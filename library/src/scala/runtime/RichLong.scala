@@ -1,7 +1,7 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2002-2006, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |                                         **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2008, LAMP/EPFL             **
+**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
@@ -24,4 +24,7 @@ final class RichLong(x: Long) extends Proxy with Ordered[Long] {
   def max(y: Long): Long = if (x > y) x else y
   def abs: Long = if (x < 0) -x else x
 
+  def toBinaryString: String = java.lang.Long.toBinaryString(x)
+  def toHexString: String = java.lang.Long.toHexString(x)
+  def toOctalString: String = java.lang.Long.toOctalString(x)
 }
