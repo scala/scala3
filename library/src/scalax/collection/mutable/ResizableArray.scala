@@ -1,47 +1,44 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2008, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2007, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
-// $Id$
+// $Id: ResizableArray.scala 15407 2008-06-20 09:26:36Z stepancheg $
 
 
-package scala.collection.mutable
-
-import Predef._
+package scalax.collection.mutable
 
 /** This class is used internally to implement data structures that
  *  are based on resizable arrays.
- *  //todo enrich with more efficient operations
  *
  *  @author  Matthias Zenger, Burak Emir
  *  @version 1.0, 03/05/2004
  */
-trait ResizableArray[A] extends RandomAccessSeq[A] {
+trait ResizableArray[A] extends Vector[A] {
 
   protected def initialSize: Int = 16
-  protected var array: Array[AnyRef] = new Array[AnyRef](initialSize)
-  private var size1: Int = 0
-  protected def size0: Int = size1
-  protected def size0_=(sz: Int) { size1 = sz }
+  protected var array: Array[AnyRef] = new Array[AnyRef](initialSize min 1)
+
+  protected var size0: Int = 0
 
   //##########################################################################
-  // implement/override methods of Seq[A]
+  // implement/override methods of Vector[A]
 
   /** Returns the length of this resizable array.
    */
   def length: Int = size0
 
-  def apply(i: Int) = array(i).asInstanceOf[A]
+  def apply(idx: Int) = {
+    if (idx >= size0) throw new IndexOutOfBoundsException(idx.toString)
+    array(idx).asInstanceOf[A]
+  }
 
-  /** remove elements of this array at indices after <code>sz</code>
-   */
-  def reduceToSize(sz: Int) {
-    if (sz > size0) throw new IllegalArgumentException
-    size0 = sz
+  def update(idx: Int, elem: A) {
+    if (idx >= size0) throw new IndexOutOfBoundsException(idx.toString)
+    array(idx) = elem.asInstanceOf[AnyRef]
   }
 
   /** Fills the given array <code>xs</code> with the elements of
@@ -58,23 +55,30 @@ trait ResizableArray[A] extends RandomAccessSeq[A] {
    *  @param   The buffer to which elements are copied
    */
   override def copyToBuffer[B >: A](dest: Buffer[B]) {
-    dest.++=(runtime.ScalaRunTime.boxArray(array).asInstanceOf[Array[B]], 0, size0)
+    dest ++= array.asInstanceOf[Iterable[A]] // !!!
   }
 
-  /** Returns a new iterator over all elements of this resizable array.
-   */
-  override def elements: Iterator[A] = new Iterator[A] {
+  override def foreach(f: A => Unit) {
     var i = 0
-    def hasNext: Boolean = i < size0
-    def next(): A = { i = i + 1; array(i - 1).asInstanceOf[A] }
+    while (i < size) {
+      f(array(i).asInstanceOf[A])
+      i += 1
+    }
   }
 
   //##########################################################################
 
+  /** remove elements of this array at indices after <code>sz</code>
+   */
+  def reduceToSize(sz: Int) {
+    require(sz <= size0)
+    size0 = sz
+  }
+
   /** ensure that the internal array has at n cells */
   protected def ensureSize(n: Int) {
     if (n > array.length) {
-      var newsize = if (array.length == 0) 2 else array.length * 2
+      var newsize = array.length * 2
       while (n > newsize)
         newsize = newsize * 2
       val newar: Array[AnyRef] = new Array(newsize)

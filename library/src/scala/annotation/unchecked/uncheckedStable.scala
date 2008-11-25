@@ -7,7 +7,7 @@
 \*                                                                      */
 package scala.annotation.unchecked
 
-/** An annotation for type arguments for which one wants to suppress variance checking
+/** An annotation for values that are assumed to be stable even though their
  *  types are volatile.
  */
-final class uncheckedVariance extends StaticAnnotation {}
+final class uncheckedStable extends StaticAnnotation {}
