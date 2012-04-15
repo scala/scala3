@@ -1,17 +1,14 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2007-2011, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
+package scala.annotation.meta
 
-package scala.reflect
-
-/** A `OptManifest[T]` is an optional [[scala.reflect.Manifest]].
- *
- *  It is either a `Manifest` or the value `NoManifest`.
- *
- *  @author Martin Odersky
+/**
+ * Currently unused; intended as an annotation target for classes such as case classes
+ * that automatically generate a companion object
  */
-trait OptManifest[+T] extends Serializable
+final class companionObject extends annotation.StaticAnnotation
