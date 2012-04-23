@@ -11,7 +11,7 @@ package generic
 
 import language.higherKinds
 
-/** A template for companion objects of `ClassManifestTraversable` and
+/** A template for companion objects of `ClassTagTraversable` and
  *  subclasses thereof.
  *
  *  @define coll collection
@@ -21,11 +21,11 @@ import language.higherKinds
  *    @author Aleksandar Prokopec
  *    @since 2.8
  */
-abstract class ClassManifestTraversableFactory[CC[X] <: Traversable[X] with GenericClassManifestTraversableTemplate[X, CC]]
-              extends GenericClassManifestCompanion[CC] {
+abstract class ArrayTagTraversableFactory[CC[X] <: Traversable[X] with GenericArrayTagTraversableTemplate[X, CC]]
+              extends GenericArrayTagCompanion[CC] {
 
-  class GenericCanBuildFrom[A](implicit manif: ClassManifest[A]) extends CanBuildFrom[CC[_], A, CC[A]] {
-    def apply(from: CC[_]) = from.genericClassManifestBuilder[A]
+  class GenericCanBuildFrom[A](implicit tag: ArrayTag[A]) extends CanBuildFrom[CC[_], A, CC[A]] {
+    def apply(from: CC[_]) = from.genericArrayTagBuilder[A]
     def apply = newBuilder[A]
   }
 }
