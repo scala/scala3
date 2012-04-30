@@ -1,21 +1,17 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2002-2011, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
 
+package scala.annotation
 
-
-package scala.collection
-package generic
-
-import language.higherKinds
-
-/** A template for companion objects of Seq and subclasses thereof.
+/** A method annotation which suppresses the creation of
+ *  additional specialized forms based on enclosing specialized
+ *  type parameters.
  *
- *  @since 2.8
+ *  @since 2.10
  */
-abstract class GenSeqFactory[CC[X] <: GenSeq[X] with GenericTraversableTemplate[X, CC]]
-extends GenTraversableFactory[CC]
+class unspecialized extends annotation.StaticAnnotation
