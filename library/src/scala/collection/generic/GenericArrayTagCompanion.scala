@@ -12,19 +12,19 @@ package generic
 import mutable.Builder
 import language.higherKinds
 
-/** This class represents companions of classes which require ClassManifests
+/** This class represents companions of classes which require ArrayTags
  *  for their element types.
  *
  *  @author Aleksandar Prokopec
  */
-abstract class GenericClassManifestCompanion[+CC[X] <: Traversable[X]] {
+abstract class GenericArrayTagCompanion[+CC[X] <: Traversable[X]] {
   type Coll = CC[_]
 
-  def newBuilder[A](implicit ord: ClassManifest[A]): Builder[A, CC[A]]
+  def newBuilder[A](implicit ord: ArrayTag[A]): Builder[A, CC[A]]
 
-  def empty[A: ClassManifest]: CC[A] = newBuilder[A].result
+  def empty[A: ArrayTag]: CC[A] = newBuilder[A].result
 
-  def apply[A](elems: A*)(implicit ord: ClassManifest[A]): CC[A] = {
+  def apply[A](elems: A*)(implicit ord: ArrayTag[A]): CC[A] = {
     val b = newBuilder[A]
     b ++= elems
     b.result
