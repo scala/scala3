@@ -6,29 +6,21 @@
 **                          |/                                          **
 \*                                                                      */
 
-
-
 package scala.collection
+package generic
 
-import generic._
-
-/** A common base class for mutable and immutable bitsets.
- *  $bitsetinfo
+/** This trait forms part of collections that can be cleared
+ *  with a clear() call.
+ *
+ *  @author   Paul Phillips
+ *  @version 2.10
+ *  @since   2.10
+ *  @define coll clearable collection
+ *  @define Coll `Clearable`
  */
-trait BitSet extends SortedSet[Int]
-                with BitSetLike[BitSet] {
-  override def empty: BitSet = BitSet.empty
+trait Clearable {
+  /** Clears the $coll's contents. After this operation, the
+   *  $coll is empty.
+   */
+  def clear(): Unit
 }
-
-/** $factoryInfo
- *  @define coll bitset
- *  @define Coll `BitSet`
- */
-object BitSet extends BitSetFactory[BitSet] {
-  val empty: BitSet = immutable.BitSet.empty
-  def newBuilder = immutable.BitSet.newBuilder
-
-  /** $canBuildFromInfo */
-  implicit def canBuildFrom: CanBuildFrom[BitSet, Int, BitSet] = bitsetCanBuildFrom
-}
-
