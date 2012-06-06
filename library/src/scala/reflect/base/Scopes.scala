@@ -1,9 +1,14 @@
 package scala.reflect
-package api
+package base
 
 trait Scopes { self: Universe =>
 
-  type Scope <: Iterable[Symbol]
+  type Scope >: Null <: Iterable[Symbol]
+
+  /** A tag that preserves the identity of the `Scope` abstract type from erasure.
+   *  Can be used for pattern matching, instance tests, serialization and likes.
+   */
+  implicit val ScopeTag: ClassTag[Scope]
 
   /** Create a new scope */
   def newScope: Scope

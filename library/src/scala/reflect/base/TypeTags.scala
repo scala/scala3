@@ -4,7 +4,7 @@
  */
 
 package scala.reflect
-package api
+package base
 
 import java.lang.{ Class => jClass }
 import language.implicitConversions
@@ -16,34 +16,29 @@ import language.implicitConversions
  *
  * === Overview ===
  *
- * Type tags are organized in a hierarchy of five classes:
- * [[scala.reflect.ArrayTag]], [[scala.reflect.ErasureTag]], [[scala.reflect.ClassTag]],
- * [[scala.reflect.api.Universe#TypeTag]] and [[scala.reflect.api.Universe#ConcreteTypeTag]].
+ * Type tags are organized in a hierarchy of four classes:
+ * [[scala.reflect.ArrayTag]], [[scala.reflect.ClassTag]],
+ * [[scala.reflect.base.Universe#TypeTag]] and [[scala.reflect.base.Universe#ConcreteTypeTag]].
  *
  * An [[scala.reflect.ArrayTag]] value carries knowledge about how to build an array of elements of type T.
- * Typically such operation is performed by storing an erasure and instantiating arrays via Java reflection,
+ * Typically such operation is performed by storing an erasure and instantiating arrays via reflection,
  * but [[scala.reflect.ArrayTag]] only defines an interface, not an implementation, hence it only contains the factory methods
  * `newArray` and `wrap` that can be used to build, correspondingly, single-dimensional and multi-dimensional arrays.
  *
- * An [[scala.reflect.ErasureTag]] value wraps a Java class, which can be accessed via the `erasure` method.
- * This notion, previously embodied in a [[scala.reflect.ClassManifest]] together with the notion of array creation,
- * deserves a concept of itself. Quite often (e.g. for serialization or classloader introspection) it's useful to
- * know an erasure, and only it, so we've implemented this notion in [[scala.reflect.ErasureTag]].
- *
- * A [[scala.reflect.ClassTag]] is a standard implementation of both [[scala.reflect.ArrayTag]] and [[scala.reflect.ErasureTag]].
+ * A [[scala.reflect.ClassTag]] is a standard implementation of [[scala.reflect.ArrayTag]].
  * It guarantees that the source type T did not to contain any references to type parameters or abstract types.
  * [[scala.reflect.ClassTag]] corresponds to a previous notion of [[scala.reflect.ClassManifest]].
  *
- * A [[scala.reflect.api.Universe#TypeTag]] value wraps a full Scala type in its tpe field.
- * A [[scala.reflect.api.Universe#ConcreteTypeTag]] value is a [[scala.reflect.api.Universe#TypeTag]]
+ * A [[scala.reflect.base.Universe#TypeTag]] value wraps a full Scala type in its tpe field.
+ * A [[scala.reflect.base.Universe#ConcreteTypeTag]] value is a [[scala.reflect.base.Universe#TypeTag]]
  * that is guaranteed not to contain any references to type parameters or abstract types.
- * Both flavors of TypeTags also carry an erasure, so [[scala.reflect.api.Universe#TypeTag]] is also an [[scala.reflect.ErasureTag]],
- * and [[scala.reflect.api.Universe#ConcreteTypeTag]] is additionally an [[scala.reflect.ArrayTag]] and a [[scala.reflect.ClassTag]]
  *
  * It is recommended to use the tag supertypes of to precisely express your intent, i.e.:
- * use ArrayTag when you want to construct arrays,
- * use ErasureTag when you need an erasure and don't mind it being generated for untagged abstract types,
- * use ClassTag only when you need an erasure of a type that doesn't refer to untagged abstract types.
+ * use ArrayTag when you just want to construct arrays,
+ * use ClassTag only when you need an erasure, e.g. for serialization or pattern matching.
+ *
+ * [Eugene++] also mention sensitivity to prefixes, i.e. that rb.TypeTag is different from ru.TypeTag
+ * [Eugene++] migratability between mirrors and universes is also worth mentioning
  *
  * === Splicing ===
  *
@@ -63,9 +58,9 @@ import language.implicitConversions
  *
  * Note that T has been replaced by String, because it comes with a TypeTag in f, whereas U was left as a type parameter.
  *
- * === ErasureTag vs ClassTag and TypeTag vs ConcreteTypeTag ===
+ * === TypeTag vs ConcreteTypeTag ===
  *
- * Be careful with ErasureTag and TypeTag, because they will reify types even if these types are abstract.
+ * Be careful with TypeTag, because it will reify types even if these types are abstract.
  * This makes it easy to forget to tag one of the methods in the call chain and discover it much later in the runtime
  * by getting cryptic errors far away from their source. For example, consider the following snippet:
  *
@@ -77,7 +72,7 @@ import language.implicitConversions
  *   }
  *
  * This fragment of Scala REPL implementation defines a `bind` function that carries a named value along with its type
- * into the heart of the REPL. Using a [[scala.reflect.api.Universe#TypeTag]] here is reasonable, because it is desirable
+ * into the heart of the REPL. Using a [[scala.reflect.base.Universe#TypeTag]] here is reasonable, because it is desirable
  * to work with all types, even if they are type parameters or abstract type members.
  *
  * However if any of the three `TypeTag` context bounds is omitted, the resulting code will be incorrect,
@@ -100,10 +95,11 @@ import language.implicitConversions
  * however there are a few caveats:
  *
  * 1) The notion of OptManifest is no longer supported. Tags can reify arbitrary types, so they are always available.
- *    // [Eugene] it might be useful, though, to guard against abstractness of the incoming type.
+ *    // [Eugene++] it might be useful, though, to guard against abstractness of the incoming type.
  *
- * 2) There's no equivalent for AnyValManifest. Consider comparing your tag with one of the core tags
+ * 2) There's no equivalent for AnyValManifest. Consider comparing your tag with one of the base tags
  *    (defined in the corresponding companion objects) to find out whether it represents a primitive value class.
+ *    You can also use `<tag>.tpe.typeSymbol.isPrimitiveValueClass` for that purpose (requires scala-reflect.jar).
  *
  * 3) There's no replacement for factory methods defined in `ClassManifest` and `Manifest` companion objects.
  *    Consider assembling corresponding types using reflection API provided by Java (for classes) and Scala (for types).
@@ -111,6 +107,7 @@ import language.implicitConversions
  * 4) Certain manifest functions (such as `<:<`, `>:>` and `typeArguments`) weren't included in the tag API.
  *    Consider using reflection API provided by Java (for classes) and Scala (for types) instead.
  */
+// [Eugene++] implement serialization for typetags
 trait TypeTags { self: Universe =>
 
   /**
@@ -119,23 +116,19 @@ trait TypeTags { self: Universe =>
    * In that value, any occurrences of type parameters or abstract types U
    * which come themselves with a TypeTag are represented by the type referenced by that TypeTag.
    *
-   * @see [[scala.reflect.api.TypeTags]]
+   * @see [[scala.reflect.base.TypeTags]]
    */
   @annotation.implicitNotFound(msg = "No TypeTag available for ${T}")
-  trait TypeTag[T] extends ErasureTag[T] with Equals with Serializable {
-
+  trait TypeTag[T] extends Equals with Serializable {
+    val mirror: Mirror
+    def in[U <: Universe with Singleton](otherMirror: MirrorOf[U]): U # TypeTag[T]
     def tpe: Type
-    def sym: Symbol = tpe.typeSymbol
-
-    def isConcrete: Boolean = tpe.isConcrete
-    def notConcrete: Boolean = !isConcrete
-    def toConcrete: ConcreteTypeTag[T] = ConcreteTypeTag[T](tpe, erasure)
 
     /** case class accessories */
     override def canEqual(x: Any) = x.isInstanceOf[TypeTag[_]]
-    override def equals(x: Any) = x.isInstanceOf[TypeTag[_]] && this.tpe == x.asInstanceOf[TypeTag[_]].tpe
-    override def hashCode = scala.runtime.ScalaRunTime.hash(tpe)
-    override def toString = if (!self.isInstanceOf[DummyMirror]) (if (isConcrete) "*ConcreteTypeTag" else "TypeTag") + "[" + tpe + "]" else "TypeTag[?]"
+    override def equals(x: Any) = x.isInstanceOf[TypeTag[_]] && this.mirror == x.asInstanceOf[TypeTag[_]].mirror && this.tpe == x.asInstanceOf[TypeTag[_]].tpe
+    override def hashCode = mirror.hashCode * 31 + tpe.hashCode
+    override def toString = "TypeTag[" + tpe + "]"
   }
 
   object TypeTag {
@@ -150,16 +143,12 @@ trait TypeTags { self: Universe =>
     val Unit    : TypeTag[scala.Unit]       = ConcreteTypeTag.Unit
     val Any     : TypeTag[scala.Any]        = ConcreteTypeTag.Any
     val Object  : TypeTag[java.lang.Object] = ConcreteTypeTag.Object
-    val AnyVal  : TypeTag[scala.AnyVal]     = ConcreteTypeTag.AnyVal
-    val AnyRef  : TypeTag[scala.AnyRef]     = ConcreteTypeTag.AnyRef
     val Nothing : TypeTag[scala.Nothing]    = ConcreteTypeTag.Nothing
     val Null    : TypeTag[scala.Null]       = ConcreteTypeTag.Null
     val String  : TypeTag[java.lang.String] = ConcreteTypeTag.String
 
-    // todo. uncomment after I redo the starr
-    // def apply[T](tpe1: Type, erasure1: jClass[_]): TypeTag[T] =
-    def apply[T](tpe1: Type, erasure1: jClass[_]): TypeTag[T] =
-      tpe1 match {
+    def apply[T](mirror1: MirrorOf[self.type], tpec1: TypeCreator): TypeTag[T] =
+      tpec1(mirror1) match {
         case ByteTpe    => TypeTag.Byte.asInstanceOf[TypeTag[T]]
         case ShortTpe   => TypeTag.Short.asInstanceOf[TypeTag[T]]
         case CharTpe    => TypeTag.Char.asInstanceOf[TypeTag[T]]
@@ -171,58 +160,56 @@ trait TypeTags { self: Universe =>
         case UnitTpe    => TypeTag.Unit.asInstanceOf[TypeTag[T]]
         case AnyTpe     => TypeTag.Any.asInstanceOf[TypeTag[T]]
         case ObjectTpe  => TypeTag.Object.asInstanceOf[TypeTag[T]]
-        case AnyValTpe  => TypeTag.AnyVal.asInstanceOf[TypeTag[T]]
-        case AnyRefTpe  => TypeTag.AnyRef.asInstanceOf[TypeTag[T]]
         case NothingTpe => TypeTag.Nothing.asInstanceOf[TypeTag[T]]
         case NullTpe    => TypeTag.Null.asInstanceOf[TypeTag[T]]
         case StringTpe  => TypeTag.String.asInstanceOf[TypeTag[T]]
-        case _          => new TypeTag[T]{ def tpe = tpe1; def erasure = erasure1 }
+        case _          => new TypeTagImpl[T](mirror1.asInstanceOf[Mirror], tpec1)
       }
 
     def unapply[T](ttag: TypeTag[T]): Option[Type] = Some(ttag.tpe)
+  }
+
+  private class TypeTagImpl[T](val mirror: Mirror, val tpec: TypeCreator) extends TypeTag[T] {
+    lazy val tpe: Type = tpec[self.type](mirror)
+    def in[U <: Universe with Singleton](otherMirror: MirrorOf[U]): U # TypeTag[T] = {
+      val otherMirror1 = otherMirror.asInstanceOf[MirrorOf[otherMirror.universe.type]]
+      otherMirror.universe.TypeTag[T](otherMirror1, tpec)
+    }
   }
 
   /**
    * If an implicit value of type u.ConcreteTypeTag[T] is required, the compiler will make one up on demand following the same procedure as for TypeTags.
    * However, if the resulting type still contains references to type parameters or abstract types, a static error results.
    *
-   * @see [[scala.reflect.api.TypeTags]]
+   * @see [[scala.reflect.base.TypeTags]]
    */
   @annotation.implicitNotFound(msg = "No ConcreteTypeTag available for ${T}")
-  trait ConcreteTypeTag[T] extends TypeTag[T] with ClassTag[T] with Equals with Serializable {
-    if (!self.isInstanceOf[DummyMirror]) {
-      if (notConcrete) throw new Error("%s (%s) is not concrete and cannot be used to construct a concrete type tag".format(tpe, tpe.kind))
-    }
-
+  trait ConcreteTypeTag[T] extends TypeTag[T] with Equals with Serializable {
     /** case class accessories */
-    override def canEqual(x: Any) = x.isInstanceOf[TypeTag[_]] // this is done on purpose. TypeTag(tpe) and ConcreteTypeTag(tpe) should be equal if tpe's are equal
-    override def equals(x: Any) = x.isInstanceOf[TypeTag[_]] && this.tpe == x.asInstanceOf[TypeTag[_]].tpe
-    override def hashCode = scala.runtime.ScalaRunTime.hash(tpe)
-    override def toString = if (!self.isInstanceOf[DummyMirror]) "ConcreteTypeTag[" + tpe + "]" else "ConcreteTypeTag[?]"
+    override def canEqual(x: Any) = x.isInstanceOf[ConcreteTypeTag[_]]
+    override def equals(x: Any) = x.isInstanceOf[ConcreteTypeTag[_]] && this.mirror == x.asInstanceOf[ConcreteTypeTag[_]].mirror && this.tpe == x.asInstanceOf[ConcreteTypeTag[_]].tpe
+    override def hashCode = mirror.hashCode * 31 + tpe.hashCode
+    override def toString = "ConcreteTypeTag[" + tpe + "]"
   }
 
   object ConcreteTypeTag {
-    val Byte    : ConcreteTypeTag[scala.Byte]       = new ConcreteTypeTag[scala.Byte]{ def tpe = ByteTpe; def erasure = ClassTag.Byte.erasure; private def readResolve() = ConcreteTypeTag.Byte }
-    val Short   : ConcreteTypeTag[scala.Short]      = new ConcreteTypeTag[scala.Short]{ def tpe = ShortTpe; def erasure = ClassTag.Short.erasure; private def readResolve() = ConcreteTypeTag.Short }
-    val Char    : ConcreteTypeTag[scala.Char]       = new ConcreteTypeTag[scala.Char]{ def tpe = CharTpe; def erasure = ClassTag.Char.erasure; private def readResolve() = ConcreteTypeTag.Char }
-    val Int     : ConcreteTypeTag[scala.Int]        = new ConcreteTypeTag[scala.Int]{ def tpe = IntTpe; def erasure = ClassTag.Int.erasure; private def readResolve() = ConcreteTypeTag.Int }
-    val Long    : ConcreteTypeTag[scala.Long]       = new ConcreteTypeTag[scala.Long]{ def tpe = LongTpe; def erasure = ClassTag.Long.erasure; private def readResolve() = ConcreteTypeTag.Long }
-    val Float   : ConcreteTypeTag[scala.Float]      = new ConcreteTypeTag[scala.Float]{ def tpe = FloatTpe; def erasure = ClassTag.Float.erasure; private def readResolve() = ConcreteTypeTag.Float }
-    val Double  : ConcreteTypeTag[scala.Double]     = new ConcreteTypeTag[scala.Double]{ def tpe = DoubleTpe; def erasure = ClassTag.Double.erasure; private def readResolve() = ConcreteTypeTag.Double }
-    val Boolean : ConcreteTypeTag[scala.Boolean]    = new ConcreteTypeTag[scala.Boolean]{ def tpe = BooleanTpe; def erasure = ClassTag.Boolean.erasure; private def readResolve() = ConcreteTypeTag.Boolean }
-    val Unit    : ConcreteTypeTag[scala.Unit]       = new ConcreteTypeTag[scala.Unit]{ def tpe = UnitTpe; def erasure = ClassTag.Unit.erasure; private def readResolve() = ConcreteTypeTag.Unit }
-    val Any     : ConcreteTypeTag[scala.Any]        = new ConcreteTypeTag[scala.Any]{ def tpe = AnyTpe; def erasure = ClassTag.Any.erasure; private def readResolve() = ConcreteTypeTag.Any }
-    val Object  : ConcreteTypeTag[java.lang.Object] = new ConcreteTypeTag[java.lang.Object]{ def tpe = ObjectTpe; def erasure = ClassTag.Object.erasure; private def readResolve() = ConcreteTypeTag.Object }
-    val AnyVal  : ConcreteTypeTag[scala.AnyVal]     = new ConcreteTypeTag[scala.AnyVal]{ def tpe = AnyValTpe; def erasure = ClassTag.AnyVal.erasure; private def readResolve() = ConcreteTypeTag.AnyVal }
-    val AnyRef  : ConcreteTypeTag[scala.AnyRef]     = new ConcreteTypeTag[scala.AnyRef]{ def tpe = AnyRefTpe; def erasure = ClassTag.AnyRef.erasure; private def readResolve() = ConcreteTypeTag.AnyRef }
-    val Nothing : ConcreteTypeTag[scala.Nothing]    = new ConcreteTypeTag[scala.Nothing]{ def tpe = NothingTpe; def erasure = ClassTag.Nothing.erasure; private def readResolve() = ConcreteTypeTag.Nothing }
-    val Null    : ConcreteTypeTag[scala.Null]       = new ConcreteTypeTag[scala.Null]{ def tpe = NullTpe; def erasure = ClassTag.Null.erasure; private def readResolve() = ConcreteTypeTag.Null }
-    val String  : ConcreteTypeTag[java.lang.String] = new ConcreteTypeTag[java.lang.String]{ def tpe = StringTpe; def erasure = ClassTag.String.erasure; private def readResolve() = ConcreteTypeTag.String }
+    val Byte:    ConcreteTypeTag[scala.Byte]       = new PredefConcreteTypeTag[scala.Byte]       (ByteTpe,    _.ConcreteTypeTag.Byte)
+    val Short:   ConcreteTypeTag[scala.Short]      = new PredefConcreteTypeTag[scala.Short]      (ShortTpe,   _.ConcreteTypeTag.Short)
+    val Char:    ConcreteTypeTag[scala.Char]       = new PredefConcreteTypeTag[scala.Char]       (CharTpe,    _.ConcreteTypeTag.Char)
+    val Int:     ConcreteTypeTag[scala.Int]        = new PredefConcreteTypeTag[scala.Int]        (IntTpe,     _.ConcreteTypeTag.Int)
+    val Long:    ConcreteTypeTag[scala.Long]       = new PredefConcreteTypeTag[scala.Long]       (LongTpe,    _.ConcreteTypeTag.Long)
+    val Float:   ConcreteTypeTag[scala.Float]      = new PredefConcreteTypeTag[scala.Float]      (FloatTpe,   _.ConcreteTypeTag.Float)
+    val Double:  ConcreteTypeTag[scala.Double]     = new PredefConcreteTypeTag[scala.Double]     (DoubleTpe,  _.ConcreteTypeTag.Double)
+    val Boolean: ConcreteTypeTag[scala.Boolean]    = new PredefConcreteTypeTag[scala.Boolean]    (BooleanTpe, _.ConcreteTypeTag.Boolean)
+    val Unit:    ConcreteTypeTag[scala.Unit]       = new PredefConcreteTypeTag[scala.Unit]       (UnitTpe,    _.ConcreteTypeTag.Unit)
+    val Any:     ConcreteTypeTag[scala.Any]        = new PredefConcreteTypeTag[scala.Any]        (AnyTpe,     _.ConcreteTypeTag.Any)
+    val Object:  ConcreteTypeTag[java.lang.Object] = new PredefConcreteTypeTag[java.lang.Object] (ObjectTpe,  _.ConcreteTypeTag.Object)
+    val Nothing: ConcreteTypeTag[scala.Nothing]    = new PredefConcreteTypeTag[scala.Nothing]    (NothingTpe, _.ConcreteTypeTag.Nothing)
+    val Null:    ConcreteTypeTag[scala.Null]       = new PredefConcreteTypeTag[scala.Null]       (NullTpe,    _.ConcreteTypeTag.Null)
+    val String:  ConcreteTypeTag[java.lang.String] = new PredefConcreteTypeTag[java.lang.String] (StringTpe,  _.ConcreteTypeTag.String)
 
-    // todo. uncomment after I redo the starr
-    // def apply[T](tpe1: Type, erasure1: jClass[_]): ConcreteTypeTag[T] =
-    def apply[T](tpe1: Type, erasure1: jClass[_] = null): ConcreteTypeTag[T] =
-      tpe1 match {
+    def apply[T](mirror1: MirrorOf[self.type], tpec1: TypeCreator): ConcreteTypeTag[T] =
+      tpec1(mirror1) match {
         case ByteTpe    => ConcreteTypeTag.Byte.asInstanceOf[ConcreteTypeTag[T]]
         case ShortTpe   => ConcreteTypeTag.Short.asInstanceOf[ConcreteTypeTag[T]]
         case CharTpe    => ConcreteTypeTag.Char.asInstanceOf[ConcreteTypeTag[T]]
@@ -234,21 +221,33 @@ trait TypeTags { self: Universe =>
         case UnitTpe    => ConcreteTypeTag.Unit.asInstanceOf[ConcreteTypeTag[T]]
         case AnyTpe     => ConcreteTypeTag.Any.asInstanceOf[ConcreteTypeTag[T]]
         case ObjectTpe  => ConcreteTypeTag.Object.asInstanceOf[ConcreteTypeTag[T]]
-        case AnyValTpe  => ConcreteTypeTag.AnyVal.asInstanceOf[ConcreteTypeTag[T]]
-        case AnyRefTpe  => ConcreteTypeTag.AnyRef.asInstanceOf[ConcreteTypeTag[T]]
         case NothingTpe => ConcreteTypeTag.Nothing.asInstanceOf[ConcreteTypeTag[T]]
         case NullTpe    => ConcreteTypeTag.Null.asInstanceOf[ConcreteTypeTag[T]]
         case StringTpe  => ConcreteTypeTag.String.asInstanceOf[ConcreteTypeTag[T]]
-        case _          => new ConcreteTypeTag[T]{ def tpe = tpe1; def erasure = erasure1 }
+        case _          => new ConcreteTypeTagImpl[T](mirror1.asInstanceOf[Mirror], tpec1)
       }
 
-    def unapply[T](ttag: TypeTag[T]): Option[Type] = if (ttag.isConcrete) Some(ttag.tpe) else None
+    def unapply[T](ttag: ConcreteTypeTag[T]): Option[Type] = Some(ttag.tpe)
   }
 
-  // incantations for summoning
-  // moved to Context, since rm.tags have their own incantations in Predef, and these guys are only useful in macros
-//  def tag[T](implicit ttag: TypeTag[T]) = ttag
-//  def typeTag[T](implicit ttag: TypeTag[T]) = ttag
-//  def concreteTag[T](implicit gttag: ConcreteTypeTag[T]) = cttag
-//  def concreteTypeTag[T](implicit gttag: ConcreteTypeTag[T]) = cttag
+  private class ConcreteTypeTagImpl[T](mirror: Mirror, tpec: TypeCreator) extends TypeTagImpl[T](mirror, tpec) with ConcreteTypeTag[T] {
+    override def in[U <: Universe with Singleton](otherMirror: MirrorOf[U]): U # TypeTag[T] = {
+      val otherMirror1 = otherMirror.asInstanceOf[MirrorOf[otherMirror.universe.type]]
+      otherMirror.universe.ConcreteTypeTag[T](otherMirror1, tpec)
+    }
+  }
+
+  private class PredefConcreteTypeTag[T](_tpe: Type, copyIn: Universe => Universe # TypeTag[T]) extends ConcreteTypeTagImpl[T](rootMirror, null) {
+    override lazy val tpe: Type = _tpe
+    override def in[U <: Universe with Singleton](otherMirror: MirrorOf[U]): U # TypeTag[T] =
+      copyIn(otherMirror.universe).asInstanceOf[U # TypeTag[T]]
+    private def readResolve() = copyIn(self)
+  }
+
+  // incantations
+  def typeTag[T](implicit ttag: TypeTag[T]) = ttag
+  def concreteTypeTag[T](implicit cttag: ConcreteTypeTag[T]) = cttag
+
+  // big thanks to Viktor Klang for this brilliant idea!
+  def typeOf[T](implicit ttag: TypeTag[T]): Type = ttag.tpe
 }
