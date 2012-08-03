@@ -1,4 +1,4 @@
-package scala.reflect.makro
+package scala.reflect.macros
 package internal
 
 /** Links macro definitions with their implementation.
