@@ -220,62 +220,70 @@ object Types {
 
     // hashing
 
-    def correctHash(h: Int) = if (h == NotCached) NotCachedAlt else h
+    protected def hashSeed = getClass.hashCode
 
-    def hashSeed = correctHash(getClass.hashCode)
-
-    protected def doHash(seed: Int, tp: Type): Int =
-      if (seed == NotCached) NotCached
-      else {
-        val elemHash = tp.hash
-        if (elemHash == NotCached) NotCached
-        else correctHash(hashing.mix(seed, elemHash))
-      }
-
-    protected def doHash(seed: Int, x: Any): Int =
-      if (seed == NotCached) NotCached
-      else {
-        val elemHash = x.hashCode
-        if (elemHash == NotCached) NotCached
-        else correctHash(hashing.mix(seed, elemHash))
-      }
-
-    protected def doHash(seed: Int, tps: List[Type]): Int =
-      if (seed == NotCached) NotCached
-      else {
-        var h = seed
-        var xs = tps
-        while (xs.nonEmpty) {
-          val elemHash = xs.head.hash
-          if (elemHash == NotCached) return NotCached
-          h = hashing.mix(h, elemHash)
-          xs = xs.tail
-        }
-        correctHash(h)
+    private def finishHash(hashCode: Int, arity: Int): Int = {
+      val h = hashing.finalizeHash(hashCode, arity)
+      if (h == NotCached) NotCachedAlt else h
     }
 
-    protected def doHash(seed: Int, variants: Variants): Int =
-      if (seed == NotCached) NotCached
-      else {
-        var h = seed
-        val it = variants.valuesIterator
-        while (it.hasNext) {
-          val elemHash = it.next.hash
-          if (elemHash == NotCached) return NotCached
-          h = hashing.mix(h, elemHash)
-        }
-        correctHash(h)
+    private def finishHash(seed: Int, arity: Int, tp: Type): Int = {
+      val elemHash = tp.hash
+      if (elemHash == NotCached) return NotCached
+      finishHash(hashing.mix(seed, elemHash), arity + 1)
     }
 
-    protected def finishHash(hashCode: Int, arity: Int): Int =
-      correctHash(hashing.finalizeHash(hashCode, arity))
+    private def finishHash(seed: Int, arity: Int, tps: List[Type]): Int = {
+      var h = seed
+      var xs = tps
+      var len = arity
+      while (xs.nonEmpty) {
+        val elemHash = xs.head.hash
+        if (elemHash == NotCached) return NotCached
+        h = hashing.mix(h, elemHash)
+        xs = xs.tail
+        len += 1
+      }
+      finishHash(h, len)
+    }
 
-    protected def hash1(x: Any): Int =
-      finishHash(doHash(hashSeed, x), 1)
+    private def finishHash(seed: Int, arity: Int, tp: Type, tps: List[Type]): Int = {
+      val elemHash = tp.hash
+      if (elemHash == NotCached) return NotCached
+      finishHash(hashing.mix(seed, elemHash), arity + 1, tps)
+    }
 
-    protected def hash2(tp1: Type, tp2: Type) =
-      finishHash(doHash(doHash(hashSeed, tp1), tp2), 2)
+    protected def doHash(x: Any): Int =
+      finishHash(hashing.mix(hashSeed, x.hashCode), 1)
 
+    protected def doHash(tp: Type): Int =
+      finishHash(hashSeed, 0, tp)
+
+    protected def doHash(tp1: Type, tp2: Type): Int = {
+      val elemHash = tp1.hash
+      if (elemHash == NotCached) return NotCached
+      finishHash(hashing.mix(hashSeed, elemHash), 1, tp2)
+    }
+
+    protected def doHash(x1: Any, tp2: Type): Int =
+      finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2)
+
+    protected def doHash(tp1: Type, tps2: List[Type]): Int =
+      finishHash(hashSeed, 0, tp1, tps2)
+
+    protected def doHash(variants: Variants): Int = {
+      var h = hashSeed
+      val it = variants.valuesIterator
+      while (it.hasNext) {
+        val elemHash = it.next.hash
+        if (elemHash == NotCached) return NotCached
+        h = hashing.mix(h, elemHash)
+      }
+      finishHash(h, variants.size)
+    }
+
+    protected def doHash(x1: Any, tp2: Type, tps3: List[Type]): Int =
+      finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
   } // end Type
 
   abstract class UniqueType extends Type {
@@ -369,7 +377,7 @@ object Types {
   }
 
   case class OverloadedType(variants: Variants) extends UniqueType with RefType {
-    override def computeHash: Int = finishHash(doHash(hashSeed, variants), variants.size)
+    override def computeHash: Int = doHash(variants)
   }
 
   abstract class SymRef extends SubType with RefType with RefSetSingleton {
@@ -405,7 +413,7 @@ object Types {
     def withInfo(newinfo: Type)(implicit ctx: Context): SymRef =
      if (info eq newinfo) this else SymRef(prefix, symbol, info)
 
-    override def computeHash = finishHash(doHash(doHash(hashSeed, prefix), symbol), 2)
+    override def computeHash = doHash(symbol, prefix)
   }
 
   abstract case class TypeRef(prefix: Type, symbol: TypeSymbol) extends SymRef {
@@ -480,7 +488,7 @@ object Types {
       if ((tc eq tycon) && (args eq typeArgs)) this
       else AppliedType(tc, args)
 
-    override def computeHash = finishHash(doHash(doHash(hashSeed, tycon), typeArgs), 2)
+    override def computeHash = doHash(tycon, typeArgs)
   }
 
   final class UniqueAppliedType(tycon: Type, typeArgs: List[Type]) extends AppliedType(tycon, typeArgs)
@@ -498,7 +506,7 @@ object Types {
     override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): RefType =
       (tp1 findMember (name, pre, excluded)) ref_& (tp2 findMember (name, pre, excluded))
 
-    override def computeHash = hash2(tp1, tp2)
+    override def computeHash = doHash(tp1, tp2)
   }
 
   final class UniqueAndType(tp1: Type, tp2: Type) extends AndType(tp1, tp2)
@@ -516,7 +524,7 @@ object Types {
     override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): RefType =
       tp1.findMember(name, pre, excluded) ref_| tp2.findMember(name, pre, excluded)
 
-    override def computeHash = hash2(tp1, tp2)
+    override def computeHash = doHash(tp1, tp2)
   }
 
   final class UniqueOrType(tp1: Type, tp2: Type) extends OrType(tp1, tp2)
@@ -548,7 +556,7 @@ object Types {
 
   abstract case class ThisType(clazz: ClassSymbol) extends SingletonType {
     def underlying(implicit ctx: Context) = clazz.typeOfThis
-    override def computeHash = finishHash(doHash(hashSeed, clazz), 1)
+    override def computeHash = doHash(clazz)
   }
 
   final class UniqueThisType(clazz: ClassSymbol) extends ThisType(clazz)
@@ -563,7 +571,7 @@ object Types {
       if ((thistp eq thistpe) && (supertp eq supertpe)) this
       else SuperType(thistp, supertp)
     def underlying(implicit ctx: Context) = supertpe
-    override def computeHash = hash2(thistpe, supertpe)
+    override def computeHash = doHash(thistpe, supertpe)
   }
 
   final class UniqueSuperType(thistpe: Type, supertpe: Type) extends SuperType(thistpe, supertpe)
@@ -575,7 +583,7 @@ object Types {
 
   abstract case class ConstantType(value: Constant) extends SingletonType {
     def underlying(implicit ctx: Context) = value.tpe
-    override def computeHash = hash1(value)
+    override def computeHash = doHash(value)
   }
 
   final class UniqueConstantType(value: Constant) extends ConstantType(value)
@@ -603,8 +611,7 @@ object Types {
     def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
       if (isDependent) new InstMethodMap(this, argTypes) apply resultType
       else resultType
-    override def computeHash =
-      finishHash(doHash(doHash(doHash(hashSeed, paramNames), paramTypes), resultType), paramTypes.length + 2)
+    override def computeHash = doHash(paramNames, resultType, paramTypes)
   }
 
   final class UniqueMethodType(paramNames: List[TermName], paramTypes: List[Type], resultTypeExp: MethodType => Type) extends MethodType(paramNames, paramTypes, resultTypeExp)
@@ -617,7 +624,7 @@ object Types {
   abstract case class ExprType(override val resultType: Type) extends UniqueType {
     def derivedExprType(rt: Type)(implicit ctx: Context) =
       if (rt eq resultType) this else ExprType(rt)
-    override def computeHash = hash1(resultType)
+    override def computeHash = doHash(resultType)
   }
 
   final class UniqueExprType(resultType: Type) extends ExprType(resultType)
@@ -663,7 +670,7 @@ object Types {
       hi.findMember(name, pre, excluded)
     def map(f: Type => Type)(implicit ctx: Context): TypeBounds =
       TypeBounds(f(lo), f(hi))
-    override def computeHash = hash2(lo, hi)
+    override def computeHash = doHash(lo, hi)
   }
 
   final class UniqueTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
