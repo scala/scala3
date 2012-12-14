@@ -10,6 +10,7 @@ import Symbols._
 import Contexts._
 import Denotations._
 import Types._
+import References.{Reference, SymRef, UniqueSymRef, OverloadedRef}
 import collection.mutable
 
 trait Symbols { self: Context =>
@@ -150,9 +151,11 @@ object Symbols {
       val initDenot = lastDenot.initial
       val newSym: Symbol =
         ctx.atPhase(FirstPhaseId) { implicit ctx =>
-          def relink(ref: RefType): Symbol = ref match {
-            case ref: SymRef => ref.symbol
-            case OverloadedType(variants) => relink(variants(refType.signature))
+          def relink(ref: Reference): Symbol = ref match {
+            case ref: SymRef =>
+              if (ref.signature == thisRef.signature) ref.symbol else NoSymbol
+            case ref @ OverloadedRef(ref1, ref2) =>
+              relink(ref1) orElse relink(ref2)
           }
           relink(initDenot.owner.info.decl(initDenot.name))
         }
@@ -169,7 +172,7 @@ object Symbols {
     def isType: Boolean
     def isTerm = !isType
 
-    def refType(implicit ctx: Context): SymRef = SymRef(owner.thisType, this)
+    def thisRef(implicit ctx: Context): SymRef = new UniqueSymRef(this, info)
 
     // forwarders for sym methods
     def owner(implicit ctx: Context): Symbol = deref.owner
@@ -202,6 +205,9 @@ object Symbols {
     def isCovariant: Boolean = ???
     def isContravariant: Boolean = ???
     def isSkolem: Boolean = ???
+    def isDeferred: Boolean = ???
+    def isConcrete = !isDeferred
+    def isJava: Boolean = ???
 
     def isSubClass(that: Symbol): Boolean = ???
     def isNonBottomSubClass(that: Symbol): Boolean = ???

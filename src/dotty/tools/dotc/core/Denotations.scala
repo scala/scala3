@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Periods._, Contexts._, Symbols._, RefSets._, Names._
+import Periods._, Contexts._, Symbols._, References._, Names._
 import Types._, Flags._, Decorators._
 import Scopes.Scope
 import collection.immutable.BitSet
@@ -193,10 +193,10 @@ object Denotations {
     }
 
     final def declsNamed(name: Name)(implicit ctx: Context): RefSet = {
-      var syms: RefSet = NoType
+      var syms: RefSet = NoRef
       var e = decls lookupEntry name
       while (e != null) {
-        syms = syms union e.sym.refType
+        syms = syms union e.sym.thisRef
         e = decls lookupNextEntry e
       }
       syms
@@ -216,12 +216,12 @@ object Denotations {
             refs = refs union
               parent.memberRefsNamed(name)
                 .filterExcluded(Flags.Private)
-                .seenFrom(thisType, parentSym)
+                .asSeenFrom(thisType, parentSym)
                 .filterDisjoint(ownRefs)
             ps = ps.tail
           }
         } else {
-          refs = NoType
+          refs = NoRef
         }
         memberCache enter (name, refs)
       }

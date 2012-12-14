@@ -9,8 +9,9 @@ import Scopes._
 import Constants._
 import Contexts._
 import Annotations._
-import RefSets._
+import References._
 import Periods._
+import References.{Reference, RefSet, RefUnion, ErrorRef}
 import scala.util.hashing.{MurmurHash3 => hashing}
 import collection.mutable
 
@@ -28,34 +29,15 @@ trait Types { self: Context =>
 
 object Types {
 
-  /** The signature of a reference.
-   *  Overloaded references with the same name are distinguished by
-   *  their signatures. A signature is a list of the fully qualified names
-   *  of the type symbols of the erasure of the parameters of the
-   *  reference. For instance a reference to the definition
-   *
-   *      def f(x: Int)(y: List[String]): String
-   *
-   *  would have signature
-   *
-   *      List("scala.Int".toTypeName, "scala.collection.immutable.List".toTypeName)
+  /** A hash value indicating that the underlying type is not
+   *  cached in unbiques.
    */
-  type Signature = List[TypeName]
+  final val NotCached = 0
 
-  val NullSignature = List(Names.EmptyTypeName)
-
-  /** The variants constituting an overloaded reference.
-   *  This is a set of non-overloaded references indexed by their
-   *  signatures. All instances of Variants are assumed to
-   *  have NoSymbol as default value.
+  /** An alternative value returned from `hash` if the
+   *  computed hashCode would be `NotCached`.
    */
-  type Variants = Map[Signature, RefType]
-
-  /** The canonical creator of variants maps.
-   *  Note that it adds NoSymbol as default value.
-   */
-  def Variants(bindings: (Signature, RefType)*): Variants =
-    Map(bindings: _*) withDefaultValue NoType
+  final val NotCachedAlt = Int.MinValue
 
   abstract class Type {
 
@@ -65,14 +47,14 @@ object Types {
 
     /** The type symbol associated with the type
      */
-    def typeSymbol: Symbol = NoSymbol
+    def typeSymbol(implicit ctx: Context): Symbol = NoSymbol
 
     /** The term symbol associated with the type
      */
-    def termSymbol: Symbol = NoSymbol
+    def termSymbol(implicit ctx: Context): Symbol = NoSymbol
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
-    def isStableType: Boolean = false
+    def isStable(implicit ctx: Context): Boolean = false
 
     /** Is this type dangerous (i.e. it might contain conflicting
      *  type information when empty, so that it can be constructed
@@ -104,35 +86,32 @@ object Types {
 
     def bounds(implicit ctx: Context): TypeBounds = TypeBounds(this, this)
 
-    def decl(name: Name)(implicit ctx: Context): RefType =
+    def decl(name: Name)(implicit ctx: Context): Reference =
       findClassDecl(name, typeSymbol.thisType, Flags.Empty)
 
-    // need: NoSymbol is as good as any other
-    def isAsGood(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = ???
-
-    def member(name: Name)(implicit ctx: Context): Type =
+    def member(name: Name)(implicit ctx: Context): Reference =
       findMember(name, this, Flags.Empty)
 
-    def nonPrivateMember(name: Name)(implicit ctx: Context): Type =
+    def nonPrivateMember(name: Name)(implicit ctx: Context): Reference =
       findMember(name, this, Flags.Private)
 
-    def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): RefType =
+    def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
       throw new AssertionError(s"cannot find members of $this")
 
-    protected def findClassMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): RefType =
-      findMemberAmong(typeSymbol.asClass.deref.memberRefsNamed(name), pre, excluded)
-
-    protected def findClassDecl(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): RefType =
+    protected def findClassDecl(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
       findMemberAmong(typeSymbol.asClass.deref.declsNamed(name), pre, excluded)
 
-    private def findMemberAmong(candidates: RefSet, pre: Type, excluded: FlagSet)(implicit ctx: Context): RefType = {
-      val resultSyms = candidates.filterAccessibleFrom(pre).filterExcluded(excluded)
-      def makeRef(refs: RefSet): RefType = refs match {
-        case RefUnion(refs1, refs2) => makeRef(refs1) ref_& makeRef(refs2)
+    protected def findMemberAmong(candidates: RefSet, pre: Type, owner: ClassSymbol, excluded: FlagSet)(implicit ctx: Context): Reference = {
+      val resultSyms = candidates
+        .filterAccessibleFrom(pre)
+        .filterExcluded(excluded)
+        .asSeenFrom(pre, owner)
+      def makeRef(refs: RefSet): Reference = refs match {
+        case RefUnion(refs1, refs2) => makeRef(refs1) & makeRef(refs2)
         case ref: SymRef => ref
       }
-      if (resultSyms.isEmpty) ErrorRefType // todo: refine
-      else makeRef(resultSyms)
+      if (resultSyms.exists) makeRef(resultSyms)
+      else ErrorRef // todo: refine
     }
 
     def memberType(sym: Symbol): Type = ???
@@ -142,11 +121,13 @@ object Types {
 
     def deconst: Type = ???
 
-    def prefix(implicit ctx: Context): Type = ???
+    def prefix: Type = ???
 
     def isTrivial: Boolean = ???
 
     def resultType: Type = ???
+
+    def typeArgs: List[Type] = ???
 
     def isCachable: Boolean = false
 
@@ -158,65 +139,91 @@ object Types {
     def subst(from: PolyType, to: PolyType): Type = ???
     def subst(from: MethodType, to: MethodType): Type = ???
     def substSym(from: List[Symbol], to: List[Symbol]): Type = ???
+    def substThis(clazz: ClassSymbol, tp: Type): Type = ???
 
-    def baseType(clazz: Symbol): Type = ???
+    def baseType(base: Symbol)(implicit ctx: Context): Type = ???
 
     def typeParams: List[TypeSymbol] = ???
 
     def effectiveBounds: TypeBounds = ???
     def isWrong: Boolean = ???
+    def exists: Boolean = true
 
     def & (that: Type)(implicit ctx: Context): Type =
       if (this eq that) this
       else if (this.isWrong) that
       else if (that.isWrong) this
-      else (this, that) match {
-        case (_, OrType(that1, that2)) =>
+      else that match {
+        case OrType(that1, that2) =>
           this & that1 | this & that2
-        case (OrType(this1, this2), _) =>
-          this1 & that | this2 & that
         case _ =>
-          val t1 = lower(this, that)
-          if (t1 ne that) t1
-          else {
-            val t2 = lower(that, this)
-            if (t2 ne this) t2
-            else AndType(this, that)
+          this match {
+            case OrType(this1, this2) =>
+              this1 & that | this2 & that
+            case _ =>
+              val t1 = mergeIfSub(this, that)
+              if (t1.exists) t1
+              else {
+                val t2 = mergeIfSub(that, this)
+                if (t2.exists) t2
+                else AndType(this, that)
+              }
           }
       }
 
-   def | (that: Type)(implicit ctx: Context): Type =
+    def | (that: Type)(implicit ctx: Context): Type =
       if (this eq that) this
       else if (this.isWrong) this
       else if (that.isWrong) that
       else {
-        val t1 = higher(this, that)
-        if (t1 ne that) t1
+        val t1 = mergeIfSuper(this, that)
+        if (t1.exists) t1
         else {
-          val t2 = higher(that, this)
-          if (t2 ne this) t2
-          else {
-            val t1w = t1.widen
-            val t2w = t2.widen
-            if ((t1w ne t1) || (t2w ne t2)) t1w | t2w
-            else OrType(this, that)
-          }
+          val t2 = mergeIfSuper(that, this)
+          if (t2.exists) t2
+          else OrType(this, that)
         }
       }
 
-   private def lower(t1: Type, t2: Type)(implicit ctx: Context): Type =
-      if (t1 <:< t2) t1
+    /** Merge `t1` into `t2` if t1 is a subtype of some part of t2.
+     */
+    private def mergeIfSub(t1: Type, t2: Type)(implicit ctx: Context): Type =
+      if (t1 <:< t2)
+        if (t2 <:< t1) t2 else t1
       else t2 match {
-        case t2 @ AndType(t21, t22) => t2.derivedAndType(lower(t1, t21), lower(t1, t22))
-        case _ => t2
+        case t2 @ AndType(t21, t22) =>
+          val lower1 = mergeIfSub(t1, t21)
+          if (lower1 eq t21) t2
+          else if (lower1.exists) lower1 & t22
+          else {
+            val lower2 = mergeIfSub(t1, t22)
+            if (lower2 eq t22) t2
+            else if (lower2.exists) t21 & lower2
+            else NoType
+          }
+        case _ =>
+          NoType
       }
 
-    private def higher(t1: Type, t2: Type)(implicit ctx: Context): Type =
-      if (t2 <:< t1) t1
+   /** Merge `t1` into `t2` if t1 is a supertype of some part of t2.
+    */
+    private def mergeIfSuper(t1: Type, t2: Type)(implicit ctx: Context): Type =
+      if (t2 <:< t1)
+        if (t1 <:< t2) t2 else t1
       else t2 match {
-        case t2 @ OrType(t21, t22) => t2.derivedOrType(higher(t1, t21), higher(t1, t22))
-        case _ => t2
-      }
+        case t2 @ OrType(t21, t22) =>
+          val higher1 = mergeIfSuper(t1, t21)
+          if (higher1 eq t21) t2
+          else if (higher1.exists) higher1 | t22
+          else {
+            val higher2 = mergeIfSuper(t1, t22)
+            if (higher2 eq t22) t2
+            else if (higher2.exists) t21 | higher2
+            else NoType
+          }
+        case _ =>
+          NoType
+    }
 
     // hashing
 
@@ -271,17 +278,6 @@ object Types {
     protected def doHash(tp1: Type, tps2: List[Type]): Int =
       finishHash(hashSeed, 0, tp1, tps2)
 
-    protected def doHash(variants: Variants): Int = {
-      var h = hashSeed
-      val it = variants.valuesIterator
-      while (it.hasNext) {
-        val elemHash = it.next.hash
-        if (elemHash == NotCached) return NotCached
-        h = hashing.mix(h, elemHash)
-      }
-      finishHash(h, variants.size)
-    }
-
     protected def doHash(x1: Any, tp2: Type, tps3: List[Type]): Int =
       finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
   } // end Type
@@ -296,266 +292,116 @@ object Types {
     else ctx.root.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
   }
 
+  trait TypeProxy extends Type {
+    def underlying(implicit ctx: Context): Type
+    override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
+      underlying.findMember(name, pre, excluded)
+    override def baseType(base: Symbol)(implicit ctx: Context): Type =
+      underlying.baseType(base)
 
-  trait RefType extends Type {
-    def signature(implicit ctx: Context): Signature =
-      throw new UnsupportedOperationException(this.getClass+".signature")
-
-    def orElse(alt: => RefType): RefType = if (isWrong) alt else this
-
-    def ref_& (that: RefType)(implicit ctx: Context): RefType =
-      if (this eq that) this
-      else if (this.isWrong) that
-      else if (that.isWrong) this
-      else (this, that) match {
-        case (OverloadedType(vs1), OverloadedType(vs2)) =>
-          OverloadedType(conj(vs1, vs2))
-        case (_, OverloadedType(vs2)) =>
-          OverloadedType(vs2 updated (this.signature, this ref_& vs2(this.signature)))
-        case (OverloadedType(vs1), _) =>
-          OverloadedType(vs1 updated (that.signature, vs1(that.signature) ref_& that))
-        case (this1 @ TypeRef(pre1, sym1), that1 @ TypeRef(pre2, sym2)) =>
-          val rawtpe =
-            if (sym1.isAbstractType) this1
-            else if (sym2.isAbstractType) that1
-            else
-              TypeRef(pre1, sym1.owner.newAbstractType(sym1.name.asTypeName, sym1.info.bounds))
-          rawtpe withInfo (this1.bounds & that1.bounds)
-        case (this1 @ TermRef(pre1, sym1), that1 @ TermRef(pre2, sym2)) =>
-          if ((this.signature != that.signature))
-            OverloadedType(Variants(this.signature -> this, that.signature -> that))
-          else
-            TermRef(this1.prefix, sym1, this1.info & that1.info)
-      }
-
-    def ref_| (that: RefType)(implicit ctx: Context): RefType =
-      if (this eq that) this
-      else if (this.isWrong) this
-      else if (that.isWrong) that
-      else (this, that) match {
-        case (OverloadedType(vs1), OverloadedType(vs2)) =>
-          OverloadedType(disj(vs1, vs2))
-        case (_, OverloadedType(vs2)) =>
-          this ref_| vs2(this.signature)
-        case (OverloadedType(vs1), _) =>
-          vs1(that.signature) ref_| that
-        case (this1 @ TypeRef(pre1, sym1), that1 @ TypeRef(pre2, sym2)) =>
-          val rbounds = this1.bounds | that1.bounds
-          val rsym = lubSym(pre1, sym1, sym2) orElse {
-            val rpre = RefinedType(pre1, newScope)
-            val rsym = rpre.typeSymbol.newAbstractType(sym1.name, rbounds)
-            rpre.decls.enter(rsym)
-            rsym
-          }
-          TypeRef(pre1, rsym.asType)
-        case (this1 @ TermRef(pre1, sym1), that1 @ TermRef(pre2, sym2)) =>
-          val rtpe = this1.info | that1.info
-          val rsym = lubSym(pre1, sym1, sym2) orElse {
-            val rpre = RefinedType(pre1, newScope)
-            val rsym = rpre.typeSymbol.newAbstractTerm(sym1.name, rtpe)
-            rpre.decls.enter(rsym)
-            rsym
-          }
-          TermRef(pre1, rsym.asTerm)
-      }
-
-    /** Conjunction of two variants sets */
-    private def conj(vs1: Variants, vs2: Variants)(implicit ctx: Context): Variants =
-      Variants(
-        ((vs1.keySet | vs2.keySet) map (sig => (sig -> (vs1(sig) ref_& vs2(sig))))).toSeq: _*)
-
-    /** Disjunction of two variants sets */
-    private def disj(vs1: Variants, vs2: Variants)(implicit ctx: Context): Variants =
-      Variants(
-        ((vs1.keySet & vs2.keySet) map (sig => (sig -> (vs1(sig) ref_| vs2(sig))))).toSeq: _*)
-
-    private def lubSym(pre: Type, sym1: Symbol, sym2: Symbol)(implicit ctx: Context): Symbol = {
-      def qualifies(sym: Symbol) =
-        (sym isAccessibleFrom pre) && (sym2.owner isSubClass sym.owner)
-      sym1.allOverriddenSymbols find qualifies getOrElse NoSymbol
-    }
   }
 
-  case class OverloadedType(variants: Variants) extends UniqueType with RefType {
-    override def computeHash: Int = doHash(variants)
+  trait SubType extends UniqueType with TypeProxy {
+
   }
 
-  abstract class SymRef extends SubType with RefType with RefSetSingleton {
-    def prefix: Type
-    def symbol: Symbol
+  trait SingletonType extends SubType
 
-    def isType: Boolean = symbol.isType
-    def isTerm = !isType
+// --- NamedTypes ------------------------------------------------------------------
 
-    protected var infoVar: Type = null
+  /** A NamedType of the form Prefix # name
+   */
+  abstract class NamedType extends UniqueType {
 
-    def info(implicit ctx: Context): Type = {
-      if (infoVar == null) infoVar = symbol.info.asSeenFrom(prefix, symbol.owner)
-        infoVar
+    val name: Name
+
+    private[Types] var referencedVar: Reference = null
+
+    private def needsStablePrefix(sym: Symbol) =
+      sym.isAbstractType || sym.isClass && !sym.isJava
+
+    def referenced(implicit ctx: Context): Reference = {
+      if (referencedVar == null || !referencedVar.isValid) {
+        referencedVar = prefix.member(name)
+        if (needsStablePrefix(referencedVar.symbol) && !prefix.isStable)
+          throw new MalformedType(prefix, referencedVar.symbol)
+      }
+      referencedVar
     }
 
-    def widen(implicit ctx: Context): Type = if (symbol.isTerm) info.widen else this
+    def isType = name.isTypeName
+    def isTerm = name.isTermName
 
-    def derivedSymRef(pre: Type, sym: Symbol)(implicit ctx: Context): Type =
-      if (pre eq prefix)
-        this
-      else if (sym.isOverridable && (sym.owner ne pre.typeSymbol))
-        pre.nonPrivateMember(sym.name)
+    def symbol(implicit ctx: Context): Symbol = referenced.symbol
+    def info(implicit ctx: Context): Type = referenced.info
+
+    def derivedNamedType(pre: Type, name: Name)(implicit ctx: Context): Type =
+      if (pre eq prefix) this
+      else NamedType(pre, name)
+
+    override def baseType(base: Symbol)(implicit ctx: Context): Type =
+      if (symbol.isClass)
+        symbol.info.baseType(base).substThis(symbol.asClass, prefix)
       else
-        SymRef(pre, sym)
+        info.bounds.hi.baseType(base)
 
-    def underlying(implicit ctx: Context) = info
 
-    override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): RefType =
-      if (symbol.isClass) findClassMember(name, pre, excluded)
-      else info.findMember(name, pre, excluded)
-
-    def withInfo(newinfo: Type)(implicit ctx: Context): SymRef =
-     if (info eq newinfo) this else SymRef(prefix, symbol, info)
-
-    override def computeHash = doHash(symbol, prefix)
+    override def computeHash = doHash(name, prefix)
   }
 
-  abstract case class TypeRef(prefix: Type, symbol: TypeSymbol) extends SymRef {
-    override def typeSymbol = symbol
-    override def signature(implicit ctx: Context): Signature = NullSignature
+  abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType {
+    override def underlying(implicit ctx: Context): Type = info
+    override def termSymbol(implicit ctx: Context): Symbol = symbol
+    override def isStable(implicit ctx: Context) = prefix.isStable && termSymbol.isStable
   }
 
-  final class UniqueTypeRef(prefix: Type, symbol: TypeSymbol) extends TypeRef(prefix, symbol)
-
-  abstract case class TermRef(prefix: Type, symbol: TermSymbol) extends SymRef {
-    override def termSymbol = symbol
-    private var signatureVar: Signature = null
-    private var signatureRun: RunId = NoRunId
-    override def signature(implicit ctx: Context): Signature = {
-      def paramSig(tp: Type): TypeName = ???
-      def resultSig(tp: Type): Signature = {
-        val s = sig(tp)
-        if (s eq NullSignature) Nil else s
-      }
-      def sig(tp: Type): Signature = tp match {
-        case tp: PolyType =>
-          resultSig(tp.resultType)
-        case tp: MethodType =>
-          (tp.paramTypes map paramSig) ::: resultSig(tp.resultType)
-        case _ => NullSignature
-      }
-      if (signatureRun != ctx.runId) {
-        signatureVar = sig(info)
-        signatureRun = ctx.runId
-      }
-      signatureVar
-    }
+  abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType {
+    override def typeSymbol(implicit ctx: Context): Symbol = symbol
+    override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
+      info.findMember(name, pre, excluded)
   }
 
-  final class UniqueTermRef(prefix: Type, symbol: TermSymbol) extends TermRef(prefix, symbol)
-
-  object SymRef {
-    def apply(prefix: Type, sym: Symbol)(implicit ctx: Context): SymRef =
-      if (sym.isType) TypeRef(prefix, sym.asType) else TermRef(prefix, sym.asTerm)
-    def apply(prefix: Type, sym: Symbol, info: Type)(implicit ctx: Context): SymRef = {
-      if (sym.isType) TypeRef(prefix, sym.asType, info) else TermRef(prefix, sym.asTerm, info)
-    }
+  trait NamedNoPrefix extends NamedType {
+    protected val fixedSym: Symbol
+    override def symbol(implicit ctx: Context): Symbol = fixedSym
+    override def info(implicit ctx: Context): Type = fixedSym.info
+    override def referenced(implicit ctx: Context): Reference = new UniqueSymRef(fixedSym, info)
   }
 
-  object TypeRef {
-    def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      unique(new UniqueTypeRef(prefix, sym))
-    def apply(prefix: Type, sym: TypeSymbol, info: Type)(implicit ctx: Context): TypeRef = {
-      val ref = apply(prefix, sym)
-      ref.infoVar = info
-      ref
-    }
+  final class TermRefNoPrefix(name: TermName, val fixedSym: Symbol)
+    extends TermRef(NoPrefix, name) with NamedNoPrefix
+
+  final class TypeRefNoPrefix(name: TypeName, val fixedSym: Symbol)
+    extends TypeRef(NoPrefix, name) with NamedNoPrefix
+
+  final class UniqueTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name)
+  final class UniqueTypeRef(prefix: Type, name: TypeName) extends TypeRef(prefix, name)
+
+  object NamedType {
+    def apply(prefix: Type, name: Name)(implicit ctx: Context) =
+      if (name.isTermName) TermRef(prefix, name.asTermName)
+      else TypeRef(prefix, name.asTypeName)
   }
 
   object TermRef {
-    def apply(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      unique(new UniqueTermRef(prefix, sym))
-    def apply(prefix: Type, sym: TermSymbol, info: Type)(implicit ctx: Context): TermRef = {
-      val ref = apply(prefix, sym)
-      ref.infoVar = info
-      ref
-    }
-
-    def make(pre: Type, sym: TermSymbol)(implicit ctx: Context) =
-      if (ctx.phase.erasedTypes) sym.tpe.resultType
-      else TermRef(pre, sym) // was more complicated; see singleType
+    def apply(prefix: Type, name: TermName)(implicit ctx: Context) =
+      unique(new UniqueTermRef(prefix, name))
+    def apply(sym: TermSymbol)(implicit ctx: Context) =
+      unique(new TermRefNoPrefix(sym.name, sym))
   }
 
-  abstract case class AppliedType(tycon: Type, typeArgs: List[Type]) extends UniqueType {
-    assert(tycon.typeParams.length == typeArgs.length)
-    def derivedAppliedType(tc: Type, args: List[Type])(implicit ctx: Context): Type =
-      if ((tc eq tycon) && (args eq typeArgs)) this
-      else AppliedType(tc, args)
-
-    override def computeHash = doHash(tycon, typeArgs)
+  object TypeRef {
+    def apply(prefix: Type, name: TypeName)(implicit ctx: Context) =
+      unique(new UniqueTypeRef(prefix, name))
+    def apply(sym: TypeSymbol)(implicit ctx: Context) =
+      unique(new TypeRefNoPrefix(sym.name, sym))
   }
 
-  final class UniqueAppliedType(tycon: Type, typeArgs: List[Type]) extends AppliedType(tycon, typeArgs)
-
-  object AppliedType {
-    def apply(tycon: Type, typeArgs: List[Type])(implicit ctx: Context) =
-      unique(new UniqueAppliedType(tycon, typeArgs))
-  }
-
-  abstract case class AndType(tp1: Type, tp2: Type) extends UniqueType {
-    def derivedAndType(t1: Type, t2: Type)(implicit ctx: Context) =
-      if ((t1 eq tp1) && (t2 eq tp2)) this
-      else AndType(tp1, tp2)
-
-    override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): RefType =
-      (tp1 findMember (name, pre, excluded)) ref_& (tp2 findMember (name, pre, excluded))
-
-    override def computeHash = doHash(tp1, tp2)
-  }
-
-  final class UniqueAndType(tp1: Type, tp2: Type) extends AndType(tp1, tp2)
-
-  object AndType {
-    def apply(tp1: Type, tp2: Type)(implicit ctx: Context) =
-      unique(new UniqueAndType(tp1, tp2))
-  }
-
-  abstract case class OrType(tp1: Type, tp2: Type) extends UniqueType {
-    def derivedOrType(t1: Type, t2: Type)(implicit ctx: Context) =
-      if ((t1 eq tp1) && (t2 eq tp2)) this
-      else OrType(tp1, tp2)
-
-    override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): RefType =
-      tp1.findMember(name, pre, excluded) ref_| tp2.findMember(name, pre, excluded)
-
-    override def computeHash = doHash(tp1, tp2)
-  }
-
-  final class UniqueOrType(tp1: Type, tp2: Type) extends OrType(tp1, tp2)
-
-  object OrType {
-    def apply(tp1: Type, tp2: Type)(implicit ctx: Context) =
-      unique(new UniqueOrType(tp1, tp2))
-  }
-
-  case object NoType extends SymRef {
-    def prefix = NoPrefix
-    def symbol = NoSymbol
-  }
-
-  case object NoPrefix extends UniqueType {
-    override def computeHash = hashSeed
-  }
-
-  abstract class ErrorType extends Type
-
-  object ErrorType extends ErrorType
-  object ErrorRefType extends ErrorType with RefType
-
-  trait SubType extends UniqueType {
-    def underlying(implicit ctx: Context): Type
-  }
-
-  abstract class SingletonType extends SubType
+// --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
 
   abstract case class ThisType(clazz: ClassSymbol) extends SingletonType {
     def underlying(implicit ctx: Context) = clazz.typeOfThis
+    override def isStable(implicit ctx: Context) = true
     override def computeHash = doHash(clazz)
   }
 
@@ -567,11 +413,12 @@ object Types {
   }
 
   abstract case class SuperType(thistpe: Type, supertpe: Type) extends SingletonType {
+    def underlying(implicit ctx: Context) = supertpe
+    override def isStable(implicit ctx: Context) = true
+    override def computeHash = doHash(thistpe, supertpe)
     def derivedSuperType(thistp: Type, supertp: Type)(implicit ctx: Context) =
       if ((thistp eq thistpe) && (supertp eq supertpe)) this
       else SuperType(thistp, supertp)
-    def underlying(implicit ctx: Context) = supertpe
-    override def computeHash = doHash(thistpe, supertpe)
   }
 
   final class UniqueSuperType(thistpe: Type, supertpe: Type) extends SuperType(thistpe, supertpe)
@@ -593,20 +440,119 @@ object Types {
       unique(new UniqueConstantType(value))
   }
 
-  case class RefinedType(parent: Type, decls: Scope) extends Type { // can make uniquetype ??? but need to special-case symbols
-    def derivedRefinedType(parent1: Type, decls1: Scope): RefinedType =
-      if ((parent1 eq parent) && (decls1 eq decls)) this
-      else RefinedType(parent1, decls1)
+  // --- AppliedType -----------------------------------------------------------------
 
-    override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): RefType =
-      findClassDecl(name, pre, excluded) orElse parent.findMember(name, pre, excluded)
+  abstract case class AppliedType(tycon: Type, override val typeArgs: List[Type]) extends UniqueType {
+    assert(tycon.typeParams.length == typeArgs.length)
+
+    override def baseType(base: Symbol)(implicit ctx: Context): Type =
+      tycon.baseType(base).subst(tycon.typeParams, typeArgs)
+
+    def derivedAppliedType(tc: Type, args: List[Type])(implicit ctx: Context): Type =
+      if ((tc eq tycon) && (args eq typeArgs)) this
+      else AppliedType(tc, args)
+
+    override def computeHash = doHash(tycon, typeArgs)
   }
+
+  final class UniqueAppliedType(tycon: Type, typeArgs: List[Type]) extends AppliedType(tycon, typeArgs)
+
+  object AppliedType {
+    def apply(tycon: Type, typeArgs: List[Type])(implicit ctx: Context) =
+      unique(new UniqueAppliedType(tycon, typeArgs))
+  }
+
+// --- CompoundTypes ---------------------------------------------------------
+
+  abstract class CompoundType extends Type {
+    val clazz: ClassSymbol
+  }
+
+  case class RefinedType(parent: Type, decls: Scope, clazz: ClassSymbol) extends CompoundType { // can make uniquetype ??? but need to special-case symbols
+
+    def derivedRefinedType(parent1: Type, decls1: Scope, clazz1: ClassSymbol): RefinedType =
+      if ((parent1 eq parent) && (decls1 eq decls) && (clazz1 eq clazz)) this
+      else RefinedType(parent1, decls1, clazz1)
+
+    override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
+      parent.findMember(name, pre, excluded) & findClassDecl(name, pre, excluded)
+  }
+
+  case class ClassInfoType(override val parents: List[Type], decls: Scope, clazz: ClassSymbol) extends CompoundType {
+    override def typeSymbol(implicit ctx: Context) = clazz
+    override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
+      findMemberAmong(clazz.deref.memberRefsNamed(name), pre, clazz, excluded)
+
+    override def baseType(base: Symbol)(implicit ctx: Context): Type =
+      if (clazz eq base) clazz.tpe
+      else if (clazz isSubClass base)
+        ((NoType: Type) /: parents) { (bt, parent) => bt & parent.baseType(base) }
+      else NoType
+  }
+
+// --- AndType/OrType ---------------------------------------------------------------
+
+  abstract case class AndType(tp1: Type, tp2: Type) extends UniqueType {
+
+    type This <: AndType
+
+    def derivedAndType(t1: Type, t2: Type)(implicit ctx: Context) =
+      if ((t1 eq tp1) && (t2 eq tp2)) this
+      else AndType(t1, t2)
+
+    override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
+      (tp1 findMember (name, pre, excluded)) & (tp2 findMember (name, pre, excluded))
+
+    override def baseType(base: Symbol)(implicit ctx: Context): Type =
+      tp1.baseType(base) & tp2.baseType(base)
+
+    override def computeHash = doHash(tp1, tp2)
+  }
+
+  final class UniqueAndType(tp1: Type, tp2: Type) extends AndType(tp1, tp2)
+
+  object AndType {
+    def apply(tp1: Type, tp2: Type)(implicit ctx: Context) =
+      unique(new UniqueAndType(tp1, tp2))
+  }
+
+  abstract case class OrType(tp1: Type, tp2: Type) extends UniqueType {
+    def derivedOrType(t1: Type, t2: Type)(implicit ctx: Context) =
+      if ((t1 eq tp1) && (t2 eq tp2)) this
+      else OrType(t1, t2)
+
+    override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference = {
+      (tp1.findMember(name, pre, excluded) | tp2.findMember(name, pre, excluded))(pre)
+    }
+
+    override def baseType(base: Symbol)(implicit ctx: Context): Type =
+      tp1.baseType(base) | tp2.baseType(base)
+
+     override def computeHash = doHash(tp1, tp2)
+  }
+
+  final class UniqueOrType(tp1: Type, tp2: Type) extends OrType(tp1, tp2)
+
+  object OrType {
+    def apply(tp1: Type, tp2: Type)(implicit ctx: Context) =
+      unique(new UniqueOrType(tp1, tp2))
+  }
+
+// ----- Method types: MethodType/ExprType/PolyType/MethodParam/PolyParam ---------------
 
   abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type], resultTypeExp: MethodType => Type) extends UniqueType {
     override lazy val resultType = resultTypeExp(this)
     lazy val isDependent = resultType exists {
       case MethodParam(mt, _) => mt eq this
       case _ => false
+    }
+    def paramSig(tp: Type): TypeName = ???
+    lazy val signature: Signature = {
+      val sig = paramTypes map paramSig
+      resultType match {
+        case mt: MethodType => sig ++ mt.signature
+        case _ => sig
+      }
     }
     def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
       if (isDependent) new InstMethodMap(this, argTypes) apply resultType
@@ -638,13 +584,6 @@ object Types {
     lazy val paramBounds = paramBoundsExp(this)
     override lazy val resultType = resultTypeExp(this)
 
-    def derivedPolyType(pnames: List[TypeName], pboundsExp: PolyType => List[TypeBounds], restpeExp: PolyType => Type): Type = {
-      val restpe = PolyType(pnames, pboundsExp, restpeExp)
-      if ((pnames eq paramNames) &&
-          (pboundsExp(this) eq paramBounds) &&
-          (restpeExp(this) eq resultType)) this
-      else restpe
-    }
     def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
       new InstPolyMap(this, argTypes) apply resultType
   }
@@ -654,8 +593,18 @@ object Types {
     override def computeHash = NotCached
   }
 
-  case class PolyParam(pt: PolyType, paramNum: Int) extends Type {
+  case class PolyParam(pt: PolyType, paramNum: Int) extends TypeProxy {
+    def underlying(implicit ctx: Context) = pt.paramBounds(paramNum).hi
+    // need hashCode and equals to be written so that
+    // cyclic reference errors are avoided
+    override def equals(other: Any) = other match {
+      case PolyParam(pt1, pn) => (pt1 eq pt) && (pn == paramNum)
+      case _ => false
+    }
+    override def hashCode = doHash(paramNum)
   }
+
+// ------ Type Bounds ------------------------------------------------------------
 
   abstract case class TypeBounds(lo: Type, hi: Type) extends UniqueType {
     def derivedTypeBounds(lo1: Type, hi1: Type)(implicit ctx: Context) =
@@ -666,7 +615,7 @@ object Types {
       TypeBounds(this.lo | that.lo, this.hi & that.hi)
     def | (that: TypeBounds)(implicit ctx: Context): TypeBounds =
       TypeBounds(this.lo & that.lo, this.hi | that.hi)
-    override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): RefType =
+    override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
       hi.findMember(name, pre, excluded)
     def map(f: Type => Type)(implicit ctx: Context): TypeBounds =
       TypeBounds(f(lo), f(hi))
@@ -680,10 +629,13 @@ object Types {
       unique(new UniqueTypeBounds(lo, hi))
   }
 
-  case class AnnotatedType(annots: List[AnnotationInfo], underlying: Type) extends Type {
-    def derivedAnnotatedType(annots1: List[AnnotationInfo], underlying1: Type) =
-      if ((annots1 eq annots) && (underlying1 eq underlying)) this
-      else AnnotatedType.make(annots1, underlying1)
+// ----- AnnotatedTypes -----------------------------------------------------------
+
+  case class AnnotatedType(annots: List[AnnotationInfo], tpe: Type) extends TypeProxy {
+    def underlying(implicit ctx: Context): Type = tpe
+    def derivedAnnotatedType(annots1: List[AnnotationInfo], tpe1: Type) =
+      if ((annots1 eq annots) && (tpe1 eq tpe)) this
+      else AnnotatedType.make(annots1, tpe1)
   }
 
   object AnnotatedType {
@@ -692,13 +644,33 @@ object Types {
       else AnnotatedType(annots, underlying)
   }
 
+// Special type objects ------------------------------------------------------------
+
+  case object NoType extends Type {
+    override def prefix = NoPrefix
+    def symbol = NoSymbol
+    def info = NoType
+  }
+
+  case object NoPrefix extends UniqueType {
+    override def computeHash = hashSeed
+  }
+
+  abstract class ErrorType extends Type
+
+  object ErrorType extends ErrorType
+
+  case object WildcardType extends Type
+
+// ----- TypeMaps --------------------------------------------------------------------
+
   abstract class TypeMap(implicit ctx: Context) extends (Type => Type) {
     def apply(tp: Type): Type
 
     /** Map this function over given type */
     def mapOver(tp: Type): Type = tp match {
-      case tp: SymRef =>
-        tp.derivedSymRef(this(tp.prefix), tp.symbol)
+      case tp: NamedType   =>
+        tp.derivedNamedType(this(tp.prefix), tp.name)
 
       case ThisType(_)
          | MethodParam(_, _)
@@ -741,14 +713,8 @@ object Types {
           tp.derivedTypeBounds(this(lo), this(hi))
         }
 
-      case tp @ RefinedType(parent, decls) =>
-        tp.derivedRefinedType(this(parent), mapOver(decls))
-
-      case tp @ OverloadedType(vs) =>
-        val altTypes = (vs map (_._2)).toList
-        val altTypes1 = altTypes mapConserve (t => this(t).asInstanceOf[RefType])
-        if (altTypes eq altTypes1) tp
-        else altTypes.reduceLeft(_ ref_& _)
+      case tp @ RefinedType(parent, decls, clazz) =>
+        tp.derivedRefinedType(this(parent), mapOver(decls), clazz)
 
       case tp @ AnnotatedType(annots, underlying) =>
         tp.derivedAnnotatedType(mapOverAnnotations(annots), this(underlying))
@@ -797,69 +763,76 @@ object Types {
     }
   }
 
-//  Constraints: poly => tvars
-//
-
-
-
   class AsSeenFromMap(pre: Type, clazz: Symbol)(implicit ctx: Context) extends TypeMap {
+
     private def skipPrefixOf(pre: Type, clazz: Symbol) =
       (pre eq NoType) || (pre eq NoPrefix) || clazz.isPackageClass
-    def apply(tp: Type) = tp match {
-      case ThisType(sym) =>
-        def toPrefix(pre: Type, clazz: Symbol): Type =
-          if (skipPrefixOf(pre, clazz))
-            tp
-          else if ((sym isNonBottomSubClass clazz) &&
-            (pre.widen.typeSymbol isNonBottomSubClass sym))
-            pre match {
-              case SuperType(thistp, _) => thistp
-              case _ => pre
-            }
-          else
-            toPrefix(pre.baseType(clazz).prefix, clazz.owner)
-        toPrefix(pre, clazz)
-      case TypeRef(_, tparam) if tparam.isTypeParameter =>
-        def toInstance(pre: Type, clazz: Symbol): Type = {
-          if (skipPrefixOf(pre, clazz)) tp
-          else {
-            val tparamOwner = tparam.owner
 
-            def throwError =
-              if (tparamOwner.tpe.parents exists (_.isErroneous))
-                ErrorType // don't be overzealous with throwing exceptions, see #2641
-              else
-                throw new Error(
-                  s"something is wrong (wrong class file?): tp ${tparam.locationString} cannot be instantiated from ${pre.widen}")
-
-            def prefixMatches = pre.typeSymbol isNonBottomSubClass tparamOwner
-
-            val basePre = pre.baseType(clazz)
-
-            def instParamFrom(typeInst: Type): Type = typeInst match {
-              case ConstantType(_) =>
-                // have to deconst because it may be a Class[T].
-                instParamFrom(typeInst.deconst)
-              case AppliedType(tycon, baseArgs) =>
-                instParam(tycon.typeParams, baseArgs)
-              case _ =>
-                throwError
-            }
-
-            def instParam(ps: List[Symbol], as: List[Type]): Type =
-              if (ps.isEmpty || as.isEmpty) throwError
-              else if (tparam eq ps.head) as.head
-              else throwError
-
-            if (tparamOwner == clazz && prefixMatches) instParamFrom(basePre)
-            else toInstance(basePre.prefix, clazz.owner)
-          }
+    private def toPrefix(pre: Type, clazz: Symbol, thisclazz: Symbol, tp: Type): Type =
+      if (skipPrefixOf(pre, clazz))
+        tp
+      else if ((thisclazz isNonBottomSubClass clazz) &&
+        (pre.widen.typeSymbol isNonBottomSubClass thisclazz))
+        pre match {
+          case SuperType(thistp, _) => thistp
+          case _ => pre
         }
-        toInstance(pre, clazz)
+      else
+        toPrefix(pre.baseType(clazz).prefix, clazz.owner, thisclazz, tp)
+
+    private def toInstance(pre: Type, clazz: Symbol, tparam: Symbol, tp: Type): Type = {
+      if (skipPrefixOf(pre, clazz)) tp
+      else {
+        val tparamOwner = tparam.owner
+
+        def throwError =
+          if (tparamOwner.tpe.parents exists (_.isErroneous))
+            ErrorType // don't be overzealous with throwing exceptions, see #2641
+          else
+            throw new Error(
+              s"something is wrong (wrong class file?): tp ${tparam.locationString} cannot be instantiated from ${pre.widen}")
+
+        def prefixMatches = pre.typeSymbol isNonBottomSubClass tparamOwner
+
+        val basePre = pre.baseType(clazz)
+
+        def instParamFrom(typeInst: Type): Type = typeInst match {
+          case ConstantType(_) =>
+            // have to deconst because it may be a Class[T].
+            instParamFrom(typeInst.deconst)
+          case AppliedType(tycon, baseArgs) =>
+            instParam(tycon.typeParams, baseArgs)
+          case _ =>
+            throwError
+        }
+
+        def instParam(ps: List[Symbol], as: List[Type]): Type =
+          if (ps.isEmpty || as.isEmpty) throwError
+          else if (tparam eq ps.head) as.head
+          else throwError
+
+        if (tparamOwner == clazz && prefixMatches) instParamFrom(basePre)
+        else toInstance(basePre.prefix, clazz.owner, tparam, tp)
+      }
+    }
+
+    def apply(tp: Type) = tp match {
+      case ThisType(thisclazz) =>
+        toPrefix(pre, clazz, thisclazz, tp)
       case _ =>
-        if (tp.isTrivial) tp else mapOver(tp)
+        tp.widen match {
+          case tp: TypeRef if tp.typeSymbol.isTypeParameter =>
+            toInstance(pre, clazz, tp.typeSymbol, tp)
+          case _ =>
+            if (tp.isTrivial) tp else mapOver(tp)
+        }
     }
   }
+
+// todo: prevent unstable prefixes in variables?
+
+
+// ----- TypeAccumulators ----------------------------------------------------
 
   abstract class TypeAccumulator[T] extends ((T, Type) => T) {
     def apply(x: T, tp: Type): T
@@ -869,10 +842,10 @@ object Types {
     def apply(x: T, annot: AnnotationInfo): T = ???
 
     def foldOver(x: T, tp: Type): T = tp match {
-      case tp: SymRef =>
+      case tp: NamedType =>
         this(x, tp.prefix)
 
-      case ThisType(_)
+     case ThisType(_)
          | MethodParam(_, _)
          | PolyParam(_, _)
          | ConstantType(_) => x
@@ -895,11 +868,8 @@ object Types {
       case TypeBounds(lo, hi) =>
         this(this(x, lo), hi)
 
-      case RefinedType(parent, decls) =>
+      case RefinedType(parent, decls, _) =>
         (this(x, parent) /: decls.toList) (apply)
-
-      case OverloadedType(vs) =>
-        (x /: (vs map (_._2))) (this)
 
       case AnnotatedType(annots, underlying) =>
         this((x /: annots) (apply), underlying)
@@ -914,6 +884,205 @@ object Types {
     def apply(x: Boolean, tp: Type) = x || p(tp) || foldOver(x, tp)
   }
 
+// ----- Subtyping -----------------------------------------------------------
+
+  type Constraints = Map[PolyParam, TypeBounds]
+
+  class SubTyper(val constraints: Constraints = Map(), explain: Boolean = false) {
+
+    /**
+     *   isSubRefinement(T1, T2) =
+     *     val clazz = T1.clazz
+     *
+     *
+     */
+    def isSubRefinement(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = {
+      val clazz = tp1.typeSymbol
+      assert(clazz eq tp2.typeSymbol)
+      if (tp1.prefix != tp2.prefix) return false
+      tp1 match {
+        case AppliedType(tycon2, args2) =>
+          isSubArgs(clazz.typeParams, tp1.typeArgs, args2) &&
+          isSubRefinement(tp1, tycon2)
+        case RefinedType(tycon2, decls, _) =>
+          ???
+
+      }
+    }
+
+    def isSubArgs(tparams: List[TypeSymbol], subargs: List[Type], superargs: List[Type]): Boolean = ???
+
+    /**
+     *   NoType is not a sub or superType of Anything
+     *
+     *   T <: ?
+     *   ? <: T
+     *   T <: Error
+     *   Error <: T
+     *
+     *   T1 <: T2[U2s] :-
+     *       T1 <: T2 /\
+     *       val T[U1s] = T1 baseType T2.typeSymbol
+     *       and for all i:
+     *       if !(Ui contravariant in T)      U1i <: U2i
+     *       if !(Ui covariant in T)          U2i <: U1i
+     *
+     *   T1[U1s] <: T2 if
+     *       T1 <: T2
+     *
+     *   P#A <: P#A  if A is no a class, or both types have same symbol
+     *
+     *   T1 <: T2  if class C = T2.typeSymbol
+     *             /\ T1' = t1 baseType C
+     *             /\ T1' isSubRefinement T2
+     *
+     *   T1 <: T2 { Ds }
+     *     if T1 <: T2 and forall i, T1 specializesSym Di
+     *
+     *
+     */
+    def isSubType(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = {
+???
+/*
+      if (tp1 == NoType || tp2 == NoType) return false
+      if (tp1 eq tp2) return true
+
+      tp2 match {
+        case tp2 @ NamedType(pre2, name2) =>
+          val ref2 = tp2.referenced
+          if (name2.isTerm && ref2.isStable) return isSubType(tp1, ref2.info)
+      }
+
+      tp1 match {
+        case tp1 @ NamedType(pre1, name1) =>
+          val ref1 = tp1.referenced
+          val sym1 = ref1.symbol
+          if (sym1 != NoSymbol) {
+            tp2 match {
+              case tp2 @ NamedType(pre2, name2) =>
+                val ref2 = tp2.referenced
+                val sym2 = ref2.symbol
+                if (sym1 eq sym2) return true
+
+
+
+
+
+                if (sym1.isTerm) {
+                  val expanded2 = if (ref2.info.isStable) return ref2.info else tp2
+                  return isSubType(ref1.info, expanded2)
+                }
+
+            }
+          }
+      }
+
+      (tp1, tp2) match {
+        case (tp1 @ NamedType(pre1, name1), tp2 @ NamedType(pre2, name2)) =>
+          if (!(pre1 =:= pre2)) return false
+          val ref1 = tp1.referenced
+          val ref2 = tp2.referenced
+          val sym1 = ref1.symbol
+          val sym2 = ref2.symbol
+          if (sym1 != NoSymbol && sym2 != NoSymbol) {
+            if (sym1 eq sym2) return true
+            if (sym2.isTerm && ref2.isStable) return isSubType(tp1, ref2.info)
+            if (sym1.isTerm) return isSubType(ref1.info, tp2)
+            if (sym1.isClass) {
+              if (sym1 == NothingClass) return true
+              if (sym2.isClass) return sym1.isNonBottomSubClass(sym2) || sym1 == NullClass
+            } else if (isSubType(ref1.upperBound, tp2)) return true
+            // !sym1.isClass || !sym2.isClass
+            if (name1  == name2) return true
+            val lo = ref2.info.lowerBound
+            return lo.typeSymbol != NothingClass && isSubType(tp1, lo)
+
+
+
+
+          }
+          if (sym1 == NothingClass) return true
+          if ()
+            if (sym1.isClass)
+              if (sym1 == NothingClass) true
+              if (sym2.isClass) sym1 isSubClass sym2
+              else if (name1 eq name2) true
+              else if
+          }
+
+            if (name1 == name2)
+
+          }
+
+        (!(tp1.symbol.isClass && tp2.symbol.isClass) || tp1.symbol == tp2.symbol)
+
+
+
+      }
+
+    }
+
+    /** First try, on the right:
+     *   - unwrap Annotated types, BoundedWildcardTypes,
+     *   - bind TypeVars  on the right, if lhs is not Annotated nor BoundedWildcard
+     *   - handle common cases for first-kind TypeRefs on both sides as a fast path.
+     */
+    def firstTry(tp1: Type, tp2: Type)(implicit ctx: Context): Boolean = tp2 match {
+      case tp2: NamedType =>
+        firstTry(tp1, tp2.underlying)
+      case tp2: TypeRef =>
+
+      case tr2: TypeRef =>
+        tp1 match {
+          case tr1: TypeRef =>
+            val sym1 = tr1.sym
+            val sym2 = tr2.sym
+            val pre1 = tr1.pre
+            val pre2 = tr2.pre
+            (((if (sym1 == sym2) phase.erasedTypes || sym1.owner.hasPackageFlag || isSubType(pre1, pre2, depth)
+               else (sym1.name == sym2.name && !sym1.isModuleClass && !sym2.isModuleClass &&
+                     (isUnifiable(pre1, pre2) ||
+                      isSameSpecializedSkolem(sym1, sym2, pre1, pre2) ||
+                      sym2.isAbstractType && isSubPre(pre1, pre2, sym2)))) &&
+                    isSubArgs(tr1.args, tr2.args, sym1.typeParams, depth))
+             ||
+             sym2.isClass && {
+               val base = tr1 baseType sym2
+               (base ne tr1) && isSubType(base, tr2, depth)
+             }
+             ||
+             thirdTryRef(tr1, tr2))
+          case _ =>
+            secondTry
+        }
+      case AnnotatedType(_, _, _) =>
+        isSubType(tp1.withoutAnnotations, tp2.withoutAnnotations, depth) &&
+        annotationsConform(tp1, tp2)
+      case BoundedWildcardType(bounds) =>
+        isSubType(tp1, bounds.hi, depth)
+      case tv2 @ TypeVar(_, constr2) =>
+        tp1 match {
+          case AnnotatedType(_, _, _) | BoundedWildcardType(_) =>
+            secondTry
+          case _ =>
+            tv2.registerBound(tp1, true)
+        }
+      case _ =>
+        secondTry*/
+    }
+
+
+  }
+
+// ----- Exceptions -------------------------------------------------------------
+
+  class TypeError(msg: String) extends Exception(msg)
+  class FatalTypeError(msg: String) extends TypeError(msg)
+  class MalformedType(pre: Type, sym: Symbol) extends FatalTypeError(s"malformed type: $pre.$sym")
+  class CyclicReference(sym: Symbol) extends FatalTypeError("cyclic reference involving $sym")
+
+// ----- Misc utilities ---------------------------------------------------------
+
   /** like map2, but returns list `xs` itself - instead of a copy - if function
    *  `f` maps all elements to themselves.
    */
@@ -925,26 +1094,4 @@ object Types {
       if ((x1 eq xs.head) && (xs1 eq xs.tail)) xs
       else x1 :: xs1
     }
-
-  final val NotCached = 0
-  final val NotCachedAlt = Int.MinValue
-
-  /** Compute the hash of a product
-  def productHash(x: Product): Int = {
-    val arr = x.productArity
-    var h = x.productPrefix.hashCode
-    var i = 0
-    while (i < arr) {
-      val elemHash = x.productElement(i) match {
-        case tp: Type => tp.hash
-        case elem => elem.hashCode
-      }
-      if (elemHash == NotCached) return NotCached
-      h = hashing.mix(h, elemHash)
-      i += 1
-    }
-    finalizeHash(h, arr)
-  }*/
-
-
 }
