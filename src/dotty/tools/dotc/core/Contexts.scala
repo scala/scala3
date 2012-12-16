@@ -17,6 +17,7 @@ object Contexts {
     val period: Period
     def names: NameTable
     def phase: Phase = ???
+    def stableInterval: Interval = ???
 
   }
 

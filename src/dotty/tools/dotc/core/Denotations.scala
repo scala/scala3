@@ -106,11 +106,9 @@ object Denotations {
     def newNameFilter: FingerPrint = new Array[Long](DefinedNamesWords)
   }
 
-  class ClassDenotation(parents: List[Type], decls: Scope) extends Denotation {
+  class ClassDenotation(val parents: List[Type], val decls: Scope, clazz: ClassSymbol) extends Denotation {
 
     import NameFilter._
-
-    lazy val baseClasses: List[ClassSymbol] = ???
 
     private var memberCacheVar: LRU8Cache[Name, RefSet] = null
 
@@ -121,19 +119,45 @@ object Denotations {
 
     def thisType: Type = ???
 
-    private var superClassBitsCache: BitSet = null
+    private var baseClassesVar: List[ClassSymbol] = null
+    private var superClassBitsVar: BitSet = null
 
-    private def computeSuperClassBits(implicit ctx: Context): BitSet = {
-      val b = BitSet.newBuilder
-      for (bc <- baseClasses) b += bc.superId
-      val bits = ctx.root.uniqueBits.findEntryOrUpdate(b.result())
-      superClassBitsCache = bits
-      bits
+    private def computeSuperClassBits(implicit ctx: Context): Unit = {
+      val seen = new mutable.BitSet
+      val locked = new mutable.BitSet
+      def addBaseClasses(bcs: List[ClassSymbol], to: List[ClassSymbol])
+          : List[ClassSymbol] = bcs match {
+        case bc :: bcs1 =>
+          val id = bc.superId
+          if (seen contains id) to
+          else if (locked contains id) throw new CyclicReference(clazz)
+          else {
+            locked += id
+            val bcs1added = addBaseClasses(bcs1, to)
+            seen += id
+            if (bcs1added eq bcs1) bcs else bc :: bcs1added
+          }
+        case _ =>
+          to
+      }
+      def addParentBaseClasses(ps: List[Type], to: List[ClassSymbol]): List[ClassSymbol] = ps match {
+        case p :: ps1 =>
+          addBaseClasses(p.baseClasses, addParentBaseClasses(ps1, to))
+        case _ =>
+          to
+      }
+      baseClassesVar = clazz :: addParentBaseClasses(parents, Nil)
+      superClassBitsVar = ctx.root.uniqueBits.findEntryOrUpdate(seen.toImmutable)
     }
 
     def superClassBits(implicit ctx: Context): BitSet = {
-      val bits = superClassBitsCache
-      if (bits != null) bits else computeSuperClassBits
+      if (superClassBitsVar == null) computeSuperClassBits
+      superClassBitsVar
+    }
+
+    def baseClasses(implicit ctx: Context): List[ClassSymbol] = {
+      if (baseClassesVar == null) computeSuperClassBits
+      baseClassesVar
     }
 
     /** Is this class a subclass of `clazz`? */
@@ -192,21 +216,11 @@ object Denotations {
       if (fp != null) fp else computeDefinedFingerPrint
     }
 
-    final def declsNamed(name: Name)(implicit ctx: Context): RefSet = {
-      var syms: RefSet = NoRef
-      var e = decls lookupEntry name
-      while (e != null) {
-        syms = syms union e.sym.thisRef
-        e = decls lookupNextEntry e
-      }
-      syms
-    }
-
     final def memberRefsNamed(name: Name)(implicit ctx: Context): RefSet = {
       var refs: RefSet = memberCache lookup name
       if (refs == null) {
         if (containsName(definedFingerPrint, name)) {
-          val ownRefs = declsNamed(name)
+          val ownRefs = decls.refsNamed(name)
           refs = ownRefs
           var ps = parents
           val ownType = thisType
@@ -226,6 +240,51 @@ object Denotations {
         memberCache enter (name, refs)
       }
       refs
+    }
+
+    private var baseTypeCache: java.util.HashMap[UniqueType, Type] = null
+
+    final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
+
+      def computeBaseTypeOf(tp: Type): Type = tp match {
+        case tp: NamedType =>
+          val sym = tp.symbol
+          val bt = baseTypeOf(tp.info)
+          if (sym.isClass) bt.substThis(sym.asClass, tp.prefix)
+          else bt
+        case AppliedType(tycon, args) =>
+          baseTypeOf(tycon).subst(tycon.typeParams, args)
+        case AndType(tp1, tp2) =>
+          baseTypeOf(tp1) & baseTypeOf(tp2)
+        case OrType(tp1, tp2) =>
+          baseTypeOf(tp1) | baseTypeOf(tp2)
+        case tp @ ClassInfoType(clazz) =>
+          def reduce(bt: Type, ps: List[Type]): Type = ps match {
+            case p :: ps1 => reduce(bt & baseTypeOf(p), ps1)
+            case _ => bt
+          }
+          reduce(NoType, tp.parents)
+        case tp: TypeProxy =>
+          baseTypeOf(tp.underlying)
+      }
+
+      if (clazz.isStatic && clazz.typeParams.isEmpty) clazz.tpe
+      else tp match {
+        case tp: UniqueType =>
+          if (baseTypeCache == null)
+            baseTypeCache = new java.util.HashMap[UniqueType, Type]
+          var basetp = baseTypeCache get tp
+          if (basetp == null) {
+            baseTypeCache.put(tp, NoType)
+            basetp = computeBaseTypeOf(tp)
+            baseTypeCache.put(tp, basetp)
+          } else if (basetp == NoType) {
+            throw new CyclicReference(clazz)
+          }
+          basetp
+        case _ =>
+          computeBaseTypeOf(tp)
+      }
     }
   }
 

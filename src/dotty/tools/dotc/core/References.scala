@@ -83,8 +83,6 @@ object References {
 
     def exists: Boolean = true
 
-    def isValid(implicit ctx: Context): Boolean
-
     /** Form a reference by conjoining with reference `that` */
     def & (that: Reference)(implicit ctx: Context): Reference =
       if (this eq that) this
@@ -111,7 +109,7 @@ object References {
           val SymRef(sym2, info2) = ref2
           def isEligible(sym1: Symbol, sym2: Symbol) =
             if (sym1.isType) !sym1.isClass
-            else sym1.isConcrete || sym2.isDeferred
+            else sym1.isConcrete || sym2.isDeferred || !sym2.exists
           def normalize(info: Type) =
             if (isType) info.bounds else info
           val sym1Eligible = isEligible(sym1, sym2)
@@ -165,7 +163,6 @@ object References {
   case class OverloadedRef(ref1: Reference, ref2: Reference) extends Reference {
     def derivedOverloadedRef(r1: Reference, r2: Reference) =
       if ((r1 eq ref1) && (r2 eq ref2)) this else OverloadedRef(r1, r2)
-    def isValid(implicit ctx: Context) = ref1.isValid && ref2.isValid
   }
 
   abstract case class SymRef(override val symbol: Symbol,
@@ -191,12 +188,13 @@ object References {
 
     // ------ RefSet ops ----------------------------------------------
 
+    def toRef(implicit ctx: Context) = this
     def containsSig(sig: Signature)(implicit ctx: Context) =
       signature == sig
     def filter(p: Symbol => Boolean)(implicit ctx: Context): RefSet =
       if (p(symbol)) this else NoRef
-    def filterDisjoint(syms: RefSet)(implicit ctx: Context): RefSet =
-      if (syms.containsSig(signature)) NoRef else this
+    def filterDisjoint(refs: RefSet)(implicit ctx: Context): RefSet =
+      if (refs.containsSig(signature)) NoRef else this
     def filterExcluded(flags: FlagSet)(implicit ctx: Context): RefSet =
       if (symbol.hasFlag(flags)) NoRef else this
     def filterAccessibleFrom(pre: Type)(implicit ctx: Context): RefSet =
@@ -208,32 +206,29 @@ object References {
   class UniqueSymRef(symbol: Symbol, info: Type)(implicit ctx: Context) extends SymRef(symbol, info) {
     private val denot = symbol.deref
     private val runid = ctx.runId
-    def isValid(implicit ctx: Context) = ctx.runId == runid && (symbol.deref eq denot)
     override protected def copy(s: Symbol, i: Type): SymRef = new UniqueSymRef(s, i)
   }
 
   class JointSymRef(symbol: Symbol, info: Type)(implicit ctx: Context) extends SymRef(symbol, info) {
     private val period = ctx.period
-    def isValid(implicit ctx: Context) = ctx.period == period
     override protected def copy(s: Symbol, i: Type): SymRef = new JointSymRef(s, i)
   }
 
   object ErrorRef extends SymRef(NoSymbol, NoType) {
-    def isValid(implicit ctx: Context): Boolean = true
   }
 
   object NoRef extends SymRef(NoSymbol, NoType) {
     override def exists = false
-    def isValid(implicit ctx: Context): Boolean = true
   }
 
 // --------------- RefSets -------------------------------------------------
 
   trait RefSet {
     def exists: Boolean
+    def toRef(implicit ctx: Context): Reference
     def containsSig(sig: Signature)(implicit ctx: Context): Boolean
     def filter(p: Symbol => Boolean)(implicit ctx: Context): RefSet
-    def filterDisjoint(syms: RefSet)(implicit ctx: Context): RefSet
+    def filterDisjoint(refs: RefSet)(implicit ctx: Context): RefSet
     def filterExcluded(flags: FlagSet)(implicit ctx: Context): RefSet
     def filterAccessibleFrom(pre: Type)(implicit ctx: Context): RefSet
     def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): RefSet
@@ -243,26 +238,27 @@ object References {
       else RefUnion(this, that)
   }
 
-  case class RefUnion(syms1: RefSet, syms2: RefSet) extends RefSet {
-    assert(syms1.exists && !syms2.exists)
+  case class RefUnion(refs1: RefSet, refs2: RefSet) extends RefSet {
+    assert(refs1.exists && !refs2.exists)
     private def derivedUnion(s1: RefSet, s2: RefSet) =
       if (!s1.exists) s2
       else if (!s2.exists) s1
-      else if ((s1 eq syms2) && (s2 eq syms2)) this
+      else if ((s1 eq refs2) && (s2 eq refs2)) this
       else new RefUnion(s1, s2)
     def exists = true
+    def toRef(implicit ctx: Context) = refs1.toRef & refs2.toRef
     def containsSig(sig: Signature)(implicit ctx: Context) =
-      (syms1 containsSig sig) || (syms2 containsSig sig)
+      (refs1 containsSig sig) || (refs2 containsSig sig)
     def filter(p: Symbol => Boolean)(implicit ctx: Context) =
-      derivedUnion(syms1 filter p, syms2 filter p)
-    def filterDisjoint(syms: RefSet)(implicit ctx: Context): RefSet =
-      derivedUnion(syms1 filterDisjoint syms, syms2 filterDisjoint syms)
+      derivedUnion(refs1 filter p, refs2 filter p)
+    def filterDisjoint(refs: RefSet)(implicit ctx: Context): RefSet =
+      derivedUnion(refs1 filterDisjoint refs, refs2 filterDisjoint refs)
     def filterExcluded(flags: FlagSet)(implicit ctx: Context): RefSet =
-      derivedUnion(syms1 filterExcluded flags, syms2 filterExcluded flags)
+      derivedUnion(refs1 filterExcluded flags, refs2 filterExcluded flags)
     def filterAccessibleFrom(pre: Type)(implicit ctx: Context): RefSet =
-      derivedUnion(syms1 filterAccessibleFrom pre, syms2 filterAccessibleFrom pre)
+      derivedUnion(refs1 filterAccessibleFrom pre, refs2 filterAccessibleFrom pre)
     def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): RefSet =
-      derivedUnion(syms1.asSeenFrom(pre, owner), syms2.asSeenFrom(pre, owner))
+      derivedUnion(refs1.asSeenFrom(pre, owner), refs2.asSeenFrom(pre, owner))
   }
 }
 

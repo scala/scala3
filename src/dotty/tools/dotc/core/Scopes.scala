@@ -11,6 +11,7 @@ import Names._
 import Periods._
 import Decorators._
 import Contexts._
+import References._
 
 object Scopes {
 
@@ -191,6 +192,17 @@ object Scopes {
       var e = lookupEntry(name)
       def hasNext: Boolean = e ne null
       def next(): Symbol = { val r = e.sym; e = lookupNextEntry(e); r }
+    }
+
+    /** The reference set of all the symbols with given name in this scope */
+    def refsNamed(name: Name)(implicit ctx: Context): RefSet = {
+      var syms: RefSet = NoRef
+      var e = lookupEntry(name)
+      while (e != null) {
+        syms = syms union e.sym.thisRef
+        e = lookupNextEntry(e)
+      }
+      syms
     }
 
     /** lookup a symbol entry matching given name.
