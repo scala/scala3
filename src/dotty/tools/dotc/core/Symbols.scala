@@ -4,6 +4,7 @@ package core
 import Periods._
 import DenotationTransformers._
 import Names._
+import Flags._
 import java.lang.AssertionError
 import Decorators._
 import Symbols._
@@ -177,7 +178,7 @@ object Symbols {
     // forwarders for sym methods
     def owner(implicit ctx: Context): Symbol = deref.owner
     def name(implicit ctx: Context): Name = deref.name
-    def flags(implicit ctx: Context): Long = deref.flags
+    def flags(implicit ctx: Context): FlagSet = deref.flags
     def info(implicit ctx: Context): Type = deref.info
     def tpe(implicit ctx: Context): Type = info
 
@@ -220,8 +221,8 @@ object Symbols {
 
     def isClass: Boolean = false
     def isMethod(implicit ctx: Context): Boolean = deref.isMethod
-    def hasFlag(required: Long)(implicit ctx: Context): Boolean = (flags & required) != 0
-    def hasAllFlags(required: Long)(implicit ctx: Context): Boolean = (flags & required) == flags
+    def hasFlag(required: FlagSet)(implicit ctx: Context): Boolean = (flags & required) != Flags.Empty
+    def hasAllFlags(required: FlagSet)(implicit ctx: Context): Boolean = (flags & required) == flags
   }
 
   abstract class TermSymbol extends Symbol {
@@ -245,8 +246,6 @@ object Symbols {
   abstract class ClassSymbol extends TypeSymbol {
     override def isClass = true
     private var superIdHint: Int = -1
-
-    override def deref(implicit ctx: Context): ClassDenotation = ???
 
     def typeOfThis(implicit ctx: Context): Type = ???
 

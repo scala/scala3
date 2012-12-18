@@ -96,4 +96,8 @@ object Periods {
   /** The interval consisting of given run id, and lo/hi phase ids */
   final def intervalOf(rid: RunId, loPid: PhaseId, hiPid: PhaseId): Interval =
     periodOf(rid, hiPid) | (hiPid - loPid)
+
+  /** The interval consisting of all periods of given run id */
+  def allPeriods(rid: RunId): Interval = intervalOf(rid, 0, PhaseMask)
+
 }

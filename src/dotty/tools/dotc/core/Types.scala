@@ -14,6 +14,8 @@ import References._
 import Periods._
 import References.{Reference, RefSet, RefUnion, ErrorRef}
 import scala.util.hashing.{MurmurHash3 => hashing}
+import collection.immutable.BitSet
+import collection.mutable
 
 import collection.mutable
 
@@ -27,6 +29,8 @@ trait Types { self: Context =>
     override def hash(x: Type): Int = x.hash
   }
 
+  /** A set for hash consing superclass bitsets */
+  private[Types] val uniqueBits = new util.HashSet[BitSet]("superbits", 1024)
 }
 
 object Types {
@@ -91,7 +95,7 @@ object Types {
     def member(name: Name)(implicit ctx: Context): Reference =
       findMember(name, this, Flags.Empty)
 
-    def decls: Scope = unsupported("decls")
+    def decls(implicit ctx: Context): Scope = unsupported("decls")
 
     def decl(name: Name)(implicit ctx: Context): Reference =
       decls.refsNamed(name).toRef
@@ -141,9 +145,10 @@ object Types {
     def substThis(clazz: ClassSymbol, tp: Type): Type = ???
     def substThis(from: RefinedType, tp: Type): Type = ???
 
-    def baseType(base: Symbol)(implicit ctx: Context): Type =
-      if (base.isClass) base.asClass.deref.baseTypeOf(this)
-      else NoType
+    def baseType(base: Symbol)(implicit ctx: Context): Type = base.info match {
+      case cinfo: ClassInfoType => cinfo.baseTypeOf(this)
+      case _ => NoType
+    }
 
     def typeParams: List[TypeSymbol] = ???
 
@@ -299,6 +304,12 @@ object Types {
     def underlying(implicit ctx: Context): Type
     override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
       underlying.findMember(name, pre, excluded)
+    override def parents(implicit ctx: Context) = underlying.parents
+    override def decls(implicit ctx: Context) = underlying.decls
+  }
+
+  trait TransformingProxy extends TypeProxy {
+
   }
 
   trait SubType extends UniqueType with TypeProxy {
@@ -316,7 +327,7 @@ object Types {
     val name: Name
 
     private[this] var referencedVar: Reference = null
-    private[this] var validPeriods = Nowhere
+    protected[this] var validPeriods = Nowhere
 
     private def needsStablePrefix(sym: Symbol) =
       sym.isAbstractType || sym.isClass && !sym.isJava
@@ -338,6 +349,12 @@ object Types {
     def info(implicit ctx: Context): Type = referenced.info
 
     def underlying(implicit ctx: Context): Type = info
+
+    override def parents(implicit ctx: Context) = {
+      val ps = info.parents
+      val sym = symbol
+      if (sym.isClass) ps.mapConserve(_.substThis(sym.asClass, prefix)) else ps
+    }
 
     def derivedNamedType(pre: Type, name: Name)(implicit ctx: Context): Type =
       if (pre eq prefix) this
@@ -363,10 +380,14 @@ object Types {
   }
 
   final class TermRefNoPrefix(val fixedSym: TermSymbol)(implicit ctx: Context)
-    extends TermRef(NoPrefix, fixedSym.name) with NamedNoPrefix
+        extends TermRef(NoPrefix, fixedSym.name) with NamedNoPrefix {
+    validPeriods = allPeriods(ctx.runId)
+  }
 
-  final class TypeRefNoPrefix(name: TypeName, val fixedSym: Symbol)
-    extends TypeRef(NoPrefix, name) with NamedNoPrefix
+  final class TypeRefNoPrefix(val fixedSym: TypeSymbol)(implicit ctx: Context)
+        extends TypeRef(NoPrefix, fixedSym.name) with NamedNoPrefix {
+    validPeriods = allPeriods(ctx.runId)
+  }
 
   final class UniqueTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name)
   final class UniqueTypeRef(prefix: Type, name: TypeName) extends TypeRef(prefix, name)
@@ -388,7 +409,7 @@ object Types {
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context) =
       unique(new UniqueTypeRef(prefix, name))
     def apply(sym: TypeSymbol)(implicit ctx: Context) =
-      unique(new TypeRefNoPrefix(sym.name, sym))
+      unique(new TypeRefNoPrefix(sym))
   }
 
 // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
@@ -491,19 +512,201 @@ object Types {
 
 // --- ClassInfo Type ---------------------------------------------------------
 
-  case class ClassInfoType(clazz: ClassSymbol) extends UniqueType {
+  case class ClassInfoType(_parents: List[Type], _decls: Scope, clazz: ClassSymbol) extends UniqueType {
+    import NameFilter._
+    import util.LRU8Cache
 
-    def cinfo(implicit ctx: Context): ClassDenotation = clazz.deref
+    override def parents(implicit ctx: Context) = _parents
+    override def decls(implicit ctx: Context) = _decls
 
-    override def parents(implicit ctx: Context) = cinfo.parents
-    def decls(implicit ctx: Context) = cinfo.decls
+    private var memberCacheVar: LRU8Cache[Name, RefSet] = null
 
+    private def memberCache: LRU8Cache[Name, RefSet] = {
+      if (memberCacheVar == null) memberCacheVar = new LRU8Cache
+      memberCacheVar
+    }
+
+    def thisType: Type = ???
+
+    private var baseClassesVar: List[ClassSymbol] = null
+    private var superClassBitsVar: BitSet = null
+
+    private def computeSuperClassBits(implicit ctx: Context): Unit = {
+      val seen = new mutable.BitSet
+      val locked = new mutable.BitSet
+      def addBaseClasses(bcs: List[ClassSymbol], to: List[ClassSymbol])
+          : List[ClassSymbol] = bcs match {
+        case bc :: bcs1 =>
+          val id = bc.superId
+          if (seen contains id) to
+          else if (locked contains id) throw new CyclicReference(clazz)
+          else {
+            locked += id
+            val bcs1added = addBaseClasses(bcs1, to)
+            seen += id
+            if (bcs1added eq bcs1) bcs else bc :: bcs1added
+          }
+        case _ =>
+          to
+      }
+      def addParentBaseClasses(ps: List[Type], to: List[ClassSymbol]): List[ClassSymbol] = ps match {
+        case p :: ps1 =>
+          addBaseClasses(p.baseClasses, addParentBaseClasses(ps1, to))
+        case _ =>
+          to
+      }
+      baseClassesVar = clazz :: addParentBaseClasses(parents, Nil)
+      superClassBitsVar = ctx.root.uniqueBits.findEntryOrUpdate(seen.toImmutable)
+    }
+
+    def superClassBits(implicit ctx: Context): BitSet = {
+      if (superClassBitsVar == null) computeSuperClassBits
+      superClassBitsVar
+    }
+
+    def baseClasses(implicit ctx: Context): List[ClassSymbol] = {
+      if (baseClassesVar == null) computeSuperClassBits
+      baseClassesVar
+    }
+
+    /** Is this class a subclass of `clazz`? */
+    final def isSubClass(clazz: ClassSymbol)(implicit ctx: Context): Boolean = {
+      superClassBits contains clazz.superId
+    }
+
+    private var definedFingerPrintCache: FingerPrint = null
+
+    private def computeDefinedFingerPrint(implicit ctx: Context): FingerPrint = {
+      var bits = newNameFilter
+      var e = decls.lastEntry
+      while (e != null) {
+        includeName(bits, clazz.name)
+        e = e.prev
+      }
+      var ps = parents
+      while (ps.nonEmpty) {
+        val parent = ps.head.typeSymbol
+        parent.info match {
+          case cinfo: ClassInfoType =>
+            includeFingerPrint(bits, cinfo.definedFingerPrint)
+            parent.deref setFlag Frozen
+          case _ =>
+        }
+        ps = ps.tail
+      }
+      definedFingerPrintCache = bits
+      bits
+    }
+
+    /** Enter a symbol in current scope.
+     *  Note: We require that this does not happen after the first time
+     *  someone does a findMember on a subclass.
+     */
+    def enter(sym: Symbol)(implicit ctx: Context) = {
+      require((clazz.flags & Frozen) == Flags.Empty)
+      decls enter sym
+      if (definedFingerPrintCache != null)
+        includeName(definedFingerPrintCache, sym.name)
+      if (memberCacheVar != null)
+        memberCache invalidate sym.name
+    }
+
+    /** Delete symbol from current scope.
+     *  Note: We require that this does not happen after the first time
+     *  someone does a findMember on a subclass.
+     */
+    def delete(sym: Symbol)(implicit ctx: Context) = {
+      require((clazz.flags & Frozen) == Flags.Empty)
+      decls unlink sym
+      if (definedFingerPrintCache != null)
+        computeDefinedFingerPrint
+      if (memberCacheVar != null)
+        memberCache invalidate sym.name
+    }
+
+    def definedFingerPrint(implicit ctx: Context): FingerPrint = {
+      val fp = definedFingerPrintCache
+      if (fp != null) fp else computeDefinedFingerPrint
+    }
+
+    final def memberRefsNamed(name: Name)(implicit ctx: Context): RefSet = {
+      var refs: RefSet = memberCache lookup name
+      if (refs == null) {
+        if (containsName(definedFingerPrint, name)) {
+          val ownRefs = decls.refsNamed(name)
+          refs = ownRefs
+          var ps = parents
+          while (ps.nonEmpty) {
+            val parentSym = ps.head.typeSymbol
+            parentSym.info match {
+              case pinfo: ClassInfoType =>
+                refs = refs union
+                  pinfo.memberRefsNamed(name)
+                    .filterExcluded(Flags.Private)
+                    .asSeenFrom(thisType, parentSym)
+                    .filterDisjoint(ownRefs)
+              case _ =>
+            }
+          }
+        } else {
+          refs = NoRef
+        }
+        memberCache enter (name, refs)
+      }
+      refs
+    }
+
+    private var baseTypeCache: java.util.HashMap[UniqueType, Type] = null
+
+    final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
+
+      def computeBaseTypeOf(tp: Type): Type = tp match {
+        case tp: NamedType =>
+          val sym = tp.symbol
+          val bt = baseTypeOf(tp.info)
+          if (sym.isClass) bt.substThis(sym.asClass, tp.prefix)
+          else bt
+        case AppliedType(tycon, args) =>
+          baseTypeOf(tycon).subst(tycon.typeParams, args)
+        case AndType(tp1, tp2) =>
+          baseTypeOf(tp1) & baseTypeOf(tp2)
+        case OrType(tp1, tp2) =>
+          baseTypeOf(tp1) | baseTypeOf(tp2)
+        case ClassInfoType(parents, _, _) =>
+          def reduce(bt: Type, ps: List[Type]): Type = ps match {
+            case p :: ps1 => reduce(bt & baseTypeOf(p), ps1)
+            case _ => bt
+          }
+          reduce(NoType, parents)
+        case tp: TypeProxy =>
+          baseTypeOf(tp.underlying)
+      }
+
+      if (clazz.isStatic && clazz.typeParams.isEmpty) clazz.tpe
+      else tp match {
+        case tp: UniqueType =>
+          if (baseTypeCache == null)
+            baseTypeCache = new java.util.HashMap[UniqueType, Type]
+          var basetp = baseTypeCache get tp
+          if (basetp == null) {
+            baseTypeCache.put(tp, NoType)
+            basetp = computeBaseTypeOf(tp)
+            baseTypeCache.put(tp, basetp)
+          } else if (basetp == NoType) {
+            throw new CyclicReference(clazz)
+          }
+          basetp
+        case _ =>
+          computeBaseTypeOf(tp)
+      }
+    }
     override def typeSymbol(implicit ctx: Context) = clazz
 
     override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
-      findMemberAmong(cinfo.memberRefsNamed(name), pre, clazz, excluded)
+      findMemberAmong(memberRefsNamed(name), pre, clazz, excluded)
 
     def computeHash = clazz.hashCode
+
   }
 
 // --- AndType/OrType ---------------------------------------------------------------
@@ -596,6 +799,12 @@ object Types {
 
     def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
       new InstPolyMap(this, argTypes) apply resultType
+
+    override def hashCode = System.identityHashCode(this)
+    override def equals(other: Any) = other match {
+      case that: PolyType => this eq that
+      case _ => false
+    }
   }
 
   case class MethodParam(mt: MethodType, paramNum: Int) extends SingletonType {
@@ -610,13 +819,6 @@ object Types {
 
   case class PolyParam(pt: PolyType, paramNum: Int) extends TypeProxy {
     def underlying(implicit ctx: Context) = pt.paramBounds(paramNum).hi
-    // need hashCode and equals to be written so that
-    // cyclic reference errors are avoided
-    override def equals(other: Any) = other match {
-      case PolyParam(pt1, pn) => (pt1 eq pt) && (pn == paramNum)
-      case _ => false
-    }
-    override def hashCode = doHash(paramNum)
   }
 
 // ------ Type Bounds ------------------------------------------------------------
@@ -1090,4 +1292,8 @@ object Types {
       if ((x1 eq xs.head) && (xs1 eq xs.tail)) xs
       else x1 :: xs1
     }
+
+  def NothingType(implicit ctx: Context) = ctx.root.definitions.NothingType
+  def AnyType(implicit ctx: Context) = ctx.root.definitions.AnyType
+  lazy val SingletonType: Type = ???
 }

@@ -4,14 +4,10 @@ package core
 import Periods._, Contexts._, Symbols._, References._, Names._
 import Types._, Flags._, Decorators._
 import Scopes.Scope
-import collection.immutable.BitSet
 import collection.mutable
-import util.LRU8Cache
 
 trait Denotations { self: Context =>
 
-  /** A set for hash consing superclass bitsets */
-  private val uniqueBits = new util.HashSet[BitSet]("superbits", 1024)
 
 }
 
@@ -39,9 +35,9 @@ object Denotations {
 
     def name: Name = ???
 
-    def flags: Long = ???
+    def flags: FlagSet = ???
 
-    def setFlag(flag: Long): Unit = ???
+    def setFlag(flag: FlagSet): Unit = ???
 
     def tpe: Type = ???
 
@@ -77,8 +73,6 @@ object Denotations {
     /** is this symbol the result of an erroneous definition? */
     def isError: Boolean = false
 
-    def asClass: ClassDenotation = ???
-
     def withType(tp: Type): Denotation = ???
   }
 
@@ -106,192 +100,10 @@ object Denotations {
     def newNameFilter: FingerPrint = new Array[Long](DefinedNamesWords)
   }
 
-  class ClassDenotation(val parents: List[Type], val decls: Scope, clazz: ClassSymbol) extends Denotation {
-
-    import NameFilter._
-
-    private var memberCacheVar: LRU8Cache[Name, RefSet] = null
-
-    private def memberCache: LRU8Cache[Name, RefSet] = {
-      if (memberCacheVar == null) memberCacheVar = new LRU8Cache
-      memberCacheVar
-    }
-
-    def thisType: Type = ???
-
-    private var baseClassesVar: List[ClassSymbol] = null
-    private var superClassBitsVar: BitSet = null
-
-    private def computeSuperClassBits(implicit ctx: Context): Unit = {
-      val seen = new mutable.BitSet
-      val locked = new mutable.BitSet
-      def addBaseClasses(bcs: List[ClassSymbol], to: List[ClassSymbol])
-          : List[ClassSymbol] = bcs match {
-        case bc :: bcs1 =>
-          val id = bc.superId
-          if (seen contains id) to
-          else if (locked contains id) throw new CyclicReference(clazz)
-          else {
-            locked += id
-            val bcs1added = addBaseClasses(bcs1, to)
-            seen += id
-            if (bcs1added eq bcs1) bcs else bc :: bcs1added
-          }
-        case _ =>
-          to
-      }
-      def addParentBaseClasses(ps: List[Type], to: List[ClassSymbol]): List[ClassSymbol] = ps match {
-        case p :: ps1 =>
-          addBaseClasses(p.baseClasses, addParentBaseClasses(ps1, to))
-        case _ =>
-          to
-      }
-      baseClassesVar = clazz :: addParentBaseClasses(parents, Nil)
-      superClassBitsVar = ctx.root.uniqueBits.findEntryOrUpdate(seen.toImmutable)
-    }
-
-    def superClassBits(implicit ctx: Context): BitSet = {
-      if (superClassBitsVar == null) computeSuperClassBits
-      superClassBitsVar
-    }
-
-    def baseClasses(implicit ctx: Context): List[ClassSymbol] = {
-      if (baseClassesVar == null) computeSuperClassBits
-      baseClassesVar
-    }
-
-    /** Is this class a subclass of `clazz`? */
-    final def isSubClass(clazz: ClassSymbol)(implicit ctx: Context): Boolean = {
-      superClassBits contains clazz.superId
-    }
-
-    private var definedFingerPrintCache: FingerPrint = null
-
-    private def computeDefinedFingerPrint(implicit ctx: Context): FingerPrint = {
-      var bits = newNameFilter
-      var e = decls.lastEntry
-      while (e != null) {
-        includeName(bits, name)
-        e = e.prev
-      }
-      var ps = parents
-      while (ps.nonEmpty) {
-        val parent = ps.head.typeSymbol.asClass.deref
-        includeFingerPrint(bits, parent.definedFingerPrint)
-        parent setFlag Frozen
-        ps = ps.tail
-      }
-      definedFingerPrintCache = bits
-      bits
-    }
-
-    /** Enter a symbol in current scope.
-     *  Note: We require that this does not happen after the first time
-     *  someone does a findMember on a subclass.
-     */
-    def enter(sym: Symbol)(implicit ctx: Context) = {
-      require((flags & Frozen) == 0)
-      decls enter sym
-      if (definedFingerPrintCache != null)
-        includeName(definedFingerPrintCache, sym.name)
-      if (memberCacheVar != null)
-        memberCache invalidate sym.name
-    }
-
-    /** Delete symbol from current scope.
-     *  Note: We require that this does not happen after the first time
-     *  someone does a findMember on a subclass.
-     */
-    def delete(sym: Symbol)(implicit ctx: Context) = {
-      require((flags & Frozen) == 0)
-      decls unlink sym
-      if (definedFingerPrintCache != null)
-        computeDefinedFingerPrint
-      if (memberCacheVar != null)
-        memberCache invalidate sym.name
-    }
-
-    def definedFingerPrint(implicit ctx: Context): FingerPrint = {
-      val fp = definedFingerPrintCache
-      if (fp != null) fp else computeDefinedFingerPrint
-    }
-
-    final def memberRefsNamed(name: Name)(implicit ctx: Context): RefSet = {
-      var refs: RefSet = memberCache lookup name
-      if (refs == null) {
-        if (containsName(definedFingerPrint, name)) {
-          val ownRefs = decls.refsNamed(name)
-          refs = ownRefs
-          var ps = parents
-          val ownType = thisType
-          while (ps.nonEmpty) {
-            val parentSym = ps.head.typeSymbol.asClass
-            val parent = parentSym.deref
-            refs = refs union
-              parent.memberRefsNamed(name)
-                .filterExcluded(Flags.Private)
-                .asSeenFrom(thisType, parentSym)
-                .filterDisjoint(ownRefs)
-            ps = ps.tail
-          }
-        } else {
-          refs = NoRef
-        }
-        memberCache enter (name, refs)
-      }
-      refs
-    }
-
-    private var baseTypeCache: java.util.HashMap[UniqueType, Type] = null
-
-    final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
-
-      def computeBaseTypeOf(tp: Type): Type = tp match {
-        case tp: NamedType =>
-          val sym = tp.symbol
-          val bt = baseTypeOf(tp.info)
-          if (sym.isClass) bt.substThis(sym.asClass, tp.prefix)
-          else bt
-        case AppliedType(tycon, args) =>
-          baseTypeOf(tycon).subst(tycon.typeParams, args)
-        case AndType(tp1, tp2) =>
-          baseTypeOf(tp1) & baseTypeOf(tp2)
-        case OrType(tp1, tp2) =>
-          baseTypeOf(tp1) | baseTypeOf(tp2)
-        case tp @ ClassInfoType(clazz) =>
-          def reduce(bt: Type, ps: List[Type]): Type = ps match {
-            case p :: ps1 => reduce(bt & baseTypeOf(p), ps1)
-            case _ => bt
-          }
-          reduce(NoType, tp.parents)
-        case tp: TypeProxy =>
-          baseTypeOf(tp.underlying)
-      }
-
-      if (clazz.isStatic && clazz.typeParams.isEmpty) clazz.tpe
-      else tp match {
-        case tp: UniqueType =>
-          if (baseTypeCache == null)
-            baseTypeCache = new java.util.HashMap[UniqueType, Type]
-          var basetp = baseTypeCache get tp
-          if (basetp == null) {
-            baseTypeCache.put(tp, NoType)
-            basetp = computeBaseTypeOf(tp)
-            baseTypeCache.put(tp, basetp)
-          } else if (basetp == NoType) {
-            throw new CyclicReference(clazz)
-          }
-          basetp
-        case _ =>
-          computeBaseTypeOf(tp)
-      }
-    }
-  }
-
   object NoDenotation extends Denotation {
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def name: Name = BootNameTable.newTermName("<none>")
-    override def flags: Long = 0
+    override def flags = Flags.Empty
     override def tpe: Type = NoType
     override def info: Type = NoType
   }
