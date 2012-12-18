@@ -55,41 +55,26 @@ object Trees {
       tree
     }
 
-    def shallowCopy: Tree[T]
+    def shallowCopy: Tree[T] = clone.asInstanceOf[Tree[T]]
 
   }
 
-  case class Ident[T](name: Name)(implicit val pos: Position) extends Tree[T] {
-    def shallowCopy = copy()
-  }
+  case class Ident[T](name: Name)(implicit val pos: Position) extends Tree[T]
 
-  case class Select[T](qualifier: Tree[T], name: Name)(implicit val pos: Position) extends Tree[T] {
-    def shallowCopy = copy()
-  }
+  case class Select[T](qualifier: Tree[T], name: Name)(implicit val pos: Position) extends Tree[T]
 
-  case class Apply[T](fun: Tree[T], arg: Tree[T])(implicit val pos: Position) extends Tree[T] {
-    def shallowCopy = copy()
-  }
+  case class Apply[T](fun: Tree[T], arg: Tree[T])(implicit val pos: Position) extends Tree[T]
 
-  case class Pair[T](left: Tree[T], right: Tree[T])(implicit val pos: Position) extends Tree[T] {
-    def shallowCopy = copy()
-  }
+  case class Pair[T](left: Tree[T], right: Tree[T])(implicit val pos: Position) extends Tree[T]
 
-  case class ValDef[T](mods: Modifiers, name: Name, rtpe: Tree[T], rhs: Tree[T])(implicit val pos: Position) extends Tree[T] {
-    def shallowCopy = copy()
-  }
+  case class ValDef[T](mods: Modifiers, name: Name, rtpe: Tree[T], rhs: Tree[T])(implicit val pos: Position) extends Tree[T]
 
-  case class TypeDef[T](mods: Modifiers, name: Name, rhs: Tree[T])(implicit val pos: Position) extends Tree[T] {
-    def shallowCopy = copy()
-  }
+  case class TypeDef[T](mods: Modifiers, name: Name, rhs: Tree[T])(implicit val pos: Position) extends Tree[T]
 
-  case class DefDef[T](mods: Modifiers, name: Name, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], rtpe: Tree[T], rhs: Tree[T])(implicit val pos: Position) extends Tree[T] {
-    def shallowCopy = copy()
-  }
+  case class DefDef[T](mods: Modifiers, name: Name, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], rtpe: Tree[T], rhs: Tree[T])(implicit val pos: Position) extends Tree[T]
 
   case class TypedSplice(tree: Tree[Type]) extends Tree[missing.Type] {
     def pos = tree.pos
-    def shallowCopy = copy()
   }
 
   implicit def embedTyped(tree: Tree[Type]): Tree[missing.Type] = TypedSplice(tree)
