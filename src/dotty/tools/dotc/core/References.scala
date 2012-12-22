@@ -81,7 +81,12 @@ object References {
     def signature: Signature =
       throw new UnsupportedOperationException(this.getClass+".signature")
 
+    /** Resolve overloaded reference to pick the one with the given signature */
+    def atSignature(sig: Signature): Reference
+
     def exists: Boolean = true
+
+    def orElse(that: => Reference) = if (this.exists) this else that
 
     /** Form a reference by conjoining with reference `that` */
     def & (that: Reference)(implicit ctx: Context): Reference =
@@ -163,6 +168,8 @@ object References {
   case class OverloadedRef(ref1: Reference, ref2: Reference) extends Reference {
     def derivedOverloadedRef(r1: Reference, r2: Reference) =
       if ((r1 eq ref1) && (r2 eq ref2)) this else OverloadedRef(r1, r2)
+    def atSignature(sig: Signature): Reference =
+      ref1.atSignature(sig) orElse ref2.atSignature(sig)
   }
 
   abstract case class SymRef(override val symbol: Symbol,
@@ -178,13 +185,16 @@ object References {
         case mt: MethodType => mt.signature
         case _ => NullSignature
       }
-      if (isType) super.signature else sig(info)
+      if (isType) NullSignature else sig(info)
     }
 
     def derivedSymRef(s: Symbol, i: Type): SymRef =
       if ((s eq symbol) && (i eq info)) this else copy(s, i)
 
     protected def copy(s: Symbol, i: Type): SymRef = this
+
+    def atSignature(sig: Signature): Reference =
+      if (sig == signature) this else NoRef
 
     // ------ RefSet ops ----------------------------------------------
 
