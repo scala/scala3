@@ -152,13 +152,8 @@ object Symbols {
       val initDenot = lastDenot.initial
       val newSym: Symbol =
         ctx.atPhase(FirstPhaseId) { implicit ctx =>
-          def relink(ref: Reference): Symbol = ref match {
-            case ref: SymRef =>
-              if (ref.signature == thisRef.signature) ref.symbol else NoSymbol
-            case ref @ OverloadedRef(ref1, ref2) =>
-              relink(ref1) orElse relink(ref2)
-          }
-          relink(initDenot.owner.info.decl(initDenot.name))
+          initDenot.owner.info.decl(initDenot.name)
+            .atSignature(thisRef.signature).symbol
         }
       if (newSym eq this) { // no change, change validity
         var d = initDenot
@@ -180,7 +175,6 @@ object Symbols {
     def name(implicit ctx: Context): Name = deref.name
     def flags(implicit ctx: Context): FlagSet = deref.flags
     def info(implicit ctx: Context): Type = deref.info
-    def tpe(implicit ctx: Context): Type = info
 
     def prefix(implicit ctx: Context) = owner.thisType
     def allOverriddenSymbols: Iterator[Symbol] = ???
@@ -223,6 +217,10 @@ object Symbols {
     def isMethod(implicit ctx: Context): Boolean = deref.isMethod
     def hasFlag(required: FlagSet)(implicit ctx: Context): Boolean = (flags & required) != Flags.Empty
     def hasAllFlags(required: FlagSet)(implicit ctx: Context): Boolean = (flags & required) == flags
+
+    def containsNull(implicit ctx: Context): Boolean =
+      isClass && !(isSubClass(defn.AnyValClass))
+
   }
 
   abstract class TermSymbol extends Symbol {
@@ -241,13 +239,24 @@ object Symbols {
   abstract class TypeSymbol extends Symbol {
     def name: TypeName
     def isType = false
+
+    def variance: Int = ???
+
+    def typeConstructor(implicit ctx: Context): Type = ???
+    def typeTemplate(implicit ctx: Context): Type = ???
   }
 
   abstract class ClassSymbol extends TypeSymbol {
     override def isClass = true
     private var superIdHint: Int = -1
 
+    override def deref(implicit ctx: Context): ClassDenotation =
+      super.deref.asInstanceOf[ClassDenotation]
+
     def typeOfThis(implicit ctx: Context): Type = ???
+
+    override def typeConstructor(implicit ctx: Context): Type = deref.typeConstructor
+    override def typeTemplate(implicit ctx: Context): Type = deref.typeTemplate
 
     /** The unique, densely packed identifier of this class symbol. Should be called
      *  only if class is a super class of some other class.
@@ -277,4 +286,6 @@ object Symbols {
     override def exists = false
     def isType = false
   }
+
+  implicit def defn(implicit ctx: Context): Definitions = ctx.root.definitions
 }
