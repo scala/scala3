@@ -6,6 +6,7 @@ import Periods._
 import Names._
 import Phases._
 import Types._
+import SubTypers._
 
 object Contexts {
 
@@ -15,6 +16,7 @@ object Contexts {
     val underlying: Context
     val root: RootContext
     val period: Period
+    def subTyper: SubTyper
     def names: NameTable
     def phase: Phase = ???
     def stableInterval: Interval = ???
@@ -24,6 +26,7 @@ object Contexts {
   abstract class SubContext(val underlying: Context) extends Context {
     val root: RootContext = underlying.root
     val period: Period = underlying.period
+    val subTyper = underlying.subTyper
     def names: NameTable = root.names
   }
 
@@ -43,6 +46,7 @@ object Contexts {
     var lastPhaseId: Int = NoPhaseId
     lazy val definitions = new Definitions()(this)
 
+    val subTyper = new SubTyper(Map())(this)
   }
 
   private final val initialUniquesCapacity = 4096

@@ -40,8 +40,6 @@ object Types {
 
   abstract class Type extends DotClass {
 
-    def <:< (that: Type): Boolean = ???
-
     def =:= (that: Type): Boolean = ???
 
     def hash = NotCached
@@ -124,6 +122,9 @@ object Types {
 
     def memberType(sym: Symbol): Type = ???
     def memberInfo(sym: Symbol): Type = ???
+
+    def <:< (that: Type)(implicit ctx: Context): Boolean =
+      ctx.subTyper.isSubType(this, that)
 
     def widen: Type = ???
 
