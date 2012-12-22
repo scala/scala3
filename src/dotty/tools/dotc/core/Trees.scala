@@ -8,15 +8,6 @@ object Trees {
     val flags: FlagSet
   }
 
-  class MissingType {
-    type Type
-  }
-
-  val missing: MissingType =
-    new MissingType {
-      type Type = Types.Type
-    }
-
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Types.Type` or `missing.Type`.
    *  Untyped trees have type `Tree[missing.Type]`. Because `missing.Type`
@@ -50,16 +41,15 @@ object Trees {
       val tree =
         (if (_tpe == null ||
             (_tpe.asInstanceOf[AnyRef] eq tpe.asInstanceOf[AnyRef])) this
-         else shallowCopy).asInstanceOf[Tree[Type]]
+         else clone).asInstanceOf[Tree[Type]]
       tree._tpe = tpe
       tree
     }
 
-    def shallowCopy: Tree[T] = clone.asInstanceOf[Tree[T]]
-
+    def withPosition(pos: Position) = ???
   }
 
-  case class Ident[T](name: Name)(implicit val pos: Position) extends Tree[T]
+  case class Ident[T] (name: Name)(implicit val pos: Position) extends Tree[T]
 
   case class Select[T](qualifier: Tree[T], name: Name)(implicit val pos: Position) extends Tree[T]
 
@@ -73,11 +63,17 @@ object Trees {
 
   case class DefDef[T](mods: Modifiers, name: Name, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], rtpe: Tree[T], rhs: Tree[T])(implicit val pos: Position) extends Tree[T]
 
-  case class TypedSplice(tree: Tree[Type]) extends Tree[missing.Type] {
+  class ImplicitDefDef[T](mods: Modifiers, name: Name, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], rtpe: Tree[T], rhs: Tree[T])
+    (implicit pos: Position) extends DefDef[T](mods, name, tparams, vparamss, rtpe, rhs) {
+    override def copy[T](mods: Modifiers, name: Name, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], rtpe: Tree[T], rhs: Tree[T])(implicit pos: Position) =
+      new ImplicitDefDef[T](mods, name, tparams, vparamss, rtpe, rhs)
+  }
+
+  case class TypedSplice(tree: Tree[Type]) extends Tree[Nothing] {
     def pos = tree.pos
   }
 
-  implicit def embedTyped(tree: Tree[Type]): Tree[missing.Type] = TypedSplice(tree)
+  implicit def embedTyped(tree: Tree[Type]): Tree[Nothing] = TypedSplice(tree)
 
   class UnAssignedTypeException[T](tree: Tree[T]) extends Exception {
     override def getMessage: String = s"type of $tree is not assigned"
