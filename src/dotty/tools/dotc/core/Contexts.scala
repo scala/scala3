@@ -41,7 +41,7 @@ object Contexts {
     val variance = 1
 
     var lastPhaseId: Int = NoPhaseId
-    lazy val definitions = new Definitions(this)
+    lazy val definitions = new Definitions()(this)
 
   }
 
