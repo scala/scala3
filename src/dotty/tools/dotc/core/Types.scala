@@ -170,8 +170,84 @@ object Types {
     def isCachable: Boolean = false
 
     def asSeenFrom(pre: Type, clazz: Symbol)(implicit ctx: Context): Type =
-      if (this.isTrivial || clazz.isStaticMono) this
-      else new AsSeenFromMap(pre, clazz) apply (this)
+      if (isTrivial ||
+          ctx.erasedTypes && clazz != defn.ArrayClass ||
+          clazz.isStaticMono) this
+      else asSeenFrom(pre, clazz, null)
+
+    def asSeenFrom(pre: Type, clazz: Symbol, map: AsSeenFromMap)(implicit ctx: Context): Type = {
+
+      def skipPrefixOf(pre: Type, clazz: Symbol) =
+        (pre eq NoType) || (pre eq NoPrefix) || clazz.isPackageClass
+
+      def toPrefix(pre: Type, clazz: Symbol, thisclazz: ClassSymbol, tp: Type): Type =
+        if (skipPrefixOf(pre, clazz))
+          tp
+        else if ((thisclazz isNonBottomSubClass clazz) &&
+          (pre.widen.typeSymbol isNonBottomSubClass thisclazz))
+          pre match {
+            case SuperType(thistp, _) => thistp
+            case _ => pre
+          }
+        else
+          toPrefix(pre.baseType(clazz).prefix, clazz.owner, thisclazz, tp)
+
+      def toInstance(pre: Type, clazz: Symbol, tparam: Symbol, tp: Type): Type = {
+        if (skipPrefixOf(pre, clazz)) tp
+        else {
+          val tparamOwner = tparam.owner
+
+          def throwError =
+            if (tparamOwner.info.parents exists (_.isErroneous))
+              ErrorType // don't be overzealous with throwing exceptions, see #2641
+            else
+              throw new Error(
+                s"something is wrong (wrong class file?): tp ${tparam.locationString} cannot be instantiated from ${pre.widen}")
+
+          def prefixMatches = pre.typeSymbol isNonBottomSubClass tparamOwner
+
+          val basePre = pre.baseType(clazz)
+
+          def instParamFrom(typeInst: Type): Type = typeInst match {
+            case ConstantType(_) =>
+              // have to deconst because it may be a Class[T].
+              instParamFrom(typeInst.deconst)
+            case AppliedType(tycon, baseArgs) =>
+              instParam(tycon.typeParams, baseArgs)
+            case _ =>
+              throwError
+          }
+
+          def instParam(ps: List[Symbol], as: List[Type]): Type =
+            if (ps.isEmpty || as.isEmpty) throwError
+            else if (tparam eq ps.head) as.head
+            else throwError
+
+          if (tparamOwner == clazz && prefixMatches) instParamFrom(basePre)
+          else toInstance(basePre.prefix, clazz.owner, tparam, tp)
+        }
+      }
+
+      this match {
+        case tp: NamedType =>
+          val sym = tp.symbol
+          if (tp.symbol.isTypeParameter)
+            toInstance(pre, clazz, sym, this)
+          else
+            tp.derivedNamedType(tp.prefix.asSeenFrom(pre, clazz), tp.name)
+        case ThisType(thisclazz) =>
+          toPrefix(pre, clazz, thisclazz, this)
+        case _ =>
+          val asSeenFromMap = if (map != null) map else new AsSeenFromMap(pre, clazz)
+          this match {
+            case tp: AppliedType =>
+              tp.derivedAppliedType(
+                asSeenFromMap(tp.tycon), tp.typeArgs mapConserve asSeenFromMap)
+            case _ =>
+              asSeenFromMap mapOver this
+          }
+      }
+    }
 
     def signature: Signature = NullSignature
     def subSignature: Signature = List()
@@ -261,7 +337,7 @@ object Types {
           }
         case _ =>
           NoType
-    }
+      }
 
     // hashing
 
@@ -896,69 +972,7 @@ object Types {
   }
 
   class AsSeenFromMap(pre: Type, clazz: Symbol)(implicit ctx: Context) extends TypeMap {
-
-    private def skipPrefixOf(pre: Type, clazz: Symbol) =
-      (pre eq NoType) || (pre eq NoPrefix) || clazz.isPackageClass
-
-    private def toPrefix(pre: Type, clazz: Symbol, thisclazz: ClassSymbol, tp: Type): Type =
-      if (skipPrefixOf(pre, clazz))
-        tp
-      else if ((thisclazz isNonBottomSubClass clazz) &&
-        (pre.widen.typeSymbol isNonBottomSubClass thisclazz))
-        pre match {
-          case SuperType(thistp, _) => thistp
-          case _ => pre
-        }
-      else
-        toPrefix(pre.baseType(clazz).prefix, clazz.owner, thisclazz, tp)
-
-    private def toInstance(pre: Type, clazz: Symbol, tparam: Symbol, tp: Type): Type = {
-      if (skipPrefixOf(pre, clazz)) tp
-      else {
-        val tparamOwner = tparam.owner
-
-        def throwError =
-          if (tparamOwner.info.parents exists (_.isErroneous))
-            ErrorType // don't be overzealous with throwing exceptions, see #2641
-          else
-            throw new Error(
-              s"something is wrong (wrong class file?): tp ${tparam.locationString} cannot be instantiated from ${pre.widen}")
-
-        def prefixMatches = pre.typeSymbol isNonBottomSubClass tparamOwner
-
-        val basePre = pre.baseType(clazz)
-
-        def instParamFrom(typeInst: Type): Type = typeInst match {
-          case ConstantType(_) =>
-            // have to deconst because it may be a Class[T].
-            instParamFrom(typeInst.deconst)
-          case AppliedType(tycon, baseArgs) =>
-            instParam(tycon.typeParams, baseArgs)
-          case _ =>
-            throwError
-        }
-
-        def instParam(ps: List[Symbol], as: List[Type]): Type =
-          if (ps.isEmpty || as.isEmpty) throwError
-          else if (tparam eq ps.head) as.head
-          else throwError
-
-        if (tparamOwner == clazz && prefixMatches) instParamFrom(basePre)
-        else toInstance(basePre.prefix, clazz.owner, tparam, tp)
-      }
-    }
-
-    def apply(tp: Type) = tp match {
-      case ThisType(thisclazz) =>
-        toPrefix(pre, clazz, thisclazz, tp)
-      case _ =>
-        tp.widen match {
-          case tp: TypeRef if tp.typeSymbol.isTypeParameter =>
-            toInstance(pre, clazz, tp.typeSymbol, tp)
-          case _ =>
-            if (tp.isTrivial) tp else mapOver(tp)
-        }
-    }
+    def apply(tp: Type) = tp.asSeenFrom(pre, clazz, this)
   }
 
 // todo: prevent unstable prefixes in variables?

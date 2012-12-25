@@ -14,4 +14,5 @@ class Definitions(implicit ctx: Context) {
   lazy val ObjectType = ObjectClass.typeConstructor
   lazy val SingletonClass: ClassSymbol = ???
   lazy val SingletonType = SingletonClass.typeConstructor
+  lazy val ArrayClass: ClassSymbol = ???
 }
