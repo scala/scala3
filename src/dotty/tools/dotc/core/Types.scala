@@ -118,6 +118,12 @@ object Types {
       if (from.isDependent) new SubstOps(this).subst(from, to, null)
       else this
 
+    def substThis(clazz: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
+      new SubstOps(this).substThis(clazz, tp, null)
+
+    def substThis(from: RefinedType, tp: Type)(implicit ctx: Context): Type =
+      new SubstOps(this).substThis(from, tp, null)
+
     /** For a class or intersection type, its parents.
      *  For a TypeBounds type, the parents of its hi bound.
      *  inherited by typerefs, singleton types, and refinement types,
@@ -166,10 +172,6 @@ object Types {
     def asSeenFrom(pre: Type, clazz: Symbol)(implicit ctx: Context): Type =
       if (this.isTrivial || clazz.isStaticMono) this
       else new AsSeenFromMap(pre, clazz) apply (this)
-
-    def substSym(from: List[Symbol], to: List[Symbol]): Type = ???
-    def substThis(clazz: ClassSymbol, tp: Type): Type = ???
-    def substThis(from: RefinedType, tp: Type): Type = ???
 
     def signature: Signature = NullSignature
     def subSignature: Signature = List()
@@ -523,7 +525,7 @@ object Types {
 
     lazy val infos = infosExpr(this)
 
-    def derivedRefinedType(parent1: Type, names1: List[Name], infos1: List[Type]): RefinedType =
+    def derivedRefinedType(parent1: Type, names1: List[Name], infos1: List[Type])(implicit ctx: Context): RefinedType =
       if ((parent1 eq parent) && (names1 eq names) && (infos1 eq infos)) this
       else
         RefinedType(parent1, names1) { rt =>

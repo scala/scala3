@@ -129,6 +129,49 @@ object Substituters {
           }
       }
     }
+
+    def substThis(from: ClassSymbol, to: Type, map: SubstThisMap)(implicit ctx: Context): Type =
+      tp match {
+        case tp @ ThisType(clazz) =>
+          if (clazz eq from) to else tp
+        case tp: NamedType =>
+          if (tp.symbol.isStatic) tp
+          else tp.derivedNamedType(tp.prefix.substThis(from, to, map), tp.name)
+        case MethodParam(_, _)
+           | PolyParam(_, _)
+           | NoPrefix => tp
+        case _ =>
+          val substMap = if (map != null) map else new SubstThisMap(from, to)
+          tp match {
+            case tp: AppliedType =>
+              tp.derivedAppliedType(
+                substMap(tp.tycon), tp.typeArgs mapConserve substMap)
+            case _ =>
+              substMap mapOver tp
+          }
+      }
+
+    def substThis(from: RefinedType, to: Type, map: SubstRefinedThisMap)(implicit ctx: Context): Type =
+      tp match {
+        case tp @ RefinedThis(rt) =>
+          if (rt eq from) to else tp
+        case tp: NamedType =>
+          if (tp.symbol.isStatic) tp
+          else tp.derivedNamedType(tp.prefix.substThis(from, to, map), tp.name)
+        case ThisType(_)
+           | MethodParam(_, _)
+           | PolyParam(_, _)
+           | NoPrefix => tp
+        case _ =>
+          val substMap = if (map != null) map else new SubstRefinedThisMap(from, to)
+          tp match {
+            case tp: AppliedType =>
+              tp.derivedAppliedType(
+                substMap(tp.tycon), tp.typeArgs mapConserve substMap)
+            case _ =>
+              substMap mapOver tp
+          }
+      }
   }
 
   class SubstPolyMap(from: PolyType, to: PolyType)(implicit ctx: Context) extends TypeMap {
@@ -149,5 +192,13 @@ object Substituters {
 
   class SubstMap(from: List[Symbol], to: List[Type])(implicit ctx: Context) extends TypeMap {
     def apply(tp: Type): Type = tp.subst(from, to, this)
+  }
+
+  class SubstThisMap(from: ClassSymbol, to: Type)(implicit ctx: Context) extends TypeMap {
+    def apply(tp: Type): Type = tp.substThis(from, to, this)
+  }
+
+  class SubstRefinedThisMap(from: RefinedType, to: Type)(implicit ctx: Context) extends TypeMap {
+    def apply(tp: Type): Type = tp.substThis(from, to, this)
   }
 }
