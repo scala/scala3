@@ -6,6 +6,7 @@ import Symbols._
 import Flags._
 import Names._
 import Scopes._
+import Substituters._
 import Constants._
 import Contexts._
 import Annotations._
@@ -98,6 +99,25 @@ object Types {
     def exists(p: Type => Boolean): Boolean =
       new ExistsAccumulator(p)(false, this)
 
+    def subst(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type =
+      if (from.isEmpty) this
+      else {
+        val from1 = from.tail
+        if (from1.isEmpty) new SubstOps(this).subst1(from.head, to.head, null)
+        else {
+          val from2 = from1.tail
+          if (from2.isEmpty) new SubstOps(this).subst2(from.head, to.head, from.tail.head, to.tail.head, null)
+          else new SubstOps(this).subst(from, to, null)
+        }
+      }
+
+    def subst(from: PolyType, to: PolyType)(implicit ctx: Context): Type =
+      new SubstOps(this).subst(from, to, null)
+
+    def subst(from: MethodType, to: MethodType)(implicit ctx: Context): Type =
+      if (from.isDependent) new SubstOps(this).subst(from, to, null)
+      else this
+
     /** For a class or intersection type, its parents.
      *  For a TypeBounds type, the parents of its hi bound.
      *  inherited by typerefs, singleton types, and refinement types,
@@ -147,12 +167,12 @@ object Types {
       if (this.isTrivial || clazz.isStaticMono) this
       else new AsSeenFromMap(pre, clazz) apply (this)
 
-    def subst(from: List[Symbol], to: List[Type]): Type = ???
-    def subst(from: PolyType, to: PolyType): Type = ???
-    def subst(from: MethodType, to: MethodType): Type = ???
     def substSym(from: List[Symbol], to: List[Symbol]): Type = ???
     def substThis(clazz: ClassSymbol, tp: Type): Type = ???
     def substThis(from: RefinedType, tp: Type): Type = ???
+
+    def signature: Signature = NullSignature
+    def subSignature: Signature = List()
 
     def baseType(base: Symbol)(implicit ctx: Context): Type = base.deref match {
       case classd: ClassDenotation => classd.baseTypeOf(this)
@@ -392,7 +412,7 @@ object Types {
     validPeriods = allPeriods(ctx.runId)
   }
 
-  final class TermRefWithSignature(prefix: Type, name: TermName, val signature: Signature) extends TermRef(prefix, name) {
+  final class TermRefWithSignature(prefix: Type, name: TermName, override val signature: Signature) extends TermRef(prefix, name) {
     override def computeHash = doHash((name, signature), prefix)
     override def referenced(implicit ctx: Context): Reference =
       super.referenced.atSignature(signature)
@@ -594,16 +614,22 @@ object Types {
       case _ => false
     }
     def paramSig(tp: Type): TypeName = ???
-    lazy val signature: Signature = {
-      val sig = paramTypes map paramSig
-      resultType match {
-        case mt: MethodType => sig ++ mt.signature
-        case _ => sig
+    override lazy val signature: Signature =
+      (paramTypes map paramSig) ++ resultType.subSignature
+
+    def derivedMethodType(paramNames: List[TermName], paramTypes: List[Type], restpe: Type)(implicit ctx: Context) =
+      if ((paramNames eq this.paramNames) && (paramTypes eq this.paramTypes) && (restpe eq this.resultType)) this
+      else {
+        val restpeExpr = (x: MethodType) => restpe.subst(this, x)
+        if (isJava) JavaMethodType(paramNames, paramTypes)(restpeExpr)
+        else if (isImplicit) ImplicitMethodType(paramNames, paramTypes)(restpeExpr)
+        else MethodType(paramNames, paramTypes)(restpeExpr)
       }
-    }
+
     def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
       if (isDependent) new InstMethodMap(this, argTypes) apply resultType
       else resultType
+
     override def computeHash = doHash(paramNames, resultType, paramTypes)
   }
 
@@ -649,6 +675,15 @@ object Types {
 
     def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
       new InstPolyMap(this, argTypes) apply resultType
+
+    override def signature: Signature = resultType.subSignature
+
+    def derivedPolyType(paramNames: List[TypeName], paramBounds: List[TypeBounds], restpe: Type)(implicit ctx: Context) =
+      if ((paramNames eq this.paramNames) && (paramBounds eq this.paramBounds) && (restpe eq this.resultType)) this
+      else
+        PolyType(paramNames)(
+          x => paramBounds mapConserve (_.substBounds(this, x)),
+          x => restpe.subst(this, x))
 
     override def hashCode = System.identityHashCode(this)
     override def equals(other: Any) = other match {
@@ -733,6 +768,10 @@ object Types {
       TypeBounds(this.lo | that.lo, this.hi & that.hi)
     def | (that: TypeBounds)(implicit ctx: Context): TypeBounds =
       TypeBounds(this.lo & that.lo, this.hi | that.hi)
+
+    def substBounds(from: PolyType, to: PolyType)(implicit ctx: Context) =
+      subst(from, to).asInstanceOf[TypeBounds]
+
     def map(f: Type => Type)(implicit ctx: Context): TypeBounds =
       TypeBounds(f(lo), f(hi))
     override def computeHash = doHash(lo, hi)
@@ -783,6 +822,9 @@ object Types {
   abstract class TypeMap(implicit ctx: Context) extends (Type => Type) {
     def apply(tp: Type): Type
 
+    def applyToBounds(tp: TypeBounds): TypeBounds =
+      apply(tp: Type).asInstanceOf[TypeBounds]
+
     /** Map this function over given type */
     def mapOver(tp: Type): Type = tp match {
       case tp: NamedType   =>
@@ -790,29 +832,17 @@ object Types {
 
       case ThisType(_)
          | MethodParam(_, _)
-         | PolyParam(_, _)
-         | ConstantType(_) => tp
+         | PolyParam(_, _) => tp
 
       case tp @ AppliedType(tycon, targs) =>
         tp.derivedAppliedType(this(tycon), targs mapConserve this)
 
       case tp @ PolyType(pnames) =>
-        val pbounds = tp.paramBounds
-        val pbounds1 = pbounds mapConserve (_ map this)
-        val restpe = tp.resultType
-        val restpe1 = this(restpe)
-        if ((pbounds1 eq pbounds) && (restpe1 eq restpe))
-          tp
-        else PolyType(pnames)(
-          x => pbounds1 mapConserve (_ map (_.subst(tp, x))),
-          x => restpe1.subst(tp, x))
+        tp.derivedPolyType(
+          pnames, tp.paramBounds mapConserve applyToBounds, this(tp.resultType))
 
       case tp @ MethodType(pnames, ptypes) =>
-        val ptypes1 = ptypes mapConserve this
-        val restpe = tp.resultType
-        val restpe1 = this(restpe)
-        if ((ptypes1 eq ptypes) && (restpe1 eq restpe)) tp
-        else MethodType(pnames, ptypes1)(x => restpe1.subst(tp, x))
+        tp.derivedMethodType(pnames, ptypes mapConserve this, this(tp.resultType))
 
       case tp @ ExprType(restpe) =>
         tp.derivedExprType(this(restpe))
@@ -946,7 +976,8 @@ object Types {
      case ThisType(_)
          | MethodParam(_, _)
          | PolyParam(_, _)
-         | ConstantType(_) => x
+         | ConstantType(_)
+         | NoPrefix => x
 
       case AppliedType(tycon, targs) =>
         (this(x, tycon) /: targs) (this)
@@ -1001,6 +1032,9 @@ object Types {
   class MalformedType(pre: Type, sym: Symbol) extends FatalTypeError(s"malformed type: $pre.$sym")
   class CyclicReference(sym: Symbol) extends FatalTypeError("cyclic reference involving $sym")
 
+// ----- Implicit decorators ---------------------------------------------------
+
+  implicit def substOps(tp: Type): SubstOps = new SubstOps(tp)
 // ----- Misc utilities ---------------------------------------------------------
 
   /** like map2, but returns list `xs` itself - instead of a copy - if function
