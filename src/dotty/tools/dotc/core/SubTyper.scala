@@ -17,7 +17,7 @@ object SubTypers {
     private var pendingSubTypes: mutable.Set[(Type, Type)] = null
     private var recCount = 0
 
-   def addConstraint(param: PolyParam, bounds: TypeBounds): Boolean = {
+    def addConstraint(param: PolyParam, bounds: TypeBounds): Boolean = {
       val newbounds = constraints(param) & bounds
       constraints = constraints.updated(param, newbounds)
       newbounds.lo <:< newbounds.hi
@@ -129,9 +129,19 @@ object SubTypers {
       case tp2 @ MethodType(_, formals1) =>
         tp1 match {
           case tp1 @ MethodType(_, formals2) =>
-            sameLength(formals1, formals2) &&
+            tp1.signature == tp2.signature &&
             matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
             tp1.isImplicit == tp2.isImplicit &&
+            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+          case _ =>
+            false
+        }
+      case tp2: PolyType =>
+        tp1 match {
+          case tp1: PolyType =>
+            tp1.signature == tp2.signature &&
+            (tp1.paramBounds corresponds tp2.paramBounds)(
+              (b1, b2) => b1 =:= b2.subst(tp2, tp1)) &&
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
           case _ =>
             false
@@ -204,5 +214,7 @@ object SubTypers {
               matchingParams(rest1, rest2, isJava1, isJava2)
         }
     }
+
+    def isSameType(tp1: Type, tp2: Type): Boolean = ???
   }
 }
