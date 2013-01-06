@@ -311,16 +311,16 @@ object Denotations {
 
     private var memberNamesCache: Map[NameFilter, Set[Name]] = Map()
 
-    def memberNames(pre: Type, filter: NameFilter)(implicit ctx: Context): Set[Name] =
-      memberNamesCache get filter match {
+    def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] =
+      memberNamesCache get keepOnly match {
         case Some(names) =>
           names
         case _ =>
-          val inheritedNames = (parents flatMap (_.memberNames(thisType, filter))).toSet
+          val inheritedNames = (parents flatMap (_.memberNames(thisType, keepOnly))).toSet
           val ownNames = decls.iterator map (_.name)
           val candidates = inheritedNames ++ ownNames
-          val names = candidates filter (filter(thisType, _))
-          memberNamesCache += (filter -> names)
+          val names = candidates filter (keepOnly(thisType, _))
+          memberNamesCache += (keepOnly -> names)
           names
     }
   }

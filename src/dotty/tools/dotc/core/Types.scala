@@ -3,6 +3,7 @@ package core
 
 import util.HashSet
 import Symbols._
+import SubTypers._
 import Flags._
 import Names._
 import Scopes._
@@ -15,6 +16,7 @@ import References._
 import Periods._
 import References.{Reference, RefSet, RefUnion, ErrorRef}
 import scala.util.hashing.{MurmurHash3 => hashing}
+import collection.mutable
 
 trait Types { self: Context =>
 
@@ -22,35 +24,68 @@ trait Types { self: Context =>
 
   private val initialUniquesCapacity = 50000
 
-  private[Types] val uniques = new util.HashSet[Type]("uniques", initialUniquesCapacity) {
+  private val uniques = new util.HashSet[Type]("uniques", initialUniquesCapacity) {
     override def hash(x: Type): Int = x.hash
   }
+
+  private var volatileRecursions: Int = 0
+  private val pendingVolatiles = new mutable.HashSet[Type]
 }
 
 object Types {
 
   /** A hash value indicating that the underlying type is not
-   *  cached in unbiques.
+   *  cached in uniques.
    */
   final val NotCached = 0
 
   /** An alternative value returned from `hash` if the
    *  computed hashCode would be `NotCached`.
    */
-  final val NotCachedAlt = Int.MinValue
+  private final val NotCachedAlt = Int.MinValue
 
+  /** How many recursive calls to isVolatile are performed before
+   *  logging starts.
+   */
+  private final val LogVolatileThreshold = 50
+
+  /** The class of types.
+   *  The principal subclasses and sub-objects are as follows:
+   *
+   *  Type -+- TypeProxy -+- NamedType ----+--- TypeRef
+   *        |             |                 \
+   *        |             +- SingletonType---+- TermRef
+   *        |             |
+   *        |             +- SingletonType --+- ThisType
+   *        |             |                  +- SuperType
+   *        |             |                  +- ConstantType
+   *        |             |                  +- MethodParam
+   *        |             |                  +- RefinedThis
+   *        |             |                  +- TypeBounds
+   *        |             |                  +- ExprType
+   *        |             |                  +- AnnotatedType
+   *        |             +- PolyParam
+   *        |             +- AppliedType
+   *        |             +- RefinedType
+   *        +- AndType
+   *        +- OrType
+   *        +- MethodType -+- ImplicitMethodType
+   *        |              +- JavaMethodType
+   *        +- PolyType
+   *        +- ClassInfo
+   *        |
+   *        +- NoType
+   *        +- ErrorType
+   *        +- WildcardType
+   */
   abstract class Type extends DotClass {
-
-    def =:= (that: Type): Boolean = ???
 
     def hash = NotCached
 
-    /** The type symbol associated with the type
-     */
+    /** The type symbol associated with the type */
     def typeSymbol(implicit ctx: Context): Symbol = NoSymbol
 
-    /** The term symbol associated with the type
-     */
+    /** The term symbol associated with the type */
     def termSymbol(implicit ctx: Context): Symbol = NoSymbol
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
@@ -62,28 +97,99 @@ object Types {
     def isLegalPrefix(implicit ctx: Context): Boolean =
       isStable || abstractTypeNames(this).isEmpty
 
-    /** The set of names of members of this type that pass the given name filter when seen as members of
-     *  `pre`. More precisely, these are all names of members `name` such that
-     *  `filter(pre, name)` is `true`.
+    /** The set of names that denote an abstract type member of this type
+     *  which is also an abstract type member of `pre`
      */
-    def memberNames(pre: Type, filter: NameFilter)(implicit ctx: Context): Set[Name] = Set()
-
     def abstractTypeNames(pre: Type)(implicit ctx: Context): Set[Name] =
       memberNames(pre, abstractTypeNameFilter)
 
+    /** The set of names that denote an abstract term member of this type
+     *  which is also an abstract term member of `pre`
+     */
     def abstractTermNames(pre: Type)(implicit ctx: Context): Set[Name] =
       memberNames(pre, abstractTermNameFilter)
 
+    /** The set of names that denote an abstract member of this type
+     *  which is also an abstract member of `pre`
+     */
+    def abstractMemberNames(pre: Type)(implicit ctx: Context): Set[Name] =
+      abstractTypeNames(pre) | abstractTermNames(pre)
+
+    /** The set of names of members of this type that pass the given name filter
+     *  when seen as members of `pre`. More precisely, these are all
+     *  of members `name` such that `keepOnly(pre, name)` is `true`.
+     */
+    def memberNames(pre: Type, keepOnly: NameFilter)(implicit ctx: Context): Set[Name] =
+      Set()
+
+    /** Is this type a TypeBounds instance, with lower and upper bounds
+     *  that are not identical?
+     */
     def isRealTypeBounds: Boolean = false
 
-
-    /** Is this type dangerous (i.e. it might contain conflicting
-     *  type information when empty, so that it can be constructed
-     *  so that type unsoundness results.) A dangerous type has an underlying
-     *  type of the form T_1 with T_n { decls }, where one of the
-     *  T_i (i > 1) is an abstract type.
+    /** A type is volatile if it has an underlying type of the
+     *  form P1 with ... with Pn { decls } (where n may be 1 or decls may
+     *  be empty), one of the parent types Pi is an abstract type, and
+     *  either decls or a different parent Pj, j != i, contributes
+     *  an abstract member.
+     *
+     *  A type contributes an abstract member if it has an abstract member which
+     *  is also a member of the whole refined type. A scope `decls` contributes
+     *  an abstract member if it has an abstract definition which is also
+     *  a member of the whole type.
+     *
+     *  Lazy values are not allowed to have volatile type, as otherwise
+     *  unsoundness can result.
      */
-    def isVolatile: Boolean = false
+    def isVolatile(implicit ctx: Context): Boolean = {
+      def isAbstractIntersection(tp: Type): Boolean = tp match {
+        case tp: TypeRef => tp.isAbstractType
+        case AndType(l, r) => isAbstractIntersection(l) | isAbstractIntersection(l)
+        case OrType(l, r) => isAbstractIntersection(l) & isAbstractIntersection(r)
+        case _ => false
+      }
+      def test = {
+        this match {
+          case ThisType(_) =>
+            false
+          case RefinedType(p, names) =>
+            p.isVolatile ||
+              isAbstractIntersection(p) &&
+              (names exists (abstractMemberNames(this) contains))
+          case tp: TypeProxy =>
+            tp.underlying.isVolatile
+          case AndType(l, r) =>
+            l.isVolatile || r.isVolatile ||
+              isAbstractIntersection(l) && r.abstractMemberNames(this).nonEmpty
+          case OrType(l, r) =>
+            l.isVolatile && r.isVolatile
+          case _ =>
+            false
+        }
+      }
+      // need to be careful not to fall into an infinite recursion here
+      // because volatile checking is done before all cycles are detected.
+      // the case to avoid is an abstract type directly or
+      // indirectly upper-bounded by itself. See #2918
+      import ctx.root.{volatileRecursions, pendingVolatiles}
+      try {
+        volatileRecursions += 1
+        if (volatileRecursions < LogVolatileThreshold)
+          test
+        else if (pendingVolatiles(this))
+          false // we can return false here, because a cycle will be detected
+                // here afterwards and an error will result anyway.
+        else
+          try {
+            pendingVolatiles += this
+            test
+          } finally {
+            pendingVolatiles -= this
+          }
+      } finally {
+        volatileRecursions -= 1
+      }
+    }
 
     /** Is this type guaranteed not to have `null` as a value? */
     def isNotNull: Boolean = false
@@ -99,6 +205,9 @@ object Types {
     def exists(p: Type => Boolean): Boolean =
       new ExistsAccumulator(p)(false, this)
 
+    /** Substitute all types that refer in their symbol attribute to
+     *  one of the symbols in `from` by the corresponding types in `to`
+     */
     def subst(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type =
       if (from.isEmpty) this
       else {
@@ -111,67 +220,108 @@ object Types {
         }
       }
 
+    /** Substitute all types of the form `PolyParam(from, N)` by
+     *  `PolyParam(to, N)`.
+     */
     def subst(from: PolyType, to: PolyType)(implicit ctx: Context): Type =
       new SubstOps(this).subst(from, to, null)
 
+    /** Substitute all types of the form `MethodParam(from, N)` by
+     *  `MethodParam(to, N)`.
+     */
     def subst(from: MethodType, to: MethodType)(implicit ctx: Context): Type =
       if (from.isDependent) new SubstOps(this).subst(from, to, null)
       else this
 
+    /** Substitute all references of the form `This(clazz)` by `tp` */
     def substThis(clazz: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
       new SubstOps(this).substThis(clazz, tp, null)
 
+    /** Substitute all references of the form `RefinedThis(from)` by `tp` */
     def substThis(from: RefinedType, tp: Type)(implicit ctx: Context): Type =
       new SubstOps(this).substThis(from, tp, null)
 
-    /** For a class or intersection type, its parents.
-     *  For a TypeBounds type, the parents of its hi bound.
-     *  inherited by typerefs, singleton types, and refinement types,
-     *  The empty list for all other types */
+    /** For a ClassInfo type, its parents,
+     *  For an AndType, its operands,
+     *  For an applied type, the instantiated parents of its base type.
+     *  Inherited by all type proxies. Empty for all other types.
+     */
     def parents(implicit ctx: Context): List[Type] = List()
 
+    /** The normalized prefix of this type is:
+     *  For an alias type, the normalized prefix of its alias
+     *  For all other named type and class infos: the prefix.
+     *  Inherited by all other type proxies.
+     *  `NoType` for all other types.
+     */
+    def normalizedPrefix(implicit ctx: Context): Type = NoType
+
+    /** This type seen as a TypeBounds */
     def bounds(implicit ctx: Context): TypeBounds = TypeBounds(this, this)
 
-    def member(name: Name)(implicit ctx: Context): Reference =
-      findMember(name, this, Flags.Empty)
+    /** The scope of all declarations of this type.
+     *  Defined by ClassInfo, inherited by type proxies.
+     *  Empty scope for all other types.
+     */
+    def decls(implicit ctx: Context): Scope = EmptyScope
 
-    def decls(implicit ctx: Context): Scope = unsupported("decls")
-
+    /** The declaration of this type with given name */
     def decl(name: Name)(implicit ctx: Context): Reference =
       decls.refsNamed(name).toRef
 
+    /** The member of this type with given name  */
+    def member(name: Name)(implicit ctx: Context): Reference =
+      findMember(name, this, Flags.Empty)
+
+    /** The non-private member of this type with given name */
     def nonPrivateMember(name: Name)(implicit ctx: Context): Reference =
       findMember(name, this, Flags.Private)
 
+    /** Find member of this type with given name and
+     *  produce a reference that contains the type of the member
+     *  as seen from given prefix `pre`. Exclude all members with one
+     *  of the flags in `excluded` from consideration.
+     */
     def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
       unsupported("findMember")
 
-    def memberType(sym: Symbol): Type = ???
-    def memberInfo(sym: Symbol): Type = ???
-
+    /** Is this type a subtype of that type? */
     def <:< (that: Type)(implicit ctx: Context): Boolean =
       ctx.subTyper.isSubType(this, that)
 
-    def widen: Type = ???
+    /** Is this type the same as that type?
+     *  This is the case iff `this <:< that` and `that <:< this`.
+     */
+    def =:= (that: Type)(implicit ctx: Context): Boolean =
+      ctx.subTyper.isSameType(this, that)
 
-    def deconst: Type = ???
+    /** Widen from singleton type to its underlying non-singleton
+     *  base type by applying one or more `underlying` dereferences,
+     *  identity for all other types. Example:
+     *
+     *  class Outer { class C ; val x: C }
+     *  val o: Outer
+     *  <o.x.type>.widen = o.C
+     */
+    def widen(implicit ctx: Context): Type = this
 
-    def prefix: Type = ???
+    /** Widen from constant type to its underlying non-constant
+     *  base type.
+     */
+    def deconst: Type = this
 
-    def isTrivial: Boolean = ???
+    //def resultType: Type = ???
 
-    def resultType: Type = ???
-
-    def baseClasses(implicit ctx: Context): List[ClassSymbol] =
-      unsupported("baseClasses")
+    /** The base classes of this type as determined by ClassDenotation.
+     *  Inherited by all type proxies.
+     *  `Nil` for all other types.
+     */
+    def baseClasses(implicit ctx: Context): List[ClassSymbol] = Nil
 
     def typeArgs: List[Type] = ???
 
-    def isCachable: Boolean = false
-
     def asSeenFrom(pre: Type, clazz: Symbol)(implicit ctx: Context): Type =
-      if (isTrivial ||
-          ctx.erasedTypes && clazz != defn.ArrayClass ||
+      if (ctx.erasedTypes && clazz != defn.ArrayClass ||
           clazz.isStaticMono) this
       else asSeenFrom(pre, clazz, null)
 
@@ -190,7 +340,7 @@ object Types {
             case _ => pre
           }
         else
-          toPrefix(pre.baseType(clazz).prefix, clazz.owner, thisclazz, tp)
+          toPrefix(pre.baseType(clazz).normalizedPrefix, clazz.owner, thisclazz, tp)
 
       def toInstance(pre: Type, clazz: Symbol, tparam: Symbol, tp: Type): Type = {
         if (skipPrefixOf(pre, clazz)) tp
@@ -224,7 +374,7 @@ object Types {
             else throwError
 
           if (tparamOwner == clazz && prefixMatches) instParamFrom(basePre)
-          else toInstance(basePre.prefix, clazz.owner, tparam, tp)
+          else toInstance(basePre.normalizedPrefix, clazz.owner, tparam, tp)
         }
       }
 
@@ -260,7 +410,7 @@ object Types {
     def typeParams: List[TypeSymbol] = ???
 
     def effectiveBounds: TypeBounds = ???
-    def isWrong: Boolean = ???
+    def isWrong: Boolean = !exists // !!! needed?
     def exists: Boolean = true
 
     def & (that: Type)(implicit ctx: Context): Type =
@@ -414,12 +564,14 @@ object Types {
     override def parents(implicit ctx: Context) = underlying.parents
     override def decls(implicit ctx: Context) = underlying.decls
     override def baseClasses(implicit ctx: Context) = underlying.baseClasses
-    override def memberNames(pre: Type, filter: NameFilter)(implicit ctx: Context) =
-      underlying.memberNames(pre, filter)
+    override def memberNames(pre: Type, keepOnly: NameFilter)(implicit ctx: Context) =
+      underlying.memberNames(pre, keepOnly)
+    override def isVolatile(implicit ctx: Context): Boolean = underlying.isVolatile
+    override def normalizedPrefix(implicit ctx: Context) = underlying.normalizedPrefix
   }
-
+ 
   trait TransformingProxy extends TypeProxy {
-
+    // needed?
   }
 
   trait SubType extends UniqueType with TypeProxy {
@@ -428,6 +580,7 @@ object Types {
 
   trait SingletonType extends SubType {
     override def isStable(implicit ctx: Context) = true
+    override def widen(implicit ctx: Context): Type = underlying.widen
   }
 
 // --- NamedTypes ------------------------------------------------------------------
@@ -436,6 +589,7 @@ object Types {
    */
   abstract class NamedType extends UniqueType with TypeProxy {
 
+    val prefix: Type
     val name: Name
 
     private[this] var referencedVar: Reference = null
@@ -462,9 +616,14 @@ object Types {
 
     def underlying(implicit ctx: Context): Type = info
 
-    def derivedNamedType(pre: Type, name: Name)(implicit ctx: Context): Type =
-      if (pre eq prefix) this
-      else NamedType(pre, name)
+    def isAbstractType(implicit ctx: Context) = info.isRealTypeBounds
+
+    override def normalizedPrefix(implicit ctx: Context) =
+      if (isAbstractType) info.normalizedPrefix else prefix
+
+    def derivedNamedType(prefix: Type, name: Name)(implicit ctx: Context): Type =
+      if (prefix eq this.prefix) this
+      else NamedType(prefix, name)
 
     override def computeHash = doHash(name, prefix)
   }
@@ -530,6 +689,7 @@ object Types {
 
   abstract case class ThisType(clazz: ClassSymbol) extends SingletonType {
     def underlying(implicit ctx: Context) = clazz.typeOfThis
+    override def isVolatile(implicit ctx: Context): Boolean = false
     override def computeHash = doHash(clazz)
   }
 
@@ -557,6 +717,7 @@ object Types {
 
   abstract case class ConstantType(value: Constant) extends SingletonType {
     def underlying(implicit ctx: Context) = value.tpe
+    override def deconst: Type = value.tpe
     override def computeHash = doHash(value)
   }
 
@@ -626,8 +787,8 @@ object Types {
       parent.findMember(name, pre, excluded | Flags.Private) &
       findDecl(name, pre)
 
-    override def memberNames(pre: Type, filter: NameFilter)(implicit ctx: Context): Set[Name] =
-      parent.memberNames(pre, filter) ++ (names filter (filter(pre, _))).toSet
+    override def memberNames(pre: Type, keepOnly: NameFilter)(implicit ctx: Context): Set[Name] =
+      parent.memberNames(pre, keepOnly) ++ (names filter (keepOnly(pre, _))).toSet
 
     def computeHash = doHash(names, parent, infos)
   }
@@ -646,8 +807,16 @@ object Types {
     override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
       tp1.findMember(name, pre, excluded) & tp2.findMember(name, pre, excluded)
 
-    override def memberNames(pre: Type, filter: NameFilter)(implicit ctx: Context): Set[Name] =
-      tp1.memberNames(pre, filter) & tp2.memberNames(pre, filter)
+    override def memberNames(pre: Type, keepOnly: NameFilter)(implicit ctx: Context): Set[Name] =
+      tp1.memberNames(pre, keepOnly) | tp2.memberNames(pre, keepOnly)
+
+    override def parents(implicit ctx: Context): List[Type] = {
+      def components(tp: Type): List[Type] = tp match {
+        case AndType(tp1, tp2) => components(tp1) ++ components(tp2)
+        case _ => List(tp)
+      }
+      components(this)
+    }
 
     override def computeHash = doHash(tp1, tp2)
   }
@@ -668,8 +837,8 @@ object Types {
       (tp1.findMember(name, pre, excluded) | tp2.findMember(name, pre, excluded))(pre)
     }
 
-    override def memberNames(pre: Type, filter: NameFilter)(implicit ctx: Context): Set[Name] =
-      tp1.memberNames(pre, filter) | tp2.memberNames(pre, filter)
+    override def memberNames(pre: Type, keepOnly: NameFilter)(implicit ctx: Context): Set[Name] =
+      tp1.memberNames(pre, keepOnly) & tp2.memberNames(pre, keepOnly)
 
     override def computeHash = doHash(tp1, tp2)
   }
@@ -684,7 +853,7 @@ object Types {
 // ----- Method types: MethodType/ExprType/PolyType/MethodParam/PolyParam ---------------
 
   abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type) extends UniqueType {
-    override lazy val resultType = resultTypeExp(this)
+    lazy val resultType = resultTypeExp(this)
     def isJava = false
     def isImplicit = false
     lazy val isDependent = resultType exists {
@@ -734,7 +903,8 @@ object Types {
   def ImplicitMethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context) =
     unique(new ImplicitMethodType(paramNames, paramTypes)(resultTypeExp))
 
-  abstract case class ExprType(override val resultType: Type) extends UniqueType {
+  abstract case class ExprType(resultType: Type) extends UniqueType with TypeProxy {
+    def underlying(implicit ctx: Context): Type = resultType
     def derivedExprType(rt: Type)(implicit ctx: Context) =
       if (rt eq resultType) this else ExprType(rt)
     override def computeHash = doHash(resultType)
@@ -749,7 +919,7 @@ object Types {
 
   case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type) extends Type {
     lazy val paramBounds = paramBoundsExp(this)
-    override lazy val resultType = resultTypeExp(this)
+    lazy val resultType = resultTypeExp(this)
 
     def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
       new InstPolyMap(this, argTypes) apply resultType
@@ -786,8 +956,10 @@ object Types {
 
 // ------ ClassInfo, Type Bounds ------------------------------------------------------------
 
-  abstract case class ClassInfo(override val prefix: Type, classd: ClassDenotation) extends UniqueType {
+  abstract case class ClassInfo(prefix: Type, classd: ClassDenotation) extends UniqueType {
     override def typeSymbol(implicit ctx: Context) = classd.clazz
+
+    override def normalizedPrefix(implicit ctx: Context) = prefix
 
     override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
       findMemberAmong(classd.memberRefsNamed(name), pre, classd.clazz, excluded)
@@ -805,10 +977,11 @@ object Types {
     override def baseClasses(implicit ctx: Context): List[ClassSymbol] =
       classd.baseClasses
 
-    override def memberNames(pre: Type, filter: NameFilter)(implicit ctx: Context): Set[Name] =
-      classd.memberNames(pre, filter)
+    override def memberNames(pre: Type, keepOnly: NameFilter)(implicit ctx: Context): Set[Name] =
+      classd.memberNames(keepOnly) filter (keepOnly(pre, _))
 
     private var parentsCache: List[Type] = null
+    // !!! caching needed here? If yes, cache AppliedType as well?
 
     override def decls(implicit ctx: Context) = classd.decls
 
@@ -827,11 +1000,11 @@ object Types {
     override def computeHash = doHash(classd.clazz, prefix)
   }
 
-  final class UniqueClassInfo(pre: Type, classd: ClassDenotation) extends ClassInfo(pre, classd)
+  final class UniqueClassInfo(prefix: Type, classd: ClassDenotation) extends ClassInfo(prefix, classd)
 
   object ClassInfo {
-    def apply(pre: Type, classd: ClassDenotation)(implicit ctx: Context) =
-      unique(new UniqueClassInfo(pre, classd))
+    def apply(prefix: Type, classd: ClassDenotation)(implicit ctx: Context) =
+      unique(new UniqueClassInfo(prefix, classd))
   }
 
   abstract case class TypeBounds(lo: Type, hi: Type) extends UniqueType with TypeProxy {
@@ -841,6 +1014,7 @@ object Types {
       else TypeBounds(lo, hi)
 
     override def isRealTypeBounds = lo ne hi
+    override def bounds(implicit ctx: Context): TypeBounds = this
 
     def & (that: TypeBounds)(implicit ctx: Context): TypeBounds =
       TypeBounds(this.lo | that.lo, this.hi & that.hi)
@@ -880,7 +1054,6 @@ object Types {
 // Special type objects ------------------------------------------------------------
 
   case object NoType extends Type {
-    override def prefix = NoPrefix
     def symbol = NoSymbol
     def info = NoType
   }
@@ -1001,7 +1174,7 @@ object Types {
       case tp @ PolyType(pnames) =>
         this((x /: tp.paramBounds) (this), tp.resultType)
 
-      case MethodType(pnames, ptypes) =>
+      case tp @ MethodType(pnames, ptypes) =>
         this((x /: ptypes) (this), tp.resultType)
 
       case ExprType(restpe) =>
@@ -1027,15 +1200,26 @@ object Types {
     def apply(x: Boolean, tp: Type) = x || p(tp) || foldOver(x, tp)
   }
 
+// ----- Name Filters --------------------------------------------------
+
+  /** A name filter selects or discards a member name of a type `pre`.
+   *  To enable efficient caching, name filters have to satisfy the
+   *  following invariant: If `keep` is a name filter, and `pre` has
+   *  class `C` as a base class, then
+   *
+   *    keep(pre, name) => keep(C.this, name)
+   */
   abstract class NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean
   }
 
+  /** A filter for names of abstract types of a given type */
   object abstractTypeNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
       name.isTypeName && (pre member name).info.isRealTypeBounds
   }
 
+  /** A filter for names of deferred term definitions of a given type */
   object abstractTermNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
       name.isTermName && (pre member name).symbol.isDeferred
@@ -1051,6 +1235,7 @@ object Types {
 // ----- Implicit decorators ---------------------------------------------------
 
   implicit def substOps(tp: Type): SubstOps = new SubstOps(tp)
+
 // ----- Misc utilities ---------------------------------------------------------
 
   /** like map2, but returns list `xs` itself - instead of a copy - if function
