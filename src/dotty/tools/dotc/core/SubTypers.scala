@@ -11,8 +11,12 @@ object SubTypers {
     private final val LogPendingSubTypesThreshold = 50
   }
 
-  class SubTyper(var constraints: Constraints)(implicit ctx: Context) extends DotClass {
+  class SubTyper(_ctx: Context) extends DotClass {
     import SubTyper._
+
+    implicit val ctx = _ctx
+
+    var constraints = ctx.constraints
 
     private var pendingSubTypes: mutable.Set[(Type, Type)] = null
     private var recCount = 0
@@ -215,6 +219,9 @@ object SubTypers {
         }
     }
 
-    def isSameType(tp1: Type, tp2: Type): Boolean = ???
+    def isSameType(tp1: Type, tp2: Type): Boolean =
+      if (tp1 == NoType || tp2 == NoType) false
+      else if (tp1 eq tp2) true
+      else isSubType(tp1, tp2) && isSubType(tp2, tp1)
   }
 }

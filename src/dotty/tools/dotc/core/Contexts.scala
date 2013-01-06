@@ -16,6 +16,7 @@ object Contexts {
     val underlying: Context
     val root: RootContext
     val period: Period
+    def constraints: Constraints
     def subTyper: SubTyper
     def names: NameTable
     def phase: Phase = ???
@@ -26,8 +27,11 @@ object Contexts {
   abstract class SubContext(val underlying: Context) extends Context {
     val root: RootContext = underlying.root
     val period: Period = underlying.period
-    val subTyper = underlying.subTyper
+    val constraints = underlying.constraints
     def names: NameTable = root.names
+    lazy val subTyper =
+      if (constraints eq underlying.constraints) underlying.subTyper
+      else new SubTyper(this)
   }
 
   class RootContext extends Context
@@ -37,6 +41,7 @@ object Contexts {
                        with Types {
 
     val underlying: Context = throw new UnsupportedOperationException("RootContext.underlying")
+    def subTyper: SubTyper = ???
 
     val root: RootContext = this
     val period = periodOf(NoRunId, NoPhaseId)
@@ -46,7 +51,7 @@ object Contexts {
     var lastPhaseId: Int = NoPhaseId
     lazy val definitions = new Definitions()(this)
 
-    val subTyper = new SubTyper(Map())(this)
+    val constraints: Constraints = Map()
   }
 
   private final val initialUniquesCapacity = 4096
