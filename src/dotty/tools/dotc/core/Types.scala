@@ -321,18 +321,17 @@ object Types {
     def typeArgs: List[Type] = ???
 
     def asSeenFrom(pre: Type, clazz: Symbol)(implicit ctx: Context): Type =
-      if (ctx.erasedTypes && clazz != defn.ArrayClass ||
-          clazz.isStaticMono) this
+      if (clazz.isStaticMono || ctx.erasedTypes && clazz != defn.ArrayClass ) this
       else asSeenFrom(pre, clazz, null)
 
-    def asSeenFrom(pre: Type, clazz: Symbol, map: AsSeenFromMap)(implicit ctx: Context): Type = {
+    def asSeenFrom(pre: Type, clazz: Symbol, theMap: AsSeenFromMap)(implicit ctx: Context): Type = {
 
       def skipPrefixOf(pre: Type, clazz: Symbol) =
         (pre eq NoType) || (pre eq NoPrefix) || clazz.isPackageClass
 
-      def toPrefix(pre: Type, clazz: Symbol, thisclazz: ClassSymbol, tp: Type): Type =
+      def toPrefix(pre: Type, clazz: Symbol, thisclazz: ClassSymbol): Type =
         if (skipPrefixOf(pre, clazz))
-          tp
+          this
         else if ((thisclazz isNonBottomSubClass clazz) &&
           (pre.widen.typeSymbol isNonBottomSubClass thisclazz))
           pre match {
@@ -342,8 +341,8 @@ object Types {
         else
           toPrefix(pre.baseType(clazz).normalizedPrefix, clazz.owner, thisclazz, tp)
 
-      def toInstance(pre: Type, clazz: Symbol, tparam: Symbol, tp: Type): Type = {
-        if (skipPrefixOf(pre, clazz)) tp
+      def toInstance(pre: Type, clazz: Symbol, tparam: Symbol): Type = {
+        if (skipPrefixOf(pre, clazz)) this
         else {
           val tparamOwner = tparam.owner
 
@@ -381,14 +380,13 @@ object Types {
       this match {
         case tp: NamedType =>
           val sym = tp.symbol
-          if (tp.symbol.isTypeParameter)
-            toInstance(pre, clazz, sym, this)
-          else
-            tp.derivedNamedType(tp.prefix.asSeenFrom(pre, clazz), tp.name)
+          if (tp.symbol.isTypeParameter) toInstance(pre, clazz, sym)
+          else if (sym.isStatic) this
+          else tp.derivedNamedType(tp.prefix.asSeenFrom(pre, clazz, theMap), tp.name)
         case ThisType(thisclazz) =>
-          toPrefix(pre, clazz, thisclazz, this)
+          toPrefix(pre, clazz, thisclazz)
         case _ =>
-          val asSeenFromMap = if (map != null) map else new AsSeenFromMap(pre, clazz)
+          val asSeenFromMap = if (theMap != null) theMap else new AsSeenFromMap(pre, clazz)
           this match {
             case tp: AppliedType =>
               tp.derivedAppliedType(
