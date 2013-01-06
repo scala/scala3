@@ -3,6 +3,9 @@ package dotty.tools.dotc.core
 import Types._, Contexts._, Symbols._
 
 class Definitions(implicit ctx: Context) {
+  private var _isInitialized = false
+  def isInitialized = _isInitialized
+
   lazy val AnyClass: ClassSymbol = ???
   lazy val AnyType = AnyClass.typeConstructor
   lazy val AnyValClass: ClassSymbol = ???
@@ -15,4 +18,11 @@ class Definitions(implicit ctx: Context) {
   lazy val SingletonClass: ClassSymbol = ???
   lazy val SingletonType = SingletonClass.typeConstructor
   lazy val ArrayClass: ClassSymbol = ???
+
+  def init() =
+    if (!isInitialized) {
+      // force initialization of every symbol that is synthesized or hijacked by the compiler
+      val forced = ???
+      _isInitialized = true
+    }
 }

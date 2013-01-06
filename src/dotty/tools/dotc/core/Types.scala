@@ -318,7 +318,6 @@ object Types {
      */
     def baseClasses(implicit ctx: Context): List[ClassSymbol] = Nil
 
-    def typeArgs: List[Type] = ???
 
     def asSeenFrom(pre: Type, clazz: Symbol)(implicit ctx: Context): Type =
       if (clazz.isStaticMono || ctx.erasedTypes && clazz != defn.ArrayClass ) this
@@ -339,7 +338,7 @@ object Types {
             case _ => pre
           }
         else
-          toPrefix(pre.baseType(clazz).normalizedPrefix, clazz.owner, thisclazz, tp)
+          toPrefix(pre.baseType(clazz).normalizedPrefix, clazz.owner, thisclazz)
 
       def toInstance(pre: Type, clazz: Symbol, tparam: Symbol): Type = {
         if (skipPrefixOf(pre, clazz)) this
@@ -373,7 +372,7 @@ object Types {
             else throwError
 
           if (tparamOwner == clazz && prefixMatches) instParamFrom(basePre)
-          else toInstance(basePre.normalizedPrefix, clazz.owner, tparam, tp)
+          else toInstance(basePre.normalizedPrefix, clazz.owner, tparam)
         }
       }
 
@@ -390,7 +389,7 @@ object Types {
           this match {
             case tp: AppliedType =>
               tp.derivedAppliedType(
-                asSeenFromMap(tp.tycon), tp.typeArgs mapConserve asSeenFromMap)
+                asSeenFromMap(tp.tycon), tp.targs mapConserve asSeenFromMap)
             case _ =>
               asSeenFromMap mapOver this
           }
@@ -405,9 +404,22 @@ object Types {
       case _ => NoType
     }
 
-    def typeParams: List[TypeSymbol] = ???
+    /** The type parameters of this type are:
+     *  For a ClassInfo type, the type parameters of its denotation.
+     *  For an applied type, the type parameters of its constructor
+     *  that have not been instantiated yet.
+     *  Inherited by type proxies.
+     *  Empty list for all other types.
+     */
+    def typeParams(implicit ctx: Context): List[TypeSymbol] = Nil
 
-    def effectiveBounds: TypeBounds = ???
+    /** The type arguments of this type are:
+     *  For an Applied type, its type arguments.
+     *  Inherited by type proxies.
+     *  Empty list for all other types.
+     */
+    def typeArgs(implicit ctx: Context): List[Type] = Nil
+
     def isWrong: Boolean = !exists // !!! needed?
     def exists: Boolean = true
 
@@ -566,8 +578,10 @@ object Types {
       underlying.memberNames(pre, keepOnly)
     override def isVolatile(implicit ctx: Context): Boolean = underlying.isVolatile
     override def normalizedPrefix(implicit ctx: Context) = underlying.normalizedPrefix
+    override def typeParams(implicit ctx: Context) = underlying.typeParams
+    override def typeArgs(implicit ctx: Context) = underlying.typeArgs
   }
- 
+
   trait TransformingProxy extends TypeProxy {
     // needed?
   }
@@ -728,28 +742,32 @@ object Types {
 
   // --- AppliedType -----------------------------------------------------------------
 
-  abstract case class AppliedType(tycon: Type, override val typeArgs: List[Type]) extends UniqueType with TypeProxy {
-    assert(tycon.typeParams.length == typeArgs.length)
+  abstract case class AppliedType(tycon: Type, targs: List[Type]) extends UniqueType with TypeProxy {
 
     def underlying(implicit ctx: Context) = tycon
 
-    def derivedAppliedType(tc: Type, args: List[Type])(implicit ctx: Context): Type =
-      if ((tc eq tycon) && (args eq typeArgs)) this
-      else AppliedType(tc, args)
+    def derivedAppliedType(tycon: Type, targs: List[Type])(implicit ctx: Context): Type =
+      if ((tycon eq this.tycon) && (targs eq this.targs)) this
+      else AppliedType(tycon, targs)
 
-    override def computeHash = doHash(tycon, typeArgs)
+    override def computeHash = doHash(tycon, targs)
+
+    override def typeParams(implicit ctx: Context): List[TypeSymbol] =
+      tycon.typeParams drop targs.length
+
+    override def typeArgs(implicit ctx: Context): List[Type] = targs
 
     override def parents(implicit ctx: Context) =
-      tycon.parents.mapConserve(_.subst(tycon.typeParams, typeArgs))
+      tycon.parents.mapConserve(_.subst(tycon.typeParams, targs))
 
   }
-  final class UniqueAppliedType(tycon: Type, typeArgs: List[Type]) extends AppliedType(tycon, typeArgs)
+  final class UniqueAppliedType(tycon: Type, targs: List[Type]) extends AppliedType(tycon, targs)
 
   object AppliedType {
-    def apply(tycon: Type, typeArgs: List[Type])(implicit ctx: Context) =
-      unique(new UniqueAppliedType(tycon, typeArgs))
-    def make(tycon: Type, typeArgs: List[Type])(implicit ctx: Context) =
-      if (typeArgs.isEmpty) tycon else apply(tycon, typeArgs)
+    def apply(tycon: Type, targs: List[Type])(implicit ctx: Context) =
+      unique(new UniqueAppliedType(tycon, targs))
+    def make(tycon: Type, targs: List[Type])(implicit ctx: Context) =
+      if (targs.isEmpty) tycon else apply(tycon, targs)
   }
 
 // --- Refined Type ---------------------------------------------------------
@@ -957,6 +975,12 @@ object Types {
   abstract case class ClassInfo(prefix: Type, classd: ClassDenotation) extends UniqueType {
     override def typeSymbol(implicit ctx: Context) = classd.clazz
 
+    def typeTemplate(implicit ctx: Context): Type =
+      classd.typeTemplate asSeenFrom (prefix, classd.clazz)
+
+    def typeConstructor(implicit ctx: Context): Type =
+      NamedType(prefix, classd.clazz.name)
+
     override def normalizedPrefix(implicit ctx: Context) = prefix
 
     override def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference =
@@ -989,11 +1013,7 @@ object Types {
       parentsCache
     }
 
-    def typeTemplate(implicit ctx: Context): Type =
-      classd.typeTemplate asSeenFrom (prefix, classd.clazz)
-
-    def typeConstructor(implicit ctx: Context): Type =
-      NamedType(prefix, classd.clazz.name)
+    override def typeParams(implicit ctx: Context) = classd.typeParams
 
     override def computeHash = doHash(classd.clazz, prefix)
   }

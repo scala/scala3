@@ -184,6 +184,7 @@ object Symbols {
     def locatedFullString: String = ???
     def defString: String = ???
     def typeParams: List[TypeSymbol] = ???
+    def unsafeTypeParams: List[TypeSymbol] = ???
     def thisType: Type = ???
     def isStaticMono = isStatic && typeParams.isEmpty
     def isPackageClass: Boolean = ???
