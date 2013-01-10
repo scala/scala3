@@ -7,13 +7,6 @@ import Scopes.Scope
 import collection.mutable
 import collection.immutable.BitSet
 
-trait Denotations { self: Context =>
-
-  /** A set for hash consing superclass bitsets */
-  private val uniqueBits = new util.HashSet[BitSet]("superbits", 1024)
-
-}
-
 object Denotations {
 
   abstract class Denotation {
@@ -268,7 +261,7 @@ object Denotations {
       refs
     }
 
-    private var baseTypeCache: java.util.HashMap[UniqueType, Type] = null
+    private var baseTypeCache: java.util.HashMap[CachedType, Type] = null
 
     final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
 
@@ -292,9 +285,9 @@ object Denotations {
 
       if (clazz.isStatic && clazz.typeParams.isEmpty) clazz.typeConstructor
       else tp match {
-        case tp: UniqueType =>
+        case tp: CachedType =>
           if (baseTypeCache == null)
-            baseTypeCache = new java.util.HashMap[UniqueType, Type]
+            baseTypeCache = new java.util.HashMap[CachedType, Type]
           var basetp = baseTypeCache get tp
           if (basetp == null) {
             baseTypeCache.put(tp, NoType)

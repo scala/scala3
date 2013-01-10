@@ -14,28 +14,6 @@ import Types._
 import References.{Reference, SymRef, UniqueSymRef, OverloadedRef}
 import collection.mutable
 
-trait Symbols { self: Context =>
-
-  import Symbols._
-
-  // Infrastructure to assign unique superclass idents to class symbols that are superclasses of
-  // some other class
-
-  private final val InitialSuperIdsSize = 4096
-
-  /** A map from a superclass id to the class that has it */
-  private var classOfId = Array.ofDim[ClassSymbol](InitialSuperIdsSize)
-
-  /** A map from a superclass to its superclass id */
-  private val superIdOfClass = new mutable.HashMap[ClassSymbol, Int]
-
-  /** The last allocate superclass id */
-  private var lastSuperId = -1
-
-  /** Allocate and return next free superclass id */
-  private def nextSuperId: Int = { lastSuperId += 1; lastSuperId }
-}
-
 object Symbols {
 
 
