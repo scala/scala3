@@ -13,7 +13,6 @@ import Annotations._
 import Denotations._
 import References._
 import Periods._
-import References.{ Reference, RefSet, RefUnion, ErrorRef }
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import collection.mutable
 
@@ -208,8 +207,9 @@ object Types {
      *  For an AndType, its operands,
      *  For an applied type, the instantiated parents of its base type.
      *  Inherited by all type proxies. Empty for all other types.
+     *  Overwritten in ClassInfo, where parents is cached.
      */
-    final def parents(implicit ctx: Context): List[Type] = this match {
+    def parents(implicit ctx: Context): List[Type] = this match {
       case tp: AppliedType =>
         val tycon = tp.tycon
         tycon.parents.mapConserve(_.subst(tycon.typeParams, tp.targs))
@@ -219,10 +219,6 @@ object Types {
           case _ => List(tp)
         }
         components(tp)
-      case tp: ClassInfo =>
-        if (tp.parentsCache == null)
-          tp.parentsCache = tp.classd.parents.mapConserve(_.substThis(tp.classd.clazz, tp.prefix))
-        tp.parentsCache
       case tp: TypeProxy =>
         tp.underlying.parents
       case _ => List()
@@ -289,7 +285,7 @@ object Types {
           .filterExcluded(excluded)
           .asSeenFrom(pre, classd.clazz)
         if (resultSyms.exists) resultSyms.toRef
-        else ErrorRef // todo: refine
+        else new ErrorRef // todo: refine
       case tp: AndType =>
         tp.tp1.findMember(name, pre, excluded) & tp.tp2.findMember(name, pre, excluded)
       case tp: OrType =>
@@ -520,15 +516,25 @@ object Types {
     val name: Name
 
     private[this] var referencedVar: Reference = null
-    protected[this] var validPeriods = Nowhere
 
     private def checkPrefix(sym: Symbol) =
       sym.isAbstractType || sym.isClass
 
     def referenced(implicit ctx: Context): Reference = {
+      val validPeriods =
+        if (referencedVar != null) referencedVar.validFor else Nowhere
       if (!containsPeriod(validPeriods, ctx.period)) {
-        referencedVar = prefix.member(name)
-        validPeriods = ctx.stableInterval
+        val thisPeriod = ctx.period
+        referencedVar =
+          if (runIdOf(validPeriods) == runIdOf(thisPeriod))
+            referencedVar.atPhase(phaseIdOf(ctx.period))
+            //val ref @ SymRef(clazz: ClassSymbol, _) = referencedVar
+            //ref.derivedSymRef(clazz, ClassInfo(prefix, clazz.deref))
+          else if (phaseIdOf(thisPeriod) > name.lastIntroPhaseId)
+            ctx.atPhase(name.lastIntroPhaseId)(prefix.member(name)(_))
+               .atPhase(phaseIdOf(thisPeriod))
+          else
+            prefix.member(name)
         if (checkPrefix(referencedVar.symbol) && !prefix.isLegalPrefix)
           throw new MalformedType(prefix, referencedVar.symbol)
       }
@@ -565,7 +571,6 @@ object Types {
 
   final class TermRefNoPrefix(val fixedSym: TermSymbol)(implicit ctx: Context)
     extends TermRef(NoPrefix, fixedSym.name) with NamedNoPrefix {
-    validPeriods = allPeriods(ctx.runId)
   }
 
   final class TermRefWithSignature(prefix: Type, name: TermName, override val signature: Signature) extends TermRef(prefix, name) {
@@ -576,7 +581,6 @@ object Types {
 
   final class TypeRefNoPrefix(val fixedSym: TypeSymbol)(implicit ctx: Context)
     extends TypeRef(NoPrefix, fixedSym.name) with NamedNoPrefix {
-    validPeriods = allPeriods(ctx.runId)
   }
 
   final class CachedTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name)
@@ -689,7 +693,7 @@ object Types {
       var ref: Reference = NoRef
       while (ns.nonEmpty && (ref eq NoRef)) {
         if (ns.head == name)
-          ref = new JointSymRef(NoSymbol, is.head.substThis(this, pre))
+          ref = new JointSymRef(NoSymbol, is.head.substThis(this, pre), allPeriods(ctx.runId))
         ns = ns.tail
         is = is.tail
       }
@@ -863,8 +867,14 @@ object Types {
     def typeConstructor(implicit ctx: Context): Type =
       NamedType(prefix, classd.clazz.name)
 
-    private[Types] var parentsCache: List[Type] = null
-    // !!! caching needed here? If yes, cache AppliedType as well?
+    // cached because baseType needs parents
+    private var parentsCache: List[Type] = null
+
+    override def parents(implicit ctx: Context): List[Type] = {
+      if (parentsCache == null)
+        parentsCache = classd.parents.mapConserve(_.substThis(classd.clazz, prefix))
+      parentsCache
+    }
 
     override def computeHash = doHash(classd.clazz, prefix)
   }

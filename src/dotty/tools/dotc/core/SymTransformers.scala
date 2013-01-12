@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import Periods._, Denotations._, Contexts._
+import Periods._, Denotations._, Contexts._, Types._
 import java.lang.AssertionError
 
 trait DenotationTransformers { self: RootContext =>
@@ -33,6 +33,7 @@ object DenotationTransformers {
   abstract class DenotationTransformer {
     val phaseId: PhaseId
     def transform(denot: Denotation): Denotation
+    def transform(tpe: Type): Type = ???
   }
 
 
