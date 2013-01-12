@@ -262,6 +262,7 @@ object Denotations {
     }
 
     private var baseTypeCache: java.util.HashMap[CachedType, Type] = null
+    private var baseTypeValid: RunId = NoRunId
 
     final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
 
@@ -283,11 +284,13 @@ object Denotations {
           else reduce(NoType, classd.parents).substThis(classd.clazz, tp.prefix)
       }
 
-      if (clazz.isStatic && clazz.typeParams.isEmpty) clazz.typeConstructor
+      if (clazz.isStaticMono) clazz.typeConstructor
       else tp match {
         case tp: CachedType =>
-          if (baseTypeCache == null)
+          if (baseTypeValid != ctx.runId) {
             baseTypeCache = new java.util.HashMap[CachedType, Type]
+            baseTypeValid = ctx.runId
+          }
           var basetp = baseTypeCache get tp
           if (basetp == null) {
             baseTypeCache.put(tp, NoType)
