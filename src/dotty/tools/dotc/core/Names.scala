@@ -3,8 +3,8 @@ package core
 
 import scala.io.Codec
 import util.NameTransformer
+import Periods._
 import Decorators._
-import Contexts._
 
 object Names {
 
@@ -84,6 +84,9 @@ object Names {
 
     /** Convert to string replacing operator symbols by corresponding \$op_name. */
     def decode: String = NameTransformer.decode(toString)
+
+    /** The last phase id where symbols with this name can be created. */
+    def lastIntroPhaseId: PhaseId = ???
   }
 
   class TermName(val basis: NameTable, val start: Int, val length: Int, val next: TermName) extends Name {
