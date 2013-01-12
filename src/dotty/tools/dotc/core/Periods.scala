@@ -24,11 +24,11 @@ abstract class Periods { self: Context =>
     }
 
   /** Execute `op` at given period */
-  def atPeriod[T](pd: Period)(op: Context => T)(implicit ctx: Context) =
+  def atPeriod[T](pd: Period)(op: Context => T) =
     op(ctx withPeriod pd)
 
   /** Execute `op` at given phase id */
-  def atPhase[T](pid: PhaseId)(op: Context => T)(implicit ctx: Context) =
+  def atPhase[T](pid: PhaseId)(op: Context => T) =
     op(ctx withPeriod periodOf(period, pid))
 }
 
@@ -89,7 +89,9 @@ object Periods {
 
   final def intervalsOverlap(ivl1: Interval, ivl2: Interval): Boolean = ???
 
- /** The period consisting of given run id and phase id */
+  final def intersection(ivl1: Interval, ivl2: Interval): Interval = ???
+
+  /** The period consisting of given run id and phase id */
   final def periodOf(rid: RunId, pid: PhaseId): Period =
     ((rid << PhaseWidth) | pid) << PhaseWidth
 
