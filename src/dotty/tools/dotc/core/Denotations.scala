@@ -12,7 +12,7 @@ object Denotations {
   abstract class Denotation {
 
     /** The validity interval of this symbol */
-    var valid: Interval = Nowhere
+    var validFor: Period = Nowhere
 
     /** The next instance of this symbol in the same run */
     private[core] var nextInRun: Denotation = this
@@ -22,9 +22,9 @@ object Denotations {
      *  of this run
      */
     def initial: Denotation = {
-      var sym = nextInRun
-      while (sym.valid > this.valid) sym = sym.nextInRun
-      sym
+      var d = nextInRun
+      while (d.validFor.code > this.validFor.code) d = d.nextInRun
+      d
     }
 
     def owner: Symbol = ???

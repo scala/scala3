@@ -70,7 +70,7 @@ object Symbols {
      */
     def deref(implicit ctx: Context): Denotation = {
       val denot = lastDenot
-      if (denot != null && containsPeriod(denot.valid, ctx.period))
+      if (denot != null && (denot.validFor contains ctx.period))
         denot
       else
         trackedDenot
@@ -83,40 +83,40 @@ object Symbols {
         denot = loadDenot
       } else {
         val currentPeriod = ctx.period
-        val valid = denot.valid
-        val currentRunId = runIdOf(currentPeriod)
-        val validRunId = runIdOf(valid)
+        val valid = denot.validFor
+        val currentRunId = currentPeriod.runId
+        val validRunId = valid.runId
         if (currentRunId != validRunId) {
           reloadDenot
-        } else if (currentPeriod > valid) {
+        } else if (currentPeriod.code > valid.code) {
           // search for containing interval as long as nextInRun
           // increases.
           var nextDenot = denot.nextInRun
-          while (nextDenot.valid > valid && !containsPeriod(nextDenot.valid, currentPeriod)) {
+          while (nextDenot.validFor.code > valid.code && !(nextDenot.validFor contains currentPeriod)) {
             denot = nextDenot
             nextDenot = nextDenot.nextInRun
           }
-          if (nextDenot.valid > valid) {
+          if (nextDenot.validFor.code > valid.code) {
             // in this case, containsPeriod(nextDenot.valid, currentPeriod)
             denot = nextDenot
           } else {
             // not found, denot points to highest existing variant
-            var startPid = lastPhaseIdOf(denot.valid) + 1
+            var startPid = denot.validFor.lastPhaseId + 1
             val endPid = ctx.root.nextTransformer(startPid + 1).phaseId - 1
             nextDenot = ctx.root.nextTransformer(startPid) transform denot
             if (nextDenot eq denot)
-              startPid = firstPhaseIdOf(denot.valid)
+              startPid = denot.validFor.firstPhaseId
             else {
               denot.nextInRun = nextDenot
               denot = nextDenot
             }
-            denot.valid = intervalOf(currentRunId, startPid, endPid)
+            denot.validFor = Period(currentRunId, startPid, endPid)
           }
         } else {
           // currentPeriod < valid; in this case a denotation must exist
           do {
             denot = denot.nextInRun
-          } while (!containsPeriod(denot.valid, currentPeriod))
+          } while (!(denot.validFor contains currentPeriod))
         }
       }
        denot
@@ -136,7 +136,7 @@ object Symbols {
       if (newSym eq this) { // no change, change validity
         var d = initDenot
         do {
-          d.valid = intervalOf(ctx.runId, firstPhaseIdOf(d.valid), lastPhaseIdOf(d.valid))
+          d.validFor = Period(ctx.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
           d = d.nextInRun
         } while (d ne initDenot)
       }

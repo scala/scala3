@@ -24,7 +24,6 @@ object Contexts {
     def subTyper: SubTyper
     def names: NameTable
     def phase: Phase = ???
-    def stableInterval: Interval = ???
     def erasedTypes: Boolean = ???
   }
 
@@ -45,7 +44,7 @@ object Contexts {
     def subTyper: SubTyper = ???
 
     val root: RootContext = this
-    val period = periodOf(NoRunId, NoPhaseId)
+    val period = Nowhere
     val names: NameTable = new NameTable
     val variance = 1
 

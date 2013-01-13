@@ -5,7 +5,6 @@ import Denotations.Denotation
 import Contexts.Context
 import Names.Name
 import Names.TypeName
-import Periods.containsPeriod
 import Symbols.NoSymbol
 import Symbols.Symbol
 import Types._, Periods._, Flags._
@@ -73,7 +72,7 @@ object References {
     def info: Type
 
     /** The interval during which this reference is valid */
-    def validFor: Interval
+    def validFor: Period
 
     /** Is this a reference to a type symbol? */
     def isType: Boolean = false
@@ -131,7 +130,7 @@ object References {
           else new JointSymRef(
               if (sym2Eligible) sym2 else sym1,
               bounds1 & bounds2,
-              intersection(ref1.validFor, ref2.validFor))
+              ref1.validFor & ref2.validFor)
         } else NoRef
     }
 
@@ -162,7 +161,7 @@ object References {
                     else new JointSymRef(
                       lubSym(ref1.symbol, ref2.symbol),
                       ref1.info | ref2.info,
-                      intersection(ref1.validFor, ref2.validFor))
+                      ref1.validFor & ref2.validFor)
                   case _ =>
                     throwError
                 }
@@ -184,7 +183,7 @@ object References {
     def signature = unsupported("signature")
     def atSignature(sig: Signature): Reference =
       ref1.atSignature(sig) orElse ref2.atSignature(sig)
-    def validFor = intersection(ref1.validFor, ref2.validFor)
+    def validFor = ref1.validFor & ref2.validFor
   }
 
   abstract case class SymRef(override val symbol: Symbol,
@@ -229,16 +228,16 @@ object References {
   }
 
   class UniqueSymRef(symbol: Symbol, info: Type)(implicit ctx: Context) extends SymRef(symbol, info) {
-    val validFor = symbol.deref.valid
+    val validFor = symbol.deref.validFor
     override protected def copy(s: Symbol, i: Type): SymRef = new UniqueSymRef(s, i)
   }
 
-  class JointSymRef(symbol: Symbol, info: Type, override val validFor: Interval)(implicit ctx: Context) extends SymRef(symbol, info) {
+  class JointSymRef(symbol: Symbol, info: Type, override val validFor: Period)(implicit ctx: Context) extends SymRef(symbol, info) {
     override protected def copy(s: Symbol, i: Type): SymRef = new JointSymRef(s, i, validFor)
   }
 
   class ErrorRef(implicit ctx: Context) extends SymRef(NoSymbol, NoType) {
-    def validFor = allPeriods(ctx.runId)
+    def validFor = Period.allInRun(ctx.runId)
   }
 
   object NoRef extends SymRef(NoSymbol, NoType) {

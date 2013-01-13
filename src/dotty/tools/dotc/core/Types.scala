@@ -515,37 +515,38 @@ object Types {
     val prefix: Type
     val name: Name
 
-    private[this] var referencedVar: Reference = null
+    private[this] var referenceVar: Reference = null
 
     private def checkPrefix(sym: Symbol) =
       sym.isAbstractType || sym.isClass
 
-    def referenced(implicit ctx: Context): Reference = {
+    /** The reference currently denoted by this type */
+    def reference(implicit ctx: Context): Reference = {
       val validPeriods =
-        if (referencedVar != null) referencedVar.validFor else Nowhere
-      if (!containsPeriod(validPeriods, ctx.period)) {
+        if (referenceVar != null) referenceVar.validFor else Nowhere
+      if (!(validPeriods contains ctx.period)) {
         val thisPeriod = ctx.period
-        referencedVar =
-          if (runIdOf(validPeriods) == runIdOf(thisPeriod))
-            referencedVar.atPhase(phaseIdOf(ctx.period))
-            //val ref @ SymRef(clazz: ClassSymbol, _) = referencedVar
+        referenceVar =
+          if (validPeriods.runId == thisPeriod.runId)
+            referenceVar.atPhase(ctx.period.phaseId)
+            //val ref @ SymRef(clazz: ClassSymbol, _) = referenceVar
             //ref.derivedSymRef(clazz, ClassInfo(prefix, clazz.deref))
-          else if (phaseIdOf(thisPeriod) > name.lastIntroPhaseId)
+          else if (thisPeriod.phaseId > name.lastIntroPhaseId)
             ctx.atPhase(name.lastIntroPhaseId)(prefix.member(name)(_))
-               .atPhase(phaseIdOf(thisPeriod))
+               .atPhase(thisPeriod.phaseId)
           else
             prefix.member(name)
-        if (checkPrefix(referencedVar.symbol) && !prefix.isLegalPrefix)
-          throw new MalformedType(prefix, referencedVar.symbol)
+        if (checkPrefix(referenceVar.symbol) && !prefix.isLegalPrefix)
+          throw new MalformedType(prefix, referenceVar.symbol)
       }
-      referencedVar
+      referenceVar
     }
 
     def isType = name.isTypeName
     def isTerm = name.isTermName
 
-    def symbol(implicit ctx: Context): Symbol = referenced.symbol
-    def info(implicit ctx: Context): Type = referenced.info
+    def symbol(implicit ctx: Context): Symbol = reference.symbol
+    def info(implicit ctx: Context): Type = reference.info
 
     override def underlying(implicit ctx: Context): Type = info
 
@@ -566,7 +567,7 @@ object Types {
     protected val fixedSym: Symbol
     override def symbol(implicit ctx: Context): Symbol = fixedSym
     override def info(implicit ctx: Context): Type = fixedSym.info
-    override def referenced(implicit ctx: Context): Reference = new UniqueSymRef(fixedSym, info)
+    override def reference(implicit ctx: Context): Reference = new UniqueSymRef(fixedSym, info)
   }
 
   final class TermRefNoPrefix(val fixedSym: TermSymbol)(implicit ctx: Context)
@@ -575,8 +576,8 @@ object Types {
 
   final class TermRefWithSignature(prefix: Type, name: TermName, override val signature: Signature) extends TermRef(prefix, name) {
     override def computeHash = doHash((name, signature), prefix)
-    override def referenced(implicit ctx: Context): Reference =
-      super.referenced.atSignature(signature)
+    override def reference(implicit ctx: Context): Reference =
+      super.reference.atSignature(signature)
   }
 
   final class TypeRefNoPrefix(val fixedSym: TypeSymbol)(implicit ctx: Context)
@@ -693,7 +694,7 @@ object Types {
       var ref: Reference = NoRef
       while (ns.nonEmpty && (ref eq NoRef)) {
         if (ns.head == name)
-          ref = new JointSymRef(NoSymbol, is.head.substThis(this, pre), allPeriods(ctx.runId))
+          ref = new JointSymRef(NoSymbol, is.head.substThis(this, pre), Period.allInRun(ctx.runId))
         ns = ns.tail
         is = is.tail
       }
