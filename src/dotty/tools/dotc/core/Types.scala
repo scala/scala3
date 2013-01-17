@@ -62,7 +62,7 @@ object Types {
     /** The type symbol associated with the type */
     final def typeSymbol(implicit ctx: Context): Symbol = this match {
       case tp: TypeRef => tp.symbol
-      case tp: ClassInfo => tp.classd.clazz
+      case tp: ClassInfo => tp.classd.symbol
       case _ => NoSymbol
     }
 
@@ -283,7 +283,7 @@ object Types {
         val resultSyms = candidates
           .filterAccessibleFrom(pre)
           .filterExcluded(excluded)
-          .asSeenFrom(pre, classd.clazz)
+          .asSeenFrom(pre, classd.symbol)
         if (resultSyms.exists) resultSyms.toRef
         else new ErrorRefd // todo: refine
       case tp: AndType =>
@@ -860,21 +860,21 @@ object Types {
   abstract case class ClassInfo(prefix: Type, classd: ClassDenotation) extends CachedGroundType {
 
     def typeTemplate(implicit ctx: Context): Type =
-      classd.typeTemplate asSeenFrom (prefix, classd.clazz)
+      classd.typeTemplate asSeenFrom (prefix, classd.symbol)
 
     def typeConstructor(implicit ctx: Context): Type =
-      NamedType(prefix, classd.clazz.name)
+      NamedType(prefix, classd.symbol.name)
 
     // cached because baseType needs parents
     private var parentsCache: List[Type] = null
 
     override def parents(implicit ctx: Context): List[Type] = {
       if (parentsCache == null)
-        parentsCache = classd.parents.mapConserve(_.substThis(classd.clazz, prefix))
+        parentsCache = classd.parents.mapConserve(_.substThis(classd.symbol, prefix))
       parentsCache
     }
 
-    override def computeHash = doHash(classd.clazz, prefix)
+    override def computeHash = doHash(classd.symbol, prefix)
   }
 
   final class CachedClassInfo(prefix: Type, classd: ClassDenotation) extends ClassInfo(prefix, classd)
