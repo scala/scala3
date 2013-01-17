@@ -11,7 +11,7 @@ import Symbols._
 import Contexts._
 import Denotations._
 import Types._
-import References.{Reference, SymRef, OverloadedRef}
+import Referenceds.{Referenced, SymRefd, OverloadedRef}
 import collection.mutable
 
 object Symbols {

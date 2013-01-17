@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Periods._, Contexts._, Symbols._, References._, Names._
+import Periods._, Contexts._, Symbols._, Referenceds._, Names._
 import Types._, Flags._, Decorators._, Transformers._
 import Scopes.Scope
 import collection.mutable
@@ -9,7 +9,7 @@ import collection.immutable.BitSet
 
 object Denotations {
 
-  abstract class Denotation extends SymRef {
+  abstract class Denotation extends SymRefd {
 
     def symbol: Symbol = ???
 
@@ -54,7 +54,7 @@ object Denotations {
 
     def withType(tp: Type): Denotation = ???
 
-    override protected def copy(s: Symbol, i: Type): SymRef = new UniqueSymRef(s, i, validFor)
+    override protected def copy(s: Symbol, i: Type): SymRefd = new UniqueSymRefd(s, i, validFor)
   }
 
   object NameFilter {
@@ -87,9 +87,9 @@ object Denotations {
 
     def typeParams: List[TypeSymbol] = ???
 
-    private var memberCacheVar: LRU8Cache[Name, RefSet] = null
+    private var memberCacheVar: LRU8Cache[Name, ReferencedSet] = null
 
-    private def memberCache: LRU8Cache[Name, RefSet] = {
+    private def memberCache: LRU8Cache[Name, ReferencedSet] = {
       if (memberCacheVar == null) memberCacheVar = new LRU8Cache
       memberCacheVar
     }
@@ -219,8 +219,8 @@ object Denotations {
       if (fp != null) fp else computeDefinedFingerPrint
     }
 
-    final def memberRefsNamed(name: Name)(implicit ctx: Context): RefSet = {
-      var refs: RefSet = memberCache lookup name
+    final def memberRefsNamed(name: Name)(implicit ctx: Context): ReferencedSet = {
+      var refs: ReferencedSet = memberCache lookup name
       if (refs == null) {
         if (containsName(definedFingerPrint, name)) {
           val ownRefs = decls.refsNamed(name)
@@ -239,7 +239,7 @@ object Denotations {
             }
           }
         } else {
-          refs = NoRef
+          refs = NoRefd
         }
         memberCache enter (name, refs)
       }

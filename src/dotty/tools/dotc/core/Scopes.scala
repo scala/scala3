@@ -11,7 +11,7 @@ import Names._
 import Periods._
 import Decorators._
 import Contexts._
-import References._
+import Referenceds._
 
 object Scopes {
 
@@ -195,8 +195,8 @@ object Scopes {
     }
 
     /** The reference set of all the symbols with given name in this scope */
-    def refsNamed(name: Name)(implicit ctx: Context): RefSet = {
-      var syms: RefSet = NoRef
+    def refsNamed(name: Name)(implicit ctx: Context): ReferencedSet = {
+      var syms: ReferencedSet = NoRefd
       var e = lookupEntry(name)
       while (e != null) {
         syms = syms union e.sym.deref

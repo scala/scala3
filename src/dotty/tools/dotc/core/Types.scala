@@ -11,7 +11,7 @@ import Constants._
 import Contexts._
 import Annotations._
 import Denotations._
-import References._
+import Referenceds._
 import Periods._
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import collection.mutable
@@ -195,11 +195,11 @@ object Types {
       if (from.isDependent) ctx.subst(this, from, to, null)
       else this
 
-    /** Substitute all references of the form `This(clazz)` by `tp` */
+    /** Substitute all occurrences of `This(clazz)` by `tp` */
     final def substThis(clazz: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
       ctx.substThis(this, clazz, tp, null)
 
-    /** Substitute all references of the form `RefinedThis(from)` by `tp` */
+    /** Substitute all occurrences of `RefinedThis(from)` by `tp` */
     final def substThis(from: RefinedType, tp: Type)(implicit ctx: Context): Type =
       ctx.substThis(this, from, tp, null)
 
@@ -255,23 +255,23 @@ object Types {
     }
 
     /** The declaration of this type with given name */
-    final def decl(name: Name)(implicit ctx: Context): Reference =
+    final def decl(name: Name)(implicit ctx: Context): Referenced =
       decls.refsNamed(name).toRef
 
     /** The member of this type with given name  */
-    final def member(name: Name)(implicit ctx: Context): Reference =
+    final def member(name: Name)(implicit ctx: Context): Referenced =
       findMember(name, this, Flags.Empty)
 
     /** The non-private member of this type with given name */
-    final def nonPrivateMember(name: Name)(implicit ctx: Context): Reference =
+    final def nonPrivateMember(name: Name)(implicit ctx: Context): Referenced =
       findMember(name, this, Flags.Private)
 
     /** Find member of this type with given name and
-     *  produce a reference that contains the type of the member
+     *  produce a referenced that contains the type of the member
      *  as seen from given prefix `pre`. Exclude all members with one
      *  of the flags in `excluded` from consideration.
      */
-    final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Reference = this match {
+    final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Referenced = this match {
       case tp: RefinedType =>
         tp.parent.findMember(name, pre, excluded | Flags.Private) &
           tp.findDecl(name, pre)
@@ -285,7 +285,7 @@ object Types {
           .filterExcluded(excluded)
           .asSeenFrom(pre, classd.clazz)
         if (resultSyms.exists) resultSyms.toRef
-        else new ErrorRef // todo: refine
+        else new ErrorRefd // todo: refine
       case tp: AndType =>
         tp.tp1.findMember(name, pre, excluded) & tp.tp2.findMember(name, pre, excluded)
       case tp: OrType =>
@@ -515,37 +515,35 @@ object Types {
     val prefix: Type
     val name: Name
 
-    private[this] var referenceVar: Reference = null
+    private[this] var lastReferenced: Referenced = null
 
     private def checkPrefix(sym: Symbol) =
       sym.isAbstractType || sym.isClass
 
-    /** The reference currently denoted by this type */
-    def reference(implicit ctx: Context): Reference = {
+    /** The referenced currently denoted by this type */
+    def deref(implicit ctx: Context): Referenced = {
       val validPeriods =
-        if (referenceVar != null) referenceVar.validFor else Nowhere
+        if (lastReferenced != null) lastReferenced.validFor else Nowhere
       if (!(validPeriods contains ctx.period)) {
         val thisPeriod = ctx.period
-        referenceVar =
+        lastReferenced =
           if (validPeriods.runId == thisPeriod.runId)
-            referenceVar.current
-            //val ref @ SymRef(clazz: ClassSymbol, _) = referenceVar
-            //ref.derivedSymRef(clazz, ClassInfo(prefix, clazz.deref))
+            lastReferenced.current
           else if (thisPeriod.phaseId > name.lastIntroPhaseId)
             ctx.atPhase(name.lastIntroPhaseId)(prefix.member(name)(_)).current
            else
             prefix.member(name)
-        if (checkPrefix(referenceVar.symbol) && !prefix.isLegalPrefix)
-          throw new MalformedType(prefix, referenceVar.symbol)
+        if (checkPrefix(lastReferenced.symbol) && !prefix.isLegalPrefix)
+          throw new MalformedType(prefix, lastReferenced.symbol)
       }
-      referenceVar
+      lastReferenced
     }
 
     def isType = name.isTypeName
     def isTerm = name.isTermName
 
-    def symbol(implicit ctx: Context): Symbol = reference.symbol
-    def info(implicit ctx: Context): Type = reference.info
+    def symbol(implicit ctx: Context): Symbol = deref.symbol
+    def info(implicit ctx: Context): Type = deref.info
 
     override def underlying(implicit ctx: Context): Type = info
 
@@ -566,7 +564,7 @@ object Types {
     protected val fixedSym: Symbol
     override def symbol(implicit ctx: Context): Symbol = fixedSym
     override def info(implicit ctx: Context): Type = fixedSym.info
-    override def reference(implicit ctx: Context): Reference = fixedSym.deref
+    override def deref(implicit ctx: Context): Referenced = fixedSym.deref
   }
 
   final class TermRefNoPrefix(val fixedSym: TermSymbol)(implicit ctx: Context)
@@ -575,8 +573,8 @@ object Types {
 
   final class TermRefWithSignature(prefix: Type, name: TermName, override val signature: Signature) extends TermRef(prefix, name) {
     override def computeHash = doHash((name, signature), prefix)
-    override def reference(implicit ctx: Context): Reference =
-      super.reference.atSignature(signature)
+    override def deref(implicit ctx: Context): Referenced =
+      super.deref.atSignature(signature)
   }
 
   final class TypeRefNoPrefix(val fixedSym: TypeSymbol)(implicit ctx: Context)
@@ -687,13 +685,13 @@ object Types {
           infos1 map (_.substThis(this, thistp))
         }
 
-    def findDecl(name: Name, pre: Type)(implicit ctx: Context): Reference = {
+    def findDecl(name: Name, pre: Type)(implicit ctx: Context): Referenced = {
       var ns = names
       var is = infos
-      var ref: Reference = NoRef
-      while (ns.nonEmpty && (ref eq NoRef)) {
+      var ref: Referenced = NoRefd
+      while (ns.nonEmpty && (ref eq NoRefd)) {
         if (ns.head == name)
-          ref = new JointSymRef(NoSymbol, is.head.substThis(this, pre), Period.allInRun(ctx.runId))
+          ref = new JointSymRefd(NoSymbol, is.head.substThis(this, pre), Period.allInRun(ctx.runId))
         ns = ns.tail
         is = is.tail
       }
