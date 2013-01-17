@@ -171,7 +171,7 @@ object Denotations {
      *  someone does a findMember on a subclass.
      */
     def enter(sym: Symbol)(implicit ctx: Context) = {
-      require(!flags.hasFlagIn(Frozen))
+      require(!(flags intersects Frozen))
       decls enter sym
       if (definedFingerPrintCache != null)
         includeName(definedFingerPrintCache, sym.name)
@@ -184,7 +184,7 @@ object Denotations {
      *  someone does a findMember on a subclass.
      */
     def delete(sym: Symbol)(implicit ctx: Context) = {
-      require((flags & Frozen) == Flags.Empty)
+      require(!(flags intersects Frozen))
       decls unlink sym
       if (definedFingerPrintCache != null)
         computeDefinedFingerPrint

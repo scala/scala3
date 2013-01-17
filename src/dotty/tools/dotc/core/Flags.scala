@@ -23,27 +23,27 @@ object Flags {
 
     def & (that: FlagSet) = FlagSet(bits & that.bits)
 
-    def hasFlagIn(flags: FlagSet) = {
+    def intersects(flags: FlagSet) = {
       val fs = bits & flags.bits
       (fs & TYPEFLAGS) != 0 &&
       fs > TYPEFLAGS
     }
 
-    def hasFlagIn(flags: FlagSet, butNotIn: FlagSet) = {
+    def intersects(flags: FlagSet, butNot: FlagSet) = {
       val fs = bits & flags.bits
       (fs & TYPEFLAGS) != 0 &&
       fs > TYPEFLAGS &&
-      (bits & butNotIn.bits) == 0
+      (bits & butNot.bits) == 0
     }
 
-    def hasAllFlags(flags: FlagSet) = {
+    def contains(flags: FlagSet) = {
       val fs = bits & flags.bits
       (fs & TYPEFLAGS) != 0 &&
       (fs >> TYPESHIFT) == (flags.bits >> TYPESHIFT)
     }
 
-    def hasAllFlags(flags: FlagSet, butNotIn: FlagSet) = {
-      val fs = bits & (flags.bits | butNotIn.bits)
+    def contains(flags: FlagSet, butNot: FlagSet) = {
+      val fs = bits & (flags.bits | butNot.bits)
       (fs & TYPEFLAGS) != 0 &&
       (fs >> TYPESHIFT) == (flags.bits >> TYPESHIFT)
     }
