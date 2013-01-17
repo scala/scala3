@@ -528,13 +528,12 @@ object Types {
         val thisPeriod = ctx.period
         referenceVar =
           if (validPeriods.runId == thisPeriod.runId)
-            referenceVar.atPhase(ctx.period.phaseId)
+            referenceVar.current
             //val ref @ SymRef(clazz: ClassSymbol, _) = referenceVar
             //ref.derivedSymRef(clazz, ClassInfo(prefix, clazz.deref))
           else if (thisPeriod.phaseId > name.lastIntroPhaseId)
-            ctx.atPhase(name.lastIntroPhaseId)(prefix.member(name)(_))
-               .atPhase(thisPeriod.phaseId)
-          else
+            ctx.atPhase(name.lastIntroPhaseId)(prefix.member(name)(_)).current
+           else
             prefix.member(name)
         if (checkPrefix(referenceVar.symbol) && !prefix.isLegalPrefix)
           throw new MalformedType(prefix, referenceVar.symbol)
@@ -567,7 +566,7 @@ object Types {
     protected val fixedSym: Symbol
     override def symbol(implicit ctx: Context): Symbol = fixedSym
     override def info(implicit ctx: Context): Type = fixedSym.info
-    override def reference(implicit ctx: Context): Reference = new UniqueSymRef(fixedSym, info)
+    override def reference(implicit ctx: Context): Reference = fixedSym.deref
   }
 
   final class TermRefNoPrefix(val fixedSym: TermSymbol)(implicit ctx: Context)

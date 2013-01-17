@@ -7,18 +7,18 @@ import Names.Name
 import Names.TypeName
 import Symbols.NoSymbol
 import Symbols.Symbol
-import Types._, Periods._, Flags._
+import Types._, Periods._, Flags._, Transformers._
 
 
-/** Classes that implement references and sets of references
+/** Classes that implement referenced items and sets of them
  */
 object References {
 
-  /** The signature of a reference.
-   *  Overloaded references with the same name are distinguished by
+  /** The signature of a referenced.
+   *  Overloaded referenceds with the same name are distinguished by
    *  their signatures. A signature is a list of the fully qualified names
    *  of the type symbols of the erasure of the parameters of the
-   *  reference. For instance a reference to the definition
+   *  referenced. For instance a referenced definition
    *
    *      def f(x: Int)(y: List[String]): String
    *
@@ -33,24 +33,24 @@ object References {
    */
   val NullSignature = List(Names.EmptyTypeName)
 
-  /** A reference is the result of resolving a name (either simple identifier or select)
-   *  during a given period interval.
+  /** A referenced is the result of resolving
+   *  a name (either simple identifier or select) during a given period.
    *
-   *  Reference has two subclasses: OverloadedRef and SymRef.
+   *  Referenced has two subclasses: OverloadedRefd and SymRefd.
    *
-   *  A SymRef refers to a `symbol` and a type (`info`) that the symbol has
-   *  when referred through this reference.
+   *  A SymRefd refers to a `symbol` and a type (`info`) that the symbol has
+   *  when seen from the reference.
    *
-   *  References (`SymRef`s) can be combined with `&` and `|`.
+   *  References can be combined with `&` and `|`.
    *  & is conjunction, | is disjunction.
    *
    *  `&` will create an overloaded reference from two
    *  non-overloaded references if their signatures differ.
    *  Analogously `|` of two references with different signatures will give
-   *  an empty reference `NoRef`.
+   *  an empty reference `NoRefd`.
    *
-   *  A reference might refer to `NoSymbol`. This is the case if the reference
-   *  was produced from a disjunction of two references with different symbols
+   *  A referenced might refer to `NoSymbol`. This is the case if the referenced
+   *  was produced from a disjunction of two referenceds with different symbols
    *  and there was no common symbol in a superclass that could substitute for
    *  both symbols. Here is an example:
    *
@@ -61,7 +61,7 @@ object References {
    *    val x: A | B = if (???) new A else new B
    *    val y = x.f
    *
-   *  Then the reference of `y` is `SymRef(NoSymbol, A | B)`.
+   *  Then the referenced of `y` is `SymRef(NoSymbol, A | B)`.
    */
   abstract class Reference extends DotClass {
 
@@ -74,6 +74,9 @@ object References {
     /** The interval during which this reference is valid */
     def validFor: Period
 
+    /** The previous reference */
+    def prev: Reference = ???
+
     /** Is this a reference to a type symbol? */
     def isType: Boolean = false
 
@@ -83,10 +86,8 @@ object References {
     /** Resolve overloaded reference to pick the one with the given signature */
     def atSignature(sig: Signature): Reference
 
-    /** This reference at given phase */
-    def atPhase(pid: PhaseId)(implicit ctx: Context): Reference = {
-      ???
-    }
+    /** The variant of this reference that's current in the given context. */
+    def current(implicit ctx: Context): Reference
 
     def exists: Boolean = true
 
@@ -98,7 +99,7 @@ object References {
       else if (!this.exists) that
       else if (!that.exists) this
       else that match {
-        case that @ SymRef(sym2, info2) =>
+        case that: SymRef =>
           val r = mergeRef(this, that)
           if (r ne NoRef) r else OverloadedRef(this, that)
         case that @ OverloadedRef(ref1, ref2) =>
@@ -112,15 +113,18 @@ object References {
       case ref1 @ OverloadedRef(ref11, ref12) =>
         val r1 = mergeRef(ref11, ref2)
         if (r1 ne NoRef) r1 else mergeRef(ref12, ref2)
-      case ref1 @ SymRef(sym1, info1) =>
+      case ref1: SymRef =>
         if (ref1 eq ref2) ref1
         else if (ref1.signature == ref2.signature) {
-          val SymRef(sym2, info2) = ref2
           def isEligible(sym1: Symbol, sym2: Symbol) =
             if (sym1.isType) !sym1.isClass
             else sym1.isConcrete || sym2.isDeferred || !sym2.exists
           def normalize(info: Type) =
             if (isType) info.bounds else info
+          val sym1 = ref1.symbol
+          val info1 = ref1.info
+          val sym2 = ref2.symbol
+          val info2 = ref2.info
           val sym1Eligible = isEligible(sym1, sym2)
           val sym2Eligible = isEligible(sym2, sym1)
           val bounds1 = normalize(info1)
@@ -184,10 +188,12 @@ object References {
     def atSignature(sig: Signature): Reference =
       ref1.atSignature(sig) orElse ref2.atSignature(sig)
     def validFor = ref1.validFor & ref2.validFor
+    def current(implicit ctx: Context): Reference =
+      derivedOverloadedRef(ref1.current, ref2.current)
   }
 
-  abstract case class SymRef(override val symbol: Symbol,
-                             override val info: Type) extends Reference with RefSet {
+  abstract class SymRef extends Reference with RefSet {
+
     override def isType = symbol.isType
     override def signature: Signature = {
       def sig(tp: Type): Signature = tp match {
@@ -210,6 +216,62 @@ object References {
     def atSignature(sig: Signature): Reference =
       if (sig == signature) this else NoRef
 
+    // ------ Transformations -----------------------------------------
+
+    var validFor: Period = Nowhere
+
+    /** The next SymRef in this run, with wrap-around from last to first. */
+    var nextInRun: SymRef = this
+
+    /** The version of this SymRef that was valid in the first phase
+     *  of this run.
+     */
+    def initial: SymRef = {
+      var current = nextInRun
+      while (current.validFor.code > this.validFor.code) current = current.nextInRun
+      current
+    }
+
+    def current(implicit ctx: Context): SymRef = {
+      val currentPeriod = ctx.period
+      val valid = validFor
+      var current = this
+      if (currentPeriod.code > valid.code) {
+        // search for containing period as long as nextInRun increases.
+        var next = nextInRun
+        while (next.validFor.code > valid.code &&
+               !(next.validFor contains currentPeriod)) {
+          current = next
+          next = next.nextInRun
+        }
+        if (next.validFor.code > valid.code) {
+          // in this case, containsPeriod(next.validFor, currentPeriod)
+          current = next
+        } else {
+          // not found, current points to highest existing variant
+          var startPid = current.validFor.lastPhaseId + 1
+          val trans = ctx.root.transformersFor(current)
+          val endPid = trans.nextTransformer(startPid + 1).phaseId - 1
+          next = trans.nextTransformer(startPid) transform current
+          if (next eq current)
+            startPid = current.validFor.firstPhaseId
+          else {
+            current.nextInRun = next
+            current = next
+          }
+          current.validFor = Period(currentPeriod.runId, startPid, endPid)
+        }
+      } else {
+        // currentPeriod < valid; in this case a version must exist
+        do {
+          current = current.nextInRun
+        } while (!(current.validFor contains currentPeriod))
+      }
+      current
+    }
+
+    def asDenotation = asInstanceOf[Denotation]
+
     // ------ RefSet ops ----------------------------------------------
 
     def toRef(implicit ctx: Context) = this
@@ -227,21 +289,30 @@ object References {
       derivedSymRef(symbol, info.asSeenFrom(pre, owner))
   }
 
-  class UniqueSymRef(symbol: Symbol, info: Type)(implicit ctx: Context) extends SymRef(symbol, info) {
-    val validFor = symbol.deref.validFor
-    override protected def copy(s: Symbol, i: Type): SymRef = new UniqueSymRef(s, i)
+  class UniqueSymRef(val symbol: Symbol,
+                     val info: Type,
+                     initValidFor: Period) extends SymRef {
+    validFor = initValidFor
+    override protected def copy(s: Symbol, i: Type): SymRef = new UniqueSymRef(s, i, validFor)
   }
 
-  class JointSymRef(symbol: Symbol, info: Type, override val validFor: Period)(implicit ctx: Context) extends SymRef(symbol, info) {
+  class JointSymRef(val symbol: Symbol,
+                    val info: Type,
+                    initValidFor: Period) extends SymRef {
+    validFor = initValidFor
     override protected def copy(s: Symbol, i: Type): SymRef = new JointSymRef(s, i, validFor)
   }
 
-  class ErrorRef(implicit ctx: Context) extends SymRef(NoSymbol, NoType) {
-    def validFor = Period.allInRun(ctx.runId)
+  class ErrorRef(implicit ctx: Context) extends SymRef {
+    val symbol = NoSymbol
+    val info = NoType
+    validFor = Period.allInRun(ctx.runId)
   }
 
-  object NoRef extends SymRef(NoSymbol, NoType) {
-    def validFor = Nowhere
+  object NoRef extends SymRef {
+    val symbol = NoSymbol
+    val info = NoType
+    validFor = Nowhere
     override def exists = false
   }
 

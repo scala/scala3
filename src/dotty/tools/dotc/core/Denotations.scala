@@ -2,30 +2,16 @@ package dotty.tools.dotc
 package core
 
 import Periods._, Contexts._, Symbols._, References._, Names._
-import Types._, Flags._, Decorators._
+import Types._, Flags._, Decorators._, Transformers._
 import Scopes.Scope
 import collection.mutable
 import collection.immutable.BitSet
 
 object Denotations {
 
-  abstract class Denotation {
+  abstract class Denotation extends SymRef {
 
-    /** The validity interval of this symbol */
-    var validFor: Period = Nowhere
-
-    /** The next instance of this symbol in the same run */
-    private[core] var nextInRun: Denotation = this
-
-    /**
-     * The version of this symbol that was valid in the first phase
-     *  of this run
-     */
-    def initial: Denotation = {
-      var d = nextInRun
-      while (d.validFor.code > this.validFor.code) d = d.nextInRun
-      d
-    }
+    def symbol: Symbol = ???
 
     def owner: Symbol = ???
 
@@ -57,9 +43,6 @@ object Denotations {
      *    interval starting in FirstPhaseId.
      */
 
-    /** is this symbol a type? */
-    def isType: Boolean = false
-
     /** is this symbol a class? */
     def isClass: Boolean = false
 
@@ -70,6 +53,8 @@ object Denotations {
     def isError: Boolean = false
 
     def withType(tp: Type): Denotation = ???
+
+    override protected def copy(s: Symbol, i: Type): SymRef = new UniqueSymRef(s, i, validFor)
   }
 
   object NameFilter {

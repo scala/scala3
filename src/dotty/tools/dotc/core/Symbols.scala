@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Periods._
-import DenotationTransformers._
+import Transformers._
 import Names._
 import Flags._
 import java.lang.AssertionError
@@ -11,7 +11,7 @@ import Symbols._
 import Contexts._
 import Denotations._
 import Types._
-import References.{Reference, SymRef, UniqueSymRef, OverloadedRef}
+import References.{Reference, SymRef, OverloadedRef}
 import collection.mutable
 
 object Symbols {
@@ -70,74 +70,32 @@ object Symbols {
      */
     def deref(implicit ctx: Context): Denotation = {
       val denot = lastDenot
-      if (denot != null && (denot.validFor contains ctx.period))
-        denot
-      else
-        trackedDenot
-    }
-
-    /** Get referenced denotation if lastDenot points to a different instance */
-    private def trackedDenot(implicit ctx: Context): Denotation = {
-      var denot = lastDenot
-      if (denot == null) {
-        denot = loadDenot
-      } else {
+      if (denot == null) loadDenot
+      else {
         val currentPeriod = ctx.period
         val valid = denot.validFor
-        val currentRunId = currentPeriod.runId
-        val validRunId = valid.runId
-        if (currentRunId != validRunId) {
-          reloadDenot
-        } else if (currentPeriod.code > valid.code) {
-          // search for containing interval as long as nextInRun
-          // increases.
-          var nextDenot = denot.nextInRun
-          while (nextDenot.validFor.code > valid.code && !(nextDenot.validFor contains currentPeriod)) {
-            denot = nextDenot
-            nextDenot = nextDenot.nextInRun
-          }
-          if (nextDenot.validFor.code > valid.code) {
-            // in this case, containsPeriod(nextDenot.valid, currentPeriod)
-            denot = nextDenot
-          } else {
-            // not found, denot points to highest existing variant
-            var startPid = denot.validFor.lastPhaseId + 1
-            val endPid = ctx.root.nextTransformer(startPid + 1).phaseId - 1
-            nextDenot = ctx.root.nextTransformer(startPid) transform denot
-            if (nextDenot eq denot)
-              startPid = denot.validFor.firstPhaseId
-            else {
-              denot.nextInRun = nextDenot
-              denot = nextDenot
-            }
-            denot.validFor = Period(currentRunId, startPid, endPid)
-          }
-        } else {
-          // currentPeriod < valid; in this case a denotation must exist
-          do {
-            denot = denot.nextInRun
-          } while (!(denot.validFor contains currentPeriod))
-        }
+        if (valid contains currentPeriod) denot
+        else if (valid.runId != currentPeriod.runId) reloadDenot
+        else denot.current.asDenotation
       }
-       denot
     }
 
     /**
      * Get loaded denotation if lastDenot points to a denotation from
-     *  a different run.
+     *  a different run. !!! needed?
      */
     private def reloadDenot(implicit ctx: Context): Denotation = {
-      val initDenot = lastDenot.initial
+      val initDenot = lastDenot.initial.asDenotation
       val newSym: Symbol =
         ctx.atPhase(FirstPhaseId) { implicit ctx =>
           initDenot.owner.info.decl(initDenot.name)
-            .atSignature(thisRef.signature).symbol
+            .atSignature(deref.signature).symbol
         }
       if (newSym eq this) { // no change, change validity
         var d = initDenot
         do {
           d.validFor = Period(ctx.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
-          d = d.nextInRun
+          d = d.nextInRun.asDenotation
         } while (d ne initDenot)
       }
       newSym.deref
@@ -145,8 +103,6 @@ object Symbols {
 
     def isType: Boolean
     def isTerm = !isType
-
-    def thisRef(implicit ctx: Context): SymRef = new UniqueSymRef(this, info)
 
     // forwarders for sym methods
     def owner(implicit ctx: Context): Symbol = deref.owner

@@ -199,7 +199,7 @@ object Scopes {
       var syms: RefSet = NoRef
       var e = lookupEntry(name)
       while (e != null) {
-        syms = syms union e.sym.thisRef
+        syms = syms union e.sym.deref
         e = lookupNextEntry(e)
       }
       syms
