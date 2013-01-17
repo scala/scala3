@@ -38,7 +38,7 @@ object Contexts {
   }
 
   class RootContext extends Context
-                       with DenotationTransformers {
+                       with Transformers {
 
     val underlying: Context = throw new UnsupportedOperationException("RootContext.underlying")
     def subTyper: SubTyper = ???
