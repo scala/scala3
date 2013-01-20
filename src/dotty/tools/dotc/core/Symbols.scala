@@ -10,30 +10,46 @@ import Decorators._
 import Symbols._
 import Contexts._
 import Denotations._
-import Types._
+import Types._, Annotations._
 import Referenceds.{Referenced, SymRefd, OverloadedRef}
 import collection.mutable
 
 object Symbols {
 
 
-  /**
-   * A SymRef is a period-dependent reference to a denotation.
-   *  Given a period, its `deref` method resolves to a Symbol.
+  /** A Symbol represents a Scala definition/declaration or a package.
    */
   abstract class Symbol {
 
-    def overriddenSymbol(inclass: ClassSymbol)(implicit ctx: Context): Symbol =
-      if (owner isSubClass inclass) ???
+    /** The non-private symbol whose type matches the type of this symbol
+     *  in in given class.
+     *
+     *  @param ofClass   The class containing the symbol's definition
+     *  @param site      The base type from which member types are computed
+     */
+    final def matchingSymbol(inClass: Symbol, site: Type)(implicit ctx: Context): Symbol = {
+      var ref = inClass.info.nonPrivateDecl(name)
+      if (ref.isTerm) {
+        val targetType = site.memberInfo(this)
+        if (ref.isOverloaded) ref = ref.atSignature(targetType.signature)
+        val candidate = ref.symbol
+        if (site.memberInfo(candidate) matches targetType) candidate
+        else NoSymbol
+      } else ref.symbol
+    }
+
+    def overriddenSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol =
+      if (owner isSubClass inClass) matchingSymbol(inClass, owner.thisType)
       else NoSymbol
 
     def isProtected: Boolean = ???
-    def isStable: Boolean = ???
+    def isStable(implicit ctx: Context): Boolean = false
     def accessBoundary: ClassSymbol = ???
     def isContainedIn(boundary: ClassSymbol) = ???
     def baseClasses: List[ClassSymbol] = ???
     def exists = true
-
+    def hasAnnotation(ann: Annotation): Boolean = ???
+    def hasAnnotation(ann: ClassSymbol): Boolean = ???
 
     def orElse(that: => Symbol) = if (exists) this else that
 
@@ -50,10 +66,9 @@ object Symbols {
       (this isAsAccessible that)
 
     def isAsAccessible(that: Symbol)(implicit ctx: Context): Boolean =
-      !this.isProtected && !that.isProtected && // protected members are incomparable
+      !(this is Protected) && !(that is Protected) && // protected members are incomparable
       (that.accessBoundary isContainedIn this.accessBoundary) &&
       this.isStable || !that.isStable
-
 
     /** Set the denotation of this symbol.
      */
@@ -161,7 +176,14 @@ object Symbols {
   abstract class TermSymbol extends Symbol {
     def name: TermName
     def isType = true
+
+    override def isStable(implicit ctx: Context) = !(
+      this.is(UnstableValue, butNot = Stable) ||
+      info.isVolatile && !hasAnnotation(defn.uncheckedStableClass)
+    )
   }
+
+  final val MutableMethodByNameParam = Mutable | Method | ByNameParam
 
   trait RefinementSymbol extends Symbol {
     override def deref(implicit ctx: Context) = lastDenot
@@ -220,7 +242,11 @@ object Symbols {
     def loadDenot(implicit ctx: Context): Denotation = NoDenotation
     override def exists = false
     def isType = false
+    override def isTerm = false
   }
 
   implicit def defn(implicit ctx: Context): Definitions = ctx.root.definitions
+
+  implicit def toFlagSet(sym: Symbol)(implicit ctx: Context): FlagSet = sym.flags
+
 }

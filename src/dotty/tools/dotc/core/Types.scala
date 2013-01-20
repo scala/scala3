@@ -157,7 +157,8 @@ object Types {
     final def isNotNull: Boolean = false
 
     /** Is this type produced as a repair for an error? */
-    final def isError(implicit ctx: Context): Boolean = (typeSymbol hasFlag Error) || (termSymbol hasFlag Error)
+    final def isError(implicit ctx: Context): Boolean =
+      (typeSymbol is Erroneous) || (termSymbol is Erroneous)
 
     /** Is some part of this type produced as a repair for an error? */
     final def isErroneous(implicit ctx: Context): Boolean = exists(_.isError)
@@ -256,7 +257,26 @@ object Types {
 
     /** The declaration of this type with given name */
     final def decl(name: Name)(implicit ctx: Context): Referenced =
-      decls.refsNamed(name).toRef
+      findDecl(name, this, Flags.Empty)
+
+    /** The non-private declaration of this type with given name */
+    final def nonPrivateDecl(name: Name)(implicit ctx: Context): Referenced =
+      findDecl(name, this, Flags.Private)
+
+    /** The non-private declaration of this type with given name */
+    final def findDecl(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Referenced = this match {
+      case tp: RefinedType =>
+        tp.findDecl(name, pre)
+      case tp: ClassInfo =>
+        tp.classd.decls
+          .refsNamed(name)
+          .filterAccessibleFrom(pre)
+          .filterExcluded(excluded)
+          .asSeenFrom(pre, tp.classd.symbol)
+          .toRef
+      case tp: TypeProxy =>
+        tp.underlying.findDecl(name, pre, excluded)
+    }
 
     /** The member of this type with given name  */
     final def member(name: Name)(implicit ctx: Context): Referenced =
@@ -302,6 +322,30 @@ object Types {
     final def =:=(that: Type)(implicit ctx: Context): Boolean =
       ctx.subTyper.isSameType(this, that)
 
+    /** Is this type close enough to that type so that members
+     *  with the two type would override each other?
+     *  This means:
+     *    - Either both types are polytypes with the same number of
+     *      type parameters and their result types match after renaming
+     *      corresponding type parameters
+     *    - Or both types are (possibly nullary) method types with equivalent type parameter types
+     *      and matching result types
+     *    - Or both types are equivalent
+     *    - Or phase.erasedTypes is false and both types are neither method nor
+     *      poly types.
+     */
+    def matches(that: Type)(implicit ctx: Context): Boolean =
+      ctx.subTyper.matchesType(this, that, !ctx.phase.erasedTypes)
+
+    /** Does this type match that type
+     *
+     */
+
+    /** The info of `sym`, seen as a member of this type. */
+    final def memberInfo(sym: Symbol)(implicit ctx: Context): Type = {
+      sym.info.asSeenFrom(this, sym.owner)
+    }
+
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences,
      *  identity for all other types. Example:
@@ -338,7 +382,9 @@ object Types {
     }
 
     final def asSeenFrom(pre: Type, clazz: Symbol)(implicit ctx: Context): Type =
-      if (clazz.isStaticMono || ctx.erasedTypes && clazz != defn.ArrayClass) this
+      if (clazz.isStaticMono ||
+          ctx.erasedTypes && clazz != defn.ArrayClass ||
+          (pre eq clazz.thisType)) this
       else ctx.asSeenFrom(this, pre, clazz, null)
 
     /** The signature of this type. This is by default NullSignature,
@@ -803,6 +849,7 @@ object Types {
 
   abstract case class ExprType(resultType: Type) extends CachedProxyType {
     override def underlying(implicit ctx: Context): Type = resultType
+    override def signature: Signature = Nil
     def derivedExprType(rt: Type)(implicit ctx: Context) =
       if (rt eq resultType) this else ExprType(rt)
     override def computeHash = doHash(resultType)

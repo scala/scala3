@@ -203,6 +203,47 @@ object SubTypers {
         true
     }
 
+    /** A function implementing `tp1` matches `tp2`. */
+    final def matchesType(tp1: Type, tp2: Type, alwaysMatchSimple: Boolean): Boolean = tp1 match {
+      case tp1: MethodType =>
+        tp2 match {
+          case tp2: MethodType =>
+            tp1.isImplicit == tp2.isImplicit &&
+              matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
+              matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), alwaysMatchSimple)
+          case tp2: ExprType =>
+            tp1.paramNames.isEmpty &&
+              matchesType(tp1.resultType, tp2.resultType, alwaysMatchSimple)
+          case _ =>
+            false
+        }
+      case tp1: ExprType =>
+        tp2 match {
+          case tp2: MethodType =>
+            tp2.paramNames.isEmpty &&
+              matchesType(tp1.resultType, tp2.resultType, alwaysMatchSimple)
+          case tp2: ExprType =>
+            matchesType(tp1.resultType, tp2.resultType, alwaysMatchSimple)
+          case _ =>
+            matchesType(tp1.resultType, tp2, alwaysMatchSimple)
+        }
+      case tp1: PolyType =>
+        tp2 match {
+          case tp2: PolyType =>
+            sameLength(tp1.paramNames, tp2.paramNames) &&
+              matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), alwaysMatchSimple)
+          case _ =>
+            false
+        }
+      case _ =>
+        tp2 match {
+          case _: MethodType | _: PolyType =>
+            false
+          case _ =>
+            alwaysMatchSimple || isSameType(tp1, tp2)
+        }
+      }
+
     /** Are `syms1` and `syms2` parameter lists with pairwise equivalent types? */
     private def matchingParams(formals1: List[Type], formals2: List[Type], isJava1: Boolean, isJava2: Boolean): Boolean = formals1 match {
       case Nil =>

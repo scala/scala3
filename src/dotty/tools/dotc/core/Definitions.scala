@@ -18,6 +18,7 @@ class Definitions(implicit ctx: Context) {
   lazy val SingletonClass: ClassSymbol = ???
   lazy val SingletonType = SingletonClass.typeConstructor
   lazy val ArrayClass: ClassSymbol = ???
+  lazy val uncheckedStableClass: ClassSymbol = ???
 
   def init() =
     if (!isInitialized) {

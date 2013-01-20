@@ -12,7 +12,9 @@ object Flags {
    */
   case class FlagSet(val bits: Long) extends AnyVal {
 
-    def | (that: FlagSet) =
+    /** The union of this flag set and the given flag set
+     */
+    def | (that: FlagSet): FlagSet =
       if (bits == 0) that
       else if (that.bits == 0) this
       else {
@@ -21,28 +23,55 @@ object Flags {
         FlagSet(tbits | ((this.bits | that.bits) & ~TYPEFLAGS))
       }
 
+    /** The union of this flag set and the given flag conjunction seen as
+     *  a flag set.
+     */
+    def | (that: FlagConjunction): FlagSet = this | FlagSet(that.bits)
+
+    /** The intersection of this flag set and the given flag set */
     def & (that: FlagSet) = FlagSet(bits & that.bits)
 
-    def intersects(flags: FlagSet) = {
+    /** The intersection of this flag set with the complement of the given flag set */
+    def &~ (that: FlagSet) = {
+      val tbits = bits & that.bits & TYPEFLAGS
+      assert(tbits != 0, s"illegal flagset combination: $this and $that")
+      FlagSet(tbits | ((this.bits & ~that.bits) & ~TYPEFLAGS))
+    }
+
+    /** Does this flag set have a non-empty intersection with the given flag set?
+     *  Pre: The intersection of the typeflags of both sets must be non-empty.
+     */
+    def is(flags: FlagSet) = {
       val fs = bits & flags.bits
       (fs & TYPEFLAGS) != 0 &&
       fs > TYPEFLAGS
     }
 
-    def intersects(flags: FlagSet, butNot: FlagSet) = {
+   /** Does this flag set have a non-empty intersection with the given flag set,
+    *  and at the same time contain none of the flags in the `butNot` set?
+    *  Pre: The intersection of the typeflags of both sets must be non-empty.
+    */
+    def is(flags: FlagSet, butNot: FlagSet) = {
       val fs = bits & flags.bits
       (fs & TYPEFLAGS) != 0 &&
       fs > TYPEFLAGS &&
       (bits & butNot.bits) == 0
     }
 
-    def contains(flags: FlagSet) = {
+    /** Does this flag set have all of the flags in given flag conjunction?
+     *  Pre: The intersection of the typeflags of both sets must be non-empty.
+     */
+    def is(flags: FlagConjunction) = {
       val fs = bits & flags.bits
       (fs & TYPEFLAGS) != 0 &&
       (fs >> TYPESHIFT) == (flags.bits >> TYPESHIFT)
     }
 
-    def contains(flags: FlagSet, butNot: FlagSet) = {
+    /** Does this flag set have all of the flags in given flag conjunction?
+     *  and at the same time contain none of the flags in the `butNot` set?
+     *  Pre: The intersection of the typeflags of both sets must be non-empty.
+     */
+    def is(flags: FlagConjunction, butNot: FlagSet) = {
       val fs = bits & (flags.bits | butNot.bits)
       (fs & TYPEFLAGS) != 0 &&
       (fs >> TYPESHIFT) == (flags.bits >> TYPESHIFT)
@@ -54,48 +83,253 @@ object Flags {
     private def flagString(idx: Int): Set[String] =
       kindIndices.map(flagName(idx)).filterNot(_.isEmpty)
 
+    /** The string representation of this flag set */
     override def toString =
       (2 to MaxFlag).flatMap(flagString).mkString(" ")
   }
 
-  final val TYPEFLAGS = 3L
-  final val TYPESHIFT = 2
-  final val TERMindex = 0
-  final val TYPEindex = 1
-  final val TERMS = 1 << TERMindex
-  final val TYPES = 1 << TYPEindex
+  /** A class representing flag sets that should be tested
+   *  conjunctively. I.e. for a flag conjunction `fc`,
+   *  `x is fc` tests whether `x` contains all flags in `fc`.
+   */
+  case class FlagConjunction(bits: Long)
 
-  final val MaxFlag = 63
+  private final val TYPEFLAGS = 3L
+  private final val TYPESHIFT = 2
+  private final val TERMindex = 0
+  private final val TYPEindex = 1
+  private final val TERMS = 1 << TERMindex
+  private final val TYPES = 1 << TYPEindex
+
+  private final val MaxFlag = 63
 
   private var flagName = Array.fill(64, 2)("")
 
   private val kindIndices = Set(TERMindex, TYPEindex)
 
-  /** The flag with given index between 2 and 63 which applies to terms */
+  /** The flag with given index between 2 and 63 which applies to terms.
+   *  Installs given name as the name of the flag. */
   def termFlag(index: Int, name: String): FlagSet = {
     flagName(index)(TERMindex) = name
-    FlagSet(TERMS | (1L << index))
+    termFlag(index)
   }
 
-  /** The flag with given index between 2 and 63 which applies to types */
+  /** The flag with given index between 2 and 63 which applies to terms. */
+  def termFlag(index: Int) = FlagSet(TERMS | (1L << index))
+
+  /** The flag with given index between 2 and 63 which applies to types.
+   *  Installs given name as the name of the flag. */
   def typeFlag(index: Int, name: String): FlagSet = {
     flagName(index)(TYPEindex) = name
-    FlagSet(TYPES | (1L << index))
+    typeFlag(index)
   }
+
+  /** The flag with given index between 2 and 63 which applies to terms. */
+  def typeFlag(index: Int) = FlagSet(TYPES | (1L << index))
 
   /** The flag with given index between 2 and 63 which applies to both terms and types */
   def commonFlag(index: Int, name: String): FlagSet =
-    termFlag(index, name) | typeFlag(index, name)
+    termFlag(index, name) | typeFlag(index)
+
+  /** The conjunction of all flags in given flag set */
+  def allOf(flags: FlagSet) = FlagConjunction(flags.bits)
+
+  /** The empty flag set */
+  final val Empty = FlagSet(0)
 
   // Available flags:
 
-  final val Empty = FlagSet(0)
+  /** Labeled with `private` modifier */
+  final val Private = commonFlag(2, "private")
 
-  final val Private = commonFlag(3, "private")
-  final val Accessor = termFlag(4, "<accessor>")
+  /** Labeled with `protected` modifier */
+  final val Protected = commonFlag(3, "protected")
 
-  final val Error = FlagSet(1 << 32)
-  final val Frozen = FlagSet(???)
-  final val Package = FlagSet(???)
+  /** Labeled with `override` modifier */
+  final val Override = commonFlag(4, "override")
 
+  /** A declared, but not defined member */
+  final val Deferred = commonFlag(5, "<deferred>")
+
+  /** Labeled with `final` modifier */
+  final val Final = commonFlag(6, "final")
+
+  /** A method. !!! needed? */
+  final val Method = termFlag(7, "<method>")
+
+  /** An abstract class */
+  final val Abstract = typeFlag(8, "abstract")
+
+  /** A trait that has only abstract methods as members
+   *  (and therefore can be represented by a Java interface
+   */
+  final val Interface = typeFlag(9, "interface")
+
+  /** A value or class implementing a module */
+  final val Module = commonFlag(10, "module")
+  final val ModuleObj = termFlag(10)
+  final val ModuleClass = typeFlag(10)
+
+  /** Labeled with `implicit` modifier */
+  final val Implicit = termFlag(11, "implicit")
+
+  /** Labeled with `sealed` modifier */
+  final val Sealed = typeFlag(12, "sealed")
+
+  /** A case class or its companion object */
+  final val Case = commonFlag(13, "case")
+  final val CaseClass = typeFlag(13)
+  final val CaseObj = termFlag(13)
+
+  /** A lazy val */
+  final val Lazy = termFlag(14, "lazy")
+
+  /** A mutable var */
+  final val Mutable = termFlag(14, "mutable")
+
+  /** A (term or type) parameter to a class or method */
+  final val Param     = commonFlag(15, "<param>")
+  final val TermParam = termFlag(15)
+  final val TypeParam = typeFlag(15)
+
+  /** A value or class representing a package */
+  final val Package = commonFlag(16, "<package>")
+  final val PackageObj = termFlag(16)
+  final val PackageClass = typeFlag(16)
+
+  /** A by-name parameter !!! needed? */
+  final val ByNameParam = termFlag(17, "<by-name>")
+
+  /** A covariant type variable */
+  final val Covariant = typeFlag(17, "<covariant>")
+
+  /** Method is a label. */
+  final val Label = termFlag(18, "<label>")
+
+  /** Symbol is a macro */
+  final val Macro = commonFlag(???, "<macro>")
+
+  /** A contravariant type variable */
+  final val Contravariant = typeFlag(18, "<contravariant>")
+
+  /** combination of abstract & override */
+  final val AbsOverride = termFlag(19, "abstract override")
+
+  /** Symbol is local to current class (i.e. private[this] or protected[this]
+   *  pre: Private or Protected are also set
+   */
+  final val Local = commonFlag(20, "<local>")
+
+  /** Symbol is defined by a Java class */
+  final val Java = commonFlag(21, "<java>")
+
+  /** A compiler-generated symbol. which is visible for type-checking
+   *  (compare with artifact)
+   */
+  final val Synthetic = commonFlag(22, "<synthetic>")
+
+  /** Method is assumed to be stable */
+  final val Stable = termFlag(23, "<stable>")
+
+  final val Static = commonFlag(24, "<static>")
+
+  /** A value or variable accessor (getter or setter) */
+  final val Accessor = termFlag(25, "<accessor>")
+
+  /** A case parameter (or its accessor, or a GADT skolem) */
+  final val CaseAccessor = termFlag(26, "<caseaccessor>")
+
+  /** A super accessor */
+  final val SuperAccessor = termFlag(27, "<superaccessor>")
+
+  /** A field generated for a primary constructor parameter (no matter if it's a 'val' or not),
+   *  or an accessor of such a field.
+   */
+  final val ParamAccessor = termFlag(28, "<paramaccessor>")
+
+  /** A parameter with a default value */
+  final val DefaultParam = termFlag(27, "<defaultparam>")
+
+  /** A trait */
+  final val Trait = typeFlag(27, "<trait>")
+
+  /** A bridge method. Set by Erasure */
+  final val Bridge = termFlag(28, "<bridge>")
+
+  /** Symbol is initialized to the default value, e.g. var x: T = _ */
+  final val DefaultInit = termFlag(29, "<defaultinit>")
+
+  /** An error symbol */
+  final val Erroneous = commonFlag(???, "<is-error>")
+
+  /** Denotation has not yet been loaded */
+  final val Unloaded = commonFlag(32, "??")
+
+  /** Denotation is in train of being loaded and completed, flag to catch cyclic dependencies */
+  final val Locked = commonFlag(???, "<locked>")
+
+  /** Variable is accessed from nested function. */
+  final val Captured = termFlag(???, "<captured>")
+
+  /** Class symbol is defined in this/superclass constructor. */
+  final val Inconstructor = typeFlag(???, "<in-constructor>")
+
+  /** Class is not allowed to accept new members because fingerprint of subclass has been taken */
+  final val Frozen = typeFlag(???, "<frozen>")
+
+  /** Class has been lifted out to package level, local value has been lifted out to class level */
+  final val Lifted = termFlag(???, "<lifted>")
+
+  /** Term member has been mixed in */
+  final val MixedIn = termFlag(???, "<mixedin>")
+
+  /** Symbol is a generated specialized member */
+  final val Specialized = commonFlag(???, "<specialized>")
+
+  /** Symbol is a Java-style varargs method */
+  final val JavaVarargs = termFlag(???, "<varargs>")
+
+  /** Symbol is a Java varargs bridge */
+  final val VBridge = termFlag(???, "<vbridge>")
+
+  /** Symbol is a method which should be marked ACC_SYNCHRONIZED */
+  final val Synchronized = termFlag(???, "<synchronized>")
+
+  /** Symbol should be ignored when typechecking; will be marked ACC_SYNTHETIC in bytecode */
+  final val Artifact = commonFlag(???, "<artifact>")
+
+  /** Symbol is an implementation class */
+  final val ImplClass = typeFlag(???, "<implclass>")
+
+// --------- Combined Flag Sets and Conjunctions ----------------------
+
+  /** Flags representing source modifiers */
+  final val ModifierFlags =
+    Private | Protected | Abstract | Final | Sealed |
+    Override | Case | Implicit | AbsOverride | Lazy
+
+  /** Flags representing access rights */
+  final val AccessFlags    = Private | Protected | Local
+
+  /** These flags are not pickled */
+  final val FlagsNotPickled =
+    Erroneous | Lifted | Unloaded | Frozen
+
+  /** These flags are pickled */
+  //final val PickledFlags  = InitialFlags & ~FlagsNotPickled
+
+
+  /** A value that's unstable unless complemented with a Stable flag */
+  final val UnstableValue = Mutable | Method | ByNameParam
+
+  /** Labeled private[this] */
+  final val PrivateLocal = allOf(Private | Local)
+
+  /** Labeled `protected[this]` */
+  final val ProtectedLocal = allOf(Protected | Local)
+
+  /** Labeled `abstract` and `override`; only used in Parser,
+   *  symbols are labeled AbsOverride instead
+   */
+  final val AbstractOverride = allOf(Abstract | Override)
 }

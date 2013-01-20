@@ -77,6 +77,12 @@ object Referenceds {
     /** Is this a reference to a type symbol? */
     def isType: Boolean = false
 
+    /** Is this a reference to a term symbol? */
+    def isTerm: Boolean = !isType
+
+    /** Is this reference overloaded? */
+    def isOverloaded = isInstanceOf[OverloadedRef]
+
     /** The signature of the reference */
     def signature: Signature
 
@@ -328,6 +334,7 @@ object Referenceds {
     val info = NoType
     validFor = Nowhere
     override def exists = false
+    override def isTerm = false
   }
 
 // --------------- ReferencedSets -------------------------------------------------

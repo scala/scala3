@@ -14,11 +14,11 @@ object Denotations {
    */
   abstract class Denotation(initFlags: FlagSet) extends SymRefd {
 
-    def symbol: Symbol
-
     def owner: Symbol
 
     def name: Name
+
+    def symbol: Symbol
 
     private[this] var currentFlags: FlagSet = initFlags
 
@@ -26,8 +26,11 @@ object Denotations {
 
     def info: Type
 
-    def setFlag(flag: FlagSet): Unit =
-      currentFlags = initFlags
+    def setFlags(flags: FlagSet): Unit =
+      currentFlags |= flags
+
+    def resetFlags(flags: FlagSet): Unit =
+      currentFlags &~= flags
 
     /** is this symbol a class? */
     def isClass: Boolean = false
@@ -43,25 +46,50 @@ object Denotations {
     override protected def copy(s: Symbol, i: Type): SymRefd = new UniqueSymRefd(s, i, validFor)
   }
 
-  class NonClassDenotation(
-      override val symbol: Symbol,
-      override val owner: Symbol,
-      override val name: Name,
-      val initFlags: FlagSet,
-      override val info: Type
+  class CompleteDenotation(
+      val symbol: Symbol,
+      val owner: Symbol,
+      val name: Name,
+      initFlags: FlagSet,
+      val info: Type
     ) extends Denotation(initFlags)
 
-  class ClassDenotation(
-      override val symbol: ClassSymbol,
-      override val owner: Symbol,
-      override val name: Name,
-      val initFlags: FlagSet,
-      val parents: List[Type],
-      val decls: Scope)(implicit ctx: Context) extends Denotation(initFlags) {
+  abstract class LazyDenotation(
+      val symbol: Symbol,
+      val owner: Symbol,
+      val name: Name,
+      initFlags: FlagSet
+    ) extends Denotation(initFlags) {
+
+    private var currentInfo: Type = null
+
+    override def flags = {
+      val fs = super.flags
+      if (fs is Unloaded) { load(); super.flags }
+      else fs
+    }
+
+    override def info = {
+      if (currentInfo == null) complete()
+      currentInfo
+    }
+
+    def load(): Unit
+    def complete(): Unit
+  }
+
+  abstract class ClassDenotation(initFlags: FlagSet)(implicit ctx: Context)
+      extends Denotation(initFlags) {
     import NameFilter._
     import util.LRU8Cache
 
-    def typeParams: List[TypeSymbol] = ???
+    val symbol: ClassSymbol
+
+    def typeParams: List[TypeSymbol]
+
+    def parents: List[Type]
+
+    def decls: Scope
 
     val info = ClassInfo(owner.thisType, this)
 
@@ -157,7 +185,7 @@ object Denotations {
         parent.deref match {
           case classd: ClassDenotation =>
             includeFingerPrint(bits, classd.definedFingerPrint)
-            parent.deref setFlag Frozen
+            parent.deref setFlags Frozen
           case _ =>
         }
         ps = ps.tail
@@ -171,7 +199,7 @@ object Denotations {
      *  someone does a findMember on a subclass.
      */
     def enter(sym: Symbol)(implicit ctx: Context) = {
-      require(!(flags intersects Frozen))
+      require(!(this is Frozen))
       decls enter sym
       if (definedFingerPrintCache != null)
         includeName(definedFingerPrintCache, sym.name)
@@ -184,7 +212,7 @@ object Denotations {
      *  someone does a findMember on a subclass.
      */
     def delete(sym: Symbol)(implicit ctx: Context) = {
-      require(!(flags intersects Frozen))
+      require(!(this is Frozen))
       decls unlink sym
       if (definedFingerPrintCache != null)
         computeDefinedFingerPrint
@@ -284,6 +312,51 @@ object Denotations {
     }
   }
 
+  class CompleteClassDenotation(
+      val symbol: ClassSymbol,
+      val owner: Symbol,
+      val name: Name,
+      initFlags: FlagSet,
+      val typeParams: List[TypeSymbol],
+      val parents: List[Type],
+      val decls: Scope
+    )(implicit ctx: Context) extends ClassDenotation(initFlags)
+
+  abstract class LazyClassDenotation(
+      val symbol: ClassSymbol,
+      val owner: Symbol,
+      val name: Name,
+      initFlags: FlagSet
+    )(implicit ctx: Context) extends ClassDenotation(initFlags) {
+
+    protected var _typeParams: List[TypeSymbol] = null
+    protected var _parents: List[Type] = null
+    protected var _decls: Scope = null
+
+    override def flags = {
+      val fs = super.flags
+      if (fs is Unloaded) { load(); flags } else fs
+    }
+
+    def typeParams: List[TypeSymbol] = {
+      val tparams = _typeParams
+      if (tparams == null) { load(); typeParams } else tparams
+    }
+
+    def parents: List[Type] = {
+      val ps = _parents
+      if (ps == null) { complete(); parents } else ps
+    }
+
+    def decls: Scope = {
+      val ds = _decls
+      if (ds == null) { complete(); decls } else ds
+    }
+
+    def load(): Unit
+    def complete(): Unit
+  }
+
   object NoDenotation extends Denotation(Flags.Empty) {
     override def symbol: Symbol = NoSymbol
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
@@ -314,4 +387,7 @@ object Denotations {
 
     def newNameFilter: FingerPrint = new Array[Long](DefinedNamesWords)
   }
+
+  implicit def toFlagSet(denot: Denotation): FlagSet = denot.flags
+
 }
