@@ -18,9 +18,9 @@ object Flags {
       if (bits == 0) that
       else if (that.bits == 0) this
       else {
-        val tbits = bits & that.bits & TYPEFLAGS
+        val tbits = bits & that.bits & KINDFLAGS
         assert(tbits != 0, s"illegal flagset combination: $this and $that")
-        FlagSet(tbits | ((this.bits | that.bits) & ~TYPEFLAGS))
+        FlagSet(tbits | ((this.bits | that.bits) & ~KINDFLAGS))
       }
 
     /** The union of this flag set and the given flag conjunction seen as
@@ -33,9 +33,9 @@ object Flags {
 
     /** The intersection of this flag set with the complement of the given flag set */
     def &~ (that: FlagSet) = {
-      val tbits = bits & that.bits & TYPEFLAGS
-      assert(tbits != 0, s"illegal flagset combination: $this and $that")
-      FlagSet(tbits | ((this.bits & ~that.bits) & ~TYPEFLAGS))
+      val tbits = bits & KINDFLAGS
+      if ((tbits & that.bits) == 0) this
+      else FlagSet(tbits | ((this.bits & ~that.bits) & ~KINDFLAGS))
     }
 
     /** Does this flag set have a non-empty intersection with the given flag set?
@@ -43,8 +43,8 @@ object Flags {
      */
     def is(flags: FlagSet) = {
       val fs = bits & flags.bits
-      (fs & TYPEFLAGS) != 0 &&
-      fs > TYPEFLAGS
+      (fs & KINDFLAGS) != 0 &&
+      fs > KINDFLAGS
     }
 
    /** Does this flag set have a non-empty intersection with the given flag set,
@@ -53,8 +53,8 @@ object Flags {
     */
     def is(flags: FlagSet, butNot: FlagSet) = {
       val fs = bits & flags.bits
-      (fs & TYPEFLAGS) != 0 &&
-      fs > TYPEFLAGS &&
+      (fs & KINDFLAGS) != 0 &&
+      fs > KINDFLAGS &&
       (bits & butNot.bits) == 0
     }
 
@@ -63,7 +63,7 @@ object Flags {
      */
     def is(flags: FlagConjunction) = {
       val fs = bits & flags.bits
-      (fs & TYPEFLAGS) != 0 &&
+      (fs & KINDFLAGS) != 0 &&
       (fs >> TYPESHIFT) == (flags.bits >> TYPESHIFT)
     }
 
@@ -73,9 +73,18 @@ object Flags {
      */
     def is(flags: FlagConjunction, butNot: FlagSet) = {
       val fs = bits & (flags.bits | butNot.bits)
-      (fs & TYPEFLAGS) != 0 &&
+      (fs & KINDFLAGS) != 0 &&
       (fs >> TYPESHIFT) == (flags.bits >> TYPESHIFT)
     }
+
+    /** This flag set with all flags transposed to be type flags */
+    def toTypeFlags = FlagSet(bits & ~KINDFLAGS | TYPES)
+
+    /** This flag set with all flags transposed to be term flags */
+    def toTermFlags = FlagSet(bits & ~KINDFLAGS | TERMS)
+
+    /** This flag set with all flags transposed to be common flags */
+    def toCommonFlags = FlagSet(bits | KINDFLAGS)
 
     /** The set of all non-empty strings that are associated
      *  as term or type flags with this index
@@ -94,12 +103,12 @@ object Flags {
    */
   case class FlagConjunction(bits: Long)
 
-  private final val TYPEFLAGS = 3L
   private final val TYPESHIFT = 2
   private final val TERMindex = 0
   private final val TYPEindex = 1
   private final val TERMS = 1 << TERMindex
   private final val TYPES = 1 << TYPEindex
+  private final val KINDFLAGS = TERMS | TYPES
 
   private final val MaxFlag = 63
 
@@ -111,28 +120,31 @@ object Flags {
    *  Installs given name as the name of the flag. */
   def termFlag(index: Int, name: String): FlagSet = {
     flagName(index)(TERMindex) = name
-    termFlag(index)
+    FlagSet(TERMS | (1L << index))
   }
 
-  /** The flag with given index between 2 and 63 which applies to terms. */
-  def termFlag(index: Int) = FlagSet(TERMS | (1L << index))
-
-  /** The flag with given index between 2 and 63 which applies to types.
+   /** The flag with given index between 2 and 63 which applies to types.
    *  Installs given name as the name of the flag. */
   def typeFlag(index: Int, name: String): FlagSet = {
     flagName(index)(TYPEindex) = name
-    typeFlag(index)
+    FlagSet(TYPES | (1L << index))
   }
 
-  /** The flag with given index between 2 and 63 which applies to terms. */
-  def typeFlag(index: Int) = FlagSet(TYPES | (1L << index))
-
   /** The flag with given index between 2 and 63 which applies to both terms and types */
-  def commonFlag(index: Int, name: String): FlagSet =
-    termFlag(index, name) | typeFlag(index)
+  def commonFlag(index: Int, name: String): FlagSet = {
+    flagName(index)(TERMindex) = name
+    flagName(index)(TYPEindex) = name
+    FlagSet(TERMS | TYPES | (1L << index))
+  }
 
   /** The conjunction of all flags in given flag set */
-  def allOf(flags: FlagSet) = FlagConjunction(flags.bits)
+  def allOf(flagss: FlagSet*) = FlagConjunction(oneOf(flagss: _*).bits)
+
+  /** The disjunction of all flags in given flag set */
+  def oneOf(flagss: FlagSet*) = (Empty /: flagss) (_ | _)
+
+  /** The disjunction of all flags in given flag set */
+  def commonFlags(flagss: FlagSet*) = oneOf(flagss map (_.toCommonFlags): _*)
 
   /** The empty flag set */
   final val Empty = FlagSet(0)
@@ -157,7 +169,7 @@ object Flags {
   /** A method. !!! needed? */
   final val Method = termFlag(7, "<method>")
 
-  /** An abstract class */
+  /** Labeled with `abstract` modifier (an abstract class) */
   final val Abstract = typeFlag(8, "abstract")
 
   /** A trait that has only abstract methods as members
@@ -167,21 +179,21 @@ object Flags {
 
   /** A value or class implementing a module */
   final val Module = commonFlag(10, "module")
-  final val ModuleObj = termFlag(10)
-  final val ModuleClass = typeFlag(10)
+  final val ModuleObj = Module.toTermFlags
+  final val ModuleClass = Module.toTypeFlags
 
-  /** Labeled with `implicit` modifier */
+  /** Labeled with `implicit` modifier (implicit value) */
   final val Implicit = termFlag(11, "implicit")
 
-  /** Labeled with `sealed` modifier */
+  /** Labeled with `sealed` modifier (sealed class) */
   final val Sealed = typeFlag(12, "sealed")
 
   /** A case class or its companion object */
   final val Case = commonFlag(13, "case")
-  final val CaseClass = typeFlag(13)
-  final val CaseObj = termFlag(13)
+  final val CaseClass = Case.toTypeFlags
+  final val CaseObj = Case.toTermFlags
 
-  /** A lazy val */
+  /** Labeled with `lazy` (a lazy val). */
   final val Lazy = termFlag(14, "lazy")
 
   /** A mutable var */
@@ -189,13 +201,13 @@ object Flags {
 
   /** A (term or type) parameter to a class or method */
   final val Param     = commonFlag(15, "<param>")
-  final val TermParam = termFlag(15)
-  final val TypeParam = typeFlag(15)
+  final val TermParam = Param.toTermFlags
+  final val TypeParam = Param.toTypeFlags
 
   /** A value or class representing a package */
   final val Package = commonFlag(16, "<package>")
-  final val PackageObj = termFlag(16)
-  final val PackageClass = typeFlag(16)
+  final val PackageObj = Package.toTermFlags
+  final val PackageClass = Package.toTypeFlags
 
   /** A by-name parameter !!! needed? */
   final val ByNameParam = termFlag(17, "<by-name>")
@@ -212,7 +224,7 @@ object Flags {
   /** A contravariant type variable */
   final val Contravariant = typeFlag(18, "<contravariant>")
 
-  /** combination of abstract & override */
+  /** Labeled with of abstract & override */
   final val AbsOverride = termFlag(19, "abstract override")
 
   /** Symbol is local to current class (i.e. private[this] or protected[this]
@@ -304,32 +316,28 @@ object Flags {
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
   /** Flags representing source modifiers */
-  final val ModifierFlags =
-    Private | Protected | Abstract | Final | Sealed |
-    Override | Case | Implicit | AbsOverride | Lazy
+  final val ModifierFlags = commonFlags(
+    Private, Protected, Abstract, Final, Sealed, Case, Implicit, AbsOverride, Lazy)
 
   /** Flags representing access rights */
-  final val AccessFlags    = Private | Protected | Local
+  final val AccessFlags = Private | Protected | Local
+
+  /** These flags are enabled from phase 1 */
+  final val InitialFlags: FlagSet = ???
 
   /** These flags are not pickled */
-  final val FlagsNotPickled =
-    Erroneous | Lifted | Unloaded | Frozen
+  final val FlagsNotPickled = commonFlags(
+    Erroneous, Lifted, Unloaded, Frozen)
 
   /** These flags are pickled */
-  //final val PickledFlags  = InitialFlags & ~FlagsNotPickled
-
+  final val PickledFlags  = InitialFlags &~ FlagsNotPickled
 
   /** A value that's unstable unless complemented with a Stable flag */
-  final val UnstableValue = Mutable | Method | ByNameParam
+  final val UnstableValue = oneOf(Mutable, Method, ByNameParam)
 
   /** Labeled private[this] */
-  final val PrivateLocal = allOf(Private | Local)
+  final val PrivateLocal = allOf(Private, Local)
 
   /** Labeled `protected[this]` */
-  final val ProtectedLocal = allOf(Protected | Local)
-
-  /** Labeled `abstract` and `override`; only used in Parser,
-   *  symbols are labeled AbsOverride instead
-   */
-  final val AbstractOverride = allOf(Abstract | Override)
+  final val ProtectedLocal = allOf(Protected, Local)
 }
