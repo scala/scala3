@@ -10,7 +10,63 @@ import Symbols.Symbol
 import Types._, Periods._, Flags._, Transformers._
 
 
-/** Classes that represent the meaning of symbols and named types, and sets over them.
+/** Denotations represent the meaning of symbols and named types.
+ *  The following diagram shows how the principal types of denotations
+ *  and their denoting entities relate to each other. Lines ending in
+ *  a down-arrow `v` are member methods. The two methods shown in the diagram are
+ *  "symbol" and "deref". Both methods are parameterized by the current context,
+ *  and are effectively indexed by current period.
+ *
+ *  Lines ending in a horizontal line mean subtying (right is a subtype of left).
+ *
+ *  NamedType------NamedTypeWithSignature
+ *    |  |                 |
+ *    |  +-----------------------------------------+
+ *    |                    |                       | symbol
+ *    |                    |                       v
+ *    |                    |                     Symbol---------ClassSymbol
+ *    |                    |                       |                |
+ *    | denot              | denot                 | denot          | denot
+ *    v                    v                       v                v
+ *  Denotation-+-----SingleDenotation-+------SymDenotation-+----ClassDenotation-+--CompleteClassDenotation
+ *             |                      |                    |                    +--LazyClassDenotation
+ *             +-----MultiDenotation  |                    |
+ *                                    |                    +--CompleteSymDenotation
+ *                                    |                    +--LazySymDenotation
+ *                                    |
+ *                                    +--UniqueRefDenotation
+ *                                    +--JointRefDenotation
+ *
+ *  Here's a short summary of the classes in this diagram.
+ *
+ *  NamedType                A type consisting of a prefix type and a name, with fields
+ *                              prefix: Type
+ *                              name: Name
+ *  NamedTypeWithSignature   A named type that has in addition a signature to select an overloaded variant, with new field
+ *                              signature: Signature
+ *  Symbol                   A label for a definition or declaration in one compiler run
+ *  ClassSymbol              A symbol representing a class
+ *  Denotation               The meaning of a named type or symbol during a period
+ *  MultiDenotation          A denotation representing several overloaded members
+ *  SingleDenotation         A denotation representing a non-overloaded member or definition, with main fields
+ *                              symbol: Symbol
+ *                              info: Type
+ *  UniqueRefDenotation      A denotation referring to a single definition with some member type
+ *  JointRefDenotation       A denotation referring to a member that could resolve to several definitions
+ *  SymDenotation            A denotation representing a single definition with its original type, with main fields
+ *                              name: Name
+ *                              owner: Symbol
+ *                              flags: Flags
+ *                              privateWithin: Symbol
+ *                              annotations: List[Annotation]
+ *  ClassDenotation          A denotation representing a single class definition, with new fields
+ *                              typeParams: List[TypeSymbol]
+ *                              parents: List[Type]
+ *                              decls: Scope
+ *  LazySymDenotation        A sym-denotation with fields that are computed on demand
+ *  CompleteSymDenotation    A sym-denotation that has all fields completed
+ *  LazyClassDenotation      A class denotation with fields that are computed on demand
+ *  CompleteClassDenotation  A class denotation that has all fields completed
  */
 object Denotations {
 
