@@ -10,8 +10,8 @@ import Scopes._
 import Constants._
 import Contexts._
 import Annotations._
+import SymDenotations._
 import Denotations._
-import Referenceds._
 import Periods._
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import collection.mutable
@@ -256,42 +256,42 @@ object Types {
     }
 
     /** The declaration of this type with given name */
-    final def decl(name: Name)(implicit ctx: Context): Referenced =
+    final def decl(name: Name)(implicit ctx: Context): Denotation =
       findDecl(name, this, Flags.Empty)
 
     /** The non-private declaration of this type with given name */
-    final def nonPrivateDecl(name: Name)(implicit ctx: Context): Referenced =
+    final def nonPrivateDecl(name: Name)(implicit ctx: Context): Denotation =
       findDecl(name, this, Flags.Private)
 
     /** The non-private declaration of this type with given name */
-    final def findDecl(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Referenced = this match {
+    final def findDecl(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: RefinedType =>
         tp.findDecl(name, pre)
       case tp: ClassInfo =>
         tp.classd.decls
-          .refsNamed(name)
+          .denotsNamed(name)
           .filterAccessibleFrom(pre)
           .filterExcluded(excluded)
           .asSeenFrom(pre, tp.classd.symbol)
-          .toRef
+          .toDenot
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, pre, excluded)
     }
 
     /** The member of this type with given name  */
-    final def member(name: Name)(implicit ctx: Context): Referenced =
+    final def member(name: Name)(implicit ctx: Context): Denotation =
       findMember(name, this, Flags.Empty)
 
     /** The non-private member of this type with given name */
-    final def nonPrivateMember(name: Name)(implicit ctx: Context): Referenced =
+    final def nonPrivateMember(name: Name)(implicit ctx: Context): Denotation =
       findMember(name, this, Flags.Private)
 
     /** Find member of this type with given name and
-     *  produce a referenced that contains the type of the member
+     *  produce a denotation that contains the type of the member
      *  as seen from given prefix `pre`. Exclude all members with one
      *  of the flags in `excluded` from consideration.
      */
-    final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Referenced = this match {
+    final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: RefinedType =>
         tp.parent.findMember(name, pre, excluded | Flags.Private) &
           tp.findDecl(name, pre)
@@ -299,13 +299,13 @@ object Types {
         tp.underlying.findMember(name, pre, excluded)
       case tp: ClassInfo =>
         val classd = tp.classd
-        val candidates = classd.memberRefsNamed(name)
+        val candidates = classd.membersNamed(name)
         val resultSyms = candidates
           .filterAccessibleFrom(pre)
           .filterExcluded(excluded)
           .asSeenFrom(pre, classd.symbol)
-        if (resultSyms.exists) resultSyms.toRef
-        else new ErrorRefd // todo: refine
+        if (resultSyms.exists) resultSyms.toDenot
+        else new ErrorDenotation // todo: refine
       case tp: AndType =>
         tp.tp1.findMember(name, pre, excluded) & tp.tp2.findMember(name, pre, excluded)
       case tp: OrType =>
@@ -395,7 +395,7 @@ object Types {
      */
     def signature: Signature = NullSignature
 
-    final def baseType(base: Symbol)(implicit ctx: Context): Type = base.deref match {
+    final def baseType(base: Symbol)(implicit ctx: Context): Type = base.denot match {
       case classd: ClassDenotation => classd.baseTypeOf(this)
       case _ => NoType
     }
@@ -561,35 +561,35 @@ object Types {
     val prefix: Type
     val name: Name
 
-    private[this] var lastReferenced: Referenced = null
+    private[this] var lastDenotation: Denotation = null
 
     private def checkPrefix(sym: Symbol) =
       sym.isAbstractType || sym.isClass
 
-    /** The referenced currently denoted by this type */
-    def deref(implicit ctx: Context): Referenced = {
+    /** The denotation currently denoted by this type */
+    def denot(implicit ctx: Context): Denotation = {
       val validPeriods =
-        if (lastReferenced != null) lastReferenced.validFor else Nowhere
+        if (lastDenotation != null) lastDenotation.validFor else Nowhere
       if (!(validPeriods contains ctx.period)) {
         val thisPeriod = ctx.period
-        lastReferenced =
+        lastDenotation =
           if (validPeriods.runId == thisPeriod.runId)
-            lastReferenced.current
+            lastDenotation.current
           else if (thisPeriod.phaseId > name.lastIntroPhaseId)
             ctx.atPhase(name.lastIntroPhaseId)(prefix.member(name)(_)).current
            else
             prefix.member(name)
-        if (checkPrefix(lastReferenced.symbol) && !prefix.isLegalPrefix)
-          throw new MalformedType(prefix, lastReferenced.symbol)
+        if (checkPrefix(lastDenotation.symbol) && !prefix.isLegalPrefix)
+          throw new MalformedType(prefix, lastDenotation.symbol)
       }
-      lastReferenced
+      lastDenotation
     }
 
     def isType = name.isTypeName
     def isTerm = name.isTermName
 
-    def symbol(implicit ctx: Context): Symbol = deref.symbol
-    def info(implicit ctx: Context): Type = deref.info
+    def symbol(implicit ctx: Context): Symbol = denot.symbol
+    def info(implicit ctx: Context): Type = denot.info
 
     override def underlying(implicit ctx: Context): Type = info
 
@@ -610,7 +610,7 @@ object Types {
     protected val fixedSym: Symbol
     override def symbol(implicit ctx: Context): Symbol = fixedSym
     override def info(implicit ctx: Context): Type = fixedSym.info
-    override def deref(implicit ctx: Context): Referenced = fixedSym.deref
+    override def denot(implicit ctx: Context): Denotation = fixedSym.denot
   }
 
   final class TermRefNoPrefix(val fixedSym: TermSymbol)(implicit ctx: Context)
@@ -619,8 +619,8 @@ object Types {
 
   final class TermRefWithSignature(prefix: Type, name: TermName, override val signature: Signature) extends TermRef(prefix, name) {
     override def computeHash = doHash((name, signature), prefix)
-    override def deref(implicit ctx: Context): Referenced =
-      super.deref.atSignature(signature)
+    override def denot(implicit ctx: Context): Denotation =
+      super.denot.atSignature(signature)
   }
 
   final class TypeRefNoPrefix(val fixedSym: TypeSymbol)(implicit ctx: Context)
@@ -731,17 +731,17 @@ object Types {
           infos1 map (_.substThis(this, thistp))
         }
 
-    def findDecl(name: Name, pre: Type)(implicit ctx: Context): Referenced = {
+    def findDecl(name: Name, pre: Type)(implicit ctx: Context): Denotation = {
       var ns = names
       var is = infos
-      var ref: Referenced = NoRefd
-      while (ns.nonEmpty && (ref eq NoRefd)) {
+      var denot: Denotation = NoDenotation
+      while (ns.nonEmpty && (denot eq NoDenotation)) {
         if (ns.head == name)
-          ref = new JointSymRefd(NoSymbol, is.head.substThis(this, pre), Period.allInRun(ctx.runId))
+          denot = new JointRefDenotation(NoSymbol, is.head.substThis(this, pre), Period.allInRun(ctx.runId))
         ns = ns.tail
         is = is.tail
       }
-      ref
+      denot
     }
 
     override def computeHash = doHash(names, parent, infos)

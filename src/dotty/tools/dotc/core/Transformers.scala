@@ -1,15 +1,15 @@
 package dotty.tools.dotc
 package core
 
-import Periods._, Denotations._, Contexts._, Types._, Referenceds._
+import Periods._, SymDenotations._, Contexts._, Types._, Denotations._
 import java.lang.AssertionError
 
 trait Transformers { self: RootContext =>
 
   import Transformers._
 
-  def transformersFor(ref: SymRefd): TransformerGroup = ref match {
-    case _: Denotation => denotTransformers
+  def transformersFor(ref: SingleDenotation): TransformerGroup = ref match {
+    case _: SymDenotation => denotTransformers
     case _ => refTransformers
   }
 
@@ -28,12 +28,12 @@ object Transformers {
       def lastPhaseId = nextTransformer(phaseId).phaseId - 1
       def validFor(implicit ctx: Context): Period =
         Period(ctx.runId, phaseId, lastPhaseId)
-      def transform(ref: SymRefd)(implicit ctx: Context): SymRefd
+      def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation
     }
 
     object NoTransformer extends Transformer {
       val phaseId = lastPhaseId + 1
-      def transform(ref: SymRefd)(implicit ctx: Context): SymRefd =
+      def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
         unsupported("transform")
     }
 

@@ -66,7 +66,7 @@ object Contexts {
     /** Allocate and return next free superclass id */
     private[core] def nextSuperId: Int = { lastSuperId += 1; lastSuperId }
 
-    // Denotations state
+    // SymDenotations state
     private[core] val uniqueBits = new util.HashSet[BitSet]("superbits", 1024)
 
     // Types state

@@ -11,7 +11,8 @@ import Names._
 import Periods._
 import Decorators._
 import Contexts._
-import Referenceds._
+import Denotations._
+import SymDenotations.NoDenotation
 
 object Scopes {
 
@@ -194,12 +195,12 @@ object Scopes {
       def next(): Symbol = { val r = e.sym; e = lookupNextEntry(e); r }
     }
 
-    /** The reference set of all the symbols with given name in this scope */
-    def refsNamed(name: Name)(implicit ctx: Context): ReferencedSet = {
-      var syms: ReferencedSet = NoRefd
+    /** The denotation set of all the symbols with given name in this scope */
+    def denotsNamed(name: Name)(implicit ctx: Context): DenotationSet = {
+      var syms: DenotationSet = NoDenotation
       var e = lookupEntry(name)
       while (e != null) {
-        syms = syms union e.sym.deref
+        syms = syms union e.sym.denot
         e = lookupNextEntry(e)
       }
       syms

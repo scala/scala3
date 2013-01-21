@@ -1,440 +1,373 @@
 package dotty.tools.dotc
 package core
 
-import Periods._, Contexts._, Symbols._, Referenceds._, Names._, Annotations._
-import Types._, Flags._, Decorators._, Transformers._
-import Scopes.Scope
-import collection.mutable
-import collection.immutable.BitSet
+import SymDenotations.{SymDenotation, NoDenotation}
+import Contexts.Context
+import Names.Name
+import Names.TypeName
+import Symbols.NoSymbol
+import Symbols.Symbol
+import Types._, Periods._, Flags._, Transformers._
 
+
+/** Classes that represent the meaning of symbols and named types, and sets over them.
+ */
 object Denotations {
 
-  /** A denotation represents the contents of a definition
-   *  during a period.
+  /** The signature of a denotation.
+   *  Overloaded denotations with the same name are distinguished by
+   *  their signatures. A signature is a list of the fully qualified names
+   *  of the type symbols of the erasure of the parameters of the
+   *  denotation. For instance a definition
+   *
+   *      def f(x: Int)(y: List[String]): String
+   *
+   *  would have signature
+   *
+   *      List("scala.Int".toTypeName, "scala.collection.immutable.List".toTypeName)
    */
-  abstract class Denotation(initFlags: FlagSet) extends SymRefd {
+  type Signature = List[TypeName]
 
-    def owner: Symbol
+  /** The signature of a val or parameterless def, as opposed
+   *  to List(), which is the signature of a zero-parameter def.
+   */
+  val NullSignature = List(Names.EmptyTypeName)
 
-    def name: Name
+  /** A denotation is the result of resolving
+   *  a name (either simple identifier or select) during a given period.
+   *
+   *  Denotation has two subclasses: MultiDenotation and SingleDenotation.
+   *
+   *  A SingleDenotation refers to a `symbol` and a type (`info`) that the symbol has
+   *  when seen from the reference.
+   *
+   *  Denotations can be combined with `&` and `|`.
+   *  & is conjunction, | is disjunction.
+   *
+   *  `&` will create an overloaded denotation from two
+   *  non-overloaded denotations if their signatures differ.
+   *  Analogously `|` of two denotations with different signatures will give
+   *  an empty denotation `NoDenotation`.
+   *
+   *  A denotation might refer to `NoSymbol`. This is the case if the denotation
+   *  was produced from a disjunction of two denotations with different symbols
+   *  and there was no common symbol in a superclass that could substitute for
+   *  both symbols. Here is an example:
+   *
+   *  Say, we have:
+   *
+   *    class A { def f: A }
+   *    class B { def f: B }
+   *    val x: A | B = if (???) new A else new B
+   *    val y = x.f
+   *
+   *  Then the denotation of `y` is `SingleDenotation(NoSymbol, A | B)`.
+   */
+  abstract class Denotation extends DotClass {
 
+    /** The referencing symbol, exists only for non-overloaded denotations */
     def symbol: Symbol
 
+    /** The type info of the denotation, exists only for non-overloaded denotations */
     def info: Type
 
-    private[this] var _flags: FlagSet = initFlags
+    /** The period during which this denotation is valid. */
+    def validFor: Period
 
-    def flags: FlagSet = _flags
+    /** Is this a reference to a type symbol? */
+    def isType: Boolean = false
 
-    def flags_=(flags: FlagSet): Unit =
-      _flags |= flags
+    /** Is this a reference to a term symbol? */
+    def isTerm: Boolean = !isType
 
-    def setFlags(flags: FlagSet): Unit =
-      _flags |= flags
+    /** Is this denotation overloaded? */
+    def isOverloaded = isInstanceOf[MultiDenotation]
 
-    def resetFlags(flags: FlagSet): Unit =
-      _flags &~= flags
+    /** The signature of the denotation */
+    def signature: Signature
 
-    private[this] var _privateWithin: Symbol = NoSymbol
+    /** Resolve overloaded denotation to pick the one with the given signature */
+    def atSignature(sig: Signature): SingleDenotation
 
-    def privateWithin: Symbol = _privateWithin
+    /** The variant of this denotation that's current in the given context. */
+    def current(implicit ctx: Context): Denotation
 
-    def privateWithin_=(sym: Symbol): Unit =
-      _privateWithin = sym
+    def exists: Boolean = true
 
-    final def isLoaded = _privateWithin != null
-
-    private[this] var _annotations: List[Annotation] = Nil
-
-    def annotations: List[Annotation] = _annotations
-
-    def annotations_=(annots: List[Annotation]): Unit =
-      _annotations = annots
-
-    final def isCompleted = _annotations != null
-
-    /** is this symbol a class? */
-    def isClass: Boolean = false
-
-    /** is this symbol a method? */
-    def isMethod: Boolean = false
-
-    /** is this symbol the result of an erroneous definition? */
-    def isError: Boolean = false
-
-    def withType(tp: Type): Denotation = ???
-
-    override protected def copy(s: Symbol, i: Type): SymRefd = new UniqueSymRefd(s, i, validFor)
-  }
-
-  class CompleteDenotation(
-      val symbol: Symbol,
-      val owner: Symbol,
-      val name: Name,
-      initFlags: FlagSet,
-      val info: Type
-    ) extends Denotation(initFlags)
-
-  trait LazyCompletion extends Denotation {
-    privateWithin = null
-    annotations = null
-
-    override final def flags = {
-      if (!isLoaded) tryLoad()
-      super.flags
-    }
-
-    override final def privateWithin = {
-      if (!isLoaded) tryLoad()
-      super.privateWithin
-    }
-
-    override final def annotations: List[Annotation] = {
-      val annots = super.annotations
-      if (annots != null) annots else { tryComplete(); annotations }
-    }
-
-    protected def tryLoad(): Unit = try {
-      if (flags is Locked) throw new CyclicReference(symbol)
-      setFlags(Locked)
-      load()
-    } catch {
-      case ex: CyclicReference => handleCycle()
-    } finally {
-      flags &~= Locked
-    }
-
-    protected def tryComplete() = try {
-      if (flags is Locked) throw new CyclicReference(symbol)
-      complete()
-    } catch {
-      case ex: CyclicReference => handleCycle()
-    } finally {
-      flags &~= Locked
-    }
-
-    protected def handleCycle(): Unit
-    protected def load(): Unit
-    protected def complete(): Unit
-  }
-
-  abstract class LazyDenotation(
-      val symbol: Symbol,
-      val owner: Symbol,
-      val name: Name,
-      initFlags: FlagSet
-    ) extends Denotation(initFlags) with LazyCompletion {
-
-    private var currentInfo: Type = null
-
-    override def info = {
-      if (currentInfo == null) complete()
-      currentInfo
-    }
-  }
-
-  abstract class ClassDenotation(initFlags: FlagSet)(implicit ctx: Context)
-      extends Denotation(initFlags) {
-    import NameFilter._
-    import util.LRU8Cache
-
-    val symbol: ClassSymbol
-
-    def typeParams: List[TypeSymbol]
-
-    def parents: List[Type]
-
-    def decls: Scope
-
-    val info = ClassInfo(owner.thisType, this)
-
-    private var memberCacheVar: LRU8Cache[Name, ReferencedSet] = null
-
-    private def memberCache: LRU8Cache[Name, ReferencedSet] = {
-      if (memberCacheVar == null) memberCacheVar = new LRU8Cache
-      memberCacheVar
-    }
-
-    private var thisTypeCache: ThisType = null
-
-    def thisType(implicit ctx: Context): Type = {
-      if (thisTypeCache == null)
-        thisTypeCache = ThisType(symbol)
-      thisTypeCache
-    }
-
-    private var typeConstructorCache: Type = null
-
-    def typeConstructor(implicit ctx: Context): Type = {
-      if (typeConstructorCache == null)
-        typeConstructorCache = NamedType(thisType, symbol.name)
-      typeConstructorCache
-    }
-
-    private var typeTemplateCache: Type = null
-
-    def typeTemplate(implicit ctx: Context): Type = {
-      if (typeTemplateCache == null)
-        AppliedType.make(typeConstructor, typeParams map (_.typeConstructor))
-      typeTemplateCache
-    }
-
-    private var baseClassesVar: List[ClassSymbol] = null
-    private var superClassBitsVar: BitSet = null
-
-    private def computeSuperClassBits(implicit ctx: Context): Unit = {
-      val seen = new mutable.BitSet
-      val locked = new mutable.BitSet
-      def addBaseClasses(bcs: List[ClassSymbol], to: List[ClassSymbol])
-          : List[ClassSymbol] = bcs match {
-        case bc :: bcs1 =>
-          val id = bc.superId
-          if (seen contains id) to
-          else if (locked contains id) throw new CyclicReference(symbol)
-          else {
-            locked += id
-            val bcs1added = addBaseClasses(bcs1, to)
-            seen += id
-            if (bcs1added eq bcs1) bcs else bc :: bcs1added
-          }
-        case _ =>
-          to
+    /** Form a denotation by conjoining with denotation `that` */
+    def & (that: Denotation)(implicit ctx: Context): Denotation =
+      if (this eq that) this
+      else if (!this.exists) that
+      else if (!that.exists) this
+      else that match {
+        case that: SingleDenotation =>
+          val r = mergeDenot(this, that)
+          if (r ne NoDenotation) r else MultiDenotation(this, that)
+        case that @ MultiDenotation(denot1, denot2) =>
+          this & denot1 & denot2
       }
-      def addParentBaseClasses(ps: List[Type], to: List[ClassSymbol]): List[ClassSymbol] = ps match {
-        case p :: ps1 =>
-          addBaseClasses(p.baseClasses, addParentBaseClasses(ps1, to))
-        case _ =>
-          to
-      }
-      baseClassesVar = symbol :: addParentBaseClasses(parents, Nil)
-      superClassBitsVar = ctx.root.uniqueBits.findEntryOrUpdate(seen.toImmutable)
-    }
 
-    def superClassBits(implicit ctx: Context): BitSet = {
-      if (superClassBitsVar == null) computeSuperClassBits
-      superClassBitsVar
-    }
-
-    def baseClasses(implicit ctx: Context): List[ClassSymbol] = {
-      if (baseClassesVar == null) computeSuperClassBits
-      baseClassesVar
-    }
-
-    /** Is this class a subclass of `clazz`? */
-    final def isSubClass(clazz: ClassSymbol)(implicit ctx: Context): Boolean = {
-      superClassBits contains clazz.superId
-    }
-
-    private var definedFingerPrintCache: FingerPrint = null
-
-    private def computeDefinedFingerPrint(implicit ctx: Context): FingerPrint = {
-      var bits = newNameFilter
-      var e = decls.lastEntry
-      while (e != null) {
-        includeName(bits, name)
-        e = e.prev
-      }
-      var ps = parents
-      while (ps.nonEmpty) {
-        val parent = ps.head.typeSymbol
-        parent.deref match {
-          case classd: ClassDenotation =>
-            includeFingerPrint(bits, classd.definedFingerPrint)
-            parent.deref.setFlags(Frozen)
-          case _ =>
-        }
-        ps = ps.tail
-      }
-      definedFingerPrintCache = bits
-      bits
-    }
-
-    /** Enter a symbol in current scope.
-     *  Note: We require that this does not happen after the first time
-     *  someone does a findMember on a subclass.
+    /** Try to merge denot1 and denot2 without adding a new signature.
+     *  If unsuccessful, return NoDenotation.
      */
-    def enter(sym: Symbol)(implicit ctx: Context) = {
-      require(!(this is Frozen))
-      decls enter sym
-      if (definedFingerPrintCache != null)
-        includeName(definedFingerPrintCache, sym.name)
-      if (memberCacheVar != null)
-        memberCache invalidate sym.name
+    private def mergeDenot(denot1: Denotation, denot2: SingleDenotation)(implicit ctx: Context): Denotation = denot1 match {
+      case denot1 @ MultiDenotation(denot11, denot12) =>
+        val d1 = mergeDenot(denot11, denot2)
+        if (d1 ne NoDenotation) d1 else mergeDenot(denot12, denot2)
+      case denot1: SingleDenotation =>
+        if (denot1 eq denot2) denot1
+        else if (denot1.signature == denot2.signature) {
+          def isEligible(sym1: Symbol, sym2: Symbol) =
+            if (sym1.isType) !sym1.isClass
+            else sym1.isConcrete || sym2.isDeferred || !sym2.exists
+          def normalize(info: Type) =
+            if (isType) info.bounds else info
+          val sym1 = denot1.symbol
+          val info1 = denot1.info
+          val sym2 = denot2.symbol
+          val info2 = denot2.info
+          val sym1Eligible = isEligible(sym1, sym2)
+          val sym2Eligible = isEligible(sym2, sym1)
+          val bounds1 = normalize(info1)
+          val bounds2 = normalize(info2)
+          if (sym2Eligible && bounds2 <:< bounds1) denot2
+          else if (sym1Eligible && bounds1 <:< bounds2) denot1
+          else new JointRefDenotation(
+              if (sym2Eligible) sym2 else sym1,
+              bounds1 & bounds2,
+              denot1.validFor & denot2.validFor)
+        } else NoDenotation
     }
 
-    /** Delete symbol from current scope.
-     *  Note: We require that this does not happen after the first time
-     *  someone does a findMember on a subclass.
-     */
-    def delete(sym: Symbol)(implicit ctx: Context) = {
-      require(!(this is Frozen))
-      decls unlink sym
-      if (definedFingerPrintCache != null)
-        computeDefinedFingerPrint
-      if (memberCacheVar != null)
-        memberCache invalidate sym.name
-    }
+    def | (that: Denotation)(pre: Type)(implicit ctx: Context): Denotation = {
 
-    def definedFingerPrint(implicit ctx: Context): FingerPrint = {
-      val fp = definedFingerPrintCache
-      if (fp != null) fp else computeDefinedFingerPrint
-    }
+      def lubSym(sym1: Symbol, sym2: Symbol): Symbol = {
+        def qualifies(sym: Symbol) =
+          (sym isAccessibleFrom pre) && (sym2.owner isSubClass sym.owner)
+        sym1.allOverriddenSymbols find qualifies getOrElse NoSymbol
+      }
 
-    final def memberRefsNamed(name: Name)(implicit ctx: Context): ReferencedSet = {
-      var refs: ReferencedSet = memberCache lookup name
-      if (refs == null) {
-        if (containsName(definedFingerPrint, name)) {
-          val ownRefs = decls.refsNamed(name)
-          refs = ownRefs
-          var ps = parents
-          while (ps.nonEmpty) {
-            val parentSym = ps.head.typeSymbol
-            parentSym.deref match {
-              case parentd: ClassDenotation =>
-                refs = refs union
-                  parentd.memberRefsNamed(name)
-                    .filterExcluded(Flags.Private)
-                    .asSeenFrom(thisType, parentSym)
-                    .filterDisjoint(ownRefs)
+      def throwError = throw new MatchError(s"$this | $that")
+
+      if (this eq that) this
+      else if (!this.exists) this
+      else if (!that.exists) that
+      else this match {
+        case denot1 @ MultiDenotation(denot11, denot12) =>
+          denot1.derivedMultiDenotation((denot11 | that)(pre), (denot12 | that)(pre))
+        case _ =>
+          that match {
+            case denot2 @ MultiDenotation(denot21, denot22) =>
+              denot2.derivedMultiDenotation((this | denot21)(pre), (this | denot22)(pre))
+            case denot2: SingleDenotation =>
+              this match {
+                case denot1: SingleDenotation =>
+                    if (denot1.signature != denot2.signature) NoDenotation
+                    else new JointRefDenotation(
+                      lubSym(denot1.symbol, denot2.symbol),
+                      denot1.info | denot2.info,
+                      denot1.validFor & denot2.validFor)
+                  case _ =>
+                    throwError
+                }
               case _ =>
+                throwError
             }
-          }
-        } else {
-          refs = NoRefd
         }
-        memberCache enter (name, refs)
-      }
-      refs
     }
+  }
 
-    private var baseTypeCache: java.util.HashMap[CachedType, Type] = null
-    private var baseTypeValid: RunId = NoRunId
+  /** The class of overloaded denotations
+   *  @param  variants   The overloaded variants indexed by thheir signatures.
+   */
+  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation {
+    def derivedMultiDenotation(d1: Denotation, d2: Denotation) =
+      if ((d1 eq denot1) && (d2 eq denot2)) this else MultiDenotation(d1, d2)
+    def symbol = unsupported("symbol")
+    def info = unsupported("info")
+    def signature = unsupported("signature")
+    def atSignature(sig: Signature): SingleDenotation =
+      denot1.atSignature(sig) orElse denot2.atSignature(sig)
+    def validFor = denot1.validFor & denot2.validFor
+    def current(implicit ctx: Context): Denotation =
+      derivedMultiDenotation(denot1.current, denot2.current)
+  }
 
-    final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
+  abstract class SingleDenotation extends Denotation with DenotationSet {
 
-      def computeBaseTypeOf(tp: Type): Type = tp match {
-        case AppliedType(tycon, args) =>
-          baseTypeOf(tycon).subst(tycon.typeParams, args)
-        case tp: TypeProxy =>
-          baseTypeOf(tp.underlying)
-        case AndType(tp1, tp2) =>
-          baseTypeOf(tp1) & baseTypeOf(tp2)
-        case OrType(tp1, tp2) =>
-          baseTypeOf(tp1) | baseTypeOf(tp2)
-        case tp @ ClassInfo(pre, classd) =>
-          def reduce(bt: Type, ps: List[Type]): Type = ps match {
-            case p :: ps1 => reduce(bt & baseTypeOf(p), ps1)
-            case _ => bt
+    override def isType = symbol.isType
+    override def signature: Signature = {
+      def sig(tp: Type): Signature = tp match {
+        case tp: PolyType =>
+          tp.resultType match {
+            case mt: MethodType => mt.signature
+            case _ => List()
           }
-          if (classd.symbol == symbol) tp.typeTemplate
-          else reduce(NoType, classd.parents).substThis(classd.symbol, tp.prefix)
+        case mt: MethodType => mt.signature
+        case _ => NullSignature
       }
+      if (isType) NullSignature else sig(info)
+    }
 
-      if (symbol.isStaticMono) symbol.typeConstructor
-      else tp match {
-        case tp: CachedType =>
-          if (baseTypeValid != ctx.runId) {
-            baseTypeCache = new java.util.HashMap[CachedType, Type]
-            baseTypeValid = ctx.runId
+    def derivedSingleDenotation(s: Symbol, i: Type): SingleDenotation =
+      if ((s eq symbol) && (i eq info)) this else copy(s, i)
+
+    protected def copy(s: Symbol, i: Type): SingleDenotation = this
+
+    def orElse(that: => SingleDenotation) = if (this.exists) this else that
+
+    def atSignature(sig: Signature): SingleDenotation =
+      if (sig == signature) this else NoDenotation
+
+    // ------ Transformations -----------------------------------------
+
+    private[this] var _validFor: Period = Nowhere
+
+    def validFor = _validFor
+    def validFor_=(p: Period) =
+      _validFor = p
+
+    /** The next SingleDenotation in this run, with wrap-around from last to first.
+     *
+     *  There may be several `SingleDenotation`s with different validity
+     *  representing the same underlying definition at different phases.
+     *  These are called a "flock". Flock members are generated by
+     *  @See current. Flock members are connected in a ring
+     *  with their `nextInRun` fields.
+     *
+     *  There are the following invariants converning flock members
+     *
+     *  1) validity periods must be non-overlapping
+     *  2) the union of all validity periods must be a contiguous
+     *     interval starting in FirstPhaseId.
+     */
+    var nextInRun: SingleDenotation = this
+
+    /** The version of this SingleDenotation that was valid in the first phase
+     *  of this run.
+     */
+    def initial: SingleDenotation = {
+      var current = nextInRun
+      while (current.validFor.code > this._validFor.code) current = current.nextInRun
+      current
+    }
+
+    def current(implicit ctx: Context): SingleDenotation = {
+      val currentPeriod = ctx.period
+      val valid = _validFor
+      var current = this
+      if (currentPeriod.code > valid.code) {
+        // search for containing period as long as nextInRun increases.
+        var next = nextInRun
+        while (next.validFor.code > valid.code &&
+               !(next.validFor contains currentPeriod)) {
+          current = next
+          next = next.nextInRun
+        }
+        if (next.validFor.code > valid.code) {
+          // in this case, containsPeriod(next._validFor, currentPeriod)
+          current = next
+        } else {
+          // not found, current points to highest existing variant
+          var startPid = current.validFor.lastPhaseId + 1
+          val trans = ctx.root.transformersFor(current)
+          val endPid = trans.nextTransformer(startPid + 1).phaseId - 1
+          next = trans.nextTransformer(startPid) transform current
+          if (next eq current)
+            startPid = current.validFor.firstPhaseId
+          else {
+            current.nextInRun = next
+            current = next
           }
-          var basetp = baseTypeCache get tp
-          if (basetp == null) {
-            baseTypeCache.put(tp, NoType)
-            basetp = computeBaseTypeOf(tp)
-            baseTypeCache.put(tp, basetp)
-          } else if (basetp == NoType) {
-            throw new CyclicReference(symbol)
-          }
-          basetp
-        case _ =>
-          computeBaseTypeOf(tp)
+          current.validFor = Period(currentPeriod.runId, startPid, endPid)
+        }
+      } else {
+        // currentPeriod < valid; in this case a version must exist
+        do {
+          current = current.nextInRun
+        } while (!(current.validFor contains currentPeriod))
       }
+      current
     }
 
-    private var memberNamesCache: Map[NameFilter, Set[Name]] = Map()
+    def asSymDenotation = asInstanceOf[SymDenotation]
 
-    def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] =
-      memberNamesCache get keepOnly match {
-        case Some(names) =>
-          names
-        case _ =>
-          val inheritedNames = (parents flatMap (_.memberNames(thisType, keepOnly))).toSet
-          val ownNames = decls.iterator map (_.name)
-          val candidates = inheritedNames ++ ownNames
-          val names = candidates filter (keepOnly(thisType, _))
-          memberNamesCache += (keepOnly -> names)
-          names
-    }
+    // ------ DenotationSet ops ----------------------------------------------
+
+    def toDenot(implicit ctx: Context) = this
+    def containsSig(sig: Signature)(implicit ctx: Context) =
+      signature == sig
+    def filter(p: Symbol => Boolean)(implicit ctx: Context): DenotationSet =
+      if (p(symbol)) this else NoDenotation
+    def filterDisjoint(denots: DenotationSet)(implicit ctx: Context): DenotationSet =
+      if (denots.containsSig(signature)) NoDenotation else this
+    def filterExcluded(flags: FlagSet)(implicit ctx: Context): DenotationSet =
+      if (symbol.hasFlag(flags)) NoDenotation else this
+    def filterAccessibleFrom(pre: Type)(implicit ctx: Context): DenotationSet =
+      if (symbol.isAccessibleFrom(pre)) this else NoDenotation
+    def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): DenotationSet =
+      derivedSingleDenotation(symbol, info.asSeenFrom(pre, owner))
   }
 
-  class CompleteClassDenotation(
-      val symbol: ClassSymbol,
-      val owner: Symbol,
-      val name: Name,
-      initFlags: FlagSet,
-      val typeParams: List[TypeSymbol],
-      val parents: List[Type],
-      val decls: Scope
-    )(implicit ctx: Context) extends ClassDenotation(initFlags)
-
-  abstract class LazyClassDenotation(
-      val symbol: ClassSymbol,
-      val owner: Symbol,
-      val name: Name,
-      initFlags: FlagSet
-    )(implicit ctx: Context) extends ClassDenotation(initFlags) with LazyCompletion {
-
-    protected var _typeParams: List[TypeSymbol] = null
-    protected var _parents: List[Type] = null
-    protected var _decls: Scope = null
-
-    final def typeParams: List[TypeSymbol] = {
-      val tparams = _typeParams
-      if (tparams != null) tparams else { tryLoad(); typeParams }
-    }
-
-    final def parents: List[Type] = {
-      val ps = _parents
-      if (ps != null) ps else { tryComplete(); parents }
-    }
-
-    final def decls: Scope = {
-      val ds = _decls
-      if (ds != null) ds else { tryComplete(); decls }
-    }
+  class UniqueRefDenotation(val symbol: Symbol,
+                     val info: Type,
+                     initValidFor: Period) extends SingleDenotation {
+    validFor = initValidFor
+    override protected def copy(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
   }
 
-  object NoDenotation extends Denotation(Flags.Empty) {
-    override def symbol: Symbol = NoSymbol
-    override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
-    override def name: Name = BootNameTable.newTermName("<none>")
-    override def info: Type = NoType
+  class JointRefDenotation(val symbol: Symbol,
+                    val info: Type,
+                    initValidFor: Period) extends SingleDenotation {
+    validFor = initValidFor
+    override protected def copy(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
   }
 
-  object NameFilter {
-    final val WordSizeLog = 6
-    final val DefinedNamesWords = 16
-    final val DefinedNamesSize = DefinedNamesWords << WordSizeLog
-    final val DefinedNamesMask = DefinedNamesSize - 1
-
-    type FingerPrint = Array[Long]
-
-    def includeName(bits: FingerPrint, name: Name): Unit = {
-      val hash = name.start & DefinedNamesMask
-      bits(hash >> 6) |= (1 << hash)
-    }
-
-    def includeFingerPrint(bits1: FingerPrint, bits2: FingerPrint): Unit =
-      for (i <- 0 until DefinedNamesWords) bits1(i) |= bits2(i)
-
-    def containsName(bits: FingerPrint, name: Name): Boolean = {
-      val hash = name.start & DefinedNamesMask
-      (bits(hash >> 6) & (1 << hash)) != 0
-    }
-
-    def newNameFilter: FingerPrint = new Array[Long](DefinedNamesWords)
+  class ErrorDenotation(implicit ctx: Context) extends SingleDenotation {
+    val symbol = NoSymbol
+    val info = NoType
+    validFor = Period.allInRun(ctx.runId)
   }
 
-  implicit def toFlagSet(denot: Denotation): FlagSet = denot.flags
+// --------------- DenotationSets -------------------------------------------------
 
+  /** A DenotationSet represents a set of denotation */
+  trait DenotationSet {
+    def exists: Boolean
+    def toDenot(implicit ctx: Context): Denotation
+    def containsSig(sig: Signature)(implicit ctx: Context): Boolean
+    def filter(p: Symbol => Boolean)(implicit ctx: Context): DenotationSet
+    def filterDisjoint(denots: DenotationSet)(implicit ctx: Context): DenotationSet
+    def filterExcluded(flags: FlagSet)(implicit ctx: Context): DenotationSet
+    def filterAccessibleFrom(pre: Type)(implicit ctx: Context): DenotationSet
+    def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): DenotationSet
+    def union(that: DenotationSet) =
+      if (!this.exists) that
+      else if (that.exists) this
+      else DenotUnion(this, that)
+  }
+
+  case class DenotUnion(denots1: DenotationSet, denots2: DenotationSet) extends DenotationSet {
+    assert(denots1.exists && !denots2.exists)
+    private def derivedUnion(s1: DenotationSet, s2: DenotationSet) =
+      if (!s1.exists) s2
+      else if (!s2.exists) s1
+      else if ((s1 eq denots2) && (s2 eq denots2)) this
+      else new DenotUnion(s1, s2)
+    def exists = true
+    def toDenot(implicit ctx: Context) = denots1.toDenot & denots2.toDenot
+    def containsSig(sig: Signature)(implicit ctx: Context) =
+      (denots1 containsSig sig) || (denots2 containsSig sig)
+    def filter(p: Symbol => Boolean)(implicit ctx: Context) =
+      derivedUnion(denots1 filter p, denots2 filter p)
+    def filterDisjoint(denots: DenotationSet)(implicit ctx: Context): DenotationSet =
+      derivedUnion(denots1 filterDisjoint denots, denots2 filterDisjoint denots)
+    def filterExcluded(flags: FlagSet)(implicit ctx: Context): DenotationSet =
+      derivedUnion(denots1 filterExcluded flags, denots2 filterExcluded flags)
+    def filterAccessibleFrom(pre: Type)(implicit ctx: Context): DenotationSet =
+      derivedUnion(denots1 filterAccessibleFrom pre, denots2 filterAccessibleFrom pre)
+    def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): DenotationSet =
+      derivedUnion(denots1.asSeenFrom(pre, owner), denots2.asSeenFrom(pre, owner))
+  }
 }
+
