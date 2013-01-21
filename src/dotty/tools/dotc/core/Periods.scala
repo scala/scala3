@@ -23,13 +23,16 @@ abstract class Periods { self: Context =>
       override val period = pd
     }
 
+  /** A new context that differs from the current one in its phase */
+  def withPhase(pid: PhaseId): Context = withPeriod(Period(runId, pid))
+
   /** Execute `op` at given period */
   def atPeriod[T](pd: Period)(op: Context => T) =
     op(ctx withPeriod pd)
 
   /** Execute `op` at given phase id */
   def atPhase[T](pid: PhaseId)(op: Context => T) =
-    op(ctx withPeriod Period(runId, pid))
+    op(ctx withPhase pid)
 }
 
 object Periods {

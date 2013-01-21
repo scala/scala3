@@ -331,7 +331,9 @@ object Denotations {
 
 // --------------- DenotationSets -------------------------------------------------
 
-  /** A DenotationSet represents a set of denotation */
+  /** A DenotationSet represents a set of single denotations
+   *  It is used as an optimization to avoid forming MultiDenotations too eagerly.
+   */
   trait DenotationSet {
     def exists: Boolean
     def toDenot(implicit ctx: Context): Denotation
@@ -348,7 +350,7 @@ object Denotations {
   }
 
   case class DenotUnion(denots1: DenotationSet, denots2: DenotationSet) extends DenotationSet {
-    assert(denots1.exists && !denots2.exists)
+    assert(denots1.exists && denots2.exists)
     private def derivedUnion(s1: DenotationSet, s2: DenotationSet) =
       if (!s1.exists) s2
       else if (!s2.exists) s1

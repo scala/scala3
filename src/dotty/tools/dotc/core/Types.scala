@@ -300,11 +300,11 @@ object Types {
       case tp: ClassInfo =>
         val classd = tp.classd
         val candidates = classd.membersNamed(name)
-        val resultSyms = candidates
+        val results = candidates
           .filterAccessibleFrom(pre)
           .filterExcluded(excluded)
           .asSeenFrom(pre, classd.symbol)
-        if (resultSyms.exists) resultSyms.toDenot
+        if (results.exists) results.toDenot
         else new ErrorDenotation // todo: refine
       case tp: AndType =>
         tp.tp1.findMember(name, pre, excluded) & tp.tp2.findMember(name, pre, excluded)
@@ -573,17 +573,23 @@ object Types {
       if (!(validPeriods contains ctx.period)) {
         val thisPeriod = ctx.period
         lastDenotation =
-          if (validPeriods.runId == thisPeriod.runId)
+          if (validPeriods.runId == thisPeriod.runId) {
             lastDenotation.current
-          else if (thisPeriod.phaseId > name.lastIntroPhaseId)
-            ctx.atPhase(name.lastIntroPhaseId)(prefix.member(name)(_)).current
-           else
-            prefix.member(name)
-        if (checkPrefix(lastDenotation.symbol) && !prefix.isLegalPrefix)
-          throw new MalformedType(prefix, lastDenotation.symbol)
+          } else {
+            val d = loadDenot
+            if (d.exists || ctx.phaseId == FirstPhaseId) {
+              if (checkPrefix(d.symbol) && !prefix.isLegalPrefix)
+                throw new MalformedType(prefix, d.symbol)
+              d
+            } else {// name has changed; try load in earlier phase and make current
+              denot(ctx.withPhase(ctx.phaseId - 1)).current
+            }
+          }
       }
       lastDenotation
     }
+
+    protected def loadDenot(implicit ctx: Context) = prefix.member(name)
 
     def isType = name.isTypeName
     def isTerm = name.isTermName
@@ -619,8 +625,8 @@ object Types {
 
   final class TermRefWithSignature(prefix: Type, name: TermName, override val signature: Signature) extends TermRef(prefix, name) {
     override def computeHash = doHash((name, signature), prefix)
-    override def denot(implicit ctx: Context): Denotation =
-      super.denot.atSignature(signature)
+    override def loadDenot(implicit ctx: Context): Denotation =
+      super.loadDenot.atSignature(signature)
   }
 
   final class TypeRefNoPrefix(val fixedSym: TypeSymbol)(implicit ctx: Context)

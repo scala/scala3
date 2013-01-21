@@ -16,7 +16,7 @@ object Names {
    *  3. Names are intended to be encoded strings. @see dotc.util.NameTransformer.
    *     The encoding will be applied when converting a string to a name.
    */
-  abstract class Name {
+  abstract class Name extends DotClass {
 
     /** The basis in which this name is stored */
     val basis: NameTable
@@ -59,7 +59,7 @@ object Names {
      *  to other entities (e.g. strings).
      *  One always should use the ==(Name) method instead.
      */
-    final override def equals(that: Any): Boolean = ??? // do not implement
+    final override def equals(that: Any): Boolean = unsupported("equals")
 
     /** The only authorized == method on names */
     def == (that: Name): Boolean = (
@@ -84,9 +84,6 @@ object Names {
 
     /** Convert to string replacing operator symbols by corresponding \$op_name. */
     def decode: String = NameTransformer.decode(toString)
-
-    /** The last phase id where symbols with this name can be created. */
-    def lastIntroPhaseId: PhaseId = ???
   }
 
   class TermName(val basis: NameTable, val start: Int, val length: Int, val next: TermName) extends Name {
