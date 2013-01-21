@@ -6,6 +6,7 @@ class Definitions(implicit ctx: Context) {
   private var _isInitialized = false
   def isInitialized = _isInitialized
 
+  lazy val RootClass: ClassSymbol = ???
   lazy val AnyClass: ClassSymbol = ???
   lazy val AnyType = AnyClass.typeConstructor
   lazy val AnyValClass: ClassSymbol = ???

@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Periods._, Contexts._, Symbols._, Referenceds._, Names._
+import Periods._, Contexts._, Symbols._, Referenceds._, Names._, Annotations._
 import Types._, Flags._, Decorators._, Transformers._
 import Scopes.Scope
 import collection.mutable
@@ -20,17 +20,38 @@ object Denotations {
 
     def symbol: Symbol
 
-    private[this] var currentFlags: FlagSet = initFlags
-
-    def flags: FlagSet = currentFlags
-
     def info: Type
 
+    private[this] var _flags: FlagSet = initFlags
+
+    def flags: FlagSet = _flags
+
+    def flags_=(flags: FlagSet): Unit =
+      _flags |= flags
+
     def setFlags(flags: FlagSet): Unit =
-      currentFlags |= flags
+      _flags |= flags
 
     def resetFlags(flags: FlagSet): Unit =
-      currentFlags &~= flags
+      _flags &~= flags
+
+    private[this] var _privateWithin: Symbol = NoSymbol
+
+    def privateWithin: Symbol = _privateWithin
+
+    def privateWithin_=(sym: Symbol): Unit =
+      _privateWithin = sym
+
+    final def isLoaded = _privateWithin != null
+
+    private[this] var _annotations: List[Annotation] = Nil
+
+    def annotations: List[Annotation] = _annotations
+
+    def annotations_=(annots: List[Annotation]): Unit =
+      _annotations = annots
+
+    final def isCompleted = _annotations != null
 
     /** is this symbol a class? */
     def isClass: Boolean = false
@@ -54,28 +75,62 @@ object Denotations {
       val info: Type
     ) extends Denotation(initFlags)
 
+  trait LazyCompletion extends Denotation {
+    privateWithin = null
+    annotations = null
+
+    override final def flags = {
+      if (!isLoaded) tryLoad()
+      super.flags
+    }
+
+    override final def privateWithin = {
+      if (!isLoaded) tryLoad()
+      super.privateWithin
+    }
+
+    override final def annotations: List[Annotation] = {
+      val annots = super.annotations
+      if (annots != null) annots else { tryComplete(); annotations }
+    }
+
+    protected def tryLoad(): Unit = try {
+      if (flags is Locked) throw new CyclicReference(symbol)
+      setFlags(Locked)
+      load()
+    } catch {
+      case ex: CyclicReference => handleCycle()
+    } finally {
+      flags &~= Locked
+    }
+
+    protected def tryComplete() = try {
+      if (flags is Locked) throw new CyclicReference(symbol)
+      complete()
+    } catch {
+      case ex: CyclicReference => handleCycle()
+    } finally {
+      flags &~= Locked
+    }
+
+    protected def handleCycle(): Unit
+    protected def load(): Unit
+    protected def complete(): Unit
+  }
+
   abstract class LazyDenotation(
       val symbol: Symbol,
       val owner: Symbol,
       val name: Name,
       initFlags: FlagSet
-    ) extends Denotation(initFlags) {
+    ) extends Denotation(initFlags) with LazyCompletion {
 
     private var currentInfo: Type = null
-
-    override def flags = {
-      val fs = super.flags
-      if (fs is Unloaded) { load(); super.flags }
-      else fs
-    }
 
     override def info = {
       if (currentInfo == null) complete()
       currentInfo
     }
-
-    def load(): Unit
-    def complete(): Unit
   }
 
   abstract class ClassDenotation(initFlags: FlagSet)(implicit ctx: Context)
@@ -185,7 +240,7 @@ object Denotations {
         parent.deref match {
           case classd: ClassDenotation =>
             includeFingerPrint(bits, classd.definedFingerPrint)
-            parent.deref setFlags Frozen
+            parent.deref.setFlags(Frozen)
           case _ =>
         }
         ps = ps.tail
@@ -327,34 +382,26 @@ object Denotations {
       val owner: Symbol,
       val name: Name,
       initFlags: FlagSet
-    )(implicit ctx: Context) extends ClassDenotation(initFlags) {
+    )(implicit ctx: Context) extends ClassDenotation(initFlags) with LazyCompletion {
 
     protected var _typeParams: List[TypeSymbol] = null
     protected var _parents: List[Type] = null
     protected var _decls: Scope = null
 
-    override def flags = {
-      val fs = super.flags
-      if (fs is Unloaded) { load(); flags } else fs
-    }
-
-    def typeParams: List[TypeSymbol] = {
+    final def typeParams: List[TypeSymbol] = {
       val tparams = _typeParams
-      if (tparams == null) { load(); typeParams } else tparams
+      if (tparams != null) tparams else { tryLoad(); typeParams }
     }
 
-    def parents: List[Type] = {
+    final def parents: List[Type] = {
       val ps = _parents
-      if (ps == null) { complete(); parents } else ps
+      if (ps != null) ps else { tryComplete(); parents }
     }
 
-    def decls: Scope = {
+    final def decls: Scope = {
       val ds = _decls
-      if (ds == null) { complete(); decls } else ds
+      if (ds != null) ds else { tryComplete(); decls }
     }
-
-    def load(): Unit
-    def complete(): Unit
   }
 
   object NoDenotation extends Denotation(Flags.Empty) {
