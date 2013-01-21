@@ -86,6 +86,9 @@ object Flags {
     /** This flag set with all flags transposed to be common flags */
     def toCommonFlags = FlagSet(bits | KINDFLAGS)
 
+    /** The number of non-kind flags in this set */
+    def numFlags: Int = java.lang.Long.bitCount(bits & ~KINDFLAGS)
+
     /** The set of all non-empty strings that are associated
      *  as term or type flags with this index
      */
@@ -138,8 +141,10 @@ object Flags {
   }
 
   /** The conjunction of all flags in given flag set */
-  def allOf(flagss: FlagSet*) = FlagConjunction(oneOf(flagss: _*).bits)
-
+  def allOf(flagss: FlagSet*) = {
+    assert(flagss forall (_.numFlags == 1))
+    FlagConjunction(oneOf(flagss: _*).bits)
+  }
   /** The disjunction of all flags in given flag set */
   def oneOf(flagss: FlagSet*) = (Empty /: flagss) (_ | _)
 
@@ -274,9 +279,6 @@ object Flags {
   /** An error symbol */
   final val Erroneous = commonFlag(???, "<is-error>")
 
-  /** Denotation has not yet been loaded */
-  final val Unloaded = commonFlag(32, "??")
-
   /** Denotation is in train of being loaded and completed, flag to catch cyclic dependencies */
   final val Locked = commonFlag(???, "<locked>")
 
@@ -327,7 +329,7 @@ object Flags {
 
   /** These flags are not pickled */
   final val FlagsNotPickled = commonFlags(
-    Erroneous, Lifted, Unloaded, Frozen)
+    Erroneous, Lifted, Frozen)
 
   /** These flags are pickled */
   final val PickledFlags  = InitialFlags &~ FlagsNotPickled
@@ -337,6 +339,12 @@ object Flags {
 
   /** Labeled private[this] */
   final val PrivateLocal = allOf(Private, Local)
+
+  /** Labeled `private` or `protected[local]` */
+  final val PrivateOrLocal = oneOf(Private, Local)
+
+  /** Java symbol which is `protected` and `static` */
+  final val StaticProtected = allOf(Java, Protected, Static)
 
   /** Labeled `protected[this]` */
   final val ProtectedLocal = allOf(Protected, Local)
