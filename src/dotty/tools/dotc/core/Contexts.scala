@@ -55,7 +55,7 @@ object Contexts {
 
     // Symbols state
     /** A map from a superclass id to the class that has it */
-    private[core] var classOfId = Array.ofDim[ClassSymbol](InitialSuperIdsSize)
+    private[core] var classOfId = new Array[ClassSymbol](InitialSuperIdsSize)
 
     /** A map from a superclass to its superclass id */
     private[core] val superIdOfClass = new mutable.HashMap[ClassSymbol, Int]
@@ -64,7 +64,15 @@ object Contexts {
     private[core] var lastSuperId = -1
 
     /** Allocate and return next free superclass id */
-    private[core] def nextSuperId: Int = { lastSuperId += 1; lastSuperId }
+    private[core] def nextSuperId: Int = {
+      lastSuperId += 1;
+      if (lastSuperId >= classOfId.length) {
+        val tmp = new Array[ClassSymbol](classOfId.length * 2)
+        classOfId.copyToArray(tmp)
+        classOfId = tmp
+      }
+      lastSuperId
+    }
 
     // SymDenotations state
     private[core] val uniqueBits = new util.HashSet[BitSet]("superbits", 1024)
