@@ -31,7 +31,7 @@ trait TypeOps { this: Context =>
             ErrorType // don't be overzealous with throwing exceptions, see #2641
           else
             throw new Error(
-              s"something is wrong (wrong class file?): ${tparam.locationString} cannot be instantiated from ${pre.widen}")
+              s"something is wrong (wrong class file?): ${tparam.showLocated} cannot be instantiated from ${pre.widen.show}")
 
         def prefixMatches = pre.typeSymbol isNonBottomSubClass tparamOwner
 

@@ -238,7 +238,7 @@ object Flags {
   final val Local = commonFlag(20, "<local>")
 
   /** Symbol is defined by a Java class */
-  final val Java = commonFlag(21, "<java>")
+  final val JavaDefined = commonFlag(21, "<java>")
 
   /** A compiler-generated symbol. which is visible for type-checking
    *  (compare with artifact)
@@ -344,8 +344,9 @@ object Flags {
   final val PrivateOrLocal = oneOf(Private, Local)
 
   /** Java symbol which is `protected` and `static` */
-  final val StaticProtected = allOf(Java, Protected, Static)
+  final val StaticProtected = allOf(JavaDefined, Protected, Static)
 
   /** Labeled `protected[this]` */
   final val ProtectedLocal = allOf(Protected, Local)
+
 }

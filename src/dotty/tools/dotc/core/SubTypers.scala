@@ -1,18 +1,18 @@
 package dotty.tools.dotc.core
 
-import Types._, Contexts._, Symbols._
+import Types._, Contexts._, Symbols._, Flags._
 import collection.mutable
 
-object SubTypers {
+object TypeComparers {
 
   type Constraints = Map[PolyParam, TypeBounds]
 
-  object SubTyper {
+  object TypeComparer {
     private final val LogPendingSubTypesThreshold = 50
   }
 
-  class SubTyper(_ctx: Context) extends DotClass {
-    import SubTyper._
+  class TypeComparer(_ctx: Context) extends DotClass {
+    import TypeComparer._
 
     implicit val ctx = _ctx
 
@@ -72,7 +72,7 @@ object SubTypers {
             val pre2 = tp2.prefix
             (sym1 == sym2 && (
               ctx.erasedTypes ||
-              sym1.owner.hasFlag(Flags.Package) ||
+              (sym1.owner.isPackage) ||
               isSubType(pre1, pre2))
               ||
               tp1.name == tp2.name &&
@@ -175,7 +175,7 @@ object SubTypers {
       case tp1: TypeRef =>
         ((tp1 eq defn.NothingType)
          ||
-         (tp1 eq defn.NullType) && tp2.typeSymbol.containsNull
+         (tp1 eq defn.NullType) && tp2.typeSymbol.isNonValueClass
          ||
          (!tp1.symbol.isClass && isSubType(tp1.info.bounds.hi, tp2)))
       case RefinedType(parent, _) =>

@@ -7,7 +7,7 @@ import Names._
 import Phases._
 import Types._
 import Symbols._
-import SubTypers._
+import TypeComparers._, Printers._
 import collection.mutable
 import collection.immutable.BitSet
 
@@ -21,10 +21,17 @@ object Contexts {
     val root: RootContext
     val period: Period
     def constraints: Constraints
-    def subTyper: SubTyper
+    def typeComparer: TypeComparer
+    def printer: Printer = ???
     def names: NameTable
+    def enclClass: Context = ???
     def phase: Phase = ???
+    def owner: Symbol = ???
     def erasedTypes: Boolean = ???
+  }
+
+  abstract class DiagnosticsContext(ctx: Context) extends SubContext(ctx) {
+    var diagnostics: () => String
   }
 
   abstract class SubContext(val underlying: Context) extends Context {
@@ -32,16 +39,16 @@ object Contexts {
     val period: Period = underlying.period
     val constraints = underlying.constraints
     def names: NameTable = root.names
-    lazy val subTyper =
-      if (constraints eq underlying.constraints) underlying.subTyper
-      else new SubTyper(this)
+    lazy val typeComparer =
+      if (constraints eq underlying.constraints) underlying.typeComparer
+      else new TypeComparer(this)
   }
 
   class RootContext extends Context
                        with Transformers {
 
     val underlying: Context = throw new UnsupportedOperationException("RootContext.underlying")
-    def subTyper: SubTyper = ???
+    def typeComparer: TypeComparer = ???
 
     val root: RootContext = this
     val period = Nowhere

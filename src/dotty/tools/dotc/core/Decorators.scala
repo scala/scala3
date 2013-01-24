@@ -1,6 +1,9 @@
 package dotty.tools.dotc
 package core
 
+import annotation.tailrec
+import Symbols._
+
 import Contexts._, Names._
 
 object Decorators {
@@ -13,6 +16,16 @@ object Decorators {
   implicit class toTermNameDecorator(val s: String) extends AnyVal {
     def toTermName(implicit context: Context): TermName =
       context.names.newTermName(s)
+  }
+
+  implicit class SymbolIteratorDecorator(val it: Iterator[Symbol]) extends AnyVal {
+    final def findSymbol(p: Symbol => Boolean): Symbol = {
+      while (it.hasNext) {
+        val sym = it.next
+        if (p(sym)) return sym
+      }
+      NoSymbol
+    }
   }
 
   final val MaxRecursions = 1000

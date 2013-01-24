@@ -1,8 +1,11 @@
 package dotty.tools.dotc.core
 
+import Symbols._
+
 object Annotations {
 
-  abstract class Annotation
-  abstract class AnnotationInfo
+  abstract class Annotation {
+    def matches(cls: Symbol) = ???
+  }
 
 }

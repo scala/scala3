@@ -114,7 +114,7 @@ object Scopes {
      *  @param sym ...
      */
     def enterUnique(sym: Symbol)(implicit ctx: Context) {
-      assert(lookup(sym.name) == NoSymbol, (sym.locatedFullString, lookup(sym.name).locatedFullString))
+      assert(lookup(sym.name) == NoSymbol, (sym.showLocated, lookup(sym.name).showLocated))
       enter(sym)
     }
 
@@ -270,11 +270,6 @@ object Scopes {
 
     @deprecated("Use `toList.reverse` instead", "2.10.0")
     def reverse: List[Symbol] = toList.reverse
-
-    override def mkString(start: String, sep: String, end: String) =
-      toList.map(_.defString).mkString(start, sep, end)
-
-    override def toString(): String = mkString("Scope{\n  ", ";\n  ", "\n}")
   }
 
   /** Create a new scope */

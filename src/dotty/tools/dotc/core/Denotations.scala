@@ -8,6 +8,7 @@ import Names.TypeName
 import Symbols.NoSymbol
 import Symbols.Symbol
 import Types._, Periods._, Flags._, Transformers._
+import Decorators.SymbolIteratorDecorator
 
 
 /** Denotations represent the meaning of symbols and named types.
@@ -20,10 +21,7 @@ import Types._, Periods._, Flags._, Transformers._
  *  Lines ending in a horizontal line mean subtying (right is a subtype of left).
  *
  *  NamedType------NamedTypeWithSignature
- *    |  |                 |
- *    |  +-----------------------------------------+
- *    |                    |                       | symbol
- *    |                    |                       v
+
  *    |                    |                     Symbol---------ClassSymbol
  *    |                    |                       |                |
  *    | denot              | denot                 | denot          | denot
@@ -134,7 +132,7 @@ object Denotations {
     def isType: Boolean = false
 
     /** Is this a reference to a term symbol? */
-    def isTerm: Boolean = !isType
+    def isTerm: Boolean = false
 
     /** Is this denotation overloaded? */
     def isOverloaded = isInstanceOf[MultiDenotation]
@@ -149,6 +147,8 @@ object Denotations {
     def current(implicit ctx: Context): Denotation
 
     def exists: Boolean = true
+
+    def filter(p: Symbol => Boolean)(implicit ctx: Context): Denotation
 
     /** Form a denotation by conjoining with denotation `that` */
     def & (that: Denotation)(implicit ctx: Context): Denotation =
@@ -199,8 +199,8 @@ object Denotations {
 
       def lubSym(sym1: Symbol, sym2: Symbol): Symbol = {
         def qualifies(sym: Symbol) =
-          (sym isAccessibleFrom pre) && (sym2.owner isSubClass sym.owner)
-        sym1.allOverriddenSymbols find qualifies getOrElse NoSymbol
+          sym.isAccessibleFrom(pre) && sym2.owner.isSubClass(sym.owner)
+        sym1.allOverriddenSymbols findSymbol qualifies
       }
 
       def throwError = throw new MatchError(s"$this | $that")
@@ -237,11 +237,15 @@ object Denotations {
    *  @param  variants   The overloaded variants indexed by thheir signatures.
    */
   case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation {
+    final override def isType = false
+    final override def isTerm = true
     def derivedMultiDenotation(d1: Denotation, d2: Denotation) =
       if ((d1 eq denot1) && (d2 eq denot2)) this else MultiDenotation(d1, d2)
     def symbol = unsupported("symbol")
     def info = unsupported("info")
     def signature = unsupported("signature")
+    def filter(p: Symbol => Boolean)(implicit ctx: Context): Denotation =
+      (denot1 filter p) & (denot2 filter p)
     def atSignature(sig: Signature): SingleDenotation =
       denot1.atSignature(sig) orElse denot2.atSignature(sig)
     def validFor = denot1.validFor & denot2.validFor
@@ -252,6 +256,7 @@ object Denotations {
   abstract class SingleDenotation extends Denotation with DenotationSet {
 
     override def isType = symbol.isType
+    override def isTerm = symbol.isTerm
     override def signature: Signature = {
       def sig(tp: Type): Signature = tp match {
         case tp: PolyType =>
@@ -271,6 +276,9 @@ object Denotations {
     protected def copy(s: Symbol, i: Type): SingleDenotation = this
 
     def orElse(that: => SingleDenotation) = if (this.exists) this else that
+
+    def filter(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation =
+      if (p(symbol)) this else NoDenotation
 
     def atSignature(sig: Signature): SingleDenotation =
       if (sig == signature) this else NoDenotation
@@ -346,19 +354,17 @@ object Denotations {
       current
     }
 
-    def asSymDenotation = asInstanceOf[SymDenotation]
+    //final def asSymDenotation = asInstanceOf[SymDenotation]
 
     // ------ DenotationSet ops ----------------------------------------------
 
     def toDenot(implicit ctx: Context) = this
     def containsSig(sig: Signature)(implicit ctx: Context) =
       signature == sig
-    def filter(p: Symbol => Boolean)(implicit ctx: Context): DenotationSet =
-      if (p(symbol)) this else NoDenotation
     def filterDisjoint(denots: DenotationSet)(implicit ctx: Context): DenotationSet =
       if (denots.containsSig(signature)) NoDenotation else this
     def filterExcluded(flags: FlagSet)(implicit ctx: Context): DenotationSet =
-      if (symbol.hasFlag(flags)) NoDenotation else this
+      if (symbol is flags) NoDenotation else this
     def filterAccessibleFrom(pre: Type)(implicit ctx: Context): DenotationSet =
       if (symbol.isAccessibleFrom(pre)) this else NoDenotation
     def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): DenotationSet =
@@ -394,7 +400,6 @@ object Denotations {
     def exists: Boolean
     def toDenot(implicit ctx: Context): Denotation
     def containsSig(sig: Signature)(implicit ctx: Context): Boolean
-    def filter(p: Symbol => Boolean)(implicit ctx: Context): DenotationSet
     def filterDisjoint(denots: DenotationSet)(implicit ctx: Context): DenotationSet
     def filterExcluded(flags: FlagSet)(implicit ctx: Context): DenotationSet
     def filterAccessibleFrom(pre: Type)(implicit ctx: Context): DenotationSet
@@ -416,8 +421,8 @@ object Denotations {
     def toDenot(implicit ctx: Context) = denots1.toDenot & denots2.toDenot
     def containsSig(sig: Signature)(implicit ctx: Context) =
       (denots1 containsSig sig) || (denots2 containsSig sig)
-    def filter(p: Symbol => Boolean)(implicit ctx: Context) =
-      derivedUnion(denots1 filter p, denots2 filter p)
+    //def filter(p: Symbol => Boolean)(implicit ctx: Context) =
+    //  derivedUnion(denots1 filter p, denots2 filter p)
     def filterDisjoint(denots: DenotationSet)(implicit ctx: Context): DenotationSet =
       derivedUnion(denots1 filterDisjoint denots, denots2 filterDisjoint denots)
     def filterExcluded(flags: FlagSet)(implicit ctx: Context): DenotationSet =

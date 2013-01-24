@@ -3,7 +3,7 @@ package core
 
 import util.HashSet
 import Symbols._
-import SubTypers._
+import TypeComparers._
 import Flags._
 import Names._
 import Scopes._
@@ -314,13 +314,13 @@ object Types {
 
     /** Is this type a subtype of that type? */
     final def <:<(that: Type)(implicit ctx: Context): Boolean =
-      ctx.subTyper.isSubType(this, that)
+      ctx.typeComparer.isSubType(this, that)
 
     /** Is this type the same as that type?
      *  This is the case iff `this <:< that` and `that <:< this`.
      */
     final def =:=(that: Type)(implicit ctx: Context): Boolean =
-      ctx.subTyper.isSameType(this, that)
+      ctx.typeComparer.isSameType(this, that)
 
     /** Is this type close enough to that type so that members
      *  with the two type would override each other?
@@ -335,15 +335,15 @@ object Types {
      *      poly types.
      */
     def matches(that: Type)(implicit ctx: Context): Boolean =
-      ctx.subTyper.matchesType(this, that, !ctx.phase.erasedTypes)
+      ctx.typeComparer.matchesType(this, that, !ctx.phase.erasedTypes)
 
     /** Does this type match that type
      *
      */
 
     /** The info of `sym`, seen as a member of this type. */
-    final def memberInfo(sym: Symbol)(implicit ctx: Context): Type = {
-      sym.info.asSeenFrom(this, sym.owner)
+    final def memberInfo(denot: SymDenotation)(implicit ctx: Context): Type = {
+      denot.info.asSeenFrom(this, denot.owner)
     }
 
     /** Widen from singleton type to its underlying non-singleton
@@ -447,7 +447,9 @@ object Types {
     def |(that: Type)(implicit ctx: Context): Type =
       ctx.lub(this, that)
 
-    // hashing
+    def show(implicit ctx: Context): String = ctx.printer.show(this)
+
+// ----- hashing ------------------------------------------------------
 
     /** customized hash code of this type.
      *  NotCached for uncached types. Cached types
@@ -978,15 +980,15 @@ object Types {
 
   // ----- AnnotatedTypes -----------------------------------------------------------
 
-  case class AnnotatedType(annots: List[AnnotationInfo], tpe: Type) extends UncachedProxyType {
+  case class AnnotatedType(annots: List[Annotation], tpe: Type) extends UncachedProxyType {
     override def underlying(implicit ctx: Context): Type = tpe
-    def derivedAnnotatedType(annots1: List[AnnotationInfo], tpe1: Type) =
+    def derivedAnnotatedType(annots1: List[Annotation], tpe1: Type) =
       if ((annots1 eq annots) && (tpe1 eq tpe)) this
       else AnnotatedType.make(annots1, tpe1)
   }
 
   object AnnotatedType {
-    def make(annots: List[AnnotationInfo], underlying: Type) =
+    def make(annots: List[Annotation], underlying: Type) =
       if (annots.isEmpty) underlying
       else AnnotatedType(annots, underlying)
   }
@@ -1060,7 +1062,7 @@ object Types {
         tp
     }
 
-    def mapOverAnnotations(annots: List[AnnotationInfo]): List[AnnotationInfo] = ???
+    def mapOverAnnotations(annots: List[Annotation]): List[Annotation] = ???
 
   }
 
@@ -1090,7 +1092,7 @@ object Types {
   abstract class TypeAccumulator[T] extends ((T, Type) => T) {
     def apply(x: T, tp: Type): T
 
-    def apply(x: T, annot: AnnotationInfo): T = ???
+    def apply(x: T, annot: Annotation): T = ???
 
     def foldOver(x: T, tp: Type): T = tp match {
       case tp: NamedType =>
