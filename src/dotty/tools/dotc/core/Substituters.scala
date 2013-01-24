@@ -54,7 +54,8 @@ trait Substituters { this: Context =>
       case tp: NamedType =>
         val sym = tp.symbol
         if (tp.prefix eq NoPrefix) {
-          if (sym eq from) return to
+          if (sym eq from)
+            return if (to.exists) to else tp
         }
         if (sym.isStatic) tp
         else tp.derivedNamedType(subst1(tp.prefix, from, to, map), tp.name)
@@ -79,8 +80,10 @@ trait Substituters { this: Context =>
       case tp: NamedType =>
         val sym = tp.symbol
         if (tp.prefix eq NoPrefix) {
-          if (sym eq from1) return to1
-          if (sym eq from2) return to2
+          if (sym eq from1)
+            return if (to1.exists) to1 else tp
+          if (sym eq from2)
+            return if (to2.exists) to2 else tp
         }
         if (sym.isStatic) tp
         else tp.derivedNamedType(subst2(tp.prefix, from1, to1, from2, to2, map), tp.name)
@@ -108,7 +111,8 @@ trait Substituters { this: Context =>
           var fs = from
           var ts = to
           while (fs.nonEmpty) {
-            if (fs.head eq sym) return ts.head
+            if (fs.head eq sym)
+              return if (ts.head.exists) ts.head else tp
             fs = fs.tail
             ts = ts.tail
           }

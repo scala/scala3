@@ -409,7 +409,15 @@ object Types {
      */
     final def typeParams(implicit ctx: Context): List[TypeSymbol] = this match {
       case tp: AppliedType =>
-        tp.tycon.typeParams drop tp.targs.length
+        def loop(tparams: List[TypeSymbol], targs: List[Type]): List[TypeSymbol] = tparams match {
+          case tparam :: tparams1 =>
+            if (targs.isEmpty) tparams
+            else if (targs.head eq NoType) loop(tparams1, targs.tail)
+            else tparam :: loop(tparams1, targs.tail)
+          case _ =>
+            Nil
+        }
+        loop(tp.tycon.typeParams, tp.targs)
       case tp: TypeProxy =>
         tp.underlying.typeParams
       case tp: ClassInfo =>
@@ -701,6 +709,10 @@ object Types {
 
   // --- AppliedType -----------------------------------------------------------------
 
+  /** An applied type of the form tycon[..targs].
+   *  ..targs must match the length to tycon.typeParams.
+   *  Missing type arguments are represented by NoType.
+   */
   abstract case class AppliedType(tycon: Type, targs: List[Type]) extends CachedProxyType {
 
     override def underlying(implicit ctx: Context) = tycon

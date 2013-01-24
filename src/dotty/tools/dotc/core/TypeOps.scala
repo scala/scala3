@@ -48,9 +48,11 @@ trait TypeOps { this: Context =>
         }
 
         def instParam(ps: List[Symbol], as: List[Type]): Type =
-          if (ps.isEmpty || as.isEmpty) throwError
-          else if (tparam eq ps.head) as.head
-          else throwError
+          if (as.isEmpty) tp
+          else if (ps.isEmpty) throwError
+          else if (tparam eq ps.head)
+            if (as.head.exists) as.head else tp
+          else instParam(ps.tail, as.tail)
 
         if (tparamOwner == clazz && prefixMatches) instParamFrom(basePre)
         else toInstance(basePre.normalizedPrefix, clazz.owner, tparam)
