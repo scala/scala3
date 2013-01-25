@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import Contexts._, Types._, Symbols._
+import Contexts._, Types._, Symbols._, Names._
 
 trait TypeOps { this: Context =>
 
@@ -15,7 +15,7 @@ trait TypeOps { this: Context =>
       else if ((thisclazz isNonBottomSubClass clazz) &&
         (pre.widen.typeSymbol isNonBottomSubClass thisclazz))
         pre match {
-          case SuperType(thistp, _) => thistp
+          case SuperType(thispre, _) => thispre
           case _ => pre
         }
       else
@@ -84,129 +84,134 @@ trait TypeOps { this: Context =>
   }
 
   final def isVolatile(tp: Type): Boolean = {
-      def isAbstractIntersection(tp: Type): Boolean = tp match {
-        case tp: TypeRef => tp.isAbstractType
-        case AndType(l, r) => isAbstractIntersection(l) | isAbstractIntersection(l)
-        case OrType(l, r) => isAbstractIntersection(l) & isAbstractIntersection(r)
-        case _ => false
+    def isAbstractIntersection(tp: Type): Boolean = tp match {
+      case tp: TypeRef => tp.isAbstractType
+      case AndType(l, r) => isAbstractIntersection(l) | isAbstractIntersection(l)
+      case OrType(l, r) => isAbstractIntersection(l) & isAbstractIntersection(r)
+      case _ => false
+    }
+    def containsName(names: Set[Name], tp: RefinedType): Boolean = tp match {
+      case tp: RefinedType1 => names contains tp.name1
+      case tp: RefinedType2 => (names contains tp.name1) || (names contains tp.name2)
+      case _ => tp.names exists (names contains)
+    }
+    def test = {
+      tp match {
+        case ThisType(_) =>
+          false
+        case tp: RefinedType =>
+          tp.parent.isVolatile ||
+            isAbstractIntersection(tp.parent) &&
+            containsName(tp.abstractMemberNames(tp), tp)
+        case tp: TypeProxy =>
+          tp.underlying.isVolatile
+        case AndType(l, r) =>
+          l.isVolatile || r.isVolatile ||
+            isAbstractIntersection(l) && r.abstractMemberNames(tp).nonEmpty
+        case OrType(l, r) =>
+          l.isVolatile && r.isVolatile
+        case _ =>
+          false
       }
-      def test = {
-        tp match {
-          case ThisType(_) =>
-            false
-          case RefinedType(p, names) =>
-            p.isVolatile ||
-              isAbstractIntersection(p) &&
-              (names exists (tp.abstractMemberNames(tp) contains))
-          case tp: TypeProxy =>
-            tp.underlying.isVolatile
-          case AndType(l, r) =>
-            l.isVolatile || r.isVolatile ||
-              isAbstractIntersection(l) && r.abstractMemberNames(tp).nonEmpty
-          case OrType(l, r) =>
-            l.isVolatile && r.isVolatile
-          case _ =>
-            false
-        }
-      }
-      // need to be careful not to fall into an infinite recursion here
-      // because volatile checking is done before all cycles are detected.
-      // the case to avoid is an abstract type directly or
-      // indirectly upper-bounded by itself. See #2918
-      import ctx.root.{volatileRecursions, pendingVolatiles}
-      try {
-        volatileRecursions += 1
-        if (volatileRecursions < LogVolatileThreshold)
+    }
+    // need to be careful not to fall into an infinite recursion here
+    // because volatile checking is done before all cycles are detected.
+    // the case to avoid is an abstract type directly or
+    // indirectly upper-bounded by itself. See #2918
+    import ctx.root.{ volatileRecursions, pendingVolatiles }
+    try {
+      volatileRecursions += 1
+      if (volatileRecursions < LogVolatileThreshold)
+        test
+      else if (pendingVolatiles(tp))
+        false // we can return false here, because a cycle will be detected
+      // here afterwards and an error will result anyway.
+      else
+        try {
+          pendingVolatiles += tp
           test
-        else if (pendingVolatiles(tp))
-          false // we can return false here, because a cycle will be detected
-                // here afterwards and an error will result anyway.
-        else
-          try {
-            pendingVolatiles += tp
-            test
-          } finally {
-            pendingVolatiles -= tp
-          }
-      } finally {
-        volatileRecursions -= 1
+        } finally {
+          pendingVolatiles -= tp
+        }
+    } finally {
+      volatileRecursions -= 1
+    }
+  }
+
+  final def glb(tp1: Type, tp2: Type): Type =
+    if (tp1 eq tp2) tp1
+    else if (tp1.isWrong) tp2
+    else if (tp2.isWrong) tp1
+    else tp2 match {
+      case OrType(tp21, tp22) =>
+        tp1 & tp21 | tp1 & tp22
+      case _ =>
+        tp1 match {
+          case OrType(tp11, tp12) =>
+            tp11 & tp2 | tp12 & tp2
+          case _ =>
+            val t1 = mergeIfSub(tp1, tp2)
+            if (t1.exists) t1
+            else {
+              val t2 = mergeIfSub(tp2, tp1)
+              if (t2.exists) t2
+              else AndType(tp1, tp2)
+            }
+        }
+    }
+
+  def lub(tp1: Type, tp2: Type): Type =
+    if (tp1 eq tp2) tp1
+    else if (tp1.isWrong) tp1
+    else if (tp2.isWrong) tp2
+    else {
+      val t1 = mergeIfSuper(tp1, tp2)
+      if (t1.exists) t1
+      else {
+        val t2 = mergeIfSuper(tp2, tp1)
+        if (t2.exists) t2
+        else OrType(tp1, tp2)
       }
     }
 
-    final def glb (tp1: Type, tp2: Type): Type =
-      if (tp1 eq tp2) tp1
-      else if (tp1.isWrong) tp2
-      else if (tp2.isWrong) tp1
-      else tp2 match {
-        case OrType(tp21, tp22) =>
-          tp1 & tp21 | tp1 & tp22
-        case _ =>
-          tp1 match {
-            case OrType(tp11, tp12) =>
-              tp11 & tp2 | tp12 & tp2
-            case _ =>
-              val t1 = mergeIfSub(tp1, tp2)
-              if (t1.exists) t1
-              else {
-                val t2 = mergeIfSub(tp2, tp1)
-                if (t2.exists) t2
-                else AndType(tp1, tp2)
-              }
-          }
-      }
-
-    def lub (tp1: Type, tp2: Type): Type =
-      if (tp1 eq tp2) tp1
-      else if (tp1.isWrong) tp1
-      else if (tp2.isWrong) tp2
-      else {
-        val t1 = mergeIfSuper(tp1, tp2)
-        if (t1.exists) t1
+  /** Merge `t1` into `tp2` if t1 is a subtype of some part of tp2.
+   */
+  private def mergeIfSub(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
+    if (tp1 <:< tp2)
+      if (tp2 <:< tp1) tp2 else tp1
+    else tp2 match {
+      case tp2 @ AndType(tp21, tp22) =>
+        val lower1 = mergeIfSub(tp1, tp21)
+        if (lower1 eq tp21) tp2
+        else if (lower1.exists) lower1 & tp22
         else {
-          val t2 = mergeIfSuper(tp2, tp1)
-          if (t2.exists) t2
-          else OrType(tp1, tp2)
+          val lower2 = mergeIfSub(tp1, tp22)
+          if (lower2 eq tp22) tp2
+          else if (lower2.exists) tp21 & lower2
+          else NoType
         }
-      }
+      case _ =>
+        NoType
+    }
 
-    /** Merge `t1` into `tp2` if t1 is a subtype of some part of tp2.
-     */
-    private def mergeIfSub(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
-      if (tp1 <:< tp2)
-        if (tp2 <:< tp1) tp2 else tp1
-      else tp2 match {
-        case tp2 @ AndType(tp21, tp22) =>
-          val lower1 = mergeIfSub(tp1, tp21)
-          if (lower1 eq tp21) tp2
-          else if (lower1.exists) lower1 & tp22
-          else {
-            val lower2 = mergeIfSub(tp1, tp22)
-            if (lower2 eq tp22) tp2
-            else if (lower2.exists) tp21 & lower2
-            else NoType
-          }
-        case _ =>
-          NoType
-      }
-
-   /** Merge `tp1` into `tp2` if tp1 is a supertype of some part of tp2.
-    */
-    private def mergeIfSuper(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
-      if (tp2 <:< tp1)
-        if (tp1 <:< tp2) tp2 else tp1
-      else tp2 match {
-        case tp2 @ OrType(tp21, tp22) =>
-          val higher1 = mergeIfSuper(tp1, tp21)
-          if (higher1 eq tp21) tp2
-          else if (higher1.exists) higher1 | tp22
-          else {
-            val higher2 = mergeIfSuper(tp1, tp22)
-            if (higher2 eq tp22) tp2
-            else if (higher2.exists) tp21 | higher2
-            else NoType
-          }
-        case _ =>
-          NoType
-      }
+  /** Merge `tp1` into `tp2` if tp1 is a supertype of some part of tp2.
+   */
+  private def mergeIfSuper(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
+    if (tp2 <:< tp1)
+      if (tp1 <:< tp2) tp2 else tp1
+    else tp2 match {
+      case tp2 @ OrType(tp21, tp22) =>
+        val higher1 = mergeIfSuper(tp1, tp21)
+        if (higher1 eq tp21) tp2
+        else if (higher1.exists) higher1 | tp22
+        else {
+          val higher2 = mergeIfSuper(tp1, tp22)
+          if (higher2 eq tp22) tp2
+          else if (higher2.exists) tp21 | higher2
+          else NoType
+        }
+      case _ =>
+        NoType
+    }
 }
 

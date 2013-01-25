@@ -110,7 +110,16 @@ object Types {
     final def memberNames(pre: Type, keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = this match {
       case tp: ClassInfo =>
         tp.classd.memberNames(keepOnly) filter (keepOnly(pre, _))
-      case tp: RefinedType =>
+      case tp: RefinedType1 =>
+        var ns = tp.parent.memberNames(pre, keepOnly)
+        if (keepOnly(pre, tp.name1)) ns += tp.name1
+        ns
+      case tp: RefinedType2 =>
+        var ns = tp.parent.memberNames(pre, keepOnly)
+        if (keepOnly(pre, tp.name1)) ns += tp.name1
+        if (keepOnly(pre, tp.name2)) ns += tp.name2
+        ns
+      case tp: RefinedTypeN =>
         tp.parent.memberNames(pre, keepOnly) ++ (tp.names filter (keepOnly(pre, _))).toSet
       case tp: AndType =>
         tp.tp1.memberNames(pre, keepOnly) | tp.tp2.memberNames(pre, keepOnly)
@@ -470,6 +479,18 @@ object Types {
       finishHash(hashing.mix(seed, elemHash), arity + 1)
     }
 
+    private def finishHash(seed: Int, arity: Int, tp1: Type, tp2: Type): Int = {
+      val elemHash = tp1.hash
+      if (elemHash == NotCached) return NotCached
+      finishHash(hashing.mix(seed, elemHash), arity + 1, tp2)
+    }
+
+    private def finishHash(seed: Int, arity: Int, tp1: Type, tp2: Type, tp3: Type): Int = {
+      val elemHash = tp1.hash
+      if (elemHash == NotCached) return NotCached
+      finishHash(hashing.mix(seed, elemHash), arity + 1, tp2, tp3)
+    }
+
     private def finishHash(seed: Int, arity: Int, tps: List[Type]): Int = {
       var h = seed
       var xs = tps
@@ -496,20 +517,24 @@ object Types {
     protected def doHash(tp: Type): Int =
       finishHash(hashSeed, 0, tp)
 
-    protected def doHash(tp1: Type, tp2: Type): Int = {
-      val elemHash = tp1.hash
-      if (elemHash == NotCached) return NotCached
-      finishHash(hashing.mix(hashSeed, elemHash), 1, tp2)
-    }
-
     protected def doHash(x1: Any, tp2: Type): Int =
       finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2)
+
+    protected def doHash(tp1: Type, tp2: Type): Int =
+      finishHash(hashSeed, 0, tp1, tp2)
+
+    protected def doHash(x1: Any, tp2: Type, tp3: Type): Int =
+      finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2, tp3)
 
     protected def doHash(tp1: Type, tps2: List[Type]): Int =
       finishHash(hashSeed, 0, tp1, tps2)
 
     protected def doHash(x1: Any, tp2: Type, tps3: List[Type]): Int =
       finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
+
+    protected def doHash(x1: Any, x2: Any, tp3: Type, tp4: Type, tp5: Type) =
+      finishHash(hashing.mix(hashing.mix(hashSeed, x1.hashCode), x2.hashCode), 2, tp3, tp4, tp5)
+
   } // end Type
 
   /** A marker trait for cached types */
@@ -737,33 +762,88 @@ object Types {
 
   // --- Refined Type ---------------------------------------------------------
 
-  case class RefinedType(parent: Type, names: List[Name])(infosExpr: RefinedType => List[Type]) extends CachedProxyType {
+  abstract case class RefinedType(parent: Type) extends CachedProxyType {
 
     override def underlying(implicit ctx: Context) = parent
 
-    lazy val infos = infosExpr(this)
-
-    def derivedRefinedType(parent1: Type, names1: List[Name], infos1: List[Type])(implicit ctx: Context): RefinedType =
-      if ((parent1 eq parent) && (names1 eq names) && (infos1 eq infos)) this
+    def derivedRefinedType(parent: Type, names: List[Name], infos: List[Type])(implicit ctx: Context): RefinedType =
+      if ((parent eq this.parent) && (names eq this.names) && (infos eq this.infos)) this
       else
-        RefinedType(parent1, names1) { rt =>
-          val thistp = RefinedThis(rt)
-          infos1 map (_.substThis(this, thistp))
-        }
+        RefinedType(parent, names, infos map (info => (rt: RefinedType) => info.substThis(this, RefinedThis(rt))))
+
+    def names: List[Name]
+
+    def infos: List[Type]
+
+    def info(name: Name): Type
 
     def findDecl(name: Name, pre: Type)(implicit ctx: Context): Denotation = {
+      val tpe = info(name)
+      if (tpe == NoType) NoDenotation
+      else new JointRefDenotation(NoSymbol, tpe.substThis(this, pre), Period.allInRun(ctx.runId))
+    }
+  }
+
+  object RefinedType {
+
+    def make(parent: Type, names: List[Name], infofs: List[RefinedType => Type])(implicit ctx: Context): Type =
+      if (names.isEmpty) parent
+      else apply(parent, names, infofs)
+
+    def apply(parent: Type, names: List[Name], infofs: List[RefinedType => Type])(implicit ctx: Context): RefinedType =
+      names.length match {
+        case 1 => apply(parent, names.head, infofs.head)
+        case 2 => apply(parent, names.head, infofs.head, names.tail.head, infofs.tail.head)
+        case _ => unique(new RefinedTypeN(parent, names, infofs))
+      }
+
+    def apply(parent: Type, name1: Name, infof1: RefinedType => Type)(implicit ctx: Context): RefinedType1 =
+      unique(new RefinedType1(parent, name1, infof1))
+
+    def apply(parent: Type, name1: Name, infof1: RefinedType => Type, name2: Name, infof2: RefinedType => Type)(implicit ctx: Context): RefinedType2 =
+      unique(new RefinedType2(parent, name1, infof1, name2, infof2))
+  }
+
+  class RefinedType1(parent: Type, val name1: Name, infof1: RefinedType => Type) extends RefinedType(parent) {
+    val info1 = infof1(this)
+    def names = name1 :: Nil
+    def infos = info1 :: Nil
+    def info(name: Name) =
+      if (name == name1) info1
+      else NoType
+    def derivedRefinedType1(parent: Type, name1: Name, info1: Type)(implicit ctx: Context): RefinedType1 =
+      if ((parent eq this.parent) && (name1 eq this.name1) && (info1 eq this.info1)) this
+      else RefinedType(parent, name1, rt => info1.substThis(this, RefinedThis(rt)))
+    override def computeHash = doHash(name1, info1, parent)
+  }
+
+  class RefinedType2(parent: Type, val name1: Name, infof1: RefinedType => Type, val name2: Name, infof2: RefinedType => Type) extends RefinedType(parent) {
+    val info1 = infof1(this)
+    val info2 = infof2(this)
+    def names = name1 :: name2 :: Nil
+    def infos = info1 :: info2 :: Nil
+    def info(name: Name) =
+      if (name == name1) info1
+      else if (name == name2) info2
+      else NoType
+    def derivedRefinedType2(parent: Type, name1: Name, info1: Type, name2: Name, info2: Type)(implicit ctx: Context): RefinedType2 =
+      if ((parent eq this.parent) && (name1 eq this.name1) && (info1 eq this.info1) && (name2 eq this.name2) && (info2 eq this.info2)) this
+      else RefinedType(parent, name1, rt => info1.substThis(this, RefinedThis(rt)), name2, rt => info2.substThis(this, RefinedThis(rt)))
+    override def computeHash = doHash(name1, name2, info1, info2, parent)
+  }
+
+  class RefinedTypeN(parent: Type, val names: List[Name], infofs: List[RefinedType => Type]) extends RefinedType(parent) {
+    val infos = infofs map (_(this))
+    def info(name: Name): Type = {
       var ns = names
       var is = infos
-      var denot: Denotation = NoDenotation
-      while (ns.nonEmpty && (denot eq NoDenotation)) {
-        if (ns.head == name)
-          denot = new JointRefDenotation(NoSymbol, is.head.substThis(this, pre), Period.allInRun(ctx.runId))
+      while (ns.nonEmpty) {
+        if (ns.head == name) return is.head
         ns = ns.tail
         is = is.tail
       }
-      denot
+      NoType
     }
-
     override def computeHash = doHash(names, parent, infos)
   }
 
@@ -1052,8 +1132,14 @@ object Types {
           tp.derivedTypeBounds(this(lo), this(hi))
         }
 
-      case tp @ RefinedType(parent, names) =>
-        tp.derivedRefinedType(this(parent), names, tp.infos mapConserve this)
+      case tp: RefinedType1 =>
+        tp.derivedRefinedType1(this(tp.parent), tp.name1, this(tp.info1))
+
+      case tp: RefinedType2 =>
+        tp.derivedRefinedType2(this(tp.parent), tp.name1, this(tp.info1), tp.name2, this(tp.info2))
+
+      case tp: RefinedTypeN =>
+        tp.derivedRefinedType(this(tp.parent), tp.names, tp.infos mapConserve this)
 
       case tp @ AnnotatedType(annots, underlying) =>
         tp.derivedAnnotatedType(mapOverAnnotations(annots), this(underlying))
@@ -1122,8 +1208,14 @@ object Types {
       case TypeBounds(lo, hi) =>
         this(this(x, lo), hi)
 
-      case tp @ RefinedType(parent, names) =>
-        (this(x, parent) /: tp.infos)(apply)
+      case tp: RefinedType1 =>
+        this(this(x, tp.parent), tp.info1)
+
+      case tp: RefinedType2 =>
+        this(this(this(x, tp.parent), tp.info1), tp.info2)
+
+      case tp: RefinedTypeN =>
+        (this(x, tp.parent) /: tp.infos)(apply)
 
       case AnnotatedType(annots, underlying) =>
         this((x /: annots)(apply), underlying)

@@ -122,6 +122,13 @@ object TypeComparers {
         val base = tp1.baseType(clazz2)
         base.exists && isSubArgs(base.typeArgs, tp2.typeArgs, clazz2.typeParams) ||
         fourthTry(tp1, tp2)
+      case tp2: RefinedType1 =>
+        isSubType(tp1, tp2.parent) &&
+        isSubType(tp1.member(tp2.name1).info, tp2.info1)
+      case tp2: RefinedType2 =>
+        isSubType(tp1, tp2.parent) &&
+        isSubType(tp1.member(tp2.name1).info, tp2.info1) &&
+        isSubType(tp1.member(tp2.name2).info, tp2.info2)
       case tp2: RefinedType =>
         isSubType(tp1, tp2.parent) &&
         ((tp2.names, tp2.infos).zipped forall ((name, info) =>
@@ -178,8 +185,8 @@ object TypeComparers {
          (tp1 eq defn.NullType) && tp2.typeSymbol.isNonValueClass
          ||
          (!tp1.symbol.isClass && isSubType(tp1.info.bounds.hi, tp2)))
-      case RefinedType(parent, _) =>
-        isSubType(parent, tp2)
+      case tp1: RefinedType =>
+        isSubType(tp1.parent, tp2)
       case AndType(tp11, tp12) =>
         isSubType(tp11, tp2) || isSubType(tp12, tp2)
       case OrType(tp11, tp12) =>
