@@ -117,17 +117,9 @@ object TypeComparers {
     def thirdTry(tp1: Type, tp2: Type): Boolean = tp2 match {
       case tp2: TypeRef =>
         thirdTryRef(tp1, tp2)
-      case tp2: RefinedType1 =>
-        isSubType(tp1, tp2.parent) &&
-        isSubType(tp1.member(tp2.name1).info, tp2.info1)
-      case tp2: RefinedType2 =>
-        isSubType(tp1, tp2.parent) &&
-        isSubType(tp1.member(tp2.name1).info, tp2.info1) &&
-        isSubType(tp1.member(tp2.name2).info, tp2.info2)
       case tp2: RefinedType =>
         isSubType(tp1, tp2.parent) &&
-        ((tp2.names, tp2.infos).zipped forall ((name, info) =>
-          isSubType(tp1.member(name).info, info)))
+        isSubType(tp1.member(tp2.name).info, tp2.info)
       case AndType(tp21, tp22) =>
         isSubType(tp1, tp21) && isSubType(tp1, tp22)
       case OrType(tp21, tp22) =>

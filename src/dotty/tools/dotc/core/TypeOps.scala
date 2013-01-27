@@ -44,18 +44,11 @@ trait TypeOps { this: Context =>
         toPrefix(pre, clazz, thisclazz)
       case _: BoundType | NoPrefix =>
         tp
-      case tp: RefinedType1 =>
-        tp.derivedRefinedType1(
+      case tp: RefinedType =>
+        tp.derivedRefinedType(
             asSeenFrom(tp.parent, pre, clazz, theMap),
-            tp.name1,
-            asSeenFrom(tp.info1, pre, clazz, theMap))
-      case tp: RefinedType2 =>
-        tp.derivedRefinedType2(
-            asSeenFrom(tp.parent, pre, clazz, theMap),
-            tp.name1,
-            asSeenFrom(tp.info1, pre, clazz, theMap),
-            tp.name2,
-            asSeenFrom(tp.info2, pre, clazz, theMap))
+            tp.name,
+            asSeenFrom(tp.info, pre, clazz, theMap))
       case _ =>
         (if (theMap != null) theMap else new AsSeenFromMap(pre, clazz))
           .mapOver(tp)
@@ -73,11 +66,6 @@ trait TypeOps { this: Context =>
       case OrType(l, r) => isAbstractIntersection(l) & isAbstractIntersection(r)
       case _ => false
     }
-    def containsName(names: Set[Name], tp: RefinedType): Boolean = tp match {
-      case tp: RefinedType1 => names contains tp.name1
-      case tp: RefinedType2 => (names contains tp.name1) || (names contains tp.name2)
-      case _ => tp.names exists (names contains)
-    }
     def test = {
       tp match {
         case ThisType(_) =>
@@ -85,7 +73,7 @@ trait TypeOps { this: Context =>
         case tp: RefinedType =>
           tp.parent.isVolatile ||
             isAbstractIntersection(tp.parent) &&
-            containsName(tp.abstractMemberNames(tp), tp)
+            (tp.abstractMemberNames(tp) contains tp.name)
         case tp: TypeProxy =>
           tp.underlying.isVolatile
         case AndType(l, r) =>
