@@ -21,61 +21,44 @@ trait TypeOps { this: Context =>
       else
         toPrefix(pre.baseType(clazz).normalizedPrefix, clazz.owner, thisclazz)
 
-    def toInstance(pre: Type, clazz: Symbol, tparam: Symbol): Type = {
-      if (skipPrefixOf(pre, clazz)) tp
-      else {
-        val tparamOwner = tparam.owner
-
-        def throwError =
-          if (tparamOwner.info.parents exists (_.isErroneous))
-            ErrorType // don't be overzealous with throwing exceptions, see #2641
-          else
-            throw new Error(
-              s"something is wrong (wrong class file?): ${tparam.showLocated} cannot be instantiated from ${pre.widen.show}")
-
-        def prefixMatches = pre.typeSymbol isNonBottomSubClass tparamOwner
-
-        val basePre = pre.baseType(clazz)
-
-        def instParamFrom(typeInst: Type): Type = typeInst match {
-          case ConstantType(_) =>
-            // have to deconst because it may be a Class[T].
-            instParamFrom(typeInst.deconst)
-          case AppliedType(tycon, baseArgs) =>
-            instParam(tycon.typeParams, baseArgs)
-          case _ =>
-            throwError
-        }
-
-        def instParam(ps: List[Symbol], as: List[Type]): Type =
-          if (as.isEmpty) tp
-          else if (ps.isEmpty) throwError
-          else if (tparam eq ps.head)
-            if (as.head.exists) as.head else tp
-          else instParam(ps.tail, as.tail)
-
-        if (tparamOwner == clazz && prefixMatches) instParamFrom(basePre)
-        else toInstance(basePre.normalizedPrefix, clazz.owner, tparam)
-      }
-    }
-
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
-        if (tp.symbol.isTypeParameter) toInstance(pre, clazz, sym)
-        else if (sym.isStatic) tp
-        else tp.derivedNamedType(asSeenFrom(tp.prefix, pre, clazz, theMap), tp.name)
+        if (sym.isStatic) tp
+        else {
+          val pre0 = tp.prefix
+          val pre1 = asSeenFrom(pre0, pre, clazz, theMap)
+          if (pre1 eq pre0) tp
+          else {
+            val tp1 = NamedType(pre1, tp.name)
+            if (sym.isTypeParameter) {
+              // short-circuit instantiated type parameters
+              // by replacing pre.tp with its alias, if it has one.
+              val tp2 = tp1.info
+              if (tp2.isAliasTypeBounds) return tp2.bounds.hi
+            }
+            tp1
+          }
+        }
       case ThisType(thisclazz) =>
         toPrefix(pre, clazz, thisclazz)
+      case _: BoundType | NoPrefix =>
+        tp
+      case tp: RefinedType1 =>
+        tp.derivedRefinedType1(
+            asSeenFrom(tp.parent, pre, clazz, theMap),
+            tp.name1,
+            asSeenFrom(tp.info1, pre, clazz, theMap))
+      case tp: RefinedType2 =>
+        tp.derivedRefinedType2(
+            asSeenFrom(tp.parent, pre, clazz, theMap),
+            tp.name1,
+            asSeenFrom(tp.info1, pre, clazz, theMap),
+            tp.name2,
+            asSeenFrom(tp.info2, pre, clazz, theMap))
       case _ =>
-        val asSeenFromMap = if (theMap != null) theMap else new AsSeenFromMap(pre, clazz)
-        tp match {
-          case tp: AppliedType =>
-            tp.derivedAppliedType(
-              asSeenFromMap(tp.tycon), tp.targs mapConserve asSeenFromMap)
-          case _ =>
-            asSeenFromMap mapOver tp
-        }
+        (if (theMap != null) theMap else new AsSeenFromMap(pre, clazz))
+          .mapOver(tp)
     }
   }
 

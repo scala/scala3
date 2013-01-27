@@ -44,7 +44,6 @@ object Types {
    *        |                                 +- ExprType
    *        |                                 +- AnnotatedType
    *        +- GroundType -+- PolyParam
-   *                       +- AppliedType
    *                       +- RefinedType
    *                       +- AndType
    *                       +- OrType
@@ -139,6 +138,14 @@ object Types {
       case _ => false
     }
 
+    /** Is this type a TypeBounds instance, with lower and upper bounds
+     *  that are identical?
+     */
+    final def isAliasTypeBounds: Boolean = this match {
+      case tp: TypeBounds => tp.lo eq tp.hi
+      case _ => false
+    }
+
     /** This type seen as a TypeBounds */
     final def bounds(implicit ctx: Context): TypeBounds = this match {
       case tp: TypeBounds => tp
@@ -195,42 +202,41 @@ object Types {
     /** Substitute all types of the form `PolyParam(from, N)` by
      *  `PolyParam(to, N)`.
      */
-    final def subst(from: PolyType, to: PolyType)(implicit ctx: Context): Type =
+    final def subst(from: BindingType, to: BindingType)(implicit ctx: Context): Type =
       ctx.subst(this, from, to, null)
-
-    /** Substitute all types of the form `MethodParam(from, N)` by
-     *  `MethodParam(to, N)`.
-     */
-    final def subst(from: MethodType, to: MethodType)(implicit ctx: Context): Type =
-      if (from.isDependent) ctx.subst(this, from, to, null)
-      else this
 
     /** Substitute all occurrences of `This(clazz)` by `tp` */
     final def substThis(clazz: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
       ctx.substThis(this, clazz, tp, null)
 
-    /** Substitute all occurrences of `RefinedThis(from)` by `tp` */
-    final def substThis(from: RefinedType, tp: Type)(implicit ctx: Context): Type =
-      ctx.substThis(this, from, tp, null)
+    /** Substitute all occurrences of `RefinedThis(rt)` by `tp` */
+    final def substThis(rt: RefinedType, tp: Type)(implicit ctx: Context): Type =
+      ctx.substThis(this, rt, tp, null)
 
     /** For a ClassInfo type, its parents,
-     *  For an AndType, its operands,
-     *  For an applied type, the instantiated parents of its base type.
      *  Inherited by all type proxies. Empty for all other types.
      *  Overwritten in ClassInfo, where parents is cached.
      */
-    def parents(implicit ctx: Context): List[Type] = this match {
-      case tp: AppliedType =>
-        val tycon = tp.tycon
-        tycon.parents.mapConserve(_.subst(tycon.typeParams, tp.targs))
+    def parents(implicit ctx: Context): List[TypeRef] = this match {
+      case tp: TypeProxy =>
+        tp.underlying.parents
+      case _ => List()
+    }
+
+    /** The elements of an AndType or OrType */
+    def factors(implicit ctx: Context): List[Type] = this match {
       case tp: AndType =>
         def components(tp: Type): List[Type] = tp match {
           case AndType(tp1, tp2) => components(tp1) ++ components(tp2)
           case _ => List(tp)
         }
         components(tp)
-      case tp: TypeProxy =>
-        tp.underlying.parents
+      case tp: OrType =>
+        def components(tp: Type): List[Type] = tp match {
+          case OrType(tp1, tp2) => components(tp1) ++ components(tp2)
+          case _ => List(tp)
+        }
+        components(tp)
       case _ => List()
     }
 
@@ -302,8 +308,11 @@ object Types {
      */
     final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: RefinedType =>
-        tp.parent.findMember(name, pre, excluded | Flags.Private) &
-          tp.findDecl(name, pre)
+        val denot = tp.findDecl(name, pre)
+        if ((denot.symbol is TypeParam) && denot.info.isAliasTypeBounds)
+          denot
+        else
+          tp.parent.findMember(name, pre, excluded | Flags.Private) & denot
       case tp: TypeProxy =>
         tp.underlying.findMember(name, pre, excluded)
       case tp: ClassInfo =>
@@ -762,20 +771,23 @@ object Types {
 
   // --- Refined Type ---------------------------------------------------------
 
-  abstract case class RefinedType(parent: Type) extends CachedProxyType {
+  abstract case class RefinedType(parent: Type) extends CachedProxyType with BindingType {
 
     override def underlying(implicit ctx: Context) = parent
 
     def derivedRefinedType(parent: Type, names: List[Name], infos: List[Type])(implicit ctx: Context): RefinedType =
       if ((parent eq this.parent) && (names eq this.names) && (infos eq this.infos)) this
       else
-        RefinedType(parent, names, infos map (info => (rt: RefinedType) => info.substThis(this, RefinedThis(rt))))
+        RefinedType(parent, names, infos map (info => (rt: RefinedType) => info.subst(this, rt)))
 
     def names: List[Name]
 
     def infos: List[Type]
 
     def info(name: Name): Type
+
+    // needed???
+    //def refine(tp: Type)(implicit ctx: Context): Type
 
     def findDecl(name: Name, pre: Type)(implicit ctx: Context): Denotation = {
       val tpe = info(name)
@@ -814,6 +826,12 @@ object Types {
     def derivedRefinedType1(parent: Type, name1: Name, info1: Type)(implicit ctx: Context): RefinedType1 =
       if ((parent eq this.parent) && (name1 eq this.name1) && (info1 eq this.info1)) this
       else RefinedType(parent, name1, rt => info1.substThis(this, RefinedThis(rt)))
+
+    /*def refine(parent: Type)(implicit ctx: Context) =
+      if (parent.nonPrivateMember(name1).exists)
+        derivedRefinedType1(parent, name1, info1)
+      else parent*/
+
     override def computeHash = doHash(name1, info1, parent)
   }
 
@@ -826,14 +844,23 @@ object Types {
       if (name == name1) info1
       else if (name == name2) info2
       else NoType
+
     def derivedRefinedType2(parent: Type, name1: Name, info1: Type, name2: Name, info2: Type)(implicit ctx: Context): RefinedType2 =
       if ((parent eq this.parent) && (name1 eq this.name1) && (info1 eq this.info1) && (name2 eq this.name2) && (info2 eq this.info2)) this
       else RefinedType(parent, name1, rt => info1.substThis(this, RefinedThis(rt)), name2, rt => info2.substThis(this, RefinedThis(rt)))
+
+    /*def refine(parent: Type)(implicit ctx: Context) =
+      if (parent.nonPrivateMember(name1).exists ||
+          parent.nonPrivateMember(name2).exists)
+        derivedRefinedType2(parent, name1, info1, name2, info2)
+      else parent*/
+
     override def computeHash = doHash(name1, name2, info1, info2, parent)
   }
 
   class RefinedTypeN(parent: Type, val names: List[Name], infofs: List[RefinedType => Type]) extends RefinedType(parent) {
     val infos = infofs map (_(this))
+
     def info(name: Name): Type = {
       var ns = names
       var is = infos
@@ -844,6 +871,12 @@ object Types {
       }
       NoType
     }
+
+    /*def refine(parent: Type)(implicit ctx: Context) =
+      if (names exists (parent.nonPrivateMember(_).exists))
+        derivedRefinedType(parent, names, infos)
+      else parent*/
+
     override def computeHash = doHash(names, parent, infos)
   }
 
@@ -884,11 +917,13 @@ object Types {
 
   // ----- Method types: MethodType/ExprType/PolyType/MethodParam/PolyParam ---------------
 
+  trait BindingType extends Type
+
   // Note: method types are cached whereas poly types are not.
   // The reason is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
-  abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type) extends CachedGroundType {
+  abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type) extends CachedGroundType with BindingType {
     lazy val resultType = resultTypeExp(this)
     def isJava = false
     def isImplicit = false
@@ -962,7 +997,8 @@ object Types {
       unique(new CachedExprType(resultType))
   }
 
-  case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type) extends UncachedGroundType {
+  case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
+      extends UncachedGroundType with BindingType {
     lazy val paramBounds = paramBoundsExp(this)
     lazy val resultType = resultTypeExp(this)
 
@@ -987,19 +1023,31 @@ object Types {
     }
   }
 
-  case class MethodParam(mt: MethodType, paramNum: Int) extends UncachedProxyType with SingletonType {
-    override def underlying(implicit ctx: Context) = mt.paramTypes(paramNum)
-    override def hashCode = doHash(System.identityHashCode(mt) + paramNum)
+  abstract class BoundType extends UncachedProxyType {
+    type BT <: BindingType
+    def binder: BT
+    def copy(bt: BT): Type
   }
 
-  case class RefinedThis(rt: RefinedType) extends UncachedProxyType with SingletonType {
-    override def underlying(implicit ctx: Context) = rt.parent
-    override def hashCode = doHash(System.identityHashCode(rt))
+  case class MethodParam(binder: MethodType, paramNum: Int) extends BoundType with SingletonType {
+    type BT = MethodType
+    override def underlying(implicit ctx: Context) = binder.paramTypes(paramNum)
+    override def hashCode = doHash(System.identityHashCode(binder) + paramNum)
+    def copy(bt: BT) = MethodParam(bt, paramNum)
   }
 
-  case class PolyParam(pt: PolyType, paramNum: Int) extends UncachedProxyType {
-    override def underlying(implicit ctx: Context) = pt.paramBounds(paramNum).hi
+  case class PolyParam(binder: PolyType, paramNum: Int) extends BoundType {
+    type BT = PolyType
+    override def underlying(implicit ctx: Context) = binder.paramBounds(paramNum).hi
+    def copy(bt: BT) = PolyParam(bt, paramNum)
     // no hashCode needed because cycle is broken in PolyType
+  }
+
+  case class RefinedThis(binder: RefinedType) extends BoundType with SingletonType {
+    type BT = RefinedType
+    override def underlying(implicit ctx: Context) = binder.parent
+    def copy(bt: BT) = RefinedThis(bt)
+    override def hashCode = doHash(System.identityHashCode(binder))
   }
 
   // ------ ClassInfo, Type Bounds ------------------------------------------------------------
@@ -1013,11 +1061,11 @@ object Types {
       NamedType(prefix, classd.symbol.name)
 
     // cached because baseType needs parents
-    private var parentsCache: List[Type] = null
+    private var parentsCache: List[TypeRef] = null
 
-    override def parents(implicit ctx: Context): List[Type] = {
+    override def parents(implicit ctx: Context): List[TypeRef] = {
       if (parentsCache == null)
-        parentsCache = classd.parents.mapConserve(_.substThis(classd.symbol, prefix))
+        parentsCache = classd.parents.mapConserve(_.substThis(classd.symbol, prefix).asInstanceOf[TypeRef])
       parentsCache
     }
 
@@ -1104,12 +1152,17 @@ object Types {
       case tp: NamedType =>
         tp.derivedNamedType(this(tp.prefix), tp.name)
 
-      case ThisType(_)
-        | MethodParam(_, _)
-        | PolyParam(_, _) => tp
+      case _: ThisType
+         | _: BoundType => tp
 
-      case tp @ AppliedType(tycon, targs) =>
-        tp.derivedAppliedType(this(tycon), targs mapConserve this)
+      case tp: RefinedType1 =>
+        tp.derivedRefinedType1(this(tp.parent), tp.name1, this(tp.info1))
+
+      case tp: RefinedType2 =>
+        tp.derivedRefinedType2(this(tp.parent), tp.name1, this(tp.info1), tp.name2, this(tp.info2))
+
+      case tp: RefinedTypeN =>
+        tp.derivedRefinedType(this(tp.parent), tp.names, tp.infos mapConserve this)
 
       case tp @ PolyType(pnames) =>
         tp.derivedPolyType(
@@ -1131,15 +1184,6 @@ object Types {
         } else {
           tp.derivedTypeBounds(this(lo), this(hi))
         }
-
-      case tp: RefinedType1 =>
-        tp.derivedRefinedType1(this(tp.parent), tp.name1, this(tp.info1))
-
-      case tp: RefinedType2 =>
-        tp.derivedRefinedType2(this(tp.parent), tp.name1, this(tp.info1), tp.name2, this(tp.info2))
-
-      case tp: RefinedTypeN =>
-        tp.derivedRefinedType(this(tp.parent), tp.names, tp.infos mapConserve this)
 
       case tp @ AnnotatedType(annots, underlying) =>
         tp.derivedAnnotatedType(mapOverAnnotations(annots), this(underlying))
@@ -1166,12 +1210,6 @@ object Types {
     }
   }
 
-  class InstRefinedMap(rt: RefinedType)(implicit ctx: Context) extends TypeMap {
-    def apply(tp: Type) = tp match {
-      case RefinedThis(`rt`) => rt.parent
-      case _ => mapOver(tp)
-    }
-  }
 
   // ----- TypeAccumulators ----------------------------------------------------
 
@@ -1184,14 +1222,17 @@ object Types {
       case tp: NamedType =>
         this(x, tp.prefix)
 
-      case ThisType(_)
-        | MethodParam(_, _)
-        | PolyParam(_, _)
-        | ConstantType(_)
-        | NoPrefix => x
+      case _: ThisType
+         | _: BoundType => x
 
-      case AppliedType(tycon, targs) =>
-        (this(x, tycon) /: targs)(this)
+      case tp: RefinedType1 =>
+        this(this(x, tp.parent), tp.info1)
+
+      case tp: RefinedType2 =>
+        this(this(this(x, tp.parent), tp.info1), tp.info2)
+
+      case tp: RefinedTypeN =>
+        (this(x, tp.parent) /: tp.infos)(apply)
 
       case tp @ PolyType(pnames) =>
         this((x /: tp.paramBounds)(this), tp.resultType)
@@ -1207,15 +1248,6 @@ object Types {
 
       case TypeBounds(lo, hi) =>
         this(this(x, lo), hi)
-
-      case tp: RefinedType1 =>
-        this(this(x, tp.parent), tp.info1)
-
-      case tp: RefinedType2 =>
-        this(this(this(x, tp.parent), tp.info1), tp.info2)
-
-      case tp: RefinedTypeN =>
-        (this(x, tp.parent) /: tp.infos)(apply)
 
       case AnnotatedType(annots, underlying) =>
         this((x /: annots)(apply), underlying)

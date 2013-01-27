@@ -356,7 +356,7 @@ object SymDenotations {
 
     def typeParams: List[TypeSymbol]
 
-    def parents: List[Type]
+    def parents: List[TypeRef]
 
     def decls: Scope
 
@@ -594,7 +594,7 @@ object SymDenotations {
       val name: Name,
       initFlags: FlagSet,
       val typeParams: List[TypeSymbol],
-      val parents: List[Type],
+      val parents: List[TypeRef],
       val decls: Scope,
       assocFile: AbstractFile = null
   )(implicit ctx: Context) extends ClassDenotation(initFlags, assocFile)
@@ -608,7 +608,7 @@ object SymDenotations {
     )(implicit ctx: Context) extends ClassDenotation(initFlags, assocFile) with LazyCompletion {
 
     protected var _typeParams: List[TypeSymbol] = null
-    protected var _parents: List[Type] = null
+    protected var _parents: List[TypeRef] = null
     protected var _decls: Scope = null
 
     final def typeParams: List[TypeSymbol] = {
@@ -616,7 +616,7 @@ object SymDenotations {
       if (tparams != null) tparams else { tryLoad(); typeParams }
     }
 
-    final def parents: List[Type] = {
+    final def parents: List[TypeRef] = {
       val ps = _parents
       if (ps != null) ps else { tryComplete(); parents }
     }

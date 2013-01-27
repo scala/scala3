@@ -7,46 +7,30 @@ import Types._, Symbols._, Contexts._
  */
 trait Substituters { this: Context =>
 
-  final def subst(tp: Type, from: PolyType, to: PolyType, map: SubstPolyMap = null): Type =
+  final def subst(tp: Type, from: BindingType, to: BindingType, map: SubstBindingMap): Type =
     tp match {
-      case tp @ PolyParam(pt, n) =>
-        if (pt eq from) PolyParam(to, n) else tp
+      case tp: BoundType =>
+        if (tp.binder eq from) tp.copy(to.asInstanceOf[tp.BT]) else tp
       case tp: NamedType =>
         if (tp.symbol.isStatic) tp
         else tp.derivedNamedType(subst(tp.prefix, from, to, map), tp.name)
-      case ThisType(_)
-        | MethodParam(_, _)
-        | NoPrefix => tp
+      case _: ThisType | NoPrefix =>
+        tp
+      case tp: RefinedType1 =>
+        tp.derivedRefinedType1(
+            subst(tp.parent, from, to, map),
+            tp.name1,
+            subst(tp.info1, from, to, map))
+      case tp: RefinedType2 =>
+        tp.derivedRefinedType2(
+            subst(tp.parent, from, to, map),
+            tp.name1,
+            subst(tp.info1, from, to, map),
+            tp.name2,
+            subst(tp.info2, from, to, map))
       case _ =>
-        val substMap = if (map != null) map else new SubstPolyMap(from, to)
-        tp match {
-          case tp: AppliedType =>
-            tp.derivedAppliedType(
-              substMap(tp.tycon), tp.typeArgs mapConserve substMap)
-          case _ =>
-            substMap mapOver tp
-        }
-    }
-
-  final def subst(tp: Type, from: MethodType, to: MethodType, map: SubstMethodMap): Type =
-    tp match {
-      case tp @ MethodParam(mt, n) =>
-        if (mt eq from) MethodParam(to, n) else tp
-      case tp: NamedType =>
-        if (tp.symbol.isStatic) tp
-        else tp.derivedNamedType(subst(tp.prefix, from, to, map), tp.name)
-      case ThisType(_)
-        | PolyParam(_, _)
-        | NoPrefix => tp
-      case _ =>
-        val substMap = if (map != null) map else new SubstMethodMap(from, to)
-        tp match {
-          case tp: AppliedType =>
-            tp.derivedAppliedType(
-              substMap(tp.tycon), tp.typeArgs mapConserve substMap)
-          case _ =>
-            substMap mapOver tp
-        }
+        (if (map != null) map else new SubstBindingMap(from, to))
+          .mapOver(tp)
     }
 
   final def subst1(tp: Type, from: Symbol, to: Type, map: Subst1Map): Type = {
@@ -59,19 +43,23 @@ trait Substituters { this: Context =>
         }
         if (sym.isStatic) tp
         else tp.derivedNamedType(subst1(tp.prefix, from, to, map), tp.name)
-      case ThisType(_)
-        | MethodParam(_, _)
-        | PolyParam(_, _)
-        | NoPrefix => tp
+      case _: ThisType | _: BoundType | NoPrefix =>
+        tp
+      case tp: RefinedType1 =>
+        tp.derivedRefinedType1(
+            subst1(tp.parent, from, to, map),
+            tp.name1,
+            subst1(tp.info1, from, to, map))
+      case tp: RefinedType2 =>
+        tp.derivedRefinedType2(
+            subst1(tp.parent, from, to, map),
+            tp.name1,
+            subst1(tp.info1, from, to, map),
+            tp.name2,
+            subst1 (tp.info2, from, to, map))
       case _ =>
-        val substMap = if (map != null) map else new Subst1Map(from, to)
-        tp match {
-          case tp: AppliedType =>
-            tp.derivedAppliedType(
-              substMap(tp.tycon), tp.typeArgs mapConserve substMap)
-          case _ =>
-            substMap mapOver tp
-        }
+        (if (map != null) map else new Subst1Map(from, to))
+          .mapOver(tp)
     }
   }
 
@@ -87,19 +75,23 @@ trait Substituters { this: Context =>
         }
         if (sym.isStatic) tp
         else tp.derivedNamedType(subst2(tp.prefix, from1, to1, from2, to2, map), tp.name)
-      case ThisType(_)
-        | MethodParam(_, _)
-        | PolyParam(_, _)
-        | NoPrefix => tp
+      case _: ThisType | _: BoundType | NoPrefix =>
+        tp
+      case tp: RefinedType1 =>
+        tp.derivedRefinedType1(
+            subst2(tp.parent, from1, to1, from2, to2, map),
+            tp.name1,
+            subst2(tp.info1, from1, to1, from2, to2, map))
+      case tp: RefinedType2 =>
+        tp.derivedRefinedType2(
+            subst2(tp.parent, from1, to1, from2, to2, map),
+            tp.name1,
+            subst2(tp.info1, from1, to1, from2, to2, map),
+            tp.name2,
+            subst2(tp.info2, from1, to1, from2, to2, map))
       case _ =>
-        val substMap = if (map != null) map else new Subst2Map(from1, to1, from2, to2)
-        tp match {
-          case tp: AppliedType =>
-            tp.derivedAppliedType(
-              substMap(tp.tycon), tp.typeArgs mapConserve substMap)
-          case _ =>
-            substMap mapOver tp
-        }
+        (if (map != null) map else new Subst2Map(from1, to1, from2, to2))
+          .mapOver(tp)
     }
   }
 
@@ -119,19 +111,23 @@ trait Substituters { this: Context =>
         }
         if (sym.isStatic) tp
         else tp.derivedNamedType(subst(tp.prefix, from, to, map), tp.name)
-      case ThisType(_)
-        | MethodParam(_, _)
-        | PolyParam(_, _)
-        | NoPrefix => tp
+      case _: ThisType | _: BoundType | NoPrefix =>
+        tp
+      case tp: RefinedType1 =>
+        tp.derivedRefinedType1(
+            subst(tp.parent, from, to, map),
+            tp.name1,
+            subst(tp.info1, from, to, map))
+      case tp: RefinedType2 =>
+        tp.derivedRefinedType2(
+            subst(tp.parent, from, to, map),
+            tp.name1,
+            subst(tp.info1, from, to, map),
+            tp.name2,
+            subst(tp.info2, from, to, map))
       case _ =>
-        val substMap = if (map != null) map else new SubstMap(from, to)
-        tp match {
-          case tp: AppliedType =>
-            tp.derivedAppliedType(
-              substMap(tp.tycon), tp.typeArgs mapConserve substMap)
-          case _ =>
-            substMap mapOver tp
-        }
+        (if (map != null) map else new SubstMap(from, to))
+          .mapOver(tp)
     }
   }
 
@@ -142,18 +138,23 @@ trait Substituters { this: Context =>
       case tp: NamedType =>
         if (tp.symbol.isStatic) tp
         else tp.derivedNamedType(substThis(tp.prefix, from, to, map), tp.name)
-      case MethodParam(_, _)
-        | PolyParam(_, _)
-        | NoPrefix => tp
+      case _: BoundType | NoPrefix =>
+        tp
+      case tp: RefinedType1 =>
+        tp.derivedRefinedType1(
+            substThis(tp.parent, from, to, map),
+            tp.name1,
+            substThis(tp.info1, from, to, map))
+      case tp: RefinedType2 =>
+        tp.derivedRefinedType2(
+            substThis(tp.parent, from, to, map),
+            tp.name1,
+            substThis(tp.info1, from, to, map),
+            tp.name2,
+            substThis(tp.info2, from, to, map))
       case _ =>
-        val substMap = if (map != null) map else new SubstThisMap(from, to)
-        tp match {
-          case tp: AppliedType =>
-            tp.derivedAppliedType(
-              substMap(tp.tycon), tp.typeArgs mapConserve substMap)
-          case _ =>
-            substMap mapOver tp
-        }
+        (if (map != null) map else new SubstThisMap(from, to))
+          .mapOver(tp)
     }
 
   final def substThis(tp: Type, from: RefinedType, to: Type, map: SubstRefinedThisMap): Type =
@@ -163,26 +164,26 @@ trait Substituters { this: Context =>
       case tp: NamedType =>
         if (tp.symbol.isStatic) tp
         else tp.derivedNamedType(substThis(tp.prefix, from, to, map), tp.name)
-      case ThisType(_)
-        | MethodParam(_, _)
-        | PolyParam(_, _)
-        | NoPrefix => tp
+      case _: ThisType | _: BoundType | NoPrefix =>
+        tp
+      case tp: RefinedType1 =>
+        tp.derivedRefinedType1(
+            substThis(tp.parent, from, to, map),
+            tp.name1,
+            substThis(tp.info1, from, to, map))
+      case tp: RefinedType2 =>
+        tp.derivedRefinedType2(
+            substThis(tp.parent, from, to, map),
+            tp.name1,
+            substThis(tp.info1, from, to, map),
+            tp.name2,
+            substThis(tp.info2, from, to, map))
       case _ =>
-        val substMap = if (map != null) map else new SubstRefinedThisMap(from, to)
-        tp match {
-          case tp: AppliedType =>
-            tp.derivedAppliedType(
-              substMap(tp.tycon), tp.typeArgs mapConserve substMap)
-          case _ =>
-            substMap mapOver tp
-        }
+        (if (map != null) map else new SubstRefinedThisMap(from, to))
+          .mapOver(tp)
     }
 
-  final class SubstPolyMap(from: PolyType, to: PolyType) extends TypeMap {
-    def apply(tp: Type) = subst(tp, from, to, this)
-  }
-
-  final class SubstMethodMap(from: MethodType, to: MethodType) extends TypeMap {
+  final class SubstBindingMap(from: BindingType, to: BindingType) extends TypeMap {
     def apply(tp: Type) = subst(tp, from, to, this)
   }
 
