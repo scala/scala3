@@ -420,31 +420,14 @@ object Types {
 
     /** The type parameters of this type are:
      *  For a ClassInfo type, the type parameters of its denotation.
-     *  For an applied type, the type parameters of its constructor
-     *  that have not been instantiated yet.
      *  Inherited by type proxies.
      *  Empty list for all other types.
      */
     final def typeParams(implicit ctx: Context): List[TypeSymbol] = this match {
-      case tp: AppliedType =>
-        tp.tycon.typeParams drop tp.targs.length
-      case tp: TypeProxy =>
-        tp.underlying.typeParams
       case tp: ClassInfo =>
         tp.classd.typeParams
-      case _ => Nil
-    }
-
-    /** The type arguments of this type are:
-     *  For an Applied type, its type arguments.
-     *  Inherited by type proxies.
-     *  Empty list for all other types.
-     */
-    final def typeArgs(implicit ctx: Context): List[Type] = this match {
-      case tp: AppliedType =>
-        tp.targs
       case tp: TypeProxy =>
-        tp.underlying.typeArgs
+        tp.underlying.typeParams
       case _ => Nil
     }
 
@@ -735,28 +718,6 @@ object Types {
       unique(new CachedConstantType(value))
   }
 
-  // --- AppliedType -----------------------------------------------------------------
-
-  abstract case class AppliedType(tycon: Type, targs: List[Type]) extends CachedProxyType {
-
-    override def underlying(implicit ctx: Context) = tycon
-
-    def derivedAppliedType(tycon: Type, targs: List[Type])(implicit ctx: Context): Type =
-      if ((tycon eq this.tycon) && (targs eq this.targs)) this
-      else AppliedType(tycon, targs)
-
-    override def computeHash = doHash(tycon, targs)
-  }
-
-  final class CachedAppliedType(tycon: Type, targs: List[Type]) extends AppliedType(tycon, targs)
-
-  object AppliedType {
-    def apply(tycon: Type, targs: List[Type])(implicit ctx: Context) =
-      unique(new CachedAppliedType(tycon, targs))
-    def make(tycon: Type, targs: List[Type])(implicit ctx: Context) =
-      if (targs.isEmpty) tycon else apply(tycon, targs)
-  }
-
   // --- Refined Type ---------------------------------------------------------
 
   abstract case class RefinedType(parent: Type) extends CachedProxyType with BindingType {
@@ -1042,9 +1003,9 @@ object Types {
 
   abstract case class ClassInfo(prefix: Type, classd: ClassDenotation) extends CachedGroundType {
 
-    def typeTemplate(implicit ctx: Context): Type =
+/*    def typeTemplate(implicit ctx: Context): Type =
       classd.typeTemplate asSeenFrom (prefix, classd.symbol)
-
+*/
     def typeConstructor(implicit ctx: Context): Type =
       NamedType(prefix, classd.symbol.name)
 

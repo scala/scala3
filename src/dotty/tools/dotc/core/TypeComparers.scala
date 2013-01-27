@@ -117,11 +117,6 @@ object TypeComparers {
     def thirdTry(tp1: Type, tp2: Type): Boolean = tp2 match {
       case tp2: TypeRef =>
         thirdTryRef(tp1, tp2)
-      case AppliedType(tycon, targs) =>
-        val clazz2 = tycon.typeSymbol
-        val base = tp1.baseType(clazz2)
-        base.exists && isSubArgs(base.typeArgs, tp2.typeArgs, clazz2.typeParams) ||
-        fourthTry(tp1, tp2)
       case tp2: RefinedType1 =>
         isSubType(tp1, tp2.parent) &&
         isSubType(tp1.member(tp2.name1).info, tp2.info1)
@@ -169,7 +164,7 @@ object TypeComparers {
           case TypeBounds(lo1, hi1) =>
             isSubType(lo2, lo1) && isSubType(hi1, hi2)
           case tp1: ClassInfo =>
-            val tt = tp1.typeTemplate
+            val tt = tp1.typeConstructor // was typeTemplate
             lo2 <:< tt && tt <:< hi2
           case _ =>
             false

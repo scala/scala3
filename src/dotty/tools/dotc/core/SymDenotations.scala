@@ -387,6 +387,7 @@ object SymDenotations {
       typeConstructorCache
     }
 
+ /*
     private var typeTemplateCache: Type = null
 
     def typeTemplate(implicit ctx: Context): Type = {
@@ -394,7 +395,7 @@ object SymDenotations {
         AppliedType.make(typeConstructor, typeParams map (_.typeConstructor))
       typeTemplateCache
     }
-
+*/
     private var baseClassesVar: List[ClassSymbol] = null
     private var superClassBitsVar: BitSet = null
 
@@ -534,8 +535,6 @@ object SymDenotations {
     final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
 
       def computeBaseTypeOf(tp: Type): Type = tp match {
-        case AppliedType(tycon, args) =>
-          baseTypeOf(tycon).subst(tycon.typeParams, args)
         case tp: TypeProxy =>
           baseTypeOf(tp.underlying)
         case AndType(tp1, tp2) =>
@@ -547,7 +546,7 @@ object SymDenotations {
             case p :: ps1 => reduce(bt & baseTypeOf(p), ps1)
             case _ => bt
           }
-          if (classd.symbol == symbol) tp.typeTemplate
+          if (classd.symbol == symbol) tp.typeConstructor // was: typeTemplate
           else reduce(NoType, classd.parents).substThis(classd.symbol, tp.prefix)
       }
 

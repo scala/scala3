@@ -228,7 +228,7 @@ object Symbols {
     def baseClasses(implicit ctx: Context): List[ClassSymbol] = classDenot.baseClasses
 
     override def typeConstructor(implicit ctx: Context): Type = classDenot.typeConstructor
-    override def typeTemplate(implicit ctx: Context): Type = classDenot.typeTemplate
+//    override def typeTemplate(implicit ctx: Context): Type = classDenot.typeTemplate
 
     def superId(implicit ctx: Context): Int = {
       val hint = superIdHint
