@@ -1,18 +1,18 @@
 package dotty.tools.dotc.core
 
-import Types._, Contexts._, Symbols._
+import Types._, Contexts._, Symbols._, Flags._
 import collection.mutable
 
-object SubTypers {
+object TypeComparers {
 
   type Constraints = Map[PolyParam, TypeBounds]
 
-  object SubTyper {
+  object TypeComparer {
     private final val LogPendingSubTypesThreshold = 50
   }
 
-  class SubTyper(_ctx: Context) extends DotClass {
-    import SubTyper._
+  class TypeComparer(_ctx: Context) extends DotClass {
+    import TypeComparer._
 
     implicit val ctx = _ctx
 
@@ -72,7 +72,7 @@ object SubTypers {
             val pre2 = tp2.prefix
             (sym1 == sym2 && (
               ctx.erasedTypes ||
-              sym1.owner.hasFlag(Flags.Package) ||
+              (sym1.owner.isPackage) ||
               isSubType(pre1, pre2))
               ||
               tp1.name == tp2.name &&
@@ -117,11 +117,13 @@ object SubTypers {
     def thirdTry(tp1: Type, tp2: Type): Boolean = tp2 match {
       case tp2: TypeRef =>
         thirdTryRef(tp1, tp2)
-      case AppliedType(tycon, targs) =>
-        val clazz2 = tycon.typeSymbol
-        val base = tp1.baseType(clazz2)
-        base.exists && isSubArgs(base.typeArgs, tp2.typeArgs, clazz2.typeParams) ||
-        fourthTry(tp1, tp2)
+      case tp2: RefinedType1 =>
+        isSubType(tp1, tp2.parent) &&
+        isSubType(tp1.member(tp2.name1).info, tp2.info1)
+      case tp2: RefinedType2 =>
+        isSubType(tp1, tp2.parent) &&
+        isSubType(tp1.member(tp2.name1).info, tp2.info1) &&
+        isSubType(tp1.member(tp2.name2).info, tp2.info2)
       case tp2: RefinedType =>
         isSubType(tp1, tp2.parent) &&
         ((tp2.names, tp2.infos).zipped forall ((name, info) =>
@@ -162,7 +164,7 @@ object SubTypers {
           case TypeBounds(lo1, hi1) =>
             isSubType(lo2, lo1) && isSubType(hi1, hi2)
           case tp1: ClassInfo =>
-            val tt = tp1.typeTemplate
+            val tt = tp1.typeConstructor // was typeTemplate
             lo2 <:< tt && tt <:< hi2
           case _ =>
             false
@@ -175,11 +177,11 @@ object SubTypers {
       case tp1: TypeRef =>
         ((tp1 eq defn.NothingType)
          ||
-         (tp1 eq defn.NullType) && tp2.typeSymbol.containsNull
+         (tp1 eq defn.NullType) && tp2.typeSymbol.isNonValueClass
          ||
          (!tp1.symbol.isClass && isSubType(tp1.info.bounds.hi, tp2)))
-      case RefinedType(parent, _) =>
-        isSubType(parent, tp2)
+      case tp1: RefinedType =>
+        isSubType(tp1.parent, tp2)
       case AndType(tp11, tp12) =>
         isSubType(tp11, tp2) || isSubType(tp12, tp2)
       case OrType(tp11, tp12) =>
@@ -202,6 +204,47 @@ object SubTypers {
         assert(tps1.isEmpty && tps2.isEmpty)
         true
     }
+
+    /** A function implementing `tp1` matches `tp2`. */
+    final def matchesType(tp1: Type, tp2: Type, alwaysMatchSimple: Boolean): Boolean = tp1 match {
+      case tp1: MethodType =>
+        tp2 match {
+          case tp2: MethodType =>
+            tp1.isImplicit == tp2.isImplicit &&
+              matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
+              matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), alwaysMatchSimple)
+          case tp2: ExprType =>
+            tp1.paramNames.isEmpty &&
+              matchesType(tp1.resultType, tp2.resultType, alwaysMatchSimple)
+          case _ =>
+            false
+        }
+      case tp1: ExprType =>
+        tp2 match {
+          case tp2: MethodType =>
+            tp2.paramNames.isEmpty &&
+              matchesType(tp1.resultType, tp2.resultType, alwaysMatchSimple)
+          case tp2: ExprType =>
+            matchesType(tp1.resultType, tp2.resultType, alwaysMatchSimple)
+          case _ =>
+            matchesType(tp1.resultType, tp2, alwaysMatchSimple)
+        }
+      case tp1: PolyType =>
+        tp2 match {
+          case tp2: PolyType =>
+            sameLength(tp1.paramNames, tp2.paramNames) &&
+              matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), alwaysMatchSimple)
+          case _ =>
+            false
+        }
+      case _ =>
+        tp2 match {
+          case _: MethodType | _: PolyType =>
+            false
+          case _ =>
+            alwaysMatchSimple || isSameType(tp1, tp2)
+        }
+      }
 
     /** Are `syms1` and `syms2` parameter lists with pairwise equivalent types? */
     private def matchingParams(formals1: List[Type], formals2: List[Type], isJava1: Boolean, isJava2: Boolean): Boolean = formals1 match {

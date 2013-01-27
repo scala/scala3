@@ -11,7 +11,8 @@ import Names._
 import Periods._
 import Decorators._
 import Contexts._
-import References._
+import Denotations._
+import SymDenotations.NoDenotation
 
 object Scopes {
 
@@ -113,7 +114,7 @@ object Scopes {
      *  @param sym ...
      */
     def enterUnique(sym: Symbol)(implicit ctx: Context) {
-      assert(lookup(sym.name) == NoSymbol, (sym.locatedFullString, lookup(sym.name).locatedFullString))
+      assert(lookup(sym.name) == NoSymbol, (sym.showLocated, lookup(sym.name).showLocated))
       enter(sym)
     }
 
@@ -194,12 +195,12 @@ object Scopes {
       def next(): Symbol = { val r = e.sym; e = lookupNextEntry(e); r }
     }
 
-    /** The reference set of all the symbols with given name in this scope */
-    def refsNamed(name: Name)(implicit ctx: Context): RefSet = {
-      var syms: RefSet = NoRef
+    /** The denotation set of all the symbols with given name in this scope */
+    def denotsNamed(name: Name)(implicit ctx: Context): DenotationSet = {
+      var syms: DenotationSet = NoDenotation
       var e = lookupEntry(name)
       while (e != null) {
-        syms = syms union e.sym.thisRef
+        syms = syms union e.sym.denot
         e = lookupNextEntry(e)
       }
       syms
@@ -269,11 +270,6 @@ object Scopes {
 
     @deprecated("Use `toList.reverse` instead", "2.10.0")
     def reverse: List[Symbol] = toList.reverse
-
-    override def mkString(start: String, sep: String, end: String) =
-      toList.map(_.defString).mkString(start, sep, end)
-
-    override def toString(): String = mkString("Scope{\n  ", ";\n  ", "\n}")
   }
 
   /** Create a new scope */

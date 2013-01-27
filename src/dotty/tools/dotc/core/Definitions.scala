@@ -6,6 +6,7 @@ class Definitions(implicit ctx: Context) {
   private var _isInitialized = false
   def isInitialized = _isInitialized
 
+  lazy val RootClass: ClassSymbol = ???
   lazy val AnyClass: ClassSymbol = ???
   lazy val AnyType = AnyClass.typeConstructor
   lazy val AnyValClass: ClassSymbol = ???
@@ -18,6 +19,7 @@ class Definitions(implicit ctx: Context) {
   lazy val SingletonClass: ClassSymbol = ???
   lazy val SingletonType = SingletonClass.typeConstructor
   lazy val ArrayClass: ClassSymbol = ???
+  lazy val uncheckedStableClass: ClassSymbol = ???
 
   def init() =
     if (!isInitialized) {

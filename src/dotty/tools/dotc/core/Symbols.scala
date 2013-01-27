@@ -2,195 +2,181 @@ package dotty.tools.dotc
 package core
 
 import Periods._
-import DenotationTransformers._
+import Transformers._
 import Names._
 import Flags._
 import java.lang.AssertionError
 import Decorators._
 import Symbols._
 import Contexts._
-import Denotations._
-import Types._
-import References.{Reference, SymRef, UniqueSymRef, OverloadedRef}
+import SymDenotations._
+import Types._, Annotations._
+import Denotations.{Denotation, SingleDenotation, MultiDenotation}
 import collection.mutable
-
-trait Symbols { self: Context =>
-
-  import Symbols._
-
-  // Infrastructure to assign unique superclass idents to class symbols that are superclasses of
-  // some other class
-
-  private final val InitialSuperIdsSize = 4096
-
-  /** A map from a superclass id to the class that has it */
-  private var classOfId = Array.ofDim[ClassSymbol](InitialSuperIdsSize)
-
-  /** A map from a superclass to its superclass id */
-  private val superIdOfClass = new mutable.HashMap[ClassSymbol, Int]
-
-  /** The last allocate superclass id */
-  private var lastSuperId = -1
-
-  /** Allocate and return next free superclass id */
-  private def nextSuperId: Int = { lastSuperId += 1; lastSuperId }
-}
+import reflect.io.AbstractFile
 
 object Symbols {
 
 
-  /**
-   * A SymRef is a period-dependent reference to a denotation.
-   *  Given a period, its `deref` method resolves to a Symbol.
+  /** A Symbol represents a Scala definition/declaration or a package.
    */
-  abstract class Symbol {
+  abstract class Symbol(denotf: Symbol => SymDenotation) {
 
-    def overriddenSymbol(inclass: ClassSymbol)(implicit ctx: Context): Symbol =
-      if (owner isSubClass inclass) ???
-      else NoSymbol
-
-    def isProtected: Boolean = ???
-    def isStable: Boolean = ???
-    def accessBoundary: ClassSymbol = ???
-    def isContainedIn(boundary: ClassSymbol) = ???
-    def baseClasses: List[ClassSymbol] = ???
+     /** Is symbol different from NoSymbol? */
     def exists = true
 
-
+    /** This symbol, if it exists, otherwise the result of evaluating `that` */
     def orElse(that: => Symbol) = if (exists) this else that
 
-    /** A isAbove B   iff  A can always be used instead of B
-     */
-    def isAbove(that: Symbol)(implicit ctx: Context): Boolean =
-      (that.owner isSubClass this.owner) &&
-      (this isAsAccessible that)
-
-    /** A isBelow B   iff the reference A & B can always be simplified to A
-     */
-    def isBelow(that: Symbol)(implicit ctx: Context): Boolean =
-      (this.owner isSubClass that.owner) ||
-      (this isAsAccessible that)
-
-    def isAsAccessible(that: Symbol)(implicit ctx: Context): Boolean =
-      !this.isProtected && !that.isProtected && // protected members are incomparable
-      (that.accessBoundary isContainedIn this.accessBoundary) &&
-      this.isStable || !that.isStable
-
-
-    /** Set the denotation of this symbol.
-     */
-    def setDenotation(denot: Denotation) =
-      lastDenot = denot
+    def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
 
     /** The last denotation of this symbol */
-    protected[this] var lastDenot: Denotation = null
+    private[this] var lastDenot: SymDenotation = denotf(this)
 
-    /** Load denotation of this symbol */
-    protected def loadDenot(implicit ctx: Context): Denotation
-
-    /** The denotation of this symbol
-     */
-    def deref(implicit ctx: Context): Denotation = {
-      val denot = lastDenot
-      if (denot != null && containsPeriod(denot.valid, ctx.period))
-        denot
-      else
-        trackedDenot
-    }
-
-    /** Get referenced denotation if lastDenot points to a different instance */
-    private def trackedDenot(implicit ctx: Context): Denotation = {
+    final def denot(implicit ctx: Context): SymDenotation = {
       var denot = lastDenot
-      if (denot == null) {
-        denot = loadDenot
-      } else {
-        val currentPeriod = ctx.period
-        val valid = denot.valid
-        val currentRunId = runIdOf(currentPeriod)
-        val validRunId = runIdOf(valid)
-        if (currentRunId != validRunId) {
-          reloadDenot
-        } else if (currentPeriod > valid) {
-          // search for containing interval as long as nextInRun
-          // increases.
-          var nextDenot = denot.nextInRun
-          while (nextDenot.valid > valid && !containsPeriod(nextDenot.valid, currentPeriod)) {
-            denot = nextDenot
-            nextDenot = nextDenot.nextInRun
-          }
-          if (nextDenot.valid > valid) {
-            // in this case, containsPeriod(nextDenot.valid, currentPeriod)
-            denot = nextDenot
-          } else {
-            // not found, denot points to highest existing variant
-            var startPid = lastPhaseIdOf(denot.valid) + 1
-            val endPid = ctx.root.nextTransformer(startPid + 1).phaseId - 1
-            nextDenot = ctx.root.nextTransformer(startPid) transform denot
-            if (nextDenot eq denot)
-              startPid = firstPhaseIdOf(denot.valid)
-            else {
-              denot.nextInRun = nextDenot
-              denot = nextDenot
-            }
-            denot.valid = intervalOf(currentRunId, startPid, endPid)
-          }
-        } else {
-          // currentPeriod < valid; in this case a denotation must exist
-          do {
-            denot = denot.nextInRun
-          } while (!containsPeriod(denot.valid, currentPeriod))
-        }
-      }
-       denot
+      if (!(denot.validFor contains ctx.period)) denot = denot.current.asInstanceOf[SymDenotation]
+      denot
     }
 
-    /**
-     * Get loaded denotation if lastDenot points to a denotation from
-     *  a different run.
+    def isType: Boolean = false
+    def isTerm: Boolean = false
+    def isClass: Boolean = false
+
+    /** Special case tests for flags that are known a-priori and do not need loading
+     *  flags.
      */
-    private def reloadDenot(implicit ctx: Context): Denotation = {
-      val initDenot = lastDenot.initial
-      val newSym: Symbol =
-        ctx.atPhase(FirstPhaseId) { implicit ctx =>
-          initDenot.owner.info.decl(initDenot.name)
-            .atSignature(thisRef.signature).symbol
-        }
-      if (newSym eq this) { // no change, change validity
-        var d = initDenot
-        do {
-          d.valid = intervalOf(ctx.runId, firstPhaseIdOf(d.valid), lastPhaseIdOf(d.valid))
-          d = d.nextInRun
-        } while (d ne initDenot)
-      }
-      newSym.deref
-    }
+    def isModule(implicit ctx: Context) = denot.isModule
+    def isModuleObj(implicit ctx: Context) = denot.isModuleObj
+    def isModuleClass(implicit ctx: Context) = denot.isModuleClass
+    def isPackage(implicit ctx: Context) = denot.isPackage
+    def isPackageObj(implicit ctx: Context) = denot.isPackageObj
+    def isPackageClass(implicit ctx: Context) = denot.isPackageClass
 
-    def isType: Boolean
-    def isTerm = !isType
+    /** A unique, densely packed integer tag for each class symbol, -1
+     *  for all other symbols. To save memory, this method
+     *  should be called only if class is a super class of some other class.
+     */
+    def superId: Int = -1
 
-    def thisRef(implicit ctx: Context): SymRef = new UniqueSymRef(this, info)
+// --------- Forwarders for sym methods --------------------------
 
-    // forwarders for sym methods
-    def owner(implicit ctx: Context): Symbol = deref.owner
-    def name(implicit ctx: Context): Name = deref.name
-    def flags(implicit ctx: Context): FlagSet = deref.flags
-    def info(implicit ctx: Context): Type = deref.info
+    /** The current owner of this symbol */
+    final def owner(implicit ctx: Context): Symbol = denot.owner
 
-    def prefix(implicit ctx: Context) = owner.thisType
-    def allOverriddenSymbols: Iterator[Symbol] = ???
-    def isAsAccessibleAs(other: Symbol): Boolean = ???
-    def isAccessibleFrom(pre: Type)(implicit ctx: Context): Boolean = ???
-    def locationString: String = ???
-    def locatedFullString: String = ???
-    def defString: String = ???
+    /** The current name of this symbol */
+    final def name(implicit ctx: Context): Name = denot.name
+
+    /** The current type info of this symbol */
+    final def info(implicit ctx: Context): Type = denot.info
+
+    /** The current flag set of this symbol */
+    final def flags(implicit ctx: Context): FlagSet = denot.flags
+
+    /** The current privateWithin boundary of this symbol, NoSymbol if no boundary is given. */
+    final def privateWithin(implicit ctx: Context): Symbol = denot.privateWithin
+
+    /** The current annotations of this symbol */
+    final def annotations(implicit ctx: Context): List[Annotation] = denot.annotations
+
+    /** Does this symbol have an annotation matching the given class symbol? */
+    final def hasAnnotation(cls: Symbol)(implicit ctx: Context): Boolean = denot.hasAnnotation(cls)
+
+    /** The chain of owners of this symbol, starting with the symbol itself */
+    final def ownersIterator(implicit ctx: Context): Iterator[Symbol] = denot.ownersIterator
+
+    /** Same as `ownersIterator contains sym` but more efficient. */
+    final def hasTransOwner(sym: Symbol)(implicit ctx: Context): Boolean = denot.hasTransOwner(sym)
+
+    /** The top-level class containing this symbol, except for a toplevel module
+     *  its module class
+     */
+    def topLevelClass(implicit ctx: Context): Symbol = denot.topLevelClass
+
+    /** The package containing this symbol */
+    def enclosingPackage(implicit ctx: Context): Symbol = denot.enclosingPackage
+
+    final def associatedFile(implicit ctx: Context): AbstractFile = denot.associatedFile
+    final def binaryFile(implicit ctx: Context): AbstractFile = denot.binaryFile
+    final def sourceFile(implicit ctx: Context): AbstractFile = denot.sourceFile
+
+    final def companionClass(implicit ctx: Context): Symbol = denot.companionClass
+
+    final def companionModule(implicit ctx: Context): Symbol = denot.companionModule
+
+    final def linkedClass(implicit ctx: Context): Symbol = denot.linkedClass
+
+    /** Is this symbol a subclass of the given class? */
+    final def isSubClass(cls: Symbol)(implicit ctx: Context): Boolean = denot.isSubClass(cls)
+
+   /** Is this class symbol a subclass of `cls`,
+     * and is this class symbol also different from Null or Nothing?
+     */
+    final def isNonBottomSubClass(cls: Symbol)(implicit ctx: Context): Boolean = denot.isNonBottomSubClass(cls)
+
+    /** Is this symbol a subclass of `base` or a companion object of such a subclass? */
+    final def isSubClassOrCompanion(base: Symbol)(implicit ctx: Context): Boolean = denot.isSubClassOrCompanion(base)
+
+    /** The class that encloses the owner of the current context
+     *  and that is a subclass of this class.
+     */
+    final def enclosingSubClass(implicit ctx: Context) = denot.enclosingSubClass
+
+    ///** Is this symbol a proper subclass of the given class? */
+    //def isProperSubClass(cls: ClassSymbol)(implicit ctx: Context): Boolean = (this ne cls) && this.isSubClass(cls)
+
+    /** The non-private symbol whose type matches the type of this symbol
+     *  in in given class.
+     *
+     *  @param inClass   The class containing the symbol's definition
+     *  @param site      The base type from which member types are computed
+     */
+    final def matchingSymbol(inClass: Symbol, site: Type)(implicit ctx: Context): Symbol = denot.matchingSymbol(inClass, site)
+
+    /** The symbol, in class `inClass`, that is overridden by this symbol. */
+    final def overriddenSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol = denot.overriddenSymbol(inClass)
+
+    /** All symbols overriden by this symbol. */
+    final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] = denot.allOverriddenSymbols
+
+    /** The class or term symbol up to which this symbol is accessible,
+     *  or RootClass if it is public.  As java protected statics are
+     *  otherwise completely inaccessible in scala, they are treated
+     *  as public.
+     *  @param base
+     */
+    final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol = denot.accessBoundary(base)
+
+    /** Is this symbol contained in `boundary`? */
+    final def isContainedIn(boundary: Symbol)(implicit ctx: Context): Boolean = denot.isContainedIn(boundary)
+
+    /** Is this symbol accessible whenever `that` symbol is accessible?
+     *  Does not take into account status of protected members.
+     */
+    final def isAsAccessibleAs(that: Symbol)(implicit ctx: Context): Boolean = denot.isAsAccessibleAs(that)
+
+    /** Is this symbol a non-value class? */
+    final def isNonValueClass(implicit ctx: Context): Boolean = denot.isNonValueClass
+
+    /** Is this symbol accessible as a member of tree with type `pre`?
+     *  @param pre          The type of the tree from which the selection is made
+     *  @param superAccess  Access is via super
+     */
+    final def isAccessibleFrom(pre: Type, superAccess: Boolean = false)(implicit ctx: Context): Boolean = denot.isAccessibleFrom(pre, superAccess)
+
+    def show(implicit ctx: Context): String = ctx.printer.show(this)
+    def showLocated(implicit ctx: Context): String = ctx.printer.showLocated(this)
+    def showDef(implicit ctx: Context): String = ctx.printer.showDef(this)
+
     def typeParams: List[TypeSymbol] = ???
     def unsafeTypeParams: List[TypeSymbol] = ???
     def thisType: Type = ???
     def isStaticMono = isStatic && typeParams.isEmpty
-    def isPackageClass: Boolean = ???
     def isRoot: Boolean = ???
     def moduleClass: Symbol = ???
     def cloneSymbol: Symbol = ???
+    def hasAnnotation(ann: Annotation): Boolean = ???
+    def hasAnnotation(ann: ClassSymbol): Boolean = ???
 
     def asTerm: TermSymbol = ???
     def asType: TypeSymbol = ???
@@ -205,41 +191,24 @@ object Symbols {
     def isConcrete = !isDeferred
     def isJava: Boolean = ???
 
-    def isSubClass(that: Symbol): Boolean = ???
-    def isNonBottomSubClass(that: Symbol): Boolean = ???
-    def isProperSubClass(that: Symbol): Boolean =
-      (this ne that) && (this isSubClass that)
-
     def isAbstractType: Boolean = ???
     def newAbstractType(name: TypeName, info: TypeBounds): TypeSymbol = ???
     def newAbstractTerm(name: TermName, tpe: Type): TypeSymbol = ???
 
-    def isClass: Boolean = false
-    def isMethod(implicit ctx: Context): Boolean = deref.isMethod
-    def hasFlag(required: FlagSet)(implicit ctx: Context): Boolean = (flags & required) != Flags.Empty
-    def hasAllFlags(required: FlagSet)(implicit ctx: Context): Boolean = (flags & required) == flags
+    //def isMethod(implicit ctx: Context): Boolean = denot.isMethod
 
-    def containsNull(implicit ctx: Context): Boolean =
-      isClass && !(isSubClass(defn.AnyValClass))
+    def isStable(implicit ctx: Context): Boolean = denot.isStable
 
   }
 
-  abstract class TermSymbol extends Symbol {
+  abstract class TermSymbol(denotf: Symbol => SymDenotation) extends Symbol(denotf) {
     def name: TermName
-    def isType = true
+    override def isTerm = true
   }
 
-  trait RefinementSymbol extends Symbol {
-    override def deref(implicit ctx: Context) = lastDenot
-  }
-
-  abstract class RefinementTermSymbol extends TermSymbol with RefinementSymbol
-
-  abstract class RefinementTypeSymbol extends TypeSymbol with RefinementSymbol
-
-  abstract class TypeSymbol extends Symbol {
+  abstract class TypeSymbol(denotf: Symbol => SymDenotation) extends Symbol(denotf) {
     def name: TypeName
-    def isType = false
+    override def isType = true
 
     def variance: Int = ???
 
@@ -247,21 +216,20 @@ object Symbols {
     def typeTemplate(implicit ctx: Context): Type = ???
   }
 
-  abstract class ClassSymbol extends TypeSymbol {
+  abstract class ClassSymbol(denotf: Symbol => ClassDenotation) extends TypeSymbol(denotf) {
     override def isClass = true
     private var superIdHint: Int = -1
 
-    override def deref(implicit ctx: Context): ClassDenotation =
-      super.deref.asInstanceOf[ClassDenotation]
+    final def classDenot(implicit ctx: Context): ClassDenotation =
+      denot.asInstanceOf[ClassDenotation]
 
     def typeOfThis(implicit ctx: Context): Type = ???
 
-    override def typeConstructor(implicit ctx: Context): Type = deref.typeConstructor
-    override def typeTemplate(implicit ctx: Context): Type = deref.typeTemplate
+    def baseClasses(implicit ctx: Context): List[ClassSymbol] = classDenot.baseClasses
 
-    /** The unique, densely packed identifier of this class symbol. Should be called
-     *  only if class is a super class of some other class.
-     */
+    override def typeConstructor(implicit ctx: Context): Type = classDenot.typeConstructor
+//    override def typeTemplate(implicit ctx: Context): Type = classDenot.typeTemplate
+
     def superId(implicit ctx: Context): Int = {
       val hint = superIdHint
       val rctx = ctx.root
@@ -282,11 +250,17 @@ object Symbols {
     }
   }
 
-  object NoSymbol extends Symbol {
-    def loadDenot(implicit ctx: Context): Denotation = NoDenotation
+  class ErrorSymbol(underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(sym => underlying.denot) {
+    override def isType = underlying.isType
+    override def isTerm = underlying.isTerm
+  }
+
+  object NoSymbol extends Symbol(sym => NoDenotation) {
     override def exists = false
-    def isType = false
   }
 
   implicit def defn(implicit ctx: Context): Definitions = ctx.root.definitions
+
+  implicit def toFlagSet(sym: Symbol)(implicit ctx: Context): FlagSet = sym.flags
+
 }

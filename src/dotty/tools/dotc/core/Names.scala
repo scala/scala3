@@ -3,8 +3,8 @@ package core
 
 import scala.io.Codec
 import util.NameTransformer
+import Periods._
 import Decorators._
-import Contexts._
 
 object Names {
 
@@ -16,7 +16,7 @@ object Names {
    *  3. Names are intended to be encoded strings. @see dotc.util.NameTransformer.
    *     The encoding will be applied when converting a string to a name.
    */
-  abstract class Name {
+  abstract class Name extends DotClass {
 
     /** The basis in which this name is stored */
     val basis: NameTable
@@ -59,7 +59,7 @@ object Names {
      *  to other entities (e.g. strings).
      *  One always should use the ==(Name) method instead.
      */
-    final override def equals(that: Any): Boolean = ??? // do not implement
+    final override def equals(that: Any): Boolean = unsupported("equals")
 
     /** The only authorized == method on names */
     def == (that: Name): Boolean = (
