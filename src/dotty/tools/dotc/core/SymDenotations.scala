@@ -25,34 +25,27 @@ object SymDenotations {
 
     def info: Type
 
+    final def isLoaded = _privateWithin != null
+    final def isCompleted = _annotations != null
+    final def ensureLoaded() = if (!isLoaded) tryLoad()
+    final def ensureCompleted() = if (!isCompleted) tryComplete()
+    protected def tryLoad(): Unit
+    protected def tryComplete(): Unit
+
     private[this] var _flags: FlagSet = initFlags
 
-    def flags: FlagSet = _flags
+    def flags: FlagSet = { ensureLoaded(); _flags }
+    def flags_=(flags: FlagSet): Unit = { _flags |= flags }
+    def setFlags(flags: FlagSet): Unit = { _flags |= flags }
+    def resetFlags(flags: FlagSet): Unit = { _flags &~= flags }
 
-    def flags_=(flags: FlagSet): Unit =
-      _flags |= flags
+    private[this] var _privateWithin: Symbol = _
+    def privateWithin: Symbol = { ensureLoaded(); _privateWithin }
+    def privateWithin_=(sym: Symbol): Unit = { _privateWithin = sym }
 
-    def setFlags(flags: FlagSet): Unit =
-      _flags |= flags
-
-    def resetFlags(flags: FlagSet): Unit =
-      _flags &~= flags
-
-    private[this] var _privateWithin: Symbol = NoSymbol
-
-    def privateWithin: Symbol = _privateWithin
-
-    def privateWithin_=(sym: Symbol): Unit =
-      _privateWithin = sym
-
-    final def isLoaded = _privateWithin != null
-
-    private[this] var _annotations: List[Annotation] = Nil
-
+    private[this] var _annotations: List[Annotation] = { ensureCompleted(); _annotations }
     def annotations: List[Annotation] = _annotations
-
-    def annotations_=(annots: List[Annotation]): Unit =
-      _annotations = annots
+    def annotations_=(annots: List[Annotation]): Unit = { _annotations = annots }
 
     def hasAnnotation(cls: Symbol) = dropOtherAnnotations(annotations, cls).nonEmpty
 
@@ -61,8 +54,6 @@ object SymDenotations {
       case ann :: rest => if (ann matches cls) anns else dropOtherAnnotations(rest, cls)
       case Nil => Nil
     }
-
-    final def isCompleted = _annotations != null
 
     /** is this denotation a class? */
     final def isClass: Boolean = symbol.isInstanceOf[ClassSymbol]
@@ -97,7 +88,7 @@ object SymDenotations {
     def isError: Boolean = false
 
     final def ownersIterator(implicit ctx: Context) = new Iterator[Symbol] {
-      private var current = symbol
+      private[this] var current = symbol
       def hasNext = current.exists
       def next: Symbol = {
         val result = current
@@ -281,32 +272,14 @@ object SymDenotations {
     def showLocated(implicit ctx: Context): String = ???
   }
 
-  class CompleteSymDenotation(
-      val symbol: Symbol,
-      val owner: Symbol,
-      val name: Name,
-      initFlags: FlagSet,
-      val info: Type
-    ) extends SymDenotation(initFlags)
+  trait isComplete extends SymDenotation {
+    privateWithin = NoSymbol
+    annotations = Nil
+    def tryLoad(): Unit = unsupported("tryLoad")
+    def tryComplete(): Unit = unsupported("tryComplete")
+  }
 
-  trait LazyCompletion extends SymDenotation {
-    privateWithin = null
-    annotations = null
-
-    override final def flags = {
-      if (!isLoaded) tryLoad()
-      super.flags
-    }
-
-    override final def privateWithin = {
-      if (!isLoaded) tryLoad()
-      super.privateWithin
-    }
-
-    override final def annotations: List[Annotation] = {
-      val annots = super.annotations
-      if (annots != null) annots else { tryComplete(); annotations }
-    }
+  trait isLazy extends SymDenotation {
 
     protected def tryLoad(): Unit = try {
       if (flags is Locked) throw new CyclicReference(symbol)
@@ -332,19 +305,24 @@ object SymDenotations {
     protected def complete(): Unit
   }
 
+  class CompleteSymDenotation(
+      val symbol: Symbol,
+      val owner: Symbol,
+      val name: Name,
+      initFlags: FlagSet,
+      val info: Type
+    ) extends SymDenotation(initFlags) with isComplete
+
   abstract class LazySymDenotation(
       val symbol: Symbol,
       val owner: Symbol,
       val name: Name,
       initFlags: FlagSet
-    ) extends SymDenotation(initFlags) with LazyCompletion {
+    ) extends SymDenotation(initFlags) with isLazy {
 
-    private var currentInfo: Type = null
+    private[this] var _info: Type = _
 
-    override def info = {
-      if (currentInfo == null) complete()
-      currentInfo
-    }
+    override def info = { ensureCompleted(); _info }
   }
 
   abstract class ClassDenotation(initFlags: FlagSet, assocFile: AbstractFile)(implicit ctx: Context)
@@ -354,8 +332,6 @@ object SymDenotations {
 
     val symbol: ClassSymbol
 
-    def typeParams: List[TypeSymbol]
-
     def parents: List[TypeRef]
 
     def decls: Scope
@@ -364,14 +340,26 @@ object SymDenotations {
 
     override def associatedFile(implicit ctx: Context): AbstractFile = assocFile
 
-    private var memberCacheVar: LRU8Cache[Name, DenotationSet] = null
+    private[this] var _typeParams: List[TypeSymbol] = _
+
+    final def typeParams: List[TypeSymbol] = {
+      val tparams = _typeParams
+      if (tparams != null) tparams else computeTypeParams
+    }
+
+    private def computeTypeParams: List[TypeSymbol] =
+      (preCompleteDecls.toList filter (_ is TypeParam)).asInstanceOf[List[TypeSymbol]]
+
+    protected def preCompleteDecls: Scope
+
+    private[this] var memberCacheVar: LRU8Cache[Name, DenotationSet] = null
 
     private def memberCache: LRU8Cache[Name, DenotationSet] = {
       if (memberCacheVar == null) memberCacheVar = new LRU8Cache
       memberCacheVar
     }
 
-    private var thisTypeCache: ThisType = null
+    private[this] var thisTypeCache: ThisType = null
 
     def thisType(implicit ctx: Context): Type = {
       if (thisTypeCache == null)
@@ -379,7 +367,7 @@ object SymDenotations {
       thisTypeCache
     }
 
-    private var typeConstructorCache: Type = null
+    private[this] var typeConstructorCache: Type = null
 
     def typeConstructor(implicit ctx: Context): Type = {
       if (typeConstructorCache == null)
@@ -388,7 +376,7 @@ object SymDenotations {
     }
 
  /*
-    private var typeTemplateCache: Type = null
+    private[this] var typeTemplateCache: Type = null
 
     def typeTemplate(implicit ctx: Context): Type = {
       if (typeTemplateCache == null)
@@ -396,8 +384,8 @@ object SymDenotations {
       typeTemplateCache
     }
 */
-    private var baseClassesVar: List[ClassSymbol] = null
-    private var superClassBitsVar: BitSet = null
+    private[this] var baseClassesVar: List[ClassSymbol] = null
+    private[this] var superClassBitsVar: BitSet = null
 
     private def computeSuperClassBits(implicit ctx: Context): Unit = {
       val seen = new mutable.BitSet
@@ -447,7 +435,7 @@ object SymDenotations {
       isNonBottomSubClass(cls) ||
         cls.isClass && ((symbol eq defn.NothingClass) || (symbol eq defn.NullClass))
 
-    private var definedFingerPrintCache: FingerPrint = null
+    private[this] var definedFingerPrintCache: FingerPrint = null
 
     private def computeDefinedFingerPrint(implicit ctx: Context): FingerPrint = {
       var bits = newNameFilter
@@ -529,8 +517,8 @@ object SymDenotations {
       denots
     }
 
-    private var baseTypeCache: java.util.HashMap[CachedType, Type] = null
-    private var baseTypeValid: RunId = NoRunId
+    private[this] var baseTypeCache: java.util.HashMap[CachedType, Type] = null
+    private[this] var baseTypeValid: RunId = NoRunId
 
     final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
 
@@ -571,7 +559,7 @@ object SymDenotations {
       }
     }
 
-    private var memberNamesCache: Map[NameFilter, Set[Name]] = Map()
+    private[this] var memberNamesCache: Map[NameFilter, Set[Name]] = Map()
 
     def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] =
       memberNamesCache get keepOnly match {
@@ -592,11 +580,12 @@ object SymDenotations {
       val owner: Symbol,
       val name: Name,
       initFlags: FlagSet,
-      val typeParams: List[TypeSymbol],
       val parents: List[TypeRef],
       val decls: Scope,
       assocFile: AbstractFile = null
-  )(implicit ctx: Context) extends ClassDenotation(initFlags, assocFile)
+  )(implicit ctx: Context) extends ClassDenotation(initFlags, assocFile) with isComplete {
+    final def preCompleteDecls = decls
+  }
 
   abstract class LazyClassDenotation(
       val symbol: ClassSymbol,
@@ -604,29 +593,17 @@ object SymDenotations {
       val name: Name,
       initFlags: FlagSet,
       assocFile: AbstractFile = null
-    )(implicit ctx: Context) extends ClassDenotation(initFlags, assocFile) with LazyCompletion {
+    )(implicit ctx: Context) extends ClassDenotation(initFlags, assocFile) with isLazy {
 
-    protected var _typeParams: List[TypeSymbol] = null
     protected var _parents: List[TypeRef] = null
     protected var _decls: Scope = null
 
-    final def typeParams: List[TypeSymbol] = {
-      val tparams = _typeParams
-      if (tparams != null) tparams else { tryLoad(); typeParams }
-    }
-
-    final def parents: List[TypeRef] = {
-      val ps = _parents
-      if (ps != null) ps else { tryComplete(); parents }
-    }
-
-    final def decls: Scope = {
-      val ds = _decls
-      if (ds != null) ds else { tryComplete(); decls }
-    }
+    final def parents: List[TypeRef] = { ensureCompleted(); _parents }
+    final def decls: Scope = { ensureCompleted(); _decls }
+    final def preCompleteDecls = {ensureLoaded(); _decls }
   }
 
-  object NoDenotation extends SymDenotation(Flags.Empty) {
+  object NoDenotation extends SymDenotation(Flags.Empty) with isComplete {
     override def symbol: Symbol = NoSymbol
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def name: Name = BootNameTable.newTermName("<none>")
