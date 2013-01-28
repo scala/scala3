@@ -198,9 +198,9 @@ object Types {
     final def subst(from: BindingType, to: BindingType)(implicit ctx: Context): Type =
       ctx.subst(this, from, to, null)
 
-    /** Substitute all occurrences of `This(clazz)` by `tp` */
-    final def substThis(clazz: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
-      ctx.substThis(this, clazz, tp, null)
+    /** Substitute all occurrences of `This(cls)` by `tp` */
+    final def substThis(cls: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
+      ctx.substThis(this, cls, tp, null)
 
     /** Substitute all occurrences of `RefinedThis(rt)` by `tp` */
     final def substThis(rt: RefinedType, tp: Type)(implicit ctx: Context): Type =
@@ -378,9 +378,9 @@ object Types {
 
     //def resultType: Type = ???
 
-    /** The base classes of this type as determined by ClassDenotation.
-     *  Inherited by all type proxies.
-     *  `Nil` for all other types.
+    /** The base classes of this type as determined by ClassDenotation
+     *  in linearization order, with the class itself as first element.
+     *  Inherited by all type proxies. `Nil` for all other types.
      */
     final def baseClasses(implicit ctx: Context): List[ClassSymbol] = this match {
       case tp: TypeProxy =>
@@ -390,11 +390,11 @@ object Types {
       case _ => Nil
     }
 
-    final def asSeenFrom(pre: Type, clazz: Symbol)(implicit ctx: Context): Type =
-      if (clazz.isStaticMono ||
-          ctx.erasedTypes && clazz != defn.ArrayClass ||
-          (pre eq clazz.thisType)) this
-      else ctx.asSeenFrom(this, pre, clazz, null)
+    final def asSeenFrom(pre: Type, cls: Symbol)(implicit ctx: Context): Type =
+      if ((cls is PackageClass) ||
+        ctx.erasedTypes && cls != defn.ArrayClass ||
+        (pre eq cls.thisType)) this
+      else ctx.asSeenFrom(this, pre, cls, null)
 
     /** The signature of this type. This is by default NullSignature,
      *  but is overridden for PolyTypes, MethodTypes, and TermRefWithSignature types.
@@ -564,8 +564,8 @@ object Types {
 
     private[this] var lastDenotation: Denotation = null
 
-    private def checkPrefix(sym: Symbol) =
-      sym.isAbstractType || sym.isClass
+    private def checkPrefix(denot: Denotation) =
+      denot.info.isRealTypeBounds || denot.symbol.isClass
 
     /** The denotation currently denoted by this type */
     def denot(implicit ctx: Context): Denotation = {
@@ -579,7 +579,7 @@ object Types {
           } else {
             val d = loadDenot
             if (d.exists || ctx.phaseId == FirstPhaseId) {
-              if (checkPrefix(d.symbol) && !prefix.isLegalPrefix)
+              if (checkPrefix(d) && !prefix.isLegalPrefix)
                 throw new MalformedType(prefix, d.symbol)
               d
             } else {// name has changed; try load in earlier phase and make current
@@ -661,16 +661,18 @@ object Types {
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
 
-  abstract case class ThisType(clazz: ClassSymbol) extends CachedProxyType with SingletonType {
-    override def underlying(implicit ctx: Context) = clazz.typeOfThis
-    override def computeHash = doHash(clazz)
+  abstract case class ThisType(cls: ClassSymbol) extends CachedProxyType with SingletonType {
+    override def underlying(implicit ctx: Context) = cls.selfType
+    override def computeHash = doHash(cls)
   }
 
-  final class CachedThisType(clazz: ClassSymbol) extends ThisType(clazz)
+  final class CachedThisType(cls: ClassSymbol) extends ThisType(cls)
 
   object ThisType {
-    def apply(clazz: ClassSymbol)(implicit ctx: Context) =
-      unique(new CachedThisType(clazz))
+    def apply(cls: ClassSymbol)(implicit ctx: Context) = {
+      assert(!(cls is PackageClass) || cls.isRoot)
+      unique(new CachedThisType(cls))
+    }
   }
 
   abstract case class SuperType(thistpe: Type, supertpe: Type) extends CachedProxyType with SingletonType {
@@ -1116,7 +1118,7 @@ object Types {
   /** A filter for names of deferred term definitions of a given type */
   object abstractTermNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
-      name.isTermName && (pre member name).symbol.isDeferred
+      name.isTermName && ((pre member name).symbol is Deferred)
   }
 
   // ----- Exceptions -------------------------------------------------------------

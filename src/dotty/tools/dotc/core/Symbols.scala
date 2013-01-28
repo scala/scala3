@@ -20,7 +20,9 @@ object Symbols {
 
   /** A Symbol represents a Scala definition/declaration or a package.
    */
-  abstract class Symbol(denotf: Symbol => SymDenotation) {
+  abstract class Symbol(denotf: Symbol => SymDenotation) extends DotClass {
+
+    type Name <: Names.Name
 
      /** Is symbol different from NoSymbol? */
     def exists = true
@@ -33,15 +35,29 @@ object Symbols {
     /** The last denotation of this symbol */
     private[this] var lastDenot: SymDenotation = denotf(this)
 
+    /** The current denotation of this symbol */
     final def denot(implicit ctx: Context): SymDenotation = {
       var denot = lastDenot
       if (!(denot.validFor contains ctx.period)) denot = denot.current.asInstanceOf[SymDenotation]
       denot
     }
 
+    /** Subclass tests and casts */
     def isType: Boolean = false
     def isTerm: Boolean = false
     def isClass: Boolean = false
+
+    def asTerm: TermSymbol = asInstanceOf[TermSymbol]
+    def asType: TypeSymbol = asInstanceOf[TypeSymbol]
+    def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
+
+    /** A unique, densely packed integer tag for each class symbol, -1
+     *  for all other symbols. To save memory, this method
+     *  should be called only if class is a super class of some other class.
+     */
+    def superId: Int = -1
+
+// --------- Forwarders for sym methods --------------------------
 
     /** Special case tests for flags that are known a-priori and do not need loading
      *  flags.
@@ -53,19 +69,11 @@ object Symbols {
     def isPackageObj(implicit ctx: Context) = denot.isPackageObj
     def isPackageClass(implicit ctx: Context) = denot.isPackageClass
 
-    /** A unique, densely packed integer tag for each class symbol, -1
-     *  for all other symbols. To save memory, this method
-     *  should be called only if class is a super class of some other class.
-     */
-    def superId: Int = -1
-
-// --------- Forwarders for sym methods --------------------------
-
     /** The current owner of this symbol */
     final def owner(implicit ctx: Context): Symbol = denot.owner
 
     /** The current name of this symbol */
-    final def name(implicit ctx: Context): Name = denot.name
+    final def name(implicit ctx: Context): Name = denot.name.asInstanceOf[Name]
 
     /** The current type info of this symbol */
     final def info(implicit ctx: Context): Type = denot.info
@@ -96,14 +104,34 @@ object Symbols {
     /** The package containing this symbol */
     def enclosingPackage(implicit ctx: Context): Symbol = denot.enclosingPackage
 
+    /** The source or class file from which this symbol was generated, null if not applicable. */
     final def associatedFile(implicit ctx: Context): AbstractFile = denot.associatedFile
+
+    /** The class file from which this symbol was generated, null if not applicable. */
     final def binaryFile(implicit ctx: Context): AbstractFile = denot.binaryFile
+
+    /** The source or class file from which this symbol was generated, null if not applicable. */
     final def sourceFile(implicit ctx: Context): AbstractFile = denot.sourceFile
 
+    /** Is this symbol defined in the same compilation unit as that symbol? */
+    final def isCoDefinedWith(that: Symbol)(implicit ctx: Context): Boolean = denot.isCoDefinedWith(that)
+
+    /** The class with the same (type-) name as this module or module class,
+     *  which is the defined in the same compilation unit.
+     *  NoSymbol if this class does not exist.
+     */
     final def companionClass(implicit ctx: Context): Symbol = denot.companionClass
 
+    /** The module object with the same (term-) name as this class or module class,
+     *  which is the defined in the same compilation unit.
+     *  NoSymbol if this class does not exist.
+     */
     final def companionModule(implicit ctx: Context): Symbol = denot.companionModule
 
+    /** If this is a class, the module class of its companion object.
+     *  If this is a module class, its companion class.
+     *  NoSymbol otherwise.
+     */
     final def linkedClass(implicit ctx: Context): Symbol = denot.linkedClass
 
     /** Is this symbol a subclass of the given class? */
@@ -168,66 +196,84 @@ object Symbols {
     def showLocated(implicit ctx: Context): String = ctx.printer.showLocated(this)
     def showDef(implicit ctx: Context): String = ctx.printer.showDef(this)
 
-    def typeParams: List[TypeSymbol] = ???
-    def unsafeTypeParams: List[TypeSymbol] = ???
-    def thisType: Type = ???
-    def isStaticMono = isStatic && typeParams.isEmpty
-    def isRoot: Boolean = ???
-    def moduleClass: Symbol = ???
-    def cloneSymbol: Symbol = ???
-    def hasAnnotation(ann: Annotation): Boolean = ???
-    def hasAnnotation(ann: ClassSymbol): Boolean = ???
+    /** The type parameters of a class symbol, Nil for all other symbols */
+    def typeParams(implicit ctx: Context): List[TypeSymbol] = denot.typeParams
 
-    def asTerm: TermSymbol = ???
-    def asType: TypeSymbol = ???
-    def asClass: ClassSymbol = ???
-    def isStatic: Boolean = ???
-    def isTypeParameter: Boolean = ???
-    def isOverridable: Boolean = ???
-    def isCovariant: Boolean = ???
-    def isContravariant: Boolean = ???
-    def isSkolem: Boolean = ???
-    def isDeferred: Boolean = ???
-    def isConcrete = !isDeferred
-    def isJava: Boolean = ???
+    /** The type This(cls), where cls is this class symbol */
+    def thisType(implicit ctx: Context): Type = denot.thisType
 
-    def isAbstractType: Boolean = ???
-    def newAbstractType(name: TypeName, info: TypeBounds): TypeSymbol = ???
-    def newAbstractTerm(name: TermName, tpe: Type): TypeSymbol = ???
+    /** Is this symbol the root class or its companion object? */
+    def isRoot(implicit ctx: Context): Boolean = denot.isRoot
+
+    /** If this is a module symbol, the class defining its template, otherwise NoSymbol. */
+    def moduleClass(implicit ctx: Context): Symbol = denot.moduleClass
+
+    /** A copy of this symbol with the same denotation */
+    def copy(implicit ctx: Context): Symbol = unsupported("copy")
+
+    /** A copy of this symbol with the same denotation but a new owner */
+    def copy(owner: Symbol)(implicit ctx: Context): Symbol = unsupported("copy")
+
+    /** Can a term with this symbol be a stable value? */
+    def isStable(implicit ctx: Context): Boolean = denot.isStable
+
+    /** Is this symbol static (i.e. with no outer instance)? */
+    def isStatic(implicit ctx: Context): Boolean = denot.isStatic
+
+    /** Does this symbol denote a class that defines static symbols? */
+    final def isStaticOwner(implicit ctx: Context): Boolean = denot.isStaticOwner
+
+//    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
+
+//    def isSkolem: Boolean = ???
+
+//    def isAbstractType: Boolean = ???
+//    def newAbstractType(name: TypeName, info: TypeBounds): TypeSymbol = ???
+//    def newAbstractTerm(name: TermName, tpe: Type): TypeSymbol = ???
 
     //def isMethod(implicit ctx: Context): Boolean = denot.isMethod
 
-    def isStable(implicit ctx: Context): Boolean = denot.isStable
 
   }
 
-  abstract class TermSymbol(denotf: Symbol => SymDenotation) extends Symbol(denotf) {
-    def name: TermName
+  class TermSymbol(denotf: Symbol => SymDenotation) extends Symbol(denotf) {
+    type Name = TermName
     override def isTerm = true
+    override def copy(implicit ctx: Context): TermSymbol = copy(owner)
+    override def copy(owner: Symbol)(implicit ctx: Context): TermSymbol = new TermSymbol(denot.copy(_, owner))
   }
 
-  abstract class TypeSymbol(denotf: Symbol => SymDenotation) extends Symbol(denotf) {
-    def name: TypeName
+  class TypeSymbol(denotf: Symbol => SymDenotation) extends Symbol(denotf) {
+    type Name = TypeName
     override def isType = true
+    override def copy(implicit ctx: Context): TypeSymbol = copy(owner)
+    override def copy(owner: Symbol)(implicit ctx: Context): TypeSymbol = new TypeSymbol(denot.copy(_, owner))
 
-    def variance: Int = ???
+    /** The type representing the type constructor for this type symbol */
+    def typeConstructor(implicit ctx: Context): Type = denot.typeConstructor
 
-    def typeConstructor(implicit ctx: Context): Type = ???
-    def typeTemplate(implicit ctx: Context): Type = ???
+    /** The variance of this type parameter as an Int, with
+     *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant
+     */
+    def variance(implicit ctx: Context): Int = denot.variance
   }
 
-  abstract class ClassSymbol(denotf: Symbol => ClassDenotation) extends TypeSymbol(denotf) {
+  class ClassSymbol(denotf: ClassSymbol => ClassDenotation) extends TypeSymbol(s => denotf(s.asClass)) {
     override def isClass = true
+    override def copy(implicit ctx: Context): ClassSymbol = copy(owner)
+    override def copy(owner: Symbol)(implicit ctx: Context): ClassSymbol = new ClassSymbol(classDenot.copyClass(_, owner))
     private var superIdHint: Int = -1
 
     final def classDenot(implicit ctx: Context): ClassDenotation =
       denot.asInstanceOf[ClassDenotation]
 
-    def typeOfThis(implicit ctx: Context): Type = ???
+    def selfType(implicit ctx: Context): Type = classDenot.selfType
 
+    /** The base classes of this class in linearization order,
+     *  with the class itself as first element.x
+     */
     def baseClasses(implicit ctx: Context): List[ClassSymbol] = classDenot.baseClasses
 
-    override def typeConstructor(implicit ctx: Context): Type = classDenot.typeConstructor
 //    override def typeTemplate(implicit ctx: Context): Type = classDenot.typeTemplate
 
     def superId(implicit ctx: Context): Int = {

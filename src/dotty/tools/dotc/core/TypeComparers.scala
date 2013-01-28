@@ -77,7 +77,7 @@ object TypeComparers {
               ||
               tp1.name == tp2.name &&
               isSubType(pre1, pre2) &&
-              (sym2.isAbstractType || isSubType(pre2, pre1)) // ???
+              (sym2.info.isRealTypeBounds || isSubType(pre2, pre1)) // ???
               ||
               (sym2.isClass) && {
                 val base = tp1.baseType(sym2)

@@ -167,6 +167,8 @@ object Flags {
 
   /** A declared, but not defined member */
   final val Deferred = commonFlag(5, "<deferred>")
+  final val DeferredTerm = Deferred.toTermFlags
+  final val DeferredType = Deferred.toTypeFlags
 
   /** Labeled with `final` modifier */
   final val Final = commonFlag(6, "final")

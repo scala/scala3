@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import Contexts._, Types._, Symbols._, Names._
+import Contexts._, Types._, Symbols._, Names._, Flags._
 
 trait TypeOps { this: Context =>
 
@@ -31,7 +31,7 @@ trait TypeOps { this: Context =>
           if (pre1 eq pre0) tp
           else {
             val tp1 = NamedType(pre1, tp.name)
-            if (sym.isTypeParameter) {
+            if (sym is TypeParam) {
               // short-circuit instantiated type parameters
               // by replacing pre.tp with its alias, if it has one.
               val tp2 = tp1.info

@@ -103,14 +103,14 @@ object SymDenotations {
       (o eq sym)
     }
 
-    def withType(tp: Type): SymDenotation = ???
+//    def withType(tp: Type): SymDenotation = ???
 
     override protected def copy(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
 
     def moduleClass(implicit ctx: Context): Symbol =
       if (this.isModuleObj) info.typeSymbol else NoSymbol
 
-        /** Desire to re-use the field in ClassSymbol which stores the source
+    /** Desire to re-use the field in ClassSymbol which stores the source
      *  file to also store the classfile, but without changing the behavior
      *  of sourceFile (which is expected at least in the IDE only to
      *  return actual source code.) So sourceFile has classfiles filtered out.
@@ -140,6 +140,11 @@ object SymDenotations {
       info.isVolatile && !hasAnnotation(defn.uncheckedStableClass)
     )
 
+    def isStatic(implicit ctx: Context) = (this is Static) || owner.isStaticOwner
+
+    final def isStaticOwner(implicit ctx: Context): Boolean =
+      (this is PackageClass) || (this is ModuleClass) && isStatic
+
     final def matchingSymbol(inClass: Symbol, site: Type)(implicit ctx: Context): Symbol = {
       var denot = inClass.info.nonPrivateDecl(name)
       if (denot.isTerm) {
@@ -159,8 +164,7 @@ object SymDenotations {
     final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
       info.baseClasses.tail.iterator map overriddenSymbol filter (_.exists)
 
-    /** Is this symbol defined in the same scope and compilation unit as `that` symbol? */
-    private def isCoDefinedWith(that: Symbol)(implicit ctx: Context) =
+    def isCoDefinedWith(that: Symbol)(implicit ctx: Context) =
       (this.owner == that.owner) &&
       (  !(this.owner.isPackageClass)
       || (this.sourceFile == null)
@@ -169,11 +173,16 @@ object SymDenotations {
       || (this.sourceFile.canonicalPath == that.sourceFile.canonicalPath)
       )
 
-    def companionModule(implicit ctx: Context): Symbol =
-      owner.info.decl(name.toTermName).filter(_.isModule).symbol
+    def companionModule(implicit ctx: Context): Symbol = {
+      owner.info.decl(name.toTermName)
+        .filter(sym => sym.isModule && sym.isCoDefinedWith(symbol))
+        .symbol
+    }
 
     def companionClass(implicit ctx: Context): Symbol =
-      owner.info.decl(name.toTypeName).filter(_.isClass).symbol
+      owner.info.decl(name.toTypeName)
+        .filter(sym => sym.isClass && sym.isCoDefinedWith(symbol))
+        .symbol
 
     def linkedClass(implicit ctx: Context): Symbol =
       if (this.isModuleClass) companionClass
@@ -239,7 +248,7 @@ object SymDenotations {
                       cls.isModuleClass &&
                       pre.widen.typeSymbol.isSubClassOrCompanion(cls.linkedClass)))
           fail(() =>
-            s"""Access to protected $show not permitted because
+            s"""Access to protected ${symbol.show} not permitted because
                |prefix type ${pre.widen.show} does not conform to
                |${cls.showLocated} where the access takes place""".stripMargin)
         else true
@@ -249,7 +258,7 @@ object SymDenotations {
         val boundary = accessBoundary(owner)
 
         (  (boundary.isTerm
-        || (boundary eq defn.RootClass))
+        || (boundary.isRoot))
         || (accessWithin(boundary) || accessWithinLinked(boundary)) &&
              (  !(this is Local)
              || (owner is ImplClass) // allow private local accesses to impl class members
@@ -268,8 +277,27 @@ object SymDenotations {
     def isNonValueClass(implicit ctx: Context): Boolean =
       isClass && !isSubClass(defn.AnyValClass)
 
-    def show(implicit ctx: Context): String = ???
-    def showLocated(implicit ctx: Context): String = ???
+    def typeParams: List[TypeSymbol] = unsupported("typeParams")
+
+    def thisType(implicit ctx: Context): Type = unsupported("thisType")
+
+    def typeConstructor(implicit ctx: Context): Type =
+      TypeRef(owner.thisType, name.asTypeName)
+
+    def variance: Int =
+      if (this is Covariant) 1
+      else if (this is Contravariant) -1
+      else 0
+
+    def isRoot: Boolean = !owner.exists // !!! && name == tpnme.Root
+
+    def copy(
+        sym: Symbol,
+        owner: Symbol = this.owner,
+        name: Name = this.name,
+        initFlags: FlagSet = this.flags,
+        info: Type = this.info) =
+      new CompleteSymDenotation(sym, owner, name, initFlags, info)
   }
 
   trait isComplete extends SymDenotation {
@@ -334,6 +362,8 @@ object SymDenotations {
 
     def parents: List[TypeRef]
 
+    def selfType: Type
+
     def decls: Scope
 
     val info = ClassInfo(owner.thisType, this)
@@ -342,7 +372,7 @@ object SymDenotations {
 
     private[this] var _typeParams: List[TypeSymbol] = _
 
-    final def typeParams: List[TypeSymbol] = {
+    override final def typeParams: List[TypeSymbol] = {
       val tparams = _typeParams
       if (tparams != null) tparams else computeTypeParams
     }
@@ -359,20 +389,25 @@ object SymDenotations {
       memberCacheVar
     }
 
-    private[this] var thisTypeCache: ThisType = null
+    private[this] var _thisType: Type = null
 
-    def thisType(implicit ctx: Context): Type = {
-      if (thisTypeCache == null)
-        thisTypeCache = ThisType(symbol)
-      thisTypeCache
+    override def thisType(implicit ctx: Context): Type = {
+      if (_thisType == null) _thisType = computeThisType
+      _thisType
     }
 
-    private[this] var typeConstructorCache: Type = null
+    // todo: apply same scheme to static objects/all objects?
+    private def computeThisType: Type =
+      if ((this is PackageClass) && !isRoot)
+        TermRef(owner.thisType, name.toTermName)
+      else
+        ThisType(symbol)
 
-    def typeConstructor(implicit ctx: Context): Type = {
-      if (typeConstructorCache == null)
-        typeConstructorCache = NamedType(thisType, symbol.name)
-      typeConstructorCache
+    private[this] var _typeConstructor: Type = null
+
+    override def typeConstructor(implicit ctx: Context): Type = {
+      if (_typeConstructor == null) _typeConstructor = super.typeConstructor
+      _typeConstructor
     }
 
  /*
@@ -538,7 +573,7 @@ object SymDenotations {
           else reduce(NoType, classd.parents).substThis(classd.symbol, tp.prefix)
       }
 
-      if (symbol.isStaticMono) symbol.typeConstructor
+      if (symbol.isStatic) symbol.typeConstructor
       else tp match {
         case tp: CachedType =>
           if (baseTypeValid != ctx.runId) {
@@ -573,6 +608,17 @@ object SymDenotations {
           memberNamesCache += (keepOnly -> names)
           names
     }
+
+    def copyClass(
+        sym: ClassSymbol,
+        owner: Symbol = this.owner,
+        name: Name = this.name,
+        initFlags: FlagSet = this.flags,
+        parents: List[TypeRef] = this.parents,
+        selfType: Type = this.selfType,
+        decls: Scope = this.decls,
+        assocFile: AbstractFile = this.assocFile) =
+      new CompleteClassDenotation(sym, owner, name, initFlags, parents, selfType, decls, assocFile)
   }
 
   class CompleteClassDenotation(
@@ -581,6 +627,7 @@ object SymDenotations {
       val name: Name,
       initFlags: FlagSet,
       val parents: List[TypeRef],
+      val selfType: Type,
       val decls: Scope,
       assocFile: AbstractFile = null
   )(implicit ctx: Context) extends ClassDenotation(initFlags, assocFile) with isComplete {
@@ -596,9 +643,11 @@ object SymDenotations {
     )(implicit ctx: Context) extends ClassDenotation(initFlags, assocFile) with isLazy {
 
     protected var _parents: List[TypeRef] = null
+    protected var _selfType: Type = null
     protected var _decls: Scope = null
 
     final def parents: List[TypeRef] = { ensureCompleted(); _parents }
+    final def selfType: Type = { ensureCompleted(); _selfType }
     final def decls: Scope = { ensureCompleted(); _decls }
     final def preCompleteDecls = {ensureLoaded(); _decls }
   }

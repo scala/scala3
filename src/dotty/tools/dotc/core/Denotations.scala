@@ -175,7 +175,7 @@ object Denotations {
         else if (denot1.signature == denot2.signature) {
           def isEligible(sym1: Symbol, sym2: Symbol) =
             if (sym1.isType) !sym1.isClass
-            else sym1.isConcrete || sym2.isDeferred || !sym2.exists
+            else !(sym1 is Deferred) || (sym2 is Deferred) || !sym2.exists
           def normalize(info: Type) =
             if (isType) info.bounds else info
           val sym1 = denot1.symbol
