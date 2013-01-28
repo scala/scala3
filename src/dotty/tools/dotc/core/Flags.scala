@@ -186,7 +186,7 @@ object Flags {
 
   /** A value or class implementing a module */
   final val Module = commonFlag(10, "module")
-  final val ModuleObj = Module.toTermFlags
+  final val ModuleVal = Module.toTermFlags
   final val ModuleClass = Module.toTypeFlags
 
   /** Labeled with `implicit` modifier (implicit value) */
@@ -198,7 +198,7 @@ object Flags {
   /** A case class or its companion object */
   final val Case = commonFlag(13, "case")
   final val CaseClass = Case.toTypeFlags
-  final val CaseObj = Case.toTermFlags
+  final val CaseVal = Case.toTermFlags
 
   /** Labeled with `lazy` (a lazy val). */
   final val Lazy = termFlag(14, "lazy")
@@ -213,8 +213,13 @@ object Flags {
 
   /** A value or class representing a package */
   final val Package = commonFlag(16, "<package>")
-  final val PackageObj = Package.toTermFlags
+  final val PackageVal = Package.toTermFlags
   final val PackageClass = Package.toTypeFlags
+
+  /** A package object or its module class */
+  final val PackageObject = commonFlag(???, "package")
+  final val PackageObjectVal = PackageObject.toTermFlags
+  final val PackageObjectClass = PackageObject.toTypeFlags
 
   /** A by-name parameter !!! needed? */
   final val ByNameParam = termFlag(17, "<by-name>")

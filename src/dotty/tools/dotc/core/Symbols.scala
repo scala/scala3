@@ -63,10 +63,10 @@ object Symbols {
      *  flags.
      */
     def isModule(implicit ctx: Context) = denot.isModule
-    def isModuleObj(implicit ctx: Context) = denot.isModuleObj
+    def isModuleObj(implicit ctx: Context) = denot.isModuleVal
     def isModuleClass(implicit ctx: Context) = denot.isModuleClass
     def isPackage(implicit ctx: Context) = denot.isPackage
-    def isPackageObj(implicit ctx: Context) = denot.isPackageObj
+    def isPackageObj(implicit ctx: Context) = denot.isPackageVal
     def isPackageClass(implicit ctx: Context) = denot.isPackageClass
 
     /** The current owner of this symbol */
@@ -95,6 +95,13 @@ object Symbols {
 
     /** Same as `ownersIterator contains sym` but more efficient. */
     final def hasTransOwner(sym: Symbol)(implicit ctx: Context): Boolean = denot.hasTransOwner(sym)
+
+    /** The owner, skipping package objects. */
+    def effectiveOwner(implicit ctx: Context) = denot.effectiveOwner
+
+    /** If this is a package object or its implementing class, its owner: otherwise this.
+     */
+    def skipPackageObject(implicit ctx: Context): Symbol = if (this is PackageObject) owner else this
 
     /** The top-level class containing this symbol, except for a toplevel module
      *  its module class

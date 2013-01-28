@@ -62,10 +62,10 @@ object SymDenotations {
      *  flags.
      */
     final def isModule = _flags is Module
-    final def isModuleObj = _flags is ModuleObj
+    final def isModuleVal = _flags is ModuleVal
     final def isModuleClass = _flags is ModuleClass
     final def isPackage = _flags is Package
-    final def isPackageObj = _flags is PackageObj
+    final def isPackageVal = _flags is PackageVal
     final def isPackageClass = _flags is PackageClass
 
     /** is this denotation a method? */
@@ -108,7 +108,7 @@ object SymDenotations {
     override protected def copy(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
 
     def moduleClass(implicit ctx: Context): Symbol =
-      if (this.isModuleObj) info.typeSymbol else NoSymbol
+      if (this.isModuleVal) info.typeSymbol else NoSymbol
 
     /** Desire to re-use the field in ClassSymbol which stores the source
      *  file to also store the classfile, but without changing the behavior
@@ -120,6 +120,8 @@ object SymDenotations {
 
     private def binaryFileOnly(file: AbstractFile): AbstractFile =
       if ((file eq null) || !(file.path endsWith ".class")) null else file
+
+    final def effectiveOwner(implicit ctx: Context) = owner.skipPackageObject
 
     final def topLevelClass(implicit ctx: Context): Symbol =
       if (!(owner.isPackageClass)) owner.topLevelClass
@@ -165,8 +167,8 @@ object SymDenotations {
       info.baseClasses.tail.iterator map overriddenSymbol filter (_.exists)
 
     def isCoDefinedWith(that: Symbol)(implicit ctx: Context) =
-      (this.owner == that.owner) &&
-      (  !(this.owner.isPackageClass)
+      (this.effectiveOwner == that.effectiveOwner) &&
+      (  !(this.effectiveOwner.isPackageClass)
       || (this.sourceFile == null)
       || (that.sourceFile == null)
       || (this.sourceFile.path == that.sourceFile.path)  // Cheap possibly wrong check, then expensive normalization
