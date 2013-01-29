@@ -4,20 +4,20 @@ package core
 import Periods._, SymDenotations._, Contexts._, Types._, Denotations._
 import java.lang.AssertionError
 
-trait Transformers { self: RootContext =>
-
-  import Transformers._
-
-  def transformersFor(ref: SingleDenotation): TransformerGroup = ref match {
-    case _: SymDenotation => denotTransformers
-    case _ => refTransformers
-  }
-
-  val denotTransformers = new TransformerGroup
-  val refTransformers = new TransformerGroup
-}
+trait Transformers
 
 object Transformers {
+
+  trait TransformerBase { self: ContextBase =>
+
+    def transformersFor(ref: SingleDenotation): TransformerGroup = ref match {
+      case _: SymDenotation => denotTransformers
+      case _ => refTransformers
+    }
+
+    val denotTransformers = new TransformerGroup
+    val refTransformers = new TransformerGroup
+  }
 
   val lastPhaseId = 31
 

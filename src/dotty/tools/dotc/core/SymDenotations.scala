@@ -232,16 +232,13 @@ object SymDenotations {
 
       /** Is protected access to target symbol permitted? */
       def isProtectedAccessOK = {
-        def fail(diagnostics: () => String): Boolean = {
-          ctx match {
-            case ctx: DiagnosticsContext => ctx.diagnostics = diagnostics
-            case _ =>
-          }
+        def fail(str: => String): Boolean = {
+          ctx.diagnose(str)
           false
         }
         val cls = owner.enclosingSubClass
         if (!cls.exists)
-          fail(() =>
+          fail(
             s"""Access to protected $this not permitted because
                |enclosing ${ctx.enclClass.owner.showLocated} is not a subclass of
                |${owner.showLocated} where target is defined""".stripMargin)
@@ -249,7 +246,7 @@ object SymDenotations {
                     pre.widen.typeSymbol.isSubClassOrCompanion(cls) ||
                       cls.isModuleClass &&
                       pre.widen.typeSymbol.isSubClassOrCompanion(cls.linkedClass)))
-          fail(() =>
+          fail(
             s"""Access to protected ${symbol.show} not permitted because
                |prefix type ${pre.widen.show} does not conform to
                |${cls.showLocated} where the access takes place""".stripMargin)
@@ -449,7 +446,7 @@ object SymDenotations {
           to
       }
       baseClassesVar = symbol :: addParentBaseClasses(parents, Nil)
-      superClassBitsVar = ctx.root.uniqueBits.findEntryOrUpdate(seen.toImmutable)
+      superClassBitsVar = ctx.uniqueBits.findEntryOrUpdate(seen.toImmutable)
     }
 
     def superClassBits(implicit ctx: Context): BitSet = {

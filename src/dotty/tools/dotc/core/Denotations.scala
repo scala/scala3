@@ -334,7 +334,7 @@ object Denotations {
         } else {
           // not found, current points to highest existing variant
           var startPid = current.validFor.lastPhaseId + 1
-          val trans = ctx.root.transformersFor(current)
+          val trans = ctx.transformersFor(current)
           val endPid = trans.nextTransformer(startPid + 1).phaseId - 1
           next = trans.nextTransformer(startPid) transform current
           if (next eq current)

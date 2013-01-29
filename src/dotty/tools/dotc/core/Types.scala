@@ -508,7 +508,7 @@ object Types {
 
   def unique[T <: Type](tp: T)(implicit ctx: Context): T = {
     if (tp.hash == NotCached) tp
-    else ctx.root.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
+    else ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
   }
 
   /** A marker trait for type proxies.
@@ -583,7 +583,7 @@ object Types {
                 throw new MalformedType(prefix, d.symbol)
               d
             } else {// name has changed; try load in earlier phase and make current
-              denot(ctx.withPhase(ctx.phaseId - 1)).current
+              denot(ctx.fresh.withPhase(ctx.phaseId - 1)).current
             }
           }
       }

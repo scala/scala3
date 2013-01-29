@@ -13,52 +13,95 @@ import collection.immutable.BitSet
 
 object Contexts {
 
-  val NoContext: Context = null
-
-  abstract class Context extends Periods with Substituters with TypeOps {
+  abstract class Context extends Periods with Substituters with TypeOps with Cloneable {
     implicit val ctx: Context = this
-    val underlying: Context
-    val root: RootContext
-    val period: Period
-    def constraints: Constraints
-    def typeComparer: TypeComparer
-    def printer: Printer = ???
-    def names: NameTable
+
+    def base: ContextBase
+
+    private[this] var _underlying: Context = _
+    protected def underlying_=(underlying: Context) = _underlying = underlying
+    def underlying: Context = _underlying
+
+    private[this] var _period: Period = _
+    protected def period_=(period: Period) = _period = period
+    def period: Period = _period
+
+    private[this] var _constraints: Constraints = _
+    protected def constraints_=(constraints: Constraints) = _constraints = constraints
+    def constraints: Constraints = _constraints
+
+    private[this] var _typeComparer: TypeComparer = _
+    protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
+
+    def typeComparer: TypeComparer = {
+      if ((_typeComparer eq underlying.typeComparer) &&
+          (constraints ne underlying.constraints))
+        _typeComparer = new TypeComparer(this)
+      _typeComparer
+    }
+
+    private[this] var _printer: Printer = _
+    protected def printer_=(printer: Printer) = _printer = printer
+    def printer: Printer = _printer
+
+    private[this] var _owner: Symbol = _
+    protected def owner_=(owner: Symbol) = _owner = owner
+    def owner: Symbol = _owner
+
+    private[this] var _diagnostics: Option[StringBuilder] = _
+    protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
+    def diagnostics: Option[StringBuilder] = _diagnostics
+
+    def diagnose(str: => String) =
+      for (sb <- diagnostics) {
+        sb.setLength(0)
+        sb.append(str)
+      }
+
+
+    def phase: Phase = ??? // phase(period.phaseId)
     def enclClass: Context = ???
-    def phase: Phase = ???
-    def owner: Symbol = ???
     def erasedTypes: Boolean = ???
+//    def settings: Settings = ???
+    def warning(msg: String) = ???
+
+    def fresh: FreshContext = {
+      val newctx = super.clone.asInstanceOf[FreshContext]
+      newctx.underlying = this
+      newctx
+    }
+
   }
 
-  abstract class DiagnosticsContext(ctx: Context) extends SubContext(ctx) {
-    var diagnostics: () => String
+  abstract class FreshContext extends Context {
+    def withPeriod(period: Period): this.type = { this.period = period; this }
+    def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
+    def withConstraints(constraints: Constraints): this.type = { this.constraints = constraints; this }
+    def withPrinter(printer: Printer): this.type = { this.printer = printer; this }
+    def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
+    def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
   }
 
-  abstract class SubContext(val underlying: Context) extends Context {
-    val root: RootContext = underlying.root
-    val period: Period = underlying.period
-    val constraints = underlying.constraints
-    def names: NameTable = root.names
-    lazy val typeComparer =
-      if (constraints eq underlying.constraints) underlying.typeComparer
-      else new TypeComparer(this)
+  private class InitialContext(val base: ContextBase) extends FreshContext {
+    underlying = NoContext
+    period = Nowhere
+    constraints = Map()
+    printer = new StdPrinter
+    owner = NoSymbol
   }
 
-  class RootContext extends Context
-                       with Transformers {
+  object NoContext extends Context {
+    val base = unsupported("base")
+  }
 
-    val underlying: Context = throw new UnsupportedOperationException("RootContext.underlying")
-    def typeComparer: TypeComparer = ???
+  class ContextBase extends Transformers.TransformerBase
+                       with Printers.PrinterBase {
 
-    val root: RootContext = this
-    val period = Nowhere
+    val initialCtx: Context = new InitialContext(this)
+
     val names: NameTable = new NameTable
-    val variance = 1
 
-    var lastPhaseId: Int = NoPhaseId
-    lazy val definitions = new Definitions()(this)
-
-    val constraints: Constraints = Map()
+    lazy val definitions = new Definitions()(initialCtx)
 
     // Symbols state
     /** A map from a superclass id to the class that has it */
@@ -93,6 +136,8 @@ object Contexts {
     private[core] var volatileRecursions: Int = 0
     private[core] val pendingVolatiles = new mutable.HashSet[Type]
   }
+
+  implicit def ctxToBase(ctx: Context): ContextBase = ctx.base
 
   /** Initial size of superId table */
   private final val InitialSuperIdsSize = 4096

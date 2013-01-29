@@ -7,7 +7,7 @@ import Contexts._
  *  run ids represent compiler runs
  *  phase ids represent compiler phases
  */
-abstract class Periods { self: Context =>
+abstract class Periods extends DotClass { self: Context =>
   import Periods._
 
   /** The current phase identifier */
@@ -16,23 +16,13 @@ abstract class Periods { self: Context =>
   /** The current run identifier */
   def runId = period.runId
 
-  /** A new context that differs from the current one in its period */
-  def withPeriod(pd: Period): Context =
-    if (period == pd) this
-    else new SubContext(self) {
-      override val period = pd
-    }
-
-  /** A new context that differs from the current one in its phase */
-  def withPhase(pid: PhaseId): Context = withPeriod(Period(runId, pid))
-
   /** Execute `op` at given period */
   def atPeriod[T](pd: Period)(op: Context => T) =
-    op(ctx withPeriod pd)
+    op(ctx.fresh.withPeriod(pd))
 
   /** Execute `op` at given phase id */
   def atPhase[T](pid: PhaseId)(op: Context => T) =
-    op(ctx withPhase pid)
+    op(ctx.fresh.withPhase(pid))
 }
 
 object Periods {

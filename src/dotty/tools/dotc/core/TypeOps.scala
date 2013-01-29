@@ -89,23 +89,22 @@ trait TypeOps { this: Context =>
     // because volatile checking is done before all cycles are detected.
     // the case to avoid is an abstract type directly or
     // indirectly upper-bounded by itself. See #2918
-    import ctx.root.{ volatileRecursions, pendingVolatiles }
     try {
-      volatileRecursions += 1
-      if (volatileRecursions < LogVolatileThreshold)
+      ctx.volatileRecursions += 1
+      if (ctx.volatileRecursions < LogVolatileThreshold)
         test
-      else if (pendingVolatiles(tp))
+      else if (ctx.pendingVolatiles(tp))
         false // we can return false here, because a cycle will be detected
       // here afterwards and an error will result anyway.
       else
         try {
-          pendingVolatiles += tp
+          ctx.pendingVolatiles += tp
           test
         } finally {
-          pendingVolatiles -= tp
+          ctx.pendingVolatiles -= tp
         }
     } finally {
-      volatileRecursions -= 1
+      ctx.volatileRecursions -= 1
     }
   }
 

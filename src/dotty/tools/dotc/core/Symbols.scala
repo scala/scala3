@@ -285,16 +285,15 @@ object Symbols {
 
     def superId(implicit ctx: Context): Int = {
       val hint = superIdHint
-      val rctx = ctx.root
-      if (hint >= 0 && hint <= rctx.lastSuperId && (rctx.classOfId(hint) eq this)) hint
+      if (hint >= 0 && hint <= ctx.lastSuperId && (ctx.classOfId(hint) eq this)) hint
       else {
-        val id = rctx.superIdOfClass get this match {
+        val id = ctx.superIdOfClass get this match {
           case Some(id) =>
             id
           case None =>
-            val id = rctx.nextSuperId
-            rctx.superIdOfClass(this) = id
-            rctx.classOfId(id) = this
+            val id = ctx.nextSuperId
+            ctx.superIdOfClass(this) = id
+            ctx.classOfId(id) = this
             id
         }
         superIdHint = id
@@ -312,7 +311,7 @@ object Symbols {
     override def exists = false
   }
 
-  implicit def defn(implicit ctx: Context): Definitions = ctx.root.definitions
+  implicit def defn(implicit ctx: Context): Definitions = ctx.definitions
 
   implicit def toFlagSet(sym: Symbol)(implicit ctx: Context): FlagSet = sym.flags
 
