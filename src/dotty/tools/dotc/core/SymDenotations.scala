@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, Annotations._
-import Types._, Flags._, Decorators._, Transformers._
+import Types._, Flags._, Decorators._, Transformers._, StdNames._
 import Scopes.Scope
 import collection.mutable
 import collection.immutable.BitSet
@@ -123,6 +123,9 @@ object SymDenotations {
 
     final def effectiveOwner(implicit ctx: Context) = owner.skipPackageObject
 
+    def enclosingClass(implicit ctx: Context): Symbol =
+      if (isClass) symbol else owner.enclosingClass
+
     final def topLevelClass(implicit ctx: Context): Symbol =
       if (!(owner.isPackageClass)) owner.topLevelClass
       else if (isClass) symbol
@@ -130,6 +133,10 @@ object SymDenotations {
 
     final def enclosingPackage(implicit ctx: Context): Symbol =
       if (isPackageClass) symbol else owner.enclosingPackage
+
+    def fullName(separator: Char)(implicit ctx: Context): Name =
+      if (this == NoSymbol || owner == NoSymbol || owner.isEffectiveRoot) name
+      else (effectiveOwner.enclosingClass.fullName(separator) :+ separator) ++ name
 
     def associatedFile(implicit ctx: Context): AbstractFile = topLevelClass.associatedFile
     final def binaryFile(implicit ctx: Context): AbstractFile = binaryFileOnly(associatedFile)
@@ -288,7 +295,13 @@ object SymDenotations {
       else if (this is Contravariant) -1
       else 0
 
-    def isRoot: Boolean = !owner.exists // !!! && name == tpnme.Root
+    def isRoot: Boolean = name.toTermName == nme.ROOT && !owner.exists
+
+    def isEmptyPackage(implicit ctx: Context): Boolean = name.toTermName == nme.EMPTY_PACKAGE && owner.isRoot
+
+    def isEffectiveRoot(implicit ctx: Context) = isRoot || isEmptyPackage
+
+    def isAnonymousClass(implicit ctx: Context): Boolean = ??? // initial.asSymDenotation.name startsWith tpnme.AnonClass
 
     def copy(
         sym: Symbol,
@@ -604,8 +617,20 @@ object SymDenotations {
           val ownNames = decls.iterator map (_.name)
           val candidates = inheritedNames ++ ownNames
           val names = candidates filter (keepOnly(thisType, _))
-          memberNamesCache += (keepOnly -> names)
+          memberNamesCache = memberNamesCache.updated(keepOnly, names)
           names
+    }
+
+    private[this] var fullNameCache: Map[Char, Name] = Map()
+
+    override final def fullName(separator: Char)(implicit ctx: Context): Name =
+      fullNameCache get separator match {
+      case Some(fn) =>
+        fn
+      case _ =>
+        val fn = super.fullName(separator)
+        fullNameCache = fullNameCache.updated(separator, fn)
+        fn
     }
 
     def copyClass(
@@ -654,7 +679,7 @@ object SymDenotations {
   object NoDenotation extends SymDenotation(Flags.Empty) with isComplete {
     override def symbol: Symbol = NoSymbol
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
-    override def name: Name = BootNameTable.newTermName("<none>")
+    override def name: Name = "<none>".toTermName
     override def info: Type = NoType
   }
 

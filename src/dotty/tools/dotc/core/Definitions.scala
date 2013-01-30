@@ -21,6 +21,12 @@ class Definitions(implicit ctx: Context) {
   lazy val ArrayClass: ClassSymbol = ???
   lazy val uncheckedStableClass: ClassSymbol = ???
 
+  /** Modules whose members are in the default namespace */
+  lazy val UnqualifiedModules: Set[Symbol] = ??? // List(PredefModule, ScalaPackage, JavaLangPackage)
+
+  /** `UnqualifiedModules` and their module classes */
+  lazy val UnqualifiedOwners = UnqualifiedModules ++ UnqualifiedModules.map(_.moduleClass)
+
   def init() =
     if (!isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler

@@ -354,7 +354,7 @@ object Denotations {
       current
     }
 
-    //final def asSymDenotation = asInstanceOf[SymDenotation]
+    final def asSymDenotation = asInstanceOf[SymDenotation]
 
     // ------ DenotationSet ops ----------------------------------------------
 

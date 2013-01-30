@@ -8,14 +8,11 @@ import Contexts._, Names._
 
 object Decorators {
 
-  implicit class toTypeNameDecorator(val s: String) extends AnyVal {
-    def toTypeName(implicit context: Context): TypeName =
-      context.names.newTypeName(s)
-  }
-
-  implicit class toTermNameDecorator(val s: String) extends AnyVal {
-    def toTermName(implicit context: Context): TermName =
-      context.names.newTermName(s)
+  implicit class StringDecorator(val s: String) extends AnyVal {
+    def toTypeName: TypeName = typeName(s)
+    def toTermName: TermName = termName(s)
+    def toEncodedTypeName = encodedTypeName(s)
+    def toEncodedTermName = encodedTermName(s)
   }
 
   implicit class SymbolIteratorDecorator(val it: Iterator[Symbol]) extends AnyVal {

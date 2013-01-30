@@ -3,9 +3,16 @@ package core
 
 import Types._, Symbols._, Contexts._, Scopes._
 
-trait Printers {
+trait Printers { this: Context =>
 
-  private[this] var _diagnostics: Option[StringBuilder] = _
+  def show(tp: Type): String = printer(this).show(tp)
+  def show(sym: Symbol): String = printer(this).show(sym)
+  def showLocated(sym: Symbol): String = printer(this).showLocated(sym)
+  def showDef(sym: Symbol): String = printer(this).showDef(sym)
+  def show(sc: Scope): String = printer(this).show(sc)
+
+  private var _diagnostics: Option[StringBuilder] = _
+
   protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
   def diagnostics: Option[StringBuilder] = _diagnostics
 
@@ -20,27 +27,20 @@ trait Printers {
 object Printers {
 
   trait PrinterBase { self: ContextBase =>
-
     private[core] var showRecursions = 0
-
   }
 
   abstract class Printer {
-    def show(tp: Type)(implicit ctx: Context): String
-    def show(sym: Symbol)(implicit ctx: Context): String
-    def showLocated(sym: Symbol)(implicit ctx: Context): String
-    def showDef(sym: Symbol)(implicit ctx: Context): String
-    def show(sc: Scope)(implicit ctx: Context): String
+    def show(tp: Type): String
+    def show(sym: Symbol): String
+    def showLocated(sym: Symbol): String
+    def showDef(sym: Symbol): String
+    def show(sc: Scope): String
   }
 
-  object StdPrinter {
-    final val maxShowRecursions = 50
-  }
+  class StdPrinter(implicit ctx: Context) extends Printer {
 
-  class StdPrinter extends Printer {
-    import StdPrinter._
-
-    def controlled(op: => String)(implicit ctx: Context): String =
+    def controlled(op: => String): String =
       if (ctx.showRecursions < maxShowRecursions)
         try {
           ctx.showRecursions += 1
@@ -49,14 +49,14 @@ object Printers {
           ctx.showRecursions -= 1
         }
       else {
-        if (???/*ctx.settings.debug.value*/) {
+        if (ctx.debug) {
           ctx.warning("Exceeded recursion depth attempting to print type.")
           (new Throwable).printStackTrace
         }
         "..."
       }
 
-    def show(tp: Type)(implicit ctx: Context): String = controlled {
+    def show(tp: Type): String = controlled {
       tp match {
         case TermRef(pre, name) =>
           ??? // showPrefix(pre) + show(name)
@@ -65,15 +65,45 @@ object Printers {
 
       }
     }
-    def show(sym: Symbol)(implicit ctx: Context): String = controlled {
+
+    protected def objectPrefix = "object "
+    protected def packagePrefix = "package "
+
+    protected def trimPrefix(str: String) =
+      str.stripPrefix(objectPrefix).stripPrefix(packagePrefix)
+
+    protected def isOmittablePrefix(sym: Symbol) =
+      (defn.UnqualifiedOwners contains sym) || isEmptyPrefix(sym)
+
+    protected  def isEmptyPrefix(sym: Symbol) =
+      sym.isEffectiveRoot || sym.isAnonymousClass || ??? // nme.isReplWrapperName(sym.name)
+
+
+    def showPrefix(tp: Type): String = controlled {
+      tp match {
+        case ThisType(cls) =>
+          if (ctx.debug) showName(cls) + ".this."
+          else if (cls.isAnonymousClass) "this."
+          else ???
+        case NoPrefix =>
+          ""
+        case _ =>
+          trimPrefix(show(tp)) + "#"
+
+      }
+    }
+
+    def show(sym: Symbol): String = controlled {
+
       ???
     }
-    def showLocated(sym: Symbol)(implicit ctx: Context): String = ???
-    def showDef(sym: Symbol)(implicit ctx: Context): String = ???
-    def show(sc: Scope)(implicit ctx: Context): String =
+    def showName(sym: Symbol): String = ???
+    def showLocated(sym: Symbol): String = ???
+    def showDef(sym: Symbol): String = ???
+    def show(sc: Scope): String =
       sc.toList.map(_.showDef).mkString("Scope{\n  ", ";\n  ", "\n}")
   }
 
-
+  final val maxShowRecursions = 50
 
 }

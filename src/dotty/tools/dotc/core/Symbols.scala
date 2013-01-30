@@ -22,7 +22,7 @@ object Symbols {
    */
   abstract class Symbol(denotf: Symbol => SymDenotation) extends DotClass {
 
-    type Name <: Names.Name
+    type ThisName <: Name
 
      /** Is symbol different from NoSymbol? */
     def exists = true
@@ -73,7 +73,7 @@ object Symbols {
     final def owner(implicit ctx: Context): Symbol = denot.owner
 
     /** The current name of this symbol */
-    final def name(implicit ctx: Context): Name = denot.name.asInstanceOf[Name]
+    final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]
 
     /** The current type info of this symbol */
     final def info(implicit ctx: Context): Type = denot.info
@@ -103,6 +103,9 @@ object Symbols {
      */
     def skipPackageObject(implicit ctx: Context): Symbol = if (this is PackageObject) owner else this
 
+     /** The class containing this symbol */
+    def enclosingClass(implicit ctx: Context): Symbol = denot.enclosingClass
+
     /** The top-level class containing this symbol, except for a toplevel module
      *  its module class
      */
@@ -110,6 +113,13 @@ object Symbols {
 
     /** The package containing this symbol */
     def enclosingPackage(implicit ctx: Context): Symbol = denot.enclosingPackage
+
+    /** The encoded full path name of this symbol, where outer names and inner names
+     *  are separated by `separator` characters.
+     *  Never translates expansions of operators back to operator symbol.
+     *  Drops package objects.
+     */
+    final def fullName(separator: Char)(implicit ctx: Context): Name = denot.fullName(separator)
 
     /** The source or class file from which this symbol was generated, null if not applicable. */
     final def associatedFile(implicit ctx: Context): AbstractFile = denot.associatedFile
@@ -199,9 +209,9 @@ object Symbols {
      */
     final def isAccessibleFrom(pre: Type, superAccess: Boolean = false)(implicit ctx: Context): Boolean = denot.isAccessibleFrom(pre, superAccess)
 
-    def show(implicit ctx: Context): String = ctx.printer.show(this)
-    def showLocated(implicit ctx: Context): String = ctx.printer.showLocated(this)
-    def showDef(implicit ctx: Context): String = ctx.printer.showDef(this)
+    def show(implicit ctx: Context): String = ctx.show(this)
+    def showLocated(implicit ctx: Context): String = ctx.showLocated(this)
+    def showDef(implicit ctx: Context): String = ctx.showDef(this)
 
     /** The type parameters of a class symbol, Nil for all other symbols */
     def typeParams(implicit ctx: Context): List[TypeSymbol] = denot.typeParams
@@ -211,6 +221,15 @@ object Symbols {
 
     /** Is this symbol the root class or its companion object? */
     def isRoot(implicit ctx: Context): Boolean = denot.isRoot
+
+    /** Is this symbol the empty package class or its companion object? */
+    def isEmptyPackage(implicit ctx: Context): Boolean = denot.isEmptyPackage
+
+    /** Is this symbol an anonymous class? */
+    def isAnonymousClass(implicit ctx: Context): Boolean = denot.isAnonymousClass
+
+    /** Is this symbol the root class, empty package class, or one of their companion objects? */
+    def isEffectiveRoot(implicit ctx: Context): Boolean = denot.isEffectiveRoot
 
     /** If this is a module symbol, the class defining its template, otherwise NoSymbol. */
     def moduleClass(implicit ctx: Context): Symbol = denot.moduleClass
@@ -244,14 +263,14 @@ object Symbols {
   }
 
   class TermSymbol(denotf: Symbol => SymDenotation) extends Symbol(denotf) {
-    type Name = TermName
+    type ThisName = TermName
     override def isTerm = true
     override def copy(implicit ctx: Context): TermSymbol = copy(owner)
     override def copy(owner: Symbol)(implicit ctx: Context): TermSymbol = new TermSymbol(denot.copy(_, owner))
   }
 
   class TypeSymbol(denotf: Symbol => SymDenotation) extends Symbol(denotf) {
-    type Name = TypeName
+    type ThisName = TypeName
     override def isType = true
     override def copy(implicit ctx: Context): TypeSymbol = copy(owner)
     override def copy(owner: Symbol)(implicit ctx: Context): TypeSymbol = new TypeSymbol(denot.copy(_, owner))

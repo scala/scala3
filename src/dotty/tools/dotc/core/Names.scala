@@ -3,29 +3,35 @@ package core
 
 import scala.io.Codec
 import util.NameTransformer
-import Periods._
 import Decorators._
+import collection.IndexedSeqOptimized
+import collection.generic.CanBuildFrom
+import collection.mutable.{ Builder, StringBuilder }
+import collection.immutable.WrappedString
+import collection.generic.CanBuildFrom
+//import annotation.volatile
 
 object Names {
 
   /** A name is essentially a string, with three differences
    *  1. Names belong in one of two universes: they are type names or term names.
    *     The same string can correspond both to a type name and to a term name.
-   *  2. In each universe, names are hash-consed per basis. Two names
-   *     representing the same string in the same basis are always reference identical.
+   *  2. NAmes are hash-consed. Two names
+   *     representing the same string in the same universe are always reference identical.
    *  3. Names are intended to be encoded strings. @see dotc.util.NameTransformer.
    *     The encoding will be applied when converting a string to a name.
    */
-  abstract class Name extends DotClass {
+  abstract class Name extends DotClass
+    with Seq[Char]
+    with IndexedSeqOptimized[Char, Name] {
 
-    /** The basis in which this name is stored */
-    val basis: NameTable
+    type ThisName <: Name
 
     /** The start index in the character array */
     val start: Int
 
     /** The length of the names */
-    val length: Int
+    override val length: Int
 
     /** Is this name a type name? */
     def isTypeName: Boolean
@@ -45,31 +51,15 @@ object Names {
     /** This name downcasted to a term name */
     def asTermName: TermName
 
-    /** This name in the given basis */
-    def in(basis: NameTable) =
-      if (this.basis eq basis) this
-      else newName(basis, this.basis.chrs, start, length)
+    /** This name converted to a local field name */
+    def toLocalName: LocalName
 
     /** Create a new name of same kind as this one, in the given
      *  basis, with `len` characters taken from `cs` starting at `offset`.
      */
-    protected def newName(basis: NameTable, cs: Array[Char], offset: Int, len: Int): Name
+    def fromChars(cs: Array[Char], offset: Int, len: Int): ThisName
 
-    /** A dummy equals method to catch all comparisons of names
-     *  to other entities (e.g. strings).
-     *  One always should use the ==(Name) method instead.
-     */
-    final override def equals(that: Any): Boolean = unsupported("equals")
-
-    /** The only authorized == method on names */
-    def == (that: Name): Boolean = (
-      (this eq that)
-      ||
-      (this.basis ne that.basis) &&
-      (this == (that in this.basis))
-    )
-
-    override def toString = new String(basis.chrs, start, length)
+    override def toString = new String(chrs, start, length)
 
     /** Write to UTF8 representation of this name to given character array.
      *  Start copying to index `to`. Return index of next free byte in array.
@@ -77,147 +67,270 @@ object Names {
      *  (i.e. maximally 3*length bytes).
      */
     final def copyUTF8(bs: Array[Byte], offset: Int): Int = {
-      val bytes = Codec.toUTF8(basis.chrs, start, length)
+      val bytes = Codec.toUTF8(chrs, start, length)
       scala.compat.Platform.arraycopy(bytes, 0, bs, offset, bytes.length)
       offset + bytes.length
     }
 
     /** Convert to string replacing operator symbols by corresponding \$op_name. */
     def decode: String = NameTransformer.decode(toString)
+
+    def ++ (other: Name): ThisName = ++ (other.toString)
+
+    def ++ (other: String): ThisName = {
+      val s = toString + other
+      fromChars(s.toCharArray, 0, s.length)
+    }
+
+    // ----- Collections integration -------------------------------------
+
+    override protected[this] def thisCollection: WrappedString = new WrappedString(repr.toString)
+    override protected[this] def toCollection(repr: Name): WrappedString = new WrappedString(repr.toString)
+
+    override protected[this] def newBuilder: Builder[Char, Name] = unsupported("newBuilder")
+
+    override def apply(index: Int): Char = chrs(start + index)
+
+    override def slice(from: Int, until: Int): ThisName =
+      fromChars(chrs, start + from, start + until)
+
+    override def seq = toCollection(this)
   }
 
-  class TermName(val basis: NameTable, val start: Int, val length: Int, val next: TermName) extends Name {
+  class TermName(val start: Int, val length: Int, private[Names] var next: TermName) extends Name {
+    type ThisName = TermName
     def isTypeName = false
     def isTermName = true
-    lazy val toTypeName: TypeName = new TypeName(basis, start, length, this)
+
+    @volatile private[this] var _typeName: TypeName = null
+
+    def toTypeName: TypeName = {
+      if (_typeName == null)
+        synchronized {
+          if (_typeName == null)
+            _typeName = new TypeName(start, length, this)
+        }
+      _typeName
+    }
     def toTermName = this
-    def asTypeName = throw new ClassCastException(this+" is not a type name")
+    def asTypeName = throw new ClassCastException(this + " is not a type name")
     def asTermName = this
 
-    protected def newName(basis: NameTable, cs: Array[Char], offset: Int, len: Int): Name =
-      basis.newTermName(cs, offset, len)
+    def toLocalName: LocalName = toTypeName.toLocalName
+
+    override protected[this] def newBuilder: Builder[Char, Name] = termNameBuilder
+
+    def fromChars(cs: Array[Char], offset: Int, len: Int): TermName = termName(cs, offset, len)
   }
 
-  class TypeName(val basis: NameTable, val start: Int, val length: Int, val toTermName: TermName) extends Name {
+  class TypeName(val start: Int, val length: Int, initialTermName: TermName) extends Name {
+    type ThisName = TypeName
     def isTypeName = true
     def isTermName = false
     def toTypeName = this
     def asTypeName = this
-    def asTermName = throw new ClassCastException(this+" is not a term name")
+    def asTermName = throw new ClassCastException(this + " is not a term name")
 
-    protected def newName(basis: NameTable, cs: Array[Char], offset: Int, len: Int): Name =
-      basis.newTypeName(cs, offset, len)
+    private[this] var _termName = initialTermName
+
+    def toTermName: TermName = _termName match {
+      case tn: LocalName =>
+        synchronized { tn.toGlobalName }
+      case tn =>
+        tn
+    }
+
+    def toLocalName: LocalName = _termName match {
+      case tn: LocalName =>
+        tn
+      case _ =>
+        synchronized {
+          val lname = new LocalName(start, length, _termName)
+          _termName = lname
+          lname
+        }
+    }
+
+    override protected[this] def newBuilder: Builder[Char, Name] = typeNameBuilder
+
+    def fromChars(cs: Array[Char], offset: Int, len: Int): TypeName = typeName(cs, offset, len)
   }
 
-  class NameTable {
+  /* A local name representing a field that has otherwise the same name as
+   * a normal term name. Used to avoid name clashes between fields and methods.
+   * Local names are linked to their corresponding trem anmes and type names.
+   *
+   * The encoding is as follows.
+   *
+   * If there are only a term name and type name:
+   *
+   *              TermName
+   *               |    ^
+   *     _typeName |    | _termName
+   *               v    |
+   *              TypeName
+   *
+   *  If there is also a local name:
+   *
+   *              TermName
+   *               |    ^
+   *               |    +--------------+ _termNme
+   *               |                   |
+   *     _typeName |                LocalName
+   *               |                   ^
+   *               |    +--------------+ _termName
+   *               v    |
+   *              TypeName
+   */
+  class LocalName(start: Int, length: Int, _next: TermName) extends TermName(start, length, _next) {
+    def toGlobalName: TermName = next
+  }
 
-    private final val HASH_SIZE = 0x8000
-    private final val HASH_MASK = 0x7FFF
-    private final val NAME_SIZE = 0x20000
-    final val nameDebug = false
+  // Nametable
 
-    /** Memory to store all names sequentially. */
-    private[Names] var chrs: Array[Char] = new Array[Char](NAME_SIZE)
-    private var nc = 0
+  private final val InitialHashSize = 0x8000
+  private final val InitialNameSize = 0x20000
+  private final val fillFactor = 0.7
 
-    /** Hashtable for finding term names quickly. */
-    private val table = new Array[Names.TermName](HASH_SIZE)
+  /** Memory to store all names sequentially. */
+  private var chrs: Array[Char] = new Array[Char](InitialNameSize)
 
-    /** The hashcode of a name. */
-    private def hashValue(cs: Array[Char], offset: Int, len: Int): Int =
-      if (len > 0)
-        (len * (41 * 41 * 41) +
-          cs(offset) * (41 * 41) +
-          cs(offset + len - 1) * 41 +
-          cs(offset + (len >> 1)))
-      else 0
+  /** The number of characters filled. */
+  private var nc = 0
 
-    /**
-     * Is (the ASCII representation of) name at given index equal to
-     *  cs[offset..offset+len-1]?
-     */
-    private def equals(index: Int, cs: Array[Char], offset: Int, len: Int): Boolean = {
-      var i = 0
-      while ((i < len) && (chrs(index + i) == cs(offset + i)))
-        i += 1;
-      i == len
+  /** Hashtable for finding term names quickly. */
+  private var table = new Array[TermName](InitialHashSize)
+
+  /** The number of defined names. */
+  private var size = 1
+
+  /** Make sure the capacity of the character array is at least `n` */
+  private def ensureCapacity(n: Int) =
+    if (n > chrs.length) {
+      val newchrs = new Array[Char](chrs.length * 2)
+      chrs.copyToArray(newchrs)
+      chrs = newchrs
     }
 
-    /** Enter characters into chrs array. */
-    private def enterChars(cs: Array[Char], offset: Int, len: Int) {
-      var i = 0
-      while (i < len) {
-        if (nc + i == chrs.length) {
-          val newchrs = new Array[Char](chrs.length * 2)
-          scala.compat.Platform.arraycopy(chrs, 0, newchrs, 0, chrs.length)
-          chrs = newchrs
-        }
-        chrs(nc + i) = cs(offset + i)
-        i += 1
-      }
-      if (len == 0) nc += 1
-      else nc = nc + len
+  /** Make sure the hash table is large enough for the given load factor */
+  private def incTableSize() = {
+    size += 1
+    if (size.toDouble / table.size > fillFactor) {
+      val oldTable = table
+      table = new Array[TermName](table.size * 2)
+      for (i <- 0 until oldTable.size) rehash(oldTable(i))
+    }
+  }
+
+  /** Rehash chain of names */
+  private def rehash(name: TermName): Unit =
+    if (name != null) {
+      rehash(name.next)
+      val h = hashValue(chrs, name.start, name.length) & (table.size - 1)
+      name.next = table(h)
+      table(h) = name
     }
 
-    /**
-     * Create a term name from the characters in cs[offset..offset+len-1].
-     *  Assume they are already encoded.
-     */
-    def newTermName(cs: Array[Char], offset: Int, len: Int): TermName = /* sync if parallel */ {
-      val h = hashValue(cs, offset, len) & HASH_MASK
+  /** The hash of a name made of from characters cs[offset..offset+len-1].  */
+  private def hashValue(cs: Array[Char], offset: Int, len: Int): Int =
+    if (len > 0)
+      (len * (41 * 41 * 41) +
+        cs(offset) * (41 * 41) +
+        cs(offset + len - 1) * 41 +
+        cs(offset + (len >> 1)))
+    else 0
+
+  /** Is (the ASCII representation of) name at given index equal to
+   *  cs[offset..offset+len-1]?
+   */
+  private def equals(index: Int, cs: Array[Char], offset: Int, len: Int): Boolean = {
+    var i = 0
+    while ((i < len) && (chrs(index + i) == cs(offset + i)))
+      i += 1;
+    i == len
+  }
+
+  /** Enter characters into chrs array. */
+  private def enterChars(cs: Array[Char], offset: Int, len: Int) {
+    ensureCapacity(nc + len)
+    var i = 0
+    while (i < len) {
+      chrs(nc + i) = cs(offset + i)
+      i += 1
+    }
+    nc += len
+  }
+
+  /** Create a term name from the characters in cs[offset..offset+len-1].
+   *  Assume they are already encoded.
+   */
+  def termName(cs: Array[Char], offset: Int, len: Int): TermName = {
+    val h = hashValue(cs, offset, len) & (table.size - 1)
+    synchronized {
       val next = table(h)
       var name = next
-      while ((name ne null) && (name.length != len || !equals(name.start, cs, offset, len)))
+      while (name ne null) {
+        if (name.length == len && equals(name.start, cs, offset, len))
+          return name
         name = name.next
-
-      if (name eq null) /* needs sync if parallel */ {
-        name = new TermName(this, nc, len, next)
-        enterChars(cs, offset, len)
-        table(h) = name
-        name
       }
-
+      name = new TermName(nc, len, next)
+      enterChars(cs, offset, len)
+      table(h) = name
+      incTableSize()
       name
-    }
-
-    /**
-     * Create a type name from the characters in cs[offset..offset+len-1].
-     *  Assume they are already encoded.
-     */
-    def newTypeName(cs: Array[Char], offset: Int, len: Int): TypeName =
-      newTermName(cs, offset, len).toTypeName
-
-    /**
-     * Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
-     *  Assume they are already encoded.
-     */
-    def newTermName(bs: Array[Byte], offset: Int, len: Int): TermName = {
-      val chars = Codec.fromUTF8(bs, offset, len)
-      newTermName(chars, 0, chars.length)
-    }
-
-    /**
-     * Create a type name from the UTF8 encoded bytes in bs[offset..offset+len-1].
-     *  Assume they are already encoded.
-     */
-    def newTypeName(bs: Array[Byte], offset: Int, len: Int): TypeName =
-      newTermName(bs, offset, len).toTypeName
-
-    /** Create a term name from a string, encode if necessary*/
-    def newTermName(s: String): TermName = {
-      val es = NameTransformer.encode(s)
-      newTermName(es.toCharArray, 0, es.length)
-    }
-
-    /** Create a type name from a string, encode if necessary */
-    def newTypeName(s: String): TypeName = {
-      val es = NameTransformer.encode(s)
-      newTypeName(es.toCharArray, 0, es.length)
     }
   }
 
-  object BootNameTable extends NameTable
+  /** Create a type name from the characters in cs[offset..offset+len-1].
+   *  Assume they are already encoded.
+   */
+  def typeName(cs: Array[Char], offset: Int, len: Int): TypeName =
+    termName(cs, offset, len).toTypeName
 
-  val EmptyTypeName = BootNameTable.newTypeName("")
-  val EmptyTermName = BootNameTable.newTermName("")
+  /** Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
+   *  Assume they are already encoded.
+   */
+  def termName(bs: Array[Byte], offset: Int, len: Int): TermName = {
+    val chars = Codec.fromUTF8(bs, offset, len)
+    termName(chars, 0, chars.length)
+  }
+
+  /** Create a type name from the UTF8 encoded bytes in bs[offset..offset+len-1].
+   *  Assume they are already encoded.
+   */
+  def typeName(bs: Array[Byte], offset: Int, len: Int): TypeName =
+    termName(bs, offset, len).toTypeName
+
+  /** Create a term name from a string, wihtout encoding operators */
+  def termName(s: String): TermName = termName(s.toCharArray, 0, s.length)
+
+  /** Create a term name from a string, encode if necessary*/
+  def encodedTermName(s: String): TermName = termName(NameTransformer.encode(s))
+
+  /** Create a type name from a string, wihtout encoding operators */
+  def typeName(s: String): TypeName = typeName(s.toCharArray, 0, s.length)
+
+  /** Create a type name from a string, encode if necessary*/
+  def encodedTypeName(s: String): TypeName = typeName(NameTransformer.encode(s))
+
+  /** The term name represented by the empoty string */
+  val EmptyTermName = new TermName(-1, 0, null)
+
+  table(0) = EmptyTermName
+
+  /** The type name represented by the empoty string */
+  val EmptyTypeName = EmptyTermName.toTypeName
+
+  val termNameBuilder: Builder[Char, TermName] =
+    StringBuilder.newBuilder.mapResult(termName)
+
+  val typeNameBuilder: Builder[Char, TypeName] =
+    StringBuilder.newBuilder.mapResult(typeName)
+
+  implicit val nameCanBuildFrom: CanBuildFrom[Name, Char, Name] = new CanBuildFrom[Name, Char, Name] {
+    def apply(from: Name): Builder[Char, Name] =
+      StringBuilder.newBuilder.mapResult(s => from.fromChars(s.toCharArray, 0, s.length))
+    def apply(): Builder[Char, Name] = termNameBuilder
+  }
 }

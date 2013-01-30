@@ -431,7 +431,7 @@ object Types {
     def |(that: Type)(implicit ctx: Context): Type =
       ctx.lub(this, that)
 
-    def show(implicit ctx: Context): String = ctx.printer.show(this)
+    def show(implicit ctx: Context): String = ctx.show(this)
 
 // ----- hashing ------------------------------------------------------
 

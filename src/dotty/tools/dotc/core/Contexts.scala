@@ -7,13 +7,17 @@ import Names._
 import Phases._
 import Types._
 import Symbols._
-import TypeComparers._, Printers._
+import TypeComparers._, Printers._, NameOps._
 import collection.mutable
 import collection.immutable.BitSet
 
 object Contexts {
 
-  abstract class Context extends Periods with Substituters with TypeOps with Cloneable {
+  abstract class Context extends Periods
+                            with Substituters
+                            with TypeOps
+                            with Printers
+                            with Cloneable {
     implicit val ctx: Context = this
 
     def base: ContextBase
@@ -40,28 +44,18 @@ object Contexts {
       _typeComparer
     }
 
-    private[this] var _printer: Printer = _
-    protected def printer_=(printer: Printer) = _printer = printer
-    def printer: Printer = _printer
+    private[this] var _printer: Context => Printer = _
+    protected def printer_=(printer: Context => Printer) = _printer = printer
+    def printer: Context => Printer = _printer
 
     private[this] var _owner: Symbol = _
     protected def owner_=(owner: Symbol) = _owner = owner
     def owner: Symbol = _owner
 
-    private[this] var _diagnostics: Option[StringBuilder] = _
-    protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
-    def diagnostics: Option[StringBuilder] = _diagnostics
-
-    def diagnose(str: => String) =
-      for (sb <- diagnostics) {
-        sb.setLength(0)
-        sb.append(str)
-      }
-
-
     def phase: Phase = ??? // phase(period.phaseId)
     def enclClass: Context = ???
     def erasedTypes: Boolean = ???
+    def debug: Boolean = ???
 //    def settings: Settings = ???
     def warning(msg: String) = ???
 
@@ -77,7 +71,7 @@ object Contexts {
     def withPeriod(period: Period): this.type = { this.period = period; this }
     def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
     def withConstraints(constraints: Constraints): this.type = { this.constraints = constraints; this }
-    def withPrinter(printer: Printer): this.type = { this.printer = printer; this }
+    def withPrinter(printer: Context => Printer): this.type = { this.printer = printer; this }
     def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
   }
@@ -86,7 +80,7 @@ object Contexts {
     underlying = NoContext
     period = Nowhere
     constraints = Map()
-    printer = new StdPrinter
+    printer = new StdPrinter()(_)
     owner = NoSymbol
   }
 
@@ -95,11 +89,10 @@ object Contexts {
   }
 
   class ContextBase extends Transformers.TransformerBase
-                       with Printers.PrinterBase {
+                       with Printers.PrinterBase
+                       with NameOps.NameOpsBase {
 
     val initialCtx: Context = new InitialContext(this)
-
-    val names: NameTable = new NameTable
 
     lazy val definitions = new Definitions()(initialCtx)
 
