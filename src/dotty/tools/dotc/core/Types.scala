@@ -613,15 +613,18 @@ object Types {
 
   abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType
 
-  trait NamedNoPrefix extends NamedType {
+  trait HasFixedSym extends NamedType {
     protected val fixedSym: Symbol
     override def symbol(implicit ctx: Context): Symbol = fixedSym
-    override def info(implicit ctx: Context): Type = fixedSym.info
-    override def denot(implicit ctx: Context): Denotation = fixedSym.denot
+    override def loadDenot(implicit ctx: Context) = {
+      val denot = fixedSym.denot
+      val owner = denot.owner
+      if (owner.isTerm) denot else denot.asSeenFrom(prefix, owner).toDenot
+    }
   }
 
-  final class TermRefNoPrefix(val fixedSym: TermSymbol)(implicit ctx: Context)
-    extends TermRef(NoPrefix, fixedSym.name) with NamedNoPrefix {
+  final class TermRefBySym(prefix: Type, val fixedSym: TermSymbol)(implicit ctx: Context)
+    extends TermRef(prefix, fixedSym.name) with HasFixedSym {
   }
 
   final class TermRefWithSignature(prefix: Type, name: TermName, override val signature: Signature) extends TermRef(prefix, name) {
@@ -630,8 +633,8 @@ object Types {
       super.loadDenot.atSignature(signature)
   }
 
-  final class TypeRefNoPrefix(val fixedSym: TypeSymbol)(implicit ctx: Context)
-    extends TypeRef(NoPrefix, fixedSym.name) with NamedNoPrefix {
+  final class TypeRefBySym(prefix: Type, val fixedSym: TypeSymbol)(implicit ctx: Context)
+    extends TypeRef(prefix, fixedSym.name) with HasFixedSym {
   }
 
   final class CachedTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name)
@@ -646,8 +649,8 @@ object Types {
   object TermRef {
     def apply(prefix: Type, name: TermName)(implicit ctx: Context) =
       unique(new CachedTermRef(prefix, name))
-    def apply(sym: TermSymbol)(implicit ctx: Context) =
-      unique(new TermRefNoPrefix(sym))
+    def apply(prefix: Type, sym: TermSymbol)(implicit ctx: Context) =
+      unique(new TermRefBySym(prefix, sym))
     def apply(prefix: Type, name: TermName, signature: Signature)(implicit ctx: Context) =
       unique(new TermRefWithSignature(prefix, name, signature))
   }
@@ -655,8 +658,8 @@ object Types {
   object TypeRef {
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context) =
       unique(new CachedTypeRef(prefix, name))
-    def apply(sym: TypeSymbol)(implicit ctx: Context) =
-      unique(new TypeRefNoPrefix(sym))
+    def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context) =
+      unique(new TypeRefBySym(prefix, sym))
   }
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
