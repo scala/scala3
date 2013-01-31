@@ -152,7 +152,7 @@ object SymDenotations {
     def isStatic(implicit ctx: Context) = (this is Static) || owner.isStaticOwner
 
     final def isStaticOwner(implicit ctx: Context): Boolean =
-      (this is PackageClass) || (this is ModuleClass) && isStatic
+      isPackageClass || isModuleClass && isStatic
 
     final def matchingSymbol(inClass: Symbol, site: Type)(implicit ctx: Context): Symbol = {
       var denot = inClass.info.nonPrivateDecl(name)
@@ -287,7 +287,7 @@ object SymDenotations {
 
     def thisType(implicit ctx: Context): Type = unsupported("thisType")
 
-    def typeConstructor(implicit ctx: Context): Type =
+    def typeConstructor(implicit ctx: Context): TypeRef =
       TypeRef(owner.thisType, name.asTypeName)
 
     def variance: Int =
@@ -319,30 +319,37 @@ object SymDenotations {
     def tryComplete(): Unit = unsupported("tryComplete")
   }
 
-  trait isLazy extends SymDenotation {
+  abstract class Completer[Denot <: SymDenotation] {
+    def handleCycle(denot: Denot): Unit
+    def load(denot: Denot): Unit
+    def complete(denot: Denot): Unit
+  }
+
+  type SymCompleter = Completer[LazySymDenotation]
+  type ClassCompleter = Completer[LazyClassDenotation]
+
+  trait isLazy[Denot <: SymDenotation] extends SymDenotation { this: Denot =>
+
+    protected def completer: Completer[Denot]
 
     protected def tryLoad(): Unit = try {
       if (flags is Locked) throw new CyclicReference(symbol)
       setFlags(Locked)
-      load()
+      completer.load(this)
     } catch {
-      case ex: CyclicReference => handleCycle()
+      case ex: CyclicReference => completer.handleCycle(this)
     } finally {
       flags &~= Locked
     }
 
-    protected def tryComplete() = try {
+    protected def tryComplete(): Unit = try {
       if (flags is Locked) throw new CyclicReference(symbol)
-      complete()
+      completer.complete(this)
     } catch {
-      case ex: CyclicReference => handleCycle()
+      case ex: CyclicReference => completer.handleCycle(this)
     } finally {
       flags &~= Locked
     }
-
-    protected def handleCycle(): Unit
-    protected def load(): Unit
-    protected def complete(): Unit
   }
 
   class CompleteSymDenotation(
@@ -357,8 +364,9 @@ object SymDenotations {
       val symbol: Symbol,
       val owner: Symbol,
       val name: Name,
-      initFlags: FlagSet
-    ) extends SymDenotation(initFlags) with isLazy {
+      initFlags: FlagSet,
+      val completer: SymCompleter
+    ) extends SymDenotation(initFlags) with isLazy[LazySymDenotation] {
 
     private[this] var _info: Type = _
 
@@ -410,14 +418,14 @@ object SymDenotations {
 
     // todo: apply same scheme to static objects/all objects?
     private def computeThisType: Type =
-      if ((this is PackageClass) && !isRoot)
+      if (isPackageClass && !isRoot)
         TermRef(owner.thisType, name.toTermName)
       else
         ThisType(symbol)
 
-    private[this] var _typeConstructor: Type = null
+    private[this] var _typeConstructor: TypeRef = null
 
-    override def typeConstructor(implicit ctx: Context): Type = {
+    override def typeConstructor(implicit ctx: Context): TypeRef = {
       if (_typeConstructor == null) _typeConstructor = super.typeConstructor
       _typeConstructor
     }
@@ -651,20 +659,22 @@ object SymDenotations {
       val name: Name,
       initFlags: FlagSet,
       val parents: List[TypeRef],
-      val selfType: Type,
+      optSelfType: Type,
       val decls: Scope,
       assocFile: AbstractFile = null
   )(implicit ctx: Context) extends ClassDenotation(initFlags, assocFile) with isComplete {
+    val selfType = if (optSelfType == NoType) thisType else optSelfType
     final def preCompleteDecls = decls
   }
 
-  abstract class LazyClassDenotation(
+  class LazyClassDenotation(
       val symbol: ClassSymbol,
       val owner: Symbol,
       val name: Name,
       initFlags: FlagSet,
+      val completer: ClassCompleter,
       assocFile: AbstractFile = null
-    )(implicit ctx: Context) extends ClassDenotation(initFlags, assocFile) with isLazy {
+    )(implicit ctx: Context) extends ClassDenotation(initFlags, assocFile) with isLazy[LazyClassDenotation] {
 
     protected var _parents: List[TypeRef] = null
     protected var _selfType: Type = null
@@ -676,7 +686,7 @@ object SymDenotations {
     final def preCompleteDecls = {ensureLoaded(); _decls }
   }
 
-  object NoDenotation extends SymDenotation(Flags.Empty) with isComplete {
+  object NoDenotation extends SymDenotation(EmptyFlags) with isComplete {
     override def symbol: Symbol = NoSymbol
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def name: Name = "<none>".toTermName

@@ -146,13 +146,13 @@ object Flags {
     FlagConjunction(oneOf(flagss: _*).bits)
   }
   /** The disjunction of all flags in given flag set */
-  def oneOf(flagss: FlagSet*) = (Empty /: flagss) (_ | _)
+  def oneOf(flagss: FlagSet*) = (EmptyFlags /: flagss) (_ | _)
 
   /** The disjunction of all flags in given flag set */
   def commonFlags(flagss: FlagSet*) = oneOf(flagss map (_.toCommonFlags): _*)
 
   /** The empty flag set */
-  final val Empty = FlagSet(0)
+  final val EmptyFlags = FlagSet(0)
 
   // Available flags:
 
@@ -331,6 +331,8 @@ object Flags {
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local
 
+  final val UninstantiatableFlags = Abstract | Final
+
   /** These flags are enabled from phase 1 */
   final val InitialFlags: FlagSet = ???
 
@@ -340,6 +342,10 @@ object Flags {
 
   /** These flags are pickled */
   final val PickledFlags  = InitialFlags &~ FlagsNotPickled
+
+  /** Packages always have these flags set */
+  final val PackageCreationFlags = commonFlags(
+    Module, Package, Final, JavaDefined, Static)
 
   /** A value that's unstable unless complemented with a Stable flag */
   final val UnstableValue = oneOf(Mutable, Method, ByNameParam)

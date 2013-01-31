@@ -7,7 +7,7 @@ import Names._
 import Phases._
 import Types._
 import Symbols._
-import TypeComparers._, Printers._, NameOps._
+import TypeComparers._, Printers._, NameOps._, SymDenotations._
 import collection.mutable
 import collection.immutable.BitSet
 
@@ -17,6 +17,7 @@ object Contexts {
                             with Substituters
                             with TypeOps
                             with Printers
+                            with Symbols
                             with Cloneable {
     implicit val ctx: Context = this
 
@@ -93,6 +94,8 @@ object Contexts {
                        with NameOps.NameOpsBase {
 
     val initialCtx: Context = new InitialContext(this)
+
+    lazy val rootLoader: ClassCompleter = ???
 
     lazy val definitions = new Definitions()(initialCtx)
 

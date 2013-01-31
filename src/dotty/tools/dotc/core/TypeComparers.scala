@@ -106,13 +106,12 @@ object TypeComparers {
         thirdTry(tp1, tp2)
     }
 
-    def thirdTryRef(tp1: Type, tp2: TypeRef): Boolean = (
-      (tp2 == defn.SingletonType && tp1.isStable)
-      ||
-      (!tp2.symbol.isClass && isSubType(tp1, tp2.info.bounds.lo))
-      ||
+    def thirdTryRef(tp1: Type, tp2: TypeRef): Boolean = {
+      val cls2 = tp2.symbol
+      (cls2 == defn.SingletonClass && tp1.isStable) ||
+      (!cls2.isClass && isSubType(tp1, tp2.info.bounds.lo)) ||
       fourthTry(tp1, tp2)
-    )
+    }
 
     def thirdTry(tp1: Type, tp2: Type): Boolean = tp2 match {
       case tp2: TypeRef =>

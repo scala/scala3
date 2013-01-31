@@ -259,17 +259,9 @@ object StdNames {
 
     val ??? = encode("???")
 
-    val wrapRefArray: N     = "wrapRefArray"
-    val wrapByteArray: N    = "wrapByteArray"
-    val wrapShortArray: N   = "wrapShortArray"
-    val wrapCharArray: N    = "wrapCharArray"
-    val wrapIntArray: N     = "wrapIntArray"
-    val wrapLongArray: N    = "wrapLongArray"
-    val wrapFloatArray: N   = "wrapFloatArray"
-    val wrapDoubleArray: N  = "wrapDoubleArray"
-    val wrapBooleanArray: N = "wrapBooleanArray"
-    val wrapUnitArray: N    = "wrapUnitArray"
-    val genericWrapArray: N = "genericWrapArray"
+    val genericWrapArray: N     = "genericWrapArray"
+    def wrapRefArray: N         = "wrapRefArray"
+    def wrapXArray(clsName: Name): N = "wrap" + clsName + "Array"
 
     // Compiler utilized names
 
@@ -293,6 +285,7 @@ object StdNames {
     val NoPrefix: N             = "NoPrefix"
     val NoSymbol: N             = "NoSymbol"
     val NoType: N               = "NoType"
+    val Ref: N                  = "Ref"
     val RootPackage: N          = "RootPackage"
     val RootClass: N            = "RootClass"
     val Select: N               = "Select"

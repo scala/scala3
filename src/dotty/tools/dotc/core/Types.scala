@@ -265,7 +265,7 @@ object Types {
 
     /** The declaration of this type with given name */
     final def decl(name: Name)(implicit ctx: Context): Denotation =
-      findDecl(name, this, Flags.Empty)
+      findDecl(name, this, EmptyFlags)
 
     /** The non-private declaration of this type with given name */
     final def nonPrivateDecl(name: Name)(implicit ctx: Context): Denotation =
@@ -286,7 +286,7 @@ object Types {
 
     /** The member of this type with given name  */
     final def member(name: Name)(implicit ctx: Context): Denotation =
-      findMember(name, this, Flags.Empty)
+      findMember(name, this, EmptyFlags)
 
     /** The non-private member of this type with given name */
     final def nonPrivateMember(name: Name)(implicit ctx: Context): Denotation =

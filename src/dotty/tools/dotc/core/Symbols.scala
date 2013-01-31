@@ -3,7 +3,7 @@ package core
 
 import Periods._
 import Transformers._
-import Names._
+import Names._, Scopes._
 import Flags._
 import java.lang.AssertionError
 import Decorators._
@@ -15,8 +15,35 @@ import Denotations.{Denotation, SingleDenotation, MultiDenotation}
 import collection.mutable
 import reflect.io.AbstractFile
 
-object Symbols {
+trait Symbols { this: Context =>
 
+  def newLazyClassSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: ClassCompleter, assocfile: AbstractFile = null) =
+    new ClassSymbol(new LazyClassDenotation(_, owner, name, initFlags, completer, assocfile))
+
+  def newCompleteClassSymbol(
+      owner: Symbol,
+      name: TypeName,
+      flags: FlagSet,
+      parents: List[TypeRef],
+      optSelfType: Type = NoType,
+      decls: Scope = newScope,
+      assocFile: AbstractFile = null) =
+   new ClassSymbol(new CompleteClassDenotation(
+       _, owner, name, flags, parents, optSelfType, decls, assocFile))
+
+  def newCompleteTypeSymbol(
+      owner: Symbol,
+      name: Name,
+      flags: FlagSet,
+      info: Type) =
+    new TypeSymbol(new CompleteSymDenotation(_, owner, name, flags, info))
+
+  def newAliasTypeSymbol(owner: Symbol, name: Name, alias: Type, flags: FlagSet = EmptyFlags) =
+    newCompleteTypeSymbol(owner, name, flags, TypeBounds(alias, alias))
+
+}
+
+object Symbols {
 
   /** A Symbol represents a Scala definition/declaration or a package.
    */
@@ -56,6 +83,17 @@ object Symbols {
      *  should be called only if class is a super class of some other class.
      */
     def superId: Int = -1
+
+    final def entered(implicit ctx: Context): this.type = {
+      owner.info.decls.enter(this)
+      this
+    }
+
+    /** Is symbol a primitive value class? */
+    def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains this
+
+    /** Is symbol a phantom class for which no runtime representation exists? */
+    def isPhantomClass(implicit ctx: Context) = defn.PhantomClasses contains this
 
 // --------- Forwarders for sym methods --------------------------
 
@@ -276,7 +314,7 @@ object Symbols {
     override def copy(owner: Symbol)(implicit ctx: Context): TypeSymbol = new TypeSymbol(denot.copy(_, owner))
 
     /** The type representing the type constructor for this type symbol */
-    def typeConstructor(implicit ctx: Context): Type = denot.typeConstructor
+    def typeConstructor(implicit ctx: Context): TypeRef = denot.typeConstructor
 
     /** The variance of this type parameter as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant
