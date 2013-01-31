@@ -81,8 +81,8 @@ object StdNames {
     final val HASHkw: N      = kw("#")
     final val ATkw: N        = kw("@")
 
-    val ANON_CLASS_NAME: N            = "$anon"
-    val ANON_FUN_NAME: N              = "$anonfun"
+    val ANON_CLASS: N            = "$anon"
+    val ANON_FUN: N              = "$anonfun"
     val BITMAP_PREFIX: N              = "bitmap$"
     val BITMAP_NORMAL: N              = BITMAP_PREFIX         // initialization bitmap for public/protected lazy vals
     val BITMAP_TRANSIENT: N           = BITMAP_PREFIX + "trans$"    // initialization bitmap for transient lazy vals

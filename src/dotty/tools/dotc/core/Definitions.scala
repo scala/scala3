@@ -30,7 +30,7 @@ class Definitions(implicit ctx: Context) {
 
   lazy val ObjectClass = requiredClass("java.lang.Object")
   lazy val AnyRefAlias: TypeSymbol = ctx.newAliasTypeSymbol(
-    ScalaPackageClass, nme.AnyRef, ObjectClass.typeConstructor).entered
+    ScalaPackageClass, tpnme.AnyRef, ObjectClass.typeConstructor).entered
   lazy val AnyClass: ClassSymbol = ctx.newCompleteClassSymbol(
     ScalaPackageClass, tpnme.Any, Abstract, Nil).entered
   lazy val AnyValClass: ClassSymbol = requiredClass("scala.AnyVal")

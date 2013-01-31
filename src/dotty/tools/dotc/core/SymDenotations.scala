@@ -295,13 +295,13 @@ object SymDenotations {
       else if (this is Contravariant) -1
       else 0
 
-    def isRoot: Boolean = name.toTermName == nme.ROOT && !owner.exists
+    def isRoot: Boolean = name.toTermName == nme.ROOT
 
     def isEmptyPackage(implicit ctx: Context): Boolean = name.toTermName == nme.EMPTY_PACKAGE && owner.isRoot
 
     def isEffectiveRoot(implicit ctx: Context) = isRoot || isEmptyPackage
 
-    def isAnonymousClass(implicit ctx: Context): Boolean = ??? // initial.asSymDenotation.name startsWith tpnme.AnonClass
+    def isAnonymousClass(implicit ctx: Context): Boolean = initial.asSymDenotation.name startsWith tpnme.ANON_CLASS
 
     def copy(
         sym: Symbol,

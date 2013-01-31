@@ -11,7 +11,7 @@ import Symbols._
 import Contexts._
 import SymDenotations._
 import Types._, Annotations._
-import Denotations.{Denotation, SingleDenotation, MultiDenotation}
+import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import reflect.io.AbstractFile
 
@@ -28,19 +28,25 @@ trait Symbols { this: Context =>
       optSelfType: Type = NoType,
       decls: Scope = newScope,
       assocFile: AbstractFile = null) =
-   new ClassSymbol(new CompleteClassDenotation(
-       _, owner, name, flags, parents, optSelfType, decls, assocFile))
+    new ClassSymbol(new CompleteClassDenotation(
+      _, owner, name, flags, parents, optSelfType, decls, assocFile))
 
   def newCompleteTypeSymbol(
       owner: Symbol,
-      name: Name,
+      name: TypeName,
       flags: FlagSet,
       info: Type) =
     new TypeSymbol(new CompleteSymDenotation(_, owner, name, flags, info))
 
-  def newAliasTypeSymbol(owner: Symbol, name: Name, alias: Type, flags: FlagSet = EmptyFlags) =
+  def newAliasTypeSymbol(owner: Symbol, name: TypeName, alias: Type, flags: FlagSet = EmptyFlags) =
     newCompleteTypeSymbol(owner, name, flags, TypeBounds(alias, alias))
 
+  def newCompleteTermSymbol(
+      owner: Symbol,
+      name: TermName,
+      flags: FlagSet,
+      info: Type) =
+    new TermSymbol(new CompleteSymDenotation(_, owner, name, flags, info))
 }
 
 object Symbols {
@@ -51,7 +57,7 @@ object Symbols {
 
     type ThisName <: Name
 
-     /** Is symbol different from NoSymbol? */
+    /** Is symbol different from NoSymbol? */
     def exists = true
 
     /** This symbol, if it exists, otherwise the result of evaluating `that` */
@@ -95,7 +101,7 @@ object Symbols {
     /** Is symbol a phantom class for which no runtime representation exists? */
     def isPhantomClass(implicit ctx: Context) = defn.PhantomClasses contains this
 
-// --------- Forwarders for sym methods --------------------------
+    // --------- Forwarders for sym methods --------------------------
 
     /** Special case tests for flags that are known a-priori and do not need loading
      *  flags.
@@ -141,7 +147,7 @@ object Symbols {
      */
     def skipPackageObject(implicit ctx: Context): Symbol = if (this is PackageObject) owner else this
 
-     /** The class containing this symbol */
+    /** The class containing this symbol */
     def enclosingClass(implicit ctx: Context): Symbol = denot.enclosingClass
 
     /** The top-level class containing this symbol, except for a toplevel module
@@ -192,8 +198,8 @@ object Symbols {
     /** Is this symbol a subclass of the given class? */
     final def isSubClass(cls: Symbol)(implicit ctx: Context): Boolean = denot.isSubClass(cls)
 
-   /** Is this class symbol a subclass of `cls`,
-     * and is this class symbol also different from Null or Nothing?
+    /** Is this class symbol a subclass of `cls`,
+     *  and is this class symbol also different from Null or Nothing?
      */
     final def isNonBottomSubClass(cls: Symbol)(implicit ctx: Context): Boolean = denot.isNonBottomSubClass(cls)
 
@@ -287,16 +293,15 @@ object Symbols {
     /** Does this symbol denote a class that defines static symbols? */
     final def isStaticOwner(implicit ctx: Context): Boolean = denot.isStaticOwner
 
-//    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
+    //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
 
-//    def isSkolem: Boolean = ???
+    //    def isSkolem: Boolean = ???
 
-//    def isAbstractType: Boolean = ???
-//    def newAbstractType(name: TypeName, info: TypeBounds): TypeSymbol = ???
-//    def newAbstractTerm(name: TermName, tpe: Type): TypeSymbol = ???
+    //    def isAbstractType: Boolean = ???
+    //    def newAbstractType(name: TypeName, info: TypeBounds): TypeSymbol = ???
+    //    def newAbstractTerm(name: TermName, tpe: Type): TypeSymbol = ???
 
     //def isMethod(implicit ctx: Context): Boolean = denot.isMethod
-
 
   }
 
@@ -338,7 +343,7 @@ object Symbols {
      */
     def baseClasses(implicit ctx: Context): List[ClassSymbol] = classDenot.baseClasses
 
-//    override def typeTemplate(implicit ctx: Context): Type = classDenot.typeTemplate
+    //    override def typeTemplate(implicit ctx: Context): Type = classDenot.typeTemplate
 
     def superId(implicit ctx: Context): Int = {
       val hint = superIdHint
