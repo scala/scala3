@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Periods._
@@ -13,23 +14,25 @@ import SymDenotations._
 import Types._, Annotations._
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
-import reflect.io.AbstractFile
+import io.AbstractFile
 
 trait Symbols { this: Context =>
+
+  def newLazyTermSymbol(owner: Symbol, name: TermName, initFlags: FlagSet, completer: SymCompleter) =
+    new TermSymbol(new LazySymDenotation(_, owner, name, initFlags, completer))
+
+  def newLazyTypeSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: SymCompleter) =
+    new TypeSymbol(new LazySymDenotation(_, owner, name, initFlags, completer))
 
   def newLazyClassSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: ClassCompleter, assocfile: AbstractFile = null) =
     new ClassSymbol(new LazyClassDenotation(_, owner, name, initFlags, completer, assocfile))
 
-  def newCompleteClassSymbol(
+  def newCompleteTermSymbol(
       owner: Symbol,
-      name: TypeName,
+      name: TermName,
       flags: FlagSet,
-      parents: List[TypeRef],
-      optSelfType: Type = NoType,
-      decls: Scope = newScope,
-      assocFile: AbstractFile = null) =
-    new ClassSymbol(new CompleteClassDenotation(
-      _, owner, name, flags, parents, optSelfType, decls, assocFile))
+      info: Type) =
+    new TermSymbol(new CompleteSymDenotation(_, owner, name, flags, info))
 
   def newCompleteTypeSymbol(
       owner: Symbol,
@@ -41,12 +44,16 @@ trait Symbols { this: Context =>
   def newAliasTypeSymbol(owner: Symbol, name: TypeName, alias: Type, flags: FlagSet = EmptyFlags) =
     newCompleteTypeSymbol(owner, name, flags, TypeBounds(alias, alias))
 
-  def newCompleteTermSymbol(
+  def newCompleteClassSymbol(
       owner: Symbol,
-      name: TermName,
+      name: TypeName,
       flags: FlagSet,
-      info: Type) =
-    new TermSymbol(new CompleteSymDenotation(_, owner, name, flags, info))
+      parents: List[TypeRef],
+      optSelfType: Type = NoType,
+      decls: Scope = newScope,
+      assocFile: AbstractFile = null) =
+    new ClassSymbol(new CompleteClassDenotation(
+      _, owner, name, flags, parents, optSelfType, decls, assocFile))
 }
 
 object Symbols {
@@ -164,6 +171,7 @@ object Symbols {
      *  Drops package objects.
      */
     final def fullName(separator: Char)(implicit ctx: Context): Name = denot.fullName(separator)
+    final def fullName(implicit ctx: Context): Name = fullName('.')
 
     /** The source or class file from which this symbol was generated, null if not applicable. */
     final def associatedFile(implicit ctx: Context): AbstractFile = denot.associatedFile

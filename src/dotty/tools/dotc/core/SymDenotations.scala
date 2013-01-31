@@ -328,6 +328,12 @@ object SymDenotations {
   type SymCompleter = Completer[LazySymDenotation]
   type ClassCompleter = Completer[LazyClassDenotation]
 
+  class ModuleCompleter(moduleClass: ClassSymbol) extends Completer[LazySymDenotation] {
+    def handleCycle(denot: LazySymDenotation): Unit = ???
+    def load(denot: LazySymDenotation): Unit = ???
+    def complete(denot: LazySymDenotation): Unit = ???
+  }
+
   trait isLazy[Denot <: SymDenotation] extends SymDenotation { this: Denot =>
 
     protected def completer: Completer[Denot]
@@ -360,7 +366,19 @@ object SymDenotations {
       val info: Type
     ) extends SymDenotation(initFlags) with isComplete
 
-  abstract class LazySymDenotation(
+  class LazyModuleDenotation(
+      symbol: Symbol,
+      owner: Symbol,
+      name: Name,
+      initFlags: FlagSet,
+      val moduleClass: ClassSymbol
+    ) extends LazySymDenotation(symbol, owner, name, initFlags, new ModuleCompleter(moduleClass)) {
+
+    override val info: Type = ???
+  }
+
+
+  class LazySymDenotation(
       val symbol: Symbol,
       val owner: Symbol,
       val name: Name,
