@@ -10,6 +10,7 @@ import Symbols._
 import TypeComparers._, Printers._, NameOps._, SymDenotations._
 import collection.mutable
 import collection.immutable.BitSet
+import config.{Settings, Platform}
 
 object Contexts {
 
@@ -53,12 +54,16 @@ object Contexts {
     protected def owner_=(owner: Symbol) = _owner = owner
     def owner: Symbol = _owner
 
+    private[this] var _settings: Settings = _
+    protected def settings_=(settings: Settings) = _settings = settings
+    def settings: Settings = _settings
+
     def phase: Phase = ??? // phase(period.phaseId)
     def enclClass: Context = ???
     def erasedTypes: Boolean = ???
     def debug: Boolean = ???
-//    def settings: Settings = ???
     def warning(msg: String) = ???
+    def inform(msg: String) = ???
 
     def fresh: FreshContext = {
       val newctx = super.clone.asInstanceOf[FreshContext]
@@ -90,14 +95,17 @@ object Contexts {
   }
 
   class ContextBase extends Transformers.TransformerBase
-                       with Printers.PrinterBase
-                       with NameOps.NameOpsBase {
+                       with Printers.PrinterBase {
 
     val initialCtx: Context = new InitialContext(this)
 
     lazy val rootLoader: ClassCompleter = ???
 
     lazy val definitions = new Definitions()(initialCtx)
+
+    lazy val loaders = new SymbolLoaders
+
+    lazy val platform: Platform = ???
 
     // Symbols state
     /** A map from a superclass id to the class that has it */

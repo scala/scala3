@@ -10,108 +10,84 @@ package core
 import java.io.IOException
 import scala.compat.Platform.currentTime
 import dotty.tools.io.{ClassPath, AbstractFile}
-import Contexts._, Symbols._, Flags._, SymDenotations._
+import Contexts._, Symbols._, Flags._, SymDenotations._, Types._
 import Decorators.StringDecorator
 //import classfile.ClassfileParser
 
+abstract class SymbolLoader extends ClassCompleter
 
-abstract class SymbolLoaders(implicit ctx: Context) {
 
-  protected def enterIfNew(owner: Symbol, member: Symbol, completer: SymbolLoader): Symbol = {
+class SymbolLoaders {
+
+  protected def enterIfNew(owner: Symbol, member: Symbol, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
     assert(owner.info.decls.lookup(member.name) == NoSymbol, owner.fullName + "." + member.name)
     owner.info.decls enter member
     member
   }
 
-  /** Enter class with given `name` into scope of `root`
-   *  and give them `completer` as type.
+  /** Enter class with given `name` into scope of `owner`.
    */
-  def enterClass(owner: Symbol, name: String, completer: SymbolLoader): Symbol = {
+  def enterClass(owner: Symbol, name: String, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
     val cls = ctx.newLazyClassSymbol(owner, name.toTypeName, EmptyFlags, completer)
     enterIfNew(owner, cls, completer)
   }
 
-  /** Enter module with given `name` into scope of `root`
-   *  and give them `completer` as type.
+  /** Enter module with given `name` into scope of `owner`.
    */
-  def enterModule(owner: Symbol, name: String, completer: SymbolLoader): Symbol = {
+  def enterModule(owner: Symbol, name: String, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
     val module = ctx.newLazyModuleSymbol(owner, name.toTermName, EmptyFlags, completer)
     enterIfNew(owner, module, completer)
   }
 
-  abstract class SymbolLoader extends ClassCompleter
-}
-/*
-  /** Enter module with given `name` into scope of `root`
+  /** Enter package with given `name` into scope of `owner`
    *  and give them `completer` as type.
    */
-  def enterModule(owner: Symbol, name: String, completer: SymbolLoader): Symbol = {
-    val module = owner.newModule(newTermName(name))
-    module setInfo completer
-    module.moduleClass setInfo moduleClassLoader
-    enterIfNew(owner, module, completer)
-  }
-
-  /** Enter package with given `name` into scope of `root`
-   *  and give them `completer` as type.
-   */
-  def enterPackage(root: Symbol, name: String, completer: SymbolLoader): Symbol = {
-    val pname = newTermName(name)
-    val preExisting = root.info.decls lookup pname
+  def enterPackage(owner: Symbol, name: String, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
+    val pname = name.toTermName
+    val preExisting = owner.info.decls lookup pname
     if (preExisting != NoSymbol) {
       // Some jars (often, obfuscated ones) include a package and
       // object with the same name. Rather than render them unusable,
       // offer a setting to resolve the conflict one way or the other.
       // This was motivated by the desire to use YourKit probes, which
       // require yjp.jar at runtime. See SI-2089.
-      if (settings.termConflict.isDefault)
+      if (ctx.settings.YtermConflict == ctx.settings.default.YtermConflict)
         throw new TypeError(
-          root+" contains object and package with same name: "+
-          name+"\none of them needs to be removed from classpath"
-        )
-      else if (settings.termConflict.value == "package") {
-        global.warning(
-          "Resolving package/object name conflict in favor of package " +
-          preExisting.fullName + ".  The object will be inaccessible."
-        )
-        root.info.decls.unlink(preExisting)
-      }
-      else {
-        global.warning(
-          "Resolving package/object name conflict in favor of object " +
-          preExisting.fullName + ".  The package will be inaccessible."
-        )
+          s"""$owner contains object and package with same name: $name
+             |one of them needs to be removed from classpath""".stripMargin)
+      else if (ctx.settings.YtermConflict.value == "package") {
+        ctx.warning(
+          s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
+        owner.info.decls.unlink(preExisting)
+      } else {
+        ctx.warning(
+          s"Resolving package/object name conflict in favor of object ${preExisting.fullName}.  The package will be inaccessible.")
         return NoSymbol
       }
     }
-    // todo: find out initialization sequence for pkg/pkg.moduleClass is different from enterModule
-    val pkg = root.newPackage(pname)
-    pkg.moduleClass setInfo completer
-    pkg setInfo pkg.moduleClass.tpe
-    root.info.decls enter pkg
-    pkg
+    ctx.newLazyModuleSymbol(owner, pname, PackageCreationFlags, completer).entered
   }
 
-  /** Enter class and module with given `name` into scope of `root`
+  /** Enter class and module with given `name` into scope of `owner`
    *  and give them `completer` as type.
    */
-  def enterClassAndModule(root: Symbol, name: String, completer: SymbolLoader) {
-    val clazz = enterClass(root, name, completer)
-    val module = enterModule(root, name, completer)
+  def enterClassAndModule(owner: Symbol, name: String, completer: SymbolLoader)(implicit ctx: Context) {
+    val clazz = enterClass(owner, name, completer)
+    val module = enterModule(owner, name, completer)
     if (!clazz.isAnonymousClass) {
       assert(clazz.companionModule == module, module)
       assert(module.companionClass == clazz, clazz)
     }
   }
 
-  /** In batch mode: Enter class and module with given `name` into scope of `root`
+  /** In batch mode: Enter class and module with given `name` into scope of `owner`
    *  and give them a source completer for given `src` as type.
-   *  In IDE mode: Find all toplevel definitions in `src` and enter then into scope of `root`
+   *  In IDE mode: Find all toplevel definitions in `src` and enter then into scope of `owner`
    *  with source completer for given `src` as type.
    *  (overridden in interactive.Global).
    */
-  def enterToplevelsFromSource(root: Symbol, name: String, src: AbstractFile) {
-    enterClassAndModule(root, name, new SourcefileLoader(src))
+  def enterToplevelsFromSource(owner: Symbol, name: String, src: AbstractFile)(implicit ctx: Context) {
+    ??? // !!! enterClassAndModule(owner, name, new SourcefileLoader(src))
   }
 
   /** The package objects of scala and scala.reflect should always
@@ -121,26 +97,29 @@ abstract class SymbolLoaders(implicit ctx: Context) {
    *  Note: We do a name-base comparison here because the method is called before we even
    *  have ReflectPackage defined.
    */
-  def binaryOnly(owner: Symbol, name: String): Boolean =
+  def binaryOnly(owner: Symbol, name: String)(implicit ctx: Context): Boolean =
     name == "package" &&
     (owner.fullName == "scala" || owner.fullName == "scala.reflect")
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */
-  def initializeFromClassPath(owner: Symbol, classRep: ClassPath[platform.BinaryRepr]#ClassRep) {
+  def initializeFromClassPath(owner: Symbol, classRep: ClassPath#ClassRep)(implicit ctx: Context) {
     ((classRep.binary, classRep.source) : @unchecked) match {
       case (Some(bin), Some(src))
-      if platform.needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
-        if (settings.verbose.value) inform("[symloader] picked up newer source file for " + src.path)
-        global.loaders.enterToplevelsFromSource(owner, classRep.name, src)
+      if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
+        if (ctx.settings.verbose.value) ctx.inform("[symloader] picked up newer source file for " + src.path)
+        enterToplevelsFromSource(owner, classRep.name, src)
       case (None, Some(src)) =>
-        if (settings.verbose.value) inform("[symloader] no class, picked up source file for " + src.path)
-        global.loaders.enterToplevelsFromSource(owner, classRep.name, src)
+        if (ctx.settings.verbose.value) ctx.inform("[symloader] no class, picked up source file for " + src.path)
+        enterToplevelsFromSource(owner, classRep.name, src)
       case (Some(bin), _) =>
-        global.loaders.enterClassAndModule(owner, classRep.name, platform.newClassLoader(bin))
+        enterClassAndModule(owner, classRep.name, ctx.platform.newClassLoader(bin))
     }
   }
 
+  def needCompile(bin: AbstractFile, src: AbstractFile) =
+    src.lastModified >= bin.lastModified
+}/*
   /**
    * A lazy type that completes itself by calling parameter doComplete.
    * Any linked modules/classes or module classes are also initialized.

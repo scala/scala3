@@ -721,7 +721,7 @@ object SymDenotations {
     def classDenot(denot: LazySymDenotation) =
       denot.moduleClass.denot.asInstanceOf[LazyClassDenotation]
     def copyLoadedFields(denot: LazySymDenotation, from: LazyClassDenotation) = {
-      denot.setFlags(from.flags.toTermFlags & ModuleFlags)
+      denot.setFlags(from.flags.toTermFlags & RetainedModuleFlags)
       denot.privateWithin = from.privateWithin
     }
     def copyCompletedFields(denot: LazySymDenotation, from: LazyClassDenotation) = {

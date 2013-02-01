@@ -10,25 +10,24 @@ import Decorators.StringDecorator
 
 object NameOps {
 
-  trait NameOpsBase { this: ContextBase =>
+  final object compactify {
+    lazy val md5 = MessageDigest.getInstance("MD5")
 
-    final object compactify extends (String => String) {
-      val md5 = MessageDigest.getInstance("MD5")
-
-      /** COMPACTIFY
-       *
-       *  The hashed name has the form (prefix + marker + md5 + marker + suffix), where
-       *   - prefix/suffix.length = MaxNameLength / 4
-       *   - md5.length = 32
-       *
-       *  We obtain the formula:
-       *
-       *   FileNameLength = 2*(MaxNameLength / 4) + 2.marker.length + 32 + 6
-       *
-       *  (+6 for ".class"). MaxNameLength can therefore be computed as follows:
-       */
+    /** COMPACTIFY
+     *
+     *  The hashed name has the form (prefix + marker + md5 + marker + suffix), where
+     *   - prefix/suffix.length = MaxNameLength / 4
+     *   - md5.length = 32
+     *
+     *  We obtain the formula:
+     *
+     *   FileNameLength = 2*(MaxNameLength / 4) + 2.marker.length + 32 + 6
+     *
+     *  (+6 for ".class"). MaxNameLength can therefore be computed as follows:
+     */
+    def apply(s: String)(implicit ctx: Context): String = {
       val marker = "$$$$"
-      val limit: Int = ??? // !!! settings.maxClassfileName.value
+      val limit: Int = ctx.settings.XmaxClassfileName.value
       val MaxNameLength = (limit - 6) min 2 * (limit - 6 - 2 * marker.length - 32)
 
       def toMD5(s: String, edge: Int): String = {
@@ -42,20 +41,10 @@ object NameOps {
 
         prefix + marker + md5chars + marker + suffix
       }
-      def apply(s: String): String =
-        if (s.length <= MaxNameLength) s else toMD5(s, MaxNameLength / 4)
+
+      if (s.length <= MaxNameLength) s else toMD5(s, MaxNameLength / 4)
     }
   }
-
-  private val Boxed = Map[TypeName, TypeName](
-    tpnme.Boolean -> jtpnme.BoxedBoolean,
-    tpnme.Byte -> jtpnme.BoxedByte,
-    tpnme.Char -> jtpnme.BoxedCharacter,
-    tpnme.Short -> jtpnme.BoxedShort,
-    tpnme.Int -> jtpnme.BoxedInteger,
-    tpnme.Long -> jtpnme.BoxedLong,
-    tpnme.Float -> jtpnme.BoxedFloat,
-    tpnme.Double -> jtpnme.BoxedDouble)
 
   implicit class NameDecorator(val name: Name) extends AnyVal {
     import nme._
@@ -147,9 +136,21 @@ object NameOps {
     }
 
     /** If name length exceeds allowable limit, replace part of it by hash */
-    def compactified(implicit ctx: Context): TermName = termName(ctx.compactify(name.toString))
+    def compactified(implicit ctx: Context): TermName = termName(compactify(name.toString))
   }
 
+  // needed???
+  private val Boxed = Map[TypeName, TypeName](
+    tpnme.Boolean -> jtpnme.BoxedBoolean,
+    tpnme.Byte -> jtpnme.BoxedByte,
+    tpnme.Char -> jtpnme.BoxedCharacter,
+    tpnme.Short -> jtpnme.BoxedShort,
+    tpnme.Int -> jtpnme.BoxedInteger,
+    tpnme.Long -> jtpnme.BoxedLong,
+    tpnme.Float -> jtpnme.BoxedFloat,
+    tpnme.Double -> jtpnme.BoxedDouble)
+
+  // needed???
   implicit class TypeNameDecorator(val name: TypeName) extends AnyVal {
     def isUnboxedName = Boxed contains name
     def boxedName: TypeName = Boxed(name)

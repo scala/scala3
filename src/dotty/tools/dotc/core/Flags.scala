@@ -331,7 +331,7 @@ object Flags {
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local
 
-  final val ModuleFlags: FlagSet = ???
+  final val RetainedModuleFlags: FlagSet = ???
 
   final val UninstantiatableFlags = Abstract | Final
 
