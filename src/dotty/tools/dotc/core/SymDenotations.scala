@@ -21,30 +21,30 @@ object SymDenotations {
 
     def name: Name
 
+    def privateWithin: Symbol
+
     def symbol: Symbol
 
     def info: Type
 
-    final def isLoaded = _privateWithin != null
-    final def isCompleted = _annotations != null
+    // The following 4 members are overridden is instances of isLazy
+    def isLoaded = true
+    def isCompleted = true
+    protected[core] def tryLoad(): Unit = unsupported("tryLoad")
+    protected[core] def tryComplete(): Unit = unsupported("tryComplete")
+
     final def ensureLoaded() = if (!isLoaded) tryLoad()
     final def ensureCompleted() = if (!isCompleted) tryComplete()
-    protected def tryLoad(): Unit
-    protected def tryComplete(): Unit
 
     private[this] var _flags: FlagSet = initFlags
 
     def flags: FlagSet = { ensureLoaded(); _flags }
-    def flags_=(flags: FlagSet): Unit = { _flags |= flags }
+    def flags_=(flags: FlagSet): Unit = { _flags = flags }
     def setFlags(flags: FlagSet): Unit = { _flags |= flags }
     def resetFlags(flags: FlagSet): Unit = { _flags &~= flags }
 
-    private[this] var _privateWithin: Symbol = _
-    def privateWithin: Symbol = { ensureLoaded(); _privateWithin }
-    def privateWithin_=(sym: Symbol): Unit = { _privateWithin = sym }
-
-    private[this] var _annotations: List[Annotation] = { ensureCompleted(); _annotations }
-    def annotations: List[Annotation] = _annotations
+    private[this] var _annotations: List[Annotation] = Nil
+    def annotations: List[Annotation] = { ensureCompleted(); _annotations }
     def annotations_=(annots: List[Annotation]): Unit = { _annotations = annots }
 
     def hasAnnotation(cls: Symbol) = dropOtherAnnotations(annotations, cls).nonEmpty
@@ -105,10 +105,17 @@ object SymDenotations {
 
 //    def withType(tp: Type): SymDenotation = ???
 
+    def asClass: ClassDenotation = asInstanceOf[ClassDenotation]
+
     override protected def copy(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
 
+    /** The class implementing this module */
     def moduleClass(implicit ctx: Context): Symbol =
       if (this.isModuleVal) info.typeSymbol else NoSymbol
+
+    /** The module implemented by this module class */
+    def sourceModule(implicit ctx: Context): Symbol =
+      if (this.isModuleClass) this.asClass.selfType.termSymbol else NoSymbol
 
     /** Desire to re-use the field in ClassSymbol which stores the source
      *  file to also store the classfile, but without changing the behavior
@@ -283,9 +290,9 @@ object SymDenotations {
     def isNonValueClass(implicit ctx: Context): Boolean =
       isClass && !isSubClass(defn.AnyValClass)
 
-    def typeParams: List[TypeSymbol] = unsupported("typeParams")
+    def typeParams(implicit ctx: Context): List[TypeSymbol] = unsupported("typeParams")
 
-    def thisType(implicit ctx: Context): Type = unsupported("thisType")
+    def thisType(implicit ctx: Context): Type = NoPrefix
 
     def typeConstructor(implicit ctx: Context): TypeRef =
       TypeRef(owner.thisType, name.asTypeName)
@@ -308,90 +315,14 @@ object SymDenotations {
         owner: Symbol = this.owner,
         name: Name = this.name,
         initFlags: FlagSet = this.flags,
+        privateWithin: Symbol = this.privateWithin,
         info: Type = this.info) =
-      new CompleteSymDenotation(sym, owner, name, initFlags, info)
+      new CompleteSymDenotation(sym, owner, name, initFlags, privateWithin, info)
   }
 
-  trait isComplete extends SymDenotation {
-    privateWithin = NoSymbol
-    annotations = Nil
-    def tryLoad(): Unit = unsupported("tryLoad")
-    def tryComplete(): Unit = unsupported("tryComplete")
-  }
-
-  abstract class Completer[Denot <: SymDenotation] {
-    def handleCycle(denot: Denot): Unit
-    def load(denot: Denot): Unit
-    def complete(denot: Denot): Unit
-  }
-
-  type SymCompleter = Completer[LazySymDenotation]
-  type ClassCompleter = Completer[LazyClassDenotation]
-
-  class ModuleCompleter(moduleClass: ClassSymbol) extends Completer[LazySymDenotation] {
-    def handleCycle(denot: LazySymDenotation): Unit = ???
-    def load(denot: LazySymDenotation): Unit = ???
-    def complete(denot: LazySymDenotation): Unit = ???
-  }
-
-  trait isLazy[Denot <: SymDenotation] extends SymDenotation { this: Denot =>
-
-    protected def completer: Completer[Denot]
-
-    protected def tryLoad(): Unit = try {
-      if (flags is Locked) throw new CyclicReference(symbol)
-      setFlags(Locked)
-      completer.load(this)
-    } catch {
-      case ex: CyclicReference => completer.handleCycle(this)
-    } finally {
-      flags &~= Locked
-    }
-
-    protected def tryComplete(): Unit = try {
-      if (flags is Locked) throw new CyclicReference(symbol)
-      completer.complete(this)
-    } catch {
-      case ex: CyclicReference => completer.handleCycle(this)
-    } finally {
-      flags &~= Locked
-    }
-  }
-
-  class CompleteSymDenotation(
-      val symbol: Symbol,
-      val owner: Symbol,
-      val name: Name,
-      initFlags: FlagSet,
-      val info: Type
-    ) extends SymDenotation(initFlags) with isComplete
-
-  class LazyModuleDenotation(
-      symbol: Symbol,
-      owner: Symbol,
-      name: Name,
-      initFlags: FlagSet,
-      val moduleClass: ClassSymbol
-    ) extends LazySymDenotation(symbol, owner, name, initFlags, new ModuleCompleter(moduleClass)) {
-
-    override val info: Type = ???
-  }
-
-
-  class LazySymDenotation(
-      val symbol: Symbol,
-      val owner: Symbol,
-      val name: Name,
-      initFlags: FlagSet,
-      val completer: SymCompleter
-    ) extends SymDenotation(initFlags) with isLazy[LazySymDenotation] {
-
-    private[this] var _info: Type = _
-
-    override def info = { ensureCompleted(); _info }
-  }
-
-  abstract class ClassDenotation(initFlags: FlagSet, assocFile: AbstractFile)(implicit ctx: Context)
+  // Note: important to leave initctx non-implicit, and to check that it is not
+  // retained after object construction.
+  abstract class ClassDenotation(initFlags: FlagSet, assocFile: AbstractFile)(initctx: Context)
       extends SymDenotation(initFlags) {
     import NameFilter._
     import util.LRU8Cache
@@ -404,18 +335,18 @@ object SymDenotations {
 
     def decls: Scope
 
-    val info = ClassInfo(owner.thisType, this)
+    val info = ClassInfo(owner.thisType(initctx), this)(initctx)
 
     override def associatedFile(implicit ctx: Context): AbstractFile = assocFile
 
     private[this] var _typeParams: List[TypeSymbol] = _
 
-    override final def typeParams: List[TypeSymbol] = {
+    override final def typeParams(implicit ctx: Context): List[TypeSymbol] = {
       val tparams = _typeParams
       if (tparams != null) tparams else computeTypeParams
     }
 
-    private def computeTypeParams: List[TypeSymbol] =
+    private def computeTypeParams(implicit ctx: Context): List[TypeSymbol] =
       (preCompleteDecls.toList filter (_ is TypeParam)).asInstanceOf[List[TypeSymbol]]
 
     protected def preCompleteDecls: Scope
@@ -435,7 +366,7 @@ object SymDenotations {
     }
 
     // todo: apply same scheme to static objects/all objects?
-    private def computeThisType: Type =
+    private def computeThisType(implicit ctx: Context): Type =
       if (isPackageClass && !isRoot)
         TermRef(owner.thisType, name.toTermName)
       else
@@ -664,11 +595,36 @@ object SymDenotations {
         owner: Symbol = this.owner,
         name: Name = this.name,
         initFlags: FlagSet = this.flags,
+        privateWithin: Symbol = this.privateWithin,
         parents: List[TypeRef] = this.parents,
         selfType: Type = this.selfType,
         decls: Scope = this.decls,
-        assocFile: AbstractFile = this.assocFile) =
-      new CompleteClassDenotation(sym, owner, name, initFlags, parents, selfType, decls, assocFile)
+        assocFile: AbstractFile = this.assocFile)(implicit ctx: Context) =
+      new CompleteClassDenotation(sym, owner, name, initFlags, privateWithin, parents, selfType, decls, assocFile)(ctx)
+  }
+
+// -------- Concrete classes for instantiating denotations --------------------------
+
+  class CompleteSymDenotation(
+      val symbol: Symbol,
+      val owner: Symbol,
+      val name: Name,
+      initFlags: FlagSet,
+      val privateWithin: Symbol,
+      val info: Type
+    ) extends SymDenotation(initFlags)
+
+  class LazySymDenotation(
+      val symbol: Symbol,
+      val owner: Symbol,
+      val name: Name,
+      initFlags: FlagSet,
+      var completer: SymCompleter
+    ) extends SymDenotation(initFlags) with isLazy[LazySymDenotation] {
+
+    private[this] var _info: Type = _
+    protected[core] def info_=(tp: Type) = if (_info == null) _info = tp
+    override def info = { if (info == null) tryComplete(); _info }
   }
 
   class CompleteClassDenotation(
@@ -676,12 +632,13 @@ object SymDenotations {
       val owner: Symbol,
       val name: Name,
       initFlags: FlagSet,
+      val privateWithin: Symbol,
       val parents: List[TypeRef],
       optSelfType: Type,
       val decls: Scope,
       assocFile: AbstractFile = null
-  )(implicit ctx: Context) extends ClassDenotation(initFlags, assocFile) with isComplete {
-    val selfType = if (optSelfType == NoType) thisType else optSelfType
+  )(initctx: Context) extends ClassDenotation(initFlags, assocFile)(initctx) {
+    val selfType = if (optSelfType == NoType) thisType(initctx) else optSelfType
     final def preCompleteDecls = decls
   }
 
@@ -690,26 +647,94 @@ object SymDenotations {
       val owner: Symbol,
       val name: Name,
       initFlags: FlagSet,
-      val completer: ClassCompleter,
+      var completer: ClassCompleter,
       assocFile: AbstractFile = null
-    )(implicit ctx: Context) extends ClassDenotation(initFlags, assocFile) with isLazy[LazyClassDenotation] {
+    )(initctx: Context) extends ClassDenotation(initFlags, assocFile)(initctx) with isLazy[LazyClassDenotation] {
 
-    protected var _parents: List[TypeRef] = null
-    protected var _selfType: Type = null
-    protected var _decls: Scope = null
+    private[this] var _parents: List[TypeRef] = null
+    private[this] var _selfType: Type = null
+    private[this] var _decls: Scope = null
 
-    final def parents: List[TypeRef] = { ensureCompleted(); _parents }
-    final def selfType: Type = { ensureCompleted(); _selfType }
-    final def decls: Scope = { ensureCompleted(); _decls }
-    final def preCompleteDecls = {ensureLoaded(); _decls }
+    protected[core] def parents_=(ps: List[TypeRef]) = if (_parents == null) _parents = ps
+    protected[core] def selfType_=(tp: Type) = if (_selfType == null) _selfType = tp
+    protected[core] def decls_=(sc: Scope) = if (_decls == null) _decls = sc
+
+    final def parents: List[TypeRef] = { if (_parents == null) tryComplete(); _parents }
+    def selfType: Type               = { if (_selfType == null) tryComplete(); _selfType }
+    final def decls: Scope           = { if (_decls == null) tryComplete(); _decls }
+    final def preCompleteDecls       = { if (_decls == null) tryLoad(); _decls }
   }
 
-  object NoDenotation extends SymDenotation(EmptyFlags) with isComplete {
+  object NoDenotation extends SymDenotation(EmptyFlags) {
     override def symbol: Symbol = NoSymbol
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def name: Name = "<none>".toTermName
     override def info: Type = NoType
+    override def privateWithin = NoSymbol
   }
+
+// ---- Completion --------------------------------------------------------
+
+  trait isLazy[Denot <: SymDenotation] extends SymDenotation { this: Denot =>
+
+    protected def completer: Completer[Denot]
+    protected def completer_= (c: Completer[Denot])
+
+    override def isLoaded = _privateWithin != null
+    override def isCompleted = completer == null
+
+    override protected[core] def tryLoad(): Unit =
+      try {
+        if (flags is Locked) throw new CyclicReference(symbol)
+        setFlags(Locked)
+        completer.load(this)
+      } finally {
+        flags &~= Locked
+      }
+
+    override protected[core] def tryComplete(): Unit = {
+      val c = completer
+      completer = null
+      if (c == null) throw new CyclicReference(symbol)
+      c.complete(this)
+    }
+
+    private[this] var _privateWithin: Symbol = _
+    def privateWithin: Symbol = { if (_privateWithin == null) tryLoad(); _privateWithin }
+    protected[core] def privateWithin_=(sym: Symbol): Unit = { _privateWithin = sym }
+  }
+
+  abstract class Completer[Denot <: SymDenotation] extends DotClass {
+    /** Load symbol, setting flags and privateWithin, and typeParams for classes
+     *  By default same as complete but can be overridden
+     */
+    def load(denot: Denot): Unit = complete(denot)
+
+    /** Complete symbol, setting all its properties */
+    def complete(denot: Denot): Unit
+  }
+
+  type SymCompleter = Completer[LazySymDenotation]
+  type ClassCompleter = Completer[LazyClassDenotation]
+
+  class ModuleCompleter(implicit ctx: Context) extends Completer[LazySymDenotation] {
+    def classDenot(denot: LazySymDenotation) =
+      denot.moduleClass.denot.asInstanceOf[LazyClassDenotation]
+    def copyLoadedFields(denot: LazySymDenotation, from: LazyClassDenotation) = {
+      denot.setFlags(from.flags.toTermFlags & ModuleFlags)
+      denot.privateWithin = from.privateWithin
+    }
+    def copyCompletedFields(denot: LazySymDenotation, from: LazyClassDenotation) = {
+      copyLoadedFields(denot, from)
+      denot.annotations = from.annotations filter (_.appliesToModule)
+    }
+    override def load(denot: LazySymDenotation): Unit =
+      copyLoadedFields(denot, classDenot(denot))
+    def complete(denot: LazySymDenotation): Unit =
+      copyCompletedFields(denot, classDenot(denot))
+  }
+
+// ---- Name filter --------------------------------------------------------
 
   object NameFilter {
     final val WordSizeLog = 6

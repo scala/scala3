@@ -623,8 +623,8 @@ object Types {
     }
   }
 
-  final class TermRefBySym(prefix: Type, val fixedSym: TermSymbol)(implicit ctx: Context)
-    extends TermRef(prefix, fixedSym.name) with HasFixedSym {
+  final class TermRefBySym(prefix: Type, val fixedSym: TermSymbol)(initctx: Context)
+    extends TermRef(prefix, fixedSym.name(initctx)) with HasFixedSym {
   }
 
   final class TermRefWithSignature(prefix: Type, name: TermName, override val signature: Signature) extends TermRef(prefix, name) {
@@ -633,8 +633,8 @@ object Types {
       super.loadDenot.atSignature(signature)
   }
 
-  final class TypeRefBySym(prefix: Type, val fixedSym: TypeSymbol)(implicit ctx: Context)
-    extends TypeRef(prefix, fixedSym.name) with HasFixedSym {
+  final class TypeRefBySym(prefix: Type, val fixedSym: TypeSymbol)(initctx: Context)
+    extends TypeRef(prefix, fixedSym.name(initctx)) with HasFixedSym {
   }
 
   final class CachedTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name)
@@ -650,7 +650,7 @@ object Types {
     def apply(prefix: Type, name: TermName)(implicit ctx: Context) =
       unique(new CachedTermRef(prefix, name))
     def apply(prefix: Type, sym: TermSymbol)(implicit ctx: Context) =
-      unique(new TermRefBySym(prefix, sym))
+      unique(new TermRefBySym(prefix, sym)(ctx))
     def apply(prefix: Type, name: TermName, signature: Signature)(implicit ctx: Context) =
       unique(new TermRefWithSignature(prefix, name, signature))
   }
@@ -659,7 +659,7 @@ object Types {
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context) =
       unique(new CachedTypeRef(prefix, name))
     def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context) =
-      unique(new TypeRefBySym(prefix, sym))
+      unique(new TypeRefBySym(prefix, sym)(ctx))
   }
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------

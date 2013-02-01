@@ -31,6 +31,14 @@ abstract class SymbolLoaders(implicit ctx: Context) {
     enterIfNew(owner, cls, completer)
   }
 
+  /** Enter module with given `name` into scope of `root`
+   *  and give them `completer` as type.
+   */
+  def enterModule(owner: Symbol, name: String, completer: SymbolLoader): Symbol = {
+    val module = ctx.newLazyModuleSymbol(owner, name.toTermName, EmptyFlags, completer)
+    enterIfNew(owner, module, completer)
+  }
+
   abstract class SymbolLoader extends ClassCompleter
 }
 /*

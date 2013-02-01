@@ -31,15 +31,15 @@ class Definitions(implicit ctx: Context) {
   lazy val ObjectClass = requiredClass("java.lang.Object")
   lazy val AnyRefAlias: TypeSymbol = ctx.newAliasTypeSymbol(
     ScalaPackageClass, tpnme.AnyRef, ObjectClass.typeConstructor).entered
-  lazy val AnyClass: ClassSymbol = ctx.newCompleteClassSymbol(
+  lazy val AnyClass: ClassSymbol = ctx.newClassSymbol(
     ScalaPackageClass, tpnme.Any, Abstract, Nil).entered
   lazy val AnyValClass: ClassSymbol = requiredClass("scala.AnyVal")
 
   lazy val NotNullClass = requiredClass("scala.NotNull")
 
-  lazy val NothingClass: ClassSymbol = ctx.newCompleteClassSymbol(
+  lazy val NothingClass: ClassSymbol = ctx.newClassSymbol(
     ScalaPackageClass, tpnme.Nothing, UninstantiatableFlags, List(AnyType)).entered
-  lazy val NullClass: ClassSymbol = ctx.newCompleteClassSymbol(
+  lazy val NullClass: ClassSymbol = ctx.newClassSymbol(
     ScalaPackageClass, tpnme.Null, UninstantiatableFlags, List(AnyRefType)).entered
 
   lazy val PredefModule = requiredModule("scala.Predef")

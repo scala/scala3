@@ -24,36 +24,79 @@ trait Symbols { this: Context =>
   def newLazyTypeSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: SymCompleter) =
     new TypeSymbol(new LazySymDenotation(_, owner, name, initFlags, completer))
 
-  def newLazyClassSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: ClassCompleter, assocfile: AbstractFile = null) =
-    new ClassSymbol(new LazyClassDenotation(_, owner, name, initFlags, completer, assocfile))
+  def newLazyClassSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: ClassCompleter, assocFile: AbstractFile = null) =
+    new ClassSymbol(new LazyClassDenotation(_, owner, name, initFlags, completer, assocFile)(this))
 
-  def newCompleteTermSymbol(
-      owner: Symbol,
+  def newLazyModuleSymbol(owner: Symbol,
       name: TermName,
       flags: FlagSet,
-      info: Type) =
-    new TermSymbol(new CompleteSymDenotation(_, owner, name, flags, info))
+      completer: ClassCompleter,
+      assocFile: AbstractFile = null)
+  = {
+    val module = newLazyTermSymbol(
+      owner, name, flags | Module, new ModuleCompleter)
+    val modcls = newLazyClassSymbol(
+      owner, name.toTypeName, flags | Module | Final, completer, assocFile)
+    module.denot.asInstanceOf[LazySymDenotation].info =
+      TypeRef(owner.thisType, modcls)
+    modcls.denot.asInstanceOf[LazyClassDenotation].selfType =
+      TermRef(owner.thisType, module)
+    module
+  }
 
-  def newCompleteTypeSymbol(
-      owner: Symbol,
-      name: TypeName,
-      flags: FlagSet,
-      info: Type) =
-    new TypeSymbol(new CompleteSymDenotation(_, owner, name, flags, info))
+  def newTermSymbol(
+    owner: Symbol,
+    name: TermName,
+    flags: FlagSet,
+    info: Type,
+    privateWithin: Symbol = NoSymbol)
+  =
+    new TermSymbol(new CompleteSymDenotation(_, owner, name, flags, privateWithin, info))
 
-  def newAliasTypeSymbol(owner: Symbol, name: TypeName, alias: Type, flags: FlagSet = EmptyFlags) =
-    newCompleteTypeSymbol(owner, name, flags, TypeBounds(alias, alias))
+  def newTypeSymbol(
+    owner: Symbol,
+    name: TypeName,
+    flags: FlagSet,
+    info: Type,
+    privateWithin: Symbol = NoSymbol)
+  =
+    new TypeSymbol(new CompleteSymDenotation(_, owner, name, flags, privateWithin, info))
 
-  def newCompleteClassSymbol(
+  def newAliasTypeSymbol(owner: Symbol, name: TypeName, alias: Type, flags: FlagSet = EmptyFlags, privateWithin: Symbol = NoSymbol) =
+    newTypeSymbol(owner, name, flags, TypeBounds(alias, alias), privateWithin)
+
+  def newClassSymbol(
       owner: Symbol,
       name: TypeName,
       flags: FlagSet,
       parents: List[TypeRef],
+      privateWithin: Symbol = NoSymbol,
       optSelfType: Type = NoType,
       decls: Scope = newScope,
-      assocFile: AbstractFile = null) =
+      assocFile: AbstractFile = null)
+  =
     new ClassSymbol(new CompleteClassDenotation(
-      _, owner, name, flags, parents, optSelfType, decls, assocFile))
+      _, owner, name, flags, privateWithin, parents, optSelfType, decls, assocFile)(this))
+
+  def newModuleSymbol(
+      owner: Symbol,
+      name: TermName,
+      flags: FlagSet,
+      classFlags: FlagSet,
+      parents: List[TypeRef],
+      privateWithin: Symbol = NoSymbol,
+      decls: Scope = newScope,
+      assocFile: AbstractFile = null)(implicit ctx: Context)
+  = {
+    val module = newLazyTermSymbol(owner, name, flags, new ModuleCompleter)
+    val modcls = newClassSymbol(
+      owner, name.toTypeName, classFlags, parents, privateWithin,
+      optSelfType = TermRef(owner.thisType, module),
+      decls, assocFile)
+    module.denot.asInstanceOf[LazySymDenotation].info =
+      TypeRef(owner.thisType, modcls)
+    module
+  }
 }
 
 object Symbols {
