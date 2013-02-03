@@ -14,9 +14,8 @@ import Contexts._, Symbols._, Flags._, SymDenotations._, Types._
 import Decorators.StringDecorator
 //import classfile.ClassfileParser
 
-abstract class SymbolLoader extends ClassCompleter
 
-
+/** A base class for Symbol loaders with some overridable behavior  */
 class SymbolLoaders {
 
   protected def enterIfNew(owner: Symbol, member: Symbol, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
@@ -28,14 +27,14 @@ class SymbolLoaders {
   /** Enter class with given `name` into scope of `owner`.
    */
   def enterClass(owner: Symbol, name: String, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
-    val cls = ctx.newLazyClassSymbol(owner, name.toTypeName, EmptyFlags, completer)
+    val cls = ctx.newLazyClassSymbol(owner, name.toTypeName, EmptyFlags, completer, assocFile = completer.sourceFileOrNull)
     enterIfNew(owner, cls, completer)
   }
 
   /** Enter module with given `name` into scope of `owner`.
    */
   def enterModule(owner: Symbol, name: String, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
-    val module = ctx.newLazyModuleSymbol(owner, name.toTermName, EmptyFlags, completer)
+    val module = ctx.newLazyModuleSymbol(owner, name.toTermName, EmptyFlags, completer, assocFile = completer.sourceFileOrNull)
     enterIfNew(owner, module, completer)
   }
 
@@ -119,20 +118,20 @@ class SymbolLoaders {
 
   def needCompile(bin: AbstractFile, src: AbstractFile) =
     src.lastModified >= bin.lastModified
-}/*
+}
   /**
    * A lazy type that completes itself by calling parameter doComplete.
    * Any linked modules/classes or module classes are also initialized.
    * Todo: consider factoring out behavior from TopClassCompleter/SymbolLoader into
    * supertrait SymLoader
    */
-  abstract class SymbolLoader extends ClassCompleter {
+  abstract class SymbolLoader(cctx: CondensedContext) extends ClassCompleter {
+    implicit def ctx: Context = cctx
 
     /** Load source or class file for `root`, return */
-    protected def doComplete(root: Symbol): Unit
+    protected def doComplete(root: LazyClassDenotation): Unit
 
-    def sourcefile: Option[AbstractFile] = None
-
+    def sourceFileOrNull: AbstractFile = null
     /**
      * Description of the resource (ClassPath, AbstractFile, MsilFile)
      * being processed by this loader
@@ -141,61 +140,33 @@ class SymbolLoaders {
 
     private var ok = false
 
-    private def setSource(sym: Symbol) {
-      sourcefile foreach (sf => sym match {
-        case cls: ClassSymbol => cls.sourceFile = sf
-        case mod: ModuleSymbol => mod.moduleClass.sourceFile = sf
-        case _ => ()
-      })
-    }
-
-    override def complete(root: Symbol) {
+    override def complete(root: LazyClassDenotation) {
       def signalError(ex: Exception) {
         ok = false
-        if (settings.debug.value) ex.printStackTrace()
+        if (ctx.settings.debug.value) ex.printStackTrace()
         val msg = ex.getMessage()
-        // SI-5593 Scaladoc's current strategy is to visit all packages in search of user code that can be documented
-        // therefore, it will rummage through the classpath triggering errors whenever it encounters package objects
-        // that are not in their correct place (see bug for details)
-        if (!settings.isScaladoc)
-          globalError(
-            if (msg eq null) "i/o error while loading " + root.name
-            else "error while loading " + root.name + ", " + msg);
+        ctx.error(
+          if (msg eq null) "i/o error while loading " + root.name
+          else "error while loading " + root.name + ", " + msg);
       }
       try {
         val start = currentTime
-        val currentphase = phase
         doComplete(root)
-        phase = currentphase
-        informTime("loaded " + description, start)
+        ctx.informTime("loaded " + description, start)
         ok = true
-        setSource(root)
-        setSource(root.companionSymbol) // module -> class, class -> module
       } catch {
         case ex: IOException =>
           signalError(ex)
         case ex: MissingRequirementError =>
           signalError(ex)
       }
-      initRoot(root)
-      if (!root.isPackageClass) initRoot(root.companionSymbol)
-    }
-
-    override def load(root: Symbol) { complete(root) }
-
-    private def markAbsent(sym: Symbol): Unit = {
-      val tpe: Type = if (ok) NoType else ErrorType
-
-      if (sym != NoSymbol)
-        sym setInfo tpe
-    }
-    private def initRoot(root: Symbol) {
-      if (root.rawInfo == this)
-        List(root, root.moduleClass) foreach markAbsent
-      else if (root.isClass && !root.isModuleClass)
-        root.rawInfo.load(root)
+      root.linkedClass.denot match {
+        case companion: LazyClassDenotation => companion.completer = null
+      }
     }
   }
+
+ /*
 
   /**
    * Load contents of a package

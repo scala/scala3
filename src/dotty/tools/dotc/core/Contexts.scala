@@ -64,8 +64,10 @@ object Contexts {
     def enclClass: Context = ???
     def erasedTypes: Boolean = ???
     def debug: Boolean = ???
+    def error(msg: String) = ???
     def warning(msg: String) = ???
     def inform(msg: String) = ???
+    def informTime(msg: String, start: Long): Unit = ???
 
     def fresh: FreshContext = {
       val newctx = super.clone.asInstanceOf[FreshContext]

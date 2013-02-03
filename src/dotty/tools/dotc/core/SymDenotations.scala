@@ -27,9 +27,10 @@ object SymDenotations {
 
     def info: Type
 
-    // The following 4 members are overridden is instances of isLazy
+    // The following 5 members are overridden by instances of isLazy
     def isLoaded = true
     def isCompleted = true
+    def exists(implicit ctx: Context) = true
     protected[core] def tryLoad(): Unit = unsupported("tryLoad")
     protected[core] def tryComplete(): Unit = unsupported("tryComplete")
 
@@ -622,6 +623,9 @@ object SymDenotations {
       var completer: SymCompleter
     ) extends SymDenotation(initFlags) with isLazy[LazySymDenotation] {
 
+    final override def exists(implicit ctx: Context) =
+      !isModuleVal || moduleClass.denot.exists
+
     private[this] var _info: Type = _
     protected[core] def info_=(tp: Type) = if (_info == null) _info = tp
     override def info = { if (info == null) tryComplete(); _info }
@@ -663,6 +667,8 @@ object SymDenotations {
     def selfType: Type               = { if (_selfType == null) tryComplete(); _selfType }
     final def decls: Scope           = { if (_decls == null) tryComplete(); _decls }
     final def preCompleteDecls       = { if (_decls == null) tryLoad(); _decls }
+
+    final override def exists(implicit ctx: Context) = { ensureCompleted(); _parents != null }
   }
 
   object NoDenotation extends SymDenotation(EmptyFlags) {
@@ -692,12 +698,19 @@ object SymDenotations {
         flags &~= Locked
       }
 
-    override protected[core] def tryComplete(): Unit = {
-      val c = completer
-      completer = null
-      if (c == null) throw new CyclicReference(symbol)
-      c.complete(this)
-    }
+    override protected[core] def tryComplete(): Unit =
+      try {
+        if (flags is Locked) throw new CyclicReference(symbol)
+        setFlags(Locked)
+        val c = completer
+        completer = null // set completer to null to avoid space leaks
+                         // and to make any subsequent completion attempt a CompletionError
+        c.complete(this)
+      } catch {
+        case _: NullPointerException => throw new CompletionError(this)
+      } finally {
+        flags &~= Locked
+      }
 
     private[this] var _privateWithin: Symbol = _
     def privateWithin: Symbol = { if (_privateWithin == null) tryLoad(); _privateWithin }
@@ -718,7 +731,7 @@ object SymDenotations {
   type ClassCompleter = Completer[LazyClassDenotation]
 
   class ModuleCompleter(cctx: CondensedContext) extends Completer[LazySymDenotation] {
-    implicit val ctx: Context = cctx
+    implicit def ctx: Context = cctx
     def classDenot(denot: LazySymDenotation) =
       denot.moduleClass.denot.asInstanceOf[LazyClassDenotation]
     def copyLoadedFields(denot: LazySymDenotation, from: LazyClassDenotation) = {
@@ -734,6 +747,8 @@ object SymDenotations {
     def complete(denot: LazySymDenotation): Unit =
       copyCompletedFields(denot, classDenot(denot))
   }
+
+  class CompletionError(denot: SymDenotation) extends Error("Trying to access missing symbol ${denot.symbol.fullName}")
 
 // ---- Name filter --------------------------------------------------------
 
