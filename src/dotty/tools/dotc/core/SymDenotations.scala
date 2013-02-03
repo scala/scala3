@@ -717,7 +717,8 @@ object SymDenotations {
   type SymCompleter = Completer[LazySymDenotation]
   type ClassCompleter = Completer[LazyClassDenotation]
 
-  class ModuleCompleter(implicit ctx: Context) extends Completer[LazySymDenotation] {
+  class ModuleCompleter(cctx: CondensedContext) extends Completer[LazySymDenotation] {
+    implicit val ctx: Context = cctx
     def classDenot(denot: LazySymDenotation) =
       denot.moduleClass.denot.asInstanceOf[LazyClassDenotation]
     def copyLoadedFields(denot: LazySymDenotation, from: LazyClassDenotation) = {

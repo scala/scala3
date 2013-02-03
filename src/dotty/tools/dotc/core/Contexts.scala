@@ -73,9 +73,15 @@ object Contexts {
       newctx
     }
 
+    def condensed: CondensedContext = base.initialCtx.fresh
+      .withPeriod(period)
+      .withPrinter(printer)
+      .withSettings(sstate)
   }
 
-  abstract class FreshContext extends Context {
+  abstract class CondensedContext extends Context
+
+  abstract class FreshContext extends CondensedContext {
     def withPeriod(period: Period): this.type = { this.period = period; this }
     def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
     def withConstraints(constraints: Constraints): this.type = { this.constraints = constraints; this }

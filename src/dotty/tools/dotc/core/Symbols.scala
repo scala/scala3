@@ -34,7 +34,7 @@ trait Symbols { this: Context =>
       assocFile: AbstractFile = null)
   = {
     val module = newLazyTermSymbol(
-      owner, name, flags | Module, new ModuleCompleter)
+      owner, name, flags | Module, new ModuleCompleter(condensed))
     val modcls = newLazyClassSymbol(
       owner, name.toTypeName, flags | Module | Final, completer, assocFile)
     module.denot.asInstanceOf[LazySymDenotation].info =
@@ -88,7 +88,7 @@ trait Symbols { this: Context =>
       decls: Scope = newScope,
       assocFile: AbstractFile = null)(implicit ctx: Context)
   = {
-    val module = newLazyTermSymbol(owner, name, flags, new ModuleCompleter)
+    val module = newLazyTermSymbol(owner, name, flags, new ModuleCompleter(condensed))
     val modcls = newClassSymbol(
       owner, name.toTypeName, classFlags, parents, privateWithin,
       optSelfType = TermRef(owner.thisType, module),

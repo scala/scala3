@@ -33,6 +33,5 @@ abstract class Platform(base: ContextBase) {
 
   /** Create a new class loader to load class file `bin` */
   def newClassLoader(bin: AbstractFile): SymbolLoader
-
 }
 
