@@ -69,16 +69,22 @@ object Contexts {
     def inform(msg: String) = ???
     def informTime(msg: String, start: Long): Unit = ???
 
+    private var _condensed: CondensedContext = null
+    def condensed: CondensedContext = {
+      if (_condensed == null)
+        _condensed = base.initialCtx.fresh
+          .withPeriod(period)
+          .withPrinter(printer)
+          .withSettings(sstate)
+      _condensed
+    }
+
     def fresh: FreshContext = {
       val newctx = super.clone.asInstanceOf[FreshContext]
       newctx.underlying = this
+      newctx._condensed = null
       newctx
     }
-
-    def condensed: CondensedContext = base.initialCtx.fresh
-      .withPeriod(period)
-      .withPrinter(printer)
-      .withSettings(sstate)
   }
 
   abstract class CondensedContext extends Context
@@ -110,7 +116,7 @@ object Contexts {
 
     val settings = new ScalaSettings
 
-    val initialCtx: Context = new InitialContext(this).fresh
+    val initialCtx: Context = new InitialContext(this)
         .withSettings(settings.defaultState)
 
     val loaders = new SymbolLoaders
