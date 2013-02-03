@@ -8,13 +8,14 @@ import io.{ ClassPath, JavaClassPath, File, Directory, Path, AbstractFile }
 import ClassPath.{ JavaContext, DefaultJavaContext, join, split }
 import PartialFunction.condOpt
 import scala.language.postfixOps
+import core.Contexts._
+import Settings._
 
 // Loosely based on the draft specification at:
 // https://wiki.scala-lang.org/display/SW/Classpath
 
 object PathResolver {
 
-  /*
   // Imports property/environment functions which suppress
   // security exceptions.
   import AccessControl._
@@ -132,11 +133,9 @@ object PathResolver {
       )
   }
 
-  def fromPathString(path: String, context: JavaContext = DefaultJavaContext): JavaClassPath = {
-    val s = new Settings() {
-      classpath = path
-    }
-    new PathResolver(s, context) result
+  def fromPathString(path: String)(implicit ctx: Context): JavaClassPath = {
+    val settings = ctx.settings.classpath.update(path)
+    new PathResolver(ctx.fresh.withSettings(settings)).result
   }
 
   /** With no arguments, show the interesting values in Environment and Defaults.
@@ -149,9 +148,11 @@ object PathResolver {
       println(Defaults)
     }
     else {
-      val settings = new Settings()
-      val rest = settings.processArguments(args.toList, false)._2
-      val pr = new PathResolver(settings)
+      val ctx = (new ContextBase).initialCtx
+      val ArgsSummary(sstate, rest, errors) =
+        ctx.settings.processArguments(args.toList, true)(ctx)
+      errors.foreach(println)
+      val pr = new PathResolver(ctx.fresh.withSettings(sstate))
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))
       println("RESIDUAL: 'scala %s'\n".format(rest.mkString(" ")))
       pr.result.show
@@ -160,7 +161,9 @@ object PathResolver {
 }
 import PathResolver.{ Defaults, Environment, firstNonEmpty, ppcp }
 
-class PathResolver(settings: Settings, context: JavaContext = DefaultJavaContext) {
+class PathResolver(_ctx: Context) {
+  implicit val ctx = _ctx
+  val context = ClassPath.DefaultJavaContext
 
   private def cmdLineOrElse(name: String, alt: String) = {
     (commandLineFor(name) match {
@@ -184,7 +187,7 @@ class PathResolver(settings: Settings, context: JavaContext = DefaultJavaContext
    */
   object Calculated {
     def scalaHome           = Defaults.scalaHome
-    def useJavaClassPath    = settings.usejavacp.value || Defaults.useJavaClassPath
+    def useJavaClassPath    = ctx.settings.usejavacp.value || Defaults.useJavaClassPath
     def javaBootClassPath   = cmdLineOrElse("javabootclasspath", Defaults.javaBootClassPath)
     def javaExtDirs         = cmdLineOrElse("javaextdirs", Defaults.javaExtDirs)
     def javaUserClassPath   = if (useJavaClassPath) Defaults.javaUserClassPath else ""
@@ -198,7 +201,7 @@ class PathResolver(settings: Settings, context: JavaContext = DefaultJavaContext
      * and then when typing relative names, instead of picking <root>.scala.relect, typedIdentifier will pick up the
      * <root>.reflect package created by the bootstrapping. Thus, no bootstrapping for scaladoc!
      * TODO: we should refactor this as a separate -bootstrap option to have a clean implementation, no? */
-    def sourcePath          = if (!settings.isScaladoc) cmdLineOrElse("sourcepath", Defaults.scalaSourcePath) else ""
+    def sourcePath          = cmdLineOrElse("sourcepath", Defaults.scalaSourcePath)
 
     /** Against my better judgment, giving in to martin here and allowing
      *  CLASSPATH to be used automatically.  So for the user-specified part
@@ -209,8 +212,8 @@ class PathResolver(settings: Settings, context: JavaContext = DefaultJavaContext
      *  - If neither of those, then "." is used.
      */
     def userClassPath = (
-      if (!settings.classpath.isDefault)
-        settings.classpath.value
+      if (!ctx.settings.classpath.isDefault)
+        ctx.settings.classpath.value
       else sys.env.getOrElse("CLASSPATH", ".")
     )
 
@@ -251,10 +254,10 @@ class PathResolver(settings: Settings, context: JavaContext = DefaultJavaContext
 
   def containers = Calculated.containers
 
-  lazy val result = {
+  lazy val result: JavaClassPath = {
     val cp = new JavaClassPath(containers.toIndexedSeq, context)
-    if (settings.Ylogcp.value) {
-      Console.println("Classpath built from " + settings.toConciseString)
+    if (ctx.settings.Ylogcp.value) {
+      Console.println("Classpath built from " + ctx.settings.toConciseString(ctx.sstate))
       Console.println("Defaults: " + PathResolver.Defaults)
       Console.println("Calculated: " + Calculated)
 
@@ -267,5 +270,4 @@ class PathResolver(settings: Settings, context: JavaContext = DefaultJavaContext
 
   def asURLs = result.asURLs
 
-  */
 }

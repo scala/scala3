@@ -8,9 +8,11 @@ import Phases._
 import Types._
 import Symbols._
 import TypeComparers._, Printers._, NameOps._, SymDenotations._
+import config.Settings._
+import config.ScalaSettings
 import collection.mutable
 import collection.immutable.BitSet
-import config.{Settings, Platform}
+import config.{Settings, Platform, JavaPlatform}
 
 object Contexts {
 
@@ -54,9 +56,9 @@ object Contexts {
     protected def owner_=(owner: Symbol) = _owner = owner
     def owner: Symbol = _owner
 
-    private[this] var _settings: Settings = _
-    protected def settings_=(settings: Settings) = _settings = settings
-    def settings: Settings = _settings
+    private[this] var _sstate: SettingsState = _
+    protected def sstate_=(sstate: SettingsState) = _sstate = sstate
+    def sstate: SettingsState = _sstate
 
     def phase: Phase = ??? // phase(period.phaseId)
     def enclClass: Context = ???
@@ -79,6 +81,7 @@ object Contexts {
     def withConstraints(constraints: Constraints): this.type = { this.constraints = constraints; this }
     def withPrinter(printer: Context => Printer): this.type = { this.printer = printer; this }
     def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
+    def withSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
   }
 
@@ -94,18 +97,26 @@ object Contexts {
     val base = unsupported("base")
   }
 
-  class ContextBase extends Transformers.TransformerBase
+  class ContextBase extends ContextState with Transformers.TransformerBase
                        with Printers.PrinterBase {
 
-    val initialCtx: Context = new InitialContext(this)
+    val settings = new ScalaSettings
 
-    lazy val rootLoader: ClassCompleter = ???
+    val initialCtx: Context = new InitialContext(this).fresh
+        .withSettings(settings.defaultState)
 
-    lazy val definitions = new Definitions()(initialCtx)
+    val loaders = new SymbolLoaders
 
-    lazy val loaders = new SymbolLoaders
+    val platform: Platform = new JavaPlatform(this)
 
-    lazy val platform: Platform = ???
+    val rootLoader: ClassCompleter = platform.rootLoader
+
+    val definitions = new Definitions()(initialCtx)
+
+  }
+
+  /** Mutable state of a context base, collected into a common class */
+  class ContextState {
 
     // Symbols state
     /** A map from a superclass id to the class that has it */

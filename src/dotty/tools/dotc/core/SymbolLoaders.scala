@@ -51,11 +51,11 @@ class SymbolLoaders {
       // offer a setting to resolve the conflict one way or the other.
       // This was motivated by the desire to use YourKit probes, which
       // require yjp.jar at runtime. See SI-2089.
-      if (ctx.settings.YtermConflict == ctx.settings.default.YtermConflict)
+      if (ctx.settings.termConflict.isDefault)
         throw new TypeError(
           s"""$owner contains object and package with same name: $name
              |one of them needs to be removed from classpath""".stripMargin)
-      else if (ctx.settings.YtermConflict.value == "package") {
+      else if (ctx.settings.termConflict.value == "package") {
         ctx.warning(
           s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
         owner.info.decls.unlink(preExisting)

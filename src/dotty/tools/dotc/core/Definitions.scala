@@ -76,6 +76,10 @@ class Definitions(implicit ctx: Context) {
   lazy val NothingType = NothingClass.typeConstructor
   lazy val NullType = NullClass.typeConstructor
 
+  lazy val BoxedNumberClass = requiredClass("java.lang.Number")
+  lazy val JavaSerializableClass = requiredClass("java.lang.Serializable")
+  lazy val ComparableClass       = requiredClass("java.lang.Comparable")
+
   // ----- Class sets ---------------------------------------------------
 
   /** Modules whose members are in the default namespace */

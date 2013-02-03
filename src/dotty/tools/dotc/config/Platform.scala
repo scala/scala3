@@ -8,7 +8,7 @@ package dotc
 package config
 
 import io.{ClassPath, AbstractFile}
-import core.Contexts._
+import core.Contexts._, core.Symbols._
 import core.SymDenotations.ClassCompleter
 import core.SymbolLoader
 
@@ -20,7 +20,7 @@ abstract class Platform(base: ContextBase) {
   def rootLoader: ClassCompleter
 
   /** The compiler classpath. */
-  def classPath: ClassPath
+  def classPath(implicit ctx: Context): ClassPath
 
   /** Update classpath with a substitution that maps entries to entries */
   def updateClassPath(subst: Map[ClassPath, ClassPath])
@@ -29,7 +29,7 @@ abstract class Platform(base: ContextBase) {
   //def platformPhases: List[SubComponent]
 
   /** The various ways a boxed primitive might materialize at runtime. */
-  def isMaybeBoxed(sym: Symbol): Boolean
+  def isMaybeBoxed(sym: Symbol)(implicit ctx: Context): Boolean
 
   /** Create a new class loader to load class file `bin` */
   def newClassLoader(bin: AbstractFile): SymbolLoader
