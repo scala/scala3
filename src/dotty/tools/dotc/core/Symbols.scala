@@ -18,11 +18,10 @@ import io.AbstractFile
 
 trait Symbols { this: Context =>
 
-  def newLazyTermSymbol(owner: Symbol, name: TermName, initFlags: FlagSet, completer: SymCompleter) =
-    new TermSymbol(new LazySymDenotation(_, owner, name, initFlags, completer))
-
-  def newLazyTypeSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: SymCompleter) =
-    new TypeSymbol(new LazySymDenotation(_, owner, name, initFlags, completer))
+  def newLazySymbol[N <: Name](owner: Symbol, name: N, initFlags: FlagSet, completer: SymCompleter) =
+    new Symbol(new LazySymDenotation(_, owner, name, initFlags, completer)) {
+      type ThisName = N
+    }
 
   def newLazyClassSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: ClassCompleter, assocFile: AbstractFile = null) =
     new ClassSymbol(new LazyClassDenotation(_, owner, name, initFlags, completer, assocFile)(this))
@@ -33,7 +32,7 @@ trait Symbols { this: Context =>
       completer: ClassCompleter,
       assocFile: AbstractFile = null)
   = {
-    val module = newLazyTermSymbol(
+    val module = newLazySymbol(
       owner, name, flags | ModuleCreationFlags, new ModuleCompleter(condensed))
     val modcls = newLazyClassSymbol(
       owner, name.toTypeName, flags | ModuleClassCreationFlags, completer, assocFile)
@@ -47,30 +46,10 @@ trait Symbols { this: Context =>
   def newLazyPackageSymbols(owner: Symbol, name: TermName, completer: ClassCompleter) =
     newLazyModuleSymbols(owner, name, PackageCreationFlags, completer)
 
-  def newSymbol(owner: Symbol, name: Name, flags: FlagSet, info: Type, privateWithin: Symbol = NoSymbol): Symbol =
-    if (name.isTermName) newTermSymbol(owner, name.asTermName, flags, info, privateWithin)
-    else newTypeSymbol(owner, name.asTypeName, flags, info, privateWithin)
-
-  def newTermSymbol(
-    owner: Symbol,
-    name: TermName,
-    flags: FlagSet,
-    info: Type,
-    privateWithin: Symbol = NoSymbol)
-  =
-    new TermSymbol(new CompleteSymDenotation(_, owner, name, flags, privateWithin, info))
-
-  def newTypeSymbol(
-    owner: Symbol,
-    name: TypeName,
-    flags: FlagSet,
-    info: Type,
-    privateWithin: Symbol = NoSymbol)
-  =
-    new TypeSymbol(new CompleteSymDenotation(_, owner, name, flags, privateWithin, info))
-
-  def newAliasTypeSymbol(owner: Symbol, name: TypeName, alias: Type, flags: FlagSet = EmptyFlags, privateWithin: Symbol = NoSymbol) =
-    newTypeSymbol(owner, name, flags, TypeBounds(alias, alias), privateWithin)
+  def newSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type, privateWithin: Symbol = NoSymbol) =
+    new Symbol(new CompleteSymDenotation(_, owner, name, flags, privateWithin, info)) {
+      type ThisName = N
+    }
 
   def newClassSymbol(
       owner: Symbol,
@@ -95,7 +74,7 @@ trait Symbols { this: Context =>
       decls: Scope = newScope,
       assocFile: AbstractFile = null)(implicit ctx: Context)
   = {
-    val module = newLazyTermSymbol(owner, name, flags | ModuleCreationFlags, new ModuleCompleter(condensed))
+    val module = newLazySymbol(owner, name, flags | ModuleCreationFlags, new ModuleCompleter(condensed))
     val modcls = newClassSymbol(
       owner, name.toTypeName, classFlags | ModuleClassCreationFlags, parents, privateWithin,
       optSelfType = TermRef(owner.thisType, module),
@@ -115,7 +94,7 @@ trait Symbols { this: Context =>
   def newStubSymbol(owner: Symbol, name: Name)(implicit ctx: Context): Symbol = {
     def stub[Denot <: SymDenotation] = new StubCompleter[Denot](ctx.condensed)
     name match {
-      case name: TermName => ctx.newLazyTermSymbol(owner, name, EmptyFlags, stub)
+      case name: TermName => ctx.newLazySymbol(owner, name, EmptyFlags, stub)
       case name: TypeName => ctx.newLazyClassSymbol(owner, name, EmptyFlags, stub)
     }
   }
@@ -125,7 +104,9 @@ object Symbols {
 
   /** A Symbol represents a Scala definition/declaration or a package.
    */
-  abstract class Symbol(denotf: Symbol => SymDenotation) extends DotClass {
+  class Symbol(denotf: Symbol => SymDenotation) extends DotClass {
+
+    type ThisName <: Name
 
     /** Is symbol different from NoSymbol? */
     def exists = true
@@ -195,7 +176,7 @@ object Symbols {
     final def owner(implicit ctx: Context): Symbol = denot.owner
 
     /** The current name of this symbol */
-    final def name(implicit ctx: Context): Name = denot.name
+    final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]
 
     /** The current type info of this symbol */
     final def info(implicit ctx: Context): Type = denot.info
@@ -393,12 +374,6 @@ object Symbols {
 
     //def isMethod(implicit ctx: Context): Boolean = denot.isMethod
 
-  }
-
-  class TermSymbol(denotf: Symbol => SymDenotation) extends Symbol(denotf)
-
-  class TypeSymbol(denotf: Symbol => SymDenotation) extends Symbol(denotf) {
-
     /** The type representing the type constructor for this type symbol */
     def typeConstructor(implicit ctx: Context): TypeRef = denot.typeConstructor
 
@@ -408,7 +383,13 @@ object Symbols {
     def variance(implicit ctx: Context): Int = denot.variance
   }
 
-  class ClassSymbol(denotf: ClassSymbol => ClassDenotation) extends TypeSymbol(s => denotf(s.asClass)) {
+  type TermSymbol = Symbol { type ThisName = TermName }
+  type TypeSymbol = Symbol { type ThisName = TypeName }
+
+  class ClassSymbol(denotf: ClassSymbol => ClassDenotation) extends Symbol(s => denotf(s.asClass)) {
+
+    type ThisName = TypeName
+
     private var superIdHint: Int = -1
 
     final def classDenot(implicit ctx: Context): ClassDenotation =
@@ -448,28 +429,19 @@ object Symbols {
     }
   }
 
-  trait ErrorSymbol {
-    val underlying: Symbol
-    def getMsg: String
-  }
-
-  class ErrorTypeSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends TypeSymbol(sym => underlying.denot) with ErrorSymbol {
-    def getMsg = msg
-  }
-
-  class ErrorTermSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends TermSymbol(sym => underlying.denot) with ErrorSymbol {
-    def getMsg = msg
+  class ErrorSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(sym => underlying.denot) {
+    type ThisName = underlying.ThisName
   }
 
   object NoSymbol extends Symbol(sym => NoDenotation) {
     override def exists = false
   }
 
-  implicit class Copier(sym: Symbol)(implicit ctx: Context) {
+  implicit class Copier[N <: Name](sym: Symbol { type ThisName = N })(implicit ctx: Context) {
     /** Copy a symbol, overriding selective fields */
     def copy(
         owner: Symbol = sym.owner,
-        name: Name = sym.name,
+        name: N = sym.name,
         flags: FlagSet = sym.flags,
         privateWithin: Symbol = sym.privateWithin,
         info: Type = sym.info): Symbol =

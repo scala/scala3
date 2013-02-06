@@ -323,7 +323,7 @@ abstract class UnPickler {
             name1 = name1.expandedName(owner)
             flags1 |= ProtectedLocal
           }
-          ctx.newLazyTypeSymbol(owner, name1, flags1, completeSym(tag))
+          ctx.newLazySymbol(owner, name1, flags1, completeSym(tag))
         case CLASSsym =>
           if (isClassRoot) completeRoot(classRoot)
           else if (isModuleRoot) completeRoot(moduleRoot)
@@ -333,10 +333,10 @@ abstract class UnPickler {
           if (isModuleRoot) {
             moduleRoot.denot.asInstanceOf[LazyClassDenotation].flags = flags
             moduleRoot
-          } else ctx.newTermSymbol(owner, name.asTermName, flags, info)
+          } else ctx.newSymbol(owner, name.asTermName, flags, info)
         case VALsym =>
           if (isModuleRoot) { assert(false); NoSymbol }
-          else ctx.newLazyTermSymbol(owner, name.asTermName, flags, completeSym(tag))
+          else ctx.newLazySymbol(owner, name.asTermName, flags, completeSym(tag))
 
         case _ =>
           errorBadSignature("bad symbol tag: " + tag)
@@ -998,7 +998,7 @@ abstract class UnPickler {
         for ((name, tpe) <- refinements) denot.decls.enter {
           val formal = cls.info.member(name).symbol
           val bounds = tpe.toAlias(formal)
-          ctx.newTypeSymbol(cls, name, formal.flags & RetainedTypeArgFlags, bounds)
+          ctx.newSymbol(cls, name, formal.flags & RetainedTypeArgFlags, bounds)
         }
       } catch {
         case e: MissingRequirementError => throw toTypeError(e)

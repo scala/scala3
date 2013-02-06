@@ -22,7 +22,7 @@ class Definitions(implicit ctx: Context) {
 
   lazy val RootClass: ClassSymbol = ctx.newLazyPackageSymbols(
     NoSymbol, nme.ROOT, ctx.rootLoader)._2
-  lazy val RootPackage: TermSymbol = ctx.newTermSymbol(
+  lazy val RootPackage: TermSymbol = ctx.newSymbol(
     NoSymbol, nme.ROOTPKG, PackageCreationFlags, TypeRef(NoPrefix, RootClass))
 
   lazy val ScalaPackageVal = requiredPackage("scala")
@@ -31,8 +31,8 @@ class Definitions(implicit ctx: Context) {
   lazy val JavaLangPackageVal = requiredPackage("java.lang")
 
   lazy val ObjectClass = requiredClass("java.lang.Object")
-  lazy val AnyRefAlias: TypeSymbol = ctx.newAliasTypeSymbol(
-    ScalaPackageClass, tpnme.AnyRef, ObjectClass.typeConstructor).entered
+  lazy val AnyRefAlias: TypeSymbol = ctx.newSymbol(
+    ScalaPackageClass, tpnme.AnyRef, EmptyFlags, TypeAlias(ObjectClass.typeConstructor)).entered
   lazy val AnyClass: ClassSymbol = ctx.newClassSymbol(
     ScalaPackageClass, tpnme.Any, Abstract, Nil).entered
   lazy val AnyValClass: ClassSymbol = requiredClass("scala.AnyVal")
