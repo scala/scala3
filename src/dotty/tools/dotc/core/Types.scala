@@ -33,16 +33,17 @@ object Types {
    *
    *  Type -+- ProxyType --+- NamedType ----+--- TypeRef
    *        |              |                 \
-   *        |              +- SingletonType---+- TermRef
-   *        |              |
-   *        |              +- SingletonType --+- ThisType
-   *        |                                 +- SuperType
-   *        |                                 +- ConstantType
-   *        |                                 +- MethodParam
-   *        |                                 +- RefinedThis
-   *        |                                 +- TypeBounds
-   *        |                                 +- ExprType
-   *        |                                 +- AnnotatedType
+   *        |              +- SingletonType-+-+- TermRef
+   *        |              |                |
+   *        |              |                +--- ThisType
+   *        |              |                +--- SuperType
+   *        |              |                +--- ConstantType
+   *        |              |                +--- MethodParam
+   *        |              |                +--- RefinedThis
+   *        |              +- TypeBounds
+   *        |              +- ExprType
+   *        |              +- AnnotatedType
+   *        |
    *        +- GroundType -+- PolyParam
    *                       +- RefinedType
    *                       +- AndType
