@@ -322,6 +322,9 @@ object Flags {
   /** Symbol is an implementation class */
   final val ImplClass = typeFlag(???, "<implclass>")
 
+  /** An existentially bound symbol (Scala 2.x only) */
+  final val Scala2Existential = typeFlag(???, "<existential>")
+
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
   /** Flags representing source modifiers */
@@ -345,23 +348,32 @@ object Flags {
   /** These flags are pickled */
   final val PickledFlags  = InitialFlags &~ FlagsNotPickled
 
-  /** Packages always have these flags set */
+  /** Modules always have these flags set */
+  final val ModuleCreationFlags = Module
+
+  /** Module classes always have these flags set */
+  final val ModuleClassCreationFlags = Module | Final
+
+  /** Packages and package classes always have these flags set */
   final val PackageCreationFlags = commonFlags(
     Module, Package, Final, JavaDefined, Static)
 
   /** A value that's unstable unless complemented with a Stable flag */
   final val UnstableValue = oneOf(Mutable, Method, ByNameParam)
 
+  /** Flags that are passed from a type parameter of a class to a refinement symbol
+    * that sets the type parameter */
+  final val RetainedTypeArgFlags = Covariant | Contravariant | Protected | Local
+
   /** Labeled private[this] */
   final val PrivateLocal = allOf(Private, Local)
+
+  /** Labeled protected[this] */
+  final val ProtectedLocal = allOf(Protected, Local)
 
   /** Labeled `private` or `protected[local]` */
   final val PrivateOrLocal = oneOf(Private, Local)
 
   /** Java symbol which is `protected` and `static` */
   final val StaticProtected = allOf(JavaDefined, Protected, Static)
-
-  /** Labeled `protected[this]` */
-  final val ProtectedLocal = allOf(Protected, Local)
-
 }

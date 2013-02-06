@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Types._, Symbols._, Contexts._, Scopes._
+import Types._, Symbols._, Contexts._, Scopes._, Names._
 
 trait Printers { this: Context =>
 
@@ -10,6 +10,8 @@ trait Printers { this: Context =>
   def showLocated(sym: Symbol): String = printer(this).showLocated(sym)
   def showDef(sym: Symbol): String = printer(this).showDef(sym)
   def show(sc: Scope): String = printer(this).show(sc)
+  def show(syms: List[Symbol], sep: String): String = printer(this).show(syms, sep)
+  def showNameDetailed(name: Name) = printer(this).showNameDetailed(name)
 
   private var _diagnostics: Option[StringBuilder] = _
 
@@ -36,6 +38,8 @@ object Printers {
     def showLocated(sym: Symbol): String
     def showDef(sym: Symbol): String
     def show(sc: Scope): String
+    def show(syms: List[Symbol], sep: String): String
+    def showNameDetailed(name: Name): String
   }
 
   class StdPrinter(implicit ctx: Context) extends Printer {
@@ -101,7 +105,14 @@ object Printers {
     def showLocated(sym: Symbol): String = ???
     def showDef(sym: Symbol): String = ???
     def show(sc: Scope): String =
-      sc.toList.map(_.showDef).mkString("Scope{\n  ", ";\n  ", "\n}")
+      "Scope{\n" + show(sc.toList, ";\n  ") + "\n}"
+
+    def show(syms: List[Symbol], sep: String): String =
+      syms map (_.showDef) mkString sep
+
+    def showNameDetailed(name: Name): String =
+      (if (name.isTypeName) "type " else "term ") + name
+
   }
 
   final val maxShowRecursions = 50

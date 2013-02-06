@@ -154,6 +154,11 @@ object NameOps {
   implicit class TypeNameDecorator(val name: TypeName) extends AnyVal {
     def isUnboxedName = Boxed contains name
     def boxedName: TypeName = Boxed(name)
+
+    /** The expanded name of `name` relative to this class `base` with given `separator`
+     */
+    def expandedName(base: Symbol, separator: Name = nme.EXPAND_SEPARATOR)(implicit ctx: Context): TypeName =
+      (base.fullName('$') ++ separator ++ name).toTypeName
   }
 
   implicit class TermNameDecorator(val name: TermName) extends AnyVal {

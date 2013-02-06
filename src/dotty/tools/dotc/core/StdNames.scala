@@ -233,6 +233,7 @@ object StdNames {
     val OUTER: N                    = "$outer"
     val OUTER_LOCAL: N              = "$outer "
     val OUTER_SYNTH: N              = "<outer>" // emitted by virtual pattern matcher, replaced by outer accessor in explicitouter
+    val REFINE_CLASS: N             = "<refinement>"
     val ROOTPKG: N                  = "_root_"
     val SELECTOR_DUMMY: N           = "<unapply-selector>"
     val SELF: N                     = "$this"

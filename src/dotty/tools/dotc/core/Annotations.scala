@@ -9,4 +9,16 @@ object Annotations {
     def appliesToModule: Boolean = ???
   }
 
+  abstract class InternalAnnotation extends Annotation {
+
+  }
+
+  case class Alias(sym: Symbol) extends InternalAnnotation {
+
+  }
+
+  case class Child(child: ClassSymbol) extends InternalAnnotation {
+
+  }
+
 }

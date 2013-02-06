@@ -20,8 +20,10 @@ class Definitions(implicit ctx: Context) {
   def requiredClass(str: String): ClassSymbol = ???
   def requiredModule(str: String): TermSymbol = ???
 
-  lazy val RootClass: ClassSymbol = ctx.newLazyClassSymbol(
-    NoSymbol, tpnme.ROOT, PackageCreationFlags, ctx.rootLoader)
+  lazy val RootClass: ClassSymbol = ctx.newLazyPackageSymbols(
+    NoSymbol, nme.ROOT, ctx.rootLoader)._2
+  lazy val RootPackage: TermSymbol = ctx.newTermSymbol(
+    NoSymbol, nme.ROOTPKG, PackageCreationFlags, TypeRef(NoPrefix, RootClass))
 
   lazy val ScalaPackageVal = requiredPackage("scala")
   lazy val ScalaPackageClass = ScalaPackageVal.moduleClass.asClass

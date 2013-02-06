@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, Annotations._
-import Types._, Flags._, Decorators._, Transformers._, StdNames._
+import Types._, Flags._, Decorators._, Transformers._, StdNames._, Scopes._
 import Scopes.Scope
 import collection.mutable
 import collection.immutable.BitSet
@@ -41,14 +41,20 @@ object SymDenotations {
 
     def flags: FlagSet = { ensureLoaded(); _flags }
     def flags_=(flags: FlagSet): Unit = { _flags = flags }
-    def setFlags(flags: FlagSet): Unit = { _flags |= flags }
-    def resetFlags(flags: FlagSet): Unit = { _flags &~= flags }
+    def setFlag(flags: FlagSet): Unit = { _flags |= flags }
+    def resetFlag(flags: FlagSet): Unit = { _flags &~= flags }
 
     private[this] var _annotations: List[Annotation] = Nil
     def annotations: List[Annotation] = { ensureCompleted(); _annotations }
     def annotations_=(annots: List[Annotation]): Unit = { _annotations = annots }
 
     def hasAnnotation(cls: Symbol) = dropOtherAnnotations(annotations, cls).nonEmpty
+
+    final def addAnnotation(annot: Annotation): Unit = annotations =
+      annot :: annotations
+
+    final def setAlias(alias: Symbol)(implicit ctx: Context): Unit =
+      addAnnotation(Alias(alias))
 
     @tailrec
     private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol): List[Annotation] = anns match {
@@ -165,10 +171,10 @@ object SymDenotations {
     final def matchingSymbol(inClass: Symbol, site: Type)(implicit ctx: Context): Symbol = {
       var denot = inClass.info.nonPrivateDecl(name)
       if (denot.isTerm) {
-        val targetType = site.memberInfo(this)
+        val targetType = site.memberInfo(symbol)
         if (denot.isOverloaded)
           denot = denot.atSignature(targetType.signature)
-        if (!(site.memberInfo(denot.asInstanceOf[SymDenotation]) matches targetType))
+        if (!(site.memberInfo(denot.symbol) matches targetType))
           denot = NoDenotation
       }
       denot.symbol
@@ -455,7 +461,7 @@ object SymDenotations {
         parent.denot match {
           case classd: ClassDenotation =>
             includeFingerPrint(bits, classd.definedFingerPrint)
-            parent.denot.setFlags(Frozen)
+            parent.denot.setFlag(Frozen)
           case _ =>
         }
         ps = ps.tail
@@ -692,7 +698,7 @@ object SymDenotations {
     override protected[core] def tryLoad(): Unit =
       try {
         if (flags is Locked) throw new CyclicReference(symbol)
-        setFlags(Locked)
+        setFlag(Locked)
         completer.load(this)
       } finally {
         flags &~= Locked
@@ -701,7 +707,7 @@ object SymDenotations {
     override protected[core] def tryComplete(): Unit =
       try {
         if (flags is Locked) throw new CyclicReference(symbol)
-        setFlags(Locked)
+        setFlag(Locked)
         val c = completer
         completer = null // set completer to null to avoid space leaks
                          // and to make any subsequent completion attempt a CompletionError
@@ -731,11 +737,11 @@ object SymDenotations {
   type ClassCompleter = Completer[LazyClassDenotation]
 
   class ModuleCompleter(cctx: CondensedContext) extends Completer[LazySymDenotation] {
-    implicit def ctx: Context = cctx
+    implicit protected def ctx: Context = cctx
     def classDenot(denot: LazySymDenotation) =
       denot.moduleClass.denot.asInstanceOf[LazyClassDenotation]
     def copyLoadedFields(denot: LazySymDenotation, from: LazyClassDenotation) = {
-      denot.setFlags(from.flags.toTermFlags & RetainedModuleFlags)
+      denot.setFlag(from.flags.toTermFlags & RetainedModuleFlags)
       denot.privateWithin = from.privateWithin
     }
     def copyCompletedFields(denot: LazySymDenotation, from: LazyClassDenotation) = {
@@ -746,6 +752,33 @@ object SymDenotations {
       copyLoadedFields(denot, classDenot(denot))
     def complete(denot: LazySymDenotation): Unit =
       copyCompletedFields(denot, classDenot(denot))
+  }
+
+  /** A completer for missing references */
+  class StubCompleter[Denot <: SymDenotation](cctx: CondensedContext) extends Completer[Denot] {
+    implicit protected def ctx: Context = cctx
+
+    def initializeToDefaults(denot: Denot) = denot match { // todo: initialize to errors instead?
+      case denot: LazySymDenotation =>
+        denot.privateWithin = NoSymbol
+        denot.info = NoType
+      case denot: LazyClassDenotation =>
+        denot.privateWithin = NoSymbol
+        denot.parents = Nil
+        denot.selfType = denot.thisType
+        denot.decls = EmptyScope
+    }
+
+    def complete(denot: Denot): Unit = {
+      val from =
+        if (denot.associatedFile == null) ""
+        else s" - referenced from ${denot.associatedFile.canonicalPath}"
+      val sym = denot.symbol
+      val symStr = s"${sym.showKind} ${sym.showName}${sym.showLocated}"
+      ctx.error(s"bad symbolic reference to $symStr$from (a classfile may be missing)")
+      if (ctx.settings.debug.value) (new Throwable).printStackTrace
+      initializeToDefaults(denot)
+    }
   }
 
   class CompletionError(denot: SymDenotation) extends Error("Trying to access missing symbol ${denot.symbol.fullName}")

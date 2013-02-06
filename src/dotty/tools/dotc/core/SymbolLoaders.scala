@@ -9,11 +9,10 @@ package core
 
 import java.io.IOException
 import scala.compat.Platform.currentTime
-import dotty.tools.io.{ClassPath, AbstractFile}
-import Contexts._, Symbols._, Flags._, SymDenotations._, Types._
+import dotty.tools.io.{ ClassPath, AbstractFile }
+import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._
 import Decorators.StringDecorator
 //import classfile.ClassfileParser
-
 
 /** A base class for Symbol loaders with some overridable behavior  */
 class SymbolLoaders {
@@ -34,7 +33,7 @@ class SymbolLoaders {
   /** Enter module with given `name` into scope of `owner`.
    */
   def enterModule(owner: Symbol, name: String, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
-    val module = ctx.newLazyModuleSymbol(owner, name.toTermName, EmptyFlags, completer, assocFile = completer.sourceFileOrNull)
+    val module = ctx.newLazyModuleSymbols(owner, name.toTermName, EmptyFlags, completer, assocFile = completer.sourceFileOrNull)._1
     enterIfNew(owner, module, completer)
   }
 
@@ -64,7 +63,7 @@ class SymbolLoaders {
         return NoSymbol
       }
     }
-    ctx.newLazyModuleSymbol(owner, pname, PackageCreationFlags, completer).entered
+    ctx.newLazyModuleSymbols(owner, pname, PackageCreationFlags, completer)._1.entered
   }
 
   /** Enter class and module with given `name` into scope of `owner`
@@ -98,14 +97,13 @@ class SymbolLoaders {
    */
   def binaryOnly(owner: Symbol, name: String)(implicit ctx: Context): Boolean =
     name == "package" &&
-    (owner.fullName == "scala" || owner.fullName == "scala.reflect")
+      (owner.fullName == "scala" || owner.fullName == "scala.reflect")
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */
   def initializeFromClassPath(owner: Symbol, classRep: ClassPath#ClassRep)(implicit ctx: Context) {
-    ((classRep.binary, classRep.source) : @unchecked) match {
-      case (Some(bin), Some(src))
-      if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
+    ((classRep.binary, classRep.source): @unchecked) match {
+      case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
         if (ctx.settings.verbose.value) ctx.inform("[symloader] picked up newer source file for " + src.path)
         enterToplevelsFromSource(owner, classRep.name, src)
       case (None, Some(src)) =>
@@ -118,81 +116,84 @@ class SymbolLoaders {
 
   def needCompile(bin: AbstractFile, src: AbstractFile) =
     src.lastModified >= bin.lastModified
-}
-  /**
-   * A lazy type that completes itself by calling parameter doComplete.
-   * Any linked modules/classes or module classes are also initialized.
-   * Todo: consider factoring out behavior from TopClassCompleter/SymbolLoader into
-   * supertrait SymLoader
+
+  /** Load contents of a package
    */
-  abstract class SymbolLoader(cctx: CondensedContext) extends ClassCompleter {
-    implicit def ctx: Context = cctx
+  class PackageLoader(classpath: ClassPath)(cctx: CondensedContext) extends SymbolLoader {
+    implicit val ctx: Context = cctx
+    protected def description = "package loader " + classpath.name
 
-    /** Load source or class file for `root`, return */
-    protected def doComplete(root: LazyClassDenotation): Unit
-
-    def sourceFileOrNull: AbstractFile = null
-    /**
-     * Description of the resource (ClassPath, AbstractFile, MsilFile)
-     * being processed by this loader
-     */
-    protected def description: String
-
-    private var ok = false
-
-    override def complete(root: LazyClassDenotation) {
-      def signalError(ex: Exception) {
-        ok = false
-        if (ctx.settings.debug.value) ex.printStackTrace()
-        val msg = ex.getMessage()
-        ctx.error(
-          if (msg eq null) "i/o error while loading " + root.name
-          else "error while loading " + root.name + ", " + msg);
+    protected def doComplete(root: LazyClassDenotation) {
+      assert(root.isPackageClass, root)
+      root.parents = Nil
+      root.decls = newScope
+      if (!root.isRoot) {
+        for (classRep <- classpath.classes) {
+          initializeFromClassPath(root.symbol, classRep)
+        }
       }
-      try {
-        val start = currentTime
-        doComplete(root)
-        ctx.informTime("loaded " + description, start)
-        ok = true
-      } catch {
-        case ex: IOException =>
-          signalError(ex)
-        case ex: MissingRequirementError =>
-          signalError(ex)
-      }
-      root.linkedClass.denot match {
-        case companion: LazyClassDenotation => companion.completer = null
+      if (!root.isEmptyPackage) {
+        for (pkg <- classpath.packages) {
+          enterPackage(root.symbol, pkg.name, new PackageLoader(pkg)(cctx))
+        }
+
+        openPackageModule(root.symbol)
       }
     }
   }
+
+  def openPackageModule(pkgClass: Symbol): Unit = ???
+
+}
+/** A lazy type that completes itself by calling parameter doComplete.
+ *  Any linked modules/classes or module classes are also initialized.
+ *  Todo: consider factoring out behavior from TopClassCompleter/SymbolLoader into
+ *  supertrait SymLoader
+ */
+abstract class SymbolLoader extends ClassCompleter {
+  implicit val ctx: Context
+
+  /** Load source or class file for `root`, return */
+  protected def doComplete(root: LazyClassDenotation): Unit
+
+  def sourceFileOrNull: AbstractFile = null
+  /** Description of the resource (ClassPath, AbstractFile, MsilFile)
+   *  being processed by this loader
+   */
+  protected def description: String
+
+  private var ok = false
+
+  override def complete(root: LazyClassDenotation) {
+    def signalError(ex: Exception) {
+      ok = false
+      if (ctx.settings.debug.value) ex.printStackTrace()
+      val msg = ex.getMessage()
+      ctx.error(
+        if (msg eq null) "i/o error while loading " + root.name
+        else "error while loading " + root.name + ", " + msg);
+    }
+    try {
+      val start = currentTime
+      doComplete(root)
+      ctx.informTime("loaded " + description, start)
+      ok = true
+    } catch {
+      case ex: IOException =>
+        signalError(ex)
+      case ex: MissingRequirementError =>
+        signalError(ex)
+    }
+    // also mark linked class as completed if it exists
+    root.linkedClass.denot match {
+      case companion: LazyClassDenotation => companion.completer = null
+    }
+  }
+}
+
 
  /*
 
-  /**
-   * Load contents of a package
-   */
-  class PackageLoader(classpath: ClassPath[platform.BinaryRepr]) extends SymbolLoader with FlagAgnosticCompleter {
-    protected def description = "package loader "+ classpath.name
-
-    protected def doComplete(root: Symbol) {
-      assert(root.isPackageClass, root)
-      root.setInfo(new PackageClassInfoType(newScope, root))
-
-      val sourcepaths = classpath.sourcepaths
-      if (!root.isRoot) {
-        for (classRep <- classpath.classes if platform.doLoad(classRep)) {
-          initializeFromClassPath(root, classRep)
-        }
-      }
-      if (!root.isEmptyPackageClass) {
-        for (pkg <- classpath.packages) {
-          enterPackage(root, pkg.name, new PackageLoader(pkg))
-        }
-
-        openPackageModule(root)
-      }
-    }
-  }
 
   class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader with FlagAssigningCompleter {
     private object classfileParser extends ClassfileParser {

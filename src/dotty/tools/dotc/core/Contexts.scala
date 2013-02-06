@@ -66,6 +66,7 @@ object Contexts {
     def debug: Boolean = ???
     def error(msg: String) = ???
     def warning(msg: String) = ???
+    def log(msg: String) = ???
     def inform(msg: String) = ???
     def informTime(msg: String, start: Long): Unit = ???
 

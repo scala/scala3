@@ -27,22 +27,25 @@ trait Symbols { this: Context =>
   def newLazyClassSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: ClassCompleter, assocFile: AbstractFile = null) =
     new ClassSymbol(new LazyClassDenotation(_, owner, name, initFlags, completer, assocFile)(this))
 
-  def newLazyModuleSymbol(owner: Symbol,
+  def newLazyModuleSymbols(owner: Symbol,
       name: TermName,
       flags: FlagSet,
       completer: ClassCompleter,
       assocFile: AbstractFile = null)
   = {
     val module = newLazyTermSymbol(
-      owner, name, flags | Module, new ModuleCompleter(condensed))
+      owner, name, flags | ModuleCreationFlags, new ModuleCompleter(condensed))
     val modcls = newLazyClassSymbol(
-      owner, name.toTypeName, flags | Module | Final, completer, assocFile)
+      owner, name.toTypeName, flags | ModuleClassCreationFlags, completer, assocFile)
     module.denot.asInstanceOf[LazySymDenotation].info =
-      TypeRef(owner.thisType, modcls)
+      TypeRef(owner.thisType(ctx), modcls)
     modcls.denot.asInstanceOf[LazyClassDenotation].selfType =
       TermRef(owner.thisType, module)
-    module
+    (module, modcls)
   }
+
+  def newLazyPackageSymbols(owner: Symbol, name: TermName, completer: ClassCompleter) =
+    newLazyModuleSymbols(owner, name, PackageCreationFlags, completer)
 
   def newTermSymbol(
     owner: Symbol,
@@ -78,7 +81,7 @@ trait Symbols { this: Context =>
     new ClassSymbol(new CompleteClassDenotation(
       _, owner, name, flags, privateWithin, parents, optSelfType, decls, assocFile)(this))
 
-  def newModuleSymbol(
+  def newModuleSymbols(
       owner: Symbol,
       name: TermName,
       flags: FlagSet,
@@ -88,14 +91,29 @@ trait Symbols { this: Context =>
       decls: Scope = newScope,
       assocFile: AbstractFile = null)(implicit ctx: Context)
   = {
-    val module = newLazyTermSymbol(owner, name, flags, new ModuleCompleter(condensed))
+    val module = newLazyTermSymbol(owner, name, flags | ModuleCreationFlags, new ModuleCompleter(condensed))
     val modcls = newClassSymbol(
-      owner, name.toTypeName, classFlags, parents, privateWithin,
+      owner, name.toTypeName, classFlags | ModuleClassCreationFlags, parents, privateWithin,
       optSelfType = TermRef(owner.thisType, module),
       decls, assocFile)
     module.denot.asInstanceOf[LazySymDenotation].info =
       TypeRef(owner.thisType, modcls)
-    module
+    (module, modcls)
+  }
+
+  def newPackageSymbols(
+      owner: Symbol,
+      name: TermName,
+      decls: Scope = newScope)(implicit ctx: Context) =
+   newModuleSymbols(
+     owner, name, PackageCreationFlags, PackageCreationFlags, Nil, NoSymbol, decls)
+
+  def newStubSymbol(owner: Symbol, name: Name)(implicit ctx: Context): Symbol = {
+    def stub[Denot <: SymDenotation] = new StubCompleter[Denot](ctx.condensed)
+    name match {
+      case name: TermName => ctx.newLazyTermSymbol(owner, name, EmptyFlags, stub)
+      case name: TypeName => ctx.newLazyClassSymbol(owner, name, EmptyFlags, stub)
+    }
   }
 }
 
@@ -181,8 +199,20 @@ object Symbols {
     /** The current annotations of this symbol */
     final def annotations(implicit ctx: Context): List[Annotation] = denot.annotations
 
+    /** Set given flags(s) of this symbol */
+    def setFlag(flags: FlagSet)(implicit ctx: Context): Unit = denot.setFlag(flags)
+
+    /** Unset given flag(s) of this symbol */
+    def resetFlag(flags: FlagSet)(implicit ctx: Context): Unit = denot.resetFlag(flags)
+
     /** Does this symbol have an annotation matching the given class symbol? */
     final def hasAnnotation(cls: Symbol)(implicit ctx: Context): Boolean = denot.hasAnnotation(cls)
+
+    /** Add given annotation to this symbol */
+    final def addAnnotation(annot: Annotation)(implicit ctx: Context): Unit = denot.addAnnotation(annot)
+
+    /** Record that this symbol is an alias of given `alias` symbol */
+    final def setAlias(alias: Symbol)(implicit ctx: Context): Unit = denot.setAlias(alias)
 
     /** The chain of owners of this symbol, starting with the symbol itself */
     final def ownersIterator(implicit ctx: Context): Iterator[Symbol] = denot.ownersIterator
@@ -307,6 +337,8 @@ object Symbols {
     def show(implicit ctx: Context): String = ctx.show(this)
     def showLocated(implicit ctx: Context): String = ctx.showLocated(this)
     def showDef(implicit ctx: Context): String = ctx.showDef(this)
+    def showKind(implicit tcx: Context): String = ???
+    def showName(implicit ctx: Context): String = ???
 
     /** The type parameters of a class symbol, Nil for all other symbols */
     def typeParams(implicit ctx: Context): List[TypeSymbol] = denot.typeParams

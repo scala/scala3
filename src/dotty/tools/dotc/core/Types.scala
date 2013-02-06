@@ -233,6 +233,18 @@ object Types {
       case _ => List()
     }
 
+    /** Map function over elements of an AndType, rebuilding with & */
+    def mapAnd(f: Type => Type)(implicit ctx: Context): Type = this match {
+      case AndType(tp1, tp2) => tp1.mapAnd(f) & tp2.mapAnd(f)
+      case _ => f(this)
+    }
+
+    /** Map function over elements of an OrType, rebuilding with | */
+    def mapOr(f: Type => Type)(implicit ctx: Context): Type = this match {
+      case OrType(tp1, tp2) => tp1.mapAnd(f) | tp2.mapAnd(f)
+      case _ => f(this)
+    }
+
     /** The normalized prefix of this type is:
      *  For an alias type, the normalized prefix of its alias
      *  For all other named type and class infos: the prefix.
@@ -350,9 +362,14 @@ object Types {
      *
      */
 
+    /** The info of `denot`, seen as a member of this type. */
+//    final def memberInfo(denot: SymDenotation)(implicit ctx: Context): Type = {
+//      denot.info.asSeenFrom(this, denot.owner)
+//    }
+
     /** The info of `sym`, seen as a member of this type. */
-    final def memberInfo(denot: SymDenotation)(implicit ctx: Context): Type = {
-      denot.info.asSeenFrom(this, denot.owner)
+    final def memberInfo(sym: Symbol)(implicit ctx: Context): Type = {
+      sym.info.asSeenFrom(this, sym.owner)
     }
 
     /** Widen from singleton type to its underlying non-singleton
@@ -420,6 +437,24 @@ object Types {
       case tp: TypeProxy =>
         tp.underlying.typeParams
       case _ => Nil
+    }
+
+    final def applyToArgs(args: List[Type])(implicit ctx: Context) = {
+      def loop(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
+        case arg :: args1 =>
+          val tparam = tparams.head
+          val tp1 = RefinedType(tp, tparam.name, tp.toAlias(tparam))
+          loop(tp1, tparams.tail, args1)
+        case nil => tp
+      }
+      if (args.isEmpty) this else loop(this, typeParams, args)
+    }
+
+    final def toAlias(tparam: Symbol)(implicit ctx: Context): TypeBounds = {
+      val flags = tparam.flags
+      if (flags is Covariant) TypeBounds(defn.NothingType, this)
+      else if (flags is Contravariant) TypeBounds(this, defn.AnyType)
+      else TypeBounds(this, this)
     }
 
     final def isWrong: Boolean = !exists // !!! needed?
@@ -623,7 +658,7 @@ object Types {
     }
   }
 
-  final class TermRefBySym(prefix: Type, val fixedSym: TermSymbol)(initctx: Context)
+  final class TermRefBySym(prefix: Type, val fixedSym: TermSymbol)(implicit initctx: Context)
     extends TermRef(prefix, fixedSym.name(initctx)) with HasFixedSym {
   }
 
@@ -633,7 +668,7 @@ object Types {
       super.loadDenot.atSignature(signature)
   }
 
-  final class TypeRefBySym(prefix: Type, val fixedSym: TypeSymbol)(initctx: Context)
+  final class TypeRefBySym(prefix: Type, val fixedSym: TypeSymbol)(implicit initctx: Context)
     extends TypeRef(prefix, fixedSym.name(initctx)) with HasFixedSym {
   }
 
@@ -729,6 +764,9 @@ object Types {
 
     def apply(parent: Type, name: Name, infof: RefinedType => Type)(implicit ctx: Context): RefinedType =
       unique(new CachedRefinedType(parent, name, infof))
+
+    def apply(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType =
+      apply(parent, name, Function const info: (RefinedType => Type))
   }
 
   // --- AndType/OrType ---------------------------------------------------------------
@@ -822,16 +860,29 @@ object Types {
     override def isImplicit = true
   }
 
-  object MethodType {
+  abstract class GenericMethodType {
+    def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType
+    def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
+      def transResult(mt: MethodType) =
+        resultType.subst(params, (0 until params.length).toList map (MethodParam(mt, _)))
+      apply(params map (_.name.asTermName), params map (_.info))(transResult _)
+    }
+  }
+
+  object MethodType extends GenericMethodType {
     def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context) =
       unique(new CachedMethodType(paramNames, paramTypes)(resultTypeExp))
   }
 
-  def JavaMethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context) =
-    unique(new JavaMethodType(paramNames, paramTypes)(resultTypeExp))
+  object JavaMethodType extends GenericMethodType {
+    def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context) =
+      unique(new JavaMethodType(paramNames, paramTypes)(resultTypeExp))
+  }
 
-  def ImplicitMethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context) =
-    unique(new ImplicitMethodType(paramNames, paramTypes)(resultTypeExp))
+  object ImplicitMethodType extends GenericMethodType {
+    def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context) =
+      unique(new ImplicitMethodType(paramNames, paramTypes)(resultTypeExp))
+  }
 
   abstract case class ExprType(resultType: Type) extends CachedProxyType {
     override def underlying(implicit ctx: Context): Type = resultType
@@ -871,6 +922,16 @@ object Types {
     override def equals(other: Any) = other match {
       case that: PolyType => this eq that
       case _ => false
+    }
+  }
+
+  object PolyType {
+    def fromSymbols(tparams: List[Symbol], resultType: Type)(implicit ctx: Context) = {
+      def transform(pt: PolyType, tp: Type) =
+        tp.subst(tparams, (0 until tparams.length).toList map (PolyParam(pt, _)))
+      apply(tparams map (_.name.asTypeName))(
+          pt => tparams map (tparam => transform(pt, tparam.info).bounds),
+          pt => transform(pt, resultType))
     }
   }
 
@@ -955,6 +1016,14 @@ object Types {
   object TypeBounds {
     def apply(lo: Type, hi: Type)(implicit ctx: Context) =
       unique(new CachedTypeBounds(lo, hi))
+  }
+
+  object TypeAlias {
+    def apply(tp: Type)(implicit ctx: Context) = TypeBounds(tp, tp)
+    def unapply(tp: Type): Option[Type] = tp match {
+      case TypeBounds(lo, hi) if lo eq hi => Some(lo)
+      case _ => None
+    }
   }
 
   // ----- AnnotatedTypes -----------------------------------------------------------
