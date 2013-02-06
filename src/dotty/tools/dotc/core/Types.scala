@@ -599,9 +599,6 @@ object Types {
 
     private[this] var lastDenotation: Denotation = null
 
-    private def checkPrefix(denot: Denotation) =
-      denot.info.isRealTypeBounds || denot.symbol.isClass
-
     /** The denotation currently denoted by this type */
     def denot(implicit ctx: Context): Denotation = {
       val validPeriods =
@@ -614,7 +611,9 @@ object Types {
           } else {
             val d = loadDenot
             if (d.exists || ctx.phaseId == FirstPhaseId) {
-              if (checkPrefix(d) && !prefix.isLegalPrefix)
+              val checkPrefix =
+                d.info.isRealTypeBounds || d.symbol.isClass
+              if (checkPrefix && !prefix.isLegalPrefix)
                 throw new MalformedType(prefix, d.symbol)
               d
             } else {// name has changed; try load in earlier phase and make current
@@ -659,7 +658,7 @@ object Types {
   }
 
   final class TermRefBySym(prefix: Type, val fixedSym: TermSymbol)(implicit initctx: Context)
-    extends TermRef(prefix, fixedSym.name(initctx)) with HasFixedSym {
+    extends TermRef(prefix, fixedSym.name(initctx).asTermName) with HasFixedSym {
   }
 
   final class TermRefWithSignature(prefix: Type, name: TermName, override val signature: Signature) extends TermRef(prefix, name) {
@@ -669,7 +668,7 @@ object Types {
   }
 
   final class TypeRefBySym(prefix: Type, val fixedSym: TypeSymbol)(implicit initctx: Context)
-    extends TypeRef(prefix, fixedSym.name(initctx)) with HasFixedSym {
+    extends TypeRef(prefix, fixedSym.name(initctx).asTypeName) with HasFixedSym {
   }
 
   final class CachedTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name)

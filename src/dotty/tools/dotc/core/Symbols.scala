@@ -47,6 +47,10 @@ trait Symbols { this: Context =>
   def newLazyPackageSymbols(owner: Symbol, name: TermName, completer: ClassCompleter) =
     newLazyModuleSymbols(owner, name, PackageCreationFlags, completer)
 
+  def newSymbol(owner: Symbol, name: Name, flags: FlagSet, info: Type, privateWithin: Symbol = NoSymbol): Symbol =
+    if (name.isTermName) newTermSymbol(owner, name.asTermName, flags, info, privateWithin)
+    else newTypeSymbol(owner, name.asTypeName, flags, info, privateWithin)
+
   def newTermSymbol(
     owner: Symbol,
     name: TermName,
@@ -123,8 +127,6 @@ object Symbols {
    */
   abstract class Symbol(denotf: Symbol => SymDenotation) extends DotClass {
 
-    type ThisName <: Name
-
     /** Is symbol different from NoSymbol? */
     def exists = true
 
@@ -144,13 +146,13 @@ object Symbols {
     }
 
     /** Subclass tests and casts */
-    def isType: Boolean = false
-    def isTerm: Boolean = false
-    def isClass: Boolean = false
+    final def isTerm: Boolean = isInstanceOf[TermSymbol]
+    final def isType: Boolean = isInstanceOf[TypeSymbol]
+    final def isClass: Boolean = isInstanceOf[ClassSymbol]
 
-    def asTerm: TermSymbol = asInstanceOf[TermSymbol]
-    def asType: TypeSymbol = asInstanceOf[TypeSymbol]
-    def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
+    final def asTerm: TermSymbol = asInstanceOf[TermSymbol]
+    final def asType: TypeSymbol = asInstanceOf[TypeSymbol]
+    final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
     /** A unique, densely packed integer tag for each class symbol, -1
      *  for all other symbols. To save memory, this method
@@ -185,7 +187,7 @@ object Symbols {
     final def owner(implicit ctx: Context): Symbol = denot.owner
 
     /** The current name of this symbol */
-    final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]
+    final def name(implicit ctx: Context): Name = denot.name
 
     /** The current type info of this symbol */
     final def info(implicit ctx: Context): Type = denot.info
@@ -361,12 +363,6 @@ object Symbols {
     /** If this is a module symbol, the class defining its template, otherwise NoSymbol. */
     def moduleClass(implicit ctx: Context): Symbol = denot.moduleClass
 
-    /** A copy of this symbol with the same denotation */
-    def copy(implicit ctx: Context): Symbol = unsupported("copy")
-
-    /** A copy of this symbol with the same denotation but a new owner */
-    def copy(owner: Symbol)(implicit ctx: Context): Symbol = unsupported("copy")
-
     /** Can a term with this symbol be a stable value? */
     def isStable(implicit ctx: Context): Boolean = denot.isStable
 
@@ -388,18 +384,9 @@ object Symbols {
 
   }
 
-  class TermSymbol(denotf: Symbol => SymDenotation) extends Symbol(denotf) {
-    type ThisName = TermName
-    override def isTerm = true
-    override def copy(implicit ctx: Context): TermSymbol = copy(owner)
-    override def copy(owner: Symbol)(implicit ctx: Context): TermSymbol = new TermSymbol(denot.copy(_, owner))
-  }
+  class TermSymbol(denotf: Symbol => SymDenotation) extends Symbol(denotf)
 
   class TypeSymbol(denotf: Symbol => SymDenotation) extends Symbol(denotf) {
-    type ThisName = TypeName
-    override def isType = true
-    override def copy(implicit ctx: Context): TypeSymbol = copy(owner)
-    override def copy(owner: Symbol)(implicit ctx: Context): TypeSymbol = new TypeSymbol(denot.copy(_, owner))
 
     /** The type representing the type constructor for this type symbol */
     def typeConstructor(implicit ctx: Context): TypeRef = denot.typeConstructor
@@ -411,9 +398,6 @@ object Symbols {
   }
 
   class ClassSymbol(denotf: ClassSymbol => ClassDenotation) extends TypeSymbol(s => denotf(s.asClass)) {
-    override def isClass = true
-    override def copy(implicit ctx: Context): ClassSymbol = copy(owner)
-    override def copy(owner: Symbol)(implicit ctx: Context): ClassSymbol = new ClassSymbol(classDenot.copyClass(_, owner))
     private var superIdHint: Int = -1
 
     final def classDenot(implicit ctx: Context): ClassDenotation =
@@ -425,6 +409,12 @@ object Symbols {
      *  with the class itself as first element.x
      */
     def baseClasses(implicit ctx: Context): List[ClassSymbol] = classDenot.baseClasses
+
+    /** The parent types of this class */
+    def parents(implicit ctx: Context): List[TypeRef] = classDenot.parents
+
+    /** The symbols defined directly in this class */
+    def decls(implicit ctx: Context): Scope = classDenot.decls
 
     //    override def typeTemplate(implicit ctx: Context): Type = classDenot.typeTemplate
 
@@ -447,13 +437,51 @@ object Symbols {
     }
   }
 
-  class ErrorSymbol(underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(sym => underlying.denot) {
-    override def isType = underlying.isType
-    override def isTerm = underlying.isTerm
+  trait ErrorSymbol {
+    val underlying: Symbol
+    def getMsg: String
+  }
+
+  class ErrorTypeSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends TypeSymbol(sym => underlying.denot) with ErrorSymbol {
+    def getMsg = msg
+  }
+
+  class ErrorTermSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends TermSymbol(sym => underlying.denot) with ErrorSymbol {
+    def getMsg = msg
   }
 
   object NoSymbol extends Symbol(sym => NoDenotation) {
     override def exists = false
+  }
+
+  implicit class Copier(sym: Symbol)(implicit ctx: Context) {
+    /** Copy a symbol, overriding selective fields */
+    def copy(
+        owner: Symbol = sym.owner,
+        name: Name = sym.name,
+        flags: FlagSet = sym.flags,
+        privateWithin: Symbol = sym.privateWithin,
+        info: Type = sym.info): Symbol =
+      if (sym.isClass) {
+        assert(info eq sym.info)
+        val pw = privateWithin
+        new ClassCopier(sym.asClass).copy(owner, name.asTypeName, flags, privateWithin = pw)
+      } else
+        ctx.newSymbol(owner, name, flags, info, privateWithin)
+  }
+
+  implicit class ClassCopier(cls: ClassSymbol)(implicit ctx: Context) {
+    /** Copy a class symbol, overriding selective fields */
+    def copy(
+        owner: Symbol = cls.owner,
+        name: TypeName = cls.name.asTypeName,
+        flags: FlagSet = cls.flags,
+        parents: List[TypeRef] = cls.classDenot.parents,
+        privateWithin: Symbol = cls.privateWithin,
+        selfType: Type = cls.selfType,
+        decls: Scope = cls.decls,
+        associatedFile: AbstractFile = cls.associatedFile) =
+      ctx.newClassSymbol(owner, name, flags, parents, privateWithin, selfType, decls, associatedFile)
   }
 
   implicit def defn(implicit ctx: Context): Definitions = ctx.definitions
