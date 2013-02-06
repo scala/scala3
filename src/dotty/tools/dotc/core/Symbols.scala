@@ -145,6 +145,14 @@ object Symbols {
       denot
     }
 
+    private[this] var _id: Int = _
+
+    /** The unique id of this symbol */
+    def id(implicit ctx: Context) = {
+      if (_id == 0) _id = ctx.nextId
+      _id
+    }
+
     /** Subclass tests and casts */
     final def isTerm: Boolean = isInstanceOf[TermSymbol]
     final def isType: Boolean = isInstanceOf[TypeSymbol]
@@ -200,6 +208,9 @@ object Symbols {
 
     /** The current annotations of this symbol */
     final def annotations(implicit ctx: Context): List[Annotation] = denot.annotations
+
+    /** The name with which this symbol was created */
+    def originalName(implicit ctx: Context) = denot.originalName
 
     /** Set given flags(s) of this symbol */
     def setFlag(flags: FlagSet)(implicit ctx: Context): Unit = denot.setFlag(flags)

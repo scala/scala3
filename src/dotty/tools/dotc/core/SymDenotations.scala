@@ -78,6 +78,9 @@ object SymDenotations {
     /** is this denotation a method? */
     //def isMethod: Boolean = false
 
+    def originalName =
+      if (flags is ExpandedName) initial.asSymDenotation.name else name
+
     def isSubClass(cls: Symbol)(implicit ctx: Context) = false
 
     def isNonBottomSubClass(cls: Symbol)(implicit ctx: Context) = false

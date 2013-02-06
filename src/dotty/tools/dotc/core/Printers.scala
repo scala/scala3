@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Types._, Symbols._, Contexts._, Scopes._, Names._
+import Types._, Symbols._, Contexts._, Scopes._, Names._, NameOps._, Flags._
 
 trait Printers { this: Context =>
 
@@ -40,10 +40,19 @@ object Printers {
     def show(sc: Scope): String
     def show(syms: List[Symbol], sep: String): String
     def showNameDetailed(name: Name): String
+    def showFullName(sym: Symbol): String
+
+    /** String representation of symbol's simple name.
+     *  If !settings.debug translates expansions of operators back to operator symbol.
+     *  E.g. $eq => =.
+     *  If settings.uniqid, adds id.
+     *  If settings.Yshowsymkinds, adds abbreviated symbol kind.
+     */
+    def showName(sym: Symbol): String
   }
 
-  class StdPrinter(implicit ctx: Context) extends Printer {
-
+  class PlainPrinter(_ctx: Context) extends Printer {
+    protected[this] implicit val ctx = _ctx
     def controlled(op: => String): String =
       if (ctx.showRecursions < maxShowRecursions)
         try {
@@ -53,22 +62,25 @@ object Printers {
           ctx.showRecursions -= 1
         }
       else {
-        if (ctx.debug) {
-          ctx.warning("Exceeded recursion depth attempting to print type.")
-          (new Throwable).printStackTrace
-        }
+        recursionLimitExceeeded()
         "..."
       }
 
-    def show(tp: Type): String = controlled {
-      tp match {
-        case TermRef(pre, name) =>
-          ??? // showPrefix(pre) + show(name)
-
-
-
-      }
+    protected def recursionLimitExceeeded() = {
+      ctx.warning("Exceeded recursion depth attempting to print type.")
+      (new Throwable).printStackTrace
     }
+
+    protected def showSimpleName(sym: Symbol) = sym.originalName.decode
+
+    def showName(sym: Symbol): String =
+      showSimpleName(sym) + (if (ctx.settings.uniqid.value) "#" + sym.id else "")
+
+    def showFullName(sym: Symbol): String =
+      if (sym.isRoot || sym == NoSymbol || sym.owner.isEffectiveRoot)
+        showName(sym)
+      else
+        showFullName(sym.effectiveOwner.enclosingClass) + "." + showName(sym)
 
     protected def objectPrefix = "object "
     protected def packagePrefix = "package "
@@ -80,28 +92,51 @@ object Printers {
       (defn.UnqualifiedOwners contains sym) || isEmptyPrefix(sym)
 
     protected  def isEmptyPrefix(sym: Symbol) =
-      sym.isEffectiveRoot || sym.isAnonymousClass || ??? // nme.isReplWrapperName(sym.name)
-
+      sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName
 
     def showPrefix(tp: Type): String = controlled {
       tp match {
+        case RefinedThis(_) =>
+          "this."
         case ThisType(cls) =>
-          if (ctx.debug) showName(cls) + ".this."
-          else if (cls.isAnonymousClass) "this."
-          else ???
+          showName(cls) + ".this."
+        case SuperType(thistpe, _) =>
+          showPrefix(thistpe).replaceAll("""\bthis\.$""", "super.")
+        case tp @ TermRef(pre, name) =>
+          val sym = tp.symbol
+          if (!sym.exists) showPrefix(pre) + name + "."
+          else showPrefix(pre) + showName(sym) + "."
+        case MethodParam(mt, idx) =>
+          mt.paramNames(idx) + "."
         case NoPrefix =>
           ""
+        case ConstantType(value) =>
+          "(" + value + ")."
         case _ =>
           trimPrefix(show(tp)) + "#"
+      }
+    }
+
+    def show(tp: Type): String = controlled {
+      tp match {
+        case tp: SingletonType =>
+          val str = showPrefix(tp)
+          if (str.endsWith(".")) str + "type"
+          else showFullName(tp.underlying.typeSymbol.skipPackageObject) + ".type"
+        case
+          TermRef(pre, name) =>
+          ??? // showPrefix(pre) + show(name)
+
+
 
       }
     }
+
 
     def show(sym: Symbol): String = controlled {
 
       ???
     }
-    def showName(sym: Symbol): String = ???
     def showLocated(sym: Symbol): String = ???
     def showDef(sym: Symbol): String = ???
     def show(sc: Scope): String =
@@ -112,9 +147,29 @@ object Printers {
 
     def showNameDetailed(name: Name): String =
       (if (name.isTypeName) "type " else "term ") + name
-
   }
 
-  final val maxShowRecursions = 50
+  class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
+    override protected def recursionLimitExceeeded() = {}
+
+    override protected def showSimpleName(sym: Symbol) = sym.name.toString
+
+    override def showPrefix(tp: Type): String = controlled {
+      tp match {
+        case ThisType(cls) =>
+          if (cls.isAnonymousClass) return "this."
+          if (isOmittablePrefix(cls)) return ""
+          if (cls.isModuleClass) return showFullName(cls) + "."
+        case tp @ TermRef(pre, name) =>
+          val sym = tp.symbol
+          if (sym is PackageObject) return showPrefix(pre)
+          if (isOmittablePrefix(sym)) return ""
+        case _ =>
+      }
+      super.showPrefix(tp)
+    }
+  }
+
+  final val maxShowRecursions = 100
 
 }

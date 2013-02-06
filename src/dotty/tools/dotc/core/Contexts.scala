@@ -48,9 +48,15 @@ object Contexts {
       _typeComparer
     }
 
-    private[this] var _printer: Context => Printer = _
-    protected def printer_=(printer: Context => Printer) = _printer = printer
-    def printer: Context => Printer = _printer
+    private[this] var _plainPrinter: Context => Printer = _
+    protected def plainPrinter_=(plainPrinter: Context => Printer) = _plainPrinter = plainPrinter
+    def plainPrinter: Context => Printer = _plainPrinter
+
+    private[this] var _refinedPrinter: Context => Printer = _
+    protected def refinedPrinter_=(refinedPrinter: Context => Printer) = _refinedPrinter = refinedPrinter
+    def refinedPrinter: Context => Printer = _refinedPrinter
+
+    def printer = if (base.settings.debug.value) plainPrinter else refinedPrinter
 
     private[this] var _owner: Symbol = _
     protected def owner_=(owner: Symbol) = _owner = owner
@@ -75,7 +81,8 @@ object Contexts {
       if (_condensed == null)
         _condensed = base.initialCtx.fresh
           .withPeriod(period)
-          .withPrinter(printer)
+          .withPlainPrinter(plainPrinter)
+          .withRefinedPrinter(refinedPrinter)
           .withSettings(sstate)
       _condensed
     }
@@ -94,7 +101,8 @@ object Contexts {
     def withPeriod(period: Period): this.type = { this.period = period; this }
     def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
     def withConstraints(constraints: Constraints): this.type = { this.constraints = constraints; this }
-    def withPrinter(printer: Context => Printer): this.type = { this.printer = printer; this }
+    def withPlainPrinter(printer: Context => Printer): this.type = { this.plainPrinter = printer; this }
+    def withRefinedPrinter(printer: Context => Printer): this.type = { this.refinedPrinter = printer; this }
     def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
     def withSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
@@ -104,7 +112,8 @@ object Contexts {
     underlying = NoContext
     period = Nowhere
     constraints = Map()
-    printer = new StdPrinter()(_)
+    plainPrinter = new PlainPrinter(_)
+    refinedPrinter = new RefinedPrinter(_)
     owner = NoSymbol
   }
 
@@ -134,6 +143,12 @@ object Contexts {
   class ContextState {
 
     // Symbols state
+
+    /** A counter for unique ids */
+    private[core] var _nextId = 0
+
+    def nextId = { _nextId += 1; _nextId }
+
     /** A map from a superclass id to the class that has it */
     private[core] var classOfId = new Array[ClassSymbol](InitialSuperIdsSize)
 

@@ -316,6 +316,9 @@ object Flags {
   /** Symbol is a method which should be marked ACC_SYNCHRONIZED */
   final val Synchronized = termFlag(???, "<synchronized>")
 
+  /** Symbol's name is expanded */
+  final val ExpandedName = commonFlag(???, "<expandedname>")
+
   /** Symbol should be ignored when typechecking; will be marked ACC_SYNTHETIC in bytecode */
   final val Artifact = commonFlag(???, "<artifact>")
 
