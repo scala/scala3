@@ -589,6 +589,9 @@ object Types {
    */
   trait SingletonType extends TypeProxy
 
+  /** A marker trait for types that apply only to type symbols */
+  trait TypeType extends Type
+
   // --- NamedTypes ------------------------------------------------------------------
 
   /** A NamedType of the form Prefix # name
@@ -964,7 +967,7 @@ object Types {
 
   // ------ ClassInfo, Type Bounds ------------------------------------------------------------
 
-  abstract case class ClassInfo(prefix: Type, classd: ClassDenotation) extends CachedGroundType {
+  abstract case class ClassInfo(prefix: Type, classd: ClassDenotation) extends CachedGroundType with TypeType {
 
 /*    def typeTemplate(implicit ctx: Context): Type =
       classd.typeTemplate asSeenFrom (prefix, classd.symbol)
@@ -991,7 +994,7 @@ object Types {
       unique(new CachedClassInfo(prefix, classd))
   }
 
-  abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType {
+  abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
     override def underlying(implicit ctx: Context): Type = hi
     def derivedTypeBounds(lo1: Type, hi1: Type)(implicit ctx: Context) =
       if ((lo1 eq lo) && (hi1 eq hi)) this

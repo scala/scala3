@@ -129,10 +129,10 @@ object Denotations {
     def validFor: Period
 
     /** Is this a reference to a type symbol? */
-    def isType: Boolean = false
+    def isType: Boolean
 
     /** Is this a reference to a term symbol? */
-    def isTerm: Boolean = false
+    final def isTerm: Boolean = !isType
 
     /** Is this denotation overloaded? */
     def isOverloaded = isInstanceOf[MultiDenotation]
@@ -238,7 +238,6 @@ object Denotations {
    */
   case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation {
     final override def isType = false
-    final override def isTerm = true
     def derivedMultiDenotation(d1: Denotation, d2: Denotation) =
       if ((d1 eq denot1) && (d2 eq denot2)) this else MultiDenotation(d1, d2)
     def symbol = unsupported("symbol")
@@ -254,9 +253,7 @@ object Denotations {
   }
 
   abstract class SingleDenotation extends Denotation with DenotationSet {
-
-    override def isType = symbol.isType
-    override def isTerm = symbol.isTerm
+    final override def isType = info.isInstanceOf[TypeType]
     override def signature: Signature = {
       def sig(tp: Type): Signature = tp match {
         case tp: PolyType =>
