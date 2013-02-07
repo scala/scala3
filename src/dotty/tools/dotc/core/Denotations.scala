@@ -132,7 +132,7 @@ object Denotations {
     def isType: Boolean
 
     /** Is this a reference to a term symbol? */
-    final def isTerm: Boolean = !isType
+    def isTerm: Boolean = !isType
 
     /** Is this denotation overloaded? */
     def isOverloaded = isInstanceOf[MultiDenotation]
@@ -253,7 +253,7 @@ object Denotations {
   }
 
   abstract class SingleDenotation extends Denotation with DenotationSet {
-    final override def isType = info.isInstanceOf[TypeType]
+    override def isType = info.isInstanceOf[TypeType]
     override def signature: Signature = {
       def sig(tp: Type): Signature = tp match {
         case tp: PolyType =>
@@ -268,9 +268,9 @@ object Denotations {
     }
 
     def derivedSingleDenotation(s: Symbol, i: Type): SingleDenotation =
-      if ((s eq symbol) && (i eq info)) this else copy(s, i)
+      if ((s eq symbol) && (i eq info)) this else newLikeThis(s, i)
 
-    protected def copy(s: Symbol, i: Type): SingleDenotation = this
+    protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = this
 
     def orElse(that: => SingleDenotation) = if (this.exists) this else that
 
@@ -372,14 +372,14 @@ object Denotations {
                      val info: Type,
                      initValidFor: Period) extends SingleDenotation {
     validFor = initValidFor
-    override protected def copy(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
+    override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
   }
 
   class JointRefDenotation(val symbol: Symbol,
                     val info: Type,
                     initValidFor: Period) extends SingleDenotation {
     validFor = initValidFor
-    override protected def copy(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
+    override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
   }
 
   class ErrorDenotation(implicit ctx: Context) extends SingleDenotation {

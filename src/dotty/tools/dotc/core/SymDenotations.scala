@@ -17,42 +17,90 @@ object SymDenotations {
    */
   abstract class SymDenotation(initFlags: FlagSet) extends SingleDenotation {
 
-    def owner: Symbol
+// ----- denotation fields and accessors ------------------------------
 
-    def name: Name
-
-    def privateWithin: Symbol
-
+    /** The denoting symbol */
     def symbol: Symbol
 
+    /** The owner. Owners form chains that always end in
+     *  defn.RootClass
+     */
+    def owner: Symbol
+
+    /** The name */
+    def name: Name
+
+    /** The privateWithin boundary, NoSymbol if no boundary is given. */
+    def privateWithin: Symbol
+
+    /** The type info.
+     *  The info an instance of TypeType iff this is a type denotation
+     */
     def info: Type
 
-    // The following 5 members are overridden by instances of isLazy
-    def isLoaded = true
-    def isCompleted = true
-    def exists(implicit ctx: Context) = true
-    protected[core] def tryLoad(): Unit = unsupported("tryLoad")
-    protected[core] def tryComplete(): Unit = unsupported("tryComplete")
+    /** The name with which the denoting symbol was created */
+    def originalName =
+      if (flags is ExpandedName) initial.asSymDenotation.name else name
 
-    final def ensureLoaded() = if (!isLoaded) tryLoad()
-    final def ensureCompleted() = if (!isCompleted) tryComplete()
+    /** The encoded full path name of this denotation, where outer names and inner names
+     *  are separated by `separator` characters.
+     *  Never translates expansions of operators back to operator symbol.
+     *  Drops package objects.
+     */
+    def fullName(separator: Char)(implicit ctx: Context): Name =
+      if (this == NoSymbol || owner == NoSymbol || owner.isEffectiveRoot) name
+      else (effectiveOwner.enclosingClass.fullName(separator) :+ separator) ++ name
+
+    /** `fullName` where `.' is the separator character */
+    def fullName(implicit ctx: Context): Name = fullName('.')
+
+    /** The source or class file from which this denotation was generated, null if not applicable. */
+    def associatedFile(implicit ctx: Context): AbstractFile = topLevelClass.associatedFile
+
+    /** The class file from which this denotation was generated, null if not applicable. */
+    final def binaryFile(implicit ctx: Context): AbstractFile = pickFile(associatedFile, classFile = true)
+
+    /** The source file from which this denotation was generated, null if not applicable. */
+    final def sourceFile(implicit ctx: Context): AbstractFile = pickFile(associatedFile, classFile = false)
+
+   /** Desire to re-use the field in ClassSymbol which stores the source
+     *  file to also store the classfile, but without changing the behavior
+     *  of sourceFile (which is expected at least in the IDE only to
+     *  return actual source code.) So sourceFile has classfiles filtered out.
+     */
+    private def pickFile(file: AbstractFile, classFile: Boolean): AbstractFile =
+      if ((file eq null) || classFile != (file.path endsWith ".class")) null else file
 
     private[this] var _flags: FlagSet = initFlags
 
+    /** The flag set */
     def flags: FlagSet = { ensureLoaded(); _flags }
-    def flags_=(flags: FlagSet): Unit = { _flags = flags }
+
+    /** Update the flag set */
+    private[core] def flags_=(flags: FlagSet): Unit = { _flags = flags }
+
+    /** Set given flags(s) of this denotation */
     def setFlag(flags: FlagSet): Unit = { _flags |= flags }
+
+     /** UnsSet given flags(s) of this denotation */
     def resetFlag(flags: FlagSet): Unit = { _flags &~= flags }
 
     private[this] var _annotations: List[Annotation] = Nil
-    def annotations: List[Annotation] = { ensureCompleted(); _annotations }
-    def annotations_=(annots: List[Annotation]): Unit = { _annotations = annots }
 
+    /** The annotations of this denotation */
+    def annotations: List[Annotation] = { ensureCompleted(); _annotations }
+
+    /** Update the annotations of this denotation */
+    private[core] def annotations_=(annots: List[Annotation]): Unit = { _annotations = annots }
+
+    /** Does this denotation have an annotation matching the given class symbol? */
     def hasAnnotation(cls: Symbol) = dropOtherAnnotations(annotations, cls).nonEmpty
 
+    /** Add given annotation to the annotations of this denotation */
     final def addAnnotation(annot: Annotation): Unit = annotations =
       annot :: annotations
 
+    /** Record that the denoting symbol is an alias of given `alias` symbol */
     final def setAlias(alias: Symbol)(implicit ctx: Context): Unit =
       addAnnotation(Alias(alias))
 
@@ -62,8 +110,38 @@ object SymDenotations {
       case Nil => Nil
     }
 
-    /** is this denotation a class? */
+// ----- completion ------------------------------
+
+    // The following 4 members are overridden by instances of isLazy
+
+    /** The denotation is loaded: flags and privateWithin are fully defined. */
+    def isLoaded = true
+
+    /** The denotation is completed: all attributes are fully defined */
+    def isCompleted = true
+
+    /** Try to load denotation. May throw `CyclicReference`. */
+    protected[core] def tryLoad(): Unit = unsupported("tryLoad")
+
+    /** Try to complete denotation. May throw `CyclicReference`. */
+    protected[core] def tryComplete(): Unit = unsupported("tryComplete")
+
+    /** Make sure denotation is loaded */
+    final def ensureLoaded() = if (!isLoaded) tryLoad()
+
+    /** Make sure denotation is completed */
+    final def ensureCompleted() = if (!isCompleted) tryComplete()
+
+// ----- tests -------------------------------------------------
+
+    /** Is this denotation a type? */
+    override def isType: Boolean = name.isTypeName
+
+    /** Is this denotation a class? */
     final def isClass: Boolean = symbol.isInstanceOf[ClassSymbol]
+
+    /** Cast to class denotation */
+    final def asClass: ClassDenotation = asInstanceOf[ClassDenotation]
 
     /** Special case tests for flags that are known a-priori and do not need loading
      *  flags.
@@ -78,118 +156,48 @@ object SymDenotations {
     /** is this denotation a method? */
     //def isMethod: Boolean = false
 
-    def originalName =
-      if (flags is ExpandedName) initial.asSymDenotation.name else name
-
-    def isSubClass(cls: Symbol)(implicit ctx: Context) = false
-
-    def isNonBottomSubClass(cls: Symbol)(implicit ctx: Context) = false
-
-    final def isSubClassOrCompanion(base: Symbol)(implicit ctx: Context): Boolean =
-      isNonBottomSubClass(base) ||
-      isModuleClass && linkedClass.isNonBottomSubClass(base)
-
-    final def enclosingSubClass(implicit ctx: Context) = {
-      val thissym = symbol
-      ctx.owner.ownersIterator.findSymbol(_.isSubClass(thissym))
-    }
-
     /** is this symbol the result of an erroneous definition? */
     def isError: Boolean = false
 
-    final def ownersIterator(implicit ctx: Context) = new Iterator[Symbol] {
-      private[this] var current = symbol
-      def hasNext = current.exists
-      def next: Symbol = {
-        val result = current
-        current = current.owner
-        result
-      }
-    }
-
-    final def hasTransOwner(sym: Symbol)(implicit ctx: Context): Boolean = {
-      var o = symbol
-      while ((o ne sym) && (o ne NoSymbol)) o = o.owner
-      (o eq sym)
-    }
-
-//    def withType(tp: Type): SymDenotation = ???
-
-    def asClass: ClassDenotation = asInstanceOf[ClassDenotation]
-
-    override protected def copy(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
-
-    /** The class implementing this module */
-    def moduleClass(implicit ctx: Context): Symbol =
-      if (this.isModuleVal) info.typeSymbol else NoSymbol
-
-    /** The module implemented by this module class */
-    def sourceModule(implicit ctx: Context): Symbol =
-      if (this.isModuleClass) this.asClass.selfType.termSymbol else NoSymbol
-
-    /** Desire to re-use the field in ClassSymbol which stores the source
-     *  file to also store the classfile, but without changing the behavior
-     *  of sourceFile (which is expected at least in the IDE only to
-     *  return actual source code.) So sourceFile has classfiles filtered out.
+    /** The denotation refers to an existing definition.
+     *  @return `false` if denotation is either `NoDenotation` or it
+     *                  refers to a toplevel class or object that has no
+     *                  definition in the source or classfile from which it is loaded.
      */
-    private def sourceFileOnly(file: AbstractFile): AbstractFile =
-      if ((file eq null) || (file.path endsWith ".class")) null else file
+    def exists(implicit ctx: Context) = true
 
-    private def binaryFileOnly(file: AbstractFile): AbstractFile =
-      if ((file eq null) || !(file.path endsWith ".class")) null else file
+    /** Is this symbol the root class or its companion object? */
+    def isRoot: Boolean = name.toTermName == nme.ROOT
 
-    final def effectiveOwner(implicit ctx: Context) = owner.skipPackageObject
+    /** Is this symbol the empty package class or its companion object? */
+    def isEmptyPackage(implicit ctx: Context): Boolean = name.toTermName == nme.EMPTY_PACKAGE && owner.isRoot
 
-    def enclosingClass(implicit ctx: Context): Symbol =
-      if (isClass) symbol else owner.enclosingClass
+    /** Is this symbol the empty package class or its companion object? */
+    def isEffectiveRoot(implicit ctx: Context) = isRoot || isEmptyPackage
 
-    final def topLevelClass(implicit ctx: Context): Symbol =
-      if (!(owner.isPackageClass)) owner.topLevelClass
-      else if (isClass) symbol
-      else moduleClass
+    /** Is this symbol an anonymous class? */
+    def isAnonymousClass(implicit ctx: Context): Boolean = initial.asSymDenotation.name startsWith tpnme.ANON_CLASS
 
-    final def enclosingPackage(implicit ctx: Context): Symbol =
-      if (isPackageClass) symbol else owner.enclosingPackage
+    /** Is this definition contained in `boundary`?
+     *  Same as `ownersIterator contains boundary` but more efficient.
+     */
+    final def isContainedIn(boundary: Symbol)(implicit ctx: Context): Boolean = {
+      def recur(sym: Symbol): Boolean =
+        if (sym eq boundary) true
+        else if (sym eq NoSymbol) false
+        else if (sym.isPackageClass && !boundary.isPackageClass) false
+        else recur(sym.owner)
+      recur(symbol)
+    }
 
-    def fullName(separator: Char)(implicit ctx: Context): Name =
-      if (this == NoSymbol || owner == NoSymbol || owner.isEffectiveRoot) name
-      else (effectiveOwner.enclosingClass.fullName(separator) :+ separator) ++ name
-
-    def associatedFile(implicit ctx: Context): AbstractFile = topLevelClass.associatedFile
-    final def binaryFile(implicit ctx: Context): AbstractFile = binaryFileOnly(associatedFile)
-    final def sourceFile(implicit ctx: Context): AbstractFile = sourceFileOnly(associatedFile)
-
-    /** Is this symbol a type or stable term? */
-    final def isStable(implicit ctx: Context) = !(
-      isTerm &&
-      this.is(UnstableValue, butNot = Stable) ||
-      info.isVolatile && !hasAnnotation(defn.uncheckedStableClass)
-    )
-
+    /** Is this denotation static (i.e. with no outer instance)? */
     def isStatic(implicit ctx: Context) = (this is Static) || owner.isStaticOwner
 
+    /** Is this a package class or module class that defines static symbols? */
     final def isStaticOwner(implicit ctx: Context): Boolean =
       isPackageClass || isModuleClass && isStatic
 
-    final def matchingSymbol(inClass: Symbol, site: Type)(implicit ctx: Context): Symbol = {
-      var denot = inClass.info.nonPrivateDecl(name)
-      if (denot.isTerm) {
-        val targetType = site.memberInfo(symbol)
-        if (denot.isOverloaded)
-          denot = denot.atSignature(targetType.signature)
-        if (!(site.memberInfo(denot.symbol) matches targetType))
-          denot = NoDenotation
-      }
-      denot.symbol
-    }
-
-    final def overriddenSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol =
-      if (owner isSubClass inClass) matchingSymbol(inClass, owner.thisType)
-      else NoSymbol
-
-    final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
-      info.baseClasses.tail.iterator map overriddenSymbol filter (_.exists)
-
+    /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     def isCoDefinedWith(that: Symbol)(implicit ctx: Context) =
       (this.effectiveOwner == that.effectiveOwner) &&
       (  !(this.effectiveOwner.isPackageClass)
@@ -199,41 +207,41 @@ object SymDenotations {
       || (this.sourceFile.canonicalPath == that.sourceFile.canonicalPath)
       )
 
-    def companionModule(implicit ctx: Context): Symbol = {
-      owner.info.decl(name.toTermName)
-        .filter(sym => sym.isModule && sym.isCoDefinedWith(symbol))
-        .symbol
-    }
+    /** Is this a denotation of a stable term? */
+    final def isStable(implicit ctx: Context) = !(
+      isTerm &&
+      this.is(UnstableValue, butNot = Stable) ||
+      info.isVolatile && !hasAnnotation(defn.uncheckedStableClass)
+    )
 
-    def companionClass(implicit ctx: Context): Symbol =
-      owner.info.decl(name.toTypeName)
-        .filter(sym => sym.isClass && sym.isCoDefinedWith(symbol))
-        .symbol
+    /** Is this a subclass of the given class `base`? */
+    def isSubClass(base: Symbol)(implicit ctx: Context) = false
 
-    def linkedClass(implicit ctx: Context): Symbol =
-      if (this.isModuleClass) companionClass
-      else if (this.isClass) companionModule.moduleClass
-      else NoSymbol
+    /** Is this a subclass of `base`,
+     *  and is the denoting symbol also different from `Null` or `Nothing`?
+     */
+    def isNonBottomSubClass(base: Symbol)(implicit ctx: Context) = false
 
-    final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol = {
-      val fs = flags
-      if (fs is PrivateOrLocal) owner
-      else if (fs is StaticProtected) defn.RootClass
-      else if (privateWithin.exists && !ctx.phase.erasedTypes) privateWithin
-      else if (fs is Protected) base
-      else defn.RootClass
-    }
+    /** Is this a subclass of `base` or a companion object of such a subclass? */
+    final def isSubClassOrCompanion(base: Symbol)(implicit ctx: Context): Boolean =
+      isNonBottomSubClass(base) ||
+      isModuleClass && linkedClass.isNonBottomSubClass(base)
 
-    final def isContainedIn(boundary: Symbol)(implicit ctx: Context): Boolean =
-      if (symbol eq boundary) true
-      else if (!this.exists ||
-               (this.isPackageClass) && !(boundary.isPackageClass)) false
-      else owner.isContainedIn(boundary)
+    /** Is this symbol a class that does not extend `AnyVal`? */
+    def isNonValueClass(implicit ctx: Context): Boolean =
+      isClass && !isSubClass(defn.AnyValClass)
 
+    /** Is this definition accessible whenever `that` symbol is accessible?
+     *  Does not take into account status of protected members.
+     */
     def isAsAccessibleAs(that: Symbol)(implicit ctx: Context): Boolean =
-     (that.accessBoundary(NoSymbol) isContainedIn this.accessBoundary(NoSymbol)) &&
-     (this.isStable || !that.isStable)
+      (that.accessBoundary(NoSymbol) isContainedIn this.accessBoundary(NoSymbol)) &&
+      (this.isStable || !that.isStable)
 
+    /** Is this definition accessible as a member of tree with type `pre`?
+     *  @param pre          The type of the tree from which the selection is made
+     *  @param superAccess  Access is via super
+     */
     def isAccessibleFrom(pre: Type, superAccess: Boolean = false)(implicit ctx: Context): Boolean = {
 
       def accessWithinLinked(boundary: Symbol) = {
@@ -243,7 +251,7 @@ object SymDenotations {
 
       /** Are we inside definition of `boundary`? */
       def accessWithin(boundary: Symbol) =
-        owner.hasTransOwner(boundary) &&
+        owner.isContainedIn(boundary) &&
           (!(this is JavaDefined) ||
            owner.enclosingPackage == boundary.enclosingPackage)
 
@@ -297,29 +305,161 @@ object SymDenotations {
       }
     }
 
-    def isNonValueClass(implicit ctx: Context): Boolean =
-      isClass && !isSubClass(defn.AnyValClass)
+   //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
+   //    def isSkolem: Boolean = ???
 
-    def typeParams(implicit ctx: Context): List[TypeSymbol] = unsupported("typeParams")
+// ------ access to related symbols ---------------------------------
 
+    /** The class implementing this module, NoSymbol if not applicable. */
+    final def moduleClass(implicit ctx: Context): Symbol =
+      if (this.isModuleVal) info.typeSymbol else NoSymbol
+
+    /** The module implemented by this module class, NoSymbol if not applicable. */
+    final def sourceModule(implicit ctx: Context): Symbol =
+      if (this.isModuleClass) this.asClass.selfType.termSymbol else NoSymbol
+
+    /** The chain of owners of this denotation, starting with the denoting symbol itself */
+    final def ownersIterator(implicit ctx: Context) = new Iterator[Symbol] {
+      private[this] var current = symbol
+      def hasNext = current.exists
+      def next: Symbol = {
+        val result = current
+        current = current.owner
+        result
+      }
+    }
+
+   /** If this is a package object or its implementing class, its owner,
+     *  otherwise the denoting symbol.
+     */
+    final def skipPackageObject(implicit ctx: Context): Symbol =
+      if (this is PackageObject) owner else symbol
+
+    /** The owner, skipping package objects. */
+    final def effectiveOwner(implicit ctx: Context) = owner.skipPackageObject
+
+    /** The class containing this denotation.
+     *  If this denotation is already a class, return itself
+     */
+    def enclosingClass(implicit ctx: Context): Symbol =
+      if (isClass) symbol else owner.enclosingClass
+
+    /** The top-level class containing this denotation,
+     *  except for a toplevel module, where its module class is returned.
+     */
+    final def topLevelClass(implicit ctx: Context): Symbol =
+      if (!(owner.isPackageClass)) owner.topLevelClass
+      else if (isClass) symbol
+      else moduleClass
+
+    /** The package containing this denotation */
+    final def enclosingPackage(implicit ctx: Context): Symbol =
+      if (isPackageClass) symbol else owner.enclosingPackage
+
+    /** The module object with the same (term-) name as this class or module class,
+     *  and which is also defined in the same scope and compilation unit.
+     *  NoSymbol if this module does not exist.
+     */
+    def companionModule(implicit ctx: Context): Symbol = {
+      owner.info.decl(name.toTermName)
+        .filter(sym => sym.isModule && sym.isCoDefinedWith(symbol))
+        .symbol
+    }
+
+    /** The class with the same (type-) name as this module or module class,
+     *  and which is also defined in the same scope and compilation unit.
+     *  NoSymbol if this class does not exist.
+     */
+    def companionClass(implicit ctx: Context): Symbol =
+      owner.info.decl(name.toTypeName)
+        .filter(sym => sym.isClass && sym.isCoDefinedWith(symbol))
+        .symbol
+
+    /** If this is a class, the module class of its companion object.
+     *  If this is a module class, its companion class.
+     *  NoSymbol otherwise.
+     */
+    def linkedClass(implicit ctx: Context): Symbol =
+      if (this.isModuleClass) companionClass
+      else if (this.isClass) companionModule.moduleClass
+      else NoSymbol
+
+    /** The class that encloses the owner of the current context
+     *  and that is a subclass of this class. NoSymbol if no such class exists.
+     */
+    final def enclosingSubClass(implicit ctx: Context) = {
+      val thissym = symbol
+      ctx.owner.ownersIterator.findSymbol(_.isSubClass(thissym))
+    }
+
+    /** The non-private symbol whose type matches the type of this symbol
+     *  in the given class.
+     *  @param inClass   The class containing the symbol's definition
+     *  @param site      The base type from which member types are computed
+     */
+     final def matchingSymbol(inClass: Symbol, site: Type)(implicit ctx: Context): Symbol = {
+      var denot = inClass.info.nonPrivateDecl(name)
+      if (denot.isTerm) {
+        val targetType = site.memberInfo(symbol)
+        if (denot.isOverloaded)
+          denot = denot.atSignature(targetType.signature)
+        if (!(site.memberInfo(denot.symbol) matches targetType))
+          denot = NoDenotation
+      }
+      denot.symbol
+    }
+
+    /** The symbol, in class `inClass`, that is overridden by this denotation. */
+    final def overriddenSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol =
+      if (owner isSubClass inClass) matchingSymbol(inClass, owner.thisType)
+      else NoSymbol
+
+    /** All symbols overriden by this denotation. */
+    final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
+      info.baseClasses.tail.iterator map overriddenSymbol filter (_.exists)
+
+    /** The class or term symbol up to which this symbol is accessible,
+     *  or RootClass if it is public.  As java protected statics are
+     *  otherwise completely inaccessible in scala, they are treated
+     *  as public.
+     *  @param base  The access boundary to assume if this symbol is protected
+     */
+    final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol = {
+      val fs = flags
+      if (fs is PrivateOrLocal) owner
+      else if (fs is StaticProtected) defn.RootClass
+      else if (privateWithin.exists && !ctx.phase.erasedTypes) privateWithin
+      else if (fs is Protected) base
+      else defn.RootClass
+    }
+
+ // ----- type-related ------------------------------------------------
+
+    /** The type parameters of a class symbol, Nil for all other symbols */
+    def typeParams(implicit ctx: Context): List[TypeSymbol] = Nil
+
+    /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(implicit ctx: Context): Type = NoPrefix
 
+    /** The type representing the type constructor for this type,
+     *  @throws ClassCastException is this is not a type
+     */
     def typeConstructor(implicit ctx: Context): TypeRef =
       TypeRef(owner.thisType, name.asTypeName)
 
+    /** The variance of this type parameter as an Int, with
+     *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
+     */
     def variance: Int =
       if (this is Covariant) 1
       else if (this is Contravariant) -1
       else 0
 
-    def isRoot: Boolean = name.toTermName == nme.ROOT
+ // ----- copies ------------------------------------------------------
 
-    def isEmptyPackage(implicit ctx: Context): Boolean = name.toTermName == nme.EMPTY_PACKAGE && owner.isRoot
+    override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
 
-    def isEffectiveRoot(implicit ctx: Context) = isRoot || isEmptyPackage
-
-    def isAnonymousClass(implicit ctx: Context): Boolean = initial.asSymDenotation.name startsWith tpnme.ANON_CLASS
-
+    /** Copy this denotation, overriding selective fields */
     def copy(
         sym: Symbol,
         owner: Symbol = this.owner,
@@ -330,43 +470,54 @@ object SymDenotations {
       new CompleteSymDenotation(sym, owner, name, initFlags, privateWithin, info)
   }
 
-  // Note: important to leave initctx non-implicit, and to check that it is not
-  // retained after object construction.
+  /** The contents of a class definition during a period
+   *  Note: important to leave initctx non-implicit, and to check that it is not
+   *  retained after object construction.
+   */
   abstract class ClassDenotation(initFlags: FlagSet, assocFile: AbstractFile)(initctx: Context)
       extends SymDenotation(initFlags) {
     import NameFilter._
     import util.LRU8Cache
 
-    val symbol: ClassSymbol
+// ----- denotation fields and accessors ------------------------------
 
+    override val symbol: ClassSymbol
+
+    /** The parent types of this class.
+     *  These are all normalized to be TypeRefs by moving any refinements
+     *  to be member definitions of the class itself. */
     def parents: List[TypeRef]
 
+    /** The type of `this` in this class */
     def selfType: Type
 
+    /** The symbols defined directly in this class */
     def decls: Scope
 
-    val info = ClassInfo(owner.thisType(initctx), this)(initctx)
+    override val info = {
+      implicit val ctx = initctx
+      ClassInfo(owner.thisType, this)
+    }
 
     override def associatedFile(implicit ctx: Context): AbstractFile = assocFile
 
     private[this] var _typeParams: List[TypeSymbol] = _
 
+    /** The type parameters of this class. Loads the class but does not complete it. */
     override final def typeParams(implicit ctx: Context): List[TypeSymbol] = {
       val tparams = _typeParams
       if (tparams != null) tparams else computeTypeParams
     }
 
+    /** The symbols defined in this class when the class is loaded but
+     *  not yet completed.
+     */
+    protected def preCompleteDecls: Scope
+
     private def computeTypeParams(implicit ctx: Context): List[TypeSymbol] =
       (preCompleteDecls.toList filter (_ is TypeParam)).asInstanceOf[List[TypeSymbol]]
 
-    protected def preCompleteDecls: Scope
-
-    private[this] var memberCacheVar: LRU8Cache[Name, DenotationSet] = null
-
-    private def memberCache: LRU8Cache[Name, DenotationSet] = {
-      if (memberCacheVar == null) memberCacheVar = new LRU8Cache
-      memberCacheVar
-    }
+// ------ class-specific operations -----------------------------------
 
     private[this] var _thisType: Type = null
 
@@ -389,17 +540,8 @@ object SymDenotations {
       _typeConstructor
     }
 
- /*
-    private[this] var typeTemplateCache: Type = null
-
-    def typeTemplate(implicit ctx: Context): Type = {
-      if (typeTemplateCache == null)
-        AppliedType.make(typeConstructor, typeParams map (_.typeConstructor))
-      typeTemplateCache
-    }
-*/
-    private[this] var baseClassesVar: List[ClassSymbol] = null
-    private[this] var superClassBitsVar: BitSet = null
+    private[this] var _baseClasses: List[ClassSymbol] = null
+    private[this] var _superClassBits: BitSet = null
 
     private def computeSuperClassBits(implicit ctx: Context): Unit = {
       val seen = new mutable.BitSet
@@ -425,31 +567,34 @@ object SymDenotations {
         case _ =>
           to
       }
-      baseClassesVar = symbol :: addParentBaseClasses(parents, Nil)
-      superClassBitsVar = ctx.uniqueBits.findEntryOrUpdate(seen.toImmutable)
+      _baseClasses = symbol :: addParentBaseClasses(parents, Nil)
+      _superClassBits = ctx.uniqueBits.findEntryOrUpdate(seen.toImmutable)
     }
 
-    def superClassBits(implicit ctx: Context): BitSet = {
-      if (superClassBitsVar == null) computeSuperClassBits
-      superClassBitsVar
+    private def superClassBits(implicit ctx: Context): BitSet = {
+      if (_superClassBits == null) computeSuperClassBits
+      _superClassBits
     }
 
-    def baseClasses(implicit ctx: Context): List[ClassSymbol] = {
-      if (baseClassesVar == null) computeSuperClassBits
-      baseClassesVar
+    /** The base classes of this class in linearization order,
+     *  with the class itself as first element.
+     */
+     def baseClasses(implicit ctx: Context): List[ClassSymbol] = {
+      if (_baseClasses == null) computeSuperClassBits
+      _baseClasses
     }
 
-    final override def isNonBottomSubClass(cls: Symbol)(implicit ctx: Context): Boolean =
-      (symbol eq cls) ||
-        (superClassBits contains cls.superId) ||
+    final override def isNonBottomSubClass(base: Symbol)(implicit ctx: Context): Boolean =
+      (symbol eq base) ||
+        (superClassBits contains base.superId) ||
         (this is Erroneous) ||
-        (cls is Erroneous) && cls.isClass
+        (base is Erroneous) && base.isClass
 
-    final override def isSubClass(cls: Symbol)(implicit ctx: Context) =
-      isNonBottomSubClass(cls) ||
-        cls.isClass && ((symbol eq defn.NothingClass) || (symbol eq defn.NullClass))
+    final override def isSubClass(base: Symbol)(implicit ctx: Context) =
+      isNonBottomSubClass(base) ||
+        base.isClass && ((symbol eq defn.NothingClass) || (symbol eq defn.NullClass))
 
-    private[this] var definedFingerPrintCache: FingerPrint = null
+    private[this] var _definedFingerPrint: FingerPrint = null
 
     private def computeDefinedFingerPrint(implicit ctx: Context): FingerPrint = {
       var bits = newNameFilter
@@ -469,10 +614,16 @@ object SymDenotations {
         }
         ps = ps.tail
       }
-      definedFingerPrintCache = bits
+      _definedFingerPrint = bits
       bits
     }
 
+    private[this] var _memberCache: LRU8Cache[Name, DenotationSet] = null
+
+    private def memberCache: LRU8Cache[Name, DenotationSet] = {
+      if (_memberCache == null) _memberCache = new LRU8Cache
+      _memberCache
+    }
     /** Enter a symbol in current scope.
      *  Note: We require that this does not happen after the first time
      *  someone does a findMember on a subclass.
@@ -480,9 +631,9 @@ object SymDenotations {
     def enter(sym: Symbol)(implicit ctx: Context) = {
       require(!(this is Frozen))
       decls enter sym
-      if (definedFingerPrintCache != null)
-        includeName(definedFingerPrintCache, sym.name)
-      if (memberCacheVar != null)
+      if (_definedFingerPrint != null)
+        includeName(_definedFingerPrint, sym.name)
+      if (_memberCache != null)
         memberCache invalidate sym.name
     }
 
@@ -493,14 +644,14 @@ object SymDenotations {
     def delete(sym: Symbol)(implicit ctx: Context) = {
       require(!(this is Frozen))
       decls unlink sym
-      if (definedFingerPrintCache != null)
+      if (_definedFingerPrint != null)
         computeDefinedFingerPrint
-      if (memberCacheVar != null)
+      if (_memberCache != null)
         memberCache invalidate sym.name
     }
 
     def definedFingerPrint(implicit ctx: Context): FingerPrint = {
-      val fp = definedFingerPrintCache
+      val fp = _definedFingerPrint
       if (fp != null) fp else computeDefinedFingerPrint
     }
 
@@ -681,11 +832,14 @@ object SymDenotations {
   }
 
   object NoDenotation extends SymDenotation(EmptyFlags) {
+    override def isTerm = false
+    override def isType = false
     override def symbol: Symbol = NoSymbol
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def name: Name = "<none>".toTermName
     override def info: Type = NoType
     override def privateWithin = NoSymbol
+    override def exists(implicit ctx: Context) = false
   }
 
 // ---- Completion --------------------------------------------------------
