@@ -441,11 +441,12 @@ object SymDenotations {
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(implicit ctx: Context): Type = NoPrefix
 
-    /** The type representing the type constructor for this type,
+    /** The type representing the type constructor for this type.
      *  @throws ClassCastException is this is not a type
      */
     def typeConstructor(implicit ctx: Context): TypeRef =
-      TypeRef(owner.thisType, name.asTypeName)
+      if (isPackageClass) TypeRef(owner.thisType, symbol.asType)
+      else TypeRef(owner.thisType, name.asTypeName)
 
     /** The variance of this type parameter as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
