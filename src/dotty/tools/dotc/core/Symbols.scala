@@ -185,15 +185,16 @@ object Symbols {
 
     def superId(implicit ctx: Context): Int = {
       val hint = superIdHint
-      if (hint >= 0 && hint <= ctx.lastSuperId && (ctx.classOfId(hint) eq this)) hint
+      val key = this.typeConstructor
+      if (hint >= 0 && hint <= ctx.lastSuperId && (ctx.classOfId(hint) eq key)) hint
       else {
-        val id = ctx.superIdOfClass get this match {
+        val id = ctx.superIdOfClass get key match {
           case Some(id) =>
             id
           case None =>
             val id = ctx.nextSuperId
-            ctx.superIdOfClass(this) = id
-            ctx.classOfId(id) = this
+            ctx.superIdOfClass(key) = id
+            ctx.classOfId(id) = key
             id
         }
         superIdHint = id

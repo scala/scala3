@@ -149,11 +149,11 @@ object Contexts {
 
     def nextId = { _nextId += 1; _nextId }
 
-    /** A map from a superclass id to the class that has it */
-    private[core] var classOfId = new Array[ClassSymbol](InitialSuperIdsSize)
+    /** A map from a superclass id to the type-ref of the class that has it */
+    private[core] var classOfId = new Array[TypeRef](InitialSuperIdsSize)
 
-    /** A map from a superclass to its superclass id */
-    private[core] val superIdOfClass = new mutable.HashMap[ClassSymbol, Int]
+    /** A map from a the type-ref of a superclass to its superclass id */
+    private[core] val superIdOfClass = new mutable.HashMap[TypeRef, Int]
 
     /** The last allocate superclass id */
     private[core] var lastSuperId = -1
@@ -162,7 +162,7 @@ object Contexts {
     private[core] def nextSuperId: Int = {
       lastSuperId += 1;
       if (lastSuperId >= classOfId.length) {
-        val tmp = new Array[ClassSymbol](classOfId.length * 2)
+        val tmp = new Array[TypeRef](classOfId.length * 2)
         classOfId.copyToArray(tmp)
         classOfId = tmp
       }
