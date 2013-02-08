@@ -355,6 +355,7 @@ object Denotations {
 
     // ------ DenotationSet ops ----------------------------------------------
 
+    def first = this
     def toDenot(implicit ctx: Context) = this
     def containsSig(sig: Signature)(implicit ctx: Context) =
       signature == sig
@@ -395,6 +396,7 @@ object Denotations {
    */
   trait DenotationSet {
     def exists: Boolean
+    def first: Denotation
     def toDenot(implicit ctx: Context): Denotation
     def containsSig(sig: Signature)(implicit ctx: Context): Boolean
     def filterDisjoint(denots: DenotationSet)(implicit ctx: Context): DenotationSet
@@ -415,6 +417,7 @@ object Denotations {
       else if ((s1 eq denots2) && (s2 eq denots2)) this
       else new DenotUnion(s1, s2)
     def exists = true
+    def first = denots1.first
     def toDenot(implicit ctx: Context) = denots1.toDenot & denots2.toDenot
     def containsSig(sig: Signature)(implicit ctx: Context) =
       (denots1 containsSig sig) || (denots2 containsSig sig)

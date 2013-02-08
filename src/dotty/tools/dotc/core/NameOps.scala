@@ -49,7 +49,7 @@ object NameOps {
   implicit class NameDecorator(val name: Name) extends AnyVal {
     import nme._
 
-    def isConstructorName = name == CONSTRUCTOR || name == MIXIN_CONSTRUCTOR
+    def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
     def isExceptionResultName = name startsWith EXCEPTION_RESULT_PREFIX
     def isImplClassName = name endsWith IMPL_CLASS_SUFFIX
     def isLocalDummyName = name startsWith LOCALDUMMY_PREFIX
@@ -159,6 +159,11 @@ object NameOps {
      */
     def expandedName(base: Symbol, separator: Name = nme.EXPAND_SEPARATOR)(implicit ctx: Context): TypeName =
       (base.fullName('$') ++ separator ++ name).toTypeName
+
+    def unexpandedName(separator: Name = nme.EXPAND_SEPARATOR) = {
+      val idx = name.lastIndexOfSlice(separator)
+      if (idx < 0) name else name drop (idx + separator.length)
+    }
   }
 
   implicit class TermNameDecorator(val name: TermName) extends AnyVal {

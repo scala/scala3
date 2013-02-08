@@ -95,9 +95,10 @@ object Flags {
     private def flagString(idx: Int): Set[String] =
       kindIndices.map(flagName(idx)).filterNot(_.isEmpty)
 
+    def flagStrings: Seq[String] = (2 to MaxFlag).flatMap(flagString)
+
     /** The string representation of this flag set */
-    override def toString =
-      (2 to MaxFlag).flatMap(flagString).mkString(" ")
+    override def toString = flagStrings.mkString(" ")
   }
 
   /** A class representing flag sets that should be tested
@@ -173,7 +174,7 @@ object Flags {
   /** Labeled with `final` modifier */
   final val Final = commonFlag(6, "final")
 
-  /** A method. !!! needed? */
+  /** A method symbol. */
   final val Method = termFlag(7, "<method>")
 
   /** Labeled with `abstract` modifier (an abstract class) */
@@ -368,11 +369,20 @@ object Flags {
     * that sets the type parameter */
   final val RetainedTypeArgFlags = Covariant | Contravariant | Protected | Local
 
+  /** A type parameter with synthesized name */
+  final val ExpandedTypeParam = allOf(ExpandedName, TypeParam)
+
+  /** A Java interface */
+  final val JavaInterface = allOf(JavaDefined, Trait)
+
   /** Labeled private[this] */
   final val PrivateLocal = allOf(Private, Local)
 
   /** Labeled protected[this] */
   final val ProtectedLocal = allOf(Protected, Local)
+
+  /** The flags of a type parameter */
+  final val TypeParamFlags = Protected | Local
 
   /** Labeled `private` or `protected[local]` */
   final val PrivateOrLocal = oneOf(Private, Local)

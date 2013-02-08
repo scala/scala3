@@ -47,7 +47,7 @@ trait Symbols { this: Context =>
     newLazyModuleSymbols(owner, name, PackageCreationFlags, completer)
 
   def newSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type, privateWithin: Symbol = NoSymbol) =
-    new Symbol(new CompleteSymDenotation(_, owner, name, flags, privateWithin, info)) {
+    new Symbol(CompleteSymDenotation(_, owner, name, flags, info, privateWithin)) {
       type ThisName = N
     }
 
@@ -62,7 +62,7 @@ trait Symbols { this: Context =>
       assocFile: AbstractFile = null)
   =
     new ClassSymbol(new CompleteClassDenotation(
-      _, owner, name, flags, privateWithin, parents, optSelfType, decls, assocFile)(this))
+      _, owner, name, flags, parents, privateWithin, optSelfType, decls, assocFile)(this))
 
   def newModuleSymbols(
       owner: Symbol,
@@ -166,7 +166,7 @@ object Symbols {
 
     def show(implicit ctx: Context): String = ctx.show(this)
     def showLocated(implicit ctx: Context): String = ctx.showLocated(this)
-    def showDef(implicit ctx: Context): String = ctx.showDef(this)
+    def showDcl(implicit ctx: Context): String = ctx.showDcl(this)
     def showKind(implicit tcx: Context): String = ???
     def showName(implicit ctx: Context): String = ???
   }
@@ -186,7 +186,8 @@ object Symbols {
     def superId(implicit ctx: Context): Int = {
       val hint = superIdHint
       val key = this.typeConstructor
-      if (hint >= 0 && hint <= ctx.lastSuperId && (ctx.classOfId(hint) eq key)) hint
+      if (hint >= 0 && hint <= ctx.lastSuperId && (ctx.classOfId(hint) eq key))
+        hint
       else {
         val id = ctx.superIdOfClass get key match {
           case Some(id) =>

@@ -228,7 +228,7 @@ object StdNames {
     val REIFY_FREE_THIS_SUFFIX: N   = "$this"
     val REIFY_FREE_VALUE_SUFFIX: N  = "$value"
     val REIFY_SYMDEF_PREFIX: N      = "symdef$"
-    val MIXIN_CONSTRUCTOR: N        = "$init$"
+    val TRAIT_CONSTRUCTOR: N        = "$init$"
     val MODULE_INSTANCE_FIELD: N    = NameTransformer.MODULE_INSTANCE_NAME  // "MODULE$"
     val OUTER: N                    = "$outer"
     val OUTER_LOCAL: N              = "$outer "

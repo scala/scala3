@@ -3,6 +3,7 @@ package core
 
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, Annotations._
 import Types._, Flags._, Decorators._, Transformers._, StdNames._, Scopes._
+import NameOps._
 import Scopes.Scope
 import collection.mutable
 import collection.immutable.BitSet
@@ -216,6 +217,28 @@ object SymDenotations {
 
     /** Is this a subclass of the given class `base`? */
     def isSubClass(base: Symbol)(implicit ctx: Context) = false
+
+    /** Is this a setter? */
+    def isGetter = (this is Accessor) && !originalName.isSetterName
+
+    /** Is this a user defined "def" method? Excluded are accessors and stable values */
+    def isSourceMethod = this is (Method, butNot = Accessor | Stable)
+
+    /** Is this a setter? */
+    def isSetter = (this is Accessor) && originalName.isSetterName
+
+    /** is this the constructor of a class? */
+    def isClassConstructor = name == nme.CONSTRUCTOR
+
+    /** Is this the constructor of a trait? */
+    def isTraitConstructor = name == nme.TRAIT_CONSTRUCTOR
+
+    /** Is this the constructor of a trait or a class */
+    def isConstructor = name.isConstructorName
+
+    /** Does this symbol denote the primary constructor of its enclosing class? */
+    final def isPrimaryConstructor(implicit ctx: Context) =
+      isConstructor && owner.primaryConstructor == this
 
     /** Is this a subclass of `base`,
      *  and is the denoting symbol also different from `Null` or `Nothing`?
@@ -433,6 +456,9 @@ object SymDenotations {
       else defn.RootClass
     }
 
+    /** The primary constructor of a class or trait, NoSymbol if not applicable. */
+    def primaryConstructor(implicit ctx: Context): Symbol = NoSymbol
+
  // ----- type-related ------------------------------------------------
 
     /** The type parameters of a class symbol, Nil for all other symbols */
@@ -441,12 +467,18 @@ object SymDenotations {
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(implicit ctx: Context): Type = NoPrefix
 
-    /** The type representing the type constructor for this type.
+    /** The named typeref representing the type constructor for this type.
      *  @throws ClassCastException is this is not a type
      */
     def typeConstructor(implicit ctx: Context): TypeRef =
-      if (isPackageClass) TypeRef(owner.thisType, symbol.asType)
+      if (isPackageClass) symbolicRef
       else TypeRef(owner.thisType, name.asTypeName)
+
+    /** The symbolic typeref representing the type constructor for this type.
+     *  @throws ClassCastException is this is not a type
+     */
+    def symbolicRef(implicit ctx: Context): TypeRef =
+      TypeRef(owner.thisType, symbol.asType)
 
     /** The variance of this type parameter as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
@@ -468,7 +500,7 @@ object SymDenotations {
         initFlags: FlagSet = this.flags,
         privateWithin: Symbol = this.privateWithin,
         info: Type = this.info) =
-      new CompleteSymDenotation(sym, owner, name, initFlags, privateWithin, info)
+      CompleteSymDenotation(sym, owner, name, initFlags, info, privateWithin)
   }
 
   /** The contents of a class definition during a period
@@ -494,6 +526,8 @@ object SymDenotations {
 
     /** The symbols defined directly in this class */
     def decls: Scope
+
+    def name: TypeName
 
     override val info = {
       implicit val ctx = initctx
@@ -752,17 +786,23 @@ object SymDenotations {
         fn
     }
 
+    override def primaryConstructor(implicit ctx: Context): Symbol = {
+      val cname =
+        if (this is Trait | ImplClass) nme.TRAIT_CONSTRUCTOR else nme.CONSTRUCTOR
+      decls.denotsNamed(cname).first.symbol
+    }
+
     def copyClass(
         sym: ClassSymbol,
         owner: Symbol = this.owner,
-        name: Name = this.name,
+        name: TypeName = this.name,
         initFlags: FlagSet = this.flags,
         privateWithin: Symbol = this.privateWithin,
         parents: List[TypeRef] = this.parents,
         selfType: Type = this.selfType,
         decls: Scope = this.decls,
         assocFile: AbstractFile = this.assocFile)(implicit ctx: Context) =
-      new CompleteClassDenotation(sym, owner, name, initFlags, privateWithin, parents, selfType, decls, assocFile)(ctx)
+      new CompleteClassDenotation(sym, owner, name, initFlags, parents, privateWithin, selfType, decls, assocFile)(ctx)
   }
 
 // -------- Concrete classes for instantiating denotations --------------------------
@@ -772,9 +812,13 @@ object SymDenotations {
       val owner: Symbol,
       val name: Name,
       initFlags: FlagSet,
-      val privateWithin: Symbol,
-      val info: Type
+      val info: Type,
+      val privateWithin: Symbol
     ) extends SymDenotation(initFlags)
+
+   def CompleteSymDenotation(symbol: Symbol, owner: Symbol, name: Name, initFlags: FlagSet,
+      info: Type, privateWithin: Symbol = NoSymbol) =
+    new CompleteSymDenotation(symbol, owner, name, initFlags, info, privateWithin)
 
   class LazySymDenotation(
       val symbol: Symbol,
@@ -792,28 +836,41 @@ object SymDenotations {
     override def info = { if (info == null) tryComplete(); _info }
   }
 
+  def LazySymDenotation(symbol: Symbol, owner: Symbol, name: Name, initFlags: FlagSet,
+      completer: SymCompleter) =
+    new LazySymDenotation(symbol, owner, name, initFlags, completer)
+
   class CompleteClassDenotation(
       val symbol: ClassSymbol,
       val owner: Symbol,
-      val name: Name,
+      val name: TypeName,
       initFlags: FlagSet,
-      val privateWithin: Symbol,
       val parents: List[TypeRef],
+      val privateWithin: Symbol,
       optSelfType: Type,
       val decls: Scope,
-      assocFile: AbstractFile = null
-  )(initctx: Context) extends ClassDenotation(initFlags, assocFile)(initctx) {
-    val selfType = if (optSelfType == NoType) thisType(initctx) else optSelfType
+      assocFile: AbstractFile)(initctx: Context)
+      extends ClassDenotation(initFlags, assocFile)(initctx) {
+    val selfType = if (optSelfType == NoType) typeConstructor(initctx) else optSelfType
     final def preCompleteDecls = decls
   }
+
+  def CompleteClassDenotation(
+      symbol: ClassSymbol, owner: Symbol, name: TypeName, initFlags: FlagSet, parents: List[TypeRef],
+      privateWithin: Symbol = NoSymbol,
+      optSelfType: Type = NoType,
+      decls: Scope = newScope,
+      assocFile: AbstractFile = null)(implicit ctx: Context) =
+    new CompleteClassDenotation(symbol, owner, name, initFlags, parents,
+        privateWithin, optSelfType, decls, assocFile)(ctx)
 
   class LazyClassDenotation(
       val symbol: ClassSymbol,
       val owner: Symbol,
-      val name: Name,
+      val name: TypeName,
       initFlags: FlagSet,
       var completer: ClassCompleter,
-      assocFile: AbstractFile = null
+      assocFile: AbstractFile
     )(initctx: Context) extends ClassDenotation(initFlags, assocFile)(initctx) with isLazy[LazyClassDenotation] {
 
     private[this] var _parents: List[TypeRef] = null
@@ -831,6 +888,11 @@ object SymDenotations {
 
     final override def exists(implicit ctx: Context) = { ensureCompleted(); _parents != null }
   }
+
+  def LazyClassDenotation(
+      symbol: ClassSymbol, owner: Symbol, name: TypeName, initFlags: FlagSet,
+      completer: ClassCompleter, assocFile: AbstractFile = null)(implicit ctx: Context) =
+    new LazyClassDenotation(symbol, owner, name, initFlags, completer, assocFile)(ctx)
 
   object NoDenotation extends SymDenotation(EmptyFlags) {
     override def isTerm = false
@@ -923,7 +985,7 @@ object SymDenotations {
       case denot: LazyClassDenotation =>
         denot.privateWithin = NoSymbol
         denot.parents = Nil
-        denot.selfType = denot.thisType
+        denot.selfType = denot.typeConstructor
         denot.decls = EmptyScope
     }
 
