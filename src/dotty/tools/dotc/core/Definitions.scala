@@ -7,18 +7,48 @@ package dotty.tools.dotc
 package core
 
 import Types._, Contexts._, Symbols._, SymDenotations._, StdNames._, Names._
-
+import Flags._, Scopes._, Decorators._, NameOps._
 import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
-import Flags._
 import PartialFunction._
 import collection.mutable
 import scala.reflect.api.{ Universe => ApiUniverse }
 
+object Definitions {
+  val MaxFunctionArity, MaxTupleArity = 22
+}
+
 class Definitions(implicit ctx: Context) {
+  import Definitions._
   def requiredPackage(str: String): TermSymbol = ???
   def requiredClass(str: String): ClassSymbol = ???
   def requiredModule(str: String): TermSymbol = ???
+
+  private def newSyntheticTypeParam(cls: ClassSymbol, scope: Scope, suffix: String = "T0") = {
+    val tname = suffix.toTypeName.expandedName(cls)
+    val tparam = ctx.newSymbol(cls, tname, TypeParamFlags, TypeBounds.empty)
+    scope.enter(tparam)
+  }
+
+  private def specialPolyClass(name: TypeName, flags: FlagSet, parentConstrs: Type*): ClassSymbol = {
+    def classDenot(cls: ClassSymbol) = {
+      val paramDecls = newScope
+      val typeParam = newSyntheticTypeParam(cls, paramDecls)
+      def instantiate(tpe: Type) =
+        if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.symbolicRef)
+        else tpe
+      val parents = parentConstrs.toList map instantiate
+      val parentRefs: List[TypeRef] = ctx.normalizeToRefs(parents, cls, paramDecls)
+      CompleteClassDenotation(cls, ScalaPackageClass, name, flags, parentRefs, decls = paramDecls)(ctx)
+    }
+    new ClassSymbol(classDenot)
+  }
+
+  private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[ClassSymbol] = {
+    val arr = new Array[ClassSymbol](arity)
+    for (i <- countFrom to arity) arr(i) = requiredClass("scala." + name + i)
+    arr
+  }
 
   lazy val RootClass: ClassSymbol = ctx.newLazyPackageSymbols(
     NoSymbol, nme.ROOT, ctx.rootLoader)._2
@@ -46,7 +76,9 @@ class Definitions(implicit ctx: Context) {
 
   lazy val PredefModule = requiredModule("scala.Predef")
 
+//  lazy val FunctionClass: ClassSymbol = requiredClass("scala.Function")
   lazy val SingletonClass: ClassSymbol = requiredClass("scala.Singleton")
+  lazy val SeqClass: ClassSymbol = requiredClass("scala.collection.Seq")
   lazy val ArrayClass: ClassSymbol = requiredClass("scala.Array")
   lazy val uncheckedStableClass: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
 
@@ -70,6 +102,11 @@ class Definitions(implicit ctx: Context) {
   lazy val BoxedFloatClass = requiredClass("java.lang.Float")
   lazy val BoxedDoubleClass = requiredClass("java.lang.Double")
 
+  lazy val ByNameParamClass       = specialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, AnyType)
+  lazy val EqualsPatternClass     = specialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, AnyType)
+  lazy val JavaRepeatedParamClass = specialPolyClass(tpnme.JAVA_REPEATED_PARAM_CLASS, Contravariant, AnyRefType, ArrayType)
+  lazy val RepeatedParamClass     = specialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, AnyRefType, SeqType)
+
   lazy val AnyType = AnyClass.typeConstructor
   lazy val AnyValType = AnyValClass.typeConstructor
   lazy val ObjectType = ObjectClass.typeConstructor
@@ -77,12 +114,21 @@ class Definitions(implicit ctx: Context) {
   lazy val NotNullType = NotNullClass.typeConstructor
   lazy val NothingType = NothingClass.typeConstructor
   lazy val NullType = NullClass.typeConstructor
+  lazy val SeqType = SeqClass.typeConstructor
+  lazy val ArrayType = ArrayClass.typeConstructor
+
 
   lazy val BoxedNumberClass = requiredClass("java.lang.Number")
   lazy val JavaSerializableClass = requiredClass("java.lang.Serializable")
   lazy val ComparableClass       = requiredClass("java.lang.Comparable")
 
   // ----- Class sets ---------------------------------------------------
+
+  lazy val FunctionClass = mkArityArray("Function", MaxFunctionArity, 0)
+  lazy val TupleClass = mkArityArray("Tuple", MaxTupleArity, 2)
+
+  lazy val FunctionClasses: Set[Symbol] = FunctionClass.toSet
+  lazy val TupleClasses: Set[Symbol] = TupleClass.toSet
 
   /** Modules whose members are in the default namespace */
   lazy val UnqualifiedModules: Set[TermSymbol] = Set(PredefModule, ScalaPackageVal, JavaLangPackageVal)
