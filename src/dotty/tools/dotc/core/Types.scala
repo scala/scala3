@@ -40,6 +40,7 @@ object Types {
    *        |              |                +--- ConstantType
    *        |              |                +--- MethodParam
    *        |              |                +--- RefinedThis
+   *        |              |                +--- NoPrefix
    *        |              +- TypeBounds
    *        |              +- ExprType
    *        |              +- AnnotatedType
@@ -440,22 +441,70 @@ object Types {
       case _ => Nil
     }
 
-    final def applyToArgs(args: List[Type])(implicit ctx: Context) = {
-      def loop(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
+    /** Encode the type resulting from applying this type to given arguments */
+    final def appliedTo(args: List[Type])(implicit ctx: Context): Type = {
+      def recur(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
         case arg :: args1 =>
           val tparam = tparams.head
-          val tp1 = RefinedType(tp, tparam.name, tp.toAlias(tparam))
-          loop(tp1, tparams.tail, args1)
+          val tp1 = RefinedType(tp, tparam.name, arg.toRHS(tparam))
+          recur(tp1, tparams.tail, args1)
         case nil => tp
       }
-      if (args.isEmpty) this else loop(this, typeParams, args)
+      if (args.isEmpty) this else recur(this, typeParams, args)
     }
 
-    final def toAlias(tparam: Symbol)(implicit ctx: Context): TypeBounds = {
-      val flags = tparam.flags
-      if (flags is Covariant) TypeBounds(defn.NothingType, this)
-      else if (flags is Contravariant) TypeBounds(this, defn.AnyType)
+    final def appliedTo(args: Type*)(implicit ctx: Context): Type = appliedTo(args.toList)
+
+    /** If this type equals `tycon applyToArgs args`, for some
+     *  non-refinement type `tycon` and (possibly partial) type arguments
+     *  `args`, return a pair consisting of `tycon` and `args`.
+     *  Otherwise return the type itself and `Nil`.
+     */
+    final def splitArgs(implicit ctx: Context): (Type, List[Type]) = {
+      def recur(tp: Type, nparams: Int): (Type, List[Type]) = tp match {
+        case tp @ RefinedType(parent, name) =>
+          def fail = (NoType, Nil)
+          if (nparams >= 0) {
+            val result @ (tycon, args) = recur(parent, nparams - 1)
+            if (tycon != NoType) {
+              val tparam = tycon.typeParams.apply(nparams)
+              if (tparam.name == name) {
+                (tycon, args :+ tp.info.argType(tparam))
+              } else fail
+            } else fail
+          } else fail
+        case tp =>
+          (tp, Nil)
+      }
+      val result @ (tycon, args) = recur(this, typeParams.length)
+      if (tycon != NoType) result else (this, Nil)
+    }
+
+    final def splitArgsCompletely(implicit ctx: Context): (Type, List[Type]) = {
+      val result @ (tycon, args) = splitArgs
+      if (args.length == tycon.typeParams.length) result else (NoType, Nil)
+    }
+
+    /** Turn this type into a TypeBounds RHS */
+    final def toRHS(tparam: Symbol)(implicit ctx: Context): TypeBounds = {
+      val v = tparam.variance
+      if (v > 0) TypeBounds(defn.NothingType, this)
+      else if (v < 0) TypeBounds(this, defn.AnyType)
       else TypeBounds(this, this)
+    }
+
+    /** If this is the image of a type argument, recover the type argument,
+     *  otherwise NoType.
+     */
+    final def argType(tparam: Symbol)(implicit ctx: Context): Type = this match {
+      case TypeBounds(lo, hi) =>
+        val v = tparam.variance
+        if (v > 0 && lo.typeSymbol == defn.NothingClass) hi
+        else if (v < 0 && hi.typeSymbol == defn.AnyClass) lo
+        else if (v == 0 && (lo eq hi)) lo
+        else NoType
+      case _ =>
+        NoType
     }
 
     final def isWrong: Boolean = !exists // !!! needed?
@@ -661,7 +710,7 @@ object Types {
     }
   }
 
-  final class TermRefBySym(prefix: Type, val fixedSym: TermSymbol)(implicit initctx: Context)
+  final class TermRefBySym(prefix: Type, val fixedSym: TermSymbol)(initctx: Context)
     extends TermRef(prefix, fixedSym.name(initctx).asTermName) with HasFixedSym {
   }
 
@@ -671,7 +720,7 @@ object Types {
       super.loadDenot.atSignature(signature)
   }
 
-  final class TypeRefBySym(prefix: Type, val fixedSym: TypeSymbol)(implicit initctx: Context)
+  final class TypeRefBySym(prefix: Type, val fixedSym: TypeSymbol)(initctx: Context)
     extends TypeRef(prefix, fixedSym.name(initctx).asTypeName) with HasFixedSym {
   }
 
@@ -1017,6 +1066,7 @@ object Types {
   final class CachedTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
 
   object TypeBounds {
+    def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
     def apply(lo: Type, hi: Type)(implicit ctx: Context) =
       unique(new CachedTypeBounds(lo, hi))
   }

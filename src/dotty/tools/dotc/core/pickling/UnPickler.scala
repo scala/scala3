@@ -321,7 +321,7 @@ abstract class UnPickler {
           var flags1 = flags
           if (flags is TypeParam) {
             name1 = name1.expandedName(owner)
-            flags1 |= ProtectedLocal
+            flags1 |= TypeParamFlags
           }
           ctx.newLazySymbol(owner, name1, flags1, completeSym(tag))
         case CLASSsym =>
@@ -428,7 +428,7 @@ abstract class UnPickler {
           val tycon =
             if (isLocal(sym)) TypeRef(pre, sym.asType)
             else TypeRef(pre, sym.name.asTypeName)
-          tycon.applyToArgs(until(end, readTypeRef))
+          tycon.appliedTo(until(end, readTypeRef))
         case TYPEBOUNDStpe =>
           TypeBounds(readTypeRef(), readTypeRef())
         case REFINEDtpe =>
@@ -930,7 +930,7 @@ abstract class UnPickler {
 
     protected def errorMissingRequirement(name: Name, owner: Symbol): Symbol =
       MissingRequirementError.signal(
-        s"bad reference while unpickling $filename: ${ctx.showNameDetailed(name)} not found in $owner"
+        s"bad reference while unpickling $filename: ${ctx.showDetailed(name)} not found in $owner"
       )
 
 //    def inferMethodAlternative(fun: Tree, argtpes: List[Type], restpe: Type) {} // can't do it; need a compiler for that.
@@ -980,26 +980,10 @@ abstract class UnPickler {
             case cinfo => (Nil, cinfo)
           }
         val selfType = if (j > 0) at(j, () => readType()) else denot.typeConstructor
-        var refinements = Map[TypeName, Type]().withDefaultValue(NoType)
-        def normalizeToRef(tp: Type): TypeRef = tp match {
-          case tp @ RefinedType(tp1, name: TypeName) =>
-            refinements = (refinements + (name -> (refinements(name) & tp.info)))
-              .withDefaultValue(NoType)
-            normalizeToRef(tp1)
-          case tp: TypeRef =>
-            tp
-          case _ =>
-            throw new TypeError(s"unexpected parent type: $tp")
-        }
-        denot.parents = parents map normalizeToRef
+        tparams foreach decls.enter
+        denot.parents = ctx.normalizeToRefs(parents, cls, decls)
         denot.selfType = selfType
-        denot.decls = newScope
-        tparams foreach denot.decls.enter
-        for ((name, tpe) <- refinements) denot.decls.enter {
-          val formal = cls.info.member(name).symbol
-          val bounds = tpe.toAlias(formal)
-          ctx.newSymbol(cls, name, formal.flags & RetainedTypeArgFlags, bounds)
-        }
+        denot.decls = decls
       } catch {
         case e: MissingRequirementError => throw toTypeError(e)
       }

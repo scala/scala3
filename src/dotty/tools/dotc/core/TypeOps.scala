@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import Contexts._, Types._, Symbols._, Names._, Flags._
+import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
 
 trait TypeOps { this: Context =>
 
@@ -183,5 +183,35 @@ trait TypeOps { this: Context =>
       case _ =>
         NoType
     }
+
+  /** Normalize a list of parent types of class `cls` that may contain refinements
+   *  to a list of typerefs, by converting all refinements to member
+   *  definitions in scope `decls`.
+   */
+  def normalizeToRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
+    var refinements = Map[TypeName, Type]()
+    var formals = Map[TypeName, Symbol]()
+    def normalizeToRef(tp: Type): TypeRef = tp match {
+      case tp @ RefinedType(tp1, name: TypeName) =>
+        refinements = refinements.updated(name,
+          refinements get name match {
+            case Some(info) => info & tp.info
+            case none => tp.info
+          })
+        formals = formals.updated(name, tp1.member(name).symbol)
+        normalizeToRef(tp1)
+      case tp: TypeRef =>
+        tp
+      case _ =>
+        throw new TypeError(s"unexpected parent type: $tp")
+    }
+    val parentRefs = parents map normalizeToRef
+    for ((name, tpe) <- refinements) decls.enter {
+      val formal = formals(name)
+      val bounds = tpe.toRHS(formal)
+      ctx.newSymbol(cls, name, formal.flags & RetainedTypeArgFlags, bounds)
+    }
+    parentRefs
+  }
 }
 
