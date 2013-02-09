@@ -390,7 +390,7 @@ object Types {
     /** Widen from constant type to its underlying non-constant
      *  base type.
      */
-    final def deconst: Type = this match {
+    final def deconst(implicit ctx: Context): Type = this match {
       case tp: ConstantType => tp.value.tpe
       case _ => this
     }
@@ -516,7 +516,7 @@ object Types {
     def |(that: Type)(implicit ctx: Context): Type =
       ctx.lub(this, that)
 
-    def show(implicit ctx: Context): String = ctx.show(this)
+    def show(implicit ctx: Context): String = ctx.show(this, Printers.GlobalPrec)
 
 // ----- hashing ------------------------------------------------------
 

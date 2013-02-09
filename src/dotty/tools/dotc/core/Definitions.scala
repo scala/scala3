@@ -107,6 +107,18 @@ class Definitions(implicit ctx: Context) {
   lazy val JavaRepeatedParamClass = specialPolyClass(tpnme.JAVA_REPEATED_PARAM_CLASS, Contravariant, AnyRefType, ArrayType)
   lazy val RepeatedParamClass     = specialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, AnyRefType, SeqType)
 
+  // fundamental reference classes
+  lazy val PartialFunctionClass         = requiredClass("scala.PartialFunction")
+  lazy val AbstractPartialFunctionClass = requiredClass("scala.runtime.AbstractPartialFunction")
+  lazy val SymbolClass                  = requiredClass("scala.Symbol")
+  lazy val StringClass                  = requiredClass("java.lang.String")
+  lazy val ClassClass                   = requiredClass("java.lang.Class")
+     //def Class_getMethod               = getMemberMethod(ClassClass, nme.getMethod_)
+  lazy val DynamicClass                 = requiredClass("scala.Dynamic")
+  lazy val BoxedNumberClass = requiredClass("java.lang.Number")
+  lazy val JavaSerializableClass = requiredClass("java.lang.Serializable")
+  lazy val ComparableClass       = requiredClass("java.lang.Comparable")
+
   lazy val AnyType = AnyClass.typeConstructor
   lazy val AnyValType = AnyValClass.typeConstructor
   lazy val ObjectType = ObjectClass.typeConstructor
@@ -117,10 +129,17 @@ class Definitions(implicit ctx: Context) {
   lazy val SeqType = SeqClass.typeConstructor
   lazy val ArrayType = ArrayClass.typeConstructor
 
+  def ClassType(arg: Type)(implicit ctx: Context) = {
+    val ctype = ClassClass.typeConstructor
+    if (ctx.phase.erasedTypes) ctype else ctype.appliedTo(arg)
+  }
 
-  lazy val BoxedNumberClass = requiredClass("java.lang.Number")
-  lazy val JavaSerializableClass = requiredClass("java.lang.Serializable")
-  lazy val ComparableClass       = requiredClass("java.lang.Comparable")
+  def EnumType(sym: Symbol)(implicit ctx: Context) =
+    // given (in java): "class A { enum E { VAL1 } }"
+    //  - sym: the symbol of the actual enumeration value (VAL1)
+    //  - .owner: the ModuleClassSymbol of the enumeration (object E)
+    //  - .linkedClassOfClass: the ClassSymbol of the enumeration (class E)
+    sym.owner.linkedClass.typeConstructor
 
   // ----- Class sets ---------------------------------------------------
 

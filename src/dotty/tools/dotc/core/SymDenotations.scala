@@ -218,11 +218,11 @@ object SymDenotations {
     /** Is this a subclass of the given class `base`? */
     def isSubClass(base: Symbol)(implicit ctx: Context) = false
 
+    /** Is this a user defined "def" method? Excluded are accessors and stable values */
+    def isSourceMethod = this is (Method, butNot = Accessor)
+
     /** Is this a setter? */
     def isGetter = (this is Accessor) && !originalName.isSetterName
-
-    /** Is this a user defined "def" method? Excluded are accessors and stable values */
-    def isSourceMethod = this is (Method, butNot = Accessor | Stable)
 
     /** Is this a setter? */
     def isSetter = (this is Accessor) && originalName.isSetterName

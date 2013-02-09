@@ -10,8 +10,6 @@ trait Printers { this: Context =>
 
   import Printers._
 
-  def show(tp: Type): String = printer(this).show(tp, GlobalPrec)
-
   private var _diagnostics: Option[StringBuilder] = _
 
   protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
@@ -242,18 +240,6 @@ object Printers {
     protected def isEmptyPrefix(sym: Symbol) =
       sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName
 
-    @switch private def escapedChar(ch: Char): String = ch match {
-      case '\b' => "\\b"
-      case '\t' => "\\t"
-      case '\n' => "\\n"
-      case '\f' => "\\f"
-      case '\r' => "\\r"
-      case '"' => "\\\""
-      case '\'' => "\\\'"
-      case '\\' => "\\\\"
-      case _ => if (ch.isControl) "\\0" + toOctalString(ch) else String.valueOf(ch)
-    }
-
     /** The string representation of this type used as a prefix */
     protected def showPrefix(tp: Type): String = controlled {
       tp match {
@@ -365,23 +351,25 @@ object Printers {
     def showLocated(sym: Symbol): String =
       show(sym) + showLocation(sym)
 
-    def show(const: Constant) = {
-      ??? /*
-      def escape(text: String): String = text flatMap escapedChar
-      tag match {
-        case NullTag   => "null"
-        case StringTag => "\"" + escape(stringValue) + "\""
-        case ClazzTag  =>
-          def show(tpe: Type) = "classOf[" + signature(tpe) + "]"
-          typeValue match {
-            case ErasedValueType(orig) => show(orig)
-            case _ => show(typeValue)
-          }
-        case CharTag   => "'" + escapedChar(charValue) + "'"
-        case LongTag   => longValue.toString() + "L"
-        case EnumTag   => symbolValue.name.toString()
-        case _         => String.valueOf(value)
-      }*/
+    @switch private def escapedChar(ch: Char): String = ch match {
+      case '\b' => "\\b"
+      case '\t' => "\\t"
+      case '\n' => "\\n"
+      case '\f' => "\\f"
+      case '\r' => "\\r"
+      case '"' => "\\\""
+      case '\'' => "\\\'"
+      case '\\' => "\\\\"
+      case _ => if (ch.isControl) "\\0" + toOctalString(ch) else String.valueOf(ch)
+    }
+
+    def show(const: Constant) = const.tag match {
+        case StringTag => "\"" + (const.value.toString flatMap escapedChar) + "\""
+        case ClazzTag  => s"classOf[${const.tpe.show}]"
+        case CharTag   => s"'${escapedChar(const.charValue)}'"
+        case LongTag   => const.longValue.toString + "L"
+        case EnumTag   => const.symbolValue.name.toString
+        case _         => String.valueOf(const.value)
     }
 
     def show(annot: Annotation): String = ???
@@ -391,7 +379,6 @@ object Printers {
 
     def show(sc: Scope): String =
       "Scope{\n" + show(sc.toList, ";\n  ") + "\n}"
-
   }
 
   class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
