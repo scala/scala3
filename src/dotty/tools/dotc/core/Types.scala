@@ -243,7 +243,7 @@ object Types {
 
     /** Map function over elements of an OrType, rebuilding with | */
     def mapOr(f: Type => Type)(implicit ctx: Context): Type = this match {
-      case OrType(tp1, tp2) => tp1.mapAnd(f) | tp2.mapAnd(f)
+      case OrType(tp1, tp2) => tp1.mapOr(f) | tp2.mapOr(f)
       case _ => f(this)
     }
 
