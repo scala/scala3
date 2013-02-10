@@ -137,7 +137,7 @@ object Contexts {
   }
 
   object NoContext extends Context {
-    val base = unsupported("base")
+    def base = unsupported("base")
   }
 
   class ContextBase extends ContextState with Transformers.TransformerBase

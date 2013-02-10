@@ -18,9 +18,9 @@ object Settings {
     private var values = ArrayBuffer(initialValues: _*)
     private var _wasRead: Boolean = false
 
-    def value(idx: Int) = {
+    def value(idx: Int): Any = {
       _wasRead = true
-      values
+      values(idx)
     }
 
     def update(idx: Int, x: Any): SettingsState =

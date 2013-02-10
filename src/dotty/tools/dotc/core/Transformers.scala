@@ -6,7 +6,7 @@ import java.lang.AssertionError
 
 trait Transformers
 
-object Transformers {
+object Transformers { transSelf =>
 
   trait TransformerBase { self: ContextBase =>
 
@@ -32,7 +32,8 @@ object Transformers {
     }
 
     object NoTransformer extends Transformer {
-      val phaseId = lastPhaseId + 1
+      val phaseId = transSelf.lastPhaseId + 1
+      override def lastPhaseId = phaseId - 1 // TODO JZ Probably off-by-N error here.
       def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
         unsupported("transform")
     }
