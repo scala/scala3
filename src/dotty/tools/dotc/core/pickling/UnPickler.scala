@@ -9,6 +9,7 @@ import java.lang.Double.longBitsToDouble
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
+import Trees._
 import scala.reflect.internal.pickling.PickleFormat._
 import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.ListBuffer
@@ -61,6 +62,8 @@ abstract class UnPickler {
 
     /** A map from refinement classes to their associated refinement types */
     private val refinementTypes = mutable.HashMap[Symbol, RefinedType]()
+
+    private val mk = makeTypedTree
 
     //println("unpickled " + classRoot + ":" + classRoot.rawInfo + ", " + moduleRoot + ":" + moduleRoot.rawInfo);//debug
 
@@ -473,19 +476,10 @@ abstract class UnPickler {
           val boundSyms = until(end, readSymbolRef)
           elimExistentials(boundSyms, restpe)
         case ANNOTATEDtpe =>
-          ???
-          /*
-          var typeRef = readNat()
-          val selfsym = if (isSymbolRef(typeRef)) {
-            val s = at(typeRef, readSymbol)
-            typeRef = readNat()
-            s
-          } else NoSymbol // selfsym can go.
-          val tp = at(typeRef, () => readType(forceProperType)) // NMT_TRANSITION
+          val tp = readTypeRef()
+          // no annotation self type is supported, so no test whether this is a symbol ref
           val annots = until(end, readAnnotationRef)
-          if (selfsym == NoSymbol) AnnotatedType(annots, tp, selfsym)
-          else tp
-          */
+          AnnotatedType(annots, tp)
         case _ =>
           noSuchTypeTag(tag, end)
       }
@@ -527,7 +521,7 @@ abstract class UnPickler {
       val end = readNat() + readIndex
       val target = readSymbolRef()
       while (readIndex != end)
-        target.addAnnotation(Child(readSymbolRef().asClass))
+        target.addAnnotation(Annotation.makeChild(readSymbolRef().asClass))
     }
 
     /* Read a reference to a pickled item */
@@ -552,76 +546,85 @@ abstract class UnPickler {
     protected def readTypeNameRef(): TypeName         = readNameRef().toTypeName
     protected def readTermNameRef(): TermName         = readNameRef().toTermName
 
-    protected def readSymbolAnnotation(): Unit        = ???
-    protected def readAnnotationRef(): Annotation     = ??? // at(readNat(), readAnnotation)
+    protected def readAnnotationRef(): Annotation     = at(readNat(), readAnnotation)
+
 //  protected def readModifiersRef(): Modifiers       = at(readNat(), readModifiers)
-//   protected def readTreeRef(): Tree                 = at(readNat(), readTree)
-/*
+    protected def readTreeRef(): TypedTree            = at(readNat(), readTree)
+
+    protected def readTree(): TypedTree               = ???
+
     /** Read an annotation argument, which is pickled either
      *  as a Constant or a Tree.
      */
-    protected def readAnnotArg(i: Int): Tree = bytes(index(i)) match {
+    protected def readAnnotArg(i: Int): TypedTree = bytes(index(i)) match {
       case TREE => at(i, readTree)
-      case _    =>
-        val const = at(i, readConstant)
-        Literal(const) setType const.tpe
+      case _    => mk.Literal(at(i, readConstant))
     }
 
     /** Read a ClassfileAnnotArg (argument to a classfile annotation)
      */
-    private def readArrayAnnot() = {
+    private def readArrayAnnotArg(): TypedTree = {
       readByte() // skip the `annotargarray` tag
       val end = readNat() + readIndex
-      until(end, () => readClassfileAnnotArg(readNat())).toArray(JavaArgumentTag)
-    }
-    protected def readClassfileAnnotArg(i: Int): ClassfileAnnotArg = bytes(index(i)) match {
-      case ANNOTINFO     => NestedAnnotArg(at(i, readAnnotation))
-      case ANNOTARGARRAY => at(i, () => ArrayAnnotArg(readArrayAnnot()))
-      case _             => LiteralAnnotArg(at(i, readConstant))
+      // array elements are trees representing instances of scala.annotation.Annotation
+      mk.ArrayValue(
+        mk.TypeTree(defn.AnnotationClass.typeConstructor),
+        until(end, () => readClassfileAnnotArg(readNat())))
     }
 
-    /** Read an AnnotationInfo. Not to be called directly, use
-     *  readAnnotation or readSymbolAnnotation
+    private def readAnnotInfoArg(): TypedTree = {
+      readByte() // skip the `annotinfo` tag
+      val end = readNat() + readIndex
+      readAnnotationContents(end)
+    }
+
+    protected def readClassfileAnnotArg(i: Int): TypedTree  = bytes(index(i)) match {
+      case ANNOTINFO     => at(i, readAnnotInfoArg)
+      case ANNOTARGARRAY => at(i, readArrayAnnotArg)
+      case _             => readAnnotArg(i)
+    }
+
+    /** Read an annotation's contents. Not to be called directly, use
+     *  readAnnotation, readSymbolAnnotation, or readAnnotInfoArg
      */
-    protected def readAnnotationInfo(end: Int): AnnotationInfo = {
+    protected def readAnnotationContents(end: Int): TypedTree = {
       val atp = readTypeRef()
-      val args = new ListBuffer[Tree]
-      val assocs = new ListBuffer[(Name, ClassfileAnnotArg)]
+      val args = new ListBuffer[TypedTree]
       while (readIndex != end) {
         val argref = readNat()
-        if (isNameEntry(argref)) {
-          val name = at(argref, readName)
-          val arg = readClassfileAnnotArg(readNat())
-          assocs += ((name, arg))
+        args += {
+          if (isNameEntry(argref)) {
+            val name = at(argref, readName)
+            val arg = readClassfileAnnotArg(readNat())
+            mk.NamedArg(name, arg)
+          } else readAnnotArg(argref)
         }
-        else
-          args += readAnnotArg(argref)
       }
-      AnnotationInfo(atp, args.toList, assocs.toList)
+      mk.New(atp, args.toList)
     }
 
     /** Read an annotation and as a side effect store it into
      *  the symbol it requests. Called at top-level, for all
      *  (symbol, annotInfo) entries. */
-    protected def readSymbolAnnotation() {
+    protected def readSymbolAnnotation(): Unit = {
       val tag = readByte()
       if (tag != SYMANNOT)
         errorBadSignature("symbol annotation expected ("+ tag +")")
       val end = readNat() + readIndex
       val target = readSymbolRef()
-      target.addAnnotation(readAnnotationInfo(end))
+      target.addAnnotation(ConcreteAnnotation(readAnnotationContents(end)))
     }
 
     /** Read an annotation and return it. Used when unpickling
      *  an ANNOTATED(WSELF)tpe or a NestedAnnotArg */
-    protected def readAnnotation(): AnnotationInfo = {
+    protected def readAnnotation(): Annotation = {
       val tag = readByte()
       if (tag != ANNOTINFO)
         errorBadSignature("annotation expected (" + tag + ")")
       val end = readNat() + readIndex
-      readAnnotationInfo(end)
+      ConcreteAnnotation(readAnnotationContents(end))
     }
-
+/*
     /* Read an abstract syntax tree */
     protected def readTree(): Tree = {
       val outerTag = readByte()
@@ -960,8 +963,8 @@ abstract class UnPickler {
         def disambiguate(alt: Symbol) =
           denot.info =:= denot.owner.thisType.memberInfo(alt)
         if (j >= 0) {
-          val alias = at(j, readDisambiguatedSymbol(disambiguate))
-          denot.setAlias(alias)
+          val alias = at(j, readDisambiguatedSymbol(disambiguate)).asTerm
+          denot.addAnnotation(Annotation.makeAlias(alias))
         }
       } catch {
         case e: MissingRequirementError => throw toTypeError(e)

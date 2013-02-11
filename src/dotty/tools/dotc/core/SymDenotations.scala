@@ -95,18 +95,14 @@ object SymDenotations {
     private[core] def annotations_=(annots: List[Annotation]): Unit = { _annotations = annots }
 
     /** Does this denotation have an annotation matching the given class symbol? */
-    def hasAnnotation(cls: Symbol) = dropOtherAnnotations(annotations, cls).nonEmpty
+    def hasAnnotation(cls: Symbol)(implicit ctx: Context) = dropOtherAnnotations(annotations, cls).nonEmpty
 
     /** Add given annotation to the annotations of this denotation */
     final def addAnnotation(annot: Annotation): Unit = annotations =
       annot :: annotations
 
-    /** Record that the denoting symbol is an alias of given `alias` symbol */
-    final def setAlias(alias: Symbol)(implicit ctx: Context): Unit =
-      addAnnotation(Alias(alias))
-
     @tailrec
-    private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol): List[Annotation] = anns match {
+    private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(implicit ctx: Context): List[Annotation] = anns match {
       case ann :: rest => if (ann matches cls) anns else dropOtherAnnotations(rest, cls)
       case Nil => Nil
     }

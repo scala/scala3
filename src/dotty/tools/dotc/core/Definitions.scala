@@ -113,11 +113,12 @@ class Definitions(implicit ctx: Context) {
   lazy val SymbolClass                  = requiredClass("scala.Symbol")
   lazy val StringClass                  = requiredClass("java.lang.String")
   lazy val ClassClass                   = requiredClass("java.lang.Class")
-     //def Class_getMethod               = getMemberMethod(ClassClass, nme.getMethod_)
+     //def Class_getMethod              = getMemberMethod(ClassClass, nme.getMethod_)
   lazy val DynamicClass                 = requiredClass("scala.Dynamic")
-  lazy val BoxedNumberClass = requiredClass("java.lang.Number")
-  lazy val JavaSerializableClass = requiredClass("java.lang.Serializable")
-  lazy val ComparableClass       = requiredClass("java.lang.Comparable")
+  lazy val BoxedNumberClass             = requiredClass("java.lang.Number")
+  lazy val JavaSerializableClass        = requiredClass("java.lang.Serializable")
+  lazy val ComparableClass              = requiredClass("java.lang.Comparable")
+  lazy val AnnotationClass              = requiredClass("scala.annotation.Annotation")
 
   lazy val AnyType = AnyClass.typeConstructor
   lazy val AnyValType = AnyValClass.typeConstructor
@@ -128,6 +129,9 @@ class Definitions(implicit ctx: Context) {
   lazy val NullType = NullClass.typeConstructor
   lazy val SeqType = SeqClass.typeConstructor
   lazy val ArrayType = ArrayClass.typeConstructor
+
+  lazy val AliasAnnot = requiredClass("dotty.annotation.internal.Alias")
+  lazy val ChildAnnot = requiredClass("dotty.annotation.internal.Alias")
 
   def ClassType(arg: Type)(implicit ctx: Context) = {
     val ctype = ClassClass.typeConstructor
