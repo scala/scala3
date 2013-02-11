@@ -6,6 +6,7 @@ import scala.util.{ Try, Success, Failure }
 import scala.reflect.internal.util.StringOps
 import reflect.ClassTag
 import core.Contexts._
+import annotation.unchecked
 
 object Settings {
 
@@ -98,7 +99,7 @@ object Settings {
         ArgsSummary(sstate, args, errors :+ msg)
       def missingArg =
         fail(s"missing argument for option $name", args)
-      def doSet(argRest: String) = (implicitly[ClassTag[T]], args) match {
+      def doSet(argRest: String) = ((implicitly[ClassTag[T]], args): @unchecked) match {
         case (BooleanTag, _) =>
           update(true, args)
         case (ListTag, _) =>
