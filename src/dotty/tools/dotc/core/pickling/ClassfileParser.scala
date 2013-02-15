@@ -147,14 +147,15 @@ class ClassfileParser(
     }
   }
 
-  def parseMember(method: Boolean) = {
+  def parseMember(method: Boolean): Unit = {
     val start = new Offset(in.bp)
     val jflags = in.nextChar
     val sflags =
       if (method) FlagTranslation.methodFlags(jflags)
       else FlagTranslation.fieldFlags(jflags)
     val name = pool.getName(in.nextChar)
-    cctx.newLazySymbol(getOwner(jflags), name, sflags, memberCompleter, start).entered
+    if (!(sflags is Flags.Private) || name == nme.CONSTRUCTOR || settings.optimise.value)
+      cctx.newLazySymbol(getOwner(jflags), name, sflags, memberCompleter, start).entered
   }
 
   object memberCompleter extends SymCompleter {
