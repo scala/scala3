@@ -235,6 +235,13 @@ object Types {
       case _ => List()
     }
 
+    /** The parameter types of a PolyType or MethodType, Empty list for others */
+    def paramTypess(implicit ctx: Context): List[List[Type]] = this match {
+      case mt: MethodType => mt.paramTypes :: mt.resultType.paramTypess
+      case pt: PolyType => pt.paramTypess
+      case _ => Nil
+    }
+
     /** Map function over elements of an AndType, rebuilding with & */
     def mapAnd(f: Type => Type)(implicit ctx: Context): Type = this match {
       case AndType(tp1, tp2) => tp1.mapAnd(f) & tp2.mapAnd(f)
@@ -455,6 +462,9 @@ object Types {
 
     final def appliedTo(args: Type*)(implicit ctx: Context): Type = appliedTo(args.toList)
 
+    final def objToAny(implicit ctx: Context) =
+      if (typeSymbol == defn.ObjectClass && !ctx.phase.erasedTypes) defn.AnyType else this
+
     /** If this type equals `tycon applyToArgs args`, for some
      *  non-refinement type `tycon` and (possibly partial) type arguments
      *  `args`, return a pair consisting of `tycon` and `args`.
@@ -488,9 +498,9 @@ object Types {
     /** Turn this type into a TypeBounds RHS */
     final def toRHS(tparam: Symbol)(implicit ctx: Context): TypeBounds = {
       val v = tparam.variance
-      if (v > 0) TypeBounds(defn.NothingType, this)
-      else if (v < 0) TypeBounds(this, defn.AnyType)
-      else TypeBounds(this, this)
+      if (v > 0) TypeBounds.upper(this)
+      else if (v < 0) TypeBounds.lower(this)
+      else TypeAlias(this)
     }
 
     /** If this is the image of a type argument, recover the type argument,
@@ -731,6 +741,9 @@ object Types {
     def apply(prefix: Type, name: Name)(implicit ctx: Context) =
       if (name.isTermName) TermRef(prefix, name.asTermName)
       else TypeRef(prefix, name.asTypeName)
+   def apply(prefix: Type, sym: Symbol)(implicit ctx: Context) =
+      if (sym.isTerm) TermRef(prefix, sym.asTerm)
+      else TypeRef(prefix, sym.asType)
   }
 
   object TermRef {
@@ -1067,6 +1080,8 @@ object Types {
 
   object TypeBounds {
     def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
+    def upper(hi: Type)(implicit ctx: Context) = apply(defn.NothingType, hi)
+    def lower(lo: Type)(implicit ctx: Context) = apply(lo, defn.AnyType)
     def apply(lo: Type, hi: Type)(implicit ctx: Context) =
       unique(new CachedTypeBounds(lo, hi))
   }

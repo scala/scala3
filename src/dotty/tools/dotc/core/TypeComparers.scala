@@ -99,7 +99,7 @@ object TypeComparers {
 
     def secondTry(tp1: Type, tp2: Type): Boolean = tp1 match {
       case tp1: PolyParam if (constraints contains tp1) =>
-        addConstraint(tp1, TypeBounds(defn.NothingType, tp2))
+        addConstraint(tp1, TypeBounds.upper(tp2))
       case WildcardType | ErrorType =>
         true
       case _ =>
