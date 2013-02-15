@@ -121,6 +121,16 @@ class ClassfileParser(
     for (i <- 0 until in.nextChar) parseMember(method = false)
     for (i <- 0 until in.nextChar) parseMember(method = true)
 
+    val needsConstructor =
+      instanceScope.lookup(nme.CONSTRUCTOR) == NoSymbol && !(sflags is Flags.Interface)
+
+    if (needsConstructor)
+      instanceScope enter
+        cctx.newSymbol(
+            classRoot.symbol,
+            nme.CONSTRUCTOR, Flags.EmptyFlags,
+            MethodType(Nil, Nil)(_ => classRoot.typeConstructor))
+
     classInfo = parseAttributes(classRoot.symbol, classInfo)
     assignClassFields(classRoot, classInfo, classRoot.typeConstructor)
     assignClassFields(moduleRoot, staticInfo, moduleRoot.typeConstructor)
