@@ -8,7 +8,7 @@ import Contexts._, Names._
 
 object Decorators {
 
-  implicit class StringDecorator(val s: String) extends AnyVal {
+  implicit class StringDecorator(val s: String) extends AnyVal with PreName {
     def toTypeName: TypeName = typeName(s)
     def toTermName: TermName = termName(s)
     def toEncodedTypeName = encodedTypeName(s)

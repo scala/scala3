@@ -13,6 +13,11 @@ import collection.generic.CanBuildFrom
 
 object Names {
 
+  trait PreName extends Any {
+    def toTypeName: TypeName
+    def toTermName: TermName
+  }
+
   /** A name is essentially a string, with three differences
    *  1. Names belong in one of two universes: they are type names or term names.
    *     The same string can correspond both to a type name and to a term name.
@@ -22,6 +27,7 @@ object Names {
    *     The encoding will be applied when converting a string to a name.
    */
   abstract class Name extends DotClass
+    with PreName
     with Seq[Char]
     with IndexedSeqOptimized[Char, Name] {
 
@@ -80,6 +86,16 @@ object Names {
     def ++ (other: String): ThisName = {
       val s = toString + other
       fromChars(s.toCharArray, 0, s.length)
+    }
+
+    def replace(from: Char, to: Char): ThisName = {
+      val cs = new Array[Char](length)
+      Array.copy(chrs, start, cs, 0, length)
+      for (i <- 0 until length) {
+        val c = cs(i)
+        chrs(i) = if (c == from) to else c
+      }
+      fromChars(cs, 0, length)
     }
 
     // ----- Collections integration -------------------------------------
