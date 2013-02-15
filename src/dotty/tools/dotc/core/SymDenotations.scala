@@ -175,6 +175,9 @@ object SymDenotations {
     /** Is this symbol an anonymous class? */
     def isAnonymousClass(implicit ctx: Context): Boolean = initial.asSymDenotation.name startsWith tpnme.ANON_CLASS
 
+    /** Is this symbol an abstract type? */
+    def isAbstractType = isType && info.isRealTypeBounds
+
     /** Is this definition contained in `boundary`?
      *  Same as `ownersIterator contains boundary` but more efficient.
      */
@@ -216,6 +219,10 @@ object SymDenotations {
 
     /** Is this a user defined "def" method? Excluded are accessors and stable values */
     def isSourceMethod = this is (Method, butNot = Accessor)
+
+    /** Is this NOT a user-defined "def" method that takes parameters? */
+    def isParameterless(implicit ctx: Context) =
+      !isSourceMethod || info.paramTypess.isEmpty
 
     /** Is this a setter? */
     def isGetter = (this is Accessor) && !originalName.isSetterName
@@ -782,6 +789,9 @@ object SymDenotations {
         fn
     }
 
+    // to avoid overloading ambiguities
+    override def fullName(implicit ctx: Context): Name = super.fullName
+
     override def primaryConstructor(implicit ctx: Context): Symbol = {
       val cname =
         if (this is Trait | ImplClass) nme.TRAIT_CONSTRUCTOR else nme.CONSTRUCTOR
@@ -879,8 +889,9 @@ object SymDenotations {
 
     final def parents: List[TypeRef] = { if (_parents == null) tryComplete(); _parents }
     def selfType: Type               = { if (_selfType == null) tryComplete(); _selfType }
-    final def decls: Scope           = { if (_decls == null) tryComplete(); _decls }
     final def preCompleteDecls       = { if (_decls == null) tryLoad(); _decls }
+    final def decls: Scope           = { if (_parents == null) tryComplete(); _decls }
+      // cannot check on decls because decls might be != null even if class is not completed
 
     final override def exists(implicit ctx: Context) = { ensureCompleted(); _parents != null }
   }
@@ -971,27 +982,28 @@ object SymDenotations {
   }
 
   /** A completer for missing references */
-  class StubCompleter[Denot <: SymDenotation](cctx: CondensedContext) extends Completer[Denot] {
+  class StubCompleter(cctx: CondensedContext) extends ClassCompleter {
     implicit protected def ctx: Context = cctx
 
-    def initializeToDefaults(denot: Denot) = denot match { // todo: initialize to errors instead?
-      case denot: LazySymDenotation =>
-        denot.privateWithin = NoSymbol
-        denot.info = NoType
-      case denot: LazyClassDenotation =>
-        denot.privateWithin = NoSymbol
-        denot.parents = Nil
-        denot.selfType = denot.typeConstructor
-        denot.decls = EmptyScope
+    def initializeToDefaults(denot: LazyClassDenotation) = {
+      // todo: initialize to errors instead?
+      denot.privateWithin = NoSymbol
+      denot.parents = Nil
+      denot.selfType = denot.typeConstructor
+      denot.decls = EmptyScope
     }
 
-    def complete(denot: Denot): Unit = {
-      val from =
-        if (denot.associatedFile == null) ""
-        else s" - referenced from ${denot.associatedFile.canonicalPath}"
+    def complete(denot: LazyClassDenotation): Unit = {
       val sym = denot.symbol
-      val symStr = s"${sym.showKind} ${sym.showName}${sym.showLocated}"
-      ctx.error(s"bad symbolic reference to $symStr$from (a classfile may be missing)")
+      val file = denot.associatedFile
+      val (location, src) =
+        if (file != null) (s" in $file", file.toString)
+        else ("", "the signature")
+      ctx.error(
+        s"""|bad symbolic reference. A signature$location refers to ${ctx.showDetailed(denot.name)}
+            |in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.
+            |It may be completely missing from the current classpath, or the version on
+            |the classpath might be incompatible with the version used when compiling $src.""".stripMargin)
       if (ctx.settings.debug.value) (new Throwable).printStackTrace
       initializeToDefaults(denot)
     }
