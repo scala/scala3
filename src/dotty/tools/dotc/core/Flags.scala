@@ -338,6 +338,10 @@ object Flags {
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local
 
+  final val AbstractSealed = Abstract | Sealed
+
+  final val SyntheticArtifact = Synthetic | Artifact
+
   final val RetainedModuleFlags: FlagSet = ???
 
   final val UninstantiatableFlags = Abstract | Final
@@ -389,4 +393,7 @@ object Flags {
 
   /** Java symbol which is `protected` and `static` */
   final val StaticProtected = allOf(JavaDefined, Protected, Static)
+
+  implicit def conjToFlagSet(conj: FlagConjunction): FlagSet =
+    FlagSet(conj.bits)
 }

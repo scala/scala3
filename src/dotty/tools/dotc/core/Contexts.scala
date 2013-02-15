@@ -43,7 +43,7 @@ object Contexts {
                             with Cloneable {
     implicit val ctx: Context = this
 
-    def base: ContextBase
+    val base: ContextBase
 
     private[this] var _underlying: Context = _
     protected def underlying_=(underlying: Context) = _underlying = underlying
@@ -89,11 +89,13 @@ object Contexts {
     def enclClass: Context = ???
     def erasedTypes: Boolean = ???
     def debug: Boolean = ???
-    def error(msg: String) = ???
-    def warning(msg: String) = ???
-    def log(msg: String) = ???
+    def error(msg: String): Unit = ???
+    def warning(msg: String): Unit = ???
+    def log(msg: String): Unit = ???
+    def debuglog(msg: String): Unit = ???
     def inform(msg: String) = ???
     def informTime(msg: String, start: Long): Unit = ???
+    def beforeTyper[T](op: => T): T = ???
 
     private var _condensed: CondensedContext = null
     def condensed: CondensedContext = {
@@ -137,11 +139,13 @@ object Contexts {
   }
 
   object NoContext extends Context {
-    def base = unsupported("base")
+    lazy val base = unsupported("base")
   }
 
-  class ContextBase extends ContextState with Transformers.TransformerBase
-                       with Printers.PrinterBase {
+  class ContextBase extends ContextState
+                       with Transformers.TransformerBase
+                       with Printers.PrinterBase
+                       with Denotations.DenotationsBase {
 
     val settings = new ScalaSettings
 

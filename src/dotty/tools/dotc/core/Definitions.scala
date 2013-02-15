@@ -3,11 +3,12 @@
  * @author  Martin Odersky
  */
 
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
-import Types._, Contexts._, Symbols._, SymDenotations._, StdNames._, Names._
-import Flags._, Scopes._, Decorators._, NameOps._
+import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
+import Flags._, Scopes._, Decorators._, NameOps._, Positions._
 import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
 import PartialFunction._
@@ -20,9 +21,8 @@ object Definitions {
 
 class Definitions(implicit ctx: Context) {
   import Definitions._
-  def requiredPackage(str: String): TermSymbol = ???
-  def requiredClass(str: String): ClassSymbol = ???
-  def requiredModule(str: String): TermSymbol = ???
+
+  import ctx.{requiredClass, requiredModule, requiredPackage}
 
   private def newSyntheticTypeParam(cls: ClassSymbol, scope: Scope, suffix: String = "T0") = {
     val tname = suffix.toTypeName.expandedName(cls)
@@ -41,7 +41,7 @@ class Definitions(implicit ctx: Context) {
       val parentRefs: List[TypeRef] = ctx.normalizeToRefs(parents, cls, paramDecls)
       CompleteClassDenotation(cls, ScalaPackageClass, name, flags, parentRefs, decls = paramDecls)(ctx)
     }
-    new ClassSymbol(classDenot)
+    new ClassSymbol(NoOffset, classDenot)
   }
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[ClassSymbol] = {
@@ -54,6 +54,9 @@ class Definitions(implicit ctx: Context) {
     NoSymbol, nme.ROOT, ctx.rootLoader)._2
   lazy val RootPackage: TermSymbol = ctx.newSymbol(
     NoSymbol, nme.ROOTPKG, PackageCreationFlags, TypeRef(NoPrefix, RootClass))
+
+  lazy val EmptyPackageClass = ctx.newPackageSymbols(RootClass, nme.EMPTY_PACKAGE)._2
+  lazy val EmptyPackageVal = EmptyPackageClass.sourceModule
 
   lazy val ScalaPackageVal = requiredPackage("scala")
   lazy val ScalaPackageClass = ScalaPackageVal.moduleClass.asClass
@@ -70,9 +73,9 @@ class Definitions(implicit ctx: Context) {
   lazy val NotNullClass = requiredClass("scala.NotNull")
 
   lazy val NothingClass: ClassSymbol = ctx.newClassSymbol(
-    ScalaPackageClass, tpnme.Nothing, UninstantiatableFlags, List(AnyType)).entered
+    ScalaPackageClass, tpnme.Nothing, UninstantiatableFlags, List(AnyClass.typeConstructor)).entered
   lazy val NullClass: ClassSymbol = ctx.newClassSymbol(
-    ScalaPackageClass, tpnme.Null, UninstantiatableFlags, List(AnyRefType)).entered
+    ScalaPackageClass, tpnme.Null, UninstantiatableFlags, List(AnyRefAlias.typeConstructor)).entered
 
   lazy val PredefModule = requiredModule("scala.Predef")
 
@@ -118,20 +121,40 @@ class Definitions(implicit ctx: Context) {
   lazy val BoxedNumberClass             = requiredClass("java.lang.Number")
   lazy val JavaSerializableClass        = requiredClass("java.lang.Serializable")
   lazy val ComparableClass              = requiredClass("java.lang.Comparable")
-  lazy val AnnotationClass              = requiredClass("scala.annotation.Annotation")
 
-  lazy val AnyType = AnyClass.typeConstructor
-  lazy val AnyValType = AnyValClass.typeConstructor
-  lazy val ObjectType = ObjectClass.typeConstructor
-  lazy val AnyRefType = AnyRefAlias.typeConstructor
-  lazy val NotNullType = NotNullClass.typeConstructor
-  lazy val NothingType = NothingClass.typeConstructor
-  lazy val NullType = NullClass.typeConstructor
-  lazy val SeqType = SeqClass.typeConstructor
-  lazy val ArrayType = ArrayClass.typeConstructor
+  // Annotation base classes
+  lazy val AnnotationClass              = requiredClass("scala.annotation.Annotation")
+  lazy val ClassfileAnnotationClass     = requiredClass("scala.annotation.ClassfileAnnotation")
+  lazy val StaticAnnotationClass        = requiredClass("scala.annotation.StaticAnnotation")
+
+  lazy val AnyType: Type = AnyClass.typeConstructor
+  lazy val AnyValType: Type = AnyValClass.typeConstructor
+  lazy val ObjectType: Type = ObjectClass.typeConstructor
+  lazy val AnyRefType: Type = AnyRefAlias.typeConstructor
+  lazy val NotNullType: Type = NotNullClass.typeConstructor
+  lazy val NothingType: Type = NothingClass.typeConstructor
+  lazy val NullType: Type = NullClass.typeConstructor
+  lazy val SeqType: Type = SeqClass.typeConstructor
+  lazy val ArrayType: Type = ArrayClass.typeConstructor
+
+  lazy val UnitType: Type = UnitClass.typeConstructor
+  lazy val BooleanType: Type = BooleanClass.typeConstructor
+  lazy val ByteType: Type = ByteClass.typeConstructor
+  lazy val ShortType: Type = ShortClass.typeConstructor
+  lazy val CharType: Type = CharClass.typeConstructor
+  lazy val IntType: Type = IntClass.typeConstructor
+  lazy val LongType: Type = LongClass.typeConstructor
+  lazy val FloatType: Type = FloatClass.typeConstructor
+  lazy val DoubleType: Type = DoubleClass.typeConstructor
+  lazy val JavaRepeatedParamType = JavaRepeatedParamClass.typeConstructor
 
   lazy val AliasAnnot = requiredClass("dotty.annotation.internal.Alias")
   lazy val ChildAnnot = requiredClass("dotty.annotation.internal.Alias")
+  lazy val ScalaSignatureAnnot = requiredClass("scala.reflect.ScalaSignature")
+  lazy val ScalaLongSignatureAnnot = requiredClass("scala.reflect.ScalaLongSignature")
+  lazy val DeprecatedAnnot = requiredClass("scala.deprecated")
+  lazy val AnnotationDefaultAnnot = requiredClass("dotty.runtime.AnnotationDefault")
+  lazy val ThrowsAnnot = requiredClass("scala.throws")
 
   def ClassType(arg: Type)(implicit ctx: Context) = {
     val ctype = ClassClass.typeConstructor
@@ -722,8 +745,6 @@ class Definitions(implicit ctx: Context) {
     lazy val StringContextClass                  = requiredClass[scala.StringContext]
          def StringContext_f                     = getMemberMethod(StringContextClass, nme.f)
 
-    lazy val ScalaSignatureAnnotation = requiredClass[scala.reflect.ScalaSignature]
-    lazy val ScalaLongSignatureAnnotation = requiredClass[scala.reflect.ScalaLongSignature]
 
     // Option classes
     lazy val OptionClass: ClassSymbol = requiredClass[Option[_]]
@@ -1113,10 +1134,6 @@ class Definitions(implicit ctx: Context) {
       def BoxedUnit_UNIT            = getMemberValue(BoxedUnitModule, nme.UNIT)
       def BoxedUnit_TYPE            = getMemberValue(BoxedUnitModule, nme.TYPE_)
 
-    // Annotation base classes
-    lazy val AnnotationClass            = requiredClass[scala.annotation.Annotation]
-    lazy val ClassfileAnnotationClass   = requiredClass[scala.annotation.ClassfileAnnotation]
-    lazy val StaticAnnotationClass      = requiredClass[scala.annotation.StaticAnnotation]
 
     // Annotations
     lazy val BridgeClass                = requiredClass[scala.annotation.bridge]
@@ -1134,7 +1151,6 @@ class Definitions(implicit ctx: Context) {
     lazy val BeanPropertyAttr           = requiredClass[scala.beans.BeanProperty]
     lazy val BooleanBeanPropertyAttr    = requiredClass[scala.beans.BooleanBeanProperty]
     lazy val CloneableAttr              = requiredClass[scala.annotation.cloneable]
-    lazy val DeprecatedAttr             = requiredClass[scala.deprecated]
     lazy val DeprecatedNameAttr         = requiredClass[scala.deprecatedName]
     lazy val DeprecatedInheritanceAttr  = requiredClass[scala.deprecatedInheritance]
     lazy val DeprecatedOverridingAttr   = requiredClass[scala.deprecatedOverriding]
