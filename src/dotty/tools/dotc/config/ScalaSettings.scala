@@ -41,7 +41,7 @@ class ScalaSettings extends Settings.SettingGroup {
 
   val argfiles = BooleanSetting("@<file>", "A text file containing compiler arguments (options and source files)")
   val classpath = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"
-  //  val d             = OutputSetting     (outputDirs, ".")
+  val d = StringSetting("-d", "directory|jar", "destination for generated classfiles.", ".")
   val nospecialization = BooleanSetting("-no-specialization", "Ignore @specialize annotations.")
   val language = MultiStringSetting("-language", "feature", "Enable one or more language features.")
 

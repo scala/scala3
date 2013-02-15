@@ -467,14 +467,6 @@ class ClassfileParser(
         case tpnme.ExceptionsATTR =>
           parseExceptions(attrLen)
 
-        case tpnme.SourceFileATTR =>
-          val srcfileLeaf = pool.getName(in.nextChar).toString.trim
-          val pkg = sym.enclosingPackage
-          val srcpath =
-            if (pkg.isEffectiveRoot) srcfileLeaf
-            else pkg.fullName(File.separatorChar) + File.separator + srcfileLeaf
-
-          // !!! srcfile0 = settings.outputDirs.srcFilesFor(in.file, srcpath).find(_.exists)
         case _ =>
       }
       in.bp = end
