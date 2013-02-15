@@ -1,14 +1,17 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
-import SymDenotations.{SymDenotation, NoDenotation}
-import Contexts.Context
+import SymDenotations.{ SymDenotation, NoDenotation }
+import Contexts.{Context, ContextBase}
 import Names.Name
 import Names.TypeName
 import Symbols.NoSymbol
-import Symbols.Symbol
+import Symbols._
 import Types._, Periods._, Flags._, Transformers._
+import io.AbstractFile
 import Decorators.SymbolIteratorDecorator
+
 
 
 /** Denotations represent the meaning of symbols and named types.
@@ -21,7 +24,7 @@ import Decorators.SymbolIteratorDecorator
  *  Lines ending in a horizontal line mean subtying (right is a subtype of left).
  *
  *  NamedType------NamedTypeWithSignature
-
+ *
  *    |                    |                     Symbol---------ClassSymbol
  *    |                    |                       |                |
  *    | denot              | denot                 | denot          | denot
@@ -146,12 +149,42 @@ object Denotations {
     /** The variant of this denotation that's current in the given context. */
     def current(implicit ctx: Context): Denotation
 
+    /** The first non-empty symbol, exists also for overloaded denotations,
+     *  where an arbitrary variant's symbol is picked (with preference for existsing symbols) */
+    def firstSym(implicit ctx: Context): Symbol
+
     def exists: Boolean = true
 
+    def orElse(that: => Denotation) = if (this.exists) this else that
+
+    /** The part of this denotation that satisfies the predicate, or NoDenotation is none exists */
     def filter(p: Symbol => Boolean)(implicit ctx: Context): Denotation
 
+    /** If this denotation is overloaded, filter with given predicate.
+     *  If result is still overloaded throw a TypeError
+     */
+    def disambiguate(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation = this match {
+      case sdenot: SingleDenotation => sdenot
+      case mdenot => this filter p match {
+        case sdenot: SingleDenotation => sdenot
+        case mdenot => throw new TypeError(s"failure to disambiguate overloaded reference $mdenot")
+      }
+    }
+
+    /** Return symbol in this denotation that satisfies the given predicate.
+     *  Throw a `TypeError` if predicate fails to disambiguate symbol.
+     *  Return a stubsymbol if no alternative satisfies the predicate.
+     */
+    def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null)(implicit ctx: Context): Symbol = {
+      val sym = disambiguate(p).symbol
+      if (sym.exists) sym else {
+        val owner = if (firstSym.exists) firstSym.owner else NoSymbol
+        ctx.newStubSymbol(owner, firstSym.name, source)
+      }
+    }
+
     /** Form a denotation by conjoining with denotation `that` */
-    def & (that: Denotation)(implicit ctx: Context): Denotation =
+    def &(that: Denotation)(implicit ctx: Context): Denotation =
       if (this eq that) this
       else if (!this.exists) that
       else if (!that.exists) this
@@ -189,13 +222,13 @@ object Denotations {
           if (sym2Eligible && bounds2 <:< bounds1) denot2
           else if (sym1Eligible && bounds1 <:< bounds2) denot1
           else new JointRefDenotation(
-              if (sym2Eligible) sym2 else sym1,
-              bounds1 & bounds2,
-              denot1.validFor & denot2.validFor)
+            if (sym2Eligible) sym2 else sym1,
+            bounds1 & bounds2,
+            denot1.validFor & denot2.validFor)
         } else NoDenotation
     }
 
-    def | (that: Denotation)(pre: Type)(implicit ctx: Context): Denotation = {
+    def |(that: Denotation)(pre: Type)(implicit ctx: Context): Denotation = {
 
       def lubSym(sym1: Symbol, sym2: Symbol): Symbol = {
         def qualifies(sym: Symbol) =
@@ -218,19 +251,21 @@ object Denotations {
             case denot2: SingleDenotation =>
               this match {
                 case denot1: SingleDenotation =>
-                    if (denot1.signature != denot2.signature) NoDenotation
-                    else new JointRefDenotation(
-                      lubSym(denot1.symbol, denot2.symbol),
-                      denot1.info | denot2.info,
-                      denot1.validFor & denot2.validFor)
-                  case _ =>
-                    throwError
-                }
-              case _ =>
-                throwError
-            }
-        }
+                  if (denot1.signature != denot2.signature) NoDenotation
+                  else new JointRefDenotation(
+                    lubSym(denot1.symbol, denot2.symbol),
+                    denot1.info | denot2.info,
+                    denot1.validFor & denot2.validFor)
+                case _ =>
+                  throwError
+              }
+            case _ =>
+              throwError
+          }
+      }
     }
+
+    def show(implicit ctx: Context): String = ctx.show(this)
   }
 
   /** The class of overloaded denotations
@@ -243,6 +278,7 @@ object Denotations {
     def symbol = unsupported("symbol")
     def info = unsupported("info")
     def signature = unsupported("signature")
+    def firstSym(implicit ctx: Context): Symbol = denot1.firstSym orElse denot2.firstSym
     def filter(p: Symbol => Boolean)(implicit ctx: Context): Denotation =
       (denot1 filter p) & (denot2 filter p)
     def atSignature(sig: Signature): SingleDenotation =
@@ -266,6 +302,7 @@ object Denotations {
       }
       if (isType) NullSignature else sig(info)
     }
+    def firstSym(implicit ctx: Context): Symbol = symbol
 
     def derivedSingleDenotation(s: Symbol, i: Type): SingleDenotation =
       if ((s eq symbol) && (i eq info)) this else newLikeThis(s, i)
@@ -321,7 +358,7 @@ object Denotations {
         // search for containing period as long as nextInRun increases.
         var next = nextInRun
         while (next.validFor.code > valid.code &&
-               !(next.validFor contains currentPeriod)) {
+          !(next.validFor contains currentPeriod)) {
           current = next
           next = next.nextInRun
         }
@@ -370,15 +407,15 @@ object Denotations {
   }
 
   class UniqueRefDenotation(val symbol: Symbol,
-                     val info: Type,
-                     initValidFor: Period) extends SingleDenotation {
+    val info: Type,
+    initValidFor: Period) extends SingleDenotation {
     validFor = initValidFor
     override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
   }
 
   class JointRefDenotation(val symbol: Symbol,
-                    val info: Type,
-                    initValidFor: Period) extends SingleDenotation {
+    val info: Type,
+    initValidFor: Period) extends SingleDenotation {
     validFor = initValidFor
     override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
   }
@@ -389,7 +426,7 @@ object Denotations {
     validFor = Period.allInRun(ctx.runId)
   }
 
-// --------------- DenotationSets -------------------------------------------------
+  // --------------- DenotationSets -------------------------------------------------
 
   /** A DenotationSet represents a set of single denotations
    *  It is used as an optimization to avoid forming MultiDenotations too eagerly.
@@ -431,6 +468,37 @@ object Denotations {
       derivedUnion(denots1 filterAccessibleFrom pre, denots2 filterAccessibleFrom pre)
     def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): DenotationSet =
       derivedUnion(denots1.asSeenFrom(pre, owner), denots2.asSeenFrom(pre, owner))
+  }
+
+  /** Creation method for denotations */
+  trait DenotationsBase { this: ContextBase =>
+    def staticRef(path: Name)(implicit ctx: Context): Denotation = {
+      def recur(path: Name, len: Int): Denotation = {
+        val point = path.lastIndexOf('.', len - 1)
+        val owner =
+          if (point > 0) recur(path.toTermName, point).disambiguate(_.isParameterless)
+          else if (path.isTermName) defn.RootClass.denot
+          else defn.EmptyPackageClass.denot
+        if (!owner.exists) owner
+        else {
+          val name = path slice (point + 1, len)
+          val result = owner.info.member(name)
+          if (result.exists) result
+          else {
+            val alt = missingHook(owner.symbol, name)
+            if (alt.exists) alt.denot
+            else result
+          }
+        }
+      }
+      recur(path, path.length)
+    }
+
+    def missingHook(owner: Symbol, name: Name)(implicit ctx: Context): Symbol =
+      if (owner.isPackage && name.isTermName)
+        ctx.newPackageSymbols(owner, name.asTermName)._1.entered
+      else
+        NoSymbol
   }
 }
 
