@@ -268,8 +268,7 @@ object Scopes {
       else newScopeWith(filtered: _*)
     }
 
-    @deprecated("Use `toList.reverse` instead", "2.10.0")
-    def reverse: List[Symbol] = toList.reverse
+    def show(implicit ctx: Context): String = ctx.show(this)
   }
 
   /** Create a new scope */
