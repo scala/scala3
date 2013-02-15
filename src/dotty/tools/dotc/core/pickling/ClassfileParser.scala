@@ -51,8 +51,8 @@ class ClassfileParser(
     case e: RuntimeException =>
       if (settings.debug.value) e.printStackTrace()
       throw new IOException(
-        s"""class file $classfile is broken, reading aborted with a
-           |${e.getClass}/${Option(e.getMessage).getOrElse("")}""".stripMargin)
+        s"""class file $classfile is broken, reading aborted with $e.getClass
+           |${Option(e.getMessage).getOrElse("")}""".stripMargin)
   }
 
   private def parseHeader() {
@@ -71,217 +71,6 @@ class ClassfileParser(
                             + majorVersion + "." + minorVersion
                             + ", should be at least "
                             + JAVA_MAJOR_VERSION + "." + JAVA_MINOR_VERSION)
-  }
-
-  class ConstantPool {
-    private val len = in.nextChar
-    private val starts = new Array[Int](len)
-    private val values = new Array[AnyRef](len)
-    private val internalized = new Array[TermName](len)
-
-    { var i = 1
-      while (i < starts.length) {
-        starts(i) = in.bp
-        i += 1
-        (in.nextByte.toInt: @switch) match {
-          case CONSTANT_UTF8 | CONSTANT_UNICODE =>
-            in.skip(in.nextChar)
-          case CONSTANT_CLASS | CONSTANT_STRING =>
-            in.skip(2)
-          case CONSTANT_FIELDREF | CONSTANT_METHODREF | CONSTANT_INTFMETHODREF
-             | CONSTANT_NAMEANDTYPE | CONSTANT_INTEGER | CONSTANT_FLOAT =>
-            in.skip(4)
-          case CONSTANT_LONG | CONSTANT_DOUBLE =>
-            in.skip(8)
-            i += 1
-          case _ =>
-            errorBadTag(in.bp - 1)
-        }
-      }
-    }
-
-    /** Return the name found at given index. */
-    def getName(index: Int): TermName = {
-      if (index <= 0 || len <= index)
-        errorBadIndex(index)
-
-      values(index) match {
-        case name: TermName => name
-        case null   =>
-          val start = starts(index)
-          if (in.buf(start).toInt != CONSTANT_UTF8) errorBadTag(start)
-          val name = termName(in.buf, start + 3, in.getChar(start + 1))
-          values(index) = name
-          name
-      }
-    }
-
-    /** Return the name found at given index in the constant pool, with '/' replaced by '.'. */
-    def getExternalName(index: Int): TermName = {
-      if (index <= 0 || len <= index)
-        errorBadIndex(index)
-
-      if (internalized(index) == null)
-        internalized(index) = getName(index).replace('/', '.')
-
-      internalized(index)
-    }
-
-    def getClassSymbol(index: Int): Symbol = {
-      if (index <= 0 || len <= index) errorBadIndex(index)
-      var c = values(index).asInstanceOf[Symbol]
-      if (c eq null) {
-        val start = starts(index)
-        if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
-        val name = getExternalName(in.getChar(start + 1))
-        if (name.isModuleName) c = cctx.requiredModule(name.stripModuleSuffix.asTermName)
-        else c = classNameToSymbol(name)
-        values(index) = c
-      }
-      c
-    }
-
-    /** Return the external name of the class info structure found at 'index'.
-     *  Use 'getClassSymbol' if the class is sure to be a top-level class.
-     */
-    def getClassName(index: Int): TermName = {
-      val start = starts(index)
-      if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
-      getExternalName(in.getChar(start + 1))
-    }
-
-    /** Return a name and a type at the given index.
-     */
-    private def getNameAndType(index: Int, ownerTpe: Type): (Name, Type) = {
-      if (index <= 0 || len <= index) errorBadIndex(index)
-      var p = values(index).asInstanceOf[(Name, Type)]
-      if (p eq null) {
-        val start = starts(index)
-        if (in.buf(start).toInt != CONSTANT_NAMEANDTYPE) errorBadTag(start)
-        val name = getName(in.getChar(start + 1).toInt)
-        var tpe  = getType(in.getChar(start + 3).toInt)
-        // fix the return type, which is blindly set to the class currently parsed
-        if (name == nme.CONSTRUCTOR)
-          tpe match {
-            case tp: MethodType =>
-              tp.derivedMethodType(tp.paramNames, tp.paramTypes, ownerTpe)
-          }
-        p = (name, tpe)
-        values(index) = p
-      }
-      p
-    }
-
-    /** Return the type of a class constant entry. Since
-     *  arrays are considered to be class types, they might
-     *  appear as entries in 'newarray' or 'cast' opcodes.
-     */
-    def getClassOrArrayType(index: Int): Type = {
-      if (index <= 0 || len <= index) errorBadIndex(index)
-      val value = values(index)
-      var c: Type = null
-      if (value eq null) {
-        val start = starts(index)
-        if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
-        val name = getExternalName(in.getChar(start + 1))
-        if (name(0) == ARRAY_TAG) {
-          c = sigToType(name)
-          values(index) = c
-        } else {
-          val sym = classNameToSymbol(name)
-          values(index) = sym
-          c = sym.typeConstructor
-        }
-      } else c = value match {
-          case tp: Type => tp
-          case cls: Symbol => cls.typeConstructor
-      }
-      c
-    }
-
-    def getType(index: Int): Type =
-      sigToType(getExternalName(index))
-
-    def getSuperClass(index: Int): Symbol =
-      if (index == 0) defn.AnyClass else getClassSymbol(index)
-
-    def getConstant(index: Int): Constant = {
-      if (index <= 0 || len <= index) errorBadIndex(index)
-      var value = values(index)
-      if (value eq null) {
-        val start = starts(index)
-        value = (in.buf(start).toInt: @switch) match {
-          case CONSTANT_STRING =>
-            Constant(getName(in.getChar(start + 1).toInt).toString)
-          case CONSTANT_INTEGER =>
-            Constant(in.getInt(start + 1))
-          case CONSTANT_FLOAT =>
-            Constant(in.getFloat(start + 1))
-          case CONSTANT_LONG =>
-            Constant(in.getLong(start + 1))
-          case CONSTANT_DOUBLE =>
-            Constant(in.getDouble(start + 1))
-          case CONSTANT_CLASS =>
-            getClassOrArrayType(index).typeSymbol
-          case _ =>
-            errorBadTag(start)
-        }
-        values(index) = value
-      }
-      value match {
-        case  ct: Constant => ct
-        case cls: Symbol   => Constant(cls.typeConstructor)
-        case arr: Type     => Constant(arr)
-      }
-    }
-
-    private def getSubArray(bytes: Array[Byte]): Array[Byte] = {
-      val decodedLength = ByteCodecs.decode(bytes)
-      val arr           = new Array[Byte](decodedLength)
-      System.arraycopy(bytes, 0, arr, 0, decodedLength)
-      arr
-    }
-
-    def getBytes(index: Int): Array[Byte] = {
-      if (index <= 0 || len <= index) errorBadIndex(index)
-      var value = values(index).asInstanceOf[Array[Byte]]
-      if (value eq null) {
-        val start = starts(index)
-        if (in.buf(start).toInt != CONSTANT_UTF8) errorBadTag(start)
-        val len   = in.getChar(start + 1)
-        val bytes = new Array[Byte](len)
-        System.arraycopy(in.buf, start + 3, bytes, 0, len)
-        value = getSubArray(bytes)
-        values(index) = value
-      }
-      value
-    }
-
-    def getBytes(indices: List[Int]): Array[Byte] = {
-      assert(!indices.isEmpty, indices)
-      var value = values(indices.head).asInstanceOf[Array[Byte]]
-      if (value eq null) {
-        val bytesBuffer = ArrayBuffer.empty[Byte]
-        for (index <- indices) {
-          if (index <= 0 || ConstantPool.this.len <= index) errorBadIndex(index)
-          val start = starts(index)
-          if (in.buf(start).toInt != CONSTANT_UTF8) errorBadTag(start)
-          val len = in.getChar(start + 1)
-          bytesBuffer ++= in.buf.view(start + 3, start + 3 + len)
-        }
-        value = getSubArray(bytesBuffer.toArray)
-        values(indices.head) = value
-      }
-      value
-    }
-
-    /** Throws an exception signaling a bad constant index. */
-    private def errorBadIndex(index: Int) =
-      throw new RuntimeException("bad constant pool index: " + index + " at pos: " + in.bp)
-
-    /** Throws an exception signaling a bad tag at given address. */
-    private def errorBadTag(start: Int) =
-      throw new RuntimeException("bad constant pool tag " + in.buf(start) + " at byte " + start)
   }
 
   /** Return the class symbol of the given name. */
@@ -929,5 +718,216 @@ class ClassfileParser(
   private def isPrivate(flags: Int)     = (flags & JAVA_ACC_PRIVATE) != 0
   private def isStatic(flags: Int)      = (flags & JAVA_ACC_STATIC) != 0
   private def hasAnnotation(flags: Int) = (flags & JAVA_ACC_ANNOTATION) != 0
+
+  class ConstantPool {
+    private val len = in.nextChar
+    private val starts = new Array[Int](len)
+    private val values = new Array[AnyRef](len)
+    private val internalized = new Array[TermName](len)
+
+    { var i = 1
+      while (i < starts.length) {
+        starts(i) = in.bp
+        i += 1
+        (in.nextByte.toInt: @switch) match {
+          case CONSTANT_UTF8 | CONSTANT_UNICODE =>
+            in.skip(in.nextChar)
+          case CONSTANT_CLASS | CONSTANT_STRING =>
+            in.skip(2)
+          case CONSTANT_FIELDREF | CONSTANT_METHODREF | CONSTANT_INTFMETHODREF
+             | CONSTANT_NAMEANDTYPE | CONSTANT_INTEGER | CONSTANT_FLOAT =>
+            in.skip(4)
+          case CONSTANT_LONG | CONSTANT_DOUBLE =>
+            in.skip(8)
+            i += 1
+          case _ =>
+            errorBadTag(in.bp - 1)
+        }
+      }
+    }
+
+    /** Return the name found at given index. */
+    def getName(index: Int): TermName = {
+      if (index <= 0 || len <= index)
+        errorBadIndex(index)
+
+      values(index) match {
+        case name: TermName => name
+        case null   =>
+          val start = starts(index)
+          if (in.buf(start).toInt != CONSTANT_UTF8) errorBadTag(start)
+          val name = termName(in.buf, start + 3, in.getChar(start + 1))
+          values(index) = name
+          name
+      }
+    }
+
+    /** Return the name found at given index in the constant pool, with '/' replaced by '.'. */
+    def getExternalName(index: Int): TermName = {
+      if (index <= 0 || len <= index)
+        errorBadIndex(index)
+
+      if (internalized(index) == null)
+        internalized(index) = getName(index).replace('/', '.')
+
+      internalized(index)
+    }
+
+    def getClassSymbol(index: Int): Symbol = {
+      if (index <= 0 || len <= index) errorBadIndex(index)
+      var c = values(index).asInstanceOf[Symbol]
+      if (c eq null) {
+        val start = starts(index)
+        if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
+        val name = getExternalName(in.getChar(start + 1))
+        if (name.isModuleName) c = cctx.requiredModule(name.stripModuleSuffix.asTermName)
+        else c = classNameToSymbol(name)
+        values(index) = c
+      }
+      c
+    }
+
+    /** Return the external name of the class info structure found at 'index'.
+     *  Use 'getClassSymbol' if the class is sure to be a top-level class.
+     */
+    def getClassName(index: Int): TermName = {
+      val start = starts(index)
+      if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
+      getExternalName(in.getChar(start + 1))
+    }
+
+    /** Return a name and a type at the given index.
+     */
+    private def getNameAndType(index: Int, ownerTpe: Type): (Name, Type) = {
+      if (index <= 0 || len <= index) errorBadIndex(index)
+      var p = values(index).asInstanceOf[(Name, Type)]
+      if (p eq null) {
+        val start = starts(index)
+        if (in.buf(start).toInt != CONSTANT_NAMEANDTYPE) errorBadTag(start)
+        val name = getName(in.getChar(start + 1).toInt)
+        var tpe  = getType(in.getChar(start + 3).toInt)
+        // fix the return type, which is blindly set to the class currently parsed
+        if (name == nme.CONSTRUCTOR)
+          tpe match {
+            case tp: MethodType =>
+              tp.derivedMethodType(tp.paramNames, tp.paramTypes, ownerTpe)
+          }
+        p = (name, tpe)
+        values(index) = p
+      }
+      p
+    }
+
+    /** Return the type of a class constant entry. Since
+     *  arrays are considered to be class types, they might
+     *  appear as entries in 'newarray' or 'cast' opcodes.
+     */
+    def getClassOrArrayType(index: Int): Type = {
+      if (index <= 0 || len <= index) errorBadIndex(index)
+      val value = values(index)
+      var c: Type = null
+      if (value eq null) {
+        val start = starts(index)
+        if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
+        val name = getExternalName(in.getChar(start + 1))
+        if (name(0) == ARRAY_TAG) {
+          c = sigToType(name)
+          values(index) = c
+        } else {
+          val sym = classNameToSymbol(name)
+          values(index) = sym
+          c = sym.typeConstructor
+        }
+      } else c = value match {
+          case tp: Type => tp
+          case cls: Symbol => cls.typeConstructor
+      }
+      c
+    }
+
+    def getType(index: Int): Type =
+      sigToType(getExternalName(index))
+
+    def getSuperClass(index: Int): Symbol =
+      if (index == 0) defn.AnyClass else getClassSymbol(index)
+
+    def getConstant(index: Int): Constant = {
+      if (index <= 0 || len <= index) errorBadIndex(index)
+      var value = values(index)
+      if (value eq null) {
+        val start = starts(index)
+        value = (in.buf(start).toInt: @switch) match {
+          case CONSTANT_STRING =>
+            Constant(getName(in.getChar(start + 1).toInt).toString)
+          case CONSTANT_INTEGER =>
+            Constant(in.getInt(start + 1))
+          case CONSTANT_FLOAT =>
+            Constant(in.getFloat(start + 1))
+          case CONSTANT_LONG =>
+            Constant(in.getLong(start + 1))
+          case CONSTANT_DOUBLE =>
+            Constant(in.getDouble(start + 1))
+          case CONSTANT_CLASS =>
+            getClassOrArrayType(index).typeSymbol
+          case _ =>
+            errorBadTag(start)
+        }
+        values(index) = value
+      }
+      value match {
+        case  ct: Constant => ct
+        case cls: Symbol   => Constant(cls.typeConstructor)
+        case arr: Type     => Constant(arr)
+      }
+    }
+
+    private def getSubArray(bytes: Array[Byte]): Array[Byte] = {
+      val decodedLength = ByteCodecs.decode(bytes)
+      val arr           = new Array[Byte](decodedLength)
+      System.arraycopy(bytes, 0, arr, 0, decodedLength)
+      arr
+    }
+
+    def getBytes(index: Int): Array[Byte] = {
+      if (index <= 0 || len <= index) errorBadIndex(index)
+      var value = values(index).asInstanceOf[Array[Byte]]
+      if (value eq null) {
+        val start = starts(index)
+        if (in.buf(start).toInt != CONSTANT_UTF8) errorBadTag(start)
+        val len   = in.getChar(start + 1)
+        val bytes = new Array[Byte](len)
+        System.arraycopy(in.buf, start + 3, bytes, 0, len)
+        value = getSubArray(bytes)
+        values(index) = value
+      }
+      value
+    }
+
+    def getBytes(indices: List[Int]): Array[Byte] = {
+      assert(!indices.isEmpty, indices)
+      var value = values(indices.head).asInstanceOf[Array[Byte]]
+      if (value eq null) {
+        val bytesBuffer = ArrayBuffer.empty[Byte]
+        for (index <- indices) {
+          if (index <= 0 || ConstantPool.this.len <= index) errorBadIndex(index)
+          val start = starts(index)
+          if (in.buf(start).toInt != CONSTANT_UTF8) errorBadTag(start)
+          val len = in.getChar(start + 1)
+          bytesBuffer ++= in.buf.view(start + 3, start + 3 + len)
+        }
+        value = getSubArray(bytesBuffer.toArray)
+        values(indices.head) = value
+      }
+      value
+    }
+
+    /** Throws an exception signaling a bad constant index. */
+    private def errorBadIndex(index: Int) =
+      throw new RuntimeException("bad constant pool index: " + index + " at pos: " + in.bp)
+
+    /** Throws an exception signaling a bad tag at given address. */
+    private def errorBadTag(start: Int) =
+      throw new RuntimeException("bad constant pool tag " + in.buf(start) + " at byte " + start)
+  }
 }
 
