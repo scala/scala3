@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Types._, Symbols._, Contexts._, Scopes._, Names._, NameOps._, Flags._
-import Constants._, Annotations._, StdNames._
+import Constants._, Annotations._, StdNames._, Denotations._
 import java.lang.Integer.toOctalString
 import scala.annotation.switch
 
@@ -78,6 +78,9 @@ object Printers {
 
     /** Show symbol and its location */
     def showLocated(sym: Symbol): String
+
+    /** Show denotation */
+    def show(denot: Denotation): String
 
     /** Show constant */
     def show(const: Constant)
@@ -351,6 +354,8 @@ object Printers {
     def showLocated(sym: Symbol): String =
       show(sym) + showLocation(sym)
 
+    def show(denot: Denotation): String = show(denot.symbol) + "/D"
+
     @switch private def escapedChar(ch: Char): String = ch match {
       case '\b' => "\\b"
       case '\t' => "\\t"
@@ -451,6 +456,8 @@ object Printers {
 
     override def showFlags(sym: Symbol) =
       sym.flags.flagStrings.filterNot(_.startsWith("<")).mkString(" ")
+
+    override def show(denot: Denotation): String = show(denot.symbol)
   }
 
   final val maxShowRecursions = 100
