@@ -18,6 +18,9 @@ import scala.annotation.switch
 
 object UnPickler {
 
+  /** Exception thrown if classfile is corrupted */
+  class BadSignature(msg: String) extends RuntimeException(msg)
+
   case class TempPolyType(tparams: List[Symbol], tpe: Type) extends UncachedGroundType
 
   /** Temporary type for classinfos, will be decomposed on completion of the class */
@@ -95,7 +98,13 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
 
   private val mk = makeTypedTree
 
-  //println("unpickled " + classRoot + ":" + classRoot.rawInfo + ", " + moduleRoot + ":" + moduleRoot.rawInfo);//debug
+  protected def errorBadSignature(msg: String) = {
+    val ex = new BadSignature(
+      s"""error reading Scala signature of $classRoot from $source:
+         |error occured at position $readIndex: $msg""".stripMargin)
+    /*if (settings.debug.value)*/ ex.printStackTrace()
+    throw ex
+  }
 
   // Laboriously unrolled for performance.
   def run() =
@@ -129,13 +138,10 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
         i += 1
       }
     } catch {
-      case ex: IOException =>
+      case ex: BadSignature =>
         throw ex
-      case ex: MissingRequirementError =>
-        throw ex
-      case ex: Throwable =>
-        /*if (settings.debug.value)*/ ex.printStackTrace()
-        throw new RuntimeException("error reading Scala signature of " + source + ": " + ex.getMessage())
+      case ex: RuntimeException =>
+        errorBadSignature(s"a runtime exception occured: $ex $ex.getMessage()")
     }
 
   def source: AbstractFile = {
@@ -416,11 +422,7 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
           assignClassFields(denot, tp, selfType)
       }
     }
-    try {
-      atReadPos(denot.symbol.offset.value, parseToCompletion)
-    } catch {
-      case e: MissingRequirementError => throw toTypeError(e)
-    }
+    atReadPos(denot.symbol.offset.value, parseToCompletion)
   }
 
   private object symUnpickler extends SymCompleter {
@@ -1007,22 +1009,4 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
           errorBadSignature("expected an TypeDef (" + other + ")")
       }
 */
-  protected def errorBadSignature(msg: String) =
-    throw new RuntimeException("malformed Scala signature of " + classRoot.name + " at " + readIndex + "; " + msg)
-
-  protected def errorMissingRequirement(name: Name, owner: Symbol): Symbol =
-    MissingRequirementError.signal(
-      s"bad reference while unpickling source: ${cctx.showDetailed(name)} not found in $owner")
-
-  //    def inferMethodAlternative(fun: Tree, argtpes: List[Type], restpe: Type) {} // can't do it; need a compiler for that.
-
-  /** Convert to a type error, that is printed gracefully instead of crashing.
-   *
-   *  Similar in intent to what SymbolLoader does (but here we don't have access to
-   *  error reporting, so we rely on the typechecker to report the error).
-   */
-  def toTypeError(e: MissingRequirementError) = {
-    // e.printStackTrace()
-    new TypeError(e.msg)
-  }
 }

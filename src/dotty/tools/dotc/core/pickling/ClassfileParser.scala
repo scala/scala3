@@ -31,39 +31,28 @@ class ClassfileParser(
 
   protected var currentClassName: Name = _      // JVM name of the current class
   protected var classTParams = Map[Name,Symbol]()
-  protected var srcfile0 : Option[AbstractFile] = None //needs freshing out
+  protected var srcfile0 : Option[AbstractFile] = None //needs fleshing out
 
   def srcfile = srcfile0
 
   private def currentIsTopLevel = !(classRoot.name contains '$')
   private val mk = makeTypedTree
 
-  private def handleMissing(e: MissingRequirementError) = {
-    if (settings.debug.value) e.printStackTrace
-    throw new IOException("Missing dependency '" + e.req + "', required by " + in.file)
-  }
-  private def handleError(e: Exception) = {
-    if (settings.debug.value) e.printStackTrace()
-    throw new IOException("class file '%s' is broken\n(%s/%s)".format(
-      in.file,
-      e.getClass,
-      if (e.getMessage eq null) "" else e.getMessage)
-    )
-  }
   private def mismatchError(c: Symbol) = {
     throw new IOException("class file '%s' has location not matching its contents: contains ".format(in.file) + c)
   }
 
-  private def parseErrorHandler[T]: PartialFunction[Throwable, T] = {
-    case e: MissingRequirementError => handleMissing(e)
-    case e: RuntimeException        => handleError(e)
-  }
-
-  def run(): Unit = {
+  def run(): Unit = try {
     debuglog("[class] >> " + classRoot.fullName)
     parseHeader
     this.pool = new ConstantPool
     parseClass()
+  } catch {
+    case e: RuntimeException =>
+      if (settings.debug.value) e.printStackTrace()
+      throw new IOException(
+        s"""class file $classfile is broken, reading aborted with a
+           |${e.getClass}/${Option(e.getMessage).getOrElse("")}""".stripMargin)
   }
 
   private def parseHeader() {

@@ -178,9 +178,7 @@ abstract class SymbolLoader extends ClassCompleter {
       ctx.informTime("loaded " + description, start)
     } catch {
       case ex: IOException =>
-        signalError(ex)
-      case ex: MissingRequirementError =>
-        signalError(ex)
+      signalError(ex)
     } finally {
       root.linkedClass.denot match {
         case companion: LazyClassDenotation => companion.completer = null
