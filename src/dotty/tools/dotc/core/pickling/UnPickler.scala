@@ -272,7 +272,7 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
   protected def readTypeName(): TypeName = readName().toTypeName
 
   /** Read a symbol */
-  protected def readSymbol(): Symbol = readDisambiguatedSymbol(Function.const(true))()
+  protected def readSymbol(): Symbol = readDisambiguatedSymbol(scala.Function.const(true))()
 
   /** Read a symbol, with possible disambiguation */
   protected def readDisambiguatedSymbol(p: Symbol => Boolean)(): Symbol = {

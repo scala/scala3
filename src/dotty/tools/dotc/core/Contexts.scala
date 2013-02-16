@@ -7,7 +7,7 @@ import Names._
 import Phases._
 import Types._
 import Symbols._
-import TypeComparers._, Printers._, NameOps._, SymDenotations._
+import TypeComparers._, Printers._, NameOps._, SymDenotations._, Positions._
 import config.Settings._
 import config.ScalaSettings
 import collection.mutable
@@ -66,6 +66,10 @@ object Contexts {
         _typeComparer = new TypeComparer(this)
       _typeComparer
     }
+
+    private[this] var _position: Position = _
+    protected def position_=(position: Position) = _position = position
+    def position: Position = _position
 
     private[this] var _plainPrinter: Context => Printer = _
     protected def plainPrinter_=(plainPrinter: Context => Printer) = _plainPrinter = plainPrinter
