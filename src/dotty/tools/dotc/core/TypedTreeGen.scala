@@ -203,7 +203,10 @@ object TypedTrees {
 
     def EmptyValDef: ValDef[Type] = Trees.EmptyValDef[Type]
 
-    // ----------------------------------------------------------
+    def Shared(tree: TypedTree): Shared[Type] =
+      Trees.Shared(tree).withType(tree.tpe)
+
+ // -----------------------------------------------------------------------------
 
     def New(tp: Type, args: List[TypedTree])(implicit ctx: Context): Apply[Type] =
       Apply(
@@ -211,6 +214,13 @@ object TypedTrees {
           New(tp),
           TermRef(tp.normalizedPrefix, tp.typeSymbol.primaryConstructor.asTerm)),
         args)
+
+    def ModuleDef(sym: TermSymbol, body: List[TypedTree])(implicit ctx: Context): ValDef[Type] = {
+      val modcls = sym.moduleClass.asClass
+      val clsdef = ClassDef(modcls, Nil, body)
+      val rhs = Block(List(clsdef), New(modcls.typeConstructor))
+      ValDef(sym, rhs)
+    }
   }
 
   object tpd extends TypeTreeGen
