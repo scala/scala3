@@ -41,7 +41,7 @@ class Definitions(implicit ctx: Context) {
       val parentRefs: List[TypeRef] = ctx.normalizeToRefs(parents, cls, paramDecls)
       CompleteClassDenotation(cls, ScalaPackageClass, name, flags, parentRefs, decls = paramDecls)(ctx)
     }
-    new ClassSymbol(NoOffset, classDenot)
+    new ClassSymbol(NoCoord, classDenot)
   }
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[ClassSymbol] = {

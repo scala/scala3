@@ -1,27 +1,55 @@
 package dotty.tools.dotc.core
 
+/** Position format in little endian:
+ *  Start: unsigned 26 Bits (works for source files up to 64M)
+ *  End: unsigned 26 Bits
+ *  Point: unsigned 12 Bits relative to start
+ *  NoPosition encoded as -1L (this is a normally invalid position
+ *  because point would lie beyond end.
+ */
 object Positions {
 
-  /** The bit position of the end part of a range position */
-  private val Shift = 32
+  private val StartEndBits = 26
+  private val StartEndMask = (1 << StartEndBits) - 1
 
   class Position(val coords: Long) extends AnyVal {
-    def isRange = coords < 0
-    def point: Int = if (isRange) start else coords.toInt
-    def start: Int = coords.abs.toInt
-    def end: Int = (if (isRange) coords.abs >>> Shift else coords).toInt
+    def point: Int = start + (coords >>> (StartEndBits * 2)).toInt
+    def start: Int = (coords & StartEndMask).toInt
+    def end: Int = ((coords >>> StartEndBits) & StartEndMask).toInt
+    def union(that: Position) =
+      if (this == NoPosition) that
+      else if (that == NoPosition) this
+      else Position(this.start min that.start, this.end max that.end)
   }
 
-  class Offset(val value: Int) extends AnyVal {
-    def toPosition = new Position(value.toLong & 0xffff)
-  }
+  def Position(start: Int, end: Int, pointOffset: Int = 0): Position =
+    new Position(
+      (start & StartEndMask).toLong |
+      ((end & StartEndMask).toLong << StartEndBits) |
+      (pointOffset.toLong << (StartEndBits * 2)))
 
-  def rangePos(start: Int, end: Int) =
-    new Position(-(start + (end.toLong << Shift)))
-
-  def offsetPos(point: Int) =
-    new Position(point.toLong)
+  def Position(point: Int): Position = Position(point, point, 0)
 
   val NoPosition = new Position(-1L)
-  val NoOffset = new Offset(-1)
+
+  /** The coordinate of a symbol. This is either an index or
+   *  a point position.
+   */
+  class Coord(val encoding: Int) extends AnyVal {
+    def isIndex = encoding > 0
+    def isPosition = encoding <= 0
+    def toIndex: Int = {
+      assert(isIndex)
+      encoding - 1
+    }
+    def toPosition = {
+      assert(isPosition)
+      if (this == NoCoord) NoPosition else Position(1 - encoding)
+    }
+  }
+
+  def indexCoord(n: Int) = new Coord(n + 1)
+  def positionCoord(n: Int) = new Coord(-(n + 1))
+
+  val NoCoord = new Coord(0)
 }

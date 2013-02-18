@@ -148,7 +148,7 @@ class ClassfileParser(
   }
 
   def parseMember(method: Boolean): Unit = {
-    val start = new Offset(in.bp)
+    val start = indexCoord(in.bp)
     val jflags = in.nextChar
     val sflags =
       if (method) FlagTranslation.methodFlags(jflags)
@@ -162,7 +162,7 @@ class ClassfileParser(
     def complete(denot: LazySymDenotation) = {
       val oldbp = in.bp
       try {
-        in.bp = denot.symbol.offset.value
+        in.bp = denot.symbol.coord.toIndex
         val sym = denot.symbol
         val jflags = in.nextChar
         val isEnum  = (jflags & JAVA_ACC_ENUM) != 0
@@ -335,7 +335,7 @@ class ClassfileParser(
       while (sig(index) != '>') {
         val tpname = subName(':'.==).toTypeName
         val s = cctx.newLazySymbol(
-          owner, tpname, Flags.TypeParam, new TypeParamCompleter(index), new Offset(index))
+          owner, tpname, Flags.TypeParam, new TypeParamCompleter(index), indexCoord(index))
         tparams = tparams + (tpname -> s)
         sig2typeBounds(tparams, skiptvs = true)
         newTParams += s

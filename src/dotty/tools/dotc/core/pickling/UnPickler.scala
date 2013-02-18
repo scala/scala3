@@ -68,7 +68,6 @@ object UnPickler {
 /** Unpickle symbol table information descending from a class and/or module root
  *  from an array of bytes.
  *  @param bytes      bytearray from which we unpickle
- *  @param offset     offset from which unpickling starts
  *  @param classroot  the top-level class which is unpickled, or NoSymbol if inapplicable
  *  @param moduleroot the top-level module class which is unpickled, or NoSymbol if inapplicable
  *  @param filename   filename associated with bytearray, only used for error messages
@@ -274,7 +273,7 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
 
   /** Read a symbol, with possible disambiguation */
   protected def readDisambiguatedSymbol(p: Symbol => Boolean)(): Symbol = {
-    val start = new Offset(readIndex)
+    val start = indexCoord(readIndex)
     val tag = readByte()
     val end = readNat() + readIndex
     def atEnd = readIndex == end
@@ -349,7 +348,7 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
     def isModuleRoot = (name.toTermName == moduleRoot.name.toTermName) && (owner == moduleRoot.owner)
 
     def completeRoot(denot: LazyClassDenotation): Symbol = {
-      atReadPos(start.value, () => completeLocal(denot))
+      atReadPos(start.toIndex, () => completeLocal(denot))
       denot.symbol
     }
 
@@ -370,16 +369,16 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
           name1 = name1.expandedName(owner)
           flags1 |= TypeParamFlags
         }
-        cctx.newLazySymbol(owner, name1, flags1, symUnpickler, off = start)
+        cctx.newLazySymbol(owner, name1, flags1, symUnpickler, coord = start)
       case CLASSsym =>
         if (isClassRoot) completeRoot(classRoot)
         else if (isModuleRoot) completeRoot(moduleRoot)
-        else cctx.newLazyClassSymbol(owner, name.asTypeName, flags, classUnpickler, off = start)
+        else cctx.newLazyClassSymbol(owner, name.asTypeName, flags, classUnpickler, coord = start)
       case MODULEsym | VALsym =>
         if (isModuleRoot) {
           moduleRoot.flags = flags
           moduleRoot.symbol
-        } else cctx.newLazySymbol(owner, name.asTermName, flags, symUnpickler, off = start)
+        } else cctx.newLazySymbol(owner, name.asTermName, flags, symUnpickler, coord = start)
       case _ =>
         errorBadSignature("bad symbol tag: " + tag)
     })
@@ -420,7 +419,7 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
           assignClassFields(denot, tp, selfType)
       }
     }
-    atReadPos(denot.symbol.offset.value, parseToCompletion)
+    atReadPos(denot.symbol.coord.toIndex, parseToCompletion)
   }
 
   private object symUnpickler extends SymCompleter {

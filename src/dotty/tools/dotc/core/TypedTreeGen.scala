@@ -9,6 +9,8 @@ object TypedTrees {
   class TypeTreeGen {
     implicit def pos(implicit ctx: Context): Position = ctx.position
 
+    def defPos(sym: Symbol)(implicit ctx: Context) = ctx.position union sym.coord.toPosition
+
     def Modifiers(sym: Symbol)(implicit ctx: Context): Modifiers[Type] = Trees.Modifiers[Type](
       sym.flags & ModifierFlags,
       if (sym.privateWithin.exists) sym.privateWithin.asType.name else tpnme.EMPTY,
@@ -118,7 +120,7 @@ object TypedTrees {
       Trees.TypeBoundsTree(lo, hi).withType(TypeBounds(lo.tpe, hi.tpe))
 
     def Bind(sym: Symbol, body: TypedTree)(implicit ctx: Context): Bind[Type] =
-      Trees.Bind(sym.name, body).withType(sym.info)
+      Trees.Bind(sym.name, body)(defPos(sym)).withType(sym.info)
 
     def Alternative(trees: List[TypedTree])(implicit ctx: Context): Alternative[Type] =
       Trees.Alternative(trees).withType(ctx.lub(trees map (_.tpe)))
@@ -131,7 +133,7 @@ object TypedTrees {
     def refType(sym: Symbol)(implicit ctx: Context) = NamedType(sym.owner.thisType, sym)
 
     def ValDef(sym: TermSymbol, rhs: TypedTree = EmptyTree)(implicit ctx: Context): ValDef[Type] =
-      Trees.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs)
+      Trees.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs)(defPos(sym))
         .withType(refType(sym))
 
     def DefDef(sym: TermSymbol, rhs: TypedTree = EmptyTree)(implicit ctx: Context): DefDef[Type] = {
@@ -165,12 +167,12 @@ object TypedTrees {
 
       Trees.DefDef(
         Modifiers(sym), sym.name, tparams map TypeDef,
-        vparamss map (_ map (ValDef(_))), TypeTree(rtp), rhs)
+        vparamss map (_ map (ValDef(_))), TypeTree(rtp), rhs)(defPos(sym))
         .withType(refType(sym))
     }
 
     def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef[Type] =
-      Trees.TypeDef(Modifiers(sym), sym.name, TypeTree(sym.info))
+      Trees.TypeDef(Modifiers(sym), sym.name, TypeTree(sym.info))(defPos(sym))
         .withType(refType(sym))
 
     def ClassDef(cls: ClassSymbol, typeParams: List[TypeSymbol], body: List[TypedTree])(implicit ctx: Context): ClassDef[Type] = {
@@ -191,7 +193,7 @@ object TypedTrees {
         .orElse(ctx.newLocalDummy(cls))
       val impl = Trees.Template(parents, selfType, rest)
         .withType(refType(localDummy))
-      Trees.ClassDef(Modifiers(cls), cls.name, tparams, impl)
+      Trees.ClassDef(Modifiers(cls), cls.name, tparams, impl)(defPos(cls))
         .withType(refType(cls))
     }
 

@@ -19,25 +19,25 @@ import io.AbstractFile
 /** Creation methods for symbols */
 trait Symbols { this: Context =>
 
-  def newLazySymbol[N <: Name](owner: Symbol, name: N, initFlags: FlagSet, completer: SymCompleter, off: Offset = NoOffset) =
-    new Symbol(off, new LazySymDenotation(_, owner, name, initFlags, completer)) {
+  def newLazySymbol[N <: Name](owner: Symbol, name: N, initFlags: FlagSet, completer: SymCompleter, coord: Coord = NoCoord) =
+    new Symbol(coord, new LazySymDenotation(_, owner, name, initFlags, completer)) {
       type ThisName = N
     }
 
-  def newLazyClassSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: ClassCompleter, assocFile: AbstractFile = null, off: Offset = NoOffset) =
-    new ClassSymbol(off, new LazyClassDenotation(_, owner, name, initFlags, completer, assocFile)(this))
+  def newLazyClassSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: ClassCompleter, assocFile: AbstractFile = null, coord: Coord = NoCoord) =
+    new ClassSymbol(coord, new LazyClassDenotation(_, owner, name, initFlags, completer, assocFile)(this))
 
   def newLazyModuleSymbols(owner: Symbol,
       name: TermName,
       flags: FlagSet,
       completer: ClassCompleter,
       assocFile: AbstractFile = null,
-      off: Offset = NoOffset): (TermSymbol, ClassSymbol)
+      coord: Coord = NoCoord): (TermSymbol, ClassSymbol)
   = {
     val module = newLazySymbol(
-      owner, name, flags | ModuleCreationFlags, new ModuleCompleter(condensed), off)
+      owner, name, flags | ModuleCreationFlags, new ModuleCompleter(condensed), coord)
     val modcls = newLazyClassSymbol(
-      owner, name.toTypeName, flags | ModuleClassCreationFlags, completer, assocFile, off)
+      owner, name.toTypeName, flags | ModuleClassCreationFlags, completer, assocFile, coord)
     module.denot.asInstanceOf[LazySymDenotation].info =
       TypeRef(owner.thisType(ctx), modcls)
     modcls.denot.asInstanceOf[LazyClassDenotation].selfType =
@@ -48,8 +48,8 @@ trait Symbols { this: Context =>
   def newLazyPackageSymbols(owner: Symbol, name: TermName, completer: ClassCompleter) =
     newLazyModuleSymbols(owner, name, PackageCreationFlags, completer)
 
-  def newSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type, privateWithin: Symbol = NoSymbol, off: Offset = NoOffset) =
-    new Symbol(off, CompleteSymDenotation(_, owner, name, flags, info, privateWithin)) {
+  def newSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type, privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
+    new Symbol(coord, CompleteSymDenotation(_, owner, name, flags, info, privateWithin)) {
       type ThisName = N
     }
 
@@ -62,9 +62,9 @@ trait Symbols { this: Context =>
       optSelfType: Type = NoType,
       decls: Scope = newScope,
       assocFile: AbstractFile = null,
-      off: Offset = NoOffset)
+      coord: Coord = NoCoord)
   =
-    new ClassSymbol(off, new CompleteClassDenotation(
+    new ClassSymbol(coord, new CompleteClassDenotation(
       _, owner, name, flags, parents, privateWithin, optSelfType, decls, assocFile)(this))
 
   def newModuleSymbols(
@@ -76,15 +76,15 @@ trait Symbols { this: Context =>
       privateWithin: Symbol = NoSymbol,
       decls: Scope = newScope,
       assocFile: AbstractFile = null,
-      off: Offset = NoOffset): (TermSymbol, ClassSymbol)
+      coord: Coord = NoCoord): (TermSymbol, ClassSymbol)
   = {
     val module = newLazySymbol(
       owner, name, flags | ModuleCreationFlags,
-      new ModuleCompleter(condensed), off)
+      new ModuleCompleter(condensed), coord)
     val modcls = newClassSymbol(
       owner, name.toTypeName, classFlags | ModuleClassCreationFlags, parents, privateWithin,
       optSelfType = TermRef(owner.thisType, module),
-      decls, assocFile, off)
+      decls, assocFile, coord)
     module.denot.asInstanceOf[LazySymDenotation].info =
       TypeRef(owner.thisType, modcls)
     (module, modcls)
@@ -105,11 +105,11 @@ trait Symbols { this: Context =>
     }
   }
 
-  def newLocalDummy(cls: Symbol, off: Offset = NoOffset) =
+  def newLocalDummy(cls: Symbol, coord: Coord = NoCoord) =
     newSymbol(cls, nme.localDummyName(cls), EmptyFlags, NoType)
 
-  def newImportSymbol(expr: TypedTree, off: Offset = NoOffset) =
-    newSymbol(NoSymbol, nme.IMPORT, EmptyFlags, ImportType(expr), off = off)
+  def newImportSymbol(expr: TypedTree, coord: Coord = NoCoord) =
+    newSymbol(NoSymbol, nme.IMPORT, EmptyFlags, ImportType(expr), coord = coord)
 
   def requiredPackage(path: PreName): TermSymbol =
     base.staticRef(path.toTermName).requiredSymbol(_.isPackage).asTerm
@@ -125,7 +125,7 @@ object Symbols {
 
   /** A Symbol represents a Scala definition/declaration or a package.
    */
-  class Symbol(val offset: Offset, denotf: Symbol => SymDenotation) extends DotClass {
+  class Symbol(val coord: Coord, denotf: Symbol => SymDenotation) extends DotClass {
 
     type ThisName <: Name
 
@@ -197,7 +197,7 @@ object Symbols {
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
-  class ClassSymbol(off: Offset, denotf: ClassSymbol => ClassDenotation) extends Symbol(off, s => denotf(s.asClass)) {
+  class ClassSymbol(coord: Coord, denotf: ClassSymbol => ClassDenotation) extends Symbol(coord, s => denotf(s.asClass)) {
 
     type ThisName = TypeName
 
@@ -227,11 +227,11 @@ object Symbols {
     }
   }
 
-  class ErrorSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(NoOffset, sym => underlying.denot) {
+  class ErrorSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(NoCoord, sym => underlying.denot) {
     type ThisName = underlying.ThisName
   }
 
-  object NoSymbol extends Symbol(NoOffset, sym => NoDenotation) {
+  object NoSymbol extends Symbol(NoCoord, sym => NoDenotation) {
     override def exists = false
   }
 
@@ -243,12 +243,12 @@ object Symbols {
         flags: FlagSet = sym.flags,
         privateWithin: Symbol = sym.privateWithin,
         info: Type = sym.info,
-        off: Offset = sym.offset): Symbol =
+        coord: Coord = sym.coord): Symbol =
       if (sym.isClass) {
         assert(info eq sym.info)
-        new ClassCopier(sym.asClass).copy(owner, name.asTypeName, flags, privateWithin = privateWithin, off = off)
+        new ClassCopier(sym.asClass).copy(owner, name.asTypeName, flags, privateWithin = privateWithin, coord = coord)
       } else
-        ctx.newSymbol(owner, name, flags, info, privateWithin, sym.offset)
+        ctx.newSymbol(owner, name, flags, info, privateWithin, sym.coord)
   }
 
   implicit class ClassCopier(cls: ClassSymbol)(implicit ctx: Context) {
@@ -262,8 +262,8 @@ object Symbols {
         selfType: Type = cls.selfType,
         decls: Scope = cls.decls,
         associatedFile: AbstractFile = cls.associatedFile,
-        off: Offset = cls.offset) =
-      ctx.newClassSymbol(owner, name, flags, parents, privateWithin, selfType, decls, associatedFile, off)
+        coord: Coord = cls.coord) =
+      ctx.newClassSymbol(owner, name, flags, parents, privateWithin, selfType, decls, associatedFile, coord)
   }
 
   implicit def defn(implicit ctx: Context): Definitions = ctx.definitions
