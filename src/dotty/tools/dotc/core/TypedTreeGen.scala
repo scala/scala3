@@ -142,12 +142,10 @@ object TypedTrees {
         case tp: PolyType =>
           val paramBounds = (tp.paramNames zip tp.paramBounds).toMap
           def typeParam(name: TypeName): TypeSymbol =
-            ctx.newLazySymbol(sym, name, TypeParam, typeParamCompleter)
-          def typeParamCompleter = new SymCompleter {
-            def complete(denot: LazySymDenotation) =
+            ctx.newLazySymbol(sym, name, TypeParam, { denot =>
               denot.info = new InstPolyMap(tp, tparamRefs) apply
                 paramBounds(denot.symbol.asType.name)
-          }
+            })
           lazy val tparams = tp.paramNames map typeParam
           lazy val tparamRefs = tparams map (_.typeConstructor)
          (tparams, tp.instantiate(tparamRefs))

@@ -75,7 +75,7 @@ object SymDenotations {
     private[this] var _flags: FlagSet = initFlags
 
     /** The flag set */
-    def flags: FlagSet = { ensureLoaded(); _flags }
+    def flags: FlagSet = { ensureCompleted(); _flags }
 
     /** Update the flag set */
     private[core] def flags_=(flags: FlagSet): Unit = { _flags = flags }
@@ -109,22 +109,13 @@ object SymDenotations {
 
 // ----- completion ------------------------------
 
-    // The following 4 members are overridden by instances of isLazy
-
-    /** The denotation is loaded: flags and privateWithin are fully defined. */
-    def isLoaded = true
+    // The following 2 members are overridden by instances of isLazy
 
     /** The denotation is completed: all attributes are fully defined */
     def isCompleted = true
 
-    /** Try to load denotation. May throw `CyclicReference`. */
-    protected[core] def tryLoad(): Unit = unsupported("tryLoad")
-
     /** Try to complete denotation. May throw `CyclicReference`. */
     protected[core] def tryComplete(): Unit = unsupported("tryComplete")
-
-    /** Make sure denotation is loaded */
-    final def ensureLoaded() = if (!isLoaded) tryLoad()
 
     /** Make sure denotation is completed */
     final def ensureCompleted() = if (!isCompleted) tryComplete()
@@ -544,14 +535,13 @@ object SymDenotations {
 
     private[this] var _typeParams: List[TypeSymbol] = _
 
-    /** The type parameters of this class. Loads the class but does not complete it. */
+    /** The type parameters of this class */
     override final def typeParams(implicit ctx: Context): List[TypeSymbol] = {
       val tparams = _typeParams
       if (tparams != null) tparams else computeTypeParams
     }
 
-    /** The symbols defined in this class when the class is loaded but
-     *  not yet completed.
+    /** The symbols defined in this class when the class is not yet completed.
      */
     protected def preCompleteDecls: Scope
 
@@ -892,8 +882,8 @@ object SymDenotations {
 
     final def parents: List[TypeRef] = { if (_parents == null) tryComplete(); _parents }
     def selfType: Type               = { if (_selfType == null) tryComplete(); _selfType }
-    final def preCompleteDecls       = { if (_decls == null) tryLoad(); _decls }
-    final def decls: Scope           = { if (_parents == null) tryComplete(); _decls }
+    final def preCompleteDecls       = { if (_decls == null) tryComplete(); _decls }
+    final def decls: Scope           = { ensureCompleted(); _decls }
       // cannot check on decls because decls might be != null even if class is not completed
 
     final override def exists(implicit ctx: Context) = { ensureCompleted(); _parents != null }
@@ -922,66 +912,39 @@ object SymDenotations {
     protected def completer: Completer[Denot]
     protected def completer_= (c: Completer[Denot])
 
-    override def isLoaded = _privateWithin != null
     override def isCompleted = completer == null
-
-    override protected[core] def tryLoad(): Unit =
-      try {
-        if (flags is Locked) throw new CyclicReference(symbol)
-        setFlag(Locked)
-        completer.load(this)
-      } finally {
-        flags &~= Locked
-      }
 
     override protected[core] def tryComplete(): Unit =
       try {
         if (flags is Locked) throw new CyclicReference(symbol)
         setFlag(Locked)
         val c = completer
+        if (c == null) throw new CompletionError(this)
         completer = null // set completer to null to avoid space leaks
                          // and to make any subsequent completion attempt a CompletionError
-        c.complete(this)
-      } catch {
-        case _: NullPointerException => throw new CompletionError(this)
+        c(this)
       } finally {
         flags &~= Locked
       }
 
     private[this] var _privateWithin: Symbol = _
-    def privateWithin: Symbol = { if (_privateWithin == null) tryLoad(); _privateWithin }
+    def privateWithin: Symbol = { if (_privateWithin == null) tryComplete(); _privateWithin }
     protected[core] def privateWithin_=(sym: Symbol): Unit = { _privateWithin = sym }
   }
 
-  abstract class Completer[Denot <: SymDenotation] extends DotClass {
-    /** Load symbol, setting flags and privateWithin, and typeParams for classes
-     *  By default same as complete but can be overridden
-     */
-    def load(denot: Denot): Unit = complete(denot)
-
-    /** Complete symbol, setting all its properties */
-    def complete(denot: Denot): Unit
-  }
-
+  /** When called, complete denotation, setting all its properties */
+  type Completer[Denot <: SymDenotation] = Denot => Unit
   type SymCompleter = Completer[LazySymDenotation]
   type ClassCompleter = Completer[LazyClassDenotation]
 
-  class ModuleCompleter(cctx: CondensedContext) extends Completer[LazySymDenotation] {
+  class ModuleCompleter(cctx: CondensedContext) extends SymCompleter {
     implicit protected def ctx: Context = cctx
-    def classDenot(denot: LazySymDenotation) =
-      denot.moduleClass.denot.asInstanceOf[LazyClassDenotation]
-    def copyLoadedFields(denot: LazySymDenotation, from: LazyClassDenotation) = {
+    def apply(denot: LazySymDenotation): Unit = {
+      val from = denot.moduleClass.denot.asInstanceOf[LazyClassDenotation]
       denot.setFlag(from.flags.toTermFlags & RetainedModuleFlags)
       denot.privateWithin = from.privateWithin
-    }
-    def copyCompletedFields(denot: LazySymDenotation, from: LazyClassDenotation) = {
-      copyLoadedFields(denot, from)
       denot.annotations = from.annotations filter (_.appliesToModule)
     }
-    override def load(denot: LazySymDenotation): Unit =
-      copyLoadedFields(denot, classDenot(denot))
-    def complete(denot: LazySymDenotation): Unit =
-      copyCompletedFields(denot, classDenot(denot))
   }
 
   /** A completer for missing references */
@@ -996,7 +959,7 @@ object SymDenotations {
       denot.decls = EmptyScope
     }
 
-    def complete(denot: LazyClassDenotation): Unit = {
+    def apply(denot: LazyClassDenotation): Unit = {
       val sym = denot.symbol
       val file = denot.associatedFile
       val (location, src) =

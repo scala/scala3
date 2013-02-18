@@ -422,13 +422,8 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
     atReadPos(denot.symbol.coord.toIndex, parseToCompletion)
   }
 
-  private object symUnpickler extends SymCompleter {
-    override def complete(denot: LazySymDenotation): Unit = completeLocal(denot)
-  }
-
-  private object classUnpickler extends ClassCompleter {
-    override def complete(denot: LazyClassDenotation): Unit = completeLocal(denot)
-  }
+  val symUnpickler: SymCompleter = completeLocal
+  val classUnpickler: ClassCompleter = completeLocal
 
   /** Convert
    *    tp { type name = sym } forSome { sym >: L <: H }

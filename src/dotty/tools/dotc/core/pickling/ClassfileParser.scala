@@ -158,41 +158,39 @@ class ClassfileParser(
       cctx.newLazySymbol(getOwner(jflags), name, sflags, memberCompleter, start).entered
   }
 
-  object memberCompleter extends SymCompleter {
-    def complete(denot: LazySymDenotation) = {
-      val oldbp = in.bp
-      try {
-        in.bp = denot.symbol.coord.toIndex
-        val sym = denot.symbol
-        val jflags = in.nextChar
-        val isEnum  = (jflags & JAVA_ACC_ENUM) != 0
-        val name = pool.getName(in.nextChar)
-        val info = pool.getType(in.nextChar)
+  val memberCompleter: SymCompleter = { denot =>
+    val oldbp = in.bp
+    try {
+      in.bp = denot.symbol.coord.toIndex
+      val sym = denot.symbol
+      val jflags = in.nextChar
+      val isEnum = (jflags & JAVA_ACC_ENUM) != 0
+      val name = pool.getName(in.nextChar)
+      val info = pool.getType(in.nextChar)
 
-        denot.info = if (isEnum) ConstantType(Constant(sym)) else info
-        if (name == nme.CONSTRUCTOR)
-          // if this is a non-static inner class, remove the explicit outer parameter
-          innerClasses.get(currentClassName) match {
-            case Some(entry) if !isStatic(entry.jflags) =>
-              val mt @ MethodType(paramnames, paramtypes) = info
-              denot.info = mt.derivedMethodType(paramnames.tail, paramtypes.tail, mt.resultType)
+      denot.info = if (isEnum) ConstantType(Constant(sym)) else info
+      if (name == nme.CONSTRUCTOR)
+        // if this is a non-static inner class, remove the explicit outer parameter
+        innerClasses.get(currentClassName) match {
+          case Some(entry) if !isStatic(entry.jflags) =>
+            val mt @ MethodType(paramnames, paramtypes) = info
+            denot.info = mt.derivedMethodType(paramnames.tail, paramtypes.tail, mt.resultType)
 
-          }
-        setPrivateWithin(denot, jflags)
-        denot.info = parseAttributes(sym, info)
-
-        if ((denot is Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
-          denot.info = arrayToRepeated(denot.info)
-
-        // seal java enums
-        if (isEnum) {
-          val enumClass = sym.owner.linkedClass
-          if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
-          enumClass.addAnnotation(Annotation.makeChild(sym))
         }
-      } finally {
-        in.bp = oldbp
+      setPrivateWithin(denot, jflags)
+      denot.info = parseAttributes(sym, info)
+
+      if ((denot is Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
+        denot.info = arrayToRepeated(denot.info)
+
+      // seal java enums
+      if (isEnum) {
+        val enumClass = sym.owner.linkedClass
+        if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
+        enumClass.addAnnotation(Annotation.makeChild(sym))
       }
+    } finally {
+      in.bp = oldbp
     }
   }
 
@@ -315,15 +313,13 @@ class ClassfileParser(
 
     var tparams = classTParams
 
-    class TypeParamCompleter(start: Int) extends SymCompleter {
-      override def complete(denot: LazySymDenotation): Unit = {
-        val savedIndex = index
-        try {
-          index = start
-          denot.info = sig2typeBounds(tparams, skiptvs = false)
-        } finally {
-          index = savedIndex
-        }
+    def typeParamCompleter(start: Int): SymCompleter = { denot =>
+      val savedIndex = index
+      try {
+        index = start
+        denot.info = sig2typeBounds(tparams, skiptvs = false)
+      } finally {
+        index = savedIndex
       }
     }
 
@@ -335,7 +331,7 @@ class ClassfileParser(
       while (sig(index) != '>') {
         val tpname = subName(':'.==).toTypeName
         val s = cctx.newLazySymbol(
-          owner, tpname, Flags.TypeParam, new TypeParamCompleter(index), indexCoord(index))
+          owner, tpname, Flags.TypeParam, typeParamCompleter(index), indexCoord(index))
         tparams = tparams + (tpname -> s)
         sig2typeBounds(tparams, skiptvs = true)
         newTParams += s
