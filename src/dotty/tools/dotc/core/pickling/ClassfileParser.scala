@@ -125,11 +125,7 @@ class ClassfileParser(
       instanceScope.lookup(nme.CONSTRUCTOR) == NoSymbol && !(sflags is Flags.Interface)
 
     if (needsConstructor)
-      instanceScope enter
-        cctx.newSymbol(
-            classRoot.symbol,
-            nme.CONSTRUCTOR, Flags.EmptyFlags,
-            MethodType(Nil, Nil)(_ => classRoot.typeConstructor))
+      instanceScope enter cctx.newDefaultConstructor(classRoot.symbol.asClass)
 
     classInfo = parseAttributes(classRoot.symbol, classInfo)
     assignClassFields(classRoot, classInfo, classRoot.typeConstructor)

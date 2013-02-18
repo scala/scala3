@@ -140,15 +140,10 @@ object TypedTrees {
 
       val (tparams, mtp) = sym.info match {
         case tp: PolyType =>
-          val paramBounds = (tp.paramNames zip tp.paramBounds).toMap
-          def typeParam(name: TypeName): TypeSymbol =
-            ctx.newLazySymbol(sym, name, TypeParam, { denot =>
-              denot.info = new InstPolyMap(tp, tparamRefs) apply
-                paramBounds(denot.symbol.asType.name)
-            })
-          lazy val tparams = tp.paramNames map typeParam
-          lazy val tparamRefs = tparams map (_.typeConstructor)
-         (tparams, tp.instantiate(tparamRefs))
+          def paramBounds(trefs: List[TypeRef]): List[Type] =
+            tp.paramBounds map new InstPolyMap(tp, trefs)
+          val tparams = ctx.newTypeParams(sym, tp.paramNames, EmptyFlags, paramBounds)
+          (tparams, tp.instantiate(tparams map (_.typeConstructor)))
         case tp => (Nil, tp)
       }
 
@@ -177,7 +172,7 @@ object TypedTrees {
       val parents = cls.info.parents map (TypeTree(_))
       val selfType =
         if (cls.selfType eq cls.typeConstructor) EmptyValDef
-        else ValDef(ctx.newSymbol(cls, nme.THIS, SyntheticArtifact, cls.selfType))
+        else ValDef(ctx.newSelfSym(cls))
       def isOwnTypeParamAccessor(stat: TypedTree) =
         stat.symbol.owner == cls && (stat.symbol is TypeParam)
       val (tparamAccessors, rest) = body partition isOwnTypeParamAccessor
