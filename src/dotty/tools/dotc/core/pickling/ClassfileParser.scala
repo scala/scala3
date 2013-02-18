@@ -5,6 +5,7 @@ package pickling
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, UnPickler._, Constants._, Trees._, Annotations._, Positions._
+import TypedTrees._
 import java.io.{ File, IOException }
 import java.lang.Integer.toHexString
 import scala.collection.{ mutable, immutable }
@@ -36,7 +37,6 @@ class ClassfileParser(
   def srcfile = srcfile0
 
   private def currentIsTopLevel = !(classRoot.name contains '$')
-  private val mk = makeTypedTree
 
   private def mismatchError(c: Symbol) = {
     throw new IOException("class file '%s' has location not matching its contents: contains ".format(in.file) + c)
@@ -399,7 +399,7 @@ class ClassfileParser(
     for (i <- 0 until nargs) {
       val name = pool.getName(in.nextChar)
       parseAnnotArg(skip) match {
-        case Some(arg) => argbuf += mk.NamedArg(name, arg)
+        case Some(arg) => argbuf += tpd.NamedArg(name, arg)
         case None => hasError = !skip
       }
     }
@@ -444,8 +444,8 @@ class ClassfileParser(
         case tpnme.BridgeATTR =>
           sym.setFlag(Flags.Bridge)
         case tpnme.DeprecatedATTR =>
-          val msg = mk.Literal(Constant("see corresponding Javadoc for more information."))
-          val since = mk.Literal(Constant(""))
+          val msg = tpd.Literal(Constant("see corresponding Javadoc for more information."))
+          val since = tpd.Literal(Constant(""))
           sym.addAnnotation(Annotation(defn.DeprecatedAnnot, msg, since))
         case tpnme.ConstantValueATTR =>
           val c = pool.getConstant(in.nextChar)

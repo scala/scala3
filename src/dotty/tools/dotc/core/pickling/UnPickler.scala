@@ -9,7 +9,7 @@ import java.lang.Double.longBitsToDouble
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
-import Trees._, Positions._
+import Trees._, Positions._, TypedTrees._
 import io.AbstractFile
 import scala.reflect.internal.pickling.PickleFormat._
 import scala.collection.{ mutable, immutable }
@@ -95,8 +95,6 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
 
   /** A map from refinement classes to their associated refinement types */
   private val refinementTypes = mutable.HashMap[Symbol, RefinedType]()
-
-  private val mk = makeTypedTree
 
   protected def errorBadSignature(msg: String) = {
     val ex = new BadSignature(
@@ -637,7 +635,7 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
    */
   protected def readAnnotArg(i: Int): TypedTree = bytes(index(i)) match {
     case TREE => at(i, readTree)
-    case _ => mk.Literal(at(i, readConstant))
+    case _ => tpd.Literal(at(i, readConstant))
   }
 
   /** Read a ClassfileAnnotArg (argument to a classfile annotation)
@@ -646,8 +644,8 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
     readByte() // skip the `annotargarray` tag
     val end = readNat() + readIndex
     // array elements are trees representing instances of scala.annotation.Annotation
-    mk.ArrayValue(
-      mk.TypeTree(defn.AnnotationClass.typeConstructor),
+    tpd.ArrayValue(
+      tpd.TypeTree(defn.AnnotationClass.typeConstructor),
       until(end, () => readClassfileAnnotArg(readNat())))
   }
 
@@ -675,11 +673,11 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
         if (isNameEntry(argref)) {
           val name = at(argref, readName)
           val arg = readClassfileAnnotArg(readNat())
-          mk.NamedArg(name, arg)
+          tpd.NamedArg(name, arg)
         } else readAnnotArg(argref)
       }
     }
-    mk.New(atp, args.toList)
+    tpd.New(atp, args.toList)
   }
 
   /** Read an annotation and as a side effect store it into

@@ -239,6 +239,9 @@ object SymDenotations {
     /** Is this the constructor of a trait or a class */
     def isConstructor = name.isConstructorName
 
+    /** Is this a local template dummmy? */
+    def isLocalDummy: Boolean = name.isLocalDummyName
+
     /** Does this symbol denote the primary constructor of its enclosing class? */
     final def isPrimaryConstructor(implicit ctx: Context) =
       isConstructor && owner.primaryConstructor == this

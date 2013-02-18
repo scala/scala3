@@ -12,7 +12,7 @@ import Contexts._
 import Annotations._
 import SymDenotations._
 import Denotations._
-import Periods._
+import Periods._, Trees._
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import collection.mutable
 
@@ -460,7 +460,8 @@ object Types {
       if (args.isEmpty) this else recur(this, typeParams, args)
     }
 
-    final def appliedTo(args: Type*)(implicit ctx: Context): Type = appliedTo(args.toList)
+    final def appliedTo(arg: Type)(implicit ctx: Context): Type = appliedTo(arg :: Nil)
+    final def appliedTo(arg1: Type, arg2: Type)(implicit ctx: Context): Type = appliedTo(arg1 :: arg2 :: Nil)
 
     final def objToAny(implicit ctx: Context) =
       if (typeSymbol == defn.ObjectClass && !ctx.phase.erasedTypes) defn.AnyType else this
@@ -831,7 +832,7 @@ object Types {
       unique(new CachedRefinedType(parent, name, infof))
 
     def apply(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType =
-      apply(parent, name, Function const info: (RefinedType => Type))
+      apply(parent, name, scala.Function const info: (RefinedType => Type))
   }
 
   // --- AndType/OrType ---------------------------------------------------------------
@@ -1094,7 +1095,7 @@ object Types {
     }
   }
 
-  // ----- AnnotatedTypes -----------------------------------------------------------
+  // ----- Annotated and Import types -----------------------------------------------
 
   case class AnnotatedType(annots: List[Annotation], tpe: Type) extends UncachedProxyType {
     override def underlying(implicit ctx: Context): Type = tpe
@@ -1108,6 +1109,8 @@ object Types {
       if (annots.isEmpty) underlying
       else AnnotatedType(annots, underlying)
   }
+
+  case class ImportType(expr: TypedTree) extends UncachedGroundType
 
   // Special type objects ------------------------------------------------------------
 

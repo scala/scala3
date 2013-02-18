@@ -130,6 +130,9 @@ trait TypeOps { this: Context =>
         }
     }
 
+  final def glb(tps: List[Type]): Type =
+    (defn.AnyType /: tps)(glb)
+
   def lub(tp1: Type, tp2: Type): Type =
     if (tp1 eq tp2) tp1
     else if (tp1.isWrong) tp1
@@ -143,6 +146,9 @@ trait TypeOps { this: Context =>
         else OrType(tp1, tp2)
       }
     }
+
+  final def lub(tps: List[Type]): Type =
+    (defn.NothingType /: tps)(lub)
 
   /** Merge `t1` into `tp2` if t1 is a subtype of some part of tp2.
    */

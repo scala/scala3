@@ -11,7 +11,7 @@ import Decorators._
 import Symbols._
 import Contexts._
 import SymDenotations._
-import Types._, Annotations._, Positions._
+import Types._, Annotations._, Positions._, StdNames._, Trees._
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
@@ -104,6 +104,12 @@ trait Symbols { this: Context =>
       case name: TypeName => ctx.newLazyClassSymbol(owner, name, EmptyFlags, stub, file)
     }
   }
+
+  def newLocalDummy(cls: Symbol, off: Offset = NoOffset) =
+    newSymbol(cls, nme.localDummyName(cls), EmptyFlags, NoType)
+
+  def newImportSymbol(expr: TypedTree, off: Offset = NoOffset) =
+    newSymbol(NoSymbol, nme.IMPORT, EmptyFlags, ImportType(expr), off = off)
 
   def requiredPackage(path: PreName): TermSymbol =
     base.staticRef(path.toTermName).requiredSymbol(_.isPackage).asTerm

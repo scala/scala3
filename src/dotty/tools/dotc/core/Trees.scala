@@ -1,15 +1,14 @@
 package dotty.tools.dotc.core
 
 import Types._, Names._, Flags._, Positions._, Contexts._, Constants._, SymDenotations._, Symbols._
-import Denotations._
+import Denotations._, StdNames._
 
 object Trees {
 
-  abstract class Modifiers[T] {
-    val flags: FlagSet
-    val privateWithin: Name
-    val annotations: List[Tree[T]]
-  }
+  case class Modifiers[T](
+    flags: FlagSet,
+    privateWithin: TypeName = tpnme.EMPTY,
+    annotations: List[Tree[T]] = Nil)
 
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Types.Type` or `missing.Type`.
@@ -57,8 +56,7 @@ object Trees {
     def isType: Boolean = false
     def isTerm: Boolean = false
     def isDef: Boolean = false
-
-    def withPosition(pos: Position) = ???
+    def isEmpty: Boolean = false
   }
 
   class UnAssignedTypeException[T](tree: Tree[T]) extends RuntimeException {
@@ -209,7 +207,7 @@ object Trees {
   }
 
   /** name = arg, outside a parameter list */
-  case class Assign[T](name: Name, arg: Tree[T])(implicit val pos: Position)
+  case class Assign[T](lhs: Tree[T], rhs: Tree[T])(implicit val pos: Position)
     extends TermTree[T] {
     type ThisTree[T] = Assign[T]
   }
@@ -236,6 +234,12 @@ object Trees {
   case class Match[T](selector: Tree[T], cases: List[CaseDef[T]])(implicit val pos: Position)
     extends TermTree[T] {
     type ThisTree[T] = Match[T]
+  }
+
+  /** case pat if guard => body */
+  case class CaseDef[T](pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit val pos: Position)
+    extends Tree[T] {
+    type ThisTree[T] = CaseDef[T]
   }
 
   /** return expr
@@ -322,12 +326,6 @@ object Trees {
     type ThisTree[T] = Bind[T]
   }
 
-  /** case pat if guard => body */
-  case class CaseDef[T](pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit val pos: Position)
-    extends Tree[T] {
-    type ThisTree[T] = CaseDef[T]
-  }
-
   /** tree_1 | ... | tree_n */
   case class Alternative[T](trees: List[Tree[T]])(implicit val pos: Position)
     extends Tree[T] {
@@ -340,22 +338,22 @@ object Trees {
     type ThisTree[T] = UnApply[T]
   }
 
-  /** mods val name: rtpe = rhs */
-  case class ValDef[T](mods: Modifiers[T], name: Name, rtpe: Tree[T], rhs: Tree[T])(implicit val pos: Position)
+  /** mods val name: tpt = rhs */
+  case class ValDef[T](mods: Modifiers[T], name: Name, tpt: Tree[T], rhs: Tree[T])(implicit val pos: Position)
     extends DefTree[T] {
     type ThisTree[T] = ValDef[T]
   }
 
-  /** mods def name[tparams](vparams_1)...(vparams_n): rtpe = rhs */
-  case class DefDef[T](mods: Modifiers[T], name: Name, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], rtpe: Tree[T], rhs: Tree[T])(implicit val pos: Position)
+  /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
+  case class DefDef[T](mods: Modifiers[T], name: Name, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])(implicit val pos: Position)
     extends DefTree[T] {
     type ThisTree[T] = DefDef[T]
   }
 
-  class ImplicitDefDef[T](mods: Modifiers[T], name: Name, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], rtpe: Tree[T], rhs: Tree[T])
-    (implicit pos: Position) extends DefDef[T](mods, name, tparams, vparamss, rtpe, rhs) {
-    override def copy[T](mods: Modifiers[T], name: Name, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], rtpe: Tree[T], rhs: Tree[T])(implicit pos: Position) =
-      new ImplicitDefDef[T](mods, name, tparams, vparamss, rtpe, rhs)
+  class ImplicitDefDef[T](mods: Modifiers[T], name: Name, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])
+    (implicit pos: Position) extends DefDef[T](mods, name, tparams, vparamss, tpt, rhs) {
+    override def copy[T](mods: Modifiers[T], name: Name, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])(implicit pos: Position) =
+      new ImplicitDefDef[T](mods, name, tparams, vparamss, tpt, rhs)
   }
 
   /** mods type name = rhs   or
@@ -400,11 +398,32 @@ object Trees {
     def forwardTo = arg
   }
 
+  trait AlwaysEmpty[T] extends Tree[T] {
+    override val pos = NoPosition
+    override def tpe = unsupported("tpe")
+    override def withType(tpe: Type) = unsupported("withType")
+    override def isEmpty: Boolean = true
+  }
+
   /** A missing tree */
-  case class EmptyTree[T]()
-    extends Tree[T] {
+  abstract case class EmptyTree[T]()
+    extends Tree[T] with AlwaysEmpty[T] {
     type ThisTree[T] = EmptyTree[T]
-    val pos = NoPosition
+  }
+
+  private object theEmptyTree extends EmptyTree[Nothing]
+
+  object EmptyTree {
+    def apply[T]: EmptyTree[T] = theEmptyTree.asInstanceOf
+  }
+
+  class EmptyValDef[T] extends ValDef[T](
+    Modifiers[T](Private), nme.WILDCARD, EmptyTree[T], EmptyTree[T])(NoPosition) with AlwaysEmpty[T]
+
+  private object theEmptyValDef extends EmptyValDef[Nothing]
+
+  object EmptyValDef {
+    def apply[T]: EmptyValDef[T] = theEmptyValDef.asInstanceOf
   }
 
 // ----- Tree cases that exist in untyped form only ------------------
@@ -419,39 +438,8 @@ object Trees {
     extends DefTree[Nothing] {
   }
 
-  // this will probably to its own file at some point.
-  class MakeTypedTree(implicit val ctx: Context) extends AnyVal {
-    implicit def pos = NoPosition
-    def Ident(tp: NamedType) =
-      Trees.Ident(tp.name).withType(tp)
-    def Select(pre: TypedTree, tp: NamedType) =
-      Trees.Select(pre, tp.name).withType(tp)
-    def Apply(fn: TypedTree, args: List[TypedTree]) = {
-      val fntpe @ MethodType(pnames, ptypes) = fn.tpe
-      assert(sameLength(ptypes, args))
-      Trees.Apply(fn, args).withType(fntpe.instantiate(args map (_.tpe)))
-    }
-    def TypeTree(tp: Type) =
-      Trees.TypeTree().withType(tp)
-    def New(tp: Type): TypedTree =
-      Trees.New(TypeTree(tp))
-    def Literal(const: Constant) =
-      Trees.Literal(const).withType(const.tpe)
-    def ArrayValue(elemtpt: TypedTree, elems: List[TypedTree]) =
-      Trees.ArrayValue(elemtpt, elems).withType(defn.ArrayType.appliedTo(elemtpt.tpe))
-    def NamedArg[T](name: Name, arg: TypedTree) =
-      Trees.NamedArg(name, arg).withType(arg.tpe)
-
-    // ----------------------------------------------------------
-
-    def New(tp: Type, args: List[TypedTree]): TypedTree =
-      Apply(
-        Select(
-          New(tp),
-          TermRef(tp.normalizedPrefix, tp.typeSymbol.primaryConstructor.asTerm)),
-        args)
+  abstract class TreeAccumulator[T, U] extends ((T, Tree[U]) => T) {
+    def apply(x: T, tree: Tree[U]): T
+    def foldOver(x: T, tree: Tree[U]): T = ???
   }
-
-  def makeTypedTree(implicit ctx: Context) = new MakeTypedTree()(ctx)
-
 }

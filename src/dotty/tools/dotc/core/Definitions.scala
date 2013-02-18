@@ -111,6 +111,7 @@ class Definitions(implicit ctx: Context) {
   lazy val RepeatedParamClass     = specialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, AnyRefType, SeqType)
 
   // fundamental reference classes
+  lazy val PairClass                    = requiredClass("dotty.Pair")
   lazy val PartialFunctionClass         = requiredClass("scala.PartialFunction")
   lazy val AbstractPartialFunctionClass = requiredClass("scala.runtime.AbstractPartialFunction")
   lazy val SymbolClass                  = requiredClass("scala.Symbol")
@@ -127,6 +128,16 @@ class Definitions(implicit ctx: Context) {
   lazy val ClassfileAnnotationClass     = requiredClass("scala.annotation.ClassfileAnnotation")
   lazy val StaticAnnotationClass        = requiredClass("scala.annotation.StaticAnnotation")
 
+  // Annotation classes
+  lazy val AliasAnnot = requiredClass("dotty.annotation.internal.Alias")
+  lazy val ChildAnnot = requiredClass("dotty.annotation.internal.Alias")
+  lazy val ScalaSignatureAnnot = requiredClass("scala.reflect.ScalaSignature")
+  lazy val ScalaLongSignatureAnnot = requiredClass("scala.reflect.ScalaLongSignature")
+  lazy val DeprecatedAnnot = requiredClass("scala.deprecated")
+  lazy val AnnotationDefaultAnnot = requiredClass("dotty.runtime.AnnotationDefault")
+  lazy val ThrowsAnnot = requiredClass("scala.throws")
+
+  // Derived types
   lazy val AnyType: Type = AnyClass.typeConstructor
   lazy val AnyValType: Type = AnyValClass.typeConstructor
   lazy val ObjectType: Type = ObjectClass.typeConstructor
@@ -146,15 +157,8 @@ class Definitions(implicit ctx: Context) {
   lazy val LongType: Type = LongClass.typeConstructor
   lazy val FloatType: Type = FloatClass.typeConstructor
   lazy val DoubleType: Type = DoubleClass.typeConstructor
+  lazy val PairType: Type = PairClass.typeConstructor
   lazy val JavaRepeatedParamType = JavaRepeatedParamClass.typeConstructor
-
-  lazy val AliasAnnot = requiredClass("dotty.annotation.internal.Alias")
-  lazy val ChildAnnot = requiredClass("dotty.annotation.internal.Alias")
-  lazy val ScalaSignatureAnnot = requiredClass("scala.reflect.ScalaSignature")
-  lazy val ScalaLongSignatureAnnot = requiredClass("scala.reflect.ScalaLongSignature")
-  lazy val DeprecatedAnnot = requiredClass("scala.deprecated")
-  lazy val AnnotationDefaultAnnot = requiredClass("dotty.runtime.AnnotationDefault")
-  lazy val ThrowsAnnot = requiredClass("scala.throws")
 
   def ClassType(arg: Type)(implicit ctx: Context) = {
     val ctype = ClassClass.typeConstructor
@@ -167,6 +171,9 @@ class Definitions(implicit ctx: Context) {
     //  - .owner: the ModuleClassSymbol of the enumeration (object E)
     //  - .linkedClassOfClass: the ClassSymbol of the enumeration (class E)
     sym.owner.linkedClass.typeConstructor
+
+  def FunctionType(args: List[Type], resultType: Type) =
+    FunctionClass(args.length).typeConstructor.appliedTo(args :+ resultType)
 
   // ----- Class sets ---------------------------------------------------
 
