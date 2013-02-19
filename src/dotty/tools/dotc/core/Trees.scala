@@ -66,7 +66,7 @@ object Trees {
       val tree =
         (if (_tpe == null ||
             (_tpe.asInstanceOf[AnyRef] eq tpe.asInstanceOf[AnyRef])) this
-         else clone).asInstanceOf[TypedTree]
+         else clone).asInstanceOf[Tree[Type]]
       tree._tpe = tpe
       tree.asInstanceOf[ThisTree[Type]]
     }
@@ -501,7 +501,10 @@ object Trees {
     def apply[T]: EmptyValDef[T] = theEmptyValDef.asInstanceOf
   }
 
-  /** A tree that can be shared without its position polluting containing trees */
+  /** A tree that can be shared without its position
+   *  polluting containing trees. Accumulators and tranformers
+   *  memoize results of shared subtrees
+   */
   case class Shared[T](shared: Tree[T]) extends Tree[T] {
     type ThisTree[T] = Shared[T]
     val pos = NoPosition
@@ -697,11 +700,15 @@ object Trees {
 
   abstract class TreeTransformer[T, C] {
     var sharedMemo: Map[Shared[T], Shared[T]] = Map()
+    type Plugins >: Null
+    def plugins: Plugins = null
+    def finishIdent(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
+    def finishSelect(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def transform(tree: Tree[T], c: C): Tree[T] = tree match {
       case Ident(name) =>
-        tree
+        finishIdent(tree, tree, c, plugins)
       case Select(qualifier, name) =>
-        tree.derivedSelect(transform(qualifier, c), name)
+        finishSelect(tree.derivedSelect(transform(qualifier, c), name), tree, c, plugins)
       case This(qual) =>
         tree
       case Super(qual, mix) =>
@@ -797,7 +804,7 @@ object Trees {
       (trees mapConserve (transformSub(_, c))).asInstanceOf[List[TT]]
   }
 
-  abstract class TreeAccumulator[T, U] extends ((T, Tree[U]) => T) {
+ abstract class TreeAccumulator[T, U] extends ((T, Tree[U]) => T) {
     var sharedMemo: Map[Shared[U], T] = Map()
     def apply(x: T, tree: Tree[U]): T
     def apply(x: T, trees: List[Tree[U]]): T = (x /: trees)(apply)
