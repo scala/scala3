@@ -164,7 +164,7 @@ abstract class SymbolLoader extends ClassCompleter {
    */
   protected def description: String
 
-  override def complete(root: LazyClassDenotation) = {
+  override def apply(root: LazyClassDenotation) = {
     def signalError(ex: Exception) {
       if (ctx.settings.debug.value) ex.printStackTrace()
       val msg = ex.getMessage()

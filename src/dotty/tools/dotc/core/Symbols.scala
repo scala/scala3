@@ -19,6 +19,8 @@ import io.AbstractFile
 /** Creation methods for symbols */
 trait Symbols { this: Context =>
 
+// ---- Fundamental symbol creation methods ----------------------------------
+
   def newLazySymbol[N <: Name](owner: Symbol, name: N, initFlags: FlagSet, completer: SymCompleter, coord: Coord = NoCoord) =
     new Symbol(coord, new LazySymDenotation(_, owner, name, initFlags, completer)) {
       type ThisName = N
@@ -44,9 +46,6 @@ trait Symbols { this: Context =>
       TermRef(owner.thisType, module)
     (module, modcls)
   }
-
-  def newLazyPackageSymbols(owner: Symbol, name: TermName, completer: ClassCompleter) =
-    newLazyModuleSymbols(owner, name, PackageCreationFlags, completer)
 
   def newSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type, privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
     new Symbol(coord, CompleteSymDenotation(_, owner, name, flags, info, privateWithin)) {
@@ -90,13 +89,6 @@ trait Symbols { this: Context =>
     (module, modcls)
   }
 
-  def newPackageSymbols(
-      owner: Symbol,
-      name: TermName,
-      decls: Scope = newScope) =
-   newModuleSymbols(
-     owner, name, PackageCreationFlags, PackageCreationFlags, Nil, NoSymbol, decls)
-
   def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
     def stub = new StubCompleter(ctx.condensed)
     name match {
@@ -105,11 +97,54 @@ trait Symbols { this: Context =>
     }
   }
 
+// ---- Derived symbol creation methods -------------------------------------
+
+  def newLazyPackageSymbols(owner: Symbol, name: TermName, completer: ClassCompleter) =
+    newLazyModuleSymbols(owner, name, PackageCreationFlags, completer)
+
+  def newPackageSymbols(
+      owner: Symbol,
+      name: TermName,
+      decls: Scope = newScope) =
+   newModuleSymbols(
+     owner, name, PackageCreationFlags, PackageCreationFlags, Nil, NoSymbol, decls)
+
   def newLocalDummy(cls: Symbol, coord: Coord = NoCoord) =
     newSymbol(cls, nme.localDummyName(cls), EmptyFlags, NoType)
 
   def newImportSymbol(expr: TypedTree, coord: Coord = NoCoord) =
     newSymbol(NoSymbol, nme.IMPORT, EmptyFlags, ImportType(expr), coord = coord)
+
+  def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
+    newSymbol(cls, nme.CONSTRUCTOR, flags, MethodType(paramNames, paramTypes)(_ => cls.typeConstructor), privateWithin, coord)
+
+  def newDefaultConstructor(cls: ClassSymbol) =
+    newConstructor(cls, EmptyFlags, Nil, Nil)
+
+  def newSelfSym(cls: ClassSymbol) =
+    ctx.newSymbol(cls, nme.THIS, SyntheticArtifact, cls.selfType)
+
+  /** Create new type parameters with given owner, names, and flags.
+   *  @param boundsFn  A function that, given type refs to the newly created
+   *                   parameters returns a list of their bounds.
+   */
+  def newTypeParams(
+    owner: Symbol,
+    names: List[TypeName],
+    flags: FlagSet,
+    boundsFn: List[TypeRef] => List[Type]) = {
+    lazy val tparams: List[TypeSymbol] = names map { name =>
+      newLazySymbol(owner, name, flags | TypeParam, { denot =>
+        denot.info = bounds(denot.symbol.asType)
+      })
+    }
+    lazy val bounds = (tparams zip boundsFn(tparams map (_.typeConstructor))).toMap
+    tparams
+  }
+
+  private val reverseApply = (x: TypeSymbol, f: TypeSymbol => TypeBounds) => f(x)
+
+// ----- Locating predefined symbols ----------------------------------------
 
   def requiredPackage(path: PreName): TermSymbol =
     base.staticRef(path.toTermName).requiredSymbol(_.isPackage).asTerm

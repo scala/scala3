@@ -9,7 +9,7 @@ import java.lang.Double.longBitsToDouble
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
-import Trees._, Positions._, TypedTrees._
+import Positions._, TypedTrees._
 import io.AbstractFile
 import scala.reflect.internal.pickling.PickleFormat._
 import scala.collection.{ mutable, immutable }
@@ -422,13 +422,8 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
     atReadPos(denot.symbol.coord.toIndex, parseToCompletion)
   }
 
-  private object symUnpickler extends SymCompleter {
-    override def complete(denot: LazySymDenotation): Unit = completeLocal(denot)
-  }
-
-  private object classUnpickler extends ClassCompleter {
-    override def complete(denot: LazyClassDenotation): Unit = completeLocal(denot)
-  }
+  val symUnpickler: SymCompleter = completeLocal
+  val classUnpickler: ClassCompleter = completeLocal
 
   /** Convert
    *    tp { type name = sym } forSome { sym >: L <: H }
@@ -625,36 +620,36 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
   protected def readAnnotationRef(): Annotation = at(readNat(), readAnnotation)
 
   //  protected def readModifiersRef(): Modifiers       = at(readNat(), readModifiers)
-  protected def readTreeRef(): TypedTree = at(readNat(), readTree)
+  protected def readTreeRef(): Tree = at(readNat(), readTree)
 
-  protected def readTree(): TypedTree = ???
+  protected def readTree(): Tree = ???
 
   /** Read an annotation argument, which is pickled either
    *  as a Constant or a Tree.
    */
-  protected def readAnnotArg(i: Int): TypedTree = bytes(index(i)) match {
+  protected def readAnnotArg(i: Int): Tree = bytes(index(i)) match {
     case TREE => at(i, readTree)
-    case _ => tpd.Literal(at(i, readConstant))
+    case _ => Literal(at(i, readConstant))
   }
 
   /** Read a ClassfileAnnotArg (argument to a classfile annotation)
    */
-  private def readArrayAnnotArg(): TypedTree = {
+  private def readArrayAnnotArg(): Tree = {
     readByte() // skip the `annotargarray` tag
     val end = readNat() + readIndex
     // array elements are trees representing instances of scala.annotation.Annotation
-    tpd.ArrayValue(
-      tpd.TypeTree(defn.AnnotationClass.typeConstructor),
+    ArrayValue(
+      TypeTree(defn.AnnotationClass.typeConstructor),
       until(end, () => readClassfileAnnotArg(readNat())))
   }
 
-  private def readAnnotInfoArg(): TypedTree = {
+  private def readAnnotInfoArg(): Tree = {
     readByte() // skip the `annotinfo` tag
     val end = readNat() + readIndex
     readAnnotationContents(end)
   }
 
-  protected def readClassfileAnnotArg(i: Int): TypedTree = bytes(index(i)) match {
+  protected def readClassfileAnnotArg(i: Int): Tree = bytes(index(i)) match {
     case ANNOTINFO => at(i, readAnnotInfoArg)
     case ANNOTARGARRAY => at(i, readArrayAnnotArg)
     case _ => readAnnotArg(i)
@@ -663,20 +658,20 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
   /** Read an annotation's contents. Not to be called directly, use
    *  readAnnotation, readSymbolAnnotation, or readAnnotInfoArg
    */
-  protected def readAnnotationContents(end: Int): TypedTree = {
+  protected def readAnnotationContents(end: Int): Tree = {
     val atp = readTypeRef()
-    val args = new ListBuffer[TypedTree]
+    val args = new ListBuffer[Tree]
     while (readIndex != end) {
       val argref = readNat()
       args += {
         if (isNameEntry(argref)) {
           val name = at(argref, readName)
           val arg = readClassfileAnnotArg(readNat())
-          tpd.NamedArg(name, arg)
+          NamedArg(name, arg)
         } else readAnnotArg(argref)
       }
     }
-    tpd.New(atp, args.toList)
+    New(atp, args.toList)
   }
 
   /** Read an annotation and as a side effect store it into

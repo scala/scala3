@@ -1,53 +1,53 @@
 package dotty.tools.dotc.core
 
-import Symbols._, Trees._, Types._, Positions._, Contexts._, Constants._, TypedTrees._
+import Symbols._, Types._, Positions._, Contexts._, Constants._, TypedTrees._
 
 object Annotations {
 
   abstract class Annotation {
-    def tree: TypedTree
+    def tree: Tree
     def symbol(implicit ctx: Context): Symbol = tree.tpe.typeSymbol
     def matches(cls: Symbol)(implicit ctx: Context): Boolean = symbol.isNonBottomSubClass(cls)
     def appliesToModule: Boolean = ???
   }
 
-  case class ConcreteAnnotation(val tree: TypedTree) extends Annotation
+  case class ConcreteAnnotation(val tree: Tree) extends Annotation
 
   object Annotation {
 
-    def apply(tree: TypedTree) = ConcreteAnnotation(tree)
+    def apply(tree: Tree) = ConcreteAnnotation(tree)
 
-    def apply(cls: ClassSymbol, arg: TypedTree)(implicit ctx: Context): Annotation =
+    def apply(cls: ClassSymbol, arg: Tree)(implicit ctx: Context): Annotation =
       apply(cls, arg :: Nil)
 
-    def apply(cls: ClassSymbol, arg1: TypedTree, arg2: TypedTree)(implicit ctx: Context): Annotation =
+    def apply(cls: ClassSymbol, arg1: Tree, arg2: Tree)(implicit ctx: Context): Annotation =
       apply(cls, arg1 :: arg2 :: Nil)
 
-    def apply(cls: ClassSymbol, args: List[TypedTree])(implicit ctx: Context): Annotation =
+    def apply(cls: ClassSymbol, args: List[Tree])(implicit ctx: Context): Annotation =
       apply(cls.typeConstructor, args)
 
-    def apply(atp: Type, arg: TypedTree)(implicit ctx: Context): Annotation =
+    def apply(atp: Type, arg: Tree)(implicit ctx: Context): Annotation =
       apply(atp, arg :: Nil)
 
-    def apply(atp: Type, arg1: TypedTree, arg2: TypedTree)(implicit ctx: Context): Annotation =
+    def apply(atp: Type, arg1: Tree, arg2: Tree)(implicit ctx: Context): Annotation =
       apply(atp, arg1 :: arg2 :: Nil)
 
-    def apply(atp: Type, args: List[TypedTree])(implicit ctx: Context): Annotation =
-      apply(tpd.New(atp, args))
+    def apply(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
+      apply(New(atp, args))
 
     def makeAlias(sym: TermSymbol)(implicit ctx: Context) =
-      apply(defn.AliasAnnot, List(tpd.Ident(TermRef(sym.owner.thisType, sym.name, sym.signature))))
+      apply(defn.AliasAnnot, List(Ident(TermRef(sym.owner.thisType, sym.name, sym.signature))))
 
     def makeChild(sym: Symbol)(implicit ctx: Context) =
-      apply(defn.ChildAnnot, List(tpd.Ident(NamedType(sym.owner.thisType, sym.name))))
+      apply(defn.ChildAnnot, List(Ident(NamedType(sym.owner.thisType, sym.name))))
   }
 
-  def makeLiteralAnnotArg(const: Constant): TypedTree = ???
+  def makeLiteralAnnotArg(const: Constant): Tree = ???
 
-  def makeArrayAnnotArg(elems: Array[TypedTree]): TypedTree = ???
+  def makeArrayAnnotArg(elems: Array[Tree]): Tree = ???
 
-  def makeNestedAnnotArg(annot: Annotation): TypedTree = annot.tree
+  def makeNestedAnnotArg(annot: Annotation): Tree = annot.tree
 
   def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context) =
-    Annotation(defn.ThrowsAnnot, tpd.Ident(TypeRef(cls.owner.thisType, cls.name)))
+    Annotation(defn.ThrowsAnnot, Ident(TypeRef(cls.owner.thisType, cls.name)))
 }
