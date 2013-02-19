@@ -4,7 +4,7 @@ package core
 package pickling
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
-import SymDenotations._, UnPickler._, Constants._, Trees._, Annotations._, Positions._
+import SymDenotations._, UnPickler._, Constants._, Annotations._, Positions._
 import TypedTrees._
 import java.io.{ File, IOException }
 import java.lang.Integer.toHexString
@@ -348,7 +348,7 @@ class ClassfileParser(
     if (ownTypeParams.isEmpty) tpe else TempPolyType(ownTypeParams, tpe)
   } // sigToType
 
-  def parseAnnotArg(skip: Boolean = false): Option[TypedTree] = {
+  def parseAnnotArg(skip: Boolean = false): Option[Tree] = {
     val tag = in.nextByte.toChar
     val index = in.nextChar
     tag match {
@@ -366,7 +366,7 @@ class ClassfileParser(
         assert(s != NoSymbol, t)
         if (skip) None else Some(makeLiteralAnnotArg(Constant(s)))
       case ARRAY_TAG =>
-        val arr = new ArrayBuffer[TypedTree]()
+        val arr = new ArrayBuffer[Tree]()
         var hasError = false
         for (i <- 0 until index)
           parseAnnotArg(skip) match {
@@ -386,12 +386,12 @@ class ClassfileParser(
   def parseAnnotation(attrNameIndex: Char, skip: Boolean = false): Option[Annotation] = try {
     val attrType = pool.getType(attrNameIndex)
     val nargs = in.nextChar
-    val argbuf = new ListBuffer[TypedTree]
+    val argbuf = new ListBuffer[Tree]
     var hasError = false
     for (i <- 0 until nargs) {
       val name = pool.getName(in.nextChar)
       parseAnnotArg(skip) match {
-        case Some(arg) => argbuf += tpd.NamedArg(name, arg)
+        case Some(arg) => argbuf += NamedArg(name, arg)
         case None => hasError = !skip
       }
     }
@@ -436,8 +436,8 @@ class ClassfileParser(
         case tpnme.BridgeATTR =>
           sym.setFlag(Flags.Bridge)
         case tpnme.DeprecatedATTR =>
-          val msg = tpd.Literal(Constant("see corresponding Javadoc for more information."))
-          val since = tpd.Literal(Constant(""))
+          val msg = Literal(Constant("see corresponding Javadoc for more information."))
+          val since = Literal(Constant(""))
           sym.addAnnotation(Annotation(defn.DeprecatedAnnot, msg, since))
         case tpnme.ConstantValueATTR =>
           val c = pool.getConstant(in.nextChar)
