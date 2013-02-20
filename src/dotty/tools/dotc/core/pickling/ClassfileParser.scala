@@ -5,7 +5,7 @@ package pickling
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
 import SymDenotations._, UnPickler._, Constants._, Annotations._, Positions._
-import TypedTrees._
+import TypedTrees.tpd._
 import java.io.{ File, IOException }
 import java.lang.Integer.toHexString
 import scala.collection.{ mutable, immutable }

@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import Symbols._, Types._, Positions._, Contexts._, Constants._, TypedTrees._
+import Symbols._, Types._, Positions._, Contexts._, Constants._, TypedTrees.tpd._
 
 object Annotations {
 

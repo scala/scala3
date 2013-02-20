@@ -84,19 +84,22 @@ object PluggableTransformers {
   }
 }
 
-import PluggableTransformers._, Types._, TypedTrees._
+import PluggableTransformers._, Types._, Trees._, Contexts._, TypedTrees.tpd
 
 class ExampleTransformer extends PluggableTransformer[Type] {
 
-  class ExamplePlugin extends Plugin {
+  object ExamplePlugin extends Plugin {
     override def processIdent = {
       case tree @ Ident(x) if x.isTypeName => tree.derivedSelect(tree, x)
-      case tree => tree
+      case tree => tpd.Ident(???)
     }
     override def processSelect = { tree =>
       if (tree.isType) tree.derivedIdent(tree.name)
-      else EmptyTree
+      else tpd.EmptyTree
     }
   }
+
+  override def transform(tree: tpd.Tree, ctx: Context) =
+    super.transform(tree, ctx)
 
 }
