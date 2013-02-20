@@ -64,12 +64,14 @@ object Types {
     final def typeSymbol(implicit ctx: Context): Symbol = this match {
       case tp: TypeRef => tp.symbol
       case tp: ClassInfo => tp.classd.symbol
+      case tp: TypeProxy => tp.underlying.typeSymbol
       case _ => NoSymbol
     }
 
     /** The term symbol associated with the type */
     final def termSymbol(implicit ctx: Context): Symbol = this match {
       case tp: TermRef => tp.symbol
+      case tp: TypeProxy => tp.underlying.termSymbol
       case _ => NoSymbol
     }
 
@@ -178,6 +180,8 @@ object Types {
      */
     final def exists(p: Type => Boolean): Boolean =
       new ExistsAccumulator(p)(false, this)
+
+    final def forall(p: Type => Boolean): Boolean = !exists(!p(_))
 
     /** Substitute all types that refer in their symbol attribute to
      *  one of the symbols in `from` by the corresponding types in `to`
@@ -975,6 +979,9 @@ object Types {
     def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
       new InstPolyMap(this, argTypes) apply resultType
 
+    def instantiateBounds(argTypes: List[Type])(implicit ctx: Context): List[TypeBounds] =
+      paramBounds mapConserve (new InstPolyMap(this, argTypes).apply)
+
     def derivedPolyType(paramNames: List[TypeName], paramBounds: List[TypeBounds], restpe: Type)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramBounds eq this.paramBounds) && (restpe eq this.resultType)) this
       else
@@ -1062,6 +1069,8 @@ object Types {
     def derivedTypeBounds(lo1: Type, hi1: Type)(implicit ctx: Context) =
       if ((lo1 eq lo) && (hi1 eq hi)) this
       else TypeBounds(lo, hi)
+
+    def contains(tp: Type)(implicit ctx: Context) = lo <:< tp && tp <:< hi
 
     def &(that: TypeBounds)(implicit ctx: Context): TypeBounds =
       TypeBounds(this.lo | that.lo, this.hi & that.hi)
@@ -1193,6 +1202,8 @@ object Types {
       case PolyParam(`pt`, n) => argtypes(n)
       case _ => mapOver(tp)
     }
+    def apply(bounds: TypeBounds): TypeBounds =
+      bounds.derivedTypeBounds(apply(bounds.lo), apply(bounds.hi))
   }
 
 
@@ -1239,7 +1250,7 @@ object Types {
     def apply(x: Boolean, tp: Type) = x || p(tp) || foldOver(x, tp)
   }
 
-  // ----- Name Filters --------------------------------------------------
+  //   ----- Name Filters --------------------------------------------------
 
   /** A name filter selects or discards a member name of a type `pre`.
    *  To enable efficient caching, name filters have to satisfy the
