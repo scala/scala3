@@ -259,13 +259,6 @@ object Trees {
     val pos = cpos union lhs.pos union rhs.pos
   }
 
-  /** (vparams) => body */
-  case class Function[T](vparams: List[ValDef[T]], body: Tree[T])(implicit cpos: Position)
-    extends SymTree[T] with TermTree[T] {
-    type ThisTree[T] = Function[T]
-    val pos = unionPos(cpos union body.pos, vparams)
-  }
-
   /** { stats; expr } */
   case class Block[T](stats: List[Tree[T]], expr: Tree[T])(implicit cpos: Position)
     extends TermTree[T] {
@@ -523,6 +516,12 @@ object Trees {
     val pos = cpos union impl.pos
   }
 
+  /** (vparams) => body */
+  case class Function(vparams: List[ValDef[Nothing]], body: Tree[Nothing])(implicit cpos: Position)
+    extends TermTree[Nothing] {
+    val pos = unionPos(cpos union body.pos, vparams)
+  }
+
   // ----- Helper functions and classes ---------------------------------------
 
   @tailrec final def unionPos(base: Position, trees: List[Tree[_]]): Position = trees match {
@@ -579,10 +578,6 @@ object Trees {
     def derivedAssign(lhs: Tree[T], rhs: Tree[T]): Assign[T] = tree match {
       case tree: Assign[_] if (lhs eq tree.lhs) && (rhs eq tree.rhs) => tree
       case _ => Assign(lhs, rhs).copyAttr(tree)
-    }
-    def derivedFunction(vparams: List[ValDef[T]], body: Tree[T]): Function[T] = tree match {
-      case tree: Function[_] if (vparams eq tree.vparams) && (body eq tree.body) => tree
-      case _ => Function(vparams, body).copyAttr(tree)
     }
     def derivedBlock(stats: List[Tree[T]], expr: Tree[T]): Block[T] = tree match {
       case tree: Block[_] if (stats eq tree.stats) && (expr eq tree.expr) => tree
@@ -726,8 +721,6 @@ object Trees {
         finishNamedArg(tree.derivedNamedArg(name, transform(arg, c)), tree, c, plugins)
       case Assign(lhs, rhs) =>
         finishAssign(tree.derivedAssign(transform(lhs, c), transform(rhs, c)), tree, c, plugins)
-      case Function(vparams, body) =>
-        finishFunction(tree.derivedFunction(transformSub(vparams, c), transform(body, c)), tree, c, plugins)
       case Block(stats, expr) =>
         finishBlock(tree.derivedBlock(transform(stats, c), transform(expr, c)), tree, c, plugins)
       case If(cond, thenp, elsep) =>
@@ -878,8 +871,6 @@ object Trees {
         this(x, arg)
       case Assign(lhs, rhs) =>
         this(this(x, lhs), rhs)
-      case Function(vparams, body) =>
-        this(this(x, vparams), body)
       case Block(stats, expr) =>
         this(this(x, stats), expr)
       case If(cond, thenp, elsep) =>

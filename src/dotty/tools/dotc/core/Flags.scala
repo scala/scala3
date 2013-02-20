@@ -388,6 +388,8 @@ object Flags {
   /** The flags of a type parameter */
   final val TypeParamFlags = Protected | Local
 
+  final val AbstractOrTrait = Trait | Abstract
+
   /** Labeled `private` or `protected[local]` */
   final val PrivateOrLocal = oneOf(Private, Local)
 

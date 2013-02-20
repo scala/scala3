@@ -667,7 +667,7 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
         if (isNameEntry(argref)) {
           val name = at(argref, readName)
           val arg = readClassfileAnnotArg(readNat())
-          NamedArg(name, arg)
+          NamedArg(name.asTermName, arg)
         } else readAnnotArg(argref)
       }
     }
