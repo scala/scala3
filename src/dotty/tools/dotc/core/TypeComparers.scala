@@ -24,7 +24,7 @@ object TypeComparers {
     def addConstraint(param: PolyParam, bounds: TypeBounds): Boolean = {
       val newbounds = constraints(param) & bounds
       constraints = constraints.updated(param, newbounds)
-      newbounds.lo <:< newbounds.hi
+      isSubType(newbounds.lo, newbounds.hi)
     }
 
     def isSubType(tp1: Type, tp2: Type): Boolean =
@@ -137,8 +137,8 @@ object TypeComparers {
         tp1 match {
           case tp1: PolyType =>
             tp1.signature == tp2.signature &&
-            (tp1.paramBounds corresponds tp2.paramBounds)(
-              (b1, b2) => b1 =:= b2.subst(tp2, tp1)) &&
+            (tp1.paramBounds corresponds tp2.paramBounds)((b1, b2) =>
+              isSameType(b1, b2.subst(tp2, tp1))) &&
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
           case _ =>
             false
@@ -156,11 +156,18 @@ object TypeComparers {
             isSubType(lo2, lo1) && isSubType(hi1, hi2)
           case tp1: ClassInfo =>
             val tt = tp1.typeConstructor // was typeTemplate
-            lo2 <:< tt && tt <:< hi2
+            isSubType(lo2, tt) && isSubType(tt, hi2)
           case _ =>
             false
         }
-      case _ =>
+/* needed?
+       case ClassInfo(pre2, denot2) =>
+        tp1 match {
+          case ClassInfo(pre1, denot1) =>
+            (denot1 eq denot2) && isSubType(pre2, pre1) // !!! or isSameType?
+        }
+*/
+     case _ =>
         fourthTry(tp1, tp2)
     }
 
@@ -246,7 +253,7 @@ object TypeComparers {
           case Nil =>
             false
           case formal2 :: rest2 =>
-            (formal1 =:= formal2 ||
+            (isSameType(formal1, formal2) ||
               isJava1 && formal2 == defn.ObjectType && formal1 == defn.AnyType ||
               isJava2 && formal1 == defn.ObjectType && formal2 == defn.AnyType) &&
               matchingParams(rest1, rest2, isJava1, isJava2)
