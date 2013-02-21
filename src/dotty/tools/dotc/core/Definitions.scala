@@ -119,7 +119,9 @@ class Definitions(implicit ctx: Context) {
   lazy val ClassClass                   = requiredClass("java.lang.Class")
      //def Class_getMethod              = getMemberMethod(ClassClass, nme.getMethod_)
   lazy val DynamicClass                 = requiredClass("scala.Dynamic")
+  lazy val OptionClass                  = requiredClass("scala.Option")
   lazy val BoxedNumberClass             = requiredClass("java.lang.Number")
+  lazy val ThrowableClass               = requiredClass("java.lang.Throwable")
   lazy val JavaSerializableClass        = requiredClass("java.lang.Serializable")
   lazy val ComparableClass              = requiredClass("java.lang.Comparable")
 
@@ -138,27 +140,30 @@ class Definitions(implicit ctx: Context) {
   lazy val ThrowsAnnot = requiredClass("scala.throws")
 
   // Derived types
-  lazy val AnyType: Type = AnyClass.typeConstructor
-  lazy val AnyValType: Type = AnyValClass.typeConstructor
-  lazy val ObjectType: Type = ObjectClass.typeConstructor
-  lazy val AnyRefType: Type = AnyRefAlias.typeConstructor
-  lazy val NotNullType: Type = NotNullClass.typeConstructor
-  lazy val NothingType: Type = NothingClass.typeConstructor
-  lazy val NullType: Type = NullClass.typeConstructor
-  lazy val SeqType: Type = SeqClass.typeConstructor
-  lazy val ArrayType: Type = ArrayClass.typeConstructor
+  def AnyType: Type = AnyClass.typeConstructor
+  def AnyValType: Type = AnyValClass.typeConstructor
+  def ObjectType: Type = ObjectClass.typeConstructor
+  def AnyRefType: Type = AnyRefAlias.typeConstructor
+  def NotNullType: Type = NotNullClass.typeConstructor
+  def NothingType: Type = NothingClass.typeConstructor
+  def NullType: Type = NullClass.typeConstructor
+  def SeqType: Type = SeqClass.typeConstructor
+  def ArrayType: Type = ArrayClass.typeConstructor
 
-  lazy val UnitType: Type = UnitClass.typeConstructor
-  lazy val BooleanType: Type = BooleanClass.typeConstructor
-  lazy val ByteType: Type = ByteClass.typeConstructor
-  lazy val ShortType: Type = ShortClass.typeConstructor
-  lazy val CharType: Type = CharClass.typeConstructor
-  lazy val IntType: Type = IntClass.typeConstructor
-  lazy val LongType: Type = LongClass.typeConstructor
-  lazy val FloatType: Type = FloatClass.typeConstructor
-  lazy val DoubleType: Type = DoubleClass.typeConstructor
-  lazy val PairType: Type = PairClass.typeConstructor
-  lazy val JavaRepeatedParamType = JavaRepeatedParamClass.typeConstructor
+  def UnitType: Type = UnitClass.typeConstructor
+  def BooleanType: Type = BooleanClass.typeConstructor
+  def ByteType: Type = ByteClass.typeConstructor
+  def ShortType: Type = ShortClass.typeConstructor
+  def CharType: Type = CharClass.typeConstructor
+  def IntType: Type = IntClass.typeConstructor
+  def LongType: Type = LongClass.typeConstructor
+  def FloatType: Type = FloatClass.typeConstructor
+  def DoubleType: Type = DoubleClass.typeConstructor
+  def PairType: Type = PairClass.typeConstructor
+  def JavaRepeatedParamType = JavaRepeatedParamClass.typeConstructor
+  def RepeatedParamType = RepeatedParamClass.typeConstructor
+  def ThrowableType = ThrowableClass.typeConstructor
+  def OptionType = OptionClass.typeConstructor
 
   def ClassType(arg: Type)(implicit ctx: Context) = {
     val ctype = ClassClass.typeConstructor
@@ -182,6 +187,7 @@ class Definitions(implicit ctx: Context) {
 
   lazy val FunctionClasses: Set[Symbol] = FunctionClass.toSet
   lazy val TupleClasses: Set[Symbol] = TupleClass.toSet
+  lazy val RepeatedParamClasses: Set[Symbol] = Set(RepeatedParamClass, JavaRepeatedParamClass)
 
   /** Modules whose members are in the default namespace */
   lazy val UnqualifiedModules: Set[TermSymbol] = Set(PredefModule, ScalaPackageVal, JavaLangPackageVal)
