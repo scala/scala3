@@ -23,11 +23,6 @@ object Flags {
         FlagSet(tbits | ((this.bits | that.bits) & ~KINDFLAGS))
       }
 
-    /** The union of this flag set and the given flag conjunction seen as
-     *  a flag set.
-     */
-    def | (that: FlagConjunction): FlagSet = this | FlagSet(that.bits)
-
     /** The intersection of this flag set and the given flag set */
     def & (that: FlagSet) = FlagSet(bits & that.bits)
 
@@ -39,9 +34,9 @@ object Flags {
     }
 
     /** Does this flag set have a non-empty intersection with the given flag set?
-     *  Pre: The intersection of the typeflags of both sets must be non-empty.
+     *  This means that both the kind flags and the carrier bits have non-empty intersection.
      */
-    def is(flags: FlagSet) = {
+    def is(flags: FlagSet): Boolean = {
       val fs = bits & flags.bits
       (fs & KINDFLAGS) != 0 &&
       fs > KINDFLAGS
@@ -49,19 +44,13 @@ object Flags {
 
    /** Does this flag set have a non-empty intersection with the given flag set,
     *  and at the same time contain none of the flags in the `butNot` set?
-    *  Pre: The intersection of the typeflags of both sets must be non-empty.
     */
-    def is(flags: FlagSet, butNot: FlagSet) = {
-      val fs = bits & flags.bits
-      (fs & KINDFLAGS) != 0 &&
-      fs > KINDFLAGS &&
-      (bits & butNot.bits) == 0
-    }
+    def is(flags: FlagSet, butNot: FlagSet): Boolean = is(flags) && !is(butNot)
 
     /** Does this flag set have all of the flags in given flag conjunction?
      *  Pre: The intersection of the typeflags of both sets must be non-empty.
      */
-    def is(flags: FlagConjunction) = {
+    def is(flags: FlagConjunction): Boolean = {
       val fs = bits & flags.bits
       (fs & KINDFLAGS) != 0 &&
       (fs >> TYPESHIFT) == (flags.bits >> TYPESHIFT)
@@ -71,11 +60,7 @@ object Flags {
      *  and at the same time contain none of the flags in the `butNot` set?
      *  Pre: The intersection of the typeflags of both sets must be non-empty.
      */
-    def is(flags: FlagConjunction, butNot: FlagSet) = {
-      val fs = bits & (flags.bits | butNot.bits)
-      (fs & KINDFLAGS) != 0 &&
-      (fs >> TYPESHIFT) == (flags.bits >> TYPESHIFT)
-    }
+    def is(flags: FlagConjunction, butNot: FlagSet): Boolean = is(flags) && !is(butNot)
 
     /** This flag set with all flags transposed to be type flags */
     def toTypeFlags = FlagSet(bits & ~KINDFLAGS | TYPES)
@@ -146,6 +131,7 @@ object Flags {
     assert(flagss forall (_.numFlags == 1))
     FlagConjunction(oneOf(flagss: _*).bits)
   }
+
   /** The disjunction of all flags in given flag set */
   def oneOf(flagss: FlagSet*) = (EmptyFlags /: flagss) (_ | _)
 
@@ -350,8 +336,7 @@ object Flags {
   final val InitialFlags: FlagSet = ???
 
   /** These flags are not pickled */
-  final val FlagsNotPickled = commonFlags(
-    Erroneous, Lifted, Frozen)
+  final val FlagsNotPickled = commonFlags(Erroneous, Lifted, Frozen)
 
   /** These flags are pickled */
   final val PickledFlags  = InitialFlags &~ FlagsNotPickled
@@ -363,35 +348,35 @@ object Flags {
   final val ModuleClassCreationFlags = Module | Final
 
   /** Packages and package classes always have these flags set */
-  final val PackageCreationFlags = commonFlags(
-    Module, Package, Final, JavaDefined, Static)
+  final val PackageCreationFlags = Module | Package | Final | JavaDefined | Static
 
   /** A value that's unstable unless complemented with a Stable flag */
-  final val UnstableValue = oneOf(Mutable, Method, ByNameParam)
+  final val UnstableValue = Mutable | Method | ByNameParam
 
   /** Flags that are passed from a type parameter of a class to a refinement symbol
     * that sets the type parameter */
   final val RetainedTypeArgFlags = Covariant | Contravariant | Protected | Local
 
+  /** An abstract class or trait */
+  final val AbstractOrTrait = Trait | Abstract
+
+  /** Labeled `private` or `protected[local]` */
+  final val PrivateOrLocal = Private | Local
+
   /** A type parameter with synthesized name */
   final val ExpandedTypeParam = allOf(ExpandedName, TypeParam)
 
+  /** The flags of a type parameter */
+  final val TypeParamFlags = Protected | Local
+
   /** A Java interface */
-  final val JavaInterface = allOf(JavaDefined, Trait)
+  final val JavaInterface = allOf(JavaDefined | Trait)
 
   /** Labeled private[this] */
   final val PrivateLocal = allOf(Private, Local)
 
   /** Labeled protected[this] */
   final val ProtectedLocal = allOf(Protected, Local)
-
-  /** The flags of a type parameter */
-  final val TypeParamFlags = Protected | Local
-
-  final val AbstractOrTrait = Trait | Abstract
-
-  /** Labeled `private` or `protected[local]` */
-  final val PrivateOrLocal = oneOf(Private, Local)
 
   /** Java symbol which is `protected` and `static` */
   final val StaticProtected = allOf(JavaDefined, Protected, Static)
