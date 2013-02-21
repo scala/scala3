@@ -345,8 +345,8 @@ object Trees {
   }
 
   /** qualifier # name */
-  case class SelectFromTypeTree[T](qualifier: Tree[T], name: TypeName)(implicit cpos: Position)
-    extends RefTree[T] with TypTree[T] {
+  case class SelectFromTypeTree[T](qualifier: Tree[T], name: Name)(implicit cpos: Position)
+    extends RefTree[T] {
     type ThisTree[T] = SelectFromTypeTree[T]
     val pos = cpos union qualifier.pos
   }
@@ -632,7 +632,7 @@ object Trees {
       case tree: SingletonTypeTree[_] if (ref eq tree.ref) => tree
       case _ => SingletonTypeTree(ref).copyAttr(tree)
     }
-    def derivedSelectFromTypeTree(qualifier: Tree[T], name: TypeName): SelectFromTypeTree[T] = tree match {
+    def derivedSelectFromTypeTree(qualifier: Tree[T], name: Name): SelectFromTypeTree[T] = tree match {
       case tree: SelectFromTypeTree[_] if (qualifier eq tree.qualifier) && (name == tree.name) => tree
       case _ => SelectFromTypeTree(qualifier, name).copyAttr(tree)
     }

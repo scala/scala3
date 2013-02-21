@@ -169,6 +169,12 @@ object SymDenotations {
     /** Is this symbol an abstract type? */
     def isAbstractType = isType && info.isRealTypeBounds
 
+    /** Is this symbol an alias type? */
+    def isAliasType = isType && info.isAliasTypeBounds
+
+    /** Is this symbol an abstract or alias type? */
+    def isAbstractOrAliasType = isType & info.isInstanceOf[TypeBounds]
+
     /** Is this definition contained in `boundary`?
      *  Same as `ownersIterator contains boundary` but more efficient.
      */

@@ -61,7 +61,7 @@ trait TypeOps { this: Context =>
 
   final def isVolatile(tp: Type): Boolean = {
     def isAbstractIntersection(tp: Type): Boolean = tp match {
-      case tp: TypeRef => tp.isAbstractType
+      case tp: TypeRef => tp.symbol.isAbstractType
       case AndType(l, r) => isAbstractIntersection(l) | isAbstractIntersection(l)
       case OrType(l, r) => isAbstractIntersection(l) & isAbstractIntersection(r)
       case _ => false

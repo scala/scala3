@@ -299,7 +299,7 @@ object Types {
      */
     final def normalizedPrefix(implicit ctx: Context): Type = this match {
       case tp: NamedType =>
-        if (tp.isAbstractType) tp.info.normalizedPrefix else tp.prefix
+        if (tp.symbol.isAliasType) tp.info.normalizedPrefix else tp.prefix
       case tp: ClassInfo =>
         tp.prefix
       case tp: TypeProxy =>
@@ -735,8 +735,6 @@ object Types {
 
     override def underlying(implicit ctx: Context): Type = info
 
-    def isAbstractType(implicit ctx: Context) = info.isRealTypeBounds
-
     def derivedNamedType(prefix: Type, name: Name)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
       else NamedType(prefix, name)
@@ -1152,7 +1150,7 @@ object Types {
       else AnnotatedType(annots, underlying)
   }
 
-  case class ImportType(expr: TypedTree) extends UncachedGroundType
+  case class ImportType(expr: Shared[Type]) extends UncachedGroundType
 
   // Special type objects ------------------------------------------------------------
 

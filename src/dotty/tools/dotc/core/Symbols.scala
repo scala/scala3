@@ -112,7 +112,7 @@ trait Symbols { this: Context =>
   def newLocalDummy(cls: Symbol, coord: Coord = NoCoord) =
     newSymbol(cls, nme.localDummyName(cls), EmptyFlags, NoType)
 
-  def newImportSymbol(expr: TypedTree, coord: Coord = NoCoord) =
+  def newImportSymbol(expr: Shared[Type], coord: Coord = NoCoord) =
     newSymbol(NoSymbol, nme.IMPORT, EmptyFlags, ImportType(expr), coord = coord)
 
   def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =

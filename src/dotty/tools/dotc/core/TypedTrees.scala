@@ -92,15 +92,27 @@ object TypedTrees {
     }
 
     def Apply(fn: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
-      val fntpe @ MethodType(pnames, ptypes) = fn.tpe
-      assert(sameLength(ptypes, args))
-      Trees.Apply(fn, args).withType(fntpe.instantiate(args map (_.tpe))).checked
+      val owntype = fn.tpe.widen match {
+        case fntpe @ MethodType(pnames, ptypes) =>
+          check(sameLength(ptypes, args))
+          fntpe.instantiate(args map (_.tpe))
+        case _ =>
+          check(false)
+          ErrorType
+      }
+      Trees.Apply(fn, args).withType(owntype).checked
     }
 
     def TypeApply(fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
-      val fntpe @ PolyType(pnames) = fn.tpe
-      assert(sameLength(pnames, args))
-      Trees.TypeApply(fn, args).withType(fntpe.instantiate(args map (_.tpe))).checked
+      val owntype = fn.tpe.widen match {
+        case fntpe @ PolyType(pnames) =>
+          check(sameLength(pnames, args))
+          fntpe.instantiate(args map (_.tpe))
+        case _ =>
+          check(false)
+          ErrorType
+      }
+      Trees.TypeApply(fn, args).withType(owntype).checked
     }
 
     def Literal(const: Constant)(implicit ctx: Context): Literal =
@@ -122,7 +134,7 @@ object TypedTrees {
       Trees.Assign(lhs, rhs).withType(defn.UnitType).checked
 
     def Block(stats: List[Tree], expr: Tree)(implicit ctx: Context): Block = {
-      lazy val locals = localSyms(stats)
+      lazy val locals = localSyms(stats).toSet
       val blk = Trees.Block(stats, expr)
       def widen(tp: Type): Type = tp match {
         case tp: TermRef if locals contains tp.symbol =>
@@ -156,7 +168,7 @@ object TypedTrees {
     def SingletonTypeTree(ref: Tree)(implicit ctx: Context): SingletonTypeTree =
       Trees.SingletonTypeTree(ref).withType(ref.tpe).checked
 
-    def SelectFromTypeTree(qualifier: Tree, tp: TypeRef)(implicit ctx: Context): SelectFromTypeTree =
+    def SelectFromTypeTree(qualifier: Tree, tp: NamedType)(implicit ctx: Context): SelectFromTypeTree =
       Trees.SelectFromTypeTree(qualifier, tp.name).withType(tp).checked
 
     def AndTypeTree(left: Tree, right: Tree)(implicit ctx: Context): AndTypeTree =
@@ -187,12 +199,13 @@ object TypedTrees {
     def Alternative(trees: List[Tree])(implicit ctx: Context): Alternative =
       Trees.Alternative(trees).withType(ctx.lub(trees map (_.tpe))).checked
 
-    def UnApply(fun: Tree, args: List[Tree])(implicit ctx: Context): UnApply =
-      Trees.UnApply(fun, args).withType(fun.tpe.widen match {
+    def UnApply(fun: Tree, args: List[Tree])(implicit ctx: Context): UnApply = {
+      val owntype = fun.tpe.widen match {
         case MethodType(_, paramType :: Nil) => paramType
-      }).checked
-
-    def refType(sym: Symbol)(implicit ctx: Context) = NamedType(sym.owner.thisType, sym)
+        case _ => check(false); ErrorType
+      }
+      Trees.UnApply(fun, args).withType(owntype).checked
+    }
 
     def ValDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): ValDef =
       Trees.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs)(defPos(sym))
@@ -234,7 +247,7 @@ object TypedTrees {
         if (cls.selfType eq cls.typeConstructor) EmptyValDef
         else ValDef(ctx.newSelfSym(cls))
       def isOwnTypeParamAccessor(stat: Tree) =
-        stat.symbol.owner == cls && (stat.symbol is TypeParam)
+        (stat.symbol is TypeParam) && stat.symbol.owner == cls
       val (tparamAccessors, rest) = body partition isOwnTypeParamAccessor
       val tparams =
         (typeParams map TypeDef) ++
@@ -266,8 +279,19 @@ object TypedTrees {
     def Shared(tree: Tree): Shared =
       Trees.Shared(tree).withType(tree.tpe)
 
+    def refType(sym: Symbol)(implicit ctx: Context) = NamedType(sym.owner.thisType, sym)
+
     // ------ Creating typed equivalents of trees that exist only in untyped form -------
 
+    /** A tree representing the same reference as the given type */
+    def ref(tp: NamedType)(implicit ctx: Context): tpd.NameTree =
+      if (tp.symbol.isStatic) Ident(tp)
+      else tp.prefix match {
+        case pre: TermRef => Select(ref(pre), tp)
+        case pre => SelectFromTypeTree(TypeTree(pre), tp)
+      }  // no checks necessary
+
+    /** new C(args) */
     def New(tp: Type, args: List[Tree])(implicit ctx: Context): Apply =
       Apply(
         Select(
@@ -343,24 +367,24 @@ object TypedTrees {
           else sym
         } else foldOver(sym, tree)
     }
-
-    implicit class addChecked[T <: Tree](val tree: T) extends AnyVal {
-      def checked(implicit ctx: Context): T = {
-        if (ctx.settings.YcheckTypedTrees.value) checkType(tree)
-        tree
-      }
-    }
   }
 
   import Trees._
 
   def check(p: Boolean)(implicit ctx: Context): Unit = assert(p)
 
+  def checkTypeArg(arg: tpd.Tree, bounds: TypeBounds)(implicit ctx: Context): Unit = {
+    check(arg.isValueType)
+    check(bounds contains arg.tpe)
+  }
+
   def checkType(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
     case Ident(name) =>
     case Select(qualifier, name) =>
       check(qualifier.isValue)
+      check(qualifier.tpe =:= tree.tpe.normalizedPrefix)
       val denot = qualifier.tpe.member(name)
+      check(denot.exists)
       check(denot.hasAltWith(_.symbol == tree.symbol))
     case This(cls) =>
     case Super(qual, mixin) =>
@@ -380,26 +404,14 @@ object TypedTrees {
         }
         check(arg.tpe <:< formal)
       }
-      fn.tpe.widen match {
-        case MethodType(paramNames, paramTypes) =>
-          (args, paramNames, paramTypes).zipped foreach checkArg
-        case _ =>
-          check(false)
-      }
+      val MethodType(paramNames, paramTypes) = fn.tpe.widen // checked already at construction
+      (args, paramNames, paramTypes).zipped foreach checkArg
     case TypeApply(fn, args) =>
-      def checkArg(arg: tpd.Tree, bounds: TypeBounds): Unit = {
-        check(arg.isType)
-        check(bounds contains arg.tpe)
-      }
-      fn.tpe.widen match {
-        case pt: PolyType =>
-          (args, pt.instantiateBounds(args map (_.tpe))).zipped foreach checkArg
-        case _ =>
-          check(false)
-      }
+      val pt @ PolyType(_) = fn.tpe.widen // checked already at construction
+      (args, pt.instantiateBounds(args map (_.tpe))).zipped foreach checkTypeArg
     case Literal(const: Constant) =>
     case New(tpt) =>
-      check(tpt.isType)
+      check(tpt.isValueType)
       val cls = tpt.tpe.typeSymbol
       check(cls.isClass)
       check(!(cls is AbstractOrTrait))
@@ -407,7 +419,7 @@ object TypedTrees {
       check(left.isValue)
       check(right.isValue)
     case Typed(expr, tpt) =>
-      check(tpt.isType)
+      check(tpt.isValueType)
       expr.tpe.widen match {
         case tp: MethodType =>
           val cls = tpt.tpe.typeSymbol
@@ -419,6 +431,7 @@ object TypedTrees {
           check(tp <:< absMembers.head.info)
         case _ =>
           check(expr.isValueOrPattern)
+          check(expr.tpe <:< tpt.tpe)
       }
     case NamedArg(name, arg) =>
     case Assign(lhs, rhs) =>
@@ -432,7 +445,7 @@ object TypedTrees {
       check(rhs.tpe <:< lhs.tpe.widen)
     case Block(stats, expr) =>
       var hoisted: Set[Symbol] = Set()
-      lazy val locals = localSyms(stats)
+      lazy val locals = localSyms(stats).toSet
       check(expr.isValue)
       def isNonLocal(sym: Symbol): Boolean =
         !(locals contains sym) || isHoistableClass(sym)
@@ -467,31 +480,35 @@ object TypedTrees {
       check(expr.isValue)
       check(expr.tpe <:< defn.ThrowableType)
     case SeqLiteral(elemtpt, elems) =>
-      check(elemtpt.isType);
+      check(elemtpt.isValueType);
       for (elem <- elems) {
         check(elem.isValue)
         check(elem.tpe <:< elemtpt.tpe)
       }
     case TypeTree(original) =>
-      if (!original.isEmpty) check(original.tpe == tree.tpe)
+      if (!original.isEmpty) {
+        check(original.isValueType)
+        check(original.tpe == tree.tpe)
+      }
     case SingletonTypeTree(ref) =>
       check(ref.isValue)
       check(ref.symbol.isStable)
     case SelectFromTypeTree(qualifier, name) =>
-      check(qualifier.isType)
+      check(qualifier.isValueType)
+      check(qualifier.tpe =:= tree.tpe.normalizedPrefix)
       val denot = qualifier.tpe.member(name)
       check(denot.exists)
       check(denot.symbol == tree.symbol)
     case AndTypeTree(left, right) =>
-      check(left.isType); check(right.isType)
+      check(left.isValueType); check(right.isValueType)
     case OrTypeTree(left, right) =>
-      check(left.isType); check(right.isType)
+      check(left.isValueType); check(right.isValueType)
     case RefineTypeTree(tpt, refinements) =>
-      check(tpt.isType)
+      check(tpt.isValueType)
       def checkRefinements(forbidden: Set[Symbol], rs: List[tpd.DefTree]): Unit = rs match {
         case r :: rs1 =>
           val rsym = r.symbol
-          check(rsym.isTerm || rsym.isAbstractType)
+          check(rsym.isTerm || rsym.isAbstractOrAliasType)
           if (rsym.isAbstractType) check(tpt.tpe.member(rsym.name).exists)
           check(rsym.info forall {
             case nt: NamedType => !(forbidden contains nt.symbol)
@@ -502,30 +519,26 @@ object TypedTrees {
       }
       checkRefinements(localSyms(refinements).toSet, refinements)
     case AppliedTypeTree(tpt, args) =>
-      check(tpt.isType)
-      for (arg <- args) check(arg.isType)
-      check(sameLength(tpt.tpe.typeParams, args))
+      check(tpt.isValueType)
+      val tparams = tpt.tpe.typeParams
+      check(sameLength(tparams, args))
+      (args, tparams map (_.info.bounds)).zipped foreach checkTypeArg
     case TypeBoundsTree(lo, hi) =>
-      check(lo.isType); check(hi.isType)
+      check(lo.isValueType); check(hi.isValueType)
       check(lo.tpe <:< hi.tpe)
     case Bind(sym, body) =>
-      // missing because it cannot be done easily bottom-up:
-      // check that Bind (and Alternative, and UnApply) only occur in patterns
       check(body.isValueOrPattern)
       check(!(tree.symbol is Method))
       body match {
         case Ident(nme.WILDCARD) =>
-        case _ => check(body.tpe <:< tree.symbol.info)
+        case _ => check(body.tpe.widen =:= tree.symbol.info)
       }
     case Alternative(alts) =>
       for (alt <- alts) check(alt.isValueOrPattern)
     case UnApply(fun, args) =>
       check(fun.isTerm)
-      val funtpe = fun.tpe.widen match {
-        case mt: MethodType => mt
-        case _ => check(false); ErrorType
-      }
       for (arg <- args) check(arg.isValueOrPattern)
+      val funtpe @ MethodType(_, _) = fun.tpe.widen
       fun.symbol.name match { // check arg arity
         case nme.unapplySeq =>
           // args need to be wrapped in (...: _*)
@@ -567,28 +580,43 @@ object TypedTrees {
       check(expr.isValue)
       check(expr.tpe.termSymbol.isStable)
     case PackageDef(pid, stats) =>
-      check(pid.isValue)
+      check(pid.isTerm)
       check(pid.symbol.isPackage)
     case Annotated(annot, arg) =>
-      check(annot.symbol.isClassConstructor)
+      check(annot.isInstantiation)
       check(annot.symbol.owner.isSubClass(defn.AnnotationClass))
-      check(arg.isType || arg.isValue)
+      check(arg.isValueType || arg.isValue)
     case tpd.EmptyTree =>
     case Shared(shared) =>
       check(shared.isType || shared.isTerm)
   }
 
-  implicit class TreeInfo(val tree: tpd.Tree) extends AnyVal {
+  implicit class TreeOps[T <: tpd.Tree](val tree: T) extends AnyVal {
+
     def isValue(implicit ctx: Context): Boolean =
       tree.isTerm && tree.tpe.widen.isValueType
+
     def isValueOrPattern(implicit ctx: Context) =
       tree.isValue || tree.isPattern
+
+    def isValueType: Boolean =
+      tree.isType && tree.tpe.isValueType
+
+    def isInstantiation = tree match {
+      case Apply(Select(New(_), nme.CONSTRUCTOR), _) => true
+      case _ => false
+    }
+
+    def checked(implicit ctx: Context): T = {
+      if (ctx.settings.YcheckTypedTrees.value) checkType(tree)
+      tree
+    }
   }
 
   // ensure that constructors are fully applied?
   // ensure that normal methods are fully applied?
 
-  def localSyms(stats: List[tpd.Tree])(implicit ctx: Context) =
+  def localSyms(stats: List[tpd.Tree])(implicit ctx: Context): List[Symbol] =
     for (stat <- stats if (stat.isDef)) yield stat.symbol
 }
 

@@ -208,9 +208,6 @@ object Flags {
   final val PackageObjectVal = PackageObject.toTermFlags
   final val PackageObjectClass = PackageObject.toTypeFlags
 
-  /** A by-name parameter !!! needed? */
-  final val ByNameParam = termFlag(17, "<by-name>")
-
   /** A covariant type variable */
   final val Covariant = typeFlag(17, "<covariant>")
 
@@ -351,7 +348,7 @@ object Flags {
   final val PackageCreationFlags = Module | Package | Final | JavaDefined | Static
 
   /** A value that's unstable unless complemented with a Stable flag */
-  final val UnstableValue = Mutable | Method | ByNameParam
+  final val UnstableValue = Mutable | Method
 
   /** Flags that are passed from a type parameter of a class to a refinement symbol
     * that sets the type parameter */
