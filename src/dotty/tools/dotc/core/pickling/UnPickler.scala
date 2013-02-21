@@ -638,7 +638,7 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
     readByte() // skip the `annotargarray` tag
     val end = readNat() + readIndex
     // array elements are trees representing instances of scala.annotation.Annotation
-    ArrayValue(
+    SeqLiteral(
       TypeTree(defn.AnnotationClass.typeConstructor),
       until(end, () => readClassfileAnnotArg(readNat())))
   }

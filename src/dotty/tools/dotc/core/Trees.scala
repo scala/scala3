@@ -83,6 +83,9 @@ object Trees {
     /** Does this tree represent a term? */
     def isTerm: Boolean = false
 
+    /** Is this a legal part of a pattern which is not at the same time a term? */
+    def isPattern: Boolean = false
+
     /** Does this tree represent a definition or declaration? */
     def isDef: Boolean = false
 
@@ -116,6 +119,14 @@ object Trees {
   trait TermTree[T] extends Tree[T] {
     type ThisTree[T] <: TermTree[T]
     override def isTerm = true
+  }
+
+  /** Instances of this class are trees which are not terms but are legal
+   *  parts of patterns.
+   */
+  trait PatternTree[T] extends Tree[T] {
+    type ThisTree[T] <: PatternTree[T]
+    override def isPattern = true
   }
 
   /** Tree's symbol can be derived from its type */
@@ -247,7 +258,7 @@ object Trees {
 
   /** name = arg, in a parameter list */
   case class NamedArg[T](name: Name, arg: Tree[T])(implicit cpos: Position)
-    extends TermTree[T] {
+    extends Tree[T] {
     type ThisTree[T] = NamedArg[T]
     val pos = cpos union arg.pos
   }
@@ -313,9 +324,9 @@ object Trees {
   }
 
   /** Array[elemtpt](elems) */
-  case class ArrayValue[T](elemtpt: Tree[T], elems: List[Tree[T]])(implicit cpos: Position)
-    extends TermTree[T] {
-    type ThisTree[T] = ArrayValue[T]
+  case class SeqLiteral[T](elemtpt: Tree[T], elems: List[Tree[T]])(implicit cpos: Position)
+    extends   Tree[T] {
+    type ThisTree[T] = SeqLiteral[T]
     val pos = unionPos(cpos union elemtpt.pos, elems)
   }
 
@@ -379,21 +390,21 @@ object Trees {
 
   /** name @ body */
   case class Bind[T](name: Name, body: Tree[T])(implicit cpos: Position)
-    extends DefTree[T] {
+    extends DefTree[T] with PatternTree[T] {
     type ThisTree[T] = Bind[T]
     val pos = cpos union body.pos
   }
 
   /** tree_1 | ... | tree_n */
   case class Alternative[T](trees: List[Tree[T]])(implicit cpos: Position)
-    extends Tree[T] {
+    extends Tree[T] with PatternTree[T] {
     type ThisTree[T] = Alternative[T]
     val pos = unionPos(cpos, trees)
   }
 
   /** fun(args) in a pattern, if fun is an extractor */
   case class UnApply[T](fun: Tree[T], args: List[Tree[T]])(implicit cpos: Position)
-    extends Tree[T] {
+    extends Tree[T] with PatternTree[T] {
     type ThisTree[T] = UnApply[T]
     val pos = unionPos(cpos union fun.pos, args)
   }
@@ -501,6 +512,8 @@ object Trees {
   case class Shared[T](shared: Tree[T]) extends Tree[T] {
     type ThisTree[T] = Shared[T]
     val pos = NoPosition
+    override val isTerm = shared.isTerm
+    override val isType = shared.isType
   }
 
   // ----- Tree cases that exist in untyped form only ------------------
@@ -607,9 +620,9 @@ object Trees {
       case tree: Throw[_] if (expr eq tree.expr) => tree
       case _ => Throw(expr).copyAttr(tree)
     }
-    def derivedArrayValue(elemtpt: Tree[T], elems: List[Tree[T]]): ArrayValue[T] = tree match {
-      case tree: ArrayValue[_] if (elemtpt eq tree.elemtpt) && (elems eq tree.elems) => tree
-      case _ => ArrayValue(elemtpt, elems).copyAttr(tree)
+    def derivedSeqLiteral(elemtpt: Tree[T], elems: List[Tree[T]]): SeqLiteral[T] = tree match {
+      case tree: SeqLiteral[_] if (elemtpt eq tree.elemtpt) && (elems eq tree.elems) => tree
+      case _ => SeqLiteral(elemtpt, elems).copyAttr(tree)
     }
     def derivedTypeTree(original: Tree[T] = EmptyTree[T]): TypeTree[T] = tree match {
       case tree: TypeTree[_] if (original eq tree.original) => tree
@@ -735,8 +748,8 @@ object Trees {
         finishTry(tree.derivedTry(transform(block, c), transformSub(catches, c), transform(finalizer, c)), tree, c, plugins)
       case Throw(expr) =>
         finishThrow(tree.derivedThrow(transform(expr, c)), tree, c, plugins)
-      case ArrayValue(elemtpt, elems) =>
-        finishArrayValue(tree.derivedArrayValue(transform(elemtpt, c), transform(elems, c)), tree, c, plugins)
+      case SeqLiteral(elemtpt, elems) =>
+        finishSeqLiteral(tree.derivedSeqLiteral(transform(elemtpt, c), transform(elems, c)), tree, c, plugins)
       case TypeTree(original) =>
         finishTypeTree(tree.derivedTypeTree(transform(original, c)), tree, c, plugins)
       case SingletonTypeTree(ref) =>
@@ -818,7 +831,7 @@ object Trees {
     def finishReturn(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishTry(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishThrow(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishArrayValue(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
+    def finishSeqLiteral(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishSingletonTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishSelectFromTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
@@ -885,7 +898,7 @@ object Trees {
         this(this(this(x, block), catches), finalizer)
       case Throw(expr) =>
         this(x, expr)
-      case ArrayValue(elemtpt, elems) =>
+      case SeqLiteral(elemtpt, elems) =>
         this(this(x, elemtpt), elems)
       case TypeTree(original) =>
         x
