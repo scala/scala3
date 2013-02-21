@@ -73,7 +73,7 @@ trait TypeOps { this: Context =>
         case tp: RefinedType =>
           tp.parent.isVolatile ||
             isAbstractIntersection(tp.parent) &&
-            (tp.abstractMemberNames(tp) contains tp.name)
+            (tp.abstractMemberNames contains tp.name)
         case tp: TypeProxy =>
           tp.underlying.isVolatile
         case AndType(l, r) =>

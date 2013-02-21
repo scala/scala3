@@ -198,12 +198,13 @@ object SymDenotations {
       || (this.sourceFile.canonicalPath == that.sourceFile.canonicalPath)
       )
 
-    /** Is this a denotation of a stable term? */
-    final def isStable(implicit ctx: Context) = !(
-      isTerm &&
-      this.is(UnstableValue, butNot = Stable) ||
-      info.isVolatile && !hasAnnotation(defn.uncheckedStableClass)
-    )
+    /** Is this a denotation of a stable term (or an arbitrary type)? */
+    final def isStable(implicit ctx: Context) = {
+      val isUnstable =
+        this.is(UnstableValue, butNot = Stable) ||
+        info.isVolatile && !hasAnnotation(defn.uncheckedStableClass)
+      !(isTerm && isUnstable)
+    }
 
     /** Is this a subclass of the given class `base`? */
     def isSubClass(base: Symbol)(implicit ctx: Context) = false
@@ -382,7 +383,7 @@ object SymDenotations {
      */
     def companionModule(implicit ctx: Context): Symbol = {
       owner.info.decl(name.toTermName)
-        .filter(sym => sym.isModule && sym.isCoDefinedWith(symbol))
+        .suchThat(sym => sym.isModule && sym.isCoDefinedWith(symbol))
         .symbol
     }
 
@@ -392,7 +393,7 @@ object SymDenotations {
      */
     def companionClass(implicit ctx: Context): Symbol =
       owner.info.decl(name.toTypeName)
-        .filter(sym => sym.isClass && sym.isCoDefinedWith(symbol))
+        .suchThat(sym => sym.isClass && sym.isCoDefinedWith(symbol))
         .symbol
 
     /** If this is a class, the module class of its companion object.

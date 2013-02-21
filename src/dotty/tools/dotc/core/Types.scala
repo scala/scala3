@@ -93,18 +93,30 @@ object Types {
      */
     final def abstractTypeNames(pre: Type)(implicit ctx: Context): Set[Name] =
       memberNames(pre, abstractTypeNameFilter)
+    final def abstractTypeNames(implicit ctx: Context): Set[Name] =
+      abstractTypeNames(this)
 
     /** The set of names that denote an abstract term member of this type
      *  which is also an abstract term member of `pre`
      */
     final def abstractTermNames(pre: Type)(implicit ctx: Context): Set[Name] =
       memberNames(pre, abstractTermNameFilter)
+    final def abstractTermNames(implicit ctx: Context): Set[Name] =
+      abstractTermNames(this)
 
     /** The set of names that denote an abstract member of this type
      *  which is also an abstract member of `pre`
      */
     final def abstractMemberNames(pre: Type)(implicit ctx: Context): Set[Name] =
       abstractTypeNames(pre) | abstractTermNames(pre)
+    final def abstractMemberNames(implicit ctx: Context): Set[Name] =
+      abstractMemberNames(this)
+
+    final def abstractTermMembers(pre: Type)(implicit ctx: Context): Set[SingleDenotation] =
+      abstractTermNames.flatMap(name =>
+        pre.member(name).altsWith(_ is Deferred))
+    final def abstractTermMembers(implicit ctx: Context): Set[SingleDenotation] =
+      abstractTermMembers(this)
 
     /** The set of names of members of this type that pass the given name filter
      *  when seen as members of `pre`. More precisely, these are all
@@ -125,6 +137,19 @@ object Types {
         tp.underlying.memberNames(pre, keepOnly)
       case _ =>
         Set()
+    }
+
+    /** Is this type a value type */
+    final def isValueType: Boolean = this match {
+      case NoPrefix
+         | NoType
+         | WildcardType
+         | _: TypeBounds
+         | _: MethodType
+         | _: PolyType
+         | _: ExprType
+         | _: ClassInfo => false
+      case _ => true
     }
 
     /** Is this type a TypeBounds instance, with lower and upper bounds
@@ -240,10 +265,18 @@ object Types {
     }
 
     /** The parameter types of a PolyType or MethodType, Empty list for others */
-    def paramTypess(implicit ctx: Context): List[List[Type]] = this match {
+    def paramTypess: List[List[Type]] = this match {
       case mt: MethodType => mt.paramTypes :: mt.resultType.paramTypess
       case pt: PolyType => pt.paramTypess
       case _ => Nil
+    }
+
+    /** The resultType of a PolyType, MethodType, or ExprType, the type itself for others */
+    def resultType: Type = this match {
+      case et: ExprType => et.resultType
+      case mt: MethodType => mt.resultType
+      case pt: PolyType => pt.resultType
+      case _ => this
     }
 
     /** Map function over elements of an AndType, rebuilding with & */
@@ -387,14 +420,16 @@ object Types {
 
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences,
-     *  identity for all other types. Example:
+     *  Also go from => T to T.
+     *  Identity for all other types. Example:
      *
      *  class Outer { class C ; val x: C }
-     *  val o: Outer
+     *  def o: Outer
      *  <o.x.type>.widen = o.C
      */
     final def widen(implicit ctx: Context): Type = this match {
       case tp: SingletonType => tp.underlying.widen
+      case tp: ExprType => tp.underlying.widen
       case _ => this
     }
 
@@ -405,8 +440,6 @@ object Types {
       case tp: ConstantType => tp.value.tpe
       case _ => this
     }
-
-    //def resultType: Type = ???
 
     /** The base classes of this type as determined by ClassDenotation
      *  in linearization order, with the class itself as first element.
@@ -883,7 +916,7 @@ object Types {
   // and therefore two different poly types would never be equal.
 
   abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type) extends CachedGroundType with BindingType {
-    lazy val resultType = resultTypeExp(this)
+    override lazy val resultType = resultTypeExp(this)
     def isJava = false
     def isImplicit = false
 
@@ -954,7 +987,7 @@ object Types {
       unique(new ImplicitMethodType(paramNames, paramTypes)(resultTypeExp))
   }
 
-  abstract case class ExprType(resultType: Type) extends CachedProxyType {
+  abstract case class ExprType(override val resultType: Type) extends CachedProxyType {
     override def underlying(implicit ctx: Context): Type = resultType
     override def signature: Signature = Nil
     def derivedExprType(rt: Type)(implicit ctx: Context) =
@@ -972,7 +1005,7 @@ object Types {
   case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
       extends UncachedGroundType with BindingType {
     lazy val paramBounds = paramBoundsExp(this)
-    lazy val resultType = resultTypeExp(this)
+    override lazy val resultType = resultTypeExp(this)
 
     override def signature = resultType.signature
 
@@ -1272,7 +1305,7 @@ object Types {
   /** A filter for names of deferred term definitions of a given type */
   object abstractTermNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
-      name.isTermName && ((pre member name).symbol is Deferred)
+      name.isTermName && (pre member name).hasAltWith(_ is Deferred)
   }
 
   // ----- Exceptions -------------------------------------------------------------

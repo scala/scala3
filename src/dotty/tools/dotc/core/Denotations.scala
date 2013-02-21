@@ -157,18 +157,31 @@ object Denotations {
 
     def orElse(that: => Denotation) = if (this.exists) this else that
 
-    /** The part of this denotation that satisfies the predicate, or NoDenotation is none exists */
-    def filter(p: Symbol => Boolean)(implicit ctx: Context): Denotation
+    /** The set of alternative single-denotations making up this denotation */
+    def alts(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation] =
+      altsWith(scala.Function.const(true))
+
+    /** The alternatives of this denotation that satisfy the predicate `p`. */
+    def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation]
+
+    /** The unique alternative of this denotation that satisfies the predicate `p`,
+     *  or NoDenotation if no satisfying alternative exists.
+     *  @throws TypeError if there is at more than one alternative that satisfies `p`.
+     */
+    def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation
+
+    /** Does this denotation have an alternative that satisfies the predicate `p`? */
+    def hasAltWith(p: Symbol => Boolean)(implicit ctx: Context): Boolean
 
     /** If this denotation is overloaded, filter with given predicate.
-     *  If result is still overloaded throw a TypeError
+     *  If result is still overloaded throw a TypeError.
+     *  Note: disambiguate is slightly different from suchThat in that
+     *  single-denotations that do not satisfy the predicate are left alone
+     *  (whereas suchThat would map them to NoDenotation).
      */
     def disambiguate(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation = this match {
       case sdenot: SingleDenotation => sdenot
-      case mdenot => this filter p match {
-        case sdenot: SingleDenotation => sdenot
-        case mdenot => throw new TypeError(s"failure to disambiguate overloaded reference $mdenot")
-      }
+      case mdenot => suchThat(p)
     }
 
     /** Return symbol in this denotation that satisfies the given predicate.
@@ -279,8 +292,18 @@ object Denotations {
     def info = unsupported("info")
     def signature = unsupported("signature")
     def firstSym(implicit ctx: Context): Symbol = denot1.firstSym orElse denot2.firstSym
-    def filter(p: Symbol => Boolean)(implicit ctx: Context): Denotation =
-      (denot1 filter p) & (denot2 filter p)
+    def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation] =
+      denot1.altsWith(p) ++ denot2.altsWith(p)
+    def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation = {
+      val sd1 = denot1.suchThat(p)
+      val sd2 = denot2.suchThat(p)
+      if (sd1.exists)
+        if (sd2.exists) throw new TypeError(s"failure to disambiguate overloaded reference $this")
+        else sd1
+      else sd2
+    }
+    def hasAltWith(p: Symbol => Boolean)(implicit ctx: Context): Boolean =
+      denot1.hasAltWith(p) || denot2.hasAltWith(p)
     def atSignature(sig: Signature): SingleDenotation =
       denot1.atSignature(sig) orElse denot2.atSignature(sig)
     def validFor = denot1.validFor & denot2.validFor
@@ -311,8 +334,14 @@ object Denotations {
 
     def orElse(that: => SingleDenotation) = if (this.exists) this else that
 
-    def filter(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation =
+   def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation] =
+      if (p(symbol)) this :: Nil else Nil
+
+    def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation =
       if (p(symbol)) this else NoDenotation
+
+    def hasAltWith(p: Symbol => Boolean)(implicit ctx: Context): Boolean =
+      p(symbol)
 
     def atSignature(sig: Signature): SingleDenotation =
       if (sig == signature) this else NoDenotation
