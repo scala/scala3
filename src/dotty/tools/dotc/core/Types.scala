@@ -18,6 +18,7 @@ import collection.mutable
 
 object Types {
 
+
   /** A hash value indicating that the underlying type is not
    *  cached in uniques.
    */
