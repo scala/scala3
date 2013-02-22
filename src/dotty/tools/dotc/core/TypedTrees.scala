@@ -83,11 +83,14 @@ object TypedTrees {
     def This(cls: ClassSymbol)(implicit ctx: Context): This =
       Trees.This(cls.name).withType(cls.thisType).checked
 
-    def Super(qual: Tree, mixin: Symbol = NoSymbol)(implicit ctx: Context): Super = {
-      val cls = qual.tpe.typeSymbol
-      val (owntype, mix) =
-        if (mixin.exists) (mixin.typeConstructor, mixin.asType.name)
-        else (ctx.glb(cls.info.parents), tpnme.EMPTY)
+    def Super(qual: Tree, mix: TypeName)(implicit ctx: Context): Super = {
+      val owntype =
+        if (mix.isEmpty) ctx.glb(qual.tpe.parents)
+        else {
+          val mixParents = qual.tpe.parents filter (_.name == mix)
+          check(mixParents.length == 1)
+          mixParents.head
+        }
       Trees.Super(qual, mix).withType(SuperType(qual.tpe, owntype)).checked
     }
 
@@ -155,6 +158,9 @@ object TypedTrees {
 
     def Return(expr: Tree, from: Ident)(implicit ctx: Context): Return =
       Trees.Return(expr, from).withType(defn.NothingType).checked
+
+    def Try(block: Tree, catches: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try =
+      Trees.Try(block, catches, finalizer).withType(ctx.lub(block.tpe :: catches.map(_.tpe))).checked
 
     def Throw(expr: Tree)(implicit ctx: Context): Throw =
       Trees.Throw(expr).withType(defn.NothingType).checked
@@ -391,7 +397,6 @@ object TypedTrees {
       check(qual.isValue)
       val cls = qual.tpe.typeSymbol
       check(cls.isClass)
-      check(mixin == NoSymbol || (cls.asClass.parents map (_.typeSymbol) contains mixin))
     case Apply(fn, args) =>
       def checkArg(arg: tpd.Tree, name: Name, formal: Type): Unit = {
         arg match {
@@ -476,6 +481,9 @@ object TypedTrees {
     case Return(expr, from) =>
       check(expr.isValue); check(from.isTerm)
       check(from.tpe.termSymbol.isSourceMethod)
+    case Try(block, catches, finalizer) =>
+      for (ctch <- catches)
+        check(ctch.pat.tpe <:< defn.ThrowableType)
     case Throw(expr) =>
       check(expr.isValue)
       check(expr.tpe <:< defn.ThrowableType)
