@@ -255,8 +255,11 @@ object SymDenotations {
       isModuleClass && linkedClass.isNonBottomSubClass(base)
 
     /** Is this symbol a class that does not extend `AnyVal`? */
-    def isNonValueClass(implicit ctx: Context): Boolean =
+    final def isNonValueClass(implicit ctx: Context): Boolean =
       isClass && !isSubClass(defn.AnyValClass)
+
+    /** Are the contents of this denotation invariant under the type map `f`? */
+    def isInvariantUnder(f: Type => Type)(implicit ctx: Context) = info eq f(info)
 
     /** Is this definition accessible whenever `that` symbol is accessible?
      *  Does not take into account status of protected members.
@@ -497,7 +500,7 @@ object SymDenotations {
     override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
 
     /** Copy this denotation, overriding selective fields */
-    def copy(
+    def copySym(
         sym: Symbol,
         owner: Symbol = this.owner,
         name: Name = this.name,
@@ -797,6 +800,11 @@ object SymDenotations {
         if (this is Trait | ImplClass) nme.TRAIT_CONSTRUCTOR else nme.CONSTRUCTOR
       decls.denotsNamed(cname).first.symbol
     }
+
+    override def isInvariantUnder(f: Type => Type)(implicit ctx: Context) =
+      (parents.mapConserve(f) eq parents) &&
+      (f(selfType) eq selfType) &&
+      (decls forall (_.isInvariantUnder(f)))
 
     def copyClass(
         sym: ClassSymbol,

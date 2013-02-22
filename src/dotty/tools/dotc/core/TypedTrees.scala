@@ -599,7 +599,7 @@ object TypedTrees {
       check(shared.isType || shared.isTerm)
   }
 
-  implicit class TreeOps[T <: tpd.Tree](val tree: T) extends AnyVal {
+  implicit class TreeOps[ThisTree <: tpd.Tree](val tree: ThisTree) extends AnyVal {
 
     def isValue(implicit ctx: Context): Boolean =
       tree.isTerm && tree.tpe.widen.isValueType
@@ -610,14 +610,63 @@ object TypedTrees {
     def isValueType: Boolean =
       tree.isType && tree.tpe.isValueType
 
-    def isInstantiation = tree match {
+    def isInstantiation: Boolean = tree match {
       case Apply(Select(New(_), nme.CONSTRUCTOR), _) => true
       case _ => false
     }
 
-    def checked(implicit ctx: Context): T = {
+    def checked(implicit ctx: Context): ThisTree = {
       if (ctx.settings.YcheckTypedTrees.value) checkType(tree)
       tree
+    }
+
+    def shallowFold[T](z: T)(op: (T, tpd.Tree) => T) =
+      new ShallowFolder(op).apply(z, tree)
+
+    def deepFold[T](z: T)(op: (T, tpd.Tree) => T) =
+      new DeepFolder(op).apply(z, tree)
+
+    def subst(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): ThisTree =
+      new TreeMapper(typeMap = new ctx.SubstSymMap(from, to)).apply(tree)
+
+    def changeOwner(from: Symbol, to: Symbol)(implicit ctx: Context): ThisTree =
+      new TreeMapper(ownerMap = (sym => if (sym == from) to else sym)).apply(tree)
+  }
+
+  class TreeMapper(typeMap: TypeMap = IdentityTypeMap, ownerMap: Symbol => Symbol = identity)(implicit ctx: Context) extends TreeTransformer[Type, Unit] {
+    override def transform(tree: tpd.Tree, c: Unit): tpd.Tree = {
+      val tree1 = tree.withType(typeMap(tree.tpe))
+      val tree2 = tree1 match {
+        case bind: tpd.Bind =>
+          val sym = bind.symbol
+          val newOwner = ownerMap(sym.owner)
+          val newInfo = typeMap(sym.info)
+          if ((newOwner ne sym.owner) || (newInfo ne sym.info))
+            bind.withType(tpd.refType(sym.copy(owner = newOwner, info = newInfo)))
+          else
+            tree1
+        case _ =>
+          tree1
+      }
+      super.transform(tree2, c)
+    }
+    override def transform(trees: List[tpd.Tree], c: Unit) = {
+      val locals = localSyms(trees)
+      val mapped = ctx.mapSymbols(locals, typeMap, ownerMap)
+      if (locals eq mapped)
+        super.transform(trees, c)
+      else
+        new TreeMapper(
+          typeMap andThen ((tp: Type) => tp.substSym(locals, mapped)),
+          ownerMap andThen (locals zip mapped).toMap)
+          .transform(trees, c)
+    }
+
+    def apply[ThisTree <: tpd.Tree](tree: ThisTree): ThisTree = transform(tree, ()).asInstanceOf[ThisTree]
+
+    def apply(annot: Annotation): Annotation = {
+      val tree1 = apply(annot.tree)
+      if (tree1 eq annot.tree) annot else ConcreteAnnotation(tree1)
     }
   }
 

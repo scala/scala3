@@ -116,7 +116,7 @@ trait Symbols { this: Context =>
     newSymbol(NoSymbol, nme.IMPORT, EmptyFlags, ImportType(expr), coord = coord)
 
   def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
-    newSymbol(cls, nme.CONSTRUCTOR, flags, MethodType(paramNames, paramTypes)(_ => cls.typeConstructor), privateWithin, coord)
+    newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes)(_ => cls.typeConstructor), privateWithin, coord)
 
   def newDefaultConstructor(cls: ClassSymbol) =
     newConstructor(cls, EmptyFlags, Nil, Nil)
@@ -142,7 +142,44 @@ trait Symbols { this: Context =>
     tparams
   }
 
-  private val reverseApply = (x: TypeSymbol, f: TypeSymbol => TypeBounds) => f(x)
+  type OwnerMap = Symbol => Symbol
+
+  /** Map given symbols, subjecting all types to given type map and owner map. Cross symbol
+   *  references are brought over from originals to copies.
+   *  Do not copy any symbols if all their attributes stay the same.
+   */
+  def mapSymbols(originals: List[Symbol], typeMap: TypeMap = IdentityTypeMap, ownerMap: OwnerMap = identity) = {
+    if (originals forall (sym =>
+        sym.isInvariantUnder(typeMap) && ownerMap(sym.owner) == sym.owner))
+      originals
+    else {
+      lazy val copies: List[Symbol] = originals map { orig =>
+        if (orig.isClass)
+          newLazyClassSymbol(ownerMap(orig.owner), orig.asClass.name, orig.flags, copyClassCompleter, orig.asClass.associatedFile, orig.coord)
+        else
+          newLazySymbol(ownerMap(orig.owner), orig.name, orig.flags, copySymCompleter, orig.coord)
+      }
+      lazy val prev = (copies zip originals).toMap
+      lazy val copyTypeMap = typeMap andThen ((tp: Type) => tp.substSym(originals, copies))
+      lazy val mapper = new TypedTrees.TreeMapper(typeMap, ownerMap)
+      def mapAnnotations(denot: isLazy[_]): Unit = {
+        denot.annotations = denot.annotations.mapConserve(mapper.apply)
+        denot.privateWithin = ownerMap(denot.privateWithin)
+      }
+      def copySymCompleter(denot: LazySymDenotation): Unit = {
+        denot.info = copyTypeMap(prev(denot.symbol).info)
+        mapAnnotations(denot)
+      }
+      def copyClassCompleter(denot: LazyClassDenotation): Unit = {
+        denot.parents = prev(denot.symbol).asClass.parents mapConserve (
+          tp => copyTypeMap(tp).asInstanceOf[TypeRef])
+        denot.selfType = copyTypeMap(prev(denot.symbol).asClass.selfType)
+        denot.decls = copyTypeMap.mapOver(prev(denot.symbol).asClass.decls)
+        mapAnnotations(denot)
+      }
+      copies
+    }
+  }
 
 // ----- Locating predefined symbols ----------------------------------------
 

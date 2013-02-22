@@ -209,7 +209,7 @@ object Types {
     final def forall(p: Type => Boolean): Boolean = !exists(!p(_))
 
     /** Substitute all types that refer in their symbol attribute to
-     *  one of the symbols in `from` by the corresponding types in `to`
+     *  one of the symbols in `from` by the corresponding types in `to`.
      */
     final def subst(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type =
       if (from.isEmpty) this
@@ -236,6 +236,11 @@ object Types {
     /** Substitute all occurrences of `RefinedThis(rt)` by `tp` */
     final def substThis(rt: RefinedType, tp: Type)(implicit ctx: Context): Type =
       ctx.substThis(this, rt, tp, null)
+
+    /** Substitute all occurrences symbols in `from` by references to corresponding symbols in `to`
+     */
+    final def substSym(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): Type =
+      ctx.substSym(this, from, to, null)
 
     /** For a ClassInfo type, its parents,
      *  Inherited by all type proxies. Empty for all other types.
@@ -963,6 +968,8 @@ object Types {
 
   abstract class GenericMethodType {
     def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType
+    def apply(paramNames: List[TermName], paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
+      apply(paramNames, paramTypes)(_ => resultType)
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
       def transResult(mt: MethodType) =
         resultType.subst(params, (0 until params.length).toList map (MethodParam(mt, _)))
@@ -1172,7 +1179,7 @@ object Types {
 
   // ----- TypeMaps --------------------------------------------------------------------
 
-  abstract class TypeMap(implicit ctx: Context) extends (Type => Type) {
+  abstract class TypeMap(implicit ctx: Context) extends (Type => Type) { thisMap =>
     def apply(tp: Type): Type
 
     def applyToBounds(tp: TypeBounds): TypeBounds =
@@ -1217,8 +1224,25 @@ object Types {
         tp
     }
 
+    def mapOver(syms: List[Symbol]): List[Symbol] =
+      ctx.mapSymbols(syms, this)
+
+    def mapOver(scope: Scope): Scope = {
+      val elems = scope.toList
+      val elems1 = mapOver(elems)
+      if (elems1 eq elems) scope
+      else newScopeWith(elems1: _*)
+    }
+
     def mapOverAnnotations(annots: List[Annotation]): List[Annotation] = ???
 
+    def andThen(f: Type => Type): TypeMap = new TypeMap {
+      def apply(tp: Type) = f(thisMap.apply(tp))
+    }
+  }
+
+  object IdentityTypeMap extends TypeMap()(NoContext) {
+    def apply(tp: Type) = tp
   }
 
   class InstMethodMap(mt: MethodType, argtypes: List[Type])(implicit ctx: Context) extends TypeMap {
