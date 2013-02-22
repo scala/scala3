@@ -187,7 +187,10 @@ object Symbols {
     /** The current denotation of this symbol */
     final def denot(implicit ctx: Context): SymDenotation = {
       var denot = lastDenot
-      if (!(denot.validFor contains ctx.period)) denot = denot.current.asInstanceOf[SymDenotation]
+      if (!(denot.validFor contains ctx.period)) {
+        denot = denot.current.asInstanceOf[SymDenotation]
+        lastDenot = denot
+      }
       denot
     }
 
