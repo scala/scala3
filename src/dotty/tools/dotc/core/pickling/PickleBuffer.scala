@@ -166,5 +166,5 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
   def times[T](n: Int, op: ()=>T): List[T] =
     if (n == 0) List() else op() :: times(n-1, op)
 
-  def unpickleScalaFlags(sflags: Long): FlagSet = ???
+  def unpickleScalaFlags(sflags: Long, isType: Boolean): FlagSet = ???
 }
