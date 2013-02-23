@@ -324,7 +324,7 @@ object ClassfileConstants {
   final val impdep1       = 0xfe
   final val impdep2       = 0xff
 
-  abstract class FlagTranslation {
+  sealed abstract class FlagTranslation {
     import Flags._
 
     private var isAnnotation = false
@@ -360,16 +360,16 @@ object ClassfileConstants {
       res
     }
 
-    def classFlags(jflags: Int): FlagSet = {
+    final def classFlags(jflags: Int): FlagSet = {
       initFields(jflags)
       isClass = true
       translateFlags(jflags, EmptyFlags)
     }
-    def fieldFlags(jflags: Int): FlagSet = {
+    final def fieldFlags(jflags: Int): FlagSet = {
       initFields(jflags)
       translateFlags(jflags, if ((jflags & JAVA_ACC_FINAL) == 0) Mutable else EmptyFlags)
     }
-    def methodFlags(jflags: Int): FlagSet = {
+    final def methodFlags(jflags: Int): FlagSet = {
       initFields(jflags)
       translateFlags(jflags, if ((jflags & JAVA_ACC_BRIDGE) != 0) Bridge else EmptyFlags)
     }

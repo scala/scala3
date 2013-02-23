@@ -13,7 +13,7 @@ import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import io.AbstractFile
 
-class ClassfileParser(
+final class ClassfileParser(
     classfile: AbstractFile,
     classRoot: LazyClassDenotation,
     moduleRoot: LazyClassDenotation)(implicit cctx: CondensedContext) {

@@ -11,7 +11,7 @@ import Flags._
  *  @param from The first index where defined data are found
  *  @param to   The first index where new data can be written
  */
-class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
+abstract class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
 
   var bytes = data
   var readIndex = from
@@ -24,13 +24,13 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
     bytes = bytes1
   }
 
-  def ensureCapacity(capacity: Int) =
+  final def ensureCapacity(capacity: Int) =
     while (bytes.length < writeIndex + capacity) dble()
 
   // -- Basic output routines --------------------------------------------
 
   /** Write a byte of data */
-  def writeByte(b: Int) {
+  final def writeByte(b: Int) {
     if (writeIndex == bytes.length) dble()
     bytes(writeIndex) = b.toByte
     writeIndex += 1
@@ -39,7 +39,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
   /** Write a natural number in big endian format, base 128.
    *  All but the last digits have bit 0x80 set.
    */
-  def writeNat(x: Int) =
+  final def writeNat(x: Int) =
     writeLongNat(x.toLong & 0x00000000FFFFFFFFL)
 
   /**
@@ -49,7 +49,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
    * if the long value is in the range Int.MIN_VALUE to
    * Int.MAX_VALUE.
    */
-  def writeLongNat(x: Long) {
+  final def writeLongNat(x: Long) {
     def writeNatPrefix(x: Long) {
       val y = x >>> 7
       if (y != 0L) writeNatPrefix(y)
@@ -66,7 +66,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
    *  @param pos ...
    *  @param x   ...
    */
-  def patchNat(pos: Int, x: Int) {
+  final def patchNat(pos: Int, x: Int) {
     def patchNatPrefix(x: Int) {
       writeByte(0)
       Array.copy(bytes, pos, bytes, pos+1, writeIndex - (pos+1))
@@ -83,7 +83,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
    *
    *  @param x The long number to be written.
    */
-  def writeLong(x: Long) {
+  final def writeLong(x: Long) {
     val y = x >> 8
     val z = x & 0xff
     if (-y != (z >> 7)) writeLong(y)
@@ -93,18 +93,18 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
   // -- Basic input routines --------------------------------------------
 
   /** Peek at the current byte without moving the read index */
-  def peekByte(): Int = bytes(readIndex)
+  final def peekByte(): Int = bytes(readIndex)
 
   /** Read a byte */
-  def readByte(): Int = {
+  final def readByte(): Int = {
     val x = bytes(readIndex); readIndex += 1; x
   }
 
   /** Read a natural number in big endian format, base 128.
    *  All but the last digits have bit 0x80 set.*/
-  def readNat(): Int = readLongNat().toInt
+  final def readNat(): Int = readLongNat().toInt
 
-  def readLongNat(): Long = {
+  final def readLongNat(): Long = {
     var b = 0L
     var x = 0L
     do {
@@ -115,7 +115,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
   }
 
   /** Read a long number in signed big endian format, base 256. */
-  def readLong(len: Int): Long = {
+  final def readLong(len: Int): Long = {
     var x = 0L
     var i = 0
     while (i < len) {
@@ -129,8 +129,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
   /** Returns the buffer as a sequence of (Int, Array[Byte]) representing
    *  (tag, data) of the individual entries.  Saves and restores buffer state.
    */
-
-  def toIndexedSeq: IndexedSeq[(Int, Array[Byte])] = {
+  final def toIndexedSeq: IndexedSeq[(Int, Array[Byte])] = {
     val saved = readIndex
     readIndex = 0
     readNat() ; readNat()     // discarding version
@@ -157,14 +156,14 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
    *  @param op  ...
    *  @return    ...
    */
-  def until[T](end: Int, op: () => T): List[T] =
+  final def until[T](end: Int, op: () => T): List[T] =
     if (readIndex == end) List() else op() :: until(end, op);
 
   /** Perform operation <code>op</code> the number of
    *  times specified.  Concatenate the results into a list.
    */
-  def times[T](n: Int, op: ()=>T): List[T] =
+  final def times[T](n: Int, op: ()=>T): List[T] =
     if (n == 0) List() else op() :: times(n-1, op)
 
-  def unpickleScalaFlags(sflags: Long): FlagSet = ???
+  final def unpickleScalaFlags(sflags: Long): FlagSet = ???
 }

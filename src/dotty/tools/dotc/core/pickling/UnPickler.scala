@@ -67,7 +67,7 @@ object UnPickler {
  *  @param moduleroot the top-level module class which is unpickled, or NoSymbol if inapplicable
  *  @param filename   filename associated with bytearray, only used for error messages
  */
-class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: LazyClassDenotation)(implicit cctx: CondensedContext)
+final class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: LazyClassDenotation)(implicit cctx: CondensedContext)
   extends PickleBuffer(bytes, 0, -1) {
 
   import UnPickler._
