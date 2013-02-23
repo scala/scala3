@@ -120,7 +120,7 @@ object Denotations {
    *
    *  Then the denotation of `y` is `SingleDenotation(NoSymbol, A | B)`.
    */
-  abstract class Denotation extends DotClass {
+  sealed abstract class Denotation extends DotClass {
 
     /** The referencing symbol, exists only for non-overloaded denotations */
     def symbol: Symbol
@@ -155,10 +155,10 @@ object Denotations {
 
     def exists: Boolean = true
 
-    def orElse(that: => Denotation) = if (this.exists) this else that
+    final def orElse(that: => Denotation) = if (this.exists) this else that
 
     /** The set of alternative single-denotations making up this denotation */
-    def alts(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation] =
+    final def alts(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation] =
       altsWith(scala.Function.const(true))
 
     /** The alternatives of this denotation that satisfy the predicate `p`. */
@@ -179,7 +179,7 @@ object Denotations {
      *  single-denotations that do not satisfy the predicate are left alone
      *  (whereas suchThat would map them to NoDenotation).
      */
-    def disambiguate(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation = this match {
+    final def disambiguate(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation = this match {
       case sdenot: SingleDenotation => sdenot
       case mdenot => suchThat(p)
     }
@@ -188,7 +188,7 @@ object Denotations {
      *  Throw a `TypeError` if predicate fails to disambiguate symbol.
      *  Return a stubsymbol if no alternative satisfies the predicate.
      */
-    def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null)(implicit ctx: Context): Symbol = {
+    final def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null)(implicit ctx: Context): Symbol = {
       val sym = disambiguate(p).symbol
       if (sym.exists) sym else {
         val owner = if (firstSym.exists) firstSym.owner else NoSymbol
@@ -197,7 +197,7 @@ object Denotations {
     }
 
     /** Form a denotation by conjoining with denotation `that` */
-    def &(that: Denotation)(implicit ctx: Context): Denotation =
+    final def &(that: Denotation)(implicit ctx: Context): Denotation =
       if (this eq that) this
       else if (!this.exists) that
       else if (!that.exists) this
@@ -241,7 +241,7 @@ object Denotations {
         } else NoDenotation
     }
 
-    def |(that: Denotation)(pre: Type)(implicit ctx: Context): Denotation = {
+    final def |(that: Denotation)(pre: Type)(implicit ctx: Context): Denotation = {
 
       def lubSym(sym1: Symbol, sym2: Symbol): Symbol = {
         def qualifies(sym: Symbol) =
@@ -278,7 +278,7 @@ object Denotations {
       }
     }
 
-    def show(implicit ctx: Context): String = ctx.show(this)
+    final def show(implicit ctx: Context): String = ctx.show(this)
   }
 
   /** The class of overloaded denotations
@@ -312,8 +312,8 @@ object Denotations {
   }
 
   abstract class SingleDenotation extends Denotation with DenotationSet {
-    override def isType = info.isInstanceOf[TypeType]
-    override def signature: Signature = {
+    def isType = info.isInstanceOf[TypeType]
+    override final def signature: Signature = {
       def sig(tp: Type): Signature = tp match {
         case tp: PolyType =>
           tp.resultType match {
@@ -325,33 +325,33 @@ object Denotations {
       }
       if (isType) NullSignature else sig(info)
     }
-    def firstSym(implicit ctx: Context): Symbol = symbol
+    final def firstSym(implicit ctx: Context): Symbol = symbol
 
-    def derivedSingleDenotation(s: Symbol, i: Type): SingleDenotation =
+    final def derivedSingleDenotation(s: Symbol, i: Type): SingleDenotation =
       if ((s eq symbol) && (i eq info)) this else newLikeThis(s, i)
 
     protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = this
 
-    def orElse(that: => SingleDenotation) = if (this.exists) this else that
+    final def orElse(that: => SingleDenotation) = if (this.exists) this else that
 
-   def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation] =
+    final def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation] =
       if (p(symbol)) this :: Nil else Nil
 
-    def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation =
+    final def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation =
       if (p(symbol)) this else NoDenotation
 
-    def hasAltWith(p: Symbol => Boolean)(implicit ctx: Context): Boolean =
+    final def hasAltWith(p: Symbol => Boolean)(implicit ctx: Context): Boolean =
       p(symbol)
 
-    def atSignature(sig: Signature): SingleDenotation =
+    final def atSignature(sig: Signature): SingleDenotation =
       if (sig == signature) this else NoDenotation
 
     // ------ Transformations -----------------------------------------
 
     private[this] var _validFor: Period = Nowhere
 
-    def validFor = _validFor
-    def validFor_=(p: Period) =
+    final def validFor = _validFor
+    final def validFor_=(p: Period) =
       _validFor = p
 
     /** The next SingleDenotation in this run, with wrap-around from last to first.
@@ -368,18 +368,18 @@ object Denotations {
      *  2) the union of all validity periods must be a contiguous
      *     interval starting in FirstPhaseId.
      */
-    var nextInRun: SingleDenotation = this
+    final var nextInRun: SingleDenotation = this
 
     /** The version of this SingleDenotation that was valid in the first phase
      *  of this run.
      */
-    def initial: SingleDenotation = {
+    final def initial: SingleDenotation = {
       var current = nextInRun
       while (current.validFor.code > this._validFor.code) current = current.nextInRun
       current
     }
 
-    def current(implicit ctx: Context): SingleDenotation = {
+    final def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
       val valid = _validFor
       var current = this
@@ -421,35 +421,35 @@ object Denotations {
 
     // ------ DenotationSet ops ----------------------------------------------
 
-    def first = this
-    def toDenot(implicit ctx: Context) = this
-    def containsSig(sig: Signature)(implicit ctx: Context) =
+    final def first = this
+    final def toDenot(implicit ctx: Context) = this
+    final def containsSig(sig: Signature)(implicit ctx: Context) =
       signature == sig
-    def filterDisjoint(denots: DenotationSet)(implicit ctx: Context): DenotationSet =
+    final def filterDisjoint(denots: DenotationSet)(implicit ctx: Context): DenotationSet =
       if (denots.containsSig(signature)) NoDenotation else this
-    def filterExcluded(flags: FlagSet)(implicit ctx: Context): DenotationSet =
+    final def filterExcluded(flags: FlagSet)(implicit ctx: Context): DenotationSet =
       if (symbol is flags) NoDenotation else this
-    def filterAccessibleFrom(pre: Type)(implicit ctx: Context): DenotationSet =
+    final def filterAccessibleFrom(pre: Type)(implicit ctx: Context): DenotationSet =
       if (symbol.isAccessibleFrom(pre)) this else NoDenotation
-    def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): DenotationSet =
+    final def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): DenotationSet =
       derivedSingleDenotation(symbol, info.asSeenFrom(pre, owner))
   }
 
-  class UniqueRefDenotation(val symbol: Symbol,
+  final class UniqueRefDenotation(val symbol: Symbol,
     val info: Type,
     initValidFor: Period) extends SingleDenotation {
     validFor = initValidFor
     override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
   }
 
-  class JointRefDenotation(val symbol: Symbol,
+  final class JointRefDenotation(val symbol: Symbol,
     val info: Type,
     initValidFor: Period) extends SingleDenotation {
     validFor = initValidFor
     override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
   }
 
-  class ErrorDenotation(implicit ctx: Context) extends SingleDenotation {
+  final class ErrorDenotation(implicit ctx: Context) extends SingleDenotation {
     val symbol = NoSymbol
     val info = NoType
     validFor = Period.allInRun(ctx.runId)
@@ -469,7 +469,7 @@ object Denotations {
     def filterExcluded(flags: FlagSet)(implicit ctx: Context): DenotationSet
     def filterAccessibleFrom(pre: Type)(implicit ctx: Context): DenotationSet
     def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): DenotationSet
-    def union(that: DenotationSet) =
+    final def union(that: DenotationSet) =
       if (!this.exists) that
       else if (that.exists) this
       else DenotUnion(this, that)
@@ -501,7 +501,7 @@ object Denotations {
 
   /** Creation method for denotations */
   trait DenotationsBase { this: ContextBase =>
-    def staticRef(path: Name)(implicit ctx: Context): Denotation = {
+    final def staticRef(path: Name)(implicit ctx: Context): Denotation = {
       def recur(path: Name, len: Int): Denotation = {
         val point = path.lastIndexOf('.', len - 1)
         val owner =
@@ -523,7 +523,7 @@ object Denotations {
       recur(path, path.length)
     }
 
-    def missingHook(owner: Symbol, name: Name)(implicit ctx: Context): Symbol =
+    final def missingHook(owner: Symbol, name: Name)(implicit ctx: Context): Symbol =
       if (owner.isPackage && name.isTermName)
         ctx.newPackageSymbols(owner, name.asTermName)._1.entered
       else
