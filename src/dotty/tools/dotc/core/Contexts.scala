@@ -41,68 +41,68 @@ object Contexts {
                                 with Printers
                                 with Symbols
                                 with Cloneable {
-    implicit val ctx: Context = this
+    final implicit val ctx: Context = this
 
     val base: ContextBase
 
-    private[this] var _underlying: Context = _
-    protected def underlying_=(underlying: Context) = _underlying = underlying
-    def underlying: Context = _underlying
+    final private[this] var _underlying: Context = _
+    protected final def underlying_=(underlying: Context) = _underlying = underlying
+    final def underlying: Context = _underlying
 
-    private[this] var _period: Period = _
-    protected def period_=(period: Period) = _period = period
-    def period: Period = _period
+    final private[this] var _period: Period = _
+    protected final def period_=(period: Period) = _period = period
+    final def period: Period = _period
 
-    private[this] var _constraints: Constraints = _
-    protected def constraints_=(constraints: Constraints) = _constraints = constraints
-    def constraints: Constraints = _constraints
+    final private[this] var _constraints: Constraints = _
+    protected final def constraints_=(constraints: Constraints) = _constraints = constraints
+    final def constraints: Constraints = _constraints
 
-    private[this] var _typeComparer: TypeComparer = _
-    protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
+    final private[this] var _typeComparer: TypeComparer = _
+    protected final def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
 
-    def typeComparer: TypeComparer = {
+    final def typeComparer: TypeComparer = {
       if ((_typeComparer eq underlying.typeComparer) &&
           (constraints ne underlying.constraints))
         _typeComparer = new TypeComparer(this)
       _typeComparer
     }
 
-    private[this] var _position: Position = _
-    protected def position_=(position: Position) = _position = position
-    def position: Position = _position
+    final private[this] var _position: Position = _
+    protected final def position_=(position: Position) = _position = position
+    final def position: Position = _position
 
     private[this] var _plainPrinter: Context => Printer = _
-    protected def plainPrinter_=(plainPrinter: Context => Printer) = _plainPrinter = plainPrinter
-    def plainPrinter: Context => Printer = _plainPrinter
+    protected final def plainPrinter_=(plainPrinter: Context => Printer) = _plainPrinter = plainPrinter
+    final def plainPrinter: Context => Printer = _plainPrinter
 
     private[this] var _refinedPrinter: Context => Printer = _
-    protected def refinedPrinter_=(refinedPrinter: Context => Printer) = _refinedPrinter = refinedPrinter
-    def refinedPrinter: Context => Printer = _refinedPrinter
+    protected final def refinedPrinter_=(refinedPrinter: Context => Printer) = _refinedPrinter = refinedPrinter
+    final def refinedPrinter: Context => Printer = _refinedPrinter
 
-    def printer = if (base.settings.debug.value) plainPrinter else refinedPrinter
+    final def printer = if (base.settings.debug.value) plainPrinter else refinedPrinter
 
     private[this] var _owner: Symbol = _
-    protected def owner_=(owner: Symbol) = _owner = owner
-    def owner: Symbol = _owner
+    protected final def owner_=(owner: Symbol) = _owner = owner
+    final def owner: Symbol = _owner
 
     private[this] var _sstate: SettingsState = _
-    protected def sstate_=(sstate: SettingsState) = _sstate = sstate
-    def sstate: SettingsState = _sstate
+    protected final def sstate_=(sstate: SettingsState) = _sstate = sstate
+    final def sstate: SettingsState = _sstate
 
-    def phase: Phase = ??? // phase(period.phaseId)
-    def enclClass: Context = ???
-    def erasedTypes: Boolean = ???
-    def debug: Boolean = ???
-    def error(msg: String): Unit = ???
-    def warning(msg: String): Unit = ???
-    def log(msg: String): Unit = ???
-    def debuglog(msg: String): Unit = ???
-    def inform(msg: String) = ???
-    def informTime(msg: String, start: Long): Unit = ???
-    def beforeTyper[T](op: => T): T = ???
+    final def phase: Phase = ??? // phase(period.phaseId)
+    final def enclClass: Context = ???
+    final def erasedTypes: Boolean = ???
+    final def debug: Boolean = ???
+    final def error(msg: String): Unit = ???
+    final def warning(msg: String): Unit = ???
+    final def log(msg: String): Unit = ???
+    final def debuglog(msg: String): Unit = ???
+    final def inform(msg: String) = ???
+    final def informTime(msg: String, start: Long): Unit = ???
+    final def beforeTyper[T](op: => T): T = ???
 
-    private var _condensed: CondensedContext = null
-    def condensed: CondensedContext = {
+    private final var _condensed: CondensedContext = null
+    final def condensed: CondensedContext = {
       if (_condensed == null)
         _condensed = base.initialCtx.fresh
           .withPeriod(period)
@@ -112,7 +112,7 @@ object Contexts {
       _condensed
     }
 
-    def fresh: FreshContext = {
+    final def fresh: FreshContext = {
       val newctx = super.clone.asInstanceOf[FreshContext]
       newctx.underlying = this
       newctx._condensed = null
@@ -123,14 +123,14 @@ object Contexts {
   sealed abstract class CondensedContext extends Context
 
   sealed abstract class FreshContext extends CondensedContext {
-    def withPeriod(period: Period): this.type = { this.period = period; this }
-    def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
-    def withConstraints(constraints: Constraints): this.type = { this.constraints = constraints; this }
-    def withPlainPrinter(printer: Context => Printer): this.type = { this.plainPrinter = printer; this }
-    def withRefinedPrinter(printer: Context => Printer): this.type = { this.refinedPrinter = printer; this }
-    def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
-    def withSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
-    def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
+    final def withPeriod(period: Period): this.type = { this.period = period; this }
+    final def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
+    final def withConstraints(constraints: Constraints): this.type = { this.constraints = constraints; this }
+    final def withPlainPrinter(printer: Context => Printer): this.type = { this.plainPrinter = printer; this }
+    final def withRefinedPrinter(printer: Context => Printer): this.type = { this.refinedPrinter = printer; this }
+    final def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
+    final def withSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
+    final def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
   }
 
   private final class InitialContext(val base: ContextBase) extends FreshContext {
@@ -172,21 +172,21 @@ object Contexts {
     // Symbols state
 
     /** A counter for unique ids */
-    private[core] var _nextId = 0
+    private[core] final var _nextId = 0
 
-    def nextId = { _nextId += 1; _nextId }
+    final def nextId = { _nextId += 1; _nextId }
 
     /** A map from a superclass id to the type-ref of the class that has it */
-    private[core] var classOfId = new Array[TypeRef](InitialSuperIdsSize)
+    private[core] final var classOfId = new Array[TypeRef](InitialSuperIdsSize)
 
     /** A map from a the type-ref of a superclass to its superclass id */
-    private[core] val superIdOfClass = new mutable.HashMap[TypeRef, Int]
+    private[core] final val superIdOfClass = new mutable.HashMap[TypeRef, Int]
 
     /** The last allocate superclass id */
-    private[core] var lastSuperId = -1
+    private[core] final var lastSuperId = -1
 
     /** Allocate and return next free superclass id */
-    private[core] def nextSuperId: Int = {
+    private[core] final def nextSuperId: Int = {
       lastSuperId += 1;
       if (lastSuperId >= classOfId.length) {
         val tmp = new Array[TypeRef](classOfId.length * 2)
@@ -197,16 +197,16 @@ object Contexts {
     }
 
     // SymDenotations state
-    private[core] val uniqueBits = new util.HashSet[BitSet]("superbits", 1024)
+    private[core] final val uniqueBits = new util.HashSet[BitSet]("superbits", 1024)
 
     // Types state
-    private[core] val uniques = new util.HashSet[Type]("uniques", initialUniquesCapacity) {
+    private[core] final val uniques = new util.HashSet[Type]("uniques", initialUniquesCapacity) {
       override def hash(x: Type): Int = x.hash
     }
 
     // TypeOps state
-    private[core] var volatileRecursions: Int = 0
-    private[core] val pendingVolatiles = new mutable.HashSet[Type]
+    private[core] final var volatileRecursions: Int = 0
+    private[core] final val pendingVolatiles = new mutable.HashSet[Type]
   }
 
   object Context {
