@@ -249,7 +249,7 @@ object Types {
     }
 
     /** The elements of an AndType or OrType */
-    def factors(implicit ctx: Context): List[Type] = this match {
+    final def factors(implicit ctx: Context): List[Type] = this match {
       case tp: AndType =>
         def components(tp: Type): List[Type] = tp match {
           case AndType(tp1, tp2) => components(tp1) ++ components(tp2)
@@ -266,7 +266,7 @@ object Types {
     }
 
     /** The parameter types of a PolyType or MethodType, Empty list for others */
-    def paramTypess: List[List[Type]] = this match {
+    final def paramTypess: List[List[Type]] = this match {
       case mt: MethodType => mt.paramTypes :: mt.resultType.paramTypess
       case pt: PolyType => pt.paramTypess
       case _ => Nil
@@ -281,13 +281,13 @@ object Types {
     }
 
     /** Map function over elements of an AndType, rebuilding with & */
-    def mapAnd(f: Type => Type)(implicit ctx: Context): Type = this match {
+    final def mapAnd(f: Type => Type)(implicit ctx: Context): Type = this match {
       case AndType(tp1, tp2) => tp1.mapAnd(f) & tp2.mapAnd(f)
       case _ => f(this)
     }
 
     /** Map function over elements of an OrType, rebuilding with | */
-    def mapOr(f: Type => Type)(implicit ctx: Context): Type = this match {
+    final def mapOr(f: Type => Type)(implicit ctx: Context): Type = this match {
       case OrType(tp1, tp2) => tp1.mapOr(f) | tp2.mapOr(f)
       case _ => f(this)
     }
@@ -402,7 +402,7 @@ object Types {
      *    - Or phase.erasedTypes is false and both types are neither method nor
      *      poly types.
      */
-    def matches(that: Type)(implicit ctx: Context): Boolean =
+    final def matches(that: Type)(implicit ctx: Context): Boolean =
       ctx.typeComparer.matchesType(this, that, !ctx.phase.erasedTypes)
 
     /** Does this type match that type
@@ -614,33 +614,33 @@ object Types {
       finishHash(hashing.mix(seed, elemHash), arity + 1, tps)
     }
 
-    protected def doHash(x: Any): Int =
+    protected final def doHash(x: Any): Int =
       finishHash(hashing.mix(hashSeed, x.hashCode), 1)
 
-    protected def doHash(tp: Type): Int =
+    protected final def doHash(tp: Type): Int =
       finishHash(hashSeed, 0, tp)
 
-    protected def doHash(x1: Any, tp2: Type): Int =
+    protected final def doHash(x1: Any, tp2: Type): Int =
       finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2)
 
-    protected def doHash(tp1: Type, tp2: Type): Int =
+    protected final def doHash(tp1: Type, tp2: Type): Int =
       finishHash(hashSeed, 0, tp1, tp2)
 
-    protected def doHash(x1: Any, tp2: Type, tp3: Type): Int =
+    protected final def doHash(x1: Any, tp2: Type, tp3: Type): Int =
       finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2, tp3)
 
-    protected def doHash(tp1: Type, tps2: List[Type]): Int =
+    protected final def doHash(tp1: Type, tps2: List[Type]): Int =
       finishHash(hashSeed, 0, tp1, tps2)
 
-    protected def doHash(x1: Any, tp2: Type, tps3: List[Type]): Int =
+    protected final def doHash(x1: Any, tp2: Type, tps3: List[Type]): Int =
       finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
 
   } // end Type
 
   /** A marker trait for cached types */
-  trait CachedType extends Type
+  sealed trait CachedType extends Type
 
-  def unique[T <: Type](tp: T)(implicit ctx: Context): T = {
+  final def unique[T <: Type](tp: T)(implicit ctx: Context): T = {
     if (tp.hash == NotCached) tp
     else ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
   }
@@ -648,7 +648,7 @@ object Types {
   /** A marker trait for type proxies.
    *  Each implementation is expected to redefine the `underlying` method.
    */
-  abstract class TypeProxy extends Type {
+  sealed abstract class TypeProxy extends Type {
     /** The type to which this proxy forwards operations. */
     def underlying(implicit ctx: Context): Type
   }
@@ -659,42 +659,42 @@ object Types {
   // is for efficiency.
 
   /**  Instances of this class are cached and are not proxies. */
-  abstract class CachedGroundType extends Type with CachedType {
+  sealed abstract class CachedGroundType extends Type with CachedType {
     final val hash = computeHash
     override final def hashCode = hash
     def computeHash: Int
   }
 
   /**  Instances of this class are cached and are proxies. */
-  abstract class CachedProxyType extends TypeProxy with CachedType {
+  sealed abstract class CachedProxyType extends TypeProxy with CachedType {
     final val hash = computeHash
     override final def hashCode = hash
     def computeHash: Int
   }
 
   /**  Instances of this class are uncached and are not proxies. */
-  abstract class UncachedGroundType extends Type {
+  sealed abstract class UncachedGroundType extends Type {
     final def hash = NotCached
   }
 
   /**  Instances of this class are uncached and are proxies. */
-  abstract class UncachedProxyType extends TypeProxy {
+  sealed abstract class UncachedProxyType extends TypeProxy {
     final def hash = NotCached
   }
 
   /** A marker trait for types that are guaranteed to contain only a
    *  single non-null value (they might contain null in addition).
    */
-  trait SingletonType extends TypeProxy
+  sealed trait SingletonType extends TypeProxy
 
   /** A marker trait for types that apply only to type symbols */
-  trait TypeType extends Type
+  sealed trait TypeType extends Type
 
   // --- NamedTypes ------------------------------------------------------------------
 
   /** A NamedType of the form Prefix # name
    */
-  abstract class NamedType extends CachedProxyType {
+  sealed abstract class NamedType extends CachedProxyType {
 
     val prefix: Type
     val name: Name
@@ -702,7 +702,7 @@ object Types {
     private[this] var lastDenotation: Denotation = null
 
     /** The denotation currently denoted by this type */
-    def denot(implicit ctx: Context): Denotation = {
+    final def denot(implicit ctx: Context): Denotation = {
       val validPeriods =
         if (lastDenotation != null) lastDenotation.validFor else Nowhere
       if (!(validPeriods contains ctx.period)) {
@@ -728,17 +728,17 @@ object Types {
 
     protected def loadDenot(implicit ctx: Context) = prefix.member(name)
 
-    def isType = name.isTypeName
-    def isTerm = name.isTermName
+    final def isType = name.isTypeName
+    final def isTerm = name.isTermName
 
     def symbol(implicit ctx: Context): Symbol = denot.symbol
-    def info(implicit ctx: Context): Type = denot.info
+    final def info(implicit ctx: Context): Type = denot.info
 
     override def underlying(implicit ctx: Context): Type = info
 
-    def isAbstractType(implicit ctx: Context) = info.isRealTypeBounds
+    final def isAbstractType(implicit ctx: Context) = info.isRealTypeBounds
 
-    def derivedNamedType(prefix: Type, name: Name)(implicit ctx: Context): Type =
+    final def derivedNamedType(prefix: Type, name: Name)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
       else NamedType(prefix, name)
 
@@ -749,10 +749,10 @@ object Types {
 
   sealed abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType
 
-  trait HasFixedSym extends NamedType {
+  sealed trait HasFixedSym extends NamedType {
     protected val fixedSym: Symbol
-    override def symbol(implicit ctx: Context): Symbol = fixedSym
-    override def loadDenot(implicit ctx: Context) = {
+    override final def symbol(implicit ctx: Context): Symbol = fixedSym
+    override final def loadDenot(implicit ctx: Context) = {
       val denot = fixedSym.denot
       val owner = denot.owner
       if (owner.isTerm) denot else denot.asSeenFrom(prefix, owner).toDenot
@@ -859,7 +859,7 @@ object Types {
     override def computeHash = doHash(name, info, parent)
   }
 
-  class CachedRefinedType(parent: Type, name: Name, infof: RefinedType => Type) extends RefinedType(parent, name)(infof)
+  final class CachedRefinedType(parent: Type, name: Name, infof: RefinedType => Type) extends RefinedType(parent, name)(infof)
 
   object RefinedType {
     def make(parent: Type, names: List[Name], infofs: List[RefinedType => Type])(implicit ctx: Context): Type =
@@ -879,7 +879,7 @@ object Types {
 
     type This <: AndType
 
-    def derivedAndType(t1: Type, t2: Type)(implicit ctx: Context) =
+    final def derivedAndType(t1: Type, t2: Type)(implicit ctx: Context) =
       if ((t1 eq tp1) && (t2 eq tp2)) this
       else AndType(t1, t2)
 
@@ -894,11 +894,11 @@ object Types {
   }
 
   sealed abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType {
-    def derivedOrType(t1: Type, t2: Type)(implicit ctx: Context) =
+    final def derivedOrType(t1: Type, t2: Type)(implicit ctx: Context) =
       if ((t1 eq tp1) && (t2 eq tp2)) this
       else OrType(t1, t2)
 
-    override def computeHash = doHash(tp1, tp2)
+    override final def computeHash = doHash(tp1, tp2)
   }
 
   final class CachedOrType(tp1: Type, tp2: Type) extends OrType(tp1, tp2)
@@ -910,14 +910,14 @@ object Types {
 
   // ----- Method types: MethodType/ExprType/PolyType/MethodParam/PolyParam ---------------
 
-  trait BindingType extends Type
+  sealed trait BindingType extends Type
 
   // Note: method types are cached whereas poly types are not.
   // The reason is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
   sealed abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type) extends CachedGroundType with BindingType {
-    override lazy val resultType = resultTypeExp(this)
+    override final lazy val resultType = resultTypeExp(this)
     def isJava = false
     def isImplicit = false
 
@@ -926,7 +926,7 @@ object Types {
       case _ => false
     }
 
-    override lazy val signature: List[TypeName] = {
+    override final lazy val signature: List[TypeName] = {
       def paramSig(tp: Type): TypeName = ???
       val followSig = resultType match {
         case rtp: MethodType => rtp.signature
@@ -935,7 +935,7 @@ object Types {
       (paramTypes map paramSig) ++ followSig
     }
 
-    def derivedMethodType(paramNames: List[TermName], paramTypes: List[Type], restpe: Type)(implicit ctx: Context) =
+    final def derivedMethodType(paramNames: List[TermName], paramTypes: List[Type], restpe: Type)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramTypes eq this.paramTypes) && (restpe eq this.resultType)) this
       else {
         val restpeExpr = (x: MethodType) => restpe.subst(this, x)
@@ -944,11 +944,11 @@ object Types {
         else MethodType(paramNames, paramTypes)(restpeExpr)
       }
 
-    def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
+    final def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
       if (isDependent) new InstMethodMap(this, argTypes) apply resultType
       else resultType
 
-    override def computeHash = doHash(paramNames, resultType, paramTypes)
+    override final def computeHash = doHash(paramNames, resultType, paramTypes)
   }
 
   final class CachedMethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)
@@ -964,9 +964,9 @@ object Types {
     override def isImplicit = true
   }
 
-  abstract class GenericMethodType {
+  sealed abstract class GenericMethodType {
     def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType
-    def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
+    final def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
       def transResult(mt: MethodType) =
         resultType.subst(params, (0 until params.length).toList map (MethodParam(mt, _)))
       apply(params map (_.name.asTermName), params map (_.info))(transResult _)
@@ -1042,7 +1042,7 @@ object Types {
     }
   }
 
-  abstract class BoundType extends UncachedProxyType {
+  sealed abstract class BoundType extends UncachedProxyType {
     type BT <: BindingType
     def binder: BT
     def copy(bt: BT): Type
@@ -1076,19 +1076,19 @@ object Types {
 /*    def typeTemplate(implicit ctx: Context): Type =
       classd.typeTemplate asSeenFrom (prefix, classd.symbol)
 */
-    def typeConstructor(implicit ctx: Context): Type =
+    final def typeConstructor(implicit ctx: Context): Type =
       NamedType(prefix, classd.symbol.name)
 
     // cached because baseType needs parents
-    private var parentsCache: List[TypeRef] = null
+    private final var parentsCache: List[TypeRef] = null
 
-    override def parents(implicit ctx: Context): List[TypeRef] = {
+    override final def parents(implicit ctx: Context): List[TypeRef] = {
       if (parentsCache == null)
         parentsCache = classd.parents.mapConserve(_.substThis(classd.symbol, prefix).asInstanceOf[TypeRef])
       parentsCache
     }
 
-    override def computeHash = doHash(classd.symbol, prefix)
+    override final def computeHash = doHash(classd.symbol, prefix)
   }
 
   final class CachedClassInfo(prefix: Type, classd: ClassDenotation) extends ClassInfo(prefix, classd)
@@ -1099,25 +1099,25 @@ object Types {
   }
 
   sealed abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
-    override def underlying(implicit ctx: Context): Type = hi
-    def derivedTypeBounds(lo1: Type, hi1: Type)(implicit ctx: Context) =
+    override final def underlying(implicit ctx: Context): Type = hi
+    final def derivedTypeBounds(lo1: Type, hi1: Type)(implicit ctx: Context) =
       if ((lo1 eq lo) && (hi1 eq hi)) this
       else TypeBounds(lo, hi)
 
-    def contains(tp: Type)(implicit ctx: Context) = lo <:< tp && tp <:< hi
+    final def contains(tp: Type)(implicit ctx: Context) = lo <:< tp && tp <:< hi
 
-    def &(that: TypeBounds)(implicit ctx: Context): TypeBounds =
+    final def &(that: TypeBounds)(implicit ctx: Context): TypeBounds =
       TypeBounds(this.lo | that.lo, this.hi & that.hi)
-    def |(that: TypeBounds)(implicit ctx: Context): TypeBounds =
+    final def |(that: TypeBounds)(implicit ctx: Context): TypeBounds =
       TypeBounds(this.lo & that.lo, this.hi | that.hi)
 
-    def substBounds(from: PolyType, to: PolyType)(implicit ctx: Context) =
+    final def substBounds(from: PolyType, to: PolyType)(implicit ctx: Context) =
       subst(from, to).asInstanceOf[TypeBounds]
 
-    def map(f: Type => Type)(implicit ctx: Context): TypeBounds =
+    final def map(f: Type => Type)(implicit ctx: Context): TypeBounds =
       TypeBounds(f(lo), f(hi))
 
-    override def computeHash = doHash(lo, hi)
+    override final def computeHash = doHash(lo, hi)
   }
 
   final class CachedTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
@@ -1155,6 +1155,13 @@ object Types {
 
   final case class ImportType(expr: TypedTree) extends UncachedGroundType
 
+  // Unpickler Types -----------------------------------------------------------------
+  final case class TempPolyType(tparams: List[Symbol], tpe: Type) extends UncachedGroundType
+
+  /** Temporary type for classinfos, will be decomposed on completion of the class */
+  final case class TempClassInfoType(parentTypes: List[Type], decls: Scope, clazz: Symbol) extends UncachedGroundType
+
+
   // Special type objects ------------------------------------------------------------
 
   case object NoType extends UncachedGroundType {
@@ -1167,7 +1174,7 @@ object Types {
     override def computeHash = hashSeed
   }
 
-  abstract class ErrorType extends UncachedGroundType
+  sealed abstract class ErrorType extends UncachedGroundType
 
   object ErrorType extends ErrorType
 
@@ -1224,14 +1231,14 @@ object Types {
 
   }
 
-  class InstMethodMap(mt: MethodType, argtypes: List[Type])(implicit ctx: Context) extends TypeMap {
+  final class InstMethodMap(mt: MethodType, argtypes: List[Type])(implicit ctx: Context) extends TypeMap {
     def apply(tp: Type) = tp match {
       case MethodParam(`mt`, n) => argtypes(n)
       case _ => mapOver(tp)
     }
   }
 
-  class InstPolyMap(pt: PolyType, argtypes: List[Type])(implicit ctx: Context) extends TypeMap {
+  final class InstPolyMap(pt: PolyType, argtypes: List[Type])(implicit ctx: Context) extends TypeMap {
     def apply(tp: Type) = tp match {
       case PolyParam(`pt`, n) => argtypes(n)
       case _ => mapOver(tp)
@@ -1280,7 +1287,7 @@ object Types {
     }
   }
 
-  class ExistsAccumulator(p: Type => Boolean) extends TypeAccumulator[Boolean] {
+  final class ExistsAccumulator(p: Type => Boolean) extends TypeAccumulator[Boolean] {
     def apply(x: Boolean, tp: Type) = x || p(tp) || foldOver(x, tp)
   }
 

@@ -21,11 +21,6 @@ object UnPickler {
   /** Exception thrown if classfile is corrupted */
   class BadSignature(msg: String) extends RuntimeException(msg)
 
-  final case class TempPolyType(tparams: List[Symbol], tpe: Type) extends UncachedGroundType
-
-  /** Temporary type for classinfos, will be decomposed on completion of the class */
-  final case class TempClassInfoType(parentTypes: List[Type], decls: Scope, clazz: Symbol) extends UncachedGroundType
-
   def depoly(tp: Type)(implicit ctx: Context): Type = tp match {
     case TempPolyType(tparams, restpe) => PolyType.fromSymbols(tparams, restpe)
     case tp => tp
