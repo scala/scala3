@@ -30,7 +30,7 @@ object Trees {
    *   - Type checking an untyped tree will remove all embedded `TypedSplice`
    *     nodes.
    */
-  abstract class Tree[T] extends DotClass {
+  sealed abstract class Tree[T] extends DotClass {
 
     /** The tree's position. Except
      *  for Shared nodes, it is always ensured that a tree's position
@@ -54,7 +54,7 @@ object Trees {
     /** Copy `tpe` attribute from tree `from` into this tree, independently
      *  whether it is null or not.
      */
-    def copyAttr(from: Tree[T]): ThisTree[T] = {
+    final def copyAttr(from: Tree[T]): ThisTree[T] = {
       _tpe = from._tpe
       this.asInstanceOf[ThisTree[T]]
     }
@@ -92,11 +92,11 @@ object Trees {
     /** Is this tree either the empty tree or the empty ValDef? */
     def isEmpty: Boolean = false
 
-    override def hashCode(): Int = System.identityHashCode(this)
-    override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
+    override final def hashCode(): Int = System.identityHashCode(this)
+    override final def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
   }
 
-  class UnAssignedTypeException[T](tree: Tree[T]) extends RuntimeException {
+  final class UnAssignedTypeException[T](tree: Tree[T]) extends RuntimeException {
     override def getMessage: String = s"type of $tree is not assigned"
   }
 
@@ -108,7 +108,7 @@ object Trees {
   /** Instances of this class are trees for which isType is definitely true.
    *  Note that some trees have isType = true without being TypTrees (e.g. Ident, AnnotatedTree)
    */
-  trait TypTree[T] extends Tree[T] {
+  sealed trait TypTree[T] extends Tree[T] {
     type ThisTree[T] <: TypTree[T]
     override def isType = true
   }
@@ -116,7 +116,7 @@ object Trees {
   /** Instances of this class are trees for which isTerm is definitely true.
    *  Note that some trees have isTerm = true without being TermTrees (e.g. Ident, AnnotatedTree)
    */
-  trait TermTree[T] extends Tree[T] {
+  sealed trait TermTree[T] extends Tree[T] {
     type ThisTree[T] <: TermTree[T]
     override def isTerm = true
   }
@@ -124,19 +124,19 @@ object Trees {
   /** Instances of this class are trees which are not terms but are legal
    *  parts of patterns.
    */
-  trait PatternTree[T] extends Tree[T] {
+  sealed trait PatternTree[T] extends Tree[T] {
     type ThisTree[T] <: PatternTree[T]
     override def isPattern = true
   }
 
   /** Tree's symbol can be derived from its type */
-  abstract class SymTree[T] extends Tree[T] {
+  sealed abstract class SymTree[T] extends Tree[T] {
     type ThisTree[T] <: SymTree[T]
-    override def denot(implicit ctx: Context) = tpe match {
+    override final def denot(implicit ctx: Context) = tpe match {
       case tpe: NamedType => tpe.denot
       case _ => NoDenotation
     }
-    override def symbol(implicit ctx: Context): Symbol = tpe match {
+    override final def symbol(implicit ctx: Context): Symbol = tpe match {
       case tpe: Type => if (isType) tpe.typeSymbol else tpe.termSymbol
       case _ => NoSymbol
     }
@@ -145,23 +145,23 @@ object Trees {
   /** Tree's symbol/isType/isTerm properties come from a subtree identified
    *  by `forwardTo`.
    */
-  abstract class ProxyTree[T] extends Tree[T] {
+  sealed abstract class ProxyTree[T] extends Tree[T] {
     type ThisTree[T] <: ProxyTree[T]
     def forwardTo: Tree[T]
-    override def denot(implicit ctx: Context): Denotation = forwardTo.denot
-    override def symbol(implicit ctx: Context): Symbol = forwardTo.symbol
+    override final def denot(implicit ctx: Context): Denotation = forwardTo.denot
+    override final def symbol(implicit ctx: Context): Symbol = forwardTo.symbol
     override def isTerm = forwardTo.isTerm
     override def isType = forwardTo.isType
   }
 
   /** Tree has a name */
-  abstract class NameTree[T] extends SymTree[T] {
+  sealed abstract class NameTree[T] extends SymTree[T] {
     type ThisTree[T] <: NameTree[T]
     def name: Name
   }
 
   /** Tree refers by name to a denotation */
-  abstract class RefTree[T] extends NameTree[T] {
+  sealed abstract class RefTree[T] extends NameTree[T] {
     type ThisTree[T] <: RefTree[T]
     def qualifier: Tree[T]
     override def isType = name.isTypeName
@@ -169,9 +169,9 @@ object Trees {
   }
 
   /** Tree represents a definition */
-  abstract class DefTree[T] extends NameTree[T] {
+  sealed abstract class DefTree[T] extends NameTree[T] {
     type ThisTree[T] <: DefTree[T]
-    override def isDef = true
+    override final def isDef = true
   }
 
   // ----------- Tree case classes ------------------------------------
@@ -477,7 +477,7 @@ object Trees {
     def forwardTo = arg
   }
 
-  trait AlwaysEmpty[T] extends Tree[T] {
+  sealed trait AlwaysEmpty[T] extends Tree[T] {
     override val pos = NoPosition
     override def tpe = unsupported("tpe")
     override def withType(tpe: Type) = unsupported("withType")
@@ -519,7 +519,7 @@ object Trees {
   // ----- Tree cases that exist in untyped form only ------------------
 
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice */
-  class TypedSplice(tree: TypedTree) extends UntypedTree {
+  final class TypedSplice(tree: TypedTree) extends UntypedTree {
     val pos = tree.pos
   }
 
@@ -707,7 +707,7 @@ object Trees {
   }
 
   abstract class TreeTransformer[T, C] {
-    var sharedMemo: Map[Shared[T], Shared[T]] = Map()
+    final var sharedMemo: Map[Shared[T], Shared[T]] = Map()
 
     def transform(tree: Tree[T], c: C): Tree[T] = tree match {
       case Ident(name) =>
@@ -856,7 +856,7 @@ object Trees {
   }
 
   abstract class TreeAccumulator[T, U] extends ((T, Tree[U]) => T) {
-    var sharedMemo: Map[Shared[U], T] = Map()
+    final var sharedMemo: Map[Shared[U], T] = Map()
     def apply(x: T, tree: Tree[U]): T
     def apply(x: T, trees: List[Tree[U]]): T = (x /: trees)(apply)
     def foldOver(x: T, tree: Tree[U]): T = tree match {
