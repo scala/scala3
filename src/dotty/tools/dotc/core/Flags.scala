@@ -105,7 +105,7 @@ object Flags {
    *  conjunctively. I.e. for a flag conjunction `fc`,
    *  `x is fc` tests whether `x` contains all flags in `fc`.
    */
-  case class FlagConjunction(bits: Long)
+  final case class FlagConjunction(bits: Long)
 
   private final val TYPESHIFT = 2
   private final val TERMindex = 0

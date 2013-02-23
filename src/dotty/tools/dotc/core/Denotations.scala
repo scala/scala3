@@ -284,7 +284,7 @@ object Denotations {
   /** The class of overloaded denotations
    *  @param  variants   The overloaded variants indexed by thheir signatures.
    */
-  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation {
+  final case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation {
     final override def isType = false
     def derivedMultiDenotation(d1: Denotation, d2: Denotation) =
       if ((d1 eq denot1) && (d2 eq denot2)) this else MultiDenotation(d1, d2)
@@ -475,7 +475,7 @@ object Denotations {
       else DenotUnion(this, that)
   }
 
-  case class DenotUnion(denots1: DenotationSet, denots2: DenotationSet) extends DenotationSet {
+  final case class DenotUnion(denots1: DenotationSet, denots2: DenotationSet) extends DenotationSet {
     assert(denots1.exists && denots2.exists)
     private def derivedUnion(s1: DenotationSet, s2: DenotationSet) =
       if (!s1.exists) s2

@@ -11,7 +11,7 @@ object Annotations {
     def appliesToModule: Boolean = ???
   }
 
-  case class ConcreteAnnotation(val tree: Tree) extends Annotation
+  final case class ConcreteAnnotation(val tree: Tree) extends Annotation
 
   object Annotation {
 

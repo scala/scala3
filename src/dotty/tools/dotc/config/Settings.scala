@@ -33,7 +33,7 @@ object Settings {
       }
   }
 
-  case class ArgsSummary(
+  final case class ArgsSummary(
     sstate: SettingsState,
     arguments: List[String],
     errors: List[String]) {
@@ -42,7 +42,7 @@ object Settings {
       ArgsSummary(sstate, arguments, errors :+ msg)
  }
 
-  case class Setting[T: ClassTag] private[Settings] (
+  final case class Setting[T: ClassTag] private[Settings] (
     name: String,
     description: String,
     default: T,

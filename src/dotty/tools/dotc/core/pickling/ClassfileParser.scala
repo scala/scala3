@@ -608,7 +608,7 @@ class ClassfileParser(
   }
 
   /** An entry in the InnerClasses attribute of this class file. */
-  case class InnerClassEntry(external: Int, outer: Int, name: Int, jflags: Int) {
+  final case class InnerClassEntry(external: Int, outer: Int, name: Int, jflags: Int) {
     def externalName = pool.getClassName(external)
     def outerName    = pool.getClassName(outer)
     def originalName = pool.getName(name)

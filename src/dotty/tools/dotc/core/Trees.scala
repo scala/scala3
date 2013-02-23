@@ -6,7 +6,7 @@ import annotation.tailrec
 
 object Trees {
 
-  case class Modifiers[T](
+  final case class Modifiers[T](
     flags: FlagSet,
     privateWithin: TypeName = tpnme.EMPTY,
     annotations: List[Tree[T]] = Nil)
