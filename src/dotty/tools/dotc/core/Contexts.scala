@@ -35,12 +35,12 @@ object Contexts {
    *      of all class fields of type context; allow them only in whitelisted
    *      classes (which should be short-lived).
    */
-  abstract class Context extends Periods
-                            with Substituters
-                            with TypeOps
-                            with Printers
-                            with Symbols
-                            with Cloneable {
+  sealed abstract class Context extends Periods
+                                with Substituters
+                                with TypeOps
+                                with Printers
+                                with Symbols
+                                with Cloneable {
     implicit val ctx: Context = this
 
     val base: ContextBase
@@ -120,9 +120,9 @@ object Contexts {
     }
   }
 
-  abstract class CondensedContext extends Context
+  sealed abstract class CondensedContext extends Context
 
-  abstract class FreshContext extends CondensedContext {
+  sealed abstract class FreshContext extends CondensedContext {
     def withPeriod(period: Period): this.type = { this.period = period; this }
     def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
     def withConstraints(constraints: Constraints): this.type = { this.constraints = constraints; this }
@@ -133,7 +133,7 @@ object Contexts {
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
   }
 
-  private class InitialContext(val base: ContextBase) extends FreshContext {
+  private final class InitialContext(val base: ContextBase) extends FreshContext {
     underlying = NoContext
     period = Nowhere
     constraints = Map()
@@ -146,10 +146,10 @@ object Contexts {
     lazy val base = unsupported("base")
   }
 
-  class ContextBase extends ContextState
-                       with Transformers.TransformerBase
-                       with Printers.PrinterBase
-                       with Denotations.DenotationsBase {
+  final class ContextBase extends ContextState
+                          with Transformers.TransformerBase
+                          with Printers.PrinterBase
+                          with Denotations.DenotationsBase {
 
     val settings = new ScalaSettings
 
@@ -167,7 +167,7 @@ object Contexts {
   }
 
   /** Mutable state of a context base, collected into a common class */
-  class ContextState {
+  abstract class ContextState {
 
     // Symbols state
 
