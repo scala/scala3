@@ -4,14 +4,14 @@ import Symbols._, Types._, Positions._, Contexts._, Constants._, TypedTrees.tpd.
 
 object Annotations {
 
-  abstract class Annotation {
+  sealed abstract class Annotation {
     def tree: Tree
-    def symbol(implicit ctx: Context): Symbol = tree.tpe.typeSymbol
-    def matches(cls: Symbol)(implicit ctx: Context): Boolean = symbol.isNonBottomSubClass(cls)
-    def appliesToModule: Boolean = ???
+    final def symbol(implicit ctx: Context): Symbol = tree.tpe.typeSymbol
+    final def matches(cls: Symbol)(implicit ctx: Context): Boolean = symbol.isNonBottomSubClass(cls)
+    final def appliesToModule: Boolean = ???
   }
 
-  final case class ConcreteAnnotation(val tree: Tree) extends Annotation
+  final case class ConcreteAnnotation(tree: Tree) extends Annotation
 
   object Annotation {
 
