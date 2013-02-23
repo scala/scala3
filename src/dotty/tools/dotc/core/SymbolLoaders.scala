@@ -180,7 +180,7 @@ sealed abstract class SymbolLoader extends ClassCompleter {
       case ex: IOException =>
       signalError(ex)
     } finally {
-      root.linkedClass.denot match {
+      (root.linkedClass.denot : @unchecked) match { // TODO JZ really only one case here?
         case companion: LazyClassDenotation => companion.completer = null
       }
     }
