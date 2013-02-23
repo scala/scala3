@@ -745,9 +745,9 @@ object Types {
     override def computeHash = doHash(name, prefix)
   }
 
-  abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType
+  sealed abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType
 
-  abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType
+  sealed abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType
 
   trait HasFixedSym extends NamedType {
     protected val fixedSym: Symbol
@@ -803,7 +803,7 @@ object Types {
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
 
-  abstract case class ThisType(cls: ClassSymbol) extends CachedProxyType with SingletonType {
+  sealed abstract case class ThisType(cls: ClassSymbol) extends CachedProxyType with SingletonType {
     override def underlying(implicit ctx: Context) = cls.selfType
     override def computeHash = doHash(cls)
   }
@@ -817,7 +817,7 @@ object Types {
     }
   }
 
-  abstract case class SuperType(thistpe: Type, supertpe: Type) extends CachedProxyType with SingletonType {
+  sealed abstract case class SuperType(thistpe: Type, supertpe: Type) extends CachedProxyType with SingletonType {
     override def underlying(implicit ctx: Context) = supertpe
     def derivedSuperType(thistp: Type, supertp: Type)(implicit ctx: Context) =
       if ((thistp eq thistpe) && (supertp eq supertpe)) this
@@ -832,7 +832,7 @@ object Types {
       unique(new CachedSuperType(thistpe, supertpe))
   }
 
-  abstract case class ConstantType(value: Constant) extends CachedProxyType with SingletonType {
+  sealed abstract case class ConstantType(value: Constant) extends CachedProxyType with SingletonType {
     override def underlying(implicit ctx: Context) = value.tpe
     override def computeHash = doHash(value)
   }
@@ -846,7 +846,7 @@ object Types {
 
   // --- Refined Type ---------------------------------------------------------
 
-  abstract case class RefinedType(parent: Type, name: Name)(infof: RefinedType => Type) extends CachedProxyType with BindingType {
+  sealed abstract case class RefinedType(parent: Type, name: Name)(infof: RefinedType => Type) extends CachedProxyType with BindingType {
 
     val info: Type = infof(this)
 
@@ -875,7 +875,7 @@ object Types {
 
   // --- AndType/OrType ---------------------------------------------------------------
 
-  abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType {
+  sealed abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType {
 
     type This <: AndType
 
@@ -893,7 +893,7 @@ object Types {
       unique(new CachedAndType(tp1, tp2))
   }
 
-  abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType {
+  sealed abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType {
     def derivedOrType(t1: Type, t2: Type)(implicit ctx: Context) =
       if ((t1 eq tp1) && (t2 eq tp2)) this
       else OrType(t1, t2)
@@ -916,7 +916,7 @@ object Types {
   // The reason is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
-  abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type) extends CachedGroundType with BindingType {
+  sealed abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type) extends CachedGroundType with BindingType {
     override lazy val resultType = resultTypeExp(this)
     def isJava = false
     def isImplicit = false
@@ -988,7 +988,7 @@ object Types {
       unique(new ImplicitMethodType(paramNames, paramTypes)(resultTypeExp))
   }
 
-  abstract case class ExprType(override val resultType: Type) extends CachedProxyType {
+  sealed abstract case class ExprType(override val resultType: Type) extends CachedProxyType {
     override def underlying(implicit ctx: Context): Type = resultType
     override def signature: Signature = Nil
     def derivedExprType(rt: Type)(implicit ctx: Context) =
@@ -1003,7 +1003,7 @@ object Types {
       unique(new CachedExprType(resultType))
   }
 
-  case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
+  final case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
       extends UncachedGroundType with BindingType {
     lazy val paramBounds = paramBoundsExp(this)
     override lazy val resultType = resultTypeExp(this)
@@ -1048,21 +1048,21 @@ object Types {
     def copy(bt: BT): Type
   }
 
-  case class MethodParam(binder: MethodType, paramNum: Int) extends BoundType with SingletonType {
+  final case class MethodParam(binder: MethodType, paramNum: Int) extends BoundType with SingletonType {
     type BT = MethodType
     override def underlying(implicit ctx: Context) = binder.paramTypes(paramNum)
     override def hashCode = doHash(System.identityHashCode(binder) + paramNum)
     def copy(bt: BT) = MethodParam(bt, paramNum)
   }
 
-  case class PolyParam(binder: PolyType, paramNum: Int) extends BoundType {
+  final case class PolyParam(binder: PolyType, paramNum: Int) extends BoundType {
     type BT = PolyType
     override def underlying(implicit ctx: Context) = binder.paramBounds(paramNum).hi
     def copy(bt: BT) = PolyParam(bt, paramNum)
     // no hashCode needed because cycle is broken in PolyType
   }
 
-  case class RefinedThis(binder: RefinedType) extends BoundType with SingletonType {
+  final case class RefinedThis(binder: RefinedType) extends BoundType with SingletonType {
     type BT = RefinedType
     override def underlying(implicit ctx: Context) = binder.parent
     def copy(bt: BT) = RefinedThis(bt)
@@ -1071,7 +1071,7 @@ object Types {
 
   // ------ ClassInfo, Type Bounds ------------------------------------------------------------
 
-  abstract case class ClassInfo(prefix: Type, classd: ClassDenotation) extends CachedGroundType with TypeType {
+  sealed abstract case class ClassInfo(prefix: Type, classd: ClassDenotation) extends CachedGroundType with TypeType {
 
 /*    def typeTemplate(implicit ctx: Context): Type =
       classd.typeTemplate asSeenFrom (prefix, classd.symbol)
@@ -1098,7 +1098,7 @@ object Types {
       unique(new CachedClassInfo(prefix, classd))
   }
 
-  abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
+  sealed abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
     override def underlying(implicit ctx: Context): Type = hi
     def derivedTypeBounds(lo1: Type, hi1: Type)(implicit ctx: Context) =
       if ((lo1 eq lo) && (hi1 eq hi)) this
@@ -1140,7 +1140,7 @@ object Types {
 
   // ----- Annotated and Import types -----------------------------------------------
 
-  case class AnnotatedType(annots: List[Annotation], tpe: Type) extends UncachedProxyType {
+  final case class AnnotatedType(annots: List[Annotation], tpe: Type) extends UncachedProxyType {
     override def underlying(implicit ctx: Context): Type = tpe
     def derivedAnnotatedType(annots1: List[Annotation], tpe1: Type) =
       if ((annots1 eq annots) && (tpe1 eq tpe)) this
@@ -1153,7 +1153,7 @@ object Types {
       else AnnotatedType(annots, underlying)
   }
 
-  case class ImportType(expr: TypedTree) extends UncachedGroundType
+  final case class ImportType(expr: TypedTree) extends UncachedGroundType
 
   // Special type objects ------------------------------------------------------------
 
