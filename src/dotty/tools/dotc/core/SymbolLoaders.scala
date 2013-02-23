@@ -17,7 +17,7 @@ import pickling.ClassfileParser
 /** A base class for Symbol loaders with some overridable behavior  */
 class SymbolLoaders {
 
-  protected def enterIfNew(owner: Symbol, member: Symbol, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
+  protected final def enterIfNew(owner: Symbol, member: Symbol, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
     assert(owner.info.decls.lookup(member.name) == NoSymbol, owner.fullName + "." + member.name)
     owner.info.decls enter member
     member
@@ -25,14 +25,14 @@ class SymbolLoaders {
 
   /** Enter class with given `name` into scope of `owner`.
    */
-  def enterClass(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context): Symbol = {
+  final def enterClass(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context): Symbol = {
     val cls = ctx.newLazyClassSymbol(owner, name.toTypeName, flags, completer, assocFile = completer.sourceFileOrNull)
     enterIfNew(owner, cls, completer)
   }
 
   /** Enter module with given `name` into scope of `owner`.
    */
-  def enterModule(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context): Symbol = {
+  final def enterModule(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context): Symbol = {
     val module = ctx.newLazyModuleSymbols(owner, name.toTermName, flags, completer, assocFile = completer.sourceFileOrNull)._1
     enterIfNew(owner, module, completer)
   }
@@ -40,7 +40,7 @@ class SymbolLoaders {
   /** Enter package with given `name` into scope of `owner`
    *  and give them `completer` as type.
    */
-  def enterPackage(owner: Symbol, name: PreName, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
+  final def enterPackage(owner: Symbol, name: PreName, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
     val pname = name.toTermName
     val preExisting = owner.info.decls lookup pname
     if (preExisting != NoSymbol) {
@@ -69,7 +69,7 @@ class SymbolLoaders {
   /** Enter class and module with given `name` into scope of `owner`
    *  and give them `completer` as type.
    */
-  def enterClassAndModule(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context) {
+  final def enterClassAndModule(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context) {
     val clazz = enterClass(owner, name, completer, flags)
     val module = enterModule(owner, name, completer, flags)
     if (!clazz.isAnonymousClass) {
@@ -84,7 +84,7 @@ class SymbolLoaders {
    *  with source completer for given `src` as type.
    *  (overridden in interactive.Global).
    */
-  def enterToplevelsFromSource(owner: Symbol, name: PreName, src: AbstractFile)(implicit ctx: Context) {
+  final def enterToplevelsFromSource(owner: Symbol, name: PreName, src: AbstractFile)(implicit ctx: Context) {
     ??? // !!! enterClassAndModule(owner, name, new SourcefileLoader(src))
   }
 
@@ -95,13 +95,13 @@ class SymbolLoaders {
    *  Note: We do a name-base comparison here because the method is called before we even
    *  have ReflectPackage defined.
    */
-  def binaryOnly(owner: Symbol, name: String)(implicit ctx: Context): Boolean =
+  final def binaryOnly(owner: Symbol, name: String)(implicit ctx: Context): Boolean =
     name == "package" &&
       (owner.fullName == "scala" || owner.fullName == "scala.reflect")
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */
-  def initializeFromClassPath(owner: Symbol, classRep: ClassPath#ClassRep)(implicit ctx: Context) {
+  final def initializeFromClassPath(owner: Symbol, classRep: ClassPath#ClassRep)(implicit ctx: Context) {
     ((classRep.binary, classRep.source): @unchecked) match {
       case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
         if (ctx.settings.verbose.value) ctx.inform("[symloader] picked up newer source file for " + src.path)
@@ -114,12 +114,12 @@ class SymbolLoaders {
     }
   }
 
-  def needCompile(bin: AbstractFile, src: AbstractFile) =
+  final def needCompile(bin: AbstractFile, src: AbstractFile) =
     src.lastModified >= bin.lastModified
 
   /** Load contents of a package
    */
-  class PackageLoader(classpath: ClassPath)(cctx: CondensedContext) extends SymbolLoader {
+  final class PackageLoader(classpath: ClassPath)(cctx: CondensedContext) extends SymbolLoader {
     implicit val ctx: Context = cctx
     protected def description = "package loader " + classpath.name
 
@@ -151,7 +151,7 @@ class SymbolLoaders {
  *  Todo: consider factoring out behavior from TopClassCompleter/SymbolLoader into
  *  supertrait SymLoader
  */
-abstract class SymbolLoader extends ClassCompleter {
+sealed abstract class SymbolLoader extends ClassCompleter {
   implicit val ctx: Context
 
   /** Load source or class file for `root`, return */
@@ -164,7 +164,7 @@ abstract class SymbolLoader extends ClassCompleter {
    */
   protected def description: String
 
-  override def apply(root: LazyClassDenotation) = {
+  override final def apply(root: LazyClassDenotation) = {
     def signalError(ex: Exception) {
       if (ctx.settings.debug.value) ex.printStackTrace()
       val msg = ex.getMessage()
@@ -187,7 +187,7 @@ abstract class SymbolLoader extends ClassCompleter {
   }
 }
 
-class ClassfileLoader(val classfile: AbstractFile)(cctx: CondensedContext) extends SymbolLoader {
+final class ClassfileLoader(val classfile: AbstractFile)(cctx: CondensedContext) extends SymbolLoader {
   implicit val ctx: Context = cctx
 
   override def sourceFileOrNull: AbstractFile = classfile
@@ -209,38 +209,6 @@ class ClassfileLoader(val classfile: AbstractFile)(cctx: CondensedContext) exten
   }
 }
 /*
-  class MsilFileLoader(msilFile: MsilFile) extends SymbolLoader with FlagAssigningCompleter {
-    private def typ = msilFile.msilType
-    private object typeParser extends clr.TypeParser {
-      val global: SymbolLoaders.this.global.type = SymbolLoaders.this.global
-    }
-
-    protected def description = "MsilFile "+ typ.FullName + ", assembly "+ typ.Assembly.FullName
-    protected def doComplete(root: Symbol) { typeParser.parse(typ, root) }
-  }
-
-  class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader with FlagAssigningCompleter {
-    protected def description = "source file "+ srcfile.toString
-    override def fromSource = true
-    override def sourcefile = Some(srcfile)
-    protected def doComplete(root: Symbol): Unit = global.currentRun.compileLate(srcfile)
-  }
-
-  object moduleClassLoader extends SymbolLoader with FlagAssigningCompleter {
-    protected def description = "module class loader"
-    protected def doComplete(root: Symbol) { root.sourceModule.initialize }
-  }
-
-  object clrTypes extends clr.CLRTypes {
-    val global: SymbolLoaders.this.global.type = SymbolLoaders.this.global
-    if (global.forMSIL) init()
-  }
-
-  /** used from classfile parser to avoid cyclies */
-  var parentsLevel = 0
-  var pendingLoadActions: List[() => Unit] = Nil
-}
-
 object SymbolLoadersStats {
   import scala.reflect.internal.TypesStats.typerNanos
   val classReadNanos = Statistics.newSubTimer  ("time classfilereading", typerNanos)
