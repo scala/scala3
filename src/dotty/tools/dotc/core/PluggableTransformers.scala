@@ -77,7 +77,7 @@ object PluggableTransformers {
       case _ => postProcess(tree, old, c, plugins)
     }
 
-    protected def postProcess(tree: Tree[T], old: Tree[T], c: Context, plugins: Plugins): Tree[T] = tree match {
+    protected def postProcess(tree: Tree[T], old: Tree[T], c: Context, plugins: Plugins): Tree[T] = (tree: @unchecked)  match {
       case tree: Ident[_] => finishIdent(tree, old, c, plugins)
       case tree: Select[_] => finishSelect(tree, old, c, plugins)
     }

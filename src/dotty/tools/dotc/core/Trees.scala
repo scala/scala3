@@ -206,7 +206,7 @@ object Trees {
     def forwardTo = qual
   }
 
-  abstract class GenericApply[T] extends ProxyTree[T] with TermTree[T] {
+  sealed abstract class GenericApply[T] extends ProxyTree[T] with TermTree[T] {
     type ThisTree[T] <: GenericApply[T]
     val fun: Tree[T]
     val args: List[Tree[T]]
@@ -485,7 +485,7 @@ object Trees {
   }
 
   /** A missing tree */
-  abstract case class EmptyTree[T]()
+  sealed abstract case class EmptyTree[T]()
     extends Tree[T] with AlwaysEmpty[T] {
     type ThisTree[T] = EmptyTree[T]
   }
@@ -496,7 +496,7 @@ object Trees {
     def apply[T]: EmptyTree[T] = theEmptyTree.asInstanceOf
   }
 
-  abstract class EmptyValDef[T] extends ValDef[T](
+  sealed abstract class EmptyValDef[T] extends ValDef[T](
     Modifiers[T](Private), nme.WILDCARD, EmptyTree[T], EmptyTree[T])(NoPosition) with AlwaysEmpty[T]
 
   private object theEmptyValDef extends EmptyValDef[Nothing]
@@ -506,7 +506,7 @@ object Trees {
   }
 
   /** A tree that can be shared without its position
-   *  polluting containing trees. Accumulators and tranformers
+   *  polluting containing trees. Accumulators and transformers
    *  memoize results of shared subtrees
    */
   final case class Shared[T](shared: Tree[T]) extends Tree[T] {
@@ -518,20 +518,25 @@ object Trees {
 
   // ----- Tree cases that exist in untyped form only ------------------
 
+  /** A marker trait for all Tree[Nothing] descendants. Useful for exhaustively pattern matching over Tree[U] */
+  sealed trait UntypedTreeMarker {
+    self: UntypedTree =>
+  }
+
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice */
-  final class TypedSplice(tree: TypedTree) extends UntypedTree {
+  final class TypedSplice(tree: TypedTree) extends UntypedTree with UntypedTreeMarker {
     val pos = tree.pos
   }
 
   /** mods object name impl */
   final case class ModuleDef(mods: Modifiers[Nothing], name: TermName, impl: Template[Nothing])(implicit cpos: Position)
-    extends DefTree[Nothing] {
+    extends DefTree[Nothing] with UntypedTreeMarker {
     val pos = cpos union impl.pos
   }
 
   /** (vparams) => body */
   final case class Function(vparams: List[ValDef[Nothing]], body: Tree[Nothing])(implicit cpos: Position)
-    extends TermTree[Nothing] {
+    extends TermTree[Nothing] with UntypedTreeMarker {
     val pos = unionPos(cpos union body.pos, vparams)
   }
 
@@ -800,6 +805,8 @@ object Trees {
             tree1
         },
         tree, c, plugins)
+      case _: UntypedTreeMarker =>
+        tree // TODO should this abort?
     }
     def transform(trees: List[Tree[T]], c: C): List[Tree[T]] =
       trees mapConserve (transform(_, c))
@@ -948,6 +955,8 @@ object Trees {
             sharedMemo = sharedMemo.updated(tree, x1)
             x1
         }
+      case _: UntypedTreeMarker =>
+        x
     }
   }
 }

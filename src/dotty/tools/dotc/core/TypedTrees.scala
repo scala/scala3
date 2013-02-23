@@ -573,9 +573,15 @@ object TypedTrees {
       check(annot.symbol.isClassConstructor)
       check(annot.symbol.owner.isSubClass(defn.AnnotationClass))
       check(arg.isType || arg.isValue)
-    case tpd.EmptyTree =>
     case Shared(shared) =>
       check(shared.isType || shared.isTerm)
+    case Try(block, catches, finalizer) =>
+      check(block.isTerm)
+      check(finalizer.isTerm)
+      def checkType(t: Tree[Type]) = check(t.tpe <:< tree.tpe)
+      checkType(block)
+      catches foreach checkType
+    case EmptyTree() =>
   }
 
   implicit class TreeInfo(val tree: tpd.Tree) extends AnyVal {
