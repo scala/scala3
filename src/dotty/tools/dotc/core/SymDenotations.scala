@@ -55,23 +55,6 @@ object SymDenotations {
     /** `fullName` where `.' is the separator character */
     def fullName(implicit ctx: Context): Name = fullName('.')
 
-    /** The source or class file from which this denotation was generated, null if not applicable. */
-    def associatedFile(implicit ctx: Context): AbstractFile = topLevelClass.associatedFile
-
-    /** The class file from which this denotation was generated, null if not applicable. */
-    final def binaryFile(implicit ctx: Context): AbstractFile = pickFile(associatedFile, classFile = true)
-
-    /** The source file from which this denotation was generated, null if not applicable. */
-    final def sourceFile(implicit ctx: Context): AbstractFile = pickFile(associatedFile, classFile = false)
-
-   /** Desire to re-use the field in ClassSymbol which stores the source
-     *  file to also store the classfile, but without changing the behavior
-     *  of sourceFile (which is expected at least in the IDE only to
-     *  return actual source code.) So sourceFile has classfiles filtered out.
-     */
-    private def pickFile(file: AbstractFile, classFile: Boolean): AbstractFile =
-      if ((file eq null) || classFile != (file.path endsWith ".class")) null else file
-
     private[this] var _flags: FlagSet = initFlags
 
     /** The flag set */
@@ -197,11 +180,15 @@ object SymDenotations {
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     def isCoDefinedWith(that: Symbol)(implicit ctx: Context) =
       (this.effectiveOwner == that.effectiveOwner) &&
-      (  !(this.effectiveOwner.isPackageClass)
-      || (this.sourceFile == null)
-      || (that.sourceFile == null)
-      || (this.sourceFile.path == that.sourceFile.path)  // Cheap possibly wrong check, then expensive normalization
-      || (this.sourceFile.canonicalPath == that.sourceFile.canonicalPath)
+      (  !this.effectiveOwner.isPackageClass
+      || { val thisFile = this.symbol.associatedFile
+           val thatFile = that.symbol.associatedFile
+           (  thisFile == null
+           || thatFile == null
+           || thisFile.path == thatFile.path // Cheap possibly wrong check, then expensive normalization
+           || thisFile.canonicalPath == thatFile.canonicalPath
+           )
+         }
       )
 
     /** Is this a denotation of a stable term (or an arbitrary type)? */
@@ -514,7 +501,7 @@ object SymDenotations {
    *  Note: important to leave initctx non-implicit, and to check that it is not
    *  retained after object construction.
    */
-  abstract class ClassDenotation(initFlags: FlagSet, assocFile: AbstractFile)(initctx: Context)
+  abstract class ClassDenotation(initFlags: FlagSet)(initctx: Context)
       extends SymDenotation(initFlags) {
     import NameFilter._
     import util.LRU8Cache
@@ -540,8 +527,6 @@ object SymDenotations {
       implicit val ctx = initctx
       ClassInfo(owner.thisType, this)
     }
-
-    override def associatedFile(implicit ctx: Context): AbstractFile = assocFile
 
     private[this] var _typeParams: List[TypeSymbol] = _
 
@@ -814,9 +799,8 @@ object SymDenotations {
         privateWithin: Symbol = this.privateWithin,
         parents: List[TypeRef] = this.parents,
         selfType: Type = this.selfType,
-        decls: Scope = this.decls,
-        assocFile: AbstractFile = this.assocFile)(implicit ctx: Context) =
-      new CompleteClassDenotation(sym, owner, name, initFlags, parents, privateWithin, selfType, decls, assocFile)(ctx)
+        decls: Scope = this.decls)(implicit ctx: Context) =
+      new CompleteClassDenotation(sym, owner, name, initFlags, parents, privateWithin, selfType, decls)(ctx)
   }
 
 // -------- Concrete classes for instantiating denotations --------------------------
@@ -862,9 +846,8 @@ object SymDenotations {
       val parents: List[TypeRef],
       val privateWithin: Symbol,
       optSelfType: Type,
-      val decls: Scope,
-      assocFile: AbstractFile)(initctx: Context)
-      extends ClassDenotation(initFlags, assocFile)(initctx) {
+      val decls: Scope)(initctx: Context)
+      extends ClassDenotation(initFlags)(initctx) {
     val selfType = if (optSelfType == NoType) typeConstructor(initctx) else optSelfType
     final def preCompleteDecls = decls
   }
@@ -876,16 +859,15 @@ object SymDenotations {
       decls: Scope = newScope,
       assocFile: AbstractFile = null)(implicit ctx: Context) =
     new CompleteClassDenotation(symbol, owner, name, initFlags, parents,
-        privateWithin, optSelfType, decls, assocFile)(ctx)
+        privateWithin, optSelfType, decls)(ctx)
 
   class LazyClassDenotation(
       val symbol: ClassSymbol,
       val owner: Symbol,
       val name: TypeName,
       initFlags: FlagSet,
-      var completer: ClassCompleter,
-      assocFile: AbstractFile
-    )(initctx: Context) extends ClassDenotation(initFlags, assocFile)(initctx) with isLazy[LazyClassDenotation] {
+      var completer: ClassCompleter
+    )(initctx: Context) extends ClassDenotation(initFlags)(initctx) with isLazy[LazyClassDenotation] {
 
     private[this] var _parents: List[TypeRef] = null
     private[this] var _selfType: Type = null
@@ -907,7 +889,7 @@ object SymDenotations {
   def LazyClassDenotation(
       symbol: ClassSymbol, owner: Symbol, name: TypeName, initFlags: FlagSet,
       completer: ClassCompleter, assocFile: AbstractFile = null)(implicit ctx: Context) =
-    new LazyClassDenotation(symbol, owner, name, initFlags, completer, assocFile)(ctx)
+    new LazyClassDenotation(symbol, owner, name, initFlags, completer)(ctx)
 
   object NoDenotation extends SymDenotation(EmptyFlags) {
     override def isTerm = false
@@ -976,7 +958,7 @@ object SymDenotations {
 
     def apply(denot: LazyClassDenotation): Unit = {
       val sym = denot.symbol
-      val file = denot.associatedFile
+      val file = sym.associatedFile
       val (location, src) =
         if (file != null) (s" in $file", file.toString)
         else ("", "the signature")

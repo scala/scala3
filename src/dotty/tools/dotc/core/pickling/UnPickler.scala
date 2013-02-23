@@ -142,8 +142,8 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
     }
 
   def source: AbstractFile = {
-    val f = classRoot.associatedFile
-    if (f != null) f else moduleRoot.associatedFile
+    val f = classRoot.symbol.associatedFile
+    if (f != null) f else moduleRoot.symbol.associatedFile
   }
 
   private def checkVersion() {

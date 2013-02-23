@@ -27,7 +27,7 @@ trait Symbols { this: Context =>
     }
 
   def newLazyClassSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: ClassCompleter, assocFile: AbstractFile = null, coord: Coord = NoCoord) =
-    new ClassSymbol(coord, new LazyClassDenotation(_, owner, name, initFlags, completer, assocFile)(this))
+    new ClassSymbol(coord, new LazyClassDenotation(_, owner, name, initFlags, completer)(this), assocFile)
 
   def newLazyModuleSymbols(owner: Symbol,
       name: TermName,
@@ -64,7 +64,7 @@ trait Symbols { this: Context =>
       coord: Coord = NoCoord)
   =
     new ClassSymbol(coord, new CompleteClassDenotation(
-      _, owner, name, flags, parents, privateWithin, optSelfType, decls, assocFile)(this))
+      _, owner, name, flags, parents, privateWithin, optSelfType, decls)(this), assocFile)
 
   def newModuleSymbols(
       owner: Symbol,
@@ -257,6 +257,26 @@ object Symbols {
     /** The current name of this symbol */
     final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]
 
+    /** The source or class file from which this class was generated, null if not applicable. */
+    def associatedFile(implicit ctx: Context): AbstractFile =
+      this.denot.topLevelClass.symbol.associatedFile
+
+    /** The class file from which this class was generated, null if not applicable. */
+    final def binaryFile(implicit ctx: Context): AbstractFile =
+      pickFile(associatedFile, classFile = true)
+
+    /** The source file from which this class was generated, null if not applicable. */
+    final def sourceFile(implicit ctx: Context): AbstractFile =
+      pickFile(associatedFile, classFile = false)
+
+   /** Desire to re-use the field in ClassSymbol which stores the source
+     *  file to also store the classfile, but without changing the behavior
+     *  of sourceFile (which is expected at least in the IDE only to
+     *  return actual source code.) So sourceFile has classfiles filtered out.
+     */
+    private def pickFile(file: AbstractFile, classFile: Boolean): AbstractFile =
+      if ((file eq null) || classFile != (file.path endsWith ".class")) null else file
+
     def show(implicit ctx: Context): String = ctx.show(this)
     def showLocated(implicit ctx: Context): String = ctx.showLocated(this)
     def showDcl(implicit ctx: Context): String = ctx.showDcl(this)
@@ -269,9 +289,14 @@ object Symbols {
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
-  class ClassSymbol(coord: Coord, denotf: ClassSymbol => ClassDenotation) extends Symbol(coord, s => denotf(s.asClass)) {
+  class ClassSymbol(coord: Coord, denotf: ClassSymbol => ClassDenotation, assocFile: AbstractFile) extends Symbol(coord, s => denotf(s.asClass)) {
 
     type ThisName = TypeName
+
+    /** The source or class file from which this class was generated, null if not applicable. */
+    override def associatedFile(implicit ctx: Context): AbstractFile =
+      if (this.owner.isPackageClass) assocFile
+      else super.associatedFile
 
     final def classDenot(implicit ctx: Context): ClassDenotation =
       denot.asInstanceOf[ClassDenotation]
