@@ -21,12 +21,12 @@ object Names {
   /** A name is essentially a string, with three differences
    *  1. Names belong in one of two universes: they are type names or term names.
    *     The same string can correspond both to a type name and to a term name.
-   *  2. NAmes are hash-consed. Two names
+   *  2. Names are hash-consed. Two names
    *     representing the same string in the same universe are always reference identical.
    *  3. Names are intended to be encoded strings. @see dotc.util.NameTransformer.
    *     The encoding will be applied when converting a string to a name.
    */
-  abstract class Name extends DotClass
+  sealed abstract class Name extends DotClass
     with PreName
     with Seq[Char]
     with IndexedSeqOptimized[Char, Name] {
@@ -65,7 +65,7 @@ object Names {
      */
     def fromChars(cs: Array[Char], offset: Int, len: Int): ThisName
 
-    override def toString = new String(chrs, start, length)
+    override final def toString = new String(chrs, start, length)
 
     /** Write to UTF8 representation of this name to given character array.
      *  Start copying to index `to`. Return index of next free byte in array.
@@ -79,16 +79,16 @@ object Names {
     }
 
     /** Convert to string replacing operator symbols by corresponding \$op_name. */
-    def decode: String = NameTransformer.decode(toString)
+    final def decode: String = NameTransformer.decode(toString)
 
-    def ++ (other: Name): ThisName = ++ (other.toString)
+    final def ++ (other: Name): ThisName = ++ (other.toString)
 
-    def ++ (other: String): ThisName = {
+    final def ++ (other: String): ThisName = {
       val s = toString + other
       fromChars(s.toCharArray, 0, s.length)
     }
 
-    def replace(from: Char, to: Char): ThisName = {
+    final def replace(from: Char, to: Char): ThisName = {
       val cs = new Array[Char](length)
       Array.copy(chrs, start, cs, 0, length)
       for (i <- 0 until length) {
@@ -100,27 +100,27 @@ object Names {
 
     // ----- Collections integration -------------------------------------
 
-    override protected[this] def thisCollection: WrappedString = new WrappedString(repr.toString)
-    override protected[this] def toCollection(repr: Name): WrappedString = new WrappedString(repr.toString)
+    override protected[this] final def thisCollection: WrappedString = new WrappedString(repr.toString)
+    override protected[this] final def toCollection(repr: Name): WrappedString = new WrappedString(repr.toString)
 
     override protected[this] def newBuilder: Builder[Char, Name] = unsupported("newBuilder")
 
-    override def apply(index: Int): Char = chrs(start + index)
+    override final def apply(index: Int): Char = chrs(start + index)
 
-    override def slice(from: Int, until: Int): ThisName =
+    override final def slice(from: Int, until: Int): ThisName =
       fromChars(chrs, start + from, start + until)
 
-    override def seq = toCollection(this)
+    override final def seq = toCollection(this)
   }
 
-  class TermName(val start: Int, val length: Int, private[Names] var next: TermName) extends Name {
+  sealed class TermName(val start: Int, val length: Int, private[Names] var next: TermName) extends Name {
     type ThisName = TermName
-    def isTypeName = false
-    def isTermName = true
+    final def isTypeName = false
+    final def isTermName = true
 
     @volatile private[this] var _typeName: TypeName = null
 
-    def toTypeName: TypeName = {
+    final def toTypeName: TypeName = {
       if (_typeName == null)
         synchronized {
           if (_typeName == null)
@@ -128,35 +128,35 @@ object Names {
         }
       _typeName
     }
-    def toTermName = this
-    def asTypeName = throw new ClassCastException(this + " is not a type name")
-    def asTermName = this
+    final def toTermName = this
+    final def asTypeName = throw new ClassCastException(this + " is not a type name")
+    final def asTermName = this
 
-    def toLocalName: LocalName = toTypeName.toLocalName
+    final def toLocalName: LocalName = toTypeName.toLocalName
 
-    override protected[this] def newBuilder: Builder[Char, Name] = termNameBuilder
+    override protected[this] final def newBuilder: Builder[Char, Name] = termNameBuilder
 
-    def fromChars(cs: Array[Char], offset: Int, len: Int): TermName = termName(cs, offset, len)
+    final def fromChars(cs: Array[Char], offset: Int, len: Int): TermName = termName(cs, offset, len)
   }
 
   class TypeName(val start: Int, val length: Int, initialTermName: TermName) extends Name {
     type ThisName = TypeName
-    def isTypeName = true
-    def isTermName = false
-    def toTypeName = this
-    def asTypeName = this
-    def asTermName = throw new ClassCastException(this + " is not a term name")
+    final def isTypeName = true
+    final def isTermName = false
+    final def toTypeName = this
+    final def asTypeName = this
+    final def asTermName = throw new ClassCastException(this + " is not a term name")
 
     private[this] var _termName = initialTermName
 
-    def toTermName: TermName = _termName match {
+    final def toTermName: TermName = _termName match {
       case tn: LocalName =>
         synchronized { tn.toGlobalName }
       case tn =>
         tn
     }
 
-    def toLocalName: LocalName = _termName match {
+    final def toLocalName: LocalName = _termName match {
       case tn: LocalName =>
         tn
       case _ =>
@@ -169,7 +169,7 @@ object Names {
 
     override protected[this] def newBuilder: Builder[Char, Name] = typeNameBuilder
 
-    def fromChars(cs: Array[Char], offset: Int, len: Int): TypeName = typeName(cs, offset, len)
+    final def fromChars(cs: Array[Char], offset: Int, len: Int): TypeName = typeName(cs, offset, len)
   }
 
   /* A local name representing a field that has otherwise the same name as
@@ -198,7 +198,7 @@ object Names {
    *               v    |
    *              TypeName
    */
-  class LocalName(start: Int, length: Int, _next: TermName) extends TermName(start, length, _next) {
+  final class LocalName(start: Int, length: Int, _next: TermName) extends TermName(start, length, _next) {
     def toGlobalName: TermName = next
   }
 
