@@ -11,17 +11,17 @@ abstract class Periods extends DotClass { self: Context =>
   import Periods._
 
   /** The current phase identifier */
-  def phaseId = period.phaseId
+  final def phaseId = period.phaseId
 
   /** The current run identifier */
-  def runId = period.runId
+  final def runId = period.runId
 
   /** Execute `op` at given period */
-  def atPeriod[T](pd: Period)(op: Context => T) =
+  final def atPeriod[T](pd: Period)(op: Context => T) =
     op(ctx.fresh.withPeriod(pd))
 
   /** Execute `op` at given phase id */
-  def atPhase[T](pid: PhaseId)(op: Context => T) =
+  final def atPhase[T](pid: PhaseId)(op: Context => T) =
     op(ctx.fresh.withPhase(pid))
 }
 
