@@ -21,15 +21,15 @@ trait Symbols { this: Context =>
 
 // ---- Fundamental symbol creation methods ----------------------------------
 
-  def newLazySymbol[N <: Name](owner: Symbol, name: N, initFlags: FlagSet, completer: SymCompleter, coord: Coord = NoCoord) =
+  final def newLazySymbol[N <: Name](owner: Symbol, name: N, initFlags: FlagSet, completer: SymCompleter, coord: Coord = NoCoord) =
     new Symbol(coord, new LazySymDenotation(_, owner, name, initFlags, completer)) {
       type ThisName = N
     }
 
-  def newLazyClassSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: ClassCompleter, assocFile: AbstractFile = null, coord: Coord = NoCoord) =
+  final def newLazyClassSymbol(owner: Symbol, name: TypeName, initFlags: FlagSet, completer: ClassCompleter, assocFile: AbstractFile = null, coord: Coord = NoCoord) =
     new ClassSymbol(coord, new LazyClassDenotation(_, owner, name, initFlags, completer, assocFile)(this))
 
-  def newLazyModuleSymbols(owner: Symbol,
+  final def newLazyModuleSymbols(owner: Symbol,
       name: TermName,
       flags: FlagSet,
       completer: ClassCompleter,
@@ -47,12 +47,12 @@ trait Symbols { this: Context =>
     (module, modcls)
   }
 
-  def newSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type, privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
+  final def newSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type, privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
     new Symbol(coord, CompleteSymDenotation(_, owner, name, flags, info, privateWithin)) {
       type ThisName = N
     }
 
-  def newClassSymbol(
+  final def newClassSymbol(
       owner: Symbol,
       name: TypeName,
       flags: FlagSet,
@@ -66,7 +66,7 @@ trait Symbols { this: Context =>
     new ClassSymbol(coord, new CompleteClassDenotation(
       _, owner, name, flags, parents, privateWithin, optSelfType, decls, assocFile)(this))
 
-  def newModuleSymbols(
+  final def newModuleSymbols(
       owner: Symbol,
       name: TermName,
       flags: FlagSet,
@@ -89,7 +89,7 @@ trait Symbols { this: Context =>
     (module, modcls)
   }
 
-  def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
+  final def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
     def stub = new StubCompleter(ctx.condensed)
     name match {
       case name: TermName => ctx.newLazyModuleSymbols(owner, name, EmptyFlags, stub, file)._1
@@ -99,36 +99,36 @@ trait Symbols { this: Context =>
 
 // ---- Derived symbol creation methods -------------------------------------
 
-  def newLazyPackageSymbols(owner: Symbol, name: TermName, completer: ClassCompleter) =
+  final def newLazyPackageSymbols(owner: Symbol, name: TermName, completer: ClassCompleter) =
     newLazyModuleSymbols(owner, name, PackageCreationFlags, completer)
 
-  def newPackageSymbols(
+  final def newPackageSymbols(
       owner: Symbol,
       name: TermName,
       decls: Scope = newScope) =
    newModuleSymbols(
      owner, name, PackageCreationFlags, PackageCreationFlags, Nil, NoSymbol, decls)
 
-  def newLocalDummy(cls: Symbol, coord: Coord = NoCoord) =
+  final def newLocalDummy(cls: Symbol, coord: Coord = NoCoord) =
     newSymbol(cls, nme.localDummyName(cls), EmptyFlags, NoType)
 
-  def newImportSymbol(expr: TypedTree, coord: Coord = NoCoord) =
+  final def newImportSymbol(expr: TypedTree, coord: Coord = NoCoord) =
     newSymbol(NoSymbol, nme.IMPORT, EmptyFlags, ImportType(expr), coord = coord)
 
-  def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
+  final def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
     newSymbol(cls, nme.CONSTRUCTOR, flags, MethodType(paramNames, paramTypes)(_ => cls.typeConstructor), privateWithin, coord)
 
-  def newDefaultConstructor(cls: ClassSymbol) =
+  final def newDefaultConstructor(cls: ClassSymbol) =
     newConstructor(cls, EmptyFlags, Nil, Nil)
 
-  def newSelfSym(cls: ClassSymbol) =
+  final def newSelfSym(cls: ClassSymbol) =
     ctx.newSymbol(cls, nme.THIS, SyntheticArtifact, cls.selfType)
 
   /** Create new type parameters with given owner, names, and flags.
    *  @param boundsFn  A function that, given type refs to the newly created
    *                   parameters returns a list of their bounds.
    */
-  def newTypeParams(
+  final def newTypeParams(
     owner: Symbol,
     names: List[TypeName],
     flags: FlagSet,
@@ -146,13 +146,13 @@ trait Symbols { this: Context =>
 
 // ----- Locating predefined symbols ----------------------------------------
 
-  def requiredPackage(path: PreName): TermSymbol =
+  final def requiredPackage(path: PreName): TermSymbol =
     base.staticRef(path.toTermName).requiredSymbol(_.isPackage).asTerm
 
-  def requiredClass(path: PreName): ClassSymbol =
+  final def requiredClass(path: PreName): ClassSymbol =
     base.staticRef(path.toTypeName).requiredSymbol(_.isClass).asClass
 
-  def requiredModule(path: PreName): TermSymbol =
+  final def requiredModule(path: PreName): TermSymbol =
     base.staticRef(path.toTermName).requiredSymbol(_.isModule).asTerm
 }
 
@@ -160,7 +160,7 @@ object Symbols {
 
   /** A Symbol represents a Scala definition/declaration or a package.
    */
-  class Symbol(val coord: Coord, denotf: Symbol => SymDenotation) extends DotClass {
+  sealed class Symbol(val coord: Coord, denotf: Symbol => SymDenotation) extends DotClass {
 
     type ThisName <: Name
 
@@ -168,15 +168,15 @@ object Symbols {
     def exists = true
 
     /** This symbol, if it exists, otherwise the result of evaluating `that` */
-    def orElse(that: => Symbol) = if (exists) this else that
+    final def orElse(that: => Symbol) = if (exists) this else that
 
     /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
-    def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
+    final def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
 
     private[this] var _id: Int = _
 
     /** The unique id of this symbol */
-    def id(implicit ctx: Context) = {
+    final def id(implicit ctx: Context) = {
       if (_id == 0) _id = ctx.nextId
       _id
     }
@@ -215,31 +215,31 @@ object Symbols {
     }
 
     /** Is symbol a primitive value class? */
-    def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains this
+    final def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains this
 
     /** Is symbol a phantom class for which no runtime representation exists? */
-    def isPhantomClass(implicit ctx: Context) = defn.PhantomClasses contains this
+    final def isPhantomClass(implicit ctx: Context) = defn.PhantomClasses contains this
 
     /** The current name of this symbol */
     final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]
 
-    def show(implicit ctx: Context): String = ctx.show(this)
-    def showLocated(implicit ctx: Context): String = ctx.showLocated(this)
-    def showDcl(implicit ctx: Context): String = ctx.showDcl(this)
-    def showKind(implicit ctx: Context): String = ctx.showKind(this)
-    def showName(implicit ctx: Context): String = ctx.showName(this)
-    def showFullName(implicit ctx: Context): String = ctx.showFullName(this)
+    final def show(implicit ctx: Context): String = ctx.show(this)
+    final def showLocated(implicit ctx: Context): String = ctx.showLocated(this)
+    final def showDcl(implicit ctx: Context): String = ctx.showDcl(this)
+    final def showKind(implicit ctx: Context): String = ctx.showKind(this)
+    final def showName(implicit ctx: Context): String = ctx.showName(this)
+    final def showFullName(implicit ctx: Context): String = ctx.showFullName(this)
 
   }
 
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
-  class ClassSymbol(coord: Coord, denotf: ClassSymbol => ClassDenotation) extends Symbol(coord, s => denotf(s.asClass)) {
+  final class ClassSymbol(coord: Coord, denotf: ClassSymbol => ClassDenotation) extends Symbol(coord, s => denotf(s.asClass)) {
 
     type ThisName = TypeName
 
-    final def classDenot(implicit ctx: Context): ClassDenotation =
+    def classDenot(implicit ctx: Context): ClassDenotation =
       denot.asInstanceOf[ClassDenotation]
 
     private var superIdHint: Int = -1
@@ -265,7 +265,7 @@ object Symbols {
     }
   }
 
-  class ErrorSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(NoCoord, sym => underlying.denot) {
+  final class ErrorSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(NoCoord, sym => underlying.denot) {
     type ThisName = underlying.ThisName
   }
 
