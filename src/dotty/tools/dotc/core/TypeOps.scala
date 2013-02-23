@@ -55,7 +55,7 @@ trait TypeOps { this: Context =>
     }
   }
 
-  class AsSeenFromMap(pre: Type, clazz: Symbol) extends TypeMap {
+  final class AsSeenFromMap(pre: Type, clazz: Symbol) extends TypeMap {
     def apply(tp: Type) = asSeenFrom(tp, pre, clazz, this)
   }
 
@@ -133,7 +133,7 @@ trait TypeOps { this: Context =>
   final def glb(tps: List[Type]): Type =
     (defn.AnyType /: tps)(glb)
 
-  def lub(tp1: Type, tp2: Type): Type =
+  final def lub(tp1: Type, tp2: Type): Type =
     if (tp1 eq tp2) tp1
     else if (tp1.isWrong) tp1
     else if (tp2.isWrong) tp2
@@ -194,7 +194,7 @@ trait TypeOps { this: Context =>
    *  to a list of typerefs, by converting all refinements to member
    *  definitions in scope `decls`.
    */
-  def normalizeToRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
+  final def normalizeToRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
     var refinements = Map[TypeName, Type]()
     var formals = Map[TypeName, Symbol]()
     def normalizeToRef(tp: Type): TypeRef = tp match {

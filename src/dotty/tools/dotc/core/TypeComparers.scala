@@ -11,7 +11,7 @@ object TypeComparers {
     private final val LogPendingSubTypesThreshold = 50
   }
 
-  class TypeComparer(_ctx: Context) extends DotClass {
+  final class TypeComparer(_ctx: Context) extends DotClass {
     import TypeComparer._
 
     implicit val ctx = _ctx
