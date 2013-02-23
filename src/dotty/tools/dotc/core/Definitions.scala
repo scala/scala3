@@ -19,7 +19,7 @@ object Definitions {
   val MaxFunctionArity, MaxTupleArity = 22
 }
 
-class Definitions(implicit ctx: Context) {
+final class Definitions(implicit ctx: Context) {
   import Definitions._
 
   import ctx.{requiredClass, requiredModule, requiredPackage}
