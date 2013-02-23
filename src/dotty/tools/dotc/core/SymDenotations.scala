@@ -52,7 +52,7 @@ object SymDenotations {
       if (this == NoSymbol || owner == NoSymbol || owner.isEffectiveRoot) name
       else (effectiveOwner.enclosingClass.fullName(separator) :+ separator) ++ name
 
-    /** `fullName` where `.' is the separator character */
+    /** `fullName` where `.` is the separator character */
     def fullName(implicit ctx: Context): Name = fullName('.')
 
     /** The source or class file from which this denotation was generated, null if not applicable. */
@@ -83,8 +83,12 @@ object SymDenotations {
     /** Set given flags(s) of this denotation */
     final def setFlag(flags: FlagSet): Unit = { _flags |= flags }
 
-     /** UnsSet given flags(s) of this denotation */
-     final def resetFlag(flags: FlagSet): Unit = { _flags &~= flags }
+    /** Unset given flags(s) of this denotation */
+    final def resetFlag(flags: FlagSet): Unit = { _flags &~= flags }
+
+    protected final def isLocked: Boolean = _flags is Locked // don't use `flags` or we'll hit an SOE.
+    protected final def lock(): Unit = setFlag(Locked)
+    protected final def unlock(): Unit = resetFlag(Locked)
 
     private[this] var _annotations: List[Annotation] = Nil
 
@@ -836,7 +840,7 @@ object SymDenotations {
 
     private[this] var _info: Type = _
     protected[core] def info_=(tp: Type) = if (_info == null) _info = tp
-    override def info = { if (info == null) tryComplete(); _info }
+    override def info = { if (_info == null) tryComplete(); _info }
   }
 
   def LazySymDenotation(symbol: Symbol, owner: Symbol, name: Name, initFlags: FlagSet,
@@ -855,7 +859,7 @@ object SymDenotations {
       assocFile: AbstractFile)(initctx: Context)
       extends ClassDenotation(initFlags, assocFile)(initctx) {
     val selfType = if (optSelfType == NoType) typeConstructor(initctx) else optSelfType
-    final def preCompleteDecls = decls
+    def preCompleteDecls = decls
   }
 
    def CompleteClassDenotation(
@@ -920,15 +924,15 @@ object SymDenotations {
 
     override protected[core] final def tryComplete(): Unit =
       try {
-        if (flags is Locked) throw new CyclicReference(symbol)
-        setFlag(Locked)
+        if (isLocked) throw new CyclicReference(symbol)
+        lock()
         val c = completer
         if (c == null) throw new CompletionError(this)
         completer = null // set completer to null to avoid space leaks
                          // and to make any subsequent completion attempt a CompletionError
         c(this)
       } finally {
-        flags &~= Locked
+        unlock()
       }
 
     private[this] var _privateWithin: Symbol = _
