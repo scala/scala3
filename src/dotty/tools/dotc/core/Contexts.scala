@@ -40,6 +40,7 @@ object Contexts {
                             with TypeOps
                             with Printers
                             with Symbols
+                            with SymDenotations
                             with Cloneable {
     implicit val ctx: Context = this
 
@@ -158,9 +159,9 @@ object Contexts {
 
     val loaders = new SymbolLoaders
 
-    val platform: Platform = new JavaPlatform(this)
+    val platform: Platform = new JavaPlatform
 
-    val rootLoader: ClassCompleter = platform.rootLoader
+    def rootLoader(implicit ctx: Context): SymbolLoader = platform.rootLoader
 
     val definitions = new Definitions()(initialCtx)
 

@@ -9,15 +9,14 @@ package config
 
 import io.{ClassPath, AbstractFile}
 import core.Contexts._, core.Symbols._
-import core.SymDenotations.ClassCompleter
 import core.SymbolLoader
 
 /** The platform dependent pieces of Global.
  */
-abstract class Platform(base: ContextBase) {
+abstract class Platform {
 
   /** The root symbol loader. */
-  def rootLoader: ClassCompleter
+  def rootLoader(implicit ctx: Context): SymbolLoader
 
   /** The compiler classpath. */
   def classPath(implicit ctx: Context): ClassPath

@@ -52,16 +52,15 @@ object UnPickler {
       tp.derivedPolyType(paramNames, tp.paramBounds, arrayToRepeated(tp.resultType))
   }
 
-  def assignClassFields(denot: LazyClassDenotation, info: Type, selfType: Type)(implicit ctx: Context): Unit = {
-    val cls = denot.symbol
+  def setClassInfo(denot: ClassDenotation, info: Type, optSelfType: Type = NoType)(implicit ctx: Context): Unit = {
+    val cls = denot.classSymbol
     val (tparams, TempClassInfoType(parents, decls, clazz)) = info match {
       case TempPolyType(tps, cinfo) => (tps, cinfo)
       case cinfo => (Nil, cinfo)
     }
+    val parentRefs = ctx.normalizeToRefs(parents, cls, decls)
     tparams foreach decls.enter
-    denot.parents = ctx.normalizeToRefs(parents, cls, decls)
-    denot.selfType = selfType
-    denot.decls = decls
+    denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, parentRefs, decls, optSelfType)
   }
 }
 
@@ -72,7 +71,7 @@ object UnPickler {
  *  @param moduleroot the top-level module class which is unpickled, or NoSymbol if inapplicable
  *  @param filename   filename associated with bytearray, only used for error messages
  */
-class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: LazyClassDenotation)(implicit cctx: CondensedContext)
+class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: ClassDenotation)(implicit cctx: CondensedContext)
   extends PickleBuffer(bytes, 0, -1) {
 
   import UnPickler._
@@ -347,8 +346,8 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
     def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner)
     def isModuleRoot = (name.toTermName == moduleRoot.name.toTermName) && (owner == moduleRoot.owner)
 
-    def completeRoot(denot: LazyClassDenotation): Symbol = {
-      atReadPos(start.toIndex, () => completeLocal(denot))
+    def completeRoot(denot: ClassDenotation): Symbol = {
+      atReadPos(start.toIndex, () => localUnpickler.parseToCompletion(denot))
       denot.symbol
     }
 
@@ -369,23 +368,23 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
           name1 = name1.expandedName(owner)
           flags1 |= TypeParamFlags
         }
-        cctx.newLazySymbol(owner, name1, flags1, symUnpickler, coord = start)
+        cctx.newSymbol(owner, name1, flags1, localUnpickler, coord = start)
       case CLASSsym =>
         if (isClassRoot) completeRoot(classRoot)
         else if (isModuleRoot) completeRoot(moduleRoot)
-        else cctx.newLazyClassSymbol(owner, name.asTypeName, flags, classUnpickler, coord = start)
+        else cctx.newClassSymbol(owner, name.asTypeName, flags, localUnpickler, coord = start)
       case MODULEsym | VALsym =>
         if (isModuleRoot) {
           moduleRoot.flags = flags
           moduleRoot.symbol
-        } else cctx.newLazySymbol(owner, name.asTermName, flags, symUnpickler, coord = start)
+        } else cctx.newSymbol(owner, name.asTermName, flags, localUnpickler, coord = start)
       case _ =>
         errorBadSignature("bad symbol tag: " + tag)
     })
   }
 
-  def completeLocal[D <: SymDenotation](denot: isLazy[D]): Unit = {
-    def parseToCompletion() = {
+  val localUnpickler = new LazyType {
+    def parseToCompletion(denot: SymDenotation) = {
       val tag = readByte()
       val end = readNat() + readIndex
       def atEnd = readIndex == end
@@ -402,7 +401,10 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
         }
       val tp = at(inforef, () => readType(forceProperType = denot.isTerm))
       denot match {
-        case denot: LazySymDenotation =>
+        case denot: ClassDenotation =>
+          val optSelfType = if (atEnd) NoType else readTypeRef()
+          setClassInfo(denot, tp, optSelfType)
+        case denot =>
           denot.info = if (tag == ALIASsym) TypeAlias(tp) else depoly(tp)
           if (atEnd) {
             assert(!(denot is SuperAccessor), denot)
@@ -414,16 +416,12 @@ class UnPickler(bytes: Array[Byte], classRoot: LazyClassDenotation, moduleRoot: 
             val alias = at(aliasRef, readDisambiguatedSymbol(disambiguate)).asTerm
             denot.addAnnotation(Annotation.makeAlias(alias))
           }
-        case denot: LazyClassDenotation =>
-          val selfType = if (atEnd) denot.typeConstructor else readTypeRef()
-          assignClassFields(denot, tp, selfType)
       }
     }
-    atReadPos(denot.symbol.coord.toIndex, parseToCompletion)
+    def complete(denot: SymDenotation): Unit = {
+      atReadPos(denot.symbol.coord.toIndex, () => parseToCompletion(denot))
+    }
   }
-
-  val symUnpickler: SymCompleter = completeLocal
-  val classUnpickler: ClassCompleter = completeLocal
 
   /** Convert
    *    tp { type name = sym } forSome { sym >: L <: H }

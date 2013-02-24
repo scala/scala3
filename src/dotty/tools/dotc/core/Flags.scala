@@ -271,7 +271,7 @@ object Flags {
   final val Erroneous = commonFlag(???, "<is-error>")
 
   /** Denotation is in train of being loaded and completed, flag to catch cyclic dependencies */
-  final val Locked = commonFlag(???, "<locked>")
+  final val CompletionStarted = commonFlag(???, "<locked>")
 
   /** Variable is accessed from nested function. */
   final val Captured = termFlag(???, "<captured>")
@@ -326,6 +326,7 @@ object Flags {
   final val SyntheticArtifact = Synthetic | Artifact
 
   final val RetainedModuleFlags: FlagSet = ???
+  final val RetainedModuleClassFlags: FlagSet = ???
 
   final val UninstantiatableFlags = Abstract | Final
 
@@ -333,7 +334,7 @@ object Flags {
   final val InitialFlags: FlagSet = ???
 
   /** These flags are not pickled */
-  final val FlagsNotPickled = commonFlags(Erroneous, Lifted, Frozen)
+  final val FlagsNotPickled = commonFlags(Erroneous, Lifted, Frozen, CompletionStarted)
 
   /** These flags are pickled */
   final val PickledFlags  = InitialFlags &~ FlagsNotPickled

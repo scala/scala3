@@ -274,15 +274,15 @@ object Printers {
           else
             (if (lo.typeSymbol == defn.NothingClass) "" else ">: " + lo) +
             (if (hi.typeSymbol == defn.AnyClass)     "" else "<: " + hi)
-        case ClassInfo(pre, cdenot) =>
+        case ClassInfo(pre, cdenot, cparents, decls, optSelfType) =>
           val preStr = showLocal(pre)
           val selfStr =
-            if (cdenot.selfType == cdenot.typeConstructor) ""
-            else s"this: ${show(cdenot.selfType, LeftArrowPrec)} =>"
-          val parentsStr = cdenot.parents.map(show(_, WithPrec)).mkString(" with ")
+            if (optSelfType.exists) s"this: ${show(optSelfType, LeftArrowPrec)} =>"
+            else ""
+          val parentsStr = cparents.map(show(_, WithPrec)).mkString(" with ")
           val declsStr =
-            if (cdenot.decls.isEmpty) ""
-            else "\n  " + show(cdenot.decls.toList, "\n  ")
+            if (decls.isEmpty) ""
+            else "\n  " + show(decls.toList, "\n  ")
           s"""$parentsStr { $selfStr$declsStr
              |} at $preStr""".stripMargin
         case _ => ": " + showGlobal(tp)

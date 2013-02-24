@@ -192,7 +192,7 @@ trait TypeOps { this: Context =>
 
   /** Normalize a list of parent types of class `cls` that may contain refinements
    *  to a list of typerefs, by converting all refinements to member
-   *  definitions in scope `decls`.
+   *  definitions in scope `decls`. Can add members to `decls` as a side-effect.
    */
   def normalizeToRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
     var refinements = Map[TypeName, Type]()

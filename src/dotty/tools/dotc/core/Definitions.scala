@@ -30,8 +30,8 @@ class Definitions(implicit ctx: Context) {
     scope.enter(tparam)
   }
 
-  private def specialPolyClass(name: TypeName, flags: FlagSet, parentConstrs: Type*): ClassSymbol = {
-    def classDenot(cls: ClassSymbol) = {
+  private def specialPolyClass(name: TypeName, flags: FlagSet, parentConstrs: Type*): ClassSymbol =
+    ctx.newClassSymbolDenoting { cls =>
       val paramDecls = newScope
       val typeParam = newSyntheticTypeParam(cls, paramDecls)
       def instantiate(tpe: Type) =
@@ -39,10 +39,10 @@ class Definitions(implicit ctx: Context) {
         else tpe
       val parents = parentConstrs.toList map instantiate
       val parentRefs: List[TypeRef] = ctx.normalizeToRefs(parents, cls, paramDecls)
-      CompleteClassDenotation(cls, ScalaPackageClass, name, flags, parentRefs, decls = paramDecls)(ctx)
+      ctx.SymDenotation(
+        cls, ScalaPackageClass, name, flags,
+        ClassInfo(ScalaPackageClass.thisType, cls, parentRefs, paramDecls))
     }
-    new ClassSymbol(NoCoord, classDenot, null)
-  }
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[ClassSymbol] = {
     val arr = new Array[ClassSymbol](arity)
@@ -50,12 +50,12 @@ class Definitions(implicit ctx: Context) {
     arr
   }
 
-  lazy val RootClass: ClassSymbol = ctx.newLazyPackageSymbols(
-    NoSymbol, nme.ROOT, ctx.rootLoader)._2
+  lazy val RootClass: ClassSymbol = ctx.newPackageSymbol(
+    NoSymbol, nme.ROOT, ctx.rootLoader).moduleClass.asClass
   lazy val RootPackage: TermSymbol = ctx.newSymbol(
     NoSymbol, nme.ROOTPKG, PackageCreationFlags, TypeRef(NoPrefix, RootClass))
 
-  lazy val EmptyPackageClass = ctx.newPackageSymbols(RootClass, nme.EMPTY_PACKAGE)._2
+  lazy val EmptyPackageClass = ctx.newCompletePackageSymbol(RootClass, nme.EMPTY_PACKAGE).moduleClass.asClass
   lazy val EmptyPackageVal = EmptyPackageClass.sourceModule
 
   lazy val ScalaPackageVal = requiredPackage("scala")
@@ -66,15 +66,15 @@ class Definitions(implicit ctx: Context) {
   lazy val ObjectClass = requiredClass("java.lang.Object")
   lazy val AnyRefAlias: TypeSymbol = ctx.newSymbol(
     ScalaPackageClass, tpnme.AnyRef, EmptyFlags, TypeAlias(ObjectClass.typeConstructor)).entered
-  lazy val AnyClass: ClassSymbol = ctx.newClassSymbol(
+  lazy val AnyClass: ClassSymbol = ctx.newCompleteClassSymbol(
     ScalaPackageClass, tpnme.Any, Abstract, Nil).entered
   lazy val AnyValClass: ClassSymbol = requiredClass("scala.AnyVal")
 
   lazy val NotNullClass = requiredClass("scala.NotNull")
 
-  lazy val NothingClass: ClassSymbol = ctx.newClassSymbol(
+  lazy val NothingClass: ClassSymbol = ctx.newCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, UninstantiatableFlags, List(AnyClass.typeConstructor)).entered
-  lazy val NullClass: ClassSymbol = ctx.newClassSymbol(
+  lazy val NullClass: ClassSymbol = ctx.newCompleteClassSymbol(
     ScalaPackageClass, tpnme.Null, UninstantiatableFlags, List(AnyRefAlias.typeConstructor)).entered
 
   lazy val PredefModule = requiredModule("scala.Predef")

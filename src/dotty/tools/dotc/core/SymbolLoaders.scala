@@ -26,14 +26,14 @@ class SymbolLoaders {
   /** Enter class with given `name` into scope of `owner`.
    */
   def enterClass(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context): Symbol = {
-    val cls = ctx.newLazyClassSymbol(owner, name.toTypeName, flags, completer, assocFile = completer.sourceFileOrNull)
+    val cls = ctx.newClassSymbol(owner, name.toTypeName, flags, completer, assocFile = completer.sourceFileOrNull)
     enterIfNew(owner, cls, completer)
   }
 
   /** Enter module with given `name` into scope of `owner`.
    */
   def enterModule(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context): Symbol = {
-    val module = ctx.newLazyModuleSymbols(owner, name.toTermName, flags, completer, assocFile = completer.sourceFileOrNull)._1
+    val module = ctx.newModuleSymbol(owner, name.toTermName, flags, completer, assocFile = completer.sourceFileOrNull)
     enterIfNew(owner, module, completer)
   }
 
@@ -63,7 +63,7 @@ class SymbolLoaders {
         return NoSymbol
       }
     }
-    ctx.newLazyModuleSymbols(owner, pname, PackageCreationFlags, completer)._1.entered
+    ctx.newModuleSymbol(owner, pname, PackageCreationFlags, completer).entered
   }
 
   /** Enter class and module with given `name` into scope of `owner`
@@ -119,16 +119,12 @@ class SymbolLoaders {
 
   /** Load contents of a package
    */
-  class PackageLoader(classpath: ClassPath)(cctx: CondensedContext) extends SymbolLoader {
-    implicit val ctx: Context = cctx
+  class PackageLoader(classpath: ClassPath)(implicit val cctx: CondensedContext) extends SymbolLoader {
     protected def description = "package loader " + classpath.name
 
-    protected def doLoad(root: LazyClassDenotation) = doComplete(root)
-
-    protected def doComplete(root: LazyClassDenotation) {
+    protected override def doComplete(root: SymDenotation) {
       assert(root.isPackageClass, root)
-      root.parents = Nil
-      root.decls = newScope
+      root.info = ClassInfo(root.owner.thisType, root.symbol.asClass, Nil, newScope)
       if (!root.isRoot) {
         for (classRep <- classpath.classes) {
           initializeFromClassPath(root.symbol, classRep)
@@ -136,9 +132,8 @@ class SymbolLoaders {
       }
       if (!root.isEmptyPackage) {
         for (pkg <- classpath.packages) {
-          enterPackage(root.symbol, pkg.name, new PackageLoader(pkg)(cctx))
+          enterPackage(root.symbol, pkg.name, new PackageLoader(pkg))
         }
-
         openPackageModule(root.symbol)
       }
     }
@@ -151,11 +146,11 @@ class SymbolLoaders {
  *  Todo: consider factoring out behavior from TopClassCompleter/SymbolLoader into
  *  supertrait SymLoader
  */
-abstract class SymbolLoader extends ClassCompleter {
-  implicit val ctx: Context
+abstract class SymbolLoader extends LazyType {
+  implicit val cctx: CondensedContext
 
   /** Load source or class file for `root`, return */
-  protected def doComplete(root: LazyClassDenotation): Unit
+  protected def doComplete(root: SymDenotation): Unit
 
   def sourceFileOrNull: AbstractFile = null
 
@@ -164,48 +159,48 @@ abstract class SymbolLoader extends ClassCompleter {
    */
   protected def description: String
 
-  override def apply(root: LazyClassDenotation) = {
+  override def complete(root: SymDenotation): Unit = {
     def signalError(ex: Exception) {
-      if (ctx.settings.debug.value) ex.printStackTrace()
+      if (cctx.settings.debug.value) ex.printStackTrace()
       val msg = ex.getMessage()
-      ctx.error(
+      cctx.error(
         if (msg eq null) "i/o error while loading " + root.name
         else "error while loading " + root.name + ", " + msg)
     }
     try {
       val start = currentTime
       doComplete(root)
-      ctx.informTime("loaded " + description, start)
+      cctx.informTime("loaded " + description, start)
     } catch {
       case ex: IOException =>
       signalError(ex)
     } finally {
-      root.linkedClass.denot match {
-        case companion: LazyClassDenotation => companion.completer = null
-      }
+      def postProcess(denot: SymDenotation) =
+        if (!denot.isCompleted) denot.markAbsent()
+      postProcess(root)
+      postProcess(root.linkedClass.denot)
     }
   }
 }
 
-class ClassfileLoader(val classfile: AbstractFile)(cctx: CondensedContext) extends SymbolLoader {
-  implicit val ctx: Context = cctx
+class ClassfileLoader(val classfile: AbstractFile)(implicit val cctx: CondensedContext) extends SymbolLoader {
 
   override def sourceFileOrNull: AbstractFile = classfile
 
   protected def description = "class file "+ classfile.toString
 
-  def rootDenots(rootDenot: LazyClassDenotation): (LazyClassDenotation, LazyClassDenotation) = {
+  def rootDenots(rootDenot: ClassDenotation): (ClassDenotation, ClassDenotation) = {
     val linkedDenot = rootDenot.linkedClass.denot match {
-      case d: LazyClassDenotation => d
-      case d => throw new FatalError(s"linked class denot $d of $rootDenot is expected to be a LazyClassDenot, but is a ${d.getClass}")
+      case d: ClassDenotation => d
+      case d => throw new FatalError(s"linked class denot $d of $rootDenot is expected to be a ClassDenotation, but is a ${d.getClass}")
     }
-    if (rootDenot.isModule) (linkedDenot, rootDenot)
+    if (rootDenot.isModuleClass) (linkedDenot, rootDenot)
     else (rootDenot, linkedDenot)
   }
 
-  protected def doComplete(root: LazyClassDenotation) {
-    val (classRoot, moduleRoot) = rootDenots(root)
-    new ClassfileParser(classfile, classRoot, moduleRoot)(cctx).run()
+  protected def doComplete(root: SymDenotation) {
+    val (classRoot, moduleRoot) = rootDenots(root.asClass)
+    new ClassfileParser(classfile, classRoot, moduleRoot).run()
   }
 }
 /*

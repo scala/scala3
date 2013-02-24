@@ -7,7 +7,7 @@ import ClassPath.{ JavaContext, DefaultJavaContext }
 import core.Contexts._
 import core.SymDenotations._, core.Symbols._, core.SymbolLoader
 
-class JavaPlatform(base: ContextBase) extends Platform(base) {
+class JavaPlatform extends Platform {
 
   private var currentClassPath: Option[MergedClassPath] = None
 
@@ -21,7 +21,7 @@ class JavaPlatform(base: ContextBase) extends Platform(base) {
   def updateClassPath(subst: Map[ClassPath, ClassPath]) =
     currentClassPath = Some(new DeltaClassPath(currentClassPath.get, subst))
 
-  def rootLoader: ClassCompleter = ??? // = new loaders.PackageLoader(classPath)
+  def rootLoader(implicit ctx: Context): SymbolLoader = new ctx.base.loaders.PackageLoader(classPath)(ctx.condensed)
 
   /** We could get away with excluding BoxedBooleanClass for the
    *  purpose of equality testing since it need not compare equal

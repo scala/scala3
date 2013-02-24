@@ -250,8 +250,8 @@ object TypedTrees {
     def ClassDef(cls: ClassSymbol, typeParams: List[TypeSymbol], body: List[Tree])(implicit ctx: Context): ClassDef = {
       val parents = cls.info.parents map (TypeTree(_))
       val selfType =
-        if (cls.selfType eq cls.typeConstructor) EmptyValDef
-        else ValDef(ctx.newSelfSym(cls))
+        if (cls.classInfo.optSelfType.exists) ValDef(ctx.newSelfSym(cls))
+        else EmptyValDef
       def isOwnTypeParamAccessor(stat: Tree) =
         (stat.symbol is TypeParam) && stat.symbol.owner == cls
       val (tparamAccessors, rest) = body partition isOwnTypeParamAccessor
@@ -466,8 +466,8 @@ object TypedTrees {
         case _ => true
       }
       def noLeaksInClass(sym: ClassSymbol): Boolean =
-        (sym.parents forall noLeaksIn) &&
-        (sym.decls.toList forall (t => noLeaksIn(t.info)))
+        (sym.classInfo.parents forall noLeaksIn) &&
+        (sym.classInfo.decls.toList forall (t => noLeaksIn(t.info)))
       check(noLeaksIn(tree.tpe))
     case If(cond, thenp, elsep) =>
       check(cond.isValue); check(thenp.isValue); check(elsep.isValue)
@@ -658,8 +658,7 @@ object TypedTrees {
       else
         new TreeMapper(
           typeMap andThen ((tp: Type) => tp.substSym(locals, mapped)),
-          ownerMap andThen (locals zip mapped).toMap)
-          .transform(trees, c)
+          ownerMap andThen (locals zip mapped).toMap).transform(trees, c)
     }
 
     def apply[ThisTree <: tpd.Tree](tree: ThisTree): ThisTree = transform(tree, ()).asInstanceOf[ThisTree]

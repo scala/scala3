@@ -525,7 +525,7 @@ object Denotations {
 
     def missingHook(owner: Symbol, name: Name)(implicit ctx: Context): Symbol =
       if (owner.isPackage && name.isTermName)
-        ctx.newPackageSymbols(owner, name.asTermName)._1.entered
+        ctx.newCompletePackageSymbol(owner, name.asTermName).entered
       else
         NoSymbol
   }

@@ -15,11 +15,10 @@ import io.AbstractFile
 
 class ClassfileParser(
     classfile: AbstractFile,
-    classRoot: LazyClassDenotation,
-    moduleRoot: LazyClassDenotation)(implicit cctx: CondensedContext) {
+    classRoot: ClassDenotation,
+    moduleRoot: ClassDenotation)(implicit cctx: CondensedContext) {
 
   import ClassfileConstants._
-  import cctx.debuglog
   import cctx.base.{settings, loaders, definitions => defn}
 
   protected val in = new AbstractFileReader(classfile)
@@ -43,7 +42,7 @@ class ClassfileParser(
   }
 
   def run(): Unit = try {
-    debuglog("[class] >> " + classRoot.fullName)
+    cctx.debuglog("[class] >> " + classRoot.fullName)
     parseHeader
     this.pool = new ConstantPool
     parseClass()
@@ -128,8 +127,8 @@ class ClassfileParser(
       instanceScope enter cctx.newDefaultConstructor(classRoot.symbol.asClass)
 
     classInfo = parseAttributes(classRoot.symbol, classInfo)
-    assignClassFields(classRoot, classInfo, classRoot.typeConstructor)
-    assignClassFields(moduleRoot, staticInfo, moduleRoot.typeConstructor)
+    setClassInfo(classRoot, classInfo)
+    setClassInfo(moduleRoot, staticInfo)
   }
 
   /** Add type parameters of enclosing classes */
@@ -151,42 +150,45 @@ class ClassfileParser(
       else FlagTranslation.fieldFlags(jflags)
     val name = pool.getName(in.nextChar)
     if (!(sflags is Flags.Private) || name == nme.CONSTRUCTOR || settings.optimise.value)
-      cctx.newLazySymbol(getOwner(jflags), name, sflags, memberCompleter, start).entered
+      cctx.newSymbol(
+        getOwner(jflags), name, sflags, memberCompleter, coord = start).entered
   }
 
-  val memberCompleter: SymCompleter = { denot =>
-    val oldbp = in.bp
-    try {
-      in.bp = denot.symbol.coord.toIndex
-      val sym = denot.symbol
-      val jflags = in.nextChar
-      val isEnum = (jflags & JAVA_ACC_ENUM) != 0
-      val name = pool.getName(in.nextChar)
-      val info = pool.getType(in.nextChar)
+  val memberCompleter = new LazyType {
+    def complete(denot: SymDenotation): Unit = {
+      val oldbp = in.bp
+      try {
+        in.bp = denot.symbol.coord.toIndex
+        val sym = denot.symbol
+        val jflags = in.nextChar
+        val isEnum = (jflags & JAVA_ACC_ENUM) != 0
+        val name = pool.getName(in.nextChar)
+        val info = pool.getType(in.nextChar)
 
-      denot.info = if (isEnum) ConstantType(Constant(sym)) else info
-      if (name == nme.CONSTRUCTOR)
-        // if this is a non-static inner class, remove the explicit outer parameter
-        innerClasses.get(currentClassName) match {
-          case Some(entry) if !isStatic(entry.jflags) =>
-            val mt @ MethodType(paramnames, paramtypes) = info
-            denot.info = mt.derivedMethodType(paramnames.tail, paramtypes.tail, mt.resultType)
+        denot.info = if (isEnum) ConstantType(Constant(sym)) else info
+        if (name == nme.CONSTRUCTOR)
+          // if this is a non-static inner class, remove the explicit outer parameter
+          innerClasses.get(currentClassName) match {
+            case Some(entry) if !isStatic(entry.jflags) =>
+              val mt @ MethodType(paramnames, paramtypes) = info
+              denot.info = mt.derivedMethodType(paramnames.tail, paramtypes.tail, mt.resultType)
 
+          }
+        setPrivateWithin(denot, jflags)
+        denot.info = parseAttributes(sym, info)
+
+        if ((denot is Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
+          denot.info = arrayToRepeated(denot.info)
+
+        // seal java enums
+        if (isEnum) {
+          val enumClass = sym.owner.linkedClass
+          if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
+          enumClass.addAnnotation(Annotation.makeChild(sym))
         }
-      setPrivateWithin(denot, jflags)
-      denot.info = parseAttributes(sym, info)
-
-      if ((denot is Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
-        denot.info = arrayToRepeated(denot.info)
-
-      // seal java enums
-      if (isEnum) {
-        val enumClass = sym.owner.linkedClass
-        if (!(enumClass is Flags.Sealed)) enumClass.setFlag(Flags.AbstractSealed)
-        enumClass.addAnnotation(Annotation.makeChild(sym))
+      } finally {
+        in.bp = oldbp
       }
-    } finally {
-      in.bp = oldbp
     }
   }
 
@@ -309,13 +311,15 @@ class ClassfileParser(
 
     var tparams = classTParams
 
-    def typeParamCompleter(start: Int): SymCompleter = { denot =>
-      val savedIndex = index
-      try {
-        index = start
-        denot.info = sig2typeBounds(tparams, skiptvs = false)
-      } finally {
-        index = savedIndex
+    def typeParamCompleter(start: Int) = new LazyType {
+      def complete(denot: SymDenotation): Unit = {
+        val savedIndex = index
+        try {
+          index = start
+          denot.info = sig2typeBounds(tparams, skiptvs = false)
+        } finally {
+          index = savedIndex
+        }
       }
     }
 
@@ -326,8 +330,8 @@ class ClassfileParser(
       val start = index
       while (sig(index) != '>') {
         val tpname = subName(':'.==).toTypeName
-        val s = cctx.newLazySymbol(
-          owner, tpname, Flags.TypeParam, typeParamCompleter(index), indexCoord(index))
+        val s = cctx.newSymbol(
+          owner, tpname, Flags.TypeParam, typeParamCompleter(index), coord = indexCoord(index))
         tparams = tparams + (tpname -> s)
         sig2typeBounds(tparams, skiptvs = true)
         newTParams += s
@@ -506,7 +510,7 @@ class ClassfileParser(
       loaders.enterClassAndModule(
           getOwner(jflags),
           entry.originalName,
-          new ClassfileLoader(file)(cctx),
+          new ClassfileLoader(file),
           FlagTranslation.classFlags(jflags))
 
     for (entry <- innerClasses.values) {
@@ -702,7 +706,7 @@ class ClassfileParser(
   protected def getScope(flags: Int): Scope =
     if (isStatic(flags)) staticScope else instanceScope
 
-  private def setPrivateWithin(denot: isLazy[_], jflags: Int) {
+  private def setPrivateWithin(denot: SymDenotation, jflags: Int) {
     if ((jflags & (JAVA_ACC_PRIVATE | JAVA_ACC_PUBLIC)) == 0)
       // See ticket #1687 for an example of when topLevelClass is NoSymbol: it
       // apparently occurs when processing v45.3 bytecode.

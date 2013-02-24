@@ -63,7 +63,7 @@ object Types {
     /** The type symbol associated with the type */
     final def typeSymbol(implicit ctx: Context): Symbol = this match {
       case tp: TypeRef => tp.symbol
-      case tp: ClassInfo => tp.classd.symbol
+      case tp: ClassInfo => tp.cls
       case tp: TypeProxy => tp.underlying.typeSymbol
       case _ => NoSymbol
     }
@@ -124,7 +124,7 @@ object Types {
      */
     final def memberNames(pre: Type, keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = this match {
       case tp: ClassInfo =>
-        tp.classd.memberNames(keepOnly) filter (keepOnly(pre, _))
+        tp.cls.memberNames(keepOnly) filter (keepOnly(pre, _))
       case tp: RefinedType =>
         var ns = tp.parent.memberNames(pre, keepOnly)
         if (keepOnly(pre, tp.name)) ns += tp.name
@@ -319,7 +319,7 @@ object Types {
      */
     final def decls(implicit ctx: Context): Scope = this match {
       case tp: ClassInfo =>
-        tp.classd.decls
+        tp.decls
       case tp: TypeProxy =>
         tp.underlying.decls
       case _ =>
@@ -337,11 +337,11 @@ object Types {
     /** The non-private class member declaration of this type with given name */
     final def findDecl(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: ClassInfo =>
-        tp.classd.decls
+        tp.decls
           .denotsNamed(name)
           .filterAccessibleFrom(pre)
           .filterExcluded(excluded)
-          .asSeenFrom(pre, tp.classd.symbol)
+          .asSeenFrom(pre, tp.cls)
           .toDenot
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, pre, excluded)
@@ -370,12 +370,12 @@ object Types {
       case tp: TypeProxy =>
         tp.underlying.findMember(name, pre, excluded)
       case tp: ClassInfo =>
-        val classd = tp.classd
-        val candidates = classd.membersNamed(name)
+        val cls = tp.cls
+        val candidates = cls.membersNamed(name)
         val results = candidates
           .filterAccessibleFrom(pre)
           .filterExcluded(excluded)
-          .asSeenFrom(pre, classd.symbol)
+          .asSeenFrom(pre, cls)
         if (results.exists) results.toDenot
         else new ErrorDenotation // todo: refine
       case tp: AndType =>
@@ -454,7 +454,7 @@ object Types {
       case tp: TypeProxy =>
         tp.underlying.baseClasses
       case tp: ClassInfo =>
-        tp.classd.baseClasses
+        tp.cls.baseClasses
       case _ => Nil
     }
 
@@ -484,7 +484,7 @@ object Types {
      */
     final def typeParams(implicit ctx: Context): List[TypeSymbol] = this match {
       case tp: ClassInfo =>
-        tp.classd.typeParams
+        tp.cls.typeParams
       case tp: TypeProxy =>
         tp.underlying.typeParams
       case _ => Nil
@@ -806,7 +806,7 @@ object Types {
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
 
   abstract case class ThisType(cls: ClassSymbol) extends CachedProxyType with SingletonType {
-    override def underlying(implicit ctx: Context) = cls.selfType
+    override def underlying(implicit ctx: Context) = cls.classInfo.selfType
     override def computeHash = doHash(cls)
   }
 
@@ -1075,31 +1075,49 @@ object Types {
 
   // ------ ClassInfo, Type Bounds ------------------------------------------------------------
 
-  abstract case class ClassInfo(prefix: Type, classd: ClassDenotation) extends CachedGroundType with TypeType {
+  /** The info of a class during a period.
+   *  @param pre          The prefix on which all class attributes need to be rebased.
+   *  @param cls          The class symbol.
+   *  @param classParents The parent types of this class.
+   *                      These are all normalized to be TypeRefs by moving any refinements
+   *                      to be member definitions of the class itself.
+   *  @param decls        The symbols defined directly in this class.
+   *  @param optSelfType  The type of `this` in this class, if explicitly given, NoType otherwise.
+   */
+  abstract case class ClassInfo(
+      prefix: Type,
+      cls: ClassSymbol,
+      classParents: List[TypeRef],
+      decls: Scope,
+      optSelfType: Type) extends CachedGroundType with TypeType {
 
-/*    def typeTemplate(implicit ctx: Context): Type =
-      classd.typeTemplate asSeenFrom (prefix, classd.symbol)
-*/
+    def selfType(implicit ctx: Context): Type =
+      if (optSelfType.exists) optSelfType else cls.typeConstructor
+
     def typeConstructor(implicit ctx: Context): Type =
-      NamedType(prefix, classd.symbol.name)
+      NamedType(prefix, cls.name)
 
     // cached because baseType needs parents
     private var parentsCache: List[TypeRef] = null
 
+    def rebase(tp: Type)(implicit ctx: Context): Type =
+      tp.substThis(cls, prefix)
+
     override def parents(implicit ctx: Context): List[TypeRef] = {
       if (parentsCache == null)
-        parentsCache = classd.parents.mapConserve(_.substThis(classd.symbol, prefix).asInstanceOf[TypeRef])
+        parentsCache = classParents.mapConserve(rebase(_).asInstanceOf[TypeRef])
       parentsCache
     }
 
-    override def computeHash = doHash(classd.symbol, prefix)
+    override def computeHash = doHash(cls, prefix)
   }
 
-  final class CachedClassInfo(prefix: Type, classd: ClassDenotation) extends ClassInfo(prefix, classd)
+  final class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[TypeRef], decls: Scope, optSelfType: Type)
+    extends ClassInfo(prefix, cls, classParents, decls, optSelfType)
 
   object ClassInfo {
-    def apply(prefix: Type, classd: ClassDenotation)(implicit ctx: Context) =
-      unique(new CachedClassInfo(prefix, classd))
+    def apply(prefix: Type, cls: ClassSymbol, classParents: List[TypeRef], decls: Scope, optSelfType: Type = NoType)(implicit ctx: Context) =
+      unique(new CachedClassInfo(prefix, cls, classParents, decls, optSelfType))
   }
 
   abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
