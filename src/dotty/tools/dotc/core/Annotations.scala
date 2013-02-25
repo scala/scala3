@@ -8,7 +8,7 @@ object Annotations {
     def tree: Tree
     def symbol(implicit ctx: Context): Symbol = tree.tpe.typeSymbol
     def matches(cls: Symbol)(implicit ctx: Context): Boolean = symbol.isNonBottomSubClass(cls)
-    def appliesToModule: Boolean = ???
+    def appliesToModule: Boolean = true // for now; see remark in SymDenotations
   }
 
   case class ConcreteAnnotation(val tree: Tree) extends Annotation

@@ -31,6 +31,6 @@ abstract class Platform {
   def isMaybeBoxed(sym: Symbol)(implicit ctx: Context): Boolean
 
   /** Create a new class loader to load class file `bin` */
-  def newClassLoader(bin: AbstractFile): SymbolLoader
+  def newClassLoader(bin: AbstractFile)(implicit ctx: Context): SymbolLoader
 }
 

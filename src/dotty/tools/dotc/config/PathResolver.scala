@@ -133,9 +133,9 @@ object PathResolver {
       )
   }
 
-  def fromPathString(path: String)(implicit ctx: Context): JavaClassPath = {
-    val settings = ctx.settings.classpath.update(path)
-    new PathResolver(ctx.fresh.withSettings(settings)).result
+  def fromPathString(path: String)(implicit cctx: CondensedContext): JavaClassPath = {
+    val settings = cctx.settings.classpath.update(path)
+    new PathResolver()(cctx.fresh.withSettings(settings)).result
   }
 
   /** With no arguments, show the interesting values in Environment and Defaults.
@@ -148,11 +148,11 @@ object PathResolver {
       println(Defaults)
     }
     else {
-      val ctx = (new ContextBase).initialCtx
+      implicit val cctx = (new ContextBase).initialCtx.condensed
       val ArgsSummary(sstate, rest, errors) =
-        ctx.settings.processArguments(args.toList, true)(ctx)
+        cctx.settings.processArguments(args.toList, true)
       errors.foreach(println)
-      val pr = new PathResolver(ctx.fresh.withSettings(sstate))
+      val pr = new PathResolver()(cctx.fresh.withSettings(sstate))
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))
       println("RESIDUAL: 'scala %s'\n".format(rest.mkString(" ")))
       pr.result.show
@@ -161,8 +161,9 @@ object PathResolver {
 }
 import PathResolver.{ Defaults, Environment, firstNonEmpty, ppcp }
 
-class PathResolver(_ctx: Context) {
-  implicit val ctx = _ctx
+class PathResolver(implicit cctx: CondensedContext) {
+  import cctx.base.settings
+
   val context = ClassPath.DefaultJavaContext
 
   private def cmdLineOrElse(name: String, alt: String) = {
@@ -172,22 +173,21 @@ class PathResolver(_ctx: Context) {
     }) getOrElse alt
   }
 
-  private def commandLineFor(s: String): Option[String] = ???
-  /*condOpt(s) {
+  private def commandLineFor(s: String): Option[String] = condOpt(s) {
     case "javabootclasspath"  => settings.javabootclasspath.value
     case "javaextdirs"        => settings.javaextdirs.value
     case "bootclasspath"      => settings.bootclasspath.value
     case "extdirs"            => settings.extdirs.value
     case "classpath" | "cp"   => settings.classpath.value
     case "sourcepath"         => settings.sourcepath.value
-  }*/
+  }
 
   /** Calculated values based on any given command line options, falling back on
    *  those in Defaults.
    */
   object Calculated {
     def scalaHome           = Defaults.scalaHome
-    def useJavaClassPath    = ctx.settings.usejavacp.value || Defaults.useJavaClassPath
+    def useJavaClassPath    = settings.usejavacp.value || Defaults.useJavaClassPath
     def javaBootClassPath   = cmdLineOrElse("javabootclasspath", Defaults.javaBootClassPath)
     def javaExtDirs         = cmdLineOrElse("javaextdirs", Defaults.javaExtDirs)
     def javaUserClassPath   = if (useJavaClassPath) Defaults.javaUserClassPath else ""
@@ -212,8 +212,8 @@ class PathResolver(_ctx: Context) {
      *  - If neither of those, then "." is used.
      */
     def userClassPath = (
-      if (!ctx.settings.classpath.isDefault)
-        ctx.settings.classpath.value
+      if (!settings.classpath.isDefault)
+        settings.classpath.value
       else sys.env.getOrElse("CLASSPATH", ".")
     )
 
@@ -256,8 +256,8 @@ class PathResolver(_ctx: Context) {
 
   lazy val result: JavaClassPath = {
     val cp = new JavaClassPath(containers.toIndexedSeq, context)
-    if (ctx.settings.Ylogcp.value) {
-      Console.println("Classpath built from " + ctx.settings.toConciseString(ctx.sstate))
+    if (settings.Ylogcp.value) {
+      Console.println("Classpath built from " + settings.toConciseString(cctx.sstate))
       Console.println("Defaults: " + PathResolver.Defaults)
       Console.println("Calculated: " + Calculated)
 

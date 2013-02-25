@@ -883,6 +883,10 @@ object SymDenotations {
       val from = denot.moduleClass.denot.asClass
       denot.setFlag(from.flags.toTermFlags & RetainedModuleValFlags)
       denot.annotations = from.annotations filter (_.appliesToModule)
+        // !!! ^^^ needs to be revised later. The problem is that annotations might
+        // only apply to the module but not to the module class. The right solution
+        // is to have the module class completer set the annotations of both the
+        // class and the module.
       denot.info = mclass.symbolicRef
       denot.privateWithin = from.privateWithin
     }

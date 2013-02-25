@@ -5,7 +5,7 @@ package config
 import io.{AbstractFile,ClassPath,JavaClassPath,MergedClassPath,DeltaClassPath}
 import ClassPath.{ JavaContext, DefaultJavaContext }
 import core.Contexts._
-import core.SymDenotations._, core.Symbols._, core.SymbolLoader
+import core.SymDenotations._, core.Symbols._, core.{SymbolLoader, ClassfileLoader}
 
 class JavaPlatform extends Platform {
 
@@ -39,6 +39,6 @@ class JavaPlatform extends Platform {
     (sym isNonBottomSubClass BoxedBooleanClass)
   }
 
-  def newClassLoader(bin: AbstractFile): SymbolLoader = ???
-    // new loaders.ClassfileLoader(bin)
+  def newClassLoader(bin: AbstractFile)(implicit ctx: Context): SymbolLoader =
+    new ClassfileLoader(bin)(ctx.condensed)
 }
