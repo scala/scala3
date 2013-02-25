@@ -883,7 +883,7 @@ object SymDenotations {
       val from = denot.moduleClass.denot.asClass
       denot.setFlag(from.flags.toTermFlags & RetainedModuleFlags)
       denot.annotations = from.annotations filter (_.appliesToModule)
-      denot.info = TypeRef(denot.owner.thisType, mclass)
+      denot.info = mclass.symbolicRef
       denot.privateWithin = from.privateWithin
     }
   }

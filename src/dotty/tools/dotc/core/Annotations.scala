@@ -49,5 +49,5 @@ object Annotations {
   def makeNestedAnnotArg(annot: Annotation): Tree = annot.tree
 
   def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context) =
-    Annotation(defn.ThrowsAnnot, Ident(TypeRef(cls.owner.thisType, cls.name)))
+    Annotation(defn.ThrowsAnnot, Ident(cls.symbolicRef))
 }
