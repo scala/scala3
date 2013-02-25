@@ -26,7 +26,7 @@ class Definitions(implicit ctx: Context) {
 
   private def newSyntheticTypeParam(cls: ClassSymbol, scope: Scope, suffix: String = "T0") = {
     val tname = suffix.toTypeName.expandedName(cls)
-    val tparam = ctx.newSymbol(cls, tname, TypeParamFlags, TypeBounds.empty)
+    val tparam = ctx.newSymbol(cls, tname, TypeParamCreationFlags, TypeBounds.empty)
     scope.enter(tparam)
   }
 
@@ -73,9 +73,9 @@ class Definitions(implicit ctx: Context) {
   lazy val NotNullClass = requiredClass("scala.NotNull")
 
   lazy val NothingClass: ClassSymbol = ctx.newCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Nothing, UninstantiatableFlags, List(AnyClass.typeConstructor)).entered
+    ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeConstructor)).entered
   lazy val NullClass: ClassSymbol = ctx.newCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Null, UninstantiatableFlags, List(AnyRefAlias.typeConstructor)).entered
+    ScalaPackageClass, tpnme.Null, AbstractFinal, List(AnyRefAlias.typeConstructor)).entered
 
   lazy val PredefModule = requiredModule("scala.Predef")
 

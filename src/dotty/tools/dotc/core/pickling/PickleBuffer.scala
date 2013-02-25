@@ -166,5 +166,95 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
   def times[T](n: Int, op: ()=>T): List[T] =
     if (n == 0) List() else op() :: times(n-1, op)
 
-  def unpickleScalaFlags(sflags: Long, isType: Boolean): FlagSet = ???
+  private final val ScalaFlagEnd = 48
+  private final val ChunkBits = 8
+  private final val ChunkSize = 1 << ChunkBits
+  private type FlagMap = Array[Array[Long]]
+
+  private val (scalaTermFlagMap, scalaTypeFlagMap) = {
+    import scala.reflect.internal.Flags._
+    val corr = Map(
+      PROTECTED -> Protected,
+      OVERRIDE -> Override,
+      PRIVATE -> Private,
+      ABSTRACT -> Abstract,
+      DEFERRED -> Deferred,
+      FINAL -> Final,
+      METHOD -> Method,
+      INTERFACE -> Interface,
+      MODULE -> Module,
+      IMPLICIT -> Implicit,
+      SEALED -> Sealed,
+      CASE -> Case,
+      MUTABLE -> Mutable,
+      PARAM -> Param,
+      PACKAGE -> Package,
+      MACRO -> Macro,
+      BYNAMEPARAM -> (Method, Covariant),
+      LABEL -> (Label, Contravariant),
+      ABSOVERRIDE -> AbsOverride,
+      LOCAL -> Local,
+      JAVA -> JavaDefined,
+      SYNTHETIC -> Synthetic,
+      STABLE -> Stable,
+      STATIC -> Static,
+      CASEACCESSOR -> CaseAccessor,
+      DEFAULTPARAM -> (DefaultParam, Trait),
+      BRIDGE -> Bridge,
+      ACCESSOR -> Accessor,
+      SUPERACCESSOR -> SuperAccessor,
+      PARAMACCESSOR -> ParamAccessor,
+      MODULEVAR -> Scala2ModuleVar,
+      LAZY -> Lazy,
+      MIXEDIN -> (MixedIn, Scala2Existential),
+      EXPANDEDNAME -> ExpandedName,
+      IMPLCLASS -> (Scala2PreSuper, ImplClass),
+      SPECIALIZED -> Specialized,
+      DEFAULTINIT -> DefaultInit,
+      VBRIDGE -> VBridge,
+      VARARGS -> JavaVarargs)
+
+    // generate initial maps from Scala flags to Dotty flags
+    val termMap, typeMap = new Array[Long](64)
+    for (idx <- 0 until ScalaFlagEnd)
+      corr get (1L << idx) match {
+        case Some((termFlag: FlagSet, typeFlag: FlagSet)) =>
+          termMap(idx) |= termFlag.bits
+          typeMap(idx) |= typeFlag.bits
+        case Some(commonFlag: FlagSet) =>
+          termMap(idx) |= commonFlag.bits
+          typeMap(idx) |= commonFlag.bits
+        case _ =>
+      }
+
+    // Convert map so that it maps chunks of ChunkBits size at once
+    // instead of single bits.
+    def chunkMap(xs: Array[Long]): FlagMap = {
+      val chunked = Array.ofDim[Long](
+        (xs.length + ChunkBits - 1) / ChunkBits, ChunkSize)
+      for (i <- 0 until chunked.length)
+        for (j <- 0 until ChunkSize)
+          for (k <- 0 until ChunkBits)
+            if ((j & (1 << k)) != 0)
+              chunked(i)(j) |= xs(i * ChunkBits + k)
+      chunked
+    }
+
+    (chunkMap(termMap), chunkMap(typeMap))
+  }
+
+  def unpickleScalaFlags(sflags: Long, isType: Boolean): FlagSet = {
+    val map: FlagMap = if (isType) scalaTypeFlagMap else scalaTermFlagMap
+    val shift = ChunkBits
+    val mask = ChunkSize - 1
+    assert(6 * ChunkBits == ScalaFlagEnd)
+    FlagSet(
+      map(0)((sflags >>> (shift * 0)).toInt & mask) |
+      map(1)((sflags >>> (shift * 1)).toInt & mask) |
+      map(2)((sflags >>> (shift * 2)).toInt & mask) |
+      map(3)((sflags >>> (shift * 3)).toInt & mask) |
+      map(4)((sflags >>> (shift * 4)).toInt & mask) |
+      map(5)((sflags >>> (shift * 5)).toInt & mask)
+    )
+  }
 }

@@ -881,7 +881,7 @@ object SymDenotations {
   class LazyModuleInfo(val mclass: ClassSymbol)(implicit cctx: CondensedContext) extends LazyType {
     def complete(denot: SymDenotation): Unit = {
       val from = denot.moduleClass.denot.asClass
-      denot.setFlag(from.flags.toTermFlags & RetainedModuleFlags)
+      denot.setFlag(from.flags.toTermFlags & RetainedModuleValFlags)
       denot.annotations = from.annotations filter (_.appliesToModule)
       denot.info = mclass.symbolicRef
       denot.privateWithin = from.privateWithin

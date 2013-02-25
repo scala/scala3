@@ -122,7 +122,7 @@ trait Symbols { this: Context =>
         infoFn(module, modcls), privateWithin)
     val mdenot = SymDenotation(
         module, owner, name,
-        flags & RetainedModuleFlags | ModuleCreationFlags,
+        flags & RetainedModuleValFlags | ModuleCreationFlags,
         if (cdenot.isCompleted) modcls.symbolicRef
         else new LazyModuleInfo(modcls)(condensed))
     module.denot = mdenot
@@ -133,7 +133,7 @@ trait Symbols { this: Context =>
   /** Create a module symbol with associated module class
    *  from its non-info fields and the fields of the module class info.
    *  @param flags  The combined flags of the module and the module class
-   *                These are masked with RetainedModuleFlags/RetainedModuleClassFlags.
+   *                These are masked with RetainedModuleValFlags/RetainedModuleClassFlags.
    */
   def newCompleteModuleSymbol(
       owner: Symbol,
