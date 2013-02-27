@@ -5,8 +5,10 @@ import annotation.tailrec
 import Symbols._
 import Contexts._, Names._, Phases._
 
+/** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
 
+  /** Turns Strings into PreNames, adding toType/TermName methods */
   implicit class StringDecorator(val s: String) extends AnyVal with PreName {
     def toTypeName: TypeName = typeName(s)
     def toTermName: TermName = termName(s)
@@ -14,6 +16,9 @@ object Decorators {
     def toEncodedTermName = encodedTermName(s)
   }
 
+  /** Implements a findSymbol method on iterators of Symbols that
+   *  works like find but avoids Option, replacing None with NoSymbol.
+   */
   implicit class SymbolIteratorDecorator(val it: Iterator[Symbol]) extends AnyVal {
     final def findSymbol(p: Symbol => Boolean): Symbol = {
       while (it.hasNext) {
@@ -24,14 +29,18 @@ object Decorators {
     }
   }
 
-  final val MaxRecursions = 1000
+  final val MaxFilterRecursions = 1000
 
+  /** Implements a filterConserve method on lists that avoids
+   *  duplication of list nodes if all tests yield true. Works for lists
+   *  up to `MaxFilterRecursions` length.
+   */
   implicit class ListDecorator[T](val xs: List[T]) extends AnyVal {
     def filterConserve(p: T => Boolean): List[T] = {
       def loop(xs: List[T], nrec: Int): List[T] = xs match {
         case Nil => xs
         case x :: xs1 =>
-          if (nrec < MaxRecursions) {
+          if (nrec < MaxFilterRecursions) {
             val ys1 = loop(xs1, nrec + 1)
             if (p(x))
               if (ys1 eq xs1) xs else x :: ys1
@@ -43,6 +52,10 @@ object Decorators {
     }
   }
 
+  /** Implements a test whether a list of strings representing phases contains
+   *  a given phase. The test returns true if the given phase starts with
+   *  one of the names in the list of strings.
+   */
   implicit class PhaseListDecorator(val names: List[String]) extends AnyVal {
     def containsPhase(phase: Phase) =
       names exists (phase.name.startsWith)
