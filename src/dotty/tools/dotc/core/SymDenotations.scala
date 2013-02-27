@@ -649,6 +649,7 @@ object SymDenotations {
       _superClassBits = ctx.uniqueBits.findEntryOrUpdate(seen.toImmutable)
     }
 
+    /** A bitset that contains the superId's of all base classes */
     private def superClassBits(implicit ctx: Context): BitSet = {
       if (_superClassBits == null) computeSuperClassBits
       _superClassBits
@@ -919,7 +920,7 @@ object SymDenotations {
             |in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.
             |It may be completely missing from the current classpath, or the version on
             |the classpath might be incompatible with the version used when compiling $src.""".stripMargin)
-      if (cctx.settings.debug.value) (new Throwable).printStackTrace
+      if (cctx.debug) (new Throwable).printStackTrace
       initializeToDefaults(denot)
     }
   }

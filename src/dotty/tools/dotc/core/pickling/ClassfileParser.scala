@@ -20,6 +20,7 @@ class ClassfileParser(
 
   import ClassfileConstants._
   import cctx.base.{settings, loaders, definitions => defn}
+  import cctx.{debug, verbose}
 
   protected val in = new AbstractFileReader(classfile)
 
@@ -48,7 +49,7 @@ class ClassfileParser(
     parseClass()
   } catch {
     case e: RuntimeException =>
-      if (settings.debug.value) e.printStackTrace()
+      if (debug) e.printStackTrace()
       throw new IOException(
         s"""class file $classfile is broken, reading aborted with $e.getClass
            |${Option(e.getMessage).getOrElse("")}""".stripMargin)
@@ -411,7 +412,7 @@ class ClassfileParser(
       // with a `FatalError` exception, handled above. Here you'd end up after a NPE (for example),
       // and that should never be swallowed silently.
       cctx.warning("Caught: " + ex + " while parsing annotations in " + in.file)
-      if (settings.debug.value) ex.printStackTrace()
+      if (debug) ex.printStackTrace()
 
       None // ignore malformed annotations
   }
@@ -433,7 +434,7 @@ class ClassfileParser(
         case tpnme.SignatureATTR =>
           val sig = pool.getExternalName(in.nextChar)
           newType = sigToType(sig, sym)
-          if (settings.debug.value && settings.verbose.value)
+          if (debug && verbose)
             println("" + sym + "; signature = " + sig + " type = " + newType)
         case tpnme.SyntheticATTR =>
           sym.setFlag(Flags.SyntheticArtifact)

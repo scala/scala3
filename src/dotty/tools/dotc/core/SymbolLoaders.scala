@@ -194,7 +194,7 @@ abstract class SymbolLoader extends LazyType {
 
   override def complete(root: SymDenotation): Unit = {
     def signalError(ex: Exception) {
-      if (cctx.settings.debug.value) ex.printStackTrace()
+      if (cctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()
       cctx.error(
         if (msg eq null) "i/o error while loading " + root.name

@@ -19,7 +19,7 @@ trait Reporting { this: Context =>
       inform(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg")
 
   def debuglog(msg: => String)(implicit ctx: Context): Unit =
-    if (ctx.settings.debug.value) log(msg)
+    if (ctx.debug) log(msg)
 
   def informTime(msg: => String, start: Long)(implicit ctx: Context): Unit =
     informProgress(msg + elapsed(start))

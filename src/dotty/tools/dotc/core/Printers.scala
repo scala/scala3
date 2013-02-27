@@ -10,18 +10,8 @@ trait Printers { this: Context =>
 
   import Printers._
 
-  def printer = if (base.settings.debug.value) plainPrinter else refinedPrinter
+  def printer = if (this.debug) plainPrinter else refinedPrinter
 
-  private var _diagnostics: Option[StringBuilder] = _
-
-  protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
-  def diagnostics: Option[StringBuilder] = _diagnostics
-
-  def diagnose(str: => String) =
-    for (sb <- diagnostics) {
-      sb.setLength(0)
-      sb.append(str)
-    }
 }
 
 object Printers {
@@ -37,10 +27,6 @@ object Printers {
   val WithPrec      = new Precedence(1)
   val LeftArrowPrec = new Precedence(1)
   val GlobalPrec    = new Precedence(0)
-
-  trait PrinterBase { self: ContextBase =>
-    private[core] var showRecursions = 0
-  }
 
   abstract class Printer {
 

@@ -76,7 +76,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
 
   import UnPickler._
 
-  protected def debug = cctx.settings.debug.value
+  import cctx.debug
 
   checkVersion()
 
@@ -98,7 +98,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
     val ex = new BadSignature(
       s"""error reading Scala signature of $classRoot from $source:
          |error occured at position $readIndex: $msg""".stripMargin)
-    /*if (settings.debug.value)*/ ex.printStackTrace()
+    /*if (debug)*/ ex.printStackTrace()
     throw ex
   }
 
