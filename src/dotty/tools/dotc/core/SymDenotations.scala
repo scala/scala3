@@ -696,9 +696,9 @@ object SymDenotations {
       bits
     }
 
-    private[this] var _memberCache: LRU8Cache[Name, DenotationSet] = null
+    private[this] var _memberCache: LRU8Cache[Name, PreDenotation] = null
 
-    private def memberCache: LRU8Cache[Name, DenotationSet] = {
+    private def memberCache: LRU8Cache[Name, PreDenotation] = {
       if (_memberCache == null) _memberCache = new LRU8Cache
       _memberCache
     }
@@ -734,8 +734,8 @@ object SymDenotations {
       if (fp != null) fp else computeDefinedFingerPrint
     }
 
-    final def membersNamed(name: Name)(implicit ctx: Context): DenotationSet = {
-      var denots: DenotationSet = memberCache lookup name
+    final def membersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
+      var denots: PreDenotation = memberCache lookup name
       if (denots == null) {
         if (containsName(definedFingerPrint, name)) {
           val ownDenots = info.decls.denotsNamed(name)

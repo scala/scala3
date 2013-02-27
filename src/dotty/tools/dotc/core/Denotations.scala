@@ -311,7 +311,7 @@ object Denotations {
       derivedMultiDenotation(denot1.current, denot2.current)
   }
 
-  abstract class SingleDenotation extends Denotation with DenotationSet {
+  abstract class SingleDenotation extends Denotation with PreDenotation {
     override def isType = info.isInstanceOf[TypeType]
     override def signature(implicit ctx: Context): Signature = {
       def sig(tp: Type): Signature = tp match {
@@ -419,19 +419,19 @@ object Denotations {
 
     final def asSymDenotation = asInstanceOf[SymDenotation]
 
-    // ------ DenotationSet ops ----------------------------------------------
+    // ------ PreDenotation ops ----------------------------------------------
 
     def first = this
     def toDenot(implicit ctx: Context) = this
     def containsSig(sig: Signature)(implicit ctx: Context) =
       signature == sig
-    def filterDisjoint(denots: DenotationSet)(implicit ctx: Context): DenotationSet =
+    def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =
       if (denots.containsSig(signature)) NoDenotation else this
-    def filterExcluded(flags: FlagSet)(implicit ctx: Context): DenotationSet =
+    def filterExcluded(flags: FlagSet)(implicit ctx: Context): PreDenotation =
       if (symbol is flags) NoDenotation else this
-    def filterAccessibleFrom(pre: Type)(implicit ctx: Context): DenotationSet =
+    def filterAccessibleFrom(pre: Type)(implicit ctx: Context): PreDenotation =
       if (symbol.isAccessibleFrom(pre)) this else NoDenotation
-    def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): DenotationSet =
+    def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): PreDenotation =
       derivedSingleDenotation(symbol, info.asSeenFrom(pre, owner))
   }
 
@@ -455,29 +455,29 @@ object Denotations {
     validFor = Period.allInRun(ctx.runId)
   }
 
-  // --------------- DenotationSets -------------------------------------------------
+  // --------------- PreDenotations -------------------------------------------------
 
-  /** A DenotationSet represents a set of single denotations
+  /** A PreDenotation represents a set of single denotations
    *  It is used as an optimization to avoid forming MultiDenotations too eagerly.
    */
-  trait DenotationSet {
+  trait PreDenotation {
     def exists: Boolean
     def first: Denotation
     def toDenot(implicit ctx: Context): Denotation
     def containsSig(sig: Signature)(implicit ctx: Context): Boolean
-    def filterDisjoint(denots: DenotationSet)(implicit ctx: Context): DenotationSet
-    def filterExcluded(flags: FlagSet)(implicit ctx: Context): DenotationSet
-    def filterAccessibleFrom(pre: Type)(implicit ctx: Context): DenotationSet
-    def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): DenotationSet
-    def union(that: DenotationSet) =
+    def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation
+    def filterExcluded(flags: FlagSet)(implicit ctx: Context): PreDenotation
+    def filterAccessibleFrom(pre: Type)(implicit ctx: Context): PreDenotation
+    def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): PreDenotation
+    def union(that: PreDenotation) =
       if (!this.exists) that
       else if (that.exists) this
       else DenotUnion(this, that)
   }
 
-  case class DenotUnion(denots1: DenotationSet, denots2: DenotationSet) extends DenotationSet {
+  case class DenotUnion(denots1: PreDenotation, denots2: PreDenotation) extends PreDenotation {
     assert(denots1.exists && denots2.exists)
-    private def derivedUnion(s1: DenotationSet, s2: DenotationSet) =
+    private def derivedUnion(s1: PreDenotation, s2: PreDenotation) =
       if (!s1.exists) s2
       else if (!s2.exists) s1
       else if ((s1 eq denots2) && (s2 eq denots2)) this
@@ -489,13 +489,13 @@ object Denotations {
       (denots1 containsSig sig) || (denots2 containsSig sig)
     //def filter(p: Symbol => Boolean)(implicit ctx: Context) =
     //  derivedUnion(denots1 filter p, denots2 filter p)
-    def filterDisjoint(denots: DenotationSet)(implicit ctx: Context): DenotationSet =
+    def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1 filterDisjoint denots, denots2 filterDisjoint denots)
-    def filterExcluded(flags: FlagSet)(implicit ctx: Context): DenotationSet =
+    def filterExcluded(flags: FlagSet)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1 filterExcluded flags, denots2 filterExcluded flags)
-    def filterAccessibleFrom(pre: Type)(implicit ctx: Context): DenotationSet =
+    def filterAccessibleFrom(pre: Type)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1 filterAccessibleFrom pre, denots2 filterAccessibleFrom pre)
-    def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): DenotationSet =
+    def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1.asSeenFrom(pre, owner), denots2.asSeenFrom(pre, owner))
   }
 

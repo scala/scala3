@@ -196,8 +196,8 @@ object Scopes {
     }
 
     /** The denotation set of all the symbols with given name in this scope */
-    def denotsNamed(name: Name)(implicit ctx: Context): DenotationSet = {
-      var syms: DenotationSet = NoDenotation
+    def denotsNamed(name: Name)(implicit ctx: Context): PreDenotation = {
+      var syms: PreDenotation = NoDenotation
       var e = lookupEntry(name)
       while (e != null) {
         syms = syms union e.sym.denot
