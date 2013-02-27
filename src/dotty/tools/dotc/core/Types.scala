@@ -14,7 +14,7 @@ import SymDenotations._
 import Denotations._
 import Periods._
 import TypedTrees.tpd._, TypedTrees.TreeMapper
-import transform.Erasure._
+import transform.Erasure
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import collection.mutable
 
@@ -840,8 +840,8 @@ object Types {
       unique(new CachedTermRef(prefix, name))
     def apply(prefix: Type, sym: TermSymbol)(implicit ctx: Context) =
       unique(new TermRefBySym(prefix, sym)(ctx))
-    def apply(prefix: Type, name: TermName, signature: Signature)(implicit ctx: Context) =
-      unique(new TermRefWithSignature(prefix, name, signature))
+    def apply(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context) =
+      unique(new TermRefWithSignature(prefix, name, sig))
   }
 
   object TypeRef {
@@ -989,13 +989,11 @@ object Types {
     }
 
     private def computeSignature(implicit ctx: Context): Signature = {
-      def paramSig(tp: Type): TypeName =
-        erasure(tp).typeSymbol.asType.name
       val followSig = resultType match {
         case rtp: MethodType => rtp.signature
         case _ => Nil
       }
-      (paramTypes map paramSig) ++ followSig
+      (paramTypes map Erasure.paramSignature) ++ followSig
     }
 
     def derivedMethodType(paramNames: List[TermName], paramTypes: List[Type], restpe: Type)(implicit ctx: Context) =

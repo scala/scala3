@@ -2,19 +2,19 @@ package dotty.tools.dotc
 package core
 package transform
 
-import Flags._
-import Symbols._, Types._, Contexts._
+import Symbols._, Types._, Contexts._, Flags._, Names._
 
 object Erasure {
 
-  /**  The erasure |T| of a type T. This is: !!! todo: update
+  /**  The erasure |T| of a type T. This is:
    *
-   *   - For a constant type, itself.
    *   - For a refined type scala.Array+[T]:
    *      - if T is Nothing or Null, scala.Array+[Object]
    *      - otherwise, if T <: Object, scala.Array+[|T|]
    *      - otherwise, if T is a type paramter coming from Java, scala.Array+[Object].
    *      - otherwise, Object
+   *   - For a constant type, NoType or NoPrefix, the type itself.
+   *   - For all other type proxies: The erasure of the underlying type.
    *   - For a typeref scala.Any, scala.AnyVal, scala.Singleon or scala.NotNull, java.lang.Object.
    *   - For a typeref scala.Unit, scala.runtime.BoxedUnit.
    *   - For a typeref P.C where C refers to a toplevel class, P.C.
@@ -30,49 +30,28 @@ object Erasure {
    *   - For a class info type of a value class, the same type without any parents.
    *   - For any other class info type with parents Ps, the same type with
    *     parents |Ps|, but with duplicate references of Object removed.
-   *   - for all other types, the type itself (with any sub-components erased)
+   *   - For any other type, exception.
    */
   def erasure(tp: Type)(implicit ctx: Context): Type = tp match {
-    case ConstantType(_) =>
-      tp
-    case tp: RefinedType =>
-      val parent = tp.parent
-      if (parent.dealias.typeSymbol == defn.ArrayClass) {
-        val (n, elemtp) = tp.splitArray
-        if (elemtp <:< defn.NullType)
-          defn.ObjectArrayType
-        else if (elemtp <:< defn.ObjectType)
-          (erasure(elemtp) /: (0 until n))((erased, _) =>
-            defn.ArrayType.appliedTo(erased))
-        else if (elemtp.typeSymbol is JavaDefined)
-          defn.ObjectArrayType
-        else
-          defn.ObjectType
-      } else erasure(parent)
     case tp: TypeRef =>
       val sym = tp.symbol
-      if (sym == defn.AnyClass || sym == defn.AnyValClass || sym == defn.SingletonClass || sym == defn.NotNullClass)
-        defn.ObjectType
-      else if (sym == defn.UnitClass) defn.BoxedUnitClass.typeConstructor
-      //      else if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tref)
-      else if (sym.isClass)
-        if (sym.owner.isPackage) tp
+      if (sym.isClass)
+        /*if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tref)
+        else */if (sym.owner.isPackage) normalizeClass(sym.asClass).typeConstructor
         else tp.derivedNamedType(erasure(tp.prefix))
-      else
-        erasure(sym.info)
-    case NoType | NoPrefix =>
+      else erasure(sym.info)
+    case tp: RefinedType =>
+      val parent = tp.parent
+      if (parent.dealias.typeSymbol == defn.ArrayClass) eraseArray(tp)
+      else erasure(parent)
+    case ConstantType(_) | NoType | NoPrefix =>
       tp
     case tp: TypeProxy =>
       erasure(tp.underlying)
     case AndType(tp1, tp2) =>
       erasure(tp1)
     case OrType(tp1, tp2) =>
-      var bcs1 = tp1.baseClasses
-      val bc2 = tp2.baseClasses.head
-      while (bcs1.nonEmpty && !bc2.isNonBottomSubClass(bcs1.head))
-        bcs1 = bcs1.tail
-      if (bcs1.isEmpty) defn.ObjectType
-      else erasure(bcs1.head.typeConstructor)
+      erasure(tp.baseType(lubClass(tp1, tp2)))
     case tp: MethodType =>
       tp.derivedMethodType(
         tp.paramNames, tp.paramTypes.mapConserve(erasure), resultErasure(tp.resultType))
@@ -84,6 +63,60 @@ object Erasure {
         else if (cls == defn.ArrayClass) defn.ObjectClass.typeConstructor :: Nil
         else removeLaterObjects(classParents mapConserve (erasure(_).asInstanceOf[TypeRef]))
       tp.derivedClassInfo(erasure(pre), parents, NoType)
+  }
+
+  def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
+    val (n, elemtp) = tp.splitArray
+    if (elemtp <:< defn.NullType)
+      defn.ObjectArrayType
+    else if (elemtp <:< defn.ObjectType)
+      (erasure(elemtp) /: (0 until n))((erased, _) =>
+        defn.ArrayType.appliedTo(erased))
+    else if (elemtp.typeSymbol is JavaDefined)
+      defn.ObjectArrayType
+    else
+      defn.ObjectType
+  }
+
+  def normalizeClass(cls: ClassSymbol)(implicit ctx: Context): ClassSymbol = {
+    if (cls.owner == defn.ScalaPackageClass) {
+      if (cls == defn.AnyClass || cls == defn.AnyValClass || cls == defn.SingletonClass || cls == defn.NotNullClass)
+        return defn.ObjectClass
+      if (cls == defn.UnitClass)
+        return defn.BoxedUnitClass
+    }
+    cls
+  }
+
+  def lubClass(tp1: Type, tp2: Type)(implicit ctx: Context): ClassSymbol = {
+    var bcs1 = tp1.baseClasses
+    val bc2 = tp2.baseClasses.head
+    while (bcs1.nonEmpty && !bc2.isNonBottomSubClass(bcs1.head))
+      bcs1 = bcs1.tail
+    if (bcs1.isEmpty) defn.ObjectClass else bcs1.head
+  }
+
+  /** The parameter signature of a type.
+   *  Need to ensure correspondence with erasure
+   */
+  def paramSignature(tp: Type)(implicit ctx: Context): TypeName = tp match {
+    case tp: TypeRef =>
+      val sym = tp.symbol
+      if (sym.isClass)
+        /*if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tref)
+        else */if (sym.owner.isPackage) normalizeClass(sym.asClass).name
+        else sym.asClass.name
+      else paramSignature(sym.info)
+    case tp: RefinedType =>
+      val parent = tp.parent
+      if (parent.dealias.typeSymbol == defn.ArrayClass) paramSignature(eraseArray(tp))
+      else paramSignature(parent)
+    case tp: TypeProxy =>
+      paramSignature(tp.underlying)
+    case AndType(tp1, tp2) =>
+      paramSignature(tp1)
+    case OrType(tp1, tp2) =>
+      lubClass(tp1, tp2).name
   }
 
   def resultErasure(tp: Type)(implicit ctx: Context) =
