@@ -335,11 +335,11 @@ object TypedTrees {
      *  the RHS of a method contains a class owned by the method, this would be
      *  an error.
      */
-    def ModuleDef(sym: TermSymbol, body: List[Tree])(implicit ctx: Context): ValDef = {
+    def ModuleDef(sym: TermSymbol, body: List[Tree])(implicit ctx: Context): TempTrees = {
       val modcls = sym.moduleClass.asClass
       val clsdef = ClassDef(modcls, Nil, body)
-      val rhs = Block(List(clsdef), New(modcls.typeConstructor))
-      ValDef(sym, rhs)
+      val valdef = ValDef(sym, New(modcls.typeConstructor))
+      TempTrees(valdef :: clsdef :: Nil)
     }
 
     /** A function def
@@ -376,6 +376,26 @@ object TypedTrees {
           else sym
         } else foldOver(sym, tree)
     }
+
+    /** Temporary class that results from translation of ModuleDefs
+     *  (and possibly other statements).
+     *  The contained trees will be integrated in enclosing Blocks or Templates
+     */
+    case class TempTrees(trees: List[Tree]) extends Tree {
+      override def pos: Position = unsupported("pos")
+      override def tpe: Type = unsupported("tpe")
+    }
+
+    /** Integrates nested TempTrees in given list of trees */
+    def flatten(trees: List[Tree]): List[Tree] =
+      if (trees exists isTempTrees)
+        trees flatMap {
+          case TempTrees(ts) => ts
+          case t => t :: Nil
+        }
+      else trees
+
+    private val isTempTrees: Tree => Boolean = (_.isInstanceOf[TempTrees])
   }
 
   import Trees._
