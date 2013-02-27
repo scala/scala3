@@ -38,8 +38,7 @@ object Flags {
      */
     def is(flags: FlagSet): Boolean = {
       val fs = bits & flags.bits
-      (fs & KINDFLAGS) != 0 &&
-      fs > KINDFLAGS
+      (fs & KINDFLAGS) != 0 && (fs & ~KINDFLAGS) != 0
     }
 
    /** Does this flag set have a non-empty intersection with the given flag set,
@@ -53,7 +52,7 @@ object Flags {
     def is(flags: FlagConjunction): Boolean = {
       val fs = bits & flags.bits
       (fs & KINDFLAGS) != 0 &&
-      (fs >> TYPESHIFT) == (flags.bits >> TYPESHIFT)
+      (fs >>> TYPESHIFT) == (flags.bits >>> TYPESHIFT)
     }
 
     /** Does this flag set have all of the flags in given flag conjunction?
@@ -74,13 +73,21 @@ object Flags {
     /** The number of non-kind flags in this set */
     def numFlags: Int = java.lang.Long.bitCount(bits & ~KINDFLAGS)
 
-    /** The set of all non-empty strings that are associated
-     *  as term or type flags with this index
-     */
-    private def flagString(idx: Int): Set[String] =
-      kindIndices.map(flagName(idx)).filterNot(_.isEmpty)
+    /** The  list of non-empty names of flags with given index idx that are set in this FlagSet */
+    private def flagString(idx: Int): List[String] =
+      if ((bits & (1L << idx)) == 0) Nil
+      else {
+        def halfString(kind: Int) =
+          if ((bits & (1L << kind)) != 0) flagName(idx)(kind) else ""
+        val termFS = halfString(TERMindex)
+        val typeFS = halfString(TYPEindex)
+        val strs = termFS :: (if (termFS == typeFS) Nil else typeFS :: Nil)
+        strs filter (_.nonEmpty)
+      }
 
-    def flagStrings: Seq[String] = (2 to MaxFlag).flatMap(flagString)
+    /** The list of non-empty names of flags that are set in this FlagSet */
+    def flagStrings: Seq[String] =
+      (2 to MaxFlag).flatMap(flagString)
 
     /** The string representation of this flag set */
     override def toString = flagStrings.mkString(" ")
@@ -105,30 +112,32 @@ object Flags {
 
   private var flagName = Array.fill(64, 2)("")
 
-  private val kindIndices = Set(TERMindex, TYPEindex)
-
   private def isDefinedAsFlag(idx: Int) = flagName(idx) exists (_.nonEmpty)
 
+  /** The flag set containing all defined flags of either kind whose bits
+   *  lie in the given range
+   */
   private def flagRange(start: Int, end: Int) =
     FlagSet((KINDFLAGS.toLong /: (start until end)) ((bits, idx) =>
       if (isDefinedAsFlag(idx)) bits | (1L << idx) else bits))
 
   /** The flag with given index between 2 and 63 which applies to terms.
    *  Installs given name as the name of the flag. */
-  def termFlag(index: Int, name: String): FlagSet = {
+  private def termFlag(index: Int, name: String): FlagSet = {
     flagName(index)(TERMindex) = name
     FlagSet(TERMS | (1L << index))
   }
 
    /** The flag with given index between 2 and 63 which applies to types.
    *  Installs given name as the name of the flag. */
-  def typeFlag(index: Int, name: String): FlagSet = {
+  private def typeFlag(index: Int, name: String): FlagSet = {
     flagName(index)(TYPEindex) = name
     FlagSet(TYPES | (1L << index))
   }
 
-  /** The flag with given index between 2 and 63 which applies to both terms and types */
-  def commonFlag(index: Int, name: String): FlagSet = {
+  /** The flag with given index between 2 and 63 which applies to both terms and types
+   *  Installs given name as the name of the flag. */
+  private def commonFlag(index: Int, name: String): FlagSet = {
     flagName(index)(TERMindex) = name
     flagName(index)(TYPEindex) = name
     FlagSet(TERMS | TYPES | (1L << index))
@@ -137,14 +146,8 @@ object Flags {
   /** The conjunction of all flags in given flag set */
   def allOf(flagss: FlagSet*) = {
     assert(flagss forall (_.numFlags == 1))
-    FlagConjunction(oneOf(flagss: _*).bits)
+    FlagConjunction((EmptyFlags /: flagss)(_ | _).bits)
   }
-
-  /** The disjunction of all flags in given flag set */
-  def oneOf(flagss: FlagSet*) = (EmptyFlags /: flagss) (_ | _)
-
-  /** The disjunction of all flags in given flag set */
-  def commonFlags(flagss: FlagSet*) = oneOf(flagss map (_.toCommonFlags): _*)
 
   /** The empty flag set */
   final val EmptyFlags = FlagSet(0)
@@ -259,7 +262,7 @@ object Flags {
   final val CaseAccessor = termFlag(23, "<caseaccessor>")
 
   /** Class symbol is defined in this/superclass constructor. */
-  final val InConstructor = typeFlag(23, "<in-constructor>")
+  final val InConstructor = typeFlag(23, "<inconstructor>")
 
   /** A super accessor */
   final val SuperAccessor = termFlag(24, "<superaccessor>")
@@ -299,7 +302,7 @@ object Flags {
 
   // Flags following this one are not pickled
 
-  /** Denotation is in train of being loaded and completed, flag to catch cyclic dependencies */
+  /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
   final val CompletionStarted = commonFlag(48, "<locked>")
 
   /** Class is not allowed to accept new members because fingerprint of subclass has been taken */
@@ -335,8 +338,9 @@ object Flags {
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
   /** Flags representing source modifiers */
-  final val ModifierFlags = commonFlags(
-    Private, Protected, Abstract, Final, Sealed, Case, Implicit, AbsOverride, Lazy)
+  final val ModifierFlags =
+    (Private | Protected | Abstract | Final |
+     Sealed | Case | Implicit | AbsOverride | Lazy).toCommonFlags
 
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local
@@ -355,7 +359,7 @@ object Flags {
   final val ModuleClassCreationFlags = Module | Final
 
   /** The flags of a type parameter */
-  final val TypeParamCreationFlags = Protected | Local
+  final val TypeParamCreationFlags = TypeParam | Protected | Local
 
   /** Flags that can apply to both a module val and a module class, except those that
     *  are added at creation anyway
@@ -378,7 +382,7 @@ object Flags {
   final val PackageCreationFlags = Module | Package | Final | JavaDefined | Static
 
   /** These flags are pickled */
-  final val PickledFlags  = flagRange(FirstFlag, FirstNotPickledFlag)
+  final val PickledFlags = flagRange(FirstFlag, FirstNotPickledFlag)
 
   /** An abstract class or a trait */
   final val AbstractOrTrait = Abstract | Trait

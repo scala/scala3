@@ -332,7 +332,8 @@ class ClassfileParser(
       while (sig(index) != '>') {
         val tpname = subName(':'.==).toTypeName
         val s = cctx.newSymbol(
-          owner, tpname, Flags.TypeParam, typeParamCompleter(index), coord = indexCoord(index))
+          owner, tpname, Flags.TypeParamCreationFlags,
+          typeParamCompleter(index), coord = indexCoord(index))
         tparams = tparams + (tpname -> s)
         sig2typeBounds(tparams, skiptvs = true)
         newTParams += s

@@ -19,6 +19,7 @@ object Definitions {
   val MaxFunctionArity, MaxTupleArity = 22
 }
 
+/** A class defining symbols and types of standard definitions */
 class Definitions(implicit ctx: Context) {
   import Definitions._
 

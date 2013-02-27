@@ -215,7 +215,7 @@ trait Symbols { this: Context =>
     val tparams = names map (_ => newNakedSymbol[TypeName](NoCoord))
     val bounds = boundsFn(tparams map (_.symbolicRef))
     (names, tparams, bounds).zipped foreach { (name, tparam, bound) =>
-      tparam.denot = SymDenotation(tparam, owner, name, flags, bound)
+      tparam.denot = SymDenotation(tparam, owner, name, flags | TypeParamCreationFlags, bound)
     }
     tparams
   }
