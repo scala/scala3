@@ -777,7 +777,7 @@ object Types {
     /** Create a NamedType of the same kind as this type, if possible,
      *  but with a new prefix. For HasFixedSym instances another such
      *  instance is only created if the symbol's owner is a base class of
-     *  the new prefix. If that is not the case, we fall back to a 
+     *  the new prefix. If that is not the case, we fall back to a
      *  NamedType or in the case of a TermRef, NamedType with signature.
      */
     protected def newLikeThis(prefix: Type)(implicit ctx: Context): Type =
@@ -1240,7 +1240,7 @@ object Types {
       else (underlying /: annots)((tp, ann) => AnnotatedType(ann, tp))
   }
 
-  case class ImportType(expr: Shared) extends UncachedGroundType
+  case class ImportType(expr: SharedTree) extends UncachedGroundType
 
   // Special type objects ------------------------------------------------------------
 

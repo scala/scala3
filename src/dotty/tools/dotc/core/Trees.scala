@@ -33,7 +33,7 @@ object Trees {
   abstract class Tree[T] extends DotClass {
 
     /** The tree's position. Except
-     *  for Shared nodes, it is always ensured that a tree's position
+     *  for SharedTree nodes, it is always ensured that a tree's position
      *  contains the positions of all its subtrees.
      */
     def pos: Position
@@ -509,8 +509,8 @@ object Trees {
    *  polluting containing trees. Accumulators and tranformers
    *  memoize results of shared subtrees
    */
-  case class Shared[T](shared: Tree[T]) extends Tree[T] {
-    type ThisTree[T] = Shared[T]
+  case class SharedTree[T](shared: Tree[T]) extends Tree[T] {
+    type ThisTree[T] = SharedTree[T]
     val pos = NoPosition
     override val isTerm = shared.isTerm
     override val isType = shared.isType
@@ -702,14 +702,14 @@ object Trees {
       case tree: Annotated[_] if (annot eq tree.annot) && (arg eq tree.arg) => tree
       case _ => Annotated(annot, arg).copyAttr(tree)
     }
-    def derivedShared(shared: Tree[T]): Shared[T] = tree match {
-      case tree: Shared[_] if (shared eq tree.shared) => tree
-      case _ => Shared(shared).copyAttr(tree)
+    def derivedSharedTree(shared: Tree[T]): SharedTree[T] = tree match {
+      case tree: SharedTree[_] if (shared eq tree.shared) => tree
+      case _ => SharedTree(shared).copyAttr(tree)
     }
   }
 
   abstract class TreeTransformer[T, C] {
-    var sharedMemo: Map[Shared[T], Shared[T]] = Map()
+    var sharedMemo: Map[SharedTree[T], SharedTree[T]] = Map()
 
     def transform(tree: Tree[T], c: C): Tree[T] = tree match {
       case Ident(name) =>
@@ -792,12 +792,12 @@ object Trees {
         finishAnnotated(tree.derivedAnnotated(transform(annot, c), transform(arg, c)), tree, c, plugins)
       case EmptyTree() =>
         finishEmptyTree(tree, tree, c, plugins)
-      case tree @ Shared(shared) =>
-        finishShared(
+      case tree @ SharedTree(shared) =>
+        finishSharedTree(
           sharedMemo get tree match {
           case Some(tree1) => tree1
           case None =>
-            val tree1 = tree.derivedShared(transform(shared, c))
+            val tree1 = tree.derivedSharedTree(transform(shared, c))
             sharedMemo = sharedMemo.updated(tree, tree1)
             tree1
         },
@@ -854,11 +854,11 @@ object Trees {
     def finishPackageDef(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishAnnotated(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishEmptyTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishShared(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
+    def finishSharedTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
   }
 
   abstract class TreeAccumulator[T, U] extends ((T, Tree[U]) => T) {
-    var sharedMemo: Map[Shared[U], T] = Map()
+    var sharedMemo: Map[SharedTree[U], T] = Map()
     def apply(x: T, tree: Tree[U]): T
     def apply(x: T, trees: List[Tree[U]]): T = (x /: trees)(apply)
     def foldOver(x: T, tree: Tree[U]): T = tree match {
@@ -942,7 +942,7 @@ object Trees {
         this(this(x, annot), arg)
       case EmptyTree() =>
         x
-      case tree @ Shared(shared) =>
+      case tree @ SharedTree(shared) =>
         sharedMemo get tree match {
           case Some(x1) => x1
           case None =>

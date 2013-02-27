@@ -63,7 +63,7 @@ object TypedTrees {
     type PackageDef = Trees.PackageDef[Type]
     type Annotated = Trees.Annotated[Type]
     type EmptyTree = Trees.EmptyTree[Type]
-    type Shared = Trees.Shared[Type]
+    type SharedTree = Trees.SharedTree[Type]
 
     private implicit def pos(implicit ctx: Context): Position = ctx.position
 
@@ -273,7 +273,7 @@ object TypedTrees {
     }
 
     def Import(expr: Tree, selectors: List[Trees.UntypedTree])(implicit ctx: Context): Import =
-      Trees.Import(expr, selectors).withType(refType(ctx.newImportSymbol(Shared(expr)))).checked
+      Trees.Import(expr, selectors).withType(refType(ctx.newImportSymbol(SharedTree(expr)))).checked
 
     def PackageDef(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef =
       Trees.PackageDef(pid, stats).withType(refType(pid.symbol)).checked
@@ -285,8 +285,8 @@ object TypedTrees {
 
     val EmptyValDef: ValDef = Trees.EmptyValDef[Type]
 
-    def Shared(tree: Tree): Shared =
-      Trees.Shared(tree).withType(tree.tpe)
+    def SharedTree(tree: Tree): SharedTree =
+      Trees.SharedTree(tree).withType(tree.tpe)
 
     def refType(sym: Symbol)(implicit ctx: Context) = NamedType(sym.owner.thisType, sym)
 
@@ -598,7 +598,7 @@ object TypedTrees {
       check(annot.symbol.owner.isSubClass(defn.AnnotationClass))
       check(arg.isValueType || arg.isValue)
     case tpd.EmptyTree =>
-    case Shared(shared) =>
+    case SharedTree(shared) =>
       check(shared.isType || shared.isTerm)
   }
 
