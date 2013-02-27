@@ -149,6 +149,7 @@ class Definitions(implicit ctx: Context) {
   def NullType: Type = NullClass.typeConstructor
   def SeqType: Type = SeqClass.typeConstructor
   def ArrayType: Type = ArrayClass.typeConstructor
+  def ObjectArrayType = ArrayType.appliedTo(ObjectType)
 
   def UnitType: Type = UnitClass.typeConstructor
   def BooleanType: Type = BooleanClass.typeConstructor
@@ -230,13 +231,27 @@ class Definitions(implicit ctx: Context) {
 
   // ----- Initialization ---------------------------------------------------
 
+  /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
+  lazy val syntheticCoreClasses = List(
+    AnnotationDefaultAnnot, // #2264
+    RepeatedParamClass,
+    JavaRepeatedParamClass,
+    ByNameParamClass,
+    AnyClass,
+    AnyRefAlias,
+    AnyValClass,
+    NullClass,
+    NothingClass,
+    SingletonClass,
+    EqualsPatternClass)
+
   private[this] var _isInitialized = false
   def isInitialized = _isInitialized
 
   def init() =
     if (!_isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
-      val forced = ???
+      val forced = syntheticCoreClasses
       _isInitialized = true
     }
 }

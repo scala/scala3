@@ -357,18 +357,18 @@ class ClassfileParser(
     val index = in.nextChar
     tag match {
       case STRING_TAG =>
-        if (skip) None else Some(makeLiteralAnnotArg(Constant(pool.getName(index).toString)))
+        if (skip) None else Some(Literal(Constant(pool.getName(index).toString)))
       case BOOL_TAG | BYTE_TAG | CHAR_TAG | SHORT_TAG | INT_TAG |
         LONG_TAG | FLOAT_TAG | DOUBLE_TAG =>
-        if (skip) None else Some(makeLiteralAnnotArg(pool.getConstant(index)))
+        if (skip) None else Some(Literal(pool.getConstant(index)))
       case CLASS_TAG =>
-        if (skip) None else Some(makeLiteralAnnotArg(Constant(pool.getType(index))))
+        if (skip) None else Some(Literal(Constant(pool.getType(index))))
       case ENUM_TAG =>
         val t = pool.getType(index)
         val n = pool.getName(in.nextChar)
         val s = t.typeSymbol.companionModule.info.decls.lookup(n)
         assert(s != NoSymbol, t)
-        if (skip) None else Some(makeLiteralAnnotArg(Constant(s)))
+        if (skip) None else Some(Literal(Constant(s)))
       case ARRAY_TAG =>
         val arr = new ArrayBuffer[Tree]()
         var hasError = false
@@ -378,9 +378,9 @@ class ClassfileParser(
             case None => hasError = true
           }
         if (hasError) None
-        else if (skip) None else Some(makeArrayAnnotArg(arr.toArray))
+        else if (skip) None else Some(SeqLiteral(arr.toList))
       case ANNOTATION_TAG =>
-        parseAnnotation(index, skip) map makeNestedAnnotArg
+        parseAnnotation(index, skip) map (_.tree)
     }
   }
 
@@ -656,7 +656,9 @@ class ClassfileParser(
           case Some(entry) =>
             val outerName = entry.outerName.stripModuleSuffix
             val owner = classSymbol(outerName)
-            val result = cctx.beforeTyper(getMember(owner, innerName.toTypeName))
+            val result = cctx.atPhaseNotLaterThanTyper { implicit ctx =>
+              getMember(owner, innerName.toTypeName)
+            }
             assert(result ne NoSymbol,
               s"""failure to resolve inner class:
                  |externalName = $externalName,

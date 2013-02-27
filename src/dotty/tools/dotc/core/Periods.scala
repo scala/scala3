@@ -11,17 +11,17 @@ abstract class Periods extends DotClass { self: Context =>
   import Periods._
 
   /** The current phase identifier */
-  def phaseId = period.phaseId
+  def phaseId: Int = period.phaseId
 
   /** The current run identifier */
-  def runId = period.runId
+  def runId: Int = period.runId
 
   /** Execute `op` at given period */
-  def atPeriod[T](pd: Period)(op: Context => T) =
+  def atPeriod[T](pd: Period)(op: Context => T): T =
     op(ctx.fresh.withPeriod(pd))
 
   /** Execute `op` at given phase id */
-  def atPhase[T](pid: PhaseId)(op: Context => T) =
+  def atPhase[T](pid: PhaseId)(op: Context => T): T =
     op(ctx.fresh.withPhase(pid))
 }
 
@@ -117,5 +117,5 @@ object Periods {
   /** The number of bits needed to encode a phase identifier. */
   final val PhaseWidth = 5
   final val PhaseMask = (1 << PhaseWidth) - 1
-
+  final val MaxPossiblePhaseId = PhaseMask
 }

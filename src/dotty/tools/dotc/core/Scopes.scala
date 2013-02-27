@@ -51,7 +51,7 @@ object Scopes {
 
     protected[Scopes] def this(base: Scope)(implicit ctx: Context) = {
       this(base.lastEntry, base.size, base.nestingLevel + 1)
-      ensureCapacity(MinHash)(ctx) // WTH??? it seems the implicit is not in scope for a secondary constructor call.
+      ensureCapacity(MinHash)(ctx) // WTH? it seems the implicit is not in scope for a secondary constructor call.
     }
 
     def this() = this(null, 0, 0)

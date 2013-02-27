@@ -9,6 +9,9 @@ object Annotations {
     def symbol(implicit ctx: Context): Symbol = tree.tpe.typeSymbol
     def matches(cls: Symbol)(implicit ctx: Context): Boolean = symbol.isNonBottomSubClass(cls)
     def appliesToModule: Boolean = true // for now; see remark in SymDenotations
+
+    def derivedAnnotation(tree: Tree) =
+      if (tree eq this.tree) this else Annotation(tree)
   }
 
   case class ConcreteAnnotation(val tree: Tree) extends Annotation
@@ -41,12 +44,6 @@ object Annotations {
     def makeChild(sym: Symbol)(implicit ctx: Context) =
       apply(defn.ChildAnnot, List(Ident(NamedType(sym.owner.thisType, sym.name))))
   }
-
-  def makeLiteralAnnotArg(const: Constant): Tree = ???
-
-  def makeArrayAnnotArg(elems: Array[Tree]): Tree = ???
-
-  def makeNestedAnnotArg(annot: Annotation): Tree = annot.tree
 
   def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context) =
     Annotation(defn.ThrowsAnnot, Ident(cls.symbolicRef))

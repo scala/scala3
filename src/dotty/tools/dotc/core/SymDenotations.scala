@@ -93,6 +93,9 @@ object SymDenotations {
     /** Make sure this denotation is completed */
     final def ensureCompleted(): Unit = info
 
+    /** The completer of this denotation. @pre: Denotation is not yet completed */
+    def completer: LazyType = _info.asInstanceOf[LazyType]
+
     /** The privateWithin boundary, NoSymbol if no boundary is given.
      */
     def privateWithin: Symbol = { ensureCompleted(); _privateWithin }
@@ -335,7 +338,7 @@ object SymDenotations {
         if (!cls.exists)
           fail(
             s"""Access to protected $this not permitted because
-               |enclosing ${ctx.enclClass.owner.showLocated} is not a subclass of
+               |enclosing ${ctx.enclTemplate.owner.showLocated} is not a subclass of
                |${owner.showLocated} where target is defined""".stripMargin)
         else if (!(isType || // allow accesses to types from arbitrary subclasses fixes #4737
           pre.widen.typeSymbol.isSubClassOrCompanion(cls) ||

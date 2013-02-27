@@ -3,8 +3,7 @@ package core
 
 import annotation.tailrec
 import Symbols._
-
-import Contexts._, Names._
+import Contexts._, Names._, Phases._
 
 object Decorators {
 
@@ -42,6 +41,11 @@ object Decorators {
       }
       loop(xs, 0)
     }
+  }
+
+  implicit class PhaseListDecorator(val names: List[String]) extends AnyVal {
+    def containsPhase(phase: Phase) =
+      names exists (phase.name.startsWith)
   }
 }
 

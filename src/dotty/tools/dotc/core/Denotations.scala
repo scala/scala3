@@ -141,10 +141,10 @@ object Denotations {
     def isOverloaded = isInstanceOf[MultiDenotation]
 
     /** The signature of the denotation */
-    def signature: Signature
+    def signature(implicit ctx: Context): Signature
 
     /** Resolve overloaded denotation to pick the one with the given signature */
-    def atSignature(sig: Signature): SingleDenotation
+    def atSignature(sig: Signature)(implicit ctx: Context): SingleDenotation
 
     /** The variant of this denotation that's current in the given context. */
     def current(implicit ctx: Context): Denotation
@@ -158,7 +158,7 @@ object Denotations {
     def orElse(that: => Denotation) = if (this.exists) this else that
 
     /** The set of alternative single-denotations making up this denotation */
-    def alts(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation] =
+    def alternatives(implicit ctx: Context): List[SingleDenotation] =
       altsWith(scala.Function.const(true))
 
     /** The alternatives of this denotation that satisfy the predicate `p`. */
@@ -290,7 +290,7 @@ object Denotations {
       if ((d1 eq denot1) && (d2 eq denot2)) this else MultiDenotation(d1, d2)
     def symbol = unsupported("symbol")
     def info = unsupported("info")
-    def signature = unsupported("signature")
+    def signature(implicit ctx: Context) = unsupported("signature")
     def firstSym(implicit ctx: Context): Symbol = denot1.firstSym orElse denot2.firstSym
     def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation] =
       denot1.altsWith(p) ++ denot2.altsWith(p)
@@ -304,7 +304,7 @@ object Denotations {
     }
     def hasAltWith(p: Symbol => Boolean)(implicit ctx: Context): Boolean =
       denot1.hasAltWith(p) || denot2.hasAltWith(p)
-    def atSignature(sig: Signature): SingleDenotation =
+    def atSignature(sig: Signature)(implicit ctx: Context): SingleDenotation =
       denot1.atSignature(sig) orElse denot2.atSignature(sig)
     def validFor = denot1.validFor & denot2.validFor
     def current(implicit ctx: Context): Denotation =
@@ -313,7 +313,7 @@ object Denotations {
 
   abstract class SingleDenotation extends Denotation with DenotationSet {
     override def isType = info.isInstanceOf[TypeType]
-    override def signature: Signature = {
+    override def signature(implicit ctx: Context): Signature = {
       def sig(tp: Type): Signature = tp match {
         case tp: PolyType =>
           tp.resultType match {
@@ -334,7 +334,7 @@ object Denotations {
 
     def orElse(that: => SingleDenotation) = if (this.exists) this else that
 
-   def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation] =
+    def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation] =
       if (p(symbol)) this :: Nil else Nil
 
     def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation =
@@ -343,7 +343,7 @@ object Denotations {
     def hasAltWith(p: Symbol => Boolean)(implicit ctx: Context): Boolean =
       p(symbol)
 
-    def atSignature(sig: Signature): SingleDenotation =
+    def atSignature(sig: Signature)(implicit ctx: Context): SingleDenotation =
       if (sig == signature) this else NoDenotation
 
     // ------ Transformations -----------------------------------------

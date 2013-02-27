@@ -13,7 +13,7 @@ trait Substituters { this: Context =>
         if (tp.binder eq from) tp.copy(to.asInstanceOf[tp.BT]) else tp
       case tp: NamedType =>
         if (tp.symbol.isStatic) tp
-        else tp.derivedNamedType(subst(tp.prefix, from, to, map), tp.name)
+        else tp.derivedNamedType(subst(tp.prefix, from, to, map))
       case _: ThisType | NoPrefix =>
         tp
       case tp: RefinedType =>
@@ -29,7 +29,7 @@ trait Substituters { this: Context =>
         val sym = tp.symbol
         if (sym eq from) return to
         if (sym.isStatic && !from.isStatic) tp
-        else tp.derivedNamedType(subst1(tp.prefix, from, to, map), tp.name)
+        else tp.derivedNamedType(subst1(tp.prefix, from, to, map))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
@@ -47,7 +47,7 @@ trait Substituters { this: Context =>
         if (sym eq from1) return to1
         if (sym eq from2) return to2
         if (sym.isStatic && !from1.isStatic && !from2.isStatic) tp
-        else tp.derivedNamedType(subst2(tp.prefix, from1, to1, from2, to2, map), tp.name)
+        else tp.derivedNamedType(subst2(tp.prefix, from1, to1, from2, to2, map))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
@@ -70,7 +70,7 @@ trait Substituters { this: Context =>
           ts = ts.tail
         }
         if (sym.isStatic && !existsStatic(from)) tp
-        else tp.derivedNamedType(subst(tp.prefix, from, to, map), tp.name)
+        else tp.derivedNamedType(subst(tp.prefix, from, to, map))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
@@ -93,7 +93,7 @@ trait Substituters { this: Context =>
           ts = ts.tail
         }
         if (sym.isStatic && !existsStatic(from)) tp
-        else tp.derivedNamedType(substSym(tp.prefix, from, to, map), tp.name)
+        else tp.derivedNamedType(substSym(tp.prefix, from, to, map))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
@@ -109,7 +109,7 @@ trait Substituters { this: Context =>
         if (clazz eq from) to else tp
       case tp: NamedType =>
         if (tp.symbol.isStatic) tp
-        else tp.derivedNamedType(substThis(tp.prefix, from, to, map), tp.name)
+        else tp.derivedNamedType(substThis(tp.prefix, from, to, map))
       case _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
@@ -125,7 +125,7 @@ trait Substituters { this: Context =>
         if (rt eq from) to else tp
       case tp: NamedType =>
         if (tp.symbol.isStatic) tp
-        else tp.derivedNamedType(substThis(tp.prefix, from, to, map), tp.name)
+        else tp.derivedNamedType(substThis(tp.prefix, from, to, map))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>

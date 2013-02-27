@@ -548,7 +548,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
         val tp = readTypeRef()
         // no annotation self type is supported, so no test whether this is a symbol ref
         val annots = until(end, readAnnotationRef)
-        AnnotatedType(annots, tp)
+        AnnotatedType.make(annots, tp)
       case _ =>
         noSuchTypeTag(tag, end)
     }

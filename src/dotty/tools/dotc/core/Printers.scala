@@ -10,6 +10,8 @@ trait Printers { this: Context =>
 
   import Printers._
 
+  def printer = if (base.settings.debug.value) plainPrinter else refinedPrinter
+
   private var _diagnostics: Option[StringBuilder] = _
 
   protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
@@ -203,8 +205,8 @@ object Printers {
           }
         case PolyParam(pt, n) =>
           show(pt.paramNames(n))
-        case AnnotatedType(annots, tpe) =>
-          showLocal(tpe) + " " + annots.map(show).mkString(" ")
+        case AnnotatedType(annot, tpe) =>
+          showLocal(tpe) + " " + show(annot)
       }
     }
 
@@ -377,7 +379,7 @@ object Printers {
         case _         => String.valueOf(const.value)
     }
 
-    def show(annot: Annotation): String = ???
+    def show(annot: Annotation): String = s"@${annot.symbol.name}" // for now
 
     def show(syms: List[Symbol], sep: String): String =
       syms map (_.showDcl) mkString sep

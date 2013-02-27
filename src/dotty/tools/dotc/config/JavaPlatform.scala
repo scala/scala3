@@ -13,7 +13,7 @@ class JavaPlatform extends Platform {
 
   def classPath(implicit ctx: Context): ClassPath = {
     if (currentClassPath.isEmpty)
-      currentClassPath = Some(new PathResolver(ctx).result)
+      currentClassPath = Some(new PathResolver(ctx.condensed).result)
     currentClassPath.get
   }
 

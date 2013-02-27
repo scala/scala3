@@ -135,7 +135,7 @@ object PathResolver {
 
   def fromPathString(path: String)(implicit cctx: CondensedContext): JavaClassPath = {
     val settings = cctx.settings.classpath.update(path)
-    new PathResolver()(cctx.fresh.withSettings(settings)).result
+    new PathResolver(cctx.fresh.withSettings(settings)).result
   }
 
   /** With no arguments, show the interesting values in Environment and Defaults.
@@ -152,7 +152,7 @@ object PathResolver {
       val ArgsSummary(sstate, rest, errors) =
         cctx.settings.processArguments(args.toList, true)
       errors.foreach(println)
-      val pr = new PathResolver()(cctx.fresh.withSettings(sstate))
+      val pr = new PathResolver(cctx.fresh.withSettings(sstate))
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))
       println("RESIDUAL: 'scala %s'\n".format(rest.mkString(" ")))
       pr.result.show
@@ -161,7 +161,8 @@ object PathResolver {
 }
 import PathResolver.{ Defaults, Environment, firstNonEmpty, ppcp }
 
-class PathResolver(implicit cctx: CondensedContext) {
+class PathResolver(cctx: CondensedContext) {
+  implicit def ctx: Context = cctx
   import cctx.base.settings
 
   val context = ClassPath.DefaultJavaContext
@@ -257,7 +258,7 @@ class PathResolver(implicit cctx: CondensedContext) {
   lazy val result: JavaClassPath = {
     val cp = new JavaClassPath(containers.toIndexedSeq, context)
     if (settings.Ylogcp.value) {
-      Console.println("Classpath built from " + settings.toConciseString(cctx.sstate))
+      Console.println("Classpath built from " + settings.toConciseString(ctx.sstate))
       Console.println("Defaults: " + PathResolver.Defaults)
       Console.println("Calculated: " + Calculated)
 

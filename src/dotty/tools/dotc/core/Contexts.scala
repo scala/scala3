@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Decorators._
@@ -8,8 +9,10 @@ import Phases._
 import Types._
 import Symbols._
 import TypeComparers._, Printers._, NameOps._, SymDenotations._, Positions._
+import TypedTrees.tpd._
 import config.Settings._
 import config.ScalaSettings
+import reporting._
 import collection.mutable
 import collection.immutable.BitSet
 import config.{Settings, Platform, JavaPlatform}
@@ -38,17 +41,26 @@ object Contexts {
   abstract class Context extends Periods
                             with Substituters
                             with TypeOps
+                            with Phases
                             with Printers
                             with Symbols
                             with SymDenotations
-                            with Cloneable {
+                            with Reporting
+                            with Cloneable { thiscontext =>
     implicit val ctx: Context = this
 
     val base: ContextBase
 
-    private[this] var _underlying: Context = _
-    protected def underlying_=(underlying: Context) = _underlying = underlying
-    def underlying: Context = _underlying
+    def outersIterator = new Iterator[Context] {
+      var current = thiscontext
+      def hasNext = current != NoContext
+      def next = { val c = current; current = current.outer; c }
+    }
+
+
+    private[this] var _outer: Context = _
+    protected def outer_=(outer: Context) = _outer = outer
+    def outer: Context = _outer
 
     private[this] var _period: Period = _
     protected def period_=(period: Period) = _period = period
@@ -62,8 +74,8 @@ object Contexts {
     protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
 
     def typeComparer: TypeComparer = {
-      if ((_typeComparer eq underlying.typeComparer) &&
-          (constraints ne underlying.constraints))
+      if ((_typeComparer eq outer.typeComparer) &&
+          (constraints ne outer.constraints))
         _typeComparer = new TypeComparer(this)
       _typeComparer
     }
@@ -80,8 +92,6 @@ object Contexts {
     protected def refinedPrinter_=(refinedPrinter: Context => Printer) = _refinedPrinter = refinedPrinter
     def refinedPrinter: Context => Printer = _refinedPrinter
 
-    def printer = if (base.settings.debug.value) plainPrinter else refinedPrinter
-
     private[this] var _owner: Symbol = _
     protected def owner_=(owner: Symbol) = _owner = owner
     def owner: Symbol = _owner
@@ -90,17 +100,26 @@ object Contexts {
     protected def sstate_=(sstate: SettingsState) = _sstate = sstate
     def sstate: SettingsState = _sstate
 
-    def phase: Phase = ??? // phase(period.phaseId)
-    def enclClass: Context = ???
-    def erasedTypes: Boolean = ???
-    def debug: Boolean = ???
-    def error(msg: String): Unit = ???
-    def warning(msg: String): Unit = ???
-    def log(msg: String): Unit = ???
-    def debuglog(msg: String): Unit = ???
-    def inform(msg: String) = ???
-    def informTime(msg: String, start: Long): Unit = ???
-    def beforeTyper[T](op: => T): T = ???
+    private[this] var _tree: Tree = _
+    protected def tree_=(tree: Tree) = _tree = tree
+    def tree: Tree = _tree
+
+    private[this] var _reporter: Reporter = _
+    protected def reporter_=(reporter: Reporter) = _reporter = reporter
+    def reporter: Reporter = _reporter
+
+    /** The next outer context whose tree is a template or package definition */
+    def enclTemplate: Context = {
+      var c = this
+      while (c != NoContext && !c.tree.isInstanceOf[Template] && !c.tree.isInstanceOf[PackageDef])
+        c = c.outer
+      c
+    }
+
+    def source = io.NoSource // for now
+
+    def erasedTypes: Boolean = phase.erasedTypes
+    def debug: Boolean = base.settings.debug.value
 
     private var _condensed: CondensedContext = null
     def condensed: CondensedContext = {
@@ -115,7 +134,7 @@ object Contexts {
 
     def fresh: FreshContext = {
       val newctx = super.clone.asInstanceOf[FreshContext]
-      newctx.underlying = this
+      newctx.outer = this
       newctx._condensed = null
       newctx
     }
@@ -131,16 +150,20 @@ object Contexts {
     def withRefinedPrinter(printer: Context => Printer): this.type = { this.refinedPrinter = printer; this }
     def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
     def withSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
+    def withTree(tree: Tree): this.type = { this.tree = tree; this }
+    def withReporter(reporter: Reporter): this.type = { this.reporter = reporter; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
   }
 
   private class InitialContext(val base: ContextBase) extends FreshContext {
-    underlying = NoContext
+    outer = NoContext
     period = Nowhere
     constraints = Map()
     plainPrinter = new PlainPrinter(_)
     refinedPrinter = new RefinedPrinter(_)
     owner = NoSymbol
+    tree = EmptyTree
+    reporter = new ConsoleReporter
   }
 
   object NoContext extends Context {
@@ -150,7 +173,8 @@ object Contexts {
   class ContextBase extends ContextState
                        with Transformers.TransformerBase
                        with Printers.PrinterBase
-                       with Denotations.DenotationsBase {
+                       with Denotations.DenotationsBase
+                       with Phases.PhasesBase {
 
     val settings = new ScalaSettings
 
@@ -208,6 +232,10 @@ object Contexts {
     // TypeOps state
     private[core] var volatileRecursions: Int = 0
     private[core] val pendingVolatiles = new mutable.HashSet[Type]
+
+    // Phases state
+    private[core] var phases = new Array[Phase](MaxPossiblePhaseId + 1)
+    private[core] var nphases = 0
   }
 
   object Context {

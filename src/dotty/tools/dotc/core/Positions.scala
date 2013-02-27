@@ -20,6 +20,7 @@ object Positions {
       if (this == NoPosition) that
       else if (that == NoPosition) this
       else Position(this.start min that.start, this.end max that.end)
+    def exists = this != NoPosition
   }
 
   def Position(start: Int, end: Int, pointOffset: Int = 0): Position =

@@ -12,7 +12,9 @@ import Contexts._
 import Annotations._
 import SymDenotations._
 import Denotations._
-import Periods._, Trees._
+import Periods._
+import TypedTrees.tpd._, TypedTrees.TreeMapper
+import transform.Erasure._
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import collection.mutable
 
@@ -41,13 +43,13 @@ object Types {
    *        |              |                +--- MethodParam
    *        |              |                +--- RefinedThis
    *        |              |                +--- NoPrefix
+   *        |              +- PolyParam
+   *        |              +- RefinedType
    *        |              +- TypeBounds
    *        |              +- ExprType
    *        |              +- AnnotatedType
    *        |
-   *        +- GroundType -+- PolyParam
-   *                       +- RefinedType
-   *                       +- AndType
+   *        +- GroundType -+- AndType
    *                       +- OrType
    *                       +- MethodType -----+- ImplicitMethodType
    *                       |                  +- JavaMethodType
@@ -269,6 +271,15 @@ object Types {
       case _ => List()
     }
 
+    /** If this is an alias type, its alias, otherwise the type itself */
+    def dealias(implicit ctx: Context): Type = this match {
+      case tp: TypeRef =>
+        val info = tp.info
+        if (info.isAliasTypeBounds) info.dealias else this
+      case _ =>
+        this
+    }
+
     /** The parameter types of a PolyType or MethodType, Empty list for others */
     def paramTypess: List[List[Type]] = this match {
       case mt: MethodType => mt.paramTypes :: mt.resultType.paramTypess
@@ -470,7 +481,7 @@ object Types {
      *   pattern is that method signatures use caching, so encapsulation
      *   is improved using an OO scheme).
      */
-    def signature: Signature = NullSignature
+    def signature(implicit ctx: Context): Signature = NullSignature
 
     final def baseType(base: Symbol)(implicit ctx: Context): Type = base.denot match {
       case classd: ClassDenotation => classd.baseTypeOf(this)
@@ -511,10 +522,10 @@ object Types {
     /** If this type equals `tycon applyToArgs args`, for some
      *  non-refinement type `tycon` and (possibly partial) type arguments
      *  `args`, return a pair consisting of `tycon` and `args`.
-     *  Otherwise return the type itself and `Nil`.
+     *  Otherwise return the dealiased type itself and `Nil`.
      */
     final def splitArgs(implicit ctx: Context): (Type, List[Type]) = {
-      def recur(tp: Type, nparams: Int): (Type, List[Type]) = tp match {
+      def recur(tp: Type, nparams: Int): (Type, List[Type]) = tp.dealias match {
         case tp @ RefinedType(parent, name) =>
           def fail = (NoType, Nil)
           if (nparams >= 0) {
@@ -536,6 +547,25 @@ object Types {
     final def splitArgsCompletely(implicit ctx: Context): (Type, List[Type]) = {
       val result @ (tycon, args) = splitArgs
       if (args.length == tycon.typeParams.length) result else (NoType, Nil)
+    }
+
+    /** If this is an encoding of an applied type, return its arguments,
+     *  otherwise return Nil
+     */
+    def typeArgs(implicit ctx: Context): List[Type] = splitArgs._2
+
+    /** If this type is of the normalized form Array[...[Array[T]...]
+     *  return the number of Array wrappers and T.
+     *  Otherwise return 0 and the type itself
+     */
+    final def splitArray(implicit ctx: Context): (Int, Type) = {
+      def recur(n: Int, tp: Type): (Int, Type) = tp.splitArgs match {
+        case (arrayType, arg :: Nil) if arrayType == defn.ArrayType =>
+          recur(n + 1, arg)
+        case (tp, Nil) =>
+          (n, tp)
+      }
+      recur(0, this)
     }
 
     /** Turn this type into a TypeBounds RHS */
@@ -740,9 +770,18 @@ object Types {
 
     override def underlying(implicit ctx: Context): Type = info
 
-    def derivedNamedType(prefix: Type, name: Name)(implicit ctx: Context): Type =
+    def derivedNamedType(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
-      else NamedType(prefix, name)
+      else newLikeThis(prefix)
+
+    /** Create a NamedType of the same kind as this type, if possible,
+     *  but with a new prefix. For HasFixedSym instances another such
+     *  instance is only created if the symbol's owner is a base class of
+     *  the new prefix. If that is not the case, we fall back to a 
+     *  NamedType or in the case of a TermRef, NamedType with signature.
+     */
+    protected def newLikeThis(prefix: Type)(implicit ctx: Context): Type =
+      NamedType(prefix, name)
 
     override def computeHash = doHash(name, prefix)
   }
@@ -763,17 +802,26 @@ object Types {
 
   final class TermRefBySym(prefix: Type, val fixedSym: TermSymbol)(initctx: Context)
     extends TermRef(prefix, fixedSym.name(initctx).asTermName) with HasFixedSym {
-  }
+    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef =
+      if (prefix.baseType(fixedSym.owner).exists) TermRef(prefix, fixedSym)
+      else TermRef(prefix, name, fixedSym.signature)
+ }
 
-  final class TermRefWithSignature(prefix: Type, name: TermName, override val signature: Signature) extends TermRef(prefix, name) {
-    override def computeHash = doHash((name, signature), prefix)
+  final class TermRefWithSignature(prefix: Type, name: TermName, sig: Signature) extends TermRef(prefix, name) {
+    override def signature(implicit ctx: Context) = sig
+    override def computeHash = doHash((name, sig), prefix)
     override def loadDenot(implicit ctx: Context): Denotation =
-      super.loadDenot.atSignature(signature)
-  }
+      super.loadDenot.atSignature(sig)
+    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRefWithSignature =
+      TermRef(prefix, name, sig)
+   }
 
   final class TypeRefBySym(prefix: Type, val fixedSym: TypeSymbol)(initctx: Context)
     extends TypeRef(prefix, fixedSym.name(initctx).asTypeName) with HasFixedSym {
-  }
+    override def newLikeThis(prefix: Type)(implicit ctx: Context): TypeRef =
+      if (prefix.baseType(fixedSym.owner).exists) TypeRef(prefix, fixedSym)
+      else TypeRef(prefix, name)
+ }
 
   final class CachedTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name)
   final class CachedTypeRef(prefix: Type, name: TypeName) extends TypeRef(prefix, name)
@@ -918,7 +966,8 @@ object Types {
   // The reason is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
-  abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type) extends CachedGroundType with BindingType {
+  abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])
+      (resultTypeExp: MethodType => Type) extends CachedGroundType with BindingType {
     override lazy val resultType = resultTypeExp(this)
     def isJava = false
     def isImplicit = false
@@ -928,8 +977,20 @@ object Types {
       case _ => false
     }
 
-    override lazy val signature: List[TypeName] = {
-      def paramSig(tp: Type): TypeName = ???
+    private[this] var _signature: Signature = _
+    private[this] var signatureRunId: Int = NoRunId
+
+    override def signature(implicit ctx: Context): Signature = {
+      if (ctx.runId != signatureRunId) {
+        _signature = computeSignature
+        signatureRunId = ctx.runId
+      }
+      _signature
+    }
+
+    private def computeSignature(implicit ctx: Context): Signature = {
+      def paramSig(tp: Type): TypeName =
+        erasure(tp).typeSymbol.asType.name
       val followSig = resultType match {
         case rtp: MethodType => rtp.signature
         case _ => Nil
@@ -994,7 +1055,7 @@ object Types {
 
   abstract case class ExprType(override val resultType: Type) extends CachedProxyType {
     override def underlying(implicit ctx: Context): Type = resultType
-    override def signature: Signature = Nil
+    override def signature(implicit ctx: Context): Signature = Nil
     def derivedExprType(rt: Type)(implicit ctx: Context) =
       if (rt eq resultType) this else ExprType(rt)
     override def computeHash = doHash(resultType)
@@ -1012,7 +1073,7 @@ object Types {
     lazy val paramBounds = paramBoundsExp(this)
     override lazy val resultType = resultTypeExp(this)
 
-    override def signature = resultType.signature
+    override def signature(implicit ctx: Context) = resultType.signature
 
     def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
       new InstPolyMap(this, argTypes) apply resultType
@@ -1109,6 +1170,10 @@ object Types {
       parentsCache
     }
 
+    def derivedClassInfo(prefix: Type, classParents: List[TypeRef], optSelfType: Type)(implicit ctx: Context) =
+      if ((prefix eq this.prefix) && (classParents eq this.classParents) && (optSelfType eq this.optSelfType)) this
+      else ClassInfo(prefix, cls, classParents, decls, optSelfType)
+
     override def computeHash = doHash(cls, prefix)
   }
 
@@ -1162,20 +1227,20 @@ object Types {
 
   // ----- Annotated and Import types -----------------------------------------------
 
-  case class AnnotatedType(annots: List[Annotation], tpe: Type) extends UncachedProxyType {
+  case class AnnotatedType(annot: Annotation, tpe: Type) extends UncachedProxyType {
     override def underlying(implicit ctx: Context): Type = tpe
-    def derivedAnnotatedType(annots1: List[Annotation], tpe1: Type) =
-      if ((annots1 eq annots) && (tpe1 eq tpe)) this
-      else AnnotatedType.make(annots1, tpe1)
+    def derivedAnnotatedType(annot: Annotation, tpe: Type) =
+      if ((annot eq this.annot) && (tpe eq this.tpe)) this
+      else AnnotatedType(annot, tpe)
   }
 
   object AnnotatedType {
     def make(annots: List[Annotation], underlying: Type) =
       if (annots.isEmpty) underlying
-      else AnnotatedType(annots, underlying)
+      else (underlying /: annots)((tp, ann) => AnnotatedType(ann, tp))
   }
 
-  case class ImportType(expr: Shared[Type]) extends UncachedGroundType
+  case class ImportType(expr: Shared) extends UncachedGroundType
 
   // Special type objects ------------------------------------------------------------
 
@@ -1206,7 +1271,7 @@ object Types {
     /** Map this function over given type */
     def mapOver(tp: Type): Type = tp match {
       case tp: NamedType =>
-        tp.derivedNamedType(this(tp.prefix), tp.name)
+        tp.derivedNamedType(this(tp.prefix))
 
       case _: ThisType
          | _: BoundType => tp
@@ -1235,8 +1300,8 @@ object Types {
           tp.derivedTypeBounds(this(lo), this(hi))
         }
 
-      case tp @ AnnotatedType(annots, underlying) =>
-        tp.derivedAnnotatedType(mapOverAnnotations(annots), this(underlying))
+      case tp @ AnnotatedType(annot, underlying) =>
+        tp.derivedAnnotatedType(mapOver(annot), this(underlying))
 
       case _ =>
         tp
@@ -1252,7 +1317,11 @@ object Types {
       else newScopeWith(elems1: _*)
     }
 
-    def mapOverAnnotations(annots: List[Annotation]): List[Annotation] = ???
+    def mapOver(annot: Annotation): Annotation =
+      annot.derivedAnnotation(mapOver(annot.tree))
+
+    def mapOver(tree: Tree): Tree = new TreeMapper(this).apply(tree)
+
 
     def andThen(f: Type => Type): TypeMap = new TypeMap {
       def apply(tp: Type) = f(thisMap.apply(tp))
@@ -1285,7 +1354,7 @@ object Types {
   abstract class TypeAccumulator[T] extends ((T, Type) => T) {
     def apply(x: T, tp: Type): T
 
-    def apply(x: T, annot: Annotation): T = ???
+    protected def apply(x: T, annot: Annotation): T = x // don't go into annotations
 
     def foldOver(x: T, tp: Type): T = tp match {
       case tp: NamedType =>
@@ -1312,8 +1381,8 @@ object Types {
       case TypeBounds(lo, hi) =>
         this(this(x, lo), hi)
 
-      case AnnotatedType(annots, underlying) =>
-        this((x /: annots)(apply), underlying)
+      case AnnotatedType(annot, underlying) =>
+        this(this(x, annot), underlying)
 
       case _ => x
     }

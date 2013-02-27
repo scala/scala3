@@ -40,7 +40,7 @@ object Settings {
 
     def fail(msg: String) =
       ArgsSummary(sstate, arguments, errors :+ msg)
- }
+  }
 
   case class Setting[T: ClassTag] private[Settings] (
     name: String,
@@ -213,6 +213,7 @@ object Settings {
       _allSettings += setting
       setting
     }
+
 
     def BooleanSetting(name: String, descr: String): Setting[Boolean] =
       publish(Setting(name, descr, false))

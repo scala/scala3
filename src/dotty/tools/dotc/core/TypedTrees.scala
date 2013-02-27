@@ -168,6 +168,9 @@ object TypedTrees {
     def SeqLiteral(elemtpt: Tree, elems: List[Tree])(implicit ctx: Context): SeqLiteral =
       Trees.SeqLiteral(elemtpt, elems).withType(defn.RepeatedParamType.appliedTo(elemtpt.tpe)).checked
 
+    def SeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
+      SeqLiteral(TypeTree(ctx.lub(elems map (_.tpe))), elems)
+
     def TypeTree(tp: Type, original: Tree = EmptyTree)(implicit ctx: Context): TypeTree =
       Trees.TypeTree(original).withType(tp).checked
 
@@ -276,7 +279,7 @@ object TypedTrees {
       Trees.PackageDef(pid, stats).withType(refType(pid.symbol)).checked
 
     def Annotated(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated =
-      Trees.Annotated(annot, arg).withType(AnnotatedType(List(Annotation(annot)), arg.tpe)).checked
+      Trees.Annotated(annot, arg).withType(AnnotatedType(Annotation(annot), arg.tpe)).checked
 
     val EmptyTree: Tree = Trees.EmptyTree[Type]
 

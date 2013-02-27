@@ -11,6 +11,7 @@ import java.io.IOException
 import scala.compat.Platform.currentTime
 import dotty.tools.io.{ ClassPath, AbstractFile }
 import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, Positions._, Names._
+import StdNames._
 import Decorators.StringDecorator
 import pickling.ClassfileParser
 
@@ -85,7 +86,7 @@ class SymbolLoaders {
    *  (overridden in interactive.Global).
    */
   def enterToplevelsFromSource(owner: Symbol, name: PreName, src: AbstractFile)(implicit ctx: Context) {
-    ??? // !!! enterClassAndModule(owner, name, new SourcefileLoader(src))
+    enterClassAndModule(owner, name, new SourcefileLoader(src)(ctx.condensed))
   }
 
   /** The package objects of scala and scala.reflect should always
@@ -134,12 +135,44 @@ class SymbolLoaders {
         for (pkg <- classpath.packages) {
           enterPackage(root.symbol, pkg.name, new PackageLoader(pkg))
         }
-        openPackageModule(root.symbol)
+        openPackageModule(root.symbol.asClass)
       }
     }
   }
 
-  def openPackageModule(pkgClass: Symbol): Unit = ???
+  /** if there's a `package` member object in `pkgClass`, enter its members into it. */
+  def openPackageModule(pkgClass: ClassSymbol)(implicit ctx: Context) {
+    val pkgModule = pkgClass.info.decl(nme.PACKAGEkw).symbol
+    if (pkgModule.isModule &&
+        (pkgModule.isCompleted ||
+         !pkgModule.completer.isInstanceOf[SourcefileLoader]))
+      // println("open "+pkgModule)//DEBUG
+      openPackageModule(pkgModule, pkgClass)
+  }
+
+  def openPackageModule(container: Symbol, dest: ClassSymbol)(implicit ctx: Context) {
+    // unlink existing symbols in the package
+    for (member <- container.info.decls.iterator) {
+      if (!(member is Private) && !member.isConstructor) {
+        // todo: handle overlapping definitions in some way: mark as errors
+        // or treat as abstractions. For now the symbol in the package module takes precedence.
+        for (existing <- dest.info.decl(member.name).alternatives)
+          dest.delete(existing.symbol)
+      }
+    }
+    // enter non-private decls in the class
+    for (member <- container.info.decls.iterator) {
+      if (!(member is Private) && !member.isConstructor) {
+        dest.enter(member)
+      }
+    }
+    // enter decls of parent classes
+    for (p <- container.info.parents) {
+      if (p.symbol != defn.ObjectClass) {
+        openPackageModule(p.symbol, dest)
+      }
+    }
+  }
 }
 /** A lazy type that completes itself by calling parameter doComplete.
  *  Any linked modules/classes or module classes are also initialized.
@@ -203,41 +236,9 @@ class ClassfileLoader(val classfile: AbstractFile)(implicit val cctx: CondensedC
     new ClassfileParser(classfile, classRoot, moduleRoot).run()
   }
 }
-/*
-  class MsilFileLoader(msilFile: MsilFile) extends SymbolLoader with FlagAssigningCompleter {
-    private def typ = msilFile.msilType
-    private object typeParser extends clr.TypeParser {
-      val global: SymbolLoaders.this.global.type = SymbolLoaders.this.global
-    }
 
-    protected def description = "MsilFile "+ typ.FullName + ", assembly "+ typ.Assembly.FullName
-    protected def doComplete(root: Symbol) { typeParser.parse(typ, root) }
-  }
-
-  class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader with FlagAssigningCompleter {
-    protected def description = "source file "+ srcfile.toString
-    override def fromSource = true
-    override def sourcefile = Some(srcfile)
-    protected def doComplete(root: Symbol): Unit = global.currentRun.compileLate(srcfile)
-  }
-
-  object moduleClassLoader extends SymbolLoader with FlagAssigningCompleter {
-    protected def description = "module class loader"
-    protected def doComplete(root: Symbol) { root.sourceModule.initialize }
-  }
-
-  object clrTypes extends clr.CLRTypes {
-    val global: SymbolLoaders.this.global.type = SymbolLoaders.this.global
-    if (global.forMSIL) init()
-  }
-
-  /** used from classfile parser to avoid cyclies */
-  var parentsLevel = 0
-  var pendingLoadActions: List[() => Unit] = Nil
+class SourcefileLoader(val srcfile: AbstractFile)(implicit val cctx: CondensedContext) extends SymbolLoader {
+  protected def description = "source file "+ srcfile.toString
+  override def sourceFileOrNull = srcfile
+  protected def doComplete(root: SymDenotation): Unit = unsupported("doComplete")
 }
-
-object SymbolLoadersStats {
-  import scala.reflect.internal.TypesStats.typerNanos
-  val classReadNanos = Statistics.newSubTimer  ("time classfilereading", typerNanos)
-}
-*/
