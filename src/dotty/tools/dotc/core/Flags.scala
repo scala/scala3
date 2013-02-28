@@ -97,7 +97,9 @@ object Flags {
    *  conjunctively. I.e. for a flag conjunction `fc`,
    *  `x is fc` tests whether `x` contains all flags in `fc`.
    */
-  case class FlagConjunction(bits: Long)
+  case class FlagConjunction(bits: Long) {
+    override def toString = FlagSet(bits).toString
+  }
 
   private final val TYPESHIFT = 2
   private final val TERMindex = 0
@@ -143,11 +145,16 @@ object Flags {
     FlagSet(TERMS | TYPES | (1L << index))
   }
 
+  /** The union of all flags in given flag set */
+  def union(flagss: FlagSet*) = (EmptyFlags /: flagss)(_ | _)
+
   /** The conjunction of all flags in given flag set */
   def allOf(flagss: FlagSet*) = {
     assert(flagss forall (_.numFlags == 1))
-    FlagConjunction((EmptyFlags /: flagss)(_ | _).bits)
+    FlagConjunction(union(flagss: _*).bits)
   }
+
+  def commonFlags(flagss: FlagSet*) = union(flagss.map(_.toCommonFlags): _*)
 
   /** The empty flag set */
   final val EmptyFlags = FlagSet(0)
@@ -339,8 +346,8 @@ object Flags {
 
   /** Flags representing source modifiers */
   final val ModifierFlags =
-    (Private | Protected | Abstract | Final |
-     Sealed | Case | Implicit | AbsOverride | Lazy).toCommonFlags
+    commonFlags(Private, Protected, Abstract, Final,
+     Sealed, Case, Implicit, AbsOverride, Lazy)
 
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local
@@ -394,7 +401,7 @@ object Flags {
   final val ExpandedTypeParam = allOf(ExpandedName, TypeParam)
 
   /** A Java interface */
-  final val JavaInterface = allOf(JavaDefined | Trait)
+  final val JavaInterface = allOf(JavaDefined, Trait)
 
   /** Labeled private[this] */
   final val PrivateLocal = allOf(Private, Local)
