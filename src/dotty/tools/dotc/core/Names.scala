@@ -113,7 +113,7 @@ object Names {
     override def apply(index: Int): Char = chrs(start + index)
 
     override def slice(from: Int, until: Int): ThisName =
-      fromChars(chrs, start + from, start + until)
+      fromChars(chrs, start + from, until - from)
 
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
 

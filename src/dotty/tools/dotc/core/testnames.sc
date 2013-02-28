@@ -26,4 +26,15 @@ object testnames {
   nfoo.replace('$', '.')                          //> res8: dotty.tools.dotc.core.testnames.nfoo.ThisName = hello.plus.plus
   n == EmptyTermName                              //> res9: Boolean = false
   EmptyTermName.start                             //> res10: Int = -1
+  nfoo slice (2, 4)                               //> res11: dotty.tools.dotc.core.testnames.nfoo.ThisName = ll
+  nfoo take 3                                     //> res12: dotty.tools.dotc.core.Names.Name = hel
+  nfoo drop 3                                     //> res13: dotty.tools.dotc.core.Names.Name = lo$plus$plus
+  nfoo.head                                       //> res14: Char = h
+  nfoo.tail                                       //> res15: dotty.tools.dotc.core.Names.Name = ello$plus$plus
+  nfoo.isTermName                                 //> res16: Boolean = true
+  val cs = Array('a', 'b', 'c')                   //> cs  : Array[Char] = Array(a, b, c)
+  termName(cs, 0, 2)                              //> res17: dotty.tools.dotc.core.Names.TermName = ab
+  termName("abc")                                 //> res18: dotty.tools.dotc.core.Names.TermName = abc
+  nfoo.filter(_ >= 'l')                           //> res19: dotty.tools.dotc.core.Names.Name = lloplusplus
+  nfoo map (_.toUpper)                            //> res20: dotty.tools.dotc.core.Names.Name = HELLO$PLUS$PLUS
 }
