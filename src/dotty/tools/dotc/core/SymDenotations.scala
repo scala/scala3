@@ -258,8 +258,7 @@ object SymDenotations {
     def isSourceMethod = this is (Method, butNot = Accessor)
 
     /** Is this NOT a user-defined "def" method that takes parameters? */
-    def isParameterless(implicit ctx: Context) =
-      !isSourceMethod || info.paramTypess.isEmpty
+    def isParameterless(implicit ctx: Context) = signature == NotAMethod
 
     /** Is this a setter? */
     def isGetter = (this is Accessor) && !originalName.isSetterName
