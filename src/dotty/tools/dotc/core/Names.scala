@@ -13,15 +13,19 @@ import collection.generic.CanBuildFrom
 
 object Names {
 
+  /** A common class for things that can be turned into names.
+   *  Instances are both names and strings, the latter via a decorator.
+   */
   trait PreName extends Any {
     def toTypeName: TypeName
     def toTermName: TermName
   }
 
   /** A name is essentially a string, with three differences
-   *  1. Names belong in one of two universes: they are type names or term names.
-   *     The same string can correspond both to a type name and to a term name.
-   *  2. NAmes are hash-consed. Two names
+   *  1. Names belong in one of two name spaces: they are type names or term names.
+   *     Term names have a sub-category of "local" field names.
+   *     The same string can correspond a name in each of the three namespaces.
+   *  2. Names are hash-consed. Two names
    *     representing the same string in the same universe are always reference identical.
    *  3. Names are intended to be encoded strings. @see dotc.util.NameTransformer.
    *     The encoding will be applied when converting a string to a name.
@@ -31,6 +35,7 @@ object Names {
     with Seq[Char]
     with IndexedSeqOptimized[Char, Name] {
 
+    /** A type for names of the same kind as this name */
     type ThisName <: Name
 
     /** The start index in the character array */
@@ -78,9 +83,10 @@ object Names {
       offset + bytes.length
     }
 
-    /** Convert to string replacing operator symbols by corresponding \$op_name. */
+    /** Convert to string \$op_name's by corresponding operator symbols. */
     def decode: String = NameTransformer.decode(toString)
 
+    /** A more efficient version of concatenation */
     def ++ (other: Name): ThisName = ++ (other.toString)
 
     def ++ (other: String): ThisName = {
@@ -92,8 +98,7 @@ object Names {
       val cs = new Array[Char](length)
       Array.copy(chrs, start, cs, 0, length)
       for (i <- 0 until length) {
-        val c = cs(i)
-        chrs(i) = if (c == from) to else c
+        if (cs(i) == from) cs(i) = to
       }
       fromChars(cs, 0, length)
     }
@@ -109,6 +114,8 @@ object Names {
 
     override def slice(from: Int, until: Int): ThisName =
       fromChars(chrs, start + from, start + until)
+
+    override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
 
     override def seq = toCollection(this)
   }
@@ -133,6 +140,8 @@ object Names {
     def asTermName = this
 
     def toLocalName: LocalName = toTypeName.toLocalName
+
+    override def hashCode: Int = start
 
     override protected[this] def newBuilder: Builder[Char, Name] = termNameBuilder
 
@@ -167,6 +176,8 @@ object Names {
         }
     }
 
+    override def hashCode: Int = -start
+
     override protected[this] def newBuilder: Builder[Char, Name] = typeNameBuilder
 
     def fromChars(cs: Array[Char], offset: Int, len: Int): TypeName = typeName(cs, offset, len)
@@ -174,7 +185,7 @@ object Names {
 
   /* A local name representing a field that has otherwise the same name as
    * a normal term name. Used to avoid name clashes between fields and methods.
-   * Local names are linked to their corresponding trem anmes and type names.
+   * Local names are linked to their corresponding term anmes and type names.
    *
    * The encoding is as follows.
    *
@@ -199,6 +210,7 @@ object Names {
    *              TypeName
    */
   class LocalName(start: Int, length: Int, _next: TermName) extends TermName(start, length, _next) {
+    override def hashCode: Int = start + 1
     def toGlobalName: TermName = next
   }
 
