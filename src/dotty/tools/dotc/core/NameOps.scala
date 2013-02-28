@@ -92,8 +92,10 @@ object NameOps {
       while (pos > 0 && name(pos - 1).isDigit)
       pos -= 1
 
-      if (pos <= 0 || pos == name.length || name(pos - 1) != '$') name
-      else name take (pos - 1)
+      if (pos > 0 && pos < name.length && name(pos - 1) == '$')
+        name take (pos - 1)
+      else
+        name
     }
 
     def stripModuleSuffix: Name =

@@ -475,13 +475,13 @@ object Types {
         (pre eq cls.thisType)) this
       else ctx.asSeenFrom(this, pre, cls, null)
 
-    /** The signature of this type. This is by default NullSignature,
+    /** The signature of this type. This is by default NotAMethod,
      *  but is overridden for PolyTypes, MethodTypes, and TermRefWithSignature types.
      *  (the reason why we deviate from the "final-method-with-pattern-match-in-base-class"
      *   pattern is that method signatures use caching, so encapsulation
      *   is improved using an OO scheme).
      */
-    def signature(implicit ctx: Context): Signature = NullSignature
+    def signature(implicit ctx: Context): Signature = NotAMethod
 
     final def baseType(base: Symbol)(implicit ctx: Context): Type = base.denot match {
       case classd: ClassDenotation => classd.baseTypeOf(this)

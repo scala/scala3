@@ -88,7 +88,7 @@ object Denotations {
   /** The signature of a val or parameterless def, as opposed
    *  to List(), which is the signature of a zero-parameter def.
    */
-  val NullSignature = List(Names.EmptyTypeName)
+  val NotAMethod: Signature = List(Names.EmptyTypeName)
 
   /** A denotation is the result of resolving
    *  a name (either simple identifier or select) during a given period.
@@ -321,9 +321,9 @@ object Denotations {
             case _ => List()
           }
         case mt: MethodType => mt.signature
-        case _ => NullSignature
+        case _ => NotAMethod
       }
-      if (isType) NullSignature else sig(info)
+      if (isType) NotAMethod else sig(info)
     }
     def firstSym(implicit ctx: Context): Symbol = symbol
 

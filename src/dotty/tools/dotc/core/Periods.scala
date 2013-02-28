@@ -27,17 +27,7 @@ abstract class Periods extends DotClass { self: Context =>
 
 object Periods {
 
-  /** A period is represented by an ordinal number for a phase in a run.
-   *  Phases in later runs have higher periods than phases in earlier runs.
-   *  Later phases have higher periods than earlier phases in the same run.
-   *  Periods are coded (in big endian) as:
-   *
-   *     sign, always 0        1 bit
-   *     runid                21 bits
-   *     phase id:             5 bits
-   *     unused:               5 bits
-   *
-   *  A period interval is an interval between two periods that share the same runid.
+  /** A period is a contiguous sequence of phase ids in some run.
    *  It is coded as follows:
    *
    *     sign, always 0        1 bit
@@ -63,20 +53,36 @@ object Periods {
     /** The first phase of this period */
     def firstPhaseId = lastPhaseId - (code & PhaseMask)
 
-    /** Does this period contain given period?
-     *  this = A .. B
-     */
+    /** Does this period contain given period? */
     def contains(that: Period): Boolean = {
+      // Let    this = (r1, l1, d1), that = (r2, l2, d2)
+      // where  r = runid, l = last phase, d = duration - 1
+      // Then seen as intervals:
+      //
+      //  this = r1 / (l1 - d1) .. l1
+      //  that = r2 / (l2 - d2) .. l2
+      //
+      // Let's compute:
+      //
+      //  lastDiff = X * 2^5 + (l1 - l2) mod 2^5
+      //             where X >= 0, X == 0 iff r1 == r2 & l1 - l2 >= 0
+      //  result = lastDiff + d2 <= d1
+      //  We have:
+      //      lastDiff + d2 <= d1
+      //  iff X == 0 && l1 - l2 >= 0 && l1 - l2 + d2 <= d1
+      //  iff r1 == r2 & l1 >= l2 && l1 - d1 <= l2 - d2
+      //  q.e.d
       val lastDiff = (code - that.code) >>> PhaseWidth
       lastDiff + (that.code & PhaseMask ) <= (this.code & PhaseMask)
     }
 
-    /** Does this period overlpa with given period? */
+    /** Does this period overlap with given period? */
     def overlaps(that: Period): Boolean =
       this.runId == that.runId &&
       this.firstPhaseId <= that.lastPhaseId &&
       that.firstPhaseId <= this.lastPhaseId
 
+    /** The intersection of two periods */
     def & (that: Period): Period =
       if (this overlaps that)
         Period(
