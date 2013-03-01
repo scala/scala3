@@ -50,6 +50,9 @@ object Names {
     /** Is this name a term name? */
     def isTermName: Boolean
 
+    /** Is this name a local name? */
+    def isLocalName: Boolean = this.isInstanceOf[LocalName]
+
     /** This name converted to a type name */
     def toTypeName: TypeName
 
@@ -70,7 +73,21 @@ object Names {
      */
     def fromChars(cs: Array[Char], offset: Int, len: Int): ThisName
 
+    /** Create new name of same kind as this name and with same
+     *  characters as given `name`.
+     */
+    def fromName(name: Name): ThisName = fromChars(chrs, name.start, name.length)
+
     override def toString = new String(chrs, start, length)
+
+    /** Show name with namespace suffix: /L for local names,
+     * /V for other term names, /T for type names
+     */
+    def showDetailed: String = toString + {
+      (if (isLocalName) "/L"
+      else if (isTypeName) "/T"
+      else "/V")
+    }
 
     /** Write to UTF8 representation of this name to given character array.
      *  Start copying to index `to`. Return index of next free byte in array.
@@ -178,7 +195,8 @@ object Names {
 
     override def hashCode: Int = -start
 
-    override protected[this] def newBuilder: Builder[Char, Name] = typeNameBuilder
+    override protected[this] def newBuilder: Builder[Char, Name] =
+      termNameBuilder.mapResult(_.toTypeName)
 
     def fromChars(cs: Array[Char], offset: Int, len: Int): TypeName = typeName(cs, offset, len)
   }
@@ -212,6 +230,10 @@ object Names {
   class LocalName(start: Int, length: Int, _next: TermName) extends TermName(start, length, _next) {
     override def hashCode: Int = start + 1
     def toGlobalName: TermName = next
+    override protected[this] def newBuilder: Builder[Char, Name] =
+      termNameBuilder.mapResult(_.toLocalName)
+    override def fromChars(cs: Array[Char], offset: Int, len: Int): TermName =
+      termName(cs, offset, len).toLocalName
   }
 
   // Nametable
@@ -330,7 +352,7 @@ object Names {
   def typeName(bs: Array[Byte], offset: Int, len: Int): TypeName =
     termName(bs, offset, len).toTypeName
 
-  /** Create a term name from a string, wihtout encoding operators */
+  /** Create a term name from a string, without encoding operators */
   def termName(s: String): TermName = termName(s.toCharArray, 0, s.length)
 
   /** Create a term name from a string, encode if necessary*/
@@ -350,11 +372,8 @@ object Names {
   /** The type name represented by the empoty string */
   val EmptyTypeName = EmptyTermName.toTypeName
 
-  val termNameBuilder: Builder[Char, TermName] =
+  def termNameBuilder: Builder[Char, TermName] =
     StringBuilder.newBuilder.mapResult(termName)
-
-  val typeNameBuilder: Builder[Char, TypeName] =
-    StringBuilder.newBuilder.mapResult(typeName)
 
   implicit val nameCanBuildFrom: CanBuildFrom[Name, Char, Name] = new CanBuildFrom[Name, Char, Name] {
     def apply(from: Name): Builder[Char, Name] =

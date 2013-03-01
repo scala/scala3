@@ -46,7 +46,7 @@ object NameOps {
     }
   }
 
-  implicit class NameDecorator(val name: Name) extends AnyVal {
+  implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
     import nme._
 
     def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
@@ -101,6 +101,16 @@ object NameOps {
     def stripModuleSuffix: Name =
       if (isModuleName) name dropRight MODULE_SUFFIX.length else name
 
+    /** The expanded name of `name` relative to this class `base` with given `separator`
+     */
+    def expandedName(base: Symbol, separator: Name = nme.EXPAND_SEPARATOR)(implicit ctx: Context): N =
+      name.fromName((base.fullName('$') ++ separator ++ name)).asInstanceOf[N]
+
+    def unexpandedName(separator: Name = nme.EXPAND_SEPARATOR): N = {
+      val idx = name.lastIndexOfSlice(separator)
+      if (idx < 0) name else (name drop (idx + separator.length)).asInstanceOf[N]
+    }
+
     /** Translate a name into a list of simple TypeNames and TermNames.
      *  In all segments before the last, type/term is determined by whether
      *  the following separator char is '.' or '#'.  The last segment
@@ -152,34 +162,14 @@ object NameOps {
     tpnme.Float -> jtpnme.BoxedFloat,
     tpnme.Double -> jtpnme.BoxedDouble)
 
-  // needed???
-  implicit class TypeNameDecorator(val name: TypeName) extends AnyVal {
-    def isUnboxedName = Boxed contains name
-    def boxedName: TypeName = Boxed(name)
-
-    /** The expanded name of `name` relative to this class `base` with given `separator`
-     */
-    def expandedName(base: Symbol, separator: Name = nme.EXPAND_SEPARATOR)(implicit ctx: Context): TypeName =
-      (base.fullName('$') ++ separator ++ name).toTypeName
-
-    def unexpandedName(separator: Name = nme.EXPAND_SEPARATOR) = {
-      val idx = name.lastIndexOfSlice(separator)
-      if (idx < 0) name else name drop (idx + separator.length)
-    }
-  }
 
   implicit class TermNameDecorator(val name: TermName) extends AnyVal {
     import nme._
 
-    /** The expanded name of `name` relative to this class `base` with given `separator`
-     */
-    def expandedName(base: Symbol, separator: Name = EXPAND_SEPARATOR)(implicit ctx: Context): TermName =
-      (base.fullName('$') ++ separator ++ name).toTermName
-
     /** The expanded setter name of `name` relative to this class `base`
      */
     def expandedSetterName(base: Symbol)(implicit ctx: Context): TermName =
-      expandedName(base, separator = TRAIT_SETTER_SEPARATOR)
+      name.expandedName(base, separator = TRAIT_SETTER_SEPARATOR)
 
     def getterName: TermName = name match {
       case name: LocalName => name.toGlobalName

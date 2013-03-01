@@ -30,7 +30,7 @@ object Printers {
 
   abstract class Printer {
 
-    /** Show name, same as name.toString */
+    /** Show name, same as name.toString + kind suffix if plain printer */
     def show(name: Name): String
 
     /** Show name with "type" or "term" prefix */
@@ -119,7 +119,7 @@ object Printers {
       || (sym.name == nme.PACKAGE)               // package
     )
 
-    def show(name: Name): String = name.toString
+    def show(name: Name): String = name.showDetailed
 
     def showDetailed(name: Name): String =
       (if (name.isTypeName) "type " else "term ") + name
@@ -376,6 +376,8 @@ object Printers {
 
   class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     override protected def recursionLimitExceeeded() = {}
+
+    override def show(name: Name): String = name.toString
 
     override protected def showSimpleName(sym: Symbol) = sym.originalName.decode
 

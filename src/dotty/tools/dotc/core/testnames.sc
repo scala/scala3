@@ -4,7 +4,6 @@ object testnames {
   println("Welcome to the Scala worksheet")       //> Welcome to the Scala worksheet
   
   import Names._
-  
   val n = termName("hello")                       //> n  : dotty.tools.dotc.core.Names.TermName = hello
   val tn = n.toTypeName                           //> tn  : dotty.tools.dotc.core.Names.TypeName = hello
   val ln = n.toLocalName                          //> ln  : dotty.tools.dotc.core.Names.LocalName = hello
@@ -37,4 +36,15 @@ object testnames {
   termName("abc")                                 //> res18: dotty.tools.dotc.core.Names.TermName = abc
   nfoo.filter(_ >= 'l')                           //> res19: dotty.tools.dotc.core.Names.Name = lloplusplus
   nfoo map (_.toUpper)                            //> res20: dotty.tools.dotc.core.Names.Name = HELLO$PLUS$PLUS
+  
+  import Decorators._
+
+  val local = "local".toTermName.toLocalName      //> local  : dotty.tools.dotc.core.Names.LocalName = local
+  val local1 = local ++ "!"                       //> local1  : dotty.tools.dotc.core.testnames.local.ThisName = local!
+  local1.showDetailed                             //> res21: String = local!/L
+  val local2 = "Foo.".toTermName ++: local1       //> local2  : dotty.tools.dotc.core.Names.Name = Foo.local!
+  local2.showDetailed                             //> res22: String = Foo.local!/V
+  local1.dropRight(2).showDetailed                //> res23: String = loca/L
+  local1.fromName("Foo.".toTermName ++ local1).showDetailed
+                                                  //> res24: String = Foo.local!/L
 }
