@@ -34,8 +34,11 @@ trait TypeOps { this: Context =>
             if (sym is TypeParam) {
               // short-circuit instantiated type parameters
               // by replacing pre.tp with its alias, if it has one.
-              val tp2 = tp1.info
-              if (tp2.isAliasTypeBounds) return tp2.bounds.hi
+              tp1.info match {
+                case TypeBounds(lo, hi) if lo eq hi =>
+                  return hi
+                case _ =>
+              }
             }
             tp1
           }

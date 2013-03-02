@@ -352,7 +352,7 @@ object Types {
           .denotsNamed(name)
           .filterAccessibleFrom(pre)
           .filterExcluded(excluded)
-          .asSeenFrom(pre, tp.cls)
+          .asSeenFrom(pre)
           .toDenot
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, pre, excluded)
@@ -386,7 +386,7 @@ object Types {
         val results = candidates
           .filterAccessibleFrom(pre)
           .filterExcluded(excluded)
-          .asSeenFrom(pre, cls)
+          .asSeenFrom(pre)
         if (results.exists) results.toDenot
         else new ErrorDenotation // todo: refine
       case tp: AndType =>
@@ -796,7 +796,7 @@ object Types {
     override def loadDenot(implicit ctx: Context) = {
       val denot = fixedSym.denot
       val owner = denot.owner
-      if (owner.isTerm) denot else denot.asSeenFrom(prefix, owner).toDenot
+      if (owner.isTerm) denot else denot.asSeenFrom(prefix).toDenot
     }
   }
 

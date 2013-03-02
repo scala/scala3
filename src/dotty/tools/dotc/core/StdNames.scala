@@ -616,7 +616,6 @@ object StdNames {
       LOCALDUMMY_PREFIX ++ clazz.name ++ ">"
 
     def newBitmapName(bitmapPrefix: TermName, n: Int): TermName = bitmapPrefix ++ n.toString
-
   }
 
   class ScalaTypeNames extends ScalaNames[TypeName] {

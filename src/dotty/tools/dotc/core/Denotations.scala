@@ -452,8 +452,8 @@ object Denotations {
       if (symbol is flags) NoDenotation else this
     def filterAccessibleFrom(pre: Type)(implicit ctx: Context): PreDenotation =
       if (symbol.isAccessibleFrom(pre)) this else NoDenotation
-    def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): PreDenotation =
-      derivedSingleDenotation(symbol, info.asSeenFrom(pre, owner))
+    def asSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation =
+      derivedSingleDenotation(symbol, info.asSeenFrom(pre, symbol.owner))
   }
 
   class UniqueRefDenotation(val symbol: Symbol,
@@ -510,10 +510,10 @@ object Denotations {
      */
     def filterAccessibleFrom(pre: Type)(implicit ctx: Context): PreDenotation
 
-    /** The denotations as seen from given prefix type `pre`, where `owner`
-     *  is assumed to be the owner of all denotation symbols.
+    /** The denotations as seen from given prefix type `pre`.
+     *  @pre All denotations need to have an existing symbol.
      */
-    def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): PreDenotation
+    def asSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation
 
     /** The union of two groups. */
     def union(that: PreDenotation) =
@@ -537,8 +537,8 @@ object Denotations {
       derivedUnion(denots1 filterExcluded flags, denots2 filterExcluded flags)
     def filterAccessibleFrom(pre: Type)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1 filterAccessibleFrom pre, denots2 filterAccessibleFrom pre)
-    def asSeenFrom(pre: Type, owner: Symbol)(implicit ctx: Context): PreDenotation =
-      derivedUnion(denots1.asSeenFrom(pre, owner), denots2.asSeenFrom(pre, owner))
+    def asSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation =
+      derivedUnion(denots1.asSeenFrom(pre), denots2.asSeenFrom(pre))
     private def derivedUnion(denots1: PreDenotation, denots2: PreDenotation) =
       if ((denots1 eq this.denots1) && (denots2 eq this.denots2)) this
       else denots1 union denots2
