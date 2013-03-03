@@ -576,7 +576,6 @@ object SymDenotations {
     initPrivateWithin: Symbol = NoSymbol)
     extends SymDenotation(symbol, _owner, name, initFlags, initInfo, initPrivateWithin) {
 
-    import NameFilter._
     import util.LRUCache
 
     // ----- denotation fields and accessors ------------------------------
@@ -679,13 +678,13 @@ object SymDenotations {
       isNonBottomSubClass(base) ||
         base.isClass && ((symbol eq defn.NothingClass) || (symbol eq defn.NullClass))
 
-    private[this] var _definedFingerPrint: FingerPrint = null
+    private[this] var _memberFingerPrint: FingerPrint = FingerPrint.empty
 
-    private def computeDefinedFingerPrint(implicit ctx: Context): FingerPrint = {
-      var bits = newFingerPrint
+    private def computeMemberFingerPrint(implicit ctx: Context): FingerPrint = {
+      var fp = FingerPrint()
       var e = info.decls.lastEntry
       while (e != null) {
-        includeName(bits, name)
+        fp.include(name)
         e = e.prev
       }
       var ps = classInfo.classParents
@@ -693,18 +692,24 @@ object SymDenotations {
         val parent = ps.head.typeSymbol
         parent.denot match {
           case classd: ClassDenotation =>
-            includeFingerPrint(bits, classd.definedFingerPrint)
+            fp.include(classd.memberFingerPrint)
             parent.denot.setFlag(Frozen)
           case _ =>
         }
         ps = ps.tail
       }
-      bits
+      fp
     }
 
-    def definedFingerPrint(implicit ctx: Context): FingerPrint = {
-      if (_definedFingerPrint == null) _definedFingerPrint = computeDefinedFingerPrint
-      _definedFingerPrint
+    /** A bloom filter for the names of all members in this class.
+     *  Makes sense only for parent classes, and should definitely
+     *  not be used for package classes because cache never
+     *  gets invalidated.
+     */
+    def memberFingerPrint(implicit ctx: Context): FingerPrint = {
+      assert(hasChildren)
+      if (_memberFingerPrint == FingerPrint.empty) _memberFingerPrint = computeMemberFingerPrint
+      _memberFingerPrint
     }
 
     private[this] var _memberCache: LRUCache[Name, PreDenotation] = null
@@ -714,8 +719,6 @@ object SymDenotations {
       _memberCache
     }
 
-    // !!! should make sure that symbols are not entered into scopes except via enter.
-
     /** Enter a symbol in current scope.
      *  Note: We require that this does not happen after the first time
      *  someone does a findMember on a subclass.
@@ -723,8 +726,8 @@ object SymDenotations {
     def enter(sym: Symbol)(implicit ctx: Context) = {
       require(!(this is Frozen))
       info.decls.openForMutations.enter(sym)
-      if (_definedFingerPrint != null)
-        includeName(_definedFingerPrint, sym.name)
+      if (_memberFingerPrint != FingerPrint.empty)
+        memberFingerPrint.include(sym.name)
       if (_memberCache != null)
         memberCache invalidate sym.name
     }
@@ -736,12 +739,13 @@ object SymDenotations {
     def delete(sym: Symbol)(implicit ctx: Context) = {
       require(!(this is Frozen))
       info.decls.openForMutations.unlink(sym)
-      if (_definedFingerPrint != null)
-        computeDefinedFingerPrint
+      if (_memberFingerPrint != FingerPrint.empty)
+        computeMemberFingerPrint
       if (_memberCache != null)
         memberCache invalidate sym.name
     }
 
+    /** Have we seen a subclass of this class? */
     def hasChildren = symbol.superId >= 0
 
     /** All members of this class that have the given name.
@@ -751,7 +755,7 @@ object SymDenotations {
     final def membersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
       var denots: PreDenotation = memberCache lookup name
       if (denots == null) {
-        if (!hasChildren || containsName(definedFingerPrint, name)) {
+        if (!hasChildren || (memberFingerPrint contains name)) {
           val ownDenots = info.decls.denotsNamed(name)
           denots = ownDenots
           var ps = classInfo.classParents
@@ -819,18 +823,24 @@ object SymDenotations {
 
     private[this] var memberNamesCache: Map[NameFilter, Set[Name]] = Map()
 
-    def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] =
-      memberNamesCache get keepOnly match {
+    def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = {
+      def computeMemberNames: Set[Name] = {
+        val inheritedNames = (classInfo.classParents flatMap (_.memberNames(thisType, keepOnly))).toSet
+        val ownNames = info.decls.iterator map (_.name)
+        val candidates = inheritedNames ++ ownNames
+        candidates filter (keepOnly(thisType, _))
+      }
+      if (isPackageClass) computeMemberNames // don't cache package member names; they might change
+      else memberNamesCache get keepOnly match {
         case Some(names) =>
           names
         case _ =>
-          val inheritedNames = (classInfo.classParents flatMap (_.memberNames(thisType, keepOnly))).toSet
-          val ownNames = info.decls.iterator map (_.name)
-          val candidates = inheritedNames ++ ownNames
-          val names = candidates filter (keepOnly(thisType, _))
+          setFlag(Frozen)
+          val names = computeMemberNames
           memberNamesCache = memberNamesCache.updated(keepOnly, names)
           names
       }
+    }
 
     private[this] var fullNameCache: Map[Char, Name] = Map()
 
@@ -890,7 +900,7 @@ object SymDenotations {
    */
   abstract class LazyModuleClassInfo(val modul: TermSymbol) extends LazyClassInfo(newScope)
 
-  /** A lazy type for modules that points to the source module class.
+  /** A lazy type for modules that points to the module class.
    *  Needed so that `moduleClass` works before completion.
    *  Completion of modules is always completion of the underlying
    *  module class, followed by copying the relevant fields to the module.
@@ -938,29 +948,37 @@ object SymDenotations {
     }
   }
 
-  // ---- Name filter --------------------------------------------------------
+  // ---- Fingerprints -----------------------------------------------------
 
-  object NameFilter {
-    final val WordSizeLog = 6
-    final val DefinedNamesWords = 32
-    final val DefinedNamesSize = DefinedNamesWords << WordSizeLog
-    final val DefinedNamesMask = DefinedNamesSize - 1
+  /** A fingerprint is a bitset that acts as a bloom filter for sets
+   *  of names.
+   */
+  class FingerPrint(val bits: Array[Long]) extends AnyVal {
+    import FingerPrint._
 
-    type FingerPrint = Array[Long]
-
-    def includeName(bits: FingerPrint, name: Name): Unit = {
-      val hash = name.hashCode & DefinedNamesMask
+    /** Include some bits of name's hashcode in set */
+    def include(name: Name): Unit = {
+      val hash = name.hashCode & Mask
       bits(hash >> WordSizeLog) |= (1L << hash)
     }
 
-    def includeFingerPrint(bits1: FingerPrint, bits2: FingerPrint): Unit =
-      for (i <- 0 until DefinedNamesWords) bits1(i) |= bits2(i)
+    /** Include all bits of `that` fingerprint in set */
+    def include(that: FingerPrint): Unit =
+      for (i <- 0 until NumWords) bits(i) |= that.bits(i)
 
-    def containsName(bits: FingerPrint, name: Name): Boolean = {
-      val hash = name.hashCode & DefinedNamesMask
+    /** Does set contain hash bits of given name? */
+    def contains(name: Name): Boolean = {
+      val hash = name.hashCode & Mask
       (bits(hash >> WordSizeLog) & (1L << hash)) != 0
     }
+  }
 
-    def newFingerPrint: FingerPrint = new Array[Long](DefinedNamesWords)
+  object FingerPrint {
+    def apply() = new FingerPrint(new Array[Long](NumWords))
+    val empty = new FingerPrint(null)
+    private final val WordSizeLog = 6
+    private final val NumWords = 32
+    private final val NumBits = NumWords << WordSizeLog
+    private final val Mask = NumBits - 1
   }
 }
