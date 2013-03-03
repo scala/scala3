@@ -197,7 +197,7 @@ trait TypeOps { this: Context =>
    *  to a list of typerefs, by converting all refinements to member
    *  definitions in scope `decls`. Can add members to `decls` as a side-effect.
    */
-  def normalizeToRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
+  def normalizeToRefs(parents: List[Type], cls: ClassSymbol, decls: MutableScope): List[TypeRef] = {
     var refinements = Map[TypeName, Type]()
     var formals = Map[TypeName, Symbol]()
     def normalizeToRef(tp: Type): TypeRef = tp match {

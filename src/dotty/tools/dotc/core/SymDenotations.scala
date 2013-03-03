@@ -722,7 +722,7 @@ object SymDenotations {
      */
     def enter(sym: Symbol)(implicit ctx: Context) = {
       require(!(this is Frozen))
-      info.decls enter sym
+      info.decls.openForMutations.enter(sym)
       if (_definedFingerPrint != null)
         includeName(_definedFingerPrint, sym.name)
       if (_memberCache != null)
@@ -735,7 +735,7 @@ object SymDenotations {
      */
     def delete(sym: Symbol)(implicit ctx: Context) = {
       require(!(this is Frozen))
-      info.decls unlink sym
+      info.decls.openForMutations.unlink(sym)
       if (_definedFingerPrint != null)
         computeDefinedFingerPrint
       if (_memberCache != null)

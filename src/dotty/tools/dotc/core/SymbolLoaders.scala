@@ -20,7 +20,7 @@ class SymbolLoaders {
 
   protected def enterIfNew(owner: Symbol, member: Symbol, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
     assert(owner.info.decls.lookup(member.name) == NoSymbol, owner.fullName + "." + member.name)
-    owner.info.decls enter member
+    owner.asClass.enter(member)
     member
   }
 
@@ -57,7 +57,7 @@ class SymbolLoaders {
       else if (ctx.settings.termConflict.value == "package") {
         ctx.warning(
           s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")
-        owner.info.decls.unlink(preExisting)
+        owner.asClass.delete(preExisting)
       } else {
         ctx.warning(
           s"Resolving package/object name conflict in favor of object ${preExisting.fullName}.  The package will be inaccessible.")

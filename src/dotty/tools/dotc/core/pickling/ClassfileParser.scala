@@ -26,8 +26,8 @@ class ClassfileParser(
 
   protected val staticModule: Symbol = moduleRoot.sourceModule
 
-  protected val instanceScope: Scope = newScope     // the scope of all instance definitions
-  protected val staticScope: Scope = newScope       // the scope of all static definitions
+  protected val instanceScope: MutableScope = newScope     // the scope of all instance definitions
+  protected val staticScope: MutableScope = newScope       // the scope of all static definitions
   protected var pool: ConstantPool = _              // the classfile's constant pool
 
   protected var currentClassName: Name = _      // JVM name of the current class
@@ -707,7 +707,7 @@ class ClassfileParser(
   protected def getOwner(flags: Int): Symbol =
     if (isStatic(flags)) moduleRoot.symbol else classRoot.symbol
 
-  protected def getScope(flags: Int): Scope =
+  protected def getScope(flags: Int): MutableScope =
     if (isStatic(flags)) staticScope else instanceScope
 
   private def setPrivateWithin(denot: SymDenotation, jflags: Int) {

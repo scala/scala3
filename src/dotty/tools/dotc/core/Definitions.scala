@@ -25,7 +25,7 @@ class Definitions(implicit ctx: Context) {
 
   import ctx.{requiredClass, requiredModule, requiredPackage}
 
-  private def newSyntheticTypeParam(cls: ClassSymbol, scope: Scope, suffix: String = "T0") = {
+  private def newSyntheticTypeParam(cls: ClassSymbol, scope: MutableScope, suffix: String = "T0") = {
     val tname = suffix.toTypeName.expandedName(cls)
     val tparam = ctx.newSymbol(cls, tname, TypeParamCreationFlags, TypeBounds.empty)
     scope.enter(tparam)

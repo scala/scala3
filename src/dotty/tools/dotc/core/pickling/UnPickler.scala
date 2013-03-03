@@ -24,7 +24,7 @@ object UnPickler {
   case class TempPolyType(tparams: List[Symbol], tpe: Type) extends UncachedGroundType
 
   /** Temporary type for classinfos, will be decomposed on completion of the class */
-  case class TempClassInfoType(parentTypes: List[Type], decls: Scope, clazz: Symbol) extends UncachedGroundType
+  case class TempClassInfoType(parentTypes: List[Type], decls: MutableScope, clazz: Symbol) extends UncachedGroundType
 
   def depoly(tp: Type)(implicit ctx: Context): Type = tp match {
     case TempPolyType(tparams, restpe) => PolyType.fromSymbols(tparams, restpe)
@@ -356,7 +356,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
         isUnpickleRoot(sym) ||
         (sym is (ModuleClass | TypeParam | Scala2Existential)) ||
         isRefinementClass(sym)))
-        symScope(sym.owner) enter sym
+        symScope(sym.owner).openForMutations.enter(sym)
       sym
     }
 
@@ -519,7 +519,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
         }
       case CLASSINFOtpe =>
         val clazz = readSymbolRef()
-        TempClassInfoType(until(end, readTypeRef), symScope(clazz), clazz)
+        TempClassInfoType(until(end, readTypeRef), symScope(clazz).openForMutations, clazz)
       case METHODtpe | IMPLICITMETHODtpe =>
         val restpe = readTypeRef()
         val params = until(end, readSymbolRef)

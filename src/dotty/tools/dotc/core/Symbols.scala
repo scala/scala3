@@ -318,7 +318,7 @@ object Symbols {
     def superId: Int = -1
 
     final def entered(implicit ctx: Context): this.type = {
-      this.owner.info.decls.enter(this)
+      this.owner.asClass.enter(this)
       this
     }
 
