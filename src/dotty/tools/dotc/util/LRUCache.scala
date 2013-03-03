@@ -2,110 +2,96 @@ package dotty.tools.dotc.util
 
 import reflect.ClassTag
 
-class LRU8Cache[Key >: Null, Value >: Null] {
+/** A least-recently-used cache for Key -> Value computations
+ *  It currently keeps the last 8 associations, but this can be
+ *  changed to anywhere between 2 and 16 by changing `LRUCache.Retained`.
+ *
+ *  Implementation: We keep a ring of eight places, linked
+ *  with the `next` data structure. The ring models a priority queue.
+ *  `last` points to the last element of the queue, and
+ *  `next(last)` to the first one. Lookups compare keys
+ *  sequentially from first to last. Elements with successful lookup
+ *  get promoted to be first in the queue. Elements are evicted
+ *  at the `last` position.
+ */
+class LRUCache[Key >: Null : ClassTag, Value >: Null: ClassTag] {
+  import LRUCache._
+  val keys = new Array[Key](Retained)
+  val values = new Array[Value](Retained)
+  var next = new SixteenNibbles(initialRing.bits)
+  var last = Retained - 1 // value is arbitrary
+  var lastButOne: Int = last - 1
 
-  import LRU8Cache._
+  def first = next(last)
 
-  private var key0, key1, key2, key3, key4, key5, key6, key7: Key = null
-  private var val0, val1, val2, val3, val4, val5, val6, val7: Value = null
-  private var hits = 0
-  private var entered = 0
-
-  private def incr(n: Int): Unit = {
-    val shift = n * width
-    hits = (hits ^ (mask << shift)) | (next((hits >>> shift) & mask) << shift)
-  }
-
-  private def decr(n: Int): Unit = {
-    val shift = n * width
-    hits = (hits ^ (mask << shift)) | (prev((hits >>> shift) & mask) << shift)
-  }
-
-  private def init(n: Int): Unit = {
-    val shift = n * width
-    hits = (hits ^ (mask << shift)) | (1 << shift)
-  }
-
-  private def clear(n: Int): Unit = {
-    val shift = n * width
-    hits = (hits ^ (mask << shift))
-  }
-
-  private def evict(): Int = {
-    var min = hits & mask
-    var minIdx = 0
-    hits = hits >>> width
-    if ((hits & mask) < min) { min = hits & mask; minIdx = 1 }
-    hits = hits >>> width
-    if ((hits & mask) < min) { min = hits & mask; minIdx = 2 }
-    hits = hits >>> width
-    if ((hits & mask) < min) { min = hits & mask; minIdx = 3 }
-    hits = hits >>> width
-    if ((hits & mask) < min) { min = hits & mask; minIdx = 4 }
-    hits = hits >>> width
-    if ((hits & mask) < min) { min = hits & mask; minIdx = 5 }
-    hits = hits >>> width
-    if ((hits & mask) < min) { min = hits & mask; minIdx = 6 }
-    hits = hits >>> width
-    if ((hits & mask) < min) { min = hits & mask; minIdx = 7 }
-    minIdx
-  }
-
-  /** Return value associated with key, or `null` if key not present.
-   *  Key must be different from `null`.
+  /** Lookup key, returning value or `null` for not found.
+   *  As a side effect, sets `lastButOne` to the element before `last`
+   *  if key was not found.
    */
   def lookup(key: Key): Value = {
-    if (key == key0) { incr(0); return val0 }
-    if (key == key1) { incr(1); return val1 }
-    if (key == key2) { incr(2); return val2 }
-    if (key == key3) { incr(3); return val3 }
-    if (key == key4) { incr(4); return val4 }
-    if (key == key5) { incr(5); return val5 }
-    if (key == key6) { incr(6); return val6 }
-    if (key == key7) { incr(7); return val7 }
-    null
+    def lookupNext(prev: Int, current: Int, nx: SixteenNibbles): Value = {
+      val follow = nx(current)
+      if (keys(current) == key) {
+        if (current == last) last = prev
+        else {
+          next = next.updated(prev, follow)
+          next = next.updated(current, first)
+          next = next.updated(last, current)
+        }
+        values(current)
+      } else if (current == last) {
+        lastButOne = prev
+        null
+      } else
+        lookupNext(current, follow, nx)
+    }
+    lookupNext(last, first, next)
   }
 
-  /** Enter key/value association in cache */
+  /** Enter key/value in cache at position `last`.
+   *  As a side effect, sets `last` to `lastButOne`.
+   *  If `lastButOne` was set by a preceding unsuccessful `lookup`
+   *  for the same key, this means that the new element is now the
+   *  first in the queue. If there was no preceding lookup, the element
+   *  is inserted at a random position in the queue.
+   */
   def enter(key: Key, value: Value): Unit = {
-    val idx = if ((entered & 7) == entered) entered else evict()
-    idx match {
-      case 0 => key0 = key; val0 = value
-      case 1 => key1 = key; val1 = value
-      case 2 => key2 = key; val2 = value
-      case 3 => key3 = key; val3 = value
-      case 4 => key4 = key; val4 = value
-      case 5 => key5 = key; val5 = value
-      case 6 => key6 = key; val6 = value
-      case 7 => key7 = key; val7 = value
-    }
-    init(idx)
-    entered += 1
-    if (entered % 8 == 0) {
-      var i = 0
-      while (i < 8) { decr(i); i += 1 }
-    }
+    keys(last) = key
+    values(last) = value
+    last = lastButOne
   }
 
-  /** Remove entry for `key` from cache if it was present */
-  def invalidate(key: Key): Unit = {
-    if (key == key0) { clear(0); key0 = null }
-    if (key == key1) { clear(1); key1 = null }
-    if (key == key2) { clear(2); key2 = null }
-    if (key == key3) { clear(3); key3 = null }
-    if (key == key4) { clear(4); key4 = null }
-    if (key == key5) { clear(5); key5 = null }
-    if (key == key6) { clear(6); key6 = null }
-    if (key == key7) { clear(7); key7 = null }
+  /** Invalidate key. The invalidated element becomes
+   *  the last in the queue.
+   */
+  def invalidate(key: Key): Unit =
+    if (lookup(key) != null) {
+      keys(first) = null
+      last = first
+    }
+
+  def indices: Iterator[Int] = Iterator.iterate(first)(next.apply)
+
+  def keysIterator: Iterator[Key] =
+    indices take Retained map keys filter (_ != null)
+
+  override def toString = {
+    val assocs = keysIterator
+      .toList  // double reverse so that lookups do not perturb order
+      .reverse
+      .map(key => s"$key -> ${lookup(key)}")
+      .reverse
+    s"LRUCache(${assocs.mkString(", ")})"
   }
-
-
 }
 
-object LRU8Cache {
-  private final val width = 32 / 8        // width of a counter in bits
-  private final val mask = (1 << width) - 1
+object LRUCache {
 
-  private val next: Array[Int] = (1 to mask).toArray :+ mask
-  private val prev: Array[Int] = 0 +: (0 until mask).toArray
+  /** The number of retained elements in the cache; must be at most 16. */
+  val Retained = 8
+
+  /** The initial ring: 0 -> 1 -> ... -> 7 -> 0 */
+  val initialRing =
+    (new SixteenNibbles(0L) /: (0 until Retained))((nibbles, idx) =>
+      nibbles.updated(idx, (idx + 1) % Retained))
 }
