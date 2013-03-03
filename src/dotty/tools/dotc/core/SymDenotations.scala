@@ -577,7 +577,7 @@ object SymDenotations {
     extends SymDenotation(symbol, _owner, name, initFlags, initInfo, initPrivateWithin) {
 
     import NameFilter._
-    import util.LRU8Cache
+    import util.LRUCache
 
     // ----- denotation fields and accessors ------------------------------
 
@@ -707,10 +707,10 @@ object SymDenotations {
       _definedFingerPrint
     }
 
-    private[this] var _memberCache: LRU8Cache[Name, PreDenotation] = null
+    private[this] var _memberCache: LRUCache[Name, PreDenotation] = null
 
-    private def memberCache: LRU8Cache[Name, PreDenotation] = {
-      if (_memberCache == null) _memberCache = new LRU8Cache
+    private def memberCache: LRUCache[Name, PreDenotation] = {
+      if (_memberCache == null) _memberCache = new LRUCache
       _memberCache
     }
 
