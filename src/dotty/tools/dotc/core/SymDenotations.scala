@@ -427,10 +427,14 @@ object SymDenotations {
     /** The top-level class containing this denotation,
      *  except for a toplevel module, where its module class is returned.
      */
-    final def topLevelClass(implicit ctx: Context): Symbol =
-      if (!(owner.isPackageClass)) owner.topLevelClass
-      else if (isClass) symbol
-      else moduleClass
+    final def topLevelClass(implicit ctx: Context): Symbol = {
+      val sym = topLevelSym
+      if (sym.isClass) sym else sym.moduleClass
+    }
+
+    /** The top-level symbol containing this denotation. */
+    final def topLevelSym(implicit ctx: Context): Symbol =
+      if (owner.isPackageClass) symbol else owner.topLevelSym
 
     /** The package containing this denotation */
     final def enclosingPackage(implicit ctx: Context): Symbol =
@@ -707,7 +711,7 @@ object SymDenotations {
      *  gets invalidated.
      */
     def memberFingerPrint(implicit ctx: Context): FingerPrint = {
-      assert(hasChildren)
+      assert(classSymbol.hasChildren)
       if (_memberFingerPrint == FingerPrint.empty) _memberFingerPrint = computeMemberFingerPrint
       _memberFingerPrint
     }
@@ -745,9 +749,6 @@ object SymDenotations {
         memberCache invalidate sym.name
     }
 
-    /** Have we seen a subclass of this class? */
-    def hasChildren = symbol.superId >= 0
-
     /** All members of this class that have the given name.
      *  The elements of the returned pre-denotation all
      *  have existing symbols.
@@ -755,7 +756,7 @@ object SymDenotations {
     final def membersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
       var denots: PreDenotation = memberCache lookup name
       if (denots == null) {
-        if (!hasChildren || (memberFingerPrint contains name)) {
+        if (!classSymbol.hasChildren || (memberFingerPrint contains name)) {
           val ownDenots = info.decls.denotsNamed(name)
           denots = ownDenots
           var ps = classInfo.classParents

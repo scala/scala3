@@ -65,7 +65,7 @@ trait Symbols { this: Context =>
   }
 
   /** Create a class symbol from its non-info fields and a function
-   *  producing its info (the info may be lazy).
+   *  producing its info (the produced info may be lazy).
    */
   def newClassSymbol(
       owner: Symbol,
@@ -77,7 +77,7 @@ trait Symbols { this: Context =>
       assocFile: AbstractFile = null): ClassSymbol
   = {
     val cls = newNakedClassSymbol(coord, assocFile)
-    val denot = SymDenotation(cls, owner, name, flags, infoFn(cls))
+    val denot = SymDenotation(cls, owner, name, flags, infoFn(cls), privateWithin)
     cls.denot = denot
     cls
   }
@@ -160,7 +160,7 @@ trait Symbols { this: Context =>
     newModuleSymbol(owner, name, PackageCreationFlags, info)
 
   /** Create a package symbol with associated package class
-   *  from its non-info fields and the fields of the package class info.
+   *  from its non-info fields its member scope.
    */
   def newCompletePackageSymbol(
       owner: Symbol,
@@ -222,9 +222,9 @@ trait Symbols { this: Context =>
 
   type OwnerMap = Symbol => Symbol
 
-  /** Map given symbols, subjecting all types to given type map and owner map. Cross symbol
-   *  references are brought over from originals to copies.
-   *  Do not copy any symbols if all their attributes stay the same.
+  /** Map given symbols, subjecting all types to given type map and owner map.
+   *  Cross symbol references are brought over from originals to copies.
+   *  Do not copy any symbols if all attributes of all symbols stay the same.
    */
   def mapSymbols(
       originals: List[Symbol],
@@ -237,16 +237,16 @@ trait Symbols { this: Context =>
     else {
       val copies: List[Symbol] = for (original <- originals) yield
         newNakedSymbol[original.ThisName](original.coord)
-      val copyTypeMap = typeMap andThen ((tp: Type) => tp.substSym(originals, copies))
-      val copyTreeMap = new TypedTrees.TreeMapper(copyTypeMap, ownerMap)
+      val treeMap = new TypedTrees.TreeMapper(typeMap, ownerMap)
+        .withSubstitution(originals, copies)
       (originals, copies).zipped foreach {(original, copy) =>
         val odenot = original.denot
         copy.denot = odenot.copySymDenotation(
           symbol = copy,
-          owner = ownerMap(odenot.owner),
-          info = copyTypeMap(odenot.info),
+          owner = treeMap.ownerMap(odenot.owner),
+          info = treeMap.typeMap(odenot.info),
           privateWithin = ownerMap(odenot.privateWithin),
-          annotations = odenot.annotations.mapConserve(copyTreeMap.apply))
+          annotations = odenot.annotations.mapConserve(treeMap.apply))
       }
       copies
     }
@@ -271,15 +271,6 @@ object Symbols {
 
     type ThisName <: Name
 
-    /** Is symbol different from NoSymbol? */
-    def exists = true
-
-    /** This symbol, if it exists, otherwise the result of evaluating `that` */
-    def orElse(that: => Symbol) = if (exists) this else that
-
-    /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
-    def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
-
     private[this] var _id: Int = _
 
     /** The unique id of this symbol */
@@ -298,7 +289,8 @@ object Symbols {
     /** The current denotation of this symbol */
     final def denot(implicit ctx: Context): SymDenotation = {
       var denot = lastDenot
-      if (!(denot.validFor contains ctx.period)) denot = denot.current.asInstanceOf[SymDenotation]
+      if (!(denot.validFor contains ctx.period))
+        denot = denot.current.asInstanceOf[SymDenotation]
       denot
     }
 
@@ -317,10 +309,18 @@ object Symbols {
      */
     def superId: Int = -1
 
+    /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(implicit ctx: Context): this.type = {
       this.owner.asClass.enter(this)
       this
     }
+
+    /** This symbol, if it exists, otherwise the result of evaluating `that` */
+    def orElse(that: => Symbol)(implicit ctx: Context) =
+      if (this.exists) this else that
+
+    /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
+    def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
 
     /** Is symbol a primitive value class? */
     def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains this
@@ -335,7 +335,7 @@ object Symbols {
      *  the class containing this symbol was generated, null if not applicable.
      */
     def associatedFile(implicit ctx: Context): AbstractFile =
-      this.denot.topLevelClass.symbol.associatedFile
+      denot.topLevelClass.symbol.associatedFile
 
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(implicit ctx: Context): AbstractFile =
@@ -359,7 +359,6 @@ object Symbols {
     def showKind(implicit ctx: Context): String = ctx.showKind(this)
     def showName(implicit ctx: Context): String = ctx.showName(this)
     def showFullName(implicit ctx: Context): String = ctx.showFullName(this)
-
   }
 
   type TermSymbol = Symbol { type ThisName = TermName }
@@ -399,6 +398,9 @@ object Symbols {
         id
       }
     }
+
+    /** Have we seen a subclass of this class? */
+    def hasChildren = superIdHint >= 0
   }
 
   class ErrorSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(NoCoord) {
@@ -407,7 +409,6 @@ object Symbols {
   }
 
   object NoSymbol extends Symbol(NoCoord) {
-    override def exists = false
     denot = NoDenotation
   }
 
@@ -429,7 +430,9 @@ object Symbols {
 
   implicit def defn(implicit ctx: Context): Definitions = ctx.definitions
 
+  /** Makes all denotation operations available on symbols */
   implicit def toDenot(sym: Symbol)(implicit ctx: Context): SymDenotation = sym.denot
 
+  /** Makes all class denotations available on class symbols */
   implicit def toClassDenot(cls: ClassSymbol)(implicit ctx: Context): ClassDenotation = cls.classDenot
 }

@@ -505,6 +505,8 @@ object TypedTrees {
       check(expr.isValue); check(from.isTerm)
       check(from.tpe.termSymbol.isSourceMethod)
     case Try(block, catches, finalizer) =>
+      check(block.isTerm)
+      check(finalizer.isTerm)
       for (ctch <- catches)
         check(ctch.pat.tpe <:< defn.ThrowableType)
     case Throw(expr) =>
@@ -656,7 +658,7 @@ object TypedTrees {
       new TreeMapper(ownerMap = (sym => if (sym == from) to else sym)).apply(tree)
   }
 
-  class TreeMapper(typeMap: TypeMap = IdentityTypeMap, ownerMap: Symbol => Symbol = identity)(implicit ctx: Context) extends TreeTransformer[Type, Unit] {
+  class TreeMapper(val typeMap: TypeMap = IdentityTypeMap, val ownerMap: Symbol => Symbol = identity)(implicit ctx: Context) extends TreeTransformer[Type, Unit] {
     override def transform(tree: tpd.Tree, c: Unit): tpd.Tree = {
       val tree1 = tree.withType(typeMap(tree.tpe))
       val tree2 = tree1 match {
@@ -676,13 +678,9 @@ object TypedTrees {
     override def transform(trees: List[tpd.Tree], c: Unit) = {
       val locals = localSyms(trees)
       val mapped = ctx.mapSymbols(locals, typeMap, ownerMap)
-      if (locals eq mapped)
-        super.transform(trees, c)
-      else
-        new TreeMapper(
-          typeMap andThen ((tp: Type) => tp.substSym(locals, mapped)),
-          ownerMap andThen (locals zip mapped).toMap).transform(trees, c)
-    }
+      if (locals eq mapped) super.transform(trees, c)
+      else withSubstitution(locals, mapped).transform(trees, c)
+     }
 
     def apply[ThisTree <: tpd.Tree](tree: ThisTree): ThisTree = transform(tree, ()).asInstanceOf[ThisTree]
 
@@ -690,6 +688,12 @@ object TypedTrees {
       val tree1 = apply(annot.tree)
       if (tree1 eq annot.tree) annot else ConcreteAnnotation(tree1)
     }
+
+    /** The current tree map composed with a substitution [from -> to] */
+    def withSubstitution(from: List[Symbol], to: List[Symbol]) =
+      new TreeMapper(
+        typeMap andThen ((tp: Type) => tp.substSym(from, to)),
+        ownerMap andThen (from zip to).toMap)
   }
 
   // ensure that constructors are fully applied?
