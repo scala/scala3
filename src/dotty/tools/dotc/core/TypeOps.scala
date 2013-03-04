@@ -50,8 +50,8 @@ trait TypeOps { this: Context =>
       case tp: RefinedType =>
         tp.derivedRefinedType(
             asSeenFrom(tp.parent, pre, clazz, theMap),
-            tp.name,
-            asSeenFrom(tp.info, pre, clazz, theMap))
+            tp.refinedName,
+            asSeenFrom(tp.refinedInfo, pre, clazz, theMap))
       case _ =>
         (if (theMap != null) theMap else new AsSeenFromMap(pre, clazz))
           .mapOver(tp)
@@ -76,7 +76,7 @@ trait TypeOps { this: Context =>
         case tp: RefinedType =>
           tp.parent.isVolatile ||
             isAbstractIntersection(tp.parent) &&
-            (tp.abstractMemberNames contains tp.name)
+            (tp.abstractMemberNames() contains tp.refinedName)
         case tp: TypeProxy =>
           tp.underlying.isVolatile
         case AndType(l, r) =>
@@ -204,8 +204,8 @@ trait TypeOps { this: Context =>
       case tp @ RefinedType(tp1, name: TypeName) =>
         refinements = refinements.updated(name,
           refinements get name match {
-            case Some(info) => info & tp.info
-            case none => tp.info
+            case Some(info) => info & tp.refinedInfo
+            case none => tp.refinedInfo
           })
         formals = formals.updated(name, tp1.member(name).symbol)
         normalizeToRef(tp1)

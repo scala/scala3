@@ -127,11 +127,11 @@ object Printers {
     /** String representation of a name used in a refinement
      *  In refined printing this undoes type parameter expansion
      */
-    protected def showRefinementName(tp: RefinedType) = show(tp.name)
+    protected def showRefinementName(tp: RefinedType) = show(tp.refinedName)
 
     /** String representation of a refinement */
     protected def showRefinement(rt: RefinedType) =
-      showRefinementName(rt) + showRHS(rt.info)
+      showRefinementName(rt) + showRHS(rt.refinedInfo)
 
     /** The longest sequence refinement types, starting at given type
      *  and following parents.
@@ -397,7 +397,7 @@ object Printers {
     }
 
     override protected def showRefinementName(tp: RefinedType): String = {
-      val tsym = tp.member(tp.name).symbol
+      val tsym = tp.member(tp.refinedName).symbol
       val name = tsym.originalName
       show(if (tsym is ExpandedTypeParam) name.asTypeName.unexpandedName() else name)
     }

@@ -88,58 +88,40 @@ object Types {
      *  T is stable or T contains no uninstantiated type variables.
      */
     final def isLegalPrefix(implicit ctx: Context): Boolean =
-      isStable || abstractTypeNames(this).isEmpty
-
-    /** The set of names that denote an abstract type member of this type
-     *  which is also an abstract type member of `pre`
-     */
-    final def abstractTypeNames(pre: Type)(implicit ctx: Context): Set[Name] =
-      memberNames(pre, abstractTypeNameFilter)
-    final def abstractTypeNames(implicit ctx: Context): Set[Name] =
-      abstractTypeNames(this)
-
-    /** The set of names that denote an abstract term member of this type
-     *  which is also an abstract term member of `pre`
-     */
-    final def abstractTermNames(pre: Type)(implicit ctx: Context): Set[Name] =
-      memberNames(pre, abstractTermNameFilter)
-    final def abstractTermNames(implicit ctx: Context): Set[Name] =
-      abstractTermNames(this)
-
-    /** The set of names that denote an abstract member of this type
-     *  which is also an abstract member of `pre`
-     */
-    final def abstractMemberNames(pre: Type)(implicit ctx: Context): Set[Name] =
-      abstractTypeNames(pre) | abstractTermNames(pre)
-    final def abstractMemberNames(implicit ctx: Context): Set[Name] =
-      abstractMemberNames(this)
-
-    final def abstractTermMembers(pre: Type)(implicit ctx: Context): Set[SingleDenotation] =
-      abstractTermNames.flatMap(name =>
-        pre.member(name).altsWith(_ is Deferred))
-    final def abstractTermMembers(implicit ctx: Context): Set[SingleDenotation] =
-      abstractTermMembers(this)
+      isStable || memberNames(abstractTypeNameFilter).isEmpty
 
     /** The set of names of members of this type that pass the given name filter
      *  when seen as members of `pre`. More precisely, these are all
      *  of members `name` such that `keepOnly(pre, name)` is `true`.
      */
-    final def memberNames(pre: Type, keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = this match {
+    final def memberNames(keepOnly: NameFilter, pre: Type = this)(implicit ctx: Context): Set[Name] = this match {
       case tp: ClassInfo =>
         tp.cls.memberNames(keepOnly) filter (keepOnly(pre, _))
       case tp: RefinedType =>
-        var ns = tp.parent.memberNames(pre, keepOnly)
-        if (keepOnly(pre, tp.name)) ns += tp.name
+        var ns = tp.parent.memberNames(keepOnly, pre)
+        if (keepOnly(pre, tp.refinedName)) ns += tp.refinedName
         ns
       case tp: AndType =>
-        tp.tp1.memberNames(pre, keepOnly) | tp.tp2.memberNames(pre, keepOnly)
+        tp.tp1.memberNames(keepOnly, pre) | tp.tp2.memberNames(keepOnly, pre)
       case tp: OrType =>
-        tp.tp1.memberNames(pre, keepOnly) & tp.tp2.memberNames(pre, keepOnly)
+        tp.tp1.memberNames(keepOnly, pre) & tp.tp2.memberNames(keepOnly, pre)
       case tp: TypeProxy =>
-        tp.underlying.memberNames(pre, keepOnly)
+        tp.underlying.memberNames(keepOnly, pre)
       case _ =>
         Set()
     }
+
+    /** The set of names that denote an abstract member of this type
+     *  which is also an abstract member of `pre`.
+     */
+    final def abstractMemberNames(pre: Type = this)(implicit ctx: Context): Set[Name] =
+      memberNames(abstractTypeNameFilter, pre) |
+      memberNames(abstractTermNameFilter, pre)
+
+    /** The set of abstract term members of this type. */
+    final def abstractTermMembers(implicit ctx: Context): Set[SingleDenotation] =
+      memberNames(abstractTermNameFilter)
+        .flatMap(member(_).altsWith(_ is Deferred))
 
     /** Is this type a value type */
     final def isValueType: Boolean = this match {
@@ -374,8 +356,8 @@ object Types {
     final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: RefinedType =>
         val pdenot = tp.parent.findMember(name, pre, excluded)
-        if (name eq tp.name)
-          pdenot & new JointRefDenotation(NoSymbol, tp.info.substThis(tp, pre), Period.allInRun(ctx.runId))
+        if (name eq tp.refinedName)
+          pdenot & new JointRefDenotation(NoSymbol, tp.refinedInfo.substThis(tp, pre), Period.allInRun(ctx.runId))
         else
           pdenot
       case tp: TypeProxy =>
@@ -533,7 +515,7 @@ object Types {
             if (tycon != NoType) {
               val tparam = tycon.typeParams.apply(nparams)
               if (tparam.name == name) {
-                (tycon, args :+ tp.info.argType(tparam))
+                (tycon, args :+ tp.refinedInfo.argType(tparam))
               } else fail
             } else fail
           } else fail
@@ -896,20 +878,20 @@ object Types {
 
   // --- Refined Type ---------------------------------------------------------
 
-  abstract case class RefinedType(parent: Type, name: Name)(infof: RefinedType => Type) extends CachedProxyType with BindingType {
+  abstract case class RefinedType(parent: Type, refinedName: Name)(infof: RefinedType => Type) extends CachedProxyType with BindingType {
 
-    val info: Type = infof(this)
+    val refinedInfo: Type = infof(this)
 
     override def underlying(implicit ctx: Context) = parent
 
-    def derivedRefinedType(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType =
-      if ((parent eq this.parent) && (name eq this.name) && (info eq this.info)) this
-      else RefinedType(parent, name, rt => info.substThis(this, RefinedThis(rt)))
+    def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType =
+      if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
+      else RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
 
-    override def computeHash = doHash(name, info, parent)
+    override def computeHash = doHash(refinedName, refinedInfo, parent)
   }
 
-  class CachedRefinedType(parent: Type, name: Name, infof: RefinedType => Type) extends RefinedType(parent, name)(infof)
+  class CachedRefinedType(parent: Type, refinedName: Name, infof: RefinedType => Type) extends RefinedType(parent, refinedName)(infof)
 
   object RefinedType {
     def make(parent: Type, names: List[Name], infofs: List[RefinedType => Type])(implicit ctx: Context): Type =
@@ -1275,7 +1257,7 @@ object Types {
          | _: BoundType => tp
 
       case tp: RefinedType =>
-        tp.derivedRefinedType(this(tp.parent), tp.name, this(tp.info))
+        tp.derivedRefinedType(this(tp.parent), tp.refinedName, this(tp.refinedInfo))
 
       case tp @ PolyType(pnames) =>
         tp.derivedPolyType(
@@ -1362,7 +1344,7 @@ object Types {
          | _: BoundType => x
 
       case tp: RefinedType =>
-        this(this(x, tp.parent), tp.info)
+        this(this(x, tp.parent), tp.refinedInfo)
 
       case tp @ PolyType(pnames) =>
         this((x /: tp.paramBounds)(this), tp.resultType)

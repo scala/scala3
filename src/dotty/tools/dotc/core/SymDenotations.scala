@@ -826,7 +826,7 @@ object SymDenotations {
 
     def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = {
       def computeMemberNames: Set[Name] = {
-        val inheritedNames = (classInfo.classParents flatMap (_.memberNames(thisType, keepOnly))).toSet
+        val inheritedNames = (classInfo.classParents flatMap (_.memberNames(keepOnly, thisType))).toSet
         val ownNames = info.decls.iterator map (_.name)
         val candidates = inheritedNames ++ ownNames
         candidates filter (keepOnly(thisType, _))

@@ -438,7 +438,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
     def elim(tp: Type): Type = tp match {
       case tp @ RefinedType(parent, name) =>
         val parent1 = elim(tp.parent)
-        tp.info match {
+        tp.refinedInfo match {
           case TypeAlias(info: TypeRefBySym) if boundSyms contains info.fixedSym =>
             RefinedType(parent1, name, info.fixedSym.info)
           case info: TypeRefBySym if boundSyms contains info.fixedSym =>

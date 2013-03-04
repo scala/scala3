@@ -118,7 +118,7 @@ object TypeComparers {
         thirdTryRef(tp1, tp2)
       case tp2: RefinedType =>
         isSubType(tp1, tp2.parent) &&
-        isSubType(tp1.member(tp2.name).info, tp2.info)
+        isSubType(tp1.member(tp2.refinedName).info, tp2.refinedInfo)
       case AndType(tp21, tp22) =>
         isSubType(tp1, tp21) && isSubType(tp1, tp22)
       case OrType(tp21, tp22) =>
