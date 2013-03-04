@@ -63,51 +63,37 @@ trait TypeOps { this: Context =>
   }
 
   final def isVolatile(tp: Type): Boolean = {
-    def isAbstractIntersection(tp: Type): Boolean = tp match {
-      case tp: TypeRef => tp.symbol.isAbstractType
-      case AndType(l, r) => isAbstractIntersection(l) | isAbstractIntersection(l)
-      case OrType(l, r) => isAbstractIntersection(l) & isAbstractIntersection(r)
-      case _ => false
-    }
-    def test = {
-      tp match {
-        case ThisType(_) =>
-          false
-        case tp: RefinedType =>
-          tp.parent.isVolatile ||
-            isAbstractIntersection(tp.parent) &&
-            (tp.abstractMemberNames() contains tp.refinedName)
-        case tp: TypeProxy =>
-          tp.underlying.isVolatile
-        case AndType(l, r) =>
-          l.isVolatile || r.isVolatile ||
-            isAbstractIntersection(l) && r.abstractMemberNames(tp).nonEmpty
-        case OrType(l, r) =>
-          l.isVolatile && r.isVolatile
-        case _ =>
-          false
-      }
-    }
-    // need to be careful not to fall into an infinite recursion here
-    // because volatile checking is done before all cycles are detected.
-    // the case to avoid is an abstract type directly or
-    // indirectly upper-bounded by itself. See #2918
-    try {
-      ctx.volatileRecursions += 1
-      if (ctx.volatileRecursions < LogVolatileThreshold)
-        test
-      else if (ctx.pendingVolatiles(tp))
-        false // we can return false here, because a cycle will be detected
-      // here afterwards and an error will result anyway.
-      else
-        try {
-          ctx.pendingVolatiles += tp
-          test
-        } finally {
-          ctx.pendingVolatiles -= tp
+    /** Pre-filter to avoid expensive DNF computation */
+    def needsChecking(tp: Type, isPart: Boolean): Boolean = tp match {
+      case tp: TypeRef =>
+        tp.info match {
+          case TypeBounds(lo, hi) =>
+            if (lo eq hi) needsChecking(hi, isPart)
+            else isPart || isVolatile(hi)
+          case _ => false
         }
-    } finally {
-      ctx.volatileRecursions -= 1
+      case tp: RefinedType =>
+        needsChecking(tp.parent, true)
+      case tp: TypeProxy =>
+        needsChecking(tp.underlying, isPart)
+      case AndType(l, r) =>
+        needsChecking(l, true) || needsChecking(r, true)
+      case OrType(l, r) =>
+        isPart || needsChecking(l, isPart) && needsChecking(r, isPart)
+      case _ =>
+        false
+    }
+    needsChecking(tp, false) && {
+      tp.DNF forall { case (parents, refinedNames) =>
+        val absParents = parents filter (_.info.isRealTypeBounds)
+        absParents.size >= 2 || {
+          val ap = absParents.head
+          (parents exists (p =>
+            (p ne ap) || p.abstractMemberNames(tp).nonEmpty)) ||
+          (refinedNames & tp.abstractMemberNames()).nonEmpty ||
+          isVolatile(ap)
+        }
+      }
     }
   }
 

@@ -300,12 +300,12 @@ object Contexts {
       override def hash(x: Type): Int = x.hash
     }
 
-    // TypeOps state
-    /** The number of recursive invocation of isVolatile */
-    private[core] var volatileRecursions: Int = 0
+    // Types state
+    /** The number of recursive invocation of underlying on a NamedType */
+    private[core] var underlyingRecursions: Int = 0
 
-    /** The set of types on which a currently active invocation of isVolatile exists. */
-    private[core] val pendingVolatiles = new mutable.HashSet[Type]
+    /** The set of named types on which a currently active invocation of underlying exists. */
+    private[core] val pendingUnderlying = new mutable.HashSet[Type]
 
     // Phases state
     /** Phases by id */
@@ -338,5 +338,5 @@ object Contexts {
   /** How many recursive calls to isVolatile are performed before
    *  logging starts.
    */
-  private[core] final val LogVolatileThreshold = 50
+  private[core] final val LogUnderlyingThreshold = 50
 }

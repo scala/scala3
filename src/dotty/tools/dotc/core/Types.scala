@@ -98,9 +98,8 @@ object Types {
       case tp: ClassInfo =>
         tp.cls.memberNames(keepOnly) filter (keepOnly(pre, _))
       case tp: RefinedType =>
-        var ns = tp.parent.memberNames(keepOnly, pre)
-        if (keepOnly(pre, tp.refinedName)) ns += tp.refinedName
-        ns
+        val ns = tp.parent.memberNames(keepOnly, pre)
+        if (keepOnly(pre, tp.refinedName)) ns + tp.refinedName else ns
       case tp: AndType =>
         tp.tp1.memberNames(keepOnly, pre) | tp.tp2.memberNames(keepOnly, pre)
       case tp: OrType =>
@@ -123,18 +122,17 @@ object Types {
       memberNames(abstractTermNameFilter)
         .flatMap(member(_).altsWith(_ is Deferred))
 
-    /** Is this type a value type */
-    final def isValueType: Boolean = this match {
-      case NoPrefix
-         | NoType
-         | WildcardType
-         | _: TypeBounds
-         | _: MethodType
-         | _: PolyType
-         | _: ExprType
-         | _: ClassInfo => false
-      case _ => true
-    }
+    /** The set of abstract type members of this type. */
+    final def abstractTypeMembers(implicit ctx: Context): Set[SingleDenotation] =
+      memberNames(abstractTypeNameFilter)
+        .map(member(_).asInstanceOf[SingleDenotation])
+
+    /** The set of abstract members of this type. */
+    final def abstractMembers(implicit ctx: Context): Set[SingleDenotation] =
+      abstractTermMembers | abstractTypeMembers
+
+    /** Is this type a value type? */
+    final def isValueType: Boolean = this.isInstanceOf[ValueType]
 
     /** Is this type a TypeBounds instance, with lower and upper bounds
      *  that are not identical?
@@ -158,16 +156,42 @@ object Types {
       case _ => TypeBounds(this, this)
     }
 
-    /** A type is volatile if it has an underlying type of the
-     *  form P1 with ... with Pn { decls } (where n may be 1 or decls may
-     *  be empty), one of the parent types Pi is an abstract type, and
-     *  either decls or a different parent Pj, j != i, contributes
-     *  an abstract member.
+    /** The disjunctive normal form of this type.
+     *  This collects a set of alternatives, each alternative consisting
+     *  of a set of typerefs and a set of refinement names. Collected are
+     *  all type refs reachable by following aliases and type proxies, and
+     *  collecting the elements of conjunctions (&) and disjunctions (|).
+     *  The set of refinement names in each alternative
+     *  are the set of names in refinement types encountered during the collection.
+     */
+    def DNF(implicit ctx: Context): Set[(Set[TypeRef], Set[Name])] = this match {
+      case tp: TypeRef =>
+        if (tp.info.isAliasTypeBounds) tp.info.bounds.hi.DNF
+        else Set((Set(tp), Set()))
+      case RefinedType(parent, name) =>
+        for ((ps, rs) <- parent.DNF) yield (ps, rs + name)
+      case tp: TypeProxy =>
+        tp.underlying.DNF
+      case AndType(l, r) =>
+        for ((lps, lrs) <- l.DNF; (rps, rrs) <- r.DNF)
+        yield (lps | rps, lrs | rrs)
+      case OrType(l, r) =>
+        l.DNF | r.DNF
+      case tp =>
+        Set((Set(), Set()))
+    }
+
+    /** A type is volatile if its DNF contains an alternative of the form
+     *  {P1, ..., Pn}, {N1, ..., Nk}, where the Pi are parent typerefs and the
+     *  Nj are refinement names, and one the 4 following conditions is met:
      *
-     *  A type contributes an abstract member if it has an abstract member which
-     *  is also a member of the whole refined type. A scope `decls` contributes
-     *  an abstract member if it has an abstract definition which is also
-     *  a member of the whole type.
+     *  1. At least two of the parents Pi are abstract types.
+     *  2. One of the parents Pi is an abstract type, and one other type Pj,
+     *     j != i has an abstract member which has the same name as an
+     *     abstract member of the whole type.
+     *  3. One of the parents Pi is an abstract type, and one of the refinement
+     *     names Nj refers to an abstract member of the whole type.
+     *  4. One of the parents Pi is an abstract type with a volatile upper bound.
      *
      *  Lazy values are not allowed to have volatile type, as otherwise
      *  unsoundness can result.
@@ -698,19 +722,30 @@ object Types {
     final def hash = NotCached
   }
 
-  /** A marker trait for types that are guaranteed to contain only a
-   *  single non-null value (they might contain null in addition).
-   */
-  trait SingletonType extends TypeProxy
-
   /** A marker trait for types that apply only to type symbols */
   trait TypeType extends Type
 
-  // --- NamedTypes ------------------------------------------------------------------
+  /** A marker trait for types that apply only to term symbols */
+  trait TermType extends Type
+
+  /** A marker trait for types that can be types of values */
+  trait ValueType extends TermType
+
+  /** A marker trait for types that are guaranteed to contain only a
+   *  single non-null value (they might contain null in addition).
+   */
+  trait SingletonType extends TypeProxy with ValueType
+
+  /** A marker trait for types that bind other types that refer to them.
+   *  Instances are: PolyType, MethodType, RefinedType.
+   */
+  trait BindingType extends Type
+
+// --- NamedTypes ------------------------------------------------------------------
 
   /** A NamedType of the form Prefix # name
    */
-  abstract class NamedType extends CachedProxyType {
+  abstract class NamedType extends CachedProxyType with ValueType {
 
     val prefix: Type
     val name: Name
@@ -750,7 +785,22 @@ object Types {
     def symbol(implicit ctx: Context): Symbol = denot.symbol
     def info(implicit ctx: Context): Type = denot.info
 
-    override def underlying(implicit ctx: Context): Type = info
+    override def underlying(implicit ctx: Context): Type = try {
+      ctx.underlyingRecursions += 1
+      if (ctx.underlyingRecursions < LogUnderlyingThreshold)
+        info
+      else if (ctx.pendingUnderlying(this))
+        throw new CyclicReference(symbol)
+      else
+        try {
+          ctx.pendingUnderlying += this
+          info
+        } finally {
+          ctx.pendingUnderlying -= this
+        }
+    } finally {
+      ctx.underlyingRecursions -= 1
+    }
 
     def derivedNamedType(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
@@ -878,7 +928,8 @@ object Types {
 
   // --- Refined Type ---------------------------------------------------------
 
-  abstract case class RefinedType(parent: Type, refinedName: Name)(infof: RefinedType => Type) extends CachedProxyType with BindingType {
+  abstract case class RefinedType(parent: Type, refinedName: Name)(infof: RefinedType => Type)
+    extends CachedProxyType with BindingType with ValueType {
 
     val refinedInfo: Type = infof(this)
 
@@ -907,7 +958,7 @@ object Types {
 
   // --- AndType/OrType ---------------------------------------------------------------
 
-  abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType {
+  abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with ValueType {
 
     type This <: AndType
 
@@ -925,7 +976,7 @@ object Types {
       unique(new CachedAndType(tp1, tp2))
   }
 
-  abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType {
+  abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with ValueType {
     def derivedOrType(t1: Type, t2: Type)(implicit ctx: Context) =
       if ((t1 eq tp1) && (t2 eq tp2)) this
       else OrType(t1, t2)
@@ -942,14 +993,14 @@ object Types {
 
   // ----- Method types: MethodType/ExprType/PolyType/MethodParam/PolyParam ---------------
 
-  trait BindingType extends Type
-
   // Note: method types are cached whereas poly types are not.
   // The reason is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
   abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])
-      (resultTypeExp: MethodType => Type) extends CachedGroundType with BindingType {
+      (resultTypeExp: MethodType => Type)
+    extends CachedGroundType with BindingType with TermType {
+
     override lazy val resultType = resultTypeExp(this)
     def isJava = false
     def isImplicit = false
@@ -1003,7 +1054,7 @@ object Types {
   }
 
   final class ImplicitMethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)
-    extends MethodType(paramNames, paramTypes)(resultTypeExp) {
+      extends MethodType(paramNames, paramTypes)(resultTypeExp) {
     override def isImplicit = true
   }
 
@@ -1033,7 +1084,8 @@ object Types {
       unique(new ImplicitMethodType(paramNames, paramTypes)(resultTypeExp))
   }
 
-  abstract case class ExprType(override val resultType: Type) extends CachedProxyType {
+  abstract case class ExprType(override val resultType: Type)
+      extends CachedProxyType with TermType {
     override def underlying(implicit ctx: Context): Type = resultType
     override def signature(implicit ctx: Context): Signature = Nil
     def derivedExprType(rt: Type)(implicit ctx: Context) =
@@ -1049,7 +1101,7 @@ object Types {
   }
 
   case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-      extends UncachedGroundType with BindingType {
+      extends UncachedGroundType with BindingType with TermType {
     lazy val paramBounds = paramBoundsExp(this)
     override lazy val resultType = resultTypeExp(this)
 
@@ -1087,7 +1139,7 @@ object Types {
     }
   }
 
-  abstract class BoundType extends UncachedProxyType {
+  abstract class BoundType extends UncachedProxyType with ValueType {
     type BT <: BindingType
     def binder: BT
     def copy(bt: BT): Type
@@ -1207,7 +1259,7 @@ object Types {
 
   // ----- Annotated and Import types -----------------------------------------------
 
-  case class AnnotatedType(annot: Annotation, tpe: Type) extends UncachedProxyType {
+  case class AnnotatedType(annot: Annotation, tpe: Type) extends UncachedProxyType with ValueType {
     override def underlying(implicit ctx: Context): Type = tpe
     def derivedAnnotatedType(annot: Annotation, tpe: Type) =
       if ((annot eq this.annot) && (tpe eq this.tpe)) this
@@ -1234,7 +1286,7 @@ object Types {
     override def computeHash = hashSeed
   }
 
-  abstract class ErrorType extends UncachedGroundType
+  abstract class ErrorType extends UncachedGroundType with ValueType
 
   object ErrorType extends ErrorType
 
