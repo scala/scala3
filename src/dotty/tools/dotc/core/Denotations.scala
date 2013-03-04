@@ -388,54 +388,80 @@ object Denotations {
       current
     }
 
-    /** Produce a denotation in the same flock that is valid for given context
-     *  If one doesn't already exist, create it.
-     *  Pre: validFor.runId == ctx.period.runId.
+    /** Produce a denotation that is valid for the given context.
      *  Usually called when !(validFor contains ctx.period)
      *  (even though this is not a precondition).
+     *  If the runId of the context is the same as runId of this denotation,
+     *  the right flock member is located, or, if it does not exist yet,
+     *  created by invoking a transformer (@See Transformers).
+     *  If the runId's differ, but this denotation is a SymDenotation
+     *  and its toplevel owner class or module
+     *  is still a member of its enclosing package, then the whole flock
+     *  is brought forward to be valid in the new runId. Otherwise
+     *  the symbol is stale, which constitutes an internal error.
      */
     def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
       val valid = _validFor
-      assert(valid.runId == currentPeriod.runId)
-      var current = this
-      if (currentPeriod.code > valid.code) {
-        // search for containing period as long as nextInRun increases.
-        var next = nextInRun
-        while (next.validFor.code > valid.code &&
-          !(next.validFor contains currentPeriod)) {
-          current = next
-          next = next.nextInRun
+      def bringForward(): Unit = {
+        this match {
+          case denot: SymDenotation =>
+            val top = denot.topLevelSym
+            if (top.owner.info.decl(top.name).symbol == top) {
+              var d: SingleDenotation = denot
+              do {
+                d.validFor = Period(currentPeriod.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
+                d = d.nextInRun
+              } while (d ne denot)
+              return
+            }
+          case _ =>
         }
-        if (next.validFor.code > valid.code) {
-          // in this case, next.validFor contains currentPeriod
-          current = next
-        } else {
-          // not found, current points to highest existing variant
-          var startPid = current.validFor.lastPhaseId + 1
-          val transformers = ctx.transformersFor(current)
-          val transformer = transformers.nextTransformer(startPid)
-          next = transformer transform current
-          if (next eq current)
-            startPid = current.validFor.firstPhaseId
-          else {
-            current.nextInRun = next
-            current = next
-          }
-          current.validFor = Period(
-              currentPeriod.runId, startPid, transformer.lastPhaseId)
-        }
-      } else {
-        // currentPeriod < valid; in this case a version must exist
-        // but to be defensive we check for infinite loop anyway
-        var cnt = 0
-        do {
-          current = current.nextInRun
-          cnt += 1
-          assert(cnt <= MaxPossiblePhaseId)
-        } while (!(current.validFor contains currentPeriod))
+        assert(false, s"stale symbol; ${symbol.showLocated}, defined in run ${valid.runId} is referred to in run ${currentPeriod.runId}")
       }
-      current
+      if (valid.runId != currentPeriod.runId) {
+        bringForward()
+        current
+      } else {
+        var cur = this
+        if (currentPeriod.code > valid.code) {
+          // search for containing period as long as nextInRun increases.
+          var next = nextInRun
+          while (next.validFor.code > valid.code &&
+            !(next.validFor contains currentPeriod)) {
+            cur = next
+            next = next.nextInRun
+          }
+          if (next.validFor.code > valid.code) {
+            // in this case, next.validFor contains currentPeriod
+            cur = next
+          } else {
+            // not found, cur points to highest existing variant
+            var startPid = cur.validFor.lastPhaseId + 1
+            val transformers = ctx.transformersFor(cur)
+            val transformer = transformers.nextTransformer(startPid)
+            next = transformer transform cur
+            if (next eq cur)
+              startPid = cur.validFor.firstPhaseId
+            else {
+              cur.nextInRun = next
+              cur = next
+            }
+            cur.validFor = Period(
+              currentPeriod.runId, startPid, transformer.lastPhaseId)
+          }
+        } else {
+          // currentPeriod < valid; in this case a version must exist
+          // but to be defensive we check for infinite loop anyway
+          var cnt = 0
+          do {
+            cur = cur.nextInRun
+            cnt += 1
+            assert(cnt <= MaxPossiblePhaseId)
+          } while (!(cur.validFor contains currentPeriod))
+        }
+        cur
+      }
     }
 
     final def asSymDenotation = asInstanceOf[SymDenotation]
@@ -529,8 +555,6 @@ object Denotations {
     def toDenot(implicit ctx: Context) = denots1.toDenot & denots2.toDenot
     def containsSig(sig: Signature)(implicit ctx: Context) =
       (denots1 containsSig sig) || (denots2 containsSig sig)
-    //def filter(p: Symbol => Boolean)(implicit ctx: Context) =
-    //  derivedUnion(denots1 filter p, denots2 filter p)
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1 filterDisjoint denots, denots2 filterDisjoint denots)
     def filterExcluded(flags: FlagSet)(implicit ctx: Context): PreDenotation =
