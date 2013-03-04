@@ -152,20 +152,20 @@ object Denotations {
     def orElse(that: => Denotation) = if (this.exists) this else that
 
     /** The set of alternative single-denotations making up this denotation */
-    def alternatives(implicit ctx: Context): List[SingleDenotation] =
+    def alternatives: List[SingleDenotation] =
       altsWith(scala.Function.const(true))
 
     /** The alternatives of this denotation that satisfy the predicate `p`. */
-    def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation]
+    def altsWith(p: Symbol => Boolean): List[SingleDenotation]
 
     /** The unique alternative of this denotation that satisfies the predicate `p`,
      *  or NoDenotation if no satisfying alternative exists.
      *  @throws TypeError if there is at more than one alternative that satisfies `p`.
      */
-    def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation
+    def suchThat(p: Symbol => Boolean): SingleDenotation
 
     /** Does this denotation have an alternative that satisfies the predicate `p`? */
-    def hasAltWith(p: Symbol => Boolean)(implicit ctx: Context): Boolean
+    def hasAltWith(p: Symbol => Boolean): Boolean
 
     /** If this denotation is overloaded, filter with given predicate.
      *  If result is still overloaded throw a TypeError.
@@ -303,9 +303,9 @@ object Denotations {
       denot1.atSignature(sig) orElse denot2.atSignature(sig)
     def current(implicit ctx: Context): Denotation =
       derivedMultiDenotation(denot1.current, denot2.current)
-    def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation] =
+    def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
       denot1.altsWith(p) ++ denot2.altsWith(p)
-    def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation = {
+    def suchThat(p: Symbol => Boolean): SingleDenotation = {
       val sd1 = denot1.suchThat(p)
       val sd2 = denot2.suchThat(p)
       if (sd1.exists)
@@ -313,7 +313,7 @@ object Denotations {
         else sd1
       else sd2
     }
-    def hasAltWith(p: Symbol => Boolean)(implicit ctx: Context): Boolean =
+    def hasAltWith(p: Symbol => Boolean): Boolean =
       denot1.hasAltWith(p) || denot2.hasAltWith(p)
     def derivedMultiDenotation(d1: Denotation, d2: Denotation) =
       if ((d1 eq denot1) && (d2 eq denot2)) this else MultiDenotation(d1, d2)
@@ -343,13 +343,13 @@ object Denotations {
 
     def orElse(that: => SingleDenotation) = if (this.exists) this else that
 
-    def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[SingleDenotation] =
+    def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
       if (p(symbol)) this :: Nil else Nil
 
-    def suchThat(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation =
+    def suchThat(p: Symbol => Boolean): SingleDenotation =
       if (p(symbol)) this else NoDenotation
 
-    def hasAltWith(p: Symbol => Boolean)(implicit ctx: Context): Boolean =
+    def hasAltWith(p: Symbol => Boolean): Boolean =
       p(symbol)
 
     def atSignature(sig: Signature)(implicit ctx: Context): SingleDenotation =
@@ -482,14 +482,16 @@ object Denotations {
       derivedSingleDenotation(symbol, info.asSeenFrom(pre, symbol.owner))
   }
 
-  class UniqueRefDenotation(val symbol: Symbol,
+  class UniqueRefDenotation(
+    val symbol: Symbol,
     val info: Type,
     initValidFor: Period) extends SingleDenotation {
     validFor = initValidFor
     override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
   }
 
-  class JointRefDenotation(val symbol: Symbol,
+  class JointRefDenotation(
+    val symbol: Symbol,
     val info: Type,
     initValidFor: Period) extends SingleDenotation {
     validFor = initValidFor
