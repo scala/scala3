@@ -164,7 +164,7 @@ object Types {
      *  The set of refinement names in each alternative
      *  are the set of names in refinement types encountered during the collection.
      */
-    def DNF(implicit ctx: Context): Set[(Set[TypeRef], Set[Name])] = this match {
+    final def DNF(implicit ctx: Context): Set[(Set[TypeRef], Set[Name])] = this match {
       case tp: TypeRef =>
         if (tp.info.isAliasTypeBounds) tp.info.bounds.hi.DNF
         else Set((Set(tp), Set()))
@@ -199,8 +199,12 @@ object Types {
     final def isVolatile(implicit ctx: Context): Boolean =
       ctx.isVolatile(this)
 
-    /** Is this type guaranteed not to have `null` as a value? */
-    final def isNotNull: Boolean = false
+    /** Is this type guaranteed not to have `null` as a value?
+     *  For the moment this is only true for modules, but it could
+     *  be refined later.
+     */
+    final def isNotNull(implicit ctx: Context): Boolean =
+      widen.typeSymbol.isModuleClass
 
     /** Is this type produced as a repair for an error? */
     final def isError(implicit ctx: Context): Boolean =
@@ -214,6 +218,8 @@ object Types {
     final def exists(p: Type => Boolean): Boolean =
       new ExistsAccumulator(p)(false, this)
 
+    /** Returns true if all parts of this type that satisfy predicate `p`.
+     */
     final def forall(p: Type => Boolean): Boolean = !exists(!p(_))
 
     /** Substitute all types that refer in their symbol attribute to
@@ -245,7 +251,7 @@ object Types {
     final def substThis(rt: RefinedType, tp: Type)(implicit ctx: Context): Type =
       ctx.substThis(this, rt, tp, null)
 
-    /** Substitute all occurrences symbols in `from` by references to corresponding symbols in `to`
+    /** Substitute all occurrences of symbols in `from` by references to corresponding symbols in `to`
      */
     final def substSym(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): Type =
       ctx.substSym(this, from, to, null)
@@ -255,51 +261,30 @@ object Types {
      *  Overwritten in ClassInfo, where parents is cached.
      */
     def parents(implicit ctx: Context): List[TypeRef] = this match {
-      case tp: TypeProxy =>
-        tp.underlying.parents
-      case _ => List()
-    }
-
-    /** The elements of an AndType or OrType */
-    def factors(implicit ctx: Context): List[Type] = this match {
-      case tp: AndType =>
-        def components(tp: Type): List[Type] = tp match {
-          case AndType(tp1, tp2) => components(tp1) ++ components(tp2)
-          case _ => List(tp)
-        }
-        components(tp)
-      case tp: OrType =>
-        def components(tp: Type): List[Type] = tp match {
-          case OrType(tp1, tp2) => components(tp1) ++ components(tp2)
-          case _ => List(tp)
-        }
-        components(tp)
+      case tp: TypeProxy => tp.underlying.parents
       case _ => List()
     }
 
     /** If this is an alias type, its alias, otherwise the type itself */
-    def dealias(implicit ctx: Context): Type = this match {
+    final def dealias(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
-        val info = tp.info
-        if (info.isAliasTypeBounds) info.dealias else this
+        tp.info match {
+          case TypeBounds(lo, hi) if lo eq hi => hi.dealias
+          case _ => this
+        }
       case _ =>
         this
     }
 
     /** The parameter types of a PolyType or MethodType, Empty list for others */
-    def paramTypess: List[List[Type]] = this match {
+    final def paramTypess: List[List[Type]] = this match {
       case mt: MethodType => mt.paramTypes :: mt.resultType.paramTypess
       case pt: PolyType => pt.paramTypess
       case _ => Nil
     }
 
     /** The resultType of a PolyType, MethodType, or ExprType, the type itself for others */
-    def resultType: Type = this match {
-      case et: ExprType => et.resultType
-      case mt: MethodType => mt.resultType
-      case pt: PolyType => pt.resultType
-      case _ => this
-    }
+    def resultType: Type = this
 
     /** Map function over elements of an AndType, rebuilding with & */
     def mapAnd(f: Type => Type)(implicit ctx: Context): Type = this match {
@@ -308,7 +293,7 @@ object Types {
     }
 
     /** Map function over elements of an OrType, rebuilding with | */
-    def mapOr(f: Type => Type)(implicit ctx: Context): Type = this match {
+    final def mapOr(f: Type => Type)(implicit ctx: Context): Type = this match {
       case OrType(tp1, tp2) => tp1.mapOr(f) | tp2.mapOr(f)
       case _ => f(this)
     }
@@ -321,7 +306,7 @@ object Types {
      */
     final def normalizedPrefix(implicit ctx: Context): Type = this match {
       case tp: NamedType =>
-        if (tp.symbol.isAliasType) tp.info.normalizedPrefix else tp.prefix
+        if (tp.info.isAliasTypeBounds) tp.info.normalizedPrefix else tp.prefix
       case tp: ClassInfo =>
         tp.prefix
       case tp: TypeProxy =>
@@ -343,39 +328,37 @@ object Types {
         EmptyScope
     }
 
-    /** The declaration of this type with given name */
+    /** A denotation containing the declaration(s) in this type with the given name */
     final def decl(name: Name)(implicit ctx: Context): Denotation =
       findDecl(name, this, EmptyFlags)
 
-    /** The non-private declaration of this type with given name */
+    /** A denotation containing the non-private declaration(s) in this type with the given name */
     final def nonPrivateDecl(name: Name)(implicit ctx: Context): Denotation =
       findDecl(name, this, Flags.Private)
 
-    /** The non-private class member declaration of this type with given name */
+    /** A denotation containing the declaration(s) in this type with the given
+     *  name, as seen from prefix type `pre`. Declarations that have a flag
+     *  in `excluded` are omitted.
+     */
     final def findDecl(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: ClassInfo =>
-        tp.decls
-          .denotsNamed(name)
-          .filterAccessibleFrom(pre)
-          .filterExcluded(excluded)
-          .asSeenFrom(pre)
-          .toDenot
+        tp.decls.denotsNamed(name).filterAsSeenFrom(pre, excluded).toDenot
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, pre, excluded)
     }
 
-    /** The member of this type with given name  */
+    /** The member of this type with the given name  */
     final def member(name: Name)(implicit ctx: Context): Denotation =
       findMember(name, this, EmptyFlags)
 
-    /** The non-private member of this type with given name */
+    /** The non-private member of this type with the given name. */
     final def nonPrivateMember(name: Name)(implicit ctx: Context): Denotation =
       findMember(name, this, Flags.Private)
 
     /** Find member of this type with given name and
      *  produce a denotation that contains the type of the member
-     *  as seen from given prefix `pre`. Exclude all members with one
-     *  of the flags in `excluded` from consideration.
+     *  as seen from given prefix `pre`. Exclude all members that have
+     *  flags in `excluded` from consideration.
      */
     final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: RefinedType =>
@@ -387,14 +370,8 @@ object Types {
       case tp: TypeProxy =>
         tp.underlying.findMember(name, pre, excluded)
       case tp: ClassInfo =>
-        val cls = tp.cls
-        val candidates = cls.membersNamed(name)
-        val results = candidates
-          .filterAccessibleFrom(pre)
-          .filterExcluded(excluded)
-          .asSeenFrom(pre)
-        if (results.exists) results.toDenot
-        else new ErrorDenotation // todo: refine
+        val candidates = tp.cls.membersNamed(name)
+        candidates.filterAsSeenFrom(pre, excluded).toDenot
       case tp: AndType =>
         tp.tp1.findMember(name, pre, excluded) & tp.tp2.findMember(name, pre, excluded)
       case tp: OrType =>
@@ -828,7 +805,7 @@ object Types {
     override def loadDenot(implicit ctx: Context) = {
       val denot = fixedSym.denot
       val owner = denot.owner
-      if (owner.isTerm) denot else denot.asSeenFrom(prefix).toDenot
+      if (owner.isTerm) denot else denot.asSeenFrom(prefix)
     }
   }
 

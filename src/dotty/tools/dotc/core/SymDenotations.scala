@@ -520,6 +520,10 @@ object SymDenotations {
 
     // ----- type-related ------------------------------------------------
 
+    /** The denotation as seen from prefix type */
+    def asSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation =
+      derivedSingleDenotation(symbol, info.asSeenFrom(pre, owner))
+
     /** The type parameters of a class symbol, Nil for all other symbols */
     def typeParams(implicit ctx: Context): List[TypeSymbol] = Nil
 
@@ -766,8 +770,7 @@ object SymDenotations {
               case parentd: ClassDenotation =>
                 denots = denots union
                   parentd.membersNamed(name)
-                    .filterExcluded(Flags.Private)
-                    .asSeenFrom(thisType)
+                    .filterAsSeenFrom(thisType, Flags.Private)
                     .filterDisjoint(ownDenots)
               case _ =>
             }

@@ -474,12 +474,13 @@ object Denotations {
       signature == sig
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =
       if (denots.containsSig(signature)) NoDenotation else this
-    def filterExcluded(flags: FlagSet)(implicit ctx: Context): PreDenotation =
-      if (symbol is flags) NoDenotation else this
-    def filterAccessibleFrom(pre: Type)(implicit ctx: Context): PreDenotation =
-      if (symbol.isAccessibleFrom(pre)) this else NoDenotation
-    def asSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation =
-      derivedSingleDenotation(symbol, info.asSeenFrom(pre, symbol.owner))
+    def filterAsSeenFrom(pre: Type, excluded: FlagSet)(implicit ctx: Context): PreDenotation = {
+      val sym = symbol
+      if (!(sym is excluded) && sym.isAccessibleFrom(pre))
+        derivedSingleDenotation(symbol, info.asSeenFrom(pre, symbol.owner))
+      else
+        NoDenotation
+    }
   }
 
   class UniqueRefDenotation(
@@ -529,21 +530,12 @@ object Denotations {
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation
 
     /** Keep only those denotations in this group whose flags do not intersect
-     *  with given `flags`.
+     *  with given `excluded` and that are accessible from prefix `pre`.
+     *  Rewrite the infos to be as seen from `pre`.
      */
-    def filterExcluded(flags: FlagSet)(implicit ctx: Context): PreDenotation
+    def filterAsSeenFrom(pre: Type, excluded: FlagSet)(implicit ctx: Context): PreDenotation
 
-    /** Keep only those denotations in this group which are accessible from
-     *  type `pre`.
-     */
-    def filterAccessibleFrom(pre: Type)(implicit ctx: Context): PreDenotation
-
-    /** The denotations as seen from given prefix type `pre`.
-     *  @pre All denotations need to have an existing symbol.
-     */
-    def asSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation
-
-    /** The union of two groups. */
+   /** The union of two groups. */
     def union(that: PreDenotation) =
       if (!this.exists) that
       else if (that.exists) this
@@ -559,12 +551,8 @@ object Denotations {
       (denots1 containsSig sig) || (denots2 containsSig sig)
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1 filterDisjoint denots, denots2 filterDisjoint denots)
-    def filterExcluded(flags: FlagSet)(implicit ctx: Context): PreDenotation =
-      derivedUnion(denots1 filterExcluded flags, denots2 filterExcluded flags)
-    def filterAccessibleFrom(pre: Type)(implicit ctx: Context): PreDenotation =
-      derivedUnion(denots1 filterAccessibleFrom pre, denots2 filterAccessibleFrom pre)
-    def asSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation =
-      derivedUnion(denots1.asSeenFrom(pre), denots2.asSeenFrom(pre))
+    def filterAsSeenFrom(pre: Type, excluded: FlagSet)(implicit ctx: Context): PreDenotation =
+      derivedUnion(denots1.filterAsSeenFrom(pre, excluded), denots2.filterAsSeenFrom(pre, excluded))
     private def derivedUnion(denots1: PreDenotation, denots2: PreDenotation) =
       if ((denots1 eq this.denots1) && (denots2 eq this.denots2)) this
       else denots1 union denots2
