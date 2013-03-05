@@ -28,7 +28,7 @@ abstract class Platform {
   //def platformPhases: List[SubComponent]
 
   /** The various ways a boxed primitive might materialize at runtime. */
-  def isMaybeBoxed(sym: Symbol)(implicit ctx: Context): Boolean
+  def isMaybeBoxed(sym: ClassSymbol)(implicit ctx: Context): Boolean
 
   /** Create a new class loader to load class file `bin` */
   def newClassLoader(bin: AbstractFile)(implicit ctx: Context): SymbolLoader

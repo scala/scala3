@@ -4,22 +4,18 @@ import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
 
 trait TypeOps { this: Context =>
 
-  final def asSeenFrom(tp: Type, pre: Type, clazz: Symbol, theMap: AsSeenFromMap): Type = {
+  final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 
-    def skipPrefixOf(pre: Type, clazz: Symbol) =
-      (pre eq NoType) || (pre eq NoPrefix) || clazz.isPackageClass
-
-    def toPrefix(pre: Type, clazz: Symbol, thisclazz: ClassSymbol): Type =
-      if (skipPrefixOf(pre, clazz))
+    def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type =
+      if ((pre eq NoType) || (pre eq NoPrefix) || cls.isPackageClass)
         tp
-      else if ((thisclazz isNonBottomSubClass clazz) &&
-        (pre.widen.typeSymbol isNonBottomSubClass thisclazz))
+      else if (thiscls.isNonBottomSubClass(cls) && pre.baseType(thiscls).exists)
         pre match {
           case SuperType(thispre, _) => thispre
           case _ => pre
         }
       else
-        toPrefix(pre.baseType(clazz).normalizedPrefix, clazz.owner, thisclazz)
+        toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)
 
     tp match {
       case tp: NamedType =>
@@ -27,7 +23,7 @@ trait TypeOps { this: Context =>
         if (sym.isStatic) tp
         else {
           val pre0 = tp.prefix
-          val pre1 = asSeenFrom(pre0, pre, clazz, theMap)
+          val pre1 = asSeenFrom(pre0, pre, cls, theMap)
           if (pre1 eq pre0) tp
           else {
             val tp1 = NamedType(pre1, tp.name)
@@ -43,23 +39,23 @@ trait TypeOps { this: Context =>
             tp1
           }
         }
-      case ThisType(thisclazz) =>
-        toPrefix(pre, clazz, thisclazz)
+      case ThisType(thiscls) =>
+        toPrefix(pre, cls, thiscls)
       case _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
         tp.derivedRefinedType(
-            asSeenFrom(tp.parent, pre, clazz, theMap),
+            asSeenFrom(tp.parent, pre, cls, theMap),
             tp.refinedName,
-            asSeenFrom(tp.refinedInfo, pre, clazz, theMap))
+            asSeenFrom(tp.refinedInfo, pre, cls, theMap))
       case _ =>
-        (if (theMap != null) theMap else new AsSeenFromMap(pre, clazz))
+        (if (theMap != null) theMap else new AsSeenFromMap(pre, cls))
           .mapOver(tp)
     }
   }
 
-  class AsSeenFromMap(pre: Type, clazz: Symbol) extends TypeMap {
-    def apply(tp: Type) = asSeenFrom(tp, pre, clazz, this)
+  class AsSeenFromMap(pre: Type, cls: Symbol) extends TypeMap {
+    def apply(tp: Type) = asSeenFrom(tp, pre, cls, this)
   }
 
   final def isVolatile(tp: Type): Boolean = {

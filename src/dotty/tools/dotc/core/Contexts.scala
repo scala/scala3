@@ -300,7 +300,6 @@ object Contexts {
       override def hash(x: Type): Int = x.hash
     }
 
-    // Types state
     /** The number of recursive invocation of underlying on a NamedType */
     private[core] var underlyingRecursions: Int = 0
 

@@ -401,16 +401,8 @@ object Types {
      *      poly types.
      */
     def matches(that: Type)(implicit ctx: Context): Boolean =
-      ctx.typeComparer.matchesType(this, that, !ctx.phase.erasedTypes)
-
-    /** Does this type match that type
-     *
-     */
-
-    /** The info of `denot`, seen as a member of this type. */
-//    final def memberInfo(denot: SymDenotation)(implicit ctx: Context): Type = {
-//      denot.info.asSeenFrom(this, denot.owner)
-//    }
+      ctx.typeComparer.matchesType(
+        this, that, alwaysMatchSimple = !ctx.phase.erasedTypes)
 
     /** The info of `sym`, seen as a member of this type. */
     final def memberInfo(sym: Symbol)(implicit ctx: Context): Type = {
@@ -428,7 +420,7 @@ object Types {
      */
     final def widen(implicit ctx: Context): Type = this match {
       case tp: SingletonType => tp.underlying.widen
-      case tp: ExprType => tp.underlying.widen
+      case tp: ExprType => tp.resultType.widen
       case _ => this
     }
 
@@ -452,10 +444,14 @@ object Types {
       case _ => Nil
     }
 
+    /** This type seen as if it were the type of a member of prefix type `pre`
+     *  declared in class `cls`.
+     */
     final def asSeenFrom(pre: Type, cls: Symbol)(implicit ctx: Context): Type =
-      if ((cls is PackageClass) ||
-        ctx.erasedTypes && cls != defn.ArrayClass ||
-        (pre eq cls.thisType)) this
+      if (  (cls is PackageClass)
+         || ctx.erasedTypes && cls != defn.ArrayClass
+         || (pre eq cls.thisType)
+         ) this
       else ctx.asSeenFrom(this, pre, cls, null)
 
     /** The signature of this type. This is by default NotAMethod,
@@ -574,7 +570,7 @@ object Types {
     }
 
     final def isWrong: Boolean = !exists // !!! needed?
-    final def exists: Boolean = true
+    def exists: Boolean = true
 
     final def &(that: Type)(implicit ctx: Context): Type =
       ctx.glb(this, that)
@@ -1256,6 +1252,7 @@ object Types {
   case object NoType extends UncachedGroundType {
     def symbol = NoSymbol
     def info = NoType
+    override def exists = false
   }
 
   /** Cached for efficiency because hashing is faster */

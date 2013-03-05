@@ -28,7 +28,7 @@ class JavaPlatform extends Platform {
    *  to anything but other booleans, but it should be present in
    *  case this is put to other uses.
    */
-  def isMaybeBoxed(sym: Symbol)(implicit ctx: Context) = {
+  def isMaybeBoxed(sym: ClassSymbol)(implicit ctx: Context) = {
     val d = defn
     import d._
     (sym == ObjectClass) ||

@@ -295,11 +295,6 @@ object SymDenotations {
      */
     def isNonBottomSubClass(base: Symbol)(implicit ctx: Context) = false
 
-    /** Is this a subclass of `base` or a companion object of such a subclass? */
-    final def isSubClassOrCompanion(base: Symbol)(implicit ctx: Context): Boolean =
-      isNonBottomSubClass(base) ||
-      isModuleClass && linkedClass.isNonBottomSubClass(base)
-
     /** Is this symbol a class that does not extend `AnyVal`? */
     final def isNonValueClass(implicit ctx: Context): Boolean =
       isClass && !isSubClass(defn.AnyValClass)
@@ -345,10 +340,10 @@ object SymDenotations {
                |enclosing ${ctx.owner.enclosingClass.showLocated} is not a subclass of
                |${owner.showLocated} where target is defined""".stripMargin)
         else if (
-          !(isType || // allow accesses to types from arbitrary subclasses fixes #4737
-            pre.widen.typeSymbol.isSubClassOrCompanion(cls) ||
-            cls.isModuleClass &&
-              pre.widen.typeSymbol.isSubClassOrCompanion(cls.linkedClass)))
+          !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
+           || pre.baseType(cls).exists
+           || owner.isModuleClass // don't perform this check for static members
+           ))
           fail(
             s"""Access to protected ${symbol.show} not permitted because
                |prefix type ${pre.widen.show} does not conform to
@@ -800,8 +795,14 @@ object SymDenotations {
             case p :: ps1 => reduce(bt & baseTypeOf(p), ps1)
             case _ => bt
           }
-          if (tp.cls eq symbol) tp.typeConstructor
-          else tp.rebase(reduce(NoType, tp.classParents))
+          if (tp.cls eq symbol)
+            tp.typeConstructor
+          else if (tp.cls.classDenot.superClassBits contains symbol.superId)
+            tp.rebase(reduce(NoType, tp.classParents))
+          else
+            NoType
+        case _ =>
+          NoType
       }
 
       if (symbol.isStatic) symbol.typeConstructor
