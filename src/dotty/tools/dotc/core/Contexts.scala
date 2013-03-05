@@ -81,7 +81,7 @@ object Contexts {
     def typeComparer: TypeComparer = {
       if ((_typeComparer eq outer.typeComparer) &&
           (constraints ne outer.constraints))
-        _typeComparer = new TypeComparer(this)
+        _typeComparer = new TypeComparer()
       _typeComparer
     }
 
@@ -335,8 +335,13 @@ object Contexts {
   /** Initial capacity of uniques HashMap */
   private[core] final val initialUniquesCapacity = 50000
 
-  /** How many recursive calls to isVolatile are performed before
+  /** How many recursive calls to NamedType#underlying are performed before
    *  logging starts.
    */
-  private[core] final val LogUnderlyingThreshold = 50
+  private[core] final val LogPendingUnderlyingThreshold = 50
+
+  /** How many recursive calls to isSubType are performed before
+   *  logging starts.
+   */
+  private[core] final val LogPendingSubTypesThreshold = 50
 }

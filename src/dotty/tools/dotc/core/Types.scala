@@ -372,10 +372,10 @@ object Types {
       case tp: ClassInfo =>
         val candidates = tp.cls.membersNamed(name)
         candidates.filterAsSeenFrom(pre, excluded).toDenot
-      case tp: AndType =>
-        tp.tp1.findMember(name, pre, excluded) & tp.tp2.findMember(name, pre, excluded)
-      case tp: OrType =>
-        (tp.tp1.findMember(name, pre, excluded) | tp.tp2.findMember(name, pre, excluded))(pre)
+      case AndType(l, r) =>
+        l.findMember(name, pre, excluded) & r.findMember(name, pre, excluded)
+      case OrType(l, r) =>
+        (l.findMember(name, pre, excluded) | r.findMember(name, pre, excluded))(pre)
     }
 
     /** Is this type a subtype of that type? */
@@ -764,7 +764,7 @@ object Types {
 
     override def underlying(implicit ctx: Context): Type = try {
       ctx.underlyingRecursions += 1
-      if (ctx.underlyingRecursions < LogUnderlyingThreshold)
+      if (ctx.underlyingRecursions < LogPendingUnderlyingThreshold)
         info
       else if (ctx.pendingUnderlying(this))
         throw new CyclicReference(symbol)
