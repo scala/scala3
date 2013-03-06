@@ -31,9 +31,8 @@ object Decorators {
 
   final val MaxFilterRecursions = 1000
 
-  /** Implements a filterConserve method on lists that avoids
-   *  duplication of list nodes if all tests yield true. Works for lists
-   *  up to `MaxFilterRecursions` length.
+  /** Implements filterConserve, zipWithConserve methods
+   *  on lists that avoid dupliation of list nodes where feasible.
    */
   implicit class ListDecorator[T](val xs: List[T]) extends AnyVal {
 

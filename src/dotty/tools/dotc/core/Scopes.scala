@@ -49,6 +49,8 @@ object Scopes {
    *  MutableScope.
    */
   abstract class Scope extends Iterable[Symbol] {
+
+    /** The last scope-entry from which all others are reachable via `prev` */
     private[dotc] def lastEntry: ScopeEntry
 
     /** The number of symbols in this scope (including inherited ones
@@ -204,7 +206,7 @@ object Scopes {
       }
     }
 
-    /** remove entry from this scope. */
+    /** Remove entry from this scope (which is required to be present) */
     final def unlink(e: ScopeEntry)(implicit ctx: Context) {
       if (lastEntry == e) {
         lastEntry = e.prev
@@ -227,7 +229,7 @@ object Scopes {
       size -= 1
     }
 
-    /** remove symbol from this scope */
+    /** remove symbol from this scope if it is present */
     final def unlink(sym: Symbol)(implicit ctx: Context) {
       var e = lookupEntry(sym.name)
       while (e ne null) {
@@ -236,10 +238,7 @@ object Scopes {
       }
     }
 
-    /** lookup a symbol entry matching given name.
-     *  @note from Martin: I believe this is a hotspot or will be one
-     *  in future versions of the type system. I have reverted the previous
-     *  change to use iterators as too costly.
+    /** Lookup a symbol entry matching given name.
      */
     override final def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
       var e: ScopeEntry = null
@@ -263,11 +262,12 @@ object Scopes {
       if (hashTable ne null)
         do { e = e.tail } while ((e ne null) && e.sym.name != entry.sym.name)
       else
-        do { e = e.prev } while ((e ne null) && e.sym.name != entry.sym.name);
+        do { e = e.prev } while ((e ne null) && e.sym.name != entry.sym.name)
       e
     }
 
-    /** Return all symbols as a list in the order they were entered in this scope.
+    /** Returns all symbols as a list in the order they were entered in this scope.
+     *  Does _not_ include the elements of inherited scopes.
      */
     override final def toList: List[Symbol] = {
       if (elemsCache eq null) {
@@ -330,7 +330,7 @@ object Scopes {
     override def lookupNextEntry(entry: ScopeEntry)(implicit ctx: Context): ScopeEntry = null
   }
 
-  /** The error scope (mutable)
+  /** A class for error scopes (mutable)
    */
   class ErrorScope(owner: Symbol) extends MutableScope
 }
