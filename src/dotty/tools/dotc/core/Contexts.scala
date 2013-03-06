@@ -300,10 +300,13 @@ object Contexts {
       override def hash(x: Type): Int = x.hash
     }
 
-    /** The number of recursive invocation of underlying on a NamedType */
+    /** The number of recursive invocation of underlying on a NamedType
+     *  during a controlled operation.
+     */
     private[core] var underlyingRecursions: Int = 0
 
-    /** The set of named types on which a currently active invocation of underlying exists. */
+    /** The set of named types on which a currently active invocation
+     *  of underlying during a controlled operation exists. */
     private[core] val pendingUnderlying = new mutable.HashSet[Type]
 
     // Phases state

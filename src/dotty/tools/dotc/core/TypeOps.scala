@@ -58,7 +58,7 @@ trait TypeOps { this: Context =>
         tp.info match {
           case TypeBounds(lo, hi) =>
             if (lo eq hi) needsChecking(hi, isPart)
-            else isPart || isVolatile(hi)
+            else isPart || tp.controlled(isVolatile(hi))
           case _ => false
         }
       case tp: RefinedType =>
@@ -88,9 +88,7 @@ trait TypeOps { this: Context =>
 
   final def glb(tp1: Type, tp2: Type): Type =
     if (tp1 eq tp2) tp1
-    else if (tp1.isWrong) tp2
-    else if (tp2.isWrong) tp1
-    else tp2 match {
+    else tp2 match {  // normalize to disjunctive normal form if possible.
       case OrType(tp21, tp22) =>
         tp1 & tp21 | tp1 & tp22
       case _ =>
@@ -113,8 +111,6 @@ trait TypeOps { this: Context =>
 
   def lub(tp1: Type, tp2: Type): Type =
     if (tp1 eq tp2) tp1
-    else if (tp1.isWrong) tp1
-    else if (tp2.isWrong) tp2
     else {
       val t1 = mergeIfSuper(tp1, tp2)
       if (t1.exists) t1
@@ -128,11 +124,11 @@ trait TypeOps { this: Context =>
   final def lub(tps: List[Type]): Type =
     (defn.NothingType /: tps)(lub)
 
-  /** Merge `t1` into `tp2` if t1 is a subtype of some part of tp2.
+  /** Merge `t1` into `tp2` if t1 is a subtype of some &-summand of tp2.
    */
   private def mergeIfSub(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
     if (tp1 <:< tp2)
-      if (tp2 <:< tp1) tp2 else tp1
+      if (tp2 <:< tp1) tp2 else tp1 // keep existing type if possible
     else tp2 match {
       case tp2 @ AndType(tp21, tp22) =>
         val lower1 = mergeIfSub(tp1, tp21)
@@ -148,11 +144,11 @@ trait TypeOps { this: Context =>
         NoType
     }
 
-  /** Merge `tp1` into `tp2` if tp1 is a supertype of some part of tp2.
+  /** Merge `tp1` into `tp2` if tp1 is a supertype of some |-summand of tp2.
    */
   private def mergeIfSuper(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
     if (tp2 <:< tp1)
-      if (tp1 <:< tp2) tp2 else tp1
+      if (tp1 <:< tp2) tp2 else tp1 // keep existing type if possible
     else tp2 match {
       case tp2 @ OrType(tp21, tp22) =>
         val higher1 = mergeIfSuper(tp1, tp21)

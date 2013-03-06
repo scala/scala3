@@ -263,7 +263,10 @@ object SymDenotations {
     final def isSourceMethod = this is (Method, butNot = Accessor)
 
     /** Is this either not a method at all, or a parameterless method? */
-    final def isParameterless(implicit ctx: Context) = signature == NotAMethod
+    final def isParameterless(implicit ctx: Context) = info match {
+      case _: MethodType | _: PolyType => false
+      case _ => true
+    }
 
     /** Is this a setter? */
     final def isGetter = (this is Accessor) && !originalName.isSetterName
@@ -791,14 +794,14 @@ object SymDenotations {
         case OrType(tp1, tp2) =>
           baseTypeOf(tp1) | baseTypeOf(tp2)
         case tp: ClassInfo =>
-          def reduce(bt: Type, ps: List[Type]): Type = ps match {
-            case p :: ps1 => reduce(bt & baseTypeOf(p), ps1)
+          def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
+            case p :: ps1 => foldGlb(bt & baseTypeOf(p), ps1)
             case _ => bt
           }
           if (tp.cls eq symbol)
             tp.typeConstructor
           else if (tp.cls.classDenot.superClassBits contains symbol.superId)
-            tp.rebase(reduce(NoType, tp.classParents))
+            tp.rebase(foldGlb(NoType, tp.classParents))
           else
             NoType
         case _ =>

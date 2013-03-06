@@ -416,10 +416,11 @@ object Printers {
       try {
         tp match {
           case tp: RefinedType =>
-            val (tycon, args) = tp.splitArgs
+            val args = tp.typeArgs
             if (args.nonEmpty) {
-              if (tycon.typeParams.length == args.length) {
-                val cls = tycon.typeSymbol
+              val tycon = tp.unrefine
+              val cls = tycon.typeSymbol
+              if (cls.typeParams.length == args.length) {
                 if (cls == defn.RepeatedParamClass) return showLocal(args.head) + "*"
                 if (cls == defn.ByNameParamClass) return "=> " + showGlobal(args.head)
                 if (defn.FunctionClasses contains cls) return showFunction(args)

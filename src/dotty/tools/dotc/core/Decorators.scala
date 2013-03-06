@@ -36,6 +36,11 @@ object Decorators {
    *  up to `MaxFilterRecursions` length.
    */
   implicit class ListDecorator[T](val xs: List[T]) extends AnyVal {
+
+    /** Like `xs filter p` but returns list `xs` itself  - instead of a copy -
+     *  if `p` is true for all elements and `xs` is not longer
+     *  than `MaxFilterRecursions`.
+     */
     def filterConserve(p: T => Boolean): List[T] = {
       def loop(xs: List[T], nrec: Int): List[T] = xs match {
         case Nil => xs
@@ -50,6 +55,21 @@ object Decorators {
       }
       loop(xs, 0)
     }
+
+    /** Like `(xs, ys).zipped.map(f)`, but returns list `xs` itself
+     *  - instead of a copy - if function `f` maps all elements of
+     *  `xs` to themselves. Also, it is required that `ys` is at least
+     *  as long as `xs`.
+     */
+    def zipWithConserve[U](ys: List[U])(f: (T, U) => T): List[T] =
+      if (xs.isEmpty) xs
+      else {
+        val x1 = f(xs.head, ys.head)
+        val xs1 = xs.tail.zipWithConserve(ys.tail)(f)
+        if ((x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) &&
+            (xs1 eq xs.tail)) xs
+        else x1 :: xs1
+      }
   }
 
   /** Implements a test whether a list of strings representing phases contains

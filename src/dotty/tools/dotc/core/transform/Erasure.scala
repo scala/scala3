@@ -120,7 +120,7 @@ object Erasure {
   }
 
   def resultErasure(tp: Type)(implicit ctx: Context) =
-    if (tp.typeSymbol == defn.UnitClass) tp else erasure(tp)
+    if (tp.dealias.typeSymbol == defn.UnitClass) tp else erasure(tp)
 
   def removeLaterObjects(trs: List[TypeRef])(implicit ctx: Context): List[TypeRef] = trs match {
     case tr :: trs1 => tr :: (trs1 filter (_.typeSymbol != defn.ObjectClass))

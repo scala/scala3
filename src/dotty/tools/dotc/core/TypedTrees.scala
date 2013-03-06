@@ -579,16 +579,22 @@ object TypedTrees {
           check(args.head.tpe.typeSymbol == defn.RepeatedParamClass)
         case nme.unapply =>
           val rtp = funtpe.resultType
-          if (rtp == defn.BooleanType)
+          val rsym = rtp.typeSymbol
+          if (rsym == defn.BooleanClass)
             check(args.isEmpty)
           else {
-            val (tycon, resArgs) = rtp.splitArgs
-            check(tycon == defn.OptionType)
-            check(resArgs.length == 1)
-            val normArgs = {
-              val (tp1, args1) = resArgs.head.splitArgs
-              if (defn.TupleClasses contains tp1.typeSymbol) args1
-              else args.head :: Nil
+            check(rsym == defn.OptionClass)
+            val normArgs = rtp.typeArgs match {
+              case optionArg :: Nil =>
+                optionArg.typeArgs match {
+                  case Nil =>
+                    optionArg :: Nil
+                  case tupleArgs if defn.TupleClasses contains optionArg.typeSymbol =>
+                    tupleArgs
+                }
+              case _ =>
+                check(false)
+                Nil
             }
             check(sameLength(normArgs, args))
           }

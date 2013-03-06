@@ -36,8 +36,9 @@ object UnPickler {
    */
   def arrayToRepeated(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp @ MethodType(paramNames, paramTypes) =>
-      val (tycon, elemtp0 :: Nil) = paramTypes.last.splitArgs
-      assert(tycon.typeSymbol == defn.ArrayClass, tp)
+      val lastArg = paramTypes.last
+      assert(lastArg.typeSymbol == defn.ArrayClass)
+      val elemtp0 :: Nil = lastArg.typeArgs
       val elemtp = elemtp0 match {
         case AndType(t1, t2) if t1.typeSymbol.isAbstractType && t2.typeSymbol == defn.ObjectClass =>
           t1 // drop intersection with Object for abstract types in varargs. UnCurry can handle them.
