@@ -22,22 +22,15 @@ trait TypeOps { this: Context =>
         val sym = tp.symbol
         if (sym.isStatic) tp
         else {
-          val pre0 = tp.prefix
-          val pre1 = asSeenFrom(pre0, pre, cls, theMap)
-          if (pre1 eq pre0) tp
-          else {
-            val tp1 = NamedType(pre1, tp.name)
-            if (sym is TypeParam) {
-              // short-circuit instantiated type parameters
-              // by replacing pre.tp with its alias, if it has one.
-              tp1.info match {
-                case TypeBounds(lo, hi) if lo eq hi =>
-                  return hi
-                case _ =>
-              }
+          val tp1 = tp.derivedNamedType(asSeenFrom(tp.prefix, pre, cls, theMap))
+          if ((tp1 ne tp) && (sym is TypeParam))
+            // short-circuit instantiated type parameters
+            // by replacing pre.tp with its alias, if it has one.
+            tp1.info match {
+              case TypeBounds(lo, hi) if lo eq hi => hi
+              case _ => tp1
             }
-            tp1
-          }
+          else tp1
         }
       case ThisType(thiscls) =>
         toPrefix(pre, cls, thiscls)
