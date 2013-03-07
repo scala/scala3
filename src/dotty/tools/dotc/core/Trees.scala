@@ -30,7 +30,7 @@ object Trees {
    *   - Type checking an untyped tree will remove all embedded `TypedSplice`
    *     nodes.
    */
-  abstract class Tree[T] extends DotClass {
+  abstract class Tree[T] extends DotClass with Showable {
 
     /** The tree's position. Except
      *  for SharedTree nodes, it is always ensured that a tree's position
@@ -71,6 +71,9 @@ object Trees {
       tree.asInstanceOf[ThisTree[Type]]
     }
 
+    /** Does the tree have it's type field set? */
+    def hasType: Boolean = _tpe != null
+
     /** The denotation referred to by this tree, NoDenotation where not applicable */
     def denot(implicit ctx: Context): Denotation = NoDenotation
 
@@ -91,6 +94,8 @@ object Trees {
 
     /** Is this tree either the empty tree or the empty ValDef? */
     def isEmpty: Boolean = false
+
+    override def show(implicit ctx: Context) = ctx.show(this)
 
     override def hashCode(): Int = System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]

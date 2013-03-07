@@ -267,7 +267,7 @@ object Symbols {
 
   /** A Symbol represents a Scala definition/declaration or a package.
    */
-  class Symbol private[Symbols] (val coord: Coord) extends DotClass {
+  class Symbol private[Symbols] (val coord: Coord) extends DotClass with Showable {
 
     type ThisName <: Name
 

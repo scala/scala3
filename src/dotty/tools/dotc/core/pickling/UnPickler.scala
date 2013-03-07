@@ -457,7 +457,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
     if (tp1 exists isBound) {
       val tp2 = tp1.subst(boundSyms, boundSyms map (_ => defn.AnyType))
       cctx.warning(s"""failure to eliminate existential
-                       |original type    : $tp forSome {${cctx.show(boundSyms, "; ")}}
+                       |original type    : $tp forSome {${cctx.showDcls(boundSyms, "; ")}}
                        |reduces to       : $tp1
                        |type used instead: $tp2
                        |proceed at own risk.""".stripMargin)

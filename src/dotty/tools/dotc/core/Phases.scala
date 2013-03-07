@@ -33,12 +33,12 @@ object Phases {
       def name = "<no phase>"
       def run() { throw new Error("NoPhase.run") }
     }
-/*
-    object SomePhase extends Phase {
+
+    object SomePhase extends Phase(initialCtx) {
       def name = "<some phase>"
       def run() { throw new Error("SomePhase.run") }
     }
-*/
+
     def phaseNamed(name: String) =
       allPhases.find(_.name == name).getOrElse(NoPhase)
 

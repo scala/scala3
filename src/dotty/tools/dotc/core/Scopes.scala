@@ -48,7 +48,7 @@ object Scopes {
    *  or to delete them. These methods are provided by subclass
    *  MutableScope.
    */
-  abstract class Scope extends Iterable[Symbol] {
+  abstract class Scope extends Showable with Iterable[Symbol] {
 
     /** The last scope-entry from which all others are reachable via `prev` */
     private[dotc] def lastEntry: ScopeEntry
@@ -109,6 +109,8 @@ object Scopes {
 
     /** Cast this scope to a mutable scope */
     final def openForMutations: MutableScope = this.asInstanceOf[MutableScope]
+
+    final def show(implicit ctx: Context): String = ctx.show(this)
   }
 
   /** A subclass of Scope that defines methods for entering and
@@ -293,8 +295,6 @@ object Scopes {
       if (filtered eq unfiltered) this
       else newScopeWith(filtered: _*)
     }
-
-    final def show(implicit ctx: Context): String = ctx.show(this)
   }
 
   /** Create a new scope */

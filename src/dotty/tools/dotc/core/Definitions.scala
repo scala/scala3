@@ -172,11 +172,12 @@ class Definitions(implicit ctx: Context) {
     if (ctx.phase.erasedTypes) ctype else ctype.appliedTo(arg)
   }
 
+  /** The enumeration type, goven a value of the enumeration */
   def EnumType(sym: Symbol)(implicit ctx: Context) =
     // given (in java): "class A { enum E { VAL1 } }"
     //  - sym: the symbol of the actual enumeration value (VAL1)
     //  - .owner: the ModuleClassSymbol of the enumeration (object E)
-    //  - .linkedClassOfClass: the ClassSymbol of the enumeration (class E)
+    //  - .linkedClass: the ClassSymbol of the enumeration (class E)
     sym.owner.linkedClass.typeConstructor
 
   def FunctionType(args: List[Type], resultType: Type) =

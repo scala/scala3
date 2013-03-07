@@ -947,7 +947,7 @@ object SymDenotations {
         if (file != null) (s" in $file", file.toString)
         else ("", "the signature")
       cctx.error(
-        s"""|bad symbolic reference. A signature$location refers to ${cctx.showDetailed(denot.name)}
+        s"""|bad symbolic reference. A signature$location refers to ${cctx.fresh.withDebug.show(denot.name)}
             |in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.
             |It may be completely missing from the current classpath, or the version on
             |the classpath might be incompatible with the version used when compiling $src.""".stripMargin)

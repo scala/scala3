@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Types._, Symbols._, Contexts._, Scopes._, Names._, NameOps._, Flags._
-import Constants._, Annotations._, StdNames._, Denotations._
+import Constants._, Annotations._, StdNames._, Denotations._, Trees._
 import java.lang.Integer.toOctalString
 import scala.annotation.switch
 
@@ -30,11 +30,10 @@ object Printers {
 
   abstract class Printer {
 
-    /** Show name, same as name.toString + kind suffix if plain printer */
+    /** Show name with namespace suffix: /L for local names,
+     * /V for other term names, /T for type names
+     */
     def show(name: Name): String
-
-    /** Show name with "type" or "term" prefix */
-    def showDetailed(name: Name): String
 
     /** Show type in context with given precedence */
     def show(tp: Type, precedence: Precedence): String
@@ -61,7 +60,7 @@ object Printers {
     /** Show symbol's declaration */
     def showDcl(sym: Symbol): String
 
-    /** If symbol's owner is printable class C, the string "in C", otherwise "" */
+    /** If symbol's owner is a printable class C, the string "in C", otherwise "" */
     def showLocation(sym: Symbol): String
 
     /** Show symbol and its location */
@@ -71,16 +70,19 @@ object Printers {
     def show(denot: Denotation): String
 
     /** Show constant */
-    def show(const: Constant)
+    def show(const: Constant): String
 
     /** Show annotation */
     def show(annot: Annotation): String
 
     /** Show all symbols in given list separated by `sep`, using `showDcl` for each */
-    def show(syms: List[Symbol], sep: String): String
+    def showDcls(syms: List[Symbol], sep: String): String
 
-    /** Show all definitions in a scope usng `showDcl` for each */
+    /** Show all definitions in a scope using `showDcl` for each */
     def show(sc: Scope): String
+
+    /** Show tree */
+    def show[T](tree: Tree[T]): String
   }
 
   class PlainPrinter(_ctx: Context) extends Printer {
@@ -105,7 +107,7 @@ object Printers {
     }
 
     /** Concatenate strings separated by spaces */
-    protected def compose(ss: String*) = ss filter (_.nonEmpty) mkString " "
+    protected def compose(ss: String*) = ss.filter(_.nonEmpty).mkString(" ")
 
     /** If the name of the symbol's owner should be used when you care about
      *  seeing an interesting name: in such cases this symbol is e.g. a method
@@ -119,10 +121,11 @@ object Printers {
       || (sym.name == nme.PACKAGE)               // package
     )
 
-    def show(name: Name): String = name.showDetailed
-
-    def showDetailed(name: Name): String =
-      (if (name.isTypeName) "type " else "term ") + name
+    def show(name: Name): String = name.toString + {
+      (if (name.isLocalName) "/L"
+      else if (name.isTypeName) "/T"
+      else "/V")
+    }
 
     /** String representation of a name used in a refinement
      *  In refined printing this undoes type parameter expansion
@@ -133,7 +136,7 @@ object Printers {
     protected def showRefinement(rt: RefinedType) =
       showRefinementName(rt) + showRHS(rt.refinedInfo)
 
-    /** The longest sequence refinement types, starting at given type
+    /** The longest sequence of refinement types, starting at given type
      *  and following parents.
      */
     private def refinementChain(tp: Type): List[Type] =
@@ -149,7 +152,7 @@ object Printers {
         case tp: SingletonType =>
           val str = showPrefix(tp)
           if (str.endsWith(".")) str + "type"
-          else showFullName(tp.underlying.typeSymbol.skipPackageObject) + ".type"
+          else showFullName(tp.typeSymbol.skipPackageObject) + ".type"
         case TypeRef(pre, name) =>
           showPrefix(pre) + showName(tp.typeSymbol)
         case tp: RefinedType =>
@@ -225,12 +228,6 @@ object Printers {
     protected def trimPrefix(str: String) =
       str.stripPrefix(objectPrefix).stripPrefix(packagePrefix)
 
-    protected def isOmittablePrefix(sym: Symbol) =
-      (defn.UnqualifiedOwners contains sym) || isEmptyPrefix(sym)
-
-    protected def isEmptyPrefix(sym: Symbol) =
-      sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName
-
     /** The string representation of this type used as a prefix */
     protected def showPrefix(tp: Type): String = controlled {
       tp match {
@@ -253,6 +250,12 @@ object Printers {
       }
     }
 
+    protected def isOmittablePrefix(sym: Symbol) =
+      (defn.UnqualifiedOwners contains sym) || isEmptyPrefix(sym)
+
+    protected def isEmptyPrefix(sym: Symbol) =
+      sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName
+
     /** String representation of a definition's type following its name */
     protected def showRHS(tp: Type): String = controlled {
       tp match {
@@ -270,7 +273,7 @@ object Printers {
           val parentsStr = cparents.map(show(_, WithPrec)).mkString(" with ")
           val declsStr =
             if (decls.isEmpty) ""
-            else "\n  " + show(decls.toList, "\n  ")
+            else "\n  " + showDcls(decls.toList, "\n  ")
           s"""$parentsStr { $selfStr$declsStr
              |} at $preStr""".stripMargin
         case _ => ": " + showGlobal(tp)
@@ -367,11 +370,28 @@ object Printers {
 
     def show(annot: Annotation): String = s"@${annot.symbol.name}" // for now
 
-    def show(syms: List[Symbol], sep: String): String =
+    def showDcls(syms: List[Symbol], sep: String): String =
       syms map (_.showDcl) mkString sep
 
     def show(sc: Scope): String =
-      "Scope{\n" + show(sc.toList, ";\n  ") + "\n}"
+      "Scope{\n" + showDcls(sc.toList, ";\n  ") + "\n}"
+
+    def show[T](tree: Tree[T]): String = tree match {
+      case node: Product =>
+        def showElem(elem: Any) = elem match {
+          case elem: Showable => elem.show
+          case elem => elem.toString
+        }
+        val nodeName = node.productPrefix
+        val elems = node.productIterator.map(showElem).mkString(", ")
+        val tpSuffix =
+          if (ctx.settings.printtypes.value && tree.hasType) s" | ${tree.tpe}"
+          else ""
+
+        s"$nodeName($elems$tpSuffix)"
+      case _ =>
+        tree.toString
+    } // todo: override in refined printer
   }
 
   class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {

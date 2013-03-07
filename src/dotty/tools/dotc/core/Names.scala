@@ -4,6 +4,7 @@ package core
 import scala.io.Codec
 import util.NameTransformer
 import Decorators._
+import Contexts.Context
 import collection.IndexedSeqOptimized
 import collection.generic.CanBuildFrom
 import collection.mutable.{ Builder, StringBuilder }
@@ -32,6 +33,7 @@ object Names {
    */
   abstract class Name extends DotClass
     with PreName
+    with Showable
     with Seq[Char]
     with IndexedSeqOptimized[Char, Name] {
 
@@ -80,14 +82,7 @@ object Names {
 
     override def toString = new String(chrs, start, length)
 
-    /** Show name with namespace suffix: /L for local names,
-     * /V for other term names, /T for type names
-     */
-    def showDetailed: String = toString + {
-      (if (isLocalName) "/L"
-      else if (isTypeName) "/T"
-      else "/V")
-    }
+    def show(implicit ctx: Context): String = ctx.show(this)
 
     /** Write to UTF8 representation of this name to given character array.
      *  Start copying to index `to`. Return index of next free byte in array.

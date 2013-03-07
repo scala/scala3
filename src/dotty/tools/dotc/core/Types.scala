@@ -60,7 +60,7 @@ object Types {
    *                       +- ErrorType
    *                       +- WildcardType
    */
-  abstract class Type extends DotClass {
+  abstract class Type extends DotClass with Showable {
 
 // ----- Tests -----------------------------------------------------
 

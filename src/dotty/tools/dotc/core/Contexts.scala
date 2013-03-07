@@ -197,7 +197,6 @@ object Contexts {
    */
   abstract class FreshContext extends CondensedContext {
     def withPeriod(period: Period): this.type = { this.period = period; this }
-    def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
     def withConstraints(constraints: Constraints): this.type = { this.constraints = constraints; this }
     def withPosition(position: Position): this.type = { this.position = position; this }
     def withPlainPrinter(printer: Context => Printer): this.type = { this.plainPrinter = printer; this }
@@ -207,6 +206,14 @@ object Contexts {
     def withTree(tree: Tree): this.type = { this.tree = tree; this }
     def withReporter(reporter: Reporter): this.type = { this.reporter = reporter; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
+
+    def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
+
+    def withSetting[T](setting: Setting[T], value: T): this.type =
+      withSettings(setting.updateIn(sstate, value))
+
+    def withDebug = withSetting(base.settings.debug, true)
+
   }
 
   /** A class defining the initial context with given context base
