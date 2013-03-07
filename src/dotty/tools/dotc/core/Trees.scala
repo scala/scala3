@@ -12,9 +12,8 @@ object Trees {
     annotations: List[Tree[T]] = Nil)
 
   /** Trees take a parameter indicating what the type of their `tpe` field
-   *  is. Two choices: `Types.Type` or `missing.Type`.
-   *  Untyped trees have type `Tree[missing.Type]`. Because `missing.Type`
-   *  is a completely abstract type, there's nothing one can do with it.
+   *  is. Two choices: `Type` or `Nothing`.
+   *  Untyped trees have type `Tree[Nothing]`.
    *
    *  Tree typing uses a copy-on-write implementation:
    *
@@ -23,11 +22,9 @@ object Trees {
    *     the existing tree transparently, assigning its `tpe` field,
    *     provided it was `null` before.
    *   - It is impossible to embed untyped trees in typed ones.
-   *   - It is possible to embed typed trees in untyped ones. In fact
-   *     there is an implicit conversion from `Tree[Types.Type]` to
-   *     `Tree[missing.Type]` which wraps the typed tree in a
-   *     `TypedSplice` node.
-   *   - Type checking an untyped tree will remove all embedded `TypedSplice`
+   *   - Typed trees can be embedded untyped ones provided they are rooted
+   *     in a TypedSplice node.
+   *   - Type checking an untyped tree should remove all embedded `TypedSplice`
    *     nodes.
    */
   abstract class Tree[T] extends DotClass with Showable {
@@ -38,13 +35,13 @@ object Trees {
      */
     def pos: Position
 
-    /** The typeconstructor at the root of the tree */
+    /** The type  constructor at the root of the tree */
     type ThisTree[T] <: Tree[T]
 
     private var _tpe: T = _
 
     /** The type of the tree. In case of an untyped tree,
-     *   an UnAssignedTypeException is thrown.
+     *   an UnAssignedTypeException is thrown. (Overridden by empty trees)
      */
     def tpe: T = {
       if (_tpe == null) throw new UnAssignedTypeException(this)
@@ -54,13 +51,13 @@ object Trees {
     /** Copy `tpe` attribute from tree `from` into this tree, independently
      *  whether it is null or not.
      */
-    def copyAttr(from: Tree[T]): ThisTree[T] = {
+    final def copyAttr(from: Tree[T]): ThisTree[T] = {
       _tpe = from._tpe
       this.asInstanceOf[ThisTree[T]]
     }
 
     /** Return a typed tree that's isomorphic to this tree, but has given
-     *  type.
+     *  type. (Overridden by empty trees)
      */
     def withType(tpe: Type): ThisTree[Type] = {
       val tree =
@@ -71,14 +68,21 @@ object Trees {
       tree.asInstanceOf[ThisTree[Type]]
     }
 
-    /** Does the tree have it's type field set? */
-    def hasType: Boolean = _tpe != null
+    /** Does the tree have its type field set? Note: this operation is not
+     *  referentially transparent, because it can observe the withType
+     *  modifications. Should be used only in special circumstances (we
+     *  need it for printing trees with optional type info).
+     */
+    final def hasType: Boolean = _tpe != null
 
-    /** The denotation referred to by this tree, NoDenotation where not applicable */
+    /** The denotation referred to by this tree.
+     *  Defined for `DenotingTree`s and `ProxyTree`s, NoDenotation for other
+     *  kinds of trees
+     */
     def denot(implicit ctx: Context): Denotation = NoDenotation
 
-    /** The symbol defined by ot referred to by this tree, NoSymbol where not applicable */
-    def symbol(implicit ctx: Context): Symbol = NoSymbol
+    /** Shorthand for `denot.symbol`. */
+    final def symbol(implicit ctx: Context): Symbol = denot.symbol
 
     /** Does this tree represent a type? */
     def isType: Boolean = false
@@ -134,33 +138,28 @@ object Trees {
     override def isPattern = true
   }
 
-  /** Tree's symbol can be derived from its type */
-  abstract class SymTree[T] extends Tree[T] {
-    type ThisTree[T] <: SymTree[T]
+  /** Tree's denotation can be derived from its type */
+  abstract class DenotingTree[T] extends Tree[T] {
+    type ThisTree[T] <: DenotingTree[T]
     override def denot(implicit ctx: Context) = tpe match {
       case tpe: NamedType => tpe.denot
       case _ => NoDenotation
     }
-    override def symbol(implicit ctx: Context): Symbol = tpe match {
-      case tpe: Type => if (isType) tpe.typeSymbol else tpe.termSymbol
-      case _ => NoSymbol
-    }
   }
 
-  /** Tree's symbol/isType/isTerm properties come from a subtree identified
-   *  by `forwardTo`.
+  /** Tree's denot/symbol/isType/isTerm properties come from a subtree
+   *  identified by `forwardTo`.
    */
   abstract class ProxyTree[T] extends Tree[T] {
     type ThisTree[T] <: ProxyTree[T]
     def forwardTo: Tree[T]
     override def denot(implicit ctx: Context): Denotation = forwardTo.denot
-    override def symbol(implicit ctx: Context): Symbol = forwardTo.symbol
     override def isTerm = forwardTo.isTerm
     override def isType = forwardTo.isType
   }
 
   /** Tree has a name */
-  abstract class NameTree[T] extends SymTree[T] {
+  abstract class NameTree[T] extends DenotingTree[T] {
     type ThisTree[T] <: NameTree[T]
     def name: Name
   }
@@ -174,7 +173,7 @@ object Trees {
   }
 
   /** Tree defines a new symbol */
-  trait DefTree[T] extends SymTree[T] {
+  trait DefTree[T] extends DenotingTree[T] {
     type ThisTree[T] <: DefTree[T]
     override def isDef = true
   }
@@ -198,7 +197,7 @@ object Trees {
 
   /** qual.this */
   case class This[T](qual: TypeName)(implicit cpos: Position)
-    extends SymTree[T] with TermTree[T] {
+    extends DenotingTree[T] with TermTree[T] {
     type ThisTree[T] = This[T]
     val pos = cpos
   }
@@ -337,14 +336,14 @@ object Trees {
 
   /** A type tree that represents an existing or inferred type */
   case class TypeTree[T](original: Tree[T] = EmptyTree[T])(implicit cpos: Position)
-    extends SymTree[T] with TypTree[T] {
+    extends DenotingTree[T] with TypTree[T] {
     type ThisTree[T] = TypeTree[T]
     val pos = cpos union original.pos
   }
 
   /** ref.type */
   case class SingletonTypeTree[T](ref: Tree[T])(implicit cpos: Position)
-    extends SymTree[T] with TypTree[T] {
+    extends DenotingTree[T] with TypTree[T] {
     type ThisTree[T] = SingletonTypeTree[T]
     val pos = cpos union ref.pos
   }
@@ -461,7 +460,7 @@ object Trees {
    *  an untyped `Pair` `name => rename`
    */
   case class Import[T](expr: Tree[T], selectors: List[UntypedTree])(implicit cpos: Position)
-    extends SymTree[T] {
+    extends DenotingTree[T] {
     type ThisTree[T] = Import[T]
     val pos = unionPos(cpos union expr.pos, selectors)
   }
@@ -514,11 +513,10 @@ object Trees {
    *  polluting containing trees. Accumulators and tranformers
    *  memoize results of shared subtrees
    */
-  case class SharedTree[T](shared: Tree[T]) extends Tree[T] {
+  case class SharedTree[T](shared: Tree[T]) extends ProxyTree[T] {
     type ThisTree[T] = SharedTree[T]
+    def forwardTo: Tree[T] = shared
     val pos = NoPosition
-    override val isTerm = shared.isTerm
-    override val isType = shared.isType
   }
 
   // ----- Tree cases that exist in untyped form only ------------------

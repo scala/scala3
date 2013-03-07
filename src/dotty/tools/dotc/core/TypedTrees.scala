@@ -13,7 +13,7 @@ object TypedTrees {
     type TypTree = Trees.TypTree[Type]
     type TermTree = Trees.TermTree[Type]
     type PatternTree = Trees.PatternTree[Type]
-    type SymTree = Trees.SymTree[Type]
+    type DenotingTree = Trees.DenotingTree[Type]
     type ProxyTree = Trees.ProxyTree[Type]
     type NameTree = Trees.NameTree[Type]
     type RefTree = Trees.RefTree[Type]

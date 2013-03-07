@@ -11,15 +11,27 @@ object Positions {
 
   private val StartEndBits = 26
   private val StartEndMask = (1 << StartEndBits) - 1
+  private val PointOffsetLimit = 1L << (64 - StartEndBits * 2)
 
   class Position(val coords: Long) extends AnyVal {
     def point: Int = start + (coords >>> (StartEndBits * 2)).toInt
     def start: Int = (coords & StartEndMask).toInt
     def end: Int = ((coords >>> StartEndBits) & StartEndMask).toInt
+
+    /** The union of two positions. Tries to keep the point offset of
+     *  the first positon if within range. Otherwise, pointoffset will be 0.
+     */
     def union(that: Position) =
-      if (this == NoPosition) that
-      else if (that == NoPosition) this
-      else Position(this.start min that.start, this.end max that.end)
+      if (!this.exists) that
+      else if (!that.exists) this
+      else {
+        val start = this.start min that.start
+        val end = this.end max that.end
+        var pointOffset = this.point - start
+        if (pointOffset >= PointOffsetLimit) pointOffset = 0
+        Position(start, end, pointOffset)
+      }
+
     def exists = this != NoPosition
   }
 
