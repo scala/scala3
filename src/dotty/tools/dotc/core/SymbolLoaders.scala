@@ -18,7 +18,8 @@ import pickling.ClassfileParser
 /** A base class for Symbol loaders with some overridable behavior  */
 class SymbolLoaders {
 
-  protected def enterIfNew(owner: Symbol, member: Symbol, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
+  protected def enterNew(owner: Symbol, member: Symbol, completer: SymbolLoader)
+      (implicit ctx: Context): Symbol = {
     assert(owner.info.decls.lookup(member.name) == NoSymbol, owner.fullName + "." + member.name)
     owner.asClass.enter(member)
     member
@@ -28,14 +29,14 @@ class SymbolLoaders {
    */
   def enterClass(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context): Symbol = {
     val cls = ctx.newClassSymbol(owner, name.toTypeName, flags, completer, assocFile = completer.sourceFileOrNull)
-    enterIfNew(owner, cls, completer)
+    enterNew(owner, cls, completer)
   }
 
   /** Enter module with given `name` into scope of `owner`.
    */
   def enterModule(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context): Symbol = {
     val module = ctx.newModuleSymbol(owner, name.toTermName, flags, completer, assocFile = completer.sourceFileOrNull)
-    enterIfNew(owner, module, completer)
+    enterNew(owner, module, completer)
   }
 
   /** Enter package with given `name` into scope of `owner`
@@ -151,9 +152,10 @@ class SymbolLoaders {
   }
 
   def openPackageModule(container: Symbol, dest: ClassSymbol)(implicit ctx: Context) {
+    def isImportable(sym: Symbol) = !(sym is Private) && !sym.isConstructor
     // unlink existing symbols in the package
     for (member <- container.info.decls.iterator) {
-      if (!(member is Private) && !member.isConstructor) {
+      if (isImportable(member)) {
         // todo: handle overlapping definitions in some way: mark as errors
         // or treat as abstractions. For now the symbol in the package module takes precedence.
         for (existing <- dest.info.decl(member.name).alternatives)
@@ -162,7 +164,7 @@ class SymbolLoaders {
     }
     // enter non-private decls in the class
     for (member <- container.info.decls.iterator) {
-      if (!(member is Private) && !member.isConstructor) {
+      if (isImportable(member)) {
         dest.enter(member)
       }
     }
@@ -174,10 +176,9 @@ class SymbolLoaders {
     }
   }
 }
+
 /** A lazy type that completes itself by calling parameter doComplete.
  *  Any linked modules/classes or module classes are also initialized.
- *  Todo: consider factoring out behavior from TopClassCompleter/SymbolLoader into
- *  supertrait SymLoader
  */
 abstract class SymbolLoader extends LazyType {
   implicit val cctx: CondensedContext
