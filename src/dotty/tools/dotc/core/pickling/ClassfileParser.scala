@@ -32,15 +32,14 @@ class ClassfileParser(
 
   protected var currentClassName: Name = _      // JVM name of the current class
   protected var classTParams = Map[Name,Symbol]()
-  protected var srcfile0 : Option[AbstractFile] = None //needs fleshing out
+  protected var srcfile0 : Option[AbstractFile] = None //needs fleshing out; this is presumably for the source file attribute, but it is neither set nor used anywhere.
 
   def srcfile = srcfile0
 
   private def currentIsTopLevel = !(classRoot.name contains '$')
 
-  private def mismatchError(c: Symbol) = {
-    throw new IOException("class file '%s' has location not matching its contents: contains ".format(in.file) + c)
-  }
+  private def mismatchError(c: Symbol) =
+    throw new IOException(s"class file '${in.file}' has location not matching its contents: contains $c")
 
   def run(): Unit = try {
     cctx.debuglog("[class] >> " + classRoot.fullName)
@@ -108,13 +107,14 @@ class ClassfileParser(
       superType :: ifaces
     }
 
-    var classInfo: Type = TempClassInfoType(parseParents, instanceScope, classRoot.symbol) // might be overridden by later parseAttributes
+    var classInfo: Type = TempClassInfoType(parseParents, instanceScope, classRoot.symbol)
+      // might be reassigned by later parseAttributes
     val staticInfo = TempClassInfoType(List(), staticScope, moduleRoot.symbol)
 
     enterOwnInnerClasses
 
     classRoot.flags = sflags
-    moduleRoot.flags = Flags.JavaDefined
+    moduleRoot.flags = Flags.JavaDefined | Flags.ModuleClassCreationFlags
     setPrivateWithin(classRoot, jflags)
     setPrivateWithin(moduleRoot, jflags)
 
@@ -153,6 +153,9 @@ class ClassfileParser(
     if (!(sflags is Flags.Private) || name == nme.CONSTRUCTOR || settings.optimise.value)
       cctx.newSymbol(
         getOwner(jflags), name, sflags, memberCompleter, coord = start).entered
+    // skip rest of member for now
+    in.nextChar // info
+    skipAttributes
   }
 
   val memberCompleter = new LazyType {
@@ -712,10 +715,7 @@ class ClassfileParser(
 
   private def setPrivateWithin(denot: SymDenotation, jflags: Int) {
     if ((jflags & (JAVA_ACC_PRIVATE | JAVA_ACC_PUBLIC)) == 0)
-      // See ticket #1687 for an example of when topLevelClass is NoSymbol: it
-      // apparently occurs when processing v45.3 bytecode.
-      if (denot.topLevelClass != NoSymbol)
-        denot.privateWithin = denot.topLevelClass.owner
+      denot.privateWithin = denot.enclosingPackage
   }
 
   private def isPrivate(flags: Int)     = (flags & JAVA_ACC_PRIVATE) != 0
