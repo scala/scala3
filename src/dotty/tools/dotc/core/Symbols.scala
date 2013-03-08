@@ -28,7 +28,7 @@ trait Symbols { this: Context =>
    *  it's debug-friendlier not to create an anonymous class here.
    */
   def newNakedSymbol[N <: Name](coord: Coord = NoCoord): Symbol { type ThisName = N } =
-    new Symbol(coord).asInstanceOf
+    new Symbol(coord).asInstanceOf[Symbol { type ThisName = N }]
 
   /** Create a class symbol without a denotation. */
   def newNakedClassSymbol(coord: Coord = NoCoord, assocFile: AbstractFile = null) =
