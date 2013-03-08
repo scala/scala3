@@ -63,7 +63,12 @@ object Settings {
 
     def updateIn(state: SettingsState, x: Any): SettingsState = x match {
       case _: T => state.update(idx, x)
-      case _ => throw new ClassCastException("illegal argument")
+      case _ =>
+        // would like to do:
+        // throw new ClassCastException(s"illegal argument, found: $x of type ${x.getClass}, required: ${implicitly[ClassTag[T]]}")
+        // but this runs afoul of primitive types. Concretely: if T is Boolean, then x is a boxed Boolean and the test will fail.
+        // Maybe this is a bug in Scala 2.10?
+        state.update(idx, x.asInstanceOf[T])
     }
 
     def isDefaultIn(state: SettingsState) = valueIn(state) == default
