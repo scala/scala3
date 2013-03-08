@@ -147,7 +147,7 @@ object Trees {
     }
   }
 
-  /** Tree's denot/symbol/isType/isTerm properties come from a subtree
+  /** Tree's denot/isType/isTerm properties come from a subtree
    *  identified by `forwardTo`.
    */
   abstract class ProxyTree[T] extends Tree[T] {
@@ -329,7 +329,7 @@ object Trees {
 
   /** Array[elemtpt](elems) */
   case class SeqLiteral[T](elemtpt: Tree[T], elems: List[Tree[T]])(implicit cpos: Position)
-    extends   Tree[T] {
+    extends Tree[T] {
     type ThisTree[T] = SeqLiteral[T]
     val pos = unionPos(cpos union elemtpt.pos, elems)
   }
@@ -401,14 +401,14 @@ object Trees {
 
   /** tree_1 | ... | tree_n */
   case class Alternative[T](trees: List[Tree[T]])(implicit cpos: Position)
-    extends Tree[T] with PatternTree[T] {
+    extends PatternTree[T] {
     type ThisTree[T] = Alternative[T]
     val pos = unionPos(cpos, trees)
   }
 
   /** fun(args) in a pattern, if fun is an extractor */
   case class UnApply[T](fun: Tree[T], args: List[Tree[T]])(implicit cpos: Position)
-    extends Tree[T] with PatternTree[T] {
+    extends PatternTree[T] {
     type ThisTree[T] = UnApply[T]
     val pos = unionPos(cpos union fun.pos, args)
   }
@@ -497,7 +497,7 @@ object Trees {
   private object theEmptyTree extends EmptyTree[Nothing]
 
   object EmptyTree {
-    def apply[T]: EmptyTree[T] = theEmptyTree.asInstanceOf
+    def apply[T]: EmptyTree[T] = theEmptyTree.asInstanceOf[EmptyTree[T]]
   }
 
   class EmptyValDef[T] extends ValDef[T](
@@ -506,7 +506,7 @@ object Trees {
   private object theEmptyValDef extends EmptyValDef[Nothing]
 
   object EmptyValDef {
-    def apply[T]: EmptyValDef[T] = theEmptyValDef.asInstanceOf
+    def apply[T]: EmptyValDef[T] = theEmptyValDef.asInstanceOf[EmptyValDef[T]]
   }
 
   /** A tree that can be shared without its position
