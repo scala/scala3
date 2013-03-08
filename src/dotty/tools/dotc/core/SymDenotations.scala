@@ -549,6 +549,16 @@ object SymDenotations {
       else if (this is Contravariant) -1
       else 0
 
+    override def toString = {
+      val kindString =
+        if (isModuleClass) "module class"
+        else if (isClass) "class"
+        else if (isType) "type"
+        else if (isModule) "module"
+        else "val"
+      s"$kindString $name"
+    }
+
     // ----- copies ------------------------------------------------------
 
     override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
