@@ -29,7 +29,7 @@ object Phases {
 
     lazy val allPhases = phases.slice(FirstPhaseId, nphases)
 
-    val NoPhase = new Phase(initialCtx) {
+    object NoPhase extends Phase(initialCtx) {
       def name = "<no phase>"
       def run() { throw new Error("NoPhase.run") }
     }
