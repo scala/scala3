@@ -261,7 +261,7 @@ trait Symbols { this: Context =>
 
   def requiredClass(path: PreName): ClassSymbol = {
     val pathName = path.toTypeName
-    val sym = base.staticRef(pathName).requiredSymbol(_.isClass, pathName).asClass
+    base.staticRef(pathName).requiredSymbol(_.isClass, pathName).asClass
   }
 
   def requiredModule(path: PreName): TermSymbol = {

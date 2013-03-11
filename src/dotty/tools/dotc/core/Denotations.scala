@@ -182,12 +182,12 @@ object Denotations {
      *  Throw a `TypeError` if predicate fails to disambiguate symbol.
      *  Return a stubsymbol if no alternative satisfies the predicate.
      */
-    def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null)(implicit ctx: Context): Symbol = {
+    def requiredSymbol(p: Symbol => Boolean, name: Name, source: AbstractFile = null)(implicit ctx: Context): Symbol = {
       val sym = disambiguate(p).symbol
       if (sym.exists) sym else {
         val firstSym = ((NoSymbol: Symbol) /: alternatives.map(_.symbol)) (_ orElse _)
         val owner = if (firstSym.exists) firstSym.owner else NoSymbol
-        ctx.newStubSymbol(owner, firstSym.name, source)
+        ctx.newStubSymbol(owner, name, source)
       }
     }
 
@@ -405,6 +405,9 @@ object Denotations {
       val valid = _validFor
       def bringForward(): Unit = {
         this match {
+          case NoDenotation =>
+            validFor = Period(currentPeriod.runId, validFor.firstPhaseId, validFor.lastPhaseId)
+            return
           case denot: SymDenotation =>
             val top = denot.topLevelSym
             if (top.owner.info.decl(top.name).symbol == top) {
@@ -576,7 +579,7 @@ object Denotations {
           val result = owner.info.member(name)
           if (result.exists) result
           else {
-            val alt = missingHook(owner.symbol, name)
+            val alt = missingHook(owner.symbol.moduleClass, name)
             if (alt.exists) alt.denot
             else result
           }
