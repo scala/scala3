@@ -15,7 +15,8 @@ trait Reporting { this: Context =>
   def inform(msg: String, pos: Position = NoPosition): Unit = reporter.info(msg, pos)
 
   def log(msg: => String)(implicit ctx: Context): Unit =
-    if (this.settings.log.value.containsPhase(phase))
+    if (true || // !!! for now
+        this.settings.log.value.containsPhase(phase))
       inform(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg")
 
   def debuglog(msg: => String)(implicit ctx: Context): Unit =

@@ -221,7 +221,7 @@ object Contexts {
    */
   private class InitialContext(val base: ContextBase, settings: SettingGroup) extends FreshContext {
     outer = NoContext
-    period = Nowhere
+    period = InitialPeriod
     constraints = Map()
     position = NoPosition
     plainPrinter = new PlainPrinter(_)
@@ -249,7 +249,11 @@ object Contexts {
     val settings = new ScalaSettings
 
     /** The initial context */
-    val initialCtx: Context = new InitialContext(this, settings)
+    val initialCtx: Context =
+      new InitialContext(this, settings)
+        .withSetting(settings.verbose, true) // !!! for now
+        .withSetting(settings.debug, true)
+        .withSetting(settings.Ylogcp, true)
 
     /** The symbol loaders */
     val loaders = new SymbolLoaders
@@ -258,7 +262,10 @@ object Contexts {
     val platform: Platform = new JavaPlatform
 
     /** The loader that loads the members of _root_ */
-    def rootLoader(implicit ctx: Context): SymbolLoader = platform.rootLoader
+    def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)
+
+    NoPhase // initialize some phases
+    SomePhase // TODO: Is there a cleaner way to do this?
 
     /** The standard definitions */
     val definitions = new Definitions()(initialCtx)

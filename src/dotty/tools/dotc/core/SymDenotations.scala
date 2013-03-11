@@ -11,7 +11,7 @@ import scala.reflect.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import annotation.tailrec
 
-trait SymDenotations {
+trait SymDenotations { this: Context =>
   import SymDenotations._
 
   /** Factory method for SymDenotion creation. All creations
@@ -23,10 +23,13 @@ trait SymDenotations {
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol = NoSymbol)(implicit ctx: Context): SymDenotation =
-    if (symbol.isClass) new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
-    else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
-
+    initPrivateWithin: Symbol = NoSymbol)(implicit ctx: Context): SymDenotation = {
+    val result =
+      if (symbol.isClass) new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+      else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+    result.validFor = stablePeriod
+    result
+  }
 }
 object SymDenotations {
 
@@ -79,7 +82,7 @@ object SymDenotations {
     }
 
     private def completedInfo(completer: LazyType): Type = {
-      if (_flags is CompletionStarted) throw new CyclicReference(symbol)
+      if (_flags is CompletionStarted) throw new CyclicReference(this)
       _flags |= CompletionStarted
       completer.complete(this)
       info
@@ -374,6 +377,15 @@ object SymDenotations {
       }
     }
 
+    /** Do members of this symbol need translation via asSeenFrom when
+     *  accessed via prefix `pre`?
+     */
+    def membersNeedAsSeenFrom(pre: Type)(implicit ctx: Context) =
+      !(  (this is PackageClass)
+       || ctx.erasedTypes && symbol != defn.ArrayClass
+       || (pre eq thisType)
+       )
+
     //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
     //    def isSkolem: Boolean = ???
 
@@ -558,6 +570,8 @@ object SymDenotations {
         else "val"
       s"$kindString $name"
     }
+
+    val debugString = toString+"#"+symbol.id // !!! DEBUG
 
     // ----- copies ------------------------------------------------------
 
@@ -887,6 +901,7 @@ object SymDenotations {
     override def isTerm = false
     override def isType = false
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
+    validFor = Period.allInRun(NoRunId) // will be brought forward automatically
   }
 
   // ---- Completion --------------------------------------------------------

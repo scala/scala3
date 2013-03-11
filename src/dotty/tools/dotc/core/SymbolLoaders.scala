@@ -42,8 +42,8 @@ class SymbolLoaders {
   /** Enter package with given `name` into scope of `owner`
    *  and give them `completer` as type.
    */
-  def enterPackage(owner: Symbol, name: PreName, completer: SymbolLoader)(implicit ctx: Context): Symbol = {
-    val pname = name.toTermName
+  def enterPackage(owner: Symbol, pkg: ClassPath)(implicit ctx: CondensedContext): Symbol = {
+    val pname = pkg.name.toTermName
     val preExisting = owner.info.decls lookup pname
     if (preExisting != NoSymbol) {
       // Some jars (often, obfuscated ones) include a package and
@@ -53,7 +53,7 @@ class SymbolLoaders {
       // require yjp.jar at runtime. See SI-2089.
       if (ctx.settings.termConflict.isDefault)
         throw new TypeError(
-          s"""$owner contains object and package with same name: $name
+          s"""$owner contains object and package with same name: $pname
              |one of them needs to be removed from classpath""".stripMargin)
       else if (ctx.settings.termConflict.value == "package") {
         ctx.warning(
@@ -65,7 +65,8 @@ class SymbolLoaders {
         return NoSymbol
       }
     }
-    ctx.newModuleSymbol(owner, pname, PackageCreationFlags, completer).entered
+    ctx.newModuleSymbol(owner, pname, PackageCreationFlags,
+      (module, modcls) => new PackageLoader(module, pkg)).entered
   }
 
   /** Enter class and module with given `name` into scope of `owner`
@@ -74,10 +75,13 @@ class SymbolLoaders {
   def enterClassAndModule(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context) {
     val clazz = enterClass(owner, name, completer, flags)
     val module = enterModule(owner, name, completer, flags)
-    if (!clazz.isAnonymousClass) {
+ /* 
+  * !!! disabled for now because it causes CyclicReference. Need to revisit
+  *   if (!clazz.isAnonymousClass) {
       assert(clazz.companionModule == module, module)
       assert(module.companionClass == clazz, clazz)
     }
+    */
   }
 
   /** In batch mode: Enter class and module with given `name` into scope of `owner`
@@ -121,12 +125,16 @@ class SymbolLoaders {
 
   /** Load contents of a package
    */
-  class PackageLoader(classpath: ClassPath)(implicit val cctx: CondensedContext) extends SymbolLoader {
+  class PackageLoader(module: TermSymbol, classpath: ClassPath)(implicit val cctx: CondensedContext)
+      extends LazyModuleClassInfo(module) with SymbolLoader {
     protected def description = "package loader " + classpath.name
 
     protected override def doComplete(root: SymDenotation) {
       assert(root.isPackageClass, root)
-      root.info = ClassInfo(root.owner.thisType, root.symbol.asClass, Nil, newScope)
+      val pre = root.owner.thisType
+      root.info = ClassInfo(pre, root.symbol.asClass, Nil, newScope, TermRef(pre, module))
+      if (!module.isCompleted)
+        module.completer.complete(module)
       if (!root.isRoot) {
         for (classRep <- classpath.classes) {
           initializeFromClassPath(root.symbol, classRep)
@@ -134,7 +142,7 @@ class SymbolLoaders {
       }
       if (!root.isEmptyPackage) {
         for (pkg <- classpath.packages) {
-          enterPackage(root.symbol, pkg.name, new PackageLoader(pkg))
+          enterPackage(root.symbol, pkg)
         }
         openPackageModule(root.symbol.asClass)
       }
@@ -180,7 +188,7 @@ class SymbolLoaders {
 /** A lazy type that completes itself by calling parameter doComplete.
  *  Any linked modules/classes or module classes are also initialized.
  */
-abstract class SymbolLoader extends LazyType {
+trait SymbolLoader extends LazyType {
   implicit val cctx: CondensedContext
 
   /** Load source or class file for `root`, return */
@@ -199,20 +207,26 @@ abstract class SymbolLoader extends LazyType {
       val msg = ex.getMessage()
       cctx.error(
         if (msg eq null) "i/o error while loading " + root.name
-        else "error while loading " + root.name + ", " + msg)
+        else "error while loading " + root.name + ",\n " + msg)
     }
     try {
+      // println("trying to complete "+root)  // !!! DEBUG
       val start = currentTime
       doComplete(root)
       cctx.informTime("loaded " + description, start)
     } catch {
       case ex: IOException =>
-      signalError(ex)
+        signalError(ex)
+      case ex: Throwable => // !!! DEBUG
+        println("caught: "+ex)
+        ex.printStackTrace()
+        throw ex
     } finally {
       def postProcess(denot: SymDenotation) =
         if (!denot.isCompleted) denot.markAbsent()
       postProcess(root)
-      postProcess(root.linkedClass.denot)
+      if (!root.isRoot)
+        postProcess(root.linkedClass.denot)
     }
   }
 }

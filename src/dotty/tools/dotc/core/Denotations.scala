@@ -111,7 +111,7 @@ object Denotations {
    *
    *  Then the denotation of `y` is `SingleDenotation(NoSymbol, A | B)`.
    */
-  abstract class Denotation extends DotClass {
+  abstract class Denotation extends DotClass with Showable {
 
     /** The referencing symbol, exists only for non-overloaded denotations */
     def symbol: Symbol
@@ -476,7 +476,7 @@ object Denotations {
       if (denots.containsSig(signature)) NoDenotation else this
     def filterAsSeenFrom(pre: Type, excluded: FlagSet)(implicit ctx: Context): PreDenotation = {
       val sym = symbol
-      if (!(sym is excluded) && sym.isAccessibleFrom(pre))
+      if (sym.exists && !(sym is excluded) && sym.isAccessibleFrom(pre))
         derivedSingleDenotation(symbol, info.asSeenFrom(pre, symbol.owner))
       else
         NoDenotation

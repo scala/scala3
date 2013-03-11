@@ -210,23 +210,26 @@ object Types {
         EmptyScope
     }
 
-    /** A denotation containing the declaration(s) in this type with the given name */
+    /** A denotation containing the declaration(s) in this type with the given name.
+     *  The result is either a SymDenotation or a MultiDenotation of SymDenotations.
+     *  The info(s) are the original symbol infos, no translation takes place.
+     */
     final def decl(name: Name)(implicit ctx: Context): Denotation =
-      findDecl(name, this, EmptyFlags)
+      findDecl(name, EmptyFlags)
 
     /** A denotation containing the non-private declaration(s) in this type with the given name */
     final def nonPrivateDecl(name: Name)(implicit ctx: Context): Denotation =
-      findDecl(name, this, Flags.Private)
+      findDecl(name, Private)
 
     /** A denotation containing the declaration(s) in this type with the given
      *  name, as seen from prefix type `pre`. Declarations that have a flag
      *  in `excluded` are omitted.
      */
-    final def findDecl(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
+    final def findDecl(name: Name, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: ClassInfo =>
-        tp.decls.denotsNamed(name).filterAsSeenFrom(pre, excluded).toDenot
+        tp.decls.denotsNamed(name).filterAsSeenFrom(NoPrefix, excluded).toDenot
       case tp: TypeProxy =>
-        tp.underlying.findDecl(name, pre, excluded)
+        tp.underlying.findDecl(name, excluded)
     }
 
     /** The member of this type with the given name  */
@@ -310,10 +313,7 @@ object Types {
      *  declared in class `cls`.
      */
     final def asSeenFrom(pre: Type, cls: Symbol)(implicit ctx: Context): Type =
-      if (  (cls is PackageClass)
-         || ctx.erasedTypes && cls != defn.ArrayClass
-         || (pre eq cls.thisType)
-         ) this
+      if (!cls.membersNeedAsSeenFrom(pre)) this
       else ctx.asSeenFrom(this, pre, cls, null)
 
 // ----- Subtype-related --------------------------------------------
@@ -768,7 +768,7 @@ object Types {
                 case _ => false
               }
               if (checkPrefix && !prefix.isLegalPrefix)
-                throw new MalformedType(prefix, d.symbol)
+                throw new MalformedType(prefix, d.asInstanceOf[SymDenotation])
               d
             } else {// name has changed; try load in earlier phase and make current
               denot(ctx.fresh.withPhase(ctx.phaseId - 1)).current
@@ -845,8 +845,8 @@ object Types {
     }
   }
 
-  final class TermRefBySym(prefix: Type, val fixedSym: TermSymbol)(initctx: Context)
-    extends TermRef(prefix, fixedSym.name(initctx).asTermName) with HasFixedSym {
+  final class TermRefBySym(prefix: Type, name: TermName, val fixedSym: TermSymbol)
+    extends TermRef(prefix, name) with HasFixedSym {
     override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef =
       if (prefix.baseType(fixedSym.owner).exists) TermRef(prefix, fixedSym)
       else TermRef(prefix, name, fixedSym.signature)
@@ -861,8 +861,8 @@ object Types {
       TermRef(prefix, name, sig)
    }
 
-  final class TypeRefBySym(prefix: Type, val fixedSym: TypeSymbol)(initctx: Context)
-    extends TypeRef(prefix, fixedSym.name(initctx).asTypeName) with HasFixedSym {
+  final class TypeRefBySym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol)
+    extends TypeRef(prefix, name) with HasFixedSym {
     override def newLikeThis(prefix: Type)(implicit ctx: Context): TypeRef =
       if (prefix.baseType(fixedSym.owner).exists) TypeRef(prefix, fixedSym)
       else TypeRef(prefix, name)
@@ -881,19 +881,23 @@ object Types {
   }
 
   object TermRef {
-    def apply(prefix: Type, name: TermName)(implicit ctx: Context) =
+    def apply(prefix: Type, name: TermName)(implicit ctx: Context): TermRef =
       unique(new CachedTermRef(prefix, name))
-    def apply(prefix: Type, sym: TermSymbol)(implicit ctx: Context) =
-      unique(new TermRefBySym(prefix, sym)(ctx))
-    def apply(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context) =
+    def apply(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRefBySym =
+      apply(prefix, sym.name, sym)
+    def apply(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRefBySym =
+      unique(new TermRefBySym(prefix, name, sym))
+    def apply(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRefWithSignature =
       unique(new TermRefWithSignature(prefix, name, sig))
   }
 
   object TypeRef {
-    def apply(prefix: Type, name: TypeName)(implicit ctx: Context) =
+    def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef =
       unique(new CachedTypeRef(prefix, name))
-    def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context) =
-      unique(new TypeRefBySym(prefix, sym)(ctx))
+    def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRefBySym =
+      apply(prefix, sym.name, sym)
+    def apply(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRefBySym =
+      unique(new TypeRefBySym(prefix, name, sym))
   }
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
@@ -1478,8 +1482,10 @@ object Types {
 
   class TypeError(msg: String) extends Exception(msg)
   class FatalTypeError(msg: String) extends TypeError(msg)
-  class MalformedType(pre: Type, sym: Symbol) extends FatalTypeError(s"malformed type: $pre.$sym")
-  class CyclicReference(sym: Symbol) extends FatalTypeError("cyclic reference involving $sym")
+  class MalformedType(pre: Type, denot: SymDenotation)
+    extends FatalTypeError(s"malformed type: $pre is not a legal prefix for $denot")
+  class CyclicReference(denot: SymDenotation)
+    extends FatalTypeError(s"cyclic reference involving $denot")
 
   // ----- Misc utilities ---------------------------------------------------------
 

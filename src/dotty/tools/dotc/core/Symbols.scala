@@ -123,7 +123,7 @@ trait Symbols { this: Context =>
     val mdenot = SymDenotation(
         module, owner, name,
         flags & RetainedModuleValFlags | ModuleCreationFlags,
-        if (cdenot.isCompleted) modcls.symbolicRef
+        if (cdenot.isCompleted) TypeRef(owner.thisType, name.toTypeName, modcls)
         else new LazyModuleInfo(modcls)(condensed))
     module.denot = mdenot
     modcls.denot = cdenot
@@ -147,7 +147,7 @@ trait Symbols { this: Context =>
     newModuleSymbol(
         owner, name, flags,
         (module, modcls) => ClassInfo(
-          owner.thisType, modcls, parents, decls, TermRef(owner.thisType, module)),
+          owner.thisType, modcls, parents, decls, TermRef(owner.thisType, name, module)),
         privateWithin, coord, assocFile)
 
   /** Create a package symbol with associated package class
@@ -156,8 +156,8 @@ trait Symbols { this: Context =>
   def newPackageSymbol(
       owner: Symbol,
       name: TermName,
-      info: LazyType): TermSymbol =
-    newModuleSymbol(owner, name, PackageCreationFlags, info)
+      infoFn: (TermSymbol, ClassSymbol) => LazyType): TermSymbol =
+    newModuleSymbol(owner, name, PackageCreationFlags, infoFn)
 
   /** Create a package symbol with associated package class
    *  from its non-info fields its member scope.
@@ -175,6 +175,7 @@ trait Symbols { this: Context =>
    */
   def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
     def stub = new StubInfo()(condensed)
+    println(s"creating stub for $name") // !!! DEBUG
     name match {
       case name: TermName =>
         newModuleSymbol(owner, name, EmptyFlags, stub, assocFile = file)
@@ -253,17 +254,27 @@ trait Symbols { this: Context =>
 
 // ----- Locating predefined symbols ----------------------------------------
 
-  def requiredPackage(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName).requiredSymbol(_.isPackage).asTerm
+  def requiredPackage(path: PreName): TermSymbol = {
+    val pathName = path.toTermName
+    base.staticRef(pathName).requiredSymbol(_.isPackage, pathName).asTerm
+  }
 
-  def requiredClass(path: PreName): ClassSymbol =
-    base.staticRef(path.toTypeName).requiredSymbol(_.isClass).asClass
+  def requiredClass(path: PreName): ClassSymbol = {
+    val pathName = path.toTypeName
+    val sym = base.staticRef(pathName).requiredSymbol(_.isClass, pathName).asClass
+  }
 
-  def requiredModule(path: PreName): TermSymbol =
-    base.staticRef(path.toTermName).requiredSymbol(_.isModule).asTerm
+  def requiredModule(path: PreName): TermSymbol = {
+    val pathName = path.toTermName
+    base.staticRef(pathName).requiredSymbol(_.isModule, pathName).asTerm
+  }
 }
 
 object Symbols {
+
+  var _nextId = 0 // !!! DEBUG
+  def nextId = { _nextId += 1; _nextId }
+
 
   /** A Symbol represents a Scala definition/declaration or a package.
    */
@@ -274,8 +285,8 @@ object Symbols {
     private[this] var _id: Int = _
 
     /** The unique id of this symbol */
-    def id(implicit ctx: Context) = {
-      if (_id == 0) _id = ctx.nextId
+    def id/*(implicit ctx: Context)*/ = { // !!! DEBUG
+      if (_id == 0) _id = /*ctx.*/nextId // !!! DEBUG
       _id
     }
 
@@ -311,6 +322,7 @@ object Symbols {
 
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(implicit ctx: Context): this.type = {
+      assert(this.owner.isClass, this.owner.denot) // !!! DEBUG
       this.owner.asClass.enter(this)
       this
     }

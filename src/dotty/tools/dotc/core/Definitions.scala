@@ -52,7 +52,7 @@ class Definitions(implicit ctx: Context) {
   }
 
   lazy val RootClass: ClassSymbol = ctx.newPackageSymbol(
-    NoSymbol, nme.ROOT, ctx.rootLoader).moduleClass.asClass
+    NoSymbol, nme.ROOT, (root, rootcls) => ctx.rootLoader(root)).moduleClass.asClass
   lazy val RootPackage: TermSymbol = ctx.newSymbol(
     NoSymbol, nme.ROOTPKG, PackageCreationFlags, TypeRef(NoPrefix, RootClass))
 

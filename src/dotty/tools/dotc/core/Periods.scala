@@ -23,6 +23,24 @@ abstract class Periods extends DotClass { self: Context =>
   /** Execute `op` at given phase id */
   def atPhase[T](pid: PhaseId)(op: Context => T): T =
     op(ctx.fresh.withPhase(pid))
+
+  /** The period containing the current period where denotations do not change.
+   *  We compute this by taking as first phase the first phase less or equal to
+   *  the current phase that has the same "nextTransformer". As last phase
+   *  we take the phaseId of the nextTransformer - 1. This has the advantage that
+   *  it works even if no transformer is installed other than the sentinel
+   *  NoTransformer, which is always installed automatically.
+   */
+  def stablePeriod = {
+    var first = phaseId
+    val transformers = base.symTransformers
+    val nxTrans = transformers.nextTransformer(first)
+    while (first - 1 > NoPhaseId &&
+           (transformers.nextTransformer(first - 1) eq nxTrans)) {
+      first -= 1
+    }
+    Period(runId, first, nxTrans.phaseId - 1)
+  }
 }
 
 object Periods {
@@ -41,10 +59,7 @@ object Periods {
     def runId: Int = code >>> (PhaseWidth * 2)
 
     /** The phase identifier of this single-phase period. */
-    def phaseId: Int = {
-      assert((code & PhaseMask) == 0)
-      (code >>> PhaseWidth) & PhaseMask
-    }
+    def phaseId: Int = (code >>> PhaseWidth) & PhaseMask
 
     /** The last phase of this period */
     def lastPhaseId: Int =
@@ -91,6 +106,8 @@ object Periods {
           this.lastPhaseId min that.lastPhaseId)
       else
         Nowhere
+
+    override def toString = s"Period($firstPhaseId..$lastPhaseId, run = $runId)"
   }
 
   object Period {
@@ -111,9 +128,12 @@ object Periods {
 
   final val Nowhere = new Period(0)
 
+  final val InitialPeriod = Period(InitialRunId, FirstPhaseId, FirstPhaseId)
+
   /** An ordinal number for compiler runs. First run has number 1. */
   type RunId = Int
   final val NoRunId = 0
+  final val InitialRunId = 1
 
   /** An ordinal number for phases. First phase has number 1. */
   type PhaseId = Int

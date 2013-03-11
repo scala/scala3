@@ -21,7 +21,7 @@ class JavaPlatform extends Platform {
   def updateClassPath(subst: Map[ClassPath, ClassPath]) =
     currentClassPath = Some(new DeltaClassPath(currentClassPath.get, subst))
 
-  def rootLoader(implicit ctx: Context): SymbolLoader = new ctx.base.loaders.PackageLoader(classPath)(ctx.condensed)
+  def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = new ctx.base.loaders.PackageLoader(root, classPath)(ctx.condensed)
 
   /** We could get away with excluding BoxedBooleanClass for the
    *  purpose of equality testing since it need not compare equal

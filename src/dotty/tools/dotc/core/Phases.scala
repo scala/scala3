@@ -9,7 +9,7 @@ trait Phases { self: Context =>
   def phase: Phase = base.phases(period.phaseId)
 
   def phasesStack: List[Phase] =
-    if (phase == this.NoPhase) Nil
+    if ((this eq NoContext) || !phase.exists) Nil
     else phase :: outersIterator.dropWhile(_.phase == phase).next.phasesStack
 
   /** Execute `op` at given phase id */
@@ -30,6 +30,7 @@ object Phases {
     lazy val allPhases = phases.slice(FirstPhaseId, nphases)
 
     object NoPhase extends Phase(initialCtx) {
+      override def exists = false
       def name = "<no phase>"
       def run() { throw new Error("NoPhase.run") }
     }
@@ -56,6 +57,7 @@ object Phases {
   abstract class Phase(initctx: Context) {
 
     val id: Int = initctx.nphases
+    initctx.phases(id) = this  // TODO: Do explicit phase install instead?
     initctx.nphases += 1
 
     def name: String
@@ -66,7 +68,7 @@ object Phases {
 
     def checkable: Boolean = true
 
-    final def exists: Boolean = id != NoPhaseId
+    def exists: Boolean = true
 
     final def <= (that: Phase) =
       exists && id <= that.id

@@ -16,7 +16,7 @@ import core.SymbolLoader
 abstract class Platform {
 
   /** The root symbol loader. */
-  def rootLoader(implicit ctx: Context): SymbolLoader
+  def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader
 
   /** The compiler classpath. */
   def classPath(implicit ctx: Context): ClassPath

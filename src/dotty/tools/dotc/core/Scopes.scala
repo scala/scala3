@@ -149,24 +149,21 @@ object Scopes {
 
     /** create and enter a scope entry */
     protected def newScopeEntry(sym: Symbol)(implicit ctx: Context): ScopeEntry = {
+      ensureCapacity(if (hashTable ne null) hashTable.length else MinHash)
       val e = new ScopeEntry(sym, this)
       e.prev = lastEntry
       lastEntry = e
+      if (hashTable ne null) enterInHash(e)
       size += 1
       elemsCache = null
-      if (hashTable ne null) {
-        ensureCapacity(hashTable.length)
-        enterInHash(e)
-      } else {
-        ensureCapacity(MinHash)
-      }
       e
     }
 
     private def enterInHash(e: ScopeEntry)(implicit ctx: Context): Unit = {
-      val i = e.sym.name.start & (hashTable.length - 1)
-      e.tail = hashTable(i)
-      hashTable(i) = e
+      val idx = e.sym.name.hashCode & (hashTable.length - 1)
+      e.tail = hashTable(idx)
+      assert(e.tail != e)
+      hashTable(idx) = e
     }
 
     /** enter a symbol in this scope. */
@@ -182,7 +179,7 @@ object Scopes {
     }
 
     private def ensureCapacity(tableSize: Int)(implicit ctx: Context): Unit =
-      if (size > tableSize * FillFactor) createHash(tableSize * 2)
+      if (size >= tableSize * FillFactor) createHash(tableSize * 2)
 
     private def createHash(tableSize: Int)(implicit ctx: Context): Unit =
       if (size > tableSize * FillFactor) createHash(tableSize * 2)
@@ -218,7 +215,7 @@ object Scopes {
         e1.prev = e.prev
       }
       if (hashTable ne null) {
-        val index = e.sym.name.start & (hashTable.length - 1)
+        val index = e.sym.name.hashCode & (hashTable.length - 1)
         var e1 = hashTable(index)
         if (e1 == e)
           hashTable(index) = e.tail
@@ -245,7 +242,7 @@ object Scopes {
     override final def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
       var e: ScopeEntry = null
       if (hashTable ne null) {
-        e = hashTable(name.start & (hashTable.length - 1))
+        e = hashTable(name.hashCode & (hashTable.length - 1))
         while ((e ne null) && e.sym.name != name) {
           e = e.tail
         }
