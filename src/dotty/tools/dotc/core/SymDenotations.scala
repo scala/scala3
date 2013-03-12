@@ -67,10 +67,14 @@ object SymDenotations {
     /** UnsSet given flags(s) of this denotation */
     final def resetFlag(flags: FlagSet): Unit = { _flags &~= flags }
 
-    final def is(fs: FlagSet) = flags is fs
-    final def is(fs: FlagSet, butNot: FlagSet) = flags is (fs, butNot)
-    final def is(fs: FlagConjunction) = flags is fs
-    final def is(fs: FlagConjunction, butNot: FlagSet) = flags is (fs, butNot)
+    final def is(fs: FlagSet) =
+      (if (fs <= FromStartFlags) _flags else flags) is fs
+    final def is(fs: FlagSet, butNot: FlagSet) =
+      (if (fs <= FromStartFlags) _flags else flags) is (fs, butNot)
+    final def is(fs: FlagConjunction) =
+      (if (fs <= FromStartFlags) _flags else flags) is fs
+    final def is(fs: FlagConjunction, butNot: FlagSet) =
+      (if (fs <= FromStartFlags) _flags else flags) is (fs, butNot)
 
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
@@ -174,16 +178,6 @@ object SymDenotations {
     /** Cast to class denotation */
     final def asClass: ClassDenotation = asInstanceOf[ClassDenotation]
 
-    /** Special case tests for flags that are known a-priori and do not need loading
-     *  flags.
-     */
-    final def isModule = _flags is Module
-    final def isModuleVal = _flags is ModuleVal
-    final def isModuleClass = _flags is ModuleClass
-    final def isPackage = _flags is Package
-    final def isPackageVal = _flags is PackageVal
-    final def isPackageClass = _flags is PackageClass
-
     /** is this symbol the result of an erroneous definition? */
     def isError: Boolean = false
 
@@ -228,7 +222,7 @@ object SymDenotations {
       def recur(sym: Symbol): Boolean =
         if (sym eq boundary) true
         else if (sym eq NoSymbol) false
-        else if (sym.isPackageClass && !boundary.isPackageClass) false
+        else if ((sym is PackageClass) && !(boundary is PackageClass)) false
         else recur(sym.owner)
       recur(symbol)
     }
@@ -238,12 +232,12 @@ object SymDenotations {
 
     /** Is this a package class or module class that defines static symbols? */
     final def isStaticOwner(implicit ctx: Context): Boolean =
-      isPackageClass || isModuleClass && isStatic
+      (this is PackageClass) || (this is ModuleClass) && isStatic
 
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     final def isCoDefinedWith(that: Symbol)(implicit ctx: Context) =
       (this.effectiveOwner == that.effectiveOwner) &&
-      (  !this.effectiveOwner.isPackageClass
+      (  !(this.effectiveOwner is PackageClass)
       || { val thisFile = this.symbol.associatedFile
            val thatFile = that.symbol.associatedFile
            (  thisFile == null
@@ -348,7 +342,7 @@ object SymDenotations {
         else if (
           !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
            || pre.baseType(cls).exists
-           || owner.isModuleClass // don't perform this check for static members
+           || (owner is ModuleClass) // don't perform this check for static members
            ))
           fail(
             s"""Access to protected ${symbol.show} not permitted because
@@ -393,14 +387,14 @@ object SymDenotations {
 
     /** The class implementing this module, NoSymbol if not applicable. */
     final def moduleClass: Symbol = _info match {
-      case info: TypeRefBySym if isModuleVal => info.fixedSym
+      case info: TypeRefBySym if this is ModuleVal => info.fixedSym
       case info: LazyModuleInfo => info.mclass
       case _ => NoSymbol
     }
 
     /** The module implemented by this module class, NoSymbol if not applicable. */
     final def sourceModule: Symbol = _info match {
-      case ClassInfo(_, _, _, _, selfType: TermRefBySym) if isModuleClass =>
+      case ClassInfo(_, _, _, _, selfType: TermRefBySym) if this is ModuleClass =>
         selfType.fixedSym
       case info: LazyModuleClassInfo =>
         info.modul
@@ -444,11 +438,11 @@ object SymDenotations {
 
     /** The top-level symbol containing this denotation. */
     final def topLevelSym(implicit ctx: Context): Symbol =
-      if (owner.isPackageClass) symbol else owner.topLevelSym
+      if (owner is PackageClass) symbol else owner.topLevelSym
 
     /** The package containing this denotation */
     final def enclosingPackage(implicit ctx: Context): Symbol =
-      if (isPackageClass) symbol else owner.enclosingPackage
+      if (this is PackageClass) symbol else owner.enclosingPackage
 
     /** The module object with the same (term-) name as this class or module class,
      *  and which is also defined in the same scope and compilation unit.
@@ -456,7 +450,7 @@ object SymDenotations {
      */
     final def companionModule(implicit ctx: Context): Symbol = {
       owner.info.decl(name.toTermName)
-        .suchThat(sym => sym.isModule && sym.isCoDefinedWith(symbol))
+        .suchThat(sym => (sym is Module) && sym.isCoDefinedWith(symbol))
         .symbol
     }
 
@@ -474,7 +468,7 @@ object SymDenotations {
      *  NoSymbol otherwise.
      */
     final def linkedClass(implicit ctx: Context): Symbol =
-      if (this.isModuleClass) companionClass
+      if (this is ModuleClass) companionClass
       else if (this.isClass) companionModule.moduleClass
       else NoSymbol
 
@@ -530,10 +524,6 @@ object SymDenotations {
 
     // ----- type-related ------------------------------------------------
 
-    /** The denotation as seen from prefix type */
-    def asSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation =
-      derivedSingleDenotation(symbol, info.asSeenFrom(pre, owner))
-
     /** The type parameters of a class symbol, Nil for all other symbols */
     def typeParams(implicit ctx: Context): List[TypeSymbol] = Nil
 
@@ -544,7 +534,7 @@ object SymDenotations {
      *  @throws ClassCastException is this is not a type
      */
     def typeConstructor(implicit ctx: Context): TypeRef =
-      if (isPackageClass || owner.isTerm) symbolicRef
+      if ((this is PackageClass) || owner.isTerm) symbolicRef
       else TypeRef(owner.thisType, name.asTypeName)
 
     /** The symbolic typeref representing the type constructor for this type.
@@ -563,10 +553,10 @@ object SymDenotations {
 
     override def toString = {
       val kindString =
-        if (isModuleClass) "module class"
+        if (this is ModuleClass) "module class"
         else if (isClass) "class"
         else if (isType) "type"
-        else if (isModule) "module"
+        else if (this is Module) "module"
         else "val"
       s"$kindString $name"
     }
@@ -638,7 +628,7 @@ object SymDenotations {
 
     private def computeThisType(implicit ctx: Context): Type = ThisType(classSymbol)
     /* was:
-      if (isPackageClass && !isRoot)
+      if ((this is PackageClass) && !isRoot)
         TermRef(owner.thisType, name.toTermName)
       else
         ThisType(classSymbol)
@@ -792,7 +782,8 @@ object SymDenotations {
               case parentd: ClassDenotation =>
                 denots = denots union
                   parentd.membersNamed(name)
-                    .filterAsSeenFrom(thisType, Flags.Private)
+                    .filterExcluded(Private)
+                    .asSeenFrom(thisType)
                     .filterDisjoint(ownDenots)
               case _ =>
             }
@@ -862,7 +853,7 @@ object SymDenotations {
         val candidates = inheritedNames ++ ownNames
         candidates filter (keepOnly(thisType, _))
       }
-      if (isPackageClass) computeMemberNames // don't cache package member names; they might change
+      if (this is PackageClass) computeMemberNames // don't cache package member names; they might change
       else memberNamesCache get keepOnly match {
         case Some(names) =>
           names
@@ -901,6 +892,7 @@ object SymDenotations {
     override def isTerm = false
     override def isType = false
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
+    override def asSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = this
     validFor = Period.allInRun(NoRunId) // will be brought forward automatically
   }
 

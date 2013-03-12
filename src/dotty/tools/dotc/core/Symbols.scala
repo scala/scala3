@@ -256,7 +256,7 @@ trait Symbols { this: Context =>
 
   def requiredPackage(path: PreName): TermSymbol = {
     val pathName = path.toTermName
-    base.staticRef(pathName).requiredSymbol(_.isPackage, pathName).asTerm
+    base.staticRef(pathName).requiredSymbol(_ is Package, pathName).asTerm
   }
 
   def requiredClass(path: PreName): ClassSymbol = {
@@ -266,7 +266,7 @@ trait Symbols { this: Context =>
 
   def requiredModule(path: PreName): TermSymbol = {
     val pathName = path.toTermName
-    base.staticRef(pathName).requiredSymbol(_.isModule, pathName).asTerm
+    base.staticRef(pathName).requiredSymbol(_ is Module, pathName).asTerm
   }
 }
 
@@ -383,7 +383,7 @@ object Symbols {
 
     /** The source or class file from which this class was generated, null if not applicable. */
     override def associatedFile(implicit ctx: Context): AbstractFile =
-      if (this.owner.isPackageClass) assocFile
+      if (this.owner is PackageClass) assocFile
       else super.associatedFile
 
     final def classDenot(implicit ctx: Context): ClassDenotation =

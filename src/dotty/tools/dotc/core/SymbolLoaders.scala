@@ -75,7 +75,7 @@ class SymbolLoaders {
   def enterClassAndModule(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context) {
     val clazz = enterClass(owner, name, completer, flags)
     val module = enterModule(owner, name, completer, flags)
- /* 
+ /*
   * !!! disabled for now because it causes CyclicReference. Need to revisit
   *   if (!clazz.isAnonymousClass) {
       assert(clazz.companionModule == module, module)
@@ -130,7 +130,7 @@ class SymbolLoaders {
     protected def description = "package loader " + classpath.name
 
     protected override def doComplete(root: SymDenotation) {
-      assert(root.isPackageClass, root)
+      assert(root is PackageClass, root)
       val pre = root.owner.thisType
       root.info = ClassInfo(pre, root.symbol.asClass, Nil, newScope, TermRef(pre, module))
       if (!module.isCompleted)
@@ -152,7 +152,7 @@ class SymbolLoaders {
   /** if there's a `package` member object in `pkgClass`, enter its members into it. */
   def openPackageModule(pkgClass: ClassSymbol)(implicit ctx: Context) {
     val pkgModule = pkgClass.info.decl(nme.PACKAGEkw).symbol
-    if (pkgModule.isModule &&
+    if ((pkgModule is Module) &&
         (pkgModule.isCompleted ||
          !pkgModule.completer.isInstanceOf[SourcefileLoader]))
       // println("open "+pkgModule)//DEBUG
@@ -242,7 +242,7 @@ class ClassfileLoader(val classfile: AbstractFile)(implicit val cctx: CondensedC
       case d: ClassDenotation => d
       case d => throw new FatalError(s"linked class denot $d of $rootDenot is expected to be a ClassDenotation, but is a ${d.getClass}")
     }
-    if (rootDenot.isModuleClass) (linkedDenot, rootDenot)
+    if (rootDenot is ModuleClass) (linkedDenot, rootDenot)
     else (rootDenot, linkedDenot)
   }
 

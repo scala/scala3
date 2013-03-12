@@ -88,7 +88,7 @@ object Types {
      *  be refined later.
      */
     final def isNotNull(implicit ctx: Context): Boolean =
-      widen.typeSymbol.isModuleClass
+      widen.typeSymbol is ModuleClass
 
     /** Is this type produced as a repair for an error? */
     final def isError(implicit ctx: Context): Boolean =
@@ -227,7 +227,7 @@ object Types {
      */
     final def findDecl(name: Name, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: ClassInfo =>
-        tp.decls.denotsNamed(name).filterAsSeenFrom(NoPrefix, excluded).toDenot
+        tp.decls.denotsNamed(name).filterExcluded(excluded).toDenot
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, excluded)
     }
@@ -256,7 +256,7 @@ object Types {
         tp.underlying.findMember(name, pre, excluded)
       case tp: ClassInfo =>
         val candidates = tp.cls.membersNamed(name)
-        candidates.filterAsSeenFrom(pre, excluded).toDenot
+        candidates.filterExcluded(excluded).asSeenFrom(pre).toDenot
       case AndType(l, r) =>
         l.findMember(name, pre, excluded) & r.findMember(name, pre, excluded)
       case OrType(l, r) =>

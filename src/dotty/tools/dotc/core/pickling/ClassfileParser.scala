@@ -135,7 +135,7 @@ class ClassfileParser(
   /** Add type parameters of enclosing classes */
   def addEnclosingTParams {
     var sym = classRoot.owner
-    while (sym.isClass && !sym.isModuleClass) {
+    while (sym.isClass && !(sym is Flags.ModuleClass)) {
       for (tparam <- sym.typeParams) {
         classTParams = classTParams.updated(tparam.name, tparam)
       }

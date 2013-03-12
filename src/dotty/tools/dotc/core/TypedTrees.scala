@@ -620,7 +620,7 @@ object TypedTrees {
       check(expr.tpe.termSymbol.isStable)
     case PackageDef(pid, stats) =>
       check(pid.isTerm)
-      check(pid.symbol.isPackage)
+      check(pid.symbol is Package)
     case Annotated(annot, arg) =>
       check(annot.isInstantiation)
       check(annot.symbol.owner.isSubClass(defn.AnnotationClass))

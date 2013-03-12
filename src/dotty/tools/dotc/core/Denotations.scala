@@ -184,7 +184,8 @@ object Denotations {
      */
     def requiredSymbol(p: Symbol => Boolean, name: Name, source: AbstractFile = null)(implicit ctx: Context): Symbol = {
       val sym = disambiguate(p).symbol
-      if (sym.exists) sym else {
+      if (sym != NoSymbol) sym // note would like to ask sym.exists instead, but this would force too much
+      else {
         val firstSym = ((NoSymbol: Symbol) /: alternatives.map(_.symbol)) (_ orElse _)
         val owner = if (firstSym.exists) firstSym.owner else NoSymbol
         ctx.newStubSymbol(owner, name, source)
@@ -471,19 +472,18 @@ object Denotations {
 
     // ------ PreDenotation ops ----------------------------------------------
 
-    def first = this
-    def toDenot(implicit ctx: Context) = this
-    def containsSig(sig: Signature)(implicit ctx: Context) =
+    final def first = this
+    final def toDenot(implicit ctx: Context) = this
+    final def containsSig(sig: Signature)(implicit ctx: Context) =
       signature == sig
-    def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =
+    final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
       if (denots.containsSig(signature)) NoDenotation else this
-    def filterAsSeenFrom(pre: Type, excluded: FlagSet)(implicit ctx: Context): PreDenotation = {
-      val sym = symbol
-      if (sym.exists && !(sym is excluded) && sym.isAccessibleFrom(pre))
-        derivedSingleDenotation(symbol, info.asSeenFrom(pre, symbol.owner))
-      else
-        NoDenotation
-    }
+    final def filterExcluded(excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
+      if (excluded != EmptyFlags && (asSymDenotation is excluded)) NoDenotation
+      else this
+    def asSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation =
+      if (!asSymDenotation.owner.membersNeedAsSeenFrom(pre)) this
+      else derivedSingleDenotation(symbol, info.asSeenFrom(pre, asSymDenotation.owner))
   }
 
   class UniqueRefDenotation(
@@ -533,12 +533,14 @@ object Denotations {
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation
 
     /** Keep only those denotations in this group whose flags do not intersect
-     *  with given `excluded` and that are accessible from prefix `pre`.
-     *  Rewrite the infos to be as seen from `pre`.
+     *  with `excluded`.
      */
-    def filterAsSeenFrom(pre: Type, excluded: FlagSet)(implicit ctx: Context): PreDenotation
+    def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation
 
-   /** The union of two groups. */
+    /** The denotation with info(s) as seen from prefix type */
+    def asSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation
+
+    /** The union of two groups. */
     def union(that: PreDenotation) =
       if (!this.exists) that
       else if (that.exists) this
@@ -554,8 +556,10 @@ object Denotations {
       (denots1 containsSig sig) || (denots2 containsSig sig)
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1 filterDisjoint denots, denots2 filterDisjoint denots)
-    def filterAsSeenFrom(pre: Type, excluded: FlagSet)(implicit ctx: Context): PreDenotation =
-      derivedUnion(denots1.filterAsSeenFrom(pre, excluded), denots2.filterAsSeenFrom(pre, excluded))
+    def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation =
+      derivedUnion(denots1.filterExcluded(excluded), denots2.filterExcluded(excluded))
+    def asSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation =
+      derivedUnion(denots1.asSeenFrom(pre), denots2.asSeenFrom(pre))
     private def derivedUnion(denots1: PreDenotation, denots2: PreDenotation) =
       if ((denots1 eq this.denots1) && (denots2 eq this.denots2)) this
       else denots1 union denots2
@@ -577,7 +581,7 @@ object Denotations {
         else {
           val name = path slice (point + 1, len)
           val result = owner.info.member(name)
-          if (result.exists) result
+          if (result != NoDenotation) result
           else {
             val alt = missingHook(owner.symbol.moduleClass, name)
             if (alt.exists) alt.denot
@@ -593,7 +597,7 @@ object Denotations {
      *  enter it.
      */
     def missingHook(owner: Symbol, name: Name)(implicit ctx: Context): Symbol =
-      if (owner.isPackage && name.isTermName)
+      if ((owner is Package) && name.isTermName)
         ctx.newCompletePackageSymbol(owner, name.asTermName).entered
       else
         NoSymbol

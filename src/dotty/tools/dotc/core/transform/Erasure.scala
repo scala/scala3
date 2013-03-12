@@ -37,7 +37,7 @@ object Erasure {
       val sym = tp.symbol
       if (sym.isClass)
         /*if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tref)
-        else */if (sym.owner.isPackage) normalizeClass(sym.asClass).typeConstructor
+        else */if (sym.owner is Package) normalizeClass(sym.asClass).typeConstructor
         else tp.derivedNamedType(erasure(tp.prefix))
       else erasure(sym.info)
     case tp: RefinedType =>
@@ -104,7 +104,7 @@ object Erasure {
       val sym = tp.symbol
       if (sym.isClass)
         /*if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tref)
-        else */if (sym.owner.isPackage) normalizeClass(sym.asClass).name
+        else */if (sym.owner is Package) normalizeClass(sym.asClass).name
         else sym.asClass.name
       else paramSignature(sym.info)
     case tp: RefinedType =>

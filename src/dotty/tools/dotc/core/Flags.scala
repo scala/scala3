@@ -61,6 +61,9 @@ object Flags {
      */
     def is(flags: FlagConjunction, butNot: FlagSet): Boolean = is(flags) && !is(butNot)
 
+    /** Is this flag set a subset of that one? */
+    def <= (that: FlagSet) = (bits & that.bits) == bits
+
     /** This flag set with all flags transposed to be type flags */
     def toTypeFlags = FlagSet(bits & ~KINDFLAGS | TYPES)
 
@@ -348,6 +351,10 @@ object Flags {
   final val ModifierFlags =
     commonFlags(Private, Protected, Abstract, Final,
      Sealed, Case, Implicit, AbsOverride, Lazy)
+
+  /** Flags guaranteed to be set upon symbol creation */
+  final val FromStartFlags =
+    AccessFlags | Module | Package | Deferred
 
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local

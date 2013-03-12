@@ -7,7 +7,7 @@ trait TypeOps { this: Context =>
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 
     def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type =
-      if ((pre eq NoType) || (pre eq NoPrefix) || cls.isPackageClass)
+      if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
         tp
       else if (thiscls.isNonBottomSubClass(cls) && pre.baseType(thiscls).exists)
         pre match {

@@ -282,13 +282,13 @@ object Printers {
 
     /** Show kind of symbol */
     def showKind(sym: Symbol) =
-      if (sym.isPackageClass) "package class"
-      else if (sym.isPackageVal) "package"
+      if (sym is PackageClass) "package class"
+      else if (sym is PackageVal) "package"
       else if (sym is PackageObjectClass) "package object class"
       else if (sym is PackageObjectVal) "package object"
       else if (sym.isAnonymousClass) "anonymous class"
-      else if (sym.isModuleClass) "module class"
-      else if (sym.isModuleVal) "module"
+      else if (sym is ModuleClass) "module class"
+      else if (sym is ModuleVal) "module"
       else if (sym is ImplClass) "implementation class"
       else if (sym is Trait) "trait"
       else if (sym.isClass) "class"
@@ -310,8 +310,8 @@ object Printers {
       else if (sym.isClass) "class"
       else if (sym.isType && !(sym is ExpandedTypeParam)) "type"
       else if (sym is Mutable) "var"
-      else if (sym.isPackage) "package"
-      else if (sym.isModule) "object"
+      else if (sym is Package) "package"
+      else if (sym is Module) "object"
       else if (sym.isSourceMethod) "def"
       else if (sym.isTerm && (!(sym is Param))) "val"
       else ""
@@ -406,7 +406,7 @@ object Printers {
         case ThisType(cls) =>
           if (cls.isAnonymousClass) return "this."
           if (isOmittablePrefix(cls)) return ""
-          if (cls.isModuleClass) return showFullName(cls) + "."
+          if (cls is ModuleClass) return showFullName(cls) + "."
         case tp @ TermRef(pre, name) =>
           val sym = tp.symbol
           if (sym is PackageObject) return showPrefix(pre)
@@ -458,7 +458,7 @@ object Printers {
     }
 
     override def showKind(sym: Symbol) =
-      if (sym.isPackage) "package"
+      if (sym is Package) "package"
       else if (sym is PackageObject) "package object"
       else if (sym is Module) "object"
       else if (sym is ImplClass) "class"
