@@ -140,12 +140,7 @@ object Denotations {
     /** The variant of this denotation that's current in the given context. */
     def current(implicit ctx: Context): Denotation
 
-    /** Does this denotation exist?
-     *  A denotation does not exist if it has NoType as an info.
-     *  This is the case for NoDenotation, and also for SymDenotations
-     *  that come from package members (classes or modules) where no
-     *  corresponding symbol was found in a classfile or source.
-     */
+    /** Is this denotation different from NoDenotation? */
     def exists: Boolean = true
 
     /** If this denotation does not exist, fallback to alternative */
@@ -184,7 +179,7 @@ object Denotations {
      */
     def requiredSymbol(p: Symbol => Boolean, name: Name, source: AbstractFile = null)(implicit ctx: Context): Symbol = {
       val sym = disambiguate(p).symbol
-      if (sym != NoSymbol) sym // note would like to ask sym.exists instead, but this would force too much
+      if (sym.exists) sym
       else {
         val firstSym = ((NoSymbol: Symbol) /: alternatives.map(_.symbol)) (_ orElse _)
         val owner = if (firstSym.exists) firstSym.owner else NoSymbol

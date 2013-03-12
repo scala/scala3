@@ -484,7 +484,7 @@ object TypedTrees {
             noLeaksInClass(sym.asClass)
           }
         }
-      def noLeaksIn(tp: Type): Boolean = tp forall {
+      def noLeaksIn(tp: Type): Boolean = tp forallParts {
         case tp: NamedType => isNonLocal(tp.symbol)
         case _ => true
       }
@@ -543,7 +543,7 @@ object TypedTrees {
           val rsym = r.symbol
           check(rsym.isTerm || rsym.isAbstractOrAliasType)
           if (rsym.isAbstractType) check(tpt.tpe.member(rsym.name).exists)
-          check(rsym.info forall {
+          check(rsym.info forallParts {
             case nt: NamedType => !(forbidden contains nt.symbol)
             case _ => true
           })

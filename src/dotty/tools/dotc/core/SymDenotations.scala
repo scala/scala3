@@ -181,13 +181,6 @@ object SymDenotations {
     /** is this symbol the result of an erroneous definition? */
     def isError: Boolean = false
 
-    /** Does this denotation refer to an existing definition?
-     *  @return `false` if denotation is either `NoDenotation` or it
-     *                  refers to a toplevel class or object that has no
-     *                  definition in the source or classfile from which it is loaded.
-     */
-    override final def exists: Boolean = info ne NoType
-
     /** Make denotation not exist */
     final def markAbsent(): Unit =
       _info = NoType
@@ -305,6 +298,8 @@ object SymDenotations {
     /** Is this definition accessible as a member of tree with type `pre`?
      *  @param pre          The type of the tree from which the selection is made
      *  @param superAccess  Access is via super
+     *  Everything is accessible if `pre` is `NoPrefix`.
+     *  A symbol with type `NoType` is not accessible for any other prefix.
      */
     final def isAccessibleFrom(pre: Type, superAccess: Boolean = false)(implicit ctx: Context): Boolean = {
 
@@ -354,7 +349,9 @@ object SymDenotations {
         else true
       }
 
-      (pre == NoPrefix) || {
+      if (pre eq NoPrefix) true
+      else if (info eq NoType) false
+      else {
         val boundary = accessBoundary(owner)
 
         (  boundary.isTerm
@@ -896,6 +893,7 @@ object SymDenotations {
 
   object NoDenotation extends SymDenotation(
     NoSymbol, NoSymbol, "<none>".toTermName, EmptyFlags, NoType) {
+    override def exists = false
     override def isTerm = false
     override def isType = false
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")

@@ -454,7 +454,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
     }
     val tp1 = elim(tp)
     val isBound = (tp: Type) => boundSyms contains tp.typeSymbol
-    if (tp1 exists isBound) {
+    if (tp1 existsPart isBound) {
       val tp2 = tp1.subst(boundSyms, boundSyms map (_ => defn.AnyType))
       cctx.warning(s"""failure to eliminate existential
                        |original type    : $tp forSome {${cctx.showDcls(boundSyms, "; ")}}

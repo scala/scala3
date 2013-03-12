@@ -95,7 +95,7 @@ object Types {
       (typeSymbol is Erroneous) || (termSymbol is Erroneous)
 
     /** Is some part of this type produced as a repair for an error? */
-    final def isErroneous(implicit ctx: Context): Boolean = exists(_.isError)
+    final def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError)
 
     /** A type is volatile if its DNF contains an alternative of the form
      *  {P1, ..., Pn}, {N1, ..., Nk}, where the Pi are parent typerefs and the
@@ -119,12 +119,12 @@ object Types {
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
      */
-    final def exists(p: Type => Boolean): Boolean =
+    final def existsPart(p: Type => Boolean): Boolean =
       new ExistsAccumulator(p)(false, this)
 
     /** Returns true if all parts of this type that satisfy predicate `p`.
      */
-    final def forall(p: Type => Boolean): Boolean = !exists(!p(_))
+    final def forallParts(p: Type => Boolean): Boolean = !existsPart(!p(_))
 
     /** Map function over elements of an AndType, rebuilding with & */
     def mapAnd(f: Type => Type)(implicit ctx: Context): Type = this match {
@@ -746,13 +746,12 @@ object Types {
             lastDenotation.current
           } else {
             val d = loadDenot
-            if (d.exists || ctx.phaseId == FirstPhaseId) {
-              if (!d.symbol.isAliasType && !prefix.isLegalPrefix)
-                throw new MalformedType(prefix, d.asInstanceOf[SymDenotation])
+            if (d.exists && !d.symbol.isAliasType && !prefix.isLegalPrefix)
+              throw new MalformedType(prefix, d.asInstanceOf[SymDenotation])
+            if (d.exists || ctx.phaseId == FirstPhaseId)
               d
-            } else {// name has changed; try load in earlier phase and make current
+            else // name has changed; try load in earlier phase and make current
               denot(ctx.fresh.withPhase(ctx.phaseId - 1)).current
-            }
           }
       }
       lastDenotation
@@ -1011,7 +1010,7 @@ object Types {
     def isJava = false
     def isImplicit = false
 
-    lazy val isDependent = resultType exists {
+    lazy val isDependent = resultType existsPart {
       case MethodParam(mt, _) => mt eq this
       case _ => false
     }
