@@ -23,13 +23,8 @@ trait TypeOps { this: Context =>
         if (sym.isStatic) tp
         else {
           val tp1 = tp.derivedNamedType(asSeenFrom(tp.prefix, pre, cls, theMap))
-          if ((tp1 ne tp) && (sym is TypeParam))
-            // short-circuit instantiated type parameters
-            // by replacing pre.tp with its alias, if it has one.
-            tp1.info match {
-              case TypeBounds(lo, hi) if lo eq hi => hi
-              case _ => tp1
-            }
+          // short-circuit instantiated type parameters
+          if ((tp1 ne tp) && (sym is (TypeParam, butNot = Deferred))) tp1.dealias 
           else tp1
         }
       case ThisType(thiscls) =>
@@ -74,7 +69,7 @@ trait TypeOps { this: Context =>
     }
     needsChecking(tp, false) && {
       tp.DNF forall { case (parents, refinedNames) =>
-        val absParents = parents filter (_.info.isRealTypeBounds)
+        val absParents = parents filter (_.symbol is Deferred)
         absParents.size >= 2 || {
           val ap = absParents.head
           (parents exists (p =>

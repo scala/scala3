@@ -220,14 +220,6 @@ object Denotations {
       case denot1: SingleDenotation =>
         if (denot1 eq denot2) denot1
         else if (denot1.signature == denot2.signature) {
-          /** symbols eligible for a joint denotation are:
-           *   - type symbols, as long as they are not classes
-           *   - term symbols, where concrete symbols take precedence over abstract ones.
-           */
-          def isEligible(sym1: Symbol, sym2: Symbol) =
-            if (sym1.isType) !sym1.isClass
-            else sym1.exists && (
-              !(sym1 is Deferred) || !sym2.exists || (sym2 is Deferred))
           /** Convert class info C to bounds C..C */
           def normalize(info: Type) =
             if (isType) info.bounds else info
@@ -235,8 +227,8 @@ object Denotations {
           val info1 = denot1.info
           val sym2 = denot2.symbol
           val info2 = denot2.info
-          val sym1Eligible = isEligible(sym1, sym2)
-          val sym2Eligible = isEligible(sym2, sym1)
+          val sym1Eligible = sym1.isAsConcrete(sym2)
+          val sym2Eligible = sym2.isAsConcrete(sym1)
           val bounds1 = normalize(info1)
           val bounds2 = normalize(info2)
           if (sym2Eligible && bounds2 <:< bounds1) denot2

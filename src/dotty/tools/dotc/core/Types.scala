@@ -72,7 +72,7 @@ object Types {
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
     final def isStable(implicit ctx: Context): Boolean = this match {
-      case tp: TermRef => tp.prefix.isStable && tp.termSymbol.isStable
+      case tp: TermRef => tp.termSymbol.isStable
       case _: SingletonType => true
       case _ => false
     }
@@ -97,21 +97,6 @@ object Types {
     /** Is some part of this type produced as a repair for an error? */
     final def isErroneous(implicit ctx: Context): Boolean = exists(_.isError)
 
-    /** Is this type a TypeBounds instance, with lower and upper bounds
-     *  that are not identical?
-     */
-    final def isRealTypeBounds: Boolean = this match {
-      case tp: TypeBounds => tp.lo ne tp.hi
-      case _ => false
-    }
-
-    /** Is this type a TypeBounds instance, with lower and upper bounds
-     *  that are identical?
-     */
-    final def isAliasTypeBounds: Boolean = this match {
-      case tp: TypeBounds => tp.lo eq tp.hi
-      case _ => false
-    }
     /** A type is volatile if its DNF contains an alternative of the form
      *  {P1, ..., Pn}, {N1, ..., Nk}, where the Pi are parent typerefs and the
      *  Nj are refinement names, and one the 4 following conditions is met:
@@ -414,7 +399,7 @@ object Types {
      */
     final def normalizedPrefix(implicit ctx: Context): Type = this match {
       case tp: NamedType =>
-        if (tp.info.isAliasTypeBounds) tp.info.normalizedPrefix else tp.prefix
+        if (tp.symbol.isAliasType) tp.info.normalizedPrefix else tp.prefix
       case tp: ClassInfo =>
         tp.prefix
       case tp: TypeProxy =>
@@ -458,7 +443,7 @@ object Types {
      */
     final def DNF(implicit ctx: Context): Set[(Set[TypeRef], Set[Name])] = this match {
       case tp: TypeRef =>
-        if (tp.info.isAliasTypeBounds) tp.info.bounds.hi.DNF
+        if (tp.symbol.isAliasType) tp.info.bounds.hi.DNF
         else Set((Set(tp), Set()))
       case RefinedType(parent, name) =>
         for ((ps, rs) <- parent.DNF) yield (ps, rs + name)
@@ -762,12 +747,7 @@ object Types {
           } else {
             val d = loadDenot
             if (d.exists || ctx.phaseId == FirstPhaseId) {
-              val checkPrefix = d.info match {
-                case TypeBounds(lo, hi) => lo ne hi
-                case _: ClassInfo => true
-                case _ => false
-              }
-              if (checkPrefix && !prefix.isLegalPrefix)
+              if (!d.symbol.isAliasType && !prefix.isLegalPrefix)
                 throw new MalformedType(prefix, d.asInstanceOf[SymDenotation])
               d
             } else {// name has changed; try load in earlier phase and make current
@@ -1469,7 +1449,7 @@ object Types {
   /** A filter for names of abstract types of a given type */
   object abstractTypeNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
-      name.isTypeName && (pre member name).info.isRealTypeBounds
+      name.isTypeName && ((pre member name).symbol is Deferred)
   }
 
   /** A filter for names of deferred term definitions of a given type */

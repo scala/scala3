@@ -207,13 +207,13 @@ object SymDenotations {
       initial.asSymDenotation.name startsWith tpnme.ANON_CLASS
 
     /** Is this symbol an abstract type? */
-    final def isAbstractType = isType && info.isRealTypeBounds
+    final def isAbstractType = isType && (this is Deferred)
 
     /** Is this symbol an alias type? */
-    final def isAliasType = isType && info.isAliasTypeBounds
+    final def isAliasType = isAbstractOrAliasType && !(this is Deferred)
 
     /** Is this symbol an abstract or alias type? */
-    final def isAbstractOrAliasType = isType & info.isInstanceOf[TypeBounds]
+    final def isAbstractOrAliasType = isType & !isClass
 
     /** Is this definition contained in `boundary`?
      *  Same as `ownersIterator contains boundary` but more efficient.
@@ -251,9 +251,12 @@ object SymDenotations {
     /** Is this a denotation of a stable term (or an arbitrary type)? */
     final def isStable(implicit ctx: Context) = {
       val isUnstable =
-        this.is(UnstableValue, butNot = Stable) ||
+        (this is UnstableValue) ||
         info.isVolatile && !hasAnnotation(defn.uncheckedStableClass)
-      !(isTerm && isUnstable)
+      (this is Stable) || isType || {
+        if (isUnstable) false
+        else { setFlag(Stable); true }
+      }
     }
 
     /** Is this a user defined "def" method? Excluded are accessors and stable values */
@@ -379,6 +382,10 @@ object SymDenotations {
        || ctx.erasedTypes && symbol != defn.ArrayClass
        || (pre eq thisType)
        )
+
+    /** Is this symbol concrete, or that symbol deferred? */
+    def isAsConcrete(that: Symbol)(implicit ctx: Context): Boolean =
+      !(this is Deferred) || (that is Deferred)
 
     //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
     //    def isSkolem: Boolean = ???
