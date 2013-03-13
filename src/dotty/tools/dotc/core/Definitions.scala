@@ -31,19 +31,22 @@ class Definitions(implicit ctx: Context) {
     scope.enter(tparam)
   }
 
-  private def specialPolyClass(name: TypeName, flags: FlagSet, parentConstrs: Type*): ClassSymbol =
-    ctx.newClassSymbolDenoting { cls =>
-      val paramDecls = newScope
-      val typeParam = newSyntheticTypeParam(cls, paramDecls)
-      def instantiate(tpe: Type) =
-        if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.symbolicRef)
-        else tpe
-      val parents = parentConstrs.toList map instantiate
-      val parentRefs: List[TypeRef] = ctx.normalizeToRefs(parents, cls, paramDecls)
-      ctx.SymDenotation(
-        cls, ScalaPackageClass, name, flags,
-        ClassInfo(ScalaPackageClass.thisType, cls, parentRefs, paramDecls))
+  private def specialPolyClass(name: TypeName, flags: FlagSet, parentConstrs: Type*): ClassSymbol = {
+    val completer = new LazyType {
+      def complete(denot: SymDenotation): Unit = {
+        val cls = denot.asClass.classSymbol
+        val paramDecls = newScope
+        val typeParam = newSyntheticTypeParam(cls, paramDecls)
+        def instantiate(tpe: Type) =
+          if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.symbolicRef)
+          else tpe
+        val parents = parentConstrs.toList map instantiate
+        val parentRefs: List[TypeRef] = ctx.normalizeToRefs(parents, cls, paramDecls)
+        denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parentRefs, paramDecls)
+      }
     }
+    ctx.newClassSymbol(ScalaPackageClass, name, flags, completer)
+  }
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[ClassSymbol] = {
     val arr = new Array[ClassSymbol](arity)

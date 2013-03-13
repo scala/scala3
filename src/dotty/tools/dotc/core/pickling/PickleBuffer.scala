@@ -173,19 +173,37 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
 
   private val (scalaTermFlagMap, scalaTypeFlagMap) = {
     import scala.reflect.internal.Flags._
+
+    // The following vals are copy-pasted from reflect.internal.Flags.
+    // They are unfortunately private there, so we cannot get at them directly.
+    // Using the public method pickledToRawFlags instead looks unattractive
+    // because of performance.
+    val IMPLICIT_PKL   = (1 << 0)
+    val FINAL_PKL      = (1 << 1)
+    val PRIVATE_PKL    = (1 << 2)
+    val PROTECTED_PKL  = (1 << 3)
+    val SEALED_PKL     = (1 << 4)
+    val OVERRIDE_PKL   = (1 << 5)
+    val CASE_PKL       = (1 << 6)
+    val ABSTRACT_PKL   = (1 << 7)
+    val DEFERRED_PKL   = (1 << 8)
+    val METHOD_PKL     = (1 << 9)
+    val MODULE_PKL     = (1 << 10)
+    val INTERFACE_PKL  = (1 << 11)
+
     val corr = Map(
-      PROTECTED -> Protected,
-      OVERRIDE -> Override,
-      PRIVATE -> Private,
-      ABSTRACT -> Abstract,
-      DEFERRED -> Deferred,
-      FINAL -> Final,
-      METHOD -> Method,
-      INTERFACE -> Interface,
-      MODULE -> Module,
-      IMPLICIT -> Implicit,
-      SEALED -> Sealed,
-      CASE -> Case,
+      PROTECTED_PKL -> Protected,
+      OVERRIDE_PKL -> Override,
+      PRIVATE_PKL -> Private,
+      ABSTRACT_PKL -> Abstract,
+      DEFERRED_PKL -> Deferred,
+      FINAL_PKL -> Final,
+      METHOD_PKL -> Method,
+      INTERFACE_PKL -> Interface,
+      MODULE_PKL -> Module,
+      IMPLICIT_PKL -> Implicit,
+      SEALED_PKL -> Sealed,
+      CASE_PKL -> Case,
       MUTABLE -> Mutable,
       PARAM -> Param,
       PACKAGE -> Package,
@@ -241,6 +259,24 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
     }
 
     (chunkMap(termMap), chunkMap(typeMap))
+  }
+
+  /** Pickle = majorVersion_Nat minorVersion_Nat nbEntries_Nat {Entry}
+   *  Entry  = type_Nat length_Nat [actual entries]
+   *
+   *  Assumes that the ..Version_Nat are already consumed.
+   *
+   *  @return an array mapping entry numbers to locations in
+   *  the byte array where the entries start.
+   */
+  def createIndex: Array[Int] = {
+    val index = new Array[Int](readNat()) // nbEntries_Nat
+    for (i <- 0 until index.length) {
+      index(i) = readIndex
+      readByte() // skip type_Nat
+      readIndex = readNat() + readIndex // read length_Nat, jump to next entry
+    }
+    index
   }
 
   def unpickleScalaFlags(sflags: Long, isType: Boolean): FlagSet = {

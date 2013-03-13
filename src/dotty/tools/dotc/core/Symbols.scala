@@ -15,6 +15,7 @@ import Types._, Annotations._, Positions._, StdNames._, Trees._
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
+import language.implicitConversions
 
 /** Creation methods for symbols */
 trait Symbols { this: Context =>
@@ -101,13 +102,12 @@ trait Symbols { this: Context =>
   /** Create a module symbol with associated module class
    *  from its non-info fields and a function producing the info
    *  of the module class (this info may be lazy).
-   *  @param flags  The combined flags of the module and the module class
-   *                These are masked with RetainedModuleFlags/RetainedModuleClassFlags.
    */
   def newModuleSymbol(
       owner: Symbol,
       name: TermName,
-      flags: FlagSet,
+      modFlags: FlagSet,
+      clsFlags: FlagSet,
       infoFn: (TermSymbol, ClassSymbol) => Type,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
@@ -117,12 +117,10 @@ trait Symbols { this: Context =>
     val module = newNakedSymbol[TermName](coord)
     val modcls = newNakedClassSymbol(coord, assocFile)
     val cdenot = SymDenotation(
-        modcls, owner, name.toTypeName,
-        flags & RetainedModuleClassFlags | ModuleClassCreationFlags,
+        modcls, owner, name.toTypeName, clsFlags,
         infoFn(module, modcls), privateWithin)
     val mdenot = SymDenotation(
-        module, owner, name,
-        flags & RetainedModuleValFlags | ModuleCreationFlags,
+        module, owner, name, modFlags,
         if (cdenot.isCompleted) TypeRef(owner.thisType, name.toTypeName, modcls)
         else new LazyModuleInfo(modcls)(condensed))
     module.denot = mdenot
@@ -138,14 +136,15 @@ trait Symbols { this: Context =>
   def newCompleteModuleSymbol(
       owner: Symbol,
       name: TermName,
-      flags: FlagSet,
+      modFlags: FlagSet,
+      clsFlags: FlagSet,
       parents: List[TypeRef],
       decls: Scope,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
       assocFile: AbstractFile = null): TermSymbol =
     newModuleSymbol(
-        owner, name, flags,
+        owner, name, modFlags, clsFlags,
         (module, modcls) => ClassInfo(
           owner.thisType, modcls, parents, decls, TermRef(owner.thisType, name, module)),
         privateWithin, coord, assocFile)
@@ -157,7 +156,7 @@ trait Symbols { this: Context =>
       owner: Symbol,
       name: TermName,
       infoFn: (TermSymbol, ClassSymbol) => LazyType): TermSymbol =
-    newModuleSymbol(owner, name, PackageCreationFlags, infoFn)
+    newModuleSymbol(owner, name, PackageCreationFlags, PackageClassCreationFlags, infoFn)
 
   /** Create a package symbol with associated package class
    *  from its non-info fields its member scope.
@@ -165,9 +164,13 @@ trait Symbols { this: Context =>
   def newCompletePackageSymbol(
       owner: Symbol,
       name: TermName,
-      flags: FlagSet = EmptyFlags,
+      modFlags: FlagSet = EmptyFlags,
+      clsFlags: FlagSet = EmptyFlags,
       decls: Scope = newScope): TermSymbol =
-    newCompleteModuleSymbol(owner, name, flags | PackageCreationFlags, Nil, decls)
+    newCompleteModuleSymbol(
+      owner, name,
+      modFlags | PackageCreationFlags, clsFlags | PackageClassCreationFlags,
+      Nil, decls)
 
 
   /** Create a stub symbol that will issue a missing reference error
@@ -178,7 +181,7 @@ trait Symbols { this: Context =>
     println(s"creating stub for $name") // !!! DEBUG
     name match {
       case name: TermName =>
-        newModuleSymbol(owner, name, EmptyFlags, stub, assocFile = file)
+        newModuleSymbol(owner, name, EmptyFlags, EmptyFlags, stub, assocFile = file)
       case name: TypeName =>
         newClassSymbol(owner, name, EmptyFlags, stub, assocFile = file)
     }

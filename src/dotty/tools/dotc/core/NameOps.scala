@@ -104,7 +104,7 @@ object NameOps {
     /** The expanded name of `name` relative to this class `base` with given `separator`
      */
     def expandedName(base: Symbol, separator: Name = nme.EXPAND_SEPARATOR)(implicit ctx: Context): N =
-      name.fromName((base.fullName('$') ++ separator ++ name)).asInstanceOf[N]
+      name.fromName(base.fullName('$') ++ separator ++ name).asInstanceOf[N]
 
     def unexpandedName(separator: Name = nme.EXPAND_SEPARATOR): N = {
       val idx = name.lastIndexOfSlice(separator)

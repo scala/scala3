@@ -51,6 +51,9 @@ object SymDenotations {
     private[this] var _privateWithin: Symbol = initPrivateWithin
     private[this] var _annotations: List[Annotation] = Nil
 
+    if (isType) assert(_flags.toTypeFlags == _flags, this.name + " " + _flags)
+    if (isTerm) assert(_flags.toTermFlags == _flags, this.name + " " + _flags)
+
     /** The owner of the symbol */
     def owner: Symbol = _owner
 
@@ -58,8 +61,11 @@ object SymDenotations {
     final def flags: FlagSet = { ensureCompleted(); _flags }
 
     /** Update the flag set */
-    private[core] final def flags_=(flags: FlagSet): Unit =
+    private[core] final def flags_=(flags: FlagSet): Unit = {
       _flags = flags
+      if (isType) assert(_flags.toTypeFlags == _flags, this.name)
+      if (isTerm) assert(_flags.toTermFlags == _flags, this.name)
+    }
 
     /** Set given flags(s) of this denotation */
     final def setFlag(flags: FlagSet): Unit = { _flags |= flags }
@@ -67,14 +73,15 @@ object SymDenotations {
     /** UnsSet given flags(s) of this denotation */
     final def resetFlag(flags: FlagSet): Unit = { _flags &~= flags }
 
-    final def is(fs: FlagSet) =
+    final def is(fs: FlagSet) = {
       (if (fs <= FromStartFlags) _flags else flags) is fs
+    }
     final def is(fs: FlagSet, butNot: FlagSet) =
-      (if (fs <= FromStartFlags) _flags else flags) is (fs, butNot)
+      (if (fs <= FromStartFlags && butNot <= FromStartFlags) _flags else flags) is (fs, butNot)
     final def is(fs: FlagConjunction) =
       (if (fs <= FromStartFlags) _flags else flags) is fs
     final def is(fs: FlagConjunction, butNot: FlagSet) =
-      (if (fs <= FromStartFlags) _flags else flags) is (fs, butNot)
+      (if (fs <= FromStartFlags && butNot <= FromStartFlags) _flags else flags) is (fs, butNot)
 
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
@@ -88,6 +95,7 @@ object SymDenotations {
     private def completedInfo(completer: LazyType): Type = {
       if (_flags is CompletionStarted) throw new CyclicReference(this)
       _flags |= CompletionStarted
+      println("completing "+this.debugString+"/"+owner.id) // !!! DEBUG
       completer.complete(this)
       info
     }

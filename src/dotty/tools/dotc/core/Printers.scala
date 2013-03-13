@@ -385,8 +385,10 @@ object Printers {
         val nodeName = node.productPrefix
         val elems = node.productIterator.map(showElem).mkString(", ")
         val tpSuffix =
-          if (ctx.settings.printtypes.value && tree.hasType) s" | ${tree.tpe}"
-          else ""
+          if (ctx.settings.printtypes.value && tree.hasType)
+            s" | ${tree.tpe.asInstanceOf[Type].show}"
+          else
+            ""
 
         s"$nodeName($elems$tpSuffix)"
       case _ =>

@@ -16,6 +16,7 @@ import reporting._
 import collection.mutable
 import collection.immutable.BitSet
 import config.{Settings, Platform, JavaPlatform}
+import language.implicitConversions
 
 object Contexts {
 
@@ -156,7 +157,6 @@ object Contexts {
     /** Is the verbose option set? */
     def verbose: Boolean = base.settings.verbose.value
 
-
     /** A condensed context containing essential information of this but
      *  no outer contexts except the initial context.
      */
@@ -254,6 +254,7 @@ object Contexts {
         .withSetting(settings.verbose, true) // !!! for now
         .withSetting(settings.debug, true)
         .withSetting(settings.Ylogcp, true)
+        .withSetting(settings.printtypes, true)
 
     /** The symbol loaders */
     val loaders = new SymbolLoaders

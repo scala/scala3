@@ -97,7 +97,7 @@ object TypedTrees {
     def Apply(fn: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
       val owntype = fn.tpe.widen match {
         case fntpe @ MethodType(pnames, ptypes) =>
-          check(sameLength(ptypes, args))
+          check(sameLength(ptypes, args), s"${fn.show}: ${fntpe.show} to ${args.map(_.show).mkString(", ")}")
           fntpe.instantiate(args map (_.tpe))
         case _ =>
           check(false)
@@ -400,7 +400,7 @@ object TypedTrees {
 
   import Trees._
 
-  def check(p: Boolean)(implicit ctx: Context): Unit = assert(p)
+  def check(p: Boolean, msg: => String = "")(implicit ctx: Context): Unit = assert(p, msg)
 
   def checkTypeArg(arg: tpd.Tree, bounds: TypeBounds)(implicit ctx: Context): Unit = {
     check(arg.isValueType)

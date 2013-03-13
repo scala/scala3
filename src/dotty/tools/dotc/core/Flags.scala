@@ -1,5 +1,7 @@
 package dotty.tools.dotc.core
 
+import language.implicitConversions
+
 object Flags {
 
   /** A FlagSet represents a set of flags. Flags are encoded as follows:
@@ -65,13 +67,13 @@ object Flags {
     def <= (that: FlagSet) = (bits & that.bits) == bits
 
     /** This flag set with all flags transposed to be type flags */
-    def toTypeFlags = FlagSet(bits & ~KINDFLAGS | TYPES)
+    def toTypeFlags = if (bits == 0) this else FlagSet(bits & ~KINDFLAGS | TYPES)
 
     /** This flag set with all flags transposed to be term flags */
-    def toTermFlags = FlagSet(bits & ~KINDFLAGS | TERMS)
+    def toTermFlags = if (bits == 0) this else FlagSet(bits & ~KINDFLAGS | TERMS)
 
     /** This flag set with all flags transposed to be common flags */
-    def toCommonFlags = FlagSet(bits | KINDFLAGS)
+    def toCommonFlags = if (bits == 0) this else FlagSet(bits | KINDFLAGS)
 
     /** The number of non-kind flags in this set */
     def numFlags: Int = java.lang.Long.bitCount(bits & ~KINDFLAGS)
@@ -334,7 +336,8 @@ object Flags {
   final val ImplClass = typeFlag(54, "<implclass>")
 
   /** An existentially bound symbol (Scala 2.x only) */
-  final val Scala2Existential = typeFlag(55, "<existential>")
+  final val Scala2ExistentialCommon = commonFlag(55, "<existential>")
+  final val Scala2Existential = Scala2ExistentialCommon.toTypeFlags
 
   /** An overloaded symbol (Scala 2.x only) */
   final val Scala2Overloaded = termFlag(56, "<overloaded>")
@@ -354,7 +357,7 @@ object Flags {
 
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
-    AccessFlags | Module | Package | Deferred
+    AccessFlags | Module | Package | Deferred | Param | Scala2ExistentialCommon
 
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local
@@ -367,10 +370,10 @@ object Flags {
   final val RetainedTypeArgFlags = Covariant | Contravariant | Protected | Local
 
   /** Modules always have these flags set */
-  final val ModuleCreationFlags = Module
+  final val ModuleCreationFlags = ModuleVal
 
   /** Module classes always have these flags set */
-  final val ModuleClassCreationFlags = Module | Final
+  final val ModuleClassCreationFlags = ModuleClass | Final
 
   /** The flags of a type parameter */
   final val TypeParamCreationFlags = TypeParam | Protected | Local
@@ -393,7 +396,9 @@ object Flags {
     InConstructor | ImplClass
 
   /** Packages and package classes always have these flags set */
-  final val PackageCreationFlags = Module | Package | Final | JavaDefined | Static
+  final val PackageCreationFlags =
+    (Module | Package | Final | JavaDefined | Static).toTermFlags
+  final val PackageClassCreationFlags = PackageCreationFlags.toTypeFlags
 
   /** These flags are pickled */
   final val PickledFlags = flagRange(FirstFlag, FirstNotPickledFlag)

@@ -14,22 +14,27 @@ trait Reporting { this: Context =>
   def warning(msg: String, pos: Position = NoPosition): Unit = reporter.warning(msg, pos)
   def inform(msg: String, pos: Position = NoPosition): Unit = reporter.info(msg, pos)
 
-  def log(msg: => String)(implicit ctx: Context): Unit =
+  def log(msg: => String): Unit =
     if (true || // !!! for now
         this.settings.log.value.containsPhase(phase))
       inform(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg")
 
-  def debuglog(msg: => String)(implicit ctx: Context): Unit =
+  def debuglog(msg: => String): Unit =
     if (ctx.debug) log(msg)
 
-  def informTime(msg: => String, start: Long)(implicit ctx: Context): Unit =
+  def informTime(msg: => String, start: Long): Unit =
     informProgress(msg + elapsed(start))
 
   private def elapsed(start: Long) =
     " in " + (currentTimeMillis - start) + "ms"
 
-  def informProgress(msg: => String)(implicit ctx: Context) =
+  def informProgress(msg: => String) =
     if (ctx.settings.verbose.value) inform("[" + msg + "]")
+
+  def trace[T](msg: => String)(value: T) = {
+    log(msg + " " + value)
+    value
+  }
 }
 
 object Reporter {

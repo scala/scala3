@@ -7,6 +7,7 @@ import scala.reflect.internal.util.StringOps
 import reflect.ClassTag
 import core.Contexts._
 import annotation.unchecked
+import language.existentials
 
 object Settings {
 

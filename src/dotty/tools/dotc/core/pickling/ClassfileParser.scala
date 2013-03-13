@@ -222,7 +222,7 @@ class ClassfileParser(
         case BOOL_TAG   => defn.BooleanType
         case 'L' =>
           def processInner(tp: Type): Type = tp match {
-            case tp @ TypeRef(pre, name) if !tp.symbol.isStatic =>
+            case tp @ TypeRef(pre, name) if !(tp.symbol.owner is Flags.ModuleClass) =>
               TypeRef(pre.widen, name)
             case _ =>
               tp

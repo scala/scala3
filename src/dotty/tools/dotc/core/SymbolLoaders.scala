@@ -34,8 +34,10 @@ class SymbolLoaders {
 
   /** Enter module with given `name` into scope of `owner`.
    */
-  def enterModule(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context): Symbol = {
-    val module = ctx.newModuleSymbol(owner, name.toTermName, flags, completer, assocFile = completer.sourceFileOrNull)
+  def enterModule(owner: Symbol, name: PreName, completer: SymbolLoader, modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags)(implicit ctx: CondensedContext): Symbol = {
+    def moduleCompleterFn(modul: TermSymbol, cls: ClassSymbol): LazyType =
+      new ModuleClassCompleter(modul, completer)
+    val module = ctx.newModuleSymbol(owner, name.toTermName, modFlags, clsFlags, moduleCompleterFn, assocFile = completer.sourceFileOrNull)
     enterNew(owner, module, completer)
   }
 
@@ -65,14 +67,14 @@ class SymbolLoaders {
         return NoSymbol
       }
     }
-    ctx.newModuleSymbol(owner, pname, PackageCreationFlags,
+    ctx.newModuleSymbol(owner, pname, PackageCreationFlags, PackageClassCreationFlags,
       (module, modcls) => new PackageLoader(module, pkg)).entered
   }
 
   /** Enter class and module with given `name` into scope of `owner`
    *  and give them `completer` as type.
    */
-  def enterClassAndModule(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context) {
+  def enterClassAndModule(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: CondensedContext) {
     val clazz = enterClass(owner, name, completer, flags)
     val module = enterModule(owner, name, completer, flags)
  /*
@@ -90,7 +92,7 @@ class SymbolLoaders {
    *  with source completer for given `src` as type.
    *  (overridden in interactive.Global).
    */
-  def enterToplevelsFromSource(owner: Symbol, name: PreName, src: AbstractFile)(implicit ctx: Context) {
+  def enterToplevelsFromSource(owner: Symbol, name: PreName, src: AbstractFile)(implicit ctx: CondensedContext) {
     enterClassAndModule(owner, name, new SourcefileLoader(src)(ctx.condensed))
   }
 
@@ -107,7 +109,7 @@ class SymbolLoaders {
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */
-  def initializeFromClassPath(owner: Symbol, classRep: ClassPath#ClassRep)(implicit ctx: Context) {
+  def initializeFromClassPath(owner: Symbol, classRep: ClassPath#ClassRep)(implicit ctx: CondensedContext) {
     ((classRep.binary, classRep.source): @unchecked) match {
       case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
         if (ctx.settings.verbose.value) ctx.inform("[symloader] picked up newer source file for " + src.path)
@@ -127,9 +129,9 @@ class SymbolLoaders {
    */
   class PackageLoader(module: TermSymbol, classpath: ClassPath)(implicit val cctx: CondensedContext)
       extends LazyModuleClassInfo(module) with SymbolLoader {
-    protected def description = "package loader " + classpath.name
+    def description = "package loader " + classpath.name
 
-    protected override def doComplete(root: SymDenotation) {
+    def doComplete(root: SymDenotation) {
       assert(root is PackageClass, root)
       val pre = root.owner.thisType
       root.info = ClassInfo(pre, root.symbol.asClass, Nil, newScope, TermRef(pre, module))
@@ -192,14 +194,14 @@ trait SymbolLoader extends LazyType {
   implicit val cctx: CondensedContext
 
   /** Load source or class file for `root`, return */
-  protected def doComplete(root: SymDenotation): Unit
+  def doComplete(root: SymDenotation): Unit
 
   def sourceFileOrNull: AbstractFile = null
 
   /** Description of the resource (ClassPath, AbstractFile, MsilFile)
    *  being processed by this loader
    */
-  protected def description: String
+  def description: String
 
   override def complete(root: SymDenotation): Unit = {
     def signalError(ex: Exception) {
@@ -235,7 +237,7 @@ class ClassfileLoader(val classfile: AbstractFile)(implicit val cctx: CondensedC
 
   override def sourceFileOrNull: AbstractFile = classfile
 
-  protected def description = "class file "+ classfile.toString
+  def description = "class file "+ classfile.toString
 
   def rootDenots(rootDenot: ClassDenotation): (ClassDenotation, ClassDenotation) = {
     val linkedDenot = rootDenot.linkedClass.denot match {
@@ -246,14 +248,23 @@ class ClassfileLoader(val classfile: AbstractFile)(implicit val cctx: CondensedC
     else (rootDenot, linkedDenot)
   }
 
-  protected def doComplete(root: SymDenotation) {
+  def doComplete(root: SymDenotation) {
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
     new ClassfileParser(classfile, classRoot, moduleRoot).run()
   }
 }
 
 class SourcefileLoader(val srcfile: AbstractFile)(implicit val cctx: CondensedContext) extends SymbolLoader {
-  protected def description = "source file "+ srcfile.toString
+  def description = "source file "+ srcfile.toString
   override def sourceFileOrNull = srcfile
-  protected def doComplete(root: SymDenotation): Unit = unsupported("doComplete")
+  def doComplete(root: SymDenotation): Unit = unsupported("doComplete")
+}
+
+class ModuleClassCompleter(modul: TermSymbol, classCompleter: SymbolLoader)(implicit val cctx: CondensedContext)
+  extends LazyModuleClassInfo(modul) with SymbolLoader {
+  def description: String = classCompleter.description
+  override def sourceFileOrNull = classCompleter.sourceFileOrNull
+  def doComplete(root: SymDenotation): Unit = {
+    classCompleter.doComplete(root)
+  }
 }

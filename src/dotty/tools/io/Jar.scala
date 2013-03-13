@@ -11,7 +11,7 @@ import java.io.{ InputStream, OutputStream, IOException, FileNotFoundException, 
 import java.util.jar._
 import scala.collection.JavaConverters._
 import Attributes.Name
-import scala.language.implicitConversions
+import scala.language.{postfixOps, implicitConversions}
 
 // Attributes.Name instances:
 //

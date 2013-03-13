@@ -3,6 +3,7 @@ package dotty.tools.dotc.core
 import Types._, Names._, Flags._, Positions._, Contexts._, Constants._, SymDenotations._, Symbols._
 import Denotations._, StdNames._
 import annotation.tailrec
+import language.higherKinds
 
 object Trees {
 

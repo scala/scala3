@@ -72,12 +72,24 @@ object UnPickler {
  *  @param moduleroot the top-level module class which is unpickled, or NoSymbol if inapplicable
  *  @param filename   filename associated with bytearray, only used for error messages
  */
-class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: ClassDenotation)(implicit cctx: CondensedContext)
+class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(implicit cctx: CondensedContext)
   extends PickleBuffer(bytes, 0, -1) {
+
+  def showPickled() = {
+    atReadPos(0, () => {
+      println(s"classRoot = ${classRoot.debugString}, moduleClassRoot = ${moduleClassRoot.debugString}")
+      util.ShowPickled.printFile(this)
+    })
+  }
+
+  print("unpickling "); showPickled() // !!! DEBUG
 
   import UnPickler._
 
   import cctx.debug
+
+  val moduleRoot = moduleClassRoot.sourceModule.denot
+  println(s"moduleRoot = $moduleRoot, ${moduleRoot.isTerm}") // !!! DEBUG
 
   checkVersion()
 
@@ -116,6 +128,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
         }
         i += 1
       }
+      finishCompletion(classRoot)
+      finishCompletion(moduleClassRoot)
       // read children last, fix for #3951
       i = 0
       while (i < index.length) {
@@ -138,12 +152,22 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
       case ex: BadSignature =>
         throw ex
       case ex: RuntimeException =>
+        ex.printStackTrace() // !!! DEBUG
         errorBadSignature(s"a runtime exception occured: $ex $ex.getMessage()")
     }
 
+  def finishCompletion(root: SymDenotation) = {
+    if (!root.isCompleted)
+      root.completer match {
+        case completer: LocalUnpickler =>
+          completer.complete(root)
+        case _ =>
+      }
+  }
+
   def source: AbstractFile = {
     val f = classRoot.symbol.associatedFile
-    if (f != null) f else moduleRoot.symbol.associatedFile
+    if (f != null) f else moduleClassRoot.symbol.associatedFile
   }
 
   private def checkVersion() {
@@ -155,24 +179,6 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
         MajorVersion + "." + MinorVersion +
         "\n found: " + major + "." + minor +
         " in " + source)
-  }
-
-  /** Pickle = majorVersion_Nat minorVersion_Nat nbEntries_Nat {Entry}
-   *  Entry  = type_Nat length_Nat [actual entries]
-   *
-   *  Assumes that the ..Version_Nat are already consumed.
-   *
-   *  @return an array mapping entry numbers to locations in
-   *  the byte array where the entries start.
-   */
-  def createIndex: Array[Int] = {
-    val index = new Array[Int](readNat()) // nbEntries_Nat
-    for (i <- 0 until index.length) {
-      index(i) = readIndex
-      readByte() // skip type_Nat
-      readIndex = readNat() + readIndex // read length_Nat, jump to next entry
-    }
-    index
   }
 
   /** The `decls` scope associated with given symbol */
@@ -231,7 +237,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
 
   protected def isUnpickleRoot(sym: Symbol) = {
     val d = sym.denot
-    d == moduleRoot || d == classRoot
+    d == moduleRoot || d == moduleClassRoot || d == classRoot
   }
 
   /** If entry at <code>i</code> is undefined, define it by performing
@@ -344,11 +350,17 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
     val owner = readSymbolRef()
     val flags = unpickleScalaFlags(readLongNat(), name.isTypeName)
 
-    def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner)
-    def isModuleRoot = (name.toTermName == moduleRoot.name.toTermName) && (owner == moduleRoot.owner)
+    def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
+    def isModuleClassRoot = (name == moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)
+    def isModuleRoot = (name == moduleClassRoot.name.toTermName) && (owner == moduleClassRoot.owner) && (flags is Module)
+
+    if (isClassRoot) println(s"classRoot of $classRoot found at $readIndex, flags = $flags") // !!! DEBUG
+    if (isModuleRoot) println(s"moduleRoot of $moduleRoot found at $readIndex, flags = $flags") // !!! DEBUG
+    if (isModuleClassRoot) println(s"moduleClassRoot of $moduleClassRoot found at $readIndex, flags = $flags") // !!! DEBUG
 
     def completeRoot(denot: ClassDenotation): Symbol = {
-      atReadPos(start.toIndex, () => localUnpickler.parseToCompletion(denot))
+      denot.setFlag(flags)
+      denot.info = new RootUnpickler(start)
       denot.symbol
     }
 
@@ -372,11 +384,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
         cctx.newSymbol(owner, name1, flags1, localUnpickler, coord = start)
       case CLASSsym =>
         if (isClassRoot) completeRoot(classRoot)
-        else if (isModuleRoot) completeRoot(moduleRoot)
+        else if (isModuleClassRoot) completeRoot(moduleClassRoot)
         else cctx.newClassSymbol(owner, name.asTypeName, flags, localUnpickler, coord = start)
       case MODULEsym | VALsym =>
         if (isModuleRoot) {
-          moduleRoot.flags = flags
+          moduleRoot setFlag flags
           moduleRoot.symbol
         } else cctx.newSymbol(owner, name.asTermName, flags, localUnpickler, coord = start)
       case _ =>
@@ -384,7 +396,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
     })
   }
 
-  val localUnpickler = new LazyType {
+  abstract class LocalUnpickler extends LazyType {
     def parseToCompletion(denot: SymDenotation) = {
       val tag = readByte()
       val end = readNat() + readIndex
@@ -413,15 +425,23 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
             assert(denot is (SuperAccessor | ParamAccessor), denot)
             def disambiguate(alt: Symbol) =
               denot.info =:= denot.owner.thisType.memberInfo(alt)
-            val aliasRef = readNat()
-            val alias = at(aliasRef, readDisambiguatedSymbol(disambiguate)).asTerm
+            val alias = readDisambiguatedSymbolRef(disambiguate).asTerm
             denot.addAnnotation(Annotation.makeAlias(alias))
           }
       }
     }
+    def startCoord(denot: SymDenotation): Coord
     def complete(denot: SymDenotation): Unit = {
-      atReadPos(denot.symbol.coord.toIndex, () => parseToCompletion(denot))
+      atReadPos(startCoord(denot).toIndex, () => parseToCompletion(denot))
     }
+  }
+
+  object localUnpickler extends LocalUnpickler {
+    def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
+  }
+
+  class RootUnpickler(start: Coord) extends LocalUnpickler {
+    def startCoord(denot: SymDenotation): Coord = start
   }
 
   /** Convert
@@ -485,7 +505,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
         else ThisType(cls)
       case SINGLEtpe =>
         val pre = readTypeRef()
-        val sym = readDisambiguatedSymbol(_.isParameterless)
+        val sym = readDisambiguatedSymbolRef(_.isParameterless)
         if (isLocal(sym)) TermRef(pre, sym.asTerm)
         else TermRef(pre, sym.name.asTermName, NotAMethod)
       case SUPERtpe =>
@@ -608,6 +628,9 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleRoot: Clas
     }
     r.asInstanceOf[Symbol]
   }
+
+  protected def readDisambiguatedSymbolRef(p: Symbol => Boolean): Symbol =
+    at(readNat(), readDisambiguatedSymbol(p))
 
   protected def readNameRef(): Name = at(readNat(), readName)
   protected def readTypeRef(): Type = at(readNat(), () => readType()) // after the NMT_TRANSITION period, we can leave off the () => ... ()

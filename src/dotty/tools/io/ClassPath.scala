@@ -15,6 +15,7 @@ import Jar.isJarOrZip
 import ClassPath._
 import scala.Option.option2Iterable
 import scala.reflect.io.Path.string2path
+import language.postfixOps
 
 /** <p>
  *    This module provides star expansion of '-classpath' option arguments, behaves the same as
