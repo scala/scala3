@@ -135,11 +135,11 @@ class Definitions(implicit ctx: Context) {
 
   // Annotation classes
   lazy val AliasAnnot = requiredClass("dotty.annotation.internal.Alias")
-  lazy val ChildAnnot = requiredClass("dotty.annotation.internal.Alias")
+  lazy val ChildAnnot = requiredClass("dotty.annotation.internal.Child")
   lazy val ScalaSignatureAnnot = requiredClass("scala.reflect.ScalaSignature")
   lazy val ScalaLongSignatureAnnot = requiredClass("scala.reflect.ScalaLongSignature")
   lazy val DeprecatedAnnot = requiredClass("scala.deprecated")
-  lazy val AnnotationDefaultAnnot = requiredClass("dotty.runtime.AnnotationDefault")
+  lazy val AnnotationDefaultAnnot = requiredClass("dotty.annotation.internal.AnnotationDefault")
   lazy val ThrowsAnnot = requiredClass("scala.throws")
 
   // Derived types
@@ -238,7 +238,6 @@ class Definitions(implicit ctx: Context) {
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticCoreClasses = List(
     AnyRefAlias,
-    SingletonClass,
     RepeatedParamClass,
     JavaRepeatedParamClass,
     ByNameParamClass,
