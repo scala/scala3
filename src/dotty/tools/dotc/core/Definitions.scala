@@ -1,8 +1,3 @@
-/* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
- * @author  Martin Odersky
- */
-
 package dotty.tools
 package dotc
 package core
@@ -68,8 +63,12 @@ class Definitions(implicit ctx: Context) {
   lazy val JavaLangPackageVal = requiredPackage("java.lang")
 
   lazy val ObjectClass = requiredClass("java.lang.Object")
-  lazy val AnyRefAlias: TypeSymbol = ctx.newSymbol(
-    ScalaPackageClass, tpnme.AnyRef, EmptyFlags, TypeAlias(ObjectClass.typeConstructor)).entered
+  lazy val AnyRefAlias: TypeSymbol = {
+    val anyRef = ctx.newSymbol(
+      ScalaPackageClass, tpnme.AnyRef, EmptyFlags, TypeAlias(ObjectClass.typeConstructor))
+    ScalaPackageClass.preCompleteDecls.openForMutations.enter(anyRef)
+    anyRef
+  }
   lazy val AnyClass: ClassSymbol = ctx.newCompleteClassSymbol(
     ScalaPackageClass, tpnme.Any, Abstract, Nil).entered
   lazy val AnyValClass: ClassSymbol = requiredClass("scala.AnyVal")
@@ -84,7 +83,7 @@ class Definitions(implicit ctx: Context) {
   lazy val PredefModule = requiredModule("scala.Predef")
 
 //  lazy val FunctionClass: ClassSymbol = requiredClass("scala.Function")
-  lazy val SingletonClass: ClassSymbol = requiredClass("scala.Singleton")
+  lazy val SingletonClass: ClassSymbol = requiredClass("dotty.Singleton")
   lazy val SeqClass: ClassSymbol = requiredClass("scala.collection.Seq")
   lazy val ArrayClass: ClassSymbol = requiredClass("scala.Array")
   lazy val uncheckedStableClass: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
@@ -238,16 +237,15 @@ class Definitions(implicit ctx: Context) {
 
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticCoreClasses = List(
-    AnnotationDefaultAnnot, // #2264
+    AnyRefAlias,
+    SingletonClass,
     RepeatedParamClass,
     JavaRepeatedParamClass,
     ByNameParamClass,
     AnyClass,
-    AnyRefAlias,
     AnyValClass,
     NullClass,
     NothingClass,
-    SingletonClass,
     EqualsPatternClass)
 
   private[this] var _isInitialized = false

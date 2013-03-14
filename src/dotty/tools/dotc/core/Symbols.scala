@@ -177,14 +177,19 @@ trait Symbols { this: Context =>
    *  when attempted to be completed.
    */
   def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
-    def stub = new StubInfo()(condensed)
-    println(s"creating stub for $name") // !!! DEBUG
-    name match {
+    def stubCompleter = new StubInfo()(condensed)
+    val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
+    //println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
+    //println(s"decls = ${normalizedOwner.preCompleteDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
+    //throw new Error()
+    val stub = name match {
       case name: TermName =>
-        newModuleSymbol(owner, name, EmptyFlags, EmptyFlags, stub, assocFile = file)
+        newModuleSymbol(normalizedOwner, name, EmptyFlags, EmptyFlags, stubCompleter, assocFile = file)
       case name: TypeName =>
-        newClassSymbol(owner, name, EmptyFlags, stub, assocFile = file)
+        newClassSymbol(normalizedOwner, name, EmptyFlags, stubCompleter, assocFile = file)
     }
+    stub.info //!!! DEBUG, force the error for now
+    stub
   }
 
   /** Create the local template dummy of given class `cls`. */
@@ -257,20 +262,14 @@ trait Symbols { this: Context =>
 
 // ----- Locating predefined symbols ----------------------------------------
 
-  def requiredPackage(path: PreName): TermSymbol = {
-    val pathName = path.toTermName
-    base.staticRef(pathName).requiredSymbol(_ is Package, pathName).asTerm
-  }
+  def requiredPackage(path: PreName): TermSymbol =
+    base.staticRef(path.toTermName).requiredSymbol(_ is Package).asTerm
 
-  def requiredClass(path: PreName): ClassSymbol = {
-    val pathName = path.toTypeName
-    base.staticRef(pathName).requiredSymbol(_.isClass, pathName).asClass
-  }
+  def requiredClass(path: PreName): ClassSymbol =
+    base.staticRef(path.toTypeName).requiredSymbol(_.isClass).asClass
 
-  def requiredModule(path: PreName): TermSymbol = {
-    val pathName = path.toTermName
-    base.staticRef(pathName).requiredSymbol(_ is Module, pathName).asTerm
-  }
+  def requiredModule(path: PreName): TermSymbol =
+    base.staticRef(path.toTermName).requiredSymbol(_ is Module).asTerm
 }
 
 object Symbols {

@@ -145,7 +145,7 @@ object SymDenotations {
     /** The symbols defined in this class when the class is not yet completed.
      *  @pre: this is a class
      */
-    protected final def preCompleteDecls: Scope = _info match {
+    protected[core] final def preCompleteDecls: Scope = _info match {
       case cinfo: LazyClassInfo => cinfo.decls
       case cinfo: ClassInfo => cinfo.decls
     }
@@ -990,7 +990,7 @@ object SymDenotations {
             |in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.
             |It may be completely missing from the current classpath, or the version on
             |the classpath might be incompatible with the version used when compiling $src.""".stripMargin)
-      if (cctx.debug) (new Throwable).printStackTrace
+      if (cctx.debug) throw new Error()
       initializeToDefaults(denot)
     }
   }

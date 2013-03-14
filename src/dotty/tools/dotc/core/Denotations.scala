@@ -140,7 +140,7 @@ object Denotations {
     /** The variant of this denotation that's current in the given context. */
     def current(implicit ctx: Context): Denotation
 
-    /** Is this denotation different from NoDenotation? */
+    /** Is this denotation different from NoDenotation or an ErrorDenotation? */
     def exists: Boolean = true
 
     /** If this denotation does not exist, fallback to alternative */
@@ -170,22 +170,22 @@ object Denotations {
      */
     def disambiguate(p: Symbol => Boolean)(implicit ctx: Context): SingleDenotation = this match {
       case sdenot: SingleDenotation => sdenot
-      case mdenot => suchThat(p)
+      case mdenot => suchThat(p) orElse NoQualifyingRef(alternatives)
     }
 
     /** Return symbol in this denotation that satisfies the given predicate.
-     *  Throw a `TypeError` if predicate fails to disambiguate symbol.
-     *  Return a stubsymbol if no alternative satisfies the predicate.
+     *  Return a stubsymbol denotation is a missing ref.
+     *  Throw a `TypeError` if predicate fails to disambiguate symbol or no alternative matches.
      */
-    def requiredSymbol(p: Symbol => Boolean, name: Name, source: AbstractFile = null)(implicit ctx: Context): Symbol = {
-      val sym = disambiguate(p).symbol
-      if (sym.exists) sym
-      else {
-        val firstSym = ((NoSymbol: Symbol) /: alternatives.map(_.symbol)) (_ orElse _)
-        val owner = if (firstSym.exists) firstSym.owner else NoSymbol
-        ctx.newStubSymbol(owner, name, source)
+    def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null)(implicit ctx: Context): Symbol =
+      disambiguate(p) match {
+        case MissingRef(ownerd, name) =>
+          ctx.newStubSymbol(ownerd.symbol, name, source)
+        case NoDenotation | _: NoQualifyingRef =>
+          throw new TypeError(s"None of the alternatives of $this satisfies required predicate")
+        case denot =>
+          denot.symbol
       }
-    }
 
     /** Form a denotation by conjoining with denotation `that` */
     def & (that: Denotation)(implicit ctx: Context): Denotation =
@@ -490,10 +490,15 @@ object Denotations {
   }
 
   class ErrorDenotation(implicit ctx: Context) extends SingleDenotation {
+    override def exists = false
     val symbol = NoSymbol
     val info = NoType
     validFor = Period.allInRun(ctx.runId)
   }
+
+  case class MissingRef(val owner: SingleDenotation, name: Name)(implicit ctx: Context) extends ErrorDenotation
+
+  case class NoQualifyingRef(alts: List[SingleDenotation])(implicit ctx: Context) extends ErrorDenotation
 
   // --------------- PreDenotations -------------------------------------------------
 
@@ -556,7 +561,9 @@ object Denotations {
 
   trait DenotationsBase { this: ContextBase =>
 
-    /** The current denotation of the static reference given by path. */
+    /** The current denotation of the static reference given by path,
+     *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
+     */
     def staticRef(path: Name)(implicit ctx: Context): Denotation = {
       def recur(path: Name, len: Int): Denotation = {
         val point = path.lastIndexOf('.', len - 1)
@@ -564,15 +571,15 @@ object Denotations {
           if (point > 0) recur(path.toTermName, point).disambiguate(_.isParameterless)
           else if (path.isTermName) defn.RootClass.denot
           else defn.EmptyPackageClass.denot
-        if (!owner.exists) NoDenotation
+        if (!owner.exists) owner
         else {
           val name = path slice (point + 1, len)
           val result = owner.info.member(name)
-          if (result != NoDenotation) result
+          if (result ne NoDenotation) result
           else {
             val alt = missingHook(owner.symbol.moduleClass, name)
             if (alt.exists) alt.denot
-            else result
+            else MissingRef(owner, name)
           }
         }
       }
