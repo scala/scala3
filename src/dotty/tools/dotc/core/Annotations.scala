@@ -16,6 +16,15 @@ object Annotations {
 
   case class ConcreteAnnotation(val tree: Tree) extends Annotation
 
+  case class LazyAnnotation(sym: Symbol)(treeFn: => Tree) extends Annotation {
+    private var _tree: Tree = null
+    def tree = {
+      if (_tree == null) _tree = treeFn
+      _tree
+    }
+    override def symbol(implicit ctx: Context): Symbol = sym
+  }
+
   object Annotation {
 
     def apply(tree: Tree) = ConcreteAnnotation(tree)
@@ -37,6 +46,12 @@ object Annotations {
 
     def apply(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
       apply(New(atp, args))
+
+    def deferred(sym: Symbol, treeFn: => Tree): Annotation =
+      new LazyAnnotation(sym)(treeFn)
+
+    def deferred(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
+      deferred(atp.typeSymbol, New(atp, args))
 
     def makeAlias(sym: TermSymbol)(implicit ctx: Context) =
       apply(defn.AliasAnnot, List(Ident(TermRef(sym.owner.thisType, sym.name, sym.signature))))

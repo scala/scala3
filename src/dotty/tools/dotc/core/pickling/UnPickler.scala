@@ -82,7 +82,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     })
   }
 
-  print("unpickling "); showPickled() // !!! DEBUG
+  // print("unpickling "); showPickled() // !!! DEBUG
 
   import UnPickler._
 
@@ -319,6 +319,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         NoSymbol
       }
 
+      // println(s"read ext symbol $name from ${owner.denot.debugString} in ${classRoot.debugString}")  // !!! DEBUG
+
       // (1) Try name.
       fromName(name) orElse {
         // (2) Try with expanded name.  Can happen if references to private
@@ -378,6 +380,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         var name1 = name.asTypeName
         var flags1 = flags
         if (flags is TypeParam) {
+          // println(s"expanding name of type parameter $name, owner = ${owner.denot}, completed = ${owner.isCompleted}") // !!! DEBUG
           name1 = name1.expandedName(owner)
           flags1 |= TypeParamCreationFlags
         }
@@ -520,7 +523,9 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val tycon =
           if (isLocal(sym)) TypeRef(pre, sym.asType)
           else TypeRef(pre, sym.name.asTypeName)
-        tycon.appliedTo(until(end, readTypeRef))
+        val args = until(end, readTypeRef)
+        // println(s"reading app type $tycon $args") // !!! DEBUG
+        tycon.appliedTo(args)
       case TYPEBOUNDStpe =>
         TypeBounds(readTypeRef(), readTypeRef())
       case REFINEDtpe =>
@@ -704,7 +709,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       errorBadSignature("symbol annotation expected (" + tag + ")")
     val end = readNat() + readIndex
     val target = readSymbolRef()
-    target.addAnnotation(ConcreteAnnotation(readAnnotationContents(end)))
+    target.addAnnotation(deferredAnnot(end))
   }
 
   /** Read an annotation and return it. Used when unpickling
@@ -715,7 +720,17 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     if (tag != ANNOTINFO)
       errorBadSignature("annotation expected (" + tag + ")")
     val end = readNat() + readIndex
-    ConcreteAnnotation(readAnnotationContents(end))
+    deferredAnnot(end)
+  }
+
+  /** A deferred annotation that can be comleted by reading
+   *  the bytes between `readIndex` and `end`.
+   */
+  protected def deferredAnnot(end: Int): Annotation = {
+    val start = readIndex
+    val atp = readTypeRef()
+    Annotation.deferred(
+      atp.typeSymbol, atReadPos(start, () => readAnnotationContents(end)))
   }
 
   /* Read an abstract syntax tree */

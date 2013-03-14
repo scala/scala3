@@ -30,6 +30,14 @@ object Types {
    */
   private final val NotCachedAlt = Int.MinValue
 
+  /** A value that indicates that the hash code is unknown
+   */
+  private final val HashUnknown = 1234
+
+  /** An alternative value if computeHash would otherwise yield HashUnknown
+   */
+  private final val HashUnknownAlt = 4321
+
   /** The class of types.
    *  The principal subclasses and sub-objects are as follows:
    *
@@ -682,7 +690,14 @@ object Types {
 
   /**  Instances of this class are cached and are not proxies. */
   abstract class CachedGroundType extends Type with CachedType {
-    final val hash = computeHash
+    private[this] var _hash = HashUnknown
+    final def hash = {
+      if (_hash == HashUnknown) {
+        _hash == computeHash
+        if (_hash == HashUnknown) _hash = HashUnknownAlt
+      }
+      _hash
+    }
     override final def hashCode =
       if (hash == NotCached) System.identityHashCode(this) else hash
     def computeHash: Int
@@ -690,7 +705,14 @@ object Types {
 
   /**  Instances of this class are cached and are proxies. */
   abstract class CachedProxyType extends TypeProxy with CachedType {
-    final val hash = computeHash
+    private[this] var _hash = HashUnknown
+    final def hash = {
+      if (_hash == HashUnknown) {
+        _hash == computeHash
+        if (_hash == HashUnknown) _hash = HashUnknownAlt
+      }
+      _hash
+    }
     override final def hashCode =
       if (hash == NotCached) System.identityHashCode(this) else hash
     def computeHash: Int
@@ -822,6 +844,14 @@ object Types {
       val owner = denot.owner
       if (owner.isTerm) denot else denot.asSeenFrom(prefix)
     }
+    override def equals(that: Any) = that match {
+      case that: HasFixedSym =>
+        this.prefix == that.prefix &&
+        this.fixedSym == that.fixedSym
+      case _ =>
+        false
+    }
+    override def computeHash = doHash(fixedSym, prefix)
   }
 
   final class TermRefBySym(prefix: Type, name: TermName, val fixedSym: TermSymbol)
@@ -831,14 +861,22 @@ object Types {
       else TermRef(prefix, name, fixedSym.signature)
  }
 
-  final class TermRefWithSignature(prefix: Type, name: TermName, sig: Signature) extends TermRef(prefix, name) {
+  final class TermRefWithSignature(prefix: Type, name: TermName, val sig: Signature) extends TermRef(prefix, name) {
     override def signature(implicit ctx: Context) = sig
-    override def computeHash = doHash((name, sig), prefix)
-    override def loadDenot(implicit ctx: Context): Denotation =
+   override def loadDenot(implicit ctx: Context): Denotation =
       super.loadDenot.atSignature(sig)
     override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRefWithSignature =
       TermRef(prefix, name, sig)
-   }
+    override def equals(that: Any) = that match {
+      case that: TermRefWithSignature =>
+        this.prefix == that.prefix &&
+        this.name == that.name &&
+        this.sig == that.sig
+      case _ =>
+        false
+    }
+    override def computeHash = doHash((name, sig), prefix)
+  }
 
   final class TypeRefBySym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol)
     extends TypeRef(prefix, name) with HasFixedSym {
@@ -1196,7 +1234,8 @@ object Types {
       if (optSelfType.exists) optSelfType else cls.typeConstructor
 
     def rebase(tp: Type)(implicit ctx: Context): Type =
-      tp.substThis(cls, prefix)
+      if (prefix eq cls.owner.thisType) tp
+      else tp.substThis(cls, prefix)
 
     def typeConstructor(implicit ctx: Context): Type =
       NamedType(prefix, cls.name)

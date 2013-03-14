@@ -334,6 +334,11 @@ object Contexts {
     // Printers state
     /** Number of recursive invocations of a show method on cuyrrent stack */
     private[core] var showRecursions = 0
+
+    // Reporters state
+    private[dotc] var indent = 0
+
+    protected[dotc] val indentTab = "  "
   }
 
   object Context {

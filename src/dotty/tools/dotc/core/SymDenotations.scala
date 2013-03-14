@@ -46,13 +46,10 @@ object SymDenotations {
 
     // ------ Getting and setting fields -----------------------------
 
-    private[this] var _flags: FlagSet = initFlags
+    private[this] var _flags: FlagSet = adaptFlags(initFlags)
     private[this] var _info: Type = initInfo
     private[this] var _privateWithin: Symbol = initPrivateWithin
     private[this] var _annotations: List[Annotation] = Nil
-
-    if (isType) assert(_flags.toTypeFlags == _flags, this.name + " " + _flags)
-    if (isTerm) assert(_flags.toTermFlags == _flags, this.name + " " + _flags)
 
     /** The owner of the symbol */
     def owner: Symbol = _owner
@@ -60,12 +57,14 @@ object SymDenotations {
     /** The flag set */
     final def flags: FlagSet = { ensureCompleted(); _flags }
 
+    final def flagsUNSAFE = _flags // !!! DEBUG; drop when no longer needed
+
+    /** Adapt flag set to this denotation's term or type nature */
+    def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
+
     /** Update the flag set */
-    private[core] final def flags_=(flags: FlagSet): Unit = {
-      _flags = flags
-      if (isType) assert(_flags.toTypeFlags == _flags, this.name)
-      if (isTerm) assert(_flags.toTermFlags == _flags, this.name)
-    }
+    private final def flags_=(flags: FlagSet): Unit =
+      _flags = adaptFlags(flags)
 
     /** Set given flags(s) of this denotation */
     final def setFlag(flags: FlagSet): Unit = { _flags |= flags }
@@ -126,14 +125,16 @@ object SymDenotations {
     }
 
     /** Update the annotations of this denotation */
-    private[core] final def annotations_=(annots: List[Annotation]): Unit = { _annotations = annots }
+    private[core] final def annotations_=(annots: List[Annotation]): Unit =
+       _annotations = annots
 
     /** Does this denotation have an annotation matching the given class symbol? */
-    final def hasAnnotation(cls: Symbol)(implicit ctx: Context) = dropOtherAnnotations(annotations, cls).nonEmpty
+    final def hasAnnotation(cls: Symbol)(implicit ctx: Context) =
+      dropOtherAnnotations(annotations, cls).nonEmpty
 
     /** Add given annotation to the annotations of this denotation */
-    final def addAnnotation(annot: Annotation): Unit = annotations =
-      annot :: annotations
+    final def addAnnotation(annot: Annotation): Unit =
+      annotations = annot :: _annotations
 
     @tailrec
     private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(implicit ctx: Context): List[Annotation] = anns match {
@@ -206,6 +207,10 @@ object SymDenotations {
     /** Is this symbol an anonymous class? */
     final def isAnonymousClass(implicit ctx: Context): Boolean =
       initial.asSymDenotation.name startsWith tpnme.ANON_CLASS
+
+    /** Is this symbol a package object or its module class? */
+    def isPackageObject(implicit ctx: Context): Boolean =
+      (name.toTermName == nme.PACKAGEkw) && (owner is Package) && (this is Module)
 
     /** Is this symbol an abstract type? */
     final def isAbstractType = isType && (this is Deferred)
@@ -429,7 +434,7 @@ object SymDenotations {
      *  otherwise the denoting symbol.
      */
     final def skipPackageObject(implicit ctx: Context): Symbol =
-      if (this is PackageObject) owner else symbol
+      if (isPackageObject) owner else symbol
 
     /** The owner, skipping package objects. */
     final def effectiveOwner(implicit ctx: Context) = owner.skipPackageObject
@@ -622,7 +627,7 @@ object SymDenotations {
 
     /** The type parameters of this class */
     override final def typeParams(implicit ctx: Context): List[TypeSymbol] = {
-      if (_typeParams == null) _typeParams == computeTypeParams
+      if (_typeParams == null) _typeParams = computeTypeParams
       _typeParams
     }
 
@@ -784,29 +789,33 @@ object SymDenotations {
     final def membersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
       var denots: PreDenotation = memberCache lookup name
       if (denots == null) {
-        if (!classSymbol.hasChildren || (memberFingerPrint contains name)) {
-          val ownDenots = info.decls.denotsNamed(name)
-          denots = ownDenots
-          var ps = classInfo.classParents
-          while (ps.nonEmpty) {
-            val parentSym = ps.head.symbol
-            parentSym.denot match {
+        denots = computeMembersNamed(name)
+        memberCache enter (name, denots)
+      }
+      denots
+    }
+
+    private def computeMembersNamed(name: Name)(implicit ctx: Context): PreDenotation =
+      if (!classSymbol.hasChildren || (memberFingerPrint contains name)) {
+        val ownDenots = info.decls.denotsNamed(name)
+        def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
+          case p :: ps =>
+            val denots1 = p.symbol.denot match {
               case parentd: ClassDenotation =>
-                denots = denots union
+                denots union
                   parentd.membersNamed(name)
                     .filterExcluded(Private)
                     .asSeenFrom(thisType)
                     .filterDisjoint(ownDenots)
               case _ =>
+                denots
             }
-          }
-        } else {
-          denots = NoDenotation
+            collect(denots1, ps)
+          case _ =>
+            denots
         }
-        memberCache enter (name, denots)
-      }
-      denots
-    }
+        collect(ownDenots, classInfo.classParents)
+      } else NoDenotation
 
     private[this] var baseTypeCache: java.util.HashMap[CachedType, Type] = null
     private[this] var baseTypeValid: RunId = NoRunId

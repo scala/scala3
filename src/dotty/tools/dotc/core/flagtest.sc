@@ -19,4 +19,7 @@ object flagtest {
   Abstract                                        //> res7: dotty.tools.dotc.core.Flags.FlagSet = abstract
   Method == Abstract                              //> res8: Boolean = false
   Method.toCommonFlags                            //> res9: dotty.tools.dotc.core.Flags.FlagSet = <method> abstract
+  FromStartFlags                                  //> res10: dotty.tools.dotc.core.Flags.FlagSet = private protected <deferred> <p
+                                                  //| aram> <local> module <package> <existential>
+  AccessFlags <= FromStartFlags                   //> res11: Boolean = true
 }

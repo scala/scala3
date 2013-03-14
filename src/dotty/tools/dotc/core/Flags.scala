@@ -240,10 +240,11 @@ object Flags {
   final val PackageVal = Package.toTermFlags
   final val PackageClass = Package.toTypeFlags
 
-  /** A package object or its module class */
+  /** A package object or its module class (unused)
   final val PackageObject = commonFlag(17, "package")
   final val PackageObjectVal = PackageObject.toTermFlags
   final val PackageObjectClass = PackageObject.toTypeFlags
+  */
 
   /** A case class or its companion object */
   final val Case = commonFlag(17, "case")
@@ -355,12 +356,12 @@ object Flags {
     commonFlags(Private, Protected, Abstract, Final,
      Sealed, Case, Implicit, AbsOverride, Lazy)
 
+  /** Flags representing access rights */
+  final val AccessFlags = Private | Protected | Local
+
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | Param | Scala2ExistentialCommon
-
-  /** Flags representing access rights */
-  final val AccessFlags = Private | Protected | Local
 
   /** A value that's unstable unless complemented with a Stable flag */
   final val UnstableValue = Mutable | Method
@@ -382,7 +383,7 @@ object Flags {
     *  are added at creation anyway
     */
   final val RetainedModuleValAndClassFlags: FlagSet =
-    AccessFlags | Package | PackageObject | Case |
+    AccessFlags | Package | Case |
     Synthetic | ExpandedName | JavaDefined | Static | Artifact |
     Erroneous | Lifted | MixedIn | Specialized
 
@@ -397,8 +398,7 @@ object Flags {
 
   /** Packages and package classes always have these flags set */
   final val PackageCreationFlags =
-    (Module | Package | Final | JavaDefined | Static).toTermFlags
-  final val PackageClassCreationFlags = PackageCreationFlags.toTypeFlags
+    Module | Package | Final | JavaDefined | Static
 
   /** These flags are pickled */
   final val PickledFlags = flagRange(FirstFlag, FirstNotPickledFlag)

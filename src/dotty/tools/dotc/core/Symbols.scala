@@ -117,10 +117,10 @@ trait Symbols { this: Context =>
     val module = newNakedSymbol[TermName](coord)
     val modcls = newNakedClassSymbol(coord, assocFile)
     val cdenot = SymDenotation(
-        modcls, owner, name.toTypeName, clsFlags,
+        modcls, owner, name.toTypeName, clsFlags | ModuleClassCreationFlags,
         infoFn(module, modcls), privateWithin)
     val mdenot = SymDenotation(
-        module, owner, name, modFlags,
+        module, owner, name, modFlags | ModuleCreationFlags,
         if (cdenot.isCompleted) TypeRef(owner.thisType, name.toTypeName, modcls)
         else new LazyModuleInfo(modcls)(condensed))
     module.denot = mdenot
@@ -156,7 +156,7 @@ trait Symbols { this: Context =>
       owner: Symbol,
       name: TermName,
       infoFn: (TermSymbol, ClassSymbol) => LazyType): TermSymbol =
-    newModuleSymbol(owner, name, PackageCreationFlags, PackageClassCreationFlags, infoFn)
+    newModuleSymbol(owner, name, PackageCreationFlags, PackageCreationFlags, infoFn)
 
   /** Create a package symbol with associated package class
    *  from its non-info fields its member scope.
@@ -169,7 +169,7 @@ trait Symbols { this: Context =>
       decls: Scope = newScope): TermSymbol =
     newCompleteModuleSymbol(
       owner, name,
-      modFlags | PackageCreationFlags, clsFlags | PackageClassCreationFlags,
+      modFlags | PackageCreationFlags, clsFlags | PackageCreationFlags,
       Nil, decls)
 
 

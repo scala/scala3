@@ -530,7 +530,7 @@ object Denotations {
     /** The union of two groups. */
     def union(that: PreDenotation) =
       if (!this.exists) that
-      else if (that.exists) this
+      else if (!that.exists) this
       else DenotUnion(this, that)
   }
 

@@ -284,8 +284,9 @@ object Printers {
     def showKind(sym: Symbol) =
       if (sym is PackageClass) "package class"
       else if (sym is PackageVal) "package"
-      else if (sym is PackageObjectClass) "package object class"
-      else if (sym is PackageObjectVal) "package object"
+      else if (sym.isPackageObject)
+        if (sym.isClass) "package object class"
+        else "package object"
       else if (sym.isAnonymousClass) "anonymous class"
       else if (sym is ModuleClass) "module class"
       else if (sym is ModuleVal) "module"
@@ -411,7 +412,7 @@ object Printers {
           if (cls is ModuleClass) return showFullName(cls) + "."
         case tp @ TermRef(pre, name) =>
           val sym = tp.symbol
-          if (sym is PackageObject) return showPrefix(pre)
+          if (sym.isPackageObject) return showPrefix(pre)
           if (isOmittablePrefix(sym)) return ""
         case _ =>
       }
@@ -461,7 +462,7 @@ object Printers {
 
     override def showKind(sym: Symbol) =
       if (sym is Package) "package"
-      else if (sym is PackageObject) "package object"
+      else if (sym.isPackageObject) "package object"
       else if (sym is Module) "object"
       else if (sym is ImplClass) "class"
       else if (sym.isClassConstructor) "constructor"

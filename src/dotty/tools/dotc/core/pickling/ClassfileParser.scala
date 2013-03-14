@@ -113,8 +113,8 @@ class ClassfileParser(
 
     enterOwnInnerClasses
 
-    classRoot.flags = sflags
-    moduleRoot.flags = Flags.JavaDefined | Flags.ModuleClassCreationFlags
+    classRoot.setFlag(sflags)
+    moduleRoot.setFlag(Flags.JavaDefined | Flags.ModuleClassCreationFlags)
     setPrivateWithin(classRoot, jflags)
     setPrivateWithin(moduleRoot, jflags)
 
@@ -150,9 +150,11 @@ class ClassfileParser(
       if (method) FlagTranslation.methodFlags(jflags)
       else FlagTranslation.fieldFlags(jflags)
     val name = pool.getName(in.nextChar)
-    if (!(sflags is Flags.Private) || name == nme.CONSTRUCTOR || settings.optimise.value)
-      cctx.newSymbol(
-        getOwner(jflags), name, sflags, memberCompleter, coord = start).entered
+    if (!(sflags is Flags.Private) || name == nme.CONSTRUCTOR || settings.optimise.value) {
+      val member = cctx.newSymbol(
+        getOwner(jflags), name, sflags, memberCompleter, coord = start)
+      getScope(jflags).enter(member)
+    }
     // skip rest of member for now
     in.nextChar // info
     skipAttributes
@@ -341,6 +343,7 @@ class ClassfileParser(
         sig2typeBounds(tparams, skiptvs = true)
         newTParams += s
       }
+      index += 1
     }
     val ownTypeParams = newTParams.toList
     val tpe =
@@ -405,7 +408,7 @@ class ClassfileParser(
       }
     }
     if (hasError || skip) None
-    else Some(Annotation(attrType, argbuf.toList))
+    else Some(Annotation.deferred(attrType, argbuf.toList))
   } catch {
     case f: FatalError => throw f // don't eat fatal errors, they mean a class was not found
     case ex: Throwable =>

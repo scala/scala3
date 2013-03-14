@@ -3,7 +3,7 @@ package test
 import dotty.tools.dotc.core._
 import Contexts._
 
-object test1 {
+object loadDefs {
 
   def main(args: Array[String]) = {
     val base = new ContextBase

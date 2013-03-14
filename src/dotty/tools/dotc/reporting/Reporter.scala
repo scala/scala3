@@ -35,6 +35,16 @@ trait Reporting { this: Context =>
     log(msg + " " + value)
     value
   }
+
+  def traceIndented[T](leading: => String, trailing: => String)(op: => T): T =
+    try {
+      log(s"${base.indentTab * base.indent}$leading")
+      base.indent += 1
+      op
+    } finally {
+      base.indent -= 1
+      log(s"${base.indentTab * base.indent}$trailing")
+    }
 }
 
 object Reporter {

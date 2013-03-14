@@ -67,7 +67,7 @@ class SymbolLoaders {
         return NoSymbol
       }
     }
-    ctx.newModuleSymbol(owner, pname, PackageCreationFlags, PackageClassCreationFlags,
+    ctx.newModuleSymbol(owner, pname, PackageCreationFlags, PackageCreationFlags,
       (module, modcls) => new PackageLoader(module, pkg)).entered
   }
 
@@ -212,16 +212,16 @@ trait SymbolLoader extends LazyType {
         else "error while loading " + root.name + ",\n " + msg)
     }
     try {
-      // println("trying to complete "+root)  // !!! DEBUG
       val start = currentTime
-      doComplete(root)
+      cctx.traceIndented(s">>>> loading ${root.debugString}", s"<<<< loaded ${root.debugString}") {
+        doComplete(root)
+      }
       cctx.informTime("loaded " + description, start)
     } catch {
       case ex: IOException =>
         signalError(ex)
-      case ex: Throwable => // !!! DEBUG
-        println("caught: "+ex)
-        ex.printStackTrace()
+      case ex: Throwable =>
+        println(s"exception caught when loading $root: $ex")
         throw ex
     } finally {
       def postProcess(denot: SymDenotation) =
