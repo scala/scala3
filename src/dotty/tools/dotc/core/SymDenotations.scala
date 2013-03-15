@@ -87,16 +87,18 @@ object SymDenotations {
      *  Uncompleted denotations set _info to a LazyType.
      */
     final def info: Type = _info match {
-      case _info: LazyType => completedInfo(_info)
+      case _info: LazyType => completeFrom(_info); info
       case _ => _info
     }
 
-    private def completedInfo(completer: LazyType): Type = {
-      if (_flags is CompletionStarted) throw new CyclicReference(this)
-      _flags |= CompletionStarted
-      println("completing "+this.debugString+"/"+owner.id) // !!! DEBUG
-      completer.complete(this)
-      info
+    private def completeFrom(completer: LazyType): Unit = {
+      if (_flags is Touched) throw new CyclicReference(this)
+      _flags |= Touched
+      Context.theBase.initialCtx.traceIndented( // !!! DEBUG
+        ">>>> completing "+this.debugString+"/"+owner.id,
+        "<<<< completed: "+this.debugString) {
+        completer.complete(this)
+      }
     }
 
     protected[core] final def info_=(tp: Type) =
@@ -148,6 +150,8 @@ object SymDenotations {
     protected[core] final def preCompleteDecls: Scope = _info match {
       case cinfo: LazyClassInfo => cinfo.decls
       case cinfo: ClassInfo => cinfo.decls
+      case cinfo: LazyType => completeFrom(cinfo); preCompleteDecls
+      case cinfo => throw new AssertionError(s"unexpected class completer for $debugString: ${cinfo.getClass}")
     }
 
     // ------ Names ----------------------------------------------

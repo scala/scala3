@@ -176,16 +176,22 @@ object Types {
     }
 
     /** The type parameters of this type are:
-     *  For a ClassInfo type, the type parameters of its denotation.
+     *  For a ClassInfo type, the type parameters of its class.
+     *  For a typeref referring to a class, the type parameters of the class.
      *  Inherited by type proxies.
      *  Empty list for all other types.
      */
     final def typeParams(implicit ctx: Context): List[TypeSymbol] = this match {
       case tp: ClassInfo =>
         tp.cls.typeParams
+      case tp: TypeRef =>
+        val tsym = tp.typeSymbol
+        if (tsym.isClass) tsym.typeParams
+        else tp.underlying.typeParams
       case tp: TypeProxy =>
         tp.underlying.typeParams
-      case _ => Nil
+      case _ =>
+        Nil
     }
 
 // ----- Member access -------------------------------------------------
@@ -441,6 +447,13 @@ object Types {
       case _ => TypeBounds(this, this)
     }
 
+    /** The type parameter with given `name`. This tries first `preCompleteDecls`
+     *  in order not to provoke a cylce by forcing the info. If that yields
+     *  no symbol it tries `member` as an alternative.
+     */
+    def typeParamNamed(name: TypeName)(implicit ctx: Context): Symbol =
+      typeSymbol.preCompleteDecls.lookup(name) orElse member(name).symbol
+
     /** The disjunctive normal form of this type.
      *  This collects a set of alternatives, each alternative consisting
      *  of a set of typerefs and a set of refinement names. Collected are
@@ -508,12 +521,24 @@ object Types {
     final def appliedTo(args: List[Type])(implicit ctx: Context): Type = {
       def recur(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
         case arg :: args1 =>
+          if (tparams.isEmpty) {
+            println(s"applied type mismatch: $this $args, $typeParams = typeParams")
+            println(s"precomplete decls = ${typeSymbol.preCompleteDecls.toList.map(_.denot).mkString("\n  ")}")
+          }
           val tparam = tparams.head
           val tp1 = RefinedType(tp, tparam.name, arg.toRHS(tparam))
           recur(tp1, tparams.tail, args1)
         case nil => tp
       }
-      if (args.isEmpty) this else recur(this, typeParams, args)
+      if (args.isEmpty) this
+      else this match {
+        case tp: PolyType =>
+          tp.instantiate(args)
+        case tp: TypeRef if tp.symbol.isClass =>
+          recur(tp, tp.typeParams, args)
+        case tp: TypeProxy =>
+          tp.underlying.appliedTo(args)
+      }
     }
 
     final def appliedTo(arg: Type)(implicit ctx: Context): Type = appliedTo(arg :: Nil)
@@ -1089,19 +1114,25 @@ object Types {
   }
 
   final class CachedMethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)
-    extends MethodType(paramNames, paramTypes)(resultTypeExp)
+    extends MethodType(paramNames, paramTypes)(resultTypeExp) {
+    override def equals(that: Any) = super.equals(that) && that.isInstanceOf[CachedMethodType]
+  }
 
   final class JavaMethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)
     extends MethodType(paramNames, paramTypes)(resultTypeExp) {
     override def isJava = true
+    override def equals(that: Any) = super.equals(that) && that.isInstanceOf[JavaMethodType]
+    override def computeHash = super.computeHash + 1
   }
 
   final class ImplicitMethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)
-      extends MethodType(paramNames, paramTypes)(resultTypeExp) {
+    extends MethodType(paramNames, paramTypes)(resultTypeExp) {
     override def isImplicit = true
+    override def equals(that: Any) = super.equals(that) && that.isInstanceOf[ImplicitMethodType]
+    override def computeHash = super.computeHash + 2
   }
 
-  abstract class GenericMethodType {
+  abstract class MethodTypeCompanion {
     def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType
     def apply(paramNames: List[TermName], paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
       apply(paramNames, paramTypes)(_ => resultType)
@@ -1112,17 +1143,17 @@ object Types {
     }
   }
 
-  object MethodType extends GenericMethodType {
+  object MethodType extends MethodTypeCompanion {
     def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context) =
       unique(new CachedMethodType(paramNames, paramTypes)(resultTypeExp))
   }
 
-  object JavaMethodType extends GenericMethodType {
+  object JavaMethodType extends MethodTypeCompanion {
     def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context) =
       unique(new JavaMethodType(paramNames, paramTypes)(resultTypeExp))
   }
 
-  object ImplicitMethodType extends GenericMethodType {
+  object ImplicitMethodType extends MethodTypeCompanion {
     def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context) =
       unique(new ImplicitMethodType(paramNames, paramTypes)(resultTypeExp))
   }

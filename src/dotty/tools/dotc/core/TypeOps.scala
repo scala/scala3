@@ -24,7 +24,7 @@ trait TypeOps { this: Context =>
         else {
           val tp1 = tp.derivedNamedType(asSeenFrom(tp.prefix, pre, cls, theMap))
           // short-circuit instantiated type parameters
-          if ((tp1 ne tp) && (sym is (TypeParam, butNot = Deferred))) tp1.dealias 
+          if ((tp1 ne tp) && (sym is (TypeParam, butNot = Deferred))) tp1.dealias
           else tp1
         }
       case ThisType(thiscls) =>
@@ -173,7 +173,7 @@ trait TypeOps { this: Context =>
             case Some(info) => info & tp.refinedInfo
             case none => tp.refinedInfo
           })
-        formals = formals.updated(name, tp1.member(name).symbol)
+        formals = formals.updated(name, tp1.typeParamNamed(name))
         normalizeToRef(tp1)
       case tp: TypeRef =>
         tp

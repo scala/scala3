@@ -40,7 +40,7 @@ class Definitions(implicit ctx: Context) {
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parentRefs, paramDecls)
       }
     }
-    ctx.newClassSymbol(ScalaPackageClass, name, flags, completer)
+    ctx.newClassSymbol(ScalaPackageClass, name, flags, completer).entered
   }
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[ClassSymbol] = {

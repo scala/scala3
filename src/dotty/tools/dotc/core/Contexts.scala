@@ -80,8 +80,8 @@ object Contexts {
     protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
 
     def typeComparer: TypeComparer = {
-      if ((_typeComparer eq outer.typeComparer) &&
-          (constraints ne outer.constraints))
+      if ((_typeComparer == null) ||
+          (_typeComparer eq outer.typeComparer) && (constraints ne outer.constraints))
         _typeComparer = new TypeComparer()
       _typeComparer
     }
@@ -234,6 +234,7 @@ object Contexts {
   }
 
   object NoContext extends Context {
+    override def typeComparer = null
     lazy val base = unsupported("base")
   }
 
@@ -348,6 +349,8 @@ object Contexts {
 
     /** implicit conversion that injects all ContextBase members into a context */
     implicit def toBase(ctx: Context): ContextBase = ctx.base
+
+    val theBase = new ContextBase // !!! DEBUG, so that we can use a minimal context for reporting even in code that normallly cannot access a context
   }
 
 

@@ -66,6 +66,12 @@ object Flags {
     /** Is this flag set a subset of that one? */
     def <= (that: FlagSet) = (bits & that.bits) == bits
 
+    /** Does this flag set apply to terms? */
+    def isTermFlags = (bits & TERMS) != 0
+
+    /** Does this flag set apply to terms? */
+    def isTypeFlags = (bits & TYPES) != 0
+
     /** This flag set with all flags transposed to be type flags */
     def toTypeFlags = if (bits == 0) this else FlagSet(bits & ~KINDFLAGS | TYPES)
 
@@ -211,14 +217,14 @@ object Flags {
   /** A value or variable accessor (getter or setter) */
   final val Accessor = termFlag(11, "<accessor>")
 
-  /** A covariant type variable */
-  final val Covariant = typeFlag(11, "<covariant>")
+  /** Labeled with `sealed` modifier (sealed class) */
+  final val Sealed = typeFlag(11, "sealed")
 
  /** A mutable var */
   final val Mutable = termFlag(12, "mutable")
 
-  /** A contravariant type variable */
-  final val Contravariant = typeFlag(12, "<contravariant>")
+  /** Class symbol is defined in this/superclass constructor. */
+  final val InConstructor = typeFlag(12, "<inconstructor>")
 
   /** Symbol is local to current class (i.e. private[this] or protected[this]
    *  pre: Private or Protected are also set
@@ -259,64 +265,65 @@ object Flags {
   /** Symbol's name is expanded */
   final val ExpandedName = commonFlag(19, "<expandedname>")
 
-  /** Method is a label. */
-  final val Label = termFlag(20, "<label>")
+  /** A covariant type variable */
+  final val CovariantCommon = commonFlag(20, "<covariant>")
+  final val Covariant = CovariantCommon.toTypeFlags
 
-  /** Labeled with `sealed` modifier (sealed class) */
-  final val Sealed = typeFlag(20, "sealed")
+  final val ContravariantCommon = commonFlag(21, "<contravariant>")
+  final val Contravariant = ContravariantCommon.toTypeFlags
+
+  /** Method is a label. */
+  final val Label = termFlag(22, "<label>")
 
   /** Labeled with of abstract & override */
-  final val AbsOverride = termFlag(21, "abstract override")
+  final val AbsOverride = termFlag(23, "abstract override")
 
   /** Method is assumed to be stable */
-  final val Stable = termFlag(22, "<stable>")
+  final val Stable = termFlag(24, "<stable>")
 
   /** A case parameter (or its accessor, or a GADT skolem) */
-  final val CaseAccessor = termFlag(23, "<caseaccessor>")
-
-  /** Class symbol is defined in this/superclass constructor. */
-  final val InConstructor = typeFlag(23, "<inconstructor>")
+  final val CaseAccessor = termFlag(25, "<caseaccessor>")
 
   /** A super accessor */
-  final val SuperAccessor = termFlag(24, "<superaccessor>")
+  final val SuperAccessor = termFlag(26, "<superaccessor>")
 
   /** A parameter with a default value */
-  final val DefaultParam = termFlag(25, "<defaultparam>")
+  final val DefaultParam = termFlag(27, "<defaultparam>")
 
   /** Symbol is initialized to the default value, e.g. var x: T = _ */
-  final val DefaultInit = termFlag(26, "<defaultinit>")
+  final val DefaultInit = termFlag(28, "<defaultinit>")
 
   /** Symbol is a macro */
-  final val Macro = commonFlag(27, "<macro>")
+  final val Macro = commonFlag(29, "<macro>")
 
   /** Symbol is defined by a Java class */
-  final val JavaDefined = commonFlag(28, "<java>")
+  final val JavaDefined = commonFlag(30, "<java>")
 
   /** Symbol is implemented as a Java static */
-  final val Static = commonFlag(29, "<static>")
+  final val Static = commonFlag(31, "<static>")
 
   /** Variable is accessed from nested function. */
-  final val Captured = termFlag(30, "<captured>")
+  final val Captured = termFlag(32, "<captured>")
 
   /** Symbol should be ignored when typechecking; will be marked ACC_SYNTHETIC in bytecode */
-  final val Artifact = commonFlag(31, "<artifact>")
+  final val Artifact = commonFlag(33, "<artifact>")
 
   /** A bridge method. Set by Erasure */
-  final val Bridge = termFlag(32, "<bridge>")
+  final val Bridge = termFlag(34, "<bridge>")
 
   /** Symbol is a Java varargs bridge */
-  final val VBridge = termFlag(33, "<vbridge>")
+  final val VBridge = termFlag(35, "<vbridge>")
 
   /** Symbol is a method which should be marked ACC_SYNCHRONIZED */
-  final val Synchronized = termFlag(34, "<synchronized>")
+  final val Synchronized = termFlag(36, "<synchronized>")
 
   /** Symbol is a Java-style varargs method */
-  final val JavaVarargs = termFlag(35, "<varargs>")
+  final val JavaVarargs = termFlag(37, "<varargs>")
 
   // Flags following this one are not pickled
 
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
-  final val CompletionStarted = commonFlag(48, "<locked>")
+  final val Touched = commonFlag(48, "<touched>")
 
   /** Class is not allowed to accept new members because fingerprint of subclass has been taken */
   final val Frozen = typeFlag(49, "<frozen>")
@@ -361,7 +368,11 @@ object Flags {
 
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
-    AccessFlags | Module | Package | Deferred | Param | Scala2ExistentialCommon
+    AccessFlags | Module | Package | Deferred | Param | Scala2ExistentialCommon | Touched |
+    CovariantCommon | ContravariantCommon
+
+  assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
+  // TODO: Should check that FromStartFlags do not changed in completion
 
   /** A value that's unstable unless complemented with a Stable flag */
   final val UnstableValue = Mutable | Method

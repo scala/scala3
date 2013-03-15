@@ -178,10 +178,10 @@ class ClassfileParser(
             case Some(entry) if !isStatic(entry.jflags) =>
               val mt @ MethodType(paramnames, paramtypes) = info
               denot.info = mt.derivedMethodType(paramnames.tail, paramtypes.tail, mt.resultType)
-
+            case _ =>
           }
         setPrivateWithin(denot, jflags)
-        denot.info = parseAttributes(sym, info)
+        denot.info = depoly(parseAttributes(sym, info))
 
         if ((denot is Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
           denot.info = arrayToRepeated(denot.info)

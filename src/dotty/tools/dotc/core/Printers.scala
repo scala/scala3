@@ -263,8 +263,8 @@ object Printers {
           if (lo eq hi)
             " = " + lo
           else
-            (if (lo.typeSymbol == defn.NothingClass) "" else ">: " + lo) +
-            (if (hi.typeSymbol == defn.AnyClass)     "" else "<: " + hi)
+            (if (lo.typeSymbol == defn.NothingClass) "" else " >: " + lo) +
+            (if (hi.typeSymbol == defn.AnyClass)     "" else " <: " + hi)
         case ClassInfo(pre, cdenot, cparents, decls, optSelfType) =>
           val preStr = showLocal(pre)
           val selfStr =

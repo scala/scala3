@@ -225,7 +225,7 @@ trait SymbolLoader extends LazyType {
         throw ex
     } finally {
       def postProcess(denot: SymDenotation) =
-        if (!denot.isCompleted) denot.markAbsent()
+        if ((denot is Touched) && !denot.isCompleted) denot.markAbsent()
       postProcess(root)
       if (!root.isRoot)
         postProcess(root.linkedClass.denot)

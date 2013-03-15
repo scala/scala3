@@ -46,9 +46,9 @@ object UnPickler {
           elemtp0
       }
       tp.derivedMethodType(
-          paramNames,
-          paramTypes.init :+ defn.JavaRepeatedParamType.appliedTo(elemtp),
-          tp.resultType)
+        paramNames,
+        paramTypes.init :+ defn.JavaRepeatedParamType.appliedTo(elemtp),
+        tp.resultType)
     case tp @ PolyType(paramNames) =>
       tp.derivedPolyType(paramNames, tp.paramBounds, arrayToRepeated(tp.resultType))
   }
@@ -107,15 +107,19 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   /** A map from refinement classes to their associated refinement types */
   private val refinementTypes = mutable.HashMap[Symbol, RefinedType]()
 
-  protected def errorBadSignature(msg: String) = {
+  protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None) = {
     val ex = new BadSignature(
       s"""error reading Scala signature of $classRoot from $source:
          |error occured at position $readIndex: $msg""".stripMargin)
-    /*if (debug)*/ ex.printStackTrace()
+    /*if (debug)*/ original.getOrElse(ex).printStackTrace() // !!! DEBUG
     throw ex
   }
 
-  // Laboriously unrolled for performance.
+  protected def handleRuntimeException(ex: RuntimeException) = ex match {
+    case ex: BadSignature => throw ex
+    case _ => errorBadSignature(s"a runtime exception occured: $ex", Some(ex))
+  }
+
   def run() =
     try {
       var i = 0
@@ -128,8 +132,6 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         }
         i += 1
       }
-      finishCompletion(classRoot)
-      finishCompletion(moduleClassRoot)
       // read children last, fix for #3951
       i = 0
       while (i < index.length) {
@@ -149,21 +151,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         i += 1
       }
     } catch {
-      case ex: BadSignature =>
-        throw ex
-      case ex: RuntimeException =>
-        ex.printStackTrace() // !!! DEBUG
-        errorBadSignature(s"a runtime exception occured: $ex $ex.getMessage()")
+      case ex: RuntimeException => handleRuntimeException(ex)
     }
-
-  def finishCompletion(root: SymDenotation) = {
-    if (!root.isCompleted)
-      root.completer match {
-        case completer: LocalUnpickler =>
-          completer.complete(root)
-        case _ =>
-      }
-  }
 
   def source: AbstractFile = {
     val f = classRoot.symbol.associatedFile
@@ -331,6 +320,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           nestedObjectSymbol orElse {
             //              // (4) Call the mirror's "missing" hook.
             adjust(cctx.base.missingHook(owner, name)) orElse {
+              println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.
               cctx.newStubSymbol(owner, name, source)
@@ -362,14 +352,15 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
     def completeRoot(denot: ClassDenotation): Symbol = {
       denot.setFlag(flags)
-      denot.info = new RootUnpickler(start)
+      denot.resetFlag(Touched) // allow one more completion
+      denot.info = new RootUnpickler(start, denot.symbol)
       denot.symbol
     }
 
     def finishSym(sym: Symbol): Symbol = {
       if (sym.owner.isClass && !(
         isUnpickleRoot(sym) ||
-        (sym is (ModuleClass | TypeParam | Scala2Existential)) ||
+        (sym is (ModuleClass | Scala2Existential)) ||
         isRefinementClass(sym)))
         symScope(sym.owner).openForMutations.enter(sym)
       sym
@@ -384,22 +375,22 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           name1 = name1.expandedName(owner)
           flags1 |= TypeParamCreationFlags
         }
-        cctx.newSymbol(owner, name1, flags1, localUnpickler, coord = start)
+        cctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
       case CLASSsym =>
         if (isClassRoot) completeRoot(classRoot)
         else if (isModuleClassRoot) completeRoot(moduleClassRoot)
-        else cctx.newClassSymbol(owner, name.asTypeName, flags, localUnpickler, coord = start)
+        else cctx.newClassSymbol(owner, name.asTypeName, flags, new LocalClassUnpickler(_), coord = start)
       case MODULEsym | VALsym =>
         if (isModuleRoot) {
           moduleRoot setFlag flags
           moduleRoot.symbol
-        } else cctx.newSymbol(owner, name.asTermName, flags, localUnpickler, coord = start)
+        } else cctx.newSymbol(owner, name.asTermName, flags, localMemberUnpickler, coord = start)
       case _ =>
         errorBadSignature("bad symbol tag: " + tag)
     })
   }
 
-  abstract class LocalUnpickler extends LazyType {
+  trait LocalUnpickler extends LazyType {
     def parseToCompletion(denot: SymDenotation) = {
       val tag = readByte()
       val end = readNat() + readIndex
@@ -421,7 +412,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           val optSelfType = if (atEnd) NoType else readTypeRef()
           setClassInfo(denot, tp, optSelfType)
         case denot =>
-          denot.info = if (tag == ALIASsym) TypeAlias(tp) else depoly(tp)
+          val tp1 = depoly(tp)
+          denot.info = if (tag == ALIASsym) TypeAlias(tp1) else tp1
           if (atEnd) {
             assert(!(denot is SuperAccessor), denot)
           } else {
@@ -433,18 +425,20 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           }
       }
     }
-    def startCoord(denot: SymDenotation): Coord
-    def complete(denot: SymDenotation): Unit = {
+    def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
+    def complete(denot: SymDenotation): Unit = try {
       atReadPos(startCoord(denot).toIndex, () => parseToCompletion(denot))
+    } catch {
+      case ex: RuntimeException => handleRuntimeException(ex)
     }
   }
 
-  object localUnpickler extends LocalUnpickler {
-    def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
-  }
+  class LocalClassUnpickler(cls: Symbol) extends LazyClassInfo(symScope(cls)) with LocalUnpickler
 
-  class RootUnpickler(start: Coord) extends LocalUnpickler {
-    def startCoord(denot: SymDenotation): Coord = start
+  object localMemberUnpickler extends LocalUnpickler
+
+  class RootUnpickler(start: Coord, cls: Symbol) extends LocalClassUnpickler(cls) {
+    override def startCoord(denot: SymDenotation): Coord = start
   }
 
   /** Convert
@@ -524,7 +518,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           if (isLocal(sym)) TypeRef(pre, sym.asType)
           else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
-        // println(s"reading app type $tycon $args") // !!! DEBUG
+        // if (args.nonEmpty) println(s"reading app type $tycon ${tycon.typeSymbol.debugString} $args, owner = ${tycon.typeSymbol.owner.debugString}") // !!! DEBUG
         tycon.appliedTo(args)
       case TYPEBOUNDStpe =>
         TypeBounds(readTypeRef(), readTypeRef())
@@ -533,7 +527,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val decls = symScope(clazz)
         symScopes(clazz) = EmptyScope // prevent further additions
         val parents = until(end, readTypeRef)
-        val parent = parents.reduceLeft(_ & _)
+        val parent = parents.reduceLeft(AndType(_, _))
         if (decls.isEmpty) parent
         else {
           def addRefinement(tp: Type, sym: Symbol) =
