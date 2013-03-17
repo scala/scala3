@@ -11,6 +11,7 @@ import Constants._
 import Contexts._
 import Annotations._
 import SymDenotations._
+import Decorators._
 import Denotations._
 import Periods._
 import TypedTrees.tpd._, TypedTrees.TreeMapper
@@ -187,7 +188,8 @@ object Types {
       case tp: TypeRef =>
         val tsym = tp.typeSymbol
         if (tsym.isClass) tsym.typeParams
-        else tp.underlying.typeParams
+        else if (tsym.isAliasType) tp.underlying.typeParams
+        else Nil
       case tp: TypeProxy =>
         tp.underlying.typeParams
       case _ =>
@@ -368,6 +370,7 @@ object Types {
      */
     final def widen(implicit ctx: Context): Type = this match {
       case tp: SingletonType => tp.underlying.widen
+      case tp: TypeBounds => tp.hi.widen
       case tp: ExprType => tp.resultType.widen
       case _ => this
     }
@@ -1004,10 +1007,17 @@ object Types {
     override def underlying(implicit ctx: Context) = parent
 
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType =
-      if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo)) this
-      else RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
+      if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))
+        this
+      else if ((defn.hkParamNames contains refinedName) &&
+               (parent.typeParams.length >= defn.hkParamArity(refinedName)))
+        derivedRefinedType(
+          parent, parent.typeParams.apply(defn.hkParamArity(refinedName)).name, refinedInfo)
+      else
+        RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
 
     override def computeHash = doHash(refinedName, refinedInfo, parent)
+    override def toString = s"RefinedType($parent, $refinedName, $refinedInfo | hash = $hashCode)"
   }
 
   class CachedRefinedType(parent: Type, refinedName: Name, infoFn: RefinedType => Type) extends RefinedType(parent, refinedName)(infoFn)
@@ -1111,6 +1121,8 @@ object Types {
       else resultType
 
     override def computeHash = doHash(paramNames, resultType, paramTypes)
+    protected def prefixString = "MethodType"
+    override def toString = s"$prefixString($paramNames, $paramTypes, $resultType)"
   }
 
   final class CachedMethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)
@@ -1123,6 +1135,7 @@ object Types {
     override def isJava = true
     override def equals(that: Any) = super.equals(that) && that.isInstanceOf[JavaMethodType]
     override def computeHash = super.computeHash + 1
+    override protected def prefixString = "JavaMethodType"
   }
 
   final class ImplicitMethodType(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)
@@ -1130,6 +1143,7 @@ object Types {
     override def isImplicit = true
     override def equals(that: Any) = super.equals(that) && that.isInstanceOf[ImplicitMethodType]
     override def computeHash = super.computeHash + 2
+    override protected def prefixString = "ImplicitMethodType"
   }
 
   abstract class MethodTypeCompanion {
@@ -1201,6 +1215,7 @@ object Types {
       case that: PolyType => this eq that
       case _ => false
     }
+    override def toString = s"PolyType($paramNames, $paramBounds, $resultType)"
   }
 
   object PolyType {
@@ -1225,6 +1240,7 @@ object Types {
     def copy(bt: BT) = MethodParam(bt, paramNum)
     // need to customize hashCode to prevent infinite recursion for dep meth types.
     override def hashCode = doHash(System.identityHashCode(binder) + paramNum)
+    override def toString = s"MethodParam(${binder.paramNames(paramNum)})"
   }
 
   case class PolyParam(binder: PolyType, paramNum: Int) extends BoundType {
@@ -1232,7 +1248,8 @@ object Types {
     override def underlying(implicit ctx: Context) = binder.paramBounds(paramNum)
     def copy(bt: BT) = PolyParam(bt, paramNum)
     // no customized hashCode needed because cycle is broken in PolyType
-  }
+    override def toString = s"PolyParam(${binder.paramNames(paramNum)})"
+ }
 
   case class RefinedThis(binder: RefinedType) extends BoundType with SingletonType {
     type BT = RefinedType
@@ -1241,6 +1258,7 @@ object Types {
     // need to customize hashCode to prevent infinite recursion for
     // refinements that refer to the refinement type via this
     override def hashCode = doHash(System.identityHashCode(binder))
+    override def toString = s"RefinedThis(${binder.hashCode})"
   }
 
   // ------ ClassInfo, Type Bounds ------------------------------------------------------------
@@ -1297,6 +1315,9 @@ object Types {
 
   /** Type bounds >: lo <: hi */
   abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
+
+    assert(!lo.isInstanceOf[TypeBounds], lo+" "+lo.getClass)
+    assert(!hi.isInstanceOf[TypeBounds], hi+" "+hi.getClass)
 
     override def underlying(implicit ctx: Context): Type = hi
 

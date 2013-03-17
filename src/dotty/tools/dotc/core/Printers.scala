@@ -261,10 +261,10 @@ object Printers {
       tp match {
         case TypeBounds(lo, hi) =>
           if (lo eq hi)
-            " = " + lo
+            " = " + lo.show
           else
-            (if (lo.typeSymbol == defn.NothingClass) "" else " >: " + lo) +
-            (if (hi.typeSymbol == defn.AnyClass)     "" else " <: " + hi)
+            (if (lo.typeSymbol == defn.NothingClass) "" else " >: " + lo.show) +
+            (if (hi.typeSymbol == defn.AnyClass)     "" else " <: " + hi.show)
         case ClassInfo(pre, cdenot, cparents, decls, optSelfType) =>
           val preStr = showLocal(pre)
           val selfStr =

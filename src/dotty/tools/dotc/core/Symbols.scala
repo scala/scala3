@@ -229,6 +229,8 @@ trait Symbols { this: Context =>
     tparams
   }
 
+  def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact, tp)
+
   type OwnerMap = Symbol => Symbol
 
   /** Map given symbols, subjecting all types to given type map and owner map.
@@ -367,6 +369,13 @@ object Symbols {
     private def pickFile(file: AbstractFile, classFile: Boolean): AbstractFile =
       if ((file eq null) || classFile != (file.path endsWith ".class")) null else file
 
+    /** The prefix string to be used when displaying this symbol without denotation */
+    protected def prefixString = "Symbol"
+
+    override def toString: String =
+      if (lastDenot == null) s"Naked$prefixString#$id"
+      else lastDenot.toString
+
     def show(implicit ctx: Context): String = ctx.show(this)
     def showLocated(implicit ctx: Context): String = ctx.showLocated(this)
     def showDcl(implicit ctx: Context): String = ctx.showDcl(this)
@@ -415,6 +424,8 @@ object Symbols {
 
     /** Have we seen a subclass of this class? */
     def hasChildren = superIdHint >= 0
+
+    override protected def prefixString = "ClassSymbol"
   }
 
   class ErrorSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(NoCoord) {

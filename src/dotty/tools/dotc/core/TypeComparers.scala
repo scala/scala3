@@ -103,6 +103,7 @@ object TypeComparers {
         val cls2 = tp2.symbol
         (  cls2 == defn.SingletonClass && tp1.isStable
         || cls2 == defn.NotNullClass && tp1.isNotNull
+        || (defn.hkTraits contains cls2) && isSubTypeHK(tp1, tp2)
         || fourthTry(tp1, tp2)
         )
     }
@@ -196,6 +197,25 @@ object TypeComparers {
         true
     }
 */
+    /** Is `tp1` a subtype of a type `tp2` of the form
+     *  `scala.HigerKindedN[Lo1, Hi1, ..., LoN, HiN]`?
+     *  This is the case if `tp1` has N type parameters and
+     *  for all I, type parameter #I's bounds are contained in
+     *  `LoI..HiI`.
+     */
+    def isSubTypeHK(tp1: Type, tp2: Type): Boolean = {
+      val tparams = tp1.typeParams
+      val hkargs = tp2.typeArgs
+      def toBounds(args: List[Type]): List[TypeBounds] = (args: @unchecked) match {
+        case lo :: hi :: args1 => TypeBounds(lo, hi) :: toBounds(args1)
+        case Nil => Nil
+      }
+      val base = ctx.newSkolemSingleton(tp1)
+      val hkbounds = toBounds(hkargs)
+      (hkbounds.length == tparams.length) &&
+        (hkbounds, tparams map (base.memberInfo(_).bounds)).zipped.forall(_ contains _)
+    }
+
     /** A function implementing `tp1` matches `tp2`. */
     final def matchesType(tp1: Type, tp2: Type, alwaysMatchSimple: Boolean): Boolean = tp1 match {
       case tp1: MethodType =>

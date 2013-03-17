@@ -4,6 +4,8 @@ import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
 
 trait TypeOps { this: Context =>
 
+  def newSkolemSingleton(underlying: Type) = TermRef(NoPrefix, newSkolem(underlying))
+
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 
     def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type =
@@ -183,7 +185,7 @@ trait TypeOps { this: Context =>
     val parentRefs = parents map normalizeToRef
     for ((name, tpe) <- refinements) decls.enter {
       val formal = formals(name)
-      val bounds = tpe.toRHS(formal)
+      val bounds = tpe //.toRHS(formal)
       ctx.newSymbol(cls, name, formal.flags & RetainedTypeArgFlags, bounds)
     }
     parentRefs

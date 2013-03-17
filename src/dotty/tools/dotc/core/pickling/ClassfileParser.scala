@@ -181,7 +181,7 @@ class ClassfileParser(
             case _ =>
           }
         setPrivateWithin(denot, jflags)
-        denot.info = depoly(parseAttributes(sym, info))
+        denot.info = depoly(parseAttributes(sym, info), denot)
 
         if ((denot is Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
           denot.info = arrayToRepeated(denot.info)

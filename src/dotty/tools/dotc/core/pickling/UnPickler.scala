@@ -21,13 +21,31 @@ object UnPickler {
   /** Exception thrown if classfile is corrupted */
   class BadSignature(msg: String) extends RuntimeException(msg)
 
-  case class TempPolyType(tparams: List[Symbol], tpe: Type) extends UncachedGroundType
+  case class TempPolyType(tparams: List[Symbol], tpe: Type) extends UncachedGroundType {
+    override def show(implicit ctx: Context): String =
+      s"[${ctx.showDcls(tparams, ", ")}]${tpe.show}"
+  }
 
   /** Temporary type for classinfos, will be decomposed on completion of the class */
   case class TempClassInfoType(parentTypes: List[Type], decls: MutableScope, clazz: Symbol) extends UncachedGroundType
 
-  def depoly(tp: Type)(implicit ctx: Context): Type = tp match {
-    case TempPolyType(tparams, restpe) => PolyType.fromSymbols(tparams, restpe)
+  def depoly(tp: Type, forSym: SymDenotation)(implicit ctx: Context): Type = tp match {
+    case TempPolyType(tparams, restpe) =>
+      if (forSym.isAbstractType) {
+        val typeArgs = tparams flatMap { tparam =>
+          List(tparam.info.bounds.lo, tparam.info.bounds.hi)
+        }
+        val correctedArgs = typeArgs.mapConserve(
+          _.subst(tparams, tparams map (_ => defn.AnyType)))
+        val hk = defn.hkTrait(tparams.length)
+        if (typeArgs ne correctedArgs)
+          ctx.warning(s"""failure to import F-bounded higher-kinded type
+                         |original type definition: ${forSym.show}${tp.show}
+                         |definition used instead : ${forSym.show} <: $hk[${correctedArgs.map(_.show).mkString(", ")}]
+                         |proceed at own risk.""".stripMargin)
+        hk.typeConstructor.appliedTo(typeArgs)
+      } else
+        PolyType.fromSymbols(tparams, restpe)
     case tp => tp
   }
 
@@ -371,9 +389,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         var name1 = name.asTypeName
         var flags1 = flags
         if (flags is TypeParam) {
-          // println(s"expanding name of type parameter $name, owner = ${owner.denot}, completed = ${owner.isCompleted}") // !!! DEBUG
           name1 = name1.expandedName(owner)
-          flags1 |= TypeParamCreationFlags
+          flags1 |= TypeParamCreationFlags | ExpandedName
         }
         cctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
       case CLASSsym =>
@@ -406,13 +423,14 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           inforef = readNat()
           pw
         }
+      println("reading type for "+denot)
       val tp = at(inforef, () => readType(forceProperType = denot.isTerm))
       denot match {
         case denot: ClassDenotation =>
           val optSelfType = if (atEnd) NoType else readTypeRef()
           setClassInfo(denot, tp, optSelfType)
         case denot =>
-          val tp1 = depoly(tp)
+          val tp1 = depoly(tp, denot)
           denot.info = if (tag == ALIASsym) TypeAlias(tp1) else tp1
           if (atEnd) {
             assert(!(denot is SuperAccessor), denot)
@@ -424,6 +442,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             denot.addAnnotation(Annotation.makeAlias(alias))
           }
       }
+      println(s"unpicked ${denot.debugString}, info = ${denot.info}")
     }
     def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
     def complete(denot: SymDenotation): Unit = try {
@@ -518,7 +537,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           if (isLocal(sym)) TypeRef(pre, sym.asType)
           else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
-        // if (args.nonEmpty) println(s"reading app type $tycon ${tycon.typeSymbol.debugString} $args, owner = ${tycon.typeSymbol.owner.debugString}") // !!! DEBUG
+        if (args.nonEmpty) println(s"reading app type $tycon ${tycon.typeSymbol.debugString} $args, owner = ${tycon.typeSymbol.owner.debugString}") // !!! DEBUG
         tycon.appliedTo(args)
       case TYPEBOUNDStpe =>
         TypeBounds(readTypeRef(), readTypeRef())

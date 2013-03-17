@@ -369,7 +369,7 @@ object Flags {
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | Param | Scala2ExistentialCommon | Touched |
-    CovariantCommon | ContravariantCommon
+    Static | CovariantCommon | ContravariantCommon | ExpandedName
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not changed in completion

@@ -22,7 +22,7 @@ class Definitions(implicit ctx: Context) {
 
   private def newSyntheticTypeParam(cls: ClassSymbol, scope: MutableScope, suffix: String = "T0") = {
     val tname = suffix.toTypeName.expandedName(cls)
-    val tparam = ctx.newSymbol(cls, tname, TypeParamCreationFlags, TypeBounds.empty)
+    val tparam = ctx.newSymbol(cls, tname, TypeParamCreationFlags | ExpandedName, TypeBounds.empty)
     scope.enter(tparam)
   }
 
@@ -201,6 +201,40 @@ class Definitions(implicit ctx: Context) {
   lazy val UnqualifiedOwners = UnqualifiedModules ++ UnqualifiedModules.map(_.moduleClass)
 
   lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
+
+  private var _hkTraits: Set[Symbol] = Set()
+  private var _hkTraitOfArity: Map[Int, ClassSymbol] = Map()
+  private var _hkParamNames: Set[Name] = Set()
+  private var _hkParamArity: Map[Name, Int] = Map()
+
+  def hkTraits: Set[Symbol] = _hkTraits
+  def hkParamNames = _hkParamNames
+  def hkParamArity = _hkParamArity
+
+  def hkTrait(n: Int): ClassSymbol = {
+    val completer = new LazyType {
+      def complete(denot: SymDenotation): Unit = {
+        val cls = denot.asClass.classSymbol
+        val paramDecls = newScope
+        for (i <- 0 until n) {
+          newSyntheticTypeParam(cls, paramDecls, "Lo"+i)
+          newSyntheticTypeParam(cls, paramDecls, "Hi"+i)
+        }
+        denot.info = ClassInfo(ScalaPackageClass.thisType, cls, List(ObjectClass.typeConstructor), paramDecls)
+      }
+    }
+    _hkTraitOfArity get n match {
+      case Some(cls) => cls
+      case None =>
+        val cls = ctx.newClassSymbol(ScalaPackageClass, tpnme.higherKindedTraitName(n), Synthetic, completer).entered
+        _hkTraits += cls
+        _hkTraitOfArity = _hkTraitOfArity.updated(n, cls)
+        val paramName = tpnme.higherKindedParamName(n)
+        _hkParamNames += paramName
+        _hkParamArity = _hkParamArity.updated(paramName, n)
+        cls
+    }
+  }
 
   // ----- Value class machinery ------------------------------------------
 

@@ -238,9 +238,11 @@ object StdNames {
     val SELECTOR_DUMMY: N           = "<unapply-selector>"
     val SELF: N                     = "$this"
     val SETTER_SUFFIX: N            = encode("_=")
+    val SKOLEM: N                   = "<skolem>"
     val SPECIALIZED_INSTANCE: N     = "specInstance$"
     val STAR: N                     = "*"
     val THIS: N                     = "_$this"
+    val HK_PARAM_PREFIX: N          = "_$hk$"
 
     final val Nil: N                = "Nil"
     final val Predef: N             = "Predef"
@@ -276,6 +278,7 @@ object StdNames {
     val EmptyPackageClass: N    = "EmptyPackageClass"
     val ExistentialTypeTree: N  = "ExistentialTypeTree"
     val Flag : N                = "Flag"
+    val HigherKinded: N         = "HigherKinded"
     val Ident: N                = "Ident"
     val Import: N               = "Import"
     val Literal: N              = "Literal"
@@ -620,6 +623,9 @@ object StdNames {
 
   class ScalaTypeNames extends ScalaNames[TypeName] {
     protected def fromString(s: String) = typeName(s)
+
+    def higherKindedTraitName(n: Int) = HigherKinded ++ n.toString
+    def higherKindedParamName(n: Int) = HK_PARAM_PREFIX ++ n.toString
   }
 
   abstract class JavaNames[N <: Name] extends DefinedNames[N] {

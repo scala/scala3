@@ -18,7 +18,7 @@ object showClass {
         println(s"self = ${c.show}")
         println(s"parents = ${cps.map(_.show).mkString(",")}")
         println(s"decls = ${decls.show}")
-        println(s"selftype = $optSelfType")
+        println(s"selftype = ${optSelfType.show}")
     }
   }
 
