@@ -136,6 +136,9 @@ class Definitions(implicit ctx: Context) {
   // Annotation classes
   lazy val AliasAnnot = requiredClass("dotty.annotation.internal.Alias")
   lazy val ChildAnnot = requiredClass("dotty.annotation.internal.Child")
+  lazy val InvariantBetweenClass = requiredClass("dotty.annotation.internal.InvariantBetween")
+  lazy val CovariantBetweenClass = requiredClass("dotty.annotation.internal.CovariantBetween")
+  lazy val ContravariantBetweenClass = requiredClass("dotty.annotation.internal.ContravariantBetween")
   lazy val ScalaSignatureAnnot = requiredClass("scala.reflect.ScalaSignature")
   lazy val ScalaLongSignatureAnnot = requiredClass("scala.reflect.ScalaLongSignature")
   lazy val DeprecatedAnnot = requiredClass("scala.deprecated")
@@ -202,16 +205,15 @@ class Definitions(implicit ctx: Context) {
 
   lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
 
+  // ----- Higher kinds machinery ------------------------------------------
+
   private var _hkTraits: Set[Symbol] = Set()
-  private var _hkTraitOfArity: Map[Int, ClassSymbol] = Map()
-  private var _hkParamNames: Set[Name] = Set()
-  private var _hkParamArity: Map[Name, Int] = Map()
+  private var _hkTrait: Map[Int, ClassSymbol] = Map()
 
+  /** The set of all `HigherKinded_n` traits that are referred to in thos compilation run. */
   def hkTraits: Set[Symbol] = _hkTraits
-  def hkParamNames = _hkParamNames
-  def hkParamArity = _hkParamArity
 
-  /** A trait `HigherKinded[Lo_1,...,Lo_n,Hi_1,...,Hi_n]` that represents
+  /** A trait `HigherKinded_n[B1, ..., Bn]` that represents
    *  the bounds of a higher-kinded type.
    */
   def hkTrait(n: Int): ClassSymbol = {
@@ -219,22 +221,31 @@ class Definitions(implicit ctx: Context) {
       def complete(denot: SymDenotation): Unit = {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
-        for (i <- 0 until n) newSyntheticTypeParam(cls, paramDecls, "Lo"+i)
-        for (i <- 0 until n) newSyntheticTypeParam(cls, paramDecls, "Hi"+i)
+        for (i <- 0 until n)
+          newSyntheticTypeParam(cls, paramDecls, "B"+i).setFlag(Covariant)
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, List(ObjectClass.typeConstructor), paramDecls)
       }
     }
-    _hkTraitOfArity get n match {
-      case Some(cls) => cls
+    _hkTrait get n match {
+      case Some(cls) =>
+        cls
       case None =>
-        val cls = ctx.newClassSymbol(ScalaPackageClass, tpnme.higherKindedTraitName(n), Synthetic, completer).entered
+        val cls = ctx.newClassSymbol(
+          ScalaPackageClass,
+          tpnme.higherKindedTraitName(n),
+          Trait | Interface | Synthetic,
+          completer).entered
         _hkTraits += cls
-        _hkTraitOfArity = _hkTraitOfArity.updated(n, cls)
-        val paramName = tpnme.higherKindedParamName(n)
-        _hkParamNames += paramName
-        _hkParamArity = _hkParamArity.updated(paramName, n)
+        _hkTrait = _hkTrait.updated(n, cls)
         cls
     }
+  }
+
+  /** The bounds trait corresponding to the given variance */
+  def hkBoundsClass(variance: Int) = variance match {
+    case 0  => InvariantBetweenClass
+    case 1  => CovariantBetweenClass
+    case -1 => ContravariantBetweenClass
   }
 
   // ----- Value class machinery ------------------------------------------

@@ -6,6 +6,7 @@ import Symbols._
 import TypeComparers._
 import Flags._
 import Names._
+import StdNames._, NameOps._
 import Scopes._
 import Constants._
 import Contexts._
@@ -75,6 +76,9 @@ object Types {
 
     /** Is this type different from NoType? */
     def exists: Boolean = true
+
+    /** This type, if it exists, otherwise `that` type */
+    def orElse(that: => Type) = if (exists) this else that
 
     /** Is this type a value type? */
     final def isValueType: Boolean = this.isInstanceOf[ValueType]
@@ -522,10 +526,11 @@ object Types {
 
     /** Encode the type resulting from applying this type to given arguments */
     final def appliedTo(args: List[Type])(implicit ctx: Context): Type = {
+
       def recur(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
         case arg :: args1 =>
           if (tparams.isEmpty) {
-            println(s"applied type mismatch: $this $args, $typeParams = typeParams")
+            println(s"applied type mismatch: $this $args, $typeParams = typeParams") // !!! DEBUG
             println(s"precomplete decls = ${typeSymbol.preCompleteDecls.toList.map(_.denot).mkString("\n  ")}")
           }
           val tparam = tparams.head
@@ -533,12 +538,47 @@ object Types {
           recur(tp1, tparams.tail, args1)
         case nil => tp
       }
+
+      def hkApp(tp: Type): Type = tp match {
+        case AndType(l, r) =>
+          hkApp(l) orElse hkApp(r)
+        case tp: RefinedType if defn.hkTraits contains tp.typeSymbol =>
+          tp
+        case tp: TypeProxy =>
+          hkApp(tp.underlying)
+      }
+
+      def hkRefinement(tp: TypeRef): Type = {
+        val hkArgs = hkApp(tp.info).typeArgs
+        ((tp: Type) /: hkArgs.zipWithIndex.zip(args)) {
+          case (parent, ((hkArg, idx), arg)) =>
+            val vsym = hkArg.typeSymbol
+            val rhs =
+              if (vsym == defn.InvariantBetweenClass)
+                TypeAlias(arg)
+              else if (vsym == defn.CovariantBetweenClass)
+                TypeBounds.upper(arg)
+              else {
+                assert(vsym == defn.ContravariantBetweenClass)
+                TypeBounds.lower(arg)
+              }
+            RefinedType(parent, tpnme.higherKindedParamName(idx), rhs)
+        }
+      }
+
+      // begin applied type
       if (args.isEmpty) this
       else this match {
         case tp: PolyType =>
           tp.instantiate(args)
-        case tp: TypeRef if tp.symbol.isClass =>
-          recur(tp, tp.typeParams, args)
+        case tp: TypeRef =>
+          val tsym = tp.symbol
+          if (tsym.isClass)
+            recur(tp, tp.typeParams, args)
+          else if (tsym.isAliasType)
+            tp.underlying.appliedTo(args)
+          else
+            hkRefinement(tp)
         case tp: TypeProxy =>
           tp.underlying.appliedTo(args)
       }
@@ -1009,10 +1049,9 @@ object Types {
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType =
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))
         this
-      else if ((defn.hkParamNames contains refinedName) &&
-               (parent.typeParams.length >= defn.hkParamArity(refinedName)))
+      else if (refinedName.isHkParamName && typeParams.length > refinedName.hkParamIndex)
         derivedRefinedType(
-          parent, parent.typeParams.apply(defn.hkParamArity(refinedName)).name, refinedInfo)
+          parent, parent.typeParams.apply(refinedName.hkParamIndex).name, refinedInfo)
       else
         RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
 
@@ -1337,6 +1376,9 @@ object Types {
       TypeBounds(f(lo), f(hi))
 
     override def computeHash = doHash(lo, hi)
+
+    override def toString =
+      if (lo eq hi) s"TypeAlias($lo)" else s"TypeBounds($lo, $hi)"
   }
 
   final class CachedTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)

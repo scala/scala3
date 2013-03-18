@@ -34,11 +34,11 @@ object UnPickler {
    *  If `forSym` is not an abstract type, this simply returns an equivalent `PolyType`.
    *  If `forSym` is an abstract type, it converts a
    *
-   *      TempPolyType(List(T_1, ..., T_n), lo..hi)
+   *      TempPolyType(List(v_1 T_1, ..., v_n T_n), lo .. hi)
    *
    *  to
    *
-   *      Bottom..HigherKinded[lo_1, ..., lo_N, hi_1, ..., hi_N] & (lo..hi)
+   *      lo .. HigherKinded_n[v_1Between[lo_1, hi_1],..., v_nBetween[lo_n, hi_n]] & hi
    *
    *  where lo_i, hi_i are the lower/upper bounds of the type parameters T_i.
    *  This works only as long as none of the type parameters T_i appears in any
@@ -48,13 +48,21 @@ object UnPickler {
   def depoly(tp: Type, forSym: SymDenotation)(implicit ctx: Context): Type = tp match {
     case TempPolyType(tparams, restpe) =>
       if (forSym.isAbstractType) {
-        val typeArgs = (tparams map (_.info.bounds.lo)) ++ (tparams map (_.info.bounds.hi))
+        val typeArgs = for (tparam <- tparams) yield {
+          val TypeBounds(lo, hi) = tparam.info
+          defn.hkBoundsClass(tparam.variance).typeConstructor
+            .appliedTo(List(lo, hi))
+        }
         val elimTparams: Type => Type = _.subst(tparams, tparams map (_ => defn.AnyType))
         val correctedArgs = typeArgs.mapConserve(elimTparams)
         val correctedRes = elimTparams(restpe)
-        assert(correctedRes.isInstanceOf[TypeBounds])
-        val hk = defn.hkTrait(tparams.length)
-        val result = TypeBounds.upper(hk.typeConstructor.appliedTo(correctedArgs)) & correctedRes
+        val hkBound = defn.hkTrait(tparams.length).typeConstructor
+          .appliedTo(correctedArgs)
+        val result = correctedRes match {
+          case TypeBounds(lo, hi) =>
+            val hi1 = if (hi == defn.AnyType) hkBound else AndType(hkBound, hi)
+            TypeBounds(lo, hi1) //note: using & instead would be too eager
+        }
         if ((typeArgs ne correctedArgs) || (restpe ne correctedRes))
           ctx.warning(s"""failure to import F-bounded higher-kinded type
                          |original type definition: ${forSym.show}${tp.show}
@@ -551,8 +559,14 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val pre = readTypeRef()
         val sym = readSymbolRef()
         val tycon =
-          if (isLocal(sym)) TypeRef(pre, sym.asType)
-          else TypeRef(pre, sym.name.asTypeName)
+          if (isLocal(sym)) {
+            TypeRef(
+              if ((pre eq NoPrefix) && (sym is TypeParam))
+                sym.owner.thisType
+              else
+                pre,
+              sym.asType)
+          } else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
         if (args.nonEmpty) println(s"reading app type $tycon ${tycon.typeSymbol.debugString} $args, owner = ${tycon.typeSymbol.owner.debugString}") // !!! DEBUG
         tycon.appliedTo(args)

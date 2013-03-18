@@ -83,6 +83,14 @@ object NameOps {
         name.last == '=' && name.head != '=' && isOperatorPart(name.head)
     }
 
+    /** Is this the name of a higher-kinded type parameter? */
+    def isHkParamName: Boolean = name(0) == '_' && name.startsWith(HK_PARAM_PREFIX)
+
+    /** The index of the higher-kinded type parameter with this name.
+     *  Pre: isHkParamName.
+     */
+    def hkParamIndex: Int = name.drop(name.lastIndexOf('$') + 1).toString.toInt
+
     /** If the name ends with $nn where nn are
       * all digits, strip the $ and the digits.
       * Otherwise return the argument.
