@@ -29,21 +29,38 @@ object UnPickler {
   /** Temporary type for classinfos, will be decomposed on completion of the class */
   case class TempClassInfoType(parentTypes: List[Type], decls: MutableScope, clazz: Symbol) extends UncachedGroundType
 
+  /** Convert temp poly type to some native Dotty idiom.
+   *  @param forSym  The symbol that gets the converted type as info.
+   *  If `forSym` is not an abstract type, this simply returns an equivalent `PolyType`.
+   *  If `forSym` is an abstract type, it converts a
+   *
+   *      TempPolyType(List(T_1, ..., T_n), lo..hi)
+   *
+   *  to
+   *
+   *      Bottom..HigherKinded[lo_1, ..., lo_N, hi_1, ..., hi_N] & (lo..hi)
+   *
+   *  where lo_i, hi_i are the lower/upper bounds of the type parameters T_i.
+   *  This works only as long as none of the type parameters T_i appears in any
+   *  of the bounds or the result type. Such occurrences of type parameters are
+   *  replaced by Any, and a warning is issued in this case.
+   */
   def depoly(tp: Type, forSym: SymDenotation)(implicit ctx: Context): Type = tp match {
     case TempPolyType(tparams, restpe) =>
       if (forSym.isAbstractType) {
-        val typeArgs = tparams flatMap { tparam =>
-          List(tparam.info.bounds.lo, tparam.info.bounds.hi)
-        }
-        val correctedArgs = typeArgs.mapConserve(
-          _.subst(tparams, tparams map (_ => defn.AnyType)))
+        val typeArgs = (tparams map (_.info.bounds.lo)) ++ (tparams map (_.info.bounds.hi))
+        val elimTparams: Type => Type = _.subst(tparams, tparams map (_ => defn.AnyType))
+        val correctedArgs = typeArgs.mapConserve(elimTparams)
+        val correctedRes = elimTparams(restpe)
+        assert(correctedRes.isInstanceOf[TypeBounds])
         val hk = defn.hkTrait(tparams.length)
-        if (typeArgs ne correctedArgs)
+        val result = TypeBounds.upper(hk.typeConstructor.appliedTo(correctedArgs)) & correctedRes
+        if ((typeArgs ne correctedArgs) || (restpe ne correctedRes))
           ctx.warning(s"""failure to import F-bounded higher-kinded type
                          |original type definition: ${forSym.show}${tp.show}
-                         |definition used instead : ${forSym.show} <: $hk[${correctedArgs.map(_.show).mkString(", ")}]
+                         |definition used instead : ${forSym.show}${result.show}
                          |proceed at own risk.""".stripMargin)
-        hk.typeConstructor.appliedTo(typeArgs)
+        result
       } else
         PolyType.fromSymbols(tparams, restpe)
     case tp => tp

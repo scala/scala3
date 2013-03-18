@@ -205,15 +205,15 @@ object TypeComparers {
      */
     def isSubTypeHK(tp1: Type, tp2: Type): Boolean = {
       val tparams = tp1.typeParams
-      val hkargs = tp2.typeArgs
-      def toBounds(args: List[Type]): List[TypeBounds] = (args: @unchecked) match {
-        case lo :: hi :: args1 => TypeBounds(lo, hi) :: toBounds(args1)
-        case Nil => Nil
+      val hkArgs = tp2.typeArgs
+      val (loBounds, hiBounds) = hkArgs splitAt (hkArgs.length / 2)
+      (loBounds.length == tparams.length) && {
+        val base = ctx.newSkolemSingleton(tp1)
+        (loBounds, hiBounds, tparams).zipped.forall { (lo, hi, tparam) =>
+          val tparamBounds = base.memberInfo(tparam).bounds
+          lo <:< tparamBounds.lo && tparamBounds.hi <:< hi
+        }
       }
-      val base = ctx.newSkolemSingleton(tp1)
-      val hkbounds = toBounds(hkargs)
-      (hkbounds.length == tparams.length) &&
-        (hkbounds, tparams map (base.memberInfo(_).bounds)).zipped.forall(_ contains _)
     }
 
     /** A function implementing `tp1` matches `tp2`. */

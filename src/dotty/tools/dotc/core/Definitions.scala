@@ -211,15 +211,16 @@ class Definitions(implicit ctx: Context) {
   def hkParamNames = _hkParamNames
   def hkParamArity = _hkParamArity
 
+  /** A trait `HigherKinded[Lo_1,...,Lo_n,Hi_1,...,Hi_n]` that represents
+   *  the bounds of a higher-kinded type.
+   */
   def hkTrait(n: Int): ClassSymbol = {
     val completer = new LazyType {
       def complete(denot: SymDenotation): Unit = {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
-        for (i <- 0 until n) {
-          newSyntheticTypeParam(cls, paramDecls, "Lo"+i)
-          newSyntheticTypeParam(cls, paramDecls, "Hi"+i)
-        }
+        for (i <- 0 until n) newSyntheticTypeParam(cls, paramDecls, "Lo"+i)
+        for (i <- 0 until n) newSyntheticTypeParam(cls, paramDecls, "Hi"+i)
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, List(ObjectClass.typeConstructor), paramDecls)
       }
     }
