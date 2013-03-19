@@ -122,9 +122,11 @@ object Printers {
     )
 
     def show(name: Name): String = name.toString + {
-      (if (name.isLocalName) "/L"
-      else if (name.isTypeName) "/T"
-      else "/V")
+      if (ctx.settings.debugNames.value)
+        if (name.isLocalName) "/L"
+        else if (name.isTypeName) "/T"
+        else "/V"
+      else ""
     }
 
     /** String representation of a name used in a refinement
@@ -156,6 +158,7 @@ object Printers {
         case TypeRef(pre, name) =>
           showPrefix(pre) + showName(tp.typeSymbol)
         case tp: RefinedType =>
+          // return tp.toString // !!! DEBUG
           val parent :: refined = refinementChain(tp).reverse
           showLocal(parent) +
           refined.asInstanceOf[List[RefinedType]].map(showRefinement).mkString("{", "; ", "}")
@@ -263,8 +266,8 @@ object Printers {
           if (lo eq hi)
             " = " + lo.show
           else
-            (if (lo.typeSymbol == defn.NothingClass) "" else " >: " + lo.show) +
-            (if (hi.typeSymbol == defn.AnyClass)     "" else " <: " + hi.show)
+            (if (lo == defn.NothingType) "" else " >: " + lo.show) +
+            (if (hi == defn.AnyType)     "" else " <: " + hi.show)
         case ClassInfo(pre, cdenot, cparents, decls, optSelfType) =>
           val preStr = showLocal(pre)
           val selfStr =
@@ -274,7 +277,7 @@ object Printers {
           val declsStr =
             if (decls.isEmpty) ""
             else "\n  " + showDcls(decls.toList, "\n  ")
-          s"""$parentsStr { $selfStr$declsStr
+          s""" extends $parentsStr { $selfStr$declsStr
              |} at $preStr""".stripMargin
         case _ => ": " + showGlobal(tp)
       }
