@@ -266,7 +266,9 @@ object Types {
         l.findMember(name, pre, excluded) & r.findMember(name, pre, excluded)
       case OrType(l, r) =>
         (l.findMember(name, pre, excluded) | r.findMember(name, pre, excluded))(pre)
-    }
+    } /* !!! DEBUG ensuring { denot =>
+      denot.alternatives forall (_.symbol.name == name)
+    }*/
 
     /** The set of names of members of this type that pass the given name filter
      *  when seen as members of `pre`. More precisely, these are all
@@ -739,7 +741,14 @@ object Types {
   def unique[T <: Type](tp: T)(implicit ctx: Context): T = {
     if (tp.hash == NotCached) tp
     else ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
-  }
+  } /* !!! DEBUG
+  ensuring (
+    result => tp.toString == result.toString || {
+      println(s"cache mismatch; tp = $tp, cached = $result")
+      false
+    }
+  )
+ */
 
 // ----- Type categories ----------------------------------------------
 
@@ -1055,6 +1064,14 @@ object Types {
       else
         RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
 
+    override def equals(that: Any) = that match {
+      case that: RefinedType =>
+        this.parent == that.parent &&
+        this.refinedName == that.refinedName &&
+        this.refinedInfo == that.refinedInfo
+      case _ =>
+        false
+    }
     override def computeHash = doHash(refinedName, refinedInfo, parent)
     override def toString = s"RefinedType($parent, $refinedName, $refinedInfo | hash = $hashCode)"
   }
@@ -1159,6 +1176,15 @@ object Types {
       if (isDependent) new InstMethodMap(this, argTypes) apply resultType
       else resultType
 
+    override def equals(that: Any) = that match {
+      case that: MethodType =>
+        this.paramNames == that.paramNames &&
+        this.paramTypes == that.paramTypes &&
+        this.resultType == that.resultType
+      case _ =>
+        false
+    }
+
     override def computeHash = doHash(paramNames, resultType, paramTypes)
     protected def prefixString = "MethodType"
     override def toString = s"$prefixString($paramNames, $paramTypes, $resultType)"
@@ -1250,10 +1276,8 @@ object Types {
     // need to override hashCode and equals to be object identity
     // because paramNames by itself is not discriminatory enough
     override def hashCode = System.identityHashCode(this)
-    override def equals(other: Any) = other match {
-      case that: PolyType => this eq that
-      case _ => false
-    }
+    override def equals(other: Any) = this eq other.asInstanceOf[AnyRef]
+
     override def toString = s"PolyType($paramNames, $paramBounds, $resultType)"
   }
 
@@ -1277,8 +1301,17 @@ object Types {
     type BT = MethodType
     override def underlying(implicit ctx: Context) = binder.paramTypes(paramNum)
     def copy(bt: BT) = MethodParam(bt, paramNum)
-    // need to customize hashCode to prevent infinite recursion for dep meth types.
+
+    // need to customize hashCode and equals to prevent infinite recursion for dep meth types.
     override def hashCode = doHash(System.identityHashCode(binder) + paramNum)
+    override def equals(that: Any) = that match {
+      case that: MethodParam =>
+        (this.binder eq that.binder) &&
+        this.paramNum == that.paramNum
+      case _ =>
+        false
+    }
+
     override def toString = s"MethodParam(${binder.paramNames(paramNum)})"
   }
 
@@ -1286,7 +1319,7 @@ object Types {
     type BT = PolyType
     override def underlying(implicit ctx: Context) = binder.paramBounds(paramNum)
     def copy(bt: BT) = PolyParam(bt, paramNum)
-    // no customized hashCode needed because cycle is broken in PolyType
+    // no customized hashCode/equals needed because cycle is broken in PolyType
     override def toString = s"PolyParam(${binder.paramNames(paramNum)})"
  }
 
@@ -1294,9 +1327,13 @@ object Types {
     type BT = RefinedType
     override def underlying(implicit ctx: Context) = binder.parent
     def copy(bt: BT) = RefinedThis(bt)
-    // need to customize hashCode to prevent infinite recursion for
+    // need to customize hashCode and equals to prevent infinite recursion for
     // refinements that refer to the refinement type via this
     override def hashCode = doHash(System.identityHashCode(binder))
+    override def equals(that: Any) = that match {
+      case that: RefinedThis => this.binder eq that.binder
+      case _ => false
+    }
     override def toString = s"RefinedThis(${binder.hashCode})"
   }
 
