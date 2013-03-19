@@ -666,7 +666,9 @@ object TypedTrees {
 
   class TreeMapper(val typeMap: TypeMap = IdentityTypeMap, val ownerMap: Symbol => Symbol = identity)(implicit ctx: Context) extends TreeTransformer[Type, Unit] {
     override def transform(tree: tpd.Tree, c: Unit): tpd.Tree = {
-      val tree1 = tree.withType(typeMap(tree.tpe))
+      val tree1 =
+        if (tree.isEmpty) tree
+        else tree.withType(typeMap(tree.tpe))
       val tree2 = tree1 match {
         case bind: tpd.Bind =>
           val sym = bind.symbol
