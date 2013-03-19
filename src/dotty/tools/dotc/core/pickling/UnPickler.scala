@@ -103,7 +103,8 @@ object UnPickler {
       case cinfo => (Nil, cinfo)
     }
     val parentRefs = ctx.normalizeToRefs(parents, cls, decls)
-    tparams foreach decls.enter
+    for (tparam <- tparams)
+      if (!decls.lookup(tparam.name).exists) decls.enter(tparam)
     denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, parentRefs, decls, optSelfType)
   }
 }
@@ -163,6 +164,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     case _ => errorBadSignature(s"a runtime exception occured: $ex", Some(ex))
   }
 
+  private var postReadOp: () => Unit = null
+
   def run() =
     try {
       var i = 0
@@ -171,6 +174,10 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           val savedIndex = readIndex
           readIndex = index(i)
           entries(i) = readSymbol()
+          if (postReadOp != null) {
+            postReadOp()
+            postReadOp = null
+          }
           readIndex = savedIndex
         }
         i += 1
@@ -401,11 +408,13 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     }
 
     def finishSym(sym: Symbol): Symbol = {
-      if (sym.owner.isClass && !(
-        isUnpickleRoot(sym) ||
-        (sym is (ModuleClass | Scala2Existential)) ||
-        isRefinementClass(sym)))
-        symScope(sym.owner).openForMutations.enter(sym)
+      if (sym.owner.isClass &&
+          !(  isUnpickleRoot(sym)
+           || (sym is (ModuleClass | Scala2Existential))
+           || ((sym is TypeParam) && !sym.owner.isClass)
+           || isRefinementClass(sym)
+           )
+         ) symScope(sym.owner).openForMutations.enter(sym)
       sym
     }
 
@@ -419,6 +428,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         }
         cctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
       case CLASSsym =>
+        val infoRef = readNat()
+        postReadOp = () => atReadPos(index(infoRef), readTypeParams) // force reading type params early, so they get entered in the right order.
         if (isClassRoot) completeRoot(classRoot)
         else if (isModuleClassRoot) completeRoot(moduleClassRoot)
         else cctx.newClassSymbol(owner, name.asTypeName, flags, new LocalClassUnpickler(_), coord = start)
@@ -467,7 +478,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             denot.addAnnotation(Annotation.makeAlias(alias))
           }
       }
-      println(s"unpicked ${denot.debugString}, info = ${denot.info}")
+      println(s"unpickled ${denot.debugString}, info = ${denot.info}")
     }
     def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
     def complete(denot: SymDenotation): Unit = try {
@@ -622,6 +633,15 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case _ =>
         noSuchTypeTag(tag, end)
     }
+  }
+
+  def readTypeParams(): List[Symbol] = {
+    val tag = readByte()
+    val end = readNat() + readIndex
+    if (tag == POLYtpe) {
+      val unusedRestperef = readNat()
+      until(end, readSymbolRef)
+    } else Nil
   }
 
   def noSuchTypeTag(tag: Int, end: Int): Type =

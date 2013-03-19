@@ -636,7 +636,8 @@ object SymDenotations {
     }
 
     private def computeTypeParams(implicit ctx: Context): List[TypeSymbol] =
-      (preCompleteDecls.toList filter (_ is TypeParam)).asInstanceOf[List[TypeSymbol]]
+      preCompleteDecls.toList.filter(sym =>
+        (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
 
     // ------ class-specific operations -----------------------------------
 
