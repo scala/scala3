@@ -256,6 +256,7 @@ object Contexts {
         .withSetting(settings.debug, true)
         .withSetting(settings.Ylogcp, true)
         .withSetting(settings.printtypes, true)
+        .withSetting(settings.pageWidth, 120)
 
     /** The symbol loaders */
     val loaders = new SymbolLoaders
@@ -334,7 +335,7 @@ object Contexts {
 
     // Printers state
     /** Number of recursive invocations of a show method on cuyrrent stack */
-    private[core] var showRecursions = 0
+    private[core] var toTextRecursions = 0
 
     // Reporters state
     private[dotc] var indent = 0

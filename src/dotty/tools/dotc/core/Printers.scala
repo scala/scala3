@@ -3,6 +3,7 @@ package core
 
 import Types._, Symbols._, Contexts._, Scopes._, Names._, NameOps._, Flags._
 import Constants._, Annotations._, StdNames._, Denotations._, Trees._
+import util.Texts._
 import java.lang.Integer.toOctalString
 import scala.annotation.switch
 
@@ -17,8 +18,8 @@ trait Printers { this: Context =>
 object Printers {
 
   class Precedence(val value: Int) extends AnyVal {
-    def parenthesize(nested: Precedence)(str: String) =
-      if (nested.value < value) "(" + str + ")" else str
+    def parenthesize(nested: Precedence)(text: Text) =
+      if (nested.value < value) "(" ~ text ~ ")" else text
   }
 
   val DotPrec       = new Precedence(4)
@@ -30,71 +31,73 @@ object Printers {
 
   abstract class Printer {
 
-    /** Show name with namespace suffix: /L for local names,
-     * /V for other term names, /T for type names
+    /** The name, possibley with with namespace suffix if debugNames is set:
+     * /L for local names, /V for other term names, /T for type names
      */
-    def show(name: Name): String
+    def nameString(name: Name): String
 
-    /** Show type in context with given precedence */
-    def show(tp: Type, precedence: Precedence): String
-
-    /** Show name of symbol.
-     *  If !settings.debug shows original name and
-     *  translates expansions of operators back to operator symbol.
+    /** The name of the given symbol.
+     *  If !settings.debug, the original name where
+     *  expansions of operators are translated back to operator symbol.
      *  E.g. $eq => =.
      *  If settings.uniqid, adds id.
      */
-    def showName(sym: Symbol): String
+    def nameString(sym: Symbol): String
 
-    /** Show fully qualified name of symbol */
-    def showFullName(sym: Symbol): String
+    /** The fully qualified name of the symbol */
+    def fullNameString(sym: Symbol): String
 
-    /** Show kind of symbol */
-    def showKind(sym: Symbol): String
+    /** The kind of the symbol */
+    def kindString(sym: Symbol): String
 
-    /** String representation, including symbol's kind e.g., "class Foo", "method Bar".
+    /** Textual representation, including symbol's kind e.g., "class Foo", "method Bar".
      *  If hasMeaninglessName is true, uses the owner's name to disambiguate identity.
      */
-    def show(sym: Symbol): String
+    def toText(sym: Symbol): Text
 
-    /** Show symbol's declaration */
-    def showDcl(sym: Symbol): String
+    /** Textual representation of symbol's declaration */
+    def dclText(sym: Symbol): Text
 
-    /** If symbol's owner is a printable class C, the string "in C", otherwise "" */
-    def showLocation(sym: Symbol): String
+    /** If symbol's owner is a printable class C, the text "in C", otherwise "" */
+    def locationText(sym: Symbol): Text
 
-    /** Show symbol and its location */
-    def showLocated(sym: Symbol): String
+    /** Textual representation of symbol and its location */
+    def locatedText(sym: Symbol): Text
 
-    /** Show denotation */
-    def show(denot: Denotation): String
+    /** Textual representation of denotation */
+    def toText(denot: Denotation): Text
 
-    /** Show constant */
-    def show(const: Constant): String
+    /** Textual representation of constant */
+    def toText(const: Constant): Text
 
-    /** Show annotation */
-    def show(annot: Annotation): String
+    /** Textual representation of annotation */
+    def toText(annot: Annotation): Text
 
-    /** Show all symbols in given list separated by `sep`, using `showDcl` for each */
-    def showDcls(syms: List[Symbol], sep: String): String
+    /** Textual representation of type in context with given precedence */
+    def toText(tp: Type, precedence: Precedence): Text
 
-    /** Show all definitions in a scope using `showDcl` for each */
-    def show(sc: Scope): String
+    /** Textual representation of all symbols in given list,
+     *  using `dclText` for displaying each.
+     */
+    def dclsText(syms: List[Symbol], sep: String = "\n"): Text
 
-    /** Show tree */
-    def show[T](tree: Tree[T]): String
+    /** Textual representation of all definitions in a scope using `dclText` for each */
+    def toText(sc: Scope): Text
+
+    /** Textual representation of tree */
+    def toText[T](tree: Tree[T]): Text
   }
 
   class PlainPrinter(_ctx: Context) extends Printer {
     protected[this] implicit val ctx = _ctx
 
-    def controlled(op: => String): String =
-      if (ctx.showRecursions < maxShowRecursions)
+    def controlled(op: => Text): Text =
+      if (ctx.toTextRecursions < maxToTextRecursions)
         try {
-          ctx.showRecursions += 1
+          ctx.toTextRecursions += 1
           op
         } finally {
-          ctx.showRecursions -= 1
+          ctx.toTextRecursions -= 1
         }
       else {
         recursionLimitExceeeded()
@@ -105,9 +108,6 @@ object Printers {
       ctx.warning("Exceeded recursion depth attempting to print type.")
       (new Throwable).printStackTrace
     }
-
-    /** Concatenate strings separated by spaces */
-    protected def compose(ss: String*) = ss.filter(_.nonEmpty).mkString(" ")
 
     /** If the name of the symbol's owner should be used when you care about
      *  seeing an interesting name: in such cases this symbol is e.g. a method
@@ -121,7 +121,7 @@ object Printers {
       || (sym.name == nme.PACKAGE)               // package
     )
 
-    def show(name: Name): String = name.toString + {
+    def nameString(name: Name): String = name.toString + {
       if (ctx.settings.debugNames.value)
         if (name.isLocalName) "/L"
         else if (name.isTypeName) "/T"
@@ -132,11 +132,11 @@ object Printers {
     /** String representation of a name used in a refinement
      *  In refined printing this undoes type parameter expansion
      */
-    protected def showRefinementName(tp: RefinedType) = show(tp.refinedName)
+    protected def refinementNameString(tp: RefinedType) = nameString(tp.refinedName)
 
     /** String representation of a refinement */
-    protected def showRefinement(rt: RefinedType) =
-      showRefinementName(rt) + showRHS(rt.refinedInfo)
+    protected def toTextRefinement(rt: RefinedType) =
+      (refinementNameString(rt) ~ toTextRHS(rt.refinedInfo)).close
 
     /** The longest sequence of refinement types, starting at given type
      *  and following parents.
@@ -147,28 +147,29 @@ object Printers {
         case _ => Nil
       })
 
-    def show(tp: Type, prec: Precedence): String = controlled {
+    def toText(tp: Type, prec: Precedence): Text = controlled {
       tp match {
         case tp: TypeType =>
-          showRHS(tp)
+          toTextRHS(tp)
         case tp: SingletonType =>
-          val str = showPrefix(tp)
-          if (str.endsWith(".")) str + "type"
-          else showFullName(tp.typeSymbol.skipPackageObject) + ".type"
+          val pre = toTextPrefix(tp)
+          if (pre.lastLine.endsWith(".")) pre ~ "type"
+          else fullNameString(tp.typeSymbol.skipPackageObject) ~ ".type"
         case TypeRef(pre, name) =>
-          showPrefix(pre) + showName(tp.typeSymbol)
+          toTextPrefix(pre) ~ nameString(tp.typeSymbol)
         case tp: RefinedType =>
           // return tp.toString // !!! DEBUG
-          val parent :: refined = refinementChain(tp).reverse
-          showLocal(parent) +
-          refined.asInstanceOf[List[RefinedType]].map(showRefinement).mkString("{", "; ", "}")
+          val parent :: (refined: List[RefinedType]) =
+            refinementChain(tp).reverse
+          toTextLocal(parent) ~ "{" ~
+          Text(refined.map(toTextRefinement), "; ").close ~ "}"
         case AndType(tp1, tp2) =>
           (prec parenthesize AndPrec) {
-            show(tp1, AndPrec) + "&" + show(tp2, AndPrec)
+            toText(tp1, AndPrec) ~ "&" ~ toText(tp2, AndPrec)
           }
         case OrType(tp1, tp2) =>
           (prec parenthesize OrPrec) {
-            show(tp1, OrPrec) + "|" + show(tp2, OrPrec)
+            toText(tp1, OrPrec) ~ "|" ~ toText(tp2, OrPrec)
           }
         case ErrorType =>
           "<error>"
@@ -180,76 +181,81 @@ object Printers {
           "<noprefix>"
         case tp: MethodType =>
           (prec parenthesize GlobalPrec) {
-            val openStr = if (tp.isImplicit) "(implicit " else "("
+            (if (tp.isImplicit) "(implicit " else "(") ~
+            Text(
               (tp.paramNames, tp.paramTypes).zipped
-              .map((name, tp) => show(name) + ": " + showGlobal(tp))
-              .mkString(openStr, ", ", ")" + showGlobal(tp.resultType))
+                .map((name, tp) => nameString(name) ~ ": " ~ toTextGlobal(tp)),
+            ", ") ~
+            ")" ~ toTextGlobal(tp.resultType)
           }
         case tp: ExprType =>
           (prec parenthesize GlobalPrec) {
-            "=> " + showGlobal(tp.resultType)
+            "=> " ~ toTextGlobal(tp.resultType)
           }
         case tp: PolyType =>
           (prec parenthesize GlobalPrec) {
-            (tp.paramNames, tp.paramBounds).zipped
-              .map((name, bounds) => show(name) + showGlobal(bounds))
-              .mkString("[", ", ", "]" + showGlobal(tp.resultType))
+            "[" ~
+            Text(
+              (tp.paramNames, tp.paramBounds).zipped
+                .map((name, bounds) => nameString(name) ~ toTextGlobal(bounds)),
+              ", ") ~
+            "]" ~ toTextGlobal(tp.resultType)
           }
         case PolyParam(pt, n) =>
-          show(pt.paramNames(n))
+          nameString(pt.paramNames(n))
         case AnnotatedType(annot, tpe) =>
-          showLocal(tpe) + " " + show(annot)
+          toTextLocal(tpe) ~ " " ~ toText(annot)
       }
-    }
+    }.close
 
-    /** Show type within highest precedence */
-    protected def showLocal(tp: Type) = show(tp, DotPrec)
+    /** Render type within highest precedence */
+    protected def toTextLocal(tp: Type) = toText(tp, DotPrec)
 
-    /** Show type within lowest precedence */
-    protected def showGlobal(tp: Type) = show(tp, GlobalPrec)
+    /** Render type within lowest precedence */
+    protected def toTextGlobal(tp: Type) = toText(tp, GlobalPrec)
 
-    /** Show name of symbol without unique id. Under refined printing,
-     *  shows decoded original name.
+    /** The name of the symbol without a unique id. Under refined printing,
+     *  the decoded original name.
      */
-    protected def showSimpleName(sym: Symbol) = show(sym.name)
+    protected def simpleNameString(sym: Symbol): String = nameString(sym.name)
 
-    /** Show unique id of symbol, after a # */
-    protected def showId(sym: Symbol) =
+    /** The unique id of symbol, after a # */
+    protected def idString(sym: Symbol): String =
       if (ctx.settings.uniqid.value) "#" + sym.id else ""
 
-    def showName(sym: Symbol): String = showSimpleName(sym) + showId(sym)
+    def nameString(sym: Symbol): String = simpleNameString(sym) + idString(sym)
 
-    def showFullName(sym: Symbol): String =
+    def fullNameString(sym: Symbol): String =
       if (sym.isRoot || sym == NoSymbol || sym.owner.isEffectiveRoot)
-        showName(sym)
+        nameString(sym)
       else
-        showFullName(sym.effectiveOwner.enclosingClass) + "." + showName(sym)
+        fullNameString(sym.effectiveOwner.enclosingClass) + "." + nameString(sym)
 
     protected def objectPrefix = "object "
     protected def packagePrefix = "package "
 
-    protected def trimPrefix(str: String) =
-      str.stripPrefix(objectPrefix).stripPrefix(packagePrefix)
+    protected def trimPrefix(text: Text) =
+      text.stripPrefix(objectPrefix).stripPrefix(packagePrefix)
 
     /** The string representation of this type used as a prefix */
-    protected def showPrefix(tp: Type): String = controlled {
+    protected def toTextPrefix(tp: Type): Text = controlled {
       tp match {
         case tp @ TermRef(pre, name) =>
-          showPrefix(pre) + showName(tp.symbol) + "."
+          toTextPrefix(pre) ~ nameString(tp.symbol) ~ "."
         case ThisType(cls) =>
-          showName(cls) + ".this."
+          nameString(cls) + ".this."
         case SuperType(thistpe, _) =>
-          showPrefix(thistpe).replaceAll("""\bthis\.$""", "super.")
+          toTextPrefix(thistpe).map(_.replaceAll("""\bthis\.$""", "super."))
         case tp @ ConstantType(value) =>
-          showLocal(tp.underlying) + "(" + show(value) + ")."
+          toTextLocal(tp.underlying) ~ "(" ~ toText(value) ~ ")."
         case MethodParam(mt, idx) =>
-          show(mt.paramNames(idx)) + "."
+          nameString(mt.paramNames(idx)) + "."
         case RefinedThis(_) =>
           "this."
         case NoPrefix =>
           ""
         case _ =>
-          trimPrefix(showLocal(tp)) + "#"
+          trimPrefix(toTextLocal(tp)) ~ "#"
       }
     }
 
@@ -260,31 +266,31 @@ object Printers {
       sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName
 
     /** String representation of a definition's type following its name */
-    protected def showRHS(tp: Type): String = controlled {
+    protected def toTextRHS(tp: Type): Text = controlled {
       tp match {
         case TypeBounds(lo, hi) =>
           if (lo eq hi)
-            " = " + lo.show
+            " = " ~ lo.toText
           else
-            (if (lo == defn.NothingType) "" else " >: " + lo.show) +
-            (if (hi == defn.AnyType)     "" else " <: " + hi.show)
+            (if (lo == defn.NothingType) Text() else " >: " ~ lo.toText) ~
+            (if (hi == defn.AnyType)     Text() else " <: " ~ hi.toText)
         case ClassInfo(pre, cdenot, cparents, decls, optSelfType) =>
-          val preStr = showLocal(pre)
-          val selfStr =
-            if (optSelfType.exists) s"this: ${show(optSelfType, LeftArrowPrec)} =>"
-            else ""
-          val parentsStr = cparents.map(show(_, WithPrec)).mkString(" with ")
-          val declsStr =
-            if (decls.isEmpty) ""
-            else "\n  " + showDcls(decls.toList, "\n  ")
-          s""" extends $parentsStr { $selfStr$declsStr
-             |} at $preStr""".stripMargin
-        case _ => ": " + showGlobal(tp)
+          val preText = toTextLocal(pre)
+          val selfText =
+            if (optSelfType.exists)
+              "this: " ~ toText(optSelfType, LeftArrowPrec) ~ " =>"
+            else Text()
+          val parentsText = Text(cparents.map(toText(_, WithPrec)), " with ")
+          val declsText = if (decls.isEmpty) Text() else dclsText(decls.toList)
+          "extends " ~ parentsText ~ "{" ~ selfText ~ declsText ~
+          "} at " ~ preText
+        case _ =>
+          ": " ~ toTextGlobal(tp)
       }
     }
 
-    /** Show kind of symbol */
-    def showKind(sym: Symbol) =
+    /** String representation of symbol's kind. */
+    def kindString(sym: Symbol): String =
       if (sym is PackageClass) "package class"
       else if (sym is PackageVal) "package"
       else if (sym.isPackageObject)
@@ -308,7 +314,7 @@ object Printers {
       else ""
 
     /** String representation of symbol's definition key word */
-    protected def showKey(sym: Symbol): String =
+    protected def keyString(sym: Symbol): String =
       if (sym is JavaInterface) "interface"
       else if (sym is (Trait, butNot = ImplClass)) "trait"
       else if (sym.isClass) "class"
@@ -321,35 +327,35 @@ object Printers {
       else ""
 
     /** String representation of symbol's flags */
-    protected def showFlags(sym: Symbol) = sym.flags.toString
+    protected def toTextFlags(sym: Symbol): Text =
+      Text(sym.flags.flagStrings map stringToText, " ")
 
     /** String representation of symbol's variance or "" if not applicable */
-    protected def showVariance(sym: Symbol) = sym.variance match {
+    protected def varianceString(sym: Symbol): String = sym.variance match {
       case -1 => "-"
       case 1 => "+"
       case _ => ""
     }
 
-    def showDcl(sym: Symbol): String = compose(
-      showFlags(sym),
-      showKey(sym),
-      showVariance(sym) + showName(sym) + showRHS(sym.info))
+    def dclText(sym: Symbol): Text =
+      (toTextFlags(sym) ~~ keyString(sym) ~~
+       (varianceString(sym) ~ nameString(sym)) ~ toTextRHS(sym.info)).close
 
-    def show(sym: Symbol): String = compose(
-      showKind(sym),
-      if (hasMeaninglessName(sym)) showSimpleName(sym.owner) + showId(sym)
-      else showName(sym)
-    )
+    def toText(sym: Symbol): Text =
+      (kindString(sym) ~~ {
+        if (hasMeaninglessName(sym)) simpleNameString(sym.owner) + idString(sym)
+        else nameString(sym)
+      }).close
 
-    def showLocation(sym: Symbol): String = {
+    def locationText(sym: Symbol): Text = {
       val owns = sym.effectiveOwner
-      if (owns.isClass && !isEmptyPrefix(owns)) "in "+show(owns) else ""
+      if (owns.isClass && !isEmptyPrefix(owns)) "in " ~ toText(owns) else Text()
     }
 
-    def showLocated(sym: Symbol): String =
-      show(sym) + showLocation(sym)
+    def locatedText(sym: Symbol): Text =
+      (toText(sym) ~ locationText(sym)).close
 
-    def show(denot: Denotation): String = show(denot.symbol) + "/D"
+    def toText(denot: Denotation): Text = toText(denot.symbol) ~ "/D"
 
     @switch private def escapedChar(ch: Char): String = ch match {
       case '\b' => "\\b"
@@ -363,82 +369,87 @@ object Printers {
       case _ => if (ch.isControl) "\\0" + toOctalString(ch) else String.valueOf(ch)
     }
 
-    def show(const: Constant) = const.tag match {
+    def toText(const: Constant): Text = const.tag match {
         case StringTag => "\"" + (const.value.toString flatMap escapedChar) + "\""
-        case ClazzTag  => s"classOf[${const.tpe.show}]"
+        case ClazzTag  => "classOf[" ~ const.tpe.toText ~ "]"
         case CharTag   => s"'${escapedChar(const.charValue)}'"
         case LongTag   => const.longValue.toString + "L"
         case EnumTag   => const.symbolValue.name.toString
         case _         => String.valueOf(const.value)
     }
 
-    def show(annot: Annotation): String = s"@${annot.symbol.name}" // for now
+    def toText(annot: Annotation): Text = s"@${annot.symbol.name}" // for now
 
-    def showDcls(syms: List[Symbol], sep: String): String =
-      syms map (_.showDcl) mkString sep
+    def dclsText(syms: List[Symbol], sep: String): Text =
+      if (sep == "\n") Text.lines(syms map dclText)
+      else Text(syms map dclText, sep)
 
-    def show(sc: Scope): String =
-      "Scope{\n" + showDcls(sc.toList, ";\n  ") + "\n}"
+    def toText(sc: Scope): Text =
+      ("Scope{" ~ dclsText(sc.toList) ~ "}").close
 
-    def show[T](tree: Tree[T]): String = tree match {
-      case node: Product =>
-        def showElem(elem: Any) = elem match {
-          case elem: Showable => elem.show
-          case elem => elem.toString
-        }
-        val nodeName = node.productPrefix
-        val elems = node.productIterator.map(showElem).mkString(", ")
-        val tpSuffix =
-          if (ctx.settings.printtypes.value && tree.hasType)
-            s" | ${tree.tpe.asInstanceOf[Type].show}"
-          else
-            ""
+    def toText[T](tree: Tree[T]): Text = {
+      tree match {
+        case node: Product =>
+          def toTextElem(elem: Any): Text = elem match {
+            case elem: Showable => elem.toText
+            case elem => elem.toString
+          }
+          val nodeName = node.productPrefix
+          val elems =
+            Text(node.productIterator.map(toTextElem).toList, ", ")
+          val tpSuffix =
+            if (ctx.settings.printtypes.value && tree.hasType)
+              " | " ~ tree.tpe.asInstanceOf[Type].toText
+            else
+              Text()
 
-        s"$nodeName($elems$tpSuffix)"
-      case _ =>
-        tree.toString
-    } // todo: override in refined printer
+          nodeName ~ "(" ~ elems ~ tpSuffix ~ ")"
+        case _ =>
+          tree.toString: Text
+      }
+    }.close // todo: override in refined printer
   }
 
   class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     override protected def recursionLimitExceeeded() = {}
 
-    override def show(name: Name): String = name.toString
+    override def nameString(name: Name): String = name.toString
 
-    override protected def showSimpleName(sym: Symbol) = sym.originalName.decode
+    override protected def simpleNameString(sym: Symbol) = sym.originalName.decode
 
-    override def showPrefix(tp: Type): String = controlled {
+    override def toTextPrefix(tp: Type): Text = controlled {
       tp match {
         case ThisType(cls) =>
           if (cls.isAnonymousClass) return "this."
           if (isOmittablePrefix(cls)) return ""
-          if (cls is ModuleClass) return showFullName(cls) + "."
+          if (cls is ModuleClass) return fullNameString(cls) + "."
         case tp @ TermRef(pre, name) =>
           val sym = tp.symbol
-          if (sym.isPackageObject) return showPrefix(pre)
+          if (sym.isPackageObject) return toTextPrefix(pre)
           if (isOmittablePrefix(sym)) return ""
         case _ =>
       }
-      super.showPrefix(tp)
+      super.toTextPrefix(tp)
     }
 
-    override protected def showRefinementName(tp: RefinedType): String = {
+    override protected def refinementNameString(tp: RefinedType): String = {
       val tsym = tp.member(tp.refinedName).symbol
       val name = tsym.originalName
-      show(if (tsym is ExpandedTypeParam) name.asTypeName.unexpandedName() else name)
+      nameString(if (tsym is ExpandedTypeParam) name.asTypeName.unexpandedName() else name)
     }
 
-    override def show(tp: Type, prec: Precedence): String = controlled {
-      def showFunction(args: List[Type]): String =
+    override def toText(tp: Type, prec: Precedence): Text = controlled {
+      def toTextFunction(args: List[Type]): Text =
         (prec parenthesize GlobalPrec) {
-          val argStr =
+          val argStr: Text =
             if (args.length == 2 &&
-              !(defn.TupleClasses contains args.head.typeSymbol)) show(args.head, LeftArrowPrec)
-            else args.init.map(showGlobal(_)).mkString("(", ", ", ")")
-          argStr + " => " + showGlobal(args.last)
+              !(defn.TupleClasses contains args.head.typeSymbol)) toText(args.head, LeftArrowPrec)
+            else
+              "(" ~ Text(args.init.map(toTextGlobal(_)), ", ") ~ ")"
+          argStr ~ " => " ~ toTextGlobal(args.last)
         }
-      def showTuple(args: List[Type]): String =
-        args.map(showGlobal(_)).mkString("(", ", ", ")")
+      def toTextTuple(args: List[Type]): Text =
+        "(" ~ Text(args.map(toTextGlobal(_)), ", ") ~ ")"
       try {
         tp match {
           case tp: RefinedType =>
@@ -447,36 +458,37 @@ object Printers {
               val tycon = tp.unrefine
               val cls = tycon.typeSymbol
               if (cls.typeParams.length == args.length) {
-                if (cls == defn.RepeatedParamClass) return showLocal(args.head) + "*"
-                if (cls == defn.ByNameParamClass) return "=> " + showGlobal(args.head)
-                if (defn.FunctionClasses contains cls) return showFunction(args)
-                if (defn.TupleClasses contains cls) return showTuple(args)
+                if (cls == defn.RepeatedParamClass) return toTextLocal(args.head) ~ "*"
+                if (cls == defn.ByNameParamClass) return "=> " ~ toTextGlobal(args.head)
+                if (defn.FunctionClasses contains cls) return toTextFunction(args)
+                if (defn.TupleClasses contains cls) return toTextTuple(args)
               }
-              return showLocal(tycon) + args.map(showGlobal(_)).mkString("[", ", ", "]")
+              return toTextLocal(tycon) ~ "[" ~
+                     Text(args.map(toTextGlobal(_)), ", ") ~ "]"
             }
           case _ =>
         }
       } catch {
         case ex: CyclicReference =>
-          "<cylic reference during display>" + super.show(tp, prec)
+          "<cylic reference during display>" ~ super.toText(tp, prec)
       }
-      super.show(tp, prec)
+      super.toText(tp, prec)
     }
 
-    override def showKind(sym: Symbol) =
+    override def kindString(sym: Symbol) =
       if (sym is Package) "package"
       else if (sym.isPackageObject) "package object"
       else if (sym is Module) "object"
       else if (sym is ImplClass) "class"
       else if (sym.isClassConstructor) "constructor"
-      else super.showKind(sym)
+      else super.kindString(sym)
 
-    override def showFlags(sym: Symbol) =
-      sym.flags.flagStrings.filterNot(_.startsWith("<")).mkString(" ")
+    override def toTextFlags(sym: Symbol) =
+      Text(sym.flags.flagStrings.filterNot(_.startsWith("<")) map stringToText, " ")
 
-    override def show(denot: Denotation): String = show(denot.symbol)
+    override def toText(denot: Denotation): Text = toText(denot.symbol)
   }
 
-  final val maxShowRecursions = 100
+  final val maxToTextRecursions = 100
 
 }

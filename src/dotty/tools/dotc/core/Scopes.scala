@@ -12,6 +12,7 @@ import Periods._
 import Decorators._
 import Contexts._
 import Denotations._
+import util.Texts._
 import SymDenotations.NoDenotation
 
 object Scopes {
@@ -110,7 +111,7 @@ object Scopes {
     /** Cast this scope to a mutable scope */
     final def openForMutations: MutableScope = this.asInstanceOf[MutableScope]
 
-    final def show(implicit ctx: Context): String = ctx.show(this)
+    final def toText(implicit ctx: Context): Text = ctx.toText(this)
   }
 
   /** A subclass of Scope that defines methods for entering and

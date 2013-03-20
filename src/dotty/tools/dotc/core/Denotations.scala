@@ -9,6 +9,7 @@ import Names.TypeName
 import Symbols.NoSymbol
 import Symbols._
 import Types._, Periods._, Flags._, Transformers._
+import util.Texts._
 import io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 
@@ -276,7 +277,7 @@ object Denotations {
       }
     }
 
-    def show(implicit ctx: Context): String = ctx.show(this)
+    def toText(implicit ctx: Context): Text = ctx.toText(this)
   }
 
   /** An overloaded denotation consisting of the alternatives of both given denotations.

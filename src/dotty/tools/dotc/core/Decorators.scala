@@ -3,7 +3,7 @@ package core
 
 import annotation.tailrec
 import Symbols._
-import Contexts._, Names._, Phases._
+import Contexts._, Names._, Phases._, util.Texts._
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
@@ -69,6 +69,10 @@ object Decorators {
             (xs1 eq xs.tail)) xs
         else x1 :: xs1
       }
+  }
+
+  implicit class TextToString(val text: Text) extends AnyVal {
+    def show(implicit ctx: Context) = text.mkString(ctx.settings.pageWidth.value)
   }
 
   /** Implements a test whether a list of strings representing phases contains

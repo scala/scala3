@@ -100,7 +100,7 @@ object Trees {
     /** Is this tree either the empty tree or the empty ValDef? */
     def isEmpty: Boolean = false
 
-    override def show(implicit ctx: Context) = ctx.show(this)
+    override def toText(implicit ctx: Context) = ctx.toText(this)
 
     override def hashCode(): Int = System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]

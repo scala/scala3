@@ -10,7 +10,7 @@ import java.lang.AssertionError
 import Decorators._
 import Symbols._
 import Contexts._
-import SymDenotations._
+import SymDenotations._, util.Texts._
 import Types._, Annotations._, Positions._, StdNames._, Trees._
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
@@ -376,12 +376,13 @@ object Symbols {
       if (lastDenot == null) s"Naked$prefixString#$id"
       else lastDenot.toString
 
-    def show(implicit ctx: Context): String = ctx.show(this)
-    def showLocated(implicit ctx: Context): String = ctx.showLocated(this)
-    def showDcl(implicit ctx: Context): String = ctx.showDcl(this)
-    def showKind(implicit ctx: Context): String = ctx.showKind(this)
-    def showName(implicit ctx: Context): String = ctx.showName(this)
-    def showFullName(implicit ctx: Context): String = ctx.showFullName(this)
+    def toText(implicit ctx: Context): Text = ctx.toText(this)
+
+    def showLocated(implicit ctx: Context): String = ctx.locatedText(this).show
+    def showDcl(implicit ctx: Context): Text = ctx.dclText(this).show
+    def showKind(implicit ctx: Context): String = ctx.kindString(this)
+    def showName(implicit ctx: Context): String = ctx.nameString(this)
+    def showFullName(implicit ctx: Context): String = ctx.fullNameString(this)
   }
 
   type TermSymbol = Symbol { type ThisName = TermName }

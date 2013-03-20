@@ -189,7 +189,7 @@ object Constants {
 
     def stringValue: String = value.toString
 
-    def show(implicit ctx: Context) = ctx.show(this)
+    def toText(implicit ctx: Context) = ctx.toText(this)
 
     def typeValue: Type     = value.asInstanceOf[Type]
     def symbolValue: Symbol = value.asInstanceOf[Symbol]

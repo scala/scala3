@@ -10,8 +10,10 @@ import java.lang.Double.longBitsToDouble
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
 import Positions._, TypedTrees.tpd._, TypedTrees.TreeOps
+import util.Texts._
 import io.AbstractFile
 import scala.reflect.internal.pickling.PickleFormat._
+import Decorators._
 import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
@@ -22,8 +24,8 @@ object UnPickler {
   class BadSignature(msg: String) extends RuntimeException(msg)
 
   case class TempPolyType(tparams: List[Symbol], tpe: Type) extends UncachedGroundType {
-    override def show(implicit ctx: Context): String =
-      s"[${ctx.showDcls(tparams, ", ")}]${tpe.show}"
+    override def toText(implicit ctx: Context): Text =
+      "[" ~ ctx.dclsText(tparams, ", ") ~ "]" ~ tpe.show
   }
 
   /** Temporary type for classinfos, will be decomposed on completion of the class */
@@ -529,7 +531,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     if (tp1 existsPart isBound) {
       val tp2 = tp1.subst(boundSyms, boundSyms map (_ => defn.AnyType))
       cctx.warning(s"""failure to eliminate existential
-                       |original type    : $tp forSome {${cctx.showDcls(boundSyms, "; ")}}
+                       |original type    : $tp forSome {${cctx.dclsText(boundSyms, "; ").show}
                        |reduces to       : $tp1
                        |type used instead: $tp2
                        |proceed at own risk.""".stripMargin)

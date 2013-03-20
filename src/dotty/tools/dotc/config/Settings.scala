@@ -230,7 +230,7 @@ object Settings {
     def ChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: String): Setting[String] =
       publish(Setting(name, descr, default, helpArg, choices))
 
-    def IntSetting(name: String, descr: String, default: Int, range: Seq[Int]): Setting[Int] =
+    def IntSetting(name: String, descr: String, default: Int, range: Seq[Int] = Nil): Setting[Int] =
       publish(Setting(name, descr, default, choices = range))
 
     def MultiStringSetting(name: String, helpArg: String, descr: String): Setting[List[String]] =

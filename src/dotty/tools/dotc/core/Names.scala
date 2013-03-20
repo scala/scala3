@@ -33,7 +33,6 @@ object Names {
    */
   abstract class Name extends DotClass
     with PreName
-    with Showable
     with Seq[Char]
     with IndexedSeqOptimized[Char, Name] {
 
@@ -82,7 +81,7 @@ object Names {
 
     override def toString = new String(chrs, start, length)
 
-    def show(implicit ctx: Context): String = ctx.show(this)
+    def show(implicit ctx: Context): String = ctx.nameString(this)
 
     /** Write to UTF8 representation of this name to given character array.
      *  Start copying to index `to`. Return index of next free byte in array.
