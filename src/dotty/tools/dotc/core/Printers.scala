@@ -96,6 +96,9 @@ object Printers {
         try {
           ctx.toTextRecursions += 1
           op
+        } catch {
+          case ex: CyclicReference =>
+            "<cycle involving ${ex.denot}>"
         } finally {
           ctx.toTextRecursions -= 1
         }
@@ -165,11 +168,11 @@ object Printers {
           Text(refined.map(toTextRefinement), "; ").close ~ "}"
         case AndType(tp1, tp2) =>
           (prec parenthesize AndPrec) {
-            toText(tp1, AndPrec) ~ "&" ~ toText(tp2, AndPrec)
+            toText(tp1, AndPrec) ~ " & " ~ toText(tp2, AndPrec)
           }
         case OrType(tp1, tp2) =>
           (prec parenthesize OrPrec) {
-            toText(tp1, OrPrec) ~ "|" ~ toText(tp2, OrPrec)
+            toText(tp1, OrPrec) ~ " | " ~ toText(tp2, OrPrec)
           }
         case ErrorType =>
           "<error>"
@@ -282,7 +285,7 @@ object Printers {
             else Text()
           val parentsText = Text(cparents.map(toText(_, WithPrec)), " with ")
           val declsText = if (decls.isEmpty) Text() else dclsText(decls.toList)
-          "extends " ~ parentsText ~ "{" ~ selfText ~ declsText ~
+          " extends " ~ parentsText ~ "{" ~ selfText ~ declsText ~
           "} at " ~ preText
         case _ =>
           ": " ~ toTextGlobal(tp)
@@ -291,22 +294,22 @@ object Printers {
 
     /** String representation of symbol's kind. */
     def kindString(sym: Symbol): String =
-      if (sym is PackageClass) "package class"
-      else if (sym is PackageVal) "package"
+      if (sym isUnsafe PackageClass) "package class"
+      else if (sym isUnsafe PackageVal) "package"
       else if (sym.isPackageObject)
         if (sym.isClass) "package object class"
         else "package object"
       else if (sym.isAnonymousClass) "anonymous class"
-      else if (sym is ModuleClass) "module class"
-      else if (sym is ModuleVal) "module"
-      else if (sym is ImplClass) "implementation class"
-      else if (sym is Trait) "trait"
+      else if (sym isUnsafe ModuleClass) "module class"
+      else if (sym isUnsafe ModuleVal) "module"
+      else if (sym isUnsafe ImplClass) "implementation class"
+      else if (sym isUnsafe Trait) "trait"
       else if (sym.isClass) "class"
       else if (sym.isType) "type"
       else if (sym.isGetter) "getter"
       else if (sym.isSetter) "setter"
-      else if (sym is Lazy) "lazy value"
-      else if (sym is Mutable) "variable"
+      else if (sym isUnsafe Lazy) "lazy value"
+      else if (sym isUnsafe Mutable) "variable"
       else if (sym.isClassConstructor && sym.isPrimaryConstructor) "primary constructor"
       else if (sym.isClassConstructor) "constructor"
       else if (sym.isSourceMethod) "method"
@@ -315,15 +318,15 @@ object Printers {
 
     /** String representation of symbol's definition key word */
     protected def keyString(sym: Symbol): String =
-      if (sym is JavaInterface) "interface"
-      else if (sym is (Trait, butNot = ImplClass)) "trait"
+      if (sym isUnsafe JavaInterface) "interface"
+      else if ((sym isUnsafe Trait) && !(sym isUnsafe ImplClass)) "trait"
       else if (sym.isClass) "class"
-      else if (sym.isType && !(sym is ExpandedTypeParam)) "type"
-      else if (sym is Mutable) "var"
-      else if (sym is Package) "package"
-      else if (sym is Module) "object"
+      else if (sym.isType && !(sym isUnsafe ExpandedTypeParam)) "type"
+      else if (sym isUnsafe Mutable) "var"
+      else if (sym isUnsafe Package) "package"
+      else if (sym isUnsafe Module) "object"
       else if (sym.isSourceMethod) "def"
-      else if (sym.isTerm && (!(sym is Param))) "val"
+      else if (sym.isTerm && (!(sym isUnsafe Param))) "val"
       else ""
 
     /** String representation of symbol's flags */
@@ -476,10 +479,10 @@ object Printers {
     }
 
     override def kindString(sym: Symbol) =
-      if (sym is Package) "package"
+      if (sym isUnsafe Package) "package"
       else if (sym.isPackageObject) "package object"
-      else if (sym is Module) "object"
-      else if (sym is ImplClass) "class"
+      else if (sym isUnsafe Module) "object"
+      else if (sym isUnsafe ImplClass) "class"
       else if (sym.isClassConstructor) "constructor"
       else super.kindString(sym)
 

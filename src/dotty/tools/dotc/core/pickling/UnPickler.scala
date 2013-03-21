@@ -135,7 +135,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   import cctx.debug
 
   val moduleRoot = moduleClassRoot.sourceModule.denot
-  println(s"moduleRoot = $moduleRoot, ${moduleRoot.isTerm}") // !!! DEBUG
+  assert(moduleRoot.isTerm)
 
   checkVersion()
 
@@ -494,7 +494,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
   object localMemberUnpickler extends LocalUnpickler
 
-  class RootUnpickler(start: Coord, cls: Symbol) extends LocalClassUnpickler(cls) {
+  class RootUnpickler(start: Coord, cls: Symbol)
+      extends LocalClassUnpickler(cls) with SymbolLoaders.SecondCompleter {
     override def startCoord(denot: SymDenotation): Coord = start
   }
 
@@ -581,7 +582,10 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
               sym.asType)
           } else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
-        if (args.nonEmpty) println(s"reading app type $tycon ${tycon.typeSymbol.debugString} $args, owner = ${tycon.typeSymbol.owner.debugString}") // !!! DEBUG
+        if (args.nonEmpty) { // DEBUG
+          println(s"reading app type $tycon") 
+          println(s"${tycon.typeSymbol.debugString} $args")
+        }
         tycon.appliedTo(args)
       case TYPEBOUNDStpe =>
         TypeBounds(readTypeRef(), readTypeRef())
@@ -606,7 +610,10 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case METHODtpe | IMPLICITMETHODtpe =>
         val restpe = readTypeRef()
         val params = until(end, readSymbolRef)
-        val maker = if (tag == METHODtpe) MethodType else ImplicitMethodType
+        def isImplicit =
+          tag == IMPLICITMETHODtpe ||
+          params.nonEmpty && (params.head is Implicit)
+        val maker = if (isImplicit) ImplicitMethodType else MethodType
         maker.fromSymbols(params, restpe)
       case POLYtpe =>
         val restpe = readTypeRef()

@@ -2,16 +2,23 @@ package test
 
 import dotty.tools.dotc.core._
 import Contexts._
-import Symbols._, Types._
+import Symbols._, Types._, dotty.tools.dotc.util.Texts._
 import Decorators._
 
 object showClass {
 
-  def showClass(path: String)(implicit ctx: Context): Unit = {
+  def showClasses(path: String)(implicit ctx: Context): Unit = {
+    def showClass(cls: Symbol) = {
+      println(s"showing $path -> ${cls.denot}")
+      val cinfo = cls.info
+      val infoText: Text = if (cinfo.exists) cinfo.toText else " is missing"
+      println("======================================")
+      println((cls.toText ~ infoText).show)
+    }
     println(s"showing $path")
     val cls = ctx.requiredClass(path.toTypeName)
-    println(s"showing $path -> ${cls.denot}")
-    println((cls.toText ~ cls.info.toText).show)
+    showClass(cls)
+//  showClass(cls.linkedClass)
 /*
     val info = cls.info
     info match {
@@ -33,20 +40,20 @@ object showClass {
     println(ctx.settings)
     base.definitions.init()
 
-    for (arg <- args) showClass(arg)
+    for (arg <- args) showClasses(arg)
 
-//    showClass("java.lang.Class")
-//    showClass("scala.Boolean")
-//    showClass("scala.Array")
-//    showClass("scala.math.Ordering")
-//    showClass("scala.collection.Traversable")
-//    showClass("scala.collection.LinearSeqLike")
-//    showClass("scala.collection.immutable.List")
-      showClass("scala.collection.TraversableLike")
-//    showClass("scala.collection.immutable.Seq")
-//    showClass("scala.collection.MapLike")
-//    showClass("scala.Function1")
-//    showClass("dotty.tools.dotc.core.Types")
+      showClasses("java.lang.Class")
+      showClasses("scala.Boolean")
+      showClasses("scala.Array")
+      showClasses("scala.math.Ordering")
+      showClasses("scala.collection.Traversable")
+//      showClasses("scala.collection.LinearSeqLike")
+//      showClasses("scala.collection.immutable.List")
+//      showClasses("scala.collection.TraversableLike")
+//      showClasses("scala.collection.generic.package")
+//      showClasses("scala.collection.MapLike")
+//      showClasses("scala.Function1")
+//      showClasses("dotty.tools.dotc.core.Types")
     println("done")
   }
 }

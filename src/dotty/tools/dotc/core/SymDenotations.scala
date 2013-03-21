@@ -81,6 +81,7 @@ object SymDenotations {
       (if (fs <= FromStartFlags) _flags else flags) is fs
     final def is(fs: FlagConjunction, butNot: FlagSet) =
       (if (fs <= FromStartFlags && butNot <= FromStartFlags) _flags else flags) is (fs, butNot)
+    final def isUnsafe(fs: FlagSet) = _flags is fs
 
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
@@ -106,6 +107,8 @@ object SymDenotations {
 
     /** The denotation is completed: all attributes are fully defined */
     final def isCompleted: Boolean = ! _info.isInstanceOf[LazyType]
+
+    final def isCompleting: Boolean = (_flags is Touched) && !isCompleted
 
     /** The completer of this denotation. @pre: Denotation is not yet completed */
     final def completer: LazyType = _info.asInstanceOf[LazyType]
@@ -803,10 +806,19 @@ object SymDenotations {
     private def computeMembersNamed(name: Name)(implicit ctx: Context): PreDenotation =
       if (!classSymbol.hasChildren || (memberFingerPrint contains name)) {
         val ownDenots = info.decls.denotsNamed(name)
+//        if (name.toString == "GenericCanBuildFrom")  // DEBUG
+//          println(s"$this.member(GenericCanBuildFrom), ownDenots = $ownDenots")
         def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
           case p :: ps =>
             val denots1 = p.symbol.denot match {
               case parentd: ClassDenotation =>
+//                if (name.toString == "GenericCanBuildFrom") {  // DEBUG
+//                  val s1 = parentd.membersNamed(name)
+//                  val s2 = s1.filterExcluded(Private)
+//                  val s3 = s2.asSeenFrom(thisType)
+//                  val s4 = s3.filterDisjoint(ownDenots)
+//                  println(s"$this.member(GenericCanBuildFrom) $s1 $s2 $s3 $s4")
+//                }
                 denots union
                   parentd.membersNamed(name)
                     .filterExcluded(Private)

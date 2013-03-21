@@ -15,6 +15,13 @@ import StdNames._
 import Decorators.StringDecorator
 import pickling.ClassfileParser
 
+object SymbolLoaders {
+  /** A marker trait for a completer that replaces the original
+   *  Symbol loader for an unpickled root.
+   */
+  trait SecondCompleter
+}
+
 /** A base class for Symbol loaders with some overridable behavior  */
 class SymbolLoaders {
 
@@ -225,7 +232,9 @@ trait SymbolLoader extends LazyType {
         throw ex
     } finally {
       def postProcess(denot: SymDenotation) =
-        if ((denot is Touched) && !denot.isCompleted) denot.markAbsent()
+        if (!denot.isCompleted &&
+            !denot.completer.isInstanceOf[SymbolLoaders.SecondCompleter])
+          denot.markAbsent()
       postProcess(root)
       if (!root.isRoot)
         postProcess(root.linkedClass.denot)

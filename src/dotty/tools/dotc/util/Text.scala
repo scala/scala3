@@ -45,6 +45,7 @@ object Texts {
         this match {
           case Str(s1) => Str(s1 + s2)
           case Fluid(Str(s1) :: prev) => Fluid(Str(s1 + s2) :: prev)
+          case Fluid(relems) => Fluid(that :: relems)
         }
       case Fluid(relems) =>
         (this /: relems.reverse)(_ appendToLastLine _)

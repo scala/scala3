@@ -551,7 +551,13 @@ object Types {
       }
 
       def hkRefinement(tp: TypeRef): Type = {
-        val hkArgs = hkApp(tp.info).typeArgs
+        val hkArgs =
+          if (tp.symbol.isCompleting)
+            // This can happen if a higher-kinded type appears applied to arguments in its own bounds.
+            // TODO: Catch this case and mark as "proceed at own risk" later.
+            args map (_ => defn.InvariantBetweenClass.typeConstructor)
+          else
+            hkApp(tp.info).typeArgs
         ((tp: Type) /: hkArgs.zipWithIndex.zip(args)) {
           case (parent, ((hkArg, idx), arg)) =>
             val vsym = hkArg.typeSymbol
@@ -1625,6 +1631,10 @@ object Types {
   object abstractTermNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
       name.isTermName && (pre member name).hasAltWith(_ is Deferred)
+  }
+
+  object takeAllFilter extends NameFilter {
+    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = true
   }
 
   // ----- Exceptions -------------------------------------------------------------

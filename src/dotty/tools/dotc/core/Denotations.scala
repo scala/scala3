@@ -463,15 +463,25 @@ object Denotations {
     final def first = this
     final def toDenot(implicit ctx: Context) = this
     final def containsSig(sig: Signature)(implicit ctx: Context) =
-      signature == sig
+      exists && signature == sig
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
       if (denots.containsSig(signature)) NoDenotation else this
     final def filterExcluded(excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
-      if (excluded != EmptyFlags && (asSymDenotation is excluded)) NoDenotation
-      else this
-    def asSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation =
-      if (!asSymDenotation.owner.membersNeedAsSeenFrom(pre)) this
-      else derivedSingleDenotation(symbol, info.asSeenFrom(pre, asSymDenotation.owner))
+      if (excluded == EmptyFlags) this
+      else this match {
+        case thisd: SymDenotation =>
+          if (thisd is excluded) NoDenotation else this
+        case _ =>
+          if (symbol is excluded) NoDenotation else this
+      }
+    def asSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = {
+      val owner = this match {
+        case thisd: SymDenotation => thisd.owner
+        case _ => if (symbol.exists) symbol.owner else NoSymbol
+      }
+      if (!owner.membersNeedAsSeenFrom(pre)) this
+      else derivedSingleDenotation(symbol, info.asSeenFrom(pre, owner))
+    }
   }
 
   class UniqueRefDenotation(

@@ -220,6 +220,8 @@ object Flags {
   /** Labeled with `sealed` modifier (sealed class) */
   final val Sealed = typeFlag(11, "sealed")
 
+  final val AccessorOrSealed = Accessor.toCommonFlags
+
  /** A mutable var */
   final val Mutable = termFlag(12, "mutable")
 
@@ -369,7 +371,7 @@ object Flags {
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | Param | Scala2ExistentialCommon | Touched |
-    Static | CovariantCommon | ContravariantCommon | ExpandedName
+    Static | CovariantCommon | ContravariantCommon | ExpandedName | AccessorOrSealed
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not changed in completion

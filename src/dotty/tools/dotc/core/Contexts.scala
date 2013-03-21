@@ -256,7 +256,7 @@ object Contexts {
         .withSetting(settings.debug, true)
         .withSetting(settings.Ylogcp, true)
         .withSetting(settings.printtypes, true)
-        .withSetting(settings.pageWidth, 120)
+        .withSetting(settings.pageWidth, 90)
 
     /** The symbol loaders */
     val loaders = new SymbolLoaders
