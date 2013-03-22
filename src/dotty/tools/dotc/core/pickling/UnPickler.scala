@@ -105,9 +105,15 @@ object UnPickler {
       case cinfo => (Nil, cinfo)
     }
     val parentRefs = ctx.normalizeToRefs(parents, cls, decls)
-    for (tparam <- tparams)
-      if (!decls.lookup(tparam.name).exists) decls.enter(tparam)
-    denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, parentRefs, decls, optSelfType)
+    for (tparam <- tparams) {
+      val tsym = decls.lookup(tparam.name)
+      if (tsym.exists) tsym.setFlag(TypeParam)
+      else decls.enter(tparam)
+    }
+    var ost = optSelfType
+    if (ost == NoType && (denot is ModuleClass))
+      ost = TermRef(denot.owner.thisType, denot.sourceModule.asTerm)
+    denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)
   }
 }
 
@@ -402,10 +408,10 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     if (isModuleRoot) println(s"moduleRoot of $moduleRoot found at $readIndex, flags = $flags") // !!! DEBUG
     if (isModuleClassRoot) println(s"moduleClassRoot of $moduleClassRoot found at $readIndex, flags = $flags") // !!! DEBUG
 
-    def completeRoot(denot: ClassDenotation): Symbol = {
+    def completeRoot(denot: ClassDenotation, completer: LazyType): Symbol = {
       denot.setFlag(flags)
       denot.resetFlag(Touched) // allow one more completion
-      denot.info = new RootUnpickler(start, denot.symbol)
+      denot.info = completer
       denot.symbol
     }
 
@@ -432,9 +438,16 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case CLASSsym =>
         val infoRef = readNat()
         postReadOp = () => atReadPos(index(infoRef), readTypeParams) // force reading type params early, so they get entered in the right order.
-        if (isClassRoot) completeRoot(classRoot)
-        else if (isModuleClassRoot) completeRoot(moduleClassRoot)
-        else cctx.newClassSymbol(owner, name.asTypeName, flags, new LocalClassUnpickler(_), coord = start)
+        if (isClassRoot)
+          completeRoot(
+            classRoot,
+            new ClassRootUnpickler(start, classRoot.symbol))
+        else if (isModuleClassRoot)
+          completeRoot(
+            moduleClassRoot,
+            new ModuleClassRootUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule.asTerm))
+        else
+          cctx.newClassSymbol(owner, name.asTypeName, flags, new LocalClassUnpickler(_), coord = start)
       case MODULEsym | VALsym =>
         if (isModuleRoot) {
           moduleRoot setFlag flags
@@ -445,7 +458,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     })
   }
 
-  trait LocalUnpickler extends LazyType {
+  abstract class LocalUnpickler extends LazyType {
     def parseToCompletion(denot: SymDenotation) = {
       val tag = readByte()
       val end = readNat() + readIndex
@@ -490,14 +503,22 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     }
   }
 
-  class LocalClassUnpickler(cls: Symbol) extends LazyClassInfo(symScope(cls)) with LocalUnpickler
+  class LocalClassUnpickler(cls: Symbol) extends LocalUnpickler with LazyClassInfo {
+    val decls = symScope(cls)
+  }
 
   object localMemberUnpickler extends LocalUnpickler
 
-  class RootUnpickler(start: Coord, cls: Symbol)
+  class ClassRootUnpickler(start: Coord, cls: Symbol)
       extends LocalClassUnpickler(cls) with SymbolLoaders.SecondCompleter {
     override def startCoord(denot: SymDenotation): Coord = start
   }
+
+  class ModuleClassRootUnpickler(start: Coord, cls: Symbol, val module: TermSymbol)
+      extends LocalClassUnpickler(cls) with SymbolLoaders.SecondCompleter with LazyModuleClassInfo {
+    override def startCoord(denot: SymDenotation): Coord = start
+  }
+
 
   /** Convert
    *    tp { type name = sym } forSome { sym >: L <: H }
@@ -583,8 +604,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           } else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
         if (args.nonEmpty) { // DEBUG
-          println(s"reading app type $tycon") 
-          println(s"${tycon.typeSymbol.debugString} $args")
+          println(s"reading app type $tycon $args")
         }
         tycon.appliedTo(args)
       case TYPEBOUNDStpe =>

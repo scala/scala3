@@ -81,7 +81,8 @@ object SymDenotations {
       (if (fs <= FromStartFlags) _flags else flags) is fs
     final def is(fs: FlagConjunction, butNot: FlagSet) =
       (if (fs <= FromStartFlags && butNot <= FromStartFlags) _flags else flags) is (fs, butNot)
-    final def isUnsafe(fs: FlagSet) = _flags is fs
+
+    final def unsafeFlags: FlagSet = _flags
 
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
@@ -102,8 +103,15 @@ object SymDenotations {
       }
     }
 
-    protected[core] final def info_=(tp: Type) =
+    protected[core] final def info_=(tp: Type) = {
+      if ((this is ModuleClass) && !(this is PackageClass))
+        tp match {
+          case ClassInfo(_, _, _, _, ost) =>
+            assert(ost.isInstanceOf[TermRef], tp)
+          case _ =>
+        }
       _info = tp
+    }
 
     /** The denotation is completed: all attributes are fully defined */
     final def isCompleted: Boolean = ! _info.isInstanceOf[LazyType]
@@ -241,7 +249,8 @@ object SymDenotations {
     }
 
     /** Is this denotation static (i.e. with no outer instance)? */
-    final def isStatic(implicit ctx: Context) = (this is Static) || owner.isStaticOwner
+    final def isStatic(implicit ctx: Context) =
+      (this is Static) || this.exists && owner.isStaticOwner
 
     /** Is this a package class or module class that defines static symbols? */
     final def isStaticOwner(implicit ctx: Context): Boolean =
@@ -421,7 +430,7 @@ object SymDenotations {
       case ClassInfo(_, _, _, _, selfType: TermRefBySym) if this is ModuleClass =>
         selfType.fixedSym
       case info: LazyModuleClassInfo =>
-        info.modul
+        info.module
       case _ =>
         NoSymbol
     }
@@ -957,12 +966,16 @@ object SymDenotations {
   /** A lazy type for classes that contains an initial pre-complete scope.
    *  Typically this is for type parameters
    */
-  abstract class LazyClassInfo(val decls: Scope) extends LazyType
+  trait LazyClassInfo extends LazyType {
+    val decls: Scope
+  }
 
   /** A lazy type for module classes that points back to the source module.
    *  Needed so that `sourceModule` works before completion.
    */
-  abstract class LazyModuleClassInfo(val modul: TermSymbol) extends LazyClassInfo(newScope)
+  trait LazyModuleClassInfo extends LazyClassInfo {
+    def module: TermSymbol
+  }
 
   /** A lazy type for modules that points to the module class.
    *  Needed so that `moduleClass` works before completion.

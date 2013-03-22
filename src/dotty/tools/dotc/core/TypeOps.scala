@@ -186,6 +186,8 @@ trait TypeOps { this: Context =>
     for ((name, tpe) <- refinements) decls.enter {
       val formal = formals(name)
       val bounds = tpe //.toRHS(formal)
+      assert(decls.lookup(name) == NoSymbol, // DEBUG
+        s"redefinition of ${decls.lookup(name).debugString} in ${cls.debugString}")
       ctx.newSymbol(cls, name, formal.flags & RetainedTypeArgFlags, bounds)
     }
     parentRefs

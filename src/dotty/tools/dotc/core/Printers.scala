@@ -293,41 +293,45 @@ object Printers {
     }
 
     /** String representation of symbol's kind. */
-    def kindString(sym: Symbol): String =
-      if (sym isUnsafe PackageClass) "package class"
-      else if (sym isUnsafe PackageVal) "package"
+    def kindString(sym: Symbol): String = {
+      val flags = sym.unsafeFlags
+      if (flags is PackageClass) "package class"
+      else if (flags is PackageVal) "package"
       else if (sym.isPackageObject)
         if (sym.isClass) "package object class"
         else "package object"
       else if (sym.isAnonymousClass) "anonymous class"
-      else if (sym isUnsafe ModuleClass) "module class"
-      else if (sym isUnsafe ModuleVal) "module"
-      else if (sym isUnsafe ImplClass) "implementation class"
-      else if (sym isUnsafe Trait) "trait"
+      else if (flags is ModuleClass) "module class"
+      else if (flags is ModuleVal) "module"
+      else if (flags is ImplClass) "implementation class"
+      else if (flags is Trait) "trait"
       else if (sym.isClass) "class"
       else if (sym.isType) "type"
       else if (sym.isGetter) "getter"
       else if (sym.isSetter) "setter"
-      else if (sym isUnsafe Lazy) "lazy value"
-      else if (sym isUnsafe Mutable) "variable"
+      else if (flags is Lazy) "lazy value"
+      else if (flags is Mutable) "variable"
       else if (sym.isClassConstructor && sym.isPrimaryConstructor) "primary constructor"
       else if (sym.isClassConstructor) "constructor"
       else if (sym.isSourceMethod) "method"
       else if (sym.isTerm) "value"
       else ""
+    }
 
     /** String representation of symbol's definition key word */
-    protected def keyString(sym: Symbol): String =
-      if (sym isUnsafe JavaInterface) "interface"
-      else if ((sym isUnsafe Trait) && !(sym isUnsafe ImplClass)) "trait"
+    protected def keyString(sym: Symbol): String = {
+      val flags = sym.unsafeFlags
+      if (flags is JavaInterface) "interface"
+      else if ((flags is Trait) && !(flags is ImplClass)) "trait"
       else if (sym.isClass) "class"
-      else if (sym.isType && !(sym isUnsafe ExpandedTypeParam)) "type"
-      else if (sym isUnsafe Mutable) "var"
-      else if (sym isUnsafe Package) "package"
-      else if (sym isUnsafe Module) "object"
+      else if (sym.isType && !(flags is ExpandedTypeParam)) "type"
+      else if (flags is Mutable) "var"
+      else if (flags is Package) "package"
+      else if (flags is Module) "object"
       else if (sym.isSourceMethod) "def"
-      else if (sym.isTerm && (!(sym isUnsafe Param))) "val"
+      else if (sym.isTerm && (!(flags is Param))) "val"
       else ""
+    }
 
     /** String representation of symbol's flags */
     protected def toTextFlags(sym: Symbol): Text =
@@ -478,13 +482,15 @@ object Printers {
       super.toText(tp, prec)
     }
 
-    override def kindString(sym: Symbol) =
-      if (sym isUnsafe Package) "package"
+    override def kindString(sym: Symbol) = {
+      val flags = sym.unsafeFlags
+      if (flags is Package) "package"
       else if (sym.isPackageObject) "package object"
-      else if (sym isUnsafe Module) "object"
-      else if (sym isUnsafe ImplClass) "class"
+      else if (flags is Module) "object"
+      else if (flags is ImplClass) "class"
       else if (sym.isClassConstructor) "constructor"
       else super.kindString(sym)
+    }
 
     override def toTextFlags(sym: Symbol) =
       Text(sym.flags.flagStrings.filterNot(_.startsWith("<")) map stringToText, " ")

@@ -134,9 +134,11 @@ class SymbolLoaders {
 
   /** Load contents of a package
    */
-  class PackageLoader(module: TermSymbol, classpath: ClassPath)(implicit val cctx: CondensedContext)
-      extends LazyModuleClassInfo(module) with SymbolLoader {
+  class PackageLoader(val module: TermSymbol, classpath: ClassPath)(implicit val cctx: CondensedContext)
+      extends SymbolLoader with LazyModuleClassInfo {
     def description = "package loader " + classpath.name
+
+    val decls = newScope
 
     def doComplete(root: SymDenotation) {
       assert(root is PackageClass, root)
@@ -197,7 +199,7 @@ class SymbolLoaders {
 /** A lazy type that completes itself by calling parameter doComplete.
  *  Any linked modules/classes or module classes are also initialized.
  */
-trait SymbolLoader extends LazyType {
+abstract class SymbolLoader extends LazyType {
   implicit val cctx: CondensedContext
 
   /** Load source or class file for `root`, return */
@@ -269,8 +271,9 @@ class SourcefileLoader(val srcfile: AbstractFile)(implicit val cctx: CondensedCo
   def doComplete(root: SymDenotation): Unit = unsupported("doComplete")
 }
 
-class ModuleClassCompleter(modul: TermSymbol, classCompleter: SymbolLoader)(implicit val cctx: CondensedContext)
-  extends LazyModuleClassInfo(modul) with SymbolLoader {
+class ModuleClassCompleter(val module: TermSymbol, classCompleter: SymbolLoader)(implicit val cctx: CondensedContext)
+  extends SymbolLoader with LazyModuleClassInfo {
+  val decls = newScope
   def description: String = classCompleter.description
   override def sourceFileOrNull = classCompleter.sourceFileOrNull
   def doComplete(root: SymDenotation): Unit = {

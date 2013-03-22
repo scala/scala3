@@ -18,7 +18,7 @@ object showClass {
     println(s"showing $path")
     val cls = ctx.requiredClass(path.toTypeName)
     showClass(cls)
-//  showClass(cls.linkedClass)
+    showClass(cls.linkedClass)
 /*
     val info = cls.info
     info match {
@@ -42,14 +42,14 @@ object showClass {
 
     for (arg <- args) showClasses(arg)
 
-      showClasses("java.lang.Class")
-      showClasses("scala.Boolean")
-      showClasses("scala.Array")
-      showClasses("scala.math.Ordering")
-      showClasses("scala.collection.Traversable")
+//      showClasses("java.lang.Class")
+//      showClasses("scala.Boolean")
+//      showClasses("scala.Array")
+//      showClasses("scala.math.Ordering")
+//      showClasses("scala.collection.Traversable")
 //      showClasses("scala.collection.LinearSeqLike")
 //      showClasses("scala.collection.immutable.List")
-//      showClasses("scala.collection.TraversableLike")
+        showClasses("scala.collection.JavaConversions")
 //      showClasses("scala.collection.generic.package")
 //      showClasses("scala.collection.MapLike")
 //      showClasses("scala.Function1")
