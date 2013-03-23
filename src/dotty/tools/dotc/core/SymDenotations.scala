@@ -98,11 +98,11 @@ object SymDenotations {
     private def completeFrom(completer: LazyType): Unit = {
       if (_flags is Touched) throw new CyclicReference(this)
       _flags |= Touched
-      Context.theBase.initialCtx.traceIndented( // !!! DEBUG
-        ">>>> completing "+this.debugString+"/"+owner.id,
-        "<<<< completed: "+this.debugString) {
+//      Context.theBase.initialCtx.traceIndented( // !!! DEBUG
+//        ">>>> completing "+this.debugString+"/"+owner.id,
+//        "<<<< completed: "+this.debugString) {
         completer.complete(this)
-      }
+//      }
     }
 
     protected[core] final def info_=(tp: Type) = {
@@ -740,7 +740,7 @@ object SymDenotations {
       var fp = FingerPrint()
       var e = info.decls.lastEntry
       while (e != null) {
-        fp.include(name)
+        fp.include(e.sym.name)
         e = e.prev
       }
       var ps = classInfo.classParents

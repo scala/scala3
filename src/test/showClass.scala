@@ -2,20 +2,31 @@ package test
 
 import dotty.tools.dotc.core._
 import Contexts._
-import Symbols._, Types._, dotty.tools.dotc.util.Texts._
+import Symbols._, Flags._, Types._, dotty.tools.dotc.util.Texts._
 import Decorators._
 
 object showClass {
 
-  def showClasses(path: String)(implicit ctx: Context): Unit = {
-    def showClass(cls: Symbol) = {
-      println(s"showing $path -> ${cls.denot}")
-      val cinfo = cls.info
-      val infoText: Text = if (cinfo.exists) cinfo.toText else " is missing"
-      println("======================================")
-      println((cls.toText ~ infoText).show)
+  def showPackage(pkg: TermSymbol)(implicit ctx: Context) {
+    for (sym <- pkg.info.decls
+         if sym.owner == pkg.moduleClass && !(sym.name contains '$')) {
+      println(s"showing $sym in ${pkg.fullName}")
+      if (sym is Package) showPackage(sym.asTerm)
+      else if (sym.isClass) showClass(sym)
+      else showClass(sym.moduleClass)
     }
-    println(s"showing $path")
+  }
+
+  def showClass(cls: Symbol)(implicit ctx: Context) = {
+    println(s"showing ${cls.denot}")
+    val cinfo = cls.info
+    val infoText: Text = if (cinfo.exists) cinfo.toText else " is missing"
+    println("======================================")
+    println((cls.toText ~ infoText).show)
+  }
+
+  def showClasses(path: String)(implicit ctx: Context): Unit = {
+    println(s"showing file $path")
     val cls = ctx.requiredClass(path.toTypeName)
     showClass(cls)
     showClass(cls.linkedClass)
@@ -40,15 +51,16 @@ object showClass {
     println(ctx.settings)
     base.definitions.init()
 
-    for (arg <- args) showClasses(arg)
+    for (arg <- args) showPackage(ctx.requiredPackage(arg))
 
-//    showClasses("java.util.Map")
+      showClasses("scala.Predef")
 //    showClasses("scala.Boolean")
 //    showClasses("scala.Array")
 //    showClasses("scala.math.Ordering")
 //      showClasses("scala.collection.JavaConversions")
-      showClasses("scala.collection.convert.Wrappers")
-      showClasses("scala.collection.mutable.WeakHashMap")
+//      showClasses("scala.collection.convert.Wrappers")
+//      showClasses("scala.collection.mutable.WeakHashMap")
+//      showClasses("scala.collection.GenIterable")
 //    showClasses("scala.collection.Traversable")
 //    showClasses("scala.collection.LinearSeqLike")
 //    showClasses("scala.collection.immutable.List")

@@ -29,10 +29,7 @@ class SymbolLoaders {
       owner: Symbol, member: Symbol,
       completer: SymbolLoader, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
     assert(scope.lookup(member.name) == NoSymbol, owner.fullName + "." + member.name)
-    scope match {
-      case scope: MutableScope => scope.enter(member)
-      case _ => owner.asClass.enter(member)
-    }
+    owner.asClass.enter(member, scope)
     member
   }
 

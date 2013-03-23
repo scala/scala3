@@ -165,7 +165,7 @@ trait TypeOps { this: Context =>
    *  to a list of typerefs, by converting all refinements to member
    *  definitions in scope `decls`. Can add members to `decls` as a side-effect.
    */
-  def normalizeToRefs(parents: List[Type], cls: ClassSymbol, decls: MutableScope /*@@@*/): List[TypeRef] = {
+  def normalizeToRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
     // println(s"normalizing $parents of $cls in ${cls.owner}") // !!! DEBUG
     var refinements = Map[TypeName, Type]()
     var formals = Map[TypeName, Symbol]()
@@ -190,7 +190,7 @@ trait TypeOps { this: Context =>
       assert(decls.lookup(name) == NoSymbol, // DEBUG
         s"redefinition of ${decls.lookup(name).debugString} in ${cls.showLocated}")
       val sym = ctx.newSymbol(cls, name, formal.flags & RetainedTypeArgFlags, bounds)
-      decls.enter(sym) // @@@ cls.enter(sym, decls)
+      cls.enter(sym, decls)
     }
     parentRefs
   }

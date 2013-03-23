@@ -29,7 +29,7 @@ object UnPickler {
   }
 
   /** Temporary type for classinfos, will be decomposed on completion of the class */
-  case class TempClassInfoType(parentTypes: List[Type], decls: /*@@@*/MutableScope, clazz: Symbol) extends UncachedGroundType
+  case class TempClassInfoType(parentTypes: List[Type], decls: Scope, clazz: Symbol) extends UncachedGroundType
 
   /** Convert temp poly type to some native Dotty idiom.
    *  @param forSym  The symbol that gets the converted type as info.
@@ -108,7 +108,7 @@ object UnPickler {
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
       if (tsym.exists) tsym.setFlag(TypeParam)
-      else decls.enter(tparam) // @@@ denot.enter(tparam, decls)
+      else denot.enter(tparam, decls)
     }
     var ost = optSelfType
     if (ost == NoType && (denot is ModuleClass))
@@ -378,7 +378,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           nestedObjectSymbol orElse {
             //              // (4) Call the mirror's "missing" hook.
             adjust(cctx.base.missingHook(owner, name)) orElse {
-              println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
+              // println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.
               cctx.newStubSymbol(owner, name, source)
@@ -404,9 +404,9 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     def isModuleClassRoot = (name == moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)
     def isModuleRoot = (name == moduleClassRoot.name.toTermName) && (owner == moduleClassRoot.owner) && (flags is Module)
 
-    if (isClassRoot) println(s"classRoot of $classRoot found at $readIndex, flags = $flags") // !!! DEBUG
-    if (isModuleRoot) println(s"moduleRoot of $moduleRoot found at $readIndex, flags = $flags") // !!! DEBUG
-    if (isModuleClassRoot) println(s"moduleClassRoot of $moduleClassRoot found at $readIndex, flags = $flags") // !!! DEBUG
+    //if (isClassRoot) println(s"classRoot of $classRoot found at $readIndex, flags = $flags") // !!! DEBUG
+    //if (isModuleRoot) println(s"moduleRoot of $moduleRoot found at $readIndex, flags = $flags") // !!! DEBUG
+    //if (isModuleClassRoot) println(s"moduleClassRoot of $moduleClassRoot found at $readIndex, flags = $flags") // !!! DEBUG
 
     def completeRoot(denot: ClassDenotation, completer: LazyType): Symbol = {
       denot.setFlag(flags)
@@ -422,7 +422,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
            || ((sym is TypeParam) && !sym.owner.isClass)
            || isRefinementClass(sym)
            )
-         ) symScope(sym.owner).openForMutations.enter(sym) // @@@ sym.owner.asClass.enter(sym, symScope(sym.owner))
+         ) sym.owner.asClass.enter(sym, symScope(sym.owner))
       sym
     }
 
@@ -474,7 +474,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           inforef = readNat()
           pw
         }
-      println("reading type for "+denot)
+      // println("reading type for "+denot) // !!! DEBUG
       val tp = at(inforef, () => readType(forceProperType = denot.isTerm))
       denot match {
         case denot: ClassDenotation =>
@@ -493,7 +493,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             denot.addAnnotation(Annotation.makeAlias(alias))
           }
       }
-      println(s"unpickled ${denot.debugString}, info = ${denot.info}")
+      // println(s"unpickled ${denot.debugString}, info = ${denot.info}") !!! DEBUG
     }
     def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
     def complete(denot: SymDenotation): Unit = try {
@@ -620,9 +620,9 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
               sym.asType)
           } else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
-        if (args.nonEmpty) { // DEBUG
-          println(s"reading app type $tycon $args")
-        }
+//        if (args.nonEmpty) { // DEBUG
+//          println(s"reading app type $tycon $args")
+//        }
         tycon.appliedTo(args)
       case TYPEBOUNDStpe =>
         TypeBounds(readTypeRef(), readTypeRef())
@@ -643,7 +643,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         }
       case CLASSINFOtpe =>
         val clazz = readSymbolRef()
-        TempClassInfoType(until(end, readTypeRef), symScope(clazz).openForMutations /*@@@*/, clazz)
+        TempClassInfoType(until(end, readTypeRef), symScope(clazz), clazz)
       case METHODtpe | IMPLICITMETHODtpe =>
         val restpe = readTypeRef()
         val params = until(end, readSymbolRef)

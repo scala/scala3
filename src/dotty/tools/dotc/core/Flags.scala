@@ -328,7 +328,7 @@ object Flags {
   final val Touched = commonFlag(48, "<touched>")
 
   /** Class is not allowed to accept new members because fingerprint of subclass has been taken */
-  final val Frozen = typeFlag(49, "<frozen>")
+  final val Frozen = commonFlag(49, "<frozen>")
 
   /** An error symbol */
   final val Erroneous = commonFlag(50, "<is-error>")
@@ -371,7 +371,7 @@ object Flags {
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | Param | Scala2ExistentialCommon | Touched |
-    Static | CovariantCommon | ContravariantCommon | ExpandedName | AccessorOrSealed
+    Static | CovariantCommon | ContravariantCommon | ExpandedName | AccessorOrSealed | Frozen
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not changed in completion
