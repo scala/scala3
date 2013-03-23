@@ -556,8 +556,15 @@ object Types {
             // This can happen if a higher-kinded type appears applied to arguments in its own bounds.
             // TODO: Catch this case and mark as "proceed at own risk" later.
             args map (_ => defn.InvariantBetweenClass.typeConstructor)
-          else
+          else {
+            if (tp.info == NoType) {
+              println(s"typeless type ref: $tp")
+              debugTrace = true
+              tp.prefix.member(tp.name)
+            }
+
             hkApp(tp.info).typeArgs
+          }
         ((tp: Type) /: hkArgs.zipWithIndex.zip(args)) {
           case (parent, ((hkArg, idx), arg)) =>
             val vsym = hkArg.typeSymbol
@@ -1026,7 +1033,7 @@ object Types {
   }
 
   /** The type of a super reference cls.super where
-   *  `thistpe` is cls.this and `supertpe` is the type of the valye referenced
+   *  `thistpe` is cls.this and `supertpe` is the type of the value referenced
    *  by `super`.
    */
   abstract case class SuperType(thistpe: Type, supertpe: Type) extends CachedProxyType with SingletonType {
@@ -1669,4 +1676,6 @@ object Types {
       }
     case _ => ys.isEmpty
   }
+
+  var debugTrace = false
 }

@@ -95,8 +95,8 @@ class SymbolLoaders {
     val clazz = enterClass(owner, name, completer, flags, scope)
     val module = enterModule(
       owner, name, completer,
-      modFlags = flags & RetainedModuleValFlags,
-      clsFlags = flags & RetainedModuleClassFlags,
+      modFlags = flags.toTermFlags & RetainedModuleValFlags,
+      clsFlags = flags.toTypeFlags & RetainedModuleClassFlags,
       scope = scope)
   }
 

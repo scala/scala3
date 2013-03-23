@@ -356,7 +356,7 @@ object Printers {
 
     def locationText(sym: Symbol): Text = {
       val owns = sym.effectiveOwner
-      if (owns.isClass && !isEmptyPrefix(owns)) "in " ~ toText(owns) else Text()
+      if (owns.isClass && !isEmptyPrefix(owns)) " in " ~ toText(owns) else Text()
     }
 
     def locatedText(sym: Symbol): Text =
