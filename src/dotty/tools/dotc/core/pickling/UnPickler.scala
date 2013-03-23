@@ -29,7 +29,7 @@ object UnPickler {
   }
 
   /** Temporary type for classinfos, will be decomposed on completion of the class */
-  case class TempClassInfoType(parentTypes: List[Type], decls: MutableScope, clazz: Symbol) extends UncachedGroundType
+  case class TempClassInfoType(parentTypes: List[Type], decls: /*@@@*/MutableScope, clazz: Symbol) extends UncachedGroundType
 
   /** Convert temp poly type to some native Dotty idiom.
    *  @param forSym  The symbol that gets the converted type as info.
@@ -108,7 +108,7 @@ object UnPickler {
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
       if (tsym.exists) tsym.setFlag(TypeParam)
-      else decls.enter(tparam)
+      else decls.enter(tparam) // @@@ denot.enter(tparam, decls)
     }
     var ost = optSelfType
     if (ost == NoType && (denot is ModuleClass))
@@ -422,7 +422,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
            || ((sym is TypeParam) && !sym.owner.isClass)
            || isRefinementClass(sym)
            )
-         ) symScope(sym.owner).openForMutations.enter(sym)
+         ) symScope(sym.owner).openForMutations.enter(sym) // @@@ sym.owner.asClass.enter(sym, symScope(sym.owner))
       sym
     }
 
@@ -591,8 +591,25 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case CONSTANTtpe =>
         ConstantType(readConstantRef())
       case TYPEREFtpe =>
-        val pre = readTypeRef()
+        var pre = readTypeRef()
         val sym = readSymbolRef()
+        pre match {
+          case ThisType(cls) =>
+            // The problem is that class references super.C get pickled as
+            // this.C. Dereferencing the member might then get an overriding class
+            // instance. The problem arises for instance for LinkedHashMap#MapValues
+            // and also for the inner Transform class in all views. We fix it by
+            // replacing the this with the appropriate super.
+            if (sym.owner != cls) {
+              val overriding = cls.preCompleteDecls.lookup(sym.name)
+              if (overriding.exists && overriding != sym) {
+                val base = pre.baseType(sym.owner)
+                assert(base.exists)
+                pre = SuperType(pre, base)
+              }
+            }
+          case _ =>
+        }
         val tycon =
           if (isLocal(sym)) {
             TypeRef(
@@ -626,7 +643,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         }
       case CLASSINFOtpe =>
         val clazz = readSymbolRef()
-        TempClassInfoType(until(end, readTypeRef), symScope(clazz).openForMutations, clazz)
+        TempClassInfoType(until(end, readTypeRef), symScope(clazz).openForMutations /*@@@*/, clazz)
       case METHODtpe | IMPLICITMETHODtpe =>
         val restpe = readTypeRef()
         val params = until(end, readSymbolRef)

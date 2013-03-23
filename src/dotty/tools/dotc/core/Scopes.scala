@@ -108,7 +108,7 @@ object Scopes {
       syms
     }
 
-    /** Cast this scope to a mutable scope */
+    /** Cast this scope to a mutable scope @@@ */
     final def openForMutations: MutableScope = this.asInstanceOf[MutableScope]
 
     final def toText(implicit ctx: Context): Text = ctx.toText(this)

@@ -44,6 +44,8 @@ object SymDenotations {
     initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation {
 
+    //assert(symbol.id != 4940, name)
+
     // ------ Getting and setting fields -----------------------------
 
     private[this] var _flags: FlagSet = adaptFlags(initFlags)
@@ -777,9 +779,14 @@ object SymDenotations {
      *  Note: We require that this does not happen after the first time
      *  someone does a findMember on a subclass.
      */
-    def enter(sym: Symbol)(implicit ctx: Context) = {
+    def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context) = {
       require(!(this is Frozen))
-      info.decls.openForMutations.enter(sym)
+      val mscope = scope match {
+        case scope: MutableScope => scope
+        case _ => info.decls.asInstanceOf[MutableScope]
+      }
+      mscope.enter(sym)
+
       if (_memberFingerPrint != FingerPrint.empty)
         memberFingerPrint.include(sym.name)
       if (_memberCache != null)
@@ -792,7 +799,7 @@ object SymDenotations {
      */
     def delete(sym: Symbol)(implicit ctx: Context) = {
       require(!(this is Frozen))
-      info.decls.openForMutations.unlink(sym)
+      info.decls.asInstanceOf[MutableScope].unlink(sym)
       if (_memberFingerPrint != FingerPrint.empty)
         computeMemberFingerPrint
       if (_memberCache != null)
@@ -815,19 +822,19 @@ object SymDenotations {
     private def computeMembersNamed(name: Name)(implicit ctx: Context): PreDenotation =
       if (!classSymbol.hasChildren || (memberFingerPrint contains name)) {
         val ownDenots = info.decls.denotsNamed(name)
-//        if (name.toString == "GenericCanBuildFrom")  // DEBUG
-//          println(s"$this.member(GenericCanBuildFrom), ownDenots = $ownDenots")
+        if (debugTrace)  // DEBUG
+          println(s"$this.member($name), ownDenots = $ownDenots")
         def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
           case p :: ps =>
             val denots1 = p.symbol.denot match {
               case parentd: ClassDenotation =>
-//                if (name.toString == "GenericCanBuildFrom") {  // DEBUG
-//                  val s1 = parentd.membersNamed(name)
-//                  val s2 = s1.filterExcluded(Private)
-//                  val s3 = s2.asSeenFrom(thisType)
-//                  val s4 = s3.filterDisjoint(ownDenots)
-//                  println(s"$this.member(GenericCanBuildFrom) $s1 $s2 $s3 $s4")
-//                }
+                if (debugTrace) {  // DEBUG
+                  val s1 = parentd.membersNamed(name)
+                  val s2 = s1.filterExcluded(Private)
+                  val s3 = s2.asSeenFrom(thisType)
+                  val s4 = s3.filterDisjoint(ownDenots)
+                  println(s"$this.member($name) $s1 $s2 $s3 $s4")
+                }
                 denots union
                   parentd.membersNamed(name)
                     .filterExcluded(Private)
