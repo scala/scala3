@@ -169,7 +169,9 @@ object Scopes {
 
     /** enter a symbol in this scope. */
     final def enter[T <: Symbol](sym: T)(implicit ctx: Context): T = {
-      if (sym.isType) assert(lookup(sym.name) == NoSymbol, sym.debugString) // !!! DEBUG
+      if (sym.isType) {
+        assert(lookup(sym.name) == NoSymbol, sym.debugString) // !!! DEBUG
+      }
       newScopeEntry(sym)
       sym
     }

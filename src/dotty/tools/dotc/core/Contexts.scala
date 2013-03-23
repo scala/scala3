@@ -254,6 +254,7 @@ object Contexts {
       new InitialContext(this, settings)
         .withSetting(settings.verbose, true) // !!! for now
         .withSetting(settings.debug, true)
+//        .withSetting(settings.debugNames, true)
         .withSetting(settings.Ylogcp, true)
         .withSetting(settings.printtypes, true)
         .withSetting(settings.pageWidth, 90)

@@ -532,7 +532,7 @@ object Types {
       def recur(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
         case arg :: args1 =>
           if (tparams.isEmpty) {
-            println(s"applied type mismatch: $this $args, $typeParams = typeParams") // !!! DEBUG
+            println(s"applied type mismatch: $this $args, typeParams = $typeParams, tsym = ${this.typeSymbol.debugString}") // !!! DEBUG
             println(s"precomplete decls = ${typeSymbol.preCompleteDecls.toList.map(_.denot).mkString("\n  ")}")
           }
           val tparam = tparams.head
@@ -913,6 +913,16 @@ object Types {
       NamedType(prefix, name)
 
     override def computeHash = doHash(name, prefix)
+
+    override def equals(that: Any) = that match {
+      case that: HasFixedSym => false
+      case that: TermRefWithSignature => false
+      case that: NamedType =>
+        this.prefix == that.prefix &&
+        this.name == that.name
+      case _ =>
+        false
+    }
   }
 
   abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType

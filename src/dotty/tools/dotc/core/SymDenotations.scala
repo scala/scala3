@@ -1015,10 +1015,10 @@ object SymDenotations {
       val (location, src) =
         if (file != null) (s" in $file", file.toString)
         else ("", "the signature")
+      val name = cctx.fresh.withSetting(cctx.settings.debugNames, true).nameString(denot.name)
       cctx.error(
-        s"""|bad symbolic reference. A signature$location refers to
-            |${cctx.fresh.withSetting(cctx.settings.debugNames, true).nameString(denot.name)}
-            |in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.
+        s"""|bad symbolic reference. A signature$location
+            |refers to $name in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.
             |It may be completely missing from the current classpath, or the version on
             |the classpath might be incompatible with the version used when compiling $src.""".stripMargin)
       if (cctx.debug) throw new Error()

@@ -25,27 +25,35 @@ object SymbolLoaders {
 /** A base class for Symbol loaders with some overridable behavior  */
 class SymbolLoaders {
 
-  protected def enterNew(owner: Symbol, member: Symbol, completer: SymbolLoader)
-      (implicit ctx: Context): Symbol = {
-    assert(owner.info.decls.lookup(member.name) == NoSymbol, owner.fullName + "." + member.name)
-    owner.asClass.enter(member)
+  protected def enterNew(
+      owner: Symbol, member: Symbol,
+      completer: SymbolLoader, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
+    assert(scope.lookup(member.name) == NoSymbol, owner.fullName + "." + member.name)
+    scope match {
+      case scope: MutableScope => scope.enter(member)
+      case _ => owner.asClass.enter(member)
+    }
     member
   }
 
   /** Enter class with given `name` into scope of `owner`.
    */
-  def enterClass(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: Context): Symbol = {
+  def enterClass(
+      owner: Symbol, name: PreName, completer: SymbolLoader,
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
     val cls = ctx.newClassSymbol(owner, name.toTypeName, flags, completer, assocFile = completer.sourceFileOrNull)
-    enterNew(owner, cls, completer)
+    enterNew(owner, cls, completer, scope)
   }
 
   /** Enter module with given `name` into scope of `owner`.
    */
-  def enterModule(owner: Symbol, name: PreName, completer: SymbolLoader, modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags)(implicit ctx: CondensedContext): Symbol = {
+  def enterModule(
+      owner: Symbol, name: PreName, completer: SymbolLoader,
+      modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: CondensedContext): Symbol = {
     def moduleCompleterFn(modul: TermSymbol, cls: ClassSymbol): LazyType =
       new ModuleClassCompleter(modul, completer)
     val module = ctx.newModuleSymbol(owner, name.toTermName, modFlags, clsFlags, moduleCompleterFn, assocFile = completer.sourceFileOrNull)
-    enterNew(owner, module, completer)
+    enterNew(owner, module, completer, scope)
   }
 
   /** Enter package with given `name` into scope of `owner`
@@ -81,16 +89,15 @@ class SymbolLoaders {
   /** Enter class and module with given `name` into scope of `owner`
    *  and give them `completer` as type.
    */
-  def enterClassAndModule(owner: Symbol, name: PreName, completer: SymbolLoader, flags: FlagSet = EmptyFlags)(implicit ctx: CondensedContext) {
-    val clazz = enterClass(owner, name, completer, flags)
-    val module = enterModule(owner, name, completer, flags)
- /*
-  * !!! disabled for now because it causes CyclicReference. Need to revisit
-  *   if (!clazz.isAnonymousClass) {
-      assert(clazz.companionModule == module, module)
-      assert(module.companionClass == clazz, clazz)
-    }
-    */
+  def enterClassAndModule(
+      owner: Symbol, name: PreName, completer: SymbolLoader,
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: CondensedContext) {
+    val clazz = enterClass(owner, name, completer, flags, scope)
+    val module = enterModule(
+      owner, name, completer,
+      modFlags = flags & RetainedModuleValFlags,
+      clsFlags = flags & RetainedModuleClassFlags,
+      scope = scope)
   }
 
   /** In batch mode: Enter class and module with given `name` into scope of `owner`
@@ -99,8 +106,10 @@ class SymbolLoaders {
    *  with source completer for given `src` as type.
    *  (overridden in interactive.Global).
    */
-  def enterToplevelsFromSource(owner: Symbol, name: PreName, src: AbstractFile)(implicit ctx: CondensedContext) {
-    enterClassAndModule(owner, name, new SourcefileLoader(src)(ctx.condensed))
+  def enterToplevelsFromSource(
+      owner: Symbol, name: PreName, src: AbstractFile,
+      scope: Scope = EmptyScope)(implicit ctx: CondensedContext) {
+    enterClassAndModule(owner, name, new SourcefileLoader(src)(ctx.condensed), scope = scope)
   }
 
   /** The package objects of scala and scala.reflect should always

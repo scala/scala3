@@ -36,7 +36,7 @@ class ClassfileParser(
 
   def srcfile = srcfile0
 
-  private def currentIsTopLevel = !(classRoot.name contains '$')
+  private def currentIsTopLevel = classRoot.owner is Flags.PackageClass
 
   private def mismatchError(c: Symbol) =
     throw new IOException(s"class file '${in.file}' has location not matching its contents: contains $c")
@@ -514,12 +514,27 @@ class ClassfileParser(
   private def enterOwnInnerClasses() {
     def className(name: Name): Name = name.drop(name.lastIndexOf('.') + 1)
 
-    def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) =
+    def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) = {
       loaders.enterClassAndModule(
           getOwner(jflags),
           entry.originalName,
           new ClassfileLoader(file),
-          FlagTranslation.classFlags(jflags))
+          FlagTranslation.classFlags(jflags),
+          getScope(jflags))
+      // println(s"entered inner class of ${getOwner(jflags)}: ${entry.originalName} from file $file") // !!! DEBUG
+ /* alternative:
+      val owner = getOwner(jflags)
+      val name = entry.originalName
+      val completer = new ClassfileLoader(file)
+      val flags = FlagTranslation.classFlags(jflags)
+      val cls = cctx.newClassSymbol(owner, name.toTypeName, flags, completer, assocFile = file)
+      def moduleCompleterFn(modul: TermSymbol, cls: ClassSymbol): LazyType =
+        new ModuleClassCompleter(modul, completer)
+      getScope(jflags).enter(cls)
+      val module = cctx.newModuleSymbol(owner, name.toTermName, Flags.EmptyFlags, Flags.EmptyFlags, /*???*/ moduleCompleterFn, assocFile = file)
+      getScope(jflags).enter(module)
+ */
+    }
 
     for (entry <- innerClasses.values) {
       // create a new class member for immediate inner classes
@@ -603,6 +618,7 @@ class ClassfileParser(
       }
 
       if (scan(tpnme.InnerClassesATTR)) {
+        val attrLen = in.nextInt
         val entries = in.nextChar.toInt
         for (i <- 0 until entries) {
           val innerIndex = in.nextChar
