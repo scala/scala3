@@ -259,7 +259,27 @@ class ClassfileLoader(val classfile: AbstractFile)(implicit val cctx: CondensedC
   def rootDenots(rootDenot: ClassDenotation): (ClassDenotation, ClassDenotation) = {
     val linkedDenot = rootDenot.linkedClass.denot match {
       case d: ClassDenotation => d
-      case d => throw new FatalError(s"linked class denot $d of $rootDenot is expected to be a ClassDenotation, but is a ${d.getClass}")
+      case d =>
+        // this can happen if the companion if shadowed by a val or type
+        // in a package object; in this case, we make up some dummy denotation
+        // as a stand in for loading.
+        // An example for this situation is scala.reflect.Manifest, which exists
+        // as a class in scala.reflect and as a val in scala.reflect.package.
+        if (rootDenot is ModuleClass)
+          cctx.newClassSymbol(
+            rootDenot.owner, rootDenot.name.asTypeName, Synthetic,
+              _ => NoType).classDenot
+        else {
+          def modClassCompleter(modul: TermSymbol, modcls: ClassSymbol) =
+            new LazyModuleClassInfo {
+              val decls = newScope
+              def module = modul
+              def complete(denot: SymDenotation) = unsupported("complete")
+            }
+          cctx.newModuleSymbol(
+            rootDenot.owner, rootDenot.name.toTermName, Synthetic, Synthetic,
+            modClassCompleter).moduleClass.denot.asClass
+        }
     }
     if (rootDenot is ModuleClass) (linkedDenot, rootDenot)
     else (rootDenot, linkedDenot)

@@ -982,6 +982,7 @@ object SymDenotations {
    */
   trait LazyModuleClassInfo extends LazyClassInfo {
     def module: TermSymbol
+    override def toString = s"LazyModuleClassInfo($module)"
   }
 
   /** A lazy type for modules that points to the module class.

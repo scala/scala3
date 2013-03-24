@@ -258,6 +258,7 @@ object Contexts {
         .withSetting(settings.Ylogcp, true)
         .withSetting(settings.printtypes, true)
         .withSetting(settings.pageWidth, 90)
+        .withSetting(settings.log, List("<some"))
 
     /** The symbol loaders */
     val loaders = new SymbolLoaders

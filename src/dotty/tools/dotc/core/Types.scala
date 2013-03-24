@@ -596,6 +596,8 @@ object Types {
             hkRefinement(tp)
         case tp: TypeProxy =>
           tp.underlying.appliedTo(args)
+        case AndType(l, r) =>
+          l.appliedTo(args) & r.appliedTo(args)
       }
     }
 

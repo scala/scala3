@@ -53,7 +53,7 @@ object showClass {
 
     for (arg <- args) showPackage(ctx.requiredPackage(arg))
 
-      showClasses("scala.Predef")
+      showClasses("scala.actors.remote.Proxy")
 //    showClasses("scala.Boolean")
 //    showClasses("scala.Array")
 //    showClasses("scala.math.Ordering")

@@ -111,8 +111,16 @@ object UnPickler {
       else denot.enter(tparam, decls)
     }
     var ost = optSelfType
-    if (ost == NoType && (denot is ModuleClass))
-      ost = TermRef(denot.owner.thisType, denot.sourceModule.asTerm)
+    if (ost == NoType && (denot is ModuleClass)) {
+      var module = denot.sourceModule
+      if (!module.isTerm) {
+        println(s"$denot does not have a sourceModule ${denot.completer} of class ${denot.completer.getClass}")
+        // 2nd try: read form precomplete decls
+        module = denot.owner.preCompleteDecls.lookup(denot.name.toTermName)
+          .suchThat(_ is Module).symbol
+      }
+      ost = TermRef(denot.owner.thisType, module.asTerm)
+    }
     denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)
   }
 }
