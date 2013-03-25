@@ -383,13 +383,8 @@ object Types {
 
     /** If this is an alias type, its alias, otherwise the type itself */
     final def dealias(implicit ctx: Context): Type = this match {
-      case tp: TypeRef =>
-        tp.info match {
-          case TypeBounds(lo, hi) if lo eq hi => hi.dealias
-          case _ => this
-        }
-      case _ =>
-        this
+      case tp: TypeRef if (tp.symbol.isAliasType) => tp.info.bounds.hi
+      case _ => this
     }
 
     /** Widen from constant type to its underlying non-constant
@@ -860,8 +855,10 @@ object Types {
             lastDenotation.current
           } else {
             val d = loadDenot
-            if (d.exists && !d.symbol.isAliasType && !prefix.isLegalPrefix)
-              throw new MalformedType(prefix, d.asInstanceOf[SymDenotation])
+            if (d.exists && !d.symbol.isAliasType && !prefix.isLegalPrefix) {
+              val ex = new MalformedType(prefix, d)
+              if (ctx.checkPrefix) throw ex else ctx.log(ex.getMessage)
+            }
             if (d.exists || ctx.phaseId == FirstPhaseId)
               d
             else // name has changed; try load in earlier phase and make current
@@ -1660,7 +1657,7 @@ object Types {
 
   class TypeError(msg: String) extends Exception(msg)
   class FatalTypeError(msg: String) extends TypeError(msg)
-  class MalformedType(pre: Type, denot: SymDenotation)
+  class MalformedType(pre: Type, denot: Denotation)
     extends FatalTypeError(s"malformed type: $pre is not a legal prefix for $denot")
   class CyclicReference(denot: SymDenotation)
     extends FatalTypeError(s"cyclic reference involving $denot")

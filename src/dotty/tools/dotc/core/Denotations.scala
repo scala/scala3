@@ -306,6 +306,7 @@ object Denotations {
       denot1.hasAltWith(p) || denot2.hasAltWith(p)
     def derivedMultiDenotation(d1: Denotation, d2: Denotation) =
       if ((d1 eq denot1) && (d2 eq denot2)) this else MultiDenotation(d1, d2)
+    override def toString = alternatives.mkString(" <and> ")
   }
 
   /** A non-overloaded denotation */
@@ -457,6 +458,10 @@ object Denotations {
     }
 
     final def asSymDenotation = asInstanceOf[SymDenotation]
+
+    override def toString =
+      if (symbol == NoSymbol) symbol.toString
+      else s"<SingleDenotation of type $info>"
 
     // ------ PreDenotation ops ----------------------------------------------
 

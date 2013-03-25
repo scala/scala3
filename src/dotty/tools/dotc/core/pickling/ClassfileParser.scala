@@ -16,7 +16,9 @@ import io.AbstractFile
 class ClassfileParser(
     classfile: AbstractFile,
     classRoot: ClassDenotation,
-    moduleRoot: ClassDenotation)(implicit cctx: CondensedContext) {
+    moduleRoot: ClassDenotation)(cctx0: CondensedContext) {
+
+  implicit val cctx: CondensedContext = cctx0.fresh.withCheckPrefix(false)
 
   import ClassfileConstants._
   import cctx.base.{settings, loaders, definitions => defn}
@@ -32,9 +34,11 @@ class ClassfileParser(
 
   protected var currentClassName: Name = _      // JVM name of the current class
   protected var classTParams = Map[Name,Symbol]()
-  protected var srcfile0 : Option[AbstractFile] = None //needs fleshing out; this is presumably for the source file attribute, but it is neither set nor used anywhere.
 
-  def srcfile = srcfile0
+  classRoot.info = new LazyClassInfo {
+    val decls = instanceScope
+    def complete(denot: SymDenotation) = unsupported("complete")
+  }
 
   private def currentIsTopLevel = classRoot.owner is Flags.PackageClass
 
@@ -336,9 +340,11 @@ class ClassfileParser(
       val start = index
       while (sig(index) != '>') {
         val tpname = subName(':'.==).toTypeName
+        val expname = if (owner.isClass) tpname.expandedName(owner) else tpname
         val s = cctx.newSymbol(
-          owner, tpname, Flags.TypeParamCreationFlags,
+          owner, expname, Flags.TypeParamCreationFlags,
           typeParamCompleter(index), coord = indexCoord(index))
+        if (owner.isClass) owner.asClass.enter(s, owner.preCompleteDecls)
         tparams = tparams + (tpname -> s)
         sig2typeBounds(tparams, skiptvs = true)
         newTParams += s

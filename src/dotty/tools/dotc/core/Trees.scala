@@ -28,7 +28,7 @@ object Trees {
    *   - Type checking an untyped tree should remove all embedded `TypedSplice`
    *     nodes.
    */
-  abstract class Tree[T] extends DotClass with Showable {
+  abstract class Tree[T] extends DotClass with Showable with Cloneable {
 
     /** The tree's position. Except
      *  for SharedTree nodes, it is always ensured that a tree's position

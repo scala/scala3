@@ -83,7 +83,12 @@ class Definitions(implicit ctx: Context) {
   lazy val PredefModule = requiredModule("scala.Predef")
 
 //  lazy val FunctionClass: ClassSymbol = requiredClass("scala.Function")
-  lazy val SingletonClass: ClassSymbol = requiredClass("dotty.Singleton")
+  lazy val SingletonClass: ClassSymbol =
+    // needed as a synthetic class because Scala 2.x refers to it in classfiles
+    // but does not define it as an explicit class.
+    ctx.newCompleteClassSymbol(
+      ScalaPackageClass, tpnme.Singleton, Trait | Interface | Final,
+      List(AnyClass.typeConstructor), EmptyScope).entered
   lazy val SeqClass: ClassSymbol = requiredClass("scala.collection.Seq")
   lazy val ArrayClass: ClassSymbol = requiredClass("scala.Array")
   lazy val uncheckedStableClass: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
@@ -291,6 +296,7 @@ class Definitions(implicit ctx: Context) {
     AnyValClass,
     NullClass,
     NothingClass,
+    SingletonClass,
     EqualsPatternClass)
 
   private[this] var _isInitialized = false

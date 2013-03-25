@@ -454,6 +454,9 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           completeRoot(
             moduleClassRoot,
             new ModuleClassRootUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule.asTerm))
+        else if (name == tpnme.REFINE_CLASS)
+          // create a type alias instead
+          cctx.newSymbol(owner, name, flags, localMemberUnpickler, coord = start)
         else
           cctx.newClassSymbol(owner, name.asTypeName, flags, new LocalClassUnpickler(_), coord = start)
       case MODULEsym | VALsym =>

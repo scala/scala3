@@ -7,22 +7,44 @@ import Decorators._
 
 object showClass {
 
+  private val blackList = List(
+    // the followig classes cannot be read correctly because they
+    // contain illegally pickled @throws annotations
+    // "scala.actors.remote.Proxy",
+    "scala.actors.remote.Serializer",
+    "scala.actors.remote.JavaSerializer",
+    "scala.build.genprod",
+    "scala.tools.nsc.symtab.classfile.AbstractFileReader",
+    "scala.remoting.Channel",
+    "scala.runtime.remoting.RegistryDelegate",
+    "scala.concurrent.Future",
+    "scala.concurrent.impl.Future",
+    "scala.concurrent.Await",
+    "scala.concurrent.Awaitable",
+    "scala.concurrent.impl.Promise"
+  )
+
   def showPackage(pkg: TermSymbol)(implicit ctx: Context) {
     for (sym <- pkg.info.decls
          if sym.owner == pkg.moduleClass && !(sym.name contains '$')) {
       println(s"showing $sym in ${pkg.fullName}")
       if (sym is Package) showPackage(sym.asTerm)
       else if (sym.isClass) showClass(sym)
-      else showClass(sym.moduleClass)
+      else if (sym is Module) showClass(sym.moduleClass)
     }
   }
 
   def showClass(cls: Symbol)(implicit ctx: Context) = {
-    println(s"showing ${cls.denot}")
-    val cinfo = cls.info
-    val infoText: Text = if (cinfo.exists) cinfo.toText else " is missing"
-    println("======================================")
-    println((cls.toText ~ infoText).show)
+    val path = cls.fullName.toString
+    if (blackList contains path)
+      println(s"blacklisted: $path")
+    else {
+      println(s"showing $path -> ${cls.denot}")
+      val cinfo = cls.info
+      val infoText: Text = if (cinfo.exists) cinfo.toText else " is missing"
+      println("======================================")
+      println((cls.toText ~ infoText).show)
+    }
   }
 
   def showClasses(path: String)(implicit ctx: Context): Unit = {
@@ -30,6 +52,7 @@ object showClass {
     val cls = ctx.requiredClass(path.toTypeName)
     showClass(cls)
     showClass(cls.linkedClass)
+
 /*
     val info = cls.info
     info match {
@@ -53,8 +76,9 @@ object showClass {
 
     for (arg <- args) showPackage(ctx.requiredPackage(arg))
 
-      showClasses("scala.actors.remote.Proxy")
-//    showClasses("scala.Boolean")
+//      showPackage(ctx.requiredPackage("scala.reflect"))
+
+      showClasses("scala.reflect.internal.StdCreators")
 //    showClasses("scala.Array")
 //    showClasses("scala.math.Ordering")
 //      showClasses("scala.collection.JavaConversions")

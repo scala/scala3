@@ -167,7 +167,8 @@ object Scopes {
     /** enter a symbol in this scope. */
     final def enter[T <: Symbol](sym: T)(implicit ctx: Context): T = {
       if (sym.isType) {
-        assert(lookup(sym.name) == NoSymbol, sym.debugString) // !!! DEBUG
+        assert(lookup(sym.name) == NoSymbol,
+          s"duplicate type ${sym.debugString}; previous was ${lookup(sym.name).debugString}") // !!! DEBUG
       }
       newScopeEntry(sym)
       sym

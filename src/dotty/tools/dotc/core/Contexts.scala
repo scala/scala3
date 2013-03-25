@@ -48,7 +48,7 @@ object Contexts {
                             with SymDenotations
                             with Reporting
                             with Cloneable { thiscontext =>
-    implicit val ctx: Context = this
+    implicit def ctx: Context = this
 
     /** The context base at the root */
     val base: ContextBase
@@ -128,6 +128,13 @@ object Contexts {
     protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
     def diagnostics: Option[StringBuilder] = _diagnostics
 
+    /** Should prefix of type selections to be checked whether it's stable?
+     *  Disabled when reading Scala pickled information.
+     */
+    private var _checkPrefix: Boolean = true
+    protected def checkPrefix_=(checkPrefix: Boolean) = _checkPrefix = checkPrefix
+    def checkPrefix: Boolean = _checkPrefix
+
     /** Leave message in diagnostics buffer if it exists */
     def diagnose(str: => String) =
       for (sb <- diagnostics) {
@@ -206,6 +213,7 @@ object Contexts {
     def withTree(tree: Tree): this.type = { this.tree = tree; this }
     def withReporter(reporter: Reporter): this.type = { this.reporter = reporter; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
+    def withCheckPrefix(checkPrefix: Boolean): this.type = { this.checkPrefix = checkPrefix; this }
 
     def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
 

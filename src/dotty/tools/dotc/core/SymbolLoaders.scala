@@ -287,7 +287,7 @@ class ClassfileLoader(val classfile: AbstractFile)(implicit val cctx: CondensedC
 
   def doComplete(root: SymDenotation) {
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
-    new ClassfileParser(classfile, classRoot, moduleRoot).run()
+    new ClassfileParser(classfile, classRoot, moduleRoot)(cctx).run()
   }
 }
 
