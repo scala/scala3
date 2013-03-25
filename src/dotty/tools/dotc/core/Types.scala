@@ -257,6 +257,20 @@ object Types {
           pdenot & new JointRefDenotation(NoSymbol, tp.refinedInfo.substThis(tp, pre), Period.allInRun(ctx.runId))
         else
           pdenot
+      case tp: ThisType =>
+        val d = tp.underlying.findMember(name, pre, excluded)
+        if (d.exists) d
+        else
+          // There is a special case to handle:
+          //   trait Super { this: Sub => private class Inner {} println(this.Inner) }
+          //   class Sub extends Super
+          // When resolving Super.this.Inner, the normal logic goes to the self type and
+          // looks for Inner from there. But this fails because Inner is private.
+          // We fix the problem by having the following fallback case, which links up the
+          // member in Super instead of Sub.
+          // As an example of this in the wild, see
+          // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
+          tp.cls.symbolicRef.findMember(name, pre, excluded)
       case tp: TypeProxy =>
         tp.underlying.findMember(name, pre, excluded)
       case tp: ClassInfo =>
@@ -866,6 +880,11 @@ object Types {
           }
       }
       lastDenotation
+    }
+
+    private[core] final def withDenot(denot: Denotation): this.type = {
+      lastDenotation = denot
+      this
     }
 
     protected def loadDenot(implicit ctx: Context) = prefix.member(name)
@@ -1659,7 +1678,7 @@ object Types {
   class FatalTypeError(msg: String) extends TypeError(msg)
   class MalformedType(pre: Type, denot: Denotation)
     extends FatalTypeError(s"malformed type: $pre is not a legal prefix for $denot")
-  class CyclicReference(denot: SymDenotation)
+  class CyclicReference(val denot: SymDenotation)
     extends FatalTypeError(s"cyclic reference involving $denot")
 
   // ----- Misc utilities ---------------------------------------------------------

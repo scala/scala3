@@ -570,7 +570,7 @@ object SymDenotations {
      */
     def typeConstructor(implicit ctx: Context): TypeRef =
       if ((this is PackageClass) || owner.isTerm) symbolicRef
-      else TypeRef(owner.thisType, name.asTypeName)
+      else TypeRef(owner.thisType, name.asTypeName).withDenot(this)
 
     /** The symbolic typeref representing the type constructor for this type.
      *  @throws ClassCastException is this is not a type

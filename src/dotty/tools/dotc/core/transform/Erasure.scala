@@ -109,7 +109,13 @@ object Erasure {
       else paramSignature(sym.info)
     case tp: RefinedType =>
       val parent = tp.parent
-      if (parent.dealias.typeSymbol == defn.ArrayClass) paramSignature(eraseArray(tp))
+      if (parent.dealias.typeSymbol == defn.ArrayClass)
+        eraseArray(tp) match {
+          case tp1: RefinedType if tp1.parent.dealias.typeSymbol == defn.ArrayClass =>
+            paramSignature(tp1.parent) ++ "[]"
+          case tp1 =>
+            paramSignature(tp1)
+        }
       else paramSignature(parent)
     case tp: TypeProxy =>
       paramSignature(tp.underlying)

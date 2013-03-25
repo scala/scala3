@@ -364,14 +364,16 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         //  return NoSymbol
 
         if (tag == EXTMODCLASSref) {
-          unimplementedTree(s"nested objects")
-          /*
+          val module = owner.info.decl(name.toTermName).suchThat(_ is Module)
+          module.info // force it, as completer does not yet point to module class.
+          module.symbol.moduleClass
+
+          /* was:
             val moduleVar = owner.info.decl(name.toTermName.moduleVarName).symbol
             if (moduleVar.isLazyAccessor)
               return moduleVar.lazyAccessor.lazyAccessor
-*/
-        }
-        NoSymbol
+           */
+        } else NoSymbol
       }
 
       // println(s"read ext symbol $name from ${owner.denot.debugString} in ${classRoot.debugString}")  // !!! DEBUG
@@ -562,7 +564,9 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     val tp1 = elim(tp)
     val isBound = (tp: Type) => boundSyms contains tp.typeSymbol
     if (tp1 existsPart isBound) {
-      val tp2 = tp1.subst(boundSyms, boundSyms map (_ => defn.AnyType))
+      val anyTypes = boundSyms map (_ => defn.AnyType)
+      val boundBounds = boundSyms map (_.info.bounds.hi)
+      val tp2 = tp1.subst(boundSyms, boundBounds).subst(boundSyms, anyTypes)
       cctx.warning(s"""failure to eliminate existential
                        |original type    : $tp forSome {${cctx.dclsText(boundSyms, "; ").show}
                        |reduces to       : $tp1

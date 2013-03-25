@@ -89,7 +89,7 @@ object Printers {
   }
 
   class PlainPrinter(_ctx: Context) extends Printer {
-    protected[this] implicit val ctx = _ctx
+    protected[this] implicit val ctx = _ctx.fresh.withCheckPrefix(false)
 
     def controlled(op: => Text): Text =
       if (ctx.toTextRecursions < maxToTextRecursions)
@@ -98,7 +98,7 @@ object Printers {
           op
         } catch {
           case ex: CyclicReference =>
-            "<cycle involving ${ex.denot}>"
+            s"<cycle involving ${ex.denot}>"
         } finally {
           ctx.toTextRecursions -= 1
         }
