@@ -634,9 +634,11 @@ object Types {
           if (buf == null) null
           else {
             if (tparams == null) tparams = tycon.typeParams
-            val tparam = tparams(buf.size)
-            if (name == tparam.name) buf += tp.refinedInfo.argType(tparam)
-            else null
+            if (buf.size < tparams.length) {
+              val tparam = tparams(buf.size)
+              if (name == tparam.name) buf += tp.refinedInfo.argType(tparam)
+              else null
+            } else null
           }
         case _ =>
           if (refineCount == 0) null

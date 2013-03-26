@@ -45,7 +45,7 @@ class Definitions(implicit ctx: Context) {
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[ClassSymbol] = {
     val arr = new Array[ClassSymbol](arity)
-    for (i <- countFrom to arity) arr(i) = requiredClass("scala." + name + i)
+    for (i <- countFrom until arity) arr(i) = requiredClass("scala." + name + i)
     arr
   }
 

@@ -171,7 +171,7 @@ object SymDenotations {
 
     /** The name with which the denoting symbol was created */
     final def originalName =
-      if (flags is ExpandedName) initial.asSymDenotation.name else name
+      if (this is ExpandedName) initial.asSymDenotation.name else name
 
     /** The encoded full path name of this denotation, where outer names and inner names
      *  are separated by `separator` characters.
