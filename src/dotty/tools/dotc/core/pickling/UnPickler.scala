@@ -488,7 +488,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           pw
         }
       // println("reading type for "+denot) // !!! DEBUG
-      val tp = at(inforef, () => readType(forceProperType = denot.isTerm))
+      val tp = at(inforef, readType)
       denot match {
         case denot: ClassDenotation =>
           val optSelfType = if (atEnd) NoType else readTypeRef()
@@ -582,7 +582,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
    *        the flag say that a type of kind * is expected, so that PolyType(tps, restpe) can be disambiguated to PolyType(tps, NullaryMethodType(restpe))
    *        (if restpe is not a ClassInfoType, a MethodType or a NullaryMethodType, which leaves TypeRef/SingletonType -- the latter would make the polytype a type constructor)
    */
-  protected def readType(forceProperType: Boolean = false): Type = {
+  protected def readType(): Type = {
     val tag = readByte()
     val end = readNat() + readIndex
     (tag: @switch) match {
@@ -670,18 +670,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case POLYtpe =>
         val restpe = readTypeRef()
         val typeParams = until(end, readSymbolRef)
-        if (typeParams.nonEmpty) {
-          // NMT_TRANSITION: old class files denoted a polymorphic nullary method as PolyType(tps, restpe), we now require PolyType(tps, NullaryMethodType(restpe))
-          // when a type of kind * is expected (forceProperType is true), we know restpe should be wrapped in a NullaryMethodType (if it wasn't suitably wrapped yet)
-          def transitionNMT(restpe: Type) = {
-            val resTpeCls = restpe.getClass.toString // what's uglier than isInstanceOf? right! -- isInstanceOf does not work since the concrete types are defined in the compiler (not in scope here)
-            if (forceProperType /*&& pickleformat < 2.9 */ && !(resTpeCls.endsWith("MethodType"))) {
-              assert(!resTpeCls.contains("ClassInfoType"))
-              ExprType(restpe)
-            } else restpe
-          }
-          TempPolyType(typeParams, transitionNMT(restpe))
-        } else ExprType(restpe)
+        if (typeParams.nonEmpty) TempPolyType(typeParams, restpe)
+        else ExprType(restpe)
       case EXISTENTIALtpe =>
         val restpe = readTypeRef()
         val boundSyms = until(end, readSymbolRef)
