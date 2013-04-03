@@ -462,7 +462,8 @@ object Types {
     /** This type seen as a TypeBounds */
     final def bounds(implicit ctx: Context): TypeBounds = this match {
       case tp: TypeBounds => tp
-      case _ => TypeBounds(this, this)
+      case ci: ClassInfo => TypeAlias(ci.typeConstructor)
+      case _ => TypeAlias(this)
     }
 
     /** The type parameter with given `name`. This tries first `preCompleteDecls`
@@ -1406,7 +1407,8 @@ object Types {
       else tp.substThis(cls, prefix)
 
     def typeConstructor(implicit ctx: Context): Type =
-      NamedType(prefix, cls.name)
+      if ((cls is PackageClass) || cls.owner.isTerm) TypeRef(prefix, cls)
+      else TypeRef(prefix, cls.name)
 
     // cached because baseType needs parents
     private var parentsCache: List[TypeRef] = null
@@ -1435,8 +1437,8 @@ object Types {
   /** Type bounds >: lo <: hi */
   abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
 
-    assert(!lo.isInstanceOf[TypeBounds], lo+" "+lo.getClass)
-    assert(!hi.isInstanceOf[TypeBounds], hi+" "+hi.getClass)
+    assert(lo.isInstanceOf[TermType], lo+" "+lo.getClass)
+    assert(hi.isInstanceOf[TermType], hi+" "+hi.getClass)
 
     override def underlying(implicit ctx: Context): Type = hi
 

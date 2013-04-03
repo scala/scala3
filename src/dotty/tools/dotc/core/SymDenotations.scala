@@ -98,11 +98,10 @@ object SymDenotations {
     private def completeFrom(completer: LazyType): Unit = {
       if (_flags is Touched) throw new CyclicReference(this)
       _flags |= Touched
-//      Context.theBase.initialCtx.traceIndented( // !!! DEBUG
-//        ">>>> completing "+this.debugString+"/"+owner.id,
-//        "<<<< completed: "+this.debugString) {
+
+      /* !!! DEBUG Context.theBase.initialCtx.traceIndented(s"completing ${this.debugString}") */ {
         completer.complete(this)
-//      }
+      }
     }
 
     protected[core] final def info_=(tp: Type) = {
@@ -855,13 +854,31 @@ object SymDenotations {
 
     final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
 
+      def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
+        case p :: ps1 => foldGlb(bt & baseTypeOf(p), ps1)
+        case _ => bt
+      }
+
       def computeBaseTypeOf(tp: Type): Type = tp match {
+        case tp: TypeRef =>
+          val subcls = tp.symbol
+          if (subcls eq symbol)
+            tp
+          else (subcls.denot) match {
+            case cdenot: ClassDenotation =>
+              if (cdenot.superClassBits contains symbol.superId) foldGlb(NoType, tp.parents)
+              else NoType
+            case _ =>
+              baseTypeOf(tp.underlying)
+          }
         case tp: TypeProxy =>
           baseTypeOf(tp.underlying)
         case AndType(tp1, tp2) =>
           baseTypeOf(tp1) & baseTypeOf(tp2)
         case OrType(tp1, tp2) =>
           baseTypeOf(tp1) | baseTypeOf(tp2)
+/*
+ *
         case tp: ClassInfo =>
           def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
             case p :: ps1 => foldGlb(bt & baseTypeOf(p), ps1)
@@ -873,28 +890,31 @@ object SymDenotations {
             tp.rebase(foldGlb(NoType, tp.classParents))
           else
             NoType
+*/
         case _ =>
           NoType
       }
 
-      if (symbol.isStatic) symbol.typeConstructor
-      else tp match {
-        case tp: CachedType =>
-          if (baseTypeValid != ctx.runId) {
-            baseTypeCache = new java.util.HashMap[CachedType, Type]
-            baseTypeValid = ctx.runId
-          }
-          var basetp = baseTypeCache get tp
-          if (basetp == null) {
-            baseTypeCache.put(tp, NoType)
-            basetp = computeBaseTypeOf(tp)
-            baseTypeCache.put(tp, basetp)
-          } else if (basetp == NoType) {
-            throw new CyclicReference(symbol)
-          }
-          basetp
-        case _ =>
-          computeBaseTypeOf(tp)
+      /* !!! DEBUG ctx.traceIndented(s"$tp.baseType($this)") */ {
+        if (symbol.isStatic) symbol.typeConstructor
+        else tp match {
+          case tp: CachedType =>
+            if (baseTypeValid != ctx.runId) {
+              baseTypeCache = new java.util.HashMap[CachedType, Type]
+              baseTypeValid = ctx.runId
+            }
+            var basetp = baseTypeCache get tp
+            if (basetp == null) {
+              baseTypeCache.put(tp, NoType)
+              basetp = computeBaseTypeOf(tp)
+              baseTypeCache.put(tp, basetp)
+            } else if (basetp == NoType) {
+              throw new CyclicReference(symbol)
+            }
+            basetp
+          case _ =>
+            computeBaseTypeOf(tp)
+        }
       }
     }
 

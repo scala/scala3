@@ -73,7 +73,15 @@ class ShowClassTests {
 
   implicit val ctx: Context = {
     val base = Context.theBase
-    val ctx = base.initialCtx
+    import base.settings._
+    val ctx = base.initialCtx.fresh
+      .withSetting(verbose, true)
+      .withSetting(debug, true)
+      //    .withSetting(settings.debugNames, true)
+      .withSetting(Ylogcp, true)
+      .withSetting(printtypes, true)
+      .withSetting(pageWidth, 90)
+      .withSetting(log, List("<some"))
     println(ctx.settings)
     base.definitions.init()
     ctx

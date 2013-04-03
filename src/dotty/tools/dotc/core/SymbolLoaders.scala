@@ -228,7 +228,7 @@ abstract class SymbolLoader extends LazyType {
     }
     try {
       val start = currentTime
-      cctx.traceIndented(s">>>> loading ${root.debugString}", s"<<<< loaded ${root.debugString}") {
+      cctx.traceIndented(s">>>> loading ${root.debugString}", _ => s"<<<< loaded ${root.debugString}") {
         doComplete(root)
       }
       cctx.informTime("loaded " + description, start)

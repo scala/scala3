@@ -35,24 +35,27 @@ trait Reporting { this: Context =>
     value
   }
 
-  def traceIndented[T](leading: => String, trailing: => String)(op: => T): T = {
+  def traceIndented[T](question: => String)(op: => T): T =
+    traceIndented[T](s"==> $question?", (res: Any) => s"<== $question = $res")(op)
+
+  def traceIndented[T](leading: => String, trailing: Any => String)(op: => T): T = {
     var finalized = false
-    def finalize(note: String) =
+    def finalize(result: Any, note: String) =
       if (!finalized) {
         base.indent -= 1
-        log(s"${base.indentTab * base.indent}$trailing$note")
+        log(s"${base.indentTab * base.indent}${trailing(result)}$note")
         finalized = true
       }
     try {
       log(s"${base.indentTab * base.indent}$leading")
       base.indent += 1
-      op
+      val res = op
+      finalize(res, "")
+      res
     } catch {
       case ex: Throwable =>
-      finalize(s" (with exception $ex)")
+      finalize("<missing>", s" (with exception $ex)")
       throw ex
-    } finally {
-      finalize("")
     }
   }
 }

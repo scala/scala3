@@ -19,6 +19,7 @@ trait TypeOps { this: Context =>
       else
         toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)
 
+    /* !!! DEBUG ctx.traceIndented(s"$tp.asSeenFrom($pre, $cls)") */ {
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -43,6 +44,7 @@ trait TypeOps { this: Context =>
           .mapOver(tp)
     }
   }
+  } 
 
   class AsSeenFromMap(pre: Type, cls: Symbol) extends TypeMap {
     def apply(tp: Type) = asSeenFrom(tp, pre, cls, this)

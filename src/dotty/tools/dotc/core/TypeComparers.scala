@@ -55,37 +55,37 @@ object TypeComparers {
       }
     }
 
-    def firstTry(tp1: Type, tp2: Type): Boolean = tp2 match {
-      case tp2: NamedType =>
-        tp1 match {
-          case tp1: NamedType =>
-            val sym1 = tp1.symbol
-            val sym2 = tp2.symbol
-            val pre1 = tp1.prefix
-            val pre2 = tp2.prefix
-            if (sym1 == sym2) (
-               ctx.erasedTypes
-            || (sym1.owner is Package)
-            || isSubType(pre1, pre2)
-            ) else (
-               tp1.name == tp2.name && isSubType(pre1, pre2)
-            || sym2.isClass && {
-                 val base = tp1.baseType(sym2)
-                 (base ne tp1) && isSubType(base, tp2)
-               }
-            || thirdTryNamed(tp1, tp2)
-            )
-          case _ =>
-            secondTry(tp1, tp2)
-        }
-      case WildcardType | ErrorType =>
-        true
-      case tp2: PolyParam if constraints contains tp2 =>
-        addConstraint(tp2, TypeBounds.lower(tp1))
-      case _ =>
-        secondTry(tp1, tp2)
+    def firstTry(tp1: Type, tp2: Type): Boolean = /* !!! DEBUG ctx.traceIndented(s"$tp1 <:< $tp2") */ {
+      tp2 match {
+        case tp2: NamedType =>
+          tp1 match {
+            case tp1: NamedType =>
+              val sym1 = tp1.symbol
+              val sym2 = tp2.symbol
+              val pre1 = tp1.prefix
+              val pre2 = tp2.prefix
+              if (sym1 == sym2) (
+                ctx.erasedTypes
+                || (sym1.owner is Package)
+                || isSubType(pre1, pre2))
+              else (
+                tp1.name == tp2.name && isSubType(pre1, pre2)
+                || sym2.isClass && {
+                  val base = tp1.baseType(sym2)
+                  (base ne tp1) && isSubType(base, tp2)
+                }
+                || thirdTryNamed(tp1, tp2))
+            case _ =>
+              secondTry(tp1, tp2)
+          }
+        case WildcardType | ErrorType =>
+          true
+        case tp2: PolyParam if constraints contains tp2 =>
+          addConstraint(tp2, TypeBounds.lower(tp1))
+        case _ =>
+          secondTry(tp1, tp2)
+      }
     }
-
 
     def secondTry(tp1: Type, tp2: Type): Boolean = tp1 match {
       case WildcardType | ErrorType =>
