@@ -825,24 +825,22 @@ object SymDenotations {
           println(s"$this.member($name), ownDenots = $ownDenots")
         def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
           case p :: ps =>
-            val denots1 = p.symbol.denot match {
+            val denots1 = collect(denots, ps)
+            p.symbol.denot match {
               case parentd: ClassDenotation =>
                 if (debugTrace) {  // DEBUG
                   val s1 = parentd.membersNamed(name)
                   val s2 = s1.filterExcluded(Private)
-                  val s3 = s2.asSeenFrom(thisType)
-                  val s4 = s3.filterDisjoint(ownDenots)
-                  println(s"$this.member($name) $s1 $s2 $s3 $s4")
+                  val s3 = s2.disjointAsSeenFrom(ownDenots, thisType)
+                  println(s"$this.member($name) $s1 $s2 $s3")
                 }
-                denots union
+                denots1 union
                   parentd.membersNamed(name)
                     .filterExcluded(Private)
-                    .asSeenFrom(thisType)
-                    .filterDisjoint(ownDenots)
+                    .disjointAsSeenFrom(ownDenots, thisType)
               case _ =>
-                denots
+                denots1
             }
-            collect(denots1, ps)
           case _ =>
             denots
         }
@@ -895,7 +893,7 @@ object SymDenotations {
           NoType
       }
 
-      ctx.traceIndented(s"$tp.baseType($this)") {
+      ctx.traceIndented(s"$tp.baseType($this) ${tp.typeSymbol.fullName} ${this.fullName}") {
         if (symbol.isStatic) symbol.typeConstructor
         else tp match {
           case tp: CachedType =>
@@ -905,10 +903,10 @@ object SymDenotations {
             }
             var basetp = baseTypeCache get tp
             if (basetp == null) {
-              baseTypeCache.put(tp, NoType)
+              baseTypeCache.put(tp, NoPrefix)
               basetp = computeBaseTypeOf(tp)
               baseTypeCache.put(tp, basetp)
-            } else if (basetp == NoType) {
+            } else if (basetp == NoPrefix) {
               throw new CyclicReference(symbol)
             }
             basetp

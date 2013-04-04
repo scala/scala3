@@ -215,26 +215,28 @@ object Denotations {
         }
       case denot1: SingleDenotation =>
         if (denot1 eq denot2) denot1
-        else if (denot1.signature == denot2.signature) {
-          /** Convert class info C to bounds C..C */
-          def normalize(info: Type) =
-            if (isType) info.bounds else info
+        else if (denot1.signature != denot2.signature) NoDenotation
+        else {
           val sym1 = denot1.symbol
-          val info1 = denot1.info
-          val sym2 = denot2.symbol
-          val info2 = denot2.info
-          val sym1Eligible = sym1.isAsConcrete(sym2)
-          val sym2Eligible = sym2.isAsConcrete(sym1)
-          val bounds1 = normalize(info1)
-          val bounds2 = normalize(info2)
-//          if (sym2Eligible && bounds2 <:< bounds1) denot2
-//          else if (sym1Eligible && bounds1 <:< bounds2) denot1
-//          else
-          new LazyJointRefDenotation(
-            if (sym2Eligible) sym2 else sym1,
-            bounds1 & bounds2,
-            denot1.validFor & denot2.validFor)
-        } else NoDenotation
+          if (sym1.isClass || sym1.isAliasType) denot1
+          else {
+            val sym2 = denot2.symbol
+            if (sym2.isClass || sym2.isAliasType) denot2
+            else {
+              // if sym1, sym2 exist, they are abstract types or term symbols
+              val info1 = denot1.info
+              val info2 = denot2.info
+              val sym1Eligible = sym1.isAsConcrete(sym2)
+              val sym2Eligible = sym2.isAsConcrete(sym1)
+              if (sym1Eligible && info1 <:< info2) denot1
+              else if (sym2Eligible && info2 <:< info1) denot2
+              else new JointRefDenotation(
+                if (sym2Eligible) sym2 else sym1,
+                info1 & info2,
+                denot1.validFor & denot2.validFor)
+            }
+          }
+        }
     }
 
     /** Form a choice between this denotation and that one.
@@ -472,6 +474,9 @@ object Denotations {
       exists && signature == sig
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
       if (denots.containsSig(signature)) NoDenotation else this
+    def disjointAsSeenFrom(denots: PreDenotation, pre: Type)(implicit ctx: Context): SingleDenotation =
+      if (signature == NotAMethod) filterDisjoint(denots).asSeenFrom(pre)
+      else asSeenFrom(pre).filterDisjoint(denots)
     final def filterExcluded(excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
       if (excluded == EmptyFlags) this
       else this match {
@@ -503,12 +508,6 @@ object Denotations {
     val info: Type,
     initValidFor: Period) extends SingleDenotation {
     validFor = initValidFor
-    override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
-  }
-
-  class LazyJointRefDenotation(val symbol: Symbol, infoFn: => Type, initValidFor: Period) extends SingleDenotation {
-    validFor = initValidFor
-    lazy val info = infoFn
     override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
   }
 
@@ -547,6 +546,8 @@ object Denotations {
      */
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation
 
+    def disjointAsSeenFrom(denots: PreDenotation, pre: Type)(implicit ctx: Context): PreDenotation
+
     /** Keep only those denotations in this group whose flags do not intersect
      *  with `excluded`.
      */
@@ -571,6 +572,8 @@ object Denotations {
       (denots1 containsSig sig) || (denots2 containsSig sig)
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1 filterDisjoint denots, denots2 filterDisjoint denots)
+    def disjointAsSeenFrom(denots: PreDenotation, pre: Type)(implicit ctx: Context): PreDenotation =
+      derivedUnion(denots1.disjointAsSeenFrom(denots, pre), denots2.disjointAsSeenFrom(denots, pre))
     def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1.filterExcluded(excluded), denots2.filterExcluded(excluded))
     def asSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation =
