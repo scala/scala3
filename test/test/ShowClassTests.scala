@@ -120,7 +120,12 @@ class ShowClassTests {
   }
 
   @Test
-  def loadJlineHistiry() = {
+  def loadJlineHistory() = {
     showPackage("scala.tools.jline.console.history")
+  }
+
+  @Test
+  def showReflectAliases() = { // tests for cycles during findMember
+    showClasses("scala.reflect.macros.runtime.Aliases")
   }
 }

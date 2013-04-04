@@ -1419,6 +1419,10 @@ object Types {
       parentsCache
     }
 
+    def derivedClassInfo(prefix: Type)(implicit ctx: Context) =
+      if (prefix eq this.prefix) this
+      else ClassInfo(prefix, cls, classParents, decls, optSelfType)
+
     def derivedClassInfo(prefix: Type, classParents: List[TypeRef], optSelfType: Type)(implicit ctx: Context) =
       if ((prefix eq this.prefix) && (classParents eq this.classParents) && (optSelfType eq this.optSelfType)) this
       else ClassInfo(prefix, cls, classParents, decls, optSelfType)

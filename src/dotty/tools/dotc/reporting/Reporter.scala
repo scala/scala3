@@ -35,6 +35,10 @@ trait Reporting { this: Context =>
     value
   }
 
+  def debugTraceIndented[T](question: => String)(op: => T): T =
+    if (this.settings.debugTrace.value) traceIndented(question)(op)
+    else op
+
   def traceIndented[T](question: => String)(op: => T): T =
     traceIndented[T](s"==> $question?", (res: Any) => s"<== $question = $res")(op)
 
@@ -54,8 +58,8 @@ trait Reporting { this: Context =>
       res
     } catch {
       case ex: Throwable =>
-      finalize("<missing>", s" (with exception $ex)")
-      throw ex
+        finalize("<missing>", s" (with exception $ex)")
+        throw ex
     }
   }
 }
