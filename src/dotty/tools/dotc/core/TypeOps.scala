@@ -19,32 +19,32 @@ trait TypeOps { this: Context =>
       else
         toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)
 
-    /* !!! DEBUG ctx.traceIndented(s"$tp.asSeenFrom($pre, $cls)") */ {
-    tp match {
-      case tp: NamedType =>
-        val sym = tp.symbol
-        if (sym.isStatic) tp
-        else {
-          val tp1 = tp.derivedNamedType(asSeenFrom(tp.prefix, pre, cls, theMap))
-          // short-circuit instantiated type parameters
-          if ((tp1 ne tp) && (sym is (TypeParam, butNot = Deferred))) tp1.dealias
-          else tp1
-        }
-      case ThisType(thiscls) =>
-        toPrefix(pre, cls, thiscls)
-      case _: BoundType | NoPrefix =>
-        tp
-      case tp: RefinedType =>
-        tp.derivedRefinedType(
+    ctx.traceIndented(s"$tp.asSeenFrom($pre, $cls)") {
+      tp match {
+        case tp: NamedType =>
+          val sym = tp.symbol
+          if (sym.isStatic) tp
+          else {
+            val tp1 = tp.derivedNamedType(asSeenFrom(tp.prefix, pre, cls, theMap))
+            // short-circuit instantiated type parameters
+            if ((tp1 ne tp) && (sym is (TypeParam, butNot = Deferred))) tp1.dealias
+            else tp1
+          }
+        case ThisType(thiscls) =>
+          toPrefix(pre, cls, thiscls)
+        case _: BoundType | NoPrefix =>
+          tp
+        case tp: RefinedType =>
+          tp.derivedRefinedType(
             asSeenFrom(tp.parent, pre, cls, theMap),
             tp.refinedName,
             asSeenFrom(tp.refinedInfo, pre, cls, theMap))
-      case _ =>
-        (if (theMap != null) theMap else new AsSeenFromMap(pre, cls))
-          .mapOver(tp)
+        case _ =>
+          (if (theMap != null) theMap else new AsSeenFromMap(pre, cls))
+            .mapOver(tp)
+      }
     }
   }
-  } 
 
   class AsSeenFromMap(pre: Type, cls: Symbol) extends TypeMap {
     def apply(tp: Type) = asSeenFrom(tp, pre, cls, this)

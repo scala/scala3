@@ -984,7 +984,7 @@ object Types {
 
   final class TermRefWithSignature(prefix: Type, name: TermName, val sig: Signature) extends TermRef(prefix, name) {
     override def signature(implicit ctx: Context) = sig
-   override def loadDenot(implicit ctx: Context): Denotation =
+    override def loadDenot(implicit ctx: Context): Denotation =
       super.loadDenot.atSignature(sig)
     override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRefWithSignature =
       TermRef(prefix, name, sig)

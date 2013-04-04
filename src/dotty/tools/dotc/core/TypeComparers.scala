@@ -55,7 +55,7 @@ object TypeComparers {
       }
     }
 
-    def firstTry(tp1: Type, tp2: Type): Boolean = /* !!! DEBUG ctx.traceIndented(s"$tp1 <:< $tp2") */ {
+    def firstTry(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"$tp1 <:< $tp2") {
       tp2 match {
         case tp2: NamedType =>
           tp1 match {

@@ -99,7 +99,7 @@ object SymDenotations {
       if (_flags is Touched) throw new CyclicReference(this)
       _flags |= Touched
 
-      /* !!! DEBUG Context.theBase.initialCtx.traceIndented(s"completing ${this.debugString}") */ {
+      Context.theBase.initialCtx.traceIndented(s"completing ${this.debugString}") {
         completer.complete(this)
       }
     }
@@ -895,7 +895,7 @@ object SymDenotations {
           NoType
       }
 
-      /* !!! DEBUG ctx.traceIndented(s"$tp.baseType($this)") */ {
+      ctx.traceIndented(s"$tp.baseType($this)") {
         if (symbol.isStatic) symbol.typeConstructor
         else tp match {
           case tp: CachedType =>

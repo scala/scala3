@@ -227,9 +227,10 @@ object Denotations {
           val sym2Eligible = sym2.isAsConcrete(sym1)
           val bounds1 = normalize(info1)
           val bounds2 = normalize(info2)
-          if (sym2Eligible && bounds2 <:< bounds1) denot2
-          else if (sym1Eligible && bounds1 <:< bounds2) denot1
-          else new JointRefDenotation(
+//          if (sym2Eligible && bounds2 <:< bounds1) denot2
+//          else if (sym1Eligible && bounds1 <:< bounds2) denot1
+//          else
+          new LazyJointRefDenotation(
             if (sym2Eligible) sym2 else sym1,
             bounds1 & bounds2,
             denot1.validFor & denot2.validFor)
@@ -502,6 +503,12 @@ object Denotations {
     val info: Type,
     initValidFor: Period) extends SingleDenotation {
     validFor = initValidFor
+    override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
+  }
+
+  class LazyJointRefDenotation(val symbol: Symbol, infoFn: => Type, initValidFor: Period) extends SingleDenotation {
+    validFor = initValidFor
+    lazy val info = infoFn
     override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
   }
 
