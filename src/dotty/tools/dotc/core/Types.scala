@@ -1162,8 +1162,7 @@ object Types {
   // --- AndType/OrType ---------------------------------------------------------------
 
   abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with ValueType {
-    assert(tp1.isValueType)
-    assert(tp2.isValueType)
+    assert(tp1.isInstanceOf[TermType] && tp2.isInstanceOf[TermType], s"$tp1 & $tp2")
 
     type This <: AndType
 
