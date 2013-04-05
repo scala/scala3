@@ -8,7 +8,7 @@ trait TypeOps { this: Context =>
 
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 
-    def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type =
+    def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = ctx.debugTraceIndented(s"toPrefix($pre, $cls, $thiscls)")  {
       if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
         tp
       else if (thiscls.isNonBottomSubClass(cls) && pre.baseType(thiscls).exists)
@@ -18,8 +18,9 @@ trait TypeOps { this: Context =>
         }
       else
         toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)
+    }
 
-    /* ctx.debugTraceIndented(s"$tp.asSeenFrom($pre, $cls)") */ { // !!! DEBUG
+    ctx.debugTraceIndented(s"$tp.asSeenFrom($pre, $cls)") { // !!! DEBUG
       tp match {
         case tp: NamedType =>
           val sym = tp.symbol
@@ -39,8 +40,8 @@ trait TypeOps { this: Context =>
             asSeenFrom(tp.parent, pre, cls, theMap),
             tp.refinedName,
             asSeenFrom(tp.refinedInfo, pre, cls, theMap))
-        case tp: ClassInfo =>
-          tp.derivedClassInfo(asSeenFrom(tp.prefix, pre, cls, theMap))
+ //       case tp: ClassInfo => !!! disabled for now
+ //         tp.derivedClassInfo(asSeenFrom(tp.prefix, pre, cls, theMap))
         case _ =>
           (if (theMap != null) theMap else new AsSeenFromMap(pre, cls))
             .mapOver(tp)
