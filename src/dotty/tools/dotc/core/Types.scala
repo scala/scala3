@@ -797,7 +797,7 @@ object Types {
     private[this] var _hash = HashUnknown
     final def hash = {
       if (_hash == HashUnknown) {
-        _hash == computeHash
+        _hash = computeHash
         if (_hash == HashUnknown) _hash = HashUnknownAlt
       }
       _hash
@@ -812,7 +812,7 @@ object Types {
     private[this] var _hash = HashUnknown
     final def hash = {
       if (_hash == HashUnknown) {
-        _hash == computeHash
+        _hash = computeHash
         if (_hash == HashUnknown) _hash = HashUnknownAlt
       }
       _hash
