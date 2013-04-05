@@ -179,9 +179,9 @@ trait Symbols { this: Context =>
   def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
     def stubCompleter = new StubInfo()(condensed)
     val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
-    //println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
-    //println(s"decls = ${normalizedOwner.preCompleteDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
-    //throw new Error()
+    println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
+    println(s"decls = ${normalizedOwner.preCompleteDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
+    throw new Error()
     val stub = name match {
       case name: TermName =>
         newModuleSymbol(normalizedOwner, name, EmptyFlags, EmptyFlags, stubCompleter, assocFile = file)
@@ -322,7 +322,7 @@ object Symbols {
      *  for all other symbols. To save memory, this method
      *  should be called only if class is a super class of some other class.
      */
-    def superId: Int = -1
+    def superId(implicit ctx: Context): Int = -1
 
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(implicit ctx: Context): this.type = {
@@ -403,7 +403,7 @@ object Symbols {
 
     private var superIdHint: Int = -1
 
-    def superId(implicit ctx: Context): Int = {
+    override def superId(implicit ctx: Context): Int = {
       val hint = superIdHint
       val key = this.typeConstructor
       if (hint >= 0 && hint <= ctx.lastSuperId && (ctx.classOfId(hint) eq key))
