@@ -67,9 +67,10 @@ object Erasure {
 
   def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
     val (n, elemtp) = tp.splitArray
-    if (elemtp <:< defn.NullType)
+    val elemCls = elemtp.classSymbol
+    if (elemCls.isSubClass(defn.NullClass))
       defn.ObjectArrayType
-    else if (elemtp <:< defn.ObjectType)
+    else if (elemCls.isSubClass(defn.ObjectClass) || elemCls.isPrimitiveValueClass)
       (erasure(elemtp) /: (0 until n))((erased, _) =>
         defn.ArrayType.appliedTo(erased))
     else if (elemtp.typeSymbol is JavaDefined)
