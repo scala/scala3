@@ -7,7 +7,7 @@ import java.io.IOException
 import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
 
-import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._
+import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
 import Positions._, TypedTrees.tpd._, TypedTrees.TreeOps
 import util.Texts._
@@ -114,10 +114,12 @@ object UnPickler {
     if (ost == NoType && (denot is ModuleClass)) {
       var module = denot.sourceModule
       if (!module.isTerm) {
-        println(s"$denot does not have a sourceModule ${denot.completer} of class ${denot.completer.getClass}")
-        // 2nd try: read form precomplete decls
-        module = denot.owner.preCompleteDecls.lookup(denot.name.toTermName)
-          .suchThat(_ is Module).symbol
+        // 2nd try: read from precomplete decls
+        module = denot.owner.preCompleteDecls.lookup(
+            denot.name.stripModuleClassSuffix.toTermName)
+            .suchThat(_ is Module).symbol
+        if (!module.isTerm) // !!! DEBUG
+          println(s"panic: $denot ${denot.owner} ${denot.owner.preCompleteDecls}")
       }
       ost = TermRef(denot.owner.thisType, module.asTerm)
     }
