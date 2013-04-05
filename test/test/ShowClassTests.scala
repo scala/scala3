@@ -6,6 +6,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.util.Texts._
+import NameOps._
 import dotty.tools.dotc.core.Decorators._
 import org.junit.Test
 
@@ -27,7 +28,7 @@ class ShowClassTests extends DottyTest {
     "scala.concurrent.Awaitable",
     "scala.concurrent.impl.Promise",
     // the following packages and classes cannot be read because
-    // theyt refer to external libraries which are not available
+    // they refer to external libraries which are not available
     // (apache.ant, usually)
     "scala.tools.ant",
     "scala.tools.partest.PartestTask")
@@ -52,7 +53,7 @@ class ShowClassTests extends DottyTest {
     showPackage(ctx.requiredPackage(path))
 
   def showClass(cls: Symbol)(implicit ctx: Context) = {
-    val path = cls.fullName.toString
+    val path = cls.fullName.stripModuleClassSuffix.toString
     if (blackList contains path)
       println(s"blacklisted: $path")
     else {
