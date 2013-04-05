@@ -684,7 +684,7 @@ class ClassfileParser(
 
         innerClasses.get(externalName) match {
           case Some(entry) =>
-            val outerName = entry.outerName.stripModuleSuffix
+            val outerName = entry.outerName.stripModuleClassSuffix
             val owner = classSymbol(outerName)
             val result = cctx.atPhaseNotLaterThanTyper { implicit ctx =>
               getMember(owner, innerName.toTypeName)
@@ -808,7 +808,7 @@ class ClassfileParser(
         val start = starts(index)
         if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
         val name = getExternalName(in.getChar(start + 1))
-        if (name.isModuleName) c = cctx.requiredModule(name.stripModuleSuffix.asTermName)
+        if (name.isModuleClassName) c = cctx.requiredModule(name.stripModuleClassSuffix.asTermName)
         else c = classNameToSymbol(name)
         values(index) = c
       }

@@ -5,7 +5,7 @@ import java.security.MessageDigest
 import Chars.isOperatorPart
 import scala.annotation.switch
 import scala.io.Codec
-import Names._, StdNames._, Contexts._, Symbols._
+import Names._, StdNames._, Contexts._, Symbols._, Flags._
 import Decorators.StringDecorator
 
 object NameOps {
@@ -60,7 +60,7 @@ object NameOps {
     def isSetterName = name endsWith SETTER_SUFFIX
     def isTraitSetterName = isSetterName && (name containsSlice TRAIT_SETTER_SEPARATOR)
     def isSingletonName = name endsWith SINGLETON_SUFFIX
-    def isModuleName = name endsWith MODULE_SUFFIX
+    def isModuleClassName = name endsWith MODULE_SUFFIX
 
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
@@ -106,8 +106,14 @@ object NameOps {
         name
     }
 
-    def stripModuleSuffix: Name =
-      if (isModuleName) name dropRight MODULE_SUFFIX.length else name
+    /** If name ends in module class suffix, drop it */
+    def stripModuleClassSuffix: Name =
+      if (isModuleClassName) name dropRight MODULE_SUFFIX.length else name
+
+    /** If flags is a ModuleClass but not a Package, add module class suffix */
+    def adjustIfModuleClass(flags: Flags.FlagSet): N =
+      if (flags is (ModuleClass, butNot = Package)) name.asTypeName.moduleClassName.asInstanceOf[N]
+      else name
 
     /** The expanded name of `name` relative to this class `base` with given `separator`
      */
@@ -171,6 +177,13 @@ object NameOps {
     tpnme.Long -> jtpnme.BoxedLong,
     tpnme.Float -> jtpnme.BoxedFloat,
     tpnme.Double -> jtpnme.BoxedDouble)
+
+  implicit class TypeNameDecorator(val name: TypeName) extends AnyVal {
+    import nme._
+
+    /** Convert this name to a module name */
+    def moduleClassName = name ++ tpnme.MODULE_SUFFIX
+  }
 
 
   implicit class TermNameDecorator(val name: TermName) extends AnyVal {

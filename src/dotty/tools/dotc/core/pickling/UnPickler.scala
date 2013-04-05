@@ -412,9 +412,10 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
     // symbols that were pickled with Pickler.writeSymInfo
     val nameref = readNat()
-    val name = at(nameref, readName)
+    val name0 = at(nameref, readName)
     val owner = readSymbolRef()
-    val flags = unpickleScalaFlags(readLongNat(), name.isTypeName)
+    val flags = unpickleScalaFlags(readLongNat(), name0.isTypeName)
+    val name = name0.adjustIfModuleClass(flags)
 
     def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
     def isModuleClassRoot = (name == moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)

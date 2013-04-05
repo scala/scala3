@@ -11,7 +11,7 @@ import Decorators._
 import Symbols._
 import Contexts._
 import SymDenotations._, util.Texts._
-import Types._, Annotations._, Positions._, StdNames._, Trees._
+import Types._, Annotations._, Positions._, StdNames._, Trees._, NameOps._
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
@@ -116,8 +116,10 @@ trait Symbols { this: Context =>
     val base = owner.thisType
     val module = newNakedSymbol[TermName](coord)
     val modcls = newNakedClassSymbol(coord, assocFile)
+    val modclsFlags = clsFlags | ModuleClassCreationFlags
+    val modclsName = name.toTypeName.adjustIfModuleClass(modclsFlags)
     val cdenot = SymDenotation(
-        modcls, owner, name.toTypeName, clsFlags | ModuleClassCreationFlags,
+        modcls, owner, modclsName, modclsFlags,
         infoFn(module, modcls), privateWithin)
     val mdenot = SymDenotation(
         module, owner, name, modFlags | ModuleCreationFlags,

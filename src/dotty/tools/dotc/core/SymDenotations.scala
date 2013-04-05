@@ -483,7 +483,7 @@ object SymDenotations {
      *  NoSymbol if this module does not exist.
      */
     final def companionModule(implicit ctx: Context): Symbol = {
-      owner.info.decl(name.toTermName)
+      owner.info.decl(name.stripModuleClassSuffix.toTermName)
         .suchThat(sym => (sym is Module) && sym.isCoDefinedWith(symbol))
         .symbol
     }
@@ -493,7 +493,7 @@ object SymDenotations {
      *  NoSymbol if this class does not exist.
      */
     final def companionClass(implicit ctx: Context): Symbol =
-      owner.info.decl(name.toTypeName)
+      owner.info.decl(name.stripModuleClassSuffix.toTypeName)
         .suchThat(sym => sym.isClass && sym.isCoDefinedWith(symbol))
         .symbol
 
@@ -634,6 +634,8 @@ object SymDenotations {
 
     // ----- denotation fields and accessors ------------------------------
 
+    if (initFlags is (Module, butNot = Package)) assert(name.isModuleClassName, this)
+
     /** The symbol asserted to have type ClassSymbol */
     def classSymbol: ClassSymbol = symbol.asInstanceOf[ClassSymbol]
 
@@ -731,7 +733,9 @@ object SymDenotations {
 
     final override def isSubClass(base: Symbol)(implicit ctx: Context) =
       isNonBottomSubClass(base) ||
-        base.isClass && ((symbol eq defn.NothingClass) || (symbol eq defn.NullClass))
+        base.isClass && (
+          (symbol eq defn.NothingClass) ||
+            (symbol eq defn.NullClass) && (base ne defn.NothingClass))
 
     private[this] var _memberFingerPrint: FingerPrint = FingerPrint.empty
 
@@ -886,7 +890,8 @@ object SymDenotations {
       }
 
       ctx.debugTraceIndented(s"$tp.baseType($this) ${tp.typeSymbol.fullName} ${this.fullName}") {
-        if (symbol.isStatic) symbol.typeConstructor
+        if (symbol.isStatic && tp.typeSymbol.isNonBottomSubClass(symbol))
+          symbol.typeConstructor
         else tp match {
           case tp: CachedType =>
             if (baseTypeValid != ctx.runId) {
