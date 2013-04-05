@@ -112,7 +112,7 @@ object Erasure {
       if (parent.dealias.typeSymbol == defn.ArrayClass)
         eraseArray(tp) match {
           case tp1: RefinedType if tp1.parent.dealias.typeSymbol == defn.ArrayClass =>
-            paramSignature(tp1.parent) ++ "[]"
+            paramSignature(tp1.refinedInfo) ++ "[]"
           case tp1 =>
             paramSignature(tp1)
         }
