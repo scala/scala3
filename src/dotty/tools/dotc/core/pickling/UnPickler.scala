@@ -110,19 +110,10 @@ object UnPickler {
       if (tsym.exists) tsym.setFlag(TypeParam)
       else denot.enter(tparam, decls)
     }
-    var ost = optSelfType
-    if (ost == NoType && (denot is ModuleClass)) {
-      var module = denot.sourceModule
-      if (!module.isTerm) {
-        // 2nd try: read from precomplete decls
-        module = denot.owner.preCompleteDecls.lookup(
-            denot.name.stripModuleClassSuffix.toTermName)
-            .suchThat(_ is Module).symbol
-        if (!module.isTerm) // !!! DEBUG
-          println(s"panic: $denot ${denot.owner} ${denot.owner.preCompleteDecls}")
-      }
-      ost = TermRef(denot.owner.thisType, module.asTerm)
-    }
+    val ost =
+      if ((optSelfType eq NoType) && (denot is ModuleClass))
+        TermRef(denot.owner.thisType, denot.sourceModule.asTerm)
+      else optSelfType
     denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)
   }
 }
@@ -468,8 +459,12 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         else if (name == tpnme.REFINE_CLASS)
           // create a type alias instead
           cctx.newSymbol(owner, name, flags, localMemberUnpickler, coord = start)
-        else
-          cctx.newClassSymbol(owner, name.asTypeName, flags, new LocalClassUnpickler(_), coord = start)
+        else {
+          val completer =
+            if (flags is ModuleClass) new LocalModuleClassUnpickler(_: Symbol)
+            else new LocalClassUnpickler(_: Symbol)
+          cctx.newClassSymbol(owner, name.asTypeName, flags, completer, coord = start)
+        }
       case MODULEsym | VALsym =>
         if (isModuleRoot) {
           moduleRoot setFlag flags
@@ -530,6 +525,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
   class LocalClassUnpickler(cls: Symbol) extends LocalUnpickler with LazyClassInfo {
     val decls = symScope(cls)
+  }
+
+  class LocalModuleClassUnpickler(cls: Symbol) extends LocalClassUnpickler(cls) with LazyModuleClassInfo {
+    def module = cls.owner.preCompleteDecls.lookup(
+      cls.name.stripModuleClassSuffix.toTermName).suchThat(_ is Module).symbol.asTerm
   }
 
   object localMemberUnpickler extends LocalUnpickler
