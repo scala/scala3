@@ -316,7 +316,7 @@ class ClassfileParser(
         if (sig(index) != ':') // guard against empty class bound
           ts += sig2type(tparams, skiptvs).objToAny
       }
-      TypeBounds.upper((defn.AnyType /: ts)(_ & _))
+      TypeBounds.upper(((NoType: Type) /: ts)(_ & _) orElse defn.AnyType)
     }
 
     var tparams = classTParams
