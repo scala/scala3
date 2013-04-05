@@ -41,10 +41,9 @@ object testnames {
 
   val local = "local".toTermName.toLocalName      //> local  : dotty.tools.dotc.core.Names.LocalName = local
   val local1 = local ++ "!"                       //> local1  : dotty.tools.dotc.core.testnames.local.ThisName = local!
-  local1.showDetailed                             //> res21: String = local!/L
+  local1                                          //> res21: dotty.tools.dotc.core.testnames.local.ThisName = local!
   val local2 = "Foo.".toTermName ++: local1       //> local2  : dotty.tools.dotc.core.Names.Name = Foo.local!
-  local2.showDetailed                             //> res22: String = Foo.local!/V
-  local1.dropRight(2).showDetailed                //> res23: String = loca/L
-  local1.fromName("Foo.".toTermName ++ local1).showDetailed
-                                                  //> res24: String = Foo.local!/L
+  local2                                          //> res22: dotty.tools.dotc.core.Names.Name = Foo.local!
+  local1.dropRight(2)                             //> res23: dotty.tools.dotc.core.Names.Name = loca
+  local1.fromName("Foo.".toTermName ++ local1)    //> res24: dotty.tools.dotc.core.testnames.local1.ThisName = Foo.local!
 }

@@ -9,7 +9,7 @@ import dotty.tools.dotc.util.Texts._
 import dotty.tools.dotc.core.Decorators._
 import org.junit.Test
 
-class ShowClassTests {
+class ShowClassTests extends DottyTest {
 
   private val blackList = List(
     // the following classes cannot be read correctly because they
@@ -69,22 +69,6 @@ class ShowClassTests {
     val cls = ctx.requiredClass(path.toTypeName)
     showClass(cls)
     showClass(cls.linkedClass)
-  }
-
-  implicit val ctx: Context = {
-    val base = Context.theBase
-    import base.settings._
-    val ctx = base.initialCtx.fresh
-      .withSetting(verbose, true)
-      .withSetting(debug, true)
-      //    .withSetting(settings.debugNames, true)
-      .withSetting(Ylogcp, true)
-      .withSetting(printtypes, true)
-      .withSetting(pageWidth, 90)
-      .withSetting(log, List("<some"))
-    println(ctx.settings)
-    base.definitions.init()
-    ctx
   }
 
   @Test

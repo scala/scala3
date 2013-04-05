@@ -5,10 +5,8 @@ object periodtest {
   
   import Periods._
   
-  val p1 = Period(1, 2, 7)                        //> p1  : dotty.tools.dotc.core.Periods.Period = dotty.tools.dotc.core.Periods$P
-                                                  //| eriod@4e5
-  val p2 = Period(1, 3, 7)                        //> p2  : dotty.tools.dotc.core.Periods.Period = dotty.tools.dotc.core.Periods$P
-                                                  //| eriod@4e4
+  val p1 = Period(1, 2, 7)                        //> p1  : dotty.tools.dotc.core.Periods.Period = Period(2..7, run = 1)
+  val p2 = Period(1, 3, 7)                        //> p2  : dotty.tools.dotc.core.Periods.Period = Period(3..7, run = 1)
   p1 contains p2                                  //> res0: Boolean = true
   p1 contains p1                                  //> res1: Boolean = true
   p2 contains p1                                  //> res2: Boolean = false

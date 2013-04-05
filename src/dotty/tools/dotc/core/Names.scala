@@ -79,7 +79,8 @@ object Names {
      */
     def fromName(name: Name): ThisName = fromChars(chrs, name.start, name.length)
 
-    override def toString = new String(chrs, start, length)
+    override def toString =
+      if (length == 0) "" else new String(chrs, start, length)
 
     def show(implicit ctx: Context): String = ctx.nameString(this)
 
