@@ -506,7 +506,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             assert(denot is (SuperAccessor | ParamAccessor), denot)
             def disambiguate(alt: Symbol) = { // !!! DEBUG
               cctx.debugTraceIndented(s"disambiguating ${denot.info} =:= ${ denot.owner.thisType.memberInfo(alt)} ${denot.owner}") {
-                denot.info =:= denot.owner.thisType.memberInfo(alt)
+                denot.info matches denot.owner.thisType.memberInfo(alt)
               }
             }
             val alias = readDisambiguatedSymbolRef(disambiguate).asTerm
