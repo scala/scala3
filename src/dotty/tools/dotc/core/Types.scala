@@ -295,7 +295,7 @@ object Types {
           // member in Super instead of Sub.
           // As an example of this in the wild, see
           // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
-          tp.cls.symbolicRef.findMember(name, pre, excluded)
+          tp.cls.symbolicRef.findMember(name, pre, excluded) orElse d
       case tp: TypeProxy =>
         tp.underlying.findMember(name, pre, excluded)
       case tp: ClassInfo =>
@@ -1162,6 +1162,8 @@ object Types {
   // --- AndType/OrType ---------------------------------------------------------------
 
   abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with ValueType {
+    assert(tp1.isValueType)
+    assert(tp2.isValueType)
 
     type This <: AndType
 

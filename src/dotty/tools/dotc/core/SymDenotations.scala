@@ -857,13 +857,7 @@ object SymDenotations {
     final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
 
       def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
-        case p :: ps1 =>
-          val bt2 = baseTypeOf(p)
-          val combined =
-            if (!bt.exists) bt2
-            else if (!bt2.exists) bt
-            else bt & bt2
-          foldGlb(combined, ps1)
+        case p :: ps1 => foldGlb(bt & baseTypeOf(p), ps1)
         case _ => bt
       }
 
