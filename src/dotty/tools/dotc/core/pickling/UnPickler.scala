@@ -645,7 +645,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
               else
                 pre,
               sym.asType)
-          } else TypeRef(pre, sym.name.asTypeName)
+          } else TypeRef(pre, sym.name.asTypeName).withDenot(sym)
         val args = until(end, readTypeRef)
 //        if (args.nonEmpty) { // DEBUG
 //          println(s"reading app type $tycon $args")
