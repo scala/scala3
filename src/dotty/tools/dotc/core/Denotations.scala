@@ -475,7 +475,7 @@ object Denotations {
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
       if (denots.containsSig(signature)) NoDenotation else this
     def disjointAsSeenFrom(denots: PreDenotation, pre: Type)(implicit ctx: Context): SingleDenotation =
-      if (signature == NotAMethod) filterDisjoint(denots).asSeenFrom(pre)
+      if (isType) filterDisjoint(denots).asSeenFrom(pre)
       else asSeenFrom(pre).filterDisjoint(denots)
     final def filterExcluded(excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
       if (excluded == EmptyFlags) this
