@@ -255,6 +255,17 @@ class Definitions(implicit ctx: Context) {
 
   // ----- Value class machinery ------------------------------------------
 
+  lazy val ScalaValueClasses: collection.Set[Symbol] = Set(
+    UnitClass,
+    BooleanClass,
+    ByteClass,
+    ShortClass,
+    CharClass,
+    IntClass,
+    LongClass,
+    FloatClass,
+    DoubleClass)
+
   private[this] val _boxedClass = mutable.Map[Symbol, Symbol]()
   private[this] val _unboxedClass = mutable.Map[Symbol, Symbol]()
 
@@ -265,8 +276,6 @@ class Definitions(implicit ctx: Context) {
   val unboxedClass: collection.Map[Symbol, Symbol] = _boxedClass
   val javaTypeToValueClass: collection.Map[Class[_], Symbol] = _javaTypeToValueClass
   val valueClassToJavaType: collection.Map[Symbol, Class[_]] = _valueClassToJavaType
-
-  lazy val ScalaValueClasses: collection.Set[Symbol] = boxedClass.keySet
 
   private def valueClassSymbol(name: String, boxed: ClassSymbol, jtype: Class[_]): ClassSymbol = {
     val vcls = requiredClass(name)
@@ -306,6 +315,7 @@ class Definitions(implicit ctx: Context) {
     if (!_isInitialized) {
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses
+      val vclasses = ScalaValueClasses
       _isInitialized = true
     }
 }
