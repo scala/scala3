@@ -16,8 +16,8 @@ class DottyTest {
     import base.settings._
     val ctx = base.initialCtx.fresh
       .withSetting(verbose, true)
-      .withSetting(debug, true)
-      .withSetting(debugTrace, true)
+//      .withSetting(debug, true)
+//      .withSetting(debugTrace, true)
       .withSetting(Ylogcp, true)
       .withSetting(printtypes, true)
       .withSetting(pageWidth, 90)
