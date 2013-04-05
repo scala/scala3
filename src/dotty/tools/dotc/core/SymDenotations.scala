@@ -680,26 +680,26 @@ object SymDenotations {
     private[this] var _superClassBits: BitSet = null
 
     private def computeBases(implicit ctx: Context): Unit = {
+      if (_baseClasses == Nil) throw new CyclicReference(this)
+      _baseClasses = Nil
       val seen = new mutable.BitSet
       val locked = new mutable.BitSet
       def addBaseClasses(bcs: List[ClassSymbol], to: List[ClassSymbol])
           : List[ClassSymbol] = bcs match {
         case bc :: bcs1 =>
+          val bcs1added = addBaseClasses(bcs1, to)
           val id = bc.superId
-          if (seen contains id) to
-          else if (locked contains id) throw new CyclicReference(symbol)
+          if (seen contains id) bcs1added
           else {
-            locked += id
-            val bcs1added = addBaseClasses(bcs1, to)
             seen += id
-            if (bcs1added eq bcs1) bcs else bc :: bcs1added
+            bc :: bcs1added
           }
         case nil =>
           to
       }
       def addParentBaseClasses(ps: List[Type], to: List[ClassSymbol]): List[ClassSymbol] = ps match {
         case p :: ps1 =>
-          addBaseClasses(p.baseClasses, addParentBaseClasses(ps1, to))
+          addParentBaseClasses(ps1, addBaseClasses(p.baseClasses, to))
         case nil =>
           to
       }
@@ -853,7 +853,13 @@ object SymDenotations {
     final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
 
       def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
-        case p :: ps1 => foldGlb(bt & baseTypeOf(p), ps1)
+        case p :: ps1 =>
+          val bt2 = baseTypeOf(p)
+          val combined =
+            if (!bt.exists) bt2
+            else if (!bt2.exists) bt
+            else bt & bt2
+          foldGlb(combined, ps1)
         case _ => bt
       }
 
@@ -875,20 +881,6 @@ object SymDenotations {
           baseTypeOf(tp1) & baseTypeOf(tp2)
         case OrType(tp1, tp2) =>
           baseTypeOf(tp1) | baseTypeOf(tp2)
-/*
- *
-        case tp: ClassInfo =>
-          def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
-            case p :: ps1 => foldGlb(bt & baseTypeOf(p), ps1)
-            case _ => bt
-          }
-          if (tp.cls eq symbol)
-            tp.typeConstructor
-          else if (tp.cls.classDenot.superClassBits contains symbol.superId)
-            tp.rebase(foldGlb(NoType, tp.classParents))
-          else
-            NoType
-*/
         case _ =>
           NoType
       }
@@ -907,7 +899,7 @@ object SymDenotations {
               basetp = computeBaseTypeOf(tp)
               baseTypeCache.put(tp, basetp)
             } else if (basetp == NoPrefix) {
-              throw new CyclicReference(symbol)
+              throw new CyclicReference(this)
             }
             basetp
           case _ =>
