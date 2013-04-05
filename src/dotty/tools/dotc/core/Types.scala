@@ -157,6 +157,7 @@ object Types {
     final def typeSymbol(implicit ctx: Context): Symbol = this match {
       case tp: TypeRef => tp.symbol
       case tp: ClassInfo => tp.cls
+      case ThisType(cls) => cls
       case tp: TypeProxy => tp.underlying.typeSymbol
       case _ => NoSymbol
     }
