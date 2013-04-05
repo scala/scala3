@@ -240,8 +240,8 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
           termMap(idx) |= termFlag.bits
           typeMap(idx) |= typeFlag.bits
         case Some(commonFlag: FlagSet) =>
-          termMap(idx) |= commonFlag.bits
-          typeMap(idx) |= commonFlag.bits
+          termMap(idx) |= commonFlag.toTermFlags.bits
+          typeMap(idx) |= commonFlag.toTypeFlags.bits
         case _ =>
       }
 
