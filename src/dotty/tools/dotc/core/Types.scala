@@ -161,6 +161,31 @@ object Types {
       case _ => NoSymbol
     }
 
+    /** The least non-trait class of which this type is a subtype. NoSymbol is none exists. */
+    final def classSymbol(implicit ctx: Context): Symbol = this match {
+      case tp: ClassInfo =>
+        if (tp.cls is Trait)
+          tp.classParents match {
+            case p :: ps => p.classSymbol
+            case nil => NoSymbol
+          }
+        else tp.cls
+      case tp: TypeProxy =>
+        tp.underlying.typeSymbol
+      case AndType(l, r) =>
+        val lsym = l.classSymbol
+        val rsym = r.classSymbol
+        if (lsym.isSubClass(rsym)) lsym
+        else if (rsym.isSubClass(lsym)) rsym
+        else NoSymbol
+      case OrType(l, r) =>
+        val lsym = l.classSymbol
+        val rsym = r.classSymbol
+        lsym.info.baseClasses.find(rsym.isSubClass).getOrElse(NoSymbol)
+      case _ =>
+        NoSymbol
+    }
+
     /** The term symbol associated with the type */
     final def termSymbol(implicit ctx: Context): Symbol = this match {
       case tp: TermRef => tp.symbol
@@ -669,7 +694,7 @@ object Types {
      */
     final def splitArray(implicit ctx: Context): (Int, Type) = {
       def recur(n: Int, tp: Type): (Int, Type) = tp match {
-        case RefinedType(tycon, _) if tycon.typeSymbol == defn.ArrayType =>
+        case RefinedType(tycon, _) if tycon.dealias.typeSymbol == defn.ArrayClass =>
           tp.typeArgs match {
             case arg :: Nil => recur(n + 1, arg)
             case _ => (n, tp)
