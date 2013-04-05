@@ -346,6 +346,12 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       def adjust(denot: Denotation) = {
         val denot1 = denot.disambiguate(p)
         val sym = denot1.symbol
+        if (denot.exists && !denot1.exists) { // !!!DEBUG
+          val alts = denot.alternatives map (d => d+":"+d.info+"/"+d.signature)
+          System.err.println(s"!!! disambiguation failure: $alts")
+          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => d+":"+d.info+"/"+d.signature)
+          System.err.println(s"!!! all members: $members")
+        }
         if (tag == EXTref) sym else sym.moduleClass
       }
 
@@ -500,8 +506,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             assert(!(denot is SuperAccessor), denot)
           } else {
             assert(denot is (SuperAccessor | ParamAccessor), denot)
-            def disambiguate(alt: Symbol) =
-              denot.info =:= denot.owner.thisType.memberInfo(alt)
+            def disambiguate(alt: Symbol) = { // !!! DEBUG
+              cctx.debugTraceIndented(s"disambiguating ${denot.info} =:= ${ denot.owner.thisType.memberInfo(alt)} ${denot.owner}") {
+                denot.info =:= denot.owner.thisType.memberInfo(alt)
+              }
+            }
             val alias = readDisambiguatedSymbolRef(disambiguate).asTerm
             denot.addAnnotation(Annotation.makeAlias(alias))
           }
