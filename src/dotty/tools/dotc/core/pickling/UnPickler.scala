@@ -459,7 +459,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           cctx.newSymbol(owner, name, flags, localMemberUnpickler, coord = start)
         else {
           def completer(cls: Symbol) = new LocalClassUnpickler(cls) {
-            override def module =
+            override def sourceModule =
               if (flags is ModuleClass)
                 cls.owner.preCompleteDecls.lookup(
                   cls.name.stripModuleClassSuffix.toTermName).suchThat(_ is Module).symbol
@@ -533,9 +533,9 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
   class LocalClassUnpickler(cls: Symbol) extends ClassCompleter(symScope(cls), localMemberUnpickler)
 
-  def rootClassUnpickler(start: Coord, cls: Symbol, modul: Symbol) =
+  def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol) =
     new ClassCompleter(symScope(cls), new AtStartUnpickler(start)) with SymbolLoaders.SecondCompleter {
-      override def module = modul
+      override def sourceModule = module
     }
 
   /** Convert

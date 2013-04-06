@@ -422,7 +422,7 @@ object SymDenotations {
     /** The class implementing this module, NoSymbol if not applicable. */
     final def moduleClass: Symbol = _info match {
       case info: TypeRefBySym if this is ModuleVal => info.fixedSym
-      case info: LazyModuleInfo => info.mclass
+      case info: ModuleCompleter => info.mclass
       case _ => NoSymbol
     }
 
@@ -431,7 +431,7 @@ object SymDenotations {
       case ClassInfo(_, _, _, _, selfType: TermRefBySym) if this is ModuleClass =>
         selfType.fixedSym
       case info: ClassCompleter =>
-        info.module
+        info.sourceModule
       case _ =>
         NoSymbol
     }
@@ -982,12 +982,12 @@ object SymDenotations {
   class ClassCompleter(val decls: Scope, underlying: LazyType = NoCompleter)
       extends LazyType {
     def complete(denot: SymDenotation): Unit = underlying.complete(denot)
-    def module: Symbol = NoSymbol
+    def sourceModule: Symbol = NoSymbol
   }
 
-  class ModuleClassCompleter(modul: Symbol, underlying: LazyType = NoCompleter)
+  class ModuleClassCompleter(module: Symbol, underlying: LazyType = NoCompleter)
     extends ClassCompleter(newScope, underlying) {
-      override def module = modul
+      override def sourceModule = module
     }
 
   object NoCompleter extends LazyType {
@@ -999,7 +999,7 @@ object SymDenotations {
    *  Completion of modules is always completion of the underlying
    *  module class, followed by copying the relevant fields to the module.
    */
-  class LazyModuleInfo(val mclass: ClassSymbol)(implicit cctx: CondensedContext) extends LazyType {
+  class ModuleCompleter(val mclass: ClassSymbol)(implicit cctx: CondensedContext) extends LazyType {
     def complete(denot: SymDenotation): Unit = {
       val from = denot.moduleClass.denot.asClass
       denot.setFlag(from.flags.toTermFlags & RetainedModuleValFlags)

@@ -124,7 +124,7 @@ trait Symbols { this: Context =>
     val mdenot = SymDenotation(
         module, owner, name, modFlags | ModuleCreationFlags,
         if (cdenot.isCompleted) TypeRef(owner.thisType, name.toTypeName, modcls)
-        else new LazyModuleInfo(modcls)(condensed))
+        else new ModuleCompleter(modcls)(condensed))
     module.denot = mdenot
     modcls.denot = cdenot
     module

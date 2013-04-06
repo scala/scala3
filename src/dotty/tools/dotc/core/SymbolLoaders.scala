@@ -141,16 +141,16 @@ class SymbolLoaders {
 
   /** Load contents of a package
    */
-  class PackageLoader(override val module: TermSymbol, classpath: ClassPath)(implicit val cctx: CondensedContext)
+  class PackageLoader(override val sourceModule: TermSymbol, classpath: ClassPath)(implicit val cctx: CondensedContext)
       extends ClassCompleter(newScope) with SymbolLoader {
     def description = "package loader " + classpath.name
 
     def doComplete(root: SymDenotation) {
       assert(root is PackageClass, root)
       val pre = root.owner.thisType
-      root.info = ClassInfo(pre, root.symbol.asClass, Nil, root.preCompleteDecls, TermRef(pre, module))
-      if (!module.isCompleted)
-        module.completer.complete(module)
+      root.info = ClassInfo(pre, root.symbol.asClass, Nil, root.preCompleteDecls, TermRef(pre, sourceModule))
+      if (!sourceModule.isCompleted)
+        sourceModule.completer.complete(sourceModule)
       if (!root.isRoot) {
         for (classRep <- classpath.classes) {
           initializeFromClassPath(root.symbol, classRep)
