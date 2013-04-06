@@ -450,19 +450,21 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         postReadOp = () => atReadPos(index(infoRef), readTypeParams) // force reading type params early, so they get entered in the right order.
         if (isClassRoot)
           completeRoot(
-            classRoot,
-            new ClassRootUnpickler(start, classRoot.symbol))
+            classRoot, rootClassUnpickler(start, classRoot.symbol, NoSymbol))
         else if (isModuleClassRoot)
           completeRoot(
-            moduleClassRoot,
-            new ModuleClassRootUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule.asTerm))
+            moduleClassRoot, rootClassUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule))
         else if (name == tpnme.REFINE_CLASS)
           // create a type alias instead
           cctx.newSymbol(owner, name, flags, localMemberUnpickler, coord = start)
         else {
-          val completer =
-            if (flags is ModuleClass) new LocalModuleClassUnpickler(_: Symbol)
-            else new LocalClassUnpickler(_: Symbol)
+          def completer(cls: Symbol) = new LocalClassUnpickler(cls) {
+            override def module =
+              if (flags is ModuleClass)
+                cls.owner.preCompleteDecls.lookup(
+                  cls.name.stripModuleClassSuffix.toTermName).suchThat(_ is Module).symbol
+              else NoSymbol
+          }
           cctx.newClassSymbol(owner, name.asTypeName, flags, completer, coord = start)
         }
       case MODULEsym | VALsym =>
@@ -523,27 +525,18 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     }
   }
 
-  class LocalClassUnpickler(cls: Symbol) extends LocalUnpickler with LazyClassInfo {
-    val decls = symScope(cls)
-  }
-
-  class LocalModuleClassUnpickler(cls: Symbol) extends LocalClassUnpickler(cls) with LazyModuleClassInfo {
-    def module = cls.owner.preCompleteDecls.lookup(
-      cls.name.stripModuleClassSuffix.toTermName).suchThat(_ is Module).symbol.asTerm
+  class AtStartUnpickler(start: Coord) extends LocalUnpickler {
+    override def startCoord(denot: SymDenotation): Coord = start
   }
 
   object localMemberUnpickler extends LocalUnpickler
 
-  class ClassRootUnpickler(start: Coord, cls: Symbol)
-      extends LocalClassUnpickler(cls) with SymbolLoaders.SecondCompleter {
-    override def startCoord(denot: SymDenotation): Coord = start
-  }
+  class LocalClassUnpickler(cls: Symbol) extends ClassCompleter(symScope(cls), localMemberUnpickler)
 
-  class ModuleClassRootUnpickler(start: Coord, cls: Symbol, val module: TermSymbol)
-      extends LocalClassUnpickler(cls) with SymbolLoaders.SecondCompleter with LazyModuleClassInfo {
-    override def startCoord(denot: SymDenotation): Coord = start
-  }
-
+  def rootClassUnpickler(start: Coord, cls: Symbol, modul: Symbol) =
+    new ClassCompleter(symScope(cls), new AtStartUnpickler(start)) with SymbolLoaders.SecondCompleter {
+      override def module = modul
+    }
 
   /** Convert
    *    tp { type name = sym } forSome { sym >: L <: H }

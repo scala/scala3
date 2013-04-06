@@ -35,10 +35,7 @@ class ClassfileParser(
   protected var currentClassName: Name = _      // JVM name of the current class
   protected var classTParams = Map[Name,Symbol]()
 
-  classRoot.info = new LazyClassInfo {
-    val decls = instanceScope
-    def complete(denot: SymDenotation) = unsupported("complete")
-  }
+  classRoot.info = new ClassCompleter(instanceScope)
 
   private def currentIsTopLevel = classRoot.owner is Flags.PackageClass
 
@@ -527,19 +524,6 @@ class ClassfileParser(
           new ClassfileLoader(file),
           FlagTranslation.classFlags(jflags),
           getScope(jflags))
-      // println(s"entered inner class of ${getOwner(jflags)}: ${entry.originalName} from file $file") // !!! DEBUG
- /* alternative:
-      val owner = getOwner(jflags)
-      val name = entry.originalName
-      val completer = new ClassfileLoader(file)
-      val flags = FlagTranslation.classFlags(jflags)
-      val cls = cctx.newClassSymbol(owner, name.toTypeName, flags, completer, assocFile = file)
-      def moduleCompleterFn(modul: TermSymbol, cls: ClassSymbol): LazyType =
-        new ModuleClassCompleter(modul, completer)
-      getScope(jflags).enter(cls)
-      val module = cctx.newModuleSymbol(owner, name.toTermName, Flags.EmptyFlags, Flags.EmptyFlags, /*???*/ moduleCompleterFn, assocFile = file)
-      getScope(jflags).enter(module)
- */
     }
 
     for (entry <- innerClasses.values) {

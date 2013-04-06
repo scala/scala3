@@ -47,9 +47,10 @@ class SymbolLoaders {
   def enterModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
       modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: CondensedContext): Symbol = {
-    def moduleCompleterFn(modul: TermSymbol, cls: ClassSymbol): LazyType =
-      new ModuleClassCompleter(modul, completer)
-    val module = ctx.newModuleSymbol(owner, name.toTermName, modFlags, clsFlags, moduleCompleterFn, assocFile = completer.sourceFileOrNull)
+    val module = ctx.newModuleSymbol(
+      owner, name.toTermName, modFlags, clsFlags,
+      (modul, _) => new ModuleClassCompleter(modul, completer),
+      assocFile = completer.sourceFileOrNull)
     enterNew(owner, module, completer, scope)
   }
 
@@ -140,11 +141,9 @@ class SymbolLoaders {
 
   /** Load contents of a package
    */
-  class PackageLoader(val module: TermSymbol, classpath: ClassPath)(implicit val cctx: CondensedContext)
-      extends SymbolLoader with LazyModuleClassInfo {
+  class PackageLoader(override val module: TermSymbol, classpath: ClassPath)(implicit val cctx: CondensedContext)
+      extends ClassCompleter(newScope) with SymbolLoader {
     def description = "package loader " + classpath.name
-
-    val decls = newScope
 
     def doComplete(root: SymDenotation) {
       assert(root is PackageClass, root)
@@ -205,7 +204,7 @@ class SymbolLoaders {
 /** A lazy type that completes itself by calling parameter doComplete.
  *  Any linked modules/classes or module classes are also initialized.
  */
-abstract class SymbolLoader extends LazyType {
+trait SymbolLoader extends LazyType {
   implicit val cctx: CondensedContext
 
   /** Load source or class file for `root`, return */
@@ -272,17 +271,11 @@ class ClassfileLoader(val classfile: AbstractFile)(implicit val cctx: CondensedC
           cctx.newClassSymbol(
             rootDenot.owner, rootDenot.name.asTypeName, Synthetic,
               _ => NoType).classDenot
-        else {
-          def modClassCompleter(modul: TermSymbol, modcls: ClassSymbol) =
-            new LazyModuleClassInfo {
-              val decls = newScope
-              def module = modul
-              def complete(denot: SymDenotation) = unsupported("complete")
-            }
+        else
           cctx.newModuleSymbol(
             rootDenot.owner, rootDenot.name.toTermName, Synthetic, Synthetic,
-            modClassCompleter).moduleClass.denot.asClass
-        }
+            (module, _) => new ModuleClassCompleter(module))
+            .moduleClass.denot.asClass
     }
     if (rootDenot is ModuleClass) (linkedDenot, rootDenot)
     else (rootDenot, linkedDenot)
@@ -298,14 +291,4 @@ class SourcefileLoader(val srcfile: AbstractFile)(implicit val cctx: CondensedCo
   def description = "source file "+ srcfile.toString
   override def sourceFileOrNull = srcfile
   def doComplete(root: SymDenotation): Unit = unsupported("doComplete")
-}
-
-class ModuleClassCompleter(val module: TermSymbol, classCompleter: SymbolLoader)(implicit val cctx: CondensedContext)
-  extends SymbolLoader with LazyModuleClassInfo {
-  val decls = newScope
-  def description: String = classCompleter.description
-  override def sourceFileOrNull = classCompleter.sourceFileOrNull
-  def doComplete(root: SymDenotation): Unit = {
-    classCompleter.doComplete(root)
-  }
 }

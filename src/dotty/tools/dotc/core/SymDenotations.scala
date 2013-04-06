@@ -160,7 +160,7 @@ object SymDenotations {
      *  @pre: this is a class
      */
     protected[core] final def preCompleteDecls: Scope = _info match {
-      case cinfo: LazyClassInfo => cinfo.decls
+      case cinfo: ClassCompleter => cinfo.decls
       case cinfo: ClassInfo => cinfo.decls
       case cinfo: LazyType => completeFrom(cinfo); preCompleteDecls
       case cinfo => throw new AssertionError(s"unexpected class completer for $debugString: ${cinfo.getClass}")
@@ -178,7 +178,7 @@ object SymDenotations {
      *  Drops package objects. Represents terms in the owner chain by a simple `separator`.
      */
     def fullName(separator: Char)(implicit ctx: Context): Name =
-      if (this == NoSymbol || owner == NoSymbol || owner.isEffectiveRoot) name
+      if (symbol == NoSymbol || owner == NoSymbol || owner.isEffectiveRoot) name
       else {
         var owner = this
         var sep = ""
@@ -430,7 +430,7 @@ object SymDenotations {
     final def sourceModule: Symbol = _info match {
       case ClassInfo(_, _, _, _, selfType: TermRefBySym) if this is ModuleClass =>
         selfType.fixedSym
-      case info: LazyModuleClassInfo =>
+      case info: ClassCompleter =>
         info.module
       case _ =>
         NoSymbol
@@ -979,19 +979,19 @@ object SymDenotations {
     def apply(module: TermSymbol, modcls: ClassSymbol) = this
   }
 
-  /** A lazy type for classes that contains an initial pre-complete scope.
-   *  Typically this is for type parameters
-   */
-  trait LazyClassInfo extends LazyType {
-    val decls: Scope
+  class ClassCompleter(val decls: Scope, underlying: LazyType = NoCompleter)
+      extends LazyType {
+    def complete(denot: SymDenotation): Unit = underlying.complete(denot)
+    def module: Symbol = NoSymbol
   }
 
-  /** A lazy type for module classes that points back to the source module.
-   *  Needed so that `sourceModule` works before completion.
-   */
-  trait LazyModuleClassInfo extends LazyClassInfo {
-    def module: TermSymbol
-    override def toString = s"LazyModuleClassInfo($module)"
+  class ModuleClassCompleter(modul: Symbol, underlying: LazyType = NoCompleter)
+    extends ClassCompleter(newScope, underlying) {
+      override def module = modul
+    }
+
+  object NoCompleter extends LazyType {
+    override def complete(denot: SymDenotation): Unit = unsupported("complete")
   }
 
   /** A lazy type for modules that points to the module class.
