@@ -288,11 +288,15 @@ object Scopes {
 
     override def foreach[U](p: Symbol => U): Unit = toList foreach p
 
-    final def filteredScope(p: Symbol => Boolean)(implicit ctx: Context): MutableScope = {
-      val unfiltered = toList
-      val filtered = unfiltered filterConserve p
-      if (filtered eq unfiltered) this
-      else newScopeWith(filtered: _*)
+    override def filter(p: Symbol => Boolean): List[Symbol] = {
+      var syms: List[Symbol] = Nil
+      var e = lastEntry
+      while ((e ne null) && e.owner == this) {
+        val sym = e.sym
+        if (p(sym)) syms = sym :: syms
+        e = e.prev
+      }
+      syms
     }
   }
 
