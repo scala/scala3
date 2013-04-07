@@ -49,7 +49,7 @@ class SymbolLoaders {
       modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: CondensedContext): Symbol = {
     val module = ctx.newModuleSymbol(
       owner, name.toTermName, modFlags, clsFlags,
-      (modul, _) => new ModuleClassCompleter(modul, completer),
+      (modul, _) => new ModuleClassCompleter(modul, newScope, completer),
       assocFile = completer.sourceFileOrNull)
     enterNew(owner, module, completer, scope)
   }
@@ -142,13 +142,13 @@ class SymbolLoaders {
   /** Load contents of a package
    */
   class PackageLoader(override val sourceModule: TermSymbol, classpath: ClassPath)(implicit val cctx: CondensedContext)
-      extends ClassCompleter(newScope) with SymbolLoader {
+      extends ClassCompleter(newScope) with SymbolLoader { // !!! TODO: ClassCompleter needed?
     def description = "package loader " + classpath.name
 
     def doComplete(root: SymDenotation) {
       assert(root is PackageClass, root)
       val pre = root.owner.thisType
-      root.info = ClassInfo(pre, root.symbol.asClass, Nil, root.preCompleteDecls, TermRef(pre, sourceModule))
+      root.info = ClassInfo(pre, root.symbol.asClass, Nil, root.decls, TermRef(pre, sourceModule))
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
       if (!root.isRoot) {
@@ -192,6 +192,7 @@ class SymbolLoaders {
         dest.enter(member)
       }
     }
+    // !!! TODO info.decls -> decls
     // enter decls of parent classes
     for (p <- container.info.parents) {
       if (p.symbol != defn.ObjectClass) {

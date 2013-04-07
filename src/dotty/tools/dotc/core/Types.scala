@@ -297,15 +297,18 @@ object Types {
           // As an example of this in the wild, see
           // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
           tp.cls.symbolicRef.findMember(name, pre, excluded) orElse d
+      case tp: TypeRef =>
+        tp.denot.findMember(name, pre, excluded)
       case tp: TypeProxy =>
         tp.underlying.findMember(name, pre, excluded)
       case tp: ClassInfo =>
-        val candidates = tp.cls.membersNamed(name)
-        candidates.filterExcluded(excluded).asSeenFrom(pre).toDenot
+        tp.cls.findMember(name, pre, excluded)
       case AndType(l, r) =>
         l.findMember(name, pre, excluded) & r.findMember(name, pre, excluded)
       case OrType(l, r) =>
         (l.findMember(name, pre, excluded) | r.findMember(name, pre, excluded))(pre)
+      case NoType =>
+        NoDenotation
     } /* !!! DEBUG ensuring { denot =>
       denot.alternatives forall (_.symbol.name == name)
     }*/
@@ -397,7 +400,7 @@ object Types {
       case _ => NoType
     }
 
-    final def & (that: Type)(implicit ctx: Context): Type =
+    def & (that: Type)(implicit ctx: Context): Type =
       ctx.glb(this, that)
 
     def | (that: Type)(implicit ctx: Context): Type =
@@ -492,12 +495,12 @@ object Types {
       case _ => TypeAlias(this)
     }
 
-    /** The type parameter with given `name`. This tries first `preCompleteDecls`
+    /** The type parameter with given `name`. This tries first `decls`
      *  in order not to provoke a cylce by forcing the info. If that yields
      *  no symbol it tries `member` as an alternative.
      */
     def typeParamNamed(name: TypeName)(implicit ctx: Context): Symbol =
-      typeSymbol.preCompleteDecls.lookup(name) orElse member(name).symbol
+      typeSymbol.decls.lookup(name) orElse member(name).symbol
 
     /** The disjunctive normal form of this type.
      *  This collects a set of alternatives, each alternative consisting
@@ -569,7 +572,7 @@ object Types {
         case arg :: args1 =>
           if (tparams.isEmpty) {
             println(s"applied type mismatch: $this $args, typeParams = $typeParams, tsym = ${this.typeSymbol.debugString}") // !!! DEBUG
-            println(s"precomplete decls = ${typeSymbol.preCompleteDecls.toList.map(_.denot).mkString("\n  ")}")
+            println(s"precomplete decls = ${typeSymbol.decls.toList.map(_.denot).mkString("\n  ")}")
           }
           val tparam = tparams.head
           val tp1 = RefinedType(tp, tparam.name, arg.toRHS(tparam))
@@ -1002,12 +1005,8 @@ object Types {
   }
 
   final class TermRefBySym(prefix: Type, name: TermName, val fixedSym: TermSymbol)
-    extends TermRef(prefix, name) with HasFixedSym {
-    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef =
-      if (prefix.baseType(fixedSym.owner).exists) TermRef(prefix, fixedSym)
-      else TermRef(prefix, name, fixedSym.signature)
- }
-
+    extends TermRef(prefix, name) with HasFixedSym
+    
   final class TermRefWithSignature(prefix: Type, name: TermName, val sig: Signature) extends TermRef(prefix, name) {
     override def signature(implicit ctx: Context) = sig
     override def loadDenot(implicit ctx: Context): Denotation =
@@ -1026,11 +1025,7 @@ object Types {
   }
 
   final class TypeRefBySym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol)
-    extends TypeRef(prefix, name) with HasFixedSym {
-    override def newLikeThis(prefix: Type)(implicit ctx: Context): TypeRef =
-      if (prefix.baseType(fixedSym.owner).exists) TypeRef(prefix, fixedSym)
-      else TypeRef(prefix, name)
- }
+    extends TypeRef(prefix, name) with HasFixedSym
 
   final class CachedTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name)
   final class CachedTypeRef(prefix: Type, name: TypeName) extends TypeRef(prefix, name)
@@ -1484,6 +1479,14 @@ object Types {
 
     def |(that: TypeBounds)(implicit ctx: Context): TypeBounds =
       TypeBounds(this.lo & that.lo, this.hi | that.hi)
+
+    override def & (that: Type)(implicit ctx: Context) = that match {
+      case that: TypeBounds => this & that
+    }
+
+    override def | (that: Type)(implicit ctx: Context) = that match {
+      case that: TypeBounds => this | that
+    }
 
     def map(f: Type => Type)(implicit ctx: Context): TypeBounds =
       TypeBounds(f(lo), f(hi))

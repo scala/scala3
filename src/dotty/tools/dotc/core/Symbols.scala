@@ -182,7 +182,7 @@ trait Symbols { this: Context =>
     def stubCompleter = new StubInfo()(condensed)
     val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
     println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
-    println(s"decls = ${normalizedOwner.preCompleteDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
+    println(s"decls = ${normalizedOwner.decls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     throw new Error()
     val stub = name match {
       case name: TermName =>
@@ -376,7 +376,7 @@ object Symbols {
 
     override def toString: String =
       if (lastDenot == null) s"Naked$prefixString#$id"
-      else lastDenot.toString
+      else lastDenot.toString +"#"+id // !!! DEBUG
 
     def toText(implicit ctx: Context): Text = ctx.toText(this)
 

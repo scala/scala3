@@ -489,8 +489,8 @@ object TypedTrees {
         case _ => true
       }
       def noLeaksInClass(sym: ClassSymbol): Boolean =
-        (sym.classInfo.parents forall noLeaksIn) &&
-        (sym.classInfo.decls.toList forall (t => noLeaksIn(t.info)))
+        (sym.info.parents forall noLeaksIn) &&
+        (sym.decls.toList forall (t => noLeaksIn(t.info)))
       check(noLeaksIn(tree.tpe))
     case If(cond, thenp, elsep) =>
       check(cond.isValue); check(thenp.isValue); check(elsep.isValue)

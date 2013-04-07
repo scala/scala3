@@ -342,7 +342,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         if (denot.exists && !denot1.exists) { // !!!DEBUG
           val alts = denot.alternatives map (d => d+":"+d.info+"/"+d.signature)
           System.err.println(s"!!! disambiguation failure: $alts")
-          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => d+":"+d.info+"/"+d.signature)
+          val members = denot.alternatives.head.symbol.owner.decls.toList map (d => d+":"+d.info+"/"+d.signature)
           System.err.println(s"!!! all members: $members")
         }
         if (tag == EXTref) sym else sym.moduleClass
@@ -461,8 +461,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           def completer(cls: Symbol) = new LocalClassUnpickler(cls) {
             override def sourceModule =
               if (flags is ModuleClass)
-                cls.owner.preCompleteDecls.lookup(
-                  cls.name.stripModuleClassSuffix.toTermName).suchThat(_ is Module).symbol
+                cls.owner.decls.lookup(cls.name.stripModuleClassSuffix.toTermName)
+                  .suchThat(_ is Module).symbol
               else NoSymbol
           }
           cctx.newClassSymbol(owner, name.asTypeName, flags, completer, coord = start)
@@ -621,7 +621,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             // and also for the inner Transform class in all views. We fix it by
             // replacing the this with the appropriate super.
             if (sym.owner != cls) {
-              val overriding = cls.preCompleteDecls.lookup(sym.name)
+              val overriding = cls.decls.lookup(sym.name)
               if (overriding.exists && overriding != sym) {
                 val base = pre.baseType(sym.owner)
                 assert(base.exists)
@@ -641,7 +641,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           } else TypeRef(pre, sym.name.asTypeName).withDenot(sym)
         val args = until(end, readTypeRef)
 //        if (args.nonEmpty) { // DEBUG
-//          println(s"reading app type $tycon $args")
+//           println(s"reading app type $tycon $args")
 //        }
         tycon.appliedTo(args)
       case TYPEBOUNDStpe =>

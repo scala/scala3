@@ -99,6 +99,11 @@ class ShowClassTests extends DottyTest {
   }
 
   @Test
+  def loadScalaCollection() = {
+    showPackage(ctx.requiredPackage("scala.collection"))
+  }
+
+  @Test
   def loadClassWithPrivateInnerAndSubSelf() = {
     showClasses("scala.tools.nsc.settings.ScalaSettings")
     showClasses("scala.tools.jline.console.history.MemoryHistory")

@@ -156,14 +156,12 @@ object SymDenotations {
       case Nil => Nil
     }
 
-    /** The symbols defined in this class when the class is not yet completed.
-     *  @pre: this is a class
+    /** The symbols defined in this class.
      */
-    protected[core] final def preCompleteDecls: Scope = _info match {
+    final def decls(implicit ctx: Context): Scope = _info match {
       case cinfo: ClassCompleter => cinfo.decls
-      case cinfo: ClassInfo => cinfo.decls
-      case cinfo: LazyType => completeFrom(cinfo); preCompleteDecls
-      case cinfo => throw new AssertionError(s"unexpected class completer for $debugString: ${cinfo.getClass}")
+      case cinfo: LazyType => completeFrom(cinfo); decls // complete-once
+      case _ => info.decls
     }
 
     // ------ Names ----------------------------------------------
@@ -651,7 +649,7 @@ object SymDenotations {
     }
 
     private def computeTypeParams(implicit ctx: Context): List[TypeSymbol] =
-      preCompleteDecls.toList.filter(sym =>
+      decls.filter(sym =>
         (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
 
     // ------ class-specific operations -----------------------------------
@@ -824,7 +822,7 @@ object SymDenotations {
 
     private def computeMembersNamed(name: Name)(implicit ctx: Context): PreDenotation =
       if (!classSymbol.hasChildren || (memberFingerPrint contains name)) {
-        val ownDenots = info.decls.denotsNamed(name)
+        val ownDenots = decls.denotsNamed(name)
         if (debugTrace)  // DEBUG
           println(s"$this.member($name), ownDenots = $ownDenots")
         def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
@@ -850,6 +848,9 @@ object SymDenotations {
         }
         collect(ownDenots, classInfo.classParents)
       } else NoDenotation
+
+    override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation =
+      membersNamed(name).filterExcluded(excluded).asSeenFrom(pre).toDenot
 
     private[this] var baseTypeCache: java.util.HashMap[CachedType, Type] = null
     private[this] var baseTypeValid: RunId = NoRunId
@@ -946,7 +947,7 @@ object SymDenotations {
     override def primaryConstructor(implicit ctx: Context): Symbol = {
       val cname =
         if (this is Trait | ImplClass) nme.TRAIT_CONSTRUCTOR else nme.CONSTRUCTOR
-      info.decls.denotsNamed(cname).first.symbol
+      decls.denotsNamed(cname).first.symbol
     }
   }
 
@@ -985,8 +986,8 @@ object SymDenotations {
     def sourceModule: Symbol = NoSymbol
   }
 
-  class ModuleClassCompleter(module: Symbol, underlying: LazyType = NoCompleter)
-    extends ClassCompleter(newScope, underlying) {
+  class ModuleClassCompleter(module: Symbol, decls: Scope = newScope, underlying: LazyType = NoCompleter)
+    extends ClassCompleter(decls, underlying) {
       override def sourceModule = module
     }
 

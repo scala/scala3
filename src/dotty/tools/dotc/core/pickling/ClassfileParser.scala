@@ -36,6 +36,7 @@ class ClassfileParser(
   protected var classTParams = Map[Name,Symbol]()
 
   classRoot.info = new ClassCompleter(instanceScope)
+  moduleRoot.info = new ModuleClassCompleter(staticModule, staticScope)
 
   private def currentIsTopLevel = classRoot.owner is Flags.PackageClass
 
@@ -341,7 +342,7 @@ class ClassfileParser(
         val s = cctx.newSymbol(
           owner, expname, Flags.TypeParamCreationFlags,
           typeParamCompleter(index), coord = indexCoord(index))
-        if (owner.isClass) owner.asClass.enter(s, owner.preCompleteDecls)
+        if (owner.isClass) owner.asClass.enter(s, owner.decls)
         tparams = tparams + (tpname -> s)
         sig2typeBounds(tparams, skiptvs = true)
         newTParams += s
@@ -377,7 +378,7 @@ class ClassfileParser(
       case ENUM_TAG =>
         val t = pool.getType(index)
         val n = pool.getName(in.nextChar)
-        val s = t.typeSymbol.companionModule.info.decls.lookup(n)
+        val s = t.typeSymbol.companionModule.decls.lookup(n)
         assert(s != NoSymbol, t)
         if (skip) None else Some(Literal(Constant(s)))
       case ARRAY_TAG =>

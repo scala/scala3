@@ -22,6 +22,7 @@ class DottyTest {
       .withSetting(printtypes, true)
       .withSetting(pageWidth, 90)
       .withSetting(log, List("<some"))
+      .withSetting(uniqid, true)
     println(ctx.settings)
     base.definitions.init()
     ctx

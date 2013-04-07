@@ -66,7 +66,7 @@ class Definitions(implicit ctx: Context) {
   lazy val AnyRefAlias: TypeSymbol = {
     val anyRef = ctx.newSymbol(
       ScalaPackageClass, tpnme.AnyRef, EmptyFlags, TypeAlias(ObjectClass.typeConstructor))
-    ScalaPackageClass.enter(anyRef, ScalaPackageClass.preCompleteDecls)
+    ScalaPackageClass.enter(anyRef, ScalaPackageClass.decls)
     anyRef
   }
   lazy val AnyClass: ClassSymbol = ctx.newCompleteClassSymbol(

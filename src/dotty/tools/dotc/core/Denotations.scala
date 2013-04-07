@@ -163,6 +163,14 @@ object Denotations {
     /** Does this denotation have an alternative that satisfies the predicate `p`? */
     def hasAltWith(p: Symbol => Boolean): Boolean
 
+    /** Find member of this denotation with given name and
+     *  produce a denotation that contains the type of the member
+     *  as seen from given prefix `pre`. Exclude all members that have
+     *  flags in `excluded` from consideration.
+     */
+    def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation =
+      info.findMember(name, pre, excluded)
+
     /** If this denotation is overloaded, filter with given predicate.
      *  If result is still overloaded throw a TypeError.
      *  Note: disambiguate is slightly different from suchThat in that
