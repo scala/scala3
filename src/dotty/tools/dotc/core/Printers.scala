@@ -96,9 +96,6 @@ object Printers {
         try {
           ctx.toTextRecursions += 1
           op
-//        } catch {
-//          case ex: CyclicReference =>
-//            s"<cycle involving ${ex.denot}>"
         } finally {
           ctx.toTextRecursions -= 1
         }

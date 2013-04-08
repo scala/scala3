@@ -6,10 +6,10 @@ object showClass extends ShowClassTests {
 
   def main(args: Array[String]) = {
     for (arg <- args) showPackage(ctx.requiredPackage(arg))
-      showClasses("scala.tools.jline.WindowsTerminal")
-//   showPackage("scala.reflect")
-//    showPackage("scala.collection")
-//    showPackage("scala")
+//      showClasses("dotty.tools.dotc.core.pickling.AbstractFileReader")
+//      showPackage("scala.reflect")
+//      showPackage("scala.collection")
+    showPackage("dotty")
     println("done")
   }
 }

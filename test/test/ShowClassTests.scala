@@ -31,7 +31,8 @@ class ShowClassTests extends DottyTest {
     // they refer to external libraries which are not available
     // (apache.ant, usually)
     "scala.tools.ant",
-    "scala.tools.partest.PartestTask")
+    "scala.tools.partest.PartestTask",
+    "dotty.tools.dotc.core.pickling.AbstractFileReader")
 
   def showPackage(pkg: TermSymbol)(implicit ctx: Context): Unit = {
     val path = pkg.fullName.toString
@@ -79,6 +80,11 @@ class ShowClassTests extends DottyTest {
   }
 
   @Test
+  def loadJavaClasses() = {
+    showPackage("scala.tools.jline")
+  }
+
+  @Test
   def loadMoreClasses() = {
     showClasses("scala.collection.JavaConversions")
     showClasses("scala.collection.convert.Wrappers")
@@ -110,8 +116,8 @@ class ShowClassTests extends DottyTest {
   }
 
   @Test
-  def loadJlineHistory() = {
-    showPackage("scala.tools.jline.console.history")
+  def loadDotty() = {
+    showPackage("dotty")
   }
 
   @Test

@@ -403,7 +403,7 @@ object SymDenotations {
      *  accessed via prefix `pre`?
      */
     def membersNeedAsSeenFrom(pre: Type)(implicit ctx: Context) =
-      !(  (this is PackageClass)
+      !(  this.isStaticOwner
        || ctx.erasedTypes && symbol != defn.ArrayClass
        || (pre eq thisType)
        )
