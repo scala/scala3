@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Types._, Symbols._, Contexts._, Scopes._, Names._, NameOps._, Flags._
-import Constants._, Annotations._, StdNames._, Denotations._, Trees._
+import Constants._, Annotations._, StdNames._, Denotations._, SymDenotations._, Trees._
 import util.Texts._
 import java.lang.Integer.toOctalString
 import scala.annotation.switch
@@ -32,7 +32,7 @@ object Printers {
   abstract class Printer {
 
     /** The name, possibley with with namespace suffix if debugNames is set:
-     * /L for local names, /V for other term names, /T for type names
+     *  /L for local names, /V for other term names, /T for type names
      */
     def nameString(name: Name): String
 
@@ -162,7 +162,7 @@ object Printers {
           val parent :: (refined: List[RefinedType]) =
             refinementChain(tp).reverse
           toTextLocal(parent) ~ "{" ~
-          Text(refined.map(toTextRefinement), "; ").close ~ "}"
+            Text(refined.map(toTextRefinement), "; ").close ~ "}"
         case AndType(tp1, tp2) =>
           (prec parenthesize AndPrec) {
             toText(tp1, AndPrec) ~ " & " ~ toText(tp2, AndPrec)
@@ -195,18 +195,21 @@ object Printers {
         case tp: PolyType =>
           (prec parenthesize GlobalPrec) {
             "[" ~
-            Text(
-              (tp.paramNames, tp.paramBounds).zipped
-                .map((name, bounds) => nameString(name) ~ toTextGlobal(bounds)),
-              ", ") ~
-            "]" ~ toTextGlobal(tp.resultType)
+              Text(
+                (tp.paramNames, tp.paramBounds).zipped
+                  .map((name, bounds) =>
+                    nameString(polyParamName(name)) ~ toTextGlobal(bounds)),
+                ", ") ~
+                "]" ~ toTextGlobal(tp.resultType)
           }
         case PolyParam(pt, n) =>
-          nameString(pt.paramNames(n))
+          nameString(polyParamName(pt.paramNames(n)))
         case AnnotatedType(annot, tpe) =>
           toTextLocal(tpe) ~ " " ~ toText(annot)
       }
     }.close
+
+    protected def polyParamName(name: TypeName): TypeName = name
 
     /** Render type within highest precedence */
     protected def toTextLocal(tp: Type) = toText(tp, DotPrec)
@@ -273,21 +276,30 @@ object Printers {
             " = " ~ lo.toText
           else
             (if (lo == defn.NothingType) Text() else " >: " ~ lo.toText) ~
-            (if (hi == defn.AnyType)     Text() else " <: " ~ hi.toText)
+              (if (hi == defn.AnyType) Text() else " <: " ~ hi.toText)
         case ClassInfo(pre, cdenot, cparents, decls, optSelfType) =>
           val preText = toTextLocal(pre)
+          val (tparams, otherDecls) = decls.toList partition treatAsTypeParam
+          val tparamsText =
+            if (tparams.isEmpty) Text() else ("[" ~ dclsText(tparams) ~ "]").close
           val selfText =
             if (optSelfType.exists)
               "this: " ~ toText(optSelfType, LeftArrowPrec) ~ " =>"
             else Text()
-          val parentsText = Text(cparents.map(toText(_, WithPrec)), " with ")
-          val declsText = if (decls.isEmpty) Text() else dclsText(decls.toList)
-          " extends " ~ parentsText ~ "{" ~ selfText ~ declsText ~
-          "} at " ~ preText
+          val parentsText = Text(cparents.map(p =>
+            toText(reconstituteParent(cdenot, p), WithPrec)), " with ")
+          val trueDecls = otherDecls.filterNot(treatAsTypeArg)
+          val declsText = if (trueDecls.isEmpty) Text() else dclsText(trueDecls)
+          tparamsText ~ " extends " ~ parentsText ~ "{" ~ selfText ~ declsText ~
+            "} at " ~ preText
         case _ =>
           ": " ~ toTextGlobal(tp)
       }
     }
+
+    protected def treatAsTypeParam(sym: Symbol): Boolean = false
+    protected def treatAsTypeArg(sym: Symbol): Boolean = false
+    protected def reconstituteParent(cdenot: ClassDenotation, parent: Type): Type = parent
 
     /** String representation of symbol's kind. */
     def kindString(sym: Symbol): String = {
@@ -321,7 +333,7 @@ object Printers {
       if (flags is JavaInterface) "interface"
       else if ((flags is Trait) && !(flags is ImplClass)) "trait"
       else if (sym.isClass) "class"
-      else if (sym.isType && !(flags is ExpandedTypeParam)) "type"
+      else if (sym.isType) "type"
       else if (flags is Mutable) "var"
       else if (flags is Package) "package"
       else if (flags is Module) "object"
@@ -343,7 +355,7 @@ object Printers {
 
     def dclText(sym: Symbol): Text =
       (toTextFlags(sym) ~~ keyString(sym) ~~
-       (varianceString(sym) ~ nameString(sym)) ~ toTextRHS(sym.info)).close
+        (varianceString(sym) ~ nameString(sym)) ~ toTextRHS(sym.info)).close
 
     def toText(sym: Symbol): Text =
       (kindString(sym) ~~ {
@@ -419,7 +431,11 @@ object Printers {
 
     override def nameString(name: Name): String = name.toString
 
-    override protected def simpleNameString(sym: Symbol) = sym.originalName.decode
+    override protected def simpleNameString(sym: Symbol) = {
+      var name = sym.originalName
+      if (sym is ModuleClass) name = name.stripModuleClassSuffix
+      name.decode
+    }
 
     override def toTextPrefix(tp: Type): Text = controlled {
       tp match {
@@ -454,30 +470,43 @@ object Printers {
         }
       def toTextTuple(args: List[Type]): Text =
         "(" ~ Text(args.map(toTextGlobal(_)), ", ") ~ ")"
-      try {
-        tp match {
-          case tp: RefinedType =>
-            val args = tp.typeArgs
-            if (args.nonEmpty) {
-              val tycon = tp.unrefine
-              val cls = tycon.typeSymbol
-              if (cls.typeParams.length == args.length) {
-                if (cls == defn.RepeatedParamClass) return toTextLocal(args.head) ~ "*"
-                if (cls == defn.ByNameParamClass) return "=> " ~ toTextGlobal(args.head)
-                if (defn.FunctionClasses contains cls) return toTextFunction(args)
-                if (defn.TupleClasses contains cls) return toTextTuple(args)
-              }
-              return toTextLocal(tycon) ~ "[" ~
-                     Text(args.map(toTextGlobal(_)), ", ") ~ "]"
+      tp match {
+        case tp: RefinedType =>
+          val args = tp.typeArgs
+          if (args.nonEmpty) {
+            val tycon = tp.unrefine
+            val cls = tycon.typeSymbol
+            if (cls.typeParams.length == args.length) {
+              if (cls == defn.RepeatedParamClass) return toTextLocal(args.head) ~ "*"
+              if (cls == defn.ByNameParamClass) return "=> " ~ toTextGlobal(args.head)
+              if (defn.FunctionClasses contains cls) return toTextFunction(args)
+              if (defn.TupleClasses contains cls) return toTextTuple(args)
             }
-          case _ =>
-        }
-      } catch {
-        case ex: CyclicReference =>
-          "<cylic reference during display>" ~ super.toText(tp, prec)
+            return (toTextLocal(tycon) ~ "[" ~
+              Text(args.map(toTextGlobal(_)), ", ") ~ "]").close
+          }
+        case tp @ TypeRef(pre, name) =>
+          if (tp.symbol is TypeParam) return nameString(tp.symbol)
+        case _ =>
       }
       super.toText(tp, prec)
     }
+
+    override protected def polyParamName(name: TypeName): TypeName =
+      name.unexpandedName()
+
+    override protected def treatAsTypeParam(sym: Symbol): Boolean = sym is TypeParam
+
+    override protected def treatAsTypeArg(sym: Symbol) =
+      sym.isType && (sym is ProtectedLocal) &&
+        (ctx.traceIndented(s"$sym.allOverriddenSymbols")(sym.allOverriddenSymbols) exists (_ is TypeParam))
+
+    override protected def reconstituteParent(cdenot: ClassDenotation, parent: Type): Type =
+      (parent /: parent.classSymbol.typeParams) { (parent, tparam) =>
+        val targSym = cdenot.decls.lookup(tparam.name)
+        if (targSym.exists) RefinedType(parent, targSym.name, targSym.info)
+        else parent
+      }
 
     override def kindString(sym: Symbol) = {
       val flags = sym.unsafeFlags
@@ -489,8 +518,17 @@ object Printers {
       else super.kindString(sym)
     }
 
-    override def toTextFlags(sym: Symbol) =
-      Text(sym.flags.flagStrings.filterNot(_.startsWith("<")) map stringToText, " ")
+    override protected def keyString(sym: Symbol): String = {
+      val flags = sym.unsafeFlags
+      if (sym.isType && (flags is ExpandedTypeParam)) ""
+      else super.keyString(sym)
+    }
+
+    override def toTextFlags(sym: Symbol) = {
+      var flags = sym.flags
+      if (flags is TypeParam) flags = flags &~ Protected
+      Text(flags.flagStrings.filterNot(_.startsWith("<")) map stringToText, " ")
+    }
 
     override def toText(denot: Denotation): Text = toText(denot.symbol)
   }
