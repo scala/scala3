@@ -500,7 +500,7 @@ object Types {
      *  no symbol it tries `member` as an alternative.
      */
     def typeParamNamed(name: TypeName)(implicit ctx: Context): Symbol =
-      typeSymbol.decls.lookup(name) orElse member(name).symbol
+      classSymbol.decls.lookup(name) orElse member(name).symbol
 
     /** The disjunctive normal form of this type.
      *  This collects a set of alternatives, each alternative consisting
@@ -1006,7 +1006,7 @@ object Types {
 
   final class TermRefBySym(prefix: Type, name: TermName, val fixedSym: TermSymbol)
     extends TermRef(prefix, name) with HasFixedSym
-    
+
   final class TermRefWithSignature(prefix: Type, name: TermName, val sig: Signature) extends TermRef(prefix, name) {
     override def signature(implicit ctx: Context) = sig
     override def loadDenot(implicit ctx: Context): Denotation =
