@@ -135,6 +135,10 @@ object Contexts {
     protected def checkPrefix_=(checkPrefix: Boolean) = _checkPrefix = checkPrefix
     def checkPrefix: Boolean = _checkPrefix
 
+    private var _moreProperties: Map[String, Any] = _
+    protected def moreProperties_=(moreProperties: Map[String, Any]) = _moreProperties = moreProperties
+    def moreProperties: Map[String, Any] = _moreProperties
+
     /** Leave message in diagnostics buffer if it exists */
     def diagnose(str: => String) =
       for (sb <- diagnostics) {
@@ -180,6 +184,7 @@ object Contexts {
           // tree is not preserved in condensed
           .withReporter(reporter)
           .withDiagnostics(diagnostics)
+          .withMoreProperties(moreProperties)
       _condensed
     }
 
@@ -214,6 +219,9 @@ object Contexts {
     def withReporter(reporter: Reporter): this.type = { this.reporter = reporter; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
     def withCheckPrefix(checkPrefix: Boolean): this.type = { this.checkPrefix = checkPrefix; this }
+    def withMoreProperties(moreProperties: Map[String, Any]): this.type = { this.moreProperties = moreProperties; this }
+    
+    def withProperty(prop: (String, Any)): this.type = withMoreProperties(moreProperties + prop)
 
     def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
 
@@ -239,6 +247,7 @@ object Contexts {
     tree = EmptyTree
     reporter = new ConsoleReporter
     diagnostics = None
+    moreProperties = Map.empty
   }
 
   object NoContext extends Context {
