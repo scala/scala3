@@ -277,7 +277,7 @@ object Printers {
           else
             (if (lo == defn.NothingType) Text() else " >: " ~ lo.toText) ~
               (if (hi == defn.AnyType) Text() else " <: " ~ hi.toText)
-        case ClassInfo(pre, cdenot, cparents, decls, optSelfType) =>
+        case ClassInfo(pre, cls, cparents, decls, optSelfType) =>
           val preText = toTextLocal(pre)
           val (tparams, otherDecls) = decls.toList partition treatAsTypeParam
           val tparamsText =
@@ -287,7 +287,7 @@ object Printers {
               "this: " ~ toText(optSelfType, LeftArrowPrec) ~ " =>"
             else Text()
           val parentsText = Text(cparents.map(p =>
-            toText(reconstituteParent(cdenot, p), WithPrec)), " with ")
+            toText(reconstituteParent(cls, p), WithPrec)), " with ")
           val trueDecls = otherDecls.filterNot(treatAsTypeArg)
           val declsText = if (trueDecls.isEmpty) Text() else dclsText(trueDecls)
           tparamsText ~ " extends " ~ parentsText ~ "{" ~ selfText ~ declsText ~
@@ -299,7 +299,7 @@ object Printers {
 
     protected def treatAsTypeParam(sym: Symbol): Boolean = false
     protected def treatAsTypeArg(sym: Symbol): Boolean = false
-    protected def reconstituteParent(cdenot: ClassDenotation, parent: Type): Type = parent
+    protected def reconstituteParent(cls: ClassSymbol, parent: Type): Type = parent
 
     /** String representation of symbol's kind. */
     def kindString(sym: Symbol): String = {
@@ -501,9 +501,9 @@ object Printers {
       sym.isType && (sym is ProtectedLocal) &&
         (ctx.traceIndented(s"$sym.allOverriddenSymbols")(sym.allOverriddenSymbols) exists (_ is TypeParam))
 
-    override protected def reconstituteParent(cdenot: ClassDenotation, parent: Type): Type =
+    override protected def reconstituteParent(cls: ClassSymbol, parent: Type): Type =
       (parent /: parent.classSymbol.typeParams) { (parent, tparam) =>
-        val targSym = cdenot.decls.lookup(tparam.name)
+        val targSym = cls.decls.lookup(tparam.name)
         if (targSym.exists) RefinedType(parent, targSym.name, targSym.info)
         else parent
       }
