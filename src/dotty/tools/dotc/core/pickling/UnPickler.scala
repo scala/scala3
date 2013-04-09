@@ -531,10 +531,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
   object localMemberUnpickler extends LocalUnpickler
 
-  class LocalClassUnpickler(cls: Symbol) extends ClassCompleter(symScope(cls), localMemberUnpickler)
+  class LocalClassUnpickler(cls: Symbol)
+    extends ClassCompleterWithDecls(symScope(cls), localMemberUnpickler)
 
   def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol) =
-    new ClassCompleter(symScope(cls), new AtStartUnpickler(start)) with SymbolLoaders.SecondCompleter {
+    new ClassCompleterWithDecls(symScope(cls), new AtStartUnpickler(start)) with SymbolLoaders.SecondCompleter {
       override def sourceModule = module
     }
 

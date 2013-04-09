@@ -159,7 +159,7 @@ object SymDenotations {
     /** The symbols defined in this class.
      */
     final def decls(implicit ctx: Context): Scope = _info match {
-      case cinfo: ClassCompleter => cinfo.decls
+      case cinfo: ClassCompleterWithDecls => cinfo.decls
       case cinfo: LazyType => completeFrom(cinfo); decls // complete-once
       case _ => info.decls
     }
@@ -430,7 +430,7 @@ object SymDenotations {
     final def sourceModule: Symbol = _info match {
       case ClassInfo(_, _, _, _, selfType: TermRefBySym) if this is ModuleClass =>
         selfType.fixedSym
-      case info: ClassCompleter =>
+      case info: ClassCompleterWithDecls =>
         info.sourceModule
       case _ =>
         NoSymbol
@@ -982,17 +982,24 @@ object SymDenotations {
     def apply(module: TermSymbol, modcls: ClassSymbol) = this
   }
 
-  class ClassCompleter(val decls: Scope, underlying: LazyType = NoCompleter)
+  /** A lazy type for completing a class that already has a scope with all
+   *  declarations in the class.
+   */
+  class ClassCompleterWithDecls(val decls: Scope, underlying: LazyType = NoCompleter)
       extends LazyType {
     def complete(denot: SymDenotation): Unit = underlying.complete(denot)
     def sourceModule: Symbol = NoSymbol
   }
 
-  class ModuleClassCompleter(module: Symbol, decls: Scope = newScope, underlying: LazyType = NoCompleter)
-    extends ClassCompleter(decls, underlying) {
+  /** A lazy type for completing a class that already has a scope with all
+   *  declarations in the class.
+   */
+  class ModuleClassCompleterWithDecls(module: Symbol, decls: Scope, underlying: LazyType = NoCompleter)
+    extends ClassCompleterWithDecls(decls, underlying) {
       override def sourceModule = module
     }
 
+  /** A missing completer */
   object NoCompleter extends LazyType {
     override def complete(denot: SymDenotation): Unit = unsupported("complete")
   }

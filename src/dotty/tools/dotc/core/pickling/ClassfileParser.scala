@@ -35,8 +35,8 @@ class ClassfileParser(
   protected var currentClassName: Name = _      // JVM name of the current class
   protected var classTParams = Map[Name,Symbol]()
 
-  classRoot.info = new ClassCompleter(instanceScope)
-  moduleRoot.info = new ModuleClassCompleter(staticModule, staticScope)
+  classRoot.info = new ClassCompleterWithDecls(instanceScope)
+  moduleRoot.info = new ModuleClassCompleterWithDecls(staticModule, staticScope)
 
   private def currentIsTopLevel = classRoot.owner is Flags.PackageClass
 
