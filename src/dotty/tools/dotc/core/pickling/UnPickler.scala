@@ -634,10 +634,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val tycon =
           if (isLocal(sym)) {
             TypeRef(
-              if ((pre eq NoPrefix) && (sym is TypeParam))
-                sym.owner.thisType
-              else
-                pre,
+              if ((pre eq NoPrefix) && (sym is TypeParam)) sym.owner.thisType
+              else pre,
               sym.asType)
           } else TypeRef(pre, sym.name.asTypeName).withDenot(sym)
         val args = until(end, readTypeRef)

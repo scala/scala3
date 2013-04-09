@@ -1430,7 +1430,7 @@ object Types {
 
     def typeConstructor(implicit ctx: Context): Type =
       if ((cls is PackageClass) || cls.owner.isTerm) TypeRef(prefix, cls)
-      else TypeRef(prefix, cls.name)
+      else TypeRef(prefix, cls.name).withDenot(cls.denot.asSeenFrom(prefix))
 
     // cached because baseType needs parents
     private var parentsCache: List[TypeRef] = null
