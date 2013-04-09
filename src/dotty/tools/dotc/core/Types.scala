@@ -1043,9 +1043,7 @@ object Types {
     def apply(prefix: Type, name: TermName)(implicit ctx: Context): TermRef =
       unique(new CachedTermRef(prefix, name))
     def apply(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRefBySym =
-      apply(prefix, sym.name, sym)
-    def apply(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRefBySym =
-      unique(new TermRefBySym(prefix, name, sym))
+      unique(new TermRefBySym(prefix, sym.name, sym))
     def apply(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRefWithSignature =
       unique(new TermRefWithSignature(prefix, name, sig))
   }

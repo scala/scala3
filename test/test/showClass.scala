@@ -12,6 +12,6 @@ object showClass extends ShowClassTests {
 
     showPackage("dotty")
     showPackage("scala")
-    println("done")
+     println("done")
   }
 }
