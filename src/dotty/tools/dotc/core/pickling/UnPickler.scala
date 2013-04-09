@@ -675,7 +675,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case POLYtpe =>
         val restpe = readTypeRef()
         val typeParams = until(end, readSymbolRef)
-        if (typeParams.nonEmpty) TempPolyType(typeParams, restpe)
+        def deExpr(tp: Type) = tp match {
+          case ExprType(restpe) => restpe
+          case tp => tp
+        }
+        if (typeParams.nonEmpty) TempPolyType(typeParams, deExpr(restpe))
         else ExprType(restpe)
       case EXISTENTIALtpe =>
         val restpe = readTypeRef()
