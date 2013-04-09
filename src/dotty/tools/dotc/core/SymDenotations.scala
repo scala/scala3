@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Periods._, Contexts._, Symbols._, Denotations._, Names._, Annotations._
+import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
 import Types._, Flags._, Decorators._, Transformers._, StdNames._, Scopes._
 import NameOps._
 import Scopes.Scope
@@ -167,8 +167,10 @@ object SymDenotations {
     // ------ Names ----------------------------------------------
 
     /** The name with which the denoting symbol was created */
-    final def originalName =
-      if (this is ExpandedName) initial.asSymDenotation.name else name
+    final def originalName = {
+      val d = initial.asSymDenotation
+      if (d is ExpandedName) d.name.unexpandedName() else d.name
+    }
 
     /** The encoded full path name of this denotation, where outer names and inner names
      *  are separated by `separator` characters.
@@ -534,7 +536,7 @@ object SymDenotations {
 
     /** All symbols overriden by this denotation. */
     final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
-      info.baseClasses.tail.iterator map overriddenSymbol filter (_.exists)
+      owner.info.baseClasses.tail.iterator map overriddenSymbol filter (_.exists)
 
     /** The class or term symbol up to which this symbol is accessible,
      *  or RootClass if it is public.  As java protected statics are
