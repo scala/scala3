@@ -9,6 +9,8 @@ object showClass extends ShowClassTests {
       showClasses("scala.collection.immutable.List")
 //      showPackage("scala.reflect")
 //      showPackage("scala.collection")
+
+    showPackage("dotty")
     showPackage("scala")
     println("done")
   }

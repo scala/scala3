@@ -34,7 +34,12 @@ class ShowClassTests extends DottyTest {
     "scala.tools.partest.PartestTask",
     "dotty.tools.dotc.core.pickling.AbstractFileReader")
 
-  def showPackage(pkg: TermSymbol)(implicit ctx: Context): Unit = {
+  def doTwice(test: Context => Unit)(implicit ctx: Context): Unit = {
+    test(ctx.fresh.withSetting(ctx.base.settings.debug, true))
+    test(ctx.fresh.withSetting(ctx.base.settings.debug, false))
+  }
+
+  def showPackage(pkg: TermSymbol)(implicit ctx: Context): Unit = doTwice { implicit ctx =>
     val path = pkg.fullName.toString
     if (blackList contains path)
       println(s"blacklisted package: $path")
@@ -66,7 +71,7 @@ class ShowClassTests extends DottyTest {
     }
   }
 
-  def showClasses(path: String)(implicit ctx: Context): Unit = {
+  def showClasses(path: String)(implicit ctx: Context): Unit = doTwice { implicit ctx =>
     println(s"showing file $path")
     val cls = ctx.requiredClass(path.toTypeName)
     showClass(cls)
