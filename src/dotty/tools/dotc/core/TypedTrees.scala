@@ -288,7 +288,7 @@ object TypedTrees {
     def SharedTree(tree: Tree): SharedTree =
       Trees.SharedTree(tree).withType(tree.tpe)
 
-    def refType(sym: Symbol)(implicit ctx: Context) = NamedType(sym.owner.thisType, sym)
+    def refType(sym: Symbol)(implicit ctx: Context) = NamedType.withSym(sym.owner.thisType, sym)
 
     // ------ Creating typed equivalents of trees that exist only in untyped form -------
 
@@ -305,7 +305,7 @@ object TypedTrees {
       Apply(
         Select(
           New(tp),
-          TermRef(tp.normalizedPrefix, tp.typeSymbol.primaryConstructor.asTerm)),
+          TermRef.withSym(tp.normalizedPrefix, tp.typeSymbol.primaryConstructor.asTerm)),
         args)
 
     /** An object def
@@ -363,7 +363,7 @@ object TypedTrees {
         }
       Block(
         DefDef(meth, body) :: Nil,
-        Typed(Ident(TermRef(NoPrefix, meth)), TypeTree(funtpe)))
+        Typed(Ident(TermRef.withSym(NoPrefix, meth)), TypeTree(funtpe)))
     }
 
     private class FindLocalDummyAccumulator(cls: ClassSymbol)(implicit ctx: Context) extends TreeAccumulator[Symbol] {

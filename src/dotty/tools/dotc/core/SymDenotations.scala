@@ -575,7 +575,7 @@ object SymDenotations {
      *  @throws ClassCastException is this is not a type
      */
     final def symbolicRef(implicit ctx: Context): TypeRef =
-      TypeRef(owner.thisType, symbol.asType)
+      TypeRef.withSym(owner.thisType, symbol.asType)
 
     /** The variance of this type parameter as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter

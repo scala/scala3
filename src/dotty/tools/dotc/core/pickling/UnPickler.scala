@@ -112,7 +112,7 @@ object UnPickler {
     }
     val ost =
       if ((optSelfType eq NoType) && (denot is ModuleClass))
-        TermRef(denot.owner.thisType, denot.sourceModule.asTerm)
+        TermRef.withSym(denot.owner.thisType, denot.sourceModule.asTerm)
       else optSelfType
     denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)
   }
@@ -603,8 +603,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case SINGLEtpe =>
         val pre = readTypeRef()
         val sym = readDisambiguatedSymbolRef(_.isParameterless)
-        if (isLocal(sym)) TermRef(pre, sym.asTerm)
-        else TermRef(pre, sym.name.asTermName, NotAMethod).withDenot(sym)
+        if (isLocal(sym)) TermRef.withSym(pre, sym.asTerm)
+        else TermRef.withSig(pre, sym.name.asTermName, NotAMethod).withDenot(sym)
       case SUPERtpe =>
         val thistpe = readTypeRef()
         val supertpe = readTypeRef()
@@ -633,9 +633,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         }
         val tycon =
           if (isLocal(sym)) {
-            TypeRef(
-              if ((pre eq NoPrefix) && (sym is TypeParam)) sym.owner.thisType
-              else pre,
+            TypeRef.withSym(
+              if ((pre eq NoPrefix) && (sym is TypeParam)) sym.owner.thisType else pre,
               sym.asType)
           } else TypeRef(pre, sym.name.asTypeName).withDenot(sym)
         val args = until(end, readTypeRef)

@@ -148,7 +148,7 @@ class SymbolLoaders {
     def doComplete(root: SymDenotation) {
       assert(root is PackageClass, root)
       val pre = root.owner.thisType
-      root.info = ClassInfo(pre, root.symbol.asClass, Nil, root.decls, TermRef(pre, sourceModule))
+      root.info = ClassInfo(pre, root.symbol.asClass, Nil, root.decls, TermRef.withSym(pre, sourceModule))
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
       if (!root.isRoot) {

@@ -4,7 +4,7 @@ import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
 
 trait TypeOps { this: Context =>
 
-  def newSkolemSingleton(underlying: Type) = TermRef(NoPrefix, newSkolem(underlying))
+  def newSkolemSingleton(underlying: Type) = TermRef.withSym(NoPrefix, newSkolem(underlying))
 
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 

@@ -88,7 +88,7 @@ trait Substituters { this: Context =>
         var fs = from
         var ts = to
         while (fs.nonEmpty) {
-          if (fs.head eq sym) return NamedType(tp.prefix, ts.head)
+          if (fs.head eq sym) return NamedType.withSym(tp.prefix, ts.head)
           fs = fs.tail
           ts = ts.tail
         }

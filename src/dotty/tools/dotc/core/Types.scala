@@ -1012,7 +1012,7 @@ object Types {
     override def loadDenot(implicit ctx: Context): Denotation =
       super.loadDenot.atSignature(sig)
     override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRefWithSignature =
-      TermRef(prefix, name, sig)
+      TermRef.withSig(prefix, name, sig)
     override def equals(that: Any) = that match {
       case that: TermRefWithSignature =>
         this.prefix == that.prefix &&
@@ -1034,27 +1034,25 @@ object Types {
     def apply(prefix: Type, name: Name)(implicit ctx: Context) =
       if (name.isTermName) TermRef(prefix, name.asTermName)
       else TypeRef(prefix, name.asTypeName)
-   def apply(prefix: Type, sym: Symbol)(implicit ctx: Context) =
-      if (sym.isTerm) TermRef(prefix, sym.asTerm)
-      else TypeRef(prefix, sym.asType)
+   def withSym(prefix: Type, sym: Symbol)(implicit ctx: Context) =
+      if (sym.isTerm) TermRef.withSym(prefix, sym.asTerm)
+      else TypeRef.withSym(prefix, sym.asType)
   }
 
   object TermRef {
     def apply(prefix: Type, name: TermName)(implicit ctx: Context): TermRef =
       unique(new CachedTermRef(prefix, name))
-    def apply(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRefBySym =
+    def withSym(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRefBySym =
       unique(new TermRefBySym(prefix, sym.name, sym))
-    def apply(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRefWithSignature =
+    def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRefWithSignature =
       unique(new TermRefWithSignature(prefix, name, sig))
   }
 
   object TypeRef {
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef =
       unique(new CachedTypeRef(prefix, name))
-    def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRefBySym =
-      apply(prefix, sym.name, sym)
-    def apply(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRefBySym =
-      unique(new TypeRefBySym(prefix, name, sym))
+    def withSym(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRefBySym =
+      unique(new TypeRefBySym(prefix, sym.name, sym))
   }
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
@@ -1427,7 +1425,7 @@ object Types {
       else tp.substThis(cls, prefix)
 
     def typeConstructor(implicit ctx: Context): Type =
-      if ((cls is PackageClass) || cls.owner.isTerm) TypeRef(prefix, cls)
+      if ((cls is PackageClass) || cls.owner.isTerm) TypeRef.withSym(prefix, cls)
       else TypeRef(prefix, cls.name).withDenot(cls.denot.asSeenFrom(prefix))
 
     // cached because baseType needs parents
