@@ -42,8 +42,10 @@ object TypeComparers {
       }
 
     def monitoredIsSubType(tp1: Type, tp2: Type) = {
-      if (pendingSubTypes == null)
+      if (pendingSubTypes == null) {
         pendingSubTypes = new mutable.HashSet[(Type, Type)]
+        ctx.log(s"!!! deep subtype recursion involving $tp1 <:< $tp2")
+      }
       val p = (tp1, tp2)
       !pendingSubTypes(p) && {
         try {
