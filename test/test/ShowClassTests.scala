@@ -39,7 +39,7 @@ class ShowClassTests extends DottyTest {
     test(ctx.fresh.withSetting(ctx.base.settings.debug, false))
   }
 
-  def showPackage(pkg: TermSymbol)(implicit ctx: Context): Unit = doTwice { implicit ctx =>
+  def showPackage(pkg: TermSymbol)(implicit ctx: Context): Unit = {
     val path = pkg.fullName.toString
     if (blackList contains path)
       println(s"blacklisted package: $path")
@@ -55,8 +55,9 @@ class ShowClassTests extends DottyTest {
     }
   }
 
-  def showPackage(path: String)(implicit ctx: Context): Unit =
+  def showPackage(path: String)(implicit ctx: Context): Unit = doTwice { implicit ctx =>
     showPackage(ctx.requiredPackage(path))
+  }
 
   def showClass(cls: Symbol)(implicit ctx: Context) = {
     val path = cls.fullName.stripModuleClassSuffix.toString
