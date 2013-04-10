@@ -66,7 +66,7 @@ object TypeComparers {
               val pre2 = tp2.prefix
               if (sym1 == sym2) (
                 ctx.erasedTypes
-                || (sym1.owner is Package)
+                || sym1.isStaticOwner
                 || isSubType(pre1, pre2))
               else (
                 tp1.name == tp2.name && isSubType(pre1, pre2)

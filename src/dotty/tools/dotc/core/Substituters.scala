@@ -108,7 +108,7 @@ trait Substituters { this: Context =>
       case tp @ ThisType(clazz) =>
         if (clazz eq from) to else tp
       case tp: NamedType =>
-        if (tp.symbol.isStatic) tp
+        if (tp.symbol.isStaticOwner) tp
         else tp.derivedNamedType(substThis(tp.prefix, from, to, map))
       case _: BoundType | NoPrefix =>
         tp
