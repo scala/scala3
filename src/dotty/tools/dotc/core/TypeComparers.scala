@@ -169,7 +169,7 @@ object TypeComparers {
     def fourthTry(tp1: Type, tp2: Type): Boolean =  tp1 match {
       case tp1: TypeRef =>
         (  (tp1 eq defn.NothingType)
-        || (tp1 eq defn.NullType) && tp2.typeSymbol.isNonValueClass
+        || (tp1 eq defn.NullType) && tp2.dealias.typeSymbol.isNonValueClass
         || !tp1.symbol.isClass && isSubType(tp1.info.bounds.hi, tp2)
         )
       case tp1: SingletonType =>
@@ -211,7 +211,7 @@ object TypeComparers {
         (hkArgs, tparams).zipped.forall { (hkArg, tparam) =>
           val lo2 :: hi2 :: Nil = hkArg.typeArgs
           val TypeBounds(lo1, hi1) = base.memberInfo(tparam)
-          lo2 <:< lo1 && hi1 <:< hi2 &&
+          isSubType(lo2, lo1) && isSubType(hi1, hi2) &&
           defn.hkBoundsClass(tparam.variance) == hkArg.typeSymbol
         }
       }

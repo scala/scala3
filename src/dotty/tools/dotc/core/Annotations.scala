@@ -7,7 +7,7 @@ object Annotations {
   abstract class Annotation {
     def tree: Tree
     def symbol(implicit ctx: Context): Symbol = tree.tpe.typeSymbol
-    def matches(cls: Symbol)(implicit ctx: Context): Boolean = symbol.isNonBottomSubClass(cls)
+    def matches(cls: Symbol)(implicit ctx: Context): Boolean = symbol.derivesFrom(cls)
     def appliesToModule: Boolean = true // for now; see remark in SymDenotations
 
     def derivedAnnotation(tree: Tree) =
@@ -51,7 +51,7 @@ object Annotations {
       new LazyAnnotation(sym)(treeFn)
 
     def deferred(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
-      deferred(atp.typeSymbol, New(atp, args))
+      deferred(atp.classSymbol, New(atp, args))
 
     def makeAlias(sym: TermSymbol)(implicit ctx: Context) =
       apply(defn.AliasAnnot, List(Ident(TermRef.withSig(sym.owner.thisType, sym.name, sym.signature).withDenot(sym))))

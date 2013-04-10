@@ -42,7 +42,7 @@ object Erasure {
       else erasure(sym.info)
     case tp: RefinedType =>
       val parent = tp.parent
-      if (parent.dealias.typeSymbol == defn.ArrayClass) eraseArray(tp)
+      if (parent.isArray) eraseArray(tp)
       else erasure(parent)
     case ConstantType(_) | NoType | NoPrefix =>
       tp
@@ -92,7 +92,7 @@ object Erasure {
   def lubClass(tp1: Type, tp2: Type)(implicit ctx: Context): ClassSymbol = {
     var bcs1 = tp1.baseClasses
     val bc2 = tp2.baseClasses.head
-    while (bcs1.nonEmpty && !bc2.isNonBottomSubClass(bcs1.head))
+    while (bcs1.nonEmpty && !bc2.derivesFrom(bcs1.head))
       bcs1 = bcs1.tail
     if (bcs1.isEmpty) defn.ObjectClass else bcs1.head
   }
@@ -110,9 +110,9 @@ object Erasure {
       else paramSignature(sym.info)
     case tp: RefinedType =>
       val parent = tp.parent
-      if (parent.dealias.typeSymbol == defn.ArrayClass)
+      if (parent.isArray)
         eraseArray(tp) match {
-          case tp1: RefinedType if tp1.parent.dealias.typeSymbol == defn.ArrayClass =>
+          case tp1: RefinedType if tp1.parent.isArray =>
             paramSignature(tp1.refinedInfo) ++ "[]"
           case tp1 =>
             paramSignature(tp1)
@@ -127,10 +127,10 @@ object Erasure {
   }
 
   def resultErasure(tp: Type)(implicit ctx: Context) =
-    if (tp.dealias.typeSymbol == defn.UnitClass) tp else erasure(tp)
+    if (tp.isClassType(defn.UnitClass)) tp else erasure(tp)
 
   def removeLaterObjects(trs: List[TypeRef])(implicit ctx: Context): List[TypeRef] = trs match {
-    case tr :: trs1 => tr :: (trs1 filter (_.typeSymbol != defn.ObjectClass))
+    case tr :: trs1 => tr :: trs1.filterNot(_.isClassType(defn.ObjectClass))
     case nil => nil
   }
 }

@@ -319,7 +319,7 @@ object SymDenotations {
     /** Is this a subclass of `base`,
      *  and is the denoting symbol also different from `Null` or `Nothing`?
      */
-    def isNonBottomSubClass(base: Symbol)(implicit ctx: Context) = false
+    def derivesFrom(base: Symbol)(implicit ctx: Context) = false
 
     /** Is this symbol a class that does not extend `AnyVal`? */
     final def isNonValueClass(implicit ctx: Context): Boolean =
@@ -351,7 +351,7 @@ object SymDenotations {
       def isCorrectThisType(pre: Type): Boolean = pre match {
         case ThisType(pclazz) =>
           (pclazz eq owner) ||
-            (this is Protected) && pclazz.isNonBottomSubClass(owner)
+            (this is Protected) && pclazz.derivesFrom(owner)
         case _ => false
       }
 
@@ -723,7 +723,7 @@ object SymDenotations {
       _baseClasses
     }
 
-    final override def isNonBottomSubClass(base: Symbol)(implicit ctx: Context): Boolean =
+    final override def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean =
       base.isClass &&
       (  (symbol eq base)
       || (superClassBits contains base.superId)
@@ -732,7 +732,7 @@ object SymDenotations {
       )
 
     final override def isSubClass(base: Symbol)(implicit ctx: Context) =
-      isNonBottomSubClass(base) ||
+      derivesFrom(base) ||
         base.isClass && (
           (symbol eq defn.NothingClass) ||
             (symbol eq defn.NullClass) && (base ne defn.NothingClass))
@@ -885,8 +885,8 @@ object SymDenotations {
           NoType
       }
 
-      ctx.debugTraceIndented(s"$tp.baseType($this) ${tp.typeSymbol.fullName} ${this.fullName}") {
-        if (symbol.isStatic && tp.typeSymbol.isNonBottomSubClass(symbol))
+      ctx.debugTraceIndented(s"$tp.baseType($this)") {
+        if (symbol.isStatic && tp.derivesFrom(symbol))
           symbol.typeConstructor
         else tp match {
           case tp: CachedType =>

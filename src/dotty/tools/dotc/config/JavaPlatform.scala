@@ -34,9 +34,9 @@ class JavaPlatform extends Platform {
     (sym == ObjectClass) ||
     (sym == JavaSerializableClass) ||
     (sym == ComparableClass) ||
-    (sym isNonBottomSubClass BoxedNumberClass) ||
-    (sym isNonBottomSubClass BoxedCharClass) ||
-    (sym isNonBottomSubClass BoxedBooleanClass)
+    (sym derivesFrom BoxedNumberClass) ||
+    (sym derivesFrom BoxedCharClass) ||
+    (sym derivesFrom BoxedBooleanClass)
   }
 
   def newClassLoader(bin: AbstractFile)(implicit ctx: Context): SymbolLoader =

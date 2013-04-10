@@ -82,10 +82,10 @@ object UnPickler {
   def arrayToRepeated(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp @ MethodType(paramNames, paramTypes) =>
       val lastArg = paramTypes.last
-      assert(lastArg.typeSymbol == defn.ArrayClass)
+      assert(lastArg.isArray)
       val elemtp0 :: Nil = lastArg.typeArgs
       val elemtp = elemtp0 match {
-        case AndType(t1, t2) if t1.typeSymbol.isAbstractType && t2.typeSymbol == defn.ObjectClass =>
+        case AndType(t1, t2) if t1.typeSymbol.isAbstractType && t2.isClassType(defn.ObjectClass) =>
           t1 // drop intersection with Object for abstract types in varargs. UnCurry can handle them.
         case _ =>
           elemtp0
@@ -550,7 +550,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
    */
   def elimExistentials(boundSyms: List[Symbol], tp: Type): Type = {
     def removeSingleton(tp: Type): Type =
-      if (tp.typeSymbol == defn.SingletonClass) defn.AnyType else tp
+      if (tp.isClassType(defn.SingletonClass)) defn.AnyType else tp
     def elim(tp: Type): Type = tp match {
       case tp @ RefinedType(parent, name) =>
         val parent1 = elim(tp.parent)
@@ -559,7 +559,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             RefinedType(parent1, name, info.fixedSym.info)
           case info: TypeRefBySym if boundSyms contains info.fixedSym =>
             val info1 = info.fixedSym.info
-            assert(info1 <:< defn.SingletonClass.typeConstructor)
+            assert(info1.derivesFrom(defn.SingletonClass))
             RefinedType(parent1, name, info1.mapAnd(removeSingleton))
           case info =>
             tp.derivedRefinedType(parent1, name, info)

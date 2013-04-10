@@ -494,13 +494,13 @@ object TypedTrees {
       check(noLeaksIn(tree.tpe))
     case If(cond, thenp, elsep) =>
       check(cond.isValue); check(thenp.isValue); check(elsep.isValue)
-      check(cond.tpe <:< defn.BooleanType)
+      check(cond.tpe.derivesFrom(defn.BooleanClass))
     case Match(selector, cases) =>
       check(selector.isValue)
       // are any checks that relate selector and patterns desirable?
     case CaseDef(pat, guard, body) =>
       check(pat.isValueOrPattern); check(guard.isValue); check(body.isValue)
-      check(guard.tpe <:< defn.BooleanType)
+      check(guard.tpe.derivesFrom(defn.BooleanClass))
     case Return(expr, from) =>
       check(expr.isValue); check(from.isTerm)
       check(from.tpe.termSymbol.isSourceMethod)
@@ -508,10 +508,10 @@ object TypedTrees {
       check(block.isTerm)
       check(finalizer.isTerm)
       for (ctch <- catches)
-        check(ctch.pat.tpe <:< defn.ThrowableType)
+        check(ctch.pat.tpe.derivesFrom(defn.ThrowableClass))
     case Throw(expr) =>
       check(expr.isValue)
-      check(expr.tpe <:< defn.ThrowableType)
+      check(expr.tpe.derivesFrom(defn.ThrowableClass))
     case SeqLiteral(elemtpt, elems) =>
       check(elemtpt.isValueType);
       for (elem <- elems) {
@@ -579,7 +579,7 @@ object TypedTrees {
           check(args.head.tpe.typeSymbol == defn.RepeatedParamClass)
         case nme.unapply =>
           val rtp = funtpe.resultType
-          val rsym = rtp.typeSymbol
+          val rsym = rtp.dealias.typeSymbol
           if (rsym == defn.BooleanClass)
             check(args.isEmpty)
           else {
@@ -589,7 +589,7 @@ object TypedTrees {
                 optionArg.typeArgs match {
                   case Nil =>
                     optionArg :: Nil
-                  case tupleArgs if defn.TupleClasses contains optionArg.typeSymbol =>
+                  case tupleArgs if defn.TupleClasses contains optionArg.dealias.typeSymbol =>
                     tupleArgs
                 }
               case _ =>

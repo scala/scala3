@@ -284,7 +284,7 @@ class ClassfileParser(
           // NOTE that the comparison to Object only works for abstract types bounded by classes that are strict subclasses of Object
           // if the bound is exactly Object, it will have been converted to Any, and the comparison will fail
           // see also RestrictJavaArraysMap (when compiling java sources directly)
-          if (elemtp.typeSymbol.isAbstractType && !(elemtp <:< defn.ObjectType)) {
+          if (elemtp.typeSymbol.isAbstractType && !(elemtp.derivesFrom(defn.ObjectClass))) {
             elemtp = AndType(elemtp, defn.ObjectType)
           }
 
@@ -430,7 +430,7 @@ class ClassfileParser(
 
   def parseAttributes(sym: Symbol, symtype: Type): Type = {
     def convertTo(c: Constant, pt: Type): Constant = {
-      if (pt.typeSymbol == defn.BooleanClass && c.tag == IntTag)
+      if (pt == defn.BooleanType && c.tag == IntTag)
         Constant(c.value != 0)
       else
         c convertTo pt

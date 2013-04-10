@@ -90,7 +90,18 @@ object Types {
       case _ => false
     }
 
-    /** A type T is a legal prefix in a type selection T#A if
+    /** Is this type an instance of the given class `cls`? */
+    final def isClassType(cls: Symbol)(implicit ctx: Context): Boolean =
+      dealias.typeSymbol == cls
+
+    /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
+    final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean =
+      classSymbol.derivesFrom(cls)
+
+    /** Is this an array type? */
+    final def isArray(implicit ctx: Context): Boolean = isClassType(defn.ArrayClass)
+
+   /** A type T is a legal prefix in a type selection T#A if
      *  T is stable or T contains no uninstantiated type variables.
      */
     final def isLegalPrefix(implicit ctx: Context): Boolean =
@@ -101,7 +112,7 @@ object Types {
      *  be refined later.
      */
     final def isNotNull(implicit ctx: Context): Boolean =
-      widen.typeSymbol is ModuleClass
+      classSymbol is ModuleClass
 
     /** Is this type produced as a repair for an error? */
     final def isError(implicit ctx: Context): Boolean =
@@ -448,7 +459,7 @@ object Types {
 
     /** Map references to Object to references to Any; needed for Java interop */
     final def objToAny(implicit ctx: Context) =
-      if (typeSymbol == defn.ObjectClass && !ctx.phase.erasedTypes) defn.AnyType else this
+      if (isClassType(defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else this
 
 // ----- Access to parts --------------------------------------------
 
@@ -684,8 +695,8 @@ object Types {
     final def argType(tparam: Symbol)(implicit ctx: Context): Type = this match {
       case TypeBounds(lo, hi) =>
         val v = tparam.variance
-        if (v > 0 && lo.typeSymbol == defn.NothingClass) hi
-        else if (v < 0 && hi.typeSymbol == defn.AnyClass) lo
+        if (v > 0 && lo.isClassType(defn.NothingClass)) hi
+        else if (v < 0 && hi.isClassType(defn.AnyClass)) lo
         else if (v == 0 && (lo eq hi)) lo
         else NoType
       case _ =>
@@ -698,7 +709,7 @@ object Types {
      */
     final def splitArray(implicit ctx: Context): (Int, Type) = {
       def recur(n: Int, tp: Type): (Int, Type) = tp match {
-        case RefinedType(tycon, _) if tycon.dealias.typeSymbol == defn.ArrayClass =>
+        case RefinedType(tycon, _) if tycon.isArray =>
           tp.typeArgs match {
             case arg :: Nil => recur(n + 1, arg)
             case _ => (n, tp)

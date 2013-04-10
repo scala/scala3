@@ -287,9 +287,9 @@ class Definitions(implicit ctx: Context) {
   }
 
   def wrapArrayMethodName(elemtp: Type): TermName = {
-    val cls = elemtp.typeSymbol
+    val cls = elemtp.classSymbol
     if (cls.isPrimitiveValueClass) nme.wrapXArray(cls.name)
-    else if ((elemtp <:< AnyRefType) && !cls.isPhantomClass) nme.wrapRefArray
+    else if (cls.derivesFrom(ObjectClass) && !cls.isPhantomClass) nme.wrapRefArray
     else nme.genericWrapArray
   }
 
