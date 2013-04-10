@@ -901,10 +901,15 @@ object Types {
             lastDenotation.current
           } else {
             val d = loadDenot
+/* need to do elsewhere as it leads to a cycle in subtyping here.
             if (d.exists && !d.symbol.isAliasType && !prefix.isLegalPrefix) {
-              val ex = new MalformedType(prefix, d)
-              if (ctx.checkPrefix) throw ex else ctx.log(ex.getMessage)
+              val ex = new MalformedType(prefix, d, prefix.memberNames(abstractTypeNameFilter))
+              if (ctx.checkPrefix) {
+                ctx.printCreationTrace()
+                throw ex
+              } else ctx.log(ex.getMessage)
             }
+*/
             if (d.exists || ctx.phaseId == FirstPhaseId)
               d
             else // name has changed; try load in earlier phase and make current
@@ -1710,8 +1715,12 @@ object Types {
 
   class TypeError(msg: String) extends Exception(msg)
   class FatalTypeError(msg: String) extends TypeError(msg)
-  class MalformedType(pre: Type, denot: Denotation)
-    extends FatalTypeError(s"malformed type: $pre is not a legal prefix for $denot")
+
+  class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name])
+    extends FatalTypeError(
+      s"""malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}"""
+         .stripMargin)
+
   class CyclicReference(val denot: SymDenotation)
     extends FatalTypeError(s"cyclic reference involving $denot")
 

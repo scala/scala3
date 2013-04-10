@@ -128,16 +128,31 @@ object Contexts {
     protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
     def diagnostics: Option[StringBuilder] = _diagnostics
 
-    /** Should prefix of type selections to be checked whether it's stable?
-     *  Disabled when reading Scala pickled information.
-     */
-    private var _checkPrefix: Boolean = true
-    protected def checkPrefix_=(checkPrefix: Boolean) = _checkPrefix = checkPrefix
-    def checkPrefix: Boolean = _checkPrefix
-
+    /** A map in which more contextual properties can be stored */
     private var _moreProperties: Map[String, Any] = _
     protected def moreProperties_=(moreProperties: Map[String, Any]) = _moreProperties = moreProperties
     def moreProperties: Map[String, Any] = _moreProperties
+
+    /** If -Ydebug is on, the top of the stack trace where this context
+     *  was created, otherwise `null`.
+     */
+    private var creationTrace: Array[StackTraceElement] = _
+
+    setCreationTrace()
+
+    private def setCreationTrace() =
+      if (true || this.settings.debug.value)
+        creationTrace = (new Throwable).getStackTrace().take(20)
+
+    /** Print all enclosing context's creation stacktraces */
+    def printCreationTraces() = {
+      println("=== context creation trace =======")
+      for (ctx <- outersIterator) {
+        println(s">>>>>>>>> $ctx")
+        if (ctx.creationTrace != null) println(ctx.creationTrace.mkString("\n"))
+      }
+      println("=== end context creation trace ===")
+    }
 
     /** Leave message in diagnostics buffer if it exists */
     def diagnose(str: => String) =
@@ -192,6 +207,7 @@ object Contexts {
     def fresh: FreshContext = {
       val newctx = super.clone.asInstanceOf[FreshContext]
       newctx.outer = this
+      newctx.setCreationTrace()
       newctx
     }
   }
@@ -218,9 +234,8 @@ object Contexts {
     def withTree(tree: Tree): this.type = { this.tree = tree; this }
     def withReporter(reporter: Reporter): this.type = { this.reporter = reporter; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
-    def withCheckPrefix(checkPrefix: Boolean): this.type = { this.checkPrefix = checkPrefix; this }
     def withMoreProperties(moreProperties: Map[String, Any]): this.type = { this.moreProperties = moreProperties; this }
-    
+
     def withProperty(prop: (String, Any)): this.type = withMoreProperties(moreProperties + prop)
 
     def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
@@ -229,7 +244,6 @@ object Contexts {
       withSettings(setting.updateIn(sstate, value))
 
     def withDebug = withSetting(base.settings.debug, true)
-
   }
 
   /** A class defining the initial context with given context base
@@ -364,7 +378,6 @@ object Contexts {
 
     val theBase = new ContextBase // !!! DEBUG, so that we can use a minimal context for reporting even in code that normallly cannot access a context
   }
-
 
   /** Initial size of superId table */
   private final val InitialSuperIdsSize = 4096

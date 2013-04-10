@@ -766,7 +766,6 @@ object SymDenotations {
      *  gets invalidated.
      */
     def memberFingerPrint(implicit ctx: Context): FingerPrint = {
-      assert(classSymbol.hasChildren)
       if (_memberFingerPrint == FingerPrint.empty) _memberFingerPrint = computeMemberFingerPrint
       _memberFingerPrint
     }

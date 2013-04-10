@@ -89,7 +89,7 @@ object Printers {
   }
 
   class PlainPrinter(_ctx: Context) extends Printer {
-    protected[this] implicit val ctx = _ctx.fresh.withCheckPrefix(false)
+    protected[this] implicit val ctx = _ctx
 
     def controlled(op: => Text): Text =
       if (ctx.toTextRecursions < maxToTextRecursions)
@@ -499,7 +499,7 @@ object Printers {
 
     override protected def treatAsTypeArg(sym: Symbol) =
       sym.isType && (sym is ProtectedLocal) &&
-        (ctx.traceIndented(s"$sym.allOverriddenSymbols")(sym.allOverriddenSymbols) exists (_ is TypeParam))
+        (sym.allOverriddenSymbols exists (_ is TypeParam))
 
     override protected def reconstituteParent(cls: ClassSymbol, parent: Type): Type =
       (parent /: parent.classSymbol.typeParams) { (parent, tparam) =>

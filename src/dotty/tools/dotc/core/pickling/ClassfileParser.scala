@@ -18,7 +18,7 @@ class ClassfileParser(
     classRoot: ClassDenotation,
     moduleRoot: ClassDenotation)(cctx0: CondensedContext) {
 
-  implicit val cctx: CondensedContext = cctx0.fresh.withCheckPrefix(false)
+  implicit val cctx: CondensedContext = cctx0
 
   import ClassfileConstants._
   import cctx.base.{settings, loaders, definitions => defn}
