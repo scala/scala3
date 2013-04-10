@@ -603,8 +603,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case SINGLEtpe =>
         val pre = readTypeRef()
         val sym = readDisambiguatedSymbolRef(_.isParameterless)
-        if (isLocal(sym)) TermRef.withSym(pre, sym.asTerm)
-        else TermRef.withSig(pre, sym.name.asTermName, NotAMethod).withDenot(sym)
+        if (isLocal(sym) || (pre == NoPrefix)) TermRef.withSym(pre, sym.asTerm)
+        else TermRef.withSig(pre, sym.name.asTermName, NotAMethod)
       case SUPERtpe =>
         val thistpe = readTypeRef()
         val supertpe = readTypeRef()
@@ -632,11 +632,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           case _ =>
         }
         val tycon =
-          if (isLocal(sym)) {
+          if (isLocal(sym) || pre == NoPrefix) {
             TypeRef.withSym(
               if ((pre eq NoPrefix) && (sym is TypeParam)) sym.owner.thisType else pre,
               sym.asType)
-          } else TypeRef(pre, sym.name.asTypeName).withDenot(sym)
+          } else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
 //        if (args.nonEmpty) { // DEBUG
 //           println(s"reading app type $tycon $args")
