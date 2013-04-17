@@ -3,7 +3,7 @@ package core
 
 
 object PluggableTransformers {
-
+/*
   import Trees._, Contexts._
 
   abstract class PluggableTransformer[T] extends TreeTransformer[T, Context] {
@@ -101,5 +101,5 @@ class ExampleTransformer extends PluggableTransformer[Type] {
 
   override def transform(tree: tpd.Tree, ctx: Context) =
     super.transform(tree, ctx)
-
+*/
 }
