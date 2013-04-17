@@ -577,6 +577,12 @@ object SymDenotations {
     final def symbolicRef(implicit ctx: Context): TypeRef =
       TypeRef.withSym(owner.thisType, symbol.asType)
 
+    /** The termref pointing to this termsymbol
+     *  @throws ClassCastException is this is not a term
+     */
+    def termRef(implicit ctx: Context): TermRef =
+      TermRef.withSym(owner.thisType, symbol.asTerm)
+
     /** The variance of this type parameter as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
      */

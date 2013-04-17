@@ -3,11 +3,16 @@
  * @author  Martin Odersky
  */
 package dotty.tools.dotc
-package core
+package util
 
-import scala.annotation.{ tailrec, switch }
+import scala.annotation.switch
 import java.lang.{ Character => JCharacter }
-import scala.language.postfixOps
+import java.lang.{Character => JCharacter}
+import java.lang.Character.LETTER_NUMBER
+import java.lang.Character.LOWERCASE_LETTER
+import java.lang.Character.OTHER_LETTER
+import java.lang.Character.TITLECASE_LETTER
+import java.lang.Character.UPPERCASE_LETTER
 
 /** Contains constants and classifier methods for characters */
 object Chars {

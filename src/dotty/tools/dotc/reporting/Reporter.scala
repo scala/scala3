@@ -3,16 +3,16 @@ package dotc
 package reporting
 
 import core.Contexts._
-import core.Positions._
+import util.Positions._
+import util.{SourceFile, NoSource}
 import core.Decorators.PhaseListDecorator
 import collection.mutable
-import io.{SourceFile, NoSource}
 import java.lang.System.currentTimeMillis
 
 trait Reporting { this: Context =>
-  def error(msg: String, pos: Position = NoPosition): Unit = reporter.error(msg, pos)
-  def warning(msg: String, pos: Position = NoPosition): Unit = reporter.warning(msg, pos)
-  def inform(msg: String, pos: Position = NoPosition): Unit = reporter.info(msg, pos)
+  def error(msg: String, pos: SourcePosition = NoSourcePosition): Unit = reporter.error(msg, pos)
+  def warning(msg: String, pos: SourcePosition = NoSourcePosition): Unit = reporter.warning(msg, pos)
+  def inform(msg: String, pos: SourcePosition = NoSourcePosition): Unit = reporter.info(msg, pos)
 
   def log(msg: => String): Unit =
     if (this.settings.log.value.containsPhase(phase))
@@ -23,6 +23,8 @@ trait Reporting { this: Context =>
 
   def informTime(msg: => String, start: Long): Unit =
     informProgress(msg + elapsed(start))
+
+  def deprecationWarning(msg: String, pos: SourcePosition): Unit = ???
 
   private def elapsed(start: Long) =
     " in " + (currentTimeMillis - start) + "ms"
@@ -78,9 +80,9 @@ abstract class Reporter {
 
   import Reporter.Severity.{Value => Severity, _}
 
-  protected def report(msg: String, severity: Severity, pos: Position)(implicit ctx: Context): Unit
+  protected def report(msg: String, severity: Severity, pos: SourcePosition)(implicit ctx: Context): Unit
 
-  protected def isHidden(severity: Severity, pos: Position)(implicit ctx: Context) = false
+  protected def isHidden(severity: Severity, pos: SourcePosition)(implicit ctx: Context) = false
 
   val count = new mutable.HashMap[Severity, Int]() {
     override def default(key: Severity) = 0
@@ -99,7 +101,7 @@ abstract class Reporter {
     finally _truncationOK = saved
   }
 
-  type ErrorHandler = (String, Position, Context) => Unit
+  type ErrorHandler = (String, SourcePosition, Context) => Unit
   private var incompleteHandler: ErrorHandler = error(_, _)(_)
   def withIncompleteHandler[T](handler: ErrorHandler)(op: => T): T = {
     val saved = incompleteHandler
@@ -112,26 +114,26 @@ abstract class Reporter {
   def hasWarnings = count(WARNING) > 0
 
   /** For sending messages that are printed only if -verbose is set */
-  def info(msg: String, pos: Position = NoPosition)(implicit ctx: Context): Unit =
+  def info(msg: String, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
     if (ctx.settings.verbose.value) info0(msg, INFO, pos)
 
   /** For sending a message which should not be labeled as a warning/error,
    *  but also shouldn't require -verbose to be visible.
    */
-  def echo(msg: String, pos: Position = NoPosition)(implicit ctx: Context): Unit =
+  def echo(msg: String, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
     info0(msg, INFO, pos)
 
-  def warning(msg: String, pos: Position = NoPosition)(implicit ctx: Context): Unit =
+  def warning(msg: String, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
     if (!ctx.settings.nowarn.value)
       withoutTruncating(info0(msg, WARNING, pos))
 
-  def error(msg: String, pos: Position = NoPosition)(implicit ctx: Context): Unit =
+  def error(msg: String, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
     withoutTruncating(info0(msg, ERROR, pos))
 
-  def incompleteInputError(msg: String, pos: Position = NoPosition)(implicit ctx: Context): Unit =
+  def incompleteInputError(msg: String, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
     incompleteHandler(msg, pos, ctx)
 
-  private def info0(msg: String, severity: Severity, pos: Position)(implicit ctx: Context): Unit = {
+  private def info0(msg: String, severity: Severity, pos: SourcePosition)(implicit ctx: Context): Unit = {
     if (!isHidden(severity, pos)) {
       count(severity) += 1
       report(msg, severity, pos)

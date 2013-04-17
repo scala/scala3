@@ -1,73 +1,12 @@
 package dotty.tools.dotc
 package core
 
-import Positions._, Types._, Contexts._, Constants._, Names._, Flags._
+import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._
 
 object TypedTrees {
 
-  object tpd {
-
-    type Modifiers = Trees.Modifiers[Type]
-    type Tree = Trees.Tree[Type]
-    type TypTree = Trees.TypTree[Type]
-    type TermTree = Trees.TermTree[Type]
-    type PatternTree = Trees.PatternTree[Type]
-    type DenotingTree = Trees.DenotingTree[Type]
-    type ProxyTree = Trees.ProxyTree[Type]
-    type NameTree = Trees.NameTree[Type]
-    type RefTree = Trees.RefTree[Type]
-    type DefTree = Trees.DefTree[Type]
-
-    type TreeCopier = Trees.TreeCopier[Type]
-    type TreeAccumulator[T] = Trees.TreeAccumulator[T, Type]
-    type TreeTransformer[C] = Trees.TreeTransformer[Type, C]
-
-    type Ident = Trees.Ident[Type]
-    type Select = Trees.Select[Type]
-    type This = Trees.This[Type]
-    type Super = Trees.Super[Type]
-    type Apply = Trees.Apply[Type]
-    type TypeApply = Trees.TypeApply[Type]
-    type Literal = Trees.Literal[Type]
-    type New = Trees.New[Type]
-    type Pair = Trees.Pair[Type]
-    type Typed = Trees.Typed[Type]
-    type NamedArg = Trees.NamedArg[Type]
-    type Assign = Trees.Assign[Type]
-    type Block = Trees.Block[Type]
-    type If = Trees.If[Type]
-    type Match = Trees.Match[Type]
-    type CaseDef = Trees.CaseDef[Type]
-    type Return = Trees.Return[Type]
-    type Try = Trees.Try[Type]
-    type Throw = Trees.Throw[Type]
-    type SeqLiteral = Trees.SeqLiteral[Type]
-    type TypeTree = Trees.TypeTree[Type]
-    type SingletonTypeTree = Trees.SingletonTypeTree[Type]
-    type SelectFromTypeTree = Trees.SelectFromTypeTree[Type]
-    type AndTypeTree = Trees.AndTypeTree[Type]
-    type OrTypeTree = Trees.OrTypeTree[Type]
-    type RefineTypeTree = Trees.RefineTypeTree[Type]
-    type AppliedTypeTree = Trees.AppliedTypeTree[Type]
-    type TypeBoundsTree = Trees.TypeBoundsTree[Type]
-    type Bind = Trees.Bind[Type]
-    type Alternative = Trees.Alternative[Type]
-    type UnApply = Trees.UnApply[Type]
-    type ValDef = Trees.ValDef[Type]
-    type DefDef = Trees.DefDef[Type]
-    type TypeDef = Trees.TypeDef[Type]
-    type Template = Trees.Template[Type]
-    type ClassDef = Trees.ClassDef[Type]
-    type Import = Trees.Import[Type]
-    type PackageDef = Trees.PackageDef[Type]
-    type Annotated = Trees.Annotated[Type]
-    type EmptyTree = Trees.EmptyTree[Type]
-    type SharedTree = Trees.SharedTree[Type]
-
-    private implicit def pos(implicit ctx: Context): Position = ctx.position
-
-    def defPos(sym: Symbol)(implicit ctx: Context) = ctx.position union sym.coord.toPosition
+  object tpd extends Trees.Instance[Type] {
 
     def Modifiers(sym: Symbol)(implicit ctx: Context): Modifiers = Trees.Modifiers[Type](
       sym.flags & ModifierFlags,
@@ -664,8 +603,8 @@ object TypedTrees {
       new TreeMapper(ownerMap = (sym => if (sym == from) to else sym)).apply(tree)
   }
 
-  class TreeMapper(val typeMap: TypeMap = IdentityTypeMap, val ownerMap: Symbol => Symbol = identity)(implicit ctx: Context) extends TreeTransformer[Type, Unit] {
-    override def transform(tree: tpd.Tree, c: Unit): tpd.Tree = {
+  class TreeMapper(val typeMap: TypeMap = IdentityTypeMap, val ownerMap: Symbol => Symbol = identity)(implicit ctx: Context) extends TreeTransformer[Type] {
+    override def transform(tree: tpd.Tree): tpd.Tree = {
       val tree1 =
         if (tree.isEmpty) tree
         else tree.withType(typeMap(tree.tpe))
@@ -681,16 +620,16 @@ object TypedTrees {
         case _ =>
           tree1
       }
-      super.transform(tree2, c)
+      super.transform(tree2)
     }
-    override def transform(trees: List[tpd.Tree], c: Unit) = {
+    override def transform(trees: List[tpd.Tree]) = {
       val locals = localSyms(trees)
       val mapped = ctx.mapSymbols(locals, typeMap, ownerMap)
-      if (locals eq mapped) super.transform(trees, c)
-      else withSubstitution(locals, mapped).transform(trees, c)
+      if (locals eq mapped) super.transform(trees)
+      else withSubstitution(locals, mapped).transform(trees)
      }
 
-    def apply[ThisTree <: tpd.Tree](tree: ThisTree): ThisTree = transform(tree, ()).asInstanceOf[ThisTree]
+    def apply[ThisTree <: tpd.Tree](tree: ThisTree): ThisTree = transform(tree).asInstanceOf[ThisTree]
 
     def apply(annot: Annotation): Annotation = {
       val tree1 = apply(annot.tree)

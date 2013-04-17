@@ -3,7 +3,7 @@ package dotc
 package reporting
 
 import scala.collection.mutable
-import core.Positions.Position
+import util.Positions.SourcePosition
 import core.Contexts._
 import Reporter.Severity.{Value => Severity, _}
 import java.io.{ BufferedReader, IOException, PrintWriter }
@@ -24,24 +24,24 @@ class ConsoleReporter(
   /** maximal number of error messages to be printed */
   protected def ErrorLimit = 100
 
-  def formatMessage(msg: String, pos: Position)(implicit ctx: Context) = msg // for now
+  def formatMessage(msg: String, pos: SourcePosition)(implicit ctx: Context) = msg // for now
 
   /** Prints the message. */
   def printMessage(msg: String) { writer.print(msg + "\n"); writer.flush() }
 
   /** Prints the message with the given position indication. */
-  def printMessage(msg: String, pos: Position)(implicit ctx: Context) {
+  def printMessage(msg: String, pos: SourcePosition)(implicit ctx: Context) {
     printMessage(formatMessage(msg, pos))
   }
 
-  def printMessage(msg: String, severity: Severity, pos: Position)(implicit ctx: Context) {
+  def printMessage(msg: String, severity: Severity, pos: SourcePosition)(implicit ctx: Context) {
     printMessage(label(severity) + msg, pos)
   }
 
   /**
    *  @param pos ...
 
-  def printSourceLine(pos: Position) {
+  def printSourceLine(pos: SourcePosition) {
     printMessage(pos.lineContent.stripLineEnd)
     printColumnMarker(pos)
   }
@@ -50,7 +50,7 @@ class ConsoleReporter(
    *
    *  @param pos ...
    */
-  def printColumnMarker(pos: Position) =
+  def printColumnMarker(pos: SourcePosition) =
     if (pos.isDefined) { printMessage(" " * (pos.column - 1) + "^") }
 */
 
@@ -60,7 +60,7 @@ class ConsoleReporter(
     if (  count(ERROR) > 0) printMessage(countString(ERROR  ) + " found")
   }
 
-  override def report(msg: String, severity: Severity, pos: Position)(implicit ctx: Context) {
+  override def report(msg: String, severity: Severity, pos: SourcePosition)(implicit ctx: Context) {
     if (severity != ERROR || count(severity) <= ErrorLimit)
       printMessage(msg, severity, pos)
     if (ctx.settings.prompt.value) displayPrompt()

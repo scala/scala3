@@ -8,8 +8,8 @@ import Names._
 import Phases._
 import Types._
 import Symbols._
-import TypeComparers._, Printers._, NameOps._, SymDenotations._, Positions._
-import TypedTrees.tpd._
+import TypeComparers._, Printers._, NameOps._, SymDenotations._, util.Positions._
+import TypedTrees.tpd._, util.FreshNameCreator
 import config.Settings._
 import config.ScalaSettings
 import reporting._
@@ -172,7 +172,7 @@ object Contexts {
     /** The current source file; will be derived from current
      *  compilation unit.
      */
-    def source = io.NoSource // for now
+    def source = util.NoSource // for now
 
     /** Does current phase use an erased types interpretation? */
     def erasedTypes: Boolean = phase.erasedTypes
@@ -288,6 +288,9 @@ object Contexts {
 
     /** The platform */
     val platform: Platform = new JavaPlatform
+
+    /** The standard fresh name creator */
+    val fresh = new FreshNameCreator.Default
 
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)

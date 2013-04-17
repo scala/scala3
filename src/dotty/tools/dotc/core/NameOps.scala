@@ -2,11 +2,12 @@ package dotty.tools.dotc
 package core
 
 import java.security.MessageDigest
-import Chars.isOperatorPart
 import scala.annotation.switch
 import scala.io.Codec
 import Names._, StdNames._, Contexts._, Symbols._, Flags._
 import Decorators.StringDecorator
+import dotty.tools.dotc.util.Chars
+import Chars.isOperatorPart
 
 object NameOps {
 

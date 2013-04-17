@@ -11,7 +11,7 @@ import Decorators._
 import Symbols._
 import Contexts._
 import SymDenotations._, util.Texts._
-import Types._, Annotations._, Positions._, StdNames._, Trees._, NameOps._
+import Types._, Annotations._, util.Positions._, StdNames._, Trees._, NameOps._
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile

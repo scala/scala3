@@ -4,7 +4,7 @@ package reporting
 
 import core.Contexts.Context
 import scala.collection.mutable
-import core.Positions.Position
+import util.Positions.SourcePosition
 import Reporter.Severity.{Value => Severity}
 
 /**
@@ -12,12 +12,12 @@ import Reporter.Severity.{Value => Severity}
  */
 class StoreReporter extends Reporter {
 
-  class Info(val msg: String, val severity: Severity, val pos: Position) {
+  class Info(val msg: String, val severity: Severity, val pos: SourcePosition) {
     override def toString() = "pos: " + pos + " " + msg + " " + severity
   }
   val infos = new mutable.LinkedHashSet[Info]
 
-  protected def report(msg: String, severity: Severity, pos: Position)(implicit ctx: Context): Unit = {
+  protected def report(msg: String, severity: Severity, pos: SourcePosition)(implicit ctx: Context): Unit = {
     infos += new Info(msg, severity, pos)
   }
 

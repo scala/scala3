@@ -1,4 +1,5 @@
-package dotty.tools.dotc.core
+package dotty.tools.dotc
+package util
 
 /** Position format in little endian:
  *  Start: unsigned 26 Bits (works for source files up to 64M)
@@ -33,6 +34,16 @@ object Positions {
       }
 
     def exists = this != NoPosition
+
+    def shift(offset: Int) =
+      if (exists) Position(start + offset, end + offset, point - start)
+      else this
+
+    def focus = Position(point)
+
+    def withStart(start: Int) = Position(start, this.end, this.point - start)
+    def withEnd(end: Int) = Position(this.start, end, this.point - this.start)
+    def withPoint(point: Int) = Position(this.start, this.end, point - this.start)
   }
 
   def Position(start: Int, end: Int, pointOffset: Int = 0): Position =
@@ -44,6 +55,15 @@ object Positions {
   def Position(point: Int): Position = Position(point, point, 0)
 
   val NoPosition = new Position(-1L)
+
+  case class SourcePosition(source: SourceFile, pos: Position) {
+    def point: Int = pos.point
+    def start: Int = pos.start
+    def end: Int = pos.end
+    def exists = pos.exists
+  }
+
+  val NoSourcePosition = SourcePosition(NoSource, NoPosition)
 
   /** The coordinate of a symbol. This is either an index or
    *  a point position.

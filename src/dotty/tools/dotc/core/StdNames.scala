@@ -240,7 +240,6 @@ object StdNames {
     val SETTER_SUFFIX: N            = encode("_=")
     val SKOLEM: N                   = "<skolem>"
     val SPECIALIZED_INSTANCE: N     = "specInstance$"
-    val STAR: N                     = "*"
     val THIS: N                     = "_$this"
     val HK_PARAM_PREFIX: N          = "_$hk$"
 

@@ -1,6 +1,7 @@
-package dotty.tools.dotc.core
+package dotty.tools.dotc
+package core
 
-import Types._, Names._, Flags._, Positions._, Contexts._, Constants._, SymDenotations._, Symbols._
+import Types._, Names._, Flags._, util.Positions._, Contexts._, Constants._, SymDenotations._, Symbols._
 import Denotations._, StdNames._
 import annotation.tailrec
 import language.higherKinds
@@ -110,6 +111,7 @@ object Trees {
     override def getMessage: String = s"type of $tree is not assigned"
   }
 
+  type Untyped = Null
   type TypedTree = Tree[Type]
   type UntypedTree = Tree[Nothing]
 
@@ -532,6 +534,9 @@ object Trees {
     extends NameTree[Nothing] with DefTree[Nothing] {
     type ThisTree[T] <: NameTree[T] with DefTree[T] with ModuleDef
     val pos = cpos union impl.pos
+    def derivedModuleDef(mods: Modifiers[Nothing], name: TermName, impl: Template[Nothing]) =
+      if (mods == this.mods && name == this.name && (impl eq this.impl)) this
+      else ModuleDef(mods, name, impl)
   }
 
   /** (vparams) => body */
@@ -539,6 +544,78 @@ object Trees {
     extends TermTree[Nothing] {
     type ThisTree[T] <: TermTree[T] with Function
     val pos = unionPos(cpos union body.pos, vparams)
+  }
+
+  /** Something in parentheses */
+  case class Parens(trees: List[Tree[Nothing]])(implicit cpos: Position) extends Tree[Nothing] {
+    type ThisType[T] <: Parens
+    val pos = unionPos(cpos, trees)
+  }
+
+  // ----- Generic Tree Instances, inherited from  `tpt` and `untpd`.
+
+  abstract class Instance[T] {
+
+    type Modifiers = Trees.Modifiers[T]
+    type Tree = Trees.Tree[T]
+    type TypTree = Trees.TypTree[T]
+    type TermTree = Trees.TermTree[T]
+    type PatternTree = Trees.PatternTree[T]
+    type DenotingTree = Trees.DenotingTree[T]
+    type ProxyTree = Trees.ProxyTree[T]
+    type NameTree = Trees.NameTree[T]
+    type RefTree = Trees.RefTree[T]
+    type DefTree = Trees.DefTree[T]
+
+    type TreeCopier = Trees.TreeCopier[T]
+    type TreeAccumulator[U] = Trees.TreeAccumulator[U, T]
+    type TreeTransformer = Trees.TreeTransformer[T]
+
+    type Ident = Trees.Ident[T]
+    type Select = Trees.Select[T]
+    type This = Trees.This[T]
+    type Super = Trees.Super[T]
+    type Apply = Trees.Apply[T]
+    type TypeApply = Trees.TypeApply[T]
+    type Literal = Trees.Literal[T]
+    type New = Trees.New[T]
+    type Pair = Trees.Pair[T]
+    type Typed = Trees.Typed[T]
+    type NamedArg = Trees.NamedArg[T]
+    type Assign = Trees.Assign[T]
+    type Block = Trees.Block[T]
+    type If = Trees.If[T]
+    type Match = Trees.Match[T]
+    type CaseDef = Trees.CaseDef[T]
+    type Return = Trees.Return[T]
+    type Try = Trees.Try[T]
+    type Throw = Trees.Throw[T]
+    type SeqLiteral = Trees.SeqLiteral[T]
+    type TypeTree = Trees.TypeTree[T]
+    type SingletonTypeTree = Trees.SingletonTypeTree[T]
+    type SelectFromTypeTree = Trees.SelectFromTypeTree[T]
+    type AndTypeTree = Trees.AndTypeTree[T]
+    type OrTypeTree = Trees.OrTypeTree[T]
+    type RefineTypeTree = Trees.RefineTypeTree[T]
+    type AppliedTypeTree = Trees.AppliedTypeTree[T]
+    type TypeBoundsTree = Trees.TypeBoundsTree[T]
+    type Bind = Trees.Bind[T]
+    type Alternative = Trees.Alternative[T]
+    type UnApply = Trees.UnApply[T]
+    type ValDef = Trees.ValDef[T]
+    type DefDef = Trees.DefDef[T]
+    type TypeDef = Trees.TypeDef[T]
+    type Template = Trees.Template[T]
+    type ClassDef = Trees.ClassDef[T]
+    type Import = Trees.Import[T]
+    type PackageDef = Trees.PackageDef[T]
+    type Annotated = Trees.Annotated[T]
+    type EmptyTree = Trees.EmptyTree[T]
+    type SharedTree = Trees.SharedTree[T]
+
+    protected implicit def pos(implicit ctx: Context): Position = ctx.position
+
+    def defPos(sym: Symbol)(implicit ctx: Context) = ctx.position union sym.coord.toPosition
   }
 
   // ----- Helper functions and classes ---------------------------------------
@@ -712,7 +789,7 @@ object Trees {
     }
   }
 
-  abstract class TreeTransformer[T, C] {
+  abstract class FullTreeTransformer[T, C] {
     var sharedMemo: Map[SharedTree[T], SharedTree[T]] = Map()
 
     def transform(tree: Tree[T], c: C): Tree[T] = tree match {
@@ -859,6 +936,107 @@ object Trees {
     def finishAnnotated(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishEmptyTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishSharedTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
+  }
+
+  abstract class TreeTransformer[T] {
+    var sharedMemo: Map[SharedTree[T], SharedTree[T]] = Map()
+
+    def transform(tree: Tree[T]): Tree[T] = tree match {
+      case Ident(name) =>
+        tree
+      case Select(qualifier, name) =>
+        tree.derivedSelect(transform(qualifier), name)
+      case This(qual) =>
+        tree
+      case Super(qual, mix) =>
+        tree.derivedSuper(transform(qual), mix)
+      case Apply(fun, args) =>
+        tree.derivedApply(transform(fun), transform(args))
+      case TypeApply(fun, args) =>
+        tree.derivedTypeApply(transform(fun), transform(args))
+      case Literal(const) =>
+        tree
+      case New(tpt) =>
+        tree.derivedNew(transform(tpt))
+      case Pair(left, right) =>
+        tree.derivedPair(transform(left), transform(right))
+      case Typed(expr, tpt) =>
+        tree.derivedTyped(transform(expr), transform(tpt))
+      case NamedArg(name, arg) =>
+        tree.derivedNamedArg(name, transform(arg))
+      case Assign(lhs, rhs) =>
+        tree.derivedAssign(transform(lhs), transform(rhs))
+      case Block(stats, expr) =>
+        tree.derivedBlock(transform(stats), transform(expr))
+      case If(cond, thenp, elsep) =>
+        tree.derivedIf(transform(cond), transform(thenp), transform(elsep))
+      case Match(selector, cases) =>
+        tree.derivedMatch(transform(selector), transformSub(cases))
+      case CaseDef(pat, guard, body) =>
+        tree.derivedCaseDef(transform(pat), transform(guard), transform(body))
+      case Return(expr, from) =>
+        tree.derivedReturn(transform(expr), transformSub(from))
+      case Try(block, catches, finalizer) =>
+        tree.derivedTry(transform(block), transformSub(catches), transform(finalizer))
+      case Throw(expr) =>
+        tree.derivedThrow(transform(expr))
+      case SeqLiteral(elemtpt, elems) =>
+        tree.derivedSeqLiteral(transform(elemtpt), transform(elems))
+      case TypeTree(original) =>
+        tree.derivedTypeTree(transform(original))
+      case SingletonTypeTree(ref) =>
+        tree.derivedSingletonTypeTree(transform(ref))
+      case SelectFromTypeTree(qualifier, name) =>
+        tree.derivedSelectFromTypeTree(transform(qualifier), name)
+      case AndTypeTree(left, right) =>
+        tree.derivedAndTypeTree(transform(left), transform(right))
+      case OrTypeTree(left, right) =>
+        tree.derivedOrTypeTree(transform(left), transform(right))
+      case RefineTypeTree(tpt, refinements) =>
+        tree.derivedRefineTypeTree(transform(tpt), transformSub(refinements))
+      case AppliedTypeTree(tpt, args) =>
+        tree.derivedAppliedTypeTree(transform(tpt), transform(args))
+      case TypeBoundsTree(lo, hi) =>
+        tree.derivedTypeBoundsTree(transform(lo), transform(hi))
+      case Bind(name, body) =>
+        tree.derivedBind(name, transform(body))
+      case Alternative(trees) =>
+        tree.derivedAlternative(transform(trees))
+      case UnApply(fun, args) =>
+        tree.derivedUnApply(transform(fun), transform(args))
+      case ValDef(mods, name, tpt, rhs) =>
+        tree.derivedValDef(mods, name, transform(tpt), transform(rhs))
+      case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
+        tree.derivedDefDef(mods, name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(rhs))
+      case TypeDef(mods, name, rhs) =>
+        tree.derivedTypeDef(mods, name, transform(rhs))
+      case Template(parents, self, body) =>
+        tree.derivedTemplate(transform(parents), transformSub(self), transform(body))
+      case ClassDef(mods, name, tparams, impl) =>
+        tree.derivedClassDef(mods, name, transformSub(tparams), transformSub(impl))
+      case Import(expr, selectors) =>
+        tree.derivedImport(transform(expr), selectors)
+      case PackageDef(pid, stats) =>
+        tree.derivedPackageDef(transformSub(pid), transform(stats))
+      case Annotated(annot, arg) =>
+        tree.derivedAnnotated(transform(annot), transform(arg))
+      case EmptyTree() =>
+        tree
+      case tree @ SharedTree(shared) =>
+        sharedMemo get tree match {
+          case Some(tree1) => tree1
+          case None =>
+            val tree1 = tree.derivedSharedTree(transform(shared))
+            sharedMemo = sharedMemo.updated(tree, tree1)
+            tree1
+        }
+    }
+    def transform(trees: List[Tree[T]]): List[Tree[T]] =
+      trees mapConserve (transform(_))
+    def transformSub(tree: Tree[T]): tree.ThisTree[T] =
+      transform(tree).asInstanceOf[tree.ThisTree[T]]
+    def transformSub[TT <: Tree[T]](trees: List[TT]): List[TT] =
+      transform(trees).asInstanceOf[List[TT]]
   }
 
   abstract class TreeAccumulator[T, U] extends ((T, Tree[U]) => T) {
