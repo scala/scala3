@@ -274,6 +274,9 @@ trait Symbols { this: Context =>
 
   def requiredModule(path: PreName): TermSymbol =
     base.staticRef(path.toTermName).requiredSymbol(_ is Module).asTerm
+
+  def requiredMethod(cls: ClassSymbol, name: PreName): TermSymbol =
+    cls.info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
 }
 
 object Symbols {

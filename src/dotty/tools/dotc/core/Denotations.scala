@@ -4,7 +4,7 @@ package core
 
 import SymDenotations.{ SymDenotation, NoDenotation }
 import Contexts.{Context, ContextBase}
-import Names.Name
+import Names.{Name, PreName}
 import Names.TypeName
 import Symbols.NoSymbol
 import Symbols._
@@ -195,6 +195,9 @@ object Denotations {
         case denot =>
           denot.symbol
       }
+
+    def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
+      info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
 
     /** Form a denotation by conjoining with denotation `that` */
     def & (that: Denotation)(implicit ctx: Context): Denotation =

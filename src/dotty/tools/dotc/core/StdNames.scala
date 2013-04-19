@@ -9,6 +9,7 @@ import Symbols._
 import Contexts._
 import Decorators.StringDecorator
 import util.NameTransformer
+import scala.collection.breakOut
 
 object StdNames {
 
@@ -211,6 +212,7 @@ object StdNames {
     // Compiler-internal
     val ANYname: N                  = "<anyname>"
     val CONSTRUCTOR: N              = "<init>"
+    val DEFAULT_CASE: N             = "defaultCase$"
     val EQEQ_LOCAL_VAR: N           = "eqEqTemp$"
     val FAKE_LOCAL_THIS: N          = "this$"
     val INITIALIZER: N              = CONSTRUCTOR // Is this buying us something?
@@ -364,6 +366,7 @@ object StdNames {
     val foreach: N              = "foreach"
     val genericArrayOps: N      = "genericArrayOps"
     val get: N                  = "get"
+    val getClass_ : N           = "getClass"
     val getOrElse: N            = "getOrElse"
     val hasNext: N              = "hasNext"
     val hashCode_ : N           = "hashCode"
@@ -614,6 +617,9 @@ object StdNames {
       case _  => termName("x$" + i)
     }
 
+    def syntheticParamNames(num: Int): List[TermName] =
+      (0 until num).map(syntheticParamName)(breakOut)
+
     def localDummyName(clazz: Symbol)(implicit ctx: Context): TermName =
       LOCALDUMMY_PREFIX ++ clazz.name ++ ">"
 
@@ -622,6 +628,12 @@ object StdNames {
 
   class ScalaTypeNames extends ScalaNames[TypeName] {
     protected def fromString(s: String) = typeName(s)
+
+    @switch def syntheticTypeParamName(i: Int): TypeName =
+      typeName("T"+i)
+
+    def syntheticTypeParamNames(num: Int): List[TypeName] =
+      (0 until num).map(syntheticTypeParamName)(breakOut)
 
     def higherKindedTraitName(n: Int) = HigherKinded ++ n.toString
     def higherKindedParamName(n: Int) = HK_PARAM_PREFIX ++ n.toString

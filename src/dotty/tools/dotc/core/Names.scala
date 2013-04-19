@@ -79,6 +79,14 @@ object Names {
      */
     def fromName(name: Name): ThisName = fromChars(chrs, name.start, name.length)
 
+    /** Create new name of same kind as this name with characters from
+     *  the given string
+     */
+    def fromString(str: String): ThisName = {
+      val cs = str.toCharArray
+      fromChars(cs, 0, cs.length)
+    }
+
     override def toString =
       if (length == 0) "" else new String(chrs, start, length)
 
@@ -95,8 +103,13 @@ object Names {
       offset + bytes.length
     }
 
-    /** Convert to string \$op_name's by corresponding operator symbols. */
-    def decode: String = NameTransformer.decode(toString)
+    /** Replace \$op_name's by corresponding operator symbols. */
+    def decode: Name =
+      if (contains('$')) fromString(NameTransformer.decode(toString))
+      else this
+
+    /** Replace operator symbols by corresponding \$op_name's. */
+    def encode: Name = fromString(NameTransformer.encode(toString))
 
     /** A more efficient version of concatenation */
     def ++ (other: Name): ThisName = ++ (other.toString)
@@ -113,6 +126,12 @@ object Names {
         if (cs(i) == from) cs(i) = to
       }
       fromChars(cs, 0, length)
+    }
+
+    def contains(ch: Char): Boolean = {
+      var i = 0
+      while (i < length && chrs(start + i) != ch) i += 1
+      i < length
     }
 
     // ----- Collections integration -------------------------------------

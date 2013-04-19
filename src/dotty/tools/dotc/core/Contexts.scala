@@ -290,7 +290,10 @@ object Contexts {
     val platform: Platform = new JavaPlatform
 
     /** The standard fresh name creator */
-    val fresh = new FreshNameCreator.Default
+    val freshNames = new FreshNameCreator.Default
+
+    def freshName(): String = freshNames.newName()
+    def freshName(prefix: String): String = freshNames.newName(prefix)
 
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)

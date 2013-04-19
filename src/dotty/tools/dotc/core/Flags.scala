@@ -441,6 +441,9 @@ object Flags {
   final val AbstractFinal = allOf(Abstract, Final)
   final val AbstractSealed = allOf(Abstract, Sealed)
   final val SyntheticArtifact = allOf(Synthetic, Artifact)
+  final val SyntheticTermParam = allOf(Synthetic, TermParam)
+  final val SyntheticTypeParam = allOf(Synthetic, TypeParam)
+  final val SyntheticCase = allOf(Synthetic, Case)
 
   implicit def conjToFlagSet(conj: FlagConjunction): FlagSet =
     FlagSet(conj.bits)
