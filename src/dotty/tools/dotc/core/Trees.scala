@@ -275,6 +275,9 @@ object Trees {
     val pos = cpos union tpt.pos
   }
 
+  def New[T >: Untyped](tpt: Tree[T], argss: List[List[Tree[T]]])(implicit cpos: Position): Tree[T] =
+    ((Select(New(tpt), nme.CONSTRUCTOR): Tree[T]) /: argss)(Apply(_, _))
+
   /** (left, right) */
   case class Pair[T >: Untyped](left: Tree[T], right: Tree[T])(implicit cpos: Position)
     extends TermTree[T] {

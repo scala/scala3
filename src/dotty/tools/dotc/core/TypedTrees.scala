@@ -239,6 +239,8 @@ object TypedTrees {
         case pre => SelectFromTypeTree(TypeTree(pre), tp)
       }  // no checks necessary
 
+    def ref(sym: TermSymbol)implicit ctx: Context): tpd.NameTree = ref(sym.termRef)
+
     /** new C(args) */
     def New(tp: Type, args: List[Tree])(implicit ctx: Context): Apply =
       Apply(

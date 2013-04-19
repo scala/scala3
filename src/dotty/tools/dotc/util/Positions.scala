@@ -46,6 +46,7 @@ object Positions {
     def withStart(start: Int) = Position(start, this.end, this.point - start)
     def withEnd(end: Int) = Position(this.start, end, this.point - this.start)
     def withPoint(point: Int) = Position(this.start, this.end, point - this.start)
+    def transparent: Position = this /* for now */
   }
 
   def Position(start: Int, end: Int, pointOffset: Int = 0): Position =

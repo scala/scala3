@@ -601,7 +601,7 @@ object StdNames {
   }
 
   class ScalaTermNames extends ScalaNames[TermName] {
-    protected def fromString(s: String) = termName(s)
+    protected implicit def fromString(s: String): TermName = termName(s)
 
     @switch def syntheticParamName(i: Int): TermName = i match {
       case 0  => x_0
@@ -627,7 +627,7 @@ object StdNames {
   }
 
   class ScalaTypeNames extends ScalaNames[TypeName] {
-    protected def fromString(s: String) = typeName(s)
+    protected implicit def fromString(s: String): TypeName = typeName(s)
 
     @switch def syntheticTypeParamName(i: Int): TypeName =
       typeName("T"+i)
