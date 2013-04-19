@@ -40,6 +40,8 @@ object Positions {
       else this
 
     def focus = Position(point)
+    def startPos = Position(start)
+    def endPos = Position(end)
 
     def withStart(start: Int) = Position(start, this.end, this.point - start)
     def withEnd(end: Int) = Position(this.start, end, this.point - this.start)

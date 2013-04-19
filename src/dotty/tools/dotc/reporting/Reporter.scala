@@ -30,12 +30,15 @@ trait Reporting { this: Context =>
     " in " + (currentTimeMillis - start) + "ms"
 
   def informProgress(msg: => String) =
-    if (ctx.settings.verbose.value) inform("[" + msg + "]")
+    if (this.settings.verbose.value) inform("[" + msg + "]")
 
   def trace[T](msg: => String)(value: T) = {
     log(msg + " " + value)
     value
   }
+
+  def debugwarn(msg: String, pos: SourcePosition = NoSourcePosition): Unit =
+    if (this.settings.debug.value) warning(msg, pos)
 
   def debugTraceIndented[T](question: => String)(op: => T): T =
     if (this.settings.debugTrace.value) traceIndented(question)(op)

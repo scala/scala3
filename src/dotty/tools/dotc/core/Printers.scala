@@ -85,7 +85,7 @@ object Printers {
     def toText(sc: Scope): Text
 
     /** Textual representation of tree */
-    def toText[T](tree: Tree[T]): Text
+    def toText[T >: Untyped](tree: Tree[T]): Text
   }
 
   class PlainPrinter(_ctx: Context) extends Printer {
@@ -403,7 +403,7 @@ object Printers {
     def toText(sc: Scope): Text =
       ("Scope{" ~ dclsText(sc.toList) ~ "}").close
 
-    def toText[T](tree: Tree[T]): Text = {
+    def toText[T >: Untyped](tree: Tree[T]): Text = {
       tree match {
         case node: Product =>
           def toTextElem(elem: Any): Text = elem match {
@@ -431,10 +431,10 @@ object Printers {
 
     override def nameString(name: Name): String = name.toString
 
-    override protected def simpleNameString(sym: Symbol) = {
+    override protected def simpleNameString(sym: Symbol): String = {
       var name = sym.originalName
       if (sym is ModuleClass) name = name.stripModuleClassSuffix
-      name.decode
+      name.decode.toString
     }
 
     override def toTextPrefix(tp: Type): Text = controlled {

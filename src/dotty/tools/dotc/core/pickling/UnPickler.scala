@@ -946,7 +946,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           val toName = readNameRef()
           val from = Trees.Ident(fromName)
           val to = Trees.Ident(toName)
-          if (toName.isEmpty) from else Trees.Pair[Nothing](from, Trees.Ident(toName))
+          if (toName.isEmpty) from else Trees.Pair(from, Trees.Ident(toName))
         })
 
         Import(expr, selectors)

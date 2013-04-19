@@ -139,6 +139,11 @@ object Types {
     final def isVolatile(implicit ctx: Context): Boolean =
       ctx.isVolatile(this)
 
+    final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = this match {
+      case AnnotatedType(annot, tp) => annot.symbol == cls || tp.hasAnnotation(cls)
+      case _ => false
+    }
+
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
@@ -1293,6 +1298,8 @@ object Types {
     def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType
     def apply(paramNames: List[TermName], paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
       apply(paramNames, paramTypes)(_ => resultType)
+    def apply(paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
+      apply(nme.syntheticParamNames(paramTypes.length), paramTypes, resultType)
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
       def transformResult(mt: MethodType) =
         resultType.subst(params, (0 until params.length).toList map (MethodParam(mt, _)))

@@ -10,7 +10,7 @@ object showClass extends ShowClassTests {
 //      showPackage("scala.reflect")
 //      showPackage("scala.collection")
 
-    showPackage("dotty")
+//    showPackage("dotty")
     showPackage("scala")
     println("done")
   }
