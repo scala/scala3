@@ -74,6 +74,8 @@ object Denotations {
    *  would have signature
    *
    *      List("scala.Int".toTypeName, "scala.collection.immutable.List".toTypeName)
+   *
+   *  TODO: discriminate on result type as well !!!
    */
   type Signature = List[TypeName]
 
@@ -84,11 +86,6 @@ object Denotations {
 
   /** A denotation is the result of resolving
    *  a name (either simple identifier or select) during a given period.
-   *
-   *  Denotation has two subclasses: MultiDenotation and SingleDenotation.
-   *
-   *  A SingleDenotation refers to a `symbol` and a type (`info`) that the symbol has
-   *  when seen from the reference.
    *
    *  Denotations can be combined with `&` and `|`.
    *  & is conjunction, | is disjunction.

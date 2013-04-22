@@ -178,7 +178,8 @@ object Types {
       case _ => NoSymbol
     }
 
-    /** The least non-trait class of which this type is a subtype. NoSymbol is none exists. */
+    /** The least non-trait class of which this type is a subtype. NoSymbol is none exists.
+     *  Note: can't do the same for traits as that would be ambiguous. */
     final def classSymbol(implicit ctx: Context): Symbol = this match {
       case tp: ClassInfo =>
         if (tp.cls is Trait)
@@ -188,7 +189,7 @@ object Types {
           }
         else tp.cls
       case tp: TypeProxy =>
-        tp.underlying.typeSymbol
+        tp.underlying.classSymbol
       case AndType(l, r) =>
         val lsym = l.classSymbol
         val rsym = r.classSymbol
@@ -400,7 +401,7 @@ object Types {
      *    - Either both types are polytypes with the same number of
      *      type parameters and their result types match after renaming
      *      corresponding type parameters
-     *    - Or both types are (possibly nullary) method types with equivalent type parameter types
+     *    - Or both types are (possibly nullary) method types with equivalent parameter types
      *      and matching result types
      *    - Or both types are equivalent
      *    - Or phase.erasedTypes is false and both types are neither method nor
@@ -512,7 +513,7 @@ object Types {
     }
 
     /** The type parameter with given `name`. This tries first `decls`
-     *  in order not to provoke a cylce by forcing the info. If that yields
+     *  in order not to provoke a cycle by forcing the info. If that yields
      *  no symbol it tries `member` as an alternative.
      */
     def typeParamNamed(name: TypeName)(implicit ctx: Context): Symbol =
@@ -591,7 +592,7 @@ object Types {
             println(s"precomplete decls = ${typeSymbol.decls.toList.map(_.denot).mkString("\n  ")}")
           }
           val tparam = tparams.head
-          val tp1 = RefinedType(tp, tparam.name, arg.toRHS(tparam))
+          val tp1 = RefinedType(tp, tparam.name, arg.toBounds(tparam))
           recur(tp1, tparams.tail, args1)
         case nil => tp
       }
@@ -662,7 +663,7 @@ object Types {
     /** Turn this type, which is used as an argument for
      *  type parameter `tparam`, into a TypeBounds RHS
      */
-    final def toRHS(tparam: Symbol)(implicit ctx: Context): TypeBounds = {
+    final def toBounds(tparam: Symbol)(implicit ctx: Context): TypeBounds = {
       val v = tparam.variance
       if (v > 0) TypeBounds.upper(this)
       else if (v < 0) TypeBounds.lower(this)
@@ -1086,6 +1087,7 @@ object Types {
 
   final class CachedThisType(cls: ClassSymbol) extends ThisType(cls)
 
+  // TODO: consider hash before constructing types?
   object ThisType {
     def apply(cls: ClassSymbol)(implicit ctx: Context) =
       unique(new CachedThisType(cls))
@@ -1340,7 +1342,7 @@ object Types {
 
   case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
       extends UncachedGroundType with BindingType with TermType {
-    lazy val paramBounds = paramBoundsExp(this)
+    lazy val paramBounds = paramBoundsExp(this) // TODO !!! this captures context, consider forcing the vals!
     override lazy val resultType = resultTypeExp(this)
 
     override def signature(implicit ctx: Context) = resultType.signature
@@ -1425,7 +1427,7 @@ object Types {
   // ------ ClassInfo, Type Bounds ------------------------------------------------------------
 
   /** The info of a class during a period, roughly
-   *  @param pre          The prefix on which parents, decls, and selfType need to be rebased.
+   *  @param prefix       The prefix on which parents, decls, and selfType need to be rebased.
    *  @param cls          The class symbol.
    *  @param classParents The parent types of this class.
    *                      These are all normalized to be TypeRefs by moving any refinements

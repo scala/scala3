@@ -27,7 +27,16 @@ trait TypeOps { this: Context =>
           if (sym.isStatic) tp
           else {
             val tp1 = tp.derivedNamedType(asSeenFrom(tp.prefix, pre, cls, theMap))
-            // short-circuit instantiated type parameters
+            // Here's an explanation why we short-circuit instantiated type parameters.
+            // Say you have             This is translated to:
+            //
+            // class List[type T] ==>   class List { type T; val hd: T }
+            // xs: List[Int]      ==>   List { type T = Int }
+            //
+            // Then with the line above, xs.hd would have type xs.T
+            //
+            // But in Scala 2.x, its type is Int, which is the dealiased version
+            // of xs.T. With the logic below, we get the same outcome as for 2.x.
             if ((tp1 ne tp) && (sym is (TypeParam, butNot = Deferred))) tp1.dealias
             else tp1
           }
