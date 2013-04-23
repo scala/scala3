@@ -182,81 +182,81 @@ abstract class SymbolicXMLBuilder(preserveWS: Boolean)(implicit ctx: Context) {
 
   def element(qname: String, attrMap: mutable.Map[String, Tree], empty: Boolean, args: Seq[Tree])(implicit cpos: Position): Tree = {
     val tpos = cpos.transparent
-    implicit val cpos: Position = tpos
+    locally {
+      implicit val cpos: Position = tpos
 
-    def handleNamespaceBinding(pre: String, z: String): Tree = {
-      def mkAssign(t: Tree): Tree = Assign(
-        Ident(_tmpscope),
-        New(_scala_xml_NamespaceBinding, LL(const(pre), t, Ident(_tmpscope)))
-      )
+      def handleNamespaceBinding(pre: String, z: String): Tree = {
+        def mkAssign(t: Tree): Tree = Assign(
+          Ident(_tmpscope),
+          New(_scala_xml_NamespaceBinding, LL(const(pre), t, Ident(_tmpscope))))
 
-      val uri1 = attrMap(z) match {
-        case Apply(_, List(uri @ Literal(Constant(_)))) => mkAssign(uri)
-        case Select(_, nme.Nil)                         => mkAssign(const(null))  // allow for xmlns="" -- bug #1626
-        case x                                          => mkAssign(x)
-      }
-      attrMap -= z
-      uri1
-    }
-
-    /** Extract all the namespaces from the attribute map. */
-    val namespaces: List[Tree] =
-      for (z <- attrMap.keys.toList ; if z startsWith xmlns) yield {
-        val ns = splitPrefix(z) match {
-          case (Some(_), rest)  => rest
-          case _                => null
+        val uri1 = attrMap(z) match {
+          case Apply(_, List(uri @ Literal(Constant(_)))) => mkAssign(uri)
+          case Select(_, nme.Nil) => mkAssign(const(null)) // allow for xmlns="" -- bug #1626
+          case x => mkAssign(x)
         }
-        handleNamespaceBinding(ns, z)
+        attrMap -= z
+        uri1
       }
 
-    val (pre, newlabel) = splitPrefix(qname) match {
-      case (Some(p), x) => (p, x)
-      case (None, x)    => (null, x)
+      /** Extract all the namespaces from the attribute map. */
+      val namespaces: List[Tree] =
+        for (z <- attrMap.keys.toList; if z startsWith xmlns) yield {
+          val ns = splitPrefix(z) match {
+            case (Some(_), rest) => rest
+            case _ => null
+          }
+          handleNamespaceBinding(ns, z)
+        }
+
+      val (pre, newlabel) = splitPrefix(qname) match {
+        case (Some(p), x) => (p, x)
+        case (None, x) => (null, x)
+      }
+
+      def mkAttributeTree(pre: String, key: String, value: Tree) = {
+        // XXX this is where we'd like to put Select(value, nme.toString_) for #1787
+        // after we resolve the Some(foo) situation.
+        val baseArgs = List(const(key), value, Ident(_md))
+        val (clazz, attrArgs) =
+          if (pre == null) (_scala_xml_UnprefixedAttribute, baseArgs)
+          else (_scala_xml_PrefixedAttribute, const(pre) :: baseArgs)
+
+        Assign(Ident(_md), New(clazz, LL(attrArgs: _*)))
+      }
+
+      def handlePrefixedAttribute(pre: String, key: String, value: Tree) = mkAttributeTree(pre, key, value)
+      def handleUnprefixedAttribute(key: String, value: Tree) = mkAttributeTree(null, key, value)
+
+      val attributes: List[Tree] =
+        for ((k, v) <- attrMap.toList.reverse) yield splitPrefix(k) match {
+          case (Some(pre), rest) => handlePrefixedAttribute(pre, rest, v)
+          case _ => handleUnprefixedAttribute(k, v)
+        }
+
+      lazy val scopeDef = ValDef(Modifiers(), _scope, _scala_xml_NamespaceBinding, Ident(_tmpscope))
+      lazy val tmpScopeDef = ValDef(Modifiers(Mutable), _tmpscope, _scala_xml_NamespaceBinding, Ident(_scope))
+      lazy val metadataDef = ValDef(Modifiers(Mutable), _md, _scala_xml_MetaData, _scala_xml_Null)
+      val makeSymbolicAttrs = if (!attributes.isEmpty) Ident(_md) else _scala_xml_Null
+
+      val (attrResult, nsResult) =
+        (attributes.isEmpty, namespaces.isEmpty) match {
+          case (true, true) => (Nil, Nil)
+          case (true, false) => (scopeDef :: Nil, tmpScopeDef :: namespaces)
+          case (false, true) => (metadataDef :: attributes, Nil)
+          case (false, false) => (scopeDef :: metadataDef :: attributes, tmpScopeDef :: namespaces)
+        }
+
+      val body = mkXML(
+        false,
+        const(pre),
+        const(newlabel),
+        makeSymbolicAttrs,
+        Ident(_scope),
+        empty,
+        args)
+
+      Block(nsResult, Block(attrResult, body))
     }
-
-    def mkAttributeTree(pre: String, key: String, value: Tree) = {
-      // XXX this is where we'd like to put Select(value, nme.toString_) for #1787
-      // after we resolve the Some(foo) situation.
-      val baseArgs = List(const(key), value, Ident(_md))
-      val (clazz, attrArgs) =
-        if (pre == null) (_scala_xml_UnprefixedAttribute, baseArgs)
-                    else (_scala_xml_PrefixedAttribute  , const(pre) :: baseArgs)
-
-      Assign(Ident(_md), New(clazz, LL(attrArgs: _*)))
-    }
-
-    def handlePrefixedAttribute(pre: String, key: String, value: Tree)  = mkAttributeTree(pre, key, value)
-    def handleUnprefixedAttribute(key: String, value: Tree)             = mkAttributeTree(null, key, value)
-
-    val attributes: List[Tree] =
-      for ((k, v) <- attrMap.toList.reverse) yield splitPrefix(k) match {
-        case (Some(pre), rest)  => handlePrefixedAttribute(pre, rest, v)
-        case _                  => handleUnprefixedAttribute(k, v)
-      }
-
-    lazy val scopeDef     = ValDef(Modifiers(), _scope, _scala_xml_NamespaceBinding, Ident(_tmpscope))
-    lazy val tmpScopeDef  = ValDef(Modifiers(Mutable), _tmpscope, _scala_xml_NamespaceBinding, Ident(_scope))
-    lazy val metadataDef  = ValDef(Modifiers(Mutable), _md, _scala_xml_MetaData, _scala_xml_Null)
-    val makeSymbolicAttrs = if (!attributes.isEmpty) Ident(_md) else _scala_xml_Null
-
-    val (attrResult, nsResult) =
-      (attributes.isEmpty, namespaces.isEmpty) match {
-        case (true ,  true)   => (Nil, Nil)
-        case (true , false)   => (scopeDef :: Nil, tmpScopeDef :: namespaces)
-        case (false,  true)   => (metadataDef :: attributes, Nil)
-        case (false, false)   => (scopeDef :: metadataDef :: attributes, tmpScopeDef :: namespaces)
-      }
-
-    val body = mkXML(
-      false,
-      const(pre),
-      const(newlabel),
-      makeSymbolicAttrs,
-      Ident(_scope),
-      empty,
-      args
-    )
-
-    Block(nsResult, Block(attrResult, body))
   }
 }
