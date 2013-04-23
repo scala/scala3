@@ -24,7 +24,7 @@ import scala.language.implicitConversions
  *  @author  Burak Emir
  *  @version 1.0
  */
-abstract class SymbolicXMLBuilder(preserveWS: Boolean)(implicit ctx: Context) {
+class SymbolicXMLBuilder(preserveWS: Boolean)(implicit ctx: Context) {
 
   import Constants.Constant
   import untpd._

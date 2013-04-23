@@ -186,7 +186,7 @@ object TypedTrees {
     }
 
     def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
-      Trees.TypeDef(Modifiers(sym), sym.name, TypeTree(sym.info))(defPos(sym))
+      Trees.TypeDef(Modifiers(sym), sym.name, Nil, TypeTree(sym.info))(defPos(sym)) // !!! fill in typeParams
         .withType(refType(sym)).checked
 
     def ClassDef(cls: ClassSymbol, typeParams: List[TypeSymbol], body: List[Tree])(implicit ctx: Context): ClassDef = {
@@ -227,7 +227,7 @@ object TypedTrees {
     def SharedTree(tree: Tree): SharedTree =
       Trees.SharedTree(tree).withType(tree.tpe)
 
-    def refType(sym: Symbol)(implicit ctx: Context) = NamedType.withSym(sym.owner.thisType, sym)
+    def refType(sym: Symbol)(implicit ctx: Context): NamedType = NamedType.withSym(sym.owner.thisType, sym)
 
     // ------ Creating typed equivalents of trees that exist only in untyped form -------
 
@@ -239,7 +239,8 @@ object TypedTrees {
         case pre => SelectFromTypeTree(TypeTree(pre), tp)
       }  // no checks necessary
 
-    def ref(sym: TermSymbol)(implicit ctx: Context): tpd.NameTree = ref(sym.termRef)
+    def ref(sym: Symbol)(implicit ctx: Context): tpd.NameTree =
+      ref(NamedType(sym.owner.thisType, sym.name).withDenot(sym))
 
     /** new C(args) */
     def New(tp: Type, args: List[Tree])(implicit ctx: Context): Apply =
@@ -479,7 +480,7 @@ object TypedTrees {
       check(left.isValueType); check(right.isValueType)
     case RefineTypeTree(tpt, refinements) =>
       check(tpt.isValueType)
-      def checkRefinements(forbidden: Set[Symbol], rs: List[tpd.DefTree]): Unit = rs match {
+      def checkRefinements(forbidden: Set[Symbol], rs: List[tpd.Tree]): Unit = rs match {
         case r :: rs1 =>
           val rsym = r.symbol
           check(rsym.isTerm || rsym.isAbstractOrAliasType)
@@ -552,7 +553,7 @@ object TypedTrees {
         check(rhs.isValue)
         check(rhs.tpe <:< tpt.tpe)
       }
-    case TypeDef(mods, name, tpt) =>
+    case TypeDef(mods, name, _, tpt) =>
       check(tpt.tpe.isInstanceOf[TypeBounds])
     case Template(parents, selfType, body) =>
     case ClassDef(mods, name, tparams, impl) =>

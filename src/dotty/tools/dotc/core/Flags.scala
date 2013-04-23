@@ -84,6 +84,9 @@ object Flags {
     /** The number of non-kind flags in this set */
     def numFlags: Int = java.lang.Long.bitCount(bits & ~KINDFLAGS)
 
+    /** The lowest non-kind bit set in this flagset */
+    def firstBit: Int = java.lang.Long.numberOfTrailingZeros(bits & ~KINDFLAGS)
+
     /** The  list of non-empty names of flags with given index idx that are set in this FlagSet */
     private def flagString(idx: Int): List[String] =
       if ((bits & (1L << idx)) == 0) Nil
@@ -444,6 +447,7 @@ object Flags {
   final val SyntheticTermParam = allOf(Synthetic, TermParam)
   final val SyntheticTypeParam = allOf(Synthetic, TypeParam)
   final val SyntheticCase = allOf(Synthetic, Case)
+  final val AbstractAndOverride = allOf(Abstract, Override)
 
   implicit def conjToFlagSet(conj: FlagConjunction): FlagSet =
     FlagSet(conj.bits)

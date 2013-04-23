@@ -91,7 +91,7 @@ object Scanners {
 
     /** we need one token lookahead and one token history
      */
-    private val next : TokenData = new TokenData0
+    val next : TokenData = new TokenData0
     private val prev : TokenData = new TokenData0
 
     /** a stack of tokens which indicates whether line-ends can be statement separators
@@ -193,32 +193,30 @@ object Scanners {
 
     def postProcessToken() = {
       // Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SEMI + ELSE => ELSE
+      def lookahead() = {
+        prev copyFrom this
+        fetchToken()
+      }
+      def reset(nextLastOffset: Offset) = {
+        lastOffset = nextLastOffset
+        next copyFrom this
+        this copyFrom prev
+      }
+      def fuse(tok: Int) = {
+        token = tok
+        offset = prev.offset
+        lastOffset = prev.lastOffset
+      }
       if (token == CASE) {
-        prev copyFrom this
         val nextLastOffset = lastCharOffset
-        fetchToken()
-        def resetOffset() {
-          offset = prev.offset
-          lastOffset = prev.lastOffset
-        }
-        if (token == CLASS) {
-          token = CASECLASS
-          resetOffset()
-        } else if (token == OBJECT) {
-          token = CASEOBJECT
-          resetOffset()
-        } else {
-          lastOffset = nextLastOffset
-          next copyFrom this
-          this copyFrom prev
-        }
+        lookahead()
+        if (token == CLASS) fuse(CASECLASS)
+        else if (token == OBJECT) fuse(CASEOBJECT)
+        else reset(nextLastOffset)
       } else if (token == SEMI) {
-        prev copyFrom this
-        fetchToken()
-        if (token != ELSE) {
-          next copyFrom this
-          this copyFrom prev
-        }
+        val nextLastOffset = lastCharOffset
+        lookahead()
+        if (token != ELSE) reset(nextLastOffset)
       }
     }
 

@@ -156,8 +156,11 @@ object Tokens {
   final val localModifierTokens = BitSet(
     ABSTRACT, FINAL, SEALED, IMPLICIT, LAZY)
 
-  final val modifierTokens = localModifierTokens | BitSet(
-    PRIVATE, PROTECTED, OVERRIDE)
+  final val accessModifierTokens = BitSet(
+    PRIVATE, PROTECTED)
+
+  final val modifierTokens = localModifierTokens | accessModifierTokens | BitSet(
+    OVERRIDE)
 
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens = defIntroTokens | modifierTokens | BitSet(
@@ -168,4 +171,6 @@ object Tokens {
 
   final val canEndStatTokens = atomicExprTokens | BitSet(
     TYPE, RPAREN, RBRACE, RBRACKET)
+
+  final val numericLitTokens = BitSet(INTLIT, LONGLIT, FLOATLIT, DOUBLELIT)
 }

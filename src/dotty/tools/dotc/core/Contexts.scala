@@ -294,6 +294,7 @@ object Contexts {
 
     def freshName(): String = freshNames.newName()
     def freshName(prefix: String): String = freshNames.newName(prefix)
+    def freshName(prefix: Name): String = freshName(prefix.toString)
 
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)

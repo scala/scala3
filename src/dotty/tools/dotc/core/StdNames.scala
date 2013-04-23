@@ -290,6 +290,7 @@ object StdNames {
     val NoPrefix: N             = "NoPrefix"
     val NoSymbol: N             = "NoSymbol"
     val NoType: N               = "NoType"
+    val Pair: N                 = "Pair"
     val Ref: N                  = "Ref"
     val RootPackage: N          = "RootPackage"
     val RootClass: N            = "RootClass"
@@ -540,6 +541,7 @@ object StdNames {
     val ZOR      = encode("||")
 
     // unary operators
+    val UNARY_PREFIX: N = "unary_"
     val UNARY_~ = encode("unary_~")
     val UNARY_+ = encode("unary_+")
     val UNARY_- = encode("unary_-")

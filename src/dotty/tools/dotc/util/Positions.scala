@@ -11,12 +11,12 @@ package util
 object Positions {
 
   private val StartEndBits = 26
-  private val StartEndMask = (1 << StartEndBits) - 1
+  private val StartEndMask: Long = (1L << StartEndBits) - 1
   private val PointOffsetLimit = 1L << (64 - StartEndBits * 2)
 
   class Position(val coords: Long) extends AnyVal {
-    def point: Int = start + (coords >>> (StartEndBits * 2)).toInt
     def start: Int = (coords & StartEndMask).toInt
+    def point: Int = start + (coords >>> (StartEndBits * 2)).toInt
     def end: Int = ((coords >>> StartEndBits) & StartEndMask).toInt
 
     /** The union of two positions. Tries to keep the point offset of
@@ -58,6 +58,16 @@ object Positions {
   def Position(point: Int): Position = Position(point, point, 0)
 
   val NoPosition = new Position(-1L)
+
+  case class PositionPrefix(val coords: Long) extends AnyVal {
+    def start: Int = (coords & StartEndMask).toInt
+    def point: Int = start + (coords >>> StartEndBits).toInt
+    def toPosition(end: Int) = Position(start, end, point - start max 0)
+  }
+
+  def PositionPrefix(start: Int, pointOffset: Int = 0): PositionPrefix =
+    new PositionPrefix(
+      (start & StartEndMask).toLong | pointOffset.toLong << StartEndBits)
 
   case class SourcePosition(source: SourceFile, pos: Position) {
     def point: Int = pos.point
