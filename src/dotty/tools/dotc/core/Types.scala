@@ -178,19 +178,15 @@ object Types {
       case _ => NoSymbol
     }
 
-    /** The least non-trait class of which this type is a subtype. NoSymbol is none exists.
-     *  Note: can't do the same for traits as that would be ambiguous. */
+    /** The least class or trait of which this type is a subtype, or
+     *  NoSymbol if none exists (either because this type is not a
+     *  value type, or because superclasses are ambiguous).
+     */
     final def classSymbol(implicit ctx: Context): Symbol = this match {
       case tp: ClassInfo =>
-        if (tp.cls is Trait)
-          tp.classParents match {
-            case p :: ps => p.classSymbol
-            case nil => NoSymbol
-          }
-        else tp.cls
+        tp.cls
       case tp: TypeProxy =>
-        tp.underlying.typeSymbol // this should be classSymbol, but that produces
-          // stackoverflows at the moment. Need to follow up on this.
+        tp.underlying.classSymbol
       case AndType(l, r) =>
         val lsym = l.classSymbol
         val rsym = r.classSymbol
@@ -200,7 +196,9 @@ object Types {
       case OrType(l, r) =>
         val lsym = l.classSymbol
         val rsym = r.classSymbol
-        lsym.info.baseClasses.find(rsym.isSubClass).getOrElse(NoSymbol)
+        if (lsym.isSubClass(rsym)) rsym
+        else if (rsym.isSubClass(lsym)) lsym
+        else NoSymbol
       case _ =>
         NoSymbol
     }
