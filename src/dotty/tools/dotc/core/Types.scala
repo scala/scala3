@@ -189,7 +189,8 @@ object Types {
           }
         else tp.cls
       case tp: TypeProxy =>
-        tp.underlying.classSymbol
+        tp.underlying.typeSymbol // this should be classSymbol, but that produces
+          // stackoverflows at the moment. Need to follow up on this.
       case AndType(l, r) =>
         val lsym = l.classSymbol
         val rsym = r.classSymbol
@@ -1220,7 +1221,7 @@ object Types {
       (resultTypeExp: MethodType => Type)
     extends CachedGroundType with BindingType with TermType {
 
-    override lazy val resultType = resultTypeExp(this)
+    override val resultType = resultTypeExp(this)
     def isJava = false
     def isImplicit = false
 
@@ -1342,8 +1343,8 @@ object Types {
 
   case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
       extends UncachedGroundType with BindingType with TermType {
-    lazy val paramBounds = paramBoundsExp(this) // TODO !!! this captures context, consider forcing the vals!
-    override lazy val resultType = resultTypeExp(this)
+    val paramBounds = paramBoundsExp(this)
+    override val resultType = resultTypeExp(this)
 
     override def signature(implicit ctx: Context) = resultType.signature
 
