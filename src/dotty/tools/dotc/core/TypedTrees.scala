@@ -142,7 +142,7 @@ object TypedTrees {
       Trees.TypeBoundsTree(lo, hi).withType(TypeBounds(lo.tpe, hi.tpe)).checked
 
     def Bind(sym: TermSymbol, body: Tree)(implicit ctx: Context): Bind =
-      Trees.Bind(sym.name, body)(defPos(sym)).withType(refType(sym)).checked
+      Trees.Bind(sym.name, body).withType(refType(sym)).checked
 
     def Alternative(trees: List[Tree])(implicit ctx: Context): Alternative =
       Trees.Alternative(trees).withType(ctx.lub(trees map (_.tpe))).checked
@@ -156,8 +156,7 @@ object TypedTrees {
     }
 
     def ValDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): ValDef =
-      Trees.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs)(defPos(sym))
-        .withType(refType(sym)).checked
+      Trees.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs).withType(refType(sym)).checked
 
     def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef = {
 
@@ -181,15 +180,15 @@ object TypedTrees {
 
       Trees.DefDef(
         Modifiers(sym), sym.name, tparams map TypeDef,
-        vparamss map (_ map (ValDef(_))), TypeTree(rtp), rhs)(defPos(sym))
-        .withType(refType(sym)).checked
+        vparamss map (_ map (ValDef(_))), TypeTree(rtp), rhs)
+          .withType(refType(sym)).checked
     }
 
     def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
-      Trees.TypeDef(Modifiers(sym), sym.name, Nil, TypeTree(sym.info))(defPos(sym)) // !!! fill in typeParams
+      Trees.TypeDef(Modifiers(sym), sym.name, Nil, TypeTree(sym.info)) // !!! fill in typeParams
         .withType(refType(sym)).checked
 
-    def ClassDef(cls: ClassSymbol, typeParams: List[TypeSymbol], body: List[Tree])(implicit ctx: Context): ClassDef = {
+    def ClassDef(cls: ClassSymbol, typeParams: List[TypeSymbol], constr: Tree, body: List[Tree])(implicit ctx: Context): ClassDef = {
       val parents = cls.info.parents map (TypeTree(_))
       val selfType =
         if (cls.classInfo.optSelfType.exists) ValDef(ctx.newSelfSym(cls))
@@ -205,9 +204,9 @@ object TypedTrees {
       val findLocalDummy = new FindLocalDummyAccumulator(cls)
       val localDummy = ((NoSymbol: Symbol) /: body)(findLocalDummy)
         .orElse(ctx.newLocalDummy(cls))
-      val impl = Trees.Template(parents, selfType, rest)
+      val impl = Trees.Template(constr, parents, selfType, rest)
         .withType(refType(localDummy)).checked
-      Trees.ClassDef(Modifiers(cls), cls.name, tparams, impl)(defPos(cls))
+      Trees.ClassDef(Modifiers(cls), cls.name, tparams, impl)
         .withType(refType(cls)).checked
     }
 
@@ -279,7 +278,8 @@ object TypedTrees {
      */
     def ModuleDef(sym: TermSymbol, body: List[Tree])(implicit ctx: Context): TempTrees = {
       val modcls = sym.moduleClass.asClass
-      val clsdef = ClassDef(modcls, Nil, body)
+      val constr = DefDef(modcls.primaryConstructor.asTerm, EmptyTree)
+      val clsdef = ClassDef(modcls, Nil, constr, body)
       val valdef = ValDef(sym, New(modcls.typeConstructor))
       TempTrees(valdef :: clsdef :: Nil)
     }
@@ -324,7 +324,6 @@ object TypedTrees {
      *  The contained trees will be integrated in enclosing Blocks or Templates
      */
     case class TempTrees(trees: List[Tree]) extends Tree {
-      override def pos: Position = unsupported("pos")
       override def tpe: Type = unsupported("tpe")
     }
 
@@ -555,7 +554,7 @@ object TypedTrees {
       }
     case TypeDef(mods, name, _, tpt) =>
       check(tpt.tpe.isInstanceOf[TypeBounds])
-    case Template(parents, selfType, body) =>
+    case Template(constr, parents, selfType, body) =>
     case ClassDef(mods, name, tparams, impl) =>
     case Import(expr, selectors) =>
       check(expr.isValue)

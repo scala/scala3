@@ -181,7 +181,7 @@ class SymbolicXMLBuilder(preserveWS: Boolean)(implicit ctx: Context) {
     New(_scala_xml_Unparsed, LL(const(str)))
 
   def element(qname: String, attrMap: mutable.Map[String, Tree], empty: Boolean, args: Seq[Tree])(implicit cpos: Position): Tree = {
-    val tpos = cpos.transparent
+    val tpos = cpos.toSynthetic
     locally {
       implicit val cpos: Position = tpos
 

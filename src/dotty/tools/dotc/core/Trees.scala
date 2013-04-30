@@ -20,6 +20,32 @@ object Trees {
   type TypedTree = Tree[Type]
   type UntypedTree = Tree[Untyped]
 
+  abstract class Positioned extends DotClass {
+
+    protected var curPos: Position = initialPos
+
+    protected def initialPos: Position
+
+    /** The tree's position. Except
+     *  for SharedTree nodes, it is always ensured that a tree's position
+     *  contains the envelopes of all its immediate subtrees. However, it need not
+     *  contain positions of other tree elements such as Modifiers.
+     */
+    def pos: Position = curPos
+
+    def withPos(pos: Position): this.type = {
+      val newpd = (if (curPos.isSynthetic) this else clone).asInstanceOf[Positioned]
+      val newpos = pos union this.pos
+      newpd.curPos = if (pos.isSynthetic) newpos else newpos withPoint pos.point
+      newpd.asInstanceOf[this.type]
+    }
+
+    protected def unionPos(pos: Position, xs: List[_]): Position = xs match {
+      case (t: Tree[_]) :: xs1 => unionPos(pos union t.envelope, xs1)
+      case _ => pos
+    }
+  }
+
   /** Modifiers and annotations for definitions
    *  @param flags          The set flags
    *  @param privateWithin  If a private or protected has is followed by a
@@ -36,11 +62,11 @@ object Trees {
     flags: FlagSet = EmptyFlags,
     privateWithin: TypeName = tpnme.EMPTY,
     annotations: List[Tree[T]] = Nil,
-    positions: FlagPositions = NoFlagPositions)(implicit val cpos: Position = NoPosition) {
+    positions: FlagPositions = NoFlagPositions) extends Positioned {
 
-    def | (fs: FlagSet): Modifiers[T] = copy(flags = flags | fs)(cpos)
-    def & (fs: FlagSet): Modifiers[T] = copy(flags = flags & fs)(cpos)
-    def &~(fs: FlagSet): Modifiers[T] = copy(flags = flags &~ fs)(cpos)
+    def | (fs: FlagSet): Modifiers[T] = copy(flags = flags | fs)
+    def & (fs: FlagSet): Modifiers[T] = copy(flags = flags & fs)
+    def &~(fs: FlagSet): Modifiers[T] = copy(flags = flags &~ fs)
 
     def is(fs: FlagSet): Boolean = flags is fs
     def is(fc: FlagConjunction): Boolean = flags is fc
@@ -50,15 +76,13 @@ object Trees {
 
     def withAnnotations(annots: List[Tree[T]]) =
       if (annots.isEmpty) this
-      else copy(annotations = annotations ++ annots)(cpos)
+      else copy(annotations = annotations ++ annots)
 
     def withPrivateWithin(pw: TypeName) =
       if (pw.isEmpty) this
-      else copy(privateWithin = pw)(cpos)
+      else copy(privateWithin = pw)
 
-    def withPos(pos: Position) = copy()(pos)
-
-    val pos: Position = unionPos(cpos, annotations)
+    protected def initialPos: Position = unionPos(NoPosition, annotations)
   }
 
   private final val OffsetShift = 6
@@ -118,17 +142,7 @@ object Trees {
    *   - Type checking an untyped tree should remove all embedded `TypedSplice`
    *     nodes.
    */
-  abstract class Tree[T >: Untyped] extends DotClass with Showable with Cloneable {
-
-    /** The tree's position. Except
-     *  for SharedTree nodes, it is always ensured that a tree's position
-     *  contains the positions of all its immediate subtrees. However, it need not
-     *  contain positions of other tree elements such as Modifiers.
-     */
-    def pos: Position
-
-    /** The extended position. Unlike `pos`, this one contains positions of modifiers */
-    def xpos: Position = pos
+  abstract class Tree[T >: Untyped] extends Positioned with Product with Showable with Cloneable {
 
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]
@@ -158,7 +172,7 @@ object Trees {
       val tree =
         (if (_tpe == null ||
           (_tpe.asInstanceOf[AnyRef] eq tpe.asInstanceOf[AnyRef])) this
-        else clone).asInstanceOf[Tree[Type]]
+         else clone).asInstanceOf[Tree[Type]]
       tree._tpe = tpe
       tree.asInstanceOf[ThisTree[Type]]
     }
@@ -175,7 +189,14 @@ object Trees {
       case _ => NoType
     }
 
-    /** The denotation referred to by this tree.
+    /** The envelope containing the tree in its entirety.
+     *  Unlile `pos`, `envelope` is always a synthetic position which does not contain
+     *  a point. Also unlike `pos`, this contains the modifiers and annotations of
+     *  a definition of type ModDefTree.
+     */
+    def envelope: Position = curPos.toSynthetic
+
+    /** The denotation referred tno by this tree.
      *  Defined for `DenotingTree`s and `ProxyTree`s, NoDenotation for other
      *  kinds of trees
      */
@@ -202,6 +223,20 @@ object Trees {
     /** if this tree is the empty tree, the alternative, else this tree */
     def orElse(that: => Tree[T]): Tree[T] =
       if (this eq theEmptyTree) that else this
+
+    protected def initialPos = {
+      var n = productArity
+      var pos = NoPosition
+      while (n > 0) {
+        n -= 1
+        productElement(n) match {
+          case t: Tree[_] => pos = pos union t.pos
+          case xs: List[_] => pos = unionPos(pos, xs)
+          case _ =>
+        }
+      }
+      pos
+    }
 
     override def toText(implicit ctx: Context) = ctx.toText(this)
 
@@ -289,41 +324,37 @@ object Trees {
   trait ModDefTree[T >: Untyped] extends DefTree[T] {
     type ThisTree[T >: Untyped] <: ModDefTree[T]
     def mods: Modifiers[T]
-    override def xpos = mods.pos union pos
+    override def envelope: Position = mods.pos union pos
   }
 
   // ----------- Tree case classes ------------------------------------
 
   /** name */
-  case class Ident[T >: Untyped](name: Name)(implicit cpos: Position)
+  case class Ident[T >: Untyped](name: Name)
     extends RefTree[T] {
     type ThisTree[T >: Untyped] = Ident[T]
-    val pos = cpos
     def qualifier: Tree[T] = EmptyTree[T]
   }
 
-  class BackquotedIdent[T >: Untyped](name: Name)(implicit cpos: Position)
+  class BackquotedIdent[T >: Untyped](name: Name)
     extends Ident[T](name)
 
   /** qualifier.name */
-  case class Select[T >: Untyped](qualifier: Tree[T], name: Name)(implicit cpos: Position)
+  case class Select[T >: Untyped](qualifier: Tree[T], name: Name)
     extends RefTree[T] {
     type ThisTree[T >: Untyped] = Select[T]
-    val pos = cpos union qualifier.pos
   }
 
   /** qual.this */
-  case class This[T >: Untyped](qual: TypeName)(implicit cpos: Position)
+  case class This[T >: Untyped](qual: TypeName)
     extends DenotingTree[T] with TermTree[T] {
     type ThisTree[T >: Untyped] = This[T]
-    val pos = cpos
   }
 
   /** C.super[mix], where qual = C.this */
-  case class Super[T >: Untyped](qual: Tree[T], mix: TypeName)(implicit cpos: Position)
+  case class Super[T >: Untyped](qual: Tree[T], mix: TypeName)
     extends ProxyTree[T] with TermTree[T] {
     type ThisTree[T >: Untyped] = Super[T]
-    val pos = cpos union qual.pos
     def forwardTo = qual
   }
 
@@ -335,102 +366,84 @@ object Trees {
   }
 
   /** fun(args) */
-  case class Apply[T >: Untyped](fun: Tree[T], args: List[Tree[T]])(implicit cpos: Position)
+  case class Apply[T >: Untyped](fun: Tree[T], args: List[Tree[T]])
     extends GenericApply[T] {
     type ThisTree[T >: Untyped] = Apply[T]
-    val pos = unionPos(cpos union fun.pos, args)
   }
 
   /** fun[args] */
-  case class TypeApply[T >: Untyped](fun: Tree[T], args: List[Tree[T]])(implicit cpos: Position)
+  case class TypeApply[T >: Untyped](fun: Tree[T], args: List[Tree[T]])
     extends GenericApply[T] {
     type ThisTree[T >: Untyped] = TypeApply[T]
-    val pos = unionPos(cpos union fun.pos, args)
   }
 
   /** const */
-  case class Literal[T >: Untyped](const: Constant)(implicit cpos: Position)
+  case class Literal[T >: Untyped](const: Constant)
     extends TermTree[T] {
     type ThisTree[T >: Untyped] = Literal[T]
-    val pos = cpos
   }
 
   /** new tpt, but no constructor call */
-  case class New[T >: Untyped](tpt: Tree[T])(implicit cpos: Position)
+  case class New[T >: Untyped](tpt: Tree[T])
     extends TermTree[T] {
     type ThisTree[T >: Untyped] = New[T]
-    val pos = cpos union tpt.pos
   }
 
   /** new tpt(args1)...(args_n)
-   *  @param cpos A position spanning the new.
    */
-  def New[T >: Untyped](tpt: Tree[T], argss: List[List[Tree[T]]])(implicit cpos: Position): Tree[T] = {
-    val newPos = cpos.withEnd(tpt.pos.end min cpos.end)
-    locally {
-      implicit val cpos: Position = newPos
-      ((Select(New(tpt), nme.CONSTRUCTOR): Tree[T]) /: argss)(Apply(_, _))
-    }
-  }
+  def New[T >: Untyped](tpt: Tree[T], argss: List[List[Tree[T]]]): Tree[T] =
+    ((Select(New(tpt), nme.CONSTRUCTOR): Tree[T]) /: argss)(Apply(_, _))
 
   /** (left, right) */
-  case class Pair[T >: Untyped](left: Tree[T], right: Tree[T])(implicit cpos: Position)
+  case class Pair[T >: Untyped](left: Tree[T], right: Tree[T])
     extends TermTree[T] {
     type ThisTree[T >: Untyped] = Pair[T]
-    val pos = cpos union left.pos union right.pos
     override def isTerm = left.isTerm && right.isTerm
     override def isType = left.isType && right.isType
     override def isPattern = !isTerm && (left.isPattern || left.isTerm) && (right.isPattern || right.isTerm)
   }
 
   /** expr : tpt */
-  case class Typed[T >: Untyped](expr: Tree[T], tpt: Tree[T])(implicit cpos: Position)
+  case class Typed[T >: Untyped](expr: Tree[T], tpt: Tree[T])
     extends ProxyTree[T] with TermTree[T] {
     type ThisTree[T >: Untyped] = Typed[T]
-    val pos = cpos union expr.pos union tpt.pos
     def forwardTo = expr
   }
 
   /** name = arg, in a parameter list */
-  case class NamedArg[T >: Untyped](name: Name, arg: Tree[T])(implicit cpos: Position)
+  case class NamedArg[T >: Untyped](name: Name, arg: Tree[T])
     extends Tree[T] {
     type ThisTree[T >: Untyped] = NamedArg[T]
-    val pos = cpos union arg.pos
   }
 
   /** name = arg, outside a parameter list */
-  case class Assign[T >: Untyped](lhs: Tree[T], rhs: Tree[T])(implicit cpos: Position)
+  case class Assign[T >: Untyped](lhs: Tree[T], rhs: Tree[T])
     extends TermTree[T] {
     type ThisTree[T >: Untyped] = Assign[T]
-    val pos = cpos union lhs.pos union rhs.pos
   }
 
   /** { stats; expr } */
-  case class Block[T >: Untyped](stats: List[Tree[T]], expr: Tree[T])(implicit cpos: Position)
+  case class Block[T >: Untyped](stats: List[Tree[T]], expr: Tree[T])
     extends TermTree[T] {
     type ThisTree[T >: Untyped] = Block[T]
-    val pos = unionPos(cpos union expr.pos, stats)
   }
 
   /** if cond then thenp else elsep */
-  case class If[T >: Untyped](cond: Tree[T], thenp: Tree[T], elsep: Tree[T])(implicit cpos: Position)
+  case class If[T >: Untyped](cond: Tree[T], thenp: Tree[T], elsep: Tree[T])
     extends TermTree[T] {
     type ThisTree[T >: Untyped] = If[T]
-    val pos = cpos union cond.pos union thenp.pos union elsep.pos
   }
 
   /** selector match { cases } */
-  case class Match[T >: Untyped](selector: Tree[T], cases: List[CaseDef[T]])(implicit cpos: Position)
+  case class Match[T >: Untyped](selector: Tree[T], cases: List[CaseDef[T]])
     extends TermTree[T] {
     type ThisTree[T >: Untyped] = Match[T]
-    val pos = unionPos(cpos union selector.pos, cases)
   }
 
   /** case pat if guard => body */
-  case class CaseDef[T >: Untyped](pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit cpos: Position)
+  case class CaseDef[T >: Untyped](pat: Tree[T], guard: Tree[T], body: Tree[T])
     extends Tree[T] {
     type ThisTree[T >: Untyped] = CaseDef[T]
-    val pos = cpos union pat.pos union guard.pos union body.pos
   }
 
   /** return expr
@@ -438,180 +451,158 @@ object Trees {
    *  After program transformations this is not necessarily the enclosing method, because
    *  closures can intervene.
    */
-  case class Return[T >: Untyped](expr: Tree[T], from: Tree[T] = EmptyTree[T]())(implicit cpos: Position)
+  case class Return[T >: Untyped](expr: Tree[T], from: Tree[T] = EmptyTree[T]())
     extends TermTree[T] {
     type ThisTree[T >: Untyped] = Return[T]
-    val pos = cpos union expr.pos // from is synthetic, does not influence pos
   }
 
   /** try block catch { catches } */
-  case class Try[T >: Untyped](block: Tree[T], catches: List[CaseDef[T]], finalizer: Tree[T])(implicit cpos: Position)
+  case class Try[T >: Untyped](block: Tree[T], catches: List[CaseDef[T]], finalizer: Tree[T])
     extends TermTree[T] {
     type ThisTree[T >: Untyped] = Try[T]
-    val pos = unionPos(cpos union block.pos union finalizer.pos, catches)
   }
 
   /** throw expr */
-  case class Throw[T >: Untyped](expr: Tree[T])(implicit cpos: Position)
+  case class Throw[T >: Untyped](expr: Tree[T])
     extends TermTree[T] {
     type ThisTree[T >: Untyped] = Throw[T]
-    val pos = cpos union expr.pos
   }
 
   /** Array[elemtpt](elems) */
-  case class SeqLiteral[T >: Untyped](elemtpt: Tree[T], elems: List[Tree[T]])(implicit cpos: Position)
+  case class SeqLiteral[T >: Untyped](elemtpt: Tree[T], elems: List[Tree[T]])
     extends Tree[T] {
     type ThisTree[T >: Untyped] = SeqLiteral[T]
-    val pos = unionPos(cpos union elemtpt.pos, elems)
   }
 
   /** A type tree that represents an existing or inferred type */
-  case class TypeTree[T >: Untyped](original: Tree[T] = EmptyTree[T])(implicit cpos: Position)
+  case class TypeTree[T >: Untyped](original: Tree[T] = EmptyTree[T])
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[T >: Untyped] = TypeTree[T]
-    val pos = if (original.pos.exists) original.pos else cpos.focus
+    override def initialPos = NoPosition
   }
 
   /** ref.type */
-  case class SingletonTypeTree[T >: Untyped](ref: Tree[T])(implicit cpos: Position)
+  case class SingletonTypeTree[T >: Untyped](ref: Tree[T])
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[T >: Untyped] = SingletonTypeTree[T]
-    val pos = cpos union ref.pos
   }
 
   /** qualifier # name */
-  case class SelectFromTypeTree[T >: Untyped](qualifier: Tree[T], name: Name)(implicit cpos: Position)
+  case class SelectFromTypeTree[T >: Untyped](qualifier: Tree[T], name: Name)
     extends RefTree[T] {
     type ThisTree[T >: Untyped] = SelectFromTypeTree[T]
-    val pos = cpos union qualifier.pos
   }
 
   /** left & right */
-  case class AndTypeTree[T >: Untyped](left: Tree[T], right: Tree[T])(implicit cpos: Position)
+  case class AndTypeTree[T >: Untyped](left: Tree[T], right: Tree[T])
     extends TypTree[T] {
     type ThisTree[T >: Untyped] = AndTypeTree[T]
-    val pos = cpos union left.pos union right.pos
   }
 
   /** left | right */
-  case class OrTypeTree[T >: Untyped](left: Tree[T], right: Tree[T])(implicit cpos: Position)
+  case class OrTypeTree[T >: Untyped](left: Tree[T], right: Tree[T])
     extends TypTree[T] {
     type ThisTree[T >: Untyped] = OrTypeTree[T]
-    val pos = cpos union left.pos union right.pos
   }
 
   /** tpt { refinements } */
-  case class RefineTypeTree[T >: Untyped](tpt: Tree[T], refinements: List[Tree[T]])(implicit cpos: Position)
+  case class RefineTypeTree[T >: Untyped](tpt: Tree[T], refinements: List[Tree[T]])
     extends ProxyTree[T] with TypTree[T] {
     type ThisTree[T >: Untyped] = RefineTypeTree[T]
-    val pos = unionPos(cpos union tpt.pos, refinements)
     def forwardTo = tpt
   }
 
   /** tpt[args] */
-  case class AppliedTypeTree[T >: Untyped](tpt: Tree[T], args: List[Tree[T]])(implicit cpos: Position)
+  case class AppliedTypeTree[T >: Untyped](tpt: Tree[T], args: List[Tree[T]])
     extends ProxyTree[T] with TypTree[T] {
     type ThisTree[T >: Untyped] = AppliedTypeTree[T]
-    val pos = unionPos(cpos union tpt.pos, args)
     def forwardTo = tpt
   }
 
-  def AppliedTypeTree[T >: Untyped](tpt: Tree[T], arg: Tree[T])(implicit cpos: Position): AppliedTypeTree[T] =
+  def AppliedTypeTree[T >: Untyped](tpt: Tree[T], arg: Tree[T]): AppliedTypeTree[T] =
     AppliedTypeTree(tpt, arg :: Nil)
 
   /** >: lo <: hi */
-  case class TypeBoundsTree[T >: Untyped](lo: Tree[T], hi: Tree[T])(implicit cpos: Position)
+  case class TypeBoundsTree[T >: Untyped](lo: Tree[T], hi: Tree[T])
     extends Tree[T] {
     type ThisTree[T >: Untyped] = TypeBoundsTree[T]
-    val pos = cpos union lo.pos union hi.pos
   }
 
   /** name @ body */
-  case class Bind[T >: Untyped](name: Name, body: Tree[T])(implicit cpos: Position)
+  case class Bind[T >: Untyped](name: Name, body: Tree[T])
     extends NameTree[T] with DefTree[T] with PatternTree[T] {
     type ThisTree[T >: Untyped] = Bind[T]
-    val pos = cpos union body.pos
   }
 
   /** tree_1 | ... | tree_n */
-  case class Alternative[T >: Untyped](trees: List[Tree[T]])(implicit cpos: Position)
+  case class Alternative[T >: Untyped](trees: List[Tree[T]])
     extends PatternTree[T] {
     type ThisTree[T >: Untyped] = Alternative[T]
-    val pos = unionPos(cpos, trees)
   }
 
   /** fun(args) in a pattern, if fun is an extractor */
-  case class UnApply[T >: Untyped](fun: Tree[T], args: List[Tree[T]])(implicit cpos: Position)
+  case class UnApply[T >: Untyped](fun: Tree[T], args: List[Tree[T]])
     extends PatternTree[T] {
     type ThisTree[T >: Untyped] = UnApply[T]
-    val pos = unionPos(cpos union fun.pos, args)
   }
 
   /** mods val name: tpt = rhs */
-  case class ValDef[T >: Untyped](mods: Modifiers[T], name: TermName, tpt: Tree[T], rhs: Tree[T])(implicit cpos: Position)
+  case class ValDef[T >: Untyped](mods: Modifiers[T], name: TermName, tpt: Tree[T], rhs: Tree[T])
     extends NameTree[T] with ModDefTree[T] {
     type ThisTree[T >: Untyped] = ValDef[T]
-    val pos = cpos union tpt.pos union rhs.pos
   }
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
-  case class DefDef[T >: Untyped](mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])(implicit cpos: Position)
+  case class DefDef[T >: Untyped](mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])
     extends NameTree[T] with ModDefTree[T] {
     type ThisTree[T >: Untyped] = DefDef[T]
-    val pos = (unionPos(cpos union tpt.pos union rhs.pos, tparams) /: vparamss)(unionPos)
   }
 
-  class ImplicitDefDef[T >: Untyped](mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])(implicit pos: Position) extends DefDef[T](mods, name, tparams, vparamss, tpt, rhs) {
-    override def copy[T >: Untyped](mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])(implicit pos: Position) =
+  class ImplicitDefDef[T >: Untyped](mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T]) extends DefDef[T](mods, name, tparams, vparamss, tpt, rhs) {
+    override def copy[T >: Untyped](mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T]) =
       new ImplicitDefDef[T](mods, name, tparams, vparamss, tpt, rhs)
   }
 
   /** mods type name = rhs   or
    *  mods type name >: lo <: hi, if rhs = TypeBoundsTree(lo, hi)
    */
-  case class TypeDef[T >: Untyped](mods: Modifiers[T], name: TypeName, tparams: List[TypeDef[T]], rhs: Tree[T])(implicit cpos: Position)
+  case class TypeDef[T >: Untyped](mods: Modifiers[T], name: TypeName, tparams: List[TypeDef[T]], rhs: Tree[T])
     extends NameTree[T] with ModDefTree[T] {
     type ThisTree[T >: Untyped] = TypeDef[T]
-    val pos = unionPos(cpos union rhs.pos, tparams)
   }
 
   /** extends parents { self => body } */
-  case class Template[T >: Untyped](parents: List[Tree[T]], self: ValDef[T], body: List[Tree[T]])(implicit cpos: Position)
+  case class Template[T >: Untyped](constr: Tree[T], parents: List[Tree[T]], self: ValDef[T], body: List[Tree[T]])
     extends DefTree[T] {
     type ThisTree[T >: Untyped] = Template[T]
-    val pos = unionPos(unionPos(cpos union self.xpos, parents), body)
   }
 
   /** mods class name[tparams] impl */
-  case class ClassDef[T >: Untyped](mods: Modifiers[T], name: TypeName, tparams: List[TypeDef[T]], impl: Template[T])(implicit cpos: Position)
+  case class ClassDef[T >: Untyped](mods: Modifiers[T], name: TypeName, tparams: List[TypeDef[T]], impl: Template[T])
     extends NameTree[T] with ModDefTree[T] {
     type ThisTree[T >: Untyped] = ClassDef[T]
-    val pos = unionPos(cpos union impl.pos, tparams)
   }
 
   /** import expr.selectors
    *  where a selector is either an untyped `Ident`, `name` or
    *  an untyped `Pair` `name => rename`
    */
-  case class Import[T >: Untyped](expr: Tree[T], selectors: List[UntypedTree])(implicit cpos: Position)
+  case class Import[T >: Untyped](expr: Tree[T], selectors: List[UntypedTree])
     extends DenotingTree[T] {
     type ThisTree[T >: Untyped] = Import[T]
-    val pos = unionPos(cpos union expr.pos, selectors)
   }
 
   /** package pid { stats } */
-  case class PackageDef[T >: Untyped](pid: RefTree[T], stats: List[Tree[T]])(implicit cpos: Position)
+  case class PackageDef[T >: Untyped](pid: RefTree[T], stats: List[Tree[T]])
     extends ProxyTree[T] {
     type ThisTree[T >: Untyped] = PackageDef[T]
-    val pos = unionPos(cpos union pid.pos, stats)
     def forwardTo = pid
   }
 
   /** arg @annot */
-  case class Annotated[T >: Untyped](annot: Tree[T], arg: Tree[T])(implicit cpos: Position)
+  case class Annotated[T >: Untyped](annot: Tree[T], arg: Tree[T])
     extends ProxyTree[T] {
     type ThisTree[T >: Untyped] = Annotated[T]
-    val pos = cpos union annot.pos union arg.pos
     def forwardTo = arg
   }
 
@@ -635,7 +626,7 @@ object Trees {
   }
 
   class EmptyValDef[T >: Untyped] extends ValDef[T](
-    Modifiers[T](Private)(NoPosition), nme.WILDCARD, EmptyTree[T], EmptyTree[T])(NoPosition) with AlwaysEmpty[T]
+    Modifiers[T](Private), nme.WILDCARD, EmptyTree[T], EmptyTree[T]) with AlwaysEmpty[T]
 
   private object theEmptyValDef extends EmptyValDef[Untyped]
 
@@ -650,49 +641,16 @@ object Trees {
   case class SharedTree[T >: Untyped](shared: Tree[T]) extends ProxyTree[T] {
     type ThisTree[T >: Untyped] = SharedTree[T]
     def forwardTo: Tree[T] = shared
-    val pos = NoPosition
   }
 
-  // ----- Tree cases that exist in untyped form only ------------------
-
-  /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice */
-  case class TypedSplice(tree: TypedTree) extends UntypedTree {
-    val pos = tree.pos
-  }
-
-  /** mods object name impl */
-  case class ModuleDef(mods: Modifiers[Untyped], name: TermName, impl: Template[Untyped])(implicit cpos: Position)
-    extends NameTree[Untyped] with ModDefTree[Untyped] {
-    type ThisTree[T >: Untyped] <: NameTree[T] with ModDefTree[T] with ModuleDef
-    val pos = cpos union impl.pos
-    def derivedModuleDef(mods: Modifiers[Untyped], name: TermName, impl: Template[Untyped]) =
-      if (mods == this.mods && name == this.name && (impl eq this.impl)) this
-      else ModuleDef(mods, name, impl)
-  }
-
-  /** (vparams) => body */
-  case class Function(vparams: List[ValDef[Untyped]], body: Tree[Untyped])(implicit cpos: Position)
-    extends TermTree[Untyped] {
-    type ThisTree[T >: Untyped] <: TermTree[T] with Function
-    val pos = unionPos(cpos union body.pos, vparams)
-  }
-
-  /** Something in parentheses */
-  case class Parens(trees: List[Tree[Untyped]])(implicit cpos: Position) extends Tree[Untyped] {
-    type ThisTree[T >: Untyped] <: Tree[T] with Parens
-    val pos = unionPos(cpos, trees)
-  }
 
   // ----- Auxiliary creation methods ------------------
 
-  def Block[T >: Untyped](stat: Tree[T], expr: Tree[T])(implicit cpos: Position): Block[T] =
+  def Block[T >: Untyped](stat: Tree[T], expr: Tree[T]): Block[T] =
     Block(stat :: Nil, expr)
 
-  def Apply[T >: Untyped](fn: Tree[T], arg: Tree[T])(implicit cpos: Position): Apply[T] =
+  def Apply[T >: Untyped](fn: Tree[T], arg: Tree[T]): Apply[T] =
     Apply(fn, arg :: Nil)
-
-  def Function(vparam: ValDef[Untyped], body: Tree[Untyped])(implicit cpos: Position): Function =
-    Function(vparam :: Nil, body)
 
   // ----- Generic Tree Instances, inherited from  `tpt` and `untpd`.
 
@@ -708,6 +666,7 @@ object Trees {
     type NameTree = Trees.NameTree[T]
     type RefTree = Trees.RefTree[T]
     type DefTree = Trees.DefTree[T]
+    type ModDefTree = Trees.ModDefTree[T]
 
     type TreeCopier = Trees.TreeCopier[T]
     type TreeAccumulator[U] = Trees.TreeAccumulator[U, T]
@@ -758,17 +717,14 @@ object Trees {
     protected implicit def pos(implicit ctx: Context): Position = ctx.position
 
     def defPos(sym: Symbol)(implicit ctx: Context) = ctx.position union sym.coord.toPosition
+
+    def Parameter(pname: TermName, tpe: Tree, mods: Modifiers = Modifiers()): ValDef =
+      ValDef(mods | Param, pname, tpe, EmptyTree())
   }
 
   // ----- Helper functions and classes ---------------------------------------
 
-  @tailrec final def unionPos(base: Position, trees: List[Tree[_]]): Position = trees match {
-    case t :: ts => unionPos(base union t.xpos, ts)
-    case nil => base
-  }
-
   implicit class TreeCopier[T >: Untyped](val tree: Tree[T]) extends AnyVal {
-    implicit def cpos = tree.pos
     def derivedIdent(name: Name): Ident[T] = tree match {
       case tree: BackquotedIdent[_] =>
         if (name == tree.name) tree
@@ -852,10 +808,6 @@ object Trees {
       case tree: SeqLiteral[_] if (elemtpt eq tree.elemtpt) && (elems eq tree.elems) => tree
       case _ => SeqLiteral(elemtpt, elems).copyAttr(tree)
     }
-    def derivedTypeTree(original: Tree[T] = EmptyTree[T]): TypeTree[T] = tree match {
-      case tree: TypeTree[_] if (original eq tree.original) => tree
-      case _ => TypeTree(original).copyAttr(tree)
-    }
     def derivedSingletonTypeTree(ref: Tree[T]): SingletonTypeTree[T] = tree match {
       case tree: SingletonTypeTree[_] if (ref eq tree.ref) => tree
       case _ => SingletonTypeTree(ref).copyAttr(tree)
@@ -908,9 +860,9 @@ object Trees {
       case tree: TypeDef[_] if (mods == tree.mods) && (name == tree.name) && (tparams eq tree.tparams) && (rhs eq tree.rhs) => tree
       case _ => TypeDef(mods, name, tparams, rhs).copyAttr(tree)
     }
-    def derivedTemplate(parents: List[Tree[T]], self: ValDef[T], body: List[Tree[T]]): Template[T] = tree match {
-      case tree: Template[_] if (parents eq tree.parents) && (self eq tree.self) && (body eq tree.body) => tree
-      case _ => Template(parents, self, body).copyAttr(tree)
+    def derivedTemplate(constr: Tree[T], parents: List[Tree[T]], self: ValDef[T], body: List[Tree[T]]): Template[T] = tree match {
+      case tree: Template[_] if (constr eq tree.constr) && (parents eq tree.parents) && (self eq tree.self) && (body eq tree.body) => tree
+      case _ => Template(constr, parents, self, body).copyAttr(tree)
     }
     def derivedClassDef(mods: Modifiers[T], name: TypeName, tparams: List[TypeDef[T]], impl: Template[T]): ClassDef[T] = tree match {
       case tree: ClassDef[_] if (mods == tree.mods) && (name == tree.name) && (tparams eq tree.tparams) && (impl eq tree.impl) => tree
@@ -979,7 +931,7 @@ object Trees {
       case SeqLiteral(elemtpt, elems) =>
         finishSeqLiteral(tree.derivedSeqLiteral(transform(elemtpt, c), transform(elems, c)), tree, c, plugins)
       case TypeTree(original) =>
-        finishTypeTree(tree.derivedTypeTree(transform(original, c)), tree, c, plugins)
+        finishTypeTree(tree, tree, c, plugins)
       case SingletonTypeTree(ref) =>
         finishSingletonTypeTree(tree.derivedSingletonTypeTree(transform(ref, c)), tree, c, plugins)
       case SelectFromTypeTree(qualifier, name) =>
@@ -1006,8 +958,8 @@ object Trees {
         finishDefDef(tree.derivedDefDef(mods, name, transformSub(tparams, c), vparamss mapConserve (transformSub(_, c)), transform(tpt, c), transform(rhs, c)), tree, c, plugins)
       case TypeDef(mods, name, tparams, rhs) =>
         finishTypeDef(tree.derivedTypeDef(mods, name, transformSub(tparams, c), transform(rhs, c)), tree, c, plugins)
-      case Template(parents, self, body) =>
-        finishTemplate(tree.derivedTemplate(transform(parents, c), transformSub(self, c), transform(body, c)), tree, c, plugins)
+      case Template(constr, parents, self, body) =>
+        finishTemplate(tree.derivedTemplate(transform(constr, c), transform(parents, c), transformSub(self, c), transform(body, c)), tree, c, plugins)
       case ClassDef(mods, name, tparams, impl) =>
         finishClassDef(tree.derivedClassDef(mods, name, transformSub(tparams, c), transformSub(impl, c)), tree, c, plugins)
       case Import(expr, selectors) =>
@@ -1128,7 +1080,7 @@ object Trees {
       case SeqLiteral(elemtpt, elems) =>
         tree.derivedSeqLiteral(transform(elemtpt), transform(elems))
       case TypeTree(original) =>
-        tree.derivedTypeTree(transform(original))
+        tree
       case SingletonTypeTree(ref) =>
         tree.derivedSingletonTypeTree(transform(ref))
       case SelectFromTypeTree(qualifier, name) =>
@@ -1155,8 +1107,8 @@ object Trees {
         tree.derivedDefDef(mods, name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(rhs))
       case TypeDef(mods, name, tparams, rhs) =>
         tree.derivedTypeDef(mods, name, transformSub(tparams), transform(rhs))
-      case Template(parents, self, body) =>
-        tree.derivedTemplate(transform(parents), transformSub(self), transform(body))
+      case Template(constr, parents, self, body) =>
+        tree.derivedTemplate(transform(constr), transform(parents), transformSub(self), transform(body))
       case ClassDef(mods, name, tparams, impl) =>
         tree.derivedClassDef(mods, name, transformSub(tparams), transformSub(impl))
       case Import(expr, selectors) =>
@@ -1257,8 +1209,8 @@ object Trees {
         this(this((this(x, tparams) /: vparamss)(apply), tpt), rhs)
       case TypeDef(mods, name, tparams, rhs) =>
         this(this(x, tparams), rhs)
-      case Template(parents, self, body) =>
-        this(this(this(x, parents), self), body)
+      case Template(constr, parents, self, body) =>
+        this(this(this(this(x, constr), parents), self), body)
       case ClassDef(mods, name, tparams, impl) =>
         this(this(x, tparams), impl)
       case Import(expr, selectors) =>

@@ -86,7 +86,7 @@ object Positions {
       Position(this.start, this.end, point - this.start)
 
     /** A synthetic copy of this position */
-    def toSynthetic = Position(start, end)
+    def toSynthetic = if (isSynthetic) this else Position(start, end)
   }
 
   private def fromOffsets(start: Int, end: Int, pointDelta: Int) =
