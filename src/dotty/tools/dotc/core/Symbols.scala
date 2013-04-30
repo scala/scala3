@@ -108,7 +108,7 @@ trait Symbols { this: Context =>
       name: TermName,
       modFlags: FlagSet,
       clsFlags: FlagSet,
-      infoFn: (TermSymbol, ClassSymbol) => Type,
+      infoFn: (TermSymbol, ClassSymbol) => Type, // typically a ModuleClassCompleterWithDecls
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
       assocFile: AbstractFile = null): TermSymbol
@@ -258,7 +258,7 @@ trait Symbols { this: Context =>
           symbol = copy,
           owner = treeMap.ownerMap(odenot.owner),
           info = treeMap.typeMap(odenot.info),
-          privateWithin = ownerMap(odenot.privateWithin),
+          privateWithin = ownerMap(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
           annotations = odenot.annotations.mapConserve(treeMap.apply))
       }
       copies
@@ -281,7 +281,7 @@ trait Symbols { this: Context =>
 
 object Symbols {
 
-  var _nextId = 0 // !!! DEBUG
+  var _nextId = 0 // !!! DEBUG, use global counter instead
   def nextId = { _nextId += 1; _nextId }
 
 
@@ -354,6 +354,7 @@ object Symbols {
 
     /** The source or class file from which this class or
      *  the class containing this symbol was generated, null if not applicable.
+     *  Overridden in ClassSymbol
      */
     def associatedFile(implicit ctx: Context): AbstractFile =
       denot.topLevelClass.symbol.associatedFile

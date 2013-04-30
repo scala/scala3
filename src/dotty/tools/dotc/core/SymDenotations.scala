@@ -84,8 +84,6 @@ object SymDenotations {
     final def is(fs: FlagConjunction, butNot: FlagSet) =
       (if (fs <= FromStartFlags && butNot <= FromStartFlags) _flags else flags) is (fs, butNot)
 
-    final def unsafeFlags: FlagSet = _flags
-
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
      *  Uncompleted denotations set _info to a LazyType.
@@ -419,6 +417,16 @@ object SymDenotations {
 
     // ------ access to related symbols ---------------------------------
 
+    /* Modules and module classes are represented as follows:
+     *
+     * object X extends Y { def f() }
+     *
+     * <module> lazy val X: X$ = new X$
+     * <module> class X$ extends Y { this: X.type => def f() }
+     *
+     * During completion, references to moduleClass and sourceModules are stored in
+     * the completers.
+     */
     /** The class implementing this module, NoSymbol if not applicable. */
     final def moduleClass: Symbol = _info match {
       case info: TypeRefBySym if this is ModuleVal => info.fixedSym
@@ -516,13 +524,18 @@ object SymDenotations {
      *  in the given class.
      *  @param inClass   The class containing the symbol's definition
      *  @param site      The base type from which member types are computed
+     *
+     *  inClass <-- find denot.symbol      class C { <-- symbol is here
+     *
+     *                   site: Subtype of both inClass and C
+     *
      */
     final def matchingSymbol(inClass: Symbol, site: Type)(implicit ctx: Context): Symbol = {
       var denot = inClass.info.nonPrivateDecl(name)
-      if (denot.isTerm) {
+      if (denot.isTerm) { // types of the same name always match
         val targetType = site.memberInfo(symbol)
         if (denot.isOverloaded)
-          denot = denot.atSignature(targetType.signature)
+          denot = denot.atSignature(targetType.signature) // seems we need two kinds of signatures here
         if (!(site.memberInfo(denot.symbol) matches targetType))
           denot = NoDenotation
       }
@@ -531,8 +544,7 @@ object SymDenotations {
 
     /** The symbol, in class `inClass`, that is overridden by this denotation. */
     final def overriddenSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol =
-      if (owner isSubClass inClass) matchingSymbol(inClass, owner.thisType)
-      else NoSymbol
+      matchingSymbol(inClass, owner.thisType)
 
     /** All symbols overriden by this denotation. */
     final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
@@ -648,6 +660,7 @@ object SymDenotations {
     /** The info asserted to have type ClassInfo */
     def classInfo(implicit ctx: Context): ClassInfo = super.info.asInstanceOf[ClassInfo]
 
+    /** TODO: Document why caches are supposedly safe to use */
     private[this] var _typeParams: List[TypeSymbol] = _
 
     /** The type parameters of this class */
@@ -850,7 +863,7 @@ object SymDenotations {
               case _ =>
                 denots1
             }
-          case _ =>
+          case nil =>
             denots
         }
         collect(ownDenots, classInfo.classParents)
@@ -862,6 +875,7 @@ object SymDenotations {
     private[this] var baseTypeCache: java.util.HashMap[CachedType, Type] = null
     private[this] var baseTypeValid: RunId = NoRunId
 
+    /** Compute tp.baseType(this) */
     final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
 
       def foldGlb(bt: Type, ps: List[Type]): Type = ps match {

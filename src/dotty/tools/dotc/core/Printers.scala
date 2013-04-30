@@ -303,7 +303,7 @@ object Printers {
 
     /** String representation of symbol's kind. */
     def kindString(sym: Symbol): String = {
-      val flags = sym.unsafeFlags
+      val flags = sym.flagsUNSAFE
       if (flags is PackageClass) "package class"
       else if (flags is PackageVal) "package"
       else if (sym.isPackageObject)
@@ -329,7 +329,7 @@ object Printers {
 
     /** String representation of symbol's definition key word */
     protected def keyString(sym: Symbol): String = {
-      val flags = sym.unsafeFlags
+      val flags = sym.flagsUNSAFE
       if (flags is JavaInterface) "interface"
       else if ((flags is Trait) && !(flags is ImplClass)) "trait"
       else if (sym.isClass) "class"
@@ -509,7 +509,7 @@ object Printers {
       }
 
     override def kindString(sym: Symbol) = {
-      val flags = sym.unsafeFlags
+      val flags = sym.flagsUNSAFE
       if (flags is Package) "package"
       else if (sym.isPackageObject) "package object"
       else if (flags is Module) "object"
@@ -519,7 +519,7 @@ object Printers {
     }
 
     override protected def keyString(sym: Symbol): String = {
-      val flags = sym.unsafeFlags
+      val flags = sym.flagsUNSAFE
       if (sym.isType && (flags is ExpandedTypeParam)) ""
       else super.keyString(sym)
     }
