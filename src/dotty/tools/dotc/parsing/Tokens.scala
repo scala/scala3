@@ -11,6 +11,7 @@ object Tokens {
   final val minToken = EMPTY
   final val maxToken = XMLSTART
 
+  type Token = Int
   type TokenSet = BitSet
 
   def tokenRange(lo: Int, hi: Int): TokenSet = BitSet(lo to hi: _*)

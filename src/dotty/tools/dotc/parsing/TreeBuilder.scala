@@ -10,6 +10,7 @@ import TreeInfo._
 
 /** Methods for building trees, used in the parser.  All the trees
  *  returned by this class must be untyped.
+ *  Note: currently unused, should be refactored into UntypedTrees.
  */
 class TreeBuilder(implicit ctx: Context) {
 
@@ -123,7 +124,7 @@ class TreeBuilder(implicit ctx: Context) {
   }
 
   def stripParens(t: Tree) = t match {
-    case Parens(ts) => makeTuple(ts)(t.pos)
+    case Parens(t) => t
     case _ => t
   }
 
@@ -155,7 +156,7 @@ class TreeBuilder(implicit ctx: Context) {
         case arg => arg
       } else args
     val arguments = right match {
-      case Parens(args) => mkNamed(args)
+      case Parens(arg) => mkNamed(arg :: Nil)
       case _ => right :: Nil
     }
     if (isExpr) {

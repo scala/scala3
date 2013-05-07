@@ -7,6 +7,7 @@ import scala.reflect.internal.Chars._
 abstract class CharArrayReader { self =>
 
   val buf: Array[Char]
+  protected def startFrom = 0
 
   /** Switch whether unicode should be decoded */
   protected def decodeUni: Boolean = true
@@ -18,16 +19,16 @@ abstract class CharArrayReader { self =>
   var ch: Char = _
 
   /** The offset one past the last read character */
-  var charOffset: Int = 0
+  var charOffset: Int = startFrom
 
   /** The offset before the last read character */
-  var lastCharOffset: Int = 0
+  var lastCharOffset: Int = startFrom
 
   /** The start offset of the current line */
-  var lineStartOffset: Int = 0
+  var lineStartOffset: Int = startFrom
 
   /** The start offset of the line before the current one */
-  var lastLineStartOffset: Int = 0
+  var lastLineStartOffset: Int = startFrom
 
   private var lastUnicodeOffset = -1
 

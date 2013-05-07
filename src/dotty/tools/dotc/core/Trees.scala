@@ -7,6 +7,7 @@ import annotation.tailrec
 import language.higherKinds
 import collection.mutable
 import collection.mutable.ArrayBuffer
+import parsing.Tokens.Token
 
 object Trees {
 
@@ -20,27 +21,55 @@ object Trees {
   type TypedTree = Tree[Type]
   type UntypedTree = Tree[Untyped]
 
-  abstract class Positioned extends DotClass {
+  /** A base class for things that have positions (currently: modifiers and trees)
+   */
+  abstract class Positioned extends DotClass with Product {
 
-    protected var curPos: Position = initialPos
+    private var curPos: Position = initialPos
 
-    protected def initialPos: Position
-
-    /** The tree's position. Except
-     *  for SharedTree nodes, it is always ensured that a tree's position
-     *  contains the envelopes of all its immediate subtrees. However, it need not
-     *  contain positions of other tree elements such as Modifiers.
+    /** The item's position.
      */
     def pos: Position = curPos
 
+    /** The envelope containing the item in its entirety. Envelope is different from
+     *  `pos` for definitions (instances of ModDefTree).
+     */
+    def envelope: Position = curPos.toSynthetic
+
+    /** A positioned item like this one with the position set to `pos`.
+     *  if the positioned item is source-derived, a clone is returned.
+     *  If the positioned item is synthetic, the position is updated
+     *  destructively and the item itself is returned.
+     */
     def withPos(pos: Position): this.type = {
       val newpd = (if (curPos.isSynthetic) this else clone).asInstanceOf[Positioned]
-      val newpos = pos union this.pos
-      newpd.curPos = if (pos.isSynthetic) newpos else newpos withPoint pos.point
+      newpd.curPos = pos
       newpd.asInstanceOf[this.type]
     }
 
-    protected def unionPos(pos: Position, xs: List[_]): Position = xs match {
+    /** This item with a position that's the union of the given `pos` and the
+     *  current position.
+     */
+    def addPos(pos: Position): this.type = withPos(pos union this.pos)
+
+    /** The initial, synthetic position. This is usually the union of all positioned children's
+     *  envelopes.
+     */
+    protected def initialPos: Position = {
+      var n = productArity
+      var pos = NoPosition
+      while (n > 0) {
+        n -= 1
+        productElement(n) match {
+          case p: Positioned => pos = pos union p.envelope
+          case xs: List[_] => pos = unionPos(pos, xs)
+          case _ =>
+        }
+      }
+      pos.toSynthetic
+    }
+
+    private def unionPos(pos: Position, xs: List[_]): Position = xs match {
       case (t: Tree[_]) :: xs1 => unionPos(pos union t.envelope, xs1)
       case _ => pos
     }
@@ -57,12 +86,12 @@ object Trees {
    *                        the first modifier or annotation and have as point
    *                        the start of the opening keyword(s) of the definition.
    *                        It should have as end the end of the opening keywords(s).
+   *                        If there is no opening keyword, point should equal end.
    */
   case class Modifiers[T >: Untyped](
     flags: FlagSet = EmptyFlags,
     privateWithin: TypeName = tpnme.EMPTY,
-    annotations: List[Tree[T]] = Nil,
-    positions: FlagPositions = NoFlagPositions) extends Positioned {
+    annotations: List[Tree[T]] = Nil) extends Positioned {
 
     def | (fs: FlagSet): Modifiers[T] = copy(flags = flags | fs)
     def & (fs: FlagSet): Modifiers[T] = copy(flags = flags & fs)
@@ -70,9 +99,6 @@ object Trees {
 
     def is(fs: FlagSet): Boolean = flags is fs
     def is(fc: FlagConjunction): Boolean = flags is fc
-
-    def add(flag: FlagSet, start: Int) =
-      copy(flags = flags | flag, positions = positions.add(flag, start))
 
     def withAnnotations(annots: List[Tree[T]]) =
       if (annots.isEmpty) this
@@ -82,49 +108,8 @@ object Trees {
       if (pw.isEmpty) this
       else copy(privateWithin = pw)
 
-    protected def initialPos: Position = unionPos(NoPosition, annotations)
+    def tokenPos: Seq[(Token, Position)] = ???
   }
-
-  private final val OffsetShift = 6
-  private final val FlagMask = (1 << OffsetShift) - 1
-
-  class FlagPositions(val arr: Array[Int]) extends AnyVal {
-    def get(flag: FlagSet): Position = {
-      val str :: Nil = flag.flagStrings.toList
-      val code = flag.firstBit
-      var i = 0
-      while (i < arr.length && ((arr(i) & FlagMask) != code)) i += 1
-      if (i < arr.length) {
-        val start = arr(i) >>> OffsetShift
-        val end = start + str.length
-        Position(start, end)
-      } else
-        NoPosition
-    }
-    def add(flag: FlagSet, start: Int) = {
-      val newarr = new Array[Int](arr.length + 1)
-      arr.copyToArray(newarr)
-      setFlagPosition(newarr, arr.length, flag, start)
-      new FlagPositions(newarr)
-    }
-  }
-
-  private def setFlagPosition(arr: Array[Int], idx: Int, flag: FlagSet, start: Int): Unit = {
-    val code = flag.firstBit
-    assert(code <= 64)
-    arr(idx) = code | (start << OffsetShift)
-  }
-
-  def FlagPositions(assocs: ArrayBuffer[(FlagSet, Int)]): FlagPositions = {
-    val arr = Array[Int](assocs.size)
-    for (i <- 0 until assocs.size) {
-      val (flag, start) = assocs(i)
-      setFlagPosition(arr, i, flag, start)
-    }
-    FlagPositions(assocs)
-  }
-
-  val NoFlagPositions = new FlagPositions(Array())
 
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Type` or `Untyped`.
@@ -189,13 +174,6 @@ object Trees {
       case _ => NoType
     }
 
-    /** The envelope containing the tree in its entirety.
-     *  Unlile `pos`, `envelope` is always a synthetic position which does not contain
-     *  a point. Also unlike `pos`, this contains the modifiers and annotations of
-     *  a definition of type ModDefTree.
-     */
-    def envelope: Position = curPos.toSynthetic
-
     /** The denotation referred tno by this tree.
      *  Defined for `DenotingTree`s and `ProxyTree`s, NoDenotation for other
      *  kinds of trees
@@ -223,20 +201,6 @@ object Trees {
     /** if this tree is the empty tree, the alternative, else this tree */
     def orElse(that: => Tree[T]): Tree[T] =
       if (this eq theEmptyTree) that else this
-
-    protected def initialPos = {
-      var n = productArity
-      var pos = NoPosition
-      while (n > 0) {
-        n -= 1
-        productElement(n) match {
-          case t: Tree[_] => pos = pos union t.pos
-          case xs: List[_] => pos = unionPos(pos, xs)
-          case _ =>
-        }
-      }
-      pos
-    }
 
     override def toText(implicit ctx: Context) = ctx.toText(this)
 
@@ -315,16 +279,14 @@ object Trees {
   }
 
   /** Tree defines a new symbol and carries modifiers.
-   *  The position of a ModDefTree usually starts
-   *  at the symbol that's being defined (known exception:
-   *  A type definition starts at the +/- if there is one).
-   *  The annotations, modifiers and keyword that come before
-   *  are subsumed in the modifier position.
+   *  The position of a ModDefTree contains only the defined identifier or pattern.
+   *  The envelope of a ModDefTree contains the whole definition and his its point
+   *  on the opening keyword (or the next token after that if keyword is missing).
    */
   trait ModDefTree[T >: Untyped] extends DefTree[T] {
     type ThisTree[T >: Untyped] <: ModDefTree[T]
     def mods: Modifiers[T]
-    override def envelope: Position = mods.pos union pos
+    override def envelope: Position = mods.pos union pos union initialPos
   }
 
   // ----------- Tree case classes ------------------------------------
@@ -506,9 +468,9 @@ object Trees {
   }
 
   /** tpt { refinements } */
-  case class RefineTypeTree[T >: Untyped](tpt: Tree[T], refinements: List[Tree[T]])
+  case class RefinedTypeTree[T >: Untyped](tpt: Tree[T], refinements: List[Tree[T]])
     extends ProxyTree[T] with TypTree[T] {
-    type ThisTree[T >: Untyped] = RefineTypeTree[T]
+    type ThisTree[T >: Untyped] = RefinedTypeTree[T]
     def forwardTo = tpt
   }
 
@@ -697,7 +659,7 @@ object Trees {
     type SelectFromTypeTree = Trees.SelectFromTypeTree[T]
     type AndTypeTree = Trees.AndTypeTree[T]
     type OrTypeTree = Trees.OrTypeTree[T]
-    type RefineTypeTree = Trees.RefineTypeTree[T]
+    type RefinedTypeTree = Trees.RefinedTypeTree[T]
     type AppliedTypeTree = Trees.AppliedTypeTree[T]
     type TypeBoundsTree = Trees.TypeBoundsTree[T]
     type Bind = Trees.Bind[T]
@@ -824,9 +786,9 @@ object Trees {
       case tree: OrTypeTree[_] if (left eq tree.left) && (right eq tree.right) => tree
       case _ => OrTypeTree(left, right).copyAttr(tree)
     }
-    def derivedRefineTypeTree(tpt: Tree[T], refinements: List[Tree[T]]): RefineTypeTree[T] = tree match {
-      case tree: RefineTypeTree[_] if (tpt eq tree.tpt) && (refinements eq tree.refinements) => tree
-      case _ => RefineTypeTree(tpt, refinements).copyAttr(tree)
+    def derivedRefinedTypeTree(tpt: Tree[T], refinements: List[Tree[T]]): RefinedTypeTree[T] = tree match {
+      case tree: RefinedTypeTree[_] if (tpt eq tree.tpt) && (refinements eq tree.refinements) => tree
+      case _ => RefinedTypeTree(tpt, refinements).copyAttr(tree)
     }
     def derivedAppliedTypeTree(tpt: Tree[T], args: List[Tree[T]]): AppliedTypeTree[T] = tree match {
       case tree: AppliedTypeTree[_] if (tpt eq tree.tpt) && (args eq tree.args) => tree
@@ -940,8 +902,8 @@ object Trees {
         finishAndTypeTree(tree.derivedAndTypeTree(transform(left, c), transform(right, c)), tree, c, plugins)
       case OrTypeTree(left, right) =>
         finishOrTypeTree(tree.derivedOrTypeTree(transform(left, c), transform(right, c)), tree, c, plugins)
-      case RefineTypeTree(tpt, refinements) =>
-        finishRefineTypeTree(tree.derivedRefineTypeTree(transform(tpt, c), transformSub(refinements, c)), tree, c, plugins)
+      case RefinedTypeTree(tpt, refinements) =>
+        finishRefinedTypeTree(tree.derivedRefinedTypeTree(transform(tpt, c), transformSub(refinements, c)), tree, c, plugins)
       case AppliedTypeTree(tpt, args) =>
         finishAppliedTypeTree(tree.derivedAppliedTypeTree(transform(tpt, c), transform(args, c)), tree, c, plugins)
       case TypeBoundsTree(lo, hi) =>
@@ -1017,7 +979,7 @@ object Trees {
     def finishSelectFromTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishAndTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishOrTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishRefineTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
+    def finishRefinedTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishAppliedTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishTypeBoundsTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishBind(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
@@ -1089,8 +1051,8 @@ object Trees {
         tree.derivedAndTypeTree(transform(left), transform(right))
       case OrTypeTree(left, right) =>
         tree.derivedOrTypeTree(transform(left), transform(right))
-      case RefineTypeTree(tpt, refinements) =>
-        tree.derivedRefineTypeTree(transform(tpt), transformSub(refinements))
+      case RefinedTypeTree(tpt, refinements) =>
+        tree.derivedRefinedTypeTree(transform(tpt), transformSub(refinements))
       case AppliedTypeTree(tpt, args) =>
         tree.derivedAppliedTypeTree(transform(tpt), transform(args))
       case TypeBoundsTree(lo, hi) =>
@@ -1191,7 +1153,7 @@ object Trees {
         this(this(x, left), right)
       case OrTypeTree(left, right) =>
         this(this(x, left), right)
-      case RefineTypeTree(tpt, refinements) =>
+      case RefinedTypeTree(tpt, refinements) =>
         this(this(x, tpt), refinements)
       case AppliedTypeTree(tpt, args) =>
         this(this(x, tpt), args)

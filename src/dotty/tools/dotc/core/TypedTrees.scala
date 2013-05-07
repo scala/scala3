@@ -125,10 +125,10 @@ object TypedTrees {
     def OrTypeTree(left: Tree, right: Tree)(implicit ctx: Context): OrTypeTree =
       Trees.OrTypeTree(left, right).withType(left.tpe | right.tpe).checked
 
-    def RefineTypeTree(tpt: Tree, refinements: List[DefTree])(implicit ctx: Context): RefineTypeTree = {
+    def RefinedTypeTree(tpt: Tree, refinements: List[DefTree])(implicit ctx: Context): RefinedTypeTree = {
       def refineType(tp: Type, refinement: Symbol): Type =
         RefinedType(tp, refinement.name, refinement.info)
-      Trees.RefineTypeTree(tpt, refinements)
+      Trees.RefinedTypeTree(tpt, refinements)
         .withType((tpt.tpe /: (refinements map (_.symbol)))(refineType)).checked
     }
 
@@ -477,7 +477,7 @@ object TypedTrees {
       check(left.isValueType); check(right.isValueType)
     case OrTypeTree(left, right) =>
       check(left.isValueType); check(right.isValueType)
-    case RefineTypeTree(tpt, refinements) =>
+    case RefinedTypeTree(tpt, refinements) =>
       check(tpt.isValueType)
       def checkRefinements(forbidden: Set[Symbol], rs: List[tpd.Tree]): Unit = rs match {
         case r :: rs1 =>

@@ -3,6 +3,7 @@ package core
 
 import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, TypedTrees._
+import Decorators._
 import language.higherKinds
 
 object UntypedTrees {
@@ -21,31 +22,54 @@ object UntypedTrees {
     }
 
     /** (vparams) => body */
+    case class SymbolLit(str: String) extends Tree
     case class Function(args: List[Tree], body: Tree) extends Tree
     case class InfixOp(left: Tree, op: Name, right: Tree) extends Tree
-    case class Postfixop(tree: Tree, op: Name) extends Tree
-    case class Prefixop(op: Name, tree: Tree) extends Tree
-    case class Parens(trees: List[Tree]) extends Tree
+    case class PostfixOp(tree: Tree, op: Name) extends Tree
+    case class PrefixOp(op: Name, tree: Tree) extends Tree
+    case class Parens(tree: Tree) extends Tree
+    case class Tuple(trees: List[Tree]) extends Tree
     case class WhileDo(cond: Tree, body: Tree) extends TermTree
     case class DoWhile(body: Tree, cond: Tree) extends TermTree
     case class ForYield(enums: List[Tree], expr: Tree) extends TermTree
     case class ForDo(enums: List[Tree], body: Tree) extends TermTree
     case class GenFrom(pat: Tree, expr: Tree) extends Tree
     case class GenAlias(pat: Tree, expr: Tree) extends Tree
-    case class TypeParamBounds(below: Tree, above: Tree, view: Tree, context: Tree) extends TypTree
-    case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree) extends ModDefTree
+    case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree]) extends TypTree
+    case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree) extends Tree
 
     def Function(vparam: ValDef, body: Tree): Function =
       Function(vparam :: Nil, body)
 
     def syntheticParameter(pname: TermName): ValDef =
       ValDef(Modifiers(SyntheticTermParam), pname, TypeTree(), EmptyTree())
+
   }
 
   import untpd._
 
   class UGen(implicit ctx: Context) {
-    def constructor(mods: Modifiers, vparamAccessorss: List[List[Tree]], ofTrait: Boolean): DefDef = ???
+    def constructor(mods: Modifiers, vparamss: List[List[ValDef]], rhs: Tree = EmptyTree()): DefDef =
+      DefDef(mods, nme.CONSTRUCTOR, Nil, vparamss, TypeTree(), rhs)
+
+    def selfDef(name: TermName, tpt: Tree) =
+      ValDef(Modifiers(Private), name, tpt, EmptyTree())
+
+    def scalaDot(name: Name): Select =
+      Select(new TypedSplice(tpd.Ident(defn.ScalaPackageVal.termRef)), name)
+
+    def mkTuple(ts: List[Tree]) = ts match {
+      case t :: Nil => Parens(t)
+      case _ => Tuple(ts)
+    }
+    
+    def scalaAnyRefConstr       = scalaDot(tpnme.AnyRef)
+    def scalaAnyValConstr        = scalaDot(tpnme.AnyVal)
+    def scalaAnyConstr           = scalaDot(tpnme.Any)
+    def scalaUnitConstr          = scalaDot(tpnme.Unit)
+    def productConstr            = scalaDot(tpnme.Product)
+    def productConstrN(n: Int)   = scalaDot(("Product" + n).toTypeName)
+    def serializableConstr       = scalaDot(tpnme.Serializable)
   }
 
   def ugen(implicit ctx: Context) =

@@ -251,12 +251,6 @@ object Flags {
   final val PackageVal = Package.toTermFlags
   final val PackageClass = Package.toTypeFlags
 
-  /** A package object or its module class (unused)
-  final val PackageObject = commonFlag(17, "package")
-  final val PackageObjectVal = PackageObject.toTermFlags
-  final val PackageObjectClass = PackageObject.toTypeFlags
-  */
-
   /** A case class or its companion object */
   final val Case = commonFlag(17, "case")
   final val CaseClass = Case.toTypeFlags
@@ -383,9 +377,12 @@ object Flags {
   /** A value that's unstable unless complemented with a Stable flag */
   final val UnstableValue = Mutable | Method
 
+  /** Flags that express the variance of a type parameter. */
+  final val VarianceFlags = Covariant | Contravariant
+
   /** Flags that are passed from a type parameter of a class to a refinement symbol
     * that sets the type parameter */
-  final val RetainedTypeArgFlags = Covariant | Contravariant | Protected | Local
+  final val RetainedTypeArgFlags = VarianceFlags | Protected | Local
 
   /** Modules always have these flags set */
   final val ModuleCreationFlags = ModuleVal

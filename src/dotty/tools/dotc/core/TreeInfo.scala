@@ -267,7 +267,7 @@ abstract class TreeInfo {
   def mayBeTypePat(tree: Tree[Untyped]): Boolean = tree match {
     case AndTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
     case OrTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
-    case RefineTypeTree(tpt, refinements) => mayBeTypePat(tpt) || refinements.exists(_.isInstanceOf[Bind[_]])
+    case RefinedTypeTree(tpt, refinements) => mayBeTypePat(tpt) || refinements.exists(_.isInstanceOf[Bind[_]])
     case AppliedTypeTree(tpt, args) => mayBeTypePat(tpt) || args.exists(_.isInstanceOf[Bind[_]])
     case SelectFromTypeTree(tpt, _) => mayBeTypePat(tpt)
     case Annotated(_, tpt) => mayBeTypePat(tpt)

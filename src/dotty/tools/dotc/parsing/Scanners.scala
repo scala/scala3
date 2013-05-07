@@ -58,7 +58,7 @@ object Scanners {
     }
   }
 
-  class Scanner(source: SourceFile)(implicit ctx: Context) extends CharArrayReader with TokenData {
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends CharArrayReader with TokenData {
 
     val buf = source.content
 

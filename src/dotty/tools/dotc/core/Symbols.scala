@@ -211,7 +211,7 @@ trait Symbols { this: Context =>
     newConstructor(cls, EmptyFlags, Nil, Nil)
 
   /** Create a symbol representing a selftype declaration for class `cls`. */
-  def newSelfSym(cls: ClassSymbol) =
+  def newSelfSym(cls: ClassSymbol): TermSymbol =
     ctx.newSymbol(cls, nme.THIS, SyntheticArtifact, cls.classInfo.selfType)
 
   /** Create new type parameters with given owner, names, and flags.

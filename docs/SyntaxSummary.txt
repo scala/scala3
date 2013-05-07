@@ -93,38 +93,46 @@ grammar.
                       |  [id '.'] `super' [ClassQualifier] `.' id
   ClassQualifier    ::=  `[' id `]'
 
-  Type              ::=  FunctionArgTypes `=>' Type                             Function(ts, t)
+  Type              ::=  FunArgTypes `=>' Type                                  Function(ts, t)
                       |  InfixType
-  FunctionArgTypes  ::=  InfixType
+  FunArgTypes       ::=  InfixType
                       | `(' [ FunArgType {`,' FunArgType } ] `)'
   InfixType         ::=  RefinedType {id [nl] RefinedType}                      InfixOp(t1, op, t2)
-  RefinedType       ::=  SimpleType {Annotation | Refinement}                   Annotated(t, annot), RefinedTypeTree(t, ds)
+  RefinedType       ::=  SimpleType {Annotation | [nl] Refinement}              Annotated(t, annot), RefinedTypeTree(t, ds)
   SimpleType        ::=  SimpleType TypeArgs                                    AppliedTypeTree(t, args)
                       |  SimpleType `#' id                                      SelectFromTypeTree(t, name)
                       |  StableId
                       |  Path `.' `type'                                        SingletonTypeTree(p)
-                      |  `(' Types ')'                                          Parens(ts)
-  TypeArgs          ::=  `[' Types `]'                                          ts
-  Types             ::=  Type {`,' Type}
-  Refinement        ::=  [nl] `{' Dcl {semi Dcl} `}'                            ds
-                      |
-  Ascription        ::=  `:' OrType                                             Typed(expr, tp)
-                      |  `:' Annotation {Annotation}                            Typed(expr, Annotated(EmptyTree, annot)*)
-  FunArgType        ::=  Type
-                      |  `=>' Type                                              Function(EmptyTree, t)
+                      |  `(' ArgTypes ')'                                       Tuple(ts)
+  ArgType           ::=  Type
+                      |  `_' TypeBounds
+  ArgTypes          ::=  ArgType {`,' ArgType}
+  FunArgType        ::=  ArgType
+                      |  `=>' ArgType                                           PrefixOp(=>, t)
   ParamType         ::=  FunArgType
                       |  Type `*'                                               PostfixOp(t, "*")
+  TypeArgs          ::=  `[' ArgTypes `]'                                       ts
+  Refinement        ::=  `{' [Dcl] {semi [Dcl]} `}'                             ds
+                      |
+  TypeBounds        ::=  [`>:' Type] [`<: Type]                                 TypeBoundsTree(lo, hi)
+  TypeParamBounds   ::=  TypeBounds {`<%' Type} {`:' Type}                      ContextBounds(typeBounds, tps)
 
-  Expr              ::=  (Bindings | [`implicit'] id | `_') `=>' Expr           Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
+  Expr              ::=  FunParams `=>' Expr                                    Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
+                      |  Expr1
+  FunParams         ::=   Bindings
+                      |   [`implicit'] id
+                      |   `_'
+  ExprInParens      ::=  PostfixExpr `:' Type
+                      |  Expr
+  BlockResult       ::=  (FunParams | [`implicit'] id `:' InfixType) => Block
                       |  Expr1
   Expr1             ::=  `if' `(' Expr `)' {nl} Expr [[semi] else Expr]         If(Parens(cond), thenp, elsep?)
                       |  `if' Expr `then' Expr [[semi] else Expr]               If(cond, thenp, elsep?)
                       |  `while' `(' Expr `)' {nl} Expr                         WhileDo(Parens(cond), body)
                       |  `while' Expr `do' Expr                                 WhileDo(cond, body)
+                      |  `do' Expr [semi] `while' Expr                          DoWhile(expr, cond)
                       |  `try' Expr Catches [`finally' Expr]                    Try(expr, catches, expr?)
                       |  `try' Expr [`finally' Expr]                            Try(expr, Nil, expr?)
-                      |  `do' Expr [semi] `while' `(' Expr ')'                  DoWhile(expr, Parens(cond))
-                      |  `do' Expr [semi] `while' Expr                          DoWhile(expr, cond)
                       |  `for' (`(' Enumerators `)' | `{' Enumerators `}')      ForYield(enums, expr)
                          {nl} [`yield'] Expr                                    ForDo(enums, expr)
                       |  `for' Enumerators (`do' Expr | `yield' Expr)
@@ -134,6 +142,8 @@ grammar.
                       |  SimpleExpr1 ArgumentExprs `=' Expr                     Assign(expr, expr)
                       |  PostfixExpr [Ascription]
                       |  PostfixExpr `match' `{' CaseClauses `}'                Match(expr, cases) -- point on match
+  Ascription        ::=  `:' InfixType                                          Typed(expr, tp)
+                      |  `:' Annotation {Annotation}                            Typed(expr, Annotated(EmptyTree, annot)*)
   Catches           ::=  `catch' `{' CaseClauses `}'                            cases
   PostfixExpr       ::=  InfixExpr [id]                                         PostfixOp(expr, op)
   InfixExpr         ::=  PrefixExpr
@@ -145,18 +155,18 @@ grammar.
   SimpleExpr1       ::=  Literal
                       |  Path
                       |  `_'
-                      |  `(' [Exprs] `)'                                        Parens(exprs)
+                      |  `(' ExprsInParens `)'                                  Parens(exprs)
                       |  SimpleExpr `.' id                                      Select(expr, id)
                       |  SimpleExpr TypeArgs                                    TypeApply(expr, args)
                       |  SimpleExpr1 ArgumentExprs                              Apply(expr, args)
                       |  XmlExpr
-  Exprs             ::=  Expr {`,' Expr}
-  ArgumentExprs     ::=  `(' [Exprs] `)'                                        exprs
-                      |  `(' [Exprs `,'] PostfixExpr `:' `_' `*' ')'            exprs :+ Typed(expr, Ident(wildcardStar))
+  ExprsInParens     ::=  ExprInParens {`,' ExprInParens}
+  ArgumentExprs     ::=  `(' [ExprsInParens] `)'                                exprs
+                      |  `(' [ExprsInParens `,'] PostfixExpr `:' `_' `*' ')'    exprs :+ Typed(expr, Ident(wildcardStar))
                       |  [nl] BlockExpr
   BlockExpr         ::=  `{' CaseClauses `}'                                    cases
                       |  `{' Block `}'                                          block // starts at {
-  Block             ::=  {BlockStat semi} [ResultExpr]                          Block(stats, expr?)
+  Block             ::=  {BlockStat semi} [BlockResult]                         Block(stats, expr?)
   BlockStat         ::=  Import
                       |  {Annotation} [`implicit' | `lazy'] Def
                       |  {Annotation} {LocalModifier} TmplDef
@@ -169,46 +179,55 @@ grammar.
   Enumerator        ::=  Generator
                       |  Guard
                       |  Pattern1 `=' Expr                                      GenAlias(pat, expr)
-  Generator         ::=  Pattern1 `<-' Expr                                     GenFrom(pat, expr)
+  Generator         ::=  Pattern `<-' Expr                                      GenFrom(pat, expr)
+  Guard             ::=  `if' PostfixExpr
 
   CaseClauses       ::=  CaseClause { CaseClause }
   CaseClause        ::=  `case' Pattern [Guard] `=>' Block                      CaseDef(pat, guard?, block)   // block starts at =>
-  Guard             ::=  `if' PostfixExpr
 
   Pattern           ::=  Pattern1 { `|' Pattern1 }                              Alternative(pats)
-  Pattern1          ::=  varid `:' Type                                         Bind(name, Typed(Ident(wildcard), tpe))
-                      |  `_' `:' Type                                           Typed(Ident(wildcard), tpe)
+  Pattern1          ::=  PatVar Ascription                                      Bind(name, Typed(Ident(wildcard), tpe))
                       |  Pattern2
   Pattern2          ::=  [varid `@'] InfixPattern                               Bind(name, pat)
-  InfixPattern      ::=  SimplePattern
-                      |  SimplePattern { id [nl] SimplePattern }                InfixOp(pat, op, pat)
-  SimplePattern     ::=  `_'                                                    Ident(wildcard)
-                      |  varid                                                  Bind(name, Ident(wildcard))
-                      |  Literal
-                      |  StableId
-                      |  StableId `(' [Patterns] `)'                            Apply(fn, pats)
-                      |  StableId `(' [Patterns `,'] Pattern2 `:' `_' `*' ')
-                      |  `(' [Patterns] `)'                                     Parens(pats)
-                      |  XmlPattern
-  Patterns          ::=  Pattern [`,' Patterns]
+  InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                InfixOp(pat, op, pat)
+  SimplePattern     ::=  PatVar                                                 Ident(wildcard)
+                      |  Literal                                                Bind(name, Ident(wildcard))                      |  Literal
+                      |  `(' [Patterns] `)'                             Parens(pats) Tuple(pats)
+ac                      |  XmlPattern
+                      |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
+  SimplePattern1    ::=  Path
+                      |  `{' Block `}'
+                      |  SimplePattern1 `.' id
+  PatVar            ::=  varid
+                      |  `_'
+  Patterns          ::=  Pattern [`,' Pattern]
+  ArgumentPatterns  ::=  `(' [Patterns] `)'                                     Apply(fn, pats)
+                      |  `(' [Patterns `,'] Pattern2 `:' `_' `*' ')
 
-  VarTypeParamClause::=  `[' VariantTypeParam {`,' VariantTypeParam} `]'
-  FunTypeParamClause::=  `[' TypeParam {`,' TypeParam} `]'
-  VariantTypeParam  ::=  {Annotation} [`+' | `-'] TypeParam                     TypeDef(Modifiers, name, tparams, bounds)
-  FunTypeParam      ::=  {Annotation} TypeParam
-  TypeParam         ::=  (id | `_') [TypeParamClause] [`>:' Type] [`<:' Type]   Bound(below, above, context)
-                         {`<%' Type} {`:' Type}
-  ParamClauses      ::=  {ParamClause} [[nl] `(' `implicit' Params `)']
-  ParamClause       ::=  [nl] `(' [Params] ')'
-  Params            ::=  Param {`,' Param}
-  Param             ::=  {Annotation} id `:' ParamType [`=' Expr]               ValDef(mods, id, tpe, expr) -- point of mods at id.
+  ClsTypeParamClause::=  `[' ClsTypeParam {`,' ClsTypeParam} `]'
+  ClsTypeParam      ::=  {Annotation} [{Modifier} type] [`+' | `-']             TypeDef(Modifiers, name, tparams, bounds)
+                         id [HkTypeParamClause] TypeParamBounds                 Bound(below, above, context)
 
-  ClassParamClauses ::=  {ClassParamClause}
-                         [[nl] `(' `implicit' ClassParams `)']
-  ClassParamClause  ::=  [nl] `(' [ClassParams] ')'
-  ClassParams       ::=  ClassParam {`' ClassParam}
-  ClassParam        ::=  {Annotation} [{Modifier} (`val' | `var')]              ValDef(mods, id, tpe, expr) -- point of mods on val/var
-                         id `:' ParamType [`=' Expr]
+  DefTypeParamClause::=  `[' DefTypeParam {`,' DefTypeParam} `]'
+  DefTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeParamBounds
+
+  TypTypeParamCaluse::=  `[' TypTypeParam {`,' TypTypeParam} `]'
+  TypTypeParam      ::=  {Annotation} id [HkTypeParamClause] TypeBounds
+
+  HkTypeParamClause ::=  `[' HkTypeParam {`,' HkTypeParam} `]'
+  HkTypeParam       ::=  {Annotation} ['+' | `-'] (Id | `_') TypeBounds
+
+  ClsParamClauses   ::=  {ClsParamClause} [[nl] `(' `implicit' ClsParams `)']
+  ClsParamClause    ::=  [nl] `(' [ClsParams] ')'
+  ClsParams         ::=  ClsParam {`' ClsParam}
+  ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var')] Param        ValDef(mods, id, tpe, expr) -- point of mods on val/var
+  Param             ::=  id `:' ParamType [`=' Expr]
+
+  DefParamClauses   ::=  {DefParamClause} [[nl] `(' `implicit' DefParams `)']
+  DefParamClause    ::=  [nl] `(' [DefParams] ')'
+  DefParams         ::=  DefParam {`,' DefParam}
+  DefParam          ::=  {Annotation} Param                                     ValDef(mods, id, tpe, expr) -- point of mods at id.
+
   Bindings          ::=  `(' Binding {`,' Binding `)'                           bindings
   Binding           ::=  (id | `_') [`:' Type]                                  ValDef(_, id, tpe, EmptyTree)
 
@@ -230,10 +249,10 @@ grammar.
   TemplateStat      ::=  Import
                       |  {Annotation [nl]} {Modifier} Def
                       |  {Annotation [nl]} {Modifier} Dcl
-                      |  Expr
+                      |  Expr1
                       |
-  SelfType          ::=  id [`:' Type] `=>'                                     ValDef(_, name, tpt, _)
-                      |  `this' `:' Type `=>'
+  SelfType          ::=  id [`:' InfiWxType] `=>'                                ValDef(_, name, tpt, _)
+                      |  `this' `:' InfixType `=>
 
   Import            ::=  `import' ImportExpr {`,' ImportExpr}
   ImportExpr        ::=  StableId `.' (id | `_' | ImportSelectors)              Import(expr, sels)
@@ -242,37 +261,38 @@ grammar.
 
   Dcl               ::=  `val' ValDcl
                       |  `var' VarDcl
-                      |  `def' FunDcl
+                      |  `def' DefDcl
                       |  `type' {nl} TypeDcl
 
   ValDcl            ::=  ids `:' Type                                           PatDef(_, ids, tpe, EmptyTree)
   VarDcl            ::=  ids `:' Type                                           PatDef(_, ids, tpe, EmptyTree)
-  FunDcl            ::=  FunSig [`:' Type]                                      DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
-  FunSig            ::=  id [FunTypeParamClause] ParamClauses
-  TypeDcl           ::=  id [TypeParamClause] ['=' Type]                        TypeDefTree(_, name, tparams, tpt)
-                         ([`>:' Type] [`<:' Type] | ['=' Type])                 TypeDefTree(_, name, tparams, bounds)
+  DefDcl            ::=  DefSig [`:' Type]                                      DefDef(_, name, tparams, vparamss, tpe, EmptyTree)
+  DefSig            ::=  id [DefTypeParamClause] DefParamClauses
+  TypeDcl           ::=  id [TypTypeParamClause] ['=' Type]                     TypeDefTree(_, name, tparams, tpt)
+                      |  id [HkParamClause] TypeBounds                          TypeDefTree(_, name, tparams, bounds)
 
   Def               ::=  `val' PatDef
                       |  `var' VarDef
-                      |  `def' FunDef
-                      |  `type' {nl} TypeDef
+                      |  `def' DefDef
+                      |  `type' {nl} TypeDcl
                       |  TmplDef
   PatDef            ::=  Pattern2 {`,' Pattern2} [`:' Type] `=' Expr            PatDef(_, pats, tpe?, expr)
   VarDef            ::=  PatDef
                       |  ids `:' Type `=' `_'
-  FunDef            ::=  FunSig [`:' Type] `=' Expr                             DefDef(_, name, tparams, vparamss, tpe, expr)
-                      |  FunSig [nl] `{' Block `}'                              DefDef(_, name, tparams, vparamss, tpe, Block)
-                      |  `this' ParamClause ParamClauses                        DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
+  DefDef            ::=  DefSig [`:' Type] `=' Expr                             DefDef(_, name, tparams, vparamss, tpe, expr)
+                      |  DefSig [nl] `{' Block `}'                              DefDef(_, name, tparams, vparamss, tpe, Block)
+                      |  `this' DefParamClause DefParamClauses                  DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
                          (`=' ConstrExpr | [nl] ConstrBlock)
 
   TmplDef           ::=  ([`case'] `class' | `trait') ClassDef
                       |  [`case'] `object' ObjectDef
-  ClassDef          ::=  id [TypeParamClause]                                   ClassDef(mods, name, tparams, templ) //
+  ClassDef          ::=  id [ClsTypeParamClause]                                   ClassDef(mods, name, tparams, templ) //
                                                                                    with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
                          {ConstrAnnotation} [AccessModifier]
-                         ClassParamClauses [`extends' Template]
-  ObjectDef         ::=  id [`extends' Template]                                ModuleDef(mods, name, template)  // no constructor
-  Template          ::=  ConstrApps [TemplateBody] | TemplateBody               Template(constrs, self, stats)
+                         ClsParamClauses TemplateOpt
+  ObjectDef         ::=  id TemplateOpt                                         ModuleDef(mods, name, template)  // no constructor
+  TemplateOpt       ::=  [`extends' Template | [nl] TemplateBody]
+  Template          ::=  ConstrApps [TemplateBody] | TemplateBody               Template(constr, parents, self, stats)
   ConstrApps        ::=  ConstrApp {`with' ConstrApp}
   ConstrApp         ::=  RefinedType {ArgumentExprs}                            Apply(tp, args)
 

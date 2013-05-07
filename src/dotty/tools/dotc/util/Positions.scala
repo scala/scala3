@@ -43,7 +43,7 @@ object Positions {
     def union(that: Position) =
       if (!this.exists) that
       else if (!that.exists) this
-      else Position(this.start min that.start, this.end max that.end)
+      else Position(this.start min that.start, this.end max that.end, this.point)
 
     /** Does the range of this position contain the one of that position? */
     def contains(that: Position): Boolean =
