@@ -44,6 +44,8 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) {
   }
   override def hashCode = file.path.## + start.##
 
+  def apply(idx: Int) = content.apply(idx)
+
   val length = content.length
 
   /** true for all source files except `NoSource` */

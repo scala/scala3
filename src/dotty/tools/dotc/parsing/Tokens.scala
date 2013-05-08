@@ -134,6 +134,9 @@ object Tokens {
   final val LBRACE = 94;           enter(LBRACE, "'{'")
   final val RBRACE = 95;           enter(RBRACE, "'}'")
 
+  final val firstParen = LPAREN
+  final val lastParen = RBRACE
+
   /** XML mode */
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
@@ -165,7 +168,7 @@ object Tokens {
 
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens = defIntroTokens | modifierTokens | BitSet(
-    CASE, IMPORT, PACKAGE)
+    IMPORT, PACKAGE)
 
   final val canStartStatTokens = canStartExpressionTokens | mustStartStatTokens | BitSet(
     AT)
