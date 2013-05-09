@@ -88,7 +88,7 @@ object Trees {
    *                        It should have as end the end of the opening keywords(s).
    *                        If there is no opening keyword, point should equal end.
    */
-  case class Modifiers[T >: Untyped](
+  case class Modifiers[T >: Untyped] (
     flags: FlagSet = EmptyFlags,
     privateWithin: TypeName = tpnme.EMPTY,
     annotations: List[Tree[T]] = Nil) extends Positioned {
@@ -107,6 +107,10 @@ object Trees {
     def withPrivateWithin(pw: TypeName) =
       if (pw.isEmpty) this
       else copy(privateWithin = pw)
+
+    def hasFlags = flags != EmptyFlags
+    def hasAnnotations = annotations.nonEmpty
+    def hasPrivateWithin = privateWithin != tpnme.EMPTY
 
     def tokenPos: Seq[(Token, Position)] = ???
   }

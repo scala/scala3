@@ -133,11 +133,9 @@ grammar.
                       |  `do' Expr [semi] `while' Expr                          DoWhile(expr, cond)
                       |  `try' Expr Catches [`finally' Expr]                    Try(expr, catches, expr?)
                       |  `try' Expr [`finally' Expr]                            Try(expr, Nil, expr?)
-                      |  `for' (`(' Enumerators `)' | `{' Enumerators `}')      ForYield(enums, expr)
-                         {nl} [`yield'] Expr                                    ForDo(enums, expr)
-                      |  `for' Enumerators (`do' Expr | `yield' Expr)
                       |  `throw' Expr                                           Throw(expr)
                       |  `return' [Expr]                                        Return(expr?)
+                      |  ForExpr
                       |  [SimpleExpr `.'] id `=' Expr                           Assign(expr, expr)
                       |  SimpleExpr1 ArgumentExprs `=' Expr                     Assign(expr, expr)
                       |  PostfixExpr [Ascription]
@@ -175,11 +173,15 @@ grammar.
   ResultExpr        ::=  Expr1
                       |  (Bindings | ([`implicit'] id | `_') `:' ) `=>' Block
                                                                                 Function(args, block)    // block starts at =>
+  ForExpr           ::=  `for' (`(' Enumerators `)' | `{' Enumerators `}')      ForYield(enums, expr)
+                         {nl} [`yield'] Expr                                    ForDo(enums, expr)
+                      |  `for' Enumerators (`do' Expr | `yield' Expr)
+
   Enumerators       ::=  Generator {semi Enumerator | Guard}
   Enumerator        ::=  Generator
                       |  Guard
                       |  Pattern1 `=' Expr                                      GenAlias(pat, expr)
-  Generator         ::=  Pattern `<-' Expr                                      GenFrom(pat, expr)
+  Generator         ::=  Pattern1 `<-' Expr                                      GenFrom(pat, expr)
   Guard             ::=  `if' PostfixExpr
 
   CaseClauses       ::=  CaseClause { CaseClause }
@@ -242,8 +244,7 @@ ac                      |  XmlPattern
   AccessModifier    ::=  (`private' | `protected') [AccessQualifier]
   AccessQualifier   ::=  `[' (id | `this') `]'
 
-  Annotation        ::=  `@' SimpleType {ArgumentExprs}
-  ConstrAnnotation  ::=  `@' SimpleType ArgumentExprs                           Apply(tpe, args)
+  Annotation        ::=  `@' SimpleType {ArgumentExprs}                         Apply(tpe, args)
 
   TemplateBody      ::=  [nl] `{' [SelfType] TemplateStat {semi TemplateStat} `} (self, stats)
   TemplateStat      ::=  Import
@@ -287,9 +288,9 @@ ac                      |  XmlPattern
   TmplDef           ::=  ([`case'] `class' | `trait') ClassDef
                       |  [`case'] `object' ObjectDef
   ClassDef          ::=  id [ClsTypeParamClause]                                   ClassDef(mods, name, tparams, templ) //
-                                                                                   with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
-                         {ConstrAnnotation} [AccessModifier]
-                         ClsParamClauses TemplateOpt
+                         [ConstrMods] ClsParamClauses TemplateOpt                  with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
+  ConstrMods        ::=  AccessModifier
+                      |  Annotation {Annotation} (AccessModifier | `this')
   ObjectDef         ::=  id TemplateOpt                                         ModuleDef(mods, name, template)  // no constructor
   TemplateOpt       ::=  [`extends' Template | [nl] TemplateBody]
   Template          ::=  ConstrApps [TemplateBody] | TemplateBody               Template(constr, parents, self, stats)
