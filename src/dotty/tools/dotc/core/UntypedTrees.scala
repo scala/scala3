@@ -74,5 +74,18 @@ object UntypedTrees {
 
   def ugen(implicit ctx: Context) =
     new UGen
+
+  implicit class UntypedTreeDecorator(val self: Tree) extends AnyVal {
+    def locateEnclosing(base: List[Tree], pos: Position): List[Tree] = {
+      def encloses(elem: Any) = elem match {
+        case t: Tree => t.envelope contains pos
+        case _ => false
+      }
+      base.productIterator find encloses match {
+        case Some(tree: Tree) => locateEnclosing(tree :: base, pos)
+        case none => base
+      }
+    }
+  }
 }
 
