@@ -1675,7 +1675,9 @@ object Parsers {
      */
     def constrModsOpt(): Modifiers = {
       val mods = modifiers(accessModifierTokens, annotsAsMods())
-      if (mods.hasAnnotations && !mods.hasFlags) accept(THIS)
+      if (mods.hasAnnotations && !mods.hasFlags)
+        if (in.token == THIS) in.nextToken()
+        else syntaxError("`private', `protected', or `this' expected")
       mods
     }
 
@@ -1716,7 +1718,7 @@ object Parsers {
       else {
         newLineOptWhenFollowedBy(LBRACE)
         if (in.token == LBRACE) template(constr)
-        else Template(constr, Nil, EmptyValDef(), Nil).withPos(constr.pos)
+        else Template(constr, Nil, EmptyValDef(), Nil).withPos(constr.pos.toSynthetic)
       }
 
 
