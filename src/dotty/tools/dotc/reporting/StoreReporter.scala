@@ -4,7 +4,7 @@ package reporting
 
 import core.Contexts.Context
 import scala.collection.mutable
-import util.Positions.SourcePosition
+import util.SourcePosition
 import Reporter.Severity.{Value => Severity}
 
 /**

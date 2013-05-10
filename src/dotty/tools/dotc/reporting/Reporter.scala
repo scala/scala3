@@ -3,7 +3,7 @@ package dotc
 package reporting
 
 import core.Contexts._
-import util.Positions._
+import util.{SourcePosition, NoSourcePosition}
 import util.{SourceFile, NoSource}
 import core.Decorators.PhaseListDecorator
 import collection.mutable

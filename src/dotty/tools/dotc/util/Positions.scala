@@ -109,17 +109,6 @@ object Positions {
   /** A sentinal for a non-existing position */
   val NoPosition = Position(1, 0)
 
-  /** A source position is comprised of a position in a source file */
-  case class SourcePosition(source: SourceFile, pos: Position) {
-    def point: Int = pos.point
-    def start: Int = pos.start
-    def end: Int = pos.end
-    def exists = pos.exists
-  }
-
-  /** A sentinel for a non-existing source position */
-  val NoSourcePosition = SourcePosition(NoSource, NoPosition)
-
   /** The coordinate of a symbol. This is either an index or
    *  a zero-range position.
    */

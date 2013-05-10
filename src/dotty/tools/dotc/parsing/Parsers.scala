@@ -4,7 +4,7 @@ package parsing
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
-import util.{ SourceFile, FreshNameCreator }
+import util.{ SourceFile, FreshNameCreator, SourcePosition }
 import Tokens._
 import Scanners._
 import MarkupParsers._
@@ -212,7 +212,11 @@ object Parsers {
      */
     def syntaxErrorOrIncomplete(msg: String) =
       if (in.token == EOF) incompleteInputError(msg)
-      else { syntaxError(msg); skip(); lastErrorOffset = in.offset }
+      else {
+        syntaxError(msg+", found: "+in)
+        skip()
+        lastErrorOffset = in.offset
+      } // DEBUG
 
     private def expectedMsg(token: Int): String =
       showToken(token) + " expected but " + showToken(in.token) + " found."

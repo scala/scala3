@@ -38,6 +38,9 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) {
   def this(sourceName: String, cs: Seq[Char])   = this(new VirtualFile(sourceName), cs.toArray)
   def this(file: AbstractFile, cs: Seq[Char])   = this(file, cs.toArray)
 
+  /** Tab increment; can be overridden */
+  def tabInc = 8
+
   override def equals(that : Any) = that match {
     case that : SourceFile => file.path == that.file.path && start == that.start
     case _ => false
@@ -102,6 +105,24 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) {
       else mid
     lastLine = findLine(0, lines.length, lastLine)
     lastLine
+  }
+
+  def startOfLine(offset: Int): Int = lineToOffset(offsetToLine(offset))
+
+  def nextLine(offset: Int): Int =
+    lineToOffset(offsetToLine(offset) + 1 min lineIndices.length - 1)
+
+  def lineContents(offset: Int): String =
+    content.slice(startOfLine(offset), nextLine(offset)).mkString
+
+  def column(offset: Int): Int = {
+    var idx = startOfLine(offset)
+    var col = 0
+    while (idx != offset) {
+      col += (if (content(idx) == '\t') tabInc - col % tabInc else 1)
+      idx += 1
+    }
+    col + 1
   }
 }
 

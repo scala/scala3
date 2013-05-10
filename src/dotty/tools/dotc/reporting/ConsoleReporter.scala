@@ -3,7 +3,7 @@ package dotc
 package reporting
 
 import scala.collection.mutable
-import util.Positions.SourcePosition
+import util.SourcePosition
 import core.Contexts._
 import Reporter.Severity.{Value => Severity, _}
 import java.io.{ BufferedReader, IOException, PrintWriter }
@@ -24,35 +24,27 @@ class ConsoleReporter(
   /** maximal number of error messages to be printed */
   protected def ErrorLimit = 100
 
-  def formatMessage(msg: String, pos: SourcePosition)(implicit ctx: Context) = msg // for now
+  def printSourceLine(pos: SourcePosition) =
+    printMessage(pos.lineContents.stripLineEnd)
+
+  def printColumnMarker(pos: SourcePosition) =
+    if (pos.exists) { writer.print(" " * (pos.column - 1) + "^ ") }
 
   /** Prints the message. */
   def printMessage(msg: String) { writer.print(msg + "\n"); writer.flush() }
 
   /** Prints the message with the given position indication. */
   def printMessage(msg: String, pos: SourcePosition)(implicit ctx: Context) {
-    printMessage(formatMessage(msg, pos))
+    if (pos.exists) {
+      printSourceLine(pos)
+      printColumnMarker(pos)
+    }
+    printMessage(msg)
   }
 
   def printMessage(msg: String, severity: Severity, pos: SourcePosition)(implicit ctx: Context) {
     printMessage(label(severity) + msg, pos)
   }
-
-  /**
-   *  @param pos ...
-
-  def printSourceLine(pos: SourcePosition) {
-    printMessage(pos.lineContent.stripLineEnd)
-    printColumnMarker(pos)
-  }
-
-  /** Prints the column marker of the given position.
-   *
-   *  @param pos ...
-   */
-  def printColumnMarker(pos: SourcePosition) =
-    if (pos.isDefined) { printMessage(" " * (pos.column - 1) + "^") }
-*/
 
   /** Prints the number of errors and warnings if their are non-zero. */
   def printSummary() {

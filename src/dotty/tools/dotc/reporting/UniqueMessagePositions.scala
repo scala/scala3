@@ -3,8 +3,7 @@ package dotc
 package reporting
 
 import scala.collection.mutable
-import util.Positions.SourcePosition
-import util.SourceFile
+import util.{SourcePosition, SourceFile}
 import Reporter.Severity.{Value => Severity}
 import core.Contexts.Context
 
