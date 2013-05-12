@@ -405,9 +405,10 @@ object Printers {
 
     def toText[T >: Untyped](tree: Tree[T]): Text = {
       tree match {
-        case node: Product =>
+        case node: Positioned =>
           def toTextElem(elem: Any): Text = elem match {
             case elem: Showable => elem.toText
+            case elem: List[_] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
             case elem => elem.toString
           }
           val nodeName = node.productPrefix
@@ -419,7 +420,7 @@ object Printers {
             else
               Text()
 
-          nodeName ~ "(" ~ elems ~ tpSuffix ~ ")"
+          nodeName ~ "(" ~ elems ~ tpSuffix ~ ")" ~ node.pos.toString
         case _ =>
           tree.toString: Text
       }
