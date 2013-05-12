@@ -11,6 +11,8 @@ import org.junit.Test
 
 class DottyTest {
 
+  dotty.tools.dotc.parsing.Scanners // initialize keywords
+
   implicit val ctx: Context = {
     val base = Context.theBase
     import base.settings._
@@ -18,6 +20,8 @@ class DottyTest {
       .withSetting(verbose, true)
 //      .withSetting(debug, true)
 //      .withSetting(debugTrace, true)
+//      .withSetting(prompt, true)
+      .withSetting(nowarn, true)
       .withSetting(Ylogcp, true)
       .withSetting(printtypes, true)
       .withSetting(pageWidth, 90)
