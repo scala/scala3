@@ -85,7 +85,8 @@ object Scanners {
     protected def putChar(c: Char): Unit = litBuf.append(c)
 
     /** Clear buffer and set string */
-    private def setStrVal() = flushBuf(litBuf)
+    private def setStrVal() =
+      strVal = flushBuf(litBuf)
 
     private class TokenData0 extends TokenData
 
@@ -183,12 +184,12 @@ object Scanners {
           (canStartStatTokens contains token) &&
           (sepRegions.isEmpty || sepRegions.head == RBRACE)) {
         next copyFrom this
-        offset = lineStartOffset min lastLineStartOffset
+        offset = if (lineStartOffset <= offset) lineStartOffset else lastLineStartOffset
         token = if (pastBlankLine()) NEWLINES else NEWLINE
       }
 
       postProcessToken()
-//      print("["+this+"]")
+      // print("["+this+"]")
     }
 
     def postProcessToken() = {
@@ -308,6 +309,7 @@ object Scanners {
                */
               if (isDigit(ch))
                 error("Non-zero numbers may not have a leading zero.")
+              base = 10
             }
             getNumber()
           }
@@ -439,21 +441,22 @@ object Scanners {
       def skipBlock(openComments: Int): Unit = {
         val last = ch
         nextChar()
-        if (ch == '/')
+        if (ch == '/') {
+          nextChar()
           if (last == '*') {
             if (openComments > 0) skipBlock(openComments - 1)
           } else {
-            nextChar()
             if (ch == '*') { nextChar(); skipBlock(openComments + 1) }
             else skipBlock(openComments)
           }
+        }
         else if (ch == SU) incompleteInputError("unclosed comment")
         else skipBlock(openComments)
       }
       val start = lastCharOffset
       def finishComment(): Boolean = {
         if (keepComments) {
-          val pos = Position(start, charOffset)
+          val pos = Position(start, charOffset, start)
           nextChar()
           revComments = Comment(pos, flushBuf(commentBuf)) :: revComments
         }
@@ -817,13 +820,13 @@ object Scanners {
 
 // Setting token data ----------------------------------------------------
 
-        /** Clear buffer and set name and token */
+    /** Clear buffer and set name and token */
     def finishNamed(idtoken: Token = IDENTIFIER, target: TokenData = this): Unit = {
       target.name = flushBuf(litBuf).toTermName
       target.token = idtoken
       if (idtoken == IDENTIFIER) {
         val idx = target.name.start
-        if (idx >= 0 && idx < kwArray.length) target.token = kwArray(idx)
+        if (idx >= 0 && idx <= lastKeywordStart) target.token = kwArray(idx)
       }
     }
 
@@ -892,7 +895,11 @@ object Scanners {
 
     def floatVal: Double = floatVal(false)
 
-    override def toString = showTokenDetailed(token)
+    override def toString =
+      showTokenDetailed(token) + {
+        if ((identifierTokens contains token) || (literalTokens contains token)) " " + name
+        else ""
+      }
 
     def show: String = token match {
       case IDENTIFIER | BACKQUOTED_IDENT => s"id($name)"
@@ -945,11 +952,13 @@ object Scanners {
 
   // ------------- keyword configuration -----------------------------------
 
+  private def start(tok: Token) = tokenString(tok).toTermName.start
+  private def sourceKeywords = keywords.toList.filterNot(kw => tokenString(kw) contains ' ')
+
+  private val lastKeywordStart = sourceKeywords.map(start).max
+
   private val kwArray: Array[Token] = {
-    def start(tok: Token) = tok.toString.toTermName.start
-    val sourceKeywords = keywords.filterNot(_.toString contains " ")
-    val lastIdx = sourceKeywords.map(start).max
-    val arr = Array.fill(lastIdx + 1)(IDENTIFIER)
+    val arr = Array.fill(lastKeywordStart + 1)(IDENTIFIER)
     for (kw <- sourceKeywords) arr(start(kw)) = kw
     arr
   }
