@@ -903,7 +903,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         setSymModsName()
         val impl = readTemplateRef()
         val tparams = until(end, readTypeDefRef)
-        ClassDef(symbol.asClass, tparams map (_.symbol.asType), EmptyTree, impl.body) // !!! TODO: pull out primary constructor
+        ClassDef(symbol.asClass, tparams map (_.symbol.asType), ???, impl.body) // !!! TODO: pull out primary constructor
 
       case MODULEtree =>
         setSymModsName()
@@ -956,7 +956,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val parents = times(readNat(), readTreeRef)
         val self = readValDefRef()
         val body = until(end, readTreeRef)
-        Trees.Template[Type](EmptyTree, parents, self, body) // !!! TODO: pull out primary constructor
+        Trees.Template[Type](???, parents, self, body) // !!! TODO: pull out primary constructor
           .withType(refType(symbol))
 
       case BLOCKtree =>
@@ -1023,7 +1023,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val block = readTreeRef()
         val finalizer = readTreeRef()
         val catches = until(end, readCaseDefRef)
-        Try(block, catches, finalizer)
+        Try(block, Match(EmptyTree, catches), finalizer)
 
       case THROWtree =>
         Throw(readTreeRef())

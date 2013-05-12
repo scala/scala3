@@ -23,6 +23,7 @@ object UntypedTrees {
 
     /** (vparams) => body */
     case class SymbolLit(str: String) extends Tree
+    case class InterpolatedString(id: TermName, stringParts: List[Tree], elems: List[Tree]) extends Tree
     case class Function(args: List[Tree], body: Tree) extends Tree
     case class InfixOp(left: Tree, op: Name, right: Tree) extends Tree
     case class PostfixOp(tree: Tree, op: Name) extends Tree
@@ -62,7 +63,7 @@ object UntypedTrees {
       case t :: Nil => Parens(t)
       case _ => Tuple(ts)
     }
-    
+
     def scalaAnyRefConstr       = scalaDot(tpnme.AnyRef)
     def scalaAnyValConstr        = scalaDot(tpnme.AnyVal)
     def scalaAnyConstr           = scalaDot(tpnme.Any)

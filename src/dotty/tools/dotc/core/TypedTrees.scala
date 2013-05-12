@@ -98,8 +98,8 @@ object TypedTrees {
     def Return(expr: Tree, from: Ident)(implicit ctx: Context): Return =
       Trees.Return(expr, from).withType(defn.NothingType).checked
 
-    def Try(block: Tree, catches: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try =
-      Trees.Try(block, catches, finalizer).withType(ctx.lub(block.tpe :: catches.map(_.tpe))).checked
+    def Try(block: Tree, handler: Tree, finalizer: Tree)(implicit ctx: Context): Try =
+      Trees.Try(block, handler, finalizer).withType(block.tpe | handler.tpe).checked
 
     def Throw(expr: Tree)(implicit ctx: Context): Throw =
       Trees.Throw(expr).withType(defn.NothingType).checked
@@ -188,7 +188,7 @@ object TypedTrees {
       Trees.TypeDef(Modifiers(sym), sym.name, Nil, TypeTree(sym.info)) // !!! fill in typeParams
         .withType(refType(sym)).checked
 
-    def ClassDef(cls: ClassSymbol, typeParams: List[TypeSymbol], constr: Tree, body: List[Tree])(implicit ctx: Context): ClassDef = {
+    def ClassDef(cls: ClassSymbol, typeParams: List[TypeSymbol], constr: DefDef, body: List[Tree])(implicit ctx: Context): ClassDef = {
       val parents = cls.info.parents map (TypeTree(_))
       val selfType =
         if (cls.classInfo.optSelfType.exists) ValDef(ctx.newSelfSym(cls))
@@ -448,8 +448,12 @@ object TypedTrees {
     case Try(block, catches, finalizer) =>
       check(block.isTerm)
       check(finalizer.isTerm)
+      // TODO: check handler.isTerm && handler >: Throwable => Nothing ???
+      /*
       for (ctch <- catches)
         check(ctch.pat.tpe.derivesFrom(defn.ThrowableClass))
+        *
+        */
     case Throw(expr) =>
       check(expr.isValue)
       check(expr.tpe.derivesFrom(defn.ThrowableClass))

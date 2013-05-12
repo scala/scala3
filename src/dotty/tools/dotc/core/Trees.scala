@@ -91,7 +91,7 @@ object Trees {
   case class Modifiers[T >: Untyped] (
     flags: FlagSet = EmptyFlags,
     privateWithin: TypeName = tpnme.EMPTY,
-    annotations: List[Tree[T]] = Nil) extends Positioned {
+    annotations: List[Tree[T]] = Nil) extends Positioned with Cloneable {
 
     def | (fs: FlagSet): Modifiers[T] = copy(flags = flags | fs)
     def & (fs: FlagSet): Modifiers[T] = copy(flags = flags & fs)
@@ -151,7 +151,7 @@ object Trees {
      */
     final def copyAttr(from: Tree[T]): ThisTree[T] = {
       _tpe = from._tpe
-      this.asInstanceOf[ThisTree[T]]
+      this.withPos(from.pos).asInstanceOf[ThisTree[T]]
     }
 
     /** Return a typed tree that's isomorphic to this tree, but has given
@@ -422,8 +422,8 @@ object Trees {
     type ThisTree[T >: Untyped] = Return[T]
   }
 
-  /** try block catch { catches } */
-  case class Try[T >: Untyped](block: Tree[T], catches: List[CaseDef[T]], finalizer: Tree[T])
+  /** try block catch handler finally finalizer */
+  case class Try[T >: Untyped](block: Tree[T], handler: Tree[T], finalizer: Tree[T])
     extends TermTree[T] {
     type ThisTree[T >: Untyped] = Try[T]
   }
@@ -445,6 +445,7 @@ object Trees {
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[T >: Untyped] = TypeTree[T]
     override def initialPos = NoPosition
+    override def isEmpty = !hasType && original.isEmpty
   }
 
   /** ref.type */
@@ -538,7 +539,7 @@ object Trees {
   }
 
   /** extends parents { self => body } */
-  case class Template[T >: Untyped](constr: Tree[T], parents: List[Tree[T]], self: ValDef[T], body: List[Tree[T]])
+  case class Template[T >: Untyped](constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], body: List[Tree[T]])
     extends DefTree[T] {
     type ThisTree[T >: Untyped] = Template[T]
   }
@@ -762,9 +763,9 @@ object Trees {
       case tree: Return[_] if (expr eq tree.expr) && (from eq tree.from) => tree
       case _ => Return(expr, from).copyAttr(tree)
     }
-    def derivedTry(block: Tree[T], catches: List[CaseDef[T]], finalizer: Tree[T]): Try[T] = tree match {
-      case tree: Try[_] if (block eq tree.block) && (catches eq tree.catches) && (finalizer eq tree.finalizer) => tree
-      case _ => Try(block, catches, finalizer).copyAttr(tree)
+    def derivedTry(block: Tree[T], handler: Tree[T], finalizer: Tree[T]): Try[T] = tree match {
+      case tree: Try[_] if (block eq tree.block) && (handler eq tree.handler) && (finalizer eq tree.finalizer) => tree
+      case _ => Try(block, handler, finalizer).copyAttr(tree)
     }
     def derivedThrow(expr: Tree[T]): Throw[T] = tree match {
       case tree: Throw[_] if (expr eq tree.expr) => tree
@@ -826,7 +827,7 @@ object Trees {
       case tree: TypeDef[_] if (mods == tree.mods) && (name == tree.name) && (tparams eq tree.tparams) && (rhs eq tree.rhs) => tree
       case _ => TypeDef(mods, name, tparams, rhs).copyAttr(tree)
     }
-    def derivedTemplate(constr: Tree[T], parents: List[Tree[T]], self: ValDef[T], body: List[Tree[T]]): Template[T] = tree match {
+    def derivedTemplate(constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], body: List[Tree[T]]): Template[T] = tree match {
       case tree: Template[_] if (constr eq tree.constr) && (parents eq tree.parents) && (self eq tree.self) && (body eq tree.body) => tree
       case _ => Template(constr, parents, self, body).copyAttr(tree)
     }
@@ -890,8 +891,8 @@ object Trees {
         finishCaseDef(tree.derivedCaseDef(transform(pat, c), transform(guard, c), transform(body, c)), tree, c, plugins)
       case Return(expr, from) =>
         finishReturn(tree.derivedReturn(transform(expr, c), transform(from, c)), tree, c, plugins)
-      case Try(block, catches, finalizer) =>
-        finishTry(tree.derivedTry(transform(block, c), transformSub(catches, c), transform(finalizer, c)), tree, c, plugins)
+      case Try(block, handler, finalizer) =>
+        finishTry(tree.derivedTry(transform(block, c), transform(handler, c), transform(finalizer, c)), tree, c, plugins)
       case Throw(expr) =>
         finishThrow(tree.derivedThrow(transform(expr, c)), tree, c, plugins)
       case SeqLiteral(elemtpt, elems) =>
@@ -925,7 +926,7 @@ object Trees {
       case TypeDef(mods, name, tparams, rhs) =>
         finishTypeDef(tree.derivedTypeDef(mods, name, transformSub(tparams, c), transform(rhs, c)), tree, c, plugins)
       case Template(constr, parents, self, body) =>
-        finishTemplate(tree.derivedTemplate(transform(constr, c), transform(parents, c), transformSub(self, c), transform(body, c)), tree, c, plugins)
+        finishTemplate(tree.derivedTemplate(transformSub(constr, c), transform(parents, c), transformSub(self, c), transform(body, c)), tree, c, plugins)
       case ClassDef(mods, name, tparams, impl) =>
         finishClassDef(tree.derivedClassDef(mods, name, transformSub(tparams, c), transformSub(impl, c)), tree, c, plugins)
       case Import(expr, selectors) =>
@@ -1039,8 +1040,8 @@ object Trees {
         tree.derivedCaseDef(transform(pat), transform(guard), transform(body))
       case Return(expr, from) =>
         tree.derivedReturn(transform(expr), transformSub(from))
-      case Try(block, catches, finalizer) =>
-        tree.derivedTry(transform(block), transformSub(catches), transform(finalizer))
+      case Try(block, handler, finalizer) =>
+        tree.derivedTry(transform(block), transform(handler), transform(finalizer))
       case Throw(expr) =>
         tree.derivedThrow(transform(expr))
       case SeqLiteral(elemtpt, elems) =>
@@ -1074,7 +1075,7 @@ object Trees {
       case TypeDef(mods, name, tparams, rhs) =>
         tree.derivedTypeDef(mods, name, transformSub(tparams), transform(rhs))
       case Template(constr, parents, self, body) =>
-        tree.derivedTemplate(transform(constr), transform(parents), transformSub(self), transform(body))
+        tree.derivedTemplate(transformSub(constr), transform(parents), transformSub(self), transform(body))
       case ClassDef(mods, name, tparams, impl) =>
         tree.derivedClassDef(mods, name, transformSub(tparams), transformSub(impl))
       case Import(expr, selectors) =>
@@ -1141,8 +1142,8 @@ object Trees {
         this(this(this(x, pat), guard), body)
       case Return(expr, from) =>
         this(this(x, expr), from)
-      case Try(block, catches, finalizer) =>
-        this(this(this(x, block), catches), finalizer)
+      case Try(block, handler, finalizer) =>
+        this(this(this(x, block), handler), finalizer)
       case Throw(expr) =>
         this(x, expr)
       case SeqLiteral(elemtpt, elems) =>
