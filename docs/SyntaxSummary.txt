@@ -98,12 +98,14 @@ grammar.
   FunArgTypes       ::=  InfixType
                       | `(' [ FunArgType {`,' FunArgType } ] `)'
   InfixType         ::=  RefinedType {id [nl] RefinedType}                      InfixOp(t1, op, t2)
-  RefinedType       ::=  SimpleType {Annotation | [nl] Refinement}              Annotated(t, annot), RefinedTypeTree(t, ds)
+  RefinedType       ::=  WithType {Annotation | [nl] Refinement}                Annotated(t, annot), RefinedTypeTree(t, ds)
+  WithType          ::=  SimpleType {`with' SimpleType}                         (deprecated)
   SimpleType        ::=  SimpleType TypeArgs                                    AppliedTypeTree(t, args)
                       |  SimpleType `#' id                                      SelectFromTypeTree(t, name)
                       |  StableId
                       |  Path `.' `type'                                        SingletonTypeTree(p)
                       |  `(' ArgTypes ')'                                       Tuple(ts)
+                      |  Refinement                                             RefinedTypeTree(EmptyTree, refinement)
   ArgType           ::=  Type
                       |  `_' TypeBounds
   ArgTypes          ::=  ArgType {`,' ArgType}
@@ -113,7 +115,6 @@ grammar.
                       |  Type `*'                                               PostfixOp(t, "*")
   TypeArgs          ::=  `[' ArgTypes `]'                                       ts
   Refinement        ::=  `{' [Dcl] {semi [Dcl]} `}'                             ds
-                      |
   TypeBounds        ::=  [`>:' Type] [`<: Type]                                 TypeBoundsTree(lo, hi)
   TypeParamBounds   ::=  TypeBounds {`<%' Type} {`:' Type}                      ContextBounds(typeBounds, tps)
 
@@ -142,7 +143,7 @@ grammar.
                       |  PostfixExpr `match' `{' CaseClauses `}'                Match(expr, cases) -- point on match
   Ascription        ::=  `:' InfixType                                          Typed(expr, tp)
                       |  `:' Annotation {Annotation}                            Typed(expr, Annotated(EmptyTree, annot)*)
-  Catches           ::=  `catch' `{' CaseClauses `}'                            cases
+  Catches           ::=  `catch' Expr
   PostfixExpr       ::=  InfixExpr [id]                                         PostfixOp(expr, op)
   InfixExpr         ::=  PrefixExpr
                       |  InfixExpr id [nl] InfixExpr                            InfixOp(expr, op, expr)
@@ -159,10 +160,11 @@ grammar.
                       |  SimpleExpr1 ArgumentExprs                              Apply(expr, args)
                       |  XmlExpr
   ExprsInParens     ::=  ExprInParens {`,' ExprInParens}
-  ArgumentExprs     ::=  `(' [ExprsInParens] `)'                                exprs
+  ParArgumentExprs  ::=  `(' [ExprsInParens] `)'                                exprs
                       |  `(' [ExprsInParens `,'] PostfixExpr `:' `_' `*' ')'    exprs :+ Typed(expr, Ident(wildcardStar))
+  ArgumentExprs     ::=  ParArgumentExprs
                       |  [nl] BlockExpr
-  BlockExpr         ::=  `{' CaseClauses `}'                                    cases
+  BlockExpr         ::=  `{' CaseClauses `}'                                    Match(EmptyTree, cases)
                       |  `{' Block `}'                                          block // starts at {
   Block             ::=  {BlockStat semi} [BlockResult]                         Block(stats, expr?)
   BlockStat         ::=  Import
@@ -188,7 +190,7 @@ grammar.
   CaseClause        ::=  `case' Pattern [Guard] `=>' Block                      CaseDef(pat, guard?, block)   // block starts at =>
 
   Pattern           ::=  Pattern1 { `|' Pattern1 }                              Alternative(pats)
-  Pattern1          ::=  PatVar Ascription                                      Bind(name, Typed(Ident(wildcard), tpe))
+  Pattern1          ::=  PatVar `:' SimpleType                                  Bind(name, Typed(Ident(wildcard), tpe))
                       |  Pattern2
   Pattern2          ::=  [varid `@'] InfixPattern                               Bind(name, pat)
   InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                InfixOp(pat, op, pat)
@@ -295,7 +297,7 @@ ac                      |  XmlPattern
   TemplateOpt       ::=  [`extends' Template | [nl] TemplateBody]
   Template          ::=  ConstrApps [TemplateBody] | TemplateBody               Template(constr, parents, self, stats)
   ConstrApps        ::=  ConstrApp {`with' ConstrApp}
-  ConstrApp         ::=  RefinedType {ArgumentExprs}                            Apply(tp, args)
+  ConstrApp         ::=  SimpleType {ArgumentExprs}                             Apply(tp, args)
 
   ConstrExpr        ::=  SelfInvocation
                       |  ConstrBlock
