@@ -195,9 +195,6 @@ object Flags {
   /** A method symbol. */
   final val Method = termFlag(7, "<method>")
 
-  /** Labeled with `abstract` modifier (an abstract class) */
-  final val Abstract = typeFlag(7, "abstract")
-
   /** A (term or type) parameter to a class or method */
   final val Param     = commonFlag(8, "<param>")
   final val TermParam = Param.toTermFlags
@@ -274,50 +271,55 @@ object Flags {
   /** Method is a label. */
   final val Label = termFlag(22, "<label>")
 
+  /** Labeled with `abstract` modifier (an abstract class)
+   *  Note: the flag counts as common, because it can be combined with OVERRIDE in a term.
+   */
+  final val Abstract = commonFlag(23, "abstract")
+
   /** Labeled with of abstract & override */
-  final val AbsOverride = termFlag(23, "abstract override")
+  final val AbsOverride = termFlag(24, "abstract override")
 
   /** Method is assumed to be stable */
-  final val Stable = termFlag(24, "<stable>")
+  final val Stable = termFlag(25, "<stable>")
 
   /** A case parameter (or its accessor, or a GADT skolem) */
-  final val CaseAccessor = termFlag(25, "<caseaccessor>")
+  final val CaseAccessor = termFlag(26, "<caseaccessor>")
 
   /** A super accessor */
-  final val SuperAccessor = termFlag(26, "<superaccessor>")
+  final val SuperAccessor = termFlag(27, "<superaccessor>")
 
   /** A parameter with a default value */
-  final val DefaultParam = termFlag(27, "<defaultparam>")
+  final val DefaultParam = termFlag(28, "<defaultparam>")
 
   /** Symbol is initialized to the default value, e.g. var x: T = _ */
-  final val DefaultInit = termFlag(28, "<defaultinit>")
+  final val DefaultInit = termFlag(29, "<defaultinit>")
 
   /** Symbol is a macro */
-  final val Macro = commonFlag(29, "<macro>")
+  final val Macro = commonFlag(30, "<macro>")
 
   /** Symbol is defined by a Java class */
-  final val JavaDefined = commonFlag(30, "<java>")
+  final val JavaDefined = commonFlag(31, "<java>")
 
   /** Symbol is implemented as a Java static */
-  final val Static = commonFlag(31, "<static>")
+  final val Static = commonFlag(32, "<static>")
 
   /** Variable is accessed from nested function. */
-  final val Captured = termFlag(32, "<captured>")
+  final val Captured = termFlag(33, "<captured>")
 
   /** Symbol should be ignored when typechecking; will be marked ACC_SYNTHETIC in bytecode */
-  final val Artifact = commonFlag(33, "<artifact>")
+  final val Artifact = commonFlag(34, "<artifact>")
 
   /** A bridge method. Set by Erasure */
-  final val Bridge = termFlag(34, "<bridge>")
+  final val Bridge = termFlag(35, "<bridge>")
 
   /** Symbol is a Java varargs bridge */
-  final val VBridge = termFlag(35, "<vbridge>")
+  final val VBridge = termFlag(36, "<vbridge>")
 
   /** Symbol is a method which should be marked ACC_SYNCHRONIZED */
-  final val Synchronized = termFlag(36, "<synchronized>")
+  final val Synchronized = termFlag(37, "<synchronized>")
 
   /** Symbol is a Java-style varargs method */
-  final val JavaVarargs = termFlag(37, "<varargs>")
+  final val JavaVarargs = termFlag(38, "<varargs>")
 
   // Flags following this one are not pickled
 
