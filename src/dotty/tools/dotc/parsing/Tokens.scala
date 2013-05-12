@@ -46,8 +46,6 @@ object Tokens {
   final val INTERPOLATIONID = 10;  enter(INTERPOLATIONID, "string interpolator")
   final val SYMBOLLIT = 11;        enter(SYMBOLLIT, "symbol literal") // TODO: deprecate
 
-  final val literalTokens = tokenRange(CHARLIT, SYMBOLLIT)
-
   /** identifiers */
   final val IDENTIFIER = 12;       enter(IDENTIFIER, "identifier")
   final val BACKQUOTED_IDENT = 13; enter(BACKQUOTED_IDENT, "identifier", "backquoted ident")
@@ -97,11 +95,11 @@ object Tokens {
   final val WHILE = 56;            enter(WHILE, "while")
   final val RETURN = 57;           enter(RETURN, "return")
   final val MATCH = 58;            enter(MATCH, "match")
-  final val FORSOME = 59;          enter(FORSOME, "forSome") // TODO: deprecate
-  final val LAZY = 61;             enter(LAZY, "lazy")
-  final val THEN = 62;             enter(THEN, "then")
+  final val LAZY = 59;             enter(LAZY, "lazy")
+  final val THEN = 60;             enter(THEN, "then")
+  final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
 
-  final val alphaKeywords = tokenRange(IF, LAZY)
+  final val alphaKeywords = tokenRange(IF, FORSOME)
 
   /** special symbols */
   final val COMMA = 70;            enter(COMMA, "','")
@@ -113,7 +111,7 @@ object Tokens {
   /** special keywords */
   final val USCORE = 73;           enter(USCORE, "_")
   final val COLON = 74;            enter(COLON, ":")
-  final val EQUALS = 75;           enter(EQUALS, "==")
+  final val EQUALS = 75;           enter(EQUALS, "=")
   final val LARROW = 76;           enter(LARROW, "<-")
   final val ARROW = 77;            enter(ARROW, "=>")
   final val SUBTYPE = 80;          enter(SUBTYPE, "<:")
@@ -141,6 +139,8 @@ object Tokens {
   final val XMLSTART = 96;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val allTokens = tokenRange(minToken, maxToken)
+
+  final val literalTokens = tokenRange(CHARLIT, SYMBOLLIT) | BitSet(TRUE, FALSE, NULL)
 
   final val atomicExprTokens = literalTokens | identifierTokens | BitSet(
     USCORE, NULL, THIS, SUPER, TRUE, FALSE, RETURN, XMLSTART)
@@ -171,7 +171,7 @@ object Tokens {
     IMPORT, PACKAGE)
 
   final val canStartStatTokens = canStartExpressionTokens | mustStartStatTokens | BitSet(
-    AT)
+    AT, CASE)
 
   final val canEndStatTokens = atomicExprTokens | BitSet(
     TYPE, RPAREN, RBRACE, RBRACKET)
