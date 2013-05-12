@@ -28,18 +28,18 @@ class ConsoleReporter(
     printMessage(pos.lineContents.stripLineEnd)
 
   def printColumnMarker(pos: SourcePosition) =
-    if (pos.exists) { writer.print(" " * (pos.column - 1) + "^ ") }
+    if (pos.exists) { printMessage(" " * (pos.column - 1) + "^") }
 
   /** Prints the message. */
   def printMessage(msg: String) { writer.print(msg + "\n"); writer.flush() }
 
   /** Prints the message with the given position indication. */
   def printMessage(msg: String, pos: SourcePosition)(implicit ctx: Context) {
+    printMessage(s"${if (pos.exists) s"$pos: " else ""}$msg")
     if (pos.exists) {
       printSourceLine(pos)
       printColumnMarker(pos)
     }
-    printMessage(msg)
   }
 
   def printMessage(msg: String, severity: Severity, pos: SourcePosition)(implicit ctx: Context) {
@@ -55,7 +55,7 @@ class ConsoleReporter(
   override def report(msg: String, severity: Severity, pos: SourcePosition)(implicit ctx: Context) {
     if (severity != ERROR || count(severity) <= ErrorLimit)
       printMessage(msg, severity, pos)
-    if (ctx.settings.prompt.value) displayPrompt()
+    if (severity != INFO && ctx.settings.prompt.value) displayPrompt()
   }
 
   def displayPrompt(): Unit = {
