@@ -10,9 +10,9 @@ package util
  */
 object Positions {
 
-  private val SyntheticPointDelta = 1 << (64 - StartEndBits * 2) - 1
   private val StartEndBits = 26
   private val StartEndMask: Long = (1L << StartEndBits) - 1
+  private val SyntheticPointDelta = (1 << (64 - StartEndBits * 2)) - 1
 
   /** A position indicates a range between a start offset and an end offset.
    *  Positions can be synthetic or source-derived. A source-derived position
@@ -22,20 +22,31 @@ object Positions {
    */
   class Position(val coords: Long) extends AnyVal {
 
+    /** Is this position different from NoPosition? */
+    def exists = this != NoPosition
+
     /** The start of this position. */
-    def start: Int = (coords & StartEndMask).toInt
+    def start: Int = {
+      assert(exists)
+      (coords & StartEndMask).toInt
+    }
+
+    /** The end of this position */
+    def end: Int = {
+      assert(exists)
+      ((coords >>> StartEndBits) & StartEndMask).toInt
+    }
 
     /** The point of this position, returns start for synthetic positions */
     def point: Int = {
+      assert(exists)
       val poff = pointDelta
       if (poff == SyntheticPointDelta) start else start + poff
     }
 
-    /** The end of this position */
-    def end: Int = ((coords >>> StartEndBits) & StartEndMask).toInt
-
     /** The difference between point and start in this position */
-    def pointDelta = (coords >>> (StartEndBits * 2)).toInt
+    def pointDelta =
+      (coords >>> (StartEndBits * 2)).toInt
 
     /** The union of two positions. This is the least range that encloses
      *  both positions. It is always a synthetic position.
@@ -50,9 +61,6 @@ object Positions {
       if (exists) (start <= that.start && end >= that.end)
       else !that.exists
 
-    /** Is this position different from NoPosition? */
-    def exists = this != NoPosition
-
     /** Is this position synthetic? */
     def isSynthetic = pointDelta == SyntheticPointDelta
 
@@ -63,7 +71,7 @@ object Positions {
      *  relative to this position.
      */
     def shift(offset: Int) =
-      if (exists) Position(start + offset, end + offset, pointDelta)
+      if (exists) fromOffsets(start + offset, end + offset, pointDelta)
       else this
 
     /** The zero-extent position with start and end at the point of this position */
@@ -76,17 +84,24 @@ object Positions {
     def endPos = Position(end)
 
     /** A copy of this position with a different start */
-    def withStart(start: Int) = Position(start, this.end, this.point - start)
+    def withStart(start: Int) = fromOffsets(start, this.end, this.point - start)
 
     /** A copy of this position with a different end */
-    def withEnd(end: Int) = Position(this.start, end, this.point - this.start)
+    def withEnd(end: Int) = fromOffsets(this.start, end, this.point - this.start)
 
     /** A copy of this position with a different point */
-    def withPoint(point: Int) =
-      Position(this.start, this.end, point - this.start)
+    def withPoint(point: Int) = fromOffsets(this.start, this.end, point - this.start)
 
     /** A synthetic copy of this position */
     def toSynthetic = if (isSynthetic) this else Position(start, end)
+
+    override def toString = {
+      val (left, right) = if (isSynthetic) ("<", ">") else ("[", "]")
+      if (exists)
+        s"$left$start..${if (point == start) "" else s"$point.."}$end$right"
+      else
+        s"${left}no position${right}"
+    }
   }
 
   private def fromOffsets(start: Int, end: Int, pointDelta: Int) =
@@ -96,17 +111,24 @@ object Positions {
       (pointDelta.toLong << (StartEndBits * 2)))
 
   /** A synthetic position with given start and end */
-  def Position(start: Int, end: Int): Position =
-    fromOffsets(start, end, SyntheticPointDelta)
+  def Position(start: Int, end: Int): Position = {
+    val pos = fromOffsets(start, end, SyntheticPointDelta)
+    assert(pos.isSynthetic)
+    pos
+  }
 
   /** A source-derived position with given start, end, and point delta */
-  def Position(start: Int, end: Int, pointDelta: Int): Position =
-    fromOffsets(start, end, if (pointDelta >= SyntheticPointDelta) 0 else pointDelta)
+  def Position(start: Int, end: Int, point: Int): Position = {
+    val pointDelta = (point - start) max 0
+    val pos = fromOffsets(start, end, if (pointDelta >= SyntheticPointDelta) 0 else pointDelta)
+    assert(pos.isSourceDerived, pos+" "+SyntheticPointDelta)
+    pos
+  }
 
   /** A synthetic zero-extent position that starts and ends at given `start`. */
-  def Position(start: Int): Position = Position(start, start, 0)
+  def Position(start: Int): Position = Position(start, start)
 
-  /** A sentinal for a non-existing position */
+  /** A sentinel for a non-existing position */
   val NoPosition = Position(1, 0)
 
   /** The coordinate of a symbol. This is either an index or
