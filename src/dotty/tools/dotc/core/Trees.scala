@@ -8,6 +8,7 @@ import language.higherKinds
 import collection.mutable
 import collection.mutable.ArrayBuffer
 import parsing.Tokens.Token
+import util.Stats
 
 object Trees {
 
@@ -20,6 +21,9 @@ object Trees {
   type Untyped = Null
   type TypedTree = Tree[Type]
   type UntypedTree = Tree[Untyped]
+
+  /** The total number of created tree nodes, maintained if Stats.enabled */
+  var ntrees = 0
 
   /** A base class for things that have positions (currently: modifiers and trees)
    */
@@ -132,6 +136,8 @@ object Trees {
    *     nodes.
    */
   abstract class Tree[T >: Untyped] extends Positioned with Product with Showable with Cloneable {
+
+    if (Stats.enabled) ntrees += 1
 
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]
