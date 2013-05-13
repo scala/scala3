@@ -15,8 +15,8 @@ import scala.reflect.internal.util._
  */
 class ConsoleReporter(
     reader: BufferedReader = Console.in,
-    writer: PrintWriter = new PrintWriter(Console.err, true))
-  extends Reporter with UniqueMessagePositions {
+    writer: PrintWriter = new PrintWriter(Console.err, true))(ctx: Context)
+  extends Reporter(ctx) with UniqueMessagePositions {
 
   /** Whether a short file name should be displayed before errors */
   protected def shortName: Boolean = false
@@ -44,12 +44,6 @@ class ConsoleReporter(
 
   def printMessage(msg: String, severity: Severity, pos: SourcePosition)(implicit ctx: Context) {
     printMessage(label(severity) + msg, pos)
-  }
-
-  /** Prints the number of errors and warnings if their are non-zero. */
-  def printSummary() {
-    if (count(WARNING) > 0) printMessage(countString(WARNING) + " found")
-    if (  count(ERROR) > 0) printMessage(countString(ERROR  ) + " found")
   }
 
   override def report(msg: String, severity: Severity, pos: SourcePosition)(implicit ctx: Context) {

@@ -10,7 +10,7 @@ import Reporter.Severity.{Value => Severity}
 /**
  * This class implements a Reporter that stores all messages
  */
-class StoreReporter extends Reporter {
+class StoreReporter(ctx: Context) extends Reporter(ctx) {
 
   class Info(val msg: String, val severity: Severity, val pos: SourcePosition) {
     override def toString() = "pos: " + pos + " " + msg + " " + severity

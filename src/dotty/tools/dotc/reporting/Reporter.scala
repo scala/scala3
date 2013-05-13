@@ -7,6 +7,7 @@ import util.{SourcePosition, NoSourcePosition}
 import util.{SourceFile, NoSource}
 import core.Decorators.PhaseListDecorator
 import collection.mutable
+import config.Settings.Setting
 import java.lang.System.currentTimeMillis
 
 trait Reporting { this: Context =>
@@ -24,7 +25,9 @@ trait Reporting { this: Context =>
   def informTime(msg: => String, start: Long): Unit =
     informProgress(msg + elapsed(start))
 
-  def deprecationWarning(msg: String, pos: SourcePosition): Unit = ???
+  def deprecation = reporter.deprecation
+  def unchecked = reporter.unchecked
+  def feature = reporter.feature
 
   private def elapsed(start: Long) =
     " in " + (currentTimeMillis - start) + "ms"
@@ -79,7 +82,7 @@ object Reporter {
  * This interface provides methods to issue information, warning and
  * error messages.
  */
-abstract class Reporter {
+abstract class Reporter(ctx: Context) {
 
   import Reporter.Severity.{Value => Severity, _}
 
@@ -165,7 +168,36 @@ abstract class Reporter {
     countElementsAsString(count(severity), label(severity).dropRight(2))
   }
 
+  def printSummary(implicit ctx: Context) {
+    if (count(WARNING) > 0) info(countString(WARNING) + " found")
+    if (  count(ERROR) > 0) info(countString(ERROR  ) + " found")
+    allConditionalWarnings foreach (_.summarize)
+  }
+
   def flush(): Unit = {}
 
-  def reset(): Unit = count.clear()
+  def reset(): Unit = {
+    count.clear()
+    allConditionalWarnings foreach (_.clear())
+  }
+
+  protected val allConditionalWarnings = new mutable.ListBuffer[ConditionalWarning]
+
+  val deprecation = new ConditionalWarning("deprecation", ctx.settings.deprecation)
+  val unchecked = new ConditionalWarning("unchecked", ctx.settings.unchecked)
+  val feature = new ConditionalWarning("feature", ctx.settings.feature)
+
+  /** Collects for certain classes of warnings during this run. */
+  class ConditionalWarning(what: String, option: Setting[Boolean]) {
+    private var unreported: Int = 0
+    def clear() =
+      unreported = 0
+    def warning(msg: String, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context) =
+      if (option.value) Reporter.this.warning(msg, pos)
+      else unreported += 1
+    def summarize(implicit ctx: Context) =
+      if (unreported > 0)
+        Reporter.this.warning(s"there were $unreported $what warning(s); re-run with ${option.name} for details")
+    allConditionalWarnings += this
+  }
 }

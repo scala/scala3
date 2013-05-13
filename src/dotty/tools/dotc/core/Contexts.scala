@@ -259,7 +259,7 @@ object Contexts {
     owner = NoSymbol
     sstate = settings.defaultState
     tree = EmptyTree
-    reporter = new ConsoleReporter
+    reporter = new ConsoleReporter()(this)
     diagnostics = None
     moreProperties = Map.empty
   }
