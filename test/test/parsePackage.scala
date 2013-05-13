@@ -1,13 +1,75 @@
 package test
 
+import dotty.tools.dotc.core._
+import Trees._
+
 object parsePackage extends ParserTest {
 
+  import UntypedTrees.untpd._
+
+  var nodes = 0
+
+  val transformer = new TreeTransformer {
+    override def transform(tree: Tree): Tree = {
+      nodes += 1
+      tree match {
+        case Ident(name) =>
+          Ident(name)
+        case This(name) =>
+          This(name)
+        case TypedSplice(t) =>
+          TypedSplice(t)
+        case SymbolLit(str) =>
+          tree
+        case InterpolatedString(id, parts, elems) =>
+          InterpolatedString(id, parts map transform, elems map transform)
+        case ModuleDef(mods, name, impl) =>
+          ModuleDef(mods, name, transformSub(impl))
+        case Function(args, body) =>
+          Function(args map transform, body)
+        case InfixOp(l, o, r) =>
+          InfixOp(transform(l), o, transform(r))
+        case PostfixOp(l, o) =>
+          PostfixOp(transform(l), o)
+        case PrefixOp(o, t) =>
+          PrefixOp(o, transform(t))
+        case Parens(t) =>
+          Parens(transform(t))
+        case Tuple(ts) =>
+          Tuple(ts map transform)
+        case WhileDo(cond, body) =>
+          WhileDo(transform(cond), transform(body))
+        case DoWhile(body, cond) =>
+          DoWhile(transform(body), transform(cond))
+        case ForYield(enums, expr) =>
+          ForYield(enums map transform, transform(expr))
+        case ForDo(enums, expr) =>
+          ForDo(enums map transform, transform(expr))
+        case GenFrom(pat, expr) =>
+          GenFrom(transform(pat), transform(expr))
+        case GenAlias(pat, expr) =>
+          GenAlias(transform(pat), transform(expr))
+        case PatDef(mods, pats, tpt, expr) =>
+          PatDef(mods, pats map transform, transform(tpt), transform(expr))
+        case ContextBounds(bounds, cxBounds) =>
+          ContextBounds(transformSub(bounds), cxBounds map transform)
+        case _ =>
+          super.transform(tree)
+      }
+    }
+  }
+
   def test() = {
+    reset()
+    nodes = 0
     val start = System.nanoTime()
     parseDir("/Users/odersky/workspace/dotty/src")
     parseDir("/Users/odersky/workspace/scala/src")
-    val ms = (System.nanoTime() - start)/1000000
-    println(s"$parsed files parsed in ${ms}ms")
+    val ms1 = (System.nanoTime() - start)/1000000
+    val buf = parsedTrees map transformer.transform
+    val ms2 = (System.nanoTime() - start)/1000000
+    println(s"$parsed files parsed in ${ms1}ms, $nodes nodes transformed in ${ms2-ms1}ms, total trees created = ${Trees.ntrees}")
+    ctx.reporter.printSummary(ctx)
   }
 
   def main(args: Array[String]): Unit = {

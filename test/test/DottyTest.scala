@@ -21,7 +21,6 @@ class DottyTest {
 //      .withSetting(debug, true)
 //      .withSetting(debugTrace, true)
 //      .withSetting(prompt, true)
-      .withSetting(nowarn, true)
       .withSetting(Ylogcp, true)
       .withSetting(printtypes, true)
       .withSetting(pageWidth, 90)

@@ -7,12 +7,19 @@ import dotty.tools.dotc.parsing._
 import Tokens._, Parsers._
 import UntypedTrees.untpd._
 import org.junit.Test
+import scala.collection.mutable.ListBuffer
 
 class ParserTest extends DottyTest {
 
   def parse(name: String): Tree = parse(new PlainFile(name))
 
   var parsed = 0
+  val parsedTrees = new ListBuffer[Tree]
+
+  def reset() = {
+    parsed = 0
+    parsedTrees.clear()
+  }
 
   def parse(file: PlainFile): Tree = {
     //println("***** parsing " + file)
@@ -20,6 +27,7 @@ class ParserTest extends DottyTest {
     val parser = new Parser(source)
     val tree = parser.parse()
     parsed += 1
+    parsedTrees += tree
     tree
   }
 
