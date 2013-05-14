@@ -15,12 +15,11 @@ import Names._
 import Trees._
 import Decorators._
 import StdNames._
-import util.Chars.isScalaLetter
 import util.Positions._
 import Types._
 import Constants._
 import NameOps._
-import scala.reflect.internal.Chars._
+import util.Chars._
 import ScriptParsers._
 import annotation.switch
 
@@ -338,25 +337,6 @@ object Parsers {
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
     var opStack: List[OpInfo] = Nil
-
-    def precedence(operator: Name): Int =
-      if (operator eq nme.ERROR) -1
-      else {
-        val firstCh = operator(0)
-        if (isScalaLetter(firstCh)) 1
-        else if (operator.isOpAssignmentName) 0
-        else firstCh match {
-          case '|'             => 2
-          case '^'             => 3
-          case '&'             => 4
-          case '=' | '!'       => 5
-          case '<' | '>'       => 6
-          case ':'             => 7
-          case '+' | '-'       => 8
-          case '*' | '/' | '%' => 9
-          case _               => 10
-        }
-      }
 
     def checkAssoc(offset: Int, op: Name, leftAssoc: Boolean) =
       if (TreeInfo.isLeftAssoc(op) != leftAssoc)

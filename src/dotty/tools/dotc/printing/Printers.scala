@@ -7,6 +7,7 @@ import Constants._, Annotations._, StdNames._, Denotations._, SymDenotations._, 
 import Texts._
 import java.lang.Integer.toOctalString
 import scala.annotation.switch
+import parsing.{precedence, minPrec, maxPrec}
 
 trait Printers { this: Context =>
 
@@ -23,12 +24,12 @@ object Printers {
       if (nested.value < value) "(" ~ text ~ ")" else text
   }
 
-  val DotPrec       = new Precedence(4)
-  val AndPrec       = new Precedence(3)
-  val OrPrec        = new Precedence(2)
-  val WithPrec      = new Precedence(1)
-  val LeftArrowPrec = new Precedence(1)
-  val GlobalPrec    = new Precedence(0)
+  val DotPrec       = new Precedence(maxPrec)
+  val AndPrec       = new Precedence(precedence(nme.raw.AMP))
+  val OrPrec        = new Precedence(precedence(nme.raw.BAR))
+  val WithPrec      = new Precedence(precedence(nme.WITHkw))
+  val LeftArrowPrec = WithPrec
+  val GlobalPrec    = new Precedence(minPrec)
 
   abstract class Printer {
 
@@ -494,7 +495,9 @@ object Printers {
       super.toText(tp, prec)
     }
 
-    override def toText[T >: Untyped](tree: Tree[T]): Text = super.toText(tree)
+    override def toText[T >: Untyped](tree: Tree[T]): Text = toText(tree, GlobalPrec)
+
+    def toText[T >: Untyped](tree: Tree[T], prec: Precedence): Text = ???
 
     override protected def polyParamName(name: TypeName): TypeName =
       name.unexpandedName()
