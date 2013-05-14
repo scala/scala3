@@ -5,7 +5,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags._
 import Types._, Symbols._, Decorators._
-import dotty.tools.dotc.util.Texts._
+import dotty.tools.dotc.printing.Texts._
 import dotty.tools.dotc.core.Decorators._
 import org.junit.Test
 

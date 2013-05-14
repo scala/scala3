@@ -135,7 +135,7 @@ object Trees {
    *   - Type checking an untyped tree should remove all embedded `TypedSplice`
    *     nodes.
    */
-  abstract class Tree[T >: Untyped] extends Positioned with Product with Showable with Cloneable {
+  abstract class Tree[T >: Untyped] extends Positioned with Product with printing.Showable with Cloneable {
 
     if (Stats.enabled) ntrees += 1
 

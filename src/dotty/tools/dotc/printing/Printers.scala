@@ -1,9 +1,10 @@
 package dotty.tools.dotc
-package core
+package printing
 
+import core._
 import Types._, Symbols._, Contexts._, Scopes._, Names._, NameOps._, Flags._
 import Constants._, Annotations._, StdNames._, Denotations._, SymDenotations._, Trees._
-import util.Texts._
+import Texts._
 import java.lang.Integer.toOctalString
 import scala.annotation.switch
 
@@ -492,6 +493,8 @@ object Printers {
       }
       super.toText(tp, prec)
     }
+
+    override def toText[T >: Untyped](tree: Tree[T]): Text = super.toText(tree)
 
     override protected def polyParamName(name: TypeName): TypeName =
       name.unexpandedName()

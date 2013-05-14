@@ -10,7 +10,7 @@ import java.lang.Double.longBitsToDouble
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
 import util.Positions._, TypedTrees.tpd._, TypedTrees.TreeOps
-import util.Texts._
+import printing.Texts._
 import io.AbstractFile
 import scala.reflect.internal.pickling.PickleFormat._
 import Decorators._

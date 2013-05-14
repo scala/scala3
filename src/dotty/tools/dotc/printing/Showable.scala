@@ -1,7 +1,9 @@
 package dotty.tools.dotc
-package core
+package printing
 
-import Contexts._, util.Texts._, Decorators._
+import core._
+
+import Contexts._, Texts._, Decorators._
 
 trait Showable {
 

@@ -15,7 +15,7 @@ import SymDenotations._
 import Decorators._
 import Denotations._
 import Periods._
-import TypedTrees.tpd._, TypedTrees.TreeMapper, util.Texts._
+import TypedTrees.tpd._, TypedTrees.TreeMapper, printing.Texts._
 import transform.Erasure
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import collection.mutable
@@ -70,7 +70,7 @@ object Types {
    *                       +- ErrorType
    *                       +- WildcardType
    */
-  abstract class Type extends DotClass with Showable {
+  abstract class Type extends DotClass with printing.Showable {
 
 // ----- Tests -----------------------------------------------------
 
@@ -735,7 +735,7 @@ object Types {
      */
     def signature(implicit ctx: Context): Signature = NotAMethod
 
-    def toText(implicit ctx: Context): Text = ctx.toText(this, Printers.GlobalPrec)
+    def toText(implicit ctx: Context): Text = ctx.toText(this, printing.Printers.GlobalPrec)
 
 // ----- hashing ------------------------------------------------------
 

@@ -3,7 +3,7 @@ package core
 
 import annotation.tailrec
 import Symbols._
-import Contexts._, Names._, Phases._, util.Texts._
+import Contexts._, Names._, Phases._, printing.Texts._
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {

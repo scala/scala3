@@ -12,7 +12,7 @@ import Periods._
 import Decorators._
 import Contexts._
 import Denotations._
-import util.Texts._
+import printing.Texts._
 import SymDenotations.NoDenotation
 
 object Scopes {
@@ -49,7 +49,7 @@ object Scopes {
    *  or to delete them. These methods are provided by subclass
    *  MutableScope.
    */
-  abstract class Scope extends Showable with Iterable[Symbol] {
+  abstract class Scope extends printing.Showable with Iterable[Symbol] {
 
     /** The last scope-entry from which all others are reachable via `prev` */
     private[dotc] def lastEntry: ScopeEntry

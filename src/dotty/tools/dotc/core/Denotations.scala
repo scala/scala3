@@ -9,7 +9,7 @@ import Names.TypeName
 import Symbols.NoSymbol
 import Symbols._
 import Types._, Periods._, Flags._, Transformers._
-import util.Texts._
+import printing.Texts._
 import io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 
@@ -109,7 +109,7 @@ object Denotations {
    *
    *  Then the denotation of `y` is `SingleDenotation(NoSymbol, A | B)`.
    */
-  abstract class Denotation extends DotClass with Showable {
+  abstract class Denotation extends DotClass with printing.Showable {
 
     /** The referencing symbol, exists only for non-overloaded denotations */
     def symbol: Symbol

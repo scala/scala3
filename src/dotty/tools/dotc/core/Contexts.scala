@@ -8,7 +8,7 @@ import Names._
 import Phases._
 import Types._
 import Symbols._
-import TypeComparers._, Printers._, NameOps._, SymDenotations._, util.Positions._
+import TypeComparers._, printing.Printers._, NameOps._, SymDenotations._, util.Positions._
 import TypedTrees.tpd._, util.FreshNameCreator
 import config.Settings._
 import config.ScalaSettings
@@ -43,7 +43,7 @@ object Contexts {
                             with Substituters
                             with TypeOps
                             with Phases
-                            with Printers
+                            with printing.Printers
                             with Symbols
                             with SymDenotations
                             with Reporting
@@ -367,7 +367,7 @@ object Contexts {
 
     // Printers state
     /** Number of recursive invocations of a show method on cuyrrent stack */
-    private[core] var toTextRecursions = 0
+    private[dotc] var toTextRecursions = 0
 
     // Reporters state
     private[dotc] var indent = 0

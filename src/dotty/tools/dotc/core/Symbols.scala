@@ -10,7 +10,7 @@ import java.lang.AssertionError
 import Decorators._
 import Symbols._
 import Contexts._
-import SymDenotations._, util.Texts._
+import SymDenotations._, printing.Texts._
 import Types._, Annotations._, util.Positions._, StdNames._, Trees._, NameOps._
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
@@ -287,7 +287,7 @@ object Symbols {
 
   /** A Symbol represents a Scala definition/declaration or a package.
    */
-  class Symbol private[Symbols] (val coord: Coord) extends DotClass with Showable {
+  class Symbol private[Symbols] (val coord: Coord) extends DotClass with printing.Showable {
 
     type ThisName <: Name
 
