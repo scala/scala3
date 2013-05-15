@@ -23,6 +23,7 @@ form.
                      |  op
   id               ::=  plainid
                      |  `\`' stringLit `\`'
+                     |  INT                           // interpolation id, only for quasi-quotes
   idrest           ::=  {letter | digit} [`_' op]
 
   integerLiteral   ::=  (decimalNumeral | hexNumera) [`L' | `l']
@@ -115,7 +116,7 @@ grammar.
                       |  Type `*'                                               PostfixOp(t, "*")
   TypeArgs          ::=  `[' ArgTypes `]'                                       ts
   Refinement        ::=  `{' [Dcl] {semi [Dcl]} `}'                             ds
-  TypeBounds        ::=  [`>:' Type] [`<: Type]                                 TypeBoundsTree(lo, hi)
+  TypeBounds        ::=  [`>:' Type] [`<: Type] | INT                           TypeBoundsTree(lo, hi)
   TypeParamBounds   ::=  TypeBounds {`<%' Type} {`:' Type}                      ContextBounds(typeBounds, tps)
 
   Expr              ::=  FunParams `=>' Expr                                    Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
@@ -187,7 +188,7 @@ grammar.
   Guard             ::=  `if' PostfixExpr
 
   CaseClauses       ::=  CaseClause { CaseClause }
-  CaseClause        ::=  `case' Pattern [Guard] `=>' Block                      CaseDef(pat, guard?, block)   // block starts at =>
+  CaseClause        ::=  `case' (Pattern [Guard] `=>' Block | INT)              CaseDef(pat, guard?, block)   // block starts at =>
 
   Pattern           ::=  Pattern1 { `|' Pattern1 }                              Alternative(pats)
   Pattern1          ::=  PatVar `:' SimpleType                                  Bind(name, Typed(Ident(wildcard), tpe))
@@ -197,7 +198,7 @@ grammar.
   SimplePattern     ::=  PatVar                                                 Ident(wildcard)
                       |  Literal                                                Bind(name, Ident(wildcard))                      |  Literal
                       |  `(' [Patterns] `)'                             Parens(pats) Tuple(pats)
-ac                      |  XmlPattern
+                      |  XmlPattern
                       |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
   SimplePattern1    ::=  Path
                       |  `{' Block `}'
@@ -226,6 +227,7 @@ ac                      |  XmlPattern
   ClsParams         ::=  ClsParam {`' ClsParam}
   ClsParam          ::=  {Annotation} [{Modifier} (`val' | `var')] Param        ValDef(mods, id, tpe, expr) -- point of mods on val/var
   Param             ::=  id `:' ParamType [`=' Expr]
+                      |  INT
 
   DefParamClauses   ::=  {DefParamClause} [[nl] `(' `implicit' DefParams `)']
   DefParamClause    ::=  [nl] `(' [DefParams] ')'
@@ -254,7 +256,7 @@ ac                      |  XmlPattern
                       |  {Annotation [nl]} {Modifier} Dcl
                       |  Expr1
                       |
-  SelfType          ::=  id [`:' InfiWxType] `=>'                                ValDef(_, name, tpt, _)
+  SelfType          ::=  id [`:' InfixType] `=>'                                ValDef(_, name, tpt, _)
                       |  `this' `:' InfixType `=>
 
   Import            ::=  `import' ImportExpr {`,' ImportExpr}
@@ -266,6 +268,7 @@ ac                      |  XmlPattern
                       |  `var' VarDcl
                       |  `def' DefDcl
                       |  `type' {nl} TypeDcl
+                      |  INT
 
   ValDcl            ::=  ids `:' Type                                           PatDef(_, ids, tpe, EmptyTree)
   VarDcl            ::=  ids `:' Type                                           PatDef(_, ids, tpe, EmptyTree)
@@ -279,6 +282,7 @@ ac                      |  XmlPattern
                       |  `def' DefDef
                       |  `type' {nl} TypeDcl
                       |  TmplDef
+                      |  INT
   PatDef            ::=  Pattern2 {`,' Pattern2} [`:' Type] `=' Expr            PatDef(_, pats, tpe?, expr)
   VarDef            ::=  PatDef
                       |  ids `:' Type `=' `_'
