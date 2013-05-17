@@ -549,12 +549,12 @@ object Parsers {
     }
 
     private def interpolatedString(inPattern: Boolean = false): Tree = atPos(in.offset) {
-      val partsBuf = new ListBuffer[Tree]
+      val partsBuf = new ListBuffer[Literal]
       val exprBuf = new ListBuffer[Tree]
       val interpolator = in.name
       in.nextToken()
       while (in.token == STRINGPART) {
-        partsBuf += literal()
+        partsBuf += literal().asInstanceOf[Literal]
         exprBuf += atPos(in.offset) {
           if (in.token == IDENTIFIER)
             termIdent()
@@ -571,7 +571,7 @@ object Parsers {
           }
         }
       }
-      if (in.token == STRINGLIT) partsBuf += literal()
+      if (in.token == STRINGLIT) partsBuf += literal().asInstanceOf[Literal]
       InterpolatedString(interpolator, partsBuf.toList, exprBuf.toList)
     }
 
@@ -1430,8 +1430,9 @@ object Parsers {
      *  DefParams         ::=  DefParam {`,' DefParam}
      *  DefParam          ::=  {Annotation} id `:' ParamType [`=' Expr]
     */
-    def paramClauses(owner: Name): List[List[ValDef]] = {
+    def paramClauses(owner: Name, ofCaseClass: Boolean = false): List[List[ValDef]] = {
       var implicitFlag = EmptyFlags
+      var firstClauseOfCaseClass = ofCaseClass
       var implicitOffset = -1 // use once
       def param(): ValDef = {
         val modStart = in.offset
@@ -1448,7 +1449,7 @@ object Parsers {
                 addFlag(mods | Param, Mutable)
               } else {
                 if (mods.hasFlags) syntaxError("`val' or `var' expected")
-                mods | Param | PrivateLocal
+                if (firstClauseOfCaseClass) mods | Param else mods | Param | PrivateLocal
               }
             }
         }
@@ -1491,7 +1492,10 @@ object Parsers {
       def clauses(): List[List[ValDef]] = {
         newLineOptWhenFollowedBy(LPAREN)
         if (in.token == LPAREN)
-          paramClause() :: (if (implicitFlag == EmptyFlags) clauses() else Nil)
+          paramClause() :: {
+            firstClauseOfCaseClass = false
+            if (implicitFlag == EmptyFlags) clauses() else Nil
+          }
         else Nil
       }
       val start = in.offset
@@ -1726,7 +1730,7 @@ object Parsers {
       val tparams = typeParamClauseOpt(ParamOwner.Class)
       val constr = atPos(in.offset) {
         val cmods = constrModsOpt()
-        val vparamss = paramClauses(name)
+        val vparamss = paramClauses(name, mods is Case)
         ugen.constructor(cmods, vparamss)
       }
       val templ = templateOpt(constr)
