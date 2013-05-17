@@ -8,13 +8,14 @@ import Names._
 import Phases._
 import Types._
 import Symbols._
-import TypeComparers._, printing.Printers._, NameOps._, SymDenotations._, util.Positions._
+import TypeComparers._, NameOps._, SymDenotations._, util.Positions._
 import TypedTrees.tpd._, util.FreshNameCreator
 import config.Settings._
 import config.ScalaSettings
 import reporting._
 import collection.mutable
 import collection.immutable.BitSet
+import printing._
 import config.{Settings, Platform, JavaPlatform}
 import language.implicitConversions
 
@@ -43,7 +44,7 @@ object Contexts {
                             with Substituters
                             with TypeOps
                             with Phases
-                            with printing.Printers
+                            with Printers
                             with Symbols
                             with SymDenotations
                             with Reporting
@@ -378,7 +379,7 @@ object Contexts {
   object Context {
 
     /** Implicit conversion that injects all printer operations into a context */
-    implicit def toPrinter(ctx: Context) = ctx.printer(ctx)
+    implicit def toPrinter(ctx: Context) = ctx.printer
 
     /** implicit conversion that injects all ContextBase members into a context */
     implicit def toBase(ctx: Context): ContextBase = ctx.base

@@ -362,7 +362,7 @@ object Flags {
   /** Flags representing source modifiers */
   final val ModifierFlags =
     commonFlags(Private, Protected, Abstract, Final,
-     Sealed, Case, Implicit, AbsOverride, Lazy)
+     Sealed, Case, Implicit, Override, AbsOverride, Lazy)
 
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local
@@ -433,6 +433,9 @@ object Flags {
 
   /** Labeled private[this] */
   final val PrivateLocal = allOf(Private, Local)
+
+  /** A local parameter */
+  final val ParamAndLocal = allOf(Param, Local)
 
   /** Labeled protected[this] */
   final val ProtectedLocal = allOf(Protected, Local)

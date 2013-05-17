@@ -22,11 +22,11 @@ object parsePackage extends ParserTest {
         case SymbolLit(str) =>
           tree
         case InterpolatedString(id, parts, elems) =>
-          InterpolatedString(id, parts map transform, elems map transform)
+          InterpolatedString(id, parts map (transformSub(_)), elems map transform)
         case ModuleDef(mods, name, impl) =>
           ModuleDef(mods, name, transformSub(impl))
-        case Function(args, body) =>
-          Function(args map transform, body)
+        case Function(params, body) =>
+          Function(params map transform, body)
         case InfixOp(l, o, r) =>
           InfixOp(transform(l), o, transform(r))
         case PostfixOp(l, o) =>

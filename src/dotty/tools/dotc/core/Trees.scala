@@ -8,6 +8,7 @@ import language.higherKinds
 import collection.mutable
 import collection.mutable.ArrayBuffer
 import parsing.Tokens.Token
+import printing.Printer
 import util.Stats
 
 object Trees {
@@ -212,7 +213,7 @@ object Trees {
     def orElse(that: => Tree[T]): Tree[T] =
       if (this eq theEmptyTree) that else this
 
-    override def toText(implicit ctx: Context) = ctx.toText(this)
+    override def toText(printer: Printer) = printer.toText(this)
 
     override def hashCode(): Int = System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
@@ -429,7 +430,7 @@ object Trees {
   }
 
   /** try block catch handler finally finalizer */
-  case class Try[T >: Untyped](block: Tree[T], handler: Tree[T], finalizer: Tree[T])
+  case class Try[T >: Untyped](expr: Tree[T], handler: Tree[T], finalizer: Tree[T])
     extends TermTree[T] {
     type ThisTree[T >: Untyped] = Try[T]
   }
@@ -529,11 +530,6 @@ object Trees {
   case class DefDef[T >: Untyped](mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])
     extends NameTree[T] with ModDefTree[T] {
     type ThisTree[T >: Untyped] = DefDef[T]
-  }
-
-  class ImplicitDefDef[T >: Untyped](mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T]) extends DefDef[T](mods, name, tparams, vparamss, tpt, rhs) {
-    override def copy[T >: Untyped](mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T]) =
-      new ImplicitDefDef[T](mods, name, tparams, vparamss, tpt, rhs)
   }
 
   /** mods type name = rhs   or
@@ -769,9 +765,9 @@ object Trees {
       case tree: Return[_] if (expr eq tree.expr) && (from eq tree.from) => tree
       case _ => Return(expr, from).copyAttr(tree)
     }
-    def derivedTry(block: Tree[T], handler: Tree[T], finalizer: Tree[T]): Try[T] = tree match {
-      case tree: Try[_] if (block eq tree.block) && (handler eq tree.handler) && (finalizer eq tree.finalizer) => tree
-      case _ => Try(block, handler, finalizer).copyAttr(tree)
+    def derivedTry(expr: Tree[T], handler: Tree[T], finalizer: Tree[T]): Try[T] = tree match {
+      case tree: Try[_] if (expr eq tree.expr) && (handler eq tree.handler) && (finalizer eq tree.finalizer) => tree
+      case _ => Try(expr, handler, finalizer).copyAttr(tree)
     }
     def derivedThrow(expr: Tree[T]): Throw[T] = tree match {
       case tree: Throw[_] if (expr eq tree.expr) => tree

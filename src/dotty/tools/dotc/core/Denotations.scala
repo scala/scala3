@@ -10,6 +10,7 @@ import Symbols.NoSymbol
 import Symbols._
 import Types._, Periods._, Flags._, Transformers._
 import printing.Texts._
+import printing.Printer
 import io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 
@@ -288,7 +289,7 @@ object Denotations {
       }
     }
 
-    def toText(implicit ctx: Context): Text = ctx.toText(this)
+    def toText(printer: Printer): Text = printer.toText(this)
   }
 
   /** An overloaded denotation consisting of the alternatives of both given denotations.

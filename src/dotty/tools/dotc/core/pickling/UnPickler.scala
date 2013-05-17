@@ -11,6 +11,7 @@ import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, Name
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
 import util.Positions._, TypedTrees.tpd._, TypedTrees.TreeOps
 import printing.Texts._
+import printing.Printer
 import io.AbstractFile
 import scala.reflect.internal.pickling.PickleFormat._
 import Decorators._
@@ -24,8 +25,8 @@ object UnPickler {
   class BadSignature(msg: String) extends RuntimeException(msg)
 
   case class TempPolyType(tparams: List[Symbol], tpe: Type) extends UncachedGroundType {
-    override def toText(implicit ctx: Context): Text =
-      "[" ~ ctx.dclsText(tparams, ", ") ~ "]" ~ tpe.show
+    override def fallbackToText(printer: Printer): Text =
+      "[" ~ printer.dclsText(tparams, ", ") ~ "]" ~ printer.toText(tpe)
   }
 
   /** Temporary type for classinfos, will be decomposed on completion of the class */

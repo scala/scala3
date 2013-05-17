@@ -3,7 +3,7 @@ package core
 
 import annotation.tailrec
 import Symbols._
-import Contexts._, Names._, Phases._, printing.Texts._
+import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
@@ -14,6 +14,7 @@ object Decorators {
     def toTermName: TermName = termName(s)
     def toEncodedTypeName = encodedTypeName(s)
     def toEncodedTermName = encodedTermName(s)
+    def toText(printer: Printer): Text = Str(s)
   }
 
   /** Implements a findSymbol method on iterators of Symbols that

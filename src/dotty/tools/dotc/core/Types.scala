@@ -17,6 +17,7 @@ import Denotations._
 import Periods._
 import TypedTrees.tpd._, TypedTrees.TreeMapper, printing.Texts._
 import transform.Erasure
+import printing.Printer
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import collection.mutable
 
@@ -735,7 +736,7 @@ object Types {
      */
     def signature(implicit ctx: Context): Signature = NotAMethod
 
-    def toText(implicit ctx: Context): Text = ctx.toText(this, printing.Printers.GlobalPrec)
+    def toText(printer: Printer): Text = printer.toText(this)
 
 // ----- hashing ------------------------------------------------------
 

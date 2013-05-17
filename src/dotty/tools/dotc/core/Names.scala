@@ -3,6 +3,8 @@ package core
 
 import scala.io.Codec
 import util.NameTransformer
+import printing.{Showable, Texts, Printer}
+import Texts.Text
 import Decorators._
 import Contexts.Context
 import collection.IndexedSeqOptimized
@@ -17,7 +19,7 @@ object Names {
   /** A common class for things that can be turned into names.
    *  Instances are both names and strings, the latter via a decorator.
    */
-  trait PreName extends Any {
+  trait PreName extends Any with Showable {
     def toTypeName: TypeName
     def toTermName: TermName
   }
@@ -90,7 +92,7 @@ object Names {
     override def toString =
       if (length == 0) "" else new String(chrs, start, length)
 
-    def show(implicit ctx: Context): String = ctx.nameString(this)
+    def toText(printer: Printer): Text = printer.toText(this)
 
     /** Write to UTF8 representation of this name to given character array.
      *  Start copying to index `to`. Return index of next free byte in array.

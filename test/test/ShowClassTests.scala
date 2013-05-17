@@ -66,9 +66,9 @@ class ShowClassTests extends DottyTest {
     else {
       println(s"showing $path -> ${cls.denot}")
       val cinfo = cls.info
-      val infoText: Text = if (cinfo.exists) cinfo.toText else " is missing"
+      val infoStr = if (cinfo.exists) cinfo.show else " is missing"
       println("======================================")
-      println((cls.toText ~ infoText).show)
+      println(cls.show + infoStr)
     }
   }
 

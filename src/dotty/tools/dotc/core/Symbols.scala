@@ -11,6 +11,7 @@ import Decorators._
 import Symbols._
 import Contexts._
 import SymDenotations._, printing.Texts._
+import printing.Printer
 import Types._, Annotations._, util.Positions._, StdNames._, Trees._, NameOps._
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
@@ -382,7 +383,7 @@ object Symbols {
       if (lastDenot == null) s"Naked$prefixString#$id"
       else lastDenot.toString +"#"+id // !!! DEBUG
 
-    def toText(implicit ctx: Context): Text = ctx.toText(this)
+    def toText(printer: Printer): Text = printer.toText(this)
 
     def showLocated(implicit ctx: Context): String = ctx.locatedText(this).show
     def showDcl(implicit ctx: Context): Text = ctx.dclText(this).show

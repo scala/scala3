@@ -13,6 +13,7 @@ import Decorators._
 import Contexts._
 import Denotations._
 import printing.Texts._
+import printing.Printer
 import SymDenotations.NoDenotation
 
 object Scopes {
@@ -108,7 +109,7 @@ object Scopes {
       syms
     }
 
-    final def toText(implicit ctx: Context): Text = ctx.toText(this)
+    final def toText(printer: Printer): Text = printer.toText(this)
   }
 
   /** A subclass of Scope that defines methods for entering and

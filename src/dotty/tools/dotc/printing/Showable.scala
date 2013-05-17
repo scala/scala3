@@ -5,10 +5,19 @@ import core._
 
 import Contexts._, Texts._, Decorators._
 
-trait Showable {
+trait Showable extends Any {
 
-  def toText(implicit ctx: Context): Text
+  /** The text representation of this showable element.
+   *  This normally dispatches to a pattern matching
+   *  method in Printers.
+   */
+  def toText(printer: Printer): Text
 
-  def show(implicit ctx: Context): String = toText.show
+  /** A fallback text representation, if the pattern matching
+   *  in Printers does not have a case for this showable element
+   */
+  def fallbackToText(printer: Printer): Text = toString
 
+  /** The string representation of this showable element. */
+  def show(implicit ctx: Context): String = toText(ctx.printer).show
 }

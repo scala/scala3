@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Types._, Symbols._, Contexts._
+import printing.Printer
 
 object Constants {
 
@@ -189,7 +190,7 @@ object Constants {
 
     def stringValue: String = value.toString
 
-    def toText(implicit ctx: Context) = ctx.toText(this)
+    def toText(printer: Printer) = printer.toText(this)
 
     def typeValue: Type     = value.asInstanceOf[Type]
     def symbolValue: Symbol = value.asInstanceOf[Symbol]

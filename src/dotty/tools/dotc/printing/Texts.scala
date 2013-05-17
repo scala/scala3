@@ -1,5 +1,6 @@
 package dotty.tools.dotc
 package printing
+import core.Contexts.Context
 
 object Texts {
 
@@ -128,15 +129,28 @@ object Texts {
     def over (that: Text) =
       if (this.isVertical) Vertical(that :: this.relems)
       else Vertical(that :: this :: Nil)
+
+    def provided(pred: => Boolean) = if (pred) this else Str("")
   }
 
   object Text {
+
+    /** The empty text */
     def apply(): Text = Str("")
+
+    /** A concatenation of elements in `xs` and interspersed with
+     *  separator strings `sep`.
+     */
     def apply(xs: Traversable[Text], sep: String = " "): Text = {
-      val ys = xs filterNot (_.isEmpty)
-      if (ys.isEmpty) Str("")
-      else ys reduce (_ ~ sep ~ _)
+      if (sep == "\n") lines(xs)
+      else {
+        val ys = xs filterNot (_.isEmpty)
+        if (ys.isEmpty) Str("")
+        else ys reduce (_ ~ sep ~ _)
+      }
     }
+
+    /** The given texts `xs`, each on a separate line */
     def lines(xs: Traversable[Text]) = Vertical(xs.toList.reverse)
   }
 
