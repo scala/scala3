@@ -445,15 +445,12 @@ object TypedTrees {
     case Return(expr, from) =>
       check(expr.isValue); check(from.isTerm)
       check(from.tpe.termSymbol.isSourceMethod)
-    case Try(block, catches, finalizer) =>
+    case Try(block, handler, finalizer) =>
       check(block.isTerm)
       check(finalizer.isTerm)
-      // TODO: check handler.isTerm && handler >: Throwable => Nothing ???
-      /*
-      for (ctch <- catches)
-        check(ctch.pat.tpe.derivesFrom(defn.ThrowableClass))
-        *
-        */
+      check(handler.isTerm)
+      check(handler.tpe derivesFrom defn.FunctionClass(1))
+      check(handler.tpe.baseType(defn.FunctionClass(1)).typeArgs.head <:< defn.ThrowableType)
     case Throw(expr) =>
       check(expr.isValue)
       check(expr.tpe.derivesFrom(defn.ThrowableClass))
