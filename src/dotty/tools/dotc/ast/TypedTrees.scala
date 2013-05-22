@@ -211,7 +211,7 @@ object tpd extends Trees.Instance[Type] {
       .withType(refType(cls)).checked
   }
 
-  def Import(expr: Tree, selectors: List[Trees.UntypedTree])(implicit ctx: Context): Import =
+  def Import(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
     Trees.Import(expr, selectors).withType(refType(ctx.newImportSymbol(SharedTree(expr)))).checked
 
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef =

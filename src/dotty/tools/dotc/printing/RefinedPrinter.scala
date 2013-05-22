@@ -10,6 +10,7 @@ import ast.untpd
 import scala.annotation.switch
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
+
   override protected def recursionLimitExceeeded() = {}
 
   /** The closest enclosing DefDef, TypeDef, or ClassDef node */
@@ -91,13 +92,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def tparamsText(params: List[Tree[T]]): Text =
       "[" ~ toText(params, ", ") ~ "]" provided params.nonEmpty
 
-    def addVparamssText[T >: Untyped](txt: Text, vparamss: List[List[ValDef[T]]]): Text =
+    def addVparamssText(txt: Text, vparamss: List[List[ValDef[T]]]): Text =
       (txt /: vparamss)((txt, vparams) => txt ~ "(" ~ toText(vparams, ", ") ~ ")")
 
-    def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
+    def blockText(trees: List[Tree[T]]): Text =
       "{" ~ toText(trees, "\n") ~ "}"
 
-    def caseBlockText[T >: Untyped](tree: Tree[T]): Text = tree match {
+    def caseBlockText(tree: Tree[T]): Text = tree match {
       case Block(stats, expr) => toText(stats :+ expr, "\n")
       case expr => toText(expr)
     }
@@ -109,6 +110,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case AppliedTypeTree(tpt, _) => " : " ~ toText(tpt)
       case untpd.Function(_, tpt) => " <% " ~ toText(tpt)
     }
+
+    import untpd._
 
     val txt: Text = tree match {
       case id: BackquotedIdent[_] =>
@@ -141,7 +144,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         blockText(stats :+ expr)
       case If(cond, thenp, elsep) =>
         changePrec(GlobalPrec) {
-          "if " ~ toText(cond) ~ (" then" provided !cond.isInstanceOf[untpd.Parens]) ~~ toText(thenp) ~ optText(elsep)(" else " ~ _)
+          "if " ~ toText(cond) ~ (" then" provided !cond.isInstanceOf[Parens]) ~~ toText(thenp) ~ optText(elsep)(" else " ~ _)
         }
       case Match(sel, cases) =>
         if (sel.isEmpty) blockText(cases)
@@ -224,7 +227,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             toText(name) ~ tparamsText(tparams) ~ toText(impl)
         }
       case Import(expr, selectors) =>
-        def selectorText(sel: UntypedTree): Text = sel match {
+        def selectorText(sel: Tree): Text = sel match {
           case Pair(l, r) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)
           case _ => toTextGlobal(sel)
         }
@@ -235,7 +238,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "import " ~ toTextLocal(expr) ~ "." ~ selectorsText
       case PackageDef(pid, stats) =>
         val statsText = stats match {
-          case (pdef: PackageDef[_]) :: Nil => toText(pdef)
+          case (pdef: PackageDef) :: Nil => toText(pdef)
           case _ => toTextGlobal(stats, "\n")
         }
         val bodyText =
@@ -247,13 +250,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "<empty>"
       case SharedTree(shared) =>
         toText(shared)
-      case untpd.TypedSplice(t) =>
+      case TypedSplice(t) =>
         toText(t)
-      case untpd.ModuleDef(mods, name, impl) =>
+      case ModuleDef(mods, name, impl) =>
         toText(mods, "object") ~~ toText(name) ~ " extends " ~ toText(impl)
-      case untpd.SymbolLit(str) =>
+      case SymbolLit(str) =>
         "'" + str
-      case untpd.InterpolatedString(id, strings, elems) =>
+      case InterpolatedString(id, strings, elems) =>
         def interleave(strs: List[Text], elems: List[Text]): Text = ((strs, elems): @unchecked) match {
           case (Nil, Nil) => ""
           case (str :: Nil, Nil) => str
@@ -262,9 +265,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val strTexts = strings map (str => Str(escapedString(str.const.stringValue)))
         val elemsTexts = elems map (elem => "{" ~ toTextGlobal(elem) ~ "}")
         toText(id) ~ "\"" ~ interleave(strTexts, elemsTexts) ~ "\""
-      case untpd.Function(args, body) =>
+      case Function(args, body) =>
         var implicitSeen: Boolean = false
-        def argToText(arg: untpd.Tree) = arg match {
+        def argToText(arg: Tree) = arg match {
           case ValDef(mods, name, tpt, _) =>
             val implicitText =
               if ((mods is Implicit) && !implicitSeen) { implicitSeen = true; "implicit " }
@@ -280,34 +283,34 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         changePrec(GlobalPrec) {
           argsText ~ " => " ~ toText(body)
         }
-      case untpd.InfixOp(l, op, r) =>
+      case InfixOp(l, op, r) =>
         val opPrec = parsing.precedence(op)
         changePrec(opPrec) { toText(l) ~ " " ~ toText(op) ~ " " ~ toText(r) }
-      case untpd.PostfixOp(l, op) =>
+      case PostfixOp(l, op) =>
         changePrec(InfixPrec) { toText(l) ~ " " ~ toText(op) }
-      case untpd.PrefixOp(op, r) =>
+      case PrefixOp(op, r) =>
         changePrec(DotPrec) { toText(op) ~ " " ~ toText(r) }
-      case untpd.Parens(t) =>
+      case Parens(t) =>
         "(" ~ toTextGlobal(t) ~ ")"
-      case untpd.Tuple(ts) =>
+      case Tuple(ts) =>
         "(" ~ toTextGlobal(ts, ", ") ~ ")"
-      case untpd.WhileDo(cond, body) =>
+      case WhileDo(cond, body) =>
         changePrec(GlobalPrec) { "while " ~ toText(cond) ~ " do " ~ toText(body) }
-      case untpd.DoWhile(cond, body) =>
+      case DoWhile(cond, body) =>
         changePrec(GlobalPrec) { "do " ~ toText(body) ~ " while " ~ toText(cond) }
-      case untpd.ForYield(enums, expr) =>
+      case ForYield(enums, expr) =>
         forText(enums, expr, " yield ")
-      case untpd.ForDo(enums, expr) =>
+      case ForDo(enums, expr) =>
         forText(enums, expr, " do ")
-      case untpd.GenFrom(pat, expr) =>
+      case GenFrom(pat, expr) =>
         toText(pat) ~ " <- " ~ toText(expr)
-      case untpd.GenAlias(pat, expr) =>
+      case GenAlias(pat, expr) =>
         toText(pat) ~ " = " ~ toText(expr)
-      case untpd.ContextBounds(bounds, cxBounds) =>
+      case ContextBounds(bounds, cxBounds) =>
         (toText(bounds) /: cxBounds) {(t, cxb) =>
           t ~ cxBoundToText(cxb)
         }
-      case untpd.PatDef(mods, pats, tpt, rhs) =>
+      case PatDef(mods, pats, tpt, rhs) =>
         toText(mods, "val") ~~ toText(pats, ", ") ~ optText(tpt)(": " ~ _) ~
           optText(rhs)(" = " ~ _)
       case _ =>

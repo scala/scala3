@@ -15,7 +15,7 @@ object untpd extends Trees.Instance[Untyped] {
   // ----- Tree cases that exist in untyped form only ------------------
 
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice */
-  case class TypedSplice(tree: TypedTree) extends UntypedTree
+  case class TypedSplice(tree: tpd.Tree) extends Tree
 
   /** mods object name impl */
   case class ModuleDef(mods: Modifiers, name: TermName, impl: Template)

@@ -21,8 +21,6 @@ object Trees {
   // value and will not infer Nothing as the type parameter for Select.
   // We should come back to this issue once type inference is changed.
   type Untyped = Null
-  type TypedTree = Tree[Type]
-  type UntypedTree = Tree[Untyped]
 
   /** The total number of created tree nodes, maintained if Stats.enabled */
   var ntrees = 0
@@ -558,7 +556,7 @@ object Trees {
    *  where a selector is either an untyped `Ident`, `name` or
    *  an untyped `Pair` `name => rename`
    */
-  case class Import[T >: Untyped](expr: Tree[T], selectors: List[UntypedTree])
+  case class Import[T >: Untyped](expr: Tree[T], selectors: List[Tree[Untyped]])
     extends DenotingTree[T] {
     type ThisTree[T >: Untyped] = Import[T]
   }
@@ -862,7 +860,7 @@ object Trees {
       case tree: ClassDef[_] if (mods == tree.mods) && (name == tree.name) && (tparams eq tree.tparams) && (impl eq tree.impl) => tree
       case _ => ClassDef(mods, name, tparams, impl).copyAttr(tree)
     }
-    def derivedImport(expr: Tree[T], selectors: List[UntypedTree]): Import[T] = tree match {
+    def derivedImport(expr: Tree[T], selectors: List[Tree[Untyped]]): Import[T] = tree match {
       case tree: Import[_] if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
       case _ => Import(expr, selectors).copyAttr(tree)
     }
