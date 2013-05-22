@@ -9,7 +9,7 @@ import Phases._
 import Types._
 import Symbols._
 import TypeComparers._, NameOps._, SymDenotations._, util.Positions._
-import TypedTrees.tpd._, util.FreshNameCreator
+import ast.TypedTrees.tpd._, util.FreshNameCreator
 import config.Settings._
 import config.ScalaSettings
 import reporting._

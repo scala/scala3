@@ -1,11 +1,12 @@
 package test
 
-import dotty.tools.dotc.core._
+import dotty.tools.dotc._
+import core._, ast._
 import Trees._
 
 object parsePackage extends ParserTest {
 
-  import UntypedTrees.untpd._
+  import ast.UntypedTrees.untpd._
 
   var nodes = 0
 

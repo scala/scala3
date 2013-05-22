@@ -12,7 +12,7 @@ import core._
 import Flags._
 import Contexts._
 import Names._
-import Trees._
+import ast.Trees._, ast.TreeInfo
 import Decorators._
 import StdNames._
 import util.Positions._
@@ -25,8 +25,7 @@ import annotation.switch
 
 object Parsers {
 
-  import UntypedTrees.{untpd, ugen}
-  import untpd._
+  import ast.UntypedTrees.untpd._
 
   case class OpInfo(operand: Tree, operator: Name, offset: Offset)
 
@@ -266,10 +265,10 @@ object Parsers {
     def convertToParam(tree: Tree, mods: Modifiers = Modifiers(), expected: String = "formal parameter"): ValDef = tree match {
       case Ident(name) =>
         Parameter(name.asTermName, TypeTree(), mods) withPos tree.pos
-      case Typed(Ident(name), tpt) if tpt.isType =>
+      case Typed(Ident(name), tpt) =>
         Parameter(name.asTermName, tpt, mods) withPos tree.pos
       case _ =>
-        syntaxError(s"not a legal $expected", tree.pos)
+        syntaxError(s"not a legal $expected (${tree.getClass})", tree.pos)
         Parameter(nme.ERROR, tree, mods)
     }
 
@@ -286,7 +285,7 @@ object Parsers {
     }
 
     def emptyConstructor() = atPos(in.offset) {
-      ugen.constructor(Modifiers(), Nil)
+      makeConstructor(Modifiers(), Nil)
     }
 
 /* -------------- XML ---------------------------------------------------- */
@@ -623,7 +622,7 @@ object Parsers {
               for (t <- ts)
                 if (TreeInfo.isByNameParamType(t))
                   syntaxError("no by-name parameter type allowed here", t.pos)
-              val tuple = atPos(start) { ugen.makeTupleOrParens(ts) }
+              val tuple = atPos(start) { makeTupleOrParens(ts) }
               infixTypeRest(refinedTypeRest(withTypeRest(simpleTypeRest(tuple))))
             }
           }
@@ -679,7 +678,7 @@ object Parsers {
      */
     def simpleType(): Tree = simpleTypeRest {
       if (in.token == LPAREN)
-        atPos(in.offset) { ugen.makeTupleOrParens(inParens(argTypes())) }
+        atPos(in.offset) { makeTupleOrParens(inParens(argTypes())) }
       else if (in.token == LBRACE)
         atPos(in.offset) { RefinedTypeTree(EmptyTree(), refinement()) }
       else path(thisOK = false, handleSingletonType) match {
@@ -993,7 +992,7 @@ object Parsers {
         case USCORE =>
           wildcardIdent()
         case LPAREN =>
-          atPos(in.offset) { ugen.makeTupleOrParens(inParens(exprsInParensOpt())) }
+          atPos(in.offset) { makeTupleOrParens(inParens(exprsInParensOpt())) }
         case LBRACE =>
           canApply = false
           blockExpr()
@@ -1134,7 +1133,7 @@ object Parsers {
               wrappedEnums = false
               accept(RPAREN)
               openParens.change(LPAREN, -1)
-              atPos(lparenOffset) { ugen.makeTupleOrParens(pats) } // note: alternatives `|' need to be weeded out by typer.
+              atPos(lparenOffset) { makeTupleOrParens(pats) } // note: alternatives `|' need to be weeded out by typer.
             }
             else pats.head
           val res = generatorRest(pat) :: enumeratorsRest()
@@ -1230,7 +1229,7 @@ object Parsers {
       case USCORE =>
         wildcardIdent()
       case LPAREN =>
-        atPos(in.offset) { ugen.makeTupleOrParens(inParens(patternsOpt())) }
+        atPos(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
       case LBRACE =>
         dotSelectors(blockExpr())
       case XMLSTART =>
@@ -1639,7 +1638,7 @@ object Parsers {
             accept(EQUALS)
             atPos(in.offset) { constrExpr() }
           }
-        ugen.constructor(mods, vparamss, rhs)
+        makeConstructor(mods, vparamss, rhs)
       } else {
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
@@ -1649,7 +1648,7 @@ object Parsers {
         val rhs =
           if (isStatSep || in.token == RBRACE) EmptyTree()
           else if (restype.isEmpty && in.token == LBRACE) {
-            restype = atPos(in.offset) { ugen.scalaUnitConstr }
+            restype = atPos(in.offset) { scalaUnit }
             blockExpr()
           } else {
             equalsExpr()
@@ -1734,7 +1733,7 @@ object Parsers {
       val constr = atPos(in.offset) {
         val cmods = constrModsOpt()
         val vparamss = paramClauses(name, mods is Case)
-        ugen.constructor(cmods, vparamss)
+        makeConstructor(cmods, vparamss)
       }
       val templ = templateOpt(constr)
       ClassDef(mods, name, tparams, templ)
@@ -1871,10 +1870,10 @@ object Parsers {
         if (in.token == ARROW) {
           first match {
             case Typed(tree @ This(tpnme.EMPTY), tpt) =>
-              self = ugen.selfDef(nme.WILDCARD, tpt).withPos(first.pos)
+              self = makeSelfDef(nme.WILDCARD, tpt).withPos(first.pos)
             case _ =>
               val ValDef(_, name, tpt, _) = convertToParam(first, expected = "self type clause")
-              self = ugen.selfDef(name, tpt).withPos(first.pos)
+              self = makeSelfDef(name, tpt).withPos(first.pos)
           }
           in.nextToken()
         } else {

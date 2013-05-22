@@ -1,4 +1,5 @@
-package dotty.tools.dotc.core
+package dotty.tools
+package dotc.core
 
 import Types._, Contexts._, Symbols._, Flags._
 import collection.mutable

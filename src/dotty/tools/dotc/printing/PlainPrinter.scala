@@ -2,10 +2,10 @@ package dotty.tools.dotc
 package printing
 
 import core._
-import Texts._, Trees._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._
+import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
-import UntypedTrees.untpd
+import ast.Trees._, ast.UntypedTrees.untpd
 import java.lang.Integer.toOctalString
 import scala.annotation.switch
 

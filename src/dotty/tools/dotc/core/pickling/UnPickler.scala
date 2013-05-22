@@ -9,7 +9,8 @@ import java.lang.Double.longBitsToDouble
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
-import util.Positions._, TypedTrees.tpd._, TypedTrees.TreeOps
+import util.Positions._
+import ast.Trees, ast.TypedTrees.tpd._, ast.TypedTrees.TreeOps
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile

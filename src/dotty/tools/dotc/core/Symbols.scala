@@ -12,7 +12,9 @@ import Symbols._
 import Contexts._
 import SymDenotations._, printing.Texts._
 import printing.Printer
-import Types._, Annotations._, util.Positions._, StdNames._, Trees._, NameOps._
+import Types._, Annotations._, util.Positions._, StdNames._, NameOps._
+import ast.TypedTrees.TreeMapper
+import ast.TypedTrees.tpd.SharedTree
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
@@ -200,7 +202,7 @@ trait Symbols { this: Context =>
     newSymbol(cls, nme.localDummyName(cls), EmptyFlags, NoType)
 
   /** Create an import symbol pointing back to given qualifier `expr`. */
-  def newImportSymbol(expr: SharedTree[Type], coord: Coord = NoCoord) =
+  def newImportSymbol(expr: SharedTree, coord: Coord = NoCoord) =
     newSymbol(NoSymbol, nme.IMPORT, EmptyFlags, ImportType(expr), coord = coord)
 
   /** Create a class constructor symbol for given class `cls`. */
@@ -251,7 +253,7 @@ trait Symbols { this: Context =>
     else {
       val copies: List[Symbol] = for (original <- originals) yield
         newNakedSymbol[original.ThisName](original.coord)
-      val treeMap = new TypedTrees.TreeMapper(typeMap, ownerMap)
+      val treeMap = new TreeMapper(typeMap, ownerMap)
         .withSubstitution(originals, copies)
       (originals, copies).zipped foreach {(original, copy) =>
         val odenot = original.denot

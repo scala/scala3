@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package printing
 
 import core._
-import Texts._, Trees._
+import Texts._, ast.Trees._
 import Types.Type, Symbols.Symbol, Contexts.Context, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations.Denotation, Annotations.Annotation
 

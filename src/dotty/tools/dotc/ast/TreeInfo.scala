@@ -1,7 +1,8 @@
 package dotty.tools
 package dotc
-package core
+package ast
 
+import core._
 import Flags._, Trees._, UntypedTrees._, TypedTrees._, Types._, Contexts._
 import Names._, StdNames._, NameOps._, Decorators._, Symbols._
 import util.HashSet

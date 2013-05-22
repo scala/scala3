@@ -7,7 +7,7 @@ import core._
 import Flags._
 import Contexts._
 import Names._
-import Trees._
+import ast.Trees._
 import Decorators._
 import StdNames._
 import util.Chars.isScalaLetter
@@ -57,8 +57,7 @@ import Parsers._
  */
 object ScriptParsers {
 
-  import UntypedTrees.{untpd, ugen}
-  import untpd._
+  import ast.UntypedTrees.untpd._
 
   class ScriptParser(source: SourceFile)(implicit ctx: Context) extends Parser(source) {
 

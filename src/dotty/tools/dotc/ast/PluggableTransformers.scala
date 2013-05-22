@@ -1,5 +1,5 @@
 package dotty.tools.dotc
-package core
+package ast
 
 
 object PluggableTransformers {

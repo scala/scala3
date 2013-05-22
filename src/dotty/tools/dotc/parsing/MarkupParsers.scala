@@ -13,7 +13,7 @@ import scala.reflect.internal.Chars.{ SU, LF }
 import Parsers._
 import util.Positions._
 import core._
-import Trees._
+import ast.Trees._
 import Constants._
 
 
@@ -35,8 +35,7 @@ import Constants._
  */
 object MarkupParsers {
 
-  import UntypedTrees.{untpd, ugen}
-  import untpd._
+  import ast.UntypedTrees.untpd._
 
   case object MissingEndTagControl extends ControlThrowable {
     override def getMessage = "start tag was here: "
