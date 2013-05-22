@@ -6,7 +6,7 @@ import Trees._
 
 object parsePackage extends ParserTest {
 
-  import ast.UntypedTrees.untpd._
+  import ast.untpd._
 
   var nodes = 0
 

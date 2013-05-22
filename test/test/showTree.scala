@@ -1,5 +1,5 @@
 package test
-import dotty.tools.dotc.ast.UntypedTrees.untpd._
+import dotty.tools.dotc.ast.untpd._
 
 object showTree extends ParserTest {
 

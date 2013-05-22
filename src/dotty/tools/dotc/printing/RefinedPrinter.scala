@@ -6,7 +6,7 @@ import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
 import ast.Trees._
-import ast.UntypedTrees.untpd
+import ast.untpd
 import scala.annotation.switch
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {

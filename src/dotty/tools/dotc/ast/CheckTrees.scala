@@ -5,9 +5,10 @@ package ast
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
-import TypedTrees.{tpd, TreeOps, localSyms}
 
 object CheckTrees {
+
+  import tpd.{TreeMapper, localSyms, TreeOps}
 
   def check(p: Boolean, msg: => String = "")(implicit ctx: Context): Unit = assert(p, msg)
 

@@ -15,7 +15,7 @@ import SymDenotations._
 import Decorators._
 import Denotations._
 import Periods._
-import ast.TypedTrees.tpd._, ast.TypedTrees.TreeMapper, printing.Texts._
+import ast.tpd._, printing.Texts._
 import transform.Erasure
 import printing.Printer
 import scala.util.hashing.{ MurmurHash3 => hashing }

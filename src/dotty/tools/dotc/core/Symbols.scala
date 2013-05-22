@@ -13,8 +13,7 @@ import Contexts._
 import SymDenotations._, printing.Texts._
 import printing.Printer
 import Types._, Annotations._, util.Positions._, StdNames._, NameOps._
-import ast.TypedTrees.TreeMapper
-import ast.TypedTrees.tpd.SharedTree
+import ast.tpd.{TreeMapper, SharedTree}
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile

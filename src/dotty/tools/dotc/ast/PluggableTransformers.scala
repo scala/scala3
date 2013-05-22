@@ -84,7 +84,7 @@ object PluggableTransformers {
   }
 }
 
-import PluggableTransformers._, Types._, Trees._, Contexts._, TypedTrees.tpd
+import PluggableTransformers._, Types._, Trees._, Contexts._
 
 class ExampleTransformer extends PluggableTransformer[Type] {
 

@@ -25,7 +25,7 @@ import annotation.switch
 
 object Parsers {
 
-  import ast.UntypedTrees.untpd._
+  import ast.untpd._
 
   case class OpInfo(operand: Tree, operator: Name, offset: Offset)
 

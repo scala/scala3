@@ -7,7 +7,7 @@ import scala.xml.{ EntityRef, Text }
 import scala.xml.XML.{ xmlns }
 import core._
 import Flags.Mutable
-import Names._, NameOps._, StdNames._, Decorators._, ast.Trees._, ast.TypedTrees._, ast.UntypedTrees._, Constants._
+import Names._, NameOps._, StdNames._, Decorators._, ast.Trees._, ast.{tpd, untpd}, Constants._
 import Symbols._, Contexts._
 import util.Positions._
 import Parsers.Parser

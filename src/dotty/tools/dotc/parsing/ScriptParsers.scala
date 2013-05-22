@@ -57,7 +57,7 @@ import Parsers._
  */
 object ScriptParsers {
 
-  import ast.UntypedTrees.untpd._
+  import ast.untpd._
 
   class ScriptParser(source: SourceFile)(implicit ctx: Context) extends Parser(source) {
 

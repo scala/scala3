@@ -35,7 +35,7 @@ import Constants._
  */
 object MarkupParsers {
 
-  import ast.UntypedTrees.untpd._
+  import ast.untpd._
 
   case object MissingEndTagControl extends ControlThrowable {
     override def getMessage = "start tag was here: "

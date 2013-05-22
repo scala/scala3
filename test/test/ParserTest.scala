@@ -5,7 +5,7 @@ import dotty.tools.dotc.util._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.parsing._
 import Tokens._, Parsers._
-import dotty.tools.dotc.ast.UntypedTrees.untpd._
+import dotty.tools.dotc.ast.untpd._
 import org.junit.Test
 import scala.collection.mutable.ListBuffer
 
