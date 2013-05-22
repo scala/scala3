@@ -104,6 +104,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def forText(enums: List[Tree[T]], expr: Tree[T], sep: String): Text =
       changePrec(GlobalPrec) { "for " ~ toText(enums, "; ") ~ sep ~ toText(expr) }
 
+    def cxBoundToText(bound: Tree[T]): Text = bound match {
+      case AppliedTypeTree(tpt, _) => " : " ~ toText(tpt)
+      case untpd.Function(_, tpt) => " <% " ~ toText(tpt)
+    }
+
     val txt: Text = tree match {
       case id: BackquotedIdent[_] =>
         "`" ~ toText(id.name) ~ "`"
@@ -299,7 +304,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(pat) ~ " = " ~ toText(expr)
       case untpd.ContextBounds(bounds, cxBounds) =>
         (toText(bounds) /: cxBounds) {(t, cxb) =>
-          t ~ " : " ~ toText(cxb)
+          t ~ cxBoundToText(cxb)
         }
       case untpd.PatDef(mods, pats, tpt, rhs) =>
         toText(mods, "val") ~~ toText(pats, ", ") ~ optText(tpt)(": " ~ _) ~

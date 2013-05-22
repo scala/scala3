@@ -476,6 +476,7 @@ object StdNames {
     val view_ : N               = "view"
     val wait_ : N               = "wait"
     val withFilter: N           = "withFilter"
+    val withFilterIfRefutable: N = "withFilterIfRefutable$"
     val wrap: N                 = "wrap"
     val zip: N                  = "zip"
 

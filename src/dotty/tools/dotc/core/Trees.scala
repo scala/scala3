@@ -47,7 +47,7 @@ object Trees {
      *  destructively and the item itself is returned.
      */
     def withPos(pos: Position): this.type = {
-      val newpd = (if (curPos.isSynthetic) this else clone).asInstanceOf[Positioned]
+      val newpd = (if (pos != curPos && curPos.isSynthetic) this else clone).asInstanceOf[Positioned]
       newpd.curPos = pos
       newpd.asInstanceOf[this.type]
     }
@@ -506,6 +506,7 @@ object Trees {
   case class Bind[T >: Untyped](name: Name, body: Tree[T])
     extends NameTree[T] with DefTree[T] with PatternTree[T] {
     type ThisTree[T >: Untyped] = Bind[T]
+    override def envelope: Position = pos union initialPos
   }
 
   /** tree_1 | ... | tree_n */
@@ -612,7 +613,6 @@ object Trees {
     def forwardTo: Tree[T] = shared
   }
 
-
   // ----- Auxiliary creation methods ------------------
 
   def Block[T >: Untyped](stat: Tree[T], expr: Tree[T]): Block[T] =
@@ -689,6 +689,30 @@ object Trees {
 
     def Parameter(pname: TermName, tpe: Tree, mods: Modifiers = Modifiers()): ValDef =
       ValDef(mods | Param, pname, tpe, EmptyTree())
+
+    /** Temporary class that results from translation of ModuleDefs
+     *  (and possibly other statements).
+     *  The contained trees will be integrated in enclosing Blocks or Templates
+     */
+    case class TempTrees(trees: List[Tree]) extends Tree {
+      override def tpe: T = unsupported("tpe")
+    }
+
+    /** Integrates nested TempTrees in given list of trees */
+    def flatten(trees: List[Tree]): List[Tree] =
+      if (trees exists isTempTrees)
+        trees flatMap {
+          case TempTrees(ts) => ts
+          case t => t :: Nil
+        }
+      else trees
+
+    def combine(trees: List[Tree]): Tree = flatten(trees) match {
+      case tree :: Nil => tree
+      case ts => TempTrees(ts)
+    }
+
+    private val isTempTrees: Tree => Boolean = (_.isInstanceOf[TempTrees])
   }
 
   // ----- Helper functions and classes ---------------------------------------

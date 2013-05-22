@@ -359,7 +359,7 @@ class TreeBuilder(implicit ctx: Context) {
     def makeClosure(pat: Tree, body: Tree): Tree =
       matchVarPattern(pat) match {
         case Some(VariableInfo(name, tpt, pos)) =>
-          Function(ValDef(Modifiers(Param).withPos(cpos.startPos), name.toTermName, tpt, EmptyTree()).withPos(pos), body)
+          Function(ValDef(Modifiers(Param).withPos(cpos.startPos), name.toTermName, tpt, EmptyTree()).withPos(pos) :: Nil, body)
         case None =>
           makeVisitor(List(CaseDef(pat, EmptyTree(), body)), checkExhaustive = false)
       }
@@ -441,10 +441,10 @@ class TreeBuilder(implicit ctx: Context) {
     val x   = ctx.freshName().toTermName
     val id  = Ident(x)
     val sel =
-      if (canDrop) mkAnnotated(defn.DropIfRedundantAnnot, id)
+      if (canDrop) mkAnnotated(???, id)
       else if (!checkExhaustive) mkAnnotated(defn.UncheckedAnnot, id)
       else id
-    Function(List(untpd.syntheticParameter(x)), Match(sel, cases))
+    Function(List(ugen.syntheticParameter(x)), Match(sel, cases))
   }
 
   /** Create tree for case definition <case pat if guard => rhs> */

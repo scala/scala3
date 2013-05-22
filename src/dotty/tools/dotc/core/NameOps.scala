@@ -107,6 +107,9 @@ object NameOps {
         name
     }
 
+    /** Convert this name to a module name */
+    def moduleClassName: TypeName = (name ++ tpnme.MODULE_SUFFIX).toTypeName
+
     /** If name ends in module class suffix, drop it */
     def stripModuleClassSuffix: Name =
       if (isModuleClassName) name dropRight MODULE_SUFFIX.length else name
@@ -178,14 +181,6 @@ object NameOps {
     tpnme.Long -> jtpnme.BoxedLong,
     tpnme.Float -> jtpnme.BoxedFloat,
     tpnme.Double -> jtpnme.BoxedDouble)
-
-  implicit class TypeNameDecorator(val name: TypeName) extends AnyVal {
-    import nme._
-
-    /** Convert this name to a module name */
-    def moduleClassName = name ++ tpnme.MODULE_SUFFIX
-  }
-
 
   implicit class TermNameDecorator(val name: TermName) extends AnyVal {
     import nme._

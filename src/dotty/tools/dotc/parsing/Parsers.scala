@@ -623,7 +623,7 @@ object Parsers {
               for (t <- ts)
                 if (TreeInfo.isByNameParamType(t))
                   syntaxError("no by-name parameter type allowed here", t.pos)
-              val tuple = atPos(start) { ugen.mkTuple(ts) }
+              val tuple = atPos(start) { ugen.makeTupleOrParens(ts) }
               infixTypeRest(refinedTypeRest(withTypeRest(simpleTypeRest(tuple))))
             }
           }
@@ -679,7 +679,7 @@ object Parsers {
      */
     def simpleType(): Tree = simpleTypeRest {
       if (in.token == LPAREN)
-        atPos(in.offset) { ugen.mkTuple(inParens(argTypes())) }
+        atPos(in.offset) { ugen.makeTupleOrParens(inParens(argTypes())) }
       else if (in.token == LBRACE)
         atPos(in.offset) { RefinedTypeTree(EmptyTree(), refinement()) }
       else path(thisOK = false, handleSingletonType) match {
@@ -756,19 +756,22 @@ object Parsers {
 
     /** TypeParamBounds   ::=  TypeBounds {`<%' Type} {`:' Type}
      */
-    def typeParamBounds(): Tree = {
+    def typeParamBounds(pname: TypeName): Tree = {
       val t = typeBounds()
-      val cbs = contextBounds()
+      val cbs = contextBounds(pname)
       if (cbs.isEmpty) t else atPos(t.pos.start) { ContextBounds(t, cbs) }
     }
 
-    def contextBounds(): List[Tree] = in.token match {
+    def contextBounds(pname: TypeName): List[Tree] = in.token match {
       case COLON =>
-        in.nextToken()
-        typ() :: contextBounds()
+        atPos(in.skipToken) {
+          AppliedTypeTree(typ(), Ident(pname))
+        } :: contextBounds(pname)
       case VIEWBOUND =>
-        syntaxError("view bounds `<%' no longer supported, use a context bound `:' instead")
-        typ() :: contextBounds
+        deprecationWarning("view bounds `<%' are deprecated, use a context bound `:' instead")
+        atPos(in.skipToken) {
+          Function(Ident(pname) :: Nil, typ())
+        } :: contextBounds(pname)
       case _ =>
         Nil
     }
@@ -990,7 +993,7 @@ object Parsers {
         case USCORE =>
           wildcardIdent()
         case LPAREN =>
-          atPos(in.offset) { ugen.mkTuple(inParens(exprsInParensOpt())) }
+          atPos(in.offset) { ugen.makeTupleOrParens(inParens(exprsInParensOpt())) }
         case LBRACE =>
           canApply = false
           blockExpr()
@@ -1131,7 +1134,7 @@ object Parsers {
               wrappedEnums = false
               accept(RPAREN)
               openParens.change(LPAREN, -1)
-              atPos(lparenOffset) { ugen.mkTuple(pats) } // note: alternatives `|' need to be weeded out by typer.
+              atPos(lparenOffset) { ugen.makeTupleOrParens(pats) } // note: alternatives `|' need to be weeded out by typer.
             }
             else pats.head
           val res = generatorRest(pat) :: enumeratorsRest()
@@ -1227,7 +1230,7 @@ object Parsers {
       case USCORE =>
         wildcardIdent()
       case LPAREN =>
-        atPos(in.offset) { ugen.mkTuple(inParens(patternsOpt())) }
+        atPos(in.offset) { ugen.makeTupleOrParens(inParens(patternsOpt())) }
       case LBRACE =>
         dotSelectors(blockExpr())
       case XMLSTART =>
@@ -1410,7 +1413,7 @@ object Parsers {
             if (ownerKind == ParamOwner.TypeParam) Nil
             else typeParamClauseOpt(ParamOwner.TypeParam)
           val bounds =
-            if (isConcreteOwner) typeParamBounds()
+            if (isConcreteOwner) typeParamBounds(name)
             else typeBounds()
           TypeDef(mods, name, hkparams, bounds)
         }

@@ -231,7 +231,7 @@ object TypedTrees {
     // ------ Creating typed equivalents of trees that exist only in untyped form -------
 
     /** A tree representing the same reference as the given type */
-    def ref(tp: NamedType)(implicit ctx: Context): tpd.NameTree =
+    def ref(tp: NamedType)(implicit ctx: Context): NameTree =
       if (tp.symbol.isStatic) Ident(tp)
       else tp.prefix match {
         case pre: TermRef => Select(ref(pre), tp)
@@ -276,7 +276,7 @@ object TypedTrees {
      *  the RHS of a method contains a class owned by the method, this would be
      *  an error.
      */
-    def ModuleDef(sym: TermSymbol, body: List[Tree])(implicit ctx: Context): TempTrees = {
+    def ModuleDef(sym: TermSymbol, body: List[Tree])(implicit ctx: Context): tpd.TempTrees = {
       val modcls = sym.moduleClass.asClass
       val constr = DefDef(modcls.primaryConstructor.asTerm, EmptyTree)
       val clsdef = ClassDef(modcls, Nil, constr, body)
@@ -318,25 +318,6 @@ object TypedTrees {
           else sym
         } else foldOver(sym, tree)
     }
-
-    /** Temporary class that results from translation of ModuleDefs
-     *  (and possibly other statements).
-     *  The contained trees will be integrated in enclosing Blocks or Templates
-     */
-    case class TempTrees(trees: List[Tree]) extends Tree {
-      override def tpe: Type = unsupported("tpe")
-    }
-
-    /** Integrates nested TempTrees in given list of trees */
-    def flatten(trees: List[Tree]): List[Tree] =
-      if (trees exists isTempTrees)
-        trees flatMap {
-          case TempTrees(ts) => ts
-          case t => t :: Nil
-        }
-      else trees
-
-    private val isTempTrees: Tree => Boolean = (_.isInstanceOf[TempTrees])
   }
 
   import Trees._

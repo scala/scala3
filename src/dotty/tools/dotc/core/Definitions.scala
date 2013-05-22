@@ -210,7 +210,6 @@ class Definitions(implicit ctx: Context) {
   lazy val InvariantBetweenClass = requiredClass("dotty.annotation.internal.InvariantBetween")
   lazy val CovariantBetweenClass = requiredClass("dotty.annotation.internal.CovariantBetween")
   lazy val ContravariantBetweenClass = requiredClass("dotty.annotation.internal.ContravariantBetween")
-  lazy val DropIfRedundantAnnot = requiredClass("dotty.annotation.internal.DropIfRedundant")
   lazy val ScalaSignatureAnnot = requiredClass("scala.reflect.ScalaSignature")
   lazy val ScalaLongSignatureAnnot = requiredClass("scala.reflect.ScalaLongSignature")
   lazy val DeprecatedAnnot = requiredClass("scala.deprecated")
