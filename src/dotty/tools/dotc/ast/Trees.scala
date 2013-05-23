@@ -46,7 +46,7 @@ object Trees {
      *  destructively and the item itself is returned.
      */
     def withPos(pos: Position): this.type = {
-      val newpd = (if (pos != curPos && curPos.isSynthetic) this else clone).asInstanceOf[Positioned]
+      val newpd = (if (pos == curPos || curPos.isSynthetic) this else clone).asInstanceOf[Positioned]
       newpd.curPos = pos
       newpd.asInstanceOf[this.type]
     }
@@ -272,6 +272,7 @@ object Trees {
   abstract class NameTree[T >: Untyped] extends DenotingTree[T] {
     type ThisTree[T >: Untyped] <: NameTree[T]
     def name: Name
+    def withName(name1: Name): NameTree[T]
   }
 
   /** Tree refers by name to a denotation */
@@ -305,6 +306,7 @@ object Trees {
   case class Ident[T >: Untyped](name: Name)
     extends RefTree[T] {
     type ThisTree[T >: Untyped] = Ident[T]
+    def withName(name: Name) = this.derivedIdent(name)
     def qualifier: Tree[T] = EmptyTree[T]
   }
 
@@ -315,6 +317,7 @@ object Trees {
   case class Select[T >: Untyped](qualifier: Tree[T], name: Name)
     extends RefTree[T] {
     type ThisTree[T >: Untyped] = Select[T]
+    def withName(name: Name) = this.derivedSelect(qualifier, name)
   }
 
   /** qual.this */
@@ -406,6 +409,12 @@ object Trees {
     type ThisTree[T >: Untyped] = If[T]
   }
 
+  /** A closure with an environment and a reference to a method */
+  case class Closure[T >: Untyped](env: List[Tree[T]], meth: RefTree[T])
+    extends TermTree[T] {
+    type ThisTree[T >: Untyped] = Closure[T]
+  }
+
   /** selector match { cases } */
   case class Match[T >: Untyped](selector: Tree[T], cases: List[CaseDef[T]])
     extends TermTree[T] {
@@ -464,6 +473,7 @@ object Trees {
   case class SelectFromTypeTree[T >: Untyped](qualifier: Tree[T], name: Name)
     extends RefTree[T] {
     type ThisTree[T >: Untyped] = SelectFromTypeTree[T]
+    def withName(name: Name) = this.derivedSelectFromTypeTree(qualifier, name)
   }
 
   /** left & right */
@@ -506,6 +516,7 @@ object Trees {
     extends NameTree[T] with DefTree[T] with PatternTree[T] {
     type ThisTree[T >: Untyped] = Bind[T]
     override def envelope: Position = pos union initialPos
+    def withName(name: Name) = this.derivedBind(name, body)
   }
 
   /** tree_1 | ... | tree_n */
@@ -524,12 +535,14 @@ object Trees {
   case class ValDef[T >: Untyped](mods: Modifiers[T], name: TermName, tpt: Tree[T], rhs: Tree[T])
     extends NameTree[T] with ModDefTree[T] {
     type ThisTree[T >: Untyped] = ValDef[T]
+    def withName(name: Name) = this.derivedValDef(mods, name.toTermName, tpt, rhs)
   }
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
   case class DefDef[T >: Untyped](mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])
     extends NameTree[T] with ModDefTree[T] {
     type ThisTree[T >: Untyped] = DefDef[T]
+    def withName(name: Name) = this.derivedDefDef(mods, name.toTermName, tparams, vparamss, tpt, rhs)
   }
 
   /** mods type name = rhs   or
@@ -538,6 +551,7 @@ object Trees {
   case class TypeDef[T >: Untyped](mods: Modifiers[T], name: TypeName, tparams: List[TypeDef[T]], rhs: Tree[T])
     extends NameTree[T] with ModDefTree[T] {
     type ThisTree[T >: Untyped] = TypeDef[T]
+    def withName(name: Name) = this.derivedTypeDef(mods, name.toTypeName, tparams, rhs)
   }
 
   /** extends parents { self => body } */
@@ -550,6 +564,7 @@ object Trees {
   case class ClassDef[T >: Untyped](mods: Modifiers[T], name: TypeName, tparams: List[TypeDef[T]], impl: Template[T])
     extends NameTree[T] with ModDefTree[T] {
     type ThisTree[T >: Untyped] = ClassDef[T]
+    def withName(name: Name) = this.derivedClassDef(mods, name.toTypeName, tparams, impl)
   }
 
   /** import expr.selectors
@@ -618,6 +633,7 @@ object Trees {
    *  a `transform(List[Tree])` call.
    */
   case class TempTrees[T >: Untyped](trees: List[Tree[T]]) extends Tree[T] {
+    type ThisTree[T >: Untyped] = TempTrees[T]
     override def tpe: T = unsupported("tpe")
   }
 
@@ -679,6 +695,7 @@ object Trees {
     type Assign = Trees.Assign[T]
     type Block = Trees.Block[T]
     type If = Trees.If[T]
+    type Closure = Trees.Closure[T]
     type Match = Trees.Match[T]
     type CaseDef = Trees.CaseDef[T]
     type Return = Trees.Return[T]
@@ -777,6 +794,10 @@ object Trees {
     def derivedIf(cond: Tree[T], thenp: Tree[T], elsep: Tree[T]): If[T] = tree match {
       case tree: If[_] if (cond eq tree.cond) && (thenp eq tree.thenp) && (elsep eq tree.elsep) => tree
       case _ => If(cond, thenp, elsep).copyAttr(tree)
+    }
+    def derivedClosure(env: List[Tree[T]], meth: RefTree[T]): Closure[T] = tree match {
+      case tree: Closure[_] if (env eq tree.env) && (meth eq tree.meth) => tree
+      case _ => Closure(env, meth).copyAttr(tree)
     }
     def derivedMatch(selector: Tree[T], cases: List[CaseDef[T]]): Match[T] = tree match {
       case tree: Match[_] if (selector eq tree.selector) && (cases eq tree.cases) => tree
@@ -878,6 +899,10 @@ object Trees {
       case tree: SharedTree[_] if (shared eq tree.shared) => tree
       case _ => SharedTree(shared).copyAttr(tree)
     }
+    def derivedTempTrees(trees: List[Tree[T]]): TempTrees[T] = tree match {
+      case tree: TempTrees[_] if (trees eq tree.trees) => tree
+      case _ => TempTrees(trees).copyAttr(tree)
+    }
   }
 
   abstract class FullTreeTransformer[T >: Untyped, C] {
@@ -912,6 +937,8 @@ object Trees {
         finishBlock(tree.derivedBlock(transform(stats, c), transform(expr, c)), tree, c, plugins)
       case If(cond, thenp, elsep) =>
         finishIf(tree.derivedIf(transform(cond, c), transform(thenp, c), transform(elsep, c)), tree, c, plugins)
+      case Closure(env, meth) =>
+        finishClosure(tree.derivedClosure(transform(env, c), transformSub(meth, c)), tree, c, plugins)
       case Match(selector, cases) =>
         finishMatch(tree.derivedMatch(transform(selector, c), transformSub(cases, c)), tree, c, plugins)
       case CaseDef(pat, guard, body) =>
@@ -1000,6 +1027,7 @@ object Trees {
     def finishFunction(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishBlock(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishIf(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
+    def finishClosure(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishMatch(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishCaseDef(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishReturn(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
@@ -1061,6 +1089,8 @@ object Trees {
         tree.derivedBlock(transform(stats), transform(expr))
       case If(cond, thenp, elsep) =>
         tree.derivedIf(transform(cond), transform(thenp), transform(elsep))
+      case Closure(env, meth) =>
+        tree.derivedClosure(transform(env), transformSub(meth))
       case Match(selector, cases) =>
         tree.derivedMatch(transform(selector), transformSub(cases))
       case CaseDef(pat, guard, body) =>
@@ -1121,6 +1151,8 @@ object Trees {
             sharedMemo = sharedMemo.updated(tree, tree1)
             tree1
         }
+      case TempTrees(trees) =>
+        tree.derivedTempTrees(transform(trees))
     }
     def transform(trees: List[Tree[T]]): List[Tree[T]] =
       flatten(trees mapConserve (transform(_)))
@@ -1163,6 +1195,8 @@ object Trees {
         this(this(x, stats), expr)
       case If(cond, thenp, elsep) =>
         this(this(this(x, cond), thenp), elsep)
+      case Closure(env, meth) =>
+        this(this(x, env), meth)
       case Match(selector, cases) =>
         this(this(x, selector), cases)
       case CaseDef(pat, guard, body) =>

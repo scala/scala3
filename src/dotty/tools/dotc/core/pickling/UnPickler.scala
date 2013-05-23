@@ -999,7 +999,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val vparams = until(end, readValDefRef)
         val applyType = MethodType(vparams map (_.name), vparams map (_.tpt.tpe), body.tpe)
         val applyMeth = cctx.newSymbol(symbol.owner, nme.apply, Method, applyType)
-        Function(applyMeth, body.changeOwner(symbol, applyMeth), tpe)
+        Closure(applyMeth, body.changeOwner(symbol, applyMeth), tpe)
 
       case ASSIGNtree =>
         val lhs = readTreeRef()

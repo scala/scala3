@@ -90,6 +90,30 @@ object tpd extends Trees.Instance[Type] {
   def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If =
     Trees.If(cond, thenp, elsep).withType(thenp.tpe | elsep.tpe).checked
 
+  /** A function def
+   *
+   *    vparams => expr
+   *
+   *  gets expanded to
+   *
+   *    { def $anonfun(vparams) = expr; Closure($anonfun) }
+   *
+   *  where the closure's type is the target type of the expression (FunctionN, unless
+   *  otherwise specified).
+   */
+  def Closure(meth: TermSymbol, body: Tree, target: Type = NoType)(implicit ctx: Context): Block = {
+    val funtpe =
+      if (target.exists) target
+      else meth.info match {
+        case mt @ MethodType(_, formals) =>
+          assert(!mt.isDependent)
+          defn.FunctionType(formals, mt.resultType)
+      }
+    Block(
+      DefDef(meth, body) :: Nil,
+      Trees.Closure(Nil, Ident(TermRef.withSym(NoPrefix, meth)))).withType(funtpe).checked
+  }
+
   def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
     Trees.Match(selector, cases).withType(ctx.lub(cases map (_.body.tpe))).checked
 
@@ -282,30 +306,6 @@ object tpd extends Trees.Instance[Type] {
     val clsdef = ClassDef(modcls, Nil, constr, body)
     val valdef = ValDef(sym, New(modcls.typeConstructor))
     TempTrees(valdef :: clsdef :: Nil)
-  }
-
-  /** A function def
-   *
-   *    vparams => expr
-   *
-   *  gets expanded to
-   *
-   *    { def $anonfun(vparams) = expr; $anonfun: pt }
-   *
-   *  where pt is the target type of the expression (FunctionN) unless
-   *  otherwise specified.
-   */
-  def Function(meth: TermSymbol, body: Tree, target: Type = NoType)(implicit ctx: Context): Block = {
-    val funtpe =
-      if (target.exists) target
-      else meth.info match {
-        case mt @ MethodType(_, formals) =>
-          assert(!mt.isDependent)
-          defn.FunctionType(formals, mt.resultType)
-      }
-    Block(
-      DefDef(meth, body) :: Nil,
-      Typed(Ident(TermRef.withSym(NoPrefix, meth)), TypeTree(funtpe)))
   }
 
   private class FindLocalDummyAccumulator(cls: ClassSymbol)(implicit ctx: Context) extends TreeAccumulator[Symbol] {

@@ -21,6 +21,10 @@ object untpd extends Trees.Instance[Untyped] {
   case class ModuleDef(mods: Modifiers, name: TermName, impl: Template)
     extends NameTree with ModDefTree {
     type ThisTree[T >: Untyped] <: Trees.NameTree[T] with Trees.ModDefTree[T] with ModuleDef
+    def derivedModuleDef(mods: Modifiers, name: TermName, impl: Template) =
+      if ((mods eq this.mods) && (name eq this.name) && (impl eq this.impl)) this
+      else ModuleDef(mods, name, impl).copyAttr(this)
+    def withName(name: Name) = derivedModuleDef(mods, name.toTermName, impl)
   }
 
   /** (vparams) => body */
@@ -100,12 +104,12 @@ object untpd extends Trees.Instance[Untyped] {
           case Tuple(args) => args mapConserve assignToNamedArg
           case _ => right :: Nil
         }
-        Apply(Select(left, op.encode), args)
+        Apply(Select(left, op), args)
       } else {
         val x = ctx.freshName().toTermName
         Block(
           ValDef(Modifiers(Synthetic), x, TypeTree(), left),
-          Apply(Select(right, op.encode), Ident(x)))
+          Apply(Select(right, op), Ident(x)))
       }
     }
 
@@ -292,7 +296,7 @@ object untpd extends Trees.Instance[Untyped] {
       mode == Mode.Pattern && isVarPattern(id) && id.name != nme.WILDCARD
 
     // begin desugar
-    tree match { // todo: move general tree desugaring to typer, and keep only untyped trees here?
+    val tree1 = tree match { // todo: move general tree desugaring to typer, and keep only untyped trees here?
       case id @ Ident(_) if isPatternVar(id) =>
         Bind(id.name, Ident(nme.WILDCARD))
       case Typed(id @ Ident(_), tpt) if isPatternVar(id) =>
@@ -328,16 +332,16 @@ object untpd extends Trees.Instance[Untyped] {
           val params = args.asInstanceOf[List[ValDef]]
           Block(
             DefDef(Modifiers(Synthetic), nme.ANON_FUN, Nil, params :: Nil, EmptyTree(), body),
-            Ident(nme.ANON_FUN))
+            Closure(Nil, Ident(nme.ANON_FUN)))
         }
       case InfixOp(l, op, r) =>
         mode match {
-          case Mode.Expr => // l.op'(r), or val x = r; l.op;(x), plus handle named args specially
+          case Mode.Expr => // l.op(r), or val x = r; l.op(x), plus handle named args specially
             makeBinop(l, op, r)
-          case Mode.Pattern => // op'(l, r)
-            Apply(Ident(op.encode), l :: r :: Nil)
-          case Mode.Type => // op'[l, r]
-            AppliedTypeTree(Ident(op.encode), l :: r :: Nil)
+          case Mode.Pattern => // op(l, r)
+            Apply(Ident(op), l :: r :: Nil)
+          case Mode.Type => // op[l, r]
+            AppliedTypeTree(Ident(op), l :: r :: Nil)
         }
       case PostfixOp(t, op) =>
         if (mode == Mode.Type && op == nme.raw.STAR)
@@ -345,13 +349,13 @@ object untpd extends Trees.Instance[Untyped] {
         else {
           assert(mode == Mode.Expr)
           if (op == nme.WILDCARD) tree // desugar later by eta expansion
-          else Select(t, op.encode)
+          else Select(t, op)
         }
       case PrefixOp(op, t) =>
         if (mode == Mode.Type && op == nme.ARROWkw)
           AppliedTypeTree(ref(defn.ByNameParamClass.typeConstructor), t)
         else
-          Select(t, nme.UNARY_PREFIX ++ op.encode)
+          Select(t, nme.UNARY_PREFIX ++ op)
       case Parens(t) =>
         t
       case Tuple(ts) =>
@@ -380,12 +384,16 @@ object untpd extends Trees.Instance[Untyped] {
       case _ =>
         tree
     }
+    tree1 match {
+      case tree1: NameTree => tree1.withName(tree1.name.encode)
+      case _ => tree1
+    }
   }.withPos(tree.pos)
 
   def desugarContextBounds(tparams: List[TypeDef], vparamss: List[List[ValDef]], ofClass: Boolean): (List[TypeDef], List[List[ValDef]]) = {
     val epbuf = new ListBuffer[ValDef]
     def makeEvidenceParam(cxBound: Tree): ValDef = ???
-    val tparams1 = tparams map {
+    val tparams1 = tparams mapConserve {
       case tparam @ TypeDef(mods, name, ttparams, ContextBounds(tbounds, cxbounds)) =>
         for (cxbound <- cxbounds) {
           val accessMods = if (ofClass) PrivateOrLocal else EmptyFlags
@@ -397,21 +405,25 @@ object untpd extends Trees.Instance[Untyped] {
       case tparam =>
         tparam
     }
-    val evidenceParams = epbuf.toList
-    val vparamss1 = vparamss.reverse match {
-      case (vparams @ (vparam :: _)) :: rvparamss if vparam.mods is Implicit =>
-        ((vparams ++ evidenceParams) :: rvparamss).reverse
-      case _ =>
-        vparamss :+ evidenceParams
+    epbuf.toList match {
+      case Nil =>
+        (tparams, vparamss)
+      case evidenceParams =>
+        val vparamss1 = vparamss.reverse match {
+          case (vparams @ (vparam :: _)) :: rvparamss if vparam.mods is Implicit =>
+            ((vparams ++ evidenceParams) :: rvparamss).reverse
+          case _ =>
+            vparamss :+ evidenceParams
+        }
+        (tparams1, vparamss1)
     }
-    (tparams1, vparamss1)
   }
 
   def desugarContextBounds(tree: Tree): Tree = tree match {
     case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
       val (tparams1, vparamss1) =
         desugarContextBounds(tparams, vparamss, ofClass = false)
-      tree.derivedDefDef(mods, name, tparams1, vparamss, tpt, rhs)
+      tree.derivedDefDef(mods, name, tparams1, vparamss1, tpt, rhs)
     case ClassDef(
       mods, name, tparams, templ @ Template(constr, parents, self, body)) =>
       val (tparams1, vparamss1) =
