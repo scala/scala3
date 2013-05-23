@@ -612,7 +612,32 @@ object Trees {
     def forwardTo: Tree[T] = shared
   }
 
+  /** Temporary class that results from translation of ModuleDefs
+   *  (and possibly other statements).
+   *  The contained trees will be integrated when transformed with
+   *  a `transform(List[Tree])` call.
+   */
+  case class TempTrees[T >: Untyped](trees: List[Tree[T]]) extends Tree[T] {
+    override def tpe: T = unsupported("tpe")
+  }
+
   // ----- Auxiliary creation methods ------------------
+
+  /** Integrates nested TempTrees in given list of trees */
+  def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] =
+    if (trees exists isTempTrees)
+      trees flatMap {
+        case TempTrees(ts) => ts
+        case t => t :: Nil
+      }
+    else trees
+
+  def combine[T >: Untyped](trees: List[Tree[T]]): Tree[T] = flatten(trees) match {
+    case tree :: Nil => tree
+    case ts => TempTrees[T](ts)
+  }
+
+  private val isTempTrees: Any => Boolean = (_.isInstanceOf[TempTrees[_]])
 
   def Block[T >: Untyped](stat: Tree[T], expr: Tree[T]): Block[T] =
     Block(stat :: Nil, expr)
@@ -681,6 +706,7 @@ object Trees {
     type Annotated = Trees.Annotated[T]
     type EmptyTree = Trees.EmptyTree[T]
     type SharedTree = Trees.SharedTree[T]
+    type TempTrees = Trees.TempTrees[T]
 
     protected implicit def pos(implicit ctx: Context): Position = ctx.position
 
@@ -688,30 +714,6 @@ object Trees {
 
     def Parameter(pname: TermName, tpe: Tree, mods: Modifiers = Modifiers()): ValDef =
       ValDef(mods | Param, pname, tpe, EmptyTree())
-
-    /** Temporary class that results from translation of ModuleDefs
-     *  (and possibly other statements).
-     *  The contained trees will be integrated in enclosing Blocks or Templates
-     */
-    case class TempTrees(trees: List[Tree]) extends Tree {
-      override def tpe: T = unsupported("tpe")
-    }
-
-    /** Integrates nested TempTrees in given list of trees */
-    def flatten(trees: List[Tree]): List[Tree] =
-      if (trees exists isTempTrees)
-        trees flatMap {
-          case TempTrees(ts) => ts
-          case t => t :: Nil
-        }
-      else trees
-
-    def combine(trees: List[Tree]): Tree = flatten(trees) match {
-      case tree :: Nil => tree
-      case ts => TempTrees(ts)
-    }
-
-    private val isTempTrees: Tree => Boolean = (_.isInstanceOf[TempTrees])
   }
 
   // ----- Helper functions and classes ---------------------------------------
@@ -974,7 +976,7 @@ object Trees {
         tree, c, plugins)
     }
     def transform(trees: List[Tree[T]], c: C): List[Tree[T]] =
-      trees mapConserve (transform(_, c))
+      flatten(trees mapConserve (transform(_, c)))
     def transformSub(tree: Tree[T], c: C): tree.ThisTree[T] =
       transform(tree, c).asInstanceOf[tree.ThisTree[T]]
     def transformSub[TT <: Tree[T]](trees: List[TT], c: C): List[TT] =
@@ -1121,7 +1123,7 @@ object Trees {
         }
     }
     def transform(trees: List[Tree[T]]): List[Tree[T]] =
-      trees mapConserve (transform(_))
+      flatten(trees mapConserve (transform(_)))
     def transformSub(tree: Tree[T]): tree.ThisTree[T] =
       transform(tree).asInstanceOf[tree.ThisTree[T]]
     def transformSub[TT <: Tree[T]](trees: List[TT]): List[TT] =

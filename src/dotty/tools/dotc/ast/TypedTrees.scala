@@ -256,11 +256,10 @@ object tpd extends Trees.Instance[Type] {
    *
    *  gets expanded to
    *
-   *     <module> lazy val obj = {
-   *       class obj$ extends parents { this: obj.type => decls }
-   *       new obj$
-   *     }
+   *     <module> lazy val obj = new obj$
+   *     <module> class obj$ extends parents { this: obj.type => decls }
    *
+   *  (The following no longer applies:
    *  What's interesting here is that the block is well typed
    *  (because class obj$ is hoistable), but the type of the `obj` val is
    *  not expressible. What needs to happen in general when
@@ -275,7 +274,7 @@ object tpd extends Trees.Instance[Type] {
    *
    *  On the other hand, for method result type inference, if the type of
    *  the RHS of a method contains a class owned by the method, this would be
-   *  an error.
+   *  an error.)
    */
   def ModuleDef(sym: TermSymbol, body: List[Tree])(implicit ctx: Context): tpd.TempTrees = {
     val modcls = sym.moduleClass.asClass
