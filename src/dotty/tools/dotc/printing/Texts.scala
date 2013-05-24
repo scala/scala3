@@ -130,7 +130,7 @@ object Texts {
       if (this.isVertical) Vertical(that :: this.relems)
       else Vertical(that :: this :: Nil)
 
-    def provided(pred: => Boolean) = if (pred) this else Str("")
+    def provided(pred: Boolean) = if (pred) this else Str("")
   }
 
   object Text {
