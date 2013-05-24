@@ -9,6 +9,9 @@
 package dotty.tools.dotc
 package util
 
+import core.Names._
+import core.Decorators._
+
 /** Provides functions to encode and decode Scala symbolic names.
  *  Also provides some constants.
  */
@@ -57,16 +60,16 @@ object NameTransformer {
    *  @param name the string to encode
    *  @return     the string with all recognized opchars replaced with their encoding
    */
-  def encode(name: String): String = {
+  def encode(name: Name): TermName = {
     var buf: StringBuilder = null
-    val len = name.length()
+    val len = name.length
     var i = 0
     while (i < len) {
-      val c = name charAt i
+      val c = name(i)
       if (c < nops && (op2code(c) ne null)) {
         if (buf eq null) {
           buf = new StringBuilder()
-          buf.append(name.substring(0, i))
+          buf.append(name.slice(0, i))
         }
         buf.append(op2code(c))
       /* Handle glyphs that are not valid Java/JVM identifiers */
@@ -74,7 +77,7 @@ object NameTransformer {
       else if (!Character.isJavaIdentifierPart(c)) {
         if (buf eq null) {
           buf = new StringBuilder()
-          buf.append(name.substring(0, i))
+          buf.append(name.slice(0, i))
         }
         buf.append("$u%04X".format(c.toInt))
       }
@@ -83,7 +86,7 @@ object NameTransformer {
       }
       i += 1
     }
-    if (buf eq null) name else buf.toString()
+    if (buf eq null) name.toTermName else buf.toString.toTermName
   }
 
   /** Replace `\$opname` by corresponding operator symbol.

@@ -12,8 +12,6 @@ object Decorators {
   implicit class StringDecorator(val s: String) extends AnyVal with PreName {
     def toTypeName: TypeName = typeName(s)
     def toTermName: TermName = termName(s)
-    def toEncodedTypeName = encodedTypeName(s)
-    def toEncodedTermName = encodedTermName(s)
     def toText(printer: Printer): Text = Str(s)
   }
 

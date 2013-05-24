@@ -17,6 +17,7 @@ object StdNames {
 
   abstract class DefinedNames[N <: Name] {
     protected implicit def fromString(s: String): N
+    protected def fromName(name: Name): N = fromString(name.toString)
 
     private val kws = mutable.Set[N]()
     protected def kw(name: N) = { kws += name; name }
@@ -25,7 +26,7 @@ object StdNames {
   }
 
   abstract class ScalaNames[N <: Name] extends DefinedNames[N] {
-    private def encode(s: String): N = fromString(NameTransformer.encode(s))
+    private def encode(s: String): N = fromName(fromString(s).encode)
 
 // Keywords, need to come first -----------------------
 
