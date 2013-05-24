@@ -941,8 +941,7 @@ object Parsers {
           atPos(id.pos.start, in.skipToken()) { Typed(id, infixType()) }
         else
           id
-      val param = convertToParam(paramExpr, mods)
-      closureRest(start, location, param :: Nil)
+      closureRest(start, location, convertToParam(paramExpr, mods) :: Nil)
     }
 
     def closureRest(start: Int, location: Location.Value, params: List[Tree]): Tree =
@@ -998,7 +997,11 @@ object Parsers {
           blockExpr()
         case NEW =>
           canApply = false
-          atPos(in.skipToken()) { New(template(emptyConstructor())) }
+          val start = in.skipToken()
+          templateOrNew(emptyConstructor()) match {
+            case impl: Template => atPos(start) { New(impl) }
+            case nu => adjustStart(start) { nu }
+          }
         case _ =>
           if (isLiteral) literal()
           else {
@@ -1348,12 +1351,24 @@ object Parsers {
       normalize(loop(start))
     }
 
+    /** Wrap annotation or constructor in New(...).<init> */
+    def wrapNew(tpt: Tree) = Select(New(tpt), nme.CONSTRUCTOR)
+
+    /** Adjust start of annotation or constructor to position of preceding @ or new */
+    def adjustStart(start: Offset)(tree: Tree): Tree = {
+      val tree1 = tree match {
+        case Apply(fn, args) => tree.derivedApply(adjustStart(start)(fn), args)
+        case Select(qual, name) => tree.derivedSelect(adjustStart(start)(qual), name)
+        case _ => tree
+      }
+      if (start < tree1.pos.start) tree1.withPos(tree1.pos.withStart(start))
+      else tree1
+    }
+
     /** Annotation        ::=  `@' SimpleType {ArgumentExprs}
      */
-    def annot() = {
-      accept(AT)
-      argumentExprss(simpleType())
-    }
+    def annot() =
+      adjustStart(accept(AT)) { argumentExprss(wrapNew(simpleType())) }
 
     def annotations(skipNewLines: Boolean = false): List[Tree] = {
       if (skipNewLines) newLineOptWhenFollowedBy(AT)
@@ -1763,19 +1778,27 @@ object Parsers {
     /** ConstrApp         ::=  SimpleType {ParArgumentExprs}
      */
     val constrApp = () =>
-      parArgumentExprss(simpleType())
+      parArgumentExprss(wrapNew(simpleType()))
 
     /** Template          ::=  ConstrApps [TemplateBody] | TemplateBody
      *  ConstrApps        ::=  ConstrApp {`with' ConstrApp}
      */
-    def template(constr: DefDef): Template = {
+    def template(constr: DefDef): Template = templateOrNew(constr) match {
+      case impl: Template => impl
+      case parent => Template(constr, parent :: Nil, EmptyValDef(), Nil)
+    }
+
+    /** Same as template, but if {...} is missing and there's only one
+     *  parent return the parent instead of a template. Called from New.
+     */
+    def templateOrNew(constr: DefDef): Tree = {
       newLineOptWhenFollowedBy(LBRACE)
-      if (in.token == LBRACE) {
-        templateBodyOpt(constr, Nil)
-      } else {
+      if (in.token == LBRACE) templateBodyOpt(constr, Nil)
+      else {
         val parents = tokenSeparated(WITH, constrApp)
         newLineOptWhenFollowedBy(LBRACE)
-        templateBodyOpt(constr, parents)
+        if (in.token != LBRACE && parents.length == 1) parents.head
+        else templateBodyOpt(constr, parents)
       }
     }
 
