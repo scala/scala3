@@ -398,5 +398,10 @@ object tpd extends Trees.Instance[Type] {
 
   def localSyms(stats: List[tpd.Tree])(implicit ctx: Context): List[Symbol] =
     for (stat <- stats if (stat.isDef)) yield stat.symbol
+
+  type TreeAccumulator[U] = Trees.TreeAccumulator[U, Type]
+  type TreeCopier = Trees.TreeCopier[Type]
+  type TreeTransformer = Trees.TreeTransformer[Type]
+
 }
 

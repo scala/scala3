@@ -97,12 +97,19 @@ object Trees {
     privateWithin: TypeName = tpnme.EMPTY,
     annotations: List[Tree[T]] = Nil) extends Positioned with Cloneable {
 
-    def | (fs: FlagSet): Modifiers[T] = copy(flags = flags | fs)
-    def & (fs: FlagSet): Modifiers[T] = copy(flags = flags & fs)
-    def &~(fs: FlagSet): Modifiers[T] = copy(flags = flags &~ fs)
-
     def is(fs: FlagSet): Boolean = flags is fs
     def is(fc: FlagConjunction): Boolean = flags is fc
+
+    def | (fs: FlagSet): Modifiers[T] = withFlags(flags | fs)
+    def & (fs: FlagSet): Modifiers[T] = withFlags(flags & fs)
+    def &~(fs: FlagSet): Modifiers[T] = withFlags(flags &~ fs)
+
+    def toTypeFlags: Modifiers[T] = withFlags(flags.toTypeFlags)
+    def toTermFlags: Modifiers[T] = withFlags(flags.toTermFlags)
+
+    private def withFlags(flags: FlagSet) =
+      if (this.flags == flags) this
+      else copy(flags = flags)
 
     def withAnnotations(annots: List[Tree[T]]) =
       if (annots.isEmpty) this
@@ -676,10 +683,6 @@ object Trees {
     type RefTree = Trees.RefTree[T]
     type DefTree = Trees.DefTree[T]
     type ModDefTree = Trees.ModDefTree[T]
-
-    type TreeCopier = Trees.TreeCopier[T]
-    type TreeAccumulator[U] = Trees.TreeAccumulator[U, T]
-    type TreeTransformer = Trees.TreeTransformer[T]
 
     type Ident = Trees.Ident[T]
     type Select = Trees.Select[T]
