@@ -1,8 +1,17 @@
 package test
+
+import scala.reflect.io._
+import dotty.tools.dotc.util._
+import dotty.tools.dotc.core._
+import dotty.tools.dotc.parsing._
+import Tokens._, Parsers._
+import org.junit.Test
 import dotty.tools.dotc._
 import ast.Trees._
 
-object showTree extends ParserTest {
+import scala.collection.mutable.ListBuffer
+
+class DeSugarTest extends ParserTest {
 
   import dotty.tools.dotc.ast.untpd._
 
@@ -63,11 +72,24 @@ object showTree extends ParserTest {
     }
   }
 
-  def main(args: Array[String]): Unit = {
-    for (arg <- args) {
-      val tree: Tree = parse(arg)
-      println("result = "+tree.show)
-      println("desugared = "+DeSugar.transform(tree).show)
-    }
+  def firstClass(stats: List[Tree]): String = stats match {
+    case Nil => "<empty>"
+    case ClassDef(_, name, _, _) :: _ => name.toString
+    case ModuleDef(_, name, _) :: _ => name.toString
+    case (pdef: PackageDef) :: _ => firstClass(pdef)
+    case stat :: stats => firstClass(stats)
   }
+
+  def firstClass(tree: Tree): String = tree match {
+    case PackageDef(pid, stats) =>
+      pid.show + "." + firstClass(stats)
+    case _ => "??? "+tree.getClass
+  }
+
+  def desugarTree(tree: Tree): Tree = {
+    //println("***** desugaring "+firstClass(tree))
+    DeSugar.transform(tree)
+  }
+
+  def desugarAll() = parsedTrees foreach (desugarTree(_).show)
 }

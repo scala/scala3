@@ -39,22 +39,4 @@ class ParserTest extends DottyTest {
     for (d <- dir.dirs)
       parseDir(d.path)
   }
-/*
-  @Test
-  def parseList() = {
-    println(System.getProperty("user.dir"))
-    parse("src/dotty/tools/dotc/core/Symbols.scala")
-    parse("src/dotty/tools/dotc/core/Types.scala")
-  }
-
-  @Test
-  def parseDotty() = {
-    parseDir("src")
-  }*/
-
-  @Test
-  def parseScala() = {
-    parseDir("/Users/odersky/workspace/scala/src")
-  }
-
 }
