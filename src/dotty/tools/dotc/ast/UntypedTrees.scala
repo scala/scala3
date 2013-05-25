@@ -326,7 +326,7 @@ object untpd extends Trees.Instance[Untyped] {
         val clsSelf = self.derivedValDef(self.mods, self.name, SingletonTypeTree(Ident(name)), self.rhs)
         val clsTmpl = tmpl.derivedTemplate(constr, parents, clsSelf, body)
         val cls = ClassDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, Nil, clsTmpl)
-        TempTrees(Array[Tree](modul, cls))
+        TempTrees(modul, cls)
       case SymbolLit(str) =>
         New(ref(defn.SymbolClass.typeConstructor), (Literal(Constant(str)) :: Nil) :: Nil)
       case InterpolatedString(id, strs, elems) =>

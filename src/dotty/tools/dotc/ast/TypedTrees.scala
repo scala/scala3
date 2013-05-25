@@ -305,7 +305,7 @@ object tpd extends Trees.Instance[Type] {
     val constr = DefDef(modcls.primaryConstructor.asTerm, EmptyTree)
     val clsdef = ClassDef(modcls, Nil, constr, body)
     val valdef = ValDef(sym, New(modcls.typeConstructor))
-    TempTrees(Array(valdef, clsdef))
+    TempTrees(valdef, clsdef)
   }
 
   private class FindLocalDummyAccumulator(cls: ClassSymbol)(implicit ctx: Context) extends TreeAccumulator[Symbol] {
