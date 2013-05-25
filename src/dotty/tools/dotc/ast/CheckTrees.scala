@@ -236,7 +236,7 @@ object CheckTrees {
       check(annot.isInstantiation)
       check(annot.symbol.owner.isSubClass(defn.AnnotationClass))
       check(arg.isValueType || arg.isValue)
-    case EmptyTree() =>
+    case EmptyTree =>
     case SharedTree(shared) =>
       check(shared.isType || shared.isTerm)
   }

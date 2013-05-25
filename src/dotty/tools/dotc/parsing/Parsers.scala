@@ -566,7 +566,7 @@ object Parsers {
             else expr()
           else {
             syntaxErrorOrIncomplete("error in interpolated string: identifier or block expected")
-            EmptyTree()
+            EmptyTree
           }
         }
       }
@@ -680,7 +680,7 @@ object Parsers {
       if (in.token == LPAREN)
         atPos(in.offset) { makeTupleOrParens(inParens(argTypes())) }
       else if (in.token == LBRACE)
-        atPos(in.offset) { RefinedTypeTree(EmptyTree(), refinement()) }
+        atPos(in.offset) { RefinedTypeTree(EmptyTree, refinement()) }
       else path(thisOK = false, handleSingletonType) match {
         case r @ SingletonTypeTree(_) => r
         case r => convertToTypeId(r)
@@ -751,7 +751,7 @@ object Parsers {
 
     private def bound(tok: Int): Tree =
       if (in.token == tok) { in.nextToken(); typ() }
-      else EmptyTree()
+      else EmptyTree
 
     /** TypeParamBounds   ::=  TypeBounds {`<%' Type} {`:' Type}
      */
@@ -851,7 +851,7 @@ object Parsers {
           newLinesOpt()
           val thenp = expr()
           val elsep = if (in.token == ELSE) { in.nextToken(); expr() }
-                      else EmptyTree()
+                      else EmptyTree
           If(cond, thenp, elsep)
         }
       case WHILE =>
@@ -876,16 +876,16 @@ object Parsers {
             if (in.token == CATCH) {
               in.nextToken()
               expr()
-            } else EmptyTree()
+            } else EmptyTree
           val finalizer =
             if (handler.isEmpty || in.token == FINALLY) { accept(FINALLY); expr() }
-            else EmptyTree()
+            else EmptyTree
           Try(body, handler, finalizer)
         }
       case THROW =>
         atPos(in.skipToken()) { Throw(expr()) }
       case RETURN =>
-        atPos(in.skipToken()) { Return(if (isExprIntro) expr() else EmptyTree(), EmptyTree()) }
+        atPos(in.skipToken()) { Return(if (isExprIntro) expr() else EmptyTree, EmptyTree) }
       case FOR =>
         forExpr()
       case IMPLICIT =>
@@ -1071,7 +1071,7 @@ object Parsers {
      */
     def blockExpr(): Tree = atPos(in.offset) {
       inDefScopeBraces {
-        if (in.token == CASE) Match(EmptyTree(), caseClauses())
+        if (in.token == CASE) Match(EmptyTree, caseClauses())
         else block()
       }
     }
@@ -1082,14 +1082,14 @@ object Parsers {
     def block(): Tree = {
       val stats = blockStatSeq()
       if (stats.nonEmpty && stats.last.isTerm) Block(stats.init, stats.last)
-      else Block(stats, EmptyTree())
+      else Block(stats, EmptyTree)
     }
 
     /** Guard ::= if PostfixExpr
      */
     def guard(): Tree =
       if (in.token == IF) { in.nextToken(); postfixExpr() }
-      else EmptyTree()
+      else EmptyTree
 
     /** Enumerators ::= Generator {semi Enumerator | Guard}
      */
@@ -1488,7 +1488,7 @@ object Parsers {
             }
           val default =
             if (in.token == EQUALS) { in.nextToken(); expr() }
-            else EmptyTree()
+            else EmptyTree
           if (implicitOffset >= 0) {
             mods = mods.withPos(mods.pos.withStart(implicitOffset))
             implicitOffset = -1
@@ -1628,7 +1628,7 @@ object Parsers {
           } else {
             expr()
           }
-        } else EmptyTree()
+        } else EmptyTree
       lhs match {
         case (id @ Ident(name: TermName)) :: Nil => id.derivedValDef(mods, name, tpt, rhs)
         case _ => PatDef(mods, lhs, tpt, rhs)
@@ -1661,7 +1661,7 @@ object Parsers {
         var restype = fromWithinReturnType(typedOpt())
         newLineOptWhenFollowedBy(LBRACE)
         val rhs =
-          if (isStatSep || in.token == RBRACE) EmptyTree()
+          if (isStatSep || in.token == RBRACE) EmptyTree
           else if (restype.isEmpty && in.token == LBRACE) {
             restype = atPos(in.offset) { scalaUnit }
             blockExpr()
@@ -1715,7 +1715,7 @@ object Parsers {
             TypeDef(mods, name, tparams, typeBounds())
           case _ =>
             syntaxErrorOrIncomplete("`=', `>:', or `<:' expected")
-            EmptyTree()
+            EmptyTree
         }
       }
     }
@@ -1736,7 +1736,7 @@ object Parsers {
           objectDef(posMods(start, mods | Case | Module))
         case _ =>
           syntaxErrorOrIncomplete("expected start of definition")
-          EmptyTree()
+          EmptyTree
     }
 
     /** ClassDef ::= Id [ClsTypeParamClause]
@@ -1919,7 +1919,7 @@ object Parsers {
         }
         acceptStatSepUnlessAtEnd()
       }
-      (self, if (stats.isEmpty) List(EmptyTree()) else stats.toList)
+      (self, if (stats.isEmpty) List(EmptyTree) else stats.toList)
     }
 
     /** RefineStatSeq    ::= RefineStat {semi RefineStat}
@@ -2048,8 +2048,8 @@ object Parsers {
       body
     }
 
-    override def blockExpr(): Tree = skipBraces(EmptyTree())
+    override def blockExpr(): Tree = skipBraces(EmptyTree)
 
-    override def templateBody() = skipBraces((EmptyValDef(), List(EmptyTree())))
+    override def templateBody() = skipBraces((EmptyValDef(), List(EmptyTree)))
   }
 }

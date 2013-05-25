@@ -15,8 +15,8 @@ import util.HashSet
 abstract class TreeInfo {
 
   def isDeclarationOrTypeDef(tree: Tree[_ >: Untyped]): Boolean = tree match {
-    case DefDef(_, _, _, _, _, EmptyTree())
-      | ValDef(_, _, _, EmptyTree())
+    case DefDef(_, _, _, _, _, EmptyTree)
+      | ValDef(_, _, _, EmptyTree)
       | TypeDef(_, _, _, _) => true
     case _ => false
   }
@@ -24,7 +24,7 @@ abstract class TreeInfo {
   /** Is tree legal as a member definition of an interface?
    */
   def isInterfaceMember(tree: Tree[_ >: Untyped]): Boolean = tree match {
-    case EmptyTree() => true
+    case EmptyTree => true
     case Import(_, _) => true
     case TypeDef(_, _, _, _) => true
     case DefDef(mods, _, _, _, _, __) => mods.flags is Deferred
@@ -36,7 +36,7 @@ abstract class TreeInfo {
    *  evaluated as part of a block after the first time?
    */
   def isIdempotentDef(tree: Tree[Type])(implicit ctx: Context): Boolean = tree match {
-    case EmptyTree()
+    case EmptyTree
       | ClassDef(_, _, _, _)
       | TypeDef(_, _, _, _)
       | Import(_, _)
@@ -57,7 +57,7 @@ abstract class TreeInfo {
    *  because the expression result from evaluating them is always the same.
    */
   def isIdempotentExpr(tree: Tree[Type])(implicit ctx: Context): Boolean = tree match {
-    case EmptyTree()
+    case EmptyTree
        | This(_)
        | Super(_, _)
        | Literal(_) =>
@@ -211,7 +211,7 @@ abstract class TreeInfo {
   def firstConstructor[T >: Untyped](stats: List[Tree[T]]): Tree[T] = stats match {
     case (meth: DefDef[_]) :: _ if meth.name.isConstructorName => meth
     case stat :: stats => firstConstructor(stats)
-    case nil => EmptyTree()
+    case nil => emptyTree()
   }
 
   /** The arguments to the first constructor in `stats`. */
@@ -310,14 +310,14 @@ abstract class TreeInfo {
 
   /** Is this pattern node a catch-all (wildcard or variable) pattern? */
   def isDefaultCase(cdef: CaseDef[_ >: Untyped]) = cdef match {
-    case CaseDef(pat, EmptyTree(), _) => isWildcardArg(pat)
+    case CaseDef(pat, EmptyTree, _) => isWildcardArg(pat)
     case _                            => false
   }
 
   /** Is this pattern node a synthetic catch-all case, added during PartialFuction synthesis before we know
     * whether the user provided cases are exhaustive. */
   def isSyntheticDefaultCase(cdef: CaseDef[_ >: Untyped]) = cdef match {
-    case CaseDef(Bind(nme.DEFAULT_CASE, _), EmptyTree(), _) => true
+    case CaseDef(Bind(nme.DEFAULT_CASE, _), EmptyTree, _) => true
     case _                                                  => false
   }
 
@@ -337,9 +337,9 @@ abstract class TreeInfo {
 
   /** Is this pattern node a catch-all or type-test pattern? */
   def isCatchCase(cdef: CaseDef[Type])(implicit ctx: Context) = cdef match {
-    case CaseDef(Typed(Ident(nme.WILDCARD), tpt), EmptyTree(), _) =>
+    case CaseDef(Typed(Ident(nme.WILDCARD), tpt), EmptyTree, _) =>
       isSimpleThrowable(tpt.tpe)
-    case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt)), EmptyTree(), _) =>
+    case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt)), EmptyTree, _) =>
       isSimpleThrowable(tpt.tpe)
     case _ =>
       isDefaultCase(cdef)
@@ -354,7 +354,7 @@ abstract class TreeInfo {
   }
 
   /** Is this case guarded? */
-  def isGuardedCase(cdef: CaseDef[_ >: Untyped]) = cdef.guard != EmptyTree()
+  def isGuardedCase(cdef: CaseDef[_ >: Untyped]) = cdef.guard ne EmptyTree
 
   /** Is this pattern node a sequence-valued pattern? */
   def isSequenceValued(tree: Tree[_ >: Untyped]): Boolean = unbind(tree) match {

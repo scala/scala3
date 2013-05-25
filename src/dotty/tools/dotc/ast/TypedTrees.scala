@@ -244,7 +244,7 @@ object tpd extends Trees.Instance[Type] {
   def Annotated(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated =
     Trees.Annotated(annot, arg).withType(AnnotatedType(Annotation(annot), arg.tpe)).checked
 
-  val EmptyTree: Tree = Trees.EmptyTree[Type]
+  val EmptyTree: Tree = emptyTree[Type]()
 
   val EmptyValDef: ValDef = Trees.EmptyValDef[Type]
 

@@ -12,6 +12,8 @@ import collection.mutable.ListBuffer
 
 object untpd extends Trees.Instance[Untyped] {
 
+  val EmptyTree = emptyTree[Untyped]()
+
 // ----- Tree cases that exist in untyped form only ------------------
 
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice */
@@ -52,11 +54,11 @@ object untpd extends Trees.Instance[Untyped] {
 
   def scalaUnit(implicit ctx: Context) = ref(defn.UnitClass.typeConstructor)
 
-  def makeConstructor(mods: Modifiers, vparamss: List[List[ValDef]], rhs: Tree = EmptyTree())(implicit ctx: Context): DefDef =
+  def makeConstructor(mods: Modifiers, vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     DefDef(mods, nme.CONSTRUCTOR, Nil, vparamss, TypeTree(), rhs)
 
   def makeSelfDef(name: TermName, tpt: Tree)(implicit ctx: Context) =
-    ValDef(Modifiers(Private), name, tpt, EmptyTree())
+    ValDef(Modifiers(Private), name, tpt, EmptyTree)
 
   def makeTupleOrParens(ts: List[Tree])(implicit ctx: Context) = ts match {
     case t :: Nil => Parens(t)
@@ -73,7 +75,7 @@ object untpd extends Trees.Instance[Untyped] {
   def desugar(tree: Tree, mode: Mode.Value)(implicit ctx: Context): Tree = {
 
     def makeSyntheticParameter(): ValDef =
-      ValDef(Modifiers(SyntheticTermParam), ctx.freshName().toTermName, TypeTree(), EmptyTree())
+      ValDef(Modifiers(SyntheticTermParam), ctx.freshName().toTermName, TypeTree(), EmptyTree)
 
     def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
       val ldef = DefDef(Modifiers(Label), lname, Nil, ListOfNil, TypeTree(), rhs)
@@ -108,7 +110,7 @@ object untpd extends Trees.Instance[Untyped] {
     /** Make closure corresponding to function  params => body */
     def makeClosure(params: List[ValDef], body: Tree) =
       Block(
-        DefDef(Modifiers(Synthetic), nme.ANON_FUN, Nil, params :: Nil, EmptyTree(), body),
+        DefDef(Modifiers(Synthetic), nme.ANON_FUN, Nil, params :: Nil, EmptyTree, body),
         Closure(Nil, Ident(nme.ANON_FUN)))
 
     /** Make closure corresponding to partial function  { cases } */
@@ -173,9 +175,9 @@ object untpd extends Trees.Instance[Untyped] {
        */
       def makeLambda(pat: Tree, body: Tree): Tree = pat match {
         case VarPattern(named, tpt) =>
-          makeClosure(derivedValDef(Modifiers(Param), named, tpt, EmptyTree()) :: Nil, body)
+          makeClosure(derivedValDef(Modifiers(Param), named, tpt, EmptyTree) :: Nil, body)
         case _ =>
-          makeCaseClosure(CaseDef(pat, EmptyTree(), body) :: Nil)
+          makeCaseClosure(CaseDef(pat, EmptyTree, body) :: Nil)
       }
 
       /** If `pat` is not yet a `Bind` wrap it in one with a fresh name
@@ -213,9 +215,9 @@ object untpd extends Trees.Instance[Untyped] {
        */
       def makePatFilter(rhs: Tree, pat: Tree): Tree = {
         val cases = List(
-          CaseDef(pat, EmptyTree(), Literal(Constant(true))),
-          CaseDef(Ident(nme.WILDCARD), EmptyTree(), Literal(Constant(false))))
-        Apply(Select(rhs, nme.withFilterIfRefutable), Match(EmptyTree(), cases))
+          CaseDef(pat, EmptyTree, Literal(Constant(true))),
+          CaseDef(Ident(nme.WILDCARD), EmptyTree, Literal(Constant(false))))
+        Apply(Select(rhs, nme.withFilterIfRefutable), Match(EmptyTree, cases))
       }
 
       /** rhs.name with a pattern filter on rhs unless `pat` is irrefutable when
@@ -248,7 +250,7 @@ object untpd extends Trees.Instance[Untyped] {
           val filtered = Apply(rhsSelect(rhs, nme.withFilter, pat), makeLambda(pat, test))
           makeFor(mapName, flatMapName, GenFrom(pat, filtered) :: rest, body)
         case _ =>
-          EmptyTree() //may happen for erroneous input
+          EmptyTree //may happen for erroneous input
       }
     }
 
@@ -279,7 +281,7 @@ object untpd extends Trees.Instance[Untyped] {
         val rhsUnchecked = makeAnnotated(defn.UncheckedAnnot, rhs)
         val vars = getVariables(pat)
         val ids = for ((named, _) <- vars) yield Ident(named.name)
-        val caseDef = CaseDef(pat, EmptyTree(), makeTuple(ids))
+        val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
         val matchExpr = Match(rhsUnchecked, caseDef :: Nil)
         vars match {
           case (named, tpt) :: Nil =>
@@ -309,9 +311,9 @@ object untpd extends Trees.Instance[Untyped] {
         desugarAnonClass(templ)
       case Assign(Apply(fn, args), rhs) =>
         Apply(Select(fn, nme.update), args :+ rhs)
-      case If(cond, thenp, EmptyTree()) =>
+      case If(cond, thenp, EmptyTree) =>
         If(cond, thenp, unitLiteral)
-      case Match(EmptyTree(), cases) =>
+      case Match(EmptyTree, cases) =>
         makeCaseClosure(cases)
       case _: DefDef | _: ClassDef =>
         desugarContextBounds(tree)
@@ -401,7 +403,7 @@ object untpd extends Trees.Instance[Untyped] {
           val accessMods = if (ofClass) PrivateOrLocal else EmptyFlags
           val epname = (nme.EVIDENCE_PARAM_PREFIX.toString + epbuf.length).toTermName
           epbuf +=
-            ValDef(Modifiers(Implicit | Param | accessMods), epname, cxbound, EmptyTree())
+            ValDef(Modifiers(Implicit | Param | accessMods), epname, cxbound, EmptyTree)
         }
         tparam.derivedTypeDef(mods, name, ttparams, tbounds)
       case tparam =>

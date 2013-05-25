@@ -219,7 +219,7 @@ object Trees {
 
     /** if this tree is the empty tree, the alternative, else this tree */
     def orElse(that: => Tree[T]): Tree[T] =
-      if (this eq theEmptyTree) that else this
+      if (this eq EmptyTree) that else this
 
     override def toText(printer: Printer) = printer.toText(this)
 
@@ -316,7 +316,7 @@ object Trees {
     extends RefTree[T] {
     type ThisTree[T >: Untyped] = Ident[T]
     def withName(name: Name) = this.derivedIdent(name)
-    def qualifier: Tree[T] = EmptyTree[T]
+    def qualifier: Tree[T] = emptyTree[T]
   }
 
   class BackquotedIdent[T >: Untyped](name: Name)
@@ -441,7 +441,7 @@ object Trees {
    *  After program transformations this is not necessarily the enclosing method, because
    *  closures can intervene.
    */
-  case class Return[T >: Untyped](expr: Tree[T], from: Tree[T] = EmptyTree[T]())
+  case class Return[T >: Untyped](expr: Tree[T], from: Tree[T] = emptyTree[T]())
     extends TermTree[T] {
     type ThisTree[T >: Untyped] = Return[T]
   }
@@ -465,7 +465,7 @@ object Trees {
   }
 
   /** A type tree that represents an existing or inferred type */
-  case class TypeTree[T >: Untyped](original: Tree[T] = EmptyTree[T])
+  case class TypeTree[T >: Untyped](original: Tree[T] = emptyTree[T])
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[T >: Untyped] = TypeTree[T]
     override def initialPos = NoPosition
@@ -606,20 +606,12 @@ object Trees {
     override def isEmpty: Boolean = true
   }
 
-  /** A missing tree */
-  abstract case class EmptyTree[T >: Untyped]()
-    extends Tree[T] with AlwaysEmpty[T] {
-    type ThisTree[T >: Untyped] = EmptyTree[T]
-  }
+  val EmptyTree: TempTrees[_] = TempTrees(Array[Tree[Untyped]]())
 
-  private object theEmptyTree extends EmptyTree[Untyped]
-
-  object EmptyTree {
-    def apply[T >: Untyped](): EmptyTree[T] = theEmptyTree.asInstanceOf[EmptyTree[T]]
-  }
+  def emptyTree[T >: Untyped](): TempTrees[T] = EmptyTree.asInstanceOf[TempTrees[T]]
 
   class EmptyValDef[T >: Untyped] extends ValDef[T](
-    Modifiers[T](Private), nme.WILDCARD, EmptyTree[T], EmptyTree[T]) with AlwaysEmpty[T]
+    Modifiers[T](Private), nme.WILDCARD, emptyTree[T], emptyTree[T]) with AlwaysEmpty[T]
 
   private object theEmptyValDef extends EmptyValDef[Untyped]
 
@@ -646,6 +638,7 @@ object Trees {
 
     type ThisTree[T >: Untyped] = TempTrees[T]
     override def tpe: T = unsupported("tpe")
+    override def withType(tpe: Type) = unsupported("withType")
 
     def apply(i: Int): Tree[T] = trees(i)
     def length: Int = trees.length
@@ -697,6 +690,10 @@ object Trees {
   }
 
   object TempTrees {
+    def apply[T >: Untyped](): Tree[T] = emptyTree()
+    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T]): TempTrees[T] = TempTrees(Array[Tree[T]](x1, x2))
+    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T], x3: Tree[T]): TempTrees[T] = TempTrees(Array[Tree[T]](x1, x2, x3))
+
     def fromList[T >: Untyped](elems: List[Tree[T]]): TempTrees[T] = apply(elems.toArray)
   }
 
@@ -796,7 +793,6 @@ object Trees {
     type Import = Trees.Import[T]
     type PackageDef = Trees.PackageDef[T]
     type Annotated = Trees.Annotated[T]
-    type EmptyTree = Trees.EmptyTree[T]
     type SharedTree = Trees.SharedTree[T]
     type TempTrees = Trees.TempTrees[T]
 
@@ -805,7 +801,7 @@ object Trees {
     def defPos(sym: Symbol)(implicit ctx: Context) = ctx.position union sym.coord.toPosition
 
     def Parameter(pname: TermName, tpe: Tree, mods: Modifiers = Modifiers()): ValDef =
-      ValDef(mods | Param, pname, tpe, EmptyTree())
+      ValDef(mods | Param, pname, tpe, emptyTree())
   }
 
   // ----- Helper functions and classes ---------------------------------------
@@ -1064,7 +1060,7 @@ object Trees {
         finishPackageDef(tree.derivedPackageDef(transformSub(pid, c), transform(stats, c)), tree, c, plugins)
       case Annotated(annot, arg) =>
         finishAnnotated(tree.derivedAnnotated(transform(annot, c), transform(arg, c)), tree, c, plugins)
-      case EmptyTree() =>
+      case EmptyTree =>
         finishEmptyTree(tree, tree, c, plugins)
       case tree @ SharedTree(shared) =>
         finishSharedTree(
@@ -1216,7 +1212,7 @@ object Trees {
         tree.derivedPackageDef(transformSub(pid), transform(stats))
       case Annotated(annot, arg) =>
         tree.derivedAnnotated(transform(annot), transform(arg))
-      case EmptyTree() =>
+      case EmptyTree =>
         tree
       case tree @ SharedTree(shared) =>
         sharedMemo get tree match {
@@ -1322,7 +1318,7 @@ object Trees {
         this(this(x, pid), stats)
       case Annotated(annot, arg) =>
         this(this(x, annot), arg)
-      case EmptyTree() =>
+      case EmptyTree =>
         x
       case tree @ SharedTree(shared) =>
         sharedMemo get tree match {
