@@ -6,8 +6,10 @@ import Types._, Names._, Flags._, util.Positions._, Contexts._, Constants._, Sym
 import Denotations._, StdNames._
 import annotation.tailrec
 import language.higherKinds
+import collection.IndexedSeqOptimized
+import collection.immutable.IndexedSeq
 import collection.mutable
-import collection.mutable.ArrayBuffer
+import collection.mutable.Builder
 import parsing.Tokens.Token
 import printing.Printer
 import util.Stats
@@ -639,28 +641,98 @@ object Trees {
    *  The contained trees will be integrated when transformed with
    *  a `transform(List[Tree])` call.
    */
-  case class TempTrees[T >: Untyped](trees: List[Tree[T]]) extends Tree[T] {
+  case class TempTrees[T >: Untyped](trees: Array[Tree[T]])
+    extends Tree[T] with IndexedSeq[Tree[T]] with IndexedSeqOptimized[Tree[T], TempTrees[T]] {
+
     type ThisTree[T >: Untyped] = TempTrees[T]
     override def tpe: T = unsupported("tpe")
+
+    def apply(i: Int): Tree[T] = trees(i)
+    def length: Int = trees.length
+    override def isEmpty: Boolean = trees.isEmpty
+    override def newBuilder: Builder[Tree[T], TempTrees[T]] = new TreesBuilder
+
+    private def flattenArray(trees: Array[Tree[T]], nestedDelta: Int): Array[Tree[T]] = {
+      val flatTrees = new Array[Tree[T]](trees.length + nestedDelta)
+      var i = 0
+      var j = 0
+      while (i < trees.length) {
+        val x = trees(i)
+        i += 1
+        x match {
+          case TempTrees(ys) =>
+            ys.copyToArray(flatTrees, j, ys.length)
+            j += ys.length
+          case _ =>
+            flatTrees(j) = x
+            j += 1
+        }
+      }
+      flatTrees
+    }
+
+    def mapConserve(f: Tree[T] => Tree[T]): TempTrees[T] = {
+      var i = 0
+      var newTrees = trees
+      var nestedSeen = false
+      var nestedDelta = 0
+      while (i < trees.length) {
+        val x = trees(i)
+        val y = f(x)
+        if ((x ne y) && (newTrees eq trees)) {
+          newTrees = new Array[Tree[T]](trees.length)
+          trees.copyToArray(newTrees, 0, i)
+        }
+        y match {
+          case TempTrees(ys) =>
+            nestedSeen = true
+            nestedDelta += (ys.length - 1)
+          case _ =>
+        }
+        newTrees(i) = y
+        i += 1
+      }
+      TempTrees(if (nestedSeen) flattenArray(newTrees, nestedDelta) else newTrees)
+    }
+  }
+
+  object TempTrees {
+    def fromList[T >: Untyped](elems: List[Tree[T]]): TempTrees[T] = apply(elems.toArray)
+  }
+
+  private val defaultTreesBuilderSize = 10
+
+  class TreesBuilder[T >: Untyped] extends Builder[Tree[T], TempTrees[T]] {
+    private var elems: Array[Tree[T]] = null
+    private var length = 0
+
+    private def resizedElems(newLength: Int): Array[Tree[T]] = {
+      val newElems = new Array[Tree[T]](newLength)
+      elems.copyToArray(newElems)
+      newElems
+    }
+
+    private def ensureSize(targetLength: Int) =
+      while (elems.length < targetLength) elems = resizedElems(elems.length * 2)
+
+    override def += (elem: Tree[T]): this.type = {
+      if (elems == null) elems = new Array[Tree[T]](defaultTreesBuilderSize)
+      ensureSize(length + 1)
+      elems(length) = elem
+      length += 1
+      this
+    }
+
+    override def clear() = length = 0
+
+    def result(): TempTrees[T] =
+      TempTrees(if (length == elems.length) elems else resizedElems(length))
+
+    override def sizeHint(n: Int) =
+      if (elems == null) elems = new Array[Tree[T]](n)
   }
 
   // ----- Auxiliary creation methods ------------------
-
-  /** Integrates nested TempTrees in given list of trees */
-  def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] =
-    if (trees exists isTempTrees)
-      trees flatMap {
-        case TempTrees(ts) => ts
-        case t => t :: Nil
-      }
-    else trees
-
-  def combine[T >: Untyped](trees: List[Tree[T]]): Tree[T] = flatten(trees) match {
-    case tree :: Nil => tree
-    case ts => TempTrees[T](ts)
-  }
-
-  private val isTempTrees: Any => Boolean = (_.isInstanceOf[TempTrees[_]])
 
   def Block[T >: Untyped](stat: Tree[T], expr: Tree[T]): Block[T] =
     Block(stat :: Nil, expr)
@@ -902,7 +974,7 @@ object Trees {
       case tree: SharedTree[_] if (shared eq tree.shared) => tree
       case _ => SharedTree(shared).copyAttr(tree)
     }
-    def derivedTempTrees(trees: List[Tree[T]]): TempTrees[T] = tree match {
+    def derivedTempTrees(trees: Array[Tree[T]]): TempTrees[T] = tree match {
       case tree: TempTrees[_] if (trees eq tree.trees) => tree
       case _ => TempTrees(trees).copyAttr(tree)
     }
@@ -1006,7 +1078,7 @@ object Trees {
         tree, c, plugins)
     }
     def transform(trees: List[Tree[T]], c: C): List[Tree[T]] =
-      flatten(trees mapConserve (transform(_, c)))
+      /*flatten*/(trees mapConserve (transform(_, c)))
     def transformSub(tree: Tree[T], c: C): tree.ThisTree[T] =
       transform(tree, c).asInstanceOf[tree.ThisTree[T]]
     def transformSub[TT <: Tree[T]](trees: List[TT], c: C): List[TT] =
@@ -1154,11 +1226,11 @@ object Trees {
             sharedMemo = sharedMemo.updated(tree, tree1)
             tree1
         }
-      case TempTrees(trees) =>
-        tree.derivedTempTrees(transform(trees))
+      case trees: TempTrees[_] =>
+        trees.mapConserve(transform(_))
     }
     def transform(trees: List[Tree[T]]): List[Tree[T]] =
-      flatten(trees mapConserve (transform(_)))
+      /*flatten*/(trees mapConserve (transform(_)))
     def transformSub(tree: Tree[T]): tree.ThisTree[T] =
       transform(tree).asInstanceOf[tree.ThisTree[T]]
     def transformSub[TT <: Tree[T]](trees: List[TT]): List[TT] =

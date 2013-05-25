@@ -292,7 +292,7 @@ object untpd extends Trees.Instance[Untyped] {
             val restDefs =
               for (((named, tpt), n) <- vars.zipWithIndex)
                 yield derivedValDef(mods, named, tpt, selector(n))
-            TempTrees(firstDef :: restDefs)
+            TempTrees.fromList(firstDef :: restDefs)
         }
     }
 
@@ -324,7 +324,7 @@ object untpd extends Trees.Instance[Untyped] {
         val clsSelf = self.derivedValDef(self.mods, self.name, SingletonTypeTree(Ident(name)), self.rhs)
         val clsTmpl = tmpl.derivedTemplate(constr, parents, clsSelf, body)
         val cls = ClassDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, Nil, clsTmpl)
-        TempTrees(List(modul, cls))
+        TempTrees(Array[Tree](modul, cls))
       case SymbolLit(str) =>
         New(ref(defn.SymbolClass.typeConstructor), (Literal(Constant(str)) :: Nil) :: Nil)
       case InterpolatedString(id, strs, elems) =>
@@ -381,8 +381,8 @@ object untpd extends Trees.Instance[Untyped] {
       case ForYield(enums, body) =>
         makeFor(nme.map, nme.flatMap, enums, body) orElse tree
       case PatDef(mods, pats, tpt, rhs) =>
-        val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
-        combine(pats1 map (makePatDef(mods, _, rhs)))
+        val pats1 = TempTrees.fromList(if (tpt.isEmpty) pats else pats map (Typed(_, tpt)))
+        pats1.mapConserve(makePatDef(mods, _, rhs))
       case _ =>
         tree
     }
