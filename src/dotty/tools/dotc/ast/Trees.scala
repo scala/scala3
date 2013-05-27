@@ -8,8 +8,7 @@ import annotation.tailrec
 import language.higherKinds
 import collection.IndexedSeqOptimized
 import collection.immutable.IndexedSeq
-import collection.mutable
-import collection.mutable.Builder
+import collection.mutable.ListBuffer
 import parsing.Tokens.Token
 import printing.Printer
 import util.Stats
@@ -599,19 +598,19 @@ object Trees {
     def forwardTo = arg
   }
 
-  trait AlwaysEmpty[T >: Untyped] extends Tree[T] {
-    override val pos = NoPosition
-    override def tpe = unsupported("tpe")
-    override def withType(tpe: Type) = unsupported("withType")
-    override def isEmpty: Boolean = true
+  trait WithoutType[T >: Untyped] extends Tree[T] {
+    override def tpe = NoType.asInstanceOf[T]
+    override def withType(tpe: Type) = this.asInstanceOf[ThisTree[Type]]
   }
 
-  val EmptyTree: TempTrees[_] = TempTrees(Array[Tree[Untyped]]())
+  val EmptyTree: Thicket[_] = Thicket(Array[Tree[Untyped]]())
 
-  def emptyTree[T >: Untyped](): TempTrees[T] = EmptyTree.asInstanceOf[TempTrees[T]]
+  def emptyTree[T >: Untyped](): Thicket[T] = EmptyTree.asInstanceOf[Thicket[T]]
 
   class EmptyValDef[T >: Untyped] extends ValDef[T](
-    Modifiers[T](Private), nme.WILDCARD, emptyTree[T], emptyTree[T]) with AlwaysEmpty[T]
+    Modifiers[T](Private), nme.WILDCARD, emptyTree[T], emptyTree[T]) with WithoutType[T] {
+    override def isEmpty: Boolean = true
+  }
 
   private object theEmptyValDef extends EmptyValDef[Untyped]
 
@@ -633,100 +632,18 @@ object Trees {
    *  The contained trees will be integrated when transformed with
    *  a `transform(List[Tree])` call.
    */
-  case class TempTrees[T >: Untyped](trees: Array[Tree[T]])
-    extends Tree[T] with IndexedSeq[Tree[T]] with IndexedSeqOptimized[Tree[T], TempTrees[T]] {
-
-    type ThisTree[T >: Untyped] = TempTrees[T]
-    override def tpe: T = unsupported("tpe")
-    override def withType(tpe: Type) = unsupported("withType")
-
-    def apply(i: Int): Tree[T] = trees(i)
-    def length: Int = trees.length
+  case class Thicket[T >: Untyped](trees: Array[Tree[T]])
+    extends Tree[T] with WithoutType[T] {
+    type ThisTree[T >: Untyped] = Thicket[T]
     override def isEmpty: Boolean = trees.isEmpty
-    override def newBuilder: Builder[Tree[T], TempTrees[T]] = new TreesBuilder
-
-    private def flattenArray(trees: Array[Tree[T]], nestedDelta: Int): Array[Tree[T]] = {
-      val flatTrees = new Array[Tree[T]](trees.length + nestedDelta)
-      var i = 0
-      var j = 0
-      while (i < trees.length) {
-        val x = trees(i)
-        i += 1
-        x match {
-          case TempTrees(ys) =>
-            ys.copyToArray(flatTrees, j, ys.length)
-            j += ys.length
-          case _ =>
-            flatTrees(j) = x
-            j += 1
-        }
-      }
-      flatTrees
-    }
-
-    def mapConserve(f: Tree[T] => Tree[T]): TempTrees[T] = {
-      var i = 0
-      var newTrees = trees
-      var nestedSeen = false
-      var nestedDelta = 0
-      while (i < trees.length) {
-        val x = trees(i)
-        val y = f(x)
-        if ((x ne y) && (newTrees eq trees)) {
-          newTrees = new Array[Tree[T]](trees.length)
-          trees.copyToArray(newTrees, 0, i)
-        }
-        y match {
-          case TempTrees(ys) =>
-            nestedSeen = true
-            nestedDelta += (ys.length - 1)
-          case _ =>
-        }
-        newTrees(i) = y
-        i += 1
-      }
-      TempTrees(if (nestedSeen) flattenArray(newTrees, nestedDelta) else newTrees)
-    }
+    override def toString = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
   }
 
-  object TempTrees {
+  object Thicket {
     def apply[T >: Untyped](): Tree[T] = emptyTree()
-    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T]): TempTrees[T] = TempTrees(Array[Tree[T]](x1, x2))
-    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T], x3: Tree[T]): TempTrees[T] = TempTrees(Array[Tree[T]](x1, x2, x3))
-
-    def fromList[T >: Untyped](elems: List[Tree[T]]): TempTrees[T] = apply(elems.toArray)
-  }
-
-  private val defaultTreesBuilderSize = 10
-
-  class TreesBuilder[T >: Untyped] extends Builder[Tree[T], TempTrees[T]] {
-    private var elems: Array[Tree[T]] = null
-    private var length = 0
-
-    private def resizedElems(newLength: Int): Array[Tree[T]] = {
-      val newElems = new Array[Tree[T]](newLength)
-      elems.copyToArray(newElems)
-      newElems
-    }
-
-    private def ensureSize(targetLength: Int) =
-      while (elems.length < targetLength) elems = resizedElems(elems.length * 2)
-
-    override def += (elem: Tree[T]): this.type = {
-      if (elems == null) elems = new Array[Tree[T]](defaultTreesBuilderSize)
-      ensureSize(length + 1)
-      elems(length) = elem
-      length += 1
-      this
-    }
-
-    override def clear() = length = 0
-
-    def result(): TempTrees[T] =
-      TempTrees(if (length == elems.length) elems else resizedElems(length))
-
-    override def sizeHint(n: Int) =
-      if (elems == null) elems = new Array[Tree[T]](n)
+    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T]): Thicket[T] = Thicket(Array[Tree[T]](x1, x2))
+    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T], x3: Tree[T]): Thicket[T] = Thicket(Array[Tree[T]](x1, x2, x3))
+    def apply[T >: Untyped](elems: List[Tree[T]]): Thicket[T] = apply(elems.toArray)
   }
 
   // ----- Auxiliary creation methods ------------------
@@ -794,7 +711,7 @@ object Trees {
     type PackageDef = Trees.PackageDef[T]
     type Annotated = Trees.Annotated[T]
     type SharedTree = Trees.SharedTree[T]
-    type TempTrees = Trees.TempTrees[T]
+    type Thicket = Trees.Thicket[T]
 
     protected implicit def pos(implicit ctx: Context): Position = ctx.position
 
@@ -970,9 +887,9 @@ object Trees {
       case tree: SharedTree[_] if (shared eq tree.shared) => tree
       case _ => SharedTree(shared).copyAttr(tree)
     }
-    def derivedTempTrees(trees: Array[Tree[T]]): TempTrees[T] = tree match {
-      case tree: TempTrees[_] if (trees eq tree.trees) => tree
-      case _ => TempTrees(trees).copyAttr(tree)
+    def derivedThicket(trees: Array[Tree[T]]): Thicket[T] = tree match {
+      case tree: Thicket[_] if (trees eq tree.trees) => tree
+      case _ => Thicket(trees).copyAttr(tree)
     }
   }
 
@@ -1074,7 +991,7 @@ object Trees {
         tree, c, plugins)
     }
     def transform(trees: List[Tree[T]], c: C): List[Tree[T]] =
-      /*flatten*/(trees mapConserve (transform(_, c)))
+      flatten(trees) mapConserve (transform(_, c))
     def transformSub(tree: Tree[T], c: C): tree.ThisTree[T] =
       transform(tree, c).asInstanceOf[tree.ThisTree[T]]
     def transformSub[TT <: Tree[T]](trees: List[TT], c: C): List[TT] =
@@ -1128,6 +1045,27 @@ object Trees {
     def finishSharedTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
   }
 
+  def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
+    var buf: ListBuffer[Tree[T]] = null
+    var xs = trees
+    while (xs.nonEmpty) {
+      xs.head match {
+        case Thicket(elems) =>
+          if (buf == null) buf = new ListBuffer
+          var ys = trees
+          while (ys ne xs) {
+            buf += ys.head
+            ys = ys.tail
+          }
+          buf ++= elems
+        case tree =>
+          if (buf != null) buf += tree
+      }
+      xs = xs.tail
+    }
+    if (buf != null) buf.toList else trees
+  }
+
   abstract class TreeTransformer[T >: Untyped] {
     var sharedMemo: Map[SharedTree[T], SharedTree[T]] = Map()
 
@@ -1157,7 +1095,7 @@ object Trees {
       case Assign(lhs, rhs) =>
         tree.derivedAssign(transform(lhs), transform(rhs))
       case Block(stats, expr) =>
-        tree.derivedBlock(transform(stats), transform(expr))
+        tree.derivedBlock(transformStats(stats), transform(expr))
       case If(cond, thenp, elsep) =>
         tree.derivedIf(transform(cond), transform(thenp), transform(elsep))
       case Closure(env, meth) =>
@@ -1203,17 +1141,19 @@ object Trees {
       case TypeDef(mods, name, tparams, rhs) =>
         tree.derivedTypeDef(mods, name, transformSub(tparams), transform(rhs))
       case Template(constr, parents, self, body) =>
-        tree.derivedTemplate(transformSub(constr), transform(parents), transformSub(self), transform(body))
+        tree.derivedTemplate(transformSub(constr), transform(parents), transformSub(self), transformStats(body))
       case ClassDef(mods, name, tparams, impl) =>
         tree.derivedClassDef(mods, name, transformSub(tparams), transformSub(impl))
       case Import(expr, selectors) =>
         tree.derivedImport(transform(expr), selectors)
       case PackageDef(pid, stats) =>
-        tree.derivedPackageDef(transformSub(pid), transform(stats))
+        tree.derivedPackageDef(transformSub(pid), transformStats(stats))
       case Annotated(annot, arg) =>
         tree.derivedAnnotated(transform(annot), transform(arg))
-      case EmptyTree =>
-        tree
+      case Thicket(trees) =>
+        val ts1 = trees.toList
+        val ts2 = transform(ts1)
+        if (ts1 eq ts2) tree else Thicket(ts2)
       case tree @ SharedTree(shared) =>
         sharedMemo get tree match {
           case Some(tree1) => tree1
@@ -1222,11 +1162,11 @@ object Trees {
             sharedMemo = sharedMemo.updated(tree, tree1)
             tree1
         }
-      case trees: TempTrees[_] =>
-        trees.mapConserve(transform(_))
     }
+    def transformStats(trees: List[Tree[T]]): List[Tree[T]] =
+      transform(trees)
     def transform(trees: List[Tree[T]]): List[Tree[T]] =
-      /*flatten*/(trees mapConserve (transform(_)))
+      flatten(trees) mapConserve (transform(_))
     def transformSub(tree: Tree[T]): tree.ThisTree[T] =
       transform(tree).asInstanceOf[tree.ThisTree[T]]
     def transformSub[TT <: Tree[T]](trees: List[TT]): List[TT] =
@@ -1236,7 +1176,7 @@ object Trees {
   abstract class TreeAccumulator[X, T >: Untyped] extends ((X, Tree[T]) => X) {
     var sharedMemo: Map[SharedTree[T], X] = Map()
     def apply(x: X, tree: Tree[T]): X
-    def apply(x: X, trees: List[Tree[T]]): X = (x /: trees)(apply)
+    def apply(x: X, trees: Traversable[Tree[T]]): X = (x /: trees)(apply)
     def foldOver(x: X, tree: Tree[T]): X = tree match {
       case Ident(name) =>
         x
@@ -1318,8 +1258,8 @@ object Trees {
         this(this(x, pid), stats)
       case Annotated(annot, arg) =>
         this(this(x, annot), arg)
-      case EmptyTree =>
-        x
+      case Thicket(ts) =>
+        this(x, ts)
       case tree @ SharedTree(shared) =>
         sharedMemo get tree match {
           case Some(x1) => x1

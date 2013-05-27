@@ -300,12 +300,12 @@ object tpd extends Trees.Instance[Type] {
    *  the RHS of a method contains a class owned by the method, this would be
    *  an error.)
    */
-  def ModuleDef(sym: TermSymbol, body: List[Tree])(implicit ctx: Context): tpd.TempTrees = {
+  def ModuleDef(sym: TermSymbol, body: List[Tree])(implicit ctx: Context): tpd.Thicket = {
     val modcls = sym.moduleClass.asClass
     val constr = DefDef(modcls.primaryConstructor.asTerm, EmptyTree)
     val clsdef = ClassDef(modcls, Nil, constr, body)
     val valdef = ValDef(sym, New(modcls.typeConstructor))
-    TempTrees(valdef, clsdef)
+    Thicket(valdef, clsdef)
   }
 
   private class FindLocalDummyAccumulator(cls: ClassSymbol)(implicit ctx: Context) extends TreeAccumulator[Symbol] {
@@ -354,11 +354,8 @@ object tpd extends Trees.Instance[Type] {
   }
 
   class TreeMapper(val typeMap: TypeMap = IdentityTypeMap, val ownerMap: Symbol => Symbol = identity)(implicit ctx: Context) extends TreeTransformer {
-    override def transform(tree: tpd.Tree): tpd.Tree = {
-      val tree1 =
-        if (tree.isEmpty) tree
-        else tree.withType(typeMap(tree.tpe))
-      val tree2 = tree1 match {
+    override def transform(tree: tpd.Tree): tpd.Tree = super.transform {
+      tree.withType(typeMap(tree.tpe)) match {
         case bind: tpd.Bind =>
           val sym = bind.symbol
           val newOwner = ownerMap(sym.owner)
@@ -366,13 +363,12 @@ object tpd extends Trees.Instance[Type] {
           if ((newOwner ne sym.owner) || (newInfo ne sym.info))
             bind.withType(tpd.refType(sym.copy(owner = newOwner, info = newInfo)))
           else
-            tree1
-        case _ =>
+            bind
+        case tree1 =>
           tree1
       }
-      super.transform(tree2)
     }
-    override def transform(trees: List[tpd.Tree]) = {
+    override def transformStats(trees: List[tpd.Tree]) = {
       val locals = localSyms(trees)
       val mapped = ctx.mapSymbols(locals, typeMap, ownerMap)
       if (locals eq mapped) super.transform(trees)
