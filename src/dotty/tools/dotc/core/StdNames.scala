@@ -380,6 +380,7 @@ object StdNames {
     val info: N                 = "info"
     val inlinedEquals: N        = "inlinedEquals"
     val isArray: N              = "isArray"
+    val isDefined: N            = "isDefined"
     val isDefinedAt: N          = "isDefinedAt"
     val isEmpty: N              = "isEmpty"
     val isInstanceOf_ : N       = "isInstanceOf"

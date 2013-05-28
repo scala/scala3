@@ -24,15 +24,11 @@ object FreshNameCreator {
      * that the returned name has never been returned by a previous
      * call to this function (provided the prefix does not end in a digit).
      */
-    def newName(prefix: String): String = {
+    def newName(prefix: String = ""): String = {
       val safePrefix = prefix.replaceAll("""[<>]""", """\$""")
       counters(safePrefix) += 1
-
-      safePrefix + counters(safePrefix)
-    }
-    def newName(): String = {
-      counter += 1
-      "$" + counter + "$"
+      val counter = counters(safePrefix)
+      if (prefix.isEmpty) "$" + counter + "$" else safePrefix + counter
     }
   }
 }

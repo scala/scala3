@@ -302,7 +302,7 @@ object Trees {
    *  The envelope of a ModDefTree contains the whole definition and his its point
    *  on the opening keyword (or the next token after that if keyword is missing).
    */
-  trait ModDefTree[T >: Untyped] extends DefTree[T] {
+  trait ModDefTree[T >: Untyped] extends NameTree[T] with DefTree[T] {
     type ThisTree[T >: Untyped] <: ModDefTree[T]
     def mods: Modifiers[T]
     override def envelope: Position = mods.pos union pos union initialPos
@@ -465,10 +465,14 @@ object Trees {
 
   /** A type tree that represents an existing or inferred type */
   case class TypeTree[T >: Untyped](original: Tree[T] = emptyTree[T])
-    extends DenotingTree[T] with TypTree[T] {
+    extends DenotingTree[T] with TypTree[T]
     type ThisTree[T >: Untyped] = TypeTree[T]
     override def initialPos = NoPosition
     override def isEmpty = !hasType && original.isEmpty
+  }
+
+  object TypeTree {
+    def apply(tpe: Type): TypeTree[Type] = TypeTree().withType(tpe)
   }
 
   /** ref.type */
@@ -541,14 +545,14 @@ object Trees {
 
   /** mods val name: tpt = rhs */
   case class ValDef[T >: Untyped](mods: Modifiers[T], name: TermName, tpt: Tree[T], rhs: Tree[T])
-    extends NameTree[T] with ModDefTree[T] {
+    extends ModDefTree[T] {
     type ThisTree[T >: Untyped] = ValDef[T]
     def withName(name: Name) = this.derivedValDef(mods, name.toTermName, tpt, rhs)
   }
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
   case class DefDef[T >: Untyped](mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])
-    extends NameTree[T] with ModDefTree[T] {
+    extends ModDefTree[T] {
     type ThisTree[T >: Untyped] = DefDef[T]
     def withName(name: Name) = this.derivedDefDef(mods, name.toTermName, tparams, vparamss, tpt, rhs)
   }
@@ -557,7 +561,7 @@ object Trees {
    *  mods type name >: lo <: hi, if rhs = TypeBoundsTree(lo, hi)
    */
   case class TypeDef[T >: Untyped](mods: Modifiers[T], name: TypeName, tparams: List[TypeDef[T]], rhs: Tree[T])
-    extends NameTree[T] with ModDefTree[T] {
+    extends ModDefTree[T] {
     type ThisTree[T >: Untyped] = TypeDef[T]
     def withName(name: Name) = this.derivedTypeDef(mods, name.toTypeName, tparams, rhs)
   }
@@ -570,7 +574,7 @@ object Trees {
 
   /** mods class name[tparams] impl */
   case class ClassDef[T >: Untyped](mods: Modifiers[T], name: TypeName, tparams: List[TypeDef[T]], impl: Template[T])
-    extends NameTree[T] with ModDefTree[T] {
+    extends ModDefTree[T] {
     type ThisTree[T >: Untyped] = ClassDef[T]
     def withName(name: Name) = this.derivedClassDef(mods, name.toTypeName, tparams, impl)
   }
@@ -716,9 +720,6 @@ object Trees {
     protected implicit def pos(implicit ctx: Context): Position = ctx.position
 
     def defPos(sym: Symbol)(implicit ctx: Context) = ctx.position union sym.coord.toPosition
-
-    def Parameter(pname: TermName, tpe: Tree, mods: Modifiers = Modifiers()): ValDef =
-      ValDef(mods | Param, pname, tpe, emptyTree())
   }
 
   // ----- Helper functions and classes ---------------------------------------

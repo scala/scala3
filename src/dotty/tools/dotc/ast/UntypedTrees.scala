@@ -70,12 +70,17 @@ object untpd extends Trees.Instance[Untyped] {
     case _ => Tuple(ts)
   }
 
+  def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers = Modifiers()): ValDef =
+    ValDef(mods | Param, pname, tpe, emptyTree())
+
+  def makeSyntheticParameter(n: Int = 1, tpt: Tree = EmptyTree)(implicit ctx: Context): ValDef =
+    ValDef(Modifiers(SyntheticTermParam), nme.syntheticParamName(n), TypeTree(), EmptyTree)
+
+  def refOfDef(tree: NameTree) = Ident(tree.name)
+
 // ------ Untyped tree desugaring ------------------------------------------
 
   def desugar(tree: Tree, mode: Mode.Value)(implicit ctx: Context): Tree = {
-
-    def makeSyntheticParameter(): ValDef =
-      ValDef(Modifiers(SyntheticTermParam), ctx.freshName().toTermName, TypeTree(), EmptyTree)
 
     def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
       val ldef = DefDef(Modifiers(Label), lname, Nil, ListOfNil, TypeTree(), rhs)
@@ -437,6 +442,21 @@ object untpd extends Trees.Instance[Untyped] {
       val templ1 = templ.derivedTemplate(constr1, parents, self, body)
       tree.derivedClassDef(mods, name, tparams1, templ1)
     case _ => tree
+  }
+
+  /** Expand to:
+   *  <module> val name: name$ = New(name$)
+   *  <module> final class name$ extends parents { self: name.type => body }
+   */
+  def desugarModuleDef(mdef: ModuleDef): Tree = {
+    val ModuleDef(mods, name, tmpl @ Template(constr, parents, self, body)) = mdef
+    val clsName = name.moduleClassName
+    val clsRef = Ident(clsName)
+    val modul = ValDef(mods | ModuleCreationFlags, name, clsRef, New(clsRef, Nil))
+    val clsSelf = self.derivedValDef(self.mods, self.name, SingletonTypeTree(Ident(name)), self.rhs)
+    val clsTmpl = tmpl.derivedTemplate(constr, parents, clsSelf, body)
+    val cls = ClassDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, Nil, clsTmpl)
+    Thicket(modul, cls)
   }
 
   def desugarAnonClass(templ: Template): Tree = {

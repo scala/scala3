@@ -470,6 +470,11 @@ object SymDenotations {
     final def enclosingClass(implicit ctx: Context): Symbol =
       if (isClass) symbol else owner.enclosingClass
 
+    final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {
+      val cls = enclosingClass
+      if (cls.name == name) cls else cls.owner.enclosingClassNamed(name)
+    }
+
     /** The top-level class containing this denotation,
      *  except for a toplevel module, where its module class is returned.
      */

@@ -1556,7 +1556,7 @@ object Types {
 
 
   /** The type of an import clause tree */
-  case class ImportType(expr: SharedTree) extends UncachedGroundType
+  case class ImportType(expr: Tree) extends UncachedGroundType
 
   /** Sentinal for "missing type" */
   case object NoType extends CachedGroundType {

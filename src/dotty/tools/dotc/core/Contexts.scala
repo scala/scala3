@@ -293,8 +293,7 @@ object Contexts {
     /** The standard fresh name creator */
     val freshNames = new FreshNameCreator.Default
 
-    def freshName(): String = freshNames.newName()
-    def freshName(prefix: String): String = freshNames.newName(prefix)
+    def freshName(prefix: String = ""): String = freshNames.newName(prefix)
     def freshName(prefix: Name): String = freshName(prefix.toString)
 
     /** The loader that loads the members of _root_ */

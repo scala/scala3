@@ -70,6 +70,10 @@ object Decorators {
       }
   }
 
+  implicit class ListOfListDecorator[T](val xss: List[List[T]]) extends AnyVal {
+    def nestedMap[U](f: T => U): List[List[U]] = xss map (_ map f)
+  }
+
   implicit class TextToString(val text: Text) extends AnyVal {
     def show(implicit ctx: Context) = text.mkString(ctx.settings.pageWidth.value)
   }
