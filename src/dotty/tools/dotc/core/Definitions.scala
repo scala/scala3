@@ -33,7 +33,7 @@ class Definitions(implicit ctx: Context) {
         val paramDecls = newScope
         val typeParam = newSyntheticTypeParam(cls, paramDecls)
         def instantiate(tpe: Type) =
-          if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.symbolicRef)
+          if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.symTypeRef)
           else tpe
         val parents = parentConstrs.toList map instantiate
         val parentRefs: List[TypeRef] = ctx.normalizeToRefs(parents, cls, paramDecls)

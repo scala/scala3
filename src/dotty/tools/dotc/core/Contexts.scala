@@ -8,15 +8,17 @@ import Names._
 import Phases._
 import Types._
 import Symbols._
+import Scopes._
 import TypeComparers._, NameOps._, SymDenotations._, util.Positions._
-import ast.tpd._, util.FreshNameCreator
+import ast.Trees._, ast.untpd
+import util.FreshNameCreator
+import typer._
 import config.Settings._
-import config.ScalaSettings
 import reporting._
 import collection.mutable
 import collection.immutable.BitSet
 import printing._
-import config.{Settings, Platform, JavaPlatform}
+import config.{Settings, ScalaSettings, Platform, JavaPlatform}
 import language.implicitConversions
 
 object Contexts {
@@ -48,6 +50,7 @@ object Contexts {
                             with Symbols
                             with SymDenotations
                             with Reporting
+                            with NamerContextOps
                             with Cloneable { thiscontext =>
     implicit def ctx: Context = this
 
@@ -75,6 +78,14 @@ object Contexts {
     private[this] var _constraints: Constraints = _
     protected def constraints_=(constraints: Constraints) = _constraints = constraints
     def constraints: Constraints = _constraints
+
+    /** The scope nesting level */
+    private[this] var _scopeNestingLevel: Int = 0
+    def scopeNestingLevel: Int = {
+      if (this._scopeNestingLevel == outer.scopeNestingLevel && this.scope != outer.scope)
+        this._scopeNestingLevel = outer.scopeNestingLevel + 1
+      this._scopeNestingLevel
+    }
 
     /** The current type comparer */
     private[this] var _typeComparer: TypeComparer = _
@@ -113,9 +124,19 @@ object Contexts {
     def sstate: SettingsState = _sstate
 
     /** The current tree */
-    private[this] var _tree: Tree = _
-    protected def tree_=(tree: Tree) = _tree = tree
-    def tree: Tree = _tree
+    private[this] var _tree: Tree[_ >: Untyped] = _
+    protected def tree_=(tree: Tree[_ >: Untyped]) = _tree = tree
+    def tree: Tree[_ >: Untyped] = _tree
+
+    /** The current scope */
+    private[this] var _scope: Scope = _
+    protected def scope_=(scope: Scope) = _scope = scope
+    def scope: Scope = _scope
+
+    /** The currently visible imports */
+    private[this] var _imports: List[ImportInfo] = _
+    protected def imports_=(imports: List[ImportInfo]) = _imports = imports
+    def imports: List[ImportInfo] = _imports
 
     /** The current reporter */
     private[this] var _reporter: Reporter = _
@@ -123,7 +144,7 @@ object Contexts {
     def reporter: Reporter = _reporter
 
     /** An optional diagostics buffer than is used by some checking code
-     *  to leave provide more information in the buffer if it exists.
+     *  to provide more information in the buffer if it exists.
      */
     private var _diagnostics: Option[StringBuilder] = _
     protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
@@ -133,6 +154,7 @@ object Contexts {
     private var _moreProperties: Map[String, Any] = _
     protected def moreProperties_=(moreProperties: Map[String, Any]) = _moreProperties = moreProperties
     def moreProperties: Map[String, Any] = _moreProperties
+
 
     /** If -Ydebug is on, the top of the stack trace where this context
      *  was created, otherwise `null`.
@@ -165,7 +187,7 @@ object Contexts {
     /** The next outer context whose tree is a template or package definition */
     def enclTemplate: Context = {
       var c = this
-      while (c != NoContext && !c.tree.isInstanceOf[Template] && !c.tree.isInstanceOf[PackageDef])
+      while (c != NoContext && !c.tree.isInstanceOf[Template[_]] && !c.tree.isInstanceOf[PackageDef[_]])
         c = c.outer
       c
     }
@@ -232,7 +254,9 @@ object Contexts {
     def withRefinedPrinter(printer: Context => Printer): this.type = { this.refinedPrinter = printer; this }
     def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
     def withSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
-    def withTree(tree: Tree): this.type = { this.tree = tree; this }
+    def withTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
+    def withScope(scope: Scope): this.type = { this.scope = scope; this }
+    def withImport(importInfo: ImportInfo): this.type = { this.imports = importInfo :: imports; this }
     def withReporter(reporter: Reporter): this.type = { this.reporter = reporter; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
     def withMoreProperties(moreProperties: Map[String, Any]): this.type = { this.moreProperties = moreProperties; this }
@@ -259,7 +283,7 @@ object Contexts {
     refinedPrinter = new RefinedPrinter(_)
     owner = NoSymbol
     sstate = settings.defaultState
-    tree = EmptyTree
+    tree = untpd.EmptyTree
     reporter = new ConsoleReporter()(this)
     diagnostics = None
     moreProperties = Map.empty

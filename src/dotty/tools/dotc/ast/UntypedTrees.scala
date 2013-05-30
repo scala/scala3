@@ -57,6 +57,9 @@ object untpd extends Trees.Instance[Untyped] {
   def makeConstructor(mods: Modifiers, vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     DefDef(mods, nme.CONSTRUCTOR, Nil, vparamss, TypeTree(), rhs)
 
+  def emptyConstructor(implicit ctx: Context): DefDef =
+    makeConstructor(Modifiers(), Nil)
+
   def makeSelfDef(name: TermName, tpt: Tree)(implicit ctx: Context) =
     ValDef(Modifiers(Private), name, tpt, EmptyTree)
 

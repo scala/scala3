@@ -62,5 +62,5 @@ object Annotations {
   }
 
   def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context) =
-    Annotation(defn.ThrowsAnnot, Ident(cls.symbolicRef))
+    Annotation(defn.ThrowsAnnot, Ident(cls.symTypeRef))
 }

@@ -102,7 +102,7 @@ object SymDenotations {
       }
     }
 
-    protected[core] final def info_=(tp: Type) = {
+    protected[dotc] final def info_=(tp: Type) = {
       if ((this is ModuleClass) && !(this is PackageClass))
         tp match {
           case ClassInfo(_, _, _, _, ost) =>
@@ -585,20 +585,23 @@ object SymDenotations {
      *  @throws ClassCastException is this is not a type
      */
     def typeConstructor(implicit ctx: Context): TypeRef =
-      if ((this is PackageClass) || owner.isTerm) symbolicRef
+      if ((this is PackageClass) || owner.isTerm) symTypeRef
       else TypeRef(owner.thisType, name.asTypeName).withDenot(this)
 
     /** The symbolic typeref representing the type constructor for this type.
      *  @throws ClassCastException is this is not a type
      */
-    final def symbolicRef(implicit ctx: Context): TypeRef =
+    final def symTypeRef(implicit ctx: Context): TypeRef =
       TypeRef.withSym(owner.thisType, symbol.asType)
 
-    /** The termref pointing to this termsymbol
+    /** The symbolic termref pointing to this termsymbol
      *  @throws ClassCastException is this is not a term
      */
-    def termRef(implicit ctx: Context): TermRef =
+    def symTermRef(implicit ctx: Context): TermRef =
       TermRef.withSym(owner.thisType, symbol.asTerm)
+
+    def symRef(implicit ctx: Context): NamedType =
+      NamedType.withSym(owner.thisType, symbol)
 
     /** The variance of this type parameter as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
@@ -1042,7 +1045,7 @@ object SymDenotations {
         // only apply to the module but not to the module class. The right solution
         // is to have the module class completer set the annotations of both the
         // class and the module.
-      denot.info = mclass.symbolicRef
+      denot.info = mclass.symTypeRef
       denot.privateWithin = from.privateWithin
     }
   }

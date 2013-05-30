@@ -216,6 +216,11 @@ object Trees {
     /** Is this tree either the empty tree or the empty ValDef? */
     def isEmpty: Boolean = false
 
+    /** Convert tree to a list. Gives a singleton list, except
+     *  for thickets which return their element trees.
+     */
+    def toList: List[Tree[T]] = this :: Nil
+
     /** if this tree is the empty tree, the alternative, else this tree */
     def orElse(that: => Tree[T]): Tree[T] =
       if (this eq EmptyTree) that else this
@@ -465,7 +470,7 @@ object Trees {
 
   /** A type tree that represents an existing or inferred type */
   case class TypeTree[T >: Untyped](original: Tree[T] = emptyTree[T])
-    extends DenotingTree[T] with TypTree[T]
+    extends DenotingTree[T] with TypTree[T] {
     type ThisTree[T >: Untyped] = TypeTree[T]
     override def initialPos = NoPosition
     override def isEmpty = !hasType && original.isEmpty
@@ -607,7 +612,7 @@ object Trees {
     override def withType(tpe: Type) = this.asInstanceOf[ThisTree[Type]]
   }
 
-  val EmptyTree: Thicket[_] = Thicket(Array[Tree[Untyped]]())
+  val EmptyTree: Thicket[_] = Thicket(Nil)
 
   def emptyTree[T >: Untyped](): Thicket[T] = EmptyTree.asInstanceOf[Thicket[T]]
 
@@ -636,18 +641,18 @@ object Trees {
    *  The contained trees will be integrated when transformed with
    *  a `transform(List[Tree])` call.
    */
-  case class Thicket[T >: Untyped](trees: Array[Tree[T]])
+  case class Thicket[T >: Untyped](trees: List[Tree[T]])
     extends Tree[T] with WithoutType[T] {
     type ThisTree[T >: Untyped] = Thicket[T]
     override def isEmpty: Boolean = trees.isEmpty
+    override def toList: List[Tree[T]] = trees
     override def toString = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
   }
 
   object Thicket {
     def apply[T >: Untyped](): Tree[T] = emptyTree()
-    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T]): Thicket[T] = Thicket(Array[Tree[T]](x1, x2))
-    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T], x3: Tree[T]): Thicket[T] = Thicket(Array[Tree[T]](x1, x2, x3))
-    def apply[T >: Untyped](elems: List[Tree[T]]): Thicket[T] = apply(elems.toArray)
+    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T]): Thicket[T] = Thicket(List(x1, x2))
+    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T], x3: Tree[T]): Thicket[T] = Thicket(List(x1, x2, x3))
   }
 
   // ----- Auxiliary creation methods ------------------
@@ -888,7 +893,7 @@ object Trees {
       case tree: SharedTree[_] if (shared eq tree.shared) => tree
       case _ => SharedTree(shared).copyAttr(tree)
     }
-    def derivedThicket(trees: Array[Tree[T]]): Thicket[T] = tree match {
+    def derivedThicket(trees: List[Tree[T]]): Thicket[T] = tree match {
       case tree: Thicket[_] if (trees eq tree.trees) => tree
       case _ => Thicket(trees).copyAttr(tree)
     }

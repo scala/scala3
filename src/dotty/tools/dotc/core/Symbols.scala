@@ -226,7 +226,7 @@ trait Symbols { this: Context =>
     flags: FlagSet,
     boundsFn: List[TypeRef] => List[Type]) = {
     val tparams = names map (_ => newNakedSymbol[TypeName](NoCoord))
-    val bounds = boundsFn(tparams map (_.symbolicRef))
+    val bounds = boundsFn(tparams map (_.symTypeRef))
     (names, tparams, bounds).zipped foreach { (name, tparam, bound) =>
       tparam.denot = SymDenotation(tparam, owner, name, flags | TypeParamCreationFlags, bound)
     }

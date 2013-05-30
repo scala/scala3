@@ -5,8 +5,7 @@ package util
 import scala.collection.mutable
 
 trait FreshNameCreator {
-  def newName(): String
-  def newName(prefix: String): String
+  def newName(prefix: String = ""): String
 
   @deprecated("use newName(prefix)", "2.9.0")
   def newName(pos: scala.reflect.internal.util.Position, prefix: String): String = newName(prefix)
@@ -24,7 +23,7 @@ object FreshNameCreator {
      * that the returned name has never been returned by a previous
      * call to this function (provided the prefix does not end in a digit).
      */
-    def newName(prefix: String = ""): String = {
+    def newName(prefix: String): String = {
       val safePrefix = prefix.replaceAll("""[<>]""", """\$""")
       counters(safePrefix) += 1
       val counter = counters(safePrefix)

@@ -313,7 +313,7 @@ object Types {
           // member in Super instead of Sub.
           // As an example of this in the wild, see
           // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
-          tp.cls.symbolicRef.findMember(name, pre, excluded) orElse d
+          tp.cls.symTypeRef.findMember(name, pre, excluded) orElse d
       case tp: TypeRef =>
         tp.denot.findMember(name, pre, excluded)
       case tp: TypeProxy =>

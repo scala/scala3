@@ -264,12 +264,12 @@ object Parsers {
     */
     def convertToParam(tree: Tree, mods: Modifiers = Modifiers(), expected: String = "formal parameter"): ValDef = tree match {
       case Ident(name) =>
-        Parameter(name.asTermName, TypeTree(), mods) withPos tree.pos
+        makeParameter(name.asTermName, TypeTree(), mods) withPos tree.pos
       case Typed(Ident(name), tpt) =>
-        Parameter(name.asTermName, tpt, mods) withPos tree.pos
+        makeParameter(name.asTermName, tpt, mods) withPos tree.pos
       case _ =>
         syntaxError(s"not a legal $expected (${tree.getClass})", tree.pos)
-        Parameter(nme.ERROR, tree, mods)
+        makeParameter(nme.ERROR, tree, mods)
     }
 
     /** Convert (qual)ident to type identifier
