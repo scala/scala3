@@ -120,7 +120,7 @@ abstract class Namer { typer: Typer =>
       sym
     }
     tree match {
-      case tree: ModDefTree =>
+      case tree: MemberDef =>
         val sym = createSym(tree.name, tree.mods.flags, privateWithinClass(tree.mods))
         ctx.enterSym(sym)
         sym

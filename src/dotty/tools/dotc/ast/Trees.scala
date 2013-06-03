@@ -37,7 +37,7 @@ object Trees {
     def pos: Position = curPos
 
     /** The envelope containing the item in its entirety. Envelope is different from
-     *  `pos` for definitions (instances of ModDefTree).
+     *  `pos` for definitions (instances of MemberDef).
      */
     def envelope: Position = curPos.toSynthetic
 
@@ -303,18 +303,18 @@ object Trees {
   }
 
   /** Tree defines a new symbol and carries modifiers.
-   *  The position of a ModDefTree contains only the defined identifier or pattern.
-   *  The envelope of a ModDefTree contains the whole definition and his its point
+   *  The position of a MemberDef contains only the defined identifier or pattern.
+   *  The envelope of a MemberDef contains the whole definition and his its point
    *  on the opening keyword (or the next token after that if keyword is missing).
    */
-  trait ModDefTree[T >: Untyped] extends NameTree[T] with DefTree[T] {
-    type ThisTree[T >: Untyped] <: ModDefTree[T]
+  trait MemberDef[T >: Untyped] extends NameTree[T] with DefTree[T] {
+    type ThisTree[T >: Untyped] <: MemberDef[T]
     def mods: Modifiers[T]
     override def envelope: Position = mods.pos union pos union initialPos
   }
 
   /** A ValDef or DefDef tree */
-  trait ValOrDefDef[T >: Untyped] extends ModDefTree[T] {
+  trait ValOrDefDef[T >: Untyped] extends MemberDef[T] {
     def tpt: Tree[T]
     def rhs: Tree[T]
   }
@@ -572,7 +572,7 @@ object Trees {
    *  mods type name >: lo <: hi, if rhs = TypeBoundsTree(lo, hi)
    */
   case class TypeDef[T >: Untyped](mods: Modifiers[T], name: TypeName, tparams: List[TypeDef[T]], rhs: Tree[T])
-    extends ModDefTree[T] {
+    extends MemberDef[T] {
     type ThisTree[T >: Untyped] = TypeDef[T]
     def withName(name: Name) = this.derivedTypeDef(mods, name.toTypeName, tparams, rhs)
   }
@@ -585,7 +585,7 @@ object Trees {
 
   /** mods class name[tparams] impl */
   case class ClassDef[T >: Untyped](mods: Modifiers[T], name: TypeName, tparams: List[TypeDef[T]], impl: Template[T])
-    extends ModDefTree[T] {
+    extends MemberDef[T] {
     type ThisTree[T >: Untyped] = ClassDef[T]
     def withName(name: Name) = this.derivedClassDef(mods, name.toTypeName, tparams, impl)
   }
@@ -687,7 +687,7 @@ object Trees {
     type NameTree = Trees.NameTree[T]
     type RefTree = Trees.RefTree[T]
     type DefTree = Trees.DefTree[T]
-    type ModDefTree = Trees.ModDefTree[T]
+    type MemberDef = Trees.MemberDef[T]
     type ValOrDefDef = Trees.ValOrDefDef[T]
 
     type Ident = Trees.Ident[T]

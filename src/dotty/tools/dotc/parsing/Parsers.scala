@@ -1301,8 +1301,8 @@ object Parsers {
     }
 
     private def compatible(flags1: FlagSet, flags2: FlagSet): Boolean = (
-         flags1 == EmptyFlags
-      || flags2 == EmptyFlags
+         flags1.isEmpty
+      || flags2.isEmpty
       || flags1.isTermFlags && flags2.isTermFlags
       || flags1.isTypeFlags && flags2.isTypeFlags
     )
@@ -1481,7 +1481,7 @@ object Parsers {
               if (in.token == ARROW) {
                 if (owner.isTypeName && !(mods is Local))
                   syntaxError(s"${if (mods is Mutable) "`var'" else "`val'"} parameters may not be call-by-name")
-                else if (implicitFlag != EmptyFlags)
+                else if (!implicitFlag.isEmpty)
                   syntaxError("implicit parameters may not be call-by-name")
               }
               paramType()
@@ -1511,7 +1511,7 @@ object Parsers {
         if (in.token == LPAREN)
           paramClause() :: {
             firstClauseOfCaseClass = false
-            if (implicitFlag == EmptyFlags) clauses() else Nil
+            if (implicitFlag.isEmpty) clauses() else Nil
           }
         else Nil
       }

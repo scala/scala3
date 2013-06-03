@@ -498,7 +498,7 @@ object Denotations {
       if (isType) filterDisjoint(denots).asSeenFrom(pre)
       else asSeenFrom(pre).filterDisjoint(denots)
     final def filterExcluded(excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
-      if (excluded == EmptyFlags) this
+      if (excluded.isEmpty) this
       else this match {
         case thisd: SymDenotation =>
           if (thisd is excluded) NoDenotation else this

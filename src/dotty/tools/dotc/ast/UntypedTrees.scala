@@ -21,8 +21,8 @@ object untpd extends Trees.Instance[Untyped] {
 
   /** mods object name impl */
   case class ModuleDef(mods: Modifiers, name: TermName, impl: Template)
-    extends NameTree with ModDefTree {
-    type ThisTree[T >: Untyped] <: Trees.NameTree[T] with Trees.ModDefTree[T] with ModuleDef
+    extends NameTree with MemberDef {
+    type ThisTree[T >: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
     def withName(name: Name) = this.derivedModuleDef(mods, name.toTermName, impl)
   }
 
