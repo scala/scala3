@@ -313,6 +313,12 @@ object Trees {
     override def envelope: Position = mods.pos union pos union initialPos
   }
 
+  /** A ValDef or DefDef tree */
+  trait ValOrDefDef[T >: Untyped] extends ModDefTree[T] {
+    def tpt: Tree[T]
+    def rhs: Tree[T]
+  }
+
   // ----------- Tree case classes ------------------------------------
 
   /** name */
@@ -550,14 +556,14 @@ object Trees {
 
   /** mods val name: tpt = rhs */
   case class ValDef[T >: Untyped](mods: Modifiers[T], name: TermName, tpt: Tree[T], rhs: Tree[T])
-    extends ModDefTree[T] {
+    extends ValOrDefDef[T] {
     type ThisTree[T >: Untyped] = ValDef[T]
     def withName(name: Name) = this.derivedValDef(mods, name.toTermName, tpt, rhs)
   }
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
   case class DefDef[T >: Untyped](mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])
-    extends ModDefTree[T] {
+    extends ValOrDefDef[T] {
     type ThisTree[T >: Untyped] = DefDef[T]
     def withName(name: Name) = this.derivedDefDef(mods, name.toTermName, tparams, vparamss, tpt, rhs)
   }
@@ -650,9 +656,13 @@ object Trees {
   }
 
   object Thicket {
-    def apply[T >: Untyped](): Tree[T] = emptyTree()
+    def apply[T >: Untyped](): Thicket[T] = emptyTree()
     def apply[T >: Untyped](x1: Tree[T], x2: Tree[T]): Thicket[T] = Thicket(List(x1, x2))
     def apply[T >: Untyped](x1: Tree[T], x2: Tree[T], x3: Tree[T]): Thicket[T] = Thicket(List(x1, x2, x3))
+    def make[T >: Untyped](xs: List[Tree[T]]): Tree[T] = flatten(xs) match {
+      case x :: Nil => x
+      case _ => apply(xs)
+    }
   }
 
   // ----- Auxiliary creation methods ------------------
@@ -678,6 +688,7 @@ object Trees {
     type RefTree = Trees.RefTree[T]
     type DefTree = Trees.DefTree[T]
     type ModDefTree = Trees.ModDefTree[T]
+    type ValOrDefDef = Trees.ValOrDefDef[T]
 
     type Ident = Trees.Ident[T]
     type Select = Trees.Select[T]

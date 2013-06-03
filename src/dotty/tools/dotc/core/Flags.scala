@@ -63,6 +63,8 @@ object Flags {
      */
     def is(flags: FlagConjunction, butNot: FlagSet): Boolean = is(flags) && !is(butNot)
 
+    def isEmpty = (bits & ~KINDFLAGS) == 0
+
     /** Is this flag set a subset of that one? */
     def <= (that: FlagSet) = (bits & that.bits) == bits
 
@@ -433,6 +435,9 @@ object Flags {
 
   /** Labeled private[this] */
   final val PrivateLocal = allOf(Private, Local)
+
+  /** A private parameter accessor */
+  final val PrivateLocalParamAccessor = allOf(Private, Local, ParamAccessor)
 
   /** A local parameter */
   final val ParamAndLocal = allOf(Param, Local)

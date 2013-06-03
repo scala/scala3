@@ -4,6 +4,8 @@ package core
 import annotation.tailrec
 import Symbols._
 import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer
+import util.Positions.Position, util.SourcePosition
+import collection.mutable.ListBuffer
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {
@@ -34,6 +36,33 @@ object Decorators {
    *  on lists that avoid dupliation of list nodes where feasible.
    */
   implicit class ListDecorator[T](val xs: List[T]) extends AnyVal {
+
+    @inline final def mapconserve[U](f: T => U): List[U] = {
+      @tailrec
+      def loop(mapped: ListBuffer[U], unchanged: List[U], pending: List[T]): List[U] =
+        if (pending.isEmpty) {
+          if (mapped eq null) unchanged
+          else mapped.prependToList(unchanged)
+        } else {
+          val head0 = pending.head
+          val head1 = f(head0)
+
+          if (head1.asInstanceOf[AnyRef] eq head0.asInstanceOf[AnyRef])
+            loop(mapped, unchanged, pending.tail)
+          else {
+            val b = if (mapped eq null) new ListBuffer[U] else mapped
+            var xc = unchanged
+            while (xc ne pending) {
+              b += xc.head
+              xc = xc.tail
+            }
+            b += head1
+            val tail0 = pending.tail
+            loop(b, tail0.asInstanceOf[List[U]], tail0)
+          }
+        }
+      loop(null, xs.asInstanceOf[List[U]], xs)
+    }
 
     /** Like `xs filter p` but returns list `xs` itself  - instead of a copy -
      *  if `p` is true for all elements and `xs` is not longer
@@ -86,5 +115,8 @@ object Decorators {
     def containsPhase(phase: Phase) =
       names exists (phase.name.startsWith)
   }
+
+  implicit def sourcePos(pos: Position)(implicit ctx: Context): SourcePosition =
+    ctx.source.atPos(pos)
 }
 

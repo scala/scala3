@@ -411,6 +411,22 @@ object Types {
       ctx.typeComparer.matchesType(
         this, that, alwaysMatchSimple = !ctx.phase.erasedTypes)
 
+    /** The non-private symbol with given name in the given class that matches this type.
+     *  @param inClass   The class containing the symbol's definition
+     *  @param name      The name of the symbol we are looking for
+     *  @param site      The base type from which member types are computed
+     */
+    def matchingTermSymbol(inClass: Symbol, name: Name, site: Type)(implicit ctx: Context): Symbol = {
+      var denot = inClass.info.nonPrivateDecl(name)
+      if (denot.isTerm) { // types of the same name always match
+        if (denot.isOverloaded)
+          denot = denot.atSignature(this.signature) // seems we need two kinds of signatures here
+        if (!(site.memberInfo(denot.symbol) matches this))
+          denot = NoDenotation
+      }
+      denot.symbol
+    }
+
     /** The basetype of this type with given class symbol */
     final def baseType(base: Symbol)(implicit ctx: Context): Type = base.denot match {
       case classd: ClassDenotation => classd.baseTypeOf(this)
@@ -504,6 +520,15 @@ object Types {
 
     /** The resultType of a PolyType, MethodType, or ExprType, the type itself for others */
     def resultType: Type = this
+
+    /** The final result type of a PolyType, MethodType, or ExprType, after skipping
+     *  all parameter sections, the type itself for all others.
+     */
+    def finalResultType: Type = resultType match {
+      case mt: MethodType => mt.resultType.finalResultType
+      case pt: PolyType => pt.resultType.finalResultType
+      case _ => resultType
+    }
 
     /** This type seen as a TypeBounds */
     final def bounds(implicit ctx: Context): TypeBounds = this match {
@@ -1369,13 +1394,15 @@ object Types {
   }
 
   object PolyType {
-    def fromSymbols(tparams: List[Symbol], resultType: Type)(implicit ctx: Context) = {
-      def transform(pt: PolyType, tp: Type) =
-        tp.subst(tparams, (0 until tparams.length).toList map (PolyParam(pt, _)))
-      apply(tparams map (_.name.asTypeName))(
+    def fromSymbols(tparams: List[Symbol], resultType: Type)(implicit ctx: Context) =
+      if (tparams.isEmpty) resultType
+      else {
+        def transform(pt: PolyType, tp: Type) =
+          tp.subst(tparams, (0 until tparams.length).toList map (PolyParam(pt, _)))
+        apply(tparams map (_.name.asTypeName))(
           pt => tparams map (tparam => transform(pt, tparam.info).bounds),
           pt => transform(pt, resultType))
-    }
+      }
   }
 
   abstract class BoundType extends UncachedProxyType with ValueType {

@@ -533,17 +533,11 @@ object SymDenotations {
      *  inClass <-- find denot.symbol      class C { <-- symbol is here
      *
      *                   site: Subtype of both inClass and C
-     *
      */
     final def matchingSymbol(inClass: Symbol, site: Type)(implicit ctx: Context): Symbol = {
       var denot = inClass.info.nonPrivateDecl(name)
-      if (denot.isTerm) { // types of the same name always match
-        val targetType = site.memberInfo(symbol)
-        if (denot.isOverloaded)
-          denot = denot.atSignature(targetType.signature) // seems we need two kinds of signatures here
-        if (!(site.memberInfo(denot.symbol) matches targetType))
-          denot = NoDenotation
-      }
+      if (denot.isTerm) // types of the same name always match
+        denot = denot.matchingDenotation(site, site.memberInfo(symbol))
       denot.symbol
     }
 

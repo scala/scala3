@@ -197,6 +197,17 @@ object Denotations {
     def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
       info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
 
+    /** The denotation that has a type matching `targetType` when seen
+     *  as a member of type `site`, `NoDenotation` if none exists.
+     */
+    def matchingDenotation(site: Type, targetType: Type)(implicit ctx: Context): SingleDenotation =
+      if (isOverloaded)
+        atSignature(targetType.signature).matchingDenotation(site, targetType)
+      else if (exists && !(site.memberInfo(symbol) matches targetType))
+        NoDenotation
+      else
+        this.asInstanceOf[SingleDenotation]
+
     /** Form a denotation by conjoining with denotation `that` */
     def & (that: Denotation)(implicit ctx: Context): Denotation =
       if (this eq that) this

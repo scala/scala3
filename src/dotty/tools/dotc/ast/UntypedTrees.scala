@@ -323,8 +323,19 @@ object untpd extends Trees.Instance[Untyped] {
         If(cond, thenp, unitLiteral)
       case Match(EmptyTree, cases) =>
         makeCaseClosure(cases)
-      case _: DefDef | _: ClassDef =>
-        desugarContextBounds(tree)
+      case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
+        val (tparams1, vparamss1) =
+          desugarContextBounds(tparams, vparamss, ofClass = false)
+        tree.derivedDefDef(mods, name, tparams1, vparamss1, tpt, rhs)
+      case ClassDef(
+        mods, name, tparams, impl @ Template(constr, parents, self, body)) =>
+        val (tparams1, vparamss1) =
+          desugarContextBounds(tparams, constr.vparamss, ofClass = true)
+        val constr1 = constr.derivedDefDef(
+          constr.mods, constr.name, constr.tparams, vparamss1, constr.tpt, constr.rhs)
+
+        val templ1 = impl.derivedTemplate(constr1, parents, self, body)
+        tree.derivedClassDef(mods, name, tparams1, templ1)
       case ModuleDef(mods, name, tmpl @ Template(constr, parents, self, body)) =>
         // <module> val name: name$ = New(name$)
         // <module> final class name$ extends parents { self: name.type => body }
@@ -431,20 +442,35 @@ object untpd extends Trees.Instance[Untyped] {
     }
   }
 
-  def desugarContextBounds(tree: Tree): Tree = tree match {
-    case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-      val (tparams1, vparamss1) =
-        desugarContextBounds(tparams, vparamss, ofClass = false)
-      tree.derivedDefDef(mods, name, tparams1, vparamss1, tpt, rhs)
-    case ClassDef(
-      mods, name, tparams, templ @ Template(constr, parents, self, body)) =>
-      val (tparams1, vparamss1) =
-        desugarContextBounds(tparams, constr.vparamss, ofClass = true)
-      val constr1 = constr.derivedDefDef(
-        constr.mods, constr.name, constr.tparams, vparamss1, constr.tpt, constr.rhs)
-      val templ1 = templ.derivedTemplate(constr1, parents, self, body)
-      tree.derivedClassDef(mods, name, tparams1, templ1)
-    case _ => tree
+  val NotInTypeAccessorFlags = Param | Private | Local
+
+  def desugarClassDef(cdef: ClassDef)(implicit ctx: Context): ClassDef = {
+    val ClassDef(
+      mods, name, tparams, impl @ Template(constr, parents, self, body)) = cdef
+
+    // desugar context bounds
+    val (tparamAccs, vparamAccss) =
+      desugarContextBounds(tparams, constr.vparamss, ofClass = true)
+
+    val tparams1 = tparams.map(tparam => tparam.derivedTypeDef(
+      Modifiers(Param), tparam.name, tparam.tparams, tparam.rhs))
+
+    // ensure parameter list is non-empty
+    val vparamss1 =
+      if (vparamAccss.isEmpty) {
+        if (mods is Case)
+          ctx.error("case class needs to have at least one parameter list", cdef.pos)
+        ListOfNil
+      }
+      else
+        vparamAccss.nestedMap(vparam => vparam.derivedValDef(
+          Modifiers(Param), vparam.name, vparam.tpt, vparam.rhs))
+
+    val constr1 = constr.derivedDefDef(
+      constr.mods, constr.name, constr.tparams, vparamss1, constr.tpt, constr.rhs)
+
+    cdef.derivedClassDef(mods, name, tparams1,
+      impl.derivedTemplate(constr1, parents, self, tparamAccs ::: vparamAccss.flatten ::: body))
   }
 
   /** Expand to:

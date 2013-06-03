@@ -1455,18 +1455,18 @@ object Parsers {
         val modStart = in.offset
         var mods = annotsAsMods()
         if (owner.isTypeName) {
-          mods = modifiers(start = mods)
+          mods = modifiers(start = mods) | ParamAccessor
           mods =
             atPos(modStart, in.offset) {
               if (in.token == VAL) {
                 in.nextToken()
-                mods | Param
+                mods
               } else if (in.token == VAR) {
                 in.nextToken()
-                addFlag(mods | Param, Mutable)
+                addFlag(mods, Mutable)
               } else {
-                if (mods.hasFlags) syntaxError("`val' or `var' expected")
-                if (firstClauseOfCaseClass) mods | Param else mods | Param | PrivateLocal
+                if ((mods.flags &~ ParamAccessor).isEmpty) syntaxError("`val' or `var' expected")
+                if (firstClauseOfCaseClass) mods else mods | PrivateLocal
               }
             }
         }
