@@ -253,6 +253,7 @@ object Contexts {
     def withPlainPrinter(printer: Context => Printer): this.type = { this.plainPrinter = printer; this }
     def withRefinedPrinter(printer: Context => Printer): this.type = { this.refinedPrinter = printer; this }
     def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
+    def withNewScope: this.type = { this.scope = newScope; this }
     def withSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
     def withTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
     def withScope(scope: Scope): this.type = { this.scope = scope; this }

@@ -430,6 +430,9 @@ object Flags {
   /** A type parameter with synthesized name */
   final val ExpandedTypeParam = allOf(ExpandedName, TypeParam)
 
+  /** A parameter or parameter accessor */
+  final val ParamOrAccessor = Param | Accessor
+
   /** A Java interface */
   final val JavaInterface = allOf(JavaDefined, Trait)
 

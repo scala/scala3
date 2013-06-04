@@ -77,7 +77,7 @@ class Typer extends Namer {
   def reEnterParams[UT <: untpd.NameTree, T <: tpd.Tree](params: List[UT])(implicit ctx: Context): List[T] = {
     for (param <- params) yield {
       val sym = symOfUntypedTree(param)
-      ctx.enterSym(sym)
+      ctx.enter(sym)
       lateDef(param, noDefTyper)
     }
   }

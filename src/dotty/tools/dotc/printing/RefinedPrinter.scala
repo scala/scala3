@@ -222,13 +222,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           }
           modText(mods, "type") ~~ toText(name) ~ tparamsText(tparams) ~ rhsText
         }
-      case Template(DefDef(mods, _, _, vparamss, _, _), parents, self, stats) =>
+      case Template(DefDef(mods, _, tparams, vparamss, _, _), parents, self, stats) =>
+        val tparamsTxt = tparamsText(tparams)
         val prefix: Text =
-          if (vparamss.isEmpty) ""
+          if (vparamss.isEmpty) tparamsTxt
           else {
             var modsText = modText(mods, "")
             if (mods.hasAnnotations && !mods.hasFlags) modsText = modsText ~~ " this"
-            addVparamssText(modsText, vparamss)
+            addVparamssText(tparamsTxt ~~ modsText, vparamss)
           }
         val parentsText = Text(parents map constrText, " with ")
         val selfText = {
@@ -237,10 +238,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         } provided !self.isEmpty
         val bodyText = "{" ~~ selfText ~~ toTextGlobal(stats, "\n") ~ "}"
         prefix ~~ (" extends" provided ownerIsClass) ~~ parentsText ~~ bodyText
-      case ClassDef(mods, name, tparams, impl) =>
+      case ClassDef(mods, name, impl) =>
         atOwner(tree) {
-          modText(mods, if (mods is Trait) "trait" else "class") ~~
-            toText(name) ~ tparamsText(tparams) ~ toText(impl)
+          modText(mods, if (mods is Trait) "trait" else "class") ~~ toText(name) ~ toText(impl)
         }
       case Import(expr, selectors) =>
         def selectorText(sel: Tree): Text = sel match {

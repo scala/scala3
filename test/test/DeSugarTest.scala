@@ -8,6 +8,8 @@ import Tokens._, Parsers._
 import org.junit.Test
 import dotty.tools.dotc._
 import ast.Trees._
+import ast.desugar
+import ast.desugar._
 
 import scala.collection.mutable.ListBuffer
 
@@ -64,8 +66,8 @@ class DeSugarTest extends ParserTest {
           tree1.derivedTypeDef(mods, name, transformSub(tparams), transform(rhs, Type))
         case Template(constr, parents, self, body) =>
           tree1.derivedTemplate(transformSub(constr), transform(parents), transformSub(self), transform(body, Expr))
-        case ClassDef(mods, name, tparams, impl) =>
-          tree1.derivedClassDef(mods, name, transformSub(tparams), transformSub(impl))
+        case ClassDef(mods, name, impl) =>
+          tree1.derivedClassDef(mods, name, transformSub(impl))
         case tree1 =>
           super.transform(tree1)
       }
@@ -74,7 +76,7 @@ class DeSugarTest extends ParserTest {
 
   def firstClass(stats: List[Tree]): String = stats match {
     case Nil => "<empty>"
-    case ClassDef(_, name, _, _) :: _ => name.toString
+    case ClassDef(_, name, _) :: _ => name.toString
     case ModuleDef(_, name, _) :: _ => name.toString
     case (pdef: PackageDef) :: _ => firstClass(pdef)
     case stat :: stats => firstClass(stats)

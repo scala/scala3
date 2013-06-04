@@ -243,6 +243,9 @@ object Types {
         Nil
     }
 
+    def uninstantiatedTypeParams(implicit ctx: Context): List[TypeSymbol] =
+      typeParams filter (tparam => member(tparam.name) == tparam)
+
 // ----- Member access -------------------------------------------------
 
     /** The scope of all declarations of this type.

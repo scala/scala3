@@ -284,9 +284,7 @@ object Parsers {
         tree
     }
 
-    def emptyConstructor() = atPos(in.offset) {
-      makeConstructor(Modifiers(), Nil)
-    }
+    def emptyConstructor() = atPos(in.offset) { ast.untpd.emptyConstructor }
 
 /* -------------- XML ---------------------------------------------------- */
 
@@ -1653,7 +1651,7 @@ object Parsers {
             accept(EQUALS)
             atPos(in.offset) { constrExpr() }
           }
-        makeConstructor(mods, vparamss, rhs)
+        makeConstructor(mods, Nil, vparamss, rhs)
       } else {
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
@@ -1744,14 +1742,14 @@ object Parsers {
      */
     def classDef(mods: Modifiers): ClassDef = atPos(tokenRange) {
       val name = ident().toTypeName
-      val tparams = typeParamClauseOpt(ParamOwner.Class)
       val constr = atPos(in.offset) {
+        val tparams = typeParamClauseOpt(ParamOwner.Class)
         val cmods = constrModsOpt()
         val vparamss = paramClauses(name, mods is Case)
-        makeConstructor(cmods, vparamss)
+        makeConstructor(cmods, tparams, vparamss)
       }
       val templ = templateOpt(constr)
-      ClassDef(mods, name, tparams, templ)
+      ClassDef(mods, name, templ)
     }
 
     /** ConstrMods        ::=  AccessModifier

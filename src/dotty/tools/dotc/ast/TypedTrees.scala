@@ -231,7 +231,7 @@ object tpd extends Trees.Instance[Type] {
       .orElse(ctx.newLocalDummy(cls))
     val impl = Trees.Template(constr, parents, selfType, rest)
       .withType(refType(localDummy)).checked
-    Trees.ClassDef(Modifiers(cls), cls.name, tparams, impl)
+    Trees.ClassDef(Modifiers(cls), cls.name, impl) // !!! todo: revise
       .withType(refType(cls)).checked
   }
 
@@ -246,7 +246,7 @@ object tpd extends Trees.Instance[Type] {
 
   val EmptyTree: Tree = emptyTree[Type]()
 
-  val EmptyValDef: ValDef = Trees.EmptyValDef[Type]
+  val EmptyValDef: ValDef = Trees.EmptyValDef().withType(NoType)
 
   def SharedTree(tree: Tree): SharedTree =
     Trees.SharedTree(tree).withType(tree.tpe)
