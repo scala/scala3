@@ -23,7 +23,15 @@ trait NamerContextOps { this: Context =>
   }
 }
 
-abstract class Namer { typer: Typer =>
+class Environment {
+  import untpd._
+  val scope = newScope
+  val expandedTree = new mutable.WeakHashMap[MemberDef, Tree]
+  val treeOfSym = mutable.Map[Symbol, Tree]()
+  val typedTree = mutable.Map[Tree, tpd.Tree]()
+}
+
+class Namer { typer: Typer =>
 
   import untpd._
 
@@ -80,22 +88,14 @@ abstract class Namer { typer: Typer =>
    *  during phase typer.
    */
 
-  val expandedTree = new mutable.WeakHashMap[MemberDef, Tree]
+  lazy val expandedTree = new mutable.WeakHashMap[Tree, Tree]
+  lazy val symOfTree = new mutable.WeakHashMap[Tree, Symbol]
+  lazy val typedTree = new mutable.WeakHashMap[Tree, tpd.Tree]
+  lazy val nestedTyper = new mutable.HashMap[Symbol, Typer]
 
-  val untypedTreeOfSym = mutable.Map[Symbol, Tree]()
-
-  val typedTreeOfSym = new mutable.HashMap[Symbol, tpd.Tree]
+  val scope = newScope
 
   implicit def posToCoord(pos: Position): Coord = positionCoord(pos)
-
-  def enclosingStats(implicit ctx: Context): List[Trees.Tree[_ >: Untyped]] =
-    if (ctx == NoContext) Nil
-    else ctx.tree match {
-      case Template(_, _, _, stats) => stats
-      case Block(stats, _) => stats
-      case PackageDef(_, stats) => stats
-      case _ => enclosingStats(ctx.outer)
-    }
 
   def privateWithinClass(mods: Modifiers)(implicit ctx: Context): Symbol = {
     val pw = mods.privateWithin
@@ -107,33 +107,23 @@ abstract class Namer { typer: Typer =>
     }
   }
 
-  def symOfTree(tree: Trees.NameTree[_], treeMap: collection.Map[Symbol, Trees.Tree[_]])(implicit ctx: Context): Symbol = {
-    var e = ctx.scope.lookupEntry(tree.name)
-    while (e != null && treeMap(e.sym) != tree)
-      e = ctx.scope.lookupNextEntry(e)
-    if (e == null) NoSymbol else e.sym
-  }
-
-  def symOfTypedTree(tree: tpd.NameTree)(implicit ctx: Context) = symOfTree(tree, typedTreeOfSym)(ctx)
-  def symOfUntypedTree (tree: NameTree)(implicit ctx: Context) = symOfTree(tree, untypedTreeOfSym)(ctx)
-
   def createSymbol(tree: Tree)(implicit ctx: Context): Symbol = {
     val sym = tree match {
       case tree: ClassDef =>
         ctx.enter(ctx.newClassSymbol(
-          ctx.owner, tree.name, tree.mods.flags, new Completer,
+          ctx.owner, tree.name, tree.mods.flags, new Completer(tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
       case tree: MemberDef =>
         ctx.enter(ctx.newSymbol(
-          ctx.owner, tree.name, tree.mods.flags, new Completer,
+          ctx.owner, tree.name, tree.mods.flags, new Completer(tree),
           privateWithinClass(tree.mods), tree.pos))
       case imp: Import =>
         ctx.newSymbol(
-          ctx.owner, nme.IMPORT, Synthetic, new Completer, NoSymbol, tree.pos)
+          ctx.owner, nme.IMPORT, Synthetic, new Completer(tree), NoSymbol, tree.pos)
       case _ =>
         NoSymbol
     }
-    if (sym.exists) untypedTreeOfSym(sym) = tree
+    if (sym.exists) symOfTree(tree) = sym
     sym
   }
 
@@ -186,121 +176,120 @@ abstract class Namer { typer: Typer =>
     result
   }
 
-  def enterParams(ddef: DefDef)(ctx: Context): Context =
-    (enterSyms(ddef.tparams)(ctx) /: ddef.vparamss) ((ctx, params) => enterSyms(params)(ctx))
-
-  class Completer(implicit ctx: Context) extends LazyType {
+  class Completer(original: Tree)(implicit ctx: Context) extends LazyType {
 
     def complete(denot: SymDenotation): Unit = {
-      val symToComplete = denot.symbol
-      val original = untypedTreeOfSym(symToComplete)
-
-      def inheritedResultType(paramFn: Type => Type)(implicit ctx: Context): Type = {
-        lazy val schema = paramFn(WildcardType)
-        val site = symToComplete.owner.symTypeRef
-        ((NoType: Type) /: symToComplete.owner.info.baseClasses.tail) { (tp, cls) =>
-          val itpe = cls.info
-            .nonPrivateDecl(symToComplete.name)
-            .matchingDenotation(site, schema)
-            .asSeenFrom(site)
-            .info.finalResultType
-          tp & itpe
-        }
-      }
-
-      def typedDefn(tree: Tree, sym: Symbol)(implicit ctx: Context): tpd.Tree = {
-        val tree1 = typer.typed(tree, sym.symRef)
-        typedTreeOfSym(sym) = tree1
-        tree1
-      }
-
-      def valOrDefDefSig[UT <: untpd.ValOrDefDef, T <: tpd.ValOrDefDef]
-              (defn: UT, op: DefTyper[UT, T], paramFn: Type => Type)(implicit ctx: Context): Type =
-        paramFn {
-          if (!defn.tpt.isEmpty) typer.typed(defn.tpt).tpe
-          else {
-            val inherited = inheritedResultType(paramFn)
-            if (inherited.exists) typer.typed(defn.tpt, inherited).tpe
-            else aheadDef(defn, op).tpt.tpe
-          }
-        }
-
-      def completeParams[UT <: untpd.NameTree, T <: tpd.Tree]
-        (params: List[UT], completer: DefTyper[UT, T])(implicit ctx: Context): Unit = {
-        enterSyms(params)
-        for (param <- params) aheadDef(param, completer)
-      }
-
-      def defDefSig(defn: DefDef)(implicit ctx: Context) = {
-        val DefDef(_, _, tparams, vparamss, _, _) = defn
-          completeParams(tparams, completeTypeDef)
-          for (vparams <- vparamss) completeParams(vparams, completeValDef)
-          def wrapMethType(restpe: Type): Type = {
-            val monotpe =
-              (restpe /: vparamss) { (restpe, params) =>
-                val creator =
-                  if (params.nonEmpty && (params.head.mods is Implicit)) ImplicitMethodType else MethodType
-                creator.fromSymbols(params map symOfUntypedTree, restpe)
-              }
-            if (tparams.nonEmpty) PolyType.fromSymbols(tparams map symOfUntypedTree, monotpe)
-            else if (vparamss.isEmpty) ExprType(monotpe)
-            else monotpe
-          }
-          valOrDefDefSig(defn, completeDefDef, wrapMethType)
-      }
-
-      def typeDefSig(defn: TypeDef)(implicit ctx: Context): Type = {
-        val lctx = localContext
-        completeParams(defn.tparams, completeTypeDef)(lctx)
-        val TypeDef(_, _, _, rhs) = aheadDef(defn, completeTypeDef)(lctx)
-        rhs.tpe   // !!! do something about parameters!
-      }
-
-      def classDefSig(defn: ClassDef)(implicit ctx: Context): Type = {
-
-        def parentType(constr: untpd.Tree): Type = {
-          val Trees.Select(Trees.New(tpt), _) = TreeInfo.methPart(constr)
-          val ptype = typedType(tpt).tpe
-          if (ptype.uninstantiatedTypeParams.isEmpty) ptype else typedExpr(constr).tpe
-        }
-
-        def enterSelfSym(name: TermName, tpe: Type): Unit =
-          ctx.enter(ctx.newSymbol(ctx.owner, name, Synthetic, tpe, coord = symToComplete.coord))
-
-        val ClassDef(_, _, impl @ Template(constr, parents, self, body)) = defn
-
-        val decls = newScope
-        val (params, rest) = body span {
-          case td: TypeDef => td.mods is ParamOrAccessor
-          case _ => false
-        }
-        enterSyms(params)
-        val parentTypes = parents map parentType
-        val parentRefs = ctx.normalizeToRefs(parentTypes, symToComplete.asClass, decls)
-        val selfTypeOpt = if (self.tpt.isEmpty) NoType else typedType(self.tpt).tpe
-        if (self.name != nme.WILDCARD)
-          enterSelfSym(self.name, selfTypeOpt orElse symToComplete.typeConstructor)
-        enterSyms(rest)
-        ClassInfo(denot.owner.thisType, symToComplete.asClass, parentRefs, decls, selfTypeOpt)
-      }
-
-      def localContext = ctx.fresh.withOwner(symToComplete)
+      val sym = denot.symbol
+      def localContext = ctx.fresh.withOwner(sym)
 
       def typeSig(defn: Tree): Type = defn match {
         case defn: ValDef =>
-          valOrDefDefSig(defn, completeValDef, identity)(localContext)
+          valOrDefDefSig(defn, sym, identity)(localContext)
         case defn: DefDef =>
-          defDefSig(defn)(localContext.withNewScope)
+          val typer1 = new Typer
+          nestedTyper(sym) = typer1
+          typer1.defDefSig(defn, sym)(localContext.withScope(typer1.scope))
         case defn: TypeDef =>
-          typeDefSig(defn)(localContext.withNewScope)
+          typeDefSig(defn, sym)(localContext.withNewScope)
         case defn: ClassDef =>
-          classDefSig(defn)(localContext)
+          classDefSig(defn, sym.asClass)(localContext)
         case imp: Import =>
-          val expr1 = typedDefn(imp.expr, symToComplete)
+          val expr1 = typedAhead(imp.expr)
           ImportType(SharedTree(expr1))
       }
 
-      symToComplete.info = typeSig(original)
+      sym.info = typeSig(original)
     }
+  }
+
+  def typedAhead(tree: Tree, mode: Mode.Value = Mode.Expr, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
+    typedTree.getOrElseUpdate(tree, typer.typed(tree))
+
+  def valOrDefDefSig(defn: ValOrDefDef, sym: Symbol, paramFn: Type => Type)(implicit ctx: Context): Type = {
+    val pt =
+      if (!defn.tpt.isEmpty) WildcardType
+      else {
+        lazy val schema = paramFn(WildcardType)
+        val site = sym.owner.symTypeRef
+        val inherited = {
+          ((NoType: Type) /: sym.owner.info.baseClasses.tail) { (tp, cls) =>
+            val itpe = cls.info
+              .nonPrivateDecl(sym.name)
+              .matchingDenotation(site, schema)
+              .asSeenFrom(site)
+              .info.finalResultType
+            tp & itpe
+          }
+        }
+        inherited orElse typedAhead(defn.rhs).tpe
+      }
+    paramFn(typedAhead(defn.tpt, Mode.Type, pt).tpe)
+  }
+
+  def completeParams(params: List[MemberDef])(implicit ctx: Context) = {
+    enterSyms(params)
+    for (param <- params) typedAhead(param)
+  }
+
+  def defDefSig(ddef: DefDef, sym: Symbol)(implicit ctx: Context) = {
+    val DefDef(_, name, tparams, vparamss, _, _) = ddef
+    completeParams(tparams)
+    vparamss foreach completeParams
+    val isConstructor = name == nme.CONSTRUCTOR
+    val isSecondaryConstructor = isConstructor && sym != sym.owner.primaryConstructor
+    def typeParams =
+      if (isSecondaryConstructor) sym.owner.primaryConstructor.typeParams
+      else tparams map symOfTree
+    def wrapMethType(restpe: Type): Type = {
+      val monotpe =
+        (restpe /: vparamss) { (restpe, params) =>
+          val creator =
+            if (params.nonEmpty && (params.head.mods is Implicit)) ImplicitMethodType else MethodType
+              creator.fromSymbols(params map symOfTree, restpe)
+        }
+      if (tparams.nonEmpty) PolyType.fromSymbols(typeParams, monotpe)
+      else if (vparamss.isEmpty) ExprType(monotpe)
+      else monotpe
+    }
+    if (isConstructor) {
+      // set result type tree to unit, but set the current class as result type of the symbol
+      typedAhead(ddef.tpt, Mode.Type, defn.UnitType)
+      wrapMethType(sym.owner.typeConstructor.appliedTo(typeParams map (_.symRef)))
+    }
+    else valOrDefDefSig(ddef, sym, wrapMethType)
+  }
+
+  def typeDefSig(defn: TypeDef, sym: Symbol)(implicit ctx: Context): Type = {
+    completeParams(defn.tparams)
+    ???
+  }
+
+  def classDefSig(defn: ClassDef, cls: ClassSymbol)(implicit ctx: Context): Type = {
+
+    def parentType(constr: untpd.Tree): Type = {
+      val Trees.Select(Trees.New(tpt), _) = TreeInfo.methPart(constr)
+      val ptype = typedAhead(tpt, Mode.Type).tpe
+      if (ptype.uninstantiatedTypeParams.isEmpty) ptype
+      else typedAhead(constr, Mode.Expr).tpe
+    }
+
+    def enterSelfSym(name: TermName, tpe: Type): Unit =
+      ctx.enter(ctx.newSymbol(ctx.owner, name, Synthetic, tpe, coord = cls.coord))
+
+    val ClassDef(_, _, impl @ Template(_, parents, self, body)) = defn
+
+    val decls = newScope
+    val (params, rest) = body span {
+      case td: TypeDef => td.mods is ParamOrAccessor
+      case _ => false
+    }
+    enterSyms(params)
+    val parentTypes = parents map parentType
+    val parentRefs = ctx.normalizeToRefs(parentTypes, cls, decls)
+    val selfTypeOpt = if (self.tpt.isEmpty) NoType else typedAhead(self.tpt, Mode.Type).tpe
+    if (self.name != nme.WILDCARD)
+      enterSelfSym(self.name, selfTypeOpt orElse cls.typeConstructor)
+    enterSyms(rest)
+    ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfTypeOpt)
   }
 }

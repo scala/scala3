@@ -133,6 +133,11 @@ object Contexts {
     protected def scope_=(scope: Scope) = _scope = scope
     def scope: Scope = _scope
 
+    /** The current typer */
+    private[this] var _typer: Typer = _
+    protected def typer_=(typer: Typer) = _typer = typer
+    def typer: Typer = _typer
+
     /** The currently visible imports */
     private[this] var _imports: List[ImportInfo] = _
     protected def imports_=(imports: List[ImportInfo]) = _imports = imports
@@ -253,10 +258,11 @@ object Contexts {
     def withPlainPrinter(printer: Context => Printer): this.type = { this.plainPrinter = printer; this }
     def withRefinedPrinter(printer: Context => Printer): this.type = { this.refinedPrinter = printer; this }
     def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
-    def withNewScope: this.type = { this.scope = newScope; this }
     def withSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
     def withTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
     def withScope(scope: Scope): this.type = { this.scope = scope; this }
+    def withNewScope: this.type = { this.scope = newScope; this }
+    def withTyper(typer: Typer): this.type = { this.typer = typer; this }
     def withImport(importInfo: ImportInfo): this.type = { this.imports = importInfo :: imports; this }
     def withReporter(reporter: Reporter): this.type = { this.reporter = reporter; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
