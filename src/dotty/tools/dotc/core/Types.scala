@@ -226,7 +226,8 @@ object Types {
     /** The type parameters of this type are:
      *  For a ClassInfo type, the type parameters of its class.
      *  For a typeref referring to a class, the type parameters of the class.
-     *  Inherited by type proxies.
+     *  For a refinement type, the type parameters of its parent, unless there's a
+     *  refinement with the same name. Inherited by all other type proxies.
      *  Empty list for all other types.
      */
     final def typeParams(implicit ctx: Context): List[TypeSymbol] = this match {
@@ -237,6 +238,8 @@ object Types {
         if (tsym.isClass) tsym.typeParams
         else if (tsym.isAliasType) tp.underlying.typeParams
         else Nil
+      case tp: RefinedType =>
+        tp.parent.typeParams filterNot (_.name == tp.refinedName)
       case tp: TypeProxy =>
         tp.underlying.typeParams
       case _ =>
@@ -362,22 +365,23 @@ object Types {
 
     /** The set of abstract term members of this type. */
     final def abstractTermMembers(implicit ctx: Context): Set[SingleDenotation] =
-      memberNames(abstractTermNameFilter)
-        .flatMap(member(_).altsWith(_ is Deferred))
+      memberNames(abstractTermNameFilter).flatMap(member(_).altsWith(_ is Deferred))
 
     /** The set of abstract type members of this type. */
     final def abstractTypeMembers(implicit ctx: Context): Set[SingleDenotation] =
-      memberNames(abstractTypeNameFilter)
-        .map(member(_).asInstanceOf[SingleDenotation])
+      memberNames(abstractTypeNameFilter).map(member(_).asInstanceOf[SingleDenotation])
 
     /** The set of abstract members of this type. */
     final def abstractMembers(implicit ctx: Context): Set[SingleDenotation] =
       abstractTermMembers | abstractTypeMembers
 
+    /** The set of type members of this type */
+    final def typeMembers(implicit ctx: Context): Set[SingleDenotation] =
+      memberNames(typeNameFilter).map(member(_).asInstanceOf[SingleDenotation])
+
     /** The info of `sym`, seen as a member of this type. */
-    final def memberInfo(sym: Symbol)(implicit ctx: Context): Type = {
+    final def memberInfo(sym: Symbol)(implicit ctx: Context): Type =
       sym.info.asSeenFrom(this, sym.owner)
-    }
 
     /** This type seen as if it were the type of a member of prefix type `pre`
      *  declared in class `cls`.
@@ -1755,6 +1759,10 @@ object Types {
   object abstractTermNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
       name.isTermName && (pre member name).hasAltWith(_ is Deferred)
+  }
+
+  object typeNameFilter extends NameFilter {
+    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = name.isTypeName
   }
 
   object takeAllFilter extends NameFilter {
