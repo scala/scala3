@@ -213,8 +213,8 @@ trait Symbols { this: Context =>
     newConstructor(cls, EmptyFlags, Nil, Nil)
 
   /** Create a symbol representing a selftype declaration for class `cls`. */
-  def newSelfSym(cls: ClassSymbol): TermSymbol =
-    ctx.newSymbol(cls, nme.THIS, SyntheticArtifact, cls.classInfo.selfType)
+  def newSelfSym(cls: ClassSymbol, name: TermName = nme.WILDCARD, optSelfType: Type = NoType): TermSymbol =
+    ctx.newSymbol(cls, name, SelfSymFlags, optSelfType orElse cls.classInfo.selfType, coord = cls.coord)
 
   /** Create new type parameters with given owner, names, and flags.
    *  @param boundsFn  A function that, given type refs to the newly created

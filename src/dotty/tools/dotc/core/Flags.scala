@@ -394,6 +394,9 @@ object Flags {
   /** Module classes always have these flags set */
   final val ModuleClassCreationFlags = ModuleClass | Final
 
+  /** The flags of the self symbol */
+  final val SelfSymFlags = Private | Local | Deferred
+
   /** The flags of a type parameter */
   final val TypeParamCreationFlags = TypeParam | Protected | Local
 

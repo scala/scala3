@@ -638,8 +638,6 @@ object SymDenotations {
   }
 
   /** The contents of a class definition during a period
-   *  Note: important to leave initctx non-implicit, and to check that it is not
-   *  retained after object construction.
    */
   class ClassDenotation private[SymDenotations] (
     symbol: Symbol,

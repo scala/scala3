@@ -262,7 +262,7 @@ object Contexts {
     def withTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
     def withScope(scope: Scope): this.type = { this.scope = scope; this }
     def withNewScope: this.type = { this.scope = newScope; this }
-    def withTyper(typer: Typer): this.type = { this.typer = typer; this }
+    def withTyper(typer: Typer): this.type = { this.typer = typer; this.scope = typer.scope; this }
     def withImport(importInfo: ImportInfo): this.type = { this.imports = importInfo :: imports; this }
     def withReporter(reporter: Reporter): this.type = { this.reporter = reporter; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }

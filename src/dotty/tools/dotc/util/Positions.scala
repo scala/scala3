@@ -1,5 +1,6 @@
 package dotty.tools.dotc
 package util
+import language.implicitConversions
 
 /** Position format in little endian:
  *  Start: unsigned 26 Bits (works for source files up to 64M)
@@ -149,8 +150,8 @@ object Positions {
   }
 
   /** An index coordinate */
-  def indexCoord(n: Int) = new Coord(n + 1)
-  def positionCoord(pos: Position) = new Coord(-(pos.point + 1))
+  implicit def indexCoord(n: Int): Coord = new Coord(n + 1)
+  implicit def positionCoord(pos: Position): Coord = new Coord(-(pos.point + 1))
 
   /** A sentinel for a missing coordinate */
   val NoCoord = new Coord(0)
