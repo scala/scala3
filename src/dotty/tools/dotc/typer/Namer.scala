@@ -284,7 +284,17 @@ class Namer { typer: Typer =>
 
   def typeDefSig(tdef: TypeDef, sym: Symbol)(implicit ctx: Context): Type = {
     completeParams(tdef.tparams)
-    ???
+    val tparamSyms = tdef.tparams map symbolOfTree
+    val rhsType = typedAhead(tdef.rhs, Mode.Type).tpe
+
+    rhsType match {
+      case bounds: TypeBounds =>
+        if (tparamSyms.nonEmpty) bounds.higherKinded(tparamSyms)
+        else rhsType
+      case _ =>
+        if (tparamSyms.nonEmpty) rhsType.LambdaAbstract(tparamSyms)(ctx.error(_, _))
+        else TypeBounds(rhsType, rhsType)
+    }
   }
 
   /** The type signature of a ClassDef with given symbol */

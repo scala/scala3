@@ -15,6 +15,7 @@ import SymDenotations._
 import Decorators._
 import Denotations._
 import Periods._
+import util.Positions.Position
 import ast.tpd._, printing.Texts._
 import transform.Erasure
 import printing.Printer
@@ -756,6 +757,70 @@ object Types {
           (n, tp)
       }
       recur(0, this)
+    }
+
+    /** Given a type alias
+     *
+     *      type T[boundSyms] = p.C[targs]
+     *
+     *  produce its equivalent right hand side RHS that makes no reference to the bound
+     *  symbols on the left hand side. I.e. the type alias can be replaced by
+     *
+     *      type T = RHS
+     *
+     *  It is required that `C` is a class and that every bound symbol in `boundSyms` appears
+     *  as an argument in `targs`. If these requirements are not met an error is
+     *  signalled by calling the parameter `error`.
+     *
+     *  The rewriting replaces bound symbols by references to the
+     *  parameters of class C. Example:
+     *
+     *  Say we have:
+     *
+     *     class Triple[type T1, type T2, type T3]
+     *     type A[X] = Triple[(X, X), X, String]
+     *
+     *  Then this is rewritable, as `X` appears as second type argument to `Triple`.
+     *  Occurrences of `X` are rewritten to `this.T2` and the whole definition becomes:
+     *
+     *     type A = Triple { type T1 = (this.T2, this.T2); type T3 = String }
+     */
+    def LambdaAbstract(boundSyms: List[Symbol])(error: (String, Position) => Unit)(implicit ctx: Context): Type = {
+      val cls = typeSymbol
+      if (!cls.isClass)
+        error("right-hand side of parameterized alias type must be a class", cls.pos)
+
+      /** Rewrite type.
+       *  @param tp     The type to rewrite
+       *  @param symMap A map that associates bound symbols were seen to match a rhs type argument
+       *                with the corresponding parameter reference (where the refined this is left open).
+       *  @return The rewritten type, paired with
+       *          the list of replacement types for bound symbols, parameterized by the actual refinement
+       */
+      def rewrite(tp: Type, symMap: Map[Symbol, RefinedType => Type]): (Type, RefinedType => List[Type]) = tp match {
+        case tp @ RefinedType(parent, name: TypeName) =>
+          tp.refinedInfo match {
+            case tr: TypeRef if boundSyms contains tr.symbol =>
+              rewrite(tp.parent, symMap + (tr.symbol -> (rt => TypeRef(RefinedThis(rt), name))))
+            case info =>
+              val (parent1, replacements) = rewrite(tp.parent, symMap)
+              (RefinedType(parent1, name, rt => info.subst(boundSyms, replacements(rt))),
+               replacements)
+          }
+        case tp =>
+          def replacements(rt: RefinedType): List[Type] =
+            for (sym <- boundSyms) yield {
+              symMap get sym match {
+                case Some(replacement) =>
+                  replacement(rt)
+                case None =>
+                  error(s"parameter $sym of type alias does not appear as type argument of the aliased $cls", sym.pos)
+                  defn.AnyType
+              }
+            }
+          (tp, replacements)
+      }
+      rewrite(this, Map())._1
     }
 
 // ----- misc -----------------------------------------------------------
@@ -1545,6 +1610,46 @@ object Types {
 
     def map(f: Type => Type)(implicit ctx: Context): TypeBounds =
       TypeBounds(f(lo), f(hi))
+
+    /** Given a higher-kinded abstract type
+     *
+     *    type T[boundSyms] >: L <: H
+     *
+     *  produce its equivalent bounds L',R that make no reference to the bound
+     *  symbols on the left hand side. The idea is to rewrite the declaration to
+     *
+     *      type T >: L' <: HigherKindedXYZ { type _$hk$i >: bL_i <: bH_i } & H'
+     *
+     *  where
+     *
+     *  - XYZ encodes the variants of the bound symbols using `P` (positive variance)
+     *    `N` (negative variance), `I` (invariant).
+     *  - bL_i is the lower bound of bound symbol #i under substitution `substBoundSyms`
+     *  - bH_i is the upper bound of bound symbol #i under substitution `substBoundSyms`
+     *  - `substBoundSyms` is the substitution that maps every bound symbol #i to the
+     *    reference `this._$hk$i`.
+     *  - L' = substBoundSyms(L), H' = substBoundSyms(H)
+     *
+     *  Example:
+     *
+     *      type T[X <: F[X]] <: Traversable[X, T]
+     *
+     *  is rewritten to:
+     *
+     *      type T <: HigherKindedP { type _$hk$0 <: F[$_hk$0] } & Traversable[_$hk$0, T]
+     *
+     *  @see Definitions.hkTrait
+     */
+    def higherKinded(boundSyms: List[Symbol])(implicit ctx: Context) = {
+      val parent = defn.hkTrait(boundSyms).typeConstructor
+      val hkParamNames = boundSyms.indices.toList map tpnme.higherKindedParamName
+      def substBoundSyms(tp: Type)(rt: RefinedType): Type =
+        tp.subst(boundSyms, hkParamNames map (TypeRef(RefinedThis(rt), _)))
+      val hkParamInfoFns: List[RefinedType => Type] =
+        for (bsym <- boundSyms) yield substBoundSyms(bsym.info)_
+      val hkBound = RefinedType.make(parent, hkParamNames, hkParamInfoFns).asInstanceOf[RefinedType]
+      TypeBounds(substBoundSyms(lo)(hkBound), AndType(hkBound, substBoundSyms(hi)(hkBound)))
+    }
 
     override def computeHash = doHash(lo, hi)
 
