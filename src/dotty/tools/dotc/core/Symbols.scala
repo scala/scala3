@@ -377,6 +377,11 @@ object Symbols {
     private def pickFile(file: AbstractFile, classFile: Boolean): AbstractFile =
       if ((file eq null) || classFile != (file.path endsWith ".class")) null else file
 
+    /** The position of this symbol.
+     *  @pre  Symbol was loaded from source
+     */
+    def pos: Position = coord.toPosition
+
     /** The prefix string to be used when displaying this symbol without denotation */
     protected def prefixString = "Symbol"
 
