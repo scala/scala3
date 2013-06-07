@@ -289,38 +289,9 @@ class Definitions(implicit ctx: Context) {
   // ----- Higher kinds machinery ------------------------------------------
 
   private var _hkTraits: Set[Symbol] = Set()
-  private var _hkTrait: Map[Int, ClassSymbol] = Map()
 
-  /** The set of all `HigherKinded_n` traits that are referred to in thos compilation run. */
+  /** The set of HigherKindedXYZ traits encountered so far */
   def hkTraits: Set[Symbol] = _hkTraits
-
-  /** A trait `HigherKinded_n[B1, ..., Bn]` that represents
-   *  the bounds of a higher-kinded type.
-   */
-  def hkTrait(n: Int): ClassSymbol = {
-    val completer = new LazyType {
-      def complete(denot: SymDenotation): Unit = {
-        val cls = denot.asClass.classSymbol
-        val paramDecls = newScope
-        for (i <- 0 until n)
-          newSyntheticTypeParam(cls, paramDecls, "B"+i).setFlag(Covariant)
-        denot.info = ClassInfo(ScalaPackageClass.thisType, cls, List(ObjectClass.typeConstructor), paramDecls)
-      }
-    }
-    _hkTrait get n match {
-      case Some(cls) =>
-        cls
-      case None =>
-        val cls = ctx.newClassSymbol(
-          ScalaPackageClass,
-          tpnme.higherKindedTraitName(n),
-          Trait | Interface | Synthetic,
-          completer).entered
-        _hkTraits += cls
-        _hkTrait = _hkTrait.updated(n, cls)
-        cls
-    }
-  }
 
   private var hkTraitOfArity = mutable.Map[List[Int], ClassSymbol]()
 
@@ -337,17 +308,7 @@ class Definitions(implicit ctx: Context) {
    *   - v_i are the variances of the bound symbols (i.e. +, -, or empty).
    *   - _$hk$i are hgiher-kinded parameter names, which are special treated in type application.
    */
-  def hkTrait(boundSyms: List[Symbol]) = {
-
-    val completer = new LazyType {
-      def complete(denot: SymDenotation): Unit = {
-        val cls = denot.asClass.classSymbol
-        val paramDecls = newScope
-        for ((bsym, i) <- boundSyms.zipWithIndex)
-          newTypeParam(cls, tpnme.higherKindedParamName(i), bsym.flags & VarianceFlags, paramDecls)
-        denot.info = ClassInfo(ScalaPackageClass.thisType, cls, List(ObjectClass.typeConstructor), paramDecls)
-      }
-    }
+  def hkTrait(variances: List[Int]) = {
 
     def varianceSuffix(v: Int) = v match {
       case -1 => "N"
@@ -355,26 +316,38 @@ class Definitions(implicit ctx: Context) {
       case  1 => "P"
     }
 
-    val variances = boundSyms map (_.variance)
-    val traitName =
-      tpnme.higherKindedTraitName(boundSyms.length) ++ (variances map varianceSuffix).mkString
+    def varianceFlags(v: Int)= v match {
+      case -1 => Contravariant
+      case  0 => Covariant
+      case  1 => EmptyFlags
+    }
 
-    def createTrait = ctx.newClassSymbol(
-      ScalaPackageClass,
-      traitName,
-      Trait | Interface | Synthetic,
-      completer).entered
+    val completer = new LazyType {
+      def complete(denot: SymDenotation): Unit = {
+        val cls = denot.asClass.classSymbol
+        val paramDecls = newScope
+        for ((v, i) <- variances.zipWithIndex)
+          newTypeParam(cls, tpnme.higherKindedParamName(i), varianceFlags(v), paramDecls)
+        denot.info = ClassInfo(ScalaPackageClass.thisType, cls, List(ObjectClass.typeConstructor), paramDecls)
+      }
+    }
+
+    val traitName =
+      tpnme.higherKindedTraitName(variances.length) ++ (variances map varianceSuffix).mkString
+
+    def createTrait = {
+      val cls = ctx.newClassSymbol(
+        ScalaPackageClass,
+        traitName,
+        Trait | Interface | Synthetic,
+        completer).entered
+      _hkTraits += cls
+      cls
+    }
 
     hkTraitOfArity.getOrElseUpdate(variances, createTrait)
   }
 
-
-  /** The bounds trait corresponding to the given variance */
-  def hkBoundsClass(variance: Int) = variance match {
-    case 0  => InvariantBetweenClass
-    case 1  => CovariantBetweenClass
-    case -1 => ContravariantBetweenClass
-  }
 
   // ----- Value class machinery ------------------------------------------
 

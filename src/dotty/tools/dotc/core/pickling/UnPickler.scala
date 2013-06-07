@@ -34,47 +34,18 @@ object UnPickler {
   case class TempClassInfoType(parentTypes: List[Type], decls: Scope, clazz: Symbol) extends UncachedGroundType
 
   /** Convert temp poly type to some native Dotty idiom.
-   *  @param forSym  The symbol that gets the converted type as info.
-   *  If `forSym` is not an abstract type, this simply returns an equivalent `PolyType`.
-   *  If `forSym` is an abstract type, it converts a
+   *  @param denot  The denotation that gets the converted type as info.
+   *  If `denot` is not an abstract type, this simply returns an equivalent `PolyType`.
+   *  If `denot` is an abstract type, it converts a
    *
    *      TempPolyType(List(v_1 T_1, ..., v_n T_n), lo .. hi)
    *
-   *  to
-   *
-   *      lo .. HigherKinded_n[v_1Between[lo_1, hi_1],..., v_nBetween[lo_n, hi_n]] & hi
-   *
-   *  where lo_i, hi_i are the lower/upper bounds of the type parameters T_i.
-   *  This works only as long as none of the type parameters T_i appears in any
-   *  of the bounds or the result type. Such occurrences of type parameters are
-   *  replaced by Any, and a warning is issued in this case.
-   */
-  def depoly(tp: Type, forSym: SymDenotation)(implicit ctx: Context): Type = tp match {
+   *  to a higher-kinded type appoximation (@see TypeBounds.higherKinded)
+  */
+  def depoly(tp: Type, denot: SymDenotation)(implicit ctx: Context): Type = tp match {
     case TempPolyType(tparams, restpe) =>
-      if (forSym.isAbstractType) {
-        val typeArgs = for (tparam <- tparams) yield {
-          val TypeBounds(lo, hi) = tparam.info
-          defn.hkBoundsClass(tparam.variance).typeConstructor
-            .appliedTo(List(lo, hi))
-        }
-        val elimTparams: Type => Type = _.subst(tparams, tparams map (_ => defn.AnyType))
-        val correctedArgs = typeArgs.mapConserve(elimTparams)
-        val correctedRes = elimTparams(restpe)
-        val hkBound = defn.hkTrait(tparams.length).typeConstructor
-          .appliedTo(correctedArgs)
-        val result = correctedRes match {
-          case TypeBounds(lo, hi) =>
-            val hi1 = if (hi == defn.AnyType) hkBound else AndType(hkBound, hi)
-            TypeBounds(lo, hi1) //note: using & instead would be too eager
-        }
-        if ((typeArgs ne correctedArgs) || (restpe ne correctedRes))
-          ctx.warning(s"""failure to import F-bounded higher-kinded type
-                         |original type definition: ${forSym.show}${tp.show}
-                         |definition used instead : ${forSym.show}${result.show}
-                         |proceed at own risk.""".stripMargin)
-        result
-      } else
-        PolyType.fromSymbols(tparams, restpe)
+      if (denot.isAbstractType) restpe.bounds.higherKinded(tparams)
+      else PolyType.fromSymbols(tparams, restpe)
     case tp => tp
   }
 

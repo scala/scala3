@@ -201,21 +201,22 @@ object TypeComparers {
     }
 */
     /** Is `tp1` a subtype of a type `tp2` of the form
-     *  `scala.HigerKindedN[xBetween_1[Lo_1, Hi_1], ..., xBetween_n[Lo_n, Hi_n]]`?
-     *  This is the case if `tp1` has `n` type parameters and
-     *  for all `0 <= i < n`, the i'th type parameter's bounds are contained in
-     *  `Lo_i..Hi_i` and its variance corresponds to the xBetween_i class.
+     *  `scala.HigerKindedXYZ { ... }?
+     *  This is the case if `tp1` and `tp2` have the same number
+     *  of type parameters, the bounds of tp1's paremeters
+     *  are contained in the corresponding bounds of tp2's parameters
+     *  and the variances of correesponding parameters agree.
      */
     def isSubTypeHK(tp1: Type, tp2: Type): Boolean = {
       val tparams = tp1.typeParams
       val hkArgs = tp2.typeArgs
       (hkArgs.length == tparams.length) && {
         val base = ctx.newSkolemSingleton(tp1)
-        (hkArgs, tparams).zipped.forall { (hkArg, tparam) =>
-          val lo2 :: hi2 :: Nil = hkArg.typeArgs
-          val TypeBounds(lo1, hi1) = base.memberInfo(tparam)
-          isSubType(lo2, lo1) && isSubType(hi1, hi2) &&
-          defn.hkBoundsClass(tparam.variance) == hkArg.typeSymbol
+        (tparams, hkArgs).zipped.forall { (tparam, hkArg) =>
+          base.memberInfo(tparam) <:< hkArg.bounds // TODO: base.memberInfo needed?
+        } &&
+        (tparams, tp2.typeSymbol.typeParams).zipped.forall { (tparam, tparam2) =>
+          tparam.variance == tparam2.variance
         }
       }
     }

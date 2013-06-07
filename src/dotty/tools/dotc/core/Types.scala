@@ -227,6 +227,9 @@ object Types {
     /** The type parameters of this type are:
      *  For a ClassInfo type, the type parameters of its class.
      *  For a typeref referring to a class, the type parameters of the class.
+     *  For a typeref referring to an alias type, the type parameters of the aliased type.
+     *  For a typeref referring to an abstract type with a HigherKindedXYZ bound, the
+     *  type parameters of the HigherKinded class.
      *  For a refinement type, the type parameters of its parent, unless there's a
      *  refinement with the same name. Inherited by all other type proxies.
      *  Empty list for all other types.
@@ -238,7 +241,12 @@ object Types {
         val tsym = tp.typeSymbol
         if (tsym.isClass) tsym.typeParams
         else if (tsym.isAliasType) tp.underlying.typeParams
-        else Nil
+        else tp.info.bounds.hi match {
+          case AndType(hkBound, other) if defn.hkTraits contains hkBound.typeSymbol =>
+            hkBound.typeSymbol.typeParams
+          case _ =>
+            Nil
+        }
       case tp: RefinedType =>
         tp.parent.typeParams filterNot (_.name == tp.refinedName)
       case tp: TypeProxy =>
@@ -630,59 +638,21 @@ object Types {
         case nil => tp
       }
 
-      def hkApp(tp: Type): Type = tp match {
-        case AndType(l, r) =>
-          hkApp(l) orElse hkApp(r)
-        case tp: RefinedType if defn.hkTraits contains tp.typeSymbol =>
-          tp
-        case tp: TypeProxy =>
-          hkApp(tp.underlying)
-      }
-
-      def hkRefinement(tp: TypeRef): Type = {
-        val hkArgs =
-          if (tp.symbol.isCompleting)
-            // This can happen if a higher-kinded type appears applied to arguments in its own bounds.
-            // TODO: Catch this case and mark as "proceed at own risk" later.
-            args map (_ => defn.InvariantBetweenClass.typeConstructor)
-          else {
-            if (tp.info == NoType) {
-              println(s"typeless type ref: $tp")
-              debugTrace = true
-              tp.prefix.member(tp.name)
-            }
-
-            hkApp(tp.info).typeArgs
-          }
-        ((tp: Type) /: hkArgs.zipWithIndex.zip(args)) {
-          case (parent, ((hkArg, idx), arg)) =>
-            val vsym = hkArg.typeSymbol
-            val rhs =
-              if (vsym == defn.InvariantBetweenClass)
-                TypeAlias(arg)
-              else if (vsym == defn.CovariantBetweenClass)
-                TypeBounds.upper(arg)
-              else {
-                assert(vsym == defn.ContravariantBetweenClass)
-                TypeBounds.lower(arg)
-              }
-            RefinedType(parent, tpnme.higherKindedParamName(idx), rhs)
+      def safeTypeParams(tsym: Symbol) =
+        if (tsym.isClass || !typeSymbol.isCompleting) typeParams
+        else {
+          ctx.warning("encountered F-bounded higher-kinded type parameters; assuming they are invariant")
+          defn.hkTrait(args map Function.const(0)).typeParams
         }
-      }
 
-      // begin applied type
       if (args.isEmpty) this
       else this match {
         case tp: PolyType =>
           tp.instantiate(args)
         case tp: TypeRef =>
           val tsym = tp.symbol
-          if (tsym.isClass)
-            recur(tp, tp.typeParams, args)
-          else if (tsym.isAliasType)
-            tp.underlying.appliedTo(args)
-          else
-            hkRefinement(tp)
+          if (tsym.isAliasType) tp.underlying.appliedTo(args)
+          else recur(tp, safeTypeParams(tsym), args)
         case tp: TypeProxy =>
           tp.underlying.appliedTo(args)
         case AndType(l, r) =>
@@ -1236,14 +1206,17 @@ object Types {
 
     override def underlying(implicit ctx: Context) = parent
 
-    def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType =
+    def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
+      def originalName = parent.typeParams.apply(refinedName.hkParamIndex).name
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))
         this
-      else if (refinedName.isHkParamName && typeParams.length > refinedName.hkParamIndex)
-        derivedRefinedType(
-          parent, parent.typeParams.apply(refinedName.hkParamIndex).name, refinedInfo)
+      else if (refinedName.isHkParamName &&
+               refinedName.hkParamIndex < typeParams.length &&
+               originalName != refinedName)
+        derivedRefinedType(parent, originalName, refinedInfo)
       else
         RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
+    }
 
     override def equals(that: Any) = that match {
       case that: RefinedType =>
@@ -1641,7 +1614,7 @@ object Types {
      *  @see Definitions.hkTrait
      */
     def higherKinded(boundSyms: List[Symbol])(implicit ctx: Context) = {
-      val parent = defn.hkTrait(boundSyms).typeConstructor
+      val parent = defn.hkTrait(boundSyms map (_.variance)).typeConstructor
       val hkParamNames = boundSyms.indices.toList map tpnme.higherKindedParamName
       def substBoundSyms(tp: Type)(rt: RefinedType): Type =
         tp.subst(boundSyms, hkParamNames map (TypeRef(RefinedThis(rt), _)))
