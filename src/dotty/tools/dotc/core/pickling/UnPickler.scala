@@ -44,8 +44,21 @@ object UnPickler {
   */
   def depoly(tp: Type, denot: SymDenotation)(implicit ctx: Context): Type = tp match {
     case TempPolyType(tparams, restpe) =>
-      if (denot.isAbstractType) restpe.bounds.higherKinded(tparams)
-      else PolyType.fromSymbols(tparams, restpe)
+      if (denot.isAbstractType)
+        restpe.bounds.higherKinded(tparams)
+      else if (denot.isAliasType) {
+        var err: Option[(String, Position)] = None
+        val result = restpe.LambdaAbstract(tparams) { (msg, pos) => err = Some((msg, pos)) }
+        for ((msg, pos) <- err)
+          ctx.warning(
+            s"""$msg
+               |originally parsed type : ${tp.show}
+               |will be approximated by: ${result.show}.
+               |Proceed at own risk.""".stripMargin)
+        result
+      }
+      else
+        PolyType.fromSymbols(tparams, restpe)
     case tp => tp
   }
 

@@ -232,6 +232,7 @@ object Types {
      *  type parameters of the HigherKinded class.
      *  For a refinement type, the type parameters of its parent, unless there's a
      *  refinement with the same name. Inherited by all other type proxies.
+     *  For an intersection type A & B, the type parameters of its left operand, A.
      *  Empty list for all other types.
      */
     final def typeParams(implicit ctx: Context): List[TypeSymbol] = this match {
@@ -251,6 +252,8 @@ object Types {
         tp.parent.typeParams filterNot (_.name == tp.refinedName)
       case tp: TypeProxy =>
         tp.underlying.typeParams
+      case tp: AndType =>
+        tp.tp1.typeParams
       case _ =>
         Nil
     }
@@ -656,7 +659,7 @@ object Types {
         case tp: TypeProxy =>
           tp.underlying.appliedTo(args)
         case AndType(l, r) =>
-          l.appliedTo(args) & r.appliedTo(args)
+          l.appliedTo(args) & r
       }
     }
 
@@ -754,43 +757,49 @@ object Types {
      *  Occurrences of `X` are rewritten to `this.T2` and the whole definition becomes:
      *
      *     type A = Triple { type T1 = (this.T2, this.T2); type T3 = String }
+     *
+     *  If the RHS is an intersection type A & B, we Lambda abstract on A instead and
+     *  then recombine with & B.
      */
-    def LambdaAbstract(boundSyms: List[Symbol])(error: (String, Position) => Unit)(implicit ctx: Context): Type = {
-      val cls = typeSymbol
-      if (!cls.isClass)
-        error("right-hand side of parameterized alias type must be a class", cls.pos)
+    def LambdaAbstract(boundSyms: List[Symbol])(error: (String, Position) => Unit)(implicit ctx: Context): Type = this match {
+      case AndType(l, r) =>
+        AndType(l.LambdaAbstract(boundSyms)(error), r)
+      case _ =>
+        val cls = typeSymbol
+        if (!cls.isClass)
+          error("right-hand side of parameterized alias type must refer to a class", cls.pos)
 
-      /** Rewrite type.
-       *  @param tp     The type to rewrite
-       *  @param symMap A map that associates bound symbols were seen to match a rhs type argument
-       *                with the corresponding parameter reference (where the refined this is left open).
-       *  @return The rewritten type, paired with
-       *          the list of replacement types for bound symbols, parameterized by the actual refinement
-       */
-      def rewrite(tp: Type, symMap: Map[Symbol, RefinedType => Type]): (Type, RefinedType => List[Type]) = tp match {
-        case tp @ RefinedType(parent, name: TypeName) =>
-          tp.refinedInfo match {
-            case tr: TypeRef if boundSyms contains tr.symbol =>
-              rewrite(tp.parent, symMap + (tr.symbol -> (rt => TypeRef(RefinedThis(rt), name))))
-            case info =>
-              val (parent1, replacements) = rewrite(tp.parent, symMap)
-              (RefinedType(parent1, name, rt => info.subst(boundSyms, replacements(rt))),
-               replacements)
-          }
-        case tp =>
-          def replacements(rt: RefinedType): List[Type] =
-            for (sym <- boundSyms) yield {
-              symMap get sym match {
-                case Some(replacement) =>
-                  replacement(rt)
-                case None =>
-                  error(s"parameter $sym of type alias does not appear as type argument of the aliased $cls", sym.pos)
-                  defn.AnyType
-              }
+        val correspondingParamName: Map[Symbol, TypeName] = {
+          for { (tparam, targ: TypeRef) <- cls.typeParams zip typeArgs
+              if boundSyms contains targ.symbol
+          } yield targ.symbol -> tparam.name
+        }.toMap
+
+        val correspondingNames = correspondingParamName.values.toSet
+
+        def replacements(rt: RefinedType): List[Type] =
+          for (sym <- boundSyms) yield {
+            correspondingParamName get sym match {
+              case Some(name) =>
+                TypeRef(RefinedThis(rt), name)
+              case None =>
+                error(s"parameter $sym of type alias does not appear as type argument of the aliased $cls", sym.pos)
+                defn.AnyType
             }
-          (tp, replacements)
-      }
-      rewrite(this, Map())._1
+          }
+
+        def rewrite(tp: Type): Type = tp match {
+          case tp @ RefinedType(parent, name: TypeName) =>
+            if (correspondingNames contains name) rewrite(parent)
+            else RefinedType(
+              rewrite(parent),
+              name,
+              rt => tp.refinedInfo.subst(boundSyms, replacements(rt)))
+          case tp =>
+            tp
+        }
+
+        rewrite(this)
     }
 
 // ----- misc -----------------------------------------------------------
