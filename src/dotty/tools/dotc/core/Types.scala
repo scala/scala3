@@ -650,8 +650,6 @@ object Types {
 
       if (args.isEmpty) this
       else this match {
-        case tp: PolyType =>
-          tp.instantiate(args)
         case tp: TypeRef =>
           val tsym = tp.symbol
           if (tsym.isAliasType) tp.underlying.appliedTo(args)
