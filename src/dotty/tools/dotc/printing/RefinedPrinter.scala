@@ -19,7 +19,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   private var currentOwner: Tree[_ >: Untyped] = emptyTree()
 
   def atOwner(owner: Tree[_ >: Untyped])(op: => Text): Text = {
-    val saved = owner
+    val saved = currentOwner
     currentOwner = owner
     try op
     finally { currentOwner = saved }
@@ -96,7 +96,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def optAscription(tpt: Tree[T]) = optText(tpt)(": " ~ _)
 
-    def tparamsText(params: List[Tree[T]]): Text =
+    def tparamsText[T >: Untyped](params: List[Tree[T]]): Text =
       "[" ~ toText(params, ", ") ~ "]" provided params.nonEmpty
 
     def addVparamssText(txt: Text, vparamss: List[List[ValDef[T]]]): Text =
@@ -214,13 +214,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           val first = modText(mods, "def") ~~ toText(name) ~ tparamsText(tparams)
           addVparamssText(first, vparamss) ~ optAscription(tpt) ~ optText(rhs)(" = " ~ _)
         }
-      case TypeDef(mods, name, tparams, rhs) =>
+      case tree @ TypeDef(mods, name, rhs) =>
         atOwner(tree) {
           val rhsText = rhs match {
             case TypeBoundsTree(_, _) => toText(rhs)
             case _ => optText(rhs)(" = " ~ _)
           }
-          modText(mods, "type") ~~ toText(name) ~ tparamsText(tparams) ~ rhsText
+          modText(mods, "type") ~~ toText(name) ~ tparamsText(tree.tparams) ~ rhsText
         }
       case Template(DefDef(mods, _, tparams, vparamss, _, _), parents, self, stats) =>
         val tparamsTxt = tparamsText(tparams)
@@ -331,6 +331,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case PatDef(mods, pats, tpt, rhs) =>
         modText(mods, "val") ~~ toText(pats, ", ") ~ optAscription(tpt) ~
           optText(rhs)(" = " ~ _)
+      case Thicket(trees) =>
+        "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case _ =>
         tree.fallbackToText(this)
     }

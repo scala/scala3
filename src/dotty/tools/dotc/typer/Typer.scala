@@ -42,11 +42,10 @@ class Typer extends Namer {
   }
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): TypeDef = {
-    val Trees.TypeDef(mods, name, tparams, rhs) = tdef
+    val Trees.TypeDef(mods, name, rhs) = tdef
     val mods1 = typedModifiers(mods)
-    val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val rhs1 = typedType(rhs)
-    tdef.withType(sym.symRef).derivedTypeDef(mods1, name, tparams1, rhs1)
+    tdef.withType(sym.symRef).derivedTypeDef(mods1, name, rhs1)
   }
 
   def typedClassDef(cdef: untpd.ClassDef, cls: ClassSymbol)(implicit ctx: Context) = {

@@ -222,7 +222,7 @@ object CheckTrees {
         check(rhs.isValue)
         check(rhs.tpe <:< tpt.tpe)
       }
-    case TypeDef(mods, name, _, tpt) =>
+    case TypeDef(mods, name, tpt) =>
       check(tpt.tpe.isInstanceOf[TypeBounds])
     case Template(constr, parents, selfType, body) =>
     case ClassDef(mods, names, impl) =>

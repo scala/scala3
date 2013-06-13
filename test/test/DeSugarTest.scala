@@ -33,11 +33,7 @@ class DeSugarTest extends ParserTest {
 
     override def transform(tree: Tree): Tree = {
       val tree1 = desugar(tree, curMode)
-      if (tree1 ne tree) {
-        //println(s"repeat desugar ${tree1.getClass}")
-        transform(tree1)
-      }
-      else tree1 match {
+      tree1 match {
         case TypedSplice(t) =>
           tree1
         case PostfixOp(od, op) =>
@@ -62,12 +58,14 @@ class DeSugarTest extends ParserTest {
           tree1.derivedValDef(mods, name, transform(tpt, Type), transform(rhs))
         case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
           tree1.derivedDefDef(mods, name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt, Type), transform(rhs))
-        case TypeDef(mods, name, tparams, rhs) =>
-          tree1.derivedTypeDef(mods, name, transformSub(tparams), transform(rhs, Type))
+        case tree1 @ TypeDef(mods, name, rhs) =>
+          tree1.derivedTypeDef(mods, name, transform(rhs, Type), transformSub(tree1.tparams))
         case Template(constr, parents, self, body) =>
           tree1.derivedTemplate(transformSub(constr), transform(parents), transformSub(self), transform(body, Expr))
         case ClassDef(mods, name, impl) =>
           tree1.derivedClassDef(mods, name, transformSub(impl))
+        case Thicket(trees) =>
+          Thicket(flatten(trees mapConserve super.transform))
         case tree1 =>
           super.transform(tree1)
       }

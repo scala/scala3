@@ -1427,7 +1427,7 @@ object Parsers {
           val bounds =
             if (isConcreteOwner) typeParamBounds(name)
             else typeBounds()
-          TypeDef(mods, name, hkparams, bounds)
+          typeDef(mods, name, hkparams, bounds)
         }
       }
       commaSeparated(typeParam)
@@ -1463,7 +1463,7 @@ object Parsers {
                 in.nextToken()
                 addFlag(mods, Mutable)
               } else {
-                if ((mods.flags &~ ParamAccessor).isEmpty) syntaxError("`val' or `var' expected")
+                if (!(mods.flags &~ ParamAccessor).isEmpty) syntaxError("`val' or `var' expected")
                 if (firstClauseOfCaseClass) mods else mods | PrivateLocal
               }
             }
@@ -1708,9 +1708,9 @@ object Parsers {
         in.token match {
           case EQUALS =>
             in.nextToken()
-            TypeDef(mods, name, tparams, typ())
+            typeDef(mods, name, tparams, typ())
           case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
-            TypeDef(mods, name, tparams, typeBounds())
+            typeDef(mods, name, tparams, typeBounds())
           case _ =>
             syntaxErrorOrIncomplete("`=', `>:', or `<:' expected")
             EmptyTree

@@ -17,7 +17,7 @@ abstract class TreeInfo {
   def isDeclarationOrTypeDef(tree: Tree[_ >: Untyped]): Boolean = tree match {
     case DefDef(_, _, _, _, _, EmptyTree)
       | ValDef(_, _, _, EmptyTree)
-      | TypeDef(_, _, _, _) => true
+      | TypeDef(_, _, _) => true
     case _ => false
   }
 
@@ -26,7 +26,7 @@ abstract class TreeInfo {
   def isInterfaceMember(tree: Tree[_ >: Untyped]): Boolean = tree match {
     case EmptyTree => true
     case Import(_, _) => true
-    case TypeDef(_, _, _, _) => true
+    case TypeDef(_, _, _) => true
     case DefDef(mods, _, _, _, _, __) => mods.flags is Deferred
     case ValDef(mods, _, _, _) => mods is Deferred
     case _ => false
@@ -38,7 +38,7 @@ abstract class TreeInfo {
   def isIdempotentDef(tree: Tree[Type])(implicit ctx: Context): Boolean = tree match {
     case EmptyTree
        | ClassDef(_, _, _)
-       | TypeDef(_, _, _, _)
+       | TypeDef(_, _, _)
        | Import(_, _)
        | DefDef(_, _, _, _, _, _) =>
       true
@@ -232,7 +232,7 @@ abstract class TreeInfo {
   }
 
   def isEarlyTypeDef(tree: Tree[_ >: Untyped]) = tree match {
-    case TypeDef(mods, _, _, _) => mods is Scala2PreSuper
+    case TypeDef(mods, _, _) => mods is Scala2PreSuper
     case _ => false
   }
 

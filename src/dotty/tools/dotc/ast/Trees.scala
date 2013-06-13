@@ -571,10 +571,11 @@ object Trees {
   /** mods type name = rhs   or
    *  mods type name >: lo <: hi, if rhs = TypeBoundsTree(lo, hi)
    */
-  case class TypeDef[T >: Untyped](mods: Modifiers[T], name: TypeName, tparams: List[TypeDef[T]], rhs: Tree[T])
+  case class TypeDef[T >: Untyped](mods: Modifiers[T], name: TypeName, rhs: Tree[T])
     extends MemberDef[T] {
     type ThisTree[T >: Untyped] = TypeDef[T]
-    def withName(name: Name) = this.derivedTypeDef(mods, name.toTypeName, tparams, rhs)
+    def withName(name: Name) = this.derivedTypeDef(mods, name.toTypeName, rhs, tparams)
+    def tparams: List[untpd.TypeDef] = Nil
   }
 
   /** extends parents { self => body } */
@@ -657,8 +658,8 @@ object Trees {
 
   object Thicket {
     def apply[T >: Untyped](): Thicket[T] = emptyTree()
-    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T]): Thicket[T] = Thicket(List(x1, x2))
-    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T], x3: Tree[T]): Thicket[T] = Thicket(List(x1, x2, x3))
+    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T]): Thicket[T] = Thicket(x1 :: x2 :: Nil)
+    def apply[T >: Untyped](x1: Tree[T], x2: Tree[T], x3: Tree[T]): Thicket[T] = Thicket(x1 :: x2 :: x3 :: Nil)
     def make[T >: Untyped](xs: List[Tree[T]]): Tree[T] = flatten(xs) match {
       case x :: Nil => x
       case _ => apply(xs)
@@ -876,9 +877,13 @@ object Trees {
       case tree: DefDef[_] if (mods == tree.mods) && (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
       case _ => DefDef(mods, name, tparams, vparamss, tpt, rhs).copyAttr(tree)
     }
-    def derivedTypeDef(mods: Modifiers[T], name: TypeName, tparams: List[TypeDef[T]], rhs: Tree[T]): TypeDef[T] = tree match {
-      case tree: TypeDef[_] if (mods == tree.mods) && (name == tree.name) && (tparams eq tree.tparams) && (rhs eq tree.rhs) => tree
-      case _ => TypeDef(mods, name, tparams, rhs).copyAttr(tree)
+    def derivedTypeDef(mods: Modifiers[T], name: TypeName, rhs: Tree[T], tparams: List[untpd.TypeDef] = Nil): TypeDef[T] = tree match {
+      case tree: TypeDef[_] if (mods == tree.mods) && (name == tree.name) && (rhs eq tree.rhs) && (tparams eq tree.tparams) => tree
+      case _ =>
+        if (tparams.nonEmpty)
+          (untpd.typeDef _).asInstanceOf[(Modifiers[T], TypeName, List[untpd.TypeDef], Tree[T]) => TypeDef[T]](
+            mods, name, tparams, rhs).copyAttr(tree)
+        else TypeDef(mods, name, rhs).copyAttr(tree)
     }
     def derivedTemplate(constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], body: List[Tree[T]]): Template[T] = tree match {
       case tree: Template[_] if (constr eq tree.constr) && (parents eq tree.parents) && (self eq tree.self) && (body eq tree.body) => tree
@@ -982,8 +987,8 @@ object Trees {
         finishValDef(tree.derivedValDef(mods, name, transform(tpt, c), transform(rhs, c)), tree, c, plugins)
       case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
         finishDefDef(tree.derivedDefDef(mods, name, transformSub(tparams, c), vparamss mapConserve (transformSub(_, c)), transform(tpt, c), transform(rhs, c)), tree, c, plugins)
-      case TypeDef(mods, name, tparams, rhs) =>
-        finishTypeDef(tree.derivedTypeDef(mods, name, transformSub(tparams, c), transform(rhs, c)), tree, c, plugins)
+      case tree @ TypeDef(mods, name, rhs) =>
+        finishTypeDef(tree.derivedTypeDef(mods, name, transform(rhs, c), tree.tparams), tree, c, plugins)
       case Template(constr, parents, self, body) =>
         finishTemplate(tree.derivedTemplate(transformSub(constr, c), transform(parents, c), transformSub(self, c), transform(body, c)), tree, c, plugins)
       case ClassDef(mods, name, impl) =>
@@ -1064,17 +1069,26 @@ object Trees {
 
   def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
     var buf: ListBuffer[Tree[T]] = null
+    def add(tree: Tree[T]) = {
+      assert(!tree.isInstanceOf[Thicket[_]])
+      buf += tree
+    }
     var xs = trees
     while (xs.nonEmpty) {
       xs.head match {
         case Thicket(elems) =>
-          if (buf == null) buf = new ListBuffer
-          var ys = trees
-          while (ys ne xs) {
-            buf += ys.head
-            ys = ys.tail
+          if (buf == null) {
+            buf = new ListBuffer
+            var ys = trees
+            while (ys ne xs) {
+              buf += ys.head
+              ys = ys.tail
+            }
           }
-          buf ++= elems
+          for (elem <- elems) {
+            assert(!elem.isInstanceOf[Thicket[_]])
+            buf += elem
+          }
         case tree =>
           if (buf != null) buf += tree
       }
@@ -1155,8 +1169,8 @@ object Trees {
         tree.derivedValDef(mods, name, transform(tpt), transform(rhs))
       case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
         tree.derivedDefDef(mods, name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(rhs))
-      case TypeDef(mods, name, tparams, rhs) =>
-        tree.derivedTypeDef(mods, name, transformSub(tparams), transform(rhs))
+      case tree @ TypeDef(mods, name, rhs) =>
+        tree.derivedTypeDef(mods, name, transform(rhs), tree.tparams)
       case Template(constr, parents, self, body) =>
         tree.derivedTemplate(transformSub(constr), transform(parents), transformSub(self), transformStats(body))
       case ClassDef(mods, name, impl) =>
@@ -1168,9 +1182,8 @@ object Trees {
       case Annotated(annot, arg) =>
         tree.derivedAnnotated(transform(annot), transform(arg))
       case Thicket(trees) =>
-        val ts1 = trees.toList
-        val ts2 = transform(ts1)
-        if (ts1 eq ts2) tree else Thicket(ts2)
+        val trees1 = transform(trees)
+        if (trees1 eq trees) tree else Thicket(trees1)
       case tree @ SharedTree(shared) =>
         sharedMemo get tree match {
           case Some(tree1) => tree1
@@ -1183,7 +1196,7 @@ object Trees {
     def transformStats(trees: List[Tree[T]]): List[Tree[T]] =
       transform(trees)
     def transform(trees: List[Tree[T]]): List[Tree[T]] =
-      flatten(trees) mapConserve (transform(_))
+      flatten(trees mapConserve (transform(_)))
     def transformSub(tree: Tree[T]): tree.ThisTree[T] =
       transform(tree).asInstanceOf[tree.ThisTree[T]]
     def transformSub[TT <: Tree[T]](trees: List[TT]): List[TT] =
@@ -1263,8 +1276,8 @@ object Trees {
         this(this(x, tpt), rhs)
       case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
         this(this((this(x, tparams) /: vparamss)(apply), tpt), rhs)
-      case TypeDef(mods, name, tparams, rhs) =>
-        this(this(x, tparams), rhs)
+      case TypeDef(mods, name, rhs) =>
+        this(x, rhs)
       case Template(constr, parents, self, body) =>
         this(this(this(this(x, constr), parents), self), body)
       case ClassDef(mods, name, impl) =>

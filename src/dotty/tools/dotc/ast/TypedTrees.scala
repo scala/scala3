@@ -210,7 +210,7 @@ object tpd extends Trees.Instance[Type] {
   }
 
   def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
-    Trees.TypeDef(Modifiers(sym), sym.name, Nil, TypeTree(sym.info)) // !!! fill in typeParams
+    Trees.TypeDef(Modifiers(sym), sym.name, TypeTree(sym.info))
       .withType(refType(sym)).checked
 
   def ClassDef(cls: ClassSymbol, typeParams: List[TypeSymbol], constr: DefDef, body: List[Tree])(implicit ctx: Context): ClassDef = {

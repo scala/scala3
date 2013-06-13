@@ -43,6 +43,12 @@ object untpd extends Trees.Instance[Untyped] {
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree]) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree) extends Tree
 
+  class PolyTypeDef(mods: Modifiers, name: TypeName, override val tparams: List[TypeDef], rhs: Tree)
+    extends TypeDef(mods, name, rhs)
+
+  def typeDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], rhs: Tree): TypeDef =
+    if (tparams.isEmpty) TypeDef(mods, name, rhs) else new PolyTypeDef(mods, name, tparams, rhs)
+
 // ------ Untyped tree values and creation methods ---------------------
 
   val unitLiteral = Literal(Constant())
@@ -98,8 +104,12 @@ object untpd extends Trees.Instance[Untyped] {
 
   implicit class UntypedTreeCopier(val tree: Tree) extends AnyVal {
     def derivedModuleDef(mods: Modifiers, name: TermName, impl: Template) = tree match {
-      case tree: ModuleDef if (mods eq tree.mods) && (name eq tree.name) && (impl eq tree.impl) =>tree
+      case tree: ModuleDef if (mods eq tree.mods) && (name eq tree.name) && (impl eq tree.impl) => tree
       case _ => ModuleDef(mods, name, impl).copyAttr(tree)
+    }
+    def derivedPolyTypeDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], rhs: Tree) = tree match {
+      case tree: PolyTypeDef if (mods eq tree.mods) && (name eq tree.name) && (tparams eq tree.tparams) && (rhs eq tree.rhs) => tree
+      case _ => new PolyTypeDef(mods, name, tparams, rhs).copyAttr(tree)
     }
     def derivedSymbolLit(str: String) = tree match {
       case tree: SymbolLit if (str == tree.str) => tree
@@ -203,6 +213,8 @@ object untpd extends Trees.Instance[Untyped] {
         tree.derivedContextBounds(transformSub(bounds), transform(cxBounds))
       case PatDef(mods, pats, tpt, rhs) =>
         tree.derivedPatDef(mods, transform(pats), transform(tpt), transform(rhs))
+      case tree: PolyTypeDef =>
+        tree.derivedPolyTypeDef(tree.mods, tree.name, transformSub(tree.tparams), transform(tree.rhs))
       case _ =>
         super.transform(tree)
     }
@@ -244,6 +256,8 @@ object untpd extends Trees.Instance[Untyped] {
         this(this(x, bounds), cxBounds)
       case PatDef(mods, pats, tpt, rhs) =>
         this(this(this(x, pats), tpt), rhs)
+      case tree: PolyTypeDef =>
+        this(this(x, tree.tparams), tree.rhs)
       case _ =>
         super.foldOver(x, tree)
     }

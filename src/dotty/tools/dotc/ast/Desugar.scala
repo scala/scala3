@@ -40,16 +40,15 @@ object desugar {
   def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false): DefDef = {
     val DefDef(mods, name, tparams, vparamss, tpt, rhs) = meth
     val epbuf = new ListBuffer[ValDef]
-    def makeEvidenceParam(cxBound: Tree): ValDef = ???
     val tparams1 = tparams mapConserve {
-      case tparam @ TypeDef(mods, name, ttparams, ContextBounds(tbounds, cxbounds)) =>
+      case tparam @ TypeDef(mods, name, ContextBounds(tbounds, cxbounds)) =>
         for (cxbound <- cxbounds) {
           val paramFlags: FlagSet = if (isPrimaryConstructor) PrivateLocalParamAccessor else Param
           val epname = (nme.EVIDENCE_PARAM_PREFIX.toString + epbuf.length).toTermName
           epbuf +=
             ValDef(Modifiers(paramFlags | Implicit), epname, cxbound, EmptyTree)
         }
-        tparam.derivedTypeDef(mods, name, ttparams, tbounds)
+        tparam.derivedTypeDef(mods, name, tbounds, tparam.tparams)
       case tparam =>
         tparam
     }
@@ -68,13 +67,13 @@ object desugar {
   }
 
   def typeDef(tdef: TypeDef)(implicit ctx: Context): Tree = {
-    val TypeDef(mods, name, tparams, rhs) = tdef
+    val TypeDef(mods, name, rhs) = tdef
     if (mods is PrivateLocalParamAccessor) {
       val tparam = tdef.derivedTypeDef(
-        tdef.mods &~ PrivateLocal | ExpandedName, tdef.name.expandedName(ctx.owner), tdef.tparams, tdef.rhs)
+        tdef.mods &~ PrivateLocal | ExpandedName, tdef.name.expandedName(ctx.owner), tdef.rhs, tdef.tparams)
       val alias = tdef.derivedTypeDef(
-        Modifiers(PrivateLocal | Synthetic), tdef.name, Nil, refOfDef(tparam))
-      Thicket(tparam :: alias :: Nil)
+        Modifiers(PrivateLocal | Synthetic), tdef.name, refOfDef(tparam))
+      Thicket(tparam, alias)
     }
     else tdef
   }
@@ -88,7 +87,7 @@ object desugar {
     val constr1 = defDef(constr0, isPrimaryConstructor = true)
 
     val tparams = constr1.tparams.map(tparam => tparam.derivedTypeDef(
-      Modifiers(Param), tparam.name, tparam.tparams, tparam.rhs))
+      Modifiers(Param), tparam.name, tparam.rhs, tparam.tparams))
 
     // ensure parameter list is non-empty
     val vparamss =
@@ -167,7 +166,7 @@ object desugar {
     val cdef1 = cdef.derivedClassDef(mods, name,
       impl.derivedTemplate(constr, parents, self,
         constr1.tparams ::: constr1.vparamss.flatten ::: body ::: caseClassMeths))
-    Thicket(cdef1 :: caseCompanions ::: implicitWrappers)
+    Thicket.make(cdef1 :: caseCompanions ::: implicitWrappers)
   }
 
   /** Expand to:
@@ -182,7 +181,7 @@ object desugar {
     val clsSelf = self.derivedValDef(self.mods, self.name, SingletonTypeTree(Ident(name)), self.rhs)
     val clsTmpl = tmpl.derivedTemplate(constr, parents, clsSelf, body)
     val cls = ClassDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, clsTmpl)
-    Thicket(cls :: valDef(modul).toList)
+    Thicket(cls, valDef(modul))
   }
 
   def memberDef(tree: Tree)(implicit ctx: Context): Tree = tree match {
@@ -412,7 +411,7 @@ object desugar {
             val restDefs =
               for (((named, tpt), n) <- vars.zipWithIndex)
               yield derivedValDef(mods, named, tpt, selector(n))
-            Thicket(firstDef :: restDefs)
+            Thicket.make(firstDef :: restDefs)
         }
     }
 
@@ -494,7 +493,7 @@ object desugar {
         makeFor(nme.map, nme.flatMap, enums, body) orElse tree
       case PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
-        Thicket(pats1 map (makePatDef(mods, _, rhs)))
+        Thicket.make(pats1 map (makePatDef(mods, _, rhs)))
       case _ =>
         tree
     }
