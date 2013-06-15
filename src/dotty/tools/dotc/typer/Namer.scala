@@ -104,7 +104,7 @@ class Namer { typer: Typer =>
     def privateWithinClass(mods: Modifiers) =
       enclosingClassNamed(mods.privateWithin, mods.pos)
     val sym = tree match {
-      case tree: ClassDef =>
+      case tree: TypeDef if tree.isClassDef =>
         ctx.enter(ctx.newClassSymbol(
           ctx.owner, tree.name, tree.mods.flags, new Completer(tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
@@ -166,17 +166,17 @@ class Namer { typer: Typer =>
      *  and the real companion, if both exist.
      */
     def mergeCompanionDefs() = {
-      val caseClassDef = mutable.Map[TypeName, ClassDef]()
-      for (cdef @ ClassDef(mods, name, _) <- stats)
+      val caseClassDef = mutable.Map[TypeName, TypeDef]()
+      for (cdef @ TypeDef(mods, name, _) <- stats)
         if (mods is Case) caseClassDef(name) = cdef
       for (mdef @ ModuleDef(_, name, _) <- stats)
         caseClassDef get name.toTypeName match {
           case Some(cdef) =>
-            val Thicket((mcls @ ClassDef(_, _, impl)) :: mrest) = expandedTree(mdef)
-            val Thicket(cls :: (companion: ClassDef) :: crest) = expandedTree(cdef)
-            val mcls1 = mcls.derivedClassDef(mcls.mods, mcls.name,
+            val Thicket((mcls @ TypeDef(_, _, impl: Template)) :: mrest) = expandedTree(mdef)
+            val Thicket(cls :: TypeDef(_, _, compimpl: Template) :: crest) = expandedTree(cdef)
+            val mcls1 = mcls.derivedTypeDef(mcls.mods, mcls.name,
               impl.derivedTemplate(impl.constr, impl.parents, impl.self,
-                companion.impl.body ++ impl.body))
+                compimpl.body ++ impl.body))
             expandedTree(mdef) = Thicket(mcls1 :: mrest)
             expandedTree(cdef) = Thicket(cls :: crest)
           case none =>
@@ -203,9 +203,8 @@ class Namer { typer: Typer =>
           nestedTyper(sym) = typer1
           typer1.defDefSig(tree, sym)(localContext.withTyper(typer1))
         case tree: TypeDef =>
-          typeDefSig(tree, sym)(localContext.withNewScope)
-        case tree: ClassDef =>
-          classDefSig(tree, sym.asClass)(localContext)
+          if (tree.isClassDef) classDefSig(tree, sym.asClass)(localContext)
+          else typeDefSig(tree, sym)(localContext.withNewScope)
         case imp: Import =>
           val expr1 = typedAhead(imp.expr)
           ImportType(SharedTree(expr1))
@@ -298,7 +297,7 @@ class Namer { typer: Typer =>
   }
 
   /** The type signature of a ClassDef with given symbol */
-  def classDefSig(cdef: ClassDef, cls: ClassSymbol)(implicit ctx: Context): Type = {
+  def classDefSig(cdef: TypeDef, cls: ClassSymbol)(implicit ctx: Context): Type = {
 
     def parentType(constr: untpd.Tree): Type = {
       val Trees.Select(Trees.New(tpt), _) = TreeInfo.methPart(constr)
@@ -307,7 +306,7 @@ class Namer { typer: Typer =>
       else typedAhead(constr, Mode.Expr).tpe
     }
 
-    val ClassDef(_, _, impl @ Template(_, parents, self, body)) = cdef
+    val TypeDef(_, _, impl @ Template(_, parents, self, body)) = cdef
 
     val decls = newScope
     val (params, rest) = body span {

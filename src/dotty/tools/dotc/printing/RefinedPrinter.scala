@@ -25,8 +25,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     finally { currentOwner = saved }
   }
 
-  private def ownerIsClass =
-    currentOwner.isInstanceOf[ClassDef[_]] || currentOwner.isInstanceOf[untpd.ModuleDef]
+  private def ownerIsClass = currentOwner match {
+    case owner: TypeDef[_] => owner.isClassDef
+    case owner: untpd.ModuleDef => true
+    case _ => false
+  }
 
   override def nameString(name: Name): String = name.decode.toString
 
@@ -216,11 +219,16 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case tree @ TypeDef(mods, name, rhs) =>
         atOwner(tree) {
-          val rhsText = rhs match {
-            case TypeBoundsTree(_, _) => toText(rhs)
-            case _ => optText(rhs)(" = " ~ _)
+          def typeDefText(rhsText: Text) =
+            modText(mods, "type") ~~ toText(name) ~ tparamsText(tree.tparams) ~ rhsText
+          rhs match {
+            case impl: Template =>
+              modText(mods, if (mods is Trait) "trait" else "class") ~~ toText(name) ~ toText(impl)
+            case rhs: TypeBoundsTree =>
+              typeDefText(toText(rhs))
+            case _ =>
+              typeDefText(optText(rhs)(" = " ~ _))
           }
-          modText(mods, "type") ~~ toText(name) ~ tparamsText(tree.tparams) ~ rhsText
         }
       case Template(DefDef(mods, _, tparams, vparamss, _, _), parents, self, stats) =>
         val tparamsTxt = tparamsText(tparams)
@@ -238,10 +246,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         } provided !self.isEmpty
         val bodyText = "{" ~~ selfText ~~ toTextGlobal(stats, "\n") ~ "}"
         prefix ~~ (" extends" provided ownerIsClass) ~~ parentsText ~~ bodyText
-      case ClassDef(mods, name, impl) =>
-        atOwner(tree) {
-          modText(mods, if (mods is Trait) "trait" else "class") ~~ toText(name) ~ toText(impl)
-        }
       case Import(expr, selectors) =>
         def selectorText(sel: Tree): Text = sel match {
           case Pair(l, r) => toTextGlobal(l) ~ " => " ~ toTextGlobal(r)

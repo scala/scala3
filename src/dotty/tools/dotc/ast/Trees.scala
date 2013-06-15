@@ -568,13 +568,23 @@ object Trees {
     def withName(name: Name) = this.derivedDefDef(mods, name.toTermName, tparams, vparamss, tpt, rhs)
   }
 
-  /** mods type name = rhs   or
-   *  mods type name >: lo <: hi, if rhs = TypeBoundsTree(lo, hi)
+  /** mods class name template     or
+   *  mods trait name template     or
+   *  mods type name = rhs   or
+   *  mods type name >: lo <: hi, if rhs = TypeBoundsTree(lo, hi) & (lo ne hi)
    */
   case class TypeDef[T >: Untyped](mods: Modifiers[T], name: TypeName, rhs: Tree[T])
     extends MemberDef[T] {
     type ThisTree[T >: Untyped] = TypeDef[T]
     def withName(name: Name) = this.derivedTypeDef(mods, name.toTypeName, rhs, tparams)
+
+    /** Is this a definition of a class? */
+    def isClassDef = rhs.isInstanceOf[Template[_]]
+
+    /** If this a non-class type definition, its type parameters.
+     *  Can be different from Nil only for PolyTypeDefs, which are always
+     *  untyped and get eliminated during desugaring.
+     */
     def tparams: List[untpd.TypeDef] = Nil
   }
 
@@ -582,13 +592,6 @@ object Trees {
   case class Template[T >: Untyped](constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], body: List[Tree[T]])
     extends DefTree[T] {
     type ThisTree[T >: Untyped] = Template[T]
-  }
-
-  /** mods class name[tparams] impl */
-  case class ClassDef[T >: Untyped](mods: Modifiers[T], name: TypeName, impl: Template[T])
-    extends MemberDef[T] {
-    type ThisTree[T >: Untyped] = ClassDef[T]
-    def withName(name: Name) = this.derivedClassDef(mods, name.toTypeName, impl)
   }
 
   /** import expr.selectors
@@ -727,7 +730,6 @@ object Trees {
     type DefDef = Trees.DefDef[T]
     type TypeDef = Trees.TypeDef[T]
     type Template = Trees.Template[T]
-    type ClassDef = Trees.ClassDef[T]
     type Import = Trees.Import[T]
     type PackageDef = Trees.PackageDef[T]
     type Annotated = Trees.Annotated[T]
@@ -889,10 +891,6 @@ object Trees {
       case tree: Template[_] if (constr eq tree.constr) && (parents eq tree.parents) && (self eq tree.self) && (body eq tree.body) => tree
       case _ => Template(constr, parents, self, body).copyAttr(tree)
     }
-    def derivedClassDef(mods: Modifiers[T], name: TypeName, impl: Template[T]): ClassDef[T] = tree match {
-      case tree: ClassDef[_] if (mods == tree.mods) && (name == tree.name) && (impl eq tree.impl) => tree
-      case _ => ClassDef(mods, name, impl).copyAttr(tree)
-    }
     def derivedImport(expr: Tree[T], selectors: List[Tree[Untyped]]): Import[T] = tree match {
       case tree: Import[_] if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
       case _ => Import(expr, selectors).copyAttr(tree)
@@ -991,8 +989,6 @@ object Trees {
         finishTypeDef(tree.derivedTypeDef(mods, name, transform(rhs, c), tree.tparams), tree, c, plugins)
       case Template(constr, parents, self, body) =>
         finishTemplate(tree.derivedTemplate(transformSub(constr, c), transform(parents, c), transformSub(self, c), transform(body, c)), tree, c, plugins)
-      case ClassDef(mods, name, impl) =>
-        finishClassDef(tree.derivedClassDef(mods, name, transformSub(impl, c)), tree, c, plugins)
       case Import(expr, selectors) =>
         finishImport(tree.derivedImport(transform(expr, c), selectors), tree, c, plugins)
       case PackageDef(pid, stats) =>
@@ -1059,7 +1055,6 @@ object Trees {
     def finishDefDef(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishTypeDef(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishTemplate(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishClassDef(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishImport(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishPackageDef(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
     def finishAnnotated(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
@@ -1173,8 +1168,6 @@ object Trees {
         tree.derivedTypeDef(mods, name, transform(rhs), tree.tparams)
       case Template(constr, parents, self, body) =>
         tree.derivedTemplate(transformSub(constr), transform(parents), transformSub(self), transformStats(body))
-      case ClassDef(mods, name, impl) =>
-        tree.derivedClassDef(mods, name, transformSub(impl))
       case Import(expr, selectors) =>
         tree.derivedImport(transform(expr), selectors)
       case PackageDef(pid, stats) =>
@@ -1280,8 +1273,6 @@ object Trees {
         this(x, rhs)
       case Template(constr, parents, self, body) =>
         this(this(this(this(x, constr), parents), self), body)
-      case ClassDef(mods, name, impl) =>
-        this(x, impl)
       case Import(expr, selectors) =>
         this(x, expr)
       case PackageDef(pid, stats) =>

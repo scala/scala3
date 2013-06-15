@@ -80,8 +80,8 @@ object desugar {
 
   private val synthetic = Modifiers(Synthetic)
 
-  def classDef(cdef: ClassDef)(implicit ctx: Context): Tree = {
-    val ClassDef(
+  def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
+    val TypeDef(
       mods, name, impl @ Template(constr0, parents, self, body)) = cdef
 
     val constr1 = defDef(constr0, isPrimaryConstructor = true)
@@ -104,7 +104,7 @@ object desugar {
 
     val classTypeRef = {
       val tycon = Ident(cdef.name)
-      val tparams = cdef.impl.constr.tparams
+      val tparams = impl.constr.tparams
       if (tparams.isEmpty) tycon else AppliedTypeTree(tycon, tparams map refOfDef)
     }
 
@@ -163,7 +163,7 @@ object desugar {
       }
       else Nil
 
-    val cdef1 = cdef.derivedClassDef(mods, name,
+    val cdef1 = cdef.derivedTypeDef(mods, name,
       impl.derivedTemplate(constr, parents, self,
         constr1.tparams ::: constr1.vparamss.flatten ::: body ::: caseClassMeths))
     Thicket.make(cdef1 :: caseCompanions ::: implicitWrappers)
@@ -180,15 +180,14 @@ object desugar {
     val modul = ValDef(mods | ModuleCreationFlags, name, clsRef, New(clsRef, Nil))
     val clsSelf = self.derivedValDef(self.mods, self.name, SingletonTypeTree(Ident(name)), self.rhs)
     val clsTmpl = tmpl.derivedTemplate(constr, parents, clsSelf, body)
-    val cls = ClassDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, clsTmpl)
+    val cls = TypeDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, clsTmpl)
     Thicket(cls, valDef(modul))
   }
 
   def memberDef(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: ValDef => valDef(tree)
-    case tree: TypeDef => typeDef(tree)
+    case tree: TypeDef => if (tree.isClassDef) classDef(tree) else typeDef(tree)
     case tree: DefDef => defDef(tree)
-    case tree: ClassDef => classDef(tree)
     case tree: ModuleDef => moduleDef(tree)
   }
 
@@ -426,7 +425,7 @@ object desugar {
         Bind(id.name, Typed(Ident(nme.WILDCARD), tpt)).withPos(id.pos)
       case New(templ: Template) =>
         val x = tpnme.ANON_CLASS
-        val clsDef = ClassDef(Modifiers(Final), x, templ)
+        val clsDef = TypeDef(Modifiers(Final), x, templ)
         Block(clsDef, New(Ident(x), Nil))
       case Assign(Apply(fn, args), rhs) =>
         Apply(Select(fn, nme.update), args :+ rhs)

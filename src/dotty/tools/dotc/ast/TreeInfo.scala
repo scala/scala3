@@ -37,7 +37,6 @@ abstract class TreeInfo {
    */
   def isIdempotentDef(tree: Tree[Type])(implicit ctx: Context): Boolean = tree match {
     case EmptyTree
-       | ClassDef(_, _, _)
        | TypeDef(_, _, _)
        | Import(_, _)
        | DefDef(_, _, _, _, _, _) =>

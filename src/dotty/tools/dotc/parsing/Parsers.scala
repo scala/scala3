@@ -1740,7 +1740,7 @@ object Parsers {
     /** ClassDef ::= Id [ClsTypeParamClause]
      *               [ConstrMods] ClsParamClauses TemplateOpt
      */
-    def classDef(mods: Modifiers): ClassDef = atPos(tokenRange) {
+    def classDef(mods: Modifiers): TypeDef = atPos(tokenRange) {
       val name = ident().toTypeName
       val constr = atPos(in.offset) {
         val tparams = typeParamClauseOpt(ParamOwner.Class)
@@ -1749,7 +1749,7 @@ object Parsers {
         makeConstructor(cmods, tparams, vparamss)
       }
       val templ = templateOpt(constr)
-      ClassDef(mods, name, templ)
+      TypeDef(mods, name, templ)
     }
 
     /** ConstrMods        ::=  AccessModifier

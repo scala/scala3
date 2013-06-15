@@ -223,9 +223,8 @@ object CheckTrees {
         check(rhs.tpe <:< tpt.tpe)
       }
     case TypeDef(mods, name, tpt) =>
-      check(tpt.tpe.isInstanceOf[TypeBounds])
+      check(tpt.isInstanceOf[Template[_]] || tpt.tpe.isInstanceOf[TypeBounds])
     case Template(constr, parents, selfType, body) =>
-    case ClassDef(mods, names, impl) =>
     case Import(expr, selectors) =>
       check(expr.isValue)
       check(expr.tpe.termSymbol.isStable)

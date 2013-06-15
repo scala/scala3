@@ -62,8 +62,6 @@ class DeSugarTest extends ParserTest {
           tree1.derivedTypeDef(mods, name, transform(rhs, Type), transformSub(tree1.tparams))
         case Template(constr, parents, self, body) =>
           tree1.derivedTemplate(transformSub(constr), transform(parents), transformSub(self), transform(body, Expr))
-        case ClassDef(mods, name, impl) =>
-          tree1.derivedClassDef(mods, name, transformSub(impl))
         case Thicket(trees) =>
           Thicket(flatten(trees mapConserve super.transform))
         case tree1 =>
@@ -74,7 +72,7 @@ class DeSugarTest extends ParserTest {
 
   def firstClass(stats: List[Tree]): String = stats match {
     case Nil => "<empty>"
-    case ClassDef(_, name, _) :: _ => name.toString
+    case TypeDef(_, name, _) :: _ => name.toString
     case ModuleDef(_, name, _) :: _ => name.toString
     case (pdef: PackageDef) :: _ => firstClass(pdef)
     case stat :: stats => firstClass(stats)

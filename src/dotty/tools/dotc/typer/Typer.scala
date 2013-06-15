@@ -48,8 +48,8 @@ class Typer extends Namer {
     tdef.withType(sym.symRef).derivedTypeDef(mods1, name, rhs1)
   }
 
-  def typedClassDef(cdef: untpd.ClassDef, cls: ClassSymbol)(implicit ctx: Context) = {
-    val Trees.ClassDef(mods, name, impl @ Template(constr, parents, self, body)) = cdef
+  def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = {
+    val Trees.TypeDef(mods, name, impl @ Template(constr, parents, self, body)) = cdef
     val mods1 = typedModifiers(mods)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parents1 = parents mapconserve (typed(_))
@@ -61,7 +61,7 @@ class Typer extends Namer {
     val impl1 = impl.withType(localDummy.symRef).derivedTemplate(
       constr1, parents1, self1, body1)
 
-    cdef.withType(cls.symRef).derivedClassDef(mods1, name, impl1)
+    cdef.withType(cls.symRef).derivedTypeDef(mods1, name, impl1)
 
     // todo later: check that
     //  1. If class is non-abstract, it is instantiatable:
@@ -90,9 +90,8 @@ class Typer extends Namer {
           val typer1 = nestedTyper.remove(sym).get
           typer1.typedDefDef(tree, sym)(localContext.withTyper(typer1))
         case tree: untpd.TypeDef =>
-          typedTypeDef(tree, sym)(localContext.withNewScope)
-        case tree: untpd.ClassDef =>
-          typedClassDef(tree, sym.asClass)(localContext)
+          if (tree.isClassDef) typedClassDef(tree, sym.asClass)(localContext)
+          else typedTypeDef(tree, sym)(localContext.withNewScope)
         case tree: untpd.Import =>
           typedImport(tree, sym)
         case tree: untpd.TypeTree =>

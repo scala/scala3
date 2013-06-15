@@ -213,7 +213,7 @@ object tpd extends Trees.Instance[Type] {
     Trees.TypeDef(Modifiers(sym), sym.name, TypeTree(sym.info))
       .withType(refType(sym)).checked
 
-  def ClassDef(cls: ClassSymbol, typeParams: List[TypeSymbol], constr: DefDef, body: List[Tree])(implicit ctx: Context): ClassDef = {
+  def ClassDef(cls: ClassSymbol, typeParams: List[TypeSymbol], constr: DefDef, body: List[Tree])(implicit ctx: Context): TypeDef = {
     val parents = cls.info.parents map (TypeTree(_))
     val selfType =
       if (cls.classInfo.optSelfType.exists) ValDef(ctx.newSelfSym(cls))
@@ -231,7 +231,7 @@ object tpd extends Trees.Instance[Type] {
       .orElse(ctx.newLocalDummy(cls))
     val impl = Trees.Template(constr, parents, selfType, rest)
       .withType(refType(localDummy)).checked
-    Trees.ClassDef(Modifiers(cls), cls.name, impl) // !!! todo: revise
+    Trees.TypeDef(Modifiers(cls), cls.name, impl) // !!! todo: revise
       .withType(refType(cls)).checked
   }
 
