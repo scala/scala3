@@ -119,6 +119,7 @@ class ClassfileParser(
     moduleRoot.setFlag(Flags.JavaDefined | Flags.ModuleClassCreationFlags)
     setPrivateWithin(classRoot, jflags)
     setPrivateWithin(moduleRoot, jflags)
+    setPrivateWithin(moduleRoot.sourceModule, jflags)
 
     for (i <- 0 until in.nextChar) parseMember(method = false)
     for (i <- 0 until in.nextChar) parseMember(method = true)
