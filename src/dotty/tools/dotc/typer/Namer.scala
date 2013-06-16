@@ -215,7 +215,7 @@ class Namer { typer: Typer =>
   }
 
   /** Typecheck tree during completion, and remember result in yypedtree map */
-  def typedAhead(tree: Tree, mode: Mode.Value = Mode.Expr, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
+  def typedAhead(tree: Tree, mode: Mode = Mode.Expr, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
     typedTree.getOrElseUpdate(tree, typer.typedExpanded(tree, mode, pt))
 
   /** Enter and typecheck parameter list */

@@ -9,16 +9,13 @@ import TreeInfo._
 import Decorators._
 import language.higherKinds
 import collection.mutable.ListBuffer
+import typer.Mode
 
 object desugar {
 
   import untpd._
 
   private type VarInfo = (NameTree, Tree)
-
-  object Mode extends Enumeration {
-    val Type, Expr, Pattern = Value
-  }
 
   def valDef(vdef: ValDef)(implicit ctx: Context): Tree = {
     val ValDef(mods, name, tpt, rhs) = vdef
@@ -191,7 +188,7 @@ object desugar {
     case tree: ModuleDef => moduleDef(tree)
   }
 
-  def apply(tree: Tree, mode: Mode.Value)(implicit ctx: Context): Tree = {
+  def apply(tree: Tree, mode: Mode)(implicit ctx: Context): Tree = {
 
     def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
       val ldef = DefDef(Modifiers(Label), lname, Nil, ListOfNil, TypeTree(), rhs)
@@ -415,7 +412,7 @@ object desugar {
     }
 
     def isPatternVar(id: Ident) =
-      mode == Mode.Pattern && isVarPattern(id) && id.name != nme.WILDCARD
+      (mode is Mode.Pattern) && isVarPattern(id) && id.name != nme.WILDCARD
 
     // begin desugar
     val tree1 = tree match { // todo: move general tree desugaring to typer, and keep only untyped trees here?
@@ -440,7 +437,7 @@ object desugar {
       case InterpolatedString(id, strs, elems) =>
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
       case Function(args, body) =>
-        if (mode == Mode.Type) // FunctionN[args: _*, body]
+        if (mode is Mode.Type) // FunctionN[args: _*, body]
           AppliedTypeTree(
             ref(defn.FunctionClass(args.length).typeConstructor),
             args :+ body)
@@ -456,15 +453,15 @@ object desugar {
             AppliedTypeTree(Ident(op), l :: r :: Nil)
         }
       case PostfixOp(t, op) =>
-        if (mode == Mode.Type && op == nme.raw.STAR)
+        if ((mode is Mode.Type) && op == nme.raw.STAR)
           AppliedTypeTree(ref(defn.RepeatedParamType), t)
         else {
-          assert(mode == Mode.Expr)
+          assert(mode is Mode.Expr)
           if (op == nme.WILDCARD) tree // desugar later by eta expansion
           else Select(t, op)
         }
       case PrefixOp(op, t) =>
-        if (mode == Mode.Type && op == nme.ARROWkw)
+        if ((mode is Mode.Type) && op == nme.ARROWkw)
           AppliedTypeTree(ref(defn.ByNameParamClass.typeConstructor), t)
         else
           Select(t, nme.UNARY_PREFIX ++ op)
@@ -473,7 +470,7 @@ object desugar {
       case Tuple(ts) =>
         def PairTypeTree(l: Tree, r: Tree) =
           AppliedTypeTree(ref(defn.PairClass.typeConstructor), l :: r :: Nil)
-        if (mode == Mode.Type) ts.reduceRight(PairTypeTree)
+        if (mode is Mode.Type) ts.reduceRight(PairTypeTree)
         else if (ts.isEmpty) unitLiteral
         else ts.reduceRight(Pair(_, _))
       case WhileDo(cond, body) =>

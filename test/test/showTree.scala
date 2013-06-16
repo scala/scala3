@@ -3,6 +3,7 @@ import dotty.tools.dotc._
 import ast.Trees._
 import ast.desugar
 import ast.desugar._
+import typer.Mode
 
 object showTree extends DeSugarTest {
 

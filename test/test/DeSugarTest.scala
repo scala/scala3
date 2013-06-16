@@ -10,6 +10,7 @@ import dotty.tools.dotc._
 import ast.Trees._
 import ast.desugar
 import ast.desugar._
+import typer.Mode
 
 import scala.collection.mutable.ListBuffer
 
@@ -20,16 +21,16 @@ class DeSugarTest extends ParserTest {
   import Mode._
 
   object DeSugar extends TreeTransformer {
-    var curMode: Mode.Value = Mode.Expr
-    def withMode[T](mode: Mode.Value)(op: => T) = {
+    var curMode: Mode = Mode.Expr
+    def withMode[T](mode: Mode)(op: => T) = {
       val saved = curMode
       curMode = mode
       try op
       finally curMode = saved
     }
 
-    def transform(tree: Tree, mode: Mode.Value): Tree = withMode(mode) { transform(tree) }
-    def transform(trees: List[Tree], mode: Mode.Value): List[Tree] = withMode(mode) { transform(trees) }
+    def transform(tree: Tree, mode: Mode): Tree = withMode(mode) { transform(tree) }
+    def transform(trees: List[Tree], mode: Mode): List[Tree] = withMode(mode) { transform(trees) }
 
     override def transform(tree: Tree): Tree = {
       val tree1 = desugar(tree, curMode)
