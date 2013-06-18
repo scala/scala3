@@ -117,8 +117,10 @@ object Types {
       classSymbol is ModuleClass
 
     /** Is this type produced as a repair for an error? */
-    final def isError(implicit ctx: Context): Boolean =
-      (typeSymbol is Erroneous) || (termSymbol is Erroneous)
+    final def isError(implicit ctx: Context): Boolean = this match {
+      case ErrorType => true
+      case _ => (typeSymbol is Erroneous) || (termSymbol is Erroneous)
+    }
 
     /** Is some part of this type produced as a repair for an error? */
     final def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError)

@@ -14,5 +14,7 @@ object Mode {
   val Pattern = Mode(1 << 2)
   val Type = Mode(1 << 3)
 
+  val Fun = Mode(1 << 4)
+
 
 }

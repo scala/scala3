@@ -208,6 +208,10 @@ object SymDenotations {
     final def markAbsent(): Unit =
       _info = NoType
 
+    /** Is symbol known to not exist? */
+    final def isAbsent: Boolean =
+      _info == NoType
+
     /** Is this symbol the root class or its companion object? */
     final def isRoot: Boolean = name.toTermName == nme.ROOT
 

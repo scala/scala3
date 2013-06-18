@@ -161,6 +161,11 @@ object Denotations {
     /** Does this denotation have an alternative that satisfies the predicate `p`? */
     def hasAltWith(p: Symbol => Boolean): Boolean
 
+    /** The denotation made up from the alternatives of this denotation that
+     *  are accessible from prefix `pre`, or NoDenotation if no accessible alternative exists.
+     */
+    def accessibleFrom(pre: Type, superAccess: Boolean = false)(implicit ctx: Context): Denotation
+
     /** Find member of this denotation with given name and
      *  produce a denotation that contains the type of the member
      *  as seen from given prefix `pre`. Exclude all members that have
@@ -244,6 +249,8 @@ object Denotations {
             if (sym2.isClass || sym2.isAliasType) denot2
             else {
               // if sym1, sym2 exist, they are abstract types or term symbols
+              // we prefer concrete because they allow more things when seen as types
+              // e.g. new C. Question: Should we take accessibility into account?
               val info1 = denot1.info
               val info2 = denot2.info
               val sym1Eligible = sym1.isAsConcrete(sym2)
@@ -327,6 +334,13 @@ object Denotations {
     }
     def hasAltWith(p: Symbol => Boolean): Boolean =
       denot1.hasAltWith(p) || denot2.hasAltWith(p)
+    def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation = {
+      val d1 = denot1 accessibleFrom (pre, superAccess)
+      val d2 = denot2 accessibleFrom (pre, superAccess)
+      if (!d1.exists) d2
+      else if (!d2.exists) d1
+      else derivedMultiDenotation(d1, d2)
+    }
     def derivedMultiDenotation(d1: Denotation, d2: Denotation) =
       if ((d1 eq denot1) && (d2 eq denot2)) this else MultiDenotation(d1, d2)
     override def toString = alternatives.mkString(" <and> ")
@@ -364,6 +378,9 @@ object Denotations {
 
     def hasAltWith(p: Symbol => Boolean): Boolean =
       p(symbol)
+
+    def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation =
+      if (symbol isAccessibleFrom (pre, superAccess)) this else NoDenotation
 
     def atSignature(sig: Signature)(implicit ctx: Context): SingleDenotation =
       if (sig == signature) this else NoDenotation

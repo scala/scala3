@@ -4,23 +4,203 @@ package typer
 
 import core._
 import ast._
-import Trees._, Constants._, StdNames._, Scopes._
+import Trees._, Constants._, StdNames._, Scopes._, Denotations._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import util.Positions._
 import util.SourcePosition
 import collection.mutable
 import annotation.tailrec
 import language.implicitConversions
-import desugar.Mode
 
 trait TyperContextOps { ctx: Context => }
 
+object Typer {
+
+  object BindingPrec {
+    val definition = 4
+    val namedImport = 3
+    val wildImport = 2
+    val packageClause = 1
+    val nothingBound = 0
+    def isImportPrec(prec: Int) = prec == namedImport || prec == wildImport
+  }
+}
 
 class Typer extends Namer {
 
   import tpd._
+  import Typer.BindingPrec
 
-  def typedModifiers(mods: untpd.Modifiers): Modifiers = ???
+  def typedSelection(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
+    val ref = site.member(name)
+    if (ref.exists) NamedType(site, name).withDenot(ref)
+    else {
+      ctx.error(s"$name is not a member of ${site.show}", pos)
+      ErrorType
+    }
+  }
+
+  def checkAccessible(tpe: Type, pos: Position) = ???
+
+  /** Attribute an identifier consisting of a simple name or an outer reference.
+   *
+   *  @param tree      The tree representing the identifier.
+   *  Transformations: (1) Prefix class members with this.
+   *                   (2) Change imported symbols to selections
+   *
+   */
+  def typedIdent(tree: untpd.Ident, mode: Mode)(implicit ctx: Context): Tree = {
+    val name = tree.name
+
+    /** A symbol qualifies if it exists and is not stale. Stale symbols
+     *  are made to disappear here. In addition,
+     *  if we are in a constructor of a pattern, we ignore all definitions
+     *  which are methods (note: if we don't do that
+     *  case x :: xs in class List would return the :: method)
+     *  unless they are stable or are accessors (the latter exception is for better error messages)
+     */
+    def qualifies(sym: Symbol): Boolean = !(
+         sym.isAbsent
+      || (mode is Mode.Pattern | Mode.Fun) && (sym is (Method, butNot = Accessor))
+      )
+
+    /** Find the denotation of enclosing `name` in given context `ctx`.
+     *  @param previous    A denotation that was found in a more deeply nested scope,
+     *                     or else `NoDenotation` if nothing was found yet.
+     *  @param prevPrec    The binding precedence of the previous denotation,
+     *                     or else `nothingBound` if nothing was found yet.
+     *  @param prevCtx     The context of the previous denotation,
+     *                     or else `NoContext` if nothing was found yet.
+     */
+    def findRef(previous: Type, prevPrec: Int, prevCtx: Context)(implicit ctx: Context): Type = {
+      import BindingPrec._
+
+      /** A string which explains how something was bound; Depending on `prec` this is either
+       *      imported by <tree>
+       *  or  defined in <symbol>
+       */
+      def bindingString(prec: Int, whereFound: Context, qualifier: String = "") =
+        if (prec == wildImport || prec == namedImport) s"imported$qualifier by  ${whereFound.tree.show}"
+        else s"defined$qualifier in ${whereFound.owner.show}"
+
+      /** Check that any previously found result from an inner context
+       *  does properly shadow the new one from an outer context.
+       */
+      def checkNewOrShadowed(found: Type, newPrec: Int): Type =
+        if (!previous.exists || (previous == found)) found
+        else {
+          if (!previous.isError && !found.isError)
+            ctx.error(
+              s"""reference to $name is ambiguous;
+                 |it is both ${bindingString(newPrec, ctx, "")}
+                 |and ${bindingString(prevPrec, prevCtx, " subsequently")}""".stripMargin,
+              tree.pos)
+          previous
+        }
+
+      /** The type representing a named import with enclosing name when imported
+       *  from given `site` and `selectors`.
+       */
+      def namedImportRef(site: Type, selectors: List[untpd.Tree]): Type = {
+        def checkUnambiguous(found: Type) = {
+          val other = namedImportRef(site, selectors.tail)
+          if (other.exists && (found != other))
+            ctx.error(s"""reference to $name is ambiguous; it is imported twice in
+                         |${ctx.tree.show}""".stripMargin,
+                      tree.pos)
+          found
+        }
+        selectors match {
+          case Trees.Pair(Trees.Ident(from), Trees.Ident(`name`)) :: rest =>
+            checkUnambiguous(typedSelection(site, name, tree.pos))
+          case Trees.Ident(`name`) :: rest =>
+            checkUnambiguous(typedSelection(site, name, tree.pos))
+          case _ :: rest =>
+            namedImportRef(site, rest)
+          case nil =>
+            NoType
+        }
+      }
+
+      /** The type representing a wildcard import with enclosing name when imported
+       *  from given `site` and `selectors`.
+       */
+      def wildImportRef(site: Type, selectors: List[untpd.Tree]): Type = {
+        def wildPermitted(selectors: List[untpd.Tree]): Boolean = selectors match {
+          case Trees.Pair(Trees.Ident(`name`), Trees.Ident(nme.WILDCARD)) :: _ => false
+          case Trees.Ident(nme.WILDCARD) :: _ => true
+          case _ :: rest => wildPermitted(rest)
+          case nil => false
+        }
+        if (wildPermitted(selectors)) {
+          val denot = site.member(name)
+          if (denot.exists) return NamedType(site, name).withDenot(denot)
+        }
+        NoType
+      }
+
+      /** Is (some alternative of) the given predenotation `denot`
+       *  defined in current compilation unit?
+       */
+      def isDefinedInCurrentUnit(denot: PreDenotation): Boolean = denot match {
+        case DenotUnion(d1, d2) => isDefinedInCurrentUnit(d1) || isDefinedInCurrentUnit(d2)
+        case denot: SingleDenotation => denot.symbol.sourceFile == ctx.source
+      }
+
+      // begin findRef
+      if (ctx eq NoContext) previous
+      else {
+        val outer = ctx.outer
+        val curScope = ctx.scope
+        val curOwner = ctx.owner
+        if (curScope ne outer.scope) {
+          val defDenots =
+            if (curOwner.isClass && (curOwner ne outer.owner)) curOwner.asClass.membersNamed(name)
+            else curScope.denotsNamed(name)
+          if (defDenots.exists) {
+            val found = NamedType(curOwner.thisType, name).withDenot(defDenots.toDenot)
+            if (!(curOwner is Package) || isDefinedInCurrentUnit(defDenots))
+              return checkNewOrShadowed(found, definition) // no need to go further out, we found highest prec entry
+            else if (prevPrec < packageClause)
+              return findRef(found, packageClause, ctx)(outer)
+          }
+        }
+        val curImport = ctx.importInfo
+        if (prevPrec < namedImport && (curImport ne outer.importInfo)) {
+          val namedImp = namedImportRef(curImport.site, curImport.selectors)
+          if (namedImp.exists)
+            return findRef(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
+          if (prevPrec < wildImport) {
+            val wildImp = wildImportRef(curImport.site, curImport.selectors)
+            if (wildImp.exists)
+              return findRef(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
+          }
+        }
+        findRef(previous, prevPrec, prevCtx)(outer)
+      }
+    }
+
+    // begin typedIdent
+    val startingContext = // ignore current variable scope in patterns to enforce linearity
+      if (mode is Mode.Pattern) ctx.outer else ctx
+
+    var ownType = findRef(NoType, BindingPrec.nothingBound, NoContext)
+    if (!ownType.exists) {
+      ctx.error(s"not found: $name", tree.pos)
+      ownType = ErrorType
+    }
+    checkAccessible(ownType, tree.pos)
+    tree.withType(ownType)
+  }
+
+  def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = {
+    val annotations1 = mods.annotations mapconserve typedAnnotation
+    if (annotations1 eq mods.annotations) mods.asInstanceOf[Modifiers]
+    else Trees.Modifiers(mods.flags, mods.privateWithin, annotations1)
+  }
+
+  def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree =
+    typed(annot, Mode.Expr, defn.AnnotationClass.typeConstructor)
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = {
     val Trees.ValDef(mods, name, tpt, rhs) = vdef
@@ -77,7 +257,7 @@ class Typer extends Namer {
     imp.withType(sym.symRef).derivedImport(expr1, imp.selectors)
   }
 
-  def typedExpanded(tree: untpd.Tree, mode: Mode.Value = Mode.Expr, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
+  def typedExpanded(tree: untpd.Tree, mode: Mode = Mode.Expr, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
     val sym = symOfTree.remove(tree).getOrElse(NoSymbol)
     sym.ensureCompleted()
     def localContext = ctx.fresh.withOwner(sym)
@@ -106,7 +286,7 @@ class Typer extends Namer {
     }
   }
 
-  def typed(tree: untpd.Tree, mode: Mode.Value = Mode.Expr, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
+  def typed(tree: untpd.Tree, mode: Mode = Mode.Expr, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
     val xtree =
       tree match {
         case tree: untpd.MemberDef =>
@@ -118,6 +298,9 @@ class Typer extends Namer {
     }
     typedExpanded(xtree, mode, pt)
   }
+
+  def typedTrees(trees: List[untpd.Tree], mode: Mode = Mode.Expr)(implicit ctx: Context): List[Tree] =
+    trees mapconserve (typed(_, mode))
 
   def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[tpd.Tree] = {
     val buf = new mutable.ListBuffer[Tree]

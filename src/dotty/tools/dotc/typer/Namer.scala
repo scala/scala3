@@ -131,7 +131,7 @@ class Namer { typer: Typer =>
 
   /** A new context that summarizes an import statement */
   def importContext(sym: Symbol, selectors: List[Tree])(implicit ctx: Context) =
-    ctx.fresh.withImport(ImportInfo(sym, selectors, ctx.scopeNestingLevel))
+    ctx.fresh.withImportInfo(ImportInfo(sym, selectors, ctx.scopeNestingLevel))
 
   /** A new context for the interior of a class */
   def inClassContext(cls: ClassSymbol, selfName: TermName)(implicit ctx: Context): Context = {
@@ -214,7 +214,7 @@ class Namer { typer: Typer =>
     }
   }
 
-  /** Typecheck tree during completion, and remember result in yypedtree map */
+  /** Typecheck tree during completion, and remember result in typedtree map */
   def typedAhead(tree: Tree, mode: Mode = Mode.Expr, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
     typedTree.getOrElseUpdate(tree, typer.typedExpanded(tree, mode, pt))
 

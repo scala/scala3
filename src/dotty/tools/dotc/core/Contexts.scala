@@ -138,10 +138,10 @@ object Contexts {
     protected def typer_=(typer: Typer) = _typer = typer
     def typer: Typer = _typer
 
-    /** The currently visible imports */
-    private[this] var _imports: List[ImportInfo] = _
-    protected def imports_=(imports: List[ImportInfo]) = _imports = imports
-    def imports: List[ImportInfo] = _imports
+    /** The currently active import info */
+    private[this] var _importInfo: ImportInfo = _
+    protected def importInfo_=(importInfo: ImportInfo) = _importInfo = importInfo
+    def importInfo: ImportInfo = _importInfo
 
     /** The current reporter */
     private[this] var _reporter: Reporter = _
@@ -263,7 +263,7 @@ object Contexts {
     def withScope(scope: Scope): this.type = { this.scope = scope; this }
     def withNewScope: this.type = { this.scope = newScope; this }
     def withTyper(typer: Typer): this.type = { this.typer = typer; this.scope = typer.scope; this }
-    def withImport(importInfo: ImportInfo): this.type = { this.imports = importInfo :: imports; this }
+    def withImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
     def withReporter(reporter: Reporter): this.type = { this.reporter = reporter; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
     def withMoreProperties(moreProperties: Map[String, Any]): this.type = { this.moreProperties = moreProperties; this }
