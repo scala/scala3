@@ -114,7 +114,20 @@ trait TypeOps { this: Context =>
             else {
               val t2 = mergeIfSub(tp2, tp1)
               if (t2.exists) t2
-              else AndType(tp1, tp2)
+              else {
+                tp1 match {
+                  case tp1: TypeType =>
+                    tp2 match {
+                      case tp2: TypeType =>
+                        val b1 = tp1.bounds
+                        val b2 = tp2.bounds
+                        return TypeBounds(b1.lo | b2.lo, b1.hi & b2.hi)
+                      case _ =>
+                    }
+                  case _ =>
+                }
+                AndType(tp1, tp2)
+              }
             }
         }
     }
@@ -132,7 +145,20 @@ trait TypeOps { this: Context =>
       else {
         val t2 = mergeIfSuper(tp2, tp1)
         if (t2.exists) t2
-        else OrType(tp1, tp2)
+        else {
+          tp1 match {
+            case tp1: TypeType =>
+              tp2 match {
+                case tp2: TypeType =>
+                  val b1 = t1.bounds
+                  val b2 = t2.bounds
+                  return TypeBounds(b1.lo & b2.lo, b1.hi | b2.hi)
+                case _ =>
+              }
+            case _ =>
+          }
+          OrType(tp1, tp2)
+        }
       }
     }
 
