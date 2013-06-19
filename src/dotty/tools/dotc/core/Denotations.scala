@@ -213,60 +213,6 @@ object Denotations {
       else
         this.asInstanceOf[SingleDenotation]
 
-    /** Form a denotation by conjoining with denotation `that` (OUTDATED, kept only for checking) */
-    private def & (that: Denotation)(implicit ctx: Context): Denotation =
-      if (this eq that) this
-      else if (!this.exists) that
-      else if (!that.exists) this
-      else that match {
-        case that: SingleDenotation =>
-          val r = mergeDenot(this, that)
-          if (r.exists) r else MultiDenotation(this, that)
-        case that @ MultiDenotation(denot1, denot2) =>
-          this & denot1 & denot2
-      }
-
-    /** Try to merge denot1 and denot2 without adding a new signature.
-     *  If unsuccessful, return NoDenotation.  (OUTDATED, kept only for checking)
-     */
-    private def mergeDenot(denot1: Denotation, denot2: SingleDenotation)(implicit ctx: Context): Denotation = denot1 match {
-      case denot1 @ MultiDenotation(denot11, denot12) =>
-        val d1 = mergeDenot(denot11, denot2)
-        if (d1.exists) denot1.derivedMultiDenotation(d1, denot2)
-        else {
-          val d2 = mergeDenot(denot12, denot2)
-          if (d2.exists) denot1.derivedMultiDenotation(denot11, d2)
-          else NoDenotation
-        }
-      case denot1: SingleDenotation =>
-        if (denot1 eq denot2) denot1
-        else if (denot1.signature != denot2.signature) NoDenotation
-        else {
-          val sym1 = denot1.symbol
-          if (sym1.isClass || sym1.isAliasType) denot1
-          else {
-            val sym2 = denot2.symbol
-            if (sym2.isClass || sym2.isAliasType) denot2
-            else {
-              // if sym1, sym2 exist, they are abstract types or term symbols
-              // we prefer concrete because they allow more things when seen as types
-              // e.g. new C. Question: Should we take accessibility into account?
-              val info1 = denot1.info
-              val info2 = denot2.info
-              val sym1Eligible = sym1.isAsConcrete(sym2)
-              val sym2Eligible = sym2.isAsConcrete(sym1)
-              if (sym1Eligible && info1 <:< info2) denot1
-              else if (sym2Eligible && info2 <:< info1) denot2
-              else new JointRefDenotation(
-                if (sym2Eligible) sym2 else sym1,
-                info1 & info2,
-                denot1.validFor & denot2.validFor)
-            }
-          }
-        }
-    }
-
-
     /** Form a denotation by conjoining with denotation `that` */
     def & (that: Denotation, pre: Type)(implicit ctx: Context): Denotation = {
 
@@ -307,28 +253,16 @@ object Denotations {
           }
       }
 
-      val result =
-        if (this eq that) this
-        else if (!this.exists) that
-        else if (!that.exists) this
-        else that match {
-          case that: SingleDenotation =>
-            val r = mergeDenot(this, that)
-            if (r.exists) r else MultiDenotation(this, that)
-          case that @ MultiDenotation(denot1, denot2) =>
-            this & (denot1, pre) & (denot2, pre)
-        }
-      if (ctx.settings.debug.value) {
-        val alt = this & that
-        if (result != alt && (result.info != alt.info || result.symbol != alt.symbol))
-          println(s"""discrepancy when computing $this & $that from $pre
-                   |previousy: $alt
-                   |now      : $result
-                   |this.info = ${this.info.show}
-                   |that.info = ${that.info.show}
-                   |${this.info <:< that.info} ${that.info <:< this.info}""".stripMargin)
+      if (this eq that) this
+      else if (!this.exists) that
+      else if (!that.exists) this
+      else that match {
+        case that: SingleDenotation =>
+          val r = mergeDenot(this, that)
+          if (r.exists) r else MultiDenotation(this, that)
+        case that @ MultiDenotation(denot1, denot2) =>
+          this & (denot1, pre) & (denot2, pre)
       }
-      result
     }
 
     /** Form a choice between this denotation and that one.
