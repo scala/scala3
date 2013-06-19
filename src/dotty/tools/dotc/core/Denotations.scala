@@ -284,10 +284,20 @@ object Denotations {
             def sym1Accessible = sym1.isAccessibleFrom(pre)
             if (info2 <:< info1 && sym1Accessible) denot1
             else {
-              def qualifies(sym: Symbol) =
-                sym.isAccessibleFrom(pre) && sym2.owner.isSubClass(sym.owner)
-              val lubSym = sym1.allOverriddenSymbols findSymbol qualifies
-              new JointRefDenotation(lubSym, info1 | info2, denot1.validFor & denot2.validFor)
+              def lubSym(overrides: Iterator[Symbol], previous: Symbol): Symbol =
+                if (!overrides.hasNext) previous
+                else {
+                  val candidate = overrides.next
+                  if (sym2.owner.isSubClass(candidate.owner))
+                    if (candidate isAccessibleFrom pre) candidate
+                    else lubSym(overrides, previous orElse candidate)
+                  else
+                    lubSym(overrides, previous)
+                }
+              new JointRefDenotation(
+                lubSym(sym1.allOverriddenSymbols, NoSymbol),
+                info1 | info2,
+                denot1.validFor & denot2.validFor)
             }
           }
         }
