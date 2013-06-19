@@ -213,8 +213,8 @@ object Denotations {
       else
         this.asInstanceOf[SingleDenotation]
 
-    /** Form a denotation by conjoining with denotation `that` */
-    def & (that: Denotation)(implicit ctx: Context): Denotation =
+    /** Form a denotation by conjoining with denotation `that` (OUTDATED, kept only for checking) */
+    private def & (that: Denotation)(implicit ctx: Context): Denotation =
       if (this eq that) this
       else if (!this.exists) that
       else if (!that.exists) this
@@ -227,7 +227,7 @@ object Denotations {
       }
 
     /** Try to merge denot1 and denot2 without adding a new signature.
-     *  If unsuccessful, return NoDenotation.
+     *  If unsuccessful, return NoDenotation.  (OUTDATED, kept only for checking)
      */
     private def mergeDenot(denot1: Denotation, denot2: SingleDenotation)(implicit ctx: Context): Denotation = denot1 match {
       case denot1 @ MultiDenotation(denot11, denot12) =>
@@ -266,17 +266,97 @@ object Denotations {
         }
     }
 
+
+    /** Form a denotation by conjoining with denotation `that` */
+    def & (that: Denotation, pre: Type)(implicit ctx: Context): Denotation = {
+
+      /** Try to merge denot1 and denot2 without adding a new signature.
+       *  If unsuccessful, return NoDenotation.
+       */
+      def mergeDenot(denot1: Denotation, denot2: SingleDenotation): Denotation = denot1 match {
+        case denot1 @ MultiDenotation(denot11, denot12) =>
+          val d1 = mergeDenot(denot11, denot2)
+          if (d1.exists) denot1.derivedMultiDenotation(d1, denot2)
+          else {
+            val d2 = mergeDenot(denot12, denot2)
+            if (d2.exists) denot1.derivedMultiDenotation(denot11, d2)
+            else NoDenotation
+          }
+        case denot1: SingleDenotation =>
+          if (denot1 eq denot2) denot1
+          else if (denot1.signature != denot2.signature) NoDenotation
+          else {
+            val info1 = denot1.info
+            val info2 = denot2.info
+            val sym2 = denot2.symbol
+            def sym2Accessible = sym2.isAccessibleFrom(pre)
+            if (info2 <:< info1 && sym2Accessible) denot2
+            else {
+              val sym1 = denot1.symbol
+              def sym1Accessible = sym1.isAccessibleFrom(pre)
+              if (info1 <:< info2 && sym1Accessible) denot1
+              else {
+                val sym =
+                  if (!sym1Accessible) sym2
+                  else if (!sym2Accessible) sym1
+                  else if (sym2 isAsConcrete sym1) sym2
+                  else sym1
+                new JointRefDenotation(sym, info1 & info2, denot1.validFor & denot2.validFor)
+              }
+            }
+          }
+      }
+
+      val result =
+        if (this eq that) this
+        else if (!this.exists) that
+        else if (!that.exists) this
+        else that match {
+          case that: SingleDenotation =>
+            val r = mergeDenot(this, that)
+            if (r.exists) r else MultiDenotation(this, that)
+          case that @ MultiDenotation(denot1, denot2) =>
+            this & (denot1, pre) & (denot2, pre)
+        }
+      if (ctx.settings.debug.value) {
+        val alt = this & that
+        if (result != alt && (result.info != alt.info || result.symbol != alt.symbol))
+          println(s"""discrepancy when computing $this & $that from $pre
+                   |previousy: $alt
+                   |now      : $result
+                   |this.info = ${this.info.show}
+                   |that.info = ${that.info.show}
+                   |${this.info <:< that.info} ${that.info <:< this.info}""".stripMargin)
+      }
+      result
+    }
+
     /** Form a choice between this denotation and that one.
      *  @param pre  The prefix type of the members of the denotation, used
      *              to determine an accessible symbol if it exists.
      */
-    def | (that: Denotation)(pre: Type)(implicit ctx: Context): Denotation = {
+    def | (that: Denotation, pre: Type)(implicit ctx: Context): Denotation = {
 
-      def lubSym(sym1: Symbol, sym2: Symbol): Symbol = {
-        def qualifies(sym: Symbol) =
-          sym.isAccessibleFrom(pre) && sym2.owner.isSubClass(sym.owner)
-        sym1.allOverriddenSymbols findSymbol qualifies
-      }
+      def unionDenot(denot1: SingleDenotation, denot2: SingleDenotation): Denotation =
+        if (denot1.signature != denot2.signature) NoDenotation
+        else {
+          val info1 = denot1.info
+          val info2 = denot2.info
+          val sym2 = denot2.symbol
+          def sym2Accessible = sym2.isAccessibleFrom(pre)
+          if (info1 <:< info2 && sym2Accessible) denot2
+          else {
+            val sym1 = denot1.symbol
+            def sym1Accessible = sym1.isAccessibleFrom(pre)
+            if (info2 <:< info1 && sym1Accessible) denot1
+            else {
+              def qualifies(sym: Symbol) =
+                sym.isAccessibleFrom(pre) && sym2.owner.isSubClass(sym.owner)
+              val lubSym = sym1.allOverriddenSymbols findSymbol qualifies
+              new JointRefDenotation(lubSym, info1 | info2, denot1.validFor & denot2.validFor)
+            }
+          }
+        }
 
       def throwError = throw new MatchError(s"$this | $that")
 
@@ -285,19 +365,15 @@ object Denotations {
       else if (!that.exists) that
       else this match {
         case denot1 @ MultiDenotation(denot11, denot12) =>
-          denot1.derivedMultiDenotation((denot11 | that)(pre), (denot12 | that)(pre))
+          denot1.derivedMultiDenotation(denot11 | (that, pre), denot12 | (that, pre))
         case _ =>
           that match {
             case denot2 @ MultiDenotation(denot21, denot22) =>
-              denot2.derivedMultiDenotation((this | denot21)(pre), (this | denot22)(pre))
+              denot2.derivedMultiDenotation(this | (denot21, pre), this | (denot22, pre))
             case denot2: SingleDenotation =>
               this match {
                 case denot1: SingleDenotation =>
-                  if (denot1.signature != denot2.signature) NoDenotation
-                  else new JointRefDenotation(
-                    lubSym(denot1.symbol, denot2.symbol),
-                    denot1.info | denot2.info,
-                    denot1.validFor & denot2.validFor)
+                  unionDenot(denot1, denot2)
                 case _ =>
                   throwError
               }
@@ -506,7 +582,7 @@ object Denotations {
     // ------ PreDenotation ops ----------------------------------------------
 
     final def first = this
-    final def toDenot(implicit ctx: Context) = this
+    final def toDenot(pre: Type)(implicit ctx: Context) = this
     final def containsSig(sig: Signature)(implicit ctx: Context) =
       exists && signature == sig
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
@@ -573,7 +649,7 @@ object Denotations {
     def first: Denotation
 
     /** Convert to full denotation by &-ing all elements */
-    def toDenot(implicit ctx: Context): Denotation
+    def toDenot(pre: Type)(implicit ctx: Context): Denotation
 
     /** Group contains a denotation with given signature */
     def containsSig(sig: Signature)(implicit ctx: Context): Boolean
@@ -604,7 +680,7 @@ object Denotations {
     assert(denots1.exists && denots2.exists)
     def exists = true
     def first = denots1.first
-    def toDenot(implicit ctx: Context) = denots1.toDenot & denots2.toDenot
+    def toDenot(pre: Type)(implicit ctx: Context) = (denots1 toDenot pre) & (denots2 toDenot pre, pre)
     def containsSig(sig: Signature)(implicit ctx: Context) =
       (denots1 containsSig sig) || (denots2 containsSig sig)
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =

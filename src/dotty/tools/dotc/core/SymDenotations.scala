@@ -874,7 +874,7 @@ object SymDenotations {
       } else NoDenotation
 
     override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation =
-      membersNamed(name).filterExcluded(excluded).asSeenFrom(pre).toDenot
+      membersNamed(name).filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
 
     private[this] var baseTypeCache: java.util.HashMap[CachedType, Type] = null
     private[this] var baseTypeValid: RunId = NoRunId

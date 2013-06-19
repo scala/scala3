@@ -295,7 +295,7 @@ object Types {
      */
     final def findDecl(name: Name, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: ClassInfo =>
-        tp.decls.denotsNamed(name).filterExcluded(excluded).toDenot
+        tp.decls.denotsNamed(name).filterExcluded(excluded).toDenot(NoPrefix)
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, excluded)
     }
@@ -317,7 +317,7 @@ object Types {
       case tp: RefinedType =>
         val pdenot = tp.parent.findMember(name, pre, excluded)
         if (name eq tp.refinedName)
-          pdenot & new JointRefDenotation(NoSymbol, tp.refinedInfo.substThis(tp, pre), Period.allInRun(ctx.runId))
+          pdenot & (new JointRefDenotation(NoSymbol, tp.refinedInfo.substThis(tp, pre), Period.allInRun(ctx.runId)), pre)
         else
           pdenot
       case tp: ThisType =>
@@ -341,9 +341,9 @@ object Types {
       case tp: ClassInfo =>
         tp.cls.findMember(name, pre, excluded)
       case AndType(l, r) =>
-        l.findMember(name, pre, excluded) & r.findMember(name, pre, excluded)
+        l.findMember(name, pre, excluded) & (r.findMember(name, pre, excluded), pre)
       case OrType(l, r) =>
-        (l.findMember(name, pre, excluded) | r.findMember(name, pre, excluded))(pre)
+        l.findMember(name, pre, excluded) | (r.findMember(name, pre, excluded), pre)
       case NoType =>
         NoDenotation
     } /* !!! DEBUG ensuring { denot =>
@@ -1527,12 +1527,12 @@ object Types {
       if (optSelfType.exists) optSelfType else cls.typeConstructor
 
     def rebase(tp: Type)(implicit ctx: Context): Type =
-      if (prefix eq cls.owner.thisType) tp
-      else tp.substThis(cls, prefix)
+      if ((prefix eq cls.owner.thisType) || !cls.owner.isClass) tp
+      else tp.substThis(cls.owner.asClass, prefix)
 
     def typeConstructor(implicit ctx: Context): Type =
       if ((cls is PackageClass) || cls.owner.isTerm) TypeRef.withSym(prefix, cls)
-      else TypeRef(prefix, cls.name).withDenot(cls.denot.asSeenFrom(prefix))
+      else TypeRef(prefix, cls.name).withDenot(cls.denot.asSeenFrom(prefix)) // this ???
 
     // cached because baseType needs parents
     private var parentsCache: List[TypeRef] = null
@@ -1584,6 +1584,7 @@ object Types {
 
     override def & (that: Type)(implicit ctx: Context) = that match {
       case that: TypeBounds => this & that
+      case that: ClassInfo => this & that.bounds
     }
 
     override def | (that: Type)(implicit ctx: Context) = that match {
@@ -1732,6 +1733,9 @@ object Types {
         } else {
           tp.derivedTypeBounds(this(lo), this(hi))
         }
+
+      case tp @ ClassInfo(prefix, _, _, _, _) =>
+        tp.derivedClassInfo(this(prefix))
 
       case tp @ AnnotatedType(annot, underlying) =>
         tp.derivedAnnotatedType(mapOver(annot), this(underlying))

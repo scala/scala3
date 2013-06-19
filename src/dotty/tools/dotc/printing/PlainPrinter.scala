@@ -216,7 +216,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val parentsText = Text(cparents.map(p =>
           toTextLocal(reconstituteParent(cls, p))), " with ")
         val trueDecls = otherDecls.filterNot(treatAsTypeArg)
-        val declsText = if (trueDecls.isEmpty) Text() else dclsText(trueDecls)
+        val declsText =
+          if (trueDecls.isEmpty || !ctx.settings.debug.value) Text()
+          else dclsText(trueDecls)
         tparamsText ~ " extends " ~ parentsText ~ "{" ~ selfText ~ declsText ~
           "} at " ~ preText
       case _ =>

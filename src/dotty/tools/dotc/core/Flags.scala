@@ -274,11 +274,12 @@ object Flags {
   final val Label = termFlag(22, "<label>")
 
   /** Labeled with `abstract` modifier (an abstract class)
+   *  Note: You should never see Abstract on any symbol except a class.
    *  Note: the flag counts as common, because it can be combined with OVERRIDE in a term.
    */
   final val Abstract = commonFlag(23, "abstract")
 
-  /** Labeled with of abstract & override */
+  /** Labeled with of abstract & override (needed?) */
   final val AbsOverride = termFlag(24, "abstract override")
 
   /** Method is assumed to be stable */
@@ -376,7 +377,7 @@ object Flags {
     Erroneous
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
-  // TODO: Should check that FromStartFlags do not changed in completion
+  // TODO: Should check that FromStartFlags do not change in completion
 
   /** A value that's unstable unless complemented with a Stable flag */
   final val UnstableValue = Mutable | Method

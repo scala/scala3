@@ -6,7 +6,8 @@ object showClass extends ShowClassTests {
 
   def main(args: Array[String]) = {
     for (arg <- args) showPackage(ctx.requiredPackage(arg))
-//      showClasses("scala.tools.reflect.Eval")
+//      showClasses("test.SyncOps")
+//     showClasses("scala.reflect.runtime.SynchronizedOps")
 //      showPackage("scala.reflect")
 //      showPackage("scala.collection")
 

@@ -158,7 +158,8 @@ class Typer extends Namer {
             if (curOwner.isClass && (curOwner ne outer.owner)) curOwner.asClass.membersNamed(name)
             else curScope.denotsNamed(name)
           if (defDenots.exists) {
-            val found = NamedType(curOwner.thisType, name).withDenot(defDenots.toDenot)
+            val pre = curOwner.thisType
+            val found = NamedType(pre, name).withDenot(defDenots toDenot pre)
             if (!(curOwner is Package) || isDefinedInCurrentUnit(defDenots))
               return checkNewOrShadowed(found, definition) // no need to go further out, we found highest prec entry
             else if (prevPrec < packageClause)
