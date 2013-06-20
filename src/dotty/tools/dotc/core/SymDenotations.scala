@@ -333,7 +333,7 @@ object SymDenotations {
      *  Everything is accessible if `pre` is `NoPrefix`.
      *  A symbol with type `NoType` is not accessible for any other prefix.
      */
-    final def isAccessibleFrom(pre: Type, superAccess: Boolean = false)(implicit ctx: Context): Boolean = {
+    final def isAccessibleFrom(pre: Type, superAccess: Boolean = false, whyNot: StringBuffer = null)(implicit ctx: Context): Boolean = {
 
       /** Are we inside definition of `boundary`? */
       def accessWithin(boundary: Symbol) =
@@ -360,24 +360,24 @@ object SymDenotations {
       /** Is protected access to target symbol permitted? */
       def isProtectedAccessOK = {
         def fail(str: => String): Boolean = {
-          ctx.diagnose(str)
+          if (whyNot != null) whyNot append str
           false
         }
         val cls = owner.enclosingSubClass
         if (!cls.exists)
           fail(
-            s"""Access to protected $this not permitted because
-               |enclosing ${ctx.owner.enclosingClass.showLocated} is not a subclass of
-               |${owner.showLocated} where target is defined""".stripMargin)
+            s""" Access to protected $this not permitted because
+               | enclosing ${ctx.owner.enclosingClass.showLocated} is not a subclass of
+               | ${owner.showLocated} where target is defined""".stripMargin)
         else if (
           !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
            || pre.baseType(cls).exists
            || (owner is ModuleClass) // don't perform this check for static members
            ))
           fail(
-            s"""Access to protected ${symbol.show} not permitted because
-               |prefix type ${pre.widen.show} does not conform to
-               |${cls.showLocated} where the access takes place""".stripMargin)
+            s""" Access to protected ${symbol.show} not permitted because
+               | prefix type ${pre.widen.show} does not conform to
+               | ${cls.showLocated} where the access takes place""".stripMargin)
         else true
       }
 

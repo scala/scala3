@@ -40,7 +40,31 @@ class Typer extends Namer {
     }
   }
 
-  def checkAccessible(tpe: Type, pos: Position) = ???
+  def checkAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = tpe match {
+    case tpe: NamedType =>
+      val pre = tpe.prefix
+      val name = tpe.name
+      val d = tpe.denot.accessibleFrom(pre, superAccess)
+      if (!d.exists) {
+        val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
+        val where = pre.typeSymbol
+        val what = alts match {
+          case Nil =>
+            name.toString
+          case sym :: Nil =>
+            if (sym.owner == where) sym.show else sym.showLocated
+          case _ =>
+            s"none of the overloaded alternatives named $name"
+        }
+        val whyNot = new StringBuffer
+        val addendum =
+          alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
+        ctx.error(s"$what cannot be accessed in $where.$whyNot")
+        ErrorType
+      } else tpe withDenot d
+    case _ =>
+      tpe
+  }
 
   /** Attribute an identifier consisting of a simple name or an outer reference.
    *
@@ -185,12 +209,13 @@ class Typer extends Namer {
     val startingContext = // ignore current variable scope in patterns to enforce linearity
       if (mode is Mode.Pattern) ctx.outer else ctx
 
-    var ownType = findRef(NoType, BindingPrec.nothingBound, NoContext)
-    if (!ownType.exists) {
-      ctx.error(s"not found: $name", tree.pos)
-      ownType = ErrorType
-    }
-    checkAccessible(ownType, tree.pos)
+    val rawType = findRef(NoType, BindingPrec.nothingBound, NoContext)
+    val ownType =
+      if (rawType.exists) checkAccessible(rawType, superAccess = false, tree.pos)
+      else {
+        ctx.error(s"not found: $name", tree.pos)
+        ErrorType
+      }
     tree.withType(ownType)
   }
 
