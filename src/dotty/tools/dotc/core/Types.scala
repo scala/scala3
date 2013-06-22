@@ -143,10 +143,14 @@ object Types {
     final def isVolatile(implicit ctx: Context): Boolean =
       ctx.isVolatile(this)
 
+    /** Does the type carry an annotation that is an instance of `cls`? */
     final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = this match {
       case AnnotatedType(annot, tp) => annot.symbol == cls || tp.hasAnnotation(cls)
       case _ => false
     }
+
+    /** Does this type occur as a part of type `that`? */
+    final def occursIn(that: Type): Boolean = that.existsPart(this == _)
 
 // ----- Higher-order combinators -----------------------------------
 
@@ -606,6 +610,10 @@ object Types {
           else ctx.subst(this, from, to, null)
         }
       }
+
+    /** Substitute a bound type by some other type */
+     final def subst(from: BoundType, to: Type)(implicit ctx: Context): Type =
+      ctx.subst(this, from, to, null)
 
     /** Substitute all types of the form `PolyParam(from, N)` by
      *  `PolyParam(to, N)`.
