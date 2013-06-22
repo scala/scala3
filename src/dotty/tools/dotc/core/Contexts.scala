@@ -74,11 +74,6 @@ object Contexts {
     protected def period_=(period: Period) = _period = period
     def period: Period = _period
 
-    /** The current set of type constraints */
-    private[this] var _constraints: Constraints = _
-    protected def constraints_=(constraints: Constraints) = _constraints = constraints
-    def constraints: Constraints = _constraints
-
     /** The scope nesting level */
     private[this] var _scopeNestingLevel: Int = 0
     def scopeNestingLevel: Int = {
@@ -90,13 +85,7 @@ object Contexts {
     /** The current type comparer */
     private[this] var _typeComparer: TypeComparer = _
     protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
-
-    def typeComparer: TypeComparer = {
-      if ((_typeComparer == null) ||
-          (_typeComparer eq outer.typeComparer) && (constraints != outer.constraints))
-        _typeComparer = new TypeComparer()
-      _typeComparer
-    }
+    def typeComparer: TypeComparer = _typeComparer
 
     /** The current position */
     private[this] var _position: Position = _
@@ -219,7 +208,7 @@ object Contexts {
       if (_condensed eq outer.condensed)
         _condensed = base.initialCtx.fresh
           .withPeriod(period)
-          // constraints is not preserved in condensed
+          // typeComparer and its constraints is not preserved in condensed
           .withPlainPrinter(plainPrinter)
           .withRefinedPrinter(refinedPrinter)
           .withOwner(owner)
@@ -253,7 +242,7 @@ object Contexts {
    */
   abstract class FreshContext extends CondensedContext {
     def withPeriod(period: Period): this.type = { this.period = period; this }
-    def withConstraints(constraints: Constraints): this.type = { this.constraints = constraints; this }
+    def withTypeComparer(typeComparer: TypeComparer): this.type = { this.typeComparer = typeComparer; this }
     def withPosition(position: Position): this.type = { this.position = position; this }
     def withPlainPrinter(printer: Context => Printer): this.type = { this.plainPrinter = printer; this }
     def withRefinedPrinter(printer: Context => Printer): this.type = { this.refinedPrinter = printer; this }
@@ -284,7 +273,7 @@ object Contexts {
   private class InitialContext(val base: ContextBase, settings: SettingGroup) extends FreshContext {
     outer = NoContext
     period = InitialPeriod
-    constraints = new Constraints(SimpleMap.Empty)
+    typeComparer = new TypeComparer
     position = NoPosition
     plainPrinter = new PlainPrinter(_)
     refinedPrinter = new RefinedPrinter(_)
@@ -297,7 +286,6 @@ object Contexts {
   }
 
   object NoContext extends Context {
-    override def typeComparer = null
     lazy val base = unsupported("base")
   }
 

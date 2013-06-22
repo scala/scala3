@@ -8,21 +8,38 @@ import util.SimpleMap
 
 object TypeComparers {
 
+  /** Constraints over undetermined type parameters
+   *  @param map  a map from PolyType to the type bounds that constrain the
+   *              polytype's type parameters. A type parameter that does not
+   *              have a constraint is represented by a `null` in the corresponding
+   *              array entry.
+   */
   class Constraints(val map: SimpleMap[PolyType, Array[TypeBounds]]) extends AnyVal {
 
+    /** Does the constraint's domain contain the given type paraneter? */
     def contains(param: PolyParam): Boolean = {
       val boundss = map(param.binder)
       boundss != null && boundss(param.paramNum) != null
     }
 
+    /** Does the constraint's domain contain some type parameter of `pt`? */
     def contains(pt: PolyType): Boolean = map(pt) != null
 
+    /** The constraints for guven type parameter `param`.
+     *  @pre  The type paraneter is contained in the constraint's domain.
+     */
     def apply(param: PolyParam): TypeBounds =
       map(param.binder)(param.paramNum)
 
+    /** The constraints for the type parameters of `pt`.
+     *  @pre  At least one of the polytype's parameters is contained in the constraint's domain.
+     */
     def apply(pt: PolyType): Array[TypeBounds] =
       map(pt)
 
+    /** A new constraint which is derived from this constraint by adding
+     *  the type bounds `bounds` added to the type parameter `param`.
+     */
     def updated(param: PolyParam, bounds: TypeBounds): Constraints = {
       val pt = param.binder
       val boundss = map(pt).clone
@@ -30,9 +47,16 @@ object TypeComparers {
       updated(pt, boundss)
     }
 
+    /** A new constraint which is derived from this constraint by adding
+     *  all the type bounds in `boundss` to the corresponding type parameters
+     *  in `pt`.
+     */
     def updated(pt: PolyType, boundss: Array[TypeBounds]) =
       new Constraints(map.updated(pt, boundss))
 
+    /** A new constraint which is derived from this constraint by removing
+     *  the type parameter `param` from the domain.
+     */
     def - (param: PolyParam) = {
       val pt = param.binder
       val pnum = param.paramNum
@@ -54,15 +78,47 @@ object TypeComparers {
 
     def + (pt: PolyType) =
       new Constraints(map.updated(pt, pt.paramBounds.toArray))
+
+    /** A new constraint which is derived from this constraint by removing
+     *  the type parameter `param` from the domain and replacing all occurrences
+     *  of the parameter elsewhere in the constraint by type `tpe`.
+     */
+    def replace(param: PolyParam, tpe: Type)(implicit ctx: Context) = {
+      val constr = this - param
+      def subst(boundss: Array[TypeBounds]) = {
+        var result = boundss
+        var i = 0
+        while (i < boundss.length) {
+          val oldBounds = boundss(i)
+          if (oldBounds != null) {
+            val newBounds = oldBounds.subst(param, tpe).asInstanceOf[TypeBounds]
+            if (oldBounds ne newBounds) {
+              if (result eq boundss) result = boundss.clone
+              result(i) = newBounds
+            }
+          }
+          i += 1
+        }
+        result
+      }
+      new Constraints(constr.map mapValues subst)
+    }
   }
 
-  class TypeComparer()(implicit val ctx: Context) extends DotClass {
-
-    var constraints = ctx.constraints
+  /** Provides methods to compare types.
+   *  @param  constraints The initial constraint which is assumed to hold for the comparisons.
+   *                      The constraint set is updated when undetermined type parameters
+   *                      in the constraint's domain are compared.
+   */
+  class TypeComparer(var constraints: Constraints = new Constraints(SimpleMap.Empty))(implicit val ctx: Context) extends DotClass {
 
     private var pendingSubTypes: mutable.Set[(Type, Type)] = null
     private var recCount = 0
 
+    /** Add the constraint `<bounds.lo <: param <: bounds.hi>`
+     *  to `constraints`.
+     *  @pre `param` is in the constraint's domain
+     */
     def addConstraint(param: PolyParam, bounds: TypeBounds): Boolean = {
       val pt = param.binder
       val pnum = param.paramNum
@@ -77,12 +133,42 @@ object TypeComparers {
       isSubType(newBounds.lo, newBounds.hi)
     }
 
+    /** Add all parameters in given polytype `pt` to the constraint's domain.
+     *  If the constraint contains already some of these parameters in its domain,
+     *  make a copy of the polytype and add the copy's type parameters instead.
+     *  Return either the original polytype, or the copy, if one was made.
+     */
     def track(pt: PolyType)(implicit ctx: Context): PolyType = {
       val tracked =
         if (constraints contains pt) pt.copy(pt.paramNames, pt.paramBounds, pt.resultType)
         else pt
       constraints = constraints + tracked
       tracked
+    }
+
+    /** Solve constraints for given type parameter `param`.
+     *  If `fromBelow` is true the parameter is approximated by its lower bound,
+     *  otherwise it is approximated by its upper bound. However, any occurrences
+     *  of the parameter in a refinement somewhere in the bound are removed.
+     *  (Such occurrences can arise for F-bounded types).
+     *  The type parameter is removed from the constraint's domain and all its
+     *  occurrences are replaced by its approximation.
+     *  Returns the approximating type.
+     */
+    def approximate(param: PolyParam, fromBelow: Boolean): Type = {
+      val removeParam = new TypeMap {
+        override def apply(tp: Type) = mapOver {
+          tp match {
+            case tp: RefinedType if param occursIn tp.refinedInfo => tp.parent
+            case _ => tp
+          }
+        }
+      }
+      val bounds = constraints(param)
+      val bound = if (fromBelow) bounds.lo else bounds.hi
+      val inst = removeParam(bound)
+      constraints = constraints.replace(param, inst)
+      inst
     }
 
     def isSubType(tp1: Type, tp2: Type): Boolean =

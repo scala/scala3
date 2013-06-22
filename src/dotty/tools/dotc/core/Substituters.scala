@@ -7,6 +7,22 @@ import Types._, Symbols._, Contexts._
  */
 trait Substituters { this: Context =>
 
+  final def subst(tp: Type, from: BoundType, to: Type, map: SubstBoundMap): Type =
+    tp match {
+      case tp: BoundType =>
+        if (tp == from) to else tp
+      case tp: NamedType =>
+        if (tp.symbol.isStatic) tp
+        else tp.derivedNamedType(subst(tp.prefix, from, to, map))
+      case _: ThisType | NoPrefix =>
+        tp
+      case tp: RefinedType =>
+        tp.derivedRefinedType(subst(tp.parent, from, to, map), tp.refinedName, subst(tp.refinedInfo, from, to, map))
+      case _ =>
+        (if (map != null) map else new SubstBoundMap(from, to))
+          .mapOver(tp)
+    }
+
   final def subst(tp: Type, from: BindingType, to: BindingType, map: SubstBindingMap): Type =
     tp match {
       case tp: BoundType =>
@@ -138,6 +154,10 @@ trait Substituters { this: Context =>
   private def existsStatic(syms: List[Symbol]): Boolean = syms match {
     case sym :: syms1 => sym.isStatic || existsStatic(syms1)
     case nil => false
+  }
+
+  final class SubstBoundMap(from: BoundType, to: Type) extends TypeMap {
+    def apply(tp: Type) = subst(tp, from, to, this)
   }
 
   final class SubstBindingMap(from: BindingType, to: BindingType) extends TypeMap {
