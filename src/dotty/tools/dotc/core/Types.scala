@@ -1434,8 +1434,10 @@ object Types {
 
     def derivedPolyType(paramNames: List[TypeName], paramBounds: List[TypeBounds], restpe: Type)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramBounds eq this.paramBounds) && (restpe eq this.resultType)) this
-      else
-        PolyType(paramNames)(
+      else copy(paramNames, paramBounds, restpe)
+
+    def copy(paramNames: List[TypeName], paramBounds: List[TypeBounds], restpe: Type)(implicit ctx: Context) =
+      PolyType(paramNames)(
           x => paramBounds mapConserve (_.subst(this, x).bounds),
           x => restpe.subst(this, x))
 
@@ -1584,10 +1586,10 @@ object Types {
     def contains(tp: Type)(implicit ctx: Context) = lo <:< tp && tp <:< hi
 
     def &(that: TypeBounds)(implicit ctx: Context): TypeBounds =
-      TypeBounds(this.lo | that.lo, this.hi & that.hi)
+      derivedTypeBounds(this.lo | that.lo, this.hi & that.hi)
 
-    def |(that: TypeBounds)(implicit ctx: Context): TypeBounds =
-      TypeBounds(this.lo & that.lo, this.hi | that.hi)
+    def | (that: TypeBounds)(implicit ctx: Context): TypeBounds =
+      derivedTypeBounds(this.lo & that.lo, this.hi | that.hi)
 
     override def & (that: Type)(implicit ctx: Context) = that match {
       case that: TypeBounds => this & that
