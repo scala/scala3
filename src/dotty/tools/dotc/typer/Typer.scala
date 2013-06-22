@@ -24,18 +24,26 @@ object Typer {
     val nothingBound = 0
     def isImportPrec(prec: Int) = prec == namedImport || prec == wildImport
   }
+
+  implicit class TreeDecorator(tree: tpd.Tree) {
+    def exprType(implicit ctx: Context): Type = tree.tpe match {
+      case tpe: TermRef if !tpe.symbol.isStable => tpe.info
+      case tpe => tpe
+    }
+  }
 }
 
 class Typer extends Namer {
 
   import tpd._
-  import Typer.BindingPrec
+  import Typer._
 
   def typedSelection(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
     val ref = site.member(name)
     if (ref.exists) NamedType(site, name).withDenot(ref)
     else {
-      ctx.error(s"$name is not a member of ${site.show}", pos)
+      if (!site.isErroneous)
+        ctx.error(s"$name is not a member of ${site.show}", pos)
       ErrorType
     }
   }
@@ -219,6 +227,65 @@ class Typer extends Namer {
     tree.withType(ownType)
   }
 
+  def typedSelect(tree: untpd.Select, mode: Mode, pt: Type)(implicit ctx: Context): Tree = {
+    val qual1 = typed(tree.qualifier, Mode.Expr, RefinedType(WildcardType, tree.name, pt))
+    val ownType = typedSelection(qual1.exprType, tree.name, tree.pos)
+    if (!ownType.isError) checkAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
+    tree.withType(ownType).derivedSelect(qual1, tree.name)
+  }
+
+  class FunProtoType(args: List[untpd.Tree], resultType: Type)(implicit ctx: Context) extends UncachedGroundType {
+    private var _typedArgs: List[tpd.Tree] = null
+    private var _argTypes: List[Type] = null
+    def typedArgs = {
+      if (_typedArgs == null)
+        _typedArgs = args mapconserve (typed(_, Mode.Expr, WildcardType))
+      _typedArgs
+    }
+    def argTypes = {
+      if (_argTypes == null)
+        _argTypes = typedArgs map (_.exprType)
+      _argTypes
+    }
+    def adaptedArgs(formals: List[Type]) = {
+      var fs = formals
+      if (_typedArgs == null)
+        _typedArgs = args mapconserve { arg =>
+          val arg1 = typed(arg, Mode.Expr, fs.head)
+          fs = fs.tail
+          arg1
+        }
+      else {
+        val adapted = typedArgs mapconserve { arg =>
+          val arg1 = adapt(arg, Mode.Expr, fs.head)
+          fs = fs.tail
+          arg1
+        }
+        if (adapted ne typedArgs) {
+          _typedArgs = adapted
+          _argTypes = null
+        }
+      }
+      typedArgs
+    }
+    def isApplicable(denot: SingleDenotation) = {
+
+    }
+  }
+
+  def typedApply(tree: untpd.Apply, mode: Mode, pt: Type)(implicit ctx: Context): Tree = {
+    val proto = new FunProtoType(tree.args, pt)
+    val fun1 = typed(tree.fun, Mode.Expr, proto)
+    fun1.exprType match {
+      case mt @ MethodType(_, formals) =>
+        val args1 = proto.adaptedArgs(formals)
+        val restpe = mt.instantiate(proto.argTypes)
+        tree.withType(restpe).derivedApply(fun1, args1)
+      case ErrorType =>
+        tree.withType(ErrorType)
+    }
+  }
+
   def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = {
     val annotations1 = mods.annotations mapconserve typedAnnotation
     if (annotations1 eq mods.annotations) mods.asInstanceOf[Modifiers]
@@ -351,5 +418,7 @@ class Typer extends Namer {
     typed(tree, Mode.Expr, pt)
   def typedType(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, Mode.Type, pt)
+
+  def adapt(tree: Tree, mode: Mode, pt: Type): Tree = ???
 
 }
