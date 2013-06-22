@@ -11,7 +11,7 @@ import Symbols._
 import Scopes._
 import TypeComparers._, NameOps._, SymDenotations._, util.Positions._
 import ast.Trees._, ast.untpd
-import util.FreshNameCreator
+import util.{FreshNameCreator, SimpleMap}
 import typer._
 import config.Settings._
 import reporting._
@@ -93,7 +93,7 @@ object Contexts {
 
     def typeComparer: TypeComparer = {
       if ((_typeComparer == null) ||
-          (_typeComparer eq outer.typeComparer) && (constraints ne outer.constraints))
+          (_typeComparer eq outer.typeComparer) && (constraints != outer.constraints))
         _typeComparer = new TypeComparer()
       _typeComparer
     }
@@ -284,7 +284,7 @@ object Contexts {
   private class InitialContext(val base: ContextBase, settings: SettingGroup) extends FreshContext {
     outer = NoContext
     period = InitialPeriod
-    constraints = Map()
+    constraints = new Constraints(SimpleMap.Empty)
     position = NoPosition
     plainPrinter = new PlainPrinter(_)
     refinedPrinter = new RefinedPrinter(_)

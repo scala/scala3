@@ -1,12 +1,60 @@
 package dotty.tools
-package dotc.core
+package dotc
+package core
 
 import Types._, Contexts._, Symbols._, Flags._
 import collection.mutable
+import util.SimpleMap
 
 object TypeComparers {
 
-  type Constraints = Map[PolyParam, TypeBounds]
+  class Constraints(val map: SimpleMap[PolyType, Array[TypeBounds]]) extends AnyVal {
+
+    def contains(param: PolyParam): Boolean = {
+      val boundss = map(param.binder)
+      boundss != null && boundss(param.paramNum) != null
+    }
+
+    def contains(pt: PolyType): Boolean = map(pt) != null
+
+    def apply(param: PolyParam): TypeBounds =
+      map(param.binder)(param.paramNum)
+
+    def apply(pt: PolyType): Array[TypeBounds] =
+      map(pt)
+
+    def updated(param: PolyParam, bounds: TypeBounds): Constraints = {
+      val pt = param.binder
+      val boundss = map(pt).clone
+      boundss(param.paramNum) = bounds
+      updated(pt, boundss)
+    }
+
+    def updated(pt: PolyType, boundss: Array[TypeBounds]) =
+      new Constraints(map.updated(pt, boundss))
+
+    def - (param: PolyParam) = {
+      val pt = param.binder
+      val pnum = param.paramNum
+      val boundss = map(pt)
+      var noneLeft = true
+      var i = 0
+      while (noneLeft && (i < boundss.length)) {
+        noneLeft = boundss(i) == null || i == pnum
+        i += 1
+      }
+      new Constraints(
+        if (noneLeft) map remove pt
+        else {
+          val newBoundss = boundss.clone
+          newBoundss(pnum) = null
+          map.updated(pt, newBoundss)
+        })
+    }
+
+    def + (pt: PolyType) =
+      new Constraints(map.updated(pt, pt.paramBounds.toArray))
+  }
 
   class TypeComparer()(implicit val ctx: Context) extends DotClass {
 
@@ -16,9 +64,25 @@ object TypeComparers {
     private var recCount = 0
 
     def addConstraint(param: PolyParam, bounds: TypeBounds): Boolean = {
-      val newbounds = constraints(param) & bounds
-      constraints = constraints.updated(param, newbounds)
-      isSubType(newbounds.lo, newbounds.hi)
+      val pt = param.binder
+      val pnum = param.paramNum
+      val oldBoundss = constraints(pt)
+      val oldBounds = oldBoundss(pnum)
+      val newBounds = oldBounds & bounds
+      if (oldBounds ne newBounds) {
+        val newBoundss = oldBoundss.clone
+        newBoundss(pnum) = newBounds
+        constraints.updated(pt, newBoundss)
+      }
+      isSubType(newBounds.lo, newBounds.hi)
+    }
+
+    def track(pt: PolyType)(implicit ctx: Context): PolyType = {
+      val tracked =
+        if (constraints contains pt) pt.copy(pt.paramNames, pt.paramBounds, pt.resultType)
+        else pt
+      constraints = constraints + tracked
+      tracked
     }
 
     def isSubType(tp1: Type, tp2: Type): Boolean =
@@ -83,8 +147,10 @@ object TypeComparers {
           }
         case WildcardType | ErrorType =>
           true
-        case tp2: PolyParam if constraints contains tp2 =>
-          addConstraint(tp2, TypeBounds.lower(tp1))
+        case tp2: PolyParam =>
+          val bounds = constraints(tp2)
+          if (bounds == null) secondTry(tp1, tp2)
+          else isSubType(tp1, bounds.lo) || addConstraint(tp2, TypeBounds.lower(tp1))
         case _ =>
           secondTry(tp1, tp2)
       }
@@ -93,8 +159,10 @@ object TypeComparers {
     def secondTry(tp1: Type, tp2: Type): Boolean = tp1 match {
       case WildcardType | ErrorType =>
         true
-      case tp1: PolyParam if constraints contains tp1 =>
-        addConstraint(tp1, TypeBounds.upper(tp2))
+      case tp1: PolyParam =>
+        val bounds = constraints(tp1)
+        if (bounds == null) thirdTry(tp1, tp2)
+        else isSubType(bounds.hi, tp2) || addConstraint(tp1, TypeBounds.upper(tp2))
       case _ =>
         thirdTry(tp1, tp2)
     }
