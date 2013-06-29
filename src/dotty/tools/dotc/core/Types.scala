@@ -117,9 +117,9 @@ object Types {
       classSymbol is ModuleClass
 
     /** Is this type produced as a repair for an error? */
-    final def isError(implicit ctx: Context): Boolean = this match {
+    final def isError(implicit ctx: Context): Boolean = thisInstance match {
       case ErrorType => true
-      case _ => (typeSymbol is Erroneous) || (termSymbol is Erroneous)
+      case tp => (tp.typeSymbol is Erroneous) || (tp.termSymbol is Erroneous)
     }
 
     /** Is some part of this type produced as a repair for an error? */
@@ -144,7 +144,7 @@ object Types {
       ctx.isVolatile(this)
 
     /** Does the type carry an annotation that is an instance of `cls`? */
-    final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = this match {
+    final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = thisInstance match {
       case AnnotatedType(annot, tp) => annot.symbol == cls || tp.hasAnnotation(cls)
       case _ => false
     }
@@ -159,20 +159,20 @@ object Types {
     final def existsPart(p: Type => Boolean): Boolean =
       new ExistsAccumulator(p)(false, this)
 
-    /** Returns true if all parts of this type that satisfy predicate `p`.
+    /** Returns true if all parts of this type satisfy predicate `p`.
      */
     final def forallParts(p: Type => Boolean): Boolean = !existsPart(!p(_))
 
     /** Map function over elements of an AndType, rebuilding with & */
-    def mapAnd(f: Type => Type)(implicit ctx: Context): Type = this match {
+    def mapAnd(f: Type => Type)(implicit ctx: Context): Type = thisInstance match {
       case AndType(tp1, tp2) => tp1.mapAnd(f) & tp2.mapAnd(f)
-      case _ => f(this)
+      case tp => f(tp)
     }
 
     /** Map function over elements of an OrType, rebuilding with | */
-    final def mapOr(f: Type => Type)(implicit ctx: Context): Type = this match {
+    final def mapOr(f: Type => Type)(implicit ctx: Context): Type = thisInstance match {
       case OrType(tp1, tp2) => tp1.mapOr(f) | tp2.mapOr(f)
-      case _ => f(this)
+      case tp => f(tp)
     }
 
 // ----- Associated symbols ----------------------------------------------
@@ -466,6 +466,11 @@ object Types {
 
 // ----- Unwrapping types -----------------------------------------------
 
+    /** Map a TypeVar to either its instance if it is instantiated, or its origin,
+     *  if not. Identity on all other types.
+     */
+    def thisInstance: Type = this
+
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences,
      *  Also go from => T to T.
@@ -477,15 +482,15 @@ object Types {
      */
     final def widen(implicit ctx: Context): Type = this match {
       case tp: SingletonType => tp.underlying.widen
-      case tp: TypeBounds => tp.hi.widen
+      case tp: TypeBounds => tp.hi.widen // needed?
       case tp: ExprType => tp.resultType.widen
       case _ => this
     }
 
     /** If this is an alias type, its alias, otherwise the type itself */
-    final def dealias(implicit ctx: Context): Type = this match {
+    final def dealias(implicit ctx: Context): Type = thisInstance match {
       case tp: TypeRef if (tp.symbol.isAliasType) => tp.info.bounds.hi
-      case _ => this
+      case tp => tp
     }
 
     /** Widen from constant type to its underlying non-constant
@@ -499,9 +504,9 @@ object Types {
     /** If this is a refinement type, the unrefined parent,
      *  else the type itself.
      */
-    final def unrefine: Type = this match {
+    final def unrefine: Type = thisInstance match {
       case tp @ RefinedType(tycon, _) => tycon.unrefine
-      case _ => this
+      case tp => tp
     }
 
     /** Map references to Object to references to Any; needed for Java interop */
@@ -705,7 +710,7 @@ object Types {
           if (refineCount == 0) null
           else new mutable.ListBuffer[Type]
       }
-      val buf = recur(this, 0)
+      val buf = recur(thisInstance, 0)
       if (buf == null) Nil else buf.toList
     }
 
@@ -737,7 +742,7 @@ object Types {
         case _ =>
           (n, tp)
       }
-      recur(0, this)
+      recur(0, thisInstance)
     }
 
     /** Given a type alias
@@ -821,6 +826,8 @@ object Types {
     def signature(implicit ctx: Context): Signature = NotAMethod
 
     def toText(printer: Printer): Text = printer.toText(this)
+
+    def varianceOf(tp: Type): FlagSet = ???
 
 // ----- hashing ------------------------------------------------------
 
@@ -1477,7 +1484,7 @@ object Types {
 
   case class MethodParam(binder: MethodType, paramNum: Int) extends BoundType with SingletonType {
     type BT = MethodType
-    override def underlying(implicit ctx: Context) = binder.paramTypes(paramNum)
+    override def underlying(implicit ctx: Context): Type = binder.paramTypes(paramNum)
     def copy(bt: BT) = MethodParam(bt, paramNum)
 
     // need to customize hashCode and equals to prevent infinite recursion for dep meth types.
@@ -1495,11 +1502,11 @@ object Types {
 
   case class PolyParam(binder: PolyType, paramNum: Int) extends BoundType {
     type BT = PolyType
-    override def underlying(implicit ctx: Context) = binder.paramBounds(paramNum)
     def copy(bt: BT) = PolyParam(bt, paramNum)
+    override def underlying(implicit ctx: Context): Type = binder.paramBounds(paramNum)
     // no customized hashCode/equals needed because cycle is broken in PolyType
     override def toString = s"PolyParam(${binder.paramNames(paramNum)})"
- }
+  }
 
   case class RefinedThis(binder: RefinedType) extends BoundType with SingletonType {
     type BT = RefinedType
@@ -1513,6 +1520,16 @@ object Types {
       case _ => false
     }
     override def toString = s"RefinedThis(${binder.hashCode})"
+  }
+
+  final case class TypeVar(origin: PolyParam) extends UncachedProxyType with ValueType {
+    private var inst: Type = NoType
+    def isInstantiated = inst ne NoType
+    def instantiateWith(tp: Type) = inst = tp
+    override def thisInstance = if (isInstantiated) inst else origin
+    override def underlying(implicit ctx: Context): Type = thisInstance
+    override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
+    override def toString = thisInstance.toString
   }
 
   // ------ ClassInfo, Type Bounds ------------------------------------------------------------
@@ -1757,6 +1774,9 @@ object Types {
       case tp @ AnnotatedType(annot, underlying) =>
         tp.derivedAnnotatedType(mapOver(annot), this(underlying))
 
+      case tp @ TypeVar(_) =>
+        apply(tp.thisInstance)
+
       case _ =>
         tp
     }
@@ -1835,6 +1855,9 @@ object Types {
 
       case AnnotatedType(annot, underlying) =>
         this(this(x, annot), underlying)
+
+      case tp: TypeVar =>
+        foldOver(x, tp.thisInstance)
 
       case _ => x
     }
