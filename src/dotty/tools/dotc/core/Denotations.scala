@@ -449,6 +449,7 @@ object Denotations {
      *  is still a member of its enclosing package, then the whole flock
      *  is brought forward to be valid in the new runId. Otherwise
      *  the symbol is stale, which constitutes an internal error.
+     *  TODO: Ensure that a subclass is renewed whenever one of its parents is.
      */
     def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
@@ -529,6 +530,8 @@ object Denotations {
     final def toDenot(pre: Type)(implicit ctx: Context) = this
     final def containsSig(sig: Signature)(implicit ctx: Context) =
       exists && signature == sig
+    final def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation =
+      if (p(this)) this else NoDenotation
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
       if (denots.containsSig(signature)) NoDenotation else this
     def disjointAsSeenFrom(denots: PreDenotation, pre: Type)(implicit ctx: Context): SingleDenotation =
@@ -598,6 +601,8 @@ object Denotations {
     /** Group contains a denotation with given signature */
     def containsSig(sig: Signature)(implicit ctx: Context): Boolean
 
+    def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation
+
     /** Keep only those denotations in this group which have a signature
      *  that's not already defined by `denots`.
      */
@@ -627,6 +632,8 @@ object Denotations {
     def toDenot(pre: Type)(implicit ctx: Context) = (denots1 toDenot pre) & (denots2 toDenot pre, pre)
     def containsSig(sig: Signature)(implicit ctx: Context) =
       (denots1 containsSig sig) || (denots2 containsSig sig)
+    def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation =
+      derivedUnion(denots1 filterWithPredicate p, denots2 filterWithPredicate p)
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1 filterDisjoint denots, denots2 filterDisjoint denots)
     def disjointAsSeenFrom(denots: PreDenotation, pre: Type)(implicit ctx: Context): PreDenotation =

@@ -3,7 +3,6 @@ package core
 
 import util.HashSet
 import Symbols._
-import TypeComparers._
 import Flags._
 import Names._
 import StdNames._, NameOps._
@@ -151,6 +150,9 @@ object Types {
 
     /** Does this type occur as a part of type `that`? */
     final def occursIn(that: Type): Boolean = that.existsPart(this == _)
+
+    def isRepeatedParam(implicit ctx: Context): Boolean =
+      defn.RepeatedParamClasses contains typeSymbol
 
 // ----- Higher-order combinators -----------------------------------
 
@@ -547,7 +549,13 @@ object Types {
       case pt: PolyType => pt.paramTypess
       case _ => Nil
     }
-
+/* Not sure whether we'll need this
+    final def firstParamTypes: List[Type] = this match {
+      case mt: MethodType => mt.paramTypes
+      case pt: PolyType => pt.firstParamTypes
+      case _ => Nil
+    }
+*/
     /** The resultType of a PolyType, MethodType, or ExprType, the type itself for others */
     def resultType: Type = this
 
@@ -616,10 +624,6 @@ object Types {
         }
       }
 
-    /** Substitute a bound type by some other type */
-     final def subst(from: BoundType, to: Type)(implicit ctx: Context): Type =
-      ctx.subst(this, from, to, null)
-
     /** Substitute all types of the form `PolyParam(from, N)` by
      *  `PolyParam(to, N)`.
      */
@@ -633,6 +637,14 @@ object Types {
     /** Substitute all occurrences of `RefinedThis(rt)` by `tp` */
     final def substThis(rt: RefinedType, tp: Type)(implicit ctx: Context): Type =
       ctx.substThis(this, rt, tp, null)
+
+    /** Substitute a bound type by some other type */
+    final def substParam(from: ParamType, to: Type)(implicit ctx: Context): Type =
+      ctx.substParam(this, from, to, null)
+
+    /** Substitute bound types by some other types */
+    final def substParams(from: BindingType, to: List[Type])(implicit ctx: Context): Type =
+      ctx.substParams(this, from, to, null)
 
     /** Substitute all occurrences of symbols in `from` by references to corresponding symbols in `to`
      */
@@ -1351,10 +1363,22 @@ object Types {
         else MethodType(paramNames, paramTypes)(restpeExpr)
       }
 
-    def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
+    def instantiate(argTypes: => List[Type])(implicit ctx: Context): Type =
       if (isDependent) new InstMethodMap(this, argTypes) apply resultType
       else resultType
 
+ /* probably won't be needed
+    private var _isVarArgs: Boolean = _
+    private var knownVarArgs: Boolean = false
+
+    def isVarArgs(implicit ctx: Context) = {
+      if (!knownVarArgs) {
+        _isVarArgs = paramTypes.nonEmpty && paramTypes.last.isRepeatedParam
+        knownVarArgs = true
+      }
+      _isVarArgs
+    }
+*/
     override def equals(that: Any) = that match {
       case that: MethodType =>
         this.paramNames == that.paramNames &&
@@ -1482,7 +1506,11 @@ object Types {
     def copy(bt: BT): Type
   }
 
-  case class MethodParam(binder: MethodType, paramNum: Int) extends BoundType with SingletonType {
+  abstract class ParamType extends BoundType {
+    def paramNum: Int
+  }
+
+  case class MethodParam(binder: MethodType, paramNum: Int) extends ParamType with SingletonType {
     type BT = MethodType
     override def underlying(implicit ctx: Context): Type = binder.paramTypes(paramNum)
     def copy(bt: BT) = MethodParam(bt, paramNum)
@@ -1500,7 +1528,7 @@ object Types {
     override def toString = s"MethodParam(${binder.paramNames(paramNum)})"
   }
 
-  case class PolyParam(binder: PolyType, paramNum: Int) extends BoundType {
+  case class PolyParam(binder: PolyType, paramNum: Int) extends ParamType {
     type BT = PolyType
     def copy(bt: BT) = PolyParam(bt, paramNum)
     override def underlying(implicit ctx: Context): Type = binder.paramBounds(paramNum)

@@ -7,22 +7,6 @@ import Types._, Symbols._, Contexts._
  */
 trait Substituters { this: Context =>
 
-  final def subst(tp: Type, from: BoundType, to: Type, map: SubstBoundMap): Type =
-    tp match {
-      case tp: BoundType =>
-        if (tp == from) to else tp
-      case tp: NamedType =>
-        if (tp.symbol.isStatic) tp
-        else tp.derivedNamedType(subst(tp.prefix, from, to, map))
-      case _: ThisType | NoPrefix =>
-        tp
-      case tp: RefinedType =>
-        tp.derivedRefinedType(subst(tp.parent, from, to, map), tp.refinedName, subst(tp.refinedInfo, from, to, map))
-      case _ =>
-        (if (map != null) map else new SubstBoundMap(from, to))
-          .mapOver(tp)
-    }
-
   final def subst(tp: Type, from: BindingType, to: BindingType, map: SubstBindingMap): Type =
     tp match {
       case tp: BoundType =>
@@ -151,13 +135,41 @@ trait Substituters { this: Context =>
           .mapOver(tp)
     }
 
+  final def substParam(tp: Type, from: ParamType, to: Type, map: SubstParamMap): Type =
+    tp match {
+      case tp: BoundType =>
+        if (tp == from) to else tp
+      case tp: NamedType =>
+        if (tp.symbol.isStatic) tp
+        else tp.derivedNamedType(substParam(tp.prefix, from, to, map))
+      case _: ThisType | NoPrefix =>
+        tp
+      case tp: RefinedType =>
+        tp.derivedRefinedType(substParam(tp.parent, from, to, map), tp.refinedName, substParam(tp.refinedInfo, from, to, map))
+      case _ =>
+        (if (map != null) map else new SubstParamMap(from, to))
+          .mapOver(tp)
+    }
+
+  final def substParams(tp: Type, from: BindingType, to: List[Type], map: SubstParamsMap): Type =
+    tp match {
+      case tp: ParamType =>
+        if (tp.binder == from) to(tp.paramNum) else tp
+      case tp: NamedType =>
+        if (tp.symbol.isStatic) tp
+        else tp.derivedNamedType(substParams(tp.prefix, from, to, map))
+      case _: ThisType | NoPrefix | _: RefinedThis =>
+        tp
+      case tp: RefinedType =>
+        tp.derivedRefinedType(substParams(tp.parent, from, to, map), tp.refinedName, substParams(tp.refinedInfo, from, to, map))
+      case _ =>
+        (if (map != null) map else new SubstParamsMap(from, to))
+          .mapOver(tp)
+    }
+
   private def existsStatic(syms: List[Symbol]): Boolean = syms match {
     case sym :: syms1 => sym.isStatic || existsStatic(syms1)
     case nil => false
-  }
-
-  final class SubstBoundMap(from: BoundType, to: Type) extends TypeMap {
-    def apply(tp: Type) = subst(tp, from, to, this)
   }
 
   final class SubstBindingMap(from: BindingType, to: BindingType) extends TypeMap {
@@ -186,5 +198,13 @@ trait Substituters { this: Context =>
 
   final class SubstRefinedThisMap(from: RefinedType, to: Type) extends TypeMap {
     def apply(tp: Type): Type = substThis(tp, from, to, this)
+  }
+
+  final class SubstParamMap(from: ParamType, to: Type) extends TypeMap {
+    def apply(tp: Type) = substParam(tp, from, to, this)
+  }
+
+  final class SubstParamsMap(from: BindingType, to: List[Type]) extends TypeMap {
+    def apply(tp: Type) = substParams(tp, from, to, this)
   }
 }

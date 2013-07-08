@@ -9,8 +9,11 @@ import Phases._
 import Types._
 import Symbols._
 import Scopes._
-import TypeComparers._, NameOps._, SymDenotations._, util.Positions._
-import ast.Trees._, ast.untpd
+import NameOps._
+import SymDenotations._
+import util.Positions._
+import ast.Trees._
+import ast.untpd
 import util.{FreshNameCreator, SimpleMap}
 import typer._
 import config.Settings._
@@ -83,9 +86,9 @@ object Contexts {
     }
 
     /** The current type comparer */
-    private[this] var _typeComparer: TypeComparer = _
-    protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
-    def typeComparer: TypeComparer = _typeComparer
+    private[this] var _typerState: TyperState = _
+    protected def typerState_=(typerState: TyperState) = _typerState = typerState
+    def typerState: TyperState = _typerState
 
     /** The current position */
     private[this] var _position: Position = _
@@ -149,6 +152,12 @@ object Contexts {
     protected def moreProperties_=(moreProperties: Map[String, Any]) = _moreProperties = moreProperties
     def moreProperties: Map[String, Any] = _moreProperties
 
+    private var _typeComparer: TypeComparer = _
+    def typeComparer: TypeComparer = {
+      if (_typeComparer == null || (_typeComparer.ctx ne this))
+        _typeComparer = new TypeComparer()(this)
+      _typeComparer
+    }
 
     /** If -Ydebug is on, the top of the stack trace where this context
      *  was created, otherwise `null`.
@@ -208,7 +217,7 @@ object Contexts {
       if (_condensed eq outer.condensed)
         _condensed = base.initialCtx.fresh
           .withPeriod(period)
-          // typeComparer and its constraints is not preserved in condensed
+          // typerState and its constraint is not preserved in condensed
           .withPlainPrinter(plainPrinter)
           .withRefinedPrinter(refinedPrinter)
           .withOwner(owner)
@@ -242,7 +251,8 @@ object Contexts {
    */
   abstract class FreshContext extends CondensedContext {
     def withPeriod(period: Period): this.type = { this.period = period; this }
-    def withTypeComparer(typeComparer: TypeComparer): this.type = { this.typeComparer = typeComparer; this }
+    def withTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
+    def withNewTyperState: this.type = withTyperState(typerState.fresh)
     def withPosition(position: Position): this.type = { this.position = position; this }
     def withPlainPrinter(printer: Context => Printer): this.type = { this.plainPrinter = printer; this }
     def withRefinedPrinter(printer: Context => Printer): this.type = { this.refinedPrinter = printer; this }
@@ -273,7 +283,7 @@ object Contexts {
   private class InitialContext(val base: ContextBase, settings: SettingGroup) extends FreshContext {
     outer = NoContext
     period = InitialPeriod
-    typeComparer = new TypeComparer
+    typerState = new TyperState
     position = NoPosition
     plainPrinter = new PlainPrinter(_)
     refinedPrinter = new RefinedPrinter(_)

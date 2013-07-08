@@ -291,8 +291,8 @@ object Flags {
   /** A super accessor */
   final val SuperAccessor = termFlag(27, "<superaccessor>")
 
-  /** A parameter with a default value */
-  final val DefaultParam = termFlag(28, "<defaultparam>")
+  /** A method that has default params */ // TODO: drop
+  final val DefaultParameterized = termFlag(28, "<defaultparam>")
 
   /** Symbol is initialized to the default value, e.g. var x: T = _ */
   final val DefaultInit = termFlag(29, "<defaultinit>")
@@ -359,6 +359,12 @@ object Flags {
 
   /** A definition that's initialized before the super call (Scala 2.x only) */
   final val Scala2PreSuper = termFlag(58, "<presuper>")
+
+  /** A method that is known to have inherited default parameters */
+  final val InheritedDefaultParams = termFlag(59, "<inherited-default-param>")
+
+  /** A method that is known to no default parameters */
+  final val NoDefaultParams = termFlag(60, "<no-default-param>")
 
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
@@ -436,6 +442,12 @@ object Flags {
 
   /** A parameter or parameter accessor */
   final val ParamOrAccessor = Param | Accessor
+
+  /** Has defined or inherited default parameters */
+  final val HasDefaultParams = DefaultParameterized | InheritedDefaultParams
+
+  /** Is a default parameter in Scala 2*/
+  final val DefaultParameter = allOf(Param, DefaultParameterized)
 
   /** A Java interface */
   final val JavaInterface = allOf(JavaDefined, Trait)

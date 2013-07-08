@@ -237,6 +237,7 @@ class Namer { typer: Typer =>
         lazy val schema = paramFn(WildcardType)
         val site = sym.owner.thisType
         val inherited = {
+          // TODO: Look only at member of supertype instead?
           ((NoType: Type) /: sym.owner.info.baseClasses.tail) { (tp, cls) =>
             val itpe = cls.info
               .nonPrivateDecl(sym.name)

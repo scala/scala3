@@ -217,7 +217,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
       STABLE -> Stable,
       STATIC -> Static,
       CASEACCESSOR -> CaseAccessor,
-      DEFAULTPARAM -> (DefaultParam, Trait),
+      DEFAULTPARAM -> (DefaultParameterized, Trait),
       BRIDGE -> Bridge,
       ACCESSOR -> Accessor,
       SUPERACCESSOR -> SuperAccessor,

@@ -263,8 +263,18 @@ class Definitions(implicit ctx: Context) {
     //  - .linkedClass: the ClassSymbol of the enumeration (class E)
     sym.owner.linkedClass.typeConstructor
 
-  def FunctionType(args: List[Type], resultType: Type) =
-    FunctionClass(args.length).typeConstructor.appliedTo(args :+ resultType)
+  object FunctionType {
+    def apply(args: List[Type], resultType: Type) =
+      FunctionClass(args.length).typeConstructor.appliedTo(args :+ resultType)
+    def unapply(ft: Type) = {
+      val tsym = ft.typeSymbol
+      lazy val targs = ft.typeArgs
+      if ((FunctionClasses contains tsym) &&
+          (targs.length - 1 <= MaxFunctionArity) &&
+          (FunctionClass(targs.length - 1) == tsym)) Some(targs.init, targs.last)
+      else None
+    }
+  }
 
   // ----- Symbol sets ---------------------------------------------------
 

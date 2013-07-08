@@ -30,6 +30,10 @@ trait SymDenotations { this: Context =>
     result.validFor = stablePeriod
     result
   }
+
+  def lookup(name: Name): PreDenotation =
+    if (owner.isClass && (owner ne outer.owner)) owner.asClass.membersNamed(name)
+    else scope.denotsNamed(name)
 }
 object SymDenotations {
 
@@ -38,7 +42,7 @@ object SymDenotations {
    */
   class SymDenotation private[SymDenotations] (
     final val symbol: Symbol,
-    _owner: Symbol,
+    ownerIfExists: Symbol,
     final val name: Name,
     initFlags: FlagSet,
     initInfo: Type,
@@ -48,54 +52,54 @@ object SymDenotations {
 
     // ------ Getting and setting fields -----------------------------
 
-    private[this] var _flags: FlagSet = adaptFlags(initFlags)
-    private[this] var _info: Type = initInfo
-    private[this] var _privateWithin: Symbol = initPrivateWithin
-    private[this] var _annotations: List[Annotation] = Nil
+    private[this] var myFlags: FlagSet = adaptFlags(initFlags)
+    private[this] var myInfo: Type = initInfo
+    private[this] var myPrivateWithin: Symbol = initPrivateWithin
+    private[this] var myAnnotations: List[Annotation] = Nil
 
     /** The owner of the symbol */
-    def owner: Symbol = _owner
+    def owner: Symbol = ownerIfExists
 
     /** The flag set */
-    final def flags: FlagSet = { ensureCompleted(); _flags }
+    final def flags: FlagSet = { ensureCompleted(); myFlags }
 
-    final def flagsUNSAFE = _flags // !!! DEBUG; drop when no longer needed
+    final def flagsUNSAFE = myFlags // !!! DEBUG; drop when no longer needed
 
     /** Adapt flag set to this denotation's term or type nature */
     def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
 
     /** Update the flag set */
     private final def flags_=(flags: FlagSet): Unit =
-      _flags = adaptFlags(flags)
+      myFlags = adaptFlags(flags)
 
     /** Set given flags(s) of this denotation */
-    final def setFlag(flags: FlagSet): Unit = { _flags |= flags }
+    final def setFlag(flags: FlagSet): Unit = { myFlags |= flags }
 
     /** UnsSet given flags(s) of this denotation */
-    final def resetFlag(flags: FlagSet): Unit = { _flags &~= flags }
+    final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
 
     final def is(fs: FlagSet) = {
-      (if (fs <= FromStartFlags) _flags else flags) is fs
+      (if (fs <= FromStartFlags) myFlags else flags) is fs
     }
     final def is(fs: FlagSet, butNot: FlagSet) =
-      (if (fs <= FromStartFlags && butNot <= FromStartFlags) _flags else flags) is (fs, butNot)
+      (if (fs <= FromStartFlags && butNot <= FromStartFlags) myFlags else flags) is (fs, butNot)
     final def is(fs: FlagConjunction) =
-      (if (fs <= FromStartFlags) _flags else flags) is fs
+      (if (fs <= FromStartFlags) myFlags else flags) is fs
     final def is(fs: FlagConjunction, butNot: FlagSet) =
-      (if (fs <= FromStartFlags && butNot <= FromStartFlags) _flags else flags) is (fs, butNot)
+      (if (fs <= FromStartFlags && butNot <= FromStartFlags) myFlags else flags) is (fs, butNot)
 
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
-     *  Uncompleted denotations set _info to a LazyType.
+     *  Uncompleted denotations set myInfo to a LazyType.
      */
-    final def info: Type = _info match {
-      case _info: LazyType => completeFrom(_info); info
-      case _ => _info
+    final def info: Type = myInfo match {
+      case myInfo: LazyType => completeFrom(myInfo); info
+      case _ => myInfo
     }
 
     private def completeFrom(completer: LazyType): Unit = {
-      if (_flags is Touched) throw new CyclicReference(this)
-      _flags |= Touched
+      if (myFlags is Touched) throw new CyclicReference(this)
+      myFlags |= Touched
 
       Context.theBase.initialCtx.debugTraceIndented(s"completing ${this.debugString}") {
         completer.complete(this)
@@ -109,36 +113,36 @@ object SymDenotations {
             assert(ost.isInstanceOf[TermRef], tp)
           case _ =>
         }
-      _info = tp
+      myInfo = tp
     }
 
     /** The denotation is completed: all attributes are fully defined */
-    final def isCompleted: Boolean = ! _info.isInstanceOf[LazyType]
+    final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]
 
-    final def isCompleting: Boolean = (_flags is Touched) && !isCompleted
+    final def isCompleting: Boolean = (myFlags is Touched) && !isCompleted
 
     /** The completer of this denotation. @pre: Denotation is not yet completed */
-    final def completer: LazyType = _info.asInstanceOf[LazyType]
+    final def completer: LazyType = myInfo.asInstanceOf[LazyType]
 
     /** Make sure this denotation is completed */
     final def ensureCompleted(): Unit = info
 
     /** The privateWithin boundary, NoSymbol if no boundary is given.
      */
-    final def privateWithin: Symbol = { ensureCompleted(); _privateWithin }
+    final def privateWithin: Symbol = { ensureCompleted(); myPrivateWithin }
 
     /** Set privateWithin. */
     protected[core] final def privateWithin_=(sym: Symbol): Unit =
-      _privateWithin = sym
+      myPrivateWithin = sym
 
     /** The annotations of this denotation */
     final def annotations: List[Annotation] = {
-      ensureCompleted(); _annotations
+      ensureCompleted(); myAnnotations
     }
 
     /** Update the annotations of this denotation */
     private[core] final def annotations_=(annots: List[Annotation]): Unit =
-       _annotations = annots
+       myAnnotations = annots
 
     /** Does this denotation have an annotation matching the given class symbol? */
     final def hasAnnotation(cls: Symbol)(implicit ctx: Context) =
@@ -146,7 +150,7 @@ object SymDenotations {
 
     /** Add given annotation to the annotations of this denotation */
     final def addAnnotation(annot: Annotation): Unit =
-      annotations = annot :: _annotations
+      annotations = annot :: myAnnotations
 
     @tailrec
     private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(implicit ctx: Context): List[Annotation] = anns match {
@@ -156,7 +160,7 @@ object SymDenotations {
 
     /** The symbols defined in this class.
      */
-    final def decls(implicit ctx: Context): Scope = _info match {
+    final def decls(implicit ctx: Context): Scope = myInfo match {
       case cinfo: ClassCompleterWithDecls => cinfo.decls
       case cinfo: LazyType => completeFrom(cinfo); decls // complete-once
       case _ => info.decls
@@ -206,11 +210,11 @@ object SymDenotations {
 
     /** Make denotation not exist */
     final def markAbsent(): Unit =
-      _info = NoType
+      myInfo = NoType
 
     /** Is symbol known to not exist? */
     final def isAbsent: Boolean =
-      _info == NoType
+      myInfo == NoType
 
     /** Is this symbol the root class or its companion object? */
     final def isRoot: Boolean = name.toTermName == nme.ROOT
@@ -416,6 +420,17 @@ object SymDenotations {
     def isAsConcrete(that: Symbol)(implicit ctx: Context): Boolean =
       !(this is Deferred) || (that is Deferred)
 
+    /** Does this symbol have defined or inherited default parameters? */
+    def hasDefaultParams(implicit ctx: Context): Boolean =
+      (this is HasDefaultParams) ||
+        !(this is NoDefaultParams) && computeDefaultParams
+
+    private def computeDefaultParams(implicit ctx: Context) = {
+      val result = allOverriddenSymbols exists (_.hasDefaultParams)
+      setFlag(if (result) InheritedDefaultParams else NoDefaultParams)
+      result
+    }
+
     //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
     //    def isSkolem: Boolean = ???
 
@@ -432,14 +447,14 @@ object SymDenotations {
      * the completers.
      */
     /** The class implementing this module, NoSymbol if not applicable. */
-    final def moduleClass: Symbol = _info match {
+    final def moduleClass: Symbol = myInfo match {
       case info: TypeRefBySym if this is ModuleVal => info.fixedSym
       case info: ModuleCompleter => info.mclass
       case _ => NoSymbol
     }
 
     /** The module implemented by this module class, NoSymbol if not applicable. */
-    final def sourceModule: Symbol = _info match {
+    final def sourceModule: Symbol = myInfo match {
       case ClassInfo(_, _, _, _, selfType: TermRefBySym) if this is ModuleClass =>
         selfType.fixedSym
       case info: ClassCompleterWithDecls =>

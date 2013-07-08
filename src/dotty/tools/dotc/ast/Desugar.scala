@@ -34,7 +34,7 @@ object desugar {
     }
   }
 
-  def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false): DefDef = {
+  def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false): Tree = {
     val DefDef(mods, name, tparams, vparamss, tpt, rhs) = meth
     val epbuf = new ListBuffer[ValDef]
     val tparams1 = tparams mapConserve {
@@ -49,7 +49,8 @@ object desugar {
       case tparam =>
         tparam
     }
-    epbuf.toList match {
+
+    val meth1 = epbuf.toList match {
       case Nil =>
         meth
       case evidenceParams =>
@@ -60,6 +61,42 @@ object desugar {
             vparamss :+ evidenceParams
         }
         meth.derivedDefDef(mods, name, tparams1, vparamss1, tpt, rhs)
+    }
+
+    def take(vparamss: List[List[ValDef]], n: Int): List[List[ValDef]] = vparamss match {
+      case vparams :: vparamss1 =>
+        val len = vparams.length
+        if (len <= n) vparams :: take(vparamss1, n - len) else Nil
+      case _ =>
+        Nil
+    }
+
+    def defaultGetters(vparamss: List[List[ValDef]], n: Int = 0): List[DefDef] = vparamss match {
+      case (vparam :: vparams) :: vparamss1 =>
+        def defaultGetter: DefDef =
+          DefDef(
+            mods = vparam.mods & AccessFlags,
+            name = meth.name.defaultGetterName(n + 1),
+            tparams = meth.tparams,
+            vparamss = take(meth.vparamss, n),
+            tpt = TypeTree(),
+            rhs = vparam.rhs)
+        val rest = defaultGetters(vparams :: vparamss1, n + 1)
+        if (vparam.rhs.isEmpty) rest else defaultGetter :: rest
+      case Nil :: vparamss1 =>
+        defaultGetters(vparamss1)
+      case nil =>
+        Nil
+    }
+
+    val defGetters = defaultGetters(vparamss)
+    if (defGetters.isEmpty) meth1
+    else {
+      val mods1 = meth1.mods | DefaultParameterized
+      val vparamss1 = vparamss map (_ map (vparam =>
+        vparam.derivedValDef(vparam.mods, vparam.name, vparam.tpt, EmptyTree)))
+      val meth2 = meth1.derivedDefDef(mods1, meth1.name, meth1.tparams, vparamss1, meth1.tpt, meth1.rhs)
+      Thicket(meth2 :: defGetters)
     }
   }
 
@@ -81,7 +118,10 @@ object desugar {
     val TypeDef(
       mods, name, impl @ Template(constr0, parents, self, body)) = cdef
 
-    val constr1 = defDef(constr0, isPrimaryConstructor = true)
+    val (constr1, defaultGetters) = defDef(constr0, isPrimaryConstructor = true) match {
+      case meth: DefDef => (meth, Nil)
+      case Thicket((meth: DefDef) :: defaults) => (meth, defaults)
+    }
 
     val tparams = constr1.tparams.map(tparam => tparam.derivedTypeDef(
       Modifiers(Param), tparam.name, tparam.rhs, tparam.tparams))
@@ -129,10 +169,18 @@ object desugar {
       }
       else Nil
 
-    val caseCompanions =
+    def anyRef = ref(defn.AnyRefAlias.typeConstructor)
+
+    def companionDefs(parent: Tree, defs: List[Tree]) =
+      moduleDef(
+        ModuleDef(
+          Modifiers(Synthetic), name.toTermName,
+          Template(emptyConstructor, parent :: Nil, EmptyValDef(), defs))).toList
+
+    val companions =
       if (mods is Case) {
         val parent =
-          if (tparams.nonEmpty) ref(defn.AnyRefAlias.typeConstructor)
+          if (tparams.nonEmpty) anyRef
           else (vparamss :\ classTypeRef) ((vparams, restpe) => Function(vparams map (_.tpt), restpe))
         val applyMeths =
           if (mods is Abstract) Nil
@@ -141,12 +189,10 @@ object desugar {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           DefDef(synthetic, nme.unapply, tparams, (unapplyParam :: Nil) :: Nil, EmptyTree, This(EmptyTypeName))
         }
-        moduleDef(
-          ModuleDef(
-            Modifiers(Synthetic), name.toTermName,
-            Template(emptyConstructor, parent :: Nil, EmptyValDef(), applyMeths ::: unapplyMeth :: Nil))
-        ).toList
+        companionDefs(parent, applyMeths ::: unapplyMeth :: defaultGetters)
       }
+      else if (defaultGetters.nonEmpty)
+        companionDefs(anyRef, defaultGetters)
       else Nil
 
     val implicitWrappers =
@@ -163,7 +209,7 @@ object desugar {
     val cdef1 = cdef.derivedTypeDef(mods, name,
       impl.derivedTemplate(constr, parents, self,
         constr1.tparams ::: constr1.vparamss.flatten ::: body ::: caseClassMeths))
-    Thicket.make(cdef1 :: caseCompanions ::: implicitWrappers)
+    Thicket.make(cdef1 :: companions ::: implicitWrappers)
   }
 
   /** Expand to:

@@ -4,8 +4,20 @@ package typer
 
 import core._
 import ast._
-import Trees._, Constants._, StdNames._, Scopes._, Denotations._
-import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
+import Trees._
+import Constants._
+import StdNames._
+import Scopes._
+import Denotations._
+import Inferencing.Infer
+import Contexts._
+import Symbols._
+import Types._
+import SymDenotations._
+import Names._
+import NameOps._
+import Flags._
+import Decorators._
 import util.Positions._
 import util.SourcePosition
 import collection.mutable
@@ -33,7 +45,7 @@ object Typer {
   }
 }
 
-class Typer extends Namer {
+class Typer extends Namer with Applications {
 
   import tpd._
   import Typer._
@@ -183,13 +195,10 @@ class Typer extends Namer {
       if (ctx eq NoContext) previous
       else {
         val outer = ctx.outer
-        val curScope = ctx.scope
-        val curOwner = ctx.owner
-        if (curScope ne outer.scope) {
-          val defDenots =
-            if (curOwner.isClass && (curOwner ne outer.owner)) curOwner.asClass.membersNamed(name)
-            else curScope.denotsNamed(name)
+        if (ctx.scope ne outer.scope) {
+          val defDenots = ctx.lookup(name)
           if (defDenots.exists) {
+            val curOwner = ctx.owner
             val pre = curOwner.thisType
             val found = NamedType(pre, name).withDenot(defDenots toDenot pre)
             if (!(curOwner is Package) || isDefinedInCurrentUnit(defDenots))
@@ -234,55 +243,32 @@ class Typer extends Namer {
     tree.withType(ownType).derivedSelect(qual1, tree.name)
   }
 
-  class FunProtoType(args: List[untpd.Tree], resultType: Type)(implicit ctx: Context) extends UncachedGroundType {
-    private var _typedArgs: List[tpd.Tree] = null
-    private var _argTypes: List[Type] = null
-    def typedArgs = {
-      if (_typedArgs == null)
-        _typedArgs = args mapconserve (typed(_, Mode.Expr, WildcardType))
-      _typedArgs
-    }
-    def argTypes = {
-      if (_argTypes == null)
-        _argTypes = typedArgs map (_.exprType)
-      _argTypes
-    }
-    def adaptedArgs(formals: List[Type]) = {
-      var fs = formals
-      if (_typedArgs == null)
-        _typedArgs = args mapconserve { arg =>
-          val arg1 = typed(arg, Mode.Expr, fs.head)
-          fs = fs.tail
-          arg1
-        }
-      else {
-        val adapted = typedArgs mapconserve { arg =>
-          val arg1 = adapt(arg, Mode.Expr, fs.head)
-          fs = fs.tail
-          arg1
-        }
-        if (adapted ne typedArgs) {
-          _typedArgs = adapted
-          _argTypes = null
-        }
-      }
-      typedArgs
-    }
-    def isApplicable(denot: SingleDenotation) = {
+  case class FunProtoType(args: List[untpd.Tree], override val resultType: Type)(implicit ctx: Context) extends UncachedGroundType {
+    private var myTypedArgs: List[tpd.Tree] = null
 
+    def argsAreTyped: Boolean = myTypedArgs != null
+
+    def typedArgs: List[tpd.Tree] = {
+      if (myTypedArgs == null)
+        myTypedArgs = args mapconserve (typed(_, pt = WildcardType))
+      myTypedArgs
     }
   }
 
   def typedApply(tree: untpd.Apply, mode: Mode, pt: Type)(implicit ctx: Context): Tree = {
     val proto = new FunProtoType(tree.args, pt)
     val fun1 = typed(tree.fun, Mode.Expr, proto)
-    fun1.exprType match {
-      case mt @ MethodType(_, formals) =>
-        val args1 = proto.adaptedArgs(formals)
-        val restpe = mt.instantiate(proto.argTypes)
-        tree.withType(restpe).derivedApply(fun1, args1)
-      case ErrorType =>
-        tree.withType(ErrorType)
+    TreeInfo.methPart(fun1).tpe match {
+      case funRef: TermRef =>
+        val app =
+          if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
+          else new ApplyToUntyped(tree, fun1, funRef, tree.args, pt)
+        app.result
+      case _ =>
+        fun1.exprType match {
+          case ErrorType =>
+            tree.withType(ErrorType)
+        }
     }
   }
 

@@ -224,7 +224,7 @@ trait Symbols { this: Context =>
     owner: Symbol,
     names: List[TypeName],
     flags: FlagSet,
-    boundsFn: List[TypeRef] => List[Type]) = {
+    boundsFn: List[TypeRef] => List[Type]): List[TypeSymbol] = {
     val tparams = names map (_ => newNakedSymbol[TypeName](NoCoord))
     val bounds = boundsFn(tparams map (_.symTypeRef))
     (names, tparams, bounds).zipped foreach { (name, tparam, bound) =>

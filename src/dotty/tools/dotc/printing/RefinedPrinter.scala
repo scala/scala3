@@ -79,7 +79,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           val tycon = tp.unrefine
           val cls = tycon.typeSymbol
           if (cls.typeParams.length == args.length) {
-            if (cls == defn.RepeatedParamClass) return toTextLocal(args.head) ~ "*"
+            if (tycon.isRepeatedParam) return toTextLocal(args.head) ~ "*"
             if (cls == defn.ByNameParamClass) return "=> " ~ toText(args.head)
             if (defn.FunctionClasses contains cls) return toTextFunction(args)
             if (defn.TupleClasses contains cls) return toTextTuple(args)

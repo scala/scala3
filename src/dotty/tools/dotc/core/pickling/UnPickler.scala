@@ -323,7 +323,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       val owner = if (atEnd) loadingMirror.RootClass else readSymbolRef()
 
       def adjust(denot: Denotation) = {
-        val denot1 = denot.disambiguate(p)
+        val denot1 = denot.disambiguate(d => p(d.symbol))
         val sym = denot1.symbol
         if (denot.exists && !denot1.exists) { // !!!DEBUG
           val alts = denot.alternatives map (d => d+":"+d.info+"/"+d.signature)
@@ -393,7 +393,15 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     val nameref = readNat()
     val name0 = at(nameref, readName)
     val owner = readSymbolRef()
-    val flags = unpickleScalaFlags(readLongNat(), name0.isTypeName)
+
+    var flags = unpickleScalaFlags(readLongNat(), name0.isTypeName)
+    if (flags is DefaultParameter) {
+      // DefaultParameterized flag now on method, not parameter
+      //assert(flags is Param, s"$name0 in $owner")
+      flags = flags &~ DefaultParameterized
+      owner.setFlag(DefaultParameterized)
+    }
+
     val name = name0.adjustIfModuleClass(flags)
 
     def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)

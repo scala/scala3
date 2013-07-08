@@ -94,7 +94,7 @@ abstract class TreeInfo {
       def recur(params: List[Symbol], args: List[Tree[T]]): Boolean = params match {
         case Nil => args.isEmpty
         case param :: params1 =>
-          if (defn.RepeatedParamClasses contains param.info.typeSymbol) {
+          if (param.info.isRepeatedParam) {
             for (arg <- args) f(param, arg)
             true
           } else args match {
@@ -128,8 +128,17 @@ abstract class TreeInfo {
     case Apply(fn, _) => methPart(fn)
     case TypeApply(fn, _) => methPart(fn)
     case AppliedTypeTree(fn, _) => methPart(fn)
-    case Block(stats, expr) if stats forall (_.isInstanceOf[ValDef[_]]) => methPart(expr)
+    case Block(stats, expr) => methPart(expr)
     case _ => tree
+  }
+
+  /** The number of arguments in an application */
+  def numArgs[T >: Untyped](tree: Tree[T]): Int = tree match {
+    case Apply(fn, args) => numArgs(fn) + args.length
+    case TypeApply(fn, args) => numArgs(fn) + args.length
+    case AppliedTypeTree(fn, args) => numArgs(fn) + args.length
+    case Block(stats, expr) => numArgs(expr)
+    case _ => 0
   }
 
   /** Is symbol potentially a getter of a mutable variable?
@@ -237,7 +246,7 @@ abstract class TreeInfo {
 
   /** Is tpt a vararg type of the form T* ? */
   def isRepeatedParamType(tpt: Tree[_ >: Untyped])(implicit ctx: Context) = tpt match {
-    case tpt: TypeTree[_] => defn.RepeatedParamClasses contains tpt.typeOpt.typeSymbol
+    case tpt: TypeTree[_] => tpt.typeOpt.isRepeatedParam
     case AppliedTypeTree(Select(_, tpnme.REPEATED_PARAM_CLASS), _)      => true
     case AppliedTypeTree(Select(_, tpnme.JAVA_REPEATED_PARAM_CLASS), _) => true
     case _                                                              => false

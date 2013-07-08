@@ -87,6 +87,9 @@ object tpd extends Trees.Instance[Type] {
     blk.withType(widen(expr.tpe))
   }
 
+  def maybeBlock(stats: List[Tree], expr: Tree)(implicit ctx: Context): Tree =
+    if (stats.isEmpty) expr else Block(stats, expr)
+
   def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If =
     Trees.If(cond, thenp, elsep).withType(thenp.tpe | elsep.tpe).checked
 
