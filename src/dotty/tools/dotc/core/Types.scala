@@ -1167,8 +1167,10 @@ object Types {
   object TermRef {
     def apply(prefix: Type, name: TermName)(implicit ctx: Context): TermRef =
       unique(new CachedTermRef(prefix, name))
+    def withSym(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRefBySym =
+      unique(new TermRefBySym(prefix, name, sym))
     def withSym(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRefBySym =
-      unique(new TermRefBySym(prefix, sym.name, sym))
+      withSym(prefix, sym.name, sym)
     def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRefWithSignature =
       unique(new TermRefWithSignature(prefix, name, sig))
   }
@@ -1176,8 +1178,10 @@ object Types {
   object TypeRef {
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef =
       unique(new CachedTypeRef(prefix, name))
+    def withSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRefBySym =
+      unique(new TypeRefBySym(prefix, name, sym))
     def withSym(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRefBySym =
-      unique(new TypeRefBySym(prefix, sym.name, sym))
+      withSym(prefix, sym.name, sym)
   }
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------

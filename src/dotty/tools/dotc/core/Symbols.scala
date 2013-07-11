@@ -125,7 +125,7 @@ trait Symbols { this: Context =>
         infoFn(module, modcls), privateWithin)
     val mdenot = SymDenotation(
         module, owner, name, modFlags | ModuleCreationFlags,
-        if (cdenot.isCompleted) TypeRef.withSym(owner.thisType, modcls)
+        if (cdenot.isCompleted) TypeRef.withSym(owner.thisType, modclsName, modcls)
         else new ModuleCompleter(modcls)(condensed))
     module.denot = mdenot
     modcls.denot = cdenot
@@ -150,7 +150,7 @@ trait Symbols { this: Context =>
     newModuleSymbol(
         owner, name, modFlags, clsFlags,
         (module, modcls) => ClassInfo(
-          owner.thisType, modcls, parents, decls, TermRef.withSym(owner.thisType, module)),
+          owner.thisType, modcls, parents, decls, TermRef.withSym(owner.thisType, name, module)),
         privateWithin, coord, assocFile)
 
   /** Create a package symbol with associated package class
@@ -185,14 +185,14 @@ trait Symbols { this: Context =>
     val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
     println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
     println(s"decls = ${normalizedOwner.decls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
-    throw new Error()
+    if (base.settings.debug.value) throw new Error()
     val stub = name match {
       case name: TermName =>
         newModuleSymbol(normalizedOwner, name, EmptyFlags, EmptyFlags, stubCompleter, assocFile = file)
       case name: TypeName =>
         newClassSymbol(normalizedOwner, name, EmptyFlags, stubCompleter, assocFile = file)
     }
-    stub.info //!!! DEBUG, force the error for now
+    //stub.info //!!! DEBUG, force the error for now
     stub
   }
 
@@ -293,13 +293,13 @@ object Symbols {
 
     type ThisName <: Name
 
-    private[this] var _id: Int = _
+    private[this] var _id: Int = {
+      //assert(id != 144972)
+      nextId
+    }
 
     /** The unique id of this symbol */
-    def id/*(implicit ctx: Context)*/ = { // !!! DEBUG
-      if (_id == 0) _id = /*ctx.*/nextId // !!! DEBUG
-      _id
-    }
+    def id = _id
 
     /** The last denotation of this symbol */
     private[this] var lastDenot: SymDenotation = _
