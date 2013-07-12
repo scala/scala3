@@ -407,11 +407,11 @@ object Denotations {
 
     // ------ Transformations -----------------------------------------
 
-    private[this] var _validFor: Period = Nowhere
+    private[this] var myValidFor: Period = Nowhere
 
-    def validFor = _validFor
+    def validFor = myValidFor
     def validFor_=(p: Period) =
-      _validFor = p
+      myValidFor = p
 
     /** The next SingleDenotation in this run, with wrap-around from last to first.
      *
@@ -434,7 +434,7 @@ object Denotations {
      */
     def initial: SingleDenotation = {
       var current = nextInRun
-      while (current.validFor.code > this._validFor.code) current = current.nextInRun
+      while (current.validFor.code > this.myValidFor.code) current = current.nextInRun
       current
     }
 
@@ -453,30 +453,25 @@ object Denotations {
      */
     def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
-      val valid = _validFor
-      def bringForward(): Unit = {
-        this match {
-          case NoDenotation =>
-            validFor = Period(currentPeriod.runId, validFor.firstPhaseId, validFor.lastPhaseId)
-            return
-          case denot: SymDenotation =>
-            val top = denot.topLevelSym
-            if (top.owner.info.decl(top.name).symbol == top) {
-              var d: SingleDenotation = denot
-              do {
-                d.validFor = Period(currentPeriod.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
-                d = d.nextInRun
-              } while (d ne denot)
-              return
-            }
-          case _ =>
+      val valid = myValidFor
+      def stillValid(denot: SymDenotation) =
+        !denot.exists || {
+          val top = denot.topLevelSym
+          top.owner.info.decl(top.name).symbol eq top
         }
-        assert(false, s"stale symbol; ${symbol.showLocated}, defined in run ${valid.runId} is referred to in run ${currentPeriod.runId}")
+      def bringForward(): SingleDenotation = this match {
+        case denot: SymDenotation if stillValid(denot) =>
+          var d: SingleDenotation = denot
+          do {
+            d.validFor = Period(currentPeriod.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
+            d = d.nextInRun
+          } while (d ne denot)
+          initial.copyIfParentInvalid
+        case _ =>
+          throw new Error(s"stale symbol; ${symbol.showLocated}, defined in run ${valid.runId} is referred to in run ${currentPeriod.runId}")
       }
-      if (valid.runId != currentPeriod.runId) {
-        bringForward()
-        current
-      } else {
+      if (valid.runId != currentPeriod.runId) bringForward.current
+      else {
         var cur = this
         if (currentPeriod.code > valid.code) {
           // search for containing period as long as nextInRun increases.
@@ -494,7 +489,7 @@ object Denotations {
             var startPid = cur.validFor.lastPhaseId + 1
             val transformers = ctx.transformersFor(cur)
             val transformer = transformers.nextTransformer(startPid)
-            next = transformer transform cur
+            next = transformer.transform(cur).copyIfParentInvalid
             if (next eq cur)
               startPid = cur.validFor.firstPhaseId
             else {
@@ -508,15 +503,21 @@ object Denotations {
           // currentPeriod < valid; in this case a version must exist
           // but to be defensive we check for infinite loop anyway
           var cnt = 0
-          do {
+          while (!(cur.validFor contains currentPeriod)) {
             cur = cur.nextInRun
             cnt += 1
             assert(cnt <= MaxPossiblePhaseId)
-          } while (!(cur.validFor contains currentPeriod))
+          }
         }
         cur
       }
     }
+
+    /** For ClassDenotations only:
+     *  If caches influenced by parent classes are still valid, the denotation
+     *  itself, otherwise a freshly initialized copy.
+     */
+    def copyIfParentInvalid(implicit ctx: Context): SingleDenotation = this
 
     final def asSymDenotation = asInstanceOf[SymDenotation]
 

@@ -660,12 +660,12 @@ object SymDenotations {
    */
   class ClassDenotation private[SymDenotations] (
     symbol: Symbol,
-    _owner: Symbol,
+    ownerIfExists: Symbol,
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol)
-    extends SymDenotation(symbol, _owner, name, initFlags, initInfo, initPrivateWithin) {
+    extends SymDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
 
     import util.LRUCache
 
@@ -680,25 +680,50 @@ object SymDenotations {
     def classInfo(implicit ctx: Context): ClassInfo = super.info.asInstanceOf[ClassInfo]
 
     /** TODO: Document why caches are supposedly safe to use */
-    private[this] var _typeParams: List[TypeSymbol] = _
+    private[this] var myTypeParams: List[TypeSymbol] = _
 
     /** The type parameters of this class */
     override final def typeParams(implicit ctx: Context): List[TypeSymbol] = {
-      if (_typeParams == null) _typeParams = computeTypeParams
-      _typeParams
+      if (myTypeParams == null) myTypeParams = computeTypeParams
+      myTypeParams
     }
 
     private def computeTypeParams(implicit ctx: Context): List[TypeSymbol] =
       decls.filter(sym =>
         (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
 
-    // ------ class-specific operations -----------------------------------
+    /** A key to verify that all caches influenced by parent classes are valid */
+    private var parentDenots: List[Denotation] = null
 
-    private[this] var _thisType: Type = null
+    /** The denotations of all parents in this class.
+     *  Note: Always use this method instead of `classInfo.classParents`
+     *  because the latter does not ensure that the `parentDenots` key
+     *  is up-to-date, which might lead to invalid caches later on.
+     */
+    private def classParents(implicit ctx: Context) = {
+      val ps = classInfo.classParents
+      if (parentDenots == null) parentDenots = ps map (_.denot)
+      ps
+    }
+
+    /** Are caches influenced by parent classes still valid? */
+    private def parentsAreValid(implicit ctx: Context): Boolean =
+      parentDenots == null ||
+      parentDenots.corresponds(classInfo.classParents)(_ eq _.denot)
+
+    /** If caches influenced by parent classes are still valid, the denotation
+     *  itself, otherwise a freshly initialized copy.
+     */
+    override def copyIfParentInvalid(implicit ctx: Context): SingleDenotation =
+      if (!parentsAreValid) copySymDenotation() else this
+
+   // ------ class-specific operations -----------------------------------
+
+    private[this] var myThisType: Type = null
 
     override def thisType(implicit ctx: Context): Type = {
-      if (_thisType == null) _thisType = computeThisType
-      _thisType
+      if (myThisType == null) myThisType = computeThisType
+      myThisType
     }
 
     private def computeThisType(implicit ctx: Context): Type = ThisType(classSymbol)
@@ -709,19 +734,19 @@ object SymDenotations {
         ThisType(classSymbol)
      */
 
-    private[this] var _typeConstructor: TypeRef = null
+    private[this] var myTypeConstructor: TypeRef = null
 
     override def typeConstructor(implicit ctx: Context): TypeRef = {
-      if (_typeConstructor == null) _typeConstructor = super.typeConstructor
-      _typeConstructor
+      if (myTypeConstructor == null) myTypeConstructor = super.typeConstructor
+      myTypeConstructor
     }
 
-    private[this] var _baseClasses: List[ClassSymbol] = null
-    private[this] var _superClassBits: BitSet = null
+    private[this] var myBaseClasses: List[ClassSymbol] = null
+    private[this] var mySuperClassBits: BitSet = null
 
     private def computeBases(implicit ctx: Context): Unit = {
-      if (_baseClasses == Nil) throw new CyclicReference(this)
-      _baseClasses = Nil
+      if (myBaseClasses == Nil) throw new CyclicReference(this)
+      myBaseClasses = Nil
       val seen = new mutable.BitSet
       val locked = new mutable.BitSet
       def addBaseClasses(bcs: List[ClassSymbol], to: List[ClassSymbol])
@@ -743,22 +768,22 @@ object SymDenotations {
         case nil =>
           to
       }
-      _baseClasses = classSymbol :: addParentBaseClasses(classInfo.classParents, Nil)
-      _superClassBits = ctx.uniqueBits.findEntryOrUpdate(seen.toImmutable)
+      myBaseClasses = classSymbol :: addParentBaseClasses(classParents, Nil)
+      mySuperClassBits = ctx.uniqueBits.findEntryOrUpdate(seen.toImmutable)
     }
 
     /** A bitset that contains the superId's of all base classes */
     private def superClassBits(implicit ctx: Context): BitSet = {
-      if (_superClassBits == null) computeBases
-      _superClassBits
+      if (mySuperClassBits == null) computeBases
+      mySuperClassBits
     }
 
     /** The base classes of this class in linearization order,
      *  with the class itself as first element.
      */
     def baseClasses(implicit ctx: Context): List[ClassSymbol] = {
-      if (_baseClasses == null) computeBases
-      _baseClasses
+      if (myBaseClasses == null) computeBases
+      myBaseClasses
     }
 
     final override def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean =
@@ -775,7 +800,7 @@ object SymDenotations {
           (symbol eq defn.NothingClass) ||
             (symbol eq defn.NullClass) && (base ne defn.NothingClass))
 
-    private[this] var _memberFingerPrint: FingerPrint = FingerPrint.empty
+    private[this] var myMemberFingerPrint: FingerPrint = FingerPrint.unknown
 
     private def computeMemberFingerPrint(implicit ctx: Context): FingerPrint = {
       var fp = FingerPrint()
@@ -784,7 +809,7 @@ object SymDenotations {
         fp.include(e.sym.name)
         e = e.prev
       }
-      var ps = classInfo.classParents
+      var ps = classParents
       while (ps.nonEmpty) {
         val parent = ps.head.typeSymbol
         parent.denot match {
@@ -804,15 +829,15 @@ object SymDenotations {
      *  gets invalidated.
      */
     def memberFingerPrint(implicit ctx: Context): FingerPrint = {
-      if (_memberFingerPrint == FingerPrint.empty) _memberFingerPrint = computeMemberFingerPrint
-      _memberFingerPrint
+      if (myMemberFingerPrint == FingerPrint.unknown) myMemberFingerPrint = computeMemberFingerPrint
+      myMemberFingerPrint
     }
 
-    private[this] var _memberCache: LRUCache[Name, PreDenotation] = null
+    private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
 
     private def memberCache: LRUCache[Name, PreDenotation] = {
-      if (_memberCache == null) _memberCache = new LRUCache
-      _memberCache
+      if (myMemberCache == null) myMemberCache = new LRUCache
+      myMemberCache
     }
 
     /** Enter a symbol in current scope.
@@ -827,9 +852,9 @@ object SymDenotations {
       }
       mscope.enter(sym)
 
-      if (_memberFingerPrint != FingerPrint.empty)
+      if (myMemberFingerPrint != FingerPrint.unknown)
         memberFingerPrint.include(sym.name)
-      if (_memberCache != null)
+      if (myMemberCache != null)
         memberCache invalidate sym.name
     }
 
@@ -840,9 +865,9 @@ object SymDenotations {
     def delete(sym: Symbol)(implicit ctx: Context) = {
       require(!(this is Frozen))
       info.decls.asInstanceOf[MutableScope].unlink(sym)
-      if (_memberFingerPrint != FingerPrint.empty)
+      if (myMemberFingerPrint != FingerPrint.unknown)
         computeMemberFingerPrint
-      if (_memberCache != null)
+      if (myMemberCache != null)
         memberCache invalidate sym.name
     }
 
@@ -885,7 +910,7 @@ object SymDenotations {
           case nil =>
             denots
         }
-        collect(ownDenots, classInfo.classParents)
+        collect(ownDenots, classParents)
       } else NoDenotation
 
     override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation =
@@ -952,7 +977,7 @@ object SymDenotations {
 
     def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = {
       def computeMemberNames: Set[Name] = {
-        val inheritedNames = (classInfo.classParents flatMap (_.memberNames(keepOnly, thisType))).toSet
+        val inheritedNames = (classParents flatMap (_.memberNames(keepOnly, thisType))).toSet
         val ownNames = info.decls.iterator map (_.name)
         val candidates = inheritedNames ++ ownNames
         candidates filter (keepOnly(thisType, _))
@@ -1118,7 +1143,7 @@ object SymDenotations {
 
   object FingerPrint {
     def apply() = new FingerPrint(new Array[Long](NumWords))
-    val empty = new FingerPrint(null)
+    val unknown = new FingerPrint(null)
     private final val WordSizeLog = 6
     private final val NumWords = 32
     private final val NumBits = NumWords << WordSizeLog
