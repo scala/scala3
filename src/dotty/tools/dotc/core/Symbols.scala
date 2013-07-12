@@ -192,7 +192,7 @@ trait Symbols { this: Context =>
       case name: TypeName =>
         newClassSymbol(normalizedOwner, name, EmptyFlags, stubCompleter, assocFile = file)
     }
-    //stub.info //!!! DEBUG, force the error for now
+    stubs = stub :: stubs
     stub
   }
 
@@ -474,4 +474,6 @@ object Symbols {
 
   /** Makes all class denotations available on class symbols */
   implicit def toClassDenot(cls: ClassSymbol)(implicit ctx: Context): ClassDenotation = cls.classDenot
+
+  var stubs: List[Symbol] = Nil // diagnostic
 }

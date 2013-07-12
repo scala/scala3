@@ -1,6 +1,7 @@
 package test
 
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Symbols
 
 object showClass extends ShowClassTests {
 
@@ -13,6 +14,7 @@ object showClass extends ShowClassTests {
 
 //    showPackage("dotty")
     showPackage("scala")
-    println("done")
+    println(s"${Symbols.stubs.length} stubs")
+    println(Symbols.stubs mkString " ")
   }
 }
