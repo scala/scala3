@@ -546,7 +546,7 @@ object Types {
     /** The parameter types of a PolyType or MethodType, Empty list for others */
     final def paramTypess: List[List[Type]] = this match {
       case mt: MethodType => mt.paramTypes :: mt.resultType.paramTypess
-      case pt: PolyType => pt.paramTypess
+      case pt: PolyType => pt.resultType.paramTypess
       case _ => Nil
     }
 /* Not sure whether we'll need this
@@ -1762,6 +1762,46 @@ object Types {
   object ErrorType extends ErrorType
 
   case object WildcardType extends UncachedGroundType
+
+  /** An extractor for single abstract method types.
+   *  A type is a SAM type if it is a reference to a class or trait, which
+   *
+   *   - has a single abstract method
+   *   - can be instantiated without arguments or with just () as argument.
+   */
+  object SAMType {
+    def isInstantiatable(tp: Type)(implicit ctx: Context): Boolean = tp match {
+      case tp: TypeRef =>
+        isInstantiatable(tp.info)
+      case tp: ClassInfo =>
+        def zeroParams(tp: Type): Boolean = tp match {
+          case pt: PolyType => zeroParams(pt)
+          case mt: MethodType => mt.paramTypess.isEmpty && !mt.resultType.isInstanceOf[MethodType]
+          case et: ExprType => true
+          case _ => false
+        }
+        val noParamsNeeded = (tp.cls is Trait) || zeroParams(tp.cls.primaryConstructor.info)
+        val selfTypeFeasible = tp.typeConstructor <:< tp.selfType
+        noParamsNeeded && selfTypeFeasible
+      case tp: RefinedType =>
+        isInstantiatable(tp.underlying)
+      case tp: TypeVar =>
+        isInstantiatable(tp.thisInstance)
+      case _ =>
+        false
+    }
+    def unapply(tp: Type)(implicit ctx: Context): Option[(SingleDenotation, List[Type], Type)] =
+      if (isInstantiatable(tp)) {
+        val absMems = tp.abstractTermMembers
+        if (absMems.size == 1)
+          absMems.head.info match {
+            case mt: MethodType if !mt.isDependent => Some((absMems.head, mt.paramTypes, mt.resultType))
+            case _=> None
+          }
+        else None
+      }
+      else None
+  }
 
   // ----- TypeMaps --------------------------------------------------------------------
 
