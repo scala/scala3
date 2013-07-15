@@ -229,6 +229,8 @@ object Contexts {
       _condensed
     }
 
+    def implicitsEnabled: Boolean = ???
+
     /** A fresh clone of this context. */
     def fresh: FreshContext = {
       val newctx = super.clone.asInstanceOf[FreshContext]
@@ -275,6 +277,7 @@ object Contexts {
       withSettings(setting.updateIn(sstate, value))
 
     def withDebug = withSetting(base.settings.debug, true)
+    def withImplicitsDisabled: this.type = ???
   }
 
   /** A class defining the initial context with given context base

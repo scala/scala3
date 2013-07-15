@@ -45,7 +45,7 @@ object Typer {
   }
 }
 
-class Typer extends Namer with Applications {
+class Typer extends Namer with Applications with Implicits {
 
   import tpd._
   import Typer._

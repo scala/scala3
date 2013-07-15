@@ -66,7 +66,20 @@ trait Applications { self: Typer =>
       tree
   }
 
-  def isCompatible(tp: Type, pt: Type): Boolean = ???
+  def normalize(tp: Type)(implicit ctx: Context) = tp.widen match {
+    case pt: PolyType => ctx.track(pt).resultType
+    case mt: MethodType if !mt.isDependent =>
+      if (mt.isImplicit) mt.resultType
+      else defn.FunctionType(mt.paramTypes, mt.resultType)
+    case et: ExprType => et.resultType
+    case _ => tp
+  }
+
+  def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean = (
+       tp <:< pt
+    || pt.typeSymbol == defn.ByNameParamClass && tp <:< pt.typeArgs.head
+    || viewExists(tp, pt)
+    )
 
   /**
    *  @param Arg        the type of arguments, could be tpd.Tree, untpd.Tree, or Type
@@ -365,7 +378,7 @@ trait Applications { self: Typer =>
   /** Subclass of Application for applicability tests with trees as arguments. */
   class ApplicableToTrees(methRef: TermRef, args: List[tpd.Tree], resultType: Type)(implicit ctx: Context)
   extends TestApplication(methRef, methRef, args, resultType) with TreeApplication[Type] {
-    def argType(arg: tpd.Tree): Type = arg.tpe
+    def argType(arg: tpd.Tree): Type = normalize(arg.tpe)
     def treeToArg(arg: tpd.Tree): tpd.Tree = arg
   }
 
@@ -492,7 +505,8 @@ trait Applications { self: Typer =>
     new ApplicableToTypes(methRef, args, resultType)(ctx.fresh.withNewTyperState).success
 
   /** Is `tp` a subtype of `pt`? */
-  def isSubType(tp: Type, pt: Type)(implicit ctx: Context) = (tp <:< pt)(ctx.fresh.withNewTyperState)
+  def testCompatible(tp: Type, pt: Type)(implicit ctx: Context) =
+    isCompatible(tp, pt)(ctx.fresh.withNewTyperState)
 
   /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
    *  `alt2`? `alt1` and `alt2` are nonoverloaded references.
@@ -507,7 +521,7 @@ trait Applications { self: Typer =>
 
     /** Is alternative `alt1` with type `tp1` as specific as alternative
      *  `alt2` with type `tp2` ? This is the case if `tp2` can be applied to
-     *  `tp1` or `tp2` is a supertype of `tp1`.
+     *  `tp1` (without intervention of implicits) or `tp2' is a supertype of `tp1`.
      */
     def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = tp1 match {
       case tp1: PolyType =>
@@ -515,9 +529,9 @@ trait Applications { self: Typer =>
         val tparams = ctx.newTypeParams(alt1.symbol.owner, tp1.paramNames, EmptyFlags, bounds)
         isAsSpecific(alt1, tp1.instantiate(tparams map (_.symRef)), alt2, tp2)
       case tp1: MethodType =>
-        isApplicableToTypes(alt2, tp1.paramTypes)
+        isApplicableToTypes(alt2, tp1.paramTypes)(ctx)
       case _ =>
-        isSubType(tp1, tp2)
+        testCompatible(tp1, tp2)(ctx)
     }
 
     val owner1 = alt1.symbol.owner
@@ -547,6 +561,25 @@ trait Applications { self: Typer =>
     else /* 1/9 */ winsType1 || /* 2/27 */ !winsType2
   }
 
+  def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = (alts: @unchecked) match {
+    case alt :: alts1 =>
+      def winner(bestSoFar: TermRef, alts: List[TermRef]): TermRef = alts match {
+        case alt :: alts1 =>
+          winner(if (isAsGood(alt, bestSoFar)) alt else bestSoFar, alts1)
+        case nil =>
+          bestSoFar
+      }
+      val best = winner(alt, alts1)
+      def asGood(alts: List[TermRef]): List[TermRef] = alts match {
+        case alt :: alts1 =>
+          if ((alt eq best) || !isAsGood(alt, best)) asGood(alts1)
+          else alt :: asGood(alts1)
+        case nil =>
+          Nil
+      }
+      best :: asGood(alts1)
+  }
+
   /** Resolve overloaded alternative `alts`, given expected type `pt`. */
   def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = {
 
@@ -573,25 +606,6 @@ trait Applications { self: Typer =>
 
     def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
       alts filter (isApplicableToTypes(_, argTypes, resultType))
-
-    def narrowMostSpecific(alts: List[TermRef]): List[TermRef] = (alts: @unchecked) match {
-      case alt :: alts1 =>
-        def winner(bestSoFar: TermRef, alts: List[TermRef]): TermRef = alts match {
-          case alt :: alts1 =>
-            winner(if (isAsGood(alt, bestSoFar)) alt else bestSoFar, alts1)
-          case nil =>
-            bestSoFar
-        }
-        val best = winner(alt, alts1)
-        def asGood(alts: List[TermRef]): List[TermRef] = alts match {
-          case alt :: alts1 =>
-            if ((alt eq best) || !isAsGood(alt, best)) asGood(alts1)
-            else alt :: asGood(alts1)
-          case nil =>
-            Nil
-        }
-        best :: asGood(alts1)
-    }
 
     val candidates = pt match {
       case pt @ FunProtoType(args, resultType) =>
@@ -636,10 +650,10 @@ trait Applications { self: Typer =>
         narrowByTypes(alts, args, resultType)
 
       case tp =>
-        alts filter (isSubType(_, tp))
+        alts filter (testCompatible(_, tp))
     }
 
     if (isDetermined(candidates)) candidates
-    else narrowMostSpecific(candidates)
+    else narrowMostSpecific(candidates)(ctx.fresh.withImplicitsDisabled)
   }
 }
