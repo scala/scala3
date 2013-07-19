@@ -4,7 +4,7 @@ package typer
 
 import core._
 import ast._
-import Trees._, Constants._, StdNames._, Scopes._
+import Trees._, Constants._, StdNames._, Scopes._, Denotations._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import ast.desugar, ast.desugar._
 import util.Positions._
@@ -22,6 +22,10 @@ trait NamerContextOps { this: Context =>
     }
     sym
   }
+
+  def lookup(name: Name): PreDenotation =
+    if (isClassDefContext) owner.asClass.membersNamed(name)
+    else scope.denotsNamed(name)
 }
 
 /** This class attaches creates symbols from definitions and imports and gives them

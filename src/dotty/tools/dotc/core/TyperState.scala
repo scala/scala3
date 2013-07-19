@@ -23,6 +23,8 @@ class TyperState extends DotClass {
   def diagnostics_=(ds: List[Diagnostic]): Unit = unsupported("diagnostics_=")
 
   def fresh: TyperState = this
+
+  def copyFrom(tp: TyperState): Unit = unsupported("copyFrom")
 }
 
 class MutableTyperState (previous: TyperState) extends TyperState {
@@ -40,4 +42,11 @@ class MutableTyperState (previous: TyperState) extends TyperState {
   override def diagnostics_=(ds: List[Diagnostic]) = myDiagnostics = ds
 
   override def fresh: TyperState = new MutableTyperState(this)
+
+  override def copyFrom(state: TyperState): Unit = {
+    constraint = state.constraint
+    undetVars = state.undetVars
+    // todo: do something about diagnostics (put reporter in state?)
+  }
+
 }

@@ -30,10 +30,6 @@ trait SymDenotations { this: Context =>
     result.validFor = stablePeriod
     result
   }
-
-  def lookup(name: Name): PreDenotation =
-    if (owner.isClass && (owner ne outer.owner)) owner.asClass.membersNamed(name)
-    else scope.denotsNamed(name)
 }
 object SymDenotations {
 
@@ -700,7 +696,7 @@ object SymDenotations {
      *  because the latter does not ensure that the `parentDenots` key
      *  is up-to-date, which might lead to invalid caches later on.
      */
-    private def classParents(implicit ctx: Context) = {
+    def classParents(implicit ctx: Context) = {
       val ps = classInfo.classParents
       if (parentDenots == null) parentDenots = ps map (_.denot)
       ps

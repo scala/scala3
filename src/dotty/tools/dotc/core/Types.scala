@@ -59,6 +59,7 @@ object Types {
    *        |              +- TypeBounds
    *        |              +- ExprType
    *        |              +- AnnotatedType
+   *        |              +- TypeVar
    *        |
    *        +- GroundType -+- AndType
    *                       +- OrType
@@ -165,6 +166,10 @@ object Types {
      */
     final def forallParts(p: Type => Boolean): Boolean = !existsPart(!p(_))
 
+    /** The parts of this type which are type or term refs */
+    final def namedParts(implicit ctx: Context): Set[NamedType] =
+      new PartsAccumulator().apply(Set(), this)
+
     /** Map function over elements of an AndType, rebuilding with & */
     def mapAnd(f: Type => Type)(implicit ctx: Context): Type = thisInstance match {
       case AndType(tp1, tp2) => tp1.mapAnd(f) & tp2.mapAnd(f)
@@ -211,6 +216,21 @@ object Types {
         else NoSymbol
       case _ =>
         NoSymbol
+    }
+
+    /** The least (wrt <:<) set of class symbols of which this type is a subtype
+     */
+    final def classSymbols(implicit ctx: Context): Set[ClassSymbol] = this match {
+      case tp: ClassInfo =>
+        Set(tp.cls)
+      case tp: TypeProxy =>
+        tp.underlying.classSymbols
+      case AndType(l, r) =>
+        l.classSymbols | r.classSymbols
+      case OrType(l, r) =>
+        l.classSymbols & r.classSymbols
+      case _ =>
+        Set()
     }
 
     /** The term symbol associated with the type */
@@ -399,6 +419,13 @@ object Types {
     final def typeMembers(implicit ctx: Context): Set[SingleDenotation] =
       memberNames(typeNameFilter).map(member(_).asInstanceOf[SingleDenotation])
 
+    /** The set of implicit members of this type */
+    final def implicitMembers(implicit ctx: Context): Set[TermRef] =
+      memberNames(implicitFilter)
+        .flatMap(name => member(name)
+          .altsWith(_ is Implicit)
+          .map(TermRef(this, name.asTermName).withDenot(_)))
+
     /** The info of `sym`, seen as a member of this type. */
     final def memberInfo(sym: Symbol)(implicit ctx: Context): Type =
       sym.info.asSeenFrom(this, sym.owner)
@@ -572,6 +599,11 @@ object Types {
     final def bounds(implicit ctx: Context): TypeBounds = this match {
       case tp: TypeBounds => tp
       case ci: ClassInfo => TypeAlias(ci.typeConstructor)
+      case wc: WildcardType =>
+        wc.optBounds match {
+          case bounds: TypeBounds => bounds
+          case NoType => TypeBounds.empty
+        }
       case _ => TypeAlias(this)
     }
 
@@ -1728,7 +1760,8 @@ object Types {
 
   /** An annotated type tpe @ annot */
   case class AnnotatedType(annot: Annotation, tpe: Type)
-      extends UncachedProxyType with ValueType { // todo: cache them?
+      extends UncachedProxyType with ValueType {
+    // todo: cache them? but this makes only sense if annotations and trees are also cached.
     override def underlying(implicit ctx: Context): Type = tpe
     def derivedAnnotatedType(annot: Annotation, tpe: Type) =
       if ((annot eq this.annot) && (tpe eq this.tpe)) this
@@ -1761,7 +1794,16 @@ object Types {
 
   object ErrorType extends ErrorType
 
-  case object WildcardType extends UncachedGroundType
+  /** Wildcard type, possibly with bounds */
+  abstract case class WildcardType(optBounds: Type) extends CachedGroundType {
+    override def computeHash = doHash(optBounds)
+  }
+
+  final class CachedWildcardType(optBounds: Type) extends WildcardType(optBounds)
+
+  object WildcardType extends WildcardType(NoType) {
+    def apply(bounds: TypeBounds)(implicit ctx: Context) = unique(new CachedWildcardType(bounds))
+  }
 
   /** An extractor for single abstract method types.
    *  A type is a SAM type if it is a reference to a class or trait, which
@@ -1892,6 +1934,22 @@ object Types {
     }
   }
 
+  /** Approximate occurrences of paremter types and uninstantiated typevars
+   *  by wildcard types
+   */
+  class WildApprox(implicit ctx: Context) extends TypeMap {
+    override def apply(tp: Type) = tp match {
+      case PolyParam(pt, pnum) =>
+        WildcardType(apply(pt.paramBounds(pnum)).bounds)
+      case MethodParam(mt, pnum) =>
+        WildcardType(TypeBounds.upper(apply(mt.paramTypes(pnum))))
+      case tp: TypeVar =>
+        apply(tp.underlying)
+      case _ =>
+        mapOver(tp)
+    }
+  }
+
   // ----- TypeAccumulators ----------------------------------------------------
 
   abstract class TypeAccumulator[T] extends ((T, Type) => T) {
@@ -1939,6 +1997,19 @@ object Types {
     def apply(x: Boolean, tp: Type) = x || p(tp) || foldOver(x, tp)
   }
 
+  class PartsAccumulator(implicit ctx: Context) extends TypeAccumulator[Set[NamedType]] {
+    def apply(x: Set[NamedType], tp: Type): Set[NamedType] = tp match {
+      case tp: NamedType =>
+        foldOver(x + tp, tp)
+      case tp: ThisType =>
+        apply(x, tp.underlying)
+      case tp: TypeVar =>
+        apply(x, tp.underlying)
+      case _ =>
+        foldOver(x, tp)
+    }
+  }
+
   //   ----- Name Filters --------------------------------------------------
 
   /** A name filter selects or discards a member name of a type `pre`.
@@ -1970,6 +2041,11 @@ object Types {
 
   object takeAllFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = true
+  }
+
+  object implicitFilter extends NameFilter {
+    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
+      (pre member name).hasAltWith(_ is Implicit)
   }
 
   // ----- Exceptions -------------------------------------------------------------

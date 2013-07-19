@@ -6,7 +6,7 @@ package dotty.tools.dotc.util
 
 /** A common class for lightweight sets.
  */
-abstract class Set[T <: AnyRef] {
+abstract class Set[T >: Null] {
 
   def findEntry(x: T): T
 
@@ -19,7 +19,7 @@ abstract class Set[T <: AnyRef] {
   def apply(x: T): Boolean = contains(x)
 
   def contains(x: T): Boolean =
-    findEntry(x) ne null
+    findEntry(x) != null
 
   def toList = iterator.toList
 

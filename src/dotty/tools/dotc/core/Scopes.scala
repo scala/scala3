@@ -7,6 +7,8 @@ package dotty.tools.dotc
 package core
 
 import Symbols._
+import Types.{TermRef, NoPrefix}
+import Flags.Implicit
 import Names._
 import Periods._
 import Decorators._
@@ -108,6 +110,8 @@ object Scopes {
       }
       syms
     }
+
+    def implicitDecls(implicit ctx: Context): Set[TermRef] = Set()
 
     final def toText(printer: Printer): Text = printer.toText(this)
   }
@@ -281,6 +285,17 @@ object Scopes {
         }
       }
       elemsCache
+    }
+
+    override def implicitDecls(implicit ctx: Context): Set[TermRef] = {
+      var irefs: Set[TermRef] = Set()
+      var e = lastEntry
+      while (e ne null) {
+        if (e.sym is Implicit)
+          irefs += TermRef(NoPrefix, e.sym.name.asTermName).withDenot(e.sym.denot)
+        e = e.prev
+      }
+      irefs
     }
 
     /** Vanilla scope - symbols are stored in declaration order.

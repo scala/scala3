@@ -16,6 +16,7 @@ import ast.Trees._
 import ast.untpd
 import util.{FreshNameCreator, SimpleMap}
 import typer._
+import Implicits.ContextualImplicits
 import config.Settings._
 import reporting._
 import collection.mutable
@@ -140,6 +141,11 @@ object Contexts {
     protected def reporter_=(reporter: Reporter) = _reporter = reporter
     def reporter: Reporter = _reporter
 
+    /** The current compiler-run specific Info */
+    private[this] var _runInfo: RunInfo = _
+    protected def runInfo_=(runInfo: RunInfo) = _runInfo = runInfo
+    def runInfo: RunInfo = _runInfo
+
     /** An optional diagostics buffer than is used by some checking code
      *  to provide more information in the buffer if it exists.
      */
@@ -159,7 +165,23 @@ object Contexts {
       _typeComparer
     }
 
-    /** If -Ydebug is on, the top of the stack trace where this context
+    /** The new implicit references that are introduces by this scope */
+    private var implicitsCache: ContextualImplicits = null
+    def implicits: ContextualImplicits = {
+      if (implicitsCache == null )
+        implicitsCache = {
+          val implicitRefs: Set[TermRef] =
+            if (isClassDefContext) owner.thisType.implicitMembers
+            else if (isImportContext) importInfo.importedImplicits
+            else if (isNonEmptyScopeContext) scope.implicitDecls
+            else Set()
+          if (implicitRefs.isEmpty) outer.implicits
+          else new ContextualImplicits(implicitRefs, outer.implicits.ctx)
+        }
+      implicitsCache
+    }
+
+  /** If -Ydebug is on, the top of the stack trace where this context
      *  was created, otherwise `null`.
      */
     private var creationTrace: Array[StackTraceElement] = _
@@ -179,6 +201,18 @@ object Contexts {
       }
       println("=== end context creation trace ===")
     }
+
+    /** Is this a context for the members of a class definition? */
+    def isClassDefContext: Boolean =
+      owner.isClass && (owner ne outer.owner)
+
+    /** Is this a context that introduces an import clause? */
+    def isImportContext: Boolean =
+      (this ne NoContext) && (this.importInfo ne outer.importInfo)
+
+    /** Is this a context that introduces a non-empty scope? */
+    def isNonEmptyScopeContext: Boolean =
+      (this.scope ne outer.scope) && this.scope.nonEmpty
 
     /** Leave message in diagnostics buffer if it exists */
     def diagnose(str: => String) =
@@ -224,6 +258,7 @@ object Contexts {
           .withSettings(sstate)
           // tree is not preserved in condensed
           .withReporter(reporter)
+          .withRunInfo(runInfo)
           .withDiagnostics(diagnostics)
           .withMoreProperties(moreProperties)
       _condensed
@@ -235,6 +270,7 @@ object Contexts {
     def fresh: FreshContext = {
       val newctx = super.clone.asInstanceOf[FreshContext]
       newctx.outer = this
+      newctx.implicitsCache = null
       newctx.setCreationTrace()
       newctx
     }
@@ -266,6 +302,7 @@ object Contexts {
     def withTyper(typer: Typer): this.type = { this.typer = typer; this.scope = typer.scope; this }
     def withImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
     def withReporter(reporter: Reporter): this.type = { this.reporter = reporter; this }
+    def withRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
     def withMoreProperties(moreProperties: Map[String, Any]): this.type = { this.moreProperties = moreProperties; this }
 
@@ -278,6 +315,7 @@ object Contexts {
 
     def withDebug = withSetting(base.settings.debug, true)
     def withImplicitsDisabled: this.type = ???
+    def silent: this.type = ???
   }
 
   /** A class defining the initial context with given context base
@@ -294,8 +332,11 @@ object Contexts {
     sstate = settings.defaultState
     tree = untpd.EmptyTree
     reporter = new ConsoleReporter()(this)
+    runInfo = new RunInfo
     diagnostics = None
     moreProperties = Map.empty
+
+    override val implicits = new ContextualImplicits(Set(), NoContext)(this)
   }
 
   object NoContext extends Context {
@@ -417,6 +458,9 @@ object Contexts {
 
     val theBase = new ContextBase // !!! DEBUG, so that we can use a minimal context for reporting even in code that normallly cannot access a context
   }
+
+  /** Info that changes on each compiler run */
+  class RunInfo(implicit val ctx: Context) extends ImplicitRunInfo
 
   /** Initial size of superId table */
   private final val InitialSuperIdsSize = 4096

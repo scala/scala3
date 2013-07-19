@@ -203,18 +203,14 @@ object Flags {
   final val TypeParam = Param.toTypeFlags
 
   /** Labeled with `implicit` modifier (implicit value) */
-  final val Implicit = termFlag(9, "implicit")
-
-  /** A trait */
-  final val Trait = typeFlag(9, "<trait>")
+  final val ImplicitCommon = commonFlag(9, "implicit")
+  final val Implicit = ImplicitCommon.toTermFlags
 
   /** Labeled with `lazy` (a lazy val). */
   final val Lazy = termFlag(10, "lazy")
 
-  /** A trait that has only abstract methods as members
-   *  (and therefore can be represented by a Java interface
-   */
-  final val Interface = typeFlag(10, "interface")
+  /** A trait */
+  final val Trait = typeFlag(10, "<trait>")
 
   /** A value or variable accessor (getter or setter) */
   final val Accessor = termFlag(11, "<accessor>")
@@ -272,6 +268,11 @@ object Flags {
 
   /** Method is a label. */
   final val Label = termFlag(22, "<label>")
+
+  /** A trait that has only abstract methods as members
+   *  (and therefore can be represented by a Java interface
+   */
+  final val Interface = typeFlag(22, "interface")
 
   /** Labeled with `abstract` modifier (an abstract class)
    *  Note: You should never see Abstract on any symbol except a class.
@@ -380,7 +381,7 @@ object Flags {
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | Param | Scala2ExistentialCommon | Touched |
     Static | CovariantCommon | ContravariantCommon | ExpandedName | AccessorOrSealed | Frozen |
-    Erroneous
+    Erroneous | ImplicitCommon
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion

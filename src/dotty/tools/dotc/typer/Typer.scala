@@ -167,21 +167,16 @@ class Typer extends Namer with Applications with Implicits {
       }
 
       /** The type representing a wildcard import with enclosing name when imported
-       *  from given `site` and `selectors`.
+       *  from given import info
        */
-      def wildImportRef(site: Type, selectors: List[untpd.Tree]): Type = {
-        def wildPermitted(selectors: List[untpd.Tree]): Boolean = selectors match {
-          case Trees.Pair(Trees.Ident(`name`), Trees.Ident(nme.WILDCARD)) :: _ => false
-          case Trees.Ident(nme.WILDCARD) :: _ => true
-          case _ :: rest => wildPermitted(rest)
-          case nil => false
+      def wildImportRef(imp: ImportInfo): Type =
+        if (imp.wildcardImport && !(imp.excluded contains name.toTermName)) {
+          val pre = imp.site
+          val denot = pre.member(name)
+          if (denot.exists) return NamedType(pre, name).withDenot(denot)
+          else NoType
         }
-        if (wildPermitted(selectors)) {
-          val denot = site.member(name)
-          if (denot.exists) return NamedType(site, name).withDenot(denot)
-        }
-        NoType
-      }
+        else NoType
 
       /** Is (some alternative of) the given predenotation `denot`
        *  defined in current compilation unit?
@@ -213,7 +208,7 @@ class Typer extends Namer with Applications with Implicits {
           if (namedImp.exists)
             return findRef(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
           if (prevPrec < wildImport) {
-            val wildImp = wildImportRef(curImport.site, curImport.selectors)
+            val wildImp = wildImportRef(curImport)
             if (wildImp.exists)
               return findRef(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
           }
