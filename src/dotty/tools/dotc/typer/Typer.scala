@@ -351,7 +351,7 @@ class Typer extends Namer with Applications with Implicits {
         case tree: untpd.TypeTree =>
           if (!tree.isEmpty) typed(tree.original, Mode.Type, pt)
           else {
-            assert(pt != WildcardType)
+            assert(!pt.isInstanceOf[WildcardType])
             tree.withType(pt)
           }
         case untpd.EmptyTree =>

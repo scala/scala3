@@ -1796,6 +1796,8 @@ object Types {
 
   /** Wildcard type, possibly with bounds */
   abstract case class WildcardType(optBounds: Type) extends CachedGroundType {
+    def derivedWildcardType(optBounds: Type)(implicit ctx: Context) =
+      if (optBounds eq this.optBounds) this else WildcardType(optBounds.asInstanceOf[TypeBounds])
     override def computeHash = doHash(optBounds)
   }
 
@@ -1890,6 +1892,9 @@ object Types {
 
       case tp @ TypeVar(_) =>
         apply(tp.thisInstance)
+
+      case tp @ WildcardType =>
+        tp.derivedWildcardType(mapOver(tp.optBounds))
 
       case _ =>
         tp
@@ -1988,6 +1993,9 @@ object Types {
 
       case tp: TypeVar =>
         foldOver(x, tp.thisInstance)
+
+      case tp: WildcardType =>
+        foldOver(x, tp.optBounds)
 
       case _ => x
     }

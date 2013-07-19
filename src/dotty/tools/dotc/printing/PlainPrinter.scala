@@ -111,8 +111,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(OrPrec) { toText(tp1) ~ " | " ~ toText(tp2) }
       case ErrorType =>
         "<error>"
-      case WildcardType =>
-        "?"
+      case tp: WildcardType =>
+        if (tp.optBounds.exists) "?" ~ toTextRHS(tp.bounds) else "?"
       case NoType =>
         "<notype>"
       case NoPrefix =>

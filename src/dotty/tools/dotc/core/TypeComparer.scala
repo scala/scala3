@@ -123,30 +123,40 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
           case _ =>
             secondTry(tp1, tp2)
         }
-      case WildcardType | ErrorType =>
-        true
-      case tp2: TypeVar =>
-        firstTry(tp1, tp2.thisInstance)
       case tp2: PolyParam =>
         constraint(tp2) match {
           case TypeBounds(lo, _) => isSubType(tp1, lo) || addConstraint(tp2, TypeBounds.lower(tp1))
           case _ => secondTry(tp1, tp2)
         }
+      case tp2: TypeVar =>
+        firstTry(tp1, tp2.thisInstance)
+      case tp2: WildcardType =>
+        tp2.optBounds match {
+          case TypeBounds(_, hi) => isSubType(tp1, hi)
+          case NoType => true
+        }
+      case ErrorType =>
+        true
       case _ =>
         secondTry(tp1, tp2)
     }
   }
 
   def secondTry(tp1: Type, tp2: Type): Boolean = tp1 match {
-    case WildcardType | ErrorType =>
-      true
-    case tp1: TypeVar =>
-      secondTry(tp1.thisInstance, tp2)
     case tp1: PolyParam =>
       constraint(tp1) match {
         case TypeBounds(_, hi) => isSubType(hi, tp2) || addConstraint(tp1, TypeBounds.upper(tp2))
         case _ => thirdTry(tp1, tp2)
       }
+    case tp1: TypeVar =>
+      secondTry(tp1.thisInstance, tp2)
+    case tp1: WildcardType =>
+      tp1.optBounds match {
+        case TypeBounds(lo, _) => isSubType(lo, tp2)
+        case _ => true
+      }
+    case ErrorType =>
+      true
     case _ =>
       thirdTry(tp1, tp2)
   }
