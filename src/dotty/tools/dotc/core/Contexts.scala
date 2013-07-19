@@ -136,11 +136,6 @@ object Contexts {
     protected def importInfo_=(importInfo: ImportInfo) = _importInfo = importInfo
     def importInfo: ImportInfo = _importInfo
 
-    /** The current reporter */
-    private[this] var _reporter: Reporter = _
-    protected def reporter_=(reporter: Reporter) = _reporter = reporter
-    def reporter: Reporter = _reporter
-
     /** The current compiler-run specific Info */
     private[this] var _runInfo: RunInfo = _
     protected def runInfo_=(runInfo: RunInfo) = _runInfo = runInfo
@@ -202,6 +197,9 @@ object Contexts {
       println("=== end context creation trace ===")
     }
 
+    /** The current reporter */
+    def reporter: Reporter = typerState.reporter
+
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =
       owner.isClass && (owner ne outer.owner)
@@ -252,12 +250,12 @@ object Contexts {
         _condensed = base.initialCtx.fresh
           .withPeriod(period)
           // typerState and its constraint is not preserved in condensed
+          // reporter is always ThrowingReporter
           .withPlainPrinter(plainPrinter)
           .withRefinedPrinter(refinedPrinter)
           .withOwner(owner)
           .withSettings(sstate)
           // tree is not preserved in condensed
-          .withReporter(reporter)
           .withRunInfo(runInfo)
           .withDiagnostics(diagnostics)
           .withMoreProperties(moreProperties)
@@ -301,7 +299,6 @@ object Contexts {
     def withNewScope: this.type = { this.scope = newScope; this }
     def withTyper(typer: Typer): this.type = { this.typer = typer; this.scope = typer.scope; this }
     def withImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
-    def withReporter(reporter: Reporter): this.type = { this.reporter = reporter; this }
     def withRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
     def withMoreProperties(moreProperties: Map[String, Any]): this.type = { this.moreProperties = moreProperties; this }
@@ -324,14 +321,13 @@ object Contexts {
   private class InitialContext(val base: ContextBase, settings: SettingGroup) extends FreshContext {
     outer = NoContext
     period = InitialPeriod
-    typerState = new TyperState
+    typerState = new TyperState(new ConsoleReporter()(this))
     position = NoPosition
     plainPrinter = new PlainPrinter(_)
     refinedPrinter = new RefinedPrinter(_)
     owner = NoSymbol
     sstate = settings.defaultState
     tree = untpd.EmptyTree
-    reporter = new ConsoleReporter()(this)
     runInfo = new RunInfo
     diagnostics = None
     moreProperties = Map.empty

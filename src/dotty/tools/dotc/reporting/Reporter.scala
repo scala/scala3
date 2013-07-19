@@ -11,9 +11,11 @@ import config.Settings.Setting
 import java.lang.System.currentTimeMillis
 
 object Reporter {
-  class Diagnostic(msgFn: => String, val pos: SourcePosition, val severity: Severity) {
+
+  class Diagnostic(msgFn: => String, val pos: SourcePosition, val severity: Severity) extends Exception {
     lazy val msg: String = msgFn
     override def toString = s"$severity at $pos: $msg"
+    override def getMessage() = msg
   }
 
   class Severity(val level: Int) extends AnyVal {
@@ -127,7 +129,7 @@ trait Reporting { this: Context =>
  * This interface provides methods to issue information, warning and
  * error messages.
  */
-abstract class Reporter(ctx: Context) {
+abstract class Reporter {
 
   /** Report a diagnostic */
   protected def doReport(d: Diagnostic)(implicit ctx: Context): Unit
@@ -217,5 +219,5 @@ abstract class Reporter(ctx: Context) {
     }
   }
 
-  def flush(): Unit = {}
+  def flush()(implicit ctx: Context): Unit = {}
 }

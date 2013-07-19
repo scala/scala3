@@ -16,7 +16,7 @@ import scala.reflect.internal.util._
 class ConsoleReporter(
     reader: BufferedReader = Console.in,
     writer: PrintWriter = new PrintWriter(Console.err, true))(ctx: Context)
-  extends Reporter(ctx) with UniqueMessagePositions {
+  extends Reporter with UniqueMessagePositions {
 
   /** maximal number of error messages to be printed */
   protected def ErrorLimit = 100
@@ -62,5 +62,5 @@ class ConsoleReporter(
     }
   }
 
-  override def flush() { writer.flush() }
+  override def flush()(implicit ctx: Context) { writer.flush() }
 }

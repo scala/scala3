@@ -4,18 +4,12 @@ package reporting
 
 import core.Contexts.Context
 import collection.mutable
-import Reporter.Diagnostic
+import Reporter._
 
 /**
  * This class implements a Reporter that stores all messages
  */
-class StoreReporter extends Reporter {
-
-  val infos = new mutable.ListBuffer[Diagnostic]
-
+object ThrowingReporter extends Reporter {
   protected def doReport(d: Diagnostic)(implicit ctx: Context): Unit =
-    infos += d
-
-  override def flush()(implicit ctx: Context) =
-    infos foreach ctx.reporter.report
+    if (d.severity == ERROR) throw d else println(d)
 }

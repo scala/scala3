@@ -185,7 +185,7 @@ trait Implicits { self: Typer =>
   def inferImplicit(pt: Type, argument: Tree, pos: Position, reportAmbiguous: Boolean = true)(implicit ctx: Context): Tree = {
     new ImplicitSearch(pt, argument, pos).bestImplicit match {
       case SearchSuccess(_, tree, newCtx) =>
-        ctx.typerState.copyFrom(newCtx.typerState)
+        newCtx.typerState.commit()
         tree
       case NoImplicitMatches =>
         EmptyTree
