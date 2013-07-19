@@ -176,7 +176,7 @@ object Parsers {
       ctx.warning(msg, source atPos Position(offset))
 
     def deprecationWarning(msg: String, offset: Int = in.offset) =
-      ctx.deprecation.warning(msg, source atPos Position(offset))
+      ctx.deprecationWarning(msg, source atPos Position(offset))
 
     /** The offset where the last syntax error was reported, or if a skip to a
      *  safepoint occurred afterwards, the offset of the safe point.
@@ -200,7 +200,7 @@ object Parsers {
 
     /** Issue an error at current offset taht input is incomplete */
     def incompleteInputError(msg: String) =
-      ctx.reporter.incompleteInputError(msg, source atPos Position(in.offset))
+      ctx.incompleteInputError(msg, source atPos Position(in.offset))
 
     /** If at end of file, issue an incompleteInputError.
      *  Otherwise issue a syntax error and skip to next safe point.

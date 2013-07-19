@@ -5,7 +5,7 @@ package reporting
 import scala.collection.mutable
 import util.SourcePosition
 import core.Contexts._
-import Reporter.Severity.{Value => Severity, _}
+import Reporter._
 import java.io.{ BufferedReader, IOException, PrintWriter }
 import scala.reflect.internal.util._
 
@@ -17,9 +17,6 @@ class ConsoleReporter(
     reader: BufferedReader = Console.in,
     writer: PrintWriter = new PrintWriter(Console.err, true))(ctx: Context)
   extends Reporter(ctx) with UniqueMessagePositions {
-
-  /** Whether a short file name should be displayed before errors */
-  protected def shortName: Boolean = false
 
   /** maximal number of error messages to be printed */
   protected def ErrorLimit = 100
@@ -34,22 +31,19 @@ class ConsoleReporter(
   def printMessage(msg: String) { writer.print(msg + "\n"); writer.flush() }
 
   /** Prints the message with the given position indication. */
-  def printMessage(msg: String, pos: SourcePosition)(implicit ctx: Context) {
-    printMessage(s"${if (pos.exists) s"$pos: " else ""}$msg")
+  def printMessageAndPos(msg: String, pos: SourcePosition)(implicit ctx: Context) {
+    val posStr = if (pos.exists) s"$pos: " else ""
+    printMessage(posStr + msg)
     if (pos.exists) {
       printSourceLine(pos)
       printColumnMarker(pos)
     }
   }
 
-  def printMessage(msg: String, severity: Severity, pos: SourcePosition)(implicit ctx: Context) {
-    printMessage(label(severity) + msg, pos)
-  }
-
-  override def report(msg: String, severity: Severity, pos: SourcePosition)(implicit ctx: Context) {
-    if (severity != ERROR || count(severity) <= ErrorLimit)
-      printMessage(msg, severity, pos)
-    if (severity != INFO && ctx.settings.prompt.value) displayPrompt()
+  override def doReport(d: Diagnostic)(implicit ctx: Context) {
+    if (d.severity != ERROR || count(d.severity.level) <= ErrorLimit)
+      printMessageAndPos(label(d.severity) + d.msg, d.pos)
+    if (d.severity.level > INFO.level && ctx.settings.prompt.value) displayPrompt()
   }
 
   def displayPrompt(): Unit = {

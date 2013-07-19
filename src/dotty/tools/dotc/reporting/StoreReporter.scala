@@ -3,26 +3,20 @@ package dotc
 package reporting
 
 import core.Contexts.Context
-import scala.collection.mutable
-import util.SourcePosition
-import Reporter.Severity.{Value => Severity}
+import collection.mutable
+import Reporter.Diagnostic
 
 /**
  * This class implements a Reporter that stores all messages
  */
 class StoreReporter(ctx: Context) extends Reporter(ctx) {
 
-  class Info(val msg: String, val severity: Severity, val pos: SourcePosition) {
-    override def toString() = "pos: " + pos + " " + msg + " " + severity
-  }
-  val infos = new mutable.LinkedHashSet[Info]
+  val infos = new mutable.ListBuffer[Diagnostic]
 
-  protected def report(msg: String, severity: Severity, pos: SourcePosition)(implicit ctx: Context): Unit = {
-    infos += new Info(msg, severity, pos)
-  }
+  protected def doReport(d: Diagnostic)(implicit ctx: Context): Unit =
+    infos += d
 
-  override def reset() {
-    super.reset()
-    infos.clear()
-  }
+  def replay(implicit ctx: Context) =
+    infos foreach ctx.reporter.report
+
 }

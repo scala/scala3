@@ -940,7 +940,7 @@ object Scanners {
 
     /** signal an error where the input ended in the middle of a token */
     def incompleteInputError(msg: String) {
-      ctx.reporter.incompleteInputError(msg, source atPos Position(offset))
+      ctx.incompleteInputError(msg, source atPos Position(offset))
       token = EOF
       errOffset = offset
     }

@@ -6,6 +6,7 @@ import Types._
 import Flags._
 import Contexts._
 import util.SimpleMap
+import reporting.Reporter.Diagnostic
 
 class TyperState extends DotClass {
 
