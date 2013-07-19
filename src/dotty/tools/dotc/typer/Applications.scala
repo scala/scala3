@@ -25,9 +25,48 @@ object Applications {
 
   private val isNamedArg = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[_]]
   def hasNamedArg(args: List[Any]) = args exists isNamedArg
+
+  /** A trait defining an `isCompatible` method. */
+  trait Compatibility {
+
+    /** Is there an implicit conversion from `tp` to `pt`? */
+    def viewExists(tp: Type, pt: Type)(implicit ctx: Context): Boolean
+
+    /** A type `tp` is compatible with a type `pt` if one of the following holds:
+     *    1. `tp` is a subtype of `pt`
+     *    2. `pt` is by name parameter type, and `tp` is compatible with its underlying type
+     *    3. there is an implicit conversion from `tp` to `pt`.
+     */
+    def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean = (
+       tp <:< pt
+    || pt.typeSymbol == defn.ByNameParamClass && tp <:< pt.typeArgs.head
+    || viewExists(tp, pt)
+    )
+  }
+
+  /** A trait defining a `normalize` method. */
+  trait Normalizing {
+
+    /** The normalized form of a type
+     *   - unwraps polymorphic types, tracking their parameters in the current constraint
+     *   - skips implicit parameters
+     *   - converts non-dependent method types to the corresponding function types
+     *   - dereferences parameterless method types
+     */
+    def normalize(tp: Type)(implicit ctx: Context): Type = tp.widen match {
+      case pt: PolyType => normalize(ctx.track(pt).resultType)
+      case mt: MethodType if !mt.isDependent =>
+        if (mt.isImplicit) mt.resultType
+        else defn.FunctionType(mt.paramTypes, mt.resultType)
+      case et: ExprType => et.resultType
+      case _ => tp
+    }
+  }
 }
 
-trait Applications { self: Typer =>
+import Applications._
+
+trait Applications extends Compatibility with Normalizing { self: Typer =>
 
   import Applications._
   import Trees._
@@ -65,21 +104,6 @@ trait Applications { self: Typer =>
     case _ =>
       tree
   }
-
-  def normalize(tp: Type)(implicit ctx: Context) = tp.widen match {
-    case pt: PolyType => ctx.track(pt).resultType
-    case mt: MethodType if !mt.isDependent =>
-      if (mt.isImplicit) mt.resultType
-      else defn.FunctionType(mt.paramTypes, mt.resultType)
-    case et: ExprType => et.resultType
-    case _ => tp
-  }
-
-  def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean = (
-       tp <:< pt
-    || pt.typeSymbol == defn.ByNameParamClass && tp <:< pt.typeArgs.head
-    || viewExists(tp, pt)
-    )
 
   /**
    *  @param Arg        the type of arguments, could be tpd.Tree, untpd.Tree, or Type
@@ -492,6 +516,12 @@ trait Applications { self: Typer =>
     def treeToArg(arg: tpd.Tree): tpd.Tree = arg
   }
 
+  def typedApply(app: untpd.Apply, fun: tpd.Tree, methRef: TermRef, args: List[tpd.Tree], resultType: Type)(implicit ctx: Context): tpd.Tree =
+    new ApplyToTyped(app, fun, methRef, args, resultType).result
+
+  def typedApply(fun: tpd.Tree, methRef: TermRef, args: List[tpd.Tree], resultType: Type)(implicit ctx: Context): tpd.Tree =
+    typedApply(Apply(untpd.TypedSplice(fun), Nil), fun, methRef, args, resultType)
+
   /** Is given method reference applicable to argument types `args`?
    *  @param  resultType   The expected result type of the application
    */
@@ -580,6 +610,9 @@ trait Applications { self: Typer =>
       best :: asGood(alts1)
   }
 
+  private val dummyTree = Literal(Constant(null))
+  def dummyTreeOfType(tp: Type): tpd.Tree = dummyTree withType tp
+
   /** Resolve overloaded alternative `alts`, given expected type `pt`. */
   def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = {
 
@@ -601,7 +634,7 @@ trait Applications { self: Typer =>
         val argShape = treeShape(arg)
         tree.withType(argShape.tpe).derivedNamedArg(name, argShape)
       case _ =>
-        Literal(Constant(null)) withType typeShape(tree)
+        dummyTreeOfType(typeShape(tree))
     }
 
     def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
