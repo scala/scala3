@@ -82,7 +82,7 @@ object Implicits {
    *  @param tree  The typed tree that can needs to be inserted
    *  @param ctx   The context after the implicit search
    */
-  case class SearchSuccess(ref: TermRef, tree: tpd.Tree, ctx: Context) extends SearchResult
+  case class SearchSuccess(ref: TermRef, tree: tpd.Tree, tstate: TyperState) extends SearchResult
 
   /** A failed search */
   abstract class SearchFailure extends SearchResult
@@ -184,8 +184,8 @@ trait Implicits { self: Typer =>
    */
   def inferImplicit(pt: Type, argument: Tree, pos: Position, reportAmbiguous: Boolean = true)(implicit ctx: Context): Tree = {
     new ImplicitSearch(pt, argument, pos).bestImplicit match {
-      case SearchSuccess(_, tree, newCtx) =>
-        newCtx.typerState.commit()
+      case SearchSuccess(_, tree, tstate) =>
+        tstate.commit()
         tree
       case NoImplicitMatches =>
         EmptyTree
@@ -210,7 +210,7 @@ trait Implicits { self: Typer =>
         if (argument.isEmpty) adapt(id, Mode.Expr, pt)
         else typedApply(id, ref, argument :: Nil, pt)
       if (tree.tpe.isError) NoImplicitMatches  // todo: replace by checking if local errors were reported in ctx.
-      else SearchSuccess(ref, tree, ctx)
+      else SearchSuccess(ref, tree, ctx.typerState)
     }
 
     /** Given a list of implicit references, produce a list of all implicit search successes,
