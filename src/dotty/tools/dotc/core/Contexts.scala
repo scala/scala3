@@ -79,12 +79,9 @@ object Contexts {
     def period: Period = _period
 
     /** The scope nesting level */
-    private[this] var _scopeNestingLevel: Int = 0
-    def scopeNestingLevel: Int = {
-      if (this._scopeNestingLevel == outer.scopeNestingLevel && this.scope != outer.scope)
-        this._scopeNestingLevel = outer.scopeNestingLevel + 1
-      this._scopeNestingLevel
-    }
+    private[this] var _mode: Mode = _
+    protected def mode_=(mode: Mode) = _mode = mode
+    def mode: Mode = _mode
 
     /** The current type comparer */
     private[this] var _typerState: TyperState = _
@@ -249,6 +246,7 @@ object Contexts {
       if (_condensed eq outer.condensed)
         _condensed = base.initialCtx.fresh
           .withPeriod(period)
+          .withMode(mode)
           // typerState and its constraint is not preserved in condensed
           // reporter is always ThrowingReporter
           .withPlainPrinter(plainPrinter)
@@ -272,6 +270,13 @@ object Contexts {
       newctx.setCreationTrace()
       newctx
     }
+
+    def withMode(mode: Mode): Context =
+      if (mode != this.mode) fresh.withMode(mode) else this
+
+    def addMode(mode: Mode): Context = withMode(this.mode | mode)
+    def maskMode(mode: Mode): Context = withMode(this.mode & mode)
+    def retractMode(mode: Mode): Context = withMode(this.mode &~ mode)
   }
 
   /** A condensed context provides only a small memory footprint over
@@ -287,6 +292,7 @@ object Contexts {
    */
   abstract class FreshContext extends CondensedContext {
     def withPeriod(period: Period): this.type = { this.period = period; this }
+    override def withMode(mode: Mode): this.type = { this.mode = mode; this }
     def withTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
     def withNewTyperState: this.type = withTyperState(typerState.fresh)
     def withPosition(position: Position): this.type = { this.position = position; this }
@@ -311,8 +317,6 @@ object Contexts {
       withSettings(setting.updateIn(sstate, value))
 
     def withDebug = withSetting(base.settings.debug, true)
-    def withImplicitsDisabled: this.type = ???
-    def silent: this.type = ???
   }
 
   /** A class defining the initial context with given context base
@@ -321,6 +325,7 @@ object Contexts {
   private class InitialContext(val base: ContextBase, settings: SettingGroup) extends FreshContext {
     outer = NoContext
     period = InitialPeriod
+    mode = Mode.None
     typerState = new TyperState(new ConsoleReporter()(this))
     position = NoPosition
     plainPrinter = new PlainPrinter(_)

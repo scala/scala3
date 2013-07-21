@@ -20,8 +20,10 @@ class DeSugarTest extends ParserTest {
 
   import Mode._
 
+  val Expr = Mode(0)
+
   object DeSugar extends TreeTransformer {
-    var curMode: Mode = Mode.Expr
+    var curMode: Mode = Expr
     def withMode[T](mode: Mode)(op: => T) = {
       val saved = curMode
       curMode = mode
@@ -33,7 +35,7 @@ class DeSugarTest extends ParserTest {
     def transform(trees: List[Tree], mode: Mode): List[Tree] = withMode(mode) { transform(trees) }
 
     override def transform(tree: Tree): Tree = {
-      val tree1 = desugar(tree, curMode)
+      val tree1 = desugar(tree)(ctx.withMode(curMode))
       tree1 match {
         case TypedSplice(t) =>
           tree1

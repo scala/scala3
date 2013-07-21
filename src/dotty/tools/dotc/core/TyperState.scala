@@ -22,8 +22,6 @@ class TyperState(val reporter: Reporter = ThrowingReporter) extends DotClass {
   def fresh: TyperState = this
 
   def commit()(implicit ctx: Context): Unit = unsupported("commit")
-
-  def copyFrom(tp: TyperState): Unit = unsupported("copyFrom")
 }
 
 class MutableTyperState(previous: TyperState, reporter: Reporter)
@@ -41,13 +39,8 @@ extends TyperState(reporter) {
   override def fresh: TyperState = new MutableTyperState(this, new StoreReporter)
 
   override def commit()(implicit ctx: Context) = {
-    ctx.typerState.copyFrom(this)
+    ctx.typerState.constraint = constraint
+    ctx.typerState.undetVars = undetVars
     reporter.flush()
   }
-
-  override def copyFrom(state: TyperState): Unit = {
-    constraint = state.constraint
-    undetVars = state.undetVars
-  }
-
 }

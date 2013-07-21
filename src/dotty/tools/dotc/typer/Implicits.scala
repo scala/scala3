@@ -8,6 +8,7 @@ import util.Positions._
 import Contexts._
 import Types._
 import Flags._
+import Mode.ImplicitsDisabled
 import Denotations._
 import NameOps._
 import SymDenotations._
@@ -27,7 +28,7 @@ object Implicits {
   /** A common base class of contextual implicits and of-type implicits which
    *  represents as set of implicit references.
    */
-  abstract class ImplicitRefs extends Compatibility with Normalizing {
+  abstract class ImplicitRefs extends Compatibility {
 
     /** The implicit references */
     def refs: Set[TermRef]
@@ -207,7 +208,7 @@ trait Implicits { self: Typer =>
     def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = {
       val id = Ident(ref).withPos(pos)
       val tree =
-        if (argument.isEmpty) adapt(id, Mode.Expr, pt)
+        if (argument.isEmpty) adapt(id, pt)
         else typedApply(id, ref, argument :: Nil, pt)
       if (tree.tpe.isError) NoImplicitMatches  // todo: replace by checking if local errors were reported in ctx.
       else SearchSuccess(ref, tree, ctx.typerState)
@@ -220,7 +221,7 @@ trait Implicits { self: Typer =>
      */
     private def rankImplicits(pending: List[TermRef], acc: List[SearchSuccess]): List[SearchSuccess] = pending match {
       case ref :: pending1 =>
-        typedImplicit(ref)(ctx.fresh.withNewTyperState.silent) match {
+        typedImplicit(ref)(ctx.fresh.withNewTyperState.addMode(ImplicitsDisabled)) match {
           case fail: SearchFailure =>
             rankImplicits(pending1, acc)
           case best @ SearchSuccess(bestRef, _, _) =>

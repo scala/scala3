@@ -9,7 +9,7 @@ import util.SimpleMap
 import Symbols._, Names._, Denotations._, Types._, Contexts._, StdNames._, Flags._
 
 /** Info relating to an import clause */
-case class ImportInfo(sym: Symbol, selectors: List[untpd.Tree], scopeNestingLevel: Int)(implicit ctx: Context) {
+case class ImportInfo(sym: Symbol, selectors: List[untpd.Tree])(implicit ctx: Context) {
 
   /** The (TermRef) type of the qualifier of the import clause */
   def site(implicit ctx: Context): Type = {

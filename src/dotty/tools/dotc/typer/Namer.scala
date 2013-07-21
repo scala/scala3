@@ -135,7 +135,7 @@ class Namer { typer: Typer =>
 
   /** A new context that summarizes an import statement */
   def importContext(sym: Symbol, selectors: List[Tree])(implicit ctx: Context) =
-    ctx.fresh.withImportInfo(ImportInfo(sym, selectors, ctx.scopeNestingLevel))
+    ctx.fresh.withImportInfo(ImportInfo(sym, selectors))
 
   /** A new context for the interior of a class */
   def inClassContext(cls: ClassSymbol, selfName: TermName)(implicit ctx: Context): Context = {
@@ -210,7 +210,7 @@ class Namer { typer: Typer =>
           if (tree.isClassDef) classDefSig(tree, sym.asClass)(localContext)
           else typeDefSig(tree, sym)(localContext.withNewScope)
         case imp: Import =>
-          val expr1 = typedAhead(imp.expr)
+          val expr1 = typedAheadExpr(imp.expr)
           ImportType(SharedTree(expr1))
       }
 
@@ -219,13 +219,19 @@ class Namer { typer: Typer =>
   }
 
   /** Typecheck tree during completion, and remember result in typedtree map */
-  def typedAhead(tree: Tree, mode: Mode = Mode.Expr, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
-    typedTree.getOrElseUpdate(tree, typer.typedExpanded(tree, mode, pt))
+  private def typedAheadImpl(tree: Tree, pt: Type)(implicit ctx: Context): tpd.Tree =
+    typedTree.getOrElseUpdate(tree, typer.typedExpanded(tree, pt))
+
+  def typedAheadType(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
+    typedAheadImpl(tree, WildcardType)(ctx retractMode Mode.PatternOrType addMode Mode.Type)
+
+  def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
+    typedAheadImpl(tree, pt)(ctx retractMode Mode.PatternOrType)
 
   /** Enter and typecheck parameter list */
   def completeParams(params: List[MemberDef])(implicit ctx: Context) = {
     enterSyms(params)
-    for (param <- params) typedAhead(param)
+    for (param <- params) typedAheadExpr(param)
   }
 
   /** The type signature of a ValDef or DefDef
@@ -251,9 +257,9 @@ class Namer { typer: Typer =>
             tp & itpe
           }
         }
-        inherited orElse typedAhead(mdef.rhs).tpe
+        inherited orElse typedAheadExpr(mdef.rhs).tpe
       }
-    paramFn(typedAhead(mdef.tpt, Mode.Type, pt).tpe)
+    paramFn(typedAheadType(mdef.tpt, pt).tpe)
   }
 
   /** The type signature of a DefDef with given symbol */
@@ -280,7 +286,7 @@ class Namer { typer: Typer =>
     }
     if (isConstructor) {
       // set result type tree to unit, but set the current class as result type of the symbol
-      typedAhead(ddef.tpt, Mode.Type, defn.UnitType)
+      typedAheadType(ddef.tpt, defn.UnitType)
       wrapMethType(sym.owner.typeConstructor.appliedTo(typeParams map (_.symRef)))
     }
     else valOrDefDefSig(ddef, sym, wrapMethType)
@@ -289,7 +295,7 @@ class Namer { typer: Typer =>
   def typeDefSig(tdef: TypeDef, sym: Symbol)(implicit ctx: Context): Type = {
     completeParams(tdef.tparams)
     val tparamSyms = tdef.tparams map symbolOfTree
-    val rhsType = typedAhead(tdef.rhs, Mode.Type).tpe
+    val rhsType = typedAheadType(tdef.rhs).tpe
 
     rhsType match {
       case bounds: TypeBounds =>
@@ -306,9 +312,9 @@ class Namer { typer: Typer =>
 
     def parentType(constr: untpd.Tree): Type = {
       val Trees.Select(Trees.New(tpt), _) = TreeInfo.methPart(constr)
-      val ptype = typedAhead(tpt, Mode.Type).tpe
+      val ptype = typedAheadType(tpt).tpe
       if (ptype.uninstantiatedTypeParams.isEmpty) ptype
-      else typedAhead(constr, Mode.Expr).tpe
+      else typedAheadExpr(constr).tpe
     }
 
     val TypeDef(_, _, impl @ Template(_, parents, self, body)) = cdef
@@ -322,7 +328,7 @@ class Namer { typer: Typer =>
     enterSyms(params)
     val parentTypes = parents map parentType
     val parentRefs = ctx.normalizeToRefs(parentTypes, cls, decls)
-    val optSelfType = if (self.tpt.isEmpty) NoType else typedAhead(self.tpt, Mode.Type).tpe
+    val optSelfType = if (self.tpt.isEmpty) NoType else typedAheadType(self.tpt).tpe
     enterSyms(rest)(inClassContext(cls, self.name))
     ClassInfo(cls.owner.thisType, cls, parentRefs, decls, optSelfType)
   }

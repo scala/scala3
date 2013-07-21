@@ -152,15 +152,15 @@ class Definitions(implicit ctx: Context) {
   lazy val ArrayClass: ClassSymbol = requiredClass("scala.Array")
   lazy val uncheckedStableClass: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
 
-  lazy val UnitClass = valueClassSymbol("scala.Unit", BoxedUnitClass, java.lang.Void.TYPE)
-  lazy val BooleanClass = valueClassSymbol("scala.Boolean", BoxedBooleanClass, java.lang.Boolean.TYPE)
-  lazy val ByteClass = valueClassSymbol("scala.Byte", BoxedByteClass, java.lang.Byte.TYPE)
-  lazy val ShortClass = valueClassSymbol("scala.Short", BoxedShortClass, java.lang.Short.TYPE)
-  lazy val CharClass = valueClassSymbol("scala.Char", BoxedCharClass, java.lang.Character.TYPE)
-  lazy val IntClass = valueClassSymbol("scala.Int", BoxedIntClass, java.lang.Integer.TYPE)
-  lazy val LongClass = valueClassSymbol("scala.Long", BoxedLongClass, java.lang.Long.TYPE)
-  lazy val FloatClass = valueClassSymbol("scala.Float", BoxedFloatClass, java.lang.Float.TYPE)
-  lazy val DoubleClass = valueClassSymbol("scala.Double", BoxedDoubleClass, java.lang.Double.TYPE)
+  lazy val UnitClass = valueClassSymbol("scala.Unit", BoxedUnitClass, java.lang.Void.TYPE, UnitEnc)
+  lazy val BooleanClass = valueClassSymbol("scala.Boolean", BoxedBooleanClass, java.lang.Boolean.TYPE, BooleanEnc)
+  lazy val ByteClass = valueClassSymbol("scala.Byte", BoxedByteClass, java.lang.Byte.TYPE, ByteEnc)
+  lazy val ShortClass = valueClassSymbol("scala.Short", BoxedShortClass, java.lang.Short.TYPE, ShortEnc)
+  lazy val CharClass = valueClassSymbol("scala.Char", BoxedCharClass, java.lang.Character.TYPE, CharEnc)
+  lazy val IntClass = valueClassSymbol("scala.Int", BoxedIntClass, java.lang.Integer.TYPE, IntEnc)
+  lazy val LongClass = valueClassSymbol("scala.Long", BoxedLongClass, java.lang.Long.TYPE, LongEnc)
+  lazy val FloatClass = valueClassSymbol("scala.Float", BoxedFloatClass, java.lang.Float.TYPE, FloatEnc)
+  lazy val DoubleClass = valueClassSymbol("scala.Double", BoxedDoubleClass, java.lang.Double.TYPE, DoubleEnc)
 
   lazy val BoxedUnitClass = requiredClass("scala.runtime.BoxedUnit")
   lazy val BoxedBooleanClass = requiredClass("java.lang.Boolean")
@@ -276,6 +276,8 @@ class Definitions(implicit ctx: Context) {
     }
   }
 
+  def isFunctionType(tp: Type) = FunctionClasses contains tp.typeSymbol
+
   // ----- Symbol sets ---------------------------------------------------
 
   lazy val FunctionClass = mkArityArray("Function", MaxFunctionArity, 0)
@@ -377,18 +379,21 @@ class Definitions(implicit ctx: Context) {
 
   private[this] val _javaTypeToValueClass = mutable.Map[Class[_], Symbol]()
   private[this] val _valueClassToJavaType = mutable.Map[Symbol, Class[_]]()
+  private[this] val _valueClassEnc = mutable.Map[Symbol, Int]()
 
   val boxedClass: collection.Map[Symbol, Symbol] = _boxedClass
   val unboxedClass: collection.Map[Symbol, Symbol] = _boxedClass
   val javaTypeToValueClass: collection.Map[Class[_], Symbol] = _javaTypeToValueClass
   val valueClassToJavaType: collection.Map[Symbol, Class[_]] = _valueClassToJavaType
+  val valueClassEnc: collection.Map[Symbol, Int] = _valueClassEnc
 
-  private def valueClassSymbol(name: String, boxed: ClassSymbol, jtype: Class[_]): ClassSymbol = {
+  private def valueClassSymbol(name: String, boxed: ClassSymbol, jtype: Class[_], enc: Int): ClassSymbol = {
     val vcls = requiredClass(name)
     _unboxedClass(boxed) = vcls
     _boxedClass(vcls) = boxed
     _javaTypeToValueClass(jtype) = vcls
     _valueClassToJavaType(vcls) = jtype
+    _valueClassEnc(vcls) = enc
     vcls
   }
 
@@ -398,6 +403,19 @@ class Definitions(implicit ctx: Context) {
     else if (cls.derivesFrom(ObjectClass) && !cls.isPhantomClass) nme.wrapRefArray
     else nme.genericWrapArray
   }
+
+  val ByteEnc = 2
+  val ShortEnc = ByteEnc * 3
+  val CharEnc = 5
+  val IntEnc = ShortEnc * CharEnc
+  val LongEnc = IntEnc * 7
+  val FloatEnc = LongEnc * 11
+  val DoubleEnc = FloatEnc * 13
+  val BooleanEnc = 17
+  val UnitEnc = 19
+
+  def isValueSubClass(cls1: Symbol, cls2: Symbol) =
+    valueClassEnc(cls2) % valueClassEnc(cls1) == 0
 
   // ----- Initialization ---------------------------------------------------
 

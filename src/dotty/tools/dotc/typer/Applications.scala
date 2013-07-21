@@ -6,6 +6,7 @@ import core._
 import ast.{Trees, untpd, tpd, TreeInfo}
 import util.Positions._
 import Trees.Untyped
+import Mode.ImplicitsDisabled
 import Contexts._
 import Types._
 import Flags._
@@ -44,29 +45,25 @@ object Applications {
     )
   }
 
-  /** A trait defining a `normalize` method. */
-  trait Normalizing {
-
-    /** The normalized form of a type
-     *   - unwraps polymorphic types, tracking their parameters in the current constraint
-     *   - skips implicit parameters
-     *   - converts non-dependent method types to the corresponding function types
-     *   - dereferences parameterless method types
-     */
-    def normalize(tp: Type)(implicit ctx: Context): Type = tp.widen match {
-      case pt: PolyType => normalize(ctx.track(pt).resultType)
-      case mt: MethodType if !mt.isDependent =>
-        if (mt.isImplicit) mt.resultType
-        else defn.FunctionType(mt.paramTypes, mt.resultType)
-      case et: ExprType => et.resultType
-      case _ => tp
-    }
+  /** The normalized form of a type
+   *   - unwraps polymorphic types, tracking their parameters in the current constraint
+   *   - skips implicit parameters
+   *   - converts non-dependent method types to the corresponding function types
+   *   - dereferences parameterless method types
+   */
+  def normalize(tp: Type)(implicit ctx: Context): Type = tp.widen match {
+    case pt: PolyType => normalize(ctx.track(pt).resultType)
+    case mt: MethodType if !mt.isDependent =>
+      if (mt.isImplicit) mt.resultType
+      else defn.FunctionType(mt.paramTypes, mt.resultType)
+    case et: ExprType => et.resultType
+    case _ => tp
   }
 }
 
 import Applications._
 
-trait Applications extends Compatibility with Normalizing { self: Typer =>
+trait Applications extends Compatibility{ self: Typer =>
 
   import Applications._
   import Trees._
@@ -164,7 +161,7 @@ trait Applications extends Compatibility with Normalizing { self: Typer =>
      */
     val methType = funType.widen match {
       case funType: MethodType => funType
-      case funType: PolyType => polyResult(ctx.track(funType))
+      case funType: PolyType => ctx.track(funType).resultType
       case _ => funType
     }
 
@@ -196,9 +193,6 @@ trait Applications extends Compatibility with Normalizing { self: Typer =>
 
     protected def methodType = methType.asInstanceOf[MethodType]
     private def methString: String = s"method ${methRef.name}: ${methType.show}"
-
-    /** The result type of a polytype; overridden in TypedApplication */
-    protected def polyResult(polytpe: PolyType): Type = polytpe.resultType
 
     /** Re-order arguments to correctly align named arguments */
     def reorder[T >: Untyped](args: List[Tree[T]]): List[Tree[T]] = {
@@ -426,7 +420,7 @@ trait Applications extends Compatibility with Normalizing { self: Typer =>
     private var myNormalizedFun: tpd.Tree = fun
 
     def addArg(arg: tpd.Tree, formal: Type): Unit =
-      typedArgBuf += adapt(arg, Mode.Expr, formal)
+      typedArgBuf += adapt(arg, formal)
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
@@ -451,15 +445,6 @@ trait Applications extends Compatibility with Normalizing { self: Typer =>
         liftedDefs = new mutable.ListBuffer[tpd.Tree]
         myNormalizedFun = liftApp(liftedDefs, myNormalizedFun)
       }
-
-    /** Replace all parameters of tracked polytype by fresh type vars,
-     *  and make function a TypeApply node with these type vars as arguments.
-     */
-    override def polyResult(poly: PolyType): Type = {
-      val tvars = ctx.newTypeVars(poly)
-      myNormalizedFun = tpd.TypeApply(normalizedFun, tvars map (tpd.TypeTree(_)))
-      poly.substParams(poly, tvars)
-    }
 
     /** The index of the first difference between lists of trees `xs` and `ys`,
      *  where `EmptyTree`s in the second list are skipped.
@@ -505,7 +490,7 @@ trait Applications extends Compatibility with Normalizing { self: Typer =>
   /** Subclass of Application for type checking an Apply node with untyped arguments. */
   class ApplyToUntyped(app: untpd.Apply, fun: tpd.Tree, methRef: TermRef, args: List[untpd.Tree], resultType: Type)(implicit ctx: Context)
   extends TypedApply(app, fun, methRef, args, resultType) {
-    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = typed(arg, Mode.Expr, formal)
+    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = typed(arg, formal)
     def treeToArg(arg: tpd.Tree): untpd.Tree = untpd.TypedSplice(arg)
   }
 
@@ -683,10 +668,10 @@ trait Applications extends Compatibility with Normalizing { self: Typer =>
         narrowByTypes(alts, args, resultType)
 
       case tp =>
-        alts filter (testCompatible(_, tp))
+        alts filter (alt => testCompatible(normalize(alt), tp))
     }
 
     if (isDetermined(candidates)) candidates
-    else narrowMostSpecific(candidates)(ctx.fresh.withImplicitsDisabled)
+    else narrowMostSpecific(candidates)(ctx.addMode(ImplicitsDisabled))
   }
 }

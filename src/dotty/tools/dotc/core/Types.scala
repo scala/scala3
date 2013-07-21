@@ -510,6 +510,8 @@ object Types {
      *  <o.x.type>.widen = o.C
      */
     final def widen(implicit ctx: Context): Type = this match {
+      case tp: TermRef =>
+      	if (tp.denot.isOverloaded) tp else tp.underlying.widen
       case tp: SingletonType => tp.underlying.widen
       case tp: TypeBounds => tp.hi.widen // needed?
       case tp: ExprType => tp.resultType.widen
