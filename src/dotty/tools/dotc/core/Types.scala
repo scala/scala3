@@ -748,14 +748,14 @@ object Types {
 
     /** The type arguments of the base type instance wrt `base` of this type */
     final def baseTypeArgs(base: Symbol)(implicit ctx: Context): List[Type] =
-      if (this <:< base.symRef)
+      if (this derivesFrom base)
         base.typeParams map (param => member(param.name).info.argType(param))
       else
         Nil
 
     /** The first type argument of the base type instance wrt `base` of this type */
     final def firstBaseTypeArg(base: Symbol)(implicit ctx: Context): Type = base.typeParams match {
-      case param :: _ if this <:< base.symRef =>
+      case param :: _ if this derivesFrom base =>
         member(param.name).info.argType(param)
       case _ =>
         NoType
