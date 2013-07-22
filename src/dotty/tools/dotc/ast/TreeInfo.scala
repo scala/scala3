@@ -366,9 +366,9 @@ abstract class TreeInfo {
 
   /** Is this pattern node a sequence-valued pattern? */
   def isSequenceValued(tree: Tree[_ >: Untyped]): Boolean = unbind(tree) match {
-    case Alternative(ts)  => ts exists isSequenceValued
-    case SeqLiteral(_, _) => true
-    case _                => false
+    case Alternative(ts) => ts exists isSequenceValued
+    case SeqLiteral(_)   => true
+    case _               => false
   }
 
   /** The underlying pattern ignoring any bindings */

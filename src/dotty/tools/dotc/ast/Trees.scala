@@ -469,7 +469,7 @@ object Trees {
   }
 
   /** Array[elemtpt](elems) */
-  case class SeqLiteral[T >: Untyped](elemtpt: Tree[T], elems: List[Tree[T]])
+  case class SeqLiteral[T >: Untyped](elems: List[Tree[T]])
     extends Tree[T] {
     type ThisTree[T >: Untyped] = SeqLiteral[T]
   }
@@ -827,9 +827,9 @@ object Trees {
       case tree: Throw[_] if (expr eq tree.expr) => tree
       case _ => Throw(expr).copyAttr(tree)
     }
-    def derivedSeqLiteral(elemtpt: Tree[T], elems: List[Tree[T]]): SeqLiteral[T] = tree match {
-      case tree: SeqLiteral[_] if (elemtpt eq tree.elemtpt) && (elems eq tree.elems) => tree
-      case _ => SeqLiteral(elemtpt, elems).copyAttr(tree)
+    def derivedSeqLiteral(elems: List[Tree[T]]): SeqLiteral[T] = tree match {
+      case tree: SeqLiteral[_] if (elems eq tree.elems) => tree
+      case _ => SeqLiteral(elems).copyAttr(tree)
     }
     def derivedSingletonTypeTree(ref: Tree[T]): SingletonTypeTree[T] = tree match {
       case tree: SingletonTypeTree[_] if (ref eq tree.ref) => tree
@@ -957,8 +957,8 @@ object Trees {
         finishTry(tree.derivedTry(transform(block, c), transform(handler, c), transform(finalizer, c)), tree, c, plugins)
       case Throw(expr) =>
         finishThrow(tree.derivedThrow(transform(expr, c)), tree, c, plugins)
-      case SeqLiteral(elemtpt, elems) =>
-        finishSeqLiteral(tree.derivedSeqLiteral(transform(elemtpt, c), transform(elems, c)), tree, c, plugins)
+      case SeqLiteral(elems) =>
+        finishSeqLiteral(tree.derivedSeqLiteral(transform(elems, c)), tree, c, plugins)
       case TypeTree(original) =>
         finishTypeTree(tree, tree, c, plugins)
       case SingletonTypeTree(ref) =>
@@ -1136,8 +1136,8 @@ object Trees {
         tree.derivedTry(transform(block), transform(handler), transform(finalizer))
       case Throw(expr) =>
         tree.derivedThrow(transform(expr))
-      case SeqLiteral(elemtpt, elems) =>
-        tree.derivedSeqLiteral(transform(elemtpt), transform(elems))
+      case SeqLiteral(elems) =>
+        tree.derivedSeqLiteral(transform(elems))
       case TypeTree(original) =>
         tree
       case SingletonTypeTree(ref) =>
@@ -1241,8 +1241,8 @@ object Trees {
         this(this(this(x, block), handler), finalizer)
       case Throw(expr) =>
         this(x, expr)
-      case SeqLiteral(elemtpt, elems) =>
-        this(this(x, elemtpt), elems)
+      case SeqLiteral(elems) =>
+        this(x, elems)
       case TypeTree(original) =>
         x
       case SingletonTypeTree(ref) =>

@@ -780,7 +780,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     val end = readNat() + readIndex
     // array elements are trees representing instances of scala.annotation.Annotation
     SeqLiteral(
-      TypeTree(defn.AnnotationClass.typeConstructor),
+      defn.SeqType.appliedTo(defn.AnnotationClass.typeConstructor :: Nil),
       until(end, () => readClassfileAnnotArg(readNat())))
   }
 
@@ -983,7 +983,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case ARRAYVALUEtree =>
         val elemtpt = readTreeRef()
         val trees = until(end, readTreeRef)
-        SeqLiteral(elemtpt, trees)
+        SeqLiteral(defn.SeqType.appliedTo(elemtpt.tpe :: Nil), trees)
+          // note can't deal with trees passed to Java methods as arrays here
 
       case FUNCTIONtree =>
         setSym()

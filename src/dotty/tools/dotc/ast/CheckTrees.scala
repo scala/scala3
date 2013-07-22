@@ -121,11 +121,11 @@ object CheckTrees {
     case Throw(expr) =>
       check(expr.isValue)
       check(expr.tpe.derivesFrom(defn.ThrowableClass))
-    case SeqLiteral(elemtpt, elems) =>
-      check(elemtpt.isValueType);
+    case SeqLiteral(elems) =>
+      val elemtp = tree.tpe.elemType
       for (elem <- elems) {
         check(elem.isValue)
-        check(elem.tpe <:< elemtpt.tpe)
+        check(elem.tpe <:< elemtp)
       }
     case TypeTree(original) =>
       if (!original.isEmpty) {

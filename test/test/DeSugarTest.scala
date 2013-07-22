@@ -53,8 +53,8 @@ class DeSugarTest extends ParserTest {
           tree1.derivedTyped(transform(expr), transform(tpt, Type))
         case CaseDef(pat, guard, body) =>
           tree1.derivedCaseDef(transform(pat, Pattern), transform(guard), transform(body))
-        case SeqLiteral(elempt, elems) =>
-          tree1.derivedSeqLiteral(transform(elempt, Type), transform(elems))
+        case SeqLiteral(elems) =>
+          tree1.derivedSeqLiteral(transform(elems))
         case UnApply(fun, args) =>
           tree1.derivedUnApply(transform(fun, Expr), transform(args))
         case ValDef(mods, name, tpt, rhs) =>

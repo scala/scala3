@@ -134,11 +134,12 @@ object tpd extends Trees.Instance[Type] {
   def Throw(expr: Tree)(implicit ctx: Context): Throw =
     Trees.Throw(expr).withType(defn.NothingType).checked
 
-  def SeqLiteral(elemtpt: Tree, elems: List[Tree])(implicit ctx: Context): SeqLiteral =
-    Trees.SeqLiteral(elemtpt, elems).withType(defn.RepeatedParamType.appliedTo(elemtpt.tpe)).checked
+  def SeqLiteral(tpe: Type, elems: List[Tree])(implicit ctx: Context): SeqLiteral =
+    Trees.SeqLiteral(elems).withType(tpe).checked
 
   def SeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
-    SeqLiteral(TypeTree(ctx.lub(elems map (_.tpe))), elems)
+    SeqLiteral(defn.SeqClass.typeConstructor.appliedTo(
+        ctx.lub(elems map (_.tpe)) :: Nil), elems)
 
   def TypeTree(tp: Type, original: Tree = EmptyTree)(implicit ctx: Context): TypeTree =
     Trees.TypeTree(original).withType(tp).checked

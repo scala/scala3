@@ -648,6 +648,10 @@ object Types {
         Set((Set(), Set()))
     }
 
+    /** The element type of a sequence or array */
+    def elemType(implicit ctx: Context): Type =
+      firstBaseTypeArg(defn.SeqClass) orElse firstBaseTypeArg(defn.ArrayClass)
+
 // ----- Substitutions -----------------------------------------------------
 
     /** Substitute all types that refer in their symbol attribute to
@@ -740,6 +744,21 @@ object Types {
       if (v > 0) TypeBounds.upper(this)
       else if (v < 0) TypeBounds.lower(this)
       else TypeAlias(this)
+    }
+
+    /** The type arguments of the base type instance wrt `base` of this type */
+    final def baseTypeArgs(base: Symbol)(implicit ctx: Context): List[Type] =
+      if (this <:< base.symRef)
+        base.typeParams map (param => member(param.name).info.argType(param))
+      else
+        Nil
+
+    /** The first type argument of the base type instance wrt `base` of this type */
+    final def firstBaseTypeArg(base: Symbol)(implicit ctx: Context): Type = base.typeParams match {
+      case param :: _ if this <:< base.symRef =>
+        member(param.name).info.argType(param)
+      case _ =>
+        NoType
     }
 
     /** If this is an encoding of a (partially) applied type, return its arguments,
