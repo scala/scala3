@@ -15,7 +15,7 @@ object tpd extends Trees.Instance[Type] {
     sym.annotations map (_.tree))
 
   def Ident(tp: NamedType)(implicit ctx: Context): Ident =
-    Trees.Ident(tp.name).withType(tp).checked
+    Trees.Ident(tp.name).withType(tp.underlyingIfRepeated).checked
 
   def Select(pre: Tree, tp: NamedType)(implicit ctx: Context): Select =
     Trees.Select(pre, tp.name).withType(tp).checked
@@ -104,16 +104,18 @@ object tpd extends Trees.Instance[Type] {
    *  where the closure's type is the target type of the expression (FunctionN, unless
    *  otherwise specified).
    */
-  def Closure(meth: TermSymbol, body: Tree, target: Type = NoType)(implicit ctx: Context): Block = {
+  def Closure(meth: TermSymbol, bodyFn: List[Tree] => Tree, target: Type = NoType)(implicit ctx: Context): Block = {
     val funtpe =
       if (target.exists) target
       else meth.info match {
         case mt @ MethodType(_, formals) =>
           assert(!mt.isDependent)
-          defn.FunctionType(formals, mt.resultType)
+          val formals1 = formals mapConserve (_.underlyingIfRepeated)
+          defn.FunctionType(formals1, mt.resultType)
       }
+    val rhsFn: List[List[Tree]] => Tree = { case args :: Nil => bodyFn(args) }
     Block(
-      DefDef(meth, body) :: Nil,
+      DefDef(meth, rhsFn) :: Nil,
       Trees.Closure(Nil, Ident(TermRef.withSym(NoPrefix, meth)))).withType(funtpe).checked
   }
 
@@ -186,7 +188,10 @@ object tpd extends Trees.Instance[Type] {
   def ValDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): ValDef =
     Trees.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs).withType(refType(sym)).checked
 
-  def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef = {
+  def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
+    DefDef(sym, Function.const(rhs) _)
+
+  def DefDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Tree)(implicit ctx: Context): DefDef = {
 
     val (tparams, mtp) = sym.info match {
       case tp: PolyType =>
@@ -205,10 +210,10 @@ object tpd extends Trees.Instance[Type] {
       case tp => (Nil, tp)
     }
     val (vparamss, rtp) = valueParamss(mtp)
-
+    val argss = vparamss map (_ map (vparam => Ident(vparam.symRef)))
     Trees.DefDef(
       Modifiers(sym), sym.name, tparams map TypeDef,
-      vparamss map (_ map (ValDef(_))), TypeTree(rtp), rhs)
+      vparamss map (_ map (ValDef(_))), TypeTree(rtp), rhsFn(argss))
       .withType(refType(sym)).checked
   }
 

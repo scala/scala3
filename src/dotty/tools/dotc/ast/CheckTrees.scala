@@ -35,8 +35,6 @@ object CheckTrees {
         arg match {
           case NamedArg(argName, _) =>
             check(argName == name)
-          case SeqLiteral(_, _) =>
-            check(formal.isRepeatedParam)
           case _ =>
             check(arg.isValue)
         }
@@ -187,7 +185,7 @@ object CheckTrees {
         case nme.unapplySeq =>
           // args need to be wrapped in (...: _*)
           check(args.length == 1)
-          check(args.head.tpe.isRepeatedParam)
+          check(args.head.isInstanceOf[tpd.SeqLiteral])
         case nme.unapply =>
           val rtp = funtpe.resultType
           val rsym = rtp.dealias.typeSymbol

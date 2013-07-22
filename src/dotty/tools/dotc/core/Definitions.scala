@@ -46,6 +46,9 @@ class Definitions(implicit ctx: Context) {
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
     ctx.newSymbol(cls, name.encode, flags | Method, info).entered.asTerm
 
+  private def newAliasType(name: TypeName, tpe: Type, flags: FlagSet = EmptyFlags): TypeSymbol =
+    ctx.newSymbol(ScalaPackageClass, name, flags, tpe).entered.asType
+
   private def newPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
                     resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags) = {
     val tparamNames = tpnme.syntheticTypeParamNames(typeParamCount)
@@ -174,8 +177,9 @@ class Definitions(implicit ctx: Context) {
 
   lazy val ByNameParamClass       = specialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, AnyType)
   lazy val EqualsPatternClass     = specialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, AnyType)
-  lazy val JavaRepeatedParamClass = specialPolyClass(tpnme.JAVA_REPEATED_PARAM_CLASS, Contravariant, AnyRefType, ArrayType)
-  lazy val RepeatedParamClass     = specialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, AnyRefType, SeqType)
+
+  lazy val RepeatedParamAlias     = newAliasType(tpnme.REPEATED_PARAM_CLASS, SeqType)
+  lazy val JavaRepeatedParamAlias = newAliasType(tpnme.JAVA_REPEATED_PARAM_CLASS, ArrayType)
 
   // fundamental reference classes
   lazy val StringClass                  = requiredClass("java.lang.String")
@@ -245,8 +249,8 @@ class Definitions(implicit ctx: Context) {
   def DoubleType: Type = DoubleClass.typeConstructor
   def PairType: Type = PairClass.typeConstructor
   def StringType: Type = StringClass.typeConstructor
-  def JavaRepeatedParamType = JavaRepeatedParamClass.typeConstructor
-  def RepeatedParamType = RepeatedParamClass.typeConstructor
+  def RepeatedParamType = RepeatedParamAlias.typeConstructor
+  def JavaRepeatedParamType = JavaRepeatedParamAlias.typeConstructor
   def ThrowableType = ThrowableClass.typeConstructor
   def OptionType = OptionClass.typeConstructor
 
@@ -285,7 +289,8 @@ class Definitions(implicit ctx: Context) {
 
   lazy val FunctionClasses: Set[Symbol] = FunctionClass.toSet
   lazy val TupleClasses: Set[Symbol] = TupleClass.toSet
-  lazy val RepeatedParamClasses: Set[Symbol] = Set(RepeatedParamClass, JavaRepeatedParamClass)
+
+  lazy val RepeatedParamAliases: Set[Symbol] = Set(RepeatedParamAlias, JavaRepeatedParamAlias)
 
   /** Modules whose members are in the default namespace */
   lazy val UnqualifiedModules: Set[TermSymbol] = Set(PredefModule, ScalaPackageVal, JavaLangPackageVal)
@@ -298,7 +303,7 @@ class Definitions(implicit ctx: Context) {
   lazy val asInstanceOfMethods = Set[Symbol](Any_asInstanceOf, Object_asInstanceOf)
   lazy val isInstanceOfMethods = Set[Symbol](Any_isInstanceOf, Object_isInstanceOf)
 
-  // ----- Higher kinds machinery ------------------------------------------
+   // ----- Higher kinds machinery ------------------------------------------
 
   private var _hkTraits: Set[Symbol] = Set()
 
@@ -422,8 +427,8 @@ class Definitions(implicit ctx: Context) {
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticCoreClasses = List(
     AnyRefAlias,
-    RepeatedParamClass,
-    JavaRepeatedParamClass,
+    RepeatedParamAlias,
+    JavaRepeatedParamAlias,
     ByNameParamClass,
     AnyClass,
     AnyValClass,

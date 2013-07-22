@@ -8,7 +8,6 @@ import util.Positions._
 import Trees.Untyped
 import Mode.ImplicitsDisabled
 import Contexts._
-import Types._
 import Flags._
 import Denotations._
 import NameOps._
@@ -19,6 +18,7 @@ import Names._
 import StdNames._
 import Constants._
 import Inferencing._
+import EtaExpansion._
 import collection.mutable
 import language.implicitConversions
 
@@ -69,38 +69,6 @@ trait Applications extends Compatibility{ self: Typer =>
   import Trees._
 
   private def state(implicit ctx: Context) = ctx.typerState
-
-  def lift(defs: mutable.ListBuffer[tpd.Tree], expr: tpd.Tree, prefix: String = "")(implicit ctx: Context): tpd.Tree =
-    if (TreeInfo.isIdempotentExpr(expr)) expr
-    else {
-      val name = ctx.freshName(prefix).toTermName
-      val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, expr.tpe, coord = positionCoord(expr.pos))
-      defs += tpd.ValDef(sym, expr)
-      tpd.Ident(sym.symRef)
-    }
-
-  def liftArgs(defs: mutable.ListBuffer[tpd.Tree], methType: Type, args: List[tpd.Tree])(implicit ctx: Context) = {
-    val paramPrefixes = methType match {
-      case MethodType(paramNames, _) => paramNames map (_.toString)
-      case _ => args map (_ => "")
-    }
-    for ((arg, prefix) <- args zip paramPrefixes) yield lift(defs, arg, prefix)
-  }
-
-  def liftApp(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
-    case Apply(fn, args) =>
-      tree.derivedApply(liftApp(defs, fn), liftArgs(defs, fn.tpe, args))
-    case TypeApply(fn, targs) =>
-      tree.derivedTypeApply(liftApp(defs, fn), targs)
-    case Select(pre, name) =>
-      tree.derivedSelect(lift(defs, pre), name)
-    case Ident(name) =>
-      lift(defs, tree)
-    case Block(stats, expr) =>
-      liftApp(defs ++= stats, expr)
-    case _ =>
-      tree
-  }
 
   /**
    *  @param Arg        the type of arguments, could be tpd.Tree, untpd.Tree, or Type

@@ -18,6 +18,7 @@ import Names._
 import NameOps._
 import Flags._
 import Decorators._
+import EtaExpansion.etaExpand
 import util.Positions._
 import util.SourcePosition
 import collection.mutable
@@ -237,7 +238,7 @@ class Typer extends Namer with Applications with Implicits {
         ctx.error(s"not found: $name", tree.pos)
         ErrorType
       }
-    tree.withType(ownType)
+    tree.withType(ownType.underlyingIfRepeated)
   }
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
@@ -310,6 +311,7 @@ class Typer extends Namer with Applications with Implicits {
     val tpt1 = typedType(tpt)
     val rhs1 = typedExpr(rhs, tpt1.tpe)
     ddef.withType(sym.symRef).derivedDefDef(mods1, name, tparams1, vparamss1, tpt1, rhs1)
+    //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): TypeDef = {
@@ -455,7 +457,6 @@ class Typer extends Namer with Applications with Implicits {
   def summarize(tpe: Type): String = ???
 
 
-
     /**
      *  (-1) For expressions with annotated types, let AnnotationCheckers decide what to do
      *  (0) Convert expressions with constant types to literals (unless in interactive/scaladoc mode)
@@ -542,7 +543,7 @@ class Typer extends Namer with Applications with Implicits {
         adapt(tpd.Apply(tree, args), pt)
       case tp: MethodType =>
         if (defn.isFunctionType(pt) && !tree.symbol.isConstructor)
-          ??? // etaExpand()
+          etaExpand(tree, tp)
         else if (tp.paramTypes.isEmpty)
           adapt(tpd.Apply(tree, Nil), pt)
         else

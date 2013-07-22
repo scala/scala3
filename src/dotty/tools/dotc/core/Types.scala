@@ -153,7 +153,7 @@ object Types {
     final def occursIn(that: Type): Boolean = that.existsPart(this == _)
 
     def isRepeatedParam(implicit ctx: Context): Boolean =
-      defn.RepeatedParamClasses contains typeSymbol
+      defn.RepeatedParamAliases contains typeSymbol
 
 // ----- Higher-order combinators -----------------------------------
 
@@ -543,6 +543,13 @@ object Types {
     /** Map references to Object to references to Any; needed for Java interop */
     final def objToAny(implicit ctx: Context) =
       if (isClassType(defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else this
+
+    /** If this is repeated parameter type, its underlying type,
+     *  else the type itself.
+     */
+    def underlyingIfRepeated(implicit ctx: Context): Type =
+      if (isRepeatedParam) dealias else this
+
 
 // ----- Access to parts --------------------------------------------
 
