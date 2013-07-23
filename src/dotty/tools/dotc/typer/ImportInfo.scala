@@ -8,8 +8,13 @@ import core._
 import util.SimpleMap
 import Symbols._, Names._, Denotations._, Types._, Contexts._, StdNames._, Flags._
 
-/** Info relating to an import clause */
-case class ImportInfo(sym: Symbol, selectors: List[untpd.Tree])(implicit ctx: Context) {
+/** Info relating to an import clause
+ *  @param   sym        The import symbol defined by the clause
+ *  @param   selectors  The selector clauses
+ *  @param   rootImport true if this is one of the implicit imports of scala, java.lang
+ *                      or Predef in the start context, false otherwise.
+ */
+class ImportInfo(val sym: Symbol, val selectors: List[untpd.Tree], val rootImport: Boolean = false)(implicit ctx: Context) {
 
   /** The (TermRef) type of the qualifier of the import clause */
   def site(implicit ctx: Context): Type = {

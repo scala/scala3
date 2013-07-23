@@ -303,6 +303,8 @@ class Definitions(implicit ctx: Context) {
   lazy val asInstanceOfMethods = Set[Symbol](Any_asInstanceOf, Object_asInstanceOf)
   lazy val isInstanceOfMethods = Set[Symbol](Any_isInstanceOf, Object_isInstanceOf)
 
+  lazy val RootImports = Set[Symbol](PredefModule, ScalaPackageVal, JavaLangPackageVal)
+
    // ----- Higher kinds machinery ------------------------------------------
 
   private var _hkTraits: Set[Symbol] = Set()

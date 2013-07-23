@@ -135,7 +135,7 @@ class Namer { typer: Typer =>
 
   /** A new context that summarizes an import statement */
   def importContext(sym: Symbol, selectors: List[Tree])(implicit ctx: Context) =
-    ctx.fresh.withImportInfo(ImportInfo(sym, selectors))
+    ctx.fresh.withImportInfo(new ImportInfo(sym, selectors))
 
   /** A new context for the interior of a class */
   def inClassContext(cls: ClassSymbol, selfName: TermName)(implicit ctx: Context): Context = {

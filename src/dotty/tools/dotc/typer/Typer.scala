@@ -53,6 +53,12 @@ class Typer extends Namer with Applications with Implicits {
   import tpd._
   import Typer._
 
+  /** A temporary data item valid for a single typed ident:
+   *  The set of all root import symbols that have been
+   *  encountered as a qualifier of an import so far.
+   */
+  private var importedFromRoot: Set[Symbol] = Set()
+
   def typedSelection(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
     val ref = site.member(name)
     if (ref.exists) NamedType(site, name).withDenot(ref)
@@ -98,6 +104,18 @@ class Typer extends Namer with Applications with Implicits {
    */
   def typedIdent(tree: untpd.Ident)(implicit ctx: Context): Tree = {
     val name = tree.name
+
+    /** Is this import a root import that has been shadowed by an explicit
+     *  import in the same program?
+     */
+    def isDisabled(imp: ImportInfo, site: Type): Boolean = {
+      val qualSym = site.termSymbol
+      if (defn.RootImports contains qualSym) {
+        if (imp.rootImport && (importedFromRoot contains qualSym)) return true
+        importedFromRoot += qualSym
+      }
+      false
+    }
 
     /** Does this identifier appear as a constructor of a pattern? */
     def isPatternConstr =
@@ -181,14 +199,16 @@ class Typer extends Namer with Applications with Implicits {
       /** The type representing a wildcard import with enclosing name when imported
        *  from given import info
        */
-      def wildImportRef(imp: ImportInfo): Type =
+      def wildImportRef(imp: ImportInfo): Type = {
         if (imp.wildcardImport && !(imp.excluded contains name.toTermName)) {
           val pre = imp.site
-          val denot = pre.member(name)
-          if (denot.exists) return NamedType(pre, name).withDenot(denot)
-          else NoType
+          if (!isDisabled(imp, pre)) {
+            val denot = pre.member(name)
+            if (denot.exists) return NamedType(pre, name).withDenot(denot)
+          }
         }
-        else NoType
+        NoType
+      }
 
       /** Is (some alternative of) the given predenotation `denot`
        *  defined in current compilation unit?
@@ -232,8 +252,13 @@ class Typer extends Namer with Applications with Implicits {
     // begin typedIdent
     val startingContext = // ignore current variable scope in patterns to enforce linearity
       if (ctx.mode is Mode.Pattern) ctx.outer else ctx
+    val saved = importedFromRoot
+    importedFromRoot = Set()
 
-    val rawType = findRef(NoType, BindingPrec.nothingBound, NoContext)
+    val rawType =
+      try findRef(NoType, BindingPrec.nothingBound, NoContext)
+      finally importedFromRoot = saved
+      
     val ownType =
       if (rawType.exists) checkAccessible(rawType, superAccess = false, tree.pos)
       else {
