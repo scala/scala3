@@ -18,6 +18,8 @@ import Names._
 import NameOps._
 import Flags._
 import Decorators._
+import ErrorReporting._
+import Applications.FunProtoType
 import EtaExpansion.etaExpand
 import util.Positions._
 import util.SourcePosition
@@ -165,9 +167,9 @@ class Typer extends Namer with Applications with Implicits {
           found
         }
         selectors match {
-          case Trees.Pair(Trees.Ident(from), Trees.Ident(`name`)) :: rest =>
+          case Pair(Ident(from), Ident(`name`)) :: rest =>
             checkUnambiguous(typedSelection(site, name, tree.pos))
-          case Trees.Ident(`name`) :: rest =>
+          case Ident(`name`) :: rest =>
             checkUnambiguous(typedSelection(site, name, tree.pos))
           case _ :: rest =>
             namedImportRef(site, rest)
@@ -248,28 +250,8 @@ class Typer extends Namer with Applications with Implicits {
     tree.withType(ownType).derivedSelect(qual1, tree.name)
   }
 
-  case class FunProtoType(args: List[untpd.Tree], override val resultType: Type)(implicit ctx: Context) extends UncachedGroundType {
-    private var myTypedArgs: List[tpd.Tree] = null
-
-    def argsAreTyped: Boolean = myTypedArgs != null
-
-    def typedArgs: List[tpd.Tree] = {
-      if (myTypedArgs == null)
-        myTypedArgs = args mapconserve (typed(_))
-      myTypedArgs
-    }
-
-    def expected: String = {
-      val result = resultType match {
-        case tp: WildcardType => ""
-        case tp => s"and expected result type $tp"
-      }
-      s"arguments (${typedArgs map (_.tpe.show) mkString ", "})$result"
-    }
-  }
-
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
-    val proto = new FunProtoType(tree.args, pt)
+    val proto = new FunProtoType(tree.args, pt, this)
     val fun1 = typedExpr(tree.fun, proto)
     TreeInfo.methPart(fun1).tpe match {
       case funRef: TermRef =>
@@ -288,14 +270,14 @@ class Typer extends Namer with Applications with Implicits {
   def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = {
     val annotations1 = mods.annotations mapconserve typedAnnotation
     if (annotations1 eq mods.annotations) mods.asInstanceOf[Modifiers]
-    else Trees.Modifiers(mods.flags, mods.privateWithin, annotations1)
+    else Modifiers(mods.flags, mods.privateWithin, annotations1)
   }
 
   def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree =
     typed(annot, defn.AnnotationClass.typeConstructor)
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = {
-    val Trees.ValDef(mods, name, tpt, rhs) = vdef
+    val ValDef(mods, name, tpt, rhs) = vdef
     val mods1 = typedModifiers(mods)
     val tpt1 = typedType(tpt)
     val rhs1 = typedExpr(rhs, tpt1.tpe)
@@ -304,7 +286,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
-    val Trees.DefDef(mods, name, tparams, vparamss, tpt, rhs) = ddef
+    val DefDef(mods, name, tparams, vparamss, tpt, rhs) = ddef
     val mods1 = typedModifiers(mods)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss.mapconserve(_ mapconserve (typed(_).asInstanceOf[ValDef]))
@@ -315,14 +297,14 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): TypeDef = {
-    val Trees.TypeDef(mods, name, rhs) = tdef
+    val TypeDef(mods, name, rhs) = tdef
     val mods1 = typedModifiers(mods)
     val rhs1 = typedType(rhs)
     tdef.withType(sym.symRef).derivedTypeDef(mods1, name, rhs1)
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = {
-    val Trees.TypeDef(mods, name, impl @ Template(constr, parents, self, body)) = cdef
+    val TypeDef(mods, name, impl @ Template(constr, parents, self, body)) = cdef
     val mods1 = typedModifiers(mods)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parents1 = parents mapconserve (typed(_))
@@ -444,19 +426,6 @@ class Typer extends Namer with Applications with Implicits {
     case _ => fallBack
   }
 
-  def errorTree(tree: Trees.Tree[_], msg: => String)(implicit ctx: Context): tpd.Tree = {
-    ctx.error(msg, tree.pos)
-    tree withType ErrorType
-  }
-
-  def expected(tp: Type)(implicit ctx: Context): String = tp match {
-    case tp: FunProtoType => tp.expected
-    case _ => s"expected type ${tp.show}"
-  }
-
-  def summarize(tpe: Type): String = ???
-
-
     /**
      *  (-1) For expressions with annotated types, let AnnotationCheckers decide what to do
      *  (0) Convert expressions with constant types to literals (unless in interactive/scaladoc mode)
@@ -498,41 +467,37 @@ class Typer extends Namer with Applications with Implicits {
      */
   def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
 
-    def overloadError(prefix: String, suffix: String, alts: List[TermRef]) =
-      errorTree(tree,
-          s"""$prefix alternatives of ${alts.head.show} with types
-             | ${alts map (_.info) mkString "\n "}
-             |$suffix ${expected(pt)}""".stripMargin)
-
-    def notAFunctionError() = {
-      val fn = summarize(TreeInfo.methPart(tree).tpe)
-      val more = tree match {
-        case Apply(_, _) => " more"
-        case _ => ""
-      }
-      errorTree(tree, s"$fn does not take$more parameters")
-    }
-
-    def typeMismatch(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ???
-
     def adaptOverloaded(ref: TermRef) = {
-      val alts = ref.denot.alternatives map (alt =>
+      val altDenots = ref.denot.alternatives
+      val alts = altDenots map (alt =>
         TermRef.withSym(ref.prefix, alt.symbol.asTerm))
+      def expectedStr = err.expectedTypeStr(pt)
       resolveOverloaded(alts, pt) match {
         case alt :: Nil =>
           adapt(tree.withType(alt), pt)
         case Nil =>
           tryInsertApplyIfFunProto(tree, pt) {
-            overloadError("none of the overloaded", "match", alts)
+            errorTree(tree,
+              s"""none of the ${err.overloadedAltsStr(altDenots)}
+                 |match $expectedStr""".stripMargin)
           }
         case alts =>
-          overloadError("Ambiguous overload. The ", "both match", alts take 2)
+          errorTree(tree,
+            s"""Ambiguous overload. The ${err.overloadedAltsStr(altDenots take 2)}
+               |both match $expectedStr""".stripMargin)
       }
     }
 
     def adaptToArgs(tp: Type, pt: FunProtoType) = tp match {
       case _: MethodType => tree
-      case _ => tryInsertApply(tree, pt) { notAFunctionError() }
+      case _ => tryInsertApply(tree, pt) {
+        def fn = err.refStr(TreeInfo.methPart(tree).tpe)
+        val more = tree match {
+          case Apply(_, _) => " more"
+          case _ => ""
+        }
+        errorTree(tree, s"$fn does not take$more parameters")
+      }
     }
 
     def adaptNoArgs(tp: Type) = tp match {
@@ -563,7 +528,7 @@ class Typer extends Namer with Applications with Implicits {
         val adapted = inferView(tree, pt)
         if (adapted ne EmptyTree) return adapted
       }
-      typeMismatch(tree, pt)
+      err.typeMismatch(tree, pt)
     }
 
     tree.tpe.widen match {

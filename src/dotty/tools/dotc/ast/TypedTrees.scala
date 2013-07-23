@@ -14,6 +14,9 @@ object tpd extends Trees.Instance[Type] {
     if (sym.privateWithin.exists) sym.privateWithin.asType.name else tpnme.EMPTY,
     sym.annotations map (_.tree))
 
+  def Modifiers(flags: FlagSet = EmptyFlags, privateWithin: TypeName = tpnme.EMPTY, annotations: List[Tree] = Nil) =
+    Trees.Modifiers(flags, privateWithin, annotations)
+
   def Ident(tp: NamedType)(implicit ctx: Context): Ident =
     Trees.Ident(tp.name).withType(tp.underlyingIfRepeated).checked
 

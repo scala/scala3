@@ -45,15 +45,15 @@ object EtaExpansion {
   }
 
   def liftApp(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case Trees.Apply(fn, args) =>
+    case Apply(fn, args) =>
       tree.derivedApply(liftApp(defs, fn), liftArgs(defs, fn.tpe, args))
-    case Trees.TypeApply(fn, targs) =>
+    case TypeApply(fn, targs) =>
       tree.derivedTypeApply(liftApp(defs, fn), targs)
-    case Trees.Select(pre, name) =>
+    case Select(pre, name) =>
       tree.derivedSelect(lift(defs, pre), name)
-    case Trees.Ident(name) =>
+    case Ident(name) =>
       lift(defs, tree)
-    case Trees.Block(stats, expr) =>
+    case Block(stats, expr) =>
       liftApp(defs ++= stats, expr)
     case _ =>
       tree
@@ -79,21 +79,21 @@ object EtaExpansion {
         val paramsArgs: List[(untpd.ValDef, untpd.Tree)] =
           (paramNames, paramTypes).zipped.map { (name, tp) =>
             val droppedStarTpe = defn.underlyingOfRepeated(tp)
-            val param = Trees.ValDef(
-              Trees.Modifiers(Param), name,
+            val param = ValDef(
+              Modifiers(Param), name,
               untpd.TypedSplice(TypeTree(droppedStarTpe)), untpd.EmptyTree)
-            var arg: untpd.Tree = Trees.Ident(name)
+            var arg: untpd.Tree = Ident(name)
             if (defn.isRepeatedParam(tp))
-              arg = Trees.Typed(arg, Trees.Ident(tpnme.WILDCARD_STAR))
+              arg = Typed(arg, Ident(tpnme.WILDCARD_STAR))
             (param, arg)
           }
         val (params, args) = paramsArgs.unzip
-        untpd.Function(params, Trees.Apply(untpd.TypedSplice(tree), args))
+        untpd.Function(params, Apply(untpd.TypedSplice(tree), args))
     }
 
     val defs = new mutable.ListBuffer[Tree]
     val tree1 = liftApp(defs, tree)
-    Trees.Block(defs.toList map untpd.TypedSplice, expand(tree1))
+    Block(defs.toList map untpd.TypedSplice, expand(tree1))
   }
    */
 

@@ -59,6 +59,18 @@ object Applications {
     case et: ExprType => et.resultType
     case _ => tp
   }
+
+  case class FunProtoType(args: List[untpd.Tree], override val resultType: Type, typer: Typer)(implicit ctx: Context) extends UncachedGroundType {
+    private var myTypedArgs: List[tpd.Tree] = null
+
+    def argsAreTyped: Boolean = myTypedArgs != null
+
+    def typedArgs: List[tpd.Tree] = {
+      if (myTypedArgs == null)
+        myTypedArgs = args mapconserve (typer.typed(_))
+      myTypedArgs
+    }
+  }
 }
 
 import Applications._
@@ -311,7 +323,7 @@ trait Applications extends Compatibility{ self: Typer =>
      *  must fit the given expected result type.
      */
     def constrainResult(mt: Type, pt: Type): Boolean = pt match {
-      case FunProtoType(_, result) =>
+      case FunProtoType(_, result, _) =>
         mt match {
           case mt: MethodType if !mt.isDependent =>
             constrainResult(mt.resultType, pt.resultType)
@@ -595,7 +607,7 @@ trait Applications extends Compatibility{ self: Typer =>
       alts filter (isApplicableToTypes(_, argTypes, resultType))
 
     val candidates = pt match {
-      case pt @ FunProtoType(args, resultType) =>
+      case pt @ FunProtoType(args, resultType, _) =>
         val numArgs = args.length
 
         def sizeFits(alt: TermRef, tp: Type): Boolean = tp match {
