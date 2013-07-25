@@ -47,6 +47,11 @@ abstract class TreeInfo {
       false
   }
 
+  def isOpAssign(tree: untpd.Tree) = tree match {
+    case Apply(Select(_, name), _ :: Nil) if name.isOpAssignmentName => true
+    case _ => false
+  }
+
   /** Is tree an expression which can be inlined without affecting program semantics?
    *
    *  Note that this is not called "isExprPure" since purity (lack of side-effects)

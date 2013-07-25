@@ -211,7 +211,7 @@ class Namer { typer: Typer =>
           else typeDefSig(tree, sym)(localContext.withNewScope)
         case imp: Import =>
           val expr1 = typedAheadExpr(imp.expr)
-          ImportType(SharedTree(expr1))
+          ImportType(tpd.SharedTree(expr1))
       }
 
       sym.info = typeSig(original)

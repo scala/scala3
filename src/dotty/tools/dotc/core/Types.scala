@@ -579,6 +579,15 @@ object Types {
       case _ => List()
     }
 
+    def firstParent(implicit ctx: Context): TypeRef = this match {
+      case tp: TypeProxy => tp.underlying.firstParent
+      case _ =>
+        parents match {
+          case p :: _ => p
+          case _ => defn.AnyClass.symTypeRef
+        }
+    }
+
     /** The parameter types of a PolyType or MethodType, Empty list for others */
     final def paramTypess: List[List[Type]] = this match {
       case mt: MethodType => mt.paramTypes :: mt.resultType.paramTypess
@@ -1428,7 +1437,7 @@ object Types {
       }
 
     def instantiate(argTypes: => List[Type])(implicit ctx: Context): Type =
-      if (isDependent) new InstMethodMap(this, argTypes) apply resultType
+      if (isDependent) resultType.substParams(this, argTypes)
       else resultType
 
  /* probably won't be needed
@@ -1530,10 +1539,10 @@ object Types {
     override def signature(implicit ctx: Context) = resultType.signature
 
     def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
-      new InstPolyMap(this, argTypes) apply resultType
+      resultType.substParams(this, argTypes)
 
     def instantiateBounds(argTypes: List[Type])(implicit ctx: Context): List[TypeBounds] =
-      paramBounds.mapConserve(new InstPolyMap(this, argTypes).apply(_).bounds)
+      paramBounds.mapConserve(_.substParams(this, argTypes).bounds)
 
     def derivedPolyType(paramNames: List[TypeName], paramBounds: List[TypeBounds], restpe: Type)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramBounds eq this.paramBounds) && (restpe eq this.resultType)) this
@@ -1951,20 +1960,6 @@ object Types {
 
   object IdentityTypeMap extends TypeMap()(NoContext) {
     def apply(tp: Type) = tp
-  }
-
-  class InstMethodMap(mt: MethodType, argtypes: List[Type])(implicit ctx: Context) extends TypeMap {
-    def apply(tp: Type) = tp match {
-      case MethodParam(`mt`, n) => argtypes(n)
-      case _ => mapOver(tp)
-    }
-  }
-
-  class InstPolyMap(pt: PolyType, argtypes: List[Type])(implicit ctx: Context) extends TypeMap {
-    def apply(tp: Type) = tp match {
-      case PolyParam(`pt`, n) => argtypes(n)
-      case _ => mapOver(tp)
-    }
   }
 
   /** Approximate occurrences of paremter types and uninstantiated typevars

@@ -3,10 +3,41 @@ package dotc
 package typer
 
 import core._
+import ast._
 import Contexts._, Types._, Flags._, Denotations._, NameOps._, Symbols._
+import Trees._
 import annotation.unchecked
+import util.Positions._
+import Decorators._
 
 object Inferencing {
+
+  import tpd._
+
+  def checkBounds(args: List[Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = {
+
+  }
+
+  def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
+    if (!tp.isStable)
+      ctx.error(s"Prefix ${tp.show} is not stable", pos)
+    tp
+  }
+
+  def checkClassTypeWithStablePrefix(tp: Type, pos: Position)(implicit ctx: Context): ClassSymbol = tp.dealias match {
+    case tp: TypeRef if tp.symbol.isClass =>
+      checkStable(tp.prefix, pos)
+      tp.symbol.asClass
+    case _: RefinedType | _: TypeVar | _: AnnotatedType =>
+      checkClassTypeWithStablePrefix(tp.asInstanceOf[TypeProxy].underlying, pos)
+    case _ =>
+      ctx.error(s"${tp.show} is not a class type", pos)
+      defn.ObjectClass
+  }
+
+  def checkInstantiatable(cls: ClassSymbol, pos: Position): Unit = {
+    ???
+  }
 
   implicit class Infer(val ictx: Context) extends AnyVal {
 
@@ -68,6 +99,7 @@ object Inferencing {
       case nil =>
         actuals.isEmpty
     }
+
 /* not needed right now
     def formalParameters[T](mtp: MethodType, actuals: List[T])(isRepeated: T => Boolean)(implicit ctx: Context) =
       if (mtp.isVarArgs && !(actuals.nonEmpty && isRepeated(actuals.last))) {

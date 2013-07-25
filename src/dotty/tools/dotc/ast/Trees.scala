@@ -52,6 +52,9 @@ object Trees {
       newpd.asInstanceOf[this.type]
     }
 
+    def withPos(posd: Positioned): this.type =
+      if (posd == null) this else withPos(posd.pos)
+
     /** This item with a position that's the union of the given `pos` and the
      *  current position.
      */
@@ -150,33 +153,36 @@ object Trees {
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]
 
-    private var _tpe: T = _
+    private var myTpe: T = _
 
     /** The type of the tree. In case of an untyped tree,
      *   an UnAssignedTypeException is thrown. (Overridden by empty trees)
      */
     def tpe: T = {
-      if (_tpe == null) throw new UnAssignedTypeException(this)
-      _tpe
+      if (myTpe == null) throw new UnAssignedTypeException(this)
+      myTpe
     }
 
     /** Copy `tpe` attribute from tree `from` into this tree, independently
      *  whether it is null or not.
-     */
-    final def copyAttr(from: Tree[T]): ThisTree[T] = {
-      _tpe = from._tpe
-      this.withPos(from.pos).asInstanceOf[ThisTree[T]]
+    final def copyAttr[U >: Untyped](from: Tree[U]): ThisTree[T] = {
+      val t1 = this.withPos(from.pos)
+      val t2 =
+        if (from.myTpe != null) t1.withType(from.myTpe.asInstanceOf[Type])
+        else t1
+      t2.asInstanceOf[ThisTree[T]]
     }
+     */
 
     /** Return a typed tree that's isomorphic to this tree, but has given
      *  type. (Overridden by empty trees)
      */
     def withType(tpe: Type): ThisTree[Type] = {
       val tree =
-        (if (_tpe == null ||
-          (_tpe.asInstanceOf[AnyRef] eq tpe.asInstanceOf[AnyRef])) this
+        (if (myTpe == null ||
+          (myTpe.asInstanceOf[AnyRef] eq tpe.asInstanceOf[AnyRef])) this
          else clone).asInstanceOf[Tree[Type]]
-      tree._tpe = tpe
+      tree.myTpe = tpe
       tree.asInstanceOf[ThisTree[Type]]
     }
 
@@ -185,9 +191,9 @@ object Trees {
      *  modifications. Should be used only in special circumstances (we
      *  need it for printing trees with optional type info).
      */
-    final def hasType: Boolean = _tpe != null
+    final def hasType: Boolean = myTpe != null
 
-    final def typeOpt: Type = _tpe match {
+    final def typeOpt: Type = myTpe match {
       case tp: Type => tp
       case _ => NoType
     }
@@ -695,6 +701,7 @@ object Trees {
     type ValOrDefDef = Trees.ValOrDefDef[T]
 
     type Ident = Trees.Ident[T]
+    type BackquotedIdent = Trees.BackquotedIdent[T]
     type Select = Trees.Select[T]
     type This = Trees.This[T]
     type Super = Trees.Super[T]
@@ -747,169 +754,169 @@ object Trees {
     def derivedIdent(name: Name): Ident[T] = tree match {
       case tree: BackquotedIdent[_] =>
         if (name == tree.name) tree
-        else new BackquotedIdent[T](name).copyAttr(tree)
+        else new BackquotedIdent[T](name).withPos(tree.pos)
       case tree: Ident[_] if (name == tree.name) => tree
-      case _ => Ident[T](name).copyAttr(tree)
+      case _ => Ident[T](name).withPos(tree.pos)
     }
     def derivedSelect(qualifier: Tree[T], name: Name): Select[T] = tree match {
       case tree: Select[_] if (qualifier eq tree.qualifier) && (name == tree.name) => tree
-      case _ => Select(qualifier, name).copyAttr(tree)
+      case _ => Select(qualifier, name).withPos(tree.pos)
     }
     def derivedThis(qual: TypeName): This[T] = tree match {
       case tree: This[_] if (qual == tree.qual) => tree
-      case _ => This[T](qual).copyAttr(tree)
+      case _ => This[T](qual).withPos(tree.pos)
     }
     def derivedSuper(qual: Tree[T], mix: TypeName): Super[T] = tree match {
       case tree: Super[_] if (qual eq tree.qual) && (mix == tree.mix) => tree
-      case _ => Super(qual, mix).copyAttr(tree)
+      case _ => Super(qual, mix).withPos(tree.pos)
     }
     def derivedApply(fun: Tree[T], args: List[Tree[T]]): Apply[T] = tree match {
       case tree: Apply[_] if (fun eq tree.fun) && (args eq tree.args) => tree
-      case _ => Apply(fun, args).copyAttr(tree)
+      case _ => Apply(fun, args).withPos(tree.pos)
     }
     def derivedTypeApply(fun: Tree[T], args: List[Tree[T]]): TypeApply[T] = tree match {
       case tree: TypeApply[_] if (fun eq tree.fun) && (args eq tree.args) => tree
-      case _ => TypeApply(fun, args).copyAttr(tree)
+      case _ => TypeApply(fun, args).withPos(tree)
     }
     def derivedLiteral(const: Constant): Literal[T] = tree match {
       case tree: Literal[_] if (const == tree.const) => tree
-      case _ => Literal[T](const).copyAttr(tree)
+      case _ => Literal[T](const).withPos(tree.pos)
     }
     def derivedNew(tpt: Tree[T]): New[T] = tree match {
       case tree: New[_] if (tpt eq tree.tpt) => tree
-      case _ => New(tpt).copyAttr(tree)
+      case _ => New(tpt).withPos(tree.pos)
     }
     def derivedPair(left: Tree[T], right: Tree[T]): Pair[T] = tree match {
       case tree: Pair[_] if (left eq tree.left) && (right eq tree.right) => tree
-      case _ => Pair(left, right).copyAttr(tree)
+      case _ => Pair(left, right).withPos(tree.pos)
     }
     def derivedTyped(expr: Tree[T], tpt: Tree[T]): Typed[T] = tree match {
       case tree: Typed[_] if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
-      case _ => Typed(expr, tpt).copyAttr(tree)
+      case _ => Typed(expr, tpt).withPos(tree.pos)
     }
     def derivedNamedArg(name: Name, arg: Tree[T]): NamedArg[T] = tree match {
       case tree: NamedArg[_] if (name == tree.name) && (arg eq tree.arg) => tree
-      case _ => NamedArg(name, arg).copyAttr(tree)
+      case _ => NamedArg(name, arg).withPos(tree.pos)
     }
     def derivedAssign(lhs: Tree[T], rhs: Tree[T]): Assign[T] = tree match {
       case tree: Assign[_] if (lhs eq tree.lhs) && (rhs eq tree.rhs) => tree
-      case _ => Assign(lhs, rhs).copyAttr(tree)
+      case _ => Assign(lhs, rhs).withPos(tree.pos)
     }
     def derivedBlock(stats: List[Tree[T]], expr: Tree[T]): Block[T] = tree match {
       case tree: Block[_] if (stats eq tree.stats) && (expr eq tree.expr) => tree
-      case _ => Block(stats, expr).copyAttr(tree)
+      case _ => Block(stats, expr).withPos(tree.pos)
     }
     def derivedIf(cond: Tree[T], thenp: Tree[T], elsep: Tree[T]): If[T] = tree match {
       case tree: If[_] if (cond eq tree.cond) && (thenp eq tree.thenp) && (elsep eq tree.elsep) => tree
-      case _ => If(cond, thenp, elsep).copyAttr(tree)
+      case _ => If(cond, thenp, elsep).withPos(tree.pos)
     }
     def derivedClosure(env: List[Tree[T]], meth: RefTree[T]): Closure[T] = tree match {
       case tree: Closure[_] if (env eq tree.env) && (meth eq tree.meth) => tree
-      case _ => Closure(env, meth).copyAttr(tree)
+      case _ => Closure(env, meth).withPos(tree.pos)
     }
     def derivedMatch(selector: Tree[T], cases: List[CaseDef[T]]): Match[T] = tree match {
       case tree: Match[_] if (selector eq tree.selector) && (cases eq tree.cases) => tree
-      case _ => Match(selector, cases).copyAttr(tree)
+      case _ => Match(selector, cases).withPos(tree.pos)
     }
     def derivedCaseDef(pat: Tree[T], guard: Tree[T], body: Tree[T]): CaseDef[T] = tree match {
       case tree: CaseDef[_] if (pat eq tree.pat) && (guard eq tree.guard) && (body eq tree.body) => tree
-      case _ => CaseDef(pat, guard, body).copyAttr(tree)
+      case _ => CaseDef(pat, guard, body).withPos(tree.pos)
     }
     def derivedReturn(expr: Tree[T], from: Tree[T]): Return[T] = tree match {
       case tree: Return[_] if (expr eq tree.expr) && (from eq tree.from) => tree
-      case _ => Return(expr, from).copyAttr(tree)
+      case _ => Return(expr, from).withPos(tree.pos)
     }
     def derivedTry(expr: Tree[T], handler: Tree[T], finalizer: Tree[T]): Try[T] = tree match {
       case tree: Try[_] if (expr eq tree.expr) && (handler eq tree.handler) && (finalizer eq tree.finalizer) => tree
-      case _ => Try(expr, handler, finalizer).copyAttr(tree)
+      case _ => Try(expr, handler, finalizer).withPos(tree.pos)
     }
     def derivedThrow(expr: Tree[T]): Throw[T] = tree match {
       case tree: Throw[_] if (expr eq tree.expr) => tree
-      case _ => Throw(expr).copyAttr(tree)
+      case _ => Throw(expr).withPos(tree.pos)
     }
     def derivedSeqLiteral(elems: List[Tree[T]]): SeqLiteral[T] = tree match {
       case tree: SeqLiteral[_] if (elems eq tree.elems) => tree
-      case _ => SeqLiteral(elems).copyAttr(tree)
+      case _ => SeqLiteral(elems).withPos(tree.pos)
     }
     def derivedSingletonTypeTree(ref: Tree[T]): SingletonTypeTree[T] = tree match {
       case tree: SingletonTypeTree[_] if (ref eq tree.ref) => tree
-      case _ => SingletonTypeTree(ref).copyAttr(tree)
+      case _ => SingletonTypeTree(ref).withPos(tree.pos)
     }
     def derivedSelectFromTypeTree(qualifier: Tree[T], name: Name): SelectFromTypeTree[T] = tree match {
       case tree: SelectFromTypeTree[_] if (qualifier eq tree.qualifier) && (name == tree.name) => tree
-      case _ => SelectFromTypeTree(qualifier, name).copyAttr(tree)
+      case _ => SelectFromTypeTree(qualifier, name).withPos(tree.pos)
     }
     def derivedAndTypeTree(left: Tree[T], right: Tree[T]): AndTypeTree[T] = tree match {
       case tree: AndTypeTree[_] if (left eq tree.left) && (right eq tree.right) => tree
-      case _ => AndTypeTree(left, right).copyAttr(tree)
+      case _ => AndTypeTree(left, right).withPos(tree.pos)
     }
     def derivedOrTypeTree(left: Tree[T], right: Tree[T]): OrTypeTree[T] = tree match {
       case tree: OrTypeTree[_] if (left eq tree.left) && (right eq tree.right) => tree
-      case _ => OrTypeTree(left, right).copyAttr(tree)
+      case _ => OrTypeTree(left, right).withPos(tree.pos)
     }
     def derivedRefinedTypeTree(tpt: Tree[T], refinements: List[Tree[T]]): RefinedTypeTree[T] = tree match {
       case tree: RefinedTypeTree[_] if (tpt eq tree.tpt) && (refinements eq tree.refinements) => tree
-      case _ => RefinedTypeTree(tpt, refinements).copyAttr(tree)
+      case _ => RefinedTypeTree(tpt, refinements).withPos(tree.pos)
     }
     def derivedAppliedTypeTree(tpt: Tree[T], args: List[Tree[T]]): AppliedTypeTree[T] = tree match {
       case tree: AppliedTypeTree[_] if (tpt eq tree.tpt) && (args eq tree.args) => tree
-      case _ => AppliedTypeTree(tpt, args).copyAttr(tree)
+      case _ => AppliedTypeTree(tpt, args).withPos(tree.pos)
     }
     def derivedTypeBoundsTree(lo: Tree[T], hi: Tree[T]): TypeBoundsTree[T] = tree match {
       case tree: TypeBoundsTree[_] if (lo eq tree.lo) && (hi eq tree.hi) => tree
-      case _ => TypeBoundsTree(lo, hi).copyAttr(tree)
+      case _ => TypeBoundsTree(lo, hi).withPos(tree.pos)
     }
     def derivedBind(name: Name, body: Tree[T]): Bind[T] = tree match {
       case tree: Bind[_] if (name eq tree.name) && (body eq tree.body) => tree
-      case _ => Bind(name, body).copyAttr(tree)
+      case _ => Bind(name, body).withPos(tree.pos)
     }
     def derivedAlternative(trees: List[Tree[T]]): Alternative[T] = tree match {
       case tree: Alternative[_] if (trees eq tree.trees) => tree
-      case _ => Alternative(trees).copyAttr(tree)
+      case _ => Alternative(trees).withPos(tree.pos)
     }
     def derivedUnApply(fun: Tree[T], args: List[Tree[T]]): UnApply[T] = tree match {
       case tree: UnApply[_] if (fun eq tree.fun) && (args eq tree.args) => tree
-      case _ => UnApply(fun, args).copyAttr(tree)
+      case _ => UnApply(fun, args).withPos(tree.pos)
     }
     def derivedValDef(mods: Modifiers[T], name: TermName, tpt: Tree[T], rhs: Tree[T]): ValDef[T] = tree match {
       case tree: ValDef[_] if (mods == tree.mods) && (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
-      case _ => ValDef(mods, name, tpt, rhs).copyAttr(tree)
+      case _ => ValDef(mods, name, tpt, rhs).withPos(tree.pos)
     }
     def derivedDefDef(mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T]): DefDef[T] = tree match {
       case tree: DefDef[_] if (mods == tree.mods) && (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
-      case _ => DefDef(mods, name, tparams, vparamss, tpt, rhs).copyAttr(tree)
+      case _ => DefDef(mods, name, tparams, vparamss, tpt, rhs).withPos(tree.pos)
     }
     def derivedTypeDef(mods: Modifiers[T], name: TypeName, rhs: Tree[T], tparams: List[untpd.TypeDef] = Nil): TypeDef[T] = tree match {
       case tree: TypeDef[_] if (mods == tree.mods) && (name == tree.name) && (rhs eq tree.rhs) && (tparams eq tree.tparams) => tree
       case _ =>
         if (tparams.nonEmpty)
           (untpd.typeDef _).asInstanceOf[(Modifiers[T], TypeName, List[untpd.TypeDef], Tree[T]) => TypeDef[T]](
-            mods, name, tparams, rhs).copyAttr(tree)
-        else TypeDef(mods, name, rhs).copyAttr(tree)
+            mods, name, tparams, rhs).withPos(tree.pos)
+        else TypeDef(mods, name, rhs).withPos(tree.pos)
     }
     def derivedTemplate(constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], body: List[Tree[T]]): Template[T] = tree match {
       case tree: Template[_] if (constr eq tree.constr) && (parents eq tree.parents) && (self eq tree.self) && (body eq tree.body) => tree
-      case _ => Template(constr, parents, self, body).copyAttr(tree)
+      case _ => Template(constr, parents, self, body).withPos(tree.pos)
     }
     def derivedImport(expr: Tree[T], selectors: List[Tree[Untyped]]): Import[T] = tree match {
       case tree: Import[_] if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
-      case _ => Import(expr, selectors).copyAttr(tree)
+      case _ => Import(expr, selectors).withPos(tree.pos)
     }
     def derivedPackageDef(pid: RefTree[T], stats: List[Tree[T]]): PackageDef[T] = tree match {
       case tree: PackageDef[_] if (pid eq tree.pid) && (stats eq tree.stats) => tree
-      case _ => PackageDef(pid, stats).copyAttr(tree)
+      case _ => PackageDef(pid, stats).withPos(tree.pos)
     }
     def derivedAnnotated(annot: Tree[T], arg: Tree[T]): Annotated[T] = tree match {
       case tree: Annotated[_] if (annot eq tree.annot) && (arg eq tree.arg) => tree
-      case _ => Annotated(annot, arg).copyAttr(tree)
+      case _ => Annotated(annot, arg).withPos(tree.pos)
     }
     def derivedSharedTree(shared: Tree[T]): SharedTree[T] = tree match {
       case tree: SharedTree[_] if (shared eq tree.shared) => tree
-      case _ => SharedTree(shared).copyAttr(tree)
+      case _ => SharedTree(shared).withPos(tree.pos)
     }
     def derivedThicket(trees: List[Tree[T]]): Thicket[T] = tree match {
       case tree: Thicket[_] if (trees eq tree.trees) => tree
-      case _ => Thicket(trees).copyAttr(tree)
+      case _ => Thicket(trees).withPos(tree.pos)
     }
   }
 

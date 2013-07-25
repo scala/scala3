@@ -5,8 +5,8 @@ import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
-import ast.Trees._
-import ast.untpd
+import ast.{Trees, untpd}
+import Trees._
 import scala.annotation.switch
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
@@ -135,7 +135,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     import untpd._
 
     val txt: Text = tree match {
-      case id: BackquotedIdent[_] =>
+      case id: Trees.BackquotedIdent[_] =>
         "`" ~ toText(id.name) ~ "`"
       case Ident(name) =>
         toText(name)

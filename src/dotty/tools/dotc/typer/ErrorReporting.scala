@@ -13,9 +13,12 @@ object ErrorReporting {
 
   import tpd._
 
-  def errorTree(tree: Trees.Tree[_], msg: => String)(implicit ctx: Context): tpd.Tree = {
-    ctx.error(msg, tree.pos)
-    tree withType ErrorType
+  def errorTree(tree: Tree, msg: => String)(implicit ctx: Context): tpd.Tree =
+    tree withType errorType(msg, tree.pos)
+
+  def errorType(msg: => String, pos: Position)(implicit ctx: Context): ErrorType = {
+    ctx.error(msg, pos)
+    ErrorType
   }
 
   class Errors(implicit ctx: Context) {
@@ -53,6 +56,10 @@ object ErrorReporting {
       case tp: NamedType => denotStr(tp.denot)
       case _ => anonymousTypeMemberStr(tp)
     }
+
+    def exprStr(tree: Tree): String = refStr(tree.tpe)
+
+    def patternConstrStr(tree: Tree): String = ???
 
     def typeMismatch(tree: Tree, pt: Type): Tree =
       errorTree(tree,

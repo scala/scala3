@@ -105,75 +105,75 @@ object untpd extends Trees.Instance[Untyped] {
   implicit class UntypedTreeCopier(val tree: Tree) extends AnyVal {
     def derivedModuleDef(mods: Modifiers, name: TermName, impl: Template) = tree match {
       case tree: ModuleDef if (mods eq tree.mods) && (name eq tree.name) && (impl eq tree.impl) => tree
-      case _ => ModuleDef(mods, name, impl).copyAttr(tree)
+      case _ => ModuleDef(mods, name, impl).withPos(tree.pos)
     }
     def derivedPolyTypeDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], rhs: Tree) = tree match {
       case tree: PolyTypeDef if (mods eq tree.mods) && (name eq tree.name) && (tparams eq tree.tparams) && (rhs eq tree.rhs) => tree
-      case _ => new PolyTypeDef(mods, name, tparams, rhs).copyAttr(tree)
+      case _ => new PolyTypeDef(mods, name, tparams, rhs).withPos(tree.pos)
     }
     def derivedSymbolLit(str: String) = tree match {
       case tree: SymbolLit if (str == tree.str) => tree
-      case _ => SymbolLit(str).copyAttr(tree)
+      case _ => SymbolLit(str).withPos(tree.pos)
     }
     def derivedInterpolatedString(id: TermName, strings: List[Literal], elems: List[Tree]) = tree match {
       case tree: InterpolatedString if (id eq tree.id) && (strings eq tree.strings) && (elems eq tree.elems) => tree
-      case _ => InterpolatedString(id, strings, elems).copyAttr(tree)
+      case _ => InterpolatedString(id, strings, elems).withPos(tree.pos)
     }
     def derivedFunction(args: List[Tree], body: Tree) = tree match {
       case tree: Function if (args eq tree.args) && (body eq tree.body) => tree
-      case _ => Function(args, body).copyAttr(tree)
+      case _ => Function(args, body).withPos(tree.pos)
     }
     def derivedInfixOp(left: Tree, op: Name, right: Tree) = tree match {
       case tree: InfixOp if (left eq tree.left) && (op eq tree.op) && (right eq tree.right) => tree
-      case _ => InfixOp(left, op, right).copyAttr(tree)
+      case _ => InfixOp(left, op, right).withPos(tree.pos)
     }
     def derivedPostfixOp(od: Tree, op: Name) = tree match {
       case tree: PostfixOp if (od eq tree.od) && (op eq tree.op) => tree
-      case _ => PostfixOp(od, op).copyAttr(tree)
+      case _ => PostfixOp(od, op).withPos(tree.pos)
     }
     def derivedPrefixOp(op: Name, od: Tree) = tree match {
       case tree: PrefixOp if (op eq tree.op) && (od eq tree.od) => tree
-      case _ => PrefixOp(op, od).copyAttr(tree)
+      case _ => PrefixOp(op, od).withPos(tree.pos)
     }
     def derivedParens(t: Tree) = tree match {
       case tree: Parens if (t eq tree.t) => tree
-      case _ => Parens(t).copyAttr(tree)
+      case _ => Parens(t).withPos(tree.pos)
     }
     def derivedTuple(trees: List[Tree]) = tree match {
       case tree: Tuple if (trees eq tree.trees) => tree
-      case _ => Tuple(trees).copyAttr(tree)
+      case _ => Tuple(trees).withPos(tree.pos)
     }
     def derivedWhileDo(cond: Tree, body: Tree) = tree match {
       case tree: WhileDo if (cond eq tree.cond) && (body eq tree.body) => tree
-      case _ => WhileDo(cond, body).copyAttr(tree)
+      case _ => WhileDo(cond, body).withPos(tree.pos)
     }
     def derivedDoWhile(body: Tree, cond: Tree) = tree match {
       case tree: DoWhile if (body eq tree.body) && (cond eq tree.cond) => tree
-      case _ => DoWhile(body, cond).copyAttr(tree)
+      case _ => DoWhile(body, cond).withPos(tree.pos)
     }
     def derivedForYield(enums: List[Tree], expr: Tree) = tree match {
       case tree: ForYield if (enums eq tree.enums) && (expr eq tree.expr) => tree
-      case _ => ForYield(enums, expr).copyAttr(tree)
+      case _ => ForYield(enums, expr).withPos(tree.pos)
     }
     def derivedForDo(enums: List[Tree], body: Tree) = tree match {
       case tree: ForDo if (enums eq tree.enums) && (body eq tree.body) => tree
-      case _ => ForDo(enums, body).copyAttr(tree)
+      case _ => ForDo(enums, body).withPos(tree.pos)
     }
     def derivedGenFrom(pat: Tree, expr: Tree) = tree match {
       case tree: GenFrom if (pat eq tree.pat) && (expr eq tree.expr) => tree
-      case _ => GenFrom(pat, expr).copyAttr(tree)
+      case _ => GenFrom(pat, expr).withPos(tree.pos)
     }
     def derivedGenAlias(pat: Tree, expr: Tree) = tree match {
       case tree: GenAlias if (pat eq tree.pat) && (expr eq tree.expr) => tree
-      case _ => GenAlias(pat, expr).copyAttr(tree)
+      case _ => GenAlias(pat, expr).withPos(tree.pos)
     }
     def derivedContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree]) = tree match {
       case tree: ContextBounds if (bounds eq tree.bounds) && (cxBounds eq tree.cxBounds) => tree
-      case _ => ContextBounds(bounds, cxBounds).copyAttr(tree)
+      case _ => ContextBounds(bounds, cxBounds).withPos(tree.pos)
     }
     def derivedPatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree) = tree match {
       case tree: PatDef if (mods eq tree.mods) && (pats eq tree.pats) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
-      case _ => PatDef(mods, pats, tpt, rhs).copyAttr(tree)
+      case _ => PatDef(mods, pats, tpt, rhs).withPos(tree.pos)
     }
   }
 

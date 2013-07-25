@@ -189,7 +189,8 @@ object desugar {
           else DefDef(synthetic, nme.apply, tparams, vparamss, EmptyTree, creatorExpr) :: Nil
         val unapplyMeth = {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
-          DefDef(synthetic, nme.unapply, tparams, (unapplyParam :: Nil) :: Nil, EmptyTree, This(EmptyTypeName))
+          DefDef(synthetic, nme.unapply, tparams, (unapplyParam :: Nil) :: Nil,
+              EmptyTree, Ident(unapplyParam.name))
         }
         companionDefs(parent, applyMeths ::: unapplyMeth :: defaultGetters)
       }

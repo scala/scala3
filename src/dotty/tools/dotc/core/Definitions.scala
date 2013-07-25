@@ -181,7 +181,7 @@ class Definitions(implicit ctx: Context) {
   lazy val RepeatedParamAlias     = newAliasType(tpnme.REPEATED_PARAM_CLASS, SeqType)
   lazy val JavaRepeatedParamAlias = newAliasType(tpnme.JAVA_REPEATED_PARAM_CLASS, ArrayType)
 
-  // fundamental reference classes
+  // fundamental classes
   lazy val StringClass                  = requiredClass("java.lang.String")
 
     lazy val String_+ = newMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
@@ -202,6 +202,7 @@ class Definitions(implicit ctx: Context) {
   lazy val ThrowableClass               = requiredClass("java.lang.Throwable")
   lazy val JavaSerializableClass        = requiredClass("java.lang.Serializable")
   lazy val ComparableClass              = requiredClass("java.lang.Comparable")
+  lazy val ProductClass                 = requiredClass("scala.Product")
 
   // Annotation base classes
   lazy val AnnotationClass              = requiredClass("scala.annotation.Annotation")
@@ -286,9 +287,11 @@ class Definitions(implicit ctx: Context) {
 
   lazy val FunctionClass = mkArityArray("Function", MaxFunctionArity, 0)
   lazy val TupleClass = mkArityArray("Tuple", MaxTupleArity, 2)
+  lazy val ProductNClass = mkArityArray("Product", MaxTupleArity, 2)
 
   lazy val FunctionClasses: Set[Symbol] = FunctionClass.toSet
   lazy val TupleClasses: Set[Symbol] = TupleClass.toSet
+  lazy val ProductClasses: Set[Symbol] = ProductNClass.toSet
 
   lazy val RepeatedParamAliases: Set[Symbol] = Set(RepeatedParamAlias, JavaRepeatedParamAlias)
 

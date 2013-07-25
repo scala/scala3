@@ -9,7 +9,7 @@ import Constants._
 import StdNames._
 import Scopes._
 import Denotations._
-import Inferencing.Infer
+import Inferencing._
 import Contexts._
 import Symbols._
 import Types._
@@ -19,7 +19,7 @@ import NameOps._
 import Flags._
 import Decorators._
 import ErrorReporting._
-import Applications.FunProtoType
+import Applications.{FunProtoType, PolyProtoType}
 import EtaExpansion.etaExpand
 import util.Positions._
 import util.SourcePosition
@@ -31,6 +31,8 @@ trait TyperContextOps { ctx: Context => }
 
 object Typer {
 
+  import tpd._
+
   object BindingPrec {
     val definition = 4
     val namedImport = 3
@@ -40,10 +42,17 @@ object Typer {
     def isImportPrec(prec: Int) = prec == namedImport || prec == wildImport
   }
 
-  implicit class TreeDecorator(tree: tpd.Tree) {
+  implicit class TreeDecorator(tree: Tree) {
     def exprType(implicit ctx: Context): Type = tree.tpe match {
       case tpe: TermRef if !tpe.symbol.isStable => tpe.info
       case tpe => tpe
+    }
+  }
+
+  case class StateFul[T](value: T, state: TyperState) {
+    def commit()(implicit ctx: Context): T = {
+      state.commit()
+      value
     }
   }
 }
@@ -60,11 +69,15 @@ class Typer extends Namer with Applications with Implicits {
   private var importedFromRoot: Set[Symbol] = Set()
 
   def typedSelection(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
-    val ref = site.member(name)
+    val ref =
+      if (name == nme.CONSTRUCTOR) site.decl(name)
+      else site.member(name)
     if (ref.exists) NamedType(site, name).withDenot(ref)
     else {
       if (!site.isErroneous)
-        ctx.error(s"$name is not a member of ${site.show}", pos)
+        ctx.error(
+          if (name == nme.CONSTRUCTOR) s"${site.show} does not have a constructor"
+          else s"$name is not a member of ${site.show}", pos)
       ErrorType
     }
   }
@@ -94,6 +107,21 @@ class Typer extends Namer with Applications with Implicits {
     case _ =>
       tpe
   }
+
+  /** The qualifying class
+   *  of a this or super with prefix `qual`.
+   *  packageOk is equal false when qualifying class symbol
+   */
+  def qualifyingClass(tree: untpd.Tree, qual: Name, packageOK: Boolean)(implicit ctx: Context): Symbol =
+    ctx.owner.enclosingClass.ownersIterator.find(o => qual.isEmpty || o.isClass && o.name == qual) match {
+      case Some(c) if packageOK || !(c is Package) =>
+        c
+      case _ =>
+        ctx.error(
+          if (qual.isEmpty) tree.show + " can be used only in a class, object, or template"
+          else qual.show + " is not an enclosing class", tree.pos)
+        NoSymbol
+    }
 
   /** Attribute an identifier consisting of a simple name or an outer reference.
    *
@@ -258,7 +286,7 @@ class Typer extends Namer with Applications with Implicits {
     val rawType =
       try findRef(NoType, BindingPrec.nothingBound, NoContext)
       finally importedFromRoot = saved
-      
+
     val ownType =
       if (rawType.exists) checkAccessible(rawType, superAccess = false, tree.pos)
       else {
@@ -275,21 +303,61 @@ class Typer extends Namer with Applications with Implicits {
     tree.withType(ownType).derivedSelect(qual1, tree.name)
   }
 
-  def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
-    val proto = new FunProtoType(tree.args, pt, this)
-    val fun1 = typedExpr(tree.fun, proto)
-    TreeInfo.methPart(fun1).tpe match {
-      case funRef: TermRef =>
-        val app =
-          if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
-          else new ApplyToUntyped(tree, fun1, funRef, tree.args, pt)
-        app.result
-      case _ =>
-        fun1.exprType match {
-          case ErrorType =>
-            tree.withType(ErrorType)
-        }
+  def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = {
+    val cls = qualifyingClass(tree, tree.qual, packageOK = false)
+    tree.withType(cls.thisType)
+  }
+
+  def typedSuper(tree: untpd.Super)(implicit ctx: Context): Tree = {
+    val mix = tree.mix
+    val qual1 = typed(tree.qual)
+    val cls = qual1.tpe.typeSymbol
+
+    def findMixinSuper(site: Type): Type = site.parents filter (_.name == mix) match {
+      case p :: Nil =>
+        p
+      case Nil =>
+        errorType(s"$mix does not name a parent class of $cls", tree.pos)
+      case p :: q :: _ =>
+        errorType(s"ambiguous parent class qualifier", tree.pos)
     }
+    val owntype =
+      if (!mix.isEmpty) findMixinSuper(cls.info)
+      else if (ctx.mode is Mode.InSuperInit) cls.info.firstParent
+      else cls.info.parents.reduceLeft((x: Type, y: Type) => AndType(x, y))
+
+    tree.withType(SuperType(cls.thisType, owntype)).derivedSuper(qual1, mix)
+  }
+
+  def typedLiteral(tree: untpd.Literal)(implicit ctx: Context) =
+    tree.withType(if (tree.const.tag == UnitTag) defn.UnitType else ConstantType(tree.const))
+
+  def typedNew(tree: untpd.New)(implicit ctx: Context) = {
+    val tpt1 = typedType(tree.tpt)
+    val cls = checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos)
+    checkInstantiatable(cls, tpt1.pos)
+    tree.withType(tpt1.tpe).derivedNew(tpt1)
+  }
+
+  def typedPair(tree: untpd.Pair)(implicit ctx: Context) = {
+    val left1 = typed(tree.left)
+    val right1 = typed(tree.right)
+    tree.withType(defn.PairType.appliedTo(left1.tpe :: right1.tpe :: Nil)).derivedPair(left1, right1)
+  }
+
+  def TypedTyped(tree: untpd.Typed)(implicit ctx: Context) = {
+    val tpt1 = typedType(tree.tpt)
+    val expr1 = typedExpr(tree.expr, tpt1.tpe)
+    tree.withType(tpt1.tpe).derivedTyped(tpt1, expr1)
+  }
+
+  def NamedArg(tree: untpd.NamedArg, pt: Type)(implicit ctx: Context) = {
+    val arg1 = typed(tree.arg, pt)
+    tree.withType(arg1.tpe).derivedNamedArg(tree.name, arg1)
+  }
+
+  def Assign(tree: untpd.Assign)(implicit ctx: Context) = {
+    ???
   }
 
   def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = {
@@ -428,28 +496,23 @@ class Typer extends Namer with Applications with Implicits {
   def typedPattern(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, pt)(ctx addMode Mode.Pattern)
 
-  def tryEither[T](op: Context => T)(fallBack: => T)(implicit ctx: Context) = {
+  def tryEither[T](op: Context => T)(fallBack: StateFul[T] => T)(implicit ctx: Context) = {
     val nestedCtx = ctx.fresh.withNewTyperState
     val result = op(nestedCtx)
     if (nestedCtx.reporter.hasErrors)
-      fallBack
+      fallBack(StateFul(result, nestedCtx.typerState))
     else {
       nestedCtx.typerState.commit()
       result
     }
   }
 
-  def tryInsertApply(tree: Tree, pt: Type)(fallBack: => Tree)(implicit ctx: Context): Tree =
+  def tryInsertApply(tree: Tree, pt: Type)(fallBack: StateFul[Tree] => Tree)(implicit ctx: Context): Tree =
     tryEither {
       implicit ctx => typedSelect(Trees.Select(untpd.TypedSplice(tree), nme.apply), pt)
     } {
       fallBack
     }
-
-  def tryInsertApplyIfFunProto(tree: Tree, pt: Type)(fallBack: => Tree)(implicit ctx: Context): Tree = pt match {
-    case pt: FunProtoType => tryInsertApply(tree, pt)(fallBack)
-    case _ => fallBack
-  }
 
     /**
      *  (-1) For expressions with annotated types, let AnnotationCheckers decide what to do
@@ -501,10 +564,13 @@ class Typer extends Namer with Applications with Implicits {
         case alt :: Nil =>
           adapt(tree.withType(alt), pt)
         case Nil =>
-          tryInsertApplyIfFunProto(tree, pt) {
+          def noMatches =
             errorTree(tree,
               s"""none of the ${err.overloadedAltsStr(altDenots)}
                  |match $expectedStr""".stripMargin)
+          pt match {
+            case pt: FunProtoType => tryInsertApply(tree, pt)(_ => noMatches)
+            case _ => noMatches
           }
         case alts =>
           errorTree(tree,
@@ -521,7 +587,7 @@ class Typer extends Namer with Applications with Implicits {
           case Apply(_, _) => " more"
           case _ => ""
         }
-        errorTree(tree, s"$fn does not take$more parameters")
+        _ => errorTree(tree, s"$fn does not take$more parameters")
       }
     }
 
@@ -559,10 +625,13 @@ class Typer extends Namer with Applications with Implicits {
     tree.tpe.widen match {
       case ref: TermRef =>
         adaptOverloaded(ref)
-      case pt: PolyType =>
-        val tracked = ctx.track(pt)
-        val tvars = ctx.newTypeVars(tracked)
-        adapt(tpd.TypeApply(tree, tvars map (tpd.TypeTree(_))), pt)
+      case poly: PolyType =>
+        if (pt.isInstanceOf[PolyProtoType]) tree
+        else {
+          val tracked = ctx.track(poly)
+          val tvars = ctx.newTypeVars(tracked)
+          adapt(tpd.TypeApply(tree, tvars map (tpd.TypeTree(_))), pt)
+        }
       case tp =>
         pt match {
           case pt: FunProtoType => adaptToArgs(tp, pt)
