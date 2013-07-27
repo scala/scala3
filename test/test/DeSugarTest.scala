@@ -5,12 +5,12 @@ import dotty.tools.dotc.util._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.parsing._
 import Tokens._, Parsers._
-import org.junit.Test
 import dotty.tools.dotc._
 import ast.Trees._
 import ast.desugar
 import ast.desugar._
 import typer.Mode
+import Contexts.Context
 
 import scala.collection.mutable.ListBuffer
 
@@ -22,7 +22,7 @@ class DeSugarTest extends ParserTest {
 
   val Expr = Mode(0)
 
-  object DeSugar extends TreeTransformer {
+  object DeSugar extends UntypedTreeTransformer {
     var curMode: Mode = Expr
     def withMode[T](mode: Mode)(op: => T) = {
       val saved = curMode
@@ -31,10 +31,10 @@ class DeSugarTest extends ParserTest {
       finally curMode = saved
     }
 
-    def transform(tree: Tree, mode: Mode): Tree = withMode(mode) { transform(tree) }
-    def transform(trees: List[Tree], mode: Mode): List[Tree] = withMode(mode) { transform(trees) }
+    def transform(tree: Tree, mode: Mode)(implicit ctx: Context): Tree = withMode(mode) { transform(tree) }
+    def transform(trees: List[Tree], mode: Mode)(implicit ctx: Context): List[Tree] = withMode(mode) { transform(trees) }
 
-    override def transform(tree: Tree): Tree = {
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
       val tree1 = desugar(tree)(ctx.withMode(curMode))
       tree1 match {
         case TypedSplice(t) =>
@@ -42,29 +42,29 @@ class DeSugarTest extends ParserTest {
         case PostfixOp(od, op) =>
           PostfixOp(transform(od), op)
         case Select(qual, name) =>
-          tree1.derivedSelect(transform(qual, Expr), name)
+          cpy.Select(tree1, transform(qual, Expr), name)
         case Apply(fn, args) =>
-          tree1.derivedApply(transform(fn, Expr), transform(args))
+          cpy.Apply(tree1, transform(fn, Expr), transform(args))
         case TypeApply(fn, args) =>
-          tree1.derivedTypeApply(transform(fn, Expr), transform(args, Type))
+          cpy.TypeApply(tree1, transform(fn, Expr), transform(args, Type))
         case New(tpt) =>
-          tree1.derivedNew(transform(tpt, Type))
+          cpy.New(tree1, transform(tpt, Type))
         case Typed(expr, tpt) =>
-          tree1.derivedTyped(transform(expr), transform(tpt, Type))
+          cpy.Typed(tree1, transform(expr), transform(tpt, Type))
         case CaseDef(pat, guard, body) =>
-          tree1.derivedCaseDef(transform(pat, Pattern), transform(guard), transform(body))
+          cpy.CaseDef(tree1, transform(pat, Pattern), transform(guard), transform(body))
         case SeqLiteral(elems) =>
-          tree1.derivedSeqLiteral(transform(elems))
+          cpy.SeqLiteral(tree1, transform(elems))
         case UnApply(fun, args) =>
-          tree1.derivedUnApply(transform(fun, Expr), transform(args))
+          cpy.UnApply(tree1, transform(fun, Expr), transform(args))
         case ValDef(mods, name, tpt, rhs) =>
-          tree1.derivedValDef(mods, name, transform(tpt, Type), transform(rhs))
+          cpy.ValDef(tree1, mods, name, transform(tpt, Type), transform(rhs))
         case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-          tree1.derivedDefDef(mods, name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt, Type), transform(rhs))
+          cpy.DefDef(tree1, mods, name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt, Type), transform(rhs))
         case tree1 @ TypeDef(mods, name, rhs) =>
-          tree1.derivedTypeDef(mods, name, transform(rhs, Type), transformSub(tree1.tparams))
+          cpy.TypeDef(tree1, mods, name, transform(rhs, Type), transformSub(tree1.tparams))
         case Template(constr, parents, self, body) =>
-          tree1.derivedTemplate(transformSub(constr), transform(parents), transformSub(self), transform(body, Expr))
+          cpy.Template(tree1, transformSub(constr), transform(parents), transformSub(self), transform(body, Expr))
         case Thicket(trees) =>
           Thicket(flatten(trees mapConserve super.transform))
         case tree1 =>

@@ -10,7 +10,7 @@ import java.lang.Double.longBitsToDouble
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
 import util.Positions._
-import ast.Trees, ast.tpd._
+import ast.Trees, ast.tpd._, ast.untpd
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
@@ -938,9 +938,9 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val selectors = until(end, () => {
           val fromName = readNameRef()
           val toName = readNameRef()
-          val from = Trees.Ident(fromName)
-          val to = Trees.Ident(toName)
-          if (toName.isEmpty) from else Trees.Pair(from, Trees.Ident(toName))
+          val from = untpd.Ident(fromName)
+          val to = untpd.Ident(toName)
+          if (toName.isEmpty) from else untpd.Pair(from, untpd.Ident(toName))
         })
 
         Import(expr, selectors)
@@ -950,7 +950,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val parents = times(readNat(), readTreeRef)
         val self = readValDefRef()
         val body = until(end, readTreeRef)
-        Trees.Template[Type](???, parents, self, body) // !!! TODO: pull out primary constructor
+        untpd.Template(???, parents, self, body) // !!! TODO: pull out primary constructor
           .withType(refType(symbol))
 
       case BLOCKtree =>
@@ -992,7 +992,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val vparams = until(end, readValDefRef)
         val applyType = MethodType(vparams map (_.name), vparams map (_.tpt.tpe), body.tpe)
         val applyMeth = cctx.newSymbol(symbol.owner, nme.apply, Method, applyType)
-        Closure(applyMeth, Function.const(body.changeOwner(symbol, applyMeth)), tpe)
+        Closure(applyMeth, Function.const(body.changeOwner(symbol, applyMeth)) _)
 
       case ASSIGNtree =>
         val lhs = readTreeRef()

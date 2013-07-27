@@ -31,7 +31,7 @@ trait TyperContextOps { ctx: Context => }
 
 object Typer {
 
-  import tpd._
+  import tpd.{cpy => _, _}
 
   object BindingPrec {
     val definition = 4
@@ -59,8 +59,9 @@ object Typer {
 
 class Typer extends Namer with Applications with Implicits {
 
-  import tpd._
   import Typer._
+  import tpd.{cpy => _, _}
+  import untpd.cpy
 
   /** A temporary data item valid for a single typed ident:
    *  The set of all root import symbols that have been
@@ -300,7 +301,7 @@ class Typer extends Namer with Applications with Implicits {
     val qual1 = typedExpr(tree.qualifier, RefinedType(WildcardType, tree.name, pt))
     val ownType = typedSelection(qual1.exprType, tree.name, tree.pos)
     if (!ownType.isError) checkAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
-    tree.withType(ownType).derivedSelect(qual1, tree.name)
+    cpy.Select(tree, qual1, tree.name).withType(ownType)
   }
 
   def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = {
@@ -326,7 +327,7 @@ class Typer extends Namer with Applications with Implicits {
       else if (ctx.mode is Mode.InSuperInit) cls.info.firstParent
       else cls.info.parents.reduceLeft((x: Type, y: Type) => AndType(x, y))
 
-    tree.withType(SuperType(cls.thisType, owntype)).derivedSuper(qual1, mix)
+    cpy.Super(tree, qual1, mix).withType(SuperType(cls.thisType, owntype))
   }
 
   def typedLiteral(tree: untpd.Literal)(implicit ctx: Context) =
@@ -336,24 +337,24 @@ class Typer extends Namer with Applications with Implicits {
     val tpt1 = typedType(tree.tpt)
     val cls = checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos)
     checkInstantiatable(cls, tpt1.pos)
-    tree.withType(tpt1.tpe).derivedNew(tpt1)
+    cpy.New(tree, tpt1).withType(tpt1.tpe)
   }
 
   def typedPair(tree: untpd.Pair)(implicit ctx: Context) = {
     val left1 = typed(tree.left)
     val right1 = typed(tree.right)
-    tree.withType(defn.PairType.appliedTo(left1.tpe :: right1.tpe :: Nil)).derivedPair(left1, right1)
+    cpy.Pair(tree, left1, right1).withType(defn.PairType.appliedTo(left1.tpe :: right1.tpe :: Nil))
   }
 
   def TypedTyped(tree: untpd.Typed)(implicit ctx: Context) = {
     val tpt1 = typedType(tree.tpt)
     val expr1 = typedExpr(tree.expr, tpt1.tpe)
-    tree.withType(tpt1.tpe).derivedTyped(tpt1, expr1)
+    cpy.Typed(tree, tpt1, expr1).withType(tpt1.tpe)
   }
 
   def NamedArg(tree: untpd.NamedArg, pt: Type)(implicit ctx: Context) = {
     val arg1 = typed(tree.arg, pt)
-    tree.withType(arg1.tpe).derivedNamedArg(tree.name, arg1)
+    cpy.NamedArg(tree, tree.name, arg1).withType(arg1.tpe)
   }
 
   def Assign(tree: untpd.Assign)(implicit ctx: Context) = {
@@ -375,7 +376,7 @@ class Typer extends Namer with Applications with Implicits {
     val tpt1 = typedType(tpt)
     val rhs1 = typedExpr(rhs, tpt1.tpe)
     val pt = if (sym.exists) sym.symRef else NoType
-    vdef.withType(pt).derivedValDef(mods1, name, tpt1, rhs1)
+    cpy.ValDef(vdef, mods1, name, tpt1, rhs1).withType(pt)
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
@@ -385,7 +386,7 @@ class Typer extends Namer with Applications with Implicits {
     val vparamss1 = vparamss.mapconserve(_ mapconserve (typed(_).asInstanceOf[ValDef]))
     val tpt1 = typedType(tpt)
     val rhs1 = typedExpr(rhs, tpt1.tpe)
-    ddef.withType(sym.symRef).derivedDefDef(mods1, name, tparams1, vparamss1, tpt1, rhs1)
+    cpy.DefDef(ddef, mods1, name, tparams1, vparamss1, tpt1, rhs1).withType(sym.symRef)
     //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
@@ -393,7 +394,7 @@ class Typer extends Namer with Applications with Implicits {
     val TypeDef(mods, name, rhs) = tdef
     val mods1 = typedModifiers(mods)
     val rhs1 = typedType(rhs)
-    tdef.withType(sym.symRef).derivedTypeDef(mods1, name, rhs1)
+    cpy.TypeDef(tdef, mods1, name, rhs1).withType(sym.symRef)
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = {
@@ -401,15 +402,15 @@ class Typer extends Namer with Applications with Implicits {
     val mods1 = typedModifiers(mods)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parents1 = parents mapconserve (typed(_))
-    val self1 = self.withType(NoType).derivedValDef(
-      typedModifiers(self.mods), self.name, typedType(self.tpt), EmptyTree)
+    val self1 = cpy.ValDef(self, typedModifiers(self.mods), self.name, typedType(self.tpt), EmptyTree)
+      .withType(NoType)
 
     val localDummy = ctx.newLocalDummy(cls, impl.pos)
     val body1 = typedStats(body, localDummy)(inClassContext(cls, self.name))
-    val impl1 = impl.withType(localDummy.symRef).derivedTemplate(
-      constr1, parents1, self1, body1)
+    val impl1 = cpy.Template(impl, constr1, parents1, self1, body1)
+      .withType(localDummy.symRef)
 
-    cdef.withType(cls.symRef).derivedTypeDef(mods1, name, impl1)
+    cpy.TypeDef(cdef, mods1, name, impl1).withType(cls.symRef)
 
     // todo later: check that
     //  1. If class is non-abstract, it is instantiatable:
@@ -422,7 +423,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = {
     val expr1 = typedExpr(imp.expr)
-    imp.withType(sym.symRef).derivedImport(expr1, imp.selectors)
+    cpy.Import(imp, expr1, imp.selectors).withType(sym.symRef)
   }
 
   def typedExpanded(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
@@ -509,7 +510,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def tryInsertApply(tree: Tree, pt: Type)(fallBack: StateFul[Tree] => Tree)(implicit ctx: Context): Tree =
     tryEither {
-      implicit ctx => typedSelect(Trees.Select(untpd.TypedSplice(tree), nme.apply), pt)
+      implicit ctx => typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
     } {
       fallBack
     }
@@ -582,7 +583,7 @@ class Typer extends Namer with Applications with Implicits {
     def adaptToArgs(tp: Type, pt: FunProtoType) = tp match {
       case _: MethodType => tree
       case _ => tryInsertApply(tree, pt) {
-        def fn = err.refStr(TreeInfo.methPart(tree).tpe)
+        def fn = err.refStr(methPart(tree).tpe)
         val more = tree match {
           case Apply(_, _) => " more"
           case _ => ""

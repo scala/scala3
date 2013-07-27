@@ -8,16 +8,16 @@ import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 
 object CheckTrees {
 
-  import tpd.{TreeMapper, localSyms, TreeOps}
+  import tpd._
 
   def check(p: Boolean, msg: => String = "")(implicit ctx: Context): Unit = assert(p, msg)
 
-  def checkTypeArg(arg: tpd.Tree, bounds: TypeBounds)(implicit ctx: Context): Unit = {
+  def checkTypeArg(arg: Tree, bounds: TypeBounds)(implicit ctx: Context): Unit = {
     check(arg.isValueType)
     check(bounds contains arg.tpe)
   }
 
-  def checkType(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
+  def checkType(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case Ident(name) =>
     case Select(qualifier, name) =>
       check(qualifier.isValue)
@@ -31,7 +31,7 @@ object CheckTrees {
       val cls = qual.tpe.typeSymbol
       check(cls.isClass)
     case Apply(fn, args) =>
-      def checkArg(arg: tpd.Tree, name: Name, formal: Type): Unit = {
+      def checkArg(arg: Tree, name: Name, formal: Type): Unit = {
         arg match {
           case NamedArg(argName, _) =>
             check(argName == name)
@@ -147,7 +147,7 @@ object CheckTrees {
       check(left.isValueType); check(right.isValueType)
     case RefinedTypeTree(tpt, refinements) =>
       check(tpt.isValueType)
-      def checkRefinements(forbidden: Set[Symbol], rs: List[tpd.Tree]): Unit = rs match {
+      def checkRefinements(forbidden: Set[Symbol], rs: List[Tree]): Unit = rs match {
         case r :: rs1 =>
           val rsym = r.symbol
           check(rsym.isTerm || rsym.isAbstractOrAliasType)
@@ -185,7 +185,7 @@ object CheckTrees {
         case nme.unapplySeq =>
           // args need to be wrapped in (...: _*)
           check(args.length == 1)
-          check(args.head.isInstanceOf[tpd.SeqLiteral])
+          check(args.head.isInstanceOf[SeqLiteral])
         case nme.unapply =>
           val rtp = funtpe.resultType
           val rsym = rtp.dealias.typeSymbol
@@ -221,7 +221,7 @@ object CheckTrees {
         check(rhs.tpe <:< tpt.tpe)
       }
     case TypeDef(mods, name, tpt) =>
-      check(tpt.isInstanceOf[Template[_]] || tpt.tpe.isInstanceOf[TypeBounds])
+      check(tpt.isInstanceOf[Template] || tpt.tpe.isInstanceOf[TypeBounds])
     case Template(constr, parents, selfType, body) =>
     case Import(expr, selectors) =>
       check(expr.isValue)

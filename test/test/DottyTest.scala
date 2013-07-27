@@ -7,7 +7,6 @@ import dotty.tools.dotc.core.Flags._
 import Types._, Symbols._, Decorators._
 import dotty.tools.dotc.printing.Texts._
 import dotty.tools.dotc.core.Decorators._
-import org.junit.Test
 
 class DottyTest {
 

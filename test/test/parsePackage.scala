@@ -3,6 +3,7 @@ package test
 import dotty.tools.dotc._
 import core._, ast._
 import Trees._
+import Contexts.Context
 
 object parsePackage extends ParserTest {
 
@@ -10,8 +11,8 @@ object parsePackage extends ParserTest {
 
   var nodes = 0
 
-  val transformer = new TreeTransformer {
-    override def transform(tree: Tree): Tree = {
+  val transformer = new UntypedTreeTransformer {
+    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
       nodes += 1
       tree match {
         case Ident(name) =>

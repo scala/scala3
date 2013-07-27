@@ -178,8 +178,8 @@ class Namer { typer: Typer =>
           case Some(cdef) =>
             val Thicket((mcls @ TypeDef(_, _, impl: Template)) :: mrest) = expandedTree(mdef)
             val Thicket(cls :: TypeDef(_, _, compimpl: Template) :: crest) = expandedTree(cdef)
-            val mcls1 = mcls.derivedTypeDef(mcls.mods, mcls.name,
-              impl.derivedTemplate(impl.constr, impl.parents, impl.self,
+            val mcls1 = cpy.TypeDef(mcls, mcls.mods, mcls.name,
+              cpy.Template(impl, impl.constr, impl.parents, impl.self,
                 compimpl.body ++ impl.body))
             expandedTree(mdef) = Thicket(mcls1 :: mrest)
             expandedTree(cdef) = Thicket(cls :: crest)
@@ -311,7 +311,7 @@ class Namer { typer: Typer =>
   def classDefSig(cdef: TypeDef, cls: ClassSymbol)(implicit ctx: Context): Type = {
 
     def parentType(constr: untpd.Tree): Type = {
-      val Trees.Select(Trees.New(tpt), _) = TreeInfo.methPart(constr)
+      val Trees.Select(Trees.New(tpt), _) = methPart(constr)
       val ptype = typedAheadType(tpt).tpe
       if (ptype.uninstantiatedTypeParams.isEmpty) ptype
       else typedAheadExpr(constr).tpe

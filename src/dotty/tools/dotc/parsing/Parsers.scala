@@ -276,9 +276,9 @@ object Parsers {
      */
     def convertToTypeId(tree: Tree): Tree = tree match {
       case id @ Ident(name) =>
-        id.derivedIdent(name.toTypeName)
+        cpy.Ident(id, name.toTypeName)
       case id @ Select(qual, name) =>
-        id.derivedSelect(qual, name.toTypeName)
+        cpy.Select(id, qual, name.toTypeName)
       case _ =>
         syntaxError("identifier expected", tree.pos)
         tree
@@ -336,7 +336,7 @@ object Parsers {
     var opStack: List[OpInfo] = Nil
 
     def checkAssoc(offset: Int, op: Name, leftAssoc: Boolean) =
-      if (TreeInfo.isLeftAssoc(op) != leftAssoc)
+      if (isLeftAssoc(op) != leftAssoc)
         syntaxError(
           "left- and right-associative operators with same precedence may not be mixed", offset)
 
@@ -376,7 +376,7 @@ object Parsers {
       var top = first
       while (isIdent && in.name != notAnOperator) {
         val op = in.name
-        top = reduceStack(base, top, precedence(op), TreeInfo.isLeftAssoc(op))
+        top = reduceStack(base, top, precedence(op), isLeftAssoc(op))
         opStack = OpInfo(top, op, in.offset) :: opStack
         ident()
         newLineOptWhenFollowing(canStartOperand)
@@ -417,7 +417,7 @@ object Parsers {
     }
 
     private def makeIdent(tok: Token, name: Name) =
-      if (tok == BACKQUOTED_IDENT) new BackquotedIdent(name)
+      if (tok == BACKQUOTED_IDENT) BackquotedIdent(name)
       else Ident(name)
 
     /** IdentOrWildcard ::= id | `_' */
@@ -618,7 +618,7 @@ object Parsers {
               atPos(start, in.skipToken()) { Function(ts, typ()) }
             else {
               for (t <- ts)
-                if (TreeInfo.isByNameParamType(t))
+                if (isByNameParamType(t))
                   syntaxError("no by-name parameter type allowed here", t.pos)
               val tuple = atPos(start) { makeTupleOrParens(ts) }
               infixTypeRest(refinedTypeRest(withTypeRest(simpleTypeRest(tuple))))
@@ -1047,7 +1047,7 @@ object Parsers {
       if (in.token == LBRACE) blockExpr() :: Nil else parArgumentExprs()
 
     val argumentExpr = () => exprInParens() match {
-      case a @ Assign(Ident(id), rhs) => a.derivedNamedArg(id, rhs)
+      case a @ Assign(Ident(id), rhs) => cpy.NamedArg(a, id, rhs)
       case e => e
     }
 
@@ -1192,14 +1192,14 @@ object Parsers {
      */
     def pattern1(): Tree = {
       val p = pattern2()
-      if (TreeInfo.isVarPattern(p) && in.token == COLON) ascription(p, Location.InPattern)
+      if (isVarPattern(p) && in.token == COLON) ascription(p, Location.InPattern)
       else p
     }
 
     /**  Pattern2    ::=  [varid `@'] InfixPattern
      */
     val pattern2 = () => infixPattern() match {
-      case p @ Ident(name) if TreeInfo.isVarPattern(p) && in.token == AT =>
+      case p @ Ident(name) if isVarPattern(p) && in.token == AT =>
         atPos(p.pos.start, in.skipToken()) { Bind(name, infixPattern()) }
       case p =>
         p
@@ -1355,8 +1355,8 @@ object Parsers {
     /** Adjust start of annotation or constructor to position of preceding @ or new */
     def adjustStart(start: Offset)(tree: Tree): Tree = {
       val tree1 = tree match {
-        case Apply(fn, args) => tree.derivedApply(adjustStart(start)(fn), args)
-        case Select(qual, name) => tree.derivedSelect(adjustStart(start)(qual), name)
+        case Apply(fn, args) => cpy.Apply(tree, adjustStart(start)(fn), args)
+        case Select(qual, name) => cpy.Select(tree, adjustStart(start)(qual), name)
         case _ => tree
       }
       if (start < tree1.pos.start) tree1.withPos(tree1.pos.withStart(start))
@@ -1427,7 +1427,7 @@ object Parsers {
           val bounds =
             if (isConcreteOwner) typeParamBounds(name)
             else typeBounds()
-          typeDef(mods, name, hkparams, bounds)
+          TypeDef(mods, name, hkparams, bounds)
         }
       }
       commaSeparated(typeParam)
@@ -1546,7 +1546,7 @@ object Parsers {
         imp
       case sel @ Select(qual, name) =>
         val selector = atPos(sel.pos.point) { Ident(name) }
-        sel.derivedImport(qual, selector :: Nil)
+        cpy.Import(sel, qual, selector :: Nil)
       case t =>
         accept(DOT)
         Import(t, Ident(nme.WILDCARD) :: Nil)
@@ -1565,7 +1565,7 @@ object Parsers {
       else {
         val sel = importSelector()
         sel :: {
-          if (!TreeInfo.isWildcardArg(sel) && in.token == COMMA) {
+          if (!isWildcardArg(sel) && in.token == COMMA) {
             in.nextToken()
             importSelectors()
           }
@@ -1628,7 +1628,7 @@ object Parsers {
           }
         } else EmptyTree
       lhs match {
-        case (id @ Ident(name: TermName)) :: Nil => id.derivedValDef(mods, name, tpt, rhs)
+        case (id @ Ident(name: TermName)) :: Nil => cpy.ValDef(id, mods, name, tpt, rhs)
         case _ => PatDef(mods, lhs, tpt, rhs)
       }
     }
@@ -1708,9 +1708,9 @@ object Parsers {
         in.token match {
           case EQUALS =>
             in.nextToken()
-            typeDef(mods, name, tparams, typ())
+            TypeDef(mods, name, tparams, typ())
           case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
-            typeDef(mods, name, tparams, typeBounds())
+            TypeDef(mods, name, tparams, typeBounds())
           case _ =>
             syntaxErrorOrIncomplete("`=', `>:', or `<:' expected")
             EmptyTree
@@ -1783,7 +1783,7 @@ object Parsers {
      */
     def template(constr: DefDef): Template = templateOrNew(constr) match {
       case impl: Template => impl
-      case parent => Template(constr, parent :: Nil, EmptyValDef(), Nil)
+      case parent => Template(constr, parent :: Nil, EmptyValDef, Nil)
     }
 
     /** Same as template, but if {...} is missing and there's only one
@@ -1807,14 +1807,14 @@ object Parsers {
       else {
         newLineOptWhenFollowedBy(LBRACE)
         if (in.token == LBRACE) template(constr)
-        else Template(constr, Nil, EmptyValDef(), Nil).withPos(constr.pos.toSynthetic)
+        else Template(constr, Nil, EmptyValDef, Nil).withPos(constr.pos.toSynthetic)
       }
 
     /** TemplateBody ::= [nl] `{' TemplateStatSeq `}'
      */
     def templateBodyOpt(constr: DefDef, parents: List[Tree]) = atPos(constr.pos.start) {
       val (self, stats) =
-        if (in.token == LBRACE) templateBody() else (EmptyValDef(), Nil)
+        if (in.token == LBRACE) templateBody() else (EmptyValDef, Nil)
       Template(constr, parents, self, stats)
     }
 
@@ -1884,7 +1884,7 @@ object Parsers {
      *                     |
      */
     def templateStatSeq(): (ValDef, List[Tree]) = {
-      var self: ValDef = EmptyValDef()
+      var self: ValDef = EmptyValDef
       val stats = new ListBuffer[Tree]
       if (isExprIntro) {
         val first = expr1()
@@ -2048,6 +2048,6 @@ object Parsers {
 
     override def blockExpr(): Tree = skipBraces(EmptyTree)
 
-    override def templateBody() = skipBraces((EmptyValDef(), List(EmptyTree)))
+    override def templateBody() = skipBraces((EmptyValDef, List(EmptyTree)))
   }
 }

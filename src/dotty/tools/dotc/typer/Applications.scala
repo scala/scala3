@@ -27,7 +27,7 @@ import language.implicitConversions
 
 object Applications {
 
-  import tpd._
+  import tpd.{ cpy => _, _ }
 
   private val isNamedArg = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[_]]
   def hasNamedArg(args: List[Any]) = args exists isNamedArg
@@ -44,10 +44,9 @@ object Applications {
      *    3. there is an implicit conversion from `tp` to `pt`.
      */
     def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean = (
-       tp <:< pt
-    || pt.typeSymbol == defn.ByNameParamClass && tp <:< pt.typeArgs.head
-    || viewExists(tp, pt)
-    )
+      tp <:< pt
+      || pt.typeSymbol == defn.ByNameParamClass && tp <:< pt.typeArgs.head
+      || viewExists(tp, pt))
   }
 
   /** The normalized form of a type
@@ -82,15 +81,15 @@ object Applications {
 
 import Applications._
 
-trait Applications extends Compatibility{ self: Typer =>
+trait Applications extends Compatibility { self: Typer =>
 
   import Applications._
-  import tpd._
+  import tpd.{ cpy => _, _ }
+  import untpd.cpy
 
   private def state(implicit ctx: Context) = ctx.typerState
 
-  /**
-   *  @param Arg        the type of arguments, could be tpd.Tree, untpd.Tree, or Type
+  /** @param Arg        the type of arguments, could be tpd.Tree, untpd.Tree, or Type
    *  @param methRef    the reference to the method of the application
    *  @param funType    the type of the function part of the application
    *  @param args       the arguments of the application
@@ -206,7 +205,7 @@ trait Applications extends Compatibility{ self: Typer =>
               args match {
                 case (arg @ NamedArg(aname, _)) :: args1 =>
                   if (namedToArg contains aname)
-                    emptyTree[T]() :: recur(pnames1, args)
+                    genericEmptyTree :: recur(pnames1, args)
                   else {
                     badNamedArg(arg)
                     recur(pnames1, args1)
@@ -222,8 +221,7 @@ trait Applications extends Compatibility{ self: Typer =>
             val (namedArgs, otherArgs) = args partition isNamedArg
             namedArgs foreach badNamedArg
             otherArgs
-          }
-          else args
+          } else args
       }
 
       recur(methodType.paramNames, args)
@@ -289,14 +287,14 @@ trait Applications extends Compatibility{ self: Typer =>
           }
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
-            findDefaultGetter(n + TreeInfo.numArgs(normalizedFun)) match {
+            findDefaultGetter(n + numArgs(normalizedFun)) match {
               case dref: NamedType =>
                 liftFun()
                 addTyped(treeToArg(spliceMeth(Ident(dref), normalizedFun)), formal)
                 matchArgs(args1, formals1, n + 1)
               case _ =>
                 missingArg(n)
-              }
+            }
           }
 
           if (formal.isRepeatedParam)
@@ -377,7 +375,7 @@ trait Applications extends Compatibility{ self: Typer =>
    */
   trait TreeApplication[T >: Untyped] extends Application[Trees.Tree[T]] {
     type TypeArg = Tree
-    def isVarArg(arg: Trees.Tree[T]): Boolean = TreeInfo.isWildcardStarArg(arg)
+    def isVarArg(arg: Trees.Tree[T]): Boolean = isWildcardStarArg(arg)
   }
 
   /** Subclass of Application for applicability tests with trees as arguments. */
@@ -471,7 +469,7 @@ trait Applications extends Compatibility{ self: Typer =>
             typedArgs = args.asInstanceOf[List[Tree]]
           methodType.instantiate(typedArgs map (_.tpe))
         }
-      val app1 = app.withType(ownType).derivedApply(normalizedFun, typedArgs)
+      val app1 = cpy.Apply(app, normalizedFun, typedArgs).withType(ownType)
       if (liftedDefs != null && liftedDefs.nonEmpty) Block(liftedDefs.toList, app1)
       else app1
     }
@@ -495,7 +493,7 @@ trait Applications extends Compatibility{ self: Typer =>
     new ApplyToTyped(app, fun, methRef, args, resultType).result
 
   def typedApply(fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Tree =
-    typedApply(Trees.Apply(untpd.TypedSplice(fun), Nil), fun, methRef, args, resultType)
+    typedApply(untpd.Apply(untpd.TypedSplice(fun), Nil), fun, methRef, args, resultType)
 
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
     if (ctx.mode is Mode.Pattern)
@@ -505,7 +503,7 @@ trait Applications extends Compatibility{ self: Typer =>
       def realApply(implicit ctx: Context) = {
         val proto = new FunProtoType(tree.args, pt, this)
         val fun1 = typedExpr(tree.fun, proto)
-        TreeInfo.methPart(fun1).tpe match {
+        methPart(fun1).tpe match {
           case funRef: TermRef =>
             val app =
               if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
@@ -525,12 +523,12 @@ trait Applications extends Compatibility{ self: Typer =>
         val lhs1 = typedExpr(lhs)
         val lifted = new mutable.ListBuffer[Tree]
         val lhs2 = untpd.TypedSplice(liftApp(lifted, lhs1))
-        val assign = Trees.Assign(lhs2, Trees.Apply(Trees.Select(lhs2, name.init), rhss))
+        val assign = untpd.Assign(lhs2, untpd.Apply(untpd.Select(lhs2, name.init), rhss))
         typed(assign)
       }
 
       realApply
-      if (TreeInfo.isOpAssign(tree))
+      if (untpd.isOpAssign(tree))
         tryEither {
           implicit ctx => realApply
         } { failed =>
@@ -555,7 +553,7 @@ trait Applications extends Compatibility{ self: Typer =>
         ctx.error(s"${err.exprStr(typedFn)} does not take type parameters", tree.pos)
         ErrorType
     }
-    tree.withType(ownType).derivedTypeApply(typedFn, typedArgs)
+    cpy.TypeApply(tree, typedFn, typedArgs).withType(ownType)
   }
 
   def typedUnApply(qual: untpd.Tree, args: List[untpd.Tree], tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
@@ -586,7 +584,7 @@ trait Applications extends Compatibility{ self: Typer =>
           ctx.error(s"${unapplyResult.show} is not a valid result type of an unapply method of an extractor", tree.pos)
           Nil
         }
-     }
+      }
 
       recur(unapplyResult)
     }
@@ -595,13 +593,14 @@ trait Applications extends Compatibility{ self: Typer =>
       val dummyArg = untpd.TypedSplice(dummyTreeOfType(WildcardType))
       val unappProto = FunProtoType(dummyArg :: Nil, pt, this)
       tryEither {
-        implicit ctx => typedExpr(Trees.Select(qual, nme.unapply), unappProto)
+        implicit ctx => typedExpr(untpd.Select(qual, nme.unapply), unappProto)
       } {
-        s => tryEither {
-          implicit ctx => typedExpr(Trees.Select(qual, nme.unapplySeq), unappProto) // for backwards compatibility; will be dropped
-        } {
-          _ => errorTree(s.value, s"${qual.show} cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method")
-        }
+        s =>
+          tryEither {
+            implicit ctx => typedExpr(untpd.Select(qual, nme.unapplySeq), unappProto) // for backwards compatibility; will be dropped
+          } {
+            _ => errorTree(s.value, s"${qual.show} cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method")
+          }
       }
     }
     fn.tpe.widen match {
@@ -610,7 +609,7 @@ trait Applications extends Compatibility{ self: Typer =>
         ownType <:< pt // done for registering the constraints; error message would come later
         var argTypes = unapplyArgs(ownType)
         val bunchedArgs = argTypes match {
-          case argType :: Nil if argType.isRepeatedParam => Trees.SeqLiteral(args) :: Nil
+          case argType :: Nil if argType.isRepeatedParam => untpd.SeqLiteral(args) :: Nil
           case _ => args
         }
         if (argTypes.length != bunchedArgs.length) {
@@ -619,7 +618,7 @@ trait Applications extends Compatibility{ self: Typer =>
             List.fill(argTypes.length - args.length)(WildcardType)
         }
         val typedArgs = (bunchedArgs, argTypes).zipped map (typed(_, _))
-        Trees.UnApply(fn, typedArgs).withPos(tree.pos).withType(ownType)
+        untpd.UnApply(fn, typedArgs).withPos(tree.pos).withType(ownType)
       case et: ErrorType =>
         tree.withType(ErrorType)
     }
@@ -713,7 +712,7 @@ trait Applications extends Compatibility{ self: Typer =>
       best :: asGood(alts1)
   }
 
-  private val dummyTree = Trees.Literal(Constant(null))
+  private val dummyTree = untpd.Literal(Constant(null))
   def dummyTreeOfType(tp: Type): Tree = dummyTree withType tp
 
   /** Resolve overloaded alternative `alts`, given expected type `pt`. */
@@ -735,7 +734,7 @@ trait Applications extends Compatibility{ self: Typer =>
     def treeShape(tree: untpd.Tree): Tree = tree match {
       case NamedArg(name, arg) =>
         val argShape = treeShape(arg)
-        tree.withType(argShape.tpe).derivedNamedArg(name, argShape)
+        cpy.NamedArg(tree, name, argShape).withType(argShape.tpe)
       case _ =>
         dummyTreeOfType(typeShape(tree))
     }
@@ -783,7 +782,7 @@ trait Applications extends Compatibility{ self: Typer =>
         }
 
       case pt @ PolyProtoType(nargs, _) =>
-        alts filter ( alt => alt.widen match {
+        alts filter (alt => alt.widen match {
           case PolyType(pnames) if pnames.length == nargs => true
           case _ => false
         })

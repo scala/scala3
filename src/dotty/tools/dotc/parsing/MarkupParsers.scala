@@ -7,7 +7,6 @@ import mutable.{ Buffer, ArrayBuffer, ListBuffer }
 import scala.util.control.ControlThrowable
 import util.SourceFile
 import scala.xml.{ Text, TextBuffer }
-import scala.xml.parsing.MarkupParserCommon
 import scala.xml.Utility.{ isNameStart, isNameChar, isSpace }
 import scala.reflect.internal.Chars.{ SU, LF }
 import Parsers._

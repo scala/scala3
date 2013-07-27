@@ -16,7 +16,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected val PrintableFlags = (ModifierFlags | Label | Module).toCommonFlags
 
   /** The closest enclosing DefDef, TypeDef, or ClassDef node */
-  private var currentOwner: Tree[_ >: Untyped] = emptyTree()
+  private var currentOwner: untpd.Tree = untpd.EmptyTree
 
   def atOwner(owner: Tree[_ >: Untyped])(op: => Text): Text = {
     val saved = currentOwner
