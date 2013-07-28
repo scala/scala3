@@ -14,28 +14,23 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (sym.privateWithin.exists) sym.privateWithin.asType.name else tpnme.EMPTY,
     sym.annotations map (_.tree))
 
-  override def Ident(name: Name)(implicit ctx: Context): Ident = unsupported("Ident")
-  override def BackquotedIdent(name: Name)(implicit ctx: Context): BackquotedIdent = unsupported("BackquotedIdent")
-
   def Ident(tp: NamedType)(implicit ctx: Context): Ident =
-    super.Ident(tp.name).withType(tp.underlyingIfRepeated).checked
+    untpd.Ident(tp.name).withType(tp.underlyingIfRepeated).checked
 
-  override def Select(qualifier: Tree, name: Name)(implicit ctx: Context): Select =
+  def Select(qualifier: Tree, name: Name)(implicit ctx: Context): Select =
     Select(qualifier, NamedType(qualifier.tpe, name))
 
   def Select(pre: Tree, tp: NamedType)(implicit ctx: Context): Select =
-    super.Select(pre, tp.name).withType(tp).checked
+    untpd.Select(pre, tp.name).withType(tp).checked
 
-  override def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit ctx: Context) =
-    super.SelectWithSig(qualifier, name, sig)
+  def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit ctx: Context) =
+    untpd.SelectWithSig(qualifier, name, sig)
       .withType(TermRef.withSig(qualifier.tpe, name.asTermName, sig))
 
-  override def This(qual: TypeName)(implicit ctx: Context): This = unsupported("This")
-
   def This(cls: ClassSymbol)(implicit ctx: Context): This =
-    super.This(cls.name).withType(cls.thisType).checked
+    untpd.This(cls.name).withType(cls.thisType).checked
 
-  override def Super(qual: Tree, mix: TypeName)(implicit ctx: Context): Super = {
+  def Super(qual: Tree, mix: TypeName)(implicit ctx: Context): Super = {
     val owntype =
       if (mix.isEmpty) ctx.glb(qual.tpe.parents)
       else {
@@ -43,10 +38,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         check(mixParents.length == 1)
         mixParents.head
       }
-    super.Super(qual, mix).withType(SuperType(qual.tpe, owntype)).checked
+    untpd.Super(qual, mix).withType(SuperType(qual.tpe, owntype)).checked
   }
 
-  override def Apply(fn: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
+  def Apply(fn: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
     val owntype = fn.tpe.widen match {
       case fntpe @ MethodType(pnames, ptypes) =>
         check(sameLength(ptypes, args), s"${fn.show}: ${fntpe.show} to ${args.map(_.show).mkString(", ")}")
@@ -55,10 +50,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         check(false)
         ErrorType
     }
-    super.Apply(fn, args).withType(owntype).checked
+    untpd.Apply(fn, args).withType(owntype).checked
   }
 
-  override def TypeApply(fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
+  def TypeApply(fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
     val owntype = fn.tpe.widen match {
       case fntpe @ PolyType(pnames) =>
         check(sameLength(pnames, args))
@@ -67,32 +62,32 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         check(false)
         ErrorType
     }
-    super.TypeApply(fn, args).withType(owntype).checked
+    untpd.TypeApply(fn, args).withType(owntype).checked
   }
 
-  override def Literal(const: Constant)(implicit ctx: Context): Literal =
-    super.Literal(const).withType(const.tpe).checked
+  def Literal(const: Constant)(implicit ctx: Context): Literal =
+    untpd.Literal(const).withType(const.tpe).checked
 
-  override def New(tpt: Tree)(implicit ctx: Context): New =
-    super.New(tpt).withType(tpt.tpe).checked
+  def New(tpt: Tree)(implicit ctx: Context): New =
+    untpd.New(tpt).withType(tpt.tpe).checked
 
   def New(tp: Type)(implicit ctx: Context): New = New(TypeTree(tp))
 
-  override def Pair(left: Tree, right: Tree)(implicit ctx: Context): Pair =
-    super.Pair(left, right).withType(defn.PairType.appliedTo(left.tpe, right.tpe)).checked
+  def Pair(left: Tree, right: Tree)(implicit ctx: Context): Pair =
+    untpd.Pair(left, right).withType(defn.PairType.appliedTo(left.tpe, right.tpe)).checked
 
-  override def Typed(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed =
-    super.Typed(expr, tpt).withType(tpt.tpe).checked
+  def Typed(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed =
+    untpd.Typed(expr, tpt).withType(tpt.tpe).checked
 
-  override def NamedArg(name: Name, arg: Tree)(implicit ctx: Context) =
-    super.NamedArg(name, arg).withType(arg.tpe).checked
+  def NamedArg(name: Name, arg: Tree)(implicit ctx: Context) =
+    untpd.NamedArg(name, arg).withType(arg.tpe).checked
 
-  override def Assign(lhs: Tree, rhs: Tree)(implicit ctx: Context): Assign =
-    super.Assign(lhs, rhs).withType(defn.UnitType).checked
+  def Assign(lhs: Tree, rhs: Tree)(implicit ctx: Context): Assign =
+    untpd.Assign(lhs, rhs).withType(defn.UnitType).checked
 
-  override def Block(stats: List[Tree], expr: Tree)(implicit ctx: Context): Block = {
+  def Block(stats: List[Tree], expr: Tree)(implicit ctx: Context): Block = {
     lazy val locals = localSyms(stats).toSet
-    val blk = super.Block(stats, expr)
+    val blk = untpd.Block(stats, expr)
     def widen(tp: Type): Type = tp match {
       case tp: TermRef if locals contains tp.symbol =>
         widen(tp.info)
@@ -104,17 +99,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def maybeBlock(stats: List[Tree], expr: Tree)(implicit ctx: Context): Tree =
     if (stats.isEmpty) expr else Block(stats, expr)
 
-  override def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If =
-    super.If(cond, thenp, elsep).withType(thenp.tpe | elsep.tpe).checked
+  def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If =
+    untpd.If(cond, thenp, elsep).withType(thenp.tpe | elsep.tpe).checked
 
-  override def Closure(env: List[Tree], meth: RefTree)(implicit ctx: Context): Closure = {
+  def Closure(env: List[Tree], meth: RefTree)(implicit ctx: Context): Closure = {
     val ownType = meth.tpe.widen match {
       case mt @ MethodType(_, formals) =>
         assert(!mt.isDependent)
         val formals1 = formals mapConserve (_.underlyingIfRepeated)
         defn.FunctionType(formals1, mt.resultType)
     }
-    super.Closure(env, meth).withType(ownType).checked
+    untpd.Closure(env, meth).withType(ownType).checked
   }
 
   /** A function def
@@ -135,90 +130,82 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Closure(Nil, Ident(TermRef.withSym(NoPrefix, meth))))
   }
 
-  override def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
-    super.Match(selector, cases).withType(ctx.lub(cases map (_.body.tpe))).checked
+  def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
+    untpd.Match(selector, cases).withType(ctx.lub(cases map (_.body.tpe))).checked
 
-  override def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef =
-    super.CaseDef(pat, guard, body).withType(body.tpe).checked
+  def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef =
+    untpd.CaseDef(pat, guard, body).withType(body.tpe).checked
 
-  override def Return(expr: Tree, from: Tree)(implicit ctx: Context): Return =
-    super.Return(expr, from).withType(defn.NothingType).checked
+  def Return(expr: Tree, from: Tree)(implicit ctx: Context): Return =
+    untpd.Return(expr, from).withType(defn.NothingType).checked
 
-  override def Try(block: Tree, handler: Tree, finalizer: Tree)(implicit ctx: Context): Try =
-    super.Try(block, handler, finalizer).withType(block.tpe | handler.tpe).checked
+  def Try(block: Tree, handler: Tree, finalizer: Tree)(implicit ctx: Context): Try =
+    untpd.Try(block, handler, finalizer).withType(block.tpe | handler.tpe).checked
 
-  override def Throw(expr: Tree)(implicit ctx: Context): Throw =
-    super.Throw(expr).withType(defn.NothingType).checked
+  def Throw(expr: Tree)(implicit ctx: Context): Throw =
+    untpd.Throw(expr).withType(defn.NothingType).checked
 
-  override def SeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
+  def SeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
     SeqLiteral(defn.SeqClass.typeConstructor.appliedTo(
         ctx.lub(elems map (_.tpe)) :: Nil), elems)
 
   // TODO: Split into Java/Scala eq literals
   def SeqLiteral(tpe: Type, elems: List[Tree])(implicit ctx: Context): SeqLiteral =
-    super.SeqLiteral(elems).withType(tpe).checked
+    untpd.SeqLiteral(elems).withType(tpe).checked
 
-  override def TypeTree(): TypeTree = unsupported("TypeTree()")
-
-  override def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
+  def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
     TypeTree(original.tpe, original)
 
   def TypeTree(tp: Type, original: Tree = EmptyTree)(implicit ctx: Context): TypeTree =
-    super.TypeTree(original).withType(tp).checked
+    untpd.TypeTree(original).withType(tp).checked
 
-  override def SingletonTypeTree(ref: Tree)(implicit ctx: Context): SingletonTypeTree =
-    super.SingletonTypeTree(ref).withType(ref.tpe).checked
+  def SingletonTypeTree(ref: Tree)(implicit ctx: Context): SingletonTypeTree =
+    untpd.SingletonTypeTree(ref).withType(ref.tpe).checked
 
-  override def SelectFromTypeTree(qualifier: Tree, name: Name)(implicit ctx: Context): SelectFromTypeTree =
+  def SelectFromTypeTree(qualifier: Tree, name: Name)(implicit ctx: Context): SelectFromTypeTree =
     SelectFromTypeTree(qualifier, NamedType(qualifier.tpe, name))
 
   def SelectFromTypeTree(qualifier: Tree, tp: NamedType)(implicit ctx: Context): SelectFromTypeTree =
-    super.SelectFromTypeTree(qualifier, tp.name).withType(tp).checked
+    untpd.SelectFromTypeTree(qualifier, tp.name).withType(tp).checked
 
-  override def AndTypeTree(left: Tree, right: Tree)(implicit ctx: Context): AndTypeTree =
-    super.AndTypeTree(left, right).withType(left.tpe & right.tpe).checked
+  def AndTypeTree(left: Tree, right: Tree)(implicit ctx: Context): AndTypeTree =
+    untpd.AndTypeTree(left, right).withType(left.tpe & right.tpe).checked
 
-  override def OrTypeTree(left: Tree, right: Tree)(implicit ctx: Context): OrTypeTree =
-    super.OrTypeTree(left, right).withType(left.tpe | right.tpe).checked
+  def OrTypeTree(left: Tree, right: Tree)(implicit ctx: Context): OrTypeTree =
+    untpd.OrTypeTree(left, right).withType(left.tpe | right.tpe).checked
 
-  override def RefinedTypeTree(tpt: Tree, refinements: List[Tree])(implicit ctx: Context): RefinedTypeTree = {
+  def RefinedTypeTree(tpt: Tree, refinements: List[Tree])(implicit ctx: Context): RefinedTypeTree = {
     def refineType(tp: Type, refinement: Symbol): Type =
       RefinedType(tp, refinement.name, refinement.info)
-    super.RefinedTypeTree(tpt, refinements)
+    untpd.RefinedTypeTree(tpt, refinements)
       .withType((tpt.tpe /: (refinements map (_.symbol)))(refineType)).checked
   }
 
   def refineType(tp: Type, refinement: Symbol)(implicit ctx: Context): Type =
     RefinedType(tp, refinement.name, refinement.info)
 
-  override def AppliedTypeTree(tpt: Tree, args: List[Tree])(implicit ctx: Context): AppliedTypeTree =
-    super.AppliedTypeTree(tpt, args).withType(tpt.tpe.appliedTo(args map (_.tpe))).checked
+  def AppliedTypeTree(tpt: Tree, args: List[Tree])(implicit ctx: Context): AppliedTypeTree =
+    untpd.AppliedTypeTree(tpt, args).withType(tpt.tpe.appliedTo(args map (_.tpe))).checked
 
-  override def TypeBoundsTree(lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree =
-    super.TypeBoundsTree(lo, hi).withType(TypeBounds(lo.tpe, hi.tpe)).checked
-
-  override def Bind(name: Name, body: Tree)(implicit ctx: Context): Bind = unsupported("Bind")
+  def TypeBoundsTree(lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree =
+    untpd.TypeBoundsTree(lo, hi).withType(TypeBounds(lo.tpe, hi.tpe)).checked
 
   def Bind(sym: TermSymbol, body: Tree)(implicit ctx: Context): Bind =
-    super.Bind(sym.name, body).withType(refType(sym)).checked
+    untpd.Bind(sym.name, body).withType(refType(sym)).checked
 
-  override def Alternative(trees: List[Tree])(implicit ctx: Context): Alternative =
-    super.Alternative(trees).withType(ctx.lub(trees map (_.tpe))).checked
+  def Alternative(trees: List[Tree])(implicit ctx: Context): Alternative =
+    untpd.Alternative(trees).withType(ctx.lub(trees map (_.tpe))).checked
 
-  override def UnApply(fun: Tree, args: List[Tree])(implicit ctx: Context): UnApply = {
+  def UnApply(fun: Tree, args: List[Tree])(implicit ctx: Context): UnApply = {
     val owntype = fun.tpe.widen match {
       case MethodType(_, paramType :: Nil) => paramType
       case _ => check(false); ErrorType
     }
-    super.UnApply(fun, args).withType(owntype).checked
+    untpd.UnApply(fun, args).withType(owntype).checked
   }
 
-  override def ValDef(mods: Modifiers, name: TermName, tpt: Tree, rhs: Tree)(implicit ctx: Context): ValDef = unsupported("ValDef")
-
   def ValDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): ValDef =
-    super.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs).withType(refType(sym)).checked
-
-  override def DefDef(mods: Modifiers, name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: Tree)(implicit ctx: Context): DefDef = unsupported("DefDef")
+    untpd.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs).withType(refType(sym)).checked
 
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     DefDef(sym, Function.const(rhs) _)
@@ -243,16 +230,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
     val (vparamss, rtp) = valueParamss(mtp)
     val argss = vparamss map (_ map (vparam => Ident(vparam.symRef)))
-    super.DefDef(
+    untpd.DefDef(
       Modifiers(sym), sym.name, tparams map TypeDef,
       vparamss map (_ map (ValDef(_))), TypeTree(rtp), rhsFn(argss))
       .withType(refType(sym)).checked
   }
 
-  override def TypeDef(mods: Modifiers, name: TypeName, rhs: Tree)(implicit ctx: Context): TypeDef = unsupported("TypeDef")
-
   def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
-    super.TypeDef(Modifiers(sym), sym.name, TypeTree(sym.info))
+    untpd.TypeDef(Modifiers(sym), sym.name, TypeTree(sym.info))
       .withType(refType(sym)).checked
 
   def ClassDef(cls: ClassSymbol, typeParams: List[TypeSymbol], constr: DefDef, body: List[Tree])(implicit ctx: Context): TypeDef = {
@@ -271,22 +256,22 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val findLocalDummy = new FindLocalDummyAccumulator(cls)
     val localDummy = ((NoSymbol: Symbol) /: body)(findLocalDummy)
       .orElse(ctx.newLocalDummy(cls))
-    val impl = super.Template(constr, parents, selfType, rest)
+    val impl = untpd.Template(constr, parents, selfType, rest)
       .withType(refType(localDummy)).checked
-    super.TypeDef(Modifiers(cls), cls.name, impl) // !!! todo: revise
+    untpd.TypeDef(Modifiers(cls), cls.name, impl) // !!! todo: revise
       .withType(refType(cls)).checked
   }
 
-  override def Import(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
-    super.Import(expr, selectors).withType(refType(ctx.newImportSymbol(SharedTree(expr)))).checked
+  def Import(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
+    untpd.Import(expr, selectors).withType(refType(ctx.newImportSymbol(SharedTree(expr)))).checked
 
-  override def PackageDef(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef =
-    super.PackageDef(pid, stats).withType(refType(pid.symbol)).checked
+  def PackageDef(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef =
+    untpd.PackageDef(pid, stats).withType(refType(pid.symbol)).checked
 
-  override def Annotated(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated =
-    super.Annotated(annot, arg).withType(AnnotatedType(Annotation(annot), arg.tpe)).checked
+  def Annotated(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated =
+    untpd.Annotated(annot, arg).withType(AnnotatedType(Annotation(annot), arg.tpe)).checked
 
-  override def SharedTree(tree: Tree)(implicit ctx: Context): SharedTree =
+  def SharedTree(tree: Tree)(implicit ctx: Context): SharedTree =
     Trees.SharedTree(tree).withType(tree.tpe)
 
 

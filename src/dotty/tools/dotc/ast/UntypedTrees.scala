@@ -4,7 +4,7 @@ package ast
 
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
-import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
+import Denotations._, SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
 import language.higherKinds
 import collection.mutable.ListBuffer
@@ -45,18 +45,76 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
     override def withName(name: Name)(implicit ctx: Context) = cpy.PolyTypeDef(this, mods, name.toTypeName, tparams, rhs)
   }
 
-// ------ Additional creation methods for untyped only -----------------
+  // ------ Creation methods for untyped only -----------------
 
-  def Literal(const: Constant) = new Literal(const)
+  def Ident(name: Name): Ident = new Ident(name)
+  def BackquotedIdent(name: Name): BackquotedIdent = new BackquotedIdent(name)
+  def Select(qualifier: Tree, name: Name): Select = new Select(qualifier, name)
+  def SelectWithSig(qualifier: Tree, name: Name, sig: Signature): Select = new SelectWithSig(qualifier, name, sig)
+  def This(qual: TypeName): This = new This(qual)
+  def Super(qual: Tree, mix: TypeName): Super = new Super(qual, mix)
+  def Apply(fun: Tree, args: List[Tree]): Apply = new Apply(fun, args)
+  def TypeApply(fun: Tree, args: List[Tree]): TypeApply = new TypeApply(fun, args)
+  def Literal(const: Constant): Literal = new Literal(const)
+  def New(tpt: Tree): New = new New(tpt)
+  def Pair(left: Tree, right: Tree): Pair = new Pair(left, right)
+  def Typed(expr: Tree, tpt: Tree): Typed = new Typed(expr, tpt)
+  def NamedArg(name: Name, arg: Tree): NamedArg = new NamedArg(name, arg)
+  def Assign(lhs: Tree, rhs: Tree): Assign = new Assign(lhs, rhs)
+  def Block(stats: List[Tree], expr: Tree): Block = new Block(stats, expr)
+  def If(cond: Tree, thenp: Tree, elsep: Tree): If = new If(cond, thenp, elsep)
+  def Closure(env: List[Tree], meth: RefTree): Closure = new Closure(env, meth)
+  def Match(selector: Tree, cases: List[CaseDef]): Match = new Match(selector, cases)
+  def CaseDef(pat: Tree, guard: Tree, body: Tree): CaseDef = new CaseDef(pat, guard, body)
+  def Return(expr: Tree, from: Tree): Return = new Return(expr, from)
+  def Try(expr: Tree, handler: Tree, finalizer: Tree): Try = new Try(expr, handler, finalizer)
+  def Throw(expr: Tree): Throw = new Throw(expr)
+  def SeqLiteral(elems: List[Tree]): SeqLiteral = new SeqLiteral(elems)
+  def TypeTree(original: Tree): TypeTree = new TypeTree(original)
+  def TypeTree() = new TypeTree(EmptyTree)
+  def SingletonTypeTree(ref: Tree): SingletonTypeTree = new SingletonTypeTree(ref)
+  def SelectFromTypeTree(qualifier: Tree, name: Name): SelectFromTypeTree = new SelectFromTypeTree(qualifier, name)
+  def AndTypeTree(left: Tree, right: Tree): AndTypeTree = new AndTypeTree(left, right)
+  def OrTypeTree(left: Tree, right: Tree): OrTypeTree = new OrTypeTree(left, right)
+  def RefinedTypeTree(tpt: Tree, refinements: List[Tree]): RefinedTypeTree = new RefinedTypeTree(tpt, refinements)
+  def AppliedTypeTree(tpt: Tree, args: List[Tree]): AppliedTypeTree = new AppliedTypeTree(tpt, args)
+  def TypeBoundsTree(lo: Tree, hi: Tree): TypeBoundsTree = new TypeBoundsTree(lo, hi)
+  def Bind(name: Name, body: Tree): Bind = new Bind(name, body)
+  def Alternative(trees: List[Tree]): Alternative = new Alternative(trees)
+  def UnApply(fun: Tree, args: List[Tree]): UnApply = new UnApply(fun, args)
+  def ValDef(mods: Modifiers, name: TermName, tpt: Tree, rhs: Tree): ValDef = new ValDef(mods, name, tpt, rhs)
+  def DefDef(mods: Modifiers, name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: Tree): DefDef = new DefDef(mods, name, tparams, vparamss, tpt, rhs)
+  def TypeDef(mods: Modifiers, name: TypeName, rhs: Tree): TypeDef = new TypeDef(mods, name, rhs)
+  def Template(constr: DefDef, parents: List[Tree], self: ValDef, body: List[Tree]): Template = new Template(constr, parents, self, body)
+  def Import(expr: Tree, selectors: List[untpd.Tree]): Import = new Import(expr, selectors)
+  def PackageDef(pid: RefTree, stats: List[Tree]): PackageDef = new PackageDef(pid, stats)
+  def Annotated(annot: Tree, arg: Tree): Annotated = new Annotated(annot, arg)
+  def SharedTree(shared: Tree): SharedTree = new SharedTree(shared)
 
-  def TypeTree(tpe: Type)(implicit ctx: Context): TypedSplice = TypedSplice(TypeTree().withType(tpe))
+  // ------ Additional creation methods for untyped only -----------------
 
-  def TypeDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], rhs: Tree)(implicit ctx: Context): TypeDef =
+  // def TypeTree(tpe: Type): TypeTree = TypeTree().withType(tpe) todo: move to untpd/tpd
+
+  /** new tpt(args1)...(args_n)
+   */
+  def New(tpt: Tree, argss: List[List[Tree]]): Tree =
+    ((Select(New(tpt), nme.CONSTRUCTOR): Tree) /: argss)(Apply(_, _))
+
+  def Block(stat: Tree, expr: Tree): Block =
+    Block(stat :: Nil, expr)
+
+  def Apply(fn: Tree, arg: Tree): Apply =
+    Apply(fn, arg :: Nil)
+
+  def AppliedTypeTree(tpt: Tree, arg: Tree): AppliedTypeTree =
+    AppliedTypeTree(tpt, arg :: Nil)
+
+  def TypeTree(tpe: Type): TypedSplice = TypedSplice(TypeTree().withType(tpe))
+
+  def TypeDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], rhs: Tree): TypeDef =
     if (tparams.isEmpty) TypeDef(mods, name, rhs) else new PolyTypeDef(mods, name, tparams, rhs)
 
-// ------ Untyped tree values and creation methods ---------------------
-
-  def unitLiteral(implicit ctx: Context) = Literal(Constant())
+  def unitLiteral = Literal(Constant())
 
   def ref(tp: NamedType)(implicit ctx: Context): Tree =
     TypedSplice(tpd.ref(tp))
