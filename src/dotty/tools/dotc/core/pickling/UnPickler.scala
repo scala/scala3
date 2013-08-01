@@ -596,7 +596,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         else ThisType(cls)
       case SINGLEtpe =>
         val pre = readTypeRef()
-        val sym = readDisambiguatedSymbolRef(_.isParameterless)
+        val sym = readDisambiguatedSymbolRef(_.info.isParameterless)
         if (isLocal(sym) || (pre == NoPrefix)) TermRef.withSym(pre, sym.asTerm)
         else TermRef.withSig(pre, sym.name.asTermName, NotAMethod)
       case SUPERtpe =>

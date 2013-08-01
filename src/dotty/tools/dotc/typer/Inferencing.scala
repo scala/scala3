@@ -14,11 +14,39 @@ object Inferencing {
 
   import tpd._
 
+  /** Is type fully defined, meaning the type does not contain wildcard types
+   *  or uninstantiated type variables. As a side effect, this will minimize
+   *  any uninstantiated type variables, provided that
+   *   - the instance type for the variable is not Nothing or Null
+   *   - the overall result of `isFullYDefined` is `true`.
+   *  Variables that are succesfully minimized do not count as uninstantiated.
+   */
+  def isFullyDefined(tp: Type)(implicit ctx: Context): Boolean = {
+    val nestedCtx = ctx.fresh.withNewTyperState
+    val result = new IsFullyDefinedAccumulator()(nestedCtx).traverse(tp)
+    if (result) nestedCtx.typerState.commit()
+    result
+  }
+
+  private class IsFullyDefinedAccumulator(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+    def traverse(tp: Type): Boolean = apply(true, tp)
+    def apply(x: Boolean, tp: Type) = !x || isOK(tp) && foldOver(x, tp)
+    def isOK(tp: Type): Boolean = tp match {
+      case _: WildcardType =>
+        false
+      case tvar: TypeVar if !tvar.isInstantiated =>
+        val inst = tvar.instantiate(fromBelow = true)
+        inst != defn.NothingType && inst != defn.NullType
+      case _ =>
+        true
+    }
+  }
+
   def checkBounds(args: List[Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = {
 
   }
 
-  def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = {
+  def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Type = {
     if (!tp.isStable)
       ctx.error(s"Prefix ${tp.show} is not stable", pos)
     tp
@@ -57,38 +85,27 @@ object Inferencing {
       tracked
     }
 
-    /** Interpolate undetermined variables.
-     *  If a variable appears covariantly in type `tp`, approximate it by
-     *  its lower bound. Otherwise, if it appears contravariantly in type `tp`,
-     *  approximate it by its upper bound. Otherwise, if `always` is true,
-     *  approximate it also by its lower bound.
-     *  Instantiated variables are removed from `undetVars`.
+    /** Interpolate those undetermined type variables whose position
+     *  is included in the position `pos` of the current tree.
+     *  If such a variable appears covariantly in type `tp` or does not appear at all,
+     *  approximate it by its lower bound. Otherwise, if it appears contravariantly
+     *  in type `tp` approximate it by its upper bound.
      */
-    def interpolateUndetVars(upTo: List[TypeVar], tp: Type, always: Boolean = false): Unit = {
-      def recur(undets: List[TypeVar]): List[TypeVar] =
-        if (undets eq upTo) undets
-        else (undets: @unchecked) match {
-          case tvar :: rest =>
-            def instantiate(fromBelow: Boolean) = {
-              tvar.instantiateWith(ctx.typeComparer.approximate(tvar.origin, fromBelow))
-              recur(rest)
-            }
-            val v = tp varianceOf tvar
-            if (v is Covariant) instantiate(fromBelow = true)
-            else if (v is Contravariant) instantiate(fromBelow = false)
-            else if (always) instantiate(fromBelow = true)
-            else tvar :: recur(rest)
+    def interpolateUndetVars(tp: Type, pos: Position): Unit =
+      for (tvar <- ctx.typerState.undetVars)
+        if (pos contains tvar.pos) {
+          val v = tp varianceOf tvar
+          if (v is Covariant) tvar.instantiate(fromBelow = true)
+          else if (v is Contravariant) tvar.instantiate(fromBelow = false)
         }
-      state.undetVars = recur(state.undetVars)
-    }
 
-    def newTypeVars(pt: PolyType): List[TypeVar] = {
-      val tvars =
-        for (n <-  (0 until pt.paramNames.length).toList)
-        yield TypeVar(PolyParam(pt, n))
-      state.undetVars = tvars ++ state.undetVars
-      tvars
-    }
+    /** Create new type variables for the parameters of a poly type.
+     *  @param pos   The position of the new type variables (relevant for
+     *  interpolateUndetVars
+     */
+    def newTypeVars(pt: PolyType, pos: Position): List[TypeVar] =
+      for (n <-  (0 until pt.paramNames.length).toList)
+      yield new TypeVar(PolyParam(pt, n), ctx.typerState, pos)
 
     def isSubTypes(actuals: List[Type], formals: List[Type])(implicit ctx: Context): Boolean = formals match {
       case formal :: formals1 =>

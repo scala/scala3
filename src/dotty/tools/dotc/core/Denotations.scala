@@ -659,7 +659,7 @@ object Denotations {
       def recur(path: Name, len: Int): Denotation = {
         val point = path.lastIndexOf('.', len - 1)
         val owner =
-          if (point > 0) recur(path.toTermName, point).disambiguate(_.isParameterless)
+          if (point > 0) recur(path.toTermName, point).disambiguate(_.info.isParameterless)
           else if (path.isTermName) defn.RootClass.denot
           else defn.EmptyPackageClass.denot
         if (!owner.exists) owner

@@ -150,7 +150,8 @@ object Types {
     }
 
     /** Does this type occur as a part of type `that`? */
-    final def occursIn(that: Type): Boolean = that.existsPart(this == _)
+    final def occursIn(that: Type)(implicit ctx: Context): Boolean =
+      that.existsPart(this == _)
 
     def isRepeatedParam(implicit ctx: Context): Boolean =
       defn.RepeatedParamAliases contains typeSymbol
@@ -159,16 +160,21 @@ object Types {
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
      */
-    final def existsPart(p: Type => Boolean): Boolean =
-      new ExistsAccumulator(p)(false, this)
+    final def existsPart(p: Type => Boolean)(implicit ctx: Context): Boolean =
+      new ExistsAccumulator(p).apply(false, this)
 
     /** Returns true if all parts of this type satisfy predicate `p`.
      */
-    final def forallParts(p: Type => Boolean): Boolean = !existsPart(!p(_))
+    final def forallParts(p: Type => Boolean)(implicit ctx: Context): Boolean = !existsPart(!p(_))
 
     /** The parts of this type which are type or term refs */
     final def namedParts(implicit ctx: Context): Set[NamedType] =
-      new PartsAccumulator().apply(Set(), this)
+      namedPartsWith(Function.const(true))
+
+    final def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): Set[NamedType] =
+      new NamedPartsAccumulator(p).apply(Set(), this)
+
+    final def foreach(f: Type => Unit): Unit = ???
 
     /** Map function over elements of an AndType, rebuilding with & */
     def mapAnd(f: Type => Type)(implicit ctx: Context): Type = thisInstance match {
@@ -498,7 +504,7 @@ object Types {
     /** Map a TypeVar to either its instance if it is instantiated, or its origin,
      *  if not. Identity on all other types.
      */
-    def thisInstance: Type = this
+    def thisInstance(implicit ctx: Context): Type = this
 
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences,
@@ -535,7 +541,7 @@ object Types {
     /** If this is a refinement type, the unrefined parent,
      *  else the type itself.
      */
-    final def unrefine: Type = thisInstance match {
+    final def unrefine(implicit ctx: Context): Type = thisInstance match {
       case tp @ RefinedType(tycon, _) => tycon.unrefine
       case tp => tp
     }
@@ -594,6 +600,15 @@ object Types {
       case pt: PolyType => pt.resultType.paramTypess
       case _ => Nil
     }
+
+    /** Is this either not a method at all, or a parameterless method? */
+    final def isParameterless: Boolean = this match {
+      case mt: MethodType => false
+      case pt: PolyType => pt.resultType.isParameterless
+      case _ => true
+    }
+
+
 /* Not sure whether we'll need this
     final def firstParamTypes: List[Type] = this match {
       case mt: MethodType => mt.paramTypes
@@ -908,6 +923,12 @@ object Types {
 
     def toText(printer: Printer): Text = printer.toText(this)
 
+    /** `tp` is either a type variable or poly param. Returns
+     *  Covariant      if all occurrences of `tp` in this type are covariant
+     *  Contravariant  if all occurrences of `tp` in this type are contravariant
+     *  Covariant | Contravariant  if there are no occurrences of `tp` in this type
+     *  EmptyFlags     if `tp` occurs noon-variantly in this type
+     */
     def varianceOf(tp: Type): FlagSet = ???
 
 // ----- hashing ------------------------------------------------------
@@ -1403,9 +1424,18 @@ object Types {
     def isJava = false
     def isImplicit = false
 
-    lazy val isDependent = resultType existsPart {
-      case MethodParam(mt, _) => mt eq this
-      case _ => false
+    private[this] var myIsDependent: Boolean = _
+    private[this] var isDepKnown = false
+
+    def isDependent(implicit ctx: Context) = {
+      if (!isDepKnown) {
+        myIsDependent = resultType existsPart {
+          case MethodParam(mt, _) => mt eq this
+          case _ => false
+        }
+        isDepKnown = true
+      }
+      myIsDependent
     }
 
     private[this] var _signature: Signature = _
@@ -1623,14 +1653,76 @@ object Types {
     override def toString = s"RefinedThis(${binder.hashCode})"
   }
 
-  final case class TypeVar(origin: PolyParam) extends UncachedProxyType with ValueType {
-    private var inst: Type = NoType
-    def isInstantiated = inst ne NoType
-    def instantiateWith(tp: Type) = inst = tp
-    override def thisInstance = if (isInstantiated) inst else origin
+  /** A type variable is essentially a switch that models some part of a substitution.
+   *  It is first linked to `origin`, a poly param that's in the current constraint set.
+   *  It can then be (once) instantiated to some other type. The instantiation is
+   *  recorded in the type variable itself, or else, if the current type state
+   *  is different from the variable's creation state (meaning unrolls are possible)
+   *  in the current typer state. Every type variable is referred to by exactly
+   *  one inferred type parameter in a TypeApply tree.
+   *
+   *  @param  origin        The parameter that's tracked by the type variable.
+   *  @param  creatorState  The typer state in which the variable was created.
+   *  @param  pos           The position of the TypeApply tree that introduces
+   *                        the type variable.
+   */
+  final class TypeVar(val origin: PolyParam, creatorState: TyperState, val pos: Position) extends UncachedProxyType with ValueType {
+
+    /** The permanent instance type of the the variable, or NoType is none is given yet */
+    private[core] var inst: Type = NoType
+
+    /** The state owning the variable. This is at first creationState, but it can
+     *  be changed to an enclosing state on a commit
+     */
+    private[core] var owningState = creatorState
+
+    assert(!(creatorState.undetVars contains this))
+    creatorState.undetVars += this
+
+    /** The instance type of this variable, or NoType if the variable is currently
+     *  uninstantiated
+     */
+    def instanceOpt(implicit ctx: Context): Type =
+      if (inst.exists) inst
+      else {
+        val i = ctx.typerState.instType(this)
+        if (i == null) NoType else i
+      }
+
+    /** Is the variable already instantiated? */
+    def isInstantiated(implicit ctx: Context) = instanceOpt.exists
+
+    /** Instantiate variable with given type */
+    def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
+      assert(owningState.undetVars contains this)
+      owningState.undetVars -= this
+      if (ctx.typerState eq creatorState) inst = tp
+      else ctx.typerState.instType = ctx.typerState.instType.updated(this, tp)
+      tp
+    }
+
+    /** Instantiate variable from the constraints over its `origin`.
+     *  If `fromBelow` is true, the variable is instantiated to the lub
+     *  of its lower bounds in the current constraint; otherwie it is
+     *  instantiated to the glb of its upper bounds.
+     */
+    def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type =
+      instantiateWith(ctx.typeComparer.approximate(origin, fromBelow))
+
+    /** If the variable is instantiated, its instance, otherwise its origin */
+    override def thisInstance(implicit ctx: Context) = {
+      val inst = instanceOpt
+      if (inst.exists) inst else origin
+    }
+
+    /** Same as `thisInstance` */
     override def underlying(implicit ctx: Context): Type = thisInstance
+
+    override def hashCode: Int = System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
-    override def toString = thisInstance.toString
+
+    override def toString =
+      if (inst.exists) inst.toString else s"TypeVar($origin)"
   }
 
   // ------ ClassInfo, Type Bounds ------------------------------------------------------------
@@ -1871,12 +1963,12 @@ object Types {
       case _ =>
         false
     }
-    def unapply(tp: Type)(implicit ctx: Context): Option[(SingleDenotation, List[Type], Type)] =
+    def unapply(tp: Type)(implicit ctx: Context): Option[SingleDenotation] =
       if (isInstantiatable(tp)) {
         val absMems = tp.abstractTermMembers
         if (absMems.size == 1)
           absMems.head.info match {
-            case mt: MethodType if !mt.isDependent => Some((absMems.head, mt.paramTypes, mt.resultType))
+            case mt: MethodType if !mt.isDependent => Some(absMems.head)
             case _=> None
           }
         else None
@@ -1927,7 +2019,7 @@ object Types {
       case tp @ AnnotatedType(annot, underlying) =>
         tp.derivedAnnotatedType(mapOver(annot), this(underlying))
 
-      case tp @ TypeVar(_) =>
+      case tp: TypeVar =>
         apply(tp.thisInstance)
 
       case tp @ WildcardType =>
@@ -1980,7 +2072,7 @@ object Types {
 
   // ----- TypeAccumulators ----------------------------------------------------
 
-  abstract class TypeAccumulator[T] extends ((T, Type) => T) {
+  abstract class TypeAccumulator[T](implicit ctx: Context) extends ((T, Type) => T) {
     def apply(x: T, tp: Type): T
 
     protected def apply(x: T, annot: Annotation): T = x // don't go into annotations
@@ -2024,13 +2116,13 @@ object Types {
     }
   }
 
-  class ExistsAccumulator(p: Type => Boolean) extends TypeAccumulator[Boolean] {
+  class ExistsAccumulator(p: Type => Boolean)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     def apply(x: Boolean, tp: Type) = x || p(tp) || foldOver(x, tp)
   }
 
-  class PartsAccumulator(implicit ctx: Context) extends TypeAccumulator[Set[NamedType]] {
+  class NamedPartsAccumulator(p: NamedType => Boolean)(implicit ctx: Context) extends TypeAccumulator[Set[NamedType]] {
     def apply(x: Set[NamedType], tp: Type): Set[NamedType] = tp match {
-      case tp: NamedType =>
+      case tp: NamedType if (p(tp)) =>
         foldOver(x + tp, tp)
       case tp: ThisType =>
         apply(x, tp.underlying)

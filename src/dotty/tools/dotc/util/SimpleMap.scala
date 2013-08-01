@@ -6,6 +6,7 @@ abstract class SimpleMap[-K, +V >: Null] {
   def updated[V1 >: V](k: K, v: V1): SimpleMap[K, V1]
   def contains(k: K): Boolean = apply(k) != null
   def mapValues[V1 >: V](f: V1 => V1): SimpleMap[K, V1]
+  def foreachKey(f: Any => Unit): Unit
 }
 
 object SimpleMap {
@@ -15,6 +16,7 @@ object SimpleMap {
     def remove(k: Any) = this
     def updated[V1 >: Null](k: Any, v: V1) = new Map1(k, v)
     def mapValues[V1 >: Null](f: V1 => V1) = this
+    def foreachKey(f: Any => Unit) = ()
   }
 
   class Map1[-K, +V >: Null] (k1: K, v1: V) extends SimpleMap[K, V] {
@@ -29,6 +31,7 @@ object SimpleMap {
       else new Map2(k1, v1, k, v)
     def mapValues[V1 >: V](f: V1 => V1) =
       new Map1(k1, f(v1))
+    def foreachKey(f: Any => Unit) = f(k1)
   }
 
   class Map2[-K, +V >: Null] (k1: K, v1: V, k2: K, v2: V) extends SimpleMap[K, V] {
@@ -46,6 +49,7 @@ object SimpleMap {
       else new Map3(k1, v1, k2, v2, k, v)
     def mapValues[V1 >: V](f: V1 => V1) =
       new Map2(k1, f(v1), k2, f(v2))
+    def foreachKey(f: Any => Unit) = { f(k1); f(k2) }
   }
 
   class Map3[-K, +V >: Null] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V) extends SimpleMap[K, V] {
@@ -66,6 +70,7 @@ object SimpleMap {
       else new Map4(k1, v1, k2, v2, k3, v3, k, v)
     def mapValues[V1 >: V](f: V1 => V1) =
       new Map3(k1, f(v1), k2, f(v2), k3, f(v3))
+    def foreachKey(f: Any => Unit) = { f(k1); f(k2); f(k3) }
   }
 
   class Map4[-K, +V >: Null] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V, k4: K, v4: V) extends SimpleMap[K, V] {
@@ -89,6 +94,7 @@ object SimpleMap {
       else new Map5(k1, v1, k2, v2, k3, v3, k4, v4, k, v)
     def mapValues[V1 >: V](f: V1 => V1) =
       new Map4(k1, f(v1), k2, f(v2), k3, f(v3), k4, f(v4))
+    def foreachKey(f: Any => Unit) = { f(k1); f(k2); f(k3); f(k4) }
   }
 
   class Map5[-K, +V >: Null] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V, k4: K, v4: V, k5: K, v5: V) extends SimpleMap[K, V] {
@@ -115,6 +121,7 @@ object SimpleMap {
       else new MapMore(Map(k1 -> v1, k2 -> v2, k3 -> v3, k4 -> v4, k5 -> v5, k -> v))
     def mapValues[V1 >: V](f: V1 => V1) =
       new Map5(k1, f(v1), k2, f(v2), k3, f(v3), k4, f(v4), k5, f(v5))
+    def foreachKey(f: Any => Unit) = { f(k1); f(k2); f(k3); f(k4); f(k5) }
   }
 
   class MapMore[-K, +V >: Null] (m: Map[K, V]) extends SimpleMap[K, V] {
@@ -135,5 +142,6 @@ object SimpleMap {
     override def contains(k: K) = m contains k
     def mapValues[V1 >: V](f: V1 => V1) =
       new MapMore(m mapValues f)
+    def foreachKey(f: Any => Unit) = { m.keysIterator foreach f }
   }
 }

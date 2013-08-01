@@ -85,15 +85,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Assign(lhs: Tree, rhs: Tree)(implicit ctx: Context): Assign =
     untpd.Assign(lhs, rhs).withType(defn.UnitType).checked
 
-  def Block(stats: List[Tree], expr: Tree)(implicit ctx: Context): Block = {
+  def Block(stats: List[Tree], expr: Tree)(implicit ctx: Context): Block =
+    untpd.Block(stats, expr).withType(blockType(stats, expr.tpe)).checked
+
+  def blockType(stats: List[Tree], exprType: Type)(implicit ctx: Context): Type = {
     lazy val locals = localSyms(stats).toSet
-    val blk = untpd.Block(stats, expr)
     def widen(tp: Type): Type = tp match {
       case tp: TermRef if locals contains tp.symbol =>
         widen(tp.info)
       case _ => tp
     }
-    blk.withType(widen(expr.tpe))
+    widen(exprType)
   }
 
   def maybeBlock(stats: List[Tree], expr: Tree)(implicit ctx: Context): Tree =
@@ -102,14 +104,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If =
     untpd.If(cond, thenp, elsep).withType(thenp.tpe | elsep.tpe).checked
 
-  def Closure(env: List[Tree], meth: RefTree)(implicit ctx: Context): Closure = {
-    val ownType = meth.tpe.widen match {
-      case mt @ MethodType(_, formals) =>
-        assert(!mt.isDependent)
-        val formals1 = formals mapConserve (_.underlyingIfRepeated)
-        defn.FunctionType(formals1, mt.resultType)
-    }
-    untpd.Closure(env, meth).withType(ownType).checked
+  def Closure(env: List[Tree], meth: RefTree)(implicit ctx: Context): Closure =
+    untpd.Closure(env, meth).withType(closureType(meth.tpe.widen)).checked
+
+  def closureType(tp: Type)(implicit ctx: Context) = tp match {
+    case mt @ MethodType(_, formals) =>
+      assert(!mt.isDependent)
+      val formals1 = formals mapConserve (_.underlyingIfRepeated)
+      defn.FunctionType(formals1, mt.resultType)
   }
 
   /** A function def

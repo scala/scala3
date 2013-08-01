@@ -287,12 +287,6 @@ object SymDenotations {
     /** Is this a user defined "def" method? Excluded are accessors and stable values */
     final def isSourceMethod = this is (Method, butNot = Accessor)
 
-    /** Is this either not a method at all, or a parameterless method? */
-    final def isParameterless(implicit ctx: Context) = info match {
-      case _: MethodType | _: PolyType => false
-      case _ => true
-    }
-
     /** Is this a setter? */
     final def isGetter = (this is Accessor) && !originalName.isSetterName
 

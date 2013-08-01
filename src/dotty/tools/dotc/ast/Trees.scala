@@ -436,7 +436,7 @@ object Trees {
   }
 
   /** A closure with an environment and a reference to a method */
-  case class Closure[-T >: Untyped] private[ast] (env: List[Tree[T]], meth: RefTree[T])
+  case class Closure[-T >: Untyped] private[ast] (env: List[Tree[T]], meth: Tree[T])
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Closure[T]
   }
@@ -847,7 +847,7 @@ object Trees {
         case tree: If if (cond eq tree.cond) && (thenp eq tree.thenp) && (elsep eq tree.elsep) => tree
         case _ => finalize(tree, untpd.If(cond, thenp, elsep))
       }
-      def Closure(tree: Tree, env: List[Tree], meth: RefTree): Closure = tree match {
+      def Closure(tree: Tree, env: List[Tree], meth: Tree): Closure = tree match {
         case tree: Closure if (env eq tree.env) && (meth eq tree.meth) => tree
         case _ => finalize(tree, untpd.Closure(env, meth))
       }
@@ -986,7 +986,7 @@ object Trees {
         case If(cond, thenp, elsep) =>
           cpy.If(tree, transform(cond), transform(thenp), transform(elsep))
         case Closure(env, meth) =>
-          cpy.Closure(tree, transform(env), transformSub(meth))
+          cpy.Closure(tree, transform(env), transform(meth))
         case Match(selector, cases) =>
           cpy.Match(tree, transform(selector), transformSub(cases))
         case CaseDef(pat, guard, body) =>

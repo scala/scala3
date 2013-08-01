@@ -346,19 +346,104 @@ class Typer extends Namer with Applications with Implicits {
     cpy.Pair(tree, left1, right1).withType(defn.PairType.appliedTo(left1.tpe :: right1.tpe :: Nil))
   }
 
-  def TypedTyped(tree: untpd.Typed)(implicit ctx: Context) = {
+  def typedTyped(tree: untpd.Typed)(implicit ctx: Context) = {
     val tpt1 = typedType(tree.tpt)
     val expr1 = typedExpr(tree.expr, tpt1.tpe)
     cpy.Typed(tree, tpt1, expr1).withType(tpt1.tpe)
   }
 
-  def NamedArg(tree: untpd.NamedArg, pt: Type)(implicit ctx: Context) = {
+  def typedNamedArg(tree: untpd.NamedArg, pt: Type)(implicit ctx: Context) = {
     val arg1 = typed(tree.arg, pt)
     cpy.NamedArg(tree, tree.name, arg1).withType(arg1.tpe)
   }
 
-  def Assign(tree: untpd.Assign)(implicit ctx: Context) = {
+  def typedAssign(tree: untpd.Assign)(implicit ctx: Context) = tree.lhs match {
+    case lhs @ Apply(fn, args) =>
+      typed(cpy.Apply(lhs, untpd.Select(fn, nme.update), args :+ tree.rhs))
+    case lhs =>
+      val lhs1 = typed(lhs)
+      def reassignmentToVal =
+        errorTree(cpy.Assign(tree, lhs1, typed(tree.rhs, lhs1.tpe.widen)),
+          "reassignment to val")
+      lhs1.tpe match {
+        case ref: TermRef if ref.symbol is Mutable =>
+          cpy.Assign(tree, lhs1, typed(tree.rhs, ref.info)).withType(defn.UnitType)
+        case ref: TermRef if ref.info.isParameterless =>
+          val pre = ref.prefix
+          val setterName = ref.name.getterToSetter
+          val setter = pre.member(setterName)
+          lhs1 match {
+            case lhs1: RefTree if setter.exists =>
+              val setterTypeRaw = TermRef(pre, setterName).withDenot(setter)
+              val setterType = checkAccessible(setterTypeRaw, isSuperSelection(tree), tree.pos)
+              val lhs2 = lhs1.withName(setterName).withType(setterType)
+              typed(cpy.Apply(tree, untpd.TypedSplice(lhs2), tree.rhs :: Nil))
+            case _ =>
+              reassignmentToVal
+          }
+        case _ =>
+          reassignmentToVal
+      }
+  }
+
+  def typedBlock(tree: Block, pt: Type)(implicit ctx: Context) = {
+    val exprCtx = enterSyms(tree.stats)
+    val stats1 = typedStats(tree.stats, ctx.owner)
+    val expr1 = typedExpr(tree.expr, pt)(exprCtx)
+    val result = cpy.Block(tree, stats1, expr1).withType(blockType(stats1, expr1.tpe))
+    val leaks = CheckTrees.escapingRefs(result)
+    if (leaks.isEmpty) result
+    else if (isFullyDefined(pt)) {
+      val expr2 = typed(untpd.Typed(untpd.TypedSplice(expr1), untpd.TypeTree(pt)))
+      untpd.Block(stats1, expr2) withType expr2.tpe
+    } else errorTree(result,
+      s"local definition of ${leaks.head.name} escapes as part of block's type ${result.tpe.show}")
+  }
+
+  def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = {
+    val cond1 = typed(tree.cond, defn.BooleanType)
+    val thenp1 = typed(tree.thenp, pt)
+    val elsep1 = typed(tree.elsep, pt)
+    cpy.If(tree, cond1, thenp1, elsep1).withType(thenp1.tpe | elsep1.tpe)
+  }
+
+  def typedFunction(tree: untpd.Function, pt: Type)(implicit ctx: Context) = {
+    val params = tree.args.asInstanceOf[List[ValDef]]
+    val protoFormals: List[Type] = pt match {
+      case _ if pt.typeSymbol == defn.FunctionClass(params.length) =>
+        pt.typeArgs take params.length
+      case MethodType(_, paramTypes) =>
+        paramTypes
+      case _ =>
+        params map Function.const(WildcardType)
+    }
+    val inferredParams =
+      for ((param, formal) <- (params, protoFormals).zipped)
+        if (param.tpt.isEmpty && isFullyDefined(formal))
+          cpy.ValDef(param, param.mods, param.name, untpd.TypeTree(formal), param.rhs)
+        else
+          param
+
     ???
+  }
+
+  def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = {
+    val env1 = tree.env map (typed(_))
+    val meth1 = typed(tree.meth)
+    pt match {
+      case SAMType(meth) if !defn.isFunctionType(pt) =>
+        ???
+      case _ =>
+        val ownType = meth1.tpe.widen match {
+          case mt: MethodType if !mt.isDependent =>
+            closureType(mt)
+          case mt: MethodType =>
+            errorType(s"cannot turn dependent method types into closures", tree.pos)
+          case tp =>
+            errorType(s"internal error: closing over non-method $tp", tree.pos)
+        }
+        cpy.Closure(tree, env1, meth1).withType(ownType)
+    }
   }
 
   def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = {
@@ -464,8 +549,10 @@ class Typer extends Namer with Applications with Implicits {
             case none => tree
           }
         case _ => tree
-    }
-    typedExpanded(xtree, pt)
+      }
+    val tree1 = typedExpanded(xtree, pt)
+    ctx.interpolateUndetVars(tree1.tpe.widen, tree1.pos)
+    adapt(tree1, pt)
   }
 
   def typedTrees(trees: List[untpd.Tree])(implicit ctx: Context): List[Tree] =
@@ -482,7 +569,8 @@ class Typer extends Namer with Applications with Implicits {
         buf += typed(mdef)
         traverse(rest)
       case stat :: rest =>
-        buf += typed(stat)(ctx.fresh.withOwner(exprOwner))
+        val nestedCtx = if (exprOwner == ctx.owner) ctx else ctx.fresh.withOwner(exprOwner)
+        buf += typed(stat)(nestedCtx)
         traverse(rest)
       case _ =>
         buf.toList
@@ -515,45 +603,44 @@ class Typer extends Namer with Applications with Implicits {
       fallBack
     }
 
-    /**
-     *  (-1) For expressions with annotated types, let AnnotationCheckers decide what to do
-     *  (0) Convert expressions with constant types to literals (unless in interactive/scaladoc mode)
-     */
+  /** (-1) For expressions with annotated types, let AnnotationCheckers decide what to do
+   *  (0) Convert expressions with constant types to literals (unless in interactive/scaladoc mode)
+   */
 
-    /** Perform the following adaptations of expression, pattern or type `tree` wrt to
-     *  given prototype `pt`:
-     *  (1) Resolve overloading
-     *  (2) Apply parameterless functions
-     *  (3) Apply polymorphic types to fresh instances of their type parameters and
-     *      store these instances in context.undetparams,
-     *      unless followed by explicit type application.
-     *  (4) Do the following to unapplied methods used as values:
-     *  (4.1) If the method has only implicit parameters pass implicit arguments
-     *  (4.2) otherwise, if `pt` is a function type and method is not a constructor,
-     *        convert to function by eta-expansion,
-     *  (4.3) otherwise, if the method is nullary with a result type compatible to `pt`
-     *        and it is not a constructor, apply it to ()
-     *  otherwise issue an error
-     *  (5) Convert constructors in a pattern as follows:
-     *  (5.1) If constructor refers to a case class factory, set tree's type to the unique
-     *        instance of its primary constructor that is a subtype of the expected type.
-     *  (5.2) If constructor refers to an extractor, convert to application of
-     *        unapply or unapplySeq method.
-     *
-     *  (6) Convert all other types to TypeTree nodes.
-     *  (7) When in TYPEmode but not FUNmode or HKmode, check that types are fully parameterized
-     *      (7.1) In HKmode, higher-kinded types are allowed, but they must have the expected kind-arity
-     *  (8) When in both EXPRmode and FUNmode, add apply method calls to values of object type.
-     *  (9) If there are undetermined type variables and not POLYmode, infer expression instance
-     *  Then, if tree's type is not a subtype of expected type, try the following adaptations:
-     *  (10) If the expected type is Byte, Short or Char, and the expression
-     *      is an integer fitting in the range of that type, convert it to that type.
-     *  (11) Widen numeric literals to their expected type, if necessary
-     *  (12) When in mode EXPRmode, convert E to { E; () } if expected type is scala.Unit.
-     *  (13) When in mode EXPRmode, apply AnnotationChecker conversion if expected type is annotated.
-     *  (14) When in mode EXPRmode, apply a view
-     *  If all this fails, error
-     */
+  /** Perform the following adaptations of expression, pattern or type `tree` wrt to
+   *  given prototype `pt`:
+   *  (1) Resolve overloading
+   *  (2) Apply parameterless functions
+   *  (3) Apply polymorphic types to fresh instances of their type parameters and
+   *      store these instances in context.undetparams,
+   *      unless followed by explicit type application.
+   *  (4) Do the following to unapplied methods used as values:
+   *  (4.1) If the method has only implicit parameters pass implicit arguments
+   *  (4.2) otherwise, if `pt` is a function type and method is not a constructor,
+   *        convert to function by eta-expansion,
+   *  (4.3) otherwise, if the method is nullary with a result type compatible to `pt`
+   *        and it is not a constructor, apply it to ()
+   *  otherwise issue an error
+   *  (5) Convert constructors in a pattern as follows:
+   *  (5.1) If constructor refers to a case class factory, set tree's type to the unique
+   *        instance of its primary constructor that is a subtype of the expected type.
+   *  (5.2) If constructor refers to an extractor, convert to application of
+   *        unapply or unapplySeq method.
+   *
+   *  (6) Convert all other types to TypeTree nodes.
+   *  (7) When in TYPEmode but not FUNmode or HKmode, check that types are fully parameterized
+   *      (7.1) In HKmode, higher-kinded types are allowed, but they must have the expected kind-arity
+   *  (8) When in both EXPRmode and FUNmode, add apply method calls to values of object type.
+   *  (9) If there are undetermined type variables and not POLYmode, infer expression instance
+   *  Then, if tree's type is not a subtype of expected type, try the following adaptations:
+   *  (10) If the expected type is Byte, Short or Char, and the expression
+   *      is an integer fitting in the range of that type, convert it to that type.
+   *  (11) Widen numeric literals to their expected type, if necessary
+   *  (12) When in mode EXPRmode, convert E to { E; () } if expected type is scala.Unit.
+   *  (13) When in mode EXPRmode, apply AnnotationChecker conversion if expected type is annotated.
+   *  (14) When in mode EXPRmode, apply a view
+   *  If all this fails, error
+   */
   def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
 
     def adaptOverloaded(ref: TermRef) = {
@@ -630,7 +717,7 @@ class Typer extends Namer with Applications with Implicits {
         if (pt.isInstanceOf[PolyProtoType]) tree
         else {
           val tracked = ctx.track(poly)
-          val tvars = ctx.newTypeVars(tracked)
+          val tvars = ctx.newTypeVars(tracked, tree.pos)
           adapt(tpd.TypeApply(tree, tvars map (tpd.TypeTree(_))), pt)
         }
       case tp =>

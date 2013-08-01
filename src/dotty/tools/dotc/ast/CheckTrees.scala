@@ -17,6 +17,27 @@ object CheckTrees {
     check(bounds contains arg.tpe)
   }
 
+  def escapingRefs(block: Block)(implicit ctx: Context): Set[NamedType] = {
+    var hoisted: Set[Symbol] = Set()
+    lazy val locals = localSyms(block.stats).toSet
+    def isNonLocal(sym: Symbol): Boolean =
+      !(locals contains sym) || isHoistableClass(sym)
+    def isHoistableClass(sym: Symbol) =
+      sym.isClass && {
+        (hoisted contains sym) || {
+          hoisted += sym
+          !classLeaks(sym.asClass)
+        }
+      }
+    def leakingTypes(tp: Type): Set[NamedType] =
+      tp namedPartsWith (tp => isNonLocal(tp.symbol))
+    def typeLeaks(tp: Type) = leakingTypes(tp).isEmpty
+    def classLeaks(sym: ClassSymbol): Boolean =
+      (sym.info.parents exists typeLeaks) ||
+      (sym.decls.toList exists (t => typeLeaks(t.info)))
+    leakingTypes(block.tpe)
+  }
+
   def checkType(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case Ident(name) =>
     case Select(qualifier, name) =>
@@ -79,27 +100,9 @@ object CheckTrees {
           check(false)
       }
       check(rhs.tpe <:< lhs.tpe.widen)
-    case Block(stats, expr) =>
-      var hoisted: Set[Symbol] = Set()
-      lazy val locals = localSyms(stats).toSet
+    case tree @ Block(stats, expr) =>
       check(expr.isValue)
-      def isNonLocal(sym: Symbol): Boolean =
-        !(locals contains sym) || isHoistableClass(sym)
-      def isHoistableClass(sym: Symbol) =
-        sym.isClass && {
-          (hoisted contains sym) || {
-            hoisted += sym
-            noLeaksInClass(sym.asClass)
-          }
-        }
-      def noLeaksIn(tp: Type): Boolean = tp forallParts {
-        case tp: NamedType => isNonLocal(tp.symbol)
-        case _ => true
-      }
-      def noLeaksInClass(sym: ClassSymbol): Boolean =
-        (sym.info.parents forall noLeaksIn) &&
-        (sym.decls.toList forall (t => noLeaksIn(t.info)))
-      check(noLeaksIn(tree.tpe))
+      check(escapingRefs(tree).isEmpty)
     case If(cond, thenp, elsep) =>
       check(cond.isValue); check(thenp.isValue); check(elsep.isValue)
       check(cond.tpe.derivesFrom(defn.BooleanClass))

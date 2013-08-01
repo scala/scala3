@@ -99,6 +99,11 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
     case _ => false
   }
 
+  def isSuperSelection(tree: untpd.Tree) = tree match {
+    case Select(Super(_, _), _) => true
+    case _ => false
+  }
+
   def isSelfOrSuperConstrCall(tree: Tree): Boolean = methPart(tree) match {
     case Ident(nme.CONSTRUCTOR)
        | Select(This(_), nme.CONSTRUCTOR)

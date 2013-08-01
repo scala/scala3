@@ -13,7 +13,7 @@ object ErrorReporting {
 
   import tpd._
 
-  def errorTree(tree: Tree, msg: => String)(implicit ctx: Context): tpd.Tree =
+  def errorTree(tree: untpd.Tree, msg: => String)(implicit ctx: Context): tpd.Tree =
     tree withType errorType(msg, tree.pos)
 
   def errorType(msg: => String, pos: Position)(implicit ctx: Context): ErrorType = {

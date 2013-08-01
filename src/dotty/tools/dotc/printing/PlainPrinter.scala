@@ -137,6 +137,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toText(polyParamName(pt.paramNames(n)))
       case AnnotatedType(annot, tpe) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
+      case tp: TypeVar =>
+        toTextLocal(tp.underlying)
       case _ =>
         tp.fallbackToText(this)
     }
