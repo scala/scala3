@@ -435,8 +435,16 @@ object Trees {
     type ThisTree[-T >: Untyped] = If[T]
   }
 
-  /** A closure with an environment and a reference to a method */
-  case class Closure[-T >: Untyped] private[ast] (env: List[Tree[T]], meth: Tree[T])
+  /** A closure with an environment and a reference to a method.
+   *  @param env    The captured parameters of the closure
+   *  @param meth   A ref tree that refers to the method of the closure.
+   *                The first (env.length) parameters of that method are filled
+   *                with env values.
+   *  @param tpt    Either EmptyTree or a TypeTree. If tpt is EmptyTree the type
+   *                of the closure is a function type, otherwise it is the type
+   *                given in `tpt`, which must be a SAM type.
+   */
+  case class Closure[-T >: Untyped] private[ast] (env: List[Tree[T]], meth: Tree[T], tpt: Tree[T])
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Closure[T]
   }
@@ -847,9 +855,9 @@ object Trees {
         case tree: If if (cond eq tree.cond) && (thenp eq tree.thenp) && (elsep eq tree.elsep) => tree
         case _ => finalize(tree, untpd.If(cond, thenp, elsep))
       }
-      def Closure(tree: Tree, env: List[Tree], meth: Tree): Closure = tree match {
-        case tree: Closure if (env eq tree.env) && (meth eq tree.meth) => tree
-        case _ => finalize(tree, untpd.Closure(env, meth))
+      def Closure(tree: Tree, env: List[Tree], meth: Tree, tpt: Tree): Closure = tree match {
+        case tree: Closure if (env eq tree.env) && (meth eq tree.meth) && (tpt eq tree.tpt) => tree
+        case _ => finalize(tree, untpd.Closure(env, meth, tpt))
       }
       def Match(tree: Tree, selector: Tree, cases: List[CaseDef]): Match = tree match {
         case tree: Match if (selector eq tree.selector) && (cases eq tree.cases) => tree
@@ -985,8 +993,8 @@ object Trees {
           cpy.Block(tree, transformStats(stats), transform(expr))
         case If(cond, thenp, elsep) =>
           cpy.If(tree, transform(cond), transform(thenp), transform(elsep))
-        case Closure(env, meth) =>
-          cpy.Closure(tree, transform(env), transform(meth))
+        case Closure(env, meth, tpt) =>
+          cpy.Closure(tree, transform(env), transform(meth), transform(tpt))
         case Match(selector, cases) =>
           cpy.Match(tree, transform(selector), transformSub(cases))
         case CaseDef(pat, guard, body) =>
@@ -1090,8 +1098,8 @@ object Trees {
           this(this(x, stats), expr)
         case If(cond, thenp, elsep) =>
           this(this(this(x, cond), thenp), elsep)
-        case Closure(env, meth) =>
-          this(this(x, env), meth)
+        case Closure(env, meth, tpt) =>
+          this(this(this(x, env), meth), tpt)
         case Match(selector, cases) =>
           this(this(x, selector), cases)
         case CaseDef(pat, guard, body) =>
@@ -1205,7 +1213,7 @@ object Trees {
         finishBlock(tree.derivedBlock(transform(stats, c), transform(expr, c)), tree, c, plugins)
       case If(cond, thenp, elsep) =>
         finishIf(tree.derivedIf(transform(cond, c), transform(thenp, c), transform(elsep, c)), tree, c, plugins)
-      case Closure(env, meth) =>
+      case Closure(env, meth, tpt) =>
         finishClosure(tree.derivedClosure(transform(env, c), transformSub(meth, c)), tree, c, plugins)
       case Match(selector, cases) =>
         finishMatch(tree.derivedMatch(transform(selector, c), transformSub(cases, c)), tree, c, plugins)

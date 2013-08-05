@@ -104,14 +104,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def If(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If =
     untpd.If(cond, thenp, elsep).withType(thenp.tpe | elsep.tpe).checked
 
-  def Closure(env: List[Tree], meth: RefTree)(implicit ctx: Context): Closure =
-    untpd.Closure(env, meth).withType(closureType(meth.tpe.widen)).checked
-
-  def closureType(tp: Type)(implicit ctx: Context) = tp match {
-    case mt @ MethodType(_, formals) =>
-      assert(!mt.isDependent)
-      val formals1 = formals mapConserve (_.underlyingIfRepeated)
-      defn.FunctionType(formals1, mt.resultType)
+  def Closure(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure = {
+    val ownType = if (tpt.isEmpty) meth.tpe.widen.toFunctionType else tpt.tpe
+    untpd.Closure(env, meth, tpt).withType(ownType).checked
   }
 
   /** A function def
@@ -125,11 +120,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  where the closure's type is the target type of the expression (FunctionN, unless
    *  otherwise specified).
    */
-  def Closure(meth: TermSymbol, bodyFn: List[Tree] => Tree)(implicit ctx: Context): Block = {
+  def Closure(meth: TermSymbol, bodyFn: List[Tree] => Tree, targetType: Type = NoType)(implicit ctx: Context): Block = {
     val rhsFn: List[List[Tree]] => Tree = { case args :: Nil => bodyFn(args) }
+    val targetTpt = if (targetType.exists) TypeTree(targetType) else EmptyTree
     Block(
       DefDef(meth, rhsFn) :: Nil,
-      Closure(Nil, Ident(TermRef.withSym(NoPrefix, meth))))
+      Closure(Nil, Ident(TermRef.withSym(NoPrefix, meth)), targetTpt))
   }
 
   def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =

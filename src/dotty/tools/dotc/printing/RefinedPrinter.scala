@@ -167,7 +167,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         changePrec(GlobalPrec) {
           "if " ~ toText(cond) ~ (" then" provided !cond.isInstanceOf[Parens]) ~~ toText(thenp) ~ optText(elsep)(" else " ~ _)
         }
-      case Closure(env, ref) =>
+      case Closure(env, ref, _) =>
         if (env.isEmpty) toText(ref)
         else "closure<" ~ toTextGlobal(env, ", ") ~ " | " ~ toTextGlobal(ref) ~ ">"
       case Match(sel, cases) =>

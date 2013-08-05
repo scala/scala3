@@ -236,6 +236,12 @@ object desugar {
     case tree: ModuleDef => moduleDef(tree)
   }
 
+  /** Make closure corresponding to function  params => body */
+  def makeClosure(params: List[ValDef], body: Tree) =
+    Block(
+      DefDef(Modifiers(Synthetic), nme.ANON_FUN, Nil, params :: Nil, EmptyTree, body),
+      Closure(Nil, Ident(nme.ANON_FUN), EmptyTree))
+
   def apply(tree: Tree)(implicit ctx: Context): Tree = {
 
     def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
@@ -268,16 +274,10 @@ object desugar {
       }
     }
 
-    /** Make closure corresponding to function  params => body */
-    def makeClosure(params: List[ValDef], body: Tree) =
-      Block(
-        DefDef(Modifiers(Synthetic), nme.ANON_FUN, Nil, params :: Nil, EmptyTree, body),
-        Closure(Nil, Ident(nme.ANON_FUN)))
-
     /** Make closure corresponding to partial function  { cases } */
-    def makeCaseClosure(cases: List[CaseDef]) = {
+    def makeCaseLambda(cases: List[CaseDef]) = {
       val param = makeSyntheticParameter()
-      makeClosure(param :: Nil, Match(Ident(param.name), cases))
+      Function(param :: Nil, Match(Ident(param.name), cases))
     }
 
     /** Create tree for for-comprehension <for (enums) do body> or
@@ -336,9 +336,9 @@ object desugar {
        */
       def makeLambda(pat: Tree, body: Tree): Tree = pat match {
         case VarPattern(named, tpt) =>
-          makeClosure(derivedValDef(Modifiers(Param), named, tpt, EmptyTree) :: Nil, body)
+          Function(derivedValDef(Modifiers(Param), named, tpt, EmptyTree) :: Nil, body)
         case _ =>
-          makeCaseClosure(CaseDef(pat, EmptyTree, body) :: Nil)
+          makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil)
       }
 
       /** If `pat` is not yet a `Bind` wrap it in one with a fresh name
@@ -477,7 +477,7 @@ object desugar {
       case If(cond, thenp, EmptyTree) =>
         If(cond, thenp, unitLiteral)
       case Match(EmptyTree, cases) =>
-        makeCaseClosure(cases)
+        makeCaseLambda(cases)
       case tree: MemberDef =>
         memberDef(tree)
       case SymbolLit(str) =>
@@ -490,7 +490,7 @@ object desugar {
             ref(defn.FunctionClass(args.length).typeConstructor),
             args :+ body)
         else
-          makeClosure(args.asInstanceOf[List[ValDef]], body)
+          tree // was: makeClosure(args.asInstanceOf[List[ValDef]], body)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
           AppliedTypeTree(Ident(op), l :: r :: Nil) // op[l, r]

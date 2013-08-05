@@ -913,6 +913,15 @@ object Types {
 
 // ----- misc -----------------------------------------------------------
 
+    /** Turn type into a function type.
+     *  @pre this is a non-dependent method type.
+     */
+    def toFunctionType(implicit ctx: Context): Type = this match {
+      case mt @ MethodType(_, formals) if !mt.isDependent =>
+        val formals1 = formals mapConserve (_.underlyingIfRepeated)
+        defn.FunctionType(formals1, mt.resultType)
+    }
+
     /** The signature of this type. This is by default NotAMethod,
      *  but is overridden for PolyTypes, MethodTypes, and TermRefWithSignature types.
      *  (the reason why we deviate from the "final-method-with-pattern-match-in-base-class"

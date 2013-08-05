@@ -412,38 +412,36 @@ class Typer extends Namer with Applications with Implicits {
     val protoFormals: List[Type] = pt match {
       case _ if pt.typeSymbol == defn.FunctionClass(params.length) =>
         pt.typeArgs take params.length
-      case MethodType(_, paramTypes) =>
+      case SAMType(meth) =>
+        val MethodType(_, paramTypes) = meth.info
         paramTypes
       case _ =>
         params map Function.const(WildcardType)
     }
-    val inferredParams =
-      for ((param, formal) <- (params, protoFormals).zipped)
-        if (param.tpt.isEmpty && isFullyDefined(formal))
-          cpy.ValDef(param, param.mods, param.name, untpd.TypeTree(formal), param.rhs)
-        else
-          param
-
-    ???
+    val inferredParams: List[untpd.ValDef] =
+      for ((param, formal) <- params zip protoFormals) yield
+        if (!param.tpt.isEmpty) param
+        else {
+          val paramType =
+            if (isFullyDefined(formal)) formal
+            else errorType(s"missing parameter type", param.pos)
+          cpy.ValDef(param, param.mods, param.name, untpd.TypeTree(paramType), param.rhs)
+        }
+    typed(desugar.makeClosure(inferredParams, tree.body), pt)
   }
 
   def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = {
     val env1 = tree.env map (typed(_))
     val meth1 = typed(tree.meth)
-    pt match {
-      case SAMType(meth) if !defn.isFunctionType(pt) =>
-        ???
-      case _ =>
-        val ownType = meth1.tpe.widen match {
-          case mt: MethodType if !mt.isDependent =>
-            closureType(mt)
-          case mt: MethodType =>
-            errorType(s"cannot turn dependent method types into closures", tree.pos)
-          case tp =>
-            errorType(s"internal error: closing over non-method $tp", tree.pos)
-        }
-        cpy.Closure(tree, env1, meth1).withType(ownType)
+    val ownType = meth1.tpe.widen match {
+      case mt: MethodType if !mt.isDependent =>
+        mt.toFunctionType
+      case mt: MethodType =>
+        errorType(s"internal error: cannot turn dependent method type $mt into closure", tree.pos)
+      case tp =>
+        errorType(s"internal error: closing over non-method $tp", tree.pos)
     }
+    cpy.Closure(tree, env1, meth1, EmptyTree).withType(ownType)
   }
 
   def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = {
@@ -704,6 +702,17 @@ class Typer extends Namer with Applications with Implicits {
       if (ctx.mode.isExpr) {
         if (pt.typeSymbol == defn.UnitClass)
           return tpd.Block(tree :: Nil, Literal(Constant()))
+        tree match {
+          case Closure(Nil, id @ Ident(nme.ANON_FUN), _)
+          if defn.isFunctionType(tree.tpe) && !defn.isFunctionType(pt) =>
+            pt match {
+              case SAMType(meth)
+              if tree.tpe <:< meth.info.toFunctionType && isFullyDefined(pt, forceIt = false) =>
+                return cpy.Closure(tree, Nil, id, TypeTree(pt)).withType(pt)
+              case _ =>
+            }
+          case _ =>
+        }
         val adapted = inferView(tree, pt)
         if (adapted ne EmptyTree) return adapted
       }

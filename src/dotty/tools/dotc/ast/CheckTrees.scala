@@ -106,6 +106,21 @@ object CheckTrees {
     case If(cond, thenp, elsep) =>
       check(cond.isValue); check(thenp.isValue); check(elsep.isValue)
       check(cond.tpe.derivesFrom(defn.BooleanClass))
+    case Closure(env, meth, target) =>
+   	  meth.tpe.widen match {
+   	    case mt @ MethodType(_, paramTypes) =>
+   	      if (target.isEmpty) {
+   	        check(env.length < paramTypes.length)
+   	        for ((arg, formal) <- env zip paramTypes)
+   	          check(arg.tpe <:< formal)
+   	      }
+   	      else
+   	        // env is stored in class, not method
+   	        target.tpe match {
+   	          case SAMType(targetMeth) =>
+   	            check(mt <:< targetMeth.info)
+   	        }
+   	  }
     case Match(selector, cases) =>
       check(selector.isValue)
       // are any checks that relate selector and patterns desirable?

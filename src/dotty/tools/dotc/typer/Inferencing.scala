@@ -21,20 +21,20 @@ object Inferencing {
    *   - the overall result of `isFullYDefined` is `true`.
    *  Variables that are succesfully minimized do not count as uninstantiated.
    */
-  def isFullyDefined(tp: Type)(implicit ctx: Context): Boolean = {
+  def isFullyDefined(tp: Type, forceIt: Boolean = false)(implicit ctx: Context): Boolean = {
     val nestedCtx = ctx.fresh.withNewTyperState
-    val result = new IsFullyDefinedAccumulator()(nestedCtx).traverse(tp)
+    val result = new IsFullyDefinedAccumulator(forceIt)(nestedCtx).traverse(tp)
     if (result) nestedCtx.typerState.commit()
     result
   }
 
-  private class IsFullyDefinedAccumulator(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+  private class IsFullyDefinedAccumulator(forceIt: Boolean)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     def traverse(tp: Type): Boolean = apply(true, tp)
     def apply(x: Boolean, tp: Type) = !x || isOK(tp) && foldOver(x, tp)
     def isOK(tp: Type): Boolean = tp match {
       case _: WildcardType =>
         false
-      case tvar: TypeVar if !tvar.isInstantiated =>
+      case tvar: TypeVar if forceIt && !tvar.isInstantiated =>
         val inst = tvar.instantiate(fromBelow = true)
         inst != defn.NothingType && inst != defn.NullType
       case _ =>
