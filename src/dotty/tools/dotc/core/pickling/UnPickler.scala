@@ -897,7 +897,10 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         setSymModsName()
         val impl = readTemplateRef()
         val tparams = until(end, readTypeDefRef)
-        ClassDef(symbol.asClass, tparams map (_.symbol.asType), ???, impl.body) // !!! TODO: pull out primary constructor
+        val cls = symbol.asClass
+        val ((constr: DefDef) :: Nil, stats) =
+          impl.body.partition(_.symbol == cls.primaryConstructor)
+        ClassDef(cls, constr, tparams ++ stats)
 
       case MODULEtree =>
         setSymModsName()

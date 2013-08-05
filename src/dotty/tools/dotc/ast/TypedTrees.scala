@@ -238,25 +238,23 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.TypeDef(Modifiers(sym), sym.name, TypeTree(sym.info))
       .withType(refType(sym)).checked
 
-  def ClassDef(cls: ClassSymbol, typeParams: List[TypeSymbol], constr: DefDef, body: List[Tree])(implicit ctx: Context): TypeDef = {
+  def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree])(implicit ctx: Context): TypeDef = {
     val parents = cls.info.parents map (TypeTree(_))
     val selfType =
       if (cls.classInfo.optSelfType.exists) ValDef(ctx.newSelfSym(cls))
       else EmptyValDef
     def isOwnTypeParamAccessor(stat: Tree) =
       (stat.symbol is TypeParam) && stat.symbol.owner == cls
-    val (tparamAccessors, rest) = body partition isOwnTypeParamAccessor
-    val tparams =
-      (typeParams map TypeDef) ++
-        (tparamAccessors collect {
-          case td: TypeDef if !(typeParams contains td.symbol) => td
-        })
+    val bodyTypeParams = body filter isOwnTypeParamAccessor map (_.symbol)
+    val newTypeParams =
+      for (tparam <- cls.typeParams if !(bodyTypeParams contains tparam))
+      yield TypeDef(tparam)
     val findLocalDummy = new FindLocalDummyAccumulator(cls)
     val localDummy = ((NoSymbol: Symbol) /: body)(findLocalDummy)
       .orElse(ctx.newLocalDummy(cls))
-    val impl = untpd.Template(constr, parents, selfType, rest)
+    val impl = untpd.Template(constr, parents, selfType, newTypeParams ++ body)
       .withType(refType(localDummy)).checked
-    untpd.TypeDef(Modifiers(cls), cls.name, impl) // !!! todo: revise
+    untpd.TypeDef(Modifiers(cls), cls.name, impl)
       .withType(refType(cls)).checked
   }
 
@@ -327,7 +325,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ModuleDef(sym: TermSymbol, body: List[Tree])(implicit ctx: Context): tpd.Thicket = {
     val modcls = sym.moduleClass.asClass
     val constr = DefDef(modcls.primaryConstructor.asTerm, EmptyTree)
-    val clsdef = ClassDef(modcls, Nil, constr, body)
+    val clsdef = ClassDef(modcls, constr, body)
     val valdef = ValDef(sym, New(modcls.typeConstructor))
     Thicket(valdef, clsdef)
   }
