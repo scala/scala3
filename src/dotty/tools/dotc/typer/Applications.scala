@@ -560,17 +560,18 @@ trait Applications extends Compatibility { self: Typer =>
 
     def unapplyArgs(unapplyResult: Type)(implicit ctx: Context): List[Type] = {
       def recur(tp: Type): List[Type] = {
-        def nonOverloadedMember(name: Name) = {
+        def extractorMemberType(name: Name) = {
           val ref = tp member name
-          if (ref.isOverloaded) {
-            errorType(s"Overloaded reference to $ref is not allowed in extractor", tree.pos)
-          }
+          if (ref.isOverloaded)
+            errorType(s"Overloaded reference to ${ref.show} is not allowed in extractor", tree.pos)
+          else if (ref.info.isInstanceOf[PolyType])
+            errorType(s"Reference to polymorphic ${ref.show}: ${ref.info.show} is not allowed in extractor", tree.pos)
           else
             ref.info
         }
 
         def productSelectors: List[Type] = {
-          val sels = for (n <- Iterator.from(0)) yield nonOverloadedMember(("_" + n).toTermName)
+          val sels = for (n <- Iterator.from(0)) yield extractorMemberType(("_" + n).toTermName)
           sels.takeWhile(_.exists).toList
         }
         def seqSelector = defn.RepeatedParamType.appliedTo(tp.elemType :: Nil)
@@ -578,8 +579,8 @@ trait Applications extends Compatibility { self: Typer =>
         if (tp derivesFrom defn.ProductClass) productSelectors
         else if (tp derivesFrom defn.SeqClass) seqSelector :: Nil
         else if (tp.typeSymbol == defn.BooleanClass) Nil
-        else if (nonOverloadedMember(nme.isDefined).exists &&
-                 nonOverloadedMember(nme.get).exists) recur(nonOverloadedMember(nme.get))
+        else if (extractorMemberType(nme.isDefined).exists &&
+                 extractorMemberType(nme.get).exists) recur(extractorMemberType(nme.get))
         else {
           ctx.error(s"${unapplyResult.show} is not a valid result type of an unapply method of an extractor", tree.pos)
           Nil
@@ -589,7 +590,10 @@ trait Applications extends Compatibility { self: Typer =>
       recur(unapplyResult)
     }
 
-    val fn = {
+    def notAnExtractor(tree: Tree) =
+      errorTree(tree, s"${qual.show} cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method")
+
+    val unapply = {
       val dummyArg = untpd.TypedSplice(dummyTreeOfType(WildcardType))
       val unappProto = FunProtoType(dummyArg :: Nil, pt, this)
       tryEither {
@@ -599,28 +603,51 @@ trait Applications extends Compatibility { self: Typer =>
           tryEither {
             implicit ctx => typedExpr(untpd.Select(qual, nme.unapplySeq), unappProto) // for backwards compatibility; will be dropped
           } {
-            _ => errorTree(s.value, s"${qual.show} cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method")
+            _ => notAnExtractor(s.value)
           }
       }
     }
-    fn.tpe.widen match {
-      case mt: MethodType =>
-        val ownType = mt.resultType
-        ownType <:< pt // done for registering the constraints; error message would come later
-        var argTypes = unapplyArgs(ownType)
+
+    unapply.tpe.widen match {
+      case mt: MethodType if !mt.isDependent =>
+        val unapplyArgType = mt.paramTypes.head
+        val ownType =
+          if (pt <:< unapplyArgType) {
+            assert(isFullyDefined(unapplyArgType))
+            pt
+          }
+          else if (unapplyArgType <:< pt)
+            ctx.maximizeType(unapplyArgType) match {
+              case None => unapplyArgType
+              case Some(tvar) =>
+                errorType(
+                  s"""There is no best instantiation of pattern type ${unapplyArgType.show}
+                     |that makes it a subtype of selector type ${pt.show}.
+                     |Non-variant type variable ${tvar.origin.show} cannot be uniquely instantiated.""".stripMargin,
+                  tree.pos)
+            }
+          else errorType(
+            s"Pattern type ${unapplyArgType.show} is neither a subtype nor a supertype of selector type ${pt.show}",
+            tree.pos)
+
+        var argTypes = unapplyArgs(mt.resultType)
         val bunchedArgs = argTypes match {
           case argType :: Nil if argType.isRepeatedParam => untpd.SeqLiteral(args) :: Nil
           case _ => args
         }
         if (argTypes.length != bunchedArgs.length) {
-          ctx.error(s"wrong number of argument patterns for ${err.patternConstrStr(fn)}", tree.pos)
+          ctx.error(s"wrong number of argument patterns for ${err.patternConstrStr(unapply)}", tree.pos)
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }
         val typedArgs = (bunchedArgs, argTypes).zipped map (typed(_, _))
-        untpd.UnApply(fn, typedArgs).withPos(tree.pos).withType(ownType)
-      case et: ErrorType =>
-        tree.withType(ErrorType)
+        val result = cpy.UnApply(tree, unapply, typedArgs) withType ownType
+        if ((ownType eq pt) || ownType.isError) result
+        else Typed(result, TypeTree(ownType))
+      case tp =>
+        val unapplyErr = if (tp.isError) unapply else notAnExtractor(unapply)
+        val typedArgsErr = args map (typed(_, defn.AnyType))
+        cpy.UnApply(tree, unapplyErr, typedArgsErr) withType ErrorType
     }
   }
 

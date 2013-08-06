@@ -91,13 +91,33 @@ object Inferencing {
      *  approximate it by its lower bound. Otherwise, if it appears contravariantly
      *  in type `tp` approximate it by its upper bound.
      */
-    def interpolateUndetVars(tp: Type, pos: Position): Unit =
-      for (tvar <- ctx.typerState.undetVars)
-        if (pos contains tvar.pos) {
-          val v = tp varianceOf tvar
-          if (v is Covariant) tvar.instantiate(fromBelow = true)
-          else if (v is Contravariant) tvar.instantiate(fromBelow = false)
+    def interpolateUndetVars(tp: Type, pos: Position): Unit = {
+      val vs = tp.variances(tvar =>
+        (ctx.typerState.undetVars contains tvar) && (pos contains tvar.pos))
+      for ((tvar, v) <- vs)
+        if (v == 1) tvar.instantiate(fromBelow = true)
+        else if (v == -1) tvar.instantiate(fromBelow = false)
+      for (tvar <- ctx.typerState.undetVars if !(vs contains tvar))
+        tvar.instantiate(fromBelow = false)
+    }
+
+    /** Instantiate undetermined type variables to that type `tp` is
+     *  maximized and return None. If this is not possible, because a non-variant
+     *  typevar is not uniquely determined, return that typevar in a Some.
+     */
+    def maximizeType(tp: Type): Option[TypeVar] = {
+      val vs = tp.variances(tvar => ctx.typerState.undetVars contains tvar)
+      var result: Option[TypeVar] = None
+      for ((tvar, v) <- vs)
+        if (v == 1) tvar.instantiate(fromBelow = false)
+        else if (v == -1) tvar.instantiate(fromBelow = true)
+        else {
+          val bounds @ TypeBounds(lo, hi) = ctx.typerState.constraint(tvar.origin)
+          if (hi <:< lo) tvar.instantiate(fromBelow = false)
+          else result = Some(tvar)
         }
+      result
+    }
 
     /** Create new type variables for the parameters of a poly type.
      *  @param pos   The position of the new type variables (relevant for

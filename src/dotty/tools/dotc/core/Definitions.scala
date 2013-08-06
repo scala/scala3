@@ -142,7 +142,7 @@ class Definitions(implicit ctx: Context) {
     ScalaPackageClass, tpnme.Null, AbstractFinal, List(AnyRefAlias.typeConstructor)).entered
 
   lazy val PredefModule = requiredModule("scala.Predef")
-  lazy val NilModule        = requiredModule("scala.collection.immutable.Nil")
+  lazy val NilModule = requiredModule("scala.collection.immutable.Nil")
 
 //  lazy val FunctionClass: ClassSymbol = requiredClass("scala.Function")
   lazy val SingletonClass: ClassSymbol =
@@ -330,7 +330,7 @@ class Definitions(implicit ctx: Context) {
    *   - v_i are the variances of the bound symbols (i.e. +, -, or empty).
    *   - _$hk$i are hgiher-kinded parameter names, which are special treated in type application.
    */
-  def hkTrait(variances: List[Int]) = {
+  def hkTrait(vcs: List[Int]) = {
 
     def varianceSuffix(v: Int) = v match {
       case -1 => "N"
@@ -348,14 +348,14 @@ class Definitions(implicit ctx: Context) {
       def complete(denot: SymDenotation): Unit = {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
-        for ((v, i) <- variances.zipWithIndex)
+        for ((v, i) <- vcs.zipWithIndex)
           newTypeParam(cls, tpnme.higherKindedParamName(i), varianceFlags(v), paramDecls)
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, List(ObjectClass.typeConstructor), paramDecls)
       }
     }
 
     val traitName =
-      tpnme.higherKindedTraitName(variances.length) ++ (variances map varianceSuffix).mkString
+      tpnme.higherKindedTraitName(vcs.length) ++ (vcs map varianceSuffix).mkString
 
     def createTrait = {
       val cls = ctx.newClassSymbol(
@@ -367,7 +367,7 @@ class Definitions(implicit ctx: Context) {
       cls
     }
 
-    hkTraitOfArity.getOrElseUpdate(variances, createTrait)
+    hkTraitOfArity.getOrElseUpdate(vcs, createTrait)
   }
 
 

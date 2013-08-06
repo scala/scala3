@@ -940,6 +940,31 @@ object Types {
      */
     def varianceOf(tp: Type): FlagSet = ???
 
+    type VarianceMap = Map[TypeVar, Int]
+
+    /** All occurrences of type vars in this type that satisfy predicate
+     *  `include` mapped to their variances (-1/0/1) in this type, where
+     *  -1 means: only covariant occurrences
+     *  +1 means: only covariant occurrences
+     *  0 means: mixed or non-variant occurrences
+     */
+    def variances(include: TypeVar => Boolean)(implicit ctx: Context): VarianceMap = {
+      val accu = new TypeAccumulator[VarianceMap] {
+        def apply(vmap: VarianceMap, t: Type): VarianceMap = t match {
+          case t: TypeVar if include(t) =>
+            vmap get t match {
+              case Some(v) =>
+                if (v == variance) vmap else vmap updated (t, 0)
+              case None =>
+                vmap updated (t, variance)
+            }
+          case _ =>
+            foldOver(vmap, t)
+        }
+      }
+      accu(Map.empty, this)
+    }
+
 // ----- hashing ------------------------------------------------------
 
     /** customized hash code of this type.
@@ -2086,6 +2111,8 @@ object Types {
 
     protected def apply(x: T, annot: Annotation): T = x // don't go into annotations
 
+    protected var variance = 1
+
     def foldOver(x: T, tp: Type): T = tp match {
       case tp: NamedType =>
         this(x, tp.prefix)
@@ -2097,21 +2124,36 @@ object Types {
         this(this(x, tp.parent), tp.refinedInfo)
 
       case tp @ MethodType(pnames, ptypes) =>
-        this((x /: ptypes)(this), tp.resultType)
+        variance = -variance
+        val y = (x /: ptypes)(this)
+        variance = -variance
+        this(y, tp.resultType)
 
       case ExprType(restpe) =>
         this(x, restpe)
 
       case tp @ PolyType(pnames) =>
-        this((x /: tp.paramBounds)(this), tp.resultType)
+        variance = -variance
+        val y = (x /: tp.paramBounds)(this)
+        variance = -variance
+        this(y, tp.resultType)
 
       case SuperType(thistp, supertp) =>
         this(this(x, thistp), supertp)
 
       case TypeBounds(lo, hi) =>
-        if (lo eq hi) this(x, lo)
-        else this(this(x, lo), hi)
-
+        if (lo eq hi) {
+          val saved = variance
+          variance = 0
+          try this(x, lo)
+          finally variance = saved
+        }
+        else {
+          variance = -variance
+          val y = this(x, lo)
+          variance = -variance
+          this(y, hi)
+        }
       case AnnotatedType(annot, underlying) =>
         this(this(x, annot), underlying)
 
