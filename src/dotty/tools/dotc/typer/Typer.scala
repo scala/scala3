@@ -482,6 +482,25 @@ class Typer extends Namer with Applications with Implicits {
     cpy.Match(tree, sel1, cases1).withType(ctx.lub(cases1.tpes))
   }
 
+  def typedReturn(tree: untpd.Return)(implicit ctx: Context): Return = {
+    def enclMethInfo(cx: Context): (Tree, Type) =
+      if (cx == NoContext || cx.tree.isInstanceOf[Trees.TypeDef[_]]) {
+        ctx.error(s"return outside method definition")
+        (EmptyTree, WildcardType)
+      }
+      else cx.tree match {
+        case ddef: DefDef =>
+          val meth = ddef.symbol
+          (Ident(TermRef.withSym(NoPrefix, meth.asTerm)),
+           if (meth.isConstructor) defn.UnitType else ddef.tpt.tpe)
+        case _ =>
+          enclMethInfo(cx.outer)
+      }
+    val (from, proto) = enclMethInfo(ctx)
+    val expr1 = typedExpr(if (tree.expr.isEmpty) untpd.unitLiteral else tree.expr, proto)
+    cpy.Return(tree, expr1, from) withType defn.NothingType
+  }
+
   def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = {
     val annotations1 = mods.annotations mapconserve typedAnnotation
     if (annotations1 eq mods.annotations) mods.asInstanceOf[Modifiers]
