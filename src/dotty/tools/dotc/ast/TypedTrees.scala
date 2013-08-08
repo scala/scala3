@@ -129,7 +129,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
-    untpd.Match(selector, cases).withType(ctx.lub(cases map (_.body.tpe))).checked
+    untpd.Match(selector, cases).withType(ctx.lub(cases.tpes)).checked
 
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef =
     untpd.CaseDef(pat, guard, body).withType(body.tpe).checked
@@ -145,7 +145,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def SeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
     SeqLiteral(defn.SeqClass.typeConstructor.appliedTo(
-        ctx.lub(elems map (_.tpe)) :: Nil), elems)
+      ctx.lub(elems map (_.tpe)) :: Nil), elems)
 
   // TODO: Split into Java/Scala eq literals
   def SeqLiteral(tpe: Type, elems: List[Tree])(implicit ctx: Context): SeqLiteral =
@@ -269,7 +269,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def SharedTree(tree: Tree)(implicit ctx: Context): SharedTree =
     Trees.SharedTree(tree).withType(tree.tpe)
-
 
   // ------ Making references ------------------------------------------------------
 

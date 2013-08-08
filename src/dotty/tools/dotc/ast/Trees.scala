@@ -455,7 +455,7 @@ object Trees {
     type ThisTree[-T >: Untyped] = Match[T]
   }
 
-  /** case pat if guard => body */
+  /** case pat if guard => body; only appears as child of a Match */
   case class CaseDef[-T >: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = CaseDef[T]
@@ -663,6 +663,9 @@ object Trees {
     def forwardTo: Tree[T] = shared
   }
 
+  implicit class ListOfTreeDecorator[T <: untpd.Tree](val xs: List[T]) extends AnyVal {
+    def tpes: List[Type] = xs map (_.tpe)
+  }
 
   // ----- Generic Tree Instances, inherited from  `tpt` and `untpd`.
 

@@ -162,8 +162,9 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
   }
 
   def thirdTryNamed(tp1: Type, tp2: NamedType): Boolean = tp2.info match {
-    case TypeBounds(lo, _) =>
-      isSubType(tp1, lo)
+    case TypeBounds(lo2, hi2) =>
+      isSubType(tp1, lo2) ||
+      (tp2.symbol is GADTFlexType) && trySetType(tp2, TypeBounds(lo2 | tp1, hi2))
     case _ =>
       val cls2 = tp2.symbol
       (cls2 == defn.SingletonClass && tp1.isStable
@@ -234,7 +235,12 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
     case tp1: TypeRef =>
       ((tp1 eq defn.NothingType)
         || (tp1 eq defn.NullType) && tp2.dealias.typeSymbol.isNonValueClass
-        || !tp1.symbol.isClass && isSubType(tp1.info.bounds.hi, tp2))
+        || (tp1.info match {
+              case TypeBounds(lo1, hi1) =>
+                isSubType(hi1, tp2) ||
+                (tp1.symbol is GADTFlexType) && trySetType(tp1, TypeBounds(lo1, hi1 & tp2))
+              case _ => false
+           }))
     case tp1: SingletonType =>
       isSubType(tp1.underlying, tp2)
     case tp1: RefinedType =>
@@ -280,6 +286,10 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
         }
     }
   }
+
+  def trySetType(tr: NamedType, bounds: TypeBounds): Boolean =
+    (bounds.lo <:< bounds.hi) &&
+    { tr.symbol.changeGADTInfo(bounds); true }
 
   /** A function implementing `tp1` matches `tp2`. */
   final def matchesType(tp1: Type, tp2: Type, alwaysMatchSimple: Boolean): Boolean = tp1 match {

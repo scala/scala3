@@ -286,6 +286,9 @@ object Flags {
   /** Method is assumed to be stable */
   final val Stable = termFlag(25, "<stable>")
 
+  /** Info can be refined during GADT pattern match */
+  final val GADTFlexType = typeFlag(25, "<gadt-flex-type>")
+
   /** A case parameter (or its accessor, or a GADT skolem) */
   final val CaseAccessor = termFlag(26, "<caseaccessor>")
 

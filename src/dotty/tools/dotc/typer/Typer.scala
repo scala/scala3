@@ -444,6 +444,44 @@ class Typer extends Namer with Applications with Implicits {
     cpy.Closure(tree, env1, meth1, EmptyTree).withType(ownType)
   }
 
+  def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context) = {
+    val sel1 = typedExpr(tree.selector)
+    val selType =
+      if (isFullyDefined(sel1.tpe)) sel1.tpe
+      else errorType("internal error: type of pattern selector is not fully defined", tree.pos)
+
+    /** gadtSyms = "all type parameters of enclosing methods that appear
+     *              non-variantly in the selector type */
+    val gadtSyms: Set[Symbol] = {
+      val accu = new TypeAccumulator[Set[Symbol]] {
+        def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
+          val tsyms1 = t match {
+            case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm && variance == 0 =>
+              tsyms + tr.symbol
+            case _ =>
+              tsyms
+          }
+          foldOver(tsyms1, t)
+        }
+      }
+      accu(Set.empty, selType)
+    }
+
+    def typedCase(tree: untpd.CaseDef)(implicit ctx: Context): CaseDef = {
+      val doCase: () => CaseDef = () => {
+        val pat1 = typedPattern(tree.pat, selType)
+        gadtSyms foreach (_.resetGADTFlexType)
+        val guard1 = typedExpr(tree.guard, defn.BooleanType)
+        val body1 = typedExpr(tree.body, pt)
+        cpy.CaseDef(tree, pat1, guard1, body1) withType body1.tpe
+      }
+      (doCase /: gadtSyms) ((op, tsym) => tsym.withGADTFlexType(op)) ()
+    }
+
+    val cases1 = tree.cases map (typedCase(_)(ctx.fresh.withNewScope))
+    cpy.Match(tree, sel1, cases1).withType(ctx.lub(cases1.tpes))
+  }
+
   def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = {
     val annotations1 = mods.annotations mapconserve typedAnnotation
     if (annotations1 eq mods.annotations) mods.asInstanceOf[Modifiers]
