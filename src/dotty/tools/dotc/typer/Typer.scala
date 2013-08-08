@@ -491,14 +491,37 @@ class Typer extends Namer with Applications with Implicits {
       else cx.tree match {
         case ddef: DefDef =>
           val meth = ddef.symbol
-          (Ident(TermRef.withSym(NoPrefix, meth.asTerm)),
-           if (meth.isConstructor) defn.UnitType else ddef.tpt.tpe)
+          val from = Ident(TermRef.withSym(NoPrefix, meth.asTerm))
+          val proto =
+            if (meth.isConstructor)
+              defn.UnitType
+            else if (ddef.tpt.isEmpty)
+              errorType(s"method ${meth.show} has return statement; needs result type", tree.pos)
+            else
+              ddef.tpt.tpe
+          (from, proto)
         case _ =>
           enclMethInfo(cx.outer)
       }
     val (from, proto) = enclMethInfo(ctx)
     val expr1 = typedExpr(if (tree.expr.isEmpty) untpd.unitLiteral else tree.expr, proto)
     cpy.Return(tree, expr1, from) withType defn.NothingType
+  }
+
+  def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = {
+    val expr1 = typed(tree.expr, pt)
+    val handler1 = typed(tree.handler, defn.FunctionType(defn.ThrowableType :: Nil, pt))
+    val finalizer1 = typed(tree.finalizer, defn.UnitType)
+    val handlerResultType = handler1.tpe match {
+      case defn.FunctionType(_, resultType) => resultType
+      case _ => defn.NothingType
+    }
+    cpy.Try(tree, expr1, handler1, finalizer1).withType(expr1.tpe | handlerResultType)
+  }
+
+  def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Throw = {
+    val expr1 = typed(tree.expr, defn.ThrowableType)
+    cpy.Throw(tree, expr1) withType defn.NothingType
   }
 
   def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = {

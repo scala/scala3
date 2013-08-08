@@ -471,7 +471,25 @@ object Trees {
     type ThisTree[-T >: Untyped] = Return[T]
   }
 
-  /** try block catch handler finally finalizer */
+  /** try block catch handler finally finalizer
+   *
+   *  Note: if the handler is a case block CASES of the form
+   *
+   *    { case1 ... caseN }
+   *
+   *  the parser returns Match(EmptyTree, CASES). Desugaring and typing this yields a closure
+   *  node
+   *
+   *    { def $anonfun(x: Throwable) = x match CASES; Closure(Nil, $anonfun) }
+   *
+   *  At some later stage when we normalize the try we can revert this to
+   *
+   *    Match(EmptyTree, CASES)
+   *
+   *  or else if stack is non-empty
+   *
+   *    Match(EmptyTree, <case x: Throwable => $anonfun(x)>)
+   */
   case class Try[-T >: Untyped] private[ast] (expr: Tree[T], handler: Tree[T], finalizer: Tree[T])
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Try[T]
