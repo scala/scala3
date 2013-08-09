@@ -70,6 +70,7 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
   def Try(expr: Tree, handler: Tree, finalizer: Tree): Try = new Try(expr, handler, finalizer)
   def Throw(expr: Tree): Throw = new Throw(expr)
   def SeqLiteral(elems: List[Tree]): SeqLiteral = new SeqLiteral(elems)
+  def JavaSeqLiteral(elems: List[Tree]): JavaSeqLiteral = new JavaSeqLiteral(elems)
   def TypeTree(original: Tree): TypeTree = new TypeTree(original)
   def TypeTree() = new TypeTree(EmptyTree)
   def SingletonTypeTree(ref: Tree): SingletonTypeTree = new SingletonTypeTree(ref)

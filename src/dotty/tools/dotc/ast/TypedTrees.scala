@@ -147,12 +147,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.Throw(expr).withType(defn.NothingType).checked
 
   def SeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
-    SeqLiteral(defn.SeqClass.typeConstructor.appliedTo(
-      ctx.lub(elems map (_.tpe)) :: Nil), elems)
+    untpd.SeqLiteral(elems)
+      .withType(defn.SeqClass.typeConstructor.appliedTo(ctx.lub(elems.tpes)))
+      .checked
 
-  // TODO: Split into Java/Scala eq literals
-  def SeqLiteral(tpe: Type, elems: List[Tree])(implicit ctx: Context): SeqLiteral =
-    untpd.SeqLiteral(elems).withType(tpe).checked
+  def SeqLiteral(tpe: Type, elems: List[Tree])(implicit ctx: Context): SeqLiteral = {
+    val untpdSeqLit =
+      if (tpe derivesFrom defn.SeqClass) untpd.SeqLiteral(elems)
+      else untpd.JavaSeqLiteral(elems)
+    untpdSeqLit.withType(tpe.elemType).checked
+  }
+
+  def JavaSeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
+    new untpd.JavaSeqLiteral(elems)
+      .withType(defn.ArrayClass.typeConstructor.appliedTo(ctx.lub(elems.tpes)))
+      .checked
 
   def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
     TypeTree(original.tpe, original)

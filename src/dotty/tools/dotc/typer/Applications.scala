@@ -410,8 +410,8 @@ trait Applications extends Compatibility { self: Typer =>
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
       typedArgBuf.trimEnd(n)
-      val seqType = if (methodType.isJava) defn.ArrayType else defn.SeqType
-      typedArgBuf += SeqLiteral(seqType.appliedTo(elemFormal :: Nil), args)
+      val seqLit = if (methodType.isJava) JavaSeqLiteral(args) else SeqLiteral(args)
+      typedArgBuf += seqLit
     }
 
     def fail(msg: => String, arg: Trees.Tree[T]) = {

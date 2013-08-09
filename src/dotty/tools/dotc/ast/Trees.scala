@@ -501,10 +501,15 @@ object Trees {
     type ThisTree[-T >: Untyped] = Throw[T]
   }
 
-  /** Array[elemtpt](elems) */
+  /** Seq(elems) */
   case class SeqLiteral[-T >: Untyped] private[ast] (elems: List[Tree[T]])
     extends Tree[T] {
     type ThisTree[-T >: Untyped] = SeqLiteral[T]
+  }
+
+  /** Array(elems) */
+  class JavaSeqLiteral[T >: Untyped] private[ast] (elems: List[Tree[T]])
+    extends SeqLiteral(elems) {
   }
 
   /** A type tree that represents an existing or inferred type */
@@ -725,6 +730,7 @@ object Trees {
     type Try = Trees.Try[T]
     type Throw = Trees.Throw[T]
     type SeqLiteral = Trees.SeqLiteral[T]
+    type JavaSeqLiteral = Trees.JavaSeqLiteral[T]
     type TypeTree = Trees.TypeTree[T]
     type SingletonTypeTree = Trees.SingletonTypeTree[T]
     type SelectFromTypeTree = Trees.SelectFromTypeTree[T]
@@ -910,6 +916,9 @@ object Trees {
         case _ => finalize(tree, untpd.Throw(expr))
       }
       def SeqLiteral(tree: Tree, elems: List[Tree]): SeqLiteral = tree match {
+        case tree: JavaSeqLiteral =>
+          if (elems eq tree.elems) tree
+          else finalize(tree, new JavaSeqLiteral(elems))
         case tree: SeqLiteral if (elems eq tree.elems) => tree
         case _ => finalize(tree, untpd.SeqLiteral(elems))
       }

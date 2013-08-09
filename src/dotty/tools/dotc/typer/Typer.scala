@@ -533,6 +533,12 @@ class Typer extends Namer with Applications with Implicits {
     cpy.Throw(tree, expr1) withType defn.NothingType
   }
 
+  def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = {
+    val proto1 = pt.elemType orElse WildcardType
+    val elems1 = tree.elems map (typed(_, proto1))
+    cpy.SeqLiteral(tree, elems1) withType ctx.lub(elems1.tpes)
+  }
+
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = {
     val body1 = typed(tree.body, pt)
     val sym = ctx.newSymbol(ctx.owner, tree.name.asTermName, EmptyFlags, pt, coord = tree.pos)

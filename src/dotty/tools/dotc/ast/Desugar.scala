@@ -557,7 +557,6 @@ object desugar {
 
   /** Traverse pattern and collect all variable names with their types in buffer.
    *  Works for expanded as well as unexpanded patterns
-   *
    */
   private object getVars extends UntypedTreeAccumulator[ListBuffer[VarInfo]] {
     override def apply(buf: ListBuffer[VarInfo], tree: Tree): ListBuffer[VarInfo] = {
