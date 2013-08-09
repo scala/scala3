@@ -616,7 +616,7 @@ trait Applications extends Compatibility { self: Typer =>
             assert(isFullyDefined(unapplyArgType))
             pt
           }
-          else if (unapplyArgType <:< pt)
+          else if (unapplyArgType <:< widenForSelector(pt))
             ctx.maximizeType(unapplyArgType) match {
               case None => unapplyArgType
               case Some(tvar) =>

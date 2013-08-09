@@ -796,6 +796,15 @@ object Trees {
 
     // ----- Position handling -----------------------------------------
 
+    def foreachSubTreeOf(tree: Tree)(f: Tree => Unit): Unit = {
+      val traverser = new TreeTraverser {
+        def traverse(tree: Tree) = foldOver(f(tree), tree)
+      }
+      traverser.traverse(tree)
+    }
+
+    // ----- Position handling -----------------------------------------
+
     protected implicit def pos(implicit ctx: Context): Position = ctx.position
 
     def defPos(sym: Symbol)(implicit ctx: Context) = ctx.position union sym.coord.toPosition
@@ -1180,6 +1189,11 @@ object Trees {
               x1
           }
       }
+    }
+
+    abstract class TreeTraverser extends TreeAccumulator[Unit] {
+      def traverse(tree: Tree): Unit
+      def apply(x: Unit, tree: Tree) = traverse(tree)
     }
 
     /** Fold `f` over all tree nodes, in depth-first, prefix order */

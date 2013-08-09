@@ -131,7 +131,7 @@ class Typer extends Namer with Applications with Implicits {
    *                   (2) Change imported symbols to selections
    *
    */
-  def typedIdent(tree: untpd.Ident)(implicit ctx: Context): Tree = {
+  def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
     val name = tree.name
 
     /** Is this import a root import that has been shadowed by an explicit
@@ -279,22 +279,24 @@ class Typer extends Namer with Applications with Implicits {
     }
 
     // begin typedIdent
-    val startingContext = // ignore current variable scope in patterns to enforce linearity
-      if (ctx.mode is Mode.Pattern) ctx.outer else ctx
-    val saved = importedFromRoot
-    importedFromRoot = Set()
+    if (name == nme.WILDCARD && (ctx.mode is Mode.Pattern))
+      tree.withType(pt)
+    else {
+      val saved = importedFromRoot
+      importedFromRoot = Set()
 
-    val rawType =
-      try findRef(NoType, BindingPrec.nothingBound, NoContext)
-      finally importedFromRoot = saved
+      val rawType =
+        try findRef(NoType, BindingPrec.nothingBound, NoContext)
+        finally importedFromRoot = saved
 
-    val ownType =
-      if (rawType.exists) checkAccessible(rawType, superAccess = false, tree.pos)
-      else {
-        ctx.error(s"not found: $name", tree.pos)
-        ErrorType
-      }
-    tree.withType(ownType.underlyingIfRepeated)
+      val ownType =
+        if (rawType.exists) checkAccessible(rawType, superAccess = false, tree.pos)
+        else {
+          ctx.error(s"not found: $name", tree.pos)
+          ErrorType
+        }
+      tree.withType(ownType.underlyingIfRepeated)
+    }
   }
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
@@ -467,18 +469,25 @@ class Typer extends Namer with Applications with Implicits {
       accu(Set.empty, selType)
     }
 
-    def typedCase(tree: untpd.CaseDef)(implicit ctx: Context): CaseDef = {
-      val doCase: () => CaseDef = () => {
-        val pat1 = typedPattern(tree.pat, selType)
+    def typedCase(tree: untpd.CaseDef): CaseDef = {
+      def caseRest(pat: Tree)(implicit ctx: Context) = {
         gadtSyms foreach (_.resetGADTFlexType)
+        foreachSubTreeOf(pat) {
+          case b: Bind =>
+            if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
+            else ctx.error(s"duplicate pattern variable: ${b.name}", b.pos)
+          case _ =>
+        }
         val guard1 = typedExpr(tree.guard, defn.BooleanType)
         val body1 = typedExpr(tree.body, pt)
-        cpy.CaseDef(tree, pat1, guard1, body1) withType body1.tpe
+        cpy.CaseDef(tree, pat, guard1, body1) withType body1.tpe
       }
+      val doCase: () => CaseDef =
+        () => caseRest(typedPattern(tree.pat, selType))(ctx.fresh.withNewScope)
       (doCase /: gadtSyms) ((op, tsym) => tsym.withGADTFlexType(op)) ()
     }
 
-    val cases1 = tree.cases map (typedCase(_)(ctx.fresh.withNewScope))
+    val cases1 = tree.cases map typedCase
     cpy.Match(tree, sel1, cases1).withType(ctx.lub(cases1.tpes))
   }
 
@@ -522,6 +531,12 @@ class Typer extends Namer with Applications with Implicits {
   def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Throw = {
     val expr1 = typed(tree.expr, defn.ThrowableType)
     cpy.Throw(tree, expr1) withType defn.NothingType
+  }
+
+  def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = {
+    val body1 = typed(tree.body, pt)
+    val sym = ctx.newSymbol(ctx.owner, tree.name.asTermName, EmptyFlags, pt, coord = tree.pos)
+    cpy.Bind(tree, tree.name, body1) withType TermRef.withSym(NoPrefix, sym)
   }
 
   def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = {
@@ -773,29 +788,35 @@ class Typer extends Namer with Applications with Implicits {
             s"""missing arguments for ${tree.symbol.show}
                |follow this method with `_' if you want to treat it as a partially applied function""".stripMargin)
       case _ =>
-        if (tp <:< pt) tree else adaptToSubType(tp)
+        if (tp <:< pt) tree
+        else if (ctx.mode is Mode.Pattern) tree // no subtype check for patterns
+        else if (ctx.mode is Mode.Type) err.typeMismatch(tree, pt)
+        else adaptToSubType(tp)
     }
 
     def adaptToSubType(tp: Type): Tree = {
-      val adapted = ConstFold(tree, pt)
-      if (adapted ne EmptyTree) return adapted
-      if (ctx.mode.isExpr) {
-        if (pt.typeSymbol == defn.UnitClass)
-          return tpd.Block(tree :: Nil, Literal(Constant()))
-        tree match {
-          case Closure(Nil, id @ Ident(nme.ANON_FUN), _)
-          if defn.isFunctionType(tree.tpe) && !defn.isFunctionType(pt) =>
-            pt match {
-              case SAMType(meth)
-              if tree.tpe <:< meth.info.toFunctionType && isFullyDefined(pt, forceIt = false) =>
-                return cpy.Closure(tree, Nil, id, TypeTree(pt)).withType(pt)
-              case _ =>
-            }
-          case _ =>
-        }
-        val adapted = inferView(tree, pt)
-        if (adapted ne EmptyTree) return adapted
+      // try converting a constant to the target type
+      val folded = ConstFold(tree, pt)
+      if (folded ne EmptyTree) return folded
+      // drop type if prototype is Unit
+      if (pt.typeSymbol == defn.UnitClass)
+        return tpd.Block(tree :: Nil, Literal(Constant()))
+      // convert function literal to SAM closure
+      tree match {
+        case Closure(Nil, id @ Ident(nme.ANON_FUN), _)
+        if defn.isFunctionType(tree.tpe) && !defn.isFunctionType(pt) =>
+          pt match {
+            case SAMType(meth)
+            if tree.tpe <:< meth.info.toFunctionType && isFullyDefined(pt, forceIt = false) =>
+              return cpy.Closure(tree, Nil, id, TypeTree(pt)).withType(pt)
+            case _ =>
+          }
+        case _ =>
       }
+      // try an implicit conversion
+      val adapted = inferView(tree, pt)
+      if (adapted ne EmptyTree) return adapted
+      // if everything fails issue a type error
       err.typeMismatch(tree, pt)
     }
 

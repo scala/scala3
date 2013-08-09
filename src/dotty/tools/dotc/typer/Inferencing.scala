@@ -42,6 +42,11 @@ object Inferencing {
     }
   }
 
+  def widenForSelector(tp: Type)(implicit ctx: Context): Type = tp.widen match {
+    case tp: TypeRef if !tp.symbol.isClass => widenForSelector(tp.bounds.hi)
+    case tp => tp
+  }
+
   def checkBounds(args: List[Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = {
 
   }
