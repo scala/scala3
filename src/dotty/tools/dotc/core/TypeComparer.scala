@@ -135,6 +135,8 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
           case TypeBounds(_, hi) => isSubType(tp1, hi)
           case NoType => true
         }
+      case tp2: AnnotatedType =>
+        isSubType(tp1, tp2.tpe) // todo: refine?
       case ErrorType =>
         true
       case _ =>
@@ -155,6 +157,8 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
         case TypeBounds(lo, _) => isSubType(lo, tp2)
         case _ => true
       }
+    case tp1: AnnotatedType =>
+      isSubType(tp1.tpe, tp2)
     case ErrorType =>
       true
     case _ =>

@@ -838,7 +838,7 @@ object Trees {
       }
       def Select(tree: Tree, qualifier: Tree, name: Name): Select = tree match {
         case tree: SelectWithSig =>
-          if ((qualifier eq tree.qualifier) && (name == tree.name) ) tree
+          if ((qualifier eq tree.qualifier) && (name == tree.name)) tree
           else finalize(tree, new SelectWithSig(qualifier, name, tree.sig))
         case tree: Select if (qualifier eq tree.qualifier) && (name == tree.name) => tree
         case _ => finalize(tree, untpd.Select(qualifier, name))

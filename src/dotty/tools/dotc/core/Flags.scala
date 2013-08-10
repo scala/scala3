@@ -456,6 +456,9 @@ object Flags {
   /** A Java interface */
   final val JavaInterface = allOf(JavaDefined, Trait)
 
+  /** A Java companion object */
+  final val JavaModule = allOf(JavaDefined, Module)
+
   /** Labeled private[this] */
   final val PrivateLocal = allOf(Private, Local)
 

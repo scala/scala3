@@ -248,6 +248,12 @@ object desugar {
       DefDef(Modifiers(Synthetic), nme.ANON_FUN, Nil, params :: Nil, EmptyTree, body),
       Closure(Nil, Ident(nme.ANON_FUN), EmptyTree))
 
+  /** Make closure corresponding to partial function  { cases } */
+  def makeCaseLambda(cases: List[CaseDef])(implicit ctx: Context) = {
+    val param = makeSyntheticParameter()
+    Function(param :: Nil, Match(Ident(param.name), cases))
+  }
+
   def apply(tree: Tree)(implicit ctx: Context): Tree = {
 
     def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
@@ -278,12 +284,6 @@ object desugar {
           ValDef(Modifiers(Synthetic), x, TypeTree(), left),
           Apply(Select(right, op), Ident(x)))
       }
-    }
-
-    /** Make closure corresponding to partial function  { cases } */
-    def makeCaseLambda(cases: List[CaseDef]) = {
-      val param = makeSyntheticParameter()
-      Function(param :: Nil, Match(Ident(param.name), cases))
     }
 
     /** Create tree for for-comprehension <for (enums) do body> or
@@ -465,38 +465,12 @@ object desugar {
         }
     }
 
-    def isPatternVar(id: Ident) = // todo: what about variables in types in patterns?
-      (ctx.mode is Mode.Pattern) && isVarPattern(id) && id.name != nme.WILDCARD
-
     // begin desugar
-    val tree1 = tree match { // todo: move general tree desugaring to typer, and keep only untyped trees here?
-      case id @ Ident(_) if isPatternVar(id) =>
-        Bind(id.name, Ident(nme.WILDCARD))
-      case Typed(id @ Ident(_), tpt) if isPatternVar(id) =>
-        Bind(id.name, Typed(Ident(nme.WILDCARD), tpt)).withPos(id.pos)
-      case New(templ: Template) =>
-        val x = tpnme.ANON_CLASS
-        val clsDef = TypeDef(Modifiers(Final), x, templ)
-        Block(clsDef, New(Ident(x), Nil))
-      case Assign(Apply(fn, args), rhs) =>
-        Apply(Select(fn, nme.update), args :+ rhs)
-      case If(cond, thenp, EmptyTree) =>
-        If(cond, thenp, unitLiteral)
-      case Match(EmptyTree, cases) =>
-        makeCaseLambda(cases)
-      case tree: MemberDef =>
-        memberDef(tree)
+    tree match {
       case SymbolLit(str) =>
         New(ref(defn.SymbolClass.typeConstructor), (Literal(Constant(str)) :: Nil) :: Nil)
       case InterpolatedString(id, strs, elems) =>
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
-      case Function(args, body) =>
-        if (ctx.mode is Mode.Type) // FunctionN[args: _*, body]
-          AppliedTypeTree(
-            ref(defn.FunctionClass(args.length).typeConstructor),
-            args :+ body)
-        else
-          tree // was: makeClosure(args.asInstanceOf[List[ValDef]], body)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
           AppliedTypeTree(Ident(op), l :: r :: Nil) // op[l, r]
@@ -542,12 +516,6 @@ object desugar {
       case PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
         flatTree(pats1 map (makePatDef(mods, _, rhs)))
-      case _ =>
-        tree
-    }
-    tree1 match {
-      case tree1: NameTree => tree1.withName(tree1.name.encode)
-      case _ => tree1
     }
   }.withPos(tree.pos)
 
