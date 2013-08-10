@@ -30,7 +30,7 @@ object Mode {
   val Type = newMode(1, "Type")
 
   val ImplicitsDisabled = newMode(2, "ImplicitsDisabled")
-  val InSuperInit = newMode(3, "inSuperInit")
+  val InSuperInit = newMode(3, "InSuperInit")
 
   val PatternOrType = Pattern | Type
 }

@@ -511,7 +511,7 @@ trait Applications extends Compatibility { self: Typer =>
             val result = app.result
             ConstFold(result) orElse result
           case _ =>
-            fun1.exprType match {
+            fun1.qualifierType match {
               case ErrorType =>
                 tree.withType(ErrorType)
             }

@@ -19,16 +19,22 @@ object desugar {
   def valDef(vdef: ValDef)(implicit ctx: Context): Tree = {
     val ValDef(mods, name, tpt, rhs) = vdef
     if (!ctx.owner.isClass || (mods is Private)) vdef
-    else {
-      val lname = name.toLocalName
-      val field = cpy.ValDef(vdef, mods, lname, tpt, rhs)
-      val getter = cpy.DefDef(vdef, mods, name, Nil, Nil, tpt, Ident(lname))
-      if (!(mods is Mutable)) Thicket(field, getter)
+    else flatTree {
+      val (field, getterRhs) =
+        if (rhs.isEmpty)
+          (EmptyTree, EmptyTree)
+        else {
+          val lname = name.toLocalName
+          (cpy.ValDef(vdef, mods, lname, tpt, rhs), Ident(lname))
+        }
+      val getter = cpy.DefDef(vdef, mods | Accessor, name, Nil, Nil, tpt, getterRhs)
+      if (!(mods is Mutable)) field :: getter :: Nil
       else {
-        val setterParam = makeSyntheticParameter(tpt = TypeTree(field))
+        val setterParam = makeSyntheticParameter(tpt = TypeTree(getter))
         val setter = cpy.DefDef(vdef,
-          mods, name.getterToSetter, Nil, (setterParam :: Nil) :: Nil, EmptyTree, refOfDef(setterParam))
-        Thicket(field, getter, setter)
+          mods | Accessor, name.getterToSetter, Nil, (setterParam :: Nil) :: Nil,
+          EmptyTree, refOfDef(setterParam))
+        field :: getter :: setter :: Nil
       }
     }
   }
@@ -544,6 +550,11 @@ object desugar {
       case _ => tree1
     }
   }.withPos(tree.pos)
+
+  def refinedTypeToClass(tree: RefinedTypeTree)(implicit ctx: Context): TypeDef = {
+    val impl = Template(emptyConstructor, tree.tpt :: Nil, EmptyValDef, tree.refinements)
+    TypeDef(Modifiers(), tpnme.REFINE_CLASS, impl)
+  }
 
  /** If tree is a variable pattern, return its name and type, otherwise return None.
    */

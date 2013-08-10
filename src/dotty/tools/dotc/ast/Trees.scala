@@ -922,6 +922,10 @@ object Trees {
         case tree: SeqLiteral if (elems eq tree.elems) => tree
         case _ => finalize(tree, untpd.SeqLiteral(elems))
       }
+      def TypeTree(tree: Tree, original: Tree): TypeTree = tree match {
+        case tree: TypeTree if original eq tree.original => tree
+        case _ => finalize(tree, untpd.TypeTree(original))
+      }
       def SingletonTypeTree(tree: Tree, ref: Tree): SingletonTypeTree = tree match {
         case tree: SingletonTypeTree if (ref eq tree.ref) => tree
         case _ => finalize(tree, untpd.SingletonTypeTree(ref))

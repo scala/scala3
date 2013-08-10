@@ -43,8 +43,9 @@ object Typer {
   }
 
   implicit class TreeDecorator(tree: Tree) {
-    def exprType(implicit ctx: Context): Type = tree.tpe match {
+    def qualifierType(implicit ctx: Context): Type = tree.tpe match {
       case tpe: TermRef if !tpe.symbol.isStable => tpe.info
+      case tpe: TypeRef => tpe.info
       case tpe => tpe
     }
   }
@@ -69,7 +70,7 @@ class Typer extends Namer with Applications with Implicits {
    */
   private var importedFromRoot: Set[Symbol] = Set()
 
-  def typedSelection(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
+  def selectionType(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
     val ref =
       if (name == nme.CONSTRUCTOR) site.decl(name)
       else site.member(name)
@@ -81,6 +82,12 @@ class Typer extends Namer with Applications with Implicits {
           else s"$name is not a member of ${site.show}", pos)
       ErrorType
     }
+  }
+
+  def checkedSelectionType(qual1: Tree, tree: untpd.RefTree)(implicit ctx: Context): Type = {
+    val ownType = selectionType(qual1.qualifierType, tree.name, tree.pos)
+    if (!ownType.isError) checkAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
+    ownType
   }
 
   def checkAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = tpe match {
@@ -215,9 +222,9 @@ class Typer extends Namer with Applications with Implicits {
         }
         selectors match {
           case Pair(Ident(from), Ident(`name`)) :: rest =>
-            checkUnambiguous(typedSelection(site, name, tree.pos))
+            checkUnambiguous(selectionType(site, name, tree.pos))
           case Ident(`name`) :: rest =>
-            checkUnambiguous(typedSelection(site, name, tree.pos))
+            checkUnambiguous(selectionType(site, name, tree.pos))
           case _ :: rest =>
             namedImportRef(site, rest)
           case nil =>
@@ -301,9 +308,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
     val qual1 = typedExpr(tree.qualifier, RefinedType(WildcardType, tree.name, pt))
-    val ownType = typedSelection(qual1.exprType, tree.name, tree.pos)
-    if (!ownType.isError) checkAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
-    cpy.Select(tree, qual1, tree.name).withType(ownType)
+    cpy.Select(tree, qual1, tree.name).withType(checkedSelectionType(qual1, tree))
   }
 
   def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = {
@@ -537,6 +542,84 @@ class Typer extends Namer with Applications with Implicits {
     val proto1 = pt.elemType orElse WildcardType
     val elems1 = tree.elems map (typed(_, proto1))
     cpy.SeqLiteral(tree, elems1) withType ctx.lub(elems1.tpes)
+  }
+
+  def typedTypeTree(tree: untpd.TypeTree)(implicit ctx: Context): TypeTree = {
+    val (original1, ownType) = tree.original match {
+      case untpd.EmptyTree =>
+        (EmptyTree, errorType("internal error: missing type in TypeTree", tree.pos))
+      case original: DefDef =>
+        val meth = ctx.lookup(original.name).first
+        assert(meth.exists, meth)
+        (EmptyTree, meth.info.resultType)
+      case original =>
+        val original1 = typed(original)
+        (original1, original1.tpe)
+    }
+    cpy.TypeTree(tree, original1) withType ownType
+  }
+
+  def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(implicit ctx: Context): SingletonTypeTree = {
+    val ref1 = typedExpr(tree.ref)
+    checkStable(ref1.qualifierType, tree.pos)
+    cpy.SingletonTypeTree(tree, ref1) withType ref1.tpe
+  }
+
+  def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): SelectFromTypeTree = {
+    val qual1 = typedType(tree.qualifier, RefinedType(WildcardType, tree.name, pt))
+    cpy.SelectFromTypeTree(tree, qual1, tree.name).withType(checkedSelectionType(qual1, tree))
+  }
+
+  def typedAndTypeTree(tree: untpd.AndTypeTree, pt: Type)(implicit ctx: Context): AndTypeTree = {
+    val left1 = typed(tree.left)
+    val right1 = typed(tree.right)
+    cpy.AndTypeTree(tree, left1, right1) withType left1.tpe & right1.tpe
+  }
+
+  def typedOrTypeTree(tree: untpd.OrTypeTree, pt: Type)(implicit ctx: Context): OrTypeTree = {
+    val left1 = typed(tree.left, pt)
+    val right1 = typed(tree.right, pt)
+    cpy.OrTypeTree(tree, left1, right1) withType left1.tpe | right1.tpe
+  }
+
+  def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(implicit ctx: Context): RefinedTypeTree = {
+    val tpt1 = typedAheadType(tree.tpt)
+    val refineClsDef = desugar.refinedTypeToClass(tree)
+    val throwAwayScopeCtx = ctx.fresh.withNewScope
+    val refineCls = createSymbol(refineClsDef)(throwAwayScopeCtx).asClass
+    val TypeDef(_, _, Template(_, _, _, refinements1)) = typed(refineClsDef)
+    assert(tree.refinements.length == refinements1.length, s"${tree.refinements} != $refinements1")
+    def addRefinement(parent: Type, refinement: Tree): Type = {
+      foreachSubTreeOf(refinement) {
+        case tree: RefTree =>
+          if (tree.symbol.owner == refineCls && tree.pos.start <= tree.symbol.pos.end)
+            ctx.error(s"illegal forward reference in refinement", tree.pos)
+        case _ =>
+      }
+      val rsym = refinement.symbol
+      val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
+      RefinedType(parent, rsym.name, rt => rinfo.substThis(refineCls, RefinedThis(rt)))
+    }
+    cpy.RefinedTypeTree(tree, tpt1, refinements1) withType
+      (tpt1.tpe /: refinements1)(addRefinement)
+  }
+
+  def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): AppliedTypeTree = {
+    val tpt1 = typed(tree.tpt)
+    val args1 = tree.args map (typed(_))
+    val tparams = tpt1.tpe.typeParams
+    if (args1.length != tparams.length)
+      ctx.error(s"wrong number of type arguments for ${tpt1.tpe.show}, should be ${tparams.length}")
+    // todo in later phase: check arguments conform to parameter bounds
+    cpy.AppliedTypeTree(tree, tpt1, args1) withType tpt1.tpe.appliedTo(args1.tpes)
+  }
+
+  def typedTypeBounds(tree: untpd.TypeBoundsTree)(implicit ctx: Context): TypeBoundsTree = {
+    val lo1 = typed(tree.lo)
+    val hi1 = typed(tree.hi)
+    if (!(lo1.tpe <:< hi1.tpe))
+      ctx.error(s"lower bound ${lo1.tpe.show} does not conform to upper bound ${hi1.tpe.show}", tree.pos)
+    cpy.TypeBoundsTree(tree, lo1, hi1) withType TypeBounds(lo1.tpe, hi1.tpe)
   }
 
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = {
