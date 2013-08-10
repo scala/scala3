@@ -467,7 +467,7 @@ trait Applications extends Compatibility { self: Typer =>
           }
           if (sameSeq(typedArgs, args)) // trick to cut down on tree copying
             typedArgs = args.asInstanceOf[List[Tree]]
-          methodType.instantiate(typedArgs map (_.tpe))
+          methodType.instantiate(typedArgs.tpes)
         }
       val app1 = cpy.Apply(app, normalizedFun, typedArgs).withType(ownType)
       if (liftedDefs != null && liftedDefs.nonEmpty) Block(liftedDefs.toList, app1)
@@ -497,7 +497,7 @@ trait Applications extends Compatibility { self: Typer =>
 
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
     if (ctx.mode is Mode.Pattern)
-      typedUnApply(tree.fun, tree.args, tree, pt)
+      typedUnApply(tree, pt)
     else {
 
       def realApply(implicit ctx: Context) = {
@@ -544,11 +544,11 @@ trait Applications extends Compatibility { self: Typer =>
 
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = {
     val typedFn = typedExpr(tree.fun, PolyProtoType(tree.args.length, pt))
-    val typedArgs = tree.args map (typedType(_))
+    val typedArgs = tree.args mapconserve (typedType(_))
     val ownType = typedFn.tpe.widen match {
       case pt: PolyType =>
         checkBounds(typedArgs, pt, tree.pos)
-        pt.resultType.substParams(pt, typedArgs map (_.tpe))
+        pt.resultType.substParams(pt, typedArgs.tpes)
       case _ =>
         ctx.error(s"${err.exprStr(typedFn)} does not take type parameters", tree.pos)
         ErrorType
@@ -556,7 +556,8 @@ trait Applications extends Compatibility { self: Typer =>
     cpy.TypeApply(tree, typedFn, typedArgs).withType(ownType)
   }
 
-  def typedUnApply(qual: untpd.Tree, args: List[untpd.Tree], tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
+  def typedUnApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
+    val Apply(qual, args) = tree
 
     def unapplyArgs(unapplyResult: Type)(implicit ctx: Context): List[Type] = {
       def recur(tp: Type): List[Type] = {
@@ -646,7 +647,7 @@ trait Applications extends Compatibility { self: Typer =>
         else Typed(result, TypeTree(ownType))
       case tp =>
         val unapplyErr = if (tp.isError) unapply else notAnExtractor(unapply)
-        val typedArgsErr = args map (typed(_, defn.AnyType))
+        val typedArgsErr = args mapconserve (typed(_, defn.AnyType))
         cpy.UnApply(tree, unapplyErr, typedArgsErr) withType ErrorType
     }
   }

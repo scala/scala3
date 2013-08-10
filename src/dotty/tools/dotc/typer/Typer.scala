@@ -438,7 +438,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = {
-    val env1 = tree.env map (typed(_))
+    val env1 = tree.env mapconserve (typed(_))
     val meth1 = typed(tree.meth)
     val ownType = meth1.tpe.widen match {
       case mt: MethodType if !mt.isDependent =>
@@ -492,7 +492,7 @@ class Typer extends Namer with Applications with Implicits {
       (doCase /: gadtSyms) ((op, tsym) => tsym.withGADTFlexType(op)) ()
     }
 
-    val cases1 = tree.cases map typedCase
+    val cases1 = tree.cases mapconserve typedCase
     cpy.Match(tree, sel1, cases1).withType(ctx.lub(cases1.tpes))
   }
 
@@ -540,7 +540,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = {
     val proto1 = pt.elemType orElse WildcardType
-    val elems1 = tree.elems map (typed(_, proto1))
+    val elems1 = tree.elems mapconserve (typed(_, proto1))
     cpy.SeqLiteral(tree, elems1) withType ctx.lub(elems1.tpes)
   }
 
@@ -606,7 +606,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): AppliedTypeTree = {
     val tpt1 = typed(tree.tpt)
-    val args1 = tree.args map (typed(_))
+    val args1 = tree.args mapconserve (typed(_))
     val tparams = tpt1.tpe.typeParams
     if (args1.length != tparams.length)
       ctx.error(s"wrong number of type arguments for ${tpt1.tpe.show}, should be ${tparams.length}")
@@ -628,6 +628,11 @@ class Typer extends Namer with Applications with Implicits {
     cpy.Bind(tree, tree.name, body1) withType TermRef.withSym(NoPrefix, sym)
   }
 
+  def typedAlternative(tree: untpd.Alternative, pt: Type)(implicit ctx: Context): Alternative = {
+    val trees1 = tree.trees mapconserve (typed(_, pt))
+    cpy.Alternative(tree, trees1) withType ctx.lub(trees1.tpes)
+  }
+
   def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = {
     val annotations1 = mods.annotations mapconserve typedAnnotation
     if (annotations1 eq mods.annotations) mods.asInstanceOf[Modifiers]
@@ -642,15 +647,15 @@ class Typer extends Namer with Applications with Implicits {
     val mods1 = typedModifiers(mods)
     val tpt1 = typedType(tpt)
     val rhs1 = typedExpr(rhs, tpt1.tpe)
-    val pt = if (sym.exists) sym.symRef else NoType
-    cpy.ValDef(vdef, mods1, name, tpt1, rhs1).withType(pt)
+    val refType = if (sym.exists) sym.symRef else NoType
+    cpy.ValDef(vdef, mods1, name, tpt1, rhs1).withType(refType)
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
     val DefDef(mods, name, tparams, vparamss, tpt, rhs) = ddef
     val mods1 = typedModifiers(mods)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
-    val vparamss1 = vparamss.mapconserve(_ mapconserve (typed(_).asInstanceOf[ValDef]))
+    val vparamss1 = vparamss mapconserve(_ mapconserve (typed(_).asInstanceOf[ValDef]))
     val tpt1 = typedType(tpt)
     val rhs1 = typedExpr(rhs, tpt1.tpe)
     cpy.DefDef(ddef, mods1, name, tparams1, vparamss1, tpt1, rhs1).withType(sym.symRef)
