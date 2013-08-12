@@ -373,8 +373,8 @@ object Contexts {
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)
 
-    NoPhase // initialize some phases
-    SomePhase // TODO: Is there a cleaner way to do this?
+    // Set up some phases to get started */
+    usePhases(SomePhase :: Nil)
 
     /** The standard definitions */
     val definitions = new Definitions()(initialCtx)
@@ -434,10 +434,7 @@ object Contexts {
 
     // Phases state
     /** Phases by id */
-    private[core] var phases = new Array[Phase](MaxPossiblePhaseId + 1)
-
-    /** The number of defined phases. This includes NoPhase, so nphases >= 1 */
-    private[core] var nphases = 0
+    private[core] var phases: Array[Phase] = _
 
     // Printers state
     /** Number of recursive invocations of a show method on cuyrrent stack */

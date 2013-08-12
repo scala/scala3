@@ -27,21 +27,25 @@ object Phases {
 
   trait PhasesBase { this: ContextBase =>
 
-    lazy val allPhases = phases.slice(FirstPhaseId, nphases)
-
-    object NoPhase extends Phase(initialCtx) {
+    object NoPhase extends Phase {
       override def exists = false
       def name = "<no phase>"
       def run() { throw new Error("NoPhase.run") }
     }
 
-    object SomePhase extends Phase(initialCtx) {
+    object SomePhase extends Phase {
       def name = "<some phase>"
       def run() { throw new Error("SomePhase.run") }
     }
 
     def phaseNamed(name: String) =
-      allPhases.find(_.name == name).getOrElse(NoPhase)
+      phases.find(_.name == name).getOrElse(NoPhase)
+
+    /** Use the following phases in the order they are given.
+     *  The list should never contain NoPhase.
+     */
+    def usePhases(phases: List[Phase]) =
+      this.phases = (NoPhase :: phases).toArray
 
     final val typerName = "typer"
     final val refchecksName = "refchecks"
@@ -54,11 +58,24 @@ object Phases {
     lazy val flattenPhase = phaseNamed(flattenName)
   }
 
-  abstract class Phase(initctx: Context) {
+  abstract class Phase {
 
-    val id: Int = initctx.nphases
-    initctx.phases(id) = this  // TODO: Do explicit phase install instead?
-    initctx.nphases += 1
+    private[this] var idCache = -1
+
+    /** The sequence position of this phase in the given context where 0
+     *  is reserved for NoPhase and the first real phase is at position 1.
+     *  Returns -1 if the phase is not installed in the context.
+     */
+    def id(implicit ctx: Context) = {
+      val id = idCache
+      val phases = ctx.phases
+      if (idCache >= 0 && idCache < phases.length && (phases(idCache) eq this))
+        id
+      else {
+        idCache = phases indexOf this
+        idCache
+      }
+    }
 
     def name: String
 
@@ -70,16 +87,16 @@ object Phases {
 
     def exists: Boolean = true
 
-    final def <= (that: Phase) =
+    final def <= (that: Phase)(implicit ctx: Context) =
       exists && id <= that.id
 
     final def prev(implicit ctx: Context): Phase =
-      if (id > FirstPhaseId) ctx.phases(id - 1) else initctx.NoPhase
+      if (id > FirstPhaseId) ctx.phases(id - 1) else ctx.NoPhase
 
     final def next(implicit ctx: Context): Phase =
-      if (hasNext) ctx.phases(id + 1) else initctx.NoPhase
+      if (hasNext) ctx.phases(id + 1) else ctx.NoPhase
 
-    final def hasNext(implicit ctx: Context) = id + 1 < ctx.nphases
+    final def hasNext(implicit ctx: Context) = id + 1 < ctx.phases.length
 
     final def iterator(implicit ctx: Context) =
       Iterator.iterate(this)(_.next) takeWhile (_.hasNext)
