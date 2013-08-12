@@ -13,7 +13,7 @@ class DottyTest {
   dotty.tools.dotc.parsing.Scanners // initialize keywords
 
   implicit val ctx: Context = {
-    val base = Context.theBase
+    val base = new ContextBase
     import base.settings._
     val ctx = base.initialCtx.fresh
       .withSetting(verbose, true)

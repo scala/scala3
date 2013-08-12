@@ -70,6 +70,8 @@ class Typer extends Namer with Applications with Implicits {
   /** A temporary data item valid for a single typed ident:
    *  The set of all root import symbols that have been
    *  encountered as a qualifier of an import so far.
+   *  Note: It would be more proper to move importedFromRoot into typedIdent.
+   *  We should check that this has no performance degradation, however.
    */
   private var importedFromRoot: Set[Symbol] = Set()
 

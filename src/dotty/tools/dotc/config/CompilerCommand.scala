@@ -1,0 +1,127 @@
+
+package dotty.tools.dotc
+package config
+
+import java.io.File
+import Settings._
+import core.Contexts._
+import core.DotClass
+import Properties._
+
+object CompilerCommand extends DotClass {
+
+  /** The name of the command */
+  def cmdName = "scalac"
+
+  private def explainAdvanced = "\n" + """
+    |-- Notes on option parsing --
+    |Boolean settings are always false unless set.
+    |Where multiple values are accepted, they should be comma-separated.
+    |  example: -Xplugin:plugin1,plugin2
+    |<phases> means one or a comma-separated list of:
+    |  (partial) phase names, phase ids, phase id ranges, or the string "all".
+    |  example: -Xprint:all prints all phases.
+    |  example: -Xprint:expl,24-26 prints phases explicitouter, closelim, dce, jvm.
+    |  example: -Xprint:-4 prints only the phases up to typer.
+    |
+  """.stripMargin.trim + "\n"
+
+  def shortUsage = s"Usage: $cmdName <options> <source files>"
+
+  def versionMsg = s"Dotty compiler $versionString -- $copyrightString"
+
+  /** Distill arguments into summary detailing settings, errors and files to compiler */
+  def distill(args: Array[String])(implicit ctx: Context): ArgsSummary = {
+    /**
+     * Expands all arguments starting with @ to the contents of the
+     * file named like each argument.
+     */
+    def expandArg(arg: String): List[String] = unsupported("expandArg")/*{
+      def stripComment(s: String) = s takeWhile (_ != '#')
+      val file = File(arg stripPrefix "@")
+      if (!file.exists)
+        throw new java.io.FileNotFoundException("argument file %s could not be found" format file.name)
+
+      settings splitParams (file.lines() map stripComment mkString " ")
+    }*/
+
+    // expand out @filename to the contents of that filename
+    def expandedArguments = args.toList flatMap {
+      case x if x startsWith "@"  => expandArg(x)
+      case x                      => List(x)
+    }
+
+    ctx.settings.processArguments(expandedArguments, processAll = true)
+  }
+
+  /** Provide usage feedback on argument summary, assuming that all settings
+   *  are already applied in context.
+   *  @return  The list of files to compile.
+   */
+  def checkUsage(summary: ArgsSummary)(implicit ctx: Context): List[String] = {
+    val settings = ctx.settings
+
+    /** Creates a help message for a subset of options based on cond */
+    def availableOptionsMsg(cond: Setting[_] => Boolean): String = {
+      val ss                  = (ctx.settings.allSettings filter cond).toList sortBy (_.name)
+      val width               = (ss map (_.name.length)).max
+      def format(s: String)   = ("%-" + width + "s") format s
+      def helpStr(s: Setting[_]) = s"${format(s.name)} ${s.description}"
+      ss map helpStr mkString "\n"
+    }
+
+    def createUsageMsg(label: String, shouldExplain: Boolean, cond: Setting[_] => Boolean): String = {
+      val prefix = List(
+        Some(shortUsage),
+        Some(explainAdvanced) filter (_ => shouldExplain),
+        Some(label + " options include:")
+      ).flatten mkString "\n"
+
+      prefix + "\n" + availableOptionsMsg(cond)
+    }
+
+    def isStandard(s: Setting[_]): Boolean = !isAdvanced(s) && !isPrivate(s)
+    def isAdvanced(s: Setting[_]): Boolean = s.name startsWith "-X"
+    def isPrivate(s: Setting[_]) : Boolean = s.name startsWith "-Y"
+
+    /** Messages explaining usage and options */
+    def usageMessage    = createUsageMsg("where possible standard", shouldExplain = false, isStandard)
+    def xusageMessage   = createUsageMsg("Possible advanced", shouldExplain = true, isAdvanced)
+    def yusageMessage   = createUsageMsg("Possible private", shouldExplain = true, isPrivate)
+
+    def shouldStopWithInfo = {
+      import settings._
+      Set(help, Xhelp, Yhelp, showPlugins, showPhases) exists (_.value)
+    }
+
+    def infoMessage: String = {
+      import settings._
+      if (help.value)               usageMessage
+      else if (Xhelp.value)         xusageMessage
+      else if (Yhelp.value)         yusageMessage
+//    else if (showPlugins.value)   global.pluginDescriptions
+//    else if (showPhases.value)    global.phaseDescriptions + (
+//      if (debug.value) "\n" + global.phaseFlagDescriptions else ""
+//    )
+      else                          ""
+    }
+
+    if (summary.errors.nonEmpty) {
+      summary.errors foreach (ctx.error(_))
+      ctx.echo("  dotc -help  gives more information")
+      Nil
+    }
+    else if (settings.version.value) {
+      ctx.echo(versionMsg)
+      Nil
+    }
+    else if (shouldStopWithInfo) {
+      ctx.echo(infoMessage)
+      Nil
+    } else {
+      if (summary.arguments.isEmpty && !settings.resident.value)
+        ctx.echo(usageMessage)
+      summary.arguments
+    }
+  }
+}
