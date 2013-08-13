@@ -454,11 +454,10 @@ object Denotations {
     def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
       val valid = myValidFor
-      def stillValid(denot: SymDenotation) =
-        !denot.exists || {
-          val top = denot.topLevelSym
-          top.owner.info.decl(top.name).symbol eq top
-        }
+      def stillValid(denot: SymDenotation): Boolean =
+        if (!denot.exists || (denot.flags is PackageClass)) true
+        else if (denot.owner is PackageClass) denot.owner.decls.lookup(denot.name) eq symbol
+        else stillValid(denot.owner)
       def bringForward(): SingleDenotation = this match {
         case denot: SymDenotation if stillValid(denot) =>
           var d: SingleDenotation = denot

@@ -33,7 +33,7 @@ object Scopes {
    */
   private final val MaxRecursions = 1000
 
-  class ScopeEntry private[Scopes] (val sym: Symbol, val owner: Scope) {
+  class ScopeEntry private[Scopes] (val name: Name, val sym: Symbol, val owner: Scope) {
 
     /** the next entry in the hash bucket
      */
@@ -153,7 +153,7 @@ object Scopes {
     /** create and enter a scope entry */
     protected def newScopeEntry(sym: Symbol)(implicit ctx: Context): ScopeEntry = {
       ensureCapacity(if (hashTable ne null) hashTable.length else MinHash)
-      val e = new ScopeEntry(sym, this)
+      val e = new ScopeEntry(sym.name, sym, this)
       e.prev = lastEntry
       lastEntry = e
       if (hashTable ne null) enterInHash(e)
@@ -163,7 +163,7 @@ object Scopes {
     }
 
     private def enterInHash(e: ScopeEntry)(implicit ctx: Context): Unit = {
-      val idx = e.sym.name.hashCode & (hashTable.length - 1)
+      val idx = e.name.hashCode & (hashTable.length - 1)
       e.tail = hashTable(idx)
       assert(e.tail != e)
       hashTable(idx) = e
@@ -222,7 +222,7 @@ object Scopes {
         e1.prev = e.prev
       }
       if (hashTable ne null) {
-        val index = e.sym.name.hashCode & (hashTable.length - 1)
+        val index = e.name.hashCode & (hashTable.length - 1)
         var e1 = hashTable(index)
         if (e1 == e)
           hashTable(index) = e.tail
@@ -250,12 +250,12 @@ object Scopes {
       var e: ScopeEntry = null
       if (hashTable ne null) {
         e = hashTable(name.hashCode & (hashTable.length - 1))
-        while ((e ne null) && e.sym.name != name) {
+        while ((e ne null) && e.name != name) {
           e = e.tail
         }
       } else {
         e = lastEntry
-        while ((e ne null) && e.sym.name != name) {
+        while ((e ne null) && e.name != name) {
           e = e.prev
         }
       }
@@ -266,9 +266,9 @@ object Scopes {
     override final def lookupNextEntry(entry: ScopeEntry)(implicit ctx: Context): ScopeEntry = {
       var e = entry
       if (hashTable ne null)
-        do { e = e.tail } while ((e ne null) && e.sym.name != entry.sym.name)
+        do { e = e.tail } while ((e ne null) && e.name != entry.name)
       else
-        do { e = e.prev } while ((e ne null) && e.sym.name != entry.sym.name)
+        do { e = e.prev } while ((e ne null) && e.name != entry.name)
       e
     }
 

@@ -494,7 +494,8 @@ object SymDenotations {
 
     /** The top-level symbol containing this denotation. */
     final def topLevelSym(implicit ctx: Context): Symbol =
-      if (owner is PackageClass) symbol else owner.topLevelSym
+      if ((this is PackageClass) || (owner is PackageClass)) symbol
+      else owner.topLevelSym
 
     /** The package containing this denotation */
     final def enclosingPackage(implicit ctx: Context): Symbol =
