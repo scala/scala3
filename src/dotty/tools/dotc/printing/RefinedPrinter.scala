@@ -54,11 +54,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     super.toTextPrefix(tp)
   }
 
-  override protected def refinementNameString(tp: RefinedType): String = {
-    val tsym = tp.member(tp.refinedName).symbol
-    val name = tsym.originalName
-    nameString(if (tsym is ExpandedTypeParam) name.asTypeName.unexpandedName() else name)
-  }
+  override protected def refinementNameString(tp: RefinedType): String =
+    if (tp.parent.isInstanceOf[WildcardType] || tp.refinedName == nme.WILDCARD)
+      super.refinementNameString(tp)
+    else {
+      val tsym = tp.member(tp.refinedName).symbol
+      val name = tsym.originalName
+      nameString(if (tsym is ExpandedTypeParam) name.asTypeName.unexpandedName() else name)
+    }
 
   override def toText(tp: Type): Text = controlled {
     def toTextTuple(args: List[Type]): Text =

@@ -7,6 +7,7 @@ import ast._
 import Trees._, Constants._, StdNames._, Scopes._, Denotations._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import ast.desugar, ast.desugar._
+import Typer.AnySelectionProto
 import util.Positions._
 import util.SourcePosition
 import collection.mutable
@@ -126,6 +127,17 @@ class Namer { typer: Typer =>
     sym
   }
 
+  /** All PackageClassInfoTypes come from here. */
+  private def createPackageSymbol(pid: RefTree)(implicit ctx: Context): Symbol = {
+    val pkgOwner = pid match {
+      case Ident(_) => if (ctx.owner eq defn.EmptyPackageClass) defn.RootClass else ctx.owner
+      case Select(qual: RefTree, _) => createPackageSymbol(qual).moduleClass
+    }
+    val existing = pkgOwner.info.decls.lookup(pid.name)
+    if ((existing is Package) && (pkgOwner eq existing.owner)) existing
+    else println(s"entering new ${pid.name} in ${pkgOwner.show}")
+  }
+
   /** The expansion of a member def */
   def expansion(mdef: MemberDef)(implicit ctx: Context): Tree = {
     val expanded = desugar.memberDef(mdef)
@@ -147,6 +159,10 @@ class Namer { typer: Typer =>
 
   /** Enter statement */
   def enterSym(stat: Tree)(implicit ctx: Context): Context = stat match {
+    case pcl: PackageDef =>
+      val pkg = createPackageSymbol(pcl.pid)
+      enterSyms(pcl.stats)(ctx.fresh.withOwner(pkg.moduleClass))
+      ctx
     case imp: Import =>
       importContext(createSymbol(imp), imp.selectors)
     case mdef: MemberDef =>
@@ -161,7 +177,7 @@ class Namer { typer: Typer =>
   def enterSyms(stats: List[Tree])(implicit ctx: Context): Context = {
     @tailrec def traverse(stats: List[Tree])(implicit ctx: Context): Context = stats match {
       case stat :: stats1 =>
-        traverse(stats)(enterSym(stat))
+        traverse(stats1)(enterSym(stat))
       case nil =>
         ctx
     }
@@ -210,7 +226,7 @@ class Namer { typer: Typer =>
           if (tree.isClassDef) classDefSig(tree, sym.asClass)(localContext)
           else typeDefSig(tree, sym)(localContext.withNewScope)
         case imp: Import =>
-          val expr1 = typedAheadExpr(imp.expr)
+          val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
           ImportType(tpd.SharedTree(expr1))
       }
 

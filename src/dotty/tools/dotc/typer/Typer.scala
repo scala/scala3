@@ -59,6 +59,8 @@ object Typer {
   }
 
   class SelectionProto(name: Name, tp: Type) extends RefinedType(WildcardType, name)(_ => tp)
+
+  object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType)
 }
 
 class Typer extends Namer with Applications with Implicits {
@@ -96,7 +98,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def checkValue(tpe: Type, proto: Type, pos: Position)(implicit ctx: Context): Unit =
-    if (!(proto.isInstanceOf[SelectionProto])) {
+    if (!proto.isInstanceOf[SelectionProto]) {
       val sym = tpe.termSymbol
       if ((sym is Package) || (sym is JavaModule)) ctx.error(s"${sym.show} is not a value", pos)
     }
@@ -737,7 +739,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = {
-    val expr1 = typedExpr(imp.expr)
+    val expr1 = typedExpr(imp.expr, AnySelectionProto)
     cpy.Import(imp, expr1, imp.selectors).withType(sym.symRef)
   }
 
@@ -751,16 +753,16 @@ class Typer extends Namer with Applications with Implicits {
       cpy.Typed(tree, arg1, TypeTree(ownType)) withType ownType
   }
 
-  def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = {
-    val pid1 = typed(tree.pid)
+ def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = {
+    val pid1 = typedExpr(tree.pid, AnySelectionProto)
     val pkg = pid1.symbol
-    val nestedCtx =
+    val packageContext =
       if (pkg is Package) ctx.fresh withOwner pkg.moduleClass
       else {
         ctx.error(s"${pkg.show} is not a packge")
         ctx
       }
-    val stats1 = typedStats(tree.stats, NoSymbol)(nestedCtx)
+    val stats1 = typedStats(tree.stats, NoSymbol)(packageContext)
     cpy.PackageDef(tree, pid1.asInstanceOf[RefTree], stats1) withType pkg.symRef
   }
 

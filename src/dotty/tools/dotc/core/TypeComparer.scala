@@ -3,6 +3,7 @@ package dotc
 package core
 
 import Types._, Contexts._, Symbols._, Flags._
+import StdNames.nme
 import collection.mutable
 import util.SimpleMap
 
@@ -181,8 +182,9 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
     case tp2: NamedType =>
       thirdTryNamed(tp1, tp2)
     case tp2: RefinedType =>
-      isSubType(tp1, tp2.parent) &&
-        isSubType(tp1.member(tp2.refinedName).info, tp2.refinedInfo)
+      isSubType(tp1, tp2.parent) && (
+        tp2.refinedName == nme.WILDCARD ||
+        isSubType(tp1.member(tp2.refinedName).info, tp2.refinedInfo))
     case AndType(tp21, tp22) =>
       isSubType(tp1, tp21) && isSubType(tp1, tp22)
     case OrType(tp21, tp22) =>
@@ -357,4 +359,10 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
     if (tp1 == NoType || tp2 == NoType) false
     else if (tp1 eq tp2) true
     else isSubType(tp1, tp2) && isSubType(tp2, tp1)
+}
+
+class ExplainingTypeComparer(implicit ctx: Context) extends TypeComparer {
+  override def isSubType(tp1: Type, tp2: Type) = {
+    ctx.traceIndented(s"${tp1.show} <:< ${tp2.show}")(super.isSubType(tp1, tp2))
+  }
 }

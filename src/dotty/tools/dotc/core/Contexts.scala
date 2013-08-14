@@ -14,7 +14,7 @@ import SymDenotations._
 import util.Positions._
 import ast.Trees._
 import ast.untpd
-import util.{FreshNameCreator, SimpleMap}
+import util.{FreshNameCreator, SimpleMap, SourceFile, NoSource}
 import typer._
 import Implicits.ContextualImplicits
 import config.Settings._
@@ -112,6 +112,11 @@ object Contexts {
     private[this] var _sstate: SettingsState = _
     protected def sstate_=(sstate: SettingsState) = _sstate = sstate
     def sstate: SettingsState = _sstate
+
+    /** The current tree */
+    private[this] var _compilationUnit: CompilationUnit = _
+    protected def compilationUnit_=(compilationUnit: CompilationUnit) = _compilationUnit = compilationUnit
+    def compilationUnit: CompilationUnit = _compilationUnit
 
     /** The current tree */
     private[this] var _tree: Tree[_ >: Untyped] = _
@@ -227,7 +232,8 @@ object Contexts {
     /** The current source file; will be derived from current
      *  compilation unit.
      */
-    def source = util.NoSource // for now
+    def source: SourceFile =
+      if (compilationUnit == null) NoSource else compilationUnit.source
 
     /** Does current phase use an erased types interpretation? */
     def erasedTypes: Boolean = phase.erasedTypes
@@ -300,6 +306,7 @@ object Contexts {
     def withRefinedPrinter(printer: Context => Printer): this.type = { this.refinedPrinter = printer; this }
     def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
     def withSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
+    def withCompilationUnit(compilationUnit: CompilationUnit): this.type = { this.compilationUnit = compilationUnit; this }
     def withTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
     def withScope(scope: Scope): this.type = { this.scope = scope; this }
     def withNewScope: this.type = { this.scope = newScope; this }
@@ -444,6 +451,9 @@ object Contexts {
     private[dotc] var indent = 0
 
     protected[dotc] val indentTab = "  "
+
+    /** Should warnings and errors containing non-sensical strings be suppressed? */
+    private[dotc] var suppressNonSensicalErrors = true
   }
 
   object Context {

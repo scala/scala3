@@ -27,15 +27,17 @@ object Phases {
 
   trait PhasesBase { this: ContextBase =>
 
+    def allPhases = phases.tail
+
     object NoPhase extends Phase {
       override def exists = false
       def name = "<no phase>"
-      def run() { throw new Error("NoPhase.run") }
+      def run(implicit ctx: Context): Unit = unsupported("run")
     }
 
     object SomePhase extends Phase {
       def name = "<some phase>"
-      def run() { throw new Error("SomePhase.run") }
+      def run(implicit ctx: Context): Unit = unsupported("run")
     }
 
     def phaseNamed(name: String) =
@@ -58,7 +60,20 @@ object Phases {
     lazy val flattenPhase = phaseNamed(flattenName)
   }
 
-  abstract class Phase {
+  abstract class Phase extends DotClass {
+
+    def name: String
+
+    def run(implicit ctx: Context): Unit
+
+    def runOn(units: List[CompilationUnit])(implicit ctx: Context): Unit =
+      for (unit <- units) run(ctx.fresh.withCompilationUnit(unit))
+
+    def description: String = name
+
+    def checkable: Boolean = true
+
+    def exists: Boolean = true
 
     private[this] var idCache = -1
 
@@ -77,17 +92,7 @@ object Phases {
       }
     }
 
-    def name: String
-
-    def run(): Unit
-
-    def description: String = name
-
-    def checkable: Boolean = true
-
-    def exists: Boolean = true
-
-    final def <= (that: Phase)(implicit ctx: Context) =
+   final def <= (that: Phase)(implicit ctx: Context) =
       exists && id <= that.id
 
     final def prev(implicit ctx: Context): Phase =
