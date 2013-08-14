@@ -139,6 +139,9 @@ class SymbolLoaders {
   def needCompile(bin: AbstractFile, src: AbstractFile) =
     src.lastModified >= bin.lastModified
 
+  /** Exclude classes with '$' in their names from consideration */
+  def isValid(className: String) = !(className contains '$')
+
   /** Load contents of a package
    */
   class PackageLoader(override val sourceModule: TermSymbol, classpath: ClassPath)(implicit val cctx: CondensedContext)
@@ -153,7 +156,8 @@ class SymbolLoaders {
         sourceModule.completer.complete(sourceModule)
       if (!root.isRoot) {
         for (classRep <- classpath.classes) {
-          initializeFromClassPath(root.symbol, classRep)
+          if (isValid(classRep.name))
+            initializeFromClassPath(root.symbol, classRep)
         }
       }
       if (!root.isEmptyPackage) {
