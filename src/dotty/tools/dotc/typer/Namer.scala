@@ -97,7 +97,7 @@ class Namer { typer: Typer =>
     if (name.isEmpty) NoSymbol
     else {
       val cls = ctx.owner.enclosingClassNamed(name)
-      if (!cls.exists) ctx.error(s"no enclosing class or object is named name", pos)
+      if (!cls.exists) ctx.error(s"no enclosing class or object is named $name", pos)
       cls
     }
   }

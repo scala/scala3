@@ -98,7 +98,10 @@ object ErrorReporting {
   implicit class InfoString(val sc: StringContext) extends AnyVal {
 
     def i(args: Any*)(implicit ctx: Context): String = {
-      if (ctx.reporter.hasErrors && ctx.suppressNonSensicalErrors && !args.forall(isSensical(_)))
+      if (ctx.reporter.hasErrors &&
+          ctx.suppressNonSensicalErrors &&
+          !ctx.settings.YshowSuppressedErrors.value &&
+          !args.forall(isSensical(_)))
         throw new SuppressedMessage
       val prefix :: suffixes = sc.parts.toList
       val (args1, suffixes1) = (args, suffixes).zipped.map(treatArg(_, _)).unzip

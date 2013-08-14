@@ -20,6 +20,7 @@ object Reporter {
         try myMsg = msgFn
         catch {
           case ex: SuppressedMessage =>
+            myIsSuppressed = true
             val saved = base.suppressNonSensicalErrors
             base.suppressNonSensicalErrors = false
             try myMsg = msgFn

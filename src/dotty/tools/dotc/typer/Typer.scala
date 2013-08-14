@@ -85,8 +85,8 @@ class Typer extends Namer with Applications with Implicits {
     else {
       if (!site.isErroneous)
         ctx.error(
-          if (name == nme.CONSTRUCTOR) s"${site.show} does not have a constructor"
-          else s"$name is not a member of ${site.show}", pos)
+          if (name == nme.CONSTRUCTOR) i"$site does not have a constructor"
+          else i"$name is not a member of $site", pos)
       ErrorType
     }
   }
@@ -100,7 +100,7 @@ class Typer extends Namer with Applications with Implicits {
   def checkValue(tpe: Type, proto: Type, pos: Position)(implicit ctx: Context): Unit =
     if (!proto.isInstanceOf[SelectionProto]) {
       val sym = tpe.termSymbol
-      if ((sym is Package) || (sym is JavaModule)) ctx.error(s"${sym.show} is not a value", pos)
+      if ((sym is Package) || (sym is JavaModule)) ctx.error(i"$sym is not a value", pos)
     }
 
   def checkAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = tpe match {
@@ -117,12 +117,12 @@ class Typer extends Namer with Applications with Implicits {
           case sym :: Nil =>
             if (sym.owner == where) sym.show else sym.showLocated
           case _ =>
-            s"none of the overloaded alternatives named $name"
+            i"none of the overloaded alternatives named $name"
         }
         val whyNot = new StringBuffer
         val addendum =
           alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
-        ctx.error(s"$what cannot be accessed in $where.$whyNot")
+        ctx.error(i"$what cannot be accessed in $where.$whyNot")
         ErrorType
       } else tpe withDenot d
     case _ =>
@@ -203,8 +203,8 @@ class Typer extends Namer with Applications with Implicits {
        *  or  defined in <symbol>
        */
       def bindingString(prec: Int, whereFound: Context, qualifier: String = "") =
-        if (prec == wildImport || prec == namedImport) s"imported$qualifier by  ${whereFound.tree.show}"
-        else s"defined$qualifier in ${whereFound.owner.show}"
+        if (prec == wildImport || prec == namedImport) i"imported$qualifier by ${whereFound.tree}"
+        else i"defined$qualifier in ${whereFound.owner}"
 
       /** Check that any previously found result from an inner context
        *  does properly shadow the new one from an outer context.
@@ -214,7 +214,7 @@ class Typer extends Namer with Applications with Implicits {
         else {
           if (!previous.isError && !found.isError)
             ctx.error(
-              s"""reference to $name is ambiguous;
+              i"""reference to $name is ambiguous;
                  |it is both ${bindingString(newPrec, ctx, "")}
                  |and ${bindingString(prevPrec, prevCtx, " subsequently")}""".stripMargin,
               tree.pos)
@@ -228,8 +228,8 @@ class Typer extends Namer with Applications with Implicits {
         def checkUnambiguous(found: Type) = {
           val other = namedImportRef(site, selectors.tail)
           if (other.exists && (found != other))
-            ctx.error(s"""reference to $name is ambiguous; it is imported twice in
-                         |${ctx.tree.show}""".stripMargin,
+            ctx.error(i"""reference to $name is ambiguous; it is imported twice in
+                         |${ctx.tree}""".stripMargin,
                       tree.pos)
           found
         }
@@ -318,7 +318,7 @@ class Typer extends Namer with Applications with Implicits {
       if (rawType.exists)
         checkAccessible(rawType, superAccess = false, tree.pos)
       else {
-        ctx.error(s"not found: $name", tree.pos)
+        ctx.error(i"not found: $name", tree.pos)
         ErrorType
       }
     tree.withType(ownType.underlyingIfRepeated)
@@ -345,7 +345,7 @@ class Typer extends Namer with Applications with Implicits {
       case p :: Nil =>
         p
       case Nil =>
-        errorType(s"$mix does not name a parent class of $cls", tree.pos)
+        errorType(i"$mix does not name a parent class of $cls", tree.pos)
       case p :: q :: _ =>
         errorType(s"ambiguous parent class qualifier", tree.pos)
     }
@@ -438,7 +438,7 @@ class Typer extends Namer with Applications with Implicits {
       val expr2 = typed(untpd.Typed(untpd.TypedSplice(expr1), untpd.TypeTree(pt)))
       untpd.Block(stats1, expr2) withType expr2.tpe
     } else errorTree(result,
-      s"local definition of ${leaks.head.name} escapes as part of block's type ${result.tpe.show}")
+      i"local definition of ${leaks.head.name} escapes as part of block's type ${result.tpe}")
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = {
@@ -470,7 +470,7 @@ class Typer extends Namer with Applications with Implicits {
           else {
             val paramType =
               if (isFullyDefined(formal)) formal
-              else errorType(s"missing parameter type", param.pos)
+              else errorType("missing parameter type", param.pos)
             cpy.ValDef(param, param.mods, param.name, untpd.TypeTree(paramType), param.rhs)
           }
       typed(desugar.makeClosure(inferredParams, body), pt)
@@ -484,9 +484,9 @@ class Typer extends Namer with Applications with Implicits {
       case mt: MethodType if !mt.isDependent =>
         mt.toFunctionType
       case mt: MethodType =>
-        errorType(s"internal error: cannot turn dependent method type $mt into closure", tree.pos)
+        errorType(i"internal error: cannot turn dependent method type $mt into closure", tree.pos)
       case tp =>
-        errorType(s"internal error: closing over non-method $tp", tree.pos)
+        errorType(i"internal error: closing over non-method $tp", tree.pos)
     }
     cpy.Closure(tree, env1, meth1, EmptyTree).withType(ownType)
   }
@@ -524,7 +524,7 @@ class Typer extends Namer with Applications with Implicits {
         foreachSubTreeOf(pat) {
           case b: Bind =>
             if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
-            else ctx.error(s"duplicate pattern variable: ${b.name}", b.pos)
+            else ctx.error(i"duplicate pattern variable: ${b.name}", b.pos)
           case _ =>
         }
         val guard1 = typedExpr(tree.guard, defn.BooleanType)
@@ -543,7 +543,7 @@ class Typer extends Namer with Applications with Implicits {
   def typedReturn(tree: untpd.Return)(implicit ctx: Context): Return = {
     def enclMethInfo(cx: Context): (Tree, Type) =
       if (cx == NoContext || cx.tree.isInstanceOf[Trees.TypeDef[_]]) {
-        ctx.error(s"return outside method definition")
+        ctx.error("return outside method definition")
         (EmptyTree, WildcardType)
       }
       else cx.tree match {
@@ -554,7 +554,7 @@ class Typer extends Namer with Applications with Implicits {
             if (meth.isConstructor)
               defn.UnitType
             else if (ddef.tpt.isEmpty)
-              errorType(s"method ${meth.show} has return statement; needs result type", tree.pos)
+              errorType(i"method $meth has return statement; needs result type", tree.pos)
             else
               ddef.tpt.tpe
           (from, proto)
@@ -638,7 +638,7 @@ class Typer extends Namer with Applications with Implicits {
       foreachSubTreeOf(refinement) {
         case tree: RefTree =>
           if (tree.symbol.owner == refineCls && tree.pos.start <= tree.symbol.pos.end)
-            ctx.error(s"illegal forward reference in refinement", tree.pos)
+            ctx.error("illegal forward reference in refinement", tree.pos)
         case _ =>
       }
       val rsym = refinement.symbol
@@ -654,7 +654,7 @@ class Typer extends Namer with Applications with Implicits {
     val args1 = tree.args mapconserve (typed(_))
     val tparams = tpt1.tpe.typeParams
     if (args1.length != tparams.length)
-      ctx.error(s"wrong number of type arguments for ${tpt1.tpe.show}, should be ${tparams.length}")
+      ctx.error(i"wrong number of type arguments for ${tpt1.tpe}, should be ${tparams.length}")
     // todo in later phase: check arguments conform to parameter bounds
     cpy.AppliedTypeTree(tree, tpt1, args1) withType tpt1.tpe.appliedTo(args1.tpes)
   }
@@ -663,7 +663,7 @@ class Typer extends Namer with Applications with Implicits {
     val lo1 = typed(tree.lo)
     val hi1 = typed(tree.hi)
     if (!(lo1.tpe <:< hi1.tpe))
-      ctx.error(s"lower bound ${lo1.tpe.show} does not conform to upper bound ${hi1.tpe.show}", tree.pos)
+      ctx.error(i"lower bound ${lo1.tpe} does not conform to upper bound ${hi1.tpe}", tree.pos)
     cpy.TypeBoundsTree(tree, lo1, hi1) withType TypeBounds(lo1.tpe, hi1.tpe)
   }
 
@@ -759,7 +759,7 @@ class Typer extends Namer with Applications with Implicits {
     val packageContext =
       if (pkg is Package) ctx.fresh withOwner pkg.moduleClass
       else {
-        ctx.error(s"${pkg.show} is not a packge")
+        ctx.error(i"$pkg is not a packge", tree.pos)
         ctx
       }
     val stats1 = typedStats(tree.stats, NoSymbol)(packageContext)
@@ -943,7 +943,7 @@ class Typer extends Namer with Applications with Implicits {
         case Nil =>
           def noMatches =
             errorTree(tree,
-              s"""none of the ${err.overloadedAltsStr(altDenots)}
+              i"""none of the ${err.overloadedAltsStr(altDenots)}
                  |match $expectedStr""".stripMargin)
           pt match {
             case pt: FunProtoType => tryInsertApply(tree, pt)(_ => noMatches)
@@ -951,7 +951,7 @@ class Typer extends Namer with Applications with Implicits {
           }
         case alts =>
           errorTree(tree,
-            s"""Ambiguous overload. The ${err.overloadedAltsStr(altDenots take 2)}
+            i"""Ambiguous overload. The ${err.overloadedAltsStr(altDenots take 2)}
                |both match $expectedStr""".stripMargin)
       }
     }
@@ -964,7 +964,7 @@ class Typer extends Namer with Applications with Implicits {
           case Apply(_, _) => " more"
           case _ => ""
         }
-        _ => errorTree(tree, s"$fn does not take$more parameters")
+        _ => errorTree(tree, i"$fn does not take$more parameters")
       }
     }
 
@@ -981,7 +981,7 @@ class Typer extends Namer with Applications with Implicits {
           adapt(tpd.Apply(tree, Nil), pt)
         else
           errorTree(tree,
-            s"""missing arguments for ${tree.symbol.show}
+            i"""missing arguments for ${tree.symbol}
                |follow this method with `_' if you want to treat it as a partially applied function""".stripMargin)
       case _ =>
         if (tp <:< pt) tree
