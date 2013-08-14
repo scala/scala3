@@ -235,6 +235,10 @@ trait Symbols { this: Context =>
 
   def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact, tp)
 
+  def newErrorSymbol(owner: Symbol, name: Name) =
+    newSymbol(owner, name, SyntheticArtifact,
+      if (name.isTypeName) TypeAlias(ErrorType) else ErrorType)
+
   type OwnerMap = Symbol => Symbol
 
   /** Map given symbols, subjecting all types to given type map and owner map.

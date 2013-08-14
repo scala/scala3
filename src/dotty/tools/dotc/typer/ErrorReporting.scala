@@ -77,27 +77,30 @@ object ErrorReporting {
 
   def err(implicit ctx: Context): Errors = new Errors
 
-  def isSensical(arg: Any)(implicit ctx: Context): Boolean = arg match {
-    case tpe: Type if tpe.isErroneous => false
-    case NoSymbol => false
-    case _ => true
-  }
-
-  def treatArg(arg: Any, suffix: String)(implicit ctx: Context): (Any, String) = arg match {
-    case arg: Showable =>
-      (arg.show, suffix)
-    case arg: List[_] if suffix.head == '%' =>
-      val (sep, rest) = suffix.tail.span(_ != '%')
-      if (rest.nonEmpty) (arg mkString sep, rest.tail)
-      else (arg, suffix)
-    case _ =>
-      (arg, suffix)
-  }
-
   /** Implementation of i"..." string interpolator */
   implicit class InfoString(val sc: StringContext) extends AnyVal {
 
     def i(args: Any*)(implicit ctx: Context): String = {
+
+      def isSensical(arg: Any): Boolean = arg match {
+        case tpe: Type if tpe.isErroneous => false
+        case NoType => false
+        case sym: Symbol if sym.isCompleted =>
+          sym.info != ErrorType && sym.info != TypeAlias(ErrorType) && sym.info != NoType
+        case _ => true
+      }
+
+      def treatArg(arg: Any, suffix: String): (Any, String) = arg match {
+        case arg: Showable =>
+          (arg.show, suffix)
+        case arg: List[_] if suffix.head == '%' =>
+          val (sep, rest) = suffix.tail.span(_ != '%')
+          if (rest.nonEmpty) (arg mkString sep, rest.tail)
+          else (arg, suffix)
+        case _ =>
+          (arg, suffix)
+      }
+
       if (ctx.reporter.hasErrors &&
           ctx.suppressNonSensicalErrors &&
           !ctx.settings.YshowSuppressedErrors.value &&

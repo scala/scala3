@@ -376,6 +376,8 @@ object Types {
         l.findMember(name, pre, excluded) & (r.findMember(name, pre, excluded), pre)
       case OrType(l, r) =>
         l.findMember(name, pre, excluded) | (r.findMember(name, pre, excluded), pre)
+      case ErrorType =>
+        ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name)
       case NoType =>
         NoDenotation
     } /* !!! DEBUG ensuring { denot =>
