@@ -135,7 +135,7 @@ class Namer { typer: Typer =>
     }
     val existing = pkgOwner.info.decls.lookup(pid.name)
     if ((existing is Package) && (pkgOwner eq existing.owner)) existing
-    else println(s"entering new ${pid.name} in ${pkgOwner.show}")
+    else ctx.newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
   }
 
   /** The expansion of a member def */
