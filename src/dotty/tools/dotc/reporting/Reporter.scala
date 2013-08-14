@@ -12,11 +12,32 @@ import java.lang.System.currentTimeMillis
 
 object Reporter {
 
-  class Diagnostic(msgFn: => String, val pos: SourcePosition, val severity: Severity) extends Exception {
-    lazy val msg: String = msgFn
+  class Diagnostic(msgFn: => String, val pos: SourcePosition, val severity: Severity, base: ContextBase) extends Exception {
+    private var myMsg: String = null
+    private var myIsSuppressed: Boolean = false
+    def msg: String = {
+      if (myMsg == null)
+        try myMsg = msgFn
+        catch {
+          case ex: SuppressedMessage =>
+            val saved = base.suppressNonSensicalErrors
+            base.suppressNonSensicalErrors = false
+            try myMsg = msgFn
+            finally base.suppressNonSensicalErrors = saved
+        }
+      myMsg
+    }
+    def isSuppressed = { msg; myIsSuppressed }
     override def toString = s"$severity at $pos: $msg"
     override def getMessage() = msg
+
+    def promotedSeverity(implicit ctx: Context): Severity =
+      if (isConditionalWarning(severity) && enablingOption(severity).value) WARNING
+      else severity
   }
+
+  def Diagnostic(msgFn: => String, pos: SourcePosition, severity: Severity)(implicit ctx: Context) =
+    new Diagnostic(msgFn, pos, severity, ctx.base)
 
   class Severity(val level: Int) extends AnyVal {
     override def toString = this match {
@@ -42,6 +63,14 @@ object Reporter {
     DeprecationWARNING.level <= s.level && s.level <= FeatureWARNING.level
 
   val conditionalWarnings = List(DeprecationWARNING, UncheckedWARNING, FeatureWARNING)
+
+  private def enablingOption(warning: Severity)(implicit ctx: Context) = warning match {
+    case DeprecationWARNING => ctx.settings.deprecation
+    case UncheckedWARNING   => ctx.settings.unchecked
+    case FeatureWARNING     => ctx.settings.feature
+  }
+
+  class SuppressedMessage extends Exception
 }
 
 import Reporter._
@@ -50,28 +79,28 @@ trait Reporting { this: Context =>
 
   /** For sending messages that are printed only if -verbose is set */
   def inform(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Diagnostic(msg, pos, VerboseINFO))
+    reporter.report(Diagnostic(msg, pos, VerboseINFO))
 
   def echo(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Diagnostic(msg, pos, INFO))
+    reporter.report(Diagnostic(msg, pos, INFO))
 
   def deprecationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Diagnostic(msg, pos, DeprecationWARNING))
+    reporter.report(Diagnostic(msg, pos, DeprecationWARNING))
 
   def uncheckedWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Diagnostic(msg, pos, UncheckedWARNING))
+    reporter.report(Diagnostic(msg, pos, UncheckedWARNING))
 
   def featureWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Diagnostic(msg, pos, FeatureWARNING))
+    reporter.report(Diagnostic(msg, pos, FeatureWARNING))
 
   def warning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Diagnostic(msg, pos, WARNING))
+    reporter.report(Diagnostic(msg, pos, WARNING))
 
   def error(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(new Diagnostic(msg, pos, ERROR))
+    reporter.report(Diagnostic(msg, pos, ERROR))
 
   def incompleteInputError(msg: String, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
-    reporter.incomplete(new Diagnostic(msg, pos, ERROR))(ctx)
+    reporter.incomplete(Diagnostic(msg, pos, ERROR))(ctx)
 
   def log(msg: => String): Unit =
     if (this.settings.log.value.containsPhase(phase))
@@ -134,7 +163,7 @@ abstract class Reporter {
   /** Report a diagnostic */
   protected def doReport(d: Diagnostic)(implicit ctx: Context): Unit
 
-  /** Whether very long lines can be truncated.  This exists so important
+ /** Whether very long lines can be truncated.  This exists so important
    *  debugging information (like printing the classpath) is not rendered
    *  invisible due to the max message length.
    */
@@ -156,28 +185,19 @@ abstract class Reporter {
     finally incompleteHandler = saved
   }
 
-  protected def isHidden(s: Severity, pos: SourcePosition)(implicit ctx: Context) = s match {
+  protected def isHidden(d: Diagnostic)(implicit ctx: Context) = d.promotedSeverity match {
     case VerboseINFO => !ctx.settings.verbose.value
     case DeprecationWARNING | UncheckedWARNING | FeatureWARNING => true
     case _ => false
   }
 
-  private def enablingOption(warning: Severity)(implicit ctx: Context) = warning match {
-    case DeprecationWARNING => ctx.settings.deprecation
-    case UncheckedWARNING   => ctx.settings.unchecked
-    case FeatureWARNING     => ctx.settings.feature
-  }
-
-  private def promoteSeverity(s: Severity)(implicit ctx: Context): Severity =
-    if (isConditionalWarning(s) && enablingOption(s).value) WARNING else s
-
   val count = new Array[Int](ERROR.level + 1)
 
-  def report(d: Diagnostic)(implicit ctx: Context): Unit = {
-    val severity = promoteSeverity(d.severity)
-    if (!isHidden(severity, d.pos)) doReport(d)
-    count(severity.level) += 1
-  }
+  def report(d: Diagnostic)(implicit ctx: Context): Unit =
+    if (!isHidden(d)) {
+      doReport(d)
+      count(d.promotedSeverity.level) += 1
+    }
 
   def incomplete(d: Diagnostic)(implicit ctx: Context): Unit =
     incompleteHandler(d)(ctx)
