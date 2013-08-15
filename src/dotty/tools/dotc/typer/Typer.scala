@@ -823,21 +823,12 @@ class Typer extends Namer with Applications with Implicits {
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
 
-    def getExpansion(tree: untpd.Tree) = tree match {
-      case tree: untpd.MemberDef =>
-        expandedTree remove tree match {
-          case Some(xtree) => xtree
-          case none => tree
-        }
-      case _ => tree
-    }
-
     def encodeName(tree: untpd.Tree) = tree match {
       case tree: NameTree => tree.withName(tree.name.encode)
       case _ => tree
     }
 
-    val tree1 = typedExpanded(encodeName(getExpansion(tree)), pt)
+    val tree1 = typedExpanded(encodeName(tree), pt)
     ctx.interpolateUndetVars(tree1.tpe.widen, tree1.pos)
     adapt(tree1, pt)
   }
@@ -853,8 +844,13 @@ class Typer extends Namer with Applications with Implicits {
         buf += imp1
         traverse(rest)(importContext(imp1.symbol, imp.selectors))
       case (mdef: untpd.MemberDef) :: rest =>
-        buf += typed(mdef)
-        traverse(rest)
+        expandedTree remove mdef match {
+          case Some(xtree) =>
+            traverse(xtree :: rest)
+          case none =>
+            buf += typed(mdef)
+            traverse(rest)
+        }
       case Thicket(stats) :: rest =>
         traverse(stats ++ rest)
       case stat :: rest =>
