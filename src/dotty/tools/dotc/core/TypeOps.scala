@@ -224,6 +224,8 @@ trait TypeOps { this: Context =>
         normalizeToRef(tp1)
       case tp: TypeRef =>
         tp
+      case ErrorType =>
+        defn.AnyClass.typeConstructor
       case _ =>
         throw new TypeError(s"unexpected parent type: $tp")
     }
