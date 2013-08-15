@@ -111,7 +111,7 @@ class Namer { typer: Typer =>
     val sym = tree match {
       case tree: TypeDef if tree.isClassDef =>
         ctx.enter(ctx.newClassSymbol(
-          ctx.owner, tree.name, tree.mods.flags, new Completer(tree),
+          ctx.owner, tree.name, tree.mods.flags, new ClassCompleter(tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
       case tree: MemberDef =>
         ctx.enter(ctx.newSymbol(
@@ -208,7 +208,7 @@ class Namer { typer: Typer =>
     result
   }
 
-  /** The completer of a symbol defined by a member def or import */
+  /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
   class Completer(original: Tree)(implicit ctx: Context) extends LazyType {
 
     def complete(denot: SymDenotation): Unit = {
@@ -223,14 +223,23 @@ class Namer { typer: Typer =>
           nestedTyper(sym) = typer1
           typer1.defDefSig(tree, sym)(localContext.withTyper(typer1))
         case tree: TypeDef =>
-          if (tree.isClassDef) classDefSig(tree, sym.asClass)(localContext)
-          else typeDefSig(tree, sym)(localContext.withNewScope)
+          typeDefSig(tree, sym)(localContext.withNewScope)
         case imp: Import =>
           val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
           ImportType(tpd.SharedTree(expr1))
       }
 
       sym.info = typeSig(original)
+    }
+  }
+
+  /** The completer for a symbol defined by a class definition */
+  class ClassCompleter(original: TypeDef, override val decls: MutableScope = newScope)(implicit ctx: Context)
+  extends ClassCompleterWithDecls(decls) {
+    override def complete(denot: SymDenotation): Unit = {
+      val cls = denot.symbol.asClass
+      def localContext = ctx.fresh.withOwner(cls)
+      cls.info = classDefSig(original, cls, decls)(localContext)
     }
   }
 
@@ -324,7 +333,7 @@ class Namer { typer: Typer =>
   }
 
   /** The type signature of a ClassDef with given symbol */
-  def classDefSig(cdef: TypeDef, cls: ClassSymbol)(implicit ctx: Context): Type = {
+  def classDefSig(cdef: TypeDef, cls: ClassSymbol, decls: MutableScope)(implicit ctx: Context): Type = {
 
     def parentType(constr: untpd.Tree): Type = {
       val Trees.Select(Trees.New(tpt), _) = methPart(constr)
@@ -335,7 +344,6 @@ class Namer { typer: Typer =>
 
     val TypeDef(_, _, impl @ Template(_, parents, self, body)) = cdef
 
-    val decls = newScope
     val (params, rest) = body span {
       case td: TypeDef => td.mods is Param
       case td: ValDef => td.mods is ParamAccessor

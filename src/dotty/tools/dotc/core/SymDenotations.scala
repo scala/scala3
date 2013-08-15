@@ -839,7 +839,7 @@ object SymDenotations {
       require(!(this is Frozen))
       val mscope = scope match {
         case scope: MutableScope => scope
-        case _ => info.decls.asInstanceOf[MutableScope]
+        case _ => decls.asInstanceOf[MutableScope]
       }
       mscope.enter(sym)
 
