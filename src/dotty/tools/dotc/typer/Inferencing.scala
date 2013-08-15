@@ -9,6 +9,7 @@ import Trees._
 import annotation.unchecked
 import util.Positions._
 import Decorators._
+import ErrorReporting.InfoString
 
 object Inferencing {
 
@@ -53,7 +54,7 @@ object Inferencing {
 
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Type = {
     if (!tp.isStable)
-      ctx.error(s"Prefix ${tp.show} is not stable", pos)
+      ctx.error(i"Prefix $tp is not stable", pos)
     tp
   }
 
@@ -64,7 +65,7 @@ object Inferencing {
     case _: RefinedType | _: TypeVar | _: AnnotatedType =>
       checkClassTypeWithStablePrefix(tp.asInstanceOf[TypeProxy].underlying, pos)
     case _ =>
-      ctx.error(s"${tp.show} is not a class type", pos)
+      ctx.error(i"$tp is not a class type", pos)
       defn.ObjectClass
   }
 
