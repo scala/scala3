@@ -8,6 +8,7 @@ import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
 import language.higherKinds
 import collection.mutable.ListBuffer
+import typer.ErrorReporting.InfoString
 import typer.Mode
 
 object desugar {
@@ -228,11 +229,11 @@ object desugar {
     val ModuleDef(mods, name, tmpl @ Template(constr, parents, self, body)) = mdef
     val clsName = name.moduleClassName
     val clsRef = Ident(clsName)
-    val modul = ValDef(mods | ModuleCreationFlags, name, clsRef, New(clsRef, Nil))
+    val modul = ValDef(mods | ModuleCreationFlags, name, clsRef, New(clsRef, Nil)) withPos mdef.pos
     val clsSelf = cpy.ValDef(self, self.mods, self.name, SingletonTypeTree(Ident(name)), self.rhs)
     val clsTmpl = cpy.Template(tmpl, constr, parents, clsSelf, body)
     val cls = TypeDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, clsTmpl)
-    Thicket(cls, valDef(modul))
+    Thicket(valDef(modul), cls)
   }
 
   def memberDef(tree: Tree)(implicit ctx: Context): Tree = tree match {

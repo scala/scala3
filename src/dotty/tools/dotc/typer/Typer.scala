@@ -268,11 +268,11 @@ class Typer extends Namer with Applications with Implicits {
       }
 
       // begin findRef
-      if (ctx eq NoContext) previous
+      if (ctx.scope == null) previous
       else {
         val outer = ctx.outer
-        if (ctx.scope ne outer.scope) {
-          val defDenots = ctx.lookup(name)
+        if ((ctx.scope ne outer.scope) || (ctx.owner ne outer.owner)) {
+          val defDenots = ctx.denotsNamed(name)
           if (defDenots.exists) {
             val curOwner = ctx.owner
             val pre = curOwner.thisType
@@ -299,6 +299,8 @@ class Typer extends Namer with Applications with Implicits {
     }
 
     // begin typedIdent
+    def kind = if (name.isTermName) "term" else "type" // !!! DEBUG
+    println(s"typed ident $kind $name in ${ctx.owner}")
     if (ctx.mode is Mode.Pattern) {
       if (name == nme.WILDCARD)
         return tree.withType(pt)
@@ -369,7 +371,7 @@ class Typer extends Namer with Applications with Implicits {
     case _ =>
       val tpt1 = typedType(tree.tpt)
       val cls = checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos)
-      checkInstantiatable(cls, tpt1.pos)
+      // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
       cpy.New(tree, tpt1).withType(tpt1.tpe)
   }
 
@@ -594,7 +596,7 @@ class Typer extends Namer with Applications with Implicits {
         assert(isFullyDefined(pt))
         (EmptyTree, pt)
       case original: DefDef =>
-        val meth = ctx.lookup(original.name).first
+        val meth = symbolOfTree(original)
         assert(meth.exists, meth)
         (EmptyTree, meth.info.resultType)
       case original =>
@@ -815,6 +817,7 @@ class Typer extends Namer with Applications with Implicits {
         case tree: untpd.Import => typedImport(tree, sym)
         case tree: untpd.PackageDef => typedPackageDef(tree)
         case tree: untpd.Annotated => typedAnnotated(tree, pt)
+        case tree: untpd.TypedSplice => tree.tree
         case untpd.EmptyTree => tpd.EmptyTree
         case _ => typed(desugar(tree), pt)
       }

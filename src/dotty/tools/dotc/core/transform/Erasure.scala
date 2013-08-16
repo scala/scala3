@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 package transform
 
-import Symbols._, Types._, Contexts._, Flags._, Names._
+import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._
 
 object Erasure {
 
@@ -63,6 +63,8 @@ object Erasure {
         else if (cls == defn.ArrayClass) defn.ObjectClass.typeConstructor :: Nil
         else removeLaterObjects(classParents mapConserve (erasure(_).asInstanceOf[TypeRef]))
       tp.derivedClassInfo(erasure(pre), parents, NoType)
+    case ErrorType =>
+      tp
   }
 
   def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
@@ -124,6 +126,8 @@ object Erasure {
       paramSignature(tp1)
     case OrType(tp1, tp2) =>
       lubClass(tp1, tp2).name
+    case ErrorType =>
+      tpnme.WILDCARD
   }
 
   def resultErasure(tp: Type)(implicit ctx: Context) =

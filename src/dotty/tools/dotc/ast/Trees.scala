@@ -662,7 +662,7 @@ object Trees {
     extends Tree[T] with WithoutType[T] {
     type ThisTree[-T >: Untyped] = Thicket[T]
     override def isEmpty: Boolean = trees.isEmpty
-    override def toList: List[Tree[T]] = trees
+    override def toList: List[Tree[T]] = flatten(trees)
     override def toString = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
   }
 
@@ -686,8 +686,34 @@ object Trees {
     def forwardTo: Tree[T] = shared
   }
 
-  implicit class ListOfTreeDecorator[T <: untpd.Tree](val xs: List[T]) extends AnyVal {
-    def tpes: List[Type] = xs map (_.tpe)
+  def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
+    var buf: ListBuffer[Tree[T]] = null
+    def add(tree: Tree[T]) = {
+      assert(!tree.isInstanceOf[Thicket[_]])
+      buf += tree
+    }
+    var xs = trees
+    while (xs.nonEmpty) {
+      xs.head match {
+        case Thicket(elems) =>
+          if (buf == null) {
+            buf = new ListBuffer
+            var ys = trees
+            while (ys ne xs) {
+              buf += ys.head
+              ys = ys.tail
+            }
+          }
+          for (elem <- elems) {
+            assert(!elem.isInstanceOf[Thicket[_]])
+            buf += elem
+          }
+        case tree =>
+          if (buf != null) buf += tree
+      }
+      xs = xs.tail
+    }
+    if (buf != null) buf.toList else trees
   }
 
   // ----- Generic Tree Instances, inherited from  `tpt` and `untpd`.
@@ -767,37 +793,7 @@ object Trees {
     def Thicket(x1: Tree, x2: Tree, x3: Tree): Thicket = Thicket(x1 :: x2 :: x3 :: Nil)
     def flatTree(xs: List[Tree]): Tree = flatten(xs) match {
       case x :: Nil => x
-      case _ => Thicket(xs)
-    }
-
-    def flatten(trees: List[Tree]): List[Tree] = {
-      var buf: ListBuffer[Tree] = null
-      def add(tree: Tree) = {
-        assert(!tree.isInstanceOf[Thicket])
-        buf += tree
-      }
-      var xs = trees
-      while (xs.nonEmpty) {
-        xs.head match {
-          case Thicket(elems) =>
-            if (buf == null) {
-              buf = new ListBuffer
-              var ys = trees
-              while (ys ne xs) {
-                buf += ys.head
-                ys = ys.tail
-              }
-            }
-            for (elem <- elems) {
-              assert(!elem.isInstanceOf[Thicket])
-              buf += elem
-            }
-          case tree =>
-            if (buf != null) buf += tree
-        }
-        xs = xs.tail
-      }
-      if (buf != null) buf.toList else trees
+      case ys => Thicket(ys)
     }
 
     // ----- Position handling -----------------------------------------

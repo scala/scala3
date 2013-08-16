@@ -12,6 +12,7 @@ import util.Positions._
 import util.SourcePosition
 import collection.mutable
 import annotation.tailrec
+import ErrorReporting._
 import language.implicitConversions
 
 trait NamerContextOps { this: Context =>
@@ -24,9 +25,13 @@ trait NamerContextOps { this: Context =>
     sym
   }
 
-  def lookup(name: Name): PreDenotation =
-    if (isClassDefContext) owner.asClass.membersNamed(name)
+  def denotsNamed(name: Name): PreDenotation =
+    if (owner.isClass) owner.asClass.membersNamed(name)
     else scope.denotsNamed(name)
+
+  def effectiveScope =
+    if (owner != null && owner.isClass) owner.asClass.decls
+    else scope
 }
 
 /** This class attaches creates symbols from definitions and imports and gives them
@@ -106,25 +111,49 @@ class Namer { typer: Typer =>
    *  and store in symOfTree map.
    */
   def createSymbol(tree: Tree)(implicit ctx: Context): Symbol = {
+
     def privateWithinClass(mods: Modifiers) =
       enclosingClassNamed(mods.privateWithin, mods.pos)
-    val sym = tree match {
+
+    def record(tree: Tree, sym: Symbol): Symbol = {
+      symOfTree(tree) = sym
+      println(s"entered: $sym in ${ctx.owner} and ${ctx.effectiveScope}")
+      sym
+    }
+
+    def recordEnter(tree: Tree, sym: Symbol) = {
+      if (sym.owner is PackageClass) {
+        val preExisting = sym.owner.decls.lookup(sym.name)
+        if (preExisting.defRunId == ctx.runId)
+          ctx.error(s"${sym.showLocated} is compiled twice", tree.pos)
+      }
+      record(tree, ctx.enter(sym))
+    }
+
+    println(i"creating symbol for $tree")
+    tree match {
       case tree: TypeDef if tree.isClassDef =>
-        ctx.enter(ctx.newClassSymbol(
+        recordEnter(tree, ctx.newClassSymbol(
           ctx.owner, tree.name, tree.mods.flags, new ClassCompleter(tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
+      case Thicket((moduleDef: ValDef) :: (modclsDef: TypeDef) :: Nil) =>
+        assert(moduleDef.mods is Module)
+        val module = ctx.newModuleSymbol(
+          ctx.owner, moduleDef.name, moduleDef.mods.flags, modclsDef.mods.flags,
+          (modul, modcls) => new ClassCompleter(modclsDef, modul),
+          privateWithinClass(moduleDef.mods), modclsDef.pos, ctx.source.file)
+        recordEnter(modclsDef, module.moduleClass)
+        recordEnter(moduleDef, module)
       case tree: MemberDef =>
-        ctx.enter(ctx.newSymbol(
+        recordEnter(tree, ctx.newSymbol(
           ctx.owner, tree.name, tree.mods.flags, new Completer(tree),
           privateWithinClass(tree.mods), tree.pos))
       case imp: Import =>
-        ctx.newSymbol(
-          ctx.owner, nme.IMPORT, Synthetic, new Completer(tree), NoSymbol, tree.pos)
+        record(imp, ctx.newSymbol(
+          ctx.owner, nme.IMPORT, Synthetic, new Completer(tree), NoSymbol, tree.pos))
       case _ =>
         NoSymbol
     }
-    if (sym.exists) symOfTree(tree) = sym
-    sym
   }
 
   /** All PackageClassInfoTypes come from here. */
@@ -165,6 +194,9 @@ class Namer { typer: Typer =>
       ctx
     case imp: Import =>
       importContext(createSymbol(imp), imp.selectors)
+    case mdef: ModuleDef =>
+      createSymbol(expansion(mdef))
+      ctx
     case mdef: MemberDef =>
       expansion(mdef).toList foreach createSymbol
       ctx
@@ -234,12 +266,13 @@ class Namer { typer: Typer =>
   }
 
   /** The completer for a symbol defined by a class definition */
-  class ClassCompleter(original: TypeDef, override val decls: MutableScope = newScope)(implicit ctx: Context)
-  extends ClassCompleterWithDecls(decls) {
+  class ClassCompleter(original: TypeDef, override val sourceModule: Symbol = NoSymbol)(implicit ctx: Context)
+  extends ClassCompleterWithDecls(newScope) {
     override def complete(denot: SymDenotation): Unit = {
       val cls = denot.symbol.asClass
       def localContext = ctx.fresh.withOwner(cls)
-      cls.info = classDefSig(original, cls, decls)(localContext)
+      println(s"completing ${cls.show}, sourceModule = ${sourceModule.show}")
+      cls.info = classDefSig(original, cls, decls.asInstanceOf[MutableScope])(localContext)
     }
   }
 
@@ -248,7 +281,7 @@ class Namer { typer: Typer =>
     typedTree.getOrElseUpdate(tree, typer.typedExpanded(tree, pt))
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
-    typedAheadImpl(tree, WildcardType)(ctx retractMode Mode.PatternOrType addMode Mode.Type)
+    typedAheadImpl(tree, pt)(ctx retractMode Mode.PatternOrType addMode Mode.Type)
 
   def typedAheadExpr(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
     typedAheadImpl(tree, pt)(ctx retractMode Mode.PatternOrType)
@@ -342,7 +375,7 @@ class Namer { typer: Typer =>
       else typedAheadExpr(constr).tpe
     }
 
-    val TypeDef(_, _, impl @ Template(_, parents, self, body)) = cdef
+    val TypeDef(_, _, impl @ Template(constr, parents, self, body)) = cdef
 
     val (params, rest) = body span {
       case td: TypeDef => td.mods is Param
@@ -350,9 +383,20 @@ class Namer { typer: Typer =>
       case _ => false
     }
     enterSyms(params)
+    def defaultSelfType =
+      if (cls is Module) TermRef.withSym(ctx.owner.thisType, cls.sourceModule.asTerm)
+      else NoType
+    // pre-set info, so that parent types can refer to type params
+    cls.info = ClassInfo(cls.owner.thisType, cls, Nil, decls, defaultSelfType)
     val parentTypes = parents map parentType
     val parentRefs = ctx.normalizeToRefs(parentTypes, cls, decls)
-    val optSelfType = if (self.tpt.isEmpty) NoType else typedAheadType(self.tpt).tpe
+    val optSelfType =
+      if (self.tpt.isEmpty) defaultSelfType
+      else {
+        val t = typedAheadType(self.tpt).tpe
+        if (!t.isError) t else defaultSelfType
+      }
+    enterSym(constr)
     enterSyms(rest)(inClassContext(cls, self.name))
     ClassInfo(cls.owner.thisType, cls, parentRefs, decls, optSelfType)
   }

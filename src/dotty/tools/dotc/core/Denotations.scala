@@ -456,7 +456,9 @@ object Denotations {
       val valid = myValidFor
       def stillValid(denot: SymDenotation): Boolean =
         if (!denot.exists || (denot.flags is PackageClass)) true
-        else if (denot.owner is PackageClass) denot.owner.decls.lookup(denot.name) eq symbol
+        else if (denot.owner is PackageClass)
+          (denot.owner.decls.lookup(denot.name) eq denot.symbol) ||
+            (denot is ModuleClass) && stillValid(denot.sourceModule) // !!! DEBUG - we should check why module classes are not entered
         else stillValid(denot.owner)
       def bringForward(): SingleDenotation = this match {
         case denot: SymDenotation if stillValid(denot) =>
@@ -467,7 +469,7 @@ object Denotations {
           } while (d ne denot)
           initial.copyIfParentInvalid
         case _ =>
-          throw new Error(s"stale symbol; ${symbol.showLocated}, defined in run ${valid.runId} is referred to in run ${currentPeriod.runId}")
+          throw new Error(s"stale symbol; $this, defined in run ${valid.runId} is referred to in run ${currentPeriod.runId}")
       }
       if (valid.runId != currentPeriod.runId) bringForward.current
       else {

@@ -437,11 +437,15 @@ object SymDenotations {
      * the completers.
      */
     /** The class implementing this module, NoSymbol if not applicable. */
-    final def moduleClass: Symbol = myInfo match {
-      case info: TypeRefBySym if this is ModuleVal => info.fixedSym
-      case info: ModuleCompleter => info.mclass
-      case _ => NoSymbol
-    }
+    final def moduleClass: Symbol =
+      if (this is ModuleVal)
+        myInfo match {
+          case info: TypeRefBySym           => info.fixedSym
+          case ExprType(info: TypeRefBySym) => info.fixedSym // needed after uncurry, when module terms might be accessor defs
+          case info: ModuleCompleter        => info.mclass
+          case _                            => NoSymbol
+        }
+      else NoSymbol
 
     /** The module implemented by this module class, NoSymbol if not applicable. */
     final def sourceModule: Symbol = myInfo match {
@@ -840,6 +844,10 @@ object SymDenotations {
       val mscope = scope match {
         case scope: MutableScope => scope
         case _ => decls.asInstanceOf[MutableScope]
+      }
+      if (this is PackageClass) { // replace existing symbols
+        val entry = mscope.lookupEntry(sym.name)
+        if (entry != null) mscope.unlink(entry)
       }
       mscope.enter(sym)
 

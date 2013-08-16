@@ -330,6 +330,8 @@ object Types {
         tp.decls.denotsNamed(name).filterExcluded(excluded).toDenot(NoPrefix)
       case tp: TypeProxy =>
         tp.underlying.findDecl(name, excluded)
+      case ErrorType =>
+        ctx.newErrorSymbol(classSymbol orElse defn.RootClass, name)
     }
 
     /** The member of this type with the given name  */
@@ -756,6 +758,8 @@ object Types {
           tp.underlying.appliedTo(args)
         case AndType(l, r) =>
           l.appliedTo(args) & r
+        case ErrorType =>
+          this
       }
     }
 

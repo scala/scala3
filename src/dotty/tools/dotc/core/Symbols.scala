@@ -320,6 +320,10 @@ object Symbols {
       denot
     }
 
+    /** The run-id when this symbol was last defined */
+    final def defRunId: RunId =
+      if (lastDenot == null) NoRunId else lastDenot.validFor.runId
+
     /** Subclass tests and casts */
     final def isTerm(implicit ctx: Context): Boolean = denot.isTerm
     final def isType(implicit ctx: Context): Boolean = denot.isType

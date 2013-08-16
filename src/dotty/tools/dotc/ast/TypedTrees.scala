@@ -393,6 +393,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       new TreeMapper(ownerMap = (sym => if (sym == from) to else sym)).apply(tree)
   }
 
+  implicit class ListOfTreeDecorator(val xs: List[tpd.Tree]) extends AnyVal {
+    def tpes: List[Type] = xs map (_.tpe)
+  }
+
   class TreeMapper(val typeMap: TypeMap = IdentityTypeMap, val ownerMap: Symbol => Symbol = identity)(implicit ctx: Context) extends TreeTransformer {
     override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = super.transform {
       tree.withType(typeMap(tree.tpe)) match {

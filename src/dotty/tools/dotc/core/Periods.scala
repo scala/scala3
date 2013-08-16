@@ -56,13 +56,13 @@ object Periods {
   class Period(val code: Int) extends AnyVal {
 
     /** The run identifier of this period. */
-    def runId: Int = code >>> (PhaseWidth * 2)
+    def runId: RunId = code >>> (PhaseWidth * 2)
 
     /** The phase identifier of this single-phase period. */
-    def phaseId: Int = (code >>> PhaseWidth) & PhaseMask
+    def phaseId: PhaseId = (code >>> PhaseWidth) & PhaseMask
 
     /** The last phase of this period */
-    def lastPhaseId: Int =
+    def lastPhaseId: PhaseId =
       (code >>> PhaseWidth) & PhaseMask
 
     /** The first phase of this period */

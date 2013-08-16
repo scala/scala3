@@ -154,13 +154,13 @@ trait Applications extends Compatibility { self: Typer =>
     /** The arguments re-ordered so that each named argument matches the
      *  same-named formal parameter.
      */
-    val orderedArgs =
+    lazy val orderedArgs =
       if (hasNamedArg(args))
         reorder(args.asInstanceOf[List[untpd.Tree]]).asInstanceOf[List[Arg]]
       else
         args
 
-    methType match {
+    protected def init() = methType match {
       case methType: MethodType =>
         // apply the result type constraint, unless method type is dependent
         if (!methType.isDependent)
@@ -248,9 +248,9 @@ trait Applications extends Compatibility { self: Typer =>
             def findDefault(cx: Context): Type = {
               if (cx eq NoContext) NoType
               else if (cx.scope != cx.outer.scope &&
-                       cx.lookup(methRef.name)
+                       cx.denotsNamed(methRef.name)
                          .filterWithPredicate(_.symbol == meth).exists) {
-                val denot = cx.lookup(getterName).toDenot(NoPrefix)
+                val denot = cx.denotsNamed(getterName).toDenot(NoPrefix)
                 NamedType(NoPrefix, getterName).withDenot(denot)
               } else findDefault(cx.outer)
             }
@@ -368,6 +368,7 @@ trait Applications extends Compatibility { self: Typer =>
     def fail(msg: => String) =
       ok = false
     def normalizedFun = EmptyTree
+    init()
   }
 
   /** Subtrait of Application for the cases where arguments are (typed or
@@ -403,6 +404,7 @@ trait Applications extends Compatibility { self: Typer =>
     private var typedArgBuf = new mutable.ListBuffer[Tree]
     private var liftedDefs: mutable.ListBuffer[Tree] = null
     private var myNormalizedFun: Tree = fun
+    init()
 
     def addArg(arg: Tree, formal: Type): Unit =
       typedArgBuf += adapt(arg, formal)
