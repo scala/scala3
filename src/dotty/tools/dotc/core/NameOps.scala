@@ -66,8 +66,6 @@ object NameOps {
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
 
-    def isLocalName = name.isInstanceOf[LocalName]
-
     /** Is name a variable name? */
     def isVariableName: Boolean = {
       val first = name.head
@@ -190,12 +188,7 @@ object NameOps {
     def expandedSetterName(base: Symbol)(implicit ctx: Context): TermName =
       name.expandedName(base, separator = TRAIT_SETTER_SEPARATOR)
 
-    def getterName: TermName = name match {
-      case name: LocalName => name.toGlobalName
-      case name => name
-    }
-
-    def getterToSetter: TermName = name ++ SETTER_SUFFIX
+    def setterName: TermName = name ++ SETTER_SUFFIX
 
     def setterToGetter: TermName = {
       val p = name.indexOfSlice(TRAIT_SETTER_SEPARATOR)

@@ -413,7 +413,7 @@ class Typer extends Namer with Applications with Implicits {
           cpy.Assign(tree, lhs1, typed(tree.rhs, ref.info)).withType(defn.UnitType)
         case ref: TermRef if ref.info.isParameterless =>
           val pre = ref.prefix
-          val setterName = ref.name.getterToSetter
+          val setterName = ref.name.setterName
           val setter = pre.member(setterName)
           lhs1 match {
             case lhs1: RefTree if setter.exists =>
@@ -595,10 +595,10 @@ class Typer extends Namer with Applications with Implicits {
       case untpd.EmptyTree =>
         assert(isFullyDefined(pt))
         (EmptyTree, pt)
-      case original: DefDef =>
+      case original: ValDef =>
         val meth = symbolOfTree(original)
         assert(meth.exists, meth)
-        (EmptyTree, meth.info.resultType)
+        (EmptyTree, meth.info)
       case original =>
         val original1 = typed(original)
         (original1, original1.tpe)

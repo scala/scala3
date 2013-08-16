@@ -323,7 +323,7 @@ trait TypedTreeInfo extends TreeInfo[Type] {self: Trees.Instance[Type] =>
     def sym = tree.symbol
     def isVar    = sym is Mutable
     def isGetter =
-      mayBeVarGetter(sym) && sym.owner.info.member(sym.name.asTermName.getterToSetter).exists
+      mayBeVarGetter(sym) && sym.owner.info.member(sym.name.asTermName.setterName).exists
 
     tree match {
       case Ident(_) => isVar

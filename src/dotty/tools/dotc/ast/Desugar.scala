@@ -19,24 +19,13 @@ object desugar {
 
   def valDef(vdef: ValDef)(implicit ctx: Context): Tree = {
     val ValDef(mods, name, tpt, rhs) = vdef
-    if (!ctx.owner.isClass || (mods is Private)) vdef
-    else flatTree {
-      val (field, getterRhs) =
-        if (rhs.isEmpty)
-          (EmptyTree, EmptyTree)
-        else {
-          val lname = name.toLocalName
-          (cpy.ValDef(vdef, mods, lname, tpt, rhs), Ident(lname))
-        }
-      val getter = cpy.DefDef(vdef, mods | Accessor, name, Nil, Nil, tpt, getterRhs)
-      if (!(mods is Mutable)) field :: getter :: Nil
-      else {
-        val setterParam = makeSyntheticParameter(tpt = TypeTree(getter))
-        val setter = cpy.DefDef(vdef,
-          mods | Accessor, name.getterToSetter, Nil, (setterParam :: Nil) :: Nil,
-          EmptyTree, refOfDef(setterParam))
-        field :: getter :: setter :: Nil
-      }
+    if (!ctx.owner.isClass || (mods is Private) || !(mods is Mutable)) vdef
+    else {
+      val setterParam = makeSyntheticParameter(tpt = TypeTree(vdef))
+      val setter = cpy.DefDef(vdef,
+        mods | Accessor, name.setterName, Nil, (setterParam :: Nil) :: Nil,
+        EmptyTree, refOfDef(setterParam))
+      Thicket(vdef, setter)
     }
   }
 
@@ -233,7 +222,7 @@ object desugar {
     val clsSelf = cpy.ValDef(self, self.mods, self.name, SingletonTypeTree(Ident(name)), self.rhs)
     val clsTmpl = cpy.Template(tmpl, constr, parents, clsSelf, body)
     val cls = TypeDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, clsTmpl)
-    Thicket(valDef(modul), cls)
+    Thicket(modul, cls)
   }
 
   def memberDef(tree: Tree)(implicit ctx: Context): Tree = tree match {

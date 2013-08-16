@@ -53,9 +53,6 @@ object Names {
     /** Is this name a term name? */
     def isTermName: Boolean
 
-    /** Is this name a local name? */
-    def isLocalName: Boolean = this.isInstanceOf[LocalName]
-
     /** This name converted to a type name */
     def toTypeName: TypeName
 
@@ -67,9 +64,6 @@ object Names {
 
     /** This name downcasted to a term name */
     def asTermName: TermName
-
-    /** This name converted to a local field name */
-    def toLocalName: LocalName
 
     /** Create a new name of same kind as this one, in the given
      *  basis, with `len` characters taken from `cs` starting at `offset`.
@@ -173,8 +167,6 @@ object Names {
     def asTypeName = throw new ClassCastException(this + " is not a type name")
     def asTermName = this
 
-    def toLocalName: LocalName = toTypeName.toLocalName
-
     override def hashCode: Int = start
 
     override protected[this] def newBuilder: Builder[Char, Name] = termNameBuilder
@@ -182,7 +174,7 @@ object Names {
     def fromChars(cs: Array[Char], offset: Int, len: Int): TermName = termName(cs, offset, len)
   }
 
-  class TypeName(val start: Int, val length: Int, initialTermName: TermName) extends Name {
+  class TypeName(val start: Int, val length: Int, val toTermName: TermName) extends Name {
     type ThisName = TypeName
     def isTypeName = true
     def isTermName = false
@@ -190,67 +182,12 @@ object Names {
     def asTypeName = this
     def asTermName = throw new ClassCastException(this + " is not a term name")
 
-    private[this] var _termName = initialTermName
-
-    def toTermName: TermName = _termName match {
-      case tn: LocalName =>
-        synchronized { tn.toGlobalName }
-      case tn =>
-        tn
-    }
-
-    def toLocalName: LocalName = _termName match {
-      case tn: LocalName =>
-        tn
-      case _ =>
-        synchronized {
-          val lname = new LocalName(start, length, _termName)
-          _termName = lname
-          lname
-        }
-    }
-
     override def hashCode: Int = -start
 
     override protected[this] def newBuilder: Builder[Char, Name] =
       termNameBuilder.mapResult(_.toTypeName)
 
     def fromChars(cs: Array[Char], offset: Int, len: Int): TypeName = typeName(cs, offset, len)
-  }
-
-  /* A local name representing a field that has otherwise the same name as
-   * a normal term name. Used to avoid name clashes between fields and methods.
-   * Local names are linked to their corresponding term anmes and type names.
-   *
-   * The encoding is as follows.
-   *
-   * If there are only a term name and type name:
-   *
-   *              TermName
-   *               |    ^
-   *     _typeName |    | _termName
-   *               v    |
-   *              TypeName
-   *
-   *  If there is also a local name:
-   *
-   *              TermName
-   *               |    ^
-   *               |    +--------------+ _termNme
-   *               |                   |
-   *     _typeName |                LocalName
-   *               |                   ^
-   *               |    +--------------+ _termName
-   *               v    |
-   *              TypeName
-   */
-  class LocalName(start: Int, length: Int, _next: TermName) extends TermName(start, length, _next) {
-    override def hashCode: Int = start + 1
-    def toGlobalName: TermName = next
-    override protected[this] def newBuilder: Builder[Char, Name] =
-      termNameBuilder.mapResult(_.toLocalName)
-    override def fromChars(cs: Array[Char], offset: Int, len: Int): TermName =
-      termName(cs, offset, len).toLocalName
   }
 
   // Nametable

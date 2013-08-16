@@ -64,9 +64,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def nameString(name: Name): String = name.toString + {
     if (ctx.settings.debugNames.value)
-      if (name.isLocalName) "/L"
-      else if (name.isTypeName) "/T"
-      else "/V"
+      if (name.isTypeName) "/T" else "/V"
     else ""
   }
 
