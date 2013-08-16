@@ -140,7 +140,9 @@ class SymbolLoaders {
     src.lastModified >= bin.lastModified
 
   /** Exclude classes with '$' in their names from consideration */
-  def isValid(className: String) = !(className contains '$')
+  def isValid(className: String) =
+    !className.isEmpty &&
+    className.last != '$' // add more exclusions here
 
   /** Load contents of a package
    */
