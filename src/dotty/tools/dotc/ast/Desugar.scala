@@ -219,8 +219,7 @@ object desugar {
     val clsName = name.moduleClassName
     val clsRef = Ident(clsName)
     val modul = ValDef(mods | ModuleCreationFlags, name, clsRef, New(clsRef, Nil)) withPos mdef.pos
-    val clsSelf = cpy.ValDef(self, self.mods, self.name, SingletonTypeTree(Ident(name)), self.rhs)
-    val clsTmpl = cpy.Template(tmpl, constr, parents, clsSelf, body)
+    val clsTmpl = cpy.Template(tmpl, constr, parents, EmptyValDef, body)
     val cls = TypeDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, clsTmpl)
     Thicket(modul, cls)
   }
