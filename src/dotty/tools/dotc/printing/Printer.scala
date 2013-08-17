@@ -87,5 +87,8 @@ abstract class Printer {
 
   /** Textual representation of tree */
   def toText[T >: Untyped](tree: Tree[T]): Text
+
+  /** A plain printer without any embellishments */
+  def plain: Printer
 }
 

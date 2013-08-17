@@ -394,4 +394,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   override def toText(denot: Denotation): Text = toText(denot.symbol)
+
+  override def plain = new PlainPrinter(_ctx)
 }

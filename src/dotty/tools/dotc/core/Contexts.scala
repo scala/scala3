@@ -88,20 +88,10 @@ object Contexts {
     protected def typerState_=(typerState: TyperState) = _typerState = typerState
     def typerState: TyperState = _typerState
 
-    /** The current position */
-    private[this] var _position: Position = _
-    protected def position_=(position: Position) = _position = position
-    def position: Position = _position
-
     /** The current plain printer */
-    private[this] var _plainPrinter: Context => Printer = _
-    protected def plainPrinter_=(plainPrinter: Context => Printer) = _plainPrinter = plainPrinter
-    def plainPrinter: Context => Printer = _plainPrinter
-
-    /** The current refined printer */
-    private[this] var _refinedPrinter: Context => Printer = _
-    protected def refinedPrinter_=(refinedPrinter: Context => Printer) = _refinedPrinter = refinedPrinter
-    def refinedPrinter: Context => Printer = _refinedPrinter
+    private[this] var _printerFn: Context => Printer = _
+    protected def printerFn_=(printerFn: Context => Printer) = _printerFn = printerFn
+    def printerFn: Context => Printer = _printerFn
 
     /** The current owner symbol */
     private[this] var _owner: Symbol = _
@@ -162,7 +152,7 @@ object Contexts {
       _typeComparer
     }
 
-    /** The new implicit references that are introduces by this scope */
+    /** The new implicit references that are introduced by this scope */
     private var implicitsCache: ContextualImplicits = null
     def implicits: ContextualImplicits = {
       if (implicitsCache == null )
@@ -255,8 +245,7 @@ object Contexts {
           .withMode(mode)
           // typerState and its constraint is not preserved in condensed
           // reporter is always ThrowingReporter
-          .withPlainPrinter(plainPrinter)
-          .withRefinedPrinter(refinedPrinter)
+          .withPrinterFn(printerFn)
           .withOwner(owner)
           .withSettings(sstate)
           // tree is not preserved in condensed
@@ -301,9 +290,7 @@ object Contexts {
     override def withMode(mode: Mode): this.type = { this.mode = mode; this }
     def withTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
     def withNewTyperState: this.type = withTyperState(typerState.fresh)
-    def withPosition(position: Position): this.type = { this.position = position; this }
-    def withPlainPrinter(printer: Context => Printer): this.type = { this.plainPrinter = printer; this }
-    def withRefinedPrinter(printer: Context => Printer): this.type = { this.refinedPrinter = printer; this }
+    def withPrinterFn(printer: Context => Printer): this.type = { this.printerFn = printer; this }
     def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
     def withSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
     def withCompilationUnit(compilationUnit: CompilationUnit): this.type = { this.compilationUnit = compilationUnit; this }
@@ -334,9 +321,7 @@ object Contexts {
     period = InitialPeriod
     mode = Mode.None
     typerState = new TyperState(new ConsoleReporter()(this))
-    position = NoPosition
-    plainPrinter = new PlainPrinter(_)
-    refinedPrinter = new RefinedPrinter(_)
+    printerFn = new RefinedPrinter(_)
     owner = NoSymbol
     sstate = settings.defaultState
     tree = untpd.EmptyTree

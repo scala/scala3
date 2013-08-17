@@ -2,11 +2,21 @@ package dotty.tools
 package dotc
 package typer
 
-import ast.untpd
+import ast.{tpd, untpd}
 import ast.Trees._
 import core._
 import util.SimpleMap
 import Symbols._, Names._, Denotations._, Types._, Contexts._, StdNames._, Flags._
+
+object ImportInfo {
+  /** The import info for a root import from given symbol `sym` */
+  def rootImport(sym: Symbol)(implicit ctx: Context) = {
+    val expr = tpd.Ident(sym.symTermRef)
+    val selectors = untpd.Ident(nme.WILDCARD) :: Nil
+    val imp = tpd.Import(expr, selectors)
+    new ImportInfo(imp.symbol, selectors, rootImport = true)
+  }
+}
 
 /** Info relating to an import clause
  *  @param   sym        The import symbol defined by the clause

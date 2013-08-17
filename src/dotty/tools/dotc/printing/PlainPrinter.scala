@@ -354,5 +354,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         tree.fallbackToText(this)
     }
   }.close // todo: override in refined printer
+
+  def plain = this
 }
 

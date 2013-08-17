@@ -5,11 +5,10 @@ import core.Contexts.Context
 
 trait Printers { this: Context =>
 
-  /** A creation method for printers, depending on debug option */
-  def printerFn = if (this.debug) plainPrinter else refinedPrinter
-
-  /** A function creatung a printer */
-  def printer = printerFn(this)
-
+  /** A function creating a printer */
+  def printer = {
+    val pr = printerFn(this)
+    if (this.debug) pr.plain else pr
+  }
 }
 

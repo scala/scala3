@@ -805,12 +805,6 @@ object Trees {
       traverser.traverse(tree)
     }
 
-    // ----- Position handling -----------------------------------------
-
-    protected implicit def pos(implicit ctx: Context): Position = ctx.position
-
-    def defPos(sym: Symbol)(implicit ctx: Context) = ctx.position union sym.coord.toPosition
-
     // ----- Helper classes for copying, transforming, accumulating -----------------
 
     val cpy: TreeCopier
