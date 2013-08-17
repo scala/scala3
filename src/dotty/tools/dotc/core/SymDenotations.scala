@@ -1016,7 +1016,7 @@ object SymDenotations {
   }
 
   object NoDenotation extends SymDenotation(
-    NoSymbol, NoSymbol, "<none>".toTermName, EmptyFlags, NoType) {
+    NoSymbol, NoSymbol, "<none>".toTermName, Permanent, NoType) {
     override def exists = false
     override def isTerm = false
     override def isType = false

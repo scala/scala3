@@ -370,6 +370,9 @@ object Flags {
   /** A method that is known to no default parameters */
   final val NoDefaultParams = termFlag(60, "<no-default-param>")
 
+  /** A denotation that is valid in all run-ids */
+  final val Permanent = commonFlag(61, "<permanent>")
+
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
   /** Flags representing source modifiers */
@@ -384,7 +387,7 @@ object Flags {
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | Param | Scala2ExistentialCommon | Touched |
     Static | CovariantCommon | ContravariantCommon | ExpandedName | AccessorOrSealed | Frozen |
-    Erroneous | ImplicitCommon
+    Erroneous | ImplicitCommon | Permanent
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion
@@ -449,6 +452,9 @@ object Flags {
 
   /** Has defined or inherited default parameters */
   final val HasDefaultParams = DefaultParameterized | InheritedDefaultParams
+
+  /** Is valid forever */
+  final val ValidForever = Package | Permanent
 
   /** Is a default parameter in Scala 2*/
   final val DefaultParameter = allOf(Param, DefaultParameterized)

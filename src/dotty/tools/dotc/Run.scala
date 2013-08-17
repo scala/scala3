@@ -8,8 +8,6 @@ import util.{SourceFile, NoSource}
 
 class Run(comp: Compiler)(implicit ctx: Context) {
 
-  defn.init()
-
   var units: List[CompilationUnit] = _
 
   def getSource(fileName: String): SourceFile = {

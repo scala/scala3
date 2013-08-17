@@ -16,6 +16,7 @@ class Compiler {
     defn.JavaLangPackageVal :: defn.ScalaPackageVal :: defn.PredefModule :: Nil
 
   def rootContext(implicit ctx: Context): Context = {
+    ctx.definitions.init()
     ctx.usePhases(phases)
     val start = ctx.fresh
       .withPeriod(Period(ctx.runId + 1, FirstPhaseId))

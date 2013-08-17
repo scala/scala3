@@ -824,7 +824,7 @@ class Typer extends Namer with Applications with Implicits {
     }
   }
 
-  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
+  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = ctx.traceIndented (i"typing $tree") {
 
     def encodeName(tree: untpd.Tree) = tree match {
       case tree: NameTree => tree.withName(tree.name.encode)

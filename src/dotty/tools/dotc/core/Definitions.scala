@@ -20,8 +20,17 @@ class Definitions(implicit ctx: Context) {
 
   import ctx.{requiredClass, requiredModule, requiredPackage}
 
+  private def newSymbol[N <: Name](owner: Symbol, name: N, flags: FlagSet, info: Type) =
+    ctx.newSymbol(owner, name, flags | Permanent, info)
+
+  private def newClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, infoFn: ClassSymbol => Type) =
+    ctx.newClassSymbol(owner, name, flags | Permanent, infoFn).entered
+
+  private def newCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope = newScope) =
+    ctx.newCompleteClassSymbol(owner, name, flags | Permanent, parents, decls).entered
+
   private def newTypeParam(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
-    scope.enter(ctx.newSymbol(cls, name, flags | TypeParamCreationFlags, TypeBounds.empty))
+    scope.enter(newSymbol(cls, name, flags | TypeParamCreationFlags, TypeBounds.empty))
 
   private def newSyntheticTypeParam(cls: ClassSymbol, scope: MutableScope, suffix: String = "T0") =
     newTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName, scope)
@@ -40,14 +49,14 @@ class Definitions(implicit ctx: Context) {
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parentRefs, paramDecls)
       }
     }
-    ctx.newClassSymbol(ScalaPackageClass, name, flags, completer).entered
+    newClassSymbol(ScalaPackageClass, name, flags, completer)
   }
 
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
-    ctx.newSymbol(cls, name.encode, flags | Method, info).entered.asTerm
+    newSymbol(cls, name.encode, flags | Method, info).entered.asTerm
 
   private def newAliasType(name: TypeName, tpe: Type, flags: FlagSet = EmptyFlags): TypeSymbol =
-    ctx.newSymbol(ScalaPackageClass, name, flags, tpe).entered.asType
+    newSymbol(ScalaPackageClass, name, flags, TypeAlias(tpe)).entered.asType
 
   private def newPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
                     resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags) = {
@@ -83,12 +92,7 @@ class Definitions(implicit ctx: Context) {
   lazy val JavaLangPackageVal = requiredPackage("java.lang")
 
   lazy val ObjectClass = requiredClass("java.lang.Object")
-  lazy val AnyRefAlias: TypeSymbol = {
-    val anyRef = ctx.newSymbol(
-      ScalaPackageClass, tpnme.AnyRef, EmptyFlags, TypeAlias(ObjectClass.typeConstructor))
-    ScalaPackageClass.enter(anyRef, ScalaPackageClass.decls)
-    anyRef
-  }
+  lazy val AnyRefAlias: TypeSymbol = newAliasType(tpnme.AnyRef, ObjectType)
 
     lazy val Object_## = newMethod(ObjectClass, nme.HASHHASH, ExprType(IntType), Final)
     lazy val Object_== = newMethod(ObjectClass, nme.EQ, methOfAnyRef(BooleanType), Final)
@@ -110,8 +114,8 @@ class Definitions(implicit ctx: Context) {
     def Object_toString  = objMethod(nme.toString_)
     private def objMethod(name: PreName) = ObjectClass.requiredMethod(name)
 
-  lazy val AnyClass: ClassSymbol = ctx.newCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Any, Abstract, Nil).entered
+  lazy val AnyClass: ClassSymbol = newCompleteClassSymbol(
+    ScalaPackageClass, tpnme.Any, Abstract, Nil)
   lazy val AnyValClass: ClassSymbol = requiredClass("scala.AnyVal")
 
     lazy val Any_==       = newMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
@@ -136,10 +140,10 @@ class Definitions(implicit ctx: Context) {
 
   lazy val NotNullClass = requiredClass("scala.NotNull")
 
-  lazy val NothingClass: ClassSymbol = ctx.newCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeConstructor)).entered
-  lazy val NullClass: ClassSymbol = ctx.newCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Null, AbstractFinal, List(AnyRefAlias.typeConstructor)).entered
+  lazy val NothingClass: ClassSymbol = newCompleteClassSymbol(
+    ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeConstructor))
+  lazy val NullClass: ClassSymbol = newCompleteClassSymbol(
+    ScalaPackageClass, tpnme.Null, AbstractFinal, List(AnyRefAlias.typeConstructor))
 
   lazy val PredefModule = requiredModule("scala.Predef")
   lazy val NilModule = requiredModule("scala.collection.immutable.Nil")
@@ -148,9 +152,9 @@ class Definitions(implicit ctx: Context) {
   lazy val SingletonClass: ClassSymbol =
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
     // but does not define it as an explicit class.
-    ctx.newCompleteClassSymbol(
+    newCompleteClassSymbol(
       ScalaPackageClass, tpnme.Singleton, Trait | Interface | Final,
-      List(AnyClass.typeConstructor), EmptyScope).entered
+      List(AnyClass.typeConstructor), EmptyScope)
   lazy val SeqClass: ClassSymbol = requiredClass("scala.collection.Seq")
   lazy val ArrayClass: ClassSymbol = requiredClass("scala.Array")
   lazy val uncheckedStableClass: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
@@ -358,11 +362,11 @@ class Definitions(implicit ctx: Context) {
       tpnme.higherKindedTraitName(vcs.length) ++ (vcs map varianceSuffix).mkString
 
     def createTrait = {
-      val cls = ctx.newClassSymbol(
+      val cls = newClassSymbol(
         ScalaPackageClass,
         traitName,
         Trait | Interface | Synthetic,
-        completer).entered
+        completer)
       _hkTraits += cls
       cls
     }
