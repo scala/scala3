@@ -142,13 +142,15 @@ class SymbolLoaders {
   /** Load contents of a package
    */
   class PackageLoader(override val sourceModule: TermSymbol, classpath: ClassPath)(implicit val cctx: CondensedContext)
-      extends ClassCompleterWithDecls(newScope) with SymbolLoader { // !!! TODO: ClassCompleter needed?
+      extends SymbolLoader with ModuleClassCompleter {
     def description = "package loader " + classpath.name
+
+    private[core] val preDecls: MutableScope = newScope
 
     def doComplete(root: SymDenotation) {
       assert(root is PackageClass, root)
       val pre = root.owner.thisType
-      root.info = ClassInfo(pre, root.symbol.asClass, Nil, root.decls, TermRef.withSym(pre, sourceModule))
+      root.info = ClassInfo(pre, root.symbol.asClass, Nil, preDecls, TermRef.withSym(pre, sourceModule))
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
       if (!root.isRoot) {
@@ -205,7 +207,7 @@ class SymbolLoaders {
 /** A lazy type that completes itself by calling parameter doComplete.
  *  Any linked modules/classes or module classes are also initialized.
  */
-trait SymbolLoader extends LazyType {
+abstract class SymbolLoader extends LazyType {
   implicit val cctx: CondensedContext
 
   /** Load source or class file for `root`, return */

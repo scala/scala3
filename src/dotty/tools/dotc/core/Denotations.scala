@@ -333,11 +333,11 @@ object Denotations {
   /** An overloaded denotation consisting of the alternatives of both given denotations.
    */
   case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation {
-    final def symbol = unsupported("symbol")
-    final def info = unsupported("info")
+    final def symbol = multiHasNot("symbol")
+    final def info = multiHasNot("info")
     final def validFor = denot1.validFor & denot2.validFor
     final def isType = false
-    def signature(implicit ctx: Context) = unsupported("signature")
+    def signature(implicit ctx: Context) = multiHasNot("signature")
     def atSignature(sig: Signature)(implicit ctx: Context): SingleDenotation =
       denot1.atSignature(sig) orElse denot2.atSignature(sig)
     def current(implicit ctx: Context): Denotation =
@@ -364,6 +364,10 @@ object Denotations {
     def derivedMultiDenotation(d1: Denotation, d2: Denotation) =
       if ((d1 eq denot1) && (d2 eq denot2)) this else MultiDenotation(d1, d2)
     override def toString = alternatives.mkString(" <and> ")
+
+    private def multiHasNot(op: String): Nothing =
+      throw new UnsupportedOperationException(
+        s"multi-denotation with alternatives $alternatives does not implement operation $op")
   }
 
   /** A non-overloaded denotation */

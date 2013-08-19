@@ -57,7 +57,7 @@ object Erasure {
         tp.paramNames, tp.paramTypes.mapConserve(erasure), resultErasure(tp.resultType))
     case tp: PolyType =>
       erasure(tp.resultType)
-    case tp @ ClassInfo(pre, cls, classParents, decls, optSelfType) =>
+    case tp @ ClassInfo(pre, cls, classParents, decls, _) =>
       val parents: List[TypeRef] =
         if (cls == defn.ObjectClass || cls.isPrimitiveValueClass) Nil
         else if (cls == defn.ArrayClass) defn.ObjectClass.typeConstructor :: Nil

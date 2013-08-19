@@ -1774,17 +1774,22 @@ object Types {
    *                      These are all normalized to be TypeRefs by moving any refinements
    *                      to be member definitions of the class itself.
    *  @param decls        The symbols defined directly in this class.
-   *  @param optSelfType  The type of `this` in this class, if explicitly given, NoType otherwise.
+   *  @param selfInfo     The type of `this` in this class, if explicitly given,
+   *                      NoType otherwise. If class is compiled from source, can also
+   *                      be a reference to the self symbol containing the type.
    */
   abstract case class ClassInfo(
       prefix: Type,
       cls: ClassSymbol,
       classParents: List[TypeRef],
       decls: Scope,
-      optSelfType: Type) extends CachedGroundType with TypeType {
+      selfInfo: DotClass /* should be: Type | Symbol */) extends CachedGroundType with TypeType {
 
-    def selfType(implicit ctx: Context): Type =
-      if (optSelfType.exists) optSelfType else cls.typeConstructor
+    def selfType(implicit ctx: Context): Type = selfInfo match {
+      case NoType => cls.typeConstructor
+      case self: Symbol => self.info
+      case tp: Type => tp
+    }
 
     def rebase(tp: Type)(implicit ctx: Context): Type =
       if ((prefix eq cls.owner.thisType) || !cls.owner.isClass) tp
@@ -1812,21 +1817,21 @@ object Types {
 
     def derivedClassInfo(prefix: Type)(implicit ctx: Context) =
       if (prefix eq this.prefix) this
-      else ClassInfo(prefix, cls, classParents, decls, optSelfType)
+      else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
-    def derivedClassInfo(prefix: Type, classParents: List[TypeRef], optSelfType: Type)(implicit ctx: Context) =
-      if ((prefix eq this.prefix) && (classParents eq this.classParents) && (optSelfType eq this.optSelfType)) this
-      else ClassInfo(prefix, cls, classParents, decls, optSelfType)
+    def derivedClassInfo(prefix: Type, classParents: List[TypeRef], selfInfo: Type)(implicit ctx: Context) =
+      if ((prefix eq this.prefix) && (classParents eq this.classParents) && (selfInfo eq this.selfInfo)) this
+      else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
     override def computeHash = doHash(cls, prefix)
   }
 
-  final class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[TypeRef], decls: Scope, optSelfType: Type)
-    extends ClassInfo(prefix, cls, classParents, decls, optSelfType)
+  final class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[TypeRef], decls: Scope, selfInfo: DotClass)
+    extends ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
   object ClassInfo {
-    def apply(prefix: Type, cls: ClassSymbol, classParents: List[TypeRef], decls: Scope, optSelfType: Type = NoType)(implicit ctx: Context) =
-      unique(new CachedClassInfo(prefix, cls, classParents, decls, optSelfType))
+    def apply(prefix: Type, cls: ClassSymbol, classParents: List[TypeRef], decls: Scope, selfInfo: DotClass = NoType)(implicit ctx: Context) =
+      unique(new CachedClassInfo(prefix, cls, classParents, decls, selfInfo))
   }
 
   /** Type bounds >: lo <: hi */

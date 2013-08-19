@@ -430,7 +430,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = {
-    val exprCtx = enterSyms(tree.stats)
+    val exprCtx = index(tree.stats)
     val stats1 = typedStats(tree.stats, ctx.owner)
     val expr1 = typedExpr(tree.expr, pt)(exprCtx)
     val result = cpy.Block(tree, stats1, expr1).withType(blockType(stats1, expr1.tpe))
@@ -632,8 +632,7 @@ class Typer extends Namer with Applications with Implicits {
   def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(implicit ctx: Context): RefinedTypeTree = {
     val tpt1 = typedAheadType(tree.tpt)
     val refineClsDef = desugar.refinedTypeToClass(tree)
-    val throwAwayScopeCtx = ctx.fresh.withNewScope
-    val refineCls = createSymbol(refineClsDef)(throwAwayScopeCtx).asClass
+    val refineCls = createSymbol(refineClsDef).asClass
     val TypeDef(_, _, Template(_, _, _, refinements1)) = typed(refineClsDef)
     assert(tree.refinements.length == refinements1.length, s"${tree.refinements} != $refinements1")
     def addRefinement(parent: Type, refinement: Tree): Type = {
@@ -721,11 +720,9 @@ class Typer extends Namer with Applications with Implicits {
     val mods1 = typedModifiers(mods)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parents1 = parents mapconserve (typed(_))
-    val self1 = cpy.ValDef(self, typedModifiers(self.mods), self.name, typedType(self.tpt), EmptyTree)
-      .withType(NoType)
-
+    val self1 = typed(self).asInstanceOf[ValDef]
     val localDummy = ctx.newLocalDummy(cls, impl.pos)
-    val body1 = typedStats(body, localDummy)(inClassContext(cls, self.name))
+    val body1 = typedStats(body, localDummy)(inClassContext(self1.symbol))
     val impl1 = cpy.Template(impl, constr1, parents1, self1, body1)
       .withType(localDummy.symRef)
 
@@ -930,6 +927,8 @@ class Typer extends Namer with Applications with Implicits {
    *  If all this fails, error
    */
   def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
+
+    println(i"adapting $tree of type ${tree.tpe} to $pt")
 
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives

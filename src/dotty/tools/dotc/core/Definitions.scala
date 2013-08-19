@@ -55,8 +55,11 @@ class Definitions(implicit ctx: Context) {
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
     newSymbol(cls, name.encode, flags | Method, info).entered.asTerm
 
-  private def newAliasType(name: TypeName, tpe: Type, flags: FlagSet = EmptyFlags): TypeSymbol =
-    newSymbol(ScalaPackageClass, name, flags, TypeAlias(tpe)).entered.asType
+  private def newAliasType(name: TypeName, tpe: Type, flags: FlagSet = EmptyFlags): TypeSymbol = {
+    val sym = newSymbol(ScalaPackageClass, name, flags, TypeAlias(tpe))
+    ScalaPackageClass.preDecls.enter(sym)
+    sym
+  }
 
   private def newPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
                     resultTypeFn: PolyType => Type, flags: FlagSet = EmptyFlags) = {

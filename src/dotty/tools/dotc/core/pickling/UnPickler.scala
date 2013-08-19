@@ -84,7 +84,7 @@ object UnPickler {
       tp.derivedPolyType(paramNames, tp.paramBounds, arrayToRepeated(tp.resultType))
   }
 
-  def setClassInfo(denot: ClassDenotation, info: Type, optSelfType: Type = NoType)(implicit ctx: Context): Unit = {
+  def setClassInfo(denot: ClassDenotation, info: Type, selfInfo: Type = NoType)(implicit ctx: Context): Unit = {
     val cls = denot.classSymbol
     val (tparams, TempClassInfoType(parents, decls, clazz)) = info match {
       case TempPolyType(tps, cinfo) => (tps, cinfo)
@@ -97,9 +97,9 @@ object UnPickler {
       else denot.enter(tparam, decls)
     }
     val ost =
-      if ((optSelfType eq NoType) && (denot is ModuleClass))
+      if ((selfInfo eq NoType) && (denot is ModuleClass))
         TermRef.withSym(denot.owner.thisType, denot.sourceModule.asTerm)
-      else optSelfType
+      else selfInfo
     denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)
   }
 }
@@ -452,13 +452,14 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           // create a type alias instead
           cctx.newSymbol(owner, name, flags, localMemberUnpickler, coord = start)
         else {
-          def completer(cls: Symbol) = new LocalClassUnpickler(cls) {
-            override def sourceModule =
-              if (flags is ModuleClass)
-                cls.owner.decls.lookup(cls.name.stripModuleClassSuffix.toTermName)
-                  .suchThat(_ is Module).symbol
-              else NoSymbol
-          }
+          def completer(cls: Symbol) =
+            if (flags is ModuleClass)
+              new LocalClassUnpickler(cls) with ModuleClassCompleter {
+                override def sourceModule =
+                  cls.owner.decls.lookup(cls.name.stripModuleClassSuffix.toTermName)
+                    .suchThat(_ is Module).symbol
+              }
+            else new LocalClassUnpickler(cls)
           cctx.newClassSymbol(owner, name.asTypeName, flags, completer, coord = start)
         }
       case MODULEsym | VALsym =>
@@ -491,8 +492,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       val tp = at(inforef, readType)
       denot match {
         case denot: ClassDenotation =>
-          val optSelfType = if (atEnd) NoType else readTypeRef()
-          setClassInfo(denot, tp, optSelfType)
+          val selfInfo = if (atEnd) NoType else readTypeRef()
+          setClassInfo(denot, tp, selfInfo)
         case denot =>
           val tp1 = depoly(tp, denot)
           denot.info = if (tag == ALIASsym) TypeAlias(tp1) else tp1
@@ -529,7 +530,9 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     extends ClassCompleterWithDecls(symScope(cls), localMemberUnpickler)
 
   def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol) =
-    new ClassCompleterWithDecls(symScope(cls), new AtStartUnpickler(start)) with SymbolLoaders.SecondCompleter {
+    new ClassCompleterWithDecls(symScope(cls), new AtStartUnpickler(start))
+      with ModuleClassCompleter
+      with SymbolLoaders.SecondCompleter {
       override def sourceModule = module
     }
 

@@ -106,7 +106,7 @@ object SymDenotations {
       if ((this is ModuleClass) && !(this is PackageClass))
         tp match {
           case ClassInfo(_, _, _, _, ost) =>
-            assert(ost.isInstanceOf[TermRef], tp)
+            assert(ost.isInstanceOf[TermRef] || ost.isInstanceOf[TermSymbol], tp)
           case _ =>
         }
       myInfo = tp
@@ -160,6 +160,17 @@ object SymDenotations {
       case cinfo: ClassCompleterWithDecls => cinfo.decls
       case cinfo: LazyType => completeFrom(cinfo); decls // complete-once
       case _ => info.decls
+    }
+
+    /** If this is a package class, the symbols entered in it
+     *  before it is completed. (this is needed to eagerly enter synthetic
+     *  aliases such as AnyRef into a package class without forcing it.
+     *  Right now, I believe the only usage is for the three synthetic aliases
+     *  in Definitions.
+     */
+    final def preDecls(implicit ctx: Context): MutableScope = myInfo match {
+      case pinfo: SymbolLoaders # PackageLoader => pinfo.preDecls
+      case _ => decls.asInstanceOf[MutableScope]
     }
 
     // ------ Names ----------------------------------------------
@@ -451,7 +462,7 @@ object SymDenotations {
     final def sourceModule: Symbol = myInfo match {
       case ClassInfo(_, _, _, _, selfType: TermRefBySym) if this is ModuleClass =>
         selfType.fixedSym
-      case info: ClassCompleterWithDecls =>
+      case info: ModuleClassCompleter =>
         info.sourceModule
       case _ =>
         NoSymbol
@@ -909,7 +920,8 @@ object SymDenotations {
           case nil =>
             denots
         }
-        collect(ownDenots, classParents)
+        if (name.isConstructorName) ownDenots
+        else collect(ownDenots, classParents)
       } else NoDenotation
 
     override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation =
@@ -1044,20 +1056,24 @@ object SymDenotations {
     def apply(module: TermSymbol, modcls: ClassSymbol) = this
   }
 
+  /** A base type for completers of module classes that knows about `sourceModule` */
+  trait ModuleClassCompleter extends LazyType {
+    def sourceModule: Symbol
+  }
+
   /** A lazy type for completing a class that already has a scope with all
    *  declarations in the class.
    */
   class ClassCompleterWithDecls(val decls: Scope, underlying: LazyType = NoCompleter)
       extends LazyType {
     def complete(denot: SymDenotation): Unit = underlying.complete(denot)
-    def sourceModule: Symbol = NoSymbol
   }
 
   /** A lazy type for completing a class that already has a scope with all
    *  declarations in the class.
    */
   class ModuleClassCompleterWithDecls(module: Symbol, decls: Scope, underlying: LazyType = NoCompleter)
-    extends ClassCompleterWithDecls(decls, underlying) {
+    extends ClassCompleterWithDecls(decls, underlying) with ModuleClassCompleter {
       override def sourceModule = module
     }
 

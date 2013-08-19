@@ -253,7 +253,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree])(implicit ctx: Context): TypeDef = {
     val parents = cls.info.parents map (TypeTree(_))
     val selfType =
-      if (cls.classInfo.optSelfType.exists) ValDef(ctx.newSelfSym(cls))
+      if (cls.classInfo.selfInfo ne NoType) ValDef(ctx.newSelfSym(cls))
       else EmptyValDef
     def isOwnTypeParamAccessor(stat: Tree) =
       (stat.symbol is TypeParam) && stat.symbol.owner == cls

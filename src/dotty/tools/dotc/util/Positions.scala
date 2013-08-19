@@ -49,6 +49,9 @@ object Positions {
     def pointDelta =
       (coords >>> (StartEndBits * 2)).toInt
 
+    def orElse(that: Position) =
+      if (this.exists) this else that
+
     /** The union of two positions. This is the least range that encloses
      *  both positions. It is always a synthetic position.
      */

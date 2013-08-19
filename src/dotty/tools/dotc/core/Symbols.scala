@@ -92,13 +92,13 @@ trait Symbols { this: Context =>
       flags: FlagSet,
       parents: List[TypeRef],
       decls: Scope = newScope,
-      optSelfType: Type = NoType,
+      selfInfo: Type = NoType,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
       assocFile: AbstractFile = null): ClassSymbol =
     newClassSymbol(
         owner, name, flags,
-        ClassInfo(owner.thisType, _, parents, decls, optSelfType),
+        ClassInfo(owner.thisType, _, parents, decls, selfInfo),
         privateWithin, coord, assocFile)
 
   /** Create a module symbol with associated module class
@@ -213,8 +213,8 @@ trait Symbols { this: Context =>
     newConstructor(cls, EmptyFlags, Nil, Nil)
 
   /** Create a symbol representing a selftype declaration for class `cls`. */
-  def newSelfSym(cls: ClassSymbol, name: TermName = nme.WILDCARD, optSelfType: Type = NoType): TermSymbol =
-    ctx.newSymbol(cls, name, SelfSymFlags, optSelfType orElse cls.classInfo.selfType, coord = cls.coord)
+  def newSelfSym(cls: ClassSymbol, name: TermName = nme.WILDCARD, selfInfo: Type = NoType): TermSymbol =
+    ctx.newSymbol(cls, name, SelfSymFlags, selfInfo orElse cls.classInfo.selfType, coord = cls.coord)
 
   /** Create new type parameters with given owner, names, and flags.
    *  @param boundsFn  A function that, given type refs to the newly created
