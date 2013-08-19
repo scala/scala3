@@ -1376,6 +1376,11 @@ object Types {
 
     override def underlying(implicit ctx: Context) = parent
 
+    /** Does goves type match `refinedInfo`. Translates to a subtype check here,
+     *  but is overridden in SelectionProto
+     */
+    def matchesInfo(tp: Type)(implicit ctx: Context): Boolean = tp <:< refinedInfo
+
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
       def originalName = parent.typeParams.apply(refinedName.hkParamIndex).name
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))

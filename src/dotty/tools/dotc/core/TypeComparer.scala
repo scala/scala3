@@ -184,7 +184,7 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
     case tp2: RefinedType =>
       isSubType(tp1, tp2.parent) && (
         tp2.refinedName == nme.WILDCARD ||
-        isSubType(tp1.member(tp2.refinedName).info, tp2.refinedInfo))
+        tp2.matchesInfo(tp1.member(tp2.refinedName).info))
     case AndType(tp21, tp22) =>
       isSubType(tp1, tp21) && isSubType(tp1, tp22)
     case OrType(tp21, tp22) =>

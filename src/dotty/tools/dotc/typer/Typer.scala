@@ -20,7 +20,7 @@ import NameOps._
 import Flags._
 import Decorators._
 import ErrorReporting._
-import Applications.{FunProtoType, PolyProtoType}
+import Applications.{FunProtoType, PolyProtoType, Compatibility, normalize}
 import EtaExpansion.etaExpand
 import util.Positions._
 import util.SourcePosition
@@ -58,7 +58,24 @@ object Typer {
     }
   }
 
-  class SelectionProto(name: Name, tp: Type) extends RefinedType(WildcardType, name)(_ => tp)
+  class SelectionProto(name: Name, tp: Type) extends RefinedType(WildcardType, name)(_ => tp) with Compatibility {
+    override def viewExists(tp: Type, pt: Type)(implicit ctx: Context): Boolean = false
+    override def matchesInfo(tp: Type)(implicit ctx: Context) = {
+      def test(implicit ctx: Context) =
+        isCompatible(normalize(tp), /*(new WildApprox) apply (needed?)*/ refinedInfo)
+      test(ctx.fresh.withNewTyperState)
+    }
+  }
+
+  def selectionProto(name: Name, tp: Type) =
+    if (name.isConstructorName) WildcardType
+    else {
+      val rtp = tp match {
+        case tp: SelectionProto => WildcardType
+        case _ => tp
+      }
+      new SelectionProto(name, rtp)
+    }
 
   object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType)
 }
@@ -327,7 +344,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
-    val qual1 = typedExpr(tree.qualifier, new SelectionProto(tree.name, pt))
+    val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt))
     val ownType = checkedSelectionType(qual1, tree)
     checkValue(ownType, pt, tree.pos)
     cpy.Select(tree, qual1, tree.name).withType(ownType)
@@ -613,7 +630,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): SelectFromTypeTree = {
-    val qual1 = typedType(tree.qualifier, new SelectionProto(tree.name, pt))
+    val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt))
     cpy.SelectFromTypeTree(tree, qual1, tree.name).withType(checkedSelectionType(qual1, tree))
   }
 
