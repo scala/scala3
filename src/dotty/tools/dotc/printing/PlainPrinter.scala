@@ -209,10 +209,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val (tparams, otherDecls) = decls.toList partition treatAsTypeParam
         val tparamsText =
           if (tparams.isEmpty) Text() else ("[" ~ dclsText(tparams) ~ "]").close
-        val selfText =
-          if (selfInfo ne NoType)
-            "this: " ~ atPrec(InfixPrec) { toText(tp.selfType) } ~ " =>"
-          else Text()
+        val selfText: Text = selfInfo match {
+          case NoType => Text()
+          case sym: Symbol if !sym.isCompleted => "this: ? =>"
+          case _ => "this: " ~ atPrec(InfixPrec) { toText(tp.selfType) } ~ " =>"
+        }
         val parentsText = Text(cparents.map(p =>
           toTextLocal(reconstituteParent(cls, p))), " with ")
         val trueDecls = otherDecls.filterNot(treatAsTypeArg)
