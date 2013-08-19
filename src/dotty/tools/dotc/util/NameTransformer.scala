@@ -60,7 +60,7 @@ object NameTransformer {
    *  @param name the string to encode
    *  @return     the string with all recognized opchars replaced with their encoding
    */
-  def encode(name: Name): TermName = {
+  def encode[N <: Name](name: N): N = {
     var buf: StringBuilder = null
     val len = name.length
     var i = 0
@@ -86,7 +86,9 @@ object NameTransformer {
       }
       i += 1
     }
-    if (buf eq null) name.toTermName else buf.toString.toTermName
+    if (buf eq null) name
+    else if (name.isTermName) buf.toString.toTermName.asInstanceOf[N]
+    else buf.toString.toTypeName.asInstanceOf[N]
   }
 
   /** Replace `\$opname` by corresponding operator symbol.
