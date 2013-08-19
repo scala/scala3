@@ -454,7 +454,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         else {
           def completer(cls: Symbol) =
             if (flags is ModuleClass)
-              new LocalClassUnpickler(cls) with ModuleClassCompleter {
+              new LocalClassUnpickler(cls) with LazyTypeOfModuleClass {
                 override def sourceModule =
                   cls.owner.decls.lookup(cls.name.stripModuleClassSuffix.toTermName)
                     .suchThat(_ is Module).symbol
@@ -531,7 +531,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
   def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol) =
     new ClassCompleterWithDecls(symScope(cls), new AtStartUnpickler(start))
-      with ModuleClassCompleter
+      with LazyTypeOfModuleClass
       with SymbolLoaders.SecondCompleter {
       override def sourceModule = module
     }

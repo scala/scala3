@@ -453,16 +453,19 @@ object SymDenotations {
         myInfo match {
           case info: TypeRefBySym           => info.fixedSym
           case ExprType(info: TypeRefBySym) => info.fixedSym // needed after uncurry, when module terms might be accessor defs
-          case info: ModuleCompleter        => info.mclass
-          case _                            => NoSymbol
+          case info: LazyTypeOfModule       => info.moduleClass
+          case _                            => println(s"missing module class for $name: $myInfo"); NoSymbol
         }
-      else NoSymbol
+      else {
+        println(s"missing module class for non-module $name");
+        NoSymbol
+      }
 
     /** The module implemented by this module class, NoSymbol if not applicable. */
     final def sourceModule: Symbol = myInfo match {
       case ClassInfo(_, _, _, _, selfType: TermRefBySym) if this is ModuleClass =>
         selfType.fixedSym
-      case info: ModuleClassCompleter =>
+      case info: LazyTypeOfModuleClass =>
         info.sourceModule
       case _ =>
         NoSymbol
@@ -1057,8 +1060,12 @@ object SymDenotations {
   }
 
   /** A base type for completers of module classes that knows about `sourceModule` */
-  trait ModuleClassCompleter extends LazyType {
+  trait LazyTypeOfModuleClass extends LazyType {
     def sourceModule: Symbol
+  }
+
+  trait LazyTypeOfModule extends LazyType {
+    def moduleClass: Symbol
   }
 
   /** A lazy type for completing a class that already has a scope with all
@@ -1073,7 +1080,7 @@ object SymDenotations {
    *  declarations in the class.
    */
   class ModuleClassCompleterWithDecls(module: Symbol, decls: Scope, underlying: LazyType = NoCompleter)
-    extends ClassCompleterWithDecls(decls, underlying) with ModuleClassCompleter {
+    extends ClassCompleterWithDecls(decls, underlying) with LazyTypeOfModuleClass {
       override def sourceModule = module
     }
 
@@ -1087,7 +1094,8 @@ object SymDenotations {
    *  Completion of modules is always completion of the underlying
    *  module class, followed by copying the relevant fields to the module.
    */
-  class ModuleCompleter(val mclass: ClassSymbol)(implicit cctx: CondensedContext) extends LazyType {
+  class ModuleCompleter(override val moduleClass: ClassSymbol)(implicit cctx: CondensedContext)
+  extends LazyTypeOfModule {
     def complete(denot: SymDenotation): Unit = {
       val from = denot.moduleClass.denot.asClass
       denot.setFlag(from.flags.toTermFlags & RetainedModuleValFlags)
@@ -1096,7 +1104,7 @@ object SymDenotations {
         // only apply to the module but not to the module class. The right solution
         // is to have the module class completer set the annotations of both the
         // class and the module.
-      denot.info = mclass.symTypeRef
+      denot.info = moduleClass.symTypeRef
       denot.privateWithin = from.privateWithin
     }
   }

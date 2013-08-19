@@ -225,7 +225,7 @@ object desugar {
     val modul = ValDef(mods | ModuleCreationFlags, name, clsRef, New(clsRef, Nil)) withPos mdef.pos
     val ValDef(selfMods, selfName, selfTpt, selfRhs) = self
     if (!selfTpt.isEmpty) ctx.error("object definition may not have a self type", self.pos)
-    val clsSelf = ValDef(selfMods, selfName, SingletonTypeTree(clsRef), selfRhs)
+    val clsSelf = ValDef(selfMods, selfName, SingletonTypeTree(Ident(name)), selfRhs)
       .withPos(self.pos orElse tmpl.pos.startPos)
     val clsTmpl = cpy.Template(tmpl, constr, parents, clsSelf, body)
     val cls = TypeDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, clsTmpl)

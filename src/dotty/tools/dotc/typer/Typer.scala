@@ -46,7 +46,6 @@ object Typer {
   implicit class TreeDecorator(tree: Tree) {
     def qualifierType(implicit ctx: Context): Type = tree.tpe match {
       case tpe: TermRef if !tpe.symbol.isStable => tpe.info
-      case tpe: TypeRef => tpe.info
       case tpe => tpe
     }
   }

@@ -28,9 +28,8 @@ abstract class Driver extends DotClass {
       !ctx.reporter.hasErrors
     } catch {
       case ex: Throwable =>
-        ctx.error(ex.getMessage)
         ex match {
-          case ex: FatalError  => false // signals that we should fail compilation.
+          case ex: FatalError  => ctx.error(ex.getMessage); false // signals that we should fail compilation.
           case _               => throw ex // unexpected error, tell the outside world.
         }
     }

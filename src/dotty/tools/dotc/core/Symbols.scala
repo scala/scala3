@@ -297,10 +297,8 @@ object Symbols {
 
     type ThisName <: Name
 
-    private[this] var _id: Int = {
-      //assert(id != 144972)
-      nextId
-    }
+    private[this] var _id: Int = nextId
+    //assert(_id != 5859)
 
     /** The unique id of this symbol */
     def id = _id
@@ -366,8 +364,9 @@ object Symbols {
      *  the class containing this symbol was generated, null if not applicable.
      *  Overridden in ClassSymbol
      */
-    def associatedFile(implicit ctx: Context): AbstractFile =
+    def associatedFile(implicit ctx: Context): AbstractFile = ctx.traceIndented(s"assocFile($this)") {
       denot.topLevelClass.symbol.associatedFile
+    }
 
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(implicit ctx: Context): AbstractFile =

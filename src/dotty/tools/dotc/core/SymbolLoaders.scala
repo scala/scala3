@@ -142,7 +142,7 @@ class SymbolLoaders {
   /** Load contents of a package
    */
   class PackageLoader(override val sourceModule: TermSymbol, classpath: ClassPath)(implicit val cctx: CondensedContext)
-      extends SymbolLoader with ModuleClassCompleter {
+      extends SymbolLoader with LazyTypeOfModuleClass {
     def description = "package loader " + classpath.name
 
     private[core] val preDecls: MutableScope = newScope
