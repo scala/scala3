@@ -18,7 +18,7 @@ class FrontEnd extends Phase {
 
   def enterSyms(implicit ctx: Context) = {
     val unit = ctx.compilationUnit
-    ctx.typer.enterSym(unit.untpdTree)
+    ctx.typer.index(unit.untpdTree)
     println("entered:\n"+unit.source)
   }
 
