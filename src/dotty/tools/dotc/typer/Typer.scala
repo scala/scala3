@@ -170,6 +170,11 @@ class Typer extends Namer with Applications with Implicits {
   def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
     val name = tree.name
 
+    /** Method is necessary because error messages need to bind to
+     *  to typedIdent's context which is lost in nested calls to findRef
+     */
+    def error(msg: => String, pos: Position) = ctx.error(msg, pos)
+
     /** Is this import a root import that has been shadowed by an explicit
      *  import in the same program?
      */
@@ -229,7 +234,7 @@ class Typer extends Namer with Applications with Implicits {
         if (!previous.exists || (previous == found)) found
         else {
           if (!previous.isError && !found.isError)
-            ctx.error(
+            error(
               i"""reference to $name is ambiguous;
                  |it is both ${bindingString(newPrec, ctx, "")}
                  |and ${bindingString(prevPrec, prevCtx, " subsequently")}""".stripMargin,
@@ -244,9 +249,9 @@ class Typer extends Namer with Applications with Implicits {
         def checkUnambiguous(found: Type) = {
           val other = namedImportRef(site, selectors.tail)
           if (other.exists && (found != other))
-            ctx.error(i"""reference to $name is ambiguous; it is imported twice in
-                         |${ctx.tree}""".stripMargin,
-                      tree.pos)
+            error(i"""reference to $name is ambiguous; it is imported twice in
+                     |${ctx.tree}""".stripMargin,
+                  tree.pos)
           found
         }
         selectors match {
@@ -336,7 +341,7 @@ class Typer extends Namer with Applications with Implicits {
       if (rawType.exists)
         checkAccessible(rawType, superAccess = false, tree.pos)
       else {
-        ctx.error(i"not found: $name", tree.pos)
+        error(i"not found: $name", tree.pos)
         ErrorType
       }
     tree.withType(ownType.underlyingIfRepeated)
@@ -942,9 +947,7 @@ class Typer extends Namer with Applications with Implicits {
    *  (14) When in mode EXPRmode, apply a view
    *  If all this fails, error
    */
-  def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
-
-    println(i"adapting $tree of type ${tree.tpe} to $pt")
+  def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt") {
 
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
@@ -1040,6 +1043,8 @@ class Typer extends Namer with Applications with Implicits {
           val tvars = ctx.newTypeVars(tracked, tree.pos)
           adapt(tpd.TypeApply(tree, tvars map (tpd.TypeTree(_))), pt)
         }
+      case NoType if tree.isInstanceOf[WithoutType[_]] =>
+        tree
       case tp =>
         pt match {
           case pt: FunProtoType => adaptToArgs(tp, pt)

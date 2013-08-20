@@ -13,7 +13,9 @@ case class SourcePosition(source: SourceFile, pos: Position) {
   def line: Int = source.offsetToLine(point)
   def column: Int = source.column(point)
 
-  override def toString = s"${source.file}:$line"
+  override def toString =
+    if (source.exists) s"${source.file}:$line"
+    else s"(no source file, offset = ${pos.point})"
 }
 
 /** A sentinel for a non-existing source position */
