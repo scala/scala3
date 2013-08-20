@@ -157,8 +157,10 @@ object SymDenotations {
     /** The symbols defined in this class.
      */
     final def decls(implicit ctx: Context): Scope = myInfo match {
-      case cinfo: ClassCompleterWithDecls => cinfo.decls
-      case cinfo: LazyType => completeFrom(cinfo); decls // complete-once
+      case cinfo: LazyType =>
+        val knownDecls = cinfo.decls
+        if (knownDecls ne EmptyScope) knownDecls
+        else { completeFrom(cinfo); decls } // complete-once
       case _ => info.decls
     }
 
@@ -453,7 +455,7 @@ object SymDenotations {
         myInfo match {
           case info: TypeRefBySym           => info.fixedSym
           case ExprType(info: TypeRefBySym) => info.fixedSym // needed after uncurry, when module terms might be accessor defs
-          case info: LazyTypeOfModule       => info.moduleClass
+          case info: LazyType               => info.moduleClass
           case _                            => println(s"missing module class for $name: $myInfo"); NoSymbol
         }
       else {
@@ -465,7 +467,7 @@ object SymDenotations {
     final def sourceModule: Symbol = myInfo match {
       case ClassInfo(_, _, _, _, selfType: TermRefBySym) if this is ModuleClass =>
         selfType.fixedSym
-      case info: LazyTypeOfModuleClass =>
+      case info: LazyType =>
         info.sourceModule
       case _ =>
         NoSymbol
@@ -1050,39 +1052,36 @@ object SymDenotations {
    */
   abstract class LazyType extends UncachedGroundType
     with (Symbol => LazyType)
-    with ((TermSymbol, ClassSymbol) => LazyType) {
+    with ((TermSymbol, ClassSymbol) => LazyType) { self =>
 
     /** Sets all missing fields of given denotation */
     def complete(denot: SymDenotation): Unit
 
     def apply(sym: Symbol) = this
     def apply(module: TermSymbol, modcls: ClassSymbol) = this
-  }
 
-  /** A base type for completers of module classes that knows about `sourceModule` */
-  trait LazyTypeOfModuleClass extends LazyType {
-    def sourceModule: Symbol
-  }
+    private var myDecls: Scope = EmptyScope
+    private var mySourceModuleFn: () => Symbol = NoSymbolFn
+    private var myModuleClass: Symbol = NoSymbol
 
-  trait LazyTypeOfModule extends LazyType {
-    def moduleClass: Symbol
-  }
-
-  /** A lazy type for completing a class that already has a scope with all
-   *  declarations in the class.
-   */
-  class ClassCompleterWithDecls(val decls: Scope, underlying: LazyType = NoCompleter)
-      extends LazyType {
-    def complete(denot: SymDenotation): Unit = underlying.complete(denot)
-  }
-
-  /** A lazy type for completing a class that already has a scope with all
-   *  declarations in the class.
-   */
-  class ModuleClassCompleterWithDecls(module: Symbol, decls: Scope, underlying: LazyType = NoCompleter)
-    extends ClassCompleterWithDecls(decls, underlying) with LazyTypeOfModuleClass {
-      override def sourceModule = module
+    def proxy: LazyType = new LazyType {
+      override def complete(denot: SymDenotation) = self.complete(denot)
     }
+
+    def decls: Scope = myDecls
+    def sourceModule: Symbol = mySourceModuleFn()
+    def moduleClass: Symbol = myModuleClass
+
+    def withDecls(decls: Scope): this.type = { myDecls = decls; this }
+    def withSourceModule(sourceModule: => Symbol): this.type = { mySourceModuleFn = () => sourceModule; this }
+    def withModuleClass(moduleClass: Symbol): this.type = { myModuleClass = moduleClass; this }
+  }
+
+  val NoSymbolFn = () => NoSymbol
+
+  class NoCompleter extends LazyType {
+    def complete(denot: SymDenotation): Unit = unsupported("complete")
+  }
 
   /** A missing completer */
   object NoCompleter extends LazyType {
@@ -1095,7 +1094,7 @@ object SymDenotations {
    *  module class, followed by copying the relevant fields to the module.
    */
   class ModuleCompleter(override val moduleClass: ClassSymbol)(implicit cctx: CondensedContext)
-  extends LazyTypeOfModule {
+  extends LazyType {
     def complete(denot: SymDenotation): Unit = {
       val from = denot.moduleClass.denot.asClass
       denot.setFlag(from.flags.toTermFlags & RetainedModuleValFlags)

@@ -452,14 +452,14 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           // create a type alias instead
           cctx.newSymbol(owner, name, flags, localMemberUnpickler, coord = start)
         else {
-          def completer(cls: Symbol) =
+          def completer(cls: Symbol) = {
+            val unpickler = new LocalUnpickler() withDecls symScope(cls)
             if (flags is ModuleClass)
-              new LocalClassUnpickler(cls) with LazyTypeOfModuleClass {
-                override def sourceModule =
-                  cls.owner.decls.lookup(cls.name.stripModuleClassSuffix.toTermName)
-                    .suchThat(_ is Module).symbol
-              }
-            else new LocalClassUnpickler(cls)
+              unpickler withSourceModule (
+                cls.owner.decls.lookup(cls.name.stripModuleClassSuffix.toTermName)
+                  .suchThat(_ is Module).symbol)
+            else unpickler
+          }
           cctx.newClassSymbol(owner, name.asTypeName, flags, completer, coord = start)
         }
       case MODULEsym | VALsym =>
@@ -472,7 +472,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     })
   }
 
-  abstract class LocalUnpickler extends LazyType {
+  class LocalUnpickler extends LazyType {
     def parseToCompletion(denot: SymDenotation) = {
       val tag = readByte()
       val end = readNat() + readIndex
@@ -520,21 +520,12 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     }
   }
 
-  class AtStartUnpickler(start: Coord) extends LocalUnpickler {
-    override def startCoord(denot: SymDenotation): Coord = start
-  }
-
   object localMemberUnpickler extends LocalUnpickler
 
-  class LocalClassUnpickler(cls: Symbol)
-    extends ClassCompleterWithDecls(symScope(cls), localMemberUnpickler)
-
   def rootClassUnpickler(start: Coord, cls: Symbol, module: Symbol) =
-    new ClassCompleterWithDecls(symScope(cls), new AtStartUnpickler(start))
-      with LazyTypeOfModuleClass
-      with SymbolLoaders.SecondCompleter {
-      override def sourceModule = module
-    }
+    (new LocalUnpickler with SymbolLoaders.SecondCompleter {
+      override def startCoord(denot: SymDenotation): Coord = start
+    }) withDecls symScope(cls) withSourceModule module
 
   /** Convert
    *    tp { type name = sym } forSome { sym >: L <: H }

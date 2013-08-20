@@ -124,7 +124,7 @@ class Namer { typer: Typer =>
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         record(tree, ctx.newClassSymbol(
-          ctx.owner, tree.name, tree.mods.flags, new ClassCompleter(tree),
+          ctx.owner, tree.name, tree.mods.flags, new Completer(tree) withDecls newScope,
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
       case tree: MemberDef =>
         record(tree, ctx.newSymbol(
@@ -251,24 +251,16 @@ class Namer { typer: Typer =>
           nestedTyper(sym) = typer1
           typer1.defDefSig(tree, sym)(localContext.withTyper(typer1))
         case tree: TypeDef =>
-          typeDefSig(tree, sym)(localContext.withNewScope)
+          if (tree.isClassDef)
+            classDefSig(tree, sym.asClass, decls.asInstanceOf[MutableScope])(localContext)
+          else
+            typeDefSig(tree, sym)(localContext.withNewScope)
         case imp: Import =>
           val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
           ImportType(tpd.SharedTree(expr1))
       }
 
       sym.info = typeSig(original)
-    }
-  }
-
-  /** The completer for a symbol defined by a class definition */
-  class ClassCompleter(original: TypeDef)(implicit ctx: Context)
-  extends ClassCompleterWithDecls(newScope) {
-    override def complete(denot: SymDenotation): Unit = {
-      val cls = denot.symbol.asClass
-      def localContext = ctx.fresh.withOwner(cls)
-      println(s"completing ${cls.show}")
-      cls.info = classDefSig(original, cls, decls.asInstanceOf[MutableScope])(localContext)
     }
   }
 
