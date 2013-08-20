@@ -107,6 +107,14 @@ class Namer { typer: Typer =>
     }
   }
 
+  /** Find moduleClass/sourceModule in effective scope */
+  private def findModuleBuddy(name: Name)(implicit ctx: Context) = {
+    val scope = ctx.effectiveScope
+    val it = scope.lookupAll(name).filter(_ is Module)
+    assert(it.hasNext, s"no companion $name in $scope")
+    it.next
+  }
+
   /** If this tree is a member def or an import, create a symbol of it
    *  and store in symOfTree map.
    */
@@ -120,15 +128,29 @@ class Namer { typer: Typer =>
       sym
     }
 
+    /** Add moduleClass/sourceModule to completer if it is for a module val or class */
+    def adjustIfModule(completer: LazyType, tree: MemberDef) =
+      if (tree.mods is Module) {
+        val name = tree.name
+        if (name.isTermName)
+          completer withModuleClass findModuleBuddy(name.moduleClassName)
+        else
+          completer withSourceModule findModuleBuddy(name.sourceModuleName)
+      }
+      else completer
+
     println(i"creating symbol for $tree")
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         record(tree, ctx.newClassSymbol(
-          ctx.owner, tree.name, tree.mods.flags, new Completer(tree) withDecls newScope,
+          ctx.owner, tree.name, tree.mods.flags,
+          adjustIfModule(new Completer(tree), tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
       case tree: MemberDef =>
+        var completer = new Completer(tree)
         record(tree, ctx.newSymbol(
-          ctx.owner, tree.name, tree.mods.flags, new Completer(tree),
+          ctx.owner, tree.name, tree.mods.flags,
+          adjustIfModule(new Completer(tree), tree),
           privateWithinClass(tree.mods), tree.pos))
       case imp: Import =>
         record(imp, ctx.newSymbol(
@@ -252,7 +274,7 @@ class Namer { typer: Typer =>
           typer1.defDefSig(tree, sym)(localContext.withTyper(typer1))
         case tree: TypeDef =>
           if (tree.isClassDef)
-            classDefSig(tree, sym.asClass, decls.asInstanceOf[MutableScope])(localContext)
+            classDefSig(tree, sym.asClass)(localContext)
           else
             typeDefSig(tree, sym)(localContext.withNewScope)
         case imp: Import =>
@@ -260,7 +282,50 @@ class Namer { typer: Typer =>
           ImportType(tpd.SharedTree(expr1))
       }
 
-      sym.info = typeSig(original)
+      /** The type signature of a ClassDef with given symbol */
+      def classDefSig(cdef: TypeDef, cls: ClassSymbol)(implicit ctx: Context): Type = {
+
+        def parentType(constr: untpd.Tree): Type = {
+          val Trees.Select(Trees.New(tpt), _) = methPart(constr)
+          val ptype = typedAheadType(tpt).tpe
+          if (ptype.uninstantiatedTypeParams.isEmpty) ptype
+          else typedAheadExpr(constr).tpe
+        }
+
+        val TypeDef(_, name, impl @ Template(constr, parents, self, body)) = cdef
+
+        val (params, rest) = body span {
+          case td: TypeDef => td.mods is Param
+          case td: ValDef => td.mods is ParamAccessor
+          case _ => false
+        }
+        val decls = newScope
+        index(params)
+        val selfInfo = if (self.isEmpty) NoType else createSymbol(self)
+        // pre-set info, so that parent types can refer to type params
+        cls.info = adjustIfModule(ClassInfo(cls.owner.thisType, cls, Nil, decls, selfInfo))
+        val parentTypes = parents map parentType
+        val parentRefs = ctx.normalizeToRefs(parentTypes, cls, decls)
+        index(constr)
+        index(rest)(inClassContext(selfInfo))
+        ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
+      }
+
+      def adjustIfModule(sig: Type): Type =
+        if (denot is Module)
+          sig match {
+            case sig: TypeRefBySym =>
+              sig
+            case sig: TypeRef =>
+              TypeRef.withSym(sig.prefix, sig.symbol.asType)
+            case sig: ClassInfo =>
+              sig.derivedClassInfo(sig.prefix, sig.classParents, TermRef.withSym(sig.prefix, sourceModule.asTerm))
+            case _ =>
+              sig
+          }
+        else sig
+
+      sym.info = adjustIfModule(typeSig(original))
     }
   }
 
@@ -351,33 +416,5 @@ class Namer { typer: Typer =>
         if (tparamSyms.nonEmpty) rhsType.LambdaAbstract(tparamSyms)(ctx.error(_, _))
         else TypeBounds(rhsType, rhsType)
     }
-  }
-
-  /** The type signature of a ClassDef with given symbol */
-  def classDefSig(cdef: TypeDef, cls: ClassSymbol, decls: MutableScope)(implicit ctx: Context): Type = {
-
-    def parentType(constr: untpd.Tree): Type = {
-      val Trees.Select(Trees.New(tpt), _) = methPart(constr)
-      val ptype = typedAheadType(tpt).tpe
-      if (ptype.uninstantiatedTypeParams.isEmpty) ptype
-      else typedAheadExpr(constr).tpe
-    }
-
-    val TypeDef(_, name, impl @ Template(constr, parents, self, body)) = cdef
-
-    val (params, rest) = body span {
-      case td: TypeDef => td.mods is Param
-      case td: ValDef => td.mods is ParamAccessor
-      case _ => false
-    }
-    index(params)
-    val selfInfo = if (self.isEmpty) NoType else createSymbol(self)
-    // pre-set info, so that parent types can refer to type params
-    cls.info = ClassInfo(cls.owner.thisType, cls, Nil, decls, selfInfo)
-    val parentTypes = parents map parentType
-    val parentRefs = ctx.normalizeToRefs(parentTypes, cls, decls)
-    index(constr)
-    index(rest)(inClassContext(selfInfo))
-    ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
   }
 }

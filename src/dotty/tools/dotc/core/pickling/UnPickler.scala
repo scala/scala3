@@ -456,7 +456,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             val unpickler = new LocalUnpickler() withDecls symScope(cls)
             if (flags is ModuleClass)
               unpickler withSourceModule (
-                cls.owner.decls.lookup(cls.name.stripModuleClassSuffix.toTermName)
+                cls.owner.decls.lookup(cls.name.sourceModuleName)
                   .suchThat(_ is Module).symbol)
             else unpickler
           }

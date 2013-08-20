@@ -105,8 +105,11 @@ object NameOps {
         name
     }
 
-    /** Convert this name to a module name */
+    /** Convert this module name to corresponding module class name */
     def moduleClassName: TypeName = (name ++ tpnme.MODULE_SUFFIX).toTypeName
+
+    /** Convert this module class name to corresponding source module name */
+    def sourceModuleName: TermName = stripModuleClassSuffix.toTermName
 
     /** If name ends in module class suffix, drop it */
     def stripModuleClassSuffix: Name =

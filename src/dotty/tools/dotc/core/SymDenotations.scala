@@ -103,10 +103,12 @@ object SymDenotations {
     }
 
     protected[dotc] final def info_=(tp: Type) = {
-      if ((this is ModuleClass) && !(this is PackageClass))
+      def illegal: String = s"illegal type for module $this: $tp"
+      if (this is Module) // make sure module invariants that allow moduleClass and sourceModule to work are kept.
         tp match {
-          case ClassInfo(_, _, _, _, ost) =>
-            assert(ost.isInstanceOf[TermRef] || ost.isInstanceOf[TermSymbol], tp)
+          case tp: ClassInfo => assert(tp.selfInfo.isInstanceOf[TermRefBySym], illegal)
+          case tp: NamedType => assert(tp.isInstanceOf[TypeRefBySym], illegal)
+          case tp: ExprType => assert(tp.resultType.isInstanceOf[TypeRefBySym], illegal)
           case _ =>
         }
       myInfo = tp
@@ -458,10 +460,7 @@ object SymDenotations {
           case info: LazyType               => info.moduleClass
           case _                            => println(s"missing module class for $name: $myInfo"); NoSymbol
         }
-      else {
-        println(s"missing module class for non-module $name");
-        NoSymbol
-      }
+      else NoSymbol
 
     /** The module implemented by this module class, NoSymbol if not applicable. */
     final def sourceModule: Symbol = myInfo match {
@@ -1062,7 +1061,7 @@ object SymDenotations {
 
     private var myDecls: Scope = EmptyScope
     private var mySourceModuleFn: () => Symbol = NoSymbolFn
-    private var myModuleClass: Symbol = NoSymbol
+    private var myModuleClassFn: () => Symbol = NoSymbolFn
 
     def proxy: LazyType = new LazyType {
       override def complete(denot: SymDenotation) = self.complete(denot)
@@ -1070,11 +1069,11 @@ object SymDenotations {
 
     def decls: Scope = myDecls
     def sourceModule: Symbol = mySourceModuleFn()
-    def moduleClass: Symbol = myModuleClass
+    def moduleClass: Symbol = myModuleClassFn()
 
     def withDecls(decls: Scope): this.type = { myDecls = decls; this }
     def withSourceModule(sourceModule: => Symbol): this.type = { mySourceModuleFn = () => sourceModule; this }
-    def withModuleClass(moduleClass: Symbol): this.type = { myModuleClass = moduleClass; this }
+    def withModuleClass(moduleClass: => Symbol): this.type = { myModuleClassFn = () => moduleClass; this }
   }
 
   val NoSymbolFn = () => NoSymbol

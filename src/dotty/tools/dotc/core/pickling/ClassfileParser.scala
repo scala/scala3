@@ -794,7 +794,7 @@ class ClassfileParser(
         val start = starts(index)
         if (in.buf(start).toInt != CONSTANT_CLASS) errorBadTag(start)
         val name = getExternalName(in.getChar(start + 1))
-        if (name.isModuleClassName) c = cctx.requiredModule(name.stripModuleClassSuffix.asTermName)
+        if (name.isModuleClassName) c = cctx.requiredModule(name.sourceModuleName)
         else c = classNameToSymbol(name)
         values(index) = c
       }
