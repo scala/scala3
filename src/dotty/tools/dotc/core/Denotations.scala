@@ -159,7 +159,7 @@ object Denotations {
     def suchThat(p: Symbol => Boolean): SingleDenotation
 
     /** Does this denotation have an alternative that satisfies the predicate `p`? */
-    def hasAltWith(p: Symbol => Boolean): Boolean
+    def hasAltWith(p: SingleDenotation => Boolean): Boolean
 
     /** The denotation made up from the alternatives of this denotation that
      *  are accessible from prefix `pre`, or NoDenotation if no accessible alternative exists.
@@ -352,7 +352,7 @@ object Denotations {
         else sd1
       else sd2
     }
-    def hasAltWith(p: Symbol => Boolean): Boolean =
+    def hasAltWith(p: SingleDenotation => Boolean): Boolean =
       denot1.hasAltWith(p) || denot2.hasAltWith(p)
     def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation = {
       val d1 = denot1 accessibleFrom (pre, superAccess)
@@ -400,8 +400,8 @@ object Denotations {
     def suchThat(p: Symbol => Boolean): SingleDenotation =
       if (p(symbol)) this else NoDenotation
 
-    def hasAltWith(p: Symbol => Boolean): Boolean =
-      p(symbol)
+    def hasAltWith(p: SingleDenotation => Boolean): Boolean =
+      p(this)
 
     def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation =
       if (symbol isAccessibleFrom (pre, superAccess)) this else NoDenotation

@@ -7,6 +7,7 @@ import ast.Trees._
 import core._
 import util.SimpleMap
 import Symbols._, Names._, Denotations._, Types._, Contexts._, StdNames._, Flags._
+import typer.ErrorReporting.InfoString
 
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
@@ -86,5 +87,15 @@ class ImportInfo(val sym: Symbol, val selectors: List[untpd.Tree], val rootImpor
         name <- originals
         denot <- pre.member(name).altsWith(_ is Implicit)
       } yield TermRef(pre, name) withDenot denot
+  }
+
+  override def toString = {
+    val siteStr = site.show
+    val exprStr = if (siteStr endsWith ".type") siteStr dropRight 5 else siteStr
+    val selectorStr = selectors match {
+      case Ident(name) :: Nil => name.show
+      case _ => "{...}"
+    }
+    i"import $exprStr.$selectorStr"
   }
 }

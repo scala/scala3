@@ -1130,6 +1130,11 @@ object Types {
    */
   trait BindingType extends Type
 
+  /** A trait for proto-types, used as expected types in typer */
+  trait ProtoType extends UncachedGroundType {
+    def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean
+  }
+
 // --- NamedTypes ------------------------------------------------------------------
 
   /** A NamedType of the form Prefix # name */
@@ -1952,8 +1957,8 @@ object Types {
       if (annots.isEmpty) underlying
       else (underlying /: annots)((tp, ann) => AnnotatedType(ann, tp))
   }
-  // Special type objects and classes -----------------------------------------------------
 
+  // Special type objects and classes -----------------------------------------------------
 
   /** The type of an import clause tree */
   case class ImportType(expr: Tree) extends UncachedGroundType
@@ -2222,7 +2227,7 @@ object Types {
   /** A filter for names of deferred term definitions of a given type */
   object abstractTermNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
-      name.isTermName && (pre member name).hasAltWith(_ is Deferred)
+      name.isTermName && (pre member name).hasAltWith(_.symbol is Deferred)
   }
 
   object typeNameFilter extends NameFilter {
@@ -2235,7 +2240,7 @@ object Types {
 
   object implicitFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
-      (pre member name).hasAltWith(_ is Implicit)
+      (pre member name).hasAltWith(_.symbol is Implicit)
   }
 
   // ----- Exceptions -------------------------------------------------------------

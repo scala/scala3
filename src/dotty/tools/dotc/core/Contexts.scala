@@ -255,8 +255,6 @@ object Contexts {
       _condensed
     }
 
-    def implicitsEnabled: Boolean = ???
-
     /** A fresh clone of this context. */
     def fresh: FreshContext = {
       val newctx = super.clone.asInstanceOf[FreshContext]

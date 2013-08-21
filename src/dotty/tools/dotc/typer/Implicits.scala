@@ -163,11 +163,11 @@ trait Implicits { self: Typer =>
 
   import tpd._
 
-  override def viewExists(from: Type, to: Type)(implicit ctx: Context): Boolean = (
-       !from.isError
-    && !to.isError
-    && ctx.implicitsEnabled
-    && inferView(dummyTreeOfType(from), to) != EmptyTree
+  override def viewExists(from: Type, to: Type)(implicit ctx: Context): Boolean = !(
+       from.isError
+    || to.isError
+    || (ctx.mode is Mode.ImplicitsDisabled)
+    || (inferView(dummyTreeOfType(from), to) eq EmptyTree)
     )
 
   /** Find an implicit conversion to apply to given tree `from` so that the

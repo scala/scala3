@@ -524,20 +524,23 @@ object SymDenotations {
      *  and which is also defined in the same scope and compilation unit.
      *  NoSymbol if this module does not exist.
      */
-    final def companionModule(implicit ctx: Context): Symbol = {
-      owner.info.decl(name.stripModuleClassSuffix.toTermName)
-        .suchThat(sym => (sym is Module) && sym.isCoDefinedWith(symbol))
-        .symbol
-    }
+    final def companionModule(implicit ctx: Context): Symbol =
+      if (owner.exists)
+        owner.info.decl(name.stripModuleClassSuffix.toTermName)
+          .suchThat(sym => (sym is Module) && sym.isCoDefinedWith(symbol))
+          .symbol
+      else NoSymbol
 
     /** The class with the same (type-) name as this module or module class,
      *  and which is also defined in the same scope and compilation unit.
      *  NoSymbol if this class does not exist.
      */
     final def companionClass(implicit ctx: Context): Symbol =
-      owner.info.decl(name.stripModuleClassSuffix.toTypeName)
-        .suchThat(sym => sym.isClass && sym.isCoDefinedWith(symbol))
-        .symbol
+      if (owner.exists)
+        owner.info.decl(name.stripModuleClassSuffix.toTypeName)
+          .suchThat(sym => sym.isClass && sym.isCoDefinedWith(symbol))
+          .symbol
+      else NoSymbol
 
     /** If this is a class, the module class of its companion object.
      *  If this is a module class, its companion class.

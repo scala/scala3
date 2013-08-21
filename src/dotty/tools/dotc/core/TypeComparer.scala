@@ -138,6 +138,8 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
         }
       case tp2: AnnotatedType =>
         isSubType(tp1, tp2.tpe) // todo: refine?
+      case tp2: ProtoType =>
+        tp2.isMatchedBy(tp1)
       case ErrorType =>
         true
       case _ =>
@@ -184,7 +186,8 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
     case tp2: RefinedType =>
       isSubType(tp1, tp2.parent) && (
         tp2.refinedName == nme.WILDCARD ||
-        tp2.matchesInfo(tp1.member(tp2.refinedName).info))
+        tp1.member(tp2.refinedName).hasAltWith(alt =>
+          isSubType(alt.info, tp2.refinedInfo)))
     case AndType(tp21, tp22) =>
       isSubType(tp1, tp21) && isSubType(tp1, tp22)
     case OrType(tp21, tp22) =>

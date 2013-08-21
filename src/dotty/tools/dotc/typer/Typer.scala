@@ -224,7 +224,7 @@ class Typer extends Namer with Applications with Implicits {
        *  or  defined in <symbol>
        */
       def bindingString(prec: Int, whereFound: Context, qualifier: String = "") =
-        if (prec == wildImport || prec == namedImport) i"imported$qualifier by ${whereFound.tree}"
+        if (prec == wildImport || prec == namedImport) i"imported$qualifier by ${whereFound.importInfo}"
         else i"defined$qualifier in ${whereFound.owner}"
 
       /** Check that any previously found result from an inner context
@@ -254,10 +254,11 @@ class Typer extends Namer with Applications with Implicits {
                   tree.pos)
           found
         }
+        val Name = name.toTermName
         selectors match {
-          case Pair(Ident(from), Ident(`name`)) :: rest =>
+          case Pair(Ident(from), Ident(Name)) :: rest =>
             checkUnambiguous(selectionType(site, name, tree.pos))
-          case Ident(`name`) :: rest =>
+          case Ident(Name) :: rest =>
             checkUnambiguous(selectionType(site, name, tree.pos))
           case _ :: rest =>
             namedImportRef(site, rest)
@@ -305,6 +306,7 @@ class Typer extends Namer with Applications with Implicits {
           }
         }
         val curImport = ctx.importInfo
+        if (curImport != null && curImport.rootImport && previous.exists) return previous
         if (prevPrec < namedImport && (curImport ne outer.importInfo)) {
           val namedImp = namedImportRef(curImport.site, curImport.selectors)
           if (namedImp.exists)
@@ -1033,23 +1035,24 @@ class Typer extends Namer with Applications with Implicits {
       err.typeMismatch(tree, pt)
     }
 
-    tree.tpe.widen match {
-      case ref: TermRef =>
-        adaptOverloaded(ref)
-      case poly: PolyType =>
-        if (pt.isInstanceOf[PolyProtoType]) tree
-        else {
-          val tracked = ctx.track(poly)
-          val tvars = ctx.newTypeVars(tracked, tree.pos)
-          adapt(tpd.TypeApply(tree, tvars map (tpd.TypeTree(_))), pt)
-        }
-      case NoType if tree.isInstanceOf[WithoutType[_]] =>
-        tree
-      case tp =>
-        pt match {
-          case pt: FunProtoType => adaptToArgs(tp, pt)
-          case _ => adaptNoArgs(tp)
-        }
+    tree match {
+      case _: MemberDef | _: PackageDef | _: Import | _: WithoutType[_] => tree
+      case _ => tree.tpe.widen match {
+        case ref: TermRef =>
+          adaptOverloaded(ref)
+        case poly: PolyType =>
+          if (pt.isInstanceOf[PolyProtoType]) tree
+          else {
+            val tracked = ctx.track(poly)
+            val tvars = ctx.newTypeVars(tracked, tree.pos)
+            adapt(tpd.TypeApply(tree, tvars map (tpd.TypeTree(_))), pt)
+          }
+        case tp =>
+          pt match {
+            case pt: FunProtoType => adaptToArgs(tp, pt)
+            case _ => adaptNoArgs(tp)
+          }
+      }
     }
   }
 }
