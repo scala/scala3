@@ -1131,7 +1131,7 @@ object Types {
   trait BindingType extends Type
 
   /** A trait for proto-types, used as expected types in typer */
-  trait ProtoType extends UncachedGroundType {
+  trait ProtoType extends Type {
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean
   }
 
@@ -1380,11 +1380,6 @@ object Types {
     val refinedInfo: Type = infoFn(this)
 
     override def underlying(implicit ctx: Context) = parent
-
-    /** Does goves type match `refinedInfo`. Translates to a subtype check here,
-     *  but is overridden in SelectionProto
-     */
-    def matchesInfo(tp: Type)(implicit ctx: Context): Boolean = tp <:< refinedInfo
 
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
       def originalName = parent.typeParams.apply(refinedName.hkParamIndex).name

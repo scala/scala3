@@ -31,52 +31,6 @@ object Applications {
 
   private val isNamedArg = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[_]]
   def hasNamedArg(args: List[Any]) = args exists isNamedArg
-
-  /** A trait defining an `isCompatible` method. */
-  trait Compatibility {
-
-    /** Is there an implicit conversion from `tp` to `pt`? */
-    def viewExists(tp: Type, pt: Type)(implicit ctx: Context): Boolean
-
-    /** A type `tp` is compatible with a type `pt` if one of the following holds:
-     *    1. `tp` is a subtype of `pt`
-     *    2. `pt` is by name parameter type, and `tp` is compatible with its underlying type
-     *    3. there is an implicit conversion from `tp` to `pt`.
-     */
-    def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean = (
-      tp <:< pt
-      || pt.typeSymbol == defn.ByNameParamClass && tp <:< pt.typeArgs.head
-      || viewExists(tp, pt))
-  }
-
-  /** The normalized form of a type
-   *   - unwraps polymorphic types, tracking their parameters in the current constraint
-   *   - skips implicit parameters
-   *   - converts non-dependent method types to the corresponding function types
-   *   - dereferences parameterless method types
-   */
-  def normalize(tp: Type)(implicit ctx: Context): Type = tp.widen match {
-    case pt: PolyType => normalize(ctx.track(pt).resultType)
-    case mt: MethodType if !mt.isDependent =>
-      if (mt.isImplicit) mt.resultType
-      else defn.FunctionType(mt.paramTypes, mt.resultType)
-    case et: ExprType => et.resultType
-    case _ => tp
-  }
-
-  case class FunProtoType(args: List[untpd.Tree], override val resultType: Type, typer: Typer)(implicit ctx: Context) extends UncachedGroundType {
-    private var myTypedArgs: List[Tree] = null
-
-    def argsAreTyped: Boolean = myTypedArgs != null
-
-    def typedArgs: List[Tree] = {
-      if (myTypedArgs == null)
-        myTypedArgs = args mapconserve (typer.typed(_))
-      myTypedArgs
-    }
-  }
-
-  case class PolyProtoType(nargs: Int, override val resultType: Type) extends UncachedGroundType
 }
 
 import Applications._
@@ -328,7 +282,7 @@ trait Applications extends Compatibility { self: Typer =>
      *  must fit the given expected result type.
      */
     def constrainResult(mt: Type, pt: Type): Boolean = pt match {
-      case FunProtoType(_, result, _) =>
+      case FunProto(_, result, _) =>
         mt match {
           case mt: MethodType if !mt.isDependent =>
             constrainResult(mt.resultType, pt.resultType)
@@ -503,7 +457,7 @@ trait Applications extends Compatibility { self: Typer =>
     else {
 
       def realApply(implicit ctx: Context) = {
-        val proto = new FunProtoType(tree.args, pt, this)
+        val proto = new FunProto(tree.args, pt, this)
         val fun1 = typedExpr(tree.fun, proto)
         methPart(fun1).tpe match {
           case funRef: TermRef =>
@@ -545,7 +499,7 @@ trait Applications extends Compatibility { self: Typer =>
   }
 
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = {
-    val typedFn = typedExpr(tree.fun, PolyProtoType(tree.args.length, pt))
+    val typedFn = typedExpr(tree.fun, PolyProto(tree.args.length, pt))
     val typedArgs = tree.args mapconserve (typedType(_))
     val ownType = typedFn.tpe.widen match {
       case pt: PolyType =>
@@ -598,7 +552,7 @@ trait Applications extends Compatibility { self: Typer =>
 
     val unapply = {
       val dummyArg = untpd.TypedSplice(dummyTreeOfType(WildcardType))
-      val unappProto = FunProtoType(dummyArg :: Nil, pt, this)
+      val unappProto = FunProto(dummyArg :: Nil, pt, this)
       tryEither {
         implicit ctx => typedExpr(untpd.Select(qual, nme.unapply), unappProto)
       } {
@@ -773,7 +727,7 @@ trait Applications extends Compatibility { self: Typer =>
       alts filter (isApplicableToTypes(_, argTypes, resultType))
 
     val candidates = pt match {
-      case pt @ FunProtoType(args, resultType, _) =>
+      case pt @ FunProto(args, resultType, _) =>
         val numArgs = args.length
 
         def sizeFits(alt: TermRef, tp: Type): Boolean = tp match {
@@ -811,7 +765,7 @@ trait Applications extends Compatibility { self: Typer =>
           else narrowByTrees(alts2, pt.typedArgs, resultType)
         }
 
-      case pt @ PolyProtoType(nargs, _) =>
+      case pt @ PolyProto(nargs, _) =>
         alts filter (alt => alt.widen match {
           case PolyType(pnames) if pnames.length == nargs => true
           case _ => false

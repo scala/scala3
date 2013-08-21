@@ -5,7 +5,7 @@ package typer
 import ast._
 import core._
 import Trees._
-import Types._, Contexts._, Decorators._, Denotations._, Symbols._
+import Types._, Inferencing._, Contexts._, Decorators._, Denotations._, Symbols._
 import Applications._
 import util.Positions._
 import printing.Showable
@@ -26,7 +26,7 @@ object ErrorReporting {
   class Errors(implicit ctx: Context) {
 
     def expectedTypeStr(tp: Type): String = tp match {
-      case tp: FunProtoType =>
+      case tp: FunProto =>
         val result = tp.resultType match {
           case tp: WildcardType => ""
           case tp => i"and expected result type $tp"

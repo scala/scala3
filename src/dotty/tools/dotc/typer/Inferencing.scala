@@ -4,7 +4,7 @@ package typer
 
 import core._
 import ast._
-import Contexts._, Types._, Flags._, Denotations._, NameOps._, Symbols._
+import Contexts._, Types._, Flags._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
 import Trees._
 import annotation.unchecked
 import util.Positions._
@@ -14,6 +14,80 @@ import ErrorReporting.InfoString
 object Inferencing {
 
   import tpd._
+
+  /** A trait defining an `isCompatible` method. */
+  trait Compatibility {
+
+    /** Is there an implicit conversion from `tp` to `pt`? */
+    def viewExists(tp: Type, pt: Type)(implicit ctx: Context): Boolean
+
+    /** A type `tp` is compatible with a type `pt` if one of the following holds:
+     *    1. `tp` is a subtype of `pt`
+     *    2. `pt` is by name parameter type, and `tp` is compatible with its underlying type
+     *    3. there is an implicit conversion from `tp` to `pt`.
+     */
+    def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean = (
+      tp <:< pt
+      || pt.typeSymbol == defn.ByNameParamClass && tp <:< pt.typeArgs.head
+      || viewExists(tp, pt))
+  }
+
+  class SelectionProto(name: Name, proto: Type)
+  extends RefinedType(WildcardType, name)(_ => proto) with ProtoType with Compatibility {
+    override def viewExists(tp: Type, pt: Type)(implicit ctx: Context): Boolean = false
+    override def isMatchedBy(tp1: Type)(implicit ctx: Context) = {
+      def testCompatible(mbrType: Type)(implicit ctx: Context) =
+        isCompatible(normalize(mbrType), /*(new WildApprox) apply (needed?)*/ proto)
+      name == nme.WILDCARD || {
+        val mbr = tp1.member(name)
+        mbr.exists && mbr.hasAltWith(m => testCompatible(m.info)(ctx.fresh.withNewTyperState))
+      }
+    }
+  }
+
+  /** Create a selection proto-type, but only one level deep;
+   *  treat constructors specially
+   */
+  def selectionProto(name: Name, tp: Type) =
+    if (name.isConstructorName) WildcardType
+    else {
+      val rtp = tp match {
+        case tp: ProtoType => WildcardType
+        case _ => tp
+      }
+      new SelectionProto(name, rtp)
+    }
+
+  object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType)
+
+  case class FunProto(args: List[untpd.Tree], override val resultType: Type, typer: Typer)(implicit ctx: Context) extends UncachedGroundType {
+    private var myTypedArgs: List[Tree] = null
+
+    def argsAreTyped: Boolean = myTypedArgs != null
+
+    def typedArgs: List[Tree] = {
+      if (myTypedArgs == null)
+        myTypedArgs = args mapconserve (typer.typed(_))
+      myTypedArgs
+    }
+  }
+
+  case class PolyProto(nargs: Int, override val resultType: Type) extends UncachedGroundType
+
+  /** The normalized form of a type
+   *   - unwraps polymorphic types, tracking their parameters in the current constraint
+   *   - skips implicit parameters
+   *   - converts non-dependent method types to the corresponding function types
+   *   - dereferences parameterless method types
+   */
+  def normalize(tp: Type)(implicit ctx: Context): Type = tp.widen match {
+    case pt: PolyType => normalize(ctx.track(pt).resultType)
+    case mt: MethodType if !mt.isDependent =>
+      if (mt.isImplicit) mt.resultType
+      else defn.FunctionType(mt.paramTypes, mt.resultType)
+    case et: ExprType => et.resultType
+    case _ => tp
+  }
 
   /** Is type fully defined, meaning the type does not contain wildcard types
    *  or uninstantiated type variables. As a side effect, this will minimize

@@ -20,7 +20,7 @@ import NameOps._
 import Flags._
 import Decorators._
 import ErrorReporting._
-import Applications.{FunProtoType, PolyProtoType, Compatibility, normalize}
+import Inferencing.{FunProto, PolyProto, Compatibility, normalize}
 import EtaExpansion.etaExpand
 import util.Positions._
 import util.SourcePosition
@@ -56,27 +56,6 @@ object Typer {
       value
     }
   }
-
-  class SelectionProto(name: Name, tp: Type) extends RefinedType(WildcardType, name)(_ => tp) with Compatibility {
-    override def viewExists(tp: Type, pt: Type)(implicit ctx: Context): Boolean = false
-    override def matchesInfo(tp: Type)(implicit ctx: Context) = {
-      def test(implicit ctx: Context) =
-        isCompatible(normalize(tp), /*(new WildApprox) apply (needed?)*/ refinedInfo)
-      test(ctx.fresh.withNewTyperState)
-    }
-  }
-
-  def selectionProto(name: Name, tp: Type) =
-    if (name.isConstructorName) WildcardType
-    else {
-      val rtp = tp match {
-        case tp: SelectionProto => WildcardType
-        case _ => tp
-      }
-      new SelectionProto(name, rtp)
-    }
-
-  object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType)
 }
 
 class Typer extends Namer with Applications with Implicits {
@@ -965,7 +944,7 @@ class Typer extends Namer with Applications with Implicits {
               i"""none of the ${err.overloadedAltsStr(altDenots)}
                  |match $expectedStr""".stripMargin)
           pt match {
-            case pt: FunProtoType => tryInsertApply(tree, pt)(_ => noMatches)
+            case pt: FunProto => tryInsertApply(tree, pt)(_ => noMatches)
             case _ => noMatches
           }
         case alts =>
@@ -975,7 +954,7 @@ class Typer extends Namer with Applications with Implicits {
       }
     }
 
-    def adaptToArgs(tp: Type, pt: FunProtoType) = tp match {
+    def adaptToArgs(tp: Type, pt: FunProto) = tp match {
       case _: MethodType => tree
       case _ => tryInsertApply(tree, pt) {
         def fn = err.refStr(methPart(tree).tpe)
@@ -1041,7 +1020,7 @@ class Typer extends Namer with Applications with Implicits {
         case ref: TermRef =>
           adaptOverloaded(ref)
         case poly: PolyType =>
-          if (pt.isInstanceOf[PolyProtoType]) tree
+          if (pt.isInstanceOf[PolyProto]) tree
           else {
             val tracked = ctx.track(poly)
             val tvars = ctx.newTypeVars(tracked, tree.pos)
@@ -1049,7 +1028,7 @@ class Typer extends Namer with Applications with Implicits {
           }
         case tp =>
           pt match {
-            case pt: FunProtoType => adaptToArgs(tp, pt)
+            case pt: FunProto => adaptToArgs(tp, pt)
             case _ => adaptNoArgs(tp)
           }
       }
