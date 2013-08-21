@@ -16,8 +16,8 @@ object Main extends Driver {
 
   override def newCompiler(): Compiler = new Compiler
 
-  override def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context) {
-    if (ctx.settings.resident.value) resident(compiler)
+  override def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Unit = {
+    if (new config.Settings.Setting.SettingDecorator(ctx.base.settings.resident).value) resident(compiler)
     else super.doCompile(compiler, fileNames)
   }
 }
