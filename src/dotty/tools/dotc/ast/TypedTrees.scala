@@ -437,6 +437,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   // ensure that normal methods are fully applied?
 
   def localSyms(stats: List[tpd.Tree])(implicit ctx: Context): List[Symbol] =
-    for (stat <- stats if (stat.isDef)) yield stat.symbol
+    for (stat <- stats if stat.isDef) yield stat.symbol
 }
 

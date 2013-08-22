@@ -394,7 +394,7 @@ class Typer extends Namer with Applications with Implicits {
     case _ =>
       val tpt1 = typedType(tree.tpt)
       val expr1 = typedExpr(tree.expr, tpt1.tpe)
-      cpy.Typed(tree, tpt1, expr1).withType(tpt1.tpe)
+      cpy.Typed(tree, expr1, tpt1).withType(tpt1.tpe)
   }
 
   def typedNamedArg(tree: untpd.NamedArg, pt: Type)(implicit ctx: Context) = {
@@ -823,7 +823,7 @@ class Typer extends Namer with Applications with Implicits {
     }
   }
 
-  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = ctx.traceIndented (i"typing $tree") {
+  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = ctx.traceIndented (i"typing $tree", show = true) {
 
     def encodeName(tree: untpd.Tree) = tree match {
       case tree: NameTree => tree.withName(tree.name.encode)
@@ -928,7 +928,7 @@ class Typer extends Namer with Applications with Implicits {
    *  (14) When in mode EXPRmode, apply a view
    *  If all this fails, error
    */
-  def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt") {
+  def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", show = false) {
 
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives

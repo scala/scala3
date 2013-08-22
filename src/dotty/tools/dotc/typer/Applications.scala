@@ -410,6 +410,7 @@ trait Applications extends Compatibility { self: Typer =>
 
     val result = {
       var typedArgs = typedArgBuf.toList
+      println(s"typed args of $methRef = $typedArgs")
       val ownType =
         if (!success) ErrorType
         else {
@@ -611,8 +612,16 @@ trait Applications extends Compatibility { self: Typer =>
   /** Is given method reference applicable to argument types `args`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context) =
+  def isApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
     new ApplicableToTrees(methRef, args, resultType)(ctx.fresh.withNewTyperState).success
+
+  def isApplicableToTrees(tp: Type, args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean = tp match {
+    case methRef: TermRef => isApplicableToTrees(methRef, args, resultType)
+    case _ =>
+      val app = tp.member(nme.apply)
+      app.exists && app.hasAltWith(d =>
+        isApplicableToTrees(TermRef(tp, nme.apply).withDenot(d), args, resultType))
+  }
 
   /** Is given method reference applicable to arguments `args`?
    *  @param  resultType   The expected result type of the application

@@ -130,9 +130,13 @@ trait Reporting { this: Context =>
     if (this.settings.debugTrace.value) traceIndented(question)(op)
     else op
 
-  def traceIndented[T](question: => String)(op: => T): T =
-    traceIndented[T](s"==> $question?", (res: Any) => s"<== $question = $res")(op)
-
+  def traceIndented[T](question: => String, show: Boolean = false)(op: => T): T = {
+    def resStr(res: Any): String = res match {
+      case res: printing.Showable if show => res.show
+      case _ => String.valueOf(res)
+    }
+    traceIndented[T](s"==> $question?", (res: Any) => s"<== $question = ${resStr(res)}")(op)
+  }
   def traceIndented[T](leading: => String, trailing: Any => String)(op: => T): T = {
     var finalized = false
     def finalize(result: Any, note: String) =

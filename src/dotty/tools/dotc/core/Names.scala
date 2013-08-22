@@ -106,7 +106,7 @@ object Names {
 
     /** Replace operator symbols by corresponding \$op_name's. */
     def encode: Name =
-      if (this eq CONSTRUCTOR) this else NameTransformer.encode(this)
+      if (dontEncode(toTermName)) this else NameTransformer.encode(this)
 
     /** A more efficient version of concatenation */
     def ++ (other: Name): ThisName = ++ (other.toString)
@@ -320,8 +320,11 @@ object Names {
   /** The type name represented by the empoty string */
   val EmptyTypeName = EmptyTermName.toTypeName
 
-  // can't use nme.CONSTRUCTOR in encode because of bootstrap failures.
-  private val CONSTRUCTOR = termName("<init>")
+  // can't move CONSTRUCTOR/EMPTY_PACKAGE to `nme` because of bootstrap failures in `encode`.
+  val CONSTRUCTOR = termName("<init>")
+  val EMPTY_PACKAGE = termName("<empty>")
+
+  val dontEncode = Set(CONSTRUCTOR, EMPTY_PACKAGE)
 
   def termNameBuilder: Builder[Char, TermName] =
     StringBuilder.newBuilder.mapResult(termName)

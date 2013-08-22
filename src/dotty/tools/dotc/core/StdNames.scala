@@ -94,7 +94,7 @@ object StdNames {
     val DEFAULT_GETTER_INIT: N        = encode("<init>")
     val DO_WHILE_PREFIX: N            = "doWhile$"
     val EMPTY: N                      = ""
-    val EMPTY_PACKAGE: N              = "<empty>"
+    val EMPTY_PACKAGE: N              = Names.EMPTY_PACKAGE.toString
     val EVIDENCE_PARAM_PREFIX: N      = "evidence$"
     val EXCEPTION_RESULT_PREFIX: N    = "exceptionResult"
     val EXPAND_SEPARATOR: N           = "$$"
@@ -212,7 +212,7 @@ object StdNames {
 
     // Compiler-internal
     val ANYname: N                  = "<anyname>"
-    val CONSTRUCTOR: N              = "<init>"
+    val CONSTRUCTOR: N              = Names.CONSTRUCTOR.toString
     val DEFAULT_CASE: N             = "defaultCase$"
     val EQEQ_LOCAL_VAR: N           = "eqEqTemp$"
     val FAKE_LOCAL_THIS: N          = "this$"
@@ -276,8 +276,6 @@ object StdNames {
     val ArrayAnnotArg: N        = "ArrayAnnotArg"
     val Constant: N             = "Constant"
     val ConstantType: N         = "ConstantType"
-    val EmptyPackage: N         = "EmptyPackage"
-    val EmptyPackageClass: N    = "EmptyPackageClass"
     val ExistentialTypeTree: N  = "ExistentialTypeTree"
     val Flag : N                = "Flag"
     val HigherKinded: N         = "HigherKinded"

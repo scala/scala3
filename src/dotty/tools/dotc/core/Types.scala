@@ -193,6 +193,7 @@ object Types {
     /** The type symbol associated with the type */
     final def typeSymbol(implicit ctx: Context): Symbol = this match {
       case tp: TypeRef => tp.symbol
+      case tp: TermRef => NoSymbol
       case tp: ClassInfo => tp.cls
       case ThisType(cls) => cls
       case tp: TypeProxy => tp.underlying.typeSymbol
@@ -492,10 +493,10 @@ object Types {
     }
 
     /** The basetype of this type with given class symbol */
-    final def baseType(base: Symbol)(implicit ctx: Context): Type = base.denot match {
+    final def baseType(base: Symbol)(implicit ctx: Context): Type = ctx.traceIndented(s"$this baseType $base") { base.denot match {
       case classd: ClassDenotation => classd.baseTypeOf(this)
       case _ => NoType
-    }
+    }}
 
     def & (that: Type)(implicit ctx: Context): Type =
       ctx.glb(this, that)

@@ -168,7 +168,7 @@ class Namer { typer: Typer =>
       println(s"entered: $sym in ${ctx.owner} and ${ctx.effectiveScope}")
       if (sym.owner is PackageClass) {
         val preExisting = sym.owner.decls.lookup(sym.name)
-        if (preExisting.defRunId == ctx.runId)
+        if (preExisting.isDefinedInCurrentRun)
           ctx.error(s"${sym.showLocated} is compiled twice", sym.pos)
         }
       ctx.enter(sym)

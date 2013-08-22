@@ -158,8 +158,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "new " ~ toTextLocal(tpt)
       case Pair(l, r) =>
         "(" ~ toTextGlobal(l) ~ ", " ~ toTextGlobal(r) ~ ")"
-      case Typed(l, tpt) =>
-        changePrec(InfixPrec) { toText(l) ~ ": " ~ toText(tpt) }
+      case Typed(expr, tpt) =>
+        changePrec(InfixPrec) { toText(expr) ~ ": " ~ toText(tpt) }
       case NamedArg(name, arg) =>
         toText(name) ~ " = " ~ toText(arg)
       case Assign(lhs, rhs) =>

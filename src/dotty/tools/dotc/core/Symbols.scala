@@ -318,9 +318,13 @@ object Symbols {
       denot
     }
 
-    /** The run-id when this symbol was last defined */
-    final def defRunId: RunId =
+    private def defRunId: RunId =
       if (lastDenot == null) NoRunId else lastDenot.validFor.runId
+
+    /** Does this symbol come from a currently compiled source file? */
+    final def isDefinedInCurrentRun(implicit ctx: Context): Boolean = {
+      pos.exists && defRunId == ctx.runId
+    }
 
     /** Subclass tests and casts */
     final def isTerm(implicit ctx: Context): Boolean = denot.isTerm
