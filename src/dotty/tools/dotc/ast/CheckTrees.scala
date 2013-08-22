@@ -20,8 +20,8 @@ object CheckTrees {
   def escapingRefs(block: Block)(implicit ctx: Context): Set[NamedType] = {
     var hoisted: Set[Symbol] = Set()
     lazy val locals = localSyms(block.stats).toSet
-    def isNonLocal(sym: Symbol): Boolean =
-      !(locals contains sym) || isHoistableClass(sym)
+    def isLocal(sym: Symbol): Boolean =
+      (locals contains sym) && !isHoistableClass(sym)
     def isHoistableClass(sym: Symbol) =
       sym.isClass && {
         (hoisted contains sym) || {
@@ -30,8 +30,8 @@ object CheckTrees {
         }
       }
     def leakingTypes(tp: Type): Set[NamedType] =
-      tp namedPartsWith (tp => isNonLocal(tp.symbol))
-    def typeLeaks(tp: Type) = leakingTypes(tp).isEmpty
+      tp namedPartsWith (tp => isLocal(tp.symbol))
+    def typeLeaks(tp: Type): Boolean = leakingTypes(tp).isEmpty
     def classLeaks(sym: ClassSymbol): Boolean =
       (sym.info.parents exists typeLeaks) ||
       (sym.decls.toList exists (t => typeLeaks(t.info)))
