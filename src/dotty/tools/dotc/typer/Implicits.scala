@@ -73,6 +73,11 @@ object Implicits {
         outerCtx.implicits.eligible(tp).filter(ref => !(shadowed contains ref.name))
       }
     }
+
+    override def toString = {
+      val own = s"(implicits: ${refs mkString ","})"
+      if (outerCtx == NoContext) own else own +"\n " + outerCtx.implicits
+    }
   }
 
   /** The result of an implicit search */
@@ -204,6 +209,8 @@ trait Implicits { self: Typer =>
 
   /** An implicit search; parameters as in `inferImplicit` */
   class ImplicitSearch(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context) {
+
+    println(s"implicit search in ${ctx.owner} scope ${ctx.implicits}")
 
     /** Try to typecheck an implicit reference */
     def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = {

@@ -326,12 +326,11 @@ object Contexts {
     runInfo = new RunInfo
     diagnostics = None
     moreProperties = Map.empty
-
-    override val implicits = new ContextualImplicits(Set(), NoContext)(this)
   }
 
   object NoContext extends Context {
     lazy val base = unsupported("base")
+    override def implicits: ContextualImplicits = new ContextualImplicits(Set(), this)
   }
 
   /** A context base defines state and associated methods that exist once per
