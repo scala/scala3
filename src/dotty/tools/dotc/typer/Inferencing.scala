@@ -60,8 +60,11 @@ object Inferencing {
 
   object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType)
 
-  case class FunProto(args: List[untpd.Tree], override val resultType: Type, typer: Typer)(implicit ctx: Context) extends UncachedGroundType {
+  case class FunProto(args: List[untpd.Tree], override val resultType: Type, typer: Typer)(implicit ctx: Context) extends UncachedGroundType with ProtoType {
     private var myTypedArgs: List[Tree] = null
+
+    def isMatchedBy(tp: Type)(implicit ctx: Context) = 
+      ctx.typer.isApplicableToTrees(tp, typedArgs, resultType)
 
     def argsAreTyped: Boolean = myTypedArgs != null
 
