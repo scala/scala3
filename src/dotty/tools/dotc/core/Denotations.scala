@@ -333,7 +333,7 @@ object Denotations {
   /** An overloaded denotation consisting of the alternatives of both given denotations.
    */
   case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation {
-    final def symbol = multiHasNot("symbol")
+    final def symbol: Symbol = NoSymbol
     final def info = multiHasNot("info")
     final def validFor = denot1.validFor & denot2.validFor
     final def isType = false
