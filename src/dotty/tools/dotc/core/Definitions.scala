@@ -87,7 +87,7 @@ class Definitions(implicit ctx: Context) {
     NoSymbol, nme.ROOTPKG, PackageCreationFlags, TypeRef.withSym(NoPrefix, RootClass))
 
   lazy val EmptyPackageClass = ctx.newCompletePackageSymbol(RootClass, nme.EMPTY_PACKAGE).moduleClass.asClass
-  lazy val EmptyPackageVal = EmptyPackageClass.sourceModule
+  lazy val EmptyPackageVal = EmptyPackageClass.sourceModule.entered
 
   lazy val ScalaPackageVal = requiredPackage("scala")
   lazy val ScalaPackageClass = ScalaPackageVal.moduleClass.asClass
@@ -447,7 +447,8 @@ class Definitions(implicit ctx: Context) {
     NullClass,
     NothingClass,
     SingletonClass,
-    EqualsPatternClass)
+    EqualsPatternClass,
+    EmptyPackageVal)
 
     /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
     lazy val syntheticCoreMethods = List(
