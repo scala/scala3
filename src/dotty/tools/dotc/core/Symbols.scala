@@ -368,9 +368,8 @@ object Symbols {
      *  the class containing this symbol was generated, null if not applicable.
      *  Overridden in ClassSymbol
      */
-    def associatedFile(implicit ctx: Context): AbstractFile = ctx.traceIndented(s"assocFile($this)") {
+    def associatedFile(implicit ctx: Context): AbstractFile = 
       denot.topLevelClass.symbol.associatedFile
-    }
 
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(implicit ctx: Context): AbstractFile =

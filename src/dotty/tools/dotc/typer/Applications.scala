@@ -118,7 +118,8 @@ trait Applications extends Compatibility { self: Typer =>
       case methType: MethodType =>
         // apply the result type constraint, unless method type is dependent
         if (!methType.isDependent)
-          ok = ok && constrainResult(methType.resultType, resultType)
+          if (!constrainResult(methType.resultType, resultType))
+            fail(err.typeMismatchStr(methType.resultType, resultType))
         // match all arguments with corresponding formal parameters
         matchArgs(orderedArgs, methType.paramTypes, 0)
       case _ =>
@@ -484,7 +485,6 @@ trait Applications extends Compatibility { self: Typer =>
         typed(assign)
       }
 
-      realApply
       if (untpd.isOpAssign(tree))
         tryEither {
           implicit ctx => realApply
@@ -706,7 +706,7 @@ trait Applications extends Compatibility { self: Typer =>
   }
 
   private val dummyTree = untpd.Literal(Constant(null))
-  def dummyTreeOfType(tp: Type): Tree = dummyTree withType tp
+  def dummyTreeOfType(tp: Type): Tree = dummyTree withTypeUnchecked tp
 
   /** Resolve overloaded alternative `alts`, given expected type `pt`. */
   def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = {

@@ -183,7 +183,8 @@ trait Implicits { self: Typer =>
    *  @param pos             The position where errors should be reported.
    *  @param reportAmbiguous Should ambiguity errors be reported? False when called from `viewExists`.
    */
-  def inferImplicit(pt: Type, argument: Tree, pos: Position, reportAmbiguous: Boolean = true)(implicit ctx: Context): Tree = {
+  def inferImplicit(pt: Type, argument: Tree, pos: Position, reportAmbiguous: Boolean = true)(implicit ctx: Context): Tree =
+    ctx.traceIndented(s"search implicit $pt, arg = ${argument.show}, reportAmbiguous = $reportAmbiguous", show = true) {
     new ImplicitSearch(pt, argument, pos).bestImplicit match {
       case SearchSuccess(_, tree, tstate) =>
         tstate.commit()

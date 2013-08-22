@@ -63,16 +63,16 @@ object ErrorReporting {
 
     def patternConstrStr(tree: Tree): String = ???
 
-    def typeMismatch(tree: Tree, pt: Type): Tree = {
-      val result = errorTree(tree,
-        i"""type mismatch:
-           | found   : ${tree.tpe}
-           | required: $pt""".stripMargin)
-      if (ctx.settings.explaintypes.value)
-        new ExplainingTypeComparer().isSubType(tree.tpe, pt)
-      result
-    }
+    def typeMismatch(tree: Tree, pt: Type): Tree =
+      errorTree(tree, typeMismatchStr(tree.tpe, pt))
 
+    def typeMismatchStr(found: Type, expected: Type) = {
+      if (ctx.settings.explaintypes.value)
+        new ExplainingTypeComparer().isSubType(found, expected)
+      i"""type mismatch:
+           | found   : $found
+           | required: $expected""".stripMargin
+    }
   }
 
   def err(implicit ctx: Context): Errors = new Errors

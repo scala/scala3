@@ -110,7 +110,7 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
   def AppliedTypeTree(tpt: Tree, arg: Tree): AppliedTypeTree =
     AppliedTypeTree(tpt, arg :: Nil)
 
-  def TypeTree(tpe: Type): TypedSplice = TypedSplice(TypeTree().withType(tpe))
+  def TypeTree(tpe: Type): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
 
   def TypeDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], rhs: Tree): TypeDef =
     if (tparams.isEmpty) TypeDef(mods, name, rhs) else new PolyTypeDef(mods, name, tparams, rhs)

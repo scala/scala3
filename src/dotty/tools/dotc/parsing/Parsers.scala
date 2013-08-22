@@ -1666,7 +1666,7 @@ object Parsers {
           } else {
             equalsExpr()
           }
-        DefDef(mods, name, tparams, vparamss, restype, rhs)
+        DefDef(mods | Method, name, tparams, vparamss, restype, rhs)
       }
     }
 

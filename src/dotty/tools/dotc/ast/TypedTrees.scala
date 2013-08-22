@@ -356,7 +356,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   class TypedTreeCopier extends TreeCopier {
     def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[Type] =
-      copied.withType(tree.tpe)
+      copied.withTypeUnchecked(tree.tpe)
   }
 
   implicit class TreeOps[ThisTree <: tpd.Tree](val tree: ThisTree) extends AnyVal {

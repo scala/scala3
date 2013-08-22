@@ -147,7 +147,6 @@ class Namer { typer: Typer =>
           adjustIfModule(new Completer(tree), tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
       case tree: MemberDef =>
-        var completer = new Completer(tree)
         record(tree, ctx.newSymbol(
           ctx.owner, tree.name, tree.mods.flags,
           adjustIfModule(new Completer(tree), tree),
@@ -385,7 +384,7 @@ class Namer { typer: Typer =>
       else tparams map symbolOfTree
     def wrapMethType(restpe: Type): Type = {
       val monotpe =
-        (restpe /: vparamss) { (restpe, params) =>
+        (vparamss :\ restpe) { (params, restpe) =>
           val make =
             if (params.nonEmpty && (params.head.mods is Implicit)) ImplicitMethodType
             else MethodType

@@ -180,7 +180,13 @@ object Trees {
     /** Return a typed tree that's isomorphic to this tree, but has given
      *  type. (Overridden by empty trees)
      */
-    def withType(tpe: Type): ThisTree[Type] = {
+    def withType(tpe: Type)(implicit ctx: Context): ThisTree[Type] = {
+      // temporary solution to catch unreported errors early
+      if (tpe == ErrorType) assert(ctx.reporter.hasErrors)
+      withTypeUnchecked(tpe)
+    }
+
+    def withTypeUnchecked(tpe: Type): ThisTree[Type] = { 
       val tree =
         (if (myTpe == null ||
           (myTpe.asInstanceOf[AnyRef] eq tpe.asInstanceOf[AnyRef])) this
@@ -650,7 +656,7 @@ object Trees {
 
   trait WithoutType[-T >: Untyped] extends Tree[T] {
     override def tpe: T @uncheckedVariance = NoType.asInstanceOf[T]
-    override def withType(tpe: Type) = this.asInstanceOf[ThisTree[Type]]
+    override def withTypeUnchecked(tpe: Type) = this.asInstanceOf[ThisTree[Type]]
   }
 
   /** Temporary class that results from translation of ModuleDefs
@@ -815,9 +821,6 @@ object Trees {
 
       def finalize(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
         postProcess(tree, copied withPos tree.pos)
-
-      private def copyAttrs(t: untpd.Tree, tree: Tree): t.ThisTree[T] =
-        t.withType(tree.typeOpt).withPos(tree.pos).asInstanceOf[t.ThisTree[T]]
 
       def Ident(tree: Tree, name: Name): Ident = tree match {
         case tree: BackquotedIdent =>

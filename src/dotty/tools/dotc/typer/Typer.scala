@@ -930,6 +930,8 @@ class Typer extends Namer with Applications with Implicits {
    */
   def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", show = false) {
 
+    def methodStr = err.refStr(methPart(tree).tpe)
+
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
       val alts = altDenots map (alt =>
@@ -957,12 +959,11 @@ class Typer extends Namer with Applications with Implicits {
     def adaptToArgs(tp: Type, pt: FunProto) = tp match {
       case _: MethodType => tree
       case _ => tryInsertApply(tree, pt) {
-        def fn = err.refStr(methPart(tree).tpe)
         val more = tree match {
           case Apply(_, _) => " more"
           case _ => ""
         }
-        _ => errorTree(tree, i"$fn does not take$more parameters")
+        _ => errorTree(tree, i"$methodStr does not take$more parameters")
       }
     }
 
@@ -970,7 +971,12 @@ class Typer extends Namer with Applications with Implicits {
       case tp: ExprType =>
         adapt(tree.withType(tp.resultType), pt)
       case tp: ImplicitMethodType =>
-        val args = tp.paramTypes map (inferImplicit(_, EmptyTree, tree.pos))
+        val args = (tp.paramNames, tp.paramTypes).zipped map { (pname, formal) =>
+          val arg = inferImplicit(formal, EmptyTree, tree.pos.endPos)
+          if (arg.isEmpty)
+            ctx.error(i"no implicit argument of type $formal found for parameter $pname of $methodStr", tree.pos.endPos)
+          arg
+        }
         adapt(tpd.Apply(tree, args), pt)
       case tp: MethodType =>
         if (defn.isFunctionType(pt) && !tree.symbol.isConstructor)
@@ -979,7 +985,7 @@ class Typer extends Namer with Applications with Implicits {
           adapt(tpd.Apply(tree, Nil), pt)
         else
           errorTree(tree,
-            i"""missing arguments for ${tree.symbol}
+            i"""missing arguments for $methodStr
                |follow this method with `_' if you want to treat it as a partially applied function""".stripMargin)
       case _ =>
         if (tp <:< pt) tree
