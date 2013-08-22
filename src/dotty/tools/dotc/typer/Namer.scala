@@ -144,7 +144,7 @@ class Namer { typer: Typer =>
       case tree: TypeDef if tree.isClassDef =>
         record(tree, ctx.newClassSymbol(
           ctx.owner, tree.name, tree.mods.flags,
-          adjustIfModule(new Completer(tree), tree),
+          adjustIfModule(new Completer(tree) withDecls newScope, tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
       case tree: MemberDef =>
         record(tree, ctx.newSymbol(
@@ -298,7 +298,6 @@ class Namer { typer: Typer =>
           case td: ValDef => td.mods is ParamAccessor
           case _ => false
         }
-        val decls = newScope
         index(params)
         val selfInfo = if (self.isEmpty) NoType else createSymbol(self)
         // pre-set info, so that parent types can refer to type params
