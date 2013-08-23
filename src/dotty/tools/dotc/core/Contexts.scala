@@ -163,7 +163,7 @@ object Contexts {
             else if (isNonEmptyScopeContext) scope.implicitDecls
             else Set()
           if (implicitRefs.isEmpty) outer.implicits
-          else new ContextualImplicits(implicitRefs, outer.implicits.ctx)
+          else new ContextualImplicits(implicitRefs, outer.implicits.ctx)(this)
         }
       implicitsCache
     }
@@ -330,7 +330,7 @@ object Contexts {
 
   object NoContext extends Context {
     lazy val base = unsupported("base")
-    override def implicits: ContextualImplicits = new ContextualImplicits(Set(), this)
+    override def implicits: ContextualImplicits = new ContextualImplicits(Set(), this)(this)
   }
 
   /** A context base defines state and associated methods that exist once per

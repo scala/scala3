@@ -1,8 +1,10 @@
-class X extends Object
+class X(elem: Int) extends Object
 
 object Implicits {
 
-  implicit val impl: X = new X
+  implicit val impl: X = new X(0)
+
+  implicit def conv(x: Int): X = new X(x)
 
   val a: Object = "abc"
   val b: Any = "abc"
@@ -13,5 +15,7 @@ object Implicits {
   }
 
   val y: Int = foo(1)
+
+  val z: X = 3
 
 }

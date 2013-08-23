@@ -63,8 +63,8 @@ object Inferencing {
   case class FunProto(args: List[untpd.Tree], override val resultType: Type, typer: Typer)(implicit ctx: Context) extends UncachedGroundType with ProtoType {
     private var myTypedArgs: List[Tree] = null
 
-    def isMatchedBy(tp: Type)(implicit ctx: Context) = 
-      ctx.typer.isApplicableToTrees(tp, typedArgs, resultType)
+    def isMatchedBy(tp: Type)(implicit ctx: Context) =
+      typer.isApplicableToTrees(tp, typedArgs, resultType)
 
     def argsAreTyped: Boolean = myTypedArgs != null
 
@@ -73,6 +73,12 @@ object Inferencing {
         myTypedArgs = args mapconserve (typer.typed(_))
       myTypedArgs
     }
+  }
+
+  case class ViewProto(argType: Type, override val resultType: Type)(implicit ctx: Context) extends CachedGroundType with ProtoType {
+    def isMatchedBy(tp: Type)(implicit ctx: Context) =
+      ctx.typer.isApplicableToTypes(tp, argType :: Nil, resultType)
+    override def computeHash = doHash(argType, resultType)
   }
 
   case class PolyProto(nargs: Int, override val resultType: Type) extends UncachedGroundType

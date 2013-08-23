@@ -6,7 +6,7 @@ import core._
 import ast.{Trees, untpd, tpd, TreeInfo}
 import util.Positions._
 import Trees.Untyped
-import Mode.ImplicitsDisabled
+import Mode.ImplicitsEnabled
 import Contexts._
 import Flags._
 import Denotations._
@@ -629,6 +629,14 @@ trait Applications extends Compatibility { self: Typer =>
   def isApplicableToTypes(methRef: TermRef, args: List[Type], resultType: Type = WildcardType)(implicit ctx: Context) =
     new ApplicableToTypes(methRef, args, resultType)(ctx.fresh.withNewTyperState).success
 
+  def isApplicableToTypes(tp: Type, args: List[Type], resultType: Type)(implicit ctx: Context): Boolean = tp match {
+    case methRef: TermRef => isApplicableToTypes(methRef, args, resultType)
+    case _ =>
+      val app = tp.member(nme.apply)
+      app.exists && app.hasAltWith(d =>
+        isApplicableToTypes(TermRef(tp, nme.apply).withDenot(d), args, resultType))
+  }
+
   /** Is `tp` a subtype of `pt`? */
   def testCompatible(tp: Type, pt: Type)(implicit ctx: Context) =
     isCompatible(tp, pt)(ctx.fresh.withNewTyperState)
@@ -788,6 +796,6 @@ trait Applications extends Compatibility { self: Typer =>
     }
 
     if (isDetermined(candidates)) candidates
-    else narrowMostSpecific(candidates)(ctx.addMode(ImplicitsDisabled))
+    else narrowMostSpecific(candidates)(ctx.retractMode(ImplicitsEnabled))
   }
 }
