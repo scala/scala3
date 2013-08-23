@@ -109,7 +109,7 @@ object Erasure {
         /*if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tref)
         else */if (sym.owner is Package) normalizeClass(sym.asClass).name
         else sym.asClass.name
-      else paramSignature(sym.info)
+      else paramSignature(tp.info)
     case tp: RefinedType =>
       val parent = tp.parent
       if (parent.isArray)
