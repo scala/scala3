@@ -97,7 +97,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (pre.lastLine.endsWith(".")) pre ~ "type"
         else fullNameString(tp.typeSymbol.skipPackageObject) ~ ".type"
       case TypeRef(pre, name) =>
-        toTextPrefix(pre) ~ nameString(tp.typeSymbol)
+        toTextPrefix(pre) ~ nameString(name)
       case tp: RefinedType =>
         // return tp.toString // !!! DEBUG
         val parent :: (refined: List[RefinedType]) =
@@ -171,7 +171,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def toTextPrefix(tp: Type): Text = controlled {
     tp match {
       case tp @ TermRef(pre, name) =>
-        toTextPrefix(pre) ~ nameString(tp.symbol) ~ "."
+        toTextPrefix(pre) ~ nameString(name) ~ "."
       case ThisType(cls) =>
         nameString(cls) + ".this."
       case SuperType(thistpe, _) =>
