@@ -613,7 +613,6 @@ object Types {
       case _ => true
     }
 
-
 /* Not sure whether we'll need this
     final def firstParamTypes: List[Type] = this match {
       case mt: MethodType => mt.paramTypes

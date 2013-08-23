@@ -451,7 +451,7 @@ trait Applications extends Compatibility { self: Typer =>
     new ApplyToTyped(app, fun, methRef, args, resultType).result
 
   def typedApply(fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Tree =
-    typedApply(untpd.Apply(untpd.TypedSplice(fun), Nil), fun, methRef, args, resultType)
+    typedApply(untpd.Apply(untpd.TypedSplice(fun), args), fun, methRef, args, resultType)
 
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
     if (ctx.mode is Mode.Pattern)

@@ -278,9 +278,9 @@ trait TypedTreeInfo extends TreeInfo[Type] {self: Trees.Instance[Type] =>
        | Literal(_) =>
       true
     case Ident(_) =>
-      tree.symbol is Stable
+      isIdempotentRef(tree)
     case Select(qual, _) =>
-      tree.symbol.isStable && isIdempotentExpr(qual)
+      isIdempotentRef(tree) && isIdempotentExpr(qual)
     case TypeApply(fn, _) =>
       isIdempotentExpr(fn)
 /*
@@ -304,6 +304,9 @@ trait TypedTreeInfo extends TreeInfo[Type] {self: Trees.Instance[Type] =>
     case _ =>
       false
   }
+
+  private def isIdempotentRef(tree: tpd.Tree)(implicit ctx: Context) =
+    tree.symbol.isStable || !tree.tpe.widen.isParameterless
 
   /** Is symbol potentially a getter of a mutable variable?
    */
