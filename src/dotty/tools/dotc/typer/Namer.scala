@@ -59,12 +59,12 @@ class Namer { typer: Typer =>
   import untpd._
 
 
-  /** A partial map from unexpanded member defs to their expansions.
+  /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
    */
-  lazy val expandedTree = new mutable.HashMap[MemberDef, Tree]
+  lazy val expandedTree = new mutable.HashMap[DefTree, Tree]
 
-  /** A map from expanded MemberDef or Import trees to their symbols.
+  /** A map from expanded MemberDef, PatDef or Import trees to their symbols.
    *  Populated during enterSyms, emptied at the point a typed tree
    *  with the same symbol is created (this can be when the symbol is completed
    *  or at the latest when the tree is typechecked.
@@ -187,8 +187,8 @@ class Namer { typer: Typer =>
   }
 
   /** The expansion of a member def */
-  def expansion(mdef: MemberDef)(implicit ctx: Context): Tree = {
-    val expanded = desugar.memberDef(mdef)
+  def expansion(mdef: DefTree)(implicit ctx: Context): Tree = {
+    val expanded = desugar.defTree(mdef)
     if (expanded ne mdef) expandedTree(mdef) = expanded
     expanded
   }
@@ -215,7 +215,7 @@ class Namer { typer: Typer =>
       ctx
     case imp: Import =>
       importContext(createSymbol(imp), imp.selectors)
-    case mdef: MemberDef =>
+    case mdef: DefTree =>
       expansion(mdef).toList foreach (tree => enterSymbol(createSymbol(tree)))
       ctx
     case _ =>

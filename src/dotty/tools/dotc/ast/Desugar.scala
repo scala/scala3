@@ -232,11 +232,53 @@ object desugar {
     Thicket(modul, cls)
   }
 
-  def memberDef(tree: Tree)(implicit ctx: Context): Tree = tree match {
+  def patDef(pdef: PatDef)(implicit ctx: Context): Tree = {
+    val PatDef(mods, pats, tpt, rhs) = pdef
+    val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
+    flatTree(pats1 map (makePatDef(mods, _, rhs)))
+  }
+
+  def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case tree: ValDef => valDef(tree)
     case tree: TypeDef => if (tree.isClassDef) classDef(tree) else typeDef(tree)
     case tree: DefDef => defDef(tree)
     case tree: ModuleDef => moduleDef(tree)
+    case tree: PatDef => patDef(tree)
+  }
+
+  /** In case there is exactly one variable x_1 in pattern
+   *   val/var p = e  ==>  val/var x_1 = (e: @unchecked) match (case p => (x_1))
+   *
+   *   in case there are zero or more than one variables in pattern
+   *   val/var p = e  ==>  private synthetic val t$ = (e: @unchecked) match (case p => (x_1, ..., x_N))
+   *                   val/var x_1 = t$._1
+   *                   ...
+   *                  val/var x_N = t$._N
+   *  If the original pattern variable carries a type annotation, so does the corresponding
+   *  ValDef.
+   */
+  def makePatDef(mods: Modifiers, pat: Tree, rhs: Tree)(implicit ctx: Context): Tree = pat match {
+    case VarPattern(named, tpt) =>
+      derivedValDef(mods, named, tpt, rhs)
+    case _ =>
+      val rhsUnchecked = makeAnnotated(defn.UncheckedAnnot, rhs)
+      val vars = getVariables(pat)
+      val ids = for ((named, _) <- vars) yield Ident(named.name)
+      val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
+      val matchExpr = Match(rhsUnchecked, caseDef :: Nil)
+      vars match {
+        case (named, tpt) :: Nil =>
+          derivedValDef(mods, named, tpt, matchExpr)
+        case _ =>
+          val tmpName = ctx.freshName().toTermName
+          val patMods = Modifiers(PrivateLocal | Synthetic | (mods.flags & Lazy))
+          val firstDef = ValDef(patMods, tmpName, TypeTree(), matchExpr)
+          def selector(n: Int) = Select(Ident(tmpName), ("_" + n).toTermName)
+          val restDefs =
+            for (((named, tpt), n) <- vars.zipWithIndex)
+              yield derivedValDef(mods, named, tpt, selector(n))
+          flatTree(firstDef :: restDefs)
+      }
   }
 
   /** Make closure corresponding to function  params => body */
@@ -251,15 +293,18 @@ object desugar {
     Function(param :: Nil, Match(Ident(param.name), cases))
   }
 
+  def makeAnnotated(cls: Symbol, tree: Tree)(implicit ctx: Context) =
+    Annotated(TypedSplice(tpd.New(cls.typeConstructor)), tree)
+
+  private def derivedValDef(mods: Modifiers, named: NameTree, tpt: Tree, rhs: Tree) =
+    ValDef(mods, named.name.asTermName, tpt, rhs).withPos(named.pos)
+
   def apply(tree: Tree)(implicit ctx: Context): Tree = {
 
     def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
       val ldef = DefDef(Modifiers(Label), lname, Nil, ListOfNil, TypeTree(), rhs)
       Block(ldef, call)
     }
-
-    def derivedValDef(mods: Modifiers, named: NameTree, tpt: Tree, rhs: Tree) =
-      ValDef(mods, named.name.asTermName, tpt, rhs).withPos(named.pos)
 
     /** Translate infix operation expression  left op right
      */
@@ -418,50 +463,6 @@ object desugar {
       }
     }
 
-    def makeAnnotated(cls: Symbol, tree: Tree) =
-      Annotated(TypedSplice(tpd.New(cls.typeConstructor)), tree)
-
-    /** Returns list of all pattern variables, possibly with their types,
-     *  without duplicates
-     */
-    def getVariables(tree: Tree): List[VarInfo] =
-      getVars(new ListBuffer[VarInfo], tree).toList
-
-    /** In case there is exactly one variable x_1 in pattern
-     *   val/var p = e  ==>  val/var x_1 = (e: @unchecked) match (case p => (x_1))
-     *
-     *   in case there are zero or more than one variables in pattern
-     *   val/var p = e  ==>  private synthetic val t$ = (e: @unchecked) match (case p => (x_1, ..., x_N))
-     *                   val/var x_1 = t$._1
-     *                   ...
-     *                  val/var x_N = t$._N
-     *  If the original pattern variable carries a type annotation, so does the corresponding
-     *  ValDef.
-     */
-    def makePatDef(mods: Modifiers, pat: Tree, rhs: Tree): Tree = pat match {
-      case VarPattern(named, tpt) =>
-        derivedValDef(mods, named, tpt, rhs)
-      case _ =>
-        val rhsUnchecked = makeAnnotated(defn.UncheckedAnnot, rhs)
-        val vars = getVariables(pat)
-        val ids = for ((named, _) <- vars) yield Ident(named.name)
-        val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
-        val matchExpr = Match(rhsUnchecked, caseDef :: Nil)
-        vars match {
-          case (named, tpt) :: Nil =>
-            derivedValDef(mods, named, tpt, matchExpr)
-          case _ =>
-            val tmpName = ctx.freshName().toTermName
-            val patMods = Modifiers(PrivateLocal | Synthetic | (mods.flags & Lazy))
-            val firstDef = ValDef(patMods, tmpName, TypeTree(), matchExpr)
-            def selector(n: Int) = Select(Ident(tmpName), ("_" + n).toTermName)
-            val restDefs =
-              for (((named, tpt), n) <- vars.zipWithIndex)
-              yield derivedValDef(mods, named, tpt, selector(n))
-            flatTree(firstDef :: restDefs)
-        }
-    }
-
     // begin desugar
     tree match {
       case SymbolLit(str) =>
@@ -555,4 +556,10 @@ object desugar {
       }
     }
   }
+
+  /** Returns list of all pattern variables, possibly with their types,
+   *  without duplicates
+   */
+  private def getVariables(tree: Tree): List[VarInfo] =
+    getVars(new ListBuffer[VarInfo], tree).toList
 }

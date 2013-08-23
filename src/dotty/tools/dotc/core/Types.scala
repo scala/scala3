@@ -2105,8 +2105,8 @@ object Types {
     def apply(tp: Type) = tp
   }
 
-  /** Approximate occurrences of paremter types and uninstantiated typevars
-   *  by wildcard types
+  /** Approximate occurrences of parameter types and uninstantiated typevars
+   *  by wildcard types.
    */
   class WildApprox(implicit ctx: Context) extends TypeMap {
     override def apply(tp: Type) = tp match {

@@ -38,7 +38,7 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
   case class GenFrom(pat: Tree, expr: Tree) extends Tree
   case class GenAlias(pat: Tree, expr: Tree) extends Tree
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree]) extends TypTree
-  case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree) extends Tree
+  case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree) extends DefTree
 
   class PolyTypeDef(mods: Modifiers, name: TypeName, override val tparams: List[TypeDef], rhs: Tree)
     extends TypeDef(mods, name, rhs) {

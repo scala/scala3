@@ -754,7 +754,7 @@ class Typer extends Namer with Applications with Implicits {
       cpy.Typed(tree, arg1, TypeTree(ownType)) withType ownType
   }
 
- def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = {
+  def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = {
     val pid1 = typedExpr(tree.pid, AnySelectionProto)
     val pkg = pid1.symbol
     val packageContext =
@@ -845,7 +845,7 @@ class Typer extends Namer with Applications with Implicits {
         val imp1 = typed(imp)
         buf += imp1
         traverse(rest)(importContext(imp1.symbol, imp.selectors))
-      case (mdef: untpd.MemberDef) :: rest =>
+      case (mdef: untpd.DefTree) :: rest =>
         expandedTree remove mdef match {
           case Some(xtree) =>
             traverse(xtree :: rest)
