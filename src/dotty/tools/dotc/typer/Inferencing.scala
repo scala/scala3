@@ -127,7 +127,7 @@ object Inferencing {
   }
 
   def widenForSelector(tp: Type)(implicit ctx: Context): Type = tp.widen match {
-    case tp: TypeRef if !tp.symbol.isClass => widenForSelector(tp.bounds.hi)
+    case tp: TypeRef if tp.symbol.isAbstractOrAliasType => widenForSelector(tp.bounds.hi)
     case tp => tp
   }
 

@@ -96,8 +96,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val pre = toTextPrefix(tp)
         if (pre.lastLine.endsWith(".")) pre ~ "type"
         else fullNameString(tp.typeSymbol.skipPackageObject) ~ ".type"
-      case TypeRef(pre, name) =>
-        toTextPrefix(pre) ~ nameString(name)
+      case tp @ TypeRef(pre, name) =>
+        toTextPrefix(pre) ~ selectionString(tp)
       case tp: RefinedType =>
         // return tp.toString // !!! DEBUG
         val parent :: (refined: List[RefinedType]) =
@@ -167,11 +167,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def trimPrefix(text: Text) =
     text.stripPrefix(objectPrefix).stripPrefix(packagePrefix)
 
+  protected def selectionString(tp: NamedType) =
+    if (tp.symbol.exists) nameString(tp.symbol)
+    else nameString(tp.name)
+
   /** The string representation of this type used as a prefix */
   protected def toTextPrefix(tp: Type): Text = controlled {
     tp match {
       case tp @ TermRef(pre, name) =>
-        toTextPrefix(pre) ~ nameString(name) ~ "."
+        toTextPrefix(pre) ~ selectionString(tp) ~ "."
       case ThisType(cls) =>
         nameString(cls) + ".this."
       case SuperType(thistpe, _) =>

@@ -39,7 +39,7 @@ object Erasure {
         /*if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tref)
         else */if (sym.owner is Package) normalizeClass(sym.asClass).typeConstructor
         else tp.derivedNamedType(erasure(tp.prefix))
-      else erasure(sym.info)
+      else erasure(tp.info)
     case tp: RefinedType =>
       val parent = tp.parent
       if (parent.isArray) eraseArray(tp)

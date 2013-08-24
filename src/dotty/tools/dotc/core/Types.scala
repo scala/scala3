@@ -531,7 +531,7 @@ object Types {
 
     /** If this is an alias type, its alias, otherwise the type itself */
     final def dealias(implicit ctx: Context): Type = thisInstance match {
-      case tp: TypeRef if (tp.symbol.isAliasType) => tp.info.bounds.hi
+      case tp: TypeRef if tp.symbol.isAliasType => tp.info.bounds.hi
       case tp => tp
     }
 

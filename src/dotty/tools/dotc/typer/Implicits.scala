@@ -119,7 +119,7 @@ trait ImplicitRunInfo { self: RunInfo =>
    */
   private val liftToClasses = new TypeMap {
     def apply(tp: Type) = tp match {
-      case tp: TypeRef if !tp.symbol.isClass =>
+      case tp: TypeRef if tp.symbol.isAbstractOrAliasType =>
         val pre = tp.prefix
         def joinClass(tp: Type, cls: ClassSymbol) =
           AndType(tp, cls.symTypeRef.asSeenFrom(pre, cls.owner))

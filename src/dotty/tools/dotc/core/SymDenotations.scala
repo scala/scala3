@@ -950,7 +950,7 @@ object SymDenotations {
           val subcls = tp.symbol
           if (subcls eq symbol)
             tp
-          else (subcls.denot) match {
+          else subcls.denot match {
             case cdenot: ClassDenotation =>
               if (cdenot.superClassBits contains symbol.superId) foldGlb(NoType, tp.parents)
               else NoType
