@@ -243,7 +243,9 @@ object Denotations {
               if (info1 <:< info2 && sym1Accessible) denot1
               else {
                 val sym =
-                  if (!sym1Accessible) sym2
+                  if (!sym1.exists) sym2
+                  else if (!sym2.exists) sym1
+                  else if (!sym1Accessible) sym2
                   else if (!sym2Accessible) sym1
                   else if (sym2 isAsConcrete sym1) sym2
                   else sym1
