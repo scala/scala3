@@ -351,10 +351,15 @@ object Types {
     final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
       case tp: RefinedType =>
         val pdenot = tp.parent.findMember(name, pre, excluded)
-        if (name eq tp.refinedName)
-          pdenot & (new JointRefDenotation(NoSymbol, tp.refinedInfo.substThis(tp, pre), Period.allInRun(ctx.runId)), pre)
-        else
-          pdenot
+        if (name eq tp.refinedName) {
+          val rinfo = tp.refinedInfo.substThis(tp, pre)
+          if (name.isTypeName) // simplified case that runs more efficiently
+            pdenot.asInstanceOf[SingleDenotation].derivedSingleDenotation(
+              pdenot.symbol, pdenot.info & rinfo)
+          else
+            pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
+        }
+        else pdenot
       case tp: ThisType =>
         val d = tp.underlying.findMember(name, pre, excluded)
         if (d.exists) d
