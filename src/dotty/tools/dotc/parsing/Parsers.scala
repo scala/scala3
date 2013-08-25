@@ -4,7 +4,7 @@ package parsing
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.immutable.BitSet
-import util.{ SourceFile, FreshNameCreator, SourcePosition }
+import util.{ SourceFile, SourcePosition }
 import Tokens._
 import Scanners._
 import MarkupParsers._
@@ -285,6 +285,34 @@ object Parsers {
     }
 
     def emptyConstructor() = atPos(in.offset) { ast.untpd.emptyConstructor }
+
+/* --------------- PLACEHOLDERS ------------------------------------------- */
+
+    /** The implicit parameters introduced by `_` in the current expression.
+     *  Parameters appear in reverse order.
+     */
+    var placeholderParams: List[ValDef] = Nil
+
+    def checkNoEscapingPlaceholders[T](op: => T): T = {
+      val savedPlaceholderParams = placeholderParams
+      placeholderParams = Nil
+
+      try op
+      finally {
+        placeholderParams match {
+          case vd :: _ => syntaxError("unbound placeholder parameter", vd.pos)
+          case _ =>
+        }
+        placeholderParams = savedPlaceholderParams
+      }
+    }
+
+    def isWildcard(t: Tree): Boolean = t match {
+      case Ident(name1) => placeholderParams.nonEmpty && name1 == placeholderParams.head.name
+      case Typed(t1, _) => isWildcard(t1)
+      case Annotated(t1, _) => isWildcard(t1)
+      case _ => false
+    }
 
 /* -------------- XML ---------------------------------------------------- */
 
@@ -837,9 +865,22 @@ object Parsers {
     def expr(): Tree = expr(Location.ElseWhere)
 
     def expr(location: Location.Value): Tree = {
+      val saved = placeholderParams
+      placeholderParams = Nil
       val t = expr1(location)
-      if (in.token == ARROW) closureRest(t.pos.start, location, convertToParams(t))
-      else t
+      if (in.token == ARROW) {
+        placeholderParams = saved
+        closureRest(t.pos.start, location, convertToParams(t))
+      }
+      else if (isWildcard(t)) {
+        placeholderParams = placeholderParams ::: saved
+        t
+      }
+      else
+        try
+          if (placeholderParams.isEmpty) t
+          else Function(placeholderParams.reverse, t)
+        finally placeholderParams = saved
     }
 
     def expr1(location: Location.Value = Location.ElseWhere): Tree = in.token match {
@@ -924,7 +965,12 @@ object Parsers {
         case AT if location != Location.InPattern =>
           (t /: annotations()) ((t, annot) => Annotated(annot, t))
         case _ =>
-          Typed(t, typeDependingOn(location))
+          val tpt = typeDependingOn(location)
+          if (isWildcard(t) && location != Location.InPattern) {
+            val vd :: rest = placeholderParams
+            placeholderParams = cpy.ValDef(vd, vd.mods, vd.name, tpt, vd.rhs) :: rest
+          }
+          Typed(t, tpt)
       }
     }
 
@@ -987,7 +1033,12 @@ object Parsers {
         case IDENTIFIER | BACKQUOTED_IDENT | THIS | SUPER =>
           path(thisOK = true)
         case USCORE =>
-          wildcardIdent()
+          val start = in.skipToken()
+          val pname = ctx.freshName(nme.USCORE_PARAM_PREFIX).toTermName
+          val param = ValDef(Modifiers(SyntheticTermParam), pname, TypeTree(), EmptyTree)
+            .withPos(Position(start))
+          placeholderParams = param :: placeholderParams
+          atPos(start) { Ident(pname) }
         case LPAREN =>
           atPos(in.offset) { makeTupleOrParens(inParens(exprsInParensOpt())) }
         case LBRACE =>
@@ -1883,7 +1934,7 @@ object Parsers {
      *                     | super ArgumentExprs {ArgumentExprs}
      *                     |
      */
-    def templateStatSeq(): (ValDef, List[Tree]) = {
+    def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
       var self: ValDef = EmptyValDef
       val stats = new ListBuffer[Tree]
       if (isExprIntro) {
@@ -1951,7 +2002,7 @@ object Parsers {
      *                 | Expr1
      *                 |
      */
-    def blockStatSeq(): List[Tree] = {
+    def blockStatSeq(): List[Tree] = checkNoEscapingPlaceholders {
       val stats = new ListBuffer[Tree]
       var exitOnError = false
       while (!isStatSeqEnd && in.token != CASE && !exitOnError) {
@@ -1987,7 +2038,7 @@ object Parsers {
 
     /** CompilationUnit ::= {package QualId semi} TopStatSeq
      */
-    def compilationUnit(): Tree = {
+    def compilationUnit(): Tree = checkNoEscapingPlaceholders {
       def topstats(): List[Tree] = {
         val ts = new ListBuffer[Tree]
         while (in.token == SEMI) in.nextToken()

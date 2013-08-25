@@ -108,6 +108,7 @@ object StdNames {
     val MODULE_SUFFIX: N              = NameTransformer.MODULE_SUFFIX_STRING
     val MODULE_VAR_SUFFIX: N          = "$module"
     val NAME_JOIN: N                  = NameTransformer.NAME_JOIN_STRING
+    val USCORE_PARAM_PREFIX: N        = "_$"
     val PACKAGE: N                    = "package"
     val PROTECTED_PREFIX: N           = "protected$"
     val PROTECTED_SET_PREFIX: N       = PROTECTED_PREFIX + "set"
