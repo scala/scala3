@@ -1754,10 +1754,23 @@ object Types {
     /** Instantiate variable from the constraints over its `origin`.
      *  If `fromBelow` is true, the variable is instantiated to the lub
      *  of its lower bounds in the current constraint; otherwie it is
-     *  instantiated to the glb of its upper bounds.
+     *  instantiated to the glb of its upper bounds. However, a lower bound
+     *  instantiation can be a singleton type only if the uper bound
+     *  is also a singleton type.
      */
-    def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type =
-      instantiateWith(ctx.typeComparer.approximate(origin, fromBelow))
+    def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type = {
+      def upperBound = ctx.typerState.constraint(origin).bounds.hi
+      def isSingleton(tp: Type): Boolean = tp match {
+        case tp: SingletonType => true
+        case AndType(tp1, tp2) => isSingleton(tp1) | isSingleton(tp2)
+        case OrType(tp1, tp2) => isSingleton(tp1) & isSingleton(tp2)
+        case _ => false
+      }
+      var inst = ctx.typeComparer.approximate(origin, fromBelow)
+      if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
+        inst = inst.widen
+      instantiateWith(inst)
+    }
 
     /** If the variable is instantiated, its instance, otherwise its origin */
     override def thisInstance(implicit ctx: Context) = {
