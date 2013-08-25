@@ -283,7 +283,7 @@ class Namer { typer: Typer =>
 
       /** The type signature of a ClassDef with given symbol */
       def classDefSig(cdef: TypeDef, cls: ClassSymbol)(implicit ctx: Context): Type = {
-
+        //todo: normalize parents, so that all mixins extend superclass
         def parentType(constr: untpd.Tree): Type = {
           val Trees.Select(Trees.New(tpt), _) = methPart(constr)
           val ptype = typedAheadType(tpt).tpe
@@ -366,7 +366,7 @@ class Namer { typer: Typer =>
             tp & itpe
           }
         }
-        inherited orElse typedAheadExpr(mdef.rhs).tpe
+        inherited orElse typedAheadExpr(mdef.rhs).tpe.widen
       }
     paramFn(typedAheadType(mdef.tpt, pt).tpe)
   }
