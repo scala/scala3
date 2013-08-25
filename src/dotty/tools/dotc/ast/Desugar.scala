@@ -135,12 +135,12 @@ object desugar {
       constr1.mods, constr1.name, tparams, vparamss, constr1.tpt, constr1.rhs)
 
     val classTypeRef = {
-      val tycon = Ident(cdef.name)
+      val tycon = Ident(cdef.name) withPos cdef.pos.startPos
       val tparams = impl.constr.tparams
       if (tparams.isEmpty) tycon else AppliedTypeTree(tycon, tparams map refOfDef)
     }
 
-    val creatorExpr = New(classTypeRef, vparamss nestedMap refOfDef)
+    lazy val creatorExpr = New(classTypeRef, vparamss nestedMap refOfDef)
 
     val caseClassMeths =
       if (mods is Case) {
@@ -165,14 +165,15 @@ object desugar {
       else Nil
 
     def anyRef = ref(defn.AnyRefAlias.typeConstructor)
+    def parentConstr(tpt: Tree) = Select(New(tpt), nme.CONSTRUCTOR)
 
-    def companionDefs(parentTpt: Tree, defs: List[Tree]) = {
-      val parentConstr = Select(New(parentTpt), nme.CONSTRUCTOR)
+    val parents1 = if (parents.isEmpty) parentConstr(anyRef) :: Nil else parents
+
+    def companionDefs(parentTpt: Tree, defs: List[Tree]) =
       moduleDef(
         ModuleDef(
           Modifiers(Synthetic), name.toTermName,
-          Template(emptyConstructor, parentConstr :: Nil, EmptyValDef, defs))).toList
-      }
+          Template(emptyConstructor, parentConstr(parentTpt) :: Nil, EmptyValDef, defs))).toList
 
     val companions =
       if (mods is Case) {
@@ -205,7 +206,7 @@ object desugar {
       else Nil
 
     val cdef1 = cpy.TypeDef(cdef, mods, name,
-      cpy.Template(impl, constr, parents, self,
+      cpy.Template(impl, constr, parents1, self,
         constr1.tparams ::: constr1.vparamss.flatten ::: body ::: caseClassMeths))
     flatTree(cdef1 :: companions ::: implicitWrappers)
   }
@@ -229,7 +230,7 @@ object desugar {
       .withPos(self.pos orElse tmpl.pos.startPos)
     val clsTmpl = cpy.Template(tmpl, constr, parents, clsSelf, body)
     val cls = TypeDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, clsTmpl)
-    Thicket(modul, cls)
+    Thicket(modul, classDef(cls))
   }
 
   def patDef(pdef: PatDef)(implicit ctx: Context): Tree = {
