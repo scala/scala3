@@ -956,7 +956,7 @@ class Typer extends Namer with Applications with Implicits {
       }
     }
 
-    def adaptToArgs(tp: Type, pt: FunProto) = tp match {
+    def adaptToArgs(wtp: Type, pt: FunProto) = wtp match {
       case _: MethodType => tree
       case _ => tryInsertApply(tree, pt) {
         val more = tree match {
@@ -967,34 +967,34 @@ class Typer extends Namer with Applications with Implicits {
       }
     }
 
-    def adaptNoArgs(tp: Type) = tp match {
-      case tp: ExprType =>
-        adapt(tree.withType(tp.resultType), pt)
-      case tp: ImplicitMethodType =>
-        val args = (tp.paramNames, tp.paramTypes).zipped map { (pname, formal) =>
+    def adaptNoArgs(wtp: Type) = wtp match {
+      case wtp: ExprType =>
+        adapt(tree.withType(wtp.resultType), pt)
+      case wtp: ImplicitMethodType =>
+        val args = (wtp.paramNames, wtp.paramTypes).zipped map { (pname, formal) =>
           val arg = inferImplicit(formal, EmptyTree, tree.pos.endPos)
           if (arg.isEmpty)
             ctx.error(i"no implicit argument of type $formal found for parameter $pname of $methodStr", tree.pos.endPos)
           arg
         }
         adapt(tpd.Apply(tree, args), pt)
-      case tp: MethodType =>
+      case wtp: MethodType =>
         if (defn.isFunctionType(pt) && !tree.symbol.isConstructor)
-          etaExpand(tree, tp)
-        else if (tp.paramTypes.isEmpty)
+          etaExpand(tree, wtp)
+        else if (wtp.paramTypes.isEmpty)
           adapt(tpd.Apply(tree, Nil), pt)
         else
           errorTree(tree,
             i"""missing arguments for $methodStr
                |follow this method with `_' if you want to treat it as a partially applied function""".stripMargin)
       case _ =>
-        if (tp <:< pt) tree
+        if (tree.tpe <:< pt) tree
         else if (ctx.mode is Mode.Pattern) tree // no subtype check for patterns
         else if (ctx.mode is Mode.Type) err.typeMismatch(tree, pt)
-        else adaptToSubType(tp)
+        else adaptToSubType(wtp)
     }
 
-    def adaptToSubType(tp: Type): Tree = {
+    def adaptToSubType(wtp: Type): Tree = {
       // try converting a constant to the target type
       val folded = ConstFold(tree, pt)
       if (folded ne EmptyTree) return folded
@@ -1004,10 +1004,10 @@ class Typer extends Namer with Applications with Implicits {
       // convert function literal to SAM closure
       tree match {
         case Closure(Nil, id @ Ident(nme.ANON_FUN), _)
-        if defn.isFunctionType(tree.tpe) && !defn.isFunctionType(pt) =>
+        if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
           pt match {
             case SAMType(meth)
-            if tree.tpe <:< meth.info.toFunctionType && isFullyDefined(pt, forceIt = false) =>
+            if wtp <:< meth.info.toFunctionType && isFullyDefined(pt, forceIt = false) =>
               return cpy.Closure(tree, Nil, id, TypeTree(pt)).withType(pt)
             case _ =>
           }
@@ -1032,10 +1032,10 @@ class Typer extends Namer with Applications with Implicits {
             val tvars = ctx.newTypeVars(tracked, tree.pos)
             adapt(tpd.TypeApply(tree, tvars map (tpd.TypeTree(_))), pt)
           }
-        case tp =>
+        case wtp =>
           pt match {
-            case pt: FunProto => adaptToArgs(tp, pt)
-            case _ => adaptNoArgs(tp)
+            case pt: FunProto => adaptToArgs(wtp, pt)
+            case _ => adaptNoArgs(wtp)
           }
       }
     }
