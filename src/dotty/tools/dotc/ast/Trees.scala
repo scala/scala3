@@ -186,7 +186,7 @@ object Trees {
       withTypeUnchecked(tpe)
     }
 
-    def withTypeUnchecked(tpe: Type): ThisTree[Type] = { 
+    def withTypeUnchecked(tpe: Type): ThisTree[Type] = {
       val tree =
         (if (myTpe == null ||
           (myTpe.asInstanceOf[AnyRef] eq tpe.asInstanceOf[AnyRef])) this
@@ -524,6 +524,8 @@ object Trees {
     type ThisTree[-T >: Untyped] = TypeTree[T]
     override def initialPos = NoPosition
     override def isEmpty = !hasType && original.isEmpty
+    override def toString =
+      s"TypeTree${if (hasType) s"[$typeOpt]" else s"($original)"}"
   }
 
   /** ref.type */

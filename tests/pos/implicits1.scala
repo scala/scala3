@@ -1,10 +1,18 @@
-class X(elem: Int) extends Object
+class X(val elem: Int) {
+  def foo(y: String): Int = y.length + elem
+}
 
 object Implicits {
 
   implicit val impl: X = new X(0)
 
   implicit def conv(x: Int): X = new X(x)
+
+  class Xdecorator(x: X) extends Object {
+    def foo(cond: Boolean): Int = if (cond) x.foo("abc") else 0
+  }
+
+  implicit def XDecorator(x: X) = new Xdecorator(x)
 
   val a: Object = "abc"
   val b: Any = "abc"
@@ -17,5 +25,11 @@ object Implicits {
   val y: Int = foo(1)
 
   val z: X = 3
+
+  val c: Int = y.elem
+
+  val d: Int = z.foo("abc")
+
+  // val e: Int = z.foo(true)  not yet
 
 }

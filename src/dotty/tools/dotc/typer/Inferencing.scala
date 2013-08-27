@@ -27,8 +27,8 @@ object Inferencing {
      *    3. there is an implicit conversion from `tp` to `pt`.
      */
     def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean = (
-      tp <:< pt
-      || pt.typeSymbol == defn.ByNameParamClass && tp <:< pt.typeArgs.head
+      conforms(tp, pt)
+      || pt.typeSymbol == defn.ByNameParamClass && conforms(tp, pt.typeArgs.head)
       || viewExists(tp, pt))
   }
 
@@ -83,6 +83,10 @@ object Inferencing {
 
   case class PolyProto(nargs: Int, override val resultType: Type) extends UncachedGroundType
 
+  object AnyFunctionProto extends UncachedGroundType with ProtoType {
+    def isMatchedBy(tp: Type)(implicit ctx: Context) = true
+  }
+
   /** The normalized form of a type
    *   - unwraps polymorphic types, tracking their parameters in the current constraint
    *   - skips implicit parameters
@@ -129,6 +133,11 @@ object Inferencing {
   def widenForSelector(tp: Type)(implicit ctx: Context): Type = tp.widen match {
     case tp: TypeRef if tp.symbol.isAbstractOrAliasType => widenForSelector(tp.bounds.hi)
     case tp => tp
+  }
+
+  def conforms(tpe: Type, pt: Type)(implicit ctx: Context): Boolean = pt match {
+    case pt: ProtoType => pt.isMatchedBy(tpe)
+    case _ => tpe <:< pt
   }
 
   def checkBounds(args: List[Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = {

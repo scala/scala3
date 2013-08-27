@@ -71,9 +71,8 @@ class Namer { typer: Typer =>
    */
   lazy val symOfTree = new mutable.HashMap[Tree, Symbol]
 
-  /** A map from expanded trees their typed versions.
+  /** A map from expanded trees to their typed versions.
    *  Populated when trees are typechecked during completion (using method typedAhead).
-   *  Emptied during typer.
    */
   lazy val typedTree = new mutable.HashMap[Tree, tpd.Tree]
 
@@ -189,6 +188,7 @@ class Namer { typer: Typer =>
   /** The expansion of a member def */
   def expansion(mdef: DefTree)(implicit ctx: Context): Tree = {
     val expanded = desugar.defTree(mdef)
+    println(i"Expansion: $mdef expands to $expanded")
     if (expanded ne mdef) expandedTree(mdef) = expanded
     expanded
   }

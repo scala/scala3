@@ -138,8 +138,6 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
         }
       case tp2: AnnotatedType =>
         isSubType(tp1, tp2.tpe) // todo: refine?
-      case tp2: ProtoType =>
-        tp2.isMatchedBy(tp1)
       case ErrorType =>
         true
       case _ =>

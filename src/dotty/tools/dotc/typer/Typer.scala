@@ -483,7 +483,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = {
     val env1 = tree.env mapconserve (typed(_))
-    val meth1 = typed(tree.meth)
+    val meth1 = typedExpanded(tree.meth)
     val ownType = meth1.tpe.widen match {
       case mt: MethodType if !mt.isDependent =>
         mt.toFunctionType
@@ -806,7 +806,8 @@ class Typer extends Namer with Applications with Implicits {
         case tree: untpd.Bind => typedBind(tree, pt)
         case tree: untpd.Alternative => typedAlternative(tree, pt)
         case tree: untpd.ValDef =>
-          typedValDef(tree, sym)(localContext)
+          if (tree.isEmpty) tpd.EmptyValDef
+          else typedValDef(tree, sym)(localContext)
         case tree: untpd.DefDef =>
           val typer1 = nestedTyper.remove(sym).get
           typer1.typedDefDef(tree, sym)(localContext.withTyper(typer1))
@@ -817,6 +818,7 @@ class Typer extends Namer with Applications with Implicits {
         case tree: untpd.PackageDef => typedPackageDef(tree)
         case tree: untpd.Annotated => typedAnnotated(tree, pt)
         case tree: untpd.TypedSplice => tree.tree
+        case untpd.PostfixOp(tree, nme.WILDCARD) => typed(tree, AnyFunctionProto)
         case untpd.EmptyTree => tpd.EmptyTree
         case _ => typed(desugar(tree), pt)
       }
@@ -971,7 +973,7 @@ class Typer extends Namer with Applications with Implicits {
       case wtp: ExprType =>
         adapt(tree.withType(wtp.resultType), pt)
       case wtp: ImplicitMethodType =>
-        val args = (wtp.paramNames, wtp.paramTypes).zipped map { (pname, formal) =>
+        val args = (wtp.paramNames, wtp.paramTypes).zipped(identity, identity) map { (pname, formal) =>
           val arg = inferImplicit(formal, EmptyTree, tree.pos.endPos)
           if (arg.isEmpty)
             ctx.error(i"no implicit argument of type $formal found for parameter $pname of $methodStr", tree.pos.endPos)
@@ -979,7 +981,8 @@ class Typer extends Namer with Applications with Implicits {
         }
         adapt(tpd.Apply(tree, args), pt)
       case wtp: MethodType =>
-        if (defn.isFunctionType(pt) && !tree.symbol.isConstructor)
+        if ((defn.isFunctionType(pt) || (pt eq AnyFunctionProto)) &&
+            !tree.symbol.isConstructor)
           etaExpand(tree, wtp)
         else if (wtp.paramTypes.isEmpty)
           adapt(tpd.Apply(tree, Nil), pt)
@@ -988,7 +991,7 @@ class Typer extends Namer with Applications with Implicits {
             i"""missing arguments for $methodStr
                |follow this method with `_' if you want to treat it as a partially applied function""".stripMargin)
       case _ =>
-        if (tree.tpe <:< pt) tree
+        if (conforms(tree.tpe, pt)) tree
         else if (ctx.mode is Mode.Pattern) tree // no subtype check for patterns
         else if (ctx.mode is Mode.Type) err.typeMismatch(tree, pt)
         else adaptToSubType(wtp)

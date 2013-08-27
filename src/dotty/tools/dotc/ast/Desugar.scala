@@ -285,7 +285,7 @@ object desugar {
   /** Make closure corresponding to function  params => body */
   def makeClosure(params: List[ValDef], body: Tree) =
     Block(
-      DefDef(Modifiers(Synthetic), nme.ANON_FUN, Nil, params :: Nil, EmptyTree, body),
+      DefDef(Modifiers(Synthetic), nme.ANON_FUN, Nil, params :: Nil, TypeTree(), body),
       Closure(Nil, Ident(nme.ANON_FUN), EmptyTree))
 
   /** Make closure corresponding to partial function  { cases } */
@@ -482,8 +482,7 @@ object desugar {
           AppliedTypeTree(ref(defn.RepeatedParamType), t)
         else {
           assert(ctx.mode.isExpr, ctx.mode)
-          if (op == nme.WILDCARD) tree // desugar later by eta expansion
-          else Select(t, op)
+          Select(t, op)
         }
       case PrefixOp(op, t) =>
         if ((ctx.mode is Mode.Type) && op == nme.ARROWkw)
