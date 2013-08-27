@@ -598,7 +598,7 @@ trait Applications extends Compatibility { self: Typer =>
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }
-        val typedArgs = (bunchedArgs, argTypes).zipped map (typed(_, _))
+        val typedArgs = (bunchedArgs, argTypes).zipped(identity, identity) map (typed(_, _))
         val result = cpy.UnApply(tree, unapply, typedArgs) withType ownType
         if ((ownType eq pt) || ownType.isError) result
         else Typed(result, TypeTree(ownType))
