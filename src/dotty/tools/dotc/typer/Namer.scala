@@ -62,7 +62,9 @@ class Namer { typer: Typer =>
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
    */
-  lazy val expandedTree = new mutable.HashMap[DefTree, Tree]
+  lazy val expandedTree = new mutable.HashMap[DefTree, Tree] {
+    override def default(tree: DefTree) = tree
+  }
 
   /** A map from expanded MemberDef, PatDef or Import trees to their symbols.
    *  Populated during enterSyms, emptied at the point a typed tree
@@ -91,9 +93,12 @@ class Namer { typer: Typer =>
   val scope = newScope
 
   /** The symbol of the given expanded tree. */
-  def symbolOfTree(tree: Tree)(implicit ctx: Context): Symbol = typedTree get tree match {
-    case Some(tree1) => tree1.denot.symbol
-    case _ => symOfTree(tree)
+  def symbolOfTree(tree: Tree)(implicit ctx: Context): Symbol = {
+    val xtree = expanded(tree)
+    typedTree get xtree match {
+      case Some(ttree) => ttree.denot.symbol
+      case _ => symOfTree(xtree)
+    }
   }
 
   /** The enclosing class with given name; error if none exists */
@@ -122,7 +127,7 @@ class Namer { typer: Typer =>
     def privateWithinClass(mods: Modifiers) =
       enclosingClassNamed(mods.privateWithin, mods.pos)
 
-    def record(tree: Tree, sym: Symbol): Symbol = {
+    def record(sym: Symbol): Symbol = {
       symOfTree(tree) = sym
       sym
     }
@@ -141,17 +146,17 @@ class Namer { typer: Typer =>
     println(i"creating symbol for $tree")
     tree match {
       case tree: TypeDef if tree.isClassDef =>
-        record(tree, ctx.newClassSymbol(
+        record(ctx.newClassSymbol(
           ctx.owner, tree.name, tree.mods.flags,
           adjustIfModule(new Completer(tree) withDecls newScope, tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
       case tree: MemberDef =>
-        record(tree, ctx.newSymbol(
+        record(ctx.newSymbol(
           ctx.owner, tree.name, tree.mods.flags,
           adjustIfModule(new Completer(tree), tree),
           privateWithinClass(tree.mods), tree.pos))
-      case imp: Import =>
-        record(imp, ctx.newSymbol(
+      case tree: Import =>
+        record(ctx.newSymbol(
           ctx.owner, nme.IMPORT, Synthetic, new Completer(tree), NoSymbol, tree.pos))
       case _ =>
         NoSymbol
@@ -191,6 +196,12 @@ class Namer { typer: Typer =>
     println(i"Expansion: $mdef expands to $expanded")
     if (expanded ne mdef) expandedTree(mdef) = expanded
     expanded
+  }
+
+  /** The expanded version of this tree, or tree itself if not expanded */
+  def expanded(tree: Tree)(implicit ctx: Context): Tree = tree match {
+    case ddef: DefTree => expandedTree(ddef)
+    case _ => tree
   }
 
   /** A new context that summarizes an import statement */
@@ -328,8 +339,8 @@ class Namer { typer: Typer =>
   }
 
   /** Typecheck tree during completion, and remember result in typedtree map */
-  private def typedAheadImpl(tree: Tree, pt: Type)(implicit ctx: Context): tpd.Tree =
-    typedTree.getOrElseUpdate(tree, typer.typedExpanded(tree, pt))
+  private def typedAheadImpl(tree: Tree, pt: Type)(implicit ctx: Context): tpd.Tree = 
+    typedTree.getOrElseUpdate(expanded(tree), typer.typedUnadapted(tree, pt))
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
     typedAheadImpl(tree, pt)(ctx retractMode Mode.PatternOrType addMode Mode.Type)
