@@ -97,14 +97,22 @@ object desugar {
 
   def typeDef(tdef: TypeDef)(implicit ctx: Context): Tree = {
     val TypeDef(mods, name, rhs) = tdef
+    val rhs1 = rhs match {
+      case TypeBoundsTree(lo, hi) =>
+        val lo1 = if (lo.isEmpty) untpd.TypeTree(defn.NothingType) else lo
+        val hi1 = if (hi.isEmpty) untpd.TypeTree(defn.AnyType) else hi
+        cpy.TypeBoundsTree(rhs, lo1, hi1)
+      case _ =>
+        rhs
+    }
     if (mods is PrivateLocalParamAccessor) {
       val tparam = cpy.TypeDef(tdef,
-        tdef.mods &~ PrivateLocal | ExpandedName, tdef.name.expandedName(ctx.owner), tdef.rhs, tdef.tparams)
+        mods &~ PrivateLocal | ExpandedName, name.expandedName(ctx.owner), rhs1, tdef.tparams)
       val alias = cpy.TypeDef(tdef,
-        Modifiers(PrivateLocal | Synthetic), tdef.name, refOfDef(tparam))
+        Modifiers(PrivateLocal | Synthetic), name, refOfDef(tparam))
       Thicket(tparam, alias)
     }
-    else tdef
+    else cpy.TypeDef(tdef, mods, name, rhs1)
   }
 
   private val synthetic = Modifiers(Synthetic)
@@ -201,7 +209,7 @@ object desugar {
         if (mods is Case)
           ctx.error("implicit classes may not case classes", cdef.pos)
         DefDef(Modifiers(Synthetic | Implicit), name.toTermName,
-          tparams, vparamss, EmptyTree, creatorExpr) :: Nil
+          tparams, vparamss, TypeTree(), creatorExpr) :: Nil
       }
       else Nil
 

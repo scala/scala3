@@ -107,7 +107,7 @@ object ErrorReporting {
           !args.forall(isSensical(_)))
         throw new SuppressedMessage
       val prefix :: suffixes = sc.parts.toList
-      val (args1, suffixes1) = (args, suffixes).zipped(identity, identity).map(treatArg(_, _)).unzip(identity)
+      val (args1, suffixes1) = (args, suffixes).zipped.map(treatArg(_, _)).unzip
       new StringContext(prefix :: suffixes1.toList: _*).s(args1: _*)
     }
   }

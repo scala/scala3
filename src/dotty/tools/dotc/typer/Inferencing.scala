@@ -27,8 +27,8 @@ object Inferencing {
      *    3. there is an implicit conversion from `tp` to `pt`.
      */
     def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean = (
-      conforms(tp, pt)
-      || pt.typeSymbol == defn.ByNameParamClass && conforms(tp, pt.typeArgs.head)
+      typeConforms(tp, pt)
+      || pt.typeSymbol == defn.ByNameParamClass && typeConforms(tp, pt.typeArgs.head)
       || viewExists(tp, pt))
   }
 
@@ -135,7 +135,7 @@ object Inferencing {
     case tp => tp
   }
 
-  def conforms(tpe: Type, pt: Type)(implicit ctx: Context): Boolean = pt match {
+  def typeConforms(tpe: Type, pt: Type)(implicit ctx: Context): Boolean = pt match {
     case pt: ProtoType => pt.isMatchedBy(tpe)
     case _ => tpe <:< pt
   }
