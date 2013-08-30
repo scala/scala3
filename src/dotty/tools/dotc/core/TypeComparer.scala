@@ -60,6 +60,7 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
     val bounds = constraint(param).asInstanceOf[TypeBounds]
     val bound = if (fromBelow) bounds.lo else bounds.hi
     val inst = removeParam(bound)
+    println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
     constraint = constraint.replace(param, inst)
     inst
   }
@@ -130,7 +131,7 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
           case _ => secondTry(tp1, tp2)
         }
       case tp2: TypeVar =>
-        firstTry(tp1, tp2.thisInstance)
+        firstTry(tp1, tp2.underlying)
       case tp2: WildcardType =>
         tp2.optBounds match {
           case TypeBounds(_, hi) => isSubType(tp1, hi)
@@ -152,7 +153,7 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
         case _ => thirdTry(tp1, tp2)
       }
     case tp1: TypeVar =>
-      secondTry(tp1.thisInstance, tp2)
+      secondTry(tp1.underlying, tp2)
     case tp1: WildcardType =>
       tp1.optBounds match {
         case TypeBounds(lo, _) => isSubType(lo, tp2)
@@ -168,8 +169,9 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
 
   def thirdTryNamed(tp1: Type, tp2: NamedType): Boolean = tp2.info match {
     case TypeBounds(lo2, hi2) =>
-      isSubType(tp1, lo2) ||
-      (tp2.symbol is GADTFlexType) && trySetType(tp2, TypeBounds(lo2 | tp1, hi2))
+      (isSubType(tp1, lo2)
+        || (tp2.symbol is GADTFlexType) && trySetType(tp2, TypeBounds(lo2 | tp1, hi2))
+        || fourthTry(tp1, tp2))
     case _ =>
       val cls2 = tp2.symbol
       (cls2 == defn.SingletonClass && tp1.isStable

@@ -125,7 +125,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: ExprType =>
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
       case tp: PolyType =>
-        def paramText(name: TypeName, bounds: TypeBounds) = toText(polyParamName(name)) ~ ": " ~ toText(bounds)
+        def paramText(name: TypeName, bounds: TypeBounds) =
+          toText(polyParamName(name)) ~ toText(bounds)
         changePrec(GlobalPrec) {
           "[" ~
             Text((tp.paramNames, tp.paramBounds).zipped map paramText, ", ") ~
@@ -136,7 +137,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case AnnotatedType(annot, tpe) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
-        toTextLocal(tp.underlying)
+        toTextLocal(tp.underlying) ~ "'" // debug for now, so that we can see where the TypeVars are.
       case _ =>
         tp.fallbackToText(this)
     }

@@ -18,7 +18,7 @@ class TyperState(val reporter: Reporter = ThrowingReporter) extends DotClass {
 
   /** A map that records for instantiated type vars their instance type.
    *  Used only in a temporary way for contexts that may be retracted
-   *  without also retracting the type var. 
+   *  without also retracting the type var.
    */
   def instType: SimpleMap[TypeVar, Type] = SimpleMap.Empty
 
@@ -34,6 +34,9 @@ class TyperState(val reporter: Reporter = ThrowingReporter) extends DotClass {
 class MutableTyperState(previous: TyperState, reporter: Reporter)
 extends TyperState(reporter) {
 
+  def checkConsistent() =
+    for (tvar <- undetVars) assert(constraint(tvar.origin) != NoType, tvar)
+
   private var myConstraint: Constraint = previous.constraint
   private var myUndetVars: Set[TypeVar] = previous.undetVars
   private var myInstType: SimpleMap[TypeVar, Type] = previous.instType
@@ -43,7 +46,10 @@ extends TyperState(reporter) {
   override def instType = myInstType
 
   override def constraint_=(c: Constraint) = myConstraint = c
-  override def undetVars_=(vs: Set[TypeVar]) = myUndetVars = vs
+  override def undetVars_=(vs: Set[TypeVar]) = {
+    myUndetVars = vs
+    //checkConsistent()
+  }
   override def instType_=(m: SimpleMap[TypeVar, Type]): Unit = myInstType = m
 
   override def fresh: TyperState = new MutableTyperState(this, new StoreReporter)

@@ -339,7 +339,7 @@ class Namer { typer: Typer =>
   }
 
   /** Typecheck tree during completion, and remember result in typedtree map */
-  private def typedAheadImpl(tree: Tree, pt: Type)(implicit ctx: Context): tpd.Tree = 
+  private def typedAheadImpl(tree: Tree, pt: Type)(implicit ctx: Context): tpd.Tree =
     typedTree.getOrElseUpdate(expanded(tree), typer.typedUnadapted(tree, pt))
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =

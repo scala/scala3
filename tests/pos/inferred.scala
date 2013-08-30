@@ -6,4 +6,10 @@ object Inferred {
 
   val y = foo("abc")
 
+  def bar[U](xs: List[U]): List[U] = xs
+
+  val n = Nil
+
+  val nn = bar(Nil)
+
 }

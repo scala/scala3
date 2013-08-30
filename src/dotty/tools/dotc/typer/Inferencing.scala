@@ -124,6 +124,7 @@ object Inferencing {
         false
       case tvar: TypeVar if forceIt && !tvar.isInstantiated =>
         val inst = tvar.instantiate(fromBelow = true)
+        println(i"forced instantiation of ${tvar.origin} = $inst")
         inst != defn.NothingType && inst != defn.NullType
       case _ =>
         true
@@ -193,10 +194,18 @@ object Inferencing {
       val vs = tp.variances(tvar =>
         (ctx.typerState.undetVars contains tvar) && (pos contains tvar.pos))
       for ((tvar, v) <- vs)
-        if (v == 1) tvar.instantiate(fromBelow = true)
-        else if (v == -1) tvar.instantiate(fromBelow = false)
-      for (tvar <- ctx.typerState.undetVars if !(vs contains tvar))
-        tvar.instantiate(fromBelow = false)
+        if (v == 1) {
+          println(i"interpolate covariant $tvar in $tp")
+          tvar.instantiate(fromBelow = true)
+        }
+        else if (v == -1) {
+          println(i"interpolate contrvariant $tvar in $tp")
+          tvar.instantiate(fromBelow = false)
+        }
+      for (tvar <- ctx.typerState.undetVars if (pos contains tvar.pos) && !(vs contains tvar)) {
+        println(i"interpolate non-occurring $tvar in $tp")
+        tvar.instantiate(fromBelow = true)
+      }
     }
 
     /** Instantiate undetermined type variables to that type `tp` is

@@ -117,7 +117,7 @@ object Types {
       classSymbol is ModuleClass
 
     /** Is this type produced as a repair for an error? */
-    final def isError(implicit ctx: Context): Boolean = thisInstance match {
+    final def isError(implicit ctx: Context): Boolean = stripTypeVar match {
       case ErrorType => true
       case tp => (tp.typeSymbol is Erroneous) || (tp.termSymbol is Erroneous)
     }
@@ -144,7 +144,7 @@ object Types {
       ctx.isVolatile(this)
 
     /** Does the type carry an annotation that is an instance of `cls`? */
-    final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = thisInstance match {
+    final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
       case AnnotatedType(annot, tp) => annot.symbol == cls || tp.hasAnnotation(cls)
       case _ => false
     }
@@ -177,15 +177,15 @@ object Types {
     final def foreach(f: Type => Unit): Unit = ???
 
     /** Map function over elements of an AndType, rebuilding with & */
-    def mapAnd(f: Type => Type)(implicit ctx: Context): Type = thisInstance match {
+    def mapAnd(f: Type => Type)(implicit ctx: Context): Type = stripTypeVar match {
       case AndType(tp1, tp2) => tp1.mapAnd(f) & tp2.mapAnd(f)
-      case tp => f(tp)
+      case _ => f(this)
     }
 
     /** Map function over elements of an OrType, rebuilding with | */
-    final def mapOr(f: Type => Type)(implicit ctx: Context): Type = thisInstance match {
+    final def mapOr(f: Type => Type)(implicit ctx: Context): Type = stripTypeVar match {
       case OrType(tp1, tp2) => tp1.mapOr(f) | tp2.mapOr(f)
-      case tp => f(tp)
+      case _ => f(this)
     }
 
 // ----- Associated symbols ----------------------------------------------
@@ -514,7 +514,7 @@ object Types {
     /** Map a TypeVar to either its instance if it is instantiated, or its origin,
      *  if not. Identity on all other types.
      */
-    def thisInstance(implicit ctx: Context): Type = this
+    def stripTypeVar(implicit ctx: Context): Type = this
 
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences,
@@ -535,9 +535,9 @@ object Types {
     }
 
     /** If this is an alias type, its alias, otherwise the type itself */
-    final def dealias(implicit ctx: Context): Type = thisInstance match {
+    final def dealias(implicit ctx: Context): Type = stripTypeVar match {
       case tp: TypeRef if tp.symbol.isAliasType => tp.info.bounds.hi
-      case tp => tp
+      case _ => this
     }
 
     /** Widen from constant type to its underlying non-constant
@@ -551,9 +551,9 @@ object Types {
     /** If this is a refinement type, the unrefined parent,
      *  else the type itself.
      */
-    final def unrefine(implicit ctx: Context): Type = thisInstance match {
+    final def unrefine(implicit ctx: Context): Type = stripTypeVar match {
       case tp @ RefinedType(tycon, _) => tycon.unrefine
-      case tp => tp
+      case _ => this
     }
 
     /** Map references to Object to references to Any; needed for Java interop */
@@ -801,7 +801,7 @@ object Types {
      */
     final def typeArgs(implicit ctx: Context): List[Type] = {
       var tparams: List[TypeSymbol] = null
-      def recur(tp: Type, refineCount: Int): mutable.ListBuffer[Type] = tp match {
+      def recur(tp: Type, refineCount: Int): mutable.ListBuffer[Type] = tp.stripTypeVar match {
         case tp @ RefinedType(tycon, name) =>
           val buf = recur(tycon, refineCount + 1)
           if (buf == null) null
@@ -817,7 +817,7 @@ object Types {
           if (refineCount == 0) null
           else new mutable.ListBuffer[Type]
       }
-      val buf = recur(thisInstance, 0)
+      val buf = recur(this, 0)
       if (buf == null) Nil else buf.toList
     }
 
@@ -840,7 +840,7 @@ object Types {
      *  Otherwise return 0 and the type itself
      */
     final def splitArray(implicit ctx: Context): (Int, Type) = {
-      def recur(n: Int, tp: Type): (Int, Type) = tp match {
+      def recur(n: Int, tp: Type): (Int, Type) = tp.stripTypeVar match {
         case RefinedType(tycon, _) if tycon.isArray =>
           tp.typeArgs match {
             case arg :: Nil => recur(n + 1, arg)
@@ -849,7 +849,7 @@ object Types {
         case _ =>
           (n, tp)
       }
-      recur(0, thisInstance)
+      recur(0, this)
     }
 
     /** Given a type alias
@@ -1759,7 +1759,7 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type = {
-      def upperBound = ctx.typerState.constraint(origin).bounds.hi
+      val upperBound = ctx.typerState.constraint(origin).bounds.hi
       def isSingleton(tp: Type): Boolean = tp match {
         case tp: SingletonType => true
         case AndType(tp1, tp2) => isSingleton(tp1) | isSingleton(tp2)
@@ -1773,13 +1773,13 @@ object Types {
     }
 
     /** If the variable is instantiated, its instance, otherwise its origin */
-    override def thisInstance(implicit ctx: Context) = {
+    override def stripTypeVar(implicit ctx: Context) = {
       val inst = instanceOpt
       if (inst.exists) inst else origin
     }
 
-    /** Same as `thisInstance` */
-    override def underlying(implicit ctx: Context): Type = thisInstance
+    /** Same as `stripTypeVar` */
+    override def underlying(implicit ctx: Context): Type = stripTypeVar
 
     override def hashCode: Int = System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
@@ -2027,7 +2027,7 @@ object Types {
       case tp: RefinedType =>
         isInstantiatable(tp.underlying)
       case tp: TypeVar =>
-        isInstantiatable(tp.thisInstance)
+        isInstantiatable(tp.underlying)
       case _ =>
         false
     }
@@ -2088,7 +2088,8 @@ object Types {
         tp.derivedAnnotatedType(mapOver(annot), this(underlying))
 
       case tp: TypeVar =>
-        apply(tp.thisInstance)
+        val inst = tp.instanceOpt
+        if (inst.exists) apply(inst) else tp
 
       case tp @ WildcardType =>
         tp.derivedWildcardType(mapOver(tp.optBounds))
@@ -2192,7 +2193,7 @@ object Types {
         this(this(x, annot), underlying)
 
       case tp: TypeVar =>
-        foldOver(x, tp.thisInstance)
+        foldOver(x, tp.underlying)
 
       case tp: WildcardType =>
         foldOver(x, tp.optBounds)

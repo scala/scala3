@@ -93,7 +93,7 @@ object ErrorReporting {
       def treatArg(arg: Any, suffix: String): (Any, String) = arg match {
         case arg: Showable =>
           (arg.show, suffix)
-        case arg: List[_] if suffix.head == '%' =>
+        case arg: List[_] if suffix.nonEmpty && suffix.head == '%' =>
           val (sep, rest) = suffix.tail.span(_ != '%')
           if (rest.nonEmpty) (arg mkString sep, rest.tail)
           else (arg, suffix)
