@@ -534,6 +534,11 @@ object Types {
       case _ => this
     }
 
+    final def widenSingleton(implicit ctx: Context): Type = this match {
+      case tp: SingletonType => tp.underlying.widenSingleton
+      case _ => this
+    }
+
     /** If this is an alias type, its alias, otherwise the type itself */
     final def dealias(implicit ctx: Context): Type = stripTypeVar match {
       case tp: TypeRef if tp.symbol.isAliasType => tp.info.bounds.hi
@@ -1745,6 +1750,7 @@ object Types {
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
       assert(owningState.undetVars contains this)
+      owningState.constraint -= origin
       owningState.undetVars -= this
       if (ctx.typerState eq creatorState) inst = tp
       else ctx.typerState.instType = ctx.typerState.instType.updated(this, tp)
