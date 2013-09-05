@@ -34,8 +34,11 @@ object Implicits {
     def refs: Set[TermRef]
 
     /** Return those references in `refs` that are compatible with type `pt`. */
-    protected def filterMatching(pt: Type)(implicit ctx: Context) =
-      refs.toList filter (ref => isCompatible(normalize(ref), pt))
+    protected def filterMatching(pt: Type)(implicit ctx: Context) = {
+      def result(implicit ctx: Context) =
+        refs.toList filter (ref => isCompatible(normalize(ref), pt))
+      result(ctx.fresh.withNewTyperState)
+    }
 
     /** No further implicit conversions can be applied when searching for implicits. */
     override def viewExists(tp: Type, pt: Type)(implicit ctx: Context) = false
