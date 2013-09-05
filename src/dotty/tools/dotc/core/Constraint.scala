@@ -4,6 +4,9 @@ package core
 
 import Types._, Contexts._
 import util.SimpleMap
+import collection.mutable.ListBuffer
+import printing.{Printer, Showable}
+import printing.Texts._
 
 /** Constraint over undetermined type parameters
  *  @param map  a map from PolyType to the type bounds that constrain the
@@ -11,7 +14,7 @@ import util.SimpleMap
  *              have a constraint is represented by a `NoType` in the corresponding
  *              array entry.
  */
-class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal {
+class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with Showable {
 
   /** Does the constraint's domain contain the type parameters of `pt`? */
   def contains(pt: PolyType): Boolean = map(pt) != null
@@ -32,8 +35,10 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal {
   /** A new constraint which is derived from this constraint by adding or replacing
    *  the entries corresponding to `pt` with `entries`.
    */
-  def updated(pt: PolyType, entries: Array[Type]) =
+  def updated(pt: PolyType, entries: Array[Type]) = {
+    assert(map(pt) != null)
     new Constraint(map.updated(pt, entries))
+  }
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain.
@@ -57,9 +62,16 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal {
       })
   }
 
-  def +(pt: PolyType) =
+  def +(pt: PolyType) = {
+/*
+    pt.resultType match {
+      case MethodType(pname :: rest, _) =>
+        assert(pname.toString != "__thingToAdd")
+      case _ =>
+    }
+*/
     new Constraint(map.updated(pt, pt.paramBounds.toArray))
-
+  }
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all occurrences
    *  of the parameter elsewhere in the constraint by type `tp`.
@@ -73,7 +85,6 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal {
           case oldBounds: TypeBounds =>
             val newBounds = oldBounds.substParam(param, tp)
             if (oldBounds ne newBounds) {
-
               if (result eq entries) result = entries.clone
               result(i) = newBounds
             }
@@ -85,5 +96,22 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal {
     }
 
     new Constraint((this - param).map mapValues subst)
+  }
+
+  def domainPolys: List[PolyType] = map.map2((k, v) => k)
+
+  def domainParams: List[PolyParam] =
+    for {
+      (poly, entries) <- map.map2((k, v) => (k, v))
+      n <- 0 until entries.length
+      if entries(n).exists
+    } yield PolyParam(poly, n)
+
+  override def toText(printer: Printer): Text = {
+    val dom = domainPolys map (_.toText(printer))
+    val assocs =
+      for (param <- domainParams)
+      yield "  " ~ param.toText(printer) ~ this(param).toText(printer)
+    "Constraint(" ~ Text(dom, ", ") ~ ") {" ~ Text(assocs, "\n") ~ "}"
   }
 }
