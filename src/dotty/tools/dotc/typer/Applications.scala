@@ -713,7 +713,7 @@ trait Applications extends Compatibility { self: Typer =>
       best :: asGood(alts1)
   }
 
-  private val dummyTree = untpd.Literal(Constant(null))
+  private lazy val dummyTree = untpd.Literal(Constant(null))
   def dummyTreeOfType(tp: Type): Tree = dummyTree withTypeUnchecked tp
 
   /** Resolve overloaded alternative `alts`, given expected type `pt`. */

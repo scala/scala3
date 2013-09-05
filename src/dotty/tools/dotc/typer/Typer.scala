@@ -1000,7 +1000,7 @@ class Typer extends Namer with Applications with Implicits {
             i"""missing arguments for $methodStr
                |follow this method with `_' if you want to treat it as a partially applied function""".stripMargin)
       case _ =>
-        if (typeConforms(tree.tpe, pt)) tree
+        if (tree.tpe <:< pt) tree
         else if (ctx.mode is Mode.Pattern) tree // no subtype check for patterns
         else if (ctx.mode is Mode.Type) err.typeMismatch(tree, pt)
         else adaptToSubType(wtp)

@@ -2,6 +2,12 @@ class X(val elem: Int) {
   def foo(y: String): Int = y.length + elem
 }
 
+object X {
+  implicit class BarDeco(x: X) {
+    def bar: String = "!"
+  }
+}
+
 object Implicits {
 
   implicit val impl: X = new X(0)
@@ -29,6 +35,10 @@ object Implicits {
   val c: Int = y.elem
 
   val d: Int = z.foo("abc")
+  
+  import X.BarDeco
+
+  println(z.bar)
 
   // val e: Int = z.foo(true)  not yet
 

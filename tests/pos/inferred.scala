@@ -12,4 +12,8 @@ object Inferred {
 
   val nn = bar(Nil)
 
+  val ints: List[Int] = 1 :: Nil
+
+  val a = if (1 == 0) Nil else ints
+
 }

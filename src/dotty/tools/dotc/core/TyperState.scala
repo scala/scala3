@@ -7,8 +7,11 @@ import Flags._
 import Contexts._
 import util.SimpleMap
 import reporting._
+import printing.{Showable, Printer}
+import printing.Texts._
+import annotation.elidable
 
-class TyperState(val reporter: Reporter = ThrowingReporter) extends DotClass {
+class TyperState(val reporter: Reporter = ThrowingReporter) extends DotClass with Showable {
 
   /** The current constraint set */
   def constraint: Constraint = new Constraint(SimpleMap.Empty)
@@ -18,7 +21,7 @@ class TyperState(val reporter: Reporter = ThrowingReporter) extends DotClass {
 
   /** A map that records for instantiated type vars their instance type.
    *  Used only in a temporary way for contexts that may be retracted
-   *  without also retracting the type var.
+   *  without also retracting the type var as a whole.
    */
   def instType: SimpleMap[TypeVar, Type] = SimpleMap.Empty
 
@@ -29,13 +32,15 @@ class TyperState(val reporter: Reporter = ThrowingReporter) extends DotClass {
   def fresh: TyperState = this
 
   def commit()(implicit ctx: Context): Unit = unsupported("commit")
+
+  @elidable(elidable.FINER)
+  def checkConsistent(implicit ctx: Context) = ()
+
+  override def toText(printer: Printer): Text = "ImmutableTyperState"
 }
 
 class MutableTyperState(previous: TyperState, reporter: Reporter)
 extends TyperState(reporter) {
-
-  def checkConsistent() =
-    for (tvar <- undetVars) assert(constraint(tvar.origin) != NoType, tvar)
 
   private var myConstraint: Constraint = previous.constraint
   private var myUndetVars: Set[TypeVar] = previous.undetVars
@@ -46,10 +51,7 @@ extends TyperState(reporter) {
   override def instType = myInstType
 
   override def constraint_=(c: Constraint) = myConstraint = c
-  override def undetVars_=(vs: Set[TypeVar]) = {
-    myUndetVars = vs
-    //checkConsistent()
-  }
+  override def undetVars_=(vs: Set[TypeVar]) = myUndetVars = vs
   override def instType_=(m: SimpleMap[TypeVar, Type]): Unit = myInstType = m
 
   override def fresh: TyperState = new MutableTyperState(this, new StoreReporter)
@@ -61,7 +63,7 @@ extends TyperState(reporter) {
    *  instantiated instead.
    */
   override def commit()(implicit ctx: Context) = {
-    var targetState = ctx.typerState
+    val targetState = ctx.typerState
     targetState.constraint = constraint
     targetState.undetVars = undetVars
     targetState.instType = instType
@@ -69,7 +71,7 @@ extends TyperState(reporter) {
     def adjustOwningState(tvar: TypeVar) =
       if (tvar.owningState eq this) tvar.owningState = targetState
     undetVars foreach adjustOwningState
-    instType foreachKey { case tvar: TypeVar =>
+    instType foreachKey { tvar =>
       adjustOwningState(tvar)
       if (tvar.owningState == targetState) {
         tvar.inst = instType(tvar)
@@ -78,5 +80,30 @@ extends TyperState(reporter) {
     }
 
     reporter.flush()
+  }
+
+  @elidable(elidable.FINER)
+  override def checkConsistent(implicit ctx: Context) = {
+    def err(msg: String, what: Showable) = s"$msg: ${what.show}\n${this.show}"
+    for (tvar <- undetVars)
+      assert(constraint(tvar.origin).exists, err("unconstrained type var", tvar))
+    val undetParams = undetVars map (_.origin)
+    for (param <- constraint.domainParams)
+      assert(undetParams contains param, err("junk constraint on", param))
+    instType.foreachKey { tvar =>
+      assert(undetVars contains tvar, err("junk instType on", tvar))
+    }
+  }
+
+  override def toText(printer: Printer): Text = {
+    val undetVarsText =
+      "  undetVars = (" ~
+      Text(undetVars map (_.toText(printer)), ", ") ~ ")"
+    val constraintText =
+      "  constraint = " ~ constraint.toText(printer)
+    val instTypeText =
+      "  instType = (" ~
+      Text(instType.map2((k, v) => s"${k.toText(printer)} -> ${v.toText(printer)}"), ", ") ~ ")"
+    Text.lines(List(undetVarsText, constraintText, instTypeText))
   }
 }
