@@ -27,8 +27,8 @@ object Inferencing {
      *    3. there is an implicit conversion from `tp` to `pt`.
      */
     def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean = (
-      typeConforms(tp, pt)
-      || pt.typeSymbol == defn.ByNameParamClass && typeConforms(tp, pt.typeArgs.head)
+      (tp <:< pt)
+      || pt.typeSymbol == defn.ByNameParamClass && (tp <:< pt.typeArgs.head)
       || viewExists(tp, pt))
   }
 
@@ -43,6 +43,7 @@ object Inferencing {
         mbr.exists && mbr.hasAltWith(m => testCompatible(m.info)(ctx.fresh.withNewTyperState))
       }
     }
+    override def toString = "Proto" + super.toString
   }
 
   /** Create a selection proto-type, but only one level deep;
@@ -93,7 +94,7 @@ object Inferencing {
    *   - converts non-dependent method types to the corresponding function types
    *   - dereferences parameterless method types
    */
-  def normalize(tp: Type)(implicit ctx: Context): Type = tp.widen match {
+  def normalize(tp: Type)(implicit ctx: Context): Type = tp.widenSingleton match {
     case pt: PolyType => normalize(ctx.track(pt).resultType)
     case mt: MethodType if !mt.isDependent =>
       if (mt.isImplicit) mt.resultType
@@ -134,11 +135,6 @@ object Inferencing {
   def widenForSelector(tp: Type)(implicit ctx: Context): Type = tp.widen match {
     case tp: TypeRef if tp.symbol.isAbstractOrAliasType => widenForSelector(tp.bounds.hi)
     case tp => tp
-  }
-
-  def typeConforms(tpe: Type, pt: Type)(implicit ctx: Context): Boolean = pt match {
-    case pt: ProtoType => pt.isMatchedBy(tpe)
-    case _ => tpe <:< pt
   }
 
   def checkBounds(args: List[Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = {
@@ -206,6 +202,7 @@ object Inferencing {
         println(i"interpolate non-occurring $tvar in $tp")
         tvar.instantiate(fromBelow = true)
       }
+      ctx.typerState.checkConsistent
     }
 
     /** Instantiate undetermined type variables to that type `tp` is
