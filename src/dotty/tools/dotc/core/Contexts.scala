@@ -146,9 +146,10 @@ object Contexts {
     def moreProperties: Map[String, Any] = _moreProperties
 
     private var _typeComparer: TypeComparer = _
+    protected def typeComparer_=(typeComparer: TypeComparer) = _typeComparer = typeComparer
     def typeComparer: TypeComparer = {
-      if (_typeComparer == null || (_typeComparer.ctx ne this))
-        _typeComparer = new TypeComparer()(this)
+      if (_typeComparer.ctx ne this)
+        _typeComparer = _typeComparer.copyIn(this)
       _typeComparer
     }
 
@@ -299,6 +300,7 @@ object Contexts {
     def withImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
     def withRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
+    def withTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
     def withMoreProperties(moreProperties: Map[String, Any]): this.type = { this.moreProperties = moreProperties; this }
 
     def withProperty(prop: (String, Any)): this.type = withMoreProperties(moreProperties + prop)
@@ -326,6 +328,7 @@ object Contexts {
     runInfo = new RunInfo
     diagnostics = None
     moreProperties = Map.empty
+    typeComparer = new TypeComparer(this)
   }
 
   object NoContext extends Context {

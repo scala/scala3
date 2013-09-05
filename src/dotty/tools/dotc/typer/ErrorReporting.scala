@@ -68,7 +68,7 @@ object ErrorReporting {
 
     def typeMismatchStr(found: Type, expected: Type) = {
       if (ctx.settings.explaintypes.value)
-        new ExplainingTypeComparer().isSubType(found, expected)
+        (found <:< expected)(ctx.fresh.withTypeComparerFn(new ExplainingTypeComparer(_)))
       i"""type mismatch:
            | found   : $found
            | required: $expected""".stripMargin

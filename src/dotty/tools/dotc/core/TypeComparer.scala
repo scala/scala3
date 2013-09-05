@@ -12,7 +12,8 @@ import util.SimpleMap
  *                      The constraint set is updated when undetermined type parameters
  *                      in the constraint's domain are compared.
  */
-class TypeComparer(implicit val ctx: Context) extends DotClass {
+class TypeComparer(initctx: Context) extends DotClass {
+  implicit val ctx = initctx
 
   val state = ctx.typerState
   import state.constraint
@@ -49,7 +50,7 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
    *  @pre `param` is associated with type bounds in the current constraint.
    */
   def approximate(param: PolyParam, fromBelow: Boolean): Type = {
-    val removeParam = new TypeMap {
+    val avoidParam = new TypeMap {
       override def apply(tp: Type) = mapOver {
         tp match {
           case tp: RefinedType if param occursIn tp.refinedInfo => tp.parent
@@ -59,7 +60,7 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
     }
     val bounds = constraint(param).asInstanceOf[TypeBounds]
     val bound = if (fromBelow) bounds.lo else bounds.hi
-    val inst = removeParam(bound)
+    val inst = avoidParam(bound)
     println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
     constraint = constraint.replace(param, inst)
     inst
@@ -126,12 +127,15 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
             secondTry(tp1, tp2)
         }
       case tp2: PolyParam =>
+        //println(constraint.show)
         constraint(tp2) match {
           case TypeBounds(lo, _) => isSubType(tp1, lo) || addConstraint(tp2, TypeBounds.lower(tp1))
           case _ => secondTry(tp1, tp2)
         }
       case tp2: TypeVar =>
-        firstTry(tp1, tp2.underlying)
+        isSubType(tp1, tp2.underlying)
+      case tp2: ProtoType =>
+        tp2.isMatchedBy(tp1)
       case tp2: WildcardType =>
         tp2.optBounds match {
           case TypeBounds(_, hi) => isSubType(tp1, hi)
@@ -153,7 +157,7 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
         case _ => thirdTry(tp1, tp2)
       }
     case tp1: TypeVar =>
-      secondTry(tp1.underlying, tp2)
+      isSubType(tp1.underlying, tp2)
     case tp1: WildcardType =>
       tp1.optBounds match {
         case TypeBounds(lo, _) => isSubType(lo, tp2)
@@ -362,10 +366,13 @@ class TypeComparer(implicit val ctx: Context) extends DotClass {
     if (tp1 == NoType || tp2 == NoType) false
     else if (tp1 eq tp2) true
     else isSubType(tp1, tp2) && isSubType(tp2, tp1)
+
+  def copyIn(ctx: Context) = new TypeComparer(ctx)
 }
 
-class ExplainingTypeComparer(implicit ctx: Context) extends TypeComparer {
+class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override def isSubType(tp1: Type, tp2: Type) = {
-    ctx.traceIndented(s"${tp1.show} <:< ${tp2.show}")(super.isSubType(tp1, tp2))
+    ctx.traceIndented(s"${tp1} <:< ${tp2}")(super.isSubType(tp1, tp2))
   }
+  override def copyIn(ctx: Context) = new ExplainingTypeComparer(ctx)
 }
