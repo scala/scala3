@@ -49,7 +49,7 @@ object Implicits {
    *  @param tp              the type determining the implicit scope
    *  @param companionRefs   the companion objects in the implicit scope.
    */
-  class OfTypeImplicits(tp: Type, val companionRefs: collection.Set[TermRefBySym])(initctx: Context)
+  class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context)
     extends ImplicitRefs {
     assert(initctx.typer != null)
     implicit val ctx: Context = initctx retractMode ImplicitsEnabled
@@ -180,7 +180,7 @@ trait ImplicitRunInfo { self: RunInfo =>
 
   // todo: compute implicits directly, without going via companionRefs
   private def computeImplicitScope(tp: Type): OfTypeImplicits = {
-    val comps = new mutable.LinkedHashSet[TermRefBySym]()
+    val comps = new TermRefSet
     tp match {
       case tp: NamedType =>
         val pre = tp.prefix
@@ -369,4 +369,28 @@ trait Implicits { self: Typer =>
       new FailedImplicit(failures, pt, argument)
     }
   }
+}
+
+/** A set of term references where equality is =:= */
+class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRefBySym] {
+  private val elems = new mutable.LinkedHashMap[TermSymbol, List[Type]]
+
+  def += (ref: TermRefBySym): Unit = {
+    val pre = ref.prefix
+    val sym = ref.symbol.asTerm
+    elems get sym match {
+      case Some(prefixes) =>
+        if (!(prefixes exists (_ =:= pre))) elems(sym) = pre :: prefixes
+      case None =>
+        elems(sym) = pre :: Nil
+    }
+  }
+
+  def ++= (refs: TraversableOnce[TermRefBySym]): Unit =
+    refs foreach +=
+
+  override def foreach[U](f: TermRefBySym => U): Unit =
+    for (sym <- elems.keysIterator)
+      for (pre <- elems(sym))
+        f(TermRef.withSym(pre, sym))
 }
