@@ -6,7 +6,7 @@ import ast._
 import core._
 import Trees._
 import Types._, Inferencing._, Contexts._, Decorators._, Denotations._, Symbols._
-import Applications._
+import Applications._, Implicits._
 import util.Positions._
 import printing.Showable
 import reporting.Reporter.SuppressedMessage
@@ -63,8 +63,9 @@ object ErrorReporting {
 
     def patternConstrStr(tree: Tree): String = ???
 
-    def typeMismatch(tree: Tree, pt: Type): Tree =
-      errorTree(tree, typeMismatchStr(tree.tpe, pt))
+    def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailure = NoImplicitMatches): Tree = {
+      errorTree(tree, typeMismatchStr(tree.tpe, pt) + implicitFailure.postscript)
+    }
 
     def typeMismatchStr(found: Type, expected: Type) = {
       if (ctx.settings.explaintypes.value)

@@ -98,11 +98,11 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with 
     new Constraint((this - param).map mapValues subst)
   }
 
-  def domainPolys: List[PolyType] = map.map2((k, v) => k)
+  def domainPolys: List[PolyType] = map.keys
 
   def domainParams: List[PolyParam] =
     for {
-      (poly, entries) <- map.map2((k, v) => (k, v))
+      (poly, entries) <- map.toList
       n <- 0 until entries.length
       if entries(n).exists
     } yield PolyParam(poly, n)

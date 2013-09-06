@@ -26,6 +26,7 @@ import util.Positions._
 import util.SourcePosition
 import collection.mutable
 import annotation.tailrec
+import Implicits._
 import language.implicitConversions
 
 trait TyperContextOps { ctx: Context => }
@@ -946,7 +947,7 @@ class Typer extends Namer with Applications with Implicits {
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
       val alts = altDenots map (alt =>
-        TermRef.withSym(ref.prefix, alt.symbol.asTerm))
+        TermRef.withSym(ref.prefix, alt.symbol.asTerm).withDenot(alt))
       def expectedStr = err.expectedTypeStr(pt)
       resolveOverloaded(alts, pt) match {
         case alt :: Nil =>
@@ -982,14 +983,23 @@ class Typer extends Namer with Applications with Implicits {
       case wtp: ExprType =>
         adapt(tree.withType(wtp.resultType), pt)
       case wtp: ImplicitMethodType =>
+        def implicitArgError(msg: => String): Tree = {
+          ctx.error(msg, tree.pos.endPos)
+          EmptyTree
+        }
         val args = (wtp.paramNames, wtp.paramTypes).zipped map { (pname, formal) =>
-          val arg = inferImplicit(formal, EmptyTree, tree.pos.endPos)
-          if (arg.isEmpty)
-            ctx.error(i"no implicit argument of type $formal found for parameter $pname of $methodStr", tree.pos.endPos)
-          arg
+          def where = i"parameter $pname of $methodStr"
+          inferImplicit(formal, EmptyTree, tree.pos.endPos) match {
+            case SearchSuccess(arg) =>
+              arg
+            case ambi: AmbiguousImplicits =>
+              implicitArgError(s"ambiguous implicits: ${ambi.explanation} of $where")
+            case failure: SearchFailure =>
+              implicitArgError(i"no implicit argument of type $formal found for $where" + failure.postscript)
+          }
         }
         adapt(tpd.Apply(tree, args), pt)
-      case wtp: MethodType =>
+      case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
         if ((defn.isFunctionType(pt) || (pt eq AnyFunctionProto)) &&
             !tree.symbol.isConstructor)
           etaExpand(tree, wtp)
@@ -1026,10 +1036,10 @@ class Typer extends Namer with Applications with Implicits {
         case _ =>
       }
       // try an implicit conversion
-      val adapted = inferView(tree, pt)
-      if (adapted ne EmptyTree) return adapted
-      // if everything fails issue a type error
-      err.typeMismatch(tree, pt)
+      inferView(tree, pt) match {
+        case SearchSuccess(adapted) => adapted
+        case failure: SearchFailure => err.typeMismatch(tree, pt, failure)
+      }
     }
 
     tree match {

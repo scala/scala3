@@ -36,7 +36,7 @@ object Implicits {
 
   val d: Int = z.foo("abc")
   
-  import X.BarDeco
+  //import X.BarDeco
 
   println(z.bar)
 

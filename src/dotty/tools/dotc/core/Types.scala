@@ -171,7 +171,7 @@ object Types {
     final def namedParts(implicit ctx: Context): Set[NamedType] =
       namedPartsWith(Function.const(true))
 
-    final def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): Set[NamedType] =
+    def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): Set[NamedType] =
       new NamedPartsAccumulator(p).apply(Set(), this)
 
     final def foreach(f: Type => Unit): Unit = ???
@@ -227,17 +227,17 @@ object Types {
 
     /** The least (wrt <:<) set of class symbols of which this type is a subtype
      */
-    final def classSymbols(implicit ctx: Context): Set[ClassSymbol] = this match {
+    final def classSymbols(implicit ctx: Context): List[ClassSymbol] = this match {
       case tp: ClassInfo =>
-        Set(tp.cls)
+        tp.cls :: Nil
       case tp: TypeProxy =>
         tp.underlying.classSymbols
       case AndType(l, r) =>
-        l.classSymbols | r.classSymbols
+        l.classSymbols union r.classSymbols
       case OrType(l, r) =>
-        l.classSymbols & r.classSymbols
+        l.classSymbols intersect r.classSymbols
       case _ =>
-        Set()
+        Nil
     }
 
     /** The term symbol associated with the type */
@@ -436,11 +436,11 @@ object Types {
       memberNames(typeNameFilter).map(member(_).asInstanceOf[SingleDenotation])
 
     /** The set of implicit members of this type */
-    final def implicitMembers(implicit ctx: Context): Set[TermRef] =
-      memberNames(implicitFilter)
+    final def implicitMembers(implicit ctx: Context): List[TermRefBySym] =
+      memberNames(implicitFilter).toList
         .flatMap(name => member(name)
           .altsWith(_ is Implicit)
-          .map(TermRef(this, name.asTermName).withDenot(_)))
+          .map(d => TermRef.withSym(this, d.symbol.asTerm).withDenot(d)))
 
     /** The info of `sym`, seen as a member of this type. */
     final def memberInfo(sym: Symbol)(implicit ctx: Context): Type =
@@ -2213,7 +2213,7 @@ object Types {
   }
 
   class NamedPartsAccumulator(p: NamedType => Boolean)(implicit ctx: Context) extends TypeAccumulator[Set[NamedType]] {
-    def apply(x: Set[NamedType], tp: Type): Set[NamedType] = tp match {
+    def apply(x: Set[NamedType], tp: Type): Set[NamedType] = tp match { // !!! make set linked!!!
       case tp: NamedType if (p(tp)) =>
         foldOver(x + tp, tp)
       case tp: ThisType =>

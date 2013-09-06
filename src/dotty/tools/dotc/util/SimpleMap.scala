@@ -2,7 +2,7 @@ package dotty.tools.dotc.util
 
 import collection.mutable.ListBuffer
 
-abstract class SimpleMap[K, +V >: Null] {
+abstract class SimpleMap[K, +V >: Null] extends (K => V) {
   def apply(k: K): V
   def remove(k: K): SimpleMap[K, V]
   def updated[V1 >: V](k: K, v: V1): SimpleMap[K, V1]
@@ -17,6 +17,8 @@ abstract class SimpleMap[K, +V >: Null] {
     }
     buf.toList
   }
+  def keys: List[K] = map2((k, v) => k)
+  def toList: List[(K, V)] = map2((k, v) => (k, v))
   override def toString = {
     def assocToString(key: K, value: V) = s"$key -> $value"
     map2(assocToString) mkString ("(", ", ", ")")

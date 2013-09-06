@@ -79,6 +79,8 @@ object Inferencing {
   case class ViewProto(argType: Type, override val resultType: Type)(implicit ctx: Context) extends CachedGroundType with ProtoType {
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
       ctx.typer.isApplicableToTypes(tp, argType :: Nil, resultType)
+    override def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): Set[NamedType] =
+      argType.namedPartsWith(p) | resultType.namedPartsWith(p)
     override def computeHash = doHash(argType, resultType)
   }
 

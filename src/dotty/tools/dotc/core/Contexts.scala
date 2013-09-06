@@ -158,11 +158,11 @@ object Contexts {
     def implicits: ContextualImplicits = {
       if (implicitsCache == null )
         implicitsCache = {
-          val implicitRefs: Set[TermRef] =
+          val implicitRefs: List[TermRefBySym] =
             if (isClassDefContext) owner.thisType.implicitMembers
             else if (isImportContext) importInfo.importedImplicits
             else if (isNonEmptyScopeContext) scope.implicitDecls
-            else Set()
+            else Nil
           if (implicitRefs.isEmpty) outer.implicits
           else new ContextualImplicits(implicitRefs, outer.implicits.ctx)(this)
         }
@@ -325,7 +325,7 @@ object Contexts {
     owner = NoSymbol
     sstate = settings.defaultState
     tree = untpd.EmptyTree
-    runInfo = new RunInfo
+    runInfo = new RunInfo(this)
     diagnostics = None
     moreProperties = Map.empty
     typeComparer = new TypeComparer(this)
@@ -333,7 +333,7 @@ object Contexts {
 
   object NoContext extends Context {
     lazy val base = unsupported("base")
-    override def implicits: ContextualImplicits = new ContextualImplicits(Set(), this)(this)
+    override def implicits: ContextualImplicits = new ContextualImplicits(Nil, this)(this)
   }
 
   /** A context base defines state and associated methods that exist once per
@@ -453,7 +453,9 @@ object Contexts {
   }
 
   /** Info that changes on each compiler run */
-  class RunInfo(implicit val ctx: Context) extends ImplicitRunInfo
+  class RunInfo(initctx: Context) extends ImplicitRunInfo {
+    implicit val ctx = initctx
+  }
 
   /** Initial size of superId table */
   private final val InitialSuperIdsSize = 4096

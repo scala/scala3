@@ -20,14 +20,13 @@ class Compiler {
     ctx.usePhases(phases)
     val start = ctx.fresh
       .withPeriod(Period(ctx.runId + 1, FirstPhaseId))
-      .withRunInfo(new RunInfo)
       .withOwner(defn.RootClass)
       .withTyper(new Typer)
       .withMode(Mode.ImplicitsEnabled)
       .withTyperState(new MutableTyperState(ctx.typerState, new ConsoleReporter()(ctx)))
     def addImport(ctx: Context, sym: Symbol) =
       ctx.fresh.withImportInfo(ImportInfo.rootImport(sym)(ctx))
-    (start /: rootImports)(addImport)
+    (start.withRunInfo(new RunInfo(start)) /: rootImports)(addImport)
   }
 
   def newRun(implicit ctx: Context): Run =

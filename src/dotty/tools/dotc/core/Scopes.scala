@@ -7,7 +7,7 @@ package dotty.tools.dotc
 package core
 
 import Symbols._
-import Types.{TermRef, NoPrefix}
+import Types.{TermRef, TermRefBySym, NoPrefix}
 import Flags.Implicit
 import Names._
 import Periods._
@@ -17,6 +17,7 @@ import Denotations._
 import printing.Texts._
 import printing.Printer
 import SymDenotations.NoDenotation
+import collection.mutable.ListBuffer
 
 object Scopes {
 
@@ -111,7 +112,7 @@ object Scopes {
       syms
     }
 
-    def implicitDecls(implicit ctx: Context): Set[TermRef] = Set()
+    def implicitDecls(implicit ctx: Context): List[TermRefBySym] = Nil
 
     final def toText(printer: Printer): Text = printer.toText(this)
   }
@@ -287,15 +288,15 @@ object Scopes {
       elemsCache
     }
 
-    override def implicitDecls(implicit ctx: Context): Set[TermRef] = {
-      var irefs: Set[TermRef] = Set()
+    override def implicitDecls(implicit ctx: Context): List[TermRefBySym] = {
+      var irefs = new ListBuffer[TermRefBySym]
       var e = lastEntry
       while (e ne null) {
         if (e.sym is Implicit)
-          irefs += TermRef(NoPrefix, e.sym.name.asTermName).withDenot(e.sym.denot)
+          irefs += TermRef.withSym(NoPrefix, e.sym.asTerm).withDenot(e.sym.denot)
         e = e.prev
       }
-      irefs
+      irefs.toList
     }
 
     /** Vanilla scope - symbols are stored in declaration order.

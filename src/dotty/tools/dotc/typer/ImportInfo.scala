@@ -76,7 +76,7 @@ class ImportInfo(val sym: Symbol, val selectors: List[untpd.Tree], val rootImpor
   }
 
   /** The implicit references imported by this import clause */
-  def importedImplicits: Set[TermRef] = {
+  def importedImplicits: List[TermRefBySym] = {
     val pre = site
     if (wildcardImport) {
       val refs = pre.implicitMembers
@@ -84,9 +84,9 @@ class ImportInfo(val sym: Symbol, val selectors: List[untpd.Tree], val rootImpor
       else refs filterNot (ref => excluded contains ref.name.toTermName)
     } else
       for {
-        name <- originals
-        denot <- pre.member(name).altsWith(_ is Implicit)
-      } yield TermRef(pre, name) withDenot denot
+        renamed <- reverseMapping.keys
+        denot <- pre.member(reverseMapping(renamed)).altsWith(_ is Implicit)
+      } yield TermRef.withSym(pre, renamed, denot.symbol.asTerm).withDenot(denot)
   }
 
   override def toString = {

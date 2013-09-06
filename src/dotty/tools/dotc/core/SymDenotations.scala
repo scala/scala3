@@ -617,13 +617,13 @@ object SymDenotations {
     /** The symbolic typeref representing the type constructor for this type.
      *  @throws ClassCastException is this is not a type
      */
-    final def symTypeRef(implicit ctx: Context): TypeRef =
+    final def symTypeRef(implicit ctx: Context): TypeRefBySym =
       TypeRef.withSym(owner.thisType, symbol.asType)
 
     /** The symbolic termref pointing to this termsymbol
      *  @throws ClassCastException is this is not a term
      */
-    def symTermRef(implicit ctx: Context): TermRef =
+    def symTermRef(implicit ctx: Context): TermRefBySym =
       TermRef.withSym(owner.thisType, symbol.asTerm)
 
     def symRef(implicit ctx: Context): NamedType =
