@@ -92,10 +92,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
     tp match {
       case tp: TypeType =>
         toTextRHS(tp)
+      case tp: TermRef if !tp.knownDenotation =>
+        toTextRef(tp) ~ ".type"
+      case tp: TermRef if tp.denot.isOverloaded =>
+        "<overloaded " ~ toTextRef(tp) ~ ">"
       case tp: SingletonType =>
-        val pre = toTextPrefix(tp)
-        if (pre.lastLine.endsWith(".")) pre ~ "type"
-        else fullNameString(tp.typeSymbol.skipPackageObject) ~ ".type"
+        toText(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
       case tp @ TypeRef(pre, name) =>
         toTextPrefix(pre) ~ selectionString(tp)
       case tp: RefinedType =>
@@ -138,6 +140,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
         toTextLocal(tp.underlying) ~ "'" // debug for now, so that we can see where the TypeVars are.
+      case NoPrefix =>
+        "<no-prefix>"
       case _ =>
         tp.fallbackToText(this)
     }
@@ -169,28 +173,35 @@ class PlainPrinter(_ctx: Context) extends Printer {
     text.stripPrefix(objectPrefix).stripPrefix(packagePrefix)
 
   protected def selectionString(tp: NamedType) =
-    if (tp.symbol.exists) nameString(tp.symbol)
+    if (tp.knownDenotation && tp.symbol.exists) nameString(tp.symbol)
     else nameString(tp.name)
+
+  /** The string representation of this type used as a prefix */
+  protected def toTextRef(tp: SingletonType): Text = controlled {
+    tp match {
+      case tp @ TermRef(pre, name) =>
+        toTextPrefix(pre) ~ selectionString(tp)
+      case ThisType(cls) =>
+        nameString(cls) + ".this"
+      case SuperType(thistpe: SingletonType, _) =>
+        toTextRef(thistpe).map(_.replaceAll("""\bthis$""", "super"))
+      case SuperType(thistpe, _) =>
+        "Super(" ~ toTextLocal(thistpe) ~ ")"
+      case tp @ ConstantType(value) =>
+        toText(value)
+      case MethodParam(mt, idx) =>
+        nameString(mt.paramNames(idx))
+      case RefinedThis(_) =>
+        "this"
+    }
+  }
 
   /** The string representation of this type used as a prefix */
   protected def toTextPrefix(tp: Type): Text = controlled {
     tp match {
-      case tp @ TermRef(pre, name) =>
-        toTextPrefix(pre) ~ selectionString(tp) ~ "."
-      case ThisType(cls) =>
-        nameString(cls) + ".this."
-      case SuperType(thistpe, _) =>
-        toTextPrefix(thistpe).map(_.replaceAll("""\bthis\.$""", "super."))
-      case tp @ ConstantType(value) =>
-        toTextLocal(tp.underlying) ~ "(" ~ toText(value) ~ ")."
-      case MethodParam(mt, idx) =>
-        nameString(mt.paramNames(idx)) + "."
-      case RefinedThis(_) =>
-        "this."
-      case NoPrefix =>
-        ""
-      case _ =>
-        trimPrefix(toTextLocal(tp)) ~ "#"
+      case NoPrefix => ""
+      case tp: SingletonType => toTextRef(tp) ~ "."
+      case _ => trimPrefix(toTextLocal(tp)) ~ "#"
     }
   }
 

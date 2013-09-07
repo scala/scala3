@@ -1155,6 +1155,8 @@ object Types {
 
     private[this] var lastDenotation: Denotation = null
 
+    def knownDenotation: Boolean = lastDenotation != null
+
     /** The denotation currently denoted by this type */
     def denot(implicit ctx: Context): Denotation = {
       val validPeriods =
@@ -1252,7 +1254,11 @@ object Types {
     }
   }
 
-  abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType
+  abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType {
+    def isOverloaded(implicit ctx: Context) = denot.isOverloaded
+    def alternatives(implicit ctx: Context) =
+      denot.alternatives map (TermRef(prefix, name).withDenot(_))
+  }
 
   abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType
 
