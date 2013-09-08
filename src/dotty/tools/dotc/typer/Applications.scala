@@ -458,16 +458,36 @@ trait Applications extends Compatibility { self: Typer =>
       typedUnApply(tree, pt)
     else {
 
-      def realApply(implicit ctx: Context) = {
+      def realApply(implicit ctx: Context): Tree = {
         val proto = new FunProto(tree.args, pt, this)
         val fun1 = typedExpr(tree.fun, proto)
         methPart(fun1).tpe match {
           case funRef: TermRef =>
-            val app =
-              if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
-              else new ApplyToUntyped(tree, fun1, funRef, tree.args, pt)
-            val result = app.result
-            ConstFold(result) orElse result
+            tryEither { implicit ctx =>
+              val app =
+                if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
+                else new ApplyToUntyped(tree, fun1, funRef, tree.args, pt)
+              val result = app.result
+              ConstFold(result) orElse result
+            } { failed => fun1 match {
+                case Select(qual, name) =>
+                  tryEither { implicit ctx =>
+                    val qual1 = adapt(qual, new SelectionProto(name, proto))
+                    if (qual1.tpe.isError) qual1
+                    else {
+                      assert(qual1 ne qual)
+                      typedApply(
+                        cpy.Apply(tree,
+                          cpy.Select(fun1, untpd.TypedSplice(qual1), name),
+                          proto.typedArgs map untpd.TypedSplice),
+                       pt)
+                    }
+                  } { _ => failed.commit()
+                  }
+                case _ =>
+                  failed.commit()
+              }
+            }
           case _ =>
             fun1.qualifierType match {
               case ErrorType =>

@@ -40,6 +40,6 @@ object Implicits {
 
   println(z.bar)
 
-  // val e: Int = z.foo(true)  not yet
+  val e: Int = z.foo(true) 
 
 }
