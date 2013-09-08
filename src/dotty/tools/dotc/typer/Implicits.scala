@@ -166,7 +166,7 @@ trait ImplicitRunInfo { self: RunInfo =>
    *  compute and cache the implicit scope; all variations wrt type parameters or
    *  abstract types are eliminated.
    */
-  private val liftToClasses = new TypeMap {
+  private object liftToClasses extends TypeMap {
     def apply(tp: Type) = tp match {
       case tp: TypeRef if tp.symbol.isAbstractOrAliasType =>
         val pre = tp.prefix
@@ -364,8 +364,8 @@ trait Implicits { self: Typer =>
     override def shadowedImplicit(ref: TermRef, shadowing: Type): SearchFailure =
       record(new ShadowedImplicit(ref, shadowing, pt, argument))
     override def failedSearch: SearchFailure = {
-      println(s"wildPt = $wildPt")
-      println(s"implicit scope = ${implicitScope(wildPt).companionRefs}")
+      //println(s"wildPt = $wildPt")
+      //println(s"implicit scope = ${implicitScope(wildPt).companionRefs}")
       new FailedImplicit(failures, pt, argument)
     }
   }
