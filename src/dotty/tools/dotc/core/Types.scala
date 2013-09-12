@@ -1256,8 +1256,14 @@ object Types {
 
   abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType {
     def isOverloaded(implicit ctx: Context) = denot.isOverloaded
-    def alternatives(implicit ctx: Context) =
-      denot.alternatives map (TermRef(prefix, name).withDenot(_))
+
+    private def rewrap(sd: SingleDenotation)(implicit ctx: Context) =
+      TermRef(prefix, name) withDenot sd
+
+    def alternatives(implicit ctx: Context): List[TermRef] =
+      denot.alternatives map rewrap
+    def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[TermRef] =
+      denot.altsWith(p) map rewrap
   }
 
   abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType
