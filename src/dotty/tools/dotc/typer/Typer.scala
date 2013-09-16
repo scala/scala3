@@ -363,7 +363,13 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedLiteral(tree: untpd.Literal)(implicit ctx: Context) =
-    tree.withType(if (tree.const.tag == UnitTag) defn.UnitType else ConstantType(tree.const))
+    tree.withType {
+      tree.const.tag match {
+        case UnitTag => defn.UnitType
+        case NullTag => defn.NullType
+        case _ => ConstantType(tree.const)
+      }
+    }
 
   def typedNew(tree: untpd.New, pt: Type)(implicit ctx: Context) = tree.tpt match {
     case templ: Template =>
@@ -542,7 +548,7 @@ class Typer extends Namer with Applications with Implicits {
     }
 
     val cases1 = tree.cases mapconserve typedCase
-    cpy.Match(tree, sel1, cases1).withType(ctx.lub(cases1.tpes))
+    cpy.Match(tree, sel1, cases1).withType(ctx.typeComparer.lub(cases1.tpes))
   }
 
   def typedReturn(tree: untpd.Return)(implicit ctx: Context): Return = {
@@ -590,7 +596,7 @@ class Typer extends Namer with Applications with Implicits {
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = {
     val proto1 = pt.elemType orElse WildcardType
     val elems1 = tree.elems mapconserve (typed(_, proto1))
-    cpy.SeqLiteral(tree, elems1) withType ctx.lub(elems1.tpes)
+    cpy.SeqLiteral(tree, elems1) withType ctx.typeComparer.lub(elems1.tpes)
   }
 
   def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree = {
@@ -679,7 +685,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedAlternative(tree: untpd.Alternative, pt: Type)(implicit ctx: Context): Alternative = {
     val trees1 = tree.trees mapconserve (typed(_, pt))
-    cpy.Alternative(tree, trees1) withType ctx.lub(trees1.tpes)
+    cpy.Alternative(tree, trees1) withType ctx.typeComparer.lub(trees1.tpes)
   }
 
   def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = {
@@ -839,7 +845,7 @@ class Typer extends Namer with Applications with Implicits {
     }
   }
 
-  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = ctx.traceIndented (i"typing $tree", show = true) {
+  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = ctx.traceIndented (s"typing ${tree.show}", show = true) {
     val tree1 = typedUnadapted(tree, pt)
     ctx.interpolateUndetVars(tree1.tpe.widen, tree1.pos)
     adapt(tree1, pt)

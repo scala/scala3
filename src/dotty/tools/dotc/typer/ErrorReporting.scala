@@ -68,11 +68,16 @@ object ErrorReporting {
     }
 
     def typeMismatchStr(found: Type, expected: Type) = {
-      if (ctx.settings.explaintypes.value)
-        (found <:< expected)(ctx.fresh.withTypeComparerFn(new ExplainingTypeComparer(_)))
+      val (typerStateStr, explanationStr) =
+        if (ctx.settings.explaintypes.value) {
+          val nestedCtx = ctx.fresh.withTypeComparerFn(new ExplainingTypeComparer(_))
+          (found <:< expected)(nestedCtx)
+          ("\n" + ctx.typerState.show, "\n" + nestedCtx.typeComparer.toString)
+        }
+        else ("", "")
       i"""type mismatch:
            | found   : $found
-           | required: $expected""".stripMargin
+           | required: $expected""".stripMargin + typerStateStr + explanationStr
     }
   }
 

@@ -504,10 +504,10 @@ object Types {
     }}
 
     def & (that: Type)(implicit ctx: Context): Type =
-      ctx.glb(this, that)
+      ctx.typeComparer.glb(this, that)
 
     def | (that: Type)(implicit ctx: Context): Type =
-      ctx.lub(this, that)
+      ctx.typeComparer.lub(this, that)
 
 // ----- Unwrapping types -----------------------------------------------
 
@@ -1284,6 +1284,7 @@ object Types {
         false
     }
     override def computeHash = doHash(fixedSym, prefix)
+    override def toString = super.toString + "(fixed sym)"
   }
 
   final class TermRefBySym(prefix: Type, name: TermName, val fixedSym: TermSymbol)
@@ -1762,7 +1763,6 @@ object Types {
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
       assert(owningState.undetVars contains this)
-      owningState.constraint -= origin
       owningState.undetVars -= this
       if (ctx.typerState eq creatorState) inst = tp
       else ctx.typerState.instType = ctx.typerState.instType.updated(this, tp)
@@ -2010,7 +2010,7 @@ object Types {
   object ErrorType extends ErrorType
 
   /** Wildcard type, possibly with bounds */
-  abstract case class WildcardType(optBounds: Type) extends CachedGroundType {
+  abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {
     def derivedWildcardType(optBounds: Type)(implicit ctx: Context) =
       if (optBounds eq this.optBounds) this else WildcardType(optBounds.asInstanceOf[TypeBounds])
     override def computeHash = doHash(optBounds)

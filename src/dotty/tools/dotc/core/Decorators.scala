@@ -6,6 +6,7 @@ import Symbols._
 import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer
 import util.Positions.Position, util.SourcePosition
 import collection.mutable.ListBuffer
+import scala.language.implicitConversions
 
 /** This object provides useful implicit decorators for types defined elsewhere */
 object Decorators {

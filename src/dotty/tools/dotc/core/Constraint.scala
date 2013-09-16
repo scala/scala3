@@ -43,7 +43,7 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain.
    */
-  def - (param: PolyParam) = {
+  def - (param: PolyParam)(implicit ctx: Context) = {
     val pt = param.binder
     val pnum = param.paramNum
     val entries = map(pt)
@@ -107,11 +107,16 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with 
       if entries(n).exists
     } yield PolyParam(poly, n)
 
-  override def toText(printer: Printer): Text = {
-    val dom = domainPolys map (_.toText(printer))
+  def constrainedTypesText(printer: Printer): Text =
+    Text(domainPolys map (_.toText(printer)), ", ")
+
+  def constraintText(indent: Int, printer: Printer): Text = {
     val assocs =
       for (param <- domainParams)
-      yield "  " ~ param.toText(printer) ~ this(param).toText(printer)
-    "Constraint(" ~ Text(dom, ", ") ~ ") {" ~ Text(assocs, "\n") ~ "}"
+      yield (" " * indent) ~ param.toText(printer) ~ this(param).toText(printer)
+    Text(assocs, "\n")
   }
+
+  override def toText(printer: Printer): Text =
+    "Constraint(" ~ constrainedTypesText(printer) ~ ") {" ~ constraintText(2, printer) ~ "}"
 }

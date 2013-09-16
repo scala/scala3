@@ -96,14 +96,17 @@ extends TyperState(reporter) {
   }
 
   override def toText(printer: Printer): Text = {
+    val header: Text = "Typer state:"
     val undetVarsText =
-      "  undetVars = (" ~
-      Text(undetVars map (_.toText(printer)), ", ") ~ ")"
+      " undetVars: " ~
+      Text(undetVars map (_.toText(printer)), ", ") ~ "."
+    val constrainedText =
+      " constrained types: " ~ constraint.constrainedTypesText(printer) ~ "."
     val constraintText =
-      "  constraint = " ~ constraint.toText(printer)
+      " constraint: " ~ constraint.constraintText(3, printer)
     val instTypeText =
-      "  instType = (" ~
-      Text(instType.map2((k, v) => s"${k.toText(printer)} -> ${v.toText(printer)}"), ", ") ~ ")"
-    Text.lines(List(undetVarsText, constraintText, instTypeText))
+      " instType: " ~
+      Text(instType.map2((k, v) => s"${k.toText(printer)} -> ${v.toText(printer)}"), ", ") ~ "."
+    Text.lines(List(header, undetVarsText, constrainedText, constraintText, instTypeText))
   }
 }

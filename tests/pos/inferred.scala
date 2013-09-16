@@ -1,3 +1,12 @@
+class List[+T] {
+  
+  def prepend [U >: T] (x: U): List[U] = null
+  
+}
+
+object Nil extends List[Nothing]
+
+
 object Inferred {
 
   def foo[T](x: T): T = x
@@ -12,8 +21,8 @@ object Inferred {
 
   val nn = bar(Nil)
 
-  val ints: List[Int] = 1 :: Nil
+  val ints: List[Int] = Nil prepend 1
 
-  val a = if (1 == 0) Nil else ints
+  // val a = if (1 == 0) Nil else ints
 
 }

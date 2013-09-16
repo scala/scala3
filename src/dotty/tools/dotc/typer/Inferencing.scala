@@ -193,15 +193,15 @@ object Inferencing {
         (ctx.typerState.undetVars contains tvar) && (pos contains tvar.pos))
       for ((tvar, v) <- vs)
         if (v == 1) {
-          println(i"interpolate covariant $tvar in $tp")
+          println(s"interpolate covariant ${tvar.show} in ${tp.show}")
           tvar.instantiate(fromBelow = true)
         }
         else if (v == -1) {
-          println(i"interpolate contrvariant $tvar in $tp")
+          println(s"interpolate contrvariant ${tvar.show} in ${tp.show}")
           tvar.instantiate(fromBelow = false)
         }
       for (tvar <- ctx.typerState.undetVars if (pos contains tvar.pos) && !(vs contains tvar)) {
-        println(i"interpolate non-occurring $tvar in $tp")
+        println(s"interpolate non-occurring ${tvar.show} in ${tp.show}")
         tvar.instantiate(fromBelow = true)
       }
       ctx.typerState.checkConsistent
@@ -229,9 +229,15 @@ object Inferencing {
      *  @param pos   The position of the new type variables (relevant for
      *  interpolateUndetVars
      */
-    def newTypeVars(pt: PolyType, pos: Position): List[TypeVar] =
-      for (n <-  (0 until pt.paramNames.length).toList)
-      yield new TypeVar(PolyParam(pt, n), ctx.typerState, pos)
+    def newTypeVars(pt: PolyType, pos: Position): List[TypeVar] = {
+      val state = ctx.typerState
+      val tvars =
+        for (n <- (0 until pt.paramNames.length).toList)
+        yield new TypeVar(PolyParam(pt, n), state, pos)
+      state.constraint = state.constraint.updated(pt,
+        state.constraint(pt) map (_.substParams(pt, tvars)))
+      tvars
+    }
 
     def isSubTypes(actuals: List[Type], formals: List[Type])(implicit ctx: Context): Boolean = formals match {
       case formal :: formals1 =>

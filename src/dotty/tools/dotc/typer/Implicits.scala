@@ -172,7 +172,8 @@ trait ImplicitRunInfo { self: RunInfo =>
         val pre = tp.prefix
         def joinClass(tp: Type, cls: ClassSymbol) =
           AndType(tp, cls.symTypeRef.asSeenFrom(pre, cls.owner))
-        (apply(tp.prefix) /: tp.classSymbols)(joinClass)
+        val lead = if (tp.prefix eq NoPrefix) defn.AnyType else apply(tp.prefix)
+        (lead /: tp.classSymbols)(joinClass)
       case _ =>
         mapOver(tp)
     }

@@ -128,20 +128,19 @@ class PlainPrinter(_ctx: Context) extends Printer {
         changePrec(GlobalPrec) { "=> " ~ toText(tp.resultType) }
       case tp: PolyType =>
         def paramText(name: TypeName, bounds: TypeBounds) =
-          toText(polyParamName(name)) ~ toText(bounds)
+          toText(polyParamName(name)) ~ polyHash(tp) ~ toText(bounds)
         changePrec(GlobalPrec) {
           "[" ~
             Text((tp.paramNames, tp.paramBounds).zipped map paramText, ", ") ~
           "]" ~ toText(tp.resultType)
         }
       case PolyParam(pt, n) =>
-        toText(polyParamName(pt.paramNames(n)))
+        toText(polyParamName(pt.paramNames(n))) ~ polyHash(pt)
       case AnnotatedType(annot, tpe) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
-        toTextLocal(tp.underlying) ~ "'" // debug for now, so that we can see where the TypeVars are.
-      case NoPrefix =>
-        "<no-prefix>"
+        val suffix = if (tp.isInstantiated) "'" else "''"
+        toTextLocal(tp.underlying) ~ suffix // debug for now, so that we can see where the TypeVars are.
       case _ =>
         tp.fallbackToText(this)
     }
@@ -154,7 +153,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
    */
   protected def simpleNameString(sym: Symbol): String = nameString(sym.name)
 
-  /** The unique id of symbol, after a # */
+  /** If -uniqid is set, the hashcode of the polytype, after a # */
+  protected def polyHash(pt: PolyType): Text =
+    "#" + pt.hashCode provided ctx.settings.uniqid.value
+
+  /** If -uniqid is set, the unique id of symbol, after a # */
   protected def idString(sym: Symbol): String =
     if (ctx.settings.uniqid.value) "#" + sym.id else ""
 

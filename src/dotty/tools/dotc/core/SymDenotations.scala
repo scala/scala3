@@ -739,13 +739,11 @@ object SymDenotations {
       myThisType
     }
 
-    private def computeThisType(implicit ctx: Context): Type = ThisType(classSymbol)
-    /* was:
+    private def computeThisType(implicit ctx: Context): Type = ThisType(classSymbol) /*
       if ((this is PackageClass) && !isRoot)
         TermRef(owner.thisType, name.toTermName)
       else
-        ThisType(classSymbol)
-     */
+        ThisType(classSymbol) */
 
     private[this] var myTypeConstructor: TypeRef = null
 

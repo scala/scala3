@@ -32,7 +32,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def Super(qual: Tree, mix: TypeName)(implicit ctx: Context): Super = {
     val owntype =
-      if (mix.isEmpty) ctx.glb(qual.tpe.parents)
+      if (mix.isEmpty) ctx.typeComparer.glb(qual.tpe.parents)
       else {
         val mixParents = qual.tpe.parents filter (_.name == mix)
         check(mixParents.length == 1)
@@ -132,7 +132,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
-    untpd.Match(selector, cases).withType(ctx.lub(cases.tpes)).checked
+    untpd.Match(selector, cases).withType(ctx.typeComparer.lub(cases.tpes)).checked
 
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef =
     untpd.CaseDef(pat, guard, body).withType(body.tpe).checked
@@ -148,7 +148,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def SeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
     untpd.SeqLiteral(elems)
-      .withType(defn.SeqClass.typeConstructor.appliedTo(ctx.lub(elems.tpes)))
+      .withType(defn.SeqClass.typeConstructor.appliedTo(ctx.typeComparer.lub(elems.tpes)))
       .checked
 
   def SeqLiteral(tpe: Type, elems: List[Tree])(implicit ctx: Context): SeqLiteral = {
@@ -160,7 +160,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def JavaSeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
     new untpd.JavaSeqLiteral(elems)
-      .withType(defn.ArrayClass.typeConstructor.appliedTo(ctx.lub(elems.tpes)))
+      .withType(defn.ArrayClass.typeConstructor.appliedTo(ctx.typeComparer.lub(elems.tpes)))
       .checked
 
   def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
@@ -204,7 +204,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.Bind(sym.name, body).withType(refType(sym)).checked
 
   def Alternative(trees: List[Tree])(implicit ctx: Context): Alternative =
-    untpd.Alternative(trees).withType(ctx.lub(trees map (_.tpe))).checked
+    untpd.Alternative(trees).withType(ctx.typeComparer.lub(trees map (_.tpe))).checked
 
   def UnApply(fun: Tree, args: List[Tree])(implicit ctx: Context): UnApply = {
     val owntype = fun.tpe.widen match {
