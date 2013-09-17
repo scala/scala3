@@ -2288,6 +2288,15 @@ object Types {
   class CyclicReference(val denot: SymDenotation)
     extends FatalTypeError(s"cyclic reference involving $denot")
 
+  class ClassMergeError(cinfo: ClassInfo, tp2: Type)(implicit ctx: Context)
+    extends FatalTypeError(s"cannot merge ${showTypeType(cinfo)} with ${showTypeType(tp2)} as members of ${cinfo.prefix.show}")
+
+  private def showTypeType(tp: Type)(implicit ctx: Context) = tp match {
+    case ClassInfo(_, cls, _, _, _) => cls.showLocated
+    case bounds: TypeBounds => "type bounds" + bounds.show
+    case _ => tp.show
+  }
+
   // ----- Debug ---------------------------------------------------------
 
   var debugTrace = false

@@ -419,14 +419,16 @@ class TypeComparer(initctx: Context) extends DotClass {
               if (t2.exists) t2
               else {
                 tp1 match {
-                  case tp1: TypeType =>
+                  case tp1: TypeBounds =>
                     tp2 match {
-                      case tp2: TypeType =>
-                        val b1 = tp1.bounds
-                        val b2 = tp2.bounds
-                        return TypeBounds(b1.lo | b2.lo, b1.hi & b2.hi)
+                      case tp2: TypeBounds =>
+                        return TypeBounds(tp1.lo | tp2.lo, tp1.hi & tp2.hi)
+                      case tp2: ClassInfo =>
+                        throw new ClassMergeError(tp2, tp1)
                       case _ =>
                     }
+                  case tp1: ClassInfo =>
+                    throw new ClassMergeError(tp1, tp2)
                   case _ =>
                 }
                 AndType(tp1, tp2)
@@ -450,14 +452,16 @@ class TypeComparer(initctx: Context) extends DotClass {
         if (t2.exists) t2
         else {
           tp1 match {
-            case tp1: TypeType =>
+            case tp1: TypeBounds =>
               tp2 match {
-                case tp2: TypeType =>
-                  val b1 = t1.bounds
-                  val b2 = t2.bounds
-                  return TypeBounds(b1.lo & b2.lo, b1.hi | b2.hi)
+                case tp2: TypeBounds =>
+                  return TypeBounds(tp1.lo & tp2.lo, tp1.hi | tp2.hi)
+                case tp2: ClassInfo =>
+                  throw new ClassMergeError(tp2, tp1)
                 case _ =>
               }
+            case tp1: ClassInfo =>
+              throw new ClassMergeError(tp1, tp2)
             case _ =>
           }
           OrType(tp1, tp2)
