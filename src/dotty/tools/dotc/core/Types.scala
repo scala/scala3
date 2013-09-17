@@ -1240,21 +1240,11 @@ object Types {
      */
     protected def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
       NamedType(prefix, name)
-
-    override def computeHash = doHash(name, prefix)
-
-    override def equals(that: Any) = that match {
-      case that: HasFixedSym => false
-      case that: TermRefWithSignature => false
-      case that: NamedType =>
-        this.prefix == that.prefix &&
-        this.name == that.name
-      case _ =>
-        false
-    }
   }
 
   abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType {
+    protected def sig: Signature = NotAMethod
+
     def isOverloaded(implicit ctx: Context) = denot.isOverloaded
 
     private def rewrap(sd: SingleDenotation)(implicit ctx: Context) =
@@ -1264,9 +1254,28 @@ object Types {
       denot.alternatives map rewrap
     def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[TermRef] =
       denot.altsWith(p) map rewrap
+
+    override def equals(that: Any) = that match {
+      case that: TermRef =>
+        this.prefix == that.prefix &&
+        this.name == that.name &&
+        this.sig == that.sig
+      case _ =>
+        false
+    }
+    override def computeHash = doHash((name, sig), prefix)
   }
 
-  abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType
+  abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType {
+    override def equals(that: Any) = that match {
+      case that: TypeRef =>
+        this.prefix == that.prefix &&
+        this.name == that.name
+      case _ =>
+        false
+    }
+    override def computeHash = doHash(name, prefix)
+  }
 
   trait HasFixedSym extends NamedType {
     protected val fixedSym: Symbol
@@ -1290,21 +1299,12 @@ object Types {
   final class TermRefBySym(prefix: Type, name: TermName, val fixedSym: TermSymbol)
     extends TermRef(prefix, name) with HasFixedSym
 
-  final class TermRefWithSignature(prefix: Type, name: TermName, val sig: Signature) extends TermRef(prefix, name) {
+  final class TermRefWithSignature(prefix: Type, name: TermName, override val sig: Signature) extends TermRef(prefix, name) {
     override def signature(implicit ctx: Context) = sig
     override def loadDenot(implicit ctx: Context): Denotation =
       super.loadDenot.atSignature(sig)
     override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRefWithSignature =
       TermRef.withSig(prefix, name, sig)
-    override def equals(that: Any) = that match {
-      case that: TermRefWithSignature =>
-        this.prefix == that.prefix &&
-        this.name == that.name &&
-        this.sig == that.sig
-      case _ =>
-        false
-    }
-    override def computeHash = doHash((name, sig), prefix)
   }
 
   final class TypeRefBySym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol)
