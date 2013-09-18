@@ -66,7 +66,7 @@ object Implicits {
    *                   name, b, whereas the name of the symbol is the original name, a.
    *  @param outerCtx  the next outer context that makes visible further implicits
    */
-  class ContextualImplicits(val refs: List[TermRefBySym], val outerCtx: Context)(initctx: Context) extends ImplicitRefs {
+  class ContextualImplicits(val refs: List[TermRef], val outerCtx: Context)(initctx: Context) extends ImplicitRefs {
     implicit val ctx: Context =
       if (initctx == NoContext) initctx else initctx retractMode Mode.ImplicitsEnabled
 
@@ -187,7 +187,7 @@ trait ImplicitRunInfo { self: RunInfo =>
         val pre = tp.prefix
         comps ++= implicitScope(pre).companionRefs
         def addClassScope(cls: ClassSymbol): Unit = {
-          def addRef(companion: TermRefBySym): Unit = {
+          def addRef(companion: TermRef): Unit = {
             val comp1 @ TermRef(p, _) = companion.asSeenFrom(pre, companion.symbol.owner)
             comps += TermRef.withSym(p, comp1.symbol.asTerm).withDenot(comp1.denot)
           }
@@ -373,10 +373,10 @@ trait Implicits { self: Typer =>
 }
 
 /** A set of term references where equality is =:= */
-class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRefBySym] {
+class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRef] {
   private val elems = new mutable.LinkedHashMap[TermSymbol, List[Type]]
 
-  def += (ref: TermRefBySym): Unit = {
+  def += (ref: TermRef): Unit = {
     val pre = ref.prefix
     val sym = ref.symbol.asTerm
     elems get sym match {
@@ -387,10 +387,10 @@ class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRefBySym
     }
   }
 
-  def ++= (refs: TraversableOnce[TermRefBySym]): Unit =
+  def ++= (refs: TraversableOnce[TermRef]): Unit =
     refs foreach +=
 
-  override def foreach[U](f: TermRefBySym => U): Unit =
+  override def foreach[U](f: TermRef => U): Unit =
     for (sym <- elems.keysIterator)
       for (pre <- elems(sym))
         f(TermRef.withSym(pre, sym))

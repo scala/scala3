@@ -323,7 +323,7 @@ class Namer { typer: Typer =>
       def adjustIfModule(sig: Type): Type =
         if (denot is Module)
           sig match {
-            case sig: TypeRefBySym =>
+            case sig: TypeRef =>
               sig
             case sig: TypeRef =>
               TypeRef.withSym(sig.prefix, sig.symbol.asType)

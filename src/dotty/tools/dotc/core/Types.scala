@@ -436,7 +436,7 @@ object Types {
       memberNames(typeNameFilter).map(member(_).asInstanceOf[SingleDenotation])
 
     /** The set of implicit members of this type */
-    final def implicitMembers(implicit ctx: Context): List[TermRefBySym] =
+    final def implicitMembers(implicit ctx: Context): List[TermRef] =
       memberNames(implicitFilter).toList
         .flatMap(name => member(name)
           .altsWith(_ is Implicit)
@@ -1153,21 +1153,27 @@ object Types {
     val prefix: Type
     val name: Name
 
-    private[this] var lastDenotation: Denotation = null
+    private[this] var lastDenotationOrSym: AnyRef = null
 
-    def knownDenotation: Boolean = lastDenotation != null
+    def knownDenotation: Boolean = lastDenotationOrSym.isInstanceOf[Denotation]
 
     /** The denotation currently denoted by this type */
-    def denot(implicit ctx: Context): Denotation = {
-      val validPeriods =
-        if (lastDenotation != null) lastDenotation.validFor else Nowhere
-      val thisPeriod = ctx.period
-      if (!(validPeriods contains thisPeriod)) {
-        lastDenotation =
-          if (validPeriods.runId == thisPeriod.runId) {
-            lastDenotation.current
-          } else {
-            val d = loadDenot
+    final def denot(implicit ctx: Context): Denotation = lastDenotationOrSym match {
+      case d: Denotation if d.validFor contains ctx.period => d
+      case _ => computeDenot
+    }
+
+    private def computeDenot(implicit ctx: Context): Denotation = {
+      val denot = lastDenotationOrSym match {
+        case d: Denotation =>
+          if (d.validFor.runId == ctx.period.runId) d.current
+          else loadDenot
+        case sym: Symbol =>
+          val d = sym.denot
+          val owner = d.owner
+          if (owner.isTerm) d else d.asSeenFrom(prefix)
+        case _ =>
+          loadDenot
 /* need to do elsewhere as it leads to a cycle in subtyping here.
             if (d.exists && !d.symbol.isAliasType && !prefix.isLegalPrefix) {
               val ex = new MalformedType(prefix, d, prefix.memberNames(abstractTypeNameFilter))
@@ -1177,21 +1183,31 @@ object Types {
               } else ctx.log(ex.getMessage)
             }
 */
-            if (d.exists || ctx.phaseId == FirstPhaseId)
-              d
-            else // name has changed; try load in earlier phase and make current
-              denot(ctx.fresh.withPhase(ctx.phaseId - 1)).current
-          }
       }
-      lastDenotation
+      lastDenotationOrSym = denot
+      denot
     }
 
     private[dotc] final def withDenot(denot: Denotation): this.type = {
-      lastDenotation = denot
+      lastDenotationOrSym = denot
       this
     }
 
-    protected def loadDenot(implicit ctx: Context) = prefix.member(name)
+    private[dotc] final def withSym(sym: Symbol): this.type = {
+      lastDenotationOrSym = sym
+      this
+    }
+
+    protected def loadDenot(implicit ctx: Context) = {
+      val d = prefix.member(name)
+      if (d.exists || ctx.phaseId == FirstPhaseId)
+        d
+      else {// name has changed; try load in earlier phase and make current
+        val d = denot(ctx.fresh.withPhase(ctx.phaseId - 1)).current
+        if (d.exists) d
+        else throw new Error(s"failure to reload $this")
+      }
+    }
 
     def isType = name.isTypeName
     def isTerm = name.isTermName
@@ -1277,6 +1293,7 @@ object Types {
     override def computeHash = doHash(name, prefix)
   }
 
+/*
   trait HasFixedSym extends NamedType {
     protected val fixedSym: Symbol
     override def symbol(implicit ctx: Context): Symbol = fixedSym
@@ -1295,20 +1312,16 @@ object Types {
     override def computeHash = doHash(fixedSym, prefix)
     override def toString = super.toString + "(fixed sym)"
   }
-
-  final class TermRefBySym(prefix: Type, name: TermName, val fixedSym: TermSymbol)
-    extends TermRef(prefix, name) with HasFixedSym
+  */
 
   final class TermRefWithSignature(prefix: Type, name: TermName, override val sig: Signature) extends TermRef(prefix, name) {
+    assert(sig != NotAMethod)
     override def signature(implicit ctx: Context) = sig
     override def loadDenot(implicit ctx: Context): Denotation =
       super.loadDenot.atSignature(sig)
-    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRefWithSignature =
+    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef =
       TermRef.withSig(prefix, name, sig)
   }
-
-  final class TypeRefBySym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol)
-    extends TypeRef(prefix, name) with HasFixedSym
 
   final class CachedTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name)
   final class CachedTypeRef(prefix: Type, name: TypeName) extends TypeRef(prefix, name)
@@ -1325,20 +1338,21 @@ object Types {
   object TermRef {
     def apply(prefix: Type, name: TermName)(implicit ctx: Context): TermRef =
       unique(new CachedTermRef(prefix, name))
-    def withSym(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRefBySym =
-      unique(new TermRefBySym(prefix, name, sym))
-    def withSym(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRefBySym =
+    def withSym(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRef =
+      apply(prefix, name) withSym sym
+    def withSym(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
       withSym(prefix, sym.name, sym)
-    def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRefWithSignature =
-      unique(new TermRefWithSignature(prefix, name, sig))
+    def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
+      if (sig == NotAMethod) apply(prefix, name)
+      else unique(new TermRefWithSignature(prefix, name, sig))
   }
 
   object TypeRef {
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef =
       unique(new CachedTypeRef(prefix, name))
-    def withSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRefBySym =
-      unique(new TypeRefBySym(prefix, name, sym))
-    def withSym(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRefBySym =
+    def withSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
+      apply(prefix, name) withSym sym
+    def withSym(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
       withSym(prefix, sym.name, sym)
   }
 

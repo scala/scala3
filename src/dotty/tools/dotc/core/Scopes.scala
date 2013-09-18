@@ -7,7 +7,7 @@ package dotty.tools.dotc
 package core
 
 import Symbols._
-import Types.{TermRef, TermRefBySym, NoPrefix}
+import Types.{TermRef, NoPrefix}
 import Flags.Implicit
 import Names._
 import Periods._
@@ -112,7 +112,7 @@ object Scopes {
       syms
     }
 
-    def implicitDecls(implicit ctx: Context): List[TermRefBySym] = Nil
+    def implicitDecls(implicit ctx: Context): List[TermRef] = Nil
 
     final def toText(printer: Printer): Text = printer.toText(this)
   }
@@ -288,8 +288,8 @@ object Scopes {
       elemsCache
     }
 
-    override def implicitDecls(implicit ctx: Context): List[TermRefBySym] = {
-      var irefs = new ListBuffer[TermRefBySym]
+    override def implicitDecls(implicit ctx: Context): List[TermRef] = {
+      var irefs = new ListBuffer[TermRef]
       var e = lastEntry
       while (e ne null) {
         if (e.sym is Implicit)

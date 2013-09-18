@@ -158,7 +158,7 @@ object Contexts {
     def implicits: ContextualImplicits = {
       if (implicitsCache == null )
         implicitsCache = {
-          val implicitRefs: List[TermRefBySym] =
+          val implicitRefs: List[TermRef] =
             if (isClassDefContext) owner.thisType.implicitMembers
             else if (isImportContext) importInfo.importedImplicits
             else if (isNonEmptyScopeContext) scope.implicitDecls

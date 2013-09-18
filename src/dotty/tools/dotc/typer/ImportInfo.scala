@@ -76,7 +76,7 @@ class ImportInfo(val sym: Symbol, val selectors: List[untpd.Tree], val rootImpor
   }
 
   /** The implicit references imported by this import clause */
-  def importedImplicits: List[TermRefBySym] = {
+  def importedImplicits: List[TermRef] = {
     val pre = site
     if (wildcardImport) {
       val refs = pre.implicitMembers

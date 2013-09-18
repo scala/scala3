@@ -104,6 +104,7 @@ object SymDenotations {
 
     protected[dotc] final def info_=(tp: Type) = {
       def illegal: String = s"illegal type for module $this: $tp"
+      /*
       if (this is Module) // make sure module invariants that allow moduleClass and sourceModule to work are kept.
         tp match {
           case tp: ClassInfo => assert(tp.selfInfo.isInstanceOf[TermRefBySym], illegal)
@@ -111,6 +112,7 @@ object SymDenotations {
           case tp: ExprType => assert(tp.resultType.isInstanceOf[TypeRefBySym], illegal)
           case _ =>
         }
+        */
       myInfo = tp
     }
 
@@ -416,7 +418,8 @@ object SymDenotations {
      *  accessed via prefix `pre`?
      */
     def membersNeedAsSeenFrom(pre: Type)(implicit ctx: Context) =
-      !(  this.isStaticOwner
+      !(  this.isTerm
+       || this.isStaticOwner
        || ctx.erasedTypes && symbol != defn.ArrayClass
        || (pre eq thisType)
        )
@@ -452,20 +455,20 @@ object SymDenotations {
      * the completers.
      */
     /** The class implementing this module, NoSymbol if not applicable. */
-    final def moduleClass: Symbol =
+    final def moduleClass(implicit ctx: Context): Symbol =
       if (this is ModuleVal)
         myInfo match {
-          case info: TypeRefBySym           => info.fixedSym
-          case ExprType(info: TypeRefBySym) => info.fixedSym // needed after uncurry, when module terms might be accessor defs
-          case info: LazyType               => info.moduleClass
-          case _                            => println(s"missing module class for $name: $myInfo"); NoSymbol
+          case info: TypeRef           => info.symbol
+          case ExprType(info: TypeRef) => info.symbol // needed after uncurry, when module terms might be accessor defs
+          case info: LazyType          => info.moduleClass
+          case _                       => println(s"missing module class for $name: $myInfo"); NoSymbol
         }
       else NoSymbol
 
     /** The module implemented by this module class, NoSymbol if not applicable. */
-    final def sourceModule: Symbol = myInfo match {
-      case ClassInfo(_, _, _, _, selfType: TermRefBySym) if this is ModuleClass =>
-        selfType.fixedSym
+    final def sourceModule(implicit ctx: Context): Symbol = myInfo match {
+      case ClassInfo(_, _, _, _, selfType: TermRef) if this is ModuleClass =>
+        selfType.symbol
       case info: LazyType =>
         info.sourceModule
       case _ =>
@@ -617,13 +620,13 @@ object SymDenotations {
     /** The symbolic typeref representing the type constructor for this type.
      *  @throws ClassCastException is this is not a type
      */
-    final def symTypeRef(implicit ctx: Context): TypeRefBySym =
+    final def symTypeRef(implicit ctx: Context): TypeRef =
       TypeRef.withSym(owner.thisType, symbol.asType)
 
     /** The symbolic termref pointing to this termsymbol
      *  @throws ClassCastException is this is not a term
      */
-    def symTermRef(implicit ctx: Context): TermRefBySym =
+    def symTermRef(implicit ctx: Context): TermRef =
       TermRef.withSym(owner.thisType, symbol.asTerm)
 
     def symRef(implicit ctx: Context): NamedType =
