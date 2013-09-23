@@ -23,25 +23,25 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   private var frozenConstraint = false
 
-  private var myAnyType: Type = null
-  private var myNothingType: Type = null
-  private var myNullType: Type = null
-  private var myObjectType: Type = null
-  def AnyType = {
-    if (myAnyType == null) myAnyType = defn.AnyType
-    myAnyType
+  private var myAnyClass: ClassSymbol = null
+  private var myNothingClass: ClassSymbol = null
+  private var myNullClass: ClassSymbol = null
+  private var myObjectClass: ClassSymbol = null
+  def AnyClass = {
+    if (myAnyClass == null) myAnyClass = defn.AnyClass
+    myAnyClass
   }
-  def NothingType = {
-    if (myNothingType == null) myNothingType = defn.NothingType
-    myNothingType
+  def NothingClass = {
+    if (myNothingClass == null) myNothingClass = defn.NothingClass
+    myNothingClass
   }
-  def NullType = {
-    if (myNullType == null) myNullType = defn.NullType
-    myNullType
+  def NullClass = {
+    if (myNullClass == null) myNullClass = defn.NullClass
+    myNullClass
   }
-  def ObjectType = {
-    if (myObjectType == null) myObjectType = defn.ObjectType
-    myObjectType
+  def ObjectClass = {
+    if (myObjectClass == null) myObjectClass = defn.ObjectClass
+    myObjectClass
   }
 
   /** Add the constraint `<bounds.lo <: param <: bounds.hi>`
@@ -220,8 +220,8 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp2: RefinedType =>
       isSubType(tp1, tp2.parent) && (
         tp2.refinedName == nme.WILDCARD
-        || (tp1 eq NothingType)
-        || (tp1 eq NullType)
+        || (tp1.typeSymbol eq NothingClass)
+        || (tp1.typeSymbol eq NullClass)
         || tp1.member(tp2.refinedName).hasAltWith(alt =>
              isSubType(alt.info, tp2.refinedInfo)))
     case AndType(tp21, tp22) =>
@@ -258,29 +258,29 @@ class TypeComparer(initctx: Context) extends DotClass {
     case TypeBounds(lo2, hi2) =>
       tp1 match {
         case TypeBounds(lo1, hi1) =>
-          ((lo2 eq NothingType) || isSubType(lo2, lo1)) &&
-          ((hi2 eq AnyType) || isSubType(hi1, hi2))
+          ((lo2.typeSymbol eq NothingClass) || isSubType(lo2, lo1)) &&
+          ((hi2.typeSymbol eq AnyClass) || isSubType(hi1, hi2))
         case tp1: ClassInfo =>
           val tt = tp1.typeConstructor // was typeTemplate
           isSubType(lo2, tt) && isSubType(tt, hi2)
         case _ =>
           false
       }
-    /* needed?
-       case ClassInfo(pre2, denot2) =>
-        tp1 match {
-          case ClassInfo(pre1, denot1) =>
-            (denot1 eq denot2) && isSubType(pre2, pre1) // !!! or isSameType?
-        }
-*/
+    case ClassInfo(pre2, cls2, _, _, _) =>
+      tp1 match {
+        case ClassInfo(pre1, cls1, _, _, _) =>
+          (cls1 eq cls2) && isSubType(pre2, pre1)
+        case _ =>
+          false
+      }
     case _ =>
       fourthTry(tp1, tp2)
   }
 
   def fourthTry(tp1: Type, tp2: Type): Boolean = tp1 match {
     case tp1: TypeRef =>
-      ((tp1 eq NothingType)
-        || (tp1 eq NullType) && tp2.dealias.typeSymbol.isNonValueClass
+      ((tp1.symbol eq NothingClass)
+        || (tp1.symbol eq NullClass) && tp2.dealias.typeSymbol.isNonValueClass
         || (tp1.info match {
               case TypeBounds(lo1, hi1) =>
                 isSubType(hi1, tp2) ||
@@ -386,8 +386,8 @@ class TypeComparer(initctx: Context) extends DotClass {
       formals2 match {
         case formal2 :: rest2 =>
           (isSameType(formal1, formal2)
-            || isJava1 && formal2 == ObjectType && formal1 == AnyType
-            || isJava2 && formal1 == ObjectType && formal2 == AnyType) && matchingParams(rest1, rest2, isJava1, isJava2)
+            || isJava1 && formal2.typeSymbol == ObjectClass && formal1.typeSymbol == AnyClass
+            || isJava2 && formal1.typeSymbol == ObjectClass && formal2.typeSymbol == AnyClass) && matchingParams(rest1, rest2, isJava1, isJava2)
         case nil =>
           false
       }
@@ -402,8 +402,8 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   def glb(tp1: Type, tp2: Type): Type =
     if (tp1 eq tp2) tp1
-    else if (!tp1.exists || (tp1 eq AnyType) || (tp2 eq NothingType)) tp2
-    else if (!tp2.exists || (tp2 eq AnyType) || (tp1 eq NothingType)) tp1
+    else if (!tp1.exists || (tp1.typeSymbol eq AnyClass) || (tp2.typeSymbol eq NothingClass)) tp2
+    else if (!tp2.exists || (tp2.typeSymbol eq AnyClass) || (tp1.typeSymbol eq NothingClass)) tp1
     else tp2 match {  // normalize to disjunctive normal form if possible.
       case OrType(tp21, tp22) =>
         tp1 & tp21 | tp1 & tp22
@@ -424,11 +424,11 @@ class TypeComparer(initctx: Context) extends DotClass {
                       case tp2: TypeBounds =>
                         return TypeBounds(tp1.lo | tp2.lo, tp1.hi & tp2.hi)
                       case tp2: ClassInfo =>
-                        throw new ClassMergeError(tp2, tp1)
+                        return classMerge(tp2, tp1)
                       case _ =>
                     }
                   case tp1: ClassInfo =>
-                    throw new ClassMergeError(tp1, tp2)
+                    return classMerge(tp1, tp2)
                   case _ =>
                 }
                 AndType(tp1, tp2)
@@ -438,12 +438,12 @@ class TypeComparer(initctx: Context) extends DotClass {
     }
 
   final def glb(tps: List[Type]): Type =
-    (AnyType /: tps)(glb)
+    (defn.AnyType /: tps)(glb)
 
   def lub(tp1: Type, tp2: Type): Type =
     if (tp1 eq tp2) tp1
-    else if (!tp1.exists || (tp1 eq AnyType) || (tp2 eq NothingType)) tp1
-    else if (!tp2.exists || (tp2 eq AnyType) || (tp1 eq NothingType)) tp2
+    else if (!tp1.exists || (tp1.typeSymbol eq AnyClass) || (tp2.typeSymbol eq NothingClass)) tp1
+    else if (!tp2.exists || (tp2.typeSymbol eq AnyClass) || (tp1.typeSymbol eq NothingClass)) tp2
     else {
       val t1 = mergeIfSuper(tp1, tp2)
       if (t1.exists) t1
@@ -457,11 +457,11 @@ class TypeComparer(initctx: Context) extends DotClass {
                 case tp2: TypeBounds =>
                   return TypeBounds(tp1.lo & tp2.lo, tp1.hi | tp2.hi)
                 case tp2: ClassInfo =>
-                  throw new ClassMergeError(tp2, tp1)
+                  return classMerge(tp2, tp1)
                 case _ =>
               }
             case tp1: ClassInfo =>
-              throw new ClassMergeError(tp1, tp2)
+              return classMerge(tp1, tp2)
             case _ =>
           }
           OrType(tp1, tp2)
@@ -470,7 +470,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     }
 
   final def lub(tps: List[Type]): Type =
-    (NothingType /: tps)(lub)
+    (defn.NothingType /: tps)(lub)
 
   /** Merge `t1` into `tp2` if t1 is a subtype of some &-summand of tp2.
    */
@@ -512,6 +512,29 @@ class TypeComparer(initctx: Context) extends DotClass {
         NoType
     }
 
+  /** Merge class info with other TypeType.
+   *  The problem is how to generate a TypeType from the union or intersection
+   *  of a ClassInfo and another TypeType. Generating an (empty) TypeBounds
+   *  that refers to the class symbol via a TypeRef does not work; it leads to
+   *  infinite loops when dereferencing proxies.
+   *  The algorithm used instead is:
+   *  1. ClassInfos always override TypeBounds.
+   *  2. When merging two ClassInfos pick one of them. More precisely,
+   *     pick the first, unless the second's prefix is a true subtype of the
+   *     first's prefix or the second's owner is a true subclass of the first's owner.
+   *  This is arbitrary, but I believe it is analogous to forming
+   *  unfeasible TypeBounds (where lo is not a subtype of hi). Such TypeBounds
+   *  can also be arbitrarily instantiated. In both cases we need to
+   *  make sure that such types do not actually arise in source programs.
+   */
+  private def classMerge(cinfo: ClassInfo, tp2: Type)(implicit ctx: Context): Type = tp2 match {
+    case cinfo2: ClassInfo if isAsGood(cinfo2, cinfo) && !isAsGood(cinfo, cinfo2) => cinfo2
+    case _ => cinfo
+  }
+
+  private def isAsGood(cinfo1: ClassInfo, cinfo2: ClassInfo)(implicit ctx: Context): Boolean =
+    (cinfo1.prefix <:< cinfo2.prefix) || (cinfo1.cls.owner derivesFrom cinfo2.cls.owner)
+
   def copyIn(ctx: Context) = new TypeComparer(ctx)
 }
 
@@ -535,7 +558,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 
   override def isSubType(tp1: Type, tp2: Type) =
-    traceIndented(s"${show(tp1)} <:< ${show(tp2)} ${tp1.getClass} ${defn.NothingType.getClass} ${tp1.normalizedPrefix} ${defn.NothingType.normalizedPrefix} ${tp1 eq defn.NothingType}  ${tp1.typeSymbol eq defn.NothingClass}") {
+    traceIndented(s"${show(tp1)} <:< ${show(tp2)}") {
       super.isSubType(tp1, tp2)
     }
 
