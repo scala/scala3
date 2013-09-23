@@ -127,7 +127,10 @@ trait Reporting { this: Context =>
     if (this.settings.debug.value) warning(msg, pos)
 
   def debugTraceIndented[T](question: => String)(op: => T): T =
-    if (this.settings.debugTrace.value) traceIndented(question)(op)
+    conditionalTraceIndented(this.settings.debugTrace.value, question)(op)
+
+  def conditionalTraceIndented[T](cond: Boolean, question: => String, show: Boolean = false)(op: => T): T =
+    if (cond) traceIndented(question, show)(op)
     else op
 
   def traceIndented[T](question: => String, show: Boolean = false)(op: => T): T = {

@@ -6,6 +6,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags._
 import Types._, Symbols._, Decorators._
 import dotty.tools.dotc.printing.Texts._
+import dotty.tools.dotc.reporting.ConsoleReporter
 import dotty.tools.dotc.core.Decorators._
 
 class DottyTest {
@@ -24,6 +25,8 @@ class DottyTest {
       .withSetting(printtypes, true)
       .withSetting(pageWidth, 90)
       .withSetting(log, List("<some"))
+ //   .withTyperState(new TyperState(new ConsoleReporter()(base.initialCtx)))
+
 //      .withSetting(uniqid, true)
     println(ctx.settings)
     base.definitions.init()

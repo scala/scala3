@@ -11,7 +11,7 @@ import printing.{Showable, Printer}
 import printing.Texts._
 import annotation.elidable
 
-class TyperState(val reporter: Reporter = ThrowingReporter) extends DotClass with Showable {
+class TyperState(val reporter: Reporter) extends DotClass with Showable {
 
   /** The current constraint set */
   def constraint: Constraint = new Constraint(SimpleMap.Empty)

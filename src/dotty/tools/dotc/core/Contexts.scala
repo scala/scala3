@@ -320,7 +320,7 @@ object Contexts {
     outer = NoContext
     period = InitialPeriod
     mode = Mode.None
-    typerState = new TyperState(new ConsoleReporter()(this))
+    typerState = new TyperState(new ThrowingReporter(new ConsoleReporter()(this)))
     printerFn = new RefinedPrinter(_)
     owner = NoSymbol
     sstate = settings.defaultState
