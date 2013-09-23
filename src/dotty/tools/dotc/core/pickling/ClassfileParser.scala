@@ -140,7 +140,7 @@ class ClassfileParser(
     var sym = classRoot.owner
     while (sym.isClass && !(sym is Flags.ModuleClass)) {
       for (tparam <- sym.typeParams) {
-        classTParams = classTParams.updated(tparam.name, tparam)
+        classTParams = classTParams.updated(tparam.name.unexpandedName(), tparam)
       }
       sym = sym.owner
     }
@@ -304,6 +304,7 @@ class ClassfileParser(
         case 'T' =>
           val n = subName(';'.==).toTypeName
           index += 1
+          //assert(tparams contains n, s"classTparams = $classTParams, tparams = $tparams, key = $n")
           if (skiptvs) defn.AnyType else tparams(n).typeConstructor
       }
     } // sig2type(tparams, skiptvs)

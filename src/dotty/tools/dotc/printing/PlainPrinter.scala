@@ -161,7 +161,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def idString(sym: Symbol): String =
     if (ctx.settings.uniqid.value) "#" + sym.id else ""
 
-  def nameString(sym: Symbol): String = simpleNameString(sym) + idString(sym)
+  def nameString(sym: Symbol): String =
+    simpleNameString(sym) + idString(sym) // + "<" + (if (sym.exists) sym.owner else "") + ">"
 
   def fullNameString(sym: Symbol): String =
     if (sym.isRoot || sym == NoSymbol || sym.owner.isEffectiveRoot)
@@ -312,7 +313,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
       else nameString(sym)
     }).close
 
-  def locationText(sym: Symbol): Text = {
+  def locationText(sym: Symbol): Text =
+    if (!sym.exists) ""
+    else {
     val owns = sym.effectiveOwner
     if (owns.isClass && !isEmptyPrefix(owns)) " in " ~ toText(owns) else Text()
   }
