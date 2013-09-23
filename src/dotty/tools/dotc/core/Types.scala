@@ -1423,6 +1423,7 @@ object Types {
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))
         this
       else if (refinedName.isHkParamName &&
+               parent.typeSymbol.isCompleted && // to avoid cyclic reference errors
                refinedName.hkParamIndex < typeParams.length &&
                originalName != refinedName)
         derivedRefinedType(parent, originalName, refinedInfo)
@@ -1467,6 +1468,10 @@ object Types {
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else AndType(tp1, tp2)
 
+    def derived_& (tp1: Type, tp2: Type)(implicit ctx: Context) =
+      if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
+      else tp1 & tp2
+
     override def computeHash = doHash(tp1, tp2)
   }
 
@@ -1481,6 +1486,10 @@ object Types {
     def derivedOrType(tp1: Type, tp2: Type)(implicit ctx: Context) =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else OrType(tp1, tp2)
+
+    def derived_| (tp1: Type, tp2: Type)(implicit ctx: Context) =
+      if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
+      else tp1 | tp2
 
     override def computeHash = doHash(tp1, tp2)
   }
@@ -1879,6 +1888,8 @@ object Types {
       else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
     override def computeHash = doHash(cls, prefix)
+
+    override def toString = s"ClassInfo($prefix, $cls)"
   }
 
   final class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[TypeRef], decls: Scope, selfInfo: DotClass)
@@ -2123,6 +2134,12 @@ object Types {
         val inst = tp.instanceOpt
         if (inst.exists) apply(inst) else tp
 
+      case tp: AndType =>
+        tp.derivedAndType(this(tp.tp1), this(tp.tp2))
+
+      case tp: OrType =>
+        tp.derivedOrType(this(tp.tp1), this(tp.tp2))
+
       case tp @ WildcardType =>
         tp.derivedWildcardType(mapOver(tp.optBounds))
 
@@ -2301,15 +2318,6 @@ object Types {
 
   class CyclicReference(val denot: SymDenotation)
     extends FatalTypeError(s"cyclic reference involving $denot")
-
-  class ClassMergeError(cinfo: ClassInfo, tp2: Type)(implicit ctx: Context)
-    extends FatalTypeError(s"cannot merge ${showTypeType(cinfo)} with ${showTypeType(tp2)} as members of ${cinfo.prefix.show}")
-
-  private def showTypeType(tp: Type)(implicit ctx: Context) = tp match {
-    case ClassInfo(_, cls, _, _, _) => cls.showLocated
-    case bounds: TypeBounds => "type bounds" + bounds.show
-    case _ => tp.show
-  }
 
   // ----- Debug ---------------------------------------------------------
 
