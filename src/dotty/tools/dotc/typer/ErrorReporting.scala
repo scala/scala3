@@ -97,14 +97,18 @@ object ErrorReporting {
       }
 
       def treatArg(arg: Any, suffix: String): (Any, String) = arg match {
-        case arg: Showable =>
-          (arg.show, suffix)
         case arg: List[_] if suffix.nonEmpty && suffix.head == '%' =>
-          val (sep, rest) = suffix.tail.span(_ != '%')
-          if (rest.nonEmpty) (arg mkString sep, rest.tail)
+          val (rawsep, rest) = suffix.tail.span(_ != '%')
+          val sep = StringContext.treatEscapes(rawsep)
+          if (rest.nonEmpty) (arg map treatSingleArg mkString sep, rest.tail)
           else (arg, suffix)
         case _ =>
           (arg, suffix)
+      }
+
+      def treatSingleArg(arg: Any) : Any = arg match {
+        case arg: Showable => arg.show
+        case _ => arg
       }
 
       if (ctx.reporter.hasErrors &&
