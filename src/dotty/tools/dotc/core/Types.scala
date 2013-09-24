@@ -1165,6 +1165,8 @@ object Types {
 
     private def computeDenot(implicit ctx: Context): Denotation = {
       val denot = lastDenotationOrSym match {
+        case d: SymDenotation if d is ValidForever =>
+          d.current
         case d: Denotation =>
           if (d.validFor.runId == ctx.period.runId) d.current
           else loadDenot
