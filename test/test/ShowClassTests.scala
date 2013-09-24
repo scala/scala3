@@ -48,9 +48,9 @@ class ShowClassTests extends DottyTest {
         sym <- pkg.info.decls if sym.owner == pkg.moduleClass && !(sym.name contains '$')
       ) {
         println(s"showing $sym in ${pkg.fullName}")
-        if (sym is Package) showPackage(sym.asTerm)
-        else if (sym.isClass) showClass(sym)
-        else if (sym is Module) showClass(sym.moduleClass)
+        if (sym is PackageVal) showPackage(sym.asTerm)
+        else if (sym.isClass && !(sym is Module)) showClass(sym)
+        else if (sym is ModuleVal) showClass(sym.moduleClass)
       }
     }
   }

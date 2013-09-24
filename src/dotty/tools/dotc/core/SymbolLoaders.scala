@@ -52,6 +52,7 @@ class SymbolLoaders {
       (modul, _) => completer.proxy withDecls newScope withSourceModule modul,
       assocFile = completer.sourceFileOrNull)
     enterNew(owner, module, completer, scope)
+    enterNew(owner, module.moduleClass, completer, scope)
   }
 
   /** Enter package with given `name` into scope of `owner`
@@ -149,14 +150,18 @@ class SymbolLoaders {
 
     def doComplete(root: SymDenotation) {
       assert(root is PackageClass, root)
+ 	  def maybeModuleClass(classRep: ClassPath#ClassRep) = classRep.name.last == '$'
       val pre = root.owner.thisType
       root.info = ClassInfo(pre, root.symbol.asClass, Nil, preDecls, TermRef.withSym(pre, sourceModule))
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
       if (!root.isRoot) {
-        for (classRep <- classpath.classes) {
-          initializeFromClassPath(root.symbol, classRep)
-        }
+        for (classRep <- classpath.classes)
+          if (!maybeModuleClass(classRep))
+            initializeFromClassPath(root.symbol, classRep)
+        for (classRep <- classpath.classes)
+          if (maybeModuleClass(classRep) && !root.decls.lookup(classRep.name.toTypeName).exists)
+            initializeFromClassPath(root.symbol, classRep)
       }
       if (!root.isEmptyPackage) {
         for (pkg <- classpath.packages) {

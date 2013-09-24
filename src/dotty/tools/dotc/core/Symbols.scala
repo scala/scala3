@@ -345,6 +345,7 @@ object Symbols {
     final def entered(implicit ctx: Context): this.type = {
       assert(this.owner.isClass, this.owner.denot) // !!! DEBUG
       this.owner.asClass.enter(this)
+      if (this is Module) this.owner.asClass.enter(this.moduleClass)
       this
     }
 
