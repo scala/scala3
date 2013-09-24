@@ -278,8 +278,9 @@ class Typer extends Namer with Applications with Implicits {
           if (defDenots.exists) {
             val curOwner = ctx.owner
             val pre = curOwner.thisType
-            val found = NamedType(pre, name).withDenot(defDenots toDenot pre)
-            if (!(curOwner is Package) || isDefinedInCurrentUnit(defDenots))
+            val defDenot = defDenots toDenot pre
+            val found = NamedType(pre, name) withDenot defDenot
+            if (!(curOwner is Package) || (defDenot.symbol is Package) || isDefinedInCurrentUnit(defDenots))
               return checkNewOrShadowed(found, definition) // no need to go further out, we found highest prec entry
             else if (prevPrec < packageClause)
               return findRef(found, packageClause, ctx)(outer)
@@ -953,7 +954,7 @@ class Typer extends Namer with Applications with Implicits {
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
       val alts = altDenots map (alt =>
-        TermRef.withSym(ref.prefix, alt.symbol.asTerm).withDenot(alt))
+        TermRef.withSig(ref.prefix, ref.name, alt.info.signature).withDenot(alt))
       def expectedStr = err.expectedTypeStr(pt)
       resolveOverloaded(alts, pt) match {
         case alt :: Nil =>

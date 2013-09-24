@@ -98,7 +98,12 @@ object SymDenotations {
       myFlags |= Touched
 
       Context.theBase.initialCtx.debugTraceIndented(s"completing ${this.debugString}") {
-        completer.complete(this)
+        try completer.complete(this) // !!! DEBUG
+        catch {
+          case ex: java.io.IOException =>
+            println(s"error when completing $name#${symbol.id} ${completer.getClass}")
+            throw ex
+        }
       }
     }
 
