@@ -460,14 +460,8 @@ object Denotations {
     def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
       val valid = myValidFor
-      def stillValid(denot: SymDenotation): Boolean =
-        if (denot is ValidForever) true
-        else if (denot.owner is PackageClass)
-          (denot.owner.decls.lookup(denot.name) eq denot.symbol) ||
-            (denot is ModuleClass) && stillValid(denot.sourceModule) // !!! DEBUG - we should check why module classes are not entered
-        else stillValid(denot.owner)
       def bringForward(): SingleDenotation = this match {
-        case denot: SymDenotation if stillValid(denot) =>
+        case denot: SymDenotation if ctx.stillValid(denot) =>
           var d: SingleDenotation = denot
           do {
             d.validFor = Period(currentPeriod.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)

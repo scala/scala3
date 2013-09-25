@@ -30,6 +30,13 @@ trait SymDenotations { this: Context =>
     result.validFor = stablePeriod
     result
   }
+
+  def stillValid(denot: SymDenotation): Boolean =
+    if (denot is ValidForever) true
+    else if (denot.owner is PackageClass)
+      (denot.owner.decls.lookup(denot.name) eq denot.symbol) ||
+      (denot is ModuleClass) && stillValid(denot.sourceModule) // !!! DEBUG - we should check why module classes are not entered
+    else stillValid(denot.owner)
 }
 object SymDenotations {
 

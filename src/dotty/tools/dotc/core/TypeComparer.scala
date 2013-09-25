@@ -21,7 +21,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   private var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private var recCount = 0
 
-  private var frozenConstraint = false
+  protected var frozenConstraint = false
 
   private var myAnyClass: ClassSymbol = null
   private var myNothingClass: ClassSymbol = null
@@ -570,6 +570,11 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   override def glb(tp1: Type, tp2: Type) =
     traceIndented(s"glb(${show(tp1)}, ${show(tp2)})") {
       super.glb(tp1, tp2)
+    }
+
+  override  def addConstraint(param: PolyParam, bounds: TypeBounds): Boolean =
+    traceIndented(s"add constraint $param $bounds $frozenConstraint") {
+      super.addConstraint(param, bounds)
     }
 
   override def copyIn(ctx: Context) = new ExplainingTypeComparer(ctx)

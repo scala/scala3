@@ -337,7 +337,10 @@ object Types {
 
     /** The member of this type with the given name  */
     final def member(name: Name)(implicit ctx: Context): Denotation =
-      findMember(name, this, EmptyFlags)
+      try findMember(name, this, EmptyFlags)
+      catch {
+        case ex: Throwable => println(s"error occurred during: $this member $name"); throw ex // DEBUG
+      }
 
     /** The non-private member of this type with the given name. */
     final def nonPrivateMember(name: Name)(implicit ctx: Context): Denotation =
@@ -353,9 +356,11 @@ object Types {
         val pdenot = tp.parent.findMember(name, pre, excluded)
         if (name eq tp.refinedName) {
           val rinfo = tp.refinedInfo.substThis(tp, pre)
-          if (name.isTypeName) // simplified case that runs more efficiently
+          if (name.isTypeName) {// simplified case that runs more efficiently
+            val info = if (pdenot.symbol is TypeParam) rinfo else pdenot.info & rinfo
             pdenot.asInstanceOf[SingleDenotation].derivedSingleDenotation(
-              pdenot.symbol, pdenot.info & rinfo)
+              pdenot.symbol, info)
+          }
           else
             pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
         }
@@ -386,7 +391,7 @@ object Types {
         l.findMember(name, pre, excluded) | (r.findMember(name, pre, excluded), pre)
       case ErrorType =>
         ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name)
-      case NoType =>
+      case _ =>
         NoDenotation
     } /* !!! DEBUG ensuring { denot =>
       denot.alternatives forall (_.symbol.name == name)
@@ -1165,7 +1170,7 @@ object Types {
 
     private def computeDenot(implicit ctx: Context): Denotation = {
       val denot = lastDenotationOrSym match {
-        case d: SymDenotation if d is ValidForever =>
+        case d: SymDenotation if ctx.stillValid(d) =>
           d.current
         case d: Denotation =>
           if (d.validFor.runId == ctx.period.runId) d.current
@@ -1292,6 +1297,7 @@ object Types {
       case _ =>
         false
     }
+    //assert(name.toString != "scala$collection$LinearSeqLike$$Repr", s"sel pre = $prefix")
     override def computeHash = doHash(name, prefix)
   }
 

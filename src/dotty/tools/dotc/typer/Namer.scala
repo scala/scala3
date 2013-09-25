@@ -368,14 +368,16 @@ class Namer { typer: Typer =>
         val site = sym.owner.thisType
         val inherited = {
           // TODO: Look only at member of supertype instead?
-          ((NoType: Type) /: sym.owner.info.baseClasses.tail) { (tp, cls) =>
-            val itpe = cls.info
-              .nonPrivateDecl(sym.name)
-              .matchingDenotation(site, schema)
-              .asSeenFrom(site)
-              .info.finalResultType
-            tp & itpe
-          }
+          if (sym.owner.isTerm) NoType
+          else
+            ((NoType: Type) /: sym.owner.info.baseClasses.tail) { (tp, cls) =>
+              val itpe = cls.info
+                .nonPrivateDecl(sym.name)
+                .matchingDenotation(site, schema)
+                .asSeenFrom(site)
+                .info.finalResultType
+              tp & itpe
+            }
         }
         inherited orElse typedAheadExpr(mdef.rhs).tpe.widen
       }

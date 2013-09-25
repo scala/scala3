@@ -23,6 +23,12 @@ object Inferred {
 
   val ints: List[Int] = Nil prepend 1
 
-  // val a = if (1 == 0) Nil else ints
+  val a = if (1 == 0) Nil else ints
+  
+  val n2 = scala.collection.immutable.Nil
+  
+  val ints2: scala.collection.immutable.List[String] = "abc" :: n2
+  
+  val ints3 = "abc" :: n2
 
 }
