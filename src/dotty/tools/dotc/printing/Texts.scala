@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 package printing
 import core.Contexts.Context
+import language.implicitConversions
 
 object Texts {
 

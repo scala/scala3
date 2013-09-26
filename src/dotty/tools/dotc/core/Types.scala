@@ -1233,7 +1233,11 @@ object Types {
     def isType = name.isTypeName
     def isTerm = name.isTermName
 
-    def symbol(implicit ctx: Context): Symbol = denot.symbol
+    def symbol(implicit ctx: Context): Symbol = lastDenotationOrSym match {
+      case sym: Symbol => sym
+      case _ => denot.symbol
+    }
+
     def info(implicit ctx: Context): Type = denot.info
 
     override def underlying(implicit ctx: Context): Type = info
