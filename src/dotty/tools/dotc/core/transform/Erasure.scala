@@ -131,10 +131,10 @@ object Erasure {
   }
 
   def resultErasure(tp: Type)(implicit ctx: Context) =
-    if (tp.isClassType(defn.UnitClass)) tp else erasure(tp)
+    if (tp isRef defn.UnitClass) tp else erasure(tp)
 
   def removeLaterObjects(trs: List[TypeRef])(implicit ctx: Context): List[TypeRef] = trs match {
-    case tr :: trs1 => tr :: trs1.filterNot(_.isClassType(defn.ObjectClass))
+    case tr :: trs1 => tr :: trs1.filterNot(_ isRef defn.ObjectClass)
     case nil => nil
   }
 }

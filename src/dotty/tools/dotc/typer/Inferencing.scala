@@ -28,7 +28,7 @@ object Inferencing {
      */
     def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean = (
       (tp <:< pt)
-      || pt.typeSymbol == defn.ByNameParamClass && (tp <:< pt.typeArgs.head)
+      || (pt isRef defn.ByNameParamClass) && (tp <:< pt.typeArgs.head)
       || viewExists(tp, pt))
   }
 

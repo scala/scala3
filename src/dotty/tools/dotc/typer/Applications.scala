@@ -556,7 +556,7 @@ trait Applications extends Compatibility { self: Typer =>
 
         if (tp derivesFrom defn.ProductClass) productSelectors
         else if (tp derivesFrom defn.SeqClass) seqSelector :: Nil
-        else if (tp.typeSymbol == defn.BooleanClass) Nil
+        else if (tp isRef defn.BooleanClass) Nil
         else if (extractorMemberType(nme.isDefined).exists &&
                  extractorMemberType(nme.get).exists) recur(extractorMemberType(nme.get))
         else {

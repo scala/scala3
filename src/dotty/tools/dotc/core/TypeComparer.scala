@@ -220,8 +220,8 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp2: RefinedType =>
       isSubType(tp1, tp2.parent) && (
         tp2.refinedName == nme.WILDCARD
-        || (tp1.typeSymbol eq NothingClass)
-        || (tp1.typeSymbol eq NullClass)
+        || (tp1 isRef NothingClass)
+        || (tp1 isRef NullClass)
         || tp1.member(tp2.refinedName).hasAltWith(alt =>
              isSubType(alt.info, tp2.refinedInfo)))
     case AndType(tp21, tp22) =>
@@ -258,8 +258,8 @@ class TypeComparer(initctx: Context) extends DotClass {
     case TypeBounds(lo2, hi2) =>
       tp1 match {
         case TypeBounds(lo1, hi1) =>
-          ((lo2.typeSymbol eq NothingClass) || isSubType(lo2, lo1)) &&
-          ((hi2.typeSymbol eq AnyClass) || isSubType(hi1, hi2))
+          ((lo2 isRef NothingClass) || isSubType(lo2, lo1)) &&
+          ((hi2 isRef AnyClass) || isSubType(hi1, hi2))
         case tp1: ClassInfo =>
           val tt = tp1.typeConstructor // was typeTemplate
           isSubType(lo2, tt) && isSubType(tt, hi2)
@@ -386,8 +386,9 @@ class TypeComparer(initctx: Context) extends DotClass {
       formals2 match {
         case formal2 :: rest2 =>
           (isSameType(formal1, formal2)
-            || isJava1 && formal2.typeSymbol == ObjectClass && formal1.typeSymbol == AnyClass
-            || isJava2 && formal1.typeSymbol == ObjectClass && formal2.typeSymbol == AnyClass) && matchingParams(rest1, rest2, isJava1, isJava2)
+            || isJava1 && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
+            || isJava2 && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
+          matchingParams(rest1, rest2, isJava1, isJava2)
         case nil =>
           false
       }
@@ -402,8 +403,8 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   def glb(tp1: Type, tp2: Type): Type =
     if (tp1 eq tp2) tp1
-    else if (!tp1.exists || (tp1.typeSymbol eq AnyClass) || (tp2.typeSymbol eq NothingClass)) tp2
-    else if (!tp2.exists || (tp2.typeSymbol eq AnyClass) || (tp1.typeSymbol eq NothingClass)) tp1
+    else if (!tp1.exists || (tp1 isRef AnyClass) || (tp2 isRef NothingClass)) tp2
+    else if (!tp2.exists || (tp2 isRef AnyClass) || (tp1 isRef NothingClass)) tp1
     else tp2 match {  // normalize to disjunctive normal form if possible.
       case OrType(tp21, tp22) =>
         tp1 & tp21 | tp1 & tp22
@@ -442,8 +443,8 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   def lub(tp1: Type, tp2: Type): Type =
     if (tp1 eq tp2) tp1
-    else if (!tp1.exists || (tp1.typeSymbol eq AnyClass) || (tp2.typeSymbol eq NothingClass)) tp1
-    else if (!tp2.exists || (tp2.typeSymbol eq AnyClass) || (tp1.typeSymbol eq NothingClass)) tp2
+    else if (!tp1.exists || (tp1 isRef AnyClass) || (tp2 isRef NothingClass)) tp1
+    else if (!tp2.exists || (tp2 isRef AnyClass) || (tp1 isRef NothingClass)) tp2
     else {
       val t1 = mergeIfSuper(tp1, tp2)
       if (t1.exists) t1

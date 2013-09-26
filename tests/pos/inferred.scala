@@ -1,10 +1,14 @@
 class List[+T] {
   
-  def prepend [U >: T] (x: U): List[U] = null
+  def prepend [U >: T] (x: U): List[U] = null//new Cons(x, this)
+  
+  def map[U](f: T => U): List[U] = null
   
 }
 
 object Nil extends List[Nothing]
+
+//class Cons[T](hd: T, tl: List[T]) extends List[T]
 
 
 object Inferred {
@@ -27,8 +31,11 @@ object Inferred {
   
   val n2 = scala.collection.immutable.Nil
   
-  val ints2: scala.collection.immutable.List[String] = "abc" :: n2
+  val ss2: scala.collection.immutable.List[String] = "abc" :: n2
   
-  val ints3 = "abc" :: n2
-
+  val ss3 = "abc" :: n2
+  
+  def closure = ((x: Int) => x)
+  
+  val ints2 = ints map closure
 }

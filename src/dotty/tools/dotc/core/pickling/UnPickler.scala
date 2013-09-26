@@ -71,7 +71,7 @@ object UnPickler {
       assert(lastArg.isArray)
       val elemtp0 :: Nil = lastArg.baseTypeArgs(defn.ArrayClass)
       val elemtp = elemtp0 match {
-        case AndType(t1, t2) if t1.typeSymbol.isAbstractType && t2.isClassType(defn.ObjectClass) =>
+        case AndType(t1, t2) if t1.typeSymbol.isAbstractType && (t2 isRef defn.ObjectClass) =>
           t1 // drop intersection with Object for abstract types in varargs. UnCurry can handle them.
         case _ =>
           elemtp0
@@ -538,7 +538,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
    */
   def elimExistentials(boundSyms: List[Symbol], tp: Type): Type = {
     def removeSingleton(tp: Type): Type =
-      if (tp.isClassType(defn.SingletonClass)) defn.AnyType else tp
+      if (tp isRef defn.SingletonClass) defn.AnyType else tp
     def elim(tp: Type): Type = tp match {
       case tp @ RefinedType(parent, name) =>
         val parent1 = elim(tp.parent)

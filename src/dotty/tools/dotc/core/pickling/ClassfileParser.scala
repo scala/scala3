@@ -248,7 +248,7 @@ class ClassfileParser(
                           val tp = sig2type(tparams, skiptvs)
                           // sig2type seems to return AnyClass regardless of the situation:
                           // we don't want Any as a LOWER bound.
-                          if (tp.typeSymbol == defn.AnyClass) TypeBounds.empty
+                          if (tp isRef defn.AnyClass) TypeBounds.empty
                           else TypeBounds.lower(tp)
                         case '*' => TypeBounds.empty
                       }

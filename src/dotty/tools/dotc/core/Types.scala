@@ -53,7 +53,6 @@ object Types {
    *        |              |                +--- ConstantType
    *        |              |                +--- MethodParam
    *        |              |                +--- RefinedThis
-   *        |              |                +--- NoPrefix
    *        |              +- PolyParam
    *        |              +- RefinedType
    *        |              +- TypeBounds
@@ -69,6 +68,7 @@ object Types {
    *                       +- ClassInfo
    *                       |
    *                       +- NoType
+   *                       +- NoPrefix
    *                       +- ErrorType
    *                       +- WildcardType
    */
@@ -92,16 +92,30 @@ object Types {
       case _ => false
     }
 
-    /** Is this type an instance of the given class `cls`? */
-    final def isClassType(cls: Symbol)(implicit ctx: Context): Boolean =
-      dealias.typeSymbol == cls
+    /** Is this type a (possibly aliased and/or partially applied) type reference
+     *  to the given type symbol?
+     *  @sym  The symbol to compare to. It must be a class symbol or abstract type.
+     *        It makes no sense for it to be an alias type because isRef would always
+     *        return false in that case.
+     */
+    def isRef(sym: Symbol)(implicit ctx: Context): Boolean = stripTypeVar match {
+      case this1: TypeRef =>
+        val thissym = this1.symbol
+        if (thissym.isAliasType) this1.info.bounds.hi.isRef(sym)
+        else thissym eq sym
+      case this1: RefinedType =>
+        // make sure all refinements are type arguments
+        this1.parent.isRef(sym) && this.typeArgs.nonEmpty
+      case _ =>
+        false
+    }
 
     /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
-    final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean =
+    final def derivesFrom(cls: Symbol)(implicit defctx: Context): Boolean =
       classSymbol.derivesFrom(cls)
 
     /** Is this an array type? */
-    final def isArray(implicit ctx: Context): Boolean = isClassType(defn.ArrayClass)
+    final def isArray(implicit ctx: Context): Boolean = isRef(defn.ArrayClass)
 
    /** A type T is a legal prefix in a type selection T#A if
      *  T is stable or T contains no uninstantiated type variables.
@@ -568,7 +582,7 @@ object Types {
 
     /** Map references to Object to references to Any; needed for Java interop */
     final def objToAny(implicit ctx: Context) =
-      if (isClassType(defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else this
+      if ((this isRef defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else this
 
     /** If this is repeated parameter type, its underlying type,
      *  else the type itself.
@@ -837,8 +851,8 @@ object Types {
     final def argType(tparam: Symbol)(implicit ctx: Context): Type = this match {
       case TypeBounds(lo, hi) =>
         val v = tparam.variance
-        if (v > 0 && lo.isClassType(defn.NothingClass)) hi
-        else if (v < 0 && hi.isClassType(defn.AnyClass)) lo
+        if (v > 0 && (lo isRef defn.NothingClass)) hi
+        else if (v < 0 && (hi isRef defn.AnyClass)) lo
         else if (v == 0 && (lo eq hi)) lo
         else NoType
       case _ =>
@@ -1867,9 +1881,9 @@ object Types {
       if ((prefix eq cls.owner.thisType) || !cls.owner.isClass) tp
       else tp.substThis(cls.owner.asClass, prefix)
 
-    private var tyconCache: Type = null
+    private var tyconCache: TypeRef = null
 
-    def typeConstructor(implicit ctx: Context): Type = {
+    def typeConstructor(implicit ctx: Context): TypeRef = {
       def clsDenot = if (prefix eq cls.owner.thisType) cls.denot else cls.denot.copySymDenotation(info = this)
       if (tyconCache == null)
         tyconCache =

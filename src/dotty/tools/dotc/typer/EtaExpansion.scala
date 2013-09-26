@@ -31,11 +31,10 @@ object EtaExpansion {
 
   def liftArgs(defs: mutable.ListBuffer[Tree], methType: Type, args: List[Tree])(implicit ctx: Context) = {
     def toPrefix(name: Name) = if (name contains '$') "" else name.toString
-    def isByName(tp: Type) = tp.typeSymbol == defn.ByNameParamClass
     val paramInfos = methType match {
       case MethodType(paramNames, paramTypes) =>
         (paramNames, paramTypes).zipped map ((name, tp) =>
-          (toPrefix(name), isByName(tp)))
+          (toPrefix(name), tp isRef defn.ByNameParamClass))
       case _ =>
         args map Function.const(("", false))
     }

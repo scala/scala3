@@ -387,7 +387,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedPair(tree: untpd.Pair, pt: Type)(implicit ctx: Context) = {
     val (leftProto, rightProto) = pt.typeArgs match {
-      case l :: r :: Nil if pt.typeSymbol == defn.PairClass => (l, r)
+      case l :: r :: Nil if pt isRef defn.PairClass => (l, r)
       case _ => (WildcardType, WildcardType)
     }
     val left1 = typed(tree.left, leftProto)
@@ -468,7 +468,7 @@ class Typer extends Namer with Applications with Implicits {
     else {
       val params = args.asInstanceOf[List[ValDef]]
       val protoFormals: List[Type] = pt match {
-        case _ if pt.typeSymbol == defn.FunctionClass(params.length) =>
+        case _ if pt isRef defn.FunctionClass(params.length) =>
           pt.typeArgs take params.length
         case SAMType(meth) =>
           val MethodType(_, paramTypes) = meth.info
@@ -1028,7 +1028,7 @@ class Typer extends Namer with Applications with Implicits {
       val folded = ConstFold(tree, pt)
       if (folded ne EmptyTree) return folded
       // drop type if prototype is Unit
-      if (pt.typeSymbol == defn.UnitClass)
+      if (pt isRef defn.UnitClass)
         return tpd.Block(tree :: Nil, Literal(Constant()))
       // convert function literal to SAM closure
       tree match {
