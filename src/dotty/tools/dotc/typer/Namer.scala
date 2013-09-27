@@ -13,6 +13,7 @@ import util.SourcePosition
 import collection.mutable
 import annotation.tailrec
 import ErrorReporting._
+import tpd.ListOfTreeDecorator
 import language.implicitConversions
 
 trait NamerContextOps { this: Context =>
@@ -296,8 +297,13 @@ class Namer { typer: Typer =>
       def classDefSig(cdef: TypeDef, cls: ClassSymbol)(implicit ctx: Context): Type = {
         //todo: normalize parents, so that all mixins extend superclass
         def parentType(constr: untpd.Tree): Type = {
-          val Trees.Select(Trees.New(tpt), _) = methPart(constr)
-          val ptype = typedAheadType(tpt).tpe
+          val (core, targs) = stripApply(constr) match {
+            case TypeApply(core, targs) => (core, targs)
+            case core => (core, Nil)
+          }
+          val Select(New(tpt), _) = core
+          val targs1 = targs map (typedAheadType(_))
+          val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
           if (ptype.uninstantiatedTypeParams.isEmpty) ptype
           else typedAheadExpr(constr).tpe
         }

@@ -397,13 +397,13 @@ object Denotations {
     def orElse(that: => SingleDenotation) = if (this.exists) this else that
 
     def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
-      if (p(symbol)) this :: Nil else Nil
+      if (exists && p(symbol)) this :: Nil else Nil
 
     def suchThat(p: Symbol => Boolean): SingleDenotation =
-      if (p(symbol)) this else NoDenotation
+      if (exists && p(symbol)) this else NoDenotation
 
     def hasAltWith(p: SingleDenotation => Boolean): Boolean =
-      p(this)
+      exists && p(this)
 
     def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation =
       if (symbol isAccessibleFrom (pre, superAccess)) this else NoDenotation

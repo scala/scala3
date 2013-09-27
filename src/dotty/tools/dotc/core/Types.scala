@@ -214,6 +214,15 @@ object Types {
       case _ => NoSymbol
     }
 
+    /** The type symbol associated with the type, skipping alises */
+    final def dealiasedTypeSymbol(implicit ctx: Context): Symbol = this match {
+      case tp: TermRef => NoSymbol
+      case tp: ClassInfo => tp.cls
+      case ThisType(cls) => cls
+      case tp: TypeProxy => tp.underlying.dealiasedTypeSymbol
+      case _ => NoSymbol
+    }
+
     /** The least class or trait of which this type is a subtype, or
      *  NoSymbol if none exists (either because this type is not a
      *  value type, or because superclasses are ambiguous).

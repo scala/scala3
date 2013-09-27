@@ -1,14 +1,26 @@
 class List[+T] {
   
-  def prepend [U >: T] (x: U): List[U] = null//new Cons(x, this)
+  def isEmpty: Boolean
+  def head: T
+  def tail: List[T]
   
-  def map[U](f: T => U): List[U] = null
+  def prepend [U >: T] (x: U): List[U] = new Cons(x, this)
+  
+  def map[U](f: T => U): List[U] = if (isEmpty) Nil else tail.map(f).prepend(f(head))
   
 }
 
-object Nil extends List[Nothing]
+object Nil extends List[Nothing] {
+  def isEmpty = true
+  def head = throw new Error()
+  def tail = ???
+}
 
-//class Cons[T](hd: T, tl: List[T]) extends List[T]
+class Cons[T](hd: T, tl: List[T]) extends List[T] {
+  def isEmpty = false
+  def head = hd
+  def tail = tl
+}
 
 
 object Inferred {
@@ -35,7 +47,7 @@ object Inferred {
   
   val ss3 = "abc" :: n2
   
-  def closure = ((x: Int) => x)
+  def cl = ((x: Int) => x + 1)
   
-  val ints2 = ints map closure
+  val ints2 = ints map (_ + 1)
 }

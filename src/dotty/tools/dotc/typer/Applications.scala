@@ -475,7 +475,7 @@ trait Applications extends Compatibility { self: Typer =>
                     val qual1 = adapt(qual, new SelectionProto(name, proto))
                     if (qual1.tpe.isError) qual1
                     else {
-                      assert(qual1 ne qual)
+                      assert(qual1 ne qual, s"$qual1 : ${qual1.tpe}")
                       typedApply(
                         cpy.Apply(tree,
                           cpy.Select(fun1, untpd.TypedSplice(qual1), name),

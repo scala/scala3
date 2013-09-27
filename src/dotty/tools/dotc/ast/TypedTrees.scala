@@ -255,9 +255,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val selfType =
       if (cls.classInfo.selfInfo ne NoType) ValDef(ctx.newSelfSym(cls))
       else EmptyValDef
-    def isOwnTypeParamAccessor(stat: Tree) =
+    def isOwnTypeParam(stat: Tree) =
       (stat.symbol is TypeParam) && stat.symbol.owner == cls
-    val bodyTypeParams = body filter isOwnTypeParamAccessor map (_.symbol)
+    val bodyTypeParams = body filter isOwnTypeParam map (_.symbol)
     val newTypeParams =
       for (tparam <- cls.typeParams if !(bodyTypeParams contains tparam))
       yield TypeDef(tparam)

@@ -105,11 +105,11 @@ object desugar {
       case _ =>
         rhs
     }
-    if (mods is PrivateLocalParamAccessor) {
+    if (mods is PrivateLocalParam) {
       val tparam = cpy.TypeDef(tdef,
         mods &~ PrivateLocal | ExpandedName, name.expandedName(ctx.owner), rhs1, tdef.tparams)
       val alias = cpy.TypeDef(tdef,
-        Modifiers(PrivateLocal | Synthetic), name, refOfDef(tparam))
+        Modifiers(PrivateLocalParamAccessor | Synthetic), name, refOfDef(tparam))
       Thicket(tparam, alias)
     }
     else cpy.TypeDef(tdef, mods, name, rhs1)

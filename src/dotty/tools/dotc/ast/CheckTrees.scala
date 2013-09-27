@@ -206,7 +206,7 @@ object CheckTrees {
           check(args.head.isInstanceOf[SeqLiteral])
         case nme.unapply =>
           val rtp = funtpe.resultType
-          val rsym = rtp.dealias.typeSymbol
+          val rsym = rtp.dealiasedTypeSymbol
           if (rsym == defn.BooleanClass)
             check(args.isEmpty)
           else {
@@ -216,7 +216,7 @@ object CheckTrees {
                 optionArg.typeArgs match {
                   case Nil =>
                     optionArg :: Nil
-                  case tupleArgs if defn.TupleClasses contains optionArg.dealias.typeSymbol =>
+                  case tupleArgs if defn.TupleClasses contains optionArg.dealiasedTypeSymbol =>
                     tupleArgs
                 }
               case _ =>

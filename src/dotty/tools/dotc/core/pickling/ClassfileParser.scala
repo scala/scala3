@@ -164,6 +164,7 @@ class ClassfileParser(
   }
 
   val memberCompleter = new LazyType {
+
     def complete(denot: SymDenotation): Unit = {
       val oldbp = in.bp
       try {
@@ -172,19 +173,35 @@ class ClassfileParser(
         val jflags = in.nextChar
         val isEnum = (jflags & JAVA_ACC_ENUM) != 0
         val name = pool.getName(in.nextChar)
-        val info = pool.getType(in.nextChar)
+        val isConstructor = name eq nme.CONSTRUCTOR
+        
+        /** Strip leading outer param from constructor.
+         *  Todo: Also strip trailing access tag for private inner constructors?
+         */
+        def stripOuterParamFromConstructor() = innerClasses.get(currentClassName) match {
+          case Some(entry) if !isStatic(entry.jflags) =>
+            val mt @ MethodType(paramnames, paramtypes) = denot.info
+            denot.info = mt.derivedMethodType(paramnames.tail, paramtypes.tail, mt.resultType)
+          case _ =>
+        }
 
-        denot.info = if (isEnum) ConstantType(Constant(sym)) else info
-        if (name == nme.CONSTRUCTOR)
-          // if this is a non-static inner class, remove the explicit outer parameter
-          innerClasses.get(currentClassName) match {
-            case Some(entry) if !isStatic(entry.jflags) =>
-              val mt @ MethodType(paramnames, paramtypes) = info
-              denot.info = mt.derivedMethodType(paramnames.tail, paramtypes.tail, mt.resultType)
-            case _ =>
-          }
+        /** Make return type of constructor be the enclosing class type,
+         *  and make constructor type polymorphic in the type parameters of the class
+         */
+        def normalizeConstructorInfo() = {
+          val mt @ MethodType(paramnames, paramtypes) = denot.info
+          val typeParams = classRoot.typeParams
+          val rt = classRoot.typeConstructor appliedTo (typeParams map (_.symRef))
+          denot.info = PolyType.fromSymbols(typeParams,
+            mt.derivedMethodType(paramnames, paramtypes, rt))
+        }
+
+        denot.info = pool.getType(in.nextChar)
+        if (isEnum) denot.info = ConstantType(Constant(sym))
+        if (isConstructor) stripOuterParamFromConstructor()
         setPrivateWithin(denot, jflags)
-        denot.info = depoly(parseAttributes(sym, info), denot)
+        denot.info = depoly(parseAttributes(sym, denot.info), denot)
+        if (isConstructor) normalizeConstructorInfo()
 
         if ((denot is Flags.Method) && (jflags & JAVA_ACC_VARARGS) != 0)
           denot.info = arrayToRepeated(denot.info)

@@ -220,10 +220,9 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp2: RefinedType =>
       isSubType(tp1, tp2.parent) && (
         tp2.refinedName == nme.WILDCARD
-        || (tp1 isRef NothingClass)
-        || (tp1 isRef NullClass)
         || tp1.member(tp2.refinedName).hasAltWith(alt =>
-             isSubType(alt.info, tp2.refinedInfo)))
+             isSubType(alt.info, tp2.refinedInfo))
+        || fourthTry(tp1, tp2))
     case AndType(tp21, tp22) =>
       isSubType(tp1, tp21) && isSubType(tp1, tp22)
     case OrType(tp21, tp22) =>
@@ -280,7 +279,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   def fourthTry(tp1: Type, tp2: Type): Boolean = tp1 match {
     case tp1: TypeRef =>
       ((tp1.symbol eq NothingClass)
-        || (tp1.symbol eq NullClass) && tp2.dealias.typeSymbol.isNonValueClass
+        || (tp1.symbol eq NullClass) && tp2.dealiasedTypeSymbol.isNonValueClass
         || (tp1.info match {
               case TypeBounds(lo1, hi1) =>
                 isSubType(hi1, tp2) ||
@@ -288,6 +287,8 @@ class TypeComparer(initctx: Context) extends DotClass {
               case _ => false
            }))
     case tp1: SingletonType =>
+      isSubType(tp1.underlying, tp2)
+    case tp1: ExprType =>
       isSubType(tp1.underlying, tp2)
     case tp1: RefinedType =>
       isSubType(tp1.parent, tp2)
@@ -544,7 +545,6 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   private val b = new StringBuilder
 
   def traceIndented[T](str: String)(op: => T): T = {
-    assert(str != "<notype> <:< Int")
     indent += 2
     b append "\n" append (" " * indent) append "==> " append str
     val res = op

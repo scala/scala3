@@ -67,11 +67,18 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
    *     <init>(x$2, x$1)
    *   }
    */
-  def methPart(tree: Tree): Tree = tree match {
-    case Apply(fn, _) => methPart(fn)
+  def methPart(tree: Tree): Tree = stripApply(tree) match {
     case TypeApply(fn, _) => methPart(fn)
-    case AppliedTypeTree(fn, _) => methPart(fn)
+    case AppliedTypeTree(fn, _) => methPart(fn) // !!! should not be needed
     case Block(stats, expr) => methPart(expr)
+    case _ => tree
+  }
+ 
+  /** If this is an application, its function part, stripping all
+   *  Apply nodes (but leaving TypeApply nodes in). Otherwise the tree itself.
+   */
+  def stripApply(tree: Tree): Tree = tree match {
+    case Apply(fn, _) => stripApply(fn)
     case _ => tree
   }
 

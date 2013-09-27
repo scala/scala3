@@ -235,6 +235,8 @@ object Flags {
    *  or an accessor of such a field.
    */
   final val ParamAccessor = commonFlag(14, "<paramaccessor>")
+  final val TermParamAccessor = ParamAccessor.toTermFlags
+  final val TypeParamAccessor = ParamAccessor.toTypeFlags
 
     /** A value or class implementing a module */
   final val Module = commonFlag(15, "module")
@@ -470,6 +472,9 @@ object Flags {
 
   /** A private parameter accessor */
   final val PrivateLocalParamAccessor = allOf(Private, Local, ParamAccessor)
+
+  /** A private parameter */
+  final val PrivateLocalParam = allOf(Private, Local, Param)
 
   /** A local parameter */
   final val ParamAndLocal = allOf(Param, Local)
