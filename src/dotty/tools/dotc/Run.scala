@@ -27,4 +27,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
         phase.runOn(units)
     }
   }
+
+  def printSummary(): Unit =
+    ctx.typerState.reporter.printSummary
 }

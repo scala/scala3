@@ -14,7 +14,7 @@ abstract class Driver extends DotClass {
     if (fileNames.nonEmpty) {
       val run = compiler.newRun
       run.compile(fileNames)
-      ctx.reporter.printSummary
+      run.printSummary()
     }
 
   protected def initCtx = (new ContextBase).initialCtx
