@@ -103,7 +103,7 @@ object ErrorReporting {
           if (rest.nonEmpty) (arg map treatSingleArg mkString sep, rest.tail)
           else (arg, suffix)
         case _ =>
-          (arg, suffix)
+          (treatSingleArg(arg), suffix)
       }
 
       def treatSingleArg(arg: Any) : Any = arg match {
