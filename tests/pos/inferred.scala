@@ -12,7 +12,7 @@ class List[+T] {
 
 object Nil extends List[Nothing] {
   def isEmpty = true
-  def head = throw new Error()
+  def head = throw new Error
   def tail = ???
 }
 

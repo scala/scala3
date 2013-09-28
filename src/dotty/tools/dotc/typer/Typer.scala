@@ -968,9 +968,18 @@ class Typer extends Namer with Applications with Implicits {
             errorTree(tree,
               i"""none of the ${err.overloadedAltsStr(altDenots)}
                  |match $expectedStr""".stripMargin)
+          def hasEmptyParams(denot: SingleDenotation) = denot.info.paramTypess match {
+            case Nil :: _ => true
+            case _ => false
+          }
           pt match {
-            case pt: FunProto => tryInsertApply(tree, pt)(_ => noMatches)
-            case _ => noMatches
+            case pt: FunProto =>
+              tryInsertApply(tree, pt)(_ => noMatches)
+            case _ =>
+              if (altDenots exists hasEmptyParams)
+                typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt)
+              else
+                noMatches
           }
         case alts =>
           errorTree(tree,
