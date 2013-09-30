@@ -225,11 +225,18 @@ trait Symbols { this: Context =>
     names: List[TypeName],
     flags: FlagSet,
     boundsFn: List[TypeRef] => List[Type]): List[TypeSymbol] = {
-    val tparams = names map (_ => newNakedSymbol[TypeName](NoCoord))
-    val bounds = boundsFn(tparams map (_.symTypeRef))
-    (names, tparams, bounds).zipped foreach { (name, tparam, bound) =>
-      tparam.denot = SymDenotation(tparam, owner, name, flags | TypeParamCreationFlags, bound)
+
+    val tparamBuf = new mutable.ListBuffer[TypeSymbol]
+    val trefBuf = new mutable.ListBuffer[TypeRef]
+    for (name <- names) {
+      val tparam = newNakedSymbol[TypeName](NoCoord)
+      tparamBuf += tparam
+      trefBuf += TypeRef.withSym(owner.thisType, name, tparam)
     }
+    val tparams = tparamBuf.toList
+    val bounds = boundsFn(trefBuf.toList)
+    for ((name, tparam, bound) <- (names, tparams, bounds).zipped)
+      tparam.denot = SymDenotation(tparam, owner, name, flags | TypeParamCreationFlags, bound)
     tparams
   }
 
