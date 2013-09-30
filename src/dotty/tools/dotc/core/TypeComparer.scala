@@ -3,6 +3,7 @@ package dotc
 package core
 
 import Types._, Contexts._, Symbols._, Flags._
+import Decorators.sourcePos
 import StdNames.nme
 import collection.mutable
 import util.SimpleMap
@@ -159,7 +160,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       case tp2: PolyParam =>
         //println(constraint.show)
         constraint(tp2) match {
-          case TypeBounds(lo, _) => isSubType(tp1, lo) || addConstraint(tp2, TypeBounds.lower(tp1))
+          case TypeBounds(lo, _) => isSubType(tp1, lo) || addConstraint(tp2, TypeBounds.lower(tp1.widen))
           case _ => secondTry(tp1, tp2)
         }
       case tp2: TypeVar =>
@@ -409,6 +410,8 @@ class TypeComparer(initctx: Context) extends DotClass {
     else tp2 match {  // normalize to disjunctive normal form if possible.
       case OrType(tp21, tp22) =>
         tp1 & tp21 | tp1 & tp22
+//      case tp2: PolyType =>
+//        mergePoly(tp2, tp1, lower = true)
       case _ =>
         tp1 match {
           case OrType(tp11, tp12) =>
@@ -426,11 +429,11 @@ class TypeComparer(initctx: Context) extends DotClass {
                       case tp2: TypeBounds =>
                         return TypeBounds(tp1.lo | tp2.lo, tp1.hi & tp2.hi)
                       case tp2: ClassInfo =>
-                        return classMerge(tp2, tp1)
+                        return classMerge(tp2, tp1, isAnd = true)
                       case _ =>
                     }
                   case tp1: ClassInfo =>
-                    return classMerge(tp1, tp2)
+                    return classMerge(tp1, tp2, isAnd = true)
                   case _ =>
                 }
                 AndType(tp1, tp2)
@@ -459,11 +462,11 @@ class TypeComparer(initctx: Context) extends DotClass {
                 case tp2: TypeBounds =>
                   return TypeBounds(tp1.lo & tp2.lo, tp1.hi | tp2.hi)
                 case tp2: ClassInfo =>
-                  return classMerge(tp2, tp1)
+                  return classMerge(tp2, tp1, isAnd = false)
                 case _ =>
               }
             case tp1: ClassInfo =>
-              return classMerge(tp1, tp2)
+              return classMerge(tp1, tp2, isAnd = false)
             case _ =>
           }
           OrType(tp1, tp2)
@@ -529,9 +532,27 @@ class TypeComparer(initctx: Context) extends DotClass {
    *  can also be arbitrarily instantiated. In both cases we need to
    *  make sure that such types do not actually arise in source programs.
    */
-  private def classMerge(cinfo: ClassInfo, tp2: Type)(implicit ctx: Context): Type = tp2 match {
-    case cinfo2: ClassInfo if isAsGood(cinfo2, cinfo) && !isAsGood(cinfo, cinfo2) => cinfo2
-    case _ => cinfo
+  private def classMerge(cinfo: ClassInfo, tp2: Type, isAnd: Boolean)(implicit ctx: Context): Type = {
+
+    def showTypeType(tp: Type)(implicit ctx: Context) = tp match {
+      case ClassInfo(_, cls, _, _, _) => cls.showLocated
+      case bounds: TypeBounds => "type bounds" + bounds.show
+      case _ => tp.show
+    }
+
+    def msg = s"cannot merge ${showTypeType(cinfo)} with ${showTypeType(tp2)}"
+    val pos = ctx.tree.pos
+
+    if (isAnd) {
+      val winner = tp2 match {
+        case cinfo2: ClassInfo if isAsGood(cinfo2, cinfo) && !isAsGood(cinfo, cinfo2) => cinfo2
+        case _ => cinfo
+      }
+      ctx.warning(s"$msg as members of one type; keeping only ${showTypeType(winner)}", ctx.tree.pos)
+      winner
+    }
+    else
+      throw new ClassMergeError(msg)
   }
 
   private def isAsGood(cinfo1: ClassInfo, cinfo2: ClassInfo)(implicit ctx: Context): Boolean =

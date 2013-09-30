@@ -78,6 +78,7 @@ extends TyperState(reporter) {
         targetState.instType = targetState.instType remove tvar
       }
     }
+    targetState.checkConsistent // !!! DEBUG
 
     reporter.flush()
   }

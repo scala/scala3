@@ -374,49 +374,54 @@ object Types {
      *  as seen from given prefix `pre`. Exclude all members that have
      *  flags in `excluded` from consideration.
      */
-    final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = this match {
-      case tp: RefinedType =>
-        val pdenot = tp.parent.findMember(name, pre, excluded)
-        if (name eq tp.refinedName) {
-          val rinfo = tp.refinedInfo.substThis(tp, pre)
-          if (name.isTypeName) {// simplified case that runs more efficiently
-            val info = if (pdenot.symbol is TypeParam) rinfo else pdenot.info & rinfo
-            pdenot.asInstanceOf[SingleDenotation].derivedSingleDenotation(
-              pdenot.symbol, info)
-          }
+    final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = try {
+      this match {
+        case tp: RefinedType =>
+          val pdenot = tp.parent.findMember(name, pre, excluded)
+          if (name eq tp.refinedName) {
+            val rinfo = tp.refinedInfo.substThis(tp, pre)
+            if (name.isTypeName) { // simplified case that runs more efficiently
+              val info = if (pdenot.symbol is TypeParam) rinfo else pdenot.info & rinfo
+              pdenot.asInstanceOf[SingleDenotation].derivedSingleDenotation(
+                pdenot.symbol, info)
+            } else
+              pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
+          } else pdenot
+        case tp: ThisType =>
+          val d = tp.underlying.findMember(name, pre, excluded)
+          if (d.exists) d
           else
-            pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
-        }
-        else pdenot
-      case tp: ThisType =>
-        val d = tp.underlying.findMember(name, pre, excluded)
-        if (d.exists) d
-        else
-          // There is a special case to handle:
-          //   trait Super { this: Sub => private class Inner {} println(this.Inner) }
-          //   class Sub extends Super
-          // When resolving Super.this.Inner, the normal logic goes to the self type and
-          // looks for Inner from there. But this fails because Inner is private.
-          // We fix the problem by having the following fallback case, which links up the
-          // member in Super instead of Sub.
-          // As an example of this in the wild, see
-          // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
-          tp.cls.symTypeRef.findMember(name, pre, excluded) orElse d
-      case tp: TypeRef =>
-        tp.denot.findMember(name, pre, excluded)
-      case tp: TypeProxy =>
-        tp.underlying.findMember(name, pre, excluded)
-      case tp: ClassInfo =>
-        tp.cls.findMember(name, pre, excluded)
-      case AndType(l, r) =>
-        l.findMember(name, pre, excluded) & (r.findMember(name, pre, excluded), pre)
-      case OrType(l, r) =>
-        l.findMember(name, pre, excluded) | (r.findMember(name, pre, excluded), pre)
-      case ErrorType =>
-        ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name)
-      case _ =>
-        NoDenotation
-    } /* !!! DEBUG ensuring { denot =>
+            // There is a special case to handle:
+            //   trait Super { this: Sub => private class Inner {} println(this.Inner) }
+            //   class Sub extends Super
+            // When resolving Super.this.Inner, the normal logic goes to the self type and
+            // looks for Inner from there. But this fails because Inner is private.
+            // We fix the problem by having the following fallback case, which links up the
+            // member in Super instead of Sub.
+            // As an example of this in the wild, see
+            // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
+            tp.cls.symTypeRef.findMember(name, pre, excluded) orElse d
+        case tp: TypeRef =>
+          tp.denot.findMember(name, pre, excluded)
+        case tp: TypeProxy =>
+          tp.underlying.findMember(name, pre, excluded)
+        case tp: ClassInfo =>
+          tp.cls.findMember(name, pre, excluded)
+        case AndType(l, r) =>
+          l.findMember(name, pre, excluded) & (r.findMember(name, pre, excluded), pre)
+        case OrType(l, r) =>
+          l.findMember(name, pre, excluded) | (r.findMember(name, pre, excluded), pre)
+        case ErrorType =>
+          ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name)
+        case _ =>
+          NoDenotation
+      }
+    } catch {
+      case ex: ClassMergeError =>
+        throw new ClassMergeError(s"${ex.getMessage} as members of type ${pre.show}")
+    }
+
+  /* !!! DEBUG ensuring { denot =>
       denot.alternatives forall (_.symbol.name == name)
     }*/
 
@@ -1824,6 +1829,7 @@ object Types {
       owningState.undetVars -= this
       if (ctx.typerState eq creatorState) inst = tp
       else ctx.typerState.instType = ctx.typerState.instType.updated(this, tp)
+      ctx.typerState.checkConsistent // !!! DEBUG
       tp
     }
 
@@ -2353,6 +2359,8 @@ object Types {
 
   class CyclicReference(val denot: SymDenotation)
     extends FatalTypeError(s"cyclic reference involving $denot")
+
+  class ClassMergeError(msg: String) extends FatalTypeError(msg)
 
   // ----- Debug ---------------------------------------------------------
 

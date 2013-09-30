@@ -1,22 +1,22 @@
-class List[+T] {
+class LIST[+T] {
   
   def isEmpty: Boolean
   def head: T
-  def tail: List[T]
+  def tail: LIST[T]
   
-  def prepend [U >: T] (x: U): List[U] = new Cons(x, this)
+  def prepend [U >: T] (x: U): LIST[U] = new CONS(x, this)
   
-  def map[U](f: T => U): List[U] = if (isEmpty) Nil else tail.map(f).prepend(f(head))
+  def map[U](f: T => U): LIST[U] = if (isEmpty) NIL else tail.map(f).prepend(f(head))
   
 }
 
-object Nil extends List[Nothing] {
+object NIL extends LIST[Nothing] {
   def isEmpty = true
   def head = throw new Error
   def tail = ???
 }
 
-class Cons[T](hd: T, tl: List[T]) extends List[T] {
+class CONS[T](hd: T, tl: LIST[T]) extends LIST[T] {
   def isEmpty = false
   def head = hd
   def tail = tl
@@ -31,15 +31,17 @@ object Inferred {
 
   val y = foo("abc")
 
-  def bar[U](xs: List[U]): List[U] = xs
+  def bar[U](xs: LIST[U]): LIST[U] = xs
 
-  val n = Nil
+  val n = NIL
 
-  val nn = bar(Nil)
+  val nn = bar(NIL)
 
-  val ints: List[Int] = Nil prepend 1
+  val ints: LIST[Int] = NIL prepend 1
+  
+  val ints1 = NIL prepend 1 prepend 2
 
-  val a = if (1 == 0) Nil else ints
+  val a = if (1 == 0) NIL else ints
   
   val n2 = scala.collection.immutable.Nil
   
@@ -50,4 +52,5 @@ object Inferred {
   def cl = ((x: Int) => x + 1)
   
   val ints2 = ints map (_ + 1)
+  
 }

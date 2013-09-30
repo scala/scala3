@@ -851,9 +851,13 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = ctx.traceIndented (s"typing ${tree.show}", show = true) {
-    val tree1 = typedUnadapted(tree, pt)
-    ctx.interpolateUndetVars(tree1.tpe.widen, tree1.pos)
-    adapt(tree1, pt)
+    try {
+      val tree1 = typedUnadapted(tree, pt)
+      ctx.interpolateUndetVars(tree1.tpe.widen, tree1.pos)
+      adapt(tree1, pt)
+    } catch {
+      case ex: FatalTypeError => errorTree(tree, ex.getMessage)
+    }
   }
 
   def typedTrees(trees: List[untpd.Tree])(implicit ctx: Context): List[Tree] =
