@@ -248,12 +248,12 @@ class TypeComparer(initctx: Context) extends DotClass {
         case _ =>
           false
       }
-    case tp2 @ ExprType(restpe1) =>
+    case tp2 @ ExprType(restpe2) =>
       tp1 match {
-        case tp1 @ ExprType(restpe2) =>
+        case tp1 @ ExprType(restpe1) =>
           isSubType(restpe1, restpe2)
         case _ =>
-          false
+          isSubType(tp1, restpe2)
       }
     case TypeBounds(lo2, hi2) =>
       tp1 match {
@@ -288,9 +288,11 @@ class TypeComparer(initctx: Context) extends DotClass {
               case _ => false
            }))
     case tp1: SingletonType =>
-      isSubType(tp1.underlying, tp2)
-    case tp1: ExprType =>
-      isSubType(tp1.underlying, tp2)
+      val underlying = tp1.underlying match {
+        case underlying: ExprType => underlying.resultType
+        case underlying => underlying
+      }
+      isSubType(underlying, tp2)
     case tp1: RefinedType =>
       isSubType(tp1.parent, tp2)
     case AndType(tp11, tp12) =>

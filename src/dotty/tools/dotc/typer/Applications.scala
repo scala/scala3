@@ -473,15 +473,13 @@ trait Applications extends Compatibility { self: Typer =>
                 case Select(qual, name) =>
                   tryEither { implicit ctx =>
                     val qual1 = adapt(qual, new SelectionProto(name, proto))
-                    if (qual1.tpe.isError) qual1
-                    else {
-                      assert(qual1 ne qual, s"$qual1 : ${qual1.tpe}")
+                    if (qual1.tpe.isError || (qual1 eq qual)) qual1 
+                    else
                       typedApply(
                         cpy.Apply(tree,
                           cpy.Select(fun1, untpd.TypedSplice(qual1), name),
                           proto.typedArgs map untpd.TypedSplice),
                        pt)
-                    }
                   } { _ => failed.commit()
                   }
                 case _ =>
