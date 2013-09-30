@@ -61,7 +61,8 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) {
   def start = 0
 
   def atPos(pos: Position): SourcePosition =
-    SourcePosition(underlying, pos)
+    if (pos.exists) SourcePosition(underlying, pos)
+    else NoSourcePosition
 
   def isSelfContained = underlying eq this
 
