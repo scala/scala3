@@ -15,6 +15,7 @@ import Decorators._
 import Denotations._
 import Periods._
 import util.Positions.Position
+import util.Stats.track
 import ast.tpd._, printing.Texts._
 import transform.Erasure
 import printing.Printer
@@ -154,8 +155,9 @@ object Types {
      *  Lazy values are not allowed to have volatile type, as otherwise
      *  unsoundness can result.
      */
-    final def isVolatile(implicit ctx: Context): Boolean =
+    final def isVolatile(implicit ctx: Context): Boolean = track("isVolatile") {
       ctx.isVolatile(this)
+    }
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
@@ -274,12 +276,14 @@ object Types {
      *  in linearization order, with the class itself as first element.
      *  Inherited by all type proxies. `Nil` for all other types.
      */
-    final def baseClasses(implicit ctx: Context): List[ClassSymbol] = this match {
-      case tp: TypeProxy =>
-        tp.underlying.baseClasses
-      case tp: ClassInfo =>
-        tp.cls.baseClasses
-      case _ => Nil
+    final def baseClasses(implicit ctx: Context): List[ClassSymbol] = track("baseClasses") {
+      this match {
+        case tp: TypeProxy =>
+          tp.underlying.baseClasses
+        case tp: ClassInfo =>
+          tp.cls.baseClasses
+        case _ => Nil
+      }
     }
 
     /** The type parameters of this type are:
@@ -293,27 +297,29 @@ object Types {
      *  For an intersection type A & B, the type parameters of its left operand, A.
      *  Empty list for all other types.
      */
-    final def typeParams(implicit ctx: Context): List[TypeSymbol] = this match {
-      case tp: ClassInfo =>
-        tp.cls.typeParams
-      case tp: TypeRef =>
-        val tsym = tp.typeSymbol
-        if (tsym.isClass) tsym.typeParams
-        else if (tsym.isAliasType) tp.underlying.typeParams
-        else tp.info.bounds.hi match {
-          case AndType(hkBound, other) if defn.hkTraits contains hkBound.typeSymbol =>
-            hkBound.typeSymbol.typeParams
-          case _ =>
-            Nil
-        }
-      case tp: RefinedType =>
-        tp.parent.typeParams filterNot (_.name == tp.refinedName)
-      case tp: TypeProxy =>
-        tp.underlying.typeParams
-      case tp: AndType =>
-        tp.tp1.typeParams
-      case _ =>
-        Nil
+    final def typeParams(implicit ctx: Context): List[TypeSymbol] = track("typeParams") {
+      this match {
+        case tp: ClassInfo =>
+          tp.cls.typeParams
+        case tp: TypeRef =>
+          val tsym = tp.typeSymbol
+          if (tsym.isClass) tsym.typeParams
+          else if (tsym.isAliasType) tp.underlying.typeParams
+          else tp.info.bounds.hi match {
+            case AndType(hkBound, other) if defn.hkTraits contains hkBound.typeSymbol =>
+              hkBound.typeSymbol.typeParams
+            case _ =>
+              Nil
+          }
+        case tp: RefinedType =>
+          tp.parent.typeParams filterNot (_.name == tp.refinedName)
+        case tp: TypeProxy =>
+          tp.underlying.typeParams
+        case tp: AndType =>
+          tp.tp1.typeParams
+        case _ =>
+          Nil
+      }
     }
 
     def uninstantiatedTypeParams(implicit ctx: Context): List[TypeSymbol] =
@@ -338,12 +344,14 @@ object Types {
      *  The result is either a SymDenotation or a MultiDenotation of SymDenotations.
      *  The info(s) are the original symbol infos, no translation takes place.
      */
-    final def decl(name: Name)(implicit ctx: Context): Denotation =
+    final def decl(name: Name)(implicit ctx: Context): Denotation = track("decl") {
       findDecl(name, EmptyFlags)
+    }
 
     /** A denotation containing the non-private declaration(s) in this type with the given name */
-    final def nonPrivateDecl(name: Name)(implicit ctx: Context): Denotation =
+    final def nonPrivateDecl(name: Name)(implicit ctx: Context): Denotation = track("nonPrivateDecl") {
       findDecl(name, Private)
+    }
 
     /** A denotation containing the declaration(s) in this type with the given
      *  name, as seen from prefix type `pre`. Declarations that have a flag
@@ -359,15 +367,17 @@ object Types {
     }
 
     /** The member of this type with the given name  */
-    final def member(name: Name)(implicit ctx: Context): Denotation =
+    final def member(name: Name)(implicit ctx: Context): Denotation = track("member-" + name) {
       try findMember(name, this, EmptyFlags)
       catch {
         case ex: Throwable => println(s"error occurred during: $this member $name"); throw ex // DEBUG
       }
+    }
 
     /** The non-private member of this type with the given name. */
-    final def nonPrivateMember(name: Name)(implicit ctx: Context): Denotation =
+    final def nonPrivateMember(name: Name)(implicit ctx: Context): Denotation = track("nonPrivateMember") {
       findMember(name, this, Flags.Private)
+    }
 
     /** Find member of this type with given name and
      *  produce a denotation that contains the type of the member
@@ -448,32 +458,37 @@ object Types {
     /** The set of names that denote an abstract member of this type
      *  which is also an abstract member of `pre`.
      */
-    final def abstractMemberNames(pre: Type = this)(implicit ctx: Context): Set[Name] =
+    final def abstractMemberNames(pre: Type = this)(implicit ctx: Context): Set[Name] = track("abstractMemberNames") {
       memberNames(abstractTypeNameFilter, pre) |
       memberNames(abstractTermNameFilter, pre)
+    }
 
     /** The set of abstract term members of this type. */
-    final def abstractTermMembers(implicit ctx: Context): Set[SingleDenotation] =
+    final def abstractTermMembers(implicit ctx: Context): Set[SingleDenotation] = track("abstractTermMembers") {
       memberNames(abstractTermNameFilter).flatMap(member(_).altsWith(_ is Deferred))
+    }
 
     /** The set of abstract type members of this type. */
-    final def abstractTypeMembers(implicit ctx: Context): Set[SingleDenotation] =
+    final def abstractTypeMembers(implicit ctx: Context): Set[SingleDenotation] = track("abstractTypeMembers") {
       memberNames(abstractTypeNameFilter).map(member(_).asInstanceOf[SingleDenotation])
+    }
 
     /** The set of abstract members of this type. */
     final def abstractMembers(implicit ctx: Context): Set[SingleDenotation] =
       abstractTermMembers | abstractTypeMembers
 
     /** The set of type members of this type */
-    final def typeMembers(implicit ctx: Context): Set[SingleDenotation] =
+    final def typeMembers(implicit ctx: Context): Set[SingleDenotation] = track("typeMembers") {
       memberNames(typeNameFilter).map(member(_).asInstanceOf[SingleDenotation])
+    }
 
     /** The set of implicit members of this type */
-    final def implicitMembers(implicit ctx: Context): List[TermRef] =
+    final def implicitMembers(implicit ctx: Context): List[TermRef] = track("implicitMembers") {
       memberNames(implicitFilter).toList
         .flatMap(name => member(name)
           .altsWith(_ is Implicit)
           .map(d => TermRef.withSym(this, d.symbol.asTerm).withDenot(d)))
+    }
 
     /** The info of `sym`, seen as a member of this type. */
     final def memberInfo(sym: Symbol)(implicit ctx: Context): Type =
@@ -482,21 +497,24 @@ object Types {
     /** This type seen as if it were the type of a member of prefix type `pre`
      *  declared in class `cls`.
      */
-    final def asSeenFrom(pre: Type, cls: Symbol)(implicit ctx: Context): Type =
+    final def asSeenFrom(pre: Type, cls: Symbol)(implicit ctx: Context): Type = track("asSeenFrom") {
       if (!cls.membersNeedAsSeenFrom(pre)) this
       else ctx.asSeenFrom(this, pre, cls, null)
+    }
 
 // ----- Subtype-related --------------------------------------------
 
     /** Is this type a subtype of that type? */
-    final def <:<(that: Type)(implicit ctx: Context): Boolean =
+    final def <:<(that: Type)(implicit ctx: Context): Boolean = track("<:<") {
       ctx.typeComparer.isSubType(this, that)
+    }
 
     /** Is this type the same as that type?
      *  This is the case iff `this <:< that` and `that <:< this`.
      */
-    final def =:=(that: Type)(implicit ctx: Context): Boolean =
+    final def =:=(that: Type)(implicit ctx: Context): Boolean = track("=:=") {
       ctx.typeComparer.isSameType(this, that)
+    }
 
     /** Is this type close enough to that type so that members
      *  with the two type would override each other?
@@ -510,9 +528,10 @@ object Types {
      *    - Or phase.erasedTypes is false and both types are neither method nor
      *      poly types.
      */
-    def matches(that: Type)(implicit ctx: Context): Boolean =
+    def matches(that: Type)(implicit ctx: Context): Boolean = track("matches") {
       ctx.typeComparer.matchesType(
         this, that, alwaysMatchSimple = !ctx.phase.erasedTypes)
+    }
 
     /** The non-private symbol with given name in the given class that matches this type.
      *  @param inClass   The class containing the symbol's definition
@@ -531,16 +550,20 @@ object Types {
     }
 
     /** The basetype of this type with given class symbol */
-    final def baseType(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseType $base")*/ { base.denot match {
-      case classd: ClassDenotation => classd.baseTypeOf(this)
-      case _ => NoType
-    }}
+    final def baseType(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseType $base")*/ track("baseType") {
+      base.denot match {
+        case classd: ClassDenotation => classd.baseTypeOf(this)
+        case _ => NoType
+      }
+    }
 
-    def & (that: Type)(implicit ctx: Context): Type =
+    def & (that: Type)(implicit ctx: Context): Type = track("&") {
       ctx.typeComparer.glb(this, that)
+    }
 
-    def | (that: Type)(implicit ctx: Context): Type =
+    def | (that: Type)(implicit ctx: Context): Type = track("|") {
       ctx.typeComparer.lub(this, that)
+    }
 
 // ----- Unwrapping types -----------------------------------------------
 
@@ -770,7 +793,7 @@ object Types {
 // ----- Modeling type application --------------------------------
 
     /** Encode the type resulting from applying this type to given arguments */
-    final def appliedTo(args: List[Type])(implicit ctx: Context): Type = {
+    final def appliedTo(args: List[Type])(implicit ctx: Context): Type = track("appliedTo") {
 
       def recur(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
         case arg :: args1 =>
@@ -997,7 +1020,7 @@ object Types {
      *  +1 means: only covariant occurrences
      *  0 means: mixed or non-variant occurrences
      */
-    def variances(include: TypeVar => Boolean)(implicit ctx: Context): VarianceMap = {
+    def variances(include: TypeVar => Boolean)(implicit ctx: Context): VarianceMap = track("variances") {
       val accu = new TypeAccumulator[VarianceMap] {
         def apply(vmap: VarianceMap, t: Type): VarianceMap = t match {
           case t: TypeVar if include(t) =>

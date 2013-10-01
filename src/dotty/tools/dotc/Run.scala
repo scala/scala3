@@ -4,7 +4,7 @@ package dotc
 import core._
 import Contexts._, Periods._, Symbols._
 import io.PlainFile
-import util.{SourceFile, NoSource}
+import util.{SourceFile, NoSource, Stats}
 
 class Run(comp: Compiler)(implicit ctx: Context) {
 
@@ -19,7 +19,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     }
   }
 
-  def compile(fileNames: List[String]): Unit = {
+  def compile(fileNames: List[String]): Unit = Stats.monitorHeartBeat {
     val sources = fileNames map getSource
     if (sources forall (_.exists)) {
       units = sources map (new CompilationUnit(_))

@@ -8,6 +8,7 @@ import Contexts._, Types._, Flags._, Denotations._, Names._, StdNames._, NameOps
 import Trees._
 import annotation.unchecked
 import util.Positions._
+import util.Stats
 import Decorators._
 import ErrorReporting.InfoString
 
@@ -96,13 +97,15 @@ object Inferencing {
    *   - converts non-dependent method types to the corresponding function types
    *   - dereferences parameterless method types
    */
-  def normalize(tp: Type)(implicit ctx: Context): Type = tp.widenSingleton match {
-    case pt: PolyType => normalize(ctx.track(pt).resultType)
-    case mt: MethodType if !mt.isDependent =>
-      if (mt.isImplicit) mt.resultType
-      else defn.FunctionType(mt.paramTypes, mt.resultType)
-    case et: ExprType => et.resultType
-    case _ => tp
+  def normalize(tp: Type)(implicit ctx: Context): Type = Stats.track("normalize") {
+    tp.widenSingleton match {
+      case pt: PolyType => normalize(ctx.track(pt).resultType)
+      case mt: MethodType if !mt.isDependent =>
+        if (mt.isImplicit) mt.resultType
+        else defn.FunctionType(mt.paramTypes, mt.resultType)
+      case et: ExprType => et.resultType
+      case _ => tp
+    }
   }
 
   /** Is type fully defined, meaning the type does not contain wildcard types
@@ -188,7 +191,7 @@ object Inferencing {
      *  approximate it by its lower bound. Otherwise, if it appears contravariantly
      *  in type `tp` approximate it by its upper bound.
      */
-    def interpolateUndetVars(tp: Type, pos: Position): Unit = {
+    def interpolateUndetVars(tp: Type, pos: Position): Unit = Stats.track("interpolateUndetVars") {
       val vs = tp.variances(tvar =>
         (ctx.typerState.undetVars contains tvar) && (pos contains tvar.pos))
       for ((tvar, v) <- vs)
@@ -211,7 +214,7 @@ object Inferencing {
      *  maximized and return None. If this is not possible, because a non-variant
      *  typevar is not uniquely determined, return that typevar in a Some.
      */
-    def maximizeType(tp: Type): Option[TypeVar] = {
+    def maximizeType(tp: Type): Option[TypeVar] = Stats.track("maximizeType") {
       val vs = tp.variances(tvar => ctx.typerState.undetVars contains tvar)
       var result: Option[TypeVar] = None
       for ((tvar, v) <- vs)

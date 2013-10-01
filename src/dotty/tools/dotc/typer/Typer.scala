@@ -27,6 +27,7 @@ import util.SourcePosition
 import collection.mutable
 import annotation.tailrec
 import Implicits._
+import util.Stats.track
 import language.implicitConversions
 
 trait TyperContextOps { ctx: Context => }
@@ -151,7 +152,7 @@ class Typer extends Namer with Applications with Implicits {
    *                   (2) Change imported symbols to selections
    *
    */
-  def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
+  def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = track("typedIdent") {
     val name = tree.name
 
     /** Method is necessary because error messages need to bind to
@@ -334,19 +335,19 @@ class Typer extends Namer with Applications with Implicits {
     tree.withType(ownType.underlyingIfRepeated)
   }
 
-  def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
+  def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
     val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt))
     val ownType = checkedSelectionType(qual1, tree)
     checkValue(ownType, pt, tree.pos)
     cpy.Select(tree, qual1, tree.name).withType(ownType)
   }
 
-  def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = {
+  def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = track("typedThis") {
     val cls = qualifyingClass(tree, tree.qual, packageOK = false)
     tree.withType(cls.thisType)
   }
 
-  def typedSuper(tree: untpd.Super)(implicit ctx: Context): Tree = {
+  def typedSuper(tree: untpd.Super)(implicit ctx: Context): Tree = track("typedSuper") {
     val mix = tree.mix
     val qual1 = typed(tree.qual)
     val cls = qual1.tpe.typeSymbol
@@ -367,7 +368,7 @@ class Typer extends Namer with Applications with Implicits {
     cpy.Super(tree, qual1, mix).withType(SuperType(cls.thisType, owntype))
   }
 
-  def typedLiteral(tree: untpd.Literal)(implicit ctx: Context) =
+  def typedLiteral(tree: untpd.Literal)(implicit ctx: Context) = track("typedLiteral") {
     tree.withType {
       tree.const.tag match {
         case UnitTag => defn.UnitType
@@ -375,21 +376,24 @@ class Typer extends Namer with Applications with Implicits {
         case _ => ConstantType(tree.const)
       }
     }
-
-  def typedNew(tree: untpd.New, pt: Type)(implicit ctx: Context) = tree.tpt match {
-    case templ: Template =>
-      import untpd._
-      val x = tpnme.ANON_CLASS
-      val clsDef = TypeDef(Modifiers(Final), x, templ)
-      typed(cpy.Block(tree, clsDef :: Nil, New(Ident(x), Nil)), pt)
-    case _ =>
-      val tpt1 = typedType(tree.tpt)
-      val cls = checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos)
-      // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
-      cpy.New(tree, tpt1).withType(tpt1.tpe)
   }
 
-  def typedPair(tree: untpd.Pair, pt: Type)(implicit ctx: Context) = {
+  def typedNew(tree: untpd.New, pt: Type)(implicit ctx: Context) = track("typedNew") {
+    tree.tpt match {
+      case templ: Template =>
+        import untpd._
+        val x = tpnme.ANON_CLASS
+        val clsDef = TypeDef(Modifiers(Final), x, templ)
+        typed(cpy.Block(tree, clsDef :: Nil, New(Ident(x), Nil)), pt)
+      case _ =>
+        val tpt1 = typedType(tree.tpt)
+        val cls = checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos)
+        // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
+        cpy.New(tree, tpt1).withType(tpt1.tpe)
+    }
+  }
+
+  def typedPair(tree: untpd.Pair, pt: Type)(implicit ctx: Context) = track("typedPair") {
     val (leftProto, rightProto) = pt.typeArgs match {
       case l :: r :: Nil if pt isRef defn.PairClass => (l, r)
       case _ => (WildcardType, WildcardType)
@@ -399,51 +403,55 @@ class Typer extends Namer with Applications with Implicits {
     cpy.Pair(tree, left1, right1).withType(defn.PairType.appliedTo(left1.tpe :: right1.tpe :: Nil))
   }
 
-  def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = tree.expr match {
-    case id: Ident if (ctx.mode is Mode.Pattern) && isVarPattern(id) && id.name != nme.WILDCARD =>
-      import untpd._
-      typed(Bind(id.name, Typed(Ident(nme.WILDCARD), tree.tpt)).withPos(id.pos))
-    case _ =>
-      val tpt1 = typedType(tree.tpt)
-      val expr1 = typedExpr(tree.expr, tpt1.tpe)
-      cpy.Typed(tree, expr1, tpt1).withType(tpt1.tpe)
+  def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = track("typedTyped") {
+    tree.expr match {
+      case id: Ident if (ctx.mode is Mode.Pattern) && isVarPattern(id) && id.name != nme.WILDCARD =>
+        import untpd._
+        typed(Bind(id.name, Typed(Ident(nme.WILDCARD), tree.tpt)).withPos(id.pos))
+      case _ =>
+        val tpt1 = typedType(tree.tpt)
+        val expr1 = typedExpr(tree.expr, tpt1.tpe)
+        cpy.Typed(tree, expr1, tpt1).withType(tpt1.tpe)
+    }
   }
 
-  def typedNamedArg(tree: untpd.NamedArg, pt: Type)(implicit ctx: Context) = {
+  def typedNamedArg(tree: untpd.NamedArg, pt: Type)(implicit ctx: Context) = track("typedNamedArg") {
     val arg1 = typed(tree.arg, pt)
     cpy.NamedArg(tree, tree.name, arg1).withType(arg1.tpe)
   }
 
-  def typedAssign(tree: untpd.Assign, pt: Type)(implicit ctx: Context) = tree.lhs match {
-    case lhs @ Apply(fn, args) =>
-      typed(cpy.Apply(lhs, untpd.Select(fn, nme.update), args :+ tree.rhs), pt)
-    case lhs =>
-      val lhs1 = typed(lhs)
-      def reassignmentToVal =
-        errorTree(cpy.Assign(tree, lhs1, typed(tree.rhs, lhs1.tpe.widen)),
-          "reassignment to val")
-      lhs1.tpe match {
-        case ref: TermRef if ref.symbol is Mutable =>
-          cpy.Assign(tree, lhs1, typed(tree.rhs, ref.info)).withType(defn.UnitType)
-        case ref: TermRef if ref.info.isParameterless =>
-          val pre = ref.prefix
-          val setterName = ref.name.setterName
-          val setter = pre.member(setterName)
-          lhs1 match {
-            case lhs1: RefTree if setter.exists =>
-              val setterTypeRaw = TermRef(pre, setterName).withDenot(setter)
-              val setterType = checkAccessible(setterTypeRaw, isSuperSelection(tree), tree.pos)
-              val lhs2 = lhs1.withName(setterName).withType(setterType)
-              typed(cpy.Apply(tree, untpd.TypedSplice(lhs2), tree.rhs :: Nil))
-            case _ =>
-              reassignmentToVal
-          }
-        case _ =>
-          reassignmentToVal
-      }
+  def typedAssign(tree: untpd.Assign, pt: Type)(implicit ctx: Context) = track("typedAssign") {
+    tree.lhs match {
+      case lhs @ Apply(fn, args) =>
+        typed(cpy.Apply(lhs, untpd.Select(fn, nme.update), args :+ tree.rhs), pt)
+      case lhs =>
+        val lhs1 = typed(lhs)
+        def reassignmentToVal =
+          errorTree(cpy.Assign(tree, lhs1, typed(tree.rhs, lhs1.tpe.widen)),
+            "reassignment to val")
+        lhs1.tpe match {
+          case ref: TermRef if ref.symbol is Mutable =>
+            cpy.Assign(tree, lhs1, typed(tree.rhs, ref.info)).withType(defn.UnitType)
+          case ref: TermRef if ref.info.isParameterless =>
+            val pre = ref.prefix
+            val setterName = ref.name.setterName
+            val setter = pre.member(setterName)
+            lhs1 match {
+              case lhs1: RefTree if setter.exists =>
+                val setterTypeRaw = TermRef(pre, setterName).withDenot(setter)
+                val setterType = checkAccessible(setterTypeRaw, isSuperSelection(tree), tree.pos)
+                val lhs2 = lhs1.withName(setterName).withType(setterType)
+                typed(cpy.Apply(tree, untpd.TypedSplice(lhs2), tree.rhs :: Nil))
+              case _ =>
+                reassignmentToVal
+            }
+          case _ =>
+            reassignmentToVal
+        }
+    }
   }
 
-  def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = {
+  def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) = track("typedBlock") {
     val exprCtx = index(tree.stats)
     val stats1 = typedStats(tree.stats, ctx.owner)
     val expr1 = typedExpr(tree.expr, pt)(exprCtx)
@@ -457,14 +465,14 @@ class Typer extends Namer with Applications with Implicits {
       i"local definition of ${leaks.head.name} escapes as part of block's type ${result.tpe}")
   }
 
-  def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = {
+  def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = track("typedIf") {
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp1 = typed(tree.thenp, pt)
     val elsep1 = typed(if (tree.elsep.isEmpty) unitLiteral else tree.elsep, pt)
     cpy.If(tree, cond1, thenp1, elsep1).withType(thenp1.tpe | elsep1.tpe)
   }
 
-  def typedFunction(tree: untpd.Function, pt: Type)(implicit ctx: Context) = {
+  def typedFunction(tree: untpd.Function, pt: Type)(implicit ctx: Context) = track("typedFunction") {
     val untpd.Function(args, body) = tree
     if (ctx.mode is Mode.Type)
       typed(cpy.AppliedTypeTree(tree,
@@ -493,7 +501,7 @@ class Typer extends Namer with Applications with Implicits {
     }
   }
 
-  def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = {
+  def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = track("typedClosure") {
     val env1 = tree.env mapconserve (typed(_))
     val meth1 = typedUnadapted(tree.meth)
     val ownType = meth1.tpe.widen match {
@@ -507,56 +515,58 @@ class Typer extends Namer with Applications with Implicits {
     cpy.Closure(tree, env1, meth1, EmptyTree).withType(ownType)
   }
 
-  def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context) = tree.selector match {
-    case EmptyTree =>
-      typed(desugar.makeCaseLambda(tree.cases) withPos tree.pos, pt)
-    case _ =>
-      val sel1 = typedExpr(tree.selector)
-      val selType =
-        if (isFullyDefined(sel1.tpe)) sel1.tpe
-        else errorType("internal error: type of pattern selector is not fully defined", tree.pos)
+  def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context) = track("typedMatch") {
+    tree.selector match {
+      case EmptyTree =>
+        typed(desugar.makeCaseLambda(tree.cases) withPos tree.pos, pt)
+      case _ =>
+        val sel1 = typedExpr(tree.selector)
+        val selType =
+          if (isFullyDefined(sel1.tpe)) sel1.tpe
+          else errorType("internal error: type of pattern selector is not fully defined", tree.pos)
 
-      /** gadtSyms = "all type parameters of enclosing methods that appear
-       *              non-variantly in the selector type
-       */
-      val gadtSyms: Set[Symbol] = {
-        val accu = new TypeAccumulator[Set[Symbol]] {
-          def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
-            val tsyms1 = t match {
-              case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm && variance == 0 =>
-                tsyms + tr.symbol
-              case _ =>
-                tsyms
+        /** gadtSyms = "all type parameters of enclosing methods that appear
+         *              non-variantly in the selector type
+         */
+        val gadtSyms: Set[Symbol] = {
+          val accu = new TypeAccumulator[Set[Symbol]] {
+            def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
+              val tsyms1 = t match {
+                case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm && variance == 0 =>
+                  tsyms + tr.symbol
+                case _ =>
+                  tsyms
+              }
+              foldOver(tsyms1, t)
             }
-            foldOver(tsyms1, t)
           }
+          accu(Set.empty, selType)
         }
-        accu(Set.empty, selType)
-    }
 
-    def typedCase(tree: untpd.CaseDef): CaseDef = {
-      def caseRest(pat: Tree)(implicit ctx: Context) = {
-        gadtSyms foreach (_.resetGADTFlexType)
-        foreachSubTreeOf(pat) {
-          case b: Bind =>
-            if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
-            else ctx.error(i"duplicate pattern variable: ${b.name}", b.pos)
-          case _ =>
+        def typedCase(tree: untpd.CaseDef): CaseDef = track("typedCase") {
+          def caseRest(pat: Tree)(implicit ctx: Context) = {
+            gadtSyms foreach (_.resetGADTFlexType)
+            foreachSubTreeOf(pat) {
+              case b: Bind =>
+                if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
+                else ctx.error(i"duplicate pattern variable: ${b.name}", b.pos)
+              case _ =>
+            }
+            val guard1 = typedExpr(tree.guard, defn.BooleanType)
+            val body1 = typedExpr(tree.body, pt)
+            cpy.CaseDef(tree, pat, guard1, body1) withType body1.tpe
+          }
+          val doCase: () => CaseDef =
+            () => caseRest(typedPattern(tree.pat, selType))(ctx.fresh.withNewScope)
+          (doCase /: gadtSyms)((op, tsym) => tsym.withGADTFlexType(op))()
         }
-        val guard1 = typedExpr(tree.guard, defn.BooleanType)
-        val body1 = typedExpr(tree.body, pt)
-        cpy.CaseDef(tree, pat, guard1, body1) withType body1.tpe
-      }
-      val doCase: () => CaseDef =
-        () => caseRest(typedPattern(tree.pat, selType))(ctx.fresh.withNewScope)
-      (doCase /: gadtSyms) ((op, tsym) => tsym.withGADTFlexType(op)) ()
-    }
 
-    val cases1 = tree.cases mapconserve typedCase
-    cpy.Match(tree, sel1, cases1).withType(ctx.typeComparer.lub(cases1.tpes))
+        val cases1 = tree.cases mapconserve typedCase
+        cpy.Match(tree, sel1, cases1).withType(ctx.typeComparer.lub(cases1.tpes))
+    }
   }
 
-  def typedReturn(tree: untpd.Return)(implicit ctx: Context): Return = {
+  def typedReturn(tree: untpd.Return)(implicit ctx: Context): Return = track("typedReturn") {
     def enclMethInfo(cx: Context): (Tree, Type) =
       if (cx == NoContext || cx.tree.isInstanceOf[Trees.TypeDef[_]]) {
         ctx.error("return outside method definition")
@@ -582,7 +592,7 @@ class Typer extends Namer with Applications with Implicits {
     cpy.Return(tree, expr1, from) withType defn.NothingType
   }
 
-  def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = {
+  def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = track("typedTry") {
     val expr1 = typed(tree.expr, pt)
     val handler1 = typed(tree.handler, defn.FunctionType(defn.ThrowableType :: Nil, pt))
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
@@ -593,18 +603,18 @@ class Typer extends Namer with Applications with Implicits {
     cpy.Try(tree, expr1, handler1, finalizer1).withType(expr1.tpe | handlerResultType)
   }
 
-  def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Throw = {
+  def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Throw = track("typedThrow") {
     val expr1 = typed(tree.expr, defn.ThrowableType)
     cpy.Throw(tree, expr1) withType defn.NothingType
   }
 
-  def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = {
+  def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = track("typedSeqLiteral") {
     val proto1 = pt.elemType orElse WildcardType
     val elems1 = tree.elems mapconserve (typed(_, proto1))
     cpy.SeqLiteral(tree, elems1) withType ctx.typeComparer.lub(elems1.tpes)
   }
 
-  def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree = {
+  def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree = track("typedTypeTree") {
     val (original1, ownType) = tree.original match {
       case untpd.EmptyTree =>
         assert(isFullyDefined(pt))
@@ -620,30 +630,30 @@ class Typer extends Namer with Applications with Implicits {
     cpy.TypeTree(tree, original1) withType ownType
   }
 
-  def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(implicit ctx: Context): SingletonTypeTree = {
+  def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(implicit ctx: Context): SingletonTypeTree = track("typedSingletonTypeTree") {
     val ref1 = typedExpr(tree.ref)
     checkStable(ref1.qualifierType, tree.pos)
     cpy.SingletonTypeTree(tree, ref1) withType ref1.tpe
   }
 
-  def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): SelectFromTypeTree = {
+  def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): SelectFromTypeTree = track("typedSelectFromTypeTree") {
     val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt))
     cpy.SelectFromTypeTree(tree, qual1, tree.name).withType(checkedSelectionType(qual1, tree))
   }
 
-  def typedAndTypeTree(tree: untpd.AndTypeTree)(implicit ctx: Context): AndTypeTree = {
+  def typedAndTypeTree(tree: untpd.AndTypeTree)(implicit ctx: Context): AndTypeTree = track("typedAndTypeTree") {
     val left1 = typed(tree.left)
     val right1 = typed(tree.right)
     cpy.AndTypeTree(tree, left1, right1) withType left1.tpe & right1.tpe
   }
 
-  def typedOrTypeTree(tree: untpd.OrTypeTree)(implicit ctx: Context): OrTypeTree = {
+  def typedOrTypeTree(tree: untpd.OrTypeTree)(implicit ctx: Context): OrTypeTree = track("typedOrTypeTree") {
     val left1 = typed(tree.left)
     val right1 = typed(tree.right)
     cpy.OrTypeTree(tree, left1, right1) withType left1.tpe | right1.tpe
   }
 
-  def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(implicit ctx: Context): RefinedTypeTree = {
+  def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(implicit ctx: Context): RefinedTypeTree = track("typedRefinedTypeTree") {
     val tpt1 = typedAheadType(tree.tpt)
     val refineClsDef = desugar.refinedTypeToClass(tree)
     val refineCls = createSymbol(refineClsDef).asClass
@@ -664,7 +674,7 @@ class Typer extends Namer with Applications with Implicits {
       (tpt1.tpe /: refinements1)(addRefinement)
   }
 
-  def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): AppliedTypeTree = {
+  def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): AppliedTypeTree = track("typedAppliedTypeTree") {
     val tpt1 = typed(tree.tpt)
     val args1 = tree.args mapconserve (typed(_))
     val tparams = tpt1.tpe.typeParams
@@ -674,7 +684,7 @@ class Typer extends Namer with Applications with Implicits {
     cpy.AppliedTypeTree(tree, tpt1, args1) withType tpt1.tpe.appliedTo(args1.tpes)
   }
 
-  def typedTypeBoundsTree(tree: untpd.TypeBoundsTree)(implicit ctx: Context): TypeBoundsTree = {
+  def typedTypeBoundsTree(tree: untpd.TypeBoundsTree)(implicit ctx: Context): TypeBoundsTree = track("typedTypeBoundsTree") {
     val lo1 = typed(tree.lo)
     val hi1 = typed(tree.hi)
     if (!(lo1.tpe <:< hi1.tpe))
@@ -682,27 +692,28 @@ class Typer extends Namer with Applications with Implicits {
     cpy.TypeBoundsTree(tree, lo1, hi1) withType TypeBounds(lo1.tpe, hi1.tpe)
   }
 
-  def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = {
+  def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = track("typedBind") {
     val body1 = typed(tree.body, pt)
     val sym = ctx.newSymbol(ctx.owner, tree.name.asTermName, EmptyFlags, pt, coord = tree.pos)
     cpy.Bind(tree, tree.name, body1) withType TermRef.withSym(NoPrefix, sym)
   }
 
-  def typedAlternative(tree: untpd.Alternative, pt: Type)(implicit ctx: Context): Alternative = {
+  def typedAlternative(tree: untpd.Alternative, pt: Type)(implicit ctx: Context): Alternative = track("typedAlternative") {
     val trees1 = tree.trees mapconserve (typed(_, pt))
     cpy.Alternative(tree, trees1) withType ctx.typeComparer.lub(trees1.tpes)
   }
 
-  def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = {
+  def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = track("typedModifiers") {
     val annotations1 = mods.annotations mapconserve typedAnnotation
     if (annotations1 eq mods.annotations) mods.asInstanceOf[Modifiers]
     else Modifiers(mods.flags, mods.privateWithin, annotations1)
   }
 
-  def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree =
+  def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree = track("typedAnnotation") {
     typed(annot, defn.AnnotationClass.typeConstructor)
+  }
 
-  def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = {
+  def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = track("typedValDef") {
     val ValDef(mods, name, tpt, rhs) = vdef
     val mods1 = typedModifiers(mods)
     val tpt1 = typedType(tpt)
@@ -711,7 +722,7 @@ class Typer extends Namer with Applications with Implicits {
     cpy.ValDef(vdef, mods1, name, tpt1, rhs1).withType(refType)
   }
 
-  def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
+  def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = track("typedDefDef") {
     val DefDef(mods, name, tparams, vparamss, tpt, rhs) = ddef
     val mods1 = typedModifiers(mods)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
@@ -722,14 +733,14 @@ class Typer extends Namer with Applications with Implicits {
     //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
-  def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): TypeDef = {
+  def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): TypeDef = track("typedTypeDef") {
     val TypeDef(mods, name, rhs) = tdef
     val mods1 = typedModifiers(mods)
     val rhs1 = typedType(rhs)
     cpy.TypeDef(tdef, mods1, name, rhs1).withType(sym.symRef)
   }
 
-  def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = {
+  def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = track("typedClassDef") {
     val TypeDef(mods, name, impl @ Template(constr, parents, self, body)) = cdef
     val mods1 = typedModifiers(mods)
     val constr1 = typed(constr).asInstanceOf[DefDef]
@@ -751,12 +762,12 @@ class Typer extends Namer with Applications with Implicits {
     // 4. Polymorphic type defs override nothing.
   }
 
-  def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = {
+  def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = track("typedImport") {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
     cpy.Import(imp, expr1, imp.selectors).withType(sym.symRef)
   }
 
-  def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = {
+  def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = track("typedAnnotated") {
     val annot1 = typed(tree.annot, defn.AnnotationClass.typeConstructor)
     val arg1 = typed(tree.arg, pt)
     val ownType = AnnotatedType(Annotation(annot1), arg1.tpe)
@@ -766,7 +777,7 @@ class Typer extends Namer with Applications with Implicits {
       cpy.Typed(tree, arg1, TypeTree(ownType)) withType ownType
   }
 
-  def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = {
+  def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = track("typedPackageDef") {
     val pid1 = typedExpr(tree.pid, AnySelectionProto)
     val pkg = pid1.symbol
     val packageContext =
@@ -953,7 +964,7 @@ class Typer extends Namer with Applications with Implicits {
    *  (14) When in mode EXPRmode, apply a view
    *  If all this fails, error
    */
-  def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", show = false) {
+  def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = track("adapt") { ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", show = false) {
 
     assert(pt.exists)
 
@@ -1085,5 +1096,5 @@ class Typer extends Namer with Applications with Implicits {
           }
       }
     }
-  }
+  }}
 }

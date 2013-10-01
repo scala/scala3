@@ -5,6 +5,7 @@ package typer
 import core._
 import ast.{Trees, untpd, tpd, TreeInfo}
 import util.Positions._
+import util.Stats.track
 import Contexts._
 import Types._
 import Flags._
@@ -35,7 +36,7 @@ object Implicits {
     def refs: List[TermRef]
 
     /** Return those references in `refs` that are compatible with type `pt`. */
-    protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = {
+    protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = track("filterMatching") {
       def result(implicit ctx: Context) =
         refs filter (ref => isCompatible(normalize(ref), pt))
       result(ctx.fresh.withNewTyperState) // create a defensive copy of ctx to avoid constraint pollution
@@ -180,7 +181,7 @@ trait ImplicitRunInfo { self: RunInfo =>
   }
 
   // todo: compute implicits directly, without going via companionRefs
-  private def computeImplicitScope(tp: Type): OfTypeImplicits = {
+  private def computeImplicitScope(tp: Type): OfTypeImplicits = track("computeImplicicScope") {
     val comps = new TermRefSet
     tp match {
       case tp: NamedType =>
@@ -239,8 +240,9 @@ trait Implicits { self: Typer =>
   /** Find an implicit conversion to apply to given tree `from` so that the
    *  result is compatible with type `to`.
    */
-  def inferView(from: tpd.Tree, to: Type)(implicit ctx: Context): SearchResult =
+  def inferView(from: tpd.Tree, to: Type)(implicit ctx: Context): SearchResult = track("inferView") {
     inferImplicit(to, from, from.pos)
+  }
 
   /** Find an implicit parameter or conversion.
    *  @param pt              The expected type of the parameter or conversion.
@@ -248,17 +250,18 @@ trait Implicits { self: Typer =>
    *                         it should be applied, EmptyTree otherwise.
    *  @param pos             The position where errors should be reported.
    */
-  def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult =
+  def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
     ctx.traceIndented(s"search implicit $pt, arg = ${argument.show}", show = true) {
-    val isearch =
-      if (ctx.settings.explaintypes.value) new ExplainedImplicitSearch(pt, argument, pos)
-      else new ImplicitSearch(pt, argument, pos)
-    val result = isearch.bestImplicit
-    result match {
-      case success: SearchSuccess => success.tstate.commit()
-      case _ =>
+      val isearch =
+        if (ctx.settings.explaintypes.value) new ExplainedImplicitSearch(pt, argument, pos)
+        else new ImplicitSearch(pt, argument, pos)
+      val result = isearch.bestImplicit
+      result match {
+        case success: SearchSuccess => success.tstate.commit()
+        case _ =>
+      }
+      result
     }
-    result
   }
 
   /** An implicit search; parameters as in `inferImplicit` */
@@ -275,7 +278,7 @@ trait Implicits { self: Typer =>
       ctx.typerState.checkConsistent // !!! DEBUG
 
       /** Try to typecheck an implicit reference */
-      def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = {
+      def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = track("typedImplicit") {
         ctx.typerState.checkConsistent // !!! DEBUG
         val id = Ident(ref).withPos(pos)
         val tree =

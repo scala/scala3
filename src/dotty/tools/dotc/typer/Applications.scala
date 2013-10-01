@@ -5,6 +5,7 @@ package typer
 import core._
 import ast.{Trees, untpd, tpd, TreeInfo}
 import util.Positions._
+import util.Stats.track
 import Trees.Untyped
 import Mode.ImplicitsEnabled
 import Contexts._
@@ -447,8 +448,9 @@ trait Applications extends Compatibility { self: Typer =>
     def treeToArg(arg: Tree): Tree = arg
   }
 
-  def typedApply(app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Tree =
+  def typedApply(app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Tree = track("typedApply") {
     new ApplyToTyped(app, fun, methRef, args, resultType).result
+  }
 
   def typedApply(fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Tree =
     typedApply(untpd.Apply(untpd.TypedSplice(fun), args), fun, methRef, args, resultType)
@@ -458,7 +460,7 @@ trait Applications extends Compatibility { self: Typer =>
       typedUnApply(tree, pt)
     else {
 
-      def realApply(implicit ctx: Context): Tree = {
+      def realApply(implicit ctx: Context): Tree = track("realApply") {
         val proto = new FunProto(tree.args, pt, this)
         val fun1 = typedExpr(tree.fun, proto)
         methPart(fun1).tpe match {
@@ -473,7 +475,7 @@ trait Applications extends Compatibility { self: Typer =>
                 case Select(qual, name) =>
                   tryEither { implicit ctx =>
                     val qual1 = adapt(qual, new SelectionProto(name, proto))
-                    if (qual1.tpe.isError || (qual1 eq qual)) qual1 
+                    if (qual1.tpe.isError || (qual1 eq qual)) qual1
                     else
                       typedApply(
                         cpy.Apply(tree,
@@ -494,7 +496,7 @@ trait Applications extends Compatibility { self: Typer =>
         }
       }
 
-      def typedOpAssign: Tree = {
+      def typedOpAssign: Tree = track("typedOpAssign") {
         val Apply(Select(lhs, name), rhss) = tree
         val lhs1 = typedExpr(lhs)
         val lifted = new mutable.ListBuffer[Tree]
@@ -517,7 +519,7 @@ trait Applications extends Compatibility { self: Typer =>
     }
   }
 
-  def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = {
+  def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
     val typedFn = typedExpr(tree.fun, PolyProto(tree.args.length, pt))
     val typedArgs = tree.args mapconserve (typedType(_))
     val ownType = typedFn.tpe.widen match {
@@ -531,7 +533,7 @@ trait Applications extends Compatibility { self: Typer =>
     cpy.TypeApply(tree, typedFn, typedArgs).withType(ownType)
   }
 
-  def typedUnApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
+  def typedUnApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
     val Apply(qual, args) = tree
 
     def unapplyArgs(unapplyResult: Type)(implicit ctx: Context): List[Type] = {
@@ -662,7 +664,7 @@ trait Applications extends Compatibility { self: Typer =>
   /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
    *  `alt2`? `alt1` and `alt2` are nonoverloaded references.
    */
-  def isAsGood(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Boolean = {
+  def isAsGood(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Boolean = track("isAsGood") {
 
     /** Is class or module class `sym1` derived from class or module class `sym2`? */
     def isDerived(sym1: Symbol, sym2: Symbol): Boolean =
@@ -712,30 +714,32 @@ trait Applications extends Compatibility { self: Typer =>
     else /* 1/9 */ winsType1 || /* 2/27 */ !winsType2
   }
 
-  def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = (alts: @unchecked) match {
-    case alt :: alts1 =>
-      def winner(bestSoFar: TermRef, alts: List[TermRef]): TermRef = alts match {
-        case alt :: alts1 =>
-          winner(if (isAsGood(alt, bestSoFar)) alt else bestSoFar, alts1)
-        case nil =>
-          bestSoFar
-      }
-      val best = winner(alt, alts1)
-      def asGood(alts: List[TermRef]): List[TermRef] = alts match {
-        case alt :: alts1 =>
-          if ((alt eq best) || !isAsGood(alt, best)) asGood(alts1)
-          else alt :: asGood(alts1)
-        case nil =>
-          Nil
-      }
-      best :: asGood(alts1)
+  def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
+    (alts: @unchecked) match {
+      case alt :: alts1 =>
+        def winner(bestSoFar: TermRef, alts: List[TermRef]): TermRef = alts match {
+          case alt :: alts1 =>
+            winner(if (isAsGood(alt, bestSoFar)) alt else bestSoFar, alts1)
+          case nil =>
+            bestSoFar
+        }
+        val best = winner(alt, alts1)
+        def asGood(alts: List[TermRef]): List[TermRef] = alts match {
+          case alt :: alts1 =>
+            if ((alt eq best) || !isAsGood(alt, best)) asGood(alts1)
+            else alt :: asGood(alts1)
+          case nil =>
+            Nil
+        }
+        best :: asGood(alts1)
+    }
   }
 
   private lazy val dummyTree = untpd.Literal(Constant(null))
   def dummyTreeOfType(tp: Type): Tree = dummyTree withTypeUnchecked tp
 
   /** Resolve overloaded alternative `alts`, given expected type `pt`. */
-  def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = {
+  def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 
