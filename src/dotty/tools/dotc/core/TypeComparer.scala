@@ -2,9 +2,9 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Flags._
+import Types._, Contexts._, Symbols._, Flags._, Names._
 import Decorators.sourcePos
-import StdNames.nme
+import StdNames.{nme, tpnme}
 import collection.mutable
 import util.SimpleMap
 
@@ -242,9 +242,8 @@ class TypeComparer(initctx: Context) extends DotClass {
       tp1 match {
         case tp1: PolyType =>
           tp1.signature == tp2.signature &&
-            (tp1.paramBounds corresponds tp2.paramBounds)((b1, b2) =>
-              isSameType(b1, b2.subst(tp2, tp1))) &&
-            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+          matchingTypeParams(tp1, tp2) &&
+          isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
           false
       }
@@ -400,11 +399,20 @@ class TypeComparer(initctx: Context) extends DotClass {
       formals2.isEmpty
   }
 
+  /** Do poly types `poly1` and `poly2` have type parameters that
+   *  have the same bounds (after renaming one set to the other)?
+   */
+  private def matchingTypeParams(poly1: PolyType, poly2: PolyType): Boolean =
+    (poly1.paramBounds corresponds poly2.paramBounds)((b1, b2) =>
+      isSameType(b1, b2.subst(poly2, poly1)))
+
+  /** Two types are the same if are mutual subtypes of each other */
   def isSameType(tp1: Type, tp2: Type): Boolean =
     if (tp1 == NoType || tp2 == NoType) false
     else if (tp1 eq tp2) true
     else isSubType(tp1, tp2) && isSubType(tp2, tp1)
 
+  /** The greatest lower bound of two types */
   def glb(tp1: Type, tp2: Type): Type =
     if (tp1 eq tp2) tp1
     else if (!tp1.exists || (tp1 isRef AnyClass) || (tp2 isRef NothingClass)) tp2
@@ -412,8 +420,6 @@ class TypeComparer(initctx: Context) extends DotClass {
     else tp2 match {  // normalize to disjunctive normal form if possible.
       case OrType(tp21, tp22) =>
         tp1 & tp21 | tp1 & tp22
-//      case tp2: PolyType =>
-//        mergePoly(tp2, tp1, lower = true)
       case _ =>
         tp1 match {
           case OrType(tp11, tp12) =>
@@ -424,29 +430,16 @@ class TypeComparer(initctx: Context) extends DotClass {
             else {
               val t2 = mergeIfSub(tp2, tp1)
               if (t2.exists) t2
-              else {
-                tp1 match {
-                  case tp1: TypeBounds =>
-                    tp2 match {
-                      case tp2: TypeBounds =>
-                        return TypeBounds(tp1.lo | tp2.lo, tp1.hi & tp2.hi)
-                      case tp2: ClassInfo =>
-                        return classMerge(tp2, tp1, isAnd = true)
-                      case _ =>
-                    }
-                  case tp1: ClassInfo =>
-                    return classMerge(tp1, tp2, isAnd = true)
-                  case _ =>
-                }
-                AndType(tp1, tp2)
-              }
+              else andType(tp1, tp2)
             }
         }
     }
-
+    
+  /** The greatest lower bound of a list types */
   final def glb(tps: List[Type]): Type =
     (defn.AnyType /: tps)(glb)
 
+  /** The least upper bound of two types */
   def lub(tp1: Type, tp2: Type): Type =
     if (tp1 eq tp2) tp1
     else if (!tp1.exists || (tp1 isRef AnyClass) || (tp2 isRef NothingClass)) tp1
@@ -457,25 +450,11 @@ class TypeComparer(initctx: Context) extends DotClass {
       else {
         val t2 = mergeIfSuper(tp2, tp1)
         if (t2.exists) t2
-        else {
-          tp1 match {
-            case tp1: TypeBounds =>
-              tp2 match {
-                case tp2: TypeBounds =>
-                  return TypeBounds(tp1.lo & tp2.lo, tp1.hi | tp2.hi)
-                case tp2: ClassInfo =>
-                  return classMerge(tp2, tp1, isAnd = false)
-                case _ =>
-              }
-            case tp1: ClassInfo =>
-              return classMerge(tp1, tp2, isAnd = false)
-            case _ =>
-          }
-          OrType(tp1, tp2)
-        }
+        else orType(tp1, tp2)
       }
     }
 
+  /** The least upper bound of a list of types */
   final def lub(tps: List[Type]): Type =
     (defn.NothingType /: tps)(lub)
 
@@ -519,46 +498,237 @@ class TypeComparer(initctx: Context) extends DotClass {
         NoType
     }
 
-  /** Merge class info with other TypeType.
-   *  The problem is how to generate a TypeType from the union or intersection
-   *  of a ClassInfo and another TypeType. Generating an (empty) TypeBounds
-   *  that refers to the class symbol via a TypeRef does not work; it leads to
-   *  infinite loops when dereferencing proxies.
-   *  The algorithm used instead is:
-   *  1. ClassInfos always override TypeBounds.
-   *  2. When merging two ClassInfos pick one of them. More precisely,
-   *     pick the first, unless the second's prefix is a true subtype of the
-   *     first's prefix or the second's owner is a true subclass of the first's owner.
+  /** Form a normalized conjunction of two types.
+   *  Note: For certain types, `&` is distributed inside the type. This holds for
+   *  all types which are not value types (e.g. TypeBounds, ClassInfo,
+   *  ExprType, MethodType, PolyType). Also, when forming an `&`,
+   *  instantiated TypeVars are dereferenced and annotations are stripped.
+   *  Finally, refined types with the same refined name are
+   *  opportunistically merged.
+   *
+   *  Sometimes, the conjunction of two types cannot be formed because
+   *  the types are in conflict of each other. In particular:
+   *
+   *    1. Two different class types are conflicting.
+   *    2. A class type conflicts with a type bounds that does not include the class reference.
+   *    3. Two method or poly types with different (type) parameters but the same
+   *       signature are conflicting
+   *
+   *  In these cases, one of the types is picked (@see andConflict).
    *  This is arbitrary, but I believe it is analogous to forming
-   *  unfeasible TypeBounds (where lo is not a subtype of hi). Such TypeBounds
-   *  can also be arbitrarily instantiated. In both cases we need to
+   *  unfeasible TypeBounds (where low bound is not a subtype of high bound).
+   *  Such TypeBounds can also be arbitrarily instantiated. In both cases we need to
    *  make sure that such types do not actually arise in source programs.
    */
-  private def classMerge(cinfo: ClassInfo, tp2: Type, isAnd: Boolean)(implicit ctx: Context): Type = {
-
-    def showTypeType(tp: Type)(implicit ctx: Context) = tp match {
-      case ClassInfo(_, cls, _, _, _) => cls.showLocated
-      case bounds: TypeBounds => "type bounds" + bounds.show
-      case _ => tp.show
+  final def andType(tp1: Type, tp2: Type) = {
+    val t1 = distributeAnd(tp1, tp2)
+    if (t1.exists) t1
+    else {
+      val t2 = distributeAnd(tp2, tp1)
+      if (t2.exists) t2
+      else AndType(tp1, tp2)
     }
-
-    def msg = s"cannot merge ${showTypeType(cinfo)} with ${showTypeType(tp2)}"
-    val pos = ctx.tree.pos
-
-    if (isAnd) {
-      val winner = tp2 match {
-        case cinfo2: ClassInfo if isAsGood(cinfo2, cinfo) && !isAsGood(cinfo, cinfo2) => cinfo2
-        case _ => cinfo
-      }
-      ctx.warning(s"$msg as members of one type; keeping only ${showTypeType(winner)}", ctx.tree.pos)
-      winner
-    }
-    else
-      throw new ClassMergeError(msg)
   }
 
-  private def isAsGood(cinfo1: ClassInfo, cinfo2: ClassInfo)(implicit ctx: Context): Boolean =
-    (cinfo1.prefix <:< cinfo2.prefix) || (cinfo1.cls.owner derivesFrom cinfo2.cls.owner)
+  /** Form a normalized conjunction of two types.
+   *  Note: For certain types, `|` is distributed inside the type. This holds for
+   *  all types which are not value types (e.g. TypeBounds, ClassInfo,
+   *  ExprType, MethodType, PolyType). Also, when forming an `|`,
+   *  instantiated TypeVars are dereferenced and annotations are stripped.
+   *
+   *  Sometimes, the disjunction of two types cannot be formed because
+   *  the types are in conflict of each other. (@see `andType` for an enumeration
+   *  of these cases). In cases of conflict a `MergeError` is raised.
+   */
+  final def orType(tp1: Type, tp2: Type) = {
+    val t1 = distributeOr(tp1, tp2)
+    if (t1.exists) t1
+    else {
+      val t2 = distributeOr(tp2, tp1)
+      if (t2.exists) t2
+      else OrType(tp1, tp2)
+    }
+  }
+
+  /** Try to distribute `&` inside type, detect and handle conflicts */
+  private def distributeAnd(tp1: Type, tp2: Type): Type = tp1 match {
+    case TypeBounds(lo1, hi1) =>
+      tp2 match {
+        case TypeBounds(lo2, hi2) =>
+          TypeBounds(lo1 | lo2, hi1 & hi2)
+        case _ =>
+          andConflict(tp1, tp2)
+      }
+    case tp1: ClassInfo =>
+      tp2 match {
+        case tp2: ClassInfo if tp1.cls eq tp2.cls =>
+          tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
+        case _ =>
+          andConflict(tp1, tp2)
+      }
+    case tp1 @ MethodType(names1, formals1) =>
+      tp2 match {
+        case tp2 @ MethodType(names2, formals2)
+        if matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
+           tp1.isImplicit == tp2.isImplicit =>
+          tp1.derivedMethodType(
+              mergeNames(names1, names2, nme.syntheticParamName),
+              formals1, tp1.resultType & tp2.resultType.subst(tp2, tp1))
+        case _ =>
+          andConflict(tp1, tp2)
+      }
+    case tp1: PolyType =>
+      tp2 match {
+        case tp2: PolyType if matchingTypeParams(tp1, tp2) =>
+          tp1.derivedPolyType(
+              mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
+              tp1.paramBounds, tp1.resultType & tp2.resultType.subst(tp2, tp1))
+        case _ =>
+          andConflict(tp1, tp2)
+      }
+    case ExprType(rt1) =>
+      tp2 match {
+        case ExprType(rt2) =>
+          ExprType(rt1 & rt2)
+        case _ =>
+          rt1 & tp2
+      }
+    case tp1: RefinedType =>
+      // opportunistically merge same-named refinements
+      // this does not change anything semantically (i.e. merging or not merging
+      // gives =:= types), but it keeps the type smaller.
+      tp2 match {
+        case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
+          tp1.derivedRefinedType(
+              tp1.parent & tp2.parent, tp1.refinedName,
+              tp1.refinedInfo & tp2.refinedInfo)
+        case _ =>
+          NoType
+      }
+    case tp1: TypeVar if tp1.isInstantiated =>
+      tp1.underlying & tp2
+    case tp1: AnnotatedType =>
+      tp1.underlying & tp2
+    case _ =>
+      NoType
+  }
+
+  /** Try to distribute `|` inside type, detect and handle conflicts */
+  private def distributeOr(tp1: Type, tp2: Type): Type = tp1 match {
+    case TypeBounds(lo1, hi1) =>
+      tp2 match {
+        case TypeBounds(lo2, hi2) =>
+          TypeBounds(lo1 & lo2, hi1 | hi2)
+        case _ =>
+          orConflict(tp1, tp2)
+      }
+    case tp1: ClassInfo =>
+      tp2 match {
+        case tp2: ClassInfo if tp1.cls eq tp2.cls =>
+          tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
+        case _ =>
+          orConflict(tp1, tp2)
+      }
+    case tp1 @ MethodType(names1, formals1) =>
+      tp2 match {
+        case tp2 @ MethodType(names2, formals2)
+        if matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
+           tp1.isImplicit == tp2.isImplicit =>
+          tp1.derivedMethodType(
+              mergeNames(names1, names2, nme.syntheticParamName),
+              formals1, tp1.resultType | tp2.resultType.subst(tp2, tp1))
+        case _ =>
+          orConflict(tp1, tp2)
+      }
+    case tp1: PolyType =>
+      tp2 match {
+        case tp2: PolyType if matchingTypeParams(tp1, tp2) =>
+          tp1.derivedPolyType(
+              mergeNames(tp1.paramNames, tp2.paramNames, tpnme.syntheticTypeParamName),
+              tp1.paramBounds, tp1.resultType | tp2.resultType.subst(tp2, tp1))
+        case _ =>
+          orConflict(tp1, tp2)
+      }
+    case ExprType(rt1) =>
+      tp2 match {
+        case ExprType(rt2) =>
+          ExprType(rt1 | rt2)
+        case _ =>
+          ExprType(rt1 | tp2)
+      }
+    case tp1: TypeVar if tp1.isInstantiated =>
+      tp1.underlying | tp2
+    case tp1: AnnotatedType =>
+      tp1.underlying | tp2
+    case _ =>
+      NoType
+  }
+
+  /** Handle `&`-conflict. If `tp2` is strictly better than `tp1` as determined
+   *  by @see `isAsGood`, pick `tp2` as the winner otherwise pick `tp1`.
+   *  Issue a warning and return the winner.
+   */
+  private def andConflict(tp1: Type, tp2: Type): Type = {
+    val winner = if (isAsGood(tp2, tp1) && !isAsGood(tp1, tp2)) tp2 else tp1
+    ctx.warning(s"${mergeErrorMsg(tp1, tp2)} as members of one type; keeping only ${showType(winner)}", ctx.tree.pos)
+    winner
+  }
+
+  /** Handle `|`-conflict by raising a `MergeError` exception */
+  private def orConflict(tp1: Type, tp2: Type): Type =
+    throw new MergeError(mergeErrorMsg(tp1, tp2))
+
+  /** Merge two lists of names. If names in corresponding positions match, keep them,
+   *  otherwise generate new synthetic names.
+   */
+  private def mergeNames[N <: Name](names1: List[N], names2: List[N], syntheticName: Int => N): List[N] = {
+    for ((name1, name2, idx) <- (names1, names2, 0 until names1.length).zipped)
+    yield if (name1 == name2) name1 else syntheticName(idx)
+  }.toList
+
+  /** Show type, handling type types better than the default */
+  private def showType(tp: Type) = tp match {
+    case ClassInfo(_, cls, _, _, _) => cls.showLocated
+    case bounds: TypeBounds => "type bounds" + bounds.show
+    case _ => tp.show
+  }
+
+  /** The error message kernel for a merge conflict */
+  private def mergeErrorMsg(tp1: Type, tp2: Type) = {
+    s"cannot merge ${showType(tp1)} with ${showType(tp2)}"
+  }
+
+  /** A comparison function to pick a winner in case of a merge conflict */
+  private def isAsGood(tp1: Type, tp2: Type): Boolean = tp1 match {
+    case tp1: ClassInfo =>
+      tp2 match {
+        case tp2: ClassInfo =>
+          (tp1.prefix <:< tp2.prefix) || (tp1.cls.owner derivesFrom tp2.cls.owner)
+        case _ =>
+          false
+      }
+    case tp1: PolyType =>
+      tp2 match {
+        case tp2: PolyType =>
+          tp1.typeParams.length == tp2.typeParams.length &&
+          isAsGood(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+        case _ =>
+          false
+      }
+    case tp1: MethodType =>
+      tp2 match {
+        case tp2: MethodType =>
+          def asGoodParams(formals1: List[Type], formals2: List[Type]) =
+            (formals2 corresponds formals1)(_ <:< _)
+          asGoodParams(tp1.paramTypes, tp2.paramTypes) &&
+          (!asGoodParams(tp2.paramTypes, tp1.paramTypes) ||
+           isAsGood(tp1.resultType, tp2.resultType))
+        case _ =>
+          false
+      }
+    case _ =>
+      false
+  }
 
   def copyIn(ctx: Context) = new TypeComparer(ctx)
 }

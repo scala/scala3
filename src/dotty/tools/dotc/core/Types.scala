@@ -417,8 +417,8 @@ object Types {
           NoDenotation
       }
     } catch {
-      case ex: ClassMergeError =>
-        throw new ClassMergeError(s"${ex.getMessage} as members of type ${pre.show}")
+      case ex: MergeError =>
+        throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
     }
 
   /* !!! DEBUG ensuring { denot =>
@@ -1500,7 +1500,7 @@ object Types {
   // --- AndType/OrType ---------------------------------------------------------------
 
   abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with ValueType {
-    assert(tp1.isInstanceOf[TermType] && tp2.isInstanceOf[TermType], s"$tp1 & $tp2")
+    assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType], s"$tp1 & $tp2")
 
     type This <: AndType
 
@@ -1523,6 +1523,8 @@ object Types {
   }
 
   abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with ValueType {
+    assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType], s"$tp1 | $tp2")
+
     def derivedOrType(tp1: Type, tp2: Type)(implicit ctx: Context) =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else OrType(tp1, tp2)
@@ -2360,7 +2362,7 @@ object Types {
   class CyclicReference(val denot: SymDenotation)
     extends FatalTypeError(s"cyclic reference involving $denot")
 
-  class ClassMergeError(msg: String) extends FatalTypeError(msg)
+  class MergeError(msg: String) extends FatalTypeError(msg)
 
   // ----- Debug ---------------------------------------------------------
 
