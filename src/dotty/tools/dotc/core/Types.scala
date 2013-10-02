@@ -193,14 +193,20 @@ object Types {
     final def foreach(f: Type => Unit): Unit = ???
 
     /** Map function over elements of an AndType, rebuilding with & */
-    def mapAnd(f: Type => Type)(implicit ctx: Context): Type = stripTypeVar match {
-      case AndType(tp1, tp2) => tp1.mapAnd(f) & tp2.mapAnd(f)
+    def mapAnd(f: Type => Type)(implicit ctx: Context): Type =
+      mapReduceAnd(f)(_ & _)
+
+    def mapReduceAnd[T](f: Type => T)(g: (T, T) => T)(implicit ctx: Context): T = stripTypeVar match {
+      case AndType(tp1, tp2) => g(tp1.mapReduceAnd(f)(g), tp2.mapReduceAnd(f)(g))
       case _ => f(this)
     }
 
     /** Map function over elements of an OrType, rebuilding with | */
-    final def mapOr(f: Type => Type)(implicit ctx: Context): Type = stripTypeVar match {
-      case OrType(tp1, tp2) => tp1.mapOr(f) | tp2.mapOr(f)
+    final def mapOr(f: Type => Type)(implicit ctx: Context): Type =
+      mapReduceOr(f)(_ | _)
+
+    final def mapReduceOr[T](f: Type => T)(g: (T, T) => T)(implicit ctx: Context): T = stripTypeVar match {
+      case OrType(tp1, tp2) => g(tp1.mapReduceOr(f)(g), tp2.mapReduceOr(f)(g))
       case _ => f(this)
     }
 

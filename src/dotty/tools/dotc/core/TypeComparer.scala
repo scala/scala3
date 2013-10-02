@@ -520,7 +520,7 @@ class TypeComparer(initctx: Context) extends DotClass {
    *  Such TypeBounds can also be arbitrarily instantiated. In both cases we need to
    *  make sure that such types do not actually arise in source programs.
    */
-  final def andType(tp1: Type, tp2: Type) = {
+  final def andType(tp1: Type, tp2: Type) = ctx.traceIndented(s"glb(${tp1.show}, ${tp2.show})", show = true) {
     val t1 = distributeAnd(tp1, tp2)
     if (t1.exists) t1
     else {
@@ -729,7 +729,13 @@ class TypeComparer(initctx: Context) extends DotClass {
     case _ =>
       false
   }
+/*
+  def widenInferred(tp: Type) = tp match {
+    case tp: OrType =>
+      val alts = tp.mapReduceOr(_ :: Nil)(_ ::: _)
 
+  }
+*/
   def copyIn(ctx: Context) = new TypeComparer(ctx)
 }
 
