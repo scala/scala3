@@ -53,6 +53,8 @@ object SymDenotations {
 
     //assert(symbol.id != 4940, name)
 
+    override def hasUniqueSym: Boolean = exists
+
     // ------ Getting and setting fields -----------------------------
 
     private[this] var myFlags: FlagSet = adaptFlags(initFlags)
@@ -932,6 +934,7 @@ object SymDenotations {
                 }
                 denots1 union
                   parentd.membersNamed(name)
+                    .dropUniqueRefsIn(denots1)
                     .filterExcluded(Private)
                     .disjointAsSeenFrom(ownDenots, thisType)
               case _ =>

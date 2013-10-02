@@ -374,6 +374,7 @@ object Denotations {
 
   /** A non-overloaded denotation */
   abstract class SingleDenotation extends Denotation with PreDenotation {
+    def hasUniqueSym: Boolean
     override def isType = info.isInstanceOf[TypeType]
     override def signature(implicit ctx: Context): Signature = {
       if (isType) NotAMethod
@@ -530,9 +531,11 @@ object Denotations {
 
     final def first = this
     final def toDenot(pre: Type)(implicit ctx: Context) = this
+    final def containsSym(sym: Symbol): Boolean =
+      hasUniqueSym && (symbol eq sym)
     final def containsSig(sig: Signature)(implicit ctx: Context) =
       exists && signature == sig
-    final def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation =
+    final def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation =
       if (p(this)) this else NoDenotation
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
       if (denots.containsSig(signature)) NoDenotation else this
@@ -547,6 +550,8 @@ object Denotations {
         case _ =>
           if (symbol is excluded) NoDenotation else this
       }
+    final def dropUniqueRefsIn(denots: PreDenotation): SingleDenotation =
+      if (hasUniqueSym && denots.containsSym(symbol)) NoDenotation else this
     def asSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = {
       val owner = this match {
         case thisd: SymDenotation => thisd.owner
@@ -562,6 +567,7 @@ object Denotations {
     val info: Type,
     initValidFor: Period) extends SingleDenotation {
     validFor = initValidFor
+    override def hasUniqueSym: Boolean = true
     override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
   }
 
@@ -570,11 +576,13 @@ object Denotations {
     val info: Type,
     initValidFor: Period) extends SingleDenotation {
     validFor = initValidFor
+    override def hasUniqueSym = false
     override protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
   }
 
   class ErrorDenotation(implicit ctx: Context) extends SingleDenotation {
     override def exists = false
+    override def hasUniqueSym = false
     val symbol = NoSymbol
     val info = NoType
     validFor = Period.allInRun(ctx.runId)
@@ -600,6 +608,9 @@ object Denotations {
     /** Convert to full denotation by &-ing all elements */
     def toDenot(pre: Type)(implicit ctx: Context): Denotation
 
+    /** Group contains a denotation that refers to given symbol */
+    def containsSym(sym: Symbol): Boolean
+
     /** Group contains a denotation with given signature */
     def containsSig(sig: Signature)(implicit ctx: Context): Boolean
 
@@ -617,6 +628,11 @@ object Denotations {
      */
     def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation
 
+    /** Drop all denotations which refer to a unique symbol that is
+     *  already referred uniquely in `denots`.
+     */
+    def dropUniqueRefsIn(denots: PreDenotation): PreDenotation
+
     /** The denotation with info(s) as seen from prefix type */
     def asSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation
 
@@ -632,6 +648,8 @@ object Denotations {
     def exists = true
     def first = denots1.first
     def toDenot(pre: Type)(implicit ctx: Context) = (denots1 toDenot pre) & (denots2 toDenot pre, pre)
+    def containsSym(sym: Symbol) =
+      (denots1 containsSym sym) || (denots2 containsSym sym)
     def containsSig(sig: Signature)(implicit ctx: Context) =
       (denots1 containsSig sig) || (denots2 containsSig sig)
     def filterWithPredicate(p: SingleDenotation => Boolean): PreDenotation =
@@ -642,6 +660,8 @@ object Denotations {
       derivedUnion(denots1.disjointAsSeenFrom(denots, pre), denots2.disjointAsSeenFrom(denots, pre))
     def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1.filterExcluded(excluded), denots2.filterExcluded(excluded))
+    def dropUniqueRefsIn(denots: PreDenotation): PreDenotation =
+      derivedUnion(denots1.dropUniqueRefsIn(denots), denots2.dropUniqueRefsIn(denots))
     def asSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1.asSeenFrom(pre), denots2.asSeenFrom(pre))
     private def derivedUnion(denots1: PreDenotation, denots2: PreDenotation) =
