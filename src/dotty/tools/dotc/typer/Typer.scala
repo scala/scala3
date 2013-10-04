@@ -1046,8 +1046,7 @@ class Typer extends Namer with Applications with Implicits {
                |follow this method with `_' if you want to treat it as a partially applied function""".stripMargin)
       case _ =>
         if (tree.tpe <:< pt) tree
-        else if (ctx.mode is Mode.Pattern) tree // no subtype check for patterns
-        else if (ctx.mode is Mode.Type) err.typeMismatch(tree, pt)
+        else if (ctx.mode is Mode.Pattern) tree // no subtype check for pattern
         else adaptToSubType(wtp)
     }
 
@@ -1092,7 +1091,11 @@ class Typer extends Namer with Applications with Implicits {
         case wtp =>
           pt match {
             case pt: FunProto => adaptToArgs(wtp, pt)
-            case _ => adaptNoArgs(wtp)
+            case _ =>
+              if (ctx.mode is Mode.Type)
+                if (tree.tpe <:< pt) tree
+                else err.typeMismatch(tree, pt)
+              else adaptNoArgs(wtp)
           }
       }
     }
