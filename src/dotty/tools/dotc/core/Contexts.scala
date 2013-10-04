@@ -243,7 +243,7 @@ object Contexts {
       if (_condensed eq outer.condensed)
         _condensed = base.initialCtx.fresh
           .withPeriod(period)
-          .withMode(mode)
+          .withNewMode(mode)
           // typerState and its constraint is not preserved in condensed
           // reporter is always ThrowingReporter
           .withPrinterFn(printerFn)
@@ -265,12 +265,12 @@ object Contexts {
       newctx
     }
 
-    def withMode(mode: Mode): Context =
-      if (mode != this.mode) fresh.withMode(mode) else this
+    final def withMode(mode: Mode): Context =
+      if (mode != this.mode) fresh.withNewMode(mode) else this
 
-    def addMode(mode: Mode): Context = withMode(this.mode | mode)
-    def maskMode(mode: Mode): Context = withMode(this.mode & mode)
-    def retractMode(mode: Mode): Context = withMode(this.mode &~ mode)
+    final def addMode(mode: Mode): Context = withMode(this.mode | mode)
+    final def maskMode(mode: Mode): Context = withMode(this.mode & mode)
+    final def retractMode(mode: Mode): Context = withMode(this.mode &~ mode)
   }
 
   /** A condensed context provides only a small memory footprint over
@@ -286,7 +286,7 @@ object Contexts {
    */
   abstract class FreshContext extends CondensedContext {
     def withPeriod(period: Period): this.type = { this.period = period; this }
-    override def withMode(mode: Mode): this.type = { this.mode = mode; this }
+    def withNewMode(mode: Mode): this.type = { this.mode = mode; this }
     def withTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
     def withNewTyperState: this.type = withTyperState(typerState.fresh)
     def withPrinterFn(printer: Context => Printer): this.type = { this.printerFn = printer; this }
