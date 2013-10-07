@@ -294,6 +294,11 @@ object Flags {
   /** A case parameter (or its accessor, or a GADT skolem) */
   final val CaseAccessor = termFlag(26, "<caseaccessor>")
 
+  /** An type parameter which is an alias for some other type parameter */
+  final val TypeParamInstance = typeFlag(26, "<type-param-inst>")
+
+  final val CaseAccessorOrTypeParamInstance = CaseAccessor.toCommonFlags
+
   /** A super accessor */
   final val SuperAccessor = termFlag(27, "<superaccessor>")
 
@@ -388,8 +393,8 @@ object Flags {
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | Param | Scala2ExistentialCommon | Touched |
-    Static | CovariantCommon | ContravariantCommon | ExpandedName | AccessorOrSealed | Frozen |
-    Erroneous | ImplicitCommon | Permanent
+    Static | CovariantCommon | ContravariantCommon | ExpandedName | AccessorOrSealed |
+    CaseAccessorOrTypeParamInstance | Frozen | Erroneous | ImplicitCommon | Permanent
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion
@@ -402,7 +407,7 @@ object Flags {
 
   /** Flags that are passed from a type parameter of a class to a refinement symbol
     * that sets the type parameter */
-  final val RetainedTypeArgFlags = VarianceFlags | Protected | Local
+  final val RetainedTypeArgFlags = VarianceFlags | ExpandedName | Protected | Local
 
   /** Modules always have these flags set */
   final val ModuleCreationFlags = ModuleVal
@@ -414,7 +419,7 @@ object Flags {
   final val SelfSymFlags = Private | Local | Deferred
 
   /** The flags of a type parameter */
-  final val TypeParamCreationFlags = TypeParam | Protected | Local
+  final val TypeParamCreationFlags = TypeParam | Deferred | Protected | Local
 
   /** Flags that can apply to both a module val and a module class, except those that
     *  are added at creation anyway
@@ -451,6 +456,15 @@ object Flags {
 
   /** A parameter or parameter accessor */
   final val ParamOrAccessor = Param | Accessor
+
+  /** A covariant type parameter instance */
+  final val CovariantExpanded = allOf(ExpandedName, Covariant)
+
+  /** A contravariant type parameter instance */
+  final val ContravariantExpanded = allOf(ExpandedName, Contravariant)
+
+  /** A covariant type parameter instance */
+  final val TypeParamOrInstance = TypeParam | TypeParamInstance
 
   /** Has defined or inherited default parameters */
   final val HasDefaultParams = DefaultParameterized | InheritedDefaultParams

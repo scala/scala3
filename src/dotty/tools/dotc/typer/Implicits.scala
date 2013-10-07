@@ -275,8 +275,6 @@ trait Implicits { self: Typer =>
     /** Search a list of eligible implicit references */
     def searchImplicits(eligible: List[TermRef], contextual: Boolean): SearchResult = {
 
-      ctx.typerState.checkConsistent // !!! DEBUG
-
       /** Try to typecheck an implicit reference */
       def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = track("typedImplicit") {
         ctx.typerState.checkConsistent // !!! DEBUG
