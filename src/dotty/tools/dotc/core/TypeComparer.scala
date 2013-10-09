@@ -254,11 +254,12 @@ class TypeComparer(initctx: Context) extends DotClass {
         case _ =>
           isSubType(tp1, restpe2)
       }
-    case TypeBounds(lo2, hi2) =>
+    case tp2 @ TypeBounds(lo2, hi2) =>
       tp1 match {
-        case TypeBounds(lo1, hi1) =>
-          ((lo2 isRef NothingClass) || isSubType(lo2, lo1)) &&
-          ((hi2 isRef AnyClass) || isSubType(hi1, hi2))
+        case tp1 @ TypeBounds(lo1, hi1) =>
+          val v = tp1.variance + tp2.variance
+          ((v > 0) || (lo2 isRef NothingClass) || isSubType(lo2, lo1)) &&
+          ((v < 0) || (hi2 isRef AnyClass) || isSubType(hi1, hi2))
         case tp1: ClassInfo =>
           val tt = tp1.typeConstructor // was typeTemplate
           isSubType(lo2, tt) && isSubType(tt, hi2)
@@ -434,7 +435,7 @@ class TypeComparer(initctx: Context) extends DotClass {
             }
         }
     }
-    
+
   /** The greatest lower bound of a list types */
   final def glb(tps: List[Type]): Type =
     (defn.AnyType /: tps)(glb)
@@ -552,9 +553,14 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   /** Try to distribute `&` inside type, detect and handle conflicts */
   private def distributeAnd(tp1: Type, tp2: Type): Type = tp1 match {
-    case TypeBounds(lo1, hi1) =>
+    case tp1 @ TypeBounds(lo1, hi1) =>
       tp2 match {
-        case TypeBounds(lo2, hi2) =>
+        case tp2 @ TypeBounds(lo2, hi2) =>
+          if ((lo1 eq hi1) && (lo2 eq hi2)) {
+            val v = (tp1.variance + tp2.variance) / 2
+            if (v > 0) return TypeAlias(hi1 & hi2, v)
+            if (v < 0) return TypeAlias(lo1 | lo2, v)
+          }
           TypeBounds(lo1 | lo2, hi1 & hi2)
         case _ =>
           andConflict(tp1, tp2)
@@ -615,9 +621,14 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   /** Try to distribute `|` inside type, detect and handle conflicts */
   private def distributeOr(tp1: Type, tp2: Type): Type = tp1 match {
-    case TypeBounds(lo1, hi1) =>
+    case tp1 @ TypeBounds(lo1, hi1) =>
       tp2 match {
-        case TypeBounds(lo2, hi2) =>
+        case tp2 @ TypeBounds(lo2, hi2) =>
+          if ((lo1 eq hi1) && (lo2 eq hi2)) {
+            val v = (tp1.variance + tp2.variance) / 2
+            if (v > 0) return TypeAlias(hi1 | hi2, v)
+            if (v < 0) return TypeAlias(lo1 & lo2, v)
+          }
           TypeBounds(lo1 & lo2, hi1 | hi2)
         case _ =>
           orConflict(tp1, tp2)

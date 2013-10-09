@@ -117,7 +117,7 @@ object SymDenotations {
     }
 
     protected[dotc] final def info_=(tp: Type) = {
-      def illegal: String = s"illegal type for module $this: $tp"
+      def illegal: String = s"illegal type for $this: $tp"
       /*
       if (this is Module) // make sure module invariants that allow moduleClass and sourceModule to work are kept.
         tp match {
@@ -646,12 +646,20 @@ object SymDenotations {
     def symRef(implicit ctx: Context): NamedType =
       NamedType.withSym(owner.thisType, symbol)
 
-    /** The variance of this type parameter as an Int, with
+    /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
      */
     final def variance: Int =
       if (this is Covariant) 1
       else if (this is Contravariant) -1
+      else 0
+
+    /** If this is a privatye[this] or protected[this] type parameter or type member,
+     *  its variance, otherwise 0.
+     */
+    final def localVariance: Int =
+      if (this is LocalCovariant) 1
+      else if (this is LocalContravariant) -1
       else 0
 
     override def toString = {

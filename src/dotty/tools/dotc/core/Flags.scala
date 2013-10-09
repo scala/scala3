@@ -458,10 +458,10 @@ object Flags {
   final val ParamOrAccessor = Param | Accessor
 
   /** A covariant type parameter instance */
-  final val CovariantExpanded = allOf(ExpandedName, Covariant)
+  final val LocalCovariant = allOf(Local, Covariant)
 
   /** A contravariant type parameter instance */
-  final val ContravariantExpanded = allOf(ExpandedName, Contravariant)
+  final val LocalContravariant = allOf(Local, Contravariant)
 
   /** A covariant type parameter instance */
   final val TypeParamOrInstance = TypeParam | TypeParamInstance

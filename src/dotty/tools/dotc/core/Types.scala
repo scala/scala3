@@ -843,9 +843,9 @@ object Types {
      */
     final def toBounds(tparam: Symbol)(implicit ctx: Context): TypeBounds = {
       val v = tparam.variance
-      if (v > 0) TypeBounds.upper(this)
-      else if (v < 0) TypeBounds.lower(this)
-      else TypeAlias(this)
+      if (v > 0 && !(tparam is Local)) TypeBounds.upper(this)
+      else if (v < 0 && !(tparam is Local)) TypeBounds.lower(this)
+      else TypeAlias(this, v)
     }
 
     /** The type arguments of the base type instance wrt `base` of this type */
@@ -893,11 +893,13 @@ object Types {
      */
     final def argType(tparam: Symbol)(implicit ctx: Context): Type = this match {
       case TypeBounds(lo, hi) =>
-        val v = tparam.variance
-        if (v > 0 && (lo isRef defn.NothingClass)) hi
-        else if (v < 0 && (hi isRef defn.AnyClass)) lo
-        else if (v == 0 && (lo eq hi)) lo
-        else NoType
+        if (lo eq hi) hi
+        else {
+          val v = tparam.variance
+          if (v > 0 && (lo isRef defn.NothingClass)) hi
+          else if (v < 0 && (hi isRef defn.AnyClass)) lo
+          else NoType
+        }
       case _ =>
         NoType
     }
@@ -1978,31 +1980,34 @@ object Types {
     assert(lo.isInstanceOf[TermType], lo+" "+lo.getClass)
     assert(hi.isInstanceOf[TermType], hi+" "+hi.getClass)
 
+    def variance: Int = 0
+
     override def underlying(implicit ctx: Context): Type = hi
 
-    def derivedTypeBounds(lo: Type, hi: Type)(implicit ctx: Context) =
-      if ((lo eq this.lo) && (hi eq this.hi)) this
-      else TypeBounds(lo, hi)
+    def derivedTypeBounds(lo: Type, hi: Type, variance: Int = this.variance)(implicit ctx: Context) =
+      if ((lo eq this.lo) && (hi eq this.hi) && (variance == this.variance)) this
+      else TypeBounds(lo, hi, variance)
 
     def contains(tp: Type)(implicit ctx: Context) = lo <:< tp && tp <:< hi
 
     def &(that: TypeBounds)(implicit ctx: Context): TypeBounds =
-      derivedTypeBounds(this.lo | that.lo, this.hi & that.hi)
+      derivedTypeBounds(this.lo | that.lo, this.hi & that.hi, (this.variance + that.variance) / 2)
 
     def | (that: TypeBounds)(implicit ctx: Context): TypeBounds =
-      derivedTypeBounds(this.lo & that.lo, this.hi | that.hi)
+      derivedTypeBounds(this.lo & that.lo, this.hi | that.hi, (this.variance + that.variance) / 2)
 
     override def & (that: Type)(implicit ctx: Context) = that match {
       case that: TypeBounds => this & that
-      case that: ClassInfo => this & that.bounds
+      case _ => super.& (that)
     }
 
     override def | (that: Type)(implicit ctx: Context) = that match {
       case that: TypeBounds => this | that
+      case _ => super.| (that)
     }
 
     def map(f: Type => Type)(implicit ctx: Context): TypeBounds =
-      TypeBounds(f(lo), f(hi))
+      derivedTypeBounds(f(lo), f(hi))
 
     /** Given a higher-kinded abstract type
      *
@@ -2051,17 +2056,28 @@ object Types {
   }
 
   final class CachedTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
+  final class CoTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi) {
+    override def variance = 1
+  }
+  final class ContraTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi) {
+    override def variance = -1
+  }
 
   object TypeBounds {
     def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
-    def upper(hi: Type)(implicit ctx: Context) = apply(defn.NothingType, hi)
-    def lower(lo: Type)(implicit ctx: Context) = apply(lo, defn.AnyType)
-    def apply(lo: Type, hi: Type)(implicit ctx: Context) =
-      unique(new CachedTypeBounds(lo, hi))
+    def upper(hi: Type, variance: Int = 0)(implicit ctx: Context) = apply(defn.NothingType, hi, variance)
+    def lower(lo: Type, variance: Int = 0)(implicit ctx: Context) = apply(lo, defn.AnyType, variance)
+    //def apply(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds = apply(lo, hi, 0)
+    def apply(lo: Type, hi: Type, variance: Int = 0)(implicit ctx: Context): TypeBounds =
+      unique(
+        if (variance == 0) new CachedTypeBounds(lo, hi)
+        else if (variance == 1) new CoTypeBounds(lo, hi)
+        else new ContraTypeBounds(lo, hi)
+      )
   }
 
   object TypeAlias {
-    def apply(tp: Type)(implicit ctx: Context) = TypeBounds(tp, tp)
+    def apply(tp: Type, variance: Int = 0)(implicit ctx: Context) = TypeBounds(tp, tp, variance)
     def unapply(tp: Type): Option[Type] = tp match {
       case TypeBounds(lo, hi) if lo eq hi => Some(lo)
       case _ => None
