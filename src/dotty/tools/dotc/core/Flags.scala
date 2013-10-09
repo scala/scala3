@@ -294,11 +294,6 @@ object Flags {
   /** A case parameter (or its accessor, or a GADT skolem) */
   final val CaseAccessor = termFlag(26, "<caseaccessor>")
 
-  /** An type parameter which is an alias for some other type parameter */
-  final val TypeParamInstance = typeFlag(26, "<type-param-inst>")
-
-  final val CaseAccessorOrTypeParamInstance = CaseAccessor.toCommonFlags
-
   /** A super accessor */
   final val SuperAccessor = termFlag(27, "<superaccessor>")
 
@@ -394,7 +389,7 @@ object Flags {
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | Param | Scala2ExistentialCommon | Touched |
     Static | CovariantCommon | ContravariantCommon | ExpandedName | AccessorOrSealed |
-    CaseAccessorOrTypeParamInstance | Frozen | Erroneous | ImplicitCommon | Permanent
+    Frozen | Erroneous | ImplicitCommon | Permanent
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion
@@ -462,9 +457,6 @@ object Flags {
 
   /** A contravariant type parameter instance */
   final val LocalContravariant = allOf(Local, Contravariant)
-
-  /** A covariant type parameter instance */
-  final val TypeParamOrInstance = TypeParam | TypeParamInstance
 
   /** Has defined or inherited default parameters */
   final val HasDefaultParams = DefaultParameterized | InheritedDefaultParams
