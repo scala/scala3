@@ -294,6 +294,11 @@ object Flags {
   /** A case parameter (or its accessor, or a GADT skolem) */
   final val CaseAccessor = termFlag(26, "<caseaccessor>")
 
+  /** An type parameter which is an alias for some other (non-visible) type parameter */
+  final val TypeArgument = typeFlag(26, "<type-param-inst>")
+
+  final val CaseAccessorOrTypeArgument = CaseAccessor.toCommonFlags
+
   /** A super accessor */
   final val SuperAccessor = termFlag(27, "<superaccessor>")
 
@@ -389,7 +394,7 @@ object Flags {
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | Param | Scala2ExistentialCommon | Touched |
     Static | CovariantCommon | ContravariantCommon | ExpandedName | AccessorOrSealed |
-    Frozen | Erroneous | ImplicitCommon | Permanent
+    CaseAccessorOrTypeArgument | Frozen | Erroneous | ImplicitCommon | Permanent
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion
