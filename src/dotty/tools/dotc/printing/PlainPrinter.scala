@@ -218,10 +218,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** String representation of a definition's type following its name */
   protected def toTextRHS(tp: Type): Text = controlled {
     tp match {
-      case TypeBounds(lo, hi) =>
-        if (lo eq hi)
-          " = " ~ toText(lo)
-        else
+      case tp @ TypeBounds(lo, hi) =>
+        if (lo eq hi) {
+        val eql =
+          if (tp.variance == 1) " =+ "
+          else if (tp.variance == -1) " =- "
+          else " = "
+          eql ~ toText(lo)
+        } else
           (if (lo == defn.NothingType) Text() else " >: " ~ toText(lo)) ~
             (if (hi == defn.AnyType) Text() else " <: " ~ toText(hi))
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
