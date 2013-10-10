@@ -6,6 +6,7 @@ import Types._, Contexts._, Symbols._, Flags._, Names._
 import Decorators.sourcePos
 import StdNames.{nme, tpnme}
 import collection.mutable
+import printing.Disambiguation.disambiguated
 import util.SimpleMap
 
 /** Provides methods to compare types.
@@ -681,7 +682,10 @@ class TypeComparer(initctx: Context) extends DotClass {
    */
   private def andConflict(tp1: Type, tp2: Type): Type = {
     val winner = if (isAsGood(tp2, tp1) && !isAsGood(tp1, tp2)) tp2 else tp1
-    ctx.warning(s"${mergeErrorMsg(tp1, tp2)} as members of one type; keeping only ${showType(winner)}", ctx.tree.pos)
+    def msg = disambiguated { implicit ctx =>
+      s"${mergeErrorMsg(tp1, tp2)} as members of one type; keeping only ${showType(winner)}"
+    }
+    ctx.warning(msg, ctx.tree.pos)
     winner
   }
 
@@ -698,16 +702,15 @@ class TypeComparer(initctx: Context) extends DotClass {
   }.toList
 
   /** Show type, handling type types better than the default */
-  private def showType(tp: Type) = tp match {
+  private def showType(tp: Type)(implicit ctx: Context) = tp match {
     case ClassInfo(_, cls, _, _, _) => cls.showLocated
     case bounds: TypeBounds => "type bounds" + bounds.show
     case _ => tp.show
   }
 
   /** The error message kernel for a merge conflict */
-  private def mergeErrorMsg(tp1: Type, tp2: Type) = {
+  private def mergeErrorMsg(tp1: Type, tp2: Type)(implicit ctx: Context) =
     s"cannot merge ${showType(tp1)} with ${showType(tp2)}"
-  }
 
   /** A comparison function to pick a winner in case of a merge conflict */
   private def isAsGood(tp1: Type, tp2: Type): Boolean = tp1 match {

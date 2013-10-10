@@ -9,6 +9,7 @@ import Types._, Inferencing._, Contexts._, Decorators._, Denotations._, Symbols.
 import Applications._, Implicits._
 import util.Positions._
 import printing.Showable
+import printing.Disambiguation.disambiguated
 import reporting.Reporter.SuppressedMessage
 
 object ErrorReporting {
@@ -67,7 +68,7 @@ object ErrorReporting {
       errorTree(tree, typeMismatchStr(tree.tpe, pt) + implicitFailure.postscript)
     }
 
-    def typeMismatchStr(found: Type, expected: Type) = {
+    def typeMismatchStr(found: Type, expected: Type) = disambiguated { implicit ctx =>
       val (typerStateStr, explanationStr) =
         if (ctx.settings.explaintypes.value) {
           val nestedCtx = ctx.fresh.withTypeComparerFn(new ExplainingTypeComparer(_))
