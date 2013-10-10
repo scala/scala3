@@ -102,6 +102,49 @@ trait TypeOps { this: Context =>
    *  definitions in scope `decls`. Can add members to `decls` as a side-effect.
    */
   def normalizeToRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
+
+    def enterArgBinding(formal: Symbol, info: Type) = {
+      val typeArgFlag = if (formal is Local) TypeArgument else EmptyFlags
+      val sym = ctx.newSymbol(cls, formal.name, formal.flags & RetainedTypeArgFlags | typeArgFlag, info)
+      cls.enter(sym, decls)
+    }
+
+    /** If we just entered the type argument binding
+     *
+     *    type From = To
+     *
+     *  and there is a type argument binding in a parent in `prefs` of the form
+     *
+     *    type X = From
+     *
+     *  then also add the binding
+     *
+     *    type X = To
+     *
+     *  to the current scope, provided (1) variances of both aliases are the same, and
+     *  (2) X is not yet defined in current scope. This "short-circuiting" prevents
+     *  long chains of aliases which would have to be traversed in type comparers.
+     */
+    def forwardRefs(from: Symbol, to: Type, prefs: List[TypeRef]) = to match {
+      case to @ TypeBounds(lo1, hi1) if lo1 eq hi1 =>
+        for (pref <- prefs)
+          for (argSym <- pref.decls)
+            if (argSym is TypeArgument) {
+              argSym.info match {
+                case info @ TypeBounds(lo2 @ TypeRef(ThisType(_), name), hi2) =>
+                  if (name == from.name &&
+                      (lo2 eq hi2) &&
+                      info.variance == to.variance &&
+                      !decls.lookup(argSym.name).exists) {
+//                    println(s"short-circuit ${argSym.name} was: ${argSym.info}, now: $to")
+                    enterArgBinding(argSym, to)
+                  }
+                case _ =>
+              }
+            }
+      case _ =>
+    }
+
     // println(s"normalizing $parents of $cls in ${cls.owner}") // !!! DEBUG
     var refinements = Map[TypeName, Type]()
     var formals = Map[TypeName, Symbol]()
@@ -123,12 +166,14 @@ trait TypeOps { this: Context =>
     }
     val parentRefs = parents map normalizeToRef
     for ((name, tpe) <- refinements) {
-      val formal = formals(name)
-      val bounds = tpe //.toRHS(formal)
       assert(decls.lookup(name) == NoSymbol, // DEBUG
         s"redefinition of ${decls.lookup(name).debugString} in ${cls.showLocated}")
-      val sym = ctx.newSymbol(cls, name, formal.flags & RetainedTypeArgFlags, bounds)
-      cls.enter(sym, decls)
+      enterArgBinding(formals(name), tpe)
+    }
+    // These two loops cannot be fused because second loop assumes that
+    // all arguments have been entered in `decls`.
+    for ((name, tpe) <- refinements) {
+      forwardRefs(formals(name), tpe, parentRefs)
     }
     parentRefs
   }
