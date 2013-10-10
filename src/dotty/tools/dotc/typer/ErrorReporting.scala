@@ -70,12 +70,10 @@ object ErrorReporting {
 
     def typeMismatchStr(found: Type, expected: Type) = disambiguated { implicit ctx =>
       val (typerStateStr, explanationStr) =
-        if (ctx.settings.explaintypes.value) {
-          val nestedCtx = ctx.fresh.withTypeComparerFn(new ExplainingTypeComparer(_))
-          (found <:< expected)(nestedCtx)
-          ("\n" + ctx.typerState.show, "\n" + nestedCtx.typeComparer.toString)
-        }
-        else ("", "")
+        if (ctx.settings.explaintypes.value)
+          ("\n" + ctx.typerState.show, "\n" + TypeComparer.explained((found <:< expected)(_)))
+        else
+          ("", "")
       i"""type mismatch:
            | found   : $found
            | required: $expected""".stripMargin + typerStateStr + explanationStr

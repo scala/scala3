@@ -2058,9 +2058,11 @@ object Types {
   final class CachedTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
   final class CoTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi) {
     override def variance = 1
+    override def toString = "Co" + super.toString
   }
   final class ContraTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi) {
     override def variance = -1
+    override def toString = "Contra" + super.toString
   }
 
   object TypeBounds {
@@ -2412,4 +2414,12 @@ object Types {
   // ----- Debug ---------------------------------------------------------
 
   var debugTrace = false
+
+  val watchList = List[String](
+  ) map (_.toTypeName)
+
+  def isWatched(tp: Type) = tp match {
+    case TypeRef(_, name) => watchList contains name
+    case _ => false
+  }
 }

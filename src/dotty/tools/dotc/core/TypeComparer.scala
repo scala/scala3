@@ -105,6 +105,13 @@ class TypeComparer(initctx: Context) extends DotClass {
       val cs = constraint
       try {
         recCount += 1
+/* !!! DEBUG
+        if (isWatched(tp1) && isWatched(tp2) && !(this.isInstanceOf[ExplainingTypeComparer])) {
+          val explained = new ExplainingTypeComparer(ctx)
+          println("***** watched:")
+          println(TypeComparer.explained(_.typeComparer.isSubType(tp1, tp2)))
+        }
+*/
         val result =
           if (recCount < LogPendingSubTypesThreshold) firstTry(tp1, tp2)
           else monitoredIsSubType(tp1, tp2)
@@ -159,11 +166,15 @@ class TypeComparer(initctx: Context) extends DotClass {
             secondTry(tp1, tp2)
         }
       case tp2: PolyParam =>
-        //println(constraint.show)
-        constraint(tp2) match {
-          case TypeBounds(lo, _) => isSubType(tp1, lo) || addConstraint(tp2, TypeBounds.lower(tp1.widen))
-          case _ => secondTry(tp1, tp2)
+        tp2 == tp1 || {
+          //println(constraint.show)
+          constraint(tp2) match {
+            case TypeBounds(lo, _) => isSubType(tp1, lo) || addConstraint(tp2, TypeBounds.lower(tp1.widen))
+            case _ => secondTry(tp1, tp2)
+          }
         }
+      case tp2: BoundType =>
+        tp2 == tp1 || secondTry(tp1, tp2)
       case tp2: TypeVar =>
         isSubType(tp1, tp2.underlying)
       case tp2: ProtoType =>
@@ -184,10 +195,14 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   def secondTry(tp1: Type, tp2: Type): Boolean = tp1 match {
     case tp1: PolyParam =>
-      constraint(tp1) match {
-        case TypeBounds(_, hi) => isSubType(hi, tp2) || addConstraint(tp1, TypeBounds.upper(tp2))
-        case _ => thirdTry(tp1, tp2)
+      (tp1 == tp2) || {
+        constraint(tp1) match {
+          case TypeBounds(_, hi) => isSubType(hi, tp2) || addConstraint(tp1, TypeBounds.upper(tp2))
+          case _ => thirdTry(tp1, tp2)
+        }
       }
+    case tp1: BoundType =>
+      tp1 == tp2 || secondTry(tp1, tp2)
     case tp1: TypeVar =>
       isSubType(tp1.underlying, tp2)
     case tp1: WildcardType =>
@@ -681,6 +696,7 @@ class TypeComparer(initctx: Context) extends DotClass {
    *  Issue a warning and return the winner.
    */
   private def andConflict(tp1: Type, tp2: Type): Type = {
+    // println(disambiguated(implicit ctx => TypeComparer.explained(_.typeComparer.isSubType(tp1, tp2)))) !!!DEBUG
     val winner = if (isAsGood(tp2, tp1) && !isAsGood(tp1, tp2)) tp2 else tp1
     def msg = disambiguated { implicit ctx =>
       s"${mergeErrorMsg(tp1, tp2)} as members of one type; keeping only ${showType(winner)}"
@@ -753,6 +769,14 @@ class TypeComparer(initctx: Context) extends DotClass {
   def copyIn(ctx: Context) = new TypeComparer(ctx)
 }
 
+object TypeComparer {
+  def explained[T](op: Context => T)(implicit ctx: Context): String = {
+    val nestedCtx = ctx.fresh.withTypeComparerFn(new ExplainingTypeComparer(_))
+    op(nestedCtx)
+    nestedCtx.typeComparer.toString
+  }
+}
+
 class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   private var indent = 0
   private val b = new StringBuilder
@@ -772,7 +796,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 
   override def isSubType(tp1: Type, tp2: Type) =
-    traceIndented(s"${show(tp1)} <:< ${show(tp2)}") {
+    traceIndented(s"${show(tp1)} <:< ${show(tp2)} ${tp1.getClass} ${tp2.getClass}") {
       super.isSubType(tp1, tp2)
     }
 
