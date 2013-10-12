@@ -41,7 +41,7 @@ object Inferencing {
         isCompatible(normalize(mbrType), /*(new WildApprox) apply (needed?)*/ proto)
       name == nme.WILDCARD || {
         val mbr = tp1.member(name)
-        mbr.exists && mbr.hasAltWith(m => testCompatible(m.info)(ctx.fresh.withNewTyperState))
+        mbr.exists && mbr.hasAltWith(m => testCompatible(m.info)(ctx.fresh.withExploreTyperState))
       }
     }
     override def toString = "Proto" + super.toString
@@ -207,7 +207,6 @@ object Inferencing {
         println(s"interpolate non-occurring ${tvar.show} in ${tp.show}")
         tvar.instantiate(fromBelow = true)
       }
-      ctx.typerState.checkConsistent
     }
 
     /** Instantiate undetermined type variables to that type `tp` is

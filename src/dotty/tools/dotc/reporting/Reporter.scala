@@ -97,8 +97,10 @@ trait Reporting { this: Context =>
   def warning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     reporter.report(Diagnostic(msg, pos, WARNING))
 
-  def error(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+  def error(msg: => String, pos: SourcePosition = NoSourcePosition): Unit = {
+    // println("*** ERROR: " + msg) // !!! DEBUG
     reporter.report(Diagnostic(msg, pos, ERROR))
+  }
 
   def incompleteInputError(msg: String, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
     reporter.incomplete(Diagnostic(msg, pos, ERROR))(ctx)

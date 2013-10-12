@@ -1084,8 +1084,10 @@ class Typer extends Namer with Applications with Implicits {
         case poly: PolyType =>
           if (pt.isInstanceOf[PolyProto]) tree
           else {
-            val tracked = ctx.track(poly)
-            val tvars = ctx.newTypeVars(tracked, tree.pos)
+            val tvars = ctx.typerState.withCheckingDisabled {
+              val tracked = ctx.track(poly)
+              ctx.newTypeVars(tracked, tree.pos)
+            }
             adapt(tpd.TypeApply(tree, tvars map (tpd.TypeTree(_))), pt)
           }
         case wtp =>

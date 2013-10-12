@@ -37,9 +37,17 @@ object Implicits {
 
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = track("filterMatching") {
-      def result(implicit ctx: Context) =
-        refs filter (ref => isCompatible(normalize(ref), pt))
-      result(ctx.fresh.withNewTyperState) // create a defensive copy of ctx to avoid constraint pollution
+      def result(implicit ctx: Context) = {
+        def refMatches(ref: TermRef) = {
+          if (ref.name.toString == "cb") {
+            println(i"refMatches ${ref.symbol}, ref = $ref, normalze = ${normalize(ref)}, pt = $pt = ${isCompatible(normalize(ref), pt)}")
+            println(err.typeMismatchStr(normalize(ref), pt))
+          }
+          isCompatible(normalize(ref), pt)
+        }
+        refs filter refMatches
+      }
+      result(ctx.fresh.withExploreTyperState) // create a defensive copy of ctx to avoid constraint pollution
     }
 
     /** No further implicit conversions can be applied when searching for implicits. */
@@ -267,6 +275,9 @@ trait Implicits { self: Typer =>
   /** An implicit search; parameters as in `inferImplicit` */
   class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position)(implicit ctx: Context) {
 
+    val initctx: Context = ctx.fresh.withNewTyperState.retractMode(ImplicitsEnabled)
+    def nestedContext = initctx.fresh.withNewTyperState
+
     protected def nonMatchingImplicit(ref: TermRef): SearchFailure = NoImplicitMatches
     protected def shadowedImplicit(ref: TermRef, shadowing: Type): SearchFailure = NoImplicitMatches
     protected def failedSearch: SearchFailure = NoImplicitMatches
@@ -277,12 +288,14 @@ trait Implicits { self: Typer =>
 
       /** Try to typecheck an implicit reference */
       def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = track("typedImplicit") {
-        ctx.typerState.checkConsistent // !!! DEBUG
         val id = Ident(ref).withPos(pos)
         val tree =
-          if (argument.isEmpty) adapt(id, pt)
-          else typedApply(id, ref, argument :: Nil, pt)
-        lazy val shadowing = typed(untpd.Ident(ref.name), ref).tpe
+          if (argument.isEmpty)
+            adapt(id, pt)
+          else
+            typed(untpd.Apply(untpd.TypedSplice(id), untpd.TypedSplice(argument) :: Nil), pt)
+        lazy val shadowing =
+            typed(untpd.Ident(ref.name), ref)(nestedContext).tpe
         if (ctx.typerState.reporter.hasErrors) nonMatchingImplicit(ref)
         else if (contextual && !(shadowing =:= ref)) shadowedImplicit(ref, shadowing)
         else SearchSuccess(tree)(ref, ctx.typerState)
@@ -295,7 +308,7 @@ trait Implicits { self: Typer =>
        */
       def rankImplicits(pending: List[TermRef], acc: List[SearchSuccess]): List[SearchSuccess] = pending match {
         case ref :: pending1 =>
-          typedImplicit(ref)(ctx.fresh.withNewTyperState.retractMode(ImplicitsEnabled)) match {
+          typedImplicit(ref)(nestedContext) match {
             case fail: SearchFailure =>
               rankImplicits(pending1, acc)
             case best: SearchSuccess =>

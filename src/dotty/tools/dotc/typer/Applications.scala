@@ -633,7 +633,7 @@ trait Applications extends Compatibility { self: Typer =>
    *  @param  resultType   The expected result type of the application
    */
   def isApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
-    new ApplicableToTrees(methRef, args, resultType)(ctx.fresh.withNewTyperState).success
+    new ApplicableToTrees(methRef, args, resultType)(ctx.fresh.withExploreTyperState).success
 
   def isApplicableToTrees(tp: Type, args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean = tp match {
     case methRef: TermRef => isApplicableToTrees(methRef, args, resultType)
@@ -647,7 +647,7 @@ trait Applications extends Compatibility { self: Typer =>
    *  @param  resultType   The expected result type of the application
    */
   def isApplicableToTypes(methRef: TermRef, args: List[Type], resultType: Type = WildcardType)(implicit ctx: Context) =
-    new ApplicableToTypes(methRef, args, resultType)(ctx.fresh.withNewTyperState).success
+    new ApplicableToTypes(methRef, args, resultType)(ctx.fresh.withExploreTyperState).success
 
   def isApplicableToTypes(tp: Type, args: List[Type], resultType: Type)(implicit ctx: Context): Boolean = tp match {
     case methRef: TermRef => isApplicableToTypes(methRef, args, resultType)
@@ -659,7 +659,7 @@ trait Applications extends Compatibility { self: Typer =>
 
   /** Is `tp` a subtype of `pt`? */
   def testCompatible(tp: Type, pt: Type)(implicit ctx: Context) =
-    isCompatible(tp, pt)(ctx.fresh.withNewTyperState)
+    isCompatible(tp, pt)(ctx.fresh.withExploreTyperState)
 
   /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
    *  `alt2`? `alt1` and `alt2` are nonoverloaded references.

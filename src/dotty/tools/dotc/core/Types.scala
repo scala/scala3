@@ -1862,7 +1862,6 @@ object Types {
       owningState.undetVars -= this
       if (ctx.typerState eq creatorState) inst = tp
       else ctx.typerState.instType = ctx.typerState.instType.updated(this, tp)
-      ctx.typerState.checkConsistent // !!! DEBUG
       tp
     }
 
@@ -1881,10 +1880,12 @@ object Types {
         case OrType(tp1, tp2) => isSingleton(tp1) & isSingleton(tp2)
         case _ => false
       }
-      var inst = ctx.typeComparer.approximate(origin, fromBelow)
-      if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
-        inst = inst.widen
-      instantiateWith(inst)
+      ctx.typerState.withCheckingDisabled {
+        var inst = ctx.typeComparer.approximate(origin, fromBelow)
+        if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
+          inst = inst.widen
+        instantiateWith(inst)
+      }
     }
 
     /** If the variable is instantiated, its instance, otherwise its origin */

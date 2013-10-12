@@ -288,7 +288,8 @@ object Contexts {
     def withPeriod(period: Period): this.type = { this.period = period; this }
     def withNewMode(mode: Mode): this.type = { this.mode = mode; this }
     def withTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
-    def withNewTyperState: this.type = withTyperState(typerState.fresh)
+    def withNewTyperState: this.type = withTyperState(typerState.fresh(committable = true))
+    def withExploreTyperState: this.type = withTyperState(typerState.fresh(committable = false))
     def withPrinterFn(printer: Context => Printer): this.type = { this.printerFn = printer; this }
     def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
     def withSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }

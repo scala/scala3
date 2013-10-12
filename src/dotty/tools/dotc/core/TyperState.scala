@@ -29,32 +29,45 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
   def undetVars_=(vs: Set[TypeVar]): Unit = unsupported("undetVars_=")
   def instType_=(m: SimpleMap[TypeVar, Type]): Unit = unsupported("instType_=")
 
-  def fresh: TyperState = this
+  def fresh(committable: Boolean): TyperState = this
 
   def commit()(implicit ctx: Context): Unit = unsupported("commit")
 
   @elidable(elidable.FINER)
   def checkConsistent(implicit ctx: Context) = ()
 
+  @elidable(elidable.FINER)
+  def enableChecking(b: Boolean): Boolean = true
+
+  def withCheckingDisabled[T](op: => T)(implicit ctx: Context): T = op
+
   override def toText(printer: Printer): Text = "ImmutableTyperState"
 }
 
-class MutableTyperState(previous: TyperState, reporter: Reporter)
+class MutableTyperState(previous: TyperState, reporter: Reporter, committable: Boolean)
 extends TyperState(reporter) {
 
   private var myConstraint: Constraint = previous.constraint
   private var myUndetVars: Set[TypeVar] = previous.undetVars
   private var myInstType: SimpleMap[TypeVar, Type] = previous.instType
+  private var checkingEnabled: Boolean = committable
 
   override def constraint = myConstraint
   override def undetVars = myUndetVars
   override def instType = myInstType
 
-  override def constraint_=(c: Constraint) = myConstraint = c
-  override def undetVars_=(vs: Set[TypeVar]) = myUndetVars = vs
+  override def constraint_=(c: Constraint) = {
+    myConstraint = c
+    checkConsistent()
+  }
+  override def undetVars_=(vs: Set[TypeVar]) = {
+    myUndetVars = vs
+    checkConsistent()
+  }
   override def instType_=(m: SimpleMap[TypeVar, Type]): Unit = myInstType = m
 
-  override def fresh: TyperState = new MutableTyperState(this, new StoreReporter)
+  override def fresh(committable: Boolean): TyperState =
+    new MutableTyperState(this, new StoreReporter, committable)
 
   /** Commit typer state so that its information is copied into current typer state
    *  In addition (1) the owning state of undetermined or temporarily instantiated
@@ -63,10 +76,13 @@ extends TyperState(reporter) {
    *  instantiated instead.
    */
   override def commit()(implicit ctx: Context) = {
+    checkConsistent
     val targetState = ctx.typerState
+    val prev = targetState.enableChecking(false)
     targetState.constraint = constraint
     targetState.undetVars = undetVars
     targetState.instType = instType
+    targetState.enableChecking(prev)
 
     def adjustOwningState(tvar: TypeVar) =
       if (tvar.owningState eq this) tvar.owningState = targetState
@@ -84,8 +100,8 @@ extends TyperState(reporter) {
   }
 
   @elidable(elidable.FINER)
-  override def checkConsistent(implicit ctx: Context) = {
-    def err(msg: String, what: Showable) = s"$msg: ${what.show}\n${this.show}"
+  def checkConsistent(show: Showable => String = MutableTyperState.toStr): Unit = if (checkingEnabled) {
+    def err(msg: String, what: Showable) = s"$msg: ${show(what)}\n${show(this)}"
     for (tvar <- undetVars)
       assert(constraint(tvar.origin).exists, err("unconstrained type var", tvar))
     val undetParams = undetVars map (_.origin)
@@ -93,6 +109,25 @@ extends TyperState(reporter) {
       assert(undetParams contains param, err("junk constraint on", param))
     instType.foreachKey { tvar =>
       assert(undetVars contains tvar, err("junk instType on", tvar))
+    }
+  }
+
+  @elidable(elidable.FINER)
+  override def checkConsistent(implicit ctx: Context): Unit = checkConsistent(_.show)
+
+  @elidable(elidable.FINER)
+  override def enableChecking(b: Boolean) = {
+    val prev = checkingEnabled
+    checkingEnabled = checkingEnabled && b
+    prev
+  }
+
+  override def withCheckingDisabled[T](op: => T)(implicit ctx: Context): T = {
+    val prev = enableChecking(false)
+    try op
+    finally {
+      enableChecking(prev)
+      checkConsistent
     }
   }
 
@@ -110,4 +145,8 @@ extends TyperState(reporter) {
       Text(instType.map2((k, v) => s"${k.toText(printer)} -> ${v.toText(printer)}"), ", ") ~ "."
     Text.lines(List(header, undetVarsText, constrainedText, constraintText, instTypeText))
   }
+}
+
+object MutableTyperState {
+  private def toStr(x: Any) = x.toString
 }
