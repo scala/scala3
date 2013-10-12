@@ -234,12 +234,16 @@ class TypeComparer(initctx: Context) extends DotClass {
   def thirdTry(tp1: Type, tp2: Type): Boolean = tp2 match {
     case tp2: NamedType =>
       thirdTryNamed(tp1, tp2)
-    case tp2: RefinedType =>
-      isSubType(tp1, tp2.parent) && (
-        tp2.refinedName == nme.WILDCARD
-        || tp1.member(tp2.refinedName).hasAltWith(alt =>
-             isSubType(alt.info, tp2.refinedInfo))
-        || fourthTry(tp1, tp2))
+    case tp2 @ RefinedType(parent2, name2) =>
+      tp1 match 
+        case tp1 @ RefinedType(parent1, name1) if name1 == name2 =>
+          isSubType(parent1, parent2) && isSubType(tp1.refinedInfo, tp2.refinedInfo)
+        case _ =>
+          isSubType(tp1, parent2) && (
+               name2 == nme.WILDCARD
+            || tp1.member(name2).hasAltWith(alt => isSubType(alt.info, tp2.refinedInfo))
+            || fourthTry(tp1, tp2))
+      }
     case AndType(tp21, tp22) =>
       isSubType(tp1, tp21) && isSubType(tp1, tp22)
     case OrType(tp21, tp22) =>

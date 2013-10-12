@@ -669,6 +669,7 @@ class Typer extends Namer with Applications with Implicits {
       val rsym = refinement.symbol
       val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
       RefinedType(parent, rsym.name, rt => rinfo.substThis(refineCls, RefinedThis(rt)))
+      // todo later: check that refinement is within bounds
     }
     cpy.RefinedTypeTree(tree, tpt1, refinements1) withType
       (tpt1.tpe /: refinements1)(addRefinement)

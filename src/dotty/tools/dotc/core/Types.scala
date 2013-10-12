@@ -396,11 +396,9 @@ object Types {
           val pdenot = tp.parent.findMember(name, pre, excluded)
           if (name eq tp.refinedName) {
             val rinfo = tp.refinedInfo.substThis(tp, pre)
-            if (name.isTypeName) { // simplified case that runs more efficiently
-              val info = if (pdenot.symbol is TypeParam) rinfo else pdenot.info & rinfo
-              pdenot.asInstanceOf[SingleDenotation].derivedSingleDenotation(
-                pdenot.symbol, info)
-            } else
+            if (name.isTypeName) // simplified case that runs more efficiently
+              pdenot.asInstanceOf[SingleDenotation].derivedSingleDenotation(pdenot.symbol, rinfo)
+            else
               pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
           } else pdenot
         case tp: ThisType =>
