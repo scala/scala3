@@ -39,7 +39,7 @@ object Implicits {
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = track("filterMatching") {
       def result(implicit ctx: Context) = {
         def refMatches(ref: TermRef) = {
-          if (ref.name.toString == "cb") {
+          if (false && ref.name.toString == "cb") { // !!! DEBUG
             println(i"refMatches ${ref.symbol}, ref = $ref, normalze = ${normalize(ref)}, pt = $pt = ${isCompatible(normalize(ref), pt)}")
             println(err.typeMismatchStr(normalize(ref), pt))
           }

@@ -165,6 +165,14 @@ class TypeComparer(initctx: Context) extends DotClass {
           case _ =>
             secondTry(tp1, tp2)
         }
+      case tp2 @ ThisType(cls) =>
+        if (cls is ModuleClass)
+          tp1 match {
+            case tp1: TermRef =>
+              return tp1.symbol.moduleClass == cls && tp1.prefix <:< cls.owner.thisType
+            case _ =>
+          }
+        secondTry(tp1, tp2)
       case tp2: PolyParam =>
         tp2 == tp1 || {
           //println(constraint.show)
@@ -194,6 +202,14 @@ class TypeComparer(initctx: Context) extends DotClass {
   }
 
   def secondTry(tp1: Type, tp2: Type): Boolean = tp1 match {
+    case tp1 @ ThisType(cls) =>
+      if (cls is ModuleClass)
+        tp2 match {
+          case tp2: TermRef =>
+            return tp2.symbol.moduleClass == cls && cls.owner.thisType <:< tp2.prefix
+          case _ =>
+        }
+      thirdTry(tp1, tp2)
     case tp1: PolyParam =>
       (tp1 == tp2) || {
         constraint(tp1) match {
@@ -235,9 +251,10 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp2: NamedType =>
       thirdTryNamed(tp1, tp2)
     case tp2 @ RefinedType(parent2, name2) =>
-      tp1 match 
-        case tp1 @ RefinedType(parent1, name1) if name1 == name2 =>
-          isSubType(parent1, parent2) && isSubType(tp1.refinedInfo, tp2.refinedInfo)
+      tp1 match {
+        case tp1 @ RefinedType(parent1, name1) if (name1 == name2) && name1.isTypeName =>
+          // optimized case; all info on t1.name2 is in refinement tp1.refinedInfo.
+          isSubType(tp1, parent2) && isSubType(tp1.refinedInfo, tp2.refinedInfo)
         case _ =>
           isSubType(tp1, parent2) && (
                name2 == nme.WILDCARD
