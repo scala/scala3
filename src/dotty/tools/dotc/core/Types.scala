@@ -1856,9 +1856,9 @@ object Types {
 
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
-      assert(owningState.undetVars contains this)
-      owningState.undetVars -= this
-      if (ctx.typerState eq creatorState) inst = tp
+      assert(ctx.typerState.undetVars contains this)
+      ctx.typerState.undetVars -= this
+      if (ctx.typerState eq owningState) inst = tp
       else ctx.typerState.instType = ctx.typerState.instType.updated(this, tp)
       tp
     }

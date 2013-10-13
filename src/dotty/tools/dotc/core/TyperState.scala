@@ -50,7 +50,7 @@ extends TyperState(reporter) {
   private var myConstraint: Constraint = previous.constraint
   private var myUndetVars: Set[TypeVar] = previous.undetVars
   private var myInstType: SimpleMap[TypeVar, Type] = previous.instType
-  private var checkingEnabled: Boolean = committable
+  private var checkingEnabled: Boolean = true
 
   override def constraint = myConstraint
   override def undetVars = myUndetVars
@@ -103,12 +103,14 @@ extends TyperState(reporter) {
   def checkConsistent(show: Showable => String = MutableTyperState.toStr): Unit = if (checkingEnabled) {
     def err(msg: String, what: Showable) = s"$msg: ${show(what)}\n${show(this)}"
     for (tvar <- undetVars)
-      assert(constraint(tvar.origin).exists, err("unconstrained type var", tvar))
-    val undetParams = undetVars map (_.origin)
-    for (param <- constraint.domainParams)
-      assert(undetParams contains param, err("junk constraint on", param))
-    instType.foreachKey { tvar =>
-      assert(undetVars contains tvar, err("junk instType on", tvar))
+      assert(constraint(tvar.origin).exists, err("unconstrained type var", tvar.origin))
+    if (committable) {
+      val undetParams = undetVars map (_.origin)
+      for (param <- constraint.domainParams)
+        assert(undetParams contains param, err("junk constraint on", param))
+      instType.foreachKey { tvar =>
+        assert(!(undetVars contains tvar), err("duplicate undetVar and instType", tvar))
+      }
     }
   }
 
@@ -118,7 +120,7 @@ extends TyperState(reporter) {
   @elidable(elidable.FINER)
   override def enableChecking(b: Boolean) = {
     val prev = checkingEnabled
-    checkingEnabled = checkingEnabled && b
+    checkingEnabled = b
     prev
   }
 
