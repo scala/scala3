@@ -410,10 +410,9 @@ trait Applications extends Compatibility { self: Typer =>
     }
     def sameSeq[T <: Trees.Tree[_]](xs: List[T], ys: List[T]): Boolean = firstDiff(xs, ys) < 0
 
-    val result = {
+    val result ={
       var typedArgs = typedArgBuf.toList
-      println(s"typed args of $methRef = $typedArgs")
-      val ownType =
+      val ownType = ctx.traceIndented(s"apply $methRef to $typedArgs") {
         if (!success) ErrorType
         else {
           if (!sameSeq(app.args, orderedArgs)) {
@@ -428,6 +427,7 @@ trait Applications extends Compatibility { self: Typer =>
             typedArgs = args.asInstanceOf[List[Tree]]
           methodType.instantiate(typedArgs.tpes)
         }
+      }
       val app1 = cpy.Apply(app, normalizedFun, typedArgs).withType(ownType)
       if (liftedDefs != null && liftedDefs.nonEmpty) Block(liftedDefs.toList, app1)
       else app1

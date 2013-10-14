@@ -259,7 +259,7 @@ trait Implicits { self: Typer =>
    *  @param pos             The position where errors should be reported.
    */
   def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
-    ctx.traceIndented(s"search implicit $pt, arg = ${argument.show}", show = true) {
+    ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}", show = true) {
       val isearch =
         if (ctx.settings.explaintypes.value) new ExplainedImplicitSearch(pt, argument, pos)
         else new ImplicitSearch(pt, argument, pos)
