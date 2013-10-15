@@ -6,6 +6,7 @@ import core._
 import ast.{Trees, untpd, tpd, TreeInfo}
 import util.Positions._
 import util.Stats.track
+import printing.Showable
 import Contexts._
 import Types._
 import Flags._
@@ -41,10 +42,12 @@ object Implicits {
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = track("filterMatching") {
       def result(implicit ctx: Context) = {
-        def refMatches(ref: TermRef) = {
-          if (false && ref.name.toString == "cb") { // !!! DEBUG
-            println(i"refMatches ${ref.symbol}, ref = $ref, normalze = ${normalize(ref)}, pt = $pt = ${isCompatible(normalize(ref), pt)}")
-            println(err.typeMismatchStr(normalize(ref), pt))
+        def refMatches(ref: TermRef) = ctx.traceIndented(i"refMatches ${ref.symbol}, ref = $ref, normalze = ${normalize(ref)}, pt = $pt") {
+          if (ref.name.toString == "canBuildFrom") {
+            val r = normalize(ref)
+            println(s"r = $r, pt = $pt")
+            println(TypeComparer.explained(implicit ctx => r <:< pt))
+            throw new Error()
           }
           isCompatible(normalize(ref), pt)
         }
@@ -61,14 +64,16 @@ object Implicits {
    *  @param tp              the type determining the implicit scope
    *  @param companionRefs   the companion objects in the implicit scope.
    */
-  class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context)
-    extends ImplicitRefs {
+  class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs {
     assert(initctx.typer != null)
     implicit val ctx: Context = disableImplicits(initctx)
     val refs: List[TermRef] = companionRefs.toList flatMap (_.implicitMembers)
 
     /** The implicit references that are eligible for expected type `tp` */
-    lazy val eligible: List[TermRef] = filterMatching(tp)
+    lazy val eligible: List[TermRef] = ctx.traceIndented(i"eligible($tp)", show = true)(filterMatching(tp))
+
+    override def toString =
+      i"OfTypeImplicits($tp), companions = ${companionRefs.toList}%, %; refs = $refs%, %."
   }
 
   /** The implicit references coming from the context.
@@ -226,7 +231,10 @@ trait ImplicitRunInfo { self: RunInfo =>
     if (tp.hash == NotCached) computeImplicitScope(tp)
     else implicitScopeCache.getOrElseUpdate(tp, {
       val liftedTp = if (isLifted) tp else liftToClasses(tp)
-      if (liftedTp ne tp) implicitScope(liftedTp, isLifted = true)
+      if (liftedTp ne tp) {
+        val liftedImplicits = implicitScope(liftedTp, isLifted = true)
+        new OfTypeImplicits(tp, liftedImplicits.companionRefs)(ctx)
+      }
       else computeImplicitScope(tp)
     })
 
