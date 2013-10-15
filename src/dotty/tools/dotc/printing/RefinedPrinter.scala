@@ -104,6 +104,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             case _ => nameString(tp.symbol)
           }
         }
+      case typer.Inferencing.FunProto(args, resultType, _) =>
+        "funproto(" ~ toTextGlobal(args, ", ") ~ "):" ~ toText(resultType)
       case _ =>
     }
     super.toText(tp)
