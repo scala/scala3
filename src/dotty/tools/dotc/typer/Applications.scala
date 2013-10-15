@@ -412,7 +412,7 @@ trait Applications extends Compatibility { self: Typer =>
 
     val result ={
       var typedArgs = typedArgBuf.toList
-      val ownType = ctx.traceIndented(s"apply $methRef to $typedArgs") {
+      val ownType = ctx.traceIndented(i"apply $methRef to $typedArgs") {
         if (!success) ErrorType
         else {
           if (!sameSeq(app.args, orderedArgs)) {
@@ -664,7 +664,9 @@ trait Applications extends Compatibility { self: Typer =>
   /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
    *  `alt2`? `alt1` and `alt2` are nonoverloaded references.
    */
-  def isAsGood(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Boolean = track("isAsGood") {
+  def isAsGood(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Boolean = track("isAsGood") { ctx.traceIndented(s"isAsGood($alt1, $alt2)") {
+
+    assert(alt1 ne alt2)
 
     /** Is class or module class `sym1` derived from class or module class `sym2`? */
     def isDerived(sym1: Symbol, sym2: Symbol): Boolean =
@@ -684,7 +686,13 @@ trait Applications extends Compatibility { self: Typer =>
       case tp1: MethodType =>
         isApplicableToTypes(alt2, tp1.paramTypes)(ctx)
       case _ =>
-        testCompatible(tp1, tp2)(ctx)
+        tp2 match {
+          case tp2: PolyType =>
+            assert(!ctx.typerState.isCommittable)
+            isAsSpecific(alt1, tp1, alt2, ctx.track(tp2).resultType)
+          case _ =>
+            testCompatible(tp1, tp2)(ctx)
+        }
     }
 
     val owner1 = alt1.symbol.owner
@@ -712,7 +720,7 @@ trait Applications extends Compatibility { self: Typer =>
     if (winsOwner1) /* 6/9 */ !winsOwner2 || /* 4/9 */ winsType1 || /* 8/27 */ !winsType2
     else if (winsOwner2) /* 2/9 */ winsType1 && /* 2/27 */ !winsType2
     else /* 1/9 */ winsType1 || /* 2/27 */ !winsType2
-  }
+  }}
 
   def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
     (alts: @unchecked) match {
