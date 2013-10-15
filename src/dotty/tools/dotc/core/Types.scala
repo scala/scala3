@@ -2327,6 +2327,13 @@ object Types {
           variance = -variance
           this(y, hi)
         }
+
+      case AndType(l, r) =>
+        this(this(x, l), r)
+
+      case OrType(l, r) =>
+        this(this(x, l), r)
+
       case AnnotatedType(annot, underlying) =>
         this(this(x, annot), underlying)
 
