@@ -7,7 +7,7 @@ import ast._
 import Trees._, Constants._, StdNames._, Scopes._, Denotations._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import ast.desugar, ast.desugar._
-import Inferencing.AnySelectionProto
+import Inferencing.{fullyDefinedType, AnySelectionProto}
 import util.Positions._
 import util.SourcePosition
 import collection.mutable
@@ -385,7 +385,9 @@ class Namer { typer: Typer =>
               tp & itpe
             }
         }
-        inherited orElse typedAheadExpr(mdef.rhs).tpe.widen
+        def rhsType = interpolateAndAdapt(typedAheadExpr(mdef.rhs), WildcardType).tpe.widen
+        def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)
+        inherited orElse lhsType
       }
     paramFn(typedAheadType(mdef.tpt, pt).tpe)
   }

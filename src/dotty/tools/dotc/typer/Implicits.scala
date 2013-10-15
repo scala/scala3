@@ -27,6 +27,9 @@ import collection.mutable
 /** Implicit resolution */
 object Implicits {
 
+  private def disableImplicits(ctx: Context): Context =
+    if (ctx == NoContext) ctx else ctx retractMode Mode.ImplicitsEnabled
+
   /** A common base class of contextual implicits and of-type implicits which
    *  represents as set of implicit references.
    */
@@ -61,7 +64,7 @@ object Implicits {
   class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context)
     extends ImplicitRefs {
     assert(initctx.typer != null)
-    implicit val ctx: Context = initctx retractMode ImplicitsEnabled
+    implicit val ctx: Context = disableImplicits(initctx)
     val refs: List[TermRef] = companionRefs.toList flatMap (_.implicitMembers)
 
     /** The implicit references that are eligible for expected type `tp` */
@@ -76,8 +79,7 @@ object Implicits {
    *  @param outerCtx  the next outer context that makes visible further implicits
    */
   class ContextualImplicits(val refs: List[TermRef], val outerCtx: Context)(initctx: Context) extends ImplicitRefs {
-    implicit val ctx: Context =
-      if (initctx == NoContext) initctx else initctx retractMode Mode.ImplicitsEnabled
+    implicit val ctx: Context = disableImplicits(initctx)
 
     private val eligibleCache = new mutable.HashMap[Type, List[TermRef]]
 
@@ -259,7 +261,7 @@ trait Implicits { self: Typer =>
    *  @param pos             The position where errors should be reported.
    */
   def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
-    ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}", show = true) {
+    ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", show = true) {
       val isearch =
         if (ctx.settings.explaintypes.value) new ExplainedImplicitSearch(pt, argument, pos)
         else new ImplicitSearch(pt, argument, pos)
@@ -275,7 +277,7 @@ trait Implicits { self: Typer =>
   /** An implicit search; parameters as in `inferImplicit` */
   class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position)(implicit ctx: Context) {
 
-    val initctx: Context = ctx.fresh.withNewTyperState.retractMode(ImplicitsEnabled)
+    val initctx: Context = disableImplicits(ctx.fresh.withNewTyperState)
     def nestedContext = initctx.fresh.withNewTyperState
 
     protected def nonMatchingImplicit(ref: TermRef): SearchFailure = NoImplicitMatches
@@ -287,19 +289,18 @@ trait Implicits { self: Typer =>
     def searchImplicits(eligible: List[TermRef], contextual: Boolean): SearchResult = {
 
       /** Try to typecheck an implicit reference */
-      def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = track("typedImplicit") {
-        val id = Ident(ref).withPos(pos)
-        val tree =
-          if (argument.isEmpty)
-            adapt(id, pt)
-          else
-            typed(untpd.Apply(untpd.TypedSplice(id), untpd.TypedSplice(argument) :: Nil), pt)
+      def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = track("typedImplicit") { ctx.traceIndented(s"typed implicit $ref, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", show = true) {
+        var generated: Tree = Ident(ref).withPos(pos)
+        if (!argument.isEmpty)
+          generated = typedUnadapted(
+            untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil), pt)
+        val generated1 = interpolateAndAdapt(generated, pt)
         lazy val shadowing =
             typed(untpd.Ident(ref.name), ref)(nestedContext).tpe
         if (ctx.typerState.reporter.hasErrors) nonMatchingImplicit(ref)
         else if (contextual && !(shadowing =:= ref)) shadowedImplicit(ref, shadowing)
-        else SearchSuccess(tree)(ref, ctx.typerState)
-      }
+        else SearchSuccess(generated)(ref, ctx.typerState)
+      }}
 
       /** Given a list of implicit references, produce a list of all implicit search successes,
        *  where the first is supposed to be the best one.
@@ -312,7 +313,7 @@ trait Implicits { self: Typer =>
             case fail: SearchFailure =>
               rankImplicits(pending1, acc)
             case best: SearchSuccess =>
-              val newPending = pending filterNot (isAsGood(_, best.ref))
+              val newPending = pending1 filterNot (isAsGood(_, best.ref)(nestedContext.withExploreTyperState))
               rankImplicits(newPending, best :: acc)
           }
         case nil => acc

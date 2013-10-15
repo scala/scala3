@@ -10,7 +10,7 @@ import annotation.unchecked
 import util.Positions._
 import util.Stats
 import Decorators._
-import ErrorReporting.InfoString
+import ErrorReporting.{errorType, InfoString}
 
 object Inferencing {
 
@@ -113,7 +113,7 @@ object Inferencing {
    *  any uninstantiated type variables, provided that
    *   - the instance type for the variable is not Nothing or Null
    *   - the overall result of `isFullYDefined` is `true`.
-   *  Variables that are succesfully minimized do not count as uninstantiated.
+   *  Variables that are successfully minimized do not count as uninstantiated.
    */
   def isFullyDefined(tp: Type, forceIt: Boolean = false)(implicit ctx: Context): Boolean = {
     val nestedCtx = ctx.fresh.withNewTyperState
@@ -121,6 +121,13 @@ object Inferencing {
     if (result) nestedCtx.typerState.commit()
     result
   }
+
+  def forceFullyDefined(tp: Type)(implicit ctx: Context): Boolean =
+    isFullyDefined(tp, forceIt = true)
+
+  def fullyDefinedType(tp: Type, what: String, pos: Position)(implicit ctx: Context) =
+    if (forceFullyDefined(tp)) tp
+    else errorType(i"internal error: type of $what $tp is not fully defined", pos)
 
   private class IsFullyDefinedAccumulator(forceIt: Boolean)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     def traverse(tp: Type): Boolean = apply(true, tp)

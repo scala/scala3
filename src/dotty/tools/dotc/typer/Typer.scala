@@ -458,7 +458,7 @@ class Typer extends Namer with Applications with Implicits {
     val result = cpy.Block(tree, stats1, expr1).withType(blockType(stats1, expr1.tpe))
     val leaks = CheckTrees.escapingRefs(result)
     if (leaks.isEmpty) result
-    else if (isFullyDefined(pt)) {
+    else if (forceFullyDefined(pt)) {
       val expr2 = typed(untpd.Typed(untpd.TypedSplice(expr1), untpd.TypeTree(pt)))
       untpd.Block(stats1, expr2) withType expr2.tpe
     } else errorTree(result,
@@ -493,7 +493,7 @@ class Typer extends Namer with Applications with Implicits {
           if (!param.tpt.isEmpty) param
           else {
             val paramType =
-              if (isFullyDefined(formal)) formal
+              if (forceFullyDefined(formal)) formal
               else errorType("missing parameter type", param.pos)
             cpy.ValDef(param, param.mods, param.name, untpd.TypeTree(paramType), param.rhs)
           }
@@ -521,12 +521,10 @@ class Typer extends Namer with Applications with Implicits {
         typed(desugar.makeCaseLambda(tree.cases) withPos tree.pos, pt)
       case _ =>
         val sel1 = typedExpr(tree.selector)
-        val selType =
-          if (isFullyDefined(sel1.tpe)) sel1.tpe
-          else errorType("internal error: type of pattern selector is not fully defined", tree.pos)
+        val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos)
 
         /** gadtSyms = "all type parameters of enclosing methods that appear
-         *              non-variantly in the selector type
+         *              non-variantly in the selector type"
          */
         val gadtSyms: Set[Symbol] = {
           val accu = new TypeAccumulator[Set[Symbol]] {
@@ -863,11 +861,8 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = ctx.traceIndented (s"typing ${tree.show}", show = true) {
-    try {
-      val tree1 = typedUnadapted(tree, pt)
-      ctx.interpolateUndetVars(tree1.tpe.widen, tree1.pos)
-      adapt(tree1, pt)
-    } catch {
+    try interpolateAndAdapt(typedUnadapted(tree, pt), pt)
+    catch {
       case ex: FatalTypeError => errorTree(tree, ex.getMessage)
     }
   }
@@ -927,6 +922,11 @@ class Typer extends Namer with Applications with Implicits {
       fallBack
     }
 
+  def interpolateAndAdapt(tree: Tree, pt: Type)(implicit ctx: Context) = {
+    ctx.interpolateUndetVars(tree.tpe.widen, tree.pos)
+    adapt(tree, pt)
+  }
+
   /** (-1) For expressions with annotated types, let AnnotationCheckers decide what to do
    *  (0) Convert expressions with constant types to literals (unless in interactive/scaladoc mode)
    */
@@ -965,7 +965,7 @@ class Typer extends Namer with Applications with Implicits {
    *  (14) When in mode EXPRmode, apply a view
    *  If all this fails, error
    */
-  def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = track("adapt") { ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", show = false) {
+  def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = track("adapt") { ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", show = true) {
 
     assert(pt.exists)
 
@@ -1034,7 +1034,7 @@ class Typer extends Namer with Applications with Implicits {
               implicitArgError(i"no implicit argument of type $formal found for $where" + failure.postscript)
           }
         }
-        adapt(tpd.Apply(tree, args), pt)
+        adapt(tpd.Apply(tree, args), wtp.resultType)
       case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
         if ((defn.isFunctionType(pt) || (pt eq AnyFunctionProto)) &&
             !tree.symbol.isConstructor)
@@ -1064,7 +1064,7 @@ class Typer extends Namer with Applications with Implicits {
         if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
           pt match {
             case SAMType(meth)
-            if wtp <:< meth.info.toFunctionType && isFullyDefined(pt, forceIt = false) =>
+            if wtp <:< meth.info.toFunctionType && isFullyDefined(pt) =>
               return cpy.Closure(tree, Nil, id, TypeTree(pt)).withType(pt)
             case _ =>
           }

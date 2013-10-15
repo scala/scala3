@@ -29,9 +29,10 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
   def undetVars_=(vs: Set[TypeVar]): Unit = unsupported("undetVars_=")
   def instType_=(m: SimpleMap[TypeVar, Type]): Unit = unsupported("instType_=")
 
-  def fresh(committable: Boolean): TyperState = this
+  def fresh(isCommittable: Boolean): TyperState = this
 
   def commit()(implicit ctx: Context): Unit = unsupported("commit")
+  def isCommittable: Boolean = false
 
   @elidable(elidable.FINER)
   def checkConsistent(implicit ctx: Context) = ()
@@ -44,7 +45,7 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
   override def toText(printer: Printer): Text = "ImmutableTyperState"
 }
 
-class MutableTyperState(previous: TyperState, reporter: Reporter, committable: Boolean)
+class MutableTyperState(previous: TyperState, reporter: Reporter, override val isCommittable: Boolean)
 extends TyperState(reporter) {
 
   private var myConstraint: Constraint = previous.constraint
@@ -66,8 +67,8 @@ extends TyperState(reporter) {
   }
   override def instType_=(m: SimpleMap[TypeVar, Type]): Unit = myInstType = m
 
-  override def fresh(committable: Boolean): TyperState =
-    new MutableTyperState(this, new StoreReporter, committable)
+  override def fresh(isCommittable: Boolean): TyperState =
+    new MutableTyperState(this, new StoreReporter, isCommittable)
 
   /** Commit typer state so that its information is copied into current typer state
    *  In addition (1) the owning state of undetermined or temporarily instantiated
@@ -104,7 +105,7 @@ extends TyperState(reporter) {
     def err(msg: String, what: Showable) = s"$msg: ${show(what)}\n${show(this)}"
     for (tvar <- undetVars)
       assert(constraint(tvar.origin).exists, err("unconstrained type var", tvar.origin))
-    if (committable) {
+    if (isCommittable) {
       val undetParams = undetVars map (_.origin)
       for (param <- constraint.domainParams)
         assert(undetParams contains param, err("junk constraint on", param))

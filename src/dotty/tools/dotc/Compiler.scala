@@ -23,7 +23,7 @@ class Compiler {
       .withOwner(defn.RootClass)
       .withTyper(new Typer)
       .withNewMode(Mode.ImplicitsEnabled)
-      .withTyperState(new MutableTyperState(ctx.typerState, new ConsoleReporter()(ctx), committable = true))
+      .withTyperState(new MutableTyperState(ctx.typerState, new ConsoleReporter()(ctx), isCommittable = true))
     def addImport(ctx: Context, sym: Symbol) =
       ctx.fresh.withImportInfo(ImportInfo.rootImport(sym)(ctx))
     (start.withRunInfo(new RunInfo(start)) /: rootImports)(addImport)
