@@ -159,7 +159,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case id: Trees.BackquotedIdent[_] =>
         "`" ~ toText(id.name) ~ "`"
       case Ident(name) =>
-        toText(name)
+        tree.typeOpt match {
+          case tp: NamedType => toTextPrefix(tp.prefix) ~ selectionString(tp)
+          case _ => toText(name)
+        }
       case Select(qual, name) =>
         toTextLocal(qual) ~ ("." ~ toText(name) provided name != nme.CONSTRUCTOR)
       case This(name) =>
