@@ -258,8 +258,10 @@ object SymDenotations {
       initial.asSymDenotation.name startsWith tpnme.ANON_CLASS
 
     /** Is this symbol a package object or its module class? */
-    def isPackageObject(implicit ctx: Context): Boolean =
-      (name.toTermName == nme.PACKAGEkw) && (owner is Package) && (this is Module)
+    def isPackageObject(implicit ctx: Context): Boolean = {
+      val poName = if (isType) nme.PACKAGE_CLS else nme.PACKAGE
+      (name.toTermName == poName) && (owner is Package) && (this is Module)
+    }
 
     /** Is this symbol an abstract type? */
     final def isAbstractType = isType && (this is Deferred)
@@ -956,7 +958,9 @@ object SymDenotations {
       } else NoDenotation
 
     override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation =
-      membersNamed(name).filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
+      //ctx.typeComparer.traceIndented(s"($this).findMember($name, $pre)") { // DEBUG
+        membersNamed(name).filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
+      //}
 
     private[this] var baseTypeCache: java.util.HashMap[CachedType, Type] = null
     private[this] var baseTypeValid: RunId = NoRunId
@@ -1064,7 +1068,7 @@ object SymDenotations {
     override def isTerm = false
     override def isType = false
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
-    override def asSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = this
+    override def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = this
     validFor = Period.allInRun(NoRunId) // will be brought forward automatically
   }
 

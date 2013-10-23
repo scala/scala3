@@ -110,6 +110,7 @@ object StdNames {
     val NAME_JOIN: N                  = NameTransformer.NAME_JOIN_STRING
     val USCORE_PARAM_PREFIX: N        = "_$"
     val PACKAGE: N                    = "package"
+    val PACKAGE_CLS: N                = "package$"
     val PROTECTED_PREFIX: N           = "protected$"
     val PROTECTED_SET_PREFIX: N       = PROTECTED_PREFIX + "set"
     val ROOT: N                       = "<root>"

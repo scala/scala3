@@ -552,7 +552,9 @@ object Denotations {
       }
     final def dropUniqueRefsIn(denots: PreDenotation): SingleDenotation =
       if (hasUniqueSym && denots.containsSym(symbol)) NoDenotation else this
-    def asSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = {
+
+    type AsSeenFromResult = SingleDenotation
+    protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = {
       val owner = this match {
         case thisd: SymDenotation => thisd.owner
         case _ => if (symbol.exists) symbol.owner else NoSymbol
@@ -633,8 +635,22 @@ object Denotations {
      */
     def dropUniqueRefsIn(denots: PreDenotation): PreDenotation
 
+    private var cachedPrefix: Type = _
+    private var cachedAsSeenFrom: AsSeenFromResult = _
+    private var validAsSeenFrom: Period = Nowhere
+    type AsSeenFromResult <: PreDenotation
+
     /** The denotation with info(s) as seen from prefix type */
-    def asSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation
+    final def asSeenFrom(pre: Type)(implicit ctx: Context): AsSeenFromResult = {
+      if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
+        cachedAsSeenFrom = computeAsSeenFrom(pre)
+        cachedPrefix = pre
+        validAsSeenFrom = ctx.period
+      }
+      cachedAsSeenFrom
+    }
+
+    protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): AsSeenFromResult
 
     /** The union of two groups. */
     def union(that: PreDenotation) =
@@ -662,7 +678,8 @@ object Denotations {
       derivedUnion(denots1.filterExcluded(excluded), denots2.filterExcluded(excluded))
     def dropUniqueRefsIn(denots: PreDenotation): PreDenotation =
       derivedUnion(denots1.dropUniqueRefsIn(denots), denots2.dropUniqueRefsIn(denots))
-    def asSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation =
+    type AsSeenFromResult = PreDenotation
+    protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1.asSeenFrom(pre), denots2.asSeenFrom(pre))
     private def derivedUnion(denots1: PreDenotation, denots2: PreDenotation) =
       if ((denots1 eq this.denots1) && (denots2 eq this.denots2)) this
