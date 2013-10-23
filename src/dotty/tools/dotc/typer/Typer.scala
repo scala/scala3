@@ -1072,8 +1072,11 @@ class Typer extends Namer with Applications with Implicits {
       }
       // try an implicit conversion
       inferView(tree, pt) match {
-        case SearchSuccess(adapted) => adapted
-        case failure: SearchFailure => err.typeMismatch(tree, pt, failure)
+        case SearchSuccess(adapted) =>
+          adapted
+        case failure: SearchFailure =>
+          if (pt.isInstanceOf[ProtoType]) tree
+          else err.typeMismatch(tree, pt, failure)
       }
     }
 
