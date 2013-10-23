@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Flags._, Names._
+import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._
 import Decorators.sourcePos
 import StdNames.{nme, tpnme}
 import collection.mutable
@@ -256,9 +256,17 @@ class TypeComparer(initctx: Context) extends DotClass {
           // optimized case; all info on t1.name2 is in refinement tp1.refinedInfo.
           isSubType(tp1, parent2) && isSubType(tp1.refinedInfo, tp2.refinedInfo)
         case _ =>
+          def hasMatchingMember(name: Name): Boolean = traceIndented(s"hasMatchingMember($name)") {
+            tp1.member(name).hasAltWith(alt => isSubType(alt.info, tp2.refinedInfo)) ||
+            name.isHkParamName && {
+              val idx = name.hkParamIndex
+              val tparams = tp1.typeParams
+              idx < tparams.length && hasMatchingMember(tparams(idx).name)
+            }
+          }
           isSubType(tp1, parent2) && (
                name2 == nme.WILDCARD
-            || tp1.member(name2).hasAltWith(alt => isSubType(alt.info, tp2.refinedInfo))
+            || hasMatchingMember(name2)
             || fourthTry(tp1, tp2))
       }
     case AndType(tp21, tp22) =>
