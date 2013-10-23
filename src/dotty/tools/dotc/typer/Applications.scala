@@ -664,7 +664,7 @@ trait Applications extends Compatibility { self: Typer =>
   /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
    *  `alt2`? `alt1` and `alt2` are nonoverloaded references.
    */
-  def isAsGood(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Boolean = track("isAsGood") { ctx.traceIndented(s"isAsGood($alt1, $alt2)") {
+  def isAsGood(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Boolean = track("isAsGood") { ctx.traceIndented(i"isAsGood($alt1, $alt2)") {
 
     assert(alt1 ne alt2)
 

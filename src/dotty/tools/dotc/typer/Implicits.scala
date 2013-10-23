@@ -42,15 +42,7 @@ object Implicits {
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = track("filterMatching") {
       def result(implicit ctx: Context) = {
-        def refMatches(ref: TermRef) = ctx.traceIndented(i"refMatches ${ref.symbol}, ref = $ref, normalze = ${normalize(ref)}, pt = $pt") {
-          if (ref.name.toString == "canBuildFrom") {
-            val r = normalize(ref)
-            println(s"r = $r, pt = $pt")
-            println(TypeComparer.explained(implicit ctx => r <:< pt))
-            throw new Error()
-          }
-          isCompatible(normalize(ref), pt)
-        }
+        def refMatches(ref: TermRef) = isCompatible(normalize(ref), pt)
         refs filter refMatches
       }
       result(ctx.fresh.withExploreTyperState) // create a defensive copy of ctx to avoid constraint pollution
@@ -321,7 +313,7 @@ trait Implicits { self: Typer =>
             case fail: SearchFailure =>
               rankImplicits(pending1, acc)
             case best: SearchSuccess =>
-              val newPending = pending1 filterNot (isAsGood(_, best.ref)(nestedContext.withExploreTyperState))
+              val newPending = pending1 filter (isAsGood(_, best.ref)(nestedContext.withExploreTyperState))
               rankImplicits(newPending, best :: acc)
           }
         case nil => acc
@@ -352,6 +344,8 @@ trait Implicits { self: Typer =>
           else eligible
         case _ => eligible.sortBy(-ctx.runInfo.useCount(_))
       }
+
+      println(i"eligible: ${sort(eligible)}")
 
       condense(rankImplicits(sort(eligible), Nil))
     }
