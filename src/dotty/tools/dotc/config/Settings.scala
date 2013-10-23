@@ -118,7 +118,7 @@ object Settings {
             update(arg2, args2)
         case (IntTag, arg2 :: args2) =>
           try {
-            val x = arg.toInt
+            val x = arg2.toInt
             choices match {
               case r: Range if x < r.head || r.last < x =>
                 fail(s"$arg2 is out of legal range $legalChoices for $name", args2)
