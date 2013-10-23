@@ -788,6 +788,8 @@ class TypeComparer(initctx: Context) extends DotClass {
   }
 */
   def copyIn(ctx: Context) = new TypeComparer(ctx)
+
+  def traceIndented[T](str: String)(op: => T): T = op
 }
 
 object TypeComparer {
@@ -802,7 +804,17 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   private var indent = 0
   private val b = new StringBuilder
 
-  def traceIndented[T](str: String)(op: => T): T = {
+  private var skipped = false
+
+  override def traceIndented[T](str: String)(op: => T): T =
+    if (skipped)
+      op
+/*
+    else if (str startsWith " =+ scala.collection.immutable.List <:<  =+ scala.collection.immutable.List") {
+      skipped = true
+      try op
+      finally skipped = false
+    }*/ else {
     indent += 2
     b append "\n" append (" " * indent) append "==> " append str
     val res = op
