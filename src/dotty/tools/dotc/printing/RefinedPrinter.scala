@@ -67,8 +67,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       super.refinementNameString(tp)
     else {
       val tsym = tp.member(tp.refinedName).symbol
-      val name = tsym.originalName
-      nameString(if (tsym is ExpandedTypeParam) name.asTypeName.unexpandedName() else name)
+      if (!tsym.exists) super.refinementNameString(tp)
+      else {
+        val name = tsym.originalName
+        nameString(if (tsym is ExpandedTypeParam) name.asTypeName.unexpandedName() else name)
+      }
     }
 
   override def toText(tp: Type): Text = controlled {
