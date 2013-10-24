@@ -255,6 +255,14 @@ object desugar {
     case tree: PatDef => patDef(tree)
   }
 
+  def block(tree: Block)(implicit ctx: Context): Block = tree.expr match {
+    case EmptyTree =>
+      cpy.Block(tree, tree.stats,
+        unitLiteral withPos (if (tree.stats.isEmpty) tree.pos else tree.pos.endPos))
+    case _ =>
+      tree
+  }
+
   /** In case there is exactly one variable x_1 in pattern
    *   val/var p = e  ==>  val/var x_1 = (e: @unchecked) match (case p => (x_1))
    *

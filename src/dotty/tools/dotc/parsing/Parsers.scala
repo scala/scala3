@@ -1130,7 +1130,7 @@ object Parsers {
      */
     def block(): Tree = {
       val stats = blockStatSeq()
-      if (stats.nonEmpty && stats.last.isTerm) Block(stats.init, stats.last)
+      if (stats.nonEmpty && !stats.last.isDef) Block(stats.init, stats.last)
       else Block(stats, EmptyTree)
     }
 

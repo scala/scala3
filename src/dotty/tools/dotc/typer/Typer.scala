@@ -461,8 +461,9 @@ class Typer extends Namer with Applications with Implicits {
     else if (forceFullyDefined(pt)) {
       val expr2 = typed(untpd.Typed(untpd.TypedSplice(expr1), untpd.TypeTree(pt)))
       untpd.Block(stats1, expr2) withType expr2.tpe
-    } else errorTree(result,
-      i"local definition of ${leaks.head.name} escapes as part of block's type ${result.tpe}")
+    } else
+      errorTree(result,
+          i"local definition of ${leaks.head.name} escapes as part of block's type ${result.tpe}")
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = track("typedIf") {
@@ -825,7 +826,7 @@ class Typer extends Namer with Applications with Implicits {
           case tree: untpd.Typed => typedTyped(tree, pt)
           case tree: untpd.NamedArg => typedNamedArg(tree, pt)
           case tree: untpd.Assign => typedAssign(tree, pt)
-          case tree: untpd.Block => typedBlock(tree, pt)
+          case tree: untpd.Block => typedBlock(desugar.block(tree), pt)
           case tree: untpd.If => typedIf(tree, pt)
           case tree: untpd.Function => typedFunction(tree, pt)
           case tree: untpd.Closure => typedClosure(tree, pt)
