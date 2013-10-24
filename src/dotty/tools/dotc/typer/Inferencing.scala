@@ -199,27 +199,21 @@ object Inferencing {
      *  approximate it by its lower bound. Otherwise, if it appears contravariantly
      *  in type `tp` approximate it by its upper bound.
      */
-    def interpolateUndetVars(tp: Type, pos: Position, direction: Int = 1): Unit = Stats.track("interpolateUndetVars") {
+    def interpolateUndetVars(tp: Type, pos: Position): Unit = Stats.track("interpolateUndetVars") {
       val vs = tp.variances(tvar =>
         (ctx.typerState.undetVars contains tvar) && (pos contains tvar.pos))
-      var todo = new ListBuffer[() => Unit]
+      var changed = false
       for ((tvar, v) <- vs)
-        if (v == 1) {
-          println(s"interpolate covariant ${tvar.show} in ${tp.show}")
+        if (v != 0) {
+          println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
+          tvar.instantiate(fromBelow = v == 1)
+          changed = true
+        }
+      if (changed)
+        interpolateUndetVars(tp, pos)
+      else
+        for (tvar <- ctx.typerState.undetVars if (pos contains tvar.pos) && !(vs contains tvar))
           tvar.instantiate(fromBelow = true)
-          todo += (() => interpolateUndetVars(tvar.instanceOpt, pos, direction))
-        }
-        else if (v == -1) {
-          println(s"interpolate contrvariant ${tvar.show} in ${tp.show}")
-          tvar.instantiate(fromBelow = false)
-          todo += (() => interpolateUndetVars(tvar.instanceOpt, pos, -direction))
-        }
-      for (tvar <- ctx.typerState.undetVars if (pos contains tvar.pos) && !(vs contains tvar)) {
-        println(s"interpolate non-occurring ${tvar.show} in ${tp.show}")
-        tvar.instantiate(fromBelow = true)
-        todo += (() => interpolateUndetVars(tvar.instanceOpt, pos, direction))
-      }
-      todo foreach (_())
     }
 
     /** Instantiate undetermined type variables to that type `tp` is

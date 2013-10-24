@@ -345,8 +345,6 @@ trait Implicits { self: Typer =>
         case _ => eligible.sortBy(-ctx.runInfo.useCount(_))
       }
 
-      println(i"eligible: ${sort(eligible)}")
-
       condense(rankImplicits(sort(eligible), Nil))
     }
 
