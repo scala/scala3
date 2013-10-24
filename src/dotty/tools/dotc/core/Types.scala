@@ -90,6 +90,7 @@ object Types {
     final def isStable(implicit ctx: Context): Boolean = this match {
       case tp: TermRef => tp.termSymbol.isStable
       case _: SingletonType => true
+      case NoPrefix => true
       case _ => false
     }
 
