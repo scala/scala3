@@ -9,7 +9,8 @@ object collections {
   val ints2 = 1 :: 2 :: Nil
   val ints3: List[Int] = ints2
   val f = (x: Int) => x + 1
-
-  val ys = ints3 map ((x: Int) => x + 1)
+    
+  val ys = ints3 map (x => x + 1)
+  val zs = ys filter (y => y != 0)
 
 }
