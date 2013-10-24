@@ -155,7 +155,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     import untpd._
 
-    val txt: Text = tree match {
+    var txt: Text = tree match {
       case id: Trees.BackquotedIdent[_] =>
         "`" ~ toText(id.name) ~ "`"
       case Ident(name) =>
@@ -364,6 +364,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ =>
         tree.fallbackToText(this)
     }
+    if (ctx.settings.printtypes.value && tree.hasType)
+      if (tree.isType) txt = toText(tree.typeOpt)
+      else if (!tree.isDef) txt = "<" ~ txt ~ ":" ~ toText(tree.typeOpt) ~ ">"
     tree match {
       case Block(_, _) | Template(_, _, _, _) => txt
       case _ => txt.close
