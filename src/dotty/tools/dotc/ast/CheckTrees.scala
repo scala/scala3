@@ -31,7 +31,7 @@ object CheckTrees {
       }
     def leakingTypes(tp: Type): Set[NamedType] =
       tp namedPartsWith (tp => isLocal(tp.symbol))
-    def typeLeaks(tp: Type): Boolean = leakingTypes(tp).isEmpty
+    def typeLeaks(tp: Type): Boolean = leakingTypes(tp).nonEmpty
     def classLeaks(sym: ClassSymbol): Boolean =
       (sym.info.parents exists typeLeaks) ||
       (sym.decls.toList exists (t => typeLeaks(t.info)))
