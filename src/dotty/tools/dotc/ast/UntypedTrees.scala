@@ -23,8 +23,8 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
     def withName(name: Name)(implicit ctx: Context) = cpy.ModuleDef(this, mods, name.toTermName, impl)
   }
 
-  case class SymbolLit(str: String) extends Tree
-  case class InterpolatedString(id: TermName, strings: List[Literal], elems: List[Tree]) extends Tree
+  case class SymbolLit(str: String) extends TermTree
+  case class InterpolatedString(id: TermName, strings: List[Literal], elems: List[Tree]) extends TermTree
   case class Function(args: List[Tree], body: Tree) extends Tree
   case class InfixOp(left: Tree, op: Name, right: Tree) extends Tree
   case class PostfixOp(od: Tree, op: Name) extends Tree
