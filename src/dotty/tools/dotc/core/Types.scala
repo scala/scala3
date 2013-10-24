@@ -2414,7 +2414,9 @@ object Types {
          .stripMargin)
 
   class CyclicReference(val denot: SymDenotation)
-    extends FatalTypeError(s"cyclic reference involving $denot")
+    extends FatalTypeError(s"cyclic reference involving $denot") {
+    printStackTrace()
+  }
 
   class MergeError(msg: String) extends FatalTypeError(msg)
 

@@ -26,9 +26,14 @@ trait NamerContextOps { this: Context =>
     sym
   }
 
-  def denotsNamed(name: Name): PreDenotation =
-    if (owner.isClass) owner.asClass.membersNamed(name)
-    else scope.denotsNamed(name)
+  def denotNamed(name: Name): Denotation =
+    if (owner.isClass)
+      if (outer.owner == owner)
+        owner.thisType.member(name)
+      else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
+        owner.findMember(name, owner.thisType, EmptyFlags)
+    else
+      scope.denotsNamed(name).toDenot(NoPrefix)
 
   def effectiveScope =
     if (owner != null && owner.isClass) owner.asClass.decls

@@ -269,8 +269,8 @@ class Typer extends Namer with Applications with Implicits {
       /** Is (some alternative of) the given predenotation `denot`
        *  defined in current compilation unit?
        */
-      def isDefinedInCurrentUnit(denot: PreDenotation): Boolean = denot match {
-        case DenotUnion(d1, d2) => isDefinedInCurrentUnit(d1) || isDefinedInCurrentUnit(d2)
+      def isDefinedInCurrentUnit(denot: Denotation): Boolean = denot match {
+        case MultiDenotation(d1, d2) => isDefinedInCurrentUnit(d1) || isDefinedInCurrentUnit(d2)
         case denot: SingleDenotation => denot.symbol.sourceFile == ctx.source
       }
 
@@ -279,13 +279,11 @@ class Typer extends Namer with Applications with Implicits {
       else {
         val outer = ctx.outer
         if ((ctx.scope ne outer.scope) || (ctx.owner ne outer.owner)) {
-          val defDenots = ctx.denotsNamed(name)
-          if (defDenots.exists) {
+          val defDenot = ctx.denotNamed(name)
+          if (defDenot.exists) {
             val curOwner = ctx.owner
-            val pre = curOwner.thisType
-            val defDenot = defDenots toDenot pre
-            val found = NamedType(pre, name) withDenot defDenot
-            if (!(curOwner is Package) || (defDenot.symbol is Package) || isDefinedInCurrentUnit(defDenots))
+            val found = NamedType(curOwner.thisType, name) withDenot defDenot
+            if (!(curOwner is Package) || (defDenot.symbol is Package) || isDefinedInCurrentUnit(defDenot))
               return checkNewOrShadowed(found, definition) // no need to go further out, we found highest prec entry
             else if (prevPrec < packageClause)
               return findRef(found, packageClause, ctx)(outer)

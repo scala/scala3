@@ -204,10 +204,10 @@ trait Applications extends Compatibility { self: Typer =>
             def findDefault(cx: Context): Type = {
               if (cx eq NoContext) NoType
               else if (cx.scope != cx.outer.scope &&
-                       cx.denotsNamed(methRef.name)
-                         .filterWithPredicate(_.symbol == meth).exists) {
-                val denot = cx.denotsNamed(getterName).toDenot(NoPrefix)
-                NamedType(NoPrefix, getterName).withDenot(denot)
+                       cx.denotNamed(methRef.name).hasAltWith(_.symbol == meth)) {
+                val denot = cx.denotNamed(getterName)
+                assert(denot.exists)
+                NamedType(cx.owner.thisType, getterName).withDenot(denot)
               } else findDefault(cx.outer)
             }
             findDefault(ctx)
