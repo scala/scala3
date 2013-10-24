@@ -806,7 +806,7 @@ class Typer extends Namer with Applications with Implicits {
           case tree: untpd.Bind => typedBind(tree, pt)
           case tree: untpd.ValDef =>
             if (tree.isEmpty) tpd.EmptyValDef
-            else typedValDef(tree, sym)(localContext)
+            else typedValDef(tree, sym)(localContext.withNewScope)
           case tree: untpd.DefDef =>
             val typer1 = nestedTyper.remove(sym).get
             typer1.typedDefDef(tree, sym)(localContext.withTyper(typer1))

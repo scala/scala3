@@ -89,7 +89,8 @@ class Namer { typer: Typer =>
 
   /** The scope of the typer.
    *  For nested typers this is a place parameters are entered during completion
-   *  and where they survive until typechecking.
+   *  and where they survive until typechecking. A context with this typer also
+   *  has this scope.
    */
   val scope = newScope
 
@@ -278,7 +279,7 @@ class Namer { typer: Typer =>
 
       def typeSig(tree: Tree): Type = tree match {
         case tree: ValDef =>
-          valOrDefDefSig(tree, sym, identity)(localContext)
+          valOrDefDefSig(tree, sym, identity)(localContext.withNewScope)
         case tree: DefDef =>
           val typer1 = new Typer
           nestedTyper(sym) = typer1
