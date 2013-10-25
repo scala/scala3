@@ -364,9 +364,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ =>
         tree.fallbackToText(this)
     }
-    if (ctx.settings.printtypes.value && tree.hasType)
-      if (tree.isType) txt = toText(tree.typeOpt)
-      else if (!tree.isDef) txt = "<" ~ txt ~ ":" ~ toText(tree.typeOpt) ~ ">"
+    if (ctx.settings.printtypes.value && tree.hasType) {
+      val tp = tree.typeOpt match {
+        case tp: TermRef if tree.isInstanceOf[RefTree] && !tp.denot.isOverloaded => tp.underlying
+        case tp => tp
+      }
+      if (tree.isType) txt = toText(tp)
+      else if (!tree.isDef) txt = "<" ~ txt ~ ":" ~ toText(tp) ~ ">"
+    }
     tree match {
       case Block(_, _) | Template(_, _, _, _) => txt
       case _ => txt.close
