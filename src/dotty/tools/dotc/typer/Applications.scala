@@ -327,17 +327,10 @@ trait Applications extends Compatibility { self: Typer =>
     init()
   }
 
-  /** Subtrait of Application for the cases where arguments are (typed or
-   *  untyped) trees.
-   */
-  trait TreeApplication[T >: Untyped] extends Application[Trees.Tree[T]] {
-    type TypeArg = Tree
-    def isVarArg(arg: Trees.Tree[T]): Boolean = isWildcardStarArg(arg)
-  }
-
   /** Subclass of Application for applicability tests with trees as arguments. */
   class ApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context)
-  extends TestApplication(methRef, methRef, args, resultType) with TreeApplication[Type] {
+  extends TestApplication(methRef, methRef, args, resultType) {
+    def isVarArg(arg: Tree): Boolean = tpd.isWildcardStarArg(arg)
     def argType(arg: Tree): Type = normalize(arg.tpe)
     def treeToArg(arg: Tree): Tree = arg
   }
@@ -355,8 +348,9 @@ trait Applications extends Compatibility { self: Typer =>
    */
   abstract class TypedApply[T >: Untyped](
     app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Trees.Tree[T]], resultType: Type)(implicit ctx: Context)
-  extends Application(methRef, fun.tpe, args, resultType) with TreeApplication[T] {
+  extends Application(methRef, fun.tpe, args, resultType) {
     type TypedArg = Tree
+    def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
     private var typedArgBuf = new mutable.ListBuffer[Tree]
     private var liftedDefs: mutable.ListBuffer[Tree] = null
     private var myNormalizedFun: Tree = fun
@@ -369,7 +363,7 @@ trait Applications extends Compatibility { self: Typer =>
       val args = typedArgBuf.takeRight(n).toList
       typedArgBuf.trimEnd(n)
       val seqLit = if (methodType.isJava) JavaSeqLiteral(args) else SeqLiteral(args)
-      typedArgBuf += seqLit
+      typedArgBuf += seqToRepeated(seqLit)
     }
 
     def fail(msg: => String, arg: Trees.Tree[T]) = {

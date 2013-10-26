@@ -73,7 +73,7 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
     case Block(stats, expr) => methPart(expr)
     case _ => tree
   }
- 
+
   /** If this is an application, its function part, stripping all
    *  Apply nodes (but leaving TypeApply nodes in). Otherwise the tree itself.
    */
@@ -207,13 +207,6 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
   def isWildcardArg(tree: Tree): Boolean = unbind(tree) match {
     case Ident(nme.WILDCARD) => true
     case _                   => false
-  }
-
-  /** Is the argument a wildcard star type of the form `_*`?
-   */
-  def isWildcardStarType(tree: Tree): Boolean = tree match {
-    case Ident(tpnme.WILDCARD_STAR) => true
-    case _                          => false
   }
 
   /** Is this pattern node a catch-all (wildcard or variable) pattern? */

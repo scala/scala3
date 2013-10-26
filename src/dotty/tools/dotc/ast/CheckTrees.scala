@@ -88,7 +88,7 @@ object CheckTrees {
           check(tp <:< absMembers.head.info)
         case _ =>
           check(expr.isValueOrPattern)
-          check(expr.tpe <:< tpt.tpe)
+          check(expr.tpe <:< tpt.tpe.translateParameterized(defn.RepeatedParamClass, defn.SeqClass))
       }
     case NamedArg(name, arg) =>
     case Assign(lhs, rhs) =>

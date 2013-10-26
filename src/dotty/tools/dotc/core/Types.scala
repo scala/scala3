@@ -171,7 +171,7 @@ object Types {
       that.existsPart(this == _)
 
     def isRepeatedParam(implicit ctx: Context): Boolean =
-      defn.RepeatedParamAliases contains typeSymbol
+      defn.RepeatedParamClasses contains typeSymbol
 
 // ----- Higher-order combinators -----------------------------------
 
@@ -861,6 +861,14 @@ object Types {
       case _ =>
         NoType
     }
+
+    /** Translate a type of the form From[T] to To[T], keep other types as they are.
+     *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
+     */
+    def translateParameterized(from: ClassSymbol, to: ClassSymbol)(implicit ctx: Context): Type =
+      if (this derivesFrom from)
+        RefinedType(to.typeConstructor, to.typeParams.head.name, member(from.typeParams.head.name).info)
+      else this
 
     /** If this is an encoding of a (partially) applied type, return its arguments,
      *  otherwise return Nil

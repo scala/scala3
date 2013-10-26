@@ -15,7 +15,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     sym.annotations map (_.tree))
 
   def Ident(tp: NamedType)(implicit ctx: Context): Ident =
-    untpd.Ident(tp.name).withType(tp.underlyingIfRepeated).checked
+    underlyingIfRepeated(untpd.Ident(tp.name) withType tp).checked
 
   def Select(qualifier: Tree, name: Name)(implicit ctx: Context): Select =
     Select(qualifier, NamedType(qualifier.tpe, name))
@@ -155,7 +155,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val untpdSeqLit =
       if (tpe derivesFrom defn.SeqClass) untpd.SeqLiteral(elems)
       else untpd.JavaSeqLiteral(elems)
-    untpdSeqLit.withType(tpe.elemType).checked
+    untpdSeqLit.withType(tpe).checked
   }
 
   def JavaSeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
@@ -296,6 +296,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def ref(sym: Symbol)(implicit ctx: Context): tpd.NameTree =
     ref(NamedType(sym.owner.thisType, sym.name).withDenot(sym))
+
+  // ----- Converting to releated trees -----------------------------------------------
+
+  def underlyingIfRepeated(id: Ident)(implicit ctx: Context): Ident =
+    if (id.isType) id else id withType id.tpe.underlyingIfRepeated
+
+  def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree =
+    Typed(tree, TypeTree(tree.tpe.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)))
 
   // ------ Creating typed equivalents of trees that exist only in untyped form -------
 

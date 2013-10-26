@@ -407,9 +407,13 @@ class Typer extends Namer with Applications with Implicits {
         import untpd._
         typed(Bind(id.name, Typed(Ident(nme.WILDCARD), tree.tpt)).withPos(id.pos))
       case _ =>
-        val tpt1 = typedType(tree.tpt)
-        val expr1 = typedExpr(tree.expr, tpt1.tpe)
-        cpy.Typed(tree, expr1, tpt1).withType(tpt1.tpe)
+        if (untpd.isWildcardStarArg(tree))
+          seqToRepeated(typedExpr(tree.expr, defn.SeqType))
+        else {
+          val tpt1 = typedType(tree.tpt)
+          val expr1 = typedExpr(tree.expr, tpt1.tpe)
+          cpy.Typed(tree, expr1, tpt1).withType(tpt1.tpe)
+        }
     }
   }
 
@@ -608,7 +612,7 @@ class Typer extends Namer with Applications with Implicits {
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = track("typedSeqLiteral") {
     val proto1 = pt.elemType orElse WildcardType
     val elems1 = tree.elems mapconserve (typed(_, proto1))
-    cpy.SeqLiteral(tree, elems1) withType ctx.typeComparer.lub(elems1.tpes)
+    cpy.SeqLiteral(tree, elems1) withType defn.SeqType.appliedTo(ctx.typeComparer.lub(elems1.tpes))
   }
 
   def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree = track("typedTypeTree") {

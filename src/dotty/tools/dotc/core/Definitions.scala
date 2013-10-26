@@ -32,15 +32,15 @@ class Definitions(implicit ctx: Context) {
   private def newTypeParam(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
     scope.enter(newSymbol(cls, name, flags | TypeParamCreationFlags, TypeBounds.empty))
 
-  private def newSyntheticTypeParam(cls: ClassSymbol, scope: MutableScope, suffix: String = "T0") =
+  private def newSyntheticTypeParam(cls: ClassSymbol, scope: MutableScope, paramFlags: FlagSet, suffix: String = "T0") =
     newTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName, scope)
 
-  private def specialPolyClass(name: TypeName, flags: FlagSet, parentConstrs: Type*): ClassSymbol = {
+  private def specialPolyClass(name: TypeName, paramFlags: FlagSet, parentConstrs: Type*): ClassSymbol = {
     val completer = new LazyType {
       def complete(denot: SymDenotation): Unit = {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
-        val typeParam = newSyntheticTypeParam(cls, paramDecls)
+        val typeParam = newSyntheticTypeParam(cls, paramDecls, paramFlags)
         def instantiate(tpe: Type) =
           if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.symTypeRef)
           else tpe
@@ -49,7 +49,7 @@ class Definitions(implicit ctx: Context) {
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parentRefs, paramDecls)
       }
     }
-    newClassSymbol(ScalaPackageClass, name, flags, completer)
+    newClassSymbol(ScalaPackageClass, name, EmptyFlags, completer)
   }
 
   private def newMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
@@ -185,8 +185,8 @@ class Definitions(implicit ctx: Context) {
   lazy val ByNameParamClass       = specialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, AnyType)
   lazy val EqualsPatternClass     = specialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, AnyType)
 
-  lazy val RepeatedParamAlias     = newAliasType(tpnme.REPEATED_PARAM_CLASS, SeqType)
-  lazy val JavaRepeatedParamAlias = newAliasType(tpnme.JAVA_REPEATED_PARAM_CLASS, ArrayType)
+  lazy val RepeatedParamClass     = specialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, SeqType)
+  lazy val JavaRepeatedParamClass = specialPolyClass(tpnme.JAVA_REPEATED_PARAM_CLASS, Covariant, ArrayType)
 
   // fundamental classes
   lazy val StringClass                  = requiredClass("java.lang.String")
@@ -257,8 +257,8 @@ class Definitions(implicit ctx: Context) {
   def DoubleType: Type = DoubleClass.typeConstructor
   def PairType: Type = PairClass.typeConstructor
   def StringType: Type = StringClass.typeConstructor
-  def RepeatedParamType = RepeatedParamAlias.typeConstructor
-  def JavaRepeatedParamType = JavaRepeatedParamAlias.typeConstructor
+  def RepeatedParamType = RepeatedParamClass.typeConstructor
+  def JavaRepeatedParamType = JavaRepeatedParamClass.typeConstructor
   def ThrowableType = ThrowableClass.typeConstructor
   def OptionType = OptionClass.typeConstructor
 
@@ -300,7 +300,7 @@ class Definitions(implicit ctx: Context) {
   lazy val TupleClasses: Set[Symbol] = TupleClass.toSet
   lazy val ProductClasses: Set[Symbol] = ProductNClass.toSet
 
-  lazy val RepeatedParamAliases: Set[Symbol] = Set(RepeatedParamAlias, JavaRepeatedParamAlias)
+  lazy val RepeatedParamClasses: Set[Symbol] = Set(RepeatedParamClass, JavaRepeatedParamClass)
 
   /** Modules whose members are in the default namespace */
   lazy val UnqualifiedModules: Set[TermSymbol] = Set(PredefModule, ScalaPackageVal, JavaLangPackageVal)
@@ -377,7 +377,6 @@ class Definitions(implicit ctx: Context) {
     hkTraitOfArity.getOrElseUpdate(vcs, createTrait)
   }
 
-
   // ----- Value class machinery ------------------------------------------
 
   lazy val ScalaValueClasses: collection.Set[Symbol] = Set(
@@ -439,8 +438,8 @@ class Definitions(implicit ctx: Context) {
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticCoreClasses = List(
     AnyRefAlias,
-    RepeatedParamAlias,
-    JavaRepeatedParamAlias,
+    RepeatedParamClass,
+    JavaRepeatedParamClass,
     ByNameParamClass,
     AnyClass,
     AnyValClass,
