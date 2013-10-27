@@ -920,7 +920,9 @@ class Typer extends Namer with Applications with Implicits {
 
   def tryInsertApply(tree: Tree, pt: Type)(fallBack: StateFul[Tree] => Tree)(implicit ctx: Context): Tree =
     tryEither {
-      implicit ctx => typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
+      implicit ctx =>
+        val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
+        if (sel.tpe.isError) sel else adapt(sel, pt)
     } {
       fallBack
     }
@@ -1008,7 +1010,7 @@ class Typer extends Namer with Applications with Implicits {
     }
 
     def adaptToArgs(wtp: Type, pt: FunProto) = wtp match {
-      case _: MethodType => tree
+      case _: MethodType | _: PolyType => tree
       case _ => tryInsertApply(tree, pt) {
         val more = tree match {
           case Apply(_, _) => " more"
@@ -1086,6 +1088,8 @@ class Typer extends Namer with Applications with Implicits {
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutType[_] => tree
       case _ => tree.tpe.widen match {
+        case ErrorType =>
+          tree
         case ref: TermRef =>
           adaptOverloaded(ref)
         case poly: PolyType =>
