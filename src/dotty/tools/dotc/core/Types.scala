@@ -901,6 +901,17 @@ object Types {
       if (buf == null) Nil else buf.toList
     }
 
+    /** The core type without any type arguments.
+     *  @param `typeArgs` must be the type arguments of this type.
+     */
+    final def withoutArgs(typeArgs: List[Type]): Type = typeArgs match {
+      case _ :: typeArgs1 =>
+        val RefinedType(tycon, _) = this
+        tycon.withoutArgs(typeArgs.tail)
+      case nil =>
+        this
+    }
+
     /** If this is the image of a type argument to type parameter `tparam`,
      *  recover the type argument, otherwise NoType.
      */
@@ -1504,10 +1515,17 @@ object Types {
 
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
       def originalName = parent.typeParams.apply(refinedName.hkParamIndex).name
+      def checkForTypeParams(tpe: Type): Boolean = tpe match {
+        case tpe: NamedType => tpe.symbol.isCompleted
+        case ThisType(cls) => cls.isCompleted
+        case tpe: BoundType => false
+        case tp: TypeProxy => checkForTypeParams(tp.underlying)
+        case _ => true
+      }
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))
         this
       else if (refinedName.isHkParamName &&
-               parent.typeSymbol.isCompleted && // to avoid cyclic reference errors
+               checkForTypeParams(parent) && // to avoid cyclic reference errors
                refinedName.hkParamIndex < typeParams.length &&
                originalName != refinedName)
         derivedRefinedType(parent, originalName, refinedInfo)

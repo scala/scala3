@@ -1099,7 +1099,7 @@ class Typer extends Namer with Applications with Implicits {
               val tracked = ctx.track(poly)
               ctx.newTypeVars(tracked, tree.pos)
             }
-            adapt(tpd.TypeApply(tree, tvars map (tpd.TypeTree(_))), pt)
+            adapt(tree appliedToTypes tvars, pt)
           }
         case wtp =>
           pt match {

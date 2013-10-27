@@ -1,4 +1,5 @@
 object varargs {
+  List(1, 2, 3)
   def g(x: Int*) = x.length
   g(1, 2, 3, 4)
   val x = if (true) 1 else 2
@@ -9,5 +10,4 @@ object varargs {
   g(Nil: _*)
   g(1)
   g()
-  List.apply(1, 2, 3)
 }

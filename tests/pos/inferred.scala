@@ -53,4 +53,7 @@ object Inferred {
   
   val ints2 = ints map (_ + 1)
   
+  val ints3 = new CONS[Int](1, NIL)
+  
+  val ints4 = new CONS(1, NIL)
 }

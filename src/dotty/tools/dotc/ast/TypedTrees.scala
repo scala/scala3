@@ -46,8 +46,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case fntpe @ MethodType(pnames, ptypes) =>
         check(sameLength(ptypes, args), s"${fn.show}: ${fntpe.show} to ${args.map(_.show).mkString(", ")}")
         fntpe.instantiate(args map (_.tpe))
-      case _ =>
-        check(false)
+      case t =>
+        check(false, s"fn = $fn, args = $args, tp = $t")
         ErrorType
     }
     untpd.Apply(fn, args).withType(owntype).checked
@@ -308,12 +308,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   // ------ Creating typed equivalents of trees that exist only in untyped form -------
 
   /** new C(args) */
-  def New(tp: Type, args: List[Tree])(implicit ctx: Context): Apply =
+  def New(tp: Type, args: List[Tree])(implicit ctx: Context): Apply = {
+    val targs = tp.typeArgs
     Apply(
       Select(
-        New(tp),
-        TermRef.withSym(tp.normalizedPrefix, tp.typeSymbol.primaryConstructor.asTerm)),
+        New(tp withoutArgs targs),
+        TermRef.withSym(tp.normalizedPrefix, tp.typeSymbol.primaryConstructor.asTerm))
+        .appliedToTypes(targs),
       args)
+  }
 
   /** An object def
    *
@@ -399,6 +402,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def changeOwner(from: Symbol, to: Symbol)(implicit ctx: Context): ThisTree =
       new TreeMapper(ownerMap = (sym => if (sym == from) to else sym)).apply(tree)
+
+    def appliedToTypes(targs: List[Type])(implicit ctx: Context): Tree =
+      if (targs.isEmpty) tree else TypeApply(tree, targs map (TypeTree(_)))
   }
 
   implicit class ListOfTreeDecorator(val xs: List[tpd.Tree]) extends AnyVal {

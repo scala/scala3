@@ -62,6 +62,11 @@ object UnPickler {
     case tp => tp
   }
 
+  def addConstructorTypeParams(denot: SymDenotation)(implicit ctx: Context) = {
+    assert(denot.isConstructor)
+    denot.info = PolyType.fromSymbols(denot.owner.typeParams, denot.info)
+  }
+
   /** Convert array parameters denoting a repeated parameter of a Java method
    *  to `JavaRepeatedParamClass` types.
    */
@@ -497,6 +502,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         case denot =>
           val tp1 = depoly(tp, denot)
           denot.info = if (tag == ALIASsym) TypeAlias(tp1) else tp1
+          if (denot.isConstructor) addConstructorTypeParams(denot)
           if (atEnd) {
             assert(!(denot is SuperAccessor), denot)
           } else {

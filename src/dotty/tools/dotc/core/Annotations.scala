@@ -61,6 +61,8 @@ object Annotations {
       apply(defn.ChildAnnot.typeConstructor.appliedTo(NamedType(sym.owner.thisType, sym.name).withDenot(sym)), Nil)
   }
 
-  def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context) =
-    Annotation(defn.ThrowsAnnot, Ident(cls.symTypeRef))
+  def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context) = {
+    val tref = cls.symTypeRef
+    Annotation(defn.ThrowsAnnot.typeConstructor.appliedTo(tref), Ident(tref))
+  }
 }

@@ -174,7 +174,7 @@ class ClassfileParser(
         val isEnum = (jflags & JAVA_ACC_ENUM) != 0
         val name = pool.getName(in.nextChar)
         val isConstructor = name eq nme.CONSTRUCTOR
-        
+
         /** Strip leading outer param from constructor.
          *  Todo: Also strip trailing access tag for private inner constructors?
          */
@@ -190,10 +190,9 @@ class ClassfileParser(
          */
         def normalizeConstructorInfo() = {
           val mt @ MethodType(paramnames, paramtypes) = denot.info
-          val typeParams = classRoot.typeParams
-          val rt = classRoot.typeConstructor appliedTo (typeParams map (_.symRef))
-          denot.info = PolyType.fromSymbols(typeParams,
-            mt.derivedMethodType(paramnames, paramtypes, rt))
+          val rt = classRoot.typeConstructor appliedTo (classRoot.typeParams map (_.symRef))
+          denot.info = mt.derivedMethodType(paramnames, paramtypes, rt)
+          addConstructorTypeParams(denot)
         }
 
         denot.info = pool.getType(in.nextChar)
