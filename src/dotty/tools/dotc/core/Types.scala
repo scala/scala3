@@ -239,6 +239,9 @@ object Types {
     final def classSymbol(implicit ctx: Context): Symbol = this match {
       case tp: ClassInfo =>
         tp.cls
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        if (sym.isClass) sym else tp.underlying.classSymbol
       case tp: TypeProxy =>
         tp.underlying.classSymbol
       case AndType(l, r) =>
@@ -262,6 +265,9 @@ object Types {
     final def classSymbols(implicit ctx: Context): List[ClassSymbol] = this match {
       case tp: ClassInfo =>
         tp.cls :: Nil
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        if (sym.isClass) sym.asClass :: Nil else tp.underlying.classSymbols
       case tp: TypeProxy =>
         tp.underlying.classSymbols
       case AndType(l, r) =>
