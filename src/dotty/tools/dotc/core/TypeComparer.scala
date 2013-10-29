@@ -50,19 +50,33 @@ class TypeComparer(initctx: Context) extends DotClass {
    *  to `constraint`.
    *  @pre `param` is in the constraint's domain
    */
-  def addConstraint(param: PolyParam, bounds: TypeBounds): Boolean =
-    !frozenConstraint && {
+  def addConstraint1(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
       val pt = param.binder
       val pnum = param.paramNum
       val oldEntries = constraint(pt)
       val oldBounds = oldEntries(pnum).asInstanceOf[TypeBounds]
-      val newBounds = oldBounds & bounds
+      val constrBounds = if (fromBelow) TypeBounds.lower(bound) else TypeBounds.upper(bound)
+      val newBounds = oldBounds & constrBounds
       if (oldBounds ne newBounds) {
         val newEntries = oldEntries.clone
         newEntries(pnum) = newBounds
         constraint = constraint.updated(pt, newEntries)
       }
       isSubType(newBounds.lo, newBounds.hi)
+    }
+
+  def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean =
+    !frozenConstraint && {
+      bound match {
+        case bound: TypeVar =>
+          if (bound.isInstantiated)
+            addConstraint1(param, bound.instanceOpt, fromBelow)
+          else
+            addConstraint1(param, bound, fromBelow) &&
+            addConstraint1(bound.origin, param, !fromBelow)
+        case _ =>
+          addConstraint1(param, bound, fromBelow)
+      }
     }
 
   /** Solve constraint for given type parameter `param`.
@@ -177,7 +191,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         tp2 == tp1 || {
           //println(constraint.show)
           constraint(tp2) match {
-            case TypeBounds(lo, _) => isSubType(tp1, lo) || addConstraint(tp2, TypeBounds.lower(tp1.widen))
+            case TypeBounds(lo, _) => isSubType(tp1, lo) || addConstraint(tp2, tp1.widen, fromBelow = true)
             case _ => secondTry(tp1, tp2)
           }
         }
@@ -213,7 +227,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp1: PolyParam =>
       (tp1 == tp2) || {
         constraint(tp1) match {
-          case TypeBounds(_, hi) => isSubType(hi, tp2) || addConstraint(tp1, TypeBounds.upper(tp2))
+          case TypeBounds(_, hi) => isSubType(hi, tp2) || addConstraint(tp1, tp2, fromBelow = false)
           case _ => thirdTry(tp1, tp2)
         }
       }
@@ -851,9 +865,9 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.glb(tp1, tp2)
     }
 
-  override  def addConstraint(param: PolyParam, bounds: TypeBounds): Boolean =
-    traceIndented(s"add constraint $param $bounds $frozenConstraint") {
-      super.addConstraint(param, bounds)
+  override  def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean =
+    traceIndented(s"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint") {
+      super.addConstraint(param, bound, fromBelow)
     }
 
   override def copyIn(ctx: Context) = new ExplainingTypeComparer(ctx)

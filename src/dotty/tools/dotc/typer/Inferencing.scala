@@ -212,8 +212,11 @@ object Inferencing {
       if (changed)
         interpolateUndetVars(tp, pos)
       else
-        for (tvar <- ctx.typerState.undetVars if (pos contains tvar.pos) && !(vs contains tvar))
+        for (tvar <- ctx.typerState.undetVars
+             if (pos contains tvar.pos) && !(tvar.pos contains pos) && !(vs contains tvar)) {
+          // println(s"instantiating non-occurring $tvar in $tp")
           tvar.instantiate(fromBelow = true)
+        }
     }
 
     /** Instantiate undetermined type variables to that type `tp` is

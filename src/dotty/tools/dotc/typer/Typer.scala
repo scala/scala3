@@ -981,7 +981,7 @@ class Typer extends Namer with Applications with Implicits {
       val alts = altDenots map (alt =>
         TermRef.withSig(ref.prefix, ref.name, alt.info.signature).withDenot(alt))
       def expectedStr = err.expectedTypeStr(pt)
-      resolveOverloaded(alts, pt) match {
+      resolveOverloaded(alts, pt)(ctx.fresh.withExploreTyperState) match {
         case alt :: Nil =>
           adapt(tree.withType(alt), pt)
         case Nil =>
@@ -1053,7 +1053,11 @@ class Typer extends Namer with Applications with Implicits {
       case _ =>
         if (tree.tpe <:< pt) tree
         else if (ctx.mode is Mode.Pattern) tree // no subtype check for pattern
-        else adaptToSubType(wtp)
+        else {
+          //println(s"adapt to subtype ${tree.tpe} !<:< $pt") // !!!DEBUG
+          //println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
+          adaptToSubType(wtp)
+        }
     }
 
     def adaptToSubType(wtp: Type): Tree = {
