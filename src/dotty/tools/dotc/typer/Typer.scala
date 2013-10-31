@@ -1054,8 +1054,8 @@ class Typer extends Namer with Applications with Implicits {
         if (tree.tpe <:< pt) tree
         else if (ctx.mode is Mode.Pattern) tree // no subtype check for pattern
         else {
-          //println(s"adapt to subtype ${tree.tpe} !<:< $pt") // !!!DEBUG
-          //println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
+          println(s"adapt to subtype ${tree.tpe} !<:< $pt") // !!!DEBUG
+          println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt)) // !!!DEBUG
           adaptToSubType(wtp)
         }
     }

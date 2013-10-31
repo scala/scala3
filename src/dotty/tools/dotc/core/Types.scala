@@ -335,6 +335,36 @@ object Types {
       }
     }
 
+    /** The type parameters of the underlying class.
+     *  This is like `typeParams`, except for three differences.
+     *  First, it does not adjust type parameters in refined types. I.e. type arguments
+     *  do not remove corresponding type parameters.
+     *  Second, it will return Nil instead of forcing a symbol, in order to rule
+     *  out CyclicReference exceptions.
+     *  Third, it will return Nil for BoundTypes because we might get a NullPointer exception
+     *  on PolyParam#underlying otherwise (demonstrated by showClass test).
+     */
+    final def safeUnderlyingTypeParams(implicit ctx: Context): List[TypeSymbol] = {
+      def ifCompleted(sym: Symbol): Symbol = if (sym.isCompleted) sym else NoSymbol
+      this match {
+        case tp: ClassInfo =>
+          if (tp.cls.isCompleted) tp.cls.typeParams else Nil
+        case tp: TypeRef =>
+          val tsym = tp.typeSymbol
+          if (tsym.isClass && tsym.isCompleted) tsym.typeParams
+          else if (tsym.isAliasType) tp.underlying.safeUnderlyingTypeParams
+          else Nil
+        case tp: BoundType =>
+          Nil
+        case tp: TypeProxy =>
+          tp.underlying.safeUnderlyingTypeParams
+        case tp: AndType =>
+          tp.tp1.safeUnderlyingTypeParams
+        case _ =>
+          Nil
+      }
+    }
+
     def uninstantiatedTypeParams(implicit ctx: Context): List[TypeSymbol] =
       typeParams filter (tparam => member(tparam.name) == tparam)
 
@@ -1514,21 +1544,24 @@ object Types {
     override def underlying(implicit ctx: Context) = parent
 
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
-      def originalName = parent.typeParams.apply(refinedName.hkParamIndex).name
-      def checkForTypeParams(tpe: Type): Boolean = tpe match {
-        case tpe: NamedType => tpe.symbol.isCompleted
-        case ThisType(cls) => cls.isCompleted
-        case tpe: BoundType => false
-        case tp: TypeProxy => checkForTypeParams(tp.underlying)
-        case _ => true
+      lazy val underlyingTypeParams = parent.safeUnderlyingTypeParams
+      lazy val originalTypeParam = underlyingTypeParams(refinedName.hkParamIndex)
+
+      /** drop any co/contra variance in refined info if variance disagrees
+       *  with new type param
+       */
+      def adjustedHKRefinedInfo(hkBounds: TypeBounds) = {
+        if (hkBounds.variance == originalTypeParam.info.bounds.variance) hkBounds
+        else TypeBounds(hkBounds.lo, hkBounds.hi)
       }
+
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))
         this
-      else if (refinedName.isHkParamName &&
-               checkForTypeParams(parent) && // to avoid cyclic reference errors
-               refinedName.hkParamIndex < typeParams.length &&
-               originalName != refinedName)
-        derivedRefinedType(parent, originalName, refinedInfo)
+      else if (   refinedName.isHkParamName
+ //            && { println(s"deriving $refinedName $parent $underlyingTypeParams"); true }
+               && refinedName.hkParamIndex < underlyingTypeParams.length
+               && originalTypeParam.name != refinedName)
+        derivedRefinedType(parent, originalTypeParam.name, adjustedHKRefinedInfo(refinedInfo.bounds))
       else
         RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
     }
@@ -1889,6 +1922,7 @@ object Types {
 
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
+      println(s"instantiating ${this.show} with ${tp.show}") // !!!DEBUG
       assert(ctx.typerState.undetVars contains this)
       ctx.typerState.undetVars -= this
       if (ctx.typerState eq owningState) inst = tp
