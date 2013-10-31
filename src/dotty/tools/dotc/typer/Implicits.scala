@@ -41,11 +41,8 @@ object Implicits {
 
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = track("filterMatching") {
-      def result(implicit ctx: Context) = {
-        def refMatches(ref: TermRef) = isCompatible(normalize(ref), pt)
-        refs filter refMatches
-      }
-      result(ctx.fresh.withExploreTyperState) // create a defensive copy of ctx to avoid constraint pollution
+      def refMatches(ref: TermRef)(implicit ctx: Context) = isCompatible(normalize(ref), pt)
+      refs filter (ref => refMatches(ref)(ctx.fresh.withExploreTyperState)) // create a defensive copy of ctx to avoid constraint pollution
     }
 
     /** No further implicit conversions can be applied when searching for implicits. */
@@ -277,6 +274,11 @@ trait Implicits { self: Typer =>
   /** An implicit search; parameters as in `inferImplicit` */
   class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position)(implicit ctx: Context) {
 
+    pt match {
+      case pt: TypeVar => assert(pt.isInstantiated) //!!! DEBUG
+      case _ =>
+    }
+
     val initctx: Context = disableImplicits(ctx.fresh.withNewTyperState)
     def nestedContext = initctx.fresh.withNewTyperState
 
@@ -293,7 +295,8 @@ trait Implicits { self: Typer =>
         var generated: Tree = Ident(ref).withPos(pos)
         if (!argument.isEmpty)
           generated = typedUnadapted(
-            untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil), pt)
+            untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),
+            pt)(ctx.fresh.addMode(Mode.RestrictedInterpolation))
         val generated1 = interpolateAndAdapt(generated, pt)
         lazy val shadowing =
             typed(untpd.Ident(ref.name), ref)(nestedContext).tpe

@@ -31,6 +31,7 @@ object Mode {
 
   val ImplicitsEnabled = newMode(2, "ImplicitsEnabled")
   val InSuperInit = newMode(3, "InSuperInit")
+  val RestrictedInterpolation = newMode(4, "RestrictedInterpolation")
 
   val PatternOrType = Pattern | Type
 }
