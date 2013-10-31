@@ -68,12 +68,9 @@ class TypeComparer(initctx: Context) extends DotClass {
   def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean =
     !frozenConstraint && {
       bound match {
-        case bound: TypeVar =>
-          if (bound.isInstantiated)
-            addConstraint1(param, bound.instanceOpt, fromBelow)
-          else
-            addConstraint1(param, bound, fromBelow) &&
-            addConstraint1(bound.origin, param, !fromBelow)
+        case bound: PolyParam if constraint(bound).exists =>
+          addConstraint1(param, bound, fromBelow) &&
+          addConstraint1(bound, param, !fromBelow)
         case _ =>
           addConstraint1(param, bound, fromBelow)
       }
@@ -107,9 +104,10 @@ class TypeComparer(initctx: Context) extends DotClass {
   }
 
   def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
+    val saved = frozenConstraint
     frozenConstraint = true
     try isSubType(tp1, tp2)
-    finally frozenConstraint = false
+    finally frozenConstraint = saved
   }
 
   def isSubType(tp1: Type, tp2: Type): Boolean =
@@ -134,6 +132,17 @@ class TypeComparer(initctx: Context) extends DotClass {
         result
       } catch {
         case ex: Throwable =>
+          if (ex.isInstanceOf[AssertionError]) { // !!!DEBUG
+            println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}"))
+            def explainPoly(tp: Type) = tp match {
+              case tp: PolyParam => println(s"polyparam ${tp.show} found in ${tp.binder.show}")
+              case tp: TypeRef => println(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
+              case tp: TypeVar => println(s"typevar ${tp.show}, origin = ${tp.origin}")
+              case _ => println(s"${tp.show} is a ${tp.getClass}")
+            }
+            explainPoly(tp1)
+            explainPoly(tp2)
+          }
           recCount -= 1
           constraint = cs
           throw ex
@@ -189,16 +198,18 @@ class TypeComparer(initctx: Context) extends DotClass {
         secondTry(tp1, tp2)
       case tp2: PolyParam =>
         tp2 == tp1 || {
-          //println(constraint.show)
-          constraint(tp2) match {
-            case TypeBounds(lo, _) => isSubType(tp1, lo) || addConstraint(tp2, tp1.widen, fromBelow = true)
-            case _ => secondTry(tp1, tp2)
+          isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
+            println(s"adding ${tp1.show} <:< ${tp2.show} to ${constraint.show}") // !!!DEBUG
+            constraint(tp2) match {
+              case TypeBounds(lo, _) => addConstraint(tp2, tp1.widen, fromBelow = true)
+              case _ => secondTry(tp1, tp2)
+            }
           }
         }
       case tp2: BoundType =>
         tp2 == tp1 || secondTry(tp1, tp2)
       case tp2: TypeVar =>
-        isSubType(tp1, tp2.underlying)
+        (tp1 eq tp2) || isSubType(tp1, tp2.underlying)
       case tp2: ProtoType =>
         tp2.isMatchedBy(tp1)
       case tp2: WildcardType =>
@@ -226,15 +237,19 @@ class TypeComparer(initctx: Context) extends DotClass {
       thirdTry(tp1, tp2)
     case tp1: PolyParam =>
       (tp1 == tp2) || {
-        constraint(tp1) match {
-          case TypeBounds(_, hi) => isSubType(hi, tp2) || addConstraint(tp1, tp2, fromBelow = false)
-          case _ => thirdTry(tp1, tp2)
+        isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
+          println(s"adding ${tp1.show} <:< ${tp2.show} to ${constraint.show}")
+          assert(frozenConstraint || !(tp2 isRef defn.NothingClass)) // !!!DEBUG
+          constraint(tp1) match {
+            case TypeBounds(_, hi) => addConstraint(tp1, tp2, fromBelow = false)
+            case _ => thirdTry(tp1, tp2)
+          }
         }
       }
     case tp1: BoundType =>
       tp1 == tp2 || secondTry(tp1, tp2)
     case tp1: TypeVar =>
-      isSubType(tp1.underlying, tp2)
+      (tp1 eq tp2) || isSubType(tp1.underlying, tp2)
     case tp1: WildcardType =>
       tp1.optBounds match {
         case TypeBounds(lo, _) => isSubType(lo, tp2)
@@ -361,6 +376,13 @@ class TypeComparer(initctx: Context) extends DotClass {
     case _ =>
       false
   }
+
+  /** The current bounds of type parameter `param` */
+  def bounds(param: PolyParam): TypeBounds = constraint(param) match {
+    case bounds: TypeBounds => bounds
+    case _ => param.binder.paramBounds(param.paramNum)
+  }
+
   /* not needed
     def isSubArgs(tps1: List[Type], tps2: List[Type], tparams: List[TypeSymbol]): Boolean = tparams match {
       case tparam :: tparams1 =>
