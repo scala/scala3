@@ -169,8 +169,10 @@ object SimpleMap {
         new Map5(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5)
       }
     }
-    def updated[V1 >: V <: AnyRef](k: K, v: V1) =
+    def updated[V1 >: V <: AnyRef](k: K, v: V1) = {
+      assert(m.size < 12) // !!!DEBUG - want to see when maps blow up
       new MapMore(m.updated(k, v))
+    }
     override def contains(k: K) = m contains k
     def mapValues[V1 >: V <: AnyRef](f: V1 => V1) = {
       val assocs = m.toList
