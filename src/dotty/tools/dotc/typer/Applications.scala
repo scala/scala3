@@ -815,8 +815,8 @@ trait Applications extends Compatibility { self: Typer =>
       case defn.FunctionType(args, resultType) =>
         narrowByTypes(alts, args, resultType)
 
-      case tp =>
-        alts filter (alt => testCompatible(normalize(alt), tp))
+      case pt =>
+        alts filter (alt => testCompatible(normalize(alt), pt))
     }
 
     if (isDetermined(candidates)) candidates

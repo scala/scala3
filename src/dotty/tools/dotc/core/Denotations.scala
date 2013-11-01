@@ -8,7 +8,7 @@ import Names.{Name, PreName}
 import Names.TypeName
 import Symbols.NoSymbol
 import Symbols._
-import Types._, Periods._, Flags._, Transformers._
+import Types._, Periods._, Flags._, Transformers._, Decorators._
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
@@ -84,6 +84,8 @@ object Denotations {
    *  to List(), which is the signature of a zero-parameter def.
    */
   val NotAMethod: Signature = List(Names.EmptyTypeName)
+
+  val UnknownSignature: Signature = List(" ".toTypeName)
 
   /** A denotation is the result of resolving
    *  a name (either simple identifier or select) during a given period.

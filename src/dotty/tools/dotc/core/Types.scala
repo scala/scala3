@@ -528,7 +528,7 @@ object Types {
       memberNames(implicitFilter).toList
         .flatMap(name => member(name)
           .altsWith(_ is Implicit)
-          .map(d => TermRef.withSym(this, d.symbol.asTerm).withDenot(d)))
+          .map(d => TermRef.withSig(this, d.symbol.asTerm.name, d.signature).withDenot(d)))
     }
 
     /** The info of `sym`, seen as a member of this type. */
@@ -1383,7 +1383,9 @@ object Types {
   }
 
   abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType {
-    protected def sig: Signature = NotAMethod
+    protected def sig: Signature = UnknownSignature
+
+    override def signature(implicit ctx: Context): Signature = denot.signature
 
     def isOverloaded(implicit ctx: Context) = denot.isOverloaded
 
@@ -1440,7 +1442,7 @@ object Types {
   */
 
   final class TermRefWithSignature(prefix: Type, name: TermName, override val sig: Signature) extends TermRef(prefix, name) {
-    assert(sig != NotAMethod)
+    assert(sig != UnknownSignature)
     override def signature(implicit ctx: Context) = sig
     override def loadDenot(implicit ctx: Context): Denotation =
       super.loadDenot.atSignature(sig)
@@ -1468,7 +1470,7 @@ object Types {
     def withSym(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
       withSym(prefix, sym.name, sym)
     def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
-      if (sig == NotAMethod) apply(prefix, name)
+      if (sig == UnknownSignature) apply(prefix, name)
       else unique(new TermRefWithSignature(prefix, name, sig))
   }
 
@@ -1666,15 +1668,15 @@ object Types {
       myIsDependent
     }
 
-    private[this] var _signature: Signature = _
+    private[this] var mySignature: Signature = _
     private[this] var signatureRunId: Int = NoRunId
 
     override def signature(implicit ctx: Context): Signature = {
       if (ctx.runId != signatureRunId) {
-        _signature = computeSignature
+        mySignature = computeSignature
         signatureRunId = ctx.runId
       }
-      _signature
+      mySignature
     }
 
     private def computeSignature(implicit ctx: Context): Signature = {
