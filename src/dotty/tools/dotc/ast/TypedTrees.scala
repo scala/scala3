@@ -234,7 +234,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         def valueParam(name: TermName, info: Type): TermSymbol =
           ctx.newSymbol(sym, name, TermParam, info)
         val params = (paramNames, paramTypes).zipped.map(valueParam)
-        val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.typeConstructor)))
+        val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.symRef)))
         (params :: paramss, rtp)
       case tp => (Nil, tp)
     }
