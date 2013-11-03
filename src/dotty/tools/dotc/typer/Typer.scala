@@ -508,10 +508,9 @@ class Typer extends Namer with Applications with Implicits {
     val env1 = tree.env mapconserve (typed(_))
     val meth1 = typedUnadapted(tree.meth)
     val ownType = meth1.tpe.widen match {
-      case mt: MethodType if !mt.isDependent =>
-        mt.toFunctionType
       case mt: MethodType =>
-        errorType(i"internal error: cannot turn dependent method type $mt into closure", tree.pos)
+        if (!mt.isDependent) mt.toFunctionType
+        else errorType(i"internal error: cannot turn dependent method type $mt into closure", tree.pos)
       case tp =>
         errorType(i"internal error: closing over non-method $tp", tree.pos)
     }

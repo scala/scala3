@@ -1092,9 +1092,6 @@ object Types {
               case None =>
                 vmap updated (t, variance)
             }
-          case t: TypeRef =>
-            val t1 = t.losslessDealias
-            if (t1 ne t) apply(vmap, t1) else foldOver(vmap, t)
           case _ =>
             foldOver(vmap, t)
         }
@@ -1112,9 +1109,6 @@ object Types {
     def simplified(implicit ctx: Context) = {
       class Simplify extends TypeMap {
         def apply(tp: Type): Type = tp match {
-          case tp: TypeRef =>
-            val tp1 = tp.losslessDealias
-            if (tp1 ne tp) apply(tp1) else mapOver(tp)
           case AndType(l, r) =>
             mapOver(l) & mapOver(r)
           case OrType(l, r) =>
@@ -1447,10 +1441,13 @@ object Types {
       def isRefinedIn(tp: Type, name: Name): Boolean = tp match {
         case RefinedType(parent, refinedName) =>
           name == refinedName || isRefinedIn(parent, name)
+        case tp: SingletonType =>
+          isRefinedIn(tp.widen, name)
         case _ =>
           false
       }
-      if ((symbol is TypeArgument) || isRefinedIn(prefix, name))
+      if (knownDenotation &&
+          ((symbol is TypeArgument | TypeParam) || isRefinedIn(prefix, name)))
         info match {
           case TypeBounds(lo, hi) if lo eq hi => hi
           case _ => this
@@ -2301,7 +2298,11 @@ object Types {
 
     /** Map this function over given type */
     def mapOver(tp: Type): Type = tp match {
-      case tp: NamedType =>
+      case tp: TypeRef =>
+        val tp1 = tp.losslessDealias
+        if (tp1 ne tp) this(tp1) else tp.derivedNamedType(this(tp.prefix))
+
+      case tp: TermRef =>
         tp.derivedNamedType(this(tp.prefix))
 
       case _: ThisType
@@ -2405,7 +2406,11 @@ object Types {
     protected var variance = 1
 
     def foldOver(x: T, tp: Type): T = tp match {
-      case tp: NamedType =>
+      case tp: TypeRef =>
+        val tp1 = tp.losslessDealias
+        if (tp1 ne tp) this(x, tp1) else this(x, tp.prefix)
+
+      case tp: TermRef =>
         this(x, tp.prefix)
 
       case _: ThisType
