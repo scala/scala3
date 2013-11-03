@@ -781,6 +781,8 @@ trait Applications extends Compatibility { self: Typer =>
             else if (numParams < numArgs) isVarArgs
             else if (numParams > numArgs + 1) hasDefault
             else isVarArgs || hasDefault
+          case _ =>
+            numArgs == 0
         }
 
         def narrowBySize(alts: List[TermRef]): List[TermRef] =
