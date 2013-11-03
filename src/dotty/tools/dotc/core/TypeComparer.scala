@@ -199,7 +199,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       case tp2: PolyParam =>
         tp2 == tp1 || {
           isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
-            println(s"adding ${tp1.show} <:< ${tp2.show} to ${constraint.show}") // !!!DEBUG
+            if (!frozenConstraint) println(s"adding ${tp1.show} <:< ${tp2.show} to ${constraint.show}") // !!!DEBUG
             constraint(tp2) match {
               case TypeBounds(lo, _) => addConstraint(tp2, tp1.widen, fromBelow = true)
               case _ => secondTry(tp1, tp2)
@@ -238,7 +238,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp1: PolyParam =>
       (tp1 == tp2) || {
         isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
-          println(s"adding ${tp1.show} <:< ${tp2.show} to ${constraint.show}")
+          if (!frozenConstraint) println(s"adding ${tp1.show} <:< ${tp2.show} to ${constraint.show}")
           assert(frozenConstraint || !(tp2 isRef defn.NothingClass)) // !!!DEBUG
           constraint(tp1) match {
             case TypeBounds(_, hi) => addConstraint(tp1, tp2, fromBelow = false)

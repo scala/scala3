@@ -200,11 +200,16 @@ object Inferencing {
      *  in type `tp` approximate it by its upper bound.
      */
     def interpolateUndetVars(tp: Type, pos: Position): Unit = Stats.track("interpolateUndetVars") {
+      println(s"interpolate undet vars in ${tp.show}, pos = $pos, mode = ${ctx.mode}, undets = ${ctx.typerState.undetVars map (tvar => s"${tvar.show}@${tvar.pos}")}")
+      println(s"qualifying undet vars: ${ctx.typerState.undetVars filter qualifies map (_.show)}")
+      println(s"fulltype: $tp") // !!! DEBUG
+
       def qualifies(tvar: TypeVar) =
         (pos contains tvar.pos) &&
         !((ctx.mode is Mode.RestrictedInterpolation) && (tvar.pos contains pos))
       val vs = tp.variances(tvar =>
         (ctx.typerState.undetVars contains tvar) && qualifies(tvar))
+      println(s"variances = $vs")
       var changed = false
       for ((tvar, v) <- vs)
         if (v != 0) {
@@ -217,7 +222,7 @@ object Inferencing {
       else
         for (tvar <- ctx.typerState.undetVars)
           if (!(vs contains tvar) && qualifies(tvar)) {
-          // println(s"instantiating non-occurring $tvar in $tp")
+            println(s"instantiating non-occurring $tvar in $tp")
             tvar.instantiate(fromBelow = true)
           }
     }

@@ -929,6 +929,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def interpolateAndAdapt(tree: Tree, pt: Type)(implicit ctx: Context) = {
     ctx.interpolateUndetVars(tree.tpe.widen, tree.pos)
+    tree overwriteType tree.tpe.simplified
     adapt(tree, pt)
   }
 

@@ -1092,12 +1092,39 @@ object Types {
               case None =>
                 vmap updated (t, variance)
             }
+          case t: TypeRef =>
+            val t1 = t.losslessDealias
+            if (t1 ne t) apply(vmap, t1) else foldOver(vmap, t)
           case _ =>
             foldOver(vmap, t)
         }
       }
       accu(Map.empty, this)
     }
+
+    /** A simplified version of this type which is equivalent wrt =:= to this type.
+     *  Rules applied are:
+     *    T { type U = V } # U  -->  V
+     *  Also, type variables are instantiated and &/| operations are re-done because
+     *  what was a union or intersection of type variables might be a simpler type
+     *  after the type variables are instantiated.
+     */
+    def simplified(implicit ctx: Context) = {
+      class Simplify extends TypeMap {
+        def apply(tp: Type): Type = tp match {
+          case tp: TypeRef =>
+            val tp1 = tp.losslessDealias
+            if (tp1 ne tp) apply(tp1) else mapOver(tp)
+          case AndType(l, r) =>
+            mapOver(l) & mapOver(r)
+          case OrType(l, r) =>
+            mapOver(l) | mapOver(r)
+          case _ =>
+            mapOver(tp)
+        }
+      }
+      new Simplify().apply(this)
+  }
 
 // ----- hashing ------------------------------------------------------
 
@@ -1409,6 +1436,28 @@ object Types {
   }
 
   abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType {
+
+    /** If this TypeRef can be dealiased, its alias type, otherwise the type itself.
+     *  A TypeRef can be safely dealiased if it refers to an alias type and either the
+     *  referenced name is a type parameter or it is refined in the prefix of the TypeRef.
+     *  The idea is than in those two cases we don't lose any info or clarity by
+     *  dereferencing.
+     */
+    def losslessDealias(implicit ctx: Context) = {
+      def isRefinedIn(tp: Type, name: Name): Boolean = tp match {
+        case RefinedType(parent, refinedName) =>
+          name == refinedName || isRefinedIn(parent, name)
+        case _ =>
+          false
+      }
+      if ((symbol is TypeArgument) || isRefinedIn(prefix, name))
+        info match {
+          case TypeBounds(lo, hi) if lo eq hi => hi
+          case _ => this
+        }
+      else this
+    }
+
     override def equals(that: Any) = that match {
       case that: TypeRef =>
         this.prefix == that.prefix &&
@@ -1951,7 +2000,7 @@ object Types {
         var inst = ctx.typeComparer.approximate(origin, fromBelow)
         if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
           inst = inst.widen
-        instantiateWith(inst)
+        instantiateWith(inst.simplified)
       }
     }
 
@@ -2383,10 +2432,10 @@ object Types {
       case SuperType(thistp, supertp) =>
         this(this(x, thistp), supertp)
 
-      case TypeBounds(lo, hi) =>
+      case bounds @ TypeBounds(lo, hi) =>
         if (lo eq hi) {
           val saved = variance
-          variance = 0
+          variance = variance * bounds.variance
           try this(x, lo)
           finally variance = saved
         }

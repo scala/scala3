@@ -264,7 +264,9 @@ trait Implicits { self: Typer =>
         else new ImplicitSearch(pt, argument, pos)
       val result = isearch.bestImplicit
       result match {
-        case success: SearchSuccess => success.tstate.commit()
+        case success: SearchSuccess =>
+          println(s"committing to ${success.tstate.show}")
+          success.tstate.commit()
         case _ =>
       }
       result
