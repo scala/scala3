@@ -599,7 +599,10 @@ object SymDenotations {
 
     /** All symbols overriden by this denotation. */
     final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
-      owner.info.baseClasses.tail.iterator map overriddenSymbol filter (_.exists)
+      if (exists)
+        owner.info.baseClasses.tail.iterator map overriddenSymbol filter (_.exists)
+      else
+        Iterator.empty
 
     /** The class or term symbol up to which this symbol is accessible,
      *  or RootClass if it is public.  As java protected statics are
