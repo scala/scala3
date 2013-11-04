@@ -142,6 +142,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val noSelfCheck = BooleanSetting("-Yno-self-type-checks", "Suppress check for self-type conformance among inherited members.")
   val YshowSuppressedErrors = BooleanSetting("-Yshow-suppressed-errors", "Also show follow-on errors and warnings that are normally supressed.")
   val Yheartbeat = BooleanSetting("-Yheartbeat", "show heartbeat stack trace of compiler operations.")
+  val Yprintpos = BooleanSetting("-Yprintpos", "show tree positions")
   def stop = stopAfter
 
   /** Area-specific debug output.
