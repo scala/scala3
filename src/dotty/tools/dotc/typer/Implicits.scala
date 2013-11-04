@@ -301,7 +301,7 @@ trait Implicits { self: Typer =>
             pt)(ctx.fresh.addMode(Mode.RestrictedInterpolation))
         val generated1 = interpolateAndAdapt(generated, pt)
         lazy val shadowing =
-            typed(untpd.Ident(ref.name), ref)(nestedContext).tpe
+            typed(untpd.Ident(ref.name) withPos pos.toSynthetic, ref)(nestedContext).tpe
         if (ctx.typerState.reporter.hasErrors) nonMatchingImplicit(ref)
         else if (contextual && !(shadowing =:= ref)) shadowedImplicit(ref, shadowing)
         else SearchSuccess(generated)(ref, ctx.typerState)

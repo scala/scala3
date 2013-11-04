@@ -127,10 +127,16 @@ extends TyperState(reporter) {
 
   override def withCheckingDisabled[T](op: => T)(implicit ctx: Context): T = {
     val prev = enableChecking(false)
+    var thrown = false
     try op
+    catch {
+      case ex: Throwable =>
+        thrown = true
+        throw ex
+    }
     finally {
       enableChecking(prev)
-      checkConsistent
+      if (!thrown) checkConsistent
     }
   }
 

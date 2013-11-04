@@ -31,11 +31,14 @@ object Trees {
    */
   abstract class Positioned extends DotClass with Product {
 
-    private var curPos: Position = initialPos
+    private[this] var curPos: Position = initialPos
 
     /** The item's position.
      */
     def pos: Position = curPos
+
+    /** Destructively update to given poisition */
+    protected def setPos(pos: Position): Unit = curPos = pos
 
     /** The envelope containing the item in its entirety. Envelope is different from
      *  `pos` for definitions (instances of MemberDef).
@@ -49,7 +52,8 @@ object Trees {
      */
     def withPos(pos: Position): this.type = {
       val newpd = (if (pos == curPos || curPos.isSynthetic) this else clone).asInstanceOf[Positioned]
-      newpd.curPos = pos
+      setPos(pos)
+      setChildPositions(pos.toSynthetic)
       newpd.asInstanceOf[this.type]
     }
 
@@ -60,6 +64,27 @@ object Trees {
      *  current position.
      */
     def addPos(pos: Position): this.type = withPos(pos union this.pos)
+
+    /** If any children of this node do not have positions, set them to the given position,
+     *  and transitively visit their children.
+     */
+    private def setChildPositions(pos: Position): Unit = {
+      def deepSetPos(x: Any): Unit = x match {
+        case p: Positioned =>
+          if (!p.pos.exists) {
+            p.setPos(pos)
+            p.setChildPositions(pos)
+          }
+        case xs: List[_] =>
+          xs foreach deepSetPos
+        case _ =>
+      }
+      var n = productArity
+      while (n > 0) {
+        n -= 1
+        deepSetPos(productElement(n))
+      }
+    }
 
     /** The initial, synthetic position. This is usually the union of all positioned children's
      *  envelopes.
@@ -661,9 +686,11 @@ object Trees {
     def forwardTo = arg
   }
 
-  trait WithoutType[-T >: Untyped] extends Tree[T] {
+  trait WithoutTypeOrPos[-T >: Untyped] extends Tree[T] {
     override def tpe: T @uncheckedVariance = NoType.asInstanceOf[T]
     override def withTypeUnchecked(tpe: Type) = this.asInstanceOf[ThisTree[Type]]
+    override def pos = NoPosition
+    override def setPos(pos: Position) = {}
   }
 
   /** Temporary class that results from translation of ModuleDefs
@@ -672,7 +699,7 @@ object Trees {
    *  a `transform(List[Tree])` call.
    */
   case class Thicket[-T >: Untyped](trees: List[Tree[T]])
-    extends Tree[T] with WithoutType[T] {
+    extends Tree[T] with WithoutTypeOrPos[T] {
     type ThisTree[-T >: Untyped] = Thicket[T]
     override def isEmpty: Boolean = trees.isEmpty
     override def toList: List[Tree[T]] = flatten(trees)
@@ -680,7 +707,7 @@ object Trees {
   }
 
   class EmptyValDef[T >: Untyped] extends ValDef[T](
-    Modifiers[T](Private), nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T]) with WithoutType[T] {
+    Modifiers[T](Private), nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T]) with WithoutTypeOrPos[T] {
     override def isEmpty: Boolean = true
   }
 

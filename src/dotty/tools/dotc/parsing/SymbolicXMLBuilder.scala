@@ -153,7 +153,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
       case EntityRef(s) => entityRef(pos, s)
     }
     ts.length match {
-      case 0 => TypedSplice(tpd.ref(defn.NilModule))
+      case 0 => TypedSplice(tpd.ref(defn.NilModule) withPos pos)
       case 1 => ts.head
       case _ => makeXMLseq(pos, ts.toList)
     }

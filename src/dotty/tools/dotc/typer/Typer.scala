@@ -1090,7 +1090,7 @@ class Typer extends Namer with Applications with Implicits {
     }
 
     tree match {
-      case _: MemberDef | _: PackageDef | _: Import | _: WithoutType[_] => tree
+      case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[_] => tree
       case _ => tree.tpe.widen match {
         case ErrorType =>
           tree

@@ -1944,6 +1944,8 @@ object Types {
    */
   final class TypeVar(val origin: PolyParam, creatorState: TyperState, val pos: Position) extends UncachedProxyType with ValueType {
 
+    assert(pos.exists)
+
     /** The permanent instance type of the the variable, or NoType is none is given yet */
     private[core] var inst: Type = NoType
 
