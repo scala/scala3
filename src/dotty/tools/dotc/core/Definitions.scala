@@ -197,7 +197,7 @@ class Definitions(implicit ctx: Context) {
 
     lazy val StringAdd_+ = StringAddClass.requiredMethod(nme.raw.PLUS)
 
-  lazy val PairClass                    = requiredClass("dotty.Tuple2")
+  lazy val PairClass                    = requiredClass("dotty.Pair")
   lazy val PartialFunctionClass         = requiredClass("scala.PartialFunction")
   lazy val AbstractPartialFunctionClass = requiredClass("scala.runtime.AbstractPartialFunction")
   lazy val SymbolClass                  = requiredClass("scala.Symbol")

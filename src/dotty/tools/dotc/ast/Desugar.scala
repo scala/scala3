@@ -13,6 +13,9 @@ import typer.Mode
 
 object desugar {
 
+  /** Are we using the new unboxed pair scheme? */
+  private final val unboxedPairs = false
+
   import untpd._
 
   private type VarInfo = (NameTree, Tree)
@@ -508,11 +511,25 @@ object desugar {
       case Parens(t) =>
         t
       case Tuple(ts) =>
-        def PairTypeTree(l: Tree, r: Tree) =
-          AppliedTypeTree(ref(defn.PairClass.typeConstructor), l :: r :: Nil)
-        if (ctx.mode is Mode.Type) ts.reduceRight(PairTypeTree)
-        else if (ts.isEmpty) unitLiteral
-        else ts.reduceRight(Pair(_, _))
+        if (unboxedPairs) {
+          def PairTypeTree(l: Tree, r: Tree) =
+            AppliedTypeTree(ref(defn.PairClass.typeConstructor), l :: r :: Nil)
+          if (ctx.mode is Mode.Type) ts.reduceRight(PairTypeTree)
+          else if (ts.isEmpty) unitLiteral
+          else ts.reduceRight(Pair(_, _))
+        }
+        else {
+          val arity = ts.length
+          def tupleClass = defn.TupleClass(arity)
+          if (arity > Definitions.MaxTupleArity) {
+            ctx.error(s"tuple too long (max allowed: ${Definitions.MaxTupleArity})", tree.pos)
+            unitLiteral
+          }
+          else if (arity == 1) ts.head
+          else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleClass.typeConstructor), ts)
+          else if (arity == 0) unitLiteral
+          else Apply(ref(tupleClass.companionModule.symRef), ts)
+        }
       case WhileDo(cond, body) =>
         // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }
         val call = Apply(Ident(nme.WHILE_PREFIX), Nil)
