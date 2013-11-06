@@ -3,6 +3,7 @@ package dotty.tools.dotc.util
 import collection.mutable.ListBuffer
 
 abstract class SimpleMap[K, +V >: Null <: AnyRef] extends (K => V) {
+  def size: Int
   def apply(k: K): V
   def remove(k: K): SimpleMap[K, V]
   def updated[V1 >: V <: AnyRef](k: K, v: V1): SimpleMap[K, V1]
@@ -28,6 +29,7 @@ abstract class SimpleMap[K, +V >: Null <: AnyRef] extends (K => V) {
 object SimpleMap {
 
   private object myEmpty extends SimpleMap[Any, Null] {
+    def size = 0
     def apply(k: Any) = null
     def remove(k: Any) = this
     def updated[V1 >: Null <: AnyRef](k: Any, v: V1) = new Map1(k, v)
@@ -38,6 +40,7 @@ object SimpleMap {
   def Empty[K] = myEmpty.asInstanceOf[SimpleMap[K, Null]]
 
   class Map1[K, +V >: Null <: AnyRef] (k1: K, v1: V) extends SimpleMap[K, V] {
+    def size = 1
     def apply(k: K) =
       if (k == k1) v1
       else null
@@ -55,6 +58,7 @@ object SimpleMap {
   }
 
   class Map2[K, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V) extends SimpleMap[K, V] {
+    def size = 2
     def apply(k: K) =
       if (k == k1) v1
       else if (k == k2) v2
@@ -76,6 +80,7 @@ object SimpleMap {
   }
 
   class Map3[K, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V) extends SimpleMap[K, V] {
+    def size = 3
     def apply(k: K) =
       if (k == k1) v1
       else if (k == k2) v2
@@ -100,6 +105,7 @@ object SimpleMap {
   }
 
   class Map4[K, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V, k4: K, v4: V) extends SimpleMap[K, V] {
+    def size = 4
     def apply(k: K) =
       if (k == k1) v1
       else if (k == k2) v2
@@ -127,6 +133,7 @@ object SimpleMap {
   }
 
   class Map5[K, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V, k4: K, v4: V, k5: K, v5: V) extends SimpleMap[K, V] {
+    def size = 5
     def apply(k: K) =
       if (k == k1) v1
       else if (k == k2) v2
@@ -157,6 +164,7 @@ object SimpleMap {
   }
 
   class MapMore[K, +V >: Null <: AnyRef] (m: Map[K, V]) extends SimpleMap[K, V] {
+    def size = m.size
     def apply(k: K) = m get k match {
       case Some(v) => v
       case None => null
