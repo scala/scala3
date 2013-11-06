@@ -302,6 +302,9 @@ object Flags {
   /** A super accessor */
   final val SuperAccessor = termFlag(27, "<superaccessor>")
 
+  /** An unpickled Scala 2.x class */
+  final val Scala2x = typeFlag(27, "<scala-2.x>")
+
   /** A method that has default params */ // TODO: drop
   final val DefaultParameterized = termFlag(28, "<defaultparam>")
 

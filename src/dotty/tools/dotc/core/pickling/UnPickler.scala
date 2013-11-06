@@ -499,6 +499,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         case denot: ClassDenotation =>
           val selfInfo = if (atEnd) NoType else readTypeRef()
           setClassInfo(denot, tp, selfInfo)
+          denot setFlag Scala2x
         case denot =>
           val tp1 = depoly(tp, denot)
           denot.info = if (tag == ALIASsym) TypeAlias(tp1) else tp1
