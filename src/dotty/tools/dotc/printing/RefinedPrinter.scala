@@ -160,7 +160,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "`" ~ toText(id.name) ~ "`"
       case Ident(name) =>
         tree.typeOpt match {
-          case tp: NamedType => toTextPrefix(tp.prefix) ~ selectionString(tp)
+          case tp: NamedType if name != nme.WILDCARD => toTextPrefix(tp.prefix) ~ selectionString(tp)
           case _ => toText(name)
         }
       case Select(qual, name) =>
