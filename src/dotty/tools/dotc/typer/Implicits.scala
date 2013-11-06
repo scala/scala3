@@ -327,7 +327,7 @@ trait Implicits { self: Typer =>
       /** Convert a (possibly empty) list of search successes into a single search result */
       def condense(hits: List[SearchSuccess]): SearchResult = hits match {
         case best :: alts =>
-          alts find (alt => isAsGood(alt.ref, best.ref)) match {
+          alts find (alt => isAsGood(alt.ref, best.ref)(ctx.fresh.withExploreTyperState)) match {
             case Some(alt) =>
               new AmbiguousImplicits(best.ref, alt.ref, pt, argument)
             case None =>
