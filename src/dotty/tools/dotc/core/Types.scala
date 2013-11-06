@@ -1972,6 +1972,7 @@ object Types {
 
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
+      assert(tp ne this)
       println(s"instantiating ${this.show} with ${tp.show}") // !!!DEBUG
       assert(ctx.typerState.undetVars contains this)
       ctx.typerState.undetVars -= this
@@ -2004,7 +2005,7 @@ object Types {
     }
 
     /** If the variable is instantiated, its instance, otherwise its origin */
-    override def stripTypeVar(implicit ctx: Context) = {
+    override def stripTypeVar(implicit ctx: Context) = { // todo: what about multiple instantiations?
       val inst = instanceOpt
       if (inst.exists) inst else origin
     }

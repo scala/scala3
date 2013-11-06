@@ -889,7 +889,9 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   override  def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean =
     traceIndented(s"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint") {
-      super.addConstraint(param, bound, fromBelow)
+      assert(bound ne param)
+      (bound.stripTypeVar eq param) ||
+        super.addConstraint(param, bound, fromBelow)
     }
 
   override def copyIn(ctx: Context) = new ExplainingTypeComparer(ctx)
