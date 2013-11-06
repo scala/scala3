@@ -8,7 +8,7 @@ import Contexts._, Types._, Flags._, Denotations._, Names._, StdNames._, NameOps
 import Trees._
 import annotation.unchecked
 import util.Positions._
-import util.Stats
+import util.{Stats, SimpleMap}
 import Decorators._
 import ErrorReporting.{errorType, InfoString}
 import collection.mutable.ListBuffer
@@ -64,17 +64,31 @@ object Inferencing {
   object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType)
 
   case class FunProto(args: List[untpd.Tree], override val resultType: Type, typer: Typer)(implicit ctx: Context) extends UncachedGroundType with ProtoType {
-    private var myTypedArgs: List[Tree] = null
+    private var myTypedArgs: List[Tree] = Nil
 
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
       typer.isApplicableToTrees(tp, typedArgs, resultType)
 
-    def argsAreTyped: Boolean = myTypedArgs != null
+    def argsAreTyped: Boolean = myTypedArgs.nonEmpty || args.isEmpty
 
     def typedArgs: List[Tree] = {
-      if (myTypedArgs == null)
-        myTypedArgs = args mapconserve (typer.typed(_))
+      if (!argsAreTyped)
+        myTypedArgs = args mapconserve { arg =>
+          val targ = myTypedArg(arg)
+          if (targ != null) targ else typer.typed(arg)
+        }
       myTypedArgs
+    }
+
+    private var myTypedArg: SimpleMap[untpd.Tree, Tree] = SimpleMap.Empty
+
+    def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
+      var targ = myTypedArg(arg)
+      if (targ == null) {
+        targ = typer.typedUnadapted(arg, formal)
+        myTypedArg = myTypedArg.updated(arg, targ)
+      }
+      typer.interpolateAndAdapt(targ, formal)
     }
   }
 
@@ -109,6 +123,13 @@ object Inferencing {
     }
   }
 
+  /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */
+  object ForceDegree extends Enumeration {
+    val none,           // don't force type variables
+        noBottom,       // force type variables, fail if forced to Nothing or Null
+        all = Value     // force type variables, don't fail
+  }
+
   /** Is type fully defined, meaning the type does not contain wildcard types
    *  or uninstantiated type variables. As a side effect, this will minimize
    *  any uninstantiated type variables, provided that
@@ -116,30 +137,27 @@ object Inferencing {
    *   - the overall result of `isFullYDefined` is `true`.
    *  Variables that are successfully minimized do not count as uninstantiated.
    */
-  def isFullyDefined(tp: Type, forceIt: Boolean = false)(implicit ctx: Context): Boolean = {
+  def isFullyDefined(tp: Type, force: ForceDegree.Value)(implicit ctx: Context): Boolean = {
     val nestedCtx = ctx.fresh.withNewTyperState
-    val result = new IsFullyDefinedAccumulator(forceIt)(nestedCtx).traverse(tp)
+    val result = new IsFullyDefinedAccumulator(force)(nestedCtx).traverse(tp)
     if (result) nestedCtx.typerState.commit()
     result
   }
 
-  def forceFullyDefined(tp: Type)(implicit ctx: Context): Boolean =
-    isFullyDefined(tp, forceIt = true)
-
   def fullyDefinedType(tp: Type, what: String, pos: Position)(implicit ctx: Context) =
-    if (forceFullyDefined(tp)) tp
+    if (isFullyDefined(tp, ForceDegree.all)) tp
     else errorType(i"internal error: type of $what $tp is not fully defined", pos)
 
-  private class IsFullyDefinedAccumulator(forceIt: Boolean)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+  private class IsFullyDefinedAccumulator(force: ForceDegree.Value)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     def traverse(tp: Type): Boolean = apply(true, tp)
     def apply(x: Boolean, tp: Type) = !x || isOK(tp) && foldOver(x, tp)
     def isOK(tp: Type): Boolean = tp match {
       case _: WildcardType =>
         false
-      case tvar: TypeVar if forceIt && !tvar.isInstantiated =>
+      case tvar: TypeVar if force != ForceDegree.none && !tvar.isInstantiated =>
         val inst = tvar.instantiate(fromBelow = true)
         println(i"forced instantiation of ${tvar.origin} = $inst")
-        inst != defn.NothingType && inst != defn.NullType && traverse(inst)
+        (force == ForceDegree.all || inst != defn.NothingType && inst != defn.NullType) && traverse(inst)
       case _ =>
         true
     }
@@ -239,8 +257,8 @@ object Inferencing {
         else if (v == -1) tvar.instantiate(fromBelow = true)
         else {
           val bounds @ TypeBounds(lo, hi) = ctx.typerState.constraint(tvar.origin)
-          if (hi <:< lo) tvar.instantiate(fromBelow = false)
-          else result = Some(tvar)
+          if (!(hi <:< lo)) result = Some(tvar)
+          tvar.instantiate(fromBelow = false)
         }
       result
     }

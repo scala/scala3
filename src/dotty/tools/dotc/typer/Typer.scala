@@ -460,7 +460,7 @@ class Typer extends Namer with Applications with Implicits {
     val result = cpy.Block(tree, stats1, expr1).withType(blockType(stats1, expr1.tpe))
     val leaks = CheckTrees.escapingRefs(result)
     if (leaks.isEmpty) result
-    else if (forceFullyDefined(pt)) {
+    else if (isFullyDefined(pt, ForceDegree.all)) {
       val expr2 = typed(untpd.Typed(untpd.TypedSplice(expr1), untpd.TypeTree(pt)))
       untpd.Block(stats1, expr2) withType expr2.tpe
     } else
@@ -496,8 +496,14 @@ class Typer extends Namer with Applications with Implicits {
           if (!param.tpt.isEmpty) param
           else {
             val paramType =
-              if (forceFullyDefined(formal)) formal
-              else errorType("missing parameter type", param.pos)
+              if (isFullyDefined(formal, ForceDegree.noBottom)) formal
+              else {
+                val ofFun =
+                  if (nme.syntheticParamNames(args.length + 1) contains param.name)
+                    s" for expanded function ${tree.show}"
+                  else ""
+                errorType(s"missing parameter type for parameter ${param.name}$ofFun, expected = ${pt.show}", param.pos)
+              }
             cpy.ValDef(param, param.mods, param.name, untpd.TypeTree(paramType), param.rhs)
           }
       typed(desugar.makeClosure(inferredParams, body), pt)
@@ -617,7 +623,7 @@ class Typer extends Namer with Applications with Implicits {
   def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree = track("typedTypeTree") {
     val (original1, ownType) = tree.original match {
       case untpd.EmptyTree =>
-        assert(isFullyDefined(pt))
+        assert(isFullyDefined(pt, ForceDegree.none))
         (EmptyTree, pt)
       case original: ValDef =>
         val meth = symbolOfTree(original)
@@ -1073,7 +1079,7 @@ class Typer extends Namer with Applications with Implicits {
         if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
           pt match {
             case SAMType(meth)
-            if wtp <:< meth.info.toFunctionType && isFullyDefined(pt) =>
+            if wtp <:< meth.info.toFunctionType && isFullyDefined(pt, ForceDegree.noBottom) =>
               return cpy.Closure(tree, Nil, id, TypeTree(pt)).withType(pt)
             case _ =>
           }

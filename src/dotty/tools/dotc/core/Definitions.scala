@@ -315,6 +315,11 @@ class Definitions(implicit ctx: Context) {
 
   lazy val RootImports = Set[Symbol](PredefModule, ScalaPackageVal, JavaLangPackageVal)
 
+  def isTupleType(tp: Type) = {
+    val arity = tp.typeArgs.length
+    arity <= MaxTupleArity && (tp isRef TupleClass(arity))
+  }
+
    // ----- Higher kinds machinery ------------------------------------------
 
   private var _hkTraits: Set[Symbol] = Set()

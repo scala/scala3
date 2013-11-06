@@ -429,9 +429,9 @@ trait Applications extends Compatibility { self: Typer =>
   }
 
   /** Subclass of Application for type checking an Apply node with untyped arguments. */
-  class ApplyToUntyped(app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[untpd.Tree], resultType: Type)(implicit ctx: Context)
-  extends TypedApply(app, fun, methRef, args, resultType) {
-    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = typed(arg, formal)
+  class ApplyToUntyped(app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto, resultType: Type)(implicit ctx: Context)
+  extends TypedApply(app, fun, methRef, proto.args, resultType) {
+    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
   }
 
@@ -462,7 +462,7 @@ trait Applications extends Compatibility { self: Typer =>
             tryEither { implicit ctx =>
               val app =
                 if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
-                else new ApplyToUntyped(tree, fun1, funRef, tree.args, pt)
+                else new ApplyToUntyped(tree, fun1, funRef, proto, pt)
               val result = app.result
               ConstFold(result) orElse result
             } { failed => fun1 match {
@@ -530,38 +530,6 @@ trait Applications extends Compatibility { self: Typer =>
   def typedUnApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
     val Apply(qual, args) = tree
 
-    def unapplyArgs(unapplyResult: Type)(implicit ctx: Context): List[Type] = {
-      def recur(tp: Type): List[Type] = {
-        def extractorMemberType(name: Name) = {
-          val ref = tp member name
-          if (ref.isOverloaded)
-            errorType(s"Overloaded reference to ${ref.show} is not allowed in extractor", tree.pos)
-          else if (ref.info.isInstanceOf[PolyType])
-            errorType(s"Reference to polymorphic ${ref.show}: ${ref.info.show} is not allowed in extractor", tree.pos)
-          else
-            ref.info
-        }
-
-        def productSelectors: List[Type] = {
-          val sels = for (n <- Iterator.from(0)) yield extractorMemberType(("_" + n).toTermName)
-          sels.takeWhile(_.exists).toList
-        }
-        def seqSelector = defn.RepeatedParamType.appliedTo(tp.elemType :: Nil)
-
-        if (tp derivesFrom defn.ProductClass) productSelectors
-        else if (tp derivesFrom defn.SeqClass) seqSelector :: Nil
-        else if (tp isRef defn.BooleanClass) Nil
-        else if (extractorMemberType(nme.isDefined).exists &&
-                 extractorMemberType(nme.get).exists) recur(extractorMemberType(nme.get))
-        else {
-          ctx.error(s"${unapplyResult.show} is not a valid result type of an unapply method of an extractor", tree.pos)
-          Nil
-        }
-      }
-
-      recur(unapplyResult)
-    }
-
     def notAnExtractor(tree: Tree) =
       errorTree(tree, s"${qual.show} cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method")
 
@@ -580,25 +548,79 @@ trait Applications extends Compatibility { self: Typer =>
       }
     }
 
+    def fromScala2x = unapply.symbol.exists && (unapply.symbol.owner is Scala2x)
+
+    def unapplyArgs(unapplyResult: Type)(implicit ctx: Context): List[Type] = {
+      def recur(tp: Type): List[Type] = {
+        def extractorMemberType(name: Name) = {
+          val ref = tp member name
+          if (ref.isOverloaded)
+            errorType(s"Overloaded reference to ${ref.show} is not allowed in extractor", tree.pos)
+          else if (ref.info.isInstanceOf[PolyType])
+            errorType(s"Reference to polymorphic ${ref.show}: ${ref.info.show} is not allowed in extractor", tree.pos)
+          else
+            ref.info
+        }
+
+        def productSelectors: List[Type] = {
+          val sels = for (n <- Iterator.from(0)) yield extractorMemberType(("_" + n).toTermName)
+          sels.takeWhile(_.exists).toList
+        }
+        def seqSelector = defn.RepeatedParamType.appliedTo(tp.elemType :: Nil)
+        def optionSelectors(tp: Type): List[Type] =
+          if (defn.isTupleType(tp)) tp.typeArgs else tp :: Nil
+        if (fromScala2x && (tp isRef defn.OptionClass) && tp.typeArgs.length == 1)
+          optionSelectors(tp.typeArgs.head)
+        else if (tp derivesFrom defn.ProductClass) productSelectors
+        else if (tp derivesFrom defn.SeqClass) seqSelector :: Nil
+        else if (tp isRef defn.BooleanClass) Nil
+        else if (extractorMemberType(nme.isDefined).exists &&
+                 extractorMemberType(nme.get).exists) recur(extractorMemberType(nme.get))
+        else {
+          ctx.error(s"${unapplyResult.show} is not a valid result type of an unapply method of an extractor", tree.pos)
+          Nil
+        }
+      }
+
+      recur(unapplyResult)
+    }
+
     unapply.tpe.widen match {
       case mt: MethodType if !mt.isDependent =>
         val unapplyArgType = mt.paramTypes.head
+        println(s"unapp arg tpe = ${unapplyArgType.show}, pt = ${pt.show}")
         val ownType =
           if (pt <:< unapplyArgType) {
-            assert(isFullyDefined(unapplyArgType))
+            fullyDefinedType(unapplyArgType, "extractor argument", tree.pos)
+            println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             pt
           }
-          else if (unapplyArgType <:< widenForSelector(pt))
+          else if (unapplyArgType <:< widenForSelector(pt)) {
             ctx.maximizeType(unapplyArgType) match {
-              case None => unapplyArgType
               case Some(tvar) =>
-                errorType(
+                def msg =
                   s"""There is no best instantiation of pattern type ${unapplyArgType.show}
                      |that makes it a subtype of selector type ${pt.show}.
-                     |Non-variant type variable ${tvar.origin.show} cannot be uniquely instantiated.""".stripMargin,
-                  tree.pos)
+                     |Non-variant type variable ${tvar.origin.show} cannot be uniquely instantiated.""".stripMargin
+                if (fromScala2x) {
+                // We can't issue an error here, because in Scala 2, ::[B] is invariant
+                // whereas List[+T] is covariant. According to the strict rule, a pattern
+                // match of a List[C] against a case x :: xs is illegal, because
+                // B cannot be uniquely instantiated. Of course :: should have been
+                // covariant in the first place, but in the Scala libraries it isn't.
+                // So for now we allow these kinds of patterns, even though they
+                // can open unsoundness holes. See SI-7952 for an example of the hole this opens.
+                  if (ctx.settings.verbose.value) ctx.warning(msg, tree.pos)
+                }
+                else {
+                  println(s" ${unapply.symbol.owner} ${unapply.symbol.owner is Scala2x}")
+                  ctx.error(msg, tree.pos)
+                }
+              case _ =>
             }
-          else errorType(
+            println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
+            unapplyArgType
+          } else errorType(
             s"Pattern type ${unapplyArgType.show} is neither a subtype nor a supertype of selector type ${pt.show}",
             tree.pos)
 
@@ -608,12 +630,13 @@ trait Applications extends Compatibility { self: Typer =>
           case _ => args
         }
         if (argTypes.length != bunchedArgs.length) {
-          ctx.error(s"wrong number of argument patterns for ${err.patternConstrStr(unapply)}", tree.pos)
+          ctx.error(i"wrong number of argument patterns for $qual; expected: ($argTypes%, %)", tree.pos)
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }
         val typedArgs = (bunchedArgs, argTypes).zipped map (typed(_, _))
         val result = cpy.UnApply(tree, unapply, typedArgs) withType ownType
+        println(s"typedargs = $typedArgs")
         if ((ownType eq pt) || ownType.isError) result
         else Typed(result, TypeTree(ownType))
       case tp =>
