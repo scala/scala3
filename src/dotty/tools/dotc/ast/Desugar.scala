@@ -416,6 +416,39 @@ object desugar {
         case _ => Bind(ctx.freshName().toTermName, pat)
       }
 
+      /** Make a pattern filter:
+       *    rhs.withFilter { case pat => true case _ => false }
+       *
+       *  On handling irrefutable patterns:
+       *  The idea is to wait until the pattern matcher sees a call
+       *
+       *      xs withFilter { cases }
+       *
+       *  where cases can be proven to be refutable i.e. cases would be
+       *  equivalent to  { case _ => true }
+       *
+       *  In that case, compile to
+       *
+       *      xs withFilter alwaysTrue
+       *
+       *  where `alwaysTrue` is a predefined function value:
+       *
+       *      val alwaysTrue: Any => Boolean = true
+       *
+       *  In the libraries operations can take advantage of alwaysTrue to shortcircuit the
+       *  withFilter call.
+       *
+       *  def withFilter(f: Elem => Boolean) =
+       *    if (f eq alwaysTrue) this // or rather identity filter monadic applied to this
+       *    else real withFilter
+       */
+      def makePatFilter(rhs: Tree, pat: Tree): Tree = {
+        val cases = List(
+          CaseDef(pat, EmptyTree, Literal(Constant(true))),
+          CaseDef(Ident(nme.WILDCARD), EmptyTree, Literal(Constant(false))))
+        Apply(Select(rhs, nme.withFilter), Match(EmptyTree, cases))
+      }
+
       /** Is pattern `pat` irrefutable when matched against `rhs`?
        *  We only can do a simple syntactic check here; a more refined check
        *  is done later prompted by the presence of a "withFilterIfRefutable" call.
@@ -437,16 +470,6 @@ object desugar {
           case Tuple(pats) => matchesTuple(pats, rhs)
           case _ => isVarPattern(pat)
         }
-      }
-
-      /** Make a pattern filter:
-       *    rhs.withFilterIfRefutable { case pat => true case _ => false }
-       */
-      def makePatFilter(rhs: Tree, pat: Tree): Tree = {
-        val cases = List(
-          CaseDef(pat, EmptyTree, Literal(Constant(true))),
-          CaseDef(Ident(nme.WILDCARD), EmptyTree, Literal(Constant(false))))
-        Apply(Select(rhs, nme.withFilterIfRefutable), Match(EmptyTree, cases))
       }
 
       /** rhs.name with a pattern filter on rhs unless `pat` is irrefutable when
