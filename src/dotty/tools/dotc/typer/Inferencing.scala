@@ -211,20 +211,20 @@ object Inferencing {
       tracked
     }
 
-    /** Interpolate those undetermined type variables whose position
-     *  is included in the position `pos` of the current tree.
+    /** Interpolate those undetermined type variables in the widened type of this tree
+     *  which are introduced by type application contained in the tree.
      *  If such a variable appears covariantly in type `tp` or does not appear at all,
      *  approximate it by its lower bound. Otherwise, if it appears contravariantly
      *  in type `tp` approximate it by its upper bound.
      */
-    def interpolateUndetVars(tp: Type, pos: Position): Unit = Stats.track("interpolateUndetVars") {
-      println(s"interpolate undet vars in ${tp.show}, pos = $pos, mode = ${ctx.mode}, undets = ${ctx.typerState.undetVars map (tvar => s"${tvar.show}@${tvar.pos}")}")
+    def interpolateUndetVars(tree: Tree): Unit = Stats.track("interpolateUndetVars") {
+      val tp = tree.tpe.widen
+
+      println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${ctx.typerState.undetVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
       println(s"qualifying undet vars: ${ctx.typerState.undetVars filter qualifies map (_.show)}")
       println(s"fulltype: $tp") // !!! DEBUG
 
-      def qualifies(tvar: TypeVar) =
-        (pos contains tvar.pos) &&
-        !((ctx.mode is Mode.RestrictedInterpolation) && (tvar.pos contains pos))
+      def qualifies(tvar: TypeVar) = tree contains tvar.owningTree
       val vs = tp.variances(tvar =>
         (ctx.typerState.undetVars contains tvar) && qualifies(tvar))
       println(s"variances = $vs")
@@ -236,7 +236,7 @@ object Inferencing {
           changed = true
         }
       if (changed)
-        interpolateUndetVars(tp, pos)
+        interpolateUndetVars(tree)
       else
         for (tvar <- ctx.typerState.undetVars)
           if (!(vs contains tvar) && qualifies(tvar)) {
@@ -267,11 +267,11 @@ object Inferencing {
      *  @param pos   The position of the new type variables (relevant for
      *  interpolateUndetVars
      */
-    def newTypeVars(pt: PolyType, pos: Position): List[TypeVar] = {
+    def newTypeVars(pt: PolyType, owningTree: untpd.Tree): List[TypeVar] = {
       val state = ctx.typerState
       val tvars =
         for (n <- (0 until pt.paramNames.length).toList)
-        yield new TypeVar(PolyParam(pt, n), state, pos)
+        yield new TypeVar(PolyParam(pt, n), state, owningTree)
       state.constraint = state.constraint.updated(pt,
         state.constraint(pt) map (_.substParams(pt, tvars)))
       tvars

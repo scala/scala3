@@ -298,7 +298,7 @@ trait Implicits { self: Typer =>
         if (!argument.isEmpty)
           generated = typedUnadapted(
             untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),
-            pt)(ctx.fresh.addMode(Mode.RestrictedInterpolation))
+            pt)
         val generated1 = interpolateAndAdapt(generated, pt)
         lazy val shadowing =
             typed(untpd.Ident(ref.name) withPos pos.toSynthetic, ref)(nestedContext).tpe

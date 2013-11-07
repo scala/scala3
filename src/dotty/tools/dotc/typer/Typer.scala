@@ -833,7 +833,7 @@ class Typer extends Namer with Applications with Implicits {
           case tree: untpd.Typed => typedTyped(tree, pt)
           case tree: untpd.NamedArg => typedNamedArg(tree, pt)
           case tree: untpd.Assign => typedAssign(tree, pt)
-          case tree: untpd.Block => typedBlock(desugar.block(tree), pt)
+          case tree: untpd.Block => typedBlock(desugar.block(tree), pt)(ctx.fresh.withNewScope)
           case tree: untpd.If => typedIf(tree, pt)
           case tree: untpd.Function => typedFunction(tree, pt)
           case tree: untpd.Closure => typedClosure(tree, pt)
@@ -933,7 +933,7 @@ class Typer extends Namer with Applications with Implicits {
     }
 
   def interpolateAndAdapt(tree: Tree, pt: Type)(implicit ctx: Context) = {
-    ctx.interpolateUndetVars(tree.tpe.widen, tree.pos)
+    ctx.interpolateUndetVars(tree)
     tree overwriteType tree.tpe.simplified
     adapt(tree, pt)
   }
@@ -1107,7 +1107,7 @@ class Typer extends Namer with Applications with Implicits {
           else {
             val tvars = ctx.typerState.withCheckingDisabled {
               val tracked = ctx.track(poly)
-              ctx.newTypeVars(tracked, tree.pos)
+              ctx.newTypeVars(tracked, tree)
             }
             adapt(tree appliedToTypes tvars, pt)
           }

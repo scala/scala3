@@ -8,26 +8,50 @@ class Coder(words: List[String]) {
       '2' -> "ABC", '3' -> "DEF", '4' -> "GHI", '5' -> "JKL",
       '6' -> "MNO", '7' -> "PQRS", '8' -> "TUV", '9' -> "WXYZ")
       
-  /** Invert the mnemonics map to give a map from chars 'A' ... 'Z' to '2' ... '9' */
-  private val charCode: Map[Char, Char] = mnemonics flatMap { ds =>
-    val digit = ds._1
-    val str = ds._2
-    str map (ltr => ltr -> digit)
+
+  ('1', "1") match {
+    case (digit, str) => true 
+    case _ => false
   }
 
-//    for ((digit, str) <- mnemonics; ltr <- str) yield ltr -> digit
+  /** Invert the mnemonics map to give a map from chars 'A' ... 'Z' to '2' ... '9' */
+  private val charCode0: Map[Char, Char] = mnemonics withFilter { 
+    case (digit, str) => true
+    case _ => false
+  } flatMap { x$1 =>
+    x$1 match {
+      case (digit, str) => str map (ltr => ltr -> digit)
+    }
+  }
 
+  private val charCode: Map[Char, Char] = 
+    for ((digit, str) <- mnemonics; ltr <- str) yield ltr -> digit
+
+/*
     /** Maps a word to the digit string it can represent */
-  private def wordCode(word: String): String = ???
+  private def wordCode(word: String): String = word map charCode
 
   /** A map from digit strings to the words that represent them */
-  private val wordsForNum: Map[String, List[String]] = ???
+  private val wordsForNum: Map[String, List[String]] = 
+    words groupBy wordCode withDefaultValue Nil
 
   /** All ways to encode a number as a list of words */
-  def encode(number: String): Set[List[String]] = ???
-
+  def encode(number: String): Set[List[String]] = 
+    if (number.isEmpty) Set(Nil)
+    else {
+      val x: List[List[String]] = ???
+      x.toSet
+    }
+*/
+/*      for {
+        splitPoint <- 1 to number.length
+        word <- number take splitPoint
+        rest <- encode(number drop splitPoint)
+      } yield word :: rest
+*/    
+      
   /** Maps a number to a list of all word phrases that can represent it */
-  def translate(number: String): Set[String] = encode(number) map (_ mkString " ")
+//  def translate(number: String): Set[String] = encode(number) map (_ mkString " ")
 
 }
 /*

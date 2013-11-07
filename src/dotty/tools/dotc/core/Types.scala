@@ -17,6 +17,7 @@ import Periods._
 import util.Positions.Position
 import util.Stats.track
 import ast.tpd._, printing.Texts._
+import ast.untpd
 import transform.Erasure
 import printing.Printer
 import scala.util.hashing.{ MurmurHash3 => hashing }
@@ -1939,12 +1940,10 @@ object Types {
    *
    *  @param  origin        The parameter that's tracked by the type variable.
    *  @param  creatorState  The typer state in which the variable was created.
-   *  @param  pos           The position of the TypeApply tree that introduces
+   *  @param  owningTree    The function part of the TypeApply tree tree that introduces
    *                        the type variable.
    */
-  final class TypeVar(val origin: PolyParam, creatorState: TyperState, val pos: Position) extends UncachedProxyType with ValueType {
-
-    assert(pos.exists)
+  final class TypeVar(val origin: PolyParam, creatorState: TyperState, val owningTree: untpd.Tree) extends UncachedProxyType with ValueType {
 
     /** The permanent instance type of the the variable, or NoType is none is given yet */
     private[core] var inst: Type = NoType
