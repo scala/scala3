@@ -80,7 +80,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def toTextFunction(args: List[Type]): Text =
       changePrec(GlobalPrec) {
         val argStr: Text =
-          if (args.length == 2 && !(defn.TupleClasses contains args.head.typeSymbol))
+          if (args.length == 2 && !defn.isTupleType(args.head))
             atPrec(InfixPrec) { toText(args.head) }
           else
             toTextTuple(args.init)

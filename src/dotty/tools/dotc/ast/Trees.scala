@@ -31,19 +31,26 @@ object Trees {
    */
   abstract class Positioned extends DotClass with Product {
 
-    private[this] var curPos: Position = initialPos
+    private[this] var curPos: Position = _
+
+    setPos(initialPos)
 
     /** The item's position.
      */
     def pos: Position = curPos
 
-    /** Destructively update to given poisition */
-    protected def setPos(pos: Position): Unit = curPos = pos
+    /** Destructively update `curPos` to given position. Also, set any missing
+     *  positions in children.
+     */
+    protected def setPos(pos: Position): Unit = {
+      curPos = pos
+      if (pos.exists) setChildPositions(pos.toSynthetic)
+    }
 
     /** The envelope containing the item in its entirety. Envelope is different from
      *  `pos` for definitions (instances of MemberDef).
      */
-    def envelope: Position = curPos.toSynthetic
+    def envelope: Position = pos.toSynthetic
 
     /** A positioned item like this one with the position set to `pos`.
      *  if the positioned item is source-derived, a clone is returned.
@@ -52,8 +59,7 @@ object Trees {
      */
     def withPos(pos: Position): this.type = {
       val newpd = (if (pos == curPos || curPos.isSynthetic) this else clone).asInstanceOf[Positioned]
-      setPos(pos)
-      setChildPositions(pos.toSynthetic)
+      newpd.setPos(pos)
       newpd.asInstanceOf[this.type]
     }
 
@@ -71,10 +77,7 @@ object Trees {
     private def setChildPositions(pos: Position): Unit = {
       def deepSetPos(x: Any): Unit = x match {
         case p: Positioned =>
-          if (!p.pos.exists) {
-            p.setPos(pos)
-            p.setChildPositions(pos)
-          }
+          if (!p.pos.exists) p.setPos(pos)
         case xs: List[_] =>
           xs foreach deepSetPos
         case _ =>
@@ -106,6 +109,27 @@ object Trees {
     private def unionPos(pos: Position, xs: List[_]): Position = xs match {
       case (t: Tree[_]) :: xs1 => unionPos(pos union t.envelope, xs1)
       case _ => pos
+    }
+
+    def contains(that: Positioned): Boolean = {
+      def isParent(x: Any): Boolean = x match {
+        case x: Positioned =>
+          x contains that
+        case xs: List[_] =>
+          xs exists isParent
+        case _ =>
+          false
+      }
+      (this eq that) ||
+      (this.envelope contains that.pos) && {
+        var n = productArity
+        var found = false
+        while (n > 0 && !found) {
+          n -= 1
+          found = isParent(productElement(n))
+        }
+        found
+      }
     }
   }
 
