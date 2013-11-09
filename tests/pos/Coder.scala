@@ -27,7 +27,6 @@ class Coder(words: List[String]) {
   private val charCode: Map[Char, Char] = 
     for ((digit, str) <- mnemonics; ltr <- str) yield ltr -> digit
 
-/*
     /** Maps a word to the digit string it can represent */
   private def wordCode(word: String): String = word map charCode
 
@@ -39,22 +38,19 @@ class Coder(words: List[String]) {
   def encode(number: String): Set[List[String]] = 
     if (number.isEmpty) Set(Nil)
     else {
-      val x: List[List[String]] = ???
-      x.toSet
-    }
-*/
-/*      for {
+      val xs = for {
         splitPoint <- 1 to number.length
-        word <- number take splitPoint
+        word <- wordsForNum(number take splitPoint)
         rest <- encode(number drop splitPoint)
       } yield word :: rest
-*/    
+      xs.toSet
+    }
       
   /** Maps a number to a list of all word phrases that can represent it */
-//  def translate(number: String): Set[String] = encode(number) map (_ mkString " ")
+  def translate(number: String): Set[String] = encode(number) map (_ mkString " ")
 
 }
-/*
+
 /** Test code */
 object Coder {
   def main(args : Array[String]) : Unit = {
@@ -62,4 +58,4 @@ object Coder {
 //    println(coder.wordsForNum)
     println(coder.translate("7225276257"))
   }
-}*/
+}
