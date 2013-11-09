@@ -62,8 +62,7 @@ object Positions {
 
     /** Does the range of this position contain the one of that position? */
     def contains(that: Position): Boolean =
-      if (exists) (start <= that.start && end >= that.end)
-      else !that.exists
+      !that.exists || exists && (start <= that.start && end >= that.end)
 
     /** Is this position synthetic? */
     def isSynthetic = pointDelta == SyntheticPointDelta
