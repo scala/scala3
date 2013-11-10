@@ -38,11 +38,12 @@ class Coder(words: List[String]) {
   def encode(number: String): Set[List[String]] = 
     if (number.isEmpty) Set(Nil)
     else {
-      val xs = for {
+      val xs = (for {
         splitPoint <- 1 to number.length
         word <- wordsForNum(number take splitPoint)
         rest <- encode(number drop splitPoint)
       } yield word :: rest
+      )
       xs.toSet
     }
       

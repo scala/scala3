@@ -66,7 +66,9 @@ class TypeComparer(initctx: Context) extends DotClass {
     }
 
   def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean =
+    param == bound ||
     !frozenConstraint && {
+      println(s"adding ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} to ${constraint.show}")
       bound match {
         case bound: PolyParam if constraint(bound).exists =>
           addConstraint1(param, bound, fromBelow) &&
@@ -199,9 +201,8 @@ class TypeComparer(initctx: Context) extends DotClass {
       case tp2: PolyParam =>
         tp2 == tp1 || {
           isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
-            if (!frozenConstraint) println(s"adding ${tp1.show} <:< ${tp2.show} to ${constraint.show}") // !!!DEBUG
             constraint(tp2) match {
-              case TypeBounds(lo, _) => addConstraint(tp2, tp1.widen, fromBelow = true)
+              case TypeBounds(lo, _) => addConstraint(tp2, tp1.widen.dealias_*, fromBelow = true)
               case _ => secondTry(tp1, tp2)
             }
           }
@@ -238,10 +239,9 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp1: PolyParam =>
       (tp1 == tp2) || {
         isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
-          if (!frozenConstraint) println(s"adding ${tp1.show} <:< ${tp2.show} to ${constraint.show}")
           assert(frozenConstraint || !(tp2 isRef defn.NothingClass)) // !!!DEBUG
           constraint(tp1) match {
-            case TypeBounds(_, hi) => addConstraint(tp1, tp2, fromBelow = false)
+            case TypeBounds(_, hi) => addConstraint(tp1, tp2.dealias_*, fromBelow = false)
             case _ => thirdTry(tp1, tp2)
           }
         }

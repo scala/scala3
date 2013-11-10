@@ -643,6 +643,18 @@ object Types {
       case _ => this
     }
 
+    final def dealias_*(implicit ctx: Context): Type = this match {
+      case tp: TypeRef =>
+        tp.info match {
+          case TypeBounds(lo, hi) if lo eq hi => hi.dealias_*
+          case _ => tp
+        }
+      case tp: TypeVar =>
+        val tp1 = tp.instanceOpt
+        if (tp1.exists) tp1.dealias_* else tp
+      case tp => tp
+    }
+
     /** Widen from constant type to its underlying non-constant
      *  base type.
      */
