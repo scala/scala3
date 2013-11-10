@@ -36,8 +36,13 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with 
    *  the entries corresponding to `pt` with `entries`.
    */
   def updated(pt: PolyType, entries: Array[Type]) = {
-    assert(map(pt) != null)
-    new Constraint(map.updated(pt, entries))
+    import Constraint._
+    val res = new Constraint(map.updated(pt, entries))
+    if (res.map.size > maxSize) {
+      maxSize = res.map.size
+      maxConstraint = res
+    }
+    res
   }
 
   /** A new constraint which is derived from this constraint by removing
@@ -53,25 +58,17 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with 
       noneLeft = (entries(i) eq NoType) || i == pnum
       i += 1
     }
-    new Constraint(
-      if (noneLeft) map remove pt
-      else {
-        val newEntries = entries.clone
-        newEntries(pnum) = NoType
-        map.updated(pt, newEntries)
-      })
+    if (noneLeft) new Constraint(map remove pt)
+    else {
+      val newEntries = entries.clone
+      newEntries(pnum) = NoType
+      updated(pt, newEntries)
+    }
   }
 
-  def +(pt: PolyType) = {
-/*
-    pt.resultType match {
-      case MethodType(pname :: rest, _) =>
-        assert(pname.toString != "__thingToAdd")
-      case _ =>
-    }
-*/
-    new Constraint(map.updated(pt, pt.paramBounds.toArray))
-  }
+  def +(pt: PolyType) =
+    updated(pt, pt.paramBounds.toArray)
+
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all occurrences
    *  of the parameter elsewhere in the constraint by type `tp`.
@@ -119,4 +116,11 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with 
 
   override def toText(printer: Printer): Text =
     "Constraint(" ~ constrainedTypesText(printer) ~ ") {" ~ constraintText(2, printer) ~ "}"
+}
+
+object Constraint {
+  var maxSize = 0
+  var maxConstraint: Constraint = _
+  def printMax()(implicit ctx: Context) =
+    if (maxSize > 0) println(s"max constraint = ${maxConstraint.show}")
 }

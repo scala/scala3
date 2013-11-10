@@ -4,7 +4,7 @@ package dotc
 import core._
 import Contexts._, Periods._, Symbols._
 import io.PlainFile
-import util.{SourceFile, NoSource, Stats}
+import util.{SourceFile, NoSource, Stats, SimpleMap}
 
 class Run(comp: Compiler)(implicit ctx: Context) {
 
@@ -28,6 +28,8 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     }
   }
 
-  def printSummary(): Unit =
+  def printSummary(): Unit = {
     ctx.typerState.reporter.printSummary
+    Constraint.printMax()
+  }
 }
