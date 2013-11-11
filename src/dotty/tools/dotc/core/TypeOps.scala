@@ -37,7 +37,7 @@ trait TypeOps { this: Context =>
             //
             // But in Scala 2.x, its type is Int, which is the dealiased version
             // of xs.T. With the logic below, we get the same outcome as for 2.x.
-            if ((tp1 ne tp) && (sym is (TypeParam, butNot = Deferred))) tp1.dealias
+            if ((tp1 ne tp) && (sym is (TypeParam, butNot = Deferred))) tp1.dealias // todo: why not TypeArgument?
             else tp1
           }
         case ThisType(thiscls) =>

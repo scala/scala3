@@ -243,6 +243,8 @@ object Types {
       case tp: TypeRef =>
         val sym = tp.symbol
         if (sym.isClass) sym else tp.underlying.classSymbol
+      case tp: TermRef =>
+        NoSymbol
       case tp: TypeProxy =>
         tp.underlying.classSymbol
       case AndType(l, r) =>
@@ -679,7 +681,7 @@ object Types {
      *  else the type itself.
      */
     def underlyingIfRepeated(implicit ctx: Context): Type =
-      if (isRepeatedParam) dealias else this
+      translateParameterized(defn.RepeatedParamClass, defn.SeqClass)
 
 
 // ----- Access to parts --------------------------------------------

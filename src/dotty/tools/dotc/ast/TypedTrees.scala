@@ -303,7 +303,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (id.isType) id else id withType id.tpe.underlyingIfRepeated
 
   def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree =
-    Typed(tree, TypeTree(tree.tpe.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)))
+    Typed(tree, TypeTree(tree.tpe.widen.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)))
 
   // ------ Creating typed equivalents of trees that exist only in untyped form -------
 
