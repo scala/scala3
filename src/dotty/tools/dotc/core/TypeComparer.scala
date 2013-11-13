@@ -310,7 +310,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         case tp1 @ MethodType(_, formals2) =>
           tp1.signature == tp2.signature &&
             /*(if (newMatch) subsumeParams(formals1, formals2, tp1.isJava, tp2.isJava)
-             else */matchingParams(formals1, formals2, tp1.isJava, tp2.isJava)) &&
+             else */matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
             tp1.isImplicit == tp2.isImplicit && // needed?
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
@@ -674,8 +674,8 @@ class TypeComparer(initctx: Context) extends DotClass {
       }
     case tp1 @ MethodType(names1, formals1) =>
       tp2 match {
-        case tp2 @ MethodType(names2, formals2)
-/*        if newMatch && (tp1.isImplicit == tp2.isImplicit) && formals1.hasSameLengthAs(formals2) =>
+/*        case tp2 @ MethodType(names2, formals2)
+        if newMatch && (tp1.isImplicit == tp2.isImplicit) && formals1.hasSameLengthAs(formals2) =>
           tp1.derivedMethodType(
               mergeNames(names1, names2, nme.syntheticParamName),
               (formals1 zipWithConserve formals2)(_ | _),
@@ -748,8 +748,8 @@ class TypeComparer(initctx: Context) extends DotClass {
       }
     case tp1 @ MethodType(names1, formals1) =>
       tp2 match {
-        case tp2 @ MethodType(names2, formals2)
-/*        if newMatch && (tp1.isImplicit == tp2.isImplicit) && formals1.hasSameLengthAs(formals2) =>
+/*        case tp2 @ MethodType(names2, formals2)
+       if newMatch && (tp1.isImplicit == tp2.isImplicit) && formals1.hasSameLengthAs(formals2) =>
           tp1.derivedMethodType(
               mergeNames(names1, names2, nme.syntheticParamName),
               (formals1 zipWithConserve formals2)(_ & _),

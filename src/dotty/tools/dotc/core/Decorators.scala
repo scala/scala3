@@ -98,6 +98,13 @@ object Decorators {
             (xs1 eq xs.tail)) xs
         else x1 :: xs1
       }
+
+    final def hasSameLengthAs[U](ys: List[U]): Boolean = {
+      @tailrec def loop(xs: List[T], ys: List[U]): Boolean =
+        if (xs.isEmpty) ys.isEmpty
+        else ys.nonEmpty && loop(xs.tail, ys.tail)
+      loop(xs, ys)
+    }
   }
 
   implicit class ListOfListDecorator[T](val xss: List[List[T]]) extends AnyVal {
