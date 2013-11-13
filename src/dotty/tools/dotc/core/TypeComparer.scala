@@ -3,7 +3,7 @@ package dotc
 package core
 
 import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._
-import Decorators.sourcePos
+import Decorators._
 import StdNames.{nme, tpnme}
 import collection.mutable
 import printing.Disambiguation.disambiguated
@@ -176,17 +176,20 @@ class TypeComparer(initctx: Context) extends DotClass {
             val sym2 = tp2.symbol
             val pre1 = tp1.prefix
             val pre2 = tp2.prefix
-            if (sym1 == sym2) (
-              ctx.erasedTypes
-              || sym1.isStaticOwner
-              || isSubType(pre1, pre2))
-            else (
-              tp1.name == tp2.name && isSubType(pre1, pre2)
-              || sym2.isClass && {
-                val base = tp1.baseType(sym2)
-                base.exists && (base ne tp1) && isSubType(base, tp2)
-              }
-              || thirdTryNamed(tp1, tp2))
+
+            ( if (sym1 == sym2) (
+                ctx.erasedTypes
+                || sym1.isStaticOwner
+                || isSubType(pre1, pre2)
+                )
+              else (
+                tp1.name == tp2.name && isSubType(pre1, pre2)
+                || sym2.isClass && {
+                     val base = tp1.baseType(sym2)
+                     base.exists && (base ne tp1) && isSubType(base, tp2)
+                   }
+                )
+            ) || thirdTryNamed(tp1, tp2)
           case _ =>
             secondTry(tp1, tp2)
         }
@@ -306,7 +309,8 @@ class TypeComparer(initctx: Context) extends DotClass {
       tp1 match {
         case tp1 @ MethodType(_, formals2) =>
           tp1.signature == tp2.signature &&
-            matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
+            /*(if (newMatch) subsumeParams(formals1, formals2, tp1.isJava, tp2.isJava)
+             else */matchingParams(formals1, formals2, tp1.isJava, tp2.isJava)) &&
             tp1.isImplicit == tp2.isImplicit && // needed?
             isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>
@@ -474,6 +478,21 @@ class TypeComparer(initctx: Context) extends DotClass {
             || isJava1 && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
             || isJava2 && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
           matchingParams(rest1, rest2, isJava1, isJava2)
+        case nil =>
+          false
+      }
+    case nil =>
+      formals2.isEmpty
+  }
+
+  private def subsumeParams(formals1: List[Type], formals2: List[Type], isJava1: Boolean, isJava2: Boolean): Boolean = formals1 match {
+    case formal1 :: rest1 =>
+      formals2 match {
+        case formal2 :: rest2 =>
+          (isSubType(formal2, formal1)
+            || isJava1 && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
+            || isJava2 && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
+          subsumeParams(rest1, rest2, isJava1, isJava2)
         case nil =>
           false
       }
@@ -656,6 +675,12 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp1 @ MethodType(names1, formals1) =>
       tp2 match {
         case tp2 @ MethodType(names2, formals2)
+/*        if newMatch && (tp1.isImplicit == tp2.isImplicit) && formals1.hasSameLengthAs(formals2) =>
+          tp1.derivedMethodType(
+              mergeNames(names1, names2, nme.syntheticParamName),
+              (formals1 zipWithConserve formals2)(_ | _),
+              tp1.resultType & tp2.resultType.subst(tp2, tp1))
+*/        case tp2 @ MethodType(names2, formals2)
         if matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
            tp1.isImplicit == tp2.isImplicit =>
           tp1.derivedMethodType(
@@ -724,6 +749,12 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp1 @ MethodType(names1, formals1) =>
       tp2 match {
         case tp2 @ MethodType(names2, formals2)
+/*        if newMatch && (tp1.isImplicit == tp2.isImplicit) && formals1.hasSameLengthAs(formals2) =>
+          tp1.derivedMethodType(
+              mergeNames(names1, names2, nme.syntheticParamName),
+              (formals1 zipWithConserve formals2)(_ & _),
+              tp1.resultType | tp2.resultType.subst(tp2, tp1))
+*/        case tp2 @ MethodType(names2, formals2)
         if matchingParams(formals1, formals2, tp1.isJava, tp2.isJava) &&
            tp1.isImplicit == tp2.isImplicit =>
           tp1.derivedMethodType(
@@ -766,6 +797,13 @@ class TypeComparer(initctx: Context) extends DotClass {
     def msg = disambiguated { implicit ctx =>
       s"${mergeErrorMsg(tp1, tp2)} as members of one type; keeping only ${showType(winner)}"
     }
+    /* !!! DEBUG
+    println("right not a subtype of left because:")
+    println(TypeComparer.explained { implicit ctx => tp2 <:< tp1})
+    println("left not a subtype of right because:")
+    println(TypeComparer.explained { implicit ctx => tp1 <:< tp2})
+    assert(false, s"andConflict ${tp1.show} and ${tp2.show}")
+    */
     ctx.warning(msg, ctx.tree.pos)
     winner
   }
@@ -873,7 +911,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 
   override def isSubType(tp1: Type, tp2: Type) =
-    traceIndented(s"${show(tp1)} <:< ${show(tp2)}") {
+    traceIndented(s"${show(tp1)} <:< ${show(tp2)} ${tp1.getClass} ${tp2.getClass}") {
       super.isSubType(tp1, tp2)
     }
 
@@ -887,7 +925,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.glb(tp1, tp2)
     }
 
-  override  def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean =
+  override def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean =
     traceIndented(s"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint") {
       assert(bound ne param)
       (bound.stripTypeVar eq param) ||
