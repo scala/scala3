@@ -89,7 +89,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def checkedSelectionType(qual1: Tree, tree: untpd.RefTree)(implicit ctx: Context): Type = {
-    val ownType = selectionType(qual1.qualifierType, tree.name, tree.pos)
+    val ownType = selectionType(qual1.tpe.widenIfUnstable, tree.name, tree.pos)
     if (!ownType.isError) checkAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
     ownType
   }
@@ -516,7 +516,7 @@ class Typer extends Namer with Applications with Implicits {
     val ownType = meth1.tpe.widen match {
       case mt: MethodType =>
         if (!mt.isDependent) mt.toFunctionType
-        else errorType(i"internal error: cannot turn dependent method type $mt into closure", tree.pos)
+        else throw new Error(s"internal error: cannot turn dependent method type $mt into closure, position = ${tree.pos}") // !!! DEBUG. Eventually, convert to an error?
       case tp =>
         errorType(i"internal error: closing over non-method $tp", tree.pos)
     }
@@ -638,7 +638,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedSingletonTypeTree(tree: untpd.SingletonTypeTree)(implicit ctx: Context): SingletonTypeTree = track("typedSingletonTypeTree") {
     val ref1 = typedExpr(tree.ref)
-    checkStable(ref1.qualifierType, tree.pos)
+    checkStable(ref1.tpe.widenIfUnstable, tree.pos)
     cpy.SingletonTypeTree(tree, ref1) withType ref1.tpe
   }
 

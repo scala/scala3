@@ -90,6 +90,8 @@ object Inferencing {
       }
       typer.interpolateAndAdapt(targ, formal)
     }
+
+    override def toString = s"FunProto(${args mkString ","} => $resultType)"
   }
 
   case class ViewProto(argType: Type, override val resultType: Type)(implicit ctx: Context) extends CachedGroundType with ProtoType {
@@ -223,6 +225,7 @@ object Inferencing {
       println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${ctx.typerState.undetVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
       println(s"qualifying undet vars: ${ctx.typerState.undetVars filter qualifies map (_.show)}")
       println(s"fulltype: $tp") // !!! DEBUG
+      println(s"constraint: ${ctx.typerState.constraint.show}")
 
       def qualifies(tvar: TypeVar) = tree contains tvar.owningTree
       val vs = tp.variances(tvar =>

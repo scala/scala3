@@ -483,7 +483,7 @@ trait Applications extends Compatibility { self: Typer =>
               }
             }
           case _ =>
-            fun1.qualifierType match {
+            fun1.tpe match {
               case ErrorType =>
                 tree.withType(ErrorType)
             }
