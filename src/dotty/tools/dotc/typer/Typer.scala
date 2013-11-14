@@ -511,7 +511,7 @@ class Typer extends Namer with Applications with Implicits {
         if (!mt.isDependent) mt.toFunctionType
         else throw new Error(s"internal error: cannot turn dependent method type $mt into closure, position = ${tree.pos}") // !!! DEBUG. Eventually, convert to an error?
       case tp =>
-        errorType(i"internal error: closing over non-method $tp", tree.pos)
+        throw new Error(i"internal error: closing over non-method $tp, pos = ${tree.pos}")
     }
     cpy.Closure(tree, env1, meth1, EmptyTree).withType(ownType)
   }

@@ -148,7 +148,7 @@ object Inferencing {
 
   def fullyDefinedType(tp: Type, what: String, pos: Position)(implicit ctx: Context) =
     if (isFullyDefined(tp, ForceDegree.all)) tp
-    else errorType(i"internal error: type of $what $tp is not fully defined", pos)
+    else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos") // !!! DEBUG
 
   private class IsFullyDefinedAccumulator(force: ForceDegree.Value)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     def traverse(tp: Type): Boolean = apply(true, tp)
