@@ -293,7 +293,7 @@ trait Implicits { self: Typer =>
     def searchImplicits(eligible: List[TermRef], contextual: Boolean): SearchResult = {
 
       /** Try to typecheck an implicit reference */
-      def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = track("typedImplicit") { ctx.traceIndented(s"typed implicit $ref, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", show = true) {
+      def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = track("typedImplicit") { ctx.traceIndented(i"typed implicit $ref, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", show = true) {
         var generated: Tree = Ident(ref).withPos(pos)
         if (!argument.isEmpty)
           generated = typedUnadapted(
@@ -329,6 +329,10 @@ trait Implicits { self: Typer =>
         case best :: alts =>
           alts find (alt => isAsGood(alt.ref, best.ref)(ctx.fresh.withExploreTyperState)) match {
             case Some(alt) =>
+            /* !!! DEBUG
+              println(i"ambiguous refs: ${hits map (_.ref) map (_.show) mkString ", "}")
+              isAsGood(best.ref, alt.ref, explain = true)(ctx.fresh.withExploreTyperState)
+            */
               new AmbiguousImplicits(best.ref, alt.ref, pt, argument)
             case None =>
               ctx.runInfo.useCount(best.ref) += 1

@@ -2,6 +2,9 @@ import scala.collection.generic.CanBuildFrom
 
 object collections {
   
+  val s = Set(1, 2, 3)
+  val ss = s map (_ + 1)
+
   val cbf: CanBuildFrom[List, Int, List[Int]] = scala.collection.immutable.List.canBuildFrom
 
   val nil = Nil
@@ -13,5 +16,4 @@ object collections {
     
   val ys = ints3 map (x => x + 1)
   val zs = ys filter (y => y != 0)
-
 }

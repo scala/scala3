@@ -45,13 +45,6 @@ object Typer {
     def isImportPrec(prec: Int) = prec == namedImport || prec == wildImport
   }
 
-  implicit class TreeDecorator(tree: Tree) {
-    def qualifierType(implicit ctx: Context): Type = tree.tpe match {
-      case tpe: TermRef if !tpe.symbol.isStable => tpe.info
-      case tpe => tpe
-    }
-  }
-
   case class StateFul[T](value: T, state: TyperState) {
     def commit()(implicit ctx: Context): T = {
       state.commit()

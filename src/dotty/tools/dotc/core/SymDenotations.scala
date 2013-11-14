@@ -10,6 +10,7 @@ import collection.immutable.BitSet
 import scala.reflect.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import annotation.tailrec
+import config.Config
 
 trait SymDenotations { this: Context =>
   import SymDenotations._
@@ -921,14 +922,15 @@ object SymDenotations {
      *  The elements of the returned pre-denotation all
      *  have existing symbols.
      */
-    final def membersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
-      var denots: PreDenotation = memberCache lookup name
-      if (denots == null) {
-        denots = computeMembersNamed(name)
-        memberCache enter (name, denots)
-      }
-      denots
-    }
+    final def membersNamed(name: Name)(implicit ctx: Context): PreDenotation =
+      if (Config.cacheMemberNames) {
+        var denots: PreDenotation = memberCache lookup name
+        if (denots == null) {
+          denots = computeMembersNamed(name)
+          memberCache enter (name, denots)
+        }
+        denots
+      } else computeMembersNamed(name)
 
     private def computeMembersNamed(name: Name)(implicit ctx: Context): PreDenotation =
       if (!classSymbol.hasChildren || (memberFingerPrint contains name)) {

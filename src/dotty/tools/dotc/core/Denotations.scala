@@ -12,6 +12,7 @@ import Types._, Periods._, Flags._, Transformers._, Decorators._
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
+import config.Config
 import Decorators.SymbolIteratorDecorator
 
 
@@ -643,14 +644,15 @@ object Denotations {
     type AsSeenFromResult <: PreDenotation
 
     /** The denotation with info(s) as seen from prefix type */
-    final def asSeenFrom(pre: Type)(implicit ctx: Context): AsSeenFromResult = {
-      if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
-        cachedAsSeenFrom = computeAsSeenFrom(pre)
-        cachedPrefix = pre
-        validAsSeenFrom = ctx.period
-      }
-      cachedAsSeenFrom
-    }
+    final def asSeenFrom(pre: Type)(implicit ctx: Context): AsSeenFromResult =
+      if (Config.cacheAsSeenFrom) {
+        if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
+          cachedAsSeenFrom = computeAsSeenFrom(pre)
+          cachedPrefix = pre
+          validAsSeenFrom = ctx.period
+        }
+        cachedAsSeenFrom
+      } else computeAsSeenFrom(pre)
 
     protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): AsSeenFromResult
 

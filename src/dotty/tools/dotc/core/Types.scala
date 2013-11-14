@@ -22,6 +22,7 @@ import transform.Erasure
 import printing.Printer
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import collection.mutable
+import config.Config
 
 object Types {
 
@@ -416,7 +417,7 @@ object Types {
     final def member(name: Name)(implicit ctx: Context): Denotation = track("member-" + name) {
       try findMember(name, widenIfUnstable, EmptyFlags)
       catch {
-        case ex: Throwable => println(s"error occurred during: $this member $name"); throw ex // DEBUG
+        case ex: Throwable => println(s"error occurred during: $this: ${this.widen} member $name"); throw ex // DEBUG
       }
     }
 
@@ -572,10 +573,12 @@ object Types {
      *    - Or phase.erasedTypes is false and both types are neither method nor
      *      poly types.
      */
-    def matches(that: Type)(implicit ctx: Context): Boolean = track("matches") {
-      ctx.typeComparer.matchesType(
-        this, that, alwaysMatchSimple = !ctx.phase.erasedTypes)
-    }
+    def matches(that: Type)(implicit ctx: Context): Boolean =
+      if (Config.newMatch) this.signature == that.signature
+      else track("matches") {
+        ctx.typeComparer.matchesType(
+          this, that, alwaysMatchSimple = !ctx.phase.erasedTypes)
+      }
 
     /** The non-private symbol with given name in the given class that matches this type.
      *  @param inClass   The class containing the symbol's definition

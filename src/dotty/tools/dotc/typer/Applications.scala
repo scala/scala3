@@ -14,7 +14,6 @@ import Denotations._
 import NameOps._
 import Symbols._
 import Types._
-import Typer.TreeDecorator
 import Decorators._
 import ErrorReporting._
 import Trees._
@@ -406,7 +405,7 @@ trait Applications extends Compatibility { self: Typer =>
 
     val result ={
       var typedArgs = typedArgBuf.toList
-      val ownType = ctx.traceIndented(i"apply $methRef to $typedArgs") {
+      val ownType = ctx.traceIndented(i"apply $methRef to $typedArgs%, %", show = true) {
         if (!success) ErrorType
         else {
           if (!sameSeq(app.args, orderedArgs)) {
