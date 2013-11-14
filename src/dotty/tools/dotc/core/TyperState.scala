@@ -17,7 +17,7 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
   def constraint: Constraint = new Constraint(SimpleMap.Empty)
 
   /** The currently uninstantiated TypeVars */
-  def undetVars: Set[TypeVar] = Set()
+  def undetVars: Set[TypeVar] = collection.immutable.ListSet()
 
   /** A map that records for instantiated type vars their instance type.
    *  Used only in a temporary way for contexts that may be retracted
