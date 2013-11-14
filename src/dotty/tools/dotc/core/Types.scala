@@ -690,7 +690,7 @@ object Types {
       if (res.exists) res else NamedType.withSym(this, sym)
     }
 
-    private def lookupRefined(pre: Type, name: Name)(implicit ctx: Context): Type = pre.stripTypeVar match {
+    protected def lookupRefined(pre: Type, name: Name)(implicit ctx: Context): Type = pre.stripTypeVar match {
       case pre: RefinedType =>
         if (pre.refinedName ne name) lookupRefined(pre.parent, name)
         else pre.refinedInfo match {
@@ -1452,13 +1452,18 @@ object Types {
       ctx.underlyingRecursions -= 1
     }
 
+/* not needed
     def derivedNamedType(prefix: Type)(implicit ctx: Context): NamedType =
       if (prefix eq this.prefix) this
       else newLikeThis(prefix)
+*/
 
     def derivedSelect(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
-      else prefix select this.name
+      else {
+        val res = lookupRefined(this, name)
+        if (res.exists) res else newLikeThis(prefix)
+      }
 
     /** Create a NamedType of the same kind as this type, if possible,
      *  but with a new prefix. For HasFixedSym instances another such
