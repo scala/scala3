@@ -414,7 +414,7 @@ object Types {
 
     /** The member of this type with the given name  */
     final def member(name: Name)(implicit ctx: Context): Denotation = track("member-" + name) {
-      try findMember(name, this, EmptyFlags)
+      try findMember(name, widenIfUnstable, EmptyFlags)
       catch {
         case ex: Throwable => println(s"error occurred during: $this member $name"); throw ex // DEBUG
       }
@@ -639,6 +639,13 @@ object Types {
       case _ => this
     }
 
+    /** Widen type if it is unstable (i.e. an EpxprType, or Termref to unstable symbol */
+    final def widenIfUnstable(implicit ctx: Context): Type = this match {
+      case tp: ExprType => tp.resultType.widenIfUnstable
+      case tp: TermRef if !tp.symbol.isStable => tp.underlying.widenIfUnstable
+      case _ => this
+    }
+
     /** If this is an alias type, its alias, otherwise the type itself */
     final def dealias(implicit ctx: Context): Type = stripTypeVar match {
       case tp: TypeRef if tp.symbol.isAliasType => tp.info.bounds.hi
@@ -655,6 +662,40 @@ object Types {
         val tp1 = tp.instanceOpt
         if (tp1.exists) tp1.dealias_* else tp
       case tp => tp
+    }
+
+    /** Reduce types of the form
+     *
+     *    P { type T = / += / -= U } # T
+     *
+     *  to just U
+     */
+    def reduceTypeRef(implicit ctx: Context): Type = this match {
+      case TypeRef(prefix, name) => lookupRefined(prefix, name) orElse this
+      case _ => this
+    }
+
+    /** The type <this . name> , reduced if possible */
+    def typeSelect(name: TypeName)(implicit ctx: Context): Type =
+      lookupRefined(this, name) orElse TypeRef(this, name)
+
+    /** The type <this . name> with given symbol, reduced if possible */
+    def typeSelect(name: TypeName, sym: TypeSymbol)(implicit ctx: Context): Type =
+      lookupRefined(this, name) orElse TypeRef.withSym(this, name, sym)
+
+    /** The type <this . sym> , reduced if possible */
+    def typeSelect(sym: TypeSymbol)(implicit ctx: Context): Type =
+      typeSelect(sym.name, sym)
+
+    private def lookupRefined(pre: Type, name: TypeName)(implicit ctx: Context): Type = pre.stripTypeVar match {
+      case pre: RefinedType =>
+        if (pre.refinedName ne name) lookupRefined(pre.parent, name)
+        else pre.refinedInfo match {
+          case TypeBounds(lo, hi) if lo eq hi => hi
+          case _ => NoType
+        }
+      case _ =>
+        NoType
     }
 
     /** Widen from constant type to its underlying non-constant
@@ -893,8 +934,8 @@ object Types {
      */
     final def toBounds(tparam: Symbol)(implicit ctx: Context): TypeBounds = {
       val v = tparam.variance
-      if (v > 0 && !(tparam is Local)) TypeBounds.upper(this)
-      else if (v < 0 && !(tparam is Local)) TypeBounds.lower(this)
+      if (v > 0 && !(tparam is LocalOrExpanded)) TypeBounds.upper(this)
+      else if (v < 0 && !(tparam is LocalOrExpanded)) TypeBounds.lower(this)
       else TypeAlias(this, v)
     }
 
@@ -1307,6 +1348,10 @@ object Types {
     val prefix: Type
     val name: Name
 
+    assert(prefix.isValueType ||
+           (prefix eq NoPrefix) ||
+           prefix.isInstanceOf[WildcardType], s"bad prefix in $prefix.$name")
+
     private[this] var lastDenotationOrSym: AnyRef = null
 
     def knownDenotation: Boolean = lastDenotationOrSym.isInstanceOf[Denotation]
@@ -1446,31 +1491,7 @@ object Types {
 
   abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType {
 
-    /** If this TypeRef can be dealiased, its alias type, otherwise the type itself.
-     *  A TypeRef can be safely dealiased if it refers to an alias type and either the
-     *  referenced name is a type parameter or it is refined in the prefix of the TypeRef.
-     *  The idea is than in those two cases we don't lose any info or clarity by
-     *  dereferencing.
-     */
-    def losslessDealias(implicit ctx: Context) = {
-      def isRefinedIn(tp: Type, name: Name): Boolean = tp match {
-        case RefinedType(parent, refinedName) =>
-          name == refinedName || isRefinedIn(parent, name)
-        case tp: SingletonType =>
-          isRefinedIn(tp.widen, name)
-        case _ =>
-          false
-      }
-      if (knownDenotation &&
-          ((symbol is TypeArgument | TypeParam) || isRefinedIn(prefix, name)))
-        info match {
-          case TypeBounds(lo, hi) if lo eq hi => hi
-          case _ => this
-        }
-      else this
-    }
-
-    override def equals(that: Any) = that match {
+   override def equals(that: Any) = that match {
       case that: TypeRef =>
         this.prefix == that.prefix &&
         this.name == that.name
@@ -1638,7 +1659,7 @@ object Types {
         false
     }
     override def computeHash = doHash(refinedName, refinedInfo, parent)
-    override def toString = s"RefinedType($parent, $refinedName, $refinedInfo | hash = $hashCode)"
+    override def toString = s"RefinedType($parent, $refinedName, $refinedInfo)"
   }
 
   class CachedRefinedType(parent: Type, refinedName: Name, infoFn: RefinedType => Type) extends RefinedType(parent, refinedName)(infoFn)
@@ -1720,10 +1741,7 @@ object Types {
 
     def isDependent(implicit ctx: Context) = {
       if (!isDepKnown) {
-        myIsDependent = resultType existsPart {
-          case MethodParam(mt, _) => mt eq this
-          case _ => false
-        }
+        myIsDependent = new IsDependentAccumulator(this).apply(false, resultType)
         isDepKnown = true
       }
       myIsDependent
@@ -2315,7 +2333,7 @@ object Types {
     /** Map this function over given type */
     def mapOver(tp: Type): Type = tp match {
       case tp: TypeRef =>
-        val tp1 = tp.losslessDealias
+        val tp1 = tp.reduceTypeRef
         if (tp1 ne tp) this(tp1) else tp.derivedNamedType(this(tp.prefix))
 
       case tp: TermRef =>
@@ -2423,8 +2441,8 @@ object Types {
 
     def foldOver(x: T, tp: Type): T = tp match {
       case tp: TypeRef =>
-        val tp1 = tp.losslessDealias
-        if (tp1 ne tp) this(x, tp1) else this(x, tp.prefix)
+        val tp1 = tp.reduceTypeRef
+        this(x, if (tp1 ne tp) tp1 else tp.prefix)
 
       case tp: TermRef =>
         this(x, tp.prefix)
@@ -2488,6 +2506,24 @@ object Types {
 
   class ExistsAccumulator(p: Type => Boolean)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     def apply(x: Boolean, tp: Type) = x || p(tp) || foldOver(x, tp)
+  }
+
+  /** An accumulator that determines whether a type contains references to
+   *  `mt` via nested method parameters
+   */
+  class IsDependentAccumulator(mt: MethodType)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+    def apply(x: Boolean, tp: Type) = x || {
+      tp match {
+        case PolyParam(`mt`, _) => true
+        case tp @ TypeRef(PolyParam(`mt`, _), name) =>
+          tp.info match { // follow type arguments to avoid dependency
+            case TypeBounds(lo, hi) if lo eq hi => apply(x, hi)
+            case _ => true
+          }
+        case _ =>
+          foldOver(x, tp)
+      }
+    }
   }
 
   class NamedPartsAccumulator(p: NamedType => Boolean)(implicit ctx: Context) extends TypeAccumulator[Set[NamedType]] {
