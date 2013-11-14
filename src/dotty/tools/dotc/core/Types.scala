@@ -679,18 +679,18 @@ object Types {
     }
 
     /** The type <this . name> , reduced if possible */
-    def typeSelect(name: TypeName)(implicit ctx: Context): Type =
-      lookupRefined(this, name) orElse TypeRef(this, name)
+    def select(name: Name)(implicit ctx: Context): Type = {
+      val res = lookupRefined(this, name)
+      if (res.exists) res else NamedType(this, name)
+    }
 
     /** The type <this . name> with given symbol, reduced if possible */
-    def typeSelect(name: TypeName, sym: TypeSymbol)(implicit ctx: Context): Type =
-      lookupRefined(this, name) orElse TypeRef.withSym(this, name, sym)
+    def select(sym: Symbol)(implicit ctx: Context): Type = {
+      val res = lookupRefined(this, sym.name)
+      if (res.exists) res else NamedType.withSym(this, sym)
+    }
 
-    /** The type <this . sym> , reduced if possible */
-    def typeSelect(sym: TypeSymbol)(implicit ctx: Context): Type =
-      typeSelect(sym.name, sym)
-
-    private def lookupRefined(pre: Type, name: TypeName)(implicit ctx: Context): Type = pre.stripTypeVar match {
+    private def lookupRefined(pre: Type, name: Name)(implicit ctx: Context): Type = pre.stripTypeVar match {
       case pre: RefinedType =>
         if (pre.refinedName ne name) lookupRefined(pre.parent, name)
         else pre.refinedInfo match {
@@ -1455,6 +1455,10 @@ object Types {
     def derivedNamedType(prefix: Type)(implicit ctx: Context): NamedType =
       if (prefix eq this.prefix) this
       else newLikeThis(prefix)
+
+    def derivedSelect(prefix: Type)(implicit ctx: Context): Type =
+      if (prefix eq this.prefix) this
+      else prefix select this.name
 
     /** Create a NamedType of the same kind as this type, if possible,
      *  but with a new prefix. For HasFixedSym instances another such
@@ -2335,12 +2339,8 @@ object Types {
 
     /** Map this function over given type */
     def mapOver(tp: Type): Type = tp match {
-      case tp: TypeRef =>
-        val tp1 = tp.reduceTypeRef
-        if (tp1 ne tp) this(tp1) else tp.derivedNamedType(this(tp.prefix))
-
-      case tp: TermRef =>
-        tp.derivedNamedType(this(tp.prefix))
+      case tp: NamedType =>
+        tp.derivedSelect(this(tp.prefix))
 
       case _: ThisType
          | _: BoundType => tp
@@ -2444,7 +2444,7 @@ object Types {
 
     def foldOver(x: T, tp: Type): T = tp match {
       case tp: TypeRef =>
-        val tp1 = tp.reduceTypeRef
+        val tp1 = tp.reduceTypeRef // !!! needed?
         this(x, if (tp1 ne tp) tp1 else tp.prefix)
 
       case tp: TermRef =>

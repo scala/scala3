@@ -20,26 +20,12 @@ trait TypeOps { this: Context =>
         toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)
     }
 
-    ctx.debugTraceIndented(s"$tp.asSeenFrom($pre, $cls)") { // !!! DEBUG
+    ctx.conditionalTraceIndented(TypeOps.track , s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) { // !!! DEBUG
       tp match {
         case tp: NamedType =>
           val sym = tp.symbol
           if (sym.isStatic) tp
-          else {
-            val tp1 = tp.derivedNamedType(asSeenFrom(tp.prefix, pre, cls, theMap))
-            // Here's an explanation why we short-circuit instantiated type parameters.
-            // Say you have             This is translated to:
-            //
-            // class List[type T] ==>   class List { type T; val hd: T }
-            // xs: List[Int]      ==>   List { type T = Int }
-            //
-            // Then with the line above, xs.hd would have type xs.T
-            //
-            // But in Scala 2.x, its type is Int, which is the dealiased version
-            // of xs.T. With the logic below, we get the same outcome as for 2.x.
-            if ((tp1 ne tp) && (sym is (TypeParam, butNot = Deferred))) tp1.dealias // todo: why not TypeArgument?
-            else tp1
-          }
+          else tp.derivedSelect(asSeenFrom(tp.prefix, pre, cls, theMap))
         case ThisType(thiscls) =>
           toPrefix(pre, cls, thiscls)
         case _: BoundType | NoPrefix =>
@@ -179,3 +165,7 @@ trait TypeOps { this: Context =>
   }
 }
 
+object TypeOps {
+
+  var track = false // !!!DEBUG
+}
