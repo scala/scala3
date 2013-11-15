@@ -2047,14 +2047,19 @@ object Types {
       }
     }
 
+    /** Unwrap to instance (if instantiated) or origin (if not), until result
+     *  is no longer a TypeVar
+     */
+    override def stripTypeVar(implicit ctx: Context): Type = { // todo: what about multiple instantiations?
+      val inst = instanceOpt
+      if (inst.exists) inst.stripTypeVar else origin
+    }
+
     /** If the variable is instantiated, its instance, otherwise its origin */
-    override def stripTypeVar(implicit ctx: Context) = { // todo: what about multiple instantiations?
+    override def underlying(implicit ctx: Context): Type = {
       val inst = instanceOpt
       if (inst.exists) inst else origin
     }
-
-    /** Same as `stripTypeVar` */
-    override def underlying(implicit ctx: Context): Type = stripTypeVar
 
     override def hashCode: Int = System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
