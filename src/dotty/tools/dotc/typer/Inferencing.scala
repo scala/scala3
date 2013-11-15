@@ -88,7 +88,7 @@ object Inferencing {
         targ = typer.typedUnadapted(arg, formal)
         myTypedArg = myTypedArg.updated(arg, targ)
       }
-      typer.interpolateAndAdapt(targ, formal)
+      typer.adapt(targ, formal)
     }
 
     override def toString = s"FunProto(${args mkString ","} => $resultType)"

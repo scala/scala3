@@ -391,7 +391,7 @@ class Namer { typer: Typer =>
               tp & itpe
             }
         }
-        def rhsType = interpolateAndAdapt(typedAheadExpr(mdef.rhs), WildcardType).tpe.widen
+        def rhsType = adapt(typedAheadExpr(mdef.rhs), WildcardType).tpe.widen
         def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)
         inherited orElse lhsType
       }

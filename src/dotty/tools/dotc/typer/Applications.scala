@@ -356,7 +356,7 @@ trait Applications extends Compatibility { self: Typer =>
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =
-      typedArgBuf += adapt(arg, formal)
+      typedArgBuf += adaptInterpolated(arg, formal)
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
@@ -467,7 +467,7 @@ trait Applications extends Compatibility { self: Typer =>
             } { failed => fun1 match {
                 case Select(qual, name) =>
                   tryEither { implicit ctx =>
-                    val qual1 = adapt(qual, new SelectionProto(name, proto))
+                    val qual1 = adaptInterpolated(qual, new SelectionProto(name, proto))
                     if (qual1.tpe.isError || (qual1 eq qual)) qual1
                     else
                       typedApply(

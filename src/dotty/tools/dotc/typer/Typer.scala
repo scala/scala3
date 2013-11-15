@@ -862,7 +862,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = ctx.traceIndented (s"typing ${tree.show}", show = true) {
-    try interpolateAndAdapt(typedUnadapted(tree, pt), pt)
+    try adapt(typedUnadapted(tree, pt), pt)
     catch {
       case ex: FatalTypeError => errorTree(tree, ex.getMessage)
     }
@@ -925,10 +925,12 @@ class Typer extends Namer with Applications with Implicits {
       fallBack
     }
 
-  def interpolateAndAdapt(tree: Tree, pt: Type)(implicit ctx: Context) = {
-    ctx.interpolateUndetVars(tree)
-    tree overwriteType tree.tpe.simplified
-    adapt(tree, pt)
+  def adapt(tree: Tree, pt: Type)(implicit ctx: Context) = track("adapt") {
+    ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", show = true) {
+      ctx.interpolateUndetVars(tree)
+      tree overwriteType tree.tpe.simplified
+      adaptInterpolated(tree, pt)
+    }
   }
 
   /** (-1) For expressions with annotated types, let AnnotationCheckers decide what to do
@@ -969,7 +971,7 @@ class Typer extends Namer with Applications with Implicits {
    *  (14) When in mode EXPRmode, apply a view
    *  If all this fails, error
    */
-  def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree = track("adapt") { ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", show = true) {
+  def adaptInterpolated(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
 
     assert(pt.exists)
 
@@ -982,7 +984,7 @@ class Typer extends Namer with Applications with Implicits {
       def expectedStr = err.expectedTypeStr(pt)
       resolveOverloaded(alts, pt)(ctx.fresh.withExploreTyperState) match {
         case alt :: Nil =>
-          adapt(tree.withType(alt), pt)
+          adaptInterpolated(tree.withType(alt), pt)
         case Nil =>
           def noMatches =
             errorTree(tree,
@@ -1021,7 +1023,7 @@ class Typer extends Namer with Applications with Implicits {
 
     def adaptNoArgs(wtp: Type) = wtp match {
       case wtp: ExprType =>
-        adapt(tree.withType(wtp.resultType), pt)
+        adaptInterpolated(tree.withType(wtp.resultType), pt)
       case wtp: ImplicitMethodType =>
         def implicitArgError(msg: => String): Tree = {
           ctx.error(msg, tree.pos.endPos)
@@ -1044,7 +1046,7 @@ class Typer extends Namer with Applications with Implicits {
             !tree.symbol.isConstructor)
           etaExpand(tree, wtp)
         else if (wtp.paramTypes.isEmpty)
-          adapt(tpd.Apply(tree, Nil), pt)
+          adaptInterpolated(tpd.Apply(tree, Nil), pt)
         else
           errorTree(tree,
             i"""missing arguments for $methodStr
@@ -1102,7 +1104,7 @@ class Typer extends Namer with Applications with Implicits {
               val tracked = ctx.track(poly)
               ctx.newTypeVars(tracked, tree)
             }
-            adapt(tree appliedToTypes tvars, pt)
+            adaptInterpolated(tree appliedToTypes tvars, pt)
           }
         case wtp =>
           pt match {
@@ -1115,5 +1117,5 @@ class Typer extends Namer with Applications with Implicits {
           }
       }
     }
-  }}
+  }
 }

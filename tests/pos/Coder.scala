@@ -38,14 +38,12 @@ class Coder(words: List[String]) {
   def encode(number: String): Set[List[String]] = 
     if (number.isEmpty) Set(Nil)
     else {
-      val xs = (for {
+      for {
         splitPoint <- 1 to number.length
         word <- wordsForNum(number take splitPoint)
         rest <- encode(number drop splitPoint)
       } yield word :: rest
-      ).toSet
-      xs//.toSet
-    }
+    }.toSet
       
   /** Maps a number to a list of all word phrases that can represent it */
   def translate(number: String): Set[String] = encode(number) map (_ mkString " ")

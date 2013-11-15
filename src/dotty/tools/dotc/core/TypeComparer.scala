@@ -216,7 +216,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       case tp2: TypeVar =>
         (tp1 eq tp2) || isSubType(tp1, tp2.underlying)
       case tp2: ProtoType =>
-        tp2.isMatchedBy(tp1)
+        isMatchedByProto(tp2, tp1)
       case tp2: WildcardType =>
         tp2.optBounds match {
           case TypeBounds(_, hi) => isSubType(tp1, hi)
@@ -386,6 +386,12 @@ class TypeComparer(initctx: Context) extends DotClass {
   def bounds(param: PolyParam): TypeBounds = constraint(param) match {
     case bounds: TypeBounds => bounds
     case _ => param.binder.paramBounds(param.paramNum)
+  }
+
+  /** Defer constraining type variables when comnpared against prototypes */
+  def isMatchedByProto(proto: ProtoType, tp: Type) = tp.stripTypeVar match {
+    case tp: PolyParam if constraint(tp).exists => true
+    case _ => proto.isMatchedBy(tp)
   }
 
   /* not needed
