@@ -651,7 +651,7 @@ object SymDenotations {
       TermRef.withSym(owner.thisType, symbol.asTerm)
 
     def symRef(implicit ctx: Context): NamedType =
-      NamedType.withSym(owner.thisType, symbol)
+      if (isType) symTypeRef else symTermRef
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter

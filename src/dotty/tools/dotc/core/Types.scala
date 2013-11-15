@@ -679,16 +679,30 @@ object Types {
     }
 
     /** The type <this . name> , reduced if possible */
-    def select(name: Name)(implicit ctx: Context): Type = {
-      val res = lookupRefined(this, name)
-      if (res.exists) res else NamedType(this, name)
+    def select(name: Name)(implicit ctx: Context): Type = name match {
+      case name: TermName =>
+        TermRef(this, name)
+      case name: TypeName =>
+        val res = lookupRefined(this, name)
+        if (res.exists) res else TypeRef(this, name)
+    }
+
+    /** The type <this . name> , reduced if possible, with given denotation if undreduced */
+    def select(name: Name, denot: Denotation)(implicit ctx: Context): Type = name match {
+      case name: TermName =>
+        TermRef(this, name).withDenot(denot)
+      case name: TypeName =>
+        val res = lookupRefined(this, name)
+        if (res.exists) res else TypeRef(this, name).withDenot(denot)
     }
 
     /** The type <this . name> with given symbol, reduced if possible */
-    def select(sym: Symbol)(implicit ctx: Context): Type = {
-      val res = lookupRefined(this, sym.name)
-      if (res.exists) res else NamedType.withSym(this, sym)
-    }
+    def select(sym: Symbol)(implicit ctx: Context): Type =
+      if (sym.isTerm) TermRef.withSym(this, sym.asTerm)
+      else {
+        val res = lookupRefined(this, sym.name)
+        if (res.exists) res else TypeRef.withSym(this, sym.asType)
+      }
 
     protected def lookupRefined(pre: Type, name: Name)(implicit ctx: Context): Type = pre.stripTypeVar match {
       case pre: RefinedType =>
@@ -1551,9 +1565,6 @@ object Types {
     def apply(prefix: Type, name: Name)(implicit ctx: Context) =
       if (name.isTermName) TermRef(prefix, name.asTermName)
       else TypeRef(prefix, name.asTypeName)
-   def withSym(prefix: Type, sym: Symbol)(implicit ctx: Context) =
-      if (sym.isTerm) TermRef.withSym(prefix, sym.asTerm)
-      else TypeRef.withSym(prefix, sym.asType)
   }
 
   object TermRef {

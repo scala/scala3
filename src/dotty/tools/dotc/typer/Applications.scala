@@ -206,7 +206,7 @@ trait Applications extends Compatibility { self: Typer =>
                        cx.denotNamed(methRef.name).hasAltWith(_.symbol == meth)) {
                 val denot = cx.denotNamed(getterName)
                 assert(denot.exists)
-                NamedType(cx.owner.thisType, getterName).withDenot(denot)
+                cx.owner.thisType.select(getterName, denot)
               } else findDefault(cx.outer)
             }
             findDefault(ctx)

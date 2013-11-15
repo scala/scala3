@@ -58,7 +58,7 @@ object Annotations {
       apply(defn.AliasAnnot, List(Ident(TermRef.withSig(sym.owner.thisType, sym.name, sym.signature).withDenot(sym))))
 
     def makeChild(sym: Symbol)(implicit ctx: Context) =
-      apply(defn.ChildAnnot.typeConstructor.appliedTo(NamedType(sym.owner.thisType, sym.name).withDenot(sym)), Nil)
+      apply(defn.ChildAnnot.typeConstructor.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
   }
 
   def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context) = {

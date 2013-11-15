@@ -68,10 +68,10 @@ class Typer extends Namer with Applications with Implicits {
   private var importedFromRoot: Set[Symbol] = Set()
 
   def selectionType(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
-    val ref =
+    val refDenot =
       if (name == nme.CONSTRUCTOR) site.decl(name)
       else site.member(name)
-    if (ref.exists) NamedType(site, name).withDenot(ref)
+    if (refDenot.exists) site.select(name, refDenot)
     else {
       if (!site.isErroneous)
         ctx.error(
@@ -253,7 +253,7 @@ class Typer extends Namer with Applications with Implicits {
           val pre = imp.site
           if (!isDisabled(imp, pre)) {
             val denot = pre.member(name)
-            if (denot.exists) return NamedType(pre, name).withDenot(denot)
+            if (denot.exists) return pre.select(name, denot)
           }
         }
         NoType
@@ -275,7 +275,7 @@ class Typer extends Namer with Applications with Implicits {
           val defDenot = ctx.denotNamed(name)
           if (defDenot.exists) {
             val curOwner = ctx.owner
-            val found = NamedType(curOwner.thisType, name) withDenot defDenot
+            val found = curOwner.thisType.select(name, defDenot)
             if (!(curOwner is Package) || (defDenot.symbol is Package) || isDefinedInCurrentUnit(defDenot))
               return checkNewOrShadowed(found, definition) // no need to go further out, we found highest prec entry
             else if (prevPrec < packageClause)

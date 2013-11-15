@@ -18,10 +18,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     underlyingIfRepeated(untpd.Ident(tp.name) withType tp).checked
 
   def Select(qualifier: Tree, name: Name)(implicit ctx: Context): Select =
-    Select(qualifier, NamedType(qualifier.tpe, name))
+    untpd.Select(qualifier, name).withType(qualifier.tpe select name)
 
-  def Select(pre: Tree, tp: NamedType)(implicit ctx: Context): Select =
-    untpd.Select(pre, tp.name).withType(tp).checked
+  def Select(qualifier: Tree, tp: NamedType)(implicit ctx: Context): Select =
+    untpd.Select(qualifier, tp.name).withType(tp).checked
 
   def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit ctx: Context) =
     untpd.SelectWithSig(qualifier, name, sig)
@@ -173,7 +173,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.SingletonTypeTree(ref).withType(ref.tpe).checked
 
   def SelectFromTypeTree(qualifier: Tree, name: Name)(implicit ctx: Context): SelectFromTypeTree =
-    SelectFromTypeTree(qualifier, NamedType(qualifier.tpe, name))
+    untpd.SelectFromTypeTree(qualifier, name).withType(qualifier.tpe select name).checked
 
   def SelectFromTypeTree(qualifier: Tree, tp: NamedType)(implicit ctx: Context): SelectFromTypeTree =
     untpd.SelectFromTypeTree(qualifier, tp.name).withType(tp).checked
@@ -201,7 +201,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.TypeBoundsTree(lo, hi).withType(TypeBounds(lo.tpe, hi.tpe)).checked
 
   def Bind(sym: TermSymbol, body: Tree)(implicit ctx: Context): Bind =
-    untpd.Bind(sym.name, body).withType(refType(sym)).checked
+    untpd.Bind(sym.name, body).withType(sym.symRef).checked
 
   def Alternative(trees: List[Tree])(implicit ctx: Context): Alternative =
     untpd.Alternative(trees).withType(ctx.typeComparer.lub(trees map (_.tpe))).checked
@@ -215,7 +215,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   def ValDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): ValDef =
-    untpd.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs).withType(refType(sym)).checked
+    untpd.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs).withType(sym.symRef).checked
 
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     DefDef(sym, Function.const(rhs) _)
@@ -243,12 +243,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.DefDef(
       Modifiers(sym), sym.name, tparams map TypeDef,
       vparamss map (_ map (ValDef(_))), TypeTree(rtp), rhsFn(argss))
-      .withType(refType(sym)).checked
+      .withType(sym.symRef).checked
   }
 
   def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
     untpd.TypeDef(Modifiers(sym), sym.name, TypeTree(sym.info))
-      .withType(refType(sym)).checked
+      .withType(sym.symRef).checked
 
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree])(implicit ctx: Context): TypeDef = {
     val parents = cls.info.parents map (TypeTree(_))
@@ -265,16 +265,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val localDummy = ((NoSymbol: Symbol) /: body)(findLocalDummy)
       .orElse(ctx.newLocalDummy(cls))
     val impl = untpd.Template(constr, parents, selfType, newTypeParams ++ body)
-      .withType(refType(localDummy)).checked
+      .withType(localDummy.symRef).checked
     untpd.TypeDef(Modifiers(cls), cls.name, impl)
-      .withType(refType(cls)).checked
+      .withType(cls.symRef).checked
   }
 
   def Import(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
-    untpd.Import(expr, selectors).withType(refType(ctx.newImportSymbol(SharedTree(expr)))).checked
+    untpd.Import(expr, selectors).withType(ctx.newImportSymbol(SharedTree(expr)).symRef).checked
 
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef =
-    untpd.PackageDef(pid, stats).withType(refType(pid.symbol)).checked
+    untpd.PackageDef(pid, stats).withType(pid.symbol.symRef).checked
 
   def Annotated(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated =
     untpd.Annotated(annot, arg).withType(AnnotatedType(Annotation(annot), arg.tpe)).checked
@@ -283,8 +283,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Trees.SharedTree(tree).withType(tree.tpe)
 
   // ------ Making references ------------------------------------------------------
-
-  def refType(sym: Symbol)(implicit ctx: Context): NamedType = NamedType.withSym(sym.owner.thisType, sym)
 
   /** A tree representing the same reference as the given type */
   def ref(tp: NamedType)(implicit ctx: Context): NameTree =
@@ -419,7 +417,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           val newOwner = ownerMap(sym.owner)
           val newInfo = typeMap(sym.info)
           if ((newOwner ne sym.owner) || (newInfo ne sym.info))
-            bind.withType(tpd.refType(sym.copy(owner = newOwner, info = newInfo)))
+            bind.withType(sym.copy(owner = newOwner, info = newInfo).symRef)
           else
             bind
         case tree1 =>

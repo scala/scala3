@@ -934,7 +934,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val ldef = DefDef(symbol.asTerm, rhs)
         def isCaseLabel(sym: Symbol) = sym.name.startsWith(nme.CASEkw)
         if (isCaseLabel(symbol)) ldef
-        else Block(ldef :: Nil, Apply(Ident(refType(symbol)), Nil))
+        else Block(ldef :: Nil, Apply(Ident(symbol.symRef), Nil))
 
       case IMPORTtree =>
         setSym()
@@ -955,7 +955,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val self = readValDefRef()
         val body = until(end, readTreeRef)
         untpd.Template(???, parents, self, body) // !!! TODO: pull out primary constructor
-          .withType(refType(symbol))
+          .withType(symbol.symRef)
 
       case BLOCKtree =>
         val expr = readTreeRef()
@@ -1016,7 +1016,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
       case RETURNtree =>
         setSym()
-        Return(readTreeRef(), Ident(refType(symbol)))
+        Return(readTreeRef(), Ident(symbol.symRef))
 
       case TREtree =>
         val block = readTreeRef()
@@ -1072,11 +1072,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         setSym()
         val qualifier = readTreeRef()
         val selector = readNameRef()
-        Select(qualifier, refType(symbol))
+        Select(qualifier, symbol.symRef)
 
       case IDENTtree =>
         setSymName()
-        Ident(refType(symbol))
+        Ident(symbol.symRef)
 
       case LITERALtree =>
         Literal(readConstantRef())
@@ -1095,7 +1095,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case SELECTFROMTYPEtree =>
         val qualifier = readTreeRef()
         val selector = readTypeNameRef()
-        SelectFromTypeTree(qualifier, refType(symbol))
+        SelectFromTypeTree(qualifier, symbol.symRef)
 
       case COMPOUNDTYPEtree =>
         readTemplateRef()
