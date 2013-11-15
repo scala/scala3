@@ -207,7 +207,7 @@ object Trees {
 
     /** Destructively set the type of the tree. This should be called only when it is known that
      *  it is safe under sharing to do so. One user-case is in the withType method below
-     *  which implements copy-on-write. Another user-case is in method interpolateAndAdapt in Typer,
+     *  which implements copy-on-write. Another use-case is in method interpolateAndAdapt in Typer,
      *  where we overwrite with a simplified version of the type itself.
      */
     private[dotc] def overwriteType(tpe: T) = myTpe = tpe

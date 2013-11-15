@@ -43,8 +43,8 @@ class Coder(words: List[String]) {
         word <- wordsForNum(number take splitPoint)
         rest <- encode(number drop splitPoint)
       } yield word :: rest
-      )
-      xs.toSet
+      ).toSet
+      xs//.toSet
     }
       
   /** Maps a number to a list of all word phrases that can represent it */
