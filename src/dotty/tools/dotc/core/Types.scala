@@ -2109,14 +2109,14 @@ object Types {
       if ((prefix eq cls.owner.thisType) || !cls.owner.isClass) tp
       else tp.substThis(cls.owner.asClass, prefix)
 
-    private var tyconCache: TypeRef = null
+    private var tyconCache: Type = null
 
-    def typeConstructor(implicit ctx: Context): TypeRef = {
+    def typeConstructor(implicit ctx: Context): Type = {
       def clsDenot = if (prefix eq cls.owner.thisType) cls.denot else cls.denot.copySymDenotation(info = this)
       if (tyconCache == null)
         tyconCache =
-          if ((cls is PackageClass) || cls.owner.isTerm) TypeRef.withSym(prefix, cls)
-          else TypeRef(prefix, cls.name).withDenot(clsDenot)
+          if ((cls is PackageClass) || cls.owner.isTerm) prefix select cls
+          else prefix select (cls.name, clsDenot)
       tyconCache
     }
 
