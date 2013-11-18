@@ -25,6 +25,7 @@ class DottyTest {
       .withSetting(printtypes, true)
       .withSetting(pageWidth, 90)
       .withSetting(log, List("<some"))
+      .withSetting(usejavacp, true)
  //   .withTyperState(new TyperState(new ConsoleReporter()(base.initialCtx)))
 
 //      .withSetting(uniqid, true)

@@ -46,13 +46,23 @@ object PathResolver {
     def classPathEnv        =  envOrElse("CLASSPATH", "")
     def sourcePathEnv       =  envOrElse("SOURCEPATH", "")
 
-    def javaBootClassPath   = propOrElse("sun.boot.class.path", searchForBootClasspath)
+    // See https://gist.github.com/harrah/404272
+    private def getEmbeddedClasspath(id: String): String =
+      Option(getClass.getClassLoader.getResource(s"$id.class.path")) map { cp => scala.io.Source.fromURL(cp).mkString(File.pathSeparator) }
+
+    def javaBootClassPath   = {
+      val jvmBoot = propOrElse("sun.boot.class.path", searchForBootClasspath)
+      getEmbeddedClasspath("boot") match {
+        case Some(embeddedBoot) => jvmBoot + File.pathSeparator + embeddedBoot
+        case None => jvmBoot
+      }
+    }
     def javaExtDirs         = propOrEmpty("java.ext.dirs")
     def scalaHome           = propOrEmpty("scala.home")
     def scalaExtDirs        = propOrEmpty("scala.ext.dirs")
 
     /** The java classpath and whether to use it. */
-    def javaUserClassPath   = propOrElse("java.class.path", "")
+    def javaUserClassPath   = getEmbeddedClasspath("app").getOrElse(propOrElse("java.class.path", ""))
     def useJavaClassPath    = propOrFalse("scala.usejavacp")
 
     override def toString = """
