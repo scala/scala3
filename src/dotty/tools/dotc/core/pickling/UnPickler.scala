@@ -73,7 +73,7 @@ object UnPickler {
   def arrayToRepeated(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp @ MethodType(paramNames, paramTypes) =>
       val lastArg = paramTypes.last
-      assert(lastArg.isArray)
+      assert(lastArg isRef defn.ArrayClass)
       val elemtp0 :: Nil = lastArg.baseTypeArgs(defn.ArrayClass)
       val elemtp = elemtp0 match {
         case AndType(t1, t2) if t1.typeSymbol.isAbstractType && (t2 isRef defn.ObjectClass) =>
@@ -555,7 +555,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           case info: TypeRef if boundSyms contains info.symbol =>
             val info1 = info.symbol.info
             assert(info1.derivesFrom(defn.SingletonClass))
-            RefinedType(parent1, name, info1.mapAnd(removeSingleton))
+            RefinedType(parent1, name, info1.mapReduceAnd(removeSingleton)(_ & _))
           case info =>
             tp.derivedRefinedType(parent1, name, info)
         }

@@ -118,9 +118,6 @@ object Types {
     final def derivesFrom(cls: Symbol)(implicit defctx: Context): Boolean =
       classSymbol.derivesFrom(cls)
 
-    /** Is this an array type? */
-    final def isArray(implicit ctx: Context): Boolean = isRef(defn.ArrayClass)
-
    /** A type T is a legal prefix in a type selection T#A if
      *  T is stable or T contains no uninstantiated type variables.
      */
@@ -164,13 +161,13 @@ object Types {
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
-      case AnnotatedType(annot, tp) => annot.symbol == cls || tp.hasAnnotation(cls)
+      case AnnotatedType(annot, tp) => (annot matches cls) || (tp hasAnnotation cls)
       case _ => false
     }
 
     /** Does this type occur as a part of type `that`? */
     final def occursIn(that: Type)(implicit ctx: Context): Boolean =
-      that.existsPart(this == _)
+      that existsPart (this == _)
 
     def isRepeatedParam(implicit ctx: Context): Boolean =
       defn.RepeatedParamClasses contains typeSymbol
@@ -184,30 +181,29 @@ object Types {
 
     /** Returns true if all parts of this type satisfy predicate `p`.
      */
-    final def forallParts(p: Type => Boolean)(implicit ctx: Context): Boolean = !existsPart(!p(_))
+    final def forallParts(p: Type => Boolean)(implicit ctx: Context): Boolean =
+      !existsPart(!p(_))
 
     /** The parts of this type which are type or term refs */
     final def namedParts(implicit ctx: Context): Set[NamedType] =
       namedPartsWith(Function.const(true))
 
+    /** The parts of this type which are type or term refs and which
+     *  satisfy predicate `p`.
+     */
     def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): Set[NamedType] =
       new NamedPartsAccumulator(p).apply(Set(), this)
 
-    final def foreach(f: Type => Unit): Unit = ???
+    // needed?
+    //final def foreach(f: Type => Unit): Unit = ???
 
-    /** Map function over elements of an AndType, rebuilding with & */
-    def mapAnd(f: Type => Type)(implicit ctx: Context): Type =
-      mapReduceAnd(f)(_ & _)
-
+    /** Map function `f` over elements of an AndType, rebuilding with function `g` */
     def mapReduceAnd[T](f: Type => T)(g: (T, T) => T)(implicit ctx: Context): T = stripTypeVar match {
       case AndType(tp1, tp2) => g(tp1.mapReduceAnd(f)(g), tp2.mapReduceAnd(f)(g))
       case _ => f(this)
     }
 
-    /** Map function over elements of an OrType, rebuilding with | */
-    final def mapOr(f: Type => Type)(implicit ctx: Context): Type =
-      mapReduceOr(f)(_ | _)
-
+    /** Map function `f` over elements of an OrType, rebuilding with function `g` */
     final def mapReduceOr[T](f: Type => T)(g: (T, T) => T)(implicit ctx: Context): T = stripTypeVar match {
       case OrType(tp1, tp2) => g(tp1.mapReduceOr(f)(g), tp2.mapReduceOr(f)(g))
       case _ => f(this)
@@ -218,19 +214,10 @@ object Types {
     /** The type symbol associated with the type */
     final def typeSymbol(implicit ctx: Context): Symbol = this match {
       case tp: TypeRef => tp.symbol
-      case tp: TermRef => NoSymbol
       case tp: ClassInfo => tp.cls
+      case tp: SingletonType => NoSymbol
       case ThisType(cls) => cls
       case tp: TypeProxy => tp.underlying.typeSymbol
-      case _ => NoSymbol
-    }
-
-    /** The type symbol associated with the type, skipping alises */
-    final def dealiasedTypeSymbol(implicit ctx: Context): Symbol = this match {
-      case tp: TermRef => NoSymbol
-      case tp: ClassInfo => tp.cls
-      case ThisType(cls) => cls
-      case tp: TypeProxy => tp.underlying.dealiasedTypeSymbol
       case _ => NoSymbol
     }
 
@@ -239,12 +226,12 @@ object Types {
      *  value type, or because superclasses are ambiguous).
      */
     final def classSymbol(implicit ctx: Context): Symbol = this match {
-      case tp: ClassInfo =>
-        tp.cls
       case tp: TypeRef =>
         val sym = tp.symbol
         if (sym.isClass) sym else tp.underlying.classSymbol
-      case tp: TermRef =>
+      case tp: ClassInfo =>
+        tp.cls
+      case tp: SingletonType =>
         NoSymbol
       case tp: TypeProxy =>
         tp.underlying.classSymbol
@@ -615,7 +602,7 @@ object Types {
 // ----- Unwrapping types -----------------------------------------------
 
     /** Map a TypeVar to either its instance if it is instantiated, or its origin,
-     *  if not. Identity on all other types.
+     *  if not, until the result is no longer a TypeVar. Identity on all other types.
      */
     def stripTypeVar(implicit ctx: Context): Type = this
 
@@ -637,6 +624,9 @@ object Types {
       case _ => this
     }
 
+    /** Widen from singleton type to its underlying non-singleton
+     *  base type by applying one or more `underlying` dereferences,
+     */
     final def widenSingleton(implicit ctx: Context): Type = this match {
       case tp: SingletonType => tp.underlying.widenSingleton
       case _ => this
@@ -649,21 +639,16 @@ object Types {
       case _ => this
     }
 
-    /** If this is an alias type, its alias, otherwise the type itself */
-    final def dealias(implicit ctx: Context): Type = stripTypeVar match {
-      case tp: TypeRef if tp.symbol.isAliasType => tp.info.bounds.hi
-      case _ => this
-    }
-
-    final def dealias_*(implicit ctx: Context): Type = this match {
+    /** Follow aliases until type is no longer an alias type. */
+    final def dealias(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
         tp.info match {
-          case TypeBounds(lo, hi) if lo eq hi => hi.dealias_*
+          case TypeBounds(lo, hi) if lo eq hi => hi.dealias
           case _ => tp
         }
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
-        if (tp1.exists) tp1.dealias_* else tp
+        if (tp1.exists) tp1.dealias else tp
       case tp => tp
     }
 
@@ -687,7 +672,7 @@ object Types {
         if (res.exists) res else TypeRef(this, name)
     }
 
-    /** The type <this . name> , reduced if possible, with given denotation if undreduced */
+    /** The type <this . name> , reduced if possible, with given denotation if unreduced */
     def select(name: Name, denot: Denotation)(implicit ctx: Context): Type = name match {
       case name: TermName =>
         TermRef(this, name).withDenot(denot)
@@ -1037,7 +1022,7 @@ object Types {
      */
     final def splitArray(implicit ctx: Context): (Int, Type) = {
       def recur(n: Int, tp: Type): (Int, Type) = tp.stripTypeVar match {
-        case RefinedType(tycon, _) if tycon.isArray =>
+        case RefinedType(tycon, _) if tycon isRef defn.ArrayClass =>
           tp.typeArgs match {
             case arg :: Nil => recur(n + 1, arg)
             case _ => (n, tp)
@@ -1491,6 +1476,11 @@ object Types {
 
   abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType {
     protected def sig: Signature = UnknownSignature
+
+    override def underlying(implicit ctx: Context): Type = {
+      val d = denot
+      if (d.isOverloaded) NoType else d.info
+    }
 
     override def signature(implicit ctx: Context): Signature = denot.signature
 

@@ -105,7 +105,7 @@ object CheckTrees {
       check(escapingRefs(tree).isEmpty)
     case If(cond, thenp, elsep) =>
       check(cond.isValue); check(thenp.isValue); check(elsep.isValue)
-      check(cond.tpe.derivesFrom(defn.BooleanClass))
+      check(cond.tpe isRef defn.BooleanClass)
     case Closure(env, meth, target) =>
    	  meth.tpe.widen match {
    	    case mt @ MethodType(_, paramTypes) =>
@@ -195,7 +195,7 @@ object CheckTrees {
       }
     case Alternative(alts) =>
       for (alt <- alts) check(alt.isValueOrPattern)
-    case UnApply(fun, args) =>
+    case UnApply(fun, args) => // todo: review
       check(fun.isTerm)
       for (arg <- args) check(arg.isValueOrPattern)
       val funtpe @ MethodType(_, _) = fun.tpe.widen
@@ -206,17 +206,16 @@ object CheckTrees {
           check(args.head.isInstanceOf[SeqLiteral])
         case nme.unapply =>
           val rtp = funtpe.resultType
-          val rsym = rtp.dealiasedTypeSymbol
-          if (rsym == defn.BooleanClass)
+          if (rtp isRef defn.BooleanClass)
             check(args.isEmpty)
           else {
-            check(rsym == defn.OptionClass)
+            check(rtp isRef defn.OptionClass)
             val normArgs = rtp.typeArgs match {
               case optionArg :: Nil =>
                 optionArg.typeArgs match {
                   case Nil =>
                     optionArg :: Nil
-                  case tupleArgs if defn.TupleClasses contains optionArg.dealiasedTypeSymbol =>
+                  case tupleArgs if defn.isTupleType(optionArg) =>
                     tupleArgs
                 }
               case _ =>

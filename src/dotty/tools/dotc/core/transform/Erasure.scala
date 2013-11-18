@@ -42,7 +42,7 @@ object Erasure {
       else erasure(tp.info)
     case tp: RefinedType =>
       val parent = tp.parent
-      if (parent.isArray) eraseArray(tp)
+      if (parent isRef defn.ArrayClass) eraseArray(tp)
       else erasure(parent)
     case ConstantType(_) | NoType | NoPrefix =>
       tp
@@ -112,9 +112,9 @@ object Erasure {
       else paramSignature(tp.info)
     case tp: RefinedType =>
       val parent = tp.parent
-      if (parent.isArray)
+      if (parent isRef defn.ArrayClass)
         eraseArray(tp) match {
-          case tp1: RefinedType if tp1.parent.isArray =>
+          case tp1: RefinedType if tp1.parent isRef defn.ArrayClass =>
             paramSignature(tp1.refinedInfo) ++ "[]"
           case tp1 =>
             paramSignature(tp1)

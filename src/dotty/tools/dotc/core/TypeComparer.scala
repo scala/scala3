@@ -206,7 +206,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         tp2 == tp1 || {
           isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
             constraint(tp2) match {
-              case TypeBounds(lo, _) => addConstraint(tp2, tp1.widen.dealias_*, fromBelow = true)
+              case TypeBounds(lo, _) => addConstraint(tp2, tp1.widen.dealias, fromBelow = true)
               case _ => secondTry(tp1, tp2)
             }
           }
@@ -245,7 +245,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
           assert(frozenConstraint || !(tp2 isRef defn.NothingClass)) // !!!DEBUG
           constraint(tp1) match {
-            case TypeBounds(_, hi) => addConstraint(tp1, tp2.dealias_*, fromBelow = false)
+            case TypeBounds(_, hi) => addConstraint(tp1, tp2.dealias, fromBelow = false)
             case _ => thirdTry(tp1, tp2)
           }
         }
@@ -359,7 +359,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   def fourthTry(tp1: Type, tp2: Type): Boolean = tp1 match {
     case tp1: TypeRef =>
       ((tp1.symbol eq NothingClass)
-        || (tp1.symbol eq NullClass) && tp2.dealiasedTypeSymbol.isNonValueClass
+        || (tp1.symbol eq NullClass) && tp2.dealias.typeSymbol.isNonValueClass
         || (tp1.info match {
               case TypeBounds(lo1, hi1) =>
                 isSubType(hi1, tp2) ||

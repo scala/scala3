@@ -184,7 +184,7 @@ object Inferencing {
     case tp: TypeRef if tp.symbol.isClass =>
       checkStable(tp.prefix, pos)
       tp.symbol.asClass
-    case /* _: RefinedType |*/ _: TypeVar | _: AnnotatedType =>
+    case _: TypeVar | _: AnnotatedType =>
       checkClassTypeWithStablePrefix(tp.asInstanceOf[TypeProxy].underlying, pos)
     case _ =>
       ctx.error(i"$tp is not a class type", pos)
