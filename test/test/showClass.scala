@@ -12,9 +12,7 @@ object showClass extends ShowClassTests {
 //      showPackage("scala.reflect")
 //      showPackage("scala.collection")
 
-    showPackage("dotty")
-    showPackage("scala")
-    println(s"${Symbols.stubs.length} stubs")
-    println(Symbols.stubs mkString " ")
+    showPackage("dotty", 1)
+    showPackage("scala", 18)
   }
 }

@@ -55,8 +55,11 @@ class ShowClassTests extends DottyTest {
     }
   }
 
-  def showPackage(path: String)(implicit ctx: Context): Unit = doTwice { implicit ctx =>
+  def showPackage(path: String, expectedStubs: Int)(implicit ctx: Context): Unit = doTwice { implicit ctx =>
     showPackage(ctx.requiredPackage(path))
+    val nstubs = Symbols.stubs.length
+    println(s"$nstubs stubs")
+    assert(nstubs == expectedStubs, s"stubs found $nstubs, expected: $expectedStubs")
   }
 
   def showClass(cls: Symbol)(implicit ctx: Context) = {
@@ -78,7 +81,7 @@ class ShowClassTests extends DottyTest {
     showClass(cls)
     showClass(cls.linkedClass)
   }
-
+/*
   @Test
   def loadSimpleClasses() = {
     showClasses("scala.Array")
@@ -87,7 +90,7 @@ class ShowClassTests extends DottyTest {
 
   @Test
   def loadJavaClasses() = {
-    showPackage("scala.tools.jline")
+    showPackage("scala.tools.jline", 0)
   }
 
   @Test
@@ -114,20 +117,21 @@ class ShowClassTests extends DottyTest {
   def loadScalaCollection() = {
     showPackage(ctx.requiredPackage("scala.collection"))
   }
-
+*/
   @Test
-  def loadClassWithPrivateInnerAndSubSelf() = {
-    showClasses("scala.tools.nsc.settings.ScalaSettings")
-    showClasses("scala.tools.jline.console.history.MemoryHistory")
+  def showScala() = {
+    showPackage("scala", 17)
   }
 
   @Test
   def loadDotty() = {
-    showPackage("dotty")
+    showPackage("dotty", 18)
   }
 
-  @Test
+
+  /*
+   * @Test
   def showReflectAliases() = { // tests for cycles during findMember
     showClasses("scala.reflect.macros.runtime.Aliases")
-  }
+  }*/
 }

@@ -5,6 +5,7 @@ import core._
 import Contexts._, Periods._, Symbols._
 import io.PlainFile
 import util.{SourceFile, NoSource, Stats, SimpleMap}
+import reporting.Reporter
 
 class Run(comp: Compiler)(implicit ctx: Context) {
 
@@ -28,8 +29,11 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     }
   }
 
-  def printSummary(): Unit = {
-    ctx.typerState.reporter.printSummary
+  /** Print summary; return # of errors encountered */
+  def printSummary(): Reporter = {
     Constraint.printMax()
+    val r = ctx.typerState.reporter
+    r.printSummary
+    r
   }
 }

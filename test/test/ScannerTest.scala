@@ -8,6 +8,11 @@ import org.junit.Test
 
 class ScannerTest extends DottyTest {
 
+  val blackList = List(
+      "/Users/odersky/workspace/scala/src/scaladoc/scala/tools/nsc/doc/html/page/Index.scala",
+      "/Users/odersky/workspace/scala/src/scaladoc/scala/tools/nsc/doc/html/page/Template.scala"
+    )
+
   def scan(name: String): Unit = scan(new PlainFile(name))
 
   def scan(file: PlainFile): Unit = {
@@ -26,8 +31,15 @@ class ScannerTest extends DottyTest {
   def scanDir(path: String): Unit = scanDir(Directory(path))
 
   def scanDir(dir: Directory): Unit = {
-    for (f <- dir.files)
-      if (f.name.endsWith(".scala")) scan(new PlainFile(f))
+    if (blackList contains dir.jfile.getAbsolutePath)
+      println(s"blacklisted package: ${dir.jfile.getAbsolutePath}")
+    else
+      for (f <- dir.files)
+        if (f.name.endsWith(".scala"))
+          if (blackList contains f.jfile.getAbsolutePath)
+            println(s"blacklisted file: ${f.jfile.getAbsolutePath}")
+          else
+            scan(new PlainFile(f))
     for (d <- dir.dirs)
       scanDir(d.path)
   }

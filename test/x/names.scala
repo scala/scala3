@@ -8,7 +8,7 @@ object Bar {
   def foo = 2
 }
 
-object Test {
+object Test123 {
 
   import Foo.foo
 
