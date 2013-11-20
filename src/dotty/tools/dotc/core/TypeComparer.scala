@@ -52,18 +52,12 @@ class TypeComparer(initctx: Context) extends DotClass {
    *  @pre `param` is in the constraint's domain
    */
   def addConstraint1(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
-      val pt = param.binder
-      val pnum = param.paramNum
-      val oldEntries = constraint(pt)
-      val oldBounds = oldEntries(pnum).asInstanceOf[TypeBounds]
+      val oldBounds = constraint.bounds(param)
       val newBounds =
         if (fromBelow) oldBounds.derivedTypeBounds(oldBounds.lo | bound, oldBounds.hi)
         else oldBounds.derivedTypeBounds(oldBounds.lo, oldBounds.hi & bound)
-      if (oldBounds ne newBounds) {
-        val newEntries = oldEntries.clone
-        newEntries(pnum) = newBounds
-        constraint = constraint.updated(pt, newEntries)
-      }
+      if (oldBounds ne newBounds)
+        constraint = constraint.updated(param, newBounds)
       isSubType(newBounds.lo, newBounds.hi)
     }
 

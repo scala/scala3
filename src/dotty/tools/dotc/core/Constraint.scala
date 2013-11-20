@@ -9,19 +9,19 @@ import printing.{Printer, Showable}
 import printing.Texts._
 
 /** Constraint over undetermined type parameters
- *  @param map  a map from PolyType to the type bounds that constrain the
- *              polytype's type parameters. A type parameter that does not
- *              have a constraint is represented by a `NoType` in the corresponding
- *              array entry.
+ *  @param myMap a map from PolyType to the type bounds that constrain the
+ *               polytype's type parameters. A type parameter that does not
+ *               have a constraint is represented by a `NoType` in the corresponding
+ *               array entry.
  */
-class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with Showable {
+class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal with Showable {
 
   /** Does the constraint's domain contain the type parameters of `pt`? */
-  def contains(pt: PolyType): Boolean = map(pt) != null
+  def contains(pt: PolyType): Boolean = myMap(pt) != null
 
   /** Does the constraint's domain contain the type parameter `param`? */
   def contains(param: PolyParam): Boolean = {
-    val entries = map(param.binder)
+    val entries = myMap(param.binder)
     entries != null && entries(param.paramNum).exists
   }
 
@@ -29,7 +29,7 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with 
    *  the constraint domain.
    */
   def at(param: PolyParam): Type = {
-    val entries = map(param.binder)
+    val entries = myMap(param.binder)
     if (entries == null) NoType else entries(param.paramNum)
   }
 
@@ -38,23 +38,35 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with 
    */
   def bounds(param: PolyParam): TypeBounds = at(param).asInstanceOf[TypeBounds]
 
-  /** The constraint for the type parameters of `pt`.
-   *  @pre  The polytype's type parameters are contained in the constraint's domain.
-   */
-  def apply(pt: PolyType): Array[Type] = map(pt)
-
   /** A new constraint which is derived from this constraint by adding or replacing
    *  the entries corresponding to `pt` with `entries`.
    */
-  def updated(pt: PolyType, entries: Array[Type]) = {
+  private def updateEntries(pt: PolyType, entries: Array[Type]): Constraint = {
     import Constraint._
-    val res = new Constraint(map.updated(pt, entries))
-    if (res.map.size > maxSize) {
-      maxSize = res.map.size
+    val res = new Constraint(myMap.updated(pt, entries))
+    if (res.myMap.size > maxSize) {
+      maxSize = res.myMap.size
       maxConstraint = res
     }
     res
   }
+
+  /** A new constraint which is derived from this constraint by updating
+   *  the the entry for parameter `param` to `tpe`.
+   *  @pre  `this contains param`.
+   */
+  def updated(param: PolyParam, tpe: Type): Constraint = {
+    val newEntries = myMap(param.binder).clone
+    newEntries(param.paramNum) = tpe
+    updateEntries(param.binder, newEntries)
+  }
+
+  /** A new constraint which is derived from this constraint by mapping
+   *  `op` over all entries of type `poly`.
+   *  @pre  `this contains poly`.
+   */
+  def transformed(poly: PolyType, op: Type => Type): Constraint =
+    updateEntries(poly, myMap(poly) map op)
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain.
@@ -62,23 +74,22 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with 
   def - (param: PolyParam)(implicit ctx: Context) = {
     val pt = param.binder
     val pnum = param.paramNum
-    val entries = map(pt)
+    val entries = myMap(pt)
     var noneLeft = true
     var i = 0
     while (noneLeft && (i < entries.length)) {
       noneLeft = (entries(i) eq NoType) || i == pnum
       i += 1
     }
-    if (noneLeft) new Constraint(map remove pt)
-    else {
-      val newEntries = entries.clone
-      newEntries(pnum) = NoType
-      updated(pt, newEntries)
-    }
+    if (noneLeft) new Constraint(myMap remove pt)
+    else updated(param, NoType)
   }
 
-  def +(pt: PolyType) =
-    updated(pt, pt.paramBounds.toArray)
+  /** A new constraint which is derived from this constraint by adding
+   *  entries for all type parameters of `poly`.
+   */
+  def +(poly: PolyType) =
+    updateEntries(poly, poly.paramBounds.toArray[Type])
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all occurrences
@@ -103,14 +114,14 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with 
       result
     }
 
-    new Constraint((this - param).map mapValues subst)
+    new Constraint((this - param).myMap mapValues subst)
   }
 
-  def domainPolys: List[PolyType] = map.keys
+  def domainPolys: List[PolyType] = myMap.keys
 
   def domainParams: List[PolyParam] =
     for {
-      (poly, entries) <- map.toList
+      (poly, entries) <- myMap.toList
       n <- 0 until entries.length
       if entries(n).exists
     } yield PolyParam(poly, n)

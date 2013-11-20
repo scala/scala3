@@ -275,8 +275,7 @@ object Inferencing {
       val tvars =
         for (n <- (0 until pt.paramNames.length).toList)
         yield new TypeVar(PolyParam(pt, n), state, owningTree)
-      state.constraint = state.constraint.updated(pt,
-        state.constraint(pt) map (_.substParams(pt, tvars)))
+      state.constraint = state.constraint.transformed(pt, _.substParams(pt, tvars))
       tvars
     }
 
