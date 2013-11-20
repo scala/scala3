@@ -598,9 +598,9 @@ trait Applications extends Compatibility { self: Typer =>
             ctx.maximizeType(unapplyArgType) match {
               case Some(tvar) =>
                 def msg =
-                  s"""There is no best instantiation of pattern type ${unapplyArgType.show}
-                     |that makes it a subtype of selector type ${pt.show}.
-                     |Non-variant type variable ${tvar.origin.show} cannot be uniquely instantiated.""".stripMargin
+                  i"""There is no best instantiation of pattern type $unapplyArgType
+                     |that makes it a subtype of selector type $pt.
+                     |Non-variant type variable ${tvar.origin} cannot be uniquely instantiated.""".stripMargin
                 if (fromScala2x) {
                 // We can't issue an error here, because in Scala 2, ::[B] is invariant
                 // whereas List[+T] is covariant. According to the strict rule, a pattern

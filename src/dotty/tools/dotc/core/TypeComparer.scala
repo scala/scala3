@@ -56,8 +56,9 @@ class TypeComparer(initctx: Context) extends DotClass {
       val pnum = param.paramNum
       val oldEntries = constraint(pt)
       val oldBounds = oldEntries(pnum).asInstanceOf[TypeBounds]
-      val constrBounds = if (fromBelow) TypeBounds.lower(bound) else TypeBounds.upper(bound)
-      val newBounds = oldBounds & constrBounds
+      val newBounds =
+        if (fromBelow) oldBounds.derivedTypeBounds(oldBounds.lo | bound, oldBounds.hi)
+        else oldBounds.derivedTypeBounds(oldBounds.lo, oldBounds.hi & bound)
       if (oldBounds ne newBounds) {
         val newEntries = oldEntries.clone
         newEntries(pnum) = newBounds

@@ -104,7 +104,7 @@ extends TyperState(reporter) {
   def checkConsistent(show: Showable => String = MutableTyperState.toStr): Unit = if (checkingEnabled) {
     def err(msg: String, what: Showable) = s"$msg: ${show(what)}\n${show(this)}"
     for (tvar <- undetVars)
-      assert(constraint(tvar.origin).exists, err("unconstrained type var", tvar.origin))
+      assert(constraint contains tvar.origin, err("unconstrained type var", tvar.origin))
     if (isCommittable) {
       val undetParams = undetVars map (_.origin)
       for (param <- constraint.domainParams)

@@ -19,6 +19,12 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with 
   /** Does the constraint's domain contain the type parameters of `pt`? */
   def contains(pt: PolyType): Boolean = map(pt) != null
 
+  /** Does the constraint's domain contain the type parameter `param`? */
+  def contains(param: PolyParam): Boolean = {
+    val entries = map(param.binder)
+    entries != null && entries(param.paramNum).exists
+  }
+
   /** The constraint for given type parameter `param`, or NoType if `param` is not part of
    *  the constraint domain.
    */
