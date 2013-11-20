@@ -72,7 +72,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     !frozenConstraint && {
       println(s"adding ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} to ${constraint.show}")
       bound match {
-        case bound: PolyParam if constraint(bound).exists =>
+        case bound: PolyParam if constraint contains bound =>
           addConstraint1(param, bound, fromBelow) &&
           addConstraint1(bound, param, !fromBelow)
         case _ =>
@@ -99,7 +99,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         }
       }
     }
-    val bounds = constraint(param).asInstanceOf[TypeBounds]
+    val bounds = constraint.bounds(param)
     val bound = if (fromBelow) bounds.lo else bounds.hi
     val inst = avoidParam(bound)
     println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
@@ -206,7 +206,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       case tp2: PolyParam =>
         tp2 == tp1 || {
           isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
-            constraint(tp2) match {
+            constraint at tp2 match {
               case TypeBounds(lo, _) => addConstraint(tp2, tp1.widen.dealias, fromBelow = true)
               case _ => secondTry(tp1, tp2)
             }
@@ -245,7 +245,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       (tp1 == tp2) || {
         isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
           assert(frozenConstraint || !(tp2 isRef defn.NothingClass)) // !!!DEBUG
-          constraint(tp1) match {
+          constraint at tp1 match {
             case TypeBounds(_, hi) => addConstraint(tp1, tp2.dealias, fromBelow = false)
             case _ => thirdTry(tp1, tp2)
           }
@@ -384,14 +384,14 @@ class TypeComparer(initctx: Context) extends DotClass {
   }
 
   /** The current bounds of type parameter `param` */
-  def bounds(param: PolyParam): TypeBounds = constraint(param) match {
+  def bounds(param: PolyParam): TypeBounds = constraint at param match {
     case bounds: TypeBounds => bounds
     case _ => param.binder.paramBounds(param.paramNum)
   }
 
   /** Defer constraining type variables when comnpared against prototypes */
   def isMatchedByProto(proto: ProtoType, tp: Type) = tp.stripTypeVar match {
-    case tp: PolyParam if constraint(tp).exists => true
+    case tp: PolyParam if constraint contains tp => true
     case _ => proto.isMatchedBy(tp)
   }
 

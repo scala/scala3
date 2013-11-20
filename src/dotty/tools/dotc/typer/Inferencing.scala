@@ -259,8 +259,8 @@ object Inferencing {
         if (v == 1) tvar.instantiate(fromBelow = false)
         else if (v == -1) tvar.instantiate(fromBelow = true)
         else {
-          val bounds @ TypeBounds(lo, hi) = ctx.typerState.constraint(tvar.origin)
-          if (!(hi <:< lo)) result = Some(tvar)
+          val bounds = ctx.typerState.constraint.bounds(tvar.origin)
+          if (!(bounds.hi <:< bounds.lo)) result = Some(tvar)
           tvar.instantiate(fromBelow = false)
         }
       result

@@ -28,10 +28,15 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with 
   /** The constraint for given type parameter `param`, or NoType if `param` is not part of
    *  the constraint domain.
    */
-  def apply(param: PolyParam): Type = {
+  def at(param: PolyParam): Type = {
     val entries = map(param.binder)
     if (entries == null) NoType else entries(param.paramNum)
   }
+
+  /** The constraint bounds for given type parameter `param`.
+   *  @pre `param` is not part of the constraint domain.
+   */
+  def bounds(param: PolyParam): TypeBounds = at(param).asInstanceOf[TypeBounds]
 
   /** The constraint for the type parameters of `pt`.
    *  @pre  The polytype's type parameters are contained in the constraint's domain.
@@ -116,7 +121,7 @@ class Constraint(val map: SimpleMap[PolyType, Array[Type]]) extends AnyVal with 
   def constraintText(indent: Int, printer: Printer): Text = {
     val assocs =
       for (param <- domainParams)
-      yield (" " * indent) ~ param.toText(printer) ~ this(param).toText(printer)
+      yield (" " * indent) ~ param.toText(printer) ~ at(param).toText(printer)
     Text(assocs, "\n")
   }
 
