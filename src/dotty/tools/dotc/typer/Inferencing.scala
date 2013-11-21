@@ -204,14 +204,30 @@ object Inferencing {
      *  If the constraint contains already some of these parameters in its domain,
      *  make a copy of the polytype and add the copy's type parameters instead.
      *  Return either the original polytype, or the copy, if one was made.
+     *  Also, if `owningTree` is non-empty, add a type variable for each parameter.
+     *  @return  The tracked polytype, and the list of created type variables.
      */
-    def track(pt: PolyType): PolyType = {
+    def track(pt: PolyType, owningTree: untpd.Tree): (PolyType, List[TypeVar]) = {
       val tracked =
         if (state.constraint contains pt) pt.copy(pt.paramNames, pt.paramBounds, pt.resultType)
         else pt
-      state.constraint = state.constraint + tracked
-      tracked
+      val tvars = if (owningTree.isEmpty) Nil else newTypeVars(tracked, owningTree)
+      state.constraint = state.constraint.add(tracked, tvars)
+      //if (!owningTree.isEmpty)
+      //  state.constraint = state.constraint.transformed(pt, _.substParams(pt, tvars))
+      (tracked, tvars)
     }
+
+    /** Create new type variables for the parameters of a poly type.
+     *  @param pos   The position of the new type variables (relevant for
+     *  interpolateUndetVars
+     */
+    private def newTypeVars(pt: PolyType, owningTree: untpd.Tree): List[TypeVar] =
+      for (n <- (0 until pt.paramNames.length).toList)
+      yield new TypeVar(PolyParam(pt, n), ctx.typerState, owningTree)
+
+    /**  Same as `track(pt, EmptyTree)`, but returns just the created polytype */
+    def track(pt: PolyType): PolyType = track(pt, EmptyTree)._1
 
     /** Interpolate those undetermined type variables in the widened type of this tree
      *  which are introduced by type application contained in the tree.
@@ -222,14 +238,14 @@ object Inferencing {
     def interpolateUndetVars(tree: Tree): Unit = Stats.track("interpolateUndetVars") {
       val tp = tree.tpe.widen
 
-      println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${ctx.typerState.undetVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
-      println(s"qualifying undet vars: ${ctx.typerState.undetVars filter qualifies map (_.show)}")
+      println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${ctx.typerState.uninstVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
+      println(s"qualifying undet vars: ${ctx.typerState.uninstVars filter qualifies map (_.show)}")
       println(s"fulltype: $tp") // !!! DEBUG
       println(s"constraint: ${ctx.typerState.constraint.show}")
 
       def qualifies(tvar: TypeVar) = tree contains tvar.owningTree
       val vs = tp.variances(tvar =>
-        (ctx.typerState.undetVars contains tvar) && qualifies(tvar))
+        (ctx.typerState.constraint contains tvar) && qualifies(tvar))
       println(s"variances = $vs")
       var changed = false
       for ((tvar, v) <- vs)
@@ -241,11 +257,12 @@ object Inferencing {
       if (changed)
         interpolateUndetVars(tree)
       else
-        for (tvar <- ctx.typerState.undetVars)
+        ctx.typerState.constraint.foreachUninstVar { tvar =>
           if (!(vs contains tvar) && qualifies(tvar)) {
             println(s"instantiating non-occurring $tvar in $tp")
             tvar.instantiate(fromBelow = true)
           }
+        }
     }
 
     /** Instantiate undetermined type variables to that type `tp` is
@@ -253,7 +270,7 @@ object Inferencing {
      *  typevar is not uniquely determined, return that typevar in a Some.
      */
     def maximizeType(tp: Type): Option[TypeVar] = Stats.track("maximizeType") {
-      val vs = tp.variances(tvar => ctx.typerState.undetVars contains tvar)
+      val vs = tp.variances(tvar => ctx.typerState.constraint contains tvar)
       var result: Option[TypeVar] = None
       for ((tvar, v) <- vs)
         if (v == 1) tvar.instantiate(fromBelow = false)
@@ -264,19 +281,6 @@ object Inferencing {
           tvar.instantiate(fromBelow = false)
         }
       result
-    }
-
-    /** Create new type variables for the parameters of a poly type.
-     *  @param pos   The position of the new type variables (relevant for
-     *  interpolateUndetVars
-     */
-    def newTypeVars(pt: PolyType, owningTree: untpd.Tree): List[TypeVar] = {
-      val state = ctx.typerState
-      val tvars =
-        for (n <- (0 until pt.paramNames.length).toList)
-        yield new TypeVar(PolyParam(pt, n), state, owningTree)
-      state.constraint = state.constraint.transformed(pt, _.substParams(pt, tvars))
-      tvars
     }
 
     def isSubTypes(actuals: List[Type], formals: List[Type])(implicit ctx: Context): Boolean = formals match {

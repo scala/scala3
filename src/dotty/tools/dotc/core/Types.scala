@@ -1998,18 +1998,11 @@ object Types {
      */
     private[core] var owningState = creatorState
 
-    assert(!(creatorState.undetVars contains this))
-    creatorState.undetVars += this
-
     /** The instance type of this variable, or NoType if the variable is currently
      *  uninstantiated
      */
     def instanceOpt(implicit ctx: Context): Type =
-      if (inst.exists) inst
-      else {
-        val i = ctx.typerState.instType(this)
-        if (i == null) NoType else i
-      }
+      if (inst.exists) inst else ctx.typerState.instType(this)
 
     /** Is the variable already instantiated? */
     def isInstantiated(implicit ctx: Context) = instanceOpt.exists
@@ -2018,10 +2011,9 @@ object Types {
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
       assert(tp ne this)
       println(s"instantiating ${this.show} with ${tp.show}") // !!!DEBUG
-      assert(ctx.typerState.undetVars contains this)
-      ctx.typerState.undetVars -= this
+      assert(ctx.typerState.constraint contains this) // !!! DEBUG
       if (ctx.typerState eq owningState) inst = tp
-      else ctx.typerState.instType = ctx.typerState.instType.updated(this, tp)
+      ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
     }
 
@@ -2041,7 +2033,7 @@ object Types {
         case _ => false
       }
       ctx.typerState.withCheckingDisabled {
-        var inst = ctx.typeComparer.approximate(origin, fromBelow)
+        var inst = ctx.typeComparer.approximation(origin, fromBelow)
         if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
           inst = inst.widen
         instantiateWith(inst.simplified)

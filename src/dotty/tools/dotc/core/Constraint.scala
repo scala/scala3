@@ -4,15 +4,18 @@ package core
 
 import Types._, Contexts._
 import util.SimpleMap
-import collection.mutable.ListBuffer
+import collection.mutable
 import printing.{Printer, Showable}
 import printing.Texts._
 
 /** Constraint over undetermined type parameters
- *  @param myMap a map from PolyType to the type bounds that constrain the
- *               polytype's type parameters. A type parameter that does not
- *               have a constraint is represented by a `NoType` in the corresponding
- *               array entry.
+ *  @param myMap a map from PolyType to arrays.
+ *               Each array contains twice the number of entries as there a type parameters
+ *               in the PolyType. The first half of the array contains the type bounds that constrain the
+ *               polytype's type parameters. The second half might contain type variables that
+ *               track the corresponding parameters, or is left empty (filled with nulls).
+ *               An instantiated type parameter is represented by having its instance type in
+ *               the corresponding array entry.
  */
 class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal with Showable {
 
@@ -24,6 +27,23 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
     val entries = myMap(param.binder)
     entries != null && entries(param.paramNum).exists
   }
+
+  /** Does this constraint contain the type variable `tvar` and is it uninstantiated? */
+  def contains(tvar: TypeVar): Boolean = {
+    val origin = tvar.origin
+    val entries = myMap(origin.binder)
+    val pnum = origin.paramNum
+    entries != null && isBounds(entries(pnum)) && (typeVar(entries, pnum) eq tvar)
+  }
+
+  /** The number of type parameters in the given entry array */
+  private def paramCount(entries: Array[Type]) = entries.length >> 1
+
+  /** The type variable corresponding to parameter numbered `n`, null if none was created */
+  private def typeVar(entries: Array[Type], n: Int): Type =
+    entries(paramCount(entries) + n)
+
+  private def isBounds(tp: Type) = tp.isInstanceOf[TypeBounds]
 
   /** The constraint for given type parameter `param`, or NoType if `param` is not part of
    *  the constraint domain.
@@ -52,7 +72,7 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
   }
 
   /** A new constraint which is derived from this constraint by updating
-   *  the the entry for parameter `param` to `tpe`.
+   *  the entry for parameter `param` to `tpe`.
    *  @pre  `this contains param`.
    */
   def updated(param: PolyParam, tpe: Type): Constraint = {
@@ -68,38 +88,39 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
   def transformed(poly: PolyType, op: Type => Type): Constraint =
     updateEntries(poly, myMap(poly) map op)
 
-  /** A new constraint which is derived from this constraint by removing
-   *  the type parameter `param` from the domain.
+  /** A new constraint with all entries coming from `pt` removed. */
+  def remove(pt: PolyType) = new Constraint(myMap remove pt)
+
+  /** Is entry associated with `pt` removable?
+   *  @param removedParam The index of a parameter which is still present in the
+   *                      entry array, but is going to be removed at the same step,
+   *                      or -1 if no such parameter exists.
    */
-  def - (param: PolyParam)(implicit ctx: Context) = {
-    val pt = param.binder
-    val pnum = param.paramNum
+  def isRemovable(pt: PolyType, removedParam: Int = -1): Boolean = {
     val entries = myMap(pt)
     var noneLeft = true
-    var i = 0
-    while (noneLeft && (i < entries.length)) {
-      noneLeft = (entries(i) eq NoType) || i == pnum
-      i += 1
+    var i = paramCount(entries)
+    while (noneLeft && i > 0) {
+      i -= 1
+      if (i != removedParam && isBounds(entries(i))) noneLeft = false
+      else typeVar(entries, i) match {
+        case tv: TypeVar =>
+          if (!tv.inst.exists) noneLeft = false // need to keep line around to compute instType
+        case _ =>
+      }
     }
-    if (noneLeft) new Constraint(myMap remove pt)
-    else updated(param, NoType)
+    noneLeft
   }
-
-  /** A new constraint which is derived from this constraint by adding
-   *  entries for all type parameters of `poly`.
-   */
-  def +(poly: PolyType) =
-    updateEntries(poly, poly.paramBounds.toArray[Type])
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all occurrences
    *  of the parameter elsewhere in the constraint by type `tp`.
    */
-  def replace(param: PolyParam, tp: Type)(implicit ctx: Context) = {
+  def replace(param: PolyParam, tp: Type)(implicit ctx: Context): Constraint = {
     def subst(entries: Array[Type]) = {
       var result = entries
       var i = 0
-      while (i < entries.length) {
+      while (i < paramCount(entries)) {
         entries(i) match {
           case oldBounds: TypeBounds =>
             val newBounds = oldBounds.substParam(param, tp)
@@ -113,18 +134,59 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
       }
       result
     }
-
-    new Constraint((this - param).myMap mapValues subst)
+    val pt = param.binder
+    val constr1 = if (isRemovable(pt, param.paramNum)) remove(pt) else updated(param, tp)
+    new Constraint(constr1.myMap mapValues subst)
   }
 
+
+  /** A new constraint which is derived from this constraint by adding
+   *  entries for all type parameters of `poly`.
+   */
+  def add(poly: PolyType, tvars: List[TypeVar] = Nil): Constraint = {
+    val nparams = poly.paramNames.length
+    val entries = new Array[Type](nparams * 2)
+    poly.paramBounds.copyToArray(entries, 0)
+    tvars.copyToArray(entries, nparams)
+    updateEntries(poly, entries)
+  }
+
+  /** The polytypes constrained by this constraint */
   def domainPolys: List[PolyType] = myMap.keys
 
+  /** The polytype parameters constrained by this constraint */
   def domainParams: List[PolyParam] =
     for {
       (poly, entries) <- myMap.toList
-      n <- 0 until entries.length
-      if entries(n).exists
+      n <- 0 until paramCount(entries)
+      if isBounds(entries(n))
     } yield PolyParam(poly, n)
+
+  /** Perform operation `op` on all typevars, or only on uninstantiated
+   *  typevars, depending on whether `uninstOnly` is set or not.
+   */
+  def foreachTypeVar(op: TypeVar => Unit, uninstOnly: Boolean = false): Unit = myMap.foreachKey { poly =>
+    val entries = myMap(poly)
+    for (i <- 0 until paramCount(entries)) {
+      def qualifies(tv: TypeVar) =
+        if (uninstOnly) isBounds(entries(i)) else !tv.inst.exists
+      typeVar(entries, i) match {
+        case tv: TypeVar if qualifies(tv) => op(tv)
+        case _ =>
+      }
+    }
+  }
+
+  /** Perform operation `op` on all uninstantiated typevars.
+   */
+   def foreachUninstVar(op: TypeVar => Unit): Unit = foreachTypeVar(op, uninstOnly = true)
+
+  /** The uninstantiated typevars of this constraint */
+  def uninstVars: collection.Seq[TypeVar] = {
+    val buf = new mutable.ArrayBuffer[TypeVar]
+    foreachUninstVar(buf += _)
+    buf
+  }
 
   def constrainedTypesText(printer: Printer): Text =
     Text(domainPolys map (_.toText(printer)), ", ")

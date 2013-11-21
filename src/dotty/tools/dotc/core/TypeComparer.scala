@@ -79,12 +79,11 @@ class TypeComparer(initctx: Context) extends DotClass {
    *  otherwise it is approximated by its upper bound. However, any occurrences
    *  of the parameter in a refinement somewhere in the bound are removed.
    *  (Such occurrences can arise for F-bounded types).
-   *  The type parameter is removed from the constraint's domain and all its
-   *  occurrences are replaced by its approximation.
+   *  The constraint is left unchanged.
    *  @return the instantiating type
    *  @pre `param` is associated with type bounds in the current constraint.
    */
-  def approximate(param: PolyParam, fromBelow: Boolean): Type = {
+  def approximation(param: PolyParam, fromBelow: Boolean): Type = {
     val avoidParam = new TypeMap {
       override def apply(tp: Type) = mapOver {
         tp match {
@@ -97,7 +96,6 @@ class TypeComparer(initctx: Context) extends DotClass {
     val bound = if (fromBelow) bounds.lo else bounds.hi
     val inst = avoidParam(bound)
     println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
-    constraint = constraint.replace(param, inst)
     inst
   }
 
