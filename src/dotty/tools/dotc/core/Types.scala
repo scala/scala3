@@ -731,7 +731,7 @@ object Types {
     /** This type seen as a TypeBounds */
     final def bounds(implicit ctx: Context): TypeBounds = this match {
       case tp: TypeBounds => tp
-      case ci: ClassInfo => TypeAlias(ci.typeConstructor)
+      case ci: ClassInfo => TypeAlias(ci.typeRef)
       case wc: WildcardType =>
         wc.optBounds match {
           case bounds: TypeBounds => bounds
@@ -961,7 +961,7 @@ object Types {
      */
     def translateParameterized(from: ClassSymbol, to: ClassSymbol)(implicit ctx: Context): Type =
       if (this derivesFrom from)
-        RefinedType(to.typeConstructor, to.typeParams.head.name, member(from.typeParams.head.name).info)
+        RefinedType(to.typeRef, to.typeParams.head.name, member(from.typeParams.head.name).info)
       else this
 
     /** If this is an encoding of a (partially) applied type, return its arguments,
@@ -2080,7 +2080,7 @@ object Types {
       selfInfo: DotClass /* should be: Type | Symbol */) extends CachedGroundType with TypeType {
 
     def selfType(implicit ctx: Context): Type = selfInfo match {
-      case NoType => cls.typeConstructor
+      case NoType => cls.typeRef
       case self: Symbol => self.info
       case tp: Type => tp
     }
@@ -2091,7 +2091,7 @@ object Types {
 
     private var tyconCache: Type = null
 
-    def typeConstructor(implicit ctx: Context): Type = {
+    def typeRef(implicit ctx: Context): Type = {
       def clsDenot = if (prefix eq cls.owner.thisType) cls.denot else cls.denot.copySymDenotation(info = this)
       if (tyconCache == null)
         tyconCache =
@@ -2195,7 +2195,7 @@ object Types {
      *  @see Definitions.hkTrait
      */
     def higherKinded(boundSyms: List[Symbol])(implicit ctx: Context) = {
-      val parent = defn.hkTrait(boundSyms map (_.variance)).typeConstructor
+      val parent = defn.hkTrait(boundSyms map (_.variance)).typeRef
       val hkParamNames = boundSyms.indices.toList map tpnme.higherKindedParamName
       def substBoundSyms(tp: Type)(rt: RefinedType): Type =
         tp.subst(boundSyms, hkParamNames map (TypeRef(RefinedThis(rt), _)))
@@ -2311,7 +2311,7 @@ object Types {
           case _ => false
         }
         val noParamsNeeded = (tp.cls is Trait) || zeroParams(tp.cls.primaryConstructor.info)
-        val selfTypeFeasible = tp.typeConstructor <:< tp.selfType
+        val selfTypeFeasible = tp.typeRef <:< tp.selfType
         noParamsNeeded && selfTypeFeasible
       case tp: RefinedType =>
         isInstantiatable(tp.underlying)

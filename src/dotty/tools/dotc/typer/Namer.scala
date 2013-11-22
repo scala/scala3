@@ -423,7 +423,7 @@ class Namer { typer: Typer =>
     if (isConstructor) {
       // set result type tree to unit, but set the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
-      wrapMethType(sym.owner.typeConstructor.appliedTo(typeParams map (_.symRef)))
+      wrapMethType(sym.owner.typeRef.appliedTo(typeParams map (_.symRef)))
     }
     else valOrDefDefSig(ddef, sym, wrapMethType)
   }

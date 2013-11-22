@@ -206,7 +206,7 @@ trait Symbols { this: Context =>
 
   /** Create a class constructor symbol for given class `cls`. */
   def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
-    newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes)(_ => cls.typeConstructor), privateWithin, coord)
+    newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes)(_ => cls.typeRef), privateWithin, coord)
 
   /** Create an empty default constructor symbol for given class `cls`. */
   def newDefaultConstructor(cls: ClassSymbol) =
@@ -463,7 +463,7 @@ object Symbols {
 
     override def superId(implicit ctx: Context): Int = {
       val hint = superIdHint
-      val key = this.typeConstructor
+      val key = this.typeRef
       if (hint >= 0 && hint <= ctx.lastSuperId && (ctx.classOfId(hint) eq key))
         hint
       else {

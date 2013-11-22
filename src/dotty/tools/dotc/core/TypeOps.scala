@@ -146,7 +146,7 @@ trait TypeOps { this: Context =>
       case tp: TypeRef =>
         tp
       case ErrorType =>
-        defn.AnyClass.typeConstructor
+        defn.AnyClass.typeRef
       case _ =>
         throw new TypeError(s"unexpected parent type: $tp")
     }

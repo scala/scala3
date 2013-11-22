@@ -37,7 +37,7 @@ object Erasure {
       val sym = tp.symbol
       if (sym.isClass)
         /*if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tref)
-        else */if (sym.owner is Package) normalizeClass(sym.asClass).typeConstructor
+        else */if (sym.owner is Package) normalizeClass(sym.asClass).typeRef
         else tp.derivedSelect(erasure(tp.prefix))
       else erasure(tp.info)
     case tp: RefinedType =>
@@ -60,7 +60,7 @@ object Erasure {
     case tp @ ClassInfo(pre, cls, classParents, decls, _) =>
       val parents: List[TypeRef] =
         if (cls == defn.ObjectClass || cls.isPrimitiveValueClass) Nil
-        else if (cls == defn.ArrayClass) defn.ObjectClass.typeConstructor :: Nil
+        else if (cls == defn.ArrayClass) defn.ObjectClass.typeRef :: Nil
         else removeLaterObjects(classParents mapConserve (erasure(_).asInstanceOf[TypeRef]))
       tp.derivedClassInfo(erasure(pre), parents, NoType)
     case ErrorType =>

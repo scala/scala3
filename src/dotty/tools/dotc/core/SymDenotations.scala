@@ -634,7 +634,7 @@ object SymDenotations {
     /** The named typeref representing the type constructor for this type.
      *  @throws ClassCastException is this is not a type
      */
-    def typeConstructor(implicit ctx: Context): TypeRef =
+    def typeRef(implicit ctx: Context): TypeRef =
       if ((this is PackageClass) || owner.isTerm) symTypeRef
       else TypeRef(owner.thisType, name.asTypeName).withDenot(this)
 
@@ -779,8 +779,8 @@ object SymDenotations {
 
     private[this] var myTypeConstructor: TypeRef = null
 
-    override def typeConstructor(implicit ctx: Context): TypeRef = {
-      if (myTypeConstructor == null) myTypeConstructor = super.typeConstructor
+    override def typeRef(implicit ctx: Context): TypeRef = {
+      if (myTypeConstructor == null) myTypeConstructor = super.typeRef
       myTypeConstructor
     }
 
@@ -1003,7 +1003,7 @@ object SymDenotations {
 
       ctx.debugTraceIndented(s"$tp.baseType($this)") {
         if (symbol.isStatic && tp.derivesFrom(symbol))
-          symbol.typeConstructor
+          symbol.typeRef
         else tp match {
           case tp: CachedType =>
             if (baseTypeValid != ctx.runId) {

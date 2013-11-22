@@ -148,7 +148,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def SeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
     untpd.SeqLiteral(elems)
-      .withType(defn.SeqClass.typeConstructor.appliedTo(ctx.typeComparer.lub(elems.tpes)))
+      .withType(defn.SeqClass.typeRef.appliedTo(ctx.typeComparer.lub(elems.tpes)))
       .checked
 
   def SeqLiteral(tpe: Type, elems: List[Tree])(implicit ctx: Context): SeqLiteral = {
@@ -160,7 +160,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def JavaSeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
     new untpd.JavaSeqLiteral(elems)
-      .withType(defn.ArrayClass.typeConstructor.appliedTo(ctx.typeComparer.lub(elems.tpes)))
+      .withType(defn.ArrayClass.typeRef.appliedTo(ctx.typeComparer.lub(elems.tpes)))
       .checked
 
   def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
@@ -225,7 +225,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val (tparams, mtp) = sym.info match {
       case tp: PolyType =>
         val tparams = ctx.newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateBounds)
-        (tparams, tp.instantiate(tparams map (_.typeConstructor)))
+        (tparams, tp.instantiate(tparams map (_.typeRef)))
       case tp => (Nil, tp)
     }
 
@@ -346,7 +346,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val modcls = sym.moduleClass.asClass
     val constr = DefDef(modcls.primaryConstructor.asTerm, EmptyTree)
     val clsdef = ClassDef(modcls, constr, body)
-    val valdef = ValDef(sym, New(modcls.typeConstructor))
+    val valdef = ValDef(sym, New(modcls.typeRef))
     Thicket(valdef, clsdef)
   }
 

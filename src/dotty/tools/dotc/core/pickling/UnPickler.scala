@@ -781,7 +781,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     val end = readNat() + readIndex
     // array elements are trees representing instances of scala.annotation.Annotation
     SeqLiteral(
-      defn.SeqType.appliedTo(defn.AnnotationClass.typeConstructor :: Nil),
+      defn.SeqType.appliedTo(defn.AnnotationClass.typeRef :: Nil),
       until(end, () => readClassfileAnnotArg(readNat())))
   }
 

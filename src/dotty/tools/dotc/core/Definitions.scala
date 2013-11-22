@@ -144,9 +144,9 @@ class Definitions(implicit ctx: Context) {
   lazy val NotNullClass = requiredClass("scala.NotNull")
 
   lazy val NothingClass: ClassSymbol = newCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeConstructor))
+    ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
   lazy val NullClass: ClassSymbol = newCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Null, AbstractFinal, List(AnyRefAlias.typeConstructor))
+    ScalaPackageClass, tpnme.Null, AbstractFinal, List(AnyRefAlias.typeRef))
 
   lazy val PredefModule = requiredModule("scala.Predef")
   lazy val NilModule = requiredModule("scala.collection.immutable.Nil")
@@ -157,7 +157,7 @@ class Definitions(implicit ctx: Context) {
     // but does not define it as an explicit class.
     newCompleteClassSymbol(
       ScalaPackageClass, tpnme.Singleton, Trait | Interface | Final,
-      List(AnyClass.typeConstructor), EmptyScope)
+      List(AnyClass.typeRef), EmptyScope)
   lazy val SeqClass: ClassSymbol = requiredClass("scala.collection.Seq")
   lazy val ArrayClass: ClassSymbol = requiredClass("scala.Array")
   lazy val uncheckedStableClass: ClassSymbol = requiredClass("scala.annotation.unchecked.uncheckedStable")
@@ -235,35 +235,35 @@ class Definitions(implicit ctx: Context) {
   def methOfAnyRef(tp: Type) = MethodType(List(AnyRefType), tp)
 
   // Derived types
-  def AnyType: Type = AnyClass.typeConstructor
-  def AnyValType: Type = AnyValClass.typeConstructor
-  def ObjectType: Type = ObjectClass.typeConstructor
-  def AnyRefType: Type = AnyRefAlias.typeConstructor
-  def NotNullType: Type = NotNullClass.typeConstructor
-  def NothingType: Type = NothingClass.typeConstructor
-  def NullType: Type = NullClass.typeConstructor
-  def SeqType: Type = SeqClass.typeConstructor
-  def ArrayType: Type = ArrayClass.typeConstructor
+  def AnyType: Type = AnyClass.typeRef
+  def AnyValType: Type = AnyValClass.typeRef
+  def ObjectType: Type = ObjectClass.typeRef
+  def AnyRefType: Type = AnyRefAlias.typeRef
+  def NotNullType: Type = NotNullClass.typeRef
+  def NothingType: Type = NothingClass.typeRef
+  def NullType: Type = NullClass.typeRef
+  def SeqType: Type = SeqClass.typeRef
+  def ArrayType: Type = ArrayClass.typeRef
   def ObjectArrayType = ArrayType.appliedTo(ObjectType)
 
-  def UnitType: Type = UnitClass.typeConstructor
-  def BooleanType: Type = BooleanClass.typeConstructor
-  def ByteType: Type = ByteClass.typeConstructor
-  def ShortType: Type = ShortClass.typeConstructor
-  def CharType: Type = CharClass.typeConstructor
-  def IntType: Type = IntClass.typeConstructor
-  def LongType: Type = LongClass.typeConstructor
-  def FloatType: Type = FloatClass.typeConstructor
-  def DoubleType: Type = DoubleClass.typeConstructor
-  def PairType: Type = PairClass.typeConstructor
-  def StringType: Type = StringClass.typeConstructor
-  def RepeatedParamType = RepeatedParamClass.typeConstructor
-  def JavaRepeatedParamType = JavaRepeatedParamClass.typeConstructor
-  def ThrowableType = ThrowableClass.typeConstructor
-  def OptionType = OptionClass.typeConstructor
+  def UnitType: Type = UnitClass.typeRef
+  def BooleanType: Type = BooleanClass.typeRef
+  def ByteType: Type = ByteClass.typeRef
+  def ShortType: Type = ShortClass.typeRef
+  def CharType: Type = CharClass.typeRef
+  def IntType: Type = IntClass.typeRef
+  def LongType: Type = LongClass.typeRef
+  def FloatType: Type = FloatClass.typeRef
+  def DoubleType: Type = DoubleClass.typeRef
+  def PairType: Type = PairClass.typeRef
+  def StringType: Type = StringClass.typeRef
+  def RepeatedParamType = RepeatedParamClass.typeRef
+  def JavaRepeatedParamType = JavaRepeatedParamClass.typeRef
+  def ThrowableType = ThrowableClass.typeRef
+  def OptionType = OptionClass.typeRef
 
   def ClassType(arg: Type)(implicit ctx: Context) = {
-    val ctype = ClassClass.typeConstructor
+    val ctype = ClassClass.typeRef
     if (ctx.phase.erasedTypes) ctype else ctype.appliedTo(arg)
   }
 
@@ -273,11 +273,11 @@ class Definitions(implicit ctx: Context) {
     //  - sym: the symbol of the actual enumeration value (VAL1)
     //  - .owner: the ModuleClassSymbol of the enumeration (object E)
     //  - .linkedClass: the ClassSymbol of the enumeration (class E)
-    sym.owner.linkedClass.typeConstructor
+    sym.owner.linkedClass.typeRef
 
   object FunctionType {
     def apply(args: List[Type], resultType: Type) =
-      FunctionClass(args.length).typeConstructor.appliedTo(args :+ resultType)
+      FunctionClass(args.length).typeRef.appliedTo(args :+ resultType)
     def unapply(ft: Type) = {
       val tsym = ft.typeSymbol
       lazy val targs = ft.typeArgs
@@ -362,7 +362,7 @@ class Definitions(implicit ctx: Context) {
         val paramDecls = newScope
         for ((v, i) <- vcs.zipWithIndex)
           newTypeParam(cls, tpnme.higherKindedParamName(i), varianceFlags(v), paramDecls)
-        denot.info = ClassInfo(ScalaPackageClass.thisType, cls, List(ObjectClass.typeConstructor), paramDecls)
+        denot.info = ClassInfo(ScalaPackageClass.thisType, cls, List(ObjectClass.typeRef), paramDecls)
       }
     }
 
@@ -657,8 +657,8 @@ class Definitions(implicit ctx: Context) {
 
     // convenient one-argument parameter lists
     lazy val anyparam     = List(AnyClass.tpe)
-    lazy val anyvalparam  = List(AnyValClass.typeConstructor)
-    lazy val anyrefparam  = List(AnyRefClass.typeConstructor)
+    lazy val anyvalparam  = List(AnyValClass.typeRef)
+    lazy val anyrefparam  = List(AnyRefClass.typeRef)
 
     // private parameter conveniences
     private def booltype    = BooleanClass.tpe
@@ -1205,7 +1205,7 @@ class Definitions(implicit ctx: Context) {
     /** Given type U, creates a Type representing Class[_ <: U].
      */
     def boundedClassType(upperBound: Type) =
-      appliedTypeAsUpperBounds(ClassClass.typeConstructor, List(upperBound))
+      appliedTypeAsUpperBounds(ClassClass.typeRef, List(upperBound))
 
     /** To avoid unchecked warnings on polymorphic classes, translate
      *  a Foo[T] into a Foo[_] for use in the pattern matcher.
@@ -1262,7 +1262,7 @@ class Definitions(implicit ctx: Context) {
     // java.lang.Object.  Java also special cases the return type.
     lazy val Any_getClass     = enterNewMethod(AnyClass, nme.getClass_, Nil, requiredMethod(ObjectClass, nme.getClass_).tpe.resultType, DEFERRED)
     lazy val Any_isInstanceOf = newT1NullaryMethod(AnyClass, nme.isInstanceOf_, Final)(_ => BooleanType)
-    lazy val Any_asInstanceOf = newT1NullaryMethod(AnyClass, nme.asInstanceOf_, Final)(_.typeConstructor)
+    lazy val Any_asInstanceOf = newT1NullaryMethod(AnyClass, nme.asInstanceOf_, Final)(_.typeRef)
 
   // A type function from T => Class[U], used to determine the return
     // type of getClass calls.  The returned type is:
@@ -1692,7 +1692,7 @@ class Definitions(implicit ctx: Context) {
       // TODO: set type bounds manually (-> MulticastDelegate), see newTypeParam
       val newCaller = enterNewMethod(DelegateClass, name, paramTypes, delegateType, Final | STATIC)
       // val newCaller = newPolyMethod(DelegateClass, name,
-      // tparam => MethodType(paramTypes, tparam.typeConstructor)) setFlag (Final | STATIC)
+      // tparam => MethodType(paramTypes, tparam.typeRef)) setFlag (Final | STATIC)
       Delegate_scalaCallers = Delegate_scalaCallers ::: List(newCaller)
       nbScalaCallers += 1
       newCaller

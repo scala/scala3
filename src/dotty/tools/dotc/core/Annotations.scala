@@ -37,7 +37,7 @@ object Annotations {
       apply(cls, arg1 :: arg2 :: Nil)
 
     def apply(cls: ClassSymbol, args: List[Tree])(implicit ctx: Context): Annotation =
-      apply(cls.typeConstructor, args)
+      apply(cls.typeRef, args)
 
     def apply(atp: Type, arg: Tree)(implicit ctx: Context): Annotation =
       apply(atp, arg :: Nil)
@@ -58,11 +58,11 @@ object Annotations {
       apply(defn.AliasAnnot, List(Ident(TermRef.withSig(sym.owner.thisType, sym.name, sym.signature).withDenot(sym))))
 
     def makeChild(sym: Symbol)(implicit ctx: Context) =
-      apply(defn.ChildAnnot.typeConstructor.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
+      apply(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
   }
 
   def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context) = {
-    val tref = cls.symTypeRef
-    Annotation(defn.ThrowsAnnot.typeConstructor.appliedTo(tref), Ident(tref))
+    val tref = cls.typeRef
+    Annotation(defn.ThrowsAnnot.typeRef.appliedTo(tref), Ident(tref))
   }
 }

@@ -101,11 +101,11 @@ class ClassfileParser(
     /** Parse parents for Java classes. For Scala, return AnyRef, since the real type will be unpickled.
      *  Updates the read pointer of 'in'. */
     def parseParents: List[Type] = {
-      val superType = if (isAnnotation) { in.nextChar; defn.AnnotationClass.typeConstructor }
-                      else pool.getSuperClass(in.nextChar).typeConstructor
+      val superType = if (isAnnotation) { in.nextChar; defn.AnnotationClass.typeRef }
+                      else pool.getSuperClass(in.nextChar).typeRef
       val ifaceCount = in.nextChar
-      var ifaces = for (i <- List.range(0, ifaceCount)) yield pool.getSuperClass(in.nextChar).typeConstructor
-      if (isAnnotation) ifaces = defn.ClassfileAnnotationClass.typeConstructor :: ifaces
+      var ifaces = for (i <- List.range(0, ifaceCount)) yield pool.getSuperClass(in.nextChar).typeRef
+      if (isAnnotation) ifaces = defn.ClassfileAnnotationClass.typeRef :: ifaces
       superType :: ifaces
     }
 
@@ -190,7 +190,7 @@ class ClassfileParser(
          */
         def normalizeConstructorInfo() = {
           val mt @ MethodType(paramnames, paramtypes) = denot.info
-          val rt = classRoot.typeConstructor appliedTo (classRoot.typeParams map (_.symRef))
+          val rt = classRoot.typeRef appliedTo (classRoot.typeParams map (_.symRef))
           denot.info = mt.derivedMethodType(paramnames, paramtypes, rt)
           addConstructorTypeParams(denot)
         }
@@ -283,12 +283,12 @@ class ClassfileParser(
           }
 
           val classSym = classNameToSymbol(subName(c => c == ';' || c == '<'))
-          var tpe = processClassType(processInner(classSym.typeConstructor))
+          var tpe = processClassType(processInner(classSym.typeRef))
           while (sig(index) == '.') {
             accept('.')
             val name = subName(c => c == ';' || c == '<' || c == '.').toTypeName
             val clazz = tpe.member(name).symbol
-            tpe = processClassType(processInner(clazz.typeConstructor))
+            tpe = processClassType(processInner(clazz.typeRef))
           }
           accept(';')
           tpe
@@ -321,7 +321,7 @@ class ClassfileParser(
           val n = subName(';'.==).toTypeName
           index += 1
           //assert(tparams contains n, s"classTparams = $classTParams, tparams = $tparams, key = $n")
-          if (skiptvs) defn.AnyType else tparams(n).typeConstructor
+          if (skiptvs) defn.AnyType else tparams(n).typeRef
       }
     } // sig2type(tparams, skiptvs)
 
@@ -867,11 +867,11 @@ class ClassfileParser(
         } else {
           val sym = classNameToSymbol(name)
           values(index) = sym
-          c = sym.typeConstructor
+          c = sym.typeRef
         }
       } else c = value match {
           case tp: Type => tp
-          case cls: Symbol => cls.typeConstructor
+          case cls: Symbol => cls.typeRef
       }
       c
     }
@@ -907,7 +907,7 @@ class ClassfileParser(
       }
       value match {
         case  ct: Constant => ct
-        case cls: Symbol   => Constant(cls.typeConstructor)
+        case cls: Symbol   => Constant(cls.typeRef)
         case arr: Type     => Constant(arr)
       }
     }

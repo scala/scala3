@@ -472,7 +472,7 @@ class Typer extends Namer with Applications with Implicits {
     val untpd.Function(args, body) = tree
     if (ctx.mode is Mode.Type)
       typed(cpy.AppliedTypeTree(tree,
-        ref(defn.FunctionClass(args.length).typeConstructor), args :+ body), pt)
+        ref(defn.FunctionClass(args.length).typeRef), args :+ body), pt)
     else {
       val params = args.asInstanceOf[List[ValDef]]
       val protoFormals: List[Type] = pt match {
@@ -710,7 +710,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree = track("typedAnnotation") {
-    typed(annot, defn.AnnotationClass.typeConstructor)
+    typed(annot, defn.AnnotationClass.typeRef)
   }
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = track("typedValDef") {
@@ -768,7 +768,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = track("typedAnnotated") {
-    val annot1 = typed(tree.annot, defn.AnnotationClass.typeConstructor)
+    val annot1 = typed(tree.annot, defn.AnnotationClass.typeRef)
     val arg1 = typed(tree.arg, pt)
     val ownType = AnnotatedType(Annotation(annot1), arg1.tpe)
     if (ctx.mode is Mode.Type)

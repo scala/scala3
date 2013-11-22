@@ -333,7 +333,7 @@ class TypeComparer(initctx: Context) extends DotClass {
           ((v > 0) || (lo2 isRef NothingClass) || isSubType(lo2, lo1)) &&
           ((v < 0) || (hi2 isRef AnyClass) || isSubType(hi1, hi2))
         case tp1: ClassInfo =>
-          val tt = tp1.typeConstructor // was typeTemplate
+          val tt = tp1.typeRef
           isSubType(lo2, tt) && isSubType(tt, hi2)
         case _ =>
           false

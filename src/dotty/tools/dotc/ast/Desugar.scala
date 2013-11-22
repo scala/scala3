@@ -175,7 +175,7 @@ object desugar {
       }
       else Nil
 
-    def anyRef = ref(defn.AnyRefAlias.typeConstructor)
+    def anyRef = ref(defn.AnyRefAlias.typeRef)
     def parentConstr(tpt: Tree) = Select(New(tpt), nme.CONSTRUCTOR)
 
     val parents1 = if (parents.isEmpty) parentConstr(anyRef) :: Nil else parents
@@ -314,7 +314,7 @@ object desugar {
   }
 
   def makeAnnotated(cls: Symbol, tree: Tree)(implicit ctx: Context) =
-    Annotated(TypedSplice(tpd.New(cls.typeConstructor)), tree)
+    Annotated(TypedSplice(tpd.New(cls.typeRef)), tree)
 
   private def derivedValDef(mods: Modifiers, named: NameTree, tpt: Tree, rhs: Tree) =
     ValDef(mods, named.name.asTermName, tpt, rhs).withPos(named.pos)
@@ -509,7 +509,7 @@ object desugar {
     // begin desugar
     tree match {
       case SymbolLit(str) =>
-        New(ref(defn.SymbolClass.typeConstructor), (Literal(Constant(str)) :: Nil) :: Nil)
+        New(ref(defn.SymbolClass.typeRef), (Literal(Constant(str)) :: Nil) :: Nil)
       case InterpolatedString(id, strs, elems) =>
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
@@ -528,7 +528,7 @@ object desugar {
         }
       case PrefixOp(op, t) =>
         if ((ctx.mode is Mode.Type) && op == nme.ARROWkw)
-          AppliedTypeTree(ref(defn.ByNameParamClass.typeConstructor), t)
+          AppliedTypeTree(ref(defn.ByNameParamClass.typeRef), t)
         else
           Select(t, nme.UNARY_PREFIX ++ op)
       case Parens(t) =>
@@ -536,7 +536,7 @@ object desugar {
       case Tuple(ts) =>
         if (unboxedPairs) {
           def PairTypeTree(l: Tree, r: Tree) =
-            AppliedTypeTree(ref(defn.PairClass.typeConstructor), l :: r :: Nil)
+            AppliedTypeTree(ref(defn.PairClass.typeRef), l :: r :: Nil)
           if (ctx.mode is Mode.Type) ts.reduceRight(PairTypeTree)
           else if (ts.isEmpty) unitLiteral
           else ts.reduceRight(Pair(_, _))
@@ -549,7 +549,7 @@ object desugar {
             unitLiteral
           }
           else if (arity == 1) ts.head
-          else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleClass.typeConstructor), ts)
+          else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleClass.typeRef), ts)
           else if (arity == 0) unitLiteral
           else Apply(ref(tupleClass.companionModule.symRef), ts)
         }

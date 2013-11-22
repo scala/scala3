@@ -434,7 +434,7 @@ class TreeBuilder(implicit ctx: Context) {
   }
 
   def mkAnnotated(cls: Symbol, tree: Tree) =
-    Annotated(TypedSplice(tpd.New(cls.typeConstructor)), tree)
+    Annotated(TypedSplice(tpd.New(cls.typeRef)), tree)
 
   /** Create visitor <x => x match cases> */
   def makeVisitor(cases: List[CaseDef], checkExhaustive: Boolean, canDrop: Boolean = false): Tree = {

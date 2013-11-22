@@ -224,7 +224,7 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
 
   /** Does this CaseDef catch Throwable? */
   def catchesThrowable(cdef: CaseDef)(implicit ctx: Context) =
-    catchesAllOf(cdef, defn.ThrowableClass.typeConstructor)
+    catchesAllOf(cdef, defn.ThrowableClass.typeRef)
 
   /** Does this CaseDef catch everything of a certain Type? */
   def catchesAllOf(cdef: CaseDef, threshold: Type)(implicit ctx: Context) =
