@@ -208,6 +208,10 @@ object Inferencing {
      *  @return  The tracked polytype, and the list of created type variables.
      */
     def track(pt: PolyType, owningTree: untpd.Tree): (PolyType, List[TypeVar]) = {
+      def howmany = if (owningTree.isEmpty) "no" else "some"
+      def committable = if (ctx.typerState.isCommittable) "committable" else "uncommittable"
+      assert(owningTree.isEmpty != ctx.typerState.isCommittable,
+          s"inconsistent: $howmany typevars were added to $committable constraint ${state.constraint}")
       val tracked =
         if (state.constraint contains pt) pt.copy(pt.paramNames, pt.paramBounds, pt.resultType)
         else pt

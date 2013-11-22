@@ -198,8 +198,16 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
     Text(assocs, "\n")
   }
 
-  override def toText(printer: Printer): Text =
-    "Constraint(" ~ constrainedTypesText(printer) ~ ") {" ~ constraintText(2, printer) ~ "}"
+  override def toText(printer: Printer): Text = {
+    val header: Text = "Constraint("
+    val uninstVarsText = " uninstVars = " ~
+      Text(uninstVars map (_.toText(printer)), ", ") ~ ";"
+    val constrainedText =
+      " constrained types = " ~ constrainedTypesText(printer) ~ ";"
+    val constraintsText =
+      " constraint = " ~ constraintText(3, printer) ~ ")"
+    Text.lines(List(header, uninstVarsText, constrainedText, constraintsText))
+  }
 }
 
 object Constraint {

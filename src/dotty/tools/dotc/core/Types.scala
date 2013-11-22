@@ -2032,12 +2032,10 @@ object Types {
         case OrType(tp1, tp2) => isSingleton(tp1) & isSingleton(tp2)
         case _ => false
       }
-      ctx.typerState.withCheckingDisabled {
-        var inst = ctx.typeComparer.approximation(origin, fromBelow)
-        if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
-          inst = inst.widen
-        instantiateWith(inst.simplified)
-      }
+      var inst = ctx.typeComparer.approximation(origin, fromBelow)
+      if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
+        inst = inst.widen
+      instantiateWith(inst.simplified)
     }
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
