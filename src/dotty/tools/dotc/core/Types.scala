@@ -215,8 +215,8 @@ object Types {
     final def typeSymbol(implicit ctx: Context): Symbol = this match {
       case tp: TypeRef => tp.symbol
       case tp: ClassInfo => tp.cls
+//    case ThisType(cls) => cls // needed?
       case tp: SingletonType => NoSymbol
-      case ThisType(cls) => cls
       case tp: TypeProxy => tp.underlying.typeSymbol
       case _ => NoSymbol
     }
@@ -238,14 +238,14 @@ object Types {
       case AndType(l, r) =>
         val lsym = l.classSymbol
         val rsym = r.classSymbol
-        if (lsym.isSubClass(rsym)) lsym
+        if (lsym isSubClass rsym) lsym
         else if (rsym.isSubClass(lsym)) rsym
         else NoSymbol
       case OrType(l, r) =>
         val lsym = l.classSymbol
         val rsym = r.classSymbol
-        if (lsym.isSubClass(rsym)) rsym
-        else if (rsym.isSubClass(lsym)) lsym
+        if (lsym isSubClass rsym) rsym
+        else if (rsym isSubClass lsym) lsym
         else NoSymbol
       case _ =>
         NoSymbol
@@ -289,75 +289,6 @@ object Types {
         case _ => Nil
       }
     }
-
-    /** The type parameters of this type are:
-     *  For a ClassInfo type, the type parameters of its class.
-     *  For a typeref referring to a class, the type parameters of the class.
-     *  For a typeref referring to an alias type, the type parameters of the aliased type.
-     *  For a typeref referring to an abstract type with a HigherKindedXYZ bound, the
-     *  type parameters of the HigherKinded class.
-     *  For a refinement type, the type parameters of its parent, unless there's a
-     *  refinement with the same name. Inherited by all other type proxies.
-     *  For an intersection type A & B, the type parameters of its left operand, A.
-     *  Empty list for all other types.
-     */
-    final def typeParams(implicit ctx: Context): List[TypeSymbol] = track("typeParams") {
-      this match {
-        case tp: ClassInfo =>
-          tp.cls.typeParams
-        case tp: TypeRef =>
-          val tsym = tp.typeSymbol
-          if (tsym.isClass) tsym.typeParams
-          else if (tsym.isAliasType) tp.underlying.typeParams
-          else tp.info.bounds.hi match {
-            case AndType(hkBound, other) if defn.hkTraits contains hkBound.typeSymbol =>
-              hkBound.typeSymbol.typeParams
-            case _ =>
-              Nil
-          }
-        case tp: RefinedType =>
-          tp.parent.typeParams filterNot (_.name == tp.refinedName)
-        case tp: TypeProxy =>
-          tp.underlying.typeParams
-        case tp: AndType =>
-          tp.tp1.typeParams
-        case _ =>
-          Nil
-      }
-    }
-
-    /** The type parameters of the underlying class.
-     *  This is like `typeParams`, except for three differences.
-     *  First, it does not adjust type parameters in refined types. I.e. type arguments
-     *  do not remove corresponding type parameters.
-     *  Second, it will return Nil instead of forcing a symbol, in order to rule
-     *  out CyclicReference exceptions.
-     *  Third, it will return Nil for BoundTypes because we might get a NullPointer exception
-     *  on PolyParam#underlying otherwise (demonstrated by showClass test).
-     */
-    final def safeUnderlyingTypeParams(implicit ctx: Context): List[TypeSymbol] = {
-      def ifCompleted(sym: Symbol): Symbol = if (sym.isCompleted) sym else NoSymbol
-      this match {
-        case tp: ClassInfo =>
-          if (tp.cls.isCompleted) tp.cls.typeParams else Nil
-        case tp: TypeRef =>
-          val tsym = tp.typeSymbol
-          if (tsym.isClass && tsym.isCompleted) tsym.typeParams
-          else if (tsym.isAliasType) tp.underlying.safeUnderlyingTypeParams
-          else Nil
-        case tp: BoundType =>
-          Nil
-        case tp: TypeProxy =>
-          tp.underlying.safeUnderlyingTypeParams
-        case tp: AndType =>
-          tp.tp1.safeUnderlyingTypeParams
-        case _ =>
-          Nil
-      }
-    }
-
-    def uninstantiatedTypeParams(implicit ctx: Context): List[TypeSymbol] =
-      typeParams filter (tparam => member(tparam.name) == tparam)
 
 // ----- Member access -------------------------------------------------
 
@@ -410,7 +341,7 @@ object Types {
 
     /** The non-private member of this type with the given name. */
     final def nonPrivateMember(name: Name)(implicit ctx: Context): Denotation = track("nonPrivateMember") {
-      findMember(name, this, Flags.Private)
+      findMember(name, widenIfUnstable, Flags.Private)
     }
 
     /** Find member of this type with given name and
@@ -890,6 +821,75 @@ object Types {
       ctx.substSym(this, from, to, null)
 
 // ----- Modeling type application --------------------------------
+
+    /** The type parameters of this type are:
+     *  For a ClassInfo type, the type parameters of its class.
+     *  For a typeref referring to a class, the type parameters of the class.
+     *  For a typeref referring to an alias type, the type parameters of the aliased type.
+     *  For a typeref referring to an abstract type with a HigherKindedXYZ bound, the
+     *  type parameters of the HigherKinded class.
+     *  For a refinement type, the type parameters of its parent, unless there's a
+     *  refinement with the same name. Inherited by all other type proxies.
+     *  For an intersection type A & B, the type parameters of its left operand, A.
+     *  Empty list for all other types.
+     */
+    final def typeParams(implicit ctx: Context): List[TypeSymbol] = track("typeParams") {
+      this match {
+        case tp: ClassInfo =>
+          tp.cls.typeParams
+        case tp: TypeRef =>
+          val tsym = tp.typeSymbol
+          if (tsym.isClass) tsym.typeParams
+          else if (tsym.isAliasType) tp.underlying.typeParams
+          else tp.info.bounds.hi match {
+            case AndType(hkBound, other) if defn.hkTraits contains hkBound.typeSymbol =>
+              hkBound.typeSymbol.typeParams
+            case _ =>
+              Nil
+          }
+        case tp: RefinedType =>
+          tp.parent.typeParams filterNot (_.name == tp.refinedName)
+        case tp: TypeProxy =>
+          tp.underlying.typeParams
+        case tp: AndType =>
+          tp.tp1.typeParams
+        case _ =>
+          Nil
+      }
+    }
+
+    /** The type parameters of the underlying class.
+     *  This is like `typeParams`, except for three differences.
+     *  First, it does not adjust type parameters in refined types. I.e. type arguments
+     *  do not remove corresponding type parameters.
+     *  Second, it will return Nil instead of forcing a symbol, in order to rule
+     *  out CyclicReference exceptions.
+     *  Third, it will return Nil for BoundTypes because we might get a NullPointer exception
+     *  on PolyParam#underlying otherwise (demonstrated by showClass test).
+     */
+    final def safeUnderlyingTypeParams(implicit ctx: Context): List[TypeSymbol] = {
+      def ifCompleted(sym: Symbol): Symbol = if (sym.isCompleted) sym else NoSymbol
+      this match {
+        case tp: ClassInfo =>
+          if (tp.cls.isCompleted) tp.cls.typeParams else Nil
+        case tp: TypeRef =>
+          val tsym = tp.typeSymbol
+          if (tsym.isClass && tsym.isCompleted) tsym.typeParams
+          else if (tsym.isAliasType) tp.underlying.safeUnderlyingTypeParams
+          else Nil
+        case tp: BoundType =>
+          Nil
+        case tp: TypeProxy =>
+          tp.underlying.safeUnderlyingTypeParams
+        case tp: AndType =>
+          tp.tp1.safeUnderlyingTypeParams
+        case _ =>
+          Nil
+      }
+    }
+
+    def uninstantiatedTypeParams(implicit ctx: Context): List[TypeSymbol] =
+      typeParams filter (tparam => member(tparam.name) == tparam)
 
     /** Encode the type resulting from applying this type to given arguments */
     final def appliedTo(args: List[Type])(implicit ctx: Context): Type = track("appliedTo") {
