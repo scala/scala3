@@ -2,7 +2,7 @@ package dotty.tools.dotc.util
 
 import collection.mutable.ListBuffer
 
-abstract class SimpleMap[K, +V >: Null <: AnyRef] extends (K => V) {
+abstract class SimpleMap[K <: AnyRef, +V >: Null <: AnyRef] extends (K => V) {
   def size: Int
   def apply(k: K): V
   def remove(k: K): SimpleMap[K, V]
@@ -28,18 +28,20 @@ abstract class SimpleMap[K, +V >: Null <: AnyRef] extends (K => V) {
 
 object SimpleMap {
 
-  private object myEmpty extends SimpleMap[Any, Null] {
+  private val CompactifyThreshold = 4
+
+  private object myEmpty extends SimpleMap[AnyRef, Null] {
     def size = 0
-    def apply(k: Any) = null
-    def remove(k: Any) = this
-    def updated[V1 >: Null <: AnyRef](k: Any, v: V1) = new Map1(k, v)
+    def apply(k: AnyRef) = null
+    def remove(k: AnyRef) = this
+    def updated[V1 >: Null <: AnyRef](k: AnyRef, v: V1) = new Map1(k, v)
     def mapValues[V1 >: Null <: AnyRef](f: V1 => V1) = this
-    def foreachKey(f: Any => Unit) = ()
+    def foreachKey(f: AnyRef => Unit) = ()
   }
 
-  def Empty[K] = myEmpty.asInstanceOf[SimpleMap[K, Null]]
+  def Empty[K <: AnyRef] = myEmpty.asInstanceOf[SimpleMap[K, Null]]
 
-  class Map1[K, +V >: Null <: AnyRef] (k1: K, v1: V) extends SimpleMap[K, V] {
+  class Map1[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V) extends SimpleMap[K, V] {
     def size = 1
     def apply(k: K) =
       if (k == k1) v1
@@ -57,7 +59,7 @@ object SimpleMap {
     def foreachKey(f: K => Unit) = f(k1)
   }
 
-  class Map2[K, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V) extends SimpleMap[K, V] {
+  class Map2[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V) extends SimpleMap[K, V] {
     def size = 2
     def apply(k: K) =
       if (k == k1) v1
@@ -79,7 +81,7 @@ object SimpleMap {
     def foreachKey(f: K => Unit) = { f(k1); f(k2) }
   }
 
-  class Map3[K, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V) extends SimpleMap[K, V] {
+  class Map3[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V) extends SimpleMap[K, V] {
     def size = 3
     def apply(k: K) =
       if (k == k1) v1
@@ -104,7 +106,7 @@ object SimpleMap {
     def foreachKey(f: K => Unit) = { f(k1); f(k2); f(k3) }
   }
 
-  class Map4[K, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V, k4: K, v4: V) extends SimpleMap[K, V] {
+  class Map4[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V, k4: K, v4: V) extends SimpleMap[K, V] {
     def size = 4
     def apply(k: K) =
       if (k == k1) v1
@@ -123,7 +125,7 @@ object SimpleMap {
       else if (k == k2) new Map4(k1, v1, k, v, k3, v3, k4, v4)
       else if (k == k3) new Map4(k1, v1, k2, v2, k, v, k4, v4)
       else if (k == k4) new Map4(k1, v1, k2, v2, k3, v3, k, v)
-      else new Map5(k1, v1, k2, v2, k3, v3, k4, v4, k, v)
+      else new MapMore(Array[AnyRef](k1, v1, k2, v2, k3, v3, k4, v4, k, v))
     def mapValues[V1 >: V <: AnyRef](f: V1 => V1) = {
       val w1 = f(v1); val w2 = f(v2); val w3 = f(v3); val w4 = f(v4)
       if ((v1 eq w1) && (v2 eq w2) && (v3 eq w3) && (v4 eq w4)) this
@@ -132,63 +134,93 @@ object SimpleMap {
     def foreachKey(f: K => Unit) = { f(k1); f(k2); f(k3); f(k4) }
   }
 
-  class Map5[K, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V, k4: K, v4: V, k5: K, v5: V) extends SimpleMap[K, V] {
-    def size = 5
-    def apply(k: K) =
-      if (k == k1) v1
-      else if (k == k2) v2
-      else if (k == k3) v3
-      else if (k == k4) v4
-      else if (k == k5) v5
-      else null
-    def remove(k: K) =
-      if (k == k1) new Map4(k2, v2, k3, v3, k4, v4, k5, v5)
-      else if (k == k2) new Map4(k1, v1, k3, v3, k4, v4, k5, v5)
-      else if (k == k3) new Map4(k1, v1, k2, v2, k4, v4, k5, v5)
-      else if (k == k4) new Map4(k1, v1, k2, v2, k3, v3, k5, v5)
-      else if (k == k5) new Map4(k1, v1, k2, v2, k3, v3, k4, v4)
-      else this
-    def updated[V1 >: V <: AnyRef](k: K, v: V1) =
-      if (k == k1) new Map5(k, v, k2, v2, k3, v3, k4, v4, k5, v5)
-      else if (k == k2) new Map5(k1, v1, k, v, k3, v3, k4, v4, k5, v5)
-      else if (k == k3) new Map5(k1, v1, k2, v2, k, v, k4, v4, k5, v5)
-      else if (k == k4) new Map5(k1, v1, k2, v2, k3, v3, k, v, k5, v5)
-      else if (k == k5) new Map5(k1, v1, k2, v2, k3, v3, k4, v4, k, v)
-      else new MapMore(Map(k1 -> v1, k2 -> v2, k3 -> v3, k4 -> v4, k5 -> v5, k -> v))
-    def mapValues[V1 >: V <: AnyRef](f: V1 => V1) = {
-      val w1 = f(v1); val w2 = f(v2); val w3 = f(v3); val w4 = f(v4); val w5 = f(v5)
-      if ((v1 eq w1) && (v2 eq w2) && (v3 eq w3) && (v4 eq w4) && (v5 eq w5)) this
-      else new Map5(k1, w1, k2, w2, k3, w3, k4, w4, k5, w5)
-    }
-    def foreachKey(f: K => Unit) = { f(k1); f(k2); f(k3); f(k4); f(k5) }
-  }
+  class MapMore[K <: AnyRef, +V >: Null <: AnyRef](bindings: Array[AnyRef]) extends SimpleMap[K, V] {
+    private def key(i: Int): K = bindings(i).asInstanceOf[K]
+    private def value(i: Int): V = bindings(i + 1).asInstanceOf[V]
 
-  class MapMore[K, +V >: Null <: AnyRef] (m: Map[K, V]) extends SimpleMap[K, V] {
-    def size = m.size
-    def apply(k: K) = m get k match {
-      case Some(v) => v
-      case None => null
-    }
-    def remove(k: K) = {
-      val m1 = m - k
-      if (m1.size > 5) new MapMore(m1)
-      else {
-        val List((k1, v1), (k2, v2), (k3, v3), (k4, v4), (k5, v5)) = m1.toList
-        new Map5(k1, v1, k2, v2, k3, v3, k4, v4, k5, v5)
+    def size = bindings.length / 2
+
+    def apply(k: K): V = {
+      var i = 0
+      while (i < bindings.length) {
+        if (bindings(i) eq k) return value(i)
+        i += 2
       }
+      null
     }
-    def updated[V1 >: V <: AnyRef](k: K, v: V1) =
-      new MapMore(m.updated(k, v))
-    override def contains(k: K) = m contains k
+
+    def remove(k: K): SimpleMap[K, V] = {
+      var i = 0
+      while (i < bindings.length) {
+        if (bindings(i) eq k) return {
+          if (size == CompactifyThreshold) {
+            var m: SimpleMap[K, V] = Empty[K]
+            for (j <- 0 until bindings.length by 2)
+              if (j != i) m = m.updated(key(j), value(j))
+            m
+          } else {
+            val bindings1 = new Array[AnyRef](bindings.length - 2)
+            Array.copy(bindings, 0, bindings1, 0, i)
+            Array.copy(bindings, i + 2, bindings1, i, bindings1.length - i)
+            new MapMore(bindings1)
+          }
+        }
+        i += 2
+      }
+      this
+    }
+
+    def updated[V1 >: V <: AnyRef](k: K, v: V1): SimpleMap[K, V] = {
+      var i = 0
+      while (i < bindings.length) {
+        if (bindings(i) eq k)
+          return {
+            if (v eq bindings(i + 1)) this
+            else {
+              val bindings1 = bindings.clone.asInstanceOf[Array[AnyRef]]
+              bindings1(i + 1) = v
+              new MapMore(bindings1)
+            }
+          }
+        i += 2
+      }
+      val bindings2 = new Array[AnyRef](bindings.length + 2)
+      Array.copy(bindings, 0, bindings2, 0, bindings.length)
+      bindings2(bindings.length) = k
+      bindings2(bindings.length + 1) = v
+      new MapMore(bindings2)
+    }
+
+    override def contains(k: K): Boolean = {
+      var i = 0
+      while (i < bindings.length) {
+        if (bindings(i) eq k) return true
+        i += 2
+      }
+      false
+    }
+
     def mapValues[V1 >: V <: AnyRef](f: V1 => V1) = {
-      val assocs = m.toList
-      val assocs1 = assocs mapConserve {
-        case assoc @ (k, v) =>
-          val w = f(v)
-          if (w eq v) assoc else (k, w)
+      var bindings1: Array[AnyRef] = bindings
+      var i = 0
+      while (i < bindings.length) {
+        val v = value(i)
+        val v1 = f(v)
+        if ((v1 ne v) && (bindings1 eq bindings))
+          bindings1 = bindings.clone.asInstanceOf[Array[AnyRef]]
+        bindings1(i) = bindings(i)
+        bindings1(i + 1) = v1
+        i += 2
       }
-      if (assocs1 eq assocs) this else new MapMore(assocs1.toMap)
+      if (bindings1 eq bindings) this else new MapMore(bindings1)
     }
-    def foreachKey(f: K => Unit) = { m.keysIterator foreach f }
+
+    def foreachKey(f: K => Unit) = {
+      var i = 0
+      while (i < bindings.length) {
+        f(key(i))
+        i += 2
+      }
+    }
   }
 }
