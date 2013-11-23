@@ -190,7 +190,7 @@ class ClassfileParser(
          */
         def normalizeConstructorInfo() = {
           val mt @ MethodType(paramnames, paramtypes) = denot.info
-          val rt = classRoot.typeRef appliedTo (classRoot.typeParams map (_.symRef))
+          val rt = classRoot.typeRef appliedTo (classRoot.typeParams map (_.typeRef))
           denot.info = mt.derivedMethodType(paramnames, paramtypes, rt)
           addConstructorTypeParams(denot)
         }

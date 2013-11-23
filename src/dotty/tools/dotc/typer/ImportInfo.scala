@@ -12,7 +12,7 @@ import typer.ErrorReporting.InfoString
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
   def rootImport(sym: Symbol)(implicit ctx: Context) = {
-    val expr = tpd.Ident(sym.symTermRef)
+    val expr = tpd.Ident(sym.valRef)
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
     val imp = tpd.Import(expr, selectors)
     new ImportInfo(imp.symbol, selectors, rootImport = true)

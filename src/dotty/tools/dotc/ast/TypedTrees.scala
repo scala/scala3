@@ -201,7 +201,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.TypeBoundsTree(lo, hi).withType(TypeBounds(lo.tpe, hi.tpe)).checked
 
   def Bind(sym: TermSymbol, body: Tree)(implicit ctx: Context): Bind =
-    untpd.Bind(sym.name, body).withType(sym.symRef).checked
+    untpd.Bind(sym.name, body).withType(sym.termRef).checked
 
   def Alternative(trees: List[Tree])(implicit ctx: Context): Alternative =
     untpd.Alternative(trees).withType(ctx.typeComparer.lub(trees map (_.tpe))).checked
@@ -215,7 +215,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   def ValDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): ValDef =
-    untpd.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs).withType(sym.symRef).checked
+    untpd.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs).withType(sym.valRef).checked
 
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     DefDef(sym, Function.const(rhs) _)
@@ -234,21 +234,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         def valueParam(name: TermName, info: Type): TermSymbol =
           ctx.newSymbol(sym, name, TermParam, info)
         val params = (paramNames, paramTypes).zipped.map(valueParam)
-        val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.symRef)))
+        val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.termRef)))
         (params :: paramss, rtp)
       case tp => (Nil, tp)
     }
     val (vparamss, rtp) = valueParamss(mtp)
-    val argss = vparamss map (_ map (vparam => Ident(vparam.symRef)))
+    val argss = vparamss map (_ map (vparam => Ident(vparam.termRef)))
     untpd.DefDef(
       Modifiers(sym), sym.name, tparams map TypeDef,
       vparamss map (_ map (ValDef(_))), TypeTree(rtp), rhsFn(argss))
-      .withType(sym.symRef).checked
+      .withType(sym.termRefWithSig).checked
   }
 
   def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
     untpd.TypeDef(Modifiers(sym), sym.name, TypeTree(sym.info))
-      .withType(sym.symRef).checked
+      .withType(sym.typeRef).checked
 
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree])(implicit ctx: Context): TypeDef = {
     val parents = cls.info.parents map (TypeTree(_))
@@ -265,16 +265,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val localDummy = ((NoSymbol: Symbol) /: body)(findLocalDummy)
       .orElse(ctx.newLocalDummy(cls))
     val impl = untpd.Template(constr, parents, selfType, newTypeParams ++ body)
-      .withType(localDummy.symRef).checked
+      .withType(localDummy.termRef).checked
     untpd.TypeDef(Modifiers(cls), cls.name, impl)
-      .withType(cls.symRef).checked
+      .withType(cls.typeRef).checked
   }
 
   def Import(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
-    untpd.Import(expr, selectors).withType(ctx.newImportSymbol(SharedTree(expr)).symRef).checked
+    untpd.Import(expr, selectors).withType(ctx.newImportSymbol(SharedTree(expr)).termRef).checked
 
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef =
-    untpd.PackageDef(pid, stats).withType(pid.symbol.symRef).checked
+    untpd.PackageDef(pid, stats).withType(pid.symbol.namedType).checked
 
   def Annotated(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated =
     untpd.Annotated(annot, arg).withType(AnnotatedType(Annotation(annot), arg.tpe)).checked
@@ -417,7 +417,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           val newOwner = ownerMap(sym.owner)
           val newInfo = typeMap(sym.info)
           if ((newOwner ne sym.owner) || (newInfo ne sym.info))
-            bind.withType(sym.copy(owner = newOwner, info = newInfo).symRef)
+            bind.withType(sym.copy(owner = newOwner, info = newInfo).namedType)
           else
             bind
         case tree1 =>

@@ -551,7 +551,7 @@ object desugar {
           else if (arity == 1) ts.head
           else if (ctx.mode is Mode.Type) AppliedTypeTree(ref(tupleClass.typeRef), ts)
           else if (arity == 0) unitLiteral
-          else Apply(ref(tupleClass.companionModule.symRef), ts)
+          else Apply(ref(tupleClass.companionModule.valRef), ts)
         }
       case WhileDo(cond, body) =>
         // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }

@@ -698,7 +698,7 @@ trait Applications extends Compatibility { self: Typer =>
       case tp1: PolyType =>
         def bounds(tparamRefs: List[TypeRef]) = tp1.paramBounds map (_.substParams(tp1, tparamRefs))
         val tparams = ctx.newTypeParams(alt1.symbol.owner, tp1.paramNames, EmptyFlags, bounds)
-        isAsSpecific(alt1, tp1.instantiate(tparams map (_.symRef)), alt2, tp2)
+        isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
       case tp1: MethodType =>
         isApplicableToTypes(alt2, tp1.paramTypes)(ctx)
       case _ =>

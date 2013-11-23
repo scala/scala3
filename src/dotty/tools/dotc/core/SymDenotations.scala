@@ -34,9 +34,7 @@ trait SymDenotations { this: Context =>
 
   def stillValid(denot: SymDenotation): Boolean =
     if (denot is ValidForever) true
-    else if (denot.owner is PackageClass)
-      (denot.owner.decls.lookup(denot.name) eq denot.symbol) ||
-      (denot is ModuleClass) && stillValid(denot.sourceModule) // !!! DEBUG - we should check why module classes are not entered
+    else if (denot.owner is PackageClass) denot.owner.decls.lookup(denot.name) eq denot.symbol
     else stillValid(denot.owner)
 }
 object SymDenotations {
@@ -631,27 +629,33 @@ object SymDenotations {
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(implicit ctx: Context): Type = NoPrefix
 
-    /** The named typeref representing the type constructor for this type.
-     *  @throws ClassCastException is this is not a type
-     */
+    /** The TypeRef representing this type denotation at its original location. */
     def typeRef(implicit ctx: Context): TypeRef =
-      if ((this is PackageClass) || owner.isTerm) symTypeRef
-      else TypeRef(owner.thisType, name.asTypeName).withDenot(this)
+      TypeRef(owner.thisType, name.asTypeName).withDenot(this)
 
-    /** The symbolic typeref representing the type constructor for this type.
-     *  @throws ClassCastException is this is not a type
+    /** The TermRef representing this term denotation at its original location. */
+    def termRef(implicit ctx: Context): TermRef =
+      TermRef(owner.thisType, name.asTermName).withDenot(this)
+
+    /** The TermRef representing this term denotation at its original location
+     *  and at signature `NotAMethod`.
      */
-    final def symTypeRef(implicit ctx: Context): TypeRef =
-      TypeRef.withSym(owner.thisType, symbol.asType)
+    def valRef(implicit ctx: Context): TermRef =
+      TermRef.withSig(owner.thisType, name.asTermName, NotAMethod).withDenot(this)
 
-    /** The symbolic termref pointing to this termsymbol
-     *  @throws ClassCastException is this is not a term
+    /** The TermRef representing this term denotation at its original location
+     *  at the denotation's signature.
+     *  @note  Unlike `valRef` and `termRef`, this will force the completion of the
+     *         denotation via a call to `info`.
      */
-    def symTermRef(implicit ctx: Context): TermRef =
-      TermRef.withSym(owner.thisType, symbol.asTerm)
+    def termRefWithSig(implicit ctx: Context): TermRef =
+      TermRef.withSig(owner.thisType, name.asTermName, signature).withDenot(this)
 
-    def symRef(implicit ctx: Context): NamedType =
-      if (isType) symTypeRef else symTermRef
+	/** The NamedType representing this denotation at its original location.
+	 *  Same as either `typeRef` or `termRefWithSig` depending whether this denotes a type or not.
+	 */
+    def namedType(implicit ctx: Context): NamedType =
+      if (isType) typeRef else termRefWithSig
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
@@ -1139,7 +1143,7 @@ object SymDenotations {
         // only apply to the module but not to the module class. The right solution
         // is to have the module class completer set the annotations of both the
         // class and the module.
-      denot.info = moduleClass.symTypeRef
+      denot.info = moduleClass.typeRef
       denot.privateWithin = from.privateWithin
     }
   }

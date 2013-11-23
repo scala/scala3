@@ -176,7 +176,7 @@ trait ImplicitRunInfo { self: RunInfo =>
       case tp: TypeRef if tp.symbol.isAbstractOrAliasType =>
         val pre = tp.prefix
         def joinClass(tp: Type, cls: ClassSymbol) =
-          AndType(tp, cls.symTypeRef.asSeenFrom(pre, cls.owner))
+          AndType(tp, cls.typeRef.asSeenFrom(pre, cls.owner))
         val lead = if (tp.prefix eq NoPrefix) defn.AnyType else apply(tp.prefix)
         (lead /: tp.classSymbols)(joinClass)
       case _ =>
@@ -202,7 +202,7 @@ trait ImplicitRunInfo { self: RunInfo =>
               comps ++= implicitScope(pre.member(param.name).info).companionRefs
           }
           val companion = cls.companionModule
-          if (companion.exists) addRef(companion.symTermRef)
+          if (companion.exists) addRef(companion.valRef)
           cls.classParents foreach addParentScope
         }
         tp.classSymbols foreach addClassScope

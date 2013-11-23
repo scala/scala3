@@ -337,8 +337,6 @@ class Namer { typer: Typer =>
           sig match {
             case sig: TypeRef =>
               sig
-            case sig: TypeRef =>
-              TypeRef.withSym(sig.prefix, sig.symbol.asType)
             case sig: ClassInfo =>
               sig.derivedClassInfo(sig.prefix, sig.classParents, TermRef.withSym(sig.prefix, sourceModule.asTerm))
             case _ =>
@@ -423,7 +421,7 @@ class Namer { typer: Typer =>
     if (isConstructor) {
       // set result type tree to unit, but set the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
-      wrapMethType(sym.owner.typeRef.appliedTo(typeParams map (_.symRef)))
+      wrapMethType(sym.owner.typeRef.appliedTo(typeParams map (_.typeRef)))
     }
     else valOrDefDefSig(ddef, sym, wrapMethType)
   }

@@ -718,7 +718,7 @@ class Typer extends Namer with Applications with Implicits {
     val mods1 = typedModifiers(mods)
     val tpt1 = typedType(tpt)
     val rhs1 = typedExpr(rhs, tpt1.tpe)
-    val refType = if (sym.exists) sym.symRef else NoType
+    val refType = if (sym.exists) sym.valRef else NoType
     cpy.ValDef(vdef, mods1, name, tpt1, rhs1).withType(refType)
   }
 
@@ -729,7 +729,7 @@ class Typer extends Namer with Applications with Implicits {
     val vparamss1 = vparamss mapconserve(_ mapconserve (typed(_).asInstanceOf[ValDef]))
     val tpt1 = typedType(tpt)
     val rhs1 = typedExpr(rhs, tpt1.tpe)
-    cpy.DefDef(ddef, mods1, name, tparams1, vparamss1, tpt1, rhs1).withType(sym.symRef)
+    cpy.DefDef(ddef, mods1, name, tparams1, vparamss1, tpt1, rhs1).withType(sym.termRefWithSig)
     //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
@@ -737,7 +737,7 @@ class Typer extends Namer with Applications with Implicits {
     val TypeDef(mods, name, rhs) = tdef
     val mods1 = typedModifiers(mods)
     val rhs1 = typedType(rhs)
-    cpy.TypeDef(tdef, mods1, name, rhs1).withType(sym.symRef)
+    cpy.TypeDef(tdef, mods1, name, rhs1).withType(sym.typeRef)
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = track("typedClassDef") {
@@ -749,9 +749,9 @@ class Typer extends Namer with Applications with Implicits {
     val localDummy = ctx.newLocalDummy(cls, impl.pos)
     val body1 = typedStats(body, localDummy)(inClassContext(self1.symbol))
     val impl1 = cpy.Template(impl, constr1, parents1, self1, body1)
-      .withType(localDummy.symRef)
+      .withType(localDummy.termRef)
 
-    cpy.TypeDef(cdef, mods1, name, impl1).withType(cls.symRef)
+    cpy.TypeDef(cdef, mods1, name, impl1).withType(cls.typeRef)
 
     // todo later: check that
     //  1. If class is non-abstract, it is instantiatable:
@@ -764,7 +764,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = track("typedImport") {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
-    cpy.Import(imp, expr1, imp.selectors).withType(sym.symRef)
+    cpy.Import(imp, expr1, imp.selectors).withType(sym.termRef)
   }
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = track("typedAnnotated") {
@@ -787,7 +787,7 @@ class Typer extends Namer with Applications with Implicits {
         ctx
       }
     val stats1 = typedStats(tree.stats, NoSymbol)(packageContext)
-    cpy.PackageDef(tree, pid1.asInstanceOf[RefTree], stats1) withType pkg.symRef
+    cpy.PackageDef(tree, pid1.asInstanceOf[RefTree], stats1) withType pkg.valRef
   }
 
   def typedUnadapted(initTree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {

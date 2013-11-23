@@ -26,7 +26,7 @@ object EtaExpansion {
       val name = ctx.freshName(prefix).toTermName
       val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, expr.tpe, coord = positionCoord(expr.pos))
       defs += ValDef(sym, expr)
-      Ident(sym.symRef)
+      Ident(sym.valRef)
     }
 
   def liftArgs(defs: mutable.ListBuffer[Tree], methType: Type, args: List[Tree])(implicit ctx: Context) = {
