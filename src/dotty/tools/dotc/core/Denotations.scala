@@ -86,8 +86,6 @@ object Denotations {
    */
   val NotAMethod: Signature = List(Names.EmptyTypeName)
 
-  val UnknownSignature: Signature = List(" ".toTypeName)
-
   /** A denotation is the result of resolving
    *  a name (either simple identifier or select) during a given period.
    *

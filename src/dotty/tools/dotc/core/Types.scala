@@ -1135,11 +1135,19 @@ object Types {
      */
     protected def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
       NamedType(prefix, name)
+
+    override def equals(that: Any) = that match {
+      case that: NamedType =>
+        this.name == that.name &&
+        this.prefix == that.prefix &&
+        !that.isInstanceOf[TermRefWithSignature]
+      case _ =>
+        false
+    }
+    override def computeHash = doHash(name, prefix)
   }
 
   abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType {
-
-    protected def sig: Signature = UnknownSignature
 
     override def underlying(implicit ctx: Context): Type = {
       val d = denot
@@ -1158,9 +1166,18 @@ object Types {
 
     def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[TermRef] =
       denot.altsWith(p) map rewrap
+  }
 
+  abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType
+
+  final class TermRefWithSignature(prefix: Type, name: TermName, val sig: Signature) extends TermRef(prefix, name) {
+    override def signature(implicit ctx: Context) = sig
+    override def loadDenot(implicit ctx: Context): Denotation =
+      super.loadDenot.atSignature(sig)
+    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef =
+      TermRef.withSig(prefix, name, sig)
     override def equals(that: Any) = that match {
-      case that: TermRef =>
+      case that: TermRefWithSignature =>
         this.prefix == that.prefix &&
         this.name == that.name &&
         this.sig == that.sig
@@ -1168,28 +1185,6 @@ object Types {
         false
     }
     override def computeHash = doHash((name, sig), prefix)
-  }
-
-  abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType {
-
-   override def equals(that: Any) = that match {
-      case that: TypeRef =>
-        this.prefix == that.prefix &&
-        this.name == that.name
-      case _ =>
-        false
-    }
-    //assert(name.toString != "scala$collection$LinearSeqLike$$Repr", s"sel pre = $prefix")
-    override def computeHash = doHash(name, prefix)
-  }
-
-  final class TermRefWithSignature(prefix: Type, name: TermName, override val sig: Signature) extends TermRef(prefix, name) {
-    assert(sig != UnknownSignature)
-    override def signature(implicit ctx: Context) = sig
-    override def loadDenot(implicit ctx: Context): Denotation =
-      super.loadDenot.atSignature(sig)
-    override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef =
-      TermRef.withSig(prefix, name, sig)
   }
 
   final class CachedTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name)
@@ -1209,8 +1204,7 @@ object Types {
     def withSym(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
       withSym(prefix, sym.name, sym)
     def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
-      if (sig == UnknownSignature) apply(prefix, name)
-      else unique(new TermRefWithSignature(prefix, name, sig))
+      unique(new TermRefWithSignature(prefix, name, sig))
   }
 
   object TypeRef {
