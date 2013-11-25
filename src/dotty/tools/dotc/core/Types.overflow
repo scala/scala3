@@ -1,0 +1,25 @@
+object Types {
+  class Type {
+  
+    /** The non-private symbol with given name in the given class that matches this type.
+     *  @param inClass   The class containing the symbol's definition
+     *  @param name      The name of the symbol we are looking for
+     *  @param site      The base type from which member types are computed
+    def matchingTermSymbol(inClass: Symbol, name: Name, site: Type)(implicit ctx: Context): Symbol = {
+      var denot = inClass.info.nonPrivateDecl(name)
+      if (denot.isTerm) { // types of the same name always match
+        if (denot.isOverloaded)
+          denot = denot.atSignature(this.signature) // seems we need two kinds of signatures here
+        if (!(site.memberInfo(denot.symbol) matches this))
+          denot = NoDenotation
+      }
+      denot.symbol
+    }   
+    
+    final def firstParamTypes: List[Type] = this match {
+      case mt: MethodType => mt.paramTypes
+      case pt: PolyType => pt.firstParamTypes
+      case _ => Nil
+    }
+  }
+} 

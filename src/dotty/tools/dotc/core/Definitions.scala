@@ -340,7 +340,7 @@ class Definitions(implicit ctx: Context) {
    *   - XYZ is a string with one letter for each variant of a bound symbols,
    *     using `P` (positive variance), `N` (negative variance), `I` (invariant).
    *   - v_i are the variances of the bound symbols (i.e. +, -, or empty).
-   *   - _$hk$i are hgiher-kinded parameter names, which are special treated in type application.
+   *   - _$hk$i are higher-kinded parameter names, which are specially treated in type application.
    */
   def hkTrait(vcs: List[Int]) = {
 

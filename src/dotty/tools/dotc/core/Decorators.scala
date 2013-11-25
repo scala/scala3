@@ -105,6 +105,12 @@ object Decorators {
         else ys.nonEmpty && loop(xs.tail, ys.tail)
       loop(xs, ys)
     }
+
+    /** Union on lists seen as sets */
+    def | (ys: List[T]): List[T] = xs ++ (ys filterNot (xs contains _))
+
+    /** Intersection on lists seen as sets */
+    def & (ys: List[T]): List[T] = xs filter (ys contains _)
   }
 
   implicit class ListOfListDecorator[T](val xss: List[List[T]]) extends AnyVal {

@@ -74,10 +74,14 @@ trait TypeOps { this: Context =>
         val absParents = parents filter (_.symbol is Deferred)
         absParents.size >= 2 || {
           val ap = absParents.head
-          (parents exists (p =>
-            (p ne ap) || p.abstractMemberNames(tp).nonEmpty)) ||
-          (refinedNames & tp.abstractMemberNames()).nonEmpty ||
-          isVolatile(ap)
+          ((parents exists (p =>
+                (p ne ap)
+             || p.memberNames(abstractTypeNameFilter, tp).nonEmpty
+             || p.memberNames(abstractTermNameFilter, tp).nonEmpty))
+          || (refinedNames & tp.memberNames(abstractTypeNameFilter, tp)).nonEmpty
+          || (refinedNames & tp.memberNames(abstractTermNameFilter, tp)).nonEmpty
+          || isVolatile(ap)
+          )
         }
       }
     }

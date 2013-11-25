@@ -381,7 +381,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     case _ => param.binder.paramBounds(param.paramNum)
   }
 
-  /** Defer constraining type variables when comnpared against prototypes */
+  /** Defer constraining type variables when compared against prototypes */
   def isMatchedByProto(proto: ProtoType, tp: Type) = tp.stripTypeVar match {
     case tp: PolyParam if constraint contains tp => true
     case _ => proto.isMatchedBy(tp)
