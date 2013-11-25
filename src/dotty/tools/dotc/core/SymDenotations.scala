@@ -37,6 +37,7 @@ trait SymDenotations { this: Context =>
     else if (denot.owner is PackageClass) denot.owner.decls.lookup(denot.name) eq denot.symbol
     else stillValid(denot.owner)
 }
+
 object SymDenotations {
 
   /** A sym-denotation represents the contents of a definition
@@ -61,16 +62,19 @@ object SymDenotations {
     private[this] var myPrivateWithin: Symbol = initPrivateWithin
     private[this] var myAnnotations: List[Annotation] = Nil
 
-    /** The owner of the symbol */
+    /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = ownerIfExists
 
     /** The flag set */
     final def flags: FlagSet = { ensureCompleted(); myFlags }
 
-    final def flagsUNSAFE = myFlags // !!! DEBUG; drop when no longer needed
+    /** The flag set without forcing symbol completion.
+     *  Should be used only for printing.
+     */
+    private[dotc] final def flagsUNSAFE = myFlags
 
     /** Adapt flag set to this denotation's term or type nature */
-    def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
+    private def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
 
     /** Update the flag set */
     private final def flags_=(flags: FlagSet): Unit =
@@ -79,16 +83,27 @@ object SymDenotations {
     /** Set given flags(s) of this denotation */
     final def setFlag(flags: FlagSet): Unit = { myFlags |= flags }
 
-    /** UnsSet given flags(s) of this denotation */
+    /** Unset given flags(s) of this denotation */
     final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
 
+    /** Has this denotation one of the flags in `fs` set? */
     final def is(fs: FlagSet) = {
       (if (fs <= FromStartFlags) myFlags else flags) is fs
     }
+
+    /** Has this denotation one of the flags in `fs` set, whereas none of the flags
+     *  in `butNot` are set?
+     */
     final def is(fs: FlagSet, butNot: FlagSet) =
       (if (fs <= FromStartFlags && butNot <= FromStartFlags) myFlags else flags) is (fs, butNot)
+
+    /** Has this denotation all of the flags in `fs` set? */
     final def is(fs: FlagConjunction) =
       (if (fs <= FromStartFlags) myFlags else flags) is fs
+
+    /** Has this denotation all of the flags in `fs` set, whereas none of the flags
+     *  in `butNot` are set?
+     */
     final def is(fs: FlagConjunction, butNot: FlagSet) =
       (if (fs <= FromStartFlags && butNot <= FromStartFlags) myFlags else flags) is (fs, butNot)
 
@@ -107,18 +122,13 @@ object SymDenotations {
 
       Context.theBase.initialCtx.debugTraceIndented(s"completing ${this.debugString}") {
         // println("completing " + debugString)
-        try completer.complete(this) // !!! DEBUG
-        catch {
-          case ex: java.io.IOException =>
-            println(s"error when completing $name#${symbol.id} ${completer.getClass}")
-            throw ex
-        }
+        completer.complete(this)
       }
     }
 
     protected[dotc] final def info_=(tp: Type) = {
-      def illegal: String = s"illegal type for $this: $tp"
       /*
+      def illegal: String = s"illegal type for $this: $tp"
       if (this is Module) // make sure module invariants that allow moduleClass and sourceModule to work are kept.
         tp match {
           case tp: ClassInfo => assert(tp.selfInfo.isInstanceOf[TermRefBySym], illegal)
@@ -129,17 +139,6 @@ object SymDenotations {
         */
       myInfo = tp
     }
-
-    /** The denotation is completed: all attributes are fully defined */
-    final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]
-
-    final def isCompleting: Boolean = (myFlags is Touched) && !isCompleted
-
-    /** The completer of this denotation. @pre: Denotation is not yet completed */
-    final def completer: LazyType = myInfo.asInstanceOf[LazyType]
-
-    /** Make sure this denotation is completed */
-    final def ensureCompleted(): Unit = info
 
     /** The privateWithin boundary, NoSymbol if no boundary is given.
      */
@@ -172,7 +171,19 @@ object SymDenotations {
       case Nil => Nil
     }
 
-    /** The symbols defined in this class.
+    /** The denotation is completed: all attributes are fully defined */
+    final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]
+
+    /** The denotation is in train of being completed */
+    final def isCompleting: Boolean = (myFlags is Touched) && !isCompleted
+
+    /** The completer of this denotation. @pre: Denotation is not yet completed */
+    final def completer: LazyType = myInfo.asInstanceOf[LazyType]
+
+    /** Make sure this denotation is completed */
+    final def ensureCompleted(): Unit = info
+
+    /** The symbols defined in this class or object.
      */
     final def decls(implicit ctx: Context): Scope = myInfo match {
       case cinfo: LazyType =>
@@ -185,7 +196,7 @@ object SymDenotations {
     /** If this is a package class, the symbols entered in it
      *  before it is completed. (this is needed to eagerly enter synthetic
      *  aliases such as AnyRef into a package class without forcing it.
-     *  Right now, I believe the only usage is for the three synthetic aliases
+     *  Right now, I believe the only usage is for the AnyRef alias
      *  in Definitions.
      */
     final def preDecls(implicit ctx: Context): MutableScope = myInfo match {
@@ -227,7 +238,7 @@ object SymDenotations {
     override def isType: Boolean = name.isTypeName
 
     /** Is this denotation a class? */
-    final def isClass: Boolean = symbol.isInstanceOf[ClassSymbol]
+    final def isClass: Boolean = isInstanceOf[ClassDenotation]
 
     /** Cast to class denotation */
     final def asClass: ClassDenotation = asInstanceOf[ClassDenotation]
@@ -244,7 +255,8 @@ object SymDenotations {
       myInfo == NoType
 
     /** Is this symbol the root class or its companion object? */
-    final def isRoot: Boolean = name.toTermName == nme.ROOT
+    final def isRoot: Boolean =
+      (name.toTermName == nme.ROOT) && (owner eq NoSymbol)
 
     /** Is this symbol the empty package class or its companion object? */
     final def isEmptyPackage(implicit ctx: Context): Boolean =
@@ -317,7 +329,7 @@ object SymDenotations {
       }
     }
 
-    /** Is this a user defined "def" method? Excluded are accessors and stable values */
+    /** Is this a user defined "def" method? Excluded are accessors. */
     final def isSourceMethod = this is (Method, butNot = Accessor)
 
     /** Is this a setter? */
@@ -352,7 +364,7 @@ object SymDenotations {
 
     /** Is this symbol a class that does not extend `AnyVal`? */
     final def isNonValueClass(implicit ctx: Context): Boolean =
-      isClass && !isSubClass(defn.AnyValClass)
+      isClass && !derivesFrom(defn.AnyValClass)
 
     /** Is this definition accessible as a member of tree with type `pre`?
      *  @param pre          The type of the tree from which the selection is made
@@ -366,7 +378,7 @@ object SymDenotations {
       def accessWithin(boundary: Symbol) =
         owner.isContainedIn(boundary) &&
           (!(this is JavaDefined) || // disregard package nesting for Java
-           owner.enclosingPackage == boundary.enclosingPackage)
+             owner.enclosingPackage == boundary.enclosingPackage)
 
       /** Are we within definition of linked class of `boundary`? */
       def accessWithinLinked(boundary: Symbol) = {
@@ -446,14 +458,13 @@ object SymDenotations {
 
     /** Does this symbol have defined or inherited default parameters? */
     def hasDefaultParams(implicit ctx: Context): Boolean =
-      (this is HasDefaultParams) ||
-        !(this is NoDefaultParams) && computeDefaultParams
-
-    private def computeDefaultParams(implicit ctx: Context) = {
-      val result = allOverriddenSymbols exists (_.hasDefaultParams)
-      setFlag(if (result) InheritedDefaultParams else NoDefaultParams)
-      result
-    }
+      if (this is HasDefaultParams) true
+      else if (this is NoDefaultParams) false
+      else {
+        val result = allOverriddenSymbols exists (_.hasDefaultParams)
+        setFlag(if (result) InheritedDefaultParams else NoDefaultParams)
+        result
+      }
 
     //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
     //    def isSkolem: Boolean = ???
