@@ -128,7 +128,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val targetTpt = if (targetType.exists) TypeTree(targetType) else EmptyTree
     Block(
       DefDef(meth, rhsFn) :: Nil,
-      Closure(Nil, Ident(TermRef.withSym(NoPrefix, meth)), targetTpt))
+      Closure(Nil, Ident(TermRef(NoPrefix, meth)), targetTpt))
   }
 
   def Match(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match =
@@ -311,7 +311,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Apply(
       Select(
         New(tp withoutArgs targs),
-        TermRef.withSym(tp.normalizedPrefix, tp.typeSymbol.primaryConstructor.asTerm))
+        TermRef(tp.normalizedPrefix, tp.typeSymbol.primaryConstructor.asTerm))
         .appliedToTypes(targs),
       args)
   }

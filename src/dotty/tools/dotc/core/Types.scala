@@ -619,10 +619,10 @@ object Types {
 
     /** The type <this . name> with given symbol, reduced if possible */
     def select(sym: Symbol)(implicit ctx: Context): Type =
-      if (sym.isTerm) TermRef.withSym(this, sym.asTerm)
+      if (sym.isTerm) TermRef(this, sym.asTerm)
       else {
         val res = lookupRefined(this, sym.name)
-        if (res.exists) res else TypeRef.withSym(this, sym.asType)
+        if (res.exists) res else TypeRef(this, sym.asType)
       }
 
     protected def lookupRefined(pre: Type, name: Name)(implicit ctx: Context): Type = pre.stripTypeVar match {
@@ -1199,10 +1199,8 @@ object Types {
   object TermRef {
     def apply(prefix: Type, name: TermName)(implicit ctx: Context): TermRef =
       unique(new CachedTermRef(prefix, name))
-    def withSym(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      apply(prefix, name) withSym sym
-    def withSym(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      withSym(prefix, sym.name, sym)
+    def apply(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
+      apply(prefix, sym.name) withSym sym
     def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
       unique(new TermRefWithSignature(prefix, name, sig))
   }
@@ -1210,10 +1208,8 @@ object Types {
   object TypeRef {
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef =
       unique(new CachedTypeRef(prefix, name))
-    def withSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      apply(prefix, name) withSym sym
-    def withSym(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      withSym(prefix, sym.name, sym)
+    def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
+      apply(prefix, sym.name) withSym sym
   }
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------

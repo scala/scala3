@@ -193,8 +193,8 @@ trait ImplicitRunInfo { self: RunInfo =>
         comps ++= implicitScope(pre).companionRefs
         def addClassScope(cls: ClassSymbol): Unit = {
           def addRef(companion: TermRef): Unit = {
-            val comp1 @ TermRef(p, _) = companion.asSeenFrom(pre, companion.symbol.owner)
-            comps += TermRef.withSym(p, comp1.symbol.asTerm).withDenot(comp1.denot)
+            val comp1 @ TermRef(_, _) = companion.asSeenFrom(pre, companion.symbol.owner)
+            comps += comp1
           }
           def addParentScope(parent: TypeRef): Unit = {
             implicitScope(parent).companionRefs foreach addRef
@@ -420,5 +420,5 @@ class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRef] {
   override def foreach[U](f: TermRef => U): Unit =
     for (sym <- elems.keysIterator)
       for (pre <- elems(sym))
-        f(TermRef.withSym(pre, sym))
+        f(TermRef(pre, sym))
 }

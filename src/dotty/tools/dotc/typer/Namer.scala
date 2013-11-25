@@ -338,7 +338,7 @@ class Namer { typer: Typer =>
             case sig: TypeRef =>
               sig
             case sig: ClassInfo =>
-              sig.derivedClassInfo(sig.prefix, sig.classParents, TermRef.withSym(sig.prefix, sourceModule.asTerm))
+              sig.derivedClassInfo(sig.prefix, sig.classParents, sig.prefix select sourceModule)
             case _ =>
               sig
           }

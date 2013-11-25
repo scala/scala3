@@ -195,7 +195,7 @@ trait Applications extends Compatibility { self: Typer =>
     def findDefaultGetter(n: Int)(implicit ctx: Context): Type = {
       def getterName = methRef.name.toTermName.defaultGetterName(n)
       def ref(pre: Type, sym: Symbol): Type =
-        if (pre.exists && sym.isTerm) TermRef.withSym(pre, sym.asTerm) else NoType
+        if (pre.exists && sym.isTerm) pre select sym else NoType
       val meth = methRef.symbol
       if (meth.hasDefaultParams)
         methRef.prefix match {

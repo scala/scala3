@@ -574,7 +574,7 @@ class Typer extends Namer with Applications with Implicits {
       else cx.tree match {
         case ddef: DefDef =>
           val meth = ddef.symbol
-          val from = Ident(TermRef.withSym(NoPrefix, meth.asTerm))
+          val from = Ident(TermRef(NoPrefix, meth.asTerm))
           val proto =
             if (meth.isConstructor)
               defn.UnitType
@@ -695,7 +695,7 @@ class Typer extends Namer with Applications with Implicits {
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = track("typedBind") {
     val body1 = typed(tree.body, pt)
     val sym = ctx.newSymbol(ctx.owner, tree.name.asTermName, EmptyFlags, pt, coord = tree.pos)
-    cpy.Bind(tree, tree.name, body1) withType TermRef.withSym(NoPrefix, sym)
+    cpy.Bind(tree, tree.name, body1) withType TermRef(NoPrefix, sym)
   }
 
   def typedAlternative(tree: untpd.Alternative, pt: Type)(implicit ctx: Context): Alternative = track("typedAlternative") {

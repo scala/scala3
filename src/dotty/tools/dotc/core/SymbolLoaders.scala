@@ -152,7 +152,7 @@ class SymbolLoaders {
       assert(root is PackageClass, root)
  	  def maybeModuleClass(classRep: ClassPath#ClassRep) = classRep.name.last == '$'
       val pre = root.owner.thisType
-      root.info = ClassInfo(pre, root.symbol.asClass, Nil, preDecls, TermRef.withSym(pre, sourceModule))
+      root.info = ClassInfo(pre, root.symbol.asClass, Nil, preDecls, pre select sourceModule)
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
       if (!root.isRoot) {
