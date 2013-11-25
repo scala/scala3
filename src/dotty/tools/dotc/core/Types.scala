@@ -186,14 +186,14 @@ object Types {
       !existsPart(!p(_))
 
     /** The parts of this type which are type or term refs */
-    final def namedParts(implicit ctx: Context): Set[NamedType] =
+    final def namedParts(implicit ctx: Context): collection.Set[NamedType] =
       namedPartsWith(Function.const(true))
 
     /** The parts of this type which are type or term refs and which
      *  satisfy predicate `p`.
      */
-    def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): Set[NamedType] =
-      new NamedPartsAccumulator(p).apply(Set(), this)
+    def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): collection.Set[NamedType] =
+      new NamedPartsAccumulator(p).apply(mutable.LinkedHashSet(), this)
 
     // needed?
     //final def foreach(f: Type => Unit): Unit = ???
@@ -2136,10 +2136,10 @@ object Types {
         this(this(x, annot), underlying)
 
       case tp: TypeVar =>
-        foldOver(x, tp.underlying)
+        this(x, tp.underlying)
 
       case tp: WildcardType =>
-        foldOver(x, tp.optBounds)
+        this(x, tp.optBounds)
 
       case _ => x
     }
@@ -2149,13 +2149,11 @@ object Types {
     def apply(x: Boolean, tp: Type) = x || p(tp) || foldOver(x, tp)
   }
 
-  class NamedPartsAccumulator(p: NamedType => Boolean)(implicit ctx: Context) extends TypeAccumulator[Set[NamedType]] {
-    def apply(x: Set[NamedType], tp: Type): Set[NamedType] = tp match { // !!! make set linked!!!
+  class NamedPartsAccumulator(p: NamedType => Boolean)(implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {
+    def apply(x: mutable.Set[NamedType], tp: Type): mutable.Set[NamedType] = tp match {
       case tp: NamedType if (p(tp)) =>
-        foldOver(x + tp, tp)
+        foldOver(x += tp, tp)
       case tp: ThisType =>
-        apply(x, tp.underlying)
-      case tp: TypeVar =>
         apply(x, tp.underlying)
       case _ =>
         foldOver(x, tp)
@@ -2169,7 +2167,7 @@ object Types {
    *  following invariant: If `keep` is a name filter, and `pre` has
    *  class `C` as a base class, then
    *
-   *    keep(pre, name) => keep(C.this, name)
+   *    keep(pre, name)  implies  keep(C.this, name)
    */
   abstract class NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean
@@ -2207,8 +2205,7 @@ object Types {
 
   class MalformedType(pre: Type, denot: Denotation, absMembers: Set[Name])
     extends FatalTypeError(
-      s"""malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}"""
-         .stripMargin)
+      s"""malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}""")
 
   class CyclicReference(val denot: SymDenotation)
     extends FatalTypeError(s"cyclic reference involving $denot") {

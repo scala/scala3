@@ -17,7 +17,7 @@ object CheckTrees {
     check(bounds contains arg.tpe)
   }
 
-  def escapingRefs(block: Block)(implicit ctx: Context): Set[NamedType] = {
+  def escapingRefs(block: Block)(implicit ctx: Context): collection.Set[NamedType] = {
     var hoisted: Set[Symbol] = Set()
     lazy val locals = localSyms(block.stats).toSet
     def isLocal(sym: Symbol): Boolean =
@@ -29,7 +29,7 @@ object CheckTrees {
           !classLeaks(sym.asClass)
         }
       }
-    def leakingTypes(tp: Type): Set[NamedType] =
+    def leakingTypes(tp: Type): collection.Set[NamedType] =
       tp namedPartsWith (tp => isLocal(tp.symbol))
     def typeLeaks(tp: Type): Boolean = leakingTypes(tp).nonEmpty
     def classLeaks(sym: ClassSymbol): Boolean =
