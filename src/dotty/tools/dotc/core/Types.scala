@@ -529,7 +529,6 @@ object Types {
       case tp: TermRef =>
       	if (tp.denot.isOverloaded) tp else tp.underlying.widen
       case tp: SingletonType => tp.underlying.widen
-//      case tp: TypeBounds => tp.hi.widen // needed?
       case tp: ExprType => tp.resultType.widen
       case _ => this
     }
@@ -588,15 +587,25 @@ object Types {
     def underlyingIfRepeated(implicit ctx: Context): Type =
       this.translateParameterized(defn.RepeatedParamClass, defn.SeqClass)
 
-    /** Reduce types of the form
+ // ----- Normalizing typerefs over refined types ----------------------------
+
+    /** If this is a refinement type that has a refinement for `name` (which might be followed
+     *  by other refinements), and the refined info is a type alias, return the alias,
+     *  otherwise return NoType. Used to reduce types of the form
      *
-     *    P { type T = / += / -= U } # T
+     *    P { ... type T = / += / -= U ... } # T
      *
      *  to just U
      */
-    def reduceTypeRefOverRefined(implicit ctx: Context): Type = this match {
-      case TypeRef(prefix, name) => lookupRefined(prefix, name) orElse this
-      case _ => this
+    def lookupRefined(pre: Type, name: Name)(implicit ctx: Context): Type = pre.stripTypeVar match {
+      case pre: RefinedType =>
+        if (pre.refinedName ne name) lookupRefined(pre.parent, name)
+        else pre.refinedInfo match {
+          case TypeBounds(lo, hi) if lo eq hi => hi
+          case _ => NoType
+        }
+      case _ =>
+        NoType
     }
 
     /** The type <this . name> , reduced if possible */
@@ -624,17 +633,6 @@ object Types {
         val res = lookupRefined(this, sym.name)
         if (res.exists) res else TypeRef(this, sym.asType)
       }
-
-    protected def lookupRefined(pre: Type, name: Name)(implicit ctx: Context): Type = pre.stripTypeVar match {
-      case pre: RefinedType =>
-        if (pre.refinedName ne name) lookupRefined(pre.parent, name)
-        else pre.refinedInfo match {
-          case TypeBounds(lo, hi) if lo eq hi => hi
-          case _ => NoType
-        }
-      case _ =>
-        NoType
-    }
 
 // ----- Access to parts --------------------------------------------
 
@@ -1095,8 +1093,6 @@ object Types {
 
     def info(implicit ctx: Context): Type = denot.info
 
-    override def underlying(implicit ctx: Context): Type = info
-
     /** Guard against cycles that can arise if given `op`
      *  follows info. The prblematic cases are a type alias to itself or
      *  bounded by itself or a val typed as itself:
@@ -1168,7 +1164,9 @@ object Types {
       denot.altsWith(p) map rewrap
   }
 
-  abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType
+  abstract case class TypeRef(override val prefix: Type, name: TypeName) extends NamedType {
+    override def underlying(implicit ctx: Context): Type = info
+  }
 
   final class TermRefWithSignature(prefix: Type, name: TermName, val sig: Signature) extends TermRef(prefix, name) {
     override def signature(implicit ctx: Context) = sig
@@ -1274,6 +1272,9 @@ object Types {
 
     override def underlying(implicit ctx: Context) = parent
 
+    /** Derived refined type, with a twist: A refinement with a higher-kinded type param placeholder
+     *  is transformed to a refinement of the original type parameter if that one exists.
+     */
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
       lazy val underlyingTypeParams = parent.safeUnderlyingTypeParams
       lazy val originalTypeParam = underlyingTypeParams(refinedName.hkParamIndex)
@@ -1328,15 +1329,9 @@ object Types {
   abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with ValueType {
     assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType], s"$tp1 & $tp2")
 
-    type This <: AndType
-
     def derivedAndType(tp1: Type, tp2: Type)(implicit ctx: Context) =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else AndType(tp1, tp2)
-
-    def derived_& (tp1: Type, tp2: Type)(implicit ctx: Context) =
-      if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
-      else tp1 & tp2
 
     override def computeHash = doHash(tp1, tp2)
   }
@@ -1355,10 +1350,6 @@ object Types {
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else OrType(tp1, tp2)
 
-    def derived_| (tp1: Type, tp2: Type)(implicit ctx: Context) =
-      if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
-      else tp1 | tp2
-
     override def computeHash = doHash(tp1, tp2)
   }
 
@@ -1369,75 +1360,78 @@ object Types {
       unique(new CachedOrType(tp1, tp2))
   }
 
-  // ----- Method types: MethodType/ExprType/PolyType/MethodParam/PolyParam ---------------
+  // ----- Method types: MethodType/ExprType/PolyType -------------------------------
 
-  // Note: method types are cached whereas poly types are not.
-  // The reason is that most poly types are cyclic via poly params,
+  // Note: method types are cached whereas poly types are not
+  // is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
   abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])
       (resultTypeExp: MethodType => Type)
-    extends CachedGroundType with BindingType with TermType {
+    extends CachedGroundType with BindingType with TermType { thisMethodType =>
 
     override val resultType = resultTypeExp(this)
     def isJava = false
     def isImplicit = false
 
     private[this] var myIsDependent: Boolean = _
-    private[this] var isDepKnown = false
+    private[this] var myIsDepKnown = false
 
+    /** Does result type contain references to parameters of this method type?
+     */
     def isDependent(implicit ctx: Context) = {
-      if (!isDepKnown) {
-        myIsDependent = new IsDependentAccumulator(this).apply(false, resultType)
-        isDepKnown = true
+      if (!myIsDepKnown) {
+        val isDepAcc = new TypeAccumulator[Boolean] {
+          def apply(x: Boolean, tp: Type) = x || {
+            tp match {
+              case MethodParam(`thisMethodType`, _) => true
+              case tp @ TypeRef(MethodParam(`thisMethodType`, _), name) =>
+                tp.info match { // follow type arguments to avoid dependency
+                  case TypeBounds(lo, hi) if lo eq hi => apply(x, hi)
+                  case _ => true
+                }
+              case _ =>
+                foldOver(x, tp)
+            }
+          }
+        }
+        myIsDependent = isDepAcc(false, resultType)
+        myIsDepKnown = true
       }
       myIsDependent
     }
 
     private[this] var mySignature: Signature = _
-    private[this] var signatureRunId: Int = NoRunId
+    private[this] var mySignatureRunId: Int = NoRunId
 
     override def signature(implicit ctx: Context): Signature = {
-      if (ctx.runId != signatureRunId) {
+      def computeSignature: Signature = {
+        val followSig = resultType match {
+          case rtp: MethodType => rtp.signature
+          case _ => Nil
+        }
+        (paramTypes map Erasure.paramSignature) ++ followSig
+      }
+      if (ctx.runId != mySignatureRunId) {
         mySignature = computeSignature
-        signatureRunId = ctx.runId
+        mySignatureRunId = ctx.runId
       }
       mySignature
-    }
-
-    private def computeSignature(implicit ctx: Context): Signature = {
-      val followSig = resultType match {
-        case rtp: MethodType => rtp.signature
-        case _ => Nil
-      }
-      (paramTypes map Erasure.paramSignature) ++ followSig
     }
 
     def derivedMethodType(paramNames: List[TermName], paramTypes: List[Type], restpe: Type)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramTypes eq this.paramTypes) && (restpe eq this.resultType)) this
       else {
-        val restpeExpr = (x: MethodType) => restpe.subst(this, x)
-        if (isJava) JavaMethodType(paramNames, paramTypes)(restpeExpr)
-        else if (isImplicit) ImplicitMethodType(paramNames, paramTypes)(restpeExpr)
-        else MethodType(paramNames, paramTypes)(restpeExpr)
+        val restpeFn = (x: MethodType) => restpe.subst(this, x)
+        if (isJava) JavaMethodType(paramNames, paramTypes)(restpeFn)
+        else if (isImplicit) ImplicitMethodType(paramNames, paramTypes)(restpeFn)
+        else MethodType(paramNames, paramTypes)(restpeFn)
       }
 
     def instantiate(argTypes: => List[Type])(implicit ctx: Context): Type =
       if (isDependent) resultType.substParams(this, argTypes)
       else resultType
 
- /* probably won't be needed
-    private var _isVarArgs: Boolean = _
-    private var knownVarArgs: Boolean = false
-
-    def isVarArgs(implicit ctx: Context) = {
-      if (!knownVarArgs) {
-        _isVarArgs = paramTypes.nonEmpty && paramTypes.last.isRepeatedParam
-        knownVarArgs = true
-      }
-      _isVarArgs
-    }
-*/
     override def equals(that: Any) = that match {
       case that: MethodType =>
         this.paramNames == that.paramNames &&
@@ -1448,6 +1442,7 @@ object Types {
     }
 
     override def computeHash = doHash(paramNames, resultType, paramTypes)
+
     protected def prefixString = "MethodType"
     override def toString = s"$prefixString($paramNames, $paramTypes, $resultType)"
   }
@@ -1502,7 +1497,7 @@ object Types {
   }
 
   abstract case class ExprType(override val resultType: Type)
-      extends CachedProxyType with TermType {
+  extends CachedProxyType with TermType {
     override def underlying(implicit ctx: Context): Type = resultType
     override def signature(implicit ctx: Context): Signature = Nil
     def derivedExprType(resultType: Type)(implicit ctx: Context) =
@@ -1518,7 +1513,8 @@ object Types {
   }
 
   case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-      extends UncachedGroundType with BindingType with TermType {
+    extends UncachedGroundType with BindingType with TermType {
+
     val paramBounds = paramBoundsExp(this)
     override val resultType = resultTypeExp(this)
 
@@ -1559,6 +1555,8 @@ object Types {
       }
   }
 
+  // ----- Bound types: MethodParam, PolyParam, RefiendThis --------------------------
+
   abstract class BoundType extends UncachedProxyType with ValueType {
     type BT <: BindingType
     def binder: BT
@@ -1575,11 +1573,10 @@ object Types {
     def copy(bt: BT) = MethodParam(bt, paramNum)
 
     // need to customize hashCode and equals to prevent infinite recursion for dep meth types.
-    override def hashCode = doHash(System.identityHashCode(binder) + paramNum)
+    override def hashCode = System.identityHashCode(binder) + paramNum
     override def equals(that: Any) = that match {
       case that: MethodParam =>
-        (this.binder eq that.binder) &&
-        this.paramNum == that.paramNum
+        (this.binder eq that.binder) && this.paramNum == that.paramNum
       case _ =>
         false
     }
@@ -1601,13 +1598,15 @@ object Types {
     def copy(bt: BT) = RefinedThis(bt)
     // need to customize hashCode and equals to prevent infinite recursion for
     // refinements that refer to the refinement type via this
-    override def hashCode = doHash(System.identityHashCode(binder))
+    override def hashCode = System.identityHashCode(binder)
     override def equals(that: Any) = that match {
       case that: RefinedThis => this.binder eq that.binder
       case _ => false
     }
     override def toString = s"RefinedThis(${binder.hashCode})"
   }
+
+  // ------------ Type variables ----------------------------------------
 
   /** A type variable is essentially a switch that models some part of a substitution.
    *  It is first linked to `origin`, a poly param that's in the current constraint set.
@@ -1627,8 +1626,8 @@ object Types {
     /** The permanent instance type of the the variable, or NoType is none is given yet */
     private[core] var inst: Type = NoType
 
-    /** The state owning the variable. This is at first creationState, but it can
-     *  be changed to an enclosing state on a commit
+    /** The state owning the variable. This is at first `creatorState`, but it can
+     *  be changed to an enclosing state on a commit.
      */
     private[core] var owningState = creatorState
 
@@ -1653,9 +1652,9 @@ object Types {
 
     /** Instantiate variable from the constraints over its `origin`.
      *  If `fromBelow` is true, the variable is instantiated to the lub
-     *  of its lower bounds in the current constraint; otherwie it is
+     *  of its lower bounds in the current constraint; otherwise it is
      *  instantiated to the glb of its upper bounds. However, a lower bound
-     *  instantiation can be a singleton type only if the uper bound
+     *  instantiation can be a singleton type only if the upper bound
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type = {
@@ -1695,7 +1694,7 @@ object Types {
 
   // ------ ClassInfo, Type Bounds ------------------------------------------------------------
 
-  /** The info of a class during a period, roughly
+  /** Roughly: the info of a class during a period.
    *  @param prefix       The prefix on which parents, decls, and selfType need to be rebased.
    *  @param cls          The class symbol.
    *  @param classParents The parent types of this class.
@@ -1715,23 +1714,23 @@ object Types {
 
     def selfType(implicit ctx: Context): Type = selfInfo match {
       case NoType => cls.typeRef
-      case self: Symbol => self.info
       case tp: Type => tp
+      case self: Symbol => self.info
     }
 
     def rebase(tp: Type)(implicit ctx: Context): Type =
       if ((prefix eq cls.owner.thisType) || !cls.owner.isClass) tp
       else tp.substThis(cls.owner.asClass, prefix)
 
-    private var tyconCache: Type = null
+    private var typeRefCache: Type = null
 
     def typeRef(implicit ctx: Context): Type = {
       def clsDenot = if (prefix eq cls.owner.thisType) cls.denot else cls.denot.copySymDenotation(info = this)
-      if (tyconCache == null)
-        tyconCache =
+      if (typeRefCache == null)
+        typeRefCache =
           if ((cls is PackageClass) || cls.owner.isTerm) prefix select cls
           else prefix select (cls.name, clsDenot)
-      tyconCache
+      typeRefCache
     }
 
     // cached because baseType needs parents
@@ -1780,7 +1779,7 @@ object Types {
 
     def contains(tp: Type)(implicit ctx: Context) = lo <:< tp && tp <:< hi
 
-    def &(that: TypeBounds)(implicit ctx: Context): TypeBounds =
+    def & (that: TypeBounds)(implicit ctx: Context): TypeBounds =
       derivedTypeBounds(this.lo | that.lo, this.hi & that.hi, (this.variance + that.variance) / 2)
 
     def | (that: TypeBounds)(implicit ctx: Context): TypeBounds =
@@ -1796,14 +1795,11 @@ object Types {
       case _ => super.| (that)
     }
 
-    def map(f: Type => Type)(implicit ctx: Context): TypeBounds =
-      derivedTypeBounds(f(lo), f(hi))
-
-    /** Given a higher-kinded abstract type
+    /** Given a the typebounds L..H of higher-kinded abstract type
      *
      *    type T[boundSyms] >: L <: H
      *
-     *  produce its equivalent bounds L',R that make no reference to the bound
+     *  produce its equivalent bounds L'..R that make no reference to the bound
      *  symbols on the left hand side. The idea is to rewrite the declaration to
      *
      *      type T >: L' <: HigherKindedXYZ { type _$hk$i >: bL_i <: bH_i } & H'
@@ -1815,7 +1811,8 @@ object Types {
      *  - bL_i is the lower bound of bound symbol #i under substitution `substBoundSyms`
      *  - bH_i is the upper bound of bound symbol #i under substitution `substBoundSyms`
      *  - `substBoundSyms` is the substitution that maps every bound symbol #i to the
-     *    reference `this._$hk$i`.
+     *    reference `<this>._$hk$i`, where `<this>` is the RefinedThis referring to the
+     *    previous HigherKindedXYZ refined type.
      *  - L' = substBoundSyms(L), H' = substBoundSyms(H)
      *
      *  Example:
@@ -1824,17 +1821,17 @@ object Types {
      *
      *  is rewritten to:
      *
-     *      type T <: HigherKindedP { type _$hk$0 <: F[$_hk$0] } & Traversable[_$hk$0, T]
+     *      type T <: HigherKindedP { type _$hk$0 <: F[$_hk$0] } & Traversable[<this>._$hk$0, T]
      *
      *  @see Definitions.hkTrait
      */
-    def higherKinded(boundSyms: List[Symbol])(implicit ctx: Context) = {
+    def higherKinded(boundSyms: List[Symbol])(implicit ctx: Context): TypeBounds = {
       val parent = defn.hkTrait(boundSyms map (_.variance)).typeRef
       val hkParamNames = boundSyms.indices.toList map tpnme.higherKindedParamName
       def substBoundSyms(tp: Type)(rt: RefinedType): Type =
         tp.subst(boundSyms, hkParamNames map (TypeRef(RefinedThis(rt), _)))
       val hkParamInfoFns: List[RefinedType => Type] =
-        for (bsym <- boundSyms) yield substBoundSyms(bsym.info)_
+        for (bsym <- boundSyms) yield substBoundSyms(bsym.info) _
       val hkBound = RefinedType.make(parent, hkParamNames, hkParamInfoFns).asInstanceOf[RefinedType]
       TypeBounds(substBoundSyms(lo)(hkBound), AndType(hkBound, substBoundSyms(hi)(hkBound)))
     }
@@ -1856,16 +1853,15 @@ object Types {
   }
 
   object TypeBounds {
-    def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
-    def upper(hi: Type, variance: Int = 0)(implicit ctx: Context) = apply(defn.NothingType, hi, variance)
-    def lower(lo: Type, variance: Int = 0)(implicit ctx: Context) = apply(lo, defn.AnyType, variance)
-    //def apply(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds = apply(lo, hi, 0)
     def apply(lo: Type, hi: Type, variance: Int = 0)(implicit ctx: Context): TypeBounds =
       unique(
         if (variance == 0) new CachedTypeBounds(lo, hi)
         else if (variance == 1) new CoTypeBounds(lo, hi)
         else new ContraTypeBounds(lo, hi)
       )
+    def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
+    def upper(hi: Type, variance: Int = 0)(implicit ctx: Context) = apply(defn.NothingType, hi, variance)
+    def lower(lo: Type, variance: Int = 0)(implicit ctx: Context) = apply(lo, defn.AnyType, variance)
   }
 
   object TypeAlias {
@@ -1930,8 +1926,12 @@ object Types {
   /** An extractor for single abstract method types.
    *  A type is a SAM type if it is a reference to a class or trait, which
    *
-   *   - has a single abstract method
+   *   - has a single abstract method with a non-dependent method type (ExprType
+   *     and PolyType not allowed!)
    *   - can be instantiated without arguments or with just () as argument.
+   *
+   *  The pattern `SAMType(denot)` matches a SAM type, where `denot` is the
+   *  denotation of the single abstract method as a member of the type.
    */
   object SAMType {
     def isInstantiatable(tp: Type)(implicit ctx: Context): Boolean = tp match {
@@ -1940,11 +1940,11 @@ object Types {
       case tp: ClassInfo =>
         def zeroParams(tp: Type): Boolean = tp match {
           case pt: PolyType => zeroParams(pt)
-          case mt: MethodType => mt.paramTypess.isEmpty && !mt.resultType.isInstanceOf[MethodType]
+          case mt: MethodType => mt.paramTypes.isEmpty && !mt.resultType.isInstanceOf[MethodType]
           case et: ExprType => true
           case _ => false
         }
-        val noParamsNeeded = (tp.cls is Trait) || zeroParams(tp.cls.primaryConstructor.info)
+        val noParamsNeeded = (tp.cls is Trait) || zeroParams(tp.cls.primaryConstructor.info) // !!! needs to be adapted once traits have parameters
         val selfTypeFeasible = tp.typeRef <:< tp.selfType
         noParamsNeeded && selfTypeFeasible
       case tp: RefinedType =>
@@ -2007,9 +2007,6 @@ object Types {
       case tp @ ClassInfo(prefix, _, _, _, _) =>
         tp.derivedClassInfo(this(prefix))
 
-      case tp @ AnnotatedType(annot, underlying) =>
-        tp.derivedAnnotatedType(mapOver(annot), this(underlying))
-
       case tp: TypeVar =>
         val inst = tp.instanceOpt
         if (inst.exists) apply(inst) else tp
@@ -2019,6 +2016,9 @@ object Types {
 
       case tp: OrType =>
         tp.derivedOrType(this(tp.tp1), this(tp.tp2))
+
+      case tp @ AnnotatedType(annot, underlying) =>
+        tp.derivedAnnotatedType(mapOver(annot), this(underlying))
 
       case tp @ WildcardType =>
         tp.derivedWildcardType(mapOver(tp.optBounds))
@@ -2079,8 +2079,8 @@ object Types {
 
     def foldOver(x: T, tp: Type): T = tp match {
       case tp: TypeRef =>
-        val tp1 = tp.reduceTypeRefOverRefined
-        this(x, if (tp1 ne tp) tp1 else tp.prefix)
+        val tp1 = tp.lookupRefined(tp.prefix, tp.name)
+        this(x, if (tp1.exists) tp1 else tp.prefix)
 
       case tp: TermRef =>
         this(x, tp.prefix)
@@ -2123,6 +2123,9 @@ object Types {
           this(y, hi)
         }
 
+      case tp @ ClassInfo(prefix, _, _, _, _) =>
+        this(x, prefix)
+
       case AndType(l, r) =>
         this(this(x, l), r)
 
@@ -2144,24 +2147,6 @@ object Types {
 
   class ExistsAccumulator(p: Type => Boolean)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     def apply(x: Boolean, tp: Type) = x || p(tp) || foldOver(x, tp)
-  }
-
-  /** An accumulator that determines whether a type contains references to
-   *  `mt` via nested method parameters
-   */
-  class IsDependentAccumulator(mt: MethodType)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
-    def apply(x: Boolean, tp: Type) = x || {
-      tp match {
-        case PolyParam(`mt`, _) => true
-        case tp @ TypeRef(PolyParam(`mt`, _), name) =>
-          tp.info match { // follow type arguments to avoid dependency
-            case TypeBounds(lo, hi) if lo eq hi => apply(x, hi)
-            case _ => true
-          }
-        case _ =>
-          foldOver(x, tp)
-      }
-    }
   }
 
   class NamedPartsAccumulator(p: NamedType => Boolean)(implicit ctx: Context) extends TypeAccumulator[Set[NamedType]] {
