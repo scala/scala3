@@ -437,7 +437,7 @@ class Namer { typer: Typer =>
         else rhsType
       case _ =>
         if (tparamSyms.nonEmpty) rhsType.LambdaAbstract(tparamSyms)(ctx.error(_, _))
-        else TypeAlias(rhsType, sym.localVariance)
+        else TypeAlias(rhsType, if (sym is Local) sym.variance else 0)
     }
   }
 }

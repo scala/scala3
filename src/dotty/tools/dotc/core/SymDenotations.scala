@@ -528,6 +528,8 @@ object SymDenotations {
     final def enclosingClass(implicit ctx: Context): Symbol =
       if (isClass) symbol else owner.enclosingClass
 
+    /** The class containing this denotation which has the given name.
+     */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {
       val cls = enclosingClass
       if (cls.name == name) cls else cls.owner.enclosingClassNamed(name)
@@ -537,16 +539,15 @@ object SymDenotations {
      *  except for a toplevel module, where its module class is returned.
      */
     final def topLevelClass(implicit ctx: Context): Symbol = {
-      val sym = topLevelSym
+      def topLevel(d: SymDenotation): Symbol = {
+        if ((d is PackageClass) || (d.owner is PackageClass)) d.symbol
+        else topLevel(d.owner)
+      }
+      val sym = topLevel(this)
       if (sym.isClass) sym else sym.moduleClass
     }
 
-    /** The top-level symbol containing this denotation. */
-    final def topLevelSym(implicit ctx: Context): Symbol =
-      if ((this is PackageClass) || (owner is PackageClass)) symbol
-      else owner.topLevelSym
-
-    /** The package containing this denotation */
+    /** The package class containing this denotation */
     final def enclosingPackage(implicit ctx: Context): Symbol =
       if (this is PackageClass) symbol else owner.enclosingPackage
 
@@ -674,14 +675,6 @@ object SymDenotations {
     final def variance: Int =
       if (this is Covariant) 1
       else if (this is Contravariant) -1
-      else 0
-
-    /** If this is a privatye[this] or protected[this] type parameter or type member,
-     *  its variance, otherwise 0.
-     */
-    final def localVariance: Int =
-      if (this is LocalCovariant) 1
-      else if (this is LocalContravariant) -1
       else 0
 
     override def toString = {

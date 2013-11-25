@@ -451,10 +451,6 @@ object Flags {
   /** An abstract class or a trait */
   final val AbstractOrTrait = Abstract | Trait
 
-  /** A local symbol, or one which has an expanded name (type parameters go from one to the other).
-   */
-  final val LocalOrExpanded = Local | ExpandedName
-
   /** Labeled `private` or `protected[local]` */
   final val PrivateOrLocal = Private | Local
 
