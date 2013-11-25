@@ -21,5 +21,15 @@ object Types {
       case pt: PolyType => pt.firstParamTypes
       case _ => Nil
     }
+    
+    /** `tp` is either a type variable or poly param. Returns
+     *  Covariant      if all occurrences of `tp` in this type are covariant
+     *  Contravariant  if all occurrences of `tp` in this type are contravariant
+     *  Covariant | Contravariant  if there are no occurrences of `tp` in this type
+     *  EmptyFlags     if `tp` occurs noon-variantly in this type
+     */
+    def varianceOf(tp: Type): FlagSet = ???
+
+    
   }
 } 

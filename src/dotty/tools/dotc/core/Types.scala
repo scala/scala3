@@ -594,7 +594,7 @@ object Types {
      *
      *  to just U
      */
-    def reduceTypeRef(implicit ctx: Context): Type = this match {
+    def reduceTypeRefOverRefined(implicit ctx: Context): Type = this match {
       case TypeRef(prefix, name) => lookupRefined(prefix, name) orElse this
       case _ => this
     }
@@ -791,8 +791,7 @@ object Types {
      */
     def toFunctionType(implicit ctx: Context): Type = this match {
       case mt @ MethodType(_, formals) if !mt.isDependent =>
-        val formals1 = formals mapConserve (_.underlyingIfRepeated)
-        defn.FunctionType(formals1, mt.resultType)
+        defn.FunctionType(formals mapConserve (_.underlyingIfRepeated), mt.resultType)
     }
 
     /** The signature of this type. This is by default NotAMethod,
@@ -803,15 +802,8 @@ object Types {
      */
     def signature(implicit ctx: Context): Signature = NotAMethod
 
+    /** Convert to text */
     def toText(printer: Printer): Text = printer.toText(this)
-
-    /** `tp` is either a type variable or poly param. Returns
-     *  Covariant      if all occurrences of `tp` in this type are covariant
-     *  Contravariant  if all occurrences of `tp` in this type are contravariant
-     *  Covariant | Contravariant  if there are no occurrences of `tp` in this type
-     *  EmptyFlags     if `tp` occurs noon-variantly in this type
-     */
-    def varianceOf(tp: Type): FlagSet = ???
 
     type VarianceMap = Map[TypeVar, Int]
 
@@ -839,9 +831,9 @@ object Types {
     }
 
     /** A simplified version of this type which is equivalent wrt =:= to this type.
-     *  Rules applied are:
-     *    T { type U = V } # U  -->  V
-     *  Also, type variables are instantiated and &/| operations are re-done because
+     *  This applies a typemap to the type which (as all typemaps) follows type
+     *  variable instances and reduces typerefs over refined types. It also
+     *  re-evaluatesall occurrences of And/OrType with &/| because
      *  what was a union or intersection of type variables might be a simpler type
      *  after the type variables are instantiated.
      */
@@ -961,13 +953,13 @@ object Types {
 
   /**  Instances of this class are cached and are not proxies. */
   abstract class CachedGroundType extends Type with CachedType {
-    private[this] var _hash = HashUnknown
+    private[this] var myHash = HashUnknown
     final def hash = {
-      if (_hash == HashUnknown) {
-        _hash = computeHash
-        if (_hash == HashUnknown) _hash = HashUnknownAlt
+      if (myHash == HashUnknown) {
+        myHash = computeHash
+        if (myHash == HashUnknown) myHash = HashUnknownAlt
       }
-      _hash
+      myHash
     }
     override final def hashCode =
       if (hash == NotCached) System.identityHashCode(this) else hash
@@ -976,13 +968,13 @@ object Types {
 
   /**  Instances of this class are cached and are proxies. */
   abstract class CachedProxyType extends TypeProxy with CachedType {
-    private[this] var _hash = HashUnknown
+    private[this] var myHash = HashUnknown
     final def hash = {
-      if (_hash == HashUnknown) {
-        _hash = computeHash
-        if (_hash == HashUnknown) _hash = HashUnknownAlt
+      if (myHash == HashUnknown) {
+        myHash = computeHash
+        if (myHash == HashUnknown) myHash = HashUnknownAlt
       }
-      _hash
+      myHash
     }
     override final def hashCode =
       if (hash == NotCached) System.identityHashCode(this) else hash
@@ -1119,7 +1111,7 @@ object Types {
       ctx.underlyingRecursions += 1
       if (ctx.underlyingRecursions < LogPendingUnderlyingThreshold)
         op
-      else if (ctx.pendingUnderlying(this))
+      else if (ctx.pendingUnderlying contains this)
         throw new CyclicReference(symbol)
       else
         try {
@@ -1132,12 +1124,6 @@ object Types {
       ctx.underlyingRecursions -= 1
     }
 
-/* not needed
-    def derivedNamedType(prefix: Type)(implicit ctx: Context): NamedType =
-      if (prefix eq this.prefix) this
-      else newLikeThis(prefix)
-*/
-
     def derivedSelect(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
       else {
@@ -1145,17 +1131,14 @@ object Types {
         if (res.exists) res else newLikeThis(prefix)
       }
 
-    /** Create a NamedType of the same kind as this type, if possible,
-     *  but with a new prefix. For HasFixedSym instances another such
-     *  instance is only created if the symbol's owner is a base class of
-     *  the new prefix. If that is not the case, we fall back to a
-     *  NamedType or in the case of a TermRef, NamedType with signature.
+    /** Create a NamedType of the same kind as this type, but with a new prefix.
      */
     protected def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
       NamedType(prefix, name)
   }
 
   abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType {
+
     protected def sig: Signature = UnknownSignature
 
     override def underlying(implicit ctx: Context): Type = {
@@ -1172,6 +1155,7 @@ object Types {
 
     def alternatives(implicit ctx: Context): List[TermRef] =
       denot.alternatives map rewrap
+
     def altsWith(p: Symbol => Boolean)(implicit ctx: Context): List[TermRef] =
       denot.altsWith(p) map rewrap
 
@@ -1198,27 +1182,6 @@ object Types {
     //assert(name.toString != "scala$collection$LinearSeqLike$$Repr", s"sel pre = $prefix")
     override def computeHash = doHash(name, prefix)
   }
-
-/*
-  trait HasFixedSym extends NamedType {
-    protected val fixedSym: Symbol
-    override def symbol(implicit ctx: Context): Symbol = fixedSym
-    override def loadDenot(implicit ctx: Context) = {
-      val denot = fixedSym.denot
-      val owner = denot.owner
-      if (owner.isTerm) denot else denot.asSeenFrom(prefix)
-    }
-    override def equals(that: Any) = that match {
-      case that: HasFixedSym =>
-        this.prefix == that.prefix &&
-        this.fixedSym == that.fixedSym
-      case _ =>
-        false
-    }
-    override def computeHash = doHash(fixedSym, prefix)
-    override def toString = super.toString + "(fixed sym)"
-  }
-  */
 
   final class TermRefWithSignature(prefix: Type, name: TermName, override val sig: Signature) extends TermRef(prefix, name) {
     assert(sig != UnknownSignature)
@@ -2126,7 +2089,7 @@ object Types {
 
     def foldOver(x: T, tp: Type): T = tp match {
       case tp: TypeRef =>
-        val tp1 = tp.reduceTypeRef // !!! needed?
+        val tp1 = tp.reduceTypeRefOverRefined
         this(x, if (tp1 ne tp) tp1 else tp.prefix)
 
       case tp: TermRef =>
