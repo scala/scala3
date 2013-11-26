@@ -4,6 +4,7 @@ object Config {
 
   final val cacheMemberNames = true
   final val cacheAsSeenFrom = true
+  final val useFingerPrints = true
 
   /** When set, use new signature-based matching.
    *  Advantantage of doing so: It's supposed to be faster

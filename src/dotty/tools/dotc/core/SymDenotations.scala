@@ -359,6 +359,8 @@ object SymDenotations {
 
     /** Is this a subclass of `base`,
      *  and is the denoting symbol also different from `Null` or `Nothing`?
+     *  @note  erroneous classes are assumed to derive from all other classes
+     *         and all classes derive from them.
      */
     def derivesFrom(base: Symbol)(implicit ctx: Context) = false
 
@@ -449,7 +451,7 @@ object SymDenotations {
       !(  this.isTerm
        || this.isStaticOwner
        || ctx.erasedTypes && symbol != defn.ArrayClass
-       || (pre eq thisType)
+       || (pre eq NoPrefix) || (pre eq thisType)
        )
 
     /** Is this symbol concrete, or that symbol deferred? */
@@ -737,24 +739,22 @@ object SymDenotations {
 
     /** The type parameters of this class */
     override final def typeParams(implicit ctx: Context): List[TypeSymbol] = {
+      def computeTypeParams = decls.filter(sym =>
+        (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
       if (myTypeParams == null) myTypeParams = computeTypeParams
       myTypeParams
     }
-
-    private def computeTypeParams(implicit ctx: Context): List[TypeSymbol] =
-      decls.filter(sym =>
-        (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
 
     /** A key to verify that all caches influenced by parent classes are valid */
     private var parentDenots: List[Denotation] = null
 
     /** The denotations of all parents in this class.
-     *  Note: Always use this method instead of `classInfo.classParents`
+     *  Note: Always use this method instead of `classInfo.myClassParents`
      *  because the latter does not ensure that the `parentDenots` key
      *  is up-to-date, which might lead to invalid caches later on.
      */
     def classParents(implicit ctx: Context) = {
-      val ps = classInfo.classParents
+      val ps = classInfo.myClassParents
       if (parentDenots == null) parentDenots = ps map (_.denot)
       ps
     }
@@ -762,7 +762,7 @@ object SymDenotations {
     /** Are caches influenced by parent classes still valid? */
     private def parentsAreValid(implicit ctx: Context): Boolean =
       parentDenots == null ||
-      parentDenots.corresponds(classInfo.classParents)(_ eq _.denot)
+      parentDenots.corresponds(classInfo.myClassParents)(_ eq _.denot)
 
     /** If caches influenced by parent classes are still valid, the denotation
      *  itself, otherwise a freshly initialized copy.
@@ -785,11 +785,11 @@ object SymDenotations {
       else
         ThisType(classSymbol) */
 
-    private[this] var myTypeConstructor: TypeRef = null
+    private[this] var myTypeRef: TypeRef = null
 
     override def typeRef(implicit ctx: Context): TypeRef = {
-      if (myTypeConstructor == null) myTypeConstructor = super.typeRef
-      myTypeConstructor
+      if (myTypeRef == null) myTypeRef = super.typeRef
+      myTypeRef
     }
 
     private[this] var myBaseClasses: List[ClassSymbol] = null
@@ -941,7 +941,9 @@ object SymDenotations {
       } else computeMembersNamed(name)
 
     private def computeMembersNamed(name: Name)(implicit ctx: Context): PreDenotation =
-      if (!classSymbol.hasChildren || (memberFingerPrint contains name)) {
+      if (!classSymbol.hasChildren ||
+          !Config.useFingerPrints ||
+          (memberFingerPrint contains name)) {
         val ownDenots = decls.denotsNamed(name)
         if (debugTrace)  // DEBUG
           println(s"$this.member($name), ownDenots = $ownDenots")
@@ -950,17 +952,9 @@ object SymDenotations {
             val denots1 = collect(denots, ps)
             p.symbol.denot match {
               case parentd: ClassDenotation =>
-                if (debugTrace) {  // DEBUG
-                  val s1 = parentd.membersNamed(name)
-                  val s2 = s1.filterExcluded(Private)
-                  val s3 = s2.disjointAsSeenFrom(ownDenots, thisType)
-                  println(s"$this.member($name) $s1 $s2 $s3")
-                }
                 denots1 union
                   parentd.membersNamed(name)
-                    .dropUniqueRefsIn(denots1)
-                    .filterExcluded(Private)
-                    .disjointAsSeenFrom(ownDenots, thisType)
+                    .mapInherited(ownDenots, denots1, thisType)
               case _ =>
                 denots1
             }

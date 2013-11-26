@@ -540,19 +540,13 @@ object Denotations {
       if (p(this)) this else NoDenotation
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =
       if (denots.containsSig(signature)) NoDenotation else this
-    def disjointAsSeenFrom(denots: PreDenotation, pre: Type)(implicit ctx: Context): SingleDenotation =
-      if (isType) filterDisjoint(denots).asSeenFrom(pre)
-      else asSeenFrom(pre).filterDisjoint(denots)
+    def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): SingleDenotation =
+      if (hasUniqueSym && prevDenots.containsSym(symbol)) NoDenotation
+      else if (overlaps(Private)) NoDenotation
+      else if (isType) filterDisjoint(ownDenots).asSeenFrom(pre)
+      else asSeenFrom(pre).filterDisjoint(ownDenots)
     final def filterExcluded(excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
-      if (excluded.isEmpty) this
-      else this match {
-        case thisd: SymDenotation =>
-          if (thisd is excluded) NoDenotation else this
-        case _ =>
-          if (symbol is excluded) NoDenotation else this
-      }
-    final def dropUniqueRefsIn(denots: PreDenotation): SingleDenotation =
-      if (hasUniqueSym && denots.containsSym(symbol)) NoDenotation else this
+      if (excluded.isEmpty || !(this overlaps excluded)) this else NoDenotation
 
     type AsSeenFromResult = SingleDenotation
     protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = {
@@ -562,6 +556,11 @@ object Denotations {
       }
       if (!owner.membersNeedAsSeenFrom(pre)) this
       else derivedSingleDenotation(symbol, info.asSeenFrom(pre, owner))
+    }
+
+    private def overlaps(fs: FlagSet)(implicit ctx: Context): Boolean = this match {
+      case sd: SymDenotation => sd is fs
+      case _ => symbol is fs
     }
   }
 
@@ -624,17 +623,22 @@ object Denotations {
      */
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation
 
-    def disjointAsSeenFrom(denots: PreDenotation, pre: Type)(implicit ctx: Context): PreDenotation
+    /** Keep only those inherited members M of this predenotation for which the following is true
+     *   - M is not marked Private
+     *   - If M has a unique symbol, it does not appear in `prevDenots`.
+     *   - M's signature as seen from prefix `pre` does not appear in `ownDenots`
+     *  Return the denotation as seen from `pre`.
+     *  Called from SymDenotations.computeMember. There, `ownDenots` are the denotations found in
+     *  the base class, which shadow any inherited denotations with the same signature.
+     *  `prevDenots` are the denotations that are defined in the class or inherited from
+     *  a base type which comes earlier in the linearization.
+     */
+    def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): PreDenotation
 
     /** Keep only those denotations in this group whose flags do not intersect
      *  with `excluded`.
      */
     def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation
-
-    /** Drop all denotations which refer to a unique symbol that is
-     *  already referred uniquely in `denots`.
-     */
-    def dropUniqueRefsIn(denots: PreDenotation): PreDenotation
 
     private var cachedPrefix: Type = _
     private var cachedAsSeenFrom: AsSeenFromResult = _
@@ -674,12 +678,11 @@ object Denotations {
       derivedUnion(denots1 filterWithPredicate p, denots2 filterWithPredicate p)
     def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1 filterDisjoint denots, denots2 filterDisjoint denots)
-    def disjointAsSeenFrom(denots: PreDenotation, pre: Type)(implicit ctx: Context): PreDenotation =
-      derivedUnion(denots1.disjointAsSeenFrom(denots, pre), denots2.disjointAsSeenFrom(denots, pre))
+    def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): PreDenotation =
+      derivedUnion(denots1.mapInherited(ownDenots, prevDenots, pre), denots2.mapInherited(ownDenots, prevDenots, pre))
     def filterExcluded(excluded: FlagSet)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1.filterExcluded(excluded), denots2.filterExcluded(excluded))
-    def dropUniqueRefsIn(denots: PreDenotation): PreDenotation =
-      derivedUnion(denots1.dropUniqueRefsIn(denots), denots2.dropUniqueRefsIn(denots))
+
     type AsSeenFromResult = PreDenotation
     protected def computeAsSeenFrom(pre: Type)(implicit ctx: Context): PreDenotation =
       derivedUnion(denots1.asSeenFrom(pre), denots2.asSeenFrom(pre))
