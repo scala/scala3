@@ -1362,13 +1362,35 @@ object Types {
 
   // ----- Method types: MethodType/ExprType/PolyType -------------------------------
 
-  // Note: method types are cached whereas poly types are not
+  // Note: method types are cached whereas poly types are not. The reason
   // is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
+  /** A trait that mixes in functionality for signature caching */
+  trait SignedType extends Type {
+
+    private[this] var mySignature: Signature = _
+    private[this] var mySignatureRunId: Int = NoRunId
+
+    protected def computeSignature(implicit ctx: Context): Signature
+    
+    protected def resultSignature(implicit ctx: Context) = resultType match {
+      case rtp: SignedType => rtp.signature
+      case tp => Signature(tp)
+    }
+
+    final override def signature(implicit ctx: Context): Signature = {
+      if (ctx.runId != mySignatureRunId) {
+        mySignature = computeSignature
+        mySignatureRunId = ctx.runId
+      }
+      mySignature
+    }
+  }
+
   abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])
       (resultTypeExp: MethodType => Type)
-    extends CachedGroundType with BindingType with TermType { thisMethodType =>
+    extends CachedGroundType with BindingType with TermType with SignedType { thisMethodType =>
 
     override val resultType = resultTypeExp(this)
     def isJava = false
@@ -1401,23 +1423,8 @@ object Types {
       myIsDependent
     }
 
-    private[this] var mySignature: Signature = _
-    private[this] var mySignatureRunId: Int = NoRunId
-
-    override def signature(implicit ctx: Context): Signature = {
-      def computeSignature: Signature = {
-        val followSig: Signature = resultType match {
-          case rtp: MethodType => rtp.signature
-          case tp => Signature(tp)
-        }
-        paramTypes ++: followSig
-      }
-      if (ctx.runId != mySignatureRunId) {
-        mySignature = computeSignature
-        mySignatureRunId = ctx.runId
-      }
-      mySignature
-    }
+    protected def computeSignature(implicit ctx: Context): Signature =
+      paramTypes ++: resultSignature
 
     def derivedMethodType(paramNames: List[TermName], paramTypes: List[Type], restpe: Type)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramTypes eq this.paramTypes) && (restpe eq this.resultType)) this
@@ -1497,9 +1504,9 @@ object Types {
   }
 
   abstract case class ExprType(override val resultType: Type)
-  extends CachedProxyType with TermType {
+  extends CachedProxyType with TermType with SignedType {
     override def underlying(implicit ctx: Context): Type = resultType
-    override def signature(implicit ctx: Context): Signature = Signature(resultType) // todo: cache?
+    protected def computeSignature(implicit ctx: Context): Signature = resultSignature
     def derivedExprType(resultType: Type)(implicit ctx: Context) =
       if (resultType eq this.resultType) this else ExprType(resultType)
     override def computeHash = doHash(resultType)
@@ -1513,12 +1520,12 @@ object Types {
   }
 
   case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-    extends UncachedGroundType with BindingType with TermType {
+    extends UncachedGroundType with BindingType with TermType with SignedType {
 
     val paramBounds = paramBoundsExp(this)
     override val resultType = resultTypeExp(this)
 
-    override def signature(implicit ctx: Context) = resultType.signature
+    protected def computeSignature(implicit ctx: Context) = resultSignature
 
     def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
       resultType.substParams(this, argTypes)

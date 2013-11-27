@@ -360,12 +360,7 @@ object Denotations {
     override def signature(implicit ctx: Context): Signature = {
       if (isType) Signature.NotAMethod
       else info match {
-        case tp: PolyType =>
-          tp.resultType match {
-            case mt: MethodType => mt.signature
-            case tp => Signature(tp)
-          }
-        case mt: MethodType => mt.signature
+        case info: SignedType => info.signature
         case _ => Signature.NotAMethod
       }
     }

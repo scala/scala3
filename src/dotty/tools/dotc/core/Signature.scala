@@ -48,7 +48,7 @@ object Signature {
   /** The signature of everything that's not a method, i.e. that has
    *  a type different from PolyType, MethodType, or ExprType.
    */
-  val NotAMethod = Signature(List(EmptyTypeName), EmptyTypeName)
+  val NotAMethod = Signature(List(), EmptyTypeName)
 
   /** The signature of a method with no parameters and result type `resultType`. */
   def apply(resultType: Type)(implicit ctx: Context): Signature =
