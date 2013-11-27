@@ -487,7 +487,7 @@ object Types {
      *      poly types.
      */
     def matches(that: Type)(implicit ctx: Context): Boolean =
-      if (Config.newMatch) this.signature == that.signature
+      if (Config.newMatch) this.signature matches that.signature
       else track("matches") {
         ctx.typeComparer.matchesType(
           this, that, alwaysMatchSimple = !ctx.phase.erasedTypes)
@@ -798,7 +798,7 @@ object Types {
      *   pattern is that method signatures use caching, so encapsulation
      *   is improved using an OO scheme).
      */
-    def signature(implicit ctx: Context): Signature = NotAMethod
+    def signature(implicit ctx: Context): Signature = Signature.NotAMethod
 
     /** Convert to text */
     def toText(printer: Printer): Text = printer.toText(this)
@@ -1406,11 +1406,11 @@ object Types {
 
     override def signature(implicit ctx: Context): Signature = {
       def computeSignature: Signature = {
-        val followSig = resultType match {
+        val followSig: Signature = resultType match {
           case rtp: MethodType => rtp.signature
-          case _ => Nil
+          case tp => Signature(tp)
         }
-        (paramTypes map Erasure.paramSignature) ++ followSig
+        paramTypes ++: followSig
       }
       if (ctx.runId != mySignatureRunId) {
         mySignature = computeSignature
@@ -1499,7 +1499,7 @@ object Types {
   abstract case class ExprType(override val resultType: Type)
   extends CachedProxyType with TermType {
     override def underlying(implicit ctx: Context): Type = resultType
-    override def signature(implicit ctx: Context): Signature = Nil
+    override def signature(implicit ctx: Context): Signature = Signature(resultType) // todo: cache?
     def derivedExprType(resultType: Type)(implicit ctx: Context) =
       if (resultType eq this.resultType) this else ExprType(resultType)
     override def computeHash = doHash(resultType)

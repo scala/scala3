@@ -10,6 +10,7 @@ import collection.immutable.BitSet
 import scala.reflect.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import annotation.tailrec
+import util.SimpleMap
 import config.Config
 
 trait SymDenotations { this: Context =>
@@ -655,7 +656,7 @@ object SymDenotations {
      *  and at signature `NotAMethod`.
      */
     def valRef(implicit ctx: Context): TermRef =
-      TermRef.withSig(owner.thisType, name.asTermName, NotAMethod).withDenot(this)
+      TermRef.withSig(owner.thisType, name.asTermName, Signature.NotAMethod).withDenot(this)
 
     /** The TermRef representing this term denotation at its original location
      *  at the denotation's signature.
@@ -931,7 +932,7 @@ object SymDenotations {
      *  have existing symbols.
      */
     final def membersNamed(name: Name)(implicit ctx: Context): PreDenotation =
-      if (Config.cacheMemberNames) {
+      if (Config.cacheMembersNamed) {
         var denots: PreDenotation = memberCache lookup name
         if (denots == null) {
           denots = computeMembersNamed(name)
@@ -1027,7 +1028,7 @@ object SymDenotations {
       }
     }
 
-    private[this] var memberNamesCache: Map[NameFilter, Set[Name]] = Map()
+    private[this] var memberNamesCache: SimpleMap[NameFilter, Set[Name]] = SimpleMap.Empty
 
     def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = {
       def computeMemberNames: Set[Name] = {
@@ -1036,36 +1037,35 @@ object SymDenotations {
         val candidates = inheritedNames ++ ownNames
         candidates filter (keepOnly(thisType, _))
       }
-      if (this is PackageClass) computeMemberNames // don't cache package member names; they might change
-      else memberNamesCache get keepOnly match {
-        case Some(names) =>
-          names
-        case _ =>
+      if ((this is PackageClass) || !Config.cacheMemberNames) computeMemberNames // don't cache package member names; they might change
+      else {
+        val cached = memberNamesCache(keepOnly)
+        if (cached != null) cached
+        else {
           setFlag(Frozen)
           val names = computeMemberNames
           memberNamesCache = memberNamesCache.updated(keepOnly, names)
           names
+        }
       }
     }
 
-    private[this] var fullNameCache: Map[Char, Name] = Map()
-
-    override final def fullName(separator: Char)(implicit ctx: Context): Name =
-      fullNameCache get separator match {
-        case Some(fn) =>
-          fn
-        case _ =>
-          val fn = super.fullName(separator)
-          fullNameCache = fullNameCache.updated(separator, fn)
-          fn
+    private[this] var fullNameCache: SimpleMap[Character, Name] = SimpleMap.Empty
+    override final def fullName(separator: Char)(implicit ctx: Context): Name = {
+      val cached = fullNameCache(separator)
+      if (cached != null) cached
+      else {
+        val fn = super.fullName(separator)
+        fullNameCache = fullNameCache.updated(separator, fn)
+        fn
       }
+    }
 
     // to avoid overloading ambiguities
     override def fullName(implicit ctx: Context): Name = super.fullName
 
     override def primaryConstructor(implicit ctx: Context): Symbol = {
-      val cname =
-        if (this is Trait | ImplClass) nme.TRAIT_CONSTRUCTOR else nme.CONSTRUCTOR
+      val cname = if (this is Trait | ImplClass) nme.TRAIT_CONSTRUCTOR else nme.CONSTRUCTOR
       decls.denotsNamed(cname).first.symbol
     }
   }
@@ -1086,7 +1086,7 @@ object SymDenotations {
    *  Note: LazyTypes double up as (constant) functions from Symbol and
    *  from (TermSymbol, ClassSymbol) to LazyType. That way lazy types can be
    *  directly passed to symbol creation methods in Symbols that demand instances
-   *  of these types.
+   *  of these function types.
    */
   abstract class LazyType extends UncachedGroundType
     with (Symbol => LazyType)
@@ -1102,6 +1102,9 @@ object SymDenotations {
     private var mySourceModuleFn: () => Symbol = NoSymbolFn
     private var myModuleClassFn: () => Symbol = NoSymbolFn
 
+    /** A proxy to this lazy type that keeps the complete operation
+     *  but provides fresh slots for scope/sourceModule/moduleClass
+     */
     def proxy: LazyType = new LazyType {
       override def complete(denot: SymDenotation) = self.complete(denot)
     }
@@ -1117,13 +1120,9 @@ object SymDenotations {
 
   val NoSymbolFn = () => NoSymbol
 
+  /** A missing completer */
   class NoCompleter extends LazyType {
     def complete(denot: SymDenotation): Unit = unsupported("complete")
-  }
-
-  /** A missing completer */
-  object NoCompleter extends LazyType {
-    override def complete(denot: SymDenotation): Unit = unsupported("complete")
   }
 
   /** A lazy type for modules that points to the module class.
@@ -1134,7 +1133,7 @@ object SymDenotations {
   class ModuleCompleter(override val moduleClass: ClassSymbol)(implicit cctx: CondensedContext)
   extends LazyType {
     def complete(denot: SymDenotation): Unit = {
-      val from = denot.moduleClass.denot.asClass
+      val from = moduleClass.denot.asClass
       denot.setFlag(from.flags.toTermFlags & RetainedModuleValFlags)
       denot.annotations = from.annotations filter (_.appliesToModule)
         // !!! ^^^ needs to be revised later. The problem is that annotations might

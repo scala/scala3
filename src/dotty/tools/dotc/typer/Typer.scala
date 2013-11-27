@@ -979,6 +979,7 @@ class Typer extends Namer with Applications with Implicits {
 
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
+      println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
       val alts = altDenots map (alt =>
         TermRef.withSig(ref.prefix, ref.name, alt.info.signature).withDenot(alt))
       def expectedStr = err.expectedTypeStr(pt)

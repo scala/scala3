@@ -9,6 +9,7 @@ import Names.TypeName
 import Symbols.NoSymbol
 import Symbols._
 import Types._, Periods._, Flags._, Transformers._, Decorators._
+import transform.Erasure
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
@@ -26,8 +27,7 @@ import Decorators.SymbolIteratorDecorator
  *
  *  Lines ending in a horizontal line mean subtying (right is a subtype of left).
  *
- *  NamedType------NamedTypeWithSignature
- *
+ *  NamedType------TermRefWithSignature
  *    |                    |                     Symbol---------ClassSymbol
  *    |                    |                       |                |
  *    | denot              | denot                 | denot          | denot
@@ -44,8 +44,9 @@ import Decorators.SymbolIteratorDecorator
  *  NamedType                A type consisting of a prefix type and a name, with fields
  *                              prefix: Type
  *                              name: Name
- *  NamedTypeWithSignature   A named type that has in addition a signature to select an overloaded variant, with new field
- *                              signature: Signature
+ *                           It has two subtypes: TermRef and TypeRef
+ *  TermRefWithSignature     A TermRef that has in addition a signature to select an overloaded variant, with new field
+ *                              sig: Signature
  *  Symbol                   A label for a definition or declaration in one compiler run
  *  ClassSymbol              A symbol representing a class
  *  Denotation               The meaning of a named type or symbol during a period
@@ -64,27 +65,6 @@ import Decorators.SymbolIteratorDecorator
  *  ClassDenotation          A denotation representing a single class definition.
  */
 object Denotations {
-
-  /** The signature of a denotation.
-   *  Overloaded denotations with the same name are distinguished by
-   *  their signatures. A signature is a list of the fully qualified names
-   *  of the type symbols of the erasure of the parameters of the
-   *  denotation. For instance a definition
-   *
-   *      def f(x: Int)(y: List[String]): String
-   *
-   *  would have signature
-   *
-   *      List("scala.Int".toTypeName, "scala.collection.immutable.List".toTypeName)
-   *
-   *  TODO: discriminate on result type as well !!!
-   */
-  type Signature = List[TypeName]
-
-  /** The signature of a val or parameterless def, as opposed
-   *  to List(), which is the signature of a zero-parameter def.
-   */
-  val NotAMethod: Signature = List(Names.EmptyTypeName)
 
   /** A denotation is the result of resolving
    *  a name (either simple identifier or select) during a given period.
@@ -231,8 +211,7 @@ object Denotations {
           }
         case denot1: SingleDenotation =>
           if (denot1 eq denot2) denot1
-          else if (denot1.signature != denot2.signature) NoDenotation
-          else {
+          else if (denot1.signature matches denot2.signature) {
             val info1 = denot1.info
             val info2 = denot2.info
             val sym2 = denot2.symbol
@@ -254,6 +233,7 @@ object Denotations {
               }
             }
           }
+          else NoDenotation
       }
 
       if (this eq that) this
@@ -275,8 +255,7 @@ object Denotations {
     def | (that: Denotation, pre: Type)(implicit ctx: Context): Denotation = {
 
       def unionDenot(denot1: SingleDenotation, denot2: SingleDenotation): Denotation =
-        if (denot1.signature != denot2.signature) NoDenotation
-        else {
+        if (denot1.signature matches denot2.signature) {
           val info1 = denot1.info
           val info2 = denot2.info
           val sym2 = denot2.symbol
@@ -304,6 +283,7 @@ object Denotations {
             }
           }
         }
+        else NoDenotation
 
       def throwError = throw new MatchError(s"$this | $that")
 
@@ -378,15 +358,15 @@ object Denotations {
     def hasUniqueSym: Boolean
     override def isType = info.isInstanceOf[TypeType]
     override def signature(implicit ctx: Context): Signature = {
-      if (isType) NotAMethod
+      if (isType) Signature.NotAMethod
       else info match {
         case tp: PolyType =>
           tp.resultType match {
             case mt: MethodType => mt.signature
-            case _ => List()
+            case tp => Signature(tp)
           }
         case mt: MethodType => mt.signature
-        case _ => NotAMethod
+        case _ => Signature.NotAMethod
       }
     }
 
@@ -411,7 +391,7 @@ object Denotations {
       if (symbol isAccessibleFrom (pre, superAccess)) this else NoDenotation
 
     def atSignature(sig: Signature)(implicit ctx: Context): SingleDenotation =
-      if (sig == signature) this else NoDenotation
+      if (sig matches signature) this else NoDenotation
 
     // ------ Transformations -----------------------------------------
 
@@ -535,7 +515,7 @@ object Denotations {
     final def containsSym(sym: Symbol): Boolean =
       hasUniqueSym && (symbol eq sym)
     final def containsSig(sig: Signature)(implicit ctx: Context) =
-      exists && signature == sig
+      exists && (signature matches sig)
     final def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation =
       if (p(this)) this else NoDenotation
     final def filterDisjoint(denots: PreDenotation)(implicit ctx: Context): SingleDenotation =

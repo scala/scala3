@@ -313,7 +313,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp2: PolyType =>
       tp1 match {
         case tp1: PolyType =>
-          tp1.signature == tp2.signature &&
+          (tp1.signature sameParams tp2.signature) &&
           matchingTypeParams(tp1, tp2) &&
           isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
         case _ =>

@@ -99,31 +99,31 @@ object Erasure {
     if (bcs1.isEmpty) defn.ObjectClass else bcs1.head
   }
 
-  /** The parameter signature of a type.
-   *  Need to ensure correspondence with erasure
+  /** The name of the type as it is used in `Signature`s.
+   *  Need to ensure correspondence with erasure!
    */
-  def paramSignature(tp: Type)(implicit ctx: Context): TypeName = tp match {
+  def sigName(tp: Type)(implicit ctx: Context): TypeName = tp match {
     case tp: TypeRef =>
       val sym = tp.symbol
       if (sym.isClass)
         /*if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tref)
         else */if (sym.owner is Package) normalizeClass(sym.asClass).name
         else sym.asClass.name
-      else paramSignature(tp.info)
+      else sigName(tp.info)
     case tp: RefinedType =>
       val parent = tp.parent
       if (parent isRef defn.ArrayClass)
         eraseArray(tp) match {
           case tp1: RefinedType if tp1.parent isRef defn.ArrayClass =>
-            paramSignature(tp1.refinedInfo) ++ "[]"
+            sigName(tp1.refinedInfo) ++ "[]"
           case tp1 =>
-            paramSignature(tp1)
+            sigName(tp1)
         }
-      else paramSignature(parent)
+      else sigName(parent)
     case tp: TypeProxy =>
-      paramSignature(tp.underlying)
+      sigName(tp.underlying)
     case AndType(tp1, tp2) =>
-      paramSignature(tp1)
+      sigName(tp1)
     case OrType(tp1, tp2) =>
       lubClass(tp1, tp2).name
     case ErrorType =>
