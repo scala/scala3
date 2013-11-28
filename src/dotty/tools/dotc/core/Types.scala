@@ -1978,6 +1978,12 @@ object Types {
   // ----- TypeMaps --------------------------------------------------------------------
 
   abstract class TypeMap(implicit ctx: Context) extends (Type => Type) { thisMap =>
+
+    /** Unset by default. If set also map parents and self type of a ClassInfo.
+     *  By default, only the prefix is mapped.
+     */
+    def mapClassInfosDeeply = false
+
     def apply(tp: Type): Type
 
     /** Map this function over given type */
@@ -2013,7 +2019,16 @@ object Types {
         }
 
       case tp @ ClassInfo(prefix, _, _, _, _) =>
-        tp.derivedClassInfo(this(prefix))
+        if (mapClassInfosDeeply) {
+          val prefix1 = this(prefix)
+          val parents1 = (tp.parents mapConserve this).asInstanceOf[List[TypeRef]]
+          val self1 = tp.self match {
+            case self: Type => this(self)
+            case _ => tp.self
+          }
+          tp.derivedClassInfo(prefix1, parents1, self1)
+        }
+        else tp.derivedClassInfo(this(prefix))
 
       case tp: TypeVar =>
         val inst = tp.instanceOpt
