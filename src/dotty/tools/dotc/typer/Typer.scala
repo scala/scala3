@@ -23,6 +23,7 @@ import ErrorReporting._
 import Inferencing.{FunProto, PolyProto, Compatibility, normalize}
 import EtaExpansion.etaExpand
 import util.Positions._
+import util.common._
 import util.SourcePosition
 import collection.mutable
 import annotation.tailrec
@@ -482,7 +483,7 @@ class Typer extends Namer with Applications with Implicits {
           val MethodType(_, paramTypes) = meth.info
           paramTypes
         case _ =>
-          params map Function.const(WildcardType)
+          params map alwaysWildcardType
       }
       val inferredParams: List[untpd.ValDef] =
         for ((param, formal) <- params zip protoFormals) yield

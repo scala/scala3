@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package core
 
 import util.HashSet
+import util.common._
 import Symbols._
 import Flags._
 import Names._
@@ -187,7 +188,7 @@ object Types {
 
     /** The parts of this type which are type or term refs */
     final def namedParts(implicit ctx: Context): collection.Set[NamedType] =
-      namedPartsWith(Function.const(true))
+      namedPartsWith(alwaysTrue)
 
     /** The parts of this type which are type or term refs and which
      *  satisfy predicate `p`.
@@ -354,7 +355,7 @@ object Types {
           if (name eq tp.refinedName) {
             val rinfo = tp.refinedInfo.substThis(tp, pre)
             if (name.isTypeName) // simplified case that runs more efficiently
-              pdenot.asInstanceOf[SingleDenotation].derivedSingleDenotation(pdenot.symbol, rinfo)
+              pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
             else
               pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
           } else pdenot
@@ -432,13 +433,13 @@ object Types {
     /** The set of abstract type members of this type. */
     final def abstractTypeMembers(implicit ctx: Context): Seq[SingleDenotation] = track("abstractTypeMembers") {
       memberDenots(abstractTypeNameFilter,
-          (name, buf) => buf += member(name).asInstanceOf[SingleDenotation])
+          (name, buf) => buf += member(name).asSingleDenotation)
     }
 
     /** The set of type members of this type */
     final def typeMembers(implicit ctx: Context): Seq[SingleDenotation] = track("typeMembers") {
       memberDenots(typeNameFilter,
-          (name, buf) => buf += member(name).asInstanceOf[SingleDenotation])
+          (name, buf) => buf += member(name).asSingleDenotation)
     }
 
     /** The set of implicit members of this type */
@@ -1373,7 +1374,7 @@ object Types {
     private[this] var mySignatureRunId: Int = NoRunId
 
     protected def computeSignature(implicit ctx: Context): Signature
-    
+
     protected def resultSignature(implicit ctx: Context) = resultType match {
       case rtp: SignedType => rtp.signature
       case tp => Signature(tp)
@@ -2220,10 +2221,6 @@ object Types {
   }
 
   class MergeError(msg: String) extends FatalTypeError(msg)
-
-  // ----- Values hoisted out for performance -----------------------------
-
-  val emptyDNF = (Nil, Set[Name]()) :: Nil
 
   // ----- Debug ---------------------------------------------------------
 

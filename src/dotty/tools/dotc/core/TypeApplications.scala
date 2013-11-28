@@ -6,6 +6,7 @@ import Contexts._
 import Symbols._
 import Decorators._
 import util.Stats._
+import util.common._
 import Names._
 import Flags._
 import util.Positions.Position
@@ -102,7 +103,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       if (tsym.isClass || !self.typeSymbol.isCompleting) typeParams
       else {
         ctx.warning("encountered F-bounded higher-kinded type parameters; assuming they are invariant")
-        defn.hkTrait(args map Function.const(0)).typeParams
+        defn.hkTrait(args map alwaysZero).typeParams
       }
 
     if (args.isEmpty) self
