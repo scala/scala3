@@ -1989,11 +1989,6 @@ object Types {
 
   abstract class TypeMap(implicit ctx: Context) extends (Type => Type) { thisMap =>
 
-    /** Unset by default. If set also map parents and self type of a ClassInfo.
-     *  By default, only the prefix is mapped.
-     */
-    def mapClassInfosDeeply = false
-
     def apply(tp: Type): Type
 
     /** Map this function over given type */
@@ -2028,17 +2023,8 @@ object Types {
           tp.derivedTypeBounds(this(lo), this(hi))
         }
 
-      case tp @ ClassInfo(prefix, _, _, _, _) =>
-        if (mapClassInfosDeeply) {
-          val prefix1 = this(prefix)
-          val parents1 = (tp.parents mapConserve this).asInstanceOf[List[TypeRef]]
-          val self1 = tp.self match {
-            case self: Type => this(self)
-            case _ => tp.self
-          }
-          tp.derivedClassInfo(prefix1, parents1, self1)
-        }
-        else tp.derivedClassInfo(this(prefix))
+      case tp: ClassInfo =>
+        mapClassInfo(tp)
 
       case tp: TypeVar =>
         val inst = tp.instanceOpt
@@ -2076,8 +2062,25 @@ object Types {
     def mapOver(tree: Tree): Tree =
       new TreeMapper(this).apply(tree)
 
+    /** Can be overridden. By default, only the prefix is mapped. */
+    protected def mapClassInfo(tp: ClassInfo): ClassInfo =
+      tp.derivedClassInfo(this(tp.prefix))
+
     def andThen(f: Type => Type): TypeMap = new TypeMap {
       def apply(tp: Type) = f(thisMap(tp))
+    }
+  }
+
+  /** A type map that maps also parents and self type of a ClassInfo */
+  abstract class DeepTypeMap(implicit ctx: Context) extends TypeMap {
+    override def mapClassInfo(tp: ClassInfo) = {
+      val prefix1 = this(tp.prefix)
+      val parents1 = (tp.parents mapConserve this).asInstanceOf[List[TypeRef]]
+      val self1 = tp.self match {
+        case self: Type => this(self)
+        case _ => tp.self
+      }
+      tp.derivedClassInfo(prefix1, parents1, self1)
     }
   }
 
