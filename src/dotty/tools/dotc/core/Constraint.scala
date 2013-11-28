@@ -25,7 +25,7 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
   /** Does the constraint's domain contain the type parameter `param`? */
   def contains(param: PolyParam): Boolean = {
     val entries = myMap(param.binder)
-    entries != null && entries(param.paramNum).exists
+    entries != null && entries(param.paramNum).isInstanceOf[TypeBounds]
   }
 
   /** Does this constraint contain the type variable `tvar` and is it uninstantiated? */
