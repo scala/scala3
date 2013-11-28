@@ -17,6 +17,7 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
   def constraint: Constraint = new Constraint(SimpleMap.Empty)
   def constraint_=(c: Constraint): Unit = {}
 
+  /** The uninstantiated variables */
   def uninstVars = constraint.uninstVars
 
   /** Gives for each instantiated type var that does not yet have its `inst` field
@@ -86,8 +87,4 @@ extends TyperState(reporter) {
   }
 
   override def toText(printer: Printer): Text = constraint.toText(printer)
-}
-
-object MutableTyperState {
-  private def toStr(x: Any) = x.toString
 }
