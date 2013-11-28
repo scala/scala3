@@ -542,6 +542,13 @@ object Types {
       case _ => this
     }
 
+    /** Widen from ExprType type to its result type.
+     */
+    final def widenExpr: Type = this match {
+      case tp: ExprType => tp.resultType
+      case _ => this
+    }
+
     /** Widen type if it is unstable (i.e. an EpxprType, or Termref to unstable symbol */
     final def widenIfUnstable(implicit ctx: Context): Type = this match {
       case tp: ExprType => tp.resultType.widenIfUnstable
@@ -1788,10 +1795,10 @@ object Types {
     def contains(tp: Type)(implicit ctx: Context) = lo <:< tp && tp <:< hi
 
     def & (that: TypeBounds)(implicit ctx: Context): TypeBounds =
-      derivedTypeBounds(this.lo | that.lo, this.hi & that.hi, (this.variance + that.variance) / 2)
+      derivedTypeBounds(this.lo | that.lo, this.hi & that.hi, this commonVariance that)
 
     def | (that: TypeBounds)(implicit ctx: Context): TypeBounds =
-      derivedTypeBounds(this.lo & that.lo, this.hi | that.hi, (this.variance + that.variance) / 2)
+      derivedTypeBounds(this.lo & that.lo, this.hi | that.hi, this commonVariance that)
 
     override def & (that: Type)(implicit ctx: Context) = that match {
       case that: TypeBounds => this & that
@@ -1802,6 +1809,9 @@ object Types {
       case that: TypeBounds => this | that
       case _ => super.| (that)
     }
+
+    /** If this type and that type have the same variance, this variance, otherwise 0 */
+    final def commonVariance(that: TypeBounds): Int = (this.variance + that.variance) / 2
 
     /** Given a the typebounds L..H of higher-kinded abstract type
      *

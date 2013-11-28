@@ -11,9 +11,6 @@ import util.SimpleMap
 import config.Config
 
 /** Provides methods to compare types.
- *  @param  constraint The initial constraint which is assumed to hold for the comparisons.
- *                      The constraint set is updated when undetermined type parameters
- *                      in the constraint's domain are compared.
  */
 class TypeComparer(initctx: Context) extends DotClass {
   implicit val ctx = initctx
@@ -24,12 +21,14 @@ class TypeComparer(initctx: Context) extends DotClass {
   private var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private var recCount = 0
 
+  /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint = false
 
   private var myAnyClass: ClassSymbol = null
   private var myNothingClass: ClassSymbol = null
   private var myNullClass: ClassSymbol = null
   private var myObjectClass: ClassSymbol = null
+
   def AnyClass = {
     if (myAnyClass == null) myAnyClass = defn.AnyClass
     myAnyClass
@@ -47,21 +46,30 @@ class TypeComparer(initctx: Context) extends DotClass {
     myObjectClass
   }
 
-  /** Add the constraint `<bounds.lo <: param <: bounds.hi>`
-   *  to `constraint`.
-   *  @pre `param` is in the constraint's domain
-   */
-  def addConstraint1(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
-      val oldBounds = constraint.bounds(param)
-      val newBounds =
-        if (fromBelow) oldBounds.derivedTypeBounds(oldBounds.lo | bound, oldBounds.hi)
-        else oldBounds.derivedTypeBounds(oldBounds.lo, oldBounds.hi & bound)
-      if (oldBounds ne newBounds)
-        constraint = constraint.updated(param, newBounds)
-      isSubType(newBounds.lo, newBounds.hi)
+  private def addConstraint1(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
+    val oldBounds = constraint.bounds(param)
+    val newBounds =
+      if (fromBelow) oldBounds.derivedTypeBounds(oldBounds.lo | bound, oldBounds.hi)
+      else oldBounds.derivedTypeBounds(oldBounds.lo, oldBounds.hi & bound)
+    (oldBounds eq newBounds) || {
+      val saved = constraint
+      constraint = constraint.updated(param, newBounds)
+      isSubType(newBounds.lo, newBounds.hi) ||
+      { constraint = saved; false } // don't leave the constraint in unsatisfiable state
     }
+  }
 
-  def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean =
+  /** If current constraint set is not frozen, add the constraint
+   *
+   *      param >: bound   if fromBelow is true
+   *      param <: bound   otherwise
+   *
+   *  to the bounds of `param`. If `bound` is itself a constrained parameter, also
+   *  add the dual constraint to `bound`.
+   *  @pre `param` is in the constraint's domain
+   *  @return Whether the augmented constraint is still satisfiable.
+   */
+  def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
     param == bound ||
     !frozenConstraint && {
       println(s"adding ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} to ${constraint.show}")
@@ -73,15 +81,16 @@ class TypeComparer(initctx: Context) extends DotClass {
           addConstraint1(param, bound, fromBelow)
       }
     }
+  }
 
-  /** Solve constraint for given type parameter `param`.
+  /** Solve constraint set for given type parameter `param`.
    *  If `fromBelow` is true the parameter is approximated by its lower bound,
    *  otherwise it is approximated by its upper bound. However, any occurrences
    *  of the parameter in a refinement somewhere in the bound are removed.
    *  (Such occurrences can arise for F-bounded types).
    *  The constraint is left unchanged.
    *  @return the instantiating type
-   *  @pre `param` is associated with type bounds in the current constraint.
+   *  @pre `param` is in the constraint's domain.
    */
   def approximation(param: PolyParam, fromBelow: Boolean): Type = {
     val avoidParam = new TypeMap {
@@ -110,7 +119,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     if (tp1 == NoType || tp2 == NoType) false
     else if (tp1 eq tp2) true
     else {
-      val cs = constraint
+      val saved = constraint
       try {
         recCount += 1
 /* !!! DEBUG
@@ -124,7 +133,7 @@ class TypeComparer(initctx: Context) extends DotClass {
           if (recCount < LogPendingSubTypesThreshold) firstTry(tp1, tp2)
           else monitoredIsSubType(tp1, tp2)
         recCount -= 1
-        if (!result) constraint = cs
+        if (!result) constraint = saved
         result
       } catch {
         case ex: Throwable =>
@@ -140,7 +149,7 @@ class TypeComparer(initctx: Context) extends DotClass {
             explainPoly(tp2)
           }
           recCount -= 1
-          constraint = cs
+          constraint = saved
           throw ex
       }
     }
@@ -191,18 +200,15 @@ class TypeComparer(initctx: Context) extends DotClass {
         if (cls is ModuleClass)
           tp1 match {
             case tp1: TermRef =>
-              return tp1.symbol.moduleClass == cls && tp1.prefix <:< cls.owner.thisType
+              return tp1.symbol.moduleClass == cls && tp1.prefix <:< cls.owner.thisType // ???
             case _ =>
           }
         secondTry(tp1, tp2)
       case tp2: PolyParam =>
-        tp2 == tp1 || {
-          isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
-            constraint at tp2 match {
-              case TypeBounds(lo, _) => addConstraint(tp2, tp1.widen.dealias, fromBelow = true)
-              case _ => secondTry(tp1, tp2)
-            }
-          }
+        tp2 == tp1 ||
+        isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
+          if (constraint contains tp2) addConstraint(tp2, tp1.widen.dealias, fromBelow = true)
+          else secondTry(tp1, tp2)
         }
       case tp2: BoundType =>
         tp2 == tp1 || secondTry(tp1, tp2)
@@ -234,14 +240,11 @@ class TypeComparer(initctx: Context) extends DotClass {
         }
       thirdTry(tp1, tp2)
     case tp1: PolyParam =>
-      (tp1 == tp2) || {
-        isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
-          assert(frozenConstraint || !(tp2 isRef defn.NothingClass)) // !!!DEBUG
-          constraint at tp1 match {
-            case TypeBounds(_, hi) => addConstraint(tp1, tp2.dealias, fromBelow = false)
-            case _ => thirdTry(tp1, tp2)
-          }
-        }
+      (tp1 == tp2) ||
+      isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
+        assert(frozenConstraint || !(tp2 isRef defn.NothingClass)) // !!!DEBUG
+        if (constraint contains tp1) addConstraint(tp1, tp2.dealias, fromBelow = false)
+        else thirdTry(tp1, tp2)
       }
     case tp1: BoundType =>
       tp1 == tp2 || secondTry(tp1, tp2)
@@ -279,7 +282,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp2 @ RefinedType(parent2, name2) =>
       tp1 match {
         case tp1 @ RefinedType(parent1, name1) if (name1 == name2) && name1.isTypeName =>
-          // optimized case; all info on t1.name2 is in refinement tp1.refinedInfo.
+          // optimized case; all info on tp1.name2 is in refinement tp1.refinedInfo.
           isSubType(tp1, parent2) && isSubType(tp1.refinedInfo, tp2.refinedInfo)
         case _ =>
           def hasMatchingMember(name: Name): Boolean = traceIndented(s"hasMatchingMember($name)") {
@@ -320,12 +323,7 @@ class TypeComparer(initctx: Context) extends DotClass {
           false
       }
     case tp2 @ ExprType(restpe2) =>
-      tp1 match {
-        case tp1 @ ExprType(restpe1) =>
-          isSubType(restpe1, restpe2)
-        case _ =>
-          isSubType(tp1, restpe2)
-      }
+      isSubType(tp1.widenExpr, restpe2)
     case tp2 @ TypeBounds(lo2, hi2) =>
       tp1 match {
         case tp1 @ TypeBounds(lo1, hi1) =>
@@ -360,11 +358,7 @@ class TypeComparer(initctx: Context) extends DotClass {
               case _ => false
            }))
     case tp1: SingletonType =>
-      val underlying = tp1.underlying match {
-        case underlying: ExprType => underlying.resultType
-        case underlying => underlying
-      }
-      isSubType(underlying, tp2)
+      isSubType(tp1.underlying.widenExpr, tp2)
     case tp1: RefinedType =>
       isSubType(tp1.parent, tp2)
     case AndType(tp11, tp12) =>
@@ -387,20 +381,6 @@ class TypeComparer(initctx: Context) extends DotClass {
     case _ => proto.isMatchedBy(tp)
   }
 
-  /* not needed
-    def isSubArgs(tps1: List[Type], tps2: List[Type], tparams: List[TypeSymbol]): Boolean = tparams match {
-      case tparam :: tparams1 =>
-        val variance = tparam.variance
-        val t1 = tps1.head
-        val t2 = tps2.head
-        (variance > 0 || isSubType(t2, t1)) &&
-        (variance < 0 || isSubType(t1, t2)) &&
-        isSubArgs(tps1.tail, tps2.tail, tparams1)
-      case _ =>
-        assert(tps1.isEmpty && tps2.isEmpty)
-        true
-    }
-*/
   /** Is `tp1` a subtype of a type `tp2` of the form
    *  `scala.HigerKindedXYZ { ... }?
    *  This is the case if `tp1` and `tp2` have the same number
@@ -540,7 +520,9 @@ class TypeComparer(initctx: Context) extends DotClass {
   final def glb(tps: List[Type]): Type =
     (defn.AnyType /: tps)(glb)
 
-  /** The least upper bound of two types */
+  /** The least upper bound of two types
+   *  @note  We do not admit singleton types in or-types as lubs.
+   */
   def lub(tp1: Type, tp2: Type): Type =
     if (tp1 eq tp2) tp1
     else if (!tp1.exists || (tp1 isRef AnyClass) || (tp2 isRef NothingClass)) tp1
@@ -622,7 +604,7 @@ class TypeComparer(initctx: Context) extends DotClass {
    *
    *  In these cases, one of the types is picked (@see andConflict).
    *  This is arbitrary, but I believe it is analogous to forming
-   *  unfeasible TypeBounds (where low bound is not a subtype of high bound).
+   *  infeasible TypeBounds (where low bound is not a subtype of high bound).
    *  Such TypeBounds can also be arbitrarily instantiated. In both cases we need to
    *  make sure that such types do not actually arise in source programs.
    */
@@ -662,7 +644,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       tp2 match {
         case tp2 @ TypeBounds(lo2, hi2) =>
           if ((lo1 eq hi1) && (lo2 eq hi2)) {
-            val v = (tp1.variance + tp2.variance) / 2
+            val v = tp1 commonVariance tp2
             if (v > 0) return TypeAlias(hi1 & hi2, v)
             if (v < 0) return TypeAlias(lo1 | lo2, v)
           }
@@ -736,7 +718,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       tp2 match {
         case tp2 @ TypeBounds(lo2, hi2) =>
           if ((lo1 eq hi1) && (lo2 eq hi2)) {
-            val v = (tp1.variance + tp2.variance) / 2
+            val v = tp1 commonVariance tp2
             if (v > 0) return TypeAlias(hi1 | hi2, v)
             if (v < 0) return TypeAlias(lo1 & lo2, v)
           }
@@ -778,12 +760,7 @@ class TypeComparer(initctx: Context) extends DotClass {
           orConflict(tp1, tp2)
       }
     case ExprType(rt1) =>
-      tp2 match {
-        case ExprType(rt2) =>
-          ExprType(rt1 | rt2)
-        case _ =>
-          ExprType(rt1 | tp2)
-      }
+      ExprType(rt1 | tp2.widenExpr)
     case tp1: TypeVar if tp1.isInstantiated =>
       tp1.underlying | tp2
     case tp1: AnnotatedType =>
@@ -867,19 +844,17 @@ class TypeComparer(initctx: Context) extends DotClass {
     case _ =>
       false
   }
-/*
-  def widenInferred(tp: Type) = tp match {
-    case tp: OrType =>
-      val alts = tp.mapReduceOr(_ :: Nil)(_ ::: _)
 
-  }
-*/
+  /** A new type comparer of the same type as this one, using the given context. */
   def copyIn(ctx: Context) = new TypeComparer(ctx)
 
+  /** A hook for showing subtype traces. Overridden in ExplainingTypeComparer */
   def traceIndented[T](str: String)(op: => T): T = op
 }
 
 object TypeComparer {
+
+  /** Show trace of comparison operations when performing `op` as result string */
   def explained[T](op: Context => T)(implicit ctx: Context): String = {
     val nestedCtx = ctx.fresh.withTypeComparerFn(new ExplainingTypeComparer(_))
     op(nestedCtx)
@@ -887,6 +862,7 @@ object TypeComparer {
   }
 }
 
+/** A type comparer that can record traces of subtype operations */
 class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   private var indent = 0
   private val b = new StringBuilder
@@ -894,21 +870,15 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   private var skipped = false
 
   override def traceIndented[T](str: String)(op: => T): T =
-    if (skipped)
-      op
-/*
-    else if (str startsWith " =+ scala.collection.immutable.List <:<  =+ scala.collection.immutable.List") {
-      skipped = true
-      try op
-      finally skipped = false
-    }*/ else {
-    indent += 2
-    b append "\n" append (" " * indent) append "==> " append str
-    val res = op
-    b append "\n" append (" " * indent) append "<== " append str append " = " append show(res)
-    indent -= 2
-    res
-  }
+    if (skipped) op
+    else {
+      indent += 2
+      b append "\n" append (" " * indent) append "==> " append str
+      val res = op
+      b append "\n" append (" " * indent) append "<== " append str append " = " append show(res)
+      indent -= 2
+      res
+    }
 
   private def show(res: Any) = res match {
     case res: printing.Showable if !ctx.settings.Yexplainlowlevel.value => res.show
@@ -939,9 +909,5 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   override def copyIn(ctx: Context) = new ExplainingTypeComparer(ctx)
 
-  override def toString =
-    "Subtype trace:" + {
-      try b.toString
-      finally b.clear()
-  }
+  override def toString = "Subtype trace:" + { try b.toString finally b.clear() }
 }
