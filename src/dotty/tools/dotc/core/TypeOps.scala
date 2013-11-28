@@ -1,9 +1,12 @@
-package dotty.tools.dotc.core
+package dotty.tools.dotc
+package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
+import util.SimpleMap
 
 trait TypeOps { this: Context =>
 
+  /** A prefix-less termRef to a new skolem symbol that has the given type as info */
   def newSkolemSingleton(underlying: Type) = TermRef(NoPrefix, newSkolem(underlying))
 
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
@@ -35,8 +38,6 @@ trait TypeOps { this: Context =>
             asSeenFrom(tp.parent, pre, cls, theMap),
             tp.refinedName,
             asSeenFrom(tp.refinedInfo, pre, cls, theMap))
- //       case tp: ClassInfo => !!! disabled for now
- //         tp.derivedClassInfo(asSeenFrom(tp.prefix, pre, cls, theMap))
         case _ =>
           (if (theMap != null) theMap else new AsSeenFromMap(pre, cls))
             .mapOver(tp)
@@ -136,15 +137,13 @@ trait TypeOps { this: Context =>
     }
 
     // println(s"normalizing $parents of $cls in ${cls.owner}") // !!! DEBUG
-    var refinements = Map[TypeName, Type]()
-    var formals = Map[TypeName, Symbol]()
+    var refinements: SimpleMap[TypeName, Type] = SimpleMap.Empty
+    var formals: SimpleMap[TypeName, Symbol] = SimpleMap.Empty
     def normalizeToRef(tp: Type): TypeRef = tp match {
       case tp @ RefinedType(tp1, name: TypeName) =>
+        val prevInfo = refinements(name)
         refinements = refinements.updated(name,
-          refinements get name match {
-            case Some(info) => info & tp.refinedInfo
-            case none => tp.refinedInfo
-          })
+            if (prevInfo == null) tp.refinedInfo else prevInfo & tp.refinedInfo)
         formals = formals.updated(name, tp1.typeParamNamed(name))
         normalizeToRef(tp1)
       case tp: TypeRef =>
@@ -155,15 +154,15 @@ trait TypeOps { this: Context =>
         throw new TypeError(s"unexpected parent type: $tp")
     }
     val parentRefs = parents map normalizeToRef
-    for ((name, tpe) <- refinements) {
+    refinements foreachKey { name =>
       assert(decls.lookup(name) == NoSymbol, // DEBUG
         s"redefinition of ${decls.lookup(name).debugString} in ${cls.showLocated}")
-      enterArgBinding(formals(name), tpe)
+      enterArgBinding(formals(name), refinements(name))
     }
     // These two loops cannot be fused because second loop assumes that
     // all arguments have been entered in `decls`.
-    for ((name, tpe) <- refinements) {
-      forwardRefs(formals(name), tpe, parentRefs)
+    refinements foreachKey { name =>
+      forwardRefs(formals(name), refinements(name), parentRefs)
     }
     parentRefs
   }
