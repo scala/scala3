@@ -17,6 +17,7 @@ import Denotations._
 import Periods._
 import util.Positions.Position
 import util.Stats.track
+import util.SimpleMap
 import ast.tpd._, printing.Texts._
 import ast.untpd
 import transform.Erasure
@@ -811,7 +812,7 @@ object Types {
     /** Convert to text */
     def toText(printer: Printer): Text = printer.toText(this)
 
-    type VarianceMap = Map[TypeVar, Int]
+    type VarianceMap = SimpleMap[TypeVar, Integer]
 
     /** All occurrences of type vars in this type that satisfy predicate
      *  `include` mapped to their variances (-1/0/1) in this type, where
@@ -823,17 +824,15 @@ object Types {
       val accu = new TypeAccumulator[VarianceMap] {
         def apply(vmap: VarianceMap, t: Type): VarianceMap = t match {
           case t: TypeVar if include(t) =>
-            vmap get t match {
-              case Some(v) =>
-                if (v == variance) vmap else vmap updated (t, 0)
-              case None =>
-                vmap updated (t, variance)
-            }
+            val v = vmap(t)
+            if (v == null) vmap.updated(t, variance)
+            else if (v == variance) vmap
+            else vmap.updated(t, 0)
           case _ =>
             foldOver(vmap, t)
         }
       }
-      accu(Map.empty, this)
+      accu(SimpleMap.Empty, this)
     }
 
     /** A simplified version of this type which is equivalent wrt =:= to this type.

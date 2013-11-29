@@ -101,7 +101,7 @@ trait Applications extends Compatibility { self: Typer =>
      */
     val methType = funType.widen match {
       case funType: MethodType => funType
-      case funType: PolyType => ctx.track(funType).resultType
+      case funType: PolyType => constrained(funType).resultType
       case _ => funType
     }
 
@@ -594,8 +594,8 @@ trait Applications extends Compatibility { self: Typer =>
             println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             pt
           }
-          else if (unapplyArgType <:< widenForSelector(pt)) {
-            ctx.maximizeType(unapplyArgType) match {
+          else if (unapplyArgType <:< widenForMatchSelector(pt)) {
+            maximizeType(unapplyArgType) match {
               case Some(tvar) =>
                 def msg =
                   i"""There is no best instantiation of pattern type $unapplyArgType
@@ -705,7 +705,7 @@ trait Applications extends Compatibility { self: Typer =>
         tp2 match {
           case tp2: PolyType =>
             assert(!ctx.typerState.isCommittable)
-            isAsSpecific(alt1, tp1, alt2, ctx.track(tp2).resultType)
+            isAsSpecific(alt1, tp1, alt2, constrained(tp2).resultType)
           case _ =>
             testCompatible(tp1, tp2)(ctx)
         }

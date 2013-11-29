@@ -928,7 +928,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def adapt(tree: Tree, pt: Type)(implicit ctx: Context) = track("adapt") {
     ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", show = true) {
-      ctx.interpolateUndetVars(tree)
+      interpolateUndetVars(tree)
       tree overwriteType tree.tpe.simplified
       adaptInterpolated(tree, pt)
     }
@@ -1102,7 +1102,7 @@ class Typer extends Namer with Applications with Implicits {
         case poly: PolyType =>
           if (pt.isInstanceOf[PolyProto]) tree
           else {
-            val (_, tvars) = ctx.track(poly, tree)
+            val (_, tvars) = constrained(poly, tree)
             adaptInterpolated(tree appliedToTypes tvars, pt)
           }
         case wtp =>

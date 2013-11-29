@@ -28,18 +28,23 @@ object Inferencing {
      *    2. `pt` is by name parameter type, and `tp` is compatible with its underlying type
      *    3. there is an implicit conversion from `tp` to `pt`.
      */
-    def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean = (
-      (tp <:< pt)
-      || (pt isRef defn.ByNameParamClass) && (tp <:< pt.typeArgs.head)
-      || viewExists(tp, pt))
+    def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean = {
+      def skipByName(tp: Type): Type =
+        if (tp isRef defn.ByNameParamClass) tp.typeArgs.head else tp
+      skipByName(tp) <:< skipByName(pt) || viewExists(tp, pt)
+    }
   }
 
+  /** A prototype for expressions [] that are part of a selection operation:
+   *
+   *       [ ].name: proto
+   */
   class SelectionProto(name: Name, proto: Type)
   extends RefinedType(WildcardType, name)(_ => proto) with ProtoType with Compatibility {
     override def viewExists(tp: Type, pt: Type)(implicit ctx: Context): Boolean = false
     override def isMatchedBy(tp1: Type)(implicit ctx: Context) = {
       def testCompatible(mbrType: Type)(implicit ctx: Context) =
-        isCompatible(normalize(mbrType), /*(new WildApprox) apply (needed?)*/ proto)
+        isCompatible(normalize(mbrType), proto)
       name == nme.WILDCARD || {
         val mbr = tp1.member(name)
         mbr.exists && mbr.hasAltWith(m => testCompatible(m.info)(ctx.fresh.withExploreTyperState))
@@ -61,16 +66,35 @@ object Inferencing {
       new SelectionProto(name, rtp)
     }
 
+  /** A prototype for expressions [] that are in some unspecified selection operation
+   *
+   *    [].?: ?
+   *
+   *  Used to indicate that expression is in a context where the only valid
+   *  operation is further selection. In this case, the expression need not be a value.
+   *  @see checkValue
+   */
   object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType)
 
-  case class FunProto(args: List[untpd.Tree], override val resultType: Type, typer: Typer)(implicit ctx: Context) extends UncachedGroundType with ProtoType {
+  /** A prototype for expressions that appear in function position
+   *
+   *  [](args): resultType
+   */
+  case class FunProto(args: List[untpd.Tree], override val resultType: Type, typer: Typer)(implicit ctx: Context)
+  extends UncachedGroundType with ProtoType {
     private var myTypedArgs: List[Tree] = Nil
+
+    /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
+    private var myTypedArg: SimpleMap[untpd.Tree, Tree] = SimpleMap.Empty
 
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
       typer.isApplicableToTrees(tp, typedArgs, resultType)
 
     def argsAreTyped: Boolean = myTypedArgs.nonEmpty || args.isEmpty
 
+    /** The typed arguments. This takes any arguments already typed using
+     *  `typedArg` into account.
+     */
     def typedArgs: List[Tree] = {
       if (!argsAreTyped)
         myTypedArgs = args mapconserve { arg =>
@@ -80,8 +104,9 @@ object Inferencing {
       myTypedArgs
     }
 
-    private var myTypedArg: SimpleMap[untpd.Tree, Tree] = SimpleMap.Empty
-
+    /** Type single argument and remember the unadapted result in `myTypedArg`.
+     *  used to avoid repreated typings of trees when backtracking.
+     */
     def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
       var targ = myTypedArg(arg)
       if (targ == null) {
@@ -94,7 +119,12 @@ object Inferencing {
     override def toString = s"FunProto(${args mkString ","} => $resultType)"
   }
 
-  case class ViewProto(argType: Type, override val resultType: Type)(implicit ctx: Context) extends CachedGroundType with ProtoType {
+  /** A prototype for implicitly inferred views:
+   *
+   *    []: argType => resultType
+   */
+  case class ViewProto(argType: Type, override val resultType: Type)(implicit ctx: Context)
+  extends CachedGroundType with ProtoType {
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
       ctx.typer.isApplicableToTypes(tp, argType :: Nil, resultType)
     override def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): collection.Set[NamedType] =
@@ -102,8 +132,16 @@ object Inferencing {
     override def computeHash = doHash(argType, resultType)
   }
 
+  /** A prototype for expressions [] that are type-parameterized:
+   *
+   *    [] [?_, ..., ?_nargs] resultType
+   */
   case class PolyProto(nargs: Int, override val resultType: Type) extends UncachedGroundType
 
+  /** A prototype for expressions [] that are known to be functions:
+   *
+   *    [] _
+   */
   object AnyFunctionProto extends UncachedGroundType with ProtoType {
     def isMatchedBy(tp: Type)(implicit ctx: Context) = true
   }
@@ -116,7 +154,7 @@ object Inferencing {
    */
   def normalize(tp: Type)(implicit ctx: Context): Type = Stats.track("normalize") {
     tp.widenSingleton match {
-      case pt: PolyType => normalize(ctx.track(pt).resultType)
+      case pt: PolyType => normalize(constrained(pt).resultType)
       case mt: MethodType if !mt.isDependent =>
         if (mt.isImplicit) mt.resultType
         else defn.FunctionType(mt.paramTypes, mt.resultType)
@@ -134,9 +172,8 @@ object Inferencing {
 
   /** Is type fully defined, meaning the type does not contain wildcard types
    *  or uninstantiated type variables. As a side effect, this will minimize
-   *  any uninstantiated type variables, provided that
-   *   - the instance type for the variable is not Nothing or Null
-   *   - the overall result of `isFullYDefined` is `true`.
+   *  any uninstantiated type variables, according to the given force degree,
+   *  but only if the overall result of `isFullyDefined` is `true`.
    *  Variables that are successfully minimized do not count as uninstantiated.
    */
   def isFullyDefined(tp: Type, force: ForceDegree.Value)(implicit ctx: Context): Boolean = {
@@ -146,6 +183,9 @@ object Inferencing {
     result
   }
 
+  /** The fully defined type, where all type variables are forced.
+   *  Throws an error if type contains wildcards.
+   */
   def fullyDefinedType(tp: Type, what: String, pos: Position)(implicit ctx: Context) =
     if (isFullyDefined(tp, ForceDegree.all)) tp
     else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos") // !!! DEBUG
@@ -165,21 +205,32 @@ object Inferencing {
     }
   }
 
-  def widenForSelector(tp: Type)(implicit ctx: Context): Type = tp.widen match {
-    case tp: TypeRef if tp.symbol.isAbstractOrAliasType => widenForSelector(tp.bounds.hi)
+  /** Recursively and also follow type declarations and type aliases. */
+  def widenForMatchSelector(tp: Type)(implicit ctx: Context): Type = tp.widen match {
+    case tp: TypeRef if !tp.symbol.isClass => widenForMatchSelector(tp.bounds.hi)
     case tp => tp
   }
 
-  def checkBounds(args: List[Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = {
+  /** Check that type arguments `args` conform to corresponding bounds in `poly` */
+  def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit =
+    for ((arg, bounds) <- args zip poly.paramBounds) {
+      def notConforms(which: String, bound: Type) =
+        ctx.error(i"Type argument ${arg.tpe} does not conform to $which bound $bound", arg.pos)
+      if (!(arg.tpe <:< bounds.hi)) notConforms("upper", bounds.hi)
+      if (!(bounds.lo <:< arg.tpe)) notConforms("lower", bounds.lo)
+    }
 
-  }
-
+  /** Check that type `tp` is stable.
+   *  @return The type itself
+   */
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Type = {
-    if (!tp.isStable)
-      ctx.error(i"Prefix $tp is not stable", pos)
+    if (!tp.isStable) ctx.error(i"Prefix $tp is not stable", pos)
     tp
   }
 
+  /** Check that `tp` is a class type with a stable prefix.
+   *  @return  Underlying class symbol if type checks out OK, ObjectClass if not.
+   */
   def checkClassTypeWithStablePrefix(tp: Type, pos: Position)(implicit ctx: Context): ClassSymbol = tp.dealias match {
     case tp: TypeRef if tp.symbol.isClass =>
       checkStable(tp.prefix, pos)
@@ -192,112 +243,110 @@ object Inferencing {
   }
 
   def checkInstantiatable(cls: ClassSymbol, pos: Position): Unit = {
-    ???
+    ??? // to be done in later phase: check that class `cls` is legal in a new.
   }
 
-  implicit class Infer(val ictx: Context) extends AnyVal {
+  /** Add all parameters in given polytype `pt` to the constraint's domain.
+   *  If the constraint contains already some of these parameters in its domain,
+   *  make a copy of the polytype and add the copy's type parameters instead.
+   *  Return either the original polytype, or the copy, if one was made.
+   *  Also, if `owningTree` is non-empty, add a type variable for each parameter.
+   *  @return  The added polytype, and the list of created type variables.
+   */
+  def constrained(pt: PolyType, owningTree: untpd.Tree)(implicit ctx: Context): (PolyType, List[TypeVar]) = {
+    val state = ctx.typerState
+    def howmany = if (owningTree.isEmpty) "no" else "some"
+    def committable = if (ctx.typerState.isCommittable) "committable" else "uncommittable"
+    assert(owningTree.isEmpty != ctx.typerState.isCommittable,
+      s"inconsistent: $howmany typevars were added to $committable constraint ${state.constraint}")
 
-    implicit private def ctx = ictx
-    private def state = ctx.typerState
-
-    /** Add all parameters in given polytype `pt` to the constraint's domain.
-     *  If the constraint contains already some of these parameters in its domain,
-     *  make a copy of the polytype and add the copy's type parameters instead.
-     *  Return either the original polytype, or the copy, if one was made.
-     *  Also, if `owningTree` is non-empty, add a type variable for each parameter.
-     *  @return  The tracked polytype, and the list of created type variables.
-     */
-    def track(pt: PolyType, owningTree: untpd.Tree): (PolyType, List[TypeVar]) = {
-      def howmany = if (owningTree.isEmpty) "no" else "some"
-      def committable = if (ctx.typerState.isCommittable) "committable" else "uncommittable"
-      assert(owningTree.isEmpty != ctx.typerState.isCommittable,
-          s"inconsistent: $howmany typevars were added to $committable constraint ${state.constraint}")
-      val tracked =
-        if (state.constraint contains pt) pt.copy(pt.paramNames, pt.paramBounds, pt.resultType)
-        else pt
-      val tvars = if (owningTree.isEmpty) Nil else newTypeVars(tracked, owningTree)
-      state.constraint = state.constraint.add(tracked, tvars)
-      //if (!owningTree.isEmpty)
-      //  state.constraint = state.constraint.transformed(pt, _.substParams(pt, tvars))
-      (tracked, tvars)
-    }
-
-    /** Create new type variables for the parameters of a poly type.
-     *  @param pos   The position of the new type variables (relevant for
-     *  interpolateUndetVars
-     */
-    private def newTypeVars(pt: PolyType, owningTree: untpd.Tree): List[TypeVar] =
+    def newTypeVars(pt: PolyType): List[TypeVar] =
       for (n <- (0 until pt.paramNames.length).toList)
-      yield new TypeVar(PolyParam(pt, n), ctx.typerState, owningTree)
+      yield new TypeVar(PolyParam(pt, n), state, owningTree)
 
-    /**  Same as `track(pt, EmptyTree)`, but returns just the created polytype */
-    def track(pt: PolyType): PolyType = track(pt, EmptyTree)._1
+    val added =
+      if (state.constraint contains pt) pt.copy(pt.paramNames, pt.paramBounds, pt.resultType)
+      else pt
+    val tvars = if (owningTree.isEmpty) Nil else newTypeVars(added)
+    state.constraint = state.constraint.add(added, tvars)
+    (added, tvars)
+  }
 
-    /** Interpolate those undetermined type variables in the widened type of this tree
-     *  which are introduced by type application contained in the tree.
-     *  If such a variable appears covariantly in type `tp` or does not appear at all,
-     *  approximate it by its lower bound. Otherwise, if it appears contravariantly
-     *  in type `tp` approximate it by its upper bound.
-     */
-    def interpolateUndetVars(tree: Tree): Unit = Stats.track("interpolateUndetVars") {
-      val tp = tree.tpe.widen
+  /**  Same as `constrained(pt, EmptyTree)`, but returns just the created polytype */
+  def constrained(pt: PolyType)(implicit ctx: Context): PolyType = constrained(pt, EmptyTree)._1
 
-      println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${ctx.typerState.uninstVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
-      println(s"qualifying undet vars: ${ctx.typerState.uninstVars filter qualifies map (_.show)}")
-      println(s"fulltype: $tp") // !!! DEBUG
-      println(s"constraint: ${ctx.typerState.constraint.show}")
+  /** Interpolate those undetermined type variables in the widened type of this tree
+   *  which are introduced by type application contained in the tree.
+   *  If such a variable appears covariantly in type `tp` or does not appear at all,
+   *  approximate it by its lower bound. Otherwise, if it appears contravariantly
+   *  in type `tp` approximate it by its upper bound.
+   */
+  def interpolateUndetVars(tree: Tree)(implicit ctx: Context): Unit = Stats.track("interpolateUndetVars") {
+    val tp = tree.tpe.widen
+    val constraint = ctx.typerState.constraint
 
-      def qualifies(tvar: TypeVar) = tree contains tvar.owningTree
-      val vs = tp.variances(tvar =>
-        (ctx.typerState.constraint contains tvar) && qualifies(tvar))
-      println(s"variances = $vs")
-      var changed = false
-      for ((tvar, v) <- vs)
-        if (v != 0) {
-          println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
-          tvar.instantiate(fromBelow = v == 1)
-          changed = true
-        }
-      if (changed)
-        interpolateUndetVars(tree)
-      else
-        ctx.typerState.constraint.foreachUninstVar { tvar =>
-          if (!(vs contains tvar) && qualifies(tvar)) {
-            println(s"instantiating non-occurring $tvar in $tp")
-            tvar.instantiate(fromBelow = true)
-          }
-        }
+    println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${constraint.uninstVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
+    println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (_.show)}")
+    println(s"fulltype: $tp") // !!! DEBUG
+    println(s"constraint: ${constraint.show}")
+
+    def qualifies(tvar: TypeVar) = tree contains tvar.owningTree
+    val vs = tp.variances(tvar => (constraint contains tvar) && qualifies(tvar))
+    println(s"variances = $vs")
+    var changed = false
+    vs foreachKey { tvar =>
+      val v = vs(tvar)
+      if (v != 0) {
+        println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
+        tvar.instantiate(fromBelow = v == 1)
+        changed = true
+      }
     }
-
-    /** Instantiate undetermined type variables to that type `tp` is
-     *  maximized and return None. If this is not possible, because a non-variant
-     *  typevar is not uniquely determined, return that typevar in a Some.
-     */
-    def maximizeType(tp: Type): Option[TypeVar] = Stats.track("maximizeType") {
-      val vs = tp.variances(tvar => ctx.typerState.constraint contains tvar)
-      var result: Option[TypeVar] = None
-      for ((tvar, v) <- vs)
-        if (v == 1) tvar.instantiate(fromBelow = false)
-        else if (v == -1) tvar.instantiate(fromBelow = true)
-        else {
-          val bounds = ctx.typerState.constraint.bounds(tvar.origin)
-          if (!(bounds.hi <:< bounds.lo)) result = Some(tvar)
-          tvar.instantiate(fromBelow = false)
+    if (changed) // instantiations might have uncovered new typevars to interpolate
+      interpolateUndetVars(tree)
+    else
+      constraint.foreachUninstVar { tvar =>
+        if (!(vs contains tvar) && qualifies(tvar)) {
+          println(s"instantiating non-occurring $tvar in $tp")
+          tvar.instantiate(fromBelow = true)
         }
-      result
-    }
+      }
+  }
 
-    def isSubTypes(actuals: List[Type], formals: List[Type])(implicit ctx: Context): Boolean = formals match {
-      case formal :: formals1 =>
-        actuals match {
-          case actual :: actuals1 => actual <:< formal && isSubTypes(actuals1, formals1)
-          case _ => false
-        }
-      case nil =>
-        actuals.isEmpty
+  /** Instantiate undetermined type variables to that type `tp` is
+   *  maximized and return None. If this is not possible, because a non-variant
+   *  typevar is not uniquely determined, return that typevar in a Some.
+   */
+  def maximizeType(tp: Type)(implicit ctx: Context): Option[TypeVar] = Stats.track("maximizeType") {
+    val constraint = ctx.typerState.constraint
+    val vs = tp.variances(constraint contains _)
+    var result: Option[TypeVar] = None
+    vs foreachKey { tvar =>
+      val v = vs(tvar)
+      if (v == 1) tvar.instantiate(fromBelow = false)
+      else if (v == -1) tvar.instantiate(fromBelow = true)
+      else {
+        val bounds = ctx.typerState.constraint.bounds(tvar.origin)
+        if (!(bounds.hi <:< bounds.lo)) result = Some(tvar)
+        tvar.instantiate(fromBelow = false)
+      }
     }
+    result
+  }
+}
 
 /* not needed right now
+
+  def isSubTypes(actuals: List[Type], formals: List[Type])(implicit ctx: Context): Boolean = formals match {
+    case formal :: formals1 =>
+      actuals match {
+        case actual :: actuals1 => actual <:< formal && isSubTypes(actuals1, formals1)
+        case _ => false
+      }
+    case nil =>
+      actuals.isEmpty
+  }
+
     def formalParameters[T](mtp: MethodType, actuals: List[T])(isRepeated: T => Boolean)(implicit ctx: Context) =
       if (mtp.isVarArgs && !(actuals.nonEmpty && isRepeated(actuals.last))) {
         val leading = mtp.paramTypes.init
@@ -307,5 +356,3 @@ object Inferencing {
       }
       else mtp.paramTypes
   */
-  }
-}
