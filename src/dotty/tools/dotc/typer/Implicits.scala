@@ -28,13 +28,12 @@ import collection.mutable
 /** Implicit resolution */
 object Implicits {
 
-  private def disableImplicits(ctx: Context): Context =
-    if (ctx == NoContext) ctx else ctx retractMode Mode.ImplicitsEnabled
-
   /** A common base class of contextual implicits and of-type implicits which
    *  represents as set of implicit references.
    */
-  abstract class ImplicitRefs extends Compatibility {
+  abstract class ImplicitRefs(initctx: Context) extends Compatibility {
+    implicit val ctx: Context =
+      if (initctx == NoContext) initctx else initctx retractMode Mode.ImplicitsEnabled
 
     /** The implicit references */
     def refs: List[TermRef]
@@ -42,7 +41,7 @@ object Implicits {
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = track("filterMatching") {
       def refMatches(ref: TermRef)(implicit ctx: Context) = isCompatible(normalize(ref), pt)
-      refs filter (ref => refMatches(ref)(ctx.fresh.withExploreTyperState)) // create a defensive copy of ctx to avoid constraint pollution
+      refs filter (refMatches(_)(ctx.fresh.withExploreTyperState)) // create a defensive copy of ctx to avoid constraint pollution
     }
 
     /** No further implicit conversions can be applied when searching for implicits. */
@@ -53,10 +52,13 @@ object Implicits {
    *  @param tp              the type determining the implicit scope
    *  @param companionRefs   the companion objects in the implicit scope.
    */
-  class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs {
+  class OfTypeImplicits(tp: Type, val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
     assert(initctx.typer != null)
-    implicit val ctx: Context = disableImplicits(initctx)
-    val refs: List[TermRef] = companionRefs.toList flatMap (_.implicitMembers)
+    val refs: List[TermRef] = {
+      val buf = new mutable.ListBuffer[TermRef]
+      for (companion <- companionRefs) buf ++= companion.implicitMembers
+      buf.toList
+    }
 
     /** The implicit references that are eligible for expected type `tp` */
     lazy val eligible: List[TermRef] = ctx.traceIndented(i"eligible($tp)", show = true)(filterMatching(tp))
@@ -72,10 +74,8 @@ object Implicits {
    *                   name, b, whereas the name of the symbol is the original name, a.
    *  @param outerCtx  the next outer context that makes visible further implicits
    */
-  class ContextualImplicits(val refs: List[TermRef], val outerCtx: Context)(initctx: Context) extends ImplicitRefs {
-    implicit val ctx: Context = disableImplicits(initctx)
-
-    private val eligibleCache = new mutable.HashMap[Type, List[TermRef]]
+  class ContextualImplicits(val refs: List[TermRef], val outerCtx: Context)(initctx: Context) extends ImplicitRefs(initctx) {
+    private val eligibleCache = new mutable.LinkedHashMap[Type, List[TermRef]]
 
     /** The implicit references that are eligible for type `tp`. */
     def eligible(tp: Type): List[TermRef] =
@@ -87,7 +87,7 @@ object Implicits {
       if (outerCtx == NoContext) ownEligible
       else ownEligible ::: {
         val shadowed = (ownEligible map (_.name)).toSet
-        outerCtx.implicits.eligible(tp).filter(ref => !(shadowed contains ref.name))
+        outerCtx.implicits.eligible(tp) filterNot (ref => shadowed contains ref.name)
       }
     }
 
@@ -105,7 +105,7 @@ object Implicits {
    *  @param tree  The typed tree that can needs to be inserted
    *  @param ctx   The context after the implicit search
    */
-  case class SearchSuccess(tree: tpd.Tree)(val ref: TermRef, val tstate: TyperState) extends SearchResult
+  case class SearchSuccess(tree: tpd.Tree, ref: TermRef, tstate: TyperState) extends SearchResult
 
   /** A failed search */
   abstract class SearchFailure extends SearchResult {
@@ -184,7 +184,7 @@ trait ImplicitRunInfo { self: RunInfo =>
     }
   }
 
-  // todo: compute implicits directly, without going via companionRefs
+  // todo: compute implicits directly, without going via companionRefs?
   private def computeImplicitScope(tp: Type): OfTypeImplicits = track("computeImplicicScope") {
     val comps = new TermRefSet
     tp match {
@@ -192,10 +192,8 @@ trait ImplicitRunInfo { self: RunInfo =>
         val pre = tp.prefix
         comps ++= implicitScope(pre).companionRefs
         def addClassScope(cls: ClassSymbol): Unit = {
-          def addRef(companion: TermRef): Unit = {
-            val comp1 @ TermRef(_, _) = companion.asSeenFrom(pre, companion.symbol.owner)
-            comps += comp1
-          }
+          def addRef(companion: TermRef): Unit =
+            comps += companion.asSeenFrom(pre, companion.symbol.owner).asInstanceOf[TermRef]
           def addParentScope(parent: TypeRef): Unit = {
             implicitScope(parent).companionRefs foreach addRef
             for (param <- parent.typeParams)
@@ -247,7 +245,7 @@ trait Implicits { self: Typer =>
   /** Find an implicit conversion to apply to given tree `from` so that the
    *  result is compatible with type `to`.
    */
-  def inferView(from: tpd.Tree, to: Type)(implicit ctx: Context): SearchResult = track("inferView") {
+  def inferView(from: Tree, to: Type)(implicit ctx: Context): SearchResult = track("inferView") {
     inferImplicit(to, from, from.pos)
   }
 
@@ -256,6 +254,7 @@ trait Implicits { self: Typer =>
    *  @param argument        If an implicit conversion is searched, the argument to which
    *                         it should be applied, EmptyTree otherwise.
    *  @param pos             The position where errors should be reported.
+   *  !!! todo: catch potential cycles
    */
   def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
     ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", show = true) {
@@ -281,13 +280,21 @@ trait Implicits { self: Typer =>
       case _ =>
     }
 
-    val initctx: Context = disableImplicits(ctx.fresh.withNewTyperState)
-    def nestedContext = initctx.fresh.withNewTyperState
+    private def nestedContext = ctx.fresh.withNewMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
+    private def implicitProto(resultType: Type) =
+      if (argument.isEmpty) resultType else ViewProto(argument.tpe, resultType)
+
+    /** The expected type for the searched implicit */
+    lazy val fullProto = implicitProto(pt)
+
+    /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
+    val wildProto = implicitProto((new WildApprox) apply pt)
+
+    /** Search failures; overridden in ExplainedImplicitSearch */
     protected def nonMatchingImplicit(ref: TermRef): SearchFailure = NoImplicitMatches
     protected def shadowedImplicit(ref: TermRef, shadowing: Type): SearchFailure = NoImplicitMatches
     protected def failedSearch: SearchFailure = NoImplicitMatches
-
 
     /** Search a list of eligible implicit references */
     def searchImplicits(eligible: List[TermRef], contextual: Boolean): SearchResult = {
@@ -301,20 +308,20 @@ trait Implicits { self: Typer =>
             pt)
         val generated1 = adapt(generated, pt)
         lazy val shadowing =
-            typed(untpd.Ident(ref.name) withPos pos.toSynthetic, ref)(nestedContext).tpe
+          typed(untpd.Ident(ref.name) withPos pos.toSynthetic, fullProto)(nestedContext.withNewTyperState).tpe
         if (ctx.typerState.reporter.hasErrors) nonMatchingImplicit(ref)
         else if (contextual && !(shadowing =:= ref)) shadowedImplicit(ref, shadowing)
-        else SearchSuccess(generated)(ref, ctx.typerState)
+        else SearchSuccess(generated, ref, ctx.typerState)
       }}
 
       /** Given a list of implicit references, produce a list of all implicit search successes,
        *  where the first is supposed to be the best one.
-       *  @param pending   The list of implicit references
+       *  @param pending   The list of implicit references that remain to be investigated
        *  @param acc       An accumulator of successful matches found so far.
        */
       def rankImplicits(pending: List[TermRef], acc: List[SearchSuccess]): List[SearchSuccess] = pending match {
         case ref :: pending1 =>
-          typedImplicit(ref)(nestedContext) match {
+          typedImplicit(ref)(nestedContext.withNewTyperState) match {
             case fail: SearchFailure =>
               rankImplicits(pending1, acc)
             case best: SearchSuccess =>
@@ -357,22 +364,13 @@ trait Implicits { self: Typer =>
       condense(rankImplicits(sort(eligible), Nil))
     }
 
-    /** The expected type where parameters and uninstantiated typevars
-     *  are replaced by wildcard types
-     */
-    val wildPt: Type = {
-      val result = (new WildApprox) apply pt
-      if (argument.isEmpty) result
-      else ViewProto(argument.tpe, result)
-    }
-
     /** Find a unique best implicit reference */
     def bestImplicit: SearchResult = {
-      searchImplicits(ctx.implicits.eligible(wildPt), contextual = true) match {
+      searchImplicits(ctx.implicits.eligible(wildProto), contextual = true) match {
         case result: SearchSuccess => result
         case result: AmbiguousImplicits => result
         case result: SearchFailure =>
-          searchImplicits(implicitScope(wildPt).eligible, contextual = false)
+          searchImplicits(implicitScope(wildProto).eligible, contextual = false)
       }
     }
 
@@ -392,8 +390,8 @@ trait Implicits { self: Typer =>
     override def shadowedImplicit(ref: TermRef, shadowing: Type): SearchFailure =
       record(new ShadowedImplicit(ref, shadowing, pt, argument))
     override def failedSearch: SearchFailure = {
-      //println(s"wildPt = $wildPt")
-      //println(s"implicit scope = ${implicitScope(wildPt).companionRefs}")
+      //println(s"wildProto = $wildProto")
+      //println(s"implicit scope = ${implicitScope(wildProto).companionRefs}")
       new FailedImplicit(failures, pt, argument)
     }
   }

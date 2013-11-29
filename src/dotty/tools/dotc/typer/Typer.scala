@@ -1034,7 +1034,7 @@ class Typer extends Namer with Applications with Implicits {
         val args = (wtp.paramNames, wtp.paramTypes).zipped map { (pname, formal) =>
           def where = i"parameter $pname of $methodStr"
           inferImplicit(formal, EmptyTree, tree.pos.endPos) match {
-            case SearchSuccess(arg) =>
+            case SearchSuccess(arg, _, _) =>
               arg
             case ambi: AmbiguousImplicits =>
               implicitArgError(s"ambiguous implicits: ${ambi.explanation} of $where")
@@ -1084,7 +1084,7 @@ class Typer extends Namer with Applications with Implicits {
       }
       // try an implicit conversion
       inferView(tree, pt) match {
-        case SearchSuccess(adapted) =>
+        case SearchSuccess(adapted, _, _) =>
           adapted
         case failure: SearchFailure =>
           if (pt.isInstanceOf[ProtoType]) tree
