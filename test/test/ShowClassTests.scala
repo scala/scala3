@@ -27,6 +27,8 @@ class ShowClassTests extends DottyTest {
     "scala.concurrent.Await",
     "scala.concurrent.Awaitable",
     "scala.concurrent.impl.Promise",
+    // the following class cannot be read because it does not exist anymore
+    "scala.reflect.macros.Context",
     // the following packages and classes cannot be read because
     // they refer to external libraries which are not available
     // (apache.ant, usually)
@@ -120,12 +122,12 @@ class ShowClassTests extends DottyTest {
 */
   @Test
   def showScala() = {
-    showPackage("scala", 17)
+    showPackage("scala", 22)
   }
 
   @Test
   def loadDotty() = {
-    showPackage("dotty", 18)
+    showPackage("dotty", 23)
   }
 
 
