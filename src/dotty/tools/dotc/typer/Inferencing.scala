@@ -294,8 +294,7 @@ object Inferencing {
     val vs = tp.variances(tvar => (constraint contains tvar) && qualifies(tvar))
     println(s"variances = $vs")
     var changed = false
-    vs foreachKey { tvar =>
-      val v = vs(tvar)
+    vs foreachBinding { (tvar, v) =>
       if (v != 0) {
         println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
         tvar.instantiate(fromBelow = v == 1)
@@ -321,8 +320,7 @@ object Inferencing {
     val constraint = ctx.typerState.constraint
     val vs = tp.variances(constraint contains _)
     var result: Option[TypeVar] = None
-    vs foreachKey { tvar =>
-      val v = vs(tvar)
+    vs foreachBinding { (tvar, v) =>
       if (v == 1) tvar.instantiate(fromBelow = false)
       else if (v == -1) tvar.instantiate(fromBelow = true)
       else {

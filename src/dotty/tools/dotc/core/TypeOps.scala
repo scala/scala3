@@ -154,15 +154,15 @@ trait TypeOps { this: Context =>
         throw new TypeError(s"unexpected parent type: $tp")
     }
     val parentRefs = parents map normalizeToRef
-    refinements foreachKey { name =>
+    refinements foreachBinding { (name, refinedInfo) =>
       assert(decls.lookup(name) == NoSymbol, // DEBUG
         s"redefinition of ${decls.lookup(name).debugString} in ${cls.showLocated}")
-      enterArgBinding(formals(name), refinements(name))
+      enterArgBinding(formals(name), refinedInfo)
     }
     // These two loops cannot be fused because second loop assumes that
     // all arguments have been entered in `decls`.
-    refinements foreachKey { name =>
-      forwardRefs(formals(name), refinements(name), parentRefs)
+    refinements foreachBinding { (name, refinedInfo) =>
+      forwardRefs(formals(name), refinedInfo, parentRefs)
     }
     parentRefs
   }

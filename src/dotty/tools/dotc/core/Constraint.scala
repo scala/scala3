@@ -165,17 +165,17 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
   /** Perform operation `op` on all typevars, or only on uninstantiated
    *  typevars, depending on whether `uninstOnly` is set or not.
    */
-  def foreachTypeVar(op: TypeVar => Unit, uninstOnly: Boolean = false): Unit = myMap.foreachKey { poly =>
-    val entries = myMap(poly)
-    for (i <- 0 until paramCount(entries)) {
-      def qualifies(tv: TypeVar) =
-        if (uninstOnly) isBounds(entries(i)) else !tv.inst.exists
-      typeVar(entries, i) match {
-        case tv: TypeVar if qualifies(tv) => op(tv)
-        case _ =>
+  def foreachTypeVar(op: TypeVar => Unit, uninstOnly: Boolean = false): Unit =
+    myMap.foreachBinding { (poly, entries) =>
+      for (i <- 0 until paramCount(entries)) {
+        def qualifies(tv: TypeVar) =
+          if (uninstOnly) isBounds(entries(i)) else !tv.inst.exists
+        typeVar(entries, i) match {
+          case tv: TypeVar if qualifies(tv) => op(tv)
+          case _ =>
+        }
       }
     }
-  }
 
   /** Perform operation `op` on all uninstantiated typevars.
    */

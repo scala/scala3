@@ -9,13 +9,10 @@ abstract class SimpleMap[K <: AnyRef, +V >: Null <: AnyRef] extends (K => V) {
   def updated[V1 >: V <: AnyRef](k: K, v: V1): SimpleMap[K, V1]
   def contains(k: K): Boolean = apply(k) != null
   def mapValues[V1 >: V <: AnyRef](f: V1 => V1): SimpleMap[K, V1]
-  def foreachKey(f: K => Unit): Unit
+  def foreachBinding(f: (K, V) => Unit): Unit
   def map2[T](f: (K, V) => T): List[T] = {
     val buf = new ListBuffer[T]
-    foreachKey { key =>
-      val k = key.asInstanceOf[K]
-      buf += f(k, this(k))
-    }
+    foreachBinding((k, v) => buf += f(k, v))
     buf.toList
   }
   def keys: List[K] = map2((k, v) => k)
@@ -36,7 +33,7 @@ object SimpleMap {
     def remove(k: AnyRef) = this
     def updated[V1 >: Null <: AnyRef](k: AnyRef, v: V1) = new Map1(k, v)
     def mapValues[V1 >: Null <: AnyRef](f: V1 => V1) = this
-    def foreachKey(f: AnyRef => Unit) = ()
+    def foreachBinding(f: (AnyRef, Null) => Unit) = ()
   }
 
   def Empty[K <: AnyRef] = myEmpty.asInstanceOf[SimpleMap[K, Null]]
@@ -56,7 +53,7 @@ object SimpleMap {
       val w1 = f(v1)
       if (v1 eq w1) this else new Map1(k1, w1)
     }
-    def foreachKey(f: K => Unit) = f(k1)
+    def foreachBinding(f: (K, V) => Unit) = f(k1, v1)
   }
 
   class Map2[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V) extends SimpleMap[K, V] {
@@ -78,7 +75,7 @@ object SimpleMap {
       if ((v1 eq w1) && (v2 eq w2)) this
       else new Map2(k1, w1, k2, w2)
     }
-    def foreachKey(f: K => Unit) = { f(k1); f(k2) }
+    def foreachBinding(f: (K, V) => Unit) = { f(k1, v1); f(k2, v2) }
   }
 
   class Map3[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V) extends SimpleMap[K, V] {
@@ -103,7 +100,7 @@ object SimpleMap {
       if ((v1 eq w1) && (v2 eq w2) && (v3 eq w3)) this
       else new Map3(k1, w1, k2, w2, k3, w3)
     }
-    def foreachKey(f: K => Unit) = { f(k1); f(k2); f(k3) }
+    def foreachBinding(f: (K, V) => Unit) = { f(k1, v1); f(k2, v2); f(k3, v3) }
   }
 
   class Map4[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V, k2: K, v2: V, k3: K, v3: V, k4: K, v4: V) extends SimpleMap[K, V] {
@@ -131,7 +128,7 @@ object SimpleMap {
       if ((v1 eq w1) && (v2 eq w2) && (v3 eq w3) && (v4 eq w4)) this
       else new Map4(k1, w1, k2, w2, k3, w3, k4, w4)
     }
-    def foreachKey(f: K => Unit) = { f(k1); f(k2); f(k3); f(k4) }
+    def foreachBinding(f: (K, V) => Unit) = { f(k1, v1); f(k2, v2); f(k3, v3); f(k4, v4) }
   }
 
   class MapMore[K <: AnyRef, +V >: Null <: AnyRef](bindings: Array[AnyRef]) extends SimpleMap[K, V] {
@@ -215,10 +212,10 @@ object SimpleMap {
       if (bindings1 eq bindings) this else new MapMore(bindings1)
     }
 
-    def foreachKey(f: K => Unit) = {
+    def foreachBinding(f: (K, V) => Unit) = {
       var i = 0
       while (i < bindings.length) {
-        f(key(i))
+        f(key(i), value(i))
         i += 2
       }
     }
