@@ -169,6 +169,11 @@ object Contexts {
       implicitsCache
     }
 
+    /** The history of implicit searches that are currently active */
+    private var _searchHistory: SearchHistory = null
+    protected def searchHistory_= (searchHistory: SearchHistory) = _searchHistory = searchHistory
+    def searchHistory: SearchHistory = _searchHistory
+
   /** If -Ydebug is on, the top of the stack trace where this context
      *  was created, otherwise `null`.
      */
@@ -302,6 +307,7 @@ object Contexts {
     def withRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
     def withTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
+    def withSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
     def withMoreProperties(moreProperties: Map[String, Any]): this.type = { this.moreProperties = moreProperties; this }
 
     def withProperty(prop: (String, Any)): this.type = withMoreProperties(moreProperties + prop)
@@ -330,6 +336,7 @@ object Contexts {
     diagnostics = None
     moreProperties = Map.empty
     typeComparer = new TypeComparer(this)
+    searchHistory = new SearchHistory(0, Map())
   }
 
   object NoContext extends Context {

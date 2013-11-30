@@ -149,6 +149,11 @@ object Implicits {
       i"${err.refStr(ref)} does $qualify but is shadowed by ${err.refStr(shadowing)}"
   }
 
+  class DivergingImplicit(ref: TermRef, val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
+    def explanation(implicit ctx: Context): String =
+      i"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
+  }
+
   class FailedImplicit(failures: List[ExplainedSearchFailure], val pt: Type, val argument: tpd.Tree) extends ExplainedSearchFailure {
     def explanation(implicit ctx: Context): String =
       if (failures.isEmpty) s"  No implicit candidates were found that $qualify"
@@ -293,6 +298,7 @@ trait Implicits { self: Typer =>
 
     /** Search failures; overridden in ExplainedImplicitSearch */
     protected def nonMatchingImplicit(ref: TermRef): SearchFailure = NoImplicitMatches
+    protected def divergingImplicit(ref: TermRef): SearchFailure = NoImplicitMatches
     protected def shadowedImplicit(ref: TermRef, shadowing: Type): SearchFailure = NoImplicitMatches
     protected def failedSearch: SearchFailure = NoImplicitMatches
 
@@ -321,7 +327,11 @@ trait Implicits { self: Typer =>
        */
       def rankImplicits(pending: List[TermRef], acc: List[SearchSuccess]): List[SearchSuccess] = pending match {
         case ref :: pending1 =>
-          typedImplicit(ref)(nestedContext.withNewTyperState) match {
+          val history = ctx.searchHistory nest wildProto
+          val result =
+            if (history eq ctx.searchHistory) divergingImplicit(ref)
+            else typedImplicit(ref)(nestedContext.withNewTyperState.withSearchHistory(history))
+          result match {
             case fail: SearchFailure =>
               rankImplicits(pending1, acc)
             case best: SearchSuccess =>
@@ -387,12 +397,70 @@ trait Implicits { self: Typer =>
     def failures = myFailures.toList
     override def nonMatchingImplicit(ref: TermRef) =
       record(new NonMatchingImplicit(ref, pt, argument))
+    override def divergingImplicit(ref: TermRef) =
+      record(new DivergingImplicit(ref, pt, argument))
     override def shadowedImplicit(ref: TermRef, shadowing: Type): SearchFailure =
       record(new ShadowedImplicit(ref, shadowing, pt, argument))
     override def failedSearch: SearchFailure = {
       //println(s"wildProto = $wildProto")
       //println(s"implicit scope = ${implicitScope(wildProto).companionRefs}")
       new FailedImplicit(failures, pt, argument)
+    }
+  }
+}
+
+/** Records the history of currently open implicit searches
+ *  @param  searchDepth   The number of open searches.
+ *  @param  seen          A map that records for each class symbol of a type
+ *                        that's currently searched for the complexity of the
+ *                        type that is searched for (wrt `typeSize`). The map
+ *                        is populated only once `searchDepth` is greater than
+ *                        the threshold given in the `XminImplicitSearchDepth` setting.
+ */
+class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
+
+  /** The number of RefinementTypes in this type, after all aliases are expanded */
+  private def typeSize(tp: Type)(implicit ctx: Context): Int = {
+    val accu = new TypeAccumulator[Int] {
+      def apply(n: Int, tp: Type): Int = tp match {
+        case tp: RefinedType =>
+          foldOver(n + 1, tp)
+        case tp: TypeRef if tp.symbol.isAliasType =>
+          apply(n, tp.info.bounds.hi)
+        case _ =>
+          foldOver(n, tp)
+      }
+    }
+    accu.apply(0, tp)
+  }
+
+  /** Check for possible divergence. If one is detected return the current search history
+   *  (this will be used as a criterion to abandon the implicit search in rankImplicits).
+   *  If no divergence is detected, produce a new search history nested in the current one
+   *  which records that we are now also looking for type `proto`.
+   *
+   *  As long as `searchDepth` is lower than the `XminImplicitSearchDepth` value
+   *  in settings, a new history is always produced, so the implicit search is always
+   *  undertaken. If `searchDepth` matches or exceeds the `XminImplicitSearchDepth` value,
+   *  we test that the new search is for a class that is either not yet in the set of
+   *  `seen` classes, or the complexity of the type `proto` being searched for is strictly
+   *  lower than the complexity of the type that was previously encountered and that had
+   *  the same class symbol as `proto`. A possible divergence is detected if that test fails.
+   */
+  def nest(proto: Type)(implicit ctx: Context): SearchHistory = {
+    if (searchDepth < ctx.settings.XminImplicitSearchDepth.value)
+      new SearchHistory(searchDepth + 1, seen)
+    else {
+      val size = typeSize(proto)
+      def updateMap(csyms: List[ClassSymbol], seen: Map[ClassSymbol, Int]): SearchHistory = csyms match {
+        case csym :: csyms1 =>
+          seen get csym match {
+            case Some(prevSize) if size >= prevSize => this
+            case _ => updateMap(csyms1, seen.updated(csym, size))
+          }
+        case _ => new SearchHistory(searchDepth + 1, seen)
+      }
+      updateMap(proto.classSymbols, seen)
     }
   }
 }
