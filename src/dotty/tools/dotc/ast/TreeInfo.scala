@@ -305,7 +305,7 @@ trait TypedTreeInfo extends TreeInfo[Type] {self: Trees.Instance[Type] =>
       false
   }
 
-  private def isIdempotentRef(tree: tpd.Tree)(implicit ctx: Context) =
+  def isIdempotentRef(tree: tpd.Tree)(implicit ctx: Context) =
     tree.symbol.isStable || !tree.tpe.widen.isParameterless
 
   /** Is symbol potentially a getter of a mutable variable?

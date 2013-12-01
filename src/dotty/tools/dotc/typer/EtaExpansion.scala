@@ -20,7 +20,7 @@ object EtaExpansion {
 
   import tpd._
 
-  def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: String = "")(implicit ctx: Context): Tree =
+  private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: String = "")(implicit ctx: Context): Tree =
     if (isIdempotentExpr(expr)) expr
     else {
       val name = ctx.freshName(prefix).toTermName
@@ -29,28 +29,41 @@ object EtaExpansion {
       Ident(sym.valRef)
     }
 
-  def liftArgs(defs: mutable.ListBuffer[Tree], methType: Type, args: List[Tree])(implicit ctx: Context) = {
-    def toPrefix(name: Name) = if (name contains '$') "" else name.toString
-    val paramInfos = methType match {
+  /** Lift arguments that are not-idempotent into ValDefs in buffer `defs`
+   *  and replace by the idents of so created ValDefs.
+   */
+  def liftArgs(defs: mutable.ListBuffer[Tree], methType: Type, args: List[Tree])(implicit ctx: Context) =
+    methType match {
       case MethodType(paramNames, paramTypes) =>
-        (paramNames, paramTypes).zipped map ((name, tp) =>
-          (toPrefix(name), tp isRef defn.ByNameParamClass))
+        (args, paramNames, paramTypes).zipped map { (arg, name, tp) =>
+          if (tp isRef defn.ByNameParamClass) arg
+          else lift(defs, arg, if (name contains '$') "" else name.toString)
+        }
       case _ =>
-        args map Function.const(("", false))
+        args map (lift(defs, _, ""))
     }
-    for ((arg, (prefix, isByName)) <- args zip paramInfos)
-    yield
-      if (isByName) arg else lift(defs, arg, prefix)
-  }
 
+  /** Lift out function prefix and all arguments from application
+   *
+   *     pre.f(arg1, ..., argN)   becomes
+   *
+   *     val x0 = pre
+   *     val x1 = arg1
+   *     ...
+   *     val xN = argN
+   *     x0.f(x1, ..., xN)
+   *
+   *  But leave idempotent expressions alone.
+   *
+   */
   def liftApp(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree = tree match {
     case Apply(fn, args) =>
       cpy.Apply(tree, liftApp(defs, fn), liftArgs(defs, fn.tpe, args))
     case TypeApply(fn, targs) =>
       cpy.TypeApply(tree, liftApp(defs, fn), targs)
-    case Select(pre, name) =>
+    case Select(pre, name) if tpd.isIdempotentRef(tree) =>
       cpy.Select(tree, lift(defs, pre), name)
-    case Ident(name) =>
+    case tree: RefTree =>
       lift(defs, tree)
     case Block(stats, expr) =>
       liftApp(defs ++= stats, expr)
@@ -58,7 +71,34 @@ object EtaExpansion {
       tree
   }
 
-  /** <p>
+  /** Eta-expanding a tree means converting a method reference to a function value.
+   *  @param    tree The tree to expand
+   *  @param    wtp  The widened type of the tree, which is always a MethodType
+   *  Let `wtp` be the method type
+   *
+   *         (x1: T1, ..., xn: Tn): R
+   *
+   *  and assume the lifted application of `tree` (@see liftApp) is
+   *
+   *         { val xs = es; expr }
+   *
+   *  Then the eta-expansion is
+   *
+   *         { val xs = es;
+   *           { def $anonfun(x1: T1, ..., xn: Tn): T = expr; Closure($anonfun) }}
+   */
+  def etaExpand(tree: Tree, tpe: MethodType)(implicit ctx: Context): Tree = {
+    def expand(lifted: Tree): Tree = {
+      val meth = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic, tpe, coord = tree.pos)
+      Closure(meth, Apply(lifted, _))
+    }
+    val defs = new mutable.ListBuffer[Tree]
+    val lifted = liftApp(defs, tree)
+    Block(defs.toList, expand(lifted))
+  }
+}
+
+  /** <p> not needed
    *    Expand partial function applications of type `type`.
    *  </p><pre>
    *  p.f(es_1)...(es_n)
@@ -95,14 +135,3 @@ object EtaExpansion {
     Block(defs.toList map untpd.TypedSplice, expand(tree1))
   }
    */
-
-  def etaExpand(tree: Tree, tpe: MethodType)(implicit ctx: Context): Tree = {
-    def expand(tree: Tree): Tree = {
-      val meth = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic, tpe, coord = tree.pos)
-      Closure(meth, Apply(tree, _))
-    }
-    val defs = new mutable.ListBuffer[Tree]
-    val tree1 = liftApp(defs, tree)
-    Block(defs.toList, expand(tree1))
-  }
-}
