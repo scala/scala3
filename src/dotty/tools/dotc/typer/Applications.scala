@@ -26,9 +26,6 @@ import collection.mutable
 import language.implicitConversions
 
 object Applications {
-
-  import tpd.{ cpy => _, _ }
-
   private val isNamedArg = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[_]]
   def hasNamedArg(args: List[Any]) = args exists isNamedArg
 }
@@ -40,8 +37,6 @@ trait Applications extends Compatibility { self: Typer =>
   import Applications._
   import tpd.{ cpy => _, _ }
   import untpd.cpy
-
-  private def state(implicit ctx: Context) = ctx.typerState
 
   /** @param Arg        the type of arguments, could be tpd.Tree, untpd.Tree, or Type
    *  @param methRef    the reference to the method of the application
@@ -93,16 +88,16 @@ trait Applications extends Compatibility { self: Typer =>
      */
     protected def liftFun(): Unit = ()
 
-    /** A flag signalling that the application was so far succesful */
+    /** A flag signalling that the typechecking the application was so far succesful */
     protected var ok = true
 
     /** The function's type after widening and instantiating polytypes
-     *  with polyparams or typevars in constraint set
+     *  with polyparams in constraint set
      */
     val methType = funType.widen match {
       case funType: MethodType => funType
       case funType: PolyType => constrained(funType).resultType
-      case _ => funType
+      case tp => tp //was: funType
     }
 
     /** The arguments re-ordered so that each named argument matches the
@@ -130,8 +125,6 @@ trait Applications extends Compatibility { self: Typer =>
     /** The application was succesful */
     def success = ok
 
-    private def state = ctx.typerState
-
     protected def methodType = methType.asInstanceOf[MethodType]
     private def methString: String = s"method ${methRef.name}: ${methType.show}"
 
@@ -140,7 +133,7 @@ trait Applications extends Compatibility { self: Typer =>
       var namedToArg: Map[Name, Trees.Tree[T]] =
         (for (NamedArg(name, arg1) <- args) yield (name, arg1)).toMap
 
-      def badNamedArg(arg: Trees.Tree[_ >: Untyped]): Unit = {
+      def badNamedArg(arg: untpd.Tree): Unit = {
         val NamedArg(name, _) = arg
         def msg =
           if (methodType.paramNames contains name)
@@ -153,25 +146,25 @@ trait Applications extends Compatibility { self: Typer =>
       def recur(pnames: List[Name], args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = pnames match {
         case pname :: pnames1 =>
           namedToArg get pname match {
-            case Some(arg) =>
+            case Some(arg) => // there is a named argument for this parameter; pick it
               namedToArg -= pname
               arg :: recur(pnames1, args)
             case None =>
               args match {
                 case (arg @ NamedArg(aname, _)) :: args1 =>
-                  if (namedToArg contains aname)
+                  if (namedToArg contains aname) // argument is missing, pass an empty tree
                     genericEmptyTree :: recur(pnames1, args)
-                  else {
+                  else { // name not (or no longer) available for named arg
                     badNamedArg(arg)
                     recur(pnames1, args1)
                   }
                 case arg :: args1 =>
-                  arg :: recur(pnames1, args1)
-                case Nil =>
+                  arg :: recur(pnames1, args1) // unnamed argument; pick it
+                case Nil => // no more args, continue to pick up any preceding named args
                   recur(pnames1, args)
               }
           }
-        case nil =>
+        case nil => // supernumerary arguments, can only be default args.
           if (hasNamedArg(args)) {
             val (namedArgs, otherArgs) = args partition isNamedArg
             namedArgs foreach badNamedArg
@@ -214,6 +207,7 @@ trait Applications extends Compatibility { self: Typer =>
             val cls = meth.owner
             val pre =
               if (meth.isClassConstructor) {
+                // default getters for class constructors are found in the companion object
                 mpre.baseType(cls) match {
                   case TypeRef(clspre, _) => ref(clspre, cls.companionModule)
                   case _ => NoType
@@ -285,15 +279,15 @@ trait Applications extends Compatibility { self: Typer =>
     def constrainResult(mt: Type, pt: Type): Boolean = pt match {
       case FunProto(_, result, _) =>
         mt match {
-          case mt: MethodType if !mt.isDependent =>
-            constrainResult(mt.resultType, pt.resultType)
+          case mt: MethodType =>
+            mt.isDependent || constrainResult(mt.resultType, pt.resultType)
           case _ =>
             true
         }
       case pt: ValueType =>
         mt match {
-          case mt: ImplicitMethodType if !mt.isDependent =>
-            constrainResult(mt.resultType, pt)
+          case mt: ImplicitMethodType =>
+            mt.isDependent || constrainResult(mt.resultType, pt)
           case _ =>
             isCompatible(mt, pt)
         }
@@ -329,9 +323,9 @@ trait Applications extends Compatibility { self: Typer =>
   /** Subclass of Application for applicability tests with trees as arguments. */
   class ApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context)
   extends TestApplication(methRef, methRef, args, resultType) {
-    def isVarArg(arg: Tree): Boolean = tpd.isWildcardStarArg(arg)
     def argType(arg: Tree): Type = normalize(arg.tpe)
     def treeToArg(arg: Tree): Tree = arg
+    def isVarArg(arg: Tree): Boolean = tpd.isWildcardStarArg(arg)
   }
 
   /** Subclass of Application for applicability tests with types as arguments. */
@@ -401,9 +395,9 @@ trait Applications extends Compatibility { self: Typer =>
           case nil => -1
         }
     }
-    def sameSeq[T <: Trees.Tree[_]](xs: List[T], ys: List[T]): Boolean = firstDiff(xs, ys) < 0
+    private def sameSeq[T <: Trees.Tree[_]](xs: List[T], ys: List[T]): Boolean = firstDiff(xs, ys) < 0
 
-    val result ={
+    val result = {
       var typedArgs = typedArgBuf.toList
       val ownType = ctx.traceIndented(i"apply $methRef to $typedArgs%, %", show = true) {
         if (!success) ErrorType
@@ -421,9 +415,7 @@ trait Applications extends Compatibility { self: Typer =>
           methodType.instantiate(typedArgs.tpes)
         }
       }
-      val app1 = cpy.Apply(app, normalizedFun, typedArgs).withType(ownType)
-      if (liftedDefs != null && liftedDefs.nonEmpty) Block(liftedDefs.toList, app1)
-      else app1
+      wrapDefs(liftedDefs, cpy.Apply(app, normalizedFun, typedArgs).withType(ownType))
     }
   }
 
@@ -441,75 +433,74 @@ trait Applications extends Compatibility { self: Typer =>
     def treeToArg(arg: Tree): Tree = arg
   }
 
-  def typedApply(app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Tree = track("typedApply") {
-    new ApplyToTyped(app, fun, methRef, args, resultType).result
-  }
-
-  def typedApply(fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Tree =
-    typedApply(untpd.Apply(untpd.TypedSplice(fun), args), fun, methRef, args, resultType)
-
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
-    if (ctx.mode is Mode.Pattern)
-      typedUnApply(tree, pt)
-    else {
 
-      def realApply(implicit ctx: Context): Tree = track("realApply") {
-        val proto = new FunProto(tree.args, pt, this)
-        val fun1 = typedExpr(tree.fun, proto)
-        methPart(fun1).tpe match {
-          case funRef: TermRef =>
-            tryEither { implicit ctx =>
-              val app =
-                if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
-                else new ApplyToUntyped(tree, fun1, funRef, proto, pt)
-              val result = app.result
-              ConstFold(result) orElse result
-            } { failed => fun1 match {
-                case Select(qual, name) =>
-                  tryEither { implicit ctx =>
-                    val qual1 = adaptInterpolated(qual, new SelectionProto(name, proto))
-                    if (qual1.tpe.isError || (qual1 eq qual)) qual1
-                    else
-                      typedApply(
-                        cpy.Apply(tree,
-                          cpy.Select(fun1, untpd.TypedSplice(qual1), name),
-                          proto.typedArgs map untpd.TypedSplice),
-                       pt)
-                  } { _ => failed.commit()
-                  }
-                case _ =>
-                  failed.commit()
-              }
+    def realApply(implicit ctx: Context): Tree = track("realApply") {
+      val proto = new FunProto(tree.args, pt, this)
+      val fun1 = typedExpr(tree.fun, proto)
+      methPart(fun1).tpe match {
+        case funRef: TermRef =>
+          tryEither { implicit ctx =>
+            val app =
+              if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
+              else new ApplyToUntyped(tree, fun1, funRef, proto, pt)
+            val result = app.result
+            ConstFold(result) orElse result
+          } { failed => fun1 match {
+              case Select(qual, name) =>
+                // try with prototype `[].name(args)`, this might succeed by inserting an
+                // implicit conversion around []. (an example is Int + BigInt).
+                tryEither { implicit ctx =>
+                  val qual1 = adaptInterpolated(qual, new SelectionProto(name, proto))
+                  if (qual1.tpe.isError || (qual1 eq qual)) qual1
+                  else
+                    typedApply(
+                      cpy.Apply(tree,
+                        cpy.Select(fun1, untpd.TypedSplice(qual1), name),
+                        proto.typedArgs map untpd.TypedSplice),
+                      pt)
+                } { _ => failed.commit()
+                }
+              case _ =>
+                failed.commit()
             }
-          case _ =>
-            fun1.tpe match {
-              case ErrorType =>
-                tree.withType(ErrorType)
-            }
-        }
-      }
-
-      def typedOpAssign: Tree = track("typedOpAssign") {
-        val Apply(Select(lhs, name), rhss) = tree
-        val lhs1 = typedExpr(lhs)
-        val lifted = new mutable.ListBuffer[Tree]
-        val lhs2 = untpd.TypedSplice(liftApp(lifted, lhs1))
-        val assign = untpd.Assign(lhs2, untpd.Apply(untpd.Select(lhs2, name.init), rhss))
-        typed(assign)
-      }
-
-      if (untpd.isOpAssign(tree))
-        tryEither {
-          implicit ctx => realApply
-        } { failed =>
-          tryEither {
-            implicit ctx => typedOpAssign
-          } { _ =>
-            failed.commit()
           }
-        }
-      else realApply
+        case _ =>
+          fun1.tpe match {
+            case ErrorType =>
+              tree.withType(ErrorType)
+          }
+      }
     }
+
+    /** Convert expression like
+     *
+     *     e += (args)
+     *
+     *  where the lifted-for-assignment version of e is { val xs = es; e' } to
+     *
+     *     { val xs = es; e' = e' + args }
+     */
+     def typedOpAssign: Tree = track("typedOpAssign") {
+      val Apply(Select(lhs, name), rhss) = tree
+      val lhs1 = typedExpr(lhs)
+      val liftedDefs = new mutable.ListBuffer[Tree]
+      val lhs2 = untpd.TypedSplice(liftAssigned(liftedDefs, lhs1))
+      val assign = untpd.Assign(lhs2, untpd.Apply(untpd.Select(lhs2, name.init), rhss))
+      wrapDefs(liftedDefs, typed(assign))
+    }
+
+    if (untpd.isOpAssign(tree))
+      tryEither {
+        implicit ctx => realApply
+      } { failed =>
+        tryEither {
+          implicit ctx => typedOpAssign
+        } { _ =>
+          failed.commit()
+        }
+      }
+    else realApply
   }
 
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
@@ -847,3 +838,12 @@ trait Applications extends Compatibility { self: Typer =>
     else narrowMostSpecific(candidates)(ctx.retractMode(ImplicitsEnabled))
   }
 }
+
+/*
+  def typedApply(app: untpd.Apply, fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Tree = track("typedApply") {
+    new ApplyToTyped(app, fun, methRef, args, resultType).result
+  }
+
+  def typedApply(fun: Tree, methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Tree =
+    typedApply(untpd.Apply(untpd.TypedSplice(fun), args), fun, methRef, args, resultType)
+*/

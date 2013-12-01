@@ -29,6 +29,19 @@ object EtaExpansion {
       Ident(sym.valRef)
     }
 
+  /** Lift out common part of tree taking part in an operator assignment such as
+   *
+   *     tree += expr
+   */
+  def liftAssigned(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree = tree match {
+    case Apply(fn, args) =>
+      cpy.Apply(tree, lift(defs, fn), liftArgs(defs, fn.tpe, args))
+    case Select(pre, name) =>
+      cpy.Select(tree, lift(defs, pre), name)
+    case _ =>
+      tree
+  }
+
   /** Lift arguments that are not-idempotent into ValDefs in buffer `defs`
    *  and replace by the idents of so created ValDefs.
    */
@@ -40,7 +53,7 @@ object EtaExpansion {
           else lift(defs, arg, if (name contains '$') "" else name.toString)
         }
       case _ =>
-        args map (lift(defs, _, ""))
+        args map (lift(defs, _))
     }
 
   /** Lift out function prefix and all arguments from application
@@ -63,12 +76,10 @@ object EtaExpansion {
       cpy.TypeApply(tree, liftApp(defs, fn), targs)
     case Select(pre, name) if tpd.isIdempotentRef(tree) =>
       cpy.Select(tree, lift(defs, pre), name)
-    case tree: RefTree =>
-      lift(defs, tree)
     case Block(stats, expr) =>
       liftApp(defs ++= stats, expr)
     case _ =>
-      tree
+      lift(defs, tree)
   }
 
   /** Eta-expanding a tree means converting a method reference to a function value.
@@ -94,8 +105,11 @@ object EtaExpansion {
     }
     val defs = new mutable.ListBuffer[Tree]
     val lifted = liftApp(defs, tree)
-    Block(defs.toList, expand(lifted))
+    wrapDefs(defs, expand(lifted))
   }
+
+  def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree =
+    if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 }
 
   /** <p> not needed

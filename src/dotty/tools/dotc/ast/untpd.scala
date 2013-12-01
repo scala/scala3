@@ -144,8 +144,8 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
   def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers = Modifiers())(implicit ctx: Context): ValDef =
     ValDef(mods | Param, pname, tpe, EmptyTree)
 
-  def makeSyntheticParameter(n: Int = 1, tpt: Tree = EmptyTree)(implicit ctx: Context): ValDef =
-    ValDef(Modifiers(SyntheticTermParam), nme.syntheticParamName(n), TypeTree(), EmptyTree)
+  def makeSyntheticParameter(n: Int = 1, tpt: Tree = TypeTree())(implicit ctx: Context): ValDef =
+    ValDef(Modifiers(SyntheticTermParam), nme.syntheticParamName(n), tpt, EmptyTree)
 
   def refOfDef(tree: NameTree)(implicit ctx: Context) = Ident(tree.name)
 

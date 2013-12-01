@@ -25,9 +25,10 @@ object desugar {
     if (!ctx.owner.isClass || (mods is Private) || !(mods is Mutable)) vdef
     else {
       val setterParam = makeSyntheticParameter(tpt = TypeTree(vdef))
+      val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
       val setter = cpy.DefDef(vdef,
         mods | Accessor, name.setterName, Nil, (setterParam :: Nil) :: Nil,
-        EmptyTree, refOfDef(setterParam))
+        TypeTree(defn.UnitType), setterRhs) // rhs gets filled in later, when field is generated and getter has parameters
       Thicket(vdef, setter)
     }
   }

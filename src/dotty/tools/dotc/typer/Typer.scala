@@ -420,6 +420,10 @@ class Typer extends Namer with Applications with Implicits {
     tree.lhs match {
       case lhs @ Apply(fn, args) =>
         typed(cpy.Apply(lhs, untpd.Select(fn, nme.update), args :+ tree.rhs), pt)
+      case untpd.TypedSplice(Apply(Select(lhs, app), args)) if app == nme.apply =>
+        typed(cpy.Apply(lhs,
+            untpd.Select(untpd.TypedSplice(lhs), nme.update),
+            (args map untpd.TypedSplice) :+ tree.rhs), pt)
       case lhs =>
         val lhs1 = typed(lhs)
         def reassignmentToVal =
@@ -620,7 +624,7 @@ class Typer extends Namer with Applications with Implicits {
         assert(isFullyDefined(pt, ForceDegree.none))
         (EmptyTree, pt)
       case original: ValDef =>
-        val meth = symbolOfTree(original)
+        val meth = original.symbol // ??? was: symbolOfTree(original) TODO: come back to this
         assert(meth.exists, meth)
         (EmptyTree, meth.info)
       case original =>
@@ -819,7 +823,8 @@ class Typer extends Namer with Applications with Implicits {
         }
 
         def typedUnnamed(tree: untpd.Tree): Tree = tree match {
-          case tree: untpd.Apply => typedApply(tree, pt)
+          case tree: untpd.Apply =>
+            if (ctx.mode is Mode.Pattern) typedUnApply(tree, pt) else typedApply(tree, pt)
           case tree: untpd.This => typedThis(tree)
           case tree: untpd.Literal => typedLiteral(tree)
           case tree: untpd.New => typedNew(tree, pt)
