@@ -23,6 +23,7 @@ import Constants._
 import Inferencing._
 import EtaExpansion._
 import collection.mutable
+import reflect.ClassTag
 import language.implicitConversions
 
 object Applications {
@@ -91,7 +92,7 @@ trait Applications extends Compatibility { self: Typer =>
     /** A flag signalling that the typechecking the application was so far succesful */
     private[this] var _ok = true
 
-    def ok = _ok 
+    def ok = _ok
     def ok_=(x: Boolean) = {
       assert(x || ctx.errorsReported || !ctx.typerState.isCommittable) // !!! DEBUG
       _ok = x
@@ -643,32 +644,26 @@ trait Applications extends Compatibility { self: Typer =>
     }
   }
 
-  /** Is given method reference applicable to argument types `args`?
+  /** Is given method reference applicable to argument trees or types `args`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
-    new ApplicableToTrees(methRef, args, resultType)(ctx.fresh.withExploreTyperState).success
-
-  def isApplicableToTrees(tp: Type, args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean = tp match {
-    case methRef: TermRef => isApplicableToTrees(methRef, args, resultType)
-    case _ =>
-      val app = tp.member(nme.apply)
-      app.exists && app.hasAltWith(d =>
-        isApplicableToTrees(TermRef(tp, nme.apply).withDenot(d), args, resultType))
+  def isApplicable[Arg: ClassTag](methRef: TermRef, args: List[Arg], resultType: Type)(implicit ctx: Context): Boolean = {
+    val nestedContext = ctx.fresh.withExploreTyperState
+    if (implicitly[ClassTag[Arg]].runtimeClass == classOf[Trees.Tree[_]])
+      new ApplicableToTrees(methRef, args.asInstanceOf[List[Tree]], resultType)(nestedContext).success
+    else
+      new ApplicableToTypes(methRef, args.asInstanceOf[List[Type]], resultType)(nestedContext).success
   }
 
-  /** Is given method reference applicable to arguments `args`?
+  /** Is given type applicable to argument trees `args`, possibly after inserting an `apply`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicableToTypes(methRef: TermRef, args: List[Type], resultType: Type = WildcardType)(implicit ctx: Context) =
-    new ApplicableToTypes(methRef, args, resultType)(ctx.fresh.withExploreTyperState).success
-
-  def isApplicableToTypes(tp: Type, args: List[Type], resultType: Type)(implicit ctx: Context): Boolean = tp match {
-    case methRef: TermRef => isApplicableToTypes(methRef, args, resultType)
+  def isApplicable[Arg: ClassTag](tp: Type, args: List[Arg], resultType: Type)(implicit ctx: Context): Boolean = tp match {
+    case methRef: TermRef if methRef.widenSingleton.isInstanceOf[SignedType] =>
+      isApplicable(methRef, args, resultType)
     case _ =>
       val app = tp.member(nme.apply)
-      app.exists && app.hasAltWith(d =>
-        isApplicableToTypes(TermRef(tp, nme.apply).withDenot(d), args, resultType))
+      app.exists && app.hasAltWith(d => isApplicable(TermRef(tp, nme.apply).withDenot(d), args, resultType))
   }
 
   /** Is `tp` a subtype of `pt`? */
@@ -698,7 +693,7 @@ trait Applications extends Compatibility { self: Typer =>
         val tparams = ctx.newTypeParams(alt1.symbol.owner, tp1.paramNames, EmptyFlags, bounds)
         isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
       case tp1: MethodType =>
-        isApplicableToTypes(alt2, tp1.paramTypes)(ctx)
+        isApplicable(alt2, tp1.paramTypes, WildcardType)
       case _ =>
         tp2 match {
           case tp2: PolyType =>
@@ -785,7 +780,7 @@ trait Applications extends Compatibility { self: Typer =>
     }
 
     def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
-      alts filter (isApplicableToTypes(_, argTypes, resultType))
+      alts filter (isApplicable(_, argTypes, resultType))
 
     val candidates = pt match {
       case pt @ FunProto(args, resultType, _) =>
@@ -818,7 +813,7 @@ trait Applications extends Compatibility { self: Typer =>
             alts
 
         def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] =
-          alts filter (isApplicableToTrees(_, args, resultType))
+          alts filter (isApplicable(_, args, resultType))
 
         val alts1 = narrowBySize(alts)
         if (isDetermined(alts1)) alts1

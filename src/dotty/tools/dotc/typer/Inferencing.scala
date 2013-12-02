@@ -88,7 +88,7 @@ object Inferencing {
     private var myTypedArg: SimpleMap[untpd.Tree, Tree] = SimpleMap.Empty
 
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
-      typer.isApplicableToTrees(tp, typedArgs, resultType)
+      typer.isApplicable(tp, typedArgs, resultType)
 
     def argsAreTyped: Boolean = myTypedArgs.nonEmpty || args.isEmpty
 
@@ -126,7 +126,7 @@ object Inferencing {
   case class ViewProto(argType: Type, override val resultType: Type)(implicit ctx: Context)
   extends CachedGroundType with ProtoType {
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
-      ctx.typer.isApplicableToTypes(tp, argType :: Nil, resultType)
+      ctx.typer.isApplicable(tp, argType :: Nil, resultType)
     override def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): collection.Set[NamedType] =
       AndType(argType, resultType).namedPartsWith(p) // this is more efficient than oring two namedParts sets
     override def computeHash = doHash(argType, resultType)
