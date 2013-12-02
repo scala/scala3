@@ -33,6 +33,12 @@ object Inferencing {
         if (tp isRef defn.ByNameParamClass) tp.typeArgs.head else tp
       skipByName(tp) <:< skipByName(pt) || viewExists(tp, pt)
     }
+
+    /** Test compatibility after normalization in a fresh typerstate */
+    def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context) = {
+      val nestedCtx = ctx.fresh.withExploreTyperState
+      isCompatible(normalize(tp)(nestedCtx), pt)(nestedCtx)
+    }
   }
 
   /** A prototype for expressions [] that are part of a selection operation:
@@ -42,14 +48,11 @@ object Inferencing {
   class SelectionProto(name: Name, proto: Type)
   extends RefinedType(WildcardType, name)(_ => proto) with ProtoType with Compatibility {
     override def viewExists(tp: Type, pt: Type)(implicit ctx: Context): Boolean = false
-    override def isMatchedBy(tp1: Type)(implicit ctx: Context) = {
-      def testCompatible(mbrType: Type)(implicit ctx: Context) =
-        isCompatible(normalize(mbrType), proto)
+    override def isMatchedBy(tp1: Type)(implicit ctx: Context) =
       name == nme.WILDCARD || {
         val mbr = tp1.member(name)
-        mbr.exists && mbr.hasAltWith(m => testCompatible(m.info)(ctx.fresh.withExploreTyperState))
+        mbr.exists && mbr.hasAltWith(m => normalizedCompatible(m.info, proto))
       }
-    }
     override def toString = "Proto" + super.toString
   }
 

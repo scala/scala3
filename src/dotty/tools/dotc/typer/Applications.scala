@@ -666,10 +666,6 @@ trait Applications extends Compatibility { self: Typer =>
       app.exists && app.hasAltWith(d => isApplicable(TermRef(tp, nme.apply).withDenot(d), args, resultType))
   }
 
-  /** Is `tp` a subtype of `pt`? */
-  def testCompatible(tp: Type, pt: Type)(implicit ctx: Context) =
-    isCompatible(tp, pt)(ctx.fresh.withExploreTyperState)
-
   /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
    *  `alt2`? `alt1` and `alt2` are nonoverloaded references.
    */
@@ -700,7 +696,7 @@ trait Applications extends Compatibility { self: Typer =>
             assert(!ctx.typerState.isCommittable)
             isAsSpecific(alt1, tp1, alt2, constrained(tp2).resultType)
           case _ =>
-            testCompatible(tp1, tp2)(ctx)
+            isCompatible(tp1, tp2)
         }
     }
 
@@ -833,7 +829,7 @@ trait Applications extends Compatibility { self: Typer =>
         narrowByTypes(alts, args, resultType)
 
       case pt =>
-        alts filter (alt => testCompatible(normalize(alt), pt))
+        alts filter (normalizedCompatible(_, pt))
     }
 
     if (isDetermined(candidates)) candidates
