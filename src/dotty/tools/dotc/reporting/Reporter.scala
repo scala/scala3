@@ -164,6 +164,8 @@ trait Reporting { this: Context =>
         throw ex
     }
   }
+
+  def errorsReported: Boolean = outersIterator exists (_.reporter.hasErrors)
 }
 
 /**

@@ -236,7 +236,7 @@ object Trees {
      */
     def withType(tpe: Type)(implicit ctx: Context): ThisTree[Type] = {
       // temporary solution to catch unreported errors early
-      if (tpe == ErrorType) assert(ctx.reporter.hasErrors)
+      if (tpe == ErrorType) assert(ctx.errorsReported || !ctx.typerState.isCommittable)
       withTypeUnchecked(tpe)
     }
 

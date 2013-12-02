@@ -22,7 +22,8 @@ class tests extends CompilerTest {
   @Test def pos_selftypes() = compileFile(posDir, "selftypes")
   @Test def pos_varargs() = compileFile(posDir, "varargs")
   @Test def pos_opassign() = compileFile(posDir, "opassign")
+  @Test def pos_typedapply() = compileFile(posDir, "typedapply")
 
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 2)
-
+  @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
 }

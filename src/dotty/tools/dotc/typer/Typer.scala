@@ -1113,6 +1113,7 @@ class Typer extends Namer with Applications with Implicits {
         case wtp =>
           pt match {
             case pt: FunProto => adaptToArgs(wtp, pt)
+            case pt: PolyProto => tree // error will be reported in typedTypeApply
             case _ =>
               if (ctx.mode is Mode.Type)
                 if (tree.tpe <:< pt) tree

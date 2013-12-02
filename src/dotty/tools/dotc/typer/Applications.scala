@@ -89,7 +89,13 @@ trait Applications extends Compatibility { self: Typer =>
     protected def liftFun(): Unit = ()
 
     /** A flag signalling that the typechecking the application was so far succesful */
-    protected var ok = true
+    private[this] var _ok = true
+
+    def ok = _ok 
+    def ok_=(x: Boolean) = {
+      assert(x || ctx.errorsReported || !ctx.typerState.isCommittable) // !!! DEBUG
+      _ok = x
+    }
 
     /** The function's type after widening and instantiating polytypes
      *  with polyparams in constraint set
@@ -509,7 +515,13 @@ trait Applications extends Compatibility { self: Typer =>
     val ownType = typedFn.tpe.widen match {
       case pt: PolyType =>
         checkBounds(typedArgs, pt, tree.pos)
-        pt.resultType.substParams(pt, typedArgs.tpes)
+        val argTypes = typedArgs.tpes
+        if (argTypes.length == pt.paramNames.length)
+          pt.resultType.substParams(pt, typedArgs.tpes)
+        else {
+          ctx.error(i"wrong number of type parameters for ${typedFn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
+          ErrorType
+        }
       case _ =>
         ctx.error(s"${err.exprStr(typedFn)} does not take type parameters", tree.pos)
         ErrorType
@@ -525,7 +537,7 @@ trait Applications extends Compatibility { self: Typer =>
 
     val unapply = {
       val dummyArg = untpd.TypedSplice(dummyTreeOfType(WildcardType))
-      val unappProto = FunProto(dummyArg :: Nil, pt, this)
+      val unappProto = FunProto(dummyArg :: Nil, WildcardType, this)
       tryEither {
         implicit ctx => typedExpr(untpd.Select(qual, nme.unapply), unappProto)
       } {
@@ -541,38 +553,33 @@ trait Applications extends Compatibility { self: Typer =>
     def fromScala2x = unapply.symbol.exists && (unapply.symbol.owner is Scala2x)
 
     def unapplyArgs(unapplyResult: Type)(implicit ctx: Context): List[Type] = {
-      def recur(tp: Type): List[Type] = {
-        def extractorMemberType(name: Name) = {
-          val ref = tp member name
-          if (ref.isOverloaded)
-            errorType(s"Overloaded reference to ${ref.show} is not allowed in extractor", tree.pos)
-          else if (ref.info.isInstanceOf[PolyType])
-            errorType(s"Reference to polymorphic ${ref.show}: ${ref.info.show} is not allowed in extractor", tree.pos)
-          else
-            ref.info
-        }
-
-        def productSelectors: List[Type] = {
-          val sels = for (n <- Iterator.from(0)) yield extractorMemberType(("_" + n).toTermName)
-          sels.takeWhile(_.exists).toList
-        }
-        def seqSelector = defn.RepeatedParamType.appliedTo(tp.elemType :: Nil)
-        def optionSelectors(tp: Type): List[Type] =
-          if (defn.isTupleType(tp)) tp.typeArgs else tp :: Nil
-        if (fromScala2x && (tp isRef defn.OptionClass) && tp.typeArgs.length == 1)
-          optionSelectors(tp.typeArgs.head)
-        else if (tp derivesFrom defn.ProductClass) productSelectors
-        else if (tp derivesFrom defn.SeqClass) seqSelector :: Nil
-        else if (tp isRef defn.BooleanClass) Nil
-        else if (extractorMemberType(nme.isDefined).exists &&
-                 extractorMemberType(nme.get).exists) recur(extractorMemberType(nme.get))
-        else {
-          ctx.error(s"${unapplyResult.show} is not a valid result type of an unapply method of an extractor", tree.pos)
-          Nil
-        }
+      def extractorMemberType(tp: Type, name: Name) = {
+        val ref = tp member name
+        if (ref.isOverloaded)
+          errorType(s"Overloaded reference to ${ref.show} is not allowed in extractor", tree.pos)
+        else if (ref.info.isInstanceOf[PolyType])
+          errorType(s"Reference to polymorphic ${ref.show}: ${ref.info.show} is not allowed in extractor", tree.pos)
+        else
+          ref.info.widenExpr.dealias
       }
 
-      recur(unapplyResult)
+      def productSelectors(tp: Type): List[Type] = {
+        val sels = for (n <- Iterator.from(1)) yield extractorMemberType(tp, ("_" + n).toTermName)
+        sels.takeWhile(_.exists).toList
+      }
+      def seqSelector = defn.RepeatedParamType.appliedTo(unapplyResult.elemType :: Nil)
+      def getSelectors(tp: Type): List[Type] =
+        if (tp derivesFrom defn.ProductClass) productSelectors(tp) else tp :: Nil
+      def getTp = extractorMemberType(unapplyResult, nme.get)
+
+      if ((extractorMemberType(unapplyResult, nme.isDefined) isRef defn.BooleanClass) &&
+           getTp.exists) getSelectors(getTp)
+      else if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
+      else if (unapplyResult isRef defn.BooleanClass) Nil
+      else {
+        ctx.error(s"${unapplyResult.show} is not a valid result type of an unapply method of an extractor", tree.pos)
+        Nil
+      }
     }
 
     unapply.tpe.widen match {
