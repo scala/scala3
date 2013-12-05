@@ -673,7 +673,9 @@ trait Applications extends Compatibility { self: Typer =>
 
     assert(alt1 ne alt2)
 
-    /** Is class or module class `sym1` derived from class or module class `sym2`? */
+    /** Is class or module class `sym1` derived from class or module class `sym2`?
+     *  Module classes also inherit the relationship from their companions.
+     */
     def isDerived(sym1: Symbol, sym2: Symbol): Boolean =
       if (sym1 isSubClass sym2) true
       else if (sym2 is Module) isDerived(sym1, sym2.companionClass)
@@ -751,7 +753,9 @@ trait Applications extends Compatibility { self: Typer =>
   private lazy val dummyTree = untpd.Literal(Constant(null))
   def dummyTreeOfType(tp: Type): Tree = dummyTree withTypeUnchecked tp
 
-  /** Resolve overloaded alternative `alts`, given expected type `pt`. */
+  /** Resolve overloaded alternative `alts`, given expected type `pt`.
+   *  todo: use techniques like for implicits to pick candidates quickly?
+   */
   def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
@@ -833,7 +837,7 @@ trait Applications extends Compatibility { self: Typer =>
     }
 
     if (isDetermined(candidates)) candidates
-    else narrowMostSpecific(candidates)(ctx.retractMode(ImplicitsEnabled))
+    else narrowMostSpecific(candidates)
   }
 }
 
