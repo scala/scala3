@@ -212,11 +212,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case SeqLiteral(elems) =>
         "[" ~ toTextGlobal(elems, ",") ~ "]"
       case TypeTree(orig) =>
-        if (tree.hasType) toText(tree.typeOpt)
-        else orig match {
-          case orig: ValDef => "like(" ~ toText(orig) ~ ")"
-          case _ => toText(orig)
-        }
+        if (tree.hasType) toText(tree.typeOpt) else toText(orig)
       case SingletonTypeTree(ref) =>
         toTextLocal(ref) ~ ".type"
       case SelectFromTypeTree(qual, name) =>

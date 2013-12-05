@@ -619,18 +619,10 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree = track("typedTypeTree") {
-    val (original1, ownType) = tree.original match {
-      case untpd.EmptyTree =>
-        assert(isFullyDefined(pt, ForceDegree.none))
-        (EmptyTree, pt)
-      case original: ValDef =>
-        val meth = original.symbol // ??? was: symbolOfTree(original) TODO: come back to this
-        assert(meth.exists, meth)
-        (EmptyTree, meth.info)
-      case original =>
-        val original1 = typed(original)
-        (original1, original1.tpe)
-    }
+    val original1 = typed(tree.original)
+    val ownType =
+      if (tree.original.isEmpty) { assert(isFullyDefined(pt, ForceDegree.none)); pt }
+      else original1.tpe
     cpy.TypeTree(tree, original1) withType ownType
   }
 
@@ -1011,9 +1003,10 @@ class Typer extends Namer with Applications with Implicits {
                 noMatches
           }
         case alts =>
+          def all = if (altDenots.length == 2) "both" else "all"
           errorTree(tree,
-            i"""Ambiguous overload. The ${err.overloadedAltsStr(altDenots take 2)}
-               |both match $expectedStr""".stripMargin)
+            i"""Ambiguous overload. The ${err.overloadedAltsStr(altDenots)}
+               |$all match $expectedStr""".stripMargin)
       }
     }
 

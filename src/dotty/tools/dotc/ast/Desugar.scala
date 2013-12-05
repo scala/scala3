@@ -20,19 +20,44 @@ object desugar {
 
   private type VarInfo = (NameTree, Tree)
 
+  /**   var x: Int = expr
+   *  ==>
+   *    def x: Int = expr
+   *    def x_=($1: like (var x: Int = expr)): Unit = ()
+   */
   def valDef(vdef: ValDef)(implicit ctx: Context): Tree = {
     val ValDef(mods, name, tpt, rhs) = vdef
-    if (!ctx.owner.isClass || (mods is Private) || !(mods is Mutable)) vdef
-    else {
-      val setterParam = makeSyntheticParameter(tpt = TypeTree(vdef))
+    def setterNeeded =
+      (mods is Mutable) && ctx.owner.isClass && (!(mods is Private) || (ctx.owner is Trait))
+    if (setterNeeded) {
+      // todo: copy of vdef as getter needed?
+      // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos ?
+      // right now vdef maps via expandedTree to a thicket which concerns itself.
+      // I don't see a problem with that but if there is one we can avoid it by making a copy here. 
+      val setterParam = makeSyntheticParameter(tpt = TypeTree())
       val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
       val setter = cpy.DefDef(vdef,
         mods | Accessor, name.setterName, Nil, (setterParam :: Nil) :: Nil,
         TypeTree(defn.UnitType), setterRhs) // rhs gets filled in later, when field is generated and getter has parameters
       Thicket(vdef, setter)
     }
+    else vdef
   }
 
+  /** Expand context bounds to evidence params. E.g.,
+   *
+   *      def f[T >: L <: H : B](params)
+   *  ==>
+   *      def f[T >: L <: H](params)(implicit evidence$0: B[T])
+   *
+   *  Expand default arguments to default getters. E.g,
+   *
+   *      def f(x: Int = 1)(y: String = x + "m") = ...
+   *  ==>
+   *      def f(x: Int)(y: String) = ...
+   *      def f$default$1 = 1
+   *      def f$default$2(x: Int) = x + "m"
+   */
   def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val DefDef(mods, name, tparams, vparamss, tpt, rhs) = meth
     val epbuf = new ListBuffer[ValDef]
@@ -62,13 +87,19 @@ object desugar {
         cpy.DefDef(meth, mods, name, tparams1, vparamss1, tpt, rhs)
     }
 
+    /** The first n parameters in a possibly curried list of parameter sections */
     def take(vparamss: List[List[ValDef]], n: Int): List[List[ValDef]] = vparamss match {
       case vparams :: vparamss1 =>
         val len = vparams.length
-        if (len <= n) vparams :: take(vparamss1, n - len) else Nil
+        if (n == 0) Nil
+        else if (n < len) (vparams take n) :: Nil
+        else vparams :: take(vparamss1, n - len)
       case _ =>
         Nil
     }
+
+    def normalizedVparamss = vparamss map (_ map (vparam =>
+      cpy.ValDef(vparam, vparam.mods, vparam.name, vparam.tpt, EmptyTree)))
 
     def defaultGetters(vparamss: List[List[ValDef]], n: Int = 0): List[DefDef] = vparamss match {
       case (vparam :: vparams) :: vparamss1 =>
@@ -77,7 +108,7 @@ object desugar {
             mods = vparam.mods & AccessFlags,
             name = meth.name.defaultGetterName(n + 1),
             tparams = meth.tparams,
-            vparamss = take(meth.vparamss, n),
+            vparamss = take(normalizedVparamss, n),
             tpt = TypeTree(),
             rhs = vparam.rhs)
         val rest = defaultGetters(vparams :: vparamss1, n + 1)
@@ -92,13 +123,18 @@ object desugar {
     if (defGetters.isEmpty) meth1
     else {
       val mods1 = meth1.mods | DefaultParameterized
-      val vparamss1 = vparamss map (_ map (vparam =>
-        cpy.ValDef(vparam, vparam.mods, vparam.name, vparam.tpt, EmptyTree)))
-      val meth2 = cpy.DefDef(meth1, mods1, meth1.name, meth1.tparams, vparamss1, meth1.tpt, meth1.rhs)
+      val meth2 = cpy.DefDef(meth1, meth1.mods | DefaultParameterized,
+          meth1.name, meth1.tparams, normalizedVparamss, meth1.tpt, meth1.rhs)
       Thicket(meth2 :: defGetters)
     }
   }
 
+  /** Fill in empty type bounds with Nothing/Any. Expand private local type parameters as follows:
+   *
+   *     class C[T]
+   * ==>
+   *     class C { type C$T; type T = C$T }
+   */
   def typeDef(tdef: TypeDef)(implicit ctx: Context): Tree = {
     val TypeDef(mods, name, rhs) = tdef
     val rhs1 = rhs match {
