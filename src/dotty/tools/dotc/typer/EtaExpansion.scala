@@ -59,7 +59,7 @@ object EtaExpansion {
       case MethodType(paramNames, paramTypes) =>
         (args, paramNames, paramTypes).zipped map { (arg, name, tp) =>
           if (tp isRef defn.ByNameParamClass) arg
-          else liftArg(defs, arg, if (name contains '$') "" else name.toString)
+          else liftArg(defs, arg, if (name contains '$') "" else name.toString + "$")
         }
       case _ =>
         args map (liftArg(defs, _))
@@ -84,9 +84,11 @@ object EtaExpansion {
     case TypeApply(fn, targs) =>
       cpy.TypeApply(tree, liftApp(defs, fn), targs)
     case Select(pre, name) if tpd.isIdempotentRef(tree) =>
-      cpy.Select(tree, lift(defs, pre), name)
+      cpy.Select(tree, liftApp(defs, pre), name)
     case Block(stats, expr) =>
       liftApp(defs ++= stats, expr)
+    case New(tpt) =>
+      tree
     case _ =>
       lift(defs, tree)
   }

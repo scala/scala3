@@ -155,6 +155,7 @@ object desugar {
 
   private val synthetic = Modifiers(Synthetic)
 
+  /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
     val TypeDef(
       mods, name, impl @ Template(constr0, parents, self, body)) = cdef
@@ -164,12 +165,16 @@ object desugar {
       case Thicket((meth: DefDef) :: defaults) => (meth, defaults)
     }
 
+    // The original type and value parameters in the constructor already have the flags
+    // needed to be type members (i.e. param, and possibly also private and local unless
+    // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
+    // go in `constr`, the constructor after desugaring.
+
     val tparams = constr1.tparams.map(tparam => cpy.TypeDef(tparam,
       Modifiers(Param), tparam.name, tparam.rhs, tparam.tparams))
 
-    // ensure parameter list is non-empty
     val vparamss =
-      if (constr1.vparamss.isEmpty) {
+      if (constr1.vparamss.isEmpty) { // ensure parameter list is non-empty
         if (mods is Case)
           ctx.error("case class needs to have at least one parameter list", cdef.pos)
         ListOfNil
@@ -180,14 +185,23 @@ object desugar {
     val constr = cpy.DefDef(constr1,
       constr1.mods, constr1.name, tparams, vparamss, constr1.tpt, constr1.rhs)
 
+    // a reference to the class type, with all parameters given.
     val classTypeRef = {
       val tycon = Ident(cdef.name) withPos cdef.pos.startPos
       val tparams = impl.constr.tparams
       if (tparams.isEmpty) tycon else AppliedTypeTree(tycon, tparams map refOfDef)
     }
 
+    // new C[Ts](paramss)
     lazy val creatorExpr = New(classTypeRef, vparamss nestedMap refOfDef)
 
+    // Methods to add to a case class C[..](p1: T1, ..., pN: Tn)(moreParams)
+    //     def isDefined = true
+    //     def productArity = N
+    //     def _1 = this.p1
+    //     ...
+    //     def _N = this.pN
+    //     def copy(p1: T1 = p1, ..., pN: TN = pN)(moreParams) = new C[...](p1, ..., pN)(moreParams)
     val caseClassMeths =
       if (mods is Case) {
         val caseParams = vparamss.head.toArray
@@ -213,14 +227,26 @@ object desugar {
     def anyRef = ref(defn.AnyRefAlias.typeRef)
     def parentConstr(tpt: Tree) = Select(New(tpt), nme.CONSTRUCTOR)
 
+    // The desugared parents:  AnyRef, in case parents are Nil.
     val parents1 = if (parents.isEmpty) parentConstr(anyRef) :: Nil else parents
 
+    // The thicket which is the desugared version of the companion object
+    //     synthetic object C extends parentTpt { defs }
     def companionDefs(parentTpt: Tree, defs: List[Tree]) =
       moduleDef(
         ModuleDef(
           Modifiers(Synthetic), name.toTermName,
           Template(emptyConstructor, parentConstr(parentTpt) :: Nil, EmptyValDef, defs))).toList
 
+    // The companion object defifinitions, if a companion is needed, Nil otherwise.
+    // companion definitions include:
+    // 1. If class is a case class case class C[Ts](p1: T1, ..., pN: TN)(moreParams):
+    //     def apply[Ts](p1: T1, ..., pN: TN)(moreParams) = new C[Ts](p1, ..., pN)(moreParams)  (unless C is abstract)
+    //     def unapply[Ts]($1: C[Ts]) = $1
+    // 2. The default getters of the constructor
+    // The parent of the companion object of a non-parameterized case class
+    //     (T11, ..., T1N) => ... => (TM1, ..., TMN) => C
+    // For all other classes, the parent is AnyRef.
     val companions =
       if (mods is Case) {
         val parent =
@@ -240,6 +266,9 @@ object desugar {
         companionDefs(anyRef, defaultGetters)
       else Nil
 
+    // For an implicit class C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, .., pMN: TMN), the method
+    //     synthetic implicit C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, ..., pMN: TMN) =
+    //       new C[Ts](p11, ..., p1N) ... (pM1, ..., pMN) =
     val implicitWrappers =
       if (mods is Implicit) {
         if (ctx.owner is Package)
