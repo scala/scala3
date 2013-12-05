@@ -64,7 +64,6 @@ extends TyperState(reporter) {
   override def commit()(implicit ctx: Context) = {
     val targetState = ctx.typerState
     assert(isCommittable)
-    assert(targetState.isCommittable)
     targetState.constraint = constraint
 
     val toCollect = new mutable.ListBuffer[PolyType]

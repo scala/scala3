@@ -197,8 +197,10 @@ object NameOps {
       val p = name.indexOfSlice(TRAIT_SETTER_SEPARATOR)
       if (p >= 0)
         (name drop (p + TRAIT_SETTER_SEPARATOR.length)).asTermName.setterToGetter
-      else
+      else {
+        assert(name endsWith SETTER_SUFFIX, name)
         name.take(name.length - SETTER_SUFFIX.length).asTermName
+      }
     }
 
     /** Nominally, name$default$N, encoded for <init> */
