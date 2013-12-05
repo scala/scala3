@@ -42,6 +42,15 @@ object EtaExpansion {
       tree
   }
 
+  /** Lift a function argument, stripping any NamedArg wrapper */
+  def liftArg(defs: mutable.ListBuffer[Tree], arg: Tree, prefix: String = "")(implicit ctx: Context): Tree = {
+    val arg1 = arg match {
+      case NamedArg(_, arg1) => arg1
+      case arg => arg
+    }
+    lift(defs, arg1, prefix)
+  }
+
   /** Lift arguments that are not-idempotent into ValDefs in buffer `defs`
    *  and replace by the idents of so created ValDefs.
    */
@@ -50,10 +59,10 @@ object EtaExpansion {
       case MethodType(paramNames, paramTypes) =>
         (args, paramNames, paramTypes).zipped map { (arg, name, tp) =>
           if (tp isRef defn.ByNameParamClass) arg
-          else lift(defs, arg, if (name contains '$') "" else name.toString)
+          else liftArg(defs, arg, if (name contains '$') "" else name.toString)
         }
       case _ =>
-        args map (lift(defs, _))
+        args map (liftArg(defs, _))
     }
 
   /** Lift out function prefix and all arguments from application

@@ -137,49 +137,48 @@ trait Applications extends Compatibility { self: Typer =>
 
     /** Re-order arguments to correctly align named arguments */
     def reorder[T >: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
-      var namedToArg: Map[Name, Trees.Tree[T]] =
-        (for (NamedArg(name, arg1) <- args) yield (name, arg1)).toMap
 
-      def badNamedArg(arg: untpd.Tree): Unit = {
-        val NamedArg(name, _) = arg
-        def msg =
-          if (methodType.paramNames contains name)
-            s"parameter $name of $methString is already instantiated"
-          else
-            s"$methString does not have a parameter $name"
-        fail(msg, arg.asInstanceOf[Arg])
-      }
-
-      def recur(pnames: List[Name], args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = pnames match {
-        case pname :: pnames1 =>
-          namedToArg get pname match {
-            case Some(arg) => // there is a named argument for this parameter; pick it
-              namedToArg -= pname
-              arg :: recur(pnames1, args)
-            case None =>
-              args match {
-                case (arg @ NamedArg(aname, _)) :: args1 =>
-                  if (namedToArg contains aname) // argument is missing, pass an empty tree
-                    genericEmptyTree :: recur(pnames1, args)
-                  else { // name not (or no longer) available for named arg
-                    badNamedArg(arg)
-                    recur(pnames1, args1)
-                  }
-                case arg :: args1 =>
-                  arg :: recur(pnames1, args1) // unnamed argument; pick it
-                case Nil => // no more args, continue to pick up any preceding named args
-                  recur(pnames1, args)
+      /** @param pnames    The list of parameter names that are missing arguments
+       *  @param args      The list of arguments that are not yet passed, or that are waiting to be dropped
+       *  @param nameToArg A map from as yet unseen names to named arguments
+       *  @param todrop    A set of names that have aready be passed as named arguments
+       *
+       *  For a well-typed application we have the invariants
+       *
+       *  1. `(args diff toDrop)` can be reordered to match `pnames`
+       *  2. For every `(name -> arg)` in `nameToArg`, `arg` is an element of `args`
+       */
+      def recur(pnames: List[Name], args: List[Trees.Tree[T]],
+                nameToArg: Map[Name, Trees.NamedArg[T]], toDrop: Set[Name]): List[Trees.Tree[T]] = pnames match {
+        case pname :: pnames1 if nameToArg contains pname =>
+          // there is a named argument for this parameter; pick it
+          nameToArg(pname) :: recur(pnames1, args, nameToArg - pname, toDrop + pname)
+        case _ =>
+          def pnamesRest = if (pnames.isEmpty) pnames else pnames.tail
+          args match {
+            case (arg @ NamedArg(aname, _)) :: args1 =>
+              if (toDrop contains aname) // argument is already passed
+                recur(pnames, args1, nameToArg, toDrop - aname)
+              else if (nameToArg contains aname) // argument is missing, pass an empty tree
+                genericEmptyTree :: recur(pnamesRest, args, nameToArg, toDrop)
+              else { // name not (or no longer) available for named arg
+                def msg =
+                  if (methodType.paramNames contains aname)
+                    s"parameter $aname of $methString is already instantiated"
+                  else
+                    s"$methString does not have a parameter $aname"
+                fail(msg, arg.asInstanceOf[Arg])
+                arg :: recur(pnamesRest, args1, nameToArg, toDrop)
               }
+            case arg :: args1 =>
+              arg :: recur(pnamesRest, args1, nameToArg, toDrop) // unnamed argument; pick it
+            case Nil => // no more args, continue to pick up any preceding named args
+              if (pnames.isEmpty) Nil
+              else recur(pnamesRest, args, nameToArg, toDrop)
           }
-        case nil => // supernumerary arguments, can only be default args.
-          if (hasNamedArg(args)) {
-            val (namedArgs, otherArgs) = args partition isNamedArg
-            namedArgs foreach badNamedArg
-            otherArgs
-          } else args
       }
-
-      recur(methodType.paramNames, args)
+      val nameAssocs = for (arg @ NamedArg(name, _) <- args) yield (name, arg)
+      recur(methodType.paramNames, args, nameAssocs.toMap, Set())
     }
 
     /** Splice new method reference into existing application */

@@ -203,10 +203,13 @@ object NameOps {
       }
     }
 
-    /** Nominally, name$default$N, encoded for <init> */
+    /** Nominally, name$default$N, encoded for <init>
+     *  @param  Post the parameters position.
+     *  @note Default getter name suffixes start at 1, so `pos` has to be adjusted by +1
+     */
     def defaultGetterName(pos: Int): TermName = {
       val prefix = if (name.isConstructorName) DEFAULT_GETTER_INIT else name
-      prefix ++ DEFAULT_GETTER ++ pos.toString
+      prefix ++ DEFAULT_GETTER ++ (pos + 1).toString
     }
 
     /** Nominally, name from name$default$N, CONSTRUCTOR for <init> */

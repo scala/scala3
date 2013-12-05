@@ -23,7 +23,7 @@ object desugar {
   /**   var x: Int = expr
    *  ==>
    *    def x: Int = expr
-   *    def x_=($1: like (var x: Int = expr)): Unit = ()
+   *    def x_=($1: <TypeTree()>): Unit = ()
    */
   def valDef(vdef: ValDef)(implicit ctx: Context): Tree = {
     val ValDef(mods, name, tpt, rhs) = vdef
@@ -33,7 +33,7 @@ object desugar {
       // todo: copy of vdef as getter needed?
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos ?
       // right now vdef maps via expandedTree to a thicket which concerns itself.
-      // I don't see a problem with that but if there is one we can avoid it by making a copy here. 
+      // I don't see a problem with that but if there is one we can avoid it by making a copy here.
       val setterParam = makeSyntheticParameter(tpt = TypeTree())
       val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
       val setter = cpy.DefDef(vdef,
@@ -87,13 +87,11 @@ object desugar {
         cpy.DefDef(meth, mods, name, tparams1, vparamss1, tpt, rhs)
     }
 
-    /** The first n parameters in a possibly curried list of parameter sections */
-    def take(vparamss: List[List[ValDef]], n: Int): List[List[ValDef]] = vparamss match {
+    /** The longest prefix of parameter lists in vparamss whose total length does not exceed `n` */
+    def takeUpTo(vparamss: List[List[ValDef]], n: Int): List[List[ValDef]] = vparamss match {
       case vparams :: vparamss1 =>
         val len = vparams.length
-        if (n == 0) Nil
-        else if (n < len) (vparams take n) :: Nil
-        else vparams :: take(vparamss1, n - len)
+        if (n >= len) vparams :: takeUpTo(vparamss1, n - len) else Nil
       case _ =>
         Nil
     }
@@ -101,25 +99,25 @@ object desugar {
     def normalizedVparamss = vparamss map (_ map (vparam =>
       cpy.ValDef(vparam, vparam.mods, vparam.name, vparam.tpt, EmptyTree)))
 
-    def defaultGetters(vparamss: List[List[ValDef]], n: Int = 0): List[DefDef] = vparamss match {
+    def defaultGetters(vparamss: List[List[ValDef]], n: Int): List[DefDef] = vparamss match {
       case (vparam :: vparams) :: vparamss1 =>
         def defaultGetter: DefDef =
           DefDef(
             mods = vparam.mods & AccessFlags,
-            name = meth.name.defaultGetterName(n + 1),
+            name = meth.name.defaultGetterName(n),
             tparams = meth.tparams,
-            vparamss = take(normalizedVparamss, n),
+            vparamss = takeUpTo(normalizedVparamss, n),
             tpt = TypeTree(),
             rhs = vparam.rhs)
         val rest = defaultGetters(vparams :: vparamss1, n + 1)
         if (vparam.rhs.isEmpty) rest else defaultGetter :: rest
       case Nil :: vparamss1 =>
-        defaultGetters(vparamss1)
+        defaultGetters(vparamss1, n)
       case nil =>
         Nil
     }
 
-    val defGetters = defaultGetters(vparamss)
+    val defGetters = defaultGetters(vparamss, 0)
     if (defGetters.isEmpty) meth1
     else {
       val mods1 = meth1.mods | DefaultParameterized
