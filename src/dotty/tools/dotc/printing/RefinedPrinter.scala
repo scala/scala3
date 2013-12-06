@@ -35,15 +35,20 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override protected def simpleNameString(sym: Symbol): String = {
     var name = sym.originalName
-    if (sym is ModuleClass) name = name.stripModuleClassSuffix
+    //if (sym is ModuleClass) name = name.stripModuleClassSuffix
     name.decode.toString
+  }
+
+  override protected def fullNameOwner(sym: Symbol) = {
+    val owner = super.fullNameOwner(sym)
+    if (owner is ModuleClass) owner.sourceModule else owner
   }
 
   override def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
       case ThisType(cls) =>
         if (cls.isAnonymousClass) return "this"
-        if (cls is ModuleClass) return fullNameString(cls)
+        if (cls is ModuleClass) return fullNameString(cls.sourceModule)
       case _ =>
     }
     super.toTextRef(tp)

@@ -170,7 +170,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
     if (sym.isRoot || sym == NoSymbol || sym.owner.isEffectiveRoot)
       nameString(sym)
     else
-      fullNameString(sym.effectiveOwner.enclosingClass) + "." + nameString(sym)
+      fullNameString(fullNameOwner(sym)) + "." + nameString(sym)
+
+  protected def fullNameOwner(sym: Symbol): Symbol = sym.effectiveOwner.enclosingClass
 
   protected def objectPrefix = "object "
   protected def packagePrefix = "package "
