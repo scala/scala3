@@ -50,7 +50,7 @@ object NameOps {
   implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
     import nme._
 
-    def isConstructorName = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
+    def isConstructorName = name == CONSTRUCTOR || name == IMPLCLASS_CONSTRUCTOR
     def isExceptionResultName = name startsWith EXCEPTION_RESULT_PREFIX
     def isImplClassName = name endsWith IMPL_CLASS_SUFFIX
     def isLocalDummyName = name startsWith LOCALDUMMY_PREFIX

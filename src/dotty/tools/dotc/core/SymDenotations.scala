@@ -343,7 +343,7 @@ object SymDenotations {
     final def isClassConstructor = name == nme.CONSTRUCTOR
 
     /** Is this the constructor of a trait? */
-    final def isTraitConstructor = name == nme.TRAIT_CONSTRUCTOR
+    final def isImplClassConstructor = name == nme.IMPLCLASS_CONSTRUCTOR
 
     /** Is this the constructor of a trait or a class */
     final def isConstructor = name.isConstructorName
@@ -1065,7 +1065,7 @@ object SymDenotations {
     override def fullName(implicit ctx: Context): Name = super.fullName
 
     override def primaryConstructor(implicit ctx: Context): Symbol = {
-      val cname = if (this is Trait | ImplClass) nme.TRAIT_CONSTRUCTOR else nme.CONSTRUCTOR
+      val cname = if (this is ImplClass) nme.IMPLCLASS_CONSTRUCTOR else nme.CONSTRUCTOR
       decls.denotsNamed(cname).first.symbol
     }
   }

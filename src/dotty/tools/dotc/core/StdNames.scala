@@ -218,7 +218,7 @@ object StdNames {
     val DEFAULT_CASE: N             = "defaultCase$"
     val EQEQ_LOCAL_VAR: N           = "eqEqTemp$"
     val FAKE_LOCAL_THIS: N          = "this$"
-    val INITIALIZER: N              = CONSTRUCTOR // Is this buying us something?
+    val IMPLCLASS_CONSTRUCTOR: N    = "$init$"
     val LAZY_LOCAL: N               = "$lzy"
     val LAZY_SLOW_SUFFIX: N         = "$lzycompute"
     val LOCAL_SUFFIX: N             = " "
@@ -233,7 +233,6 @@ object StdNames {
     val REIFY_FREE_THIS_SUFFIX: N   = "$this"
     val REIFY_FREE_VALUE_SUFFIX: N  = "$value"
     val REIFY_SYMDEF_PREFIX: N      = "symdef$"
-    val TRAIT_CONSTRUCTOR: N        = "$init$"
     val MODULE_INSTANCE_FIELD: N    = NameTransformer.MODULE_INSTANCE_NAME  // "MODULE$"
     val OUTER: N                    = "$outer"
     val OUTER_LOCAL: N              = "$outer "
