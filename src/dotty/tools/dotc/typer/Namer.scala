@@ -205,12 +205,13 @@ class Namer { typer: Typer =>
     else ctx.newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
   }
 
-  /** The expansion of a member def */
-  def expansion(mdef: DefTree)(implicit ctx: Context): Tree = {
-    val expanded = desugar.defTree(mdef)
-    println(i"Expansion: $mdef expands to $expanded")
-    if (expanded ne mdef) expandedTree(mdef) = expanded
-    expanded
+  /** Expand tree and store in `expandedTree` */
+  def expand(tree: Tree)(implicit ctx: Context): Unit = tree match {
+    case mdef: DefTree =>
+      val expanded = desugar.defTree(mdef)
+      println(i"Expansion: $mdef expands to $expanded")
+      if (expanded ne mdef) expandedTree(mdef) = expanded
+    case _ =>
   }
 
   /** The expanded version of this tree, or tree itself if not expanded */
@@ -233,8 +234,16 @@ class Namer { typer: Typer =>
     localCtx
   }
 
-  /** Create top-level symbols for statement and enter them into symbol table */
-  def index(stat: Tree)(implicit ctx: Context): Context = stat match {
+  /** Expand tree and create top-level symbols for statement and enter them into symbol table */
+  def index(stat: Tree)(implicit ctx: Context): Context = {
+    expand(stat)
+    indexExpanded(stat)
+  }
+
+  /** Create top-level symbols for all statements in the expansion of this statement and
+   *  enter them into symbol table
+   */
+  def indexExpanded(stat: Tree)(implicit ctx: Context): Context = stat match {
     case pcl: PackageDef =>
       val pkg = createPackageSymbol(pcl.pid)
       index(pcl.stats)(ctx.fresh.withOwner(pkg.moduleClass))
@@ -242,7 +251,7 @@ class Namer { typer: Typer =>
     case imp: Import =>
       importContext(createSymbol(imp), imp.selectors)
     case mdef: DefTree =>
-      expansion(mdef).toList foreach (tree => enterSymbol(createSymbol(tree)))
+      expandedTree(mdef).toList foreach (tree => enterSymbol(createSymbol(tree)))
       ctx
     case _ =>
       ctx
@@ -261,20 +270,20 @@ class Namer { typer: Typer =>
       for (mdef @ ModuleDef(_, name, _) <- stats)
         caseClassDef get name.toTypeName match {
           case Some(cdef) =>
-            val Thicket((mcls @ TypeDef(_, _, impl: Template)) :: mrest) = expandedTree(mdef)
-            val Thicket(cls :: TypeDef(_, _, compimpl: Template) :: crest) = expandedTree(cdef)
+            val Thicket(vdef :: (mcls @ TypeDef(_, _, impl: Template)) :: Nil) = expandedTree(mdef)
+            val Thicket(cls :: mval :: TypeDef(_, _, compimpl: Template) :: crest) = expandedTree(cdef)
             val mcls1 = cpy.TypeDef(mcls, mcls.mods, mcls.name,
               cpy.Template(impl, impl.constr, impl.parents, impl.self,
                 compimpl.body ++ impl.body))
-            expandedTree(mdef) = Thicket(mcls1 :: mrest)
+            expandedTree(mdef) = Thicket(vdef :: mcls1 :: Nil)
             expandedTree(cdef) = Thicket(cls :: crest)
           case none =>
         }
-      }
+    }
 
-    val result = (ctx /: stats) ((ctx, stat) => index(stat)(ctx))
+    stats foreach expand
     mergeCompanionDefs()
-    result
+    (ctx /: stats) ((ctx, stat) => indexExpanded(stat)(ctx))
   }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */

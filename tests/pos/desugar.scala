@@ -9,5 +9,19 @@ object desugar {
   def foo0(first: Int, second: Int = 2, third: Int = 3) = first + second
   def foo1(first: Int, second: Int = 2)(third: Int = 3) = first + second
   def foo2(first: Int)(second: Int = 2)(third: Int = 3) = first + second
+  
+  object lists {
+    trait List[+T] {
+      def head: T
+      def tail: List[T]
+    }
 
+    case class Cons[+T](val head: T, val tail: List[T]) extends List[T]
+
+    object Cons {
+      def apply[T](head: T): Cons[T] = apply(head, Nil)
+    }
+
+    case object Nil extends List[Nothing]
+  }
 }
