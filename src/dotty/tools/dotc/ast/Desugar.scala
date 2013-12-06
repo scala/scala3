@@ -206,7 +206,7 @@ object desugar {
       if (mods is Case) {
         val caseParams = vparamss.head.toArray
         def syntheticProperty(name: TermName, rhs: Tree) =
-          DefDef(synthetic, name, Nil, Nil, EmptyTree, rhs)
+          DefDef(synthetic, name, Nil, Nil, TypeTree(), rhs)
         val isDefinedMeth = syntheticProperty(nme.isDefined, Literal(Constant(true)))
         val productArityMeth = syntheticProperty(nme.productArity, Literal(Constant(caseParams.length)))
         val productElemMeths = for (i <- 0 until caseParams.length) yield
@@ -218,7 +218,7 @@ object desugar {
               cpy.ValDef(vparam, vparam.mods, vparam.name, vparam.tpt, refOfDef(vparam)))
             val copyRestParamss = vparamss.tail.nestedMap(vparam =>
               cpy.ValDef(vparam, vparam.mods, vparam.name, vparam.tpt, EmptyTree))
-            DefDef(synthetic, nme.copy, tparams, copyFirstParams :: copyRestParamss, EmptyTree, creatorExpr) :: Nil
+            DefDef(synthetic, nme.copy, tparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr) :: Nil
           }
         copyMeths ::: isDefinedMeth :: productArityMeth :: productElemMeths.toList
       }
@@ -254,11 +254,11 @@ object desugar {
           else (vparamss :\ classTypeRef) ((vparams, restpe) => Function(vparams map (_.tpt), restpe))
         val applyMeths =
           if (mods is Abstract) Nil
-          else DefDef(synthetic, nme.apply, tparams, vparamss, EmptyTree, creatorExpr) :: Nil
+          else DefDef(synthetic, nme.apply, tparams, vparamss, TypeTree(), creatorExpr) :: Nil
         val unapplyMeth = {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           DefDef(synthetic, nme.unapply, tparams, (unapplyParam :: Nil) :: Nil,
-              EmptyTree, Ident(unapplyParam.name))
+              TypeTree(), Ident(unapplyParam.name))
         }
         companionDefs(parent, applyMeths ::: unapplyMeth :: defaultGetters)
       }
