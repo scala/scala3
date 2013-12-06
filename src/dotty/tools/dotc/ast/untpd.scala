@@ -96,10 +96,19 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
 
   // def TypeTree(tpe: Type): TypeTree = TypeTree().withType(tpe) todo: move to untpd/tpd
 
-  /** new tpt(args1)...(args_n)
+  /**     new pre.C[Ts](args1)...(args_n)
+   *  ==>
+   *      (new pre.C).<init>[Ts](args1)...(args_n)
    */
-  def New(tpt: Tree, argss: List[List[Tree]]): Tree =
-    ((Select(New(tpt), nme.CONSTRUCTOR): Tree) /: argss)(Apply(_, _))
+  def New(tpt: Tree, argss: List[List[Tree]]): Tree = {
+    val (tycon, targs) = tpt match {
+      case AppliedTypeTree(tycon, targs) => (tycon, targs)
+      case _ => (tpt, Nil)
+    }
+    var prefix: Tree = Select(New(tycon), nme.CONSTRUCTOR)
+    if (targs.nonEmpty) prefix = TypeApply(prefix, targs)
+    (prefix /: argss)(Apply(_, _))
+  }
 
   def Block(stat: Tree, expr: Tree): Block =
     Block(stat :: Nil, expr)
