@@ -208,7 +208,7 @@ object Inferencing {
     }
   }
 
-  /** Recursively and also follow type declarations and type aliases. */
+  /** Recursively widen and also follow type declarations and type aliases. */
   def widenForMatchSelector(tp: Type)(implicit ctx: Context): Type = tp.widen match {
     case tp: TypeRef if !tp.symbol.isClass => widenForMatchSelector(tp.bounds.hi)
     case tp => tp

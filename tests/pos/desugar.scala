@@ -29,10 +29,14 @@ object desugar {
   
   object patDefs {
     
-    val xs = Cons(1, Cons(2, Nil))
+    val xs: List[Int] = Cons(1, Cons(2, Nil))
     
-    val Cons(y, ys) = xs
+    val Cons(y, ys) = xs 
     val Cons(z, _) = xs
     val Cons(_, _) = xs
+   
+    val (cons: Cons[Int]) = xs
+    
+    val x, y, z: Int = 1
   }
 }

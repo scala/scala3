@@ -589,13 +589,14 @@ trait Applications extends Compatibility { self: Typer =>
       case mt: MethodType if !mt.isDependent =>
         val unapplyArgType = mt.paramTypes.head
         println(s"unapp arg tpe = ${unapplyArgType.show}, pt = ${pt.show}")
+        def wpt = widenForMatchSelector(pt)
         val ownType =
           if (pt <:< unapplyArgType) {
             fullyDefinedType(unapplyArgType, "extractor argument", tree.pos)
             println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             pt
           }
-          else if (unapplyArgType <:< widenForMatchSelector(pt)) {
+          else if (unapplyArgType <:< wpt) {
             maximizeType(unapplyArgType) match {
               case Some(tvar) =>
                 def msg =
@@ -621,7 +622,7 @@ trait Applications extends Compatibility { self: Typer =>
             println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
             unapplyArgType
           } else errorType(
-            s"Pattern type ${unapplyArgType.show} is neither a subtype nor a supertype of selector type ${pt.show}",
+            i"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $wpt",
             tree.pos)
 
         var argTypes = unapplyArgs(mt.resultType)
