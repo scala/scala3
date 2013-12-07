@@ -396,18 +396,25 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = track("typedTyped") {
+    def regularTyped(isWildcard: Boolean) = {
+      val tpt1 = typedType(tree.tpt)
+      val expr1 =
+        if (isWildcard) tree.expr withType tpt1.tpe
+        else typedExpr(tree.expr, tpt1.tpe)
+      cpy.Typed(tree, expr1, tpt1).withType(tpt1.tpe)
+    }
     tree.expr match {
-      case id: Ident if (ctx.mode is Mode.Pattern) && isVarPattern(id) && id.name != nme.WILDCARD =>
-        import untpd._
-        typed(Bind(id.name, Typed(Ident(nme.WILDCARD), tree.tpt)).withPos(id.pos))
+      case id: Ident if (ctx.mode is Mode.Pattern) && isVarPattern(id) =>
+        if (id.name == nme.WILDCARD) regularTyped(isWildcard = true)
+        else {
+          import untpd._
+          typed(Bind(id.name, Typed(Ident(nme.WILDCARD), tree.tpt)).withPos(id.pos))
+        }
       case _ =>
         if (untpd.isWildcardStarArg(tree))
           seqToRepeated(typedExpr(tree.expr, defn.SeqType))
-        else {
-          val tpt1 = typedType(tree.tpt)
-          val expr1 = typedExpr(tree.expr, tpt1.tpe)
-          cpy.Typed(tree, expr1, tpt1).withType(tpt1.tpe)
-        }
+        else
+          regularTyped(isWildcard = false)
     }
   }
 
@@ -767,7 +774,8 @@ class Typer extends Namer with Applications with Implicits {
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = track("typedAnnotated") {
     val annot1 = typed(tree.annot, defn.AnnotationClass.typeRef)
     val arg1 = typed(tree.arg, pt)
-    val ownType = AnnotatedType(Annotation(annot1), arg1.tpe)
+    val underlyingType = if (arg1.isTerm) arg1.tpe.widen else arg1.tpe
+    val ownType = AnnotatedType(Annotation(annot1), underlyingType)
     if (ctx.mode is Mode.Type)
       cpy.Annotated(tree, annot1, arg1) withType ownType
     else
