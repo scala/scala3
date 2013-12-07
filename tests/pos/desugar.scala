@@ -32,5 +32,7 @@ object desugar {
     val xs = Cons(1, Cons(2, Nil))
     
     val Cons(y, ys) = xs
+    val Cons(z, _) = xs
+    val Cons(_, _) = xs
   }
 }

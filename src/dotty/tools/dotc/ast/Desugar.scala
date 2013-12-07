@@ -352,6 +352,8 @@ object desugar {
       val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
       val matchExpr = Match(rhsUnchecked, caseDef :: Nil)
       vars match {
+        case Nil =>
+          matchExpr
         case (named, tpt) :: Nil =>
           derivedValDef(mods, named, tpt, matchExpr)
         case _ =>
@@ -684,9 +686,9 @@ object desugar {
           apply(add(tree, tpt), tree1)
         case tree @ Bind(_, tree1) =>
           apply(add(tree, TypeTree()), tree1)
-        case Typed(id: Ident, t) if isVarPattern(id) =>
+        case Typed(id: Ident, t) if isVarPattern(id) && id.name != nme.WILDCARD =>
           add(id, t)
-        case id: Ident if isVarPattern(id) =>
+        case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD =>
           add(id, TypeTree())
         case _ =>
           foldOver(buf, tree)
