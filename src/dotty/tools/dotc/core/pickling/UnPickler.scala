@@ -407,7 +407,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       owner.setFlag(DefaultParameterized)
     }
 
-    val name = name0.adjustIfModuleClass(flags)
+    val name1 = name0.adjustIfModuleClass(flags)
+    val name = if (name1 == nme.IMPLCLASS_CONSTRUCTOR) nme.CONSTRUCTOR else name1
 
     def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
     def isModuleClassRoot = (name == moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)

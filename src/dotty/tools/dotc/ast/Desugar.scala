@@ -18,6 +18,7 @@ object desugar {
 
   import untpd._
 
+  /** Info of a variable in a pattern: The named tree and its type */
   private type VarInfo = (NameTree, Tree)
 
   /**   var x: Int = expr
@@ -210,7 +211,7 @@ object desugar {
         val isDefinedMeth = syntheticProperty(nme.isDefined, Literal(Constant(true)))
         val productArityMeth = syntheticProperty(nme.productArity, Literal(Constant(caseParams.length)))
         val productElemMeths = for (i <- 0 until caseParams.length) yield
-          syntheticProperty(("_" + (i + 1)).toTermName, Select(This(EmptyTypeName), caseParams(i).name))
+          syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeName), caseParams(i).name))
         val copyMeths =
           if (mods is Abstract) Nil
           else {
@@ -225,10 +226,18 @@ object desugar {
       else Nil
 
     def anyRef = ref(defn.AnyRefAlias.typeRef)
-    def parentConstr(tpt: Tree) = Select(New(tpt), nme.CONSTRUCTOR)
+    def productConstr = {
+      val tycon = ref(defn.ProductNClass(vparamss.head.length).typeRef)
+      val targs = vparamss.head map (_.tpt)
+      New(AppliedTypeTree(tycon, targs), Nil)
+    }
 
     // The desugared parents:  AnyRef, in case parents are Nil.
-    val parents1 = if (parents.isEmpty) parentConstr(anyRef) :: Nil else parents
+    // Case classes also get a ProductN parent
+    val parents1 = {
+      val parents0 = if (mods is Case) parents :+ productConstr else parents
+      if (parents0.isEmpty) New(anyRef, Nil) :: Nil else parents0
+    }
 
     // The thicket which is the desugared version of the companion object
     //     synthetic object C extends parentTpt { defs }
@@ -236,7 +245,7 @@ object desugar {
       moduleDef(
         ModuleDef(
           Modifiers(Synthetic), name.toTermName,
-          Template(emptyConstructor, parentConstr(parentTpt) :: Nil, EmptyValDef, defs))).toList
+          Template(emptyConstructor, New(parentTpt, Nil) :: Nil, EmptyValDef, defs))).toList
 
     // The companion object defifinitions, if a companion is needed, Nil otherwise.
     // companion definitions include:
@@ -308,29 +317,21 @@ object desugar {
     Thicket(modul, classDef(cls))
   }
 
+  /**     val p1, ..., pN: T = E
+   *  ==>
+   *      makePatDef[[val p1: T1 = E]]; ...; makePatDef[[val pN: TN = E]]
+   */
   def patDef(pdef: PatDef)(implicit ctx: Context): Tree = {
     val PatDef(mods, pats, tpt, rhs) = pdef
     val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
     flatTree(pats1 map (makePatDef(mods, _, rhs)))
   }
 
-  def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case tree: ValDef => valDef(tree)
-    case tree: TypeDef => if (tree.isClassDef) classDef(tree) else typeDef(tree)
-    case tree: DefDef => defDef(tree)
-    case tree: ModuleDef => moduleDef(tree)
-    case tree: PatDef => patDef(tree)
-  }
-
-  def block(tree: Block)(implicit ctx: Context): Block = tree.expr match {
-    case EmptyTree =>
-      cpy.Block(tree, tree.stats,
-        unitLiteral withPos (if (tree.stats.isEmpty) tree.pos else tree.pos.endPos))
-    case _ =>
-      tree
-  }
-
-  /** In case there is exactly one variable x_1 in pattern
+  /** If `pat` is a variable pattern,
+   *
+   *    val/var p = e
+   *
+   *  Otherwise, in case there is exactly one variable x_1 in pattern
    *   val/var p = e  ==>  val/var x_1 = (e: @unchecked) match (case p => (x_1))
    *
    *   in case there are zero or more than one variables in pattern
@@ -357,12 +358,28 @@ object desugar {
           val tmpName = ctx.freshName().toTermName
           val patMods = Modifiers(PrivateLocal | Synthetic | (mods.flags & Lazy))
           val firstDef = ValDef(patMods, tmpName, TypeTree(), matchExpr)
-          def selector(n: Int) = Select(Ident(tmpName), ("_" + n).toTermName)
+          def selector(n: Int) = Select(Ident(tmpName), nme.selectorName(n))
           val restDefs =
             for (((named, tpt), n) <- vars.zipWithIndex)
               yield derivedValDef(mods, named, tpt, selector(n))
           flatTree(firstDef :: restDefs)
       }
+  }
+
+  def defTree(tree: Tree)(implicit ctx: Context): Tree = tree match {
+    case tree: ValDef => valDef(tree)
+    case tree: TypeDef => if (tree.isClassDef) classDef(tree) else typeDef(tree)
+    case tree: DefDef => defDef(tree)
+    case tree: ModuleDef => moduleDef(tree)
+    case tree: PatDef => patDef(tree)
+  }
+
+  def block(tree: Block)(implicit ctx: Context): Block = tree.expr match {
+    case EmptyTree =>
+      cpy.Block(tree, tree.stats,
+        unitLiteral withPos (if (tree.stats.isEmpty) tree.pos else tree.pos.endPos))
+    case _ =>
+      tree
   }
 
   /** Make closure corresponding to function  params => body */

@@ -10,7 +10,7 @@ object desugar {
   def foo1(first: Int, second: Int = 2)(third: Int = 3) = first + second
   def foo2(first: Int)(second: Int = 2)(third: Int = 3) = first + second
   
-  object lists {
+  object caseClasses { self =>
     trait List[+T] {
       def head: T
       def tail: List[T]
@@ -23,5 +23,14 @@ object desugar {
     }
 
     case object Nil extends List[Nothing]
+  }
+  
+  import caseClasses._
+  
+  object patDefs {
+    
+    val xs = Cons(1, Cons(2, Nil))
+    
+    val Cons(y, ys) = xs
   }
 }

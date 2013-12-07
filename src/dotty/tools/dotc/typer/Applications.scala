@@ -564,7 +564,7 @@ trait Applications extends Compatibility { self: Typer =>
       }
 
       def productSelectors(tp: Type): List[Type] = {
-        val sels = for (n <- Iterator.from(1)) yield extractorMemberType(tp, ("_" + n).toTermName)
+        val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n))
         sels.takeWhile(_.exists).toList
       }
       def seqSelector = defn.RepeatedParamType.appliedTo(unapplyResult.elemType :: Nil)
@@ -572,9 +572,12 @@ trait Applications extends Compatibility { self: Typer =>
         if (tp derivesFrom defn.ProductClass) productSelectors(tp) else tp :: Nil
       def getTp = extractorMemberType(unapplyResult, nme.get)
 
-      if ((extractorMemberType(unapplyResult, nme.isDefined) isRef defn.BooleanClass) &&
-           getTp.exists) getSelectors(getTp)
-      else if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
+      // println(s"unapply $unapplyResult ${extractorMemberType(unapplyResult, nme.isDefined)}")
+      if (extractorMemberType(unapplyResult, nme.isDefined) isRef defn.BooleanClass) {
+        if (getTp.exists) return getSelectors(getTp)
+        else if (unapplyResult derivesFrom defn.ProductClass) return productSelectors(unapplyResult)
+      }
+      if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
       else if (unapplyResult isRef defn.BooleanClass) Nil
       else {
         ctx.error(s"${unapplyResult.show} is not a valid result type of an unapply method of an extractor", tree.pos)
