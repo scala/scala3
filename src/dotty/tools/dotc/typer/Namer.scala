@@ -162,12 +162,12 @@ class Namer { typer: Typer =>
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         record(ctx.newClassSymbol(
-          ctx.owner, tree.name, tree.mods.flags,
+          ctx.owner, tree.name.encode.asTypeName, tree.mods.flags,
           adjustIfModule(new Completer(tree) withDecls newScope, tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
       case tree: MemberDef =>
         record(ctx.newSymbol(
-          ctx.owner, tree.name, tree.mods.flags,
+          ctx.owner, tree.name.encode, tree.mods.flags,
           adjustIfModule(new Completer(tree), tree),
           privateWithinClass(tree.mods), tree.pos))
       case tree: Import =>
