@@ -139,8 +139,13 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case expr => toText(expr)
     }
 
+    def enumText(tree: Tree[T]) = tree match {
+      case _: untpd.GenFrom | _: untpd.GenAlias => toText(tree)
+      case _ => "if " ~ toText(tree)
+    }
+
     def forText(enums: List[Tree[T]], expr: Tree[T], sep: String): Text =
-      changePrec(GlobalPrec) { "for " ~ toText(enums, "; ") ~ sep ~ toText(expr) }
+      changePrec(GlobalPrec) { "for " ~ Text(enums map enumText, "; ") ~ sep ~ toText(expr) }
 
     def cxBoundToText(bound: Tree[T]): Text = bound match {
       case AppliedTypeTree(tpt, _) => " : " ~ toText(tpt)
