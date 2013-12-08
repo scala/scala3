@@ -398,12 +398,13 @@ object Parsers {
      */
     def infixOps(
         first: Tree, canStartOperand: Token => Boolean, operand: () => Tree,
+        isType: Boolean = false,
         notAnOperator: Name = nme.EMPTY,
         maybePostfix: Boolean = false): Tree = {
       val base = opStack
       var top = first
       while (isIdent && in.name != notAnOperator) {
-        val op = in.name
+        val op = if (isType) in.name.toTypeName else in.name
         top = reduceStack(base, top, precedence(op), isLeftAssoc(op))
         opStack = OpInfo(top, op, in.offset) :: opStack
         ident()
@@ -667,7 +668,7 @@ object Parsers {
     def infixType(): Tree = infixTypeRest(refinedType())
 
     def infixTypeRest(t: Tree): Tree =
-      infixOps(t, canStartTypeTokens, refinedType, notAnOperator = nme.raw.STAR)
+      infixOps(t, canStartTypeTokens, refinedType, isType = true, notAnOperator = nme.raw.STAR)
 
     /** RefinedType        ::=  WithType {Annotation | [nl] Refinement}
      */
