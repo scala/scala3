@@ -159,8 +159,8 @@ trait Applications extends Compatibility { self: Typer =>
             case (arg @ NamedArg(aname, _)) :: args1 =>
               if (toDrop contains aname) // argument is already passed
                 recur(pnames, args1, nameToArg, toDrop - aname)
-              else if (nameToArg contains aname) // argument is missing, pass an empty tree
-                genericEmptyTree :: recur(pnamesRest, args, nameToArg, toDrop)
+              else if ((nameToArg contains aname) && pnames.nonEmpty) // argument is missing, pass an empty tree
+                genericEmptyTree :: recur(pnames.tail, args, nameToArg, toDrop)
               else { // name not (or no longer) available for named arg
                 def msg =
                   if (methodType.paramNames contains aname)
@@ -219,7 +219,9 @@ trait Applications extends Compatibility { self: Typer =>
                   case _ => NoType
                 }
               } else mpre
-            ref(pre, pre.member(getterName).symbol)
+            val getter = pre.member(getterName)
+            assert(getter.exists, getterName)
+            ref(pre, getter.symbol)
         }
       else NoType
     }
