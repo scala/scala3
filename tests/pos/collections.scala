@@ -2,6 +2,8 @@ import scala.collection.generic.CanBuildFrom
 
 object collections {
   
+  List(1, 2, 3) map (x => 2)
+
   val s = Set(1, 2, 3)
   val ss = s map (_ + 1)
 
@@ -16,4 +18,5 @@ object collections {
     
   val ys = ints3 map (x => x + 1)
   val zs = ys filter (y => y != 0)
+
 }

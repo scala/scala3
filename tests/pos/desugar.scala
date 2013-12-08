@@ -1,9 +1,9 @@
 object desugar {
-
+  
   // variables
   var x: Int = 2
   var y = x * x
-  
+
   { var z: Int = y }
  
   def foo0(first: Int, second: Int = 2, third: Int = 3) = first + second
@@ -24,11 +24,11 @@ object desugar {
 
     case object Nil extends List[Nothing]
   }
-  
-  import caseClasses._
-  
+    
   object patDefs {
     
+    import caseClasses._
+
     val xs: List[Int] = Cons(1, Cons(2, Nil))
     
     val Cons(y, ys) = xs 
@@ -39,4 +39,21 @@ object desugar {
     
     val x, y, z: Int = 1
   }
+  
+  object Binops {
+    
+    x :: y :: Nil
+    
+  }
+  
+  object fors {
+        
+    for (x <- List(1, 2, 3)) yield 2
+    for (x <- List(1, 2, 3) if x % 2 == 0) yield x * x
+    for (x <- List(1, 2, 3); y <- 0 to x) yield x * y
+    for (x <- List(1, 2, 3); y <- 0 to x; if x + y % 2 == 0) yield x * y
+    for (x <- List(1, 2, 3); y = x * x; if x + y % 2 == 0) yield x * y
+    for (x <- List(1, 2, 3); y = x * x; z = x * y; u <- 0 to y) yield x * y * z * u
+  }
+
 }

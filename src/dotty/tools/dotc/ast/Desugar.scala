@@ -376,6 +376,10 @@ object desugar {
     case tree: PatDef => patDef(tree)
   }
 
+  /**     { stats; <empty > }
+   *  ==>
+   *      { stats; () }
+   */
   def block(tree: Block)(implicit ctx: Context): Block = tree.expr match {
     case EmptyTree =>
       cpy.Block(tree, tree.stats,
@@ -384,26 +388,41 @@ object desugar {
       tree
   }
 
-  /** Make closure corresponding to function  params => body */
+  /** Make closure corresponding to function.
+   *      params => body
+   *  ==>
+   *      def $anonfun(params) = body
+   *      Closure($anonfun)
+   */
   def makeClosure(params: List[ValDef], body: Tree) =
     Block(
       DefDef(Modifiers(Synthetic), nme.ANON_FUN, Nil, params :: Nil, TypeTree(), body),
       Closure(Nil, Ident(nme.ANON_FUN), EmptyTree))
 
-  /** Make closure corresponding to partial function  { cases } */
+  /** Expand partial function
+   *       { cases }
+   *  ==>
+   *       x$0 => x$0 match { cases }
+   */
   def makeCaseLambda(cases: List[CaseDef])(implicit ctx: Context) = {
     val param = makeSyntheticParameter()
     Function(param :: Nil, Match(Ident(param.name), cases))
   }
 
+  /** Add annotation with class `cls` to tree:
+   *      tree @cls
+   */
   def makeAnnotated(cls: Symbol, tree: Tree)(implicit ctx: Context) =
     Annotated(TypedSplice(tpd.New(cls.typeRef)), tree)
 
   private def derivedValDef(mods: Modifiers, named: NameTree, tpt: Tree, rhs: Tree) =
     ValDef(mods, named.name.asTermName, tpt, rhs).withPos(named.pos)
 
+  /** Main desugaring method */
   def apply(tree: Tree)(implicit ctx: Context): Tree = {
 
+    /**    { label def lname() = rhs; call }
+     */
     def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
       val ldef = DefDef(Modifiers(Label), lname, Nil, ListOfNil, TypeTree(), rhs)
       Block(ldef, call)
@@ -479,7 +498,7 @@ object desugar {
      *  @param enums        The enumerators in the for expression
      *  @param body         The body of the for expression
      */
-    def makeFor(mapName: TermName, flatMapName: TermName, enums: List[Tree], body: Tree): Tree = {
+    def makeFor(mapName: TermName, flatMapName: TermName, enums: List[Tree], body: Tree): Tree = ctx.traceIndented(i"make for ${ForYield(enums, body)}", show = true) {
 
       /** Make a function value pat => body.
        *  If pat is a var pattern id: T then this gives (id: T) => body
@@ -492,11 +511,17 @@ object desugar {
           makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil)
       }
 
-      /** If `pat` is not yet a `Bind` wrap it in one with a fresh name
+      /** If `pat` is not an Identifier, a Typed(Ident, _), or a Bind, wrap
+       *  it in a Bind with a fresh name. Return the transformed pattern, and the identifier
+       *  that refers to the bound variable for the pattern.
        */
-      def makeBind(pat: Tree): Tree = pat match {
-        case Bind(_, _) => pat
-        case _ => Bind(ctx.freshName().toTermName, pat)
+      def makeIdPat(pat: Tree): (Tree, Ident) = pat match {
+        case Bind(name, _) => (pat, Ident(name))
+        case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD => (id, id)
+        case Typed(id: Ident, _) if isVarPattern(id) && id.name != nme.WILDCARD => (pat, id)
+        case _ =>
+          val name = ctx.freshName().toTermName
+          (Bind(name, pat), Ident(name))
       }
 
       /** Make a pattern filter:
@@ -534,7 +559,7 @@ object desugar {
 
       /** Is pattern `pat` irrefutable when matched against `rhs`?
        *  We only can do a simple syntactic check here; a more refined check
-       *  is done later prompted by the presence of a "withFilterIfRefutable" call.
+       *  is done later in the pattern matcher (see discussion in @makePatFilter).
        */
       def isIrrefutable(pat: Tree, rhs: Tree): Boolean = {
         def matchesTuple(pats: List[Tree], rhs: Tree): Boolean = rhs match {
@@ -543,7 +568,7 @@ object desugar {
           case Block(_, rhs1) => matchesTuple(pats, rhs1)
           case If(_, thenp, elsep) => matchesTuple(pats, thenp) && matchesTuple(pats, elsep)
           case Match(_, cases) => cases forall (matchesTuple(pats, _))
-          case CaseDef(_, _, rhs1) => matchesTuple(pats, rhs)
+          case CaseDef(_, _, rhs1) => matchesTuple(pats, rhs1)
           case Throw(_) => true
           case _ => false
         }
@@ -555,35 +580,40 @@ object desugar {
         }
       }
 
+      def isIrrefutableGenFrom(gen: GenFrom): Boolean =
+        gen.isInstanceOf[IrrefutableGenFrom] || isIrrefutable(gen.pat, gen.expr)
+
       /** rhs.name with a pattern filter on rhs unless `pat` is irrefutable when
        *  matched against `rhs`.
        */
-      def rhsSelect(rhs: Tree, name: TermName, pat: Tree) = {
-        val rhs1 = if (isIrrefutable(pat, rhs)) rhs else makePatFilter(rhs, pat)
-        Select(rhs1, name)
+      def rhsSelect(gen: GenFrom, name: TermName) = {
+        val rhs = if (isIrrefutableGenFrom(gen)) gen.expr else makePatFilter(gen.expr, gen.pat)
+        Select(rhs, name)
       }
 
       enums match {
-        case (enum @ GenFrom(pat, rhs)) :: Nil =>
-          Apply(rhsSelect(rhs, mapName, pat), makeLambda(pat, body))
-        case GenFrom(pat, rhs) :: (rest @ (GenFrom(_, _) :: _)) =>
+        case (gen: GenFrom) :: Nil =>
+          Apply(rhsSelect(gen, mapName), makeLambda(gen.pat, body))
+        case (gen: GenFrom) :: (rest @ (GenFrom(_, _) :: _)) =>
           val cont = makeFor(mapName, flatMapName, rest, body)
-          Apply(rhsSelect(rhs, flatMapName, pat), makeLambda(pat, cont))
+          Apply(rhsSelect(gen, flatMapName), makeLambda(gen.pat, cont))
         case (enum @ GenFrom(pat, rhs)) :: (rest @ GenAlias(_, _) :: _) =>
           val (valeqs, rest1) = rest.span(_.isInstanceOf[GenAlias])
           val pats = valeqs map { case GenAlias(pat, _) => pat }
           val rhss = valeqs map { case GenAlias(_, rhs) => rhs }
-          val defpat1 = makeBind(pat)
-          val defpats = pats map makeBind
+          val (defpat0, id0) = makeIdPat(pat)
+          val (defpats, ids) = (pats map makeIdPat).unzip
           val pdefs = (defpats, rhss).zipped map (makePatDef(Modifiers(), _, _))
-          val ids = (defpat1 :: defpats) map { case Bind(name, _) => Ident(name) }
-          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat1, rhs) :: Nil, Block(pdefs, makeTuple(ids)))
+          val rhs1 = makeFor(nme.map, nme.flatMap, GenFrom(defpat0, rhs) :: Nil, Block(pdefs, makeTuple(id0 :: ids)))
           val allpats = pat :: pats
-          val vfrom1 = GenFrom(makeTuple(allpats), rhs1)
+          val vfrom1 = new IrrefutableGenFrom(makeTuple(allpats), rhs1)
           makeFor(mapName, flatMapName, vfrom1 :: rest1, body)
-        case (enum @ GenFrom(pat, rhs)) :: test :: rest =>
-          val filtered = Apply(rhsSelect(rhs, nme.withFilter, pat), makeLambda(pat, test))
-          makeFor(mapName, flatMapName, GenFrom(pat, filtered) :: rest, body)
+        case (gen: GenFrom) :: test :: rest =>
+          val filtered = Apply(rhsSelect(gen, nme.withFilter), makeLambda(gen.pat, test))
+          val genFrom =
+            if (isIrrefutableGenFrom(gen)) new IrrefutableGenFrom(gen.pat, filtered)
+            else GenFrom(gen.pat, filtered)
+          makeFor(mapName, flatMapName, genFrom :: rest, body)
         case _ =>
           EmptyTree //may happen for erroneous input
       }
@@ -701,4 +731,6 @@ object desugar {
    */
   private def getVariables(tree: Tree): List[VarInfo] =
     getVars(new ListBuffer[VarInfo], tree).toList
+
+  private class IrrefutableGenFrom(pat: Tree, expr: Tree) extends GenFrom(pat, expr)
 }
