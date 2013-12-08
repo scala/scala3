@@ -408,7 +408,7 @@ trait Applications extends Compatibility { self: Typer =>
       val ownType = ctx.traceIndented(i"apply $methRef to $typedArgs%, %", show = true) {
         if (!success) ErrorType
         else {
-          if (!sameSeq(app.args, orderedArgs)) {
+          if (!sameSeq(args, orderedArgs)) {
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
             liftFun()
