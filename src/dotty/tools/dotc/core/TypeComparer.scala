@@ -207,7 +207,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       case tp2: PolyParam =>
         tp2 == tp1 ||
         isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
-          if (constraint contains tp2) addConstraint(tp2, tp1.widen.dealias, fromBelow = true)
+          if (constraint contains tp2) addConstraint(tp2, tp1.widen.dealias.stripTypeVar, fromBelow = true)
           else secondTry(tp1, tp2)
         }
       case tp2: BoundType =>
