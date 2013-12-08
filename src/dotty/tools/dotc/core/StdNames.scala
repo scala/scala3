@@ -91,7 +91,7 @@ object StdNames {
     val BITMAP_CHECKINIT: N           = BITMAP_PREFIX + "init$"      // initialization bitmap for checkinit values
     val BITMAP_CHECKINIT_TRANSIENT: N = BITMAP_PREFIX + "inittrans$" // initialization bitmap for transient checkinit values
     val DEFAULT_GETTER: N             = "$default$"
-    val DEFAULT_GETTER_INIT: N        = encode("<init>")
+    val DEFAULT_GETTER_INIT: N        = NameTransformer.encode("<init>")
     val DO_WHILE_PREFIX: N            = "doWhile$"
     val EMPTY: N                      = ""
     val EMPTY_PACKAGE: N              = Names.EMPTY_PACKAGE.toString
@@ -150,6 +150,7 @@ object StdNames {
 
     // fictions we use as both types and terms
     final val ERROR: N    = "<error>"
+    final val ERRORenc: N = encode("<error>")
     final val NO_NAME: N  = "<none>"  // formerly NOSYMBOL
     final val WILDCARD: N = "_"
 
