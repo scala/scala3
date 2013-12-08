@@ -1,8 +1,9 @@
 object desugar {
-  
+
   // variables
   var x: Int = 2
   var y = x * x
+  val list = List(1, 2, 3)
 
   { var z: Int = y }
  
@@ -44,6 +45,8 @@ object desugar {
     
     x :: y :: Nil
     
+    val x :: y :: Nil = list
+    
   }
   
   object fors {
@@ -54,6 +57,29 @@ object desugar {
     for (x <- List(1, 2, 3); y <- 0 to x; if x + y % 2 == 0) yield x * y
     for (x <- List(1, 2, 3); y = x * x; if x + y % 2 == 0) yield x * y
     for (x <- List(1, 2, 3); y = x * x; z = x * y; u <- 0 to y) yield x * y * z * u
+
+    for (x <- List(1, 2, 3)) println(x)
+    for (x <- List(1, 2, 3) if x % 2 == 0) println(x * x)
+    for (x <- List(1, 2, 3); y <- 0 to x) println(x * y)
+    for (x <- List(1, 2, 3); y <- 0 to x; if x + y % 2 == 0) println(x * y)
+    for (x <- List(1, 2, 3); y = x * x; if x + y % 2 == 0) println(x * y)
+    for (x <- List(1, 2, 3); y = x * x; z = x * y; u <- 0 to y) println(x * y * z * u)
+  }
+  
+  object misc {
+    'hello
+    s"this is a $x + ${x + y} string"
+    type ~ = Tuple2
+    val pair: Int ~ String = 1 -> "abc"
+    def foo(xs: Int*) = xs.length
+    foo(list: _*)
+    println(list: _*)
+    (list length)
+    - desugar.x
+    def bar(x: => Int) = x
+    (x + y) + 1
+    while (x < 10) x += 1
+    do x -= 1 while (x > 0)
   }
 
 }

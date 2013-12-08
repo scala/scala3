@@ -421,10 +421,10 @@ object desugar {
   /** Main desugaring method */
   def apply(tree: Tree)(implicit ctx: Context): Tree = {
 
-    /**    { label def lname() = rhs; call }
+    /**    { label def lname(): Unit = rhs; call }
      */
     def labelDefAndCall(lname: TermName, rhs: Tree, call: Tree) = {
-      val ldef = DefDef(Modifiers(Label), lname, Nil, ListOfNil, TypeTree(), rhs)
+      val ldef = DefDef(Modifiers(Label), lname, Nil, ListOfNil, TypeTree(defn.UnitType), rhs)
       Block(ldef, call)
     }
 
@@ -686,6 +686,13 @@ object desugar {
     }
   }.withPos(tree.pos)
 
+  /** Create a class definition with the same info as this refined type.
+   *      parent { refinements }
+   *  ==>
+   *      class <refinement> extends parent { refinements }
+   *
+   *  The result is used for validity checking, is thrown away afterwards.
+   */
   def refinedTypeToClass(tree: RefinedTypeTree)(implicit ctx: Context): TypeDef = {
     val impl = Template(emptyConstructor, tree.tpt :: Nil, EmptyValDef, tree.refinements)
     TypeDef(Modifiers(), tpnme.REFINE_CLASS, impl)
