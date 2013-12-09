@@ -627,7 +627,9 @@ object desugar {
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
         if (ctx.mode is Mode.Type)
-          AppliedTypeTree(Ident(op), l :: r :: Nil) // op[l, r]
+          if (op == tpnme.raw.AMP) AndTypeTree(l, r)     // l & r
+          else if (op == tpnme.raw.BAR) OrTypeTree(l, r) // l | r
+          else AppliedTypeTree(Ident(op), l :: r :: Nil) // op[l, r]
         else if (ctx.mode is Mode.Pattern)
           Apply(Ident(op), l :: r :: Nil) // op(l, r)
         else // l.op(r), or val x = r; l.op(x), plus handle named args specially

@@ -20,6 +20,24 @@ object sigs {
       
    override def foo(x: Int) = "abc"
   }
+  
+  trait A { self: B =>
+    type AA
+    val a: AA & BB
+    
+  }
+  
+  trait B { this: A =>
+    type BB
+    val b: AA & BB
+  }
+
+  class C extends A with B {
+    type AA = String
+    type BB = AnyRef
+    val a = ""
+    val b = ""
+  }
 
 
 }

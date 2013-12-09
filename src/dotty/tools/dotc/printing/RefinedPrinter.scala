@@ -260,6 +260,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
               modText(mods, if (mods is Trait) "trait" else "class") ~~ toText(name) ~ toText(impl)
             case rhs: TypeBoundsTree =>
               typeDefText(toText(rhs))
+            case rhs: TypeTree =>
+              typeDefText(toText(rhs))
             case _ =>
               typeDefText(optText(rhs)(" = " ~ _))
           }
