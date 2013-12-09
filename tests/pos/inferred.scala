@@ -16,12 +16,11 @@ object NIL extends LIST[Nothing] {
   def tail = ???
 }
 
-class CONS[T](hd: T, tl: LIST[T]) extends LIST[T] {
+class CONS[U](hd: U, tl: LIST[U]) extends LIST[U] {
   def isEmpty = false
-  def head = hd
+  def head: U = hd
   def tail = tl
 }
-
 
 object Inferred {
 

@@ -126,7 +126,7 @@ object Erasure {
       sigName(tp1)
     case OrType(tp1, tp2) =>
       lubClass(tp1, tp2).name
-    case ErrorType =>
+    case ErrorType | WildcardType =>
       tpnme.WILDCARD
   }
 

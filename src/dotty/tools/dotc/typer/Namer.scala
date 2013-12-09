@@ -312,13 +312,16 @@ class Namer { typer: Typer =>
 
       /** The type signature of a ClassDef with given symbol */
       def classDefSig(cdef: TypeDef, cls: ClassSymbol)(implicit ctx: Context): Type = {
-        //todo: normalize parents, so that all mixins extend superclass
+
+        /** The type of a parent constructor. Types constructor arguments
+         *  only if parent type contains uninstantiated type parameters.
+         */
         def parentType(constr: untpd.Tree): Type = {
           val (core, targs) = stripApply(constr) match {
             case TypeApply(core, targs) => (core, targs)
             case core => (core, Nil)
           }
-          val Select(New(tpt), _) = core
+          val Select(New(tpt), nme.CONSTRUCTOR) = core
           val targs1 = targs map (typedAheadType(_))
           val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
           if (ptype.uninstantiatedTypeParams.isEmpty) ptype
@@ -346,8 +349,6 @@ class Namer { typer: Typer =>
       def adjustIfModule(sig: Type): Type =
         if (denot is Module)
           sig match {
-            case sig: TypeRef =>
-              sig
             case sig: ClassInfo =>
               sig.derivedClassInfo(selfInfo = sig.prefix select sourceModule)
             case _ =>
@@ -385,9 +386,7 @@ class Namer { typer: Typer =>
     val pt =
       if (!mdef.tpt.isEmpty) WildcardType
       else {
-        lazy val schema = paramFn(WildcardType)
-        val site = sym.owner.thisType
-        val inherited = {
+        val inherited =
           if ((sym is Param) && sym.owner.isSetter) { // fill in type from getter result type
             val getterCtx = ctx.outersIterator
                 .dropWhile(_.owner != sym.owner)
@@ -396,17 +395,19 @@ class Namer { typer: Typer =>
             getterCtx.denotNamed(sym.owner.asTerm.name.setterToGetter).info.widenExpr
           }
           else if (sym.owner.isTerm) NoType
-          else
+          else {
             // TODO: Look only at member of supertype instead?
+            lazy val schema = paramFn(WildcardType)
+            val site = sym.owner.thisType
             ((NoType: Type) /: sym.owner.info.baseClasses.tail) { (tp, cls) =>
               val itpe = cls.info
                 .nonPrivateDecl(sym.name)
                 .matchingDenotation(site, schema)
-                .asSeenFrom(site)
                 .info.finalResultType
+                .asSeenFrom(site, cls)
               tp & itpe
             }
-        }
+          }
         def rhsType = adapt(typedAheadExpr(mdef.rhs), WildcardType).tpe.widen
         def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)
         inherited orElse lhsType
@@ -437,7 +438,7 @@ class Namer { typer: Typer =>
       else monotpe
     }
     if (isConstructor) {
-      // set result type tree to unit, but set the current class as result type of the symbol
+      // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
       wrapMethType(sym.owner.typeRef.appliedTo(typeParams map (_.typeRef)))
     }
