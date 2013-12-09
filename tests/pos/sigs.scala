@@ -1,5 +1,9 @@
 object sigs {
   
+  type Lst[A] = List[A]
+  
+  type Twin[B] = (B, B)
+  
   var x = 7 * 9
   
   class Base {

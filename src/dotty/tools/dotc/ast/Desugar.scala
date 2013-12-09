@@ -151,7 +151,7 @@ object desugar {
         Modifiers(PrivateLocalParamAccessor | Synthetic), name, refOfDef(tparam))
       Thicket(tparam, alias)
     }
-    else cpy.TypeDef(tdef, mods, name, rhs1)
+    else cpy.TypeDef(tdef, mods, name, rhs1, tdef.tparams)
   }
 
   private val synthetic = Modifiers(Synthetic)

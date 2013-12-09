@@ -740,8 +740,8 @@ class Typer extends Namer with Applications with Implicits {
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): TypeDef = track("typedTypeDef") {
     val TypeDef(mods, name, rhs) = tdef
     val mods1 = typedModifiers(mods)
-    val rhs1 = typedType(rhs)
-    cpy.TypeDef(tdef, mods1, name, rhs1).withType(sym.typeRef)
+    //val rhs1 = typedType(rhs)
+    cpy.TypeDef(tdef, mods1, name, TypeTree(sym.info)).withType(sym.typeRef)
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = track("typedClassDef") {
