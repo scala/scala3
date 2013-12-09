@@ -35,8 +35,9 @@ trait TyperContextOps { ctx: Context => }
 
 object Typer {
 
-  import tpd.{cpy => _, _}
-
+  /** The precedence of bindings which determines which of several bindings will be
+   *  accessed by an Ident.
+   */
   object BindingPrec {
     val definition = 4
     val namedImport = 3
@@ -46,6 +47,9 @@ object Typer {
     def isImportPrec(prec: Int) = prec == namedImport || prec == wildImport
   }
 
+  /** A result value that is packed with the typer state that was used to
+   *  generate it.
+   */
   case class StateFul[T](value: T, state: TyperState) {
     def commit()(implicit ctx: Context): T = {
       state.commit()
@@ -68,11 +72,20 @@ class Typer extends Namer with Applications with Implicits {
    */
   private var importedFromRoot: Set[Symbol] = Set()
 
+    /** A denotation exists really if it exists and does not point to a stale symbol. */
+    def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean =
+      denot.exists && {
+        val sym = denot.symbol
+        (sym eq NoSymbol) || !sym.isAbsent
+      }
+
+  /** The type of a selection with `name` of a tree with type `site`.
+   */
   def selectionType(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
     val refDenot =
       if (name == nme.CONSTRUCTOR) site.decl(name)
       else site.member(name)
-    if (refDenot.exists) site.select(name, refDenot)
+    if (reallyExists(refDenot)) site.select(name, refDenot)
     else {
       if (!site.isErroneous)
         ctx.error(
@@ -82,18 +95,25 @@ class Typer extends Namer with Applications with Implicits {
     }
   }
 
+  /** The selection type, which is additionally checked for accessibility.
+   */
   def checkedSelectionType(qual1: Tree, tree: untpd.RefTree)(implicit ctx: Context): Type = {
     val ownType = selectionType(qual1.tpe.widenIfUnstable, tree.name, tree.pos)
     if (!ownType.isError) checkAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
     ownType
   }
 
+  /** Check that Java statics and packages can only be used in selections.
+   */
   def checkValue(tpe: Type, proto: Type, pos: Position)(implicit ctx: Context): Unit =
     if (!proto.isInstanceOf[SelectionProto]) {
       val sym = tpe.termSymbol
       if ((sym is Package) || (sym is JavaModule)) ctx.error(i"$sym is not a value", pos)
     }
 
+  /** If `tpe` is a named type, check that its denotation is accessible in the
+   *  current context.
+   */
   def checkAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = tpe match {
     case tpe: NamedType =>
       val pre = tpe.prefix
@@ -124,9 +144,8 @@ class Typer extends Namer with Applications with Implicits {
       tpe
   }
 
-  /** The qualifying class
-   *  of a this or super with prefix `qual`.
-   *  packageOk is equal false when qualifying class symbol
+  /** The qualifying class of a this or super with prefix `qual` (which might be empty).
+   *  @param packageOk   The qualifier may refer to a package.
    */
   def qualifyingClass(tree: untpd.Tree, qual: Name, packageOK: Boolean)(implicit ctx: Context): Symbol =
     ctx.owner.enclosingClass.ownersIterator.find(o => qual.isEmpty || o.isClass && o.name == qual) match {
@@ -139,12 +158,11 @@ class Typer extends Namer with Applications with Implicits {
         NoSymbol
     }
 
-  /** Attribute an identifier consisting of a simple name or an outer reference.
+  /** Attribute an identifier consisting of a simple name.
    *
    *  @param tree      The tree representing the identifier.
    *  Transformations: (1) Prefix class members with this.
-   *                   (2) Change imported symbols to selections
-   *
+   *                   (2) Change imported symbols to selections.
    */
   def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = track("typedIdent") {
     val name = tree.name
@@ -175,17 +193,15 @@ class Typer extends Namer with Applications with Implicits {
         }
       else false
 
-    /** A symbol qualifies if it exists and is not stale. Stale symbols
-     *  are made to disappear here. In addition,
+    /** A symbol qualifies if it really exists. In addition,
      *  if we are in a constructor of a pattern, we ignore all definitions
-     *  which are methods (note: if we don't do that
-     *  case x :: xs in class List would return the :: method)
-     *  unless they are stable or are accessors (the latter exception is for better error messages)
+     *  which are methods and not accessors (note: if we don't do that
+     *  case x :: xs in class List would return the :: method).
      */
-    def qualifies(sym: Symbol): Boolean = !(
-         sym.isAbsent
-      || isPatternConstr && (sym is (Method, butNot = Accessor))
-      )
+    def qualifies(denot: Denotation): Boolean =
+      reallyExists(denot) && !(
+         pt.isInstanceOf[UnapplySelectionProto] &&
+         (denot.symbol is (Method, butNot = Accessor)))
 
     /** Find the denotation of enclosing `name` in given context `ctx`.
      *  @param previous    A denotation that was found in a more deeply nested scope,
@@ -254,7 +270,7 @@ class Typer extends Namer with Applications with Implicits {
           val pre = imp.site
           if (!isDisabled(imp, pre)) {
             val denot = pre.member(name)
-            if (denot.exists) return pre.select(name, denot)
+            if (reallyExists(denot)) return pre.select(name, denot)
           }
         }
         NoType
@@ -274,7 +290,7 @@ class Typer extends Namer with Applications with Implicits {
         val outer = ctx.outer
         if ((ctx.scope ne outer.scope) || (ctx.owner ne outer.owner)) {
           val defDenot = ctx.denotNamed(name)
-          if (defDenot.exists) {
+          if (qualifies(defDenot)) {
             val curOwner = ctx.owner
             val found = curOwner.thisType.select(name, defDenot)
             if (!(curOwner is Package) || (defDenot.symbol is Package) || isDefinedInCurrentUnit(defDenot))

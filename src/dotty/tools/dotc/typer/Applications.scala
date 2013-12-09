@@ -19,7 +19,6 @@ import ErrorReporting._
 import Trees._
 import Names._
 import StdNames._
-import Constants._
 import Inferencing._
 import EtaExpansion._
 import collection.mutable
@@ -538,8 +537,7 @@ trait Applications extends Compatibility { self: Typer =>
       errorTree(tree, s"${qual.show} cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method")
 
     val unapply = {
-      val dummyArg = untpd.TypedSplice(dummyTreeOfType(WildcardType))
-      val unappProto = FunProto(dummyArg :: Nil, WildcardType, this)
+      val unappProto = new UnapplyFunProto(this)
       tryEither {
         implicit ctx => typedExpr(untpd.Select(qual, nme.unapply), unappProto)
       } {
@@ -754,9 +752,6 @@ trait Applications extends Compatibility { self: Typer =>
         best :: asGood(alts1)
     }
   }
-
-  private lazy val dummyTree = untpd.Literal(Constant(null))
-  def dummyTreeOfType(tp: Type): Tree = dummyTree withTypeUnchecked tp
 
   /** Resolve overloaded alternative `alts`, given expected type `pt`.
    *  todo: use techniques like for implicits to pick candidates quickly?

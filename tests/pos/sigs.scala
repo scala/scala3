@@ -9,7 +9,6 @@ object sigs {
   class Base {
     
     def foo(x: Int): Any = 33
-    
     def foo: Object = "x"
     
   }

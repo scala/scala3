@@ -6,6 +6,7 @@ import core._
 import ast._
 import Contexts._, Types._, Flags._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
 import Trees._
+import Constants._
 import annotation.unchecked
 import util.Positions._
 import util.{Stats, SimpleMap}
@@ -61,12 +62,10 @@ object Inferencing {
    */
   def selectionProto(name: Name, tp: Type) =
     if (name.isConstructorName) WildcardType
-    else {
-      val rtp = tp match {
-        case tp: ProtoType => WildcardType
-        case _ => tp
-      }
-      new SelectionProto(name, rtp)
+    else tp match {
+      case tp: UnapplyFunProto => new UnapplySelectionProto(name)
+      case tp: ProtoType => new SelectionProto(name, WildcardType)
+      case _ => new SelectionProto(name, tp)
     }
 
   /** A prototype for expressions [] that are in some unspecified selection operation
@@ -78,6 +77,9 @@ object Inferencing {
    *  @see checkValue
    */
   object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType)
+
+  /** A prototype for selections in pattern constructors */
+  class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType)
 
   /** A prototype for expressions that appear in function position
    *
@@ -134,6 +136,9 @@ object Inferencing {
       AndType(argType, resultType).namedPartsWith(p) // this is more efficient than oring two namedParts sets
     override def computeHash = doHash(argType, resultType)
   }
+
+  class UnapplyFunProto(typer: Typer)(implicit ctx: Context) extends FunProto(
+      untpd.TypedSplice(dummyTreeOfType(WildcardType)) :: Nil, WildcardType, typer)
 
   /** A prototype for expressions [] that are type-parameterized:
    *
@@ -334,6 +339,11 @@ object Inferencing {
     }
     result
   }
+
+  private lazy val dummyTree = untpd.Literal(Constant(null))
+
+  /** Dummy tree to be used as an argument of a FunProto or ViewProto type */
+  def dummyTreeOfType(tp: Type): Tree = dummyTree withTypeUnchecked tp
 }
 
 /* not needed right now
