@@ -150,7 +150,7 @@ class Namer { typer: Typer =>
     /** Add moduleClass/sourceModule to completer if it is for a module val or class */
     def adjustIfModule(completer: LazyType, tree: MemberDef) =
       if (tree.mods is Module) {
-        val name = tree.name
+        val name = tree.name.encode
         if (name.isTermName)
           completer withModuleClass findModuleBuddy(name.moduleClassName)
         else
