@@ -496,8 +496,10 @@ class TypeComparer(initctx: Context) extends DotClass {
   /** The greatest lower bound of two types */
   def glb(tp1: Type, tp2: Type): Type =
     if (tp1 eq tp2) tp1
-    else if (!tp1.exists || (tp1 isRef AnyClass) || (tp2 isRef NothingClass)) tp2
-    else if (!tp2.exists || (tp2 isRef AnyClass) || (tp1 isRef NothingClass)) tp1
+    else if (!tp1.exists) tp2
+    else if (!tp2.exists) tp1
+    else if ((tp1 isRef AnyClass) || (tp2 isRef NothingClass)) tp2
+    else if ((tp2 isRef AnyClass) || (tp1 isRef NothingClass)) tp1
     else tp2 match {  // normalize to disjunctive normal form if possible.
       case OrType(tp21, tp22) =>
         tp1 & tp21 | tp1 & tp22
@@ -525,8 +527,10 @@ class TypeComparer(initctx: Context) extends DotClass {
    */
   def lub(tp1: Type, tp2: Type): Type =
     if (tp1 eq tp2) tp1
-    else if (!tp1.exists || (tp1 isRef AnyClass) || (tp2 isRef NothingClass)) tp1
-    else if (!tp2.exists || (tp2 isRef AnyClass) || (tp1 isRef NothingClass)) tp2
+    else if (!tp1.exists) tp1
+    else if (!tp2.exists) tp2
+    else if ((tp1 isRef AnyClass) || (tp2 isRef NothingClass)) tp1
+    else if ((tp2 isRef AnyClass) || (tp1 isRef NothingClass)) tp2
     else {
       val t1 = mergeIfSuper(tp1, tp2)
       if (t1.exists) t1
