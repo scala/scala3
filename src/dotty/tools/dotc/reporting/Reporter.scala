@@ -219,6 +219,17 @@ abstract class Reporter {
   def hasErrors   = count(ERROR.level) > 0
   def hasWarnings = count(WARNING.level) > 0
 
+  def isSilent[T](op: => Unit): Boolean = {
+    val prevCount = count.clone
+    op
+    var i = 0
+    while (i < count.length) {
+      if (prevCount(i) != count(i)) return false
+      i += 1
+    }
+    true
+  }
+
   /** Returns a string meaning "n elements". */
   private def countElementsAsString(n: Int, elements: String): String =
     n match {

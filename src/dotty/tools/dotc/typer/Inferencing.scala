@@ -110,13 +110,14 @@ object Inferencing {
     }
 
     /** Type single argument and remember the unadapted result in `myTypedArg`.
-     *  used to avoid repreated typings of trees when backtracking.
+     *  used to avoid repeated typings of trees when backtracking.
      */
     def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
       var targ = myTypedArg(arg)
       if (targ == null) {
-        targ = typer.typedUnadapted(arg, formal)
-        myTypedArg = myTypedArg.updated(arg, targ)
+        if (ctx.typerState.reporter.isSilent {
+          targ = typer.typedUnadapted(arg, formal)
+        }) myTypedArg = myTypedArg.updated(arg, targ)
       }
       typer.adapt(targ, formal)
     }
