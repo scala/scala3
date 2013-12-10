@@ -15,7 +15,7 @@ object ImportInfo {
     val expr = tpd.Ident(sym.valRef)
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
     val imp = tpd.Import(expr, selectors)
-    new ImportInfo(imp.symbol, selectors, rootImport = true)
+    new ImportInfo(imp.symbol, selectors, isRootImport = true)
   }
 }
 
@@ -25,7 +25,7 @@ object ImportInfo {
  *  @param   rootImport true if this is one of the implicit imports of scala, java.lang
  *                      or Predef in the start context, false otherwise.
  */
-class ImportInfo(val sym: Symbol, val selectors: List[untpd.Tree], val rootImport: Boolean = false)(implicit ctx: Context) {
+class ImportInfo(val sym: Symbol, val selectors: List[untpd.Tree], val isRootImport: Boolean = false)(implicit ctx: Context) {
 
   /** The (TermRef) type of the qualifier of the import clause */
   def site(implicit ctx: Context): Type = {
@@ -43,7 +43,7 @@ class ImportInfo(val sym: Symbol, val selectors: List[untpd.Tree], val rootImpor
   def originals: Set[TermName] = { ensureInitialized(); myOriginals }
 
   /** Does the import clause end with wildcard? */
-  def wildcardImport = { ensureInitialized(); myWildcardImport }
+  def isWildcardImport = { ensureInitialized(); myWildcardImport }
 
   private var myExcluded: Set[TermName] = null
   private var myMapped: SimpleMap[TermName, TermName] = null
@@ -78,7 +78,7 @@ class ImportInfo(val sym: Symbol, val selectors: List[untpd.Tree], val rootImpor
   /** The implicit references imported by this import clause */
   def importedImplicits: List[TermRef] = {
     val pre = site
-    if (wildcardImport) {
+    if (isWildcardImport) {
       val refs = pre.implicitMembers
       if (excluded.isEmpty) refs
       else refs filterNot (ref => excluded contains ref.name.toTermName)

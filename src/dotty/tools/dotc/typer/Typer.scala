@@ -72,12 +72,12 @@ class Typer extends Namer with Applications with Implicits {
    */
   private var importedFromRoot: Set[Symbol] = Set()
 
-    /** A denotation exists really if it exists and does not point to a stale symbol. */
-    def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean =
-      denot.exists && {
-        val sym = denot.symbol
-        (sym eq NoSymbol) || !sym.isAbsent
-      }
+  /** A denotation exists really if it exists and does not point to a stale symbol. */
+  def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean =
+    denot.exists && {
+      val sym = denot.symbol
+      (sym eq NoSymbol) || !sym.isAbsent
+    }
 
   /** The type of a selection with `name` of a tree with type `site`.
    */
@@ -158,11 +158,12 @@ class Typer extends Namer with Applications with Implicits {
         NoSymbol
     }
 
-  /** Attribute an identifier consisting of a simple name.
+  /** Attribute an identifier consisting of a simple name or wildcard
    *
    *  @param tree      The tree representing the identifier.
    *  Transformations: (1) Prefix class members with this.
    *                   (2) Change imported symbols to selections.
+   *                   (3) Change pattern Idents id (but not wildcards) to id @ _
    */
   def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = track("typedIdent") {
     val name = tree.name
@@ -178,7 +179,7 @@ class Typer extends Namer with Applications with Implicits {
     def isDisabled(imp: ImportInfo, site: Type): Boolean = {
       val qualSym = site.termSymbol
       if (defn.RootImports contains qualSym) {
-        if (imp.rootImport && (importedFromRoot contains qualSym)) return true
+        if (imp.isRootImport && (importedFromRoot contains qualSym)) return true
         importedFromRoot += qualSym
       }
       false
@@ -227,13 +228,18 @@ class Typer extends Namer with Applications with Implicits {
        */
       def checkNewOrShadowed(found: Type, newPrec: Int): Type =
         if (!previous.exists || (previous == found)) found
+        else if (newPrec == definition && (prevCtx.scope eq ctx.scope)) {
+          // special case: definitions beat imports if both are in contexts with same scope
+          found
+        }
         else {
-          if (!previous.isError && !found.isError)
+          if (!previous.isError && !found.isError) {
             error(
               i"""reference to $name is ambiguous;
                  |it is both ${bindingString(newPrec, ctx, "")}
                  |and ${bindingString(prevPrec, prevCtx, " subsequently")}""".stripMargin,
               tree.pos)
+          }
           previous
         }
 
@@ -243,9 +249,8 @@ class Typer extends Namer with Applications with Implicits {
       def namedImportRef(site: Type, selectors: List[untpd.Tree]): Type = {
         def checkUnambiguous(found: Type) = {
           val other = namedImportRef(site, selectors.tail)
-          if (other.exists && (found != other))
-            error(i"""reference to $name is ambiguous; it is imported twice in
-                     |${ctx.tree}""".stripMargin,
+          if (other.exists && found.exists && (found != other))
+            error(i"reference to $name is ambiguous; it is imported twice in ${ctx.tree}",
                   tree.pos)
           found
         }
@@ -266,7 +271,7 @@ class Typer extends Namer with Applications with Implicits {
        *  from given import info
        */
       def wildImportRef(imp: ImportInfo): Type = {
-        if (imp.wildcardImport && !(imp.excluded contains name.toTermName)) {
+        if (imp.isWildcardImport && !(imp.excluded contains name.toTermName)) {
           val pre = imp.site
           if (!isDisabled(imp, pre)) {
             val denot = pre.member(name)
@@ -300,7 +305,7 @@ class Typer extends Namer with Applications with Implicits {
           }
         }
         val curImport = ctx.importInfo
-        if (curImport != null && curImport.rootImport && previous.exists) return previous
+        if (curImport != null && curImport.isRootImport && previous.exists) return previous
         if (prevPrec < namedImport && (curImport ne outer.importInfo)) {
           val namedImp = namedImportRef(curImport.site, curImport.selectors)
           if (namedImp.exists)
@@ -316,8 +321,8 @@ class Typer extends Namer with Applications with Implicits {
     }
 
     // begin typedIdent
-    def kind = if (name.isTermName) "term" else "type" // !!! DEBUG
-    println(s"typed ident $kind $name in ${ctx.owner}")
+    def kind = if (name.isTermName) "" else "type "
+    println(s"typed ident $kind$name in ${ctx.owner}")  // !!! DEBUG
     if (ctx.mode is Mode.Pattern) {
       if (name == nme.WILDCARD)
         return tree.withType(pt)
@@ -326,7 +331,7 @@ class Typer extends Namer with Applications with Implicits {
     }
 
     val saved = importedFromRoot
-    importedFromRoot = Set()
+    importedFromRoot = Set.empty
 
     val rawType =
       try findRef(NoType, BindingPrec.nothingBound, NoContext)
@@ -337,7 +342,7 @@ class Typer extends Namer with Applications with Implicits {
       if (rawType.exists)
         checkAccessible(rawType, superAccess = false, tree.pos)
       else {
-        error(i"not found: $name", tree.pos)
+        error(i"not found: $kind$name", tree.pos)
         ErrorType
       }
     tree.withType(ownType.underlyingIfRepeated)
