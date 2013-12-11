@@ -9,7 +9,12 @@ import util.HashSet
 
 trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
 
-  def isDeclarationOrTypeDef(tree: Tree): Boolean = tree match {
+  def unsplice[T >: Untyped](tree: Trees.Tree[T]): Trees.Tree[T] = tree.asInstanceOf[untpd.Tree] match {
+    case untpd.TypedSplice(tree1) => tree1.asInstanceOf[Trees.Tree[T]]
+    case _ => tree
+  }
+
+  def isDeclarationOrTypeDef(tree: Tree): Boolean = unsplice(tree) match {
     case DefDef(_, _, _, _, _, EmptyTree)
       | ValDef(_, _, _, EmptyTree)
       | TypeDef(_, _, _) => true
@@ -18,7 +23,7 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
 
   /** Is tree legal as a member definition of an interface?
    */
-  def isInterfaceMember(tree: Tree): Boolean = tree match {
+  def isInterfaceMember(tree: Tree): Boolean = unsplice(tree) match {
     case EmptyTree => true
     case Import(_, _) => true
     case TypeDef(_, _, _) => true
@@ -27,8 +32,12 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
     case _ => false
   }
 
-  def isOpAssign(tree: Tree) = tree match {
-    case Apply(Select(_, name), _ :: Nil) if name.isOpAssignmentName => true
+  def isOpAssign(tree: Tree) = unsplice(tree) match {
+    case Apply(fn, _ :: Nil) =>
+      unsplice(fn) match {
+        case Select(_, name) if name.isOpAssignmentName => true
+        case _ => false
+      }
     case _ => false
   }
 
@@ -77,13 +86,13 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
   /** If this is an application, its function part, stripping all
    *  Apply nodes (but leaving TypeApply nodes in). Otherwise the tree itself.
    */
-  def stripApply(tree: Tree): Tree = tree match {
+  def stripApply(tree: Tree): Tree = unsplice(tree) match {
     case Apply(fn, _) => stripApply(fn)
     case _ => tree
   }
 
   /** The number of arguments in an application */
-  def numArgs(tree: Tree): Int = tree match {
+  def numArgs(tree: Tree): Int = unsplice(tree) match {
     case Apply(fn, args) => numArgs(fn) + args.length
     case TypeApply(fn, args) => numArgs(fn) + args.length
     case AppliedTypeTree(fn, args) => numArgs(fn) + args.length
@@ -106,7 +115,7 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
     case _ => false
   }
 
-  def isSuperSelection(tree: untpd.Tree) = tree match {
+  def isSuperSelection(tree: untpd.Tree) = unsplice(tree) match {
     case Select(Super(_, _), _) => true
     case _ => false
   }
@@ -119,7 +128,7 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
   }
 
   /** Is tree a variable pattern? */
-  def isVarPattern(pat: untpd.Tree): Boolean = pat match {
+  def isVarPattern(pat: untpd.Tree): Boolean = unsplice(pat) match {
     case x: BackquotedIdent => false
     case x: Ident => x.name.isVariableName
     case _  => false
@@ -144,12 +153,12 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
 
   def isEarlyDef(tree: Tree) = isEarlyValDef(tree) || isEarlyTypeDef(tree)
 
-  def isEarlyValDef(tree: Tree) = tree match {
+  def isEarlyValDef(tree: Tree) = unsplice(tree) match {
     case ValDef(mods, _, _, _) => mods is Scala2PreSuper
     case _ => false
   }
 
-  def isEarlyTypeDef(tree: Tree) = tree match {
+  def isEarlyTypeDef(tree: Tree) = unsplice(tree) match {
     case TypeDef(mods, _, _) => mods is Scala2PreSuper
     case _ => false
   }
@@ -173,7 +182,7 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
   def isLeftAssoc(operator: Name) = operator.nonEmpty && (operator.last != ':')
 
   /** can this type be a type pattern? */
-  def mayBeTypePat(tree: untpd.Tree): Boolean = tree match {
+  def mayBeTypePat(tree: untpd.Tree): Boolean = unsplice(tree) match {
     case AndTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
     case OrTypeTree(tpt1, tpt2) => mayBeTypePat(tpt1) || mayBeTypePat(tpt2)
     case RefinedTypeTree(tpt, refinements) => mayBeTypePat(tpt) || refinements.exists(_.isInstanceOf[Bind])
@@ -185,7 +194,7 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
 
   /** Is this argument node of the form <expr> : _* ?
    */
-  def isWildcardStarArg(tree: untpd.Tree): Boolean = tree match {
+  def isWildcardStarArg(tree: untpd.Tree): Boolean = unsplice(tree) match {
     case Typed(_, Ident(tpnme.WILDCARD_STAR)) => true
     case _ => false
   }
@@ -217,7 +226,7 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
 
   /** Is this pattern node a synthetic catch-all case, added during PartialFuction synthesis before we know
     * whether the user provided cases are exhaustive. */
-  def isSyntheticDefaultCase(cdef: CaseDef) = cdef match {
+  def isSyntheticDefaultCase(cdef: CaseDef) = unsplice(cdef) match {
     case CaseDef(Bind(nme.DEFAULT_CASE, _), EmptyTree, _) => true
     case _                                                  => false
   }
@@ -240,7 +249,7 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
   def isGuardedCase(cdef: CaseDef) = cdef.guard ne EmptyTree
 
   /** The underlying pattern ignoring any bindings */
-  def unbind(x: Tree): Tree = x match {
+  def unbind(x: Tree): Tree = unsplice(x) match {
     case Bind(_, y) => unbind(y)
     case y          => y
   }
@@ -251,7 +260,7 @@ trait TypedTreeInfo extends TreeInfo[Type] {self: Trees.Instance[Type] =>
   /** Is tree a definition that has no side effects when
    *  evaluated as part of a block after the first time?
    */
-  def isIdempotentDef(tree: tpd.Tree)(implicit ctx: Context): Boolean = tree match {
+  def isIdempotentDef(tree: tpd.Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
     case EmptyTree
        | TypeDef(_, _, _)
        | Import(_, _)
@@ -271,7 +280,7 @@ trait TypedTreeInfo extends TreeInfo[Type] {self: Trees.Instance[Type] =>
    *  takes a different code path than all to follow; but they are safe to inline
    *  because the expression result from evaluating them is always the same.
    */
-  def isIdempotentExpr(tree: tpd.Tree)(implicit ctx: Context): Boolean = tree match {
+  def isIdempotentExpr(tree: tpd.Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
     case EmptyTree
        | This(_)
        | Super(_, _)
@@ -328,7 +337,7 @@ trait TypedTreeInfo extends TreeInfo[Type] {self: Trees.Instance[Type] =>
     def isGetter =
       mayBeVarGetter(sym) && sym.owner.info.member(sym.name.asTermName.setterName).exists
 
-    tree match {
+    unsplice(tree) match {
       case Ident(_) => isVar
       case Select(_, _) => isVar || isGetter
       case Apply(_, _) =>
@@ -341,7 +350,7 @@ trait TypedTreeInfo extends TreeInfo[Type] {self: Trees.Instance[Type] =>
   }
 
   /** Is tree a `this` node which belongs to `enclClass`? */
-  def isSelf(tree: Tree, enclClass: Symbol)(implicit ctx: Context): Boolean = tree match {
+  def isSelf(tree: Tree, enclClass: Symbol)(implicit ctx: Context): Boolean = unsplice(tree) match {
     case This(_) => tree.symbol == enclClass
     case _ => false
   }
@@ -349,7 +358,7 @@ trait TypedTreeInfo extends TreeInfo[Type] {self: Trees.Instance[Type] =>
   /** Strips layers of `.asInstanceOf[T]` / `_.$asInstanceOf[T]()` from an expression */
   def stripCast(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
     def isCast(sel: tpd.Tree) = defn.asInstanceOfMethods contains sel.symbol
-    tree match {
+    unsplice(tree) match {
       case TypeApply(sel @ Select(inner, _), _) if isCast(sel) =>
         stripCast(inner)
       case Apply(TypeApply(sel @ Select(inner, _), _), Nil) if isCast(sel) =>
