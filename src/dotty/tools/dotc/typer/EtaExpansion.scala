@@ -24,18 +24,18 @@ object EtaExpansion {
     if (isIdempotentExpr(expr)) expr
     else {
       val name = ctx.freshName(prefix).toTermName
-      val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, expr.tpe, coord = positionCoord(expr.pos))
+      val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, expr.tpe.widen, coord = positionCoord(expr.pos))
       defs += ValDef(sym, expr)
       Ident(sym.valRef)
     }
 
-  /** Lift out common part of tree taking part in an operator assignment such as
+  /** Lift out common part of lhs tree taking part in an operator assignment such as
    *
-   *     tree += expr
+   *     lhs += expr
    */
   def liftAssigned(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case Apply(fn, args) =>
-      cpy.Apply(tree, lift(defs, fn), liftArgs(defs, fn.tpe, args))
+    case Apply(fn @ Select(pre, name), args) =>
+      cpy.Apply(tree, cpy.Select(fn, lift(defs, pre), name), liftArgs(defs, fn.tpe, args))
     case Select(pre, name) =>
       cpy.Select(tree, lift(defs, pre), name)
     case _ =>
