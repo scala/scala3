@@ -16,7 +16,6 @@ case class Mode(val bits: Int) extends AnyVal {
 }
 
 object Mode {
-//  val None = Mode(1 << 0)
   val None = Mode(0)
 
   private var modeName = new Array[String](32)
@@ -30,7 +29,6 @@ object Mode {
   val Type = newMode(1, "Type")
 
   val ImplicitsEnabled = newMode(2, "ImplicitsEnabled")
-  val InSuperInit = newMode(3, "InSuperInit")
 
   val PatternOrType = Pattern | Type
 }

@@ -46,7 +46,7 @@ object Inferencing {
    *
    *       [ ].name: proto
    */
-  class SelectionProto(name: Name, proto: Type)
+  class SelectionProto(val name: Name, proto: Type)
   extends RefinedType(WildcardType, name)(_ => proto) with ProtoType with Compatibility {
     override def viewExists(tp: Type, pt: Type)(implicit ctx: Context): Boolean = false
     override def isMatchedBy(tp1: Type)(implicit ctx: Context) =
@@ -232,10 +232,8 @@ object Inferencing {
   /** Check that type `tp` is stable.
    *  @return The type itself
    */
-  def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Type = {
-    if (!tp.isStable) ctx.error(i"Prefix $tp is not stable", pos)
-    tp
-  }
+  def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
+    if (!tp.isStable) ctx.error(i"Prefix of type ${tp.widenIfUnstable} is not stable", pos)
 
   /** Check that `tp` is a class type with a stable prefix.
    *  @return  Underlying class symbol if type checks out OK, ObjectClass if not.

@@ -360,7 +360,7 @@ class Typer extends Namer with Applications with Implicits {
     tree.withType(cls.thisType)
   }
 
-  def typedSuper(tree: untpd.Super)(implicit ctx: Context): Tree = track("typedSuper") {
+  def typedSuper(tree: untpd.Super, pt: Type)(implicit ctx: Context): Tree = track("typedSuper") {
     val mix = tree.mix
     val qual1 = typed(tree.qual)
     val cls = qual1.tpe.typeSymbol
@@ -375,9 +375,10 @@ class Typer extends Namer with Applications with Implicits {
     }
     val owntype =
       if (!mix.isEmpty) findMixinSuper(cls.info)
-      else if (ctx.mode is Mode.InSuperInit) cls.info.firstParent
-      else cls.info.parents.reduceLeft((x: Type, y: Type) => AndType(x, y))
-
+      else pt match {
+        case pt: SelectionProto if pt.name == nme.CONSTRUCTOR => cls.info.firstParent
+        case _ => cls.info.parents.reduceLeft((x: Type, y: Type) => AndType(x, y))
+      }
     cpy.Super(tree, qual1, mix).withType(SuperType(cls.thisType, owntype))
   }
 
@@ -448,9 +449,9 @@ class Typer extends Namer with Applications with Implicits {
     tree.lhs match {
       case lhs @ Apply(fn, args) =>
         typed(cpy.Apply(lhs, untpd.Select(fn, nme.update), args :+ tree.rhs), pt)
-      case untpd.TypedSplice(Apply(Select(lhs, app), args)) if app == nme.apply =>
-        typed(cpy.Apply(lhs,
-            untpd.Select(untpd.TypedSplice(lhs), nme.update),
+      case untpd.TypedSplice(Apply(Select(fn, app), args)) if app == nme.apply =>
+        typed(cpy.Apply(fn,
+            untpd.Select(untpd.TypedSplice(fn), nme.update),
             (args map untpd.TypedSplice) :+ tree.rhs), pt)
       case lhs =>
         val lhs1 = typed(lhs)
@@ -458,7 +459,7 @@ class Typer extends Namer with Applications with Implicits {
           errorTree(cpy.Assign(tree, lhs1, typed(tree.rhs, lhs1.tpe.widen)),
             "reassignment to val")
         lhs1.tpe match {
-          case ref: TermRef if ref.symbol is Mutable =>
+          case ref: TermRef if ref.symbol is (Mutable, butNot = Accessor) =>
             cpy.Assign(tree, lhs1, typed(tree.rhs, ref.info)).withType(defn.UnitType)
           case ref: TermRef if ref.info.isParameterless =>
             val pre = ref.prefix
@@ -466,8 +467,8 @@ class Typer extends Namer with Applications with Implicits {
             val setter = pre.member(setterName)
             lhs1 match {
               case lhs1: RefTree if setter.exists =>
-                val setterTypeRaw = TermRef(pre, setterName).withDenot(setter)
-                val setterType = checkAccessible(setterTypeRaw, isSuperSelection(tree), tree.pos)
+                val setterTypeRaw = pre select (setterName, setter)
+                val setterType = checkAccessible(setterTypeRaw, isSuperSelection(lhs1), tree.pos)
                 val lhs2 = lhs1.withName(setterName).withType(setterType)
                 typed(cpy.Apply(tree, untpd.TypedSplice(lhs2), tree.rhs :: Nil))
               case _ =>
@@ -789,6 +790,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = track("typedImport") {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
+    checkStable(expr1.tpe, imp.expr.pos)
     cpy.Import(imp, expr1, imp.selectors).withType(sym.termRef)
   }
 
@@ -862,7 +864,7 @@ class Typer extends Namer with Applications with Implicits {
           case tree: untpd.Try => typedTry(tree, pt)
           case tree: untpd.Throw => typedThrow(tree)
           case tree: untpd.TypeApply => typedTypeApply(tree, pt)
-          case tree: untpd.Super => typedSuper(tree)
+          case tree: untpd.Super => typedSuper(tree, pt)
           case tree: untpd.SeqLiteral => typedSeqLiteral(tree, pt)
           case tree: untpd.TypeTree => typedTypeTree(tree, pt)
           case tree: untpd.SingletonTypeTree => typedSingletonTypeTree(tree)

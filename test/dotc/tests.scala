@@ -28,8 +28,10 @@ class tests extends CompilerTest {
   @Test def pos_sigs() = compileFile(posDir, "sigs")
   @Test def pos_typers() = compileFile(posDir, "typers")
   @Test def pos_typedidents() = compileFile(posDir, "typedidents")
+  @Test def pos_assignments() = compileFile(posDir, "assignments")
 
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 2)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
   @Test def neg_typedidents() = compileFile(negDir, "typedidents", xerrors = 2)
+  @Test def nef_assignments() = compileFile(negDir, "assignments", xerrors = 3)
 }
