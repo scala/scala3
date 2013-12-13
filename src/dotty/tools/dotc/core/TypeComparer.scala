@@ -138,7 +138,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       } catch {
         case ex: Throwable =>
           if (ex.isInstanceOf[AssertionError]) { // !!!DEBUG
-            println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}"))
+            println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}, frozen = $frozenConstraint"))
             def explainPoly(tp: Type) = tp match {
               case tp: PolyParam => println(s"polyparam ${tp.show} found in ${tp.binder.show}")
               case tp: TypeRef => println(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
@@ -171,6 +171,13 @@ class TypeComparer(initctx: Context) extends DotClass {
   }
 
   def firstTry(tp1: Type, tp2: Type): Boolean = ctx.debugTraceIndented(s"$tp1 <:< $tp2") {
+    if (false && (tp2 isRef defn.NothingClass) && !frozenConstraint) {
+      tp1 match {
+        case tp1 @ TypeRef(_, name) =>
+          assert(name.toString != "CONS$$U", tp1.info + "/" + tp1.symbol.isAliasType)
+        case _ =>
+      }
+    }
     tp2 match {
       case tp2: NamedType =>
         tp1 match {
@@ -265,7 +272,7 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   def thirdTryNamed(tp1: Type, tp2: NamedType): Boolean = tp2.info match {
     case TypeBounds(lo2, hi2) =>
-      (isSubType(tp1, lo2)
+      ((frozenConstraint || !isCappable(tp1)) && isSubType(tp1, lo2)
         || (tp2.symbol is GADTFlexType) && trySetType(tp2, TypeBounds(lo2 | tp1, hi2))
         || fourthTry(tp1, tp2))
     case _ =>
@@ -349,14 +356,14 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   def fourthTry(tp1: Type, tp2: Type): Boolean = tp1 match {
     case tp1: TypeRef =>
-      ((tp1.symbol eq NothingClass)
-        || (tp1.symbol eq NullClass) && tp2.dealias.typeSymbol.isNonValueClass
-        || (tp1.info match {
-              case TypeBounds(lo1, hi1) =>
-                isSubType(hi1, tp2) ||
-                (tp1.symbol is GADTFlexType) && trySetType(tp1, TypeBounds(lo1, hi1 & tp2))
-              case _ => false
-           }))
+      tp1.info match {
+        case TypeBounds(lo1, hi1) =>
+          isSubType(hi1, tp2) ||
+          (tp1.symbol is GADTFlexType) && trySetType(tp1, TypeBounds(lo1, hi1 & tp2))
+        case _ =>
+          (tp1.symbol eq NothingClass) ||
+          (tp1.symbol eq NullClass) && tp2.dealias.typeSymbol.isNonValueClass
+      }
     case tp1: SingletonType =>
       isSubType(tp1.underlying.widenExpr, tp2)
     case tp1: RefinedType =>
@@ -379,6 +386,20 @@ class TypeComparer(initctx: Context) extends DotClass {
   def isMatchedByProto(proto: ProtoType, tp: Type) = tp.stripTypeVar match {
     case tp: PolyParam if constraint contains tp => true
     case _ => proto.isMatchedBy(tp)
+  }
+
+  /** Can type `tp` be constrained from above by adding a constraint to
+   *  a typevar that it refers to? In that case we have to be careful not
+   *  to approximate with the lower bound of a type in `thridTryNamed`. Instead,
+   *  we should first unroll `tp1` until we hit the type variable and bound the
+   *  type variable with (the corresponding type in) `tp2` instead.
+   */
+  def isCappable(tp: Type): Boolean = tp match {
+    case tp: PolyParam => constraint contains tp
+    case tp: TypeProxy => isCappable(tp.underlying)
+    case tp: AndType => isCappable(tp.tp1) || isCappable(tp.tp2)
+    case tp: OrType => isCappable(tp.tp1) || isCappable(tp.tp2)
+    case _ => false
   }
 
   /** Is `tp1` a subtype of a type `tp2` of the form
