@@ -166,8 +166,9 @@ class Namer { typer: Typer =>
           adjustIfModule(new Completer(tree) withDecls newScope, tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
       case tree: MemberDef =>
+        val deferred = if (lacksDefinition(tree)) Deferred else EmptyFlags
         record(ctx.newSymbol(
-          ctx.owner, tree.name.encode, tree.mods.flags,
+          ctx.owner, tree.name.encode, tree.mods.flags | deferred,
           adjustIfModule(new Completer(tree), tree),
           privateWithinClass(tree.mods), tree.pos))
       case tree: Import =>
@@ -408,6 +409,8 @@ class Namer { typer: Typer =>
               tp & itpe
             }
           }
+        // println(s"final inherited for $sym: ${inherited.toString}") !!! 
+        // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
         def rhsType = adapt(typedAheadExpr(mdef.rhs), WildcardType).tpe.widen
         def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)
         inherited orElse lhsType

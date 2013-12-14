@@ -431,7 +431,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   override def toTextFlags(sym: Symbol) = {
-    var flags = sym.flags
+    var flags = sym.flagsUNSAFE
     if (flags is TypeParam) flags = flags &~ Protected
     Text(flags.flagStrings.filterNot(_.startsWith("<")) map stringToText, " ")
   }

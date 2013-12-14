@@ -219,6 +219,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def isEmptyPrefix(sym: Symbol) =
     sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName
 
+  /** String representation of a definition's type following its name,
+   *  if symbol is completed, "?" otherwise.
+   */
+  protected def toTextRHS(optType: Option[Type]): Text = optType match {
+    case Some(tp) => toTextRHS(tp)
+    case None => "?"
+  }
+
   /** String representation of a definition's type following its name */
   protected def toTextRHS(tp: Type): Text = controlled {
     tp match {
@@ -295,14 +303,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if (flags is Mutable) "var"
     else if (flags is Package) "package"
     else if (flags is Module) "object"
-    else if (sym.isSourceMethod) "def"
+    else if (sym.isCompleted && sym.isSourceMethod) "def"
     else if (sym.isTerm && (!(flags is Param))) "val"
     else ""
   }
 
   /** String representation of symbol's flags */
   protected def toTextFlags(sym: Symbol): Text =
-    Text(sym.flags.flagStrings map stringToText, " ")
+    Text(sym.flagsUNSAFE.flagStrings map stringToText, " ")
 
   /** String representation of symbol's variance or "" if not applicable */
   protected def varianceString(sym: Symbol): String = sym.variance match {
@@ -313,7 +321,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def dclText(sym: Symbol): Text =
     (toTextFlags(sym) ~~ keyString(sym) ~~
-      (varianceString(sym) ~ nameString(sym)) ~ toTextRHS(sym.info)).close
+      (varianceString(sym) ~ nameString(sym)) ~ toTextRHS(sym.unforcedInfo)).close
 
   def toText(sym: Symbol): Text =
     (kindString(sym) ~~ {

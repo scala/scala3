@@ -13,6 +13,6 @@ object showClass extends ShowClassTests {
 //      showPackage("scala.collection")
 
     showPackage("dotty", 1)
-    showPackage("scala", 18)
+    showPackage("scala", 2)
   }
 }

@@ -629,10 +629,10 @@ object Types {
     /** The type <this . name> , reduced if possible, with given denotation if unreduced */
     def select(name: Name, denot: Denotation)(implicit ctx: Context): Type = name match {
       case name: TermName =>
-        TermRef(this, name).withDenot(denot)
+        TermRef(this, name, denot)
       case name: TypeName =>
         val res = lookupRefined(this, name)
-        if (res.exists) res else TypeRef(this, name).withDenot(denot)
+        if (res.exists) res else TypeRef(this, name, denot)
     }
 
     /** The type <this . name> with given symbol, reduced if possible */
@@ -1162,7 +1162,7 @@ object Types {
     def isOverloaded(implicit ctx: Context) = denot.isOverloaded
 
     private def rewrap(sd: SingleDenotation)(implicit ctx: Context) =
-      TermRef(prefix, name) withDenot sd
+      TermRef(prefix, name, sd)
 
     def alternatives(implicit ctx: Context): List[TermRef] =
       denot.alternatives map rewrap
@@ -1176,6 +1176,7 @@ object Types {
   }
 
   final class TermRefWithSignature(prefix: Type, name: TermName, val sig: Signature) extends TermRef(prefix, name) {
+    assert(prefix ne NoPrefix)
     override def signature(implicit ctx: Context) = sig
     override def loadDenot(implicit ctx: Context): Denotation =
       super.loadDenot.atSignature(sig)
@@ -1192,29 +1193,59 @@ object Types {
     override def computeHash = doHash((name, sig), prefix)
   }
 
-  final class CachedTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name)
-  final class CachedTypeRef(prefix: Type, name: TypeName) extends TypeRef(prefix, name)
+  trait WithNoPrefix extends NamedType {
+    def fixedSym: Symbol
+    assert(fixedSym ne NoSymbol)
+    withSym(fixedSym)
+    override def equals(that: Any) = that match {
+      case that: WithNoPrefix => this.fixedSym eq that.fixedSym
+      case _ => false
+    }
+    override def computeHash = doHash(fixedSym)
+  }
+
+  final class CachedTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name) {
+    assert(prefix ne NoPrefix)
+  }
+  final class CachedTypeRef(prefix: Type, name: TypeName) extends TypeRef(prefix, name) {
+    assert(prefix ne NoPrefix)
+  }
+
+  final class NoPrefixTermRef(name: TermName, val fixedSym: TermSymbol) extends TermRef(NoPrefix, name) with WithNoPrefix
+  final class NoPrefixTypeRef(name: TypeName, val fixedSym: TypeSymbol) extends TypeRef(NoPrefix, name) with WithNoPrefix
 
   object NamedType {
     def apply(prefix: Type, name: Name)(implicit ctx: Context) =
       if (name.isTermName) TermRef(prefix, name.asTermName)
       else TypeRef(prefix, name.asTypeName)
+    def apply(prefix: Type, name: Name, denot: Denotation)(implicit ctx: Context) =
+      if (name.isTermName) TermRef(prefix, name.asTermName, denot)
+      else TypeRef(prefix, name.asTypeName, denot)
   }
 
   object TermRef {
     def apply(prefix: Type, name: TermName)(implicit ctx: Context): TermRef =
       unique(new CachedTermRef(prefix, name))
     def apply(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      apply(prefix, sym.name) withSym sym
+      if (prefix eq NoPrefix) unique(new NoPrefixTermRef(sym.name, sym))
+      else apply(prefix, sym.name) withSym sym
+    def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef =
+      (if (prefix eq NoPrefix) apply(prefix, denot.symbol.asTerm) else apply(prefix, name)) withDenot denot
     def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
       unique(new TermRefWithSignature(prefix, name, sig))
+    def withSig(prefix: Type, name: TermName, sig: Signature, denot: Denotation)(implicit ctx: Context): TermRef =
+      (if (prefix eq NoPrefix) apply(prefix, denot.symbol.asTerm)
+       else withSig(prefix, name, sig)) withDenot denot
   }
 
   object TypeRef {
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef =
       unique(new CachedTypeRef(prefix, name))
     def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      apply(prefix, sym.name) withSym sym
+      if (prefix eq NoPrefix) unique(new NoPrefixTypeRef(sym.name, sym))
+      else apply(prefix, sym.name) withSym sym
+    def apply(prefix: Type, name: TypeName, denot: Denotation)(implicit ctx: Context): TypeRef =
+      (if (prefix eq NoPrefix) apply(prefix, denot.symbol.asType) else apply(prefix, name)) withDenot denot
   }
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
@@ -1727,9 +1758,22 @@ object Types {
       selfInfo: DotClass /* should be: Type | Symbol */) extends CachedGroundType with TypeType {
 
     def selfType(implicit ctx: Context): Type = selfInfo match {
-      case NoType => cls.typeRef
+      case NoType =>
+        if (selfTypeCache == null) selfTypeCache = computeSelfType(cls.typeRef, cls.typeParams)
+        selfTypeCache
       case tp: Type => tp
       case self: Symbol => self.info
+    }
+
+    private var selfTypeCache: Type = null
+
+    private def computeSelfType(base: Type, tparams: List[TypeSymbol])(implicit ctx: Context): Type = tparams match {
+      case tparam :: tparams1 =>
+        computeSelfType(
+          RefinedType(base, tparam.name, TypeRef(cls.thisType, tparam).toBounds(tparam)),
+          tparams1)
+      case nil =>
+        base
     }
 
     def rebase(tp: Type)(implicit ctx: Context): Type =
@@ -2189,7 +2233,7 @@ object Types {
       case tp: NamedType if (p(tp)) =>
         foldOver(x += tp, tp)
       case tp: ThisType =>
-        apply(x, tp.underlying)
+        apply(x, if (tp.cls is Module) tp.underlying else tp.cls.typeRef)
       case _ =>
         foldOver(x, tp)
     }

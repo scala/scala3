@@ -117,6 +117,12 @@ object SymDenotations {
       case _ => myInfo
     }
 
+    /** Optionally, the info if it is completed */
+    final def unforcedInfo: Option[Type] = myInfo match {
+      case myInfo: LazyType => None
+      case _ => Some(myInfo)
+    }
+
     private def completeFrom(completer: LazyType): Unit = {
       if (myFlags is Touched) throw new CyclicReference(this)
       myFlags |= Touched
@@ -646,17 +652,17 @@ object SymDenotations {
 
     /** The TypeRef representing this type denotation at its original location. */
     def typeRef(implicit ctx: Context): TypeRef =
-      TypeRef(owner.thisType, name.asTypeName).withDenot(this)
+      TypeRef(owner.thisType, name.asTypeName, this)
 
     /** The TermRef representing this term denotation at its original location. */
     def termRef(implicit ctx: Context): TermRef =
-      TermRef(owner.thisType, name.asTermName).withDenot(this)
+      TermRef(owner.thisType, name.asTermName, this)
 
     /** The TermRef representing this term denotation at its original location
      *  and at signature `NotAMethod`.
      */
     def valRef(implicit ctx: Context): TermRef =
-      TermRef.withSig(owner.thisType, name.asTermName, Signature.NotAMethod).withDenot(this)
+      TermRef.withSig(owner.thisType, name.asTermName, Signature.NotAMethod, this)
 
     /** The TermRef representing this term denotation at its original location
      *  at the denotation's signature.
@@ -664,7 +670,7 @@ object SymDenotations {
      *         denotation via a call to `info`.
      */
     def termRefWithSig(implicit ctx: Context): TermRef =
-      TermRef.withSig(owner.thisType, name.asTermName, signature).withDenot(this)
+      TermRef.withSig(owner.thisType, name.asTermName, signature, this)
 
 	/** The NamedType representing this denotation at its original location.
 	 *  Same as either `typeRef` or `termRefWithSig` depending whether this denotes a type or not.

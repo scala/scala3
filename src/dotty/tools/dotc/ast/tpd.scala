@@ -293,7 +293,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     } // no checks necessary
 
   def ref(sym: Symbol)(implicit ctx: Context): tpd.NameTree =
-    ref(NamedType(sym.owner.thisType, sym.name).withDenot(sym))
+    ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
 
   // ----- Converting to releated trees -----------------------------------------------
 

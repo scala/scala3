@@ -86,7 +86,7 @@ class ImportInfo(val sym: Symbol, val selectors: List[untpd.Tree], val isRootImp
       for {
         renamed <- reverseMapping.keys
         denot <- pre.member(reverseMapping(renamed)).altsWith(_ is Implicit)
-      } yield TermRef.withSig(pre, renamed, denot.signature).withDenot(denot)
+      } yield TermRef.withSig(pre, renamed, denot.signature, denot)
   }
 
   override def toString = {

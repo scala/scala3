@@ -122,12 +122,12 @@ class ShowClassTests extends DottyTest {
 */
   @Test
   def showScala() = {
-    showPackage("scala", 22)
+    showPackage("scala", 1)
   }
 
   @Test
   def loadDotty() = {
-    showPackage("dotty", 23)
+    showPackage("dotty", 2)
   }
 
 

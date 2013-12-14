@@ -248,6 +248,15 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
   /** Is this case guarded? */
   def isGuardedCase(cdef: CaseDef) = cdef.guard ne EmptyTree
 
+  /** True iff definition if a val or def with no right-hand-side, or it
+   *  is an abstract typoe declaration
+   */
+  def lacksDefinition(mdef: MemberDef) = mdef match {
+    case mdef: ValOrDefDef => mdef.rhs.isEmpty && !mdef.name.isConstructorName
+    case mdef: TypeDef => mdef.rhs.isEmpty || mdef.rhs.isInstanceOf[TypeBoundsTree]
+    case _ => false
+  }
+
   /** The underlying pattern ignoring any bindings */
   def unbind(x: Tree): Tree = unsplice(x) match {
     case Bind(_, y) => unbind(y)

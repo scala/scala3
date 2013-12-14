@@ -55,7 +55,7 @@ object Annotations {
       deferred(atp.classSymbol, New(atp, args))
 
     def makeAlias(sym: TermSymbol)(implicit ctx: Context) =
-      apply(defn.AliasAnnot, List(Ident(TermRef.withSig(sym.owner.thisType, sym.name, sym.signature).withDenot(sym))))
+      apply(defn.AliasAnnot, List(Ident(TermRef.withSig(sym.owner.thisType, sym.name, sym.signature, sym))))
 
     def makeChild(sym: Symbol)(implicit ctx: Context) =
       apply(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)

@@ -621,10 +621,13 @@ trait Applications extends Compatibility { self: Typer =>
             }
             println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
             unapplyArgType
-          } else errorType(
-            i"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $wpt",
-            tree.pos)
-
+          } else {
+            // println("Neither sub nor super")
+            // println(TypeComparer.explained(implicit ctx => unapplyArgType <:< wpt))
+            errorType(
+              i"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $wpt",
+              tree.pos)
+          }
         var argTypes = unapplyArgs(mt.resultType)
         val bunchedArgs = argTypes match {
           case argType :: Nil if argType.isRepeatedParam => untpd.SeqLiteral(args) :: Nil
@@ -666,7 +669,7 @@ trait Applications extends Compatibility { self: Typer =>
       isApplicable(methRef, args, resultType)
     case _ =>
       val app = tp.member(nme.apply)
-      app.exists && app.hasAltWith(d => isApplicable(TermRef(tp, nme.apply).withDenot(d), args, resultType))
+      app.exists && app.hasAltWith(d => isApplicable(TermRef(tp, nme.apply, d), args, resultType))
   }
 
   /** In a set of overloaded applicable alternatives, is `alt1` at least as good as

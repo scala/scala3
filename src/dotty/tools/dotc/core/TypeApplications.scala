@@ -129,8 +129,8 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def toBounds(tparam: Symbol)(implicit ctx: Context): TypeBounds = {
     val v = tparam.variance
-    if (v > 0 && !(tparam is Local)) TypeBounds.upper(self)
-    else if (v < 0 && !(tparam is Local)) TypeBounds.lower(self)
+    if (v > 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.upper(self)
+    else if (v < 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.lower(self)
     else TypeAlias(self, v)
   }
 
