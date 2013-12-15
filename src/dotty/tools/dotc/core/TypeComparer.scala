@@ -413,7 +413,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     val tparams = tp1.typeParams
     val hkArgs = tp2.typeArgs
     (hkArgs.length == tparams.length) && {
-      val base = ctx.newSkolemSingleton(tp1)
+      val base = tp1.narrow
       (tparams, hkArgs).zipped.forall { (tparam, hkArg) =>
         base.memberInfo(tparam) <:< hkArg.bounds // TODO: base.memberInfo needed?
       } &&

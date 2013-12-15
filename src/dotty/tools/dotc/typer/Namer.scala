@@ -229,7 +229,8 @@ class Namer { typer: Typer =>
   def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/)(implicit ctx: Context): Context = {
     val localCtx: Context = ctx.fresh.withNewScope
     selfInfo match {
-      case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.enter(sym)
+      case sym: Symbol if sym.exists && sym.name != nme.WILDCARD =>
+        localCtx.scope.asInstanceOf[MutableScope].enter(sym)
       case _ =>
     }
     localCtx
@@ -409,7 +410,7 @@ class Namer { typer: Typer =>
               tp & itpe
             }
           }
-        // println(s"final inherited for $sym: ${inherited.toString}") !!! 
+        // println(s"final inherited for $sym: ${inherited.toString}") !!!
         // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
         def rhsType = adapt(typedAheadExpr(mdef.rhs), WildcardType).tpe.widen
         def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)

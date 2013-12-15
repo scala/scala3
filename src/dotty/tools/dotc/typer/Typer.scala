@@ -506,16 +506,18 @@ class Typer extends Namer with Applications with Implicits {
     val untpd.Function(args, body) = tree
     if (ctx.mode is Mode.Type)
       typed(cpy.AppliedTypeTree(tree,
-        ref(defn.FunctionClass(args.length).typeRef), args :+ body), pt)
+        untpd.TypeTree(defn.FunctionClass(args.length).typeRef), args :+ body), pt)
     else {
       val params = args.asInstanceOf[List[ValDef]]
       val protoFormals: List[Type] = pt match {
         case _ if pt isRef defn.FunctionClass(params.length) =>
           pt.typeArgs take params.length
         case SAMType(meth) =>
+          // println(s"SAMType $pt")
           val MethodType(_, paramTypes) = meth.info
           paramTypes
         case _ =>
+          // println(s"Neither fucntion nor SAM type $pt")
           params map alwaysWildcardType
       }
       val inferredParams: List[untpd.ValDef] =
@@ -527,7 +529,7 @@ class Typer extends Namer with Applications with Implicits {
               else {
                 val ofFun =
                   if (nme.syntheticParamNames(args.length + 1) contains param.name)
-                    s" for expanded function ${tree.show}"
+                    s" of expanded function ${tree.show}"
                   else ""
                 errorType(s"missing parameter type for parameter ${param.name}$ofFun, expected = ${pt.show}", param.pos)
               }
@@ -540,14 +542,21 @@ class Typer extends Namer with Applications with Implicits {
   def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = track("typedClosure") {
     val env1 = tree.env mapconserve (typed(_))
     val meth1 = typedUnadapted(tree.meth)
-    val ownType = meth1.tpe.widen match {
+    val (ownType, target) = meth1.tpe.widen match {
       case mt: MethodType =>
-        if (!mt.isDependent) mt.toFunctionType
-        else throw new Error(s"internal error: cannot turn dependent method type $mt into closure, position = ${tree.pos}") // !!! DEBUG. Eventually, convert to an error?
+        pt match {
+          case SAMType(meth) if !defn.isFunctionType(pt) && mt <:< meth.info =>
+            if (!isFullyDefined(pt, ForceDegree.all))
+              ctx.error(i"result type of closure is an underspecified SAM type $pt", tree.pos)
+            (pt, TypeTree(pt))
+          case _ =>
+            if (!mt.isDependent) (mt.toFunctionType, EmptyTree)
+            else throw new Error(s"internal error: cannot turn dependent method type $mt into closure, position = ${tree.pos}") // !!! DEBUG. Eventually, convert to an error?
+        }
       case tp =>
         throw new Error(i"internal error: closing over non-method $tp, pos = ${tree.pos}")
     }
-    cpy.Closure(tree, env1, meth1, EmptyTree).withType(ownType)
+    cpy.Closure(tree, env1, meth1, target).withType(ownType)
   }
 
   def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context) = track("typedMatch") {

@@ -10,7 +10,7 @@ object Functions {
   val xf2: String => Int = x.foo(_)
   val x2: String => Int = x.foo
   val x3 = x.foo _
- /*
+
   abstract class Spore[T, U] {
     def run(x: T): U
   }
@@ -29,5 +29,4 @@ object Functions {
   }
   val z: Spore[String, String] = x => x + x
   val z2: Spore2[String, String] = x => x + x
-  */
 }

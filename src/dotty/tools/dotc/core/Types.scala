@@ -596,6 +596,9 @@ object Types {
     def underlyingIfRepeated(implicit ctx: Context): Type =
       this.translateParameterized(defn.RepeatedParamClass, defn.SeqClass)
 
+    /** A prefix-less termRef to a new skolem symbol that has the given type as info */
+    def narrow(implicit ctx: Context): TermRef = TermRef(NoPrefix, ctx.newSkolem(this))
+
  // ----- Normalizing typerefs over refined types ----------------------------
 
     /** If this is a refinement type that has a refinement for `name` (which might be followed
@@ -1987,7 +1990,7 @@ object Types {
   /** An extractor for single abstract method types.
    *  A type is a SAM type if it is a reference to a class or trait, which
    *
-   *   - has a single abstract method with a non-dependent method type (ExprType
+   *   - has a single abstract method with a method type (ExprType
    *     and PolyType not allowed!)
    *   - can be instantiated without arguments or with just () as argument.
    *
@@ -1995,34 +1998,50 @@ object Types {
    *  denotation of the single abstract method as a member of the type.
    */
   object SAMType {
-    def isInstantiatable(tp: Type)(implicit ctx: Context): Boolean = tp match {
-      case tp: TypeRef =>
-        isInstantiatable(tp.info)
+    def zeroParamClass(tp: Type)(implicit ctx: Context): Type = tp match {
       case tp: ClassInfo =>
         def zeroParams(tp: Type): Boolean = tp match {
-          case pt: PolyType => zeroParams(pt)
+          case pt: PolyType => zeroParams(pt.resultType)
           case mt: MethodType => mt.paramTypes.isEmpty && !mt.resultType.isInstanceOf[MethodType]
           case et: ExprType => true
           case _ => false
         }
-        val noParamsNeeded = (tp.cls is Trait) || zeroParams(tp.cls.primaryConstructor.info) // !!! needs to be adapted once traits have parameters
-        val selfTypeFeasible = tp.typeRef <:< tp.selfType
-        noParamsNeeded && selfTypeFeasible
+        if ((tp.cls is Trait) || zeroParams(tp.cls.primaryConstructor.info)) tp // !!! needs to be adapted once traits have parameters
+        else NoType
+      case tp: TypeRef =>
+        zeroParamClass(tp.underlying)
       case tp: RefinedType =>
-        isInstantiatable(tp.underlying)
+        zeroParamClass(tp.underlying)
       case tp: TypeVar =>
-        isInstantiatable(tp.underlying)
+        zeroParamClass(tp.underlying)
+      case _ =>
+        NoType
+    }
+    def isInstantiatable(tp: Type)(implicit ctx: Context): Boolean = zeroParamClass(tp) match {
+      case cinfo: ClassInfo =>
+        val tref = tp.narrow
+        val selfType = cinfo.selfType.asSeenFrom(tref, cinfo.cls)
+        tref <:< selfType
       case _ =>
         false
     }
     def unapply(tp: Type)(implicit ctx: Context): Option[SingleDenotation] =
       if (isInstantiatable(tp)) {
         val absMems = tp.abstractTermMembers
+        // println(s"absMems: ${absMems map (_.show) mkString ", "}")
         if (absMems.size == 1)
           absMems.head.info match {
             case mt: MethodType if !mt.isDependent => Some(absMems.head)
             case _=> None
           }
+        else if (tp isRef defn.PartialFunctionClass)
+          // To maintain compatibility with 2.x, we treat PartialFunction specially,
+          // pretending it is a SAM type. In the future it would be better to merge
+          // Function and PartialFunction, have Function1 contain a isDefinedAt method
+          //     def isDefinedAt(x: T) = true
+          // and overwrite that method whenever the function body is a sequence of
+          // case clauses.
+          absMems.find(_.symbol.name == nme.apply)
         else None
       }
       else None

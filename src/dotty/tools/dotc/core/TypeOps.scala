@@ -6,9 +6,6 @@ import util.SimpleMap
 
 trait TypeOps { this: Context =>
 
-  /** A prefix-less termRef to a new skolem symbol that has the given type as info */
-  def newSkolemSingleton(underlying: Type) = TermRef(NoPrefix, newSkolem(underlying))
-
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 
     def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = ctx.debugTraceIndented(s"toPrefix($pre, $cls, $thiscls)")  {
