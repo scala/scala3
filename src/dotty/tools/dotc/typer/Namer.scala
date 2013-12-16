@@ -185,11 +185,14 @@ class Namer { typer: Typer =>
   def enterSymbol(sym: Symbol)(implicit ctx: Context) = {
     if (sym.exists) {
       println(s"entered: $sym in ${ctx.owner} and ${ctx.effectiveScope}")
+      def preExisting = ctx.effectiveScope.lookup(sym.name)
       if (sym.owner is PackageClass) {
-        val preExisting = sym.owner.decls.lookup(sym.name)
         if (preExisting.isDefinedInCurrentRun)
           ctx.error(s"${sym.showLocated} is compiled twice", sym.pos)
         }
+      else if (!sym.owner.isClass && preExisting.exists) {
+        ctx.error(i"${sym.name} is already defined as $preExisting")
+      }
       ctx.enter(sym)
     }
     sym
