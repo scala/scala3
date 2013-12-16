@@ -458,7 +458,7 @@ trait Applications extends Compatibility { self: Typer =>
               else new ApplyToUntyped(tree, fun1, funRef, proto, pt)
             val result = app.result
             ConstFold(result) orElse result
-          } { failed => fun1 match {
+          } { (failedVal, failedState) => fun1 match {
               case Select(qual, name) =>
                 // try with prototype `[].name(args)`, this might succeed by inserting an
                 // implicit conversion around []. (an example is Int + BigInt).
@@ -471,10 +471,13 @@ trait Applications extends Compatibility { self: Typer =>
                         cpy.Select(fun1, untpd.TypedSplice(qual1), name),
                         proto.typedArgs map untpd.TypedSplice),
                       pt)
-                } { _ => failed.commit()
+                } { (_, _) =>
+                  failedState.commit()
+                  failedVal
                 }
               case _ =>
-                failed.commit()
+                failedState.commit()
+                failedVal
             }
           }
         case _ =>
@@ -505,11 +508,12 @@ trait Applications extends Compatibility { self: Typer =>
     if (untpd.isOpAssign(tree))
       tryEither {
         implicit ctx => realApply
-      } { failed =>
+      } { (failedVal, failedState) =>
         tryEither {
           implicit ctx => typedOpAssign
-        } { _ =>
-          failed.commit()
+        } { (_, _) =>
+          failedState.commit()
+          failedVal
         }
       }
     else realApply
@@ -546,11 +550,11 @@ trait Applications extends Compatibility { self: Typer =>
       tryEither {
         implicit ctx => typedExpr(untpd.Select(qual, nme.unapply), unappProto)
       } {
-        s =>
+        (sel, _) =>
           tryEither {
             implicit ctx => typedExpr(untpd.Select(qual, nme.unapplySeq), unappProto) // for backwards compatibility; will be dropped
           } {
-            _ => notAnExtractor(s.value)
+            (_, _) => notAnExtractor(sel)
           }
       }
     }

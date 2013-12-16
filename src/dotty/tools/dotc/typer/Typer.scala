@@ -46,16 +46,6 @@ object Typer {
     val nothingBound = 0
     def isImportPrec(prec: Int) = prec == namedImport || prec == wildImport
   }
-
-  /** A result value that is packed with the typer state that was used to
-   *  generate it.
-   */
-  case class StateFul[T](value: T, state: TyperState) {
-    def commit()(implicit ctx: Context): T = {
-      state.commit()
-      value
-    }
-  }
 }
 
 class Typer extends Namer with Applications with Implicits {
@@ -943,18 +933,18 @@ class Typer extends Namer with Applications with Implicits {
   def typedPattern(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, pt)(ctx addMode Mode.Pattern)
 
-  def tryEither[T](op: Context => T)(fallBack: StateFul[T] => T)(implicit ctx: Context) = {
+  def tryEither[T](op: Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context) = {
     val nestedCtx = ctx.fresh.withNewTyperState
     val result = op(nestedCtx)
     if (nestedCtx.reporter.hasErrors)
-      fallBack(StateFul(result, nestedCtx.typerState))
+      fallBack(result, nestedCtx.typerState)
     else {
       nestedCtx.typerState.commit()
       result
     }
   }
 
-  def tryInsertApply(tree: Tree, pt: Type)(fallBack: StateFul[Tree] => Tree)(implicit ctx: Context): Tree =
+  def tryInsertApply(tree: Tree, pt: Type)(fallBack: (Tree, TyperState) => Tree)(implicit ctx: Context): Tree =
     tryEither {
       implicit ctx =>
         val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
@@ -1035,7 +1025,7 @@ class Typer extends Namer with Applications with Implicits {
           }
           pt match {
             case pt: FunProto =>
-              tryInsertApply(tree, pt)(_ => noMatches)
+              tryInsertApply(tree, pt)((_, _) => noMatches)
             case _ =>
               if (altDenots exists hasEmptyParams)
                 typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt)
@@ -1057,7 +1047,7 @@ class Typer extends Namer with Applications with Implicits {
           case Apply(_, _) => " more"
           case _ => ""
         }
-        _ => errorTree(tree, i"$methodStr does not take$more parameters")
+        (_, _) => errorTree(tree, i"$methodStr does not take$more parameters")
       }
     }
 
