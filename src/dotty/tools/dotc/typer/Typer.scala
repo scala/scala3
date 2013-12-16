@@ -708,7 +708,7 @@ class Typer extends Namer with Applications with Implicits {
     }
     val res = cpy.RefinedTypeTree(tree, tpt1, refinements1) withType
       (tpt1.tpe /: refinements1)(addRefinement)
-    println(s"typed refinement: ${res.tpe}")
+    // println(s"typed refinement: ${res.tpe.show}")
     res
   }
 

@@ -1,5 +1,5 @@
 object typers {
-  
+
   class List[+T] {
     def :: (x: T) = new :: (x, this)
     
@@ -16,6 +16,37 @@ object typers {
   def len[U](xs: List[U]): Int = xs match {
     case x :: xs1 => 1 + len(xs1)
     case Nil => 0
+  }
+  
+  object returns {
+    
+    def foo(x: Int): Int = {
+      return 3
+    }
+  }
+  
+  object tries {
+
+    val x = try {
+      "abc"
+    } catch {
+      case ex: java.io.IOException =>
+        123
+    } finally {
+      println("done")
+    }
+
+    val y = try 2 catch Predef.identity
+
+    val z = try 3 finally "abc"
+
+  }
+
+  class C {
+    
+  }
+  class Refinements {
+    val y: C { type T; val key: T; def process(x: T): Int }
   }
 
 }

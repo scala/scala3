@@ -696,7 +696,8 @@ object desugar {
    *  The result is used for validity checking, is thrown away afterwards.
    */
   def refinedTypeToClass(tree: RefinedTypeTree)(implicit ctx: Context): TypeDef = {
-    val impl = Template(emptyConstructor, tree.tpt :: Nil, EmptyValDef, tree.refinements)
+    val parent = Select(New(tree.tpt), nme.CONSTRUCTOR)
+    val impl = Template(emptyConstructor, parent :: Nil, EmptyValDef, tree.refinements)
     TypeDef(Modifiers(), tpnme.REFINE_CLASS, impl)
   }
 
