@@ -1,3 +1,5 @@
+import annotation.tailrec
+
 object typers {
 
   class List[+T] {
@@ -43,6 +45,12 @@ object typers {
   }
 
   class C {
+    
+    @tailrec def factorial(acc: Int, n: Int): Int = 
+      if (n == 0) acc
+      else factorial(acc * n, n - 1)
+      
+    println(factorial(1, 10))
   }
   
   class Refinements {

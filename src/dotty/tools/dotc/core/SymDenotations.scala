@@ -692,6 +692,7 @@ object SymDenotations {
         else if (isClass) "class"
         else if (isType) "type"
         else if (this is Module) "module"
+        else if (this is Method) "method"
         else "val"
       s"$kindString $name"
     }

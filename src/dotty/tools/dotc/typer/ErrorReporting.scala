@@ -24,6 +24,25 @@ object ErrorReporting {
     ErrorType
   }
 
+  def cyclicErrorMsg(ex: CyclicReference)(implicit ctx: Context) = {
+    val cycleSym = ex.denot.symbol
+    def errorMsg(msg: String, cx: Context): String =
+      if (cx.mode is Mode.InferringReturnType) {
+        cx.tree match {
+          case tree: Trees.ValOrDefDef[_] =>
+            val treeSym = ctx.symOfContextTree(tree)
+            if (treeSym.exists && treeSym.name == cycleSym.name && treeSym.owner == cycleSym.owner) {
+              val result = if (cycleSym.isSourceMethod) " result" else ""
+              i"overloaded or recursive $cycleSym needs$result type"
+            }
+            else errorMsg(msg, cx.outer)
+          case _ =>
+            errorMsg(msg, cx.outer)
+        }
+      } else msg
+    errorMsg(ex.getMessage, ctx)
+  }
+
   class Errors(implicit ctx: Context) {
 
     def expectedTypeStr(tp: Type): String = tp match {

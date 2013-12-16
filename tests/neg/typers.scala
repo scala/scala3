@@ -25,6 +25,16 @@ object typers {
     return 4
   }
   
+  object cyclic {
+    def factorial(acc: Int, n: Int) = 
+      if (n == 0) acc
+      else factorial(acc * n, n - 1)
+      
+    def foo(x: Int) = x
+    def foo() = foo(1)
+      
+  }
+  
   object tries {
 
     val x = try {

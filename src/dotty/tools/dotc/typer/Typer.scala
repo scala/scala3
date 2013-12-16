@@ -831,8 +831,9 @@ class Typer extends Namer with Applications with Implicits {
     typedTree remove xtree match {
       case Some(ttree) => ttree
       case none =>
-        val sym = symOfTree.remove(xtree).getOrElse(NoSymbol)
+        val sym = symOfTree.getOrElse(xtree, NoSymbol)
         sym.ensureCompleted()
+        symOfTree.remove(xtree)
         def localContext = ctx.fresh.withOwner(sym).withTree(xtree)
 
         def typedNamed(tree: untpd.NameTree): Tree = tree match {
@@ -900,6 +901,7 @@ class Typer extends Namer with Applications with Implicits {
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = ctx.traceIndented (s"typing ${tree.show}", show = true) {
     try adapt(typedUnadapted(tree, pt), pt)
     catch {
+      case ex: CyclicReference => errorTree(tree, cyclicErrorMsg(ex))
       case ex: FatalTypeError => errorTree(tree, ex.getMessage)
     }
   }

@@ -47,6 +47,22 @@ trait NamerContextOps { this: Context =>
   def effectiveScope: Scope =
     if (owner != null && owner.isClass) owner.asClass.decls
     else scope
+
+  /** The symbol (stored in some typer's symTree) of an enclosing context definition */
+  def symOfContextTree(tree: untpd.Tree) = {
+    def go(ctx: Context): Symbol = {
+      val typer = ctx.typer
+      if (typer == null) NoSymbol
+      else typer.symOfTree get tree match {
+        case Some(sym) => sym
+        case None =>
+          var cx = ctx.outer
+          while (cx.typer eq typer) cx = cx.outer
+          go(cx)
+      }
+    }
+    go(this)
+  }
 }
 
 /** This class creates symbols from definitions and imports and gives them
@@ -416,7 +432,8 @@ class Namer { typer: Typer =>
           }
         // println(s"final inherited for $sym: ${inherited.toString}") !!!
         // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-        def rhsType = adapt(typedAheadExpr(mdef.rhs), WildcardType).tpe.widen
+        val rhsCtx = ctx.fresh addMode Mode.InferringReturnType
+        def rhsType = adapt(typedAheadExpr(mdef.rhs)(rhsCtx), WildcardType).tpe.widen
         def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)
         inherited orElse lhsType
       }

@@ -29,6 +29,7 @@ object Mode {
   val Type = newMode(1, "Type")
 
   val ImplicitsEnabled = newMode(2, "ImplicitsEnabled")
+  val InferringReturnType = newMode(3, "InferencingReturnType")
 
   val PatternOrType = Pattern | Type
 }
