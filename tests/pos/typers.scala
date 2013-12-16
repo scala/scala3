@@ -1,4 +1,4 @@
-import annotation.tailrec
+import annotation.{tailrec, switch}
 
 object typers {
 
@@ -46,11 +46,14 @@ object typers {
 
   class C {
     
-    @tailrec def factorial(acc: Int, n: Int): Int = 
-      if (n == 0) acc
-      else factorial(acc * n, n - 1)
+    @tailrec def factorial(acc: Int, n: Int): Int = (n: @switch) match {
+      case 0 => acc
+      case _ => factorial(acc * n, n - 1)
+    }
       
     println(factorial(1, 10))
+    
+    
   }
   
   class Refinements {

@@ -394,7 +394,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedNew(tree: untpd.New, pt: Type)(implicit ctx: Context) = track("typedNew") {
     tree.tpt match {
-      case templ: Template =>
+      case templ: untpd.Template =>
         import untpd._
         val x = tpnme.ANON_CLASS
         val clsDef = TypeDef(Modifiers(Final), x, templ)
@@ -426,7 +426,7 @@ class Typer extends Namer with Applications with Implicits {
       cpy.Typed(tree, expr1, tpt1).withType(tpt1.tpe)
     }
     tree.expr match {
-      case id: Ident if (ctx.mode is Mode.Pattern) && isVarPattern(id) =>
+      case id: untpd.Ident if (ctx.mode is Mode.Pattern) && isVarPattern(id) =>
         if (id.name == nme.WILDCARD) regularTyped(isWildcard = true)
         else {
           import untpd._
@@ -759,7 +759,7 @@ class Typer extends Namer with Applications with Implicits {
     val DefDef(mods, name, tparams, vparamss, tpt, rhs) = ddef
     val mods1 = typedModifiers(mods)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
-    val vparamss1 = vparamss mapconserve(_ mapconserve (typed(_).asInstanceOf[ValDef]))
+    val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
     val tpt1 = typedType(tpt)
     val rhs1 = typedExpr(rhs, tpt1.tpe)
     cpy.DefDef(ddef, mods1, name, tparams1, vparamss1, tpt1, rhs1).withType(sym.termRefWithSig)
@@ -930,7 +930,7 @@ class Typer extends Namer with Applications with Implicits {
         val nestedCtx = if (exprOwner == ctx.owner) ctx else ctx.fresh.withOwner(exprOwner)
         buf += typed(stat)(nestedCtx)
         traverse(rest)
-      case _ =>
+      case nil =>
         buf.toList
     }
     traverse(stats)
@@ -938,7 +938,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, pt)(ctx retractMode Mode.PatternOrType)
-  def typedType(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
+  def typedType(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = // todo: retract mode between Type and Pattern?
     typed(tree, pt)(ctx addMode Mode.Type)
   def typedPattern(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
     typed(tree, pt)(ctx addMode Mode.Pattern)
