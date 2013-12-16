@@ -71,7 +71,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (tp.parent.isInstanceOf[WildcardType] || tp.refinedName == nme.WILDCARD)
       super.refinementNameString(tp)
     else {
-      val tsym = tp.member(tp.refinedName).symbol
+      val tsym = tp.parent.member(tp.refinedName).symbol
       if (!tsym.exists) super.refinementNameString(tp)
       else {
         val name = tsym.originalName
