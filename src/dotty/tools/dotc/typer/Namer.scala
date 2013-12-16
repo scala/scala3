@@ -167,8 +167,9 @@ class Namer { typer: Typer =>
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
       case tree: MemberDef =>
         val deferred = if (lacksDefinition(tree)) Deferred else EmptyFlags
+        val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
         record(ctx.newSymbol(
-          ctx.owner, tree.name.encode, tree.mods.flags | deferred,
+          ctx.owner, tree.name.encode, tree.mods.flags | deferred | method,
           adjustIfModule(new Completer(tree), tree),
           privateWithinClass(tree.mods), tree.pos))
       case tree: Import =>

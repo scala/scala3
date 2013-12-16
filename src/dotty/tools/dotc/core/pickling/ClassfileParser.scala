@@ -150,7 +150,7 @@ class ClassfileParser(
     val start = indexCoord(in.bp)
     val jflags = in.nextChar
     val sflags =
-      if (method) FlagTranslation.methodFlags(jflags)
+      if (method) Flags.Method | FlagTranslation.methodFlags(jflags)
       else FlagTranslation.fieldFlags(jflags)
     val name = pool.getName(in.nextChar)
     if (!(sflags is Flags.Private) || name == nme.CONSTRUCTOR || settings.optimise.value) {
