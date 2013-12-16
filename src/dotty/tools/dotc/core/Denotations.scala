@@ -359,7 +359,13 @@ object Denotations {
     final def signature(implicit ctx: Context): Signature = {
       if (isType) Signature.NotAMethod // don't force info if this is a type SymDenotation
       else info match {
-        case info: SignedType => info.signature
+        case info: SignedType =>
+          try info.signature
+          catch { // !!! DEBUG
+            case ex: MatchError =>
+              println(s"cannot take signature of ${info.show}")
+              throw ex
+          }
         case _ => Signature.NotAMethod
       }
     }

@@ -33,5 +33,6 @@ class tests extends CompilerTest {
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 2)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
   @Test def neg_typedidents() = compileFile(negDir, "typedidents", xerrors = 2)
-  @Test def nef_assignments() = compileFile(negDir, "assignments", xerrors = 3)
+  @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)
+  @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 7)
 }

@@ -12,7 +12,7 @@ import util.Positions._
 import util.{Stats, SimpleMap}
 import Decorators._
 import ErrorReporting.{errorType, InfoString}
-import collection.mutable.ListBuffer
+import collection.mutable
 
 object Inferencing {
 
@@ -247,6 +247,27 @@ object Inferencing {
     case _ =>
       ctx.error(i"$tp is not a class type", pos)
       defn.ObjectClass
+  }
+
+  /** Check that class does not define */
+  def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = {
+    val seen = new mutable.HashMap[Name, List[Symbol]] {
+      override def default(key: Name) = Nil
+    }
+    println(i"cndd $cls")
+    for (decl <- cls.info.decls) {
+      for (other <- seen(decl.name)) {
+        println(i"conflict? $decl $other")
+        if (decl.signature matches other.signature) {
+          val ofType = if (decl.isType) "" else i": ${other.info}"
+          val explanation =
+            if (!decl.isSourceMethod) ""
+            else "\n (both definitions have the same erased type signature)"
+          ctx.error(i"$decl is already defined as $other$ofType$explanation", decl.pos)
+        }
+      }
+      seen(decl.name) = decl :: seen(decl.name)
+    }
   }
 
   def checkInstantiatable(cls: ClassSymbol, pos: Position): Unit = {

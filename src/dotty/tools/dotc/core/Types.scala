@@ -1434,6 +1434,7 @@ object Types {
     extends CachedGroundType with BindingType with TermType with SignedType { thisMethodType =>
 
     override val resultType = resultTypeExp(this)
+    assert(resultType != NoType, this)
     def isJava = false
     def isImplicit = false
 

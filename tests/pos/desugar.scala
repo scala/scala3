@@ -38,7 +38,7 @@ object desugar {
    
     val (cons: Cons[Int]) = xs
     
-    val x, y, z: Int = 1
+    val x1, y1, z1: Int = 1
   }
   
   object Binops {

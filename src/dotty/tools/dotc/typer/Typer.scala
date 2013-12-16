@@ -611,26 +611,21 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedReturn(tree: untpd.Return)(implicit ctx: Context): Return = track("typedReturn") {
-    def enclMethInfo(cx: Context): (Tree, Type) =
-      if (cx == NoContext || cx.owner.isType) {
-        ctx.error("return outside method definition")
+    def enclMethInfo(cx: Context): (Tree, Type) = {
+      val owner = cx.owner
+      if (cx == NoContext || owner.isType) {
+        ctx.error("return outside method definition", tree.pos)
         (EmptyTree, WildcardType)
       }
-      else cx.tree match {
-        case ddef: DefDef =>
-          val meth = cx.owner
-          val from = Ident(TermRef(NoPrefix, meth.asTerm))
-          val proto =
-            if (meth.isConstructor)
-              defn.UnitType
-            else if (ddef.tpt.isEmpty)
-              errorType(i"method ${meth.name} has return statement; needs result type", tree.pos)
-            else
-              ddef.tpt.tpe
+      else if (owner.isSourceMethod)
+        if (owner.isCompleted) {
+          val from = Ident(TermRef(NoPrefix, owner.asTerm))
+          val proto = if (owner.isConstructor) defn.UnitType else owner.info.finalResultType
           (from, proto)
-        case _ =>
-          enclMethInfo(cx.outer)
-      }
+        }
+        else (EmptyTree, errorType(i"$owner has return statement; needs result type", tree.pos))
+      else enclMethInfo(cx.outer)
+    }
     val (from, proto) = enclMethInfo(ctx)
     val expr1 = typedExpr(tree.expr orElse untpd.unitLiteral, proto)
     cpy.Return(tree, expr1, from) withType defn.NothingType
@@ -786,9 +781,9 @@ class Typer extends Namer with Applications with Implicits {
     val self1 = typed(self).asInstanceOf[ValDef]
     val localDummy = ctx.newLocalDummy(cls, impl.pos)
     val body1 = typedStats(body, localDummy)(inClassContext(self1.symbol))
+    checkNoDoubleDefs(cls)
     val impl1 = cpy.Template(impl, constr1, parents1, self1, body1)
       .withType(localDummy.termRef)
-
     cpy.TypeDef(cdef, mods1, name, impl1).withType(cls.typeRef)
 
     // todo later: check that
