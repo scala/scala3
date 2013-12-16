@@ -210,7 +210,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case CaseDef(pat, guard, body) =>
         "case " ~ toText(pat) ~ optText(guard)("if " ~ _) ~ " => " ~ caseBlockText(body)
       case Return(expr, from) =>
-        changePrec(GlobalPrec) { "return " ~ optText(expr)(" " ~ _) }
+        changePrec(GlobalPrec) { "return" ~ optText(expr)(" " ~ _) }
       case Try(expr, handler, finalizer) =>
         changePrec(GlobalPrec) {
           "try " ~ toText(expr) ~ optText(handler)(" catch " ~ _) ~ optText(finalizer)(" finally " ~ _)

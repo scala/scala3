@@ -195,7 +195,8 @@ object Flags {
   final val Final = commonFlag(6, "final")
 
   /** A method symbol. */
-  final val Method = termFlag(7, "<method>")
+  final val MethodCommon = commonFlag(7, "<method>")
+  final val Method = MethodCommon.toTermFlags
 
   /** A (term or type) parameter to a class or method */
   final val Param     = commonFlag(8, "<param>")
@@ -395,7 +396,7 @@ object Flags {
 
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
-    AccessFlags | Module | Package | Deferred | Param | Scala2ExistentialCommon | Touched |
+    AccessFlags | Module | Package | Deferred | MethodCommon | Param | Scala2ExistentialCommon | Touched |
     Static | CovariantCommon | ContravariantCommon | ExpandedName | AccessorOrSealed |
     CaseAccessorOrTypeArgument | Frozen | Erroneous | ImplicitCommon | Permanent
 
