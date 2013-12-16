@@ -184,6 +184,7 @@ object Scanners {
           (canStartStatTokens contains token) &&
           (sepRegions.isEmpty || sepRegions.head == RBRACE)) {
         next copyFrom this
+        //  todo: make offset line-end of previous line?
         offset = if (lineStartOffset <= offset) lineStartOffset else lastLineStartOffset
         token = if (pastBlankLine()) NEWLINES else NEWLINE
       }

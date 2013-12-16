@@ -208,7 +208,7 @@ object Parsers {
     def syntaxErrorOrIncomplete(msg: String) =
       if (in.token == EOF) incompleteInputError(msg)
       else {
-        syntaxError(msg+", found: "+in)
+        syntaxError(msg)
         skip()
         lastErrorOffset = in.offset
       } // DEBUG
@@ -1690,40 +1690,31 @@ object Parsers {
       }
     }
 
-    /** DefDef ::= DefSig `:' Type `=' Expr
-     *           | DefSig [nl] `{' Block `}'
-     *           | this ParamClause ParamClauses (`=' ConstrExpr | [nl] ConstrBlock)
-     *  DefDcl ::= DefSig [`:' Type]
+    /** DefDef ::= DefSig (`:' Type [`=' Expr] | "=" Expr)
+     *           | this ParamClause ParamClauses `=' ConstrExpr
+     *  DefDcl ::= DefSig `:' Type
      *  DefSig ::= id [DefTypeParamClause] ParamClauses
      */
     def defDefOrDcl(mods: Modifiers): Tree = atPos(tokenRange) {
       if (in.token == THIS) {
         in.nextToken()
         val vparamss = paramClauses(nme.CONSTRUCTOR)
-        newLineOptWhenFollowedBy(LBRACE)
-        val rhs =
-          if (in.token == LBRACE)
-            atPos(in.offset) { constrBlock() } // todo: deprecate
-          else {
-            accept(EQUALS)
-            atPos(in.offset) { constrExpr() }
-          }
+        val rhs = {
+          accept(EQUALS)
+          atPos(in.offset) { constrExpr() }
+        }
         makeConstructor(mods, Nil, vparamss, rhs)
       } else {
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         val vparamss = paramClauses(name)
-        var restype = fromWithinReturnType(typedOpt())
-        newLineOptWhenFollowedBy(LBRACE)
+        val tpt = fromWithinReturnType(typedOpt())
         val rhs =
-          if (isStatSep || in.token == RBRACE) EmptyTree
-          else if (restype.isEmpty && in.token == LBRACE) {
-            restype = atPos(in.offset) { scalaUnit }
-            blockExpr()
-          } else {
-            equalsExpr()
-          }
-        DefDef(mods | Method, name, tparams, vparamss, restype, rhs)
+          if (tpt.isEmpty || in.token == EQUALS) {
+            accept(EQUALS)
+            expr()
+          } else EmptyTree
+        DefDef(mods | Method, name, tparams, vparamss, tpt, rhs)
       }
     }
 

@@ -105,8 +105,8 @@ object Tokens {
   final val COMMA = 70;            enter(COMMA, "','")
   final val SEMI = 71;             enter(DOT, "'.'")
   final val DOT = 72;              enter(SEMI, "';'")
-  final val NEWLINE = 78;          enter(NEWLINE, "';'", "new line")
-  final val NEWLINES = 79;         enter(NEWLINES, "';'", "new lines")
+  final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
+  final val NEWLINES = 79;         enter(NEWLINES, "end of statement", "new lines")
 
   /** special keywords */
   final val USCORE = 73;           enter(USCORE, "_")
