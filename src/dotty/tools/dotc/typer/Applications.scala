@@ -78,6 +78,8 @@ trait Applications extends Compatibility { self: Typer =>
     /** Signal failure with given message at position of the application itself */
     protected def fail(msg: => String): Unit
 
+    protected def appPos: Position
+
     /** If constructing trees, the current function part, which might be
      *  affected by lifting. EmptyTree otherwise.
      */
@@ -246,7 +248,7 @@ trait Applications extends Compatibility { self: Typer =>
             findDefaultGetter(n + numArgs(normalizedFun)) match {
               case dref: NamedType =>
                 liftFun()
-                addTyped(treeToArg(spliceMeth(Ident(dref), normalizedFun)), formal)
+                addTyped(treeToArg(spliceMeth(Ident(dref) withPos appPos, normalizedFun)), formal)
                 matchArgs(args1, formals1, n + 1)
               case _ =>
                 missingArg(n)
@@ -323,6 +325,7 @@ trait Applications extends Compatibility { self: Typer =>
       ok = false
     def fail(msg: => String) =
       ok = false
+    def appPos = NoPosition
     def normalizedFun = EmptyTree
     init()
   }
@@ -365,6 +368,8 @@ trait Applications extends Compatibility { self: Typer =>
       val seqLit = if (methodType.isJava) JavaSeqLiteral(args) else SeqLiteral(args)
       typedArgBuf += seqToRepeated(seqLit)
     }
+
+    override def appPos = app.pos
 
     def fail(msg: => String, arg: Trees.Tree[T]) = {
       ctx.error(msg, arg.pos)
