@@ -293,7 +293,7 @@ class Namer { typer: Typer =>
 
     def complete(denot: SymDenotation): Unit = {
       val sym = denot.symbol
-      def localContext = ctx.fresh.withOwner(sym)
+      def localContext = ctx.fresh.withOwner(sym).withTree(original)
 
       def typeSig(tree: Tree): Type = tree match {
         case tree: ValDef =>
