@@ -1009,25 +1009,22 @@ class Typer extends Namer with Applications with Implicits {
       val altDenots = ref.denot.alternatives
       println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
       val alts = altDenots map (alt =>
-        TermRef.withSig(ref.prefix, ref.name, alt.info.signature).withDenot(alt))
+        TermRef.withSig(ref.prefix, ref.name, alt.info.signature, alt))
       def expectedStr = err.expectedTypeStr(pt)
       resolveOverloaded(alts, pt)(ctx.fresh.withExploreTyperState) match {
         case alt :: Nil =>
-          adaptInterpolated(tree.withType(alt), pt)
+          adapt(tree.withType(alt), pt)
         case Nil =>
           def noMatches =
             errorTree(tree,
               i"""none of the ${err.overloadedAltsStr(altDenots)}
                  |match $expectedStr""".stripMargin)
-          def hasEmptyParams(denot: SingleDenotation) = denot.info.paramTypess match {
-            case Nil :: _ => true
-            case _ => false
-          }
+          def hasEmptyParams(denot: SingleDenotation) = denot.info.paramTypess == ListOfNil
           pt match {
             case pt: FunProto =>
               tryInsertApply(tree, pt)((_, _) => noMatches)
             case _ =>
-              if (altDenots exists hasEmptyParams)
+              if (altDenots exists (_.info.paramTypess == ListOfNil))
                 typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt)
               else
                 noMatches
@@ -1071,7 +1068,7 @@ class Typer extends Namer with Applications with Implicits {
           }
         }
         adapt(tpd.Apply(tree, args), wtp.resultType)
-      case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
+      case wtp: MethodType if !pt.isInstanceOf[SingletonType] => 
         if ((defn.isFunctionType(pt) || (pt eq AnyFunctionProto)) &&
             !tree.symbol.isConstructor)
           etaExpand(tree, wtp)
@@ -1086,7 +1083,7 @@ class Typer extends Namer with Applications with Implicits {
         else if (ctx.mode is Mode.Pattern) tree // no subtype check for pattern
         else {
           println(s"adapt to subtype ${tree.tpe} !<:< $pt") // !!!DEBUG
-          println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt)) // !!!DEBUG
+          // println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt)) // !!!DEBUG
           adaptToSubType(wtp)
         }
     }

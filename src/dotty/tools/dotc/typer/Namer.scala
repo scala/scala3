@@ -265,7 +265,7 @@ class Namer { typer: Typer =>
   /** Create top-level symbols for all statements in the expansion of this statement and
    *  enter them into symbol table
    */
-  def indexExpanded(stat: Tree)(implicit ctx: Context): Context = stat match {
+  def indexExpanded(stat: Tree)(implicit ctx: Context): Context = expanded(stat) match {
     case pcl: PackageDef =>
       val pkg = createPackageSymbol(pcl.pid)
       index(pcl.stats)(ctx.fresh.withOwner(pkg.moduleClass))
@@ -273,7 +273,10 @@ class Namer { typer: Typer =>
     case imp: Import =>
       importContext(createSymbol(imp), imp.selectors)
     case mdef: DefTree =>
-      expandedTree(mdef).toList foreach (tree => enterSymbol(createSymbol(tree)))
+      enterSymbol(createSymbol(mdef))
+      ctx
+    case stats: Thicket =>
+      for (tree <- stats.toList) enterSymbol(createSymbol(tree))
       ctx
     case _ =>
       ctx

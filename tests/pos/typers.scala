@@ -1,3 +1,5 @@
+package test 
+
 import annotation.{tailrec, switch}
 
 object typers {
@@ -41,6 +43,8 @@ object typers {
     val y = try 2 catch Predef.identity
 
     val z = try 3 finally "abc"
+    
+    println("abc".toString)
 
   }
 

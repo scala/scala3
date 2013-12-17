@@ -305,16 +305,20 @@ object desugar {
    */
   def moduleDef(mdef: ModuleDef)(implicit ctx: Context): Tree = {
     val ModuleDef(mods, name, tmpl @ Template(constr, parents, self, body)) = mdef
-    val clsName = name.moduleClassName
-    val clsRef = Ident(clsName)
-    val modul = ValDef(mods | ModuleCreationFlags, name, clsRef, New(clsRef, Nil)) withPos mdef.pos
-    val ValDef(selfMods, selfName, selfTpt, selfRhs) = self
-    if (!selfTpt.isEmpty) ctx.error("object definition may not have a self type", self.pos)
-    val clsSelf = ValDef(selfMods, selfName, SingletonTypeTree(Ident(name)), selfRhs)
-      .withPos(self.pos orElse tmpl.pos.startPos)
-    val clsTmpl = cpy.Template(tmpl, constr, parents, clsSelf, body)
-    val cls = TypeDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, clsTmpl)
-    Thicket(modul, classDef(cls))
+    if (mods is Package)
+      PackageDef(Ident(name), cpy.ModuleDef(mdef, mods &~ Package, nme.PACKAGE, tmpl) :: Nil)
+    else {
+      val clsName = name.moduleClassName
+      val clsRef = Ident(clsName)
+      val modul = ValDef(mods | ModuleCreationFlags, name, clsRef, New(clsRef, Nil)) withPos mdef.pos
+      val ValDef(selfMods, selfName, selfTpt, selfRhs) = self
+      if (!selfTpt.isEmpty) ctx.error("object definition may not have a self type", self.pos)
+      val clsSelf = ValDef(selfMods, selfName, SingletonTypeTree(Ident(name)), selfRhs)
+        .withPos(self.pos orElse tmpl.pos.startPos)
+      val clsTmpl = cpy.Template(tmpl, constr, parents, clsSelf, body)
+      val cls = TypeDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, clsTmpl)
+      Thicket(modul, classDef(cls))
+    }
   }
 
   /**     val p1, ..., pN: T = E

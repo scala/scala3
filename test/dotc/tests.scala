@@ -29,6 +29,7 @@ class tests extends CompilerTest {
   @Test def pos_typers() = compileFile(posDir, "typers")
   @Test def pos_typedidents() = compileFile(posDir, "typedidents")
   @Test def pos_assignments() = compileFile(posDir, "assignments")
+  @Test def pos_packageobject() = compileFile(posDir, "packageobject")
 
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 2)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
