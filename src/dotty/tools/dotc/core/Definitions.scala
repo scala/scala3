@@ -288,8 +288,6 @@ class Definitions(implicit ctx: Context) {
     }
   }
 
-  def isFunctionType(tp: Type) = FunctionClasses contains tp.typeSymbol
-
   // ----- Symbol sets ---------------------------------------------------
 
   lazy val FunctionClass = mkArityArray("Function", MaxFunctionArity, 0)
@@ -320,7 +318,12 @@ class Definitions(implicit ctx: Context) {
     arity <= MaxTupleArity && (tp isRef TupleClass(arity))
   }
 
-   // ----- Higher kinds machinery ------------------------------------------
+  def isFunctionType(tp: Type) = {
+    val arity = tp.dealias.typeArgs.length - 1
+    0 <= arity && arity <= MaxFunctionArity && (tp isRef FunctionClass(arity))
+  }
+
+  // ----- Higher kinds machinery ------------------------------------------
 
   private var _hkTraits: Set[Symbol] = Set()
 
