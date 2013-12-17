@@ -1040,11 +1040,14 @@ object SymDenotations {
     def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = {
       def computeMemberNames: Set[Name] = {
         val inheritedNames = (classParents flatMap (_.memberNames(keepOnly, thisType))).toSet
-        val ownNames = info.decls.iterator map (_.name)
+        var ownSyms = info.decls.toList
+        if (keepOnly == implicitFilter) ownSyms = ownSyms filter (_ is Implicit)
+        val ownNames = ownSyms.iterator map (_.name)
         val candidates = inheritedNames ++ ownNames
         candidates filter (keepOnly(thisType, _))
       }
-      if ((this is PackageClass) || !Config.cacheMemberNames) computeMemberNames // don't cache package member names; they might change
+      if ((this is PackageClass) || (keepOnly == implicitFilter) || !Config.cacheMemberNames)
+        computeMemberNames // don't cache package member names; they might change
       else {
         val cached = memberNamesCache(keepOnly)
         if (cached != null) cached

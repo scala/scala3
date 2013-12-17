@@ -2297,8 +2297,11 @@ object Types {
   }
 
   object implicitFilter extends NameFilter {
-    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
-      (pre member name).hasAltWith(_.symbol is Implicit)
+    /** A dummy filter method.
+     *  Implicit filtering is handled specially in computeMemberNames, so
+     *  no post-filtering is needed.
+     */
+    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = true
   }
 
   // ----- Exceptions -------------------------------------------------------------
