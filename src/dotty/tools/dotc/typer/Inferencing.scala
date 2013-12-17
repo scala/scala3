@@ -235,7 +235,7 @@ object Inferencing {
   /** Check that `tp` is a class type with a stable prefix.
    *  @return  Underlying class type if type checks out OK, ObjectClass.typeRef if not.
    */
-  def checkClassTypeWithStablePrefix(tp: Type, pos: Position)(implicit ctx: Context): Type = tp.dealias match {
+  def checkClassTypeWithStablePrefix(tp: Type, pos: Position)(implicit ctx: Context): TypeRef = tp.dealias match {
     case tp: TypeRef if tp.symbol.isClass =>
       checkStable(tp.prefix, pos)
       tp

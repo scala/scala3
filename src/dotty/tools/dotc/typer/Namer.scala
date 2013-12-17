@@ -348,9 +348,9 @@ class Namer { typer: Typer =>
           }
           val Select(New(tpt), nme.CONSTRUCTOR) = core
           val targs1 = targs map (typedAheadType(_))
-          var ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
-          if (ptype.uninstantiatedTypeParams.nonEmpty) ptype = typedAheadExpr(constr).tpe
-          checkClassTypeWithStablePrefix(ptype, core.pos)
+          val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
+          if (ptype.uninstantiatedTypeParams.isEmpty) ptype
+          else typedAheadExpr(constr).tpe
         }
 
         val TypeDef(_, name, impl @ Template(constr, parents, self, body)) = cdef
@@ -366,9 +366,13 @@ class Namer { typer: Typer =>
         cls.info = adjustIfModule(ClassInfo(cls.owner.thisType, cls, Nil, decls, selfInfo))
         val parentTypes = parents map parentType
         val parentRefs = ctx.normalizeToRefs(parentTypes, cls, decls)
+        val parentClsRefs =
+          for ((parentRef, constr) <- parentRefs zip parents)
+          yield checkClassTypeWithStablePrefix(parentRef, constr.pos)
+
         index(constr)
         index(rest)(inClassContext(selfInfo))
-        ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
+        ClassInfo(cls.owner.thisType, cls, parentClsRefs, decls, selfInfo)
       }
 
       def adjustIfModule(sig: Type): Type =
