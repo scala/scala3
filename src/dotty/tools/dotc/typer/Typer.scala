@@ -353,7 +353,7 @@ class Typer extends Namer with Applications with Implicits {
   def typedSuper(tree: untpd.Super, pt: Type)(implicit ctx: Context): Tree = track("typedSuper") {
     val mix = tree.mix
     val qual1 = typed(tree.qual)
-    val cls = qual1.tpe.typeSymbol
+    val cls = qual1.tpe.widen.typeSymbol
 
     def findMixinSuper(site: Type): Type = site.parents filter (_.name == mix) match {
       case p :: Nil =>
@@ -740,7 +740,10 @@ class Typer extends Namer with Applications with Implicits {
     val ValDef(mods, name, tpt, rhs) = vdef
     val mods1 = typedModifiers(mods)
     val tpt1 = typedType(tpt)
-    val rhs1 = typedExpr(rhs, tpt1.tpe)
+    val rhs1 = rhs match {
+      case Ident(nme.WILDCARD) => rhs withType tpt1.tpe
+      case _ => typedExpr(rhs, tpt1.tpe)
+    }
     val refType = if (sym.exists) sym.valRef else NoType
     cpy.ValDef(vdef, mods1, name, tpt1, rhs1).withType(refType)
   }
@@ -1068,7 +1071,7 @@ class Typer extends Namer with Applications with Implicits {
           }
         }
         adapt(tpd.Apply(tree, args), wtp.resultType)
-      case wtp: MethodType if !pt.isInstanceOf[SingletonType] => 
+      case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
         if ((defn.isFunctionType(pt) || (pt eq AnyFunctionProto)) &&
             !tree.symbol.isConstructor)
           etaExpand(tree, wtp)
