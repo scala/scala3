@@ -233,17 +233,17 @@ object Inferencing {
     if (!tp.isStable) ctx.error(i"Prefix of type ${tp.widenIfUnstable} is not stable", pos)
 
   /** Check that `tp` is a class type with a stable prefix.
-   *  @return  Underlying class symbol if type checks out OK, ObjectClass if not.
+   *  @return  Underlying class type if type checks out OK, ObjectClass.typeRef if not.
    */
-  def checkClassTypeWithStablePrefix(tp: Type, pos: Position)(implicit ctx: Context): ClassSymbol = tp.dealias match {
+  def checkClassTypeWithStablePrefix(tp: Type, pos: Position)(implicit ctx: Context): Type = tp.dealias match {
     case tp: TypeRef if tp.symbol.isClass =>
       checkStable(tp.prefix, pos)
-      tp.symbol.asClass
+      tp
     case _: TypeVar | _: AnnotatedType =>
       checkClassTypeWithStablePrefix(tp.asInstanceOf[TypeProxy].underlying, pos)
     case _ =>
       ctx.error(i"$tp is not a class type", pos)
-      defn.ObjectClass
+      defn.ObjectClass.typeRef
   }
 
   /** Check that class does not define */

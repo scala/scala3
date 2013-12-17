@@ -7,7 +7,7 @@ import ast._
 import Trees._, Constants._, StdNames._, Scopes._, Denotations._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import ast.desugar, ast.desugar._
-import Inferencing.{fullyDefinedType, AnySelectionProto}
+import Inferencing.{fullyDefinedType, AnySelectionProto, checkClassTypeWithStablePrefix}
 import util.Positions._
 import util.SourcePosition
 import collection.mutable
@@ -348,9 +348,9 @@ class Namer { typer: Typer =>
           }
           val Select(New(tpt), nme.CONSTRUCTOR) = core
           val targs1 = targs map (typedAheadType(_))
-          val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
-          if (ptype.uninstantiatedTypeParams.isEmpty) ptype
-          else typedAheadExpr(constr).tpe
+          var ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
+          if (ptype.uninstantiatedTypeParams.nonEmpty) ptype = typedAheadExpr(constr).tpe
+          checkClassTypeWithStablePrefix(ptype, core.pos)
         }
 
         val TypeDef(_, name, impl @ Template(constr, parents, self, body)) = cdef

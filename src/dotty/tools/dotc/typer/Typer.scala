@@ -391,7 +391,7 @@ class Typer extends Namer with Applications with Implicits {
         typed(cpy.Block(tree, clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
         val tpt1 = typedType(tree.tpt)
-        val cls = checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos)
+        val clsref = checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos)
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
         cpy.New(tree, tpt1).withType(tpt1.tpe)
     }
@@ -717,7 +717,8 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = track("typedBind") {
     val body1 = typed(tree.body, pt)
-    val sym = ctx.newSymbol(ctx.owner, tree.name.asTermName, EmptyFlags, pt, coord = tree.pos)
+    // println(i"typed bind $tree pt = $pt bodytpe = ${body1.tpe}")
+    val sym = ctx.newSymbol(ctx.owner, tree.name.asTermName, EmptyFlags, body1.tpe, coord = tree.pos)
     cpy.Bind(tree, tree.name, body1) withType TermRef(NoPrefix, sym)
   }
 

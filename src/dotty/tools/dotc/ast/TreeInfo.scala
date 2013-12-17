@@ -80,7 +80,7 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
     case TypeApply(fn, _) => methPart(fn)
     case AppliedTypeTree(fn, _) => methPart(fn) // !!! should not be needed
     case Block(stats, expr) => methPart(expr)
-    case _ => tree
+    case mp => mp
   }
 
   /** If this is an application, its function part, stripping all

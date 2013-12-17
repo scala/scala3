@@ -483,6 +483,8 @@ trait Applications extends Compatibility { self: Typer =>
           fun1.tpe match {
             case ErrorType =>
               tree.withType(ErrorType)
+            case tp =>
+              throw new Error(s"unexpected type.\n fun1 = $fun1,\n methPart(fun1) = ${methPart(fun1)},\n methPart(fun1).tpe = ${methPart(fun1).tpe},\n tpe = $tp")
           }
       }
     }
