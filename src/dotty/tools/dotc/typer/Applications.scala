@@ -360,7 +360,7 @@ trait Applications extends Compatibility { self: Typer =>
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =
-      typedArgBuf += adaptInterpolated(arg, formal)
+      typedArgBuf += adaptInterpolated(arg, formal.widenByName)
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
@@ -411,7 +411,7 @@ trait Applications extends Compatibility { self: Typer =>
 
     val result = {
       var typedArgs = typedArgBuf.toList
-      val ownType = ctx.traceIndented(i"apply $methRef to $typedArgs%, %", show = true) {
+      val ownType =
         if (!success) ErrorType
         else {
           if (!sameSeq(args, orderedArgs)) {
@@ -426,7 +426,6 @@ trait Applications extends Compatibility { self: Typer =>
             typedArgs = args.asInstanceOf[List[Tree]]
           methodType.instantiate(typedArgs.tpes)
         }
-      }
       wrapDefs(liftedDefs, cpy.Apply(app, normalizedFun, typedArgs).withType(ownType))
     }
   }
@@ -434,7 +433,7 @@ trait Applications extends Compatibility { self: Typer =>
   /** Subclass of Application for type checking an Apply node with untyped arguments. */
   class ApplyToUntyped(app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto, resultType: Type)(implicit ctx: Context)
   extends TypedApply(app, fun, methRef, proto.args, resultType) {
-    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal)
+    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal.widenByName)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
   }
 

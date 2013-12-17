@@ -72,7 +72,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
     param == bound ||
     !frozenConstraint && {
-      println(s"adding ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} to ${constraint.show}")
+      // println(s"adding ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} to ${constraint.show}")
       bound match {
         case bound: PolyParam if constraint contains bound =>
           addConstraint1(param, bound, fromBelow) &&
