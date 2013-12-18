@@ -417,7 +417,7 @@ object desugar {
    *      tree @cls
    */
   def makeAnnotated(cls: Symbol, tree: Tree)(implicit ctx: Context) =
-    Annotated(TypedSplice(tpd.New(cls.typeRef)), tree)
+    Annotated(TypedSplice(tpd.New(cls.typeRef, Nil)), tree)
 
   private def derivedValDef(mods: Modifiers, named: NameTree, tpt: Tree, rhs: Tree) =
     ValDef(mods, named.name.asTermName, tpt, rhs).withPos(named.pos)
@@ -700,7 +700,7 @@ object desugar {
    *  The result is used for validity checking, is thrown away afterwards.
    */
   def refinedTypeToClass(tree: RefinedTypeTree)(implicit ctx: Context): TypeDef = {
-    val parent = Select(New(tree.tpt), nme.CONSTRUCTOR)
+    val parent = New(tree.tpt, Nil)
     val impl = Template(emptyConstructor, parent :: Nil, EmptyValDef, tree.refinements)
     TypeDef(Modifiers(), tpnme.REFINE_CLASS, impl)
   }

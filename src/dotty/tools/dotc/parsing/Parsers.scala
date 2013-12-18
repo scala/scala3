@@ -1423,7 +1423,7 @@ object Parsers {
     /** Annotation        ::=  `@' SimpleType {ArgumentExprs}
      */
     def annot() =
-      adjustStart(accept(AT)) { argumentExprss(wrapNew(simpleType())) }
+      adjustStart(accept(AT)) { ensureApplied(argumentExprss(wrapNew(simpleType()))) }
 
     def annotations(skipNewLines: Boolean = false): List[Tree] = {
       if (skipNewLines) newLineOptWhenFollowedBy(AT)
@@ -1824,7 +1824,7 @@ object Parsers {
     /** ConstrApp         ::=  SimpleType {ParArgumentExprs}
      */
     val constrApp = () =>
-      parArgumentExprss(wrapNew(simpleType()))
+      ensureApplied(parArgumentExprss(wrapNew(simpleType())))
 
     /** Template          ::=  ConstrApps [TemplateBody] | TemplateBody
      *  ConstrApps        ::=  ConstrApp {`with' ConstrApp}

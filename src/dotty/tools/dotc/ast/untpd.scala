@@ -107,7 +107,7 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
     }
     var prefix: Tree = Select(New(tycon), nme.CONSTRUCTOR)
     if (targs.nonEmpty) prefix = TypeApply(prefix, targs)
-    (prefix /: argss)(Apply(_, _))
+    ensureApplied((prefix /: argss)(Apply(_, _)))
   }
 
   def Block(stat: Tree, expr: Tree): Block =
@@ -115,6 +115,11 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
 
   def Apply(fn: Tree, arg: Tree): Apply =
     Apply(fn, arg :: Nil)
+
+  def ensureApplied(tpt: Tree) = tpt match {
+    case _: Apply => tpt
+    case _ => Apply(tpt, Nil)
+  }
 
   def AppliedTypeTree(tpt: Tree, arg: Tree): AppliedTypeTree =
     AppliedTypeTree(tpt, arg :: Nil)
