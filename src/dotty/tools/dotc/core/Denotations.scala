@@ -203,7 +203,7 @@ object Denotations {
       def mergeDenot(denot1: Denotation, denot2: SingleDenotation): Denotation = denot1 match {
         case denot1 @ MultiDenotation(denot11, denot12) =>
           val d1 = mergeDenot(denot11, denot2)
-          if (d1.exists) denot1.derivedMultiDenotation(d1, denot2)
+          if (d1.exists) denot1.derivedMultiDenotation(d1, denot12)
           else {
             val d2 = mergeDenot(denot12, denot2)
             if (d2.exists) denot1.derivedMultiDenotation(denot11, d2)
