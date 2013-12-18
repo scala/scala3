@@ -112,7 +112,7 @@ object EtaExpansion {
   def etaExpand(tree: Tree, tpe: MethodType)(implicit ctx: Context): Tree = {
     def expand(lifted: Tree): Tree = {
       val meth = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic, tpe, coord = tree.pos)
-      Closure(meth, Apply(lifted, _))
+      Closure(meth, argss => (lifted /: argss)(Apply(_, _)))
     }
     val defs = new mutable.ListBuffer[Tree]
     val lifted = liftApp(defs, tree)
