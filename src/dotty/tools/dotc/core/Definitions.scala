@@ -318,6 +318,9 @@ class Definitions(implicit ctx: Context) {
     arity <= MaxTupleArity && (tp isRef TupleClass(arity))
   }
 
+  def isProductSubType(tp: Type) =
+    (tp derivesFrom ProductClass) && tp.baseClasses.exists(ProductClasses contains _)
+
   def isFunctionType(tp: Type) = {
     val arity = tp.dealias.typeArgs.length - 1
     0 <= arity && arity <= MaxFunctionArity && (tp isRef FunctionClass(arity))

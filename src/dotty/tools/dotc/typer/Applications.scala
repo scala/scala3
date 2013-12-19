@@ -612,13 +612,13 @@ trait Applications extends Compatibility { self: Typer =>
       }
       def seqSelector = defn.RepeatedParamType.appliedTo(unapplyResult.elemType :: Nil)
       def getSelectors(tp: Type): List[Type] =
-        if (tp derivesFrom defn.ProductClass) productSelectors(tp) else tp :: Nil
+        if (defn.isProductSubType(tp)) productSelectors(tp) else tp :: Nil
       def getTp = extractorMemberType(unapplyResult, nme.get)
 
       // println(s"unapply $unapplyResult ${extractorMemberType(unapplyResult, nme.isDefined)}")
       if (extractorMemberType(unapplyResult, nme.isDefined) isRef defn.BooleanClass) {
         if (getTp.exists) return getSelectors(getTp)
-        else if (unapplyResult derivesFrom defn.ProductClass) return productSelectors(unapplyResult)
+        else if (defn.isProductSubType(unapplyResult)) return productSelectors(unapplyResult)
       }
       if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
       else if (unapplyResult isRef defn.BooleanClass) Nil
