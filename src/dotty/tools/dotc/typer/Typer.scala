@@ -1071,7 +1071,7 @@ class Typer extends Namer with Applications with Implicits {
               implicitArgError(i"no implicit argument of type $formal found for $where" + failure.postscript)
           }
         }
-        adapt(tpd.Apply(tree, args), wtp.resultType)
+        adapt(tpd.Apply(tree, args), pt)
       case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
         if ((defn.isFunctionType(pt) || (pt eq AnyFunctionProto)) &&
             !tree.symbol.isConstructor)
