@@ -83,6 +83,12 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
     case mp => mp
   }
 
+  /** If tree is a closure, it's body, otherwise tree itself */
+  def closureBody(tree: tpd.Tree): tpd.Tree = tree match {
+    case Block(DefDef(_, nme.ANON_FUN, _, _, _, rhs) :: Nil, Closure(_, _, _)) => rhs
+    case _ => tree
+  }
+
   /** If this is an application, its function part, stripping all
    *  Apply nodes (but leaving TypeApply nodes in). Otherwise the tree itself.
    */

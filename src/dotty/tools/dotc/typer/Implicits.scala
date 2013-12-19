@@ -322,10 +322,13 @@ trait Implicits { self: Typer =>
         val generated1 = adapt(generated, pt)
         lazy val shadowing =
           typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)(nestedContext.withNewTyperState)
+        def shadowingSym = closureBody(shadowing).symbol
         if (ctx.typerState.reporter.hasErrors)
           nonMatchingImplicit(ref)
-        else if (contextual && shadowing.symbol != ref.symbol)
-          shadowedImplicit(ref, methPart(shadowing).tpe)
+        else if (contextual && shadowingSym != ref.symbol) {
+          println(i"SHADOWING $ref is shadowed by $shadowing with sym ${shadowingSym} of type ${methPart(shadowing).tpe}, funproto = ${funProto.getClass}")
+          shadowedImplicit(ref, if (shadowingSym.exists) shadowingSym.typeRef else methPart(shadowing).tpe)
+        }
         else
           SearchSuccess(generated, ref, ctx.typerState)
       }}
