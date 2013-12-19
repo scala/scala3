@@ -333,7 +333,7 @@ trait Applications extends Compatibility { self: Typer =>
   /** Subclass of Application for applicability tests with trees as arguments. */
   class ApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context)
   extends TestApplication(methRef, methRef, args, resultType) {
-    def argType(arg: Tree): Type = normalize(arg.tpe)
+    def argType(arg: Tree): Type = normalize(arg.tpe, NoType)
     def treeToArg(arg: Tree): Tree = arg
     def isVarArg(arg: Tree): Boolean = tpd.isWildcardStarArg(arg)
   }
@@ -546,7 +546,31 @@ trait Applications extends Compatibility { self: Typer =>
     def notAnExtractor(tree: Tree) =
       errorTree(tree, s"${qual.show} cannot be used as an extractor in a pattern because it lacks an unapply or unapplySeq method")
 
-    val unapply = {
+    /** If this is a term ref tree, try to typecheck with its type name.
+     *  If this refers to a type alias, follow the alias, and if
+     *  one finds a class, reference the class companion module.
+     */
+    def followTypeAlias(tree: untpd.Tree): untpd.Tree = {
+      tree match {
+        case tree: untpd.RefTree =>
+          val ttree = typedType(tree.withName(tree.name.toTypeName))
+          ttree.tpe match {
+            case alias: TypeRef if alias.symbol.isAliasType =>
+              companionRef(alias) match {
+                case companion: TermRef => return untpd.ref(companion)
+                case _ =>
+              }
+            case _ =>
+          }
+        case _ =>
+      }
+      untpd.EmptyTree
+    }
+
+    /** A typed qual.unappy or qual.unappySeq tree, if this typechecks.
+     *  Otherwise fallBack with (maltyped) qual.unapply as argument
+     */
+    def trySelectUnapply(qual: untpd.Tree)(fallBack: Tree => Tree): Tree = {
       val unappProto = new UnapplyFunProto(this)
       tryEither {
         implicit ctx => typedExpr(untpd.Select(qual, nme.unapply), unappProto)
@@ -555,9 +579,18 @@ trait Applications extends Compatibility { self: Typer =>
           tryEither {
             implicit ctx => typedExpr(untpd.Select(qual, nme.unapplySeq), unappProto) // for backwards compatibility; will be dropped
           } {
-            (_, _) => notAnExtractor(sel)
+            (_, _) => fallBack(sel)
           }
       }
+    }
+
+    /** Produce a typed qual.unappy or qual.unappySeq tree, or
+     *  else if this fails follow a type alias and try again.
+     */
+    val unapply = trySelectUnapply(qual) { sel =>
+      val qual1 = followTypeAlias(qual)
+      if (qual1.isEmpty) notAnExtractor(sel)
+      else trySelectUnapply(qual1)(_ => notAnExtractor(sel))
     }
 
     def fromScala2x = unapply.symbol.exists && (unapply.symbol.owner is Scala2x)

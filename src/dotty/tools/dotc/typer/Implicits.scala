@@ -40,7 +40,7 @@ object Implicits {
 
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = track("filterMatching") {
-      def refMatches(ref: TermRef)(implicit ctx: Context) = isCompatible(normalize(ref), pt)
+      def refMatches(ref: TermRef)(implicit ctx: Context) = isCompatible(normalize(ref, pt), pt)
       refs filter (refMatches(_)(ctx.fresh.withExploreTyperState)) // create a defensive copy of ctx to avoid constraint pollution
     }
 

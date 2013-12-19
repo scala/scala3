@@ -35,7 +35,7 @@ object Inferencing {
     /** Test compatibility after normalization in a fresh typerstate */
     def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context) = {
       val nestedCtx = ctx.fresh.withExploreTyperState
-      isCompatible(normalize(tp)(nestedCtx), pt)(nestedCtx)
+      isCompatible(normalize(tp, pt)(nestedCtx), pt)(nestedCtx)
     }
   }
 
@@ -78,12 +78,14 @@ object Inferencing {
   /** A prototype for selections in pattern constructors */
   class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType)
 
+  trait ApplyingProto extends ProtoType
+
   /** A prototype for expressions that appear in function position
    *
    *  [](args): resultType
    */
   case class FunProto(args: List[untpd.Tree], override val resultType: Type, typer: Typer)(implicit ctx: Context)
-  extends UncachedGroundType with ProtoType {
+  extends UncachedGroundType with ApplyingProto {
     private var myTypedArgs: List[Tree] = Nil
 
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
@@ -127,9 +129,14 @@ object Inferencing {
    *    []: argType => resultType
    */
   case class ViewProto(argType: Type, override val resultType: Type)(implicit ctx: Context)
-  extends CachedGroundType with ProtoType {
-    def isMatchedBy(tp: Type)(implicit ctx: Context) =
+  extends CachedGroundType with ApplyingProto {
+ //   def lookingForInfo = resultType match {
+ //     case rt: SelectionProto => rt.name.toString == "info"
+ //     case _ => false
+ //   }
+    def isMatchedBy(tp: Type)(implicit ctx: Context) = /*ctx.conditionalTraceIndented(lookingForInfo, i"?.info isMatchedBy $tp ${tp.getClass}")*/ {
       ctx.typer.isApplicable(tp, argType :: Nil, resultType)
+    }
     override def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): collection.Set[NamedType] =
       AndType(argType, resultType).namedPartsWith(p) // this is more efficient than oring two namedParts sets
     override def computeHash = doHash(argType, resultType)
@@ -158,12 +165,12 @@ object Inferencing {
    *   - converts non-dependent method types to the corresponding function types
    *   - dereferences parameterless method types
    */
-  def normalize(tp: Type)(implicit ctx: Context): Type = Stats.track("normalize") {
+  def normalize(tp: Type, pt: Type)(implicit ctx: Context): Type = Stats.track("normalize") {
     tp.widenSingleton match {
-      case pt: PolyType => normalize(constrained(pt).resultType)
-      case mt: MethodType if !mt.isDependent =>
+      case pt: PolyType => normalize(constrained(pt).resultType, pt)
+      case mt: MethodType if !mt.isDependent /*&& !pt.isInstanceOf[ApplyingProto]*/ =>
         if (mt.isImplicit) mt.resultType
-        else defn.FunctionType(mt.paramTypes, mt.resultType)
+        else defn.FunctionType(mt.paramTypes, normalize(mt.resultType, pt))
       case et: ExprType => et.resultType
       case _ => tp
     }
@@ -213,8 +220,29 @@ object Inferencing {
 
   /** Recursively widen and also follow type declarations and type aliases. */
   def widenForMatchSelector(tp: Type)(implicit ctx: Context): Type = tp.widen match {
-    case tp: TypeRef if !tp.symbol.isClass => widenForMatchSelector(tp.bounds.hi)
+    case tp: TypeRef if !tp.symbol.isClass => widenForMatchSelector(tp.info.bounds.hi)
     case tp => tp
+  }
+
+  /** Following type aliases and stripping refinements and annotations, if one arrives at a
+   *  class type reference where the class has a companion module, a reference to
+   *  that companion module. Otherwise NoType
+   */
+  def companionRef(tp: Type)(implicit ctx: Context): Type = tp.dealias match {
+    case tp: TypeRef if tp.symbol.isClass =>
+      val companion = tp.classSymbol.companionModule
+      if (companion.exists)
+        companion.valRef.asSeenFrom(tp.prefix, companion.symbol.owner)
+      else
+        NoType
+    case tp: TypeVar =>
+      companionRef(tp.underlying)
+    case tp: AnnotatedType =>
+      companionRef(tp.underlying)
+    case tp: RefinedType =>
+      companionRef(tp.underlying)
+    case _ =>
+      NoType
   }
 
   /** Check that type arguments `args` conform to corresponding bounds in `poly` */
@@ -239,8 +267,10 @@ object Inferencing {
     case tp: TypeRef if tp.symbol.isClass =>
       checkStable(tp.prefix, pos)
       tp
-    case _: TypeVar | _: AnnotatedType =>
-      checkClassTypeWithStablePrefix(tp.asInstanceOf[TypeProxy].underlying, pos)
+    case tp: TypeVar =>
+      checkClassTypeWithStablePrefix(tp.underlying, pos)
+    case tp: AnnotatedType =>
+      checkClassTypeWithStablePrefix(tp.underlying, pos)
     case _ =>
       ctx.error(i"$tp is not a class type", pos)
       defn.ObjectClass.typeRef
