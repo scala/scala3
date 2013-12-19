@@ -294,6 +294,12 @@ trait Implicits { self: Typer =>
     /** The expected type for the searched implicit */
     lazy val fullProto = implicitProto(pt)
 
+    lazy val funProto = fullProto match {
+      case proto: ViewProto =>
+        FunProto(dummyTreeOfType(proto.argType) :: Nil, proto.resultType, self)
+      case proto => proto
+    }
+
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
     val wildProto = implicitProto((new WildApprox) apply pt)
 
@@ -315,10 +321,13 @@ trait Implicits { self: Typer =>
             pt)
         val generated1 = adapt(generated, pt)
         lazy val shadowing =
-          typed(untpd.Ident(ref.name) withPos pos.toSynthetic, fullProto)(nestedContext.withNewTyperState).tpe
-        if (ctx.typerState.reporter.hasErrors) nonMatchingImplicit(ref)
-        else if (contextual && !(shadowing =:= ref)) shadowedImplicit(ref, shadowing)
-        else SearchSuccess(generated, ref, ctx.typerState)
+          typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)(nestedContext.withNewTyperState)
+        if (ctx.typerState.reporter.hasErrors)
+          nonMatchingImplicit(ref)
+        else if (contextual && shadowing.symbol != ref.symbol)
+          shadowedImplicit(ref, methPart(shadowing).tpe)
+        else
+          SearchSuccess(generated, ref, ctx.typerState)
       }}
 
       /** Given a list of implicit references, produce a list of all implicit search successes,
