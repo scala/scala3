@@ -2104,7 +2104,8 @@ object Types {
         tp.derivedOrType(this(tp.tp1), this(tp.tp2))
 
       case tp @ AnnotatedType(annot, underlying) =>
-        tp.derivedAnnotatedType(mapOver(annot), this(underlying))
+        val underlying1 = mapOver(underlying)
+        if (underlying1 eq underlying) tp else underlying1
 
       case tp @ WildcardType =>
         tp.derivedWildcardType(mapOver(tp.optBounds))
