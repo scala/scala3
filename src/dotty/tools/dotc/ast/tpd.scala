@@ -205,12 +205,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Alternative(trees: List[Tree])(implicit ctx: Context): Alternative =
     untpd.Alternative(trees).withType(ctx.typeComparer.lub(trees map (_.tpe))).checked
 
-  def UnApply(fun: Tree, args: List[Tree])(implicit ctx: Context): UnApply = {
+  def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree])(implicit ctx: Context): UnApply = {
     val owntype = fun.tpe.widen match {
       case MethodType(_, paramType :: Nil) => paramType
       case _ => check(false); ErrorType
     }
-    untpd.UnApply(fun, args).withType(owntype).checked
+    untpd.UnApply(fun, implicits, patterns).withType(owntype).checked
   }
 
   def ValDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): ValDef =

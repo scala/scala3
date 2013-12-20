@@ -18,5 +18,13 @@ object collections {
     
   val ys = ints3 map (x => x + 1)
   val zs = ys filter (y => y != 0)
+  
+  val chrs = "abc"
+    
+  def do2(x: Int, y: Char) = ()
+  
+  chrs foreach println
+  
+  (ints2, chrs).zipped foreach do2
 
 }

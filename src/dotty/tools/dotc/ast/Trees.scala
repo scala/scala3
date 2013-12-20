@@ -640,8 +640,20 @@ object Trees {
     type ThisTree[-T >: Untyped] = Alternative[T]
   }
 
-  /** fun(args) in a pattern, if fun is an extractor */
-  case class UnApply[-T >: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])
+  /** The typed translation of `extractor(patterns)` in a pattern. The translation has the following
+   *  components:
+   *
+   *  @param fun       is `extractor.unapply` (or, for backwards compatibility, `extractor.unapplySeq`)
+   *                   possibly with type parameters
+   *  @param implicits Any implicit parameters passed to the unapply after the selector
+   *  @param patterns  The argument patterns in the pattern match.
+   *
+   *  Given a match selector `sel` a pattern UnApply(fun, implicits, patterns) is roughly translated as follows
+   *
+   *    val result = fun(sel)(implicits)
+   *    if (result.isDefined) "match patterns against result"
+   */
+  case class UnApply[-T >: Untyped] private[ast] (fun: Tree[T], implicits: List[Tree[T]], patterns: List[Tree[T]])
     extends PatternTree[T] {
     type ThisTree[-T >: Untyped] = UnApply[T]
   }
@@ -1014,9 +1026,9 @@ object Trees {
         case tree: Alternative if (trees eq tree.trees) => tree
         case _ => finalize(tree, untpd.Alternative(trees))
       }
-      def UnApply(tree: Tree, fun: Tree, args: List[Tree]): UnApply = tree match {
-        case tree: UnApply if (fun eq tree.fun) && (args eq tree.args) => tree
-        case _ => finalize(tree, untpd.UnApply(fun, args))
+      def UnApply(tree: Tree, fun: Tree, implicits: List[Tree], patterns: List[Tree]): UnApply = tree match {
+        case tree: UnApply if (fun eq tree.fun) && (implicits eq tree.implicits) && (patterns eq tree.patterns) => tree
+        case _ => finalize(tree, untpd.UnApply(fun, implicits, patterns))
       }
       def ValDef(tree: Tree, mods: Modifiers, name: TermName, tpt: Tree, rhs: Tree): ValDef = tree match {
         case tree: ValDef if (mods == tree.mods) && (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
@@ -1122,8 +1134,8 @@ object Trees {
           cpy.Bind(tree, name, transform(body))
         case Alternative(trees) =>
           cpy.Alternative(tree, transform(trees))
-        case UnApply(fun, args) =>
-          cpy.UnApply(tree, transform(fun), transform(args))
+        case UnApply(fun, implicits, patterns) =>
+          cpy.UnApply(tree, transform(fun), transform(implicits), transform(patterns))
         case ValDef(mods, name, tpt, rhs) =>
           cpy.ValDef(tree, mods, name, transform(tpt), transform(rhs))
         case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
@@ -1227,8 +1239,8 @@ object Trees {
           this(x, body)
         case Alternative(trees) =>
           this(x, trees)
-        case UnApply(fun, args) =>
-          this(this(x, fun), args)
+        case UnApply(fun, implicits, patterns) =>
+          this(this(this(x, fun), implicits), patterns)
         case ValDef(mods, name, tpt, rhs) =>
           this(this(x, tpt), rhs)
         case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>

@@ -241,8 +241,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         changePrec(InfixPrec) { toText(name) ~ " @ " ~ toText(body) }
       case Alternative(trees) =>
         changePrec(OrPrec) { toText(trees, " | ") }
-      case UnApply(fun, args) =>
-        toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
+      case UnApply(fun, implicits, patterns) =>
+        val extractor = fun match {
+          case Select(extractor, nme.unapply) => extractor
+          case _ => fun
+        }
+        toTextLocal(extractor) ~
+        "(" ~ toTextGlobal(patterns, ", ") ~ ")" ~
+        ("(" ~ toTextGlobal(implicits, ", ") ~ ")" provided implicits.nonEmpty)
       case ValDef(mods, name, tpt, rhs) =>
         modText(mods, if (mods is Mutable) "var" else "val") ~~ toText(name) ~
           optAscription(tpt) ~ optText(rhs)(" = " ~ _)

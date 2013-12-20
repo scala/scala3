@@ -629,7 +629,7 @@ trait Applications extends Compatibility { self: Typer =>
     }
 
     unapply.tpe.widen match {
-      case mt: MethodType if !mt.isDependent =>
+      case mt: MethodType if mt.paramTypes.length == 1 && !mt.isDependent =>
         val unapplyArgType = mt.paramTypes.head
         println(s"unapp arg tpe = ${unapplyArgType.show}, pt = ${pt.show}")
         def wpt = widenForMatchSelector(pt)
@@ -671,7 +671,15 @@ trait Applications extends Compatibility { self: Typer =>
               i"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $wpt",
               tree.pos)
           }
-        var argTypes = unapplyArgs(mt.resultType)
+
+        val dummyArg = dummyTreeOfType(unapplyArgType)
+        val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapply, dummyArg :: Nil)))
+        val unapplyImplicits = unapplyApp match {
+          case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2
+          case Apply(unapply, `dummyArg` :: Nil) => Nil
+        }
+
+        var argTypes = unapplyArgs(unapplyApp.tpe)
         val bunchedArgs = argTypes match {
           case argType :: Nil if argType.isRepeatedParam => untpd.SeqLiteral(args) :: Nil
           case _ => args
@@ -681,15 +689,15 @@ trait Applications extends Compatibility { self: Typer =>
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }
-        val typedArgs = (bunchedArgs, argTypes).zipped map (typed(_, _))
-        val result = cpy.UnApply(tree, unapply, typedArgs) withType ownType
-        println(s"typedargs = $typedArgs")
+        val unapplyPatterns = (bunchedArgs, argTypes).zipped map (typed(_, _))
+        val result = cpy.UnApply(tree, unapply, unapplyImplicits, unapplyPatterns) withType ownType
+        println(s"unapply patterns = $unapplyPatterns")
         if ((ownType eq pt) || ownType.isError) result
         else Typed(result, TypeTree(ownType))
       case tp =>
         val unapplyErr = if (tp.isError) unapply else notAnExtractor(unapply)
         val typedArgsErr = args mapconserve (typed(_, defn.AnyType))
-        cpy.UnApply(tree, unapplyErr, typedArgsErr) withType ErrorType
+        cpy.UnApply(tree, unapplyErr, Nil, typedArgsErr) withType ErrorType
     }
   }
 

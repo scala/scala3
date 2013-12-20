@@ -82,7 +82,7 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
   def TypeBoundsTree(lo: Tree, hi: Tree): TypeBoundsTree = new TypeBoundsTree(lo, hi)
   def Bind(name: Name, body: Tree): Bind = new Bind(name, body)
   def Alternative(trees: List[Tree]): Alternative = new Alternative(trees)
-  def UnApply(fun: Tree, args: List[Tree]): UnApply = new UnApply(fun, args)
+  def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree]): UnApply = new UnApply(fun, implicits, patterns)
   def ValDef(mods: Modifiers, name: TermName, tpt: Tree, rhs: Tree): ValDef = new ValDef(mods, name, tpt, rhs)
   def DefDef(mods: Modifiers, name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: Tree): DefDef = new DefDef(mods, name, tparams, vparamss, tpt, rhs)
   def TypeDef(mods: Modifiers, name: TypeName, rhs: Tree): TypeDef = new TypeDef(mods, name, rhs)

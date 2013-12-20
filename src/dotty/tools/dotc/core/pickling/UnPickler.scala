@@ -979,7 +979,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case UNAPPLYtree =>
         val fun = readTreeRef()
         val args = until(end, readTreeRef)
-        UnApply(fun, args)
+        UnApply(fun, Nil, args) // !!! this is wrong in general
 
       case ARRAYVALUEtree =>
         val elemtpt = readTreeRef()

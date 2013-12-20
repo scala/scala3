@@ -195,7 +195,7 @@ object CheckTrees {
       }
     case Alternative(alts) =>
       for (alt <- alts) check(alt.isValueOrPattern)
-    case UnApply(fun, args) => // todo: review
+    case UnApply(fun, implicits, args) => // todo: review
       check(fun.isTerm)
       for (arg <- args) check(arg.isValueOrPattern)
       val funtpe @ MethodType(_, _) = fun.tpe.widen
