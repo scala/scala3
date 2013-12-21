@@ -309,9 +309,9 @@ class TypeComparer(initctx: Context) extends DotClass {
       isSubType(tp1, tp21) && isSubType(tp1, tp22)
     case OrType(tp21, tp22) =>
       isSubType(tp1, tp21) || isSubType(tp1, tp22)
-    case tp2 @ MethodType(_, formals1) =>
+    case tp2 @ MethodType(_, formals2) =>
       tp1 match {
-        case tp1 @ MethodType(_, formals2) =>
+        case tp1 @ MethodType(_, formals1) =>
           tp1.signature == tp2.signature &&
             (if (Config.newMatch) subsumeParams(formals1, formals2, tp1.isJava, tp2.isJava)
              else matchingParams(formals1, formals2, tp1.isJava, tp2.isJava)) &&
@@ -330,7 +330,16 @@ class TypeComparer(initctx: Context) extends DotClass {
           false
       }
     case tp2 @ ExprType(restpe2) =>
-      isSubType(tp1.widenExpr, restpe2)
+      tp1 match {
+        // We allow ()T to be a subtype of => T.
+        // We need some subtype relationship between them so that e.g.
+        // def toString   and   def toString()   don't clash when seen
+        // as members of the same type. And it seems most logical to take
+        // ()T <:< => T, since everything one can do with a => T one can
+        // also do with a ()T by automatic () insertion.
+        case tp1 @ MethodType(Nil, _) => isSubType(tp1.resultType, restpe2)
+        case _ => isSubType(tp1.widenExpr, restpe2)
+      }
     case tp2 @ TypeBounds(lo2, hi2) =>
       tp1 match {
         case tp1 @ TypeBounds(lo1, hi1) =>
