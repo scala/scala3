@@ -32,7 +32,7 @@ object Inferencing {
     def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean =
       tp.widenByName <:< pt.widenByName || viewExists(tp, pt)
 
-    /** Test compatibility after normalization in a fresh typerstate */
+    /** Test compatibility after normalization in a fresh typerstate. */
     def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context) = {
       val nestedCtx = ctx.fresh.withExploreTyperState
       isCompatible(normalize(tp, pt)(nestedCtx), pt)(nestedCtx)
@@ -164,13 +164,25 @@ object Inferencing {
    *   - skips implicit parameters
    *   - converts non-dependent method types to the corresponding function types
    *   - dereferences parameterless method types
+   *   - dereferences nullary method types provided the corresponding function type
+   *     is not a subtype of the expected type.
+   * Note: We need to take account of the possibility of inserting a () argument list in normalization. Otherwise, a type with a
+   *     def toString(): String
+   * member would not count as a valid solution for ?{toString: String}. This would then lead to an implicit
+   * insertion, with a nice explosion of inference search because of course every implicit result has some sort
+   * of toString method. The problem is solved by dereferencing nullary method types if the corresponding
+   * function type is not compatible with the prototype.
    */
   def normalize(tp: Type, pt: Type)(implicit ctx: Context): Type = Stats.track("normalize") {
     tp.widenSingleton match {
       case pt: PolyType => normalize(constrained(pt).resultType, pt)
       case mt: MethodType if !mt.isDependent /*&& !pt.isInstanceOf[ApplyingProto]*/ =>
         if (mt.isImplicit) mt.resultType
-        else defn.FunctionType(mt.paramTypes, normalize(mt.resultType, pt))
+        else {
+          val rt = normalize(mt.resultType, pt)
+          val ft = defn.FunctionType(mt.paramTypes, rt)
+          if (mt.paramTypes.nonEmpty || ft <:< pt) ft else rt
+        }
       case et: ExprType => et.resultType
       case _ => tp
     }

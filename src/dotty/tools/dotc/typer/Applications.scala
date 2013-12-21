@@ -315,11 +315,11 @@ trait Applications extends Compatibility { self: Typer =>
     type Result = Unit
 
     /** The type of the given argument */
-    protected def argType(arg: Arg): Type
+    protected def argType(arg: Arg, formal: Type): Type
 
     def typedArg(arg: Arg, formal: Type): Arg = arg
     def addArg(arg: TypedArg, formal: Type) =
-      ok = ok & isCompatible(argType(arg), formal)
+      ok = ok & isCompatible(argType(arg, formal), formal)
     def makeVarArg(n: Int, elemFormal: Type) = {}
     def fail(msg: => String, arg: Arg) =
       ok = false
@@ -333,7 +333,7 @@ trait Applications extends Compatibility { self: Typer =>
   /** Subclass of Application for applicability tests with trees as arguments. */
   class ApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context)
   extends TestApplication(methRef, methRef, args, resultType) {
-    def argType(arg: Tree): Type = normalize(arg.tpe, NoType)
+    def argType(arg: Tree, formal: Type): Type = normalize(arg.tpe, formal)
     def treeToArg(arg: Tree): Tree = arg
     def isVarArg(arg: Tree): Boolean = tpd.isWildcardStarArg(arg)
   }
@@ -341,7 +341,7 @@ trait Applications extends Compatibility { self: Typer =>
   /** Subclass of Application for applicability tests with types as arguments. */
   class ApplicableToTypes(methRef: TermRef, args: List[Type], resultType: Type)(implicit ctx: Context)
   extends TestApplication(methRef, methRef, args, resultType) {
-    def argType(arg: Type): Type = arg
+    def argType(arg: Type, formal: Type): Type = arg
     def treeToArg(arg: Tree): Type = arg.tpe
     def isVarArg(arg: Type): Boolean = arg.isRepeatedParam
   }
