@@ -29,7 +29,7 @@ class FrontEnd extends Phase {
   }
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): Unit = {
-    val unitContexts = units map ctx.fresh.withCompilationUnit
+    val unitContexts = units map (unit => ctx.fresh.withCompilationUnit(unit))
     unitContexts foreach (parse(_))
     unitContexts foreach (enterSyms(_))
     unitContexts foreach (typeCheck(_))
