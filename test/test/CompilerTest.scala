@@ -20,4 +20,23 @@ class CompilerTest extends DottyTest {
   def compileFile(prefix: String, fileName: String, args: List[String] = Nil, xerrors: Int = 0): Unit =
     compileArgs((s"$prefix$fileName.scala" :: args).toArray, xerrors)
 
+  def compileDir(path: String, args: List[String] = Nil, xerrors: Int = 0): Unit = {
+    val dir = Directory(path)
+    val fileNames = dir.files.toArray.map(_.toString).filter(_ endsWith ".scala")
+    compileArgs(fileNames ++ args, xerrors)
+  }
+
+}
+object CompilerText extends App {
+
+//  val dotcDir = "/Users/odersky/workspace/dotty/src/dotty/"
+
+//  new CompilerTest().compileFile(dotcDir + "tools/dotc/", "CompilationUnit")
+//  new CompilerTest().compileFile(dotcDir + "tools/dotc/", "Compiler")
+//  new CompilerTest().compileFile(dotcDir + "tools/dotc/", "Driver")
+//  new CompilerTest().compileFile(dotcDir + "tools/dotc/", "Main")
+//  new CompilerTest().compileFile(dotcDir + "tools/dotc/", "Run")
+
+//  new CompilerTest().compileDir(dotcDir + "tools/dotc")
+ // new CompilerTest().compileFile(dotcDir + "tools/dotc/", "Run")
 }

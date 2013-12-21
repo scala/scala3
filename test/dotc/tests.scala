@@ -10,7 +10,7 @@ class tests extends CompilerTest {
 
   val posDir = "/Users/odersky/workspace/dotty/tests/pos/"
   val negDir = "/Users/odersky/workspace/dotty/tests/neg/"
-
+  val dotcDir = "/Users/odersky/workspace/dotty/src/dotty/"
 
   @Test def pos_Coder() = compileFile(posDir, "Coder")
   @Test def pos_blockescapes() = compileFile(posDir, "blockescapes")
@@ -37,4 +37,6 @@ class tests extends CompilerTest {
   @Test def neg_typedidents() = compileFile(negDir, "typedidents", xerrors = 2)
   @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)
   @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 10)
+
+  @Test def dotc = compileDir(dotcDir + "tools/dotc")
 }
