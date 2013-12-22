@@ -100,8 +100,7 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
   /** The number of arguments in an application */
   def numArgs(tree: Tree): Int = unsplice(tree) match {
     case Apply(fn, args) => numArgs(fn) + args.length
-    case TypeApply(fn, args) => numArgs(fn) + args.length
-    case AppliedTypeTree(fn, args) => numArgs(fn) + args.length
+    case TypeApply(fn, args) => numArgs(fn)
     case Block(stats, expr) => numArgs(expr)
     case _ => 0
   }
