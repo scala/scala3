@@ -127,11 +127,14 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Turn this type, which is used as an argument for
    *  type parameter `tparam`, into a TypeBounds RHS
    */
-  final def toBounds(tparam: Symbol)(implicit ctx: Context): TypeBounds = {
-    val v = tparam.variance
-    if (v > 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.upper(self)
-    else if (v < 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.lower(self)
-    else TypeAlias(self, v)
+  final def toBounds(tparam: Symbol)(implicit ctx: Context): TypeBounds = self match {
+    case self: TypeBounds => // this can happen for wildcard args
+      self
+    case _ =>
+      val v = tparam.variance
+      if (v > 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.upper(self)
+      else if (v < 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.lower(self)
+      else TypeAlias(self, v)
   }
 
   /** The type arguments of the base type instance wrt `base` of this type */

@@ -708,8 +708,9 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedTypeBoundsTree(tree: untpd.TypeBoundsTree)(implicit ctx: Context): TypeBoundsTree = track("typedTypeBoundsTree") {
-    val lo1 = typed(tree.lo)
-    val hi1 = typed(tree.hi)
+    val TypeBoundsTree(lo, hi) = desugar.typeBoundsTree(tree)
+    val lo1 = typed(lo)
+    val hi1 = typed(hi)
     if (!(lo1.tpe <:< hi1.tpe))
       ctx.error(i"lower bound ${lo1.tpe} does not conform to upper bound ${hi1.tpe}", tree.pos)
     cpy.TypeBoundsTree(tree, lo1, hi1) withType TypeBounds(lo1.tpe, hi1.tpe)

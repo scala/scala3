@@ -136,22 +136,14 @@ object desugar {
    */
   def typeDef(tdef: TypeDef)(implicit ctx: Context): Tree = {
     val TypeDef(mods, name, rhs) = tdef
-    val rhs1 = rhs match {
-      case TypeBoundsTree(lo, hi) =>
-        val lo1 = if (lo.isEmpty) untpd.TypeTree(defn.NothingType) else lo
-        val hi1 = if (hi.isEmpty) untpd.TypeTree(defn.AnyType) else hi
-        cpy.TypeBoundsTree(rhs, lo1, hi1)
-      case _ =>
-        rhs
-    }
     if (mods is PrivateLocalParam) {
       val tparam = cpy.TypeDef(tdef,
-        mods &~ PrivateLocal | ExpandedName, name.expandedName(ctx.owner), rhs1, tdef.tparams)
+        mods &~ PrivateLocal | ExpandedName, name.expandedName(ctx.owner), rhs, tdef.tparams)
       val alias = cpy.TypeDef(tdef,
         Modifiers(PrivateLocalParamAccessor | Synthetic), name, refOfDef(tparam))
       Thicket(tparam, alias)
     }
-    else cpy.TypeDef(tdef, mods, name, rhs1, tdef.tparams)
+    else cpy.TypeDef(tdef, mods, name, rhs, tdef.tparams)
   }
 
   private val synthetic = Modifiers(Synthetic)
@@ -226,18 +218,20 @@ object desugar {
       else Nil
 
     def anyRef = ref(defn.AnyRefAlias.typeRef)
-    def productConstr = {
-      val tycon = ref(defn.ProductNClass(vparamss.head.length).typeRef)
+    def productConstr(n: Int) = {
+      val tycon = ref(defn.ProductNClass(n).typeRef)
       val targs = vparamss.head map (_.tpt)
       New(AppliedTypeTree(tycon, targs), Nil)
     }
 
     // The desugared parents:  AnyRef, in case parents are Nil.
     // Case classes also get a ProductN parent
-    val parents1 = {
-      val parents0 = if (mods is Case) parents :+ productConstr else parents
-      if (parents0.isEmpty) New(anyRef, Nil) :: Nil else parents0
-    }
+    var parents1 = parents
+    val n = vparamss.head.length
+    if ((mods is Case) && 2 <= n && n <= Definitions.MaxTupleArity)
+      parents1 = parents1 :+ productConstr(n)
+    if (parents1.isEmpty)
+      parents1 = New(anyRef, Nil) :: Nil
 
     // The thicket which is the desugared version of the companion object
     //     synthetic object C extends parentTpt { defs }
@@ -390,6 +384,16 @@ object desugar {
         unitLiteral withPos (if (tree.stats.isEmpty) tree.pos else tree.pos.endPos))
     case _ =>
       tree
+  }
+
+  /** EmptyTree in lower bound ==> Nothing
+   *  EmptyTree in upper bounds ==> Any
+   */
+  def typeBoundsTree(tree: TypeBoundsTree)(implicit ctx: Context): TypeBoundsTree = {
+    val TypeBoundsTree(lo, hi) = tree
+    val lo1 = if (lo.isEmpty) untpd.TypeTree(defn.NothingType) else lo
+    val hi1 = if (hi.isEmpty) untpd.TypeTree(defn.AnyType) else hi
+    cpy.TypeBoundsTree(tree, lo1, hi1)
   }
 
   /** Make closure corresponding to function.
