@@ -89,6 +89,9 @@ object UnPickler {
       tp.derivedPolyType(paramNames, tp.paramBounds, arrayToRepeated(tp.resultType))
   }
 
+  def ensureConstructor(cls: ClassSymbol, scope: Scope)(implicit ctx: Context) =
+    if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) cls.enter(ctx.newDefaultConstructor(cls), scope)
+
   def setClassInfo(denot: ClassDenotation, info: Type, selfInfo: Type = NoType)(implicit ctx: Context): Unit = {
     val cls = denot.classSymbol
     val (tparams, TempClassInfoType(parents, decls, clazz)) = info match {
@@ -105,6 +108,7 @@ object UnPickler {
       if ((selfInfo eq NoType) && (denot is ModuleClass))
         denot.owner.thisType select denot.sourceModule
       else selfInfo
+    if (!(denot.flagsUNSAFE is JavaModule)) ensureConstructor(denot.symbol.asClass, decls)
     denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)
   }
 }
