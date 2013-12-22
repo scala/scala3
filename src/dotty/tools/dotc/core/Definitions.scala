@@ -45,7 +45,7 @@ class Definitions(implicit ctx: Context) {
           if (tpe.typeParams.nonEmpty) tpe.appliedTo(typeParam.typeRef)
           else tpe
         val parents = parentConstrs.toList map instantiate
-        val parentRefs: List[TypeRef] = ctx.normalizeToRefs(parents, cls, paramDecls)
+        val parentRefs: List[TypeRef] = ctx.normalizeToClassRefs(parents, cls, paramDecls)
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parentRefs, paramDecls)
       }
     }
@@ -98,8 +98,8 @@ class Definitions(implicit ctx: Context) {
   lazy val AnyRefAlias: TypeSymbol = newAliasType(tpnme.AnyRef, ObjectType)
 
     lazy val Object_## = newMethod(ObjectClass, nme.HASHHASH, ExprType(IntType), Final)
-    lazy val Object_== = newMethod(ObjectClass, nme.EQ, methOfAnyRef(BooleanType), Final)
-    lazy val Object_!= = newMethod(ObjectClass, nme.NE, methOfAnyRef(BooleanType), Final)
+    lazy val Object_== = newMethod(ObjectClass, nme.EQ, methOfAny(BooleanType), Final)
+    lazy val Object_!= = newMethod(ObjectClass, nme.NE, methOfAny(BooleanType), Final)
     lazy val Object_eq = newMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
     lazy val Object_ne = newMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
     lazy val Object_isInstanceOf = newT1EmptyParamsMethod(ObjectClass, nme.isInstanceOf_Ob, _ => BooleanType, Final | Synthetic)

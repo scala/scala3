@@ -86,10 +86,10 @@ trait TypeOps { this: Context =>
   }
 
   /** Normalize a list of parent types of class `cls` that may contain refinements
-   *  to a list of typerefs, by converting all refinements to member
+   *  to a list of typerefs referring to classes, by converting all refinements to member
    *  definitions in scope `decls`. Can add members to `decls` as a side-effect.
    */
-  def normalizeToRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
+  def normalizeToClassRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
 
     def enterArgBinding(formal: Symbol, info: Type) = {
       val typeArgFlag = if (formal is Local) TypeArgument else EmptyFlags
@@ -144,7 +144,8 @@ trait TypeOps { this: Context =>
         formals = formals.updated(name, tp1.typeParamNamed(name))
         normalizeToRef(tp1)
       case tp: TypeRef =>
-        tp
+        if (tp.symbol.isAliasType) normalizeToRef(tp.info.bounds.hi)
+        else tp
       case ErrorType =>
         defn.AnyClass.typeRef
       case _ =>

@@ -365,7 +365,7 @@ class Namer { typer: Typer =>
         // pre-set info, so that parent types can refer to type params
         cls.info = adjustIfModule(ClassInfo(cls.owner.thisType, cls, Nil, decls, selfInfo))
         val parentTypes = parents map parentType
-        val parentRefs = ctx.normalizeToRefs(parentTypes, cls, decls)
+        val parentRefs = ctx.normalizeToClassRefs(parentTypes, cls, decls)
         val parentClsRefs =
           for ((parentRef, constr) <- parentRefs zip parents)
           yield checkClassTypeWithStablePrefix(parentRef, constr.pos)
