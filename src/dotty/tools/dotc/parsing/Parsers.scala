@@ -677,7 +677,7 @@ object Parsers {
     def refinedTypeRest(t: Tree): Tree = {
       newLineOptWhenFollowedBy(LBRACE)
       in.token match {
-        case AT => refinedTypeRest(atPos(t.pos.start) { Annotated(t, annot()) })
+        case AT => refinedTypeRest(atPos(t.pos.start) { Annotated(annot(), t) })
         case LBRACE => refinedTypeRest(atPos(t.pos.start) { RefinedTypeTree(t, refinement()) })
         case _ => t
       }
