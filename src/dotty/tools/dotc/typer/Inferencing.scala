@@ -149,7 +149,15 @@ object Inferencing {
    *
    *    [] [?_, ..., ?_nargs] resultType
    */
-  case class PolyProto(nargs: Int, override val resultType: Type) extends UncachedGroundType
+  case class PolyProto(nargs: Int, override val resultType: Type) extends UncachedGroundType with ProtoType {
+    override def isMatchedBy(tp: Type)(implicit ctx: Context) = {
+      def isInstantiatable(tp: Type) = tp.widen match {
+        case PolyType(paramNames) => paramNames.length == nargs
+        case _ => false
+      }
+      isInstantiatable(tp) || tp.member(nme.apply).hasAltWith(d => isInstantiatable(d.info))
+    }
+  }
 
   /** A prototype for expressions [] that are known to be functions:
    *
