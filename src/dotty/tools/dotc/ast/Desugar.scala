@@ -106,7 +106,7 @@ object desugar {
           DefDef(
             mods = vparam.mods & AccessFlags,
             name = meth.name.defaultGetterName(n),
-            tparams = meth.tparams,
+            tparams = meth.tparams map toDefParam,
             vparamss = takeUpTo(normalizedVparamss, n),
             tpt = TypeTree(),
             rhs = vparam.rhs)
@@ -148,6 +148,9 @@ object desugar {
 
   private val synthetic = Modifiers(Synthetic)
 
+  private def toDefParam(tparam: TypeDef) =
+    cpy.TypeDef(tparam, Modifiers(Param), tparam.name, tparam.rhs, tparam.tparams)
+
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
     val TypeDef(
@@ -163,9 +166,7 @@ object desugar {
     // prefixed by type or val). `tparams` and `vparamss` are the type parameters that
     // go in `constr`, the constructor after desugaring.
 
-    val tparams = constr1.tparams.map(tparam => cpy.TypeDef(tparam,
-      Modifiers(Param), tparam.name, tparam.rhs, tparam.tparams))
-
+    val tparams = constr1.tparams map toDefParam
     val vparamss =
       if (constr1.vparamss.isEmpty) { // ensure parameter list is non-empty
         if (mods is Case)
