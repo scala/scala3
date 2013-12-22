@@ -647,7 +647,7 @@ object Parsers {
               atPos(start, in.skipToken()) { Function(ts, typ()) }
             else {
               for (t <- ts)
-                if (isByNameParamType(t))
+                if (t.isInstanceOf[ByNameTypeTree])
                   syntaxError("no by-name parameter type allowed here", t.pos)
               val tuple = atPos(start) { makeTupleOrParens(ts) }
               infixTypeRest(refinedTypeRest(withTypeRest(simpleTypeRest(tuple))))
@@ -748,7 +748,7 @@ object Parsers {
     /** FunArgType ::=  ArgType | `=>' ArgType
      */
     val funArgType = () =>
-      if (in.token == ARROW) atPos(in.skipToken()) { PrefixOp(nme.ARROWkw, argType()) }
+      if (in.token == ARROW) atPos(in.skipToken()) { ByNameTypeTree(argType()) }
       else argType()
 
     /** ParamType ::= FunArgType | ArgType `*'

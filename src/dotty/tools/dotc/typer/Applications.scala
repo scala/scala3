@@ -360,7 +360,7 @@ trait Applications extends Compatibility { self: Typer =>
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =
-      typedArgBuf += adaptInterpolated(arg, formal.widenByName)
+      typedArgBuf += adaptInterpolated(arg, formal.widenExpr)
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
@@ -433,7 +433,7 @@ trait Applications extends Compatibility { self: Typer =>
   /** Subclass of Application for type checking an Apply node with untyped arguments. */
   class ApplyToUntyped(app: untpd.Apply, fun: Tree, methRef: TermRef, proto: FunProto, resultType: Type)(implicit ctx: Context)
   extends TypedApply(app, fun, methRef, proto.args, resultType) {
-    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal.widenByName)
+    def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal.widenExpr)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
   }
 

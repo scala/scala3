@@ -182,7 +182,7 @@ class Definitions(implicit ctx: Context) {
   lazy val BoxedFloatClass = requiredClass("java.lang.Float")
   lazy val BoxedDoubleClass = requiredClass("java.lang.Double")
 
-  lazy val ByNameParamClass       = specialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, AnyType)
+  lazy val ByNameParamClass2x     = specialPolyClass(tpnme.BYNAME_PARAM_CLASS, Covariant, AnyType)
   lazy val EqualsPatternClass     = specialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, AnyType)
 
   lazy val RepeatedParamClass     = specialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, SeqType)
@@ -451,7 +451,7 @@ class Definitions(implicit ctx: Context) {
     AnyRefAlias,
     RepeatedParamClass,
     JavaRepeatedParamClass,
-    ByNameParamClass,
+    ByNameParamClass2x,
     AnyClass,
     AnyValClass,
     NullClass,

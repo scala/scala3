@@ -196,6 +196,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def AppliedTypeTree(tpt: Tree, args: List[Tree])(implicit ctx: Context): AppliedTypeTree =
     untpd.AppliedTypeTree(tpt, args).withType(tpt.tpe.appliedTo(args map (_.tpe))).checked
 
+  def ByNameTypeTree(result: Tree)(implicit ctx: Context): ByNameTypeTree =
+    untpd.ByNameTypeTree(result).withType(ExprType(result.tpe)).checked
+
   def TypeBoundsTree(lo: Tree, hi: Tree)(implicit ctx: Context): TypeBoundsTree =
     untpd.TypeBoundsTree(lo, hi).withType(TypeBounds(lo.tpe, hi.tpe)).checked
 

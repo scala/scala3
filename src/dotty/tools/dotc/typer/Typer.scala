@@ -707,6 +707,11 @@ class Typer extends Namer with Applications with Implicits {
     cpy.AppliedTypeTree(tree, tpt1, args1) withType tpt1.tpe.appliedTo(args1.tpes)
   }
 
+  def typedByNameTypeTree(tree: untpd.ByNameTypeTree)(implicit ctx: Context): ByNameTypeTree = track("typedByNameTypeTree") {
+    val result1 = typed(tree.result)
+    cpy.ByNameTypeTree(tree, result1) withType ExprType(result1.tpe)
+  }
+
   def typedTypeBoundsTree(tree: untpd.TypeBoundsTree)(implicit ctx: Context): TypeBoundsTree = track("typedTypeBoundsTree") {
     val TypeBoundsTree(lo, hi) = desugar.typeBoundsTree(tree)
     val lo1 = typed(lo)
@@ -875,6 +880,7 @@ class Typer extends Namer with Applications with Implicits {
           case tree: untpd.OrTypeTree => typedOrTypeTree(tree)
           case tree: untpd.RefinedTypeTree => typedRefinedTypeTree(tree)
           case tree: untpd.AppliedTypeTree => typedAppliedTypeTree(tree)
+          case tree: untpd.ByNameTypeTree => typedByNameTypeTree(tree)
           case tree: untpd.TypeBoundsTree => typedTypeBoundsTree(tree)
           case tree: untpd.Alternative => typedAlternative(tree, pt)
           case tree: untpd.Import => typedImport(tree, sym)

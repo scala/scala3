@@ -263,7 +263,7 @@ trait Implicits { self: Typer =>
    */
   def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
     ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", show = true) {
-      assert(!(pt isRef defn.ByNameParamClass))
+      assert(!pt.isInstanceOf[ExprType])
       val isearch =
         if (ctx.settings.explaintypes.value) new ExplainedImplicitSearch(pt, argument, pos)
         else new ImplicitSearch(pt, argument, pos)

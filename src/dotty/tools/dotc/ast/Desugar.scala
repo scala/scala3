@@ -651,10 +651,7 @@ object desugar {
           Select(t, op)
         }
       case PrefixOp(op, t) =>
-        if ((ctx.mode is Mode.Type) && op == nme.ARROWkw)
-          AppliedTypeTree(ref(defn.ByNameParamClass.typeRef), t)
-        else
-          Select(t, nme.UNARY_PREFIX ++ op)
+        Select(t, nme.UNARY_PREFIX ++ op)
       case Parens(t) =>
         t
       case Tuple(ts) =>

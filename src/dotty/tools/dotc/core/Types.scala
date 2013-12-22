@@ -550,10 +550,6 @@ object Types {
       case _ => this
     }
 
-    /** Widen from => T to T */
-    final def widenByName(implicit ctx: Context): Type =
-      if (this isRef defn.ByNameParamClass) this.typeArgs.head else this
-
     /** Widen type if it is unstable (i.e. an EpxprType, or Termref to unstable symbol */
     final def widenIfUnstable(implicit ctx: Context): Type = this match {
       case tp: ExprType => tp.resultType.widenIfUnstable

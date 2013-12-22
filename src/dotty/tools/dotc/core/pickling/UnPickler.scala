@@ -638,10 +638,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           }
           else TypeRef(pre, sym.name.asTypeName)
         val args = until(end, readTypeRef)
-//        if (args.nonEmpty) { // DEBUG
-//           println(s"reading app type $tycon $args")
-//        }
-        tycon.appliedTo(args)
+        if (sym == defn.ByNameParamClass2x) ExprType(args.head)
+        else tycon.appliedTo(args)
       case TYPEBOUNDStpe =>
         TypeBounds(readTypeRef(), readTypeRef())
       case REFINEDtpe =>

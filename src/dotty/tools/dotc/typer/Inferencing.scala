@@ -30,7 +30,7 @@ object Inferencing {
      *    3. there is an implicit conversion from `tp` to `pt`.
      */
     def isCompatible(tp: Type, pt: Type)(implicit ctx: Context): Boolean =
-      tp.widenByName <:< pt.widenByName || viewExists(tp, pt)
+      tp.widenExpr <:< pt.widenExpr || viewExists(tp, pt)
 
     /** Test compatibility after normalization in a fresh typerstate. */
     def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context) = {

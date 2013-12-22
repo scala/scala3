@@ -176,13 +176,6 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
     case _                                                              => false
   }
 
-  /** Is tpt a by-name parameter type of the form => T? */
-  def isByNameParamType(tpt: Tree)(implicit ctx: Context)  = tpt match {
-    case tpt: TypeTree => tpt.typeOpt isRef defn.ByNameParamClass
-    case AppliedTypeTree(Select(_, tpnme.BYNAME_PARAM_CLASS), _) => true
-    case _                                                       => false
-  }
-
   /** Is name a left-associative operator? */
   def isLeftAssoc(operator: Name) = operator.nonEmpty && (operator.last != ':')
 

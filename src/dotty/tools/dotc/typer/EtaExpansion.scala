@@ -58,7 +58,7 @@ object EtaExpansion {
     methType match {
       case MethodType(paramNames, paramTypes) =>
         (args, paramNames, paramTypes).zipped map { (arg, name, tp) =>
-          if (tp isRef defn.ByNameParamClass) arg
+          if (tp.isInstanceOf[ExprType]) arg
           else liftArg(defs, arg, if (name contains '$') "" else name.toString + "$")
         }
       case _ =>
