@@ -203,8 +203,10 @@ object desugar {
           DefDef(synthetic, name, Nil, Nil, TypeTree(), rhs)
         val isDefinedMeth = syntheticProperty(nme.isDefined, Literal(Constant(true)))
         val productArityMeth = syntheticProperty(nme.productArity, Literal(Constant(caseParams.length)))
-        val productElemMeths = for (i <- 0 until caseParams.length) yield
-          syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeName), caseParams(i).name))
+        def selectorName(n: Int) =
+          if (caseParams.length == 1) nme.get else nme.selectorName(n)
+        val productElemMeths =for (i <- 0 until caseParams.length) yield
+          syntheticProperty(selectorName(i), Select(This(EmptyTypeName), caseParams(i).name))
         val copyMeths =
           if (mods is Abstract) Nil
           else {
@@ -263,8 +265,8 @@ object desugar {
               tparams, vparamss, TypeTree(), creatorExpr) :: Nil
         val unapplyMeth = {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
-          DefDef(synthetic, nme.unapply, tparams, (unapplyParam :: Nil) :: Nil,
-              TypeTree(), Ident(unapplyParam.name))
+          val unapplyRHS = if (n == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
+          DefDef(synthetic, nme.unapply, tparams, (unapplyParam :: Nil) :: Nil, TypeTree(), unapplyRHS)
         }
         companionDefs(parent, applyMeths ::: unapplyMeth :: defaultGetters)
       }
@@ -286,8 +288,12 @@ object desugar {
       }
       else Nil
 
+    val self1 =
+      if (self.isEmpty || !self.tpt.isEmpty) self
+      else cpy.ValDef(self, self.mods, self.name, classTypeRef, self.rhs)
+
     val cdef1 = cpy.TypeDef(cdef, mods, name,
-      cpy.Template(impl, constr, parents1, self,
+      cpy.Template(impl, constr, parents1, self1,
         constr1.tparams ::: constr1.vparamss.flatten ::: body ::: caseClassMeths))
     flatTree(cdef1 :: companions ::: implicitWrappers)
   }
