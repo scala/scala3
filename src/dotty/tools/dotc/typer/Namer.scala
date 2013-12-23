@@ -177,10 +177,12 @@ class Namer { typer: Typer =>
     println(i"creating symbol for $tree")
     tree match {
       case tree: TypeDef if tree.isClassDef =>
-        record(ctx.newClassSymbol(
+        val cls = record(ctx.newClassSymbol(
           ctx.owner, tree.name.encode.asTypeName, tree.mods.flags,
-          cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx) withDecls newScope, tree),
+          cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
+        cls.completer.asInstanceOf[ClassCompleter].init()
+        cls
       case tree: MemberDef =>
         val deferred = if (lacksDefinition(tree)) Deferred else EmptyFlags
         val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
@@ -336,8 +338,19 @@ class Namer { typer: Typer =>
   }
 
   class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
+    withDecls(newScope)
 
     protected implicit val ctx = localContext(cls)
+
+    val TypeDef(_, name, impl @ Template(constr, parents, self, body)) = original
+
+    val (params, rest) = body span {
+      case td: TypeDef => td.mods is Param
+      case td: ValDef => td.mods is ParamAccessor
+      case _ => false
+    }
+
+    def init() = index(params)
 
     /** The type signature of a ClassDef with given symbol */
     override def complete(denot: SymDenotation): Unit = {
@@ -357,14 +370,6 @@ class Namer { typer: Typer =>
         else typedAheadExpr(constr).tpe
       }
 
-      val TypeDef(_, name, impl @ Template(constr, parents, self, body)) = original
-
-      val (params, rest) = body span {
-        case td: TypeDef => td.mods is Param
-        case td: ValDef => td.mods is ParamAccessor
-        case _ => false
-      }
-      index(params)
       val selfInfo =
         if (self.isEmpty) NoType
         else if (cls is Module) cls.owner.thisType select sourceModule
