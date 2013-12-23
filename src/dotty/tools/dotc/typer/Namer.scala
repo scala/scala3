@@ -179,7 +179,7 @@ class Namer { typer: Typer =>
       case tree: TypeDef if tree.isClassDef =>
         record(ctx.newClassSymbol(
           ctx.owner, tree.name.encode.asTypeName, tree.mods.flags,
-          adjustIfModule(new Completer(tree) withDecls newScope, tree),
+          cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx) withDecls newScope, tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
       case tree: MemberDef =>
         val deferred = if (lacksDefinition(tree)) Deferred else EmptyFlags
@@ -314,78 +314,72 @@ class Namer { typer: Typer =>
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
   class Completer(original: Tree)(implicit ctx: Context) extends LazyType {
 
-    def complete(denot: SymDenotation): Unit = {
-      val sym = denot.symbol
-      def localContext = ctx.fresh.withOwner(sym).withTree(original)
+    protected def localContext(owner: Symbol) = ctx.fresh.withOwner(owner).withTree(original)
 
-      def typeSig(tree: Tree): Type = tree match {
-        case tree: ValDef =>
-          valOrDefDefSig(tree, sym, identity)(localContext.withNewScope)
-        case tree: DefDef =>
-          val typer1 = new Typer
-          nestedTyper(sym) = typer1
-          typer1.defDefSig(tree, sym)(localContext.withTyper(typer1))
-        case tree: TypeDef =>
-          if (tree.isClassDef)
-            classDefSig(tree, sym.asClass)(localContext)
-          else
-            typeDefSig(tree, sym)(localContext.withNewScope)
-        case imp: Import =>
-          val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
-          ImportType(tpd.SharedTree(expr1))
+    private def typeSig(sym: Symbol): Type = original match {
+      case original: ValDef =>
+        valOrDefDefSig(original, sym, identity)(localContext(sym).withNewScope)
+      case original: DefDef =>
+        val typer1 = new Typer
+        nestedTyper(sym) = typer1
+        typer1.defDefSig(original, sym)(localContext(sym).withTyper(typer1))
+      case original: TypeDef =>
+        assert(!original.isClassDef)
+        typeDefSig(original, sym)(localContext(sym).withNewScope)
+      case imp: Import =>
+        val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
+        ImportType(tpd.SharedTree(expr1))
+    }
+
+    def complete(denot: SymDenotation): Unit =
+      denot.info = typeSig(denot.symbol)
+  }
+
+  class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
+
+    protected implicit val ctx = localContext(cls)
+
+    /** The type signature of a ClassDef with given symbol */
+    override def complete(denot: SymDenotation): Unit = {
+
+      /** The type of a parent constructor. Types constructor arguments
+       *  only if parent type contains uninstantiated type parameters.
+       */
+      def parentType(constr: untpd.Tree): Type = {
+        val (core, targs) = stripApply(constr) match {
+          case TypeApply(core, targs) => (core, targs)
+          case core => (core, Nil)
+        }
+        val Select(New(tpt), nme.CONSTRUCTOR) = core
+        val targs1 = targs map (typedAheadType(_))
+        val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
+        if (ptype.uninstantiatedTypeParams.isEmpty) ptype
+        else typedAheadExpr(constr).tpe
       }
 
-      /** The type signature of a ClassDef with given symbol */
-      def classDefSig(cdef: TypeDef, cls: ClassSymbol)(implicit ctx: Context): Type = {
+      val TypeDef(_, name, impl @ Template(constr, parents, self, body)) = original
 
-        /** The type of a parent constructor. Types constructor arguments
-         *  only if parent type contains uninstantiated type parameters.
-         */
-        def parentType(constr: untpd.Tree): Type = {
-          val (core, targs) = stripApply(constr) match {
-            case TypeApply(core, targs) => (core, targs)
-            case core => (core, Nil)
-          }
-          val Select(New(tpt), nme.CONSTRUCTOR) = core
-          val targs1 = targs map (typedAheadType(_))
-          val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
-          if (ptype.uninstantiatedTypeParams.isEmpty) ptype
-          else typedAheadExpr(constr).tpe
-        }
-
-        val TypeDef(_, name, impl @ Template(constr, parents, self, body)) = cdef
-
-        val (params, rest) = body span {
-          case td: TypeDef => td.mods is Param
-          case td: ValDef => td.mods is ParamAccessor
-          case _ => false
-        }
-        index(params)
-        val selfInfo = if (self.isEmpty) NoType else createSymbol(self)
-        // pre-set info, so that parent types can refer to type params
-        cls.info = adjustIfModule(ClassInfo(cls.owner.thisType, cls, Nil, decls, selfInfo))
-        val parentTypes = parents map parentType
-        val parentRefs = ctx.normalizeToClassRefs(parentTypes, cls, decls)
-        val parentClsRefs =
-          for ((parentRef, constr) <- parentRefs zip parents)
+      val (params, rest) = body span {
+        case td: TypeDef => td.mods is Param
+        case td: ValDef => td.mods is ParamAccessor
+        case _ => false
+      }
+      index(params)
+      val selfInfo =
+        if (self.isEmpty) NoType
+        else if (cls is Module) cls.owner.thisType select sourceModule
+        else createSymbol(self)
+      // pre-set info, so that parent types can refer to type params
+      denot.info = ClassInfo(cls.owner.thisType, cls, Nil, decls, selfInfo)
+      val parentTypes = parents map parentType
+      val parentRefs = ctx.normalizeToClassRefs(parentTypes, cls, decls)
+      val parentClsRefs =
+        for ((parentRef, constr) <- parentRefs zip parents)
           yield checkClassTypeWithStablePrefix(parentRef, constr.pos)
 
-        index(constr)
-        index(rest)(inClassContext(selfInfo))
-        ClassInfo(cls.owner.thisType, cls, parentClsRefs, decls, selfInfo)
-      }
-
-      def adjustIfModule(sig: Type): Type =
-        if (denot is Module)
-          sig match {
-            case sig: ClassInfo =>
-              sig.derivedClassInfo(selfInfo = sig.prefix select sourceModule)
-            case _ =>
-              sig
-          }
-        else sig
-
-      sym.info = adjustIfModule(typeSig(original))
+      index(constr)
+      index(rest)(inClassContext(selfInfo))
+      denot.info = ClassInfo(cls.owner.thisType, cls, parentClsRefs, decls, selfInfo)
     }
   }
 
