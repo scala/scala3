@@ -258,7 +258,9 @@ object desugar {
           else (vparamss :\ classTypeRef) ((vparams, restpe) => Function(vparams map (_.tpt), restpe))
         val applyMeths =
           if (mods is Abstract) Nil
-          else DefDef(synthetic, nme.apply, tparams, vparamss, TypeTree(), creatorExpr) :: Nil
+          else DefDef(
+              synthetic | (constr1.mods.flags & DefaultParameterized), nme.apply,
+              tparams, vparamss, TypeTree(), creatorExpr) :: Nil
         val unapplyMeth = {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           DefDef(synthetic, nme.unapply, tparams, (unapplyParam :: Nil) :: Nil,

@@ -193,10 +193,12 @@ trait Applications extends Compatibility { self: Typer =>
      *  parameter list, or NoType if none was found
      */
     def findDefaultGetter(n: Int)(implicit ctx: Context): Type = {
-      def getterName = methRef.name.toTermName.defaultGetterName(n)
+      val meth = methRef.symbol
+      val prefix =
+        if ((meth is Synthetic) && meth.name == nme.apply) nme.CONSTRUCTOR else methRef.name
+      def getterName = prefix.defaultGetterName(n)
       def ref(pre: Type, sym: Symbol): Type =
         if (pre.exists && sym.isTerm) pre select sym else NoType
-      val meth = methRef.symbol
       if (meth.hasDefaultParams)
         methRef.prefix match {
           case NoPrefix =>
@@ -221,7 +223,6 @@ trait Applications extends Compatibility { self: Typer =>
                 }
               } else mpre
             val getter = pre.member(getterName)
-            assert(getter.exists, getterName)
             ref(pre, getter.symbol)
         }
       else NoType
