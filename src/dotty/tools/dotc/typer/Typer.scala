@@ -72,9 +72,7 @@ class Typer extends Namer with Applications with Implicits {
   /** The type of a selection with `name` of a tree with type `site`.
    */
   def selectionType(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
-    val refDenot =
-      if (name == nme.CONSTRUCTOR) site.decl(name)
-      else site.member(name)
+    val refDenot = site.member(name)
     if (reallyExists(refDenot)) site.select(name, refDenot)
     else {
       if (!site.isErroneous)
