@@ -639,7 +639,9 @@ object desugar {
     // begin desugar
     tree match {
       case SymbolLit(str) =>
-        New(ref(defn.SymbolClass.typeRef), (Literal(Constant(str)) :: Nil) :: Nil)
+        Apply(
+          Select(ref(defn.SymbolClass.companionModule.termRef), nme.apply),
+          Literal(Constant(str)) :: Nil)
       case InterpolatedString(id, strs, elems) =>
         Apply(Select(Apply(Ident(nme.StringContext), strs), id), elems)
       case InfixOp(l, op, r) =>
