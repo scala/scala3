@@ -14,6 +14,7 @@ import Periods._
 import Decorators._
 import Contexts._
 import Denotations._
+import SymDenotations._
 import printing.Texts._
 import printing.Printer
 import SymDenotations.NoDenotation
@@ -102,11 +103,12 @@ object Scopes {
     }
 
     /** The denotation set of all the symbols with given name in this scope */
-    final def denotsNamed(name: Name)(implicit ctx: Context): PreDenotation = {
+    final def denotsNamed(name: Name, select: SymDenotation => Boolean = selectAll)(implicit ctx: Context): PreDenotation = {
       var syms: PreDenotation = NoDenotation
       var e = lookupEntry(name)
       while (e != null) {
-        syms = syms union e.sym.denot
+        val d = e.sym.denot
+        if (select(d)) syms = syms union d
         e = lookupNextEntry(e)
       }
       syms
@@ -339,6 +341,10 @@ object Scopes {
    *  This is overridden by the reflective compiler to avoid creating new scopes for packages
    */
   def scopeTransform(owner: Symbol)(op: => MutableScope): MutableScope = op
+
+  val selectAll: SymDenotation => Boolean = Function.const(true)
+  val selectPrivate: SymDenotation => Boolean    = d => (d is Flags.Private)
+  val selectNonPrivate: SymDenotation => Boolean = d => !(d is Flags.Private)
 
   /** The empty scope (immutable).
    */

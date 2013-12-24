@@ -63,5 +63,20 @@ object typers {
   class Refinements {
     val y: C { type T; val key: T; def process(x: T): Int }
   }
+  
+  object Accessibility {
+    
+    class A {
+      val x: String = "abc"
+    }
+    
+    class B extends A {
+      private def x: Int = 1
+    }
+    
+    val b: B = new B
+    val y = b.x
+    
+  }
 
 }

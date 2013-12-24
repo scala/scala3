@@ -596,7 +596,7 @@ object Types {
     def underlyingIfRepeated(implicit ctx: Context): Type =
       this.translateParameterized(defn.RepeatedParamClass, defn.SeqClass)
 
-    /** If this is a (possibly aliased, annotated, and parameterized) reference to
+    /** If this is a (possibly aliased, annotated, and/or parameterized) reference to
      *  a class, the class type ref, otherwise NoType.
      */
     def underlyingClassRef(implicit ctx: Context): Type = dealias match {

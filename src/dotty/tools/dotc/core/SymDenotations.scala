@@ -385,9 +385,9 @@ object SymDenotations {
 
       /** Are we inside definition of `boundary`? */
       def accessWithin(boundary: Symbol) =
-        owner.isContainedIn(boundary) &&
+        ctx.owner.isContainedIn(boundary) &&
           (!(this is JavaDefined) || // disregard package nesting for Java
-             owner.enclosingPackage == boundary.enclosingPackage)
+             ctx.owner.enclosingPackage == boundary.enclosingPackage)
 
       /** Are we within definition of linked class of `boundary`? */
       def accessWithinLinked(boundary: Symbol) = {
@@ -938,21 +938,30 @@ object SymDenotations {
      *  The elements of the returned pre-denotation all
      *  have existing symbols.
      */
-    final def membersNamed(name: Name)(implicit ctx: Context): PreDenotation =
+    final def membersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
+      val privates = decls.denotsNamed(name, selectPrivate)
+      privates union nonPrivateMembersNamed(name).filterDisjoint(privates)
+    }
+
+    /** All non-private members of this class that have the given name.
+     *  The elements of the returned pre-denotation all
+     *  have existing symbols.
+     */
+    final def nonPrivateMembersNamed(name: Name)(implicit ctx: Context): PreDenotation =
       if (Config.cacheMembersNamed) {
         var denots: PreDenotation = memberCache lookup name
         if (denots == null) {
-          denots = computeMembersNamed(name)
+          denots = computeNPMembersNamed(name)
           memberCache enter (name, denots)
         }
         denots
-      } else computeMembersNamed(name)
+      } else computeNPMembersNamed(name)
 
-    private def computeMembersNamed(name: Name)(implicit ctx: Context): PreDenotation =
+    private def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation =
       if (!classSymbol.hasChildren ||
           !Config.useFingerPrints ||
           (memberFingerPrint contains name)) {
-        val ownDenots = decls.denotsNamed(name)
+        val ownDenots = decls.denotsNamed(name, selectNonPrivate)
         if (debugTrace)  // DEBUG
           println(s"$this.member($name), ownDenots = $ownDenots")
         def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
@@ -973,10 +982,10 @@ object SymDenotations {
         else collect(ownDenots, classParents)
       } else NoDenotation
 
-    override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation =
-      //ctx.typeComparer.traceIndented(s"($this).findMember($name, $pre)") { // DEBUG
-        membersNamed(name).filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
-      //}
+    override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
+      val raw = if (excluded is Private) nonPrivateMembersNamed(name) else membersNamed(name)
+      raw.filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
+    }
 
     private[this] var baseTypeCache: java.util.HashMap[CachedType, Type] = null
     private[this] var baseTypeValid: RunId = NoRunId

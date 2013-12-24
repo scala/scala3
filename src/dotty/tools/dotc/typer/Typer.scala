@@ -89,8 +89,7 @@ class Typer extends Namer with Applications with Implicits {
    */
   def checkedSelectionType(qual1: Tree, tree: untpd.RefTree)(implicit ctx: Context): Type = {
     val ownType = selectionType(qual1.tpe.widenIfUnstable, tree.name, tree.pos)
-    if (!ownType.isError) checkAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
-    ownType
+    checkAccessible(ownType, qual1.isInstanceOf[Super], tree.pos)
   }
 
   /** Check that Java statics and packages can only be used in selections.
@@ -102,7 +101,8 @@ class Typer extends Namer with Applications with Implicits {
     }
 
   /** If `tpe` is a named type, check that its denotation is accessible in the
-   *  current context.
+   *  current context. Return the type with those alternatives as denotations
+   *  which are accessible.
    */
   def checkAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = tpe match {
     case tpe: NamedType =>
@@ -110,21 +110,27 @@ class Typer extends Namer with Applications with Implicits {
       val name = tpe.name
       val d = tpe.denot.accessibleFrom(pre, superAccess)
       if (!d.exists) {
-        val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
-        val where = pre.typeSymbol
-        val what = alts match {
-          case Nil =>
-            name.toString
-          case sym :: Nil =>
-            if (sym.owner == where) sym.show else sym.showLocated
-          case _ =>
-            i"none of the overloaded alternatives named $name"
+        val d2 = pre.nonPrivateMember(name)
+        if (reallyExists(d2))
+          checkAccessible(pre.select(name, d2), superAccess, pos)
+        else {
+          val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
+          val where = pre.typeSymbol
+          val what = alts match {
+            case Nil =>
+              name.toString
+            case sym :: Nil =>
+              if (sym.owner == where) sym.show else sym.showLocated
+            case _ =>
+              i"none of the overloaded alternatives named $name"
+          }
+          val whyNot = new StringBuffer
+          val addendum =
+            alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
+          if (!tpe.isError)
+            ctx.error(i"$what cannot be accessed from $pre.$whyNot", pos)
+          ErrorType
         }
-        val whyNot = new StringBuffer
-        val addendum =
-          alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
-        ctx.error(i"$what cannot be accessed from $pre.$whyNot", pos)
-        ErrorType
       }
       else if (d.symbol is TypeParamAccessor) // always dereference type param accessors
         checkAccessible(d.info.bounds.hi, superAccess, pos)
