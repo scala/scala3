@@ -596,6 +596,17 @@ object Types {
     def underlyingIfRepeated(implicit ctx: Context): Type =
       this.translateParameterized(defn.RepeatedParamClass, defn.SeqClass)
 
+    /** If this is a (possibly aliased, annotated, and parameterized) reference to
+     *  a class, the class type ref, otherwise NoType.
+     */
+    def underlyingClassRef(implicit ctx: Context): Type = dealias match {
+      case tp: TypeRef if tp.symbol.isClass => tp
+      case tp: TypeVar => tp.underlying.underlyingClassRef
+      case tp: AnnotatedType => tp.underlying.underlyingClassRef
+      case tp: RefinedType => tp.underlying.underlyingClassRef
+      case _ => NoType
+    }
+
     /** A prefix-less termRef to a new skolem symbol that has the given type as info */
     def narrow(implicit ctx: Context): TermRef = TermRef(NoPrefix, ctx.newSkolem(this))
 

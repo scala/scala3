@@ -248,21 +248,13 @@ object Inferencing {
    *  class type reference where the class has a companion module, a reference to
    *  that companion module. Otherwise NoType
    */
-  def companionRef(tp: Type)(implicit ctx: Context): Type = tp.dealias match {
-    case tp: TypeRef if tp.symbol.isClass =>
+  def companionRef(tp: Type)(implicit ctx: Context): Type = tp.underlyingClassRef match {
+    case tp: TypeRef =>
       val companion = tp.classSymbol.companionModule
       if (companion.exists)
         companion.valRef.asSeenFrom(tp.prefix, companion.symbol.owner)
-      else
-        NoType
-    case tp: TypeVar =>
-      companionRef(tp.underlying)
-    case tp: AnnotatedType =>
-      companionRef(tp.underlying)
-    case tp: RefinedType =>
-      companionRef(tp.underlying)
-    case _ =>
-      NoType
+      else NoType
+    case _ => NoType
   }
 
   /** Check that type arguments `args` conform to corresponding bounds in `poly` */
@@ -283,16 +275,13 @@ object Inferencing {
   /** Check that `tp` is a class type with a stable prefix.
    *  @return  Underlying class type if type checks out OK, ObjectClass.typeRef if not.
    */
-  def checkClassTypeWithStablePrefix(tp: Type, pos: Position)(implicit ctx: Context): TypeRef = tp.dealias match {
-    case tp: TypeRef if tp.symbol.isClass =>
-      checkStable(tp.prefix, pos)
-      tp
-    case tp: TypeVar =>
-      checkClassTypeWithStablePrefix(tp.underlying, pos)
-    case tp: AnnotatedType =>
-      checkClassTypeWithStablePrefix(tp.underlying, pos)
+  def checkClassTypeWithStablePrefix(tp: Type, pos: Position)(implicit ctx: Context): TypeRef =
+    tp.underlyingClassRef match {
+      case tp: TypeRef =>
+        checkStable(tp.prefix, pos)
+        tp
     case _ =>
-      ctx.error(i"$tp is not a class type", pos)
+      ctx.error(s"$tp is not a class type", pos)
       defn.ObjectClass.typeRef
   }
 

@@ -123,7 +123,7 @@ class Typer extends Namer with Applications with Implicits {
         val whyNot = new StringBuffer
         val addendum =
           alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
-        ctx.error(i"$what cannot be accessed in $where.$whyNot")
+        ctx.error(i"$what cannot be accessed from $pre.$whyNot", pos)
         ErrorType
       }
       else if (d.symbol is TypeParamAccessor) // always dereference type param accessors
