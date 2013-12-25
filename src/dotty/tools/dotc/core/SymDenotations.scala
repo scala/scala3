@@ -916,9 +916,9 @@ object SymDenotations {
       mscope.enter(sym)
 
       if (myMemberFingerPrint != FingerPrint.unknown)
-        memberFingerPrint.include(sym.name)
+        myMemberFingerPrint.include(sym.name)
       if (myMemberCache != null)
-        memberCache invalidate sym.name
+        myMemberCache invalidate sym.name
     }
 
     /** Delete symbol from current scope.
@@ -931,7 +931,7 @@ object SymDenotations {
       if (myMemberFingerPrint != FingerPrint.unknown)
         computeMemberFingerPrint
       if (myMemberCache != null)
-        memberCache invalidate sym.name
+        myMemberCache invalidate sym.name
     }
 
     /** All members of this class that have the given name.
@@ -953,6 +953,9 @@ object SymDenotations {
         if (denots == null) {
           denots = computeNPMembersNamed(name)
           memberCache enter (name, denots)
+        } else if (Config.checkCacheMembersNamed) {
+          val denots1 = computeNPMembersNamed(name)
+          assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")
         }
         denots
       } else computeNPMembersNamed(name)
@@ -970,7 +973,7 @@ object SymDenotations {
             p.symbol.denot match {
               case parentd: ClassDenotation =>
                 denots1 union
-                  parentd.membersNamed(name)
+                  parentd.nonPrivateMembersNamed(name)
                     .mapInherited(ownDenots, denots1, thisType)
               case _ =>
                 denots1
