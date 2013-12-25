@@ -76,6 +76,23 @@ object typers {
     
     val b: B = new B
     val y = b.x
+    val z: String = y
+    
+  }
+  
+  object Self {
+    
+    class A(self: Int) { self =>
+      
+      class B {
+        val b = self
+        val c: A = b
+      }
+      
+      val a = self
+      val c: A = a
+    }
+    
     
   }
 

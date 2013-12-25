@@ -34,8 +34,14 @@ trait NamerContextOps { this: Context =>
   /** The denotation with the given name in current context */
   def denotNamed(name: Name): Denotation =
     if (owner.isClass)
-      if (outer.owner == owner)
+      if (outer.owner == owner) { // inner class scope; check whether we are referring to self
+        if (scope.size == 1) {
+          val elem = scope.asInstanceOf[MutableScope].lastEntry
+          if (elem.name == name) return elem.sym.denot // return self
+        }
+        assert(scope.size <= 1, scope)
         owner.thisType.member(name)
+      }
       else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
         owner.findMember(name, owner.thisType, EmptyFlags)
     else
