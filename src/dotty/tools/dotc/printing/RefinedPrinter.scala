@@ -264,7 +264,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             modText(mods, "type") ~~ toText(name) ~ tparamsText(tree.tparams) ~ rhsText
           rhs match {
             case impl: Template =>
-              modText(mods, if (mods is Trait) "trait" else "class") ~~ toText(name) ~ toText(impl)
+              modText(mods, if (mods is Trait) "trait" else "class") ~~ toText(name) ~ toText(impl) ~
+              (if (tree.hasType && ctx.settings.verbose.value) s"[decls = ${tree.symbol.info.decls}]" else "")
             case rhs: TypeBoundsTree =>
               typeDefText(toText(rhs))
             case rhs: TypeTree =>
