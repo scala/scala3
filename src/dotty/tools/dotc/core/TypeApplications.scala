@@ -82,7 +82,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   def uninstantiatedTypeParams(implicit ctx: Context): List[TypeSymbol] =
-    typeParams filter (tparam => self.member(tparam.name) == tparam)
+    typeParams filter (tparam => self.member(tparam.name).symbol == tparam)
 
   /** Encode the type resulting from applying this type to given arguments */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = track("appliedTo") {
