@@ -146,7 +146,7 @@ class Definitions(implicit ctx: Context) {
   lazy val NothingClass: ClassSymbol = newCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
   lazy val NullClass: ClassSymbol = newCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Null, AbstractFinal, List(AnyRefAlias.typeRef))
+    ScalaPackageClass, tpnme.Null, AbstractFinal, List(ObjectClass.typeRef))
 
   lazy val PredefModule = requiredModule("scala.Predef")
   lazy val NilModule = requiredModule("scala.collection.immutable.Nil")
@@ -232,7 +232,7 @@ class Definitions(implicit ctx: Context) {
   // convenient one-parameter method types
   def methOfAny(tp: Type) = MethodType(List(AnyType), tp)
   def methOfAnyVal(tp: Type) = MethodType(List(AnyValType), tp)
-  def methOfAnyRef(tp: Type) = MethodType(List(AnyRefType), tp)
+  def methOfAnyRef(tp: Type) = MethodType(List(ObjectType), tp)
 
   // Derived types
   def AnyType: Type = AnyClass.typeRef
