@@ -178,7 +178,7 @@ object SymDenotations {
       case Nil => Nil
     }
 
-    /** The denotation is completed: all attributes are fully defined */
+    /** The denotation is completed: info is not a lazy type and attributes have defined values */
     final def isCompleted: Boolean = !myInfo.isInstanceOf[LazyType]
 
     /** The denotation is in train of being completed */
@@ -753,6 +753,13 @@ object SymDenotations {
       myTypeParams
     }
 
+    /** The denotation is fully completed: all attributes are fully defined.
+     *  ClassDenotations compiled from source are first completed, then fully completed.
+     *  @see Namer#ClassCompleter
+     */
+    private def isFullyCompleted(implicit ctx: Context): Boolean =
+      isCompleted && classInfo.myClassParents.nonEmpty
+
     /** A key to verify that all caches influenced by parent classes are valid */
     private var parentDenots: List[Denotation] = null
 
@@ -763,7 +770,7 @@ object SymDenotations {
      */
     def classParents(implicit ctx: Context) = {
       val ps = classInfo.myClassParents
-      if (parentDenots == null) parentDenots = ps map (_.denot)
+      if (parentDenots == null && ps.nonEmpty) parentDenots = ps map (_.denot)
       ps
     }
 
@@ -952,7 +959,7 @@ object SymDenotations {
         var denots: PreDenotation = memberCache lookup name
         if (denots == null) {
           denots = computeNPMembersNamed(name)
-          memberCache enter (name, denots)
+          if (isFullyCompleted) memberCache.enter(name, denots)
         } else if (Config.checkCacheMembersNamed) {
           val denots1 = computeNPMembersNamed(name)
           assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")
