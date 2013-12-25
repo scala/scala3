@@ -1723,7 +1723,7 @@ object Parsers {
      */
     def constrExpr(): Tree =
       if (in.token == LBRACE) constrBlock()
-      else Block(selfInvocation() :: Nil, Literal(Constant()))
+      else Block(selfInvocation() :: Nil, Literal(Constant(())))
 
     /** SelfInvocation  ::= this ArgumentExprs {ArgumentExprs}
      */
@@ -1742,7 +1742,7 @@ object Parsers {
           else Nil
         }
         accept(RBRACE)
-        Block(stats, Literal(Constant()))
+        Block(stats, Literal(Constant(())))
       }
 
     /** TypeDef ::= type Id [TypeParamClause] `=' Type

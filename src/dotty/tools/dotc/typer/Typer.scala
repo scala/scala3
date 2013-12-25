@@ -1109,7 +1109,7 @@ class Typer extends Namer with Applications with Implicits {
       if (folded ne EmptyTree) return folded
       // drop type if prototype is Unit
       if (pt isRef defn.UnitClass)
-        return tpd.Block(tree :: Nil, Literal(Constant()))
+        return tpd.Block(tree :: Nil, Literal(Constant(())))
       // convert function literal to SAM closure
       tree match {
         case Closure(Nil, id @ Ident(nme.ANON_FUN), _)
