@@ -853,6 +853,7 @@ object SymDenotations {
     }
 
     final override def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean =
+      !isAbsent &&
       base.isClass &&
       (  (symbol eq base)
       || (superClassBits contains base.superId)
