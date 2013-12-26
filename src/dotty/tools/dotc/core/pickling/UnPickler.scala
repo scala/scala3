@@ -430,13 +430,16 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     }
 
     def finishSym(sym: Symbol): Symbol = {
-      if (sym.owner.isClass &&
+      val owner = sym.owner
+      if (owner.isClass &&
           !(  isUnpickleRoot(sym)
            || (sym is (ModuleClass | Scala2Existential))
-           || ((sym is TypeParam) && !sym.owner.isClass)
            || isRefinementClass(sym)
            )
-         ) sym.owner.asClass.enter(sym, symScope(sym.owner))
+         )
+        owner.asClass.enter(sym, symScope(owner))
+      else if (isRefinementClass(owner))
+        symScope(owner).asInstanceOf[MutableScope].enter(sym)
       sym
     }
 

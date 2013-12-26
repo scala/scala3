@@ -93,6 +93,10 @@ object ErrorReporting {
           ("\n" + ctx.typerState.show, "\n" + TypeComparer.explained((found <:< expected)(_)))
         else
           ("", "")
+      def infoStr = found match { // DEBUG
+          case tp: TypeRef => s"with info ${tp.info} / ${tp.prefix.toString} / ${tp.prefix.dealias.toString}"
+          case _ => ""
+        }
       i"""type mismatch:
            | found   : $found
            | required: $expected""".stripMargin + typerStateStr + explanationStr
