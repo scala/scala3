@@ -92,11 +92,29 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.Block(stats, expr).withType(blockType(stats, expr.tpe)).checked
 
   def blockType(stats: List[Tree], exprType: Type)(implicit ctx: Context): Type = {
+    val widenMap = new TypeMap {
+      lazy val locals = localSyms(stats).toSet
+      def apply(tp: Type) = tp match {
+        case tp: TermRef if tp.symbol.owner.isTerm && (locals contains tp.symbol) =>
+          apply(tp.info)
+        case _ =>
+          mapOver(tp)
+      }
+    }
     lazy val locals = localSyms(stats).toSet
-    def widen(tp: Type): Type = tp match {
-      case tp: TermRef if locals contains tp.symbol =>
+    def containsLocals(tp: Type) =
+      tp.namedPartsWith(part => locals contains part.symbol).nonEmpty
+    def widen(tp: Type): Type = tp.stripTypeVar match {
+      case tp: TermRef if containsLocals(tp) =>
         widen(tp.info)
-      case _ => tp
+      case tp: TypeRef if !tp.symbol.isClass && containsLocals(tp) =>
+        widen(tp.info.bounds.hi)
+      case tp: ExprType =>
+        tp.derivedExprType(widen(tp.resultType))
+      case tp: AnnotatedType if containsLocals(tp) =>
+        widen(tp.underlying)
+      case _ =>
+        tp
     }
     widen(exprType)
   }
