@@ -433,7 +433,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       val owner = sym.owner
       if (owner.isClass &&
           !(  isUnpickleRoot(sym)
-           || (sym is (ModuleClass | Scala2Existential))
+           || (sym is Scala2Existential)
            || isRefinementClass(sym)
            )
          )

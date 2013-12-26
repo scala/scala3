@@ -41,5 +41,6 @@ class tests extends CompilerTest {
   @Test def dotc = compileDir(dotcDir + "tools/dotc")
   @Test def dotc_checktrees = compileFile(dotcDir + "tools/dotc/ast/", "CheckTrees")
   @Test def dotc_trees = compileFile(dotcDir + "tools/dotc/ast/", "Trees")
+  @Test def dotc_untpd = compileFile(dotcDir + "tools/dotc/ast/", "untpd")
 
 }
