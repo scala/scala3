@@ -260,6 +260,16 @@ trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
     case Bind(_, y) => unbind(y)
     case y          => y
   }
+
+  /** Checks whether predicate `p` is true for all result parts of this epression,
+   *  where we zoom into Ifs, Matches, and Blocks.
+   */
+  def forallResults(tree: Tree, p: Tree => Boolean): Boolean = tree match {
+    case If(_, thenp, elsep) => forallResults(thenp, p) && forallResults(elsep, p)
+    case Match(_, cases) => cases forall (c => forallResults(c.body, p))
+    case Block(_, expr) => forallResults(expr, p)
+    case _ => p(tree)
+  }
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] {self: Trees.Instance[Type] =>

@@ -355,9 +355,15 @@ object desugar {
     case _ =>
       val rhsUnchecked = makeAnnotated(defn.UncheckedAnnot, rhs)
       val vars = getVariables(pat)
+      val isMatchingTuple: Tree => Boolean = {
+        case Tuple(es) => es.length == vars.length
+        case _ => false
+      }
       val ids = for ((named, _) <- vars) yield Ident(named.name)
       val caseDef = CaseDef(pat, EmptyTree, makeTuple(ids))
-      val matchExpr = Match(rhsUnchecked, caseDef :: Nil)
+      val matchExpr =
+        if (forallResults(rhs, isMatchingTuple)) rhs
+        else Match(rhsUnchecked, caseDef :: Nil)
       vars match {
         case Nil =>
           matchExpr
