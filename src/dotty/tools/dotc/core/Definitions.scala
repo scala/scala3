@@ -322,9 +322,11 @@ class Definitions(implicit ctx: Context) {
     (tp derivesFrom ProductClass) && tp.baseClasses.exists(ProductClasses contains _)
 
   def isFunctionType(tp: Type) = {
-    val arity = tp.dealias.typeArgs.length - 1
+    val arity = functionArity(tp)
     0 <= arity && arity <= MaxFunctionArity && (tp isRef FunctionClass(arity))
   }
+
+  def functionArity(tp: Type) = tp.dealias.typeArgs.length - 1
 
   // ----- Higher kinds machinery ------------------------------------------
 

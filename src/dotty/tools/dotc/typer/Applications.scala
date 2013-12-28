@@ -26,8 +26,12 @@ import reflect.ClassTag
 import language.implicitConversions
 
 object Applications {
+  import tpd._
   private val isNamedArg = (arg: Any) => arg.isInstanceOf[Trees.NamedArg[_]]
   def hasNamedArg(args: List[Any]) = args exists isNamedArg
+
+  def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree =
+    if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 }
 
 import Applications._

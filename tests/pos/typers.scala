@@ -3,6 +3,10 @@ package test
 import annotation.{tailrec, switch}
 
 object typers {
+  
+  def fun(x: Int): Int = x + 1
+  
+  val foo = fun(_)
 
   class List[+T] {
     def :: (x: T) = new :: (x, this)
