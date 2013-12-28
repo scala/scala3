@@ -174,7 +174,7 @@ object desugar {
         ListOfNil
       } else
         constr1.vparamss.nestedMap(vparam => cpy.ValDef(vparam,
-          Modifiers(Param), vparam.name, vparam.tpt, vparam.rhs))
+          Modifiers(Param | vparam.mods.flags & Implicit), vparam.name, vparam.tpt, vparam.rhs))
 
     val constr = cpy.DefDef(constr1,
       constr1.mods, constr1.name, tparams, vparamss, constr1.tpt, constr1.rhs)
