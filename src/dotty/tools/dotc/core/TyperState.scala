@@ -41,6 +41,9 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
   /** Is it allowed to commit this state? */
   def isCommittable: Boolean = false
 
+  /** Can this state be transitively committed until the top-level? */
+  def isGlobalCommittable: Boolean = false
+
   override def toText(printer: Printer): Text = "ImmutableTyperState"
 }
 
@@ -54,6 +57,10 @@ extends TyperState(reporter) {
 
   override def fresh(isCommittable: Boolean): TyperState =
     new MutableTyperState(this, new StoreReporter, isCommittable)
+
+  override val isGlobalCommittable =
+    isCommittable &&
+    (!previous.isInstanceOf[MutableTyperState] || previous.isGlobalCommittable)
 
   /** Commit typer state so that its information is copied into current typer state
    *  In addition (1) the owning state of undetermined or temporarily instantiated

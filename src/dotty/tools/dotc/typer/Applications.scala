@@ -562,7 +562,7 @@ trait Applications extends Compatibility { self: Typer =>
           ttree.tpe match {
             case alias: TypeRef if alias.symbol.isAliasType =>
               companionRef(alias) match {
-                case companion: TermRef => return untpd.ref(companion)
+                case companion: TermRef => return untpd.ref(companion) withPos tree.pos
                 case _ =>
               }
             case _ =>

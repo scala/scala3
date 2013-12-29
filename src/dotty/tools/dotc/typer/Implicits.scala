@@ -245,7 +245,8 @@ trait Implicits { self: Typer =>
        !from.isError
     && !to.isError
     && (ctx.mode is Mode.ImplicitsEnabled)
-    && (inferView(dummyTreeOfType(from), to).isInstanceOf[SearchSuccess]))
+    && (inferView(dummyTreeOfType(from), to)(ctx.fresh.withExploreTyperState).isInstanceOf[SearchSuccess])
+    )
 
   /** Find an implicit conversion to apply to given tree `from` so that the
    *  result is compatible with type `to`.

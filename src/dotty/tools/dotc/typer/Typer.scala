@@ -492,7 +492,7 @@ class Typer extends Namer with Applications with Implicits {
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = track("typedIf") {
     val cond1 = typed(tree.cond, defn.BooleanType)
     val thenp1 = typed(tree.thenp, pt)
-    val elsep1 = typed(tree.elsep orElse untpd.unitLiteral, pt)
+    val elsep1 = typed(tree.elsep orElse untpd.unitLiteral withPos tree.pos, pt)
     cpy.If(tree, cond1, thenp1, elsep1).withType(thenp1.tpe | elsep1.tpe)
   }
 
@@ -952,6 +952,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = ctx.traceIndented (s"typing ${tree.show}", show = true) {
+    if (!tree.isEmpty && ctx.typerState.isGlobalCommittable) assert(tree.pos.exists, tree)
     try adapt(typedUnadapted(tree, pt), pt)
     catch {
       case ex: CyclicReference => errorTree(tree, cyclicErrorMsg(ex))

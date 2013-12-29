@@ -78,13 +78,13 @@ object Positions {
       else this
 
     /** The zero-extent position with start and end at the point of this position */
-    def focus = Position(point)
+    def focus = if (exists) Position(point) else NoPosition
 
     /** The zero-extent position with start and end at the start of this position */
-    def startPos = Position(start)
+    def startPos = if (exists) Position(start) else NoPosition
 
     /** The zero-extent position with start and end at the end of this position */
-    def endPos = Position(end)
+    def endPos = if (exists) Position(end) else NoPosition
 
     /** A copy of this position with a different start */
     def withStart(start: Int) =
