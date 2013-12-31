@@ -260,15 +260,15 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case tree @ TypeDef(mods, name, rhs) =>
         atOwner(tree) {
-          def typeDefText(rhsText: Text) =
-            modText(mods, "type") ~~ toText(name) ~ tparamsText(tree.tparams) ~ rhsText
+          def typeDefText(rhsText: Text) = {
+            val rhsText1 = if (tree.hasType) toText(tree.symbol.info) else rhsText
+            modText(mods, "type") ~~ toText(name) ~ tparamsText(tree.tparams) ~ rhsText1
+          }
           rhs match {
             case impl: Template =>
               modText(mods, if (mods is Trait) "trait" else "class") ~~ toText(name) ~ toText(impl) ~
               (if (tree.hasType && ctx.settings.verbose.value) s"[decls = ${tree.symbol.info.decls}]" else "")
             case rhs: TypeBoundsTree =>
-              typeDefText(toText(rhs))
-            case rhs: TypeTree =>
               typeDefText(toText(rhs))
             case _ =>
               typeDefText(optText(rhs)(" = " ~ _))

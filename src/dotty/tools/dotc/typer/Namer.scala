@@ -492,8 +492,10 @@ class Namer { typer: Typer =>
         if (tparamSyms.nonEmpty) bounds.higherKinded(tparamSyms)
         else rhsType
       case _ =>
-        if (tparamSyms.nonEmpty) rhsType.LambdaAbstract(tparamSyms)(ctx.error(_, _))
-        else TypeAlias(rhsType, if (sym is Local) sym.variance else 0)
+        val abstractedRhsType =
+          if (tparamSyms.nonEmpty) rhsType.LambdaAbstract(tparamSyms)(ctx.error(_, _))
+          else rhsType
+        TypeAlias(abstractedRhsType, if (sym is Local) sym.variance else 0)
     }
   }
 }

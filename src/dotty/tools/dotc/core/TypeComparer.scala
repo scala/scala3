@@ -249,7 +249,10 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp1: PolyParam =>
       (tp1 == tp2) ||
       isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
-        assert(frozenConstraint || !(tp2 isRef defn.NothingClass)) // !!!DEBUG
+        if (!frozenConstraint &&
+            (tp2 isRef defn.NothingClass) &&
+            ctx.typerState.isGlobalCommittable)
+          ctx.log(s"!!! instantiating to Nothing: $tp1")
         if (constraint contains tp1) addConstraint(tp1, tp2.dealias, fromBelow = false)
         else thirdTry(tp1, tp2)
       }
@@ -287,12 +290,12 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp2: NamedType =>
       thirdTryNamed(tp1, tp2)
     case tp2 @ RefinedType(parent2, name2) =>
-      tp1 match {
-        case tp1 @ RefinedType(parent1, name1) if (name1 == name2) && name1.isTypeName =>
+      tp1.widen match {
+        case tp1 @ RefinedType(parent1, name1) if nameMatches(name1, name2, tp1, tp2) =>
           // optimized case; all info on tp1.name2 is in refinement tp1.refinedInfo.
           isSubType(tp1, parent2) && isSubType(tp1.refinedInfo, tp2.refinedInfo)
         case _ =>
-          def hasMatchingMember(name: Name): Boolean = traceIndented(s"hasMatchingMember($name)") (
+          def hasMatchingMember(name: Name): Boolean = traceIndented(s"hasMatchingMember($name) ${tp1.member(name)}") (
                tp1.member(name).hasAltWith(alt => isSubType(alt.info, tp2.refinedInfo))
             ||
                { // special case for situations like:
@@ -407,6 +410,24 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp: PolyParam if constraint contains tp => true
     case _ => proto.isMatchedBy(tp)
   }
+
+  /** Tow refinement names match if they are the same or one is the
+   *  name of a type parameter of its parent type, and the other is
+   *  the corresponding higher-kinded parameter name
+   */
+  private def nameMatches(name1: Name, name2: Name, tp1: Type, tp2: Type) =
+    name1.isTypeName &&
+    (name1 == name2 || isHKAlias(name1, name2, tp2) || isHKAlias(name2, name1, tp1))
+
+  /** Is name1 a higher-kinded parameter name and name2 a corresponding
+   *  type parameter name?
+   */
+  private def isHKAlias(name1: Name, name2: Name, tp2: Type) =
+    name1.isHkParamName && {
+      val i = name1.hkParamIndex
+      val tparams = tp2.safeUnderlyingTypeParams
+      i < tparams.length && tparams(i).name == name2
+    }
 
   /** Can type `tp` be constrained from above by adding a constraint to
    *  a typevar that it refers to? In that case we have to be careful not
