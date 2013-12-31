@@ -12,9 +12,6 @@ class Compiler {
 
   def phases = List(new FrontEnd)
 
-  def rootImports(implicit ctx: Context) =
-    defn.JavaLangPackageVal :: defn.ScalaPackageVal :: defn.PredefModule :: Nil
-
   def rootContext(implicit ctx: Context): Context = {
     ctx.definitions.init()
     ctx.usePhases(phases)
@@ -26,7 +23,7 @@ class Compiler {
       .withTyperState(new MutableTyperState(ctx.typerState, new ConsoleReporter()(ctx), isCommittable = true))
     def addImport(ctx: Context, sym: Symbol) =
       ctx.fresh.withImportInfo(ImportInfo.rootImport(sym)(ctx))
-    (start.withRunInfo(new RunInfo(start)) /: rootImports)(addImport)
+    (start.withRunInfo(new RunInfo(start)) /: defn.RootImports)(addImport)
   }
 
   def newRun(implicit ctx: Context): Run =

@@ -148,7 +148,8 @@ class Definitions(implicit ctx: Context) {
   lazy val NullClass: ClassSymbol = newCompleteClassSymbol(
     ScalaPackageClass, tpnme.Null, AbstractFinal, List(ObjectClass.typeRef))
 
-  lazy val PredefModule = requiredModule("scala.Predef")
+  lazy val ScalaPredefModule = requiredModule("scala.Predef")
+  lazy val DottyPredefModule = requiredModule("dotty.Predef")
   lazy val NilModule = requiredModule("scala.collection.immutable.Nil")
 
 //  lazy val FunctionClass: ClassSymbol = requiredClass("scala.Function")
@@ -300,18 +301,15 @@ class Definitions(implicit ctx: Context) {
 
   lazy val RepeatedParamClasses: Set[Symbol] = Set(RepeatedParamClass, JavaRepeatedParamClass)
 
-  /** Modules whose members are in the default namespace */
-  lazy val UnqualifiedModules: Set[TermSymbol] = Set(PredefModule, ScalaPackageVal, JavaLangPackageVal)
-
-  /** `UnqualifiedModules` and their module classes */
-  lazy val UnqualifiedOwners = UnqualifiedModules ++ UnqualifiedModules.map(_.moduleClass)
+  /** `Modules whose members are in the default namespace and their module classes */
+  lazy val UnqualifiedOwners = RootImports.toSet ++ RootImports.map(_.moduleClass)
 
   lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
 
   lazy val asInstanceOfMethods = Set[Symbol](Any_asInstanceOf, Object_asInstanceOf)
   lazy val isInstanceOfMethods = Set[Symbol](Any_isInstanceOf, Object_isInstanceOf)
 
-  lazy val RootImports = Set[Symbol](PredefModule, ScalaPackageVal, JavaLangPackageVal)
+  lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
 
   def isTupleType(tp: Type) = {
     val arity = tp.dealias.typeArgs.length
