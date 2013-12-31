@@ -48,9 +48,11 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   private def addConstraint1(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
     val oldBounds = constraint.bounds(param)
+    assert(!bound.isInstanceOf[TypeVar])
     val newBounds =
       if (fromBelow) oldBounds.derivedTypeBounds(oldBounds.lo | bound, oldBounds.hi)
       else oldBounds.derivedTypeBounds(oldBounds.lo, oldBounds.hi & bound)
+    (param == bound) ||
     (oldBounds eq newBounds) || {
       val saved = constraint
       constraint = constraint.updated(param, newBounds)
@@ -158,6 +160,8 @@ class TypeComparer(initctx: Context) extends DotClass {
     if (pendingSubTypes == null) {
       pendingSubTypes = new mutable.HashSet[(Type, Type)]
       ctx.log(s"!!! deep subtype recursion involving $tp1 <:< $tp2")
+      if (!this.isInstanceOf[ExplainingTypeComparer])
+        ctx.log(TypeComparer.explained(implicit ctx => tp1 <:< tp2))
     }
     val p = (tp1, tp2)
     !pendingSubTypes(p) && {
@@ -253,7 +257,7 @@ class TypeComparer(initctx: Context) extends DotClass {
             (tp2 isRef defn.NothingClass) &&
             ctx.typerState.isGlobalCommittable)
           ctx.log(s"!!! instantiating to Nothing: $tp1")
-        if (constraint contains tp1) addConstraint(tp1, tp2.dealias, fromBelow = false)
+        if (constraint contains tp1) addConstraint(tp1, tp2.dealias.stripTypeVar, fromBelow = false)
         else thirdTry(tp1, tp2)
       }
     case tp1: BoundType =>
@@ -968,9 +972,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
 
   override def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean =
     traceIndented(s"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound $frozenConstraint") {
-      assert(bound ne param)
-      (bound.stripTypeVar eq param) ||
-        super.addConstraint(param, bound, fromBelow)
+      super.addConstraint(param, bound, fromBelow)
     }
 
   override def copyIn(ctx: Context) = new ExplainingTypeComparer(ctx)
