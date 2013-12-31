@@ -420,14 +420,24 @@ class Namer { typer: Typer =>
     val pt =
       if (!mdef.tpt.isEmpty) WildcardType
       else {
+
+        /** Context where `sym` is defined */
+        def defContext(sym: Symbol) =
+          ctx.outersIterator
+            .dropWhile(_.owner != sym)
+            .dropWhile(_.owner == sym)
+            .next
+
+        /** An type for this definition that might be inherited from elsewhere:
+         *  If this is a setter parameter, the corresponding getter type.
+         *  If this is a class member, the conjunction of all result types
+         *  of overridden methods.
+         *  NoType if neither case holds.
+         */
         val inherited =
-          if ((sym is Param) && sym.owner.isSetter) { // fill in type from getter result type
-            val getterCtx = ctx.outersIterator
-                .dropWhile(_.owner != sym.owner)
-                .dropWhile(_.owner == sym.owner)
-                .next
-            getterCtx.denotNamed(sym.owner.asTerm.name.setterToGetter).info.widenExpr
-          }
+          if ((sym is Param) && sym.owner.isSetter) // fill in type from getter result type
+            defContext(sym.owner)
+              .denotNamed(sym.owner.asTerm.name.setterToGetter).info.widenExpr
           else if (sym.owner.isTerm) NoType
           else {
             // TODO: Look only at member of supertype instead?
@@ -442,10 +452,39 @@ class Namer { typer: Typer =>
               tp & itpe
             }
           }
+
+        /** The proto-type to be used when inferring the result type from
+         *  the right hand side. This is `WildcardType` except if the definition
+         *  is a default getter. In that case, the proto-type is the type of
+         *  the corresponding parameter where bound parameters are replaced by
+         *  Wildcards.
+         */
+        def rhsProto = {
+          val name = sym.asTerm.name
+          val idx = name.defaultGetterIndex
+          if (idx < 0) WildcardType
+          else {
+            val original = name.defaultGetterToMethod
+            val meth: Denotation =
+              if (original.isConstructorName && (sym.owner is ModuleClass))
+                sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
+              else
+                defContext(sym).denotNamed(original)
+            def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
+              case params :: paramss1 =>
+                if (idx < params.length) (new WildApprox) apply params(idx)
+                else paramProto(paramss1, idx - params.length)
+              case nil =>
+                WildcardType
+            }
+            paramProto(meth.suchThat(_.hasDefaultParams).info.widen.paramTypess, idx)
+          }
+        }
+
         // println(s"final inherited for $sym: ${inherited.toString}") !!!
         // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
         val rhsCtx = ctx.fresh addMode Mode.InferringReturnType
-        def rhsType = adapt(typedAheadExpr(mdef.rhs)(rhsCtx), WildcardType).tpe.widen
+        def rhsType = adapt(typedAheadExpr(mdef.rhs)(rhsCtx), rhsProto).tpe.widen
         def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)
         inherited orElse lhsType
       }

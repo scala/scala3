@@ -4,10 +4,19 @@ import annotation.{tailrec, switch}
 
 object typers {
   
-  def fun(x: Int): Int = x + 1
+  object Eta {
+    
+    def fun(x: Int): Int = x + 1
+    val foo = fun(_)
+  }
   
-  val foo = fun(_)
-
+  case class DefaultParams(init: String => String = identity)
+  object DefaultParams {
+    def foo(x: String => String = identity) = x("abc")
+    
+    foo()
+  }
+  
   class List[+T] {
     def :: (x: T) = new :: (x, this)
     

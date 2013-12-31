@@ -222,6 +222,13 @@ object NameOps {
       } else name
     }
 
+    /** If this is a default getter, its index (starting from 0), else -1 */
+    def defaultGetterIndex: Int = {
+      val p = name.indexOfSlice(DEFAULT_GETTER)
+      if (p >= 0) name.drop(p + DEFAULT_GETTER.length).toString.toInt - 1
+      else -1
+    }
+
     /** The name of a super-accessor */
     def superAccessorName: TermName =
       SUPER_PREFIX ++ name
