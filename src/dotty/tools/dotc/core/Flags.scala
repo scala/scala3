@@ -359,6 +359,9 @@ object Flags {
   /** Symbol is a generated specialized member */
   final val Specialized = commonFlag(53, "<specialized>")
 
+  /** Symbol is a self name */
+  final val SelfName = termFlag(54, "<selfname>")
+
   /** Symbol is an implementation class */
   final val ImplClass = typeFlag(54, "<implclass>")
 

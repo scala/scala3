@@ -288,9 +288,10 @@ object desugar {
       }
       else Nil
 
+    val selfType = if (self.tpt.isEmpty) classTypeRef else self.tpt
     val self1 =
-      if (self.isEmpty || !self.tpt.isEmpty) self
-      else cpy.ValDef(self, self.mods, self.name, classTypeRef, self.rhs)
+      if (self.isEmpty) self
+      else cpy.ValDef(self, self.mods | SelfName, self.name, selfType, self.rhs)
 
     val cdef1 = cpy.TypeDef(cdef, mods, name,
       cpy.Template(impl, constr, parents1, self1,

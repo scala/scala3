@@ -283,6 +283,12 @@ class Typer extends Namer with Applications with Implicits {
         case denot: SingleDenotation => denot.symbol.sourceFile == ctx.source
       }
 
+      /** Is `denot` the denotation of a self symbol? */
+      def isSelfDenot(denot: Denotation) = denot match {
+        case denot: SymDenotation => denot is SelfName
+        case _ => false
+      }
+
       // begin findRef
       if (ctx.scope == null) previous
       else {
@@ -291,7 +297,9 @@ class Typer extends Namer with Applications with Implicits {
           val defDenot = ctx.denotNamed(name)
           if (qualifies(defDenot)) {
             val curOwner = ctx.owner
-            val found = curOwner.thisType.select(name, defDenot)
+            val found =
+              if (isSelfDenot(defDenot)) curOwner.thisType
+              else curOwner.thisType.select(name, defDenot)
             if (!(curOwner is Package) || (defDenot.symbol is Package) || isDefinedInCurrentUnit(defDenot))
               return checkNewOrShadowed(found, definition) // no need to go further out, we found highest prec entry
             else if (prevPrec < packageClause)
