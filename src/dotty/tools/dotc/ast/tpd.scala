@@ -429,7 +429,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def tpes: List[Type] = xs map (_.tpe)
   }
 
-  class TreeMapper(val typeMap: TypeMap = IdentityTypeMap, val ownerMap: Symbol => Symbol = identity _)(implicit ctx: Context) extends TreeTransformer {
+  class TreeMapper(val typeMap: TypeMap = IdentityTypeMap, val ownerMap: Symbol => Symbol = identity)(implicit ctx: Context) extends TreeTransformer {
     override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = super.transform {
       tree.withType(typeMap(tree.tpe)) match {
         case bind: tpd.Bind =>
