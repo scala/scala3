@@ -2,11 +2,12 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._
+import Types._, Contexts._, Symbols._
 import util.SimpleMap
 import collection.mutable
 import printing.{Printer, Showable}
 import printing.Texts._
+import config.Config
 
 /** Constraint over undetermined type parameters
  *  @param myMap a map from PolyType to arrays.
@@ -64,12 +65,25 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
   private def updateEntries(pt: PolyType, entries: Array[Type]): Constraint = {
     import Constraint._
     val res = new Constraint(myMap.updated(pt, entries))
+    if (Config.checkConstraintsNonCyclic) checkNonCyclic(pt, entries)
     if (res.myMap.size > maxSize) {
       maxSize = res.myMap.size
       maxConstraint = res
     }
     res
   }
+
+  /** Check that no constrained parameter contains itself as a bound */
+  def checkNonCyclic(pt: PolyType, entries: Array[Type]) =
+    for ((entry, i) <- entries.zipWithIndex) {
+      val param = PolyParam(pt, i)
+      entry match {
+        case TypeBounds(lo, hi) =>
+          assert(lo != param, param)
+          assert(hi != param, param)
+        case _ =>
+      }
+    }
 
   /** A new constraint which is derived from this constraint by updating
    *  the entry for parameter `param` to `tpe`.
@@ -117,7 +131,33 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
    *  of the parameter elsewhere in the constraint by type `tp`.
    */
   def replace(param: PolyParam, tp: Type)(implicit ctx: Context): Constraint = {
-    def subst(entries: Array[Type]) = {
+
+    /** Drop parameter `PolyParam(poly, n)` from bounds in type `tp` */
+    def dropParamIn(tp: Type, poly: PolyType, n: Int, fromBelow: Boolean = false): Type = {
+      def drop(tp: Type): Type = tp match {
+        case tp: AndOrType =>
+          val tp1 = drop(tp.tp1)
+          val tp2 = drop(tp.tp2)
+          if (!tp1.exists) tp2
+          else if (!tp2.exists) tp1
+          else tp
+        case PolyParam(`poly`, `n`) => NoType
+        case _ => tp
+      }
+      tp match {
+        case tp: TypeBounds =>
+          tp.derivedTypeBounds(
+              dropParamIn(tp.lo, poly, n, !fromBelow),
+              dropParamIn(tp.hi, poly, n, fromBelow))
+        case _ =>
+          val tp1 = drop(tp)
+          if (tp1.exists || !tp.exists) tp1
+          else if (fromBelow) defn.NothingType
+          else defn.AnyType
+      }
+    }
+
+    def subst(poly: PolyType, entries: Array[Type]) = {
       var result = entries
       var i = 0
       while (i < paramCount(entries)) {
@@ -126,7 +166,7 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
             val newBounds = oldBounds.substParam(param, tp)
             if (oldBounds ne newBounds) {
               if (result eq entries) result = entries.clone
-              result(i) = newBounds
+              result(i) = dropParamIn(newBounds, poly, i, fromBelow = false)
             }
           case _ =>
         }
@@ -134,11 +174,11 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
       }
       result
     }
+
     val pt = param.binder
     val constr1 = if (isRemovable(pt, param.paramNum)) remove(pt) else updated(param, tp)
     new Constraint(constr1.myMap mapValues subst)
   }
-
 
   /** A new constraint which is derived from this constraint by adding
    *  entries for all type parameters of `poly`.
