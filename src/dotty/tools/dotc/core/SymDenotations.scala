@@ -565,7 +565,7 @@ object SymDenotations {
      *  NoSymbol if this module does not exist.
      */
     final def companionModule(implicit ctx: Context): Symbol =
-      if (owner.exists)
+      if (owner.exists && name != tpnme.ANON_CLASS) // name test to avoid forcing, thereby causing cyclic reference errors
         owner.info.decl(name.stripModuleClassSuffix.toTermName)
           .suchThat(sym => (sym is Module) && sym.isCoDefinedWith(symbol))
           .symbol
