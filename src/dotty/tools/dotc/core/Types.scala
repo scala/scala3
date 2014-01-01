@@ -2070,6 +2070,8 @@ object Types {
 
     def apply(tp: Type): Type
 
+    protected var variance = 1
+
     /** Map this function over given type */
     def mapOver(tp: Type): Type = tp match {
       case tp: NamedType =>
@@ -2082,24 +2084,35 @@ object Types {
         tp.derivedRefinedType(this(tp.parent), tp.refinedName, this(tp.refinedInfo))
 
       case tp @ MethodType(pnames, ptypes) =>
-        tp.derivedMethodType(pnames, ptypes mapConserve this, this(tp.resultType))
+        variance = -variance
+        val ptypes1 = ptypes mapConserve this
+        variance = -variance
+        tp.derivedMethodType(pnames, ptypes1, this(tp.resultType))
 
       case tp @ ExprType(restpe) =>
         tp.derivedExprType(this(restpe))
 
       case tp @ PolyType(pnames) =>
+        variance = -variance
+        val bounds1 = tp.paramBounds.mapConserve(apply(_).bounds)
+        variance = -variance
         tp.derivedPolyType(
-          pnames, tp.paramBounds.mapConserve(apply(_).bounds), this(tp.resultType))
+          pnames, bounds1, this(tp.resultType))
 
       case tp @ SuperType(thistp, supertp) =>
         tp.derivedSuperType(this(thistp), this(supertp))
 
       case tp @ TypeBounds(lo, hi) =>
         if (lo eq hi) {
-          val lo1 = this(lo)
+          val saved = variance
+          variance = variance * tp.variance
+          val lo1 = try this(lo) finally variance = saved
           tp.derivedTypeBounds(lo1, lo1)
         } else {
-          tp.derivedTypeBounds(this(lo), this(hi))
+          variance = -variance
+          val lo1 = this(lo)
+          variance = -variance
+          tp.derivedTypeBounds(lo1, this(hi))
         }
 
       case tp: ClassInfo =>

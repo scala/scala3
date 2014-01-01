@@ -205,7 +205,7 @@ object desugar {
         val productArityMeth = syntheticProperty(nme.productArity, Literal(Constant(caseParams.length)))
         def selectorName(n: Int) =
           if (caseParams.length == 1) nme.get else nme.selectorName(n)
-        val productElemMeths =for (i <- 0 until caseParams.length) yield
+        val productElemMeths = for (i <- 0 until caseParams.length) yield
           syntheticProperty(selectorName(i), Select(This(EmptyTypeName), caseParams(i).name))
         val copyMeths =
           if (mods is Abstract) Nil

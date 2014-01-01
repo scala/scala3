@@ -94,29 +94,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def blockType(stats: List[Tree], exprType: Type)(implicit ctx: Context): Type = {
     val widenMap = new TypeMap {
       lazy val locals = localSyms(stats).toSet
+      def isLocal(sym: Symbol) = sym.owner.isTerm && (locals contains sym)
       def apply(tp: Type) = tp match {
-        case tp: TermRef if tp.symbol.owner.isTerm && (locals contains tp.symbol) =>
+        case tp: TermRef if isLocal(tp.symbol) && variance > 0 =>
           apply(tp.info)
+        case tp @ TypeRef(pre: TermRef, _) if tp.symbol.isAliasType && isLocal(pre.symbol) =>
+          apply(tp.info.bounds.hi)
         case _ =>
           mapOver(tp)
       }
     }
-    lazy val locals = localSyms(stats).toSet
-    def containsLocals(tp: Type) =
-      tp.namedPartsWith(part => locals contains part.symbol).nonEmpty
-    def widen(tp: Type): Type = tp.stripTypeVar match {
-      case tp: TermRef if containsLocals(tp) =>
-        widen(tp.info)
-      case tp: TypeRef if !tp.symbol.isClass && containsLocals(tp) =>
-        widen(tp.info.bounds.hi)
-      case tp: ExprType =>
-        tp.derivedExprType(widen(tp.resultType))
-      case tp: AnnotatedType if containsLocals(tp) =>
-        widen(tp.underlying)
-      case _ =>
-        tp
-    }
-    widen(exprType)
+    widenMap(exprType)
   }
 
   def maybeBlock(stats: List[Tree], expr: Tree)(implicit ctx: Context): Tree =

@@ -494,7 +494,7 @@ class Typer extends Namer with Applications with Implicits {
       untpd.Block(stats1, expr2) withType expr2.tpe
     } else
       errorTree(result,
-          i"local definition of ${leaks.head.name} escapes as part of block's type ${result.tpe}")
+          i"local definition of ${leaks.head.name} escapes as part of block's type ${result.tpe}"/*; full type: ${result.tpe.toString}"*/)
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = track("typedIf") {
