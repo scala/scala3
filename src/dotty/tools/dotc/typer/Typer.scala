@@ -872,6 +872,9 @@ class Typer extends Namer with Applications with Implicits {
       cpy.Typed(tree, arg1, TypeTree(ownType)) withType ownType
   }
 
+  def typedAsFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree =
+    typed(tree, if (defn.isFunctionType(pt)) pt else AnyFunctionProto)
+
   def typedPackageDef(tree: untpd.PackageDef)(implicit ctx: Context): Tree = track("typedPackageDef") {
     val pid1 = typedExpr(tree.pid, AnySelectionProto)
     val pkg = pid1.symbol
@@ -947,7 +950,7 @@ class Typer extends Namer with Applications with Implicits {
           case tree: untpd.PackageDef => typedPackageDef(tree)
           case tree: untpd.Annotated => typedAnnotated(tree, pt)
           case tree: untpd.TypedSplice => tree.tree
-          case untpd.PostfixOp(tree, nme.WILDCARD) => typed(tree, AnyFunctionProto)
+          case untpd.PostfixOp(tree, nme.WILDCARD) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
           case _ => typedUnadapted(desugar(tree), pt)
         }

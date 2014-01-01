@@ -8,6 +8,13 @@ package dotc
 import core.Contexts.Context
 import reporting.Reporter
 
+/* To do:
+ *   - simplify hk types
+ *   - make use of AndOrType
+ *   - review isSubType
+ *   - cycle check for implicits
+ */
+
 object Main extends Driver {
   def resident(compiler: Compiler): Reporter = unsupported("resident") /*loop { line =>
     val command = new CompilerCommand(line split "\\s+" toList, new Settings(scalacError))
