@@ -24,6 +24,12 @@ class TypeComparer(initctx: Context) extends DotClass {
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint = false
 
+  /** If the constraint is ignored, subtype checks only take into account
+   *  declared bounds of PolyParams. Used when forming unions and intersectons
+   *  of constraint bounds
+   */
+  protected var ignoreConstraint = false
+
   private var myAnyClass: ClassSymbol = null
   private var myNothingClass: ClassSymbol = null
   private var myNullClass: ClassSymbol = null
@@ -49,9 +55,14 @@ class TypeComparer(initctx: Context) extends DotClass {
   private def addConstraint1(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
     val oldBounds = constraint.bounds(param)
     assert(!bound.isInstanceOf[TypeVar])
+    val saved = ignoreConstraint
+    ignoreConstraint = true
     val newBounds =
-      if (fromBelow) oldBounds.derivedTypeBounds(oldBounds.lo | bound, oldBounds.hi)
-      else oldBounds.derivedTypeBounds(oldBounds.lo, oldBounds.hi & bound)
+      try
+        if (fromBelow) oldBounds.derivedTypeBounds(oldBounds.lo | bound, oldBounds.hi)
+        else oldBounds.derivedTypeBounds(oldBounds.lo, oldBounds.hi & bound)
+      finally ignoreConstraint = saved
+    // val res = // !!!DEBUG
     (param == bound) ||
     (oldBounds eq newBounds) || {
       val saved = constraint
@@ -59,6 +70,10 @@ class TypeComparer(initctx: Context) extends DotClass {
       isSubType(newBounds.lo, newBounds.hi) ||
       { constraint = saved; false } // don't leave the constraint in unsatisfiable state
     }
+    //println(s"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound = $res")
+    //if (res)
+    //  println(constraint.show)
+    //res
   }
 
   /** If current constraint set is not frozen, add the constraint
@@ -405,7 +420,7 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   /** The current bounds of type parameter `param` */
   def bounds(param: PolyParam): TypeBounds = constraint at param match {
-    case bounds: TypeBounds => bounds
+    case bounds: TypeBounds if !ignoreConstraint => bounds
     case _ => param.binder.paramBounds(param.paramNum)
   }
 

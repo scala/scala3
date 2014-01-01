@@ -108,5 +108,11 @@ object typers {
     
     
   }
-
+  
+  object Arrays {
+    
+    val arr = List("a", "b", "c").toArray
+    val i = 2
+    arr(i).charAt(0)
+  }
 }
