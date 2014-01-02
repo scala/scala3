@@ -420,9 +420,9 @@ object desugar {
    *      def $anonfun(params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree) =
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = TypeTree()) =
     Block(
-      DefDef(Modifiers(Synthetic), nme.ANON_FUN, Nil, params :: Nil, TypeTree(), body),
+      DefDef(Modifiers(Synthetic), nme.ANON_FUN, Nil, params :: Nil, tpt, body),
       Closure(Nil, Ident(nme.ANON_FUN), EmptyTree))
 
   /** Expand partial function

@@ -586,10 +586,10 @@ class Typer extends Namer with Applications with Implicits {
             cpy.ValDef(param, param.mods, param.name, paramTpt, param.rhs)
           }
 
-      /*val resultTpt =
+      val resultTpt =
         if (isFullyDefined(protoResult, ForceDegree.none)) untpd.TypeTree(protoResult)
-        else untpd.TypeTree()*/
-      typed(desugar.makeClosure(inferredParams, fnBody/*, resultTpt*/), pt)
+        else untpd.TypeTree()
+      typed(desugar.makeClosure(inferredParams, fnBody, resultTpt), pt)
     }
   }
 
