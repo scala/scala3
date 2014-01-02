@@ -10,6 +10,7 @@ import Constants._
 import annotation.unchecked
 import util.Positions._
 import util.{Stats, SimpleMap}
+import util.common._
 import Decorators._
 import ErrorReporting.{errorType, InfoString}
 import collection.mutable
@@ -224,14 +225,25 @@ object Inferencing {
     else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos") // !!! DEBUG
 
   private class IsFullyDefinedAccumulator(force: ForceDegree.Value)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
-    def traverse(tp: Type): Boolean = apply(true, tp)
+    private var vs: SimpleMap[TypeVar, Integer] = null
+    private var rootTp: Type = null
+    def isContravariant(tvar: TypeVar) = {
+      (variance < 0) && { // otherwise no need to compute, it can't be contravariant
+        if (vs == null) vs = rootTp.variances(alwaysTrue)
+        vs(tvar) < 0
+      }
+    }
+    def traverse(tp: Type): Boolean = {
+      rootTp = tp
+      apply(true, tp)
+    }
     def apply(x: Boolean, tp: Type) = !x || isOK(tp) && foldOver(x, tp)
     def isOK(tp: Type): Boolean = tp match {
       case _: WildcardType =>
         false
       case tvar: TypeVar if !tvar.isInstantiated =>
         force != ForceDegree.none && {
-          val inst = tvar.instantiate(fromBelow = true)
+          val inst = tvar.instantiate(fromBelow = !isContravariant(tvar))
           println(i"forced instantiation of ${tvar.origin} = $inst")
           (force == ForceDegree.all || inst != defn.NothingType && inst != defn.NullType) && traverse(inst)
         }
