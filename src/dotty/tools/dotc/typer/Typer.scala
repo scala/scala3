@@ -511,14 +511,14 @@ class Typer extends Namer with Applications with Implicits {
         untpd.TypeTree(defn.FunctionClass(args.length).typeRef), args :+ body), pt)
     else {
       val params = args.asInstanceOf[List[untpd.ValDef]]
-      val protoFormals: List[Type] = pt match {
+      val (protoFormals, protoResult): (List[Type], Type) = pt match {
         case _ if pt isRef defn.FunctionClass(params.length) =>
-          pt.typeArgs take params.length
+          (pt.typeArgs take params.length, pt.typeArgs.last)
         case SAMType(meth) =>
-          val MethodType(_, paramTypes) = meth.info
-          paramTypes
+          val mt @ MethodType(_, paramTypes) = meth.info
+          (paramTypes, mt.resultType)
         case _ =>
-          params map alwaysWildcardType
+          (params map alwaysWildcardType, WildcardType)
       }
 
       def refersTo(arg: untpd.Tree, param: untpd.ValDef): Boolean = arg match {
@@ -585,7 +585,11 @@ class Typer extends Namer with Applications with Implicits {
             val paramTpt = untpd.TypeTree(inferredParamType(param, formal))
             cpy.ValDef(param, param.mods, param.name, paramTpt, param.rhs)
           }
-      typed(desugar.makeClosure(inferredParams, fnBody), pt)
+
+      val resultTpt =
+        if (isFullyDefined(protoResult, ForceDegree.none)) untpd.TypeTree(protoResult)
+        else untpd.TypeTree()
+      typed(desugar.makeClosure(inferredParams, fnBody, resultTpt), pt)
     }
   }
 
