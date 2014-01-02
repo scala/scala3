@@ -7,7 +7,10 @@ import Flags._, Trees._, Types._, Contexts._
 import Names._, StdNames._, NameOps._, Decorators._, Symbols._
 import util.HashSet
 
-trait TreeInfo[T >: Untyped] { self: Trees.Instance[T] =>
+trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
+
+  // Note: the <: Type constraint looks necessary (and is needed to make the file compile in dotc).
+  // But Scalac accepts the program happily without it. Need to find out why.
 
   def unsplice[T >: Untyped](tree: Trees.Tree[T]): Trees.Tree[T] = tree.asInstanceOf[untpd.Tree] match {
     case untpd.TypedSplice(tree1) => tree1.asInstanceOf[Trees.Tree[T]]

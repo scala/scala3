@@ -39,11 +39,5 @@ class tests extends CompilerTest {
   @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 10)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc")
-  //@Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast")
-  @Test def dotc_checktrees = compileFile(dotcDir + "tools/dotc/ast/", "CheckTrees")
-  @Test def dotc_trees = compileFile(dotcDir + "tools/dotc/ast/", "Trees")
-  @Test def dotc_untpd = compileFile(dotcDir + "tools/dotc/ast/", "untpd")
-  @Test def dotc_tpd = compileFile(dotcDir + "tools/dotc/ast/", "tpd")
-  @Test def dotc_desugar = compileFile(dotcDir + "tools/dotc/ast/", "Desugar")
-
+  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast")
 }
