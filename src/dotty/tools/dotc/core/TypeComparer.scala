@@ -971,7 +971,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
   }
 
   override def isSubType(tp1: Type, tp2: Type) =
-    traceIndented(s"${show(tp1)} <:< ${show(tp2)} ${tp1.getClass} ${tp2.getClass} ${if (frozenConstraint) "frozen" else ""}") {
+    traceIndented(s"${show(tp1)} <:< ${show(tp2)}${if (ctx.settings.verbose.value) s" ${tp1.getClass} ${tp2.getClass}" else ""}${if (frozenConstraint) " frozen" else ""}") {
       super.isSubType(tp1, tp2)
     }
 

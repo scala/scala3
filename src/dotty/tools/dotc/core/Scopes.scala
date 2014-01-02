@@ -17,6 +17,7 @@ import Denotations._
 import SymDenotations._
 import printing.Texts._
 import printing.Printer
+import util.common._
 import SymDenotations.NoDenotation
 import collection.mutable.ListBuffer
 
@@ -342,7 +343,7 @@ object Scopes {
    */
   def scopeTransform(owner: Symbol)(op: => MutableScope): MutableScope = op
 
-  val selectAll: SymDenotation => Boolean = Function.const(true)
+  val selectAll: SymDenotation => Boolean = alwaysTrue
   val selectPrivate: SymDenotation => Boolean    = d => (d is Flags.Private)
   val selectNonPrivate: SymDenotation => Boolean = d => !(d is Flags.Private)
 

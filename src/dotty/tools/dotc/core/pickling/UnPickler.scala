@@ -14,6 +14,7 @@ import ast.Trees, ast.tpd._, ast.untpd
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
+import util.common._
 import scala.reflect.internal.pickling.PickleFormat._
 import Decorators._
 import scala.collection.{ mutable, immutable }
@@ -318,7 +319,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   protected def readTypeName(): TypeName = readName().toTypeName
 
   /** Read a symbol */
-  protected def readSymbol(): Symbol = readDisambiguatedSymbol(scala.Function.const(true))()
+  protected def readSymbol(): Symbol = readDisambiguatedSymbol(alwaysTrue)()
 
   /** Read a symbol, with possible disambiguation */
   protected def readDisambiguatedSymbol(p: Symbol => Boolean)(): Symbol = {
