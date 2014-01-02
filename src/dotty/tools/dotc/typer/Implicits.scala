@@ -252,7 +252,7 @@ trait Implicits { self: Typer =>
    *  result is compatible with type `to`.
    */
   def inferView(from: Tree, to: Type)(implicit ctx: Context): SearchResult = track("inferView") {
-    inferImplicit(to, from, from.pos)
+    inferImplicit(to.stripTypeVar, from, from.pos)
   }
 
   /** Find an implicit parameter or conversion.
