@@ -276,6 +276,10 @@ object Contexts {
     final def addMode(mode: Mode): Context = withMode(this.mode | mode)
     final def maskMode(mode: Mode): Context = withMode(this.mode & mode)
     final def retractMode(mode: Mode): Context = withMode(this.mode &~ mode)
+
+    override def toString =
+      "Context(\n" +
+      (outersIterator map ( ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}") mkString "\n")
   }
 
   /** A condensed context provides only a small memory footprint over
@@ -296,7 +300,7 @@ object Contexts {
     def withNewTyperState: this.type = withTyperState(typerState.fresh(isCommittable = true))
     def withExploreTyperState: this.type = withTyperState(typerState.fresh(isCommittable = false))
     def withPrinterFn(printer: Context => Printer): this.type = { this.printerFn = printer; this }
-    def withOwner(owner: Symbol): this.type = { this.owner = owner; this }
+    def withOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
     def withSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
     def withCompilationUnit(compilationUnit: CompilationUnit): this.type = { this.compilationUnit = compilationUnit; this }
     def withTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }

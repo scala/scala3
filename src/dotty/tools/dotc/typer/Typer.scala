@@ -121,7 +121,7 @@ class Typer extends Namer with Applications with Implicits {
             case _ =>
               i"none of the overloaded alternatives named $name"
           }
-          val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else "" 
+          val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
           val whyNot = new StringBuffer
           val addendum =
             alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
@@ -884,7 +884,7 @@ class Typer extends Namer with Applications with Implicits {
         ctx.error(i"$pkg is not a packge", tree.pos)
         ctx
       }
-    val stats1 = typedStats(tree.stats, NoSymbol)(packageContext)
+    val stats1 = typedStats(tree.stats, pkg)(packageContext)
     cpy.PackageDef(tree, pid1.asInstanceOf[RefTree], stats1) withType pkg.valRef
   }
 
@@ -906,7 +906,7 @@ class Typer extends Namer with Applications with Implicits {
           case tree: untpd.Bind => typedBind(tree, pt)
           case tree: untpd.ValDef =>
             if (tree.isEmpty) tpd.EmptyValDef
-            else typedValDef(tree, sym)(localContext.withNewScope)
+            else typedValDef(tree, sym)(ctx.fresh.withTree(tree).withNewScope)
           case tree: untpd.DefDef =>
             val typer1 = nestedTyper.remove(sym).get
             typer1.typedDefDef(tree, sym)(localContext.withTyper(typer1))
