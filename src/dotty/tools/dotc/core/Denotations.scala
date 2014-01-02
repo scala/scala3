@@ -266,7 +266,7 @@ object Denotations {
             def sym1Accessible = sym1.isAccessibleFrom(pre)
             if (info2 <:< info1 && sym1Accessible) denot1
             else {
-              val owner2 = sym2.owner
+              val owner2 = if (sym2 ne NoSymbol) sym2.owner else NoSymbol
               /** Determine a symbol which is overridden by both sym1 and sym2.
                *  Preference is given to accessible symbols.
                */
