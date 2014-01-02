@@ -229,10 +229,12 @@ object Inferencing {
     def isOK(tp: Type): Boolean = tp match {
       case _: WildcardType =>
         false
-      case tvar: TypeVar if force != ForceDegree.none && !tvar.isInstantiated =>
-        val inst = tvar.instantiate(fromBelow = true)
-        println(i"forced instantiation of ${tvar.origin} = $inst")
-        (force == ForceDegree.all || inst != defn.NothingType && inst != defn.NullType) && traverse(inst)
+      case tvar: TypeVar if !tvar.isInstantiated =>
+        force != ForceDegree.none && {
+          val inst = tvar.instantiate(fromBelow = true)
+          println(i"forced instantiation of ${tvar.origin} = $inst")
+          (force == ForceDegree.all || inst != defn.NothingType && inst != defn.NullType) && traverse(inst)
+        }
       case _ =>
         true
     }
