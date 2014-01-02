@@ -113,20 +113,20 @@ class Typer extends Namer with Applications with Implicits {
           checkAccessible(pre.select(name, d2), superAccess, pos)
         else {
           val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
-          val where = pre.typeSymbol
           val what = alts match {
             case Nil =>
               name.toString
             case sym :: Nil =>
-              if (sym.owner == where) sym.show else sym.showLocated
+              if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated
             case _ =>
               i"none of the overloaded alternatives named $name"
           }
+          val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else "" 
           val whyNot = new StringBuffer
           val addendum =
             alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
           if (!tpe.isError)
-            ctx.error(i"$what cannot be accessed from $pre.$whyNot", pos)
+            ctx.error(i"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
           ErrorType
         }
       }
