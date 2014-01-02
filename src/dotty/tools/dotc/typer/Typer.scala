@@ -586,10 +586,10 @@ class Typer extends Namer with Applications with Implicits {
             cpy.ValDef(param, param.mods, param.name, paramTpt, param.rhs)
           }
 
-      val resultTpt =
+      /*val resultTpt =
         if (isFullyDefined(protoResult, ForceDegree.none)) untpd.TypeTree(protoResult)
-        else untpd.TypeTree()
-      typed(desugar.makeClosure(inferredParams, fnBody, resultTpt), pt)
+        else untpd.TypeTree()*/
+      typed(desugar.makeClosure(inferredParams, fnBody/*, resultTpt*/), pt)
     }
   }
 
@@ -888,7 +888,7 @@ class Typer extends Namer with Applications with Implicits {
         ctx.error(i"$pkg is not a packge", tree.pos)
         ctx
       }
-    val stats1 = typedStats(tree.stats, pkg)(packageContext)
+    val stats1 = typedStats(tree.stats, pkg.moduleClass)(packageContext)
     cpy.PackageDef(tree, pid1.asInstanceOf[RefTree], stats1) withType pkg.valRef
   }
 
@@ -901,7 +901,11 @@ class Typer extends Namer with Applications with Implicits {
         val sym = symOfTree.getOrElse(xtree, NoSymbol)
         sym.ensureCompleted()
         symOfTree.remove(xtree)
-        def localContext = ctx.fresh.withOwner(sym).withTree(xtree)
+        def localContext = {
+          val freshCtx = ctx.fresh.withTree(xtree)
+          if (sym.exists) freshCtx.withOwner(sym)
+          else freshCtx // can happen for self defs
+        }
 
         def typedNamed(tree: untpd.NameTree): Tree = tree match {
           case tree: untpd.Ident => typedIdent(tree, pt)
@@ -910,7 +914,7 @@ class Typer extends Namer with Applications with Implicits {
           case tree: untpd.Bind => typedBind(tree, pt)
           case tree: untpd.ValDef =>
             if (tree.isEmpty) tpd.EmptyValDef
-            else typedValDef(tree, sym)(ctx.fresh.withTree(tree).withNewScope)
+            else typedValDef(tree, sym)(localContext.withNewScope)
           case tree: untpd.DefDef =>
             val typer1 = nestedTyper.remove(sym).get
             typer1.typedDefDef(tree, sym)(localContext.withTyper(typer1))
