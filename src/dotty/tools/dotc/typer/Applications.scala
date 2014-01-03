@@ -23,6 +23,7 @@ import Inferencing._
 import EtaExpansion._
 import collection.mutable
 import reflect.ClassTag
+import config.Printers._
 import language.implicitConversions
 
 object Applications {
@@ -636,12 +637,12 @@ trait Applications extends Compatibility { self: Typer =>
     unapply.tpe.widen match {
       case mt: MethodType if mt.paramTypes.length == 1 && !mt.isDependent =>
         val unapplyArgType = mt.paramTypes.head
-        println(s"unapp arg tpe = ${unapplyArgType.show}, pt = ${pt.show}")
+        unapp.println(s"unapp arg tpe = ${unapplyArgType.show}, pt = ${pt.show}")
         def wpt = widenForMatchSelector(pt)
         val ownType =
           if (pt <:< unapplyArgType) {
             fullyDefinedType(unapplyArgType, "extractor argument", tree.pos)
-            println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
+            unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             pt
           }
           else if (unapplyArgType <:< wpt) {
@@ -662,16 +663,16 @@ trait Applications extends Compatibility { self: Typer =>
                   if (ctx.settings.verbose.value) ctx.warning(msg, tree.pos)
                 }
                 else {
-                  println(s" ${unapply.symbol.owner} ${unapply.symbol.owner is Scala2x}")
+                  unapp.println(s" ${unapply.symbol.owner} ${unapply.symbol.owner is Scala2x}")
                   ctx.error(msg, tree.pos)
                 }
               case _ =>
             }
-            println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
+            unapp.println(i"case 2 $unapplyArgType ${ctx.typerState.constraint}")
             unapplyArgType
           } else {
-            // println("Neither sub nor super")
-            // println(TypeComparer.explained(implicit ctx => unapplyArgType <:< wpt))
+            unapp.println("Neither sub nor super")
+            unapp.println(TypeComparer.explained(implicit ctx => unapplyArgType <:< wpt))
             errorType(
               i"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $wpt",
               tree.pos)
@@ -696,7 +697,7 @@ trait Applications extends Compatibility { self: Typer =>
         }
         val unapplyPatterns = (bunchedArgs, argTypes).zipped map (typed(_, _))
         val result = cpy.UnApply(tree, unapply, unapplyImplicits, unapplyPatterns) withType ownType
-        println(s"unapply patterns = $unapplyPatterns")
+        unapp.println(s"unapply patterns = $unapplyPatterns")
         if ((ownType eq pt) || ownType.isError) result
         else Typed(result, TypeTree(ownType))
       case tp =>

@@ -9,6 +9,7 @@ import collection.mutable
 import printing.Disambiguation.disambiguated
 import util.SimpleMap
 import config.Config
+import config.Printers._
 
 /** Provides methods to compare types.
  */
@@ -62,18 +63,17 @@ class TypeComparer(initctx: Context) extends DotClass {
         if (fromBelow) oldBounds.derivedTypeBounds(oldBounds.lo | bound, oldBounds.hi)
         else oldBounds.derivedTypeBounds(oldBounds.lo, oldBounds.hi & bound)
       finally ignoreConstraint = saved
-    // val res = // !!!DEBUG
-    (param == bound) ||
-    (oldBounds eq newBounds) || {
-      val saved = constraint
-      constraint = constraint.updated(param, newBounds)
-      isSubType(newBounds.lo, newBounds.hi) ||
-      { constraint = saved; false } // don't leave the constraint in unsatisfiable state
-    }
-    //println(s"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound = $res")
-    //if (res)
-    //  println(constraint.show)
-    //res
+    val res =
+      (param == bound) ||
+        (oldBounds eq newBounds) || {
+          val saved = constraint
+          constraint = constraint.updated(param, newBounds)
+          isSubType(newBounds.lo, newBounds.hi) ||
+            { constraint = saved; false } // don't leave the constraint in unsatisfiable state
+        }
+    constr.println(s"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound = $res")
+    if (res) constr.println(constraint.show)
+    res
   }
 
   /** If current constraint set is not frozen, add the constraint
@@ -89,7 +89,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
     param == bound ||
     !frozenConstraint && {
-      // println(s"adding ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} to ${constraint.show}")
+      constr.println(s"adding ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} to ${constraint.show}")
       bound match {
         case bound: PolyParam if constraint contains bound =>
           addConstraint1(param, bound, fromBelow) &&
@@ -121,7 +121,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     val bounds = constraint.bounds(param)
     val bound = if (fromBelow) bounds.lo else bounds.hi
     val inst = avoidParam(bound)
-    println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
+    typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
     inst
   }
 

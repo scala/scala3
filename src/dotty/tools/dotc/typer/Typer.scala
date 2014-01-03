@@ -29,6 +29,7 @@ import collection.mutable
 import annotation.tailrec
 import Implicits._
 import util.Stats.track
+import config.Printers._
 import language.implicitConversions
 
 trait TyperContextOps { ctx: Context => }
@@ -324,7 +325,7 @@ class Typer extends Namer with Applications with Implicits {
 
     // begin typedIdent
     def kind = if (name.isTermName) "" else "type "
-    // println(s"typed ident $kind$name in ${ctx.owner}")  // !!! DEBUG
+    typr.println(s"typed ident $kind$name in ${ctx.owner}")
     if (ctx.mode is Mode.Pattern) {
       if (name == nme.WILDCARD)
         return tree.withType(pt)
@@ -743,7 +744,7 @@ class Typer extends Namer with Applications with Implicits {
     val TypeDef(_, _, Template(_, _, _, refinements1)) = typed(refineClsDef)
     assert(tree.refinements.length == refinements1.length, s"${tree.refinements} != $refinements1")
     def addRefinement(parent: Type, refinement: Tree): Type = {
-      // println(s"adding refinement $refinement") !!!DEBUG
+      typr.println(s"adding refinement $refinement")
       foreachSubTreeOf(refinement) {
         case tree: RefTree =>
           if (tree.symbol.owner == refineCls && tree.pos.start <= tree.symbol.pos.end)
@@ -757,7 +758,7 @@ class Typer extends Namer with Applications with Implicits {
     }
     val res = cpy.RefinedTypeTree(tree, tpt1, refinements1) withType
       (tpt1.tpe /: refinements1)(addRefinement)
-    // println(s"typed refinement: ${res.tpe.show}")
+    typr.println(s"typed refinement: ${res.tpe.show}")
     res
   }
 
@@ -787,7 +788,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = track("typedBind") {
     val body1 = typed(tree.body, pt)
-    // println(i"typed bind $tree pt = $pt bodytpe = ${body1.tpe}")
+    typr.println(i"typed bind $tree pt = $pt bodytpe = ${body1.tpe}")
     val sym = ctx.newSymbol(ctx.owner, tree.name.asTermName, EmptyFlags, body1.tpe, coord = tree.pos)
     cpy.Bind(tree, tree.name, body1) withType TermRef(NoPrefix, sym)
   }
@@ -1090,7 +1091,7 @@ class Typer extends Namer with Applications with Implicits {
 
     def adaptOverloaded(ref: TermRef) = {
       val altDenots = ref.denot.alternatives
-      // println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %") !!! DEBUG
+      typr.println(i"adapt overloaded $ref with alternatives ${altDenots map (_.info)}%, %")
       val alts = altDenots map (alt =>
         TermRef.withSig(ref.prefix, ref.name, alt.info.signature, alt))
       def expectedStr = err.expectedTypeStr(pt)
@@ -1168,8 +1169,8 @@ class Typer extends Namer with Applications with Implicits {
         if (tree.tpe <:< pt) tree
         else if (ctx.mode is Mode.Pattern) tree // no subtype check for pattern
         else {
-          // println(s"adapt to subtype ${tree.tpe} !<:< $pt") // !!!DEBUG
-          // println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt)) // !!!DEBUG
+          typr.println(s"adapt to subtype ${tree.tpe} !<:< $pt")
+          typr.println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
           adaptToSubType(wtp)
         }
     }

@@ -14,6 +14,7 @@ import collection.mutable
 import annotation.tailrec
 import ErrorReporting._
 import tpd.ListOfTreeDecorator
+import config.Printers._
 import language.implicitConversions
 
 trait NamerContextOps { this: Context =>
@@ -180,7 +181,7 @@ class Namer { typer: Typer =>
       }
       else completer
 
-    println(i"creating symbol for $tree")
+    typr.println(i"creating symbol for $tree")
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         val cls = record(ctx.newClassSymbol(
@@ -209,7 +210,7 @@ class Namer { typer: Typer =>
     */
   def enterSymbol(sym: Symbol)(implicit ctx: Context) = {
     if (sym.exists) {
-      println(s"entered: $sym in ${ctx.owner} and ${ctx.effectiveScope}")
+      typr.println(s"entered: $sym in ${ctx.owner} and ${ctx.effectiveScope}")
       def preExisting = ctx.effectiveScope.lookup(sym.name)
       if (sym.owner is PackageClass) {
         if (preExisting.isDefinedInCurrentRun)
@@ -238,7 +239,7 @@ class Namer { typer: Typer =>
   def expand(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case mdef: DefTree =>
       val expanded = desugar.defTree(mdef)
-      println(i"Expansion: $mdef expands to $expanded")
+      typr.println(i"Expansion: $mdef expands to $expanded")
       if (expanded ne mdef) expandedTree(mdef) = expanded
     case _ =>
   }

@@ -25,6 +25,7 @@ import printing.Printer
 import scala.util.hashing.{ MurmurHash3 => hashing }
 import collection.{mutable, Seq, breakOut}
 import config.Config
+import config.Printers._
 import language.implicitConversions
 
 object Types {
@@ -1708,7 +1709,7 @@ object Types {
     /** Instantiate variable with given type */
     def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
       assert(tp ne this)
-      println(s"instantiating ${this.show} with ${tp.show}") // !!!DEBUG
+      typr.println(s"instantiating ${this.show} with ${tp.show}")
       assert(ctx.typerState.constraint contains this) // !!! DEBUG
       if (ctx.typerState eq owningState) inst = tp
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)

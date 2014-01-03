@@ -13,6 +13,7 @@ import util.{Stats, SimpleMap}
 import util.common._
 import Decorators._
 import ErrorReporting.{errorType, InfoString}
+import config.Printers._
 import collection.mutable
 
 object Inferencing {
@@ -244,7 +245,7 @@ object Inferencing {
       case tvar: TypeVar if !tvar.isInstantiated =>
         force != ForceDegree.none && {
           val inst = tvar.instantiate(fromBelow = !isContravariant(tvar))
-          println(i"forced instantiation of ${tvar.origin} = $inst")
+          typr.println(i"forced instantiation of ${tvar.origin} = $inst")
           (force == ForceDegree.all || inst != defn.NothingType && inst != defn.NullType) && traverse(inst)
         }
       case _ =>
@@ -304,10 +305,10 @@ object Inferencing {
     val seen = new mutable.HashMap[Name, List[Symbol]] {
       override def default(key: Name) = Nil
     }
-    println(i"cndd $cls")
+    typr.println(i"check no double defs $cls")
     for (decl <- cls.info.decls) {
       for (other <- seen(decl.name)) {
-        println(i"conflict? $decl $other")
+        typr.println(i"conflict? $decl $other")
         if (decl.signature matches other.signature) {
           val ofType = if (decl.isType) "" else i": ${other.info}"
           val explanation =
@@ -375,7 +376,7 @@ object Inferencing {
     var changed = false
     vs foreachBinding { (tvar, v) =>
       if (v != 0) {
-        //println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
+        typr.println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
         tvar.instantiate(fromBelow = v == 1)
         changed = true
       }
@@ -385,7 +386,7 @@ object Inferencing {
     else
       constraint.foreachUninstVar { tvar =>
         if (!(vs contains tvar) && qualifies(tvar)) {
-          //println(s"instantiating non-occurring $tvar in $tp")
+          typr.println(s"instantiating non-occurring $tvar in $tp")
           tvar.instantiate(fromBelow = true)
         }
       }
