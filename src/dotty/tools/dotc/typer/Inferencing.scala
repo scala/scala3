@@ -140,7 +140,7 @@ object Inferencing {
       ctx.typer.isApplicable(tp, argType :: Nil, resultType)
     }
     override def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): collection.Set[NamedType] =
-      AndType(argType, resultType).namedPartsWith(p) // this is more efficient than oring two namedParts sets
+      AndType.unchecked(argType, resultType).namedPartsWith(p) // this is more efficient than oring two namedParts sets
     override def computeHash = doHash(argType, resultType)
   }
 

@@ -1385,7 +1385,6 @@ object Types {
   }
 
   abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
-    assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType], s"$tp1 & $tp2")
 
     def derivedAndType(tp1: Type, tp2: Type)(implicit ctx: Context) =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
@@ -1397,8 +1396,13 @@ object Types {
   final class CachedAndType(tp1: Type, tp2: Type) extends AndType(tp1, tp2)
 
   object AndType {
-    def apply(tp1: Type, tp2: Type)(implicit ctx: Context) =
+    def apply(tp1: Type, tp2: Type)(implicit ctx: Context) = {
+      assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType], s"$tp1 & $tp2")
+      unchecked(tp1, tp2)
+    }
+    def unchecked(tp1: Type, tp2: Type)(implicit ctx: Context) = {
       unique(new CachedAndType(tp1, tp2))
+    }
   }
 
   abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
