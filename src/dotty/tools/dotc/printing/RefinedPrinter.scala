@@ -33,11 +33,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def nameString(name: Name): String = name.decode.toString
 
-  override protected def simpleNameString(sym: Symbol): String = {
-    var name = sym.originalName
-    //if (sym is ModuleClass) name = name.stripModuleClassSuffix
-    name.decode.toString
-  }
+  override protected def simpleNameString(sym: Symbol): String =
+    sym.originalName.decode.toString
 
   override protected def fullNameOwner(sym: Symbol) = {
     val owner = super.fullNameOwner(sym)
@@ -94,7 +91,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     tp match {
       case tp: RefinedType =>
         val args = tp.typeArgs
-        if (args.nonEmpty) {
+        if (args.nonEmpty && (args forall (_.exists))) {
           val tycon = tp.unrefine
           val cls = tycon.typeSymbol
           if (cls.typeParams.length == args.length) {
