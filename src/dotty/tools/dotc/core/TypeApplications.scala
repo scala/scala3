@@ -204,7 +204,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         val v = tparam.variance
         if (v > 0 && (lo isRef defn.NothingClass)) hi
         else if (v < 0 && (hi isRef defn.AnyClass)) lo
-        else NoType
+        else self // it's wildcard type; return its bounds
       }
     case _ =>
       NoType
