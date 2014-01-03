@@ -158,7 +158,7 @@ class TypeComparer(initctx: Context) extends DotClass {
             println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}, frozen = $frozenConstraint"))
             def explainPoly(tp: Type) = tp match {
               case tp: PolyParam => println(s"polyparam ${tp.show} found in ${tp.binder.show}")
-              case tp: TypeRef => println(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
+              case tp: TypeRef if tp.symbol.exists => println(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
               case tp: TypeVar => println(s"typevar ${tp.show}, origin = ${tp.origin}")
               case _ => println(s"${tp.show} is a ${tp.getClass}")
             }
