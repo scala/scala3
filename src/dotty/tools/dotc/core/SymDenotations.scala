@@ -147,6 +147,10 @@ object SymDenotations {
       myInfo = tp
     }
 
+    /** The name, except if this is a module class, strip the module class suffix */
+    def effectiveName =
+      if (this is ModuleClass) name.stripModuleClassSuffix else name
+
     /** The privateWithin boundary, NoSymbol if no boundary is given.
      */
     final def privateWithin: Symbol = { ensureCompleted(); myPrivateWithin }
@@ -216,7 +220,7 @@ object SymDenotations {
     /** The name with which the denoting symbol was created */
     final def originalName = {
       val d = initial.asSymDenotation
-      if (d is ExpandedName) d.name.unexpandedName() else d.name
+      if (d is ExpandedName) d.name.unexpandedName() else d.effectiveName
     }
 
     /** The encoded full path name of this denotation, where outer names and inner names
@@ -535,13 +539,13 @@ object SymDenotations {
      *  If this denotation is already a class, return itself
      */
     final def enclosingClass(implicit ctx: Context): Symbol =
-      if (isClass) symbol else owner.enclosingClass
+      if (isClass || !exists) symbol else owner.enclosingClass
 
-    /** The class containing this denotation which has the given name.
+    /** The class containing this denotation which has the given effective name.
      */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {
       val cls = enclosingClass
-      if (cls.name == name) cls else cls.owner.enclosingClassNamed(name)
+      if (cls.effectiveName == name || !cls.exists) cls else cls.owner.enclosingClassNamed(name)
     }
 
     /** The top-level class containing this denotation,
@@ -566,7 +570,7 @@ object SymDenotations {
      */
     final def companionModule(implicit ctx: Context): Symbol =
       if (owner.exists && name != tpnme.ANON_CLASS) // name test to avoid forcing, thereby causing cyclic reference errors
-        owner.info.decl(name.stripModuleClassSuffix.toTermName)
+        owner.info.decl(effectiveName.toTermName)
           .suchThat(sym => (sym is Module) && sym.isCoDefinedWith(symbol))
           .symbol
       else NoSymbol
@@ -577,7 +581,7 @@ object SymDenotations {
      */
     final def companionClass(implicit ctx: Context): Symbol =
       if (owner.exists)
-        owner.info.decl(name.stripModuleClassSuffix.toTypeName)
+        owner.info.decl(effectiveName.toTypeName)
           .suchThat(sym => sym.isClass && sym.isCoDefinedWith(symbol))
           .symbol
       else NoSymbol
