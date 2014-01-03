@@ -843,18 +843,22 @@ object SymDenotations {
     }
 
     /** A bitset that contains the superId's of all base classes */
-    private def superClassBits(implicit ctx: Context): BitSet = {
-      if (mySuperClassBits == null) computeBases
-      mySuperClassBits
-    }
+    private def superClassBits(implicit ctx: Context): BitSet =
+      if (classParents.isEmpty) BitSet() // can happen when called too early in Namers
+      else {
+        if (mySuperClassBits == null) computeBases
+        mySuperClassBits
+      }
 
     /** The base classes of this class in linearization order,
      *  with the class itself as first element.
      */
-    def baseClasses(implicit ctx: Context): List[ClassSymbol] = {
-      if (myBaseClasses == null) computeBases
-      myBaseClasses
-    }
+    def baseClasses(implicit ctx: Context): List[ClassSymbol] =
+      if (classParents.isEmpty) classSymbol :: Nil // can happen when called too early in Namers
+      else {
+        if (myBaseClasses == null) computeBases
+        myBaseClasses
+      }
 
     final override def derivesFrom(base: Symbol)(implicit ctx: Context): Boolean =
       !isAbsent &&
