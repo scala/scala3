@@ -77,6 +77,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
   override def toText(tp: Type): Text = controlled {
+    def argText(arg: Type): Text = arg match {
+      case arg: TypeBounds => "_" ~ toTextGlobal(arg)
+      case _ => toTextGlobal(arg)
+    }
     def toTextTuple(args: List[Type]): Text =
       "(" ~ toTextGlobal(args, ", ") ~ ")"
     def toTextFunction(args: List[Type]): Text =
@@ -91,7 +95,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     tp match {
       case tp: RefinedType =>
         val args = tp.typeArgs
-        if (args.nonEmpty && (args forall (_.exists))) {
+        if (args.nonEmpty) {
           val tycon = tp.unrefine
           val cls = tycon.typeSymbol
           if (cls.typeParams.length == args.length) {
@@ -99,7 +103,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             if (defn.FunctionClasses contains cls) return toTextFunction(args)
             if (defn.TupleClasses contains cls) return toTextTuple(args)
           }
-          return (toTextLocal(tycon) ~ "[" ~ toTextGlobal(args, ", ") ~ "]").close
+          return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
         }
       case tp @ TypeRef(pre, name) =>
         if (tp.symbol is TypeParam | TypeArgument) {
@@ -159,6 +163,16 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       val flagMask = if (suppressKw) PrintableFlags &~ Private else PrintableFlags
       val modsText: Text = (mods.flags & flagMask).toString
       Text(mods.annotations.map(annotText), " ") ~~ modsText ~~ (kw provided !suppressKw)
+    }
+
+    def argText(arg: Tree[T]): Text = arg match {
+      case arg: TypeBoundsTree[_] => "_" ~ toTextGlobal(arg)
+      case arg: TypeTree[_] =>
+        arg.typeOpt match {
+          case tp: TypeBounds => "_" ~ toTextGlobal(arg)
+          case _ => toTextGlobal(arg)
+        }
+      case _ => toTextGlobal(arg)
     }
 
     import untpd._
@@ -232,7 +246,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case RefinedTypeTree(tpt, refines) =>
         toTextLocal(tpt) ~ " " ~ blockText(refines)
       case AppliedTypeTree(tpt, args) =>
-        toTextLocal(tpt) ~ "[" ~ toTextGlobal(args, ", ") ~ "]"
+        toTextLocal(tpt) ~ "[" ~ Text(args map argText, ", ") ~ "]"
       case TypeBoundsTree(lo, hi) =>
         optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _)
       case Bind(name, body) =>
