@@ -51,23 +51,21 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
   /** The type parameters of the underlying class.
-   *  This is like `typeParams`, except for 4 differences.
+   *  This is like `typeParams`, except for 3 differences.
    *  First, it does not adjust type parameters in refined types. I.e. type arguments
    *  do not remove corresponding type parameters.
-   *  Second, it will return Nil instead of forcing a symbol, in order to rule
-   *  out CyclicReference exceptions.
-   *  Third, it will return Nil for BoundTypes because we might get a NullPointer exception
+   *  Second, it will return Nil for BoundTypes because we might get a NullPointer exception
    *  on PolyParam#underlying otherwise (demonstrated by showClass test).
-   *  Fourth, it won't return higher-kinded type parameters.
+   *  Third, it won't return higher-kinded type parameters.
    */
   final def safeUnderlyingTypeParams(implicit ctx: Context): List[TypeSymbol] = {
     def ifCompleted(sym: Symbol): Symbol = if (sym.isCompleted) sym else NoSymbol
     self match {
       case tp: ClassInfo =>
-        if (tp.cls.isCompleted) tp.cls.typeParams else Nil
+        tp.cls.typeParams
       case tp: TypeRef =>
         val tsym = tp.typeSymbol
-        if (tsym.isClass && tsym.isCompleted) tsym.typeParams
+        if (tsym.isClass) tsym.typeParams
         else if (tsym.isAliasType) tp.underlying.safeUnderlyingTypeParams
         else Nil
       case tp: BoundType =>

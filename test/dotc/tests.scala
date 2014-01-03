@@ -6,7 +6,12 @@ import test._
 class tests extends CompilerTest {
 
   override val defaultOptions =
-    List("-verbose", "-Ylog:frontend", "-explaintypes", "-Yshow-suppressed-errors", "-pagewidth", "160")
+    List(
+//        "-verbose",
+ //         "-Ylog:frontend",
+//        "-explaintypes",
+//        "-Yshow-suppressed-errors",
+        "-pagewidth", "160")
 
   val posDir = "/Users/odersky/workspace/dotty/tests/pos/"
   val negDir = "/Users/odersky/workspace/dotty/tests/neg/"
