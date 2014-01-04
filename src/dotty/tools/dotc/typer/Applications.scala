@@ -336,15 +336,17 @@ trait Applications extends Compatibility { self: Typer =>
     init()
   }
 
-  /** Subclass of Application for applicability tests with trees as arguments. */
-  class ApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type)(implicit ctx: Context)
-  extends TestApplication(methRef, methRef, args, resultType) {
+  /** Subclass of Application for applicability tests with type arguments and value
+   *  argument trees.
+   */
+  class ApplicableToTrees(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context)
+  extends TestApplication(methRef, methRef.widen.appliedTo(targs), args, resultType) {
     def argType(arg: Tree, formal: Type): Type = normalize(arg.tpe, formal)
     def treeToArg(arg: Tree): Tree = arg
     def isVarArg(arg: Tree): Boolean = tpd.isWildcardStarArg(arg)
   }
 
-  /** Subclass of Application for applicability tests with types as arguments. */
+  /** Subclass of Application for applicability tests with value argument types. */
   class ApplicableToTypes(methRef: TermRef, args: List[Type], resultType: Type)(implicit ctx: Context)
   extends TestApplication(methRef, methRef, args, resultType) {
     def argType(arg: Type, formal: Type): Type = arg
@@ -527,8 +529,8 @@ trait Applications extends Compatibility { self: Typer =>
   }
 
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
-    val typedFn = typedExpr(tree.fun, PolyProto(tree.args.length, pt))
     val typedArgs = tree.args mapconserve (typedType(_))
+    val typedFn = typedExpr(tree.fun, PolyProto(typedArgs.tpes, pt))
     val ownType = typedFn.tpe.widen match {
       case pt: PolyType =>
         checkBounds(typedArgs, pt, tree.pos)
@@ -707,26 +709,40 @@ trait Applications extends Compatibility { self: Typer =>
     }
   }
 
-  /** Is given method reference applicable to argument trees or types `args`?
+  /** Is given method reference applicable to type arguments `targs` and argument trees `args`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicable[Arg: ClassTag](methRef: TermRef, args: List[Arg], resultType: Type)(implicit ctx: Context): Boolean = {
+  def isApplicable(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean = {
     val nestedContext = ctx.fresh.withExploreTyperState
-    if (implicitly[ClassTag[Arg]].runtimeClass == classOf[Trees.Tree[_]])
-      new ApplicableToTrees(methRef, args.asInstanceOf[List[Tree]], resultType)(nestedContext).success
-    else
-      new ApplicableToTypes(methRef, args.asInstanceOf[List[Type]], resultType)(nestedContext).success
+    new ApplicableToTrees(methRef, targs, args, resultType)(nestedContext).success
   }
 
-  /** Is given type applicable to argument trees `args`, possibly after inserting an `apply`?
+  /** Is given method reference applicable to argument types `args`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicable[Arg: ClassTag](tp: Type, args: List[Arg], resultType: Type)(implicit ctx: Context): Boolean = tp match {
+  def isApplicable(methRef: TermRef, args: List[Type], resultType: Type)(implicit ctx: Context): Boolean = {
+    val nestedContext = ctx.fresh.withExploreTyperState
+    new ApplicableToTypes(methRef, args, resultType)(nestedContext).success
+  }
+
+  /** Is given type applicable to type arguments `targs` and argument trees `args`,
+   *  possibly after inserting an `apply`?
+   *  @param  resultType   The expected result type of the application
+   */
+  def isApplicable(tp: Type, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean =
+    onMethod(tp, isApplicable(_, targs, args, resultType))
+
+  /** Is given type applicable to argument types `args`, possibly after inserting an `apply`?
+   *  @param  resultType   The expected result type of the application
+   */
+  def isApplicable(tp: Type, args: List[Type], resultType: Type)(implicit ctx: Context): Boolean =
+    onMethod(tp, isApplicable(_, args, resultType))
+
+  private def onMethod(tp: Type, p: TermRef => Boolean)(implicit ctx: Context): Boolean = tp match {
     case methRef: TermRef if methRef.widenSingleton.isInstanceOf[SignedType] =>
-      isApplicable(methRef, args, resultType)
+      p(methRef)
     case _ =>
-      val app = tp.member(nme.apply)
-      app.exists && app.hasAltWith(d => isApplicable(TermRef(tp, nme.apply, d), args, resultType))
+      tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
   }
 
   /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
@@ -813,10 +829,12 @@ trait Applications extends Compatibility { self: Typer =>
     }
   }
 
-  /** Resolve overloaded alternative `alts`, given expected type `pt`.
+  /** Resolve overloaded alternative `alts`, given expected type `pt` and
+   *  possibly also type argument `targs` that need to be applied to each alternative
+   *  to form the method type.
    *  todo: use techniques like for implicits to pick candidates quickly?
    */
-  def resolveOverloaded(alts: List[TermRef], pt: Type)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
+  def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type] = Nil)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 
@@ -873,7 +891,7 @@ trait Applications extends Compatibility { self: Typer =>
             alts
 
         def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] =
-          alts filter (isApplicable(_, args, resultType))
+          alts filter (isApplicable(_, targs, args, resultType))
 
         val alts1 = narrowBySize(alts)
         if (isDetermined(alts1)) alts1
@@ -883,11 +901,9 @@ trait Applications extends Compatibility { self: Typer =>
           else narrowByTrees(alts2, pt.typedArgs, resultType)
         }
 
-      case pt @ PolyProto(nargs, _) =>
-        alts filter (alt => alt.widen match {
-          case PolyType(pnames) if pnames.length == nargs => true
-          case _ => false
-        })
+      case pt @ PolyProto(targs, pt1) =>
+        val alts1 = alts filter pt.isMatchedBy
+        resolveOverloaded(alts1, pt1, targs)
 
       case defn.FunctionType(args, resultType) =>
         narrowByTypes(alts, args, resultType)

@@ -1,9 +1,10 @@
 package test 
 
 import annotation.{tailrec, switch}
+import collection.mutable._
 
 object typers {
-  
+    
   object Eta {
     
     def fun(x: Int): Int = x + 1
@@ -114,5 +115,7 @@ object typers {
     val arr = List("a", "b", "c").toArray
     val i = 2
     arr(i).charAt(0)
+    
+    val x = new ArrayBuffer[String] // testing overloaded polymorphic constructors
   }
 }
