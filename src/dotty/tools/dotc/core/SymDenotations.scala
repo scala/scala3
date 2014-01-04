@@ -220,7 +220,7 @@ object SymDenotations {
     /** The name with which the denoting symbol was created */
     final def originalName = {
       val d = initial.asSymDenotation
-      if (d is ExpandedName) d.name.unexpandedName() else d.effectiveName
+      if (d is ExpandedName) d.name.unexpandedName() else d.name // !!!DEBUG, was: effectiveName
     }
 
     /** The encoded full path name of this denotation, where outer names and inner names

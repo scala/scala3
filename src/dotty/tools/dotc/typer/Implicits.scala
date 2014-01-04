@@ -105,7 +105,9 @@ object Implicits {
    *  @param tree  The typed tree that can needs to be inserted
    *  @param ctx   The context after the implicit search
    */
-  case class SearchSuccess(tree: tpd.Tree, ref: TermRef, tstate: TyperState) extends SearchResult
+  case class SearchSuccess(tree: tpd.Tree, ref: TermRef, tstate: TyperState) extends SearchResult {
+    override def toString = s"SearchSuccess($tree, $ref)"
+  }
 
   /** A failed search */
   abstract class SearchFailure extends SearchResult {

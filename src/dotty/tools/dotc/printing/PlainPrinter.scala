@@ -97,7 +97,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"
       case tp: TermRef if tp.symbol is Module =>
-        toText(tp.underlying)
+        toText(tp.underlying) ~ ".type"
       case tp: SingletonType =>
         toText(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
       case tp @ TypeRef(pre, name) =>
@@ -114,7 +114,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case ErrorType =>
         "<error>"
       case tp: WildcardType =>
-        if (tp.optBounds.exists) "?" ~ toTextRHS(tp.bounds) else "?"
+        if (tp.optBounds.exists) "(?" ~ toTextRHS(tp.bounds) ~ ")" else "?"
       case NoType =>
         "<notype>"
       case NoPrefix =>
