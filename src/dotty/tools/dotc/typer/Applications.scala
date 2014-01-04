@@ -287,28 +287,6 @@ trait Applications extends Compatibility { self: Typer =>
           }
       }
     }
-
-    /** Take into account that the result type of the current method
-     *  must fit the given expected result type.
-     */
-    def constrainResult(mt: Type, pt: Type): Boolean = pt match {
-      case FunProto(_, result, _) =>
-        mt match {
-          case mt: MethodType =>
-            mt.isDependent || constrainResult(mt.resultType, pt.resultType)
-          case _ =>
-            true
-        }
-      case pt: ValueType =>
-        mt match {
-          case mt: MethodType =>
-            mt.isDependent || isCompatible(normalize(mt, pt), pt)
-          case _ =>
-            isCompatible(mt, pt)
-        }
-      case _ =>
-        true
-    }
   }
 
   /** Subclass of Application for the cases where we are interested only

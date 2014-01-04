@@ -265,7 +265,7 @@ trait Implicits { self: Typer =>
    *  !!! todo: catch potential cycles
    */
   def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
-    ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", show = true) {
+    ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}, constraint = ${ctx.typerState.constraint.show}", show = true) {
       assert(!pt.isInstanceOf[ExprType])
       val isearch =
         if (ctx.settings.explaintypes.value) new ExplainedImplicitSearch(pt, argument, pos)

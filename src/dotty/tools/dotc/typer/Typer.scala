@@ -1137,7 +1137,7 @@ class Typer extends Namer with Applications with Implicits {
     def adaptNoArgs(wtp: Type): Tree = wtp match {
       case wtp: ExprType =>
         adaptInterpolated(tree.withType(wtp.resultType), pt)
-      case wtp: ImplicitMethodType =>
+      case wtp: ImplicitMethodType if constrainResult(wtp, pt) =>
         def implicitArgError(msg: => String): Tree = {
           ctx.error(msg, tree.pos.endPos)
           EmptyTree

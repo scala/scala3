@@ -39,6 +39,28 @@ object Inferencing {
       val nestedCtx = ctx.fresh.withExploreTyperState
       isCompatible(normalize(tp, pt)(nestedCtx), pt)(nestedCtx)
     }
+
+    /** Check that the result type of the current method
+     *  fits the given expected result type.
+     */
+    def constrainResult(mt: Type, pt: Type)(implicit ctx: Context): Boolean = pt match {
+      case FunProto(_, result, _) =>
+        mt match {
+          case mt: MethodType =>
+            mt.isDependent || constrainResult(mt.resultType, pt.resultType)
+          case _ =>
+            true
+        }
+      case pt: ValueType =>
+        mt match {
+          case mt: MethodType =>
+            mt.isDependent || isCompatible(normalize(mt, pt), pt)
+          case _ =>
+            isCompatible(mt, pt)
+        }
+      case _ =>
+        true
+    }
   }
 
   /** A prototype for expressions [] that are part of a selection operation:
