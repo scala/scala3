@@ -487,7 +487,7 @@ class Typer extends Namer with Applications with Implicits {
     val exprCtx = index(tree.stats)
     val stats1 = typedStats(tree.stats, ctx.owner)
     val expr1 = typedExpr(tree.expr, pt)(exprCtx)
-    val result = cpy.Block(tree, stats1, expr1).withType(blockType(stats1, expr1.tpe))
+    val result = cpy.Block(tree, stats1, expr1).withType(avoid(expr1.tpe, localSyms(stats1)))
     val leaks = CheckTrees.escapingRefs(result)
     if (leaks.isEmpty) result
     else if (isFullyDefined(pt, ForceDegree.all)) {
@@ -606,7 +606,7 @@ class Typer extends Namer with Applications with Implicits {
             (pt, TypeTree(pt))
           case _ =>
             if (!mt.isDependent) (mt.toFunctionType, EmptyTree)
-            else throw new Error(s"internal error: cannot turn dependent method type $mt into closure, position = ${tree.pos}") // !!! DEBUG. Eventually, convert to an error?
+            else throw new Error(i"internal error: cannot turn dependent method type $mt into closure, position = ${tree.pos}, raw type = ${mt.toString}") // !!! DEBUG. Eventually, convert to an error?
         }
       case tp =>
         throw new Error(i"internal error: closing over non-method $tp, pos = ${tree.pos}")

@@ -503,12 +503,16 @@ class Namer { typer: Typer =>
       if (isSecondaryConstructor) sym.owner.primaryConstructor.typeParams
       else tparams map symbolOfTree
     def wrapMethType(restpe: Type): Type = {
+      val paramSymss = vparamss.nestedMap(symbolOfTree)
+      val restpe1 = // try to make anonymous functions non-dependent, so that they can be used in closures
+        if (name == nme.ANON_FUN) tpd.avoid(restpe, paramSymss.flatten)
+        else restpe
       val monotpe =
-        (vparamss :\ restpe) { (params, restpe) =>
+        (paramSymss :\ restpe1) { (params, restpe) =>
           val make =
-            if (params.nonEmpty && (params.head.mods is Implicit)) ImplicitMethodType
+            if (params.nonEmpty && (params.head is Implicit)) ImplicitMethodType
             else MethodType
-          make.fromSymbols(params map symbolOfTree, restpe)
+          make.fromSymbols(params, restpe)
         }
       if (typeParams.nonEmpty) PolyType.fromSymbols(typeParams, monotpe)
       else if (vparamss.isEmpty) ExprType(monotpe)

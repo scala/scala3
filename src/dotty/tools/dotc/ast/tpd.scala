@@ -89,22 +89,22 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.Assign(lhs, rhs).withType(defn.UnitType).checked
 
   def Block(stats: List[Tree], expr: Tree)(implicit ctx: Context): Block =
-    untpd.Block(stats, expr).withType(blockType(stats, expr.tpe)).checked
+    untpd.Block(stats, expr).withType(avoid(expr.tpe, localSyms(stats))).checked
 
-  def blockType(stats: List[Tree], exprType: Type)(implicit ctx: Context): Type = {
+  def avoid(tp: Type, syms: => List[Symbol])(implicit ctx: Context): Type = {
     val widenMap = new TypeMap {
-      lazy val locals = localSyms(stats).toSet
-      def isLocal(sym: Symbol) = sym.owner.isTerm && (locals contains sym)
+      lazy val avoided = syms.toSet
+      def toAvoid(sym: Symbol) = sym.owner.isTerm && (avoided contains sym)
       def apply(tp: Type) = tp match {
-        case tp: TermRef if isLocal(tp.symbol) && variance > 0 =>
+        case tp: TermRef if toAvoid(tp.symbol) && variance > 0 =>
           apply(tp.info)
-        case tp @ TypeRef(pre: TermRef, _) if tp.symbol.isAliasType && isLocal(pre.symbol) =>
+        case tp @ TypeRef(pre: TermRef, _) if tp.symbol.isAliasType && toAvoid(pre.symbol) =>
           apply(tp.info.bounds.hi)
         case _ =>
           mapOver(tp)
       }
     }
-    widenMap(exprType)
+    widenMap(tp)
   }
 
   def maybeBlock(stats: List[Tree], expr: Tree)(implicit ctx: Context): Tree =
