@@ -235,8 +235,8 @@ object desugar {
     val n = vparamss.head.length
     if ((mods is Case) && 2 <= n && n <= Definitions.MaxTupleArity)
       parents1 = parents1 :+ productConstr(n)
-    if (parents1.isEmpty)
-      parents1 = New(anyRef, Nil) :: Nil
+    if (parents.isEmpty)
+      parents1 = New(anyRef, Nil) :: parents1
 
     // The thicket which is the desugared version of the companion object
     //     synthetic object C extends parentTpt { defs }

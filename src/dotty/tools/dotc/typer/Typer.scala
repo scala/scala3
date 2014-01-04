@@ -76,10 +76,12 @@ class Typer extends Namer with Applications with Implicits {
     val refDenot = site.member(name)
     if (reallyExists(refDenot)) site.select(name, refDenot)
     else {
-      if (!site.isErroneous)
+      if (!site.isErroneous) {
+        typr.println(s"site = $site, baseClasses = ${site.baseClasses}")
         ctx.error(
           if (name == nme.CONSTRUCTOR) i"$site does not have a constructor"
           else i"$name is not a member of $site", pos)
+      }
       ErrorType
     }
   }
