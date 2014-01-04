@@ -292,6 +292,8 @@ trait Implicits { self: Typer =>
     private def implicitProto(resultType: Type) =
       if (argument.isEmpty) resultType else ViewProto(argument.tpe, resultType)
 
+    assert(argument.isEmpty || argument.tpe.isValueType, i"found: ${argument.tpe}, expected: $pt")
+
     /** The expected type for the searched implicit */
     lazy val fullProto = implicitProto(pt)
 

@@ -301,8 +301,8 @@ trait Applications extends Compatibility { self: Typer =>
         }
       case pt: ValueType =>
         mt match {
-          case mt: ImplicitMethodType =>
-            mt.isDependent || constrainResult(mt.resultType, pt)
+          case mt: MethodType =>
+            mt.isDependent || isCompatible(normalize(mt, pt), pt)
           case _ =>
             isCompatible(mt, pt)
         }
