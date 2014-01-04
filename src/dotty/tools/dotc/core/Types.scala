@@ -628,6 +628,8 @@ object Types {
           case TypeBounds(lo, hi) if lo eq hi => hi
           case _ => NoType
         }
+      case pre: WildcardType =>
+        WildcardType
       case _ =>
         NoType
     }
@@ -1044,8 +1046,7 @@ object Types {
     val name: Name
 
     assert(prefix.isValueType ||
-           (prefix eq NoPrefix) ||
-           prefix.isInstanceOf[WildcardType], s"bad prefix in $prefix.$name")
+           (prefix eq NoPrefix), s"bad prefix in $prefix.$name")
 
     private[this] var lastDenotationOrSym: AnyRef = null
 
@@ -1145,7 +1146,7 @@ object Types {
     def derivedSelect(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
       else {
-        val res = lookupRefined(this, name)
+        val res = lookupRefined(prefix, name)
         if (res.exists) res else newLikeThis(prefix)
       }
 
@@ -2196,7 +2197,8 @@ object Types {
       case MethodParam(mt, pnum) =>
         WildcardType(TypeBounds.upper(apply(mt.paramTypes(pnum))))
       case tp: TypeVar =>
-        apply(tp.underlying)
+        val inst = tp.instanceOpt
+        apply(inst orElse WildcardType(ctx.typerState.constraint.bounds(tp.origin)))
       case _ =>
         mapOver(tp)
     }
