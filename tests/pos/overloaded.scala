@@ -18,5 +18,7 @@ object overloaded {
   val y2: Any = g _ 
   
   println(g)
-
+  
+  val xs = List("a", "b")
+  xs.mkString
 }

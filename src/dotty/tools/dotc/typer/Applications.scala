@@ -741,7 +741,8 @@ trait Applications extends Compatibility { self: Typer =>
 
     /** Is alternative `alt1` with type `tp1` as specific as alternative
      *  `alt2` with type `tp2` ? This is the case if `tp2` can be applied to
-     *  `tp1` (without intervention of implicits) or `tp2' is a supertype of `tp1`.
+     *  `tp1` (without intervention of implicits) or `tp2' is a supertype of `tp1`,
+     *  or `tp2` is a method or poly type but `tp1` isn't.
      */
     def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = tp1 match {
       case tp1: PolyType =>
@@ -753,8 +754,12 @@ trait Applications extends Compatibility { self: Typer =>
       case _ =>
         tp2 match {
           case tp2: PolyType =>
-            assert(!ctx.typerState.isCommittable)
-            isAsSpecific(alt1, tp1, alt2, constrained(tp2).resultType)
+            true
+// was:
+//            assert(!ctx.typerState.isCommittable)
+//            isAsSpecific(alt1, tp1, alt2, constrained(tp2).resultType)
+          case tp2: MethodType =>
+            true
           case _ =>
             isCompatible(tp1, tp2)
         }
