@@ -39,7 +39,7 @@ class OutputDirs {
   /** Set the single output directory. From now on, all files will
    *  be dumped in there, regardless of previous calls to 'add'.
    */
-  def setSingleOutput(outDir: String) {
+  def setSingleOutput(outDir: String): Unit = {
     val dst = AbstractFile.getDirectory(outDir)
     setSingleOutput(checkDir(dst, outDir, true))
   }
@@ -49,11 +49,11 @@ class OutputDirs {
   /** Set the single output directory. From now on, all files will
    *  be dumped in there, regardless of previous calls to 'add'.
    */
-  def setSingleOutput(dir: AbstractFile) {
+  def setSingleOutput(dir: AbstractFile): Unit = {
     singleOutDir = Some(dir)
   }
 
-  def add(src: AbstractFile, dst: AbstractFile) {
+  def add(src: AbstractFile, dst: AbstractFile): Unit = {
     singleOutDir = None
     outputDirs ::= ((src, dst))
   }

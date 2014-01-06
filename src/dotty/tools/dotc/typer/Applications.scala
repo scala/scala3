@@ -598,7 +598,8 @@ trait Applications extends Compatibility { self: Typer =>
       }
       def seqSelector = defn.RepeatedParamType.appliedTo(unapplyResult.elemType :: Nil)
       def getSelectors(tp: Type): List[Type] =
-        if (defn.isProductSubType(tp)) productSelectors(tp) else tp :: Nil
+        if (defn.isProductSubType(tp) && args.length > 1) productSelectors(tp)
+        else tp :: Nil
       def getTp = extractorMemberType(unapplyResult, nme.get)
 
       // println(s"unapply $unapplyResult ${extractorMemberType(unapplyResult, nme.isDefined)}")
