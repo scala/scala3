@@ -254,7 +254,8 @@ class Typer extends Namer with Applications with Implicits {
         val Name = name.toTermName
         selectors match {
           case Pair(Ident(from), Ident(Name)) :: rest =>
-            checkUnambiguous(selectionType(site, name, tree.pos))
+            val selName = if (name.isTypeName) from.toTypeName else from
+            checkUnambiguous(selectionType(site, selName, tree.pos))
           case Ident(Name) :: rest =>
             checkUnambiguous(selectionType(site, name, tree.pos))
           case _ :: rest =>

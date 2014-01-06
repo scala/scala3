@@ -740,28 +740,24 @@ trait Applications extends Compatibility { self: Typer =>
       else (sym1 is Module) && isDerived(sym1.companionClass, sym2)
 
     /** Is alternative `alt1` with type `tp1` as specific as alternative
-     *  `alt2` with type `tp2` ? This is the case if `tp2` can be applied to
-     *  `tp1` (without intervention of implicits) or `tp2' is a supertype of `tp1`,
-     *  or `tp2` is a method or poly type but `tp1` isn't.
+     *  `alt2` with type `tp2` ? This is the case if
+     *
+     *    1. `tp2` is a method or poly type but `tp1` isn't, or `tp1` is nullary.
+     *    2. `tp2` and `tp1` are method or poly types and `tp2` can be applied to the parameters of `tp1`.
+     *    3. Neither `tp1` nor `tp2` are method or poly types and `tp1` is compatible with `tp2`.
      */
-    def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = tp1 match {
+   def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = tp1 match {
       case tp1: PolyType =>
         def bounds(tparamRefs: List[TypeRef]) = tp1.paramBounds map (_.substParams(tp1, tparamRefs))
         val tparams = ctx.newTypeParams(alt1.symbol.owner, tp1.paramNames, EmptyFlags, bounds)
         isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
       case tp1: MethodType =>
-        isApplicable(alt2, tp1.paramTypes, WildcardType)
+        isApplicable(alt2, tp1.paramTypes, WildcardType) ||
+        tp1.paramTypes.isEmpty && tp2.isInstanceOf[MethodOrPoly]
       case _ =>
         tp2 match {
-          case tp2: PolyType =>
-            true
-// was:
-//            assert(!ctx.typerState.isCommittable)
-//            isAsSpecific(alt1, tp1, alt2, constrained(tp2).resultType)
-          case tp2: MethodType =>
-            true
-          case _ =>
-            isCompatible(tp1, tp2)
+          case tp2: MethodOrPoly => true
+          case _ => isCompatible(tp1, tp2)
         }
     }
 
@@ -792,11 +788,12 @@ trait Applications extends Compatibility { self: Typer =>
     else /* 1/9 */ winsType1 || /* 2/27 */ !winsType2
   }}
 
-  def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
+  def narrowMostSpecific(alts: List[TermRef], onTarget: Boolean = false)(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
     (alts: @unchecked) match {
       case alt :: alts1 =>
         def winner(bestSoFar: TermRef, alts: List[TermRef]): TermRef = alts match {
           case alt :: alts1 =>
+            println(i"comparing ${alt.widen} ${bestSoFar.widen}")
             winner(if (isAsGood(alt, bestSoFar)) alt else bestSoFar, alts1)
           case nil =>
             bestSoFar
@@ -809,7 +806,7 @@ trait Applications extends Compatibility { self: Typer =>
           case nil =>
             Nil
         }
-        best :: asGood(alts1)
+        best :: asGood(alts)
     }
   }
 
@@ -819,6 +816,11 @@ trait Applications extends Compatibility { self: Typer =>
    *  todo: use techniques like for implicits to pick candidates quickly?
    */
   def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type] = Nil)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
+
+    val onTarget = alts.head.name == "toLowerCase".toTermName
+
+    if (onTarget)
+      println(i"resolveOverloaded $alts, pt = $pt")
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 
@@ -878,10 +880,14 @@ trait Applications extends Compatibility { self: Typer =>
           alts filter (isApplicable(_, targs, args, resultType))
 
         val alts1 = narrowBySize(alts)
+        if (onTarget) println(i"narrow by size $alts")
+
         if (isDetermined(alts1)) alts1
         else {
           val alts2 = narrowByShapes(alts1)
-          if (isDetermined(alts2)) alts2
+         if (onTarget) println(i"narrow by shapes $alts")
+
+         if (isDetermined(alts2)) alts2
           else narrowByTrees(alts2, pt.typedArgs, resultType)
         }
 
@@ -895,9 +901,9 @@ trait Applications extends Compatibility { self: Typer =>
       case pt =>
         alts filter (normalizedCompatible(_, pt))
     }
-
+    println(s"candidates = $alts")
     if (isDetermined(candidates)) candidates
-    else narrowMostSpecific(candidates)
+    else narrowMostSpecific(candidates, onTarget)
   }
 }
 

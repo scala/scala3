@@ -158,7 +158,7 @@ trait PropertiesTrait {
   }
 
   // provide a main method so version info can be obtained by running this
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     val writer = new PrintWriter(Console.err, true)
     writer println versionMsg
   }

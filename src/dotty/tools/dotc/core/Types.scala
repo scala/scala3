@@ -1451,9 +1451,11 @@ object Types {
     }
   }
 
+  trait MethodOrPoly extends SignedType
+
   abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])
       (resultTypeExp: MethodType => Type)
-    extends CachedGroundType with BindingType with TermType with SignedType { thisMethodType =>
+    extends CachedGroundType with BindingType with TermType with MethodOrPoly { thisMethodType =>
 
     override val resultType = resultTypeExp(this)
     assert(resultType != NoType, this)
@@ -1584,7 +1586,7 @@ object Types {
   }
 
   case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-    extends UncachedGroundType with BindingType with TermType with SignedType {
+    extends UncachedGroundType with BindingType with TermType with MethodOrPoly {
 
     val paramBounds = paramBoundsExp(this)
     override val resultType = resultTypeExp(this)
