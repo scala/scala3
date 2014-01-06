@@ -41,7 +41,9 @@ object Implicits {
 
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = track("filterMatching") {
-      def refMatches(ref: TermRef)(implicit ctx: Context) = isCompatible(normalize(ref, pt), pt)
+      def refMatches(ref: TermRef)(implicit ctx: Context) =
+        (ref.symbol isAccessibleFrom ref.prefix) && isCompatible(normalize(ref, pt), pt)
+
       refs filter (refMatches(_)(ctx.fresh.withExploreTyperState)) // create a defensive copy of ctx to avoid constraint pollution
     }
 
@@ -354,7 +356,7 @@ trait Implicits { self: Typer =>
           }
         if (ctx.typerState.reporter.hasErrors)
           nonMatchingImplicit(ref)
-        else if (contextual && !refMatches(shadowing)) {
+        else if (contextual && !shadowing.tpe.isError && !refMatches(shadowing)) {
           println(i"SHADOWING $ref is shadowed by $shadowing")
           shadowedImplicit(ref, methPart(shadowing).tpe)
         }
