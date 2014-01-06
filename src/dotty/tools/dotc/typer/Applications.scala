@@ -788,12 +788,11 @@ trait Applications extends Compatibility { self: Typer =>
     else /* 1/9 */ winsType1 || /* 2/27 */ !winsType2
   }}
 
-  def narrowMostSpecific(alts: List[TermRef], onTarget: Boolean = false)(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
+  def narrowMostSpecific(alts: List[TermRef])(implicit ctx: Context): List[TermRef] = track("narrowMostSpecific") {
     (alts: @unchecked) match {
       case alt :: alts1 =>
         def winner(bestSoFar: TermRef, alts: List[TermRef]): TermRef = alts match {
           case alt :: alts1 =>
-            println(i"comparing ${alt.widen} ${bestSoFar.widen}")
             winner(if (isAsGood(alt, bestSoFar)) alt else bestSoFar, alts1)
           case nil =>
             bestSoFar
@@ -816,11 +815,6 @@ trait Applications extends Compatibility { self: Typer =>
    *  todo: use techniques like for implicits to pick candidates quickly?
    */
   def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type] = Nil)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
-
-    val onTarget = alts.head.name == "toLowerCase".toTermName
-
-    if (onTarget)
-      println(i"resolveOverloaded $alts, pt = $pt")
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 
@@ -880,14 +874,10 @@ trait Applications extends Compatibility { self: Typer =>
           alts filter (isApplicable(_, targs, args, resultType))
 
         val alts1 = narrowBySize(alts)
-        if (onTarget) println(i"narrow by size $alts")
-
         if (isDetermined(alts1)) alts1
         else {
           val alts2 = narrowByShapes(alts1)
-         if (onTarget) println(i"narrow by shapes $alts")
-
-         if (isDetermined(alts2)) alts2
+          if (isDetermined(alts2)) alts2
           else narrowByTrees(alts2, pt.typedArgs, resultType)
         }
 
@@ -901,9 +891,8 @@ trait Applications extends Compatibility { self: Typer =>
       case pt =>
         alts filter (normalizedCompatible(_, pt))
     }
-    println(s"candidates = $alts")
     if (isDetermined(candidates)) candidates
-    else narrowMostSpecific(candidates, onTarget)
+    else narrowMostSpecific(candidates)
   }
 }
 
