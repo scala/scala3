@@ -6,7 +6,10 @@ import scala.util.{ Try, Success, Failure }
 import scala.reflect.internal.util.StringOps
 import reflect.ClassTag
 import core.Contexts._
-import annotation.unchecked
+// import annotation.unchecked
+  // Dotty deviation: Imports take precedence over definitions in enclosing package
+  // (Note that @unchecked is in scala, not annotation, so annotation.unchecked gives
+  // us a package, which is not what was intended anyway).
 import language.existentials
 
 object Settings {
@@ -57,7 +60,7 @@ object Settings {
       copy(aliases = aliases :+ abbrv)(idx)
 
     def dependsOn[U](setting: Setting[U], value: U): Setting[T] =
-      copy(depends = depends :+ (setting, value))(idx)
+      copy(depends = depends :+ ((setting, value)))(idx) // Dotty deviation: no auto-tupling
 
     def valueIn(state: SettingsState): T =
       state.value(idx).asInstanceOf[T]
