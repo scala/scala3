@@ -327,7 +327,7 @@ class Namer { typer: Typer =>
 
     private def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
-        valOrDefDefSig(original, sym, identity)(localContext(sym).withNewScope)
+        valOrDefDefSig(original, sym, Nil, identity)(localContext(sym).withNewScope)
       case original: DefDef =>
         val typer1 = new Typer
         nestedTyper(sym) = typer1
@@ -417,7 +417,7 @@ class Namer { typer: Typer =>
    *  @param paramFn  A wrapping function that produces the type of the
    *                  defined symbol, given its final return type
    */
-  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramFn: Type => Type)(implicit ctx: Context): Type = {
+  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, typeParams: List[Symbol], paramFn: Type => Type)(implicit ctx: Context): Type = {
     val pt =
       if (!mdef.tpt.isEmpty) WildcardType
       else {
@@ -445,12 +445,19 @@ class Namer { typer: Typer =>
             lazy val schema = paramFn(WildcardType)
             val site = sym.owner.thisType
             ((NoType: Type) /: sym.owner.info.baseClasses.tail) { (tp, cls) =>
-              val itpe = cls.info
-                .nonPrivateDecl(sym.name)
-                .matchingDenotation(site, schema)
-                .info.finalResultType
-                .asSeenFrom(site, cls)
-              tp & itpe
+              val iRawInfo =
+                cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema).info
+              val iInstInfo = iRawInfo match {
+                case iRawInfo: PolyType =>
+                  if (iRawInfo.paramNames.length == typeParams.length)
+                    iRawInfo.instantiate(typeParams map (_.typeRef))
+                  else NoType
+                case _ =>
+                  if (typeParams.isEmpty) iRawInfo
+                  else NoType
+              }
+              val iResType = iInstInfo.finalResultType.asSeenFrom(site, cls)
+              tp & iResType
             }
           }
 
@@ -523,7 +530,7 @@ class Namer { typer: Typer =>
       typedAheadType(ddef.tpt, defn.UnitType)
       wrapMethType(sym.owner.typeRef.appliedTo(typeParams map (_.typeRef)))
     }
-    else valOrDefDefSig(ddef, sym, wrapMethType)
+    else valOrDefDefSig(ddef, sym, typeParams, wrapMethType)
   }
 
   def typeDefSig(tdef: TypeDef, sym: Symbol)(implicit ctx: Context): Type = {
