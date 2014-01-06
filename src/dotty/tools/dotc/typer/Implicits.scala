@@ -502,7 +502,9 @@ class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
             case Some(prevSize) if size >= prevSize => this
             case _ => updateMap(csyms1, seen.updated(csym, size))
           }
-        case _ => new SearchHistory(searchDepth + 1, seen)
+        case nil =>
+          if (csyms.isEmpty) this
+          else new SearchHistory(searchDepth + 1, seen)
       }
       updateMap(proto.classSymbols, seen)
     }
