@@ -48,4 +48,6 @@ class tests extends CompilerTest {
   @Test def dotc_settings = compileFile(dotcDir + "tools/dotc/config/", "Settings")
   @Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
   @Test def dotc_javaplatform = compileFile(dotcDir + "tools/dotc/config/", "JavaPlatform")
+  @Test def dotc_outputdirs = compileFile(dotcDir + "tools/dotc/config/", "OutputDirs")
+  @Test def dotc_pathresolver = compileFile(dotcDir + "tools/dotc/config/", "PathResolver")
 }

@@ -265,10 +265,15 @@ object Inferencing {
       case _: WildcardType =>
         false
       case tvar: TypeVar if !tvar.isInstantiated =>
+        def isBottomType(tp: Type) = tp == defn.NothingType || tp == defn.NullType
         force != ForceDegree.none && {
-          val inst = tvar.instantiate(fromBelow = !isContravariant(tvar))
+          val forceUp =
+            isContravariant(tvar) ||
+              force == ForceDegree.noBottom &&
+              isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true))
+          val inst = tvar.instantiate(fromBelow = !forceUp)
           typr.println(i"forced instantiation of ${tvar.origin} = $inst")
-          (force == ForceDegree.all || inst != defn.NothingType && inst != defn.NullType) && traverse(inst)
+          traverse(inst)
         }
       case _ =>
         true

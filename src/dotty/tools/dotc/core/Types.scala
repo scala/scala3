@@ -1729,7 +1729,7 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type = {
-      val upperBound = ctx.typerState.constraint.bounds(origin).hi
+      def upperBound = ctx.typerState.constraint.bounds(origin).hi
       def isSingleton(tp: Type): Boolean = tp match {
         case tp: SingletonType => true
         case AndType(tp1, tp2) => isSingleton(tp1) | isSingleton(tp2)
