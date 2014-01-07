@@ -263,11 +263,13 @@ object Contexts {
 
     /** A fresh clone of this context. */
     def fresh: FreshContext = {
-      val newctx = super.clone.asInstanceOf[FreshContext]
-      newctx.outer = this
+      val newctx: Context = super.clone.asInstanceOf[FreshContext] 
+      newctx.outer = this  
       newctx.implicitsCache = null
       newctx.setCreationTrace()
-      newctx
+        // Dotty deviation: Scala2x allows access to private members implicitCache and setCreationTrace
+        // even from a subclass prefix. Dotty (and Java) do not. I think that's a bug in Scala2x.
+      newctx.asInstanceOf[FreshContext]
     }
 
     final def withMode(mode: Mode): Context =
