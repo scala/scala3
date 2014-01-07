@@ -12,7 +12,6 @@ import reporting.Reporter
  *   - simplify hk types
  *   - make use of AndOrType
  *   - review isSubType
- *   - cycle check for implicits
  *   - have a second look at normalization (leave at method types if pt is method type?)
  *   - fix problem with duplicate companion objects for classes with default parameters in constructors
  */

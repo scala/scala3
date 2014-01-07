@@ -12,6 +12,8 @@ object Config {
 
   final val checkConstraintsNonCyclic = true
 
+  final val traceDeepSubTypes = false
+
   final val verboseExplainSubtype = true
 
   /** When set, use new signature-based matching.

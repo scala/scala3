@@ -79,8 +79,8 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
       val param = PolyParam(pt, i)
       entry match {
         case TypeBounds(lo, hi) =>
-          assert(lo != param, param)
-          assert(hi != param, param)
+          assert(!param.occursIn(lo, fromBelow = false), s"$param occurs above $lo")
+          assert(!param.occursIn(hi, fromBelow = true), s"$param occurs below $hi")
         case _ =>
       }
     }
@@ -126,36 +126,33 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
     noneLeft
   }
 
+  /** Drop parameter `PolyParam(poly, n)` from `bounds`,
+   *  replacing with Nothing in the lower bound and by `Any` in the upper bound.
+   */
+  def dropParamIn(bounds: TypeBounds, poly: PolyType, n: Int)(implicit ctx: Context): TypeBounds = {
+    def drop(tp: Type): Type = tp match {
+      case tp: AndOrType =>
+        val tp1 = drop(tp.tp1)
+        val tp2 = drop(tp.tp2)
+        if (!tp1.exists) tp2
+        else if (!tp2.exists) tp1
+        else tp
+      case PolyParam(`poly`, `n`) => NoType
+      case _ => tp
+    }
+    def approx(tp: Type, limit: Type): Type = {
+      val tp1 = drop(tp)
+      if (tp1.exists || !tp.exists) tp1 else limit
+    }
+    bounds.derivedTypeBounds(
+        approx(bounds.lo, defn.NothingType), approx(bounds.hi, defn.AnyType))
+  }
+
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all occurrences
    *  of the parameter elsewhere in the constraint by type `tp`.
    */
   def replace(param: PolyParam, tp: Type)(implicit ctx: Context): Constraint = {
-
-    /** Drop parameter `PolyParam(poly, n)` from bounds in type `tp` */
-    def dropParamIn(tp: Type, poly: PolyType, n: Int, fromBelow: Boolean = false): Type = {
-      def drop(tp: Type): Type = tp match {
-        case tp: AndOrType =>
-          val tp1 = drop(tp.tp1)
-          val tp2 = drop(tp.tp2)
-          if (!tp1.exists) tp2
-          else if (!tp2.exists) tp1
-          else tp
-        case PolyParam(`poly`, `n`) => NoType
-        case _ => tp
-      }
-      tp match {
-        case tp: TypeBounds =>
-          tp.derivedTypeBounds(
-              dropParamIn(tp.lo, poly, n, !fromBelow),
-              dropParamIn(tp.hi, poly, n, fromBelow))
-        case _ =>
-          val tp1 = drop(tp)
-          if (tp1.exists || !tp.exists) tp1
-          else if (fromBelow) defn.NothingType
-          else defn.AnyType
-      }
-    }
 
     def subst(poly: PolyType, entries: Array[Type]) = {
       var result = entries
@@ -163,10 +160,10 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
       while (i < paramCount(entries)) {
         entries(i) match {
           case oldBounds: TypeBounds =>
-            val newBounds = oldBounds.substParam(param, tp)
+            val newBounds = oldBounds.substParam(param, tp).asInstanceOf[TypeBounds]
             if (oldBounds ne newBounds) {
               if (result eq entries) result = entries.clone
-              result(i) = dropParamIn(newBounds, poly, i, fromBelow = false)
+              result(i) = dropParamIn(newBounds, poly, i)
             }
           case _ =>
         }

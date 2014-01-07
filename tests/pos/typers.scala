@@ -4,6 +4,11 @@ import annotation.{tailrec, switch}
 import collection.mutable._
 
 object typers {
+  
+  val entries = Array("abc", "def")
+  
+  for ((x, i) <- entries.zipWithIndex)
+    println(x)
     
   object Eta {
     

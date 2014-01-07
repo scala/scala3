@@ -1383,9 +1383,12 @@ object Types {
   trait AndOrType extends ValueType { // todo: check where we can simplify using AndOrType
     def tp1: Type
     def tp2: Type
+    def isAnd: Boolean
   }
 
   abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
+
+    def isAnd = true
 
     def derivedAndType(tp1: Type, tp2: Type)(implicit ctx: Context) =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
@@ -1408,6 +1411,8 @@ object Types {
 
   abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
     assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType], s"$tp1 | $tp2")
+
+    def isAnd = false
 
     def derivedOrType(tp1: Type, tp2: Type)(implicit ctx: Context) =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
@@ -1660,6 +1665,20 @@ object Types {
   case class PolyParam(binder: PolyType, paramNum: Int) extends ParamType {
     type BT = PolyType
     def copy(bt: BT) = PolyParam(bt, paramNum)
+
+    /** Looking only at the structure of `bound`, is one of the following true?
+     *     - fromBelow and param <:< bound
+     *     - !fromBelow and param >:> bound
+     */
+    def occursIn(bound: Type, fromBelow: Boolean): Boolean = bound match {
+      case bound: PolyParam => bound == this
+      case bound: AndOrType =>
+        def occ1 = occursIn(bound.tp1, fromBelow)
+        def occ2 = occursIn(bound.tp2, fromBelow)
+        if (fromBelow == bound.isAnd) occ1 || occ2 else occ1 & occ2
+      case _ => false
+    }
+
     override def underlying(implicit ctx: Context): Type = binder.paramBounds(paramNum)
     // no customized hashCode/equals needed because cycle is broken in PolyType
     override def toString = s"PolyParam(${binder.paramNames(paramNum)})"

@@ -53,6 +53,16 @@ class TypeComparer(initctx: Context) extends DotClass {
     myObjectClass
   }
 
+  /** Update constraint for `param` to `bounds`, check that
+   *  new constraint is still satisfiable.
+   */
+  private def updateConstraint(param: PolyParam, bounds: TypeBounds): Boolean = {
+    val saved = constraint
+    constraint = constraint.updated(param, bounds)
+    isSubType(bounds.lo, bounds.hi) ||
+    { constraint = saved; false } // don't leave the constraint in unsatisfiable state
+  }
+
   private def addConstraint1(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
     val oldBounds = constraint.bounds(param)
     assert(!bound.isInstanceOf[TypeVar])
@@ -64,16 +74,20 @@ class TypeComparer(initctx: Context) extends DotClass {
         else oldBounds.derivedTypeBounds(oldBounds.lo, oldBounds.hi & bound)
       finally ignoreConstraint = saved
     val res =
-      (param == bound) ||
-        (oldBounds eq newBounds) || {
-          val saved = constraint
-          constraint = constraint.updated(param, newBounds)
-          isSubType(newBounds.lo, newBounds.hi) ||
-            { constraint = saved; false } // don't leave the constraint in unsatisfiable state
-        }
+      (param == bound) || (oldBounds eq newBounds) || updateConstraint(param, newBounds)
     constr.println(s"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound = $res")
     if (res) constr.println(constraint.show)
     res
+  }
+
+  /** Make p2 = p1, transfer all bounds of p2 to p1 */
+  private def unify(p1: PolyParam, p2: PolyParam): Boolean = {
+    constr.println(s"unifying $p1 $p2")
+    val p1Bounds =
+      constraint.dropParamIn(constraint.bounds(p1), p2.binder, p2.paramNum) &
+      constraint.dropParamIn(constraint.bounds(p2), p1.binder, p1.paramNum)
+    updateConstraint(p1, p1Bounds) &&
+    updateConstraint(p2, TypeAlias(p1))
   }
 
   /** If current constraint set is not frozen, add the constraint
@@ -89,14 +103,27 @@ class TypeComparer(initctx: Context) extends DotClass {
   def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
     param == bound ||
     !frozenConstraint && {
-      constr.println(s"adding ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} to ${constraint.show}")
-      bound match {
+      constr.println(s"adding ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} (${bound.getClass}) to ${constraint.show}")
+      val res = bound match {
         case bound: PolyParam if constraint contains bound =>
-          addConstraint1(param, bound, fromBelow) &&
-          addConstraint1(bound, param, !fromBelow)
+          val TypeBounds(lo, hi) = constraint.bounds(bound)
+          if (lo eq hi)
+            addConstraint(param, lo, fromBelow)
+          else if (fromBelow && param.occursIn(lo, fromBelow = true))
+            unify(param, bound)
+          else if (!fromBelow && param.occursIn(hi, fromBelow = false))
+            unify(bound, param)
+          else
+            addConstraint1(param, bound, fromBelow) &&
+            addConstraint1(bound, param, !fromBelow)
+        case bound: AndOrType if fromBelow != bound.isAnd =>
+          addConstraint(param, bound.tp1, fromBelow) &&
+          addConstraint(param, bound.tp2, fromBelow)
         case _ =>
           addConstraint1(param, bound, fromBelow)
       }
+      constr.println(s"added ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} = ${constraint.show}")
+      res
     }
   }
 
@@ -174,9 +201,9 @@ class TypeComparer(initctx: Context) extends DotClass {
   def monitoredIsSubType(tp1: Type, tp2: Type) = {
     if (pendingSubTypes == null) {
       pendingSubTypes = new mutable.HashSet[(Type, Type)]
-      ctx.log(s"!!! deep subtype recursion involving $tp1 <:< $tp2")
-      if (!this.isInstanceOf[ExplainingTypeComparer])
-        ctx.log(TypeComparer.explained(implicit ctx => tp1 <:< tp2))
+      ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${ctx.typerState.constraint.show}")
+      if (Config.traceDeepSubTypes && !this.isInstanceOf[ExplainingTypeComparer])
+        ctx.log(TypeComparer.explained(implicit ctx => ctx.typeComparer.isSubType(tp1, tp2)))
     }
     val p = (tp1, tp2)
     !pendingSubTypes(p) && {
@@ -190,13 +217,6 @@ class TypeComparer(initctx: Context) extends DotClass {
   }
 
   def firstTry(tp1: Type, tp2: Type): Boolean = ctx.debugTraceIndented(s"$tp1 <:< $tp2") {
-    if (false && (tp2 isRef defn.NothingClass) && !frozenConstraint) {
-      tp1 match {
-        case tp1 @ TypeRef(_, name) =>
-          assert(name.toString != "CONS$$U", tp1.info + "/" + tp1.symbol.isAliasType)
-        case _ =>
-      }
-    }
     tp2 match {
       case tp2: NamedType =>
         tp1 match {

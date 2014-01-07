@@ -125,6 +125,8 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) {
     }
     col + 1
   }
+
+  override def toString = file.toString
 }
 
 object NoSource extends SourceFile("<no source>", Nil) {

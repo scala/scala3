@@ -11,19 +11,27 @@ class FrontEnd extends Phase {
 
   def name = "frontend"
 
-  def parse(implicit ctx: Context) = {
+  def monitor(doing: String)(body: => Unit)(implicit ctx: Context) =
+    try body
+    catch {
+      case ex: Throwable =>
+        println(s"exception occured while $doing ${ctx.compilationUnit}")
+        throw ex
+    }
+
+  def parse(implicit ctx: Context) = monitor("parsing") {
     val unit = ctx.compilationUnit
     unit.untpdTree = new Parser(unit.source).parse()
     typr.println("parsed:\n"+unit.untpdTree.show)
   }
 
-  def enterSyms(implicit ctx: Context) = {
+  def enterSyms(implicit ctx: Context) = monitor("indexing") {
     val unit = ctx.compilationUnit
     ctx.typer.index(unit.untpdTree)
     typr.println("entered: "+unit.source)
   }
 
-  def typeCheck(implicit ctx: Context) = {
+  def typeCheck(implicit ctx: Context) = monitor("typechecking") {
     val unit = ctx.compilationUnit
     unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
     typr.println("typed: "+unit.source)
