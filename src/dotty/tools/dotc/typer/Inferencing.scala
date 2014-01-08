@@ -76,6 +76,14 @@ object Inferencing {
         mbr.exists && mbr.hasAltWith(m => normalizedCompatible(m.info, proto))
       }
     override def toString = "Proto" + super.toString
+    override def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
+      val tp1 @ RefinedType(parent1, refinedName1) = super.derivedRefinedType(parent, refinedName, refinedInfo)
+      if (tp1 eq this) this
+      else {
+        assert(parent == WildcardType)
+        new SelectionProto(refinedName1, tp1.refinedInfo)
+      }
+    }
   }
 
   /** Create a selection proto-type, but only one level deep;

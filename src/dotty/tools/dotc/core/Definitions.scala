@@ -284,7 +284,7 @@ class Definitions(implicit ctx: Context) {
       lazy val targs = ft.typeArgs
       if ((FunctionClasses contains tsym) &&
           (targs.length - 1 <= MaxFunctionArity) &&
-          (FunctionClass(targs.length - 1) == tsym)) Some(targs.init, targs.last)
+          (FunctionClass(targs.length - 1) == tsym)) Some((targs.init, targs.last)) // Dotty deviation: no auto-tupling
       else None
     }
   }
