@@ -2307,9 +2307,12 @@ object Types {
   }
 
   class NamedPartsAccumulator(p: NamedType => Boolean)(implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {
+    def maybeAdd(x: mutable.Set[NamedType], tp: NamedType) = if (p(tp)) x += tp else x
     def apply(x: mutable.Set[NamedType], tp: Type): mutable.Set[NamedType] = tp match {
-      case tp: NamedType if (p(tp)) =>
-        foldOver(x += tp, tp)
+      case tp: TermRef =>
+        apply(foldOver(maybeAdd(x, tp), tp), tp.underlying)
+      case tp: TypeRef =>
+        foldOver(maybeAdd(x, tp), tp)
       case tp: ThisType =>
         apply(x, if (tp.cls is Module) tp.underlying else tp.cls.typeRef)
       case _ =>

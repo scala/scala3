@@ -228,7 +228,7 @@ trait ImplicitRunInfo { self: RunInfo =>
             }
             tp.classSymbols(liftingCtx) foreach addClassScope
           case _ =>
-            for (part <- tp.namedParts)
+            for (part <- tp.namedPartsWith(_.isType))
               comps ++= iscope(part).companionRefs
         }
         new OfTypeImplicits(tp, comps)(ctx)
