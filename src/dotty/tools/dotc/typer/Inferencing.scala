@@ -51,7 +51,7 @@ object Inferencing {
           case _ =>
             true
         }
-      case pt: ValueType =>
+      case pt: ValueType if !(pt isRef defn.UnitClass) =>
         mt match {
           case mt: MethodType =>
             mt.isDependent || isCompatible(normalize(mt, pt), pt)
