@@ -179,10 +179,8 @@ object Contexts {
      */
     private var creationTrace: Array[StackTraceElement] = _
 
-    setCreationTrace()
-
     private def setCreationTrace() =
-      if (true || this.settings.debug.value)
+      if (this.settings.debug.value)
         creationTrace = (new Throwable).getStackTrace().take(20)
 
     /** Print all enclosing context's creation stacktraces */
@@ -263,8 +261,8 @@ object Contexts {
 
     /** A fresh clone of this context. */
     def fresh: FreshContext = {
-      val newctx: Context = super.clone.asInstanceOf[FreshContext] 
-      newctx.outer = this  
+      val newctx: Context = super.clone.asInstanceOf[FreshContext]
+      newctx.outer = this
       newctx.implicitsCache = null
       newctx.setCreationTrace()
         // Dotty deviation: Scala2x allows access to private members implicitCache and setCreationTrace

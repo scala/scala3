@@ -2315,6 +2315,12 @@ object Types {
         foldOver(maybeAdd(x, tp), tp)
       case tp: ThisType =>
         apply(x, if (tp.cls is Module) tp.underlying else tp.cls.typeRef)
+      case tp: ConstantType =>
+        apply(x, tp.underlying)
+      case tp: MethodParam =>
+        apply(x, tp.underlying)
+      case tp: PolyParam =>
+        apply(x, tp.underlying)
       case _ =>
         foldOver(x, tp)
     }
