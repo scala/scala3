@@ -4,6 +4,7 @@ package core
 
 import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
 import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._
+import pickling.UnPickler.ensureConstructor
 import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
 import PartialFunction._
@@ -117,8 +118,12 @@ class Definitions(implicit ctx: Context) {
     def Object_toString  = objMethod(nme.toString_)
     private def objMethod(name: PreName) = ObjectClass.requiredMethod(name)
 
-  lazy val AnyClass: ClassSymbol = newCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Any, Abstract, Nil)
+  lazy val AnyClass: ClassSymbol = {
+    val cls = newCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil)
+    ensureConstructor(cls, EmptyScope)
+    cls
+  }
+
   lazy val AnyValClass: ClassSymbol = requiredClass("scala.AnyVal")
 
     lazy val Any_==       = newMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
