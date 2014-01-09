@@ -218,10 +218,11 @@ abstract class Reporter {
 
   def hasErrors   = count(ERROR.level) > 0
   def hasWarnings = count(WARNING.level) > 0
+  
+  def errorCounts: Any = count.clone
 
-  def isSilent[T](op: => Unit): Boolean = {
-    val prevCount = count.clone
-    op
+  def wasSilent[T](counts: Any): Boolean = {
+    val prevCount = counts.asInstanceOf[Array[Int]]
     var i = 0
     while (i < count.length) {
       if (prevCount(i) != count(i)) return false

@@ -146,9 +146,10 @@ object Inferencing {
     def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
       var targ = myTypedArg(arg)
       if (targ == null) {
-        if (ctx.typerState.reporter.isSilent {
-          targ = typer.typedUnadapted(arg, formal)
-        }) myTypedArg = myTypedArg.updated(arg, targ)
+        val counts = ctx.reporter.errorCounts
+        targ = typer.typedUnadapted(arg, formal)
+        if (ctx.reporter.wasSilent(counts))
+          myTypedArg = myTypedArg.updated(arg, targ)
       }
       typer.adapt(targ, formal)
     }
