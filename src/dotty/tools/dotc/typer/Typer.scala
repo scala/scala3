@@ -112,7 +112,7 @@ class Typer extends Namer with Applications with Implicits {
       val d = tpe.denot.accessibleFrom(pre, superAccess)
       if (!d.exists) {
         val d2 = pre.nonPrivateMember(name)
-        if (reallyExists(d2))
+        if (reallyExists(d2) && (d2 ne tpe.denot))
           checkAccessible(pre.select(name, d2), superAccess, pos)
         else {
           val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
