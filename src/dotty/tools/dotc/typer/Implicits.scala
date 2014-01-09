@@ -274,7 +274,10 @@ trait Implicits { self: Typer =>
    *  result is compatible with type `to`.
    */
   def inferView(from: Tree, to: Type)(implicit ctx: Context): SearchResult = track("inferView") {
-    inferImplicit(to.stripTypeVar, from, from.pos)
+    if (   (to isRef defn.AnyClass)
+        || (to isRef defn.ObjectClass)
+        || (to isRef defn.UnitClass)) NoImplicitMatches
+    else inferImplicit(to.stripTypeVar, from, from.pos)
   }
 
   /** Find an implicit parameter or conversion.
