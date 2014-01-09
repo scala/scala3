@@ -1117,9 +1117,10 @@ class Typer extends Namer with Applications with Implicits {
                 noMatches
           }
         case alts =>
-          def all = if (altDenots.length == 2) "both" else "all"
+          val remainingDenots = alts map (_.denot.asInstanceOf[SingleDenotation])
+          def all = if (remainingDenots.length == 2) "both" else "all"
           errorTree(tree,
-            i"""Ambiguous overload. The ${err.overloadedAltsStr(altDenots)}
+            i"""Ambiguous overload. The ${err.overloadedAltsStr(remainingDenots)}
                |$all match $expectedStr""".stripMargin)
       }
     }
