@@ -449,11 +449,8 @@ trait Applications extends Compatibility { self: Typer =>
                 // implicit conversion around []. (an example is Int + BigInt).
                 tryEither { implicit ctx =>
                   val qual1 = adaptInterpolated(qual, new SelectionProto(name, proto))
-                  if (qual1 eq qual) {
-                    failedState.commit()
-                    failedVal
-                  }
-                  else if (qual1.tpe.isError) qual1
+                  if (qual eq qual1) ctx.error("no progress")
+                  if (ctx.reporter.hasErrors) qual1
                   else
                     typedApply(
                       cpy.Apply(tree,
@@ -750,20 +747,21 @@ trait Applications extends Compatibility { self: Typer =>
      *    2. `tp2` and `tp1` are method or poly types and `tp2` can be applied to the parameters of `tp1`.
      *    3. Neither `tp1` nor `tp2` are method or poly types and `tp1` is compatible with `tp2`.
      */
-   def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = tp1 match {
+    def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = ctx.traceIndented(i"isAsSpecific $tp1 $tp2") { tp1 match {
       case tp1: PolyType =>
         def bounds(tparamRefs: List[TypeRef]) = tp1.paramBounds map (_.substParams(tp1, tparamRefs))
         val tparams = ctx.newTypeParams(alt1.symbol.owner, tp1.paramNames, EmptyFlags, bounds)
         isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
       case tp1: MethodType =>
-        isApplicable(alt2, tp1.paramTypes, WildcardType) ||
+        def repeatedToSingle(tp: Type) = if (tp.isRepeatedParam) tp.typeArgs.head else tp
+        isApplicable(alt2, tp1.paramTypes map repeatedToSingle, WildcardType) ||
         tp1.paramTypes.isEmpty && tp2.isInstanceOf[MethodOrPoly]
       case _ =>
         tp2 match {
           case tp2: MethodOrPoly => true
           case _ => isCompatible(tp1, tp2)
         }
-    }
+    }}
 
     val owner1 = alt1.symbol.owner
     val owner2 = alt2.symbol.owner
