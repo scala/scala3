@@ -449,7 +449,11 @@ trait Applications extends Compatibility { self: Typer =>
                 // implicit conversion around []. (an example is Int + BigInt).
                 tryEither { implicit ctx =>
                   val qual1 = adaptInterpolated(qual, new SelectionProto(name, proto))
-                  if (qual1.tpe.isError || (qual1 eq qual)) qual1
+                  if (qual1 eq qual) {
+                    failedState.commit()
+                    failedVal
+                  }
+                  else if (qual1.tpe.isError) qual1
                   else
                     typedApply(
                       cpy.Apply(tree,
