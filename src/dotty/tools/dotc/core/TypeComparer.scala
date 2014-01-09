@@ -3,6 +3,7 @@ package dotc
 package core
 
 import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._
+import typer.Mode
 import Decorators._
 import StdNames.{nme, tpnme}
 import collection.mutable
@@ -119,6 +120,8 @@ class TypeComparer(initctx: Context) extends DotClass {
         case bound: AndOrType if fromBelow != bound.isAnd =>
           addConstraint(param, bound.tp1, fromBelow) &&
           addConstraint(param, bound.tp2, fromBelow)
+        case bound: WildcardType =>
+          true
         case _ =>
           addConstraint1(param, bound, fromBelow)
       }
@@ -254,7 +257,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         tp2 == tp1 ||
         isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
           if (constraint contains tp2) addConstraint(tp2, tp1.widen.dealias.stripTypeVar, fromBelow = true)
-          else secondTry(tp1, tp2)
+          else (ctx.mode is Mode.TypevarsMissContext) || secondTry(tp1, tp2)
         }
       case tp2: BoundType =>
         tp2 == tp1 || secondTry(tp1, tp2)
@@ -293,7 +296,7 @@ class TypeComparer(initctx: Context) extends DotClass {
             ctx.typerState.isGlobalCommittable)
           ctx.log(s"!!! instantiating to Nothing: $tp1")
         if (constraint contains tp1) addConstraint(tp1, tp2.dealias.stripTypeVar, fromBelow = false)
-        else thirdTry(tp1, tp2)
+        else (ctx.mode is Mode.TypevarsMissContext) || thirdTry(tp1, tp2)
       }
     case tp1: BoundType =>
       tp1 == tp2 || secondTry(tp1, tp2)

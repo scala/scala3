@@ -44,7 +44,7 @@ object Implicits {
       def refMatches(ref: TermRef)(implicit ctx: Context) =
         (ref.symbol isAccessibleFrom ref.prefix) && isCompatible(normalize(ref, pt), pt)
 
-      refs filter (refMatches(_)(ctx.fresh.withExploreTyperState)) // create a defensive copy of ctx to avoid constraint pollution
+      refs filter (refMatches(_)(ctx.fresh.withExploreTyperState.addMode(Mode.TypevarsMissContext))) // create a defensive copy of ctx to avoid constraint pollution
     }
 
     /** No further implicit conversions can be applied when searching for implicits. */
