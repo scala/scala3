@@ -184,7 +184,7 @@ object Scopes {
     }
 
     /** enter a symbol, asserting that no symbol with same name exists in scope */
-    final def enterUnique(sym: Symbol)(implicit ctx: Context) {
+    final def enterUnique(sym: Symbol)(implicit ctx: Context): Unit = {
       assert(lookup(sym.name) == NoSymbol, (sym.showLocated, lookup(sym.name).showLocated))
       enter(sym)
     }
@@ -199,7 +199,7 @@ object Scopes {
         enterAllInHash(lastEntry)
       }
 
-    private def enterAllInHash(e: ScopeEntry, n: Int = 0)(implicit ctx: Context) {
+    private def enterAllInHash(e: ScopeEntry, n: Int = 0)(implicit ctx: Context): Unit = {
       if (e ne null) {
         if (n < MaxRecursions) {
           enterAllInHash(e.prev, n + 1)
@@ -217,7 +217,7 @@ object Scopes {
     }
 
     /** Remove entry from this scope (which is required to be present) */
-    final def unlink(e: ScopeEntry)(implicit ctx: Context) {
+    final def unlink(e: ScopeEntry)(implicit ctx: Context): Unit = {
       if (lastEntry == e) {
         lastEntry = e.prev
       } else {
@@ -240,7 +240,7 @@ object Scopes {
     }
 
     /** remove symbol from this scope if it is present */
-    final def unlink(sym: Symbol)(implicit ctx: Context) {
+    final def unlink(sym: Symbol)(implicit ctx: Context): Unit = {
       var e = lookupEntry(sym.name)
       while (e ne null) {
         if (e.sym == sym) unlink(e);

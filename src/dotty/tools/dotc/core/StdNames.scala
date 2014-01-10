@@ -339,7 +339,7 @@ object StdNames {
     val ClassManifestFactory: N = "ClassManifestFactory"
     val classOf: N              = "classOf"
     val clone_ : N              = "clone"
-    val conforms: N             = "conforms"
+ //   val conforms : N             = "conforms" // Dotty deviation: no special treatment of conforms, so the occurrence of the name here would cause to unintended implicit shadowing. Should find a less common name for it in Predef.
     val copy: N                 = "copy"
     val currentMirror: N        = "currentMirror"
     val definitions: N          = "definitions"
