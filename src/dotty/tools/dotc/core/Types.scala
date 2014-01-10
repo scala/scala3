@@ -1223,6 +1223,7 @@ object Types {
   final class CachedTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name) {
     assert(prefix ne NoPrefix)
   }
+
   final class CachedTypeRef(prefix: Type, name: TypeName) extends TypeRef(prefix, name) {
     assert(prefix ne NoPrefix)
   }

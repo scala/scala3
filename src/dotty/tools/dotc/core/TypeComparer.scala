@@ -233,6 +233,7 @@ class TypeComparer(initctx: Context) extends DotClass {
                 ctx.erasedTypes
                 || sym1.isStaticOwner
                 || isSubType(pre1, pre2)
+                || pre1.isInstanceOf[ThisType] && pre2.isInstanceOf[ThisType]
                 )
               else (
                 tp1.name == tp2.name && isSubType(pre1, pre2)
