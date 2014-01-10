@@ -448,7 +448,7 @@ object Types {
     final def implicitMembers(implicit ctx: Context): List[TermRef] = track("implicitMembers") {
       memberDenots(implicitFilter,
           (name, buf) => buf ++= member(name).altsWith(_ is Implicit))
-        .toList.map(_.asInstanceOf[SymDenotation].termRefWithSig)
+        .toList.map(_.termRefWithSig)
     }
 
     /** The info of `sym`, seen as a member of this type. */

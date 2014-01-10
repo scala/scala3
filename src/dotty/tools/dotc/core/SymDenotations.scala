@@ -654,33 +654,17 @@ object SymDenotations {
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(implicit ctx: Context): Type = NoPrefix
 
-    /** The TypeRef representing this type denotation at its original location. */
-    def typeRef(implicit ctx: Context): TypeRef =
+    override def typeRef(implicit ctx: Context): TypeRef =
       TypeRef(owner.thisType, name.asTypeName, this)
 
-    /** The TermRef representing this term denotation at its original location. */
-    def termRef(implicit ctx: Context): TermRef =
+    override def termRef(implicit ctx: Context): TermRef =
       TermRef(owner.thisType, name.asTermName, this)
 
-    /** The TermRef representing this term denotation at its original location
-     *  and at signature `NotAMethod`.
-     */
-    def valRef(implicit ctx: Context): TermRef =
+    override def valRef(implicit ctx: Context): TermRef =
       TermRef.withSig(owner.thisType, name.asTermName, Signature.NotAMethod, this)
 
-    /** The TermRef representing this term denotation at its original location
-     *  at the denotation's signature.
-     *  @note  Unlike `valRef` and `termRef`, this will force the completion of the
-     *         denotation via a call to `info`.
-     */
-    def termRefWithSig(implicit ctx: Context): TermRef =
+    override def termRefWithSig(implicit ctx: Context): TermRef =
       TermRef.withSig(owner.thisType, name.asTermName, signature, this)
-
-	/** The NamedType representing this denotation at its original location.
-	 *  Same as either `typeRef` or `termRefWithSig` depending whether this denotes a type or not.
-	 */
-    def namedType(implicit ctx: Context): NamedType =
-      if (isType) typeRef else termRefWithSig
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
