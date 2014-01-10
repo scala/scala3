@@ -919,7 +919,7 @@ object SymDenotations {
      *  Note: We require that this does not happen after the first time
      *  someone does a findMember on a subclass.
      */
-    def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context) = {
+    def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
       require(!(this is Frozen))
       val mscope = scope match {
         case scope: MutableScope => scope

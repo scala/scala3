@@ -91,7 +91,11 @@ object UnPickler {
   }
 
   def ensureConstructor(cls: ClassSymbol, scope: Scope)(implicit ctx: Context) =
-    if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) cls.enter(ctx.newDefaultConstructor(cls), scope)
+    if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) {
+      val constr = ctx.newDefaultConstructor(cls)
+      addConstructorTypeParams(constr)
+      cls.enter(constr, scope)
+    }
 
   def setClassInfo(denot: ClassDenotation, info: Type, selfInfo: Type = NoType)(implicit ctx: Context): Unit = {
     val cls = denot.classSymbol
