@@ -980,6 +980,7 @@ object SymDenotations {
       if (!classSymbol.hasChildren ||
           !Config.useFingerPrints ||
           (memberFingerPrint contains name)) {
+        ensureCompleted()
         val ownDenots = decls.denotsNamed(name, selectNonPrivate)
         if (debugTrace)  // DEBUG
           println(s"$this.member($name), ownDenots = $ownDenots")
