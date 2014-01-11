@@ -461,27 +461,31 @@ class Typer extends Namer with Applications with Implicits {
             (args map untpd.TypedSplice) :+ tree.rhs), pt)
       case lhs =>
         val lhs1 = typed(lhs)
-        def reassignmentToVal =
-          errorTree(cpy.Assign(tree, lhs1, typed(tree.rhs, lhs1.tpe.widen)),
-            "reassignment to val")
         lhs1.tpe match {
           case ref: TermRef if ref.symbol is (Mutable, butNot = Accessor) =>
             cpy.Assign(tree, lhs1, typed(tree.rhs, ref.info)).withType(defn.UnitType)
-          case ref: TermRef if ref.info.isParameterless =>
-            val pre = ref.prefix
-            val setterName = ref.name.setterName
-            val setter = pre.member(setterName)
-            lhs1 match {
-              case lhs1: RefTree if setter.exists =>
-                val setterTypeRaw = pre select (setterName, setter)
-                val setterType = checkAccessible(setterTypeRaw, isSuperSelection(lhs1), tree.pos)
-                val lhs2 = lhs1.withName(setterName).withType(setterType)
-                typed(cpy.Apply(tree, untpd.TypedSplice(lhs2), tree.rhs :: Nil))
-              case _ =>
+          case _ =>
+            def reassignmentToVal =
+              errorTree(cpy.Assign(tree, lhs1, typed(tree.rhs, lhs1.tpe.widen)),
+                  "reassignment to val")
+            val lhsCore = stripApply(lhs1) // need to strip off any implicit parameters
+            lhsCore.tpe match {
+              case ref: TermRef => // todo: further conditions to impose on getter?
+                val pre = ref.prefix
+                val setterName = ref.name.setterName
+                val setter = pre.member(setterName)
+                lhsCore match {
+                  case lhsCore: RefTree if setter.exists =>
+                    val setterTypeRaw = pre select (setterName, setter)
+                    val setterType = checkAccessible(setterTypeRaw, isSuperSelection(lhsCore), tree.pos)
+                    val lhs2 = lhsCore.withName(setterName).withType(setterType)
+                    typed(cpy.Apply(tree, untpd.TypedSplice(lhs2), tree.rhs :: Nil))
+                  case _ =>
+                    reassignmentToVal
+                }
+              case tpe =>
                 reassignmentToVal
             }
-          case _ =>
-            reassignmentToVal
         }
     }
   }
