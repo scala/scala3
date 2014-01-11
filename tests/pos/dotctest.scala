@@ -1,337 +1,527 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
-import scala.io.Codec
-import util.NameTransformer
-import printing.{Showable, Texts, Printer}
-import Texts.Text
+import Periods._
+import Transformers._
+import Names._, Scopes._
+import Flags._
+import java.lang.AssertionError
 import Decorators._
-import Contexts.Context
-import collection.IndexedSeqOptimized
-import collection.generic.CanBuildFrom
-import collection.mutable.{ Builder, StringBuilder }
-import collection.immutable.WrappedString
-import collection.generic.CanBuildFrom
-//import annotation.volatile
+import Symbols._
+import Contexts._
+import SymDenotations._ 
+import printing.Texts._
+import printing.Printer
+import Types._, Annotations._, util.Positions._, StdNames._, NameOps._
+import ast.tpd.{TreeMapper, SharedTree}
+import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
+import collection.mutable
+import io.AbstractFile
+import language.implicitConversions
 
-object Names {
+/** Creation methods for symbols */
+trait Symbols { this: Context =>
+  
+  // import Symbols._
 
-  /** A common class for things that can be turned into names.
-   *  Instances are both names and strings, the latter via a decorator.
+// ---- Factory methods for symbol creation ----------------------
+//
+// All symbol creations should be done via the next two methods.
+
+  /** Create a symbol without a denotation.
+   *  Note this uses a cast instead of a direct type refinement because
+   *  it's debug-friendlier not to create an anonymous class here.
    */
-  trait PreName extends Any with Showable {
-    def toTypeName: TypeName
-    def toTermName: TermName
+  def newNakedSymbol[N <: Name](coord: Coord = NoCoord): Symbol { type ThisName = N } =
+    new Symbol(coord).asInstanceOf[Symbol { type ThisName = N }]
+
+  /** Create a class symbol without a denotation. */
+  def newNakedClassSymbol(coord: Coord = NoCoord, assocFile: AbstractFile = null) =
+    new ClassSymbol(coord, assocFile)
+
+// ---- Symbol creation methods ----------------------------------
+
+  /** Create a symbol from a function producing its denotation */
+  def newSymbolDenoting[N <: Name](denotFn: Symbol => SymDenotation, coord: Coord = NoCoord): Symbol { type ThisName = N } = {
+    val sym = newNakedSymbol[N](coord)
+    sym.denot = denotFn(sym)
+    sym
   }
 
-  /** A name is essentially a string, with three differences
-   *  1. Names belong in one of two name spaces: they are type names or term names.
-   *     Term names have a sub-category of "local" field names.
-   *     The same string can correspond a name in each of the three namespaces.
-   *  2. Names are hash-consed. Two names
-   *     representing the same string in the same universe are always reference identical.
-   *  3. Names are intended to be encoded strings. @see dotc.util.NameTransformer.
-   *     The encoding will be applied when converting a string to a name.
+  /** Create a symbol from its fields (info may be lazy) */
+  def newSymbol[N <: Name](
+      owner: Symbol,
+      name: N,
+      flags: FlagSet,
+      info: Type,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord): Symbol { type ThisName = N } = {
+    val sym = newNakedSymbol[N](coord)
+    val denot = SymDenotation(sym, owner, name, flags, info, privateWithin)
+    sym.denot = denot
+    sym
+  }
+
+  /** Create a class symbol from a function producing its denotation */
+  def newClassSymbolDenoting(denotFn: ClassSymbol => SymDenotation, coord: Coord = NoCoord, assocFile: AbstractFile = null): ClassSymbol = {
+    val cls = newNakedClassSymbol(coord, assocFile)
+    cls.denot = denotFn(cls)
+    cls
+  }
+
+  /** Create a class symbol from its non-info fields and a function
+   *  producing its info (the produced info may be lazy).
    */
-  abstract class Name extends DotClass
-    with PreName
-    with Seq[Char]
-    with IndexedSeqOptimized[Char, Name] {
+  def newClassSymbol(
+      owner: Symbol,
+      name: TypeName,
+      flags: FlagSet,
+      infoFn: ClassSymbol => Type,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      assocFile: AbstractFile = null): ClassSymbol
+  = {
+    val cls = newNakedClassSymbol(coord, assocFile)
+    val denot = SymDenotation(cls, owner, name, flags, infoFn(cls), privateWithin)
+    cls.denot = denot
+    cls
+  }
 
-    /** A type for names of the same kind as this name */
-    type ThisName <: Name
+  /** Create a class symbol from its non-info fields and the fields of its info. */
+  def newCompleteClassSymbol(
+      owner: Symbol,
+      name: TypeName,
+      flags: FlagSet,
+      parents: List[TypeRef],
+      decls: Scope = newScope,
+      selfInfo: Type = NoType,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      assocFile: AbstractFile = null): ClassSymbol =
+    newClassSymbol(
+        owner, name, flags,
+        ClassInfo(owner.thisType, _, parents, decls, selfInfo),
+        privateWithin, coord, assocFile)
 
-    /** The start index in the character array */
-    val start: Int
+  /** Create a module symbol with associated module class
+   *  from its non-info fields and a function producing the info
+   *  of the module class (this info may be lazy).
+   */
+  def newModuleSymbol(
+      owner: Symbol,
+      name: TermName,
+      modFlags: FlagSet,
+      clsFlags: FlagSet,
+      infoFn: (TermSymbol, ClassSymbol) => Type, // typically a ModuleClassCompleterWithDecls
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      assocFile: AbstractFile = null): TermSymbol
+  = {
+    val base = owner.thisType
+    val module = newNakedSymbol[TermName](coord)
+    val modcls = newNakedClassSymbol(coord, assocFile)
+    val modclsFlags = clsFlags | ModuleClassCreationFlags
+    val modclsName = name.toTypeName.adjustIfModuleClass(modclsFlags)
+    val cdenot = SymDenotation(
+        modcls, owner, modclsName, modclsFlags,
+        infoFn(module, modcls), privateWithin)
+    val mdenot = SymDenotation(
+        module, owner, name, modFlags | ModuleCreationFlags,
+        if (cdenot.isCompleted) TypeRef(owner.thisType, modclsName) withSym modcls
+        else new ModuleCompleter(modcls)(condensed))
+    module.denot = mdenot
+    modcls.denot = cdenot
+    module
+  }
 
-    /** The length of the names */
-    override val length: Int
+  /** Create a module symbol with associated module class
+   *  from its non-info fields and the fields of the module class info.
+   *  @param flags  The combined flags of the module and the module class
+   *                These are masked with RetainedModuleValFlags/RetainedModuleClassFlags.
+   */
+  def newCompleteModuleSymbol(
+      owner: Symbol,
+      name: TermName,
+      modFlags: FlagSet,
+      clsFlags: FlagSet,
+      parents: List[TypeRef],
+      decls: Scope,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      assocFile: AbstractFile = null): TermSymbol =
+    newModuleSymbol(
+        owner, name, modFlags, clsFlags,
+        (module, modcls) => ClassInfo(
+          owner.thisType, modcls, parents, decls, TermRef(owner.thisType, name) withSym module),
+        privateWithin, coord, assocFile)
 
-    /** Is this name a type name? */
-    def isTypeName: Boolean
+  /** Create a package symbol with associated package class
+   *  from its non-info fields and a lazy type for loading the package's members.
+   */
+  def newPackageSymbol(
+      owner: Symbol,
+      name: TermName,
+      infoFn: (TermSymbol, ClassSymbol) => LazyType): TermSymbol =
+    newModuleSymbol(owner, name, PackageCreationFlags, PackageCreationFlags, infoFn)
 
-    /** Is this name a term name? */
-    def isTermName: Boolean
+  /** Create a package symbol with associated package class
+   *  from its non-info fields its member scope.
+   */
+  def newCompletePackageSymbol(
+      owner: Symbol,
+      name: TermName,
+      modFlags: FlagSet = EmptyFlags,
+      clsFlags: FlagSet = EmptyFlags,
+      decls: Scope = newScope): TermSymbol =
+    newCompleteModuleSymbol(
+      owner, name,
+      modFlags | PackageCreationFlags, clsFlags | PackageCreationFlags,
+      Nil, decls)
 
-    /** This name converted to a type name */
-    def toTypeName: TypeName
 
-    /** This name converted to a term name */
-    def toTermName: TermName
+  /** Create a stub symbol that will issue a missing reference error
+   *  when attempted to be completed.
+   */
+  def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
+    def stubCompleter = new StubInfo()(condensed)
+    val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
+    println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
+    println(s"decls = ${normalizedOwner.decls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
+    if (base.settings.debug.value) throw new Error()
+    val stub = name match {
+      case name: TermName =>
+        newModuleSymbol(normalizedOwner, name, EmptyFlags, EmptyFlags, stubCompleter, assocFile = file)
+      case name: TypeName =>
+        newClassSymbol(normalizedOwner, name, EmptyFlags, stubCompleter, assocFile = file)
+    }
+    stubs = stub :: stubs
+    stub
+  }
 
-    /** This name downcasted to a type name */
-    def asTypeName: TypeName
+  /** Create the local template dummy of given class `cls`. */
+  def newLocalDummy(cls: Symbol, coord: Coord = NoCoord) =
+    newSymbol(cls, nme.localDummyName(cls), EmptyFlags, NoType)
 
-    /** This name downcasted to a term name */
-    def asTermName: TermName
+  /** Create an import symbol pointing back to given qualifier `expr`. */
+  def newImportSymbol(expr: SharedTree, coord: Coord = NoCoord) =
+    newSymbol(NoSymbol, nme.IMPORT, EmptyFlags, ImportType(expr), coord = coord)
 
-    /** Create a new name of same kind as this one, in the given
-     *  basis, with `len` characters taken from `cs` starting at `offset`.
-     */
-    def fromChars(cs: Array[Char], offset: Int, len: Int): ThisName
+  /** Create a class constructor symbol for given class `cls`. */
+  def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
+    newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes)(_ => cls.typeRef), privateWithin, coord)
 
-    /** Create new name of same kind as this name and with same
-     *  characters as given `name`.
-     */
-    def fromName(name: Name): ThisName = fromChars(chrs, name.start, name.length)
+  /** Create an empty default constructor symbol for given class `cls`. */
+  def newDefaultConstructor(cls: ClassSymbol) =
+    newConstructor(cls, EmptyFlags, Nil, Nil)
 
-    /** Create new name of same kind as this name with characters from
-     *  the given string
-     */
-    def fromString(str: String): ThisName = {
-      val cs = str.toCharArray
-      fromChars(cs, 0, cs.length)
+  /** Create a symbol representing a selftype declaration for class `cls`. */
+  def newSelfSym(cls: ClassSymbol, name: TermName = nme.WILDCARD, selfInfo: Type = NoType): TermSymbol =
+    ctx.newSymbol(cls, name, SelfSymFlags, selfInfo orElse cls.classInfo.selfType, coord = cls.coord)
+
+  /** Create new type parameters with given owner, names, and flags.
+   *  @param boundsFn  A function that, given type refs to the newly created
+   *                   parameters returns a list of their bounds.
+   */
+  def newTypeParams(
+    owner: Symbol,
+    names: List[TypeName],
+    flags: FlagSet,
+    boundsFn: List[TypeRef] => List[Type]): List[TypeSymbol] = {
+
+    val tparamBuf = new mutable.ListBuffer[TypeSymbol]
+    val trefBuf = new mutable.ListBuffer[TypeRef]
+    for (name <- names) {
+      val tparam = newNakedSymbol[TypeName](NoCoord)
+      tparamBuf += tparam
+      trefBuf += TypeRef(owner.thisType, name) withSym tparam
+    }
+    val tparams = tparamBuf.toList
+    val bounds = boundsFn(trefBuf.toList)
+    for ((name, tparam, bound) <- (names, tparams, bounds).zipped)
+      tparam.denot = SymDenotation(tparam, owner, name, flags | TypeParamCreationFlags, bound)
+    tparams
+  }
+
+  def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact, tp)
+
+  def newErrorSymbol(owner: Symbol, name: Name) =
+    newSymbol(owner, name, SyntheticArtifact,
+      if (name.isTypeName) TypeAlias(ErrorType) else ErrorType)
+
+  type OwnerMap = Symbol => Symbol
+
+  /** Map given symbols, subjecting all types to given type map and owner map.
+   *  Cross symbol references are brought over from originals to copies.
+   *  Do not copy any symbols if all attributes of all symbols stay the same.
+   */
+  def mapSymbols(
+      originals: List[Symbol],
+      typeMap: TypeMap = IdentityTypeMap,
+      ownerMap: OwnerMap = identity)
+  =
+    if (originals forall (sym =>
+        (typeMap(sym.info) eq sym.info) && (ownerMap(sym.owner) eq sym.owner)))
+      originals
+    else {
+      val copies: List[Symbol] = for (original <- originals) yield
+        newNakedSymbol[original.ThisName](original.coord)
+      val treeMap = new TreeMapper(typeMap, ownerMap)
+        .withSubstitution(originals, copies)
+      (originals, copies).zipped foreach {(original, copy) =>
+        val odenot = original.denot
+        copy.denot = odenot.copySymDenotation(
+          symbol = copy,
+          owner = treeMap.ownerMap(odenot.owner),
+          info = treeMap.typeMap(odenot.info),
+          privateWithin = ownerMap(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
+          annotations = odenot.annotations.mapConserve(treeMap.apply))
+      }
+      copies
     }
 
-    override def toString =
-      if (length == 0) "" else new String(chrs, start, length)
+// ----- Locating predefined symbols ----------------------------------------
+
+  def requiredPackage(path: PreName): TermSymbol =
+    base.staticRef(path.toTermName).requiredSymbol(_ is Package).asTerm
+
+  def requiredClass(path: PreName): ClassSymbol =
+    base.staticRef(path.toTypeName).requiredSymbol(_.isClass).asClass
+
+  def requiredModule(path: PreName): TermSymbol =
+    base.staticRef(path.toTermName).requiredSymbol(_ is Module).asTerm
+
+  def requiredMethod(cls: ClassSymbol, name: PreName): TermSymbol =
+    cls.info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
+}
+
+object Symbols {
+
+  var _nextId = 0 // !!! DEBUG, use global counter instead
+  def nextId = { _nextId += 1; _nextId }
+
+
+  /** A Symbol represents a Scala definition/declaration or a package.
+   */
+  class Symbol private[Symbols] (val coord: Coord) extends DotClass with printing.Showable {
+
+    type ThisName <: Name
+
+    private[this] var _id: Int = nextId
+    //assert(_id != 5859)
+
+    /** The unique id of this symbol */
+    def id = _id
+
+    /** The last denotation of this symbol */
+    private[this] var lastDenot: SymDenotation = _
+
+    /** Set the denotation of this symbol */
+    private[Symbols] def denot_=(d: SymDenotation) =
+      lastDenot = d
+
+    /** The current denotation of this symbol */
+    final def denot(implicit ctx: Context): SymDenotation = {
+      var denot = lastDenot
+      if (!(denot.validFor contains ctx.period))
+        denot = denot.current.asInstanceOf[SymDenotation]
+      denot
+    }
+
+    private def defRunId: RunId =
+      if (lastDenot == null) NoRunId else lastDenot.validFor.runId
+
+    /** Does this symbol come from a currently compiled source file? */
+    final def isDefinedInCurrentRun(implicit ctx: Context): Boolean = {
+      pos.exists && defRunId == ctx.runId
+    }
+
+    /** Subclass tests and casts */
+    final def isTerm(implicit ctx: Context): Boolean = denot.isTerm
+    final def isType(implicit ctx: Context): Boolean = denot.isType
+    final def isClass: Boolean = isInstanceOf[ClassSymbol]
+
+    final def asTerm(implicit ctx: Context): TermSymbol = { assert(isTerm, this); asInstanceOf[TermSymbol] }
+    final def asType(implicit ctx: Context): TypeSymbol = { assert(isType, this); asInstanceOf[TypeSymbol] }
+    final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
+
+    /** A unique, densely packed integer tag for each class symbol, -1
+     *  for all other symbols. To save memory, this method
+     *  should be called only if class is a super class of some other class.
+     */
+    def superId(implicit ctx: Context): Int = -1
+
+    /** This symbol entered into owner's scope (owner must be a class). */
+    final def entered(implicit ctx: Context): this.type = {
+      assert(this.owner.isClass, this.owner.denot) // !!! DEBUG
+      this.owner.asClass.enter(this)
+      if (this is Module) this.owner.asClass.enter(this.moduleClass)
+      this
+    }
+
+    /** This symbol, if it exists, otherwise the result of evaluating `that` */
+    def orElse(that: => Symbol)(implicit ctx: Context) =
+      if (this.exists) this else that
+
+    /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
+    def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
+
+    /** Is symbol a primitive value class? */
+    def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains this
+
+    /** Is symbol a phantom class for which no runtime representation exists? */
+    def isPhantomClass(implicit ctx: Context) = defn.PhantomClasses contains this
+
+    /** The current name of this symbol */
+    final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]
+
+    /** The source or class file from which this class or
+     *  the class containing this symbol was generated, null if not applicable.
+     *  Overridden in ClassSymbol
+     */
+    def associatedFile(implicit ctx: Context): AbstractFile =
+      denot.topLevelClass.symbol.associatedFile
+
+    /** The class file from which this class was generated, null if not applicable. */
+    final def binaryFile(implicit ctx: Context): AbstractFile =
+      pickFile(associatedFile, classFile = true)
+
+    /** The source file from which this class was generated, null if not applicable. */
+    final def sourceFile(implicit ctx: Context): AbstractFile =
+      pickFile(associatedFile, classFile = false)
+
+   /** Desire to re-use the field in ClassSymbol which stores the source
+     *  file to also store the classfile, but without changing the behavior
+     *  of sourceFile (which is expected at least in the IDE only to
+     *  return actual source code.) So sourceFile has classfiles filtered out.
+     */
+    private def pickFile(file: AbstractFile, classFile: Boolean): AbstractFile =
+      if ((file eq null) || classFile != (file.path endsWith ".class")) null else file
+
+    /** The position of this symbol, or NoPosition is symbol was not loaded
+     *  from source.
+     */
+    def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
+
+// -------- GADT handling -----------------------------------------------
+
+    /** Perform given operation `op` where this symbol allows tightening of
+     *  its type bounds.
+     */
+    private[dotc] def withGADTFlexType[T](op: () => T)(implicit ctx: Context): () => T = { () =>
+      assert((denot is TypeParam) && denot.owner.isTerm)
+      val saved = denot
+      denot = denot.copySymDenotation(initFlags = denot.flags | GADTFlexType)
+      try op()
+      finally denot = saved
+    }
+
+    /** Disallow tightening of type bounds for this symbol from now on */
+    private[dotc] def resetGADTFlexType()(implicit ctx: Context): Unit = {
+      assert(denot is GADTFlexType)
+      denot = denot.copySymDenotation(initFlags = denot.flags &~ GADTFlexType)
+    }
+
+    /** Change info of this symbol to new, tightened type bounds */
+    private[core] def changeGADTInfo(bounds: TypeBounds)(implicit ctx: Context): Unit = {
+      assert(denot is GADTFlexType)
+      denot = denot.copySymDenotation(info = bounds)
+    }
+
+// -------- Printing --------------------------------------------------------
+
+    /** The prefix string to be used when displaying this symbol without denotation */
+    protected def prefixString = "Symbol"
+
+    override def toString: String =
+      if (lastDenot == null) s"Naked$prefixString#$id"
+      else lastDenot.toString// +"#"+id // !!! DEBUG
 
     def toText(printer: Printer): Text = printer.toText(this)
 
-    /** Write to UTF8 representation of this name to given character array.
-     *  Start copying to index `to`. Return index of next free byte in array.
-     *  Array must have enough remaining space for all bytes
-     *  (i.e. maximally 3*length bytes).
-     */
-    final def copyUTF8(bs: Array[Byte], offset: Int): Int = {
-      val bytes = Codec.toUTF8(chrs, start, length)
-      scala.compat.Platform.arraycopy(bytes, 0, bs, offset, bytes.length)
-      offset + bytes.length
-    }
-
-    /** Replace \$op_name's by corresponding operator symbols. */
-    def decode: Name =
-      if (contains('$')) fromString(NameTransformer.decode(toString))
-      else this
-
-    /** Replace operator symbols by corresponding \$op_name's. */
-    def encode: Name =
-      if (dontEncode(toTermName)) this else NameTransformer.encode(this)
-
-    /** A more efficient version of concatenation */
-    def ++ (other: Name): ThisName = ++ (other.toString)
-
-    def ++ (other: String): ThisName = {
-      val s = toString + other
-      fromChars(s.toCharArray, 0, s.length)
-    }
-
-    def replace(from: Char, to: Char): ThisName = {
-      val cs = new Array[Char](length)
-      Array.copy(chrs, start, cs, 0, length)
-      for (i <- 0 until length) {
-        if (cs(i) == from) cs(i) = to
-      }
-      fromChars(cs, 0, length)
-    }
-
-    def contains(ch: Char): Boolean = {
-      var i = 0
-      while (i < length && chrs(start + i) != ch) i += 1
-      i < length
-    }
-
-    // ----- Collections integration -------------------------------------
-
-    override protected[this] def thisCollection: WrappedString = new WrappedString(repr.toString)
-    override protected[this] def toCollection(repr: Name): WrappedString = new WrappedString(repr.toString)
-
-    override protected[this] def newBuilder: Builder[Char, Name] = unsupported("newBuilder")
-
-    override def apply(index: Int): Char = chrs(start + index)
-
-    override def slice(from: Int, until: Int): ThisName =
-      fromChars(chrs, start + from, until - from)
-
-    override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
-
-    override def seq = toCollection(this)
+    def showLocated(implicit ctx: Context): String = ctx.locatedText(this).show
+    def showDcl(implicit ctx: Context): String = ctx.dclText(this).show
+    def showKind(implicit ctx: Context): String = ctx.kindString(this)
+    def showName(implicit ctx: Context): String = ctx.nameString(this)
+    def showFullName(implicit ctx: Context): String = ctx.fullNameString(this)
   }
 
-  class TermName(val start: Int, val length: Int, private[Names] var next: TermName) extends Name {
-    type ThisName = TermName
-    def isTypeName = false
-    def isTermName = true
+  type TermSymbol = Symbol { type ThisName = TermName }
+  type TypeSymbol = Symbol { type ThisName = TypeName }
 
-    @volatile private[this] var _typeName: TypeName = null
+  class ClassSymbol private[Symbols] (coord: Coord, assocFile: AbstractFile)
+    extends Symbol(coord) {
 
-    def toTypeName: TypeName = {
-      if (_typeName == null)
-        synchronized {
-          if (_typeName == null)
-            _typeName = new TypeName(start, length, this)
-        }
-      _typeName
-    }
-    def toTermName = this
-    def asTypeName = throw new ClassCastException(this + " is not a type name")
-    def asTermName = this
-
-    override def hashCode: Int = start
-
-    override protected[this] def newBuilder: Builder[Char, Name] = termNameBuilder
-
-    def fromChars(cs: Array[Char], offset: Int, len: Int): TermName = termName(cs, offset, len)
-  }
-
-  class TypeName(val start: Int, val length: Int, val toTermName: TermName) extends Name {
     type ThisName = TypeName
-    def isTypeName = true
-    def isTermName = false
-    def toTypeName = this
-    def asTypeName = this
-    def asTermName = throw new ClassCastException(this + " is not a term name")
 
-    override def hashCode: Int = -start
+    /** The source or class file from which this class was generated, null if not applicable. */
+    override def associatedFile(implicit ctx: Context): AbstractFile =
+      if (assocFile != null || (this.owner is PackageClass)) assocFile
+      else super.associatedFile
 
-    override protected[this] def newBuilder: Builder[Char, Name] =
-      termNameBuilder.mapResult(_.toTypeName)
+    final def classDenot(implicit ctx: Context): ClassDenotation =
+      denot.asInstanceOf[ClassDenotation]
 
-    def fromChars(cs: Array[Char], offset: Int, len: Int): TypeName = typeName(cs, offset, len)
-  }
+    private var superIdHint: Int = -1
 
-  // Nametable
-
-  private final val InitialHashSize = 0x8000
-  private final val InitialNameSize = 0x20000
-  private final val fillFactor = 0.7
-
-  /** Memory to store all names sequentially. */
-  private var chrs: Array[Char] = new Array[Char](InitialNameSize)
-
-  /** The number of characters filled. */
-  private var nc = 0
-
-  /** Hashtable for finding term names quickly. */
-  private var table = new Array[TermName](InitialHashSize)
-
-  /** The number of defined names. */
-  private var size = 1
-
-  /** Make sure the capacity of the character array is at least `n` */
-  private def ensureCapacity(n: Int) =
-    if (n > chrs.length) {
-      val newchrs = new Array[Char](chrs.length * 2)
-      chrs.copyToArray(newchrs)
-      chrs = newchrs
-    }
-
-  /** Make sure the hash table is large enough for the given load factor */
-  private def incTableSize() = {
-    size += 1
-    if (size.toDouble / table.size > fillFactor) {
-      val oldTable = table
-      table = new Array[TermName](table.size * 2)
-      for (i <- 0 until oldTable.size) rehash(oldTable(i))
-    }
-  }
-
-  /** Rehash chain of names */
-  private def rehash(name: TermName): Unit =
-    if (name != null) {
-      rehash(name.next)
-      val h = hashValue(chrs, name.start, name.length) & (table.size - 1)
-      name.next = table(h)
-      table(h) = name
-    }
-
-  /** The hash of a name made of from characters cs[offset..offset+len-1].  */
-  private def hashValue(cs: Array[Char], offset: Int, len: Int): Int =
-    if (len > 0)
-      (len * (41 * 41 * 41) +
-        cs(offset) * (41 * 41) +
-        cs(offset + len - 1) * 41 +
-        cs(offset + (len >> 1)))
-    else 0
-
-  /** Is (the ASCII representation of) name at given index equal to
-   *  cs[offset..offset+len-1]?
-   */
-  private def equals(index: Int, cs: Array[Char], offset: Int, len: Int): Boolean = {
-    var i = 0
-    while ((i < len) && (chrs(index + i) == cs(offset + i)))
-      i += 1;
-    i == len
-  }
-
-  /** Enter characters into chrs array. */
-  private def enterChars(cs: Array[Char], offset: Int, len: Int): Unit = {
-    ensureCapacity(nc + len)
-    var i = 0
-    while (i < len) {
-      chrs(nc + i) = cs(offset + i)
-      i += 1
-    }
-    nc += len
-  }
-
-  /** Create a term name from the characters in cs[offset..offset+len-1].
-   *  Assume they are already encoded.
-   */
-  def termName(cs: Array[Char], offset: Int, len: Int): TermName = {
-    val h = hashValue(cs, offset, len) & (table.size - 1)
-    synchronized {
-      val next = table(h)
-      var name = next
-      while (name ne null) {
-        if (name.length == len && equals(name.start, cs, offset, len))
-          return name
-        name = name.next
+    override def superId(implicit ctx: Context): Int = {
+      val hint = superIdHint
+      val key = this.typeRef
+      if (hint >= 0 && hint <= ctx.lastSuperId && (ctx.classOfId(hint) eq key))
+        hint
+      else {
+        val id = ctx.superIdOfClass get key match {
+          case Some(id) =>
+            id
+          case None =>
+            val id = ctx.nextSuperId
+            ctx.superIdOfClass(key) = id
+            ctx.classOfId(id) = key
+            id
+        }
+        superIdHint = id
+        id
       }
-      name = new TermName(nc, len, next)
-      enterChars(cs, offset, len)
-      table(h) = name
-      incTableSize()
-      name
     }
+
+    /** Have we seen a subclass of this class? */
+    def hasChildren = superIdHint >= 0
+
+    override protected def prefixString = "ClassSymbol"
   }
 
-  /** Create a type name from the characters in cs[offset..offset+len-1].
-   *  Assume they are already encoded.
-   */
-  def typeName(cs: Array[Char], offset: Int, len: Int): TypeName =
-    termName(cs, offset, len).toTypeName
-
-  /** Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
-   *  Assume they are already encoded.
-   */
-  def termName(bs: Array[Byte], offset: Int, len: Int): TermName = {
-    val chars = Codec.fromUTF8(bs, offset, len)
-    termName(chars, 0, chars.length)
+  class ErrorSymbol(val underlying: Symbol, msg: => String)(implicit ctx: Context) extends Symbol(NoCoord) {
+    type ThisName = underlying.ThisName
+    denot = underlying.denot
   }
 
-  /** Create a type name from the UTF8 encoded bytes in bs[offset..offset+len-1].
-   *  Assume they are already encoded.
-   */
-  def typeName(bs: Array[Byte], offset: Int, len: Int): TypeName =
-    termName(bs, offset, len).toTypeName
-
-  /** Create a term name from a string, without encoding operators */
-  def termName(s: String): TermName = termName(s.toCharArray, 0, s.length)
-
-  /** Create a type name from a string, wihtout encoding operators */
-  def typeName(s: String): TypeName = typeName(s.toCharArray, 0, s.length)
-
-  /** The term name represented by the empoty string */
-  val EmptyTermName = new TermName(-1, 0, null)
-
-  table(0) = EmptyTermName
-
-  /** The type name represented by the empoty string */
-  val EmptyTypeName = EmptyTermName.toTypeName
-
-  // can't move CONSTRUCTOR/EMPTY_PACKAGE to `nme` because of bootstrap failures in `encode`.
-  val CONSTRUCTOR = termName("<init>")
-  val EMPTY_PACKAGE = termName("<empty>")
-
-  val dontEncode = Set(CONSTRUCTOR, EMPTY_PACKAGE)
-
-  def termNameBuilder: Builder[Char, TermName] =
-    StringBuilder.newBuilder.mapResult(termName)
-
-  implicit val nameCanBuildFrom: CanBuildFrom[Name, Char, Name] = new CanBuildFrom[Name, Char, Name] {
-    def apply(from: Name): Builder[Char, Name] =
-      StringBuilder.newBuilder.mapResult(s => from.fromChars(s.toCharArray, 0, s.length))
-    def apply(): Builder[Char, Name] = termNameBuilder
+  object NoSymbol extends Symbol(NoCoord) {
+    denot = NoDenotation
   }
+
+  implicit class Copier[N <: Name](sym: Symbol { type ThisName = N })(implicit ctx: Context) {
+    /** Copy a symbol, overriding selective fields */
+    def copy(
+        owner: Symbol = sym.owner,
+        name: N = sym.name,
+        flags: FlagSet = sym.flags,
+        info: Type = sym.info,
+        privateWithin: Symbol = sym.privateWithin,
+        coord: Coord = sym.coord,
+        associatedFile: AbstractFile = sym.associatedFile): Symbol =
+      if (sym.isClass)
+        ctx.newClassSymbol(owner, name.asTypeName, flags, _ => info, privateWithin, coord, associatedFile)
+      else
+        ctx.newSymbol(owner, name, flags, info, privateWithin, coord)
+  }
+
+  implicit def defn(implicit ctx: Context): Definitions = ctx.definitions
+
+  /** Makes all denotation operations available on symbols */
+  implicit def toDenot(sym: Symbol)(implicit ctx: Context): SymDenotation = sym.denot
+
+  /** Makes all class denotations available on class symbols */
+  implicit def toClassDenot(cls: ClassSymbol)(implicit ctx: Context): ClassDenotation = cls.classDenot
+
+  var stubs: List[Symbol] = Nil // diagnostic
 }

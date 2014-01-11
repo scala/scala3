@@ -2379,6 +2379,7 @@ object Types {
 
   class CyclicReference(val denot: SymDenotation)
     extends FatalTypeError(s"cyclic reference involving $denot") {
+    def show(implicit ctx: Context) = s"cyclic reference involving ${denot.show}"
     printStackTrace()
   }
 

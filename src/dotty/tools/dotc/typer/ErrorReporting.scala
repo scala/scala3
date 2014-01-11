@@ -40,7 +40,7 @@ object ErrorReporting {
             errorMsg(msg, cx.outer)
         }
       } else msg
-    errorMsg(ex.getMessage, ctx)
+    errorMsg(ex.show, ctx)
   }
 
   class Errors(implicit ctx: Context) {

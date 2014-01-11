@@ -6,6 +6,7 @@ import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
 import ast.{Trees, untpd}
+import typer.Namer
 import Trees._
 import scala.annotation.switch
 
@@ -432,6 +433,19 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if (targSym.exists) RefinedType(parent, targSym.name, targSym.info)
       else parent
     }
+
+  override def toText(sym: Symbol): Text = {
+    if (sym.name == nme.IMPORT) {
+      val info = if (sym.isCompleted) sym.info else sym.completer
+      def importString(tree: untpd.Tree) = s"import ${tree.show}"
+      info match {
+        case info: Namer#Completer => return importString(info.original)
+        case info: ImportType => return importString(info.expr)
+        case _ =>
+      }
+    }
+    super.toText(sym)
+  }
 
   override def kindString(sym: Symbol) = {
     val flags = sym.flagsUNSAFE
