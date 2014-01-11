@@ -365,7 +365,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     case AndType(tp21, tp22) =>
       isSubType(tp1, tp21) && isSubType(tp1, tp22)
     case OrType(tp21, tp22) =>
-      isSubType(tp1, tp21) || isSubType(tp1, tp22)
+      isSubType(tp1, tp21) || isSubType(tp1, tp22) || fourthTry(tp1, tp2)
     case tp2 @ MethodType(_, formals2) =>
       tp1 match {
         case tp1 @ MethodType(_, formals1) =>
