@@ -321,7 +321,7 @@ class Namer { typer: Typer =>
   }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
-  class Completer(original: Tree)(implicit ctx: Context) extends LazyType {
+  class Completer(val original: Tree)(implicit ctx: Context) extends LazyType {
 
     protected def localContext(owner: Symbol) = ctx.fresh.withOwner(owner).withTree(original)
 
@@ -336,8 +336,14 @@ class Namer { typer: Typer =>
         assert(!original.isClassDef)
         typeDefSig(original, sym)(localContext(sym).withNewScope)
       case imp: Import =>
-        val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
-        ImportType(tpd.SharedTree(expr1))
+        try {
+          val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
+          ImportType(tpd.SharedTree(expr1))
+        } catch {
+          case ex: CyclicReference =>
+            typr.println(s"error while completing ${imp.expr}")
+            throw ex
+        }
     }
 
     def complete(denot: SymDenotation): Unit =
@@ -365,17 +371,20 @@ class Namer { typer: Typer =>
       /** The type of a parent constructor. Types constructor arguments
        *  only if parent type contains uninstantiated type parameters.
        */
-      def parentType(constr: untpd.Tree): Type = {
-        val (core, targs) = stripApply(constr) match {
-          case TypeApply(core, targs) => (core, targs)
-          case core => (core, Nil)
+      def parentType(constr: untpd.Tree): Type =
+        if (constr.isType) { // this case applies to desugared refined types
+          typedAheadType(constr).tpe
+        } else {
+          val (core, targs) = stripApply(constr) match {
+            case TypeApply(core, targs) => (core, targs)
+            case core => (core, Nil)
+          }
+          val Select(New(tpt), nme.CONSTRUCTOR) = core
+          val targs1 = targs map (typedAheadType(_))
+          val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
+          if (ptype.uninstantiatedTypeParams.isEmpty) ptype
+          else typedAheadExpr(constr).tpe
         }
-        val Select(New(tpt), nme.CONSTRUCTOR) = core
-        val targs1 = targs map (typedAheadType(_))
-        val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
-        if (ptype.uninstantiatedTypeParams.isEmpty) ptype
-        else typedAheadExpr(constr).tpe
-      }
 
       val selfInfo =
         if (self.isEmpty) NoType
