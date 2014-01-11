@@ -763,10 +763,16 @@ trait Applications extends Compatibility { self: Typer =>
         }
     }}
 
+    /** Drop any implicit parameter section */
+    def stripImplicit(tp: Type) = tp match {
+      case mt: ImplicitMethodType if !mt.isDependent => mt.resultType // todo: make sure implicit method types are not dependent
+      case _ => tp
+    }
+
     val owner1 = alt1.symbol.owner
     val owner2 = alt2.symbol.owner
-    val tp1 = alt1.widen
-    val tp2 = alt2.widen
+    val tp1 = stripImplicit(alt1.widen)
+    val tp2 = stripImplicit(alt2.widen)
 
     def winsOwner1 = isDerived(owner1, owner2)
     def winsType1  = isAsSpecific(alt1, tp1, alt2, tp2)

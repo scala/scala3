@@ -90,7 +90,7 @@ class SymbolLoaders {
    */
   def enterClassAndModule(
       owner: Symbol, name: PreName, completer: SymbolLoader,
-      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: CondensedContext) {
+      flags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: CondensedContext): Unit = {
     val clazz = enterClass(owner, name, completer, flags, scope)
     val module = enterModule(
       owner, name, completer,
@@ -107,7 +107,7 @@ class SymbolLoaders {
    */
   def enterToplevelsFromSource(
       owner: Symbol, name: PreName, src: AbstractFile,
-      scope: Scope = EmptyScope)(implicit ctx: CondensedContext) {
+      scope: Scope = EmptyScope)(implicit ctx: CondensedContext): Unit = {
     enterClassAndModule(owner, name, new SourcefileLoader(src)(ctx.condensed), scope = scope)
   }
 
@@ -124,7 +124,7 @@ class SymbolLoaders {
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */
-  def initializeFromClassPath(owner: Symbol, classRep: ClassPath#ClassRep)(implicit ctx: CondensedContext) {
+  def initializeFromClassPath(owner: Symbol, classRep: ClassPath#ClassRep)(implicit ctx: CondensedContext): Unit = {
     ((classRep.binary, classRep.source): @unchecked) match {
       case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
         if (ctx.settings.verbose.value) ctx.inform("[symloader] picked up newer source file for " + src.path)
@@ -148,7 +148,7 @@ class SymbolLoaders {
 
     private[core] val preDecls: MutableScope = newScope
 
-    def doComplete(root: SymDenotation) {
+    def doComplete(root: SymDenotation): Unit = {
       assert(root is PackageClass, root)
  	  def maybeModuleClass(classRep: ClassPath#ClassRep) = classRep.name.last == '$'
       val pre = root.owner.thisType
@@ -173,7 +173,7 @@ class SymbolLoaders {
   }
 
   /** if there's a `package` member object in `pkgClass`, enter its members into it. */
-  def openPackageModule(pkgClass: ClassSymbol)(implicit ctx: Context) {
+  def openPackageModule(pkgClass: ClassSymbol)(implicit ctx: Context): Unit = {
     val pkgModule = pkgClass.info.decl(nme.PACKAGEkw).symbol
     if ((pkgModule is Module) &&
         (pkgModule.isCompleted ||
@@ -182,7 +182,7 @@ class SymbolLoaders {
       openPackageModule(pkgModule, pkgClass)
   }
 
-  def openPackageModule(container: Symbol, dest: ClassSymbol)(implicit ctx: Context) {
+  def openPackageModule(container: Symbol, dest: ClassSymbol)(implicit ctx: Context): Unit = {
     def isImportable(sym: Symbol) = !(sym is Private) && !sym.isConstructor
     // unlink existing symbols in the package
     for (member <- container.info.decls.iterator) {
@@ -226,7 +226,7 @@ abstract class SymbolLoader extends LazyType {
   def description: String
 
   override def complete(root: SymDenotation): Unit = {
-    def signalError(ex: Exception) {
+    def signalError(ex: Exception): Unit = {
       if (cctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()
       cctx.error(
@@ -289,7 +289,7 @@ class ClassfileLoader(val classfile: AbstractFile)(implicit val cctx: CondensedC
     else (rootDenot, linkedDenot)
   }
 
-  def doComplete(root: SymDenotation) {
+  def doComplete(root: SymDenotation): Unit = {
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
     new ClassfileParser(classfile, classRoot, moduleRoot)(cctx).run()
   }
