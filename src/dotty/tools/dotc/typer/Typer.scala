@@ -312,7 +312,7 @@ class Typer extends Namer with Applications with Implicits {
         }
         val curImport = ctx.importInfo
         if (curImport != null && curImport.isRootImport && previous.exists) return previous
-        if (prevPrec < namedImport && (curImport ne outer.importInfo)) {
+        if (prevPrec < namedImport && (curImport ne outer.importInfo) && !curImport.sym.isCompleting) {
           val namedImp = namedImportRef(curImport.site, curImport.selectors)
           if (namedImp.exists)
             return findRef(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
