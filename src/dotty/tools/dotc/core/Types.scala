@@ -857,7 +857,8 @@ object Types {
      *  variable instances and reduces typerefs over refined types. It also
      *  re-evaluatesall occurrences of And/OrType with &/| because
      *  what was a union or intersection of type variables might be a simpler type
-     *  after the type variables are instantiated.
+     *  after the type variables are instantiated. Finally, it
+     *  maps poly params in the current constraint set back to their type vars.
      */
     def simplified(implicit ctx: Context) = {
       class Simplify extends TypeMap {
@@ -866,6 +867,8 @@ object Types {
             mapOver(l) & mapOver(r)
           case OrType(l, r) =>
             mapOver(l) | mapOver(r)
+          case tp: PolyParam =>
+            ctx.typerState.constraint.typeVarOfParam(tp) orElse tp
           case _ =>
             mapOver(tp)
         }
@@ -1736,7 +1739,7 @@ object Types {
     def isInstantiated(implicit ctx: Context) = instanceOpt.exists
 
     /** Instantiate variable with given type */
-    def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
+    private def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
       assert(tp ne this)
       typr.println(s"instantiating ${this.show} with ${tp.show}")
       assert(ctx.typerState.constraint contains this) // !!! DEBUG

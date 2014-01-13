@@ -59,6 +59,15 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
    */
   def bounds(param: PolyParam): TypeBounds = at(param).asInstanceOf[TypeBounds]
 
+  /** The type variable corresponding to parameter `param`, or
+   *  NoType, if `param` is not in constrained or is not paired with a type variable.
+   */
+  def typeVarOfParam(param: PolyParam): Type = {
+    val entries = myMap(param.binder)
+    if (entries == null) NoType
+    else typeVar(entries, param.paramNum)
+  }
+
   /** A new constraint which is derived from this constraint by adding or replacing
    *  the entries corresponding to `pt` with `entries`.
    */
