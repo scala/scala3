@@ -520,8 +520,8 @@ class Typer extends Namer with Applications with Implicits {
     else {
       val params = args.asInstanceOf[List[untpd.ValDef]]
       val (protoFormals, protoResult): (List[Type], Type) = pt match {
-        case _ if pt isRef defn.FunctionClass(params.length) =>
-          (pt.typeArgs take params.length, pt.typeArgs.last)
+        case _ if defn.isFunctionType(pt) =>
+          (pt.dealias.typeArgs.init, pt.dealias.typeArgs.last)
         case SAMType(meth) =>
           val mt @ MethodType(_, paramTypes) = meth.info
           (paramTypes, mt.resultType)
