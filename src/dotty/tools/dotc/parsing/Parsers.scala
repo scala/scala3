@@ -929,7 +929,7 @@ object Parsers {
       case FOR =>
         forExpr()
       case IMPLICIT =>
-        atPos(in.skipToken()) { implicitClosure(in.skipToken(), location) }
+        implicitClosure(in.skipToken(), location)
       case _ =>
         expr1Rest(postfixExpr(), location)
     }
