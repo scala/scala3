@@ -5,6 +5,12 @@ import collection.mutable._
 
 object typers {
   
+  val names = List("a", "b", "c")
+  val ints = List(1, 2, 3)
+  
+  for ((name, n) <- (names, ints).zipped)
+    println(name.length + n)
+  
   val entries = Array("abc", "def")
   
   for ((x, i) <- entries.zipWithIndex)

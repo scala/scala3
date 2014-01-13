@@ -24,6 +24,7 @@ import Inferencing._
 import Applications._
 import ErrorReporting._
 import config.Config
+import config.Printers._
 import collection.mutable
 
 /** Implicit resolution */
@@ -64,7 +65,7 @@ object Implicits {
     }
 
     /** The implicit references that are eligible for expected type `tp` */
-    lazy val eligible: List[TermRef] = ctx.traceIndented(i"eligible($tp), companions = ${companionRefs.toList}%, %", show = true)(filterMatching(tp))
+    lazy val eligible: List[TermRef] = ctx.traceIndented(implicits, i"eligible($tp), companions = ${companionRefs.toList}%, %", show = true)(filterMatching(tp))
 
     override def toString =
       i"OfTypeImplicits($tp), companions = ${companionRefs.toList}%, %; refs = $refs%, %."
@@ -208,7 +209,7 @@ trait ImplicitRunInfo { self: RunInfo =>
 
     // todo: compute implicits directly, without going via companionRefs?
     def computeImplicitScope(tp: Type): OfTypeImplicits = track("computeImplicicScope") {
-      ctx.traceIndented(i"computeImplicitScope($tp)") {
+      ctx.traceIndented(implicits, i"computeImplicitScope($tp)") {
         val comps = new TermRefSet
         tp match {
           case tp: NamedType =>
@@ -288,7 +289,7 @@ trait Implicits { self: Typer =>
    *  !!! todo: catch potential cycles
    */
   def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
-    ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}, constraint = ${ctx.typerState.constraint.show}", show = true) {
+    ctx.traceIndented(implicits, s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}, constraint = ${ctx.typerState.constraint.show}", show = true) {
       assert(!pt.isInstanceOf[ExprType])
       val isearch =
         if (ctx.settings.explaintypes.value) new ExplainedImplicitSearch(pt, argument, pos)
@@ -341,7 +342,7 @@ trait Implicits { self: Typer =>
     def searchImplicits(eligible: List[TermRef], contextual: Boolean): SearchResult = {
 
       /** Try to typecheck an implicit reference */
-      def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = track("typedImplicit") { ctx.traceIndented(i"typed implicit $ref, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", show = true) {
+      def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = track("typedImplicit") { ctx.traceIndented(implicits, i"typed implicit $ref, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", show = true) {
         var generated: Tree = Ident(ref).withPos(pos)
         if (!argument.isEmpty)
           generated = typedUnadapted(

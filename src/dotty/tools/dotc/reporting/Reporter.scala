@@ -135,6 +135,10 @@ trait Reporting { this: Context =>
     if (cond) traceIndented(question, show)(op)
     else op
 
+  def traceIndented[T](printer: config.Printers.Printer, question: => String, show: Boolean = false)(op: => T): T =
+    if (printer ne config.Printers.noPrinter) traceIndented(question, show)(op)
+    else op
+
   def traceIndented[T](question: => String, show: Boolean = false)(op: => T): T = {
     def resStr(res: Any): String = res match {
       case res: printing.Showable if show => res.show
@@ -142,6 +146,7 @@ trait Reporting { this: Context =>
     }
     traceIndented[T](s"==> $question?", (res: Any) => s"<== $question = ${resStr(res)}")(op)
   }
+
   def traceIndented[T](leading: => String, trailing: Any => String)(op: => T): T = {
     var finalized = false
     var logctx = this
@@ -218,7 +223,7 @@ abstract class Reporter {
 
   def hasErrors   = count(ERROR.level) > 0
   def hasWarnings = count(WARNING.level) > 0
-  
+
   def errorCounts: Any = count.clone
 
   def wasSilent[T](counts: Any): Boolean = {
