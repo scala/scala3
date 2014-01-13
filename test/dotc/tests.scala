@@ -63,8 +63,9 @@ class tests extends CompilerTest {
   @Test def dotc15 = compileFile(dotcDir + "tools/dotc/core/", "Signature")
   @Test def dotc16 = compileFile(dotcDir + "tools/dotc/core/", "StdNames")
   @Test def dotc17 = compileFile(dotcDir + "tools/dotc/core/", "Substituters")
-//  @Test def dotc18 = compileFile(dotcDir + "tools/dotc/core/", "SymbolLoaders")
-//  @Test def dotc19 = compileFile(dotcDir + "tools/dotc/core/", "Symbols")
+  @Test def dotc18 = compileFile(dotcDir + "tools/dotc/core/", "SymbolLoaders")
+  @Test def dotc19 = compileFile(dotcDir + "tools/dotc/core/", "Symbols")
+  @Test def dotc20 = compileFile(dotcDir + "tools/dotc/core/", "SymDenotations")
 
 
 

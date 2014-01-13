@@ -6,6 +6,7 @@ import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import CheckTrees._, Denotations._
+import config.Printers._
 
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
@@ -102,11 +103,18 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       def apply(tp: Type) = tp match {
         case tp: TermRef if toAvoid(tp.symbol) && variance > 0 =>
           apply(tp.info)
-        case tp @ TypeRef(pre: TermRef, _) if tp.symbol.isAliasType && toAvoid(pre.symbol) =>
-          apply(tp.info.bounds.hi)
+        case tp @ TypeRef(pre: TermRef, _) if toAvoid(pre.symbol) =>
+          tp.info match {
+            case TypeAlias(ref) => apply(ref)
+            case _ => mapOver(tp)
+          }
         case tp @ RefinedType(parent, _) =>
           val tp1 @ RefinedType(parent1, _) = mapOver(tp)
-          if (tp1.refinedInfo existsPart toAvoid) parent1 else tp1
+          if (tp1.refinedInfo existsPart toAvoid) {
+            typr.println(s"dropping refinement from $tp1")
+            parent1
+          }
+          else tp1
         case _ =>
           mapOver(tp)
       }
