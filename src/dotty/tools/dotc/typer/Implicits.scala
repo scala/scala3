@@ -278,7 +278,7 @@ trait Implicits { self: Typer =>
     if (   (to isRef defn.AnyClass)
         || (to isRef defn.ObjectClass)
         || (to isRef defn.UnitClass)) NoImplicitMatches
-    else inferImplicit(to.stripTypeVar, from, from.pos)
+    else inferImplicit(to.stripTypeVar.widenExpr, from, from.pos)
   }
 
   /** Find an implicit parameter or conversion.
