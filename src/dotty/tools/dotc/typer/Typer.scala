@@ -460,15 +460,15 @@ class Typer extends Namer with Applications with Implicits {
             untpd.Select(untpd.TypedSplice(fn), nme.update),
             (args map untpd.TypedSplice) :+ tree.rhs), pt)
       case lhs =>
-        val lhs1 = typed(lhs)
-        lhs1.tpe match {
+        val lhsCore = typedUnadapted(lhs)
+        def lhs1 = typed(untpd.TypedSplice(lhsCore))
+        lhsCore.tpe match {
           case ref: TermRef if ref.symbol is (Mutable, butNot = Accessor) =>
             cpy.Assign(tree, lhs1, typed(tree.rhs, ref.info)).withType(defn.UnitType)
           case _ =>
             def reassignmentToVal =
-              errorTree(cpy.Assign(tree, lhs1, typed(tree.rhs, lhs1.tpe.widen)),
+              errorTree(cpy.Assign(tree, lhsCore, typed(tree.rhs, lhs1.tpe.widen)),
                   "reassignment to val")
-            val lhsCore = stripApply(lhs1) // need to strip off any implicit parameters
             lhsCore.tpe match {
               case ref: TermRef => // todo: further conditions to impose on getter?
                 val pre = ref.prefix
