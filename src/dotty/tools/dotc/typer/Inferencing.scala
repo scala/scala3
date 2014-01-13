@@ -244,7 +244,7 @@ object Inferencing {
    */
   def isFullyDefined(tp: Type, force: ForceDegree.Value)(implicit ctx: Context): Boolean = {
     val nestedCtx = ctx.fresh.withNewTyperState
-    val result = new IsFullyDefinedAccumulator(force)(nestedCtx).traverse(tp)
+    val result = new IsFullyDefinedAccumulator(force)(nestedCtx).process(tp)
     if (result) nestedCtx.typerState.commit()
     result
   }
@@ -256,38 +256,59 @@ object Inferencing {
     if (isFullyDefined(tp, ForceDegree.all)) tp
     else throw new Error(i"internal error: type of $what $tp is not fully defined, pos = $pos") // !!! DEBUG
 
+  /** The accumulator which forces type variables using the policy encoded in `force`
+   *  and returns whether the type is fully defined. Two phases:
+   *  1st Phase: Try to stantiate covariant and non-variant type variables to
+   *  their lower bound. Record whether succesful.
+   *  2nd Phase: If first phase was succesful, instantiate all remaining type variables
+   *  to their upper bound.
+   */
   private class IsFullyDefinedAccumulator(force: ForceDegree.Value)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
-    private var vs: SimpleMap[TypeVar, Integer] = null
-    private var rootTp: Type = null
-    def isContravariant(tvar: TypeVar) = {
-      (variance < 0) && { // otherwise no need to compute, it can't be contravariant
-        if (vs == null) vs = rootTp.variances(alwaysTrue)
-        vs(tvar) < 0
-      }
+    private def instantiate(tvar: TypeVar, fromBelow: Boolean): Type = {
+      val inst = tvar.instantiate(fromBelow)
+      typr.println(i"forced instantiation of ${tvar.origin} = $inst")
+      inst
     }
-    def traverse(tp: Type): Boolean = {
-      rootTp = tp
-      apply(true, tp)
-    }
-    def apply(x: Boolean, tp: Type) = !x || isOK(tp) && foldOver(x, tp)
-    def isOK(tp: Type): Boolean = tp match {
+    private var toMaximize: Boolean = false
+    def apply(x: Boolean, tp: Type) = x && isOK(tp) && foldOver(x, tp)
+    private def isOK(tp: Type): Boolean = tp match {
       case _: WildcardType =>
         false
       case tvar: TypeVar if !tvar.isInstantiated =>
-        def isBottomType(tp: Type) = tp == defn.NothingType || tp == defn.NullType
-        force != ForceDegree.none && {
-          val forceUp =
-            isContravariant(tvar) ||
+        if (force == ForceDegree.none) false
+        else {
+          val minimize =
+            variance >= 0 && !(
               force == ForceDegree.noBottom &&
-              isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true))
-          val inst = tvar.instantiate(fromBelow = !forceUp)
-          typr.println(i"forced instantiation of ${tvar.origin} = $inst")
-          traverse(inst)
+              isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true)))
+          if (minimize) instantiate(tvar, fromBelow = true)
+          else toMaximize = true
+          true
         }
       case _ =>
         true
     }
+
+    private class UpperInstantiator(implicit ctx: Context) extends TypeAccumulator[Unit] {
+      def apply(x: Unit, tp: Type): Unit = {
+        tp match {
+          case tvar: TypeVar if !tvar.isInstantiated =>
+            instantiate(tvar, fromBelow = false)
+          case _ =>
+        }
+        foldOver(x, tp)
+      }
+    }
+
+    def process(tp: Type): Boolean = {
+      val res = apply(true, tp)
+      if (res && toMaximize) new UpperInstantiator().apply((), tp)
+      res
+    }
   }
+
+  def isBottomType(tp: Type)(implicit ctx: Context) =
+    tp == defn.NothingType || tp == defn.NullType
 
   /** Recursively widen and also follow type declarations and type aliases. */
   def widenForMatchSelector(tp: Type)(implicit ctx: Context): Type = tp.widen match {
