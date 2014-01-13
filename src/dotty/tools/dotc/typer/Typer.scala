@@ -224,9 +224,12 @@ class Typer extends Namer with Applications with Implicits {
        *  does properly shadow the new one from an outer context.
        */
       def checkNewOrShadowed(found: Type, newPrec: Int): Type =
-        if (!previous.exists || (previous == found)) found
-        else if (newPrec == definition && (prevCtx.scope eq ctx.scope)) {
-          // special case: definitions beat imports if both are in contexts with same scope
+        if (!previous.exists || (previous =:= found)) found
+        else if ((prevCtx.scope eq ctx.scope) &&
+                 (newPrec == definition ||
+                  newPrec == namedImport && prevPrec == wildImport)) {
+          // special cases: definitions beat imports, and named imports beat
+          // wildcard imports, provided both are in contexts with same scope
           found
         }
         else {
@@ -312,11 +315,14 @@ class Typer extends Namer with Applications with Implicits {
         }
         val curImport = ctx.importInfo
         if (curImport != null && curImport.isRootImport && previous.exists) return previous
-        if (prevPrec < namedImport && (curImport ne outer.importInfo) && !curImport.sym.isCompleting) {
+        // would import of kind `prec` be not shadowed by a nested higher-precedence definition?
+        def isPossibleImport(prec: Int) =
+          prevPrec < prec || prevPrec == prec && (prevCtx.scope eq ctx.scope)
+        if (isPossibleImport(namedImport) && (curImport ne outer.importInfo) && !curImport.sym.isCompleting) {
           val namedImp = namedImportRef(curImport.site, curImport.selectors)
           if (namedImp.exists)
             return findRef(checkNewOrShadowed(namedImp, namedImport), namedImport, ctx)(outer)
-          if (prevPrec < wildImport) {
+          if (isPossibleImport(wildImport)) {
             val wildImp = wildImportRef(curImport)
             if (wildImp.exists)
               return findRef(checkNewOrShadowed(wildImp, wildImport), wildImport, ctx)(outer)
