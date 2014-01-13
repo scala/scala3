@@ -93,13 +93,20 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def avoid(tp: Type, syms: => List[Symbol])(implicit ctx: Context): Type = {
     val widenMap = new TypeMap {
-      lazy val avoided = syms.toSet
-      def toAvoid(sym: Symbol) = sym.owner.isTerm && (avoided contains sym)
+      lazy val forbidden = syms.toSet
+      def toAvoid(sym: Symbol): Boolean = sym.owner.isTerm && (forbidden contains sym)
+      def toAvoid(tp: Type): Boolean = tp match {
+        case tp: TermRef => toAvoid(tp.symbol)
+        case _ => false
+      }
       def apply(tp: Type) = tp match {
         case tp: TermRef if toAvoid(tp.symbol) && variance > 0 =>
           apply(tp.info)
         case tp @ TypeRef(pre: TermRef, _) if tp.symbol.isAliasType && toAvoid(pre.symbol) =>
           apply(tp.info.bounds.hi)
+        case tp @ RefinedType(parent, _) =>
+          val tp1 @ RefinedType(parent1, _) = mapOver(tp)
+          if (tp1.refinedInfo existsPart toAvoid) parent1 else tp1
         case _ =>
           mapOver(tp)
       }

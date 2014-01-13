@@ -37,7 +37,7 @@ class tests extends CompilerTest {
   @Test def pos_packageobject() = compileFile(posDir, "packageobject")
   @Test def pos_overloaded() = compileFile(posDir, "overloaded")
 
-  @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 2)
+  @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
   @Test def neg_typedidents() = compileFile(negDir, "typedidents", xerrors = 2)
   @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)
@@ -46,6 +46,28 @@ class tests extends CompilerTest {
   @Test def dotc = compileDir(dotcDir + "tools/dotc")
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast")
   @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config")
+  @Test def dotc1 = compileFile(dotcDir + "tools/dotc/core/", "Annotations")
+  @Test def dotc2 = compileFile(dotcDir + "tools/dotc/core/", "Constants")
+  @Test def dotc3 = compileFile(dotcDir + "tools/dotc/core/", "Constraint")
+  @Test def dotc4 = compileFile(dotcDir + "tools/dotc/core/", "Contexts")
+  @Test def dotc5 = compileFile(dotcDir + "tools/dotc/core/", "Decorators")
+  @Test def dotc6 = compileFile(dotcDir + "tools/dotc/core/", "Definitions")
+  @Test def dotc7 = compileFile(dotcDir + "tools/dotc/core/", "Denotations")
+  @Test def dotc8 = compileFile(dotcDir + "tools/dotc/core/", "DotClass")
+  @Test def dotc9 = compileFile(dotcDir + "tools/dotc/core/", "Flags")
+  @Test def dotc10 = compileFile(dotcDir + "tools/dotc/core/", "NameOps")
+  @Test def dotc11 = compileFile(dotcDir + "tools/dotc/core/", "Names")
+  @Test def dotc12 = compileFile(dotcDir + "tools/dotc/core/", "Periods")
+  @Test def dotc13 = compileFile(dotcDir + "tools/dotc/core/", "Phases")
+  @Test def dotc14 = compileFile(dotcDir + "tools/dotc/core/", "Scopes")
+  @Test def dotc15 = compileFile(dotcDir + "tools/dotc/core/", "Signature")
+  @Test def dotc16 = compileFile(dotcDir + "tools/dotc/core/", "StdNames")
+  @Test def dotc17 = compileFile(dotcDir + "tools/dotc/core/", "Substituters")
+//  @Test def dotc18 = compileFile(dotcDir + "tools/dotc/core/", "SymbolLoaders")
+//  @Test def dotc19 = compileFile(dotcDir + "tools/dotc/core/", "Symbols")
+
+
+
 //  @Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 
 }
