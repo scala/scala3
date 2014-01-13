@@ -586,6 +586,9 @@ class Typer extends Namer with Applications with Implicits {
         errorType(s"missing parameter type for parameter ${param.name}$ofFun, expected = ${pt.show}", param.pos)
       }
 
+      if (protoFormals.length != params.length)
+        ctx.error(s"wrong number of parameters, expected: ${protoFormals.length}", tree.pos)
+
       val inferredParams: List[untpd.ValDef] =
         for ((param, formal) <- params zip protoFormals) yield
           if (!param.tpt.isEmpty) param
