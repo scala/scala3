@@ -84,6 +84,8 @@ object Inferencing {
         new SelectionProto(refinedName1, tp1.refinedInfo)
       }
     }
+    def map(tm: TypeMap) = tm(this).asInstanceOf[SelectionProto]
+    def fold[T](x: T, ta: TypeAccumulator[T]) = ta(x, this)
   }
 
   /** Create a selection proto-type, but only one level deep;
@@ -155,6 +157,14 @@ object Inferencing {
     }
 
     override def toString = s"FunProto(${args mkString ","} => $resultType)"
+
+    def map(tm: TypeMap): FunProto = {
+      val resultType1 = tm(resultType)
+      if (resultType1 eq resultType) this
+      else FunProto(args, resultType1, typer)
+    }
+
+    def fold[T](x: T, ta: TypeAccumulator[T]): T = ta(x, resultType)
   }
 
   /** A prototype for implicitly inferred views:
@@ -170,6 +180,16 @@ object Inferencing {
     def isMatchedBy(tp: Type)(implicit ctx: Context) = /*ctx.conditionalTraceIndented(lookingForInfo, i"?.info isMatchedBy $tp ${tp.getClass}")*/ {
       ctx.typer.isApplicable(tp, argType :: Nil, resultType)
     }
+
+    def map(tm: TypeMap): ViewProto = {
+      val argType1 = tm(argType)
+      val resultType1 = tm(resultType)
+      if ((argType1 eq argType) && (resultType1 eq resultType)) this
+      else ViewProto(argType1, resultType1)
+    }
+
+    def fold[T](x: T, ta: TypeAccumulator[T]): T = ta(ta(x, argType), resultType)
+
     override def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): collection.Set[NamedType] =
       AndType.unchecked(argType, resultType).namedPartsWith(p) // this is more efficient than oring two namedParts sets
     override def computeHash = doHash(argType, resultType)
@@ -190,6 +210,15 @@ object Inferencing {
       }
       isInstantiatable(tp) || tp.member(nme.apply).hasAltWith(d => isInstantiatable(d.info))
     }
+
+    def map(tm: TypeMap): PolyProto = {
+      val targs1 = targs mapConserve tm
+      val resultType1 = tm(resultType)
+      if ((targs1 eq targs) && (resultType1 eq resultType)) this
+      else PolyProto(targs1, resultType1)
+    }
+
+    def fold[T](x: T, ta: TypeAccumulator[T]): T = ta((x /: targs)(ta), resultType)
   }
 
   /** A prototype for expressions [] that are known to be functions:
@@ -198,6 +227,8 @@ object Inferencing {
    */
   object AnyFunctionProto extends UncachedGroundType with ProtoType {
     def isMatchedBy(tp: Type)(implicit ctx: Context) = true
+    def map(tm: TypeMap) = this
+    def fold[T](x: T, ta: TypeAccumulator[T]) = x
   }
 
   /** The normalized form of a type

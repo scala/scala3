@@ -1035,6 +1035,8 @@ object Types {
   /** A trait for proto-types, used as expected types in typer */
   trait ProtoType extends Type {
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean
+    def fold[T](x: T, ta: TypeAccumulator[T]): T
+    def map(tm: TypeMap): ProtoType
   }
 
 // --- NamedTypes ------------------------------------------------------------------
@@ -2163,6 +2165,9 @@ object Types {
       case tp @ WildcardType =>
         tp.derivedWildcardType(mapOver(tp.optBounds))
 
+      case tp: ProtoType =>
+        tp.map(this)
+
       case _ =>
         tp
     }
@@ -2298,6 +2303,9 @@ object Types {
 
       case tp: WildcardType =>
         this(x, tp.optBounds)
+
+      case tp: ProtoType =>
+        tp.fold(x, this)
 
       case _ => x
     }
