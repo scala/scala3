@@ -698,7 +698,7 @@ class Typer extends Namer with Applications with Implicits {
       else enclMethInfo(cx.outer)
     }
     val (from, proto) = enclMethInfo(ctx)
-    val expr1 = typedExpr(tree.expr orElse untpd.unitLiteral, proto)
+    val expr1 = typedExpr(tree.expr orElse untpd.unitLiteral.withPos(tree.pos), proto)
     cpy.Return(tree, expr1, from) withType defn.NothingType
   }
 
