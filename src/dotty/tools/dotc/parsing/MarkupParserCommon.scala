@@ -89,7 +89,7 @@ private[dotty] trait MarkupParserCommon extends TokenTests {
 
   /** [42]  '<' xmlEndTag ::=  '<' '/' Name S? '>'
    */
-  def xEndTag(startName: String) {
+  def xEndTag(startName: String): Unit = {
     xToken('/')
     if (xName != startName)
       errorNoEnd(startName)
@@ -196,11 +196,11 @@ private[dotty] trait MarkupParserCommon extends TokenTests {
     x
   }
 
-  def xToken(that: Char) {
+  def xToken(that: Char): Unit = {
     if (ch == that) nextch
     else xHandleError(that, "'%s' expected instead of '%s'".format(that, ch))
   }
-  def xToken(that: Seq[Char]) { that foreach xToken }
+  def xToken(that: Seq[Char]): Unit = { that foreach xToken }
 
   /** scan [S] '=' [S]*/
   def xEQ() = { xSpaceOpt; xToken('='); xSpaceOpt }

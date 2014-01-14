@@ -77,7 +77,7 @@ object MarkupParsers {
     var tmppos : Position = NoPosition
     def ch = input.ch
     /** this method assign the next character to ch and advances in input */
-    def nextch() { input.nextChar() }
+    def nextch(): Unit = { input.nextChar() }
 
     protected def ch_returning_nextch: Char = {
       val result = ch; input.nextChar(); result
@@ -180,7 +180,7 @@ object MarkupParsers {
       xTakeUntil(handle.comment, () => Position(start, curOffset, start), "-->")
     }
 
-    def appendText(pos: Position, ts: Buffer[Tree], txt: String) {
+    def appendText(pos: Position, ts: Buffer[Tree], txt: String): Unit = {
       val toAppend =
         if (preserveWS) Seq(txt)
         else TextBuffer.fromString(txt).toText map (_.text)
@@ -191,7 +191,7 @@ object MarkupParsers {
     /** adds entity/character to ts as side-effect
      *  @precond ch == '&'
      */
-    def content_AMP(ts: ArrayBuffer[Tree]) {
+    def content_AMP(ts: ArrayBuffer[Tree]): Unit = {
       nextch
       val toAppend = ch match {
         case '#' => // CharacterRef
@@ -400,7 +400,7 @@ object MarkupParsers {
     def xScalaPatterns: List[Tree] = escapeToScala(parser.patterns(), "pattern")
 
     def reportSyntaxError(pos: Int, str: String) = parser.syntaxError(str, pos)
-    def reportSyntaxError(str: String) {
+    def reportSyntaxError(str: String): Unit = {
       reportSyntaxError(curOffset, "in XML literal: " + str)
       nextch()
     }

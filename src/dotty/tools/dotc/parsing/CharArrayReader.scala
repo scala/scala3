@@ -70,7 +70,7 @@ abstract class CharArrayReader { self =>
   }
 
   /** Interpret \\uxxxx escapes */
-  private def potentialUnicode() {
+  private def potentialUnicode(): Unit = {
     def evenSlashPrefix: Boolean = {
       var p = charOffset - 2
       while (p >= 0 && buf(p) == '\\') p -= 1
@@ -101,7 +101,7 @@ abstract class CharArrayReader { self =>
   }
 
   /** replace CR;LF by LF */
-  private def skipCR() {
+  private def skipCR(): Unit = {
     if (ch == CR)
       if (charOffset < buf.length && buf(charOffset) == LF) {
         charOffset += 1
@@ -110,7 +110,7 @@ abstract class CharArrayReader { self =>
   }
 
   /** Handle line ends */
-  private def potentialLineEnd() {
+  private def potentialLineEnd(): Unit = {
     if (ch == LF || ch == FF) {
       lastLineStartOffset = lineStartOffset
       lineStartOffset = charOffset
