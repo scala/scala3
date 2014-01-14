@@ -56,7 +56,7 @@ class ClassfileParser(
            |${Option(e.getMessage).getOrElse("")}""".stripMargin)
   }
 
-  private def parseHeader() {
+  private def parseHeader(): Unit = {
     val magic = in.nextInt
     if (magic != JAVA_MAGIC)
       throw new IOException("class file '" + in.file + "' "
@@ -82,7 +82,7 @@ class ClassfileParser(
 
   var sawPrivateConstructor = false
 
-  def parseClass() {
+  def parseClass(): Unit = {
     val jflags       = in.nextChar
     val isAnnotation = hasAnnotation(jflags)
     val sflags       = FlagTranslation.classFlags(jflags)
@@ -94,7 +94,7 @@ class ClassfileParser(
       if (c != classRoot.symbol) mismatchError(c)
     }
 
-    addEnclosingTParams
+    addEnclosingTParams()
 
     if (unpickleOrParseInnerClasses()) return
 
@@ -104,7 +104,14 @@ class ClassfileParser(
       val superType = if (isAnnotation) { in.nextChar; defn.AnnotationClass.typeRef }
                       else pool.getSuperClass(in.nextChar).typeRef
       val ifaceCount = in.nextChar
-      var ifaces = for (i <- List.range(0, ifaceCount)) yield pool.getSuperClass(in.nextChar).typeRef
+      var ifaces = for (i <- (0 until ifaceCount).toList) yield pool.getSuperClass(in.nextChar).typeRef
+        // Dotty deviation: was
+        //    var ifaces = for (i <- List.range(0 until ifaceCount)) ...
+        // This does not typecheck because the type parameter of List is now lower-bounded by Int | Char.
+        // Consequently, no best implicit for the "Integral" evidence parameter of "range"
+        // is found. If we treat constant subtyping specially, we might be able
+        // to do something there. But in any case, the until should be more efficient.
+        
       if (isAnnotation) ifaces = defn.ClassfileAnnotationClass.typeRef :: ifaces
       superType :: ifaces
     }
@@ -129,7 +136,7 @@ class ClassfileParser(
   }
 
   /** Add type parameters of enclosing classes */
-  def addEnclosingTParams {
+  def addEnclosingTParams(): Unit = {
     var sym = classRoot.owner
     while (sym.isClass && !(sym is Flags.ModuleClass)) {
       for (tparam <- sym.typeParams) {
@@ -213,7 +220,7 @@ class ClassfileParser(
   private def sigToType(sig: TermName, owner: Symbol = null): Type = {
     var index = 0
     val end = sig.length
-    def accept(ch: Char) {
+    def accept(ch: Char): Unit = {
       assert(sig(index) == ch, (sig(index), ch))
       index += 1
     }
@@ -448,7 +455,7 @@ class ClassfileParser(
     }
     var newType = symtype
 
-    def parseAttribute() {
+    def parseAttribute(): Unit = {
       val attrName = pool.getName(in.nextChar).toTypeName
       val attrLen = in.nextInt
       val end = in.bp + attrLen
@@ -495,7 +502,7 @@ class ClassfileParser(
      * Parse the "Exceptions" attribute which denotes the exceptions
      * thrown by a method.
      */
-    def parseExceptions(len: Int) {
+    def parseExceptions(len: Int): Unit = {
       val nClasses = in.nextChar
       for (n <- 0 until nClasses) {
         // FIXME: this performs an equivalent of getExceptionTypes instead of getGenericExceptionTypes (SI-7065)
@@ -526,7 +533,7 @@ class ClassfileParser(
   /** Enter own inner classes in the right scope. It needs the scopes to be set up,
    *  and implicitly current class' superclasses.
    */
-  private def enterOwnInnerClasses() {
+  private def enterOwnInnerClasses(): Unit = {
     def className(name: Name): Name = name.drop(name.lastIndexOf('.') + 1)
 
     def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) = {
@@ -708,21 +715,21 @@ class ClassfileParser(
     }
   }
 
- def skipAttributes() {
+ def skipAttributes(): Unit = {
     val attrCount = in.nextChar
     for (i <- 0 until attrCount) {
       in.skip(2); in.skip(in.nextInt)
     }
   }
 
-  def skipMembers() {
+  def skipMembers(): Unit = {
     val memberCount = in.nextChar
     for (i <- 0 until memberCount) {
       in.skip(6); skipAttributes()
     }
   }
 
-  def skipSuperclasses() {
+  def skipSuperclasses(): Unit = {
     in.skip(2) // superclass
     val ifaces = in.nextChar
     in.skip(2 * ifaces)
@@ -734,7 +741,7 @@ class ClassfileParser(
   protected def getScope(flags: Int): MutableScope =
     if (isStatic(flags)) staticScope else instanceScope
 
-  private def setPrivateWithin(denot: SymDenotation, jflags: Int) {
+  private def setPrivateWithin(denot: SymDenotation, jflags: Int): Unit = {
     if ((jflags & (JAVA_ACC_PRIVATE | JAVA_ACC_PUBLIC)) == 0)
       denot.privateWithin = denot.enclosingPackage
   }

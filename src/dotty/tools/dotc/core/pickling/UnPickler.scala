@@ -218,7 +218,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     if (f != null) f else moduleClassRoot.symbol.associatedFile
   }
 
-  private def checkVersion() {
+  private def checkVersion(): Unit = {
     val major = readNat()
     val minor = readNat()
     if (major != MajorVersion || minor > MinorVersion)
@@ -734,7 +734,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
   /** Read children and store them into the corresponding symbol.
    */
-  protected def readChildren() {
+  protected def readChildren(): Unit = {
     val tag = readByte()
     assert(tag == CHILDREN)
     val end = readNat() + readIndex
@@ -874,18 +874,18 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     var name: Name = null
 
     /** Read a Symbol, Modifiers, and a Name */
-    def setSymModsName() {
+    def setSymModsName(): Unit = {
       symbol = readSymbolRef()
       mods = readModifiersRef(symbol.isType)
       name = readNameRef()
     }
     /** Read a Symbol and a Name */
-    def setSymName() {
+    def setSymName(): Unit = {
       symbol = readSymbolRef()
       name = readNameRef()
     }
     /** Read a Symbol */
-    def setSym() {
+    def setSym(): Unit = {
       symbol = readSymbolRef()
     }
 

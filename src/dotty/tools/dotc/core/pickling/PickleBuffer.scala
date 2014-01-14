@@ -18,7 +18,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
   var writeIndex = to
 
   /** Double bytes array */
-  private def dble() {
+  private def dble(): Unit = {
     val bytes1 = new Array[Byte](bytes.length * 2)
     Array.copy(bytes, 0, bytes1, 0, writeIndex)
     bytes = bytes1
@@ -30,7 +30,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
   // -- Basic output routines --------------------------------------------
 
   /** Write a byte of data */
-  def writeByte(b: Int) {
+  def writeByte(b: Int): Unit = {
     if (writeIndex == bytes.length) dble()
     bytes(writeIndex) = b.toByte
     writeIndex += 1
@@ -39,7 +39,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
   /** Write a natural number in big endian format, base 128.
    *  All but the last digits have bit 0x80 set.
    */
-  def writeNat(x: Int) =
+  def writeNat(x: Int): Unit =
     writeLongNat(x.toLong & 0x00000000FFFFFFFFL)
 
   /**
@@ -49,8 +49,8 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
    * if the long value is in the range Int.MIN_VALUE to
    * Int.MAX_VALUE.
    */
-  def writeLongNat(x: Long) {
-    def writeNatPrefix(x: Long) {
+  def writeLongNat(x: Long): Unit = {
+    def writeNatPrefix(x: Long): Unit = {
       val y = x >>> 7
       if (y != 0L) writeNatPrefix(y)
       writeByte(((x & 0x7f) | 0x80).toInt)
@@ -66,8 +66,8 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
    *  @param pos ...
    *  @param x   ...
    */
-  def patchNat(pos: Int, x: Int) {
-    def patchNatPrefix(x: Int) {
+  def patchNat(pos: Int, x: Int): Unit = {
+    def patchNatPrefix(x: Int): Unit = {
       writeByte(0)
       Array.copy(bytes, pos, bytes, pos+1, writeIndex - (pos+1))
       bytes(pos) = ((x & 0x7f) | 0x80).toByte
@@ -83,7 +83,7 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
    *
    *  @param x The long number to be written.
    */
-  def writeLong(x: Long) {
+  def writeLong(x: Long): Unit = {
     val y = x >> 8
     val z = x & 0xff
     if (-y != (z >> 7)) writeLong(y)
@@ -208,8 +208,8 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
       PARAM -> Param,
       PACKAGE -> Package,
       MACRO -> Macro,
-      BYNAMEPARAM -> (Method, Covariant),
-      LABEL -> (Label, Contravariant),
+      BYNAMEPARAM -> ((Method, Covariant)), // Dotty deviation: no auto-tupling
+      LABEL -> ((Label, Contravariant)), // Dotty deviation: no auto-tupling
       ABSOVERRIDE -> AbsOverride,
       LOCAL -> Local,
       JAVA -> JavaDefined,
@@ -217,16 +217,16 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
       STABLE -> Stable,
       STATIC -> Static,
       CASEACCESSOR -> CaseAccessor,
-      DEFAULTPARAM -> (DefaultParameterized, Trait),
+      DEFAULTPARAM -> ((DefaultParameterized, Trait)), // Dotty deviation: no auto-tupling
       BRIDGE -> Bridge,
       ACCESSOR -> Accessor,
       SUPERACCESSOR -> SuperAccessor,
       PARAMACCESSOR -> ParamAccessor,
       MODULEVAR -> Scala2ModuleVar,
       LAZY -> Lazy,
-      MIXEDIN -> (MixedIn, Scala2Existential),
+      MIXEDIN -> ((MixedIn, Scala2Existential)), // Dotty deviation: no auto-tupling
       EXPANDEDNAME -> ExpandedName,
-      IMPLCLASS -> (Scala2PreSuper, ImplClass),
+      IMPLCLASS -> ((Scala2PreSuper, ImplClass)), // Dotty deviation: no auto-tupling
       SPECIALIZED -> Specialized,
       DEFAULTINIT -> DefaultInit,
       VBRIDGE -> VBridge,
