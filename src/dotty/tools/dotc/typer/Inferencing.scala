@@ -398,11 +398,15 @@ object Inferencing {
       for (other <- seen(decl.name)) {
         typr.println(i"conflict? $decl $other")
         if (decl.signature matches other.signature) {
-          val ofType = if (decl.isType) "" else i": ${other.info}"
-          val explanation =
-            if (!decl.isSourceMethod) ""
-            else "\n (both definitions have the same erased type signature)"
-          ctx.error(i"$decl is already defined as $other$ofType$explanation", decl.pos)
+          def doubleDefError(decl: Symbol, other: Symbol): Unit = {
+            val ofType = if (decl.isType) "" else i": ${other.info}"
+            val explanation =
+              if (!decl.isSourceMethod) ""
+              else "\n (both definitions have the same erased type signature)"
+            ctx.error(i"$decl is already defined as $other$ofType$explanation", decl.pos)
+          }
+          if (decl is Synthetic) doubleDefError(other, decl)
+          else doubleDefError(decl, other)
         }
       }
       seen(decl.name) = decl :: seen(decl.name)
