@@ -1054,9 +1054,12 @@ object SymDenotations {
     def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = {
       def computeMemberNames: Set[Name] = {
         val inheritedNames = (classParents flatMap (_.memberNames(keepOnly, thisType))).toSet
-        var ownSyms = info.decls.toList
-        if (keepOnly == implicitFilter) ownSyms = ownSyms filter (_ is Implicit)
-        val ownNames = ownSyms.iterator map (_.name)
+        val ownSyms =
+          if (keepOnly == implicitFilter)
+            if (this is Package) Iterator.empty
+            else info.decls.iterator filter (_ is Implicit)
+          else info.decls.iterator
+        val ownNames = ownSyms map (_.name)
         val candidates = inheritedNames ++ ownNames
         candidates filter (keepOnly(thisType, _))
       }
