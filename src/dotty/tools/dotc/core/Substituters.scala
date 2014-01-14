@@ -10,7 +10,7 @@ trait Substituters { this: Context =>
   final def subst(tp: Type, from: BindingType, to: BindingType, map: SubstBindingMap): Type =
     tp match {
       case tp: BoundType =>
-        if (tp.binder eq from) tp.copy(to.asInstanceOf[tp.BT]) else tp
+        if (tp.binder eq from) tp.copyBoundType(to.asInstanceOf[tp.BT]) else tp
       case tp: NamedType =>
         if (tp.symbol.isStatic) tp
         else tp.derivedSelect(subst(tp.prefix, from, to, map))

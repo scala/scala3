@@ -1644,7 +1644,11 @@ object Types {
   abstract class BoundType extends UncachedProxyType with ValueType {
     type BT <: BindingType
     def binder: BT
-    def copy(bt: BT): Type
+    // Dotty deviation: copyBoundType was copy, but
+    // dotty generates copy methods always automatically, and therefore
+    // does not accept same-named method definitions in subclasses.
+    // Scala2x, on the other hand, requires them (not sure why!)
+    def copyBoundType(bt: BT): Type
   }
 
   abstract class ParamType extends BoundType {
@@ -1654,7 +1658,7 @@ object Types {
   case class MethodParam(binder: MethodType, paramNum: Int) extends ParamType with SingletonType {
     type BT = MethodType
     override def underlying(implicit ctx: Context): Type = binder.paramTypes(paramNum)
-    def copy(bt: BT) = MethodParam(bt, paramNum)
+    def copyBoundType(bt: BT) = MethodParam(bt, paramNum)
 
     // need to customize hashCode and equals to prevent infinite recursion for dep meth types.
     override def hashCode = System.identityHashCode(binder) + paramNum
@@ -1670,7 +1674,7 @@ object Types {
 
   case class PolyParam(binder: PolyType, paramNum: Int) extends ParamType {
     type BT = PolyType
-    def copy(bt: BT) = PolyParam(bt, paramNum)
+    def copyBoundType(bt: BT) = PolyParam(bt, paramNum)
 
     /** Looking only at the structure of `bound`, is one of the following true?
      *     - fromBelow and param <:< bound
@@ -1693,7 +1697,8 @@ object Types {
   case class RefinedThis(binder: RefinedType) extends BoundType with SingletonType {
     type BT = RefinedType
     override def underlying(implicit ctx: Context) = binder.parent
-    def copy(bt: BT) = RefinedThis(bt)
+    def copyBoundType(bt: BT) = RefinedThis(bt)
+
     // need to customize hashCode and equals to prevent infinite recursion for
     // refinements that refer to the refinement type via this
     override def hashCode = System.identityHashCode(binder)
