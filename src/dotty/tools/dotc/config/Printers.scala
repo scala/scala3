@@ -11,10 +11,11 @@ object Printers {
   }
 
   val core: Printer = noPrinter
-  val typr: Printer = new Printer
-  val constr: Printer = new Printer
+  val typr: Printer = noPrinter
+  val constr: Printer = noPrinter
   val overload: Printer = noPrinter
   val implicits: Printer = noPrinter
   val unapp: Printer = noPrinter
+  val completions = noPrinter
 
 }

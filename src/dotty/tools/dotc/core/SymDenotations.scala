@@ -12,6 +12,7 @@ import Decorators.SymbolIteratorDecorator
 import annotation.tailrec
 import util.SimpleMap
 import config.Config
+import config.Printers._
 
 trait SymDenotations { this: Context =>
   import SymDenotations._
@@ -127,7 +128,7 @@ object SymDenotations {
       if (myFlags is Touched) throw new CyclicReference(this)
       myFlags |= Touched
 
-      Context.theBase.initialCtx.debugTraceIndented(s"completing ${this.debugString}") {
+      Context.theBase.initialCtx.traceIndented(completions, s"completing ${this.debugString}") {
         // println("completing " + debugString)
         completer.complete(this)
       }

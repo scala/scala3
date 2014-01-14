@@ -327,7 +327,8 @@ class Namer { typer: Typer =>
 
     private def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
-        valOrDefDefSig(original, sym, Nil, identity)(localContext(sym).withNewScope)
+        if (sym is Module) moduleValSig(sym)
+        else valOrDefDefSig(original, sym, Nil, identity)(localContext(sym).withNewScope)
       case original: DefDef =>
         val typer1 = new Typer
         nestedTyper(sym) = typer1
@@ -418,6 +419,17 @@ class Namer { typer: Typer =>
   def completeParams(params: List[MemberDef])(implicit ctx: Context) = {
     index(params)
     for (param <- params) typedAheadExpr(param)
+  }
+
+  /** The signature of a module valdef.
+   *  This will compute the corresponding module class TypeRef immediately
+   *  without going through the defined type of the ValDef. This is necessary
+   *  to avoid cyclic references involving imports and module val defs.
+   */
+  def moduleValSig(sym: Symbol)(implicit ctx: Context): Type = {
+    val clsName = sym.name.moduleClassName
+    val cls = ctx.denotNamed(clsName) suchThat (_ is ModuleClass)
+    ctx.owner.thisType select (clsName, cls)
   }
 
   /** The type signature of a ValDef or DefDef
