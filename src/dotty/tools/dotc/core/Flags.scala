@@ -365,6 +365,8 @@ object Flags {
   /** Symbol is an implementation class */
   final val ImplClass = typeFlag(54, "<implclass>")
 
+  final val SelfNameOrImplClass = SelfName.toCommonFlags
+
   /** An existentially bound symbol (Scala 2.x only) */
   final val Scala2ExistentialCommon = commonFlag(55, "<existential>")
   final val Scala2Existential = Scala2ExistentialCommon.toTypeFlags
@@ -401,7 +403,7 @@ object Flags {
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | MethodCommon | Param | Scala2ExistentialCommon | Touched |
     Static | CovariantCommon | ContravariantCommon | ExpandedName | AccessorOrSealed |
-    CaseAccessorOrTypeArgument | Frozen | Erroneous | ImplicitCommon | Permanent
+    CaseAccessorOrTypeArgument | Frozen | Erroneous | ImplicitCommon | Permanent | SelfNameOrImplClass
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion
