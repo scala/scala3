@@ -314,7 +314,7 @@ object Symbols {
     private[this] var lastDenot: SymDenotation = _
 
     /** Set the denotation of this symbol */
-    private[Symbols] def denot_=(d: SymDenotation) =
+    private[core] def denot_=(d: SymDenotation) =
       lastDenot = d
 
     /** The current denotation of this symbol */

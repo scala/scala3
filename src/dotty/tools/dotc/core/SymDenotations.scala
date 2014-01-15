@@ -912,7 +912,10 @@ object SymDenotations {
       }
       if (this is PackageClass) { // replace existing symbols
         val entry = mscope.lookupEntry(sym.name)
-        if (entry != null) mscope.unlink(entry)
+        if (entry != null) {
+          mscope.unlink(entry)
+          entry.sym.denot = sym.denot // to avoid stale symbols
+        }
       }
       mscope.enter(sym)
 
