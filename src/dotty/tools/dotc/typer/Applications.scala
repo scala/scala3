@@ -605,7 +605,12 @@ trait Applications extends Compatibility { self: Typer =>
 
       // println(s"unapply $unapplyResult ${extractorMemberType(unapplyResult, nme.isDefined)}")
       if (extractorMemberType(unapplyResult, nme.isDefined) isRef defn.BooleanClass) {
-        if (getTp.exists) return getSelectors(getTp)
+        if (getTp.exists)
+          if (unapply.symbol.name == nme.unapplySeq) {
+            val seqArg = getTp.firstBaseTypeArg(defn.SeqClass)
+            if (seqArg.exists) return args map Function.const(seqArg)
+          }
+          else return getSelectors(getTp)
         else if (defn.isProductSubType(unapplyResult)) return productSelectors(unapplyResult)
       }
       if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil

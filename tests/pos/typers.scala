@@ -7,7 +7,7 @@ object typers {
   
   val names = List("a", "b", "c")
   val ints = List(1, 2, 3)
-  
+
   for ((name, n) <- (names, ints).zipped)
     println(name.length + n)
   
@@ -129,4 +129,15 @@ object typers {
     
     val x = new ArrayBuffer[String] // testing overloaded polymorphic constructors
   }
+
+  object SeqExtractors {
+    val y = names match {
+      case List(x, z) => x
+      case List(x) => x
+      case List() => ""
+    }
+    val yy: String = y
+  }
+  
+
 }
