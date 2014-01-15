@@ -621,18 +621,27 @@ trait Applications extends Compatibility { self: Typer =>
       }
     }
 
+    /** Can `subtp` be made to be a subtype of `tp`, possibly by dropping some
+     *  refinements in `tp`?
+     */
+    def isSubTypeOfParent(subtp: Type, tp: Type): Boolean =
+      if (subtp <:< tp) true
+      else tp match {
+        case RefinedType(parent, _) => isSubTypeOfParent(subtp, parent)
+        case _ => false
+      }
+
     unapply.tpe.widen match {
       case mt: MethodType if mt.paramTypes.length == 1 && !mt.isDependent =>
         val unapplyArgType = mt.paramTypes.head
         unapp.println(s"unapp arg tpe = ${unapplyArgType.show}, pt = ${pt.show}")
-        def wpt = widenForMatchSelector(pt)
+        def wpt = widenForMatchSelector(pt) // needed?
         val ownType =
           if (pt <:< unapplyArgType) {
             fullyDefinedType(unapplyArgType, "extractor argument", tree.pos)
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             pt
-          }
-          else if (unapplyArgType <:< wpt) {
+          } else if (isSubTypeOfParent(unapplyArgType, wpt)) {
             maximizeType(unapplyArgType) match {
               case Some(tvar) =>
                 def msg =
@@ -640,16 +649,15 @@ trait Applications extends Compatibility { self: Typer =>
                      |that makes it a subtype of selector type $pt.
                      |Non-variant type variable ${tvar.origin} cannot be uniquely instantiated.""".stripMargin
                 if (fromScala2x) {
-                // We can't issue an error here, because in Scala 2, ::[B] is invariant
-                // whereas List[+T] is covariant. According to the strict rule, a pattern
-                // match of a List[C] against a case x :: xs is illegal, because
-                // B cannot be uniquely instantiated. Of course :: should have been
-                // covariant in the first place, but in the Scala libraries it isn't.
-                // So for now we allow these kinds of patterns, even though they
-                // can open unsoundness holes. See SI-7952 for an example of the hole this opens.
+                  // We can't issue an error here, because in Scala 2, ::[B] is invariant
+                  // whereas List[+T] is covariant. According to the strict rule, a pattern
+                  // match of a List[C] against a case x :: xs is illegal, because
+                  // B cannot be uniquely instantiated. Of course :: should have been
+                  // covariant in the first place, but in the Scala libraries it isn't.
+                  // So for now we allow these kinds of patterns, even though they
+                  // can open unsoundness holes. See SI-7952 for an example of the hole this opens.
                   if (ctx.settings.verbose.value) ctx.warning(msg, tree.pos)
-                }
-                else {
+                } else {
                   unapp.println(s" ${unapply.symbol.owner} ${unapply.symbol.owner is Scala2x}")
                   ctx.error(msg, tree.pos)
                 }
