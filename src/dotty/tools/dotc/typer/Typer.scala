@@ -1205,7 +1205,7 @@ class Typer extends Namer with Applications with Implicits {
     def adaptToSubType(wtp: Type): Tree = {
       // try converting a constant to the target type
       val folded = ConstFold(tree, pt)
-      if (folded ne EmptyTree) return folded
+      if (folded ne tree) return folded
       // drop type if prototype is Unit
       if (pt isRef defn.UnitClass)
         return tpd.Block(tree :: Nil, Literal(Constant(())))

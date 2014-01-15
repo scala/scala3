@@ -442,7 +442,7 @@ trait Applications extends Compatibility { self: Typer =>
               if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
               else new ApplyToUntyped(tree, fun1, funRef, proto, pt)
             val result = app.result
-            ConstFold(result) orElse result
+            ConstFold(result)
           } { (failedVal, failedState) => fun1 match {
               case Select(qual, name) =>
                 // try with prototype `[].name(args)`, this might succeed by inserting an

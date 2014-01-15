@@ -17,26 +17,25 @@ object ConstFold {
   import tpd._
 
   /** If tree is a constant operation, replace with result. */
-  def apply(tree: Tree)(implicit ctx: Context): Tree =
-    finish(tree) {
-      tree match {
-        case Apply(Select(xt, op), yt :: Nil) =>
-          xt.tpe match {
-            case ConstantType(x) =>
-              yt.tpe match {
-                case ConstantType(y) => foldBinop(op, x, y)
-                case _ => null
-              }
-            case _ => null
-          }
-        case Select(xt, op) =>
-          xt.tpe match {
-            case ConstantType(x) => foldUnop(op, x)
-            case _ => null
-          }
-        case _ => null
-      }
+  def apply(tree: Tree)(implicit ctx: Context): Tree = finish(tree) {
+    tree match {
+      case Apply(Select(xt, op), yt :: Nil) =>
+        xt.tpe match {
+          case ConstantType(x) =>
+            yt.tpe match {
+              case ConstantType(y) => foldBinop(op, x, y)
+              case _ => null
+            }
+          case _ => null
+        }
+      case Select(xt, op) =>
+        xt.tpe match {
+          case ConstantType(x) => foldUnop(op, x)
+          case _ => null
+        }
+      case _ => null
     }
+  }
 
   /** If tree is a constant value that can be converted to type `pt`, perform
    *  the conversion.
@@ -53,7 +52,7 @@ object ConstFold {
     try {
       val x = compX
       if (x ne null) tree withType ConstantType(x)
-      else EmptyTree
+      else tree
     } catch {
       case _: ArithmeticException => tree   // the code will crash at runtime,
                                             // but that is better than the

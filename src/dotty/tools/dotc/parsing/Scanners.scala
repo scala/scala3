@@ -158,7 +158,7 @@ object Scanners {
 
     /** Produce next token, filling TokenData fields of Scanner.
      */
-    def nextToken() {
+    def nextToken(): Unit = {
       val lastToken = token
       adjustSepRegions(lastToken)
 
@@ -244,7 +244,7 @@ object Scanners {
 
     /** read next token, filling TokenData fields of Scanner.
      */
-    protected final def fetchToken() {
+    protected final def fetchToken(): Unit = {
       offset = charOffset - 1
       (ch: @switch) match {
         case ' ' | '\t' | CR | LF | FF =>
@@ -471,7 +471,7 @@ object Scanners {
 
 // Identifiers ---------------------------------------------------------------
 
-    private def getBackquotedIdent() {
+    private def getBackquotedIdent(): Unit = {
       nextChar()
       getLitChars('`')
       if (ch == '`') {
@@ -533,7 +533,7 @@ object Scanners {
         else finishNamed()
     }
 
-    private def getIdentOrOperatorRest() {
+    private def getIdentOrOperatorRest(): Unit = {
       if (isIdentifierPart(ch))
         getIdentRest()
       else ch match {
@@ -709,7 +709,7 @@ object Scanners {
     /** read fractional part and exponent of floating point number
      *  if one is present.
      */
-    protected def getFraction() {
+    protected def getFraction(): Unit = {
       token = DOUBLELIT
       while ('0' <= ch && ch <= '9') {
         putChar(ch)
@@ -746,14 +746,14 @@ object Scanners {
       }
       checkNoLetter()
     }
-    def checkNoLetter() {
+    def checkNoLetter(): Unit = {
       if (isIdentifierPart(ch) && ch >= ' ')
         error("Invalid literal number")
     }
 
     /** Read a number into strVal and set base
     */
-    protected def getNumber() {
+    protected def getNumber(): Unit = {
       while (digit2int(ch, base) >= 0) {
         putChar(ch)
         nextChar()
@@ -805,7 +805,7 @@ object Scanners {
     /** Parse character literal if current character is followed by \',
      *  or follow with given op and return a symbol literal token
      */
-    def charLitOr(op: () => Unit) {
+    def charLitOr(op: () => Unit): Unit = {
       putChar(ch)
       nextChar()
       if (ch == '\'') {
@@ -940,7 +940,7 @@ object Scanners {
     }
 
     /** signal an error where the input ended in the middle of a token */
-    def incompleteInputError(msg: String) {
+    def incompleteInputError(msg: String): Unit = {
       ctx.incompleteInputError(msg, source atPos Position(offset))
       token = EOF
       errOffset = offset
