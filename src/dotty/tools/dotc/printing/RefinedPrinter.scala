@@ -126,7 +126,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def optDotPrefix(name: Name) = optText(name)(_ ~ ".")
 
-    def optAscription(tpt: Tree[T]) = optText(tpt)(": " ~ _)
+    def optAscription(tpt: untpd.Tree) = optText(tpt)(": " ~ _)
+      // Dotty deviation: called with an untpd.Tree, so cannot be a untpd.Tree[T] (seems to be a Scala2 problem to allow this)
+      // More deviations marked below as // DD
 
     def tparamsText[T >: Untyped](params: List[Tree[T]]): Text =
       "[" ~ toText(params, ", ") ~ "]" provided params.nonEmpty
@@ -142,24 +144,24 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case expr => toText(expr)
     }
 
-    def enumText(tree: Tree[T]) = tree match {
+    def enumText(tree: untpd.Tree) = tree match { // DD
       case _: untpd.GenFrom | _: untpd.GenAlias => toText(tree)
       case _ => "if " ~ toText(tree)
     }
 
-    def forText(enums: List[Tree[T]], expr: Tree[T], sep: String): Text =
+    def forText(enums: List[untpd.Tree], expr: untpd.Tree, sep: String): Text = // DD
       changePrec(GlobalPrec) { "for " ~ Text(enums map enumText, "; ") ~ sep ~ toText(expr) }
 
-    def cxBoundToText(bound: Tree[T]): Text = bound match {
+    def cxBoundToText(bound: untpd.Tree): Text = bound match { // DD
       case AppliedTypeTree(tpt, _) => " : " ~ toText(tpt)
       case untpd.Function(_, tpt) => " <% " ~ toText(tpt)
     }
 
-    def constrText(tree: Tree[T]): Text = toTextLocal(tree).stripPrefix("new ")
+    def constrText(tree: untpd.Tree): Text = toTextLocal(tree).stripPrefix("new ") // DD
 
-    def annotText(tree: Tree[T]): Text = "@" ~ constrText(tree)
+    def annotText(tree: untpd.Tree): Text = "@" ~ constrText(tree) // DD
 
-    def modText(mods: Modifiers[T], kw: String): Text = {
+    def modText(mods: untpd.Modifiers, kw: String): Text = { // DD
       val suppressKw = if (ownerIsClass) mods is ParamAndLocal else mods is Param
       val flagMask = if (suppressKw) PrintableFlags &~ Private else PrintableFlags
       val modsText: Text = (mods.flags & flagMask).toString
