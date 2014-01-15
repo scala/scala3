@@ -136,7 +136,7 @@ object Parsers {
      *   - Definite statement starts on new lines, provided they are not more indented
      *     than the last known statement start before the error point.
      */
-    protected def skip() {
+    protected def skip(): Unit = {
       val skippedParens = new ParensCounters
       while (true) {
         (in.token: @switch) match {
@@ -603,21 +603,21 @@ object Parsers {
 
 /* ------------- NEW LINES ------------------------------------------------- */
 
-    def newLineOpt() {
+    def newLineOpt(): Unit = {
       if (in.token == NEWLINE) in.nextToken()
     }
 
-    def newLinesOpt() {
+    def newLinesOpt(): Unit = {
       if (in.token == NEWLINE || in.token == NEWLINES)
         in.nextToken()
     }
 
-    def newLineOptWhenFollowedBy(token: Int) {
+    def newLineOptWhenFollowedBy(token: Int): Unit = {
       // note: next is defined here because current == NEWLINE
       if (in.token == NEWLINE && in.next.token == token) newLineOpt()
     }
 
-    def newLineOptWhenFollowing(p: Int => Boolean) {
+    def newLineOptWhenFollowing(p: Int => Boolean): Unit = {
       // note: next is defined here because current == NEWLINE
       if (in.token == NEWLINE && p(in.next.token)) newLineOpt()
     }
