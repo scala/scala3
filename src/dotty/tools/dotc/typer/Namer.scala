@@ -372,7 +372,7 @@ class Namer { typer: Typer =>
       /** The type of a parent constructor. Types constructor arguments
        *  only if parent type contains uninstantiated type parameters.
        */
-      def parentType(constr: untpd.Tree): Type =
+      def parentType(constr: untpd.Tree)(implicit ctx: Context): Type =
         if (constr.isType) { // this case applies to desugared refined types
           typedAheadType(constr).tpe
         } else {
@@ -393,7 +393,7 @@ class Namer { typer: Typer =>
         else createSymbol(self)
       // pre-set info, so that parent types can refer to type params
       denot.info = ClassInfo(cls.owner.thisType, cls, Nil, decls, selfInfo)
-      val parentTypes = parents map parentType
+      val parentTypes = parents map (parentType(_)(ctx.fresh addMode Mode.InSuperCall))
       val parentRefs = ctx.normalizeToClassRefs(parentTypes, cls, decls)
       val parentClsRefs =
         for ((parentRef, constr) <- parentRefs zip parents)

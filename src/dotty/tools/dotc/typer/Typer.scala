@@ -141,11 +141,20 @@ class Typer extends Namer with Applications with Implicits {
       tpe
   }
 
+  /** The enclosing class, except if we are in a super call, in which case
+   *  it is the next outer one.
+   */
+  def effectiveEnclosingClass(implicit ctx: Context) = {
+    val enclClass = ctx.owner.enclosingClass
+    if ((ctx.mode is Mode.InSuperCall) && enclClass.exists) enclClass.owner.enclosingClass
+    else enclClass
+  }
+
   /** The qualifying class of a this or super with prefix `qual` (which might be empty).
    *  @param packageOk   The qualifier may refer to a package.
    */
-  def qualifyingClass(tree: untpd.Tree, qual: Name, packageOK: Boolean)(implicit ctx: Context): Symbol =
-    ctx.owner.enclosingClass.ownersIterator.find(o => qual.isEmpty || o.isClass && o.name == qual) match {
+  def qualifyingClass(tree: untpd.Tree, qual: Name, packageOK: Boolean)(implicit ctx: Context): Symbol = {
+    effectiveEnclosingClass.ownersIterator.find(o => qual.isEmpty || o.isClass && o.name == qual) match {
       case Some(c) if packageOK || !(c is Package) =>
         c
       case _ =>
@@ -154,6 +163,7 @@ class Typer extends Namer with Applications with Implicits {
           else qual.show + " is not an enclosing class", tree.pos)
         NoSymbol
     }
+  }
 
   /** Attribute an identifier consisting of a simple name or wildcard
    *
@@ -858,7 +868,7 @@ class Typer extends Namer with Applications with Implicits {
     val TypeDef(mods, name, impl @ Template(constr, parents, self, body)) = cdef
     val mods1 = typedModifiers(mods)
     val constr1 = typed(constr).asInstanceOf[DefDef]
-    val parents1 = parents mapconserve (typed(_))
+    val parents1 = parents mapconserve (typed(_)(ctx.fresh addMode Mode.InSuperCall))
     val self1 = typed(self).asInstanceOf[ValDef]
     val localDummy = ctx.newLocalDummy(cls, impl.pos)
     val body1 = typedStats(body, localDummy)(inClassContext(self1.symbol))
