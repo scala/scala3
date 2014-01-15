@@ -613,9 +613,18 @@ class Typer extends Namer with Applications with Implicits {
             cpy.ValDef(param, param.mods, param.name, paramTpt, param.rhs)
           }
 
-      val resultTpt =
-        if (isFullyDefined(protoResult, ForceDegree.none)) untpd.TypeTree(protoResult)
-        else untpd.TypeTree()
+      // Define result type of closure as the expected type, thereby pushing
+      // down any implicit searches. We do this even if the expected type is not fully
+      // defined, which is a bit of a hack. But it's needed to make the following work
+      // (see typers.scala and printers/PlainPrinter.scala for examples).
+      //
+      //     def double(x: Char): String = s"$x$x"
+      //     "abc" flatMap double
+      //
+      val resultTpt = protoResult match {
+        case WildcardType(_) => untpd.TypeTree()
+        case _ => untpd.TypeTree(protoResult)
+      }
       typed(desugar.makeClosure(inferredParams, fnBody, resultTpt), pt)
     }
   }
@@ -646,14 +655,15 @@ class Typer extends Namer with Applications with Implicits {
         typed(desugar.makeCaseLambda(tree.cases) withPos tree.pos, pt)
       case _ =>
         val sel1 = typedExpr(tree.selector)
-        val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.pos)
+        val selType = widenForMatchSelector(
+            fullyDefinedType(sel1.tpe, "pattern selector", tree.pos))
 
         /** gadtSyms = "all type parameters of enclosing methods that appear
          *              non-variantly in the selector type" todo: should typevars
          *              which appear with variances +1 and -1 (in different
          *              places) be considered as well?
          */
-        val gadtSyms: Set[Symbol] = {
+        val gadtSyms: Set[Symbol] = ctx.traceIndented(gadts, i"GADT syms of $selType") {
           val accu = new TypeAccumulator[Set[Symbol]] {
             def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
               val tsyms1 = t match {

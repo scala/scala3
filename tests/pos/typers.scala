@@ -7,15 +7,17 @@ object typers {
   
   val names = List("a", "b", "c")
   val ints = List(1, 2, 3)
+  
+  object Inference {
 
-  for ((name, n) <- (names, ints).zipped)
-    println(name.length + n)
-  
-  val entries = Array("abc", "def")
-  
-  for ((x, i) <- entries.zipWithIndex)
-    println(x)
+    for ((name, n) <- (names, ints).zipped)
+      println(name.length + n)
+      
+    def double(x: Char): String = s"$x$x"
     
+    "abc" flatMap double
+  
+  }
   object Eta {
     
     def fun(x: Int): Int = x + 1
@@ -128,6 +130,11 @@ object typers {
     arr(i).charAt(0)
     
     val x = new ArrayBuffer[String] // testing overloaded polymorphic constructors
+
+    val entries = Array("abc", "def")
+    
+    for ((x, i) <- entries.zipWithIndex)
+      println(x)
   }
 
   object SeqExtractors {

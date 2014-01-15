@@ -17,5 +17,6 @@ object Printers {
   val implicits: Printer = noPrinter
   val unapp: Printer = noPrinter
   val completions = noPrinter
+  val gadts = noPrinter
 
 }
