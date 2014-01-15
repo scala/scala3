@@ -33,7 +33,7 @@ object Implicits {
   /** A common base class of contextual implicits and of-type implicits which
    *  represents as set of implicit references.
    */
-  abstract class ImplicitRefs(initctx: Context) extends Compatibility {
+  abstract class ImplicitRefs(initctx: Context) {
     implicit val ctx: Context =
       if (initctx == NoContext) initctx else initctx retractMode Mode.ImplicitsEnabled
 
@@ -43,13 +43,10 @@ object Implicits {
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = track("filterMatching") {
       def refMatches(ref: TermRef)(implicit ctx: Context) =
-        (ref.symbol isAccessibleFrom ref.prefix) && isCompatible(normalize(ref, pt), pt)
+        (ref.symbol isAccessibleFrom ref.prefix) && NoViewsAllowed.isCompatible(normalize(ref, pt), pt)
 
       refs filter (refMatches(_)(ctx.fresh.withExploreTyperState.addMode(Mode.TypevarsMissContext))) // create a defensive copy of ctx to avoid constraint pollution
     }
-
-    /** No further implicit conversions can be applied when searching for implicits. */
-    override def viewExists(tp: Type, pt: Type)(implicit ctx: Context) = false
   }
 
   /** The implicit references coming from the implicit scope of a type.

@@ -31,7 +31,11 @@ object Disambiguation {
 
     private def recordedNameString(sym: Symbol): String = {
       val str = rawNameString(sym)
-      val existing = variants.getOrElse(str, new mutable.ListBuffer)
+      val existing = variants.getOrElse(str, new mutable.ListBuffer[Symbol])
+        // Dotty deviation: without a type parameter on ListBuffer, inference
+        // will compute ListBuffer[Symbol] | ListBuffer[Nothing] as the type of "existing"
+        // and then the assignment to variants below will fail.
+        // We need to find a way to avoid such useless inferred types.
       if (!(existing contains sym)) {
         hasConflicts |= existing.nonEmpty
         variants(str) = (existing += sym)

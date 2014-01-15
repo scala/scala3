@@ -371,7 +371,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
-    val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt))
+    val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
     val ownType = checkedSelectionType(qual1, tree)
     checkValue(ownType, pt, tree.pos)
     cpy.Select(tree, qual1, tree.name).withType(ownType)
@@ -747,7 +747,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): SelectFromTypeTree = track("typedSelectFromTypeTree") {
-    val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt))
+    val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt, this))
     cpy.SelectFromTypeTree(tree, qual1, tree.name).withType(checkedSelectionType(qual1, tree))
   }
 

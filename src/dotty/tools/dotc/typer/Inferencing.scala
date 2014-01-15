@@ -63,17 +63,20 @@ object Inferencing {
     }
   }
 
+  object NoViewsAllowed extends Compatibility {
+    override def viewExists(tp: Type, pt: Type)(implicit ctx: Context): Boolean = false
+  }
+
   /** A prototype for expressions [] that are part of a selection operation:
    *
    *       [ ].name: proto
    */
-  class SelectionProto(val name: Name, proto: Type)
-  extends RefinedType(WildcardType, name)(_ => proto) with ProtoType with Compatibility {
-    override def viewExists(tp: Type, pt: Type)(implicit ctx: Context): Boolean = false
+  class SelectionProto(val name: Name, proto: Type, compat: Compatibility)
+  extends RefinedType(WildcardType, name)(_ => proto) with ProtoType {
     override def isMatchedBy(tp1: Type)(implicit ctx: Context) =
       name == nme.WILDCARD || {
         val mbr = tp1.member(name)
-        mbr.exists && mbr.hasAltWith(m => normalizedCompatible(m.info, proto))
+        mbr.exists && mbr.hasAltWith(m => compat.normalizedCompatible(m.info, proto))
       }
     override def toString = "Proto" + super.toString
     override def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
@@ -81,7 +84,7 @@ object Inferencing {
       if (tp1 eq this) this
       else {
         assert(parent == WildcardType)
-        new SelectionProto(refinedName1, tp1.refinedInfo)
+        new SelectionProto(refinedName1, tp1.refinedInfo, compat)
       }
     }
     def map(tm: TypeMap) = tm(this).asInstanceOf[SelectionProto]
@@ -91,12 +94,12 @@ object Inferencing {
   /** Create a selection proto-type, but only one level deep;
    *  treat constructors specially
    */
-  def selectionProto(name: Name, tp: Type) =
+  def selectionProto(name: Name, tp: Type, typer: Typer) =
     if (name.isConstructorName) WildcardType
     else tp match {
       case tp: UnapplyFunProto => new UnapplySelectionProto(name)
-      case tp: ProtoType => new SelectionProto(name, WildcardType)
-      case _ => new SelectionProto(name, tp)
+      case tp: ProtoType => new SelectionProto(name, WildcardType, typer)
+      case _ => new SelectionProto(name, tp, typer)
     }
 
   /** A prototype for expressions [] that are in some unspecified selection operation
@@ -107,10 +110,10 @@ object Inferencing {
    *  operation is further selection. In this case, the expression need not be a value.
    *  @see checkValue
    */
-  object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType)
+  object AnySelectionProto extends SelectionProto(nme.WILDCARD, WildcardType, NoViewsAllowed)
 
   /** A prototype for selections in pattern constructors */
-  class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType)
+  class UnapplySelectionProto(name: Name) extends SelectionProto(name, WildcardType, NoViewsAllowed)
 
   trait ApplyingProto extends ProtoType
 
