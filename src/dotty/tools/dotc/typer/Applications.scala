@@ -741,7 +741,7 @@ trait Applications extends Compatibility { self: Typer =>
   /** In a set of overloaded applicable alternatives, is `alt1` at least as good as
    *  `alt2`? `alt1` and `alt2` are nonoverloaded references.
    */
-  def isAsGood(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Boolean = track("isAsGood") { ctx.traceIndented(overload, i"isAsGood($alt1, $alt2)") {
+  def isAsGood(alt1: TermRef, alt2: TermRef)(implicit ctx: Context): Boolean = track("isAsGood") { ctx.traceIndented(i"isAsGood($alt1, $alt2)", overload) {
 
     assert(alt1 ne alt2)
 
@@ -760,7 +760,7 @@ trait Applications extends Compatibility { self: Typer =>
      *    2. `tp2` and `tp1` are method or poly types and `tp2` can be applied to the parameters of `tp1`.
      *    3. Neither `tp1` nor `tp2` are method or poly types and `tp1` is compatible with `tp2`.
      */
-    def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = ctx.traceIndented(overload, i"isAsSpecific $tp1 $tp2") { tp1 match {
+    def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = ctx.traceIndented(i"isAsSpecific $tp1 $tp2", overload) { tp1 match {
       case tp1: PolyType =>
         def bounds(tparamRefs: List[TypeRef]) = tp1.paramBounds map (_.substParams(tp1, tparamRefs))
         val tparams = ctx.newTypeParams(alt1.symbol.owner, tp1.paramNames, EmptyFlags, bounds)

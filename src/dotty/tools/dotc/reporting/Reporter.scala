@@ -8,6 +8,7 @@ import util.{SourceFile, NoSource}
 import core.Decorators.PhaseListDecorator
 import collection.mutable
 import config.Settings.Setting
+import config.Printers
 import java.lang.System.currentTimeMillis
 
 object Reporter {
@@ -128,23 +129,20 @@ trait Reporting { this: Context =>
   def debugwarn(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.debug.value) warning(msg, pos)
 
-  def debugTraceIndented[T](question: => String, show: Boolean = false)(op: => T): T =
-    conditionalTraceIndented(this.settings.debugTrace.value, question, show)(op)
+  def debugTraceIndented[T](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => T): T =
+    conditionalTraceIndented(this.settings.debugTrace.value, question, printer, show)(op)
 
-  def conditionalTraceIndented[T](cond: Boolean, question: => String, show: Boolean = false)(op: => T): T =
-    if (cond) traceIndented(question, show)(op)
+  def conditionalTraceIndented[T](cond: Boolean, question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => T): T =
+    if (cond) traceIndented(question, printer, show)(op)
     else op
 
-  def traceIndented[T](printer: config.Printers.Printer, question: => String, show: Boolean = false)(op: => T): T =
-    if (printer ne config.Printers.noPrinter) traceIndented(question, show)(op)
-    else op
-
-  def traceIndented[T](question: => String, show: Boolean = false)(op: => T): T = {
+  def traceIndented[T](question: => String, printer: Printers.Printer = Printers.default, show: Boolean = false)(op: => T): T = {
     def resStr(res: Any): String = res match {
       case res: printing.Showable if show => res.show
       case _ => String.valueOf(res)
     }
-    traceIndented[T](s"==> $question?", (res: Any) => s"<== $question = ${resStr(res)}")(op)
+    if (printer eq config.Printers.noPrinter) op
+    else traceIndented[T](s"==> $question?", (res: Any) => s"<== $question = ${resStr(res)}")(op)
   }
 
   def traceIndented[T](leading: => String, trailing: Any => String)(op: => T): T = {
@@ -258,7 +256,7 @@ abstract class Reporter {
     countElementsAsString(count(severity.level), label(severity).dropRight(2))
   }
 
-  def printSummary(implicit ctx: Context) {
+  def printSummary(implicit ctx: Context): Unit = {
     if (count(WARNING.level) > 0) ctx.echo(countString(WARNING) + " found")
     if (  count(ERROR.level) > 0) ctx.echo(countString(ERROR  ) + " found")
     for (cwarning <- conditionalWarnings) {

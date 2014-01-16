@@ -128,7 +128,7 @@ object SymDenotations {
       if (myFlags is Touched) throw new CyclicReference(this)
       myFlags |= Touched
 
-      Context.theBase.initialCtx.traceIndented(completions, s"completing ${this.debugString}") {
+      Context.theBase.initialCtx.traceIndented(s"completing ${this.debugString}", completions) {
         // println("completing " + debugString)
         completer.complete(this)
       }

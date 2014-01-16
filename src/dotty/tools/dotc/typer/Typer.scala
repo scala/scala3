@@ -663,7 +663,7 @@ class Typer extends Namer with Applications with Implicits {
          *              which appear with variances +1 and -1 (in different
          *              places) be considered as well?
          */
-        val gadtSyms: Set[Symbol] = ctx.traceIndented(gadts, i"GADT syms of $selType") {
+        val gadtSyms: Set[Symbol] = ctx.traceIndented(i"GADT syms of $selType", gadts) {
           val accu = new TypeAccumulator[Set[Symbol]] {
             def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
               val tsyms1 = t match {
