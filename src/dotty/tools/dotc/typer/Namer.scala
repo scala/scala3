@@ -506,7 +506,11 @@ class Namer { typer: Typer =>
               case nil =>
                 WildcardType
             }
-            paramProto(meth.suchThat(_.hasDefaultParams).info.widen.paramTypess, idx)
+            val defaultAlts = meth.altsWith(_.hasDefaultParams)
+            if (defaultAlts.length == 1)
+              paramProto(defaultAlts.head.info.widen.paramTypess, idx)
+            else
+              WildcardType
           }
         }
 
