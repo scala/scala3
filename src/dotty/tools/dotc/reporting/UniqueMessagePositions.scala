@@ -21,7 +21,7 @@ trait UniqueMessagePositions extends Reporter {
   override def isHidden(d: Diagnostic)(implicit ctx: Context): Boolean =
     super.isHidden(d) || {
       d.pos.exists && {
-        positions get (ctx.source, d.pos.point) match {
+        positions get ((ctx.source, d.pos.point)) match { // Dotty deviation: no autotupling
           case Some(s) if s.level >= d.severity.level => true
           case _ => positions((ctx.source, d.pos.point)) = d.severity; false
         }
