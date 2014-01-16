@@ -411,6 +411,10 @@ object Inferencing {
           if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
         }
+        if ((decl is HasDefaultParams) && (other is HasDefaultParams)) {
+          ctx.error(i"two or more overloaded variants of $decl have default arguments")
+          decl resetFlag HasDefaultParams
+        }
       }
       seen(decl.name) = decl :: seen(decl.name)
     }
