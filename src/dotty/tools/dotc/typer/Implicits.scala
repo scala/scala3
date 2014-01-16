@@ -182,6 +182,8 @@ trait ImplicitRunInfo { self: RunInfo =>
    */
   def implicitScope(tp: Type, liftingCtx: Context): OfTypeImplicits = {
 
+    val seen: mutable.Set[Type] = mutable.Set()
+
     /** Replace every typeref that does not refer to a class by a conjunction of class types
      *  that has the same implicit scope as the original typeref. The motivation for applying
      *  this map is that it reduces the total number of types for which we need to
@@ -204,21 +206,28 @@ trait ImplicitRunInfo { self: RunInfo =>
       }
     }
 
+    def iscopeRefs(tp: Type): TermRefSet =
+      if (seen contains tp) EmptyTermRefSet
+      else {
+        seen += tp
+        iscope(tp).companionRefs
+      }
+
     // todo: compute implicits directly, without going via companionRefs?
-    def computeImplicitScope(tp: Type): OfTypeImplicits = track("computeImplicicScope") {
-      ctx.traceIndented(implicits, i"computeImplicitScope($tp)") {
+    def collectCompanions(tp: Type): TermRefSet = track("computeImplicicScope") {
+      ctx.traceIndented(implicits, i"collectCompanions($tp)") {
         val comps = new TermRefSet
         tp match {
           case tp: NamedType =>
             val pre = tp.prefix
-            comps ++= iscope(pre).companionRefs
+            comps ++= iscopeRefs(pre)
             def addClassScope(cls: ClassSymbol): Unit = {
               def addRef(companion: TermRef): Unit =
                 comps += companion.asSeenFrom(pre, companion.symbol.owner).asInstanceOf[TermRef]
               def addParentScope(parent: TypeRef): Unit = {
-                iscope(parent).companionRefs foreach addRef
+                iscopeRefs(parent) foreach addRef
                 for (param <- parent.typeParams)
-                  comps ++= iscope(pre.member(param.name).info).companionRefs
+                  comps ++= iscopeRefs(pre.member(param.name).info)
               }
               val companion = cls.companionModule
               if (companion.exists) addRef(companion.valRef)
@@ -227,24 +236,24 @@ trait ImplicitRunInfo { self: RunInfo =>
             tp.classSymbols(liftingCtx) foreach addClassScope
           case _ =>
             for (part <- tp.namedPartsWith(_.isType))
-              comps ++= iscope(part).companionRefs
+              comps ++= iscopeRefs(part)
         }
-        new OfTypeImplicits(tp, comps)(ctx)
+        comps
       }
     }
 
-    /** The implicit scope of type `tp`
+    def ofTypeImplicits(comps: TermRefSet) = new OfTypeImplicits(tp, comps)(ctx)
+
+   /** The implicit scope of type `tp`
      *  @param isLifted    Type `tp` is the result of a `liftToClasses` application
      */
     def iscope(tp: Type, isLifted: Boolean = false): OfTypeImplicits =
-      if (tp.hash == NotCached || !Config.cacheImplicitScopes) computeImplicitScope(tp)
+      if (tp.hash == NotCached || !Config.cacheImplicitScopes)
+        ofTypeImplicits(collectCompanions(tp))
       else implicitScopeCache.getOrElseUpdate(tp, {
         val liftedTp = if (isLifted) tp else liftToClasses(tp)
-        if (liftedTp ne tp) {
-          val liftedImplicits = iscope(liftedTp, isLifted = true)
-          new OfTypeImplicits(tp, liftedImplicits.companionRefs)(ctx)
-        }
-        else computeImplicitScope(tp)
+        if (liftedTp ne tp) iscope(liftedTp, isLifted = true)
+        else ofTypeImplicits(collectCompanions(tp))
       })
 
     iscope(tp)

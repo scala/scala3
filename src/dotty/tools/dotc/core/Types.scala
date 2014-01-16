@@ -2325,22 +2325,28 @@ object Types {
 
   class NamedPartsAccumulator(p: NamedType => Boolean)(implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {
     def maybeAdd(x: mutable.Set[NamedType], tp: NamedType) = if (p(tp)) x += tp else x
-    def apply(x: mutable.Set[NamedType], tp: Type): mutable.Set[NamedType] = tp match {
-      case tp: TermRef =>
-        apply(foldOver(maybeAdd(x, tp), tp), tp.underlying)
-      case tp: TypeRef =>
-        foldOver(maybeAdd(x, tp), tp)
-      case tp: ThisType =>
-        apply(x, if (tp.cls is Module) tp.underlying else tp.cls.typeRef)
-      case tp: ConstantType =>
-        apply(x, tp.underlying)
-      case tp: MethodParam =>
-        apply(x, tp.underlying)
-      case tp: PolyParam =>
-        apply(x, tp.underlying)
-      case _ =>
-        foldOver(x, tp)
-    }
+    val seen: mutable.Set[Type] = mutable.Set()
+    def apply(x: mutable.Set[NamedType], tp: Type): mutable.Set[NamedType] =
+      if (seen contains tp) x
+      else {
+        seen += tp
+        tp match {
+          case tp: TermRef =>
+            apply(foldOver(maybeAdd(x, tp), tp), tp.underlying)
+          case tp: TypeRef =>
+            foldOver(maybeAdd(x, tp), tp)
+          case tp: ThisType =>
+            apply(x, tp.underlying)
+          case tp: ConstantType =>
+            apply(x, tp.underlying)
+          case tp: MethodParam =>
+            apply(x, tp.underlying)
+          case tp: PolyParam =>
+            apply(x, tp.underlying)
+          case _ =>
+            foldOver(x, tp)
+        }
+      }
   }
 
   //   ----- Name Filters --------------------------------------------------
