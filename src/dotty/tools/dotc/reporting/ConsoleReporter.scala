@@ -28,10 +28,10 @@ class ConsoleReporter(
     if (pos.exists) { printMessage(" " * (pos.column - 1) + "^") }
 
   /** Prints the message. */
-  def printMessage(msg: String) { writer.print(msg + "\n"); writer.flush() }
+  def printMessage(msg: String): Unit = { writer.print(msg + "\n"); writer.flush() }
 
   /** Prints the message with the given position indication. */
-  def printMessageAndPos(msg: String, pos: SourcePosition)(implicit ctx: Context) {
+  def printMessageAndPos(msg: String, pos: SourcePosition)(implicit ctx: Context): Unit = {
     val posStr = if (pos.exists) s"$pos: " else ""
     printMessage(posStr + msg)
     if (pos.exists) {
@@ -61,5 +61,5 @@ class ConsoleReporter(
     }
   }
 
-  override def flush()(implicit ctx: Context) { writer.flush() }
+  override def flush()(implicit ctx: Context): Unit = { writer.flush() }
 }
