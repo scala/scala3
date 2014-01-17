@@ -298,19 +298,22 @@ class Namer { typer: Typer =>
      *  and the real companion, if both exist.
      */
     def mergeCompanionDefs() = {
-      val caseClassDef = mutable.Map[TypeName, TypeDef]()
+      val classDef = mutable.Map[TypeName, TypeDef]()
       for (cdef @ TypeDef(mods, name, _) <- stats)
-        if (mods is Case) caseClassDef(name) = cdef
+        if (cdef.isClassDef) classDef(name) = cdef
       for (mdef @ ModuleDef(_, name, _) <- stats)
-        caseClassDef get name.toTypeName match {
+        classDef get name.toTypeName match {
           case Some(cdef) =>
             val Thicket(vdef :: (mcls @ TypeDef(_, _, impl: Template)) :: Nil) = expandedTree(mdef)
-            val Thicket(cls :: mval :: TypeDef(_, _, compimpl: Template) :: crest) = expandedTree(cdef)
-            val mcls1 = cpy.TypeDef(mcls, mcls.mods, mcls.name,
-              cpy.Template(impl, impl.constr, impl.parents, impl.self,
-                compimpl.body ++ impl.body))
-            expandedTree(mdef) = Thicket(vdef :: mcls1 :: Nil)
-            expandedTree(cdef) = Thicket(cls :: crest)
+            expandedTree(cdef) match {
+              case Thicket(cls :: mval :: TypeDef(_, _, compimpl: Template) :: crest) =>
+                val mcls1 = cpy.TypeDef(mcls, mcls.mods, mcls.name,
+                    cpy.Template(impl, impl.constr, impl.parents, impl.self,
+                        compimpl.body ++ impl.body))
+                expandedTree(mdef) = Thicket(vdef :: mcls1 :: Nil)
+                expandedTree(cdef) = Thicket(cls :: crest)
+              case _ =>
+            }
           case none =>
         }
     }
