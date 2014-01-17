@@ -1390,16 +1390,21 @@ object Types {
     def tp1: Type
     def tp2: Type
     def isAnd: Boolean
+    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): AndOrType  // needed?
+
   }
 
   abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
 
     def isAnd = true
 
-    def derivedAndType(tp1: Type, tp2: Type)(implicit ctx: Context) =
+    def derivedAndType(tp1: Type, tp2: Type)(implicit ctx: Context): AndType =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else AndType(tp1, tp2)
 
+    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): AndOrType =
+      derivedAndType(tp1, tp2)
+      
     override def computeHash = doHash(tp1, tp2)
   }
 
@@ -1420,9 +1425,12 @@ object Types {
 
     def isAnd = false
 
-    def derivedOrType(tp1: Type, tp2: Type)(implicit ctx: Context) =
+    def derivedOrType(tp1: Type, tp2: Type)(implicit ctx: Context): OrType =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else OrType(tp1, tp2)
+
+    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): AndOrType =
+      derivedOrType(tp1, tp2)
 
     override def computeHash = doHash(tp1, tp2)
   }
@@ -2234,6 +2242,22 @@ object Types {
       case tp: TypeVar =>
         val inst = tp.instanceOpt
         apply(inst orElse WildcardType(ctx.typerState.constraint.bounds(tp.origin)))
+      case tp: AndType =>
+        val tp1a = apply(tp.tp1)
+        val tp2a = apply(tp.tp2)
+        def wildBounds(tp: Type) =
+          if (tp.isInstanceOf[WildcardType]) tp.bounds else TypeBounds.upper(tp)
+        if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
+          WildcardType(wildBounds(tp1a) & wildBounds(tp2a))
+        else
+          tp.derivedAndType(tp1a, tp2a)
+      case tp: OrType =>
+        val tp1a = apply(tp.tp1)
+        val tp2a = apply(tp.tp2)
+        if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
+          WildcardType(tp1a.bounds | tp2a.bounds)
+        else
+          tp.derivedOrType(tp1a, tp2a)
       case _ =>
         mapOver(tp)
     }
