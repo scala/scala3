@@ -182,6 +182,7 @@ class SymbolLoaders {
       openPackageModule(pkgModule, pkgClass)
   }
 
+  // todo: revise to really include the members?
   def openPackageModule(container: Symbol, dest: ClassSymbol)(implicit ctx: Context): Unit = {
     def isImportable(sym: Symbol) = !(sym is Private) && !sym.isConstructor
     // unlink existing symbols in the package

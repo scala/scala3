@@ -407,7 +407,7 @@ class Namer { typer: Typer =>
 
   /** Typecheck tree during completion, and remember result in typedtree map */
   private def typedAheadImpl(tree: Tree, pt: Type)(implicit ctx: Context): tpd.Tree =
-    typedTree.getOrElseUpdate(expanded(tree), typer.typedUnadapted(tree, pt))
+    typedTree.getOrElseUpdate(expanded(tree), typer.typed(tree, pt))
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
     typedAheadImpl(tree, pt)(ctx retractMode Mode.PatternOrType addMode Mode.Type)
@@ -517,7 +517,7 @@ class Namer { typer: Typer =>
         // println(s"final inherited for $sym: ${inherited.toString}") !!!
         // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
         val rhsCtx = ctx.fresh addMode Mode.InferringReturnType
-        def rhsType = adapt(typedAheadExpr(mdef.rhs, rhsProto)(rhsCtx), rhsProto).tpe.widen
+        def rhsType = typedAheadExpr(mdef.rhs, rhsProto)(rhsCtx).tpe.widen
         def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)
         inherited orElse lhsType
       }

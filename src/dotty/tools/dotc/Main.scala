@@ -15,6 +15,7 @@ import reporting.Reporter
  *   - have a second look at normalization (leave at method types if pt is method type?)
  *   - fix problem with duplicate companion objects for classes with default parameters in constructors
  *   - Check usages of isAliasType and replace where possible by looking at the info.
+ *   - Don't open package objects from class files if they are present in source
  */
 
 object Main extends Driver {
