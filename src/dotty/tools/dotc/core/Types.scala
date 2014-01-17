@@ -333,6 +333,8 @@ object Types {
         tp.underlying.findDecl(name, excluded)
       case ErrorType =>
         ctx.newErrorSymbol(classSymbol orElse defn.RootClass, name)
+      case _ =>
+        NoDenotation
     }
 
     /** The member of this type with the given name  */
@@ -1404,7 +1406,7 @@ object Types {
 
     def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): AndOrType =
       derivedAndType(tp1, tp2)
-      
+
     override def computeHash = doHash(tp1, tp2)
   }
 
