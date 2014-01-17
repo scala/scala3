@@ -402,8 +402,8 @@ object Inferencing {
         typr.println(i"conflict? $decl $other")
         if (decl.signature matches other.signature) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit = {
-            val ofType = if (decl.isType) "" else i": ${other.info}"
-            val explanation =
+            def ofType = if (decl.isType) "" else i": ${other.info}"
+            def explanation =
               if (!decl.isSourceMethod) ""
               else "\n (both definitions have the same erased type signature)"
             ctx.error(i"$decl is already defined as $other$ofType$explanation", decl.pos)

@@ -824,7 +824,7 @@ class Typer extends Namer with Applications with Implicits {
 
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = track("typedBind") {
     val body1 = typed(tree.body, pt)
-    typr.println(i"typed bind $tree pt = $pt bodytpe = ${body1.tpe}")
+    typr.println(s"typed bind ${tree.show} pt = ${pt.show} bodytpe = ${body1.tpe.show}")
     val sym = ctx.newSymbol(ctx.owner, tree.name.asTermName, EmptyFlags, body1.tpe, coord = tree.pos)
     cpy.Bind(tree, tree.name, body1) withType TermRef(NoPrefix, sym)
   }
