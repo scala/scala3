@@ -30,7 +30,7 @@ object Stats {
         print("|")
     }
 
-    override final def run() {
+    override final def run(): Unit = {
       Thread.sleep(HeartBeatPeriod)
       printStack(stack)
       if (continue) run()

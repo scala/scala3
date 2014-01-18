@@ -735,36 +735,59 @@ object desugar {
     }
   }
 
-  /** Traverse pattern and collect all variable names with their types in buffer.
-   *  Works for expanded as well as unexpanded patterns
-   */
-  private object getVars extends UntypedTreeAccumulator[ListBuffer[VarInfo]] {
-    override def apply(buf: ListBuffer[VarInfo], tree: Tree): ListBuffer[VarInfo] = {
-      def seenName(name: Name) = buf exists (_._1.name == name)
-      def add(named: NameTree, t: Tree): ListBuffer[VarInfo] =
-        if (seenName(named.name)) buf else buf += ((named, t))
-      tree match {
-        case Bind(nme.WILDCARD, _) =>
-          foldOver(buf, tree)
-        case tree @ Bind(_, Typed(tree1, tpt)) if !mayBeTypePat(tpt) =>
-          apply(add(tree, tpt), tree1)
-        case tree @ Bind(_, tree1) =>
-          apply(add(tree, TypeTree()), tree1)
-        case Typed(id: Ident, t) if isVarPattern(id) && id.name != nme.WILDCARD =>
-          add(id, t)
-        case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD =>
-          add(id, TypeTree())
-        case _ =>
-          foldOver(buf, tree)
-      }
-    }
-  }
-
   /** Returns list of all pattern variables, possibly with their types,
    *  without duplicates
    */
-  private def getVariables(tree: Tree): List[VarInfo] =
-    getVars(new ListBuffer[VarInfo], tree).toList
+  private def getVariables(tree: Tree)(implicit ctx: Context): List[VarInfo] = {
+    val buf = new ListBuffer[VarInfo]
+    def seenName(name: Name) = buf exists (_._1.name == name)
+    def add(named: NameTree, t: Tree): Unit =
+      if (!seenName(named.name)) buf += ((named, t))
+    def collect(tree: Tree): Unit = tree match {
+      case Bind(nme.WILDCARD, _) =>
+        collect(tree)
+      case tree @ Bind(_, Typed(tree1, tpt)) if !mayBeTypePat(tpt) =>
+        add(tree, tpt)
+        collect(tree1)
+      case tree @ Bind(_, tree1) =>
+        add(tree, TypeTree())
+        collect(tree1)
+      case Typed(id: Ident, t) if isVarPattern(id) && id.name != nme.WILDCARD =>
+        add(id, t)
+      case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD =>
+        add(id, TypeTree())
+      case Apply(_, args) =>
+        args foreach collect
+      case Pair(left, right) =>
+        collect(left)
+        collect(right)
+      case Typed(expr, _) =>
+        collect(expr)
+      case NamedArg(_, arg) =>
+        collect(arg)
+      case SeqLiteral(elems) =>
+        elems foreach collect
+      case Alternative(trees) =>
+        for (tree <- trees; (vble, _) <- getVariables(tree))
+          ctx.error("illegal variable in pattern alternative", vble.pos)
+      case Annotated(annot, arg) =>
+        collect(arg)
+      case InterpolatedString(_, _, elems) =>
+        elems foreach collect
+      case InfixOp(left, _, right) =>
+        collect(left)
+        collect(right)
+      case PrefixOp(_, od) =>
+        collect(od)
+      case Parens(tree) =>
+        collect(tree)
+      case Tuple(trees) =>
+        trees foreach collect
+      case _ =>
+    }
+    collect(tree)
+    buf.toList
+  }
 
   private class IrrefutableGenFrom(pat: Tree, expr: Tree) extends GenFrom(pat, expr)
 }
