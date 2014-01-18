@@ -511,14 +511,30 @@ class Typer extends Namer with Applications with Implicits {
     val stats1 = typedStats(tree.stats, ctx.owner)
     val expr1 = typedExpr(tree.expr, pt)(exprCtx)
     val result = cpy.Block(tree, stats1, expr1).withType(avoid(expr1.tpe, localSyms(stats1)))
-    val leaks = CheckTrees.escapingRefs(result)
-    if (leaks.isEmpty) result
+    checkNoLocalRefs(result, pt)
+  }
+
+  /** Check that block's type can be expressed without references to locally defined
+   *  symbols. The following two remedies are tried before giving up:
+   *  1. If the expected type of the block is fully defined, pick it as the
+   *     type of the result expressed by adding a type ascription.
+   *  2. If (1) fails, force all type variables so that the block's type is
+   *     fully defined and try again.
+   */
+  def checkNoLocalRefs(block: Block, pt: Type, forcedDefined: Boolean = false)(implicit ctx: Context): Tree = {
+    val Block(stats, expr) = block
+    val leaks = CheckTrees.escapingRefs(block)
+    if (leaks.isEmpty) block
     else if (isFullyDefined(pt, ForceDegree.all)) {
-      val expr2 = typed(untpd.Typed(untpd.TypedSplice(expr1), untpd.TypeTree(pt)))
-      untpd.Block(stats1, expr2) withType expr2.tpe
+      val expr1 = typed(untpd.Typed(untpd.TypedSplice(expr), untpd.TypeTree(pt)))
+      untpd.Block(stats, expr1) withType expr1.tpe
+    } else if (!forcedDefined) {
+      fullyDefinedType(block.tpe, "block", block.pos)
+      val block1 = block.withType(avoid(block.tpe, localSyms(stats)))
+      checkNoLocalRefs(block1, pt, forcedDefined = true)
     } else
-      errorTree(result,
-          i"local definition of ${leaks.head.name} escapes as part of block's type ${result.tpe}"/*; full type: ${result.tpe.toString}"*/)
+      errorTree(block,
+          i"local definition of ${leaks.head.name} escapes as part of block's type ${block.tpe}"/*; full type: ${result.tpe.toString}"*/)
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = track("typedIf") {
