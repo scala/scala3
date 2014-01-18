@@ -107,8 +107,8 @@ object Erasure {
       val sym = tp.symbol
       if (sym.isClass)
         /*if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tref)
-        else */if (sym.owner is Package) normalizeClass(sym.asClass).name
-        else sym.asClass.name
+        else */if (sym.owner is Package) normalizeClass(sym.asClass).fullName.asTypeName
+        else sym.asClass.fullName.asTypeName
       else sigName(tp.info)
     case tp: RefinedType =>
       val parent = tp.parent

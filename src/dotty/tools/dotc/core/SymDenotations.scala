@@ -229,7 +229,7 @@ object SymDenotations {
      *  Never translates expansions of operators back to operator symbol.
      *  Drops package objects. Represents terms in the owner chain by a simple `separator`.
      */
-    def fullName(separator: Char)(implicit ctx: Context): Name =
+    def fullNameSeparated(separator: Char)(implicit ctx: Context): Name =
       if (symbol == NoSymbol || owner == NoSymbol || owner.isEffectiveRoot) name
       else {
         var owner = this
@@ -238,11 +238,12 @@ object SymDenotations {
           owner = owner.owner
           sep += separator
         } while (!owner.isClass)
-        owner.skipPackageObject.fullName(separator) ++ sep ++ name
+        val fn = owner.skipPackageObject.fullNameSeparated(separator) ++ sep ++ name
+        if (isType) fn.toTypeName else fn.toTermName
       }
 
     /** `fullName` where `.' is the separator character */
-    def fullName(implicit ctx: Context): Name = fullName('.')
+    def fullName(implicit ctx: Context): Name = fullNameSeparated('.')
 
     // ----- Tests -------------------------------------------------
 
@@ -426,6 +427,7 @@ object SymDenotations {
         else if (
           !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
            || pre.baseType(cls).exists
+           || isConstructor
            || (owner is ModuleClass) // don't perform this check for static members
            ))
           fail(
@@ -1092,11 +1094,11 @@ object SymDenotations {
     }
 
     private[this] var fullNameCache: SimpleMap[Character, Name] = SimpleMap.Empty
-    override final def fullName(separator: Char)(implicit ctx: Context): Name = {
+    override final def fullNameSeparated(separator: Char)(implicit ctx: Context): Name = {
       val cached = fullNameCache(separator)
       if (cached != null) cached
       else {
-        val fn = super.fullName(separator)
+        val fn = super.fullNameSeparated(separator)
         fullNameCache = fullNameCache.updated(separator, fn)
         fn
       }

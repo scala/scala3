@@ -123,7 +123,7 @@ object NameOps {
     /** The expanded name of `name` relative to this class `base` with given `separator`
      */
     def expandedName(base: Symbol, separator: Name = nme.EXPAND_SEPARATOR)(implicit ctx: Context): N = {
-      val prefix = if (base is Flags.ExpandedName) base.name else base.fullName('$')
+      val prefix = if (base is Flags.ExpandedName) base.name else base.fullNameSeparated('$')
       name.fromName(prefix ++ separator ++ name).asInstanceOf[N]
     }
 
