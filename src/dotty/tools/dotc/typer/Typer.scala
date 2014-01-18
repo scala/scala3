@@ -67,6 +67,7 @@ class Typer extends Namer with Applications with Implicits {
   def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean =
     denot.exists && {
       val sym = denot.symbol
+      sym.ensureCompleted
       (sym eq NoSymbol) || !sym.isAbsent
     }
 

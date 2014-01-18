@@ -263,8 +263,9 @@ object SymDenotations {
       myInfo = NoType
 
     /** Is symbol known to not exist? */
-    final def isAbsent: Boolean =
-      myInfo == NoType
+    final def isAbsent(implicit ctx: Context): Boolean =
+      myInfo == NoType ||
+      (this is (ModuleVal, butNot = Package)) && moduleClass.isAbsent
 
     /** Is this symbol the root class or its companion object? */
     final def isRoot: Boolean =
@@ -729,7 +730,7 @@ object SymDenotations {
     def classSymbol: ClassSymbol = symbol.asInstanceOf[ClassSymbol]
 
     /** The info asserted to have type ClassInfo */
-    def classInfo(implicit ctx: Context): ClassInfo = super.info.asInstanceOf[ClassInfo]
+    def classInfo(implicit ctx: Context): ClassInfo = info.asInstanceOf[ClassInfo]
 
     /** TODO: Document why caches are supposedly safe to use */
     private[this] var myTypeParams: List[TypeSymbol] = _
@@ -742,12 +743,17 @@ object SymDenotations {
       myTypeParams
     }
 
+    private def myClassParents: List[TypeRef] = info match {
+      case classInfo: ClassInfo => classInfo.myClassParents
+      case _ => Nil
+    }
+
     /** The denotation is fully completed: all attributes are fully defined.
      *  ClassDenotations compiled from source are first completed, then fully completed.
      *  @see Namer#ClassCompleter
      */
     private def isFullyCompleted(implicit ctx: Context): Boolean =
-      isCompleted && classInfo.myClassParents.nonEmpty
+      isCompleted && myClassParents.nonEmpty
 
     /** A key to verify that all caches influenced by parent classes are valid */
     private var parentDenots: List[Denotation] = null
@@ -757,8 +763,8 @@ object SymDenotations {
      *  because the latter does not ensure that the `parentDenots` key
      *  is up-to-date, which might lead to invalid caches later on.
      */
-    def classParents(implicit ctx: Context) = {
-      val ps = classInfo.myClassParents
+    def classParents(implicit ctx: Context): List[TypeRef] = {
+      val ps = myClassParents
       if (parentDenots == null && ps.nonEmpty) parentDenots = ps map (_.denot)
       ps
     }
@@ -766,7 +772,7 @@ object SymDenotations {
     /** Are caches influenced by parent classes still valid? */
     private def parentsAreValid(implicit ctx: Context): Boolean =
       parentDenots == null ||
-      parentDenots.corresponds(classInfo.myClassParents)(_ eq _.denot)
+      parentDenots.corresponds(myClassParents)(_ eq _.denot)
 
     /** If caches influenced by parent classes are still valid, the denotation
      *  itself, otherwise a freshly initialized copy.
