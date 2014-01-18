@@ -911,7 +911,6 @@ object SymDenotations {
      *  someone does a findMember on a subclass.
      */
     def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
-      require(!(this is Frozen))
       val mscope = scope match {
         case scope: MutableScope => scope
         case _ => decls.asInstanceOf[MutableScope]
@@ -923,7 +922,13 @@ object SymDenotations {
           entry.sym.denot = sym.denot // to avoid stale symbols
         }
       }
-      mscope.enter(sym)
+      enterNoReplace(sym, mscope)
+    }
+
+    /** Enter a symbol in current scope without potentially replacing the old copy. */
+    def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
+      require(!(this is Frozen))
+      scope.enter(sym)
 
       if (myMemberFingerPrint != FingerPrint.unknown)
         myMemberFingerPrint.include(sym.name)

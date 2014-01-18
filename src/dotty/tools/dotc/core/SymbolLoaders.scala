@@ -197,7 +197,7 @@ class SymbolLoaders {
     // enter non-private decls in the class
     for (member <- container.info.decls.iterator) {
       if (isImportable(member)) {
-        dest.enter(member)
+        dest.enterNoReplace(member, dest.decls.asInstanceOf[MutableScope])
       }
     }
     // !!! TODO info.decls -> decls
