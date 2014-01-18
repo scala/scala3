@@ -52,6 +52,8 @@ class tests extends CompilerTest {
   @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing")
   @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing")
   @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting")
+  @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer")
+  @Test def dotc_util = compileDir(dotcDir + "tools/dotc/util")
 
 //  @Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 
