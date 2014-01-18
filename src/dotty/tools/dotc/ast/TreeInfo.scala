@@ -195,8 +195,9 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   /** Is this argument node of the form <expr> : _* ?
    */
-  def isWildcardStarArg(tree: untpd.Tree): Boolean = unsplice(tree) match {
+  def isWildcardStarArg(tree: untpd.Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
     case Typed(_, Ident(tpnme.WILDCARD_STAR)) => true
+    case Typed(_, tpt: TypeTree) => tpt.hasType && tpt.tpe.isRepeatedParam
     case _ => false
   }
 
@@ -209,7 +210,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }*/
 
   /** Does this argument list end with an argument of the form <expr> : _* ? */
-  def isWildcardStarArgList(trees: List[Tree]) =
+  def isWildcardStarArgList(trees: List[Tree])(implicit ctx: Context) =
     trees.nonEmpty && isWildcardStarArg(trees.last)
 
   /** Is the argument a wildcard argument of the form `_` or `x @ _`?
