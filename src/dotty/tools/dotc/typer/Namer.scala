@@ -265,6 +265,26 @@ class Namer { typer: Typer =>
     localCtx
   }
 
+  /** `stat` is a definition in package `pkg`. If `stat` has a potential companion,
+   *  invalidate the companion symbol by setting its info to NoType. (If the companion
+   *  does in fact exist it the info will be immediately reset to a completer
+   *  by the subsequent index operation).
+   */
+  private def invalidateCompanion(pkg: Symbol, stat: untpd.Tree)(implicit ctx: Context) = {
+    def invalidate(name: Name) =
+      pkg.info.decl(name).alternatives foreach { member =>
+        if (member.symbol.isClass && !(member.symbol is Package))
+          member.symbol.info = NoType
+      }
+    stat match {
+      case stat: TypeDef if stat.isClassDef =>
+        invalidate(stat.name.moduleClassName)
+      case stat: ModuleDef =>
+        invalidate(stat.name.toTypeName)
+      case _ =>
+    }
+  }
+
   /** Expand tree and create top-level symbols for statement and enter them into symbol table */
   def index(stat: Tree)(implicit ctx: Context): Context = {
     expand(stat)
@@ -277,6 +297,7 @@ class Namer { typer: Typer =>
   def indexExpanded(stat: Tree)(implicit ctx: Context): Context = expanded(stat) match {
     case pcl: PackageDef =>
       val pkg = createPackageSymbol(pcl.pid)
+      pcl.stats foreach (invalidateCompanion(pkg, _))
       index(pcl.stats)(ctx.fresh.withOwner(pkg.moduleClass))
       ctx
     case imp: Import =>
