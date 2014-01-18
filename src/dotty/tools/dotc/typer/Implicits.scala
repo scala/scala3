@@ -222,8 +222,13 @@ trait ImplicitRunInfo { self: RunInfo =>
             val pre = tp.prefix
             comps ++= iscopeRefs(pre)
             def addClassScope(cls: ClassSymbol): Unit = {
-              def addRef(companion: TermRef): Unit =
-                comps += companion.asSeenFrom(pre, companion.symbol.owner).asInstanceOf[TermRef]
+              def addRef(companion: TermRef): Unit = {
+                val compSym = companion.symbol
+                if (compSym is Package)
+                  addRef(TermRef(companion, nme.PACKAGE))
+                else if (compSym.exists)
+                  comps += companion.asSeenFrom(pre, compSym.owner).asInstanceOf[TermRef]
+              }
               def addParentScope(parent: TypeRef): Unit = {
                 iscopeRefs(parent) foreach addRef
                 for (param <- parent.typeParams)

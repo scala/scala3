@@ -1,135 +1,172 @@
+/* NSC -- new Scala compiler
+ * Copyright 2005-2012 LAMP/EPFL
+ * @author  Paul Phillips
+ */
+
+
 package dotty.tools
-package dotc
-package util
+package io
 
-import scala.collection.mutable.ArrayBuffer
-import dotty.tools.io._
-import annotation.tailrec
-import java.util.regex.Pattern
-import java.io.IOException
-import Chars._
-import ScriptSourceFile._
-import Positions._
+import java.io.{ InputStream, OutputStream, IOException, FileNotFoundException, FileInputStream, DataOutputStream }
+import java.util.jar._
+import scala.collection.JavaConverters._
+import Attributes.Name
+import scala.language.{postfixOps, implicitConversions}
 
-object ScriptSourceFile {
-  private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
-  private val headerStarts  = List("#!", "::#!")
+// Attributes.Name instances:
+//
+// static Attributes.Name   CLASS_PATH
+// static Attributes.Name   CONTENT_TYPE
+// static Attributes.Name   EXTENSION_INSTALLATION
+// static Attributes.Name   EXTENSION_LIST
+// static Attributes.Name   EXTENSION_NAME
+// static Attributes.Name   IMPLEMENTATION_TITLE
+// static Attributes.Name   IMPLEMENTATION_URL
+// static Attributes.Name   IMPLEMENTATION_VENDOR
+// static Attributes.Name   IMPLEMENTATION_VENDOR_ID
+// static Attributes.Name   IMPLEMENTATION_VERSION
+// static Attributes.Name   MAIN_CLASS
+// static Attributes.Name   MANIFEST_VERSION
+// static Attributes.Name   SEALED
+// static Attributes.Name   SIGNATURE_VERSION
+// static Attributes.Name   SPECIFICATION_TITLE
+// static Attributes.Name   SPECIFICATION_VENDOR
+// static Attributes.Name   SPECIFICATION_VERSION
 
-  def apply(file: AbstractFile, content: Array[Char]) = {
-    /** Length of the script header from the given content, if there is one.
-     *  The header begins with "#!" or "::#!" and ends with a line starting
-     *  with "!#" or "::!#".
-     */
-    val headerLength =
-      if (headerStarts exists (content startsWith _)) {
-        val matcher = headerPattern matcher content.mkString
-        if (matcher.find) matcher.end
-        else throw new IOException("script file does not close its header with !# or ::!#")
-      } else 0
-    new SourceFile(file, content drop headerLength) {
-      override val underlying = new SourceFile(file, content)
-    }
+class Jar(file: File) extends Iterable[JarEntry] {
+  def this(jfile: JFile) = this(File(jfile))
+  def this(path: String) = this(File(path))
+
+  protected def errorFn(msg: String): Unit = Console println msg
+
+  lazy val jarFile  = new JarFile(file.jfile)
+  lazy val manifest = withJarInput(s => Option(s.getManifest))
+
+  def mainClass     = manifest map (f => f(Name.MAIN_CLASS))
+  /** The manifest-defined classpath String if available. */
+  def classPathString: Option[String] =
+    for (m <- manifest ; cp <- m.attrs get Name.CLASS_PATH) yield cp
+  def classPathElements: List[String] = classPathString match {
+    case Some(s)  => s split "\\s+" toList
+    case _        => Nil
   }
+
+  def withJarInput[T](f: JarInputStream => T): T = {
+    val in = new JarInputStream(file.inputStream())
+    try f(in)
+    finally in.close()
+  }
+  def jarWriter(mainAttrs: (Attributes.Name, String)*) = {
+    new JarWriter(file, Jar.WManifest(mainAttrs: _*).underlying)
+  }
+
+  override def foreach[U](f: JarEntry => U): Unit = withJarInput { in =>
+    Iterator continually in.getNextJarEntry() takeWhile (_ != null) foreach f
+  }
+  override def iterator: Iterator[JarEntry] = this.toList.iterator
+  def fileishIterator: Iterator[Fileish] = jarFile.entries.asScala map (x => Fileish(x, () => getEntryStream(x)))
+
+  private def getEntryStream(entry: JarEntry) = jarFile getInputStream entry match {
+    case null   => errorFn("No such entry: " + entry) ; null
+    case x      => x
+  }
+  override def toString = "" + file
 }
 
-case class SourceFile(file: AbstractFile, content: Array[Char]) {
+class JarWriter(val file: File, val manifest: Manifest) {
+  private lazy val out = new JarOutputStream(file.outputStream(), manifest)
 
-  def this(_file: AbstractFile)                 = this(_file, _file.toCharArray)
-  def this(sourceName: String, cs: Seq[Char])   = this(new VirtualFile(sourceName), cs.toArray)
-  def this(file: AbstractFile, cs: Seq[Char])   = this(file, cs.toArray)
-
-  /** Tab increment; can be overridden */
-  def tabInc = 8
-
-  override def equals(that : Any) = that match {
-    case that : SourceFile => file.path == that.file.path && start == that.start
-    case _ => false
-  }
-  override def hashCode = file.path.## + start.##
-
-  def apply(idx: Int) = content.apply(idx)
-
-  val length = content.length
-
-  /** true for all source files except `NoSource` */
-  def exists: Boolean = true
-
-  /** The underlying source file */
-  def underlying: SourceFile = this
-
-  /** The start of this file in the underlying source file */
-  def start = 0
-
-  def atPos(pos: Position): SourcePosition =
-    if (pos.exists) SourcePosition(underlying, pos)
-    else NoSourcePosition
-
-  def isSelfContained = underlying eq this
-
-  /** Map a position to a position in the underlying source file.
-   *  For regular source files, simply return the argument.
+  /** Adds a jar entry for the given path and returns an output
+   *  stream to which the data should immediately be written.
+   *  This unusual interface exists to work with fjbg.
    */
-  def positionInUltimateSource(position: SourcePosition): SourcePosition =
-    SourcePosition(underlying, position.pos shift start)
+  def newOutputStream(path: String): DataOutputStream = {
+    val entry = new JarEntry(path)
+    out putNextEntry entry
+    new DataOutputStream(out)
+  }
 
-  def isLineBreak(idx: Int) =
-    if (idx >= length) false else {
-      val ch = content(idx)
-      // don't identify the CR in CR LF as a line break, since LF will do.
-      if (ch == CR) (idx + 1 == length) || (content(idx + 1) != LF)
-      else isLineBreakChar(ch)
+  def writeAllFrom(dir: Directory): Unit = {
+    try dir.list foreach (x => addEntry(x, ""))
+    finally out.close()
+  }
+  def addStream(entry: JarEntry, in: InputStream): Unit =  {
+    out putNextEntry entry
+    try transfer(in, out)
+    finally out.closeEntry()
+  }
+  def addFile(file: File, prefix: String): Unit =  {
+    val entry = new JarEntry(prefix + file.name)
+    addStream(entry, file.inputStream())
+  }
+  def addEntry(entry: Path, prefix: String): Unit =  {
+    if (entry.isFile) addFile(entry.toFile, prefix)
+    else addDirectory(entry.toDirectory, prefix + entry.name + "/")
+  }
+  def addDirectory(entry: Directory, prefix: String): Unit =  {
+    entry.list foreach (p => addEntry(p, prefix))
+  }
+
+  private def transfer(in: InputStream, out: OutputStream) = {
+    val buf = new Array[Byte](10240)
+    def loop(): Unit = in.read(buf, 0, buf.length) match {
+      case -1 => in.close()
+      case n  => out.write(buf, 0, n) ; loop
     }
-
-  def calculateLineIndices(cs: Array[Char]) = {
-    val buf = new ArrayBuffer[Int]
-    buf += 0
-    for (i <- 0 until cs.length) if (isLineBreak(i)) buf += i + 1
-    buf += cs.length // sentinel, so that findLine below works smoother
-    buf.toArray
-  }
-  private lazy val lineIndices: Array[Int] = calculateLineIndices(content)
-
-  /** Map line to offset of first character in line */
-  def lineToOffset(index : Int): Int = lineIndices(index)
-
-  /** A cache to speed up offsetToLine searches to similar lines */
-  private var lastLine = 0
-
-  /** Convert offset to line in this source file
-   *  Lines are numbered from 0
-   */
-  def offsetToLine(offset: Int): Int = {
-    val lines = lineIndices
-    def findLine(lo: Int, hi: Int, mid: Int): Int =
-      if (offset < lines(mid)) findLine(lo, mid - 1, (lo + mid - 1) / 2)
-      else if (offset >= lines(mid + 1)) findLine(mid + 1, hi, (mid + 1 + hi) / 2)
-      else mid
-    lastLine = findLine(0, lines.length, lastLine)
-    lastLine
+    loop
   }
 
-  def startOfLine(offset: Int): Int = lineToOffset(offsetToLine(offset))
-
-  def nextLine(offset: Int): Int =
-    lineToOffset(offsetToLine(offset) + 1 min lineIndices.length - 1)
-
-  def lineContents(offset: Int): String =
-    content.slice(startOfLine(offset), nextLine(offset)).mkString
-
-  def column(offset: Int): Int = {
-    var idx = startOfLine(offset)
-    var col = 0
-    while (idx != offset) {
-      col += (if (content(idx) == '\t') tabInc - col % tabInc else 1)
-      idx += 1
-    }
-    col + 1
-  }
-
-  override def toString = file.toString
+  def close() = out.close()
 }
 
-object NoSource extends SourceFile("<no source>", Nil) {
-  override def exists = false
-}
+object Jar {
+  type AttributeMap = java.util.Map[Attributes.Name, String]
 
+  object WManifest {
+    def apply(mainAttrs: (Attributes.Name, String)*): WManifest = {
+      val m = WManifest(new JManifest)
+      for ((k, v) <- mainAttrs)
+        m(k) = v
+
+      m
+    }
+    def apply(manifest: JManifest): WManifest = new WManifest(manifest)
+    implicit def unenrichManifest(x: WManifest): JManifest = x.underlying
+  }
+  class WManifest(manifest: JManifest) {
+    for ((k, v) <- initialMainAttrs)
+      this(k) = v
+
+    def underlying = manifest
+    def attrs = manifest.getMainAttributes().asInstanceOf[AttributeMap].asScala withDefaultValue null
+    def initialMainAttrs: Map[Attributes.Name, String] = {
+      import scala.util.Properties._
+      Map(
+        Name.MANIFEST_VERSION -> "1.0",
+        ScalaCompilerVersion  -> versionNumberString
+      )
+    }
+
+    def apply(name: Attributes.Name): String        = attrs(name)
+    def apply(name: String): String                 = apply(new Attributes.Name(name))
+    def update(key: Attributes.Name, value: String) = attrs.put(key, value)
+    def update(key: String, value: String)          = attrs.put(new Attributes.Name(key), value)
+
+    def mainClass: String = apply(Name.MAIN_CLASS)
+    def mainClass_=(value: String) = update(Name.MAIN_CLASS, value)
+  }
+
+  // See http://download.java.net/jdk7/docs/api/java/nio/file/Path.html
+  // for some ideas.
+  private val ZipMagicNumber = List[Byte](80, 75, 3, 4)
+  private def magicNumberIsZip(f: Path) = f.isFile && (f.toFile.bytes().take(4).toList == ZipMagicNumber)
+
+  def isJarOrZip(f: Path): Boolean = isJarOrZip(f, true)
+  def isJarOrZip(f: Path, examineFile: Boolean): Boolean =
+    f.hasExtension("zip", "jar") || (examineFile && magicNumberIsZip(f))
+
+  def create(file: File, sourceDir: Directory, mainClass: String): Unit =  {
+    val writer = new Jar(file).jarWriter(Name.MAIN_CLASS -> mainClass)
+    writer writeAllFrom sourceDir
+  }
+}
