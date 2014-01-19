@@ -229,14 +229,11 @@ object desugar {
       New(AppliedTypeTree(tycon, targs), Nil)
     }
 
-    // The desugared parents:  AnyRef, in case parents are Nil.
-    // Case classes also get a ProductN parent
+    // Case classes get a ProductN parent
     var parents1 = parents
     val n = vparamss.head.length
     if ((mods is Case) && 2 <= n && n <= Definitions.MaxTupleArity)
       parents1 = parents1 :+ productConstr(n)
-    if (parents.isEmpty)
-      parents1 = New(anyRef, Nil) :: parents1
 
     // The thicket which is the desugared version of the companion object
     //     synthetic object C extends parentTpt { defs }
