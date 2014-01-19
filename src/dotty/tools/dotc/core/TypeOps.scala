@@ -85,17 +85,42 @@ trait TypeOps { this: Context =>
     }
   }
 
+  private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
+    val typeArgFlag = if (formal is Local) TypeArgument else EmptyFlags
+    val sym = ctx.newSymbol(cls, formal.name, formal.flags & RetainedTypeArgFlags | typeArgFlag, info)
+    cls.enter(sym, decls)
+  }
+
+  /** If we have member definitions
+   *
+   *     type argSym v= from
+   *     type from v= to
+   *
+   *  where the variances of both alias are the same, then enter a new definition
+   *
+   *     type argSym v= to
+   *
+   *  unless a definition for `argSym` already exists in the current scope.
+   */
+  def forwardRef(argSym: Symbol, from: Symbol, to: TypeBounds, cls: ClassSymbol, decls: Scope) =
+    argSym.info match {
+      case info @ TypeBounds(lo2 @ TypeRef(ThisType(_), name), hi2) =>
+        if (name == from.name &&
+            (lo2 eq hi2) &&
+            info.variance == to.variance &&
+            !decls.lookup(argSym.name).exists) {
+              // println(s"short-circuit ${argSym.name} was: ${argSym.info}, now: $to")
+              enterArgBinding(argSym, to, cls, decls)
+            }
+      case _ =>
+    }
+
+
   /** Normalize a list of parent types of class `cls` that may contain refinements
    *  to a list of typerefs referring to classes, by converting all refinements to member
    *  definitions in scope `decls`. Can add members to `decls` as a side-effect.
    */
   def normalizeToClassRefs(parents: List[Type], cls: ClassSymbol, decls: Scope): List[TypeRef] = {
-
-    def enterArgBinding(formal: Symbol, info: Type) = {
-      val typeArgFlag = if (formal is Local) TypeArgument else EmptyFlags
-      val sym = ctx.newSymbol(cls, formal.name, formal.flags & RetainedTypeArgFlags | typeArgFlag, info)
-      cls.enter(sym, decls)
-    }
 
     /** If we just entered the type argument binding
      *
@@ -117,19 +142,8 @@ trait TypeOps { this: Context =>
       case to @ TypeBounds(lo1, hi1) if lo1 eq hi1 =>
         for (pref <- prefs)
           for (argSym <- pref.decls)
-            if (argSym is TypeArgument) {
-              argSym.info match {
-                case info @ TypeBounds(lo2 @ TypeRef(ThisType(_), name), hi2) =>
-                  if (name == from.name &&
-                      (lo2 eq hi2) &&
-                      info.variance == to.variance &&
-                      !decls.lookup(argSym.name).exists) {
-//                    println(s"short-circuit ${argSym.name} was: ${argSym.info}, now: $to")
-                    enterArgBinding(argSym, to)
-                  }
-                case _ =>
-              }
-            }
+            if (argSym is TypeArgument)
+              forwardRef(argSym, from, to, cls, decls)
       case _ =>
     }
 
@@ -155,7 +169,7 @@ trait TypeOps { this: Context =>
     refinements foreachBinding { (name, refinedInfo) =>
       assert(decls.lookup(name) == NoSymbol, // DEBUG
         s"redefinition of ${decls.lookup(name).debugString} in ${cls.showLocated}")
-      enterArgBinding(formals(name), refinedInfo)
+      enterArgBinding(formals(name), refinedInfo, cls, decls)
     }
     // These two loops cannot be fused because second loop assumes that
     // all arguments have been entered in `decls`.

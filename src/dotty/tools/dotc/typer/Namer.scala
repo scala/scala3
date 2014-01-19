@@ -7,7 +7,7 @@ import ast._
 import Trees._, Constants._, StdNames._, Scopes._, Denotations._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import ast.desugar, ast.desugar._
-import Inferencing.{fullyDefinedType, AnySelectionProto, checkClassTypeWithStablePrefix}
+import Inferencing.{fullyDefinedType, AnySelectionProto, checkClassTypeWithStablePrefix, ensureFirstIsClass, forwardTypeParams}
 import util.Positions._
 import util.SourcePosition
 import collection.mutable
@@ -422,10 +422,15 @@ class Namer { typer: Typer =>
       val parentClsRefs =
         for ((parentRef, constr) <- parentRefs zip parents)
           yield checkClassTypeWithStablePrefix(parentRef, constr.pos)
+      val normalizedParentClsRefs = ensureFirstIsClass(parentClsRefs)
 
       index(constr)
       index(rest)(inClassContext(selfInfo))
-      denot.info = ClassInfo(cls.owner.thisType, cls, parentClsRefs, decls, selfInfo)
+      denot.info = ClassInfo(cls.owner.thisType, cls, normalizedParentClsRefs, decls, selfInfo)
+      if (parentClsRefs ne normalizedParentClsRefs) {
+        forwardTypeParams(normalizedParentClsRefs.head.symbol.asClass, cls, decls)
+        typr.println(i"expanded parents of $denot: $normalizedParentClsRefs%, %")
+      }
     }
   }
 

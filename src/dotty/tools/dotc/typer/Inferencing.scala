@@ -7,6 +7,7 @@ import ast._
 import Contexts._, Types._, Flags._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
 import Trees._
 import Constants._
+import Scopes._
 import annotation.unchecked
 import util.Positions._
 import util.{Stats, SimpleMap}
@@ -395,6 +396,47 @@ object Inferencing {
     case _ =>
       ctx.error(s"$tp is not a class type", pos)
       defn.ObjectClass.typeRef
+  }
+
+  /** Ensure that first typeref in a list of parents points to a non-trait class.
+   *  If that's not already the case, add one.
+   */
+  def ensureFirstIsClass(prefs: List[TypeRef])(implicit ctx: Context): List[TypeRef] = {
+    def isRealClass(sym: Symbol) = sym.isClass && !(sym is Trait)
+    def realClassParent(tref: TypeRef): TypeRef =
+      if (isRealClass(tref.symbol)) tref
+      else tref.info.parents match {
+        case pref :: _ => if (isRealClass(pref.symbol)) pref else realClassParent(pref)
+        case nil => defn.ObjectClass.typeRef
+      }
+    def improve(clsRef: TypeRef, parent: TypeRef): TypeRef = {
+      val pclsRef = realClassParent(parent)
+      if (pclsRef.symbol derivesFrom clsRef.symbol) pclsRef else clsRef
+    }
+    prefs match {
+      case pref :: _ if isRealClass(pref.symbol) => prefs
+      case _ => (defn.ObjectClass.typeRef /: prefs)(improve) :: prefs
+    }
+  }
+
+  /** Forward bindings of all type parameters of `pcls`. That is, if the type parameter
+   *  if instantiated in a parent class, include its type binding in the current class.
+   */
+  def forwardTypeParams(pcls: ClassSymbol, cls: ClassSymbol, decls: Scope)(implicit ctx: Context): Unit = {
+    for (tparam <- pcls.typeParams) {
+      val argSym: Symbol = cls.thisType.member(tparam.name).symbol
+      argSym.info match {
+        case TypeAlias(TypeRef(ThisType(_), name)) =>
+          val from = cls.thisType.member(name).symbol
+          from.info match {
+            case bounds: TypeBounds =>
+              typr.println(s"forward ref $argSym $from $bounds")
+              ctx.forwardRef(argSym, from, bounds, cls, decls)
+            case _ =>
+          }
+        case _ =>
+      }
+    }
   }
 
   /** Check that class does not define */

@@ -1,7 +1,15 @@
 object test {
-  object foo extends scala.reflect.io.Streamable.Chars {
-    val lns = lines()
-    val pkgLines = lns collect { case x if x startsWith "package " => x stripPrefix "package" trim }
-  }
+ 
+  abstract class Tree[-T0 >: Null]
+  
+  trait TermTree[-T1 >: Null] extends Tree[T1]
+  
+  case class Literal[-T2 >: Null](x: Tree[T2]) extends /*Tree[T2] with*/ TermTree[T2]
 
+  def f[T >: Null](x: Tree[T]): Unit = {
+    def g(x: Tree[T]): Unit = ()
+    x match {
+      case Literal(x) => g(x)
+    }
+  }
 }
