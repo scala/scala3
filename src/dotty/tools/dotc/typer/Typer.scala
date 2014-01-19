@@ -1242,7 +1242,11 @@ class Typer extends Namer with Applications with Implicits {
         if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
           pt match {
             case SAMType(meth)
-            if wtp <:< meth.info.toFunctionType && isFullyDefined(pt, ForceDegree.noBottom) =>
+            if wtp <:< meth.info.toFunctionType =>
+              // was ... && isFullyDefined(pt, ForceDegree.noBottom)
+              // but this prevents case blocks from implementing polymorphic partial functions,
+              // since we do not know the result parameter a priori. Have to wait until the
+              // body is typechecked.
               return cpy.Closure(tree, Nil, id, TypeTree(pt)).withType(pt)
             case _ =>
           }
