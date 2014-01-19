@@ -448,7 +448,9 @@ trait Applications extends Compatibility { self: Typer =>
                 // try with prototype `[].name(args)`, this might succeed by inserting an
                 // implicit conversion around []. (an example is Int + BigInt).
                 tryEither { implicit ctx =>
-                  val qual1 = adaptInterpolated(qual, new SelectionProto(name, proto, NoViewsAllowed))
+                  val simpleFunProto = new FunProto(tree.args, WildcardType, this) // drop result type, because views are disabled
+                  val selProto = new SelectionProto(name, simpleFunProto, NoViewsAllowed)
+                  val qual1 = adaptInterpolated(qual, selProto)
                   if (qual eq qual1) ctx.error("no progress")
                   if (ctx.reporter.hasErrors) qual1
                   else

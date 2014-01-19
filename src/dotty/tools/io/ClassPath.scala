@@ -389,7 +389,7 @@ extends ClassPath {
     }
     new MergedClassPath(newEntries, context)
   }
-  def show() {
+  def show(): Unit = {
     println("ClassPath %s has %d entries and results in:\n".format(name, entries.size))
     asClasspathString split ':' foreach (x => println("  " + x))
   }
