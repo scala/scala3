@@ -13,7 +13,7 @@ import reporting.Reporter
  *   - make use of AndOrType
  *   - review isSubType
  *   - have a second look at normalization (leave at method types if pt is method type?)
- *   - Check usages of isAliasType and replace where possible by looking at the info.
+ *   - Check usages of isAliasType and replace where possible by looking at the info. Look for #dealias
  *   - Don't open package objects from class files if they are present in source
  */
 
