@@ -645,7 +645,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         else {
           val tp1w = tp1.widen
           val tp2w = tp2.widen
-          if ((tp1 ne tp1w) && (tp2 ne tp2w)) lub(tp1w, tp2w)
+          if ((tp1 ne tp1w) || (tp2 ne tp2w)) lub(tp1w, tp2w)
           else orType(tp1w, tp2w) // no need to check subtypes again
         }
       }
