@@ -250,7 +250,7 @@ object Types {
         val lsym = l.classSymbol
         val rsym = r.classSymbol
         if (lsym isSubClass rsym) lsym
-        else if (rsym.isSubClass(lsym)) rsym
+        else if (rsym isSubClass lsym) rsym
         else NoSymbol
       case OrType(l, r) =>
         val lsym = l.classSymbol
@@ -2177,11 +2177,8 @@ object Types {
         val inst = tp.instanceOpt
         if (inst.exists) apply(inst) else tp
 
-      case tp: AndType =>
-        tp.derivedAndType(this(tp.tp1), this(tp.tp2))
-
-      case tp: OrType =>
-        tp.derivedOrType(this(tp.tp1), this(tp.tp2))
+      case tp: AndOrType =>
+        tp.derivedAndOrType(this(tp.tp1), this(tp.tp2))
 
       case tp @ AnnotatedType(annot, underlying) =>
         val underlying1 = mapOver(underlying)
@@ -2330,11 +2327,8 @@ object Types {
       case tp @ ClassInfo(prefix, _, _, _, _) =>
         this(x, prefix)
 
-      case AndType(l, r) =>
-        this(this(x, l), r)
-
-      case OrType(l, r) =>
-        this(this(x, l), r)
+      case tp: AndOrType =>
+        this(this(x, tp.tp1), tp.tp2)
 
       case AnnotatedType(annot, underlying) =>
         this(this(x, annot), underlying)

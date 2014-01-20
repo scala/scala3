@@ -10,7 +10,6 @@ import reporting.Reporter
 
 /* To do:
  *   - simplify hk types
- *   - make use of AndOrType
  *   - review isSubType
  *   - have a second look at normalization (leave at method types if pt is method type?)
  *   - Don't open package objects from class files if they are present in source

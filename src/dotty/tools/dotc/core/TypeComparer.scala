@@ -481,8 +481,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   def isCappable(tp: Type): Boolean = tp match {
     case tp: PolyParam => constraint contains tp
     case tp: TypeProxy => isCappable(tp.underlying)
-    case tp: AndType => isCappable(tp.tp1) || isCappable(tp.tp2)
-    case tp: OrType => isCappable(tp.tp1) || isCappable(tp.tp2)
+    case tp: AndOrType => isCappable(tp.tp1) || isCappable(tp.tp2)
     case _ => false
   }
 
