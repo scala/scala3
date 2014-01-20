@@ -173,8 +173,15 @@ object Types {
     final def occursIn(that: Type)(implicit ctx: Context): Boolean =
       that existsPart (this == _)
 
+    /** Is this a type of a repeated parameter? */
     def isRepeatedParam(implicit ctx: Context): Boolean =
       defn.RepeatedParamClasses contains typeSymbol
+
+    /** Is this an alias TypeBounds? */
+    def isAlias: Boolean = this match {
+      case TypeBounds(lo, hi) => lo eq hi
+      case _ => false
+    }
 
 // ----- Higher-order combinators -----------------------------------
 
@@ -672,7 +679,7 @@ object Types {
      */
     final def normalizedPrefix(implicit ctx: Context): Type = this match {
       case tp: NamedType =>
-        if (tp.symbol.isAliasType) tp.info.normalizedPrefix else tp.prefix
+        if (tp.symbol.info.isAlias) tp.info.normalizedPrefix else tp.prefix
       case tp: ClassInfo =>
         tp.prefix
       case tp: TypeProxy =>

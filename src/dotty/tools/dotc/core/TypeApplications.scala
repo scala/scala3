@@ -33,7 +33,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case tp: TypeRef =>
         val tsym = tp.typeSymbol
         if (tsym.isClass) tsym.typeParams
-        else if (tsym.isAliasType) tp.underlying.typeParams
+        else if (tsym.info.isAlias) tp.underlying.typeParams
         else tp.info.bounds.hi match {
           case AndType(hkBound, other) if defn.hkTraits contains hkBound.typeSymbol =>
             hkBound.typeSymbol.typeParams

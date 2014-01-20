@@ -305,16 +305,9 @@ object Inferencing {
       inst
     }
     private var toMaximize: Boolean = false
-    def apply(x: Boolean, tp: Type): Boolean = tp match {
+    def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
       case _: WildcardType =>
         false
-      case tp: TypeRef =>
-        // todo: factor out? same logic is also used in avoid.
-        // and interestingly it does not work with #dealias
-        tp.info match {
-          case TypeAlias(ref) => apply(x, ref)
-          case _ => foldOver(x, tp)
-        }
       case tvar: TypeVar if !tvar.isInstantiated =>
         if (force == ForceDegree.none) false
         else {
@@ -324,9 +317,9 @@ object Inferencing {
               isBottomType(ctx.typeComparer.approximation(tvar.origin, fromBelow = true)))
           if (minimize) instantiate(tvar, fromBelow = true)
           else toMaximize = true
-          foldOver(x, tp)
+          foldOver(x, tvar)
         }
-      case _ =>
+      case tp =>
         foldOver(x, tp)
     }
 

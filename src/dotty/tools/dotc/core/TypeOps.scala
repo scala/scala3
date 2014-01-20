@@ -165,7 +165,7 @@ trait TypeOps { this: Context =>
         formals = formals.updated(name, tp1.typeParamNamed(name))
         normalizeToRef(tp1)
       case tp: TypeRef =>
-        if (tp.symbol.isAliasType) normalizeToRef(tp.info.bounds.hi)
+        if (tp.symbol.info.isAlias) normalizeToRef(tp.info.bounds.hi)
         else tp
       case ErrorType =>
         defn.AnyClass.typeRef

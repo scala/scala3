@@ -544,7 +544,7 @@ trait Applications extends Compatibility { self: Typer =>
         case tree: untpd.RefTree =>
           val ttree = typedType(tree.withName(tree.name.toTypeName))
           ttree.tpe match {
-            case alias: TypeRef if alias.symbol.isAliasType =>
+            case alias: TypeRef if alias.info.isAlias =>
               companionRef(alias) match {
                 case companion: TermRef => return untpd.ref(companion) withPos tree.pos
                 case _ =>
