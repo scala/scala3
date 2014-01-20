@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
+import SymDenotations._
 import util.SimpleMap
 
 trait TypeOps { this: Context =>
@@ -86,8 +87,14 @@ trait TypeOps { this: Context =>
   }
 
   private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
+    val lazyInfo = new LazyType { // needed so we do not force `formal`.
+      def complete(denot: SymDenotation): Unit = {
+        denot setFlag formal.flags & RetainedTypeArgFlags
+        denot.info = info
+      }
+    }
     val typeArgFlag = if (formal is Local) TypeArgument else EmptyFlags
-    val sym = ctx.newSymbol(cls, formal.name, formal.flags & RetainedTypeArgFlags | typeArgFlag, info)
+    val sym = ctx.newSymbol(cls, formal.name, formal.flagsUNSAFE & RetainedTypeArgFlags | typeArgFlag, lazyInfo)
     cls.enter(sym, decls)
   }
 

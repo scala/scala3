@@ -15,7 +15,7 @@ object Printers {
   val typr: Printer = new Printer
   val constr: Printer = noPrinter
   val overload: Printer = noPrinter
-  val implicits: Printer = new Printer
+  val implicits: Printer = noPrinter
   val unapp: Printer = noPrinter
   val completions = noPrinter
   val gadts = noPrinter

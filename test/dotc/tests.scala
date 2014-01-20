@@ -57,6 +57,12 @@ class tests extends CompilerTest {
   @Test def tools_io = compileDir(dotcDir + "tools/io")
   @Test def tools = compileDir(dotcDir + "tools")
 
-  @Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
+  @Test def testNonCyclic = compileArgs(Array(
+      dotcDir + "tools/dotc/CompilationUnit.scala",
+      dotcDir + "tools/dotc/core/Types.scala",
+      dotcDir + "tools/dotc/ast/Trees.scala",
+      "-Ylog:frontend",
+      "-Xprompt"))
 
+  //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }

@@ -128,10 +128,9 @@ object SymDenotations {
       if (myFlags is Touched) throw new CyclicReference(this)
       myFlags |= Touched
 
-      Context.theBase.initialCtx.traceIndented(s"completing ${this.debugString}", completions) {
-        // println("completing " + debugString)
-        completer.complete(this)
-      }
+      completions.println(s"completing ${this.debugString}")
+      completer.complete(this)
+      completions.println(s"completed ${this.debugString}")
     }
 
     protected[dotc] final def info_=(tp: Type) = {
