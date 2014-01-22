@@ -59,8 +59,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case fntpe @ PolyType(pnames) =>
         check(sameLength(pnames, args))
         fntpe.instantiate(args map (_.tpe))
-      case _ =>
-        check(false)
+      case t =>
+        check(false, s"bad type: $t")
         ErrorType
     }
     untpd.TypeApply(fn, args).withType(owntype).checked
