@@ -537,19 +537,16 @@ object Types {
      *  def o: Outer
      *  <o.x.type>.widen = o.C
      */
-    final def widen(implicit ctx: Context): Type = this match {
-      case tp: TermRef =>
-      	if (tp.denot.isOverloaded) tp else tp.underlying.widen
-      case tp: SingletonType => tp.underlying.widen
+    final def widen(implicit ctx: Context): Type = widenSingleton match {
       case tp: ExprType => tp.resultType.widen
-      case _ => this
+      case tp => tp
     }
 
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences,
      */
     final def widenSingleton(implicit ctx: Context): Type = this match {
-      case tp: SingletonType => tp.underlying.widenSingleton
+      case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
       case _ => this
     }
 
@@ -1037,7 +1034,9 @@ object Types {
   /** A marker trait for types that are guaranteed to contain only a
    *  single non-null value (they might contain null in addition).
    */
-  trait SingletonType extends TypeProxy with ValueType
+  trait SingletonType extends TypeProxy with ValueType {
+    def isOverloaded(implicit ctx: Context) = false
+  }
 
   /** A marker trait for types that bind other types that refer to them.
    *  Instances are: PolyType, MethodType, RefinedType.
@@ -1189,7 +1188,7 @@ object Types {
 
     override def signature(implicit ctx: Context): Signature = denot.signature
 
-    def isOverloaded(implicit ctx: Context) = denot.isOverloaded
+    override def isOverloaded(implicit ctx: Context) = denot.isOverloaded
 
     private def rewrap(sd: SingleDenotation)(implicit ctx: Context) =
       TermRef(prefix, name, sd)
