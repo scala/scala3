@@ -2,7 +2,7 @@ import sbt._
 import Keys._
 import Process._
 
-object MiniboxingBuild extends Build {
+object DottyBuild extends Build {
 
   val defaults = Defaults.defaultSettings ++ Seq(
     // set sources to src/, tests to test/ and resources to resources/
@@ -31,9 +31,23 @@ object MiniboxingBuild extends Build {
     // scalac options
     scalacOptions in Global ++= Seq("-feature", "-deprecation", "-language:_"),
 
-    // main class
-    mainClass in (Compile, run) := Some("dotty.tools.dotc.Main")
+    // Adjust classpath for running dotty
+    mainClass in (Compile, run) := Some("dotty.tools.dotc.Main"),
+    fork in run := true,
+    fork in Test := true,
+    // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
+    javaOptions <++= (managedClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
+       // put the Scala {library, reflect, compiler} in the classpath
+       val path = for {
+         file <- attList.map(_.data)
+         path = file.getAbsolutePath
+       } yield "-Xbootclasspath/p:" + path       
+       // dotty itself needs to be in the bootclasspath
+       val self = "-Xbootclasspath/a:" + bin
+       System.err.println("PATH: " + path)
+       self :: path.toList
+    }
   )
 
-  lazy val dotty = Project(id = "miniboxing", base = file("."), settings = defaults)
+  lazy val dotty = Project(id = "dotty", base = file("."), settings = defaults)
 }
