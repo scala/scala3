@@ -6,13 +6,13 @@ object DottyBuild extends Build {
 
   val defaults = Defaults.defaultSettings ++ Seq(
     // set sources to src/, tests to test/ and resources to resources/
-    scalaSource in Compile <<= baseDirectory(_ / "src"),
-    javaSource in Compile <<= baseDirectory(_ / "src"),
-    scalaSource in Test <<= baseDirectory(_ / "test"),
-    javaSource in Test <<= baseDirectory(_ / "test"),
-    resourceDirectory in Compile <<= baseDirectory(_ / "resources"),
-    unmanagedSourceDirectories in Compile <<= (scalaSource in Compile)(Seq(_)),
-    unmanagedSourceDirectories in Test <<= (scalaSource in Test)(Seq(_)),
+    scalaSource in Compile := baseDirectory.value / "src",
+    javaSource in Compile := baseDirectory.value / "src",
+    scalaSource in Test := baseDirectory.value / "test",
+    javaSource in Test := baseDirectory.value / "test",
+    resourceDirectory in Compile := baseDirectory.value / "resources",
+    unmanagedSourceDirectories in Compile := Seq((scalaSource in Compile).value),
+    unmanagedSourceDirectories in Test := Seq((scalaSource in Test).value),
     
     // include sources in eclipse (downloads source code for all dependencies)
     //http://stackoverflow.com/questions/10472840/how-to-attach-sources-to-sbt-managed-dependencies-in-scala-ide#answer-11683728
@@ -43,9 +43,9 @@ object DottyBuild extends Build {
          path = file.getAbsolutePath
        } yield "-Xbootclasspath/p:" + path       
        // dotty itself needs to be in the bootclasspath
-       val self = "-Xbootclasspath/a:" + bin
-       System.err.println("PATH: " + path)
-       self :: path.toList
+       val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
+       // System.err.println("BOOTPATH: " + fullpath)
+       fullpath
     }
   )
 
