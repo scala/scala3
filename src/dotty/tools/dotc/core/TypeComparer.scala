@@ -587,16 +587,16 @@ class TypeComparer(initctx: Context) extends DotClass {
       isSubType(tp11, tp2) && isSubType(tp12, tp2)
     case ErrorType =>
       true
-    case tp1: TermRef =>
-      tp1.denot match {
-        case sd: SingleDenotation =>
-          sd.info match {
-            case OrType(tp11, tp12) =>
-              def derivedRef(tp: Type) =
-                TermRef(tp1.prefix, tp1.name, sd.derivedSingleDenotation(sd.symbol, tp))
-              return secondTry(OrType(derivedRef(tp11), derivedRef(tp12)), tp2)
-            case _ =>
-          }
+    case tp1: NamedType =>
+      tp1.info match {
+        case OrType(tp11, tp12) =>
+          val sd = tp1.denot.asSingleDenotation
+          def derivedRef(tp: Type) =
+            NamedType(tp1.prefix, tp1.name, sd.derivedSingleDenotation(sd.symbol, tp))
+          return secondTry(OrType(derivedRef(tp11), derivedRef(tp12)), tp2)
+        case TypeBounds(lo1, hi1) =>
+          if ((tp1.symbol is GADTFlexType) && !isSubTypeWhenFrozen(hi1, tp2))
+            return trySetType(tp1, TypeBounds(lo1, hi1 & tp2))
         case _ =>
       }
       thirdTry(tp1, tp2)
@@ -606,9 +606,12 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   def thirdTryNamed(tp1: Type, tp2: NamedType): Boolean = tp2.info match {
     case TypeBounds(lo2, hi2) =>
-      ((frozenConstraint || !isCappable(tp1)) && isSubType(tp1, lo2)
-        || (tp2.symbol is GADTFlexType) && trySetType(tp2, TypeBounds(lo2 | tp1, hi2))
-        || fourthTry(tp1, tp2))
+      if ((tp2.symbol is GADTFlexType) && !isSubTypeWhenFrozen(tp1, lo2))
+        trySetType(tp2, TypeBounds(lo2 | tp1, hi2))
+      else
+        ((frozenConstraint || !isCappable(tp1)) && isSubType(tp1, lo2)
+        || fourthTry(tp1, tp2)
+        )
     case _ =>
       val cls2 = tp2.symbol
       cls2.isClass && {
@@ -714,8 +717,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp1: TypeRef =>
       tp1.info match {
         case TypeBounds(lo1, hi1) =>
-          isSubType(hi1, tp2) ||
-          (tp1.symbol is GADTFlexType) && trySetType(tp1, TypeBounds(lo1, hi1 & tp2))
+          isSubType(hi1, tp2)
         case _ =>
           (tp1.symbol eq NothingClass) && tp2.isInstanceOf[ValueType] ||
           (tp1.symbol eq NullClass) && tp2.dealias.typeSymbol.isNullableClass
