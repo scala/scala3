@@ -1,5 +1,0 @@
-.idea
-.idea_modules
-.gitignore
-target
-project/local-plugins.sbt

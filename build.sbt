@@ -1,13 +1,14 @@
+
 name := "dotty"
 
-organization := "lamp"
+scalaVersion in Global := "2.11.0-M7"
 
-scalaVersion := "2.10.0"
+version in Global := "0.1-SNAPSHOT"
 
-scalaSource in Compile <<= baseDirectory / "src"
+organization in Global := "org.scala-lang"
 
-scalacOptions in Global ++= Seq("-feature", "-deprecation", "-language:_")
+organizationName in Global := "LAMP/EPFL"
 
-libraryDependencies <+= scalaVersion ( sv => "org.scala-lang" % "scala-reflect" % sv )
+organizationHomepage in Global := Some(url("http://lamp.epfl.ch"))
 
-scalaSource in Test <<= baseDirectory / "test"
+homepage in Global := Some(url("http://scala-lang.org"))
