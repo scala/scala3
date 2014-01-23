@@ -511,13 +511,8 @@ class TypeComparer(initctx: Context) extends DotClass {
                 || isSubType(pre1, pre2)
                 || pre1.isInstanceOf[ThisType] && pre2.isInstanceOf[ThisType]
                 )
-              else (
+              else
                 tp1.name == tp2.name && isSubType(pre1, pre2)
-                || sym2.isClass && {
-                     val base = tp1.baseType(sym2)
-                     base.exists && (base ne tp1) && isSubType(base, tp2)
-                   }
-                )
             ) || thirdTryNamed(tp1, tp2)
           case _ =>
             secondTry(tp1, tp2)
@@ -616,10 +611,14 @@ class TypeComparer(initctx: Context) extends DotClass {
         || fourthTry(tp1, tp2))
     case _ =>
       val cls2 = tp2.symbol
-      (cls2 == defn.SingletonClass && tp1.isStable
+      cls2.isClass && {
+        val base = tp1.baseType(cls2)
+        (base.exists && (base ne tp1) && isSubType(base, tp2)
+        || cls2 == defn.SingletonClass && tp1.isStable
         || cls2 == defn.NotNullClass && tp1.isNotNull
         || (defn.hkTraits contains cls2) && isSubTypeHK(tp1, tp2)
-        || fourthTry(tp1, tp2))
+        )
+      } || fourthTry(tp1, tp2)
   }
 
   def thirdTry(tp1: Type, tp2: Type): Boolean = tp2 match {
@@ -722,13 +721,36 @@ class TypeComparer(initctx: Context) extends DotClass {
           (tp1.symbol eq NullClass) && tp2.dealias.typeSymbol.isNullableClass
       }
     case tp1: SingletonType =>
-      isSubType(tp1.underlying.widenExpr, tp2)
+      isNewSubType(tp1.underlying.widenExpr, tp2)
     case tp1: RefinedType =>
-      isSubType(tp1.parent, tp2)
+      isNewSubType(tp1.parent, tp2)
     case AndType(tp11, tp12) =>
-      isSubType(tp11, tp2) || isSubType(tp12, tp2)
+      isNewSubType(tp11, tp2) || isNewSubType(tp12, tp2)
     case _ =>
       false
+  }
+
+  /** Like tp1 <:< tp2, but returns false immediately if we know that
+   *  the case was covered previouslky during subtyping.
+   */
+  private def isNewSubType(tp1: Type, tp2: Type): Boolean =
+    if (isCovered(tp1) && isCovered(tp2)) {
+      //println(s"useless subtype: $tp1 <:< $tp2")
+      false
+    }
+    else isSubType(tp1, tp2)
+
+  /** A type has been covered previously in subtype check if it
+   *  is some combination of TypeRefs that point to classes, where the
+   *  combiners are RefinedTypes, AndTypes or AnnotatedTypes.
+   */
+  private def isCovered(tp: Type): Boolean = tp.dealias.stripTypeVar match {
+    case tp: TypeRef => tp.symbol.isClass && tp.symbol != NothingClass && tp.symbol != NullClass
+    case tp: ProtoType => false
+    case tp: RefinedType => isCovered(tp.parent)
+    case tp: AnnotatedType => isCovered(tp.underlying)
+    case AndType(tp1, tp2) => isCovered(tp1) && isCovered(tp2)
+    case _ => false
   }
 
   /** The current bounds of type parameter `param` */
