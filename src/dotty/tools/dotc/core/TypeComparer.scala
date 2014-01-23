@@ -615,9 +615,9 @@ class TypeComparer(initctx: Context) extends DotClass {
         NamedType(tp1.prefix, tp1.name, sd.derivedSingleDenotation(sd.symbol, tp))
       secondTry(OrType(derivedRef(tp11), derivedRef(tp12)), tp2)
     case TypeBounds(lo1, hi1) =>
-      /*if (lo1 eq hi1) isSubType(hi1, tp2.dealias)
-      else*/ if ((tp1.symbol is GADTFlexType) && !isSubTypeWhenFrozen(hi1, tp2))
+      if ((tp1.symbol is GADTFlexType) && !isSubTypeWhenFrozen(hi1, tp2))
         trySetType(tp1, TypeBounds(lo1, hi1 & tp2))
+      else if (lo1 eq hi1) isSubType(hi1, tp2)
       else thirdTry(tp1, tp2)
     case _ =>
       thirdTry(tp1, tp2)
@@ -811,8 +811,8 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   /** Can type `tp` be constrained from above by adding a constraint to
    *  a typevar that it refers to? In that case we have to be careful not
-   *  to approximate with the lower bound of a type in `thridTryNamed`. Instead,
-   *  we should first unroll `tp1` until we hit the type variable and bound the
+   *  to approximate with the lower bound of a type in `thirdTry`. Instead,
+   *  we should first unroll `tp1` until we hit the type variable and bind the
    *  type variable with (the corresponding type in) `tp2` instead.
    */
   def isCappable(tp: Type): Boolean = tp match {
