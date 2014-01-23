@@ -548,7 +548,7 @@ object Denotations {
       if (denots.exists && denots.containsSig(signature)) NoDenotation else this
     def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(implicit ctx: Context): SingleDenotation =
       if (hasUniqueSym && prevDenots.containsSym(symbol)) NoDenotation
-      else if (isType) filterDisjoint(ownDenots).asSeenFrom(pre)
+      else if (isType) filterDisjoint(ownDenots).asSeenFrom(pre) // comment!! (it's an optimization)
       else asSeenFrom(pre).filterDisjoint(ownDenots)
     final def filterExcluded(excluded: FlagSet)(implicit ctx: Context): SingleDenotation =
       if (excluded.isEmpty || !(this overlaps excluded)) this else NoDenotation

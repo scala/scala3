@@ -581,7 +581,7 @@ object Trees {
       s"TypeTree${if (hasType) s"[$typeOpt]" else s"($original)"}"
   }
 
-  /** ref.type */
+  /** ref.type todo: Make TermRef? */
   case class SingletonTypeTree[-T >: Untyped] private[ast] (ref: Tree[T])
     extends DenotingTree[T] with TypTree[T] {
     type ThisTree[-T >: Untyped] = SingletonTypeTree[T]
