@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._
+import Types._, Contexts._, Symbols._, Flags._, Names._, NameOps._, Denotations._
 import typer.Mode
 import Decorators._
 import StdNames.{nme, tpnme}
@@ -103,12 +103,13 @@ class TypeComparer(initctx: Context) extends DotClass {
    *  @pre `param` is in the constraint's domain
    *  @return Whether the augmented constraint is still satisfiable.
    */
-  def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
+  def addConstraint(param: PolyParam, bound0: Type, fromBelow: Boolean): Boolean = {
+    val bound = bound0.dealias.stripTypeVar
     param == bound || // ###
     !frozenConstraint && { // ###
 
     constr.println(s"adding ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} (${bound.getClass}) to ${constraint.show}")
-    val res = bound.dealias.stripTypeVar match {
+    val res = bound match {
       case bound: PolyParam if constraint contains bound =>
         val TypeBounds(lo, hi) = constraint.bounds(bound)
         if (lo eq hi)
@@ -532,7 +533,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       case tp2: PolyParam =>
         tp2 == tp1 ||
         isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
-          if (constraint contains tp2) addConstraint(tp2, tp1.widen.dealias.stripTypeVar, fromBelow = true)
+          if (constraint contains tp2) addConstraint(tp2, tp1.widen, fromBelow = true)
           else (ctx.mode is Mode.TypevarsMissContext) || secondTry(tp1, tp2)
         }
       case tp2: BoundType =>
@@ -567,13 +568,13 @@ class TypeComparer(initctx: Context) extends DotClass {
         }
       thirdTry(tp1, tp2)
     case tp1: PolyParam =>
-      (tp1 == tp2) ||
+      tp1 == tp2 ||
       isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
         if (!frozenConstraint &&
             (tp2 isRef defn.NothingClass) &&
             ctx.typerState.isGlobalCommittable)
           ctx.log(s"!!! instantiating to Nothing: $tp1")
-        if (constraint contains tp1) addConstraint(tp1, tp2.dealias.stripTypeVar, fromBelow = false)
+        if (constraint contains tp1) addConstraint(tp1, tp2, fromBelow = false)
         else (ctx.mode is Mode.TypevarsMissContext) || thirdTry(tp1, tp2)
       }
     case tp1: BoundType =>
@@ -591,6 +592,19 @@ class TypeComparer(initctx: Context) extends DotClass {
       isSubType(tp11, tp2) && isSubType(tp12, tp2)
     case ErrorType =>
       true
+    case tp1: TermRef =>
+      tp1.denot match {
+        case sd: SingleDenotation =>
+          sd.info match {
+            case OrType(tp11, tp12) =>
+              def derivedRef(tp: Type) =
+                TermRef(tp1.prefix, tp1.name, sd.derivedSingleDenotation(sd.symbol, tp))
+              return secondTry(OrType(derivedRef(tp11), derivedRef(tp12)), tp2)
+            case _ =>
+          }
+        case _ =>
+      }
+      thirdTry(tp1, tp2)
     case _ =>
       thirdTry(tp1, tp2)
   }
