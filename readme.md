@@ -7,8 +7,9 @@ The experimental compiler for a Scala dialect based on DOT.
 ```
   sbt compile
   sbt run
+  sbt test
 ```
-The tests (`sbt test`) don''t work yet.
+At least half of the tests fail, we need to diagnose them.
 
 
 ### To use the Scala IDE:
@@ -20,7 +21,8 @@ Notes:
  * There are 2 spurious version incompatibility warnings
  * To run dotty in Eclipse:
    * Navigate to `dotty.tools.dotc.Main`
-   * Run As ... > Scala Application
-   * then go to Run Configurations > Main$ > Classpath > Bootstrap entries:
-     * add the Scala library (Advanced... > Add library ... > Scala library)
-     * add the dotty classfiles (Add projects... > [x] dotty)
+   * `Run As...` > `Scala Application`
+   * then go to `Run Configurations` > `Main$` > `Classpath` > `Bootstrap entries`:
+     * add the Scala library (`Advanced...` > `Add library...` > `Scala library`)
+     * add the dotty classfiles (`Add projects...` > `[x] dotty`)
+   * then go to `Run Configurations` > `Main$` > `Arguments` and add `${project_loc}/examples/hello.scala`
