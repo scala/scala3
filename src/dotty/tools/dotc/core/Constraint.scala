@@ -71,7 +71,7 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
   /** A new constraint which is derived from this constraint by adding or replacing
    *  the entries corresponding to `pt` with `entries`.
    */
-  private def updateEntries(pt: PolyType, entries: Array[Type]): Constraint = {
+  private def updateEntries(pt: PolyType, entries: Array[Type])(implicit ctx: Context) : Constraint = {
     import Constraint._
     val res = new Constraint(myMap.updated(pt, entries))
     if (Config.checkConstraintsNonCyclic) checkNonCyclic(pt, entries)
@@ -82,23 +82,28 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
     res
   }
 
-  /** Check that no constrained parameter contains itself as a bound */
-  def checkNonCyclic(pt: PolyType, entries: Array[Type]) =
+  /** Check that no constrained parameter in `pt` contains itself as a bound */
+  def checkNonCyclic(pt: PolyType, entries: Array[Type])(implicit ctx: Context): Unit =
     for ((entry, i) <- entries.zipWithIndex) {
       val param = PolyParam(pt, i)
       entry match {
         case TypeBounds(lo, hi) =>
-          assert(!param.occursIn(lo, fromBelow = false), s"$param occurs above $lo")
-          assert(!param.occursIn(hi, fromBelow = true), s"$param occurs below $hi")
+          assert(!param.occursIn(lo, fromBelow = true), s"$param occurs below $lo")
+          assert(!param.occursIn(hi, fromBelow = false), s"$param occurs above $hi")
         case _ =>
       }
     }
+
+  /** Check that no constrained parameter contains itself as a bound */
+  def checkNonCyclic()(implicit ctx: Context): Unit = {
+    for (pt <- domainPolys) checkNonCyclic(pt, myMap(pt))
+  }
 
   /** A new constraint which is derived from this constraint by updating
    *  the entry for parameter `param` to `tpe`.
    *  @pre  `this contains param`.
    */
-  def updated(param: PolyParam, tpe: Type): Constraint = {
+  def updated(param: PolyParam, tpe: Type)(implicit ctx: Context): Constraint = {
     val newEntries = myMap(param.binder).clone
     newEntries(param.paramNum) = tpe
     updateEntries(param.binder, newEntries)
@@ -108,7 +113,7 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
    *  `op` over all entries of type `poly`.
    *  @pre  `this contains poly`.
    */
-  def transformed(poly: PolyType, op: Type => Type): Constraint =
+  def transformed(poly: PolyType, op: Type => Type)(implicit ctx: Context) : Constraint =
     updateEntries(poly, myMap(poly) map op)
 
   /** A new constraint with all entries coming from `pt` removed. */
@@ -161,7 +166,7 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
    *  the type parameter `param` from the domain and replacing all occurrences
    *  of the parameter elsewhere in the constraint by type `tp`.
    */
-  def replace(param: PolyParam, tp: Type)(implicit ctx: Context): Constraint = {
+  private def uncheckedReplace(param: PolyParam, tp: Type)(implicit ctx: Context): Constraint = {
 
     def subst(poly: PolyType, entries: Array[Type]) = {
       var result = entries
@@ -183,13 +188,46 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
 
     val pt = param.binder
     val constr1 = if (isRemovable(pt, param.paramNum)) remove(pt) else updated(param, tp)
-    new Constraint(constr1.myMap mapValues subst)
+    val result = new Constraint(constr1.myMap mapValues subst)
+    if (Config.checkConstraintsNonCyclic) result.checkNonCyclic()
+    result
+  }
+
+  /** A new constraint which is derived from this constraint by removing
+   *  the type parameter `param` from the domain and replacing all occurrences
+   *  of the parameter elsewhere in the constraint by type `tp`.
+   *  `tp` is another polyparam, applies the necessary unifications to avoud a cyclic
+   *  constraint.
+   */
+  def replace(param: PolyParam, tp: Type)(implicit ctx: Context): Constraint =
+    tp.dealias.stripTypeVar match {
+      case tp: PolyParam if this contains tp =>
+        val bs = bounds(tp)
+        if (tp == param)
+          this
+        else if (param.occursIn(bs.lo, fromBelow = true) ||
+                 param.occursIn(bs.hi, fromBelow = false))
+          unify(tp, param).uncheckedReplace(param, tp)
+        else
+          uncheckedReplace(param, tp)
+      case _ =>
+        uncheckedReplace(param, tp)
+    }
+
+  /** A constraint resulting by adding p2 = p1 to this constraint, and at the same
+   *  time transferring all bounds of p2 to p1
+   */
+  def unify(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): Constraint = {
+    val p1Bounds =
+      dropParamIn(bounds(p1), p2.binder, p2.paramNum) &
+      dropParamIn(bounds(p2), p1.binder, p1.paramNum)
+    this.updated(p1, p1Bounds).updated(p2, TypeAlias(p1))
   }
 
   /** A new constraint which is derived from this constraint by adding
    *  entries for all type parameters of `poly`.
    */
-  def add(poly: PolyType, tvars: List[TypeVar] = Nil): Constraint = {
+  def add(poly: PolyType, tvars: List[TypeVar] = Nil)(implicit ctx: Context) : Constraint = {
     val nparams = poly.paramNames.length
     val entries = new Array[Type](nparams * 2)
     poly.paramBounds.copyToArray(entries, 0)

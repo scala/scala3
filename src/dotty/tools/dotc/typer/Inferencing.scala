@@ -504,12 +504,10 @@ object Inferencing {
     val tp = tree.tpe.widen
     val constraint = ctx.typerState.constraint
 
-    /* !!! DEBUG
-    println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${constraint.uninstVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
-    println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (_.show)}")
-    println(s"fulltype: $tp") // !!! DEBUG
-    println(s"constraint: ${constraint.show}")
-    */
+    constr.println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${constraint.uninstVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
+    constr.println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (tvar => s"$tvar / ${tvar.show}")}")
+    constr.println(s"fulltype: $tp") // !!! DEBUG
+    constr.println(s"constraint: ${constraint.show}")
 
     def qualifies(tvar: TypeVar) = tree contains tvar.owningTree
     val vs = tp.variances(tvar => (constraint contains tvar) && qualifies(tvar))
@@ -526,7 +524,7 @@ object Inferencing {
     else
       constraint.foreachUninstVar { tvar =>
         if (!(vs contains tvar) && qualifies(tvar)) {
-          typr.println(s"instantiating non-occurring $tvar in $tp")
+          typr.println(s"instantiating non-occurring ${tvar.show} in ${tp.show}")
           tvar.instantiate(fromBelow = true)
         }
       }

@@ -8,7 +8,8 @@ class tests extends CompilerTest {
   override val defaultOptions =
     List(
 //        "-verbose",
- //         "-Ylog:frontend",
+//         "-Ylog:frontend",
+//        "-Xprompt",
 //        "-explaintypes",
 //        "-Yshow-suppressed-errors",
         "-pagewidth", "160")

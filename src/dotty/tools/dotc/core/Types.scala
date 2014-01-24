@@ -1696,12 +1696,12 @@ object Types {
      *     - fromBelow and param <:< bound
      *     - !fromBelow and param >:> bound
      */
-    def occursIn(bound: Type, fromBelow: Boolean): Boolean = bound match {
+    def occursIn(bound: Type, fromBelow: Boolean)(implicit ctx: Context): Boolean = bound.stripTypeVar match {
       case bound: PolyParam => bound == this
       case bound: AndOrType =>
         def occ1 = occursIn(bound.tp1, fromBelow)
         def occ2 = occursIn(bound.tp2, fromBelow)
-        if (fromBelow == bound.isAnd) occ1 & occ2 else occ1 || occ2
+        if (fromBelow == bound.isAnd) occ1 && occ2 else occ1 || occ2
       case _ => false
     }
 
@@ -1761,10 +1761,11 @@ object Types {
 
     /** Instantiate variable with given type */
     private def instantiateWith(tp: Type)(implicit ctx: Context): Type = {
-      assert(tp ne this)
+      assert(tp ne this, s"self instantiation of ${tp.show}, constraint = ${ctx.typerState.constraint.show}")
       typr.println(s"instantiating ${this.show} with ${tp.show}")
       assert(ctx.typerState.constraint contains this) // !!! DEBUG
-      if (ctx.typerState eq owningState) inst = tp
+      if ((ctx.typerState eq owningState) && !ctx.typeComparer.subtypeCheckInProgress)
+        inst = tp
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
     }
@@ -1807,8 +1808,10 @@ object Types {
     override def hashCode: Int = System.identityHashCode(this)
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
 
-    override def toString =
-      if (inst.exists) inst.toString else s"TypeVar($origin)"
+    override def toString = {
+      def instStr = if (inst.exists) s" -> $inst" else ""
+      s"TypeVar($origin$instStr)"
+    }
   }
 
   // ------ ClassInfo, Type Bounds ------------------------------------------------------------

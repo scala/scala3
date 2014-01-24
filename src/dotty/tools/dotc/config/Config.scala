@@ -12,7 +12,11 @@ object Config {
 
   final val checkConstraintsNonCyclic = true
 
-  final val traceDeepSubTypes = false
+  /** Throw an exception if a deep subtype recursion is detected */
+  final val flagDeepSubTypeRecursions = true
+
+  /** Show subtype traces for all deep subtype recursions */
+  final val traceDeepSubTypeRecursions = false
 
   final val verboseExplainSubtype = true
 

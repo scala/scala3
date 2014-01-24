@@ -34,6 +34,13 @@ class TypeComparer(initctx: Context) extends DotClass {
    */
   protected var ignoreConstraint = false
 
+  /** Is a subtype check in course? In that case we may not
+   *  permanently instantiate type variables, because the corresponding
+   *  constraint might still be retracted and the instantiation should
+   *  then be reversed.
+   */
+  def subtypeCheckInProgress: Boolean = recCount >= 0
+
   private var myAnyClass: ClassSymbol = null
   private var myNothingClass: ClassSymbol = null
   private var myNullClass: ClassSymbol = null
@@ -86,11 +93,9 @@ class TypeComparer(initctx: Context) extends DotClass {
   /** Make p2 = p1, transfer all bounds of p2 to p1 */
   private def unify(p1: PolyParam, p2: PolyParam): Boolean = {
     constr.println(s"unifying $p1 $p2")
-    val p1Bounds =
-      constraint.dropParamIn(constraint.bounds(p1), p2.binder, p2.paramNum) &
-      constraint.dropParamIn(constraint.bounds(p2), p1.binder, p1.paramNum)
-    updateConstraint(p1, p1Bounds) &&
-    updateConstraint(p2, TypeAlias(p1))
+    val constraint1 = constraint.unify(p1, p2)
+    val bounds = constraint1.bounds(p1)
+    isSubType(bounds.lo, bounds.hi) && { constraint = constraint1; true }
   }
 
   /** If current constraint set is not frozen, add the constraint
@@ -216,8 +221,9 @@ class TypeComparer(initctx: Context) extends DotClass {
     if (pendingSubTypes == null) {
       pendingSubTypes = new mutable.HashSet[(Type, Type)]
       ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${ctx.typerState.constraint.show}")
-      assert(!Config.flagDeepRecursions)
-      if (Config.traceDeepSubTypes && !this.isInstanceOf[ExplainingTypeComparer])
+      ctx.log(s"!!! constraint = ${constraint.show}")
+      assert(!Config.flagDeepSubTypeRecursions)
+      if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
         ctx.log(TypeComparer.explained(implicit ctx => ctx.typeComparer.isSubType(tp1, tp2)))
     }
     val p = (tp1, tp2)
