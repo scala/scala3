@@ -1701,7 +1701,7 @@ object Types {
       case bound: AndOrType =>
         def occ1 = occursIn(bound.tp1, fromBelow)
         def occ2 = occursIn(bound.tp2, fromBelow)
-        if (fromBelow == bound.isAnd) occ1 || occ2 else occ1 & occ2
+        if (fromBelow == bound.isAnd) occ1 & occ2 else occ1 || occ2
       case _ => false
     }
 

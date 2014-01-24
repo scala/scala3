@@ -104,10 +104,8 @@ class TypeComparer(initctx: Context) extends DotClass {
    *  @return Whether the augmented constraint is still satisfiable.
    */
   def addConstraint(param: PolyParam, bound0: Type, fromBelow: Boolean): Boolean = {
+    assert(!frozenConstraint)
     val bound = bound0.dealias.stripTypeVar
-    param == bound || // ###
-    !frozenConstraint && { // ###
-
     constr.println(s"adding ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} (${bound.getClass}) to ${constraint.show}")
     val res = bound match {
       case bound: PolyParam if constraint contains bound =>
@@ -133,7 +131,6 @@ class TypeComparer(initctx: Context) extends DotClass {
     }
     constr.println(s"added ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} = ${constraint.show}")
     res
-    } // ###
   }
 
   def isConstrained(param: PolyParam): Boolean =
@@ -174,7 +171,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   def isNonBottomSubType(tp1: Type, tp2: Type): Boolean =
     !(tp2 isRef NothingClass) && isSubType(tp1, tp2)
 
-  def isSubType(tp1: Type, tp2: Type): Boolean =
+  def isSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubType ${tp1.show} <:< ${tp2.show}", subtyping) {
     if (tp1 == NoType || tp2 == NoType) false
     else if (tp1 eq tp2) true
     else {
@@ -213,11 +210,13 @@ class TypeComparer(initctx: Context) extends DotClass {
           throw ex
       }
     }
+  }
 
   def monitoredIsSubType(tp1: Type, tp2: Type) = {
     if (pendingSubTypes == null) {
       pendingSubTypes = new mutable.HashSet[(Type, Type)]
       ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${ctx.typerState.constraint.show}")
+      assert(!Config.flagDeepRecursions)
       if (Config.traceDeepSubTypes && !this.isInstanceOf[ExplainingTypeComparer])
         ctx.log(TypeComparer.explained(implicit ctx => ctx.typeComparer.isSubType(tp1, tp2)))
     }
@@ -533,7 +532,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         def comparePolyParam = {
           tp2 == tp1 ||
             isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
-              if (constraint contains tp2) addConstraint(tp2, tp1.widen, fromBelow = true)
+              if (isConstrained(tp2)) addConstraint(tp2, tp1.widen, fromBelow = true)
               else (ctx.mode is Mode.TypevarsMissContext) || secondTry(tp1, tp2)
             }
         }
@@ -581,7 +580,7 @@ class TypeComparer(initctx: Context) extends DotClass {
               (tp2 isRef defn.NothingClass) &&
               ctx.typerState.isGlobalCommittable)
             ctx.log(s"!!! instantiating to Nothing: $tp1")
-          if (constraint contains tp1) addConstraint(tp1, tp2, fromBelow = false)
+          if (isConstrained(tp1)) addConstraint(tp1, tp2, fromBelow = false)
           else (ctx.mode is Mode.TypevarsMissContext) || thirdTry(tp1, tp2)
         }
       }
@@ -766,7 +765,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     }
     else isSubType(tp1, tp2)
 
-  /** A type has been covered previously in subtype check if it
+  /** A type has been covered previously in subtype checking if it
    *  is some combination of TypeRefs that point to classes, where the
    *  combiners are RefinedTypes, AndTypes or AnnotatedTypes.
    */
