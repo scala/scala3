@@ -138,7 +138,7 @@ object ShowPickled {
     def printConstAnnotArgRef() = printNat()
     def printAnnotArgRef() = printNat()
 
-    def printSymInfo(end: Int): Unit = {
+    def printSymInfo(end: Int, isType: Boolean): Unit = {
       printNameRef()
       printSymbolRef()
       val pflags = buf.readLongNat()
@@ -149,14 +149,7 @@ object ShowPickled {
             idx + "(" + s + ")"
           }
         )
-        val flagString = {
-          val arg1 = Flags.pickledToRawFlags(pflags)
-          accessBoundary match {
-            case Some(pw) => Flags.flagsToString(arg1, pw)
-            case _        => Flags.flagsToString(arg1)
-          }
-        }
-
+        val flagString = buf.unpickleScalaFlags(pflags, isType).toString
         out.print(" %s[%s]".format(toHexString(pflags), flagString))
       }
 
@@ -194,7 +187,7 @@ object ShowPickled {
           out.print(typeName(buf.bytes, buf.readIndex, len))
           buf.readIndex = end
         case TYPEsym | ALIASsym | CLASSsym | MODULEsym | VALsym =>
-          printSymInfo(end)
+          printSymInfo(end, tag == TYPEsym || tag == ALIASsym || tag == CLASSsym)
           if (tag == CLASSsym && (buf.readIndex < end)) printTypeRef()
         case EXTref | EXTMODCLASSref =>
           printNameRef()
