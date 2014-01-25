@@ -26,7 +26,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  For an intersection type A & B, the type parameters of its left operand, A.
    *  Empty list for all other types.
    */
-  final def typeParams(implicit ctx: Context): List[TypeSymbol] = track("typeParams") {
+  final def typeParams(implicit ctx: Context): List[TypeSymbol] = /*>|>*/ track("typeParams") /*<|<*/ {
     self match {
       case tp: ClassInfo =>
         tp.cls.typeParams
@@ -83,7 +83,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     typeParams filter (tparam => self.member(tparam.name).symbol == tparam)
 
   /** Encode the type resulting from applying this type to given arguments */
-  final def appliedTo(args: List[Type])(implicit ctx: Context): Type = track("appliedTo") {
+  final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
 
     def recur(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
       case arg :: args1 =>

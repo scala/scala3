@@ -1044,7 +1044,7 @@ object SymDenotations {
           NoType
       }
 
-      ctx.debugTraceIndented(s"$tp.baseType($this)") {
+      /*>|>*/ ctx.debugTraceIndented(s"$tp.baseType($this)") /*<|<*/ {
         if (symbol.isStatic && tp.derivesFrom(symbol))
           symbol.typeRef
         else tp match {
