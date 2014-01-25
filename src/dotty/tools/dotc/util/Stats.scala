@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package util
 
 import core.Contexts._
+import collection.mutable
 
 object Stats {
 
@@ -12,11 +13,24 @@ object Stats {
 
   @volatile private var stack: List[String] = Nil
 
-  def track[T](fn: String)(op: => T) = {
-    stack = fn :: stack
-    try op
-    finally stack = stack.tail
+  val hits = new mutable.HashMap[String, Int] {
+    override def default(key: String): Int = 0
   }
+
+  def record(fn: String) = {
+    val name = if (fn.startsWith("member-")) "member" else fn
+    hits(name) += 1
+  }
+
+  private var monitored = false
+
+  def track[T](fn: String)(op: => T) =
+    if (monitored) {
+      stack = fn :: stack
+      record(fn)
+      try op
+      finally stack = stack.tail
+    } else op
 
   class HeartBeat extends Thread() {
     @volatile private[Stats] var continue = true
@@ -41,8 +55,12 @@ object Stats {
     if (ctx.settings.Yheartbeat.value) {
       var hb = new HeartBeat()
       hb.start()
+      monitored = true
       try op
-      finally hb.continue = false
+      finally {
+        hb.continue = false
+        println(hits.toList.sortBy(_._2).map{ case (x, y) => s"$x -> $y" } mkString "\n")
+      }
     } else op
   }
 }
