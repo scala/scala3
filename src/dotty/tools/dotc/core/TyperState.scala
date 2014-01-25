@@ -38,6 +38,12 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
   /** Commit state so that it gets propagated to enclosing context */
   def commit()(implicit ctx: Context): Unit = unsupported("commit")
 
+  /** Make type variable instances permanent by assigning to `inst` field if
+   *  type variable instantiation cannot be retracted anymore. Then, remove
+   *  no-longer needed constraint entries.
+   */
+  def gc(): Unit = ()
+
   /** Is it allowed to commit this state? */
   def isCommittable: Boolean = false
 
@@ -73,23 +79,28 @@ extends TyperState(reporter) {
     assert(isCommittable)
     targetState.constraint = constraint
 
-    val toCollect = new mutable.ListBuffer[PolyType]
     constraint foreachTypeVar { tvar =>
       if (tvar.owningState eq this)
         tvar.owningState = targetState
+    }
+    targetState.gc()
+    reporter.flush()
+  }
+
+  override def gc(): Unit = {
+    val toCollect = new mutable.ListBuffer[PolyType]
+    constraint foreachTypeVar { tvar =>
       if (!tvar.inst.exists) {
         val inst = instType(tvar)
-        if (inst.exists && (tvar.owningState eq targetState)) {
+        if (inst.exists && (tvar.owningState eq this)) {
           tvar.inst = inst
           val poly = tvar.origin.binder
-          if (targetState.constraint.isRemovable(poly)) toCollect += poly
+          if (constraint.isRemovable(poly)) toCollect += poly
         }
       }
     }
     for (poly <- toCollect)
-      targetState.constraint = targetState.constraint.remove(poly)
-
-    reporter.flush()
+      constraint = constraint.remove(poly)
   }
 
   override def toText(printer: Printer): Text = constraint.toText(printer)

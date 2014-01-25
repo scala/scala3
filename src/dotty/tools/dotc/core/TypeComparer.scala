@@ -34,12 +34,21 @@ class TypeComparer(initctx: Context) extends DotClass {
    */
   protected var ignoreConstraint = false
 
+  private var needsGc = false
+
   /** Is a subtype check in course? In that case we may not
    *  permanently instantiate type variables, because the corresponding
    *  constraint might still be retracted and the instantiation should
    *  then be reversed.
    */
-  def subtypeCheckInProgress: Boolean = recCount >= 0
+  def subtypeCheckInProgress: Boolean = {
+    val result = recCount > 0
+    if (result) {
+      constr.println("*** needsGC ***")
+      needsGc = true
+    }
+    result
+  }
 
   private var myAnyClass: ClassSymbol = null
   private var myNothingClass: ClassSymbol = null
@@ -176,7 +185,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   def isNonBottomSubType(tp1: Type, tp2: Type): Boolean =
     !(tp2 isRef NothingClass) && isSubType(tp1, tp2)
 
-  def isSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubType ${tp1.show} <:< ${tp2.show}", subtyping) {
+  def isSubType(tp1: Type, tp2: Type): Boolean = /*>|>*/ ctx.traceIndented(s"isSubType ${tp1.show} <:< ${tp2.show}", subtyping) /*<|<*/ {
     if (tp1 == NoType || tp2 == NoType) false
     else if (tp1 eq tp2) true
     else {
@@ -196,6 +205,7 @@ class TypeComparer(initctx: Context) extends DotClass {
           else monitoredIsSubType(tp1, tp2)
         recCount -= 1
         if (!result) constraint = saved
+        else if (recCount == 0 && needsGc) ctx.typerState.gc()
         result
       } catch {
         case ex: Throwable =>
@@ -656,7 +666,7 @@ class TypeComparer(initctx: Context) extends DotClass {
           // optimized case; all info on tp1.name2 is in refinement tp1.refinedInfo.
           isSubType(tp1, parent2) && isSubType(tp1.refinedInfo, tp2.refinedInfo)
         case _ =>
-          def hasMatchingMember(name: Name): Boolean = traceIndented(s"hasMatchingMember($name) ${tp1.member(name)}") (
+          def hasMatchingMember(name: Name): Boolean = /*>|>*/ traceIndented(s"hasMatchingMember($name) ${tp1.member(name)}") /*<|<*/ (
                tp1.member(name).hasAltWith(alt => isSubType(alt.info, tp2.refinedInfo))
             ||
                { // special case for situations like:
