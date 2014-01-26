@@ -53,6 +53,7 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   /** For stastics: count how many isSubTypes are part of succesful comparisons */
   private var successCount = 0
+  private var totalCount = 0
 
   private var myAnyClass: ClassSymbol = null
   private var myNothingClass: ClassSymbol = null
@@ -194,7 +195,8 @@ class TypeComparer(initctx: Context) extends DotClass {
     else if (tp1 eq tp2) true
     else {
       val saved = constraint
-      val savedCount = successCount
+      val savedSuccessCount = successCount
+      val savedTotalCount = totalCount
       try {
         recCount += 1
 /* !!! DEBUG
@@ -209,15 +211,18 @@ class TypeComparer(initctx: Context) extends DotClass {
             if (oldCompare) firstTry(tp1, tp2) else compare(tp1, tp2)
           else monitoredIsSubType(tp1, tp2)
         successCount += 1
+        totalCount += 1
         recCount -= 1
         if (!result) {
           constraint = saved
-          successCount = savedCount
+          successCount = savedSuccessCount
         }
         else if (recCount == 0) {
           if (needsGc) ctx.typerState.gc()
-          Stats.record("successful-<:<", successCount)
+          Stats.record("successful subType", successCount)
+          Stats.record("total subType", totalCount)
           successCount = 0
+          totalCount = 0
         }
         result
       } catch {
@@ -235,7 +240,7 @@ class TypeComparer(initctx: Context) extends DotClass {
           }
           recCount -= 1
           constraint = saved
-          successCount = savedCount
+          successCount = savedSuccessCount
           throw ex
       }
     }
