@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package core
 
-import util.HashSet
 import util.common._
 import Symbols._
 import Flags._
@@ -22,31 +21,14 @@ import ast.tpd._, printing.Texts._
 import ast.untpd
 import transform.Erasure
 import printing.Printer
-import scala.util.hashing.{ MurmurHash3 => hashing }
+import Hashable._
+import Uniques._
 import collection.{mutable, Seq, breakOut}
 import config.Config
 import config.Printers._
 import language.implicitConversions
 
 object Types {
-
-  /** A hash value indicating that the underlying type is not
-   *  cached in uniques.
-   */
-  final val NotCached = 0
-
-  /** An alternative value returned from `hash` if the
-   *  computed hashCode would be `NotCached`.
-   */
-  private final val NotCachedAlt = Int.MinValue
-
-  /** A value that indicates that the hash code is unknown
-   */
-  private final val HashUnknown = 1234
-
-  /** An alternative value if computeHash would otherwise yield HashUnknown
-   */
-  private final val HashUnknownAlt = 4321
 
   /** The class of types.
    *  The principal subclasses and sub-objects are as follows:
@@ -79,7 +61,7 @@ object Types {
    *                       +- ErrorType
    *                       +- WildcardType
    */
-  abstract class Type extends DotClass with printing.Showable {
+  abstract class Type extends DotClass with Hashable with printing.Showable {
 
 // ----- Tests -----------------------------------------------------
 
@@ -880,104 +862,19 @@ object Types {
         }
       }
       new Simplify().apply(this)
-  }
-
-// ----- hashing ------------------------------------------------------
+    }
 
     /** customized hash code of this type.
      *  NotCached for uncached types. Cached types
      *  compute hash and use it as the type's hashCode.
      */
     def hash: Int
-
-    protected def hashSeed = getClass.hashCode
-
-    private def finishHash(hashCode: Int, arity: Int): Int =
-      avoidNotCached(hashing.finalizeHash(hashCode, arity))
-
-    protected def identityHash = avoidNotCached(System.identityHashCode(this))
-
-    protected def avoidNotCached(h: Int) = if (h == NotCached) NotCachedAlt else h
-
-    private def finishHash(seed: Int, arity: Int, tp: Type): Int = {
-      val elemHash = tp.hash
-      if (elemHash == NotCached) return NotCached
-      finishHash(hashing.mix(seed, elemHash), arity + 1)
-    }
-
-    private def finishHash(seed: Int, arity: Int, tp1: Type, tp2: Type): Int = {
-      val elemHash = tp1.hash
-      if (elemHash == NotCached) return NotCached
-      finishHash(hashing.mix(seed, elemHash), arity + 1, tp2)
-    }
-
-    private def finishHash(seed: Int, arity: Int, tps: List[Type]): Int = {
-      var h = seed
-      var xs = tps
-      var len = arity
-      while (xs.nonEmpty) {
-        val elemHash = xs.head.hash
-        if (elemHash == NotCached) return NotCached
-        h = hashing.mix(h, elemHash)
-        xs = xs.tail
-        len += 1
-      }
-      finishHash(h, len)
-    }
-
-    private def finishHash(seed: Int, arity: Int, tp: Type, tps: List[Type]): Int = {
-      val elemHash = tp.hash
-      if (elemHash == NotCached) return NotCached
-      finishHash(hashing.mix(seed, elemHash), arity + 1, tps)
-    }
-
-    protected def doHash(x: Any): Int =
-      finishHash(hashing.mix(hashSeed, x.hashCode), 1)
-
-    protected def doHash(tp: Type): Int =
-      finishHash(hashSeed, 0, tp)
-
-    protected def doHash(x1: Any, tp2: Type): Int =
-      finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2)
-
-    protected def doHash(tp1: Type, tp2: Type): Int =
-      finishHash(hashSeed, 0, tp1, tp2)
-
-    protected def doHash(x1: Any, tp2: Type, tp3: Type): Int =
-      finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2, tp3)
-
-    protected def doHash(tp1: Type, tps2: List[Type]): Int =
-      finishHash(hashSeed, 0, tp1, tps2)
-
-    protected def doHash(x1: Any, tp2: Type, tps3: List[Type]): Int =
-      finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
-
   } // end Type
+
+// ----- Type categories ----------------------------------------------
 
   /** A marker trait for cached types */
   trait CachedType extends Type
-
-  def unique[T <: Type](tp: T)(implicit ctx: Context): T = {
-    if (monitored)
-      if (tp.hash == NotCached) {
-        record("uncached-types")
-        record(s"uncached: ${tp.getClass}")
-      } else {
-        record("cached-types")
-        record(s"cached: ${tp.getClass}")
-      }
-    if (tp.hash == NotCached) tp
-    else ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
-  } /* !!! DEBUG
-  ensuring (
-    result => tp.toString == result.toString || {
-      println(s"cache mismatch; tp = $tp, cached = $result")
-      false
-    }
-  )
- */
-
-// ----- Type categories ----------------------------------------------
 
   /** A marker trait for type proxies.
    *  Each implementation is expected to redefine the `underlying` method.
@@ -1009,7 +906,7 @@ object Types {
 
   /**  Instances of this class are cached and are proxies. */
   abstract class CachedProxyType extends TypeProxy with CachedType {
-    private[this] var myHash = HashUnknown
+    protected[this] var myHash = HashUnknown
     final def hash = {
       if (myHash == HashUnknown) {
         myHash = computeHash
@@ -1076,8 +973,7 @@ object Types {
     val prefix: Type
     val name: Name
 
-    assert(prefix.isValueType ||
-           (prefix eq NoPrefix), s"bad prefix in $prefix.$name")
+    assert(prefix.isValueType || (prefix eq NoPrefix))
 
     private[this] var lastDenotationOrSym: AnyRef = null
 
@@ -1194,7 +1090,6 @@ object Types {
       case _ =>
         false
     }
-    override def computeHash = doHash(name, prefix)
   }
 
   abstract case class TermRef(override val prefix: Type, name: TermName) extends NamedType with SingletonType {
@@ -1251,12 +1146,16 @@ object Types {
     override def computeHash = doHash(fixedSym)
   }
 
-  final class CachedTermRef(prefix: Type, name: TermName) extends TermRef(prefix, name) {
+  final class CachedTermRef(prefix: Type, name: TermName, hc: Int) extends TermRef(prefix, name) {
     assert(prefix ne NoPrefix)
+    myHash = hc
+    override def computeHash = unsupported("computeHash")
   }
 
-  final class CachedTypeRef(prefix: Type, name: TypeName) extends TypeRef(prefix, name) {
+  final class CachedTypeRef(prefix: Type, name: TypeName, hc: Int) extends TypeRef(prefix, name) {
     assert(prefix ne NoPrefix)
+    myHash = hc
+    override def computeHash = unsupported("computeHash")
   }
 
   final class NoPrefixTermRef(name: TermName, val fixedSym: TermSymbol) extends TermRef(NoPrefix, name) with WithNoPrefix
@@ -1273,7 +1172,7 @@ object Types {
 
   object TermRef {
     def apply(prefix: Type, name: TermName)(implicit ctx: Context): TermRef =
-      unique(new CachedTermRef(prefix, name))
+      ctx.uniqueNamedTypes.enterIfNew(prefix, name).asInstanceOf[TermRef]
     def apply(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
       if (prefix eq NoPrefix) unique(new NoPrefixTermRef(sym.name, sym))
       else apply(prefix, sym.name) withSym sym
@@ -1288,7 +1187,7 @@ object Types {
 
   object TypeRef {
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef =
-      unique(new CachedTypeRef(prefix, name))
+      ctx.uniqueNamedTypes.enterIfNew(prefix, name).asInstanceOf[TypeRef]
     def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
       if (prefix eq NoPrefix) unique(new NoPrefixTypeRef(sym.name, sym))
       else apply(prefix, sym.name) withSym sym
@@ -1400,19 +1299,22 @@ object Types {
     val refinedInfo = infoFn(this)
   }
 
-  class DirectRefinedType(parent: Type, refinedName: Name, override val refinedInfo: Type) extends RefinedType(parent, refinedName)
+  class PreHashedRefinedType(parent: Type, refinedName: Name, override val refinedInfo: Type, hc: Int)
+  extends RefinedType(parent, refinedName) {
+    myHash = hc
+    override def computeHash = unsupported("computeHash")
+  }
 
   object RefinedType {
     def make(parent: Type, names: List[Name], infoFns: List[RefinedType => Type])(implicit ctx: Context): Type =
       if (names.isEmpty) parent
       else make(RefinedType(parent, names.head, infoFns.head), names.tail, infoFns.tail)
 
-    def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType = {
-      unique(new CachedRefinedType(parent, name, infoFn))
-    }
+    def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType =
+      ctx.base.uniqueRefinedTypes.enterIfNew(new CachedRefinedType(parent, name, infoFn))
 
     def apply(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType = {
-      unique(new DirectRefinedType(parent, name, info))
+      ctx.base.uniqueRefinedTypes.enterIfNew(parent, name, info)
     }
   }
 
@@ -1444,7 +1346,7 @@ object Types {
 
   object AndType {
     def apply(tp1: Type, tp2: Type)(implicit ctx: Context) = {
-      assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType], s"$tp1 & $tp2")
+      assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType])
       unchecked(tp1, tp2)
     }
     def unchecked(tp1: Type, tp2: Type)(implicit ctx: Context) = {
@@ -1453,7 +1355,7 @@ object Types {
   }
 
   abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
-    assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType], s"$tp1 | $tp2")
+    assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType])
 
     def isAnd = false
 
@@ -1509,7 +1411,7 @@ object Types {
     extends CachedGroundType with BindingType with TermType with MethodOrPoly { thisMethodType =>
 
     override val resultType = resultTypeExp(this)
-    assert(resultType != NoType, this)
+    assert(resultType != NoType)
     def isJava = false
     def isImplicit = false
 
@@ -1927,8 +1829,8 @@ object Types {
   /** Type bounds >: lo <: hi */
   abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
 
-    assert(lo.isInstanceOf[TermType], lo+" "+lo.getClass)
-    assert(hi.isInstanceOf[TermType], hi+" "+hi.getClass)
+    assert(lo.isInstanceOf[TermType])
+    assert(hi.isInstanceOf[TermType])
 
     def variance: Int = 0
 
@@ -2000,29 +1902,27 @@ object Types {
       TypeBounds(substBoundSyms(lo)(hkBound), AndType(hkBound, substBoundSyms(hi)(hkBound)))
     }
 
-    override def computeHash = doHash(lo, hi)
-
     override def toString =
       if (lo eq hi) s"TypeAlias($lo)" else s"TypeBounds($lo, $hi)"
   }
 
-  final class CachedTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
-  final class CoTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi) {
+  class CachedTypeBounds(lo: Type, hi: Type, hc: Int) extends TypeBounds(lo, hi) {
+    myHash = hc
+    override def computeHash = unsupported("computeHash")
+  }
+
+  final class CoTypeBounds(lo: Type, hi: Type, hc: Int) extends CachedTypeBounds(lo, hi, hc) {
     override def variance = 1
     override def toString = "Co" + super.toString
   }
-  final class ContraTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi) {
+  final class ContraTypeBounds(lo: Type, hi: Type, hc: Int) extends CachedTypeBounds(lo, hi, hc) {
     override def variance = -1
     override def toString = "Contra" + super.toString
   }
 
   object TypeBounds {
     def apply(lo: Type, hi: Type, variance: Int = 0)(implicit ctx: Context): TypeBounds =
-      unique(
-        if (variance == 0) new CachedTypeBounds(lo, hi)
-        else if (variance == 1) new CoTypeBounds(lo, hi)
-        else new ContraTypeBounds(lo, hi)
-      )
+      ctx.uniqueTypeBounds.enterIfNew(lo, hi, variance)
     def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
     def upper(hi: Type, variance: Int = 0)(implicit ctx: Context) = apply(defn.NothingType, hi, variance)
     def lower(lo: Type, variance: Int = 0)(implicit ctx: Context) = apply(lo, defn.AnyType, variance)

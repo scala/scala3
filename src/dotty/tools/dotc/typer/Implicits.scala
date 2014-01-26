@@ -23,6 +23,7 @@ import Constants._
 import Inferencing._
 import Applications._
 import ErrorReporting._
+import Hashable._
 import config.Config
 import config.Printers._
 import collection.mutable

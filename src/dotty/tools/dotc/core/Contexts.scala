@@ -10,6 +10,7 @@ import Types._
 import Symbols._
 import Scopes._
 import NameOps._
+import Uniques._
 import SymDenotations._
 import util.Positions._
 import ast.Trees._
@@ -427,7 +428,20 @@ object Contexts {
       override def hash(x: Type): Int = x.hash
     }
 
-    private[dotc] def uniquesSize = uniques.size
+    /** A table for hash consing unique refined types */
+    private[core] val uniqueRefinedTypes = new RefinedUniques
+
+    /** A table for hash consing unique named types */
+    private[core] val uniqueNamedTypes = new NamedTypeUniques
+
+    /** A table for hash consing unique type bounds */
+    private[core] val uniqueTypeBounds = new TypeBoundsUniques
+
+    private def uniqueMaps = List(uniques, uniqueRefinedTypes, uniqueNamedTypes, uniqueTypeBounds)
+
+    /** A map that associates label and size of all uniques sets */
+    def uniquesSize: Map[String, Int] =
+      uniqueMaps.map(m => m.label -> m.size).toMap
 
     /** The number of recursive invocation of underlying on a NamedType
      *  during a controlled operation.
@@ -475,7 +489,7 @@ object Contexts {
   private final val InitialSuperIdsSize = 4096
 
   /** Initial capacity of uniques HashMap */
-  private[core] final val initialUniquesCapacity = 50000
+  private[core] final val initialUniquesCapacity = 40000
 
   /** How many recursive calls to NamedType#underlying are performed before
    *  logging starts.

@@ -73,7 +73,8 @@ object Inferencing {
    *       [ ].name: proto
    */
   class SelectionProto(val name: Name, proto: Type, compat: Compatibility)
-  extends DirectRefinedType(WildcardType, name, proto) with ProtoType {
+  extends RefinedType(WildcardType, name) with ProtoType {
+    override val refinedInfo = proto
     override def isMatchedBy(tp1: Type)(implicit ctx: Context) =
       name == nme.WILDCARD || {
         val mbr = tp1.member(name)

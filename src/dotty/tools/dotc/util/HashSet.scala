@@ -36,6 +36,10 @@ class HashSet[T >: Null <: AnyRef](val label: String, initialCapacity: Int) exte
       h = index(h + 1)
       entry = table(h)
     }
+    addEntryAt(h, x)
+  }
+
+  private def addEntryAt(h: Int, x: T) = {
     table(h) = x
     used += 1
     if (used > (table.length >> 2)) growTable()
@@ -51,6 +55,25 @@ class HashSet[T >: Null <: AnyRef](val label: String, initialCapacity: Int) exte
     }
     entry.asInstanceOf[T]
   }
+
+  private var rover: Int = -1
+
+  protected def findEntryByHash(hashCode: Int): T = {
+    rover = index(hashCode)
+    nextEntryByHash(hashCode)
+  }
+
+  protected def nextEntryByHash(hashCode: Int): T = {
+    var entry = table(rover)
+    while (entry ne null) {
+      rover = index(rover + 1)
+      if (hash(entry.asInstanceOf[T]) == hashCode) return entry.asInstanceOf[T]
+      entry = table(rover)
+    }
+    null
+  }
+
+  protected def addEntryAfterScan(x: T): T = addEntryAt(rover, x)
 
   def addEntry(x: T): Unit = {
     var h = index(hash(x))

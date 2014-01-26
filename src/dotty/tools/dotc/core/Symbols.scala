@@ -338,8 +338,8 @@ object Symbols {
     final def isType(implicit ctx: Context): Boolean = denot.isType
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
 
-    final def asTerm(implicit ctx: Context): TermSymbol = { assert(isTerm, this); asInstanceOf[TermSymbol] }
-    final def asType(implicit ctx: Context): TypeSymbol = { assert(isType, this); asInstanceOf[TypeSymbol] }
+    final def asTerm(implicit ctx: Context): TermSymbol = { assert(isTerm); asInstanceOf[TermSymbol] }
+    final def asType(implicit ctx: Context): TypeSymbol = { assert(isType); asInstanceOf[TypeSymbol] }
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
     /** A unique, densely packed integer tag for each class symbol, -1
@@ -350,7 +350,7 @@ object Symbols {
 
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(implicit ctx: Context): this.type = {
-      assert(this.owner.isClass, this.owner.denot) // !!! DEBUG
+      assert(this.owner.isClass) // !!! DEBUG
       this.owner.asClass.enter(this)
       if (this is Module) this.owner.asClass.enter(this.moduleClass)
       this
