@@ -17,9 +17,11 @@ object Stats {
     override def default(key: String): Int = 0
   }
 
-  def record(fn: String) = {
-    val name = if (fn.startsWith("member-")) "member" else fn
-    hits(name) += 1
+  def record(fn: String, n: Int = 1) = {
+    if (monitored) {
+      val name = if (fn.startsWith("member-")) "member" else fn
+      hits(name) += n
+    }
   }
 
   private var monitored = false
@@ -59,7 +61,9 @@ object Stats {
       try op
       finally {
         hb.continue = false
+        println()
         println(hits.toList.sortBy(_._2).map{ case (x, y) => s"$x -> $y" } mkString "\n")
+        println(s"unique types: ${ctx.base.uniquesSize}")
       }
     } else op
   }

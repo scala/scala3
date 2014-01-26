@@ -16,7 +16,7 @@ import Decorators._
 import Denotations._
 import Periods._
 import util.Positions.Position
-import util.Stats.track
+import util.Stats._
 import util.SimpleMap
 import ast.tpd._, printing.Texts._
 import ast.untpd
@@ -956,8 +956,14 @@ object Types {
   trait CachedType extends Type
 
   def unique[T <: Type](tp: T)(implicit ctx: Context): T = {
-    if (tp.hash == NotCached) tp
-    else ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
+    if (tp.hash == NotCached) {
+      record("uncached-types")
+      tp
+    }
+    else {
+      record("cached-types")
+      ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
+    }
   } /* !!! DEBUG
   ensuring (
     result => tp.toString == result.toString || {

@@ -427,6 +427,8 @@ object Contexts {
       override def hash(x: Type): Int = x.hash
     }
 
+    private[dotc] def uniquesSize = uniques.size
+
     /** The number of recursive invocation of underlying on a NamedType
      *  during a controlled operation.
      */

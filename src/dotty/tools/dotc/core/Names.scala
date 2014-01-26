@@ -269,6 +269,7 @@ object Names {
    *  Assume they are already encoded.
    */
   def termName(cs: Array[Char], offset: Int, len: Int): TermName = {
+    util.Stats.record("termName")
     val h = hashValue(cs, offset, len) & (table.size - 1)
     synchronized {
       val next = table(h)

@@ -1024,7 +1024,7 @@ class Typer extends Namer with Applications with Implicits {
     }
   }
 
-  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = ctx.traceIndented (s"typing ${tree.show}", show = true) {
+  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = ctx.traceIndented (s"typing ${tree.show}", typr, show = true) {
     if (!tree.isEmpty && ctx.typerState.isGlobalCommittable) assert(tree.pos.exists, tree)
     try adapt(typedUnadapted(tree, pt), pt)
     catch {
@@ -1091,7 +1091,7 @@ class Typer extends Namer with Applications with Implicits {
     }
 
   def adapt(tree: Tree, pt: Type)(implicit ctx: Context) = track("adapt") {
-    ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", show = true) {
+    ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) {
       interpolateUndetVars(tree)
       tree overwriteType tree.tpe.simplified
       adaptInterpolated(tree, pt)

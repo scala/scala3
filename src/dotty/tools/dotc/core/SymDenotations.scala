@@ -11,6 +11,7 @@ import scala.reflect.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import annotation.tailrec
 import util.SimpleMap
+import util.Stats
 import config.Config
 import config.Printers._
 
@@ -967,7 +968,8 @@ object SymDenotations {
      *  The elements of the returned pre-denotation all
      *  have existing symbols.
      */
-    final def nonPrivateMembersNamed(name: Name)(implicit ctx: Context): PreDenotation =
+    final def nonPrivateMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
+      Stats.record("nonPrivateMembersNamed")
       if (Config.cacheMembersNamed) {
         var denots: PreDenotation = memberCache lookup name
         if (denots == null) {
@@ -979,11 +981,13 @@ object SymDenotations {
         }
         denots
       } else computeNPMembersNamed(name)
+    }
 
-    private def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation =
+    private def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = /*>|>*/ Stats.track("computeNPMembersNamed") /*<|<*/ {
       if (!classSymbol.hasChildren ||
           !Config.useFingerPrints ||
           (memberFingerPrint contains name)) {
+        Stats.record("computeNPMembersNamed after fingerprint")
         ensureCompleted()
         val ownDenots = decls.denotsNamed(name, selectNonPrivate)
         if (debugTrace)  // DEBUG
@@ -1005,6 +1009,7 @@ object SymDenotations {
         if (name.isConstructorName) ownDenots
         else collect(ownDenots, classParents)
       } else NoDenotation
+    }
 
     override final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = {
       val raw = if (excluded is Private) nonPrivateMembersNamed(name) else membersNamed(name)
@@ -1022,26 +1027,29 @@ object SymDenotations {
         case _ => bt
       }
 
-      def computeBaseTypeOf(tp: Type): Type = tp match {
-        case tp: TypeRef =>
-          val subcls = tp.symbol
-          if (subcls eq symbol)
-            tp
-          else subcls.denot match {
-            case cdenot: ClassDenotation =>
-              if (cdenot.superClassBits contains symbol.superId) foldGlb(NoType, tp.parents)
-              else NoType
-            case _ =>
-              baseTypeOf(tp.underlying)
-          }
-        case tp: TypeProxy =>
-          baseTypeOf(tp.underlying)
-        case AndType(tp1, tp2) =>
-          baseTypeOf(tp1) & baseTypeOf(tp2)
-        case OrType(tp1, tp2) =>
-          baseTypeOf(tp1) | baseTypeOf(tp2)
-        case _ =>
-          NoType
+      def computeBaseTypeOf(tp: Type): Type = {
+        Stats.record("computeBaseTypeOf")
+        tp match {
+          case tp: TypeRef =>
+            val subcls = tp.symbol
+            if (subcls eq symbol)
+              tp
+            else subcls.denot match {
+              case cdenot: ClassDenotation =>
+                if (cdenot.superClassBits contains symbol.superId) foldGlb(NoType, tp.parents)
+                else NoType
+              case _ =>
+                baseTypeOf(tp.underlying)
+            }
+          case tp: TypeProxy =>
+            baseTypeOf(tp.underlying)
+          case AndType(tp1, tp2) =>
+            baseTypeOf(tp1) & baseTypeOf(tp2)
+          case OrType(tp1, tp2) =>
+            baseTypeOf(tp1) | baseTypeOf(tp2)
+          case _ =>
+            NoType
+        }
       }
 
       /*>|>*/ ctx.debugTraceIndented(s"$tp.baseType($this)") /*<|<*/ {
