@@ -962,7 +962,10 @@ object Types {
       if (tp.hash == NotCached) {
         record("uncached-types")
         record(s"uncached: ${tp.getClass}")
-      } else record("cached-types")
+      } else {
+        record("cached-types")
+        record(s"cached: ${tp.getClass}")
+      }
     if (tp.hash == NotCached) tp
     else ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
   } /* !!! DEBUG
@@ -1348,10 +1351,10 @@ object Types {
    *  @param infoFn: A function that produces the info of the refinement declaration,
    *                 given the refined type itself.
    */
-  abstract case class RefinedType(parent: Type, refinedName: Name)(infoFn: RefinedType => Type)
+  abstract case class RefinedType(parent: Type, refinedName: Name)
     extends CachedProxyType with BindingType with ValueType {
 
-    val refinedInfo: Type = infoFn(this)
+    val refinedInfo: Type
 
     override def underlying(implicit ctx: Context) = parent
 
@@ -1393,18 +1396,24 @@ object Types {
     override def toString = s"RefinedType($parent, $refinedName, $refinedInfo)"
   }
 
-  class CachedRefinedType(parent: Type, refinedName: Name, infoFn: RefinedType => Type) extends RefinedType(parent, refinedName)(infoFn)
+  class CachedRefinedType(parent: Type, refinedName: Name, infoFn: RefinedType => Type) extends RefinedType(parent, refinedName) {
+    val refinedInfo = infoFn(this)
+  }
+
+  class DirectRefinedType(parent: Type, refinedName: Name, override val refinedInfo: Type) extends RefinedType(parent, refinedName)
 
   object RefinedType {
     def make(parent: Type, names: List[Name], infoFns: List[RefinedType => Type])(implicit ctx: Context): Type =
       if (names.isEmpty) parent
       else make(RefinedType(parent, names.head, infoFns.head), names.tail, infoFns.tail)
 
-    def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType =
+    def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType = {
       unique(new CachedRefinedType(parent, name, infoFn))
+    }
 
-    def apply(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType =
-      apply(parent, name, scala.Function.const(info): (RefinedType => Type))
+    def apply(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType = {
+      unique(new DirectRefinedType(parent, name, info))
+    }
   }
 
   // --- AndType/OrType ---------------------------------------------------------------
