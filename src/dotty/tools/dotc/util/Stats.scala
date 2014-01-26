@@ -24,7 +24,7 @@ object Stats {
     }
   }
 
-  private var monitored = false
+  var monitored = false
 
   def track[T](fn: String)(op: => T) =
     if (monitored) {

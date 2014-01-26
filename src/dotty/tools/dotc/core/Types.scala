@@ -892,10 +892,12 @@ object Types {
 
     protected def hashSeed = getClass.hashCode
 
-    private def finishHash(hashCode: Int, arity: Int): Int = {
-      val h = hashing.finalizeHash(hashCode, arity)
-      if (h == NotCached) NotCachedAlt else h
-    }
+    private def finishHash(hashCode: Int, arity: Int): Int =
+      avoidNotCached(hashing.finalizeHash(hashCode, arity))
+
+    protected def identityHash = avoidNotCached(System.identityHashCode(this))
+
+    protected def avoidNotCached(h: Int) = if (h == NotCached) NotCachedAlt else h
 
     private def finishHash(seed: Int, arity: Int, tp: Type): Int = {
       val elemHash = tp.hash
@@ -956,14 +958,13 @@ object Types {
   trait CachedType extends Type
 
   def unique[T <: Type](tp: T)(implicit ctx: Context): T = {
-    if (tp.hash == NotCached) {
-      record("uncached-types")
-      tp
-    }
-    else {
-      record("cached-types")
-      ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
-    }
+    if (monitored)
+      if (tp.hash == NotCached) {
+        record("uncached-types")
+        record(s"uncached: ${tp.getClass}")
+      } else record("cached-types")
+    if (tp.hash == NotCached) tp
+    else ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
   } /* !!! DEBUG
   ensuring (
     result => tp.toString == result.toString || {
@@ -1021,11 +1022,19 @@ object Types {
   /**  Instances of this class are uncached and are not proxies. */
   abstract class UncachedGroundType extends Type {
     final def hash = NotCached
+    if (monitored) {
+      record(s"uncachable")
+      record(s"uncachable: $getClass")
+    }
   }
 
   /**  Instances of this class are uncached and are proxies. */
   abstract class UncachedProxyType extends TypeProxy {
     final def hash = NotCached
+    if (monitored) {
+      record(s"uncachable")
+      record(s"uncachable: $getClass")
+    }
   }
 
   /** A marker trait for types that apply only to type symbols */
@@ -1619,7 +1628,7 @@ object Types {
   }
 
   case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
-    extends UncachedGroundType with BindingType with TermType with MethodOrPoly {
+    extends CachedGroundType with BindingType with TermType with MethodOrPoly {
 
     val paramBounds = paramBoundsExp(this)
     override val resultType = resultTypeExp(this)
@@ -1643,8 +1652,8 @@ object Types {
 
     // need to override hashCode and equals to be object identity
     // because paramNames by itself is not discriminatory enough
-    override def hashCode = System.identityHashCode(this)
     override def equals(other: Any) = this eq other.asInstanceOf[AnyRef]
+    override def computeHash = identityHash
 
     override def toString = s"PolyType($paramNames, $paramBounds, $resultType)"
   }
@@ -1663,7 +1672,7 @@ object Types {
 
   // ----- Bound types: MethodParam, PolyParam, RefiendThis --------------------------
 
-  abstract class BoundType extends UncachedProxyType with ValueType {
+  abstract class BoundType extends CachedProxyType with ValueType {
     type BT <: BindingType
     def binder: BT
     // Dotty deviation: copyBoundType was copy, but
@@ -1683,7 +1692,7 @@ object Types {
     def copyBoundType(bt: BT) = MethodParam(bt, paramNum)
 
     // need to customize hashCode and equals to prevent infinite recursion for dep meth types.
-    override def hashCode = System.identityHashCode(binder) + paramNum
+    override def computeHash = avoidNotCached(System.identityHashCode(binder) + paramNum)
     override def equals(that: Any) = that match {
       case that: MethodParam =>
         (this.binder eq that.binder) && this.paramNum == that.paramNum
@@ -1714,6 +1723,8 @@ object Types {
     override def underlying(implicit ctx: Context): Type = binder.paramBounds(paramNum)
     // no customized hashCode/equals needed because cycle is broken in PolyType
     override def toString = s"PolyParam(${binder.paramNames(paramNum)})"
+
+    override def computeHash = doHash(paramNum, binder)
   }
 
   case class RefinedThis(binder: RefinedType) extends BoundType with SingletonType {
@@ -1723,7 +1734,7 @@ object Types {
 
     // need to customize hashCode and equals to prevent infinite recursion for
     // refinements that refer to the refinement type via this
-    override def hashCode = System.identityHashCode(binder)
+    override def computeHash = identityHash
     override def equals(that: Any) = that match {
       case that: RefinedThis => this.binder eq that.binder
       case _ => false
@@ -1746,7 +1757,7 @@ object Types {
    *  @param  owningTree    The function part of the TypeApply tree tree that introduces
    *                        the type variable.
    */
-  final class TypeVar(val origin: PolyParam, creatorState: TyperState, val owningTree: untpd.Tree) extends UncachedProxyType with ValueType {
+  final class TypeVar(val origin: PolyParam, creatorState: TyperState, val owningTree: untpd.Tree) extends CachedProxyType with ValueType {
 
     /** The permanent instance type of the the variable, or NoType is none is given yet */
     private[core] var inst: Type = NoType
@@ -1811,7 +1822,7 @@ object Types {
       if (inst.exists) inst else origin
     }
 
-    override def hashCode: Int = System.identityHashCode(this)
+    override def computeHash: Int = identityHash
     override def equals(that: Any) = this eq that.asInstanceOf[AnyRef]
 
     override def toString = {
