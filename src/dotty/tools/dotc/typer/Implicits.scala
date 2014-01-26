@@ -279,7 +279,18 @@ trait Implicits { self: Typer =>
        !from.isError
     && !to.isError
     && (ctx.mode is Mode.ImplicitsEnabled)
-    && (inferView(dummyTreeOfType(from), to)(ctx.fresh.withExploreTyperState).isInstanceOf[SearchSuccess])
+    && { from.widenExpr match {
+           case from: TypeRef if defn.ScalaValueClasses contains from.symbol =>
+             to.widenExpr match {
+               case to: TypeRef if defn.ScalaValueClasses contains to.symbol =>
+                 util.Stats.record("isValueSubClass")
+                 return defn.isValueSubClass(from.symbol, to.symbol)
+               case _ =>
+             }
+           case _ =>
+         }
+         inferView(dummyTreeOfType(from), to)(ctx.fresh.withExploreTyperState).isInstanceOf[SearchSuccess]
+       }
     )
 
   /** Find an implicit conversion to apply to given tree `from` so that the
@@ -300,7 +311,7 @@ trait Implicits { self: Typer =>
    *  !!! todo: catch potential cycles
    */
   def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
-    ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}, constraint = ${ctx.typerState.constraint.show}", implicits, show = true) {
+    ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       assert(!pt.isInstanceOf[ExprType])
       val isearch =
         if (ctx.settings.explaintypes.value) new ExplainedImplicitSearch(pt, argument, pos)
