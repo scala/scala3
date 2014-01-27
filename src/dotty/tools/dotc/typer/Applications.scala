@@ -736,6 +736,8 @@ trait Applications extends Compatibility { self: Typer =>
   private def onMethod(tp: Type, p: TermRef => Boolean)(implicit ctx: Context): Boolean = tp match {
     case methRef: TermRef if methRef.widenSingleton.isInstanceOf[SignedType] =>
       p(methRef)
+    case mt: SignedType =>
+      p(mt.narrow)
     case _ =>
       tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
   }

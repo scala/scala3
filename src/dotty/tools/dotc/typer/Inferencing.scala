@@ -256,9 +256,13 @@ object Inferencing {
       case mt: MethodType if !mt.isDependent /*&& !pt.isInstanceOf[ApplyingProto]*/ =>
         if (mt.isImplicit) mt.resultType
         else {
-          val rt = normalize(mt.resultType, pt)
-          val ft = defn.FunctionType(mt.paramTypes, rt)
-          if (mt.paramTypes.nonEmpty || ft <:< pt) ft else rt
+          val rt = normalize(mt.resultType, pt)       
+          if (pt.isInstanceOf[ApplyingProto])
+            mt.derivedMethodType(mt.paramNames, mt.paramTypes, rt)
+          else {
+            val ft = defn.FunctionType(mt.paramTypes, rt)
+            if (mt.paramTypes.nonEmpty || ft <:< pt) ft else rt
+          }
         }
       case et: ExprType => et.resultType
       case _ => tp
