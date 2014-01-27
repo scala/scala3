@@ -7,7 +7,7 @@ import ast._
 import Trees._, Constants._, StdNames._, Scopes._, Denotations._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import ast.desugar, ast.desugar._
-import Inferencing.{fullyDefinedType, AnySelectionProto, checkClassTypeWithStablePrefix, ensureFirstIsClass, forwardTypeParams}
+import Inferencing._
 import util.Positions._
 import util.SourcePosition
 import collection.mutable

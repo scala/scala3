@@ -961,8 +961,8 @@ object Types {
   /** A trait for proto-types, used as expected types in typer */
   trait ProtoType extends Type {
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean
-    def fold[T](x: T, ta: TypeAccumulator[T]): T
-    def map(tm: TypeMap): ProtoType
+    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T
+    def map(tm: TypeMap)(implicit ctx: Context): ProtoType
   }
 
   /** Implementations of this trait cache the resukts of `narrow`. */
@@ -1491,7 +1491,7 @@ object Types {
     extends MethodType(paramNames, paramTypes)(resultTypeExp) {
     override def isJava = true
     override def equals(that: Any) = super.equals(that) && that.isInstanceOf[JavaMethodType]
-    override def computeHash = super.computeHash + 1
+    override def computeHash = addDelta(super.computeHash, 1)
     override protected def prefixString = "JavaMethodType"
   }
 
@@ -1499,7 +1499,7 @@ object Types {
     extends MethodType(paramNames, paramTypes)(resultTypeExp) {
     override def isImplicit = true
     override def equals(that: Any) = super.equals(that) && that.isInstanceOf[ImplicitMethodType]
-    override def computeHash = super.computeHash + 2
+    override def computeHash = addDelta(super.computeHash, 2)
     override protected def prefixString = "ImplicitMethodType"
   }
 
@@ -1612,7 +1612,7 @@ object Types {
     def copyBoundType(bt: BT) = MethodParam(bt, paramNum)
 
     // need to customize hashCode and equals to prevent infinite recursion for dep meth types.
-    override def computeHash = avoidNotCached(System.identityHashCode(binder) + paramNum)
+    override def computeHash = addDelta(System.identityHashCode(binder), paramNum)
     override def equals(that: Any) = that match {
       case that: MethodParam =>
         (this.binder eq that.binder) && this.paramNum == that.paramNum
@@ -2171,39 +2171,6 @@ object Types {
 
   object IdentityTypeMap extends TypeMap()(NoContext) {
     def apply(tp: Type) = tp
-  }
-
-  /** Approximate occurrences of parameter types and uninstantiated typevars
-   *  by wildcard types.
-   */
-  class WildApprox(implicit ctx: Context) extends TypeMap {
-    override def apply(tp: Type) = tp match {
-      case PolyParam(pt, pnum) =>
-        WildcardType(apply(pt.paramBounds(pnum)).bounds)
-      case MethodParam(mt, pnum) =>
-        WildcardType(TypeBounds.upper(apply(mt.paramTypes(pnum))))
-      case tp: TypeVar =>
-        val inst = tp.instanceOpt
-        apply(inst orElse WildcardType(ctx.typerState.constraint.bounds(tp.origin)))
-      case tp: AndType =>
-        val tp1a = apply(tp.tp1)
-        val tp2a = apply(tp.tp2)
-        def wildBounds(tp: Type) =
-          if (tp.isInstanceOf[WildcardType]) tp.bounds else TypeBounds.upper(tp)
-        if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
-          WildcardType(wildBounds(tp1a) & wildBounds(tp2a))
-        else
-          tp.derivedAndType(tp1a, tp2a)
-      case tp: OrType =>
-        val tp1a = apply(tp.tp1)
-        val tp2a = apply(tp.tp2)
-        if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
-          WildcardType(tp1a.bounds | tp2a.bounds)
-        else
-          tp.derivedOrType(tp1a, tp2a)
-      case _ =>
-        mapOver(tp)
-    }
   }
 
   // ----- TypeAccumulators ----------------------------------------------------

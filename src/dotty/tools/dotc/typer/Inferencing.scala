@@ -13,6 +13,7 @@ import util.Positions._
 import util.{Stats, SimpleMap}
 import util.common._
 import Decorators._
+import Uniques._
 import ErrorReporting.{errorType, InfoString}
 import config.Printers._
 import collection.mutable
@@ -72,7 +73,7 @@ object Inferencing {
    *
    *       [ ].name: proto
    */
-  class SelectionProto(val name: Name, proto: Type, compat: Compatibility)
+  abstract class SelectionProto(val name: Name, proto: Type, compat: Compatibility)
   extends RefinedType(WildcardType, name) with ProtoType {
     override val refinedInfo = proto
     override def isMatchedBy(tp1: Type)(implicit ctx: Context) =
@@ -86,22 +87,44 @@ object Inferencing {
       if (tp1 eq this) this
       else {
         assert(parent == WildcardType)
-        new SelectionProto(refinedName1, tp1.refinedInfo, compat)
+        SelectionProto(refinedName1, tp1.refinedInfo, compat)
       }
     }
-    def map(tm: TypeMap) = tm(this).asInstanceOf[SelectionProto]
-    def fold[T](x: T, ta: TypeAccumulator[T]) = ta(x, this)
+    def derivedSelectionProto(name: Name, proto: Type, compat: Compatibility)(implicit ctx: Context) =
+      if ((name eq this.name) && (proto eq this.proto) && (compat eq this.compat)) this
+      else SelectionProto(name, proto, compat)
+ /*
+    override def equals(that: Any): Boolean = that match {
+      case that: SelectionProto =>
+        (name eq that.name) && (refinedInfo eq that.refinedInfo) && (compat eq that.compat)
+    }
+
+*/
+    def map(tm: TypeMap)(implicit ctx: Context) = derivedSelectionProto(name, tm(proto), compat)
+    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context) = ta(x, this)
+  }
+
+  class CachedSelectionProto(name: Name, proto: Type, compat: Compatibility) extends SelectionProto(name, proto, compat) {
+    override def computeHash = addDelta(doHash(name, proto), if (compat == NoViewsAllowed) 1 else 0)
+  }
+
+  object SelectionProto {
+    def apply(name: Name, proto: Type, compat: Compatibility)(implicit ctx: Context): SelectionProto = {
+      val rt = new CachedSelectionProto(name, proto, compat)
+      if (compat eq NoViewsAllowed) ctx.uniqueRefinedTypes.enterIfNew(rt).asInstanceOf[SelectionProto]
+      else rt
+    }
   }
 
   /** Create a selection proto-type, but only one level deep;
    *  treat constructors specially
    */
-  def selectionProto(name: Name, tp: Type, typer: Typer) =
+  def selectionProto(name: Name, tp: Type, typer: Typer)(implicit ctx: Context) =
     if (name.isConstructorName) WildcardType
     else tp match {
       case tp: UnapplyFunProto => new UnapplySelectionProto(name)
-      case tp: ProtoType => new SelectionProto(name, WildcardType, typer)
-      case _ => new SelectionProto(name, tp, typer)
+      case tp: ProtoType => SelectionProto(name, WildcardType, typer)
+      case _ => SelectionProto(name, tp, typer)
     }
 
   /** A prototype for expressions [] that are in some unspecified selection operation
@@ -133,6 +156,10 @@ object Inferencing {
     def isMatchedBy(tp: Type)(implicit ctx: Context) =
       typer.isApplicable(tp, Nil, typedArgs, resultType)
 
+    def derivedFunProto(args: List[untpd.Tree], resultType: Type, typer: Typer) =
+      if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
+      else new FunProto(args, resultType, typer)
+
     def argsAreTyped: Boolean = myTypedArgs.nonEmpty || args.isEmpty
 
     /** The typed arguments. This takes any arguments already typed using
@@ -163,20 +190,17 @@ object Inferencing {
 
     override def toString = s"FunProto(${args mkString ","} => $resultType)"
 
-    def map(tm: TypeMap): FunProto = {
-      val resultType1 = tm(resultType)
-      if (resultType1 eq resultType) this
-      else FunProto(args, resultType1, typer)
-    }
+    def map(tm: TypeMap)(implicit ctx: Context): FunProto =
+      derivedFunProto(args, tm(resultType), typer)
 
-    def fold[T](x: T, ta: TypeAccumulator[T]): T = ta(x, resultType)
+    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T = ta(x, resultType)
   }
 
   /** A prototype for implicitly inferred views:
    *
    *    []: argType => resultType
    */
-  case class ViewProto(argType: Type, override val resultType: Type)(implicit ctx: Context)
+  abstract case class ViewProto(argType: Type, override val resultType: Type)(implicit ctx: Context)
   extends CachedGroundType with ApplyingProto {
  //   def lookingForInfo = resultType match {
  //     case rt: SelectionProto => rt.name.toString == "info"
@@ -186,18 +210,25 @@ object Inferencing {
       ctx.typer.isApplicable(tp, argType :: Nil, resultType)
     }
 
-    def map(tm: TypeMap): ViewProto = {
-      val argType1 = tm(argType)
-      val resultType1 = tm(resultType)
-      if ((argType1 eq argType) && (resultType1 eq resultType)) this
-      else ViewProto(argType1, resultType1)
-    }
+    def derivedViewProto(argType: Type, resultType: Type)(implicit ctx: Context) =
+      if ((argType eq this.argType) && (resultType eq this.resultType)) this
+      else ViewProto(argType, resultType)
 
-    def fold[T](x: T, ta: TypeAccumulator[T]): T = ta(ta(x, argType), resultType)
+    def map(tm: TypeMap)(implicit ctx: Context): ViewProto = derivedViewProto(tm(argType), tm(resultType))
+
+    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T = ta(ta(x, argType), resultType)
 
     override def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): collection.Set[NamedType] =
       AndType.unchecked(argType, resultType).namedPartsWith(p) // this is more efficient than oring two namedParts sets
+  }
+
+  class CachedViewProto(argType: Type, resultType: Type)(implicit ctx: Context) extends ViewProto(argType, resultType) {
     override def computeHash = doHash(argType, resultType)
+  }
+
+  object ViewProto {
+    def apply(argType: Type, resultType: Type)(implicit ctx: Context) =
+      unique(new CachedViewProto(argType, resultType))
   }
 
   class UnapplyFunProto(typer: Typer)(implicit ctx: Context) extends FunProto(
@@ -216,14 +247,14 @@ object Inferencing {
       isInstantiatable(tp) || tp.member(nme.apply).hasAltWith(d => isInstantiatable(d.info))
     }
 
-    def map(tm: TypeMap): PolyProto = {
-      val targs1 = targs mapConserve tm
-      val resultType1 = tm(resultType)
-      if ((targs1 eq targs) && (resultType1 eq resultType)) this
-      else PolyProto(targs1, resultType1)
-    }
+    def derivedPolyProto(targs: List[Type], resultType: Type) =
+      if ((targs eq this.targs) && (resultType eq this.resultType)) this
+      else PolyProto(targs, resultType)
 
-    def fold[T](x: T, ta: TypeAccumulator[T]): T = ta((x /: targs)(ta), resultType)
+    def map(tm: TypeMap)(implicit ctx: Context): PolyProto =
+      derivedPolyProto(targs mapConserve tm, tm(resultType))
+
+    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T = ta((x /: targs)(ta), resultType)
   }
 
   /** A prototype for expressions [] that are known to be functions:
@@ -232,8 +263,8 @@ object Inferencing {
    */
   object AnyFunctionProto extends UncachedGroundType with ProtoType {
     def isMatchedBy(tp: Type)(implicit ctx: Context) = true
-    def map(tm: TypeMap) = this
-    def fold[T](x: T, ta: TypeAccumulator[T]) = x
+    def map(tm: TypeMap)(implicit ctx: Context) = this
+    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context) = x
   }
 
   /** The normalized form of a type
@@ -256,7 +287,7 @@ object Inferencing {
       case mt: MethodType if !mt.isDependent /*&& !pt.isInstanceOf[ApplyingProto]*/ =>
         if (mt.isImplicit) mt.resultType
         else {
-          val rt = normalize(mt.resultType, pt)       
+          val rt = normalize(mt.resultType, pt)
           if (pt.isInstanceOf[ApplyingProto])
             mt.derivedMethodType(mt.paramNames, mt.paramTypes, rt)
           else {
@@ -469,6 +500,44 @@ object Inferencing {
   def checkInstantiatable(cls: ClassSymbol, pos: Position): Unit = {
     ??? // to be done in later phase: check that class `cls` is legal in a new.
   }
+
+  /** Approximate occurrences of parameter types and uninstantiated typevars
+   *  by wildcard types.
+   */
+  class WildApprox(implicit ctx: Context) extends TypeMap {
+    override def apply(tp: Type) = tp match {
+      case PolyParam(pt, pnum) =>
+        WildcardType(apply(pt.paramBounds(pnum)).bounds)
+      case MethodParam(mt, pnum) =>
+        WildcardType(TypeBounds.upper(apply(mt.paramTypes(pnum))))
+      case tp: TypeVar =>
+        val inst = tp.instanceOpt
+        apply(inst orElse WildcardType(ctx.typerState.constraint.bounds(tp.origin)))
+      case tp: AndType =>
+        val tp1a = apply(tp.tp1)
+        val tp2a = apply(tp.tp2)
+        def wildBounds(tp: Type) =
+          if (tp.isInstanceOf[WildcardType]) tp.bounds else TypeBounds.upper(tp)
+        if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
+          WildcardType(wildBounds(tp1a) & wildBounds(tp2a))
+        else
+          tp.derivedAndType(tp1a, tp2a)
+      case tp: OrType =>
+        val tp1a = apply(tp.tp1)
+        val tp2a = apply(tp.tp2)
+        if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
+          WildcardType(tp1a.bounds | tp2a.bounds)
+        else
+          tp.derivedOrType(tp1a, tp2a)
+      case tp: SelectionProto =>
+        tp.derivedSelectionProto(tp.name, this(tp.refinedInfo), NoViewsAllowed)
+      case tp: ViewProto =>
+        tp.derivedViewProto(this(tp.argType), this(tp.resultType))
+      case _ =>
+        mapOver(tp)
+    }
+  }
+
 
   /** Add all parameters in given polytype `pt` to the constraint's domain.
    *  If the constraint contains already some of these parameters in its domain,

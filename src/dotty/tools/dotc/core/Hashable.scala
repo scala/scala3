@@ -35,8 +35,6 @@ trait Hashable {
 
   protected final def identityHash = avoidNotCached(System.identityHashCode(this))
 
-  protected final def avoidNotCached(h: Int) = if (h == NotCached) NotCachedAlt else h
-
   private def finishHash(seed: Int, arity: Int, tp: Type): Int = {
     val elemHash = tp.hash
     if (elemHash == NotCached) return NotCached
@@ -89,4 +87,8 @@ trait Hashable {
 
   protected final def doHash(x1: Any, tp2: Type, tps3: List[Type]): Int =
     finishHash(hashing.mix(hashSeed, x1.hashCode), 1, tp2, tps3)
+
+  protected final def addDelta(hc: Int, delta: Int) = avoidNotCached(hc + delta)
+
+  private def avoidNotCached(h: Int) = if (h == NotCached) NotCachedAlt else h
 }
