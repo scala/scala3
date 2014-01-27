@@ -5,7 +5,7 @@ package typer
 import core._
 import ast.{Trees, untpd, tpd, TreeInfo}
 import util.Positions._
-import util.Stats.track
+import util.Stats.{track, record, monitored}
 import printing.Showable
 import Contexts._
 import Types._
@@ -46,7 +46,8 @@ object Implicits {
       def refMatches(ref: TermRef)(implicit ctx: Context) =
         (ref.symbol isAccessibleFrom ref.prefix) && NoViewsAllowed.isCompatible(normalize(ref, pt), pt)
 
-      refs filter (refMatches(_)(ctx.fresh.withExploreTyperState.addMode(Mode.TypevarsMissContext))) // create a defensive copy of ctx to avoid constraint pollution
+      if (refs.isEmpty) refs
+      else refs filter (refMatches(_)(ctx.fresh.withExploreTyperState.addMode(Mode.TypevarsMissContext))) // create a defensive copy of ctx to avoid constraint pollution
     }
   }
 
@@ -63,7 +64,13 @@ object Implicits {
     }
 
     /** The implicit references that are eligible for expected type `tp` */
-    lazy val eligible: List[TermRef] = ctx.traceIndented(i"eligible($tp), companions = ${companionRefs.toList}%, %", implicits, show = true)(filterMatching(tp))
+    lazy val eligible: List[TermRef] =
+      /*>|>*/ track("eligible in tpe") /*<|<*/ {
+        /*>|>*/ ctx.traceIndented(i"eligible($tp), companions = ${companionRefs.toList}%, %", implicits, show = true) /*<|<*/ {
+          if (refs.nonEmpty && monitored) record(s"check eligible refs in tpe", refs.length)
+          filterMatching(tp)
+        }
+      }
 
     override def toString =
       i"OfTypeImplicits($tp), companions = ${companionRefs.toList}%, %; refs = $refs%, %."
@@ -80,11 +87,13 @@ object Implicits {
     private val eligibleCache = new mutable.LinkedHashMap[Type, List[TermRef]]
 
     /** The implicit references that are eligible for type `tp`. */
-    def eligible(tp: Type): List[TermRef] =
+    def eligible(tp: Type): List[TermRef] = /*>|>*/ track(s"eligible in ctx") /*<|<*/ {
       if (tp.hash == NotCached) computeEligible(tp)
       else eligibleCache.getOrElseUpdate(tp, computeEligible(tp))
+    }
 
     private def computeEligible(tp: Type): List[TermRef] = {
+      if (refs.nonEmpty && monitored) record(s"check eligible refs in ctx", refs.length)
       val ownEligible = filterMatching(tp)
       if (outerCtx == NoContext) ownEligible
       else ownEligible ::: {
