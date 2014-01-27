@@ -24,7 +24,12 @@ object Uniques {
   def unique[T <: Type](tp: T)(implicit ctx: Context): T = {
     if (monitored) recordCaching(tp)
     if (tp.hash == NotCached) tp
-    else ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
+    else if (monitored) {
+      val size = ctx.uniques.size
+      val result = ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
+      if (ctx.uniques.size > size) record(s"fresh unique ${tp.getClass}")
+      result
+    } else ctx.uniques.findEntryOrUpdate(tp).asInstanceOf[T]
   } /* !!! DEBUG
   ensuring (
     result => tp.toString == result.toString || {

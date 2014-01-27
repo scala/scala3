@@ -965,6 +965,15 @@ object Types {
     def map(tm: TypeMap): ProtoType
   }
 
+  /** Implementations of this trait cache the resukts of `narrow`. */
+  trait NarrowCached extends Type {
+    private var myNarrow: TermRef = null
+    override def narrow(implicit ctx: Context): TermRef = {
+      if (myNarrow eq null) myNarrow = super.narrow
+      myNarrow
+    }
+  }
+
 // --- NamedTypes ------------------------------------------------------------------
 
   /** A NamedType of the form Prefix # name */
@@ -1408,7 +1417,7 @@ object Types {
 
   abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])
       (resultTypeExp: MethodType => Type)
-    extends CachedGroundType with BindingType with TermType with MethodOrPoly { thisMethodType =>
+    extends CachedGroundType with BindingType with TermType with MethodOrPoly with NarrowCached { thisMethodType =>
 
     override val resultType = resultTypeExp(this)
     assert(resultType != NoType)
