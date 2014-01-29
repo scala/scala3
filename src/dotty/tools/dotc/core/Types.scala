@@ -1266,6 +1266,8 @@ object Types {
 
     override def underlying(implicit ctx: Context) = parent
 
+    protected def isProto: Boolean = false
+
     /** Derived refined type, with a twist: A refinement with a higher-kinded type param placeholder
      *  is transformed to a refinement of the original type parameter if that one exists.
      */
@@ -1296,7 +1298,8 @@ object Types {
       case that: RefinedType =>
         this.parent == that.parent &&
         this.refinedName == that.refinedName &&
-        this.refinedInfo == that.refinedInfo
+        this.refinedInfo == that.refinedInfo &&
+        !that.isProto
       case _ =>
         false
     }

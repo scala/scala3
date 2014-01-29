@@ -73,7 +73,7 @@ object Inferencing {
    *
    *       [ ].name: proto
    */
-  abstract class SelectionProto(val name: Name, proto: Type, compat: Compatibility)
+  abstract class SelectionProto(val name: Name, proto: Type, val compat: Compatibility)
   extends RefinedType(WildcardType, name) with ProtoType {
     override val refinedInfo = proto
     override def isMatchedBy(tp1: Type)(implicit ctx: Context) =
@@ -81,6 +81,7 @@ object Inferencing {
         val mbr = tp1.member(name)
         mbr.exists && mbr.hasAltWith(m => compat.normalizedCompatible(m.info, proto))
       }
+    override def isProto = true
     override def toString = "Proto" + super.toString
     override def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
       val tp1 @ RefinedType(parent1, refinedName1) = super.derivedRefinedType(parent, refinedName, refinedInfo)
@@ -93,20 +94,21 @@ object Inferencing {
     def derivedSelectionProto(name: Name, proto: Type, compat: Compatibility)(implicit ctx: Context) =
       if ((name eq this.name) && (proto eq this.proto) && (compat eq this.compat)) this
       else SelectionProto(name, proto, compat)
- /*
+
     override def equals(that: Any): Boolean = that match {
       case that: SelectionProto =>
-        (name eq that.name) && (refinedInfo eq that.refinedInfo) && (compat eq that.compat)
+        (name eq that.name) && (refinedInfo == that.refinedInfo) && (compat eq that.compat)
+      case _ =>
+        false
     }
 
-*/
     def map(tm: TypeMap)(implicit ctx: Context) = derivedSelectionProto(name, tm(proto), compat)
     def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context) = ta(x, this)
-  }
 
-  class CachedSelectionProto(name: Name, proto: Type, compat: Compatibility) extends SelectionProto(name, proto, compat) {
     override def computeHash = addDelta(doHash(name, proto), if (compat == NoViewsAllowed) 1 else 0)
   }
+
+  class CachedSelectionProto(name: Name, proto: Type, compat: Compatibility) extends SelectionProto(name, proto, compat)
 
   object SelectionProto {
     def apply(name: Name, proto: Type, compat: Compatibility)(implicit ctx: Context): SelectionProto = {
