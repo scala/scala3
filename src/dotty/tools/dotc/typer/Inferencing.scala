@@ -208,8 +208,36 @@ object Inferencing {
  //     case rt: SelectionProto => rt.name.toString == "info"
  //     case _ => false
  //   }
-    def isMatchedBy(tp: Type)(implicit ctx: Context) = /*ctx.conditionalTraceIndented(lookingForInfo, i"?.info isMatchedBy $tp ${tp.getClass}")*/ {
-      ctx.typer.isApplicable(tp, argType :: Nil, resultType)
+    def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean = /*ctx.conditionalTraceIndented(lookingForInfo, i"?.info isMatchedBy $tp ${tp.getClass}")*/ {
+      def discard(tp: Type): Boolean = tp.widen match {
+        case tpw: MethodType =>
+          tpw.isImplicit ||
+          tpw.paramTypes.length != 1 ||
+          !(argType <:< tpw.paramTypes.head)(ctx.fresh.withExploreTyperState)
+        case tpw: PolyType =>
+          discard((new WildApprox) apply tpw.resultType)
+//        case tpw: TermRef =>
+//          false
+        case _ =>
+          false
+ /* not yet
+        case tpw =>
+          def isConforms(sym: Symbol) =
+            sym.exists && sym.owner == defn.ScalaPredefModule.moduleClass && sym.name == tpnme.Conforms
+          if (isConforms(tpw.typeSymbol)) false
+          else {
+            if (ctx.typer.isApplicable(tp, argType :: Nil, resultType))
+              println(i"??? $tp is applicable to $this / typeSymbol = ${tpw.typeSymbol}")
+            true
+          }
+ */
+      }
+
+      if (discard(tp)) {
+        Stats.record("discarded eligible")
+        false
+      }
+      else ctx.typer.isApplicable(tp, argType :: Nil, resultType)
     }
 
     def derivedViewProto(argType: Type, resultType: Type)(implicit ctx: Context) =
@@ -285,7 +313,7 @@ object Inferencing {
    */
   def normalize(tp: Type, pt: Type)(implicit ctx: Context): Type = Stats.track("normalize") {
     tp.widenSingleton match {
-      case pt: PolyType => normalize(constrained(pt).resultType, pt)
+      case poly: PolyType => normalize(constrained(poly).resultType, pt)
       case mt: MethodType if !mt.isDependent /*&& !pt.isInstanceOf[ApplyingProto]*/ =>
         if (mt.isImplicit) mt.resultType
         else {

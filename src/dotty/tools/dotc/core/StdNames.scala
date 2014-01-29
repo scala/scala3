@@ -26,7 +26,7 @@ object StdNames {
   }
 
   abstract class ScalaNames[N <: Name] extends DefinedNames[N] {
-    private def encode(s: String): N = fromName(fromString(s).encode)
+    protected def encode(s: String): N = fromName(fromString(s).encode)
 
 // Keywords, need to come first -----------------------
 
@@ -636,8 +636,7 @@ object StdNames {
   class ScalaTypeNames extends ScalaNames[TypeName] {
     protected implicit def fromString(s: String): TypeName = typeName(s)
 
-    @switch def syntheticTypeParamName(i: Int): TypeName =
-      typeName("T"+i)
+    @switch def syntheticTypeParamName(i: Int): TypeName = "T"+i
 
     def syntheticTypeParamNames(num: Int): List[TypeName] =
       (0 until num).map(syntheticTypeParamName)(breakOut)
