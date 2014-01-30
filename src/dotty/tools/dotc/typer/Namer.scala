@@ -99,21 +99,21 @@ class Namer { typer: Typer =>
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
    */
-  lazy val expandedTree = new mutable.HashMap[DefTree, Tree] {
-    override def default(tree: DefTree) = tree
-  }
+  lazy val expandedTree = new mutable.AnyRefMap[DefTree, Tree] /*{
+    override def default(tree: DefTree) = tree // can't have defaults on AnyRefMaps :-(
+  }*/
 
   /** A map from expanded MemberDef, PatDef or Import trees to their symbols.
    *  Populated during enterSyms, emptied at the point a typed tree
    *  with the same symbol is created (this can be when the symbol is completed
    *  or at the latest when the tree is typechecked.
    */
-  lazy val symOfTree = new mutable.HashMap[Tree, Symbol]
+  lazy val symOfTree = new mutable.AnyRefMap[Tree, Symbol]
 
   /** A map from expanded trees to their typed versions.
    *  Populated when trees are typechecked during completion (using method typedAhead).
    */
-  lazy val typedTree = new mutable.HashMap[Tree, tpd.Tree]
+  lazy val typedTree = new mutable.AnyRefMap[Tree, tpd.Tree]
 
   /** A map from method symbols to nested typers.
    *  Populated when methods are completed. Emptied when they are typechecked.
@@ -121,7 +121,7 @@ class Namer { typer: Typer =>
    *  one, so that trees that are shared between different DefDefs can be independently
    *  used as indices. It also contains a scope that contains nested parameters.
    */
-  lazy val nestedTyper = new mutable.HashMap[Symbol, Typer]
+  lazy val nestedTyper = new mutable.AnyRefMap[Symbol, Typer]
 
   /** The scope of the typer.
    *  For nested typers this is a place parameters are entered during completion
@@ -246,7 +246,7 @@ class Namer { typer: Typer =>
 
   /** The expanded version of this tree, or tree itself if not expanded */
   def expanded(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case ddef: DefTree => expandedTree(ddef)
+    case ddef: DefTree => expandedTree.getOrElse(ddef, ddef)
     case _ => tree
   }
 
@@ -326,7 +326,7 @@ class Namer { typer: Typer =>
         classDef get name.toTypeName match {
           case Some(cdef) =>
             val Thicket(vdef :: (mcls @ TypeDef(_, _, impl: Template)) :: Nil) = expandedTree(mdef)
-            expandedTree(cdef) match {
+            expandedTree.getOrElse(cdef, cdef) match {
               case Thicket(cls :: mval :: TypeDef(_, _, compimpl: Template) :: crest) =>
                 val mcls1 = cpy.TypeDef(mcls, mcls.mods, mcls.name,
                     cpy.Template(impl, impl.constr, impl.parents, impl.self,
@@ -435,8 +435,18 @@ class Namer { typer: Typer =>
   }
 
   /** Typecheck tree during completion, and remember result in typedtree map */
-  private def typedAheadImpl(tree: Tree, pt: Type)(implicit ctx: Context): tpd.Tree =
-    typedTree.getOrElseUpdate(expanded(tree), typer.typed(tree, pt))
+  private def typedAheadImpl(tree: Tree, pt: Type)(implicit ctx: Context): tpd.Tree = {
+    val xtree = expanded(tree)
+    typedTree.get(xtree) match {
+      case Some(ttree) => ttree
+      case none =>
+        val ttree = typer.typed(tree, pt)
+        typedTree(xtree) = ttree
+        ttree
+    }
+    // was: typedTree.getOrElseUpdate(expanded(tree), typer.typed(tree, pt))
+    // but this fails for AnyRefMap with an ArrayIndexOutOfBounds exception in getOrElseUpdate
+  }
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =
     typedAheadImpl(tree, pt)(ctx retractMode Mode.PatternOrType addMode Mode.Type)

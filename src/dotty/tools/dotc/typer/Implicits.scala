@@ -86,23 +86,24 @@ object Implicits {
    *  @param outerCtx  the next outer context that makes visible further implicits
    */
   class ContextualImplicits(val refs: List[TermRef], val outerCtx: Context)(initctx: Context) extends ImplicitRefs(initctx) {
-    private val eligibleCache = new mutable.LinkedHashMap[Type, List[TermRef]]
+    private val eligibleCache = new mutable.AnyRefMap[Type, List[TermRef]]
 
     /** The implicit references that are eligible for type `tp`. */
     def eligible(tp: Type): List[TermRef] = /*>|>*/ track(s"eligible in ctx") /*<|<*/ {
       if (tp.hash == NotCached) computeEligible(tp)
-      else {
-        eligibleCache get tp match {
-          case Some(_) =>
-            def elided(ci: ContextualImplicits): Int = {
-              val n = ci.refs.length
-              if (ci.outerCtx == NoContext) n
-              else n + elided(ci.outerCtx.implicits)
-            }
-            record(s"elided eligible refs", elided(this))
-          case None =>
-        }
-        eligibleCache.getOrElseUpdate(tp, computeEligible(tp))
+      else eligibleCache get tp match {
+        case Some(eligibles) =>
+          def elided(ci: ContextualImplicits): Int = {
+            val n = ci.refs.length
+            if (ci.outerCtx == NoContext) n
+            else n + elided(ci.outerCtx.implicits)
+          }
+          if (monitored) record(s"elided eligible refs", elided(this))
+          eligibles
+        case None =>
+          val eligibles = computeEligible(tp)
+          eligibleCache(tp) = eligibles
+          eligibles
       }
     }
 
@@ -195,7 +196,7 @@ import Implicits._
 /** Info relating to implicits that is kept for one run */
 trait ImplicitRunInfo { self: RunInfo =>
 
-  private val implicitScopeCache = mutable.HashMap[Type, OfTypeImplicits]()
+  private val implicitScopeCache = mutable.AnyRefMap[Type, OfTypeImplicits]()
 
   /** The implicit scope of a type `tp`
    *  @param liftingCtx   A context to be used when computing the class symbols of
@@ -564,7 +565,7 @@ class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
 
 /** A set of term references where equality is =:= */
 class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRef] {
-  private val elems = new mutable.LinkedHashMap[TermSymbol, List[Type]]
+  private val elems = new mutable.LinkedHashMap[TermSymbol, List[Type]] // todo: change to j.u.LinkedHashMap?
 
   def += (ref: TermRef): Unit = {
     val pre = ref.prefix

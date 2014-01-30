@@ -399,7 +399,7 @@ object Contexts {
     private[core] var classOfId = new Array[TypeRef](InitialSuperIdsSize)
 
     /** A map from a the typeref of a class to its superclass id */
-    private[core] val superIdOfClass = new mutable.HashMap[TypeRef, Int]
+    private[core] val superIdOfClass = new mutable.AnyRefMap[TypeRef, Int]
 
     /** The last allocated superclass id */
     private[core] var lastSuperId = -1

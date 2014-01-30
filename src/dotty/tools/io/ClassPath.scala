@@ -339,7 +339,7 @@ extends ClassPath {
 
   lazy val classes: IndexedSeq[AnyClassRep] = {
     var count   = 0
-    val indices = mutable.HashMap[String, Int]()
+    val indices = mutable.AnyRefMap[String, Int]()
     val cls     = new mutable.ArrayBuffer[AnyClassRep](1024)
 
     for (e <- entries; c <- e.classes) {
@@ -364,7 +364,7 @@ extends ClassPath {
 
   lazy val packages: IndexedSeq[ClassPath] = {
     var count   = 0
-    val indices = mutable.HashMap[String, Int]()
+    val indices = mutable.AnyRefMap[String, Int]()
     val pkg     = new mutable.ArrayBuffer[ClassPath](256)
 
     for (e <- entries; p <- e.packages) {

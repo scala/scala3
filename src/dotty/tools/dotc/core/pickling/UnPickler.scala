@@ -155,10 +155,10 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   private val entries = new Array[AnyRef](index.length)
 
   /** A map from symbols to their associated `decls` scopes */
-  private val symScopes = mutable.HashMap[Symbol, Scope]()
+  private val symScopes = mutable.AnyRefMap[Symbol, Scope]()
 
   /** A map from refinement classes to their associated refinement types */
-  private val refinementTypes = mutable.HashMap[Symbol, RefinedType]()
+  private val refinementTypes = mutable.AnyRefMap[Symbol, RefinedType]()
 
   protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None) = {
     val ex = new BadSignature(
