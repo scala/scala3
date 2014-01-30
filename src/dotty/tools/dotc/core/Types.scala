@@ -984,50 +984,67 @@ object Types {
 
     assert(prefix.isValueType || (prefix eq NoPrefix))
 
-    private[this] var lastDenotationOrSym: AnyRef = null
+    private[this] var lastDenotation: Denotation = _
+    private[this] var lastSymbol: Symbol = _
+    private[this] var checkedPeriod = Nowhere
 
-    def knownDenotation: Boolean = lastDenotationOrSym.isInstanceOf[Denotation]
+    // Invariants:
+    // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
+    // (2) lastDenotation != null    =>  lastSymbol != null
+
+    def knownDenotation: Boolean = lastDenotation != null
 
     /** The denotation currently denoted by this type */
-    final def denot(implicit ctx: Context): Denotation = lastDenotationOrSym match {
-      case d: Denotation if d.validFor contains ctx.period => d
-      case _ => computeDenot
+    final def denot(implicit ctx: Context): Denotation = {
+      val now = ctx.period
+      if (checkedPeriod == now) lastDenotation else denotAt(now)
     }
 
+    /** A first fall back to do a somewhat more expensive calculation in case the first
+     *  attempt in `denot` does not yield a denotation.
+     */
+    private def denotAt(now: Period)(implicit ctx: Context): Denotation = {
+      val d = lastDenotation
+      if (d != null && (d.validFor contains now)) {
+        checkedPeriod = now
+        d
+      }
+      else computeDenot
+    }
+
+    /** A second fallback to recompute the denotation if necessary */
     private def computeDenot(implicit ctx: Context): Denotation = {
-      val denot = lastDenotationOrSym match {
+      val d = lastDenotation match {
+        case null =>
+          val sym = lastSymbol
+          if (sym == null) loadDenot else denotOfSym(sym)
         case d: SymDenotation if ctx.stillValid(d) =>
           d.current
-        case d: Denotation =>
+        case d =>
           if (d.validFor.runId == ctx.period.runId) d.current
           else loadDenot
-        case sym: Symbol =>
-          val d = sym.denot
-          val owner = d.owner
-          if (owner.isTerm) d else d.asSeenFrom(prefix)
-        case _ =>
-          loadDenot
-/* need to do elsewhere as it leads to a cycle in subtyping here.
-            if (d.exists && !d.symbol.isAliasType && !prefix.isLegalPrefix) {
-              val ex = new MalformedType(prefix, d, prefix.memberNames(abstractTypeNameFilter))
-              if (ctx.checkPrefix) {
-                ctx.printCreationTrace()
-                throw ex
-              } else ctx.log(ex.getMessage)
-            }
-*/
       }
-      lastDenotationOrSym = denot
-      denot
+      lastDenotation = d
+      lastSymbol = d.symbol
+      d
+    }
+
+    private def denotOfSym(sym: Symbol)(implicit ctx: Context): Denotation = {
+      val d = sym.denot
+      val owner = d.owner
+      if (owner.isTerm) d else d.asSeenFrom(prefix)
     }
 
     private[dotc] final def withDenot(denot: Denotation): this.type = {
-      lastDenotationOrSym = denot
+      lastDenotation = denot
+      lastSymbol = denot.symbol
       this
     }
 
     private[dotc] final def withSym(sym: Symbol): this.type = {
-      lastDenotationOrSym = sym
+      lastDenotation = null
+      lastSymbol = sym
+      checkedPeriod = Nowhere
       this
     }
 
@@ -1045,9 +1062,11 @@ object Types {
     def isType = name.isTypeName
     def isTerm = name.isTermName
 
-    def symbol(implicit ctx: Context): Symbol = lastDenotationOrSym match {
-      case sym: Symbol => sym
-      case _ => denot.symbol
+    def symbol(implicit ctx: Context): Symbol = {
+      val now = ctx.period
+      if (checkedPeriod == now ||
+          lastDenotation == null && lastSymbol != null) lastSymbol
+      else denot.symbol
     }
 
     def info(implicit ctx: Context): Type = denot.info
