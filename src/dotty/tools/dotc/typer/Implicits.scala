@@ -43,9 +43,48 @@ object Implicits {
 
     /** Return those references in `refs` that are compatible with type `pt`. */
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = track("filterMatching") {
+
       def refMatches(ref: TermRef)(implicit ctx: Context) = {
-        // println(i"refmatches $ref --> ${normalize(ref, pt)}, pt = $pt")
-        (ref.symbol isAccessibleFrom ref.prefix) && NoViewsAllowed.isCompatible(normalize(ref, pt), pt)
+      
+        def discardForView(tpw: Type, argType: Type): Boolean = tpw match {
+          case tpw: MethodType =>
+            tpw.isImplicit ||
+            tpw.paramTypes.length != 1 ||
+            !(argType <:< tpw.paramTypes.head)(ctx.fresh.withExploreTyperState)
+          case tpw: PolyType =>
+            discardForView((new WildApprox) apply tpw.resultType, argType)
+          case tpw: TermRef =>
+            false // can't discard overloaded refs
+          case tpw =>
+            def isConforms(sym: Symbol) =
+              sym.exists && sym.owner == defn.ScalaPredefModule.moduleClass && sym.name == tpnme.Conforms
+            if (isConforms(tpw.typeSymbol)) false // todo: figure out why we need conforms
+            else {
+              //if (ctx.typer.isApplicable(tp, argType :: Nil, resultType))
+              //  println(i"??? $tp is applicable to $this / typeSymbol = ${tpw.typeSymbol}")
+              true
+            }
+        }
+        
+        def discardForValueType(tpw: Type): Boolean = tpw match {
+          case mt: MethodType => !mt.isImplicit
+          case mt: PolyType => discardForValueType(tpw.resultType)
+          case _ => false
+        }
+
+        def discard = pt match {
+          case pt: ViewProto => discardForView(ref.widen, pt.argType)
+          case _: ValueType => !defn.isFunctionType(pt) && discardForValueType(ref.widen) 
+          case _ => false
+        }
+
+        (ref.symbol isAccessibleFrom ref.prefix) && {
+          if (discard) {
+            record("discarded eligible")
+            false
+          }
+          else NoViewsAllowed.isCompatible(normalize(ref, pt), pt)
+        }
       }
 
       if (refs.isEmpty) refs

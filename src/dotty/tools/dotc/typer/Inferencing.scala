@@ -209,31 +209,7 @@ object Inferencing {
  //     case _ => false
  //   }
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean = /*ctx.conditionalTraceIndented(lookingForInfo, i"?.info isMatchedBy $tp ${tp.getClass}")*/ {
-      def discard(tp: Type): Boolean = tp.widen match {
-        case tpw: MethodType =>
-          tpw.isImplicit ||
-          tpw.paramTypes.length != 1 ||
-          !(argType <:< tpw.paramTypes.head)(ctx.fresh.withExploreTyperState)
-        case tpw: PolyType =>
-          discard((new WildApprox) apply tpw.resultType)
-        case tpw: TermRef =>
-          false // can't discard overloaded refs
-        case tpw =>
-          def isConforms(sym: Symbol) =
-            sym.exists && sym.owner == defn.ScalaPredefModule.moduleClass && sym.name == tpnme.Conforms
-          if (isConforms(tpw.typeSymbol)) false // todo: figure out why we need conforms
-          else {
-            //if (ctx.typer.isApplicable(tp, argType :: Nil, resultType))
-            //  println(i"??? $tp is applicable to $this / typeSymbol = ${tpw.typeSymbol}")
-            true
-          }
-      }
-
-      if (discard(tp)) {
-        Stats.record("discarded eligible")
-        false
-      }
-      else ctx.typer.isApplicable(tp, argType :: Nil, resultType)
+  	  ctx.typer.isApplicable(tp, argType :: Nil, resultType)
     }
 
     def derivedViewProto(argType: Type, resultType: Type)(implicit ctx: Context) =
