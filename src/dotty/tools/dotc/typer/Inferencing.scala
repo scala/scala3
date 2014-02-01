@@ -216,21 +216,17 @@ object Inferencing {
           !(argType <:< tpw.paramTypes.head)(ctx.fresh.withExploreTyperState)
         case tpw: PolyType =>
           discard((new WildApprox) apply tpw.resultType)
-//        case tpw: TermRef =>
-//          false
-        case _ =>
-          false
- /* not yet
+        case tpw: TermRef =>
+          false // can't discard overloaded refs
         case tpw =>
           def isConforms(sym: Symbol) =
             sym.exists && sym.owner == defn.ScalaPredefModule.moduleClass && sym.name == tpnme.Conforms
-          if (isConforms(tpw.typeSymbol)) false
+          if (isConforms(tpw.typeSymbol)) false // todo: figure out why we need conforms
           else {
-            if (ctx.typer.isApplicable(tp, argType :: Nil, resultType))
-              println(i"??? $tp is applicable to $this / typeSymbol = ${tpw.typeSymbol}")
+            //if (ctx.typer.isApplicable(tp, argType :: Nil, resultType))
+            //  println(i"??? $tp is applicable to $this / typeSymbol = ${tpw.typeSymbol}")
             true
           }
- */
       }
 
       if (discard(tp)) {
@@ -542,7 +538,11 @@ object Inferencing {
         WildcardType(TypeBounds.upper(apply(mt.paramTypes(pnum))))
       case tp: TypeVar =>
         val inst = tp.instanceOpt
-        apply(inst orElse WildcardType(ctx.typerState.constraint.bounds(tp.origin)))
+        if (inst.exists) apply(inst)
+        else ctx.typerState.constraint.at(tp.origin) match {
+          case bounds: TypeBounds => apply(WildcardType(bounds))
+          case NoType => WildcardType
+        }
       case tp: AndType =>
         val tp1a = apply(tp.tp1)
         val tp2a = apply(tp.tp2)

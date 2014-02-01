@@ -643,6 +643,8 @@ object StdNames {
 
     def higherKindedTraitName(n: Int) = HigherKinded ++ n.toString
     def higherKindedParamName(n: Int) = HK_PARAM_PREFIX ++ n.toString
+
+    final val Conforms = encode("<:<")
   }
 
   abstract class JavaNames[N <: Name] extends DefinedNames[N] {

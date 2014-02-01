@@ -325,7 +325,15 @@ trait Implicits { self: Typer =>
     if (   (to isRef defn.AnyClass)
         || (to isRef defn.ObjectClass)
         || (to isRef defn.UnitClass)) NoImplicitMatches
-    else inferImplicit(to.stripTypeVar.widenExpr, from, from.pos)
+    else
+      try inferImplicit(to.stripTypeVar.widenExpr, from, from.pos)
+      catch {
+        case ex: AssertionError =>
+          implicits.println(s"view $from ==> $to")
+          implicits.println(ctx.typerState.constraint.show)
+          implicits.println(TypeComparer.explained(implicit ctx => from.tpe <:< to))
+          throw ex
+      }
   }
 
   /** Find an implicit parameter or conversion.
@@ -362,14 +370,14 @@ trait Implicits { self: Typer =>
 
     private def nestedContext = ctx.fresh.withNewMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
-    private def implicitProto(resultType: Type) =
-      if (argument.isEmpty) resultType else ViewProto(argument.tpe, resultType)
+    private def implicitProto(resultType: Type, f: Type => Type) =
+      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe), f(resultType))
 
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
         i"found: ${argument.tpe}, expected: $pt")
 
     /** The expected type for the searched implicit */
-    lazy val fullProto = implicitProto(pt)
+    lazy val fullProto = implicitProto(pt, identity)
 
     lazy val funProto = fullProto match {
       case proto: ViewProto =>
@@ -378,7 +386,7 @@ trait Implicits { self: Typer =>
     }
 
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
-    val wildProto = implicitProto((new WildApprox) apply pt)
+    val wildProto = implicitProto(pt, new WildApprox)
 
     /** Search failures; overridden in ExplainedImplicitSearch */
     protected def nonMatchingImplicit(ref: TermRef): SearchFailure = NoImplicitMatches
