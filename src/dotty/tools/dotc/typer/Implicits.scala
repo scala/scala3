@@ -45,14 +45,21 @@ object Implicits {
     protected def filterMatching(pt: Type)(implicit ctx: Context): List[TermRef] = track("filterMatching") {
 
       def refMatches(ref: TermRef)(implicit ctx: Context) = {
-      
+
         def discardForView(tpw: Type, argType: Type): Boolean = tpw match {
-          case tpw: MethodType =>
-            tpw.isImplicit ||
-            tpw.paramTypes.length != 1 ||
-            !(argType <:< tpw.paramTypes.head)(ctx.fresh.withExploreTyperState)
-          case tpw: PolyType =>
-            discardForView((new WildApprox) apply tpw.resultType, argType)
+          case mt: MethodType =>
+            mt.isImplicit ||
+            mt.paramTypes.length != 1 ||
+            !(argType <:< mt.paramTypes.head)(ctx.fresh.withExploreTyperState)
+          case poly: PolyType =>
+            poly.resultType match {
+              case mt: MethodType =>
+                mt.isImplicit ||
+                mt.paramTypes.length != 1 ||
+                !(argType <:< ((new WildApprox) apply mt.paramTypes.head))(ctx.fresh.withExploreTyperState)
+              case rtp =>
+                discardForView((new WildApprox) apply rtp, argType)
+            }
           case tpw: TermRef =>
             false // can't discard overloaded refs
           case tpw =>
@@ -65,7 +72,7 @@ object Implicits {
               true
             }
         }
-        
+
         def discardForValueType(tpw: Type): Boolean = tpw match {
           case mt: MethodType => !mt.isImplicit
           case mt: PolyType => discardForValueType(tpw.resultType)
@@ -74,7 +81,7 @@ object Implicits {
 
         def discard = pt match {
           case pt: ViewProto => discardForView(ref.widen, pt.argType)
-          case _: ValueType => !defn.isFunctionType(pt) && discardForValueType(ref.widen) 
+          case _: ValueType => !defn.isFunctionType(pt) && discardForValueType(ref.widen)
           case _ => false
         }
 
@@ -146,7 +153,7 @@ object Implicits {
       }
     }
 
-    private def computeEligible(tp: Type): List[TermRef] = ctx.traceIndented(i"computeEligible $tp in $refs%, %", implicitsDetailed) {
+    private def computeEligible(tp: Type): List[TermRef] = /*>|>*/ ctx.traceIndented(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
       if (monitored) record(s"check eligible refs in ctx", refs.length)
       val ownEligible = filterMatching(tp)
       if (outerCtx == NoContext) ownEligible
