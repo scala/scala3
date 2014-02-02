@@ -16,7 +16,7 @@ import config.Printers._
 /** Provides methods to compare types.
  */
 class TypeComparer(initctx: Context) extends DotClass {
-  implicit val ctx = initctx
+  implicit val ctx: Context = initctx
 
   val state = ctx.typerState
   import state.constraint

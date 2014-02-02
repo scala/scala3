@@ -378,7 +378,7 @@ class Namer { typer: Typer =>
   class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
     withDecls(newScope)
 
-    protected implicit val ctx = localContext(cls)
+    protected implicit val ctx: Context = localContext(cls)
 
     val TypeDef(_, name, impl @ Template(constr, parents, self, body)) = original
 

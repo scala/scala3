@@ -18,7 +18,7 @@ object Implicits {
     def foo(cond: Boolean): Int = if (cond) x.foo("abc") else 0
   }
 
-  implicit def XDecorator(x: X) = new Xdecorator(x)
+  implicit def XDecorator(x: X): Xdecorator = new Xdecorator(x)
 
   val a: Object = "abc"
   val b: Any = "abc"

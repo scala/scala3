@@ -274,7 +274,7 @@ object desugar {
       else Nil
 
     // For an implicit class C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, .., pMN: TMN), the method
-    //     synthetic implicit C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, ..., pMN: TMN) =
+    //     synthetic implicit C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, ..., pMN: TMN): C[Ts] =
     //       new C[Ts](p11, ..., p1N) ... (pM1, ..., pMN) =
     val implicitWrappers =
       if (mods is Implicit) {
@@ -283,7 +283,7 @@ object desugar {
         if (mods is Case)
           ctx.error("implicit classes may not case classes", cdef.pos)
         DefDef(Modifiers(Synthetic | Implicit), name.toTermName,
-          tparams, vparamss, TypeTree(), creatorExpr) :: Nil
+          tparams, vparamss, classTypeRef, creatorExpr) :: Nil
       }
       else Nil
 

@@ -477,7 +477,7 @@ object Contexts {
   object Context {
 
     /** Implicit conversion that injects all printer operations into a context */
-    implicit def toPrinter(ctx: Context) = ctx.printer
+    implicit def toPrinter(ctx: Context): Printer = ctx.printer
 
     /** implicit conversion that injects all ContextBase members into a context */
     implicit def toBase(ctx: Context): ContextBase = ctx.base
@@ -487,7 +487,7 @@ object Contexts {
 
   /** Info that changes on each compiler run */
   class RunInfo(initctx: Context) extends ImplicitRunInfo {
-    implicit val ctx = initctx
+    implicit val ctx: Context = initctx
   }
 
   /** Initial size of superId table */

@@ -274,7 +274,7 @@ trait ImplicitRunInfo { self: RunInfo =>
      *  abstract types are eliminated.
      */
     object liftToClasses extends TypeMap {
-      private implicit val ctx = liftingCtx
+      private implicit val ctx: Context = liftingCtx
       def apply(tp: Type) = tp match {
         case tp: TypeRef if tp.symbol.isAbstractOrAliasType =>
           val pre = tp.prefix
