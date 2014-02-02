@@ -862,6 +862,7 @@ class Typer extends Namer with Applications with Implicits {
     val ValDef(mods, name, tpt, rhs) = vdef
     val mods1 = typedModifiers(mods)
     val tpt1 = typedType(tpt)
+    if (sym is Implicit) checkImplicitTptNonEmpty(vdef)
     val rhs1 = rhs match {
       case Ident(nme.WILDCARD) => rhs withType tpt1.tpe
       case _ => typedExpr(rhs, tpt1.tpe)
@@ -875,6 +876,10 @@ class Typer extends Namer with Applications with Implicits {
     val mods1 = typedModifiers(mods)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
+    if (sym is Implicit) {
+      checkImplicitTptNonEmpty(ddef)
+      checkImplicitParamsNotSingletons(vparamss1)
+    }
     val tpt1 = typedType(tpt)
     val rhs1 = typedExpr(rhs, tpt1.tpe)
     cpy.DefDef(ddef, mods1, name, tparams1, vparamss1, tpt1, rhs1).withType(sym.termRefWithSig)

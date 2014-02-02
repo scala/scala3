@@ -425,8 +425,26 @@ object Inferencing {
         checkStable(tp.prefix, pos)
         tp
     case _ =>
-      ctx.error(s"$tp is not a class type", pos)
+      ctx.error(i"$tp is not a class type", pos)
       defn.ObjectClass.typeRef
+  }
+
+  /** Check that (return) type of implicit definition is not empty */
+  def checkImplicitTptNonEmpty(defTree: untpd.ValOrDefDef)(implicit ctx: Context): Unit = defTree.tpt match {
+    case TypeTree(original) if original.isEmpty =>
+      val resStr = if (defTree.isInstanceOf[untpd.DefDef]) "result " else ""
+      ctx.error(i"${resStr}type of implicit definition needs to be given explicitly", defTree.pos)
+    case _ =>
+  }
+
+  /** Check that a non-implicit parameter making up the first parameter section of an
+   *  implicit conversion is not a singleton type.
+   */
+  def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = vparamss match {
+    case (vparam :: Nil) :: _ if !(vparam.symbol is Implicit) =>
+      if (vparam.tpt.tpe.isInstanceOf[SingletonType])
+        ctx.error(s"implicit conversion may not have a parameter of singleton type", vparam.tpt.pos)
+    case _ =>
   }
 
   /** Ensure that first typeref in a list of parents points to a non-trait class.
