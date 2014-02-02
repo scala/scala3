@@ -89,6 +89,19 @@ class ImportInfo(val sym: Symbol, val selectors: List[untpd.Tree], val isRootImp
       } yield TermRef.withSig(pre, renamed, denot.signature, denot)
   }
 
+  /** The root import symbol hidden by this symbol, or NoSymbol if no such symbol is hidden.
+   *  Note: this computation needs to work even for un-initialized import infos, and
+   *  is not allowed to force initialization.
+   */
+  lazy val hiddenRoot: Symbol = {
+    val sym = site.termSymbol
+    def hasMaskingSelector = selectors exists {
+      case Pair(_, Ident(nme.WILDCARD)) => true
+      case _ => false
+    }
+    if ((defn.RootImports contains sym) && hasMaskingSelector) sym else NoSymbol
+  }
+
   override def toString = {
     val siteStr = site.show
     val exprStr = if (siteStr endsWith ".type") siteStr dropRight 5 else siteStr

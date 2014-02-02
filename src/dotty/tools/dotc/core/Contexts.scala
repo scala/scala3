@@ -164,10 +164,13 @@ object Contexts {
             else if (isImportContext) importInfo.importedImplicits
             else if (isNonEmptyScopeContext) scope.implicitDecls
             else Nil
-          if (implicitRefs.isEmpty && !(isImportContext && importInfo.isRootImport))
-            outer.implicits // record root imports because they hide implicits in same import further out
-          else
-            new ContextualImplicits(implicitRefs, outer.implicits)(this)
+          val outerImplicits =
+            if (isImportContext && importInfo.hiddenRoot.exists)
+              outer.implicits exclude importInfo.hiddenRoot
+            else
+              outer.implicits
+          if (implicitRefs.isEmpty) outerImplicits
+          else new ContextualImplicits(implicitRefs, outerImplicits)(this)
         }
       implicitsCache
     }

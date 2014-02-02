@@ -185,11 +185,8 @@ class Typer extends Namer with Applications with Implicits {
      *  import in the same program?
      */
     def isDisabled(imp: ImportInfo, site: Type): Boolean = {
-      val qualSym = site.termSymbol
-      if (defn.RootImports contains qualSym) {
-        if (imp.isRootImport && (importedFromRoot contains qualSym)) return true
-        importedFromRoot += qualSym
-      }
+      if (imp.isRootImport && (importedFromRoot contains site.termSymbol)) return true
+      if (imp.hiddenRoot.exists) importedFromRoot += imp.hiddenRoot
       false
     }
 
