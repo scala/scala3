@@ -154,7 +154,7 @@ class Definitions(implicit ctx: Context) {
     ScalaPackageClass, tpnme.Null, AbstractFinal, List(ObjectClass.typeRef))
 
   lazy val ScalaPredefModule = requiredModule("scala.Predef")
-  lazy val DottyPredefModule = requiredModule("dotty.Predef")
+  lazy val DottyPredefModule = requiredModule("dotty.DottyPredef")
   lazy val NilModule = requiredModule("scala.collection.immutable.Nil")
 
 //  lazy val FunctionClass: ClassSymbol = requiredClass("scala.Function")
