@@ -164,8 +164,10 @@ object Contexts {
             else if (isImportContext) importInfo.importedImplicits
             else if (isNonEmptyScopeContext) scope.implicitDecls
             else Nil
-          if (implicitRefs.isEmpty) outer.implicits
-          else new ContextualImplicits(implicitRefs, outer.implicits.ctx)(this)
+          if (implicitRefs.isEmpty && !(isImportContext && importInfo.isRootImport))
+            outer.implicits // record root imports because they hide implicits in same import further out
+          else
+            new ContextualImplicits(implicitRefs, outer.implicits)(this)
         }
       implicitsCache
     }
@@ -346,7 +348,7 @@ object Contexts {
 
   object NoContext extends Context {
     lazy val base = unsupported("base")
-    override def implicits: ContextualImplicits = new ContextualImplicits(Nil, this)(this)
+    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null)(this)
   }
 
   /** A context base defines state and associated methods that exist once per

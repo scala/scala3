@@ -131,7 +131,7 @@ object Implicits {
    *                   name, b, whereas the name of the symbol is the original name, a.
    *  @param outerCtx  the next outer context that makes visible further implicits
    */
-  class ContextualImplicits(val refs: List[TermRef], val outerCtx: Context)(initctx: Context) extends ImplicitRefs(initctx) {
+  class ContextualImplicits(val refs: List[TermRef], val outerImplicits: ContextualImplicits)(initctx: Context) extends ImplicitRefs(initctx) {
     private val eligibleCache = new mutable.AnyRefMap[Type, List[TermRef]]
 
     /** The implicit references that are eligible for type `tp`. */
@@ -141,8 +141,8 @@ object Implicits {
         case Some(eligibles) =>
           def elided(ci: ContextualImplicits): Int = {
             val n = ci.refs.length
-            if (ci.outerCtx == NoContext) n
-            else n + elided(ci.outerCtx.implicits)
+            if (ci.outerImplicits == null) n
+            else n + elided(ci.outerImplicits)
           }
           if (monitored) record(s"elided eligible refs", elided(this))
           eligibles
@@ -156,16 +156,16 @@ object Implicits {
     private def computeEligible(tp: Type): List[TermRef] = /*>|>*/ ctx.traceIndented(i"computeEligible $tp in $refs%, %", implicitsDetailed) /*<|<*/ {
       if (monitored) record(s"check eligible refs in ctx", refs.length)
       val ownEligible = filterMatching(tp)
-      if (outerCtx == NoContext) ownEligible
+      if (outerImplicits == null) ownEligible
       else ownEligible ::: {
         val shadowed = (ownEligible map (_.name)).toSet
-        outerCtx.implicits.eligible(tp) filterNot (ref => shadowed contains ref.name)
+        outerImplicits.eligible(tp) filterNot (ref => shadowed contains ref.name)
       }
     }
 
     override def toString = {
       val own = s"(implicits: ${refs mkString ","})"
-      if (outerCtx == NoContext) own else own + "\n " + outerCtx.implicits
+      if (outerImplicits == null) own else own + "\n " + outerImplicits
     }
   }
 
