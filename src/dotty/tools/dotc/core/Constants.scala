@@ -167,10 +167,15 @@ object Constants {
     /** Convert constant value to conform to given type.
      */
     def convertTo(pt: Type)(implicit ctx: Context): Constant = {
-      val target = pt.typeSymbol
+      def lowerBound(pt: Type): Type = pt.dealias.stripTypeVar match {
+        case tref: TypeRef if !tref.symbol.isClass => lowerBound(tref.info.bounds.lo)
+        case param: PolyParam => lowerBound(ctx.typeComparer.bounds(param).lo)
+        case pt => pt
+      }
+      val target = lowerBound(pt).typeSymbol
       if (target == tpe.typeSymbol)
         this
-      else if (target == defn.ByteClass && isByteRange)
+      else if ((target == defn.ByteClass) && isByteRange)
         Constant(byteValue)
       else if (target == defn.ShortClass && isShortRange)
         Constant(shortValue)
