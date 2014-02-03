@@ -11,7 +11,7 @@ abstract class Driver extends DotClass {
 
   protected def newCompiler(): Compiler
 
-  protected def emptyReporter = new StoreReporter
+  protected def emptyReporter: Reporter = new StoreReporter
 
   protected def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
     if (fileNames.nonEmpty) {

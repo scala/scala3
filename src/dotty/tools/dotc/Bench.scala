@@ -22,23 +22,31 @@ object Bench extends Driver {
     new compiler.Run() compile command.files
   }*/
 
+  private var numRuns = 1
+
   lazy val compiler = new Compiler
 
   override def newCompiler(): Compiler = compiler
 
-  override def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter = {
+  override def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
     if (new config.Settings.Setting.SettingDecorator[Boolean](ctx.base.settings.resident).value(ctx))
       resident(compiler)
     else
-      super.doCompile(compiler, fileNames)
+      (emptyReporter /: (0 until numRuns))((_, _) => super.doCompile(compiler, fileNames))
+
+  def extractNumArg(args: Array[String], name: String, default: Int = 1): (Int, Array[String]) = {
+    val pos = args indexOf name
+    if (pos < 0) (default, args)
+    else (args(pos + 1).toInt, (args take pos) ++ (args drop (pos + 2)))
   }
 
-  val N = 10
-
   override def main(args: Array[String]): Unit = {
-    for (i <- 0 until N) {
+    val (numCompilers, args1) = extractNumArg(args, "#compilers")
+    val (numRuns, args2) = extractNumArg(args1, "#runs")
+    this.numRuns = numRuns
+    for (i <- 0 until numCompilers) {
       val start = System.nanoTime()
-      process(args)
+      process(args2)
       println(s"time elapsed: ${(System.nanoTime - start) / 1000000}ms")
     }
   }
