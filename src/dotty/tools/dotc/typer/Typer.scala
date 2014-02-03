@@ -1150,7 +1150,7 @@ class Typer extends Namer with Applications with Implicits {
       val alts = altDenots map (alt =>
         TermRef.withSig(ref.prefix, ref.name, alt.info.signature, alt))
       def expectedStr = err.expectedTypeStr(pt)
-      resolveOverloaded(alts, pt)(ctx.fresh.withExploreTyperState) match {
+      resolveOverloaded(alts, pt) match {
         case alt :: Nil =>
           adapt(tree.withType(alt), pt)
         case Nil =>
