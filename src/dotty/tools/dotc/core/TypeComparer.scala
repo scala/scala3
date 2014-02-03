@@ -24,8 +24,6 @@ class TypeComparer(initctx: Context) extends DotClass {
   private var pendingSubTypes: mutable.Set[(Type, Type)] = null
   private var recCount = 0
 
-  final val oldCompare = true // ###
-
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint = false
 
@@ -208,8 +206,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         }
 */
         val result =
-          if (recCount < LogPendingSubTypesThreshold)
-            if (oldCompare) firstTry(tp1, tp2) else compare(tp1, tp2)
+          if (recCount < LogPendingSubTypesThreshold) firstTry(tp1, tp2)
           else monitoredIsSubType(tp1, tp2)
         successCount += 1
         totalCount += 1
@@ -260,12 +257,16 @@ class TypeComparer(initctx: Context) extends DotClass {
     !pendingSubTypes(p) && {
       try {
         pendingSubTypes += p
-        if (oldCompare) firstTry(tp1, tp2) else compare(tp1, tp2)
+        firstTry(tp1, tp2)
       } finally {
         pendingSubTypes -= p
       }
     }
   }
+
+/* Alternative implementation of isSubType, currently put on hold. Did not work
+ * out. Keep around for a while longer in case we want to mine it for ideas.
+ */
 
   def compare(tp1: Type, tp2: Type): Boolean = ctx.debugTraceIndented(s"$tp1 <:< $tp2") {
     tp2 match {
@@ -381,10 +382,24 @@ class TypeComparer(initctx: Context) extends DotClass {
       compareNamed
 
     case tp2 @ RefinedType(parent2, name2) =>
+      def matchRefinements(tp1: Type, tp2: Type, seen: Set[Name]): Type = tp1 match {
+        case tp1 @ RefinedType(parent1, name1) if !(seen contains name1) =>
+          tp2 match {
+            case tp2 @ RefinedType(parent2, name2) if nameMatches(name1, name2, tp1, tp2) =>
+              if (isSubType(tp1.refinedInfo, tp2.refinedInfo))
+                matchRefinements(parent1, parent2, seen + name1)
+              else NoType
+            case _ => tp2
+          }
+        case _ => tp2
+      }
       def compareRefined: Boolean = tp1.widen match {
         case tp1 @ RefinedType(parent1, name1) if nameMatches(name1, name2, tp1, tp2) =>
           // optimized case; all info on tp1.name2 is in refinement tp1.refinedInfo.
-          isSubType(tp1, parent2) && isSubType(tp1.refinedInfo, tp2.refinedInfo)
+          isSubType(tp1.refinedInfo, tp2.refinedInfo) && {
+            val ancestor2 = matchRefinements(parent1, parent2, Set.empty + name1)
+            ancestor2.exists && isSubType(tp1, ancestor2)
+          }
         case _ =>
           def hasMatchingMember(name: Name): Boolean = traceIndented(s"hasMatchingMember($name) ${tp1.member(name)}") (
                tp1.member(name).hasAltWith(alt => isSubType(alt.info, tp2.refinedInfo))
@@ -681,10 +696,24 @@ class TypeComparer(initctx: Context) extends DotClass {
       }
       compareNamed
     case tp2 @ RefinedType(parent2, name2) =>
-      def compareRefined = tp1.widen match {
+      def matchRefinements(tp1: Type, tp2: Type, seen: Set[Name]): Type = tp1 match {
+        case tp1 @ RefinedType(parent1, name1) if !(seen contains name1) =>
+          tp2 match {
+            case tp2 @ RefinedType(parent2, name2) if nameMatches(name1, name2, tp1, tp2) =>
+              if (isSubType(tp1.refinedInfo, tp2.refinedInfo))
+                matchRefinements(parent1, parent2, seen + name1)
+              else NoType
+            case _ => tp2
+          }
+        case _ => tp2
+      }
+      def compareRefined: Boolean = tp1.widen match {
         case tp1 @ RefinedType(parent1, name1) if nameMatches(name1, name2, tp1, tp2) =>
           // optimized case; all info on tp1.name2 is in refinement tp1.refinedInfo.
-          isSubType(tp1, parent2) && isSubType(tp1.refinedInfo, tp2.refinedInfo)
+          isSubType(tp1.refinedInfo, tp2.refinedInfo) && {
+            val ancestor2 = matchRefinements(parent1, parent2, Set.empty + name1)
+            ancestor2.exists && isSubType(tp1, ancestor2)
+          }
         case _ =>
           def hasMatchingMember(name: Name): Boolean = /*>|>*/ traceIndented(s"hasMatchingMember($name) ${tp1.member(name)}") /*<|<*/ (
                tp1.member(name).hasAltWith(alt => isSubType(alt.info, tp2.refinedInfo))
