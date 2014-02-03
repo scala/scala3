@@ -63,14 +63,9 @@ object Implicits {
           case tpw: TermRef =>
             false // can't discard overloaded refs
           case tpw =>
-            def isConforms(sym: Symbol) =
-              sym.exists && sym.owner == defn.ScalaPredefModule.moduleClass && sym.name == tpnme.Conforms
-            if (isConforms(tpw.typeSymbol)) false // todo: figure out why we need conforms
-            else {
-              //if (ctx.typer.isApplicable(tp, argType :: Nil, resultType))
-              //  println(i"??? $tp is applicable to $this / typeSymbol = ${tpw.typeSymbol}")
-              true
-            }
+            //if (ctx.typer.isApplicable(tp, argType :: Nil, resultType))
+            //  println(i"??? $tp is applicable to $this / typeSymbol = ${tpw.typeSymbol}")
+            true
         }
 
         def discardForValueType(tpw: Type): Boolean = tpw match {
