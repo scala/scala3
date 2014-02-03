@@ -631,11 +631,14 @@ class TypeComparer(initctx: Context) extends DotClass {
       def comparePolyParam = {
         tp1 == tp2 ||
         isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
-          if (!frozenConstraint &&
-              (tp2 isRef defn.NothingClass) &&
-              ctx.typerState.isGlobalCommittable)
-            ctx.log(s"!!! instantiating to Nothing: $tp1")
-          if (isConstrained(tp1)) addConstraint(tp1, tp2, fromBelow = false)
+          if (isConstrained(tp1))
+            addConstraint(tp1, tp2, fromBelow = false) && {
+              if ((!frozenConstraint) &&
+                  (tp2 isRef defn.NothingClass) &&
+                  ctx.typerState.isGlobalCommittable)
+                ctx.log(s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}")
+              true
+            }
           else (ctx.mode is Mode.TypevarsMissContext) || thirdTry(tp1, tp2)
         }
       }

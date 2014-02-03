@@ -2,6 +2,9 @@ import scala.collection.generic.CanBuildFrom
 
 object collections {
   
+  val arr = Array("a", "b")
+  val aa = arr ++ arr
+ 
   List(1, 2, 3) map (x => 2)
 
   val s = Set(1, 2, 3)

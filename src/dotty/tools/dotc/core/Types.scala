@@ -828,7 +828,7 @@ object Types {
     def variances(include: TypeVar => Boolean)(implicit ctx: Context): VarianceMap = track("variances") {
       val accu = new TypeAccumulator[VarianceMap] {
         def apply(vmap: VarianceMap, t: Type): VarianceMap = t match {
-          case t: TypeVar if include(t) =>
+          case t: TypeVar if !t.isInstantiated && include(t) =>
             val v = vmap(t)
             if (v == null) vmap.updated(t, variance)
             else if (v == variance) vmap
@@ -852,9 +852,9 @@ object Types {
       class Simplify extends TypeMap {
         def apply(tp: Type): Type = tp match {
           case AndType(l, r) =>
-            mapOver(l) & mapOver(r)
+            this(l) & this(r)
           case OrType(l, r) =>
-            mapOver(l) | mapOver(r)
+            this(l) | this(r)
           case tp: PolyParam =>
             ctx.typerState.constraint.typeVarOfParam(tp) orElse tp
           case _ =>
