@@ -1,11 +1,8 @@
 object test {
   
-  import java.util.concurrent.{ Future, Callable, ExecutorService }
-  def callable[T](body: => T): Callable[T] = new Callable[T] { override def call() = body }
+  import collection.JavaConverters._
   
-  
-  def xsubmit(x: Runnable): Future[_] = ???
-  //def xsubmit[T](x: Runnable, y: T): Future[T] = ???
-  def xsubmit[U](x: Callable[U]): Future[U] = ???
-  def spawn0[V](body: V): Future[V]         = xsubmit(callable(body))
+  private val elems =
+    (new java.util.LinkedHashMap[String, List[Int]]).asScala
+  val elems2: collection.mutable.Map[String, List[Int]] = elems
 }

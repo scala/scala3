@@ -354,8 +354,11 @@ class TypeComparer(initctx: Context) extends DotClass {
             addConstraint(tp1, tp2, fromBelow = false) && {
               if ((!frozenConstraint) &&
                   (tp2 isRef defn.NothingClass) &&
-                  ctx.typerState.isGlobalCommittable)
-                ctx.log(s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}")
+                  ctx.typerState.isGlobalCommittable) {
+                def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
+                if (Config.flagInstantiationToNothing) assert(false, msg)
+                else ctx.log(msg)
+              }
               true
             }
           else (ctx.mode is Mode.TypevarsMissContext) || thirdTry(tp1, tp2)
@@ -437,7 +440,7 @@ class TypeComparer(initctx: Context) extends DotClass {
             ancestor2.exists && isSubType(tp1, ancestor2)
           }
         case _ =>
-          def hasMatchingMember(name: Name): Boolean = /*>|>*/ traceIndented(s"hasMatchingMember($name) ${tp1.member(name)}") /*<|<*/ (
+          def hasMatchingMember(name: Name): Boolean = /*>|>*/ ctx.traceIndented(s"hasMatchingMember($name) ${tp1.member(name)}", subtyping) /*<|<*/ (
                tp1.member(name).hasAltWith(alt => isSubType(alt.info, tp2.refinedInfo))
             ||
                { // special case for situations like:

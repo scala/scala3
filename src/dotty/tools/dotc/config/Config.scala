@@ -12,6 +12,8 @@ object Config {
 
   final val checkConstraintsNonCyclic = true
 
+  final val flagInstantiationToNothing = false
+
   /** Throw an exception if a deep subtype recursion is detected */
   final val flagDeepSubTypeRecursions = true
 

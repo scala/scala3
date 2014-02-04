@@ -268,9 +268,9 @@ class ClassfileParser(
                           else TypeBounds.lower(tp)
                         case '*' => TypeBounds.empty
                       }
-                      tp1 = RefinedType(tp, formals.head.name, bounds)
+                      tp1 = RefinedType(tp1, formals.head.name, bounds)
                     case _ =>
-                      tp1 = RefinedType(tp, formals.head.name, TypeAlias(sig2type(tparams, skiptvs)))
+                      tp1 = RefinedType(tp1, formals.head.name, TypeAlias(sig2type(tparams, skiptvs)))
                   }
                   formals = formals.tail
                 }

@@ -10,10 +10,7 @@ import reporting.Reporter
 
 /* To do:
  *   - simplify hk types
- *   - review isSubType
- *   - have a second look at normalization (leave at method types if pt is method type?)
  *   - Don't open package objects from class files if they are present in source
- *   - check why we cannot access java.util.LinkedHashMap as a map
  *   - Revise the way classes are inherited - when not followed by [...] or (...),
  *     assume the unparameterized type and forward type parameters as we do now for the synthetic head class.
  */

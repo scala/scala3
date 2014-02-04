@@ -626,8 +626,9 @@ class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
 
 /** A set of term references where equality is =:= */
 class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRef] {
-  private val elems = new mutable.LinkedHashMap[TermSymbol, List[Type]] // todo: change to j.u.LinkedHashMap?
-
+  import collection.JavaConverters._
+  private val elems = (new java.util.LinkedHashMap[TermSymbol, List[Type]]).asScala
+  
   def += (ref: TermRef): Unit = {
     val pre = ref.prefix
     val sym = ref.symbol.asTerm
