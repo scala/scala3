@@ -31,12 +31,12 @@ class ScannerTest extends DottyTest {
   def scanDir(path: String): Unit = scanDir(Directory(path))
 
   def scanDir(dir: Directory): Unit = {
-    if (blackList contains dir.jfile.getAbsolutePath)
+    if (blackList contains dir.jfile.toString)
       println(s"blacklisted package: ${dir.jfile.getAbsolutePath}")
     else
       for (f <- dir.files)
         if (f.name.endsWith(".scala"))
-          if (blackList contains f.jfile.getAbsolutePath)
+          if (blackList contains f.jfile.toString)
             println(s"blacklisted file: ${f.jfile.getAbsolutePath}")
           else
             scan(new PlainFile(f))
