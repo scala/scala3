@@ -10,8 +10,8 @@ object desugarPackage extends DeSugarTest {
     reset()
     val start = System.nanoTime()
     val startNodes = Trees.ntrees
-    parseDir("/Users/odersky/workspace/dotty/src")
-    parseDir("/Users/odersky/workspace/scala/src")
+    parseDir("./src")
+    parseDir("../scala/src")
     val ms1 = (System.nanoTime() - start)/1000000
     val nodes = Trees.ntrees
     val buf = parsedTrees map desugarTree

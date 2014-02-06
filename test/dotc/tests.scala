@@ -14,9 +14,9 @@ class tests extends CompilerTest {
 //        "-Yshow-suppressed-errors",
         "-pagewidth", "160")
 
-  val posDir = "/Users/odersky/workspace/dotty/tests/pos/"
-  val negDir = "/Users/odersky/workspace/dotty/tests/neg/"
-  val dotcDir = "/Users/odersky/workspace/dotty/src/dotty/"
+  val posDir = "./tests/pos/"
+  val negDir = "./tests/neg/"
+  val dotcDir = "./src/dotty/"
 
   @Test def pos_Coder() = compileFile(posDir, "Coder")
   @Test def pos_blockescapes() = compileFile(posDir, "blockescapes")

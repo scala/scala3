@@ -9,8 +9,8 @@ import org.junit.Test
 class ScannerTest extends DottyTest {
 
   val blackList = List(
-      "/Users/odersky/workspace/scala/src/scaladoc/scala/tools/nsc/doc/html/page/Index.scala",
-      "/Users/odersky/workspace/scala/src/scaladoc/scala/tools/nsc/doc/html/page/Template.scala"
+      "../scala/src/scaladoc/scala/tools/nsc/doc/html/page/Index.scala",
+      "../scala/src/scaladoc/scala/tools/nsc/doc/html/page/Template.scala"
     )
 
   def scan(name: String): Unit = scan(new PlainFile(name))
@@ -58,6 +58,6 @@ class ScannerTest extends DottyTest {
 
   @Test
   def scanScala() = {
-    scanDir("/Users/odersky/workspace/scala/src")
+    scanDir("../scala/src")
   }
 }
