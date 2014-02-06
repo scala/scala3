@@ -12,11 +12,14 @@ class Compiler {
 
   def phases = List(new FrontEnd)
 
+  var runId = 1
+  def nextRunId = { runId += 1; runId }
+
   def rootContext(implicit ctx: Context): Context = {
     ctx.definitions.init()
     ctx.usePhases(phases)
     val start = ctx.fresh
-      .withPeriod(Period(ctx.runId + 1, FirstPhaseId))
+      .withPeriod(Period(nextRunId, FirstPhaseId))
       .withOwner(defn.RootClass)
       .withTyper(new Typer)
       .withNewMode(Mode.ImplicitsEnabled)

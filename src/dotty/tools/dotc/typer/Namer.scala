@@ -182,19 +182,35 @@ class Namer { typer: Typer =>
       else completer
 
     typr.println(i"creating symbol for $tree")
+
+    def checkNoConflict(name: Name): Unit = {
+      def preExisting = ctx.effectiveScope.lookup(name)
+      if (ctx.owner is PackageClass) {
+        if (preExisting.isDefinedInCurrentRun)
+          ctx.error(s"${preExisting.showLocated} is compiled twice, runid = ${ctx.runId}", tree.pos)
+        }
+      else if ((!ctx.owner.isClass || name.isTypeName) && preExisting.exists) {
+        ctx.error(i"$name is already defined as $preExisting")
+      }
+    }
+
     tree match {
       case tree: TypeDef if tree.isClassDef =>
+        val name = tree.name.encode.asTypeName
+        checkNoConflict(name)
         val cls = record(ctx.newClassSymbol(
-          ctx.owner, tree.name.encode.asTypeName, tree.mods.flags,
+          ctx.owner, name, tree.mods.flags,
           cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
+        val name = tree.name.encode
+        checkNoConflict(name)
         val deferred = if (lacksDefinition(tree)) Deferred else EmptyFlags
         val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
         record(ctx.newSymbol(
-          ctx.owner, tree.name.encode, tree.mods.flags | deferred | method,
+          ctx.owner, name, tree.mods.flags | deferred | method,
           adjustIfModule(new Completer(tree), tree),
           privateWithinClass(tree.mods), tree.pos))
       case tree: Import =>
@@ -211,14 +227,6 @@ class Namer { typer: Typer =>
   def enterSymbol(sym: Symbol)(implicit ctx: Context) = {
     if (sym.exists) {
       typr.println(s"entered: $sym in ${ctx.owner} and ${ctx.effectiveScope}")
-      def preExisting = ctx.effectiveScope.lookup(sym.name)
-      if (sym.owner is PackageClass) {
-        if (preExisting.isDefinedInCurrentRun)
-          ctx.error(s"${sym.showLocated} is compiled twice", sym.pos)
-        }
-      else if (!sym.owner.isClass && preExisting.exists) {
-        ctx.error(i"${sym.name} is already defined as $preExisting")
-      }
       ctx.enter(sym)
     }
     sym

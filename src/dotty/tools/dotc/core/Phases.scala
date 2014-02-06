@@ -12,7 +12,7 @@ trait Phases { self: Context =>
     if ((this eq NoContext) || !phase.exists) Nil
     else phase :: outersIterator.dropWhile(_.phase == phase).next.phasesStack
 
-  /** Execute `op` at given phase id */
+  /** Execute `op` at given phase */
   def atPhase[T](phase: Phase)(op: Context => T): T =
     atPhase(phase.id)(op)
 
@@ -92,7 +92,7 @@ object Phases {
       }
     }
 
-   final def <= (that: Phase)(implicit ctx: Context) =
+    final def <= (that: Phase)(implicit ctx: Context) =
       exists && id <= that.id
 
     final def prev(implicit ctx: Context): Phase =
