@@ -4,6 +4,7 @@ dotty
 The experimental compiler for a Scala dialect based on DOT.
 
 ### To get started:
+You need to have scala source in "../scala"
 ```
   sbt compile
   sbt run
