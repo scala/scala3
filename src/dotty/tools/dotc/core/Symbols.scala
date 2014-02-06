@@ -240,7 +240,7 @@ trait Symbols { this: Context =>
     tparams
   }
 
-  def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact, tp)
+  def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | ValidForever, tp)
 
   def newErrorSymbol(owner: Symbol, name: Name) =
     newSymbol(owner, name, SyntheticArtifact,
