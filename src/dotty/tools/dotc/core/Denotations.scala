@@ -479,7 +479,7 @@ object Denotations {
           } while (d ne denot)
           initial.copyIfParentInvalid
         case _ =>
-          throw new Error(s"stale symbol; $this, defined in run ${valid.runId} is referred to in run ${currentPeriod.runId}")
+          staleSymbolError
       }
       if (valid.runId != currentPeriod.runId) bringForward.current
       else {
@@ -522,6 +522,9 @@ object Denotations {
         cur
       }
     }
+
+    def staleSymbolError(implicit ctx: Context) =
+      throw new Error(s"stale symbol; $this, defined in run ${myValidFor.runId} is referred to in run ${ctx.period.runId}")
 
     /** For ClassDenotations only:
      *  If caches influenced by parent classes are still valid, the denotation

@@ -204,10 +204,6 @@ object Inferencing {
    */
   abstract case class ViewProto(argType: Type, override val resultType: Type)(implicit ctx: Context)
   extends CachedGroundType with ApplyingProto {
- //   def lookingForInfo = resultType match {
- //     case rt: SelectionProto => rt.name.toString == "info"
- //     case _ => false
- //   }
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean = /*ctx.conditionalTraceIndented(lookingForInfo, i"?.info isMatchedBy $tp ${tp.getClass}")*/ {
   	  ctx.typer.isApplicable(tp, argType :: Nil, resultType)
     }
