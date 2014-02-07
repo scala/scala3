@@ -10,7 +10,7 @@ import reporting.ConsoleReporter
 
 class Compiler {
 
-  def phases = List(new FrontEnd)
+  def phases = List(new FrontEnd, new backend.jvm.GenBCode.BCodePhase)
 
   def rootContext(implicit ctx: Context): Context = {
     ctx.definitions.init()

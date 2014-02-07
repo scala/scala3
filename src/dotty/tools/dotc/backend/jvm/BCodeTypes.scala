@@ -10,6 +10,13 @@ package backend.jvm
 import scala.tools.asm
 import scala.collection.{ immutable, mutable }
 
+import dotc.ast.Trees.Tree
+import dotc.core.Types.Type
+import dotc.core.StdNames
+import dotc.core.Symbols.{Symbol, NoSymbol}
+
+import StdNames.nme
+
 /*
  *  Utilities to mediate between types as represented in Scala ASTs and ASM trees.
  *
@@ -18,8 +25,6 @@ import scala.collection.{ immutable, mutable }
  *
  */
 abstract class BCodeTypes extends BCodeIdiomatic {
-
-  import global._
 
   // when compiling the Scala library, some assertions don't hold (e.g., scala.Boolean has null superClass although it's not an interface)
   val isCompilingStdLib = !(settings.sourcepath.isDefault)
@@ -72,7 +77,6 @@ abstract class BCodeTypes extends BCodeIdiomatic {
    * must-single-thread
    */
   def initBCodeTypes() {
-    import definitions._
 
     primitiveTypeMap =
       Map(
@@ -743,7 +747,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
      *  when the inner class should not get an index in the constant pool.
      *  That means non-member classes (anonymous). See Section 4.7.5 in the JVMS.
      */
-    def outerName(innerSym: Symbol): Name = {
+    def outerName(innerSym: Symbol): core.Names.Name = {
       if (innerSym.originalEnclosingMethod != NoSymbol)
         null
       else {

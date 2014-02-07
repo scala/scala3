@@ -14,6 +14,10 @@ import scala.annotation.switch
 
 import scala.tools.asm
 
+import dotc.ast.Trees._
+import dotc.core.Types.Type
+import dotc.core.Symbols.{Symbol, NoSymbol}
+
 /*
  *
  *  @author  Miguel Garcia, http://lamp.epfl.ch/~magarcia/ScalaCompilerCornerReloaded/
@@ -21,13 +25,14 @@ import scala.tools.asm
  *
  */
 abstract class BCodeSyncAndTry extends BCodeBodyBuilder {
-  import global._
-
 
   /*
    * Functionality to lower `synchronized` and `try` expressions.
    */
-  abstract class SyncAndTryBuilder(cunit: CompilationUnit) extends PlainBodyBuilder(cunit) {
+  abstract class SyncAndTryBuilder(cunit: CompilationUnit,
+                                   ctx:   dotc.core.Contexts.Context) extends PlainBodyBuilder(cunit, ctx) {
+
+    import ast.tpd._
 
     def genSynchronized(tree: Apply, expectedType: BType): BType = {
       val Apply(fun, args) = tree
@@ -180,6 +185,8 @@ abstract class BCodeSyncAndTry extends BCodeBodyBuilder {
 
       val Try(block, catches, finalizer) = tree
       val kind = tpeTK(tree)
+
+      import ast.Trees.{Typed, Ident, Bind}
 
       val caseHandlers: List[EHClause] =
         for (CaseDef(pat, _, caseBody) <- catches) yield {

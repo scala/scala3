@@ -11,6 +11,10 @@ import scala.tools.asm
 import scala.annotation.switch
 import scala.collection.{ immutable, mutable }
 
+import dotc.ast.Trees.Tree
+import dotc.core.Types.Type
+import dotc.core.Symbols.{Symbol, NoSymbol}
+
 /*
  *  Immutable representations of bytecode-level types.
  *
@@ -18,13 +22,12 @@ import scala.collection.{ immutable, mutable }
  *  @version 1.0
  *
  */
-abstract class BCodeGlue extends SubComponent {
-
-  import global._
+abstract class BCodeGlue {
 
   object BType {
 
-    import global.chrs
+    import core.Names
+    import Names.chrs
 
     // ------------- sorts -------------
 
@@ -124,7 +127,7 @@ abstract class BCodeGlue extends SubComponent {
      * must-single-thread
      */
     def getMethodType(methodDescriptor: String): BType = {
-      val n = global.newTypeName(methodDescriptor)
+      val n = Names.typeName(methodDescriptor)
       new BType(BType.METHOD, n.start, n.length) // TODO assert isValidMethodDescriptor
     }
 
@@ -138,7 +141,7 @@ abstract class BCodeGlue extends SubComponent {
      * must-single-thread
      */
     def getMethodType(returnType: BType, argumentTypes: Array[BType]): BType = {
-      val n = global.newTypeName(getMethodDescriptor(returnType, argumentTypes))
+      val n = Names.typeName(getMethodDescriptor(returnType, argumentTypes))
       new BType(BType.METHOD, n.start, n.length)
     }
 
@@ -206,7 +209,7 @@ abstract class BCodeGlue extends SubComponent {
      * must-single-thread
      */
     def getReturnType(methodDescriptor: String): BType = {
-      val n     = global.newTypeName(methodDescriptor)
+      val n     = Names.typeName(methodDescriptor)
       val delta = n.pos(')') // `delta` is relative to the Name's zero-based start position, not a valid index into chrs.
       assert(delta < n.length, s"not a valid method descriptor: $methodDescriptor")
       getType(n.start + delta + 1)
@@ -248,7 +251,7 @@ abstract class BCodeGlue extends SubComponent {
    */
   final class BType(val sort: Int, val off: Int, val len: Int) {
 
-    import global.chrs
+    import core.Names.chrs
 
     /*
      * can-multi-thread
@@ -619,7 +622,7 @@ abstract class BCodeGlue extends SubComponent {
    *
    * must-single-thread
    */
-  def brefType(iname: String): BType = { brefType(newTypeName(iname.toCharArray(), 0, iname.length())) }
+  def brefType(iname: String): BType = { brefType(dotc.core.Names.typeName(iname.toCharArray(), 0, iname.length())) }
 
   /*
    * Creates a BType token for the TypeName received as argument.
@@ -627,7 +630,7 @@ abstract class BCodeGlue extends SubComponent {
    *
    *  can-multi-thread
    */
-  def brefType(iname: TypeName): BType = { BType.getObjectType(iname.start, iname.length) }
+  def brefType(iname: core.Names.TypeName): BType = { BType.getObjectType(iname.start, iname.length) }
 
   // due to keyboard economy only
   val UNIT   = BType.VOID_TYPE
