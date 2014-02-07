@@ -8,6 +8,7 @@ package dotc
 package backend.jvm
 
 import scala.collection.{ mutable, immutable }
+import core.Symbols.{Symbol, NoSymbol}
 
 /** Scala primitive operations are represented as methods in `Any` and
  *  `AnyVal` subclasses. Here we demultiplex them by providing a mapping
