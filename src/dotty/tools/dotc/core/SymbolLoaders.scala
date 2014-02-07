@@ -163,49 +163,9 @@ class SymbolLoaders {
           if (maybeModuleClass(classRep) && !root.decls.lookup(classRep.name.toTypeName).exists)
             initializeFromClassPath(root.symbol, classRep)
       }
-      if (!root.isEmptyPackage) {
-        for (pkg <- classpath.packages) {
+      if (!root.isEmptyPackage)
+        for (pkg <- classpath.packages)
           enterPackage(root.symbol, pkg)
-        }
-        openPackageModule(root.symbol.asClass)
-      }
-    }
-  }
-
-  /** if there's a `package` member object in `pkgClass`, enter its members into it. */
-  def openPackageModule(pkgClass: ClassSymbol)(implicit ctx: Context): Unit = {
-    val pkgModule = pkgClass.info.decl(nme.PACKAGEkw).symbol
-    if ((pkgModule is Module) &&
-        (pkgModule.isCompleted ||
-         !pkgModule.completer.isInstanceOf[SourcefileLoader]))
-      // println("open "+pkgModule)//DEBUG
-      openPackageModule(pkgModule, pkgClass)
-  }
-
-  // todo: revise to really include the members?
-  def openPackageModule(container: Symbol, dest: ClassSymbol)(implicit ctx: Context): Unit = {
-    def isImportable(sym: Symbol) = !(sym is Private) && !sym.isConstructor
-    // unlink existing symbols in the package
-    for (member <- container.info.decls.iterator) {
-      if (isImportable(member)) {
-        // todo: handle overlapping definitions in some way: mark as errors
-        // or treat as abstractions. For now the symbol in the package module takes precedence.
-        for (existing <- dest.info.decl(member.name).alternatives)
-          dest.delete(existing.symbol)
-      }
-    }
-    // enter non-private decls in the class
-    for (member <- container.info.decls.iterator) {
-      if (isImportable(member)) {
-        dest.enterNoReplace(member, dest.decls.asInstanceOf[MutableScope])
-      }
-    }
-    // !!! TODO info.decls -> decls
-    // enter decls of parent classes
-    for (p <- container.info.parents) {
-      if (p.symbol != defn.ObjectClass) {
-        openPackageModule(p.symbol, dest)
-      }
     }
   }
 }

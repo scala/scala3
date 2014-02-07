@@ -29,7 +29,9 @@ trait SymDenotations { this: Context =>
     initInfo: Type,
     initPrivateWithin: Symbol = NoSymbol)(implicit ctx: Context): SymDenotation = {
     val result =
-      if (symbol.isClass) new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+      if (symbol.isClass)
+        if (initFlags is Package) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+        else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
       else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
     result.validFor = stablePeriod
     result
@@ -983,7 +985,7 @@ object SymDenotations {
       } else computeNPMembersNamed(name)
     }
 
-    private def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = /*>|>*/ Stats.track("computeNPMembersNamed") /*<|<*/ {
+    private[core] def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = /*>|>*/ Stats.track("computeNPMembersNamed") /*<|<*/ {
       if (!classSymbol.hasChildren ||
           !Config.useFingerPrints ||
           (memberFingerPrint contains name)) {
@@ -1121,6 +1123,51 @@ object SymDenotations {
     override def primaryConstructor(implicit ctx: Context): Symbol = {
       val cname = if (this is ImplClass) nme.IMPLCLASS_CONSTRUCTOR else nme.CONSTRUCTOR
       decls.denotsNamed(cname).first.symbol
+    }
+  }
+
+  /** The denotation of a package class.
+   *  It overrides ClassDenotation to take account of package objects when looking for members
+   */
+  class PackageClassDenotation private[SymDenotations] (
+    symbol: Symbol,
+    ownerIfExists: Symbol,
+    name: Name,
+    initFlags: FlagSet,
+    initInfo: Type,
+    initPrivateWithin: Symbol = NoSymbol)
+    extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
+
+    private[this] var packageObjCache: SymDenotation = _
+    private[this] var packageObjRunId: RunId = NoRunId
+
+    /** The package object in this class, of one exists */
+    def packageObj(implicit ctx: Context): SymDenotation = {
+      if (packageObjRunId != ctx.runId) {
+        packageObjRunId = ctx.runId
+        packageObjCache = NoDenotation // break cycle in case we are looking for package object itself
+        packageObjCache = findMember(nme.PACKAGE, thisType, EmptyFlags).asSymDenotation
+      }
+      packageObjCache
+    }
+
+    /** Look first for members in package; if none are found look in package object */
+    override def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
+      val denots = super.computeNPMembersNamed(name)
+      if (denots.exists) denots
+      else packageObj.moduleClass.denot match {
+        case pcls: ClassDenotation => pcls.computeNPMembersNamed(name)
+        case _ => denots
+      }
+    }
+
+    /** The union of the member names of the package and the package object */
+    override def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = {
+      val ownNames = super.memberNames(keepOnly)
+      packageObj.moduleClass.denot match {
+        case pcls: ClassDenotation => ownNames union pcls.memberNames(keepOnly)
+        case _ => ownNames
+      }
     }
   }
 

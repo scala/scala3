@@ -306,6 +306,7 @@ object Denotations {
     }
 
     final def asSingleDenotation = asInstanceOf[SingleDenotation]
+    final def asSymDenotation = asInstanceOf[SymDenotation]
 
     def toText(printer: Printer): Text = printer.toText(this)
   }
@@ -531,8 +532,6 @@ object Denotations {
      *  itself, otherwise a freshly initialized copy.
      */
     def copyIfParentInvalid(implicit ctx: Context): SingleDenotation = this
-
-    final def asSymDenotation = asInstanceOf[SymDenotation]
 
     override def toString =
       if (symbol == NoSymbol) symbol.toString
