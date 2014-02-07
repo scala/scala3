@@ -195,33 +195,40 @@ object scalaPrimitives {
   }
 
   /** Initialize the primitive map */
-  def init() {
+  def init(implicit ctx: core.Contexts.Context) {
+
+    import core.Symbols.defn
+
     primitives.clear()
     // scala.Any
-    addPrimitive(Any_==, EQ)
-    addPrimitive(Any_!=, NE)
-    addPrimitive(Any_isInstanceOf, IS)
-    addPrimitive(Any_asInstanceOf, AS)
-    addPrimitive(Any_##, HASH)
+    addPrimitive(defn.Any_==, EQ)
+    addPrimitive(defn.Any_!=, NE)
+    addPrimitive(defn.Any_isInstanceOf, IS)
+    addPrimitive(defn.Any_asInstanceOf, AS)
+    addPrimitive(defn.Any_##, HASH)
 
     // java.lang.Object
-    addPrimitive(Object_eq, ID)
-    addPrimitive(Object_ne, NI)
-    addPrimitive(Object_==, EQ)
-    addPrimitive(Object_!=, NE)
-    addPrimitive(Object_synchronized, SYNCHRONIZED)
-    addPrimitive(Object_isInstanceOf, IS)
-    addPrimitive(Object_asInstanceOf, AS)
+    addPrimitive(defn.Object_eq, ID)
+    addPrimitive(defn.Object_ne, NI)
+    addPrimitive(defn.Object_==, EQ)
+    addPrimitive(defn.Object_!=, NE)
+    addPrimitive(defn.Object_synchronized, SYNCHRONIZED)
+    addPrimitive(defn.Object_isInstanceOf, IS)
+    addPrimitive(defn.Object_asInstanceOf, AS)
 
     // java.lang.String
-    addPrimitive(String_+, CONCAT)
+    addPrimitive(defn.String_+, CONCAT)
+
+    import core.StdNames.nme
 
     // scala.Array
+    val ArrayClass = defn.ArrayClass
     addPrimitives(ArrayClass, nme.length, LENGTH)
     addPrimitives(ArrayClass, nme.apply, APPLY)
     addPrimitives(ArrayClass, nme.update, UPDATE)
 
     // scala.Boolean
+    val BooleanClass = defn.BooleanClass
     addPrimitives(BooleanClass, nme.EQ, EQ)
     addPrimitives(BooleanClass, nme.NE, NE)
     addPrimitives(BooleanClass, nme.UNARY_!, ZNOT)
@@ -232,6 +239,7 @@ object scalaPrimitives {
     addPrimitives(BooleanClass, nme.XOR, XOR)
 
     // scala.Byte
+    val ByteClass = defn.ByteClass
     addPrimitives(ByteClass, nme.EQ, EQ)
     addPrimitives(ByteClass, nme.NE, NE)
     addPrimitives(ByteClass, nme.ADD, ADD)
@@ -264,6 +272,7 @@ object scalaPrimitives {
     addPrimitives(ByteClass, nme.toDouble, B2D)
 
     // scala.Short
+    val ShortClass = defn.ShortClass
     addPrimitives(ShortClass, nme.EQ, EQ)
     addPrimitives(ShortClass, nme.NE, NE)
     addPrimitives(ShortClass, nme.ADD, ADD)
@@ -296,6 +305,7 @@ object scalaPrimitives {
     addPrimitives(ShortClass, nme.toDouble, S2D)
 
     // scala.Char
+    val CharClass = defn.CharClass
     addPrimitives(CharClass, nme.EQ, EQ)
     addPrimitives(CharClass, nme.NE, NE)
     addPrimitives(CharClass, nme.ADD, ADD)
@@ -327,6 +337,7 @@ object scalaPrimitives {
     addPrimitives(CharClass, nme.toDouble, C2D)
 
     // scala.Int
+    val IntClass = defn.IntClass
     addPrimitives(IntClass, nme.EQ, EQ)
     addPrimitives(IntClass, nme.NE, NE)
     addPrimitives(IntClass, nme.ADD, ADD)
@@ -358,6 +369,7 @@ object scalaPrimitives {
     addPrimitives(IntClass, nme.toDouble, I2D)
 
     // scala.Long
+    val LongClass = defn.LongClass
     addPrimitives(LongClass, nme.EQ, EQ)
     addPrimitives(LongClass, nme.NE, NE)
     addPrimitives(LongClass, nme.ADD, ADD)
@@ -389,6 +401,7 @@ object scalaPrimitives {
     addPrimitives(LongClass, nme.toDouble, L2D)
 
     // scala.Float
+    val FloatClass = defn.FloatClass
     addPrimitives(FloatClass, nme.EQ, EQ)
     addPrimitives(FloatClass, nme.NE, NE)
     addPrimitives(FloatClass, nme.ADD, ADD)
@@ -413,6 +426,7 @@ object scalaPrimitives {
     addPrimitives(FloatClass, nme.UNARY_-, NEG)
 
     // scala.Double
+    val DoubleClass = defn.DoubleClass
     addPrimitives(DoubleClass, nme.EQ, EQ)
     addPrimitives(DoubleClass, nme.NE, NE)
     addPrimitives(DoubleClass, nme.ADD, ADD)
@@ -526,14 +540,14 @@ object scalaPrimitives {
   }
 
   /** If code is a coercion primitive, the result type */
-  def generatedKind(code: Int): BType = code match {
-    case B2B | C2B | S2B | I2B | L2B | F2B | D2B => BType.BYTE
-    case B2C | C2C | S2C | I2C | L2C | F2C | D2C => BType.CHAR
-    case B2S | C2S | S2S | I2S | L2S | F2S | D2S => BType.SHORT
-    case B2I | C2I | S2I | I2I | L2I | F2I | D2I => BType.INT
-    case B2L | C2L | S2L | I2L | L2L | F2L | D2L => BType.LONG
-    case B2F | C2F | S2F | I2F | L2F | F2F | D2F => BType.FLOAT
-    case B2D | C2D | S2D | I2D | L2D | F2D | D2D => BType.DOUBLE
+  def generatedKind(code: Int): GenBCode.BType = code match {
+    case B2B | C2B | S2B | I2B | L2B | F2B | D2B => GenBCode.BType.BYTE
+    case B2C | C2C | S2C | I2C | L2C | F2C | D2C => GenBCode.BType.CHAR
+    case B2S | C2S | S2S | I2S | L2S | F2S | D2S => GenBCode.BType.SHORT
+    case B2I | C2I | S2I | I2I | L2I | F2I | D2I => GenBCode.BType.INT
+    case B2L | C2L | S2L | I2L | L2L | F2L | D2L => GenBCode.BType.LONG
+    case B2F | C2F | S2F | I2F | L2F | F2F | D2F => GenBCode.BType.FLOAT
+    case B2D | C2D | S2D | I2D | L2D | F2D | D2D => GenBCode.BType.DOUBLE
   }
 
   def isPrimitive(sym: Symbol): Boolean = primitives contains sym
