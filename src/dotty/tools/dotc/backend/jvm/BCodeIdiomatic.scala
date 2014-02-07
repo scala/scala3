@@ -3,8 +3,8 @@
  * @author  Martin Odersky
  */
 
-package scala
-package tools.nsc
+package dotty.tools
+package dotc
 package backend.jvm
 
 import scala.tools.asm

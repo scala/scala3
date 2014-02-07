@@ -4,8 +4,8 @@
  */
 
 
-package scala
-package tools.nsc
+package dotty.tools
+package dotc
 package backend
 package jvm
 
