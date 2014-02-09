@@ -65,10 +65,14 @@ class Typer extends Namer with Applications with Implicits {
 
   /** A denotation exists really if it exists and does not point to a stale symbol. */
   def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean =
-    denot.exists && {
-      val sym = denot.symbol
-      sym.ensureCompleted
-      (sym eq NoSymbol) || !sym.isAbsent
+    try
+      denot.exists && {
+        val sym = denot.symbol
+            sym.ensureCompleted
+            (sym eq NoSymbol) || !sym.isAbsent
+      }
+    catch {
+      case ex: StaleSymbol => false
     }
 
   /** The type of a selection with `name` of a tree with type `site`.

@@ -461,6 +461,18 @@ object Denotations {
       current
     }
 
+    protected def bringForward()(implicit ctx: Context): SingleDenotation = this match {
+      case denot: SymDenotation if ctx.stillValid(denot) =>
+        var d: SingleDenotation = denot
+        do {
+          d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
+          d = d.nextInRun
+        } while (d ne denot)
+        initial.copyIfParentInvalid
+      case _ =>
+        staleSymbolError
+    }
+
     /** Produce a denotation that is valid for the given context.
      *  Usually called when !(validFor contains ctx.period)
      *  (even though this is not a precondition).
@@ -476,17 +488,6 @@ object Denotations {
     def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
       val valid = myValidFor
-      def bringForward(): SingleDenotation = this match {
-        case denot: SymDenotation if ctx.stillValid(denot) =>
-          var d: SingleDenotation = denot
-          do {
-            d.validFor = Period(currentPeriod.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
-            d = d.nextInRun
-          } while (d ne denot)
-          initial.copyIfParentInvalid
-        case _ =>
-          staleSymbolError
-      }
       if (valid.runId != currentPeriod.runId) bringForward.current
       else {
         var cur = this
@@ -530,7 +531,7 @@ object Denotations {
     }
 
     def staleSymbolError(implicit ctx: Context) =
-      throw new Error(s"stale symbol; $this, defined in run ${myValidFor.runId} is referred to in run ${ctx.period.runId}")
+      throw new StaleSymbol(s"stale symbol; $this, defined in run ${myValidFor.runId} is referred to in run ${ctx.period.runId}")
 
     /** For ClassDenotations only:
      *  If caches influenced by parent classes are still valid, the denotation
@@ -757,5 +758,7 @@ object Denotations {
       else
         NoSymbol
   }
+
+  class StaleSymbol(msg: String) extends Exception(msg)
 }
 

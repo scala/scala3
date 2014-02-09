@@ -33,14 +33,23 @@ trait SymDenotations { this: Context =>
         if (initFlags is Package) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
         else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
       else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+    result.firstRunId = ctx.runId
     result.validFor = stablePeriod
     result
   }
 
-  def stillValid(denot: SymDenotation): Boolean =
+  def stillValid(denot: SymDenotation): Boolean = try
     if (denot is ValidForever) true
     else if (denot.owner is PackageClass) denot.owner.decls.lookup(denot.name) eq denot.symbol
-    else stillValid(denot.owner)
+    else
+      stillValid(denot.owner) && (
+        (denot.owner.firstRunId == denot.firstRunId) || {
+         println(s"no longer valid: $denot, was defined in ${denot.firstRunId}, owner ${denot.owner} was defined in ${denot.owner.firstRunId}")
+          false
+       })
+  catch {
+    case ex: StaleSymbol => false
+  }
 }
 
 object SymDenotations {
@@ -59,6 +68,8 @@ object SymDenotations {
     //assert(symbol.id != 4940, name)
 
     override def hasUniqueSym: Boolean = exists
+
+    private[SymDenotations] var firstRunId: RunId = _
 
     // ------ Getting and setting fields -----------------------------
 
@@ -720,6 +731,8 @@ object SymDenotations {
       val annotations1 = if (annotations != null) annotations else this.annotations
       val d = ctx.SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
       d.annotations = annotations1
+      d.firstRunId = firstRunId
+      // what about validFor?
       d
     }
   }
@@ -787,13 +800,37 @@ object SymDenotations {
     /** Are caches influenced by parent classes still valid? */
     private def parentsAreValid(implicit ctx: Context): Boolean =
       parentDenots == null ||
-      parentDenots.corresponds(myClassParents)(_ eq _.denot)
+      parentDenots.corresponds(myClassParents map (_.denot))(_ eq _)
+
+    private var copied = 0
 
     /** If caches influenced by parent classes are still valid, the denotation
      *  itself, otherwise a freshly initialized copy.
      */
     override def copyIfParentInvalid(implicit ctx: Context): SingleDenotation =
-      if (!parentsAreValid) copySymDenotation() else this
+      if (!parentsAreValid) {
+        println(s"parents of $this are invalid; copying $hashCode, symbol id = ${symbol.id} ...")
+        for ((pd1, pd2) <- parentDenots zip (myClassParents map (_.denot)))
+          if (pd1 ne pd2) println(s"different: $pd1 != $pd2")
+        if (name.toString == "Context")
+          new Error().printStackTrace()
+        assert(copied == 0)
+        copied += 1
+        copySymDenotation()
+      }
+      else this
+
+    protected override def bringForward()(implicit ctx: Context): SingleDenotation = {
+      if (name.toString == "Context") println(s"bring forward $this, id = ${symbol.id}, defunid = ${symbol.defRunId}, ctx.runid = ${ctx.runId}")
+      assert(ctx.runId >= symbol.defRunId, s"$this, defrunid = ${symbol.defRunId}, ctx.runid = ${ctx.runId}")
+      if (symbol.defRunId == ctx.runId) symbol.denot
+      else {
+        val d = super.bringForward()
+        symbol.denot = d.asSymDenotation
+        if (name.toString == "Context") println(s"brought forward $d, id = ${symbol.id}, defunid = ${symbol.defRunId}")
+        d
+      }
+    }
 
    // ------ class-specific operations -----------------------------------
 

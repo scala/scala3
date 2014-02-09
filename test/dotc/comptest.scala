@@ -9,5 +9,5 @@ object comptest extends CompilerTest {
   val dotcDir = "/Users/odersky/workspace/dotty/src/dotty/"
 
   def main(args: Array[String]) =
-    compileFile(posDir, "typers", List("-Xprompt", "-Ylog:frontend", "#runs", "2"))
+    compileFile(posDir, "Coder", List("-Xprompt", "-Ylog:frontend", "#runs", "2"))
 }
