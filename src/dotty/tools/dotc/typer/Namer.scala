@@ -274,7 +274,7 @@ class Namer { typer: Typer =>
   }
 
    /** For all class definitions `stat` in `xstats`: If the companion class if not also defined
-   *  in `xstats`, invalidate it by setting its info to NoType. 
+   *  in `xstats`, invalidate it by setting its info to NoType.
    */
   def invalidateCompanions(pkg: Symbol, xstats: List[untpd.Tree])(implicit ctx: Context): Unit = {
     val definedNames = xstats collect { case stat: NameTree => stat.name }
@@ -350,7 +350,7 @@ class Namer { typer: Typer =>
   }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
-  class Completer(val original: Tree)(implicit ctx: Context) extends LazyType {
+  class Completer(val original: Tree)(implicit ctx: Context) extends LazyType with CompleteInCreationContext {
 
     protected def localContext(owner: Symbol) = ctx.fresh.withOwner(owner).withTree(original)
 
@@ -376,7 +376,7 @@ class Namer { typer: Typer =>
         }
     }
 
-    def complete(denot: SymDenotation): Unit =
+    override def completeInCreationContext(denot: SymDenotation): Unit =
       denot.info = typeSig(denot.symbol)
   }
 
@@ -396,7 +396,7 @@ class Namer { typer: Typer =>
     def init() = index(params)
 
     /** The type signature of a ClassDef with given symbol */
-    override def complete(denot: SymDenotation): Unit = {
+    override def completeInCreationContext(denot: SymDenotation): Unit = {
 
       /** The type of a parent constructor. Types constructor arguments
        *  only if parent type contains uninstantiated type parameters.

@@ -173,7 +173,7 @@ class SymbolLoaders {
 /** A lazy type that completes itself by calling parameter doComplete.
  *  Any linked modules/classes or module classes are also initialized.
  */
-abstract class SymbolLoader extends LazyType {
+abstract class SymbolLoader extends LazyType with CompleteInCreationContext {
   implicit val cctx: CondensedContext
 
   /** Load source or class file for `root`, return */
@@ -186,7 +186,7 @@ abstract class SymbolLoader extends LazyType {
    */
   def description: String
 
-  override def complete(root: SymDenotation): Unit = {
+  override def completeInCreationContext(root: SymDenotation): Unit = {
     def signalError(ex: Exception): Unit = {
       if (cctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()

@@ -490,7 +490,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     })
   }
 
-  class LocalUnpickler extends LazyType {
+  class LocalUnpickler extends LazyType with CompleteInCreationContext {
     def parseToCompletion(denot: SymDenotation) = {
       val tag = readByte()
       val end = readNat() + readIndex
@@ -533,7 +533,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       // println(s"unpickled ${denot.debugString}, info = ${denot.info}") !!! DEBUG
     }
     def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
-    def complete(denot: SymDenotation): Unit = try {
+    def completeInCreationContext(denot: SymDenotation): Unit = try {
       atReadPos(startCoord(denot).toIndex, () => parseToCompletion(denot))
     } catch {
       case ex: RuntimeException => handleRuntimeException(ex)

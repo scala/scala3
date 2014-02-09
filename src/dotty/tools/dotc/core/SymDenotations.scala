@@ -71,7 +71,7 @@ object SymDenotations {
     def owner: Symbol = ownerIfExists
 
     /** The flag set */
-    final def flags: FlagSet = { ensureCompleted(); myFlags }
+    final def flags(implicit ctx: Context): FlagSet = { ensureCompleted(); myFlags }
 
     /** The flag set without forcing symbol completion.
      *  Should be used only for printing.
@@ -92,34 +92,37 @@ object SymDenotations {
     final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
 
     /** Has this denotation one of the flags in `fs` set? */
-    final def is(fs: FlagSet) = {
+    final def is(fs: FlagSet)(implicit ctx: Context) = {
       (if (fs <= FromStartFlags) myFlags else flags) is fs
     }
 
     /** Has this denotation one of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
-    final def is(fs: FlagSet, butNot: FlagSet) =
+    final def is(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context) =
       (if (fs <= FromStartFlags && butNot <= FromStartFlags) myFlags else flags) is (fs, butNot)
 
     /** Has this denotation all of the flags in `fs` set? */
-    final def is(fs: FlagConjunction) =
+    final def is(fs: FlagConjunction)(implicit ctx: Context) =
       (if (fs <= FromStartFlags) myFlags else flags) is fs
 
     /** Has this denotation all of the flags in `fs` set, whereas none of the flags
      *  in `butNot` are set?
      */
-    final def is(fs: FlagConjunction, butNot: FlagSet) =
+    final def is(fs: FlagConjunction, butNot: FlagSet)(implicit ctx: Context) =
       (if (fs <= FromStartFlags && butNot <= FromStartFlags) myFlags else flags) is (fs, butNot)
 
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
      *  Uncompleted denotations set myInfo to a LazyType.
      */
-    final def info: Type = myInfo match {
+    final def info(implicit ctx: Context): Type = myInfo match {
       case myInfo: LazyType => completeFrom(myInfo); info
       case _ => myInfo
     }
+
+    /** The type info, or, if symbol is not yet completed, the completer */
+    final def infoOrCompleter = myInfo
 
     /** Optionally, the info if it is completed */
     final def unforcedInfo: Option[Type] = myInfo match {
@@ -127,7 +130,7 @@ object SymDenotations {
       case _ => Some(myInfo)
     }
 
-    private def completeFrom(completer: LazyType): Unit = {
+    private def completeFrom(completer: LazyType)(implicit ctx: Context): Unit = {
       if (myFlags is Touched) throw new CyclicReference(this)
       myFlags |= Touched
 
@@ -151,19 +154,19 @@ object SymDenotations {
     }
 
     /** The name, except if this is a module class, strip the module class suffix */
-    def effectiveName =
+    def effectiveName(implicit ctx: Context) =
       if (this is ModuleClass) name.stripModuleClassSuffix else name
 
     /** The privateWithin boundary, NoSymbol if no boundary is given.
      */
-    final def privateWithin: Symbol = { ensureCompleted(); myPrivateWithin }
+    final def privateWithin(implicit ctx: Context): Symbol = { ensureCompleted(); myPrivateWithin }
 
     /** Set privateWithin. */
     protected[core] final def privateWithin_=(sym: Symbol): Unit =
       myPrivateWithin = sym
 
     /** The annotations of this denotation */
-    final def annotations: List[Annotation] = {
+    final def annotations(implicit ctx: Context): List[Annotation] = {
       ensureCompleted(); myAnnotations
     }
 
@@ -195,7 +198,7 @@ object SymDenotations {
     final def completer: LazyType = myInfo.asInstanceOf[LazyType]
 
     /** Make sure this denotation is completed */
-    final def ensureCompleted(): Unit = info
+    final def ensureCompleted()(implicit ctx: Context): Unit = info
 
     /** The symbols defined in this class or object.
      */
@@ -221,7 +224,7 @@ object SymDenotations {
     // ------ Names ----------------------------------------------
 
     /** The name with which the denoting symbol was created */
-    final def originalName = {
+    final def originalName(implicit ctx: Context) = {
       val d = initial.asSymDenotation
       if (d is ExpandedName) d.name.unexpandedName() else d.name // !!!DEBUG, was: effectiveName
     }
@@ -292,10 +295,10 @@ object SymDenotations {
     }
 
     /** Is this symbol an abstract type? */
-    final def isAbstractType = isType && (this is Deferred)
+    final def isAbstractType(implicit ctx: Context) = isType && (this is Deferred)
 
     /** Is this symbol an alias type? */
-    final def isAliasType = isAbstractOrAliasType && !(this is Deferred)
+    final def isAliasType(implicit ctx: Context) = isAbstractOrAliasType && !(this is Deferred)
 
     /** Is this symbol an abstract or alias type? */
     final def isAbstractOrAliasType = isType & !isClass
@@ -346,13 +349,13 @@ object SymDenotations {
     }
 
     /** Is this a user defined "def" method? Excluded are accessors. */
-    final def isSourceMethod = this is (Method, butNot = Accessor)
+    final def isSourceMethod(implicit ctx: Context) = this is (Method, butNot = Accessor)
 
     /** Is this a setter? */
-    final def isGetter = (this is Accessor) && !originalName.isSetterName
+    final def isGetter(implicit ctx: Context) = (this is Accessor) && !originalName.isSetterName
 
     /** Is this a setter? */
-    final def isSetter = (this is Accessor) && originalName.isSetterName
+    final def isSetter(implicit ctx: Context) = (this is Accessor) && originalName.isSetterName
 
     /** is this the constructor of a class? */
     final def isClassConstructor = name == nme.CONSTRUCTOR
@@ -679,18 +682,18 @@ object SymDenotations {
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
      */
-    final def variance: Int =
+    final def variance(implicit ctx: Context): Int =
       if (this is Covariant) 1
       else if (this is Contravariant) -1
       else 0
 
     override def toString = {
       val kindString =
-        if (this is ModuleClass) "module class"
+        if (myFlags is ModuleClass) "module class"
         else if (isClass) "class"
         else if (isType) "type"
-        else if (this is Module) "module"
-        else if (this is Method) "method"
+        else if (myFlags is Module) "module"
+        else if (myFlags is Method) "method"
         else "val"
       s"$kindString $name"
     }
@@ -706,13 +709,17 @@ object SymDenotations {
       symbol: Symbol = this.symbol,
       owner: Symbol = this.owner,
       name: Name = this.name,
-      initFlags: FlagSet = this.flags,
-      info: Type = this.info,
-      privateWithin: Symbol = this.privateWithin,
-      annotations: List[Annotation] = this.annotations)(implicit ctx: Context) =
-    {
-      val d = ctx.SymDenotation(symbol, owner, name, initFlags, info, privateWithin)
-      d.annotations = annotations
+      initFlags: FlagSet = UndefinedFlags,
+      info: Type = null,
+      privateWithin: Symbol = null,
+      annotations: List[Annotation] = null)(implicit ctx: Context) =
+    { // simulate default parameters, while also passing implicit context ctx to the default values
+      val initFlags1 = if (initFlags != UndefinedFlags) initFlags else this.flags
+      val info1 = if (info != null) info else this.info
+      val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
+      val annotations1 = if (annotations != null) annotations else this.annotations
+      val d = ctx.SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
+      d.annotations = annotations1
       d
     }
   }
@@ -751,7 +758,7 @@ object SymDenotations {
       myTypeParams
     }
 
-    private def myClassParents: List[TypeRef] = info match {
+    private def myClassParents(implicit ctx: Context): List[TypeRef] = info match {
       case classInfo: ClassInfo => classInfo.myClassParents
       case _ => Nil
     }
@@ -1194,7 +1201,7 @@ object SymDenotations {
     with ((TermSymbol, ClassSymbol) => LazyType) { self =>
 
     /** Sets all missing fields of given denotation */
-    def complete(denot: SymDenotation): Unit
+    def complete(denot: SymDenotation)(implicit ctx: Context): Unit
 
     def apply(sym: Symbol) = this
     def apply(module: TermSymbol, modcls: ClassSymbol) = this
@@ -1207,7 +1214,7 @@ object SymDenotations {
      *  but provides fresh slots for scope/sourceModule/moduleClass
      */
     def proxy: LazyType = new LazyType {
-      override def complete(denot: SymDenotation) = self.complete(denot)
+      override def complete(denot: SymDenotation)(implicit ctx: Context) = self.complete(denot)
     }
 
     def decls: Scope = myDecls
@@ -1219,11 +1226,17 @@ object SymDenotations {
     def withModuleClass(moduleClass: => Symbol): this.type = { myModuleClassFn = () => moduleClass; this }
   }
 
+  trait CompleteInCreationContext extends LazyType {
+    def completeInCreationContext(denot: SymDenotation): Unit
+    final override def complete(denot: SymDenotation)(implicit ctx: Context) =
+      completeInCreationContext(denot)
+  }
+
   val NoSymbolFn = () => NoSymbol
 
   /** A missing completer */
   class NoCompleter extends LazyType {
-    def complete(denot: SymDenotation): Unit = unsupported("complete")
+    def complete(denot: SymDenotation)(implicit ctx: Context): Unit = unsupported("complete")
   }
 
   /** A lazy type for modules that points to the module class.
@@ -1232,8 +1245,8 @@ object SymDenotations {
    *  module class, followed by copying the relevant fields to the module.
    */
   class ModuleCompleter(override val moduleClass: ClassSymbol)(implicit cctx: CondensedContext)
-  extends LazyType {
-    def complete(denot: SymDenotation): Unit = {
+  extends LazyType with CompleteInCreationContext {
+    def completeInCreationContext(denot: SymDenotation): Unit = {
       val from = moduleClass.denot.asClass
       denot.setFlag(from.flags.toTermFlags & RetainedModuleValFlags)
       denot.annotations = from.annotations filter (_.appliesToModule)
@@ -1247,9 +1260,9 @@ object SymDenotations {
   }
 
   /** A completer for missing references */
-  class StubInfo()(implicit cctx: CondensedContext) extends LazyType {
+  class StubInfo()(implicit cctx: CondensedContext) extends LazyType with CompleteInCreationContext {
 
-    def initializeToDefaults(denot: SymDenotation) = {
+    def initializeToDefaults(denot: SymDenotation)(implicit ctx: Context) = {
       denot.info = denot match {
         case denot: ClassDenotation =>
           ClassInfo(denot.owner.thisType, denot.classSymbol, Nil, EmptyScope)
@@ -1259,7 +1272,7 @@ object SymDenotations {
       denot.privateWithin = NoSymbol
     }
 
-    def complete(denot: SymDenotation): Unit = {
+    def completeInCreationContext(denot: SymDenotation): Unit = {
       val sym = denot.symbol
       val file = sym.associatedFile
       val (location, src) =

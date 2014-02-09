@@ -441,9 +441,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def toText(sym: Symbol): Text = {
     if (sym.name == nme.IMPORT) {
-      val info = if (sym.isCompleted) sym.info else sym.completer
       def importString(tree: untpd.Tree) = s"import ${tree.show}"
-      info match {
+      sym.infoOrCompleter match {
         case info: Namer#Completer => return importString(info.original)
         case info: ImportType => return importString(info.expr)
         case _ =>

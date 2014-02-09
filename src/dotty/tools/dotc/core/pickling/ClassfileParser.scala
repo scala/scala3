@@ -163,9 +163,9 @@ class ClassfileParser(
     skipAttributes
   }
 
-  val memberCompleter = new LazyType {
+  val memberCompleter = new LazyType with CompleteInCreationContext {
 
-    def complete(denot: SymDenotation): Unit = {
+    def completeInCreationContext(denot: SymDenotation): Unit = {
       val oldbp = in.bp
       try {
         in.bp = denot.symbol.coord.toIndex
@@ -337,8 +337,8 @@ class ClassfileParser(
 
     var tparams = classTParams
 
-    def typeParamCompleter(start: Int) = new LazyType {
-      def complete(denot: SymDenotation): Unit = {
+    def typeParamCompleter(start: Int) = new LazyType with CompleteInCreationContext {
+      def completeInCreationContext(denot: SymDenotation): Unit = {
         val savedIndex = index
         try {
           index = start

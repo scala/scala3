@@ -37,8 +37,8 @@ class Definitions(implicit ctx: Context) {
     newTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName, scope)
 
   private def specialPolyClass(name: TypeName, paramFlags: FlagSet, parentConstrs: Type*): ClassSymbol = {
-    val completer = new LazyType {
-      def complete(denot: SymDenotation): Unit = {
+    val completer = new LazyType with CompleteInCreationContext {
+      def completeInCreationContext(denot: SymDenotation): Unit = {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
         val typeParam = newSyntheticTypeParam(cls, paramDecls, paramFlags)
@@ -368,8 +368,8 @@ class Definitions(implicit ctx: Context) {
       case  1 => EmptyFlags
     }
 
-    val completer = new LazyType {
-      def complete(denot: SymDenotation): Unit = {
+    val completer = new LazyType with CompleteInCreationContext {
+      def completeInCreationContext(denot: SymDenotation): Unit = {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
         for ((v, i) <- vcs.zipWithIndex)
