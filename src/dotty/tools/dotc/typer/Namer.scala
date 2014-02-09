@@ -350,7 +350,7 @@ class Namer { typer: Typer =>
   }
 
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
-  class Completer(val original: Tree)(implicit ctx: Context) extends LazyType with CompleteInCreationContext {
+  class Completer(val original: Tree)(implicit ctx: Context) extends LazyType {
 
     protected def localContext(owner: Symbol) = ctx.fresh.withOwner(owner).withTree(original)
 
@@ -376,7 +376,10 @@ class Namer { typer: Typer =>
         }
     }
 
-    override def completeInCreationContext(denot: SymDenotation): Unit =
+    final override def complete(denot: SymDenotation)(implicit ctx: Context) =
+      completeInCreationContext(denot)
+
+    def completeInCreationContext(denot: SymDenotation): Unit =
       denot.info = typeSig(denot.symbol)
   }
 

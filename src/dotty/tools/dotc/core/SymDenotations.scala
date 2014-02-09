@@ -1226,12 +1226,6 @@ object SymDenotations {
     def withModuleClass(moduleClass: => Symbol): this.type = { myModuleClassFn = () => moduleClass; this }
   }
 
-  trait CompleteInCreationContext extends LazyType {
-    def completeInCreationContext(denot: SymDenotation): Unit
-    final override def complete(denot: SymDenotation)(implicit ctx: Context) =
-      completeInCreationContext(denot)
-  }
-
   val NoSymbolFn = () => NoSymbol
 
   /** A missing completer */
