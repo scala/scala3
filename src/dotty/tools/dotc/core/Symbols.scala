@@ -126,7 +126,7 @@ trait Symbols { this: Context =>
     val mdenot = SymDenotation(
         module, owner, name, modFlags | ModuleCreationFlags,
         if (cdenot.isCompleted) TypeRef(owner.thisType, modclsName) withSym modcls
-        else new ModuleCompleter(modcls)(condensed))
+        else new ModuleCompleter(modcls))
     module.denot = mdenot
     modcls.denot = cdenot
     module
@@ -181,7 +181,7 @@ trait Symbols { this: Context =>
    *  when attempted to be completed.
    */
   def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
-    def stubCompleter = new StubInfo()(condensed)
+    def stubCompleter = new StubInfo()
     val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
     println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
     println(s"decls = ${normalizedOwner.decls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG

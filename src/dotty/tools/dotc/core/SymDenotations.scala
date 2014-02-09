@@ -1244,9 +1244,8 @@ object SymDenotations {
    *  Completion of modules is always completion of the underlying
    *  module class, followed by copying the relevant fields to the module.
    */
-  class ModuleCompleter(override val moduleClass: ClassSymbol)(implicit cctx: CondensedContext)
-  extends LazyType with CompleteInCreationContext {
-    def completeInCreationContext(denot: SymDenotation): Unit = {
+  class ModuleCompleter(override val moduleClass: ClassSymbol) extends LazyType {
+    def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
       val from = moduleClass.denot.asClass
       denot.setFlag(from.flags.toTermFlags & RetainedModuleValFlags)
       denot.annotations = from.annotations filter (_.appliesToModule)
@@ -1260,7 +1259,7 @@ object SymDenotations {
   }
 
   /** A completer for missing references */
-  class StubInfo()(implicit cctx: CondensedContext) extends LazyType with CompleteInCreationContext {
+  class StubInfo() extends LazyType {
 
     def initializeToDefaults(denot: SymDenotation)(implicit ctx: Context) = {
       denot.info = denot match {
@@ -1272,19 +1271,19 @@ object SymDenotations {
       denot.privateWithin = NoSymbol
     }
 
-    def completeInCreationContext(denot: SymDenotation): Unit = {
+    def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
       val sym = denot.symbol
       val file = sym.associatedFile
       val (location, src) =
         if (file != null) (s" in $file", file.toString)
         else ("", "the signature")
-      val name = cctx.fresh.withSetting(cctx.settings.debugNames, true).nameString(denot.name)
-      cctx.error(
+      val name = ctx.fresh.withSetting(ctx.settings.debugNames, true).nameString(denot.name)
+      ctx.error(
         s"""|bad symbolic reference. A signature$location
             |refers to $name in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.
             |It may be completely missing from the current classpath, or the version on
             |the classpath might be incompatible with the version used when compiling $src.""".stripMargin)
-      if (cctx.debug) throw new Error()
+      if (ctx.debug) throw new Error()
       initializeToDefaults(denot)
     }
   }
