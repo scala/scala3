@@ -240,7 +240,7 @@ trait Symbols { this: Context =>
     tparams
   }
 
-  def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | ValidForever, tp)
+  def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | Permanent, tp)
 
   def newErrorSymbol(owner: Symbol, name: Name) =
     newSymbol(owner, name, SyntheticArtifact,
@@ -320,12 +320,14 @@ object Symbols {
     /** The current denotation of this symbol */
     final def denot(implicit ctx: Context): SymDenotation = {
       var denot = lastDenot
-      if (!(denot.validFor contains ctx.period))
+      if (!(denot.validFor contains ctx.period)) {
         denot = denot.current.asInstanceOf[SymDenotation]
+        lastDenot = denot
+      }
       denot
     }
 
-    private def defRunId: RunId =
+    private[core] def defRunId: RunId =
       if (lastDenot == null) NoRunId else lastDenot.validFor.runId
 
     /** Does this symbol come from a currently compiled source file? */
