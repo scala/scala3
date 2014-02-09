@@ -24,9 +24,7 @@ object Bench extends Driver {
 
   private var numRuns = 1
 
-  lazy val compiler = new Compiler
-
-  override def newCompiler(): Compiler = compiler
+  def newCompiler(): Compiler = new Compiler
 
   private def ntimes(n: Int)(op: => Reporter): Reporter =
     (emptyReporter /: (0 until n)) ((_, _) => op)
