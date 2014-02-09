@@ -486,7 +486,7 @@ object Contexts {
   }
 
   /** Info that changes on each compiler run */
-  class RunInfo(initctx: Context) extends ImplicitRunInfo {
+  class RunInfo(initctx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
     implicit val ctx: Context = initctx
   }
 
