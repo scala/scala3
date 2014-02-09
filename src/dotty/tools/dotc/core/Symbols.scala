@@ -185,7 +185,7 @@ trait Symbols { this: Context =>
     val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
     println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
     println(s"decls = ${normalizedOwner.decls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
-    if (base.settings.debug.value) throw new Error()
+    //if (base.settings.debug.value) throw new Error()
     val stub = name match {
       case name: TermName =>
         newModuleSymbol(normalizedOwner, name, EmptyFlags, EmptyFlags, stubCompleter, assocFile = file)

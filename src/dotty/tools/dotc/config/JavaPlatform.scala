@@ -13,7 +13,7 @@ class JavaPlatform extends Platform {
 
   def classPath(implicit ctx: Context): ClassPath = {
     if (currentClassPath.isEmpty)
-      currentClassPath = Some(new PathResolver(ctx.condensed).result)
+      currentClassPath = Some(new PathResolver().result)
     currentClassPath.get
   }
 
@@ -21,7 +21,7 @@ class JavaPlatform extends Platform {
   def updateClassPath(subst: Map[ClassPath, ClassPath]) =
     currentClassPath = Some(new DeltaClassPath(currentClassPath.get, subst))
 
-  def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = new ctx.base.loaders.PackageLoader(root, classPath)(ctx.condensed)
+  def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = new ctx.base.loaders.PackageLoader(root, classPath)
 
   /** We could get away with excluding BoxedBooleanClass for the
    *  purpose of equality testing since it need not compare equal
@@ -40,5 +40,5 @@ class JavaPlatform extends Platform {
   }
 
   def newClassLoader(bin: AbstractFile)(implicit ctx: Context): SymbolLoader =
-    new ClassfileLoader(bin)(ctx.condensed)
+    new ClassfileLoader(bin)
 }
