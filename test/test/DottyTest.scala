@@ -29,7 +29,7 @@ class DottyTest {
 
 //      .withSetting(uniqid, true)
     println(ctx.settings)
-    base.definitions.init()
+    base.definitions.init(ctx)
     ctx
   }
 

@@ -812,8 +812,6 @@ object SymDenotations {
         println(s"parents of $this are invalid; copying $hashCode, symbol id = ${symbol.id} ...")
         for ((pd1, pd2) <- parentDenots zip (myClassParents map (_.denot)))
           if (pd1 ne pd2) println(s"different: $pd1 != $pd2")
-        if (name.toString == "Context")
-          new Error().printStackTrace()
         assert(copied == 0)
         copied += 1
         copySymDenotation()
@@ -821,13 +819,11 @@ object SymDenotations {
       else this
 
     protected override def bringForward()(implicit ctx: Context): SingleDenotation = {
-      if (name.toString == "Context") println(s"bring forward $this, id = ${symbol.id}, defunid = ${symbol.defRunId}, ctx.runid = ${ctx.runId}")
       assert(ctx.runId >= symbol.defRunId, s"$this, defrunid = ${symbol.defRunId}, ctx.runid = ${ctx.runId}")
       if (symbol.defRunId == ctx.runId) symbol.denot
       else {
         val d = super.bringForward()
         symbol.denot = d.asSymDenotation
-        if (name.toString == "Context") println(s"brought forward $d, id = ${symbol.id}, defunid = ${symbol.defRunId}")
         d
       }
     }

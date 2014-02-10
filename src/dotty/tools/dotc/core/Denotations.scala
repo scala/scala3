@@ -531,7 +531,7 @@ object Denotations {
     }
 
     def staleSymbolError(implicit ctx: Context) =
-      throw new StaleSymbol(s"stale symbol; $this, defined in run ${myValidFor.runId} is referred to in run ${ctx.period.runId}")
+      throw new StaleSymbol(s"stale symbol; $this in ${this.asSymDenotation.owner}, defined in run ${myValidFor.runId}, is referred to in run ${ctx.period.runId}")
 
     /** For ClassDenotations only:
      *  If caches influenced by parent classes are still valid, the denotation
