@@ -63,6 +63,15 @@ class Typer extends Namer with Applications with Implicits {
    */
   private var importedFromRoot: Set[Symbol] = Set()
 
+ /** A denotation exists really if it exists and does not point to a stale symbol.
+  def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean = denot match {
+    case denot: SymDenotation =>
+      denot.ensureCompleted
+      denot.exists && !denot.isAbsent
+    case _ =>
+      true
+  }*/
+
   /** A denotation exists really if it exists and does not point to a stale symbol. */
   def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean =
     try

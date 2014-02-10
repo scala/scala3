@@ -9,5 +9,13 @@ object comptest extends CompilerTest {
   val dotcDir = "/Users/odersky/workspace/dotty/src/dotty/"
 
   def main(args: Array[String]) =
-    compileDir(dotcDir + "tools/dotc/reporting", List("-Xprompt", "-Ylog:frontend", "#runs", "2"))
+    compileArgs(Array(
+      dotcDir + "tools/dotc/CompilationUnit.scala",
+      dotcDir + "tools/dotc/core/Types.scala",
+      dotcDir + "tools/dotc/ast/Trees.scala",
+      "#runs", "2",
+      "-Ylog:frontend",
+      "-Xprompt"))
+
+//    compileDir(dotcDir + "tools/dotc/printing", List("-Xprompt", "-Ylog:frontend", "#runs", "2", "-uniqid"))
 }

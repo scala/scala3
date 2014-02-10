@@ -343,7 +343,7 @@ trait ImplicitRunInfo { self: RunInfo =>
   }
 
   /** A map that counts the number of times an implicit ref was picked */
-  val useCount = new mutable.HashMap[TermRef, Int] {
+  val useCount: mutable.Map[TermRef, Int] = new mutable.HashMap[TermRef, Int] { // !!!
     override def default(key: TermRef) = 0
   }
 }
@@ -628,7 +628,7 @@ class SearchHistory(val searchDepth: Int, val seen: Map[ClassSymbol, Int]) {
 class TermRefSet(implicit ctx: Context) extends mutable.Traversable[TermRef] {
   import collection.JavaConverters._
   private val elems = (new java.util.LinkedHashMap[TermSymbol, List[Type]]).asScala
-  
+
   def += (ref: TermRef): Unit = {
     val pre = ref.prefix
     val sym = ref.symbol.asTerm

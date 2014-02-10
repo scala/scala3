@@ -30,26 +30,28 @@ trait SymDenotations { this: Context =>
     initPrivateWithin: Symbol = NoSymbol)(implicit ctx: Context): SymDenotation = {
     val result =
       if (symbol.isClass)
-        if (initFlags is Package) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
-        else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+        if (initFlags is Package) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin, ctx.runId)
+        else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin, ctx.runId)
       else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
-    result.firstRunId = ctx.runId
     result.validFor = stablePeriod
     result
   }
 
-  def stillValid(denot: SymDenotation): Boolean = try
+  def stillValid(denot: SymDenotation): Boolean =
     if (denot is ValidForever) true
-    else if (denot.owner is PackageClass) denot.owner.decls.lookup(denot.name) eq denot.symbol
-    else
-      stillValid(denot.owner) && (
-        (denot.owner.firstRunId == denot.firstRunId) || {
-         println(s"no longer valid: $denot, was defined in ${denot.firstRunId}, owner ${denot.owner} was defined in ${denot.owner.firstRunId}")
-          false
-       })
-  catch {
-    case ex: StaleSymbol => false
-  }
+    else try {
+      val owner = denot.owner.denot
+      def isSelfSym = owner.infoOrCompleter match {
+        case ClassInfo(_, _, _, _, selfInfo) => selfInfo == denot.symbol
+        case _ => false
+      }
+      stillValid(owner) && owner.isClass && (
+           (owner.decls.lookupAll(denot.name) contains denot.symbol)
+        || isSelfSym
+        )
+    } catch {
+      case ex: StaleSymbol => false
+    }
 }
 
 object SymDenotations {
@@ -68,8 +70,6 @@ object SymDenotations {
     //assert(symbol.id != 4940, name)
 
     override def hasUniqueSym: Boolean = exists
-
-    private[SymDenotations] var firstRunId: RunId = _
 
     // ------ Getting and setting fields -----------------------------
 
@@ -731,8 +731,6 @@ object SymDenotations {
       val annotations1 = if (annotations != null) annotations else this.annotations
       val d = ctx.SymDenotation(symbol, owner, name, initFlags1, info1, privateWithin1)
       d.annotations = annotations1
-      d.firstRunId = firstRunId
-      // what about validFor?
       d
     }
   }
@@ -745,7 +743,8 @@ object SymDenotations {
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol = NoSymbol)
+    initPrivateWithin: Symbol,
+    initRunId: RunId)
     extends SymDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
 
     import util.LRUCache
@@ -771,8 +770,9 @@ object SymDenotations {
       myTypeParams
     }
 
-    private def myClassParents(implicit ctx: Context): List[TypeRef] = info match {
-      case classInfo: ClassInfo => classInfo.myClassParents
+    /** The denotations of all parents in this class. */
+    def classParents(implicit ctx: Context): List[TypeRef] = info match {
+      case classInfo: ClassInfo => classInfo.classParents
       case _ => Nil
     }
 
@@ -781,51 +781,45 @@ object SymDenotations {
      *  @see Namer#ClassCompleter
      */
     private def isFullyCompleted(implicit ctx: Context): Boolean =
-      isCompleted && myClassParents.nonEmpty
+      isCompleted && classParents.nonEmpty
 
-    /** A key to verify that all caches influenced by parent classes are valid */
-    private var parentDenots: List[Denotation] = null
+    // ------ syncing inheritance-related info -----------------------------
 
-    /** The denotations of all parents in this class.
-     *  Note: Always use this method instead of `classInfo.myClassParents`
-     *  because the latter does not ensure that the `parentDenots` key
-     *  is up-to-date, which might lead to invalid caches later on.
-     */
-    def classParents(implicit ctx: Context): List[TypeRef] = {
-      val ps = myClassParents
-      if (parentDenots == null && ps.nonEmpty) parentDenots = ps map (_.denot)
-      ps
-    }
-
-    /** Are caches influenced by parent classes still valid? */
-    private def parentsAreValid(implicit ctx: Context): Boolean =
-      parentDenots == null ||
-      parentDenots.corresponds(myClassParents map (_.denot))(_ eq _)
-
-    private var copied = 0
+    private var firstRunId: RunId = initRunId
 
     /** If caches influenced by parent classes are still valid, the denotation
      *  itself, otherwise a freshly initialized copy.
      */
-    override def copyIfParentInvalid(implicit ctx: Context): SingleDenotation =
-      if (!parentsAreValid) {
-        println(s"parents of $this are invalid; copying $hashCode, symbol id = ${symbol.id} ...")
-        for ((pd1, pd2) <- parentDenots zip (myClassParents map (_.denot)))
-          if (pd1 ne pd2) println(s"different: $pd1 != $pd2")
-        assert(copied == 0)
-        copied += 1
-        copySymDenotation()
+    override def syncWithParents(implicit ctx: Context): SingleDenotation = {
+      def isYounger(tref: TypeRef) = tref.symbol.denot match {
+        case denot: ClassDenotation =>
+          if (denot.validFor.runId < ctx.runId) denot.current // syncs with its parents in turn
+          val result = denot.firstRunId > this.firstRunId
+          if (result) incremental.println(s"$denot is younger than $this")
+          result
+        case _ => false
       }
-      else this
+      val parentIsYounger = (firstRunId < ctx.runId) && {
+        infoOrCompleter match {
+          case cinfo: ClassInfo => cinfo.classParents exists isYounger
+          case _ => false
+        }
+      }
+      if (parentIsYounger) {
+        incremental.println(s"parents of $this are invalid; symbol id = ${symbol.id}, copying ...\n")
+        invalidateInheritedInfo()
+        firstRunId = ctx.runId
+      }
+      this
+    }
 
-    protected override def bringForward()(implicit ctx: Context): SingleDenotation = {
-      assert(ctx.runId >= symbol.defRunId, s"$this, defrunid = ${symbol.defRunId}, ctx.runid = ${ctx.runId}")
-      if (symbol.defRunId == ctx.runId) symbol.denot
-      else {
-        val d = super.bringForward()
-        symbol.denot = d.asSymDenotation
-        d
-      }
+    /** Invalidate all caches and fields that depend on base classes and their contents */
+    private def invalidateInheritedInfo(): Unit = {
+      myBaseClasses = null
+      mySuperClassBits = null
+      myMemberFingerPrint = FingerPrint.unknown
+      myMemberCache = null
+      memberNamesCache = SimpleMap.Empty
     }
 
    // ------ class-specific operations -----------------------------------
@@ -1175,8 +1169,9 @@ object SymDenotations {
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol = NoSymbol)
-    extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
+    initPrivateWithin: Symbol,
+    initRunId: RunId)
+    extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin, initRunId) {
 
     private[this] var packageObjCache: SymDenotation = _
     private[this] var packageObjRunId: RunId = NoRunId
