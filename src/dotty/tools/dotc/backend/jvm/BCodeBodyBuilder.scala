@@ -4,8 +4,8 @@
  */
 
 
-package scala
-package tools.nsc
+package dotty.tools
+package dotc
 package backend
 package jvm
 
@@ -14,6 +14,12 @@ import scala.annotation.switch
 
 import scala.tools.asm
 
+import dotc.ast.Trees._
+import core.Types.Type
+import core.StdNames
+import core.Symbols.{Symbol, NoSymbol}
+import core.Constants.Constant
+
 /*
  *
  *  @author  Miguel Garcia, http://lamp.epfl.ch/~magarcia/ScalaCompilerCornerReloaded/
@@ -21,16 +27,18 @@ import scala.tools.asm
  *
  */
 abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
-  import global._
-  import definitions._
+
+  import ast.tpd._
 
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
-  abstract class PlainBodyBuilder(cunit: CompilationUnit) extends PlainSkelBuilder(cunit) {
+  abstract class PlainBodyBuilder(cunit:   CompilationUnit,
+                                  implicit val ctx: dotc.core.Contexts.Context) extends PlainSkelBuilder(cunit) {
 
     import icodes.TestOp
     import icodes.opcodes.InvokeStyle
+    import StdNames.nme
 
     /*  If the selector type has a member with the right name,
      *  it is the host class; otherwise the symbol's owner.
@@ -218,10 +226,83 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
       resKind
     }
 
+    /**
+     * Return the primitive code of the given operation. If the
+     * operation is an array get/set, we inspect the type of the receiver
+     * to demux the operation.
+     *
+     * @param fun The method symbol
+     * @param tpe The type of the receiver object. It is used only for array
+     *            operations
+     */
+    def getPrimitive(fun: Symbol, tpe: Type): Int = {
+      val code = scalaPrimitives.getPrimitive(fun)
+
+      def elementType = enteringTyper {
+        val arrayParent = tpe :: tpe.parents collectFirst {
+          case dotc.core.Types.TypeRef(_, ArrayClass, elem :: Nil) => elem
+        }
+        arrayParent getOrElse sys.error(fun.fullName + " : " + (tpe :: tpe.baseTypeSeq.toList).mkString(", "))
+      }
+
+      import scalaPrimitives._
+
+      code match {
+
+        case APPLY =>
+          toTypeKind(elementType) match {
+            case BType.BOOLEAN_TYPE => ZARRAY_GET
+            case BType.BYTE_TYPE    => BARRAY_GET
+            case BType.SHORT_TYPE   => SARRAY_GET
+            case BType.CHAR_TYPE    => CARRAY_GET
+            case BType.INT_TYPE     => IARRAY_GET
+            case BType.LONG_TYPE    => LARRAY_GET
+            case BType.FLOAT_TYPE   => FARRAY_GET
+            case BType.DOUBLE_TYPE  => DARRAY_GET
+            case r =>
+              assert(r.isRefOrArrayType)
+              OARRAY_GET
+          }
+
+        case UPDATE =>
+          toTypeKind(elementType) match {
+            case BType.BOOLEAN_TYPE  => ZARRAY_SET
+            case BType.BYTE_TYPE    => BARRAY_SET
+            case BType.SHORT_TYPE   => SARRAY_SET
+            case BType.CHAR_TYPE    => CARRAY_SET
+            case BType.INT_TYPE     => IARRAY_SET
+            case BType.LONG_TYPE    => LARRAY_SET
+            case BType.FLOAT_TYPE   => FARRAY_SET
+            case BType.DOUBLE_TYPE  => DARRAY_SET
+            case r =>
+              assert(r.isRefOrArrayType)
+              OARRAY_SET
+          }
+
+        case LENGTH =>
+          toTypeKind(elementType) match {
+            case BType.BOOLEAN_TYPE => ZARRAY_LENGTH
+            case BType.BYTE_TYPE    => BARRAY_LENGTH
+            case BType.SHORT_TYPE   => SARRAY_LENGTH
+            case BType.CHAR_TYPE    => CARRAY_LENGTH
+            case BType.INT_TYPE     => IARRAY_LENGTH
+            case BType.LONG_TYPE    => LARRAY_LENGTH
+            case BType.FLOAT_TYPE   => FARRAY_LENGTH
+            case BType.DOUBLE_TYPE  => DARRAY_LENGTH
+            case r =>
+              assert(r.isRefOrArrayType)
+              OARRAY_LENGTH
+          }
+
+        case _ =>
+          code
+      }
+    }
+
     def genPrimitiveOp(tree: Apply, expectedType: BType): BType = {
       val sym = tree.symbol
       val Apply(fun @ Select(receiver, _), _) = tree
-      val code = scalaPrimitives.getPrimitive(sym, receiver.tpe)
+      val code = getPrimitive(sym, receiver.tpe)
 
       import scalaPrimitives.{isArithmeticOp, isArrayOp, isLogicalOp, isComparisonOp}
 
@@ -306,7 +387,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
         case app : Apply =>
           generatedType = genApply(app, expectedType)
 
-        case ApplyDynamic(qual, args) => sys.error("No invokedynamic support yet.")
+        // case ApplyDynamic(qual, args) => sys.error("No invokedynamic support yet.")
 
         case This(qual) =>
           val symIsModuleClass = tree.symbol.isModuleClass
@@ -359,10 +440,10 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
 
         case Literal(value) =>
           if (value.tag != UnitTag) (value.tag, expectedType) match {
-            case (IntTag,   LONG  ) => bc.lconst(value.longValue);       generatedType = LONG
-            case (FloatTag, DOUBLE) => bc.dconst(value.doubleValue);     generatedType = DOUBLE
-            case (NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = RT_NULL
-            case _                  => genConstant(value);               generatedType = tpeTK(tree)
+            case (dotc.core.Constants.IntTag,   LONG  ) => bc.lconst(value.longValue);       generatedType = LONG
+            case (dotc.core.Constants.FloatTag, DOUBLE) => bc.dconst(value.doubleValue);     generatedType = DOUBLE
+            case (dotc.core.Constants.NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = RT_NULL
+            case _                                      => genConstant(value);               generatedType = tpeTK(tree)
           }
 
         case blck : Block => genBlock(blck, expectedType)
@@ -434,6 +515,9 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
      * Otherwise it's safe to call from multiple threads.
      */
     def genConstant(const: Constant) {
+
+      import dotc.core.Constants._
+
       (const.tag: @switch) match {
 
         case BooleanTag => bc.boolconst(const.booleanValue)
@@ -825,7 +909,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     /* Generate code that loads args into label parameters. */
-    def genLoadLabelArguments(args: List[Tree], lblDef: LabelDef, gotoPos: Position) {
+    def genLoadLabelArguments(args: List[Tree], lblDef: LabelDef, gotoPos: dotc.util.Positions.Position) {
 
       val aps = {
         val params: List[Symbol] = lblDef.params.map(_.symbol)
@@ -936,7 +1020,10 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
       StringReference
     }
 
-    def genCallMethod(method: Symbol, style: InvokeStyle, hostClass0: Symbol = null, pos: Position = NoPosition) {
+    def genCallMethod(method:     Symbol,
+                      style:      InvokeStyle,
+                      hostClass0: Symbol = null,
+                      pos:        dotc.util.Positions.Position = dotc.util.Positions.NoPosition) {
 
       val siteSymbol = claszSymbol
       val hostSymbol = if (hostClass0 == null) method.owner else hostClass0;
@@ -1118,7 +1205,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
       tree match {
 
         case Apply(fun, args) if isPrimitive(fun.symbol) =>
-          import scalaPrimitives.{ ZNOT, ZAND, ZOR, EQ, getPrimitive }
+          import scalaPrimitives.{ ZNOT, ZAND, ZOR, EQ }
 
           // lhs and rhs of test
           lazy val Select(lhs, _) = fun
@@ -1135,7 +1222,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
             genCond(rhs, success, failure)
           }
 
-          getPrimitive(fun.symbol) match {
+          scalaPrimitives.getPrimitive(fun.symbol) match {
             case ZNOT   => genCond(lhs, failure, success)
             case ZAND   => genZandOrZor(and = true)
             case ZOR    => genZandOrZor(and = false)

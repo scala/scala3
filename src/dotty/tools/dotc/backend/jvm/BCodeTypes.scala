@@ -3,12 +3,19 @@
  * @author  Martin Odersky
  */
 
-package scala
-package tools.nsc
+package dotty.tools
+package dotc
 package backend.jvm
 
 import scala.tools.asm
 import scala.collection.{ immutable, mutable }
+
+import dotc.ast.Trees.Tree
+import dotc.core.Types.Type
+import dotc.core.StdNames
+import dotc.core.Symbols.{Symbol, NoSymbol}
+
+import StdNames.nme
 
 /*
  *  Utilities to mediate between types as represented in Scala ASTs and ASM trees.
@@ -18,8 +25,6 @@ import scala.collection.{ immutable, mutable }
  *
  */
 abstract class BCodeTypes extends BCodeIdiomatic {
-
-  import global._
 
   // when compiling the Scala library, some assertions don't hold (e.g., scala.Boolean has null superClass although it's not an interface)
   val isCompilingStdLib = !(settings.sourcepath.isDefault)
@@ -71,28 +76,29 @@ abstract class BCodeTypes extends BCodeIdiomatic {
   /*
    * must-single-thread
    */
-  def initBCodeTypes() {
-    import definitions._
+  def initBCodeTypes(implicit ctx: core.Contexts.Context) {
+
+    import core.Symbols.defn
 
     primitiveTypeMap =
       Map(
-        UnitClass     -> UNIT,
-        BooleanClass  -> BOOL,
-        CharClass     -> CHAR,
-        ByteClass     -> BYTE,
-        ShortClass    -> SHORT,
-        IntClass      -> INT,
-        LongClass     -> LONG,
-        FloatClass    -> FLOAT,
-        DoubleClass   -> DOUBLE
+        defn.UnitClass     -> UNIT,
+        defn.BooleanClass  -> BOOL,
+        defn.CharClass     -> CHAR,
+        defn.ByteClass     -> BYTE,
+        defn.ShortClass    -> SHORT,
+        defn.IntClass      -> INT,
+        defn.LongClass     -> LONG,
+        defn.FloatClass    -> FLOAT,
+        defn.DoubleClass   -> DOUBLE
       )
 
     phantomTypeMap =
       Map(
-        NothingClass -> RT_NOTHING,
-        NullClass    -> RT_NULL,
-        NothingClass -> RT_NOTHING, // we map on purpose to RT_NOTHING, getting rid of the distinction compile-time vs. runtime for NullClass.
-        NullClass    -> RT_NULL     // ditto.
+        defn.NothingClass -> RT_NOTHING,
+        defn.NullClass    -> RT_NULL,
+        defn.NothingClass -> RT_NOTHING, // we map on purpose to RT_NOTHING, getting rid of the distinction compile-time vs. runtime for NullClass.
+        defn.NullClass    -> RT_NULL     // ditto.
       )
 
     boxResultType =
@@ -105,7 +111,16 @@ abstract class BCodeTypes extends BCodeIdiomatic {
 
     // boxed classes are looked up in the `exemplars` map by jvmWiseLUB().
     // Other than that, they aren't needed there (e.g., `isSubtypeOf()` special-cases boxed classes, similarly for others).
-    val boxedClasses = List(BoxedBooleanClass, BoxedCharacterClass, BoxedByteClass, BoxedShortClass, BoxedIntClass, BoxedLongClass, BoxedFloatClass, BoxedDoubleClass)
+    val boxedClasses = List(
+      defn.BoxedBooleanClass,
+      defn.BoxedCharClass,
+      defn.BoxedByteClass,
+      defn.BoxedShortClass,
+      defn.BoxedIntClass,
+      defn.BoxedLongClass,
+      defn.BoxedFloatClass,
+      defn.BoxedDoubleClass
+    )
     for(csym <- boxedClasses) {
       val key = brefType(csym.javaBinaryName.toTypeName)
       val tr  = buildExemplar(key, csym)
@@ -157,12 +172,12 @@ abstract class BCodeTypes extends BCodeIdiomatic {
     BType.getMethodType("()V")                   // necessary for JCodeMethodN.genStartConcat
     BType.getMethodType("()Ljava/lang/String;")  // necessary for JCodeMethodN.genEndConcat
 
-    PartialFunctionReference    = exemplar(PartialFunctionClass).c
+    PartialFunctionReference    = exemplar(defn.PartialFunctionClass).c
     for(idx <- 0 to definitions.MaxFunctionArity) {
-      FunctionReference(idx)           = exemplar(FunctionClass(idx))
-      AbstractFunctionReference(idx)   = exemplar(AbstractFunctionClass(idx))
+      FunctionReference(idx)           = exemplar(defn.FunctionClass(idx))
+      AbstractFunctionReference(idx)   = exemplar(defn.AbstractFunctionClass(idx))
       abstractFunctionArityMap        += (AbstractFunctionReference(idx).c -> idx)
-      AbstractPartialFunctionReference = exemplar(AbstractPartialFunctionClass).c
+      AbstractPartialFunctionReference = exemplar(defn.AbstractPartialFunctionClass).c
     }
 
     // later a few analyses (e.g. refreshInnerClasses) will look up BTypes based on descriptors in instructions
@@ -743,7 +758,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
      *  when the inner class should not get an index in the constant pool.
      *  That means non-member classes (anonymous). See Section 4.7.5 in the JVMS.
      */
-    def outerName(innerSym: Symbol): Name = {
+    def outerName(innerSym: Symbol): core.Names.Name = {
       if (innerSym.originalEnclosingMethod != NoSymbol)
         null
       else {

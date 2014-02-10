@@ -4,8 +4,8 @@
  */
 
 
-package scala
-package tools.nsc
+package dotty.tools
+package dotc
 package backend
 package jvm
 
@@ -13,6 +13,10 @@ import scala.collection.{ mutable, immutable }
 import scala.annotation.switch
 
 import scala.tools.asm
+
+import dotc.ast.Trees
+import dotc.core.Types.Type
+import dotc.core.Symbols.{Symbol, NoSymbol}
 
 /*
  *  Prepare in-memory representations of classfiles using the ASM Tree API, and serialize them to disk.
@@ -43,18 +47,14 @@ import scala.tools.asm
  *  @version 1.0
  *
  */
-abstract class GenBCode extends BCodeSyncAndTry {
-  import global._
+object GenBCode extends BCodeSyncAndTry {
 
-  val phaseName = "jvm"
+  final class PlainClassBuilder(cunit: CompilationUnit,
+                                ctx:   dotc.core.Contexts.Context) extends SyncAndTryBuilder(cunit)
 
-  override def newPhase(prev: Phase) = new BCodePhase(prev)
+  class BCodePhase extends dotc.core.Phases.Phase {
 
-  final class PlainClassBuilder(cunit: CompilationUnit) extends SyncAndTryBuilder(cunit)
-
-  class BCodePhase(prev: Phase) extends StdPhase(prev) {
-
-    override def name = phaseName
+    override def name = "jvm"
     override def description = "Generate bytecode from ASTs using the ASM library"
     override def erasedTypes = true
 
@@ -64,7 +64,7 @@ abstract class GenBCode extends BCodeSyncAndTry {
 
     /* ---------------- q1 ---------------- */
 
-    case class Item1(arrivalPos: Int, cd: ClassDef, cunit: CompilationUnit) {
+    case class Item1(arrivalPos: Int, cd: ast.Trees.TypeDef, cunit: CompilationUnit) {
       def isPoison = { arrivalPos == Int.MaxValue }
     }
     private val poison1 = Item1(Int.MaxValue, null, null)
@@ -118,7 +118,8 @@ abstract class GenBCode extends BCodeSyncAndTry {
     /*
      *  Pipeline that takes ClassDefs from queue-1, lowers them into an intermediate form, placing them on queue-2
      */
-    class Worker1(needsOutFolder: Boolean) {
+    class Worker1(needsOutFolder: Boolean,
+                  implicit val ctx: dotc.core.Contexts.Context) {
 
       val caseInsensitively = mutable.Map.empty[String, Symbol]
 
@@ -175,7 +176,7 @@ abstract class GenBCode extends BCodeSyncAndTry {
           } else null
 
         // -------------- "plain" class --------------
-        val pcb = new PlainClassBuilder(cunit)
+        val pcb = new PlainClassBuilder(cunit, ctx)
         pcb.genPlainClass(cd)
         val outF = if (needsOutFolder) getOutFolder(claszSymbol, pcb.thisName, cunit) else null;
         val plainC = pcb.cnode
@@ -262,11 +263,11 @@ abstract class GenBCode extends BCodeSyncAndTry {
      *    (c) tear down (closing the classfile-writer and clearing maps)
      *
      */
-    override def run() {
+    def runOn(units: List[CompilationUnit])(implicit ctx: dotc.core.Contexts.Context): Unit = {
 
       arrivalPos = 0 // just in case
       scalaPrimitives.init
-      initBCodeTypes()
+      initBCodeTypes
 
       // initBytecodeWriter invokes fullName, thus we have to run it before the typer-dependent thread is activated.
       bytecodeWriter  = initBytecodeWriter(cleanup.getEntryPoints)
@@ -274,7 +275,7 @@ abstract class GenBCode extends BCodeSyncAndTry {
       beanInfoCodeGen = new JBeanInfoBuilder
 
       val needsOutfileForSymbol = bytecodeWriter.isInstanceOf[ClassBytecodeWriter]
-      buildAndSendToDisk(needsOutfileForSymbol)
+      buildAndSendToDisk(needsOutfileForSymbol, units, ctx)
 
       // closing output files.
       bytecodeWriter.close()
@@ -296,6 +297,8 @@ abstract class GenBCode extends BCodeSyncAndTry {
       clearBCodeTypes()
     }
 
+    override def run(implicit ctx: dotc.core.Contexts.Context): Unit = unsupported("run()")
+
     /*
      *  Sequentially:
      *    (a) place all ClassDefs in queue-1
@@ -303,18 +306,20 @@ abstract class GenBCode extends BCodeSyncAndTry {
      *    (c) dequeue one at a time from queue-2, convert it to byte-array,    place in queue-3
      *    (d) serialize to disk by draining queue-3.
      */
-    private def buildAndSendToDisk(needsOutFolder: Boolean) {
+    private def buildAndSendToDisk(needsOutFolder: Boolean,
+                                   units: List[CompilationUnit],
+                                   ctx: dotc.core.Contexts.Context) {
 
-      feedPipeline1()
-      (new Worker1(needsOutFolder)).run()
+      feedPipeline1(units)
+      (new Worker1(needsOutFolder, ctx)).run()
       (new Worker2).run()
       drainQ3()
 
     }
 
     /* Feed pipeline-1: place all ClassDefs on q1, recording their arrival position. */
-    private def feedPipeline1() {
-      super.run()
+    private def feedPipeline1(units: List[CompilationUnit]) {
+      units forech apply
       q1 add poison1
     }
 
@@ -363,11 +368,15 @@ abstract class GenBCode extends BCodeSyncAndTry {
 
     override def apply(cunit: CompilationUnit): Unit = {
 
-      def gen(tree: Tree) {
+      def gen(tree: Trees.Tree) {
+
+        import Trees.{PackageDef, TypeDef}
+
         tree match {
-          case EmptyTree            => ()
+          case ast.untpd.EmptyTree  => ()
+          case ast.tpd.EmptyTree    => ()
           case PackageDef(_, stats) => stats foreach gen
-          case cd: ClassDef         =>
+          case cd: TypeDef          =>
             q1 add Item1(arrivalPos, cd, cunit)
             arrivalPos += 1
         }

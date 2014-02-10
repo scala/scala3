@@ -3,14 +3,18 @@
  * @author  Martin Odersky
  */
 
-package scala
-package tools.nsc
+package dotty.tools
+package dotc
 package backend.jvm
 
 import scala.tools.asm
 import scala.annotation.switch
 import scala.collection.{ immutable, mutable }
 import collection.convert.Wrappers.JListWrapper
+
+import dotc.ast.Trees.Tree
+import dotc.core.Types.Type
+import dotc.core.Symbols.{Symbol, NoSymbol}
 
 /*
  *  A high-level facade to the ASM API for bytecode generation.
@@ -20,8 +24,6 @@ import collection.convert.Wrappers.JListWrapper
  *
  */
 abstract class BCodeIdiomatic extends BCodeGlue {
-
-  import global._
 
   val classfileVersion: Int = settings.target.value match {
     case "jvm-1.5"     => asm.Opcodes.V1_5
@@ -674,39 +676,6 @@ abstract class BCodeIdiomatic extends BCodeGlue {
       (List(DARRAY_LENGTH, DARRAY_GET, DARRAY_SET) map (_ -> DOUBLE)) ++
       (List(OARRAY_LENGTH, OARRAY_GET, OARRAY_SET) map (_ -> ObjectReference)) : _*
     )
-  }
-
-  /*
-   * Collects (in `result`) all LabelDef nodes enclosed (directly or not) by each node it visits.
-   *
-   * In other words, this traverser prepares a map giving
-   * all labelDefs (the entry-value) having a Tree node (the entry-key) as ancestor.
-   * The entry-value for a LabelDef entry-key always contains the entry-key.
-   *
-   */
-  class LabelDefsFinder extends Traverser {
-    val result = mutable.Map.empty[Tree, List[LabelDef]]
-    var acc: List[LabelDef] = Nil
-
-    /*
-     * can-multi-thread
-     */
-    override def traverse(tree: Tree) {
-      val saved = acc
-      acc = Nil
-      super.traverse(tree)
-      // acc contains all LabelDefs found under (but not at) `tree`
-      tree match {
-        case lblDf: LabelDef => acc ::= lblDf
-        case _               => ()
-      }
-      if (acc.isEmpty) {
-        acc = saved
-      } else {
-        result += (tree -> acc)
-        acc = acc ::: saved
-      }
-    }
   }
 
   implicit class InsnIterMethodNode(mnode: asm.tree.MethodNode) {

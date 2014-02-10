@@ -4,8 +4,8 @@
  */
 
 
-package scala
-package tools.nsc
+package dotty.tools
+package dotc
 package backend
 package jvm
 
@@ -15,6 +15,10 @@ import scala.annotation.switch
 
 import scala.tools.asm
 
+import dotc.ast.Trees._
+import dotc.core.Types.Type
+import dotc.core.Symbols.{Symbol, NoSymbol}
+
 /*
  *
  *  @author  Miguel Garcia, http://lamp.epfl.ch/~magarcia/ScalaCompilerCornerReloaded/
@@ -22,7 +26,6 @@ import scala.tools.asm
  *
  */
 abstract class BCodeSkelBuilder extends BCodeHelpers {
-  import global._
 
   /*
    * There's a dedicated PlainClassBuilder for each CompilationUnit,
@@ -51,6 +54,8 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
     with    BCForwardersGen
     with    BCPickles
     with    BCJGenSigGen {
+
+    import ast.tpd._
 
     // Strangely I can't find this in the asm code 255, but reserving 1 for "this"
     final val MaximumJvmParameters = 254
@@ -86,7 +91,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- helper utils for generating classes and fiels ---------------- */
 
-    def genPlainClass(cd: ClassDef) {
+    def genPlainClass(cd: TypeDef) {
       assert(cnode == null, "GenBCode detected nested methods.")
       innerClassBufferASM.clear()
 
@@ -372,7 +377,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
        * The invoker must make sure inner classes are tracked for the sym's tpe.
        */
       def makeLocal(tk: BType, name: String): Symbol = {
-        val locSym = methSymbol.newVariable(cunit.freshTermName(name), NoPosition, Flags.SYNTHETIC) // setInfo tpe
+        val locSym = methSymbol.newVariable(cunit.freshTermName(name), dotc.util.Positions.NoPosition, Flags.SYNTHETIC) // setInfo tpe
         makeLocal(locSym, tk)
         locSym
       }

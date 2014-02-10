@@ -197,7 +197,7 @@ object Names {
   private final val fillFactor = 0.7
 
   /** Memory to store all names sequentially. */
-  private var chrs: Array[Char] = new Array[Char](InitialNameSize)
+  var chrs: Array[Char] = new Array[Char](InitialNameSize)
 
   /** The number of characters filled. */
   private var nc = 0
@@ -284,6 +284,36 @@ object Names {
       table(h) = name
       incTableSize()
       name
+    }
+  }
+
+  /**
+   *  Used only by the GenBCode backend, to represent bytecode-level types in a way that makes equals() and hashCode() efficient.
+   *  For bytecode-level types of OBJECT sort, its internal name (not its descriptor) is stored.
+   *  For those of ARRAY sort,  its descriptor is stored ie has a leading '['
+   *  For those of METHOD sort, its descriptor is stored ie has a leading '('
+   *
+   *  can-multi-thread
+   *  TODO SI-6240 !!! JZ Really? the constructors TermName and TypeName publish unconstructed `this` references
+   *               into the hash tables; we could observe them here before the subclass constructor completes.
+   */
+  final def lookupTypeName(cs: Array[Char]): TypeName = lookupTypeNameIfExisting(cs, true)
+
+  final def lookupTypeNameIfExisting(cs: Array[Char], failOnNotFound: Boolean): TypeName = {
+    val h = hashValue(cs, 0, cs.length) & (table.size - 1)
+    synchronized {
+      val next = table(h)
+      var name = next
+      while (name ne null) {
+        if (name.length == len && equals(name.start, cs, 0, cs.length))
+          return name.toTypeName
+        name = name.next
+      }
+      if (failOnNotFound) {
+        throw new RuntimeException(s"lookup of non-existing TypeName: ${new String(cs)}")
+      } else {
+        return null
+      }
     }
   }
 

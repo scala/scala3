@@ -3,14 +3,20 @@
  * @author  Martin Odersky
  */
 
-package scala
-package tools.nsc
+package dotty.tools
+package dotc
 package backend.jvm
 
 import scala.tools.asm
 import scala.annotation.switch
 import scala.collection.{ immutable, mutable }
 import scala.tools.nsc.io.AbstractFile
+
+import dotc.ast.Trees._
+
+import dotc.core.StdNames
+import dotc.core.Types.Type
+import dotc.core.Symbols.{Symbol, NoSymbol}
 
 /*
  *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -21,7 +27,7 @@ import scala.tools.nsc.io.AbstractFile
  */
 abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 
-  import global._
+  import ast.tpd._
 
   /*
    * must-single-thread
@@ -79,13 +85,13 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 
     /*
      *  This method is thread re-entrant because chrs never grows during its operation (that's because all TypeNames being looked up have already been entered).
-     *  To stress this point, rather than using `newTypeName()` we use `lookupTypeName()`
+     *  To stress this point, rather than using `Names.typeName()` we use `lookupTypeName()`
      *
      *  can-multi-thread
      */
     override def getCommonSuperClass(inameA: String, inameB: String): String = {
-      val a = brefType(lookupTypeName(inameA.toCharArray))
-      val b = brefType(lookupTypeName(inameB.toCharArray))
+      val a = brefType(core.Names.lookupTypeName(inameA.toCharArray))
+      val b = brefType(core.Names.lookupTypeName(inameB.toCharArray))
       val lca = jvmWiseLUB(a, b)
       val lcaName = lca.getInternalName // don't call javaName because that side-effects innerClassBuffer.
       assert(lcaName != "scala/Any")
@@ -134,11 +140,13 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
    */
   object isJavaEntryPoint {
 
+    import dotc.core.Types.{MethodType, PolyType}
+
     /*
      * must-single-thread
      */
     def apply(sym: Symbol, csymCompUnit: CompilationUnit): Boolean = {
-      def fail(msg: String, pos: Position = sym.pos) = {
+      def fail(msg: String, pos: dotc.util.Positions.Position = sym.pos) = {
         csymCompUnit.warning(sym.pos,
           sym.name +
           s" has a main method with parameter type Array[String], but ${sym.fullName('.')} will not be a runnable program.\n  Reason: $msg"
@@ -225,7 +233,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
   /*
    *  must-single-thread
    */
-  def fieldSymbols(cls: Symbol): List[Symbol] = {
+  def fieldSymbols(cls: Symbol)(implicit ctx: core.Contexts.Context): List[Symbol] = {
     for (f <- cls.info.decls.toList ;
          if !f.isMethod && f.isTerm && !f.isModule
     ) yield f;
@@ -234,7 +242,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
   /*
    * can-multi-thread
    */
-  def methodSymbols(cd: ClassDef): List[Symbol] = {
+  def methodSymbols(cd: TypeDef): List[Symbol] = {
     cd.impl.body collect { case dd: DefDef => dd.symbol }
   }
 
@@ -323,14 +331,14 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      * can-multi-thread
      */
     def pickleMarkerLocal = {
-      createJAttribute(tpnme.ScalaSignatureATTR.toString, versionPickle.bytes, 0, versionPickle.writeIndex)
+      createJAttribute(StdNames.tpnme.ScalaSignatureATTR.toString, versionPickle.bytes, 0, versionPickle.writeIndex)
     }
 
     /*
      * can-multi-thread
      */
     def pickleMarkerForeign = {
-      createJAttribute(tpnme.ScalaATTR.toString, new Array[Byte](0), 0, 0)
+      createJAttribute(StdNames.tpnme.ScalaATTR.toString, new Array[Byte](0), 0, 0)
     }
 
     /*  Returns a ScalaSignature annotation if it must be added to this class, none otherwise.
@@ -493,10 +501,10 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
         }
       }
 
-      import definitions.ArrayClass
+      import dotc.core.Types.{ThisType, ConstantType, TypeRef, ClassInfo}
 
       // Call to .normalize fixes #3003 (follow type aliases). Otherwise, primitiveOrArrayOrRefType() would return ObjectReference.
-      t.normalize match {
+      t match {
 
         case ThisType(sym) =>
           if (sym == ArrayClass) ObjectReference
@@ -510,17 +518,10 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
           if (sym == ArrayClass) arrayOf(toTypeKind(args.head))
           else                   primitiveOrRefType2(sym)
 
-        case ClassInfoType(_, _, sym) =>
+        case ClassInfo(_, _, sym) =>
           assert(sym != ArrayClass, "ClassInfoType to ArrayClass!")
           primitiveOrRefType(sym)
 
-        // !!! Iulian says types which make no sense after erasure should not reach here, which includes the ExistentialType, AnnotatedType, RefinedType.
-        case ExistentialType(_, t)   => toTypeKind(t) // TODO shouldn't get here but the following does: akka-actor/src/main/scala/akka/util/WildcardTree.scala
-        case AnnotatedType(_, w)     => toTypeKind(w) // TODO test/files/jvm/annotations.scala causes an AnnotatedType to reach here.
-        case RefinedType(parents, _) => parents map toTypeKind reduceLeft jvmWiseLUB
-
-        // For sure WildcardTypes shouldn't reach here either, but when debugging such situations this may come in handy.
-        // case WildcardType    => REFERENCE(ObjectClass)
         case norm => abort(
           s"Unknown type: $t, $norm [${t.getClass}, ${norm.getClass}] TypeRef? ${t.isInstanceOf[TypeRef]}"
         )
@@ -879,7 +880,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
         ) && !(meth.throwsAnnotations contains definitions.RemoteExceptionClass)
       )
       if (needsAnnotation) {
-        val c   = Constant(definitions.RemoteExceptionClass.tpe)
+        val c   = core.Constants.Constant(definitions.RemoteExceptionClass.tpe)
         val arg = Literal(c) setType c.tpe
         meth.addAnnotation(appliedType(definitions.ThrowsClass, c.tpe), arg)
       }
@@ -956,7 +957,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
       debuglog(s"Dumping mirror class for object: $moduleClass")
 
       val linkedClass  = moduleClass.companionClass
-      lazy val conflictingNames: Set[Name] = {
+      lazy val conflictingNames: Set[core.Names.Name] = {
         (linkedClass.info.members collect { case sym if sym.name.isTermName => sym.name }).toSet
       }
       debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
