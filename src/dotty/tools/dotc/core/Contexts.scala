@@ -387,7 +387,7 @@ object Contexts {
     usePhases(SomePhase :: Nil)
 
     /** The standard definitions */
-    val definitions = new Definitions()(initialCtx)
+    val definitions = new Definitions
   }
 
   /** The essential mutable state of a context base, collected into a common class */

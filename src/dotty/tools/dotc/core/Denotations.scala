@@ -17,8 +17,6 @@ import config.Config
 import util.common._
 import Decorators.SymbolIteratorDecorator
 
-
-
 /** Denotations represent the meaning of symbols and named types.
  *  The following diagram shows how the principal types of denotations
  *  and their denoting entities relate to each other. Lines ending in
@@ -461,6 +459,22 @@ object Denotations {
       current
     }
 
+    /** Move validity period of this denotation to a new run. Throw a StaleSymbol error
+     *  if denotation is no longer valid.
+     */
+    private def bringForward()(implicit ctx: Context): SingleDenotation = this match {
+      case denot: SymDenotation if ctx.stillValid(denot) =>
+        if (denot.exists) assert(ctx.runId > validFor.runId)
+        var d: SingleDenotation = denot
+        do {
+          d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
+          d = d.nextInRun
+        } while (d ne denot)
+        initial.syncWithParents
+      case _ =>
+        staleSymbolError
+    }
+
     /** Produce a denotation that is valid for the given context.
      *  Usually called when !(validFor contains ctx.period)
      *  (even though this is not a precondition).
@@ -476,17 +490,6 @@ object Denotations {
     def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
       val valid = myValidFor
-      def bringForward(): SingleDenotation = this match {
-        case denot: SymDenotation if ctx.stillValid(denot) =>
-          var d: SingleDenotation = denot
-          do {
-            d.validFor = Period(currentPeriod.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
-            d = d.nextInRun
-          } while (d ne denot)
-          initial.copyIfParentInvalid
-        case _ =>
-          staleSymbolError
-      }
       if (valid.runId != currentPeriod.runId) bringForward.current
       else {
         var cur = this
@@ -505,7 +508,7 @@ object Denotations {
             var startPid = cur.validFor.lastPhaseId + 1
             val transformers = ctx.transformersFor(cur)
             val transformer = transformers.nextTransformer(startPid)
-            next = transformer.transform(cur).copyIfParentInvalid
+            next = transformer.transform(cur).syncWithParents
             if (next eq cur)
               startPid = cur.validFor.firstPhaseId
             else {
@@ -529,14 +532,20 @@ object Denotations {
       }
     }
 
-    def staleSymbolError(implicit ctx: Context) =
-      throw new Error(s"stale symbol; $this, defined in run ${myValidFor.runId} is referred to in run ${ctx.period.runId}")
+    def staleSymbolError(implicit ctx: Context) = {
+      def ownerMsg = this match {
+        case denot: SymDenotation => s"in ${denot.owner}"
+        case _ => ""
+      }
+      def msg = s"stale symbol; $this#${symbol.id}$ownerMsg, defined in run ${myValidFor.runId}, is referred to in run ${ctx.period.runId}"
+      throw new StaleSymbol(msg)
+    }
 
     /** For ClassDenotations only:
      *  If caches influenced by parent classes are still valid, the denotation
      *  itself, otherwise a freshly initialized copy.
      */
-    def copyIfParentInvalid(implicit ctx: Context): SingleDenotation = this
+    def syncWithParents(implicit ctx: Context): SingleDenotation = this
 
     override def toString =
       if (symbol == NoSymbol) symbol.toString
@@ -756,6 +765,11 @@ object Denotations {
         ctx.newCompletePackageSymbol(owner, name.asTermName).entered
       else
         NoSymbol
+  }
+
+  /** An exception for accessing symbols that are no longer valid in current run */
+  class StaleSymbol(msg: => String) extends Exception {
+    override def getMessage() = msg
   }
 }
 

@@ -12,6 +12,7 @@ class tests extends CompilerTest {
 //        "-Xprompt",
 //        "-explaintypes",
 //        "-Yshow-suppressed-errors",
+        "#runs", "2",
         "-pagewidth", "160")
 
   val posDir = "./tests/pos/"
