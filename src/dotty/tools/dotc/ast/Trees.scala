@@ -29,7 +29,7 @@ object Trees {
 
   /** A base class for things that have positions (currently: modifiers and trees)
    */
-  abstract class Positioned extends Attachment.Container with Product {
+  abstract class Positioned extends DotClass with Product {
 
     private[this] var curPos: Position = _
 
@@ -196,7 +196,11 @@ object Trees {
    *   - Type checking an untyped tree should remove all embedded `TypedSplice`
    *     nodes.
    */
-  abstract class Tree[-T >: Untyped] extends Positioned with Product with printing.Showable with Cloneable {
+  abstract class Tree[-T >: Untyped] extends Positioned
+                                        with Product
+                                        with Attachment.Container
+                                        with printing.Showable
+                                        with Cloneable {
 
     if (Stats.enabled) ntrees += 1
 

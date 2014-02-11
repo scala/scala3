@@ -5,71 +5,94 @@ package dotty.tools.dotc.util
  */
 object Attachment {
 
+  /** The class of keys for attachments yielding values of type V */
   class Key[+V]
 
-  val NullKey = new Key[Null]
-
-  abstract class AttachmentLink[+V] extends DotClass {
-    private[Attachment] def key: Key[V]
-    private[Attachment] def value: V
+  /** An implementation trait for attachements.
+   *  Clients should inherit from Container instead.
+   */
+  trait LinkSource {
     private[Attachment] var next: Link[_]
 
-    def getAttachment[V](key: Key[V]): Option[V] =
-      if (this.key eq key) Some(value.asInstanceOf[V])
-      else if (next == null) None
-      else next.getAttachment(key)
-
-    def attachment[V](key: Key[V]): V =
-      if (this.key eq key) value.asInstanceOf[V]
-      else if (next == null) throw new NoSuchElementException
-      else next.attachment(key)
-
-    def attachmentOrElse[V](key: Key[V], default: V): V =
-      if (this.key eq key) value.asInstanceOf[V]
-      else if (next == null) default
-      else next.attachmentOrElse(key, default)
-
-    def pushAttachment[V](key: Key[V], value: V): Unit = {
-      assert(!getAttachment(key).isDefined)
-      next = new Link(key, value, next)
+    /** Optionally get attachment corresponding to `key` */
+    final def getAttachment[V](key: Key[V]): Option[V] = {
+      val nx = next
+      if (nx == null) None
+      else if (nx.key eq key) Some(nx.value.asInstanceOf[V])
+      else nx.getAttachment[V](key)
     }
 
-    def putAttachment[V](key: Key[V], value: V): Option[V] = {
-      if (next == null) {
+    /** The attachment corresponding to `key`.
+     *  @throws NoSuchElementException  if no attachment with key exists
+     */
+    final def attachment[V](key: Key[V]): V = {
+      val nx = next
+      if (nx == null) throw new NoSuchElementException
+      else if (nx.key eq key) nx.value.asInstanceOf[V]
+      else nx.attachment(key)
+    }
+
+    /** The attachment corresponding to `key`, or `default`
+     *  if no attachment with `key` exists.
+     */
+    final def attachmentOrElse[V](key: Key[V], default: V): V = {
+      val nx = next
+      if (nx == null) default
+      else if (nx.key eq key) nx.value.asInstanceOf[V]
+      else nx.attachmentOrElse(key, default)
+    }
+
+    /** Add attachment with given `key` and `value`.
+     *  @return  Optionally, the old attachment with given `key` if one existed before.
+     *  The new attachment is added at the position of the old one, or at the end
+     *  if no attachment with same `key` existed.
+     */
+    final def putAttachment[V](key: Key[V], value: V): Option[V] = {
+      val nx = next
+      if (nx == null) {
         next = new Link(key, value, null)
         None
       }
-      else if (next.key eq key) {
-        val nx = next
+      else if (nx.key eq key) {
         next = new Link(key, value, nx.next)
         Some(nx.value.asInstanceOf[V])
       }
-      else next.putAttachment(key, value)
+      else nx.putAttachment(key, value)
     }
 
-    def removeAttachment[V](key: Key[V]): Option[V] = {
-      if (next == null)
+    /** Remove attachment with given `key`, if it exists.
+     *  @return  Optionally, the removed attachment with given `key` if one existed before.
+     */
+    final def removeAttachment[V](key: Key[V]): Option[V] = {
+      val nx = next
+      if (nx == null)
         None
-      else if (next.key eq key) {
-        val nx = next
+      else if (nx.key eq key) {
         next = nx.next
         Some(nx.value.asInstanceOf[V])
       }
-      else next.removeAttachment(key)
+      else nx.removeAttachment(key)
     }
 
-    def allAttachments: List[Any] =
-      if (next == null) Nil else next.allAttachments
+    /** The list of all values attached to this container. */
+    final def allAttachments: List[Any] = {
+      val nx = next
+      if (nx == null) Nil else nx.value :: nx.allAttachments
+    }
   }
 
+  /** A private, concrete implementation class linking attachments.
+   */
   private[Attachment] class Link[+V](val key: Key[V], val value: V, var next: Link[_])
-      extends AttachmentLink[V] {
-    override def allAttachments: List[Any] = value :: super.allAttachments
-  }
+      extends LinkSource
 
-  class Container extends AttachmentLink[Null] {
-    private[Attachment] def key = NullKey
-    private[Attachment] def value: Null = unsupported("value")
+  /** A trait for objects that can contain attachments */
+  trait Container extends LinkSource {
     private[Attachment] var next: Link[_] = null
+
+    final def pushAttachment[V](key: Key[V], value: V): Unit = {
+      assert(!getAttachment(key).isDefined)
+      next = new Link(key, value, next)
+    }
   }
 }
