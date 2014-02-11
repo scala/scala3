@@ -15,9 +15,19 @@ object Attachment {
     private[Attachment] var next: Link[_]
 
     def getAttachment[V](key: Key[V]): Option[V] =
-      if (this.key eq key) Some(this.value.asInstanceOf[V])
+      if (this.key eq key) Some(value.asInstanceOf[V])
       else if (next == null) None
       else next.getAttachment(key)
+
+    def attachment[V](key: Key[V]): V =
+      if (this.key eq key) value.asInstanceOf[V]
+      else if (next == null) throw new NoSuchElementException
+      else next.attachment(key)
+
+    def attachmentOrElse[V](key: Key[V], default: V): V =
+      if (this.key eq key) value.asInstanceOf[V]
+      else if (next == null) default
+      else next.attachmentOrElse(key, default)
 
     def pushAttachment[V](key: Key[V], value: V): Unit = {
       assert(!getAttachment(key).isDefined)

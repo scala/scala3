@@ -60,7 +60,7 @@ trait NamerContextOps { this: Context =>
     def go(ctx: Context): Symbol = {
       val typer = ctx.typer
       if (typer == null) NoSymbol
-      else typer.symOfTree get tree match {
+      else tree.getAttachment(typer.SymOfTree) match {
         case Some(sym) => sym
         case None =>
           var cx = ctx.outer
@@ -103,7 +103,7 @@ class Namer { typer: Typer =>
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
    */
-  lazy val expandedTree = new mutable.AnyRefMap[DefTree, Tree]
+  //lazy val expandedTree = new mutable.AnyRefMap[DefTree, Tree]
   /*{
     override def default(tree: DefTree) = tree // can't have defaults on AnyRefMaps :-(
   }*/
@@ -113,7 +113,7 @@ class Namer { typer: Typer =>
    *  with the same symbol is created (this can be when the symbol is completed
    *  or at the latest when the tree is typechecked.
    */
-  lazy val symOfTree = new mutable.AnyRefMap[Tree, Symbol]
+  //lazy val symOfTree = new mutable.AnyRefMap[Tree, Symbol]
 
   /** A map from expanded trees to their typed versions.
    *  Populated when trees are typechecked during completion (using method typedAhead).
@@ -140,7 +140,7 @@ class Namer { typer: Typer =>
     val xtree = expanded(tree)
     xtree.getAttachment(TypedAhead) match {
       case Some(ttree) => ttree.symbol
-      case none => symOfTree(xtree)
+      case none => xtree.attachment(SymOfTree)
     }
   }
 
@@ -171,7 +171,7 @@ class Namer { typer: Typer =>
       enclosingClassNamed(mods.privateWithin, mods.pos)
 
     def record(sym: Symbol): Symbol = {
-      symOfTree(tree) = sym
+      tree.pushAttachment(SymOfTree, sym)
       sym
     }
 
@@ -253,15 +253,13 @@ class Namer { typer: Typer =>
     case mdef: DefTree =>
       val expanded = desugar.defTree(mdef)
       typr.println(i"Expansion: $mdef expands to $expanded")
-      if (expanded ne mdef) expandedTree(mdef) = expanded
-      // if (expanded ne mdef) mdef.pushAttachment(ExpandedTree(expanded))
+      if (expanded ne mdef) mdef.pushAttachment(ExpandedTree, expanded)
     case _ =>
   }
 
   /** The expanded version of this tree, or tree itself if not expanded */
   def expanded(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case ddef: DefTree => expandedTree.getOrElse(ddef, ddef)
-      //ddef.getAttachment(ExpandedTreeKey).orElse(ddef).asInstanceOf[Tree]
+    case ddef: DefTree => ddef.attachmentOrElse(ExpandedTree, ddef)
     case _ => tree
   }
 
@@ -337,14 +335,14 @@ class Namer { typer: Typer =>
       for (mdef @ ModuleDef(_, name, _) <- stats)
         classDef get name.toTypeName match {
           case Some(cdef) =>
-            val Thicket(vdef :: (mcls @ TypeDef(_, _, impl: Template)) :: Nil) = expandedTree(mdef)
-            expandedTree.getOrElse(cdef, cdef) match {
+            val Thicket(vdef :: (mcls @ TypeDef(_, _, impl: Template)) :: Nil) = mdef.attachment(ExpandedTree)
+            cdef.attachmentOrElse(ExpandedTree, cdef) match {
               case Thicket(cls :: mval :: TypeDef(_, _, compimpl: Template) :: crest) =>
                 val mcls1 = cpy.TypeDef(mcls, mcls.mods, mcls.name,
                     cpy.Template(impl, impl.constr, impl.parents, impl.self,
                         compimpl.body ++ impl.body))
-                expandedTree(mdef) = Thicket(vdef :: mcls1 :: Nil)
-                expandedTree(cdef) = Thicket(cls :: crest)
+                mdef.putAttachment(ExpandedTree, Thicket(vdef :: mcls1 :: Nil))
+                cdef.putAttachment(ExpandedTree, Thicket(cls :: crest))
               case _ =>
             }
           case none =>

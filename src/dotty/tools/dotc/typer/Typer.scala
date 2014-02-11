@@ -967,9 +967,13 @@ class Typer extends Namer with Applications with Implicits {
     xtree.removeAttachment(TypedAhead) match {
       case Some(ttree) => ttree
       case none =>
-        val sym = symOfTree.getOrElse(xtree, NoSymbol)
-        sym.ensureCompleted()
-        symOfTree.remove(xtree)
+        val sym = xtree.removeAttachment(SymOfTree) match {
+          case Some(sym) =>
+            sym.ensureCompleted()
+            sym
+          case none =>
+            NoSymbol
+        }
         def localContext = {
           val freshCtx = ctx.fresh.withTree(xtree)
           if (sym.exists) freshCtx.withOwner(sym)
@@ -1059,7 +1063,7 @@ class Typer extends Namer with Applications with Implicits {
         buf += imp1
         traverse(rest)(importContext(imp1.symbol, imp.selectors))
       case (mdef: untpd.DefTree) :: rest =>
-        expandedTree remove mdef match {
+        mdef.removeAttachment(ExpandedTree) match {
           case Some(xtree) =>
             traverse(xtree :: rest)
           case none =>
