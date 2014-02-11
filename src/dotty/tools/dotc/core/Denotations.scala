@@ -90,7 +90,7 @@ object Denotations {
    *
    *  Then the denotation of `y` is `SingleDenotation(NoSymbol, A | B)`.
    */
-  abstract class Denotation extends DotClass with printing.Showable {
+  abstract class Denotation extends util.DotClass with printing.Showable {
 
     /** The referencing symbol, exists only for non-overloaded denotations */
     def symbol: Symbol

@@ -964,7 +964,7 @@ class Typer extends Namer with Applications with Implicits {
   def typedUnadapted(initTree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
 
     val xtree = expanded(initTree)
-    typedTree remove xtree match {
+    xtree.removeAttachment(TypedAhead) match {
       case Some(ttree) => ttree
       case none =>
         val sym = symOfTree.getOrElse(xtree, NoSymbol)

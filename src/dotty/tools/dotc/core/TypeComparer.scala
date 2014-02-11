@@ -8,8 +8,7 @@ import Decorators._
 import StdNames.{nme, tpnme}
 import collection.mutable
 import printing.Disambiguation.disambiguated
-import util.SimpleMap
-import util.Stats
+import util.{SimpleMap, Stats, DotClass}
 import config.Config
 import config.Printers._
 

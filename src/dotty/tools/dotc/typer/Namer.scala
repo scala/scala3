@@ -9,7 +9,7 @@ import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Fla
 import ast.desugar, ast.desugar._
 import Inferencing._
 import util.Positions._
-import util.SourcePosition
+import util.{Attachment, SourcePosition, DotClass}
 import collection.mutable
 import annotation.tailrec
 import ErrorReporting._
@@ -96,10 +96,15 @@ class Namer { typer: Typer =>
 
   import untpd._
 
+  val TypedAhead = new Attachment.Key[tpd.Tree]
+  val ExpandedTree = new Attachment.Key[Tree]
+  val SymOfTree = new Attachment.Key[Symbol]
+
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
    */
-  lazy val expandedTree = new mutable.AnyRefMap[DefTree, Tree] /*{
+  lazy val expandedTree = new mutable.AnyRefMap[DefTree, Tree]
+  /*{
     override def default(tree: DefTree) = tree // can't have defaults on AnyRefMaps :-(
   }*/
 
@@ -113,7 +118,7 @@ class Namer { typer: Typer =>
   /** A map from expanded trees to their typed versions.
    *  Populated when trees are typechecked during completion (using method typedAhead).
    */
-  lazy val typedTree = new mutable.AnyRefMap[Tree, tpd.Tree]
+  // lazy val typedTree = new mutable.AnyRefMap[Tree, tpd.Tree]
 
   /** A map from method symbols to nested typers.
    *  Populated when methods are completed. Emptied when they are typechecked.
@@ -133,9 +138,9 @@ class Namer { typer: Typer =>
   /** The symbol of the given expanded tree. */
   def symbolOfTree(tree: Tree)(implicit ctx: Context): Symbol = {
     val xtree = expanded(tree)
-    typedTree get xtree match {
-      case Some(ttree) => ttree.denot.symbol
-      case _ => symOfTree(xtree)
+    xtree.getAttachment(TypedAhead) match {
+      case Some(ttree) => ttree.symbol
+      case none => symOfTree(xtree)
     }
   }
 
@@ -249,12 +254,14 @@ class Namer { typer: Typer =>
       val expanded = desugar.defTree(mdef)
       typr.println(i"Expansion: $mdef expands to $expanded")
       if (expanded ne mdef) expandedTree(mdef) = expanded
+      // if (expanded ne mdef) mdef.pushAttachment(ExpandedTree(expanded))
     case _ =>
   }
 
   /** The expanded version of this tree, or tree itself if not expanded */
   def expanded(tree: Tree)(implicit ctx: Context): Tree = tree match {
     case ddef: DefTree => expandedTree.getOrElse(ddef, ddef)
+      //ddef.getAttachment(ExpandedTreeKey).orElse(ddef).asInstanceOf[Tree]
     case _ => tree
   }
 
@@ -445,15 +452,13 @@ class Namer { typer: Typer =>
   /** Typecheck tree during completion, and remember result in typedtree map */
   private def typedAheadImpl(tree: Tree, pt: Type)(implicit ctx: Context): tpd.Tree = {
     val xtree = expanded(tree)
-    typedTree.get(xtree) match {
+    xtree.getAttachment(TypedAhead) match {
       case Some(ttree) => ttree
       case none =>
         val ttree = typer.typed(tree, pt)
-        typedTree(xtree) = ttree
+        xtree.pushAttachment(TypedAhead, ttree)
         ttree
     }
-    // was: typedTree.getOrElseUpdate(expanded(tree), typer.typed(tree, pt))
-    // but this fails for AnyRefMap with an ArrayIndexOutOfBounds exception in getOrElseUpdate
   }
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =

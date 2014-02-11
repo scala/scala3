@@ -11,7 +11,7 @@ import collection.immutable.IndexedSeq
 import collection.mutable.ListBuffer
 import parsing.Tokens.Token
 import printing.Printer
-import util.Stats
+import util.{Stats, Attachment, DotClass}
 import annotation.unchecked.uncheckedVariance
 
 object Trees {
@@ -29,7 +29,7 @@ object Trees {
 
   /** A base class for things that have positions (currently: modifiers and trees)
    */
-  abstract class Positioned extends DotClass with Product {
+  abstract class Positioned extends Attachment.Container with Product {
 
     private[this] var curPos: Position = _
 

@@ -16,7 +16,7 @@ import Denotations._
 import Periods._
 import util.Positions.Position
 import util.Stats._
-import util.SimpleMap
+import util.{DotClass, SimpleMap}
 import ast.tpd._, printing.Texts._
 import ast.untpd
 import transform.Erasure

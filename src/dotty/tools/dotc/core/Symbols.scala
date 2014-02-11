@@ -4,20 +4,27 @@ package core
 
 import Periods._
 import Transformers._
-import Names._, Scopes._
+import Names._
+import Scopes._
 import Flags._
 import java.lang.AssertionError
 import Decorators._
 import Symbols._
 import Contexts._
-import SymDenotations._, printing.Texts._
+import SymDenotations._
+import printing.Texts._
 import printing.Printer
-import Types._, Annotations._, util.Positions._, StdNames._, NameOps._
+import Types._
+import Annotations._
+import util.Positions._
+import StdNames._
+import NameOps._
 import ast.tpd.{TreeMapper, SharedTree}
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
+import util.DotClass
 
 /** Creation methods for symbols */
 trait Symbols { this: Context =>

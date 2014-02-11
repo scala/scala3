@@ -1,7 +1,9 @@
 package dotty.tools.dotc
 package core
 
-import Periods._, Contexts._
+import Periods._
+import Contexts._
+import util.DotClass
 
 trait Phases { self: Context =>
   import Phases._

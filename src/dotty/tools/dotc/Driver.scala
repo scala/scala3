@@ -2,7 +2,7 @@ package dotty.tools.dotc
 
 import config.CompilerCommand
 import core.Contexts.{Context, ContextBase}
-import core.DotClass
+import util.DotClass
 import reporting._
 
 abstract class Driver extends DotClass {
