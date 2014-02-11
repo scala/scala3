@@ -10,13 +10,16 @@ package backend.jvm
 import scala.tools.asm
 import scala.annotation.switch
 import scala.collection.{ immutable, mutable }
-import scala.tools.nsc.io.AbstractFile
+import dotty.tools.io.AbstractFile
 
 import dotc.ast.Trees._
 
 import dotc.core.StdNames
 import dotc.core.Types.Type
 import dotc.core.Symbols.{Symbol, NoSymbol}
+import dotc.core.SymDenotations._
+import dotc.core.Flags
+import dotc.core.StdNames.{nme, tpnme}
 
 /*
  *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -435,37 +438,36 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *  Tracks (if needed) the inner class given by `t`.
      *
      * must-single-thread
+     * 
+     * TODO(lry): check if `ctx` should be a paramter of the class instead.
      */
-    final def toTypeKind(t: Type): BType = {
+    final def toTypeKind(t: Type)(implicit ctx: dotc.core.Contexts.Context): BType = {
 
       /* Interfaces have to be handled delicately to avoid introducing spurious errors,
        *  but if we treat them all as AnyRef we lose too much information.
        */
-      def newReference(sym0: Symbol): BType = {
-        assert(!primitiveTypeMap.contains(sym0), "Use primitiveTypeMap instead.")
-        assert(sym0 != definitions.ArrayClass,   "Use arrayOf() instead.")
+      def newReference(sym: Symbol): BType = {
+        assert(!primitiveTypeMap.contains(sym),   "Use primitiveTypeMap instead.")
+        assert(sym != ctx.definitions.ArrayClass, "Use arrayOf() instead.")
 
-        if (sym0 == definitions.NullClass)    return RT_NULL;
-        if (sym0 == definitions.NothingClass) return RT_NOTHING;
+        if (sym == ctx.definitions.NullClass)    return RT_NULL;
+        if (sym == ctx.definitions.NothingClass) return RT_NOTHING;
 
-        val sym = (
-          if (!sym0.isPackageClass) sym0
-          else sym0.info.member(nme.PACKAGE) match {
-            case NoSymbol => abort(s"SI-5604: Cannot use package as value: ${sym0.fullName}")
-            case s        => abort(s"SI-5604: found package class where package object expected: $s")
+        if (sym is Flags.PackageClass) {
+          sym.info.member(nme.PACKAGE) match {
+            case NoDenotation => throw new FatalError(s"SI-5604: Cannot use package as value: ${sym.fullName}")
+            case s            => throw new FatalError(s"SI-5604: found package class where package object expected: $s")
           }
-        )
+        }
 
-        // Can't call .toInterface (at this phase) or we trip an assertion.
-        // See PackratParser#grow for a method which fails with an apparent mismatch
-        // between "object PackratParsers$class" and "trait PackratParsers"
-        if (sym.isImplClass) {
-          // pos/spec-List.scala is the sole failure if we don't check for NoSymbol
-          val traitSym = sym.owner.info.decl(tpnme.interfaceName(sym.name))
-          if (traitSym != NoSymbol) {
+        if (sym is Flags.ImplClass) {
+          val traitDenot = sym.owner.info.decl(tpnme.interfaceName(sym.name))
+          // scalac legacy: the `if` check below should not be needed.
+          // pos/spec-List.scala is the sole failure if we don't check for NoDenotation
+          // if (traitDenot != NoDenotation) {
             // this tracks the inner class in innerClassBufferASM, if needed.
-            return asmClassType(traitSym)
-          }
+            return asmClassType(traitDenot.symbol)
+          // }
         }
 
         assert(hasInternalName(sym), s"Invoked for a symbol lacking JVM internal name: ${sym.fullName}")

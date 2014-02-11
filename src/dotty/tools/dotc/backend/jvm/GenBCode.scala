@@ -50,7 +50,7 @@ import dotc.core.Symbols.{Symbol, NoSymbol}
 object GenBCode extends BCodeSyncAndTry {
 
   final class PlainClassBuilder(cunit: CompilationUnit,
-                                ctx:   dotc.core.Contexts.Context) extends SyncAndTryBuilder(cunit)
+                                ctx:   dotc.core.Contexts.Context) extends SyncAndTryBuilder(cunit, ctx)
 
   class BCodePhase extends dotc.core.Phases.Phase {
 
@@ -64,7 +64,7 @@ object GenBCode extends BCodeSyncAndTry {
 
     /* ---------------- q1 ---------------- */
 
-    case class Item1(arrivalPos: Int, cd: ast.Trees.TypeDef, cunit: CompilationUnit) {
+    case class Item1(arrivalPos: Int, cd: ast.tpd.TypeDef, cunit: CompilationUnit) {
       def isPoison = { arrivalPos == Int.MaxValue }
     }
     private val poison1 = Item1(Int.MaxValue, null, null)

@@ -25,7 +25,9 @@ object Flags {
         FlagSet(tbits | ((this.bits | that.bits) & ~KINDFLAGS))
       }
 
-    /** The intersection of this flag set and the given flag set */
+    /** The intersection of this flag set and the given flag set 
+     *  TODO(lry): check if resulting flag set has a non-empty kind?
+     */
     def & (that: FlagSet) = FlagSet(bits & that.bits)
 
     /** The intersection of this flag set with the complement of the given flag set */
@@ -89,7 +91,7 @@ object Flags {
     /** The lowest non-kind bit set in this flagset */
     def firstBit: Int = java.lang.Long.numberOfTrailingZeros(bits & ~KINDFLAGS)
 
-    /** The  list of non-empty names of flags with given index idx that are set in this FlagSet */
+    /** The list of non-empty names of flags with given index idx that are set in this FlagSet */
     private def flagString(idx: Int): List[String] =
       if ((bits & (1L << idx)) == 0) Nil
       else {
@@ -112,6 +114,10 @@ object Flags {
   /** A class representing flag sets that should be tested
    *  conjunctively. I.e. for a flag conjunction `fc`,
    *  `x is fc` tests whether `x` contains all flags in `fc`.
+   *
+   * TODO(lry) cannot be a value class because its erause is the same as `FlagSet`,
+   * the overloaded `is` would not work. Maybe rename `is` to `isAny` and `isAll`,
+   * get rid of `FlagConjunction`? Code would also be more explicit.
    */
   case class FlagConjunction(bits: Long) {
     override def toString = FlagSet(bits).toString
@@ -249,7 +255,10 @@ object Flags {
   final val PackageVal = Package.toTermFlags
   final val PackageClass = Package.toTypeFlags
 
-  /** A case class or its companion object */
+  /** A case class or its companion object
+   *  TODO(lry): Is CaseVal set for the companion of a case class? Or for a `case object`?
+   *  Or both? Is CaseClass set for the module class of a `case object`?
+   */
   final val Case = commonFlag(17, "case")
   final val CaseClass = Case.toTypeFlags
   final val CaseVal = Case.toTermFlags
