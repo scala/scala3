@@ -3,7 +3,7 @@ package test
 import scala.reflect.io._
 import org.junit.Test
 import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.Main
+import dotty.tools.dotc.{Main, Bench, Driver}
 import dotty.tools.dotc.reporting.Reporter
 
 class CompilerTest extends DottyTest {
@@ -11,7 +11,9 @@ class CompilerTest extends DottyTest {
   def defaultOptions: List[String] = Nil
 
   def compileArgs(args: Array[String], xerrors: Int = 0): Unit = {
-    val nerrors = Main.process(args ++ defaultOptions).count(Reporter.ERROR.level)
+    val allArgs = args ++ defaultOptions
+    val processor = if (allArgs.exists(_.startsWith("#"))) Bench else Main
+    val nerrors = processor.process(allArgs).count(Reporter.ERROR.level)
     assert(nerrors == xerrors, s"Wrong # of errors. Expected: $xerrors, found: $nerrors")
   }
 

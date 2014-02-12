@@ -133,9 +133,9 @@ object PathResolver {
       )
   }
 
-  def fromPathString(path: String)(implicit cctx: CondensedContext): JavaClassPath = {
-    val settings = cctx.settings.classpath.update(path)
-    new PathResolver(cctx.fresh.withSettings(settings)).result
+  def fromPathString(path: String)(implicit ctx: Context): JavaClassPath = {
+    val settings = ctx.settings.classpath.update(path)
+    new PathResolver()(ctx.fresh.withSettings(settings)).result
   }
 
   /** With no arguments, show the interesting values in Environment and Defaults.
@@ -148,11 +148,11 @@ object PathResolver {
       println(Defaults)
     }
     else {
-      implicit val cctx = (new ContextBase).initialCtx.condensed
+      implicit val ctx = (new ContextBase).initialCtx
       val ArgsSummary(sstate, rest, errors) =
-        cctx.settings.processArguments(args.toList, true)
+        ctx.settings.processArguments(args.toList, true)
       errors.foreach(println)
-      val pr = new PathResolver(cctx.fresh.withSettings(sstate))
+      val pr = new PathResolver()(ctx.fresh.withSettings(sstate))
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))
       println("RESIDUAL: 'scala %s'\n".format(rest.mkString(" ")))
       pr.result.show
@@ -161,9 +161,8 @@ object PathResolver {
 }
 import PathResolver.{ Defaults, Environment, firstNonEmpty, ppcp }
 
-class PathResolver(cctx: CondensedContext) {
-  implicit def ctx: Context = cctx
-  import cctx.base.settings
+class PathResolver(implicit ctx: Context) {
+  import ctx.base.settings
 
   val context = ClassPath.DefaultJavaContext
 

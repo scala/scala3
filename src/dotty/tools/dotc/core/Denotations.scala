@@ -17,8 +17,6 @@ import config.Config
 import util.common._
 import Decorators.SymbolIteratorDecorator
 
-
-
 /** Denotations represent the meaning of symbols and named types.
  *  The following diagram shows how the principal types of denotations
  *  and their denoting entities relate to each other. Lines ending in
@@ -92,13 +90,18 @@ object Denotations {
    *
    *  Then the denotation of `y` is `SingleDenotation(NoSymbol, A | B)`.
    */
-  abstract class Denotation extends DotClass with printing.Showable {
+  abstract class Denotation extends util.DotClass with printing.Showable {
 
     /** The referencing symbol, exists only for non-overloaded denotations */
     def symbol: Symbol
 
     /** The type info of the denotation, exists only for non-overloaded denotations */
-    def info: Type
+    def info(implicit ctx: Context): Type
+
+    /** The type info, or, if this is a SymDenotation where the symbol
+     *  is not yet completed, the completer
+     */
+    def infoOrCompleter: Type
 
     /** The period during which this denotation is valid. */
     def validFor: Period
@@ -306,6 +309,7 @@ object Denotations {
     }
 
     final def asSingleDenotation = asInstanceOf[SingleDenotation]
+    final def asSymDenotation = asInstanceOf[SymDenotation]
 
     def toText(printer: Printer): Text = printer.toText(this)
   }
@@ -314,7 +318,8 @@ object Denotations {
    */
   case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation {
     final def symbol: Symbol = NoSymbol
-    final def info = multiHasNot("info")
+    final def infoOrCompleter = multiHasNot("info")
+    final def info(implicit ctx: Context) = infoOrCompleter
     final def validFor = denot1.validFor & denot2.validFor
     final def isType = false
     def signature(implicit ctx: Context) = multiHasNot("signature")
@@ -355,7 +360,6 @@ object Denotations {
     def hasUniqueSym: Boolean
     protected def newLikeThis(symbol: Symbol, info: Type): SingleDenotation
 
-    def isType = info.isInstanceOf[TypeType]
     final def signature(implicit ctx: Context): Signature = {
       if (isType) Signature.NotAMethod // don't force info if this is a type SymDenotation
       else info match {
@@ -370,7 +374,7 @@ object Denotations {
       }
     }
 
-    def derivedSingleDenotation(symbol: Symbol, info: Type): SingleDenotation =
+    def derivedSingleDenotation(symbol: Symbol, info: Type)(implicit ctx: Context): SingleDenotation =
       if ((symbol eq this.symbol) && (info eq this.info)) this
       else newLikeThis(symbol, info)
 
@@ -455,6 +459,22 @@ object Denotations {
       current
     }
 
+    /** Move validity period of this denotation to a new run. Throw a StaleSymbol error
+     *  if denotation is no longer valid.
+     */
+    private def bringForward()(implicit ctx: Context): SingleDenotation = this match {
+      case denot: SymDenotation if ctx.stillValid(denot) =>
+        if (denot.exists) assert(ctx.runId > validFor.runId)
+        var d: SingleDenotation = denot
+        do {
+          d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
+          d = d.nextInRun
+        } while (d ne denot)
+        initial.syncWithParents
+      case _ =>
+        staleSymbolError
+    }
+
     /** Produce a denotation that is valid for the given context.
      *  Usually called when !(validFor contains ctx.period)
      *  (even though this is not a precondition).
@@ -470,17 +490,6 @@ object Denotations {
     def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
       val valid = myValidFor
-      def bringForward(): SingleDenotation = this match {
-        case denot: SymDenotation if ctx.stillValid(denot) =>
-          var d: SingleDenotation = denot
-          do {
-            d.validFor = Period(currentPeriod.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
-            d = d.nextInRun
-          } while (d ne denot)
-          initial.copyIfParentInvalid
-        case _ =>
-          throw new Error(s"stale symbol; $this, defined in run ${valid.runId} is referred to in run ${currentPeriod.runId}")
-      }
       if (valid.runId != currentPeriod.runId) bringForward.current
       else {
         var cur = this
@@ -499,7 +508,7 @@ object Denotations {
             var startPid = cur.validFor.lastPhaseId + 1
             val transformers = ctx.transformersFor(cur)
             val transformer = transformers.nextTransformer(startPid)
-            next = transformer.transform(cur).copyIfParentInvalid
+            next = transformer.transform(cur).syncWithParents
             if (next eq cur)
               startPid = cur.validFor.firstPhaseId
             else {
@@ -523,17 +532,24 @@ object Denotations {
       }
     }
 
+    def staleSymbolError(implicit ctx: Context) = {
+      def ownerMsg = this match {
+        case denot: SymDenotation => s"in ${denot.owner}"
+        case _ => ""
+      }
+      def msg = s"stale symbol; $this#${symbol.id}$ownerMsg, defined in run ${myValidFor.runId}, is referred to in run ${ctx.period.runId}"
+      throw new StaleSymbol(msg)
+    }
+
     /** For ClassDenotations only:
      *  If caches influenced by parent classes are still valid, the denotation
      *  itself, otherwise a freshly initialized copy.
      */
-    def copyIfParentInvalid(implicit ctx: Context): SingleDenotation = this
-
-    final def asSymDenotation = asInstanceOf[SymDenotation]
+    def syncWithParents(implicit ctx: Context): SingleDenotation = this
 
     override def toString =
       if (symbol == NoSymbol) symbol.toString
-      else s"<SingleDenotation of type $info>"
+      else s"<SingleDenotation of type $infoOrCompleter>"
 
     // ------ PreDenotation ops ----------------------------------------------
 
@@ -569,10 +585,16 @@ object Denotations {
     }
   }
 
+  abstract class NonSymSingleDenotation extends SingleDenotation {
+    def infoOrCompleter: Type
+    def info(implicit ctx: Context) = infoOrCompleter
+    def isType = infoOrCompleter.isInstanceOf[TypeType]
+  }
+
   class UniqueRefDenotation(
     val symbol: Symbol,
-    val info: Type,
-    initValidFor: Period) extends SingleDenotation {
+    val infoOrCompleter: Type,
+    initValidFor: Period) extends NonSymSingleDenotation {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = true
     protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
@@ -580,18 +602,18 @@ object Denotations {
 
   class JointRefDenotation(
     val symbol: Symbol,
-    val info: Type,
-    initValidFor: Period) extends SingleDenotation {
+    val infoOrCompleter: Type,
+    initValidFor: Period) extends NonSymSingleDenotation {
     validFor = initValidFor
     override def hasUniqueSym = false
     protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new JointRefDenotation(s, i, validFor)
   }
 
-  class ErrorDenotation(implicit ctx: Context) extends SingleDenotation {
+  class ErrorDenotation(implicit ctx: Context) extends NonSymSingleDenotation {
     override def exists = false
     override def hasUniqueSym = false
-    val symbol = NoSymbol
-    val info = NoType
+    def symbol = NoSymbol
+    def infoOrCompleter = NoType
     validFor = Period.allInRun(ctx.runId)
     protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = this
   }
@@ -743,6 +765,11 @@ object Denotations {
         ctx.newCompletePackageSymbol(owner, name.asTermName).entered
       else
         NoSymbol
+  }
+
+  /** An exception for accessing symbols that are no longer valid in current run */
+  class StaleSymbol(msg: => String) extends Exception {
+    override def getMessage() = msg
   }
 }
 

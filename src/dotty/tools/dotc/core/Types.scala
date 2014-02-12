@@ -16,7 +16,7 @@ import Denotations._
 import Periods._
 import util.Positions.Position
 import util.Stats._
-import util.SimpleMap
+import util.{DotClass, SimpleMap}
 import ast.tpd._, printing.Texts._
 import ast.untpd
 import transform.Erasure
@@ -1018,8 +1018,12 @@ object Types {
         case null =>
           val sym = lastSymbol
           if (sym == null) loadDenot else denotOfSym(sym)
-        case d: SymDenotation if ctx.stillValid(d) =>
-          d.current
+        case d: SymDenotation =>
+          if (ctx.stillValid(d)) d.current
+          else {
+            val newd = loadDenot
+            if (newd.exists) newd else d.staleSymbolError
+          }
         case d =>
           if (d.validFor.runId == ctx.period.runId) d.current
           else loadDenot
@@ -1789,7 +1793,7 @@ object Types {
   abstract case class ClassInfo(
       prefix: Type,
       cls: ClassSymbol,
-      myClassParents: List[TypeRef], // to be used only in ClassDenotation!
+      classParents: List[TypeRef],
       decls: Scope,
       selfInfo: DotClass /* should be: Type | Symbol */) extends CachedGroundType with TypeType {
 
@@ -1838,10 +1842,10 @@ object Types {
 
     def derivedClassInfo(prefix: Type)(implicit ctx: Context) =
       if (prefix eq this.prefix) this
-      else ClassInfo(prefix, cls, myClassParents, decls, selfInfo)
+      else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
-    def derivedClassInfo(prefix: Type = this.prefix, classParents: List[TypeRef] = myClassParents, selfInfo: DotClass = this.selfInfo)(implicit ctx: Context) =
-      if ((prefix eq this.prefix) && (classParents eq this.myClassParents) && (selfInfo eq this.selfInfo)) this
+    def derivedClassInfo(prefix: Type = this.prefix, classParents: List[TypeRef] = classParents, selfInfo: DotClass = this.selfInfo)(implicit ctx: Context) =
+      if ((prefix eq this.prefix) && (classParents eq this.classParents) && (selfInfo eq this.selfInfo)) this
       else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
     override def computeHash = doHash(cls, prefix)

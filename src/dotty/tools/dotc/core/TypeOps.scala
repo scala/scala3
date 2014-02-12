@@ -88,7 +88,7 @@ trait TypeOps { this: Context =>
 
   private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
     val lazyInfo = new LazyType { // needed so we do not force `formal`.
-      def complete(denot: SymDenotation): Unit = {
+      def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         denot setFlag formal.flags & RetainedTypeArgFlags
         denot.info = info
       }

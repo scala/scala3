@@ -175,6 +175,9 @@ object Flags {
   /** The empty flag set */
   final val EmptyFlags = FlagSet(0)
 
+  /** The undefined flag set */
+  final val UndefinedFlags = FlagSet(~KINDFLAGS)
+
   // Available flags:
 
   /** Labeled with `private` modifier */

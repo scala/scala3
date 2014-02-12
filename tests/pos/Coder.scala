@@ -50,7 +50,6 @@ class Coder(words: List[String]) {
 
 }
 
-/** Test code */
 object Coder {
   def main(args : Array[String]) : Unit = {
     val coder = new Coder(List("Scala", "sobls", "Python", "Ruby", "C", "A", "rocks", "sucks", "works", "Racka"))

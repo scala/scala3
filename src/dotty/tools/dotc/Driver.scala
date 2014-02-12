@@ -2,7 +2,7 @@ package dotty.tools.dotc
 
 import config.CompilerCommand
 import core.Contexts.{Context, ContextBase}
-import core.DotClass
+import util.DotClass
 import reporting._
 
 abstract class Driver extends DotClass {
@@ -24,7 +24,7 @@ abstract class Driver extends DotClass {
 
   def process(args: Array[String]): Reporter = {
     val summary = CompilerCommand.distill(args)(initCtx)
-    implicit val ctx = initCtx.fresh.withSettings(summary.sstate)
+    implicit val ctx: Context = initCtx.fresh.withSettings(summary.sstate)
     val fileNames = CompilerCommand.checkUsage(summary)
     try {
       doCompile(newCompiler(), fileNames)

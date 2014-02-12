@@ -63,12 +63,25 @@ class Typer extends Namer with Applications with Implicits {
    */
   private var importedFromRoot: Set[Symbol] = Set()
 
+ /** A denotation exists really if it exists and does not point to a stale symbol.
+  def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean = denot match {
+    case denot: SymDenotation =>
+      denot.ensureCompleted
+      denot.exists && !denot.isAbsent
+    case _ =>
+      true
+  }*/
+
   /** A denotation exists really if it exists and does not point to a stale symbol. */
   def reallyExists(denot: Denotation)(implicit ctx: Context): Boolean =
-    denot.exists && {
-      val sym = denot.symbol
-      sym.ensureCompleted
-      (sym eq NoSymbol) || !sym.isAbsent
+    try
+      denot.exists && {
+        val sym = denot.symbol
+            sym.ensureCompleted
+            (sym eq NoSymbol) || !sym.isAbsent
+      }
+    catch {
+      case ex: StaleSymbol => false
     }
 
   /** The type of a selection with `name` of a tree with type `site`.
@@ -951,12 +964,16 @@ class Typer extends Namer with Applications with Implicits {
   def typedUnadapted(initTree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
 
     val xtree = expanded(initTree)
-    typedTree remove xtree match {
+    xtree.removeAttachment(TypedAhead) match {
       case Some(ttree) => ttree
       case none =>
-        val sym = symOfTree.getOrElse(xtree, NoSymbol)
-        sym.ensureCompleted()
-        symOfTree.remove(xtree)
+        val sym = xtree.removeAttachment(SymOfTree) match {
+          case Some(sym) =>
+            sym.ensureCompleted()
+            sym
+          case none =>
+            NoSymbol
+        }
         def localContext = {
           val freshCtx = ctx.fresh.withTree(xtree)
           if (sym.exists) freshCtx.withOwner(sym)
@@ -1046,7 +1063,7 @@ class Typer extends Namer with Applications with Implicits {
         buf += imp1
         traverse(rest)(importContext(imp1.symbol, imp.selectors))
       case (mdef: untpd.DefTree) :: rest =>
-        expandedTree remove mdef match {
+        mdef.removeAttachment(ExpandedTree) match {
           case Some(xtree) =>
             traverse(xtree :: rest)
           case none =>

@@ -246,7 +246,6 @@ object Contexts {
 
     /** A condensed context containing essential information of this but
      *  no outer contexts except the initial context.
-     */
     private var _condensed: CondensedContext = null
     def condensed: CondensedContext = {
       if (_condensed eq outer.condensed)
@@ -264,6 +263,7 @@ object Contexts {
           .withMoreProperties(moreProperties)
       _condensed
     }
+    */
 
     /** A fresh clone of this context. */
     def fresh: FreshContext = {
@@ -291,15 +291,15 @@ object Contexts {
   /** A condensed context provides only a small memory footprint over
    *  a Context base, and therefore can be stored without problems in
    *  long-lived objects.
-   */
   abstract class CondensedContext extends Context {
     override def condensed = this
   }
+  */
 
   /** A fresh context allows selective modification
    *  of its attributes using the with... methods.
    */
-  abstract class FreshContext extends CondensedContext {
+  abstract class FreshContext extends Context {
     def withPeriod(period: Period): this.type = { this.period = period; this }
     def withNewMode(mode: Mode): this.type = { this.mode = mode; this }
     def withTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
@@ -387,7 +387,7 @@ object Contexts {
     usePhases(SomePhase :: Nil)
 
     /** The standard definitions */
-    val definitions = new Definitions()(initialCtx)
+    val definitions = new Definitions
   }
 
   /** The essential mutable state of a context base, collected into a common class */
@@ -486,7 +486,7 @@ object Contexts {
   }
 
   /** Info that changes on each compiler run */
-  class RunInfo(initctx: Context) extends ImplicitRunInfo {
+  class RunInfo(initctx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
     implicit val ctx: Context = initctx
   }
 

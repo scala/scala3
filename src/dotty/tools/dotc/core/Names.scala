@@ -12,6 +12,7 @@ import collection.generic.CanBuildFrom
 import collection.mutable.{ Builder, StringBuilder }
 import collection.immutable.WrappedString
 import collection.generic.CanBuildFrom
+import util.DotClass
 //import annotation.volatile
 
 object Names {

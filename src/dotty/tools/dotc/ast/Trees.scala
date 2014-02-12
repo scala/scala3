@@ -11,7 +11,7 @@ import collection.immutable.IndexedSeq
 import collection.mutable.ListBuffer
 import parsing.Tokens.Token
 import printing.Printer
-import util.Stats
+import util.{Stats, Attachment, DotClass}
 import annotation.unchecked.uncheckedVariance
 
 object Trees {
@@ -196,7 +196,11 @@ object Trees {
    *   - Type checking an untyped tree should remove all embedded `TypedSplice`
    *     nodes.
    */
-  abstract class Tree[-T >: Untyped] extends Positioned with Product with printing.Showable with Cloneable {
+  abstract class Tree[-T >: Untyped] extends Positioned
+                                        with Product
+                                        with Attachment.Container
+                                        with printing.Showable
+                                        with Cloneable {
 
     if (Stats.enabled) ntrees += 1
 

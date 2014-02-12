@@ -5,7 +5,7 @@ package core
 import Types._
 import Flags._
 import Contexts._
-import util.SimpleMap
+import util.{SimpleMap, DotClass}
 import reporting._
 import printing.{Showable, Printer}
 import printing.Texts._

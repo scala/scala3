@@ -4,20 +4,27 @@ package core
 
 import Periods._
 import Transformers._
-import Names._, Scopes._
+import Names._
+import Scopes._
 import Flags._
 import java.lang.AssertionError
 import Decorators._
 import Symbols._
 import Contexts._
-import SymDenotations._, printing.Texts._
+import SymDenotations._
+import printing.Texts._
 import printing.Printer
-import Types._, Annotations._, util.Positions._, StdNames._, NameOps._
+import Types._
+import Annotations._
+import util.Positions._
+import StdNames._
+import NameOps._
 import ast.tpd.{TreeMapper, SharedTree}
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
+import util.DotClass
 
 /** Creation methods for symbols */
 trait Symbols { this: Context =>
@@ -126,7 +133,7 @@ trait Symbols { this: Context =>
     val mdenot = SymDenotation(
         module, owner, name, modFlags | ModuleCreationFlags,
         if (cdenot.isCompleted) TypeRef(owner.thisType, modclsName) withSym modcls
-        else new ModuleCompleter(modcls)(condensed))
+        else new ModuleCompleter(modcls))
     module.denot = mdenot
     modcls.denot = cdenot
     module
@@ -181,11 +188,11 @@ trait Symbols { this: Context =>
    *  when attempted to be completed.
    */
   def newStubSymbol(owner: Symbol, name: Name, file: AbstractFile = null): Symbol = {
-    def stubCompleter = new StubInfo()(condensed)
+    def stubCompleter = new StubInfo()
     val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
     println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
     println(s"decls = ${normalizedOwner.decls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
-    if (base.settings.debug.value) throw new Error()
+    //if (base.settings.debug.value) throw new Error()
     val stub = name match {
       case name: TermName =>
         newModuleSymbol(normalizedOwner, name, EmptyFlags, EmptyFlags, stubCompleter, assocFile = file)
@@ -240,7 +247,7 @@ trait Symbols { this: Context =>
     tparams
   }
 
-  def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact, tp)
+  def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | Permanent, tp)
 
   def newErrorSymbol(owner: Symbol, name: Name) =
     newSymbol(owner, name, SyntheticArtifact,
@@ -320,12 +327,14 @@ object Symbols {
     /** The current denotation of this symbol */
     final def denot(implicit ctx: Context): SymDenotation = {
       var denot = lastDenot
-      if (!(denot.validFor contains ctx.period))
+      if (!(denot.validFor contains ctx.period)) {
         denot = denot.current.asInstanceOf[SymDenotation]
+        lastDenot = denot
+      }
       denot
     }
 
-    private def defRunId: RunId =
+    private[core] def defRunId: RunId =
       if (lastDenot == null) NoRunId else lastDenot.validFor.runId
 
     /** Does this symbol come from a currently compiled source file? */

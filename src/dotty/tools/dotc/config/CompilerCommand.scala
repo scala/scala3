@@ -5,7 +5,7 @@ package config
 import java.io.File
 import Settings._
 import core.Contexts._
-import core.DotClass
+import util.DotClass
 import Properties._
 
 object CompilerCommand extends DotClass {

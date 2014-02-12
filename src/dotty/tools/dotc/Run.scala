@@ -31,7 +31,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
 
   /** Print summary; return # of errors encountered */
   def printSummary(): Reporter = {
-    Constraint.printMax()
+    ctx.runInfo.printMaxConstraint()
     val r = ctx.typerState.reporter
     r.printSummary
     r

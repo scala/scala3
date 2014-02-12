@@ -9,7 +9,7 @@ import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Fla
 import ast.desugar, ast.desugar._
 import Inferencing._
 import util.Positions._
-import util.SourcePosition
+import util.{Attachment, SourcePosition, DotClass}
 import collection.mutable
 import annotation.tailrec
 import ErrorReporting._
@@ -60,7 +60,7 @@ trait NamerContextOps { this: Context =>
     def go(ctx: Context): Symbol = {
       val typer = ctx.typer
       if (typer == null) NoSymbol
-      else typer.symOfTree get tree match {
+      else tree.getAttachment(typer.SymOfTree) match {
         case Some(sym) => sym
         case None =>
           var cx = ctx.outer
@@ -96,10 +96,15 @@ class Namer { typer: Typer =>
 
   import untpd._
 
+  val TypedAhead = new Attachment.Key[tpd.Tree]
+  val ExpandedTree = new Attachment.Key[Tree]
+  val SymOfTree = new Attachment.Key[Symbol]
+
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
    */
-  lazy val expandedTree = new mutable.AnyRefMap[DefTree, Tree] /*{
+  //lazy val expandedTree = new mutable.AnyRefMap[DefTree, Tree]
+  /*{
     override def default(tree: DefTree) = tree // can't have defaults on AnyRefMaps :-(
   }*/
 
@@ -108,12 +113,12 @@ class Namer { typer: Typer =>
    *  with the same symbol is created (this can be when the symbol is completed
    *  or at the latest when the tree is typechecked.
    */
-  lazy val symOfTree = new mutable.AnyRefMap[Tree, Symbol]
+  //lazy val symOfTree = new mutable.AnyRefMap[Tree, Symbol]
 
   /** A map from expanded trees to their typed versions.
    *  Populated when trees are typechecked during completion (using method typedAhead).
    */
-  lazy val typedTree = new mutable.AnyRefMap[Tree, tpd.Tree]
+  // lazy val typedTree = new mutable.AnyRefMap[Tree, tpd.Tree]
 
   /** A map from method symbols to nested typers.
    *  Populated when methods are completed. Emptied when they are typechecked.
@@ -133,9 +138,9 @@ class Namer { typer: Typer =>
   /** The symbol of the given expanded tree. */
   def symbolOfTree(tree: Tree)(implicit ctx: Context): Symbol = {
     val xtree = expanded(tree)
-    typedTree get xtree match {
-      case Some(ttree) => ttree.denot.symbol
-      case _ => symOfTree(xtree)
+    xtree.getAttachment(TypedAhead) match {
+      case Some(ttree) => ttree.symbol
+      case none => xtree.attachment(SymOfTree)
     }
   }
 
@@ -166,7 +171,7 @@ class Namer { typer: Typer =>
       enclosingClassNamed(mods.privateWithin, mods.pos)
 
     def record(sym: Symbol): Symbol = {
-      symOfTree(tree) = sym
+      tree.pushAttachment(SymOfTree, sym)
       sym
     }
 
@@ -182,19 +187,35 @@ class Namer { typer: Typer =>
       else completer
 
     typr.println(i"creating symbol for $tree")
+
+    def checkNoConflict(name: Name): Unit = {
+      def preExisting = ctx.effectiveScope.lookup(name)
+      if (ctx.owner is PackageClass) {
+        if (preExisting.isDefinedInCurrentRun)
+          ctx.error(s"${preExisting.showLocated} is compiled twice, runid = ${ctx.runId}", tree.pos)
+        }
+      else if ((!ctx.owner.isClass || name.isTypeName) && preExisting.exists) {
+        ctx.error(i"$name is already defined as $preExisting")
+      }
+    }
+
     tree match {
       case tree: TypeDef if tree.isClassDef =>
+        val name = tree.name.encode.asTypeName
+        checkNoConflict(name)
         val cls = record(ctx.newClassSymbol(
-          ctx.owner, tree.name.encode.asTypeName, tree.mods.flags,
+          ctx.owner, name, tree.mods.flags,
           cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
         cls.completer.asInstanceOf[ClassCompleter].init()
         cls
       case tree: MemberDef =>
+        val name = tree.name.encode
+        checkNoConflict(name)
         val deferred = if (lacksDefinition(tree)) Deferred else EmptyFlags
         val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
         record(ctx.newSymbol(
-          ctx.owner, tree.name.encode, tree.mods.flags | deferred | method,
+          ctx.owner, name, tree.mods.flags | deferred | method,
           adjustIfModule(new Completer(tree), tree),
           privateWithinClass(tree.mods), tree.pos))
       case tree: Import =>
@@ -211,14 +232,6 @@ class Namer { typer: Typer =>
   def enterSymbol(sym: Symbol)(implicit ctx: Context) = {
     if (sym.exists) {
       typr.println(s"entered: $sym in ${ctx.owner} and ${ctx.effectiveScope}")
-      def preExisting = ctx.effectiveScope.lookup(sym.name)
-      if (sym.owner is PackageClass) {
-        if (preExisting.isDefinedInCurrentRun)
-          ctx.error(s"${sym.showLocated} is compiled twice", sym.pos)
-        }
-      else if (!sym.owner.isClass && preExisting.exists) {
-        ctx.error(i"${sym.name} is already defined as $preExisting")
-      }
       ctx.enter(sym)
     }
     sym
@@ -240,13 +253,13 @@ class Namer { typer: Typer =>
     case mdef: DefTree =>
       val expanded = desugar.defTree(mdef)
       typr.println(i"Expansion: $mdef expands to $expanded")
-      if (expanded ne mdef) expandedTree(mdef) = expanded
+      if (expanded ne mdef) mdef.pushAttachment(ExpandedTree, expanded)
     case _ =>
   }
 
   /** The expanded version of this tree, or tree itself if not expanded */
   def expanded(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case ddef: DefTree => expandedTree.getOrElse(ddef, ddef)
+    case ddef: DefTree => ddef.attachmentOrElse(ExpandedTree, ddef)
     case _ => tree
   }
 
@@ -265,22 +278,19 @@ class Namer { typer: Typer =>
     localCtx
   }
 
-  /** `stat` is a definition in package `pkg`. If `stat` has a potential companion,
-   *  invalidate the companion symbol by setting its info to NoType. (If the companion
-   *  does in fact exist it the info will be immediately reset to a completer
-   *  by the subsequent index operation).
+   /** For all class definitions `stat` in `xstats`: If the companion class if not also defined
+   *  in `xstats`, invalidate it by setting its info to NoType.
    */
-  private def invalidateCompanion(pkg: Symbol, stat: untpd.Tree)(implicit ctx: Context) = {
-    def invalidate(name: Name) =
-      pkg.info.decl(name).alternatives foreach { member =>
-        if (member.symbol.isClass && !(member.symbol is Package))
-          member.symbol.info = NoType
+  def invalidateCompanions(pkg: Symbol, xstats: List[untpd.Tree])(implicit ctx: Context): Unit = {
+    val definedNames = xstats collect { case stat: NameTree => stat.name }
+    def invalidate(name: TypeName) =
+      if (!(definedNames contains name)) {
+        val member = pkg.info.decl(name).asSymDenotation
+        if (member.isClass && !(member is Package)) member.info = NoType
       }
-    stat match {
+    xstats foreach {
       case stat: TypeDef if stat.isClassDef =>
         invalidate(stat.name.moduleClassName)
-      case stat: ModuleDef =>
-        invalidate(stat.name.toTypeName)
       case _ =>
     }
   }
@@ -297,8 +307,8 @@ class Namer { typer: Typer =>
   def indexExpanded(stat: Tree)(implicit ctx: Context): Context = expanded(stat) match {
     case pcl: PackageDef =>
       val pkg = createPackageSymbol(pcl.pid)
-      pcl.stats foreach (invalidateCompanion(pkg, _))
       index(pcl.stats)(ctx.fresh.withOwner(pkg.moduleClass))
+      invalidateCompanions(pkg, Trees.flatten(pcl.stats map expanded))
       ctx
     case imp: Import =>
       importContext(createSymbol(imp), imp.selectors)
@@ -325,14 +335,14 @@ class Namer { typer: Typer =>
       for (mdef @ ModuleDef(_, name, _) <- stats)
         classDef get name.toTypeName match {
           case Some(cdef) =>
-            val Thicket(vdef :: (mcls @ TypeDef(_, _, impl: Template)) :: Nil) = expandedTree(mdef)
-            expandedTree.getOrElse(cdef, cdef) match {
+            val Thicket(vdef :: (mcls @ TypeDef(_, _, impl: Template)) :: Nil) = mdef.attachment(ExpandedTree)
+            cdef.attachmentOrElse(ExpandedTree, cdef) match {
               case Thicket(cls :: mval :: TypeDef(_, _, compimpl: Template) :: crest) =>
                 val mcls1 = cpy.TypeDef(mcls, mcls.mods, mcls.name,
                     cpy.Template(impl, impl.constr, impl.parents, impl.self,
                         compimpl.body ++ impl.body))
-                expandedTree(mdef) = Thicket(vdef :: mcls1 :: Nil)
-                expandedTree(cdef) = Thicket(cls :: crest)
+                mdef.putAttachment(ExpandedTree, Thicket(vdef :: mcls1 :: Nil))
+                cdef.putAttachment(ExpandedTree, Thicket(cls :: crest))
               case _ =>
             }
           case none =>
@@ -371,7 +381,10 @@ class Namer { typer: Typer =>
         }
     }
 
-    def complete(denot: SymDenotation): Unit =
+    final override def complete(denot: SymDenotation)(implicit ctx: Context) =
+      completeInCreationContext(denot)
+
+    def completeInCreationContext(denot: SymDenotation): Unit =
       denot.info = typeSig(denot.symbol)
   }
 
@@ -391,7 +404,7 @@ class Namer { typer: Typer =>
     def init() = index(params)
 
     /** The type signature of a ClassDef with given symbol */
-    override def complete(denot: SymDenotation): Unit = {
+    override def completeInCreationContext(denot: SymDenotation): Unit = {
 
       /** The type of a parent constructor. Types constructor arguments
        *  only if parent type contains uninstantiated type parameters.
@@ -437,15 +450,13 @@ class Namer { typer: Typer =>
   /** Typecheck tree during completion, and remember result in typedtree map */
   private def typedAheadImpl(tree: Tree, pt: Type)(implicit ctx: Context): tpd.Tree = {
     val xtree = expanded(tree)
-    typedTree.get(xtree) match {
+    xtree.getAttachment(TypedAhead) match {
       case Some(ttree) => ttree
       case none =>
         val ttree = typer.typed(tree, pt)
-        typedTree(xtree) = ttree
+        xtree.pushAttachment(TypedAhead, ttree)
         ttree
     }
-    // was: typedTree.getOrElseUpdate(expanded(tree), typer.typed(tree, pt))
-    // but this fails for AnyRefMap with an ArrayIndexOutOfBounds exception in getOrElseUpdate
   }
 
   def typedAheadType(tree: Tree, pt: Type = WildcardType)(implicit ctx: Context): tpd.Tree =

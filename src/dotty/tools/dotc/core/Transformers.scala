@@ -1,8 +1,13 @@
 package dotty.tools.dotc
 package core
 
-import Periods._, SymDenotations._, Contexts._, Types._, Denotations._
+import Periods._
+import SymDenotations._
+import Contexts._
+import Types._
+import Denotations._
 import java.lang.AssertionError
+import dotty.tools.dotc.util.DotClass
 
 trait Transformers
 

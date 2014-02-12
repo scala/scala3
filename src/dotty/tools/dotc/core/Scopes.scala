@@ -344,8 +344,8 @@ object Scopes {
   def scopeTransform(owner: Symbol)(op: => MutableScope): MutableScope = op
 
   val selectAll: SymDenotation => Boolean = alwaysTrue
-  val selectPrivate: SymDenotation => Boolean    = d => (d is Flags.Private)
-  val selectNonPrivate: SymDenotation => Boolean = d => !(d is Flags.Private)
+  val selectPrivate: SymDenotation => Boolean    = d => (d.flagsUNSAFE is Flags.Private)
+  val selectNonPrivate: SymDenotation => Boolean = d => !(d.flagsUNSAFE is Flags.Private)
 
   /** The empty scope (immutable).
    */

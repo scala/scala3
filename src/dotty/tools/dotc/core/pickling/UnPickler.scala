@@ -125,7 +125,7 @@ object UnPickler {
  *  @param moduleroot the top-level module class which is unpickled, or NoSymbol if inapplicable
  *  @param filename   filename associated with bytearray, only used for error messages
  */
-class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(implicit cctx: CondensedContext)
+class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(ictx: Context)
   extends PickleBuffer(bytes, 0, -1) {
 
   def showPickled() = {
@@ -139,14 +139,12 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
   import UnPickler._
 
-  import cctx.debug
-
-  val moduleRoot = moduleClassRoot.sourceModule.denot
+  val moduleRoot = moduleClassRoot.sourceModule(ictx).denot(ictx)
   assert(moduleRoot.isTerm)
 
-  checkVersion()
+  checkVersion(ictx)
 
-  private val loadingMirror = defn // was: mirrorThatLoaded(classRoot)
+  private val loadingMirror = defn(ictx) // was: mirrorThatLoaded(classRoot)
 
   /** A map from entry numbers to array offsets */
   private val index = createIndex
@@ -160,7 +158,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   /** A map from refinement classes to their associated refinement types */
   private val refinementTypes = mutable.AnyRefMap[Symbol, RefinedType]()
 
-  protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None) = {
+  protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(implicit ctx: Context) = {
     val ex = new BadSignature(
       s"""error reading Scala signature of $classRoot from $source:
          |error occured at position $readIndex: $msg""".stripMargin)
@@ -168,14 +166,14 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     throw ex
   }
 
-  protected def handleRuntimeException(ex: RuntimeException) = ex match {
+  protected def handleRuntimeException(ex: RuntimeException)(implicit ctx: Context) = ex match {
     case ex: BadSignature => throw ex
     case _ => errorBadSignature(s"a runtime exception occured: $ex", Some(ex))
   }
 
   private var postReadOp: () => Unit = null
 
-  def run() =
+  def run()(implicit ctx: Context) =
     try {
       var i = 0
       while (i < index.length) {
@@ -213,12 +211,12 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case ex: RuntimeException => handleRuntimeException(ex)
     }
 
-  def source: AbstractFile = {
+  def source(implicit ctx: Context): AbstractFile = {
     val f = classRoot.symbol.associatedFile
     if (f != null) f else moduleClassRoot.symbol.associatedFile
   }
 
-  private def checkVersion(): Unit = {
+  private def checkVersion(implicit ctx: Context): Unit = {
     val major = readNat()
     val minor = readNat()
     if (major != MajorVersion || minor > MinorVersion)
@@ -233,7 +231,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   protected def symScope(sym: Symbol) = symScopes.getOrElseUpdate(sym, newScope)
 
   /** Does entry represent an (internal) symbol */
-  protected def isSymbolEntry(i: Int): Boolean = {
+  protected def isSymbolEntry(i: Int)(implicit ctx: Context): Boolean = {
     val tag = bytes(index(i)).toInt
     (firstSymTag <= tag && tag <= lastSymTag &&
       (tag != CLASSsym || !isRefinementSymbolEntry(i)))
@@ -266,7 +264,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   /** Does entry represent a refinement symbol?
    *  pre: Entry is a class symbol
    */
-  protected def isRefinementSymbolEntry(i: Int): Boolean = {
+  protected def isRefinementSymbolEntry(i: Int)(implicit ctx: Context): Boolean = {
     val savedIndex = readIndex
     readIndex = index(i)
     val tag = readByte().toInt
@@ -278,12 +276,12 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     result
   }
 
-  protected def isRefinementClass(sym: Symbol): Boolean =
+  protected def isRefinementClass(sym: Symbol)(implicit ctx: Context): Boolean =
     sym.name == tpnme.REFINE_CLASS
 
-  protected def isLocal(sym: Symbol) = isUnpickleRoot(sym.topLevelClass)
+  protected def isLocal(sym: Symbol)(implicit ctx: Context) = isUnpickleRoot(sym.topLevelClass)
 
-  protected def isUnpickleRoot(sym: Symbol) = {
+  protected def isUnpickleRoot(sym: Symbol)(implicit ctx: Context) = {
     val d = sym.denot
     d == moduleRoot || d == moduleClassRoot || d == classRoot
   }
@@ -310,7 +308,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   }
 
   /** Read a name */
-  protected def readName(): Name = {
+  protected def readName()(implicit ctx: Context): Name = {
     val tag = readByte()
     val len = readNat()
     tag match {
@@ -319,14 +317,14 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case _ => errorBadSignature("bad name tag: " + tag)
     }
   }
-  protected def readTermName(): TermName = readName().toTermName
-  protected def readTypeName(): TypeName = readName().toTypeName
+  protected def readTermName()(implicit ctx: Context): TermName = readName().toTermName
+  protected def readTypeName()(implicit ctx: Context): TypeName = readName().toTypeName
 
   /** Read a symbol */
-  protected def readSymbol(): Symbol = readDisambiguatedSymbol(alwaysTrue)()
+  protected def readSymbol()(implicit ctx: Context): Symbol = readDisambiguatedSymbol(alwaysTrue)()
 
   /** Read a symbol, with possible disambiguation */
-  protected def readDisambiguatedSymbol(p: Symbol => Boolean)(): Symbol = {
+  protected def readDisambiguatedSymbol(p: Symbol => Boolean)()(implicit ctx: Context): Symbol = {
     val start = indexCoord(readIndex)
     val tag = readByte()
     val end = readNat() + readIndex
@@ -386,11 +384,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           // (3) Try as a nested object symbol.
           nestedObjectSymbol orElse {
             //              // (4) Call the mirror's "missing" hook.
-            adjust(cctx.base.missingHook(owner, name)) orElse {
+            adjust(ctx.base.missingHook(owner, name)) orElse {
               // println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.
-              cctx.newStubSymbol(owner, name, source)
+              ctx.newStubSymbol(owner, name, source)
             }
           }
         }
@@ -456,7 +454,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           name1 = name1.expandedName(owner)
           flags1 |= TypeParamCreationFlags | ExpandedName
         }
-        cctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
+        ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
       case CLASSsym =>
         val infoRef = readNat()
         postReadOp = () => atReadPos(index(infoRef), readTypeParams) // force reading type params early, so they get entered in the right order.
@@ -468,7 +466,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             moduleClassRoot, rootClassUnpickler(start, moduleClassRoot.symbol, moduleClassRoot.sourceModule))
         else if (name == tpnme.REFINE_CLASS)
           // create a type alias instead
-          cctx.newSymbol(owner, name, flags, localMemberUnpickler, coord = start)
+          ctx.newSymbol(owner, name, flags, localMemberUnpickler, coord = start)
         else {
           def completer(cls: Symbol) = {
             val unpickler = new LocalUnpickler() withDecls symScope(cls)
@@ -478,62 +476,62 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
                   .suchThat(_ is Module).symbol)
             else unpickler
           }
-          cctx.newClassSymbol(owner, name.asTypeName, flags, completer, coord = start)
+          ctx.newClassSymbol(owner, name.asTypeName, flags, completer, coord = start)
         }
       case MODULEsym | VALsym =>
         if (isModuleRoot) {
           moduleRoot setFlag flags
           moduleRoot.symbol
-        } else cctx.newSymbol(owner, name.asTermName, flags, localMemberUnpickler, coord = start)
+        } else ctx.newSymbol(owner, name.asTermName, flags, localMemberUnpickler, coord = start)
       case _ =>
         errorBadSignature("bad symbol tag: " + tag)
     })
   }
 
   class LocalUnpickler extends LazyType {
-    def parseToCompletion(denot: SymDenotation) = {
-      val tag = readByte()
-      val end = readNat() + readIndex
-      def atEnd = readIndex == end
-      val unusedNameref = readNat()
-      val unusedOwnerref = readNat()
-      val unusedFlags = readLongNat()
-      var inforef = readNat()
-      denot.privateWithin =
-        if (!isSymbolRef(inforef)) NoSymbol
-        else {
-          val pw = at(inforef, readSymbol)
-          inforef = readNat()
-          pw
-        }
-      // println("reading type for "+denot) // !!! DEBUG
-      val tp = at(inforef, readType)
-      denot match {
-        case denot: ClassDenotation =>
-          val selfInfo = if (atEnd) NoType else readTypeRef()
-          setClassInfo(denot, tp, selfInfo)
-          denot setFlag Scala2x
-        case denot =>
-          val tp1 = depoly(tp, denot)
-          denot.info = if (tag == ALIASsym) TypeAlias(tp1) else tp1
-          if (denot.isConstructor) addConstructorTypeParams(denot)
-          if (atEnd) {
-            assert(!(denot is SuperAccessor), denot)
-          } else {
-            assert(denot is (SuperAccessor | ParamAccessor), denot)
-            def disambiguate(alt: Symbol) = { // !!! DEBUG
-              cctx.debugTraceIndented(s"disambiguating ${denot.info} =:= ${ denot.owner.thisType.memberInfo(alt)} ${denot.owner}") {
-                denot.info matches denot.owner.thisType.memberInfo(alt)
-              }
-            }
-            val alias = readDisambiguatedSymbolRef(disambiguate).asTerm
-            denot.addAnnotation(Annotation.makeAlias(alias))
-          }
-      }
-      // println(s"unpickled ${denot.debugString}, info = ${denot.info}") !!! DEBUG
-    }
     def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
-    def complete(denot: SymDenotation): Unit = try {
+    def complete(denot: SymDenotation)(implicit ctx: Context): Unit = try {
+      def parseToCompletion(denot: SymDenotation) = {
+        val tag = readByte()
+        val end = readNat() + readIndex
+        def atEnd = readIndex == end
+        val unusedNameref = readNat()
+        val unusedOwnerref = readNat()
+        val unusedFlags = readLongNat()
+        var inforef = readNat()
+        denot.privateWithin =
+          if (!isSymbolRef(inforef)) NoSymbol
+          else {
+            val pw = at(inforef, readSymbol)
+            inforef = readNat()
+            pw
+          }
+        // println("reading type for "+denot) // !!! DEBUG
+        val tp = at(inforef, readType)
+        denot match {
+          case denot: ClassDenotation =>
+            val selfInfo = if (atEnd) NoType else readTypeRef()
+            setClassInfo(denot, tp, selfInfo)
+            denot setFlag Scala2x
+          case denot =>
+            val tp1 = depoly(tp, denot)
+            denot.info = if (tag == ALIASsym) TypeAlias(tp1) else tp1
+            if (denot.isConstructor) addConstructorTypeParams(denot)
+            if (atEnd) {
+              assert(!(denot is SuperAccessor), denot)
+            } else {
+              assert(denot is (SuperAccessor | ParamAccessor), denot)
+              def disambiguate(alt: Symbol) = { // !!! DEBUG
+                ctx.debugTraceIndented(s"disambiguating ${denot.info} =:= ${denot.owner.thisType.memberInfo(alt)} ${denot.owner}") {
+                  denot.info matches denot.owner.thisType.memberInfo(alt)
+                }
+              }
+              val alias = readDisambiguatedSymbolRef(disambiguate).asTerm
+              denot.addAnnotation(Annotation.makeAlias(alias))
+            }
+        }
+        // println(s"unpickled ${denot.debugString}, info = ${denot.info}") !!! DEBUG
+      }
       atReadPos(startCoord(denot).toIndex, () => parseToCompletion(denot))
     } catch {
       case ex: RuntimeException => handleRuntimeException(ex)
@@ -556,7 +554,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
    *  to
    *    tp { name: T }
    */
-  def elimExistentials(boundSyms: List[Symbol], tp: Type): Type = {
+  def elimExistentials(boundSyms: List[Symbol], tp: Type)(implicit ctx: Context): Type = {
     def removeSingleton(tp: Type): Type =
       if (tp isRef defn.SingletonClass) defn.AnyType else tp
     def elim(tp: Type): Type = tp match {
@@ -581,11 +579,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       val anyTypes = boundSyms map (_ => defn.AnyType)
       val boundBounds = boundSyms map (_.info.bounds.hi)
       val tp2 = tp1.subst(boundSyms, boundBounds).subst(boundSyms, anyTypes)
-      cctx.warning(s"""failure to eliminate existential
-                       |original type    : $tp forSome {${cctx.dclsText(boundSyms, "; ").show}
-                       |reduces to       : $tp1
-                       |type used instead: $tp2
-                       |proceed at own risk.""".stripMargin)
+      ctx.warning(s"""failure to eliminate existential
+                      |original type    : $tp forSome {${ctx.dclsText(boundSyms, "; ").show}
+                      |reduces to       : $tp1
+                      |type used instead: $tp2
+                      |proceed at own risk.""".stripMargin)
       tp2
     } else tp1
   }
@@ -596,7 +594,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
    *        the flag say that a type of kind * is expected, so that PolyType(tps, restpe) can be disambiguated to PolyType(tps, NullaryMethodType(restpe))
    *        (if restpe is not a ClassInfoType, a MethodType or a NullaryMethodType, which leaves TypeRef/SingletonType -- the latter would make the polytype a type constructor)
    */
-  protected def readType(): Type = {
+  protected def readType()(implicit ctx: Context): Type = {
     val tag = readByte()
     val end = readNat() + readIndex
     (tag: @switch) match {
@@ -695,7 +693,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     }
   }
 
-  def readTypeParams(): List[Symbol] = {
+  def readTypeParams()(implicit ctx: Context): List[Symbol] = {
     val tag = readByte()
     val end = readNat() + readIndex
     if (tag == POLYtpe) {
@@ -704,11 +702,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     } else Nil
   }
 
-  def noSuchTypeTag(tag: Int, end: Int): Type =
+  def noSuchTypeTag(tag: Int, end: Int)(implicit ctx: Context): Type =
     errorBadSignature("bad type tag: " + tag)
 
   /** Read a constant */
-  protected def readConstant(): Constant = {
+  protected def readConstant()(implicit ctx: Context): Constant = {
     val tag = readByte().toInt
     val len = readNat()
     (tag: @switch) match {
@@ -729,12 +727,12 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     }
   }
 
-  def noSuchConstantTag(tag: Int, len: Int): Constant =
+  def noSuchConstantTag(tag: Int, len: Int)(implicit ctx: Context): Constant =
     errorBadSignature("bad constant tag: " + tag)
 
   /** Read children and store them into the corresponding symbol.
    */
-  protected def readChildren(): Unit = {
+  protected def readChildren()(implicit ctx: Context): Unit = {
     val tag = readByte()
     assert(tag == CHILDREN)
     val end = readNat() + readIndex
@@ -744,7 +742,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   }
 
   /* Read a reference to a pickled item */
-  protected def readSymbolRef(): Symbol = { //OPT inlined from: at(readNat(), readSymbol) to save on closure creation
+  protected def readSymbolRef()(implicit ctx: Context): Symbol = { //OPT inlined from: at(readNat(), readSymbol) to save on closure creation
     val i = readNat()
     var r = entries(i)
     if (r eq null) {
@@ -758,32 +756,32 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     r.asInstanceOf[Symbol]
   }
 
-  protected def readDisambiguatedSymbolRef(p: Symbol => Boolean): Symbol =
+  protected def readDisambiguatedSymbolRef(p: Symbol => Boolean)(implicit ctx: Context): Symbol =
     at(readNat(), readDisambiguatedSymbol(p))
 
-  protected def readNameRef(): Name = at(readNat(), readName)
-  protected def readTypeRef(): Type = at(readNat(), () => readType()) // after the NMT_TRANSITION period, we can leave off the () => ... ()
-  protected def readConstantRef(): Constant = at(readNat(), readConstant)
+  protected def readNameRef()(implicit ctx: Context): Name = at(readNat(), readName)
+  protected def readTypeRef()(implicit ctx: Context): Type = at(readNat(), () => readType()) // after the NMT_TRANSITION period, we can leave off the () => ... ()
+  protected def readConstantRef()(implicit ctx: Context): Constant = at(readNat(), readConstant)
 
-  protected def readTypeNameRef(): TypeName = readNameRef().toTypeName
-  protected def readTermNameRef(): TermName = readNameRef().toTermName
+  protected def readTypeNameRef()(implicit ctx: Context): TypeName = readNameRef().toTypeName
+  protected def readTermNameRef()(implicit ctx: Context): TermName = readNameRef().toTermName
 
-  protected def readAnnotationRef(): Annotation = at(readNat(), readAnnotation)
+  protected def readAnnotationRef()(implicit ctx: Context): Annotation = at(readNat(), readAnnotation)
 
-  protected def readModifiersRef(isType: Boolean): Modifiers = at(readNat(), () => readModifiers(isType))
-  protected def readTreeRef(): Tree = at(readNat(), readTree)
+  protected def readModifiersRef(isType: Boolean)(implicit ctx: Context): Modifiers = at(readNat(), () => readModifiers(isType))
+  protected def readTreeRef()(implicit ctx: Context): Tree = at(readNat(), readTree)
 
   /** Read an annotation argument, which is pickled either
    *  as a Constant or a Tree.
    */
-  protected def readAnnotArg(i: Int): Tree = bytes(index(i)) match {
+  protected def readAnnotArg(i: Int)(implicit ctx: Context): Tree = bytes(index(i)) match {
     case TREE => at(i, readTree)
     case _ => Literal(at(i, readConstant))
   }
 
   /** Read a ClassfileAnnotArg (argument to a classfile annotation)
    */
-  private def readArrayAnnotArg(): Tree = {
+  private def readArrayAnnotArg()(implicit ctx: Context): Tree = {
     readByte() // skip the `annotargarray` tag
     val end = readNat() + readIndex
     // array elements are trees representing instances of scala.annotation.Annotation
@@ -792,13 +790,13 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       until(end, () => readClassfileAnnotArg(readNat())))
   }
 
-  private def readAnnotInfoArg(): Tree = {
+  private def readAnnotInfoArg()(implicit ctx: Context): Tree = {
     readByte() // skip the `annotinfo` tag
     val end = readNat() + readIndex
     readAnnotationContents(end)
   }
 
-  protected def readClassfileAnnotArg(i: Int): Tree = bytes(index(i)) match {
+  protected def readClassfileAnnotArg(i: Int)(implicit ctx: Context): Tree = bytes(index(i)) match {
     case ANNOTINFO => at(i, readAnnotInfoArg)
     case ANNOTARGARRAY => at(i, readArrayAnnotArg)
     case _ => readAnnotArg(i)
@@ -807,7 +805,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   /** Read an annotation's contents. Not to be called directly, use
    *  readAnnotation, readSymbolAnnotation, or readAnnotInfoArg
    */
-  protected def readAnnotationContents(end: Int): Tree = {
+  protected def readAnnotationContents(end: Int)(implicit ctx: Context): Tree = {
     val atp = readTypeRef()
     val args = new ListBuffer[Tree]
     while (readIndex != end) {
@@ -827,7 +825,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
    *  the symbol it requests. Called at top-level, for all
    *  (symbol, annotInfo) entries.
    */
-  protected def readSymbolAnnotation(): Unit = {
+  protected def readSymbolAnnotation()(implicit ctx: Context): Unit = {
     val tag = readByte()
     if (tag != SYMANNOT)
       errorBadSignature("symbol annotation expected (" + tag + ")")
@@ -839,7 +837,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   /** Read an annotation and return it. Used when unpickling
    *  an ANNOTATED(WSELF)tpe or a NestedAnnotArg
    */
-  protected def readAnnotation(): Annotation = {
+  protected def readAnnotation()(implicit ctx: Context): Annotation = {
     val tag = readByte()
     if (tag != ANNOTINFO)
       errorBadSignature("annotation expected (" + tag + ")")
@@ -850,7 +848,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   /** A deferred annotation that can be comleted by reading
    *  the bytes between `readIndex` and `end`.
    */
-  protected def deferredAnnot(end: Int): Annotation = {
+  protected def deferredAnnot(end: Int)(implicit ctx: Context): Annotation = {
     val start = readIndex
     val atp = readTypeRef()
     Annotation.deferred(
@@ -858,7 +856,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   }
 
   /* Read an abstract syntax tree */
-  protected def readTree(): Tree = {
+  protected def readTree()(implicit ctx: Context): Tree = {
     val outerTag = readByte()
     if (outerTag != TREE)
       errorBadSignature("tree expected (" + outerTag + ")")
@@ -1002,7 +1000,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val body = readTreeRef()
         val vparams = until(end, readValDefRef)
         val applyType = MethodType(vparams map (_.name), vparams map (_.tpt.tpe), body.tpe)
-        val applyMeth = cctx.newSymbol(symbol.owner, nme.apply, Method, applyType)
+        val applyMeth = ctx.newSymbol(symbol.owner, nme.apply, Method, applyType)
         Closure(applyMeth, Function.const(body.changeOwner(symbol, applyMeth)) _)
 
       case ASSIGNtree =>
@@ -1127,13 +1125,13 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     }
   }
 
-  def noSuchTreeTag(tag: Int, end: Int) =
+  def noSuchTreeTag(tag: Int, end: Int)(implicit ctx: Context) =
     errorBadSignature("unknown tree type (" + tag + ")")
 
-  def unimplementedTree(what: String) =
+  def unimplementedTree(what: String)(implicit ctx: Context) =
     errorBadSignature(s"cannot read $what trees from Scala 2.x signatures")
 
-  def readModifiers(isType: Boolean): Modifiers = {
+  def readModifiers(isType: Boolean)(implicit ctx: Context): Modifiers = {
     val tag = readNat()
     if (tag != MODIFIERS)
       errorBadSignature("expected a modifiers tag (" + tag + ")")
@@ -1146,31 +1144,31 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     Trees.Modifiers[Type](flags, privateWithin, Nil)
   }
 
-  protected def readTemplateRef(): Template =
+  protected def readTemplateRef()(implicit ctx: Context): Template =
     readTreeRef() match {
       case templ: Template => templ
       case other =>
         errorBadSignature("expected a template (" + other + ")")
     }
-  protected def readCaseDefRef(): CaseDef =
+  protected def readCaseDefRef()(implicit ctx: Context): CaseDef =
     readTreeRef() match {
       case tree: CaseDef => tree
       case other =>
         errorBadSignature("expected a case def (" + other + ")")
     }
-  protected def readValDefRef(): ValDef =
+  protected def readValDefRef()(implicit ctx: Context): ValDef =
     readTreeRef() match {
       case tree: ValDef => tree
       case other =>
         errorBadSignature("expected a ValDef (" + other + ")")
     }
-  protected def readIdentRef(): Ident =
+  protected def readIdentRef()(implicit ctx: Context): Ident =
     readTreeRef() match {
       case tree: Ident => tree
       case other =>
         errorBadSignature("expected an Ident (" + other + ")")
     }
-  protected def readTypeDefRef(): TypeDef =
+  protected def readTypeDefRef()(implicit ctx: Context): TypeDef =
     readTreeRef() match {
       case tree: TypeDef => tree
       case other =>
