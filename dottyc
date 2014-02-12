@@ -1,6 +1,7 @@
 #!/bin/bash
 
-MY_PATH="`dirname \"$0\"`"              # relative
+MY_PATH="`realpath \"$0\"`"             # relative, symbolic links resolved
+MY_PATH="`dirname \"$MY_PATH\"`"
 MY_PATH="`( cd \"$MY_PATH\" && pwd )`"  # absolute
 SCALA_VERSION=2.11.0-M7
 DOTTY_VERSION=0.1
