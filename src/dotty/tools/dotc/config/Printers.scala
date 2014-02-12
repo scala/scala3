@@ -10,16 +10,17 @@ object Printers {
     override def println(msg: => String): Unit = ()
   }
 
-  val default: Printer = new Printer
-  val core: Printer = noPrinter
-  val typr: Printer = noPrinter
-  val constr: Printer = noPrinter
-  val overload: Printer = noPrinter
-  val implicits: Printer = noPrinter
+  val default: Printer           = new Printer
+  val core: Printer              = noPrinter
+  val typr: Printer              = noPrinter
+  val constr: Printer            = noPrinter
+  val overload: Printer          = noPrinter
+  val implicits: Printer         = noPrinter
   val implicitsDetailed: Printer = noPrinter
-  val subtyping: Printer = noPrinter
-  val unapp: Printer = noPrinter
-  val completions = noPrinter
-  val gadts = noPrinter
+  val subtyping: Printer         = noPrinter
+  val unapp: Printer             = noPrinter
+  val completions: Printer       = noPrinter
+  val gadts: Printer             = noPrinter
+  val bcknd: Printer             = noPrinter
 
 }

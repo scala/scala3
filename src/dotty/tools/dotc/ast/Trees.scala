@@ -260,7 +260,7 @@ object Trees {
       case _ => NoType
     }
 
-    /** The denotation referred tno by this tree.
+    /** The denotation referred to by this tree.
      *  Defined for `DenotingTree`s and `ProxyTree`s, NoDenotation for other
      *  kinds of trees
      */

@@ -29,14 +29,11 @@ abstract class Driver extends DotClass {
     try {
       doCompile(newCompiler(), fileNames)
     } catch {
+      case ex: FatalError  =>
+        ctx.error(ex.getMessage) // signals that we should fail compilation.
+        ctx.typerState.reporter
       case ex: Throwable =>
-        ex match {
-          case ex: FatalError  =>
-            ctx.error(ex.getMessage) // signals that we should fail compilation.
-            ctx.typerState.reporter
-          case _ =>
-            throw ex // unexpected error, tell the outside world.
-        }
+        throw ex // unexpected error, tell the outside world.
     }
   }
 

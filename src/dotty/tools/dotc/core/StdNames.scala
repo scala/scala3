@@ -644,6 +644,9 @@ object StdNames {
     def higherKindedTraitName(n: Int) = HigherKinded ++ n.toString
     def higherKindedParamName(n: Int) = HK_PARAM_PREFIX ++ n.toString
 
+    def implClassName(name: Name): TypeName     = (name ++ IMPL_CLASS_SUFFIX).toTypeName
+    def interfaceName(implname: Name): TypeName = (implname dropRight IMPL_CLASS_SUFFIX.length).toTypeName
+
     final val Conforms = encode("<:<")
   }
 

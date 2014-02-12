@@ -14,8 +14,10 @@ import dotc.ast.Trees.Tree
 import dotc.core.Types.Type
 import dotc.core.StdNames
 import dotc.core.Symbols.{Symbol, NoSymbol}
+import dotc.core.SymDenotations._
+import dotc.core.Flags
 
-import StdNames.nme
+import StdNames.{nme, tpnme}
 
 /*
  *  Utilities to mediate between types as represented in Scala ASTs and ASM trees.
@@ -378,13 +380,15 @@ abstract class BCodeTypes extends BCodeIdiomatic {
    * On the other hand, this method does record the inner-class status of the argument, via `buildExemplar()`.
    *
    * must-single-thread
+   * 
+   * TODO(lry) check if ctx should be a class parameter
    */
-  final def exemplar(csym0: Symbol): Tracked = {
+  final def exemplar(csym0: Symbol)(implicit ctx: dotc.core.Contexts.Context): Tracked = {
     assert(csym0 != NoSymbol, "NoSymbol can't be tracked")
 
     val csym = {
-      if (csym0.isJavaDefined && csym0.isModuleClass) csym0.linkedClassOfClass
-      else if (csym0.isModule) csym0.moduleClass
+      if ((csym0 is Flags.JavaDefined) && (csym0 is Flags.ModuleClass)) csym0.linkedClass
+      else if (csym0 is Flags.ModuleVal) csym0.moduleClass
       else csym0 // we track only module-classes and plain-classes
     }
 

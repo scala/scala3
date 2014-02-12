@@ -18,7 +18,9 @@ import dotc.ast.Trees._
 import core.Types.Type
 import core.StdNames
 import core.Symbols.{Symbol, NoSymbol}
+import core.SymDenotations._
 import core.Constants.Constant
+import config.Printers.bcknd
 
 /*
  *
@@ -33,7 +35,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
-  abstract class PlainBodyBuilder(cunit:   CompilationUnit,
+  abstract class PlainBodyBuilder(cunit: CompilationUnit,
                                   implicit val ctx: dotc.core.Contexts.Context) extends PlainSkelBuilder(cunit) {
 
     import icodes.TestOp
@@ -44,8 +46,8 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
      *  it is the host class; otherwise the symbol's owner.
      */
     def findHostClass(selector: Type, sym: Symbol) = selector member sym.name match {
-      case NoSymbol   => debuglog(s"Rejecting $selector as host class for $sym") ; sym.owner
-      case _          => selector.typeSymbol
+      case NoDenotation => bcknd.println(s"Rejecting $selector as host class for $sym") ; sym.owner
+      case _            => selector.typeSymbol
     }
 
     /* ---------------- helper utils for generating methods and code ---------------- */
