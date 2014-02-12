@@ -1,0 +1,30 @@
+#!/bin/bash
+
+MY_PATH="`dirname \"$0\"`"              # relative
+MY_PATH="`( cd \"$MY_PATH\" && pwd )`"  # absolute
+SCALA_VERSION=2.11.0-M7
+DOTTY_VERSION=0.1
+MAIN_JAR=$MY_PATH/target/scala-$SCALA_VERSION/dotty_$SCALA_VERSION-$DOTTY_VERSION-SNAPSHOT.jar
+
+function checkjar {
+  if [ ! -f "$1" ]
+  then
+    echo "The script is going to build the required jar file $1 by running \"sbt $2\" [5s until build]"
+    sleep 5
+    cd $MINIBOXING_PATH
+    sbt $2
+    cd -
+    if [ ! -f "$1" ]
+    then
+      echo "The required jar file has not been built by sbt. Please run \"sbt $2\""
+      exit 1
+    else
+      echo "The required jar file was built."
+    fi
+  fi
+}
+
+checkjar $MAIN_JAR package
+
+java -jar $MAIN_JAR $@
+#$SCALA_PATH/scalac -bootclasspath $RUNTIME_JAR:$PLUGIN_JAR -Xplugin:$PLUGIN_JAR $@
