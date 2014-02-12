@@ -1,5 +1,12 @@
 #!/bin/bash
-
+if [[ "$OSTYPE" == "linux-gnu" ]]; then
+  MY_PATH="`realpath \"$0\"`"             # relative, symbolic links resolved
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+  MY_PATH="`readlink \"$0\"`"             # relative, symbolic links resolved
+fi
+if [[ "$MY_PATH" == "" ]]; then
+  MY_PATH="$0"
+fi
 MY_PATH="`realpath \"$0\"`"             # relative, symbolic links resolved
 MY_PATH="`dirname \"$MY_PATH\"`"
 MY_PATH="`( cd \"$MY_PATH\" && pwd )`"  # absolute
