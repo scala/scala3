@@ -47,6 +47,28 @@ trait TypeOps { this: Context =>
     def apply(tp: Type) = asSeenFrom(tp, pre, cls, this)
   }
 
+  /** Implementation of Types#simplified */
+  final def simplify(tp: Type, theMap: SimplifyMap): Type = tp match {
+    case tp: NamedType =>
+      tp.derivedSelect(simplify(tp.prefix, theMap))
+    case  _: ThisType | NoPrefix =>
+      tp
+    case tp: RefinedType =>
+      tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
+    case AndType(l, r) =>
+      simplify(l, theMap) & simplify(r, theMap)
+    case OrType(l, r) =>
+      simplify(l, theMap) | simplify(r, theMap)
+    case tp: PolyParam =>
+      typerState.constraint.typeVarOfParam(tp) orElse tp
+    case _ =>
+      (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
+  }
+
+  class SimplifyMap extends TypeMap {
+    def apply(tp: Type) = simplify(tp, this)
+  }
+
   final def isVolatile(tp: Type): Boolean = {
     /** Pre-filter to avoid expensive DNF computation */
     def needsChecking(tp: Type, isPart: Boolean): Boolean = tp match {

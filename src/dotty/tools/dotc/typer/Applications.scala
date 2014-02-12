@@ -223,7 +223,7 @@ trait Applications extends Compatibility { self: Typer =>
               if (meth.isClassConstructor) {
                 // default getters for class constructors are found in the companion object
                 mpre.baseType(cls) match {
-                  case TypeRef(clspre, _) => ref(clspre, cls.companionModule)
+                  case tp: TypeRef => ref(tp.prefix, cls.companionModule)
                   case _ => NoType
                 }
               } else mpre

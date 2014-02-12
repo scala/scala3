@@ -100,8 +100,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toText(tp.underlying) ~ ".type"
       case tp: SingletonType =>
         toText(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
-      case tp @ TypeRef(pre, name) =>
-        toTextPrefix(pre) ~ selectionString(tp)
+      case tp: TypeRef =>
+        toTextPrefix(tp.prefix) ~ selectionString(tp)
       case tp: RefinedType =>
         // return tp.toString // !!! DEBUG
         val parent :: (refined: List[RefinedType]) =
@@ -187,8 +187,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** The string representation of this type used as a prefix */
   protected def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
-      case tp @ TermRef(pre, name) =>
-        toTextPrefix(pre) ~ selectionString(tp)
+      case tp: TermRef =>
+        toTextPrefix(tp.prefix) ~ selectionString(tp)
       case ThisType(cls) =>
         nameString(cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>

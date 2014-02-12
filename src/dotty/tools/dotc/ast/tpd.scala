@@ -108,12 +108,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       def apply(tp: Type) = tp match {
         case tp: TermRef if toAvoid(tp) && variance > 0 =>
           apply(tp.info)
-        case tp @ TypeRef(pre, _) if toAvoid(pre) =>
+        case tp: TypeRef if toAvoid(tp.prefix) =>
           tp.info match {
             case TypeAlias(ref) => apply(ref)
             case _ => mapOver(tp)
           }
-        case tp @ RefinedType(parent, _) =>
+        case tp: RefinedType =>
           val tp1 @ RefinedType(parent1, _) = mapOver(tp)
           if (tp1.refinedInfo existsPart toAvoid) {
             typr.println(s"dropping refinement from $tp1")

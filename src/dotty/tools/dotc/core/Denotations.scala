@@ -769,6 +769,7 @@ object Denotations {
 
   /** An exception for accessing symbols that are no longer valid in current run */
   class StaleSymbol(msg: => String) extends Exception {
+    util.Stats.record("stale symbol")
     override def getMessage() = msg
   }
 }

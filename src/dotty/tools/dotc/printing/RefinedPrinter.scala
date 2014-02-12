@@ -57,7 +57,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     tp match {
       case ThisType(cls) =>
         if (isOmittablePrefix(cls)) return ""
-      case tp @ TermRef(pre, name) =>
+      case tp @ TermRef(pre, _) =>
         val sym = tp.symbol
         if (sym.isPackageObject) return toTextPrefix(pre)
         if (isOmittablePrefix(sym)) return ""
@@ -109,7 +109,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case tp: ViewProto =>
         return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
-      case tp @ TypeRef(pre, name) =>
+      case tp: TypeRef =>
         if (tp.symbol is TypeParam | TypeArgument) {
           return tp.info match {
             case TypeAlias(hi) => toText(hi)

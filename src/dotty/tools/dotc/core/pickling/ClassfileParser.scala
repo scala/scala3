@@ -239,13 +239,13 @@ class ClassfileParser(
         case BOOL_TAG   => defn.BooleanType
         case 'L' =>
           def processInner(tp: Type): Type = tp match {
-            case tp @ TypeRef(pre, name) if !(tp.symbol.owner is Flags.ModuleClass) =>
-              TypeRef(processInner(pre.widen), name)
+            case tp: TypeRef if !(tp.symbol.owner is Flags.ModuleClass) =>
+              TypeRef(processInner(tp.prefix.widen), tp.name)
             case _ =>
               tp
           }
           def processClassType(tp: Type): Type = tp match {
-            case tp @ TypeRef(pre, name) =>
+            case tp: TypeRef =>
               if (sig(index) == '<') {
                 accept('<')
                 var tp1: Type = tp

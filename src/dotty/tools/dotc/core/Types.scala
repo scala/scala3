@@ -26,6 +26,7 @@ import Uniques._
 import collection.{mutable, Seq, breakOut}
 import config.Config
 import config.Printers._
+import annotation.tailrec
 import language.implicitConversions
 
 object Types {
@@ -342,45 +343,52 @@ object Types {
      *  flags in `excluded` from consideration.
      */
     final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = try {
-      this match {
+      @tailrec def go(tp: Type): Denotation = tp match {
         case tp: RefinedType =>
-          val pdenot = tp.parent.findMember(name, pre, excluded)
-          if (name eq tp.refinedName) {
-            val rinfo = tp.refinedInfo.substThis(tp, pre)
-            if (name.isTypeName) // simplified case that runs more efficiently
-              pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
-            else
-              pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
-          } else pdenot
+          if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
         case tp: ThisType =>
-          val d = tp.underlying.findMember(name, pre, excluded)
-          if (d.exists) d
-          else
-            // There is a special case to handle:
-            //   trait Super { this: Sub => private class Inner {} println(this.Inner) }
-            //   class Sub extends Super
-            // When resolving Super.this.Inner, the normal logic goes to the self type and
-            // looks for Inner from there. But this fails because Inner is private.
-            // We fix the problem by having the following fallback case, which links up the
-            // member in Super instead of Sub.
-            // As an example of this in the wild, see
-            // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
-            tp.cls.typeRef.findMember(name, pre, excluded) orElse d
+          goThis(tp)
         case tp: TypeRef =>
           tp.denot.findMember(name, pre, excluded)
         case tp: TypeProxy =>
-          tp.underlying.findMember(name, pre, excluded)
+          go(tp.underlying)
         case tp: ClassInfo =>
           tp.cls.findMember(name, pre, excluded)
         case AndType(l, r) =>
-          l.findMember(name, pre, excluded) & (r.findMember(name, pre, excluded), pre)
+          goAnd(l, r)
         case OrType(l, r) =>
-          l.findMember(name, pre, excluded) | (r.findMember(name, pre, excluded), pre)
+          goOr(l, r)
         case ErrorType =>
           ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name)
         case _ =>
           NoDenotation
       }
+      def goRefined(tp: RefinedType) = {
+        val pdenot = go(tp.parent)
+        val rinfo = tp.refinedInfo.substThis(tp, pre)
+        if (name.isTypeName) // simplified case that runs more efficiently
+          pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
+        else
+          pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
+      }
+      def goThis(tp: ThisType) = {
+        val d = go(tp.underlying)
+        if (d.exists) d
+        else
+          // There is a special case to handle:
+          //   trait Super { this: Sub => private class Inner {} println(this.Inner) }
+          //   class Sub extends Super
+          // When resolving Super.this.Inner, the normal logic goes to the self type and
+          // looks for Inner from there. But this fails because Inner is private.
+          // We fix the problem by having the following fallback case, which links up the
+          // member in Super instead of Sub.
+          // As an example of this in the wild, see
+          // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
+          go(tp.cls.typeRef) orElse d
+      }
+      def goAnd(l: Type, r: Type) = go(l) & (go(r), pre)
+      def goOr(l: Type, r: Type) = go(l) | (go(r), pre)
+      go(this)
     } catch {
       case ex: MergeError =>
         throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
@@ -843,26 +851,12 @@ object Types {
     /** A simplified version of this type which is equivalent wrt =:= to this type.
      *  This applies a typemap to the type which (as all typemaps) follows type
      *  variable instances and reduces typerefs over refined types. It also
-     *  re-evaluatesall occurrences of And/OrType with &/| because
+     *  re-evaluates all occurrences of And/OrType with &/| because
      *  what was a union or intersection of type variables might be a simpler type
      *  after the type variables are instantiated. Finally, it
      *  maps poly params in the current constraint set back to their type vars.
      */
-    def simplified(implicit ctx: Context) = {
-      class Simplify extends TypeMap {
-        def apply(tp: Type): Type = tp match {
-          case AndType(l, r) =>
-            this(l) & this(r)
-          case OrType(l, r) =>
-            this(l) | this(r)
-          case tp: PolyParam =>
-            ctx.typerState.constraint.typeVarOfParam(tp) orElse tp
-          case _ =>
-            mapOver(tp)
-        }
-      }
-      new Simplify().apply(this)
-    }
+    def simplified(implicit ctx: Context) = ctx.simplify(this, null)
 
     /** customized hash code of this type.
      *  NotCached for uncached types. Cached types
@@ -2096,7 +2090,8 @@ object Types {
         tp.derivedSelect(this(tp.prefix))
 
       case _: ThisType
-         | _: BoundType => tp
+         | _: BoundType
+         | NoPrefix => tp
 
       case tp: RefinedType =>
         tp.derivedRefinedType(this(tp.parent), tp.refinedName, this(tp.refinedInfo))
@@ -2217,7 +2212,8 @@ object Types {
         this(x, tp.prefix)
 
       case _: ThisType
-         | _: BoundType => x
+         | _: BoundType
+         | NoPrefix => x
 
       case tp: RefinedType =>
         this(this(x, tp.parent), tp.refinedInfo)
