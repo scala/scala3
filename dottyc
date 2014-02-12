@@ -5,13 +5,29 @@ MY_PATH="`( cd \"$MY_PATH\" && pwd )`"  # absolute
 SCALA_VERSION=2.11.0-M7
 DOTTY_VERSION=0.1
 MAIN_JAR=$MY_PATH/target/scala-$SCALA_VERSION/dotty_$SCALA_VERSION-$DOTTY_VERSION-SNAPSHOT.jar
+if [ "$SCALA_LIBRARY_JAR" == "" ]
+then  
+  SCALA_LIBRARY_JAR=$HOME/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-$SCALA_VERSION.jar
+fi
+
+if [ "$SCALA_REFLECT_JAR" == "" ]
+then  
+  SCALA_REFLECT_JAR=$HOME/.ivy2/cache/org.scala-lang/scala-reflect/jars/scala-reflect-$SCALA_VERSION.jar
+fi
+
+if [ ! -f "$SCALA_LIBRARY_JAR" -o ! -f "$SCALA_REFLECT_JAR" ]
+then
+  echo To use this script please set 
+  echo SCALA_LIBRARY_JAR to point to scala-library-$SCALA_VERSION.jar "(currently $SCALA_LIBRARY_JAR)"
+  echo SCALA_REFLECT_JAR to point to scala-reflect-$SCALA_VERSION.jar "(currently $SCALA_REFLECT_JAR)"
+fi
 
 function checkjar {
   if [ ! -f "$1" ]
   then
     echo "The script is going to build the required jar file $1 by running \"sbt $2\" [5s until build]"
     sleep 5
-    cd $MINIBOXING_PATH
+    cd $MY_PATH
     sbt $2
     cd -
     if [ ! -f "$1" ]
@@ -26,5 +42,4 @@ function checkjar {
 
 checkjar $MAIN_JAR package
 
-java -jar $MAIN_JAR $@
-#$SCALA_PATH/scalac -bootclasspath $RUNTIME_JAR:$PLUGIN_JAR -Xplugin:$PLUGIN_JAR $@
+java -cp $MAIN_JAR:$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR -Dscala.usejavacp=true dotty.tools.dotc.Main $@
