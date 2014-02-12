@@ -327,7 +327,7 @@ object Types {
     }
 
     /** The member of this type with the given name  */
-    final def member(name: Name)(implicit ctx: Context): Denotation = /*>|>*/ track("member-" + name) /*<|<*/ {
+    final def member(name: Name)(implicit ctx: Context): Denotation = /*>|>*/ track("member") /*<|<*/ {
       findMember(name, widenIfUnstable, EmptyFlags)
     }
 

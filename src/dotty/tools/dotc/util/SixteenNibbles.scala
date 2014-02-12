@@ -12,7 +12,7 @@ class SixteenNibbles(val bits: Long) extends AnyVal {
 
   def updated(idx: Int, value: Int): SixteenNibbles =
     new SixteenNibbles(
-      (bits & ~(Mask << (idx * Width))) |
+      (bits & ~(LongMask << (idx * Width))) |
       ((value & Mask).toLong << (idx * Width)))
 
   def elements: IndexedSeq[Int] = (0 until 16) map apply
@@ -24,4 +24,5 @@ class SixteenNibbles(val bits: Long) extends AnyVal {
 object SixteenNibbles {
   final val Width = 4
   final val Mask = (1 << Width) - 1
+  final val LongMask = Mask.toLong
 }
