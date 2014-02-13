@@ -3,18 +3,16 @@
  * @author  Martin Odersky
  */
 
-
-package dotty.tools
-package dotc
-package backend
-package jvm
+package dotty.tools.dotc
+package backend.jvm
 
 import scala.collection.{ mutable, immutable }
 import scala.annotation.switch
 
 import dotty.tools.asm
 
-import dotc.ast.Trees._
+import ast.Trees._
+import core.Contexts.Context
 import core.Flags
 import core.Types.Type
 import core.StdNames
@@ -37,7 +35,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
   abstract class PlainBodyBuilder(cunit: CompilationUnit,
-                                  implicit val ctx: dotc.core.Contexts.Context) extends PlainSkelBuilder(cunit) {
+                                  implicit val ctx: Context) extends PlainSkelBuilder(cunit) {
 
     import icodes.TestOp
     import icodes.opcodes.InvokeStyle

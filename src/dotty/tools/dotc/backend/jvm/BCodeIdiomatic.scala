@@ -3,8 +3,7 @@
  * @author  Martin Odersky
  */
 
-package dotty.tools
-package dotc
+package dotty.tools.dotc
 package backend.jvm
 
 import dotty.tools.asm
@@ -12,9 +11,10 @@ import scala.annotation.switch
 import scala.collection.{ immutable, mutable }
 import collection.convert.Wrappers.JListWrapper
 
-import dotc.ast.Trees.Tree
-import dotc.core.Types.Type
-import dotc.core.Symbols.{Symbol, NoSymbol}
+import ast.Trees.Tree
+import core.Contexts.Context
+import core.Types.Type
+import core.Symbols.{Symbol, NoSymbol}
 
 /*
  *  A high-level facade to the ASM API for bytecode generation.
@@ -692,7 +692,7 @@ abstract class BCodeIdiomatic extends BCodeGlue {
     }
   }
 
-  def abort(msg: => AnyRef)(implicit ctx: core.Contexts.Context): Nothing = {
+  def abort(msg: => AnyRef)(implicit ctx: Context): Nothing = {
     ctx.error(msg)
     throw new FatalError(msg)
   }

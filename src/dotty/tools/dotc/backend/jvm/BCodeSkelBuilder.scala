@@ -3,21 +3,17 @@
  * @author  Martin Odersky
  */
 
-
-package dotty.tools
-package dotc
-package backend
-package jvm
+package dotty.tools.dotc
+package backend.jvm
 
 import scala.collection.{ mutable, immutable }
-import scala.tools.nsc.symtab._
 import scala.annotation.switch
 
 import dotty.tools.asm
 
-import dotc.ast.Trees._
-import dotc.core.Types.Type
-import dotc.core.Symbols.{Symbol, NoSymbol}
+import ast.Trees._
+import core.Types.Type
+import core.Symbols.{Symbol, NoSymbol}
 
 /*
  *

@@ -3,20 +3,18 @@
  * @author  Martin Odersky
  */
 
-
-package dotty.tools
-package dotc
-package backend
-package jvm
+package dotty.tools.dotc
+package backend.jvm
 
 import scala.collection.{ mutable, immutable }
 import scala.annotation.switch
 
 import dotty.tools.asm
 
-import dotc.ast.Trees
-import dotc.core.Types.Type
-import dotc.core.Symbols.{Symbol, NoSymbol}
+import ast.Trees
+import core.Contexts.Context
+import core.Types.Type
+import core.Symbols.{Symbol, NoSymbol}
 
 /*
  *  Prepare in-memory representations of classfiles using the ASM Tree API, and serialize them to disk.
@@ -50,13 +48,13 @@ import dotc.core.Symbols.{Symbol, NoSymbol}
 object GenBCode extends BCodeSyncAndTry {
 
   final class PlainClassBuilder(cunit: CompilationUnit,
-                                ctx:   dotc.core.Contexts.Context) extends SyncAndTryBuilder(cunit, ctx)
+                                ctx:   Context) extends SyncAndTryBuilder(cunit, ctx)
 
   class BCodePhase extends dotc.core.Phases.Phase {
 
-    override def name = "jvm"
+    def name = "jvm"
     override def description = "Generate bytecode from ASTs using the ASM library"
-    override def erasedTypes = true
+//    override def erasedTypes = true // TODO(lry) remove, probably not necessary in dotty
 
     private var bytecodeWriter  : BytecodeWriter   = null
     private var mirrorCodeGen   : JMirrorBuilder   = null
@@ -118,8 +116,7 @@ object GenBCode extends BCodeSyncAndTry {
     /*
      *  Pipeline that takes ClassDefs from queue-1, lowers them into an intermediate form, placing them on queue-2
      */
-    class Worker1(needsOutFolder: Boolean,
-                  implicit val ctx: dotc.core.Contexts.Context) {
+    class Worker1(needsOutFolder: Boolean, implicit val ctx: Context) {
 
       val caseInsensitively = mutable.Map.empty[String, Symbol]
 
@@ -263,7 +260,7 @@ object GenBCode extends BCodeSyncAndTry {
      *    (c) tear down (closing the classfile-writer and clearing maps)
      *
      */
-    def runOn(units: List[CompilationUnit])(implicit ctx: dotc.core.Contexts.Context): Unit = {
+    def runOn(units: List[CompilationUnit])(implicit ctx: Context): Unit = {
 
       arrivalPos = 0 // just in case
       scalaPrimitives.init
@@ -297,7 +294,7 @@ object GenBCode extends BCodeSyncAndTry {
       clearBCodeTypes()
     }
 
-    override def run(implicit ctx: dotc.core.Contexts.Context): Unit = unsupported("run()")
+    override def run(implicit ctx: Context): Unit = unsupported("run()")
 
     /*
      *  Sequentially:
@@ -308,7 +305,7 @@ object GenBCode extends BCodeSyncAndTry {
      */
     private def buildAndSendToDisk(needsOutFolder: Boolean,
                                    units: List[CompilationUnit],
-                                   ctx: dotc.core.Contexts.Context) {
+                                   ctx: Context) {
 
       feedPipeline1(units)
       (new Worker1(needsOutFolder, ctx)).run()

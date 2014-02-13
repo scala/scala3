@@ -3,14 +3,15 @@
  * @author  Martin Odersky
  */
 
-package dotty.tools
-package dotc
+package dotty.tools.dotc
 package backend.jvm
 
-import java.io.{ DataOutputStream, FileOutputStream, IOException, OutputStream, File => JFile }
-import scala.tools.nsc.io._
-import java.util.jar.Attributes.Name
 import scala.language.postfixOps
+
+import java.io.{ DataOutputStream, FileOutputStream, IOException, OutputStream, File => JFile }
+import java.util.jar.Attributes.Name
+
+import dotty.tools.io._
 
 /** Can't output a file due to the state of the file system. */
 class FileConflictException(msg: String, val file: AbstractFile) extends IOException(msg)

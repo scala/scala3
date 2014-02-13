@@ -3,20 +3,18 @@
  * @author  Martin Odersky
  */
 
-
-package dotty.tools
-package dotc
-package backend
-package jvm
+package dotty.tools.dotc
+package backend.jvm
 
 import scala.collection.{ mutable, immutable }
 import scala.annotation.switch
 
 import dotty.tools.asm
 
-import dotc.ast.Trees._
-import dotc.core.Types.Type
-import dotc.core.Symbols.{Symbol, NoSymbol}
+import ast.Trees._
+import core.Contexts.Context
+import core.Types.Type
+import core.Symbols.{Symbol, NoSymbol}
 
 /*
  *
@@ -30,7 +28,7 @@ abstract class BCodeSyncAndTry extends BCodeBodyBuilder {
    * Functionality to lower `synchronized` and `try` expressions.
    */
   abstract class SyncAndTryBuilder(cunit: CompilationUnit,
-                                   ctx:   dotc.core.Contexts.Context) extends PlainBodyBuilder(cunit, ctx) {
+                                   ctx:   Context) extends PlainBodyBuilder(cunit, ctx) {
 
     import ast.tpd._
 

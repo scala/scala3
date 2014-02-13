@@ -3,8 +3,7 @@
  * @author  Martin Odersky
  */
 
-package dotty.tools
-package dotc
+package dotty.tools.dotc
 package backend.jvm
 
 import dotty.tools.asm
@@ -12,14 +11,14 @@ import scala.annotation.switch
 import scala.collection.{ immutable, mutable }
 import dotty.tools.io.AbstractFile
 
-import dotc.ast.Trees._
-
-import dotc.core.StdNames
-import dotc.core.Types.Type
-import dotc.core.Symbols.{Symbol, NoSymbol}
-import dotc.core.SymDenotations._
-import dotc.core.Flags
-import dotc.core.StdNames.{nme, tpnme}
+import ast.Trees._
+import core.Contexts.Context
+import core.StdNames
+import core.Types.Type
+import core.Symbols.{Symbol, NoSymbol}
+import core.SymDenotations._
+import core.Flags
+import core.StdNames.{nme, tpnme}
 
 /*
  *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -209,7 +208,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
   /*
    * must-single-thread
    */
-  def initBytecodeWriter(entryPoints: List[Symbol])(implicit ctx: core.Contexts.Context): BytecodeWriter = {
+  def initBytecodeWriter(entryPoints: List[Symbol])(implicit ctx: Context): BytecodeWriter = {
     settings.outputDirs.getSingleOutput match {
       case Some(f) if f hasExtension "jar" =>
         // If no main class was specified, see if there's only one
@@ -236,7 +235,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
   /*
    *  must-single-thread
    */
-  def fieldSymbols(cls: Symbol)(implicit ctx: core.Contexts.Context): List[Symbol] = {
+  def fieldSymbols(cls: Symbol)(implicit ctx: Context): List[Symbol] = {
     for (f <- cls.info.decls.toList ;
          if !(f is Flags.Method) && f.isTerm && !(f is Flags.ModuleVal)
     ) yield f;
@@ -405,14 +404,14 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      *  must-single-thread
      */
-    final def internalName(sym: Symbol)(implicit ctx: core.Contexts.Context): String = asmClassType(sym).getInternalName
+    final def internalName(sym: Symbol)(implicit ctx: Context): String = asmClassType(sym).getInternalName
 
     /*
      *  Tracks (if needed) the inner class given by `sym`.
      *
      *  must-single-thread
      */
-    final def asmClassType(sym: Symbol)(implicit ctx: core.Contexts.Context): BType = {
+    final def asmClassType(sym: Symbol)(implicit ctx: Context): BType = {
       assert(
         hasInternalName(sym),
         {
@@ -441,7 +440,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      * 
      * TODO(lry): check if `ctx` should be a paramter of the class instead.
      */
-    final def toTypeKind(t: Type)(implicit ctx: dotc.core.Contexts.Context): BType = {
+    final def toTypeKind(t: Type)(implicit ctx: Context): BType = {
 
       /* Interfaces have to be handled delicately to avoid introducing spurious errors,
        *  but if we treat them all as AnyRef we lose too much information.
@@ -535,7 +534,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
     /*
      * must-single-thread
      */
-    def asmMethodType(msym: Symbol)(implicit ctx: core.Contexts.Context): BType = {
+    def asmMethodType(msym: Symbol)(implicit ctx: Context): BType = {
       assert(msym is Flags.Method, s"not a method-symbol: $msym")
       val resT: BType =
         if (msym.isClassConstructor || msym.isConstructor) BType.VOID_TYPE
@@ -550,7 +549,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      *  must-single-thread
      */
-    final def trackMemberClasses(csym: Symbol, lateClosuresBTs: List[BType])(implicit ctx: core.Contexts.Context): List[BType] = {
+    final def trackMemberClasses(csym: Symbol, lateClosuresBTs: List[BType])(implicit ctx: Context): List[BType] = {
       val lateInnerClasses = exitingErasure {
         for (sym <- List(csym, csym.linkedClassOfClass); memberc <- sym.info.decls.map(innerClassSymbolFor) if memberc.isClass)
         yield memberc
@@ -574,14 +573,14 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      *  must-single-thread
      */
-    final def descriptor(t: Type)(implicit ctx: core.Contexts.Context): String = (toTypeKind(t).getDescriptor)
+    final def descriptor(t: Type)(implicit ctx: Context): String = (toTypeKind(t).getDescriptor)
 
     /*
      *  Tracks (if needed) the inner class given by `sym`.
      *
      *  must-single-thread
      */
-    final def descriptor(sym: Symbol)(implicit ctx: core.Contexts.Context): String = (asmClassType(sym).getDescriptor)
+    final def descriptor(sym: Symbol)(implicit ctx: Context): String = (asmClassType(sym).getDescriptor)
 
   } // end of trait BCInnerClassGen
 

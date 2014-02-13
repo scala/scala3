@@ -3,11 +3,12 @@
  * @author  Martin Odersky
  */
 
-package dotty.tools
-package dotc
+package dotty.tools.dotc
 package backend.jvm
 
 import scala.collection.{ mutable, immutable }
+
+import core.Contexts.Context
 import core.Symbols.{Symbol, NoSymbol}
 
 /** Scala primitive operations are represented as methods in `Any` and
@@ -195,7 +196,7 @@ object scalaPrimitives {
   }
 
   /** Initialize the primitive map */
-  def init(implicit ctx: core.Contexts.Context): Unit = {
+  def init(implicit ctx: Context): Unit = {
 
     import core.Symbols.defn
 
