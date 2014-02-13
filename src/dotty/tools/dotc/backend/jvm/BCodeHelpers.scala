@@ -238,7 +238,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
    */
   def fieldSymbols(cls: Symbol)(implicit ctx: core.Contexts.Context): List[Symbol] = {
     for (f <- cls.info.decls.toList ;
-         if !f.isMethod && f.isTerm && !(f is Flags.ModuleVal)
+         if !(f is Flags.Method) && f.isTerm && !(f is Flags.ModuleVal)
     ) yield f;
   }
 
@@ -535,7 +535,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      * must-single-thread
      */
     def asmMethodType(msym: Symbol): BType = {
-      assert(msym.isMethod, s"not a method-symbol: $msym")
+      assert(msym is Flags.Method, s"not a method-symbol: $msym")
       val resT: BType =
         if (msym.isClassConstructor || msym.isConstructor) BType.VOID_TYPE
         else toTypeKind(msym.tpe.resultType);
@@ -824,9 +824,9 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
         val isValidSignature = wrap {
           // Alternative: scala.tools.reflect.SigParser (frontend to sun.reflect.generics.parser.SignatureParser)
           import dotty.tools.asm.util.CheckClassAdapter
-          if (sym.isMethod)    { CheckClassAdapter checkMethodSignature sig }
-          else if (sym.isTerm) { CheckClassAdapter checkFieldSignature  sig }
-          else                 { CheckClassAdapter checkClassSignature  sig }
+          if (sym is Flags.Method) { CheckClassAdapter checkMethodSignature sig }
+          else if (sym.isTerm)     { CheckClassAdapter checkFieldSignature  sig }
+          else                     { CheckClassAdapter checkClassSignature  sig }
         }
 
         if (!isValidSignature) {
@@ -1055,7 +1055,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 
       var res: EnclMethodEntry = null
       val sym = clazz.originalEnclosingMethod
-      if (sym.isMethod) {
+      if (sym is Flags.Method) {
         debuglog(s"enclosing method for $clazz is $sym (in ${sym.enclClass})")
         res = newEEE(sym.enclClass, sym)
       } else if (clazz.isAnonymousClass) {
