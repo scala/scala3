@@ -757,12 +757,12 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
                   val qualSym = findHostClass(qual.tpe, sym)
                   if (qualSym == ArrayClass) {
                     targetTypeKind = tpeTK(qual)
-                    log(s"Stored target type kind for ${sym.fullName} as $targetTypeKind")
+                    ctx.log(s"Stored target type kind for ${sym.fullName} as $targetTypeKind")
                   }
                   else {
                     hostClass = qualSym
                     if (qual.tpe.typeSymbol != qualSym) {
-                      log(s"Precisified host class for $sym from ${qual.tpe.typeSymbol.fullName} to ${qualSym.fullName}")
+                      ctx.log(s"Precisified host class for $sym from ${qual.tpe.typeSymbol.fullName} to ${qualSym.fullName}")
                     }
                   }
 
@@ -948,8 +948,8 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
       val module = (
         if (!tree.symbol is Flags.PackageClass) tree.symbol
         else tree.symbol.info.member(nme.PACKAGE) match {
-          case NoSymbol => abort(s"SI-5604: Cannot use package as value: $tree")
-          case s        => abort(s"SI-5604: found package class where package object expected: $tree")
+          case NoDenotation => abort(s"SI-5604: Cannot use package as value: $tree")
+          case s            => abort(s"SI-5604: found package class where package object expected: $tree")
         }
       )
       lineNumber(tree)

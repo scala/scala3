@@ -83,10 +83,6 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
 
     def tpeTK(tree: Tree): BType = { toTypeKind(tree.tpe) }
 
-    def log(msg: => AnyRef) {
-      global synchronized { global.log(msg) }
-    }
-
     override def getCurrentCUnit(): CompilationUnit = { cunit }
 
     /* ---------------- helper utils for generating classes and fiels ---------------- */
@@ -188,7 +184,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
               exitingPickler { !(lmoc.name.toString contains '$') && lmoc.hasModuleFlag && !(lmoc is Flags.ImplClass) && !lmoc.isNestedClass }
             }
             if (isCandidateForForwarders) {
-              log(s"Adding static forwarders from '$claszSymbol' to implementations in '$lmoc'")
+              ctx.log(s"Adding static forwarders from '$claszSymbol' to implementations in '$lmoc'")
               addForwarders(isRemote(claszSymbol), cnode, thisName, lmoc.moduleClass)
             }
           }

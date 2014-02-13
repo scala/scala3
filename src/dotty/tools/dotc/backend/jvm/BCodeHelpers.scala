@@ -209,7 +209,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
   /*
    * must-single-thread
    */
-  def initBytecodeWriter(entryPoints: List[Symbol]): BytecodeWriter = {
+  def initBytecodeWriter(entryPoints: List[Symbol])(implicit ctx: core.Contexts.Context): BytecodeWriter = {
     settings.outputDirs.getSingleOutput match {
       case Some(f) if f hasExtension "jar" =>
         // If no main class was specified, see if there's only one
@@ -217,15 +217,15 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
         if (settings.mainClass.isDefault) {
           entryPoints map (_.fullName('.')) match {
             case Nil      =>
-              log("No Main-Class designated or discovered.")
+              ctx.log("No Main-Class designated or discovered.")
             case name :: Nil =>
-              log(s"Unique entry point: setting Main-Class to $name")
+              ctx.log(s"Unique entry point: setting Main-Class to $name")
               settings.mainClass.value = name
             case names =>
-              log(s"No Main-Class due to multiple entry points:\n  ${names.mkString("\n  ")}")
+              ctx.log(s"No Main-Class due to multiple entry points:\n  ${names.mkString("\n  ")}")
           }
         }
-        else log(s"Main-Class was specified: ${settings.mainClass.value}")
+        else ctx.log(s"Main-Class was specified: ${settings.mainClass.value}")
 
         new DirectToJarfileWriter(f.file)
 

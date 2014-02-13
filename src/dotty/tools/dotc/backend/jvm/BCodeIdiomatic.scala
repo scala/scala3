@@ -691,4 +691,10 @@ abstract class BCodeIdiomatic extends BCodeGlue {
       }
     }
   }
+
+  def abort(msg: => AnyRef)(implicit ctx: core.Contexts.Context): Nothing = {
+    ctx.error(msg)
+    throw new FatalError(msg)
+  }
+
 }
