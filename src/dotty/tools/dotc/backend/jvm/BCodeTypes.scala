@@ -334,7 +334,10 @@ abstract class BCodeTypes extends BCodeIdiomatic {
   final def isDeprecated(sym: Symbol): Boolean = { sym.annotations exists (_ matches definitions.DeprecatedAttr) }
 
   /* must-single-thread */
-  final def hasInternalName(sym: Symbol) = { sym.isClass || ((sym is Flags.ModuleVal) && !(sym is Flags.Method)) }
+  final def hasInternalName(sym: Symbol)(implicit ctx: core.Contexts.Context) = (
+    sym.isClass ||
+    ((sym is Flags.ModuleVal) && !(sym is Flags.Method))
+  )
 
   /* must-single-thread */
   def getSuperInterfaces(csym: Symbol): List[Symbol] = {

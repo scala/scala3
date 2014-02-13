@@ -405,14 +405,14 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      *  must-single-thread
      */
-    final def internalName(sym: Symbol): String = { asmClassType(sym).getInternalName }
+    final def internalName(sym: Symbol)(implicit ctx: core.Contexts.Context): String = asmClassType(sym).getInternalName
 
     /*
      *  Tracks (if needed) the inner class given by `sym`.
      *
      *  must-single-thread
      */
-    final def asmClassType(sym: Symbol): BType = {
+    final def asmClassType(sym: Symbol)(implicit ctx: core.Contexts.Context): BType = {
       assert(
         hasInternalName(sym),
         {
@@ -489,16 +489,17 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
       }
 
       def primitiveOrRefType2(sym: Symbol): BType = {
+        import core.Symbols.defn
+
         primitiveTypeMap.get(sym) match {
           case Some(pt) => pt
           case None =>
-            sym match {
-              case definitions.NullClass    => RT_NULL
-              case definitions.NothingClass => RT_NOTHING
-              case _ if sym.isClass         => newReference(sym)
-              case _ =>
-                assert(sym.isType, sym) // it must be compiling Array[a]
-                ObjectReference
+            if (sym == defn.NullClass)         RT_NULL
+            else if (sym == defn.NothingClass) RT_NOTHING
+            else if (sym.isClass)              newReference(sym)
+            else {
+              assert(sym.isType, sym) // it must be compiling Array[a]
+              ObjectReference
             }
         }
       }
