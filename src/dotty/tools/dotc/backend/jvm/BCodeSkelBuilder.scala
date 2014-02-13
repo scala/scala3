@@ -87,7 +87,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- helper utils for generating classes and fiels ---------------- */
 
-    def genPlainClass(cd: TypeDef) {
+    def genPlainClass(cd: TypeDef): Unit = {
       assert(cnode == null, "GenBCode detected nested methods.")
       innerClassBufferASM.clear()
 
@@ -125,7 +125,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    private def initJClass(jclass: asm.ClassVisitor) {
+    private def initJClass(jclass: asm.ClassVisitor): Unit = {
 
       val ps = claszSymbol.info.parents
       val superClass: String = if (ps.isEmpty) JAVA_LANG_OBJECT.getInternalName else internalName(ps.head.typeSymbol);
@@ -199,7 +199,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
     /*
      * can-multi-thread
      */
-    private def addModuleInstanceField() {
+    private def addModuleInstanceField(): Unit = {
       val fv =
         cnode.visitField(PublicStaticFinal, // TODO confirm whether we really don't want ACC_SYNTHETIC nor ACC_DEPRECATED
                          strMODULE_INSTANCE_FIELD,
@@ -214,7 +214,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    private def fabricateStaticInit() {
+    private def fabricateStaticInit(): Unit = {
 
       val clinit: asm.MethodVisitor = cnode.visitMethod(
         PublicStatic, // TODO confirm whether we really don't want ACC_SYNTHETIC nor ACC_DEPRECATED
@@ -238,7 +238,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
       clinit.visitEnd()
     }
 
-    def addClassFields() {
+    def addClassFields(): Unit = {
       /*  Non-method term members are fields, except for module members. Module
        *  members can only happen on .NET (no flatten) for inner traits. There,
        *  a module symbol is generated (transformInfo in mixin) which is used
@@ -336,10 +336,10 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
      *  emitted for that purpose as described in `genLoadTry()` and `genSynchronized()`.
      */
     var cleanups: List[asm.Label] = Nil
-    def registerCleanup(finCleanup: asm.Label) {
+    def registerCleanup(finCleanup: asm.Label): Unit = {
       if (finCleanup != null) { cleanups = finCleanup :: cleanups }
     }
-    def unregisterCleanup(finCleanup: asm.Label) {
+    def unregisterCleanup(finCleanup: asm.Label): Unit = {
       if (finCleanup != null) {
         assert(cleanups.head eq finCleanup,
                s"Bad nesting of cleanup operations: $cleanups trying to unregister: $finCleanup")
@@ -360,7 +360,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
 
       private var nxtIdx = -1 // next available index for local-var
 
-      def reset(isStaticMethod: Boolean) {
+      def reset(isStaticMethod: Boolean): Unit = {
         slots.clear()
         nxtIdx = if (isStaticMethod) 0 else 1
       }
@@ -398,12 +398,12 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
       }
 
       // not to be confused with `fieldStore` and `fieldLoad` which also take a symbol but a field-symbol.
-      def store(locSym: Symbol) {
+      def store(locSym: Symbol): Unit = {
         val Local(tk, _, idx, _) = slots(locSym)
         bc.store(idx, tk)
       }
 
-      def load(locSym: Symbol) {
+      def load(locSym: Symbol): Unit = {
         val Local(tk, _, idx, _) = slots(locSym)
         bc.load(idx, tk)
       }
@@ -452,14 +452,14 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
           pp
       }
     }
-    def markProgramPoint(lbl: asm.Label) {
+    def markProgramPoint(lbl: asm.Label): Unit = {
       val skip = (lbl == null) || isAtProgramPoint(lbl)
       if (!skip) { mnode visitLabel lbl }
     }
     def isAtProgramPoint(lbl: asm.Label): Boolean = {
       (lastInsn match { case labnode: asm.tree.LabelNode => (labnode.getLabel == lbl); case _ => false } )
     }
-    def lineNumber(tree: Tree) {
+    def lineNumber(tree: Tree): Unit = {
       if (!emitLines || !tree.pos.isDefined) return;
       val nr = tree.pos.finalPosition.line
       if (nr != lastEmittedLineNr) {
@@ -475,7 +475,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
     }
 
     // on entering a method
-    def resetMethodBookkeeping(dd: DefDef) {
+    def resetMethodBookkeeping(dd: DefDef): Unit = {
       locals.reset(isStaticMethod = methSymbol.isStaticMember)
       jumpDest = immutable.Map.empty[ /* LabelDef */ Symbol, asm.Label ]
       // populate labelDefsAtOrUnder
@@ -496,7 +496,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- top-down traversal invoking ASM Tree API along the way ---------------- */
 
-    def gen(tree: Tree) {
+    def gen(tree: Tree): Unit = {
       tree match {
         case EmptyTree => ()
 
@@ -515,7 +515,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    def initJMethod(flags: Int, paramAnnotations: List[List[AnnotationInfo]]) {
+    def initJMethod(flags: Int, paramAnnotations: List[List[AnnotationInfo]]): Unit = {
 
       val jgensig = getGenericSignature(methSymbol, claszSymbol)
       addRemoteExceptionAnnot(isCZRemote, hasPublicBitSet(flags), methSymbol)
@@ -543,7 +543,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
     } // end of method initJMethod
 
 
-    def genDefDef(dd: DefDef) {
+    def genDefDef(dd: DefDef): Unit = {
       // the only method whose implementation is not emitted: getClass()
       if (definitions.isGetClass(dd.symbol)) { return }
       assert(mnode == null, "GenBCode detected nested method.")
@@ -599,7 +599,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
 
       if (!isAbstractMethod && !isNative) {
 
-        def emitNormalMethodBody() {
+        def emitNormalMethodBody(): Unit = {
           val veryFirstProgramPoint = currProgramPoint()
           genLoad(rhs, returnType)
 
@@ -648,7 +648,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
      *
      *  TODO document, explain interplay with `fabricateStaticInit()`
      */
-    private def appendToStaticCtor(dd: DefDef) {
+    private def appendToStaticCtor(dd: DefDef): Unit = {
 
       def insertBefore(
             location: asm.tree.AbstractInsnNode,
@@ -711,7 +711,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
 
     }
 
-    def emitLocalVarScope(sym: Symbol, start: asm.Label, end: asm.Label, force: Boolean = false) {
+    def emitLocalVarScope(sym: Symbol, start: asm.Label, end: asm.Label, force: Boolean = false): Unit = {
       val Local(tk, name, idx, isSynth) = locals(sym)
       if (force || !isSynth) {
         mnode.visitLocalVariable(name, tk.getDescriptor, null, start, end, idx)

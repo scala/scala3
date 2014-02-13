@@ -78,7 +78,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
   /*
    * must-single-thread
    */
-  def initBCodeTypes(implicit ctx: core.Contexts.Context) {
+  def initBCodeTypes(implicit ctx: core.Contexts.Context): Unit = {
 
     import core.Symbols.defn
 
@@ -193,7 +193,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
   /*
    * must-single-thread
    */
-  def clearBCodeTypes() {
+  def clearBCodeTypes(): Unit = {
     symExemplars.clear()
     exemplars.clear()
   }
@@ -237,7 +237,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
       _directMemberClasses
     }
 
-    def directMemberClasses_=(bs: List[BType]) {
+    def directMemberClasses_=(bs: List[BType]): Unit = {
       if (_directMemberClasses != null) {
         // TODO we enter here when both mirror class and plain class are emitted for the same ModuleClassSymbol.
         assert(_directMemberClasses == bs.sortBy(_.off))
@@ -481,7 +481,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
   def allInterfaces(is: Iterable[Tracked]): Boolean = { is forall { i => i.isInterface } }
   def nonInterfaces(is: Iterable[Tracked]): Iterable[Tracked] = { is filterNot { i => i.isInterface } }
 
-  def checkAllInterfaces(ifaces: Iterable[Tracked]) {
+  def checkAllInterfaces(ifaces: Iterable[Tracked]): Unit = {
     assert(allInterfaces(ifaces), s"Non-interfaces: ${nonInterfaces(ifaces).mkString}")
   }
 

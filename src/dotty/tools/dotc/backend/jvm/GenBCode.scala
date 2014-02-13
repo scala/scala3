@@ -123,7 +123,7 @@ object GenBCode extends BCodeSyncAndTry {
 
       val caseInsensitively = mutable.Map.empty[String, Symbol]
 
-      def run() {
+      def run(): Unit = {
         while (true) {
           val item = q1.poll
           if (item.isPoison) {
@@ -147,7 +147,7 @@ object GenBCode extends BCodeSyncAndTry {
        *  enqueues them in queue-2.
        *
        */
-      def visit(item: Item1) {
+      def visit(item: Item1): Unit = {
         val Item1(arrivalPos, cd, cunit) = item
         val claszSymbol = cd.symbol
 
@@ -212,7 +212,7 @@ object GenBCode extends BCodeSyncAndTry {
      */
     class Worker2 {
 
-      def run() {
+      def run(): Unit = {
         while (true) {
           val item = q2.poll
           if (item.isPoison) {
@@ -230,7 +230,7 @@ object GenBCode extends BCodeSyncAndTry {
         }
       }
 
-      private def addToQ3(item: Item2) {
+      private def addToQ3(item: Item2): Unit = {
 
         def getByteArray(cn: asm.tree.ClassNode): Array[Byte] = {
           val cw = new CClassWriter(extraProc)
@@ -318,15 +318,15 @@ object GenBCode extends BCodeSyncAndTry {
     }
 
     /* Feed pipeline-1: place all ClassDefs on q1, recording their arrival position. */
-    private def feedPipeline1(units: List[CompilationUnit]) {
+    private def feedPipeline1(units: List[CompilationUnit]): Unit = {
       units forech apply
       q1 add poison1
     }
 
     /* Pipeline that writes classfile representations to disk. */
-    private def drainQ3() {
+    private def drainQ3(): Unit = {
 
-      def sendToDisk(cfr: SubItem3, outFolder: scala.tools.nsc.io.AbstractFile) {
+      def sendToDisk(cfr: SubItem3, outFolder: scala.tools.nsc.io.AbstractFile): Unit = {
         if (cfr != null){
           val SubItem3(jclassName, jclassBytes) = cfr
           try {
@@ -368,7 +368,7 @@ object GenBCode extends BCodeSyncAndTry {
 
     override def apply(cunit: CompilationUnit): Unit = {
 
-      def gen(tree: Trees.Tree) {
+      def gen(tree: Trees.Tree): Unit = {
 
         import Trees.{PackageDef, TypeDef}
 

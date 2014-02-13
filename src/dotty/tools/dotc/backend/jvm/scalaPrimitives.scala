@@ -195,7 +195,7 @@ object scalaPrimitives {
   }
 
   /** Initialize the primitive map */
-  def init(implicit ctx: core.Contexts.Context) {
+  def init(implicit ctx: core.Contexts.Context): Unit = {
 
     import core.Symbols.defn
 
@@ -452,12 +452,12 @@ object scalaPrimitives {
   }
 
   /** Add a primitive operation to the map */
-  def addPrimitive(s: Symbol, code: Int) {
+  def addPrimitive(s: Symbol, code: Int): Unit = {
     assert(!(primitives contains s), "Duplicate primitive " + s)
     primitives(s) = code
   }
 
-  def addPrimitives(cls: Symbol, method: dotc.core.Names.TermName, code: Int) {
+  def addPrimitives(cls: Symbol, method: dotc.core.Names.TermName, code: Int): Unit = {
     val alts = (cls.info member method).alternatives
     if (alts.isEmpty)
       inform(s"Unknown primitive method $cls.$method")
