@@ -1310,7 +1310,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
 
           markProgramPoint(lNonNull)
           locals.load(eqEqTempLocal)
-          genCallMethod(Object_equals, icodes.opcodes.Dynamic)
+          genCallMethod(ctx.definitions.Object_equals, icodes.opcodes.Dynamic)
           genCZJUMP(success, failure, icodes.NE, BOOL)
         }
       }
