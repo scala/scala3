@@ -421,7 +421,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
    */
   private def buildExemplar(key: BType, csym: Symbol): Tracked = {
     val sc =
-     if (csym.isImplClass) definitions.ObjectClass
+     if (csym is Flags.ImplClass) definitions.ObjectClass
      else csym.superClass
     assert(
       if (csym == definitions.ObjectClass)
@@ -653,14 +653,14 @@ abstract class BCodeTypes extends BCodeIdiomatic {
    * must-single-thread
    */
   def isTopLevelModule(sym: Symbol): Boolean = {
-    exitingPickler { sym.isModuleClass && !sym.isImplClass && !sym.isNestedClass }
+    exitingPickler { sym.isModuleClass && !(sym is Flags.ImplClass) && !sym.isNestedClass }
   }
 
   /*
    * must-single-thread
    */
   def isStaticModule(sym: Symbol): Boolean = {
-    sym.isModuleClass && !sym.isImplClass && !sym.isLifted
+    sym.isModuleClass && !(sym is Flags.ImplClass) && !sym.isLifted
   }
 
   // ---------------------------------------------------------------------

@@ -185,7 +185,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
           if (lmoc != NoSymbol) {
             // it must be a top level class (name contains no $s)
             val isCandidateForForwarders = {
-              exitingPickler { !(lmoc.name.toString contains '$') && lmoc.hasModuleFlag && !lmoc.isImplClass && !lmoc.isNestedClass }
+              exitingPickler { !(lmoc.name.toString contains '$') && lmoc.hasModuleFlag && !(lmoc is Flags.ImplClass) && !lmoc.isNestedClass }
             }
             if (isCandidateForForwarders) {
               log(s"Adding static forwarders from '$claszSymbol' to implementations in '$lmoc'")

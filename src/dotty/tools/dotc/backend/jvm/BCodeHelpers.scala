@@ -791,7 +791,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
       || sym.isArtifact
       || sym.isLiftedMethod
       || sym.isBridge
-      || (sym.ownerChain exists (_.isImplClass))
+      || (sym.ownerChain exists (_ is Flags.ImplClass))
     )
 
     def getCurrentCUnit(): CompilationUnit
