@@ -1,6 +1,9 @@
 package dotty
 
 package object tools {
+  // TODO(lrytz) there also exists the class `dotty.tools.dotc.FatalError`. The aliases here
+  // seem to be used in the `dotty.tools.io` package. Needs clean up. If `io` needs a different
+  // exception, it should have a different name.
   type FatalError = scala.reflect.internal.FatalError
   val FatalError = scala.reflect.internal.FatalError
 

@@ -3,8 +3,7 @@
  * @author  Martin Odersky
  */
 
-package dotty.tools
-package dotc
+package dotty.tools.dotc
 package backend.jvm
 
 import dotty.tools.asm
@@ -12,14 +11,14 @@ import scala.annotation.switch
 import scala.collection.{ immutable, mutable }
 import dotty.tools.io.AbstractFile
 
-import dotc.ast.Trees._
-
-import dotc.core.StdNames
-import dotc.core.Types.Type
-import dotc.core.Symbols.{Symbol, NoSymbol}
-import dotc.core.SymDenotations._
-import dotc.core.Flags
-import dotc.core.StdNames.{nme, tpnme}
+import ast.Trees._
+import core.Contexts.Context
+import core.StdNames
+import core.Types.Type
+import core.Symbols.{Symbol, NoSymbol}
+import core.SymDenotations._
+import core.Flags
+import core.StdNames.{nme, tpnme}
 
 /*
  *  Traits encapsulating functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -209,7 +208,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
   /*
    * must-single-thread
    */
-  def initBytecodeWriter(entryPoints: List[Symbol])(implicit ctx: core.Contexts.Context): BytecodeWriter = {
+  def initBytecodeWriter(entryPoints: List[Symbol])(implicit ctx: Context): BytecodeWriter = {
     settings.outputDirs.getSingleOutput match {
       case Some(f) if f hasExtension "jar" =>
         // If no main class was specified, see if there's only one
@@ -236,7 +235,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
   /*
    *  must-single-thread
    */
-  def fieldSymbols(cls: Symbol)(implicit ctx: core.Contexts.Context): List[Symbol] = {
+  def fieldSymbols(cls: Symbol)(implicit ctx: Context): List[Symbol] = {
     for (f <- cls.info.decls.toList ;
          if !(f is Flags.Method) && f.isTerm && !(f is Flags.ModuleVal)
     ) yield f;
@@ -296,6 +295,17 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 
   } // end of method addInnerClassesASM()
 
+  /**
+   * All components (e.g. BCPickles, BCInnerClassGen) of the builder classes
+   * extend this trait to have access to the context.
+   *
+   * The context is provided by the three leaf classes (PlainClassBuilder,
+   * JMirrorBuilder and JBeanInfoBuilder) as class parameter.
+   */
+  trait HasContext {
+    implicit protected val ctx: Context
+  }
+
   /*
    * Custom attribute (JVMS 4.7.1) "ScalaSig" used as marker only
    * i.e., the pickle is contained in a custom annotation, see:
@@ -308,7 +318,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
    * while the "Signature" attribute can be associated to classes, methods, and fields.)
    *
    */
-  trait BCPickles {
+  trait BCPickles extends HasContext {
 
     import scala.reflect.internal.pickling.{ PickleFormat, PickleBuffer }
 
@@ -383,7 +393,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 
   } // end of trait BCPickles
 
-  trait BCInnerClassGen {
+  trait BCInnerClassGen extends HasContext {
 
     def debugLevel = settings.debuginfo.indexOfChoice
 
@@ -405,14 +415,14 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      *  must-single-thread
      */
-    final def internalName(sym: Symbol)(implicit ctx: core.Contexts.Context): String = asmClassType(sym).getInternalName
+    final def internalName(sym: Symbol): String = asmClassType(sym).getInternalName
 
     /*
      *  Tracks (if needed) the inner class given by `sym`.
      *
      *  must-single-thread
      */
-    final def asmClassType(sym: Symbol)(implicit ctx: core.Contexts.Context): BType = {
+    final def asmClassType(sym: Symbol): BType = {
       assert(
         hasInternalName(sym),
         {
@@ -438,10 +448,8 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *  Tracks (if needed) the inner class given by `t`.
      *
      * must-single-thread
-     * 
-     * TODO(lry): check if `ctx` should be a paramter of the class instead.
      */
-    final def toTypeKind(t: Type)(implicit ctx: dotc.core.Contexts.Context): BType = {
+    final def toTypeKind(t: Type): BType = {
 
       /* Interfaces have to be handled delicately to avoid introducing spurious errors,
        *  but if we treat them all as AnyRef we lose too much information.
@@ -535,7 +543,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
     /*
      * must-single-thread
      */
-    def asmMethodType(msym: Symbol)(implicit ctx: core.Contexts.Context): BType = {
+    def asmMethodType(msym: Symbol): BType = {
       assert(msym is Flags.Method, s"not a method-symbol: $msym")
       val resT: BType =
         if (msym.isClassConstructor || msym.isConstructor) BType.VOID_TYPE
@@ -550,7 +558,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      *  must-single-thread
      */
-    final def trackMemberClasses(csym: Symbol, lateClosuresBTs: List[BType])(implicit ctx: core.Contexts.Context): List[BType] = {
+    final def trackMemberClasses(csym: Symbol, lateClosuresBTs: List[BType]): List[BType] = {
       val lateInnerClasses = exitingErasure {
         for (sym <- List(csym, csym.linkedClassOfClass); memberc <- sym.info.decls.map(innerClassSymbolFor) if memberc.isClass)
         yield memberc
@@ -574,14 +582,14 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      *  must-single-thread
      */
-    final def descriptor(t: Type)(implicit ctx: core.Contexts.Context): String = (toTypeKind(t).getDescriptor)
+    final def descriptor(t: Type): String = (toTypeKind(t).getDescriptor)
 
     /*
      *  Tracks (if needed) the inner class given by `sym`.
      *
      *  must-single-thread
      */
-    final def descriptor(sym: Symbol)(implicit ctx: core.Contexts.Context): String = (asmClassType(sym).getDescriptor)
+    final def descriptor(sym: Symbol): String = (asmClassType(sym).getDescriptor)
 
   } // end of trait BCInnerClassGen
 
@@ -774,7 +782,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 
   } // end of trait BCAnnotGen
 
-  trait BCJGenSigGen {
+  trait BCJGenSigGen extends HasContext {
 
     // @M don't generate java generics sigs for (members of) implementation
     // classes, as they are monomorphic (TODO: ok?)
@@ -996,7 +1004,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 
   } // end of trait BCForwardersGen
 
-  trait BCClassGen extends BCInnerClassGen {
+  trait BCClassGen extends BCInnerClassGen with HasContext {
 
     // Used as threshold above which a tableswitch bytecode instruction is preferred over a lookupswitch.
     // There's a space tradeoff between these multi-branch instructions (details in the JVM spec).
@@ -1081,7 +1089,10 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 
   } // end of class JBuilder
 
-  /* functionality for building plain and mirror classes */
+  /* functionality for building plain and mirror classes
+   * TODO(lrytz): it seems only `JMirrorBuilder` extends `JCommonBuilder`.
+   * So this class could be removed.
+   */
   abstract class JCommonBuilder
     extends JBuilder
     with    BCAnnotGen
@@ -1089,7 +1100,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
     with    BCPickles { }
 
   /* builder of mirror classes */
-  class JMirrorBuilder extends JCommonBuilder {
+  class JMirrorBuilder(implicit protected val ctx: Context) extends JCommonBuilder {
 
     private var cunit: CompilationUnit = _
     def getCurrentCUnit(): CompilationUnit = cunit;
@@ -1144,7 +1155,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
   } // end of class JMirrorBuilder
 
   /* builder of bean info classes */
-  class JBeanInfoBuilder extends JBuilder {
+  class JBeanInfoBuilder(implicit protected val ctx: Context) extends JBuilder {
 
     /*
      * Generate a bean info class that describes the given class.

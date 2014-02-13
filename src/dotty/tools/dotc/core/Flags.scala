@@ -26,7 +26,7 @@ object Flags {
       }
 
     /** The intersection of this flag set and the given flag set 
-     *  TODO(lry): check if resulting flag set has a non-empty kind?
+     *  TODO(lrytz): check if resulting flag set has a non-empty kind?
      */
     def & (that: FlagSet) = FlagSet(bits & that.bits)
 
@@ -115,7 +115,7 @@ object Flags {
    *  conjunctively. I.e. for a flag conjunction `fc`,
    *  `x is fc` tests whether `x` contains all flags in `fc`.
    *
-   * TODO(lry) cannot be a value class because its erause is the same as `FlagSet`,
+   * TODO(lrytz) cannot be a value class because its erause is the same as `FlagSet`,
    * the overloaded `is` would not work. Maybe rename `is` to `isAny` and `isAll`,
    * get rid of `FlagConjunction`? Code would also be more explicit.
    */
@@ -256,7 +256,7 @@ object Flags {
   final val PackageClass = Package.toTypeFlags
 
   /** A case class or its companion object
-   *  TODO(lry): Is CaseVal set for the companion of a case class? Or for a `case object`?
+   *  TODO(lrytz): Is CaseVal set for the companion of a case class? Or for a `case object`?
    *  Or both? Is CaseClass set for the module class of a `case object`?
    */
   final val Case = commonFlag(17, "case")

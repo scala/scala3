@@ -3,19 +3,19 @@
  * @author  Martin Odersky
  */
 
-package dotty.tools
-package dotc
+package dotty.tools.dotc
 package backend.jvm
 
 import dotty.tools.asm
 import scala.collection.{ immutable, mutable }
 
-import dotc.ast.Trees.Tree
-import dotc.core.Types.Type
-import dotc.core.StdNames
-import dotc.core.Symbols.{Symbol, NoSymbol}
-import dotc.core.SymDenotations._
-import dotc.core.Flags
+import ast.Trees.Tree
+import core.Contexts.Context
+import core.Types.Type
+import core.StdNames
+import core.Symbols.{Symbol, NoSymbol}
+import core.SymDenotations._
+import core.Flags
 
 import StdNames.{nme, tpnme}
 
@@ -78,7 +78,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
   /*
    * must-single-thread
    */
-  def initBCodeTypes(implicit ctx: core.Contexts.Context): Unit = {
+  def initBCodeTypes(implicit ctx: Context): Unit = {
 
     import core.Symbols.defn
 
@@ -334,7 +334,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
   final def isDeprecated(sym: Symbol): Boolean = { sym.annotations exists (_ matches definitions.DeprecatedAttr) }
 
   /* must-single-thread */
-  final def hasInternalName(sym: Symbol)(implicit ctx: core.Contexts.Context) = (
+  final def hasInternalName(sym: Symbol)(implicit ctx: Context) = (
     sym.isClass ||
     ((sym is Flags.ModuleVal) && !(sym is Flags.Method))
   )
@@ -383,10 +383,8 @@ abstract class BCodeTypes extends BCodeIdiomatic {
    * On the other hand, this method does record the inner-class status of the argument, via `buildExemplar()`.
    *
    * must-single-thread
-   * 
-   * TODO(lry) check if ctx should be a class parameter
    */
-  final def exemplar(csym0: Symbol)(implicit ctx: dotc.core.Contexts.Context): Tracked = {
+  final def exemplar(csym0: Symbol)(implicit ctx: Context): Tracked = {
     assert(csym0 != NoSymbol, "NoSymbol can't be tracked")
 
     val csym = {

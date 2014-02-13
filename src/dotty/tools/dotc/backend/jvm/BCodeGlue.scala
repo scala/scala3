@@ -3,17 +3,16 @@
  * @author  Martin Odersky
  */
 
-package dotty.tools
-package dotc
+package dotty.tools.dotc
 package backend.jvm
 
 import dotty.tools.asm
 import scala.annotation.switch
 import scala.collection.{ immutable, mutable }
 
-import dotc.ast.Trees.Tree
-import dotc.core.Types.Type
-import dotc.core.Symbols.{Symbol, NoSymbol}
+import ast.Trees.Tree
+import core.Types.Type
+import core.Symbols.{Symbol, NoSymbol}
 
 /*
  *  Immutable representations of bytecode-level types.

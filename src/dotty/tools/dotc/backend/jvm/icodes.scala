@@ -3,11 +3,8 @@
  * @author  Martin Odersky
  */
 
-
-package dotty.tools
-package dotc
-package backend
-package jvm
+package dotty.tools.dotc
+package backend.jvm
 
 object icodes {
 

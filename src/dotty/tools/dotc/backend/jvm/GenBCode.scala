@@ -3,20 +3,19 @@
  * @author  Martin Odersky
  */
 
-
-package dotty.tools
-package dotc
-package backend
-package jvm
+package dotty.tools.dotc
+package backend.jvm
 
 import scala.collection.{ mutable, immutable }
 import scala.annotation.switch
 
 import dotty.tools.asm
 
-import dotc.ast.Trees
-import dotc.core.Types.Type
-import dotc.core.Symbols.{Symbol, NoSymbol}
+import ast.Trees._
+import core.Contexts.Context
+import core.Phases.Phase
+import core.Types.Type
+import core.Symbols.{Symbol, NoSymbol}
 
 /*
  *  Prepare in-memory representations of classfiles using the ASM Tree API, and serialize them to disk.
@@ -49,22 +48,26 @@ import dotc.core.Symbols.{Symbol, NoSymbol}
  */
 object GenBCode extends BCodeSyncAndTry {
 
-  final class PlainClassBuilder(cunit: CompilationUnit,
-                                ctx:   dotc.core.Contexts.Context) extends SyncAndTryBuilder(cunit, ctx)
+  import ast.tpd._
 
-  class BCodePhase extends dotc.core.Phases.Phase {
+  final class PlainClassBuilder(cunit: CompilationUnit)(implicit protected val ctx: Context)
+  extends SyncAndTryBuilder(cunit)
 
-    override def name = "jvm"
+  class BCodePhase extends Phase {
+
+    def name = "jvm"
     override def description = "Generate bytecode from ASTs using the ASM library"
-    override def erasedTypes = true
+//    override def erasedTypes = true // TODO(lrytz) remove, probably not necessary in dotty
 
     private var bytecodeWriter  : BytecodeWriter   = null
+    // TODO(lrytz): pass builders around instead of storing them in fields. Builders
+    // have a context, potential for memory leaks.
     private var mirrorCodeGen   : JMirrorBuilder   = null
     private var beanInfoCodeGen : JBeanInfoBuilder = null
 
     /* ---------------- q1 ---------------- */
 
-    case class Item1(arrivalPos: Int, cd: ast.tpd.TypeDef, cunit: CompilationUnit) {
+    case class Item1(arrivalPos: Int, cd: TypeDef, cunit: CompilationUnit) {
       def isPoison = { arrivalPos == Int.MaxValue }
     }
     private val poison1 = Item1(Int.MaxValue, null, null)
@@ -76,7 +79,7 @@ object GenBCode extends BCodeSyncAndTry {
                      mirror:       asm.tree.ClassNode,
                      plain:        asm.tree.ClassNode,
                      bean:         asm.tree.ClassNode,
-                     outFolder:    scala.tools.nsc.io.AbstractFile) {
+                     outFolder:    dotty.tools.io.AbstractFile) {
       def isPoison = { arrivalPos == Int.MaxValue }
     }
 
@@ -101,7 +104,7 @@ object GenBCode extends BCodeSyncAndTry {
                      mirror:     SubItem3,
                      plain:      SubItem3,
                      bean:       SubItem3,
-                     outFolder:  scala.tools.nsc.io.AbstractFile) {
+                     outFolder:  dotty.tools.io.AbstractFile) {
 
       def isPoison  = { arrivalPos == Int.MaxValue }
     }
@@ -118,8 +121,7 @@ object GenBCode extends BCodeSyncAndTry {
     /*
      *  Pipeline that takes ClassDefs from queue-1, lowers them into an intermediate form, placing them on queue-2
      */
-    class Worker1(needsOutFolder: Boolean,
-                  implicit val ctx: dotc.core.Contexts.Context) {
+    class Worker1(needsOutFolder: Boolean, implicit val ctx: Context) {
 
       val caseInsensitively = mutable.Map.empty[String, Symbol]
 
@@ -263,7 +265,7 @@ object GenBCode extends BCodeSyncAndTry {
      *    (c) tear down (closing the classfile-writer and clearing maps)
      *
      */
-    def runOn(units: List[CompilationUnit])(implicit ctx: dotc.core.Contexts.Context): Unit = {
+    def runOn(units: List[CompilationUnit])(implicit ctx: Context): Unit = {
 
       arrivalPos = 0 // just in case
       scalaPrimitives.init
@@ -297,7 +299,7 @@ object GenBCode extends BCodeSyncAndTry {
       clearBCodeTypes()
     }
 
-    override def run(implicit ctx: dotc.core.Contexts.Context): Unit = unsupported("run()")
+    override def run(implicit ctx: Context): Unit = unsupported("run()")
 
     /*
      *  Sequentially:
@@ -308,7 +310,7 @@ object GenBCode extends BCodeSyncAndTry {
      */
     private def buildAndSendToDisk(needsOutFolder: Boolean,
                                    units: List[CompilationUnit],
-                                   ctx: dotc.core.Contexts.Context) {
+                                   ctx: Context) {
 
       feedPipeline1(units)
       (new Worker1(needsOutFolder, ctx)).run()
@@ -319,14 +321,14 @@ object GenBCode extends BCodeSyncAndTry {
 
     /* Feed pipeline-1: place all ClassDefs on q1, recording their arrival position. */
     private def feedPipeline1(units: List[CompilationUnit]): Unit = {
-      units forech apply
+      units foreach addToQ1
       q1 add poison1
     }
 
     /* Pipeline that writes classfile representations to disk. */
     private def drainQ3(): Unit = {
 
-      def sendToDisk(cfr: SubItem3, outFolder: scala.tools.nsc.io.AbstractFile): Unit = {
+      def sendToDisk(cfr: SubItem3, outFolder: dotty.tools.io.AbstractFile): Unit = {
         if (cfr != null){
           val SubItem3(jclassName, jclassBytes) = cfr
           try {
@@ -363,26 +365,19 @@ object GenBCode extends BCodeSyncAndTry {
       assert(q1.isEmpty, s"Some ClassDefs remained in the first queue: $q1")
       assert(q2.isEmpty, s"Some classfiles remained in the second queue: $q2")
       assert(q3.isEmpty, s"Some classfiles weren't written to disk: $q3")
-
     }
 
-    override def apply(cunit: CompilationUnit): Unit = {
-
-      def gen(tree: Trees.Tree): Unit = {
-
-        import Trees.{PackageDef, TypeDef}
-
+    def addToQ1(cunit: CompilationUnit): Unit = {
+      def gen(tree: Tree): Unit = {
         tree match {
-          case ast.untpd.EmptyTree  => ()
-          case ast.tpd.EmptyTree    => ()
+          case EmptyTree    => ()
           case PackageDef(_, stats) => stats foreach gen
           case cd: TypeDef          =>
             q1 add Item1(arrivalPos, cd, cunit)
             arrivalPos += 1
         }
       }
-
-      gen(cunit.body)
+      gen(cunit.tpdTree)
     }
 
   } // end of class BCodePhase
