@@ -7,7 +7,7 @@ package dotty.tools
 package dotc
 package backend.jvm
 
-import scala.tools.asm
+import dotty.tools.asm
 import scala.collection.{ immutable, mutable }
 
 import dotc.ast.Trees.Tree

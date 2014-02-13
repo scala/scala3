@@ -13,7 +13,7 @@ import scala.collection.{ mutable, immutable }
 import scala.tools.nsc.symtab._
 import scala.annotation.switch
 
-import scala.tools.asm
+import dotty.tools.asm
 
 import dotc.ast.Trees._
 import dotc.core.Types.Type
