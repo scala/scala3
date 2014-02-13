@@ -535,7 +535,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
     /*
      * must-single-thread
      */
-    def asmMethodType(msym: Symbol): BType = {
+    def asmMethodType(msym: Symbol)(implicit ctx: core.Contexts.Context): BType = {
       assert(msym is Flags.Method, s"not a method-symbol: $msym")
       val resT: BType =
         if (msym.isClassConstructor || msym.isConstructor) BType.VOID_TYPE
@@ -550,7 +550,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      *  must-single-thread
      */
-    final def trackMemberClasses(csym: Symbol, lateClosuresBTs: List[BType]): List[BType] = {
+    final def trackMemberClasses(csym: Symbol, lateClosuresBTs: List[BType])(implicit ctx: core.Contexts.Context): List[BType] = {
       val lateInnerClasses = exitingErasure {
         for (sym <- List(csym, csym.linkedClassOfClass); memberc <- sym.info.decls.map(innerClassSymbolFor) if memberc.isClass)
         yield memberc
@@ -574,14 +574,14 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      *  must-single-thread
      */
-    final def descriptor(t: Type):   String = { toTypeKind(t).getDescriptor   }
+    final def descriptor(t: Type)(implicit ctx: core.Contexts.Context): String = (toTypeKind(t).getDescriptor)
 
     /*
      *  Tracks (if needed) the inner class given by `sym`.
      *
      *  must-single-thread
      */
-    final def descriptor(sym: Symbol): String = { asmClassType(sym).getDescriptor }
+    final def descriptor(sym: Symbol)(implicit ctx: core.Contexts.Context): String = (asmClassType(sym).getDescriptor)
 
   } // end of trait BCInnerClassGen
 
