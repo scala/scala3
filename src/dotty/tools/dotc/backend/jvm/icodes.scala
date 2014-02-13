@@ -150,7 +150,7 @@ object icodes {
     /** Call through super[mix].
      *  On JVM, translated to `invokespecial`.
      */
-    case class SuperCall(mix: dotc.core.Names.TermName) extends InvokeStyle {
+    case class SuperCall(mix: dotty.tools.dotc.core.Names.TermName) extends InvokeStyle {
       override def isSuper = true
       override def toString(): String = { "super(" + mix + ")" }
     }

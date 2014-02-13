@@ -241,7 +241,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
 
       def elementType = enteringTyper {
         val arrayParent = tpe :: tpe.parents collectFirst {
-          case dotc.core.Types.TypeRef(_, ArrayClass, elem :: Nil) => elem
+          case dotc.core.Types.TypeRef(_, ctx.definitions.ArrayClass, elem :: Nil) => elem
         }
         arrayParent getOrElse sys.error(fun.fullName + " : " + (tpe :: tpe.baseTypeSeq.toList).mkString(", "))
       }
@@ -353,7 +353,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
         case lblDf : LabelDef => genLabelDef(lblDf, expectedType)
 
         case ValDef(_, nme.THIS, _, _) =>
-          debuglog("skipping trivial assign to _$this: " + tree)
+          ctx.debuglog("skipping trivial assign to _$this: " + tree)
 
         case ValDef(_, _, _, rhs) =>
           val sym = tree.symbol
@@ -400,7 +400,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
           else {
             mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
             generatedType =
-              if (tree.symbol == ArrayClass) ObjectReference
+              if (tree.symbol == ctx.definitions.ArrayClass) ObjectReference
               else brefType(thisName) // inner class (if any) for claszSymbol already tracked.
           }
 
@@ -412,7 +412,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
           val sym = tree.symbol
           generatedType = symInfoTK(sym)
           val hostClass = findHostClass(qualifier.tpe, sym)
-          debuglog(s"Host class of $sym with qual $qualifier (${qualifier.tpe}) is $hostClass")
+          ctx.debuglog(s"Host class of $sym with qual $qualifier (${qualifier.tpe}) is $hostClass")
           val qualSafeToElide = treeInfo isQualifierSafeToElide qualifier
 
           def genLoadQualUnlessElidable(): Unit = { if (!qualSafeToElide) { genLoadQualifier(tree) } }
@@ -440,11 +440,12 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
           }
 
         case Literal(value) =>
+          import dotty.tools.dotc.core.Constants._
           if (value.tag != UnitTag) (value.tag, expectedType) match {
-            case (dotc.core.Constants.IntTag,   LONG  ) => bc.lconst(value.longValue);       generatedType = LONG
-            case (dotc.core.Constants.FloatTag, DOUBLE) => bc.dconst(value.doubleValue);     generatedType = DOUBLE
-            case (dotc.core.Constants.NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = RT_NULL
-            case _                                      => genConstant(value);               generatedType = tpeTK(tree)
+            case (IntTag,   LONG  ) => bc.lconst(value.longValue);       generatedType = LONG
+            case (FloatTag, DOUBLE) => bc.dconst(value.doubleValue);     generatedType = DOUBLE
+            case (NullTag,  _     ) => bc.emit(asm.Opcodes.ACONST_NULL); generatedType = RT_NULL
+            case _                  => genConstant(value);               generatedType = tpeTK(tree)
           }
 
         case blck : Block => genBlock(blck, expectedType)
@@ -517,7 +518,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
      */
     def genConstant(const: Constant): Unit = {
 
-      import dotc.core.Constants._
+      import dotty.tools.dotc.core.Constants._
 
       (const.tag: @switch) match {
 
@@ -587,7 +588,10 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
         case nextCleanup :: rest =>
           if (saveReturnValue) {
             if (insideCleanupBlock) {
-              cunit.warning(r.pos, "Return statement found in finally-clause, discarding its return-value in favor of that of a more deeply nested return.")
+              ctx.warning(
+                "Return statement found in finally-clause, discarding its return-value in favor of that of a more deeply nested return.",
+                core.Decorators.sourcePos(r.pos)
+              )
               bc drop returnType
             } else {
               // regarding return value, the protocol is: in place of a `return-stmt`, a sequence of `adapt, store, jump` are inserted.
@@ -612,9 +616,9 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
 
           val sym = fun.symbol
           val cast = sym match {
-            case Object_isInstanceOf  => false
-            case Object_asInstanceOf  => true
-            case _                    => abort(s"Unexpected type application $fun[sym: ${sym.fullName}] in: $app")
+            case ctx.definitions.Object_isInstanceOf  => false
+            case ctx.definitions.Object_asInstanceOf  => true
+            case _                                    => abort(s"Unexpected type application $fun[sym: ${sym.fullName}] in: $app")
           }
 
           val Select(obj, _) = fun
@@ -753,7 +757,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
               fun match {
                 case Select(qual, _) =>
                   val qualSym = findHostClass(qual.tpe, sym)
-                  if (qualSym == ArrayClass) {
+                  if (qualSym == ctx.definitions.ArrayClass) {
                     targetTypeKind = tpeTK(qual)
                     ctx.log(s"Stored target type kind for ${sym.fullName} as $targetTypeKind")
                   }
@@ -766,7 +770,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
 
                 case _ =>
               }
-              if ((targetTypeKind != null) && (sym == definitions.Array_clone) && invokeStyle.isDynamic) {
+              if ((targetTypeKind != null) && (sym == ctx.definitions.Array_clone) && invokeStyle.isDynamic) {
                 val target: String = targetTypeKind.getInternalName
                 bc.invokevirtual(target, "clone", "()Ljava/lang/Object;")
               }
@@ -910,7 +914,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     /* Generate code that loads args into label parameters. */
-    def genLoadLabelArguments(args: List[Tree], lblDef: LabelDef, gotoPos: dotc.util.Positions.Position): Unit = {
+    def genLoadLabelArguments(args: List[Tree], lblDef: LabelDef, gotoPos: dotty.tools.dotc.util.Positions.Position): Unit = {
 
       val aps = {
         val params: List[Symbol] = lblDef.params.map(_.symbol)
@@ -1024,7 +1028,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
     def genCallMethod(method:     Symbol,
                       style:      InvokeStyle,
                       hostClass0: Symbol = null,
-                      pos:        dotc.util.Positions.Position = dotc.util.Positions.NoPosition) {
+                      pos:        dotty.tools.dotc.util.Positions.Position = dotty.tools.dotc.util.Positions.NoPosition) {
 
       val siteSymbol = claszSymbol
       val hostSymbol = if (hostClass0 == null) method.owner else hostClass0;
