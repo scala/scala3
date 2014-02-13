@@ -15,6 +15,7 @@ import scala.annotation.switch
 import dotty.tools.asm
 
 import dotc.ast.Trees._
+import core.Flags
 import core.Types.Type
 import core.StdNames
 import core.Symbols.{Symbol, NoSymbol}
@@ -392,7 +393,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
         // case ApplyDynamic(qual, args) => sys.error("No invokedynamic support yet.")
 
         case This(qual) =>
-          val symIsModuleClass = tree.symbol.isModuleClass
+          val symIsModuleClass = tree.symbol is Flags.ModuleVal
           assert(tree.symbol == claszSymbol || symIsModuleClass,
                  s"Trying to access the this of another class: tree.symbol = ${tree.symbol}, class symbol = $claszSymbol compilation unit: $cunit")
           if (symIsModuleClass && tree.symbol != claszSymbol) {
@@ -406,7 +407,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
           }
 
         case Select(Ident(nme.EMPTY_PACKAGE_NAME), module) =>
-          assert(tree.symbol.isModule, s"Selection of non-module from empty package: $tree sym: ${tree.symbol} at: ${tree.pos}")
+          assert(tree.symbol is Flags.ModuleVal, s"Selection of non-module from empty package: $tree sym: ${tree.symbol} at: ${tree.pos}")
           genLoadModule(tree)
 
         case Select(qualifier, selector) =>
@@ -418,7 +419,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
 
           def genLoadQualUnlessElidable() { if (!qualSafeToElide) { genLoadQualifier(tree) } }
 
-          if (sym.isModule) {
+          if (sym is Flags.ModuleVal) {
             genLoadQualUnlessElidable()
             genLoadModule(tree)
           }
@@ -435,7 +436,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
           val sym = tree.symbol
           if (!sym.isPackage) {
             val tk = symInfoTK(sym)
-            if (sym.isModule) { genLoadModule(tree) }
+            if (sym is Flags.ModuleVal) { genLoadModule(tree) }
             else { locals.load(sym) }
             generatedType = tk
           }
@@ -945,7 +946,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
 
     def genLoadModule(tree: Tree): BType = {
       val module = (
-        if (!tree.symbol.isPackageClass) tree.symbol
+        if (!tree.symbol is Flags.PackageClass) tree.symbol
         else tree.symbol.info.member(nme.PACKAGE) match {
           case NoSymbol => abort(s"SI-5604: Cannot use package as value: $tree")
           case s        => abort(s"SI-5604: found package class where package object expected: $tree")
@@ -1035,7 +1036,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
 
       def needsInterfaceCall(sym: Symbol) = (
            sym.isInterface
-        || sym.isJavaDefined && sym.isNonBottomSubClass(definitions.ClassfileAnnotationClass)
+        || (sym is Flags.JavaDefined) && sym.isNonBottomSubClass(definitions.ClassfileAnnotationClass)
       )
 
       // whether to reference the type of the receiver or

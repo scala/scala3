@@ -334,7 +334,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
   final def isDeprecated(sym: Symbol): Boolean = { sym.annotations exists (_ matches definitions.DeprecatedAttr) }
 
   /* must-single-thread */
-  final def hasInternalName(sym: Symbol) = { sym.isClass || (sym.isModule && !sym.isMethod) }
+  final def hasInternalName(sym: Symbol) = { sym.isClass || ((sym is Flags.ModuleVal) && !sym.isMethod) }
 
   /* must-single-thread */
   def getSuperInterfaces(csym: Symbol): List[Symbol] = {
@@ -698,7 +698,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
    * must-single-thread
    */
   def innerClassSymbolFor(s: Symbol): Symbol =
-    if (s.isClass) s else if (s.isModule) s.moduleClass else NoSymbol
+    if (s.isClass) s else if (s is Flags.ModuleVal) s.moduleClass else NoSymbol
 
   /*
    *  Computes the chain of inner-class (over the is-member-of relation) for the given argument.
@@ -734,7 +734,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
     var x = ics
     while (x ne NoSymbol) {
       assert(x.isClass, s"not a class symbol: ${x.fullName}")
-      val isInner = !x.rawowner.isPackageClass
+      val isInner = !(x.rawowner is Flags.PackageClass)
       if (isInner) {
         chain ::= x
         x = innerClassSymbolFor(x.rawowner)

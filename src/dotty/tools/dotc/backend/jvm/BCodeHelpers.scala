@@ -238,7 +238,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
    */
   def fieldSymbols(cls: Symbol)(implicit ctx: core.Contexts.Context): List[Symbol] = {
     for (f <- cls.info.decls.toList ;
-         if !f.isMethod && f.isTerm && !f.isModule
+         if !f.isMethod && f.isTerm && !(f is Flags.ModuleVal)
     ) yield f;
   }
 
@@ -703,7 +703,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      * must-single-thread
      */
     private def shouldEmitAnnotation(annot: AnnotationInfo) =
-      annot.symbol.initialize.isJavaDefined &&
+      (annot.symbol.initialize is Flags.JavaDefined) &&
       annot.matches(definitions.ClassfileAnnotationClass) &&
       annot.args.isEmpty &&
       !annot.matches(definitions.DeprecatedAttr)
