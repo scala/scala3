@@ -78,7 +78,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
   /*
    * must-single-thread
    */
-  def initBCodeTypes(implicit ctx: core.Contexts.Context) {
+  def initBCodeTypes(implicit ctx: core.Contexts.Context): Unit = {
 
     import core.Symbols.defn
 
@@ -193,7 +193,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
   /*
    * must-single-thread
    */
-  def clearBCodeTypes() {
+  def clearBCodeTypes(): Unit = {
     symExemplars.clear()
     exemplars.clear()
   }
@@ -237,7 +237,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
       _directMemberClasses
     }
 
-    def directMemberClasses_=(bs: List[BType]) {
+    def directMemberClasses_=(bs: List[BType]): Unit = {
       if (_directMemberClasses != null) {
         // TODO we enter here when both mirror class and plain class are emitted for the same ModuleClassSymbol.
         assert(_directMemberClasses == bs.sortBy(_.off))
@@ -334,7 +334,10 @@ abstract class BCodeTypes extends BCodeIdiomatic {
   final def isDeprecated(sym: Symbol): Boolean = { sym.annotations exists (_ matches definitions.DeprecatedAttr) }
 
   /* must-single-thread */
-  final def hasInternalName(sym: Symbol) = { sym.isClass || (sym.isModule && !sym.isMethod) }
+  final def hasInternalName(sym: Symbol)(implicit ctx: core.Contexts.Context) = (
+    sym.isClass ||
+    ((sym is Flags.ModuleVal) && !(sym is Flags.Method))
+  )
 
   /* must-single-thread */
   def getSuperInterfaces(csym: Symbol): List[Symbol] = {
@@ -421,7 +424,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
    */
   private def buildExemplar(key: BType, csym: Symbol): Tracked = {
     val sc =
-     if (csym.isImplClass) definitions.ObjectClass
+     if (csym is Flags.ImplClass) definitions.ObjectClass
      else csym.superClass
     assert(
       if (csym == definitions.ObjectClass)
@@ -478,7 +481,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
   def allInterfaces(is: Iterable[Tracked]): Boolean = { is forall { i => i.isInterface } }
   def nonInterfaces(is: Iterable[Tracked]): Iterable[Tracked] = { is filterNot { i => i.isInterface } }
 
-  def checkAllInterfaces(ifaces: Iterable[Tracked]) {
+  def checkAllInterfaces(ifaces: Iterable[Tracked]): Unit = {
     assert(allInterfaces(ifaces), s"Non-interfaces: ${nonInterfaces(ifaces).mkString}")
   }
 
@@ -653,14 +656,14 @@ abstract class BCodeTypes extends BCodeIdiomatic {
    * must-single-thread
    */
   def isTopLevelModule(sym: Symbol): Boolean = {
-    exitingPickler { sym.isModuleClass && !sym.isImplClass && !sym.isNestedClass }
+    exitingPickler { sym.isModuleClass && !(sym is Flags.ImplClass) && !sym.isNestedClass }
   }
 
   /*
    * must-single-thread
    */
   def isStaticModule(sym: Symbol): Boolean = {
-    sym.isModuleClass && !sym.isImplClass && !sym.isLifted
+    sym.isModuleClass && !(sym is Flags.ImplClass) && !sym.isLifted
   }
 
   // ---------------------------------------------------------------------
@@ -698,7 +701,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
    * must-single-thread
    */
   def innerClassSymbolFor(s: Symbol): Symbol =
-    if (s.isClass) s else if (s.isModule) s.moduleClass else NoSymbol
+    if (s.isClass) s else if (s is Flags.ModuleVal) s.moduleClass else NoSymbol
 
   /*
    *  Computes the chain of inner-class (over the is-member-of relation) for the given argument.
@@ -734,7 +737,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
     var x = ics
     while (x ne NoSymbol) {
       assert(x.isClass, s"not a class symbol: ${x.fullName}")
-      val isInner = !x.rawowner.isPackageClass
+      val isInner = !(x.rawowner is Flags.PackageClass)
       if (isInner) {
         chain ::= x
         x = innerClassSymbolFor(x.rawowner)
@@ -835,7 +838,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
     // constructors of module classes should be private
     // PP: why are they only being marked private at this stage and not earlier?
     val privateFlag =
-      sym.isPrivate || (sym.isPrimaryConstructor && isTopLevelModule(sym.owner))
+      (sym is Flags.Private) || (sym.isPrimaryConstructor && isTopLevelModule(sym.owner))
 
     // Final: the only fields which can receive ACC_FINAL are eager vals.
     // Neither vars nor lazy vals can, because:

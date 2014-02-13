@@ -209,7 +209,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
   /*
    * must-single-thread
    */
-  def initBytecodeWriter(entryPoints: List[Symbol]): BytecodeWriter = {
+  def initBytecodeWriter(entryPoints: List[Symbol])(implicit ctx: core.Contexts.Context): BytecodeWriter = {
     settings.outputDirs.getSingleOutput match {
       case Some(f) if f hasExtension "jar" =>
         // If no main class was specified, see if there's only one
@@ -217,15 +217,15 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
         if (settings.mainClass.isDefault) {
           entryPoints map (_.fullName('.')) match {
             case Nil      =>
-              log("No Main-Class designated or discovered.")
+              ctx.log("No Main-Class designated or discovered.")
             case name :: Nil =>
-              log(s"Unique entry point: setting Main-Class to $name")
+              ctx.log(s"Unique entry point: setting Main-Class to $name")
               settings.mainClass.value = name
             case names =>
-              log(s"No Main-Class due to multiple entry points:\n  ${names.mkString("\n  ")}")
+              ctx.log(s"No Main-Class due to multiple entry points:\n  ${names.mkString("\n  ")}")
           }
         }
-        else log(s"Main-Class was specified: ${settings.mainClass.value}")
+        else ctx.log(s"Main-Class was specified: ${settings.mainClass.value}")
 
         new DirectToJarfileWriter(f.file)
 
@@ -238,7 +238,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
    */
   def fieldSymbols(cls: Symbol)(implicit ctx: core.Contexts.Context): List[Symbol] = {
     for (f <- cls.info.decls.toList ;
-         if !f.isMethod && f.isTerm && !f.isModule
+         if !(f is Flags.Method) && f.isTerm && !(f is Flags.ModuleVal)
     ) yield f;
   }
 
@@ -263,7 +263,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
    *
    * can-multi-thread
    */
-  final def addInnerClassesASM(jclass: asm.ClassVisitor, refedInnerClasses: Iterable[BType]) {
+  final def addInnerClassesASM(jclass: asm.ClassVisitor, refedInnerClasses: Iterable[BType]): Unit = {
     // used to detect duplicates.
     val seen = mutable.Map.empty[String, String]
     // result without duplicates, not yet sorted.
@@ -405,14 +405,14 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      *  must-single-thread
      */
-    final def internalName(sym: Symbol): String = { asmClassType(sym).getInternalName }
+    final def internalName(sym: Symbol)(implicit ctx: core.Contexts.Context): String = asmClassType(sym).getInternalName
 
     /*
      *  Tracks (if needed) the inner class given by `sym`.
      *
      *  must-single-thread
      */
-    final def asmClassType(sym: Symbol): BType = {
+    final def asmClassType(sym: Symbol)(implicit ctx: core.Contexts.Context): BType = {
       assert(
         hasInternalName(sym),
         {
@@ -489,16 +489,17 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
       }
 
       def primitiveOrRefType2(sym: Symbol): BType = {
+        import core.Symbols.defn
+
         primitiveTypeMap.get(sym) match {
           case Some(pt) => pt
           case None =>
-            sym match {
-              case definitions.NullClass    => RT_NULL
-              case definitions.NothingClass => RT_NOTHING
-              case _ if sym.isClass         => newReference(sym)
-              case _ =>
-                assert(sym.isType, sym) // it must be compiling Array[a]
-                ObjectReference
+            if (sym == defn.NullClass)         RT_NULL
+            else if (sym == defn.NothingClass) RT_NOTHING
+            else if (sym.isClass)              newReference(sym)
+            else {
+              assert(sym.isType, sym) // it must be compiling Array[a]
+              ObjectReference
             }
         }
       }
@@ -534,8 +535,8 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
     /*
      * must-single-thread
      */
-    def asmMethodType(msym: Symbol): BType = {
-      assert(msym.isMethod, s"not a method-symbol: $msym")
+    def asmMethodType(msym: Symbol)(implicit ctx: core.Contexts.Context): BType = {
+      assert(msym is Flags.Method, s"not a method-symbol: $msym")
       val resT: BType =
         if (msym.isClassConstructor || msym.isConstructor) BType.VOID_TYPE
         else toTypeKind(msym.tpe.resultType);
@@ -549,7 +550,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      *  must-single-thread
      */
-    final def trackMemberClasses(csym: Symbol, lateClosuresBTs: List[BType]): List[BType] = {
+    final def trackMemberClasses(csym: Symbol, lateClosuresBTs: List[BType])(implicit ctx: core.Contexts.Context): List[BType] = {
       val lateInnerClasses = exitingErasure {
         for (sym <- List(csym, csym.linkedClassOfClass); memberc <- sym.info.decls.map(innerClassSymbolFor) if memberc.isClass)
         yield memberc
@@ -573,14 +574,14 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      *  must-single-thread
      */
-    final def descriptor(t: Type):   String = { toTypeKind(t).getDescriptor   }
+    final def descriptor(t: Type)(implicit ctx: core.Contexts.Context): String = (toTypeKind(t).getDescriptor)
 
     /*
      *  Tracks (if needed) the inner class given by `sym`.
      *
      *  must-single-thread
      */
-    final def descriptor(sym: Symbol): String = { asmClassType(sym).getDescriptor }
+    final def descriptor(sym: Symbol)(implicit ctx: core.Contexts.Context): String = (asmClassType(sym).getDescriptor)
 
   } // end of trait BCInnerClassGen
 
@@ -703,7 +704,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      * must-single-thread
      */
     private def shouldEmitAnnotation(annot: AnnotationInfo) =
-      annot.symbol.initialize.isJavaDefined &&
+      (annot.symbol.initialize is Flags.JavaDefined) &&
       annot.matches(definitions.ClassfileAnnotationClass) &&
       annot.args.isEmpty &&
       !annot.matches(definitions.DeprecatedAttr)
@@ -713,7 +714,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *   must-single-thread
      * but not  necessarily always.
      */
-    def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, ClassfileAnnotArg)]) {
+    def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, ClassfileAnnotArg)]): Unit = {
       for ((name, value) <- assocs) {
         emitArgument(av, name.toString(), value)
       }
@@ -723,7 +724,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
     /*
      * must-single-thread
      */
-    def emitAnnotations(cw: asm.ClassVisitor, annotations: List[AnnotationInfo]) {
+    def emitAnnotations(cw: asm.ClassVisitor, annotations: List[AnnotationInfo]): Unit = {
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val AnnotationInfo(typ, args, assocs) = annot
         assert(args.isEmpty, args)
@@ -735,7 +736,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
     /*
      * must-single-thread
      */
-    def emitAnnotations(mw: asm.MethodVisitor, annotations: List[AnnotationInfo]) {
+    def emitAnnotations(mw: asm.MethodVisitor, annotations: List[AnnotationInfo]): Unit = {
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val AnnotationInfo(typ, args, assocs) = annot
         assert(args.isEmpty, args)
@@ -747,7 +748,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
     /*
      * must-single-thread
      */
-    def emitAnnotations(fw: asm.FieldVisitor, annotations: List[AnnotationInfo]) {
+    def emitAnnotations(fw: asm.FieldVisitor, annotations: List[AnnotationInfo]): Unit = {
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val AnnotationInfo(typ, args, assocs) = annot
         assert(args.isEmpty, args)
@@ -759,7 +760,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
     /*
      * must-single-thread
      */
-    def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[AnnotationInfo]]) {
+    def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[AnnotationInfo]]): Unit = {
       val annotationss = pannotss map (_ filter shouldEmitAnnotation)
       if (annotationss forall (_.isEmpty)) return
       for ((annots, idx) <- annotationss.zipWithIndex;
@@ -791,7 +792,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
       || sym.isArtifact
       || sym.isLiftedMethod
       || sym.isBridge
-      || (sym.ownerChain exists (_.isImplClass))
+      || (sym.ownerChain exists (_ is Flags.ImplClass))
     )
 
     def getCurrentCUnit(): CompilationUnit
@@ -824,9 +825,9 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
         val isValidSignature = wrap {
           // Alternative: scala.tools.reflect.SigParser (frontend to sun.reflect.generics.parser.SignatureParser)
           import dotty.tools.asm.util.CheckClassAdapter
-          if (sym.isMethod)    { CheckClassAdapter checkMethodSignature sig }
-          else if (sym.isTerm) { CheckClassAdapter checkFieldSignature  sig }
-          else                 { CheckClassAdapter checkClassSignature  sig }
+          if (sym is Flags.Method) { CheckClassAdapter checkMethodSignature sig }
+          else if (sym.isTerm)     { CheckClassAdapter checkFieldSignature  sig }
+          else                     { CheckClassAdapter checkClassSignature  sig }
         }
 
         if (!isValidSignature) {
@@ -875,7 +876,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      * must-single-thread
      */
-    def addRemoteExceptionAnnot(isRemoteClass: Boolean, isJMethodPublic: Boolean, meth: Symbol) {
+    def addRemoteExceptionAnnot(isRemoteClass: Boolean, isJMethodPublic: Boolean, meth: Symbol): Unit = {
       val needsAnnotation = (
         (  isRemoteClass ||
            isRemote(meth) && isJMethodPublic
@@ -892,7 +893,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      * must-single-thread
      */
-    private def addForwarder(isRemoteClass: Boolean, jclass: asm.ClassVisitor, module: Symbol, m: Symbol) {
+    private def addForwarder(isRemoteClass: Boolean, jclass: asm.ClassVisitor, module: Symbol, m: Symbol): Unit = {
       val moduleName     = internalName(module)
       val methodInfo     = module.thisType.memberInfo(m)
       val paramJavaTypes: List[BType] = methodInfo.paramTypes map toTypeKind
@@ -954,7 +955,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      * must-single-thread
      */
-    def addForwarders(isRemoteClass: Boolean, jclass: asm.ClassVisitor, jclassName: String, moduleClass: Symbol) {
+    def addForwarders(isRemoteClass: Boolean, jclass: asm.ClassVisitor, jclassName: String, moduleClass: Symbol): Unit = {
       assert(moduleClass.isModuleClass, moduleClass)
       debuglog(s"Dumping mirror class for object: $moduleClass")
 
@@ -1014,7 +1015,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      *
      *  can-multi-thread
      */
-    def addSerialVUID(id: Long, jclass: asm.ClassVisitor) {
+    def addSerialVUID(id: Long, jclass: asm.ClassVisitor): Unit = {
       // add static serialVersionUID field if `clasz` annotated with `@SerialVersionUID(uid: Long)`
       jclass.visitField(
         PublicStaticFinal,
@@ -1055,7 +1056,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 
       var res: EnclMethodEntry = null
       val sym = clazz.originalEnclosingMethod
-      if (sym.isMethod) {
+      if (sym is Flags.Method) {
         debuglog(s"enclosing method for $clazz is $sym (in ${sym.enclClass})")
         res = newEEE(sym.enclClass, sym)
       } else if (clazz.isAnonymousClass) {
@@ -1214,7 +1215,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
           Array(exemplar(definitions.ClassClass).c, stringArrayJType, stringArrayJType)
         )
 
-      def push(lst: List[String]) {
+      def push(lst: List[String]): Unit = {
         var fi = 0
         for (f <- lst) {
           constructor.visitInsn(asm.Opcodes.DUP)
@@ -1280,7 +1281,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
     /*
      * must-single-thread
      */
-    def legacyAddCreatorCode(clinit: asm.MethodVisitor, cnode: asm.tree.ClassNode, thisName: String) {
+    def legacyAddCreatorCode(clinit: asm.MethodVisitor, cnode: asm.tree.ClassNode, thisName: String): Unit = {
       // this tracks the inner class in innerClassBufferASM, if needed.
       val androidCreatorType = asmClassType(AndroidCreatorClass)
       val tdesc_creator = androidCreatorType.getDescriptor

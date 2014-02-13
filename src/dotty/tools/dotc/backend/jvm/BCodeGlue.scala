@@ -488,7 +488,7 @@ abstract class BCodeGlue {
      *
      * can-multi-thread
      */
-    private def getDescriptor(buf: StringBuffer) {
+    private def getDescriptor(buf: StringBuffer): Unit = {
       if (isPrimitiveOrVoid) {
         // descriptor is in byte 3 of 'off' for primitive types (buf == null)
         buf.append(((off & 0xFF000000) >>> 24).asInstanceOf[Char])
