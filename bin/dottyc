@@ -1,15 +1,10 @@
 #!/bin/bash
-if [[ "$OSTYPE" == "linux-gnu" ]]; then
-  MY_PATH="`realpath \"$0\"`"             # relative, symbolic links resolved
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-  MY_PATH="`readlink \"$0\"`"             # relative, symbolic links resolved
-fi
+MY_PATH="`readlink \"$0\"`"             # relative, symbolic links resolved
 if [[ "$MY_PATH" == "" ]]; then
   MY_PATH="$0"
 fi
-MY_PATH="`realpath \"$0\"`"             # relative, symbolic links resolved
 MY_PATH="`dirname \"$MY_PATH\"`"
-MY_PATH="`( cd \"$MY_PATH\" && pwd )`"  # absolute
+MY_PATH="`( cd \"$MY_PATH\" && pwd )`/../"  # absolute
 SCALA_VERSION=2.11.0-M7
 DOTTY_VERSION=0.1
 MAIN_JAR=$MY_PATH/target/scala-$SCALA_VERSION/dotty_$SCALA_VERSION-$DOTTY_VERSION-SNAPSHOT.jar
