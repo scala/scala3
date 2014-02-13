@@ -7,7 +7,7 @@ package dotty.tools
 package dotc
 package backend.jvm
 
-import scala.tools.asm
+import dotty.tools.asm
 import scala.annotation.switch
 import scala.collection.{ immutable, mutable }
 import collection.convert.Wrappers.JListWrapper

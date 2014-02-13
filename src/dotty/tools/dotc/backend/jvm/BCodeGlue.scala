@@ -7,7 +7,7 @@ package dotty.tools
 package dotc
 package backend.jvm
 
-import scala.tools.asm
+import dotty.tools.asm
 import scala.annotation.switch
 import scala.collection.{ immutable, mutable }
 
@@ -256,8 +256,8 @@ abstract class BCodeGlue {
     /*
      * can-multi-thread
      */
-    def toASMType: scala.tools.asm.Type = {
-      import scala.tools.asm
+    def toASMType: dotty.tools.asm.Type = {
+      import dotty.tools.asm
       // using `asm.Type.SHORT` instead of `BType.SHORT` because otherwise "warning: could not emit switch for @switch annotated match"
       (sort: @switch) match {
         case asm.Type.VOID    => asm.Type.VOID_TYPE
@@ -533,7 +533,7 @@ abstract class BCodeGlue {
      * can-multi-thread
      */
     def getOpcode(opcode: Int): Int = {
-      import scala.tools.asm.Opcodes
+      import dotty.tools.asm.Opcodes
       if (opcode == Opcodes.IALOAD || opcode == Opcodes.IASTORE) {
         // the offset for IALOAD or IASTORE is in byte 1 of 'off' for
         // primitive types (buf == null)

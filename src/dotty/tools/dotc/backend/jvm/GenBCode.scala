@@ -12,7 +12,7 @@ package jvm
 import scala.collection.{ mutable, immutable }
 import scala.annotation.switch
 
-import scala.tools.asm
+import dotty.tools.asm
 
 import dotc.ast.Trees
 import dotc.core.Types.Type
