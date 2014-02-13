@@ -12,6 +12,7 @@ import scala.annotation.switch
 import dotty.tools.asm
 
 import ast.Trees._
+import core.Contexts.Context
 import core.Types.Type
 import core.Symbols.{Symbol, NoSymbol}
 

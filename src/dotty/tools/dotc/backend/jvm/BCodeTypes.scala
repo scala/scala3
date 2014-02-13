@@ -383,8 +383,6 @@ abstract class BCodeTypes extends BCodeIdiomatic {
    * On the other hand, this method does record the inner-class status of the argument, via `buildExemplar()`.
    *
    * must-single-thread
-   * 
-   * TODO(lry) check if ctx should be a class parameter
    */
   final def exemplar(csym0: Symbol)(implicit ctx: Context): Tracked = {
     assert(csym0 != NoSymbol, "NoSymbol can't be tracked")

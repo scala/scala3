@@ -27,8 +27,8 @@ abstract class BCodeSyncAndTry extends BCodeBodyBuilder {
   /*
    * Functionality to lower `synchronized` and `try` expressions.
    */
-  abstract class SyncAndTryBuilder(cunit: CompilationUnit,
-                                   ctx:   Context) extends PlainBodyBuilder(cunit, ctx) {
+  abstract class SyncAndTryBuilder(cunit: CompilationUnit)
+  extends PlainBodyBuilder(cunit) {
 
     import ast.tpd._
 

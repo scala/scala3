@@ -34,8 +34,8 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
-  abstract class PlainBodyBuilder(cunit: CompilationUnit,
-                                  implicit val ctx: Context) extends PlainSkelBuilder(cunit) {
+  abstract class PlainBodyBuilder(cunit: CompilationUnit)
+  extends PlainSkelBuilder(cunit) {
 
     import icodes.TestOp
     import icodes.opcodes.InvokeStyle
