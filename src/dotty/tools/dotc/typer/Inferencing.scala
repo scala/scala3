@@ -520,44 +520,52 @@ object Inferencing {
   /** Approximate occurrences of parameter types and uninstantiated typevars
    *  by wildcard types.
    */
-  class WildApprox(implicit ctx: Context) extends TypeMap {
-    override def apply(tp: Type) = tp match {
-      case PolyParam(pt, pnum) =>
-        WildcardType(apply(pt.paramBounds(pnum)).bounds)
-      case MethodParam(mt, pnum) =>
-        WildcardType(TypeBounds.upper(apply(mt.paramTypes(pnum))))
-      case tp: TypeVar =>
-        val inst = tp.instanceOpt
-        if (inst.exists) apply(inst)
-        else ctx.typerState.constraint.at(tp.origin) match {
-          case bounds: TypeBounds => apply(WildcardType(bounds))
-          case NoType => WildcardType
-        }
-      case tp: AndType =>
-        val tp1a = apply(tp.tp1)
-        val tp2a = apply(tp.tp2)
-        def wildBounds(tp: Type) =
-          if (tp.isInstanceOf[WildcardType]) tp.bounds else TypeBounds.upper(tp)
-        if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
-          WildcardType(wildBounds(tp1a) & wildBounds(tp2a))
-        else
-          tp.derivedAndType(tp1a, tp2a)
-      case tp: OrType =>
-        val tp1a = apply(tp.tp1)
-        val tp2a = apply(tp.tp2)
-        if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
-          WildcardType(tp1a.bounds | tp2a.bounds)
-        else
-          tp.derivedOrType(tp1a, tp2a)
-      case tp: SelectionProto =>
-        tp.derivedSelectionProto(tp.name, this(tp.refinedInfo), NoViewsAllowed)
-      case tp: ViewProto =>
-        tp.derivedViewProto(this(tp.argType), this(tp.resultType))
-      case _ =>
-        mapOver(tp)
-    }
+  final def wildApprox(tp: Type, theMap: WildApproxMap = null)(implicit ctx: Context): Type = tp match {
+    case tp: NamedType => // default case, inlined for speed
+      if (tp.symbol.isStatic) tp
+      else tp.derivedSelect(wildApprox(tp.prefix, theMap))
+    case PolyParam(pt, pnum) =>
+      WildcardType(wildApprox(pt.paramBounds(pnum)).bounds)
+    case MethodParam(mt, pnum) =>
+      WildcardType(TypeBounds.upper(wildApprox(mt.paramTypes(pnum))))
+    case tp: TypeVar =>
+      val inst = tp.instanceOpt
+      if (inst.exists) wildApprox(inst)
+      else ctx.typerState.constraint.at(tp.origin) match {
+        case bounds: TypeBounds => wildApprox(WildcardType(bounds))
+        case NoType => WildcardType
+      }
+    case tp: AndType =>
+      val tp1a = wildApprox(tp.tp1)
+      val tp2a = wildApprox(tp.tp2)
+      def wildBounds(tp: Type) =
+        if (tp.isInstanceOf[WildcardType]) tp.bounds else TypeBounds.upper(tp)
+      if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
+        WildcardType(wildBounds(tp1a) & wildBounds(tp2a))
+      else
+        tp.derivedAndType(tp1a, tp2a)
+    case tp: OrType =>
+      val tp1a = wildApprox(tp.tp1)
+      val tp2a = wildApprox(tp.tp2)
+      if (tp1a.isInstanceOf[WildcardType] || tp2a.isInstanceOf[WildcardType])
+        WildcardType(tp1a.bounds | tp2a.bounds)
+      else
+        tp.derivedOrType(tp1a, tp2a)
+    case tp: SelectionProto =>
+      tp.derivedSelectionProto(tp.name, wildApprox(tp.refinedInfo), NoViewsAllowed)
+    case tp: ViewProto =>
+      tp.derivedViewProto(wildApprox(tp.argType), wildApprox(tp.resultType))
+    case  _: ThisType | _: BoundType | NoPrefix => // default case, inlined for speed
+      tp
+    case tp: RefinedType => // default case, inlined for speed
+      tp.derivedRefinedType(wildApprox(tp.parent, theMap), tp.refinedName, wildApprox(tp.refinedInfo, theMap))
+    case _ =>
+      (if (theMap != null) theMap else new WildApproxMap).mapOver(tp)
   }
 
+  private[Inferencing] class WildApproxMap(implicit ctx: Context) extends TypeMap {
+    def apply(tp: Type) = wildApprox(tp, this)
+  }
 
   /** Add all parameters in given polytype `pt` to the constraint's domain.
    *  If the constraint contains already some of these parameters in its domain,

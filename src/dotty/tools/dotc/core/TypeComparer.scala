@@ -163,7 +163,8 @@ class TypeComparer(initctx: Context) extends DotClass {
    */
   def approximation(param: PolyParam, fromBelow: Boolean): Type = {
     val avoidParam = new TypeMap {
-      override def apply(tp: Type) = mapOver {
+      override def stopAtStatic = true
+      def apply(tp: Type) = mapOver {
         tp match {
           case tp: RefinedType if param occursIn tp.refinedInfo => tp.parent
           case _ => tp
@@ -269,18 +270,16 @@ class TypeComparer(initctx: Context) extends DotClass {
         def compareNamed = tp1 match {
           case tp1: NamedType =>
             val sym1 = tp1.symbol
-            val sym2 = tp2.symbol
-            val pre1 = tp1.prefix
-            val pre2 = tp2.prefix
-
-            ( if (sym1 == sym2) (
-                ctx.erasedTypes
+            ( if (sym1 == tp2.symbol) (
+                   ctx.erasedTypes
                 || sym1.isStaticOwner
-                || isSubType(pre1, pre2)
-                || pre1.isInstanceOf[ThisType] && pre2.isInstanceOf[ThisType]
-                )
-              else
-                tp1.name == tp2.name && isSubType(pre1, pre2)
+                || { val pre1 = tp1.prefix
+                     val pre2 = tp2.prefix
+                     isSubType(pre1, pre2) ||
+                     pre1.isInstanceOf[ThisType] && pre2.isInstanceOf[ThisType]
+                   }
+              ) else
+                tp1.name == tp2.name && isSubType(tp1.prefix, tp2.prefix)
             ) || secondTryNamed(tp1, tp2)
           case _ =>
             secondTry(tp1, tp2)

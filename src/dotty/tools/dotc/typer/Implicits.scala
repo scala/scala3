@@ -56,9 +56,9 @@ object Implicits {
               case mt: MethodType =>
                 mt.isImplicit ||
                 mt.paramTypes.length != 1 ||
-                !(argType <:< ((new WildApprox) apply mt.paramTypes.head))(ctx.fresh.withExploreTyperState)
+                !(argType <:< wildApprox(mt.paramTypes.head)(ctx.fresh.withExploreTyperState))
               case rtp =>
-                discardForView((new WildApprox) apply rtp, argType)
+                discardForView(wildApprox(rtp), argType)
             }
           case tpw: TermRef =>
             false // can't discard overloaded refs
@@ -270,6 +270,7 @@ trait ImplicitRunInfo { self: RunInfo =>
      */
     object liftToClasses extends TypeMap {
       private implicit val ctx: Context = liftingCtx
+      override def stopAtStatic = true
       def apply(tp: Type) = tp match {
         case tp: TypeRef if tp.symbol.isAbstractOrAliasType =>
           val pre = tp.prefix
@@ -439,7 +440,7 @@ trait Implicits { self: Typer =>
     }
 
     /** The expected type where parameters and uninstantiated typevars are replaced by wildcard types */
-    val wildProto = implicitProto(pt, new WildApprox)
+    val wildProto = implicitProto(pt, wildApprox(_))
 
     /** Search failures; overridden in ExplainedImplicitSearch */
     protected def nonMatchingImplicit(ref: TermRef): SearchFailure = NoImplicitMatches

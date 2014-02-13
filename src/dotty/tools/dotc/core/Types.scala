@@ -2080,6 +2080,8 @@ object Types {
 
   abstract class TypeMap(implicit ctx: Context) extends (Type => Type) { thisMap =>
 
+    protected def stopAtStatic = true
+
     def apply(tp: Type): Type
 
     protected var variance = 1
@@ -2087,7 +2089,8 @@ object Types {
     /** Map this function over given type */
     def mapOver(tp: Type): Type = tp match {
       case tp: NamedType =>
-        tp.derivedSelect(this(tp.prefix))
+        if (stopAtStatic && tp.symbol.isStatic) tp
+        else tp.derivedSelect(this(tp.prefix))
 
       case _: ThisType
          | _: BoundType
@@ -2173,6 +2176,7 @@ object Types {
       tp.derivedClassInfo(this(tp.prefix))
 
     def andThen(f: Type => Type): TypeMap = new TypeMap {
+      override def stopAtStatic = thisMap.stopAtStatic
       def apply(tp: Type) = f(thisMap(tp))
     }
   }
@@ -2191,6 +2195,7 @@ object Types {
   }
 
   object IdentityTypeMap extends TypeMap()(NoContext) {
+    override def stopAtStatic = true
     def apply(tp: Type) = tp
   }
 
