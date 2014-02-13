@@ -4,13 +4,16 @@ import Process._
 
 object DottyBuild extends Build {
 
-  val defaults = Defaults.defaultSettings ++ Seq(
-    // set sources to src/, tests to test/ and resources to resources/
+  // set sources to src/, tests to test/ and resources to resources/
+  val srcDirs = Seq(
     scalaSource in Compile := baseDirectory.value / "src",
     javaSource in Compile := baseDirectory.value / "src",
     scalaSource in Test := baseDirectory.value / "test",
     javaSource in Test := baseDirectory.value / "test",
-    resourceDirectory in Compile := baseDirectory.value / "resources",
+    resourceDirectory in Compile := baseDirectory.value / "resources"
+  )
+
+  val defaults = Defaults.defaultSettings ++ srcDirs ++ Seq(
     unmanagedSourceDirectories in Compile := Seq((scalaSource in Compile).value),
     unmanagedSourceDirectories in Test := Seq((scalaSource in Test).value),
     
@@ -49,5 +52,7 @@ object DottyBuild extends Build {
     }
   )
 
-  lazy val dotty = Project(id = "dotty", base = file("."), settings = defaults)
+  lazy val asm = project in file("modules/asm") settings (srcDirs: _*)
+
+  lazy val dotty = Project(id = "dotty", base = file("."), settings = defaults) dependsOn asm
 }
