@@ -223,13 +223,13 @@ object scalaPrimitives {
     import core.StdNames.nme
 
     // scala.Array
-    val ArrayClass = defn.ArrayClass
+    lazy val ArrayClass = defn.ArrayClass
     addPrimitives(ArrayClass, nme.length, LENGTH)
     addPrimitives(ArrayClass, nme.apply, APPLY)
     addPrimitives(ArrayClass, nme.update, UPDATE)
 
     // scala.Boolean
-    val BooleanClass = defn.BooleanClass
+    lazy val BooleanClass = defn.BooleanClass
     addPrimitives(BooleanClass, nme.EQ, EQ)
     addPrimitives(BooleanClass, nme.NE, NE)
     addPrimitives(BooleanClass, nme.UNARY_!, ZNOT)
@@ -240,7 +240,7 @@ object scalaPrimitives {
     addPrimitives(BooleanClass, nme.XOR, XOR)
 
     // scala.Byte
-    val ByteClass = defn.ByteClass
+    lazy val ByteClass = defn.ByteClass
     addPrimitives(ByteClass, nme.EQ, EQ)
     addPrimitives(ByteClass, nme.NE, NE)
     addPrimitives(ByteClass, nme.ADD, ADD)
@@ -273,7 +273,7 @@ object scalaPrimitives {
     addPrimitives(ByteClass, nme.toDouble, B2D)
 
     // scala.Short
-    val ShortClass = defn.ShortClass
+    lazy val ShortClass = defn.ShortClass
     addPrimitives(ShortClass, nme.EQ, EQ)
     addPrimitives(ShortClass, nme.NE, NE)
     addPrimitives(ShortClass, nme.ADD, ADD)
@@ -306,7 +306,7 @@ object scalaPrimitives {
     addPrimitives(ShortClass, nme.toDouble, S2D)
 
     // scala.Char
-    val CharClass = defn.CharClass
+    lazy val CharClass = defn.CharClass
     addPrimitives(CharClass, nme.EQ, EQ)
     addPrimitives(CharClass, nme.NE, NE)
     addPrimitives(CharClass, nme.ADD, ADD)
@@ -338,7 +338,7 @@ object scalaPrimitives {
     addPrimitives(CharClass, nme.toDouble, C2D)
 
     // scala.Int
-    val IntClass = defn.IntClass
+    lazy val IntClass = defn.IntClass
     addPrimitives(IntClass, nme.EQ, EQ)
     addPrimitives(IntClass, nme.NE, NE)
     addPrimitives(IntClass, nme.ADD, ADD)
@@ -370,7 +370,7 @@ object scalaPrimitives {
     addPrimitives(IntClass, nme.toDouble, I2D)
 
     // scala.Long
-    val LongClass = defn.LongClass
+    lazy val LongClass = defn.LongClass
     addPrimitives(LongClass, nme.EQ, EQ)
     addPrimitives(LongClass, nme.NE, NE)
     addPrimitives(LongClass, nme.ADD, ADD)
@@ -402,7 +402,7 @@ object scalaPrimitives {
     addPrimitives(LongClass, nme.toDouble, L2D)
 
     // scala.Float
-    val FloatClass = defn.FloatClass
+    lazy val FloatClass = defn.FloatClass
     addPrimitives(FloatClass, nme.EQ, EQ)
     addPrimitives(FloatClass, nme.NE, NE)
     addPrimitives(FloatClass, nme.ADD, ADD)
@@ -427,7 +427,7 @@ object scalaPrimitives {
     addPrimitives(FloatClass, nme.UNARY_-, NEG)
 
     // scala.Double
-    val DoubleClass = defn.DoubleClass
+    lazy val DoubleClass = defn.DoubleClass
     addPrimitives(DoubleClass, nme.EQ, EQ)
     addPrimitives(DoubleClass, nme.NE, NE)
     addPrimitives(DoubleClass, nme.ADD, ADD)

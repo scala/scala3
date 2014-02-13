@@ -615,11 +615,10 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
         case Apply(TypeApply(fun, targs), _) =>
 
           val sym = fun.symbol
-          val cast = sym match {
-            case ctx.definitions.Object_isInstanceOf  => false
-            case ctx.definitions.Object_asInstanceOf  => true
-            case _                                    => abort(s"Unexpected type application $fun[sym: ${sym.fullName}] in: $app")
-          }
+          val cast =
+            if      (sym == ctx.definitions.Object_isInstanceOf) false
+            else if (sym == ctx.definitions.Object_asInstanceOf) true
+            else abort(s"Unexpected type application $fun[sym: ${sym.fullName}] in: $app")
 
           val Select(obj, _) = fun
           val l = tpeTK(obj)
