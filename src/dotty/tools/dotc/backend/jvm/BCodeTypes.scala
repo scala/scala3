@@ -835,7 +835,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
     // constructors of module classes should be private
     // PP: why are they only being marked private at this stage and not earlier?
     val privateFlag =
-      sym.isPrivate || (sym.isPrimaryConstructor && isTopLevelModule(sym.owner))
+      (sym is Flags.Private) || (sym.isPrimaryConstructor && isTopLevelModule(sym.owner))
 
     // Final: the only fields which can receive ACC_FINAL are eager vals.
     // Neither vars nor lazy vals can, because:

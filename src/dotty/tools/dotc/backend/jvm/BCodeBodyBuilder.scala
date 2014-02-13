@@ -740,7 +740,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
 
               val invokeStyle =
                 if (sym.isStaticMember) icodes.opcodes.Static(onInstance = false)
-                else if (sym.isPrivate || sym.isClassConstructor) icodes.opcodes.Static(onInstance = true)
+                else if ((sym is Flags.Private) || sym.isClassConstructor) icodes.opcodes.Static(onInstance = true)
                 else icodes.opcodes.Dynamic;
 
               if (invokeStyle.hasInstance) {
@@ -1035,7 +1035,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
       hostSymbol.info ; methodOwner.info
 
       def needsInterfaceCall(sym: Symbol) = (
-           sym.isInterface
+           (sym is Flags.Interface)
         || (sym is Flags.JavaDefined) && sym.isNonBottomSubClass(definitions.ClassfileAnnotationClass)
       )
 
