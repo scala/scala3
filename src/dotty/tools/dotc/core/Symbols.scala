@@ -203,7 +203,15 @@ trait Symbols { this: Context =>
     stub
   }
 
-  /** Create the local template dummy of given class `cls`. */
+  /** Create the local template dummy of given class `cls`.
+   *  In a template
+   *
+   *     trait T { val fld: Int; { val x: int = 2 }; val fld2 = { val y = 2; y }}
+   *
+   *  the owner of `x` is the local dummy of the template. The owner of the local
+   *  dummy is then the class of the template itself. By contrast, the owner of `y`
+   *  would be `fld2`. There is a single local dummy per template.
+   */
   def newLocalDummy(cls: Symbol, coord: Coord = NoCoord) =
     newSymbol(cls, nme.localDummyName(cls), EmptyFlags, NoType)
 

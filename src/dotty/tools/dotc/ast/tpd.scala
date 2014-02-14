@@ -8,6 +8,7 @@ import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import CheckTrees._, Denotations._
 import config.Printers._
 
+/** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def Modifiers(sym: Symbol)(implicit ctx: Context): Modifiers = Modifiers(
