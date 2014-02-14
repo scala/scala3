@@ -141,56 +141,70 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
    * must-single-thread
    */
   object isJavaEntryPoint {
-
     import core.Types.{MethodType, PolyType}
+
+    // The given symbol is a method with the right name and signature to be a runnable java program.
+    def isJavaMainMethod(sym: Symbol)(implicit ctx: Context) = {
+      (sym.name == nme.main) && (sym.info match {
+        case mt @ MethodType(_, ptp :: Nil) =>
+          isArrayOfSymbol(ptp, ctx.definitions.StringClass) &&
+          mt.resultType.typeSymbol == ctx.definitions.UnitClass
+        case _ => false
+      })
+    }
+    // The given class has a main method.
+    def hasJavaMainMethod(sym: Symbol)(implicit ctx: Context): Boolean =
+      (sym.info member nme.main).alternatives exists isJavaMainMethod
+
 
     /*
      * must-single-thread
      */
-    def apply(sym: Symbol, ctx: Context): Boolean = {
+    def apply(sym: Symbol)(implicit ctx: Context): Boolean = {
       def fail(msg: String, pos: util.Positions.Position = sym.pos) = {
-        ctx.warning(sym.pos,
+        ctx.warning(
           sym.name +
-          s" has a main method with parameter type Array[String], but ${sym.fullName('.')} will not be a runnable program.\n  Reason: $msg"
+          s" has a main method with parameter type Array[String], but ${sym.fullName} will not be a runnable program.\n  Reason: $msg",
           // TODO: make this next claim true, if possible
           //   by generating valid main methods as static in module classes
           //   not sure what the jvm allows here
           // + "  You can still run the program by calling it as " + javaName(sym) + " instead."
+          ctx.source.atPos(sym.pos)
         )
         false
       }
       def failNoForwarder(msg: String) = {
         fail(s"$msg, which means no static forwarder can be generated.\n")
       }
-      val possibles = if (sym.hasModuleFlag) (sym.tpe nonPrivateMember nme.main).alternatives else Nil
+      val possibles = if (sym is Flags.Module) (sym.info nonPrivateMember nme.main).alternatives else Nil
       val hasApproximate = possibles exists { m =>
         m.info match {
-          case MethodType(p :: Nil, _) => p.tpe.typeSymbol == definitions.ArrayClass
+          case MethodType(_, p :: Nil) => p.typeSymbol == ctx.definitions.ArrayClass
           case _                       => false
         }
       }
       // At this point it's a module with a main-looking method, so either succeed or warn that it isn't.
       hasApproximate && {
         // Before erasure so we can identify generic mains.
-        enteringErasure {
-          val companion     = sym.linkedClassOfClass
+        ctx.atPhase(ctx.typerPhase) { implicit ctx =>
+          val companion     = sym.linkedClass
 
-          if (definitions.hasJavaMainMethod(companion))
+          if (hasJavaMainMethod(companion))
             failNoForwarder("companion contains its own main method")
-          else if (companion.tpe.member(nme.main) != NoSymbol)
+          else if (companion.info.member(nme.main) != NoSymbol)
             // this is only because forwarders aren't smart enough yet
             failNoForwarder("companion contains its own main method (implementation restriction: no main is allowed, regardless of signature)")
-          else if (companion.isTrait)
+          else if (companion is Flags.Trait)
             failNoForwarder("companion is a trait")
           // Now either succeeed, or issue some additional warnings for things which look like
           // attempts to be java main methods.
-        else (possibles exists definitions.isJavaMainMethod) || {
+        else (possibles exists isJavaMainMethod) || {
             possibles exists { m =>
               m.info match {
-                case PolyType(_, _) =>
+                case PolyType(_, _) => // TODO(lrytz) fix this
                   fail("main methods cannot be generic.")
-                case MethodType(params, res) =>
-                  if (res.typeSymbol :: params exists (_.isAbstractType))
+                case mt @ MethodType(_, paramTypes) =>
+                  if (mt.resultType.typeSymbol :: paramTypes.map(_.typeSymbol) exists (_.isAbstractType))
                     fail("main methods cannot refer to type parameters or abstract types.", m.pos)
                   else
                     definitions.isJavaMainMethod(m) || fail("main method must have exact signature (Array[String])Unit", m.pos)
@@ -202,7 +216,6 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
         }
       }
     }
-
   }
 
   /*
