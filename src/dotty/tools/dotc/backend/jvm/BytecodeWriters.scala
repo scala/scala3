@@ -45,21 +45,20 @@ trait BytecodeWriters {
     val emitAsmp  = ctx0.base.settings.Ygenasmp.isSetByUser
     val doDump    = ctx0.base.settings.Ydumpclasses.isSetByUser
     (emitAsmp, doDump) match {
-      case (false, false) => new ClassBytecodeWriter { }
+      case (false, false) => new ClassBytecodeWriter { val ctx = ctx0 }
       case (false, true ) => new ClassBytecodeWriter with DumpBytecodeWriter { val ctx = ctx0 }
       case (true,  false) => new ClassBytecodeWriter with AsmpBytecodeWriter { val ctx = ctx0 }
       case (true,  true ) => new ClassBytecodeWriter with AsmpBytecodeWriter with DumpBytecodeWriter { val ctx = ctx0 }
     }
   }
 
-  trait BytecodeWriter {
+  trait BytecodeWriter extends HasContext {
     def writeClass(label: String, jclassName: String, jclassBytes: Array[Byte], outfile: AbstractFile): Unit
     def close(): Unit = ()
   }
 
   class DirectToJarfileWriter(jfile: JFile)(implicit protected val ctx: Context)
-  extends BytecodeWriter
-  with HasContext {
+  extends BytecodeWriter {
     val jarMainAttrs = (
       if (ctx.settings.mainClass.isDefault) Nil
       else List(Name.MAIN_CLASS -> ctx.settings.mainClass.value)
@@ -88,7 +87,7 @@ trait BytecodeWriters {
    *        their expansion by ASM is more readable.
    *
    * */
-  trait AsmpBytecodeWriter extends BytecodeWriter with HasContext {
+  trait AsmpBytecodeWriter extends BytecodeWriter {
     import dotty.tools.asm
 
     private val baseDir = Directory(ctx.settings.Ygenasmp.value).createDirectory()
@@ -129,7 +128,7 @@ trait BytecodeWriters {
     }
   }
 
-  trait DumpBytecodeWriter extends BytecodeWriter with HasContext {
+  trait DumpBytecodeWriter extends BytecodeWriter {
     val baseDir = Directory(ctx.settings.Ydumpclasses.value).createDirectory()
 
     abstract override def writeClass(label: String, jclassName: String, jclassBytes: Array[Byte], outfile: AbstractFile): Unit = {
