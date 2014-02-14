@@ -47,7 +47,6 @@ import core.Symbols.{Symbol, NoSymbol}
  *
  */
 object GenBCode extends BCodeSyncAndTry {
-
   import ast.tpd._
 
   final class PlainClassBuilder(cunit: CompilationUnit)(implicit protected val ctx: Context)
@@ -265,7 +264,7 @@ object GenBCode extends BCodeSyncAndTry {
      *    (c) tear down (closing the classfile-writer and clearing maps)
      *
      */
-    def runOn(units: List[CompilationUnit])(implicit ctx: Context): Unit = {
+    override def runOn(units: List[CompilationUnit])(implicit ctx: Context): Unit = {
 
       arrivalPos = 0 // just in case
       scalaPrimitives.init
@@ -304,7 +303,7 @@ object GenBCode extends BCodeSyncAndTry {
       beanInfoCodeGen = null
     }
 
-    override def run(implicit ctx: Context): Unit = unsupported("run()")
+    def run(implicit ctx: Context): Unit = unsupported("run()")
 
     /*
      *  Sequentially:
