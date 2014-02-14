@@ -1,0 +1,13 @@
+language: scala
+script:
+  - sbt ++$TRAVIS_SCALA_VERSION clean update compile test
+scala:
+  - 2.11.0-M7
+jdk:
+  - oraclejdk7
+notifications:
+  email:
+    - dotty-reports@googlegroups.com
+branches:
+  only:
+    - master
