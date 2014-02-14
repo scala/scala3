@@ -209,6 +209,10 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
    * must-single-thread
    */
   def initBytecodeWriter(entryPoints: List[Symbol])(implicit ctx: Context): BytecodeWriter = {
+
+    import ctx.base.settings
+    import ctx.log
+
     settings.outputDirs.getSingleOutput match {
       case Some(f) if f hasExtension "jar" =>
         // If no main class was specified, see if there's only one
@@ -216,19 +220,19 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
         if (settings.mainClass.isDefault) {
           entryPoints map (_.fullName('.')) match {
             case Nil      =>
-              ctx.log("No Main-Class designated or discovered.")
+              log("No Main-Class designated or discovered.")
             case name :: Nil =>
-              ctx.log(s"Unique entry point: setting Main-Class to $name")
-              settings.mainClass.value = name
+              log(s"Unique entry point: setting Main-Class to $name")
+              settings.mainClass.update(name)
             case names =>
-              ctx.log(s"No Main-Class due to multiple entry points:\n  ${names.mkString("\n  ")}")
+              log(s"No Main-Class due to multiple entry points:\n  ${names.mkString("\n  ")}")
           }
         }
-        else ctx.log(s"Main-Class was specified: ${settings.mainClass.value}")
+        else log(s"Main-Class was specified: ${settings.mainClass.value}")
 
         new DirectToJarfileWriter(f.file)
 
-      case _ => factoryNonJarBytecodeWriter()
+      case _ => factoryNonJarBytecodeWriter(ctx)
     }
   }
 
@@ -294,17 +298,6 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
     }
 
   } // end of method addInnerClassesASM()
-
-  /**
-   * All components (e.g. BCPickles, BCInnerClassGen) of the builder classes
-   * extend this trait to have access to the context.
-   *
-   * The context is provided by the three leaf classes (PlainClassBuilder,
-   * JMirrorBuilder and JBeanInfoBuilder) as class parameter.
-   */
-  trait HasContext {
-    implicit protected val ctx: Context
-  }
 
   /*
    * Custom attribute (JVMS 4.7.1) "ScalaSig" used as marker only
@@ -395,7 +388,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 
   trait BCInnerClassGen extends HasContext {
 
-    def debugLevel = settings.debuginfo.indexOfChoice
+    def debugLevel = ctx.settings.g.indexOfChoice
 
     val emitSource = debugLevel >= 1
     val emitLines  = debugLevel >= 2
@@ -797,7 +790,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
       // without it.  This is particularly bad because the availability of
       // generic information could disappear as a consequence of a seemingly
       // unrelated change.
-         settings.Ynogenericsig
+         ctx.settings.Ynogenericsig
       || sym.isArtifact
       || sym.isLiftedMethod
       || sym.isBridge
@@ -829,7 +822,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
             catch { case _: Throwable => false }
           }
 
-      if (settings.Xverify) {
+      if (ctx.settings.Xverify) {
         // Run the signature parser to catch bogus signatures.
         val isValidSignature = wrap {
           // Alternative: scala.tools.reflect.SigParser (frontend to sun.reflect.generics.parser.SignatureParser)
@@ -849,7 +842,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
         }
       }
 
-      if ((settings.check containsName phaseName)) {
+      if ((ctx.settings.check containsName phaseName)) {
         val normalizedTpe = enteringErasure(erasure.prepareSigMap(memberTpe))
         val bytecodeTpe = owner.thisType.memberInfo(sym)
         if (!sym.isType && !sym.isConstructor && !(erasure.erasure(sym)(normalizedTpe) =:= bytecodeTpe)) {

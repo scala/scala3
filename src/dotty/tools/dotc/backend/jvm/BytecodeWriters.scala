@@ -12,6 +12,7 @@ import java.io.{ DataOutputStream, FileOutputStream, IOException, OutputStream, 
 import java.util.jar.Attributes.Name
 
 import dotty.tools.io._
+import core.Contexts.Context
 
 /** Can't output a file due to the state of the file system. */
 class FileConflictException(msg: String, val file: AbstractFile) extends IOException(msg)
@@ -22,8 +23,8 @@ class FileConflictException(msg: String, val file: AbstractFile) extends IOExcep
  */
 trait BytecodeWriters {
 
-  def outputDirectory(sym: Symbol): AbstractFile =
-    settings.outputDirs outputDirFor enteringFlatten(sym.sourceFile)
+  def outputDirectory(sym: Symbol)(implicit ctx: Context): AbstractFile =
+    ctx.settings.outputDirs outputDirFor enteringFlatten(sym.sourceFile)
 
   /**
    * @param clsName cls.getName
@@ -40,26 +41,27 @@ trait BytecodeWriters {
   def getFile(sym: Symbol, clsName: String, suffix: String): AbstractFile =
     getFile(outputDirectory(sym), clsName, suffix)
 
-  def factoryNonJarBytecodeWriter(): BytecodeWriter = {
-    val emitAsmp  = settings.Ygenasmp.isSetByUser
-    val doDump    = settings.Ydumpclasses.isSetByUser
+  def factoryNonJarBytecodeWriter(implicit ctx: Context): BytecodeWriter = {
+    val emitAsmp  = ctx.settings.Ygenasmp.isSetByUser
+    val doDump    = ctx.settings.Ydumpclasses.isSetByUser
     (emitAsmp, doDump) match {
-      case (false, false) => new ClassBytecodeWriter { }
-      case (false, true ) => new ClassBytecodeWriter with DumpBytecodeWriter { }
+      case (false, false) => new ClassBytecodeWriter
+      case (false, true ) => new ClassBytecodeWriter with DumpBytecodeWriter
       case (true,  false) => new ClassBytecodeWriter with AsmpBytecodeWriter
-      case (true,  true ) => new ClassBytecodeWriter with AsmpBytecodeWriter with DumpBytecodeWriter { }
+      case (true,  true ) => new ClassBytecodeWriter with AsmpBytecodeWriter with DumpBytecodeWriter
     }
   }
 
-  trait BytecodeWriter {
+  trait BytecodeWriter extends HasContext {
     def writeClass(label: String, jclassName: String, jclassBytes: Array[Byte], outfile: AbstractFile): Unit
     def close(): Unit = ()
   }
 
-  class DirectToJarfileWriter(jfile: JFile) extends BytecodeWriter {
+  class DirectToJarfileWriter(jfile: JFile)(implicit protected val ctx: Context)
+  extends BytecodeWriter {
     val jarMainAttrs = (
-      if (settings.mainClass.isDefault) Nil
-      else List(Name.MAIN_CLASS -> settings.mainClass.value)
+      if (ctx.settings.mainClass.isDefault) Nil
+      else List(Name.MAIN_CLASS -> ctx.settings.mainClass.value)
     )
     val writer = new Jar(jfile).jarWriter(jarMainAttrs: _*)
 
@@ -88,7 +90,7 @@ trait BytecodeWriters {
   trait AsmpBytecodeWriter extends BytecodeWriter {
     import dotty.tools.asm
 
-    private val baseDir = Directory(settings.Ygenasmp.value).createDirectory()
+    private val baseDir = Directory(ctx.settings.Ygenasmp.value).createDirectory()
 
     private def emitAsmp(jclassBytes: Array[Byte], asmpFile: io.File): Unit = {
       val pw = asmpFile.printWriter()
@@ -114,7 +116,7 @@ trait BytecodeWriters {
     }
   }
 
-  trait ClassBytecodeWriter extends BytecodeWriter {
+  class ClassBytecodeWriter(implicit protected val ctx: Context) extends BytecodeWriter {
     def writeClass(label: String, jclassName: String, jclassBytes: Array[Byte], outfile: AbstractFile): Unit = {
       assert(outfile != null,
              "Precisely this override requires its invoker to hand out a non-null AbstractFile.")
@@ -127,7 +129,7 @@ trait BytecodeWriters {
   }
 
   trait DumpBytecodeWriter extends BytecodeWriter {
-    val baseDir = Directory(settings.Ydumpclasses.value).createDirectory()
+    val baseDir = Directory(ctx.settings.Ydumpclasses.value).createDirectory()
 
     abstract override def writeClass(label: String, jclassName: String, jclassBytes: Array[Byte], outfile: AbstractFile): Unit = {
       super.writeClass(label, jclassName, jclassBytes, outfile)
