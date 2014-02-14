@@ -621,7 +621,9 @@ abstract class BCodeGlue {
    *
    * must-single-thread
    */
-  def brefType(iname: String): BType = { brefType(dotc.core.Names.typeName(iname.toCharArray(), 0, iname.length())) }
+  def brefType(iname: String): BType = {
+    brefType(core.Names.typeName(iname.toCharArray(), 0, iname.length()))
+  }
 
   /*
    * Creates a BType token for the TypeName received as argument.

@@ -142,14 +142,14 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
    */
   object isJavaEntryPoint {
 
-    import dotc.core.Types.{MethodType, PolyType}
+    import core.Types.{MethodType, PolyType}
 
     /*
      * must-single-thread
      */
-    def apply(sym: Symbol, csymCompUnit: CompilationUnit): Boolean = {
-      def fail(msg: String, pos: dotc.util.Positions.Position = sym.pos) = {
-        csymCompUnit.warning(sym.pos,
+    def apply(sym: Symbol, ctx: Context): Boolean = {
+      def fail(msg: String, pos: util.Positions.Position = sym.pos) = {
+        ctx.warning(sym.pos,
           sym.name +
           s" has a main method with parameter type Array[String], but ${sym.fullName('.')} will not be a runnable program.\n  Reason: $msg"
           // TODO: make this next claim true, if possible
@@ -491,7 +491,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
       }
 
       def primitiveOrRefType(sym: Symbol): BType = {
-        assert(sym != definitions.ArrayClass, "Use primitiveOrArrayOrRefType() instead.")
+        assert(sym != ctx.definitions.ArrayClass, "Use primitiveOrArrayOrRefType() instead.")
 
         primitiveTypeMap.getOrElse(sym, newReference(sym))
       }
@@ -512,25 +512,25 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
         }
       }
 
-      import dotc.core.Types.{ThisType, ConstantType, TypeRef, ClassInfo}
+      import core.Types.{ThisType, ConstantType, TypeRef, ClassInfo}
 
       // Call to .normalize fixes #3003 (follow type aliases). Otherwise, primitiveOrArrayOrRefType() would return ObjectReference.
       t match {
 
         case ThisType(sym) =>
-          if (sym == ArrayClass) ObjectReference
-          else                   phantomTypeMap.getOrElse(sym, exemplar(sym).c)
+          if (sym == ctx.definitions.ArrayClass) ObjectReference
+          else phantomTypeMap.getOrElse(sym, exemplar(sym).c)
 
         case SingleType(_, sym) => primitiveOrRefType(sym)
 
         case _: ConstantType    => toTypeKind(t.underlying)
 
         case TypeRef(_, sym, args)    =>
-          if (sym == ArrayClass) arrayOf(toTypeKind(args.head))
-          else                   primitiveOrRefType2(sym)
+          if (sym == ctx.definitions.ArrayClass) arrayOf(toTypeKind(args.head))
+          else primitiveOrRefType2(sym)
 
         case ClassInfo(_, _, sym) =>
-          assert(sym != ArrayClass, "ClassInfoType to ArrayClass!")
+          assert(sym != ctx.definitions.ArrayClass, "ClassInfoType to ArrayClass!")
           primitiveOrRefType(sym)
 
         case norm => abort(
@@ -667,9 +667,10 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
       (arg: @unchecked) match {
 
         case LiteralAnnotArg(const) =>
+          import core.Constants._
           if (const.isNonUnitAnyVal) { av.visit(name, const.value) }
           else {
-            const.tag match {
+            (const.tag: @switch) match {
               case StringTag  =>
                 assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
                 av.visit(name, const.stringValue)  // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
