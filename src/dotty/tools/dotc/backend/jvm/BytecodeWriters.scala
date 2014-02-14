@@ -12,6 +12,7 @@ import java.io.{ DataOutputStream, FileOutputStream, IOException, OutputStream, 
 import java.util.jar.Attributes.Name
 
 import dotty.tools.io._
+import core.Contexts.Context
 
 /** Can't output a file due to the state of the file system. */
 class FileConflictException(msg: String, val file: AbstractFile) extends IOException(msg)
@@ -22,8 +23,8 @@ class FileConflictException(msg: String, val file: AbstractFile) extends IOExcep
  */
 trait BytecodeWriters {
 
-  def outputDirectory(sym: Symbol): AbstractFile =
-    settings.outputDirs outputDirFor enteringFlatten(sym.sourceFile)
+  def outputDirectory(sym: Symbol)(implicit ctx: Context): AbstractFile =
+    ctx.base.settings.outputDirs outputDirFor enteringFlatten(sym.sourceFile)
 
   /**
    * @param clsName cls.getName
@@ -40,9 +41,9 @@ trait BytecodeWriters {
   def getFile(sym: Symbol, clsName: String, suffix: String): AbstractFile =
     getFile(outputDirectory(sym), clsName, suffix)
 
-  def factoryNonJarBytecodeWriter(): BytecodeWriter = {
-    val emitAsmp  = settings.Ygenasmp.isSetByUser
-    val doDump    = settings.Ydumpclasses.isSetByUser
+  def factoryNonJarBytecodeWriter(implicit ctx: Context): BytecodeWriter = {
+    val emitAsmp  = ctx.base.settings.Ygenasmp.isSetByUser
+    val doDump    = ctx.base.settings.Ydumpclasses.isSetByUser
     (emitAsmp, doDump) match {
       case (false, false) => new ClassBytecodeWriter { }
       case (false, true ) => new ClassBytecodeWriter with DumpBytecodeWriter { }

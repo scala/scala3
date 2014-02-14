@@ -171,7 +171,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
 
       } else {
 
-        val skipStaticForwarders = (claszSymbol.isInterface || settings.noForwarders)
+        val skipStaticForwarders = (claszSymbol.isInterface || ctx.base.settings.noForwarders)
         if (!skipStaticForwarders) {
           val lmoc = claszSymbol.companionModule
           // add static forwarders if there are no name conflicts; see bugs #363 and #1735
@@ -605,7 +605,7 @@ abstract class BCodeSkelBuilder extends BCodeHelpers {
             case Return(_) => ()
             case EmptyTree =>
               globalError("Concrete method has no definition: " + dd + (
-                if (settings.debug) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
+                if (ctx.base.settings.debug) "(found: " + methSymbol.owner.info.decls.toList.mkString(", ") + ")"
                 else "")
               )
             case _ =>
