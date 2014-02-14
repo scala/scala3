@@ -223,7 +223,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
               log("No Main-Class designated or discovered.")
             case name :: Nil =>
               log(s"Unique entry point: setting Main-Class to $name")
-              settings.mainClass.value = name
+              settings.mainClass.update(name)
             case names =>
               log(s"No Main-Class due to multiple entry points:\n  ${names.mkString("\n  ")}")
           }
@@ -232,7 +232,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 
         new DirectToJarfileWriter(f.file)
 
-      case _ => factoryNonJarBytecodeWriter()
+      case _ => factoryNonJarBytecodeWriter(ctx)
     }
   }
 
@@ -298,17 +298,6 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
     }
 
   } // end of method addInnerClassesASM()
-
-  /**
-   * All components (e.g. BCPickles, BCInnerClassGen) of the builder classes
-   * extend this trait to have access to the context.
-   *
-   * The context is provided by the three leaf classes (PlainClassBuilder,
-   * JMirrorBuilder and JBeanInfoBuilder) as class parameter.
-   */
-  trait HasContext {
-    implicit protected val ctx: Context
-  }
 
   /*
    * Custom attribute (JVMS 4.7.1) "ScalaSig" used as marker only

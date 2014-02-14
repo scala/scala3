@@ -297,6 +297,9 @@ object GenBCode extends BCodeSyncAndTry {
 
       // clearing maps
       clearBCodeTypes()
+
+      // free the Context instance reachable from BytecodeWriter
+      bytecodeWriter = null
     }
 
     override def run(implicit ctx: Context): Unit = unsupported("run()")
