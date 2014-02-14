@@ -142,13 +142,13 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
    */
   object isJavaEntryPoint {
 
-    import dotty.tools.dotc.core.Types.{MethodType, PolyType}
+    import core.Types.{MethodType, PolyType}
 
     /*
      * must-single-thread
      */
     def apply(sym: Symbol, ctx: Context): Boolean = {
-      def fail(msg: String, pos: dotty.tools.dotc.util.Positions.Position = sym.pos) = {
+      def fail(msg: String, pos: util.Positions.Position = sym.pos) = {
         ctx.warning(sym.pos,
           sym.name +
           s" has a main method with parameter type Array[String], but ${sym.fullName('.')} will not be a runnable program.\n  Reason: $msg"
@@ -512,7 +512,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
         }
       }
 
-      import dotty.tools.dotc.core.Types.{ThisType, ConstantType, TypeRef, ClassInfo}
+      import core.Types.{ThisType, ConstantType, TypeRef, ClassInfo}
 
       // Call to .normalize fixes #3003 (follow type aliases). Otherwise, primitiveOrArrayOrRefType() would return ObjectReference.
       t match {
@@ -667,7 +667,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
       (arg: @unchecked) match {
 
         case LiteralAnnotArg(const) =>
-          import dotty.tools.dotc.core.Constants._
+          import core.Constants._
           if (const.isNonUnitAnyVal) { av.visit(name, const.value) }
           else {
             (const.tag: @switch) match {

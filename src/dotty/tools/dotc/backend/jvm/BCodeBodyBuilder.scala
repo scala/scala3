@@ -440,7 +440,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
           }
 
         case Literal(value) =>
-          import dotty.tools.dotc.core.Constants._
+          import core.Constants._
           if (value.tag != UnitTag) (value.tag, expectedType) match {
             case (IntTag,   LONG  ) => bc.lconst(value.longValue);       generatedType = LONG
             case (FloatTag, DOUBLE) => bc.dconst(value.doubleValue);     generatedType = DOUBLE
@@ -518,7 +518,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
      */
     def genConstant(const: Constant): Unit = {
 
-      import dotty.tools.dotc.core.Constants._
+      import core.Constants._
 
       (const.tag: @switch) match {
 
@@ -913,7 +913,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
     }
 
     /* Generate code that loads args into label parameters. */
-    def genLoadLabelArguments(args: List[Tree], lblDef: LabelDef, gotoPos: dotty.tools.dotc.util.Positions.Position): Unit = {
+    def genLoadLabelArguments(args: List[Tree], lblDef: LabelDef, gotoPos: util.Positions.Position): Unit = {
 
       val aps = {
         val params: List[Symbol] = lblDef.params.map(_.symbol)
@@ -1027,7 +1027,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
     def genCallMethod(method:     Symbol,
                       style:      InvokeStyle,
                       hostClass0: Symbol = null,
-                      pos:        dotty.tools.dotc.util.Positions.Position = dotty.tools.dotc.util.Positions.NoPosition) {
+                      pos:        util.Positions.Position = util.Positions.NoPosition) {
 
       val siteSymbol = claszSymbol
       val hostSymbol = if (hostClass0 == null) method.owner else hostClass0;
