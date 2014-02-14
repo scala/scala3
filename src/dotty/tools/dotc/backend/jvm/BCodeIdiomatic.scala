@@ -25,7 +25,7 @@ import core.Symbols.{Symbol, NoSymbol}
  */
 abstract class BCodeIdiomatic extends BCodeGlue {
 
-  def classfileVersion(implicit ctx: Context): Int = ctx.base.settings.target.value match {
+  def classfileVersion(implicit ctx: Context): Int = ctx.settings.target.value match {
     case "jvm-1.5"     => asm.Opcodes.V1_5
     case "jvm-1.6"     => asm.Opcodes.V1_6
     case "jvm-1.7"     => asm.Opcodes.V1_7

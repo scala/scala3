@@ -29,7 +29,7 @@ import StdNames.{nme, tpnme}
 abstract class BCodeTypes extends BCodeIdiomatic {
 
   // when compiling the Scala library, some assertions don't hold (e.g., scala.Boolean has null superClass although it's not an interface)
-  def isCompilingStdLib(implicit ctx: Context) = !(ctx.base.settings.sourcepath.isDefault)
+  def isCompilingStdLib(implicit ctx: Context) = !(ctx.settings.sourcepath.isDefault)
 
   val srBoxedUnit  = brefType("scala/runtime/BoxedUnit")
 

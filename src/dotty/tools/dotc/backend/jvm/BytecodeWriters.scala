@@ -24,7 +24,7 @@ class FileConflictException(msg: String, val file: AbstractFile) extends IOExcep
 trait BytecodeWriters {
 
   def outputDirectory(sym: Symbol)(implicit ctx: Context): AbstractFile =
-    ctx.base.settings.outputDirs outputDirFor enteringFlatten(sym.sourceFile)
+    ctx.settings.outputDirs outputDirFor enteringFlatten(sym.sourceFile)
 
   /**
    * @param clsName cls.getName
@@ -61,8 +61,8 @@ trait BytecodeWriters {
   extends BytecodeWriter
   with HasContext {
     val jarMainAttrs = (
-      if (ctx.base.settings.mainClass.isDefault) Nil
-      else List(Name.MAIN_CLASS -> ctx.base.settings.mainClass.value)
+      if (ctx.settings.mainClass.isDefault) Nil
+      else List(Name.MAIN_CLASS -> ctx.settings.mainClass.value)
     )
     val writer = new Jar(jfile).jarWriter(jarMainAttrs: _*)
 
@@ -91,7 +91,7 @@ trait BytecodeWriters {
   trait AsmpBytecodeWriter extends BytecodeWriter with HasContext {
     import dotty.tools.asm
 
-    private val baseDir = Directory(ctx.base.settings.Ygenasmp.value).createDirectory()
+    private val baseDir = Directory(ctx.settings.Ygenasmp.value).createDirectory()
 
     private def emitAsmp(jclassBytes: Array[Byte], asmpFile: io.File): Unit = {
       val pw = asmpFile.printWriter()
@@ -130,7 +130,7 @@ trait BytecodeWriters {
   }
 
   trait DumpBytecodeWriter extends BytecodeWriter with HasContext {
-    val baseDir = Directory(ctx.base.settings.Ydumpclasses.value).createDirectory()
+    val baseDir = Directory(ctx.settings.Ydumpclasses.value).createDirectory()
 
     abstract override def writeClass(label: String, jclassName: String, jclassBytes: Array[Byte], outfile: AbstractFile): Unit = {
       super.writeClass(label, jclassName, jclassBytes, outfile)

@@ -388,7 +388,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 
   trait BCInnerClassGen extends HasContext {
 
-    def debugLevel = ctx.base.settings.g.indexOfChoice
+    def debugLevel = ctx.settings.g.indexOfChoice
 
     val emitSource = debugLevel >= 1
     val emitLines  = debugLevel >= 2
@@ -790,7 +790,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
       // without it.  This is particularly bad because the availability of
       // generic information could disappear as a consequence of a seemingly
       // unrelated change.
-         ctx.base.settings.Ynogenericsig
+         ctx.settings.Ynogenericsig
       || sym.isArtifact
       || sym.isLiftedMethod
       || sym.isBridge
@@ -822,7 +822,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
             catch { case _: Throwable => false }
           }
 
-      if (ctx.base.settings.Xverify) {
+      if (ctx.settings.Xverify) {
         // Run the signature parser to catch bogus signatures.
         val isValidSignature = wrap {
           // Alternative: scala.tools.reflect.SigParser (frontend to sun.reflect.generics.parser.SignatureParser)
@@ -842,7 +842,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
         }
       }
 
-      if ((ctx.base.settings.check containsName phaseName)) {
+      if ((ctx.settings.check containsName phaseName)) {
         val normalizedTpe = enteringErasure(erasure.prepareSigMap(memberTpe))
         val bytecodeTpe = owner.thisType.memberInfo(sym)
         if (!sym.isType && !sym.isConstructor && !(erasure.erasure(sym)(normalizedTpe) =:= bytecodeTpe)) {
