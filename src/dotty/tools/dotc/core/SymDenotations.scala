@@ -1116,7 +1116,8 @@ object SymDenotations {
     }
 
     // to avoid overloading ambiguities
-    override def fullName(implicit ctx: Context): Name = super.fullName
+    // TODO(lrytz) remove
+    // override def fullName(implicit ctx: Context): Name = super.fullName
 
     override def primaryConstructor(implicit ctx: Context): Symbol = {
       val cname = if (this is ImplClass) nme.IMPLCLASS_CONSTRUCTOR else nme.CONSTRUCTOR

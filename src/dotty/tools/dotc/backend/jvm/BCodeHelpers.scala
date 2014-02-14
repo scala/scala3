@@ -155,7 +155,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
           // TODO: make this next claim true, if possible
           //   by generating valid main methods as static in module classes
           //   not sure what the jvm allows here
-          // + "  You can still run the program by calling it as " + sym.javaSimpleName + " instead."
+          // + "  You can still run the program by calling it as " + javaName(sym) + " instead."
         )
         false
       }
@@ -919,7 +919,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 
       val jReturnType = toTypeKind(methodInfo.resultType)
       val mdesc = BType.getMethodType(jReturnType, mkArray(paramJavaTypes)).getDescriptor
-      val mirrorMethodName = m.javaSimpleName.toString
+      val mirrorMethodName = javaName(m).toString
       val mirrorMethod: asm.MethodVisitor = jclass.visitMethod(
         flags,
         mirrorMethodName,
@@ -1051,7 +1051,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
       def newEEE(eClass: Symbol, m: Symbol) = {
         EnclMethodEntry(
           internalName(eClass),
-          m.javaSimpleName.toString,
+          javaName(m).toString,
           asmMethodType(m)
         )
       }
@@ -1160,7 +1160,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
      */
     def genBeanInfoClass(cls: Symbol, cunit: CompilationUnit, fieldSymbols: List[Symbol], methodSymbols: List[Symbol]): asm.tree.ClassNode = {
 
-      def javaSimpleName(s: Symbol): String = { s.javaSimpleName.toString }
+      def javaNameString(s: Symbol): String = javaName(s).toString
 
       innerClassBufferASM.clear()
 
@@ -1193,7 +1193,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 	         if g.isPublic && !(f.name startsWith "$")
           ) {
              // inserting $outer breaks the bean
-             fieldList = javaSimpleName(f) :: javaSimpleName(g) :: (if (s != NoSymbol) javaSimpleName(s) else null) :: fieldList
+             fieldList = javaNameString(f) :: javaNameString(g) :: (if (s != NoSymbol) javaNameString(s) else null) :: fieldList
       }
 
       val methodList: List[String] =
@@ -1203,7 +1203,7 @@ abstract class BCodeHelpers extends BCodeTypes with BytecodeWriters {
 	          !(m.name startsWith "$") &&
 	          !m.isGetter &&
 	          !m.isSetter)
-       yield javaSimpleName(m)
+       yield javaNameString(m)
 
       val constructor = beanInfoClass.visitMethod(
         asm.Opcodes.ACC_PUBLIC,

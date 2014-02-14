@@ -335,7 +335,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
         coercionTo(code)
       }
       else abort(
-        s"Primitive operation not handled yet: ${sym.fullName}(${fun.symbol.simpleName}) at: ${tree.pos}"
+        s"Primitive operation not handled yet: ${sym.fullName}(${fun.symbol.name}) at: ${tree.pos}"
       )
     }
 
@@ -499,7 +499,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
       val owner      =
         if (hostClass == null) internalName(field.owner)
         else                  internalName(hostClass)
-      val fieldJName = field.javaSimpleName.toString
+      val fieldJName = javaName(field).toString
       val fieldDescr = symInfoTK(field).getDescriptor
       val isStatic   = field.isStaticMember
       val opc =
@@ -552,7 +552,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
         case EnumTag   =>
           val sym       = const.symbolValue
           val ownerName = internalName(sym.owner)
-          val fieldName = sym.javaSimpleName.toString
+          val fieldName = javaName(sym).toString
           val fieldDesc = toTypeKind(sym.tpe.underlying).getDescriptor
           mnode.visitFieldInsn(
             asm.Opcodes.GETSTATIC,
@@ -1050,7 +1050,7 @@ abstract class BCodeBodyBuilder extends BCodeSkelBuilder {
       val receiver = if (useMethodOwner) methodOwner else hostSymbol
       val bmOwner  = asmClassType(receiver)
       val jowner   = bmOwner.getInternalName
-      val jname    = method.javaSimpleName.toString
+      val jname    = javaName(method).toString
       val bmType   = asmMethodType(method)
       val mdescr   = bmType.getDescriptor
 
