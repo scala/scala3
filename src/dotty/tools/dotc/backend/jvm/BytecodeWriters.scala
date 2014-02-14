@@ -41,14 +41,14 @@ trait BytecodeWriters {
   def getFile(sym: Symbol, clsName: String, suffix: String): AbstractFile =
     getFile(outputDirectory(sym), clsName, suffix)
 
-  def factoryNonJarBytecodeWriter(implicit ctx0: Context): BytecodeWriter = {
-    val emitAsmp  = ctx0.base.settings.Ygenasmp.isSetByUser
-    val doDump    = ctx0.base.settings.Ydumpclasses.isSetByUser
+  def factoryNonJarBytecodeWriter(implicit ctx: Context): BytecodeWriter = {
+    val emitAsmp  = ctx.settings.Ygenasmp.isSetByUser
+    val doDump    = ctx.settings.Ydumpclasses.isSetByUser
     (emitAsmp, doDump) match {
-      case (false, false) => new ClassBytecodeWriter { val ctx = ctx0 }
-      case (false, true ) => new ClassBytecodeWriter with DumpBytecodeWriter { val ctx = ctx0 }
-      case (true,  false) => new ClassBytecodeWriter with AsmpBytecodeWriter { val ctx = ctx0 }
-      case (true,  true ) => new ClassBytecodeWriter with AsmpBytecodeWriter with DumpBytecodeWriter { val ctx = ctx0 }
+      case (false, false) => new ClassBytecodeWriter
+      case (false, true ) => new ClassBytecodeWriter with DumpBytecodeWriter
+      case (true,  false) => new ClassBytecodeWriter with AsmpBytecodeWriter
+      case (true,  true ) => new ClassBytecodeWriter with AsmpBytecodeWriter with DumpBytecodeWriter
     }
   }
 
@@ -116,7 +116,7 @@ trait BytecodeWriters {
     }
   }
 
-  trait ClassBytecodeWriter extends BytecodeWriter {
+  class ClassBytecodeWriter(implicit protected val ctx: Context) extends BytecodeWriter {
     def writeClass(label: String, jclassName: String, jclassBytes: Array[Byte], outfile: AbstractFile): Unit = {
       assert(outfile != null,
              "Precisely this override requires its invoker to hand out a non-null AbstractFile.")
