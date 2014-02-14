@@ -1,6 +1,6 @@
 language: scala
 script:
-  - sbt clean update compile test
+  - sbt update compile test
 jdk:
   - oraclejdk7
 notifications:
