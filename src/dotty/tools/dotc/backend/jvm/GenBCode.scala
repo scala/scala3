@@ -59,9 +59,9 @@ object GenBCode extends BCodeSyncAndTry {
     override def description = "Generate bytecode from ASTs using the ASM library"
 //    override def erasedTypes = true // TODO(lrytz) remove, probably not necessary in dotty
 
-    private var bytecodeWriter  : BytecodeWriter   = null
-    // TODO(lrytz): pass builders around instead of storing them in fields. Builders
+    // TODO(lrytz): pass writer and builders around instead of storing them in fields. They
     // have a context, potential for memory leaks.
+    private var bytecodeWriter  : BytecodeWriter   = null
     private var mirrorCodeGen   : JMirrorBuilder   = null
     private var beanInfoCodeGen : JBeanInfoBuilder = null
 
@@ -298,8 +298,10 @@ object GenBCode extends BCodeSyncAndTry {
       // clearing maps
       clearBCodeTypes()
 
-      // free the Context instance reachable from BytecodeWriter
+      // free the reachable Context instances
       bytecodeWriter = null
+      mirrorCodeGen = null
+      beanInfoCodeGen = null
     }
 
     override def run(implicit ctx: Context): Unit = unsupported("run()")
