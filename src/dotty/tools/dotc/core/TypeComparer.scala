@@ -371,7 +371,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       val sd = tp1.denot.asSingleDenotation
       def derivedRef(tp: Type) =
         NamedType(tp1.prefix, tp1.name, sd.derivedSingleDenotation(sd.symbol, tp))
-      secondTry(OrType(derivedRef(tp11), derivedRef(tp12)), tp2)
+      secondTry(OrType.make(derivedRef(tp11), derivedRef(tp12)), tp2)
     case TypeBounds(lo1, hi1) =>
       if ((tp1.symbol is GADTFlexType) && !isSubTypeWhenFrozen(hi1, tp2))
         trySetType(tp1, TypeBounds(lo1, hi1 & tp2))

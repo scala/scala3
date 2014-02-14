@@ -1353,19 +1353,18 @@ object Types {
     def tp1: Type
     def tp2: Type
     def isAnd: Boolean
-    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): AndOrType  // needed?
-
+    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type  // needed?
   }
 
   abstract case class AndType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
 
     def isAnd = true
 
-    def derivedAndType(tp1: Type, tp2: Type)(implicit ctx: Context): AndType =
+    def derivedAndType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
-      else AndType(tp1, tp2)
+      else AndType.make(tp1, tp2)
 
-    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): AndOrType =
+    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       derivedAndType(tp1, tp2)
 
     override def computeHash = doHash(tp1, tp2)
@@ -1381,18 +1380,19 @@ object Types {
     def unchecked(tp1: Type, tp2: Type)(implicit ctx: Context) = {
       unique(new CachedAndType(tp1, tp2))
     }
+    def make(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
+      if (tp1 eq tp2) tp1 else apply(tp1, tp2)
   }
 
   abstract case class OrType(tp1: Type, tp2: Type) extends CachedGroundType with AndOrType {
     assert(tp1.isInstanceOf[ValueType] && tp2.isInstanceOf[ValueType])
-
     def isAnd = false
 
-    def derivedOrType(tp1: Type, tp2: Type)(implicit ctx: Context): OrType =
+    def derivedOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
-      else OrType(tp1, tp2)
+      else OrType.make(tp1, tp2)
 
-    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): AndOrType =
+    def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       derivedOrType(tp1, tp2)
 
     override def computeHash = doHash(tp1, tp2)
@@ -1403,6 +1403,8 @@ object Types {
   object OrType {
     def apply(tp1: Type, tp2: Type)(implicit ctx: Context) =
       unique(new CachedOrType(tp1, tp2))
+    def make(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
+      if (tp1 eq tp2) tp1 else apply(tp1, tp2)
   }
 
   // ----- Method types: MethodType/ExprType/PolyType -------------------------------
