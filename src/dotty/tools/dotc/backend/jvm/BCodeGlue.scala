@@ -11,8 +11,13 @@ import scala.annotation.switch
 import scala.collection.{ immutable, mutable }
 
 import ast.Trees.Tree
+import core.Contexts.Context
 import core.Types.Type
 import core.Symbols.{Symbol, NoSymbol}
+import core.SymDenotations.SymDenotation
+import core.Flags
+import core.NameOps._
+import core.Names.Name
 
 /*
  *  Immutable representations of bytecode-level types.
@@ -716,5 +721,26 @@ abstract class BCodeGlue {
       FLOAT  -> MethodNameAndType("unboxToFloat",   "(Ljava/lang/Object;)F") ,
       DOUBLE -> MethodNameAndType("unboxToDouble",  "(Ljava/lang/Object;)D")
     )
+  }
+
+  def javaName(symDenot: SymDenotation): Name = {
+    addModuleSuffix(symDenot.name, symDenot)
+  }
+
+  def javaBinaryName(symDenot: SymDenotation)(implicit ctx: Context): Name = {
+    addModuleSuffix(symDenot.fullNameSeparated('/'), symDenot)
+  }
+
+  def javaClassName(symDenot: SymDenotation)(implicit ctx: Context): String = {
+    addModuleSuffix(symDenot.fullName, symDenot).toString
+  }
+
+  private def addModuleSuffix(name: Name, symDenot: SymDenotation): Name = {
+    // TODO(lrytz): the `needsModuleSuffix` check in scalac also checks:
+    //   !isMethod && !isImplClass && !isJavaDefined
+    // Moreover, it checks for the `Module` flag instead of `ModuleClass`.
+    // I assume only a ModuleClass should ever get a moduleClassName.
+    if (symDenot is Flags.ModuleClass) name.moduleClassName
+    else name
   }
 }

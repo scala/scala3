@@ -124,7 +124,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
       defn.BoxedDoubleClass
     )
     for(csym <- boxedClasses) {
-      val key = brefType(csym.javaBinaryName.toTypeName)
+      val key = brefType(javaBinaryName(csym).toTypeName)
       val tr  = buildExemplar(key, csym)
       symExemplars.put(csym, tr)
       exemplars.put(tr.c, tr)
@@ -401,7 +401,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
       return opt
     }
 
-    val key = brefType(csym.javaBinaryName.toTypeName)
+    val key = brefType(javaBinaryName(csym).toTypeName)
     assert(key.isNonSpecial || isCompilingStdLib, s"Not a class to track: ${csym.fullName}")
 
     // TODO accomodate the fix for SI-5031 of https://github.com/scala/scala/commit/0527b2549bcada2fda2201daa630369b377d0877
@@ -767,7 +767,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
       if (innerSym.originalEnclosingMethod != NoSymbol)
         null
       else {
-        val outerName = innerSym.rawowner.javaBinaryName
+        val outerName = javaBinaryName(innerSym.rawowner)
         if (isTopLevelModule(innerSym.rawowner)) nme.stripModuleSuffix(outerName)
         else outerName
       }
@@ -787,7 +787,7 @@ abstract class BCodeTypes extends BCodeIdiomatic {
     ) & (INNER_CLASSES_FLAGS | asm.Opcodes.ACC_DEPRECATED)
     val flags = if (innerSym.isModuleClass) flagsWithFinal & ~asm.Opcodes.ACC_FINAL else flagsWithFinal // For SI-5676, object overriding.
 
-    val jname = innerSym.javaBinaryName.toString // never null
+    val jname = javaBinaryName(innerSym).toString // never null
     val oname = { // null when method-enclosed
       val on = outerName(innerSym)
       if (on == null) null else on.toString

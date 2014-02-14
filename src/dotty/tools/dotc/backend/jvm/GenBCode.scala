@@ -59,9 +59,9 @@ object GenBCode extends BCodeSyncAndTry {
     override def description = "Generate bytecode from ASTs using the ASM library"
 //    override def erasedTypes = true // TODO(lrytz) remove, probably not necessary in dotty
 
-    private var bytecodeWriter  : BytecodeWriter   = null
-    // TODO(lrytz): pass builders around instead of storing them in fields. Builders
+    // TODO(lrytz): pass writer and builders around instead of storing them in fields. They
     // have a context, potential for memory leaks.
+    private var bytecodeWriter  : BytecodeWriter   = null
     private var mirrorCodeGen   : JMirrorBuilder   = null
     private var beanInfoCodeGen : JBeanInfoBuilder = null
 
@@ -154,15 +154,15 @@ object GenBCode extends BCodeSyncAndTry {
         val claszSymbol = cd.symbol
 
         // GenASM checks this before classfiles are emitted, https://github.com/scala/scala/commit/e4d1d930693ac75d8eb64c2c3c69f2fc22bec739
-        val lowercaseJavaClassName = claszSymbol.javaClassName.toLowerCase
+        val lowercaseJavaClassName = javaClassName(claszSymbol).toLowerCase
         caseInsensitively.get(lowercaseJavaClassName) match {
           case None =>
             caseInsensitively.put(lowercaseJavaClassName, claszSymbol)
           case Some(dupClassSym) =>
-            item.cunit.warning(
-              claszSymbol.pos,
-              s"Class ${claszSymbol.javaClassName} differs only in case from ${dupClassSym.javaClassName}. " +
-              "Such classes will overwrite one another on case-insensitive filesystems."
+            ctx.warning(
+              s"Class ${javaClassName(claszSymbol)} differs only in case from ${javaClassName(dupClassSym)}. " +
+              "Such classes will overwrite one another on case-insensitive filesystems.",
+              cunit.source.atPos(claszSymbol.pos)
             )
         }
 
@@ -172,13 +172,13 @@ object GenBCode extends BCodeSyncAndTry {
             if (claszSymbol.companionClass == NoSymbol) {
               mirrorCodeGen.genMirrorClass(claszSymbol, cunit)
             } else {
-              log(s"No mirror class for module with linked class: ${claszSymbol.fullName}")
+              ctx.log(s"No mirror class for module with linked class: ${claszSymbol.fullName}")
               null
             }
           } else null
 
         // -------------- "plain" class --------------
-        val pcb = new PlainClassBuilder(cunit, ctx)
+        val pcb = new PlainClassBuilder(cunit)
         pcb.genPlainClass(cd)
         val outF = if (needsOutFolder) getOutFolder(claszSymbol, pcb.thisName, cunit) else null;
         val plainC = pcb.cnode
@@ -298,8 +298,10 @@ object GenBCode extends BCodeSyncAndTry {
       // clearing maps
       clearBCodeTypes()
 
-      // free the Context instance reachable from BytecodeWriter
+      // free the reachable Context instances
       bytecodeWriter = null
+      mirrorCodeGen = null
+      beanInfoCodeGen = null
     }
 
     override def run(implicit ctx: Context): Unit = unsupported("run()")
