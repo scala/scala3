@@ -10,3 +10,5 @@ The dotty compiler is largely a new design. It takes a more functional approach 
 We expect that, over time, some of the new technologies explored in this project will find their way into future versions of Scala. At present it is too early to say which ones and when.
 
 If you want to try it out, to get started have a look at https://github.com/lampepfl/dotty/wiki/Getting-Started.
+
+Developers mailing list is https://groups.google.com/forum/#!forum/dotty-internals.
