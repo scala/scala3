@@ -7,7 +7,7 @@ import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annot
 import StdNames.nme
 import ast.{Trees, untpd}
 import typer.Namer
-import typer.Inferencing.ViewProto
+import typer.Inferencing.{SelectionProto, ViewProto}
 import Trees._
 import scala.annotation.switch
 
@@ -107,6 +107,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           }
           return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
         }
+      case tp: SelectionProto =>
+        return toText(RefinedType(WildcardType, tp.name, tp.memberProto))
       case tp: ViewProto =>
         return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
       case tp: TypeRef =>

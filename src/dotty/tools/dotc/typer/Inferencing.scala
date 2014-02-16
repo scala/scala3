@@ -53,7 +53,7 @@ object Inferencing {
           case _ =>
             true
         }
-      case pt: ValueType if !(pt isRef defn.UnitClass) =>
+      case _: ValueTypeOrProto if !(pt isRef defn.UnitClass) =>
         mt match {
           case mt: MethodType =>
             mt.isDependent || isCompatible(normalize(mt, pt), pt)
@@ -73,48 +73,41 @@ object Inferencing {
    *
    *       [ ].name: proto
    */
-  abstract class SelectionProto(val name: Name, proto: Type, val compat: Compatibility)
-  extends RefinedType(WildcardType, name) with ProtoType {
-    override val refinedInfo = proto
-    override def isMatchedBy(tp1: Type)(implicit ctx: Context) =
+  abstract case class SelectionProto(val name: Name, val memberProto: Type, val compat: Compatibility)
+  extends CachedProxyType with ProtoType with ValueTypeOrProto {
+
+    override def isMatchedBy(tp1: Type)(implicit ctx: Context) = {
       name == nme.WILDCARD || {
         val mbr = tp1.member(name)
-        mbr.exists && mbr.hasAltWith(m => compat.normalizedCompatible(m.info, proto))
-      }
-    override def isProto = true
-    override def toString = "Proto" + super.toString
-    override def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
-      val tp1 @ RefinedType(parent1, refinedName1) = super.derivedRefinedType(parent, refinedName, refinedInfo)
-      if (tp1 eq this) this
-      else {
-        assert(parent == WildcardType)
-        SelectionProto(refinedName1, tp1.refinedInfo, compat)
+        mbr.exists && mbr.hasAltWith(m => compat.normalizedCompatible(m.info, memberProto))
       }
     }
-    def derivedSelectionProto(name: Name, proto: Type, compat: Compatibility)(implicit ctx: Context) =
-      if ((name eq this.name) && (proto eq this.proto) && (compat eq this.compat)) this
-      else SelectionProto(name, proto, compat)
+
+    def underlying(implicit ctx: Context) = WildcardType
+
+    def derivedSelectionProto(name: Name, memberProto: Type, compat: Compatibility)(implicit ctx: Context) =
+      if ((name eq this.name) && (memberProto eq this.memberProto) && (compat eq this.compat)) this
+      else SelectionProto(name, memberProto, compat)
 
     override def equals(that: Any): Boolean = that match {
       case that: SelectionProto =>
-        (name eq that.name) && (refinedInfo == that.refinedInfo) && (compat eq that.compat)
+        (name eq that.name) && (memberProto == that.memberProto) && (compat eq that.compat)
       case _ =>
         false
     }
 
-    def map(tm: TypeMap)(implicit ctx: Context) = derivedSelectionProto(name, tm(proto), compat)
-    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context) = ta(x, this)
+    def map(tm: TypeMap)(implicit ctx: Context) = derivedSelectionProto(name, tm(memberProto), compat)
+    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context) = ta(x, memberProto)
 
-    override def computeHash = addDelta(doHash(name, proto), if (compat == NoViewsAllowed) 1 else 0)
+    override def computeHash = addDelta(doHash(name, memberProto), if (compat == NoViewsAllowed) 1 else 0)
   }
 
-  class CachedSelectionProto(name: Name, proto: Type, compat: Compatibility) extends SelectionProto(name, proto, compat)
+  class CachedSelectionProto(name: Name, memberProto: Type, compat: Compatibility) extends SelectionProto(name, memberProto, compat)
 
   object SelectionProto {
-    def apply(name: Name, proto: Type, compat: Compatibility)(implicit ctx: Context): SelectionProto = {
-      val rt = new CachedSelectionProto(name, proto, compat)
-      if (compat eq NoViewsAllowed) ctx.uniqueRefinedTypes.enterIfNew(rt).asInstanceOf[SelectionProto]
-      else rt
+    def apply(name: Name, memberProto: Type, compat: Compatibility)(implicit ctx: Context): SelectionProto = {
+      val selproto = new CachedSelectionProto(name, memberProto, compat)
+      if (compat eq NoViewsAllowed) unique(selproto) else selproto
     }
   }
 
@@ -552,7 +545,7 @@ object Inferencing {
       else
         tp.derivedOrType(tp1a, tp2a)
     case tp: SelectionProto =>
-      tp.derivedSelectionProto(tp.name, wildApprox(tp.refinedInfo), NoViewsAllowed)
+      tp.derivedSelectionProto(tp.name, wildApprox(tp.memberProto), NoViewsAllowed)
     case tp: ViewProto =>
       tp.derivedViewProto(wildApprox(tp.argType), wildApprox(tp.resultType))
     case  _: ThisType | _: BoundType | NoPrefix => // default case, inlined for speed

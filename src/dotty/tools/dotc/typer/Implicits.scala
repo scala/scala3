@@ -76,7 +76,7 @@ object Implicits {
 
         def discard = pt match {
           case pt: ViewProto => discardForView(ref.widen, pt.argType)
-          case _: ValueType => !defn.isFunctionType(pt) && discardForValueType(ref.widen)
+          case _: ValueTypeOrProto => !defn.isFunctionType(pt) && discardForValueType(ref.widen)
           case _ => false
         }
 

@@ -937,8 +937,11 @@ object Types {
   /** A marker trait for types that apply only to term symbols */
   trait TermType extends Type
 
+  /** A marker trait for types that can be types of values or prototypes of value types */
+  trait ValueTypeOrProto extends TermType
+
   /** A marker trait for types that can be types of values */
-  trait ValueType extends TermType
+  trait ValueType extends ValueTypeOrProto
 
   /** A marker trait for types that are guaranteed to contain only a
    *  single non-null value (they might contain null in addition).
@@ -1283,8 +1286,6 @@ object Types {
 
     override def underlying(implicit ctx: Context) = parent
 
-    protected def isProto: Boolean = false
-
     /** Derived refined type, with a twist: A refinement with a higher-kinded type param placeholder
      *  is transformed to a refinement of the original type parameter if that one exists.
      */
@@ -1315,8 +1316,7 @@ object Types {
       case that: RefinedType =>
         this.parent == that.parent &&
         this.refinedName == that.refinedName &&
-        this.refinedInfo == that.refinedInfo &&
-        !that.isProto
+        this.refinedInfo == that.refinedInfo
       case _ =>
         false
     }
