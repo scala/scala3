@@ -1,6 +1,6 @@
 language: scala
 script:
-  - sbt update compile test
+  - sbt -Ddotty.travis.build=yes update compile test
 jdk:
   - oraclejdk7
 notifications:
@@ -9,3 +9,7 @@ notifications:
 branches:
   only:
     - master
+before_install:
+  - cd ..
+  - git clone https://github.com/scala/scala.git
+  - cd dotty

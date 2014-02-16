@@ -4,6 +4,8 @@ import Process._
 
 object DottyBuild extends Build {
 
+  val TRAVIS_BUILD = "dotty.travis.build"
+
   val defaults = Defaults.defaultSettings ++ Seq(
     // set sources to src/, tests to test/ and resources to resources/
     scalaSource in Compile := baseDirectory.value / "src",
@@ -45,7 +47,14 @@ object DottyBuild extends Build {
        // dotty itself needs to be in the bootclasspath
        val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
        // System.err.println("BOOTPATH: " + fullpath)
-       fullpath
+
+       val travis_build = // propagate if this is a travis build
+         if (sys.props.isDefinedAt(TRAVIS_BUILD)) 
+           List(s"-D$TRAVIS_BUILD=${sys.props(TRAVIS_BUILD)}")
+         else 
+           List()
+
+       travis_build ::: fullpath
     }
   )
 
