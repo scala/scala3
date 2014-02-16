@@ -12,6 +12,11 @@ import org.junit.Test
 
 class ShowClassTests extends DottyTest {
 
+  def debug_println(msg: => Any) = {
+    if (!sys.props.isDefinedAt("dotty.travis.build"))
+      println(msg)
+  }
+
   private val blackList = List(
     // the following classes cannot be read correctly because they
     // contain illegally pickled @throws annotations
@@ -44,12 +49,12 @@ class ShowClassTests extends DottyTest {
   def showPackage(pkg: TermSymbol)(implicit ctx: Context): Unit = {
     val path = pkg.fullName.toString
     if (blackList contains path)
-      println(s"blacklisted package: $path")
+      debug_println(s"blacklisted package: $path")
     else {
       for (
         sym <- pkg.info.decls if sym.owner == pkg.moduleClass && !(sym.name contains '$')
       ) {
-        println(s"showing $sym in ${pkg.fullName}")
+        debug_println(s"showing $sym in ${pkg.fullName}")
         if (sym is PackageVal) showPackage(sym.asTerm)
         else if (sym.isClass && !(sym is Module)) showClass(sym)
         else if (sym is ModuleVal) showClass(sym.moduleClass)
@@ -60,25 +65,25 @@ class ShowClassTests extends DottyTest {
   def showPackage(path: String, expectedStubs: Int)(implicit ctx: Context): Unit = doTwice { implicit ctx =>
     showPackage(ctx.requiredPackage(path))
     val nstubs = Symbols.stubs.length
-    println(s"$nstubs stubs")
+    debug_println(s"$nstubs stubs")
     assert(nstubs <= expectedStubs, s"stubs found $nstubs, expected: $expectedStubs")
   }
 
   def showClass(cls: Symbol)(implicit ctx: Context) = {
     val path = cls.fullName.stripModuleClassSuffix.toString
     if (blackList contains path)
-      println(s"blacklisted: $path")
+      debug_println(s"blacklisted: $path")
     else {
-      println(s"showing $path -> ${cls.denot}")
+      debug_println(s"showing $path -> ${cls.denot}")
       val cinfo = cls.info
       val infoStr = if (cinfo.exists) cinfo.show else " is missing"
-      println("======================================")
-      println(cls.show + infoStr)
+      debug_println("======================================")
+      debug_println(cls.show + infoStr)
     }
   }
 
   def showClasses(path: String)(implicit ctx: Context): Unit = doTwice { implicit ctx =>
-    println(s"showing file $path")
+    debug_println(s"showing file $path")
     val cls = ctx.requiredClass(path.toTypeName)
     showClass(cls)
     showClass(cls.linkedClass)
