@@ -115,7 +115,7 @@ object Erasure {
       if (parent isRef defn.ArrayClass)
         eraseArray(tp) match {
           case tp1: RefinedType if tp1.parent isRef defn.ArrayClass =>
-            sigName(tp1.refinedInfo) ++ "[]"
+            sigName(tp1.compactInfo) ++ "[]"
           case tp1 =>
             sigName(tp1)
         }

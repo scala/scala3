@@ -17,7 +17,7 @@ trait Substituters { this: Context =>
       case _: ThisType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(subst(tp.parent, from, to, map), tp.refinedName, subst(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(subst(tp.parent, from, to, map), tp.refinedName, subst(tp.compactInfo, from, to, map))
       case _ =>
         (if (map != null) map else new SubstBindingMap(from, to))
           .mapOver(tp)
@@ -33,7 +33,7 @@ trait Substituters { this: Context =>
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(subst1(tp.parent, from, to, map), tp.refinedName, subst1(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(subst1(tp.parent, from, to, map), tp.refinedName, subst1(tp.compactInfo, from, to, map))
       case _ =>
         (if (map != null) map else new Subst1Map(from, to))
           .mapOver(tp)
@@ -51,7 +51,7 @@ trait Substituters { this: Context =>
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(subst2(tp.parent, from1, to1, from2, to2, map), tp.refinedName, subst2(tp.refinedInfo, from1, to1, from2, to2, map))
+        tp.derivedRefinedType(subst2(tp.parent, from1, to1, from2, to2, map), tp.refinedName, subst2(tp.compactInfo, from1, to1, from2, to2, map))
       case _ =>
         (if (map != null) map else new Subst2Map(from1, to1, from2, to2))
           .mapOver(tp)
@@ -74,7 +74,7 @@ trait Substituters { this: Context =>
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(subst(tp.parent, from, to, map), tp.refinedName, subst(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(subst(tp.parent, from, to, map), tp.refinedName, subst(tp.compactInfo, from, to, map))
       case _ =>
         (if (map != null) map else new SubstMap(from, to))
           .mapOver(tp)
@@ -97,7 +97,7 @@ trait Substituters { this: Context =>
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(substSym(tp.parent, from, to, map), tp.refinedName, substSym(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(substSym(tp.parent, from, to, map), tp.refinedName, substSym(tp.compactInfo, from, to, map))
       case _ =>
         (if (map != null) map else new SubstSymMap(from, to))
           .mapOver(tp)
@@ -113,7 +113,7 @@ trait Substituters { this: Context =>
       case _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(substThis(tp.parent, from, to, map), tp.refinedName, substThis(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(substThis(tp.parent, from, to, map), tp.refinedName, substThis(tp.compactInfo, from, to, map))
       case _ =>
         (if (map != null) map else new SubstThisMap(from, to))
           .mapOver(tp)
@@ -129,7 +129,7 @@ trait Substituters { this: Context =>
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(substThis(tp.parent, from, to, map), tp.refinedName, substThis(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(substThis(tp.parent, from, to, map), tp.refinedName, substThis(tp.compactInfo, from, to, map))
       case _ =>
         (if (map != null) map else new SubstRefinedThisMap(from, to))
           .mapOver(tp)
@@ -145,7 +145,7 @@ trait Substituters { this: Context =>
       case _: ThisType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(substParam(tp.parent, from, to, map), tp.refinedName, substParam(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(substParam(tp.parent, from, to, map), tp.refinedName, substParam(tp.compactInfo, from, to, map))
       case _ =>
         (if (map != null) map else new SubstParamMap(from, to))
           .mapOver(tp)
@@ -161,7 +161,7 @@ trait Substituters { this: Context =>
       case _: ThisType | NoPrefix | _: RefinedThis =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(substParams(tp.parent, from, to, map), tp.refinedName, substParams(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(substParams(tp.parent, from, to, map), tp.refinedName, substParams(tp.compactInfo, from, to, map))
       case _ =>
         (if (map != null) map else new SubstParamsMap(from, to))
           .mapOver(tp)

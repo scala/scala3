@@ -92,20 +92,21 @@ object Uniques {
     }
   }
 
+  /** Todo: clean up once the initialization scheme for refined types is decided */
   final class RefinedUniques extends HashSet[RefinedType]("uniqueRefinedTypes", initialUniquesCapacity) with Hashable {
-    override val hashSeed = classOf[CachedRefinedType].hashCode // some types start life as CachedRefinedTypes, need to have same hash seed
+//    override val hashSeed = classOf[DerivedRefinedType].hashCode // some types start life as DerivedRefinedTypes, need to have same hash seed
     override def hash(x: RefinedType): Int = x.hash
 
-    private def findPrevious(h: Int, parent: Type, refinedName: Name, refinedInfo: Type): RefinedType = {
+    private def findPrevious(h: Int, parent: Type, refinedName: Name, compactInfo: Type): RefinedType = {
       var e = findEntryByHash(h)
       while (e != null) {
-        if ((e.parent == parent) && (e.refinedName eq refinedName) && (e.refinedInfo == refinedInfo))
+        if ((e.parent == parent) && (e.refinedName eq refinedName) && (e.compactInfo == compactInfo))
           return e
         e = nextEntryByHash(h)
       }
       e
     }
-
+/*
     def enterIfNew(parent: Type, refinedName: Name, refinedInfo: Type): RefinedType = {
       val h = doHash(refinedName, refinedInfo, parent)
       def newType = new PreHashedRefinedType(parent, refinedName, refinedInfo, h)
@@ -116,12 +117,12 @@ object Uniques {
         if (r ne null) r else addEntryAfterScan(newType)
       }
     }
-
+*/
     def enterIfNew(rt: RefinedType) = {
       if (monitored) recordCaching(rt)
       if (rt.hash == NotCached) rt
       else {
-        val r = findPrevious(rt.hash, rt.parent, rt.refinedName, rt.refinedInfo)
+        val r = findPrevious(rt.hash, rt.parent, rt.refinedName, rt.compactInfo)
         if (r ne null) r else addEntryAfterScan(rt)
       }
     }

@@ -35,7 +35,7 @@ trait TypeOps { this: Context =>
           tp.derivedRefinedType(
             asSeenFrom(tp.parent, pre, cls, theMap),
             tp.refinedName,
-            asSeenFrom(tp.refinedInfo, pre, cls, theMap))
+            asSeenFrom(tp.compactInfo, pre, cls, theMap))
         case _ =>
           (if (theMap != null) theMap else new AsSeenFromMap(pre, cls))
             .mapOver(tp)
@@ -57,7 +57,7 @@ trait TypeOps { this: Context =>
     case  _: ThisType | _: BoundType | NoPrefix =>
       tp
     case tp: RefinedType =>
-      tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
+      tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.compactInfo, theMap))
     case AndType(l, r) =>
       simplify(l, theMap) & simplify(r, theMap)
     case OrType(l, r) =>

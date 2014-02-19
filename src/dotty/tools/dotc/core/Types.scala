@@ -620,10 +620,8 @@ object Types {
     def lookupRefined(pre: Type, name: Name)(implicit ctx: Context): Type = pre.stripTypeVar match {
       case pre: RefinedType =>
         if (pre.refinedName ne name) lookupRefined(pre.parent, name)
-        else pre.refinedInfo match {
-          case TypeBounds(lo, hi) if lo eq hi => hi
-          case _ => NoType
-        }
+        else if (pre.isAliasRefinement) pre.compactInfo
+        else NoType
       case pre: WildcardType =>
         WildcardType
       case _ =>
@@ -1282,14 +1280,40 @@ object Types {
   abstract case class RefinedType(parent: Type, refinedName: Name)
     extends CachedProxyType with BindingType with ValueType {
 
-    val refinedInfo: Type
+    /** The compact info: avoid having a TypeBounds for aliases.
+     *  The full TypeBounds form is reconstituted in refinedInfo
+     */
+    val compactInfo: Type
+
+    /** If this is an encoded alias type, its variance */
+    def boundsVariance: Int
+
+    /** Is the refinement an alias type? */
+    def isAliasRefinement = refinedName.isTypeName && !compactInfo.isInstanceOf[TypeType]
+
+    /** The refinement in standardized form (for a type alias or abstract type,
+     *  this is always a TypeBounds
+     */
+    def refinedInfo(implicit ctx: Context): Type =
+      if (isAliasRefinement) TypeAlias(compactInfo, boundsVariance)
+      else compactInfo
+
+    if (monitored)
+      compactInfo match {
+        case TypeBounds(lo, hi) => assert(lo ne hi)
+          record("surviving type bounds")
+          assert(lo ne hi)
+        case _ =>
+          if (isAliasRefinement) record("alias refinements")
+          else record("plain refinements")
+      }
 
     override def underlying(implicit ctx: Context) = parent
 
     /** Derived refined type, with a twist: A refinement with a higher-kinded type param placeholder
      *  is transformed to a refinement of the original type parameter if that one exists.
      */
-    def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
+    def derivedRefinedType(parent: Type, refinedName: Name, compactInfo: Type)(implicit ctx: Context): RefinedType = {
       lazy val underlyingTypeParams = parent.safeUnderlyingTypeParams
       lazy val originalTypeParam = underlyingTypeParams(refinedName.hkParamIndex)
 
@@ -1301,50 +1325,95 @@ object Types {
         else TypeBounds(hkBounds.lo, hkBounds.hi)
       }
 
-      if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))
+      if ((parent eq this.parent) && (refinedName eq this.refinedName) && (compactInfo eq this.compactInfo))
         this
       else if (   refinedName.isHkParamName
  //            && { println(s"deriving $refinedName $parent $underlyingTypeParams"); true }
                && refinedName.hkParamIndex < underlyingTypeParams.length
                && originalTypeParam.name != refinedName)
-        derivedRefinedType(parent, originalTypeParam.name, adjustedHKRefinedInfo(refinedInfo.bounds))
+        RefinedType(parent, originalTypeParam.name, adjustedHKRefinedInfo(refinedInfo.bounds))
       else
-        RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
+        RefinedType.compact(parent, refinedName, compactInfo, boundsVariance, this)
     }
 
     override def equals(that: Any) = that match {
       case that: RefinedType =>
         this.parent == that.parent &&
         this.refinedName == that.refinedName &&
-        this.refinedInfo == that.refinedInfo
+        this.compactInfo == that.compactInfo &&
+        this.boundsVariance == that.boundsVariance
       case _ =>
         false
     }
-    override def computeHash = doHash(refinedName, refinedInfo, parent)
-    override def toString = s"RefinedType($parent, $refinedName, $refinedInfo)"
+    override def computeHash = addDelta(doHash(refinedName, compactInfo, parent), boundsVariance)
+    override def toString = s"RefinedType($parent, $refinedName, $compactInfo)"
   }
 
-  class CachedRefinedType(parent: Type, refinedName: Name, infoFn: RefinedType => Type) extends RefinedType(parent, refinedName) {
-    val refinedInfo = infoFn(this)
+  /** Main implementation class of refined type */
+  class DerivedRefinedType(parent: Type, refinedName: Name, cinfo: Type, derivedFrom: Type)(implicit ctx: Context) extends RefinedType(parent, refinedName) {
+    val compactInfo = derivedFrom match {
+      case rt: RefinedType => cinfo.substThis(rt, RefinedThis(this))
+      case _ => cinfo
+    }
+    def boundsVariance = 0
   }
 
+  /** Implementation class for covariant alias refinements */
+  class CoRefinedType(parent: Type, refinedName: Name, cinfo: Type, derivedFrom: Type)(implicit ctx: Context)
+  extends DerivedRefinedType(parent, refinedName, cinfo, derivedFrom) {
+    override def boundsVariance = +1
+  }
+
+  /** Implementation class for contravariant alias refinements */
+  class ContraRefinedType(parent: Type, refinedName: Name, cinfo: Type, derivedFrom: Type)(implicit ctx: Context)
+  extends DerivedRefinedType(parent, refinedName, cinfo, derivedFrom) {
+    override def boundsVariance = -1
+  }
+
+  /** A dummy refined type used for bootstrapping when the refined info is given as a function
+   *  from the refined type itself.
+   */
+  class DummyRefinedType(parent: Type, name: Name)
+  extends RefinedType(parent, name) {
+    override def computeHash = NotCached
+    val compactInfo = NoType
+    val boundsVariance = 0
+  }
+
+/*
   class PreHashedRefinedType(parent: Type, refinedName: Name, override val refinedInfo: Type, hc: Int)
   extends RefinedType(parent, refinedName) {
     myHash = hc
     override def computeHash = unsupported("computeHash")
   }
-
+*/
   object RefinedType {
     def make(parent: Type, names: List[Name], infoFns: List[RefinedType => Type])(implicit ctx: Context): Type =
       if (names.isEmpty) parent
       else make(RefinedType(parent, names.head, infoFns.head), names.tail, infoFns.tail)
 
-    def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType =
-      ctx.base.uniqueRefinedTypes.enterIfNew(new CachedRefinedType(parent, name, infoFn))
-
-    def apply(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType = {
-      ctx.base.uniqueRefinedTypes.enterIfNew(parent, name, info)
+    def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType = {
+      val dummy = new DummyRefinedType(parent, name)
+      apply(parent, name, infoFn(dummy), dummy)
     }
+
+    def apply(parent: Type, name: Name, info: Type, derivedFrom: Type = NoType)(implicit ctx: Context): RefinedType = {
+      info match {
+        case bounds @ TypeBounds(lo, hi) if lo eq hi =>
+          assert(name.isTypeName)
+          compact(parent, name, hi, bounds.variance, derivedFrom)
+        case _ =>
+          compact(parent, name, info, 0, derivedFrom)
+      }
+    }
+
+    def compact(parent: Type, name: Name, compactInfo: Type, boundsVariance: Int, derivedFrom: Type = NoType)(implicit ctx: Context): RefinedType =
+      ctx.base.uniqueRefinedTypes.enterIfNew {
+        if (boundsVariance == 0) new DerivedRefinedType(parent, name, compactInfo, derivedFrom)
+        else if (boundsVariance > 0) new CoRefinedType(parent, name, compactInfo, derivedFrom)
+        else new ContraRefinedType(parent, name, compactInfo, derivedFrom)
+      }
+      // ctx.base.uniqueRefinedTypes.enterIfNew(parent, name, info)
   }
 
   // --- AndType/OrType ---------------------------------------------------------------
@@ -1806,7 +1875,7 @@ object Types {
     private def computeSelfType(base: Type, tparams: List[TypeSymbol])(implicit ctx: Context): Type = tparams match {
       case tparam :: tparams1 =>
         computeSelfType(
-          RefinedType(base, tparam.name, TypeRef(cls.thisType, tparam).toBounds(tparam)),
+          base.paramRefinement(tparam, TypeRef(cls.thisType, tparam)),
           tparams1)
       case nil =>
         base
@@ -1946,6 +2015,7 @@ object Types {
     override def variance = 1
     override def toString = "Co" + super.toString
   }
+
   final class ContraTypeBounds(lo: Type, hi: Type, hc: Int) extends CachedTypeBounds(lo, hi, hc) {
     override def variance = -1
     override def toString = "Contra" + super.toString
@@ -2099,7 +2169,7 @@ object Types {
          | NoPrefix => tp
 
       case tp: RefinedType =>
-        tp.derivedRefinedType(this(tp.parent), tp.refinedName, this(tp.refinedInfo))
+        tp.derivedRefinedType(this(tp.parent), tp.refinedName, this(tp.compactInfo))
 
       case tp @ MethodType(pnames, ptypes) =>
         variance = -variance
@@ -2223,7 +2293,12 @@ object Types {
          | NoPrefix => x
 
       case tp: RefinedType =>
-        this(this(x, tp.parent), tp.refinedInfo)
+        val y = this(x, tp.parent)
+        val saved = variance
+        if (tp.isAliasRefinement) variance = variance * tp.boundsVariance
+        val result = this(y, tp.compactInfo)
+        variance = saved
+        result
 
       case tp @ MethodType(pnames, ptypes) =>
         variance = -variance
