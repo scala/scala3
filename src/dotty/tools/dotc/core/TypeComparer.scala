@@ -423,8 +423,13 @@ class TypeComparer(initctx: Context) extends DotClass {
             ancestor2.exists && isSubType(tp1, ancestor2)
           }
         case _ =>
+          def qualifies(m: SingleDenotation) = isSubType(m.info, tp2.refinedInfo)
+          def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
+            case mbr: SingleDenotation => qualifies(mbr)
+            case _ => mbr hasAltWith qualifies
+          }
           def hasMatchingMember(name: Name): Boolean = /*>|>*/ ctx.traceIndented(s"hasMatchingMember($name) ${tp1.member(name)}", subtyping) /*<|<*/ (
-               tp1.member(name).hasAltWith(alt => isSubType(alt.info, tp2.refinedInfo))
+               memberMatches(tp1 member name)
             ||
                // special case for situations like:
                //    foo <: C { type T = foo.T }
