@@ -15,7 +15,7 @@ import annotation.tailrec
  *  get promoted to be first in the queue. Elements are evicted
  *  at the `last` position.
  */
-class LRUCache[Key >: Null : ClassTag, Value >: Null: ClassTag] {
+class LRUCache[Key >: Null <: AnyRef : ClassTag, Value >: Null: ClassTag] {
   import LRUCache._
   val keys = new Array[Key](Retained)
   val values = new Array[Value](Retained)
@@ -33,7 +33,7 @@ class LRUCache[Key >: Null : ClassTag, Value >: Null: ClassTag] {
     @tailrec
     def lookupNext(prev: Int, current: Int, nx: SixteenNibbles): Value = {
       val follow = nx(current)
-      if (keys(current) == key) {
+      if (keys(current) eq key) {
         // arrange so that found element is at position `first`.
         if (current == last) last = prev
         else if (prev != last) {
