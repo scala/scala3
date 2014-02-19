@@ -872,7 +872,7 @@ object SymDenotations {
           to
       }
       myBaseClasses = classSymbol :: addParentBaseClasses(classParents, Nil)
-      mySuperClassBits = ctx.uniqueBits.findEntryOrUpdate(seen.toImmutable)
+      mySuperClassBits = seen.toImmutable
     }
 
     /** A bitset that contains the superId's of all base classes */

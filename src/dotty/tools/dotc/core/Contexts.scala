@@ -420,13 +420,6 @@ object Contexts {
       lastSuperId
     }
 
-    // SymDenotations state
-    /** A table where unique superclass bits are kept.
-     *  These are bitsets that contain the superclass ids of all base classes of a class.
-     *  Used to speed up isSubClass tests.
-     */
-    private[core] val uniqueBits = new util.HashSet[BitSet]("superbits", 1024)
-
     // Types state
     /** A table for hash consing unique types */
     private[core] val uniques = new util.HashSet[Type]("uniques", initialUniquesCapacity) {
