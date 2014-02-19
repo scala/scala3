@@ -30,7 +30,7 @@ class HashSet[T >: Null <: AnyRef](val label: String, initialCapacity: Int) exte
     var h = index(hash(x))
     var entry = table(h)
     while (entry ne null) {
-      if (x == entry)
+      if (x equals entry)
         return entry.asInstanceOf[T]
 
       h = index(h + 1)
@@ -49,7 +49,7 @@ class HashSet[T >: Null <: AnyRef](val label: String, initialCapacity: Int) exte
   def findEntry(x: T): T = {
     var h = index(hash(x))
     var entry = table(h)
-    while ((entry ne null) && x != entry) {
+    while ((entry ne null) && !(x equals entry)) {
       h = index(h + 1)
       entry = table(h)
     }
@@ -79,7 +79,7 @@ class HashSet[T >: Null <: AnyRef](val label: String, initialCapacity: Int) exte
     var h = index(hash(x))
     var entry = table(h)
     while (entry ne null) {
-      if (x == entry) return
+      if (x equals entry) return
       h = index(h + 1)
       entry = table(h)
     }
