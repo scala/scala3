@@ -521,6 +521,10 @@ object Inferencing {
     case tp: NamedType => // default case, inlined for speed
       if (tp.symbol.isStatic) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap))
+    case tp: RefinedType => // default case, inlined for speed
+      tp.derivedRefinedType(wildApprox(tp.parent, theMap), tp.refinedName, wildApprox(tp.refinedInfo, theMap))
+    case tp: TypeBounds if tp.lo eq tp.hi => // default case, inlined for speed
+      tp.derivedTypeAlias(wildApprox(tp.lo, theMap))
     case PolyParam(pt, pnum) =>
       WildcardType(wildApprox(pt.paramBounds(pnum)).bounds)
     case MethodParam(mt, pnum) =>
@@ -554,8 +558,6 @@ object Inferencing {
       tp.derivedViewProto(wildApprox(tp.argType), wildApprox(tp.resultType))
     case  _: ThisType | _: BoundType | NoPrefix => // default case, inlined for speed
       tp
-    case tp: RefinedType => // default case, inlined for speed
-      tp.derivedRefinedType(wildApprox(tp.parent, theMap), tp.refinedName, wildApprox(tp.refinedInfo, theMap))
     case _ =>
       (if (theMap != null) theMap else new WildApproxMap).mapOver(tp)
   }

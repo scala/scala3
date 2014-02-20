@@ -7,58 +7,64 @@ import Types._, Symbols._, Contexts._
  */
 trait Substituters { this: Context =>
 
-  final def subst(tp: Type, from: BindingType, to: BindingType, map: SubstBindingMap): Type =
+  final def subst(tp: Type, from: BindingType, to: BindingType, theMap: SubstBindingMap): Type =
     tp match {
       case tp: BoundType =>
         if (tp.binder eq from) tp.copyBoundType(to.asInstanceOf[tp.BT]) else tp
       case tp: NamedType =>
         if (tp.symbol.isStatic) tp
-        else tp.derivedSelect(subst(tp.prefix, from, to, map))
+        else tp.derivedSelect(subst(tp.prefix, from, to, theMap))
       case _: ThisType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(subst(tp.parent, from, to, map), tp.refinedName, subst(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(subst(tp.parent, from, to, theMap), tp.refinedName, subst(tp.refinedInfo, from, to, theMap))
+      case tp: TypeBounds if tp.lo eq tp.hi =>
+        tp.derivedTypeAlias(subst(tp.lo, from, to, theMap))
       case _ =>
-        (if (map != null) map else new SubstBindingMap(from, to))
+        (if (theMap != null) theMap else new SubstBindingMap(from, to))
           .mapOver(tp)
     }
 
-  final def subst1(tp: Type, from: Symbol, to: Type, map: Subst1Map): Type = {
+  final def subst1(tp: Type, from: Symbol, to: Type, theMap: Subst1Map): Type = {
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
         if (sym eq from) return to
         if (sym.isStatic && !from.isStatic) tp
-        else tp.derivedSelect(subst1(tp.prefix, from, to, map))
+        else tp.derivedSelect(subst1(tp.prefix, from, to, theMap))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(subst1(tp.parent, from, to, map), tp.refinedName, subst1(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(subst1(tp.parent, from, to, theMap), tp.refinedName, subst1(tp.refinedInfo, from, to, theMap))
+      case tp: TypeBounds if tp.lo eq tp.hi =>
+        tp.derivedTypeAlias(subst1(tp.lo, from, to, theMap))
       case _ =>
-        (if (map != null) map else new Subst1Map(from, to))
+        (if (theMap != null) theMap else new Subst1Map(from, to))
           .mapOver(tp)
     }
   }
 
-  final def subst2(tp: Type, from1: Symbol, to1: Type, from2: Symbol, to2: Type, map: Subst2Map): Type = {
+  final def subst2(tp: Type, from1: Symbol, to1: Type, from2: Symbol, to2: Type, theMap: Subst2Map): Type = {
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
         if (sym eq from1) return to1
         if (sym eq from2) return to2
         if (sym.isStatic && !from1.isStatic && !from2.isStatic) tp
-        else tp.derivedSelect(subst2(tp.prefix, from1, to1, from2, to2, map))
+        else tp.derivedSelect(subst2(tp.prefix, from1, to1, from2, to2, theMap))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(subst2(tp.parent, from1, to1, from2, to2, map), tp.refinedName, subst2(tp.refinedInfo, from1, to1, from2, to2, map))
+        tp.derivedRefinedType(subst2(tp.parent, from1, to1, from2, to2, theMap), tp.refinedName, subst2(tp.refinedInfo, from1, to1, from2, to2, theMap))
+      case tp: TypeBounds if tp.lo eq tp.hi =>
+        tp.derivedTypeAlias(subst2(tp.lo, from1, to1, from2, to2, theMap))
       case _ =>
-        (if (map != null) map else new Subst2Map(from1, to1, from2, to2))
+        (if (theMap != null) theMap else new Subst2Map(from1, to1, from2, to2))
           .mapOver(tp)
     }
   }
 
-  final def subst(tp: Type, from: List[Symbol], to: List[Type], map: SubstMap): Type = {
+  final def subst(tp: Type, from: List[Symbol], to: List[Type], theMap: SubstMap): Type = {
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -70,18 +76,20 @@ trait Substituters { this: Context =>
           ts = ts.tail
         }
         if (sym.isStatic && !existsStatic(from)) tp
-        else tp.derivedSelect(subst(tp.prefix, from, to, map))
+        else tp.derivedSelect(subst(tp.prefix, from, to, theMap))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(subst(tp.parent, from, to, map), tp.refinedName, subst(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(subst(tp.parent, from, to, theMap), tp.refinedName, subst(tp.refinedInfo, from, to, theMap))
+      case tp: TypeBounds if tp.lo eq tp.hi =>
+        tp.derivedTypeAlias(subst(tp.lo, from, to, theMap))
       case _ =>
-        (if (map != null) map else new SubstMap(from, to))
+        (if (theMap != null) theMap else new SubstMap(from, to))
           .mapOver(tp)
     }
   }
 
-  final def substSym(tp: Type, from: List[Symbol], to: List[Symbol], map: SubstSymMap): Type =
+  final def substSym(tp: Type, from: List[Symbol], to: List[Symbol], theMap: SubstSymMap): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -93,77 +101,87 @@ trait Substituters { this: Context =>
           ts = ts.tail
         }
         if (sym.isStatic && !existsStatic(from)) tp
-        else tp.derivedSelect(substSym(tp.prefix, from, to, map))
+        else tp.derivedSelect(substSym(tp.prefix, from, to, theMap))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(substSym(tp.parent, from, to, map), tp.refinedName, substSym(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(substSym(tp.parent, from, to, theMap), tp.refinedName, substSym(tp.refinedInfo, from, to, theMap))
+      case tp: TypeBounds if tp.lo eq tp.hi =>
+        tp.derivedTypeAlias(substSym(tp.lo, from, to, theMap))
       case _ =>
-        (if (map != null) map else new SubstSymMap(from, to))
+        (if (theMap != null) theMap else new SubstSymMap(from, to))
           .mapOver(tp)
     }
 
-  final def substThis(tp: Type, from: ClassSymbol, to: Type, map: SubstThisMap): Type =
+  final def substThis(tp: Type, from: ClassSymbol, to: Type, theMap: SubstThisMap): Type =
     tp match {
       case tp @ ThisType(clazz) =>
         if (clazz eq from) to else tp
       case tp: NamedType =>
         if (tp.symbol.isStaticOwner) tp
-        else tp.derivedSelect(substThis(tp.prefix, from, to, map))
+        else tp.derivedSelect(substThis(tp.prefix, from, to, theMap))
       case _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(substThis(tp.parent, from, to, map), tp.refinedName, substThis(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(substThis(tp.parent, from, to, theMap), tp.refinedName, substThis(tp.refinedInfo, from, to, theMap))
+      case tp: TypeBounds if tp.lo eq tp.hi =>
+        tp.derivedTypeAlias(substThis(tp.lo, from, to, theMap))
       case _ =>
-        (if (map != null) map else new SubstThisMap(from, to))
+        (if (theMap != null) theMap else new SubstThisMap(from, to))
           .mapOver(tp)
     }
 
-  final def substThis(tp: Type, from: RefinedType, to: Type, map: SubstRefinedThisMap): Type =
+  final def substThis(tp: Type, from: RefinedType, to: Type, theMap: SubstRefinedThisMap): Type =
     tp match {
       case tp @ RefinedThis(rt) =>
         if (rt eq from) to else tp
       case tp: NamedType =>
         if (tp.symbol.isStatic) tp
-        else tp.derivedSelect(substThis(tp.prefix, from, to, map))
+        else tp.derivedSelect(substThis(tp.prefix, from, to, theMap))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(substThis(tp.parent, from, to, map), tp.refinedName, substThis(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(substThis(tp.parent, from, to, theMap), tp.refinedName, substThis(tp.refinedInfo, from, to, theMap))
+      case tp: TypeBounds if tp.lo eq tp.hi =>
+        tp.derivedTypeAlias(substThis(tp.lo, from, to, theMap))
       case _ =>
-        (if (map != null) map else new SubstRefinedThisMap(from, to))
+        (if (theMap != null) theMap else new SubstRefinedThisMap(from, to))
           .mapOver(tp)
     }
 
-  final def substParam(tp: Type, from: ParamType, to: Type, map: SubstParamMap): Type =
+  final def substParam(tp: Type, from: ParamType, to: Type, theMap: SubstParamMap): Type =
     tp match {
       case tp: BoundType =>
         if (tp == from) to else tp
       case tp: NamedType =>
         if (tp.symbol.isStatic) tp
-        else tp.derivedSelect(substParam(tp.prefix, from, to, map))
+        else tp.derivedSelect(substParam(tp.prefix, from, to, theMap))
       case _: ThisType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(substParam(tp.parent, from, to, map), tp.refinedName, substParam(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(substParam(tp.parent, from, to, theMap), tp.refinedName, substParam(tp.refinedInfo, from, to, theMap))
+      case tp: TypeBounds if tp.lo eq tp.hi =>
+        tp.derivedTypeAlias(substParam(tp.lo, from, to, theMap))
       case _ =>
-        (if (map != null) map else new SubstParamMap(from, to))
+        (if (theMap != null) theMap else new SubstParamMap(from, to))
           .mapOver(tp)
     }
 
-  final def substParams(tp: Type, from: BindingType, to: List[Type], map: SubstParamsMap): Type =
+  final def substParams(tp: Type, from: BindingType, to: List[Type], theMap: SubstParamsMap): Type =
     tp match {
       case tp: ParamType =>
         if (tp.binder == from) to(tp.paramNum) else tp
       case tp: NamedType =>
         if (tp.symbol.isStatic) tp
-        else tp.derivedSelect(substParams(tp.prefix, from, to, map))
+        else tp.derivedSelect(substParams(tp.prefix, from, to, theMap))
       case _: ThisType | NoPrefix | _: RefinedThis =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(substParams(tp.parent, from, to, map), tp.refinedName, substParams(tp.refinedInfo, from, to, map))
+        tp.derivedRefinedType(substParams(tp.parent, from, to, theMap), tp.refinedName, substParams(tp.refinedInfo, from, to, theMap))
+      case tp: TypeBounds if tp.lo eq tp.hi =>
+        tp.derivedTypeAlias(substParams(tp.lo, from, to, theMap))
       case _ =>
-        (if (map != null) map else new SubstParamsMap(from, to))
+        (if (theMap != null) theMap else new SubstParamsMap(from, to))
           .mapOver(tp)
     }
 

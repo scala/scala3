@@ -1871,6 +1871,11 @@ object Types {
       if ((lo eq this.lo) && (hi eq this.hi) && (variance == this.variance)) this
       else TypeBounds(lo, hi, variance)
 
+    /** pre: this is a type alias */
+    def derivedTypeAlias(tp: Type, variance: Int = this.variance)(implicit ctx: Context) =
+      if (lo eq tp) this
+      else TypeAlias(tp, variance)
+
     def contains(tp: Type)(implicit ctx: Context) = lo <:< tp && tp <:< hi
 
     def & (that: TypeBounds)(implicit ctx: Context): TypeBounds =
@@ -2124,8 +2129,9 @@ object Types {
         if (lo eq hi) {
           val saved = variance
           variance = variance * tp.variance
-          val lo1 = try this(lo) finally variance = saved
-          tp.derivedTypeBounds(lo1, lo1)
+          val lo1 = this(lo)
+          variance = saved
+          tp.derivedTypeAlias(lo1)
         } else {
           variance = -variance
           val lo1 = this(lo)
@@ -2247,8 +2253,9 @@ object Types {
         if (lo eq hi) {
           val saved = variance
           variance = variance * bounds.variance
-          try this(x, lo)
-          finally variance = saved
+          val result = this(x, lo)
+          variance = saved
+          result
         }
         else {
           variance = -variance
