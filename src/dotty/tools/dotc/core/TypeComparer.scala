@@ -166,7 +166,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       override def stopAtStatic = true
       def apply(tp: Type) = mapOver {
         tp match {
-          case tp: RefinedType if param occursIn tp.compactInfo => tp.parent
+          case tp: RefinedType if param occursIn tp.refinedInfo => tp.parent
           case _ => tp
         }
       }
@@ -408,7 +408,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         case tp1 @ RefinedType(parent1, name1) if !(seen contains name1) =>
           tp2 match {
             case tp2 @ RefinedType(parent2, name2) if nameMatches(name1, name2, tp1, tp2) =>
-              if (refinementIsSubType(tp1, tp2))
+              if (isSubType(tp1.refinedInfo, tp2.refinedInfo))
                 matchRefinements(parent1, parent2, seen + name1)
               else NoType
             case _ => tp2
@@ -418,7 +418,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       def compareRefined: Boolean = tp1.widen match {
         case tp1 @ RefinedType(parent1, name1) if nameMatches(name1, name2, tp1, tp2) =>
           // optimized case; all info on tp1.name2 is in refinement tp1.refinedInfo.
-          refinementIsSubType(tp1, tp2) && {
+          isSubType(tp1.refinedInfo, tp2.refinedInfo) && {
             val ancestor2 = matchRefinements(parent1, parent2, Set.empty + name1)
             ancestor2.exists && isSubType(tp1, ancestor2)
           }
@@ -431,9 +431,15 @@ class TypeComparer(initctx: Context) extends DotClass {
           def hasMatchingMember(name: Name): Boolean = /*>|>*/ ctx.traceIndented(s"hasMatchingMember($name) ${tp1.member(name)}", subtyping) /*<|<*/ (
                memberMatches(tp1 member name)
             ||
-               // special case for situations like:
-               //    foo <: C { type T = foo.T }
-               tp2.isAliasRefinement && (tp1 select name) =:= tp2.compactInfo
+               { // special case for situations like:
+                 //    foo <: C { type T = foo.T }
+                 tp2.refinedInfo match {
+                   case TypeBounds(lo, hi) if lo eq hi =>
+                     val ref = tp1 select name
+                     isSubType(ref, lo) && isSubType(hi, ref)
+                   case _ => false
+                 }
+               }
             ||
                name.isHkParamName && {
                  val idx = name.hkParamIndex
@@ -486,7 +492,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp2 @ TypeBounds(lo2, hi2) =>
       def compareTypeBounds = tp1 match {
         case tp1 @ TypeBounds(lo1, hi1) =>
-          val v = tp1.variance + tp2.variance  // !!! todo: revisit
+          val v = tp1.variance + tp2.variance
           ((v > 0) || (lo2 isRef NothingClass) || isSubType(lo2, lo1)) &&
           ((v < 0) || (hi2 isRef AnyClass) || isSubType(hi1, hi2))
         case tp1: ClassInfo =>
@@ -525,19 +531,6 @@ class TypeComparer(initctx: Context) extends DotClass {
       isNewSubType(tp11, tp2) || isNewSubType(tp12, tp2)
     case _ =>
       false
-  }
-
-  def refinementIsSubType(rt1: RefinedType, rt2: RefinedType): Boolean = {
-    if (rt1 eq rt2) return true
-    if (rt1.isAliasRefinement)
-      if (rt2.isAliasRefinement) {
-        if (rt2.boundsVariance > 0 && rt1.boundsVariance >= 0)
-          return isSubType(rt1.compactInfo, rt2.compactInfo)
-        else if (rt2.boundsVariance < 0 && rt1.boundsVariance <= 0)
-          return isSubType(rt2.compactInfo, rt1.compactInfo)
-      }
-      // todo: handle case where rt2.compactInfo is a type bounds
-    isSubType(rt1.refinedInfo, rt2.refinedInfo)
   }
 
   /** Like tp1 <:< tp2, but returns false immediately if we know that
@@ -927,14 +920,9 @@ class TypeComparer(initctx: Context) extends DotClass {
       // gives =:= types), but it keeps the type smaller.
       tp2 match {
         case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
-          val commonParent = tp1.parent & tp2.parent
-          val commonName = tp1.refinedName
-          if (refinementIsSubType(tp1, tp2))
-            tp1.derivedRefinedType(commonParent, commonName, tp1.compactInfo)
-          else if (refinementIsSubType(tp2, tp1))
-            tp1.derivedRefinedType(commonParent, commonName, tp2.compactInfo)
-          else
-            RefinedType(commonParent, commonName, tp1.refinedInfo & tp2.refinedInfo)
+          tp1.derivedRefinedType(
+              tp1.parent & tp2.parent, tp1.refinedName,
+              tp1.refinedInfo & tp2.refinedInfo)
         case _ =>
           NoType
       }

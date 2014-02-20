@@ -116,7 +116,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           }
         case tp: RefinedType =>
           val tp1 @ RefinedType(parent1, _) = mapOver(tp)
-          if (tp1.compactInfo existsPart toAvoid) {
+          if (tp1.refinedInfo existsPart toAvoid) {
             typr.println(s"dropping refinement from $tp1")
             parent1
           }

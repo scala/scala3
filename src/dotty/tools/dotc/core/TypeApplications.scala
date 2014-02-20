@@ -92,7 +92,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           println(s"precomplete decls = ${self.typeSymbol.decls.toList.map(_.denot).mkString("\n  ")}")
         }
         val tparam = tparams.head
-        val tp1 = tp.paramRefinement(tparam, arg)
+        val tp1 = RefinedType(tp, tparam.name, arg.toBounds(tparam))
         recur(tp1, tparams.tail, args1)
       case nil => tp
     }
@@ -122,20 +122,17 @@ class TypeApplications(val self: Type) extends AnyVal {
   final def appliedTo(arg: Type)(implicit ctx: Context): Type = appliedTo(arg :: Nil)
   final def appliedTo(arg1: Type, arg2: Type)(implicit ctx: Context): Type = appliedTo(arg1 :: arg2 :: Nil)
 
-  /** Add a refinement to this type, which reflects `arg` being used as an argument for
-   *  type parameter `tparam`.
+  /** Turn this type, which is used as an argument for
+   *  type parameter `tparam`, into a TypeBounds RHS
    */
-  final def paramRefinement(tparam: Symbol, arg: Type)(implicit ctx: Context): RefinedType = arg match {
-    case arg: TypeBounds => // this can happen for wildcard args
-      RefinedType(self, tparam.name, arg)
+  final def toBounds(tparam: Symbol)(implicit ctx: Context): TypeBounds = self match {
+    case self: TypeBounds => // this can happen for wildcard args
+      self
     case _ =>
       val v = tparam.variance
-      if (v > 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam))
-        RefinedType(self, tparam.name, TypeBounds.upper(arg))
-      else if (v < 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam))
-        RefinedType(self, tparam.name, TypeBounds.lower(arg))
-      else
-        RefinedType.compact(self, tparam.name, arg, v)
+      if (v > 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.upper(self)
+      else if (v < 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.lower(self)
+      else TypeAlias(self, v)
   }
 
   /** The type arguments of the base type instance wrt `base` of this type */
@@ -174,7 +171,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           if (tparams == null) tparams = tycon.typeParams
           if (buf.size < tparams.length) {
             val tparam = tparams(buf.size)
-            if (name == tparam.name) buf += tp.argTypeOfRefinement(tparam)
+            if (name == tparam.name) buf += tp.refinedInfo.argType(tparam)
             else null
           } else null
         }
@@ -209,17 +206,6 @@ class TypeApplications(val self: Type) extends AnyVal {
         else if (v < 0 && (hi isRef defn.AnyClass)) lo
         else self // it's wildcard type; return its bounds
       }
-    case _ =>
-      NoType
-  }
-
-  /** If the refinement is the image of a type argument to type parameter `tparam`,
-   *  recover the type argument, otherwise NoType.
-   */
-  final def argTypeOfRefinement(tparam: Symbol)(implicit ctx: Context): Type = self match {
-    case self: RefinedType =>
-      if (self.isAliasRefinement) self.compactInfo
-      else self.refinedInfo.argType(tparam)
     case _ =>
       NoType
   }

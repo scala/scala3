@@ -560,16 +560,15 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
     def elim(tp: Type): Type = tp match {
       case tp @ RefinedType(parent, name) =>
         val parent1 = elim(tp.parent)
-        tp.compactInfo match {
+        tp.refinedInfo match {
+          case TypeAlias(info: TypeRef) if boundSyms contains info.symbol =>
+            RefinedType(parent1, name, info.symbol.info)
           case info: TypeRef if boundSyms contains info.symbol =>
             val info1 = info.symbol.info
-            if (tp.isAliasRefinement) RefinedType(parent1, name, info1)
-            else {
-              assert(info1.derivesFrom(defn.SingletonClass))
-              RefinedType(parent1, name, info1.mapReduceAnd(removeSingleton)(_ & _))
-            }
-          case cinfo =>
-            tp.derivedRefinedType(parent1, name, cinfo)
+            assert(info1.derivesFrom(defn.SingletonClass))
+            RefinedType(parent1, name, info1.mapReduceAnd(removeSingleton)(_ & _))
+          case info =>
+            tp.derivedRefinedType(parent1, name, info)
         }
       case _ =>
         tp

@@ -555,7 +555,7 @@ object Inferencing {
     case  _: ThisType | _: BoundType | NoPrefix => // default case, inlined for speed
       tp
     case tp: RefinedType => // default case, inlined for speed
-      tp.derivedRefinedType(wildApprox(tp.parent, theMap), tp.refinedName, wildApprox(tp.compactInfo, theMap))
+      tp.derivedRefinedType(wildApprox(tp.parent, theMap), tp.refinedName, wildApprox(tp.refinedInfo, theMap))
     case _ =>
       (if (theMap != null) theMap else new WildApproxMap).mapOver(tp)
   }
