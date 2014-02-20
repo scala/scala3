@@ -434,9 +434,7 @@ class TypeComparer(initctx: Context) extends DotClass {
                { // special case for situations like:
                  //    foo <: C { type T = foo.T }
                  tp2.refinedInfo match {
-                   case TypeBounds(lo, hi) if lo eq hi =>
-                     val ref = tp1 select name
-                     isSubType(ref, lo) && isSubType(hi, ref)
+                   case TypeBounds(lo, hi) if lo eq hi => (tp1 select name) =:= lo
                    case _ => false
                  }
                }
@@ -492,9 +490,8 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp2 @ TypeBounds(lo2, hi2) =>
       def compareTypeBounds = tp1 match {
         case tp1 @ TypeBounds(lo1, hi1) =>
-          val v = tp1.variance + tp2.variance
-          ((v > 0) || (lo2 isRef NothingClass) || isSubType(lo2, lo1)) &&
-          ((v < 0) || (hi2 isRef AnyClass) || isSubType(hi1, hi2))
+          (tp2.variance > 0 && tp1.variance >= 0 || isSubType(lo2, lo1)) &&
+          (tp2.variance < 0 && tp1.variance <= 0 || isSubType(hi1, hi2))
         case tp1: ClassInfo =>
           val tt = tp1.typeRef
           isSubType(lo2, tt) && isSubType(tt, hi2)
