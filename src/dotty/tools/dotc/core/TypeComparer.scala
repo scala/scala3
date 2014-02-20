@@ -349,7 +349,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       }
       comparePolyParam
     case tp1: BoundType =>
-      tp1 == tp2 || secondTry(tp1, tp2)
+      tp1 == tp2 || thirdTry(tp1, tp2)
     case tp1: TypeVar =>
       (tp1 eq tp2) || isSubType(tp1.underlying, tp2)
     case tp1: WildcardType =>
