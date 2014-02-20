@@ -34,7 +34,7 @@ class Definitions {
     scope.enter(newSymbol(cls, name, flags | TypeParamCreationFlags, TypeBounds.empty))
 
   private def newSyntheticTypeParam(cls: ClassSymbol, scope: MutableScope, paramFlags: FlagSet, suffix: String = "T0") =
-    newTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName, scope)
+    newTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName | paramFlags, scope)
 
   private def specialPolyClass(name: TypeName, paramFlags: FlagSet, parentConstrs: Type*): ClassSymbol = {
     val completer = new LazyType {
