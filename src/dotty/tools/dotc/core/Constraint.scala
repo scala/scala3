@@ -18,7 +18,7 @@ import config.Config
  *               An instantiated type parameter is represented by having its instance type in
  *               the corresponding array entry.
  */
-class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal with Showable {
+class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends Showable {
 
   /** Does the constraint's domain contain the type parameters of `pt`? */
   def contains(pt: PolyType): Boolean = myMap(pt) != null
@@ -106,7 +106,7 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
   }
 
   /** A new constraint which is derived from this constraint by mapping
-   *  `op` over all entries of type `poly`.
+   *  `op` over all entries of `poly`.
    *  @pre  `this contains poly`.
    */
   def transformed(poly: PolyType, op: Type => Type)(implicit ctx: Context) : Constraint =
@@ -245,27 +245,32 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends AnyVal wit
   /** Perform operation `op` on all typevars, or only on uninstantiated
    *  typevars, depending on whether `uninstOnly` is set or not.
    */
-  def foreachTypeVar(op: TypeVar => Unit, uninstOnly: Boolean = false): Unit =
+  def foreachTypeVar(op: TypeVar => Unit): Unit =
     myMap.foreachBinding { (poly, entries) =>
       for (i <- 0 until paramCount(entries)) {
-        def qualifies(tv: TypeVar) =
-          if (uninstOnly) isBounds(entries(i)) else !tv.inst.exists
         typeVar(entries, i) match {
-          case tv: TypeVar if qualifies(tv) => op(tv)
+          case tv: TypeVar if !tv.inst.exists => op(tv)
           case _ =>
         }
       }
     }
 
-  /** Perform operation `op` on all uninstantiated typevars.
-   */
-   def foreachUninstVar(op: TypeVar => Unit): Unit = foreachTypeVar(op, uninstOnly = true)
+  private var myUninstVars: mutable.ArrayBuffer[TypeVar] = null
 
   /** The uninstantiated typevars of this constraint */
   def uninstVars: collection.Seq[TypeVar] = {
-    val buf = new mutable.ArrayBuffer[TypeVar]
-    foreachUninstVar(buf += _)
-    buf
+    if (myUninstVars == null) {
+      myUninstVars = new mutable.ArrayBuffer[TypeVar]
+      myMap.foreachBinding { (poly, entries) =>
+        for (i <- 0 until paramCount(entries)) {
+          typeVar(entries, i) match {
+            case tv: TypeVar if isBounds(entries(i)) => myUninstVars += tv
+            case _ =>
+          }
+        }
+      }
+    }
+    myUninstVars
   }
 
   def constrainedTypesText(printer: Printer): Text =
