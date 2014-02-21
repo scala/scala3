@@ -1116,25 +1116,29 @@ object SymDenotations {
 
     def memberNames(keepOnly: NameFilter)(implicit ctx: Context): Set[Name] = {
       def computeMemberNames: Set[Name] = {
-        val inheritedNames = (classParents flatMap (_.memberNames(keepOnly, thisType))).toSet
+        var names = Set[Name]()
+        def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
+        for (p <- classParents)
+          for (name <- p.memberNames(keepOnly, thisType)) maybeAdd(name)
         val ownSyms =
           if (keepOnly == implicitFilter)
             if (this is Package) Iterator.empty
             else info.decls.iterator filter (_ is Implicit)
           else info.decls.iterator
-        val ownNames = ownSyms map (_.name)
-        val candidates = inheritedNames ++ ownNames
-        candidates filter (keepOnly(thisType, _))
+        for (sym <- ownSyms) maybeAdd(sym.name)
+        names
       }
-      if ((this is PackageClass) || (keepOnly == implicitFilter) || !Config.cacheMemberNames)
+      if ((this is PackageClass) || !Config.cacheMemberNames)
         computeMemberNames // don't cache package member names; they might change
       else {
         val cached = memberNamesCache(keepOnly)
         if (cached != null) cached
         else {
-          setFlag(Frozen)
           val names = computeMemberNames
-          memberNamesCache = memberNamesCache.updated(keepOnly, names)
+          if (isFullyCompleted) {
+            setFlag(Frozen)
+            memberNamesCache = memberNamesCache.updated(keepOnly, names)
+          }
           names
         }
       }
