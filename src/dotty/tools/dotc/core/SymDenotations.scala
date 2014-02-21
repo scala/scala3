@@ -1065,7 +1065,9 @@ object SymDenotations {
 
       def computeBaseTypeOf(tp: Type): Type = {
         Stats.record("computeBaseTypeOf")
-        tp match {
+        if (symbol.isStatic && tp.derivesFrom(symbol))
+          symbol.typeRef
+        else tp match {
           case tp: TypeRef =>
             val subcls = tp.symbol
             if (subcls eq symbol)
@@ -1089,9 +1091,7 @@ object SymDenotations {
       }
 
       /*>|>*/ ctx.debugTraceIndented(s"$tp.baseType($this)") /*<|<*/ {
-        if (symbol.isStatic && tp.derivesFrom(symbol))
-          symbol.typeRef
-        else tp match {
+        tp match {
           case tp: CachedType =>
             if (baseTypeValid != ctx.runId) {
               baseTypeCache = new java.util.HashMap[CachedType, Type]
