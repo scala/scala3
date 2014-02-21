@@ -590,8 +590,12 @@ object Types {
     /** If this is repeated parameter type, its underlying type,
      *  else the type itself.
      */
-    def underlyingIfRepeated(implicit ctx: Context): Type =
-      this.translateParameterized(defn.RepeatedParamClass, defn.SeqClass)
+    def underlyingIfRepeated(implicit ctx: Context): Type = this match {
+      case rt @ RefinedType(tref: TypeRef, name) if defn.RepeatedParamClasses contains tref.symbol =>
+        RefinedType(defn.SeqClass.typeRef, name, rt.refinedInfo)
+      case _ =>
+        this
+    }
 
     /** If this is a (possibly aliased, annotated, and/or parameterized) reference to
      *  a class, the class type ref, otherwise NoType.
