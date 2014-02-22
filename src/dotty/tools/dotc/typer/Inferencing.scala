@@ -249,7 +249,8 @@ object Inferencing {
     def map(tm: TypeMap)(implicit ctx: Context): PolyProto =
       derivedPolyProto(targs mapConserve tm, tm(resultType))
 
-    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T = ta((x /: targs)(ta), resultType)
+    def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context): T =
+      ta(ta.foldOver(x, targs), resultType)
   }
 
   /** A prototype for expressions [] that are known to be functions:

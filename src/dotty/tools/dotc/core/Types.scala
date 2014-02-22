@@ -2216,7 +2216,7 @@ object Types {
   abstract class TypeAccumulator[T](implicit ctx: Context) extends ((T, Type) => T) {
     def apply(x: T, tp: Type): T
 
-    protected def apply(x: T, annot: Annotation): T = x // don't go into annotations
+    protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
 
     protected var variance = 1
 
@@ -2237,7 +2237,7 @@ object Types {
 
       case tp @ MethodType(pnames, ptypes) =>
         variance = -variance
-        val y = (x /: ptypes)(this)
+        val y = foldOver(x, ptypes)
         variance = -variance
         this(y, tp.resultType)
 
@@ -2246,7 +2246,7 @@ object Types {
 
       case tp @ PolyType(pnames) =>
         variance = -variance
-        val y = (x /: tp.paramBounds)(this)
+        val y = foldOver(x, tp.paramBounds)
         variance = -variance
         this(y, tp.resultType)
 
@@ -2275,7 +2275,7 @@ object Types {
         this(this(x, tp.tp1), tp.tp2)
 
       case AnnotatedType(annot, underlying) =>
-        this(this(x, annot), underlying)
+        this(applyToAnnot(x, annot), underlying)
 
       case tp: TypeVar =>
         this(x, tp.underlying)
@@ -2287,6 +2287,11 @@ object Types {
         tp.fold(x, this)
 
       case _ => x
+    }
+
+    final def foldOver(x: T, ts: List[Type]): T = ts match {
+      case t :: ts1 => foldOver(apply(x, t), ts1)
+      case nil => x
     }
   }
 
