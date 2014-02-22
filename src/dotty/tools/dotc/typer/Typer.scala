@@ -28,7 +28,7 @@ import util.SourcePosition
 import collection.mutable
 import annotation.tailrec
 import Implicits._
-import util.Stats.track
+import util.Stats.{track, record}
 import config.Printers._
 import language.implicitConversions
 
@@ -959,7 +959,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedUnadapted(initTree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
-
+    record("typedUnadapted")
     val xtree = expanded(initTree)
     xtree.removeAttachment(TypedAhead) match {
       case Some(ttree) => ttree

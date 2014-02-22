@@ -297,6 +297,18 @@ object Trees {
     def orElse[U >: Untyped <: T](that: => Tree[U]): Tree[U] =
       if (this eq genericEmptyTree) that else this
 
+    /** The number of nodes in this tree */
+    def treeSize: Int = {
+      var s = 1
+      def addSize(elem: Any): Unit = elem match {
+        case t: Tree[_] => s += t.treeSize
+        case ts: List[_] => ts foreach addSize
+        case _ =>
+      }
+      productIterator foreach addSize
+      s
+    }
+
     override def toText(printer: Printer) = printer.toText(this)
 
     override def hashCode(): Int = System.identityHashCode(this)

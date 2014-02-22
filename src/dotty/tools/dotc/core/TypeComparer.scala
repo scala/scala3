@@ -195,7 +195,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       val saved = constraint
       val savedSuccessCount = successCount
       val savedTotalCount = totalCount
-      if (Stats.monitored) Stats.record(s"isSubType ${tp1.show} <:< ${tp2.show}")
+      //if (Stats.monitored) Stats.record(s"isSubType ${tp1.show} <:< ${tp2.show}")
       try {
         recCount += 1
 /* !!! DEBUG

@@ -6,6 +6,7 @@ import Phases._
 import Contexts._
 import parsing.Parsers.Parser
 import config.Printers._
+import util.Stats._
 
 class FrontEnd extends Phase {
 
@@ -35,13 +36,17 @@ class FrontEnd extends Phase {
     val unit = ctx.compilationUnit
     unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
     typr.println("typed: "+unit.source)
+    record("retainedUntypedTrees", unit.untpdTree.treeSize)
+    record("retainedTypedTrees", unit.tpdTree.treeSize)
   }
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): Unit = {
     val unitContexts = units map (unit => ctx.fresh.withCompilationUnit(unit))
     unitContexts foreach (parse(_))
+    record("parsedTrees", ast.Trees.ntrees)
     unitContexts foreach (enterSyms(_))
     unitContexts foreach (typeCheck(_))
+    record("totalTrees", ast.Trees.ntrees)
   }
 
   override def run(implicit ctx: Context): Unit = {
