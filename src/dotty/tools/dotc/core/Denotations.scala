@@ -201,6 +201,10 @@ object Denotations {
     def & (that: Denotation, pre: Type)(implicit ctx: Context): Denotation = {
 
       /** Try to merge denot1 and denot2 without adding a new signature.
+       *  Prefer denotations with more specific types, provided the symbol stays accessible
+       *  Prefer denotations with accessible symbols over denotations with
+       *  existing, but inaccessible symbols.
+       *  If there's no preference, produce a JointRefDenotation with the intersection of both infos.
        *  If unsuccessful, return NoDenotation.
        */
       def mergeDenot(denot1: Denotation, denot2: SingleDenotation): Denotation = denot1 match {
@@ -218,18 +222,18 @@ object Denotations {
             val info1 = denot1.info
             val info2 = denot2.info
             val sym2 = denot2.symbol
-            def sym2Accessible = sym2.isAccessibleFrom(pre)
-            if (info2 <:< info1 && sym2Accessible) denot2
+            val sym2Accessible = sym2.isAccessibleFrom(pre)
+            if (sym2Accessible && info2 <:< info1) denot2
             else {
               val sym1 = denot1.symbol
-              def sym1Accessible = sym1.isAccessibleFrom(pre)
-              if (info1 <:< info2 && sym1Accessible) denot1
+              val sym1Accessible = sym1.isAccessibleFrom(pre)
+              if (sym1Accessible && info1 <:< info2) denot1
+              else if (sym1Accessible && sym2.exists && !sym2Accessible) denot1
+              else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
               else {
                 val sym =
                   if (!sym1.exists) sym2
                   else if (!sym2.exists) sym1
-                  else if (!sym1Accessible) sym2
-                  else if (!sym2Accessible) sym1
                   else if (sym2 isAsConcrete sym1) sym2
                   else sym1
                 new JointRefDenotation(sym, info1 & info2, denot1.validFor & denot2.validFor)
@@ -705,7 +709,8 @@ object Denotations {
     assert(denots1.exists && denots2.exists)
     def exists = true
     def first = denots1.first
-    def toDenot(pre: Type)(implicit ctx: Context) = (denots1 toDenot pre) & (denots2 toDenot pre, pre)
+    def toDenot(pre: Type)(implicit ctx: Context) =
+      (denots1 toDenot pre) & (denots2 toDenot pre, pre)
     def containsSym(sym: Symbol) =
       (denots1 containsSym sym) || (denots2 containsSym sym)
     def containsSig(sig: Signature)(implicit ctx: Context) =
