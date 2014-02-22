@@ -838,18 +838,7 @@ object Types {
      *  0 means: mixed or non-variant occurrences
      */
     def variances(include: TypeVar => Boolean)(implicit ctx: Context): VarianceMap = track("variances") {
-      val accu = new TypeAccumulator[VarianceMap] {
-        def apply(vmap: VarianceMap, t: Type): VarianceMap = t match {
-          case t: TypeVar if !t.isInstantiated && include(t) =>
-            val v = vmap(t)
-            if (v == null) vmap.updated(t, variance)
-            else if (v == variance) vmap
-            else vmap.updated(t, 0)
-          case _ =>
-            foldOver(vmap, t)
-        }
-      }
-      accu(SimpleMap.Empty, this)
+      ctx.addVariances(SimpleMap.Empty, this, +1, include, null)
     }
 
     /** A simplified version of this type which is equivalent wrt =:= to this type.
@@ -2089,7 +2078,7 @@ object Types {
 
   // ----- TypeMaps --------------------------------------------------------------------
 
-  abstract class TypeMap(implicit ctx: Context) extends (Type => Type) { thisMap =>
+  abstract class TypeMap(implicit protected val ctx: Context) extends (Type => Type) { thisMap =>
 
     protected def stopAtStatic = true
 
@@ -2110,6 +2099,20 @@ object Types {
       case tp: RefinedType =>
         tp.derivedRefinedType(this(tp.parent), tp.refinedName, this(tp.refinedInfo))
 
+      case tp @ TypeBounds(lo, hi) =>
+        if (lo eq hi) {
+          val saved = variance
+          variance = variance * tp.variance
+          val lo1 = this(lo)
+          variance = saved
+          tp.derivedTypeAlias(lo1)
+        } else {
+          variance = -variance
+          val lo1 = this(lo)
+          variance = -variance
+          tp.derivedTypeBounds(lo1, this(hi))
+        }
+
       case tp @ MethodType(pnames, ptypes) =>
         variance = -variance
         val ptypes1 = ptypes mapConserve this
@@ -2128,20 +2131,6 @@ object Types {
 
       case tp @ SuperType(thistp, supertp) =>
         tp.derivedSuperType(this(thistp), this(supertp))
-
-      case tp @ TypeBounds(lo, hi) =>
-        if (lo eq hi) {
-          val saved = variance
-          variance = variance * tp.variance
-          val lo1 = this(lo)
-          variance = saved
-          tp.derivedTypeAlias(lo1)
-        } else {
-          variance = -variance
-          val lo1 = this(lo)
-          variance = -variance
-          tp.derivedTypeBounds(lo1, this(hi))
-        }
 
       case tp: ClassInfo =>
         mapClassInfo(tp)
@@ -2213,7 +2202,10 @@ object Types {
 
   // ----- TypeAccumulators ----------------------------------------------------
 
-  abstract class TypeAccumulator[T](implicit ctx: Context) extends ((T, Type) => T) {
+  abstract class TypeAccumulator[T](implicit protected val ctx: Context) extends ((T, Type) => T) {
+
+    protected def stopAtStatic = true
+
     def apply(x: T, tp: Type): T
 
     protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
@@ -2222,11 +2214,14 @@ object Types {
 
     def foldOver(x: T, tp: Type): T = tp match {
       case tp: TypeRef =>
-        val tp1 = tp.lookupRefined(tp.prefix, tp.name)
-        this(x, if (tp1.exists) tp1 else tp.prefix)
-
+        if (stopAtStatic && tp.symbol.isStatic) x
+        else {
+          val tp1 = tp.lookupRefined(tp.prefix, tp.name)
+          this(x, if (tp1.exists) tp1 else tp.prefix)
+        }
       case tp: TermRef =>
-        this(x, tp.prefix)
+        if (stopAtStatic && tp.symbol.isStatic) x
+        else this(x, tp.prefix)
 
       case _: ThisType
          | _: BoundType
@@ -2234,6 +2229,21 @@ object Types {
 
       case tp: RefinedType =>
         this(this(x, tp.parent), tp.refinedInfo)
+
+      case bounds @ TypeBounds(lo, hi) =>
+        if (lo eq hi) {
+          val saved = variance
+          variance = variance * bounds.variance
+          val result = this(x, lo)
+          variance = saved
+          result
+        }
+        else {
+          variance = -variance
+          val y = this(x, lo)
+          variance = -variance
+          this(y, hi)
+        }
 
       case tp @ MethodType(pnames, ptypes) =>
         variance = -variance
@@ -2296,10 +2306,12 @@ object Types {
   }
 
   class ExistsAccumulator(p: Type => Boolean)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
+    override def stopAtStatic = false
     def apply(x: Boolean, tp: Type) = x || p(tp) || foldOver(x, tp)
   }
 
   class NamedPartsAccumulator(p: NamedType => Boolean)(implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {
+    override def stopAtStatic = false
     def maybeAdd(x: mutable.Set[NamedType], tp: NamedType) = if (p(tp)) x += tp else x
     val seen: mutable.Set[Type] = mutable.Set()
     def apply(x: mutable.Set[NamedType], tp: Type): mutable.Set[NamedType] =

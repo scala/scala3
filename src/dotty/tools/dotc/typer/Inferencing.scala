@@ -610,7 +610,7 @@ object Inferencing {
     constr.println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (tvar => s"$tvar / ${tvar.show}")}, constraint: ${constraint.show}")
 
     def qualifies(tvar: TypeVar) = tree contains tvar.owningTree
-    val vs = tp.variances(tvar => (constraint contains tvar) && qualifies(tvar))
+    val vs = tp.variances(qualifies)
     var changed = false
     vs foreachBinding { (tvar, v) =>
       if (v != 0) {
@@ -634,8 +634,7 @@ object Inferencing {
    *  typevar is not uniquely determined, return that typevar in a Some.
    */
   def maximizeType(tp: Type)(implicit ctx: Context): Option[TypeVar] = Stats.track("maximizeType") {
-    val constraint = ctx.typerState.constraint
-    val vs = tp.variances(constraint contains _)
+    val vs = tp.variances(alwaysTrue)
     var result: Option[TypeVar] = None
     vs foreachBinding { (tvar, v) =>
       if (v == 1) tvar.instantiate(fromBelow = false)
