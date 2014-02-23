@@ -38,7 +38,7 @@ and others.
 
 `dotty.tools.dotc.typer`
 
-> This is new code except for some minor components (e.g. the ConstantFolder). It uses however many solution details that have been developed over time by many people, including Jason Zaugg, Adriaan Moors, Lukas Rytz, Paul Phillips, and Greg Kossakowski.
+> This is new code except for some minor components (e.g. the ConstantFolder). It uses however many solution details that have been developed over time by many people, including Jason Zaugg, Adriaan Moors, Lukas Rytz, Paul Phillips, Greg Kossakowski, and others.
 
 `dotty.tools.dotc.util`
 
