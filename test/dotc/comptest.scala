@@ -10,12 +10,12 @@ object comptest extends CompilerTest {
 
   def main(args: Array[String]) =
     compileArgs(Array(
-      dotcDir + "tools/dotc/CompilationUnit.scala",
-      dotcDir + "tools/dotc/core/Types.scala",
-      dotcDir + "tools/dotc/ast/Trees.scala",
+      dotcDir + "compiler/internal/CompilationUnit.scala",
+      dotcDir + "compiler/internal/core/Types.scala",
+      dotcDir + "compiler/internal/ast/Trees.scala",
       "#runs", "2",
       "-Ylog:frontend",
       "-Xprompt"))
 
-//    compileDir(dotcDir + "tools/dotc/printing", List("-Xprompt", "-Ylog:frontend", "#runs", "2", "-uniqid"))
+//    compileDir(dotcDir + "compiler/internal/printing", List("-Xprompt", "-Ylog:frontend", "#runs", "2", "-uniqid"))
 }

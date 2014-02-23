@@ -1,13 +1,14 @@
 package test
 
-import dotty.tools.dotc.core._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.printing.Texts._
+import dotty.compiler.internal._
+import core._
+import core.Contexts._
+import core.Symbols._
+import core.Flags._
+import core.Types._
+import printing.Texts._
 import NameOps._
-import dotty.tools.dotc.core.Decorators._
+import core.Decorators._
 import org.junit.Test
 
 class ShowClassTests extends DottyTest {
@@ -39,7 +40,7 @@ class ShowClassTests extends DottyTest {
     // (apache.ant, usually)
     "scala.tools.ant",
     "scala.tools.partest.PartestTask",
-    "dotty.tools.dotc.core.pickling.AbstractFileReader")
+    "dotty.compiler.internal.core.pickling.AbstractFileReader")
 
   def doTwice(test: Context => Unit)(implicit ctx: Context): Unit = {
     test(ctx.fresh.withSetting(ctx.base.settings.debug, true))

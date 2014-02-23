@@ -46,26 +46,25 @@ class tests extends CompilerTest {
   @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 10)
   @Test def neg_rootImports = compileFile(negDir, "rootImplicits", xerrors = 2)
 
-  @Test def dotc = compileDir(dotcDir + "tools/dotc")
-  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast")
-  @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config")
-  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core")
-  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling")
-  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/core/transform")
-  @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing")
-  @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing")
-  @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting")
-  @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer")
-  @Test def dotc_util = compileDir(dotcDir + "tools/dotc/util")
-  @Test def tools_io = compileDir(dotcDir + "tools/io")
-  @Test def tools = compileDir(dotcDir + "tools")
+  @Test def dotc = compileDir(dotcDir + "compiler/internal")
+  @Test def dotc_ast = compileDir(dotcDir + "compiler/internal/ast")
+  @Test def dotc_config = compileDir(dotcDir + "compiler/internal/config")
+  @Test def dotc_core = compileDir(dotcDir + "compiler/internal/core")
+  @Test def dotc_core_pickling = compileDir(dotcDir + "compiler/internal/core/pickling")
+  @Test def dotc_transform = compileDir(dotcDir + "compiler/internal/core/transform")
+  @Test def dotc_parsing = compileDir(dotcDir + "compiler/internal/parsing")
+  @Test def dotc_printing = compileDir(dotcDir + "compiler/internal/printing")
+  @Test def dotc_reporting = compileDir(dotcDir + "compiler/internal/reporting")
+  @Test def dotc_typer = compileDir(dotcDir + "compiler/internal/typer")
+  @Test def dotc_util = compileDir(dotcDir + "compiler/internal/util")
+  @Test def tools_io = compileDir(dotcDir + "compiler/internal/io")
 
   @Test def testNonCyclic = compileArgs(Array(
-      dotcDir + "tools/dotc/CompilationUnit.scala",
-      dotcDir + "tools/dotc/core/Types.scala",
-      dotcDir + "tools/dotc/ast/Trees.scala",
+      dotcDir + "compiler/internal/CompilationUnit.scala",
+      dotcDir + "compiler/internal/core/Types.scala",
+      dotcDir + "compiler/internal/ast/Trees.scala",
       "-Ylog:frontend",
       "-Xprompt"))
 
-  //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
+  //@Test def dotc_compilercommand = compileFile(dotcDir + "compiler/internal/config/", "CompilerCommand")
 }

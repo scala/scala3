@@ -3,8 +3,8 @@ package test
 import scala.reflect.io._
 import org.junit.Test
 import scala.collection.mutable.ListBuffer
-import dotty.tools.dotc.{Main, Bench, Driver}
-import dotty.tools.dotc.reporting.Reporter
+import dotty.compiler.internal.{Main, Bench, Driver}
+import dotty.compiler.internal.reporting.Reporter
 
 class CompilerTest extends DottyTest {
 

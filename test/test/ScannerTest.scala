@@ -1,8 +1,8 @@
 package test
 
 import scala.reflect.io._
-import dotty.tools.dotc.util._
-import dotty.tools.dotc.parsing._
+import dotty.compiler.internal.util._
+import dotty.compiler.internal.parsing._
 import Tokens._, Scanners._
 import org.junit.Test
 
@@ -47,8 +47,8 @@ class ScannerTest extends DottyTest {
   @Test
   def scanList() = {
     println(System.getProperty("user.dir"))
-    scan("src/dotty/tools/dotc/core/Symbols.scala")
-    scan("src/dotty/tools/dotc/core/Symbols.scala")
+    scan("src/dotty/compiler/internal/core/Symbols.scala")
+    scan("src/dotty/compiler/internal/core/Symbols.scala")
   }
 
   @Test
