@@ -2,15 +2,13 @@ The dotty compiler frontend has been developed since November 2012 by Martin Ode
 that the list of contributors to the codebase will grow quickly. Dotty draws inspiration and code from the original
 Scala compiler "nsc", which is developed at [scala/scala](https://github.com/scala/scala). 
 
-The majority of the dotty codebase is new code, with the exception of the components mentioned below. We have for each component tried to 
-come up with a list of the original authors in the  [scala/scala](https://github.com/scala/scala) codebase. Apologies if some major authors were omitted
-by oversight.
+The majority of the dotty codebase is new code, with the exception of the components mentioned below. We have for each component tried to come up with a list of the original authors in the  [scala/scala](https://github.com/scala/scala) codebase. Apologies if some major authors were omitted by oversight.
 
 `dotty.tools.dotc.ast`
 
 > The syntax tree handling is mostly new, but some elements, such as the idea of tree copiers and the `TreeInfo` module, 
 > were adopted from  [scala/scala](https://github.com/scala/scala). 
-> The original authors of these parts included Martin Odersky, Paul Phillips, Adriaan Moors, and Matthias Zenger.
+> The original authors of these parts include Martin Odersky, Paul Phillips, Adriaan Moors, and Matthias Zenger.
 
 `dotty.tools.dotc.config`
 
@@ -29,24 +27,21 @@ by oversight.
 `dotty.tools.dotc.parsing`
 
 > The lexical and syntactic analysis components were adapted from the current Scala compiler. They were originally authored by Martin Odersky,
-> Burak Emir, Paul Phillips, Adriaan Moors, Lex Spoon, Sean McDermid and others.
+> Burak Emir, Paul Phillips, Lex Spoon, Sean McDirmid and others.
 
 `dotty.tools.dotc.reporting`
 
-> Adapted from  [scala/scala](https://github.com/scala/scala) with some heavy modifications. They were originally authored by Matthias Zenger, Martin Odersky, 
-and others.
+> Adapted from  [scala/scala](https://github.com/scala/scala) with some heavy modifications. They were originally authored by Matthias Zenger, Martin Odersky, and others.
 
 `dotty.tools.dotc.typer`
 
-> This is new code except for some minor components (e.g. the ConstantFolder). It uses however many solution details that have been developed over time by many people, including Jason Zaugg, Adriaan Moors, Lukas Rytz, Paul Phillips, Greg Kossakowski, and others.
+> This is new code except for some minor components (e.g. the ConstantFolder). It uses however many solution details that have been developed over time by many people, including Jason Zaugg, Adriaan Moors, Lukas Rytz, Paul Phillips, Grzegorz Kossakowski, and others.
 
 `dotty.tools.dotc.util`
 
 > The utilities package is a mix of new and adapted components. The files in  [scala/scala](https://github.com/scala/scala) were originally authored by many people,
-> including Paul Phillips, Martin Odersky, Sean McDermid, and others.
+> including Paul Phillips, Martin Odersky, Sean McDirmid, and others.
   
 `dotty.tools.io`   
 
 > The I/O support library was adapted from current Scala compiler. Original authors were Paul Phillips and others.
-
-
