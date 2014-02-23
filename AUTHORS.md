@@ -38,7 +38,7 @@ and others.
 
 `dotty.tools.dotc.typer`
 
-> Some minor components (e.g. the ConstantFolder) were adapted from the current Scala compiler. The rest is new.
+> This is new code except for some minor components (e.g. the ConstantFolder). It uses however many solution details that have been developed over time by many people, including Jason Zaugg, Adriaan Moors, Lukas Rytz, Paul Phillips, and Greg Kossakowski.
 
 `dotty.tools.dotc.util`
 
