@@ -9,7 +9,7 @@ by oversight.
 `dotty.tools.dotc.ast`
 
 The syntax tree handling is mostly new, but some elements, such as the idea of tree copiers and the `TreeInfo` module, were adopted from  [scala/scala](https://github.com/scala/scala). 
-The original authors of these parts included Martin Odersky, Paul Phillips and Matthias Zenger.
+The original authors of these parts included Martin Odersky, Paul Phillips, Adriaan Moors, and Matthias Zenger.
 
 `dotty.tools.dotc.config`
 
