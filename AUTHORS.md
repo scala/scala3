@@ -1,6 +1,6 @@
 The dotty compiler frontend has been developed since November 2012 by Martin Odersky. It is expected and hoped for 
 that the list of contributors to the codebase will grow quickly. Dotty draws inspiration and code from the original
-Scala compiler "nsc", which is developed at `scala/scala`. 
+Scala compiler "nsc", which is developed at (scala/scala)[https://github.com/scala/scala]. 
 
 The majority of the dotty codebase is new code, with the exception of the components listed below. We have for each component tried to 
 come up with a list of the original authors in the `scala/scala` codebase. Apologies if some major authors were omitted
