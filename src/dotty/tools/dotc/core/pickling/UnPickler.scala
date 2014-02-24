@@ -15,6 +15,7 @@ import printing.Texts._
 import printing.Printer
 import io.AbstractFile
 import util.common._
+import PickleBuffer._
 import scala.reflect.internal.pickling.PickleFormat._
 import Decorators._
 import scala.collection.{ mutable, immutable }

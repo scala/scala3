@@ -125,7 +125,7 @@ object Positions {
   def Position(start: Int, end: Int, point: Int): Position = {
     val pointDelta = (point - start) max 0
     val pos = fromOffsets(start, end, if (pointDelta >= SyntheticPointDelta) 0 else pointDelta)
-    assert(pos.isSourceDerived, pos+" "+SyntheticPointDelta)
+    assert(pos.isSourceDerived)
     pos
   }
 

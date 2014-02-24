@@ -149,7 +149,7 @@ object ShowPickled {
             idx + "(" + s + ")"
           }
         )
-        val flagString = buf.unpickleScalaFlags(pflags, isType).toString
+        val flagString = PickleBuffer.unpickleScalaFlags(pflags, isType).toString
         out.print(" %s[%s]".format(toHexString(pflags), flagString))
       }
 

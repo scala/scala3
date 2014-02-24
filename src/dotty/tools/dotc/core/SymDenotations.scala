@@ -709,7 +709,7 @@ object SymDenotations {
       s"$kindString $name"
     }
 
-    val debugString = toString+"#"+symbol.id // !!! DEBUG
+    def debugString = toString+"#"+symbol.id // !!! DEBUG
 
     // ----- copies ------------------------------------------------------
 
