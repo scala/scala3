@@ -471,6 +471,9 @@ object Contexts {
 
     def reset() = {
       for ((_, set) <- uniqueSets) set.clear()
+      for (i <- 0 until classOfId.length) classOfId(i) = null
+      superIdOfClass.clear()
+      lastSuperId = -1
     }
   }
 

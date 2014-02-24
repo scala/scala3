@@ -347,6 +347,8 @@ trait ImplicitRunInfo { self: RunInfo =>
   val useCount = new mutable.HashMap[TermRef, Int] {
     override def default(key: TermRef) = 0
   }
+
+  def clear() = implicitScopeCache.clear()
 }
 
 /** The implicit resolution part of type checking */

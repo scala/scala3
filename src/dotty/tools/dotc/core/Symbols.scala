@@ -499,7 +499,7 @@ object Symbols {
     }
 
     /** Have we seen a subclass of this class? */
-    def hasChildren = superIdHint >= 0
+    def hasChildren = superIdHint >= 0 // dubious, does not survive runs if children are deleted!
 
     override protected def prefixString = "ClassSymbol"
   }

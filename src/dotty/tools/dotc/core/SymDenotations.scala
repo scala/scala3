@@ -847,6 +847,14 @@ object SymDenotations {
     private[this] var myBaseClasses: List[ClassSymbol] = null
     private[this] var mySuperClassBits: BitSet = null
 
+	/** Invalidate baseTypeCache and superClassBits on new run */
+    private def checkBasesUpToDate()(implicit ctx: Context) =
+      if (baseTypeValid != ctx.runId) {
+        baseTypeCache = new java.util.HashMap[CachedType, Type]
+        mySuperClassBits = null
+        baseTypeValid = ctx.runId
+      }
+
     private def computeBases(implicit ctx: Context): Unit = {
       if (myBaseClasses == Nil) throw new CyclicReference(this)
       myBaseClasses = Nil
@@ -879,6 +887,7 @@ object SymDenotations {
     private def superClassBits(implicit ctx: Context): BitSet =
       if (classParents.isEmpty) BitSet() // can happen when called too early in Namers
       else {
+        checkBasesUpToDate()
         if (mySuperClassBits == null) computeBases
         mySuperClassBits
       }
@@ -1093,10 +1102,7 @@ object SymDenotations {
       /*>|>*/ ctx.debugTraceIndented(s"$tp.baseType($this)") /*<|<*/ {
         tp match {
           case tp: CachedType =>
-            if (baseTypeValid != ctx.runId) {
-              baseTypeCache = new java.util.HashMap[CachedType, Type]
-              baseTypeValid = ctx.runId
-            }
+            checkBasesUpToDate()
             var basetp = baseTypeCache get tp
             if (basetp == null) {
               baseTypeCache.put(tp, NoPrefix)
@@ -1239,8 +1245,8 @@ object SymDenotations {
     def apply(module: TermSymbol, modcls: ClassSymbol) = this
 
     private var myDecls: Scope = EmptyScope
-    private var mySourceModuleFn: () => Symbol = NoSymbolFn
-    private var myModuleClassFn: () => Symbol = NoSymbolFn
+    private var mySourceModuleFn: Context => Symbol = NoSymbolFn
+    private var myModuleClassFn: Context => Symbol = NoSymbolFn
 
     /** A proxy to this lazy type that keeps the complete operation
      *  but provides fresh slots for scope/sourceModule/moduleClass
@@ -1250,15 +1256,15 @@ object SymDenotations {
     }
 
     def decls: Scope = myDecls
-    def sourceModule: Symbol = mySourceModuleFn()
-    def moduleClass: Symbol = myModuleClassFn()
+    def sourceModule(implicit ctx: Context): Symbol = mySourceModuleFn(ctx)
+    def moduleClass(implicit ctx: Context): Symbol = myModuleClassFn(ctx)
 
     def withDecls(decls: Scope): this.type = { myDecls = decls; this }
-    def withSourceModule(sourceModule: => Symbol): this.type = { mySourceModuleFn = () => sourceModule; this }
-    def withModuleClass(moduleClass: => Symbol): this.type = { myModuleClassFn = () => moduleClass; this }
+    def withSourceModule(sourceModuleFn: Context => Symbol): this.type = { mySourceModuleFn = sourceModuleFn; this }
+    def withModuleClass(moduleClassFn: Context => Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
   }
 
-  val NoSymbolFn = () => NoSymbol
+  val NoSymbolFn = (ctx: Context) => NoSymbol
 
   /** A missing completer */
   class NoCompleter extends LazyType {
@@ -1270,7 +1276,8 @@ object SymDenotations {
    *  Completion of modules is always completion of the underlying
    *  module class, followed by copying the relevant fields to the module.
    */
-  class ModuleCompleter(override val moduleClass: ClassSymbol) extends LazyType {
+  class ModuleCompleter(_moduleClass: ClassSymbol) extends LazyType {
+    override def moduleClass(implicit ctx: Context) = _moduleClass
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
       val from = moduleClass.denot.asClass
       denot.setFlag(from.flags.toTermFlags & RetainedModuleValFlags)

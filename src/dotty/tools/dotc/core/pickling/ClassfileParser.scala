@@ -32,7 +32,7 @@ class ClassfileParser(
   protected var classTParams = Map[Name,Symbol]()
 
   classRoot.info = (new NoCompleter).withDecls(instanceScope)
-  moduleRoot.info = (new NoCompleter).withDecls(staticScope).withSourceModule(staticModule)
+  moduleRoot.info = (new NoCompleter).withDecls(staticScope).withSourceModule(_ => staticModule)
 
   private def currentIsTopLevel(implicit ctx: Context) = classRoot.owner is Flags.PackageClass
 

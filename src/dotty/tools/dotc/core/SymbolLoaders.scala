@@ -49,7 +49,7 @@ class SymbolLoaders {
       modFlags: FlagSet = EmptyFlags, clsFlags: FlagSet = EmptyFlags, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
     val module = ctx.newModuleSymbol(
       owner, name.toTermName, modFlags, clsFlags,
-      (modul, _) => completer.proxy withDecls newScope withSourceModule modul,
+      (module, _) => completer.proxy withDecls newScope withSourceModule (_ => module),
       assocFile = completer.sourceFileOrNull)
     enterNew(owner, module, completer, scope)
     enterNew(owner, module.moduleClass, completer, scope)
@@ -142,8 +142,9 @@ class SymbolLoaders {
 
   /** Load contents of a package
    */
-  class PackageLoader(override val sourceModule: TermSymbol, classpath: ClassPath)
+  class PackageLoader(_sourceModule: TermSymbol, classpath: ClassPath)
       extends SymbolLoader {
+    override def sourceModule(implicit ctx: Context) = _sourceModule
     def description = "package loader " + classpath.name
 
     private[core] val preDecls: MutableScope = newScope
@@ -242,7 +243,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
         else
           ctx.newModuleSymbol(
             rootDenot.owner, rootDenot.name.toTermName, Synthetic, Synthetic,
-            (module, _) => new NoCompleter() withDecls newScope withSourceModule module)
+            (module, _) => new NoCompleter() withDecls newScope withSourceModule (_ => module))
             .moduleClass.denot.asClass
     }
     if (rootDenot is ModuleClass) (linkedDenot, rootDenot)

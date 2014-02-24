@@ -32,6 +32,9 @@ class Compiler {
 
   def newRun(implicit ctx: Context): Run = {
     try new Run(this)(rootContext)
-    finally ctx.base.reset()
+    finally {
+      ctx.base.reset()
+      ctx.runInfo.clear()
+    }
   }
 }

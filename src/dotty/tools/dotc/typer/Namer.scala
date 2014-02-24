@@ -180,9 +180,9 @@ class Namer { typer: Typer =>
       if (tree.mods is Module) {
         val name = tree.name.encode
         if (name.isTermName)
-          completer withModuleClass findModuleBuddy(name.moduleClassName)
+          completer withModuleClass (_ => findModuleBuddy(name.moduleClassName))
         else
-          completer withSourceModule findModuleBuddy(name.sourceModuleName)
+          completer withSourceModule (_ => findModuleBuddy(name.sourceModuleName))
       }
       else completer
 
