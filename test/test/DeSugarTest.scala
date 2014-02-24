@@ -1,11 +1,11 @@
 package test
 
 import scala.reflect.io._
-import dotty.tools.dotc.util._
-import dotty.tools.dotc.core._
-import dotty.tools.dotc.parsing._
+import dotty.compiler.internal._
+import util._
+import core._
+import parsing._
 import Tokens._, Parsers._
-import dotty.tools.dotc._
 import ast.Trees._
 import ast.desugar
 import ast.desugar._
@@ -16,7 +16,7 @@ import scala.collection.mutable.ListBuffer
 
 class DeSugarTest extends ParserTest {
 
-  import dotty.tools.dotc.ast.untpd._
+  import dotty.compiler.internal.ast.untpd._
 
   import Mode._
 

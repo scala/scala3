@@ -1,6 +1,6 @@
 package test
 
-import dotty.tools.dotc._
+import dotty.compiler.internal._
 import core._, ast._
 import Trees._
 import Contexts.Context

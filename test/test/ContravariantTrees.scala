@@ -1,7 +1,7 @@
 package test
 
 import language.higherKinds
-import dotty.tools.dotc.core._
+import dotty.compiler.internal.core._
 import Flags._, Names._, StdNames._
 import annotation.unchecked.uncheckedVariance
 

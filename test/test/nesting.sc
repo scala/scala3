@@ -1,4 +1,4 @@
-package dotty.tools.dotc.core
+package dotty.compiler.internal.core
 
 object nesting {
   class C {
@@ -22,10 +22,8 @@ object nesting {
     }
   }
   
-  val c = new C                                   //> c  : dotty.tools.dotc.core.nesting.C = dotty.tools.dotc.core.nesting$C@1a84d
-                                                  //| a23
-  val d = c.foo                                   //> d  : dotty.tools.dotc.core.nesting.c.D = dotty.tools.dotc.core.nesting$C$D$1
-                                                  //| @2705d88a
-  d.show                                          //> res0: String = foo.D
+  val c = new C
+  val d = c.foo
+  d.show
   
 }
