@@ -63,7 +63,7 @@ object Stats {
         hb.continue = false
         println()
         println(hits.toList.sortBy(_._2).map{ case (x, y) => s"$x -> $y" } mkString "\n")
-        println(s"sizes: ${ctx.base.uniquesSize}")
+        println(s"sizes: ${ctx.base.uniquesSizes}")
       }
     } else op
   }

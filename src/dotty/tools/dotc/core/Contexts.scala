@@ -422,7 +422,7 @@ object Contexts {
 
     // Types state
     /** A table for hash consing unique types */
-    private[core] val uniques = new util.HashSet[Type]("uniques", initialUniquesCapacity) {
+    private[core] val uniques = new util.HashSet[Type](initialUniquesCapacity) {
       override def hash(x: Type): Int = x.hash
     }
 
@@ -435,11 +435,14 @@ object Contexts {
     /** A table for hash consing unique type bounds */
     private[core] val uniqueTypeBounds = new TypeBoundsUniques
 
-    private def uniqueMaps = List(uniques, uniqueRefinedTypes, uniqueNamedTypes, uniqueTypeBounds)
+    private def uniqueSets = Map(
+        "uniques" -> uniques,
+        "uniqueRefinedTypes" -> uniqueRefinedTypes,
+        "uniqueNamedTypes" -> uniqueNamedTypes,
+        "uniqueTypeBounds" -> uniqueTypeBounds)
 
     /** A map that associates label and size of all uniques sets */
-    def uniquesSize: Map[String, Int] =
-      uniqueMaps.map(m => m.label -> m.size).toMap
+    def uniquesSizes: Map[String, Int] = uniqueSets.mapValues(_.size)
 
     /** The number of recursive invocation of underlying on a NamedType
      *  during a controlled operation.
@@ -465,6 +468,10 @@ object Contexts {
 
     /** Should warnings and errors containing non-sensical strings be suppressed? */
     private[dotc] var suppressNonSensicalErrors = true
+
+    def reset() = {
+      for ((_, set) <- uniqueSets) set.clear()
+    }
   }
 
   object Context {

@@ -39,7 +39,7 @@ object Uniques {
   )
  */
 
-  final class NamedTypeUniques extends HashSet[NamedType]("uniqueNamedTypes", initialUniquesCapacity) with Hashable {
+  final class NamedTypeUniques extends HashSet[NamedType](initialUniquesCapacity) with Hashable {
     override def hash(x: NamedType): Int = x.hash
 
     private def findPrevious(h: Int, prefix: Type, name: Name): NamedType = {
@@ -65,7 +65,7 @@ object Uniques {
     }
   }
 
-  final class TypeBoundsUniques extends HashSet[TypeBounds]("uniqueTypeBounds", initialUniquesCapacity) with Hashable {
+  final class TypeBoundsUniques extends HashSet[TypeBounds](initialUniquesCapacity) with Hashable {
     override def hash(x: TypeBounds): Int = x.hash
 
     private def findPrevious(h: Int, lo: Type, hi: Type, variance: Int): TypeBounds = {
@@ -92,7 +92,7 @@ object Uniques {
     }
   }
 
-  final class RefinedUniques extends HashSet[RefinedType]("uniqueRefinedTypes", initialUniquesCapacity) with Hashable {
+  final class RefinedUniques extends HashSet[RefinedType](initialUniquesCapacity) with Hashable {
     override val hashSeed = classOf[CachedRefinedType].hashCode // some types start life as CachedRefinedTypes, need to have same hash seed
     override def hash(x: RefinedType): Int = x.hash
 

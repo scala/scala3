@@ -30,6 +30,8 @@ class Compiler {
     (start.withRunInfo(new RunInfo(start)) /: defn.RootImports)(addImport)
   }
 
-  def newRun(implicit ctx: Context): Run =
-    new Run(this)(rootContext)
+  def newRun(implicit ctx: Context): Run = {
+    try new Run(this)(rootContext)
+    finally ctx.base.reset()
+  }
 }
