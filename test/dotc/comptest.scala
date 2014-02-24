@@ -4,9 +4,9 @@ import test._
 
 object comptest extends CompilerTest {
 
-  val posDir = "/Users/odersky/workspace/dotty/tests/pos/"
-  val negDir = "/Users/odersky/workspace/dotty/tests/neg/"
-  val dotcDir = "/Users/odersky/workspace/dotty/src/dotty/"
+  val posDir = "./tests/pos/"
+  val negDir = "./tests/neg/"
+  val dotcDir = "./src/dotty/"
 
   def main(args: Array[String]) =
     compileArgs(Array(
