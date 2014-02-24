@@ -8,7 +8,7 @@ import Decorators._
 import StdNames.{nme, tpnme}
 import collection.mutable
 import printing.Disambiguation.disambiguated
-import util.{SimpleMap, Stats, DotClass}
+import util.{Stats, DotClass}
 import config.Config
 import config.Printers._
 
@@ -56,6 +56,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   private var myNothingClass: ClassSymbol = null
   private var myNullClass: ClassSymbol = null
   private var myObjectClass: ClassSymbol = null
+  private var myAnyType: TypeRef = null
 
   def AnyClass = {
     if (myAnyClass == null) myAnyClass = defn.AnyClass
@@ -72,6 +73,10 @@ class TypeComparer(initctx: Context) extends DotClass {
   def ObjectClass = {
     if (myObjectClass == null) myObjectClass = defn.ObjectClass
     myObjectClass
+  }
+  def AnyType = {
+    if (myAnyType == null) myAnyType = AnyClass.typeRef
+    myAnyType
   }
 
   /** Update constraint for `param` to `bounds`, check that
@@ -178,6 +183,14 @@ class TypeComparer(initctx: Context) extends DotClass {
     inst
   }
 
+  def topLevelSubType(tp1: Type, tp2: Type): Boolean = {
+    if (tp2 eq NoType) return false
+    if ((tp2 eq tp1) ||
+        (tp2 eq WildcardType) ||
+        (tp2 eq AnyType) && tp1.isValueType) return true
+    isSubType(tp1, tp2)
+  }
+
   def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
     val saved = frozenConstraint
     frozenConstraint = true
@@ -189,7 +202,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     !(tp2 isRef NothingClass) && isSubType(tp1, tp2)
 
   def isSubType(tp1: Type, tp2: Type): Boolean = /*>|>*/ ctx.traceIndented(s"isSubType ${tp1.show} <:< ${tp2.show}", subtyping) /*<|<*/ {
-    if (tp1 == NoType || tp2 == NoType) false
+    if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
     else {
       val saved = constraint
@@ -216,7 +229,7 @@ class TypeComparer(initctx: Context) extends DotClass {
           successCount = savedSuccessCount
         }
         else if (recCount == 0) {
-          if (needsGc) ctx.typerState.gc()
+          if (needsGc) state.gc()
           Stats.record("successful subType", successCount)
           Stats.record("total subType", totalCount)
           successCount = 0
@@ -247,7 +260,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   def monitoredIsSubType(tp1: Type, tp2: Type) = {
     if (pendingSubTypes == null) {
       pendingSubTypes = new mutable.HashSet[(Type, Type)]
-      ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${ctx.typerState.constraint.show}")
+      ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
       ctx.log(s"!!! constraint = ${constraint.show}")
       assert(!Config.flagDeepSubTypeRecursions)
       if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
@@ -337,7 +350,7 @@ class TypeComparer(initctx: Context) extends DotClass {
             addConstraint(tp1, tp2, fromBelow = false) && {
               if ((!frozenConstraint) &&
                   (tp2 isRef defn.NothingClass) &&
-                  ctx.typerState.isGlobalCommittable) {
+                  state.isGlobalCommittable) {
                 def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
                 if (Config.flagInstantiationToNothing) assert(false, msg)
                 else ctx.log(msg)
@@ -1174,7 +1187,7 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         def comparePoly = (
              param1 == tp2
           || isSubTypeWhenFrozen(bounds(param1).hi, tp2)
-          || { if ((tp2 isRef defn.NothingClass) && ctx.typerState.isGlobalCommittable)
+          || { if ((tp2 isRef defn.NothingClass) && state.isGlobalCommittable)
                  ctx.log(s"!!! instantiating to Nothing: $tp1")
                addConstraint(param1, tp2, fromBelow = false)
              }

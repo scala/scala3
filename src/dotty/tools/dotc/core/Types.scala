@@ -466,7 +466,7 @@ object Types {
 
     /** Is this type a subtype of that type? */
     final def <:<(that: Type)(implicit ctx: Context): Boolean = track("<:<") {
-      ctx.typeComparer.isSubType(this, that)
+      ctx.typeComparer.topLevelSubType(this, that)
     }
 
     /** Is this type the same as that type?
@@ -2262,21 +2262,6 @@ object Types {
 
       case SuperType(thistp, supertp) =>
         this(this(x, thistp), supertp)
-
-      case bounds @ TypeBounds(lo, hi) =>
-        if (lo eq hi) {
-          val saved = variance
-          variance = variance * bounds.variance
-          val result = this(x, lo)
-          variance = saved
-          result
-        }
-        else {
-          variance = -variance
-          val y = this(x, lo)
-          variance = -variance
-          this(y, hi)
-        }
 
       case tp @ ClassInfo(prefix, _, _, _, _) =>
         this(x, prefix)
