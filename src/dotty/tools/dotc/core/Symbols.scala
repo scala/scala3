@@ -480,26 +480,22 @@ object Symbols {
 
     override def superId(implicit ctx: Context): Int = {
       val hint = superIdHint
-      val key = this.typeRef
-      if (hint >= 0 && hint <= ctx.lastSuperId && (ctx.classOfId(hint) eq key))
+      if (hint >= 0 && hint <= ctx.lastSuperId && (ctx.classOfId(hint) eq this))
         hint
       else {
-        val id = ctx.superIdOfClass get key match {
+        val id = ctx.superIdOfClass get this match {
           case Some(id) =>
             id
           case None =>
             val id = ctx.nextSuperId
-            ctx.superIdOfClass(key) = id
-            ctx.classOfId(id) = key
+            ctx.superIdOfClass(this) = id
+            ctx.classOfId(id) = this
             id
         }
         superIdHint = id
         id
       }
     }
-
-    /** Have we seen a subclass of this class? */
-    def hasChildren = superIdHint >= 0 // dubious, does not survive runs if children are deleted!
 
     override protected def prefixString = "ClassSymbol"
   }

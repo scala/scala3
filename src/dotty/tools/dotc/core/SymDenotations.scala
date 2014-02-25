@@ -856,7 +856,7 @@ object SymDenotations {
       }
 
     private def computeBases(implicit ctx: Context): Unit = {
-      if (myBaseClasses == Nil) throw new CyclicReference(this)
+      if (myBaseClasses eq Nil) throw new CyclicReference(this)
       myBaseClasses = Nil
       val seen = new mutable.BitSet
       val locked = new mutable.BitSet
@@ -1012,24 +1012,25 @@ object SymDenotations {
     /** All non-private members of this class that have the given name.
      *  The elements of the returned pre-denotation all
      *  have existing symbols.
+     *  @param inherited  The method is called on a parent class from computeNPMembersNamed
      */
-    final def nonPrivateMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
+    final def nonPrivateMembersNamed(name: Name, inherited: Boolean = false)(implicit ctx: Context): PreDenotation = {
       Stats.record("nonPrivateMembersNamed")
       if (Config.cacheMembersNamed) {
         var denots: PreDenotation = memberCache lookup name
         if (denots == null) {
-          denots = computeNPMembersNamed(name)
+          denots = computeNPMembersNamed(name, inherited)
           if (isFullyCompleted) memberCache.enter(name, denots)
         } else if (Config.checkCacheMembersNamed) {
-          val denots1 = computeNPMembersNamed(name)
+          val denots1 = computeNPMembersNamed(name, inherited)
           assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")
         }
         denots
-      } else computeNPMembersNamed(name)
+      } else computeNPMembersNamed(name, inherited)
     }
 
-    private[core] def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = /*>|>*/ Stats.track("computeNPMembersNamed") /*<|<*/ {
-      if (!classSymbol.hasChildren ||
+    private[core] def computeNPMembersNamed(name: Name, inherited: Boolean)(implicit ctx: Context): PreDenotation = /*>|>*/ Stats.track("computeNPMembersNamed") /*<|<*/ {
+      if (!inherited ||
           !Config.useFingerPrints ||
           (memberFingerPrint contains name)) {
         Stats.record("computeNPMembersNamed after fingerprint")
@@ -1043,7 +1044,7 @@ object SymDenotations {
             p.symbol.denot match {
               case parentd: ClassDenotation =>
                 denots1 union
-                  parentd.nonPrivateMembersNamed(name)
+                  parentd.nonPrivateMembersNamed(name, inherited = true)
                     .mapInherited(ownDenots, denots1, thisType)
               case _ =>
                 denots1
@@ -1197,11 +1198,11 @@ object SymDenotations {
     }
 
     /** Look first for members in package; if none are found look in package object */
-    override def computeNPMembersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
-      val denots = super.computeNPMembersNamed(name)
+    override def computeNPMembersNamed(name: Name, inherited: Boolean)(implicit ctx: Context): PreDenotation = {
+      val denots = super.computeNPMembersNamed(name, inherited)
       if (denots.exists) denots
       else packageObj.moduleClass.denot match {
-        case pcls: ClassDenotation => pcls.computeNPMembersNamed(name)
+        case pcls: ClassDenotation => pcls.computeNPMembersNamed(name, inherited)
         case _ => denots
       }
     }

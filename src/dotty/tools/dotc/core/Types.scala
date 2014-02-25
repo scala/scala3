@@ -102,7 +102,7 @@ object Types {
     }
 
     /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
-    final def derivesFrom(cls: Symbol)(implicit defctx: Context): Boolean =
+    final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean =
       classSymbol.derivesFrom(cls)
 
    /** A type T is a legal prefix in a type selection T#A if
@@ -498,7 +498,7 @@ object Types {
     /** The basetype of this type with given class symbol */
     final def baseType(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseType $base")*/ /*>|>*/ track("baseType") /*<|<*/ {
       base.denot match {
-        case classd: ClassDenotation => classd.baseTypeOf(this)
+        case classd: ClassDenotation => classd.baseTypeOf(this)//widen.dealias)
         case _ => NoType
       }
     }

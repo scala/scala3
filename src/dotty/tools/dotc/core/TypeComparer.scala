@@ -283,7 +283,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         def compareNamed = tp1 match {
           case tp1: NamedType =>
             val sym1 = tp1.symbol
-            ( if (sym1 == tp2.symbol) (
+            ( if (sym1 eq tp2.symbol) (
                    ctx.erasedTypes
                 || sym1.isStaticOwner
                 || { val pre1 = tp1.prefix
@@ -292,7 +292,7 @@ class TypeComparer(initctx: Context) extends DotClass {
                      pre1.isInstanceOf[ThisType] && pre2.isInstanceOf[ThisType]
                    }
               ) else
-                tp1.name == tp2.name && isSubType(tp1.prefix, tp2.prefix)
+                (tp1.name eq tp2.name) && isSubType(tp1.prefix, tp2.prefix)
             ) || secondTryNamed(tp1, tp2)
           case ThisType(cls) if cls eq tp2.symbol.moduleClass =>
             isSubType(cls.owner.thisType, tp2.prefix)
