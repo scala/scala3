@@ -838,7 +838,19 @@ object Types {
      *  0 means: mixed or non-variant occurrences
      */
     def variances(include: TypeVar => Boolean)(implicit ctx: Context): VarianceMap = track("variances") {
-      ctx.addVariances(SimpleMap.Empty, this, +1, include, null)
+      val accu = new TypeAccumulator[VarianceMap] {
+        def apply(vmap: VarianceMap, t: Type): VarianceMap = t match {
+          case t: TypeVar
+          if !t.isInstantiated && (ctx.typerState.constraint contains t) && include(t) =>
+            val v = vmap(t)
+            if (v == null) vmap.updated(t, variance)
+            else if (v == variance) vmap
+            else vmap.updated(t, 0)
+          case _ =>
+            foldOver(vmap, t)
+        }
+      }
+      accu(SimpleMap.Empty, this)
     }
 
     /** A simplified version of this type which is equivalent wrt =:= to this type.

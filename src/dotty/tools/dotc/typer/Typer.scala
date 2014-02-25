@@ -84,8 +84,8 @@ class Typer extends Namer with Applications with Implicits {
   /** The type of a selection with `name` of a tree with type `site`.
    */
   def selectionType(site: Type, name: Name, pos: Position)(implicit ctx: Context): Type = {
-    val refDenot = site.member(name)
-    if (reallyExists(refDenot)) site.select(name, refDenot)
+    val mbr = site.member(name)
+    if (reallyExists(mbr)) site.select(name, mbr)
     else {
       if (!site.isErroneous) {
         typr.println(s"site = $site, baseClasses = ${site.baseClasses}")

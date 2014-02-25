@@ -602,31 +602,33 @@ object Inferencing {
    *  approximate it by its lower bound. Otherwise, if it appears contravariantly
    *  in type `tp` approximate it by its upper bound.
    */
-  def interpolateUndetVars(tree: Tree)(implicit ctx: Context): Unit = Stats.track("interpolateUndetVars") {
-    val tp = tree.tpe.widen
+  def interpolateUndetVars(tree: Tree)(implicit ctx: Context): Unit = {
     val constraint = ctx.typerState.constraint
+    val qualifies = (tvar: TypeVar) => tree contains tvar.owningTree
+    def interpolate() = Stats.track("interpolateUndetVars") {
+      val tp = tree.tpe.widen
+      constr.println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${constraint.uninstVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
+      constr.println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (tvar => s"$tvar / ${tvar.show}")}, constraint: ${constraint.show}")
 
-    constr.println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${constraint.uninstVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
-    constr.println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (tvar => s"$tvar / ${tvar.show}")}, constraint: ${constraint.show}")
-
-    def qualifies(tvar: TypeVar) = tree contains tvar.owningTree
-    val vs = tp.variances(qualifies)
-    var changed = false
-    vs foreachBinding { (tvar, v) =>
-      if (v != 0) {
-        typr.println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
-        tvar.instantiate(fromBelow = v == 1)
-        changed = true
-      }
-    }
-    if (changed) // instantiations might have uncovered new typevars to interpolate
-      interpolateUndetVars(tree)
-    else
-      for (tvar <- constraint.uninstVars)
-        if (!(vs contains tvar) && qualifies(tvar)) {
-          typr.println(s"instantiating non-occurring ${tvar.show} in ${tp.show}")
-          tvar.instantiate(fromBelow = true)
+      val vs = tp.variances(qualifies)
+      var changed = false
+      vs foreachBinding { (tvar, v) =>
+        if (v != 0) {
+          typr.println(s"interpolate ${if (v == 1) "co" else "contra"}variant ${tvar.show} in ${tp.show}")
+          tvar.instantiate(fromBelow = v == 1)
+          changed = true
         }
+      }
+      if (changed) // instantiations might have uncovered new typevars to interpolate
+        interpolateUndetVars(tree)
+      else
+        for (tvar <- constraint.uninstVars)
+          if (!(vs contains tvar) && qualifies(tvar)) {
+            typr.println(s"instantiating non-occurring ${tvar.show} in ${tp.show}")
+            tvar.instantiate(fromBelow = true)
+          }
+    }
+    if (constraint.uninstVars exists qualifies) interpolate()
   }
 
   /** Instantiate undetermined type variables to that type `tp` is

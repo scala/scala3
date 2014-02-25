@@ -113,54 +113,6 @@ trait TypeOps { this: Context =>
     }
   }
 
-  type VarianceMap = SimpleMap[TypeVar, Integer]
-
-  /** Add occurrences of type variables in type `tp` to variance map `vmap` */
-  final def addVariances(vmap: VarianceMap, tp: Type, variance: Int, include: TypeVar => Boolean, accu: VariancesAccumulator): VarianceMap = tp match {
-    case tp: TypeRef =>
-      if (tp.symbol.isStatic) vmap
-      else {
-        val prefix = tp.prefix
-        val tp1 = tp.lookupRefined(prefix, tp.name)
-        addVariances(vmap, if (tp1.exists) tp1 else prefix, variance, include, accu)
-      }
-    case tp: TermRef =>
-      if (tp.symbol.isStatic) vmap
-      else addVariances(vmap, tp.prefix, variance, include, accu)
-
-    case _: ThisType
-      | _: BoundType
-      | NoPrefix => vmap
-
-    case tp: RefinedType =>
-      addVariances(
-        addVariances(vmap, tp.parent, variance, include, accu),
-        tp.refinedInfo, variance, include, accu)
-
-    case bounds @ TypeBounds(lo, hi) if lo eq hi =>
-      addVariances(vmap, lo, variance * bounds.variance, include, accu)
-
-    case tp: TypeVar if !tp.isInstantiated && (typerState.constraint contains tp) && include(tp) =>
-      val v = vmap(tp)
-      if (v == null) vmap.updated(tp, variance)
-      else if (v == variance) vmap
-      else vmap.updated(tp, 0)
-
-    case _ =>
-      (if (accu != null) accu else new VariancesAccumulator(include)).runOver(vmap, tp, variance)
-  }
-
-  class VariancesAccumulator(include: TypeVar => Boolean) extends TypeAccumulator[VarianceMap] {
-    def apply(vmap: VarianceMap, tp: Type): VarianceMap = addVariances(vmap, tp, variance, include, this)
-    def runOver(vmap: VarianceMap, tp: Type, variance: Int): VarianceMap = {
-      val saved = this.variance
-      this.variance = variance
-      val result = foldOver(vmap, tp)
-      this.variance = saved
-      result
-    }
-  }
-
   private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
     val lazyInfo = new LazyType { // needed so we do not force `formal`.
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
