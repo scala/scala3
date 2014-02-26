@@ -2099,73 +2099,87 @@ object Types {
     protected var variance = 1
 
     /** Map this function over given type */
-    def mapOver(tp: Type): Type = tp match {
-      case tp: NamedType =>
-        if (stopAtStatic && tp.symbol.isStatic) tp
-        else tp.derivedSelect(this(tp.prefix))
+    def mapOver(tp: Type): Type = {
+      implicit val ctx = this.ctx
+      tp match {
+        case tp: NamedType =>
+          if (stopAtStatic && tp.symbol.isStatic) tp
+          else tp.derivedSelect(this(tp.prefix))
 
-      case _: ThisType
-         | _: BoundType
-         | NoPrefix => tp
+        case _: ThisType
+          | _: BoundType
+          | NoPrefix => tp
 
-      case tp: RefinedType =>
-        tp.derivedRefinedType(this(tp.parent), tp.refinedName, this(tp.refinedInfo))
+        case tp: RefinedType =>
+          tp.derivedRefinedType(this(tp.parent), tp.refinedName, this(tp.refinedInfo))
 
-      case tp @ TypeBounds(lo, hi) =>
-        if (lo eq hi) {
-          val saved = variance
-          variance = variance * tp.variance
-          val lo1 = this(lo)
-          variance = saved
-          tp.derivedTypeAlias(lo1)
-        } else {
-          variance = -variance
-          val lo1 = this(lo)
-          variance = -variance
-          tp.derivedTypeBounds(lo1, this(hi))
-        }
+        case tp: TypeBounds =>
+          def mapOverBounds = {
+            val lo = tp.lo
+            val hi = tp.hi
+            if (lo eq hi) {
+              val saved = variance
+              variance = variance * tp.variance
+              val lo1 = this(lo)
+              variance = saved
+              tp.derivedTypeAlias(lo1)
+            } else {
+              variance = -variance
+              val lo1 = this(lo)
+              variance = -variance
+              tp.derivedTypeBounds(lo1, this(hi))
+            }
+          }
+          mapOverBounds
 
-      case tp @ MethodType(pnames, ptypes) =>
-        variance = -variance
-        val ptypes1 = ptypes mapConserve this
-        variance = -variance
-        tp.derivedMethodType(pnames, ptypes1, this(tp.resultType))
+        case tp: MethodType =>
+          def mapOverMethod = {
+            variance = -variance
+            val ptypes1 = tp.paramTypes mapConserve this
+            variance = -variance
+            tp.derivedMethodType(tp.paramNames, ptypes1, this(tp.resultType))
+          }
+          mapOverMethod
 
-      case tp @ ExprType(restpe) =>
-        tp.derivedExprType(this(restpe))
+        case tp: ExprType =>
+          tp.derivedExprType(this(tp.resultType))
 
-      case tp @ PolyType(pnames) =>
-        variance = -variance
-        val bounds1 = tp.paramBounds.mapConserve(apply(_).bounds)
-        variance = -variance
-        tp.derivedPolyType(
-          pnames, bounds1, this(tp.resultType))
+        case tp: PolyType =>
+          def mapOverPoly = {
+            variance = -variance
+            val bounds1 = tp.paramBounds.mapConserve(this).asInstanceOf[List[TypeBounds]]
+            variance = -variance
+            tp.derivedPolyType(
+              tp.paramNames, bounds1, this(tp.resultType))
+          }
+          mapOverPoly
 
-      case tp @ SuperType(thistp, supertp) =>
-        tp.derivedSuperType(this(thistp), this(supertp))
+        case tp @ SuperType(thistp, supertp) =>
+          tp.derivedSuperType(this(thistp), this(supertp))
 
-      case tp: ClassInfo =>
-        mapClassInfo(tp)
+        case tp: ClassInfo =>
+          mapClassInfo(tp)
 
-      case tp: TypeVar =>
-        val inst = tp.instanceOpt
-        if (inst.exists) apply(inst) else tp
+        case tp: TypeVar =>
+          val inst = tp.instanceOpt
+          if (inst.exists) apply(inst) else tp
 
-      case tp: AndOrType =>
-        tp.derivedAndOrType(this(tp.tp1), this(tp.tp2))
+        case tp: AndOrType =>
+          tp.derivedAndOrType(this(tp.tp1), this(tp.tp2))
 
-      case tp @ AnnotatedType(annot, underlying) =>
-        val underlying1 = mapOver(underlying)
-        if (underlying1 eq underlying) tp else underlying1
+        case tp @ AnnotatedType(annot, underlying) =>
+          val underlying1 = this(underlying)
+          if (underlying1 eq underlying) tp else underlying1
 
-      case tp @ WildcardType =>
-        tp.derivedWildcardType(mapOver(tp.optBounds))
+        case tp @ WildcardType =>
+          tp.derivedWildcardType(mapOver(tp.optBounds))
 
-      case tp: ProtoType =>
-        tp.map(this)
+        case tp: ProtoType =>
+          tp.map(this)
 
-      case _ =>
-        tp
+        case _ =>
+          tp
+      }
     }
 
     def mapOver(syms: List[Symbol]): List[Symbol] =

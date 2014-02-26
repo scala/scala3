@@ -280,24 +280,27 @@ class TypeComparer(initctx: Context) extends DotClass {
   def firstTry(tp1: Type, tp2: Type): Boolean = {
     tp2 match {
       case tp2: NamedType =>
-        def compareNamed = tp1 match {
-          case tp1: NamedType =>
-            val sym1 = tp1.symbol
-            ( if (sym1 eq tp2.symbol) (
-                   ctx.erasedTypes
+        def compareNamed = {
+          implicit val ctx = this.ctx
+          tp1 match {
+            case tp1: NamedType =>
+              val sym1 = tp1.symbol
+              (if (sym1 eq tp2.symbol) (
+                ctx.erasedTypes
                 || sym1.isStaticOwner
-                || { val pre1 = tp1.prefix
-                     val pre2 = tp2.prefix
-                     isSubType(pre1, pre2) ||
-                     pre1.isInstanceOf[ThisType] && pre2.isInstanceOf[ThisType]
-                   }
-              ) else
-                (tp1.name eq tp2.name) && isSubType(tp1.prefix, tp2.prefix)
-            ) || secondTryNamed(tp1, tp2)
-          case ThisType(cls) if cls eq tp2.symbol.moduleClass =>
-            isSubType(cls.owner.thisType, tp2.prefix)
-          case _ =>
-            secondTry(tp1, tp2)
+                || {
+                  val pre1 = tp1.prefix
+                  val pre2 = tp2.prefix
+                  isSubType(pre1, pre2) ||
+                    pre1.isInstanceOf[ThisType] && pre2.isInstanceOf[ThisType]
+                })
+              else
+                (tp1.name eq tp2.name) && isSubType(tp1.prefix, tp2.prefix)) || secondTryNamed(tp1, tp2)
+            case ThisType(cls) if cls eq tp2.symbol.moduleClass =>
+              isSubType(cls.owner.thisType, tp2.prefix)
+            case _ =>
+              secondTry(tp1, tp2)
+          }
         }
         compareNamed
       case tp2: ProtoType =>
