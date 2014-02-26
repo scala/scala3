@@ -207,38 +207,32 @@ class TypeComparer(initctx: Context) extends DotClass {
     else {
       val saved = constraint
       val savedSuccessCount = successCount
-      val savedTotalCount = totalCount
-      //if (Stats.monitored) Stats.record(s"isSubType ${tp1.show} <:< ${tp2.show}")
       try {
-        recCount += 1
-/* !!! DEBUG
-        if (isWatched(tp1) && isWatched(tp2) && !(this.isInstanceOf[ExplainingTypeComparer])) {
-          val explained = new ExplainingTypeComparer(ctx)
-          println("***** watched:")
-          println(TypeComparer.explained(_.typeComparer.isSubType(tp1, tp2)))
-        }
-*/
+        recCount = recCount + 1
         val result =
           if (recCount < LogPendingSubTypesThreshold) firstTry(tp1, tp2)
           else monitoredIsSubType(tp1, tp2)
-        successCount += 1
-        totalCount += 1
-        recCount -= 1
-        if (!result) {
-          constraint = saved
-          successCount = savedSuccessCount
+        recCount = recCount - 1
+        if (!result) constraint = saved
+        else if (recCount == 0 && needsGc) state.gc()
+
+        def recordStatistics = {
+          // Stats.record(s"isSubType ${tp1.show} <:< ${tp2.show}")
+          totalCount += 1
+          if (result) successCount += 1 else successCount = savedSuccessCount
+          if (recCount == 0) {
+            Stats.record("successful subType", successCount)
+            Stats.record("total subType", totalCount)
+            successCount = 0
+            totalCount = 0
+          }
         }
-        else if (recCount == 0) {
-          if (needsGc) state.gc()
-          Stats.record("successful subType", successCount)
-          Stats.record("total subType", totalCount)
-          successCount = 0
-          totalCount = 0
-        }
+        if (Stats.monitored) recordStatistics
+
         result
       } catch {
         case ex: Throwable =>
-          if (ex.isInstanceOf[AssertionError]) { // !!!DEBUG
+          def showState =  {
             println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}, frozen = $frozenConstraint"))
             def explainPoly(tp: Type) = tp match {
               case tp: PolyParam => println(s"polyparam ${tp.show} found in ${tp.binder.show}")
@@ -249,6 +243,7 @@ class TypeComparer(initctx: Context) extends DotClass {
             explainPoly(tp1)
             explainPoly(tp2)
           }
+          if (ex.isInstanceOf[AssertionError]) showState
           recCount -= 1
           constraint = saved
           successCount = savedSuccessCount
