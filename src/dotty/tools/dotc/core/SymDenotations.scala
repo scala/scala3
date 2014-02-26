@@ -60,12 +60,12 @@ object SymDenotations {
    *  during a period.
    */
   class SymDenotation private[SymDenotations] (
-    final val symbol: Symbol,
+    symbol: Symbol,
     ownerIfExists: Symbol,
     final val name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation {
+    initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol) {
 
     //assert(symbol.id != 4940, name)
 
