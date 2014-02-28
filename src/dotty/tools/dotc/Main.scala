@@ -9,9 +9,7 @@ import core.Contexts.Context
 import reporting.Reporter
 
 /* To do:
- *   - simplify hk types
- *   - Don't open package objects from class files if they are present in source
- *   - Revise the way classes are inherited - when not followed by [...] or (...),
+s *   - Revise the way classes are inherited - when not followed by [...] or (...),
  *     assume the unparameterized type and forward type parameters as we do now for the synthetic head class.
  */
 object Main extends Driver {
