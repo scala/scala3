@@ -6,6 +6,7 @@ import Contexts._, Periods._, Symbols._
 import io.PlainFile
 import util.{SourceFile, NoSource, Stats, SimpleMap}
 import reporting.Reporter
+import java.io.FileWriter
 
 class Run(comp: Compiler)(implicit ctx: Context) {
 
@@ -27,6 +28,15 @@ class Run(comp: Compiler)(implicit ctx: Context) {
       for (phase <- ctx.allPhases)
         phase.runOn(units)
     }
+  }
+
+  def compile(sourceCode: String): Unit = {
+    val tmpFile = java.io.File.createTempFile("dotty-source-tmp", ".scala")
+    tmpFile.createNewFile()
+    val writer = new FileWriter(tmpFile)
+    writer.write(sourceCode)
+    writer.close()
+    compile(List(tmpFile.getAbsolutePath))
   }
 
   /** Print summary; return # of errors encountered */
