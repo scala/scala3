@@ -226,7 +226,7 @@ object desugar {
     def productConstr(n: Int) = {
       val tycon = ref(defn.ProductNClass(n).typeRef)
       val targs = vparamss.head map (_.tpt)
-      New(AppliedTypeTree(tycon, targs), Nil)
+      AppliedTypeTree(tycon, targs)
     }
 
     // Case classes get a ProductN parent
@@ -241,7 +241,7 @@ object desugar {
       moduleDef(
         ModuleDef(
           Modifiers(Synthetic), name.toTermName,
-          Template(emptyConstructor, New(parentTpt, Nil) :: Nil, EmptyValDef, defs))).toList
+          Template(emptyConstructor, parentTpt :: Nil, EmptyValDef, defs))).toList
 
     // The companion object defifinitions, if a companion is needed, Nil otherwise.
     // companion definitions include:
@@ -713,13 +713,13 @@ object desugar {
   /** Create a class definition with the same info as this refined type.
    *      parent { refinements }
    *  ==>
-   *      class <refinement> extends parent { refinements }
+   *      trait <refinement> extends parent { refinements }
    *
    *  The result is used for validity checking, is thrown away afterwards.
    */
   def refinedTypeToClass(tree: RefinedTypeTree)(implicit ctx: Context): TypeDef = {
     val impl = Template(emptyConstructor, tree.tpt :: Nil, EmptyValDef, tree.refinements)
-    TypeDef(Modifiers(), tpnme.REFINE_CLASS, impl)
+    TypeDef(Modifiers(Trait), tpnme.REFINE_CLASS, impl)
   }
 
  /** If tree is a variable pattern, return its name and type, otherwise return None.

@@ -150,6 +150,10 @@ class TypeApplications(val self: Type) extends AnyVal {
       NoType
   }
 
+  /** The base type including all type arguments of this type */
+  final def baseTypeWithArgs(base: Symbol)(implicit ctx: Context): Type =
+    self.baseType(base).appliedTo(baseTypeArgs(base))
+
   /** Translate a type of the form From[T] to To[T], keep other types as they are.
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
    */

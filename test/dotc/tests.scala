@@ -38,13 +38,16 @@ class tests extends CompilerTest {
   @Test def pos_assignments() = compileFile(posDir, "assignments")
   @Test def pos_packageobject() = compileFile(posDir, "packageobject")
   @Test def pos_overloaded() = compileFile(posDir, "overloaded")
+  @Test def pos_templateParents() = compileFile(posDir, "templateParents")
 
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
   @Test def neg_typedidents() = compileFile(negDir, "typedIdents", xerrors = 2)
   @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)
   @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 10)
+  @Test def neg_privates() = compileFile(negDir, "privates", xerrors = 2)
   @Test def neg_rootImports = compileFile(negDir, "rootImplicits", xerrors = 2)
+  @Test def neg_templateParents() = compileFile(posDir, "templateParents", xerrors = 2)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc")
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast")

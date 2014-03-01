@@ -431,7 +431,7 @@ class Typer extends Namer with Applications with Implicits {
         typed(cpy.Block(tree, clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
         val tpt1 = typedType(tree.tpt)
-        val clsref = checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos)
+        val clsref = checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
         cpy.New(tree, tpt1).withType(tpt1.tpe)
     }
@@ -904,10 +904,31 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = track("typedClassDef") {
+    val superCtx = ctx.fresh addMode Mode.InSuperCall
+    def typedParent(tree: untpd.Tree): Tree =
+      if (tree.isType) typedType(tree)(superCtx)
+      else {
+        val result = typedExpr(tree)(superCtx)
+        if ((cls is Trait) && result.tpe.classSymbol.isRealClass)
+          ctx.error(s"trait may not call constructor of ${result.tpe.classSymbol}", tree.pos)
+        result
+      }
+
+    /** If this is a real class, make sure its first parent is a
+     *  constructor call. Cannot simply use a type.
+     */
+    def ensureConstrCall(parents: List[Tree]): List[Tree] = {
+      val firstParent :: otherParents = parents
+      if (firstParent.isType && !(cls is Trait))
+        typed(untpd.New(untpd.TypedSplice(firstParent), Nil))(superCtx) :: otherParents
+      else parents
+    }
+
     val TypeDef(mods, name, impl @ Template(constr, parents, self, body)) = cdef
     val mods1 = typedModifiers(mods)
     val constr1 = typed(constr).asInstanceOf[DefDef]
-    val parents1 = parents mapconserve (typed(_)(ctx.fresh addMode Mode.InSuperCall))
+    val parents1 = ensureConstrCall(ensureFirstIsClass(
+        parents mapconserve typedParent, cdef.pos.toSynthetic))
     val self1 = typed(self).asInstanceOf[ValDef]
     val localDummy = ctx.newLocalDummy(cls, impl.pos)
     val body1 = typedStats(body, localDummy)(inClassContext(self1.symbol))

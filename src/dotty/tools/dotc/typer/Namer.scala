@@ -409,11 +409,11 @@ class Namer { typer: Typer =>
       /** The type of a parent constructor. Types constructor arguments
        *  only if parent type contains uninstantiated type parameters.
        */
-      def parentType(constr: untpd.Tree)(implicit ctx: Context): Type =
-        if (constr.isType) { // this case applies to desugared refined types
-          typedAheadType(constr).tpe
+      def parentType(parent: untpd.Tree)(implicit ctx: Context): Type =
+        if (parent.isType) {
+          typedAheadType(parent).tpe
         } else {
-          val (core, targs) = stripApply(constr) match {
+          val (core, targs) = stripApply(parent) match {
             case TypeApply(core, targs) => (core, targs)
             case core => (core, Nil)
           }
@@ -421,8 +421,13 @@ class Namer { typer: Typer =>
           val targs1 = targs map (typedAheadType(_))
           val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
           if (ptype.uninstantiatedTypeParams.isEmpty) ptype
-          else typedAheadExpr(constr).tpe
+          else typedAheadExpr(parent).tpe
         }
+
+      def checkedParentType(parent: untpd.Tree): Type = {
+        val ptype = parentType(parent)(ctx.fresh addMode Mode.InSuperCall)
+        checkClassTypeWithStablePrefix(ptype, parent.pos, traitReq = parent ne parents.head)
+      }
 
       val selfInfo =
         if (self.isEmpty) NoType
@@ -430,20 +435,13 @@ class Namer { typer: Typer =>
         else createSymbol(self)
       // pre-set info, so that parent types can refer to type params
       denot.info = ClassInfo(cls.owner.thisType, cls, Nil, decls, selfInfo)
-      val parentTypes = parents map (parentType(_)(ctx.fresh addMode Mode.InSuperCall))
+      val parentTypes = ensureFirstIsClass(parents map checkedParentType)
       val parentRefs = ctx.normalizeToClassRefs(parentTypes, cls, decls)
-      val parentClsRefs =
-        for ((parentRef, constr) <- parentRefs zip parents)
-          yield checkClassTypeWithStablePrefix(parentRef, constr.pos)
-      val normalizedParentClsRefs = ensureFirstIsClass(parentClsRefs)
+      typr.println(s"completing $denot, parents = $parents, parentTypes = $parentTypes, parentRefs = $parentRefs")
 
       index(constr)
       index(rest)(inClassContext(selfInfo))
-      denot.info = ClassInfo(cls.owner.thisType, cls, normalizedParentClsRefs, decls, selfInfo)
-      if (parentClsRefs ne normalizedParentClsRefs) {
-        forwardTypeParams(normalizedParentClsRefs.head.symbol.asClass, cls, decls)
-        typr.println(i"expanded parents of $denot: $normalizedParentClsRefs%, %")
-      }
+      denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
     }
   }
 

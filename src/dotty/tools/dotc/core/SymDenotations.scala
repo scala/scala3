@@ -269,6 +269,9 @@ object SymDenotations {
     /** Is this denotation a class? */
     final def isClass: Boolean = isInstanceOf[ClassDenotation]
 
+    /** Is this denotation a non-trait class? */
+    final def isRealClass(implicit ctx: Context) = isClass && !is(Trait)
+
     /** Cast to class denotation */
     final def asClass: ClassDenotation = asInstanceOf[ClassDenotation]
 

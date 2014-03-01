@@ -410,13 +410,15 @@ object Inferencing {
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
     if (!tp.isStable) ctx.error(i"Prefix of type ${tp.widenIfUnstable} is not stable", pos)
 
-  /** Check that `tp` is a class type with a stable prefix.
-   *  @return  Underlying class type if type checks out OK, ObjectClass.typeRef if not.
+  /** Check that `tp` is a class type with a stable prefix. Also, if `isFirst` is
+   *  false check that `tp` is a trait.
+   *  @return  `tp` itself if it is a class or trait ref, ObjectClass.typeRef if not.
    */
-  def checkClassTypeWithStablePrefix(tp: Type, pos: Position)(implicit ctx: Context): TypeRef =
+  def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type =
     tp.underlyingClassRef match {
-      case tp: TypeRef =>
-        checkStable(tp.prefix, pos)
+      case tref: TypeRef =>
+        checkStable(tref.prefix, pos)
+        if (traitReq && !(tref.symbol is Trait)) ctx.error(i"$tref is not a trait", pos)
         tp
     case _ =>
       ctx.error(i"$tp is not a class type", pos)
@@ -441,45 +443,45 @@ object Inferencing {
     case _ =>
   }
 
-  /** Ensure that first typeref in a list of parents points to a non-trait class.
-   *  If that's not already the case, add one.
+  /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
+   *  If that's not already the case, add one. The added class type CT is determined as follows.
+   *  First, let C be the unique class such that
+   *  - there is a parent P_i such that P_i derives from C, and
+   *  - for every class D: If some parent P_j, j <= i derives from D, then C derives from D.
+   *  Then, let CT be the smallest type which
+   *  - has C as its class symbol, and
+   *  - for all parents P_i: If P_i derives from C then P_i <:< CT.
    */
-  def ensureFirstIsClass(prefs: List[TypeRef])(implicit ctx: Context): List[TypeRef] = {
-    def isRealClass(sym: Symbol) = sym.isClass && !(sym is Trait)
-    def realClassParent(tref: TypeRef): TypeRef =
-      if (isRealClass(tref.symbol)) tref
-      else tref.info.parents match {
-        case pref :: _ => if (isRealClass(pref.symbol)) pref else realClassParent(pref)
-        case nil => defn.ObjectClass.typeRef
+  def ensureFirstIsClass(parents: List[Type])(implicit ctx: Context): List[Type] = {
+    def realClassParent(cls: Symbol): ClassSymbol =
+      if (!cls.isClass) defn.ObjectClass
+      else if (!(cls is Trait)) cls.asClass
+      else cls.asClass.classParents match {
+        case parentRef :: _ => realClassParent(parentRef.symbol)
+        case nil => defn.ObjectClass
       }
-    def improve(clsRef: TypeRef, parent: TypeRef): TypeRef = {
-      val pclsRef = realClassParent(parent)
-      if (pclsRef.symbol derivesFrom clsRef.symbol) pclsRef else clsRef
+    def improve(candidate: ClassSymbol, parent: Type): ClassSymbol = {
+      val pcls = realClassParent(parent.classSymbol)
+      if (pcls derivesFrom candidate) pcls else candidate
     }
-    prefs match {
-      case pref :: _ if isRealClass(pref.symbol) => prefs
-      case _ => (defn.ObjectClass.typeRef /: prefs)(improve) :: prefs
+    parents match {
+      case p :: _ if p.classSymbol.isRealClass => parents
+      case _ =>
+        val pcls = (defn.ObjectClass /: parents)(improve)
+        val ptype = ctx.typeComparer.glb(
+            defn.ObjectType :: (parents map (_ baseTypeWithArgs pcls)))
+        ptype :: parents
     }
   }
 
-  /** Forward bindings of all type parameters of `pcls`. That is, if the type parameter
-   *  if instantiated in a parent class, include its type binding in the current class.
-   */
-  def forwardTypeParams(pcls: ClassSymbol, cls: ClassSymbol, decls: Scope)(implicit ctx: Context): Unit = {
-    for (tparam <- pcls.typeParams) {
-      val argSym: Symbol = cls.thisType.member(tparam.name).symbol
-      argSym.info match {
-        case TypeAlias(TypeRef(ThisType(_), name)) =>
-          val from = cls.thisType.member(name).symbol
-          from.info match {
-            case bounds: TypeBounds =>
-              typr.println(s"forward ref $argSym $from $bounds")
-              ctx.forwardRef(argSym, from, bounds, cls, decls)
-            case _ =>
-          }
-        case _ =>
-      }
-    }
+  /** Ensure that first parent tree refers to a real class. */
+  def ensureFirstIsClass(parents: List[Tree], pos: Position)(implicit ctx: Context): List[Tree] = parents match {
+    case p :: ps if p.tpe.classSymbol.isRealClass => parents
+    case _ =>
+      // add synthetic class type
+      val parentTypes = ensureFirstIsClass(parents.tpes)
+      assert(parentTypes.length > parents.length)
+      (TypeTree(parentTypes.head) withPos pos) :: parents
   }
 
   /** Check that class does not define */
