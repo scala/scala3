@@ -715,10 +715,12 @@ object desugar {
    *  ==>
    *      trait <refinement> extends parent { refinements }
    *
+   *  If the parent is missing, Object is assumed.
    *  The result is used for validity checking, is thrown away afterwards.
    */
   def refinedTypeToClass(tree: RefinedTypeTree)(implicit ctx: Context): TypeDef = {
-    val impl = Template(emptyConstructor, tree.tpt :: Nil, EmptyValDef, tree.refinements)
+    val parent = if (tree.tpt.isEmpty) TypeTree(defn.ObjectType) else tree.tpt
+    val impl = Template(emptyConstructor, parent :: Nil, EmptyValDef, tree.refinements)
     TypeDef(Modifiers(Trait), tpnme.REFINE_CLASS, impl)
   }
 

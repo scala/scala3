@@ -798,7 +798,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(implicit ctx: Context): RefinedTypeTree = track("typedRefinedTypeTree") {
-    val tpt1 = typedAheadType(tree.tpt)
+    val tpt1 = if (tree.tpt.isEmpty) TypeTree(defn.ObjectType) else typedAheadType(tree.tpt)
     val refineClsDef = desugar.refinedTypeToClass(tree)
     val refineCls = createSymbol(refineClsDef).asClass
     val TypeDef(_, _, Template(_, _, _, refinements1)) = typed(refineClsDef)
