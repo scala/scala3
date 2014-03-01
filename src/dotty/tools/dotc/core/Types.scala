@@ -1883,11 +1883,21 @@ object Types {
 
     def contains(tp: Type)(implicit ctx: Context) = lo <:< tp && tp <:< hi
 
-    def & (that: TypeBounds)(implicit ctx: Context): TypeBounds =
-      derivedTypeBounds(this.lo | that.lo, this.hi & that.hi, this commonVariance that)
+    def & (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
+      val v = this commonVariance that
+      if (v != 0 && (this.lo eq this.hi) && (that.lo eq that.hi))
+        if (v > 0) derivedTypeAlias(this.hi & that.hi, v)
+        else derivedTypeAlias(this.lo | that.lo, v)
+      else derivedTypeBounds(this.lo | that.lo, this.hi & that.hi, v)
+    }
 
-    def | (that: TypeBounds)(implicit ctx: Context): TypeBounds =
-      derivedTypeBounds(this.lo & that.lo, this.hi | that.hi, this commonVariance that)
+    def | (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
+      val v = this commonVariance that
+      if (v == 0 && (this.lo eq this.hi) && (that.lo eq that.hi))
+        if (v > 0) derivedTypeAlias(this.hi | that.hi, v)
+        else derivedTypeAlias(this.lo & that.lo, v)
+      else derivedTypeBounds(this.lo & that.lo, this.hi | that.hi, v)
+    }
 
     override def & (that: Type)(implicit ctx: Context) = that match {
       case that: TypeBounds => this & that
