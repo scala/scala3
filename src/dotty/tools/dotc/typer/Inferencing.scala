@@ -468,6 +468,7 @@ object Inferencing {
       case p :: _ if p.classSymbol.isRealClass => parents
       case _ =>
         val pcls = (defn.ObjectClass /: parents)(improve)
+        typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseTypeWithArgs pcls)}%, %")
         val ptype = ctx.typeComparer.glb(
             defn.ObjectType :: (parents map (_ baseTypeWithArgs pcls)))
         ptype :: parents
@@ -479,9 +480,22 @@ object Inferencing {
     case p :: ps if p.tpe.classSymbol.isRealClass => parents
     case _ =>
       // add synthetic class type
-      val parentTypes = ensureFirstIsClass(parents.tpes)
-      assert(parentTypes.length > parents.length)
-      (TypeTree(parentTypes.head) withPos pos) :: parents
+      val first :: _ = ensureFirstIsClass(parents.tpes)
+      TypeTree(checkFeasible(first, pos, i"\n in inferred parent $first")).withPos(pos) :: parents
+  }
+
+  /** Check that any top-level type arguments in this type are feasible, i.e. that
+   *  their lower bound conforms to their upper cound. If a type argument is
+   *  infeasible, issue and error and continue with upper bound.
+   */
+  def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp match {
+    case tp: RefinedType =>
+      tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasible(tp.refinedInfo, pos, where))
+    case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
+      ctx.error(i"no type exists between low bound $lo and high bound $hi$where", pos)
+      tp.derivedTypeAlias(hi)
+    case _ =>
+      tp
   }
 
   /** Check that class does not define */
