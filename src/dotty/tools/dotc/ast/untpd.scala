@@ -13,8 +13,16 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
 
 // ----- Tree cases that exist in untyped form only ------------------
 
+  trait OpTree extends Tree {
+    def op: Name
+    override def isTerm = op.isTermName
+    override def isType = op.isTypeName
+  }
+
   /** A typed subtree of an untyped tree needs to be wrapped in a TypedSlice */
-  case class TypedSplice(tree: tpd.Tree) extends Tree
+  case class TypedSplice(tree: tpd.Tree) extends ProxyTree {
+    def forwardTo = tree
+  }
 
   /** mods object name impl */
   case class ModuleDef(mods: Modifiers, name: TermName, impl: Template)
@@ -25,12 +33,20 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
 
   case class SymbolLit(str: String) extends TermTree
   case class InterpolatedString(id: TermName, strings: List[Literal], elems: List[Tree]) extends TermTree
-  case class Function(args: List[Tree], body: Tree) extends Tree
-  case class InfixOp(left: Tree, op: Name, right: Tree) extends Tree
-  case class PostfixOp(od: Tree, op: Name) extends Tree
-  case class PrefixOp(op: Name, od: Tree) extends Tree
-  case class Parens(t: Tree) extends Tree
-  case class Tuple(trees: List[Tree]) extends Tree
+  case class Function(args: List[Tree], body: Tree) extends Tree {
+    override def isTerm = body.isTerm
+    override def isType = body.isType
+  }
+  case class InfixOp(left: Tree, op: Name, right: Tree) extends OpTree
+  case class PostfixOp(od: Tree, op: Name) extends OpTree
+  case class PrefixOp(op: Name, od: Tree) extends OpTree
+  case class Parens(t: Tree) extends ProxyTree {
+    def forwardTo = t
+  }
+  case class Tuple(trees: List[Tree]) extends Tree {
+    override def isTerm = trees.isEmpty || trees.head.isTerm
+    override def isType = !isTerm
+  }
   case class WhileDo(cond: Tree, body: Tree) extends TermTree
   case class DoWhile(body: Tree, cond: Tree) extends TermTree
   case class ForYield(enums: List[Tree], expr: Tree) extends TermTree
@@ -101,10 +117,19 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
    *  ==>
    *      (new pre.C).<init>[Ts](args1)...(args_n)
    */
-  def New(tpt: Tree, argss: List[List[Tree]]): Tree = {
+  def New(tpt: Tree, argss: List[List[Tree]])(implicit ctx: Context): Tree = {
     val (tycon, targs) = tpt match {
-      case AppliedTypeTree(tycon, targs) => (tycon, targs)
-      case _ => (tpt, Nil)
+      case AppliedTypeTree(tycon, targs) =>
+        (tycon, targs)
+      case TypedSplice(AppliedTypeTree(tycon, targs)) =>
+        (TypedSplice(tycon), targs map TypedSplice)
+      case TypedSplice(tpt1: Tree) =>
+        val argTypes = tpt1.tpe.typeArgs
+        val tycon = tpt1.tpe.withoutArgs(argTypes)
+        def wrap(tpe: Type) = TypeTree(tpe) withPos tpt.pos
+        (wrap(tycon), argTypes map wrap)
+      case _ =>
+        (tpt, Nil)
     }
     var prefix: Tree = Select(New(tycon), nme.CONSTRUCTOR)
     if (targs.nonEmpty) prefix = TypeApply(prefix, targs)
