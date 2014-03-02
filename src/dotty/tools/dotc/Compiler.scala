@@ -7,10 +7,11 @@ import Periods._
 import Symbols._
 import typer.{FrontEnd, Typer, Mode, ImportInfo}
 import reporting.ConsoleReporter
+import dotty.tools.dotc.core.Phases.Phase
 
 class Compiler {
 
-  def phases = List(new FrontEnd)
+  def phases: List[Phase] = List(new FrontEnd)
 
   var runId = 1
   def nextRunId = { runId += 1; runId }
