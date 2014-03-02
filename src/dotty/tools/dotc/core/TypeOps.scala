@@ -12,13 +12,13 @@ trait TypeOps { this: Context =>
     def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.debugTraceIndented(s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
       if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
         tp
-      else if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
+      else if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists)
         pre match {
           case SuperType(thispre, _) => thispre
           case _ => pre
         }
       else
-        toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)
+        toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
     }
 
     /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track , s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG

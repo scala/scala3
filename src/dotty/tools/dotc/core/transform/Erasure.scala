@@ -51,7 +51,7 @@ object Erasure {
     case AndType(tp1, tp2) =>
       erasure(tp1)
     case OrType(tp1, tp2) =>
-      erasure(tp.baseType(lubClass(tp1, tp2)))
+      erasure(tp.baseTypeRef(lubClass(tp1, tp2)))
     case tp: MethodType =>
       tp.derivedMethodType(
         tp.paramNames, tp.paramTypes.mapConserve(erasure), resultErasure(tp.resultType))

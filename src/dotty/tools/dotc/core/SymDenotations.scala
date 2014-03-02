@@ -449,7 +449,7 @@ object SymDenotations {
                | ${owner.showLocated} where target is defined""".stripMargin)
         else if (
           !(  isType // allow accesses to types from arbitrary subclasses fixes #4737
-           || pre.baseType(cls).exists
+           || pre.baseTypeRef(cls).exists // ??? why not use derivesFrom ???
            || isConstructor
            || (owner is ModuleClass) // don't perform this check for static members
            ))
@@ -850,12 +850,12 @@ object SymDenotations {
     private[this] var myBaseClasses: List[ClassSymbol] = null
     private[this] var mySuperClassBits: BitSet = null
 
-	/** Invalidate baseTypeCache and superClassBits on new run */
+	/** Invalidate baseTypeRefCache and superClassBits on new run */
     private def checkBasesUpToDate()(implicit ctx: Context) =
-      if (baseTypeValid != ctx.runId) {
-        baseTypeCache = new java.util.HashMap[CachedType, Type]
+      if (baseTypeRefValid != ctx.runId) {
+        baseTypeRefCache = new java.util.HashMap[CachedType, Type]
         mySuperClassBits = null
-        baseTypeValid = ctx.runId
+        baseTypeRefValid = ctx.runId
       }
 
     private def computeBases(implicit ctx: Context): Unit = {
@@ -1065,18 +1065,18 @@ object SymDenotations {
       raw.filterExcluded(excluded).asSeenFrom(pre).toDenot(pre)
     }
 
-    private[this] var baseTypeCache: java.util.HashMap[CachedType, Type] = null
-    private[this] var baseTypeValid: RunId = NoRunId
+    private[this] var baseTypeRefCache: java.util.HashMap[CachedType, Type] = null
+    private[this] var baseTypeRefValid: RunId = NoRunId
 
-    /** Compute tp.baseType(this) */
-    final def baseTypeOf(tp: Type)(implicit ctx: Context): Type = {
+    /** Compute tp.baseTypeRef(this) */
+    final def baseTypeRefOf(tp: Type)(implicit ctx: Context): Type = {
 
       def foldGlb(bt: Type, ps: List[Type]): Type = ps match {
-        case p :: ps1 => foldGlb(bt & baseTypeOf(p), ps1)
+        case p :: ps1 => foldGlb(bt & baseTypeRefOf(p), ps1)
         case _ => bt
       }
 
-      def computeBaseTypeOf(tp: Type): Type = {
+      def computeBaseTypeRefOf(tp: Type): Type = {
         Stats.record("computeBaseTypeOf")
         if (symbol.isStatic && tp.derivesFrom(symbol))
           symbol.typeRef
@@ -1090,34 +1090,34 @@ object SymDenotations {
                 if (cdenot.superClassBits contains symbol.superId) foldGlb(NoType, tp.parents)
                 else NoType
               case _ =>
-                baseTypeOf(tp.underlying)
+                baseTypeRefOf(tp.underlying)
             }
           case tp: TypeProxy =>
-            baseTypeOf(tp.underlying)
+            baseTypeRefOf(tp.underlying)
           case AndType(tp1, tp2) =>
-            baseTypeOf(tp1) & baseTypeOf(tp2)
+            baseTypeRefOf(tp1) & baseTypeRefOf(tp2)
           case OrType(tp1, tp2) =>
-            baseTypeOf(tp1) | baseTypeOf(tp2)
+            baseTypeRefOf(tp1) | baseTypeRefOf(tp2)
           case _ =>
             NoType
         }
       }
 
-      /*>|>*/ ctx.debugTraceIndented(s"$tp.baseType($this)") /*<|<*/ {
+      /*>|>*/ ctx.debugTraceIndented(s"$tp.baseTypeRef($this)") /*<|<*/ {
         tp match {
           case tp: CachedType =>
             checkBasesUpToDate()
-            var basetp = baseTypeCache get tp
+            var basetp = baseTypeRefCache get tp
             if (basetp == null) {
-              baseTypeCache.put(tp, NoPrefix)
-              basetp = computeBaseTypeOf(tp)
-              baseTypeCache.put(tp, basetp)
+              baseTypeRefCache.put(tp, NoPrefix)
+              basetp = computeBaseTypeRefOf(tp)
+              baseTypeRefCache.put(tp, basetp)
             } else if (basetp == NoPrefix) {
               throw new CyclicReference(this)
             }
             basetp
           case _ =>
-            computeBaseTypeOf(tp)
+            computeBaseTypeRefOf(tp)
         }
       }
     }

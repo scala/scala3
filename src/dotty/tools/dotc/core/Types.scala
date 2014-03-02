@@ -495,10 +495,12 @@ object Types {
           this, that, alwaysMatchSimple = !ctx.phase.erasedTypes)
       }
 
-    /** The basetype of this type with given class symbol */
-    final def baseType(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseType $base")*/ /*>|>*/ track("baseType") /*<|<*/ {
+    /** The basetype TypeRef of this type with given class symbol,
+     *  but without including any type arguments
+     */
+    final def baseTypeRef(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseTypeRef $base")*/ /*>|>*/ track("baseTypeRef") /*<|<*/ {
       base.denot match {
-        case classd: ClassDenotation => classd.baseTypeOf(this)//widen.dealias)
+        case classd: ClassDenotation => classd.baseTypeRefOf(this)//widen.dealias)
         case _ => NoType
       }
     }

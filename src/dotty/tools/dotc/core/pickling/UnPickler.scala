@@ -631,7 +631,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             if (sym.owner != cls) {
               val overriding = cls.decls.lookup(sym.name)
               if (overriding.exists && overriding != sym) {
-                val base = pre.baseType(sym.owner)
+                val base = pre.baseTypeWithArgs(sym.owner)
                 assert(base.exists)
                 pre = SuperType(pre, base)
               }
