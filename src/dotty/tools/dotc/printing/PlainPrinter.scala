@@ -23,11 +23,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
         ctx.toTextRecursions -= 1
       }
     else {
-      recursionLimitExceeeded()
+      recursionLimitExceeded()
       "..."
     }
 
-  protected def recursionLimitExceeeded() = {
+  protected def recursionLimitExceeded() = {
     ctx.warning("Exceeded recursion depth attempting to print type.")
     (new Throwable).printStackTrace
   }

@@ -411,7 +411,7 @@ object Contexts {
 
     /** Allocate and return next free superclass id */
     private[core] def nextSuperId: Int = {
-      lastSuperId += 1;
+      lastSuperId += 1
       if (lastSuperId >= classOfId.length) {
         val tmp = new Array[ClassSymbol](classOfId.length * 2)
         classOfId.copyToArray(tmp)

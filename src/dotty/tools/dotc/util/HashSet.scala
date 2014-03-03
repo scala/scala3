@@ -1,6 +1,6 @@
 package dotty.tools.dotc.util
 
-/** A hash set that allows some priviliged protected access to its internals
+/** A hash set that allows some privileged protected access to its internals
  */
 class HashSet[T >: Null <: AnyRef](initialCapacity: Int, loadFactor: Float = 0.25f) extends Set[T] with scala.collection.generic.Clearable {
   private var used: Int = _

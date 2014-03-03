@@ -17,7 +17,7 @@ object Positions {
 
   /** A position indicates a range between a start offset and an end offset.
    *  Positions can be synthetic or source-derived. A source-derived position
-   *  has in addition a pointlies somewhere between start and end. The point
+   *  has in addition a point lies somewhere between start and end. The point
    *  is roughly where the ^ would go if an error was diagnosed at that position.
    *  All quantities are encoded opaquely in a Long.
    */

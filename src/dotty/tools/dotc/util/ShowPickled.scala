@@ -239,7 +239,7 @@ object ShowPickled {
         case SYMANNOT       =>
           printSymbolRef(); printTypeRef(); buf.until(end, printAnnotArgRef)
         case ANNOTATEDtpe   =>
-          printTypeRef(); buf.until(end, printAnnotInfoRef);
+          printTypeRef(); buf.until(end, printAnnotInfoRef)
         case ANNOTINFO      =>
           printTypeRef(); buf.until(end, printAnnotArgRef)
         case ANNOTARGARRAY  =>

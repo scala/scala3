@@ -251,7 +251,7 @@ object Names {
   private def equals(index: Int, cs: Array[Char], offset: Int, len: Int): Boolean = {
     var i = 0
     while ((i < len) && (chrs(index + i) == cs(offset + i)))
-      i += 1;
+      i += 1
     i == len
   }
 

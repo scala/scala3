@@ -120,7 +120,7 @@ class SymbolLoaders {
    */
   def binaryOnly(owner: Symbol, name: String)(implicit ctx: Context): Boolean =
     name == "package" &&
-      (owner.fullName == "scala" || owner.fullName == "scala.reflect")
+      (owner.fullName.toString == "scala" || owner.fullName.toString == "scala.reflect")
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */

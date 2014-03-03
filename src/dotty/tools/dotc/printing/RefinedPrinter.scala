@@ -13,7 +13,7 @@ import scala.annotation.switch
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
-  override protected def recursionLimitExceeeded() = {}
+  override protected def recursionLimitExceeded() = {}
 
   protected val PrintableFlags = (ModifierFlags | Label | Module).toCommonFlags
 

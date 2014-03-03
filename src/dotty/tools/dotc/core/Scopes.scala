@@ -231,7 +231,7 @@ object Scopes {
         if (e1 == e)
           hashTable(index) = e.tail
         else {
-          while (e1.tail != e) e1 = e1.tail;
+          while (e1.tail != e) e1 = e1.tail
           e1.tail = e.tail
         }
       }
@@ -243,7 +243,7 @@ object Scopes {
     final def unlink(sym: Symbol)(implicit ctx: Context): Unit = {
       var e = lookupEntry(sym.name)
       while (e ne null) {
-        if (e.sym == sym) unlink(e);
+        if (e.sym == sym) unlink(e)
         e = lookupNextEntry(e)
       }
     }
