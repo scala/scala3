@@ -96,7 +96,7 @@ object Types {
         else thissym eq sym
       case this1: RefinedType =>
         // make sure all refinements are type arguments
-        this1.parent.isRef(sym) && this.typeArgs.nonEmpty
+        this1.parent.isRef(sym) && this.argInfos.nonEmpty
       case _ =>
         false
     }

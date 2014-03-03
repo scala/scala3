@@ -24,6 +24,7 @@ import EtaExpansion._
 import collection.mutable
 import reflect.ClassTag
 import config.Printers._
+import TypeApplications._
 import language.implicitConversions
 
 object Applications {
@@ -266,7 +267,7 @@ trait Applications extends Compatibility { self: Typer =>
               case arg :: Nil if isVarArg(arg) =>
                 addTyped(arg, formal)
               case _ =>
-                val elemFormal = formal.typeArgs.head
+                val elemFormal = formal.argTypesLo.head
                 args foreach (addTyped(_, elemFormal))
                 makeVarArg(args.length, elemFormal)
             }
@@ -609,7 +610,7 @@ trait Applications extends Compatibility { self: Typer =>
       if (extractorMemberType(unapplyResult, nme.isDefined) isRef defn.BooleanClass) {
         if (getTp.exists)
           if (unapply.symbol.name == nme.unapplySeq) {
-            val seqArg = getTp.firstBaseTypeArg(defn.SeqClass)
+            val seqArg = boundsToHi(getTp.firstBaseArgInfo(defn.SeqClass))
             if (seqArg.exists) return args map Function.const(seqArg)
           }
           else return getSelectors(getTp)
@@ -683,6 +684,7 @@ trait Applications extends Compatibility { self: Typer =>
         }
 
         var argTypes = unapplyArgs(unapplyApp.tpe)
+        for (argType <- argTypes) assert(!argType.isInstanceOf[TypeBounds], unapplyApp.tpe.show)
         val bunchedArgs = argTypes match {
           case argType :: Nil if argType.isRepeatedParam => untpd.SeqLiteral(args) :: Nil
           case _ => args
@@ -770,7 +772,7 @@ trait Applications extends Compatibility { self: Typer =>
         val tparams = ctx.newTypeParams(alt1.symbol.owner, tp1.paramNames, EmptyFlags, bounds)
         isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
       case tp1: MethodType =>
-        def repeatedToSingle(tp: Type) = if (tp.isRepeatedParam) tp.typeArgs.head else tp
+        def repeatedToSingle(tp: Type) = if (tp.isRepeatedParam) tp.argTypesHi.head else tp
         isApplicable(alt2, tp1.paramTypes map repeatedToSingle, WildcardType) ||
         tp1.paramTypes.isEmpty && tp2.isInstanceOf[MethodOrPoly]
       case _ =>

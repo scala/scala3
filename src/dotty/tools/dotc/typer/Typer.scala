@@ -438,7 +438,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedPair(tree: untpd.Pair, pt: Type)(implicit ctx: Context) = track("typedPair") {
-    val (leftProto, rightProto) = pt.typeArgs match {
+    val (leftProto, rightProto) = pt.argTypesLo match {
       case l :: r :: Nil if pt isRef defn.PairClass => (l, r)
       case _ => (WildcardType, WildcardType)
     }
@@ -561,7 +561,7 @@ class Typer extends Namer with Applications with Implicits {
       val params = args.asInstanceOf[List[untpd.ValDef]]
       val (protoFormals, protoResult): (List[Type], Type) = pt match {
         case _ if defn.isFunctionType(pt) =>
-          (pt.dealias.typeArgs.init, pt.dealias.typeArgs.last)
+          (pt.dealias.argInfos.init, pt.dealias.argInfos.last)
         case SAMType(meth) =>
           val mt @ MethodType(_, paramTypes) = meth.info
           (paramTypes, mt.resultType)
@@ -750,7 +750,7 @@ class Typer extends Namer with Applications with Implicits {
     val expr1 = typed(tree.expr, pt)
     val handler1 = typed(tree.handler, defn.FunctionType(defn.ThrowableType :: Nil, pt))
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
-    val handlerTypeArgs = handler1.tpe.baseTypeArgs(defn.FunctionClass(1))
+    val handlerTypeArgs = handler1.tpe.baseArgTypesHi(defn.FunctionClass(1))
     val ownType = if (handlerTypeArgs.nonEmpty) expr1.tpe | handlerTypeArgs(1) else expr1.tpe
     cpy.Try(tree, expr1, handler1, finalizer1) withType ownType
   }
