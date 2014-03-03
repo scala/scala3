@@ -986,7 +986,7 @@ object Types {
     val prefix: Type
     val name: Name
 
-    assert(prefix.isValueType || (prefix eq NoPrefix))
+    assert(prefix.isValueType || (prefix eq NoPrefix), s"invalid prefix $prefix")
 
     private[this] var lastDenotation: Denotation = _
     private[this] var lastSymbol: Symbol = _

@@ -754,7 +754,7 @@ object SymDenotations {
 
     // ----- denotation fields and accessors ------------------------------
 
-    if (initFlags is (Module, butNot = Package)) assert(name.isModuleClassName)
+    if (initFlags is (Module, butNot = Package)) assert(name.isModuleClassName, s"module naming inconsistency: $name")
 
     /** The symbol asserted to have type ClassSymbol */
     def classSymbol: ClassSymbol = symbol.asInstanceOf[ClassSymbol]

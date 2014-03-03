@@ -212,7 +212,7 @@ trait Applications extends Compatibility { self: Typer =>
               else if (cx.scope != cx.outer.scope &&
                        cx.denotNamed(methRef.name).hasAltWith(_.symbol == meth)) {
                 val denot = cx.denotNamed(getterName)
-                assert(denot.exists)
+                assert(denot.exists, s"non-existent getter denotation ($denot) for getter($getterName)")
                 cx.owner.thisType.select(getterName, denot)
               } else findDefault(cx.outer)
             }

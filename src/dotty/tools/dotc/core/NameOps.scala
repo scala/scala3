@@ -198,7 +198,7 @@ object NameOps {
       if (p >= 0)
         (name drop (p + TRAIT_SETTER_SEPARATOR.length)).asTermName.setterToGetter
       else {
-        assert(name endsWith SETTER_SUFFIX, name)
+        assert(name.endsWith(SETTER_SUFFIX), name + " is referenced as a setter but has wrong name format")
         name.take(name.length - SETTER_SUFFIX.length).asTermName
       }
     }
