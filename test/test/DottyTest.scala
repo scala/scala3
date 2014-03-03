@@ -23,39 +23,48 @@ class DottyTest {
     import base.settings._
     val ctx = base.initialCtx.fresh
       .withSetting(verbose, true)
-//      .withSetting(debug, true)
-//      .withSetting(debugTrace, true)
-//      .withSetting(prompt, true)
+      //      .withSetting(debug, true)
+      //      .withSetting(debugTrace, true)
+      //      .withSetting(prompt, true)
       .withSetting(Ylogcp, true)
       .withSetting(printtypes, true)
       .withSetting(pageWidth, 90)
       .withSetting(log, List("<some"))
- //   .withTyperState(new TyperState(new ConsoleReporter()(base.initialCtx)))
+    //   .withTyperState(new TyperState(new ConsoleReporter()(base.initialCtx)))
 
-//      .withSetting(uniqid, true)
+    //      .withSetting(uniqid, true)
     println(ctx.settings)
     base.definitions.init(ctx)
     ctx
   }
 
-  def checkCompile(checkAfterPhase: String, source:String)(assertion:tpd.Tree =>Unit): Unit = {
-    val c = new Compiler {
-      override def phases = {
-        val allPhases = super.phases
-        val targetPhase = allPhases.find{p=> p.name == checkAfterPhase}
-        assert(targetPhase isDefined)
-        val phasesBefore = allPhases.takeWhile(x=> ! (x eq targetPhase.get))
+  private def compilerWithChecker(phase: String)(assertion:(tpd.Tree, Context) => Unit) = new Compiler {
+    override def phases = {
+      val allPhases = super.phases
+      val targetPhase = allPhases.find{p=> p.name == phase}
+      assert(targetPhase isDefined)
+      val phasesBefore = allPhases.takeWhile(x=> ! (x eq targetPhase.get))
 
-        val checker = new Phase{
-          def name = "assertionChecker"
-          override def run(implicit ctx: Context): Unit = assertion(ctx.compilationUnit.tpdTree)
-        }
-        phasesBefore:::List(targetPhase.get, checker)
+      val checker = new Phase{
+        def name = "assertionChecker"
+        override def run(implicit ctx: Context): Unit = assertion(ctx.compilationUnit.tpdTree, ctx)
       }
+      phasesBefore:::List(targetPhase.get, checker)
     }
+  }
+
+  def checkCompile(checkAfterPhase: String, source:String)(assertion:(tpd.Tree, Context) => Unit): Unit = {
+    val c = compilerWithChecker(checkAfterPhase)(assertion)
     c.rootContext(ctx)
     val run = c.newRun
     run.compile(source)
+  }
+
+  def checkCompile(checkAfterPhase: String, sources:List[String])(assertion:(tpd.Tree, Context) => Unit): Unit = {
+    val c = compilerWithChecker(checkAfterPhase)(assertion)
+    c.rootContext(ctx)
+    val run = c.newRun
+    run.compile(sources)
   }
 
   def methType(names: String*)(paramTypes: Type*)(resultType: Type = defn.UnitType) =
