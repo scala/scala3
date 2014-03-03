@@ -12,13 +12,17 @@ class FrontEnd extends Phase {
 
   def name = "frontend"
 
-  def monitor(doing: String)(body: => Unit)(implicit ctx: Context) =
-    try body
-    catch {
+  def monitor(doing: String)(body: => Unit)(implicit ctx: Context) = {
+    def action = s"$doing ${ctx.compilationUnit}"
+    try {
+      ctx.inform(action)
+      body
+    } catch {
       case ex: Throwable =>
-        println(s"exception occured while $doing ${ctx.compilationUnit}")
+        println(s"exception occured while $action")
         throw ex
     }
+  }
 
   def parse(implicit ctx: Context) = monitor("parsing") {
     val unit = ctx.compilationUnit
