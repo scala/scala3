@@ -33,6 +33,8 @@ object DottyBuild extends Build {
     // scalac options
     scalacOptions in Global ++= Seq("-feature", "-deprecation", "-language:_"),
 
+    // enable verbose exception messages for JUnit
+    testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
     // Adjust classpath for running dotty
     mainClass in (Compile, run) := Some("dotty.tools.dotc.Main"),
     fork in run := true,
