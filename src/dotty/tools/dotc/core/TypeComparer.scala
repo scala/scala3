@@ -616,7 +616,7 @@ class TypeComparer(initctx: Context) extends DotClass {
    */
   def isSubTypeHK(tp1: Type, tp2: Type): Boolean = {
     val tparams = tp1.typeParams
-    val hkArgs = tp2.typeArgs
+    val hkArgs = tp2.argInfos
     (hkArgs.length == tparams.length) && {
       val base = tp1.narrow
       (tparams, hkArgs).zipped.forall { (tparam, hkArg) =>
@@ -752,7 +752,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   /** The least upper bound of two types
    *  @note  We do not admit singleton types in or-types as lubs.
    */
-  def lub(tp1: Type, tp2: Type): Type =
+  def lub(tp1: Type, tp2: Type): Type = /*>|>*/ ctx.traceIndented(s"lub(${tp1.show}, ${tp2.show})", typr, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2
@@ -772,6 +772,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         }
       }
     }
+  }
 
   /** The least upper bound of a list of types */
   final def lub(tps: List[Type]): Type =

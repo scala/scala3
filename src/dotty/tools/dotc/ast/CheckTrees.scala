@@ -135,7 +135,7 @@ object CheckTrees {
       check(finalizer.isTerm)
       check(handler.isTerm)
       check(handler.tpe derivesFrom defn.FunctionClass(1))
-      check(handler.tpe.baseTypeArgs(defn.FunctionClass(1)).head <:< defn.ThrowableType)
+      check(handler.tpe.baseArgInfos(defn.FunctionClass(1)).head <:< defn.ThrowableType)
     case Throw(expr) =>
       check(expr.isValue)
       check(expr.tpe.derivesFrom(defn.ThrowableClass))
@@ -210,9 +210,9 @@ object CheckTrees {
             check(args.isEmpty)
           else {
             check(rtp isRef defn.OptionClass)
-            val normArgs = rtp.typeArgs match {
+            val normArgs = rtp.argTypesHi match {
               case optionArg :: Nil =>
-                optionArg.typeArgs match {
+                optionArg.argTypesHi match {
                   case Nil =>
                     optionArg :: Nil
                   case tupleArgs if defn.isTupleType(optionArg) =>

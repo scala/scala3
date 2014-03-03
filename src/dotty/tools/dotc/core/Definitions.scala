@@ -286,7 +286,7 @@ class Definitions {
     def unapply(ft: Type): Option[(List[Type], Type)] = { // Dotty deviation: Type annotation needed because inferred type
                                                           // is Some[(List[Type], Type)] | None, which is not a legal unapply type.
       val tsym = ft.typeSymbol
-      lazy val targs = ft.typeArgs
+      lazy val targs = ft.argInfos
       if ((FunctionClasses contains tsym) &&
           (targs.length - 1 <= MaxFunctionArity) &&
           (FunctionClass(targs.length - 1) == tsym)) Some((targs.init, targs.last)) // Dotty deviation: no auto-tupling
@@ -317,7 +317,7 @@ class Definitions {
   lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
 
   def isTupleType(tp: Type) = {
-    val arity = tp.dealias.typeArgs.length
+    val arity = tp.dealias.argInfos.length
     arity <= MaxTupleArity && (tp isRef TupleClass(arity))
   }
 
@@ -329,7 +329,7 @@ class Definitions {
     0 <= arity && arity <= MaxFunctionArity && (tp isRef FunctionClass(arity))
   }
 
-  def functionArity(tp: Type) = tp.dealias.typeArgs.length - 1
+  def functionArity(tp: Type) = tp.dealias.argInfos.length - 1
 
   // ----- Higher kinds machinery ------------------------------------------
 

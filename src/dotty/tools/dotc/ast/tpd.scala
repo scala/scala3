@@ -336,7 +336,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** new C(args) */
   def New(tp: Type, args: List[Tree])(implicit ctx: Context): Apply = {
-    val targs = tp.typeArgs
+    val targs = tp.argTypes
     Apply(
       Select(
         New(tp withoutArgs targs),

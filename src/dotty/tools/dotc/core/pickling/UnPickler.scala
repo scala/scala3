@@ -76,7 +76,7 @@ object UnPickler {
     case tp @ MethodType(paramNames, paramTypes) =>
       val lastArg = paramTypes.last
       assert(lastArg isRef defn.ArrayClass)
-      val elemtp0 :: Nil = lastArg.baseTypeArgs(defn.ArrayClass)
+      val elemtp0 :: Nil = lastArg.baseArgInfos(defn.ArrayClass)
       val elemtp = elemtp0 match {
         case AndType(t1, t2) if t1.typeSymbol.isAbstractType && (t2 isRef defn.ObjectClass) =>
           t1 // drop intersection with Object for abstract types in varargs. UnCurry can handle them.
