@@ -71,5 +71,11 @@ class tests extends CompilerTest {
       "-Ylog:frontend",
       "-Xprompt"))
 
+  @Test def testIssue_34 = compileArgs(Array(
+      dotcDir + "tools/dotc/config/Properties.scala",
+      dotcDir + "tools/dotc/config/PathResolver.scala",
+      "-Ylog:frontend",
+      "-Xprompt"))
+
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }
