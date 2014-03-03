@@ -52,7 +52,7 @@ class tests extends CompilerTest {
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc")
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast")
-  @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config")
+  @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config", List("-verbose"))
   @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core")
   @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling")
   @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/core/transform")
