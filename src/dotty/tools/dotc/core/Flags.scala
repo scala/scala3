@@ -166,7 +166,7 @@ object Flags {
 
   /** The conjunction of all flags in given flag set */
   def allOf(flagss: FlagSet*) = {
-    assert(flagss forall (_.numFlags == 1))
+    assert(flagss forall (_.numFlags == 1), "Flags.allOf doesn't support flag " + flagss.find(_.numFlags != 1))
     FlagConjunction(union(flagss: _*).bits)
   }
 

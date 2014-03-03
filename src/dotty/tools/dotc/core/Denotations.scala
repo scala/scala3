@@ -466,7 +466,7 @@ object Denotations {
      */
     private def bringForward()(implicit ctx: Context): SingleDenotation = this match {
       case denot: SymDenotation if ctx.stillValid(denot) =>
-        if (denot.exists) assert(ctx.runId > validFor.runId)
+        if (denot.exists) assert(ctx.runId > validFor.runId, s"denotation $denot invalid in run ${ctx.runId}. ValidFor: $validFor")
         var d: SingleDenotation = denot
         do {
           d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
@@ -527,7 +527,7 @@ object Denotations {
           while (!(cur.validFor contains currentPeriod)) {
             cur = cur.nextInRun
             cnt += 1
-            assert(cnt <= MaxPossiblePhaseId)
+            assert(cnt <= MaxPossiblePhaseId, "seems to be a loop in Denotations")
           }
         }
         cur
@@ -704,7 +704,7 @@ object Denotations {
   }
 
   case class DenotUnion(denots1: PreDenotation, denots2: PreDenotation) extends PreDenotation {
-    assert(denots1.exists && denots2.exists)
+    assert(denots1.exists && denots2.exists, s"Union of non-existing denotations ($denots1) and ($denots2)")
     def exists = true
     def first = denots1.first
     def toDenot(pre: Type)(implicit ctx: Context) =

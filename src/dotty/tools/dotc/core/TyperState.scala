@@ -31,7 +31,7 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
   }
 
   /** A fresh typer state with the same constraint as this one.
-   *  @param isCommittable  The constraint can be committed to an exclosing context.
+   *  @param isCommittable  The constraint can be committed to an enclosing context.
    */
   def fresh(isCommittable: Boolean): TyperState = this
 

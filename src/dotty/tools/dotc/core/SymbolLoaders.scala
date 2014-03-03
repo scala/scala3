@@ -28,7 +28,7 @@ class SymbolLoaders {
   protected def enterNew(
       owner: Symbol, member: Symbol,
       completer: SymbolLoader, scope: Scope = EmptyScope)(implicit ctx: Context): Symbol = {
-    assert(scope.lookup(member.name) == NoSymbol, owner.fullName + "." + member.name)
+    assert(scope.lookup(member.name) == NoSymbol, s"${owner.fullName}.${member.name} already has a symbol")
     owner.asClass.enter(member, scope)
     member
   }
@@ -120,7 +120,7 @@ class SymbolLoaders {
    */
   def binaryOnly(owner: Symbol, name: String)(implicit ctx: Context): Boolean =
     name == "package" &&
-      (owner.fullName == "scala" || owner.fullName == "scala.reflect")
+      (owner.fullName.toString == "scala" || owner.fullName.toString == "scala.reflect")
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
    */
