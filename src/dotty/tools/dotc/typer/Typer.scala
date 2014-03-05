@@ -9,7 +9,7 @@ import Constants._
 import StdNames._
 import Scopes._
 import Denotations._
-import Inferencing._
+import ProtoTypes._
 import Contexts._
 import Symbols._
 import Types._
@@ -20,7 +20,6 @@ import NameOps._
 import Flags._
 import Decorators._
 import ErrorReporting._
-import Inferencing.{FunProto, PolyProto, Compatibility, normalize}
 import EtaExpansion.etaExpand
 import util.Positions._
 import util.common._
@@ -49,7 +48,7 @@ object Typer {
   }
 }
 
-class Typer extends Namer with Applications with Implicits {
+class Typer extends Namer with Applications with Implicits with Inferencing with Checking {
 
   import Typer._
   import tpd.{cpy => _, _}
@@ -414,13 +413,7 @@ class Typer extends Namer with Applications with Implicits {
   }
 
   def typedLiteral(tree: untpd.Literal)(implicit ctx: Context) = track("typedLiteral") {
-    tree.withType {
-      tree.const.tag match {
-        case UnitTag => defn.UnitType
-        case NullTag => defn.NullType
-        case _ => ConstantType(tree.const)
-      }
-    }
+    tpd.typedLiteral(tree)
   }
 
   def typedNew(tree: untpd.New, pt: Type)(implicit ctx: Context) = track("typedNew") {
@@ -431,10 +424,9 @@ class Typer extends Namer with Applications with Implicits {
         val clsDef = TypeDef(Modifiers(Final), x, templ)
         typed(cpy.Block(tree, clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
-        val tpt1 = typedType(tree.tpt)
-        val clsref = checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
+	      val tpt1 = typedType(tree.tpt)
+        tpd.typedNew(cpy.New(tree, tpt1))
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
-        cpy.New(tree, tpt1).withType(tpt1.tpe)
     }
   }
 

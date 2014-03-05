@@ -68,13 +68,27 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   def Literal(const: Constant)(implicit ctx: Context): Literal =
-    untpd.Literal(const).withType(const.tpe).checked
+    typedLiteral(untpd.Literal(const))
+
+  def typedLiteral(tree: untpd.Literal)(implicit ctx: Context) =
+    tree.withType {
+      tree.const.tag match {
+        case UnitTag => defn.UnitType
+        case NullTag => defn.NullType
+        case _ => ConstantType(tree.const)
+      }
+    }
 
   def unitLiteral(implicit ctx: Context): Literal =
     Literal(Constant(()))
 
   def New(tpt: Tree)(implicit ctx: Context): New =
     untpd.New(tpt).withType(tpt.tpe).checked
+
+  def typedNew(tree: untpd.New)(implicit ctx: Context) = {
+    ctx.typer.checkClassTypeWithStablePrefix(tree.tpt.tpe, tree.tpt.pos, traitReq = false)
+    tree.withType(tree.tpt.tpe)
+  }
 
   def New(tp: Type)(implicit ctx: Context): New = New(TypeTree(tp))
 

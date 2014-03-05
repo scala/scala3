@@ -19,7 +19,7 @@ import ErrorReporting._
 import Trees._
 import Names._
 import StdNames._
-import Inferencing._
+import ProtoTypes._
 import EtaExpansion._
 import collection.mutable
 import reflect.ClassTag

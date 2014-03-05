@@ -5,7 +5,7 @@ package typer
 import ast._
 import core._
 import Trees._
-import Types._, Inferencing._, Contexts._, Decorators._, Denotations._, Symbols._
+import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
 import Applications._, Implicits._
 import util.Positions._
 import printing.Showable
