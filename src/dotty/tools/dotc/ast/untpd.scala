@@ -107,7 +107,6 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
   def Import(expr: Tree, selectors: List[untpd.Tree]): Import = new Import(expr, selectors)
   def PackageDef(pid: RefTree, stats: List[Tree]): PackageDef = new PackageDef(pid, stats)
   def Annotated(annot: Tree, arg: Tree): Annotated = new Annotated(annot, arg)
-  def SharedTree(shared: Tree): SharedTree = new SharedTree(shared)
 
   // ------ Additional creation methods for untyped only -----------------
 

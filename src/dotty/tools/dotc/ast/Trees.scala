@@ -776,15 +776,6 @@ object Trees {
   def genericEmptyValDef[T >: Untyped]: ValDef[T] = theEmptyValDef.asInstanceOf[ValDef[T]]
   def genericEmptyTree[T >: Untyped]: Thicket[T] = theEmptyTree.asInstanceOf[Thicket[T]]
 
-  /** A tree that can be shared without its position
-   *  polluting containing trees. Accumulators and tranformers
-   *  memoize results of shared subtrees
-   */
-  case class SharedTree[-T >: Untyped](shared: Tree[T]) extends ProxyTree[T] {
-    type ThisTree[-T >: Untyped] = SharedTree[T]
-    def forwardTo: Tree[T] = shared
-  }
-
   def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
     var buf: ListBuffer[Tree[T]] = null
     var xs = trees
@@ -871,7 +862,6 @@ object Trees {
     type Import = Trees.Import[T]
     type PackageDef = Trees.PackageDef[T]
     type Annotated = Trees.Annotated[T]
-    type SharedTree = Trees.SharedTree[T]
     type Thicket = Trees.Thicket[T]
 
     val EmptyTree: Thicket = genericEmptyTree
@@ -1081,10 +1071,6 @@ object Trees {
         case tree: Annotated if (annot eq tree.annot) && (arg eq tree.arg) => tree
         case _ => finalize(tree, untpd.Annotated(annot, arg))
       }
-      def SharedTree(tree: Tree, shared: Tree): SharedTree = tree match {
-        case tree: SharedTree if (shared eq tree.shared) => tree
-        case _ => finalize(tree, untpd.SharedTree(shared))
-      }
       def Thicket(tree: Tree, trees: List[Tree]): Thicket = tree match {
         case tree: Thicket if (trees eq tree.trees) => tree
         case _ => finalize(tree, untpd.Thicket(trees))
@@ -1092,7 +1078,6 @@ object Trees {
     }
 
     abstract class TreeTransformer(val cpy: TreeCopier = inst.cpy) {
-      var sharedMemo: Map[SharedTree, SharedTree] = Map()
 
       def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
         case Ident(name) =>
@@ -1178,14 +1163,6 @@ object Trees {
         case Thicket(trees) =>
           val trees1 = transform(trees)
           if (trees1 eq trees) tree else Thicket(trees1)
-        case tree @ SharedTree(shared) =>
-          sharedMemo get tree match {
-            case Some(tree1) => tree1
-            case None =>
-              val tree1 = cpy.SharedTree(tree, transform(shared))
-              sharedMemo = sharedMemo.updated(tree, tree1)
-              tree1
-          }
       }
       def transformStats(trees: List[Tree])(implicit ctx: Context): List[Tree] =
         transform(trees)
@@ -1198,7 +1175,6 @@ object Trees {
     }
 
     abstract class TreeAccumulator[X] extends ((X, Tree) => X) {
-      var sharedMemo: Map[SharedTree, X] = Map()
       def apply(x: X, tree: Tree): X
       def apply(x: X, trees: Traversable[Tree]): X = (x /: trees)(apply)
       def foldOver(x: X, tree: Tree): X = tree match {
@@ -1284,14 +1260,6 @@ object Trees {
           this(this(x, annot), arg)
         case Thicket(ts) =>
           this(x, ts)
-        case tree @ SharedTree(shared) =>
-          sharedMemo get tree match {
-            case Some(x1) => x1
-            case None =>
-              val x1 = this(x, shared)
-              sharedMemo = sharedMemo.updated(tree, x1)
-              x1
-          }
       }
     }
 

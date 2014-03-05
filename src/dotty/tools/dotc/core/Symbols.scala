@@ -19,7 +19,7 @@ import Annotations._
 import util.Positions._
 import StdNames._
 import NameOps._
-import ast.tpd.{TreeMapper, SharedTree}
+import ast.tpd.{TreeMapper, Tree}
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
@@ -216,7 +216,7 @@ trait Symbols { this: Context =>
     newSymbol(cls, nme.localDummyName(cls), EmptyFlags, NoType)
 
   /** Create an import symbol pointing back to given qualifier `expr`. */
-  def newImportSymbol(expr: SharedTree, coord: Coord = NoCoord) =
+  def newImportSymbol(expr: Tree, coord: Coord = NoCoord) =
     newSymbol(NoSymbol, nme.IMPORT, EmptyFlags, ImportType(expr), coord = coord)
 
   /** Create a class constructor symbol for given class `cls`. */
