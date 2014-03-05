@@ -644,7 +644,7 @@ object Trees {
 
   /** >: lo <: hi */
   case class TypeBoundsTree[-T >: Untyped] private[ast] (lo: Tree[T], hi: Tree[T])
-    extends Tree[T] {
+    extends TypTree[T] {
     type ThisTree[-T >: Untyped] = TypeBoundsTree[T]
   }
 

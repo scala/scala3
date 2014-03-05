@@ -88,7 +88,6 @@ class Typer extends Namer with Applications with Implicits {
     if (reallyExists(mbr)) site.select(name, mbr)
     else {
       if (!site.isErroneous) {
-        typr.println(s"site = $site, baseClasses = ${site.baseClasses}")
         ctx.error(
           if (name == nme.CONSTRUCTOR) i"$site does not have a constructor"
           else i"$name is not a member of $site", pos)
