@@ -5,7 +5,7 @@ package typer
 import core._
 import ast._
 import Contexts._, Types._, Flags._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
-import Trees._
+import Trees._, ProtoTypes._
 import Constants._
 import Scopes._
 import annotation.unchecked
@@ -20,6 +20,7 @@ import collection.mutable
 
 trait NoChecking {
   import tpd._
+  def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
   def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = ()
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type = tp
@@ -32,6 +33,16 @@ trait NoChecking {
 trait Checking extends NoChecking {
 
   import tpd._
+
+  /** Check that Java statics and packages can only be used in selections.
+   */
+  override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = {
+    if (!proto.isInstanceOf[SelectionProto]) {
+      val sym = tree.tpe.termSymbol
+      if ((sym is Package) || (sym is JavaModule)) ctx.error(i"$sym is not a value", tree.pos)
+    }
+    tree
+  }
 
   /** Check that type arguments `args` conform to corresponding bounds in `poly` */
   override def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit =

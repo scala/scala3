@@ -591,7 +591,7 @@ class Namer { typer: Typer =>
           (paramSymss.isEmpty || paramSymss.head.nonEmpty && (paramSymss.head.head is Implicit)))
         paramSymss = Nil :: paramSymss
       val restpe1 = // try to make anonymous functions non-dependent, so that they can be used in closures
-        if (name == nme.ANON_FUN) tpd.avoid(restpe, paramSymss.flatten)
+        if (name == nme.ANON_FUN) avoid(restpe, paramSymss.flatten)
         else restpe
       val monotpe =
         (paramSymss :\ restpe1) { (params, restpe) =>
