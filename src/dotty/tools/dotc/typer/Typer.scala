@@ -88,7 +88,6 @@ class Typer extends Namer with Applications with Implicits {
     if (reallyExists(mbr)) site.select(name, mbr)
     else {
       if (!site.isErroneous) {
-        typr.println(s"site = $site, baseClasses = ${site.baseClasses}")
         ctx.error(
           if (name == nme.CONSTRUCTOR) i"$site does not have a constructor"
           else i"$name is not a member of $site", pos)
@@ -139,8 +138,7 @@ class Typer extends Namer with Applications with Implicits {
             }
             val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
             val whyNot = new StringBuffer
-            val addendum =
-              alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
+            alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
             if (!tpe.isError)
               ctx.error(i"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
             ErrorType
@@ -245,7 +243,7 @@ class Typer extends Namer with Applications with Implicits {
        *  does properly shadow the new one from an outer context.
        */
       def checkNewOrShadowed(found: Type, newPrec: Int): Type =
-        if (!previous.exists || (previous =:= found)) found
+        if (!previous.exists || ctx.typeComparer.isSameRef(previous, found)) found
         else if ((prevCtx.scope eq ctx.scope) &&
                  (newPrec == definition ||
                   newPrec == namedImport && prevPrec == wildImport)) {

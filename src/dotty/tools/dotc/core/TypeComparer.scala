@@ -715,9 +715,27 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   /** Two types are the same if are mutual subtypes of each other */
   def isSameType(tp1: Type, tp2: Type): Boolean =
-    if (tp1 == NoType || tp2 == NoType) false
+    if (tp1 eq NoType) false
     else if (tp1 eq tp2) true
     else isSubType(tp1, tp2) && isSubType(tp2, tp1)
+
+  /** Same as `isSameType` but also can be applied to overloaded TermRefs, where
+   *  two overloaded refs are the same if they have pairwise equal alternatives
+   */
+  def isSameRef(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSameRef($tp1, $tp2") {
+    def isSubRef(tp1: Type, tp2: Type): Boolean = tp1 match {
+      case tp1: TermRef if tp1.isOverloaded =>
+        tp1.alternatives forall (isSubRef(_, tp2))
+      case _ =>
+        tp2 match {
+          case tp2: TermRef if tp2.isOverloaded =>
+            tp2.alternatives exists (isSubRef(tp1, _))
+          case _ =>
+            isSubType(tp1, tp2)
+        }
+    }
+    isSubRef(tp1, tp2) && isSubRef(tp2, tp1)
+  }
 
   /** The greatest lower bound of two types */
   def glb(tp1: Type, tp2: Type): Type = /*>|>*/ ctx.traceIndented(s"glb(${tp1.show}, ${tp2.show})", typr, show = true) /*<|<*/ {

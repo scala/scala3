@@ -1140,7 +1140,7 @@ object Types {
     override def isOverloaded(implicit ctx: Context) = denot.isOverloaded
 
     private def rewrap(sd: SingleDenotation)(implicit ctx: Context) =
-      TermRef(prefix, name, sd)
+      TermRef.withSig(prefix, name, sd.signature, sd)
 
     def alternatives(implicit ctx: Context): List[TermRef] =
       denot.alternatives map rewrap
