@@ -138,8 +138,7 @@ class Typer extends Namer with Applications with Implicits {
             }
             val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
             val whyNot = new StringBuffer
-            val addendum =
-              alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
+            alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
             if (!tpe.isError)
               ctx.error(i"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
             ErrorType
