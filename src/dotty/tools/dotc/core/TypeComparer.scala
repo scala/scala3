@@ -715,7 +715,9 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   /** Two types are the same if are mutual subtypes of each other */
   def isSameType(tp1: Type, tp2: Type): Boolean =
-    isSubType(tp1, tp2) && isSubType(tp2, tp1)
+    if (tp1 eq NoType) false
+    else if (tp1 eq tp2) true
+    else isSubType(tp1, tp2) && isSubType(tp2, tp1)
 
   /** Same as `isSameType` but also can be applied to overloaded TermRefs, where
    *  two overloaded refs are the same if they have pairwise equal alternatives
