@@ -103,7 +103,7 @@ object ProtoTypes {
     def map(tm: TypeMap)(implicit ctx: Context) = derivedSelectionProto(name, tm(memberProto), compat)
     def fold[T](x: T, ta: TypeAccumulator[T])(implicit ctx: Context) = ta(x, memberProto)
 
-    override def computeHash = addDelta(doHash(name, memberProto), if (compat == NoViewsAllowed) 1 else 0)
+    override def computeHash = addDelta(doHash(name, memberProto), if (compat eq NoViewsAllowed) 1 else 0)
   }
 
   class CachedSelectionProto(name: Name, memberProto: Type, compat: Compatibility) extends SelectionProto(name, memberProto, compat)

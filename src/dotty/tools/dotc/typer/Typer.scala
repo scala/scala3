@@ -48,7 +48,7 @@ object Typer {
   }
 }
 
-class Typer extends Namer with Applications with Implicits with Inferencing with Checking {
+class Typer extends Namer with TypeAssigner with Applications with Implicits with Inferencing with Checking {
 
   import Typer._
   import tpd.{cpy => _, _}
@@ -413,7 +413,7 @@ class Typer extends Namer with Applications with Implicits with Inferencing with
   }
 
   def typedLiteral(tree: untpd.Literal)(implicit ctx: Context) = track("typedLiteral") {
-    tpd.typedLiteral(tree)
+    assignType(tree)
   }
 
   def typedNew(tree: untpd.New, pt: Type)(implicit ctx: Context) = track("typedNew") {
@@ -425,7 +425,7 @@ class Typer extends Namer with Applications with Implicits with Inferencing with
         typed(cpy.Block(tree, clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
 	      val tpt1 = typedType(tree.tpt)
-        tpd.typedNew(cpy.New(tree, tpt1))
+        assignType(cpy.New(tree, tpt1))
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
     }
   }

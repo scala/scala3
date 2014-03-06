@@ -58,14 +58,16 @@ trait NamerContextOps { this: Context =>
   /** The symbol (stored in some typer's symTree) of an enclosing context definition */
   def symOfContextTree(tree: untpd.Tree) = {
     def go(ctx: Context): Symbol = {
-      val typer = ctx.typer
-      if (typer == null) NoSymbol
-      else tree.getAttachment(typer.SymOfTree) match {
-        case Some(sym) => sym
-        case None =>
-          var cx = ctx.outer
-          while (cx.typer eq typer) cx = cx.outer
-          go(cx)
+      ctx.typeAssigner match {
+        case typer: Typer =>
+          tree.getAttachment(typer.SymOfTree) match {
+            case Some(sym) => sym
+            case None =>
+              var cx = ctx.outer
+              while (cx.typeAssigner eq typer) cx = cx.outer
+              go(cx)
+          }
+        case _ => NoSymbol
       }
     }
     go(this)

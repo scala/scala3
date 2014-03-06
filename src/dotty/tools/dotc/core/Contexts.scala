@@ -119,10 +119,11 @@ object Contexts {
     protected def scope_=(scope: Scope) = _scope = scope
     def scope: Scope = _scope
 
-    /** The current typer */
-    private[this] var _typer: Typer = _
-    protected def typer_=(typer: Typer) = _typer = typer
-    def typer: Typer = _typer
+    /** The current type assigner ot typer */
+    private[this] var _typeAssigner: TypeAssigner = _
+    protected def typeAssigner_=(typeAssigner: TypeAssigner) = _typeAssigner = typeAssigner
+    def typeAssigner: TypeAssigner = _typeAssigner
+    def typer: Typer = _typeAssigner.asInstanceOf[Typer]
 
     /** The currently active import info */
     private[this] var _importInfo: ImportInfo = _
@@ -312,7 +313,8 @@ object Contexts {
     def withTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
     def withScope(scope: Scope): this.type = { this.scope = scope; this }
     def withNewScope: this.type = { this.scope = newScope; this }
-    def withTyper(typer: Typer): this.type = { this.typer = typer; this.scope = typer.scope; this }
+    def withTypeAssigner(typeAssigner: TypeAssigner): this.type = { this.typeAssigner = typeAssigner; this }
+    def withTyper(typer: Typer): this.type = { this.scope = typer.scope; withTypeAssigner(typer) }
     def withImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
     def withRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
     def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
@@ -342,6 +344,7 @@ object Contexts {
     owner = NoSymbol
     sstate = settings.defaultState
     tree = untpd.EmptyTree
+    typeAssigner = TypeAssigner
     runInfo = new RunInfo(this)
     diagnostics = None
     moreProperties = Map.empty
