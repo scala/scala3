@@ -40,6 +40,7 @@ class tests extends CompilerTest {
   @Test def pos_overloaded() = compileFile(posDir, "overloaded")
   @Test def pos_templateParents() = compileFile(posDir, "templateParents")
   @Test def pos_structural() = compileFile(posDir, "structural")
+  @Test def pos_i39 = compileFile(posDir, "i39")
 
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
@@ -49,6 +50,7 @@ class tests extends CompilerTest {
   @Test def neg_privates() = compileFile(negDir, "privates", xerrors = 2)
   @Test def neg_rootImports = compileFile(negDir, "rootImplicits", xerrors = 2)
   @Test def neg_templateParents() = compileFile(negDir, "templateParents", xerrors = 3)
+  @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 1)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc")
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast")

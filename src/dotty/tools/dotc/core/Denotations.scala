@@ -393,7 +393,7 @@ object Denotations {
       exists && p(this)
 
     def accessibleFrom(pre: Type, superAccess: Boolean)(implicit ctx: Context): Denotation =
-      if (symbol isAccessibleFrom (pre, superAccess)) this else NoDenotation
+      if (!symbol.exists || symbol.isAccessibleFrom(pre, superAccess)) this else NoDenotation
 
     def atSignature(sig: Signature)(implicit ctx: Context): SingleDenotation =
       if (sig matches signature) this else NoDenotation

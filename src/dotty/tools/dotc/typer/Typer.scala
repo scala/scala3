@@ -116,40 +116,43 @@ class Typer extends Namer with Applications with Implicits {
    *  current context. Return the type with those alternatives as denotations
    *  which are accessible.
    */
-  def checkAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = tpe match {
-    case tpe: NamedType =>
-      val pre = tpe.prefix
-      val name = tpe.name
-      val d = tpe.denot.accessibleFrom(pre, superAccess)
-      if (!d.exists) {
-        val d2 = pre.nonPrivateMember(name)
-        if (reallyExists(d2) && (d2 ne tpe.denot))
-          checkAccessible(pre.select(name, d2), superAccess, pos)
-        else {
-          val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
-          val what = alts match {
-            case Nil =>
-              name.toString
-            case sym :: Nil =>
-              if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated
-            case _ =>
-              i"none of the overloaded alternatives named $name"
+  def checkAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
+    def test(tpe: Type, firstTry: Boolean): Type = tpe match {
+      case tpe: NamedType =>
+        val pre = tpe.prefix
+        val name = tpe.name
+        val d = tpe.denot.accessibleFrom(pre, superAccess)
+        if (!d.exists) {
+          // it could be that we found an inaccessbile private member, but there is
+          // an inherited non-private member with the same name and signature.
+          val d2 = pre.nonPrivateMember(name)
+          if (reallyExists(d2) && firstTry) test(pre.select(name, d2), false)
+          else {
+            val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
+            val what = alts match {
+              case Nil =>
+                name.toString
+              case sym :: Nil =>
+                if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated
+              case _ =>
+                i"none of the overloaded alternatives named $name"
+            }
+            val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
+            val whyNot = new StringBuffer
+            val addendum =
+              alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
+            if (!tpe.isError)
+              ctx.error(i"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
+            ErrorType
           }
-          val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
-          val whyNot = new StringBuffer
-          val addendum =
-            alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
-          if (!tpe.isError)
-            ctx.error(i"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
-          ErrorType
-        }
-      }
-      else if (d.symbol is TypeParamAccessor) // always dereference type param accessors
-        checkAccessible(d.info.bounds.hi, superAccess, pos)
-      else
-        tpe withDenot d
-    case _ =>
-      tpe
+        } else if (d.symbol is TypeParamAccessor) // always dereference type param accessors
+          checkAccessible(d.info.bounds.hi, superAccess, pos)
+        else
+          tpe withDenot d
+      case _ =>
+        tpe
+    }
+    test(tpe, true)
   }
 
   /** The enclosing class, except if we are in a super call, in which case
