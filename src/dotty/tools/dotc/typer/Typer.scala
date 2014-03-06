@@ -244,7 +244,7 @@ class Typer extends Namer with Applications with Implicits {
        *  does properly shadow the new one from an outer context.
        */
       def checkNewOrShadowed(found: Type, newPrec: Int): Type =
-        if (!previous.exists || (previous =:= found)) found
+        if (!previous.exists || ctx.typeComparer.isSameRef(previous, found)) found
         else if ((prevCtx.scope eq ctx.scope) &&
                  (newPrec == definition ||
                   newPrec == namedImport && prevPrec == wildImport)) {
