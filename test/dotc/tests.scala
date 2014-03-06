@@ -41,6 +41,7 @@ class tests extends CompilerTest {
   @Test def pos_templateParents() = compileFile(posDir, "templateParents")
   @Test def pos_structural() = compileFile(posDir, "structural")
   @Test def pos_i39 = compileFile(posDir, "i39")
+  @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess")
 
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
