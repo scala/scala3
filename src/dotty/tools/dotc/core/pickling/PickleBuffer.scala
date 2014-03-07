@@ -229,8 +229,8 @@ object PickleBuffer {
       PARAM -> Param,
       PACKAGE -> Package,
       MACRO -> Macro,
-      BYNAMEPARAM -> ((Method, Covariant)), // Dotty deviation: no auto-tupling
-      LABEL -> ((Label, Contravariant)), // Dotty deviation: no auto-tupling
+      BYNAMEPARAM -> (Method, Covariant),
+      LABEL -> (Label, Contravariant),
       ABSOVERRIDE -> AbsOverride,
       LOCAL -> Local,
       JAVA -> JavaDefined,
@@ -238,16 +238,16 @@ object PickleBuffer {
       STABLE -> Stable,
       STATIC -> Static,
       CASEACCESSOR -> CaseAccessor,
-      DEFAULTPARAM -> ((DefaultParameterized, Trait)), // Dotty deviation: no auto-tupling
+      DEFAULTPARAM -> (DefaultParameterized, Trait),
       BRIDGE -> Bridge,
       ACCESSOR -> Accessor,
       SUPERACCESSOR -> SuperAccessor,
       PARAMACCESSOR -> ParamAccessor,
       MODULEVAR -> Scala2ModuleVar,
       LAZY -> Lazy,
-      MIXEDIN -> ((MixedIn, Scala2Existential)), // Dotty deviation: no auto-tupling
+      MIXEDIN -> (MixedIn, Scala2Existential),
       EXPANDEDNAME -> ExpandedName,
-      IMPLCLASS -> ((Scala2PreSuper, ImplClass)), // Dotty deviation: no auto-tupling
+      IMPLCLASS -> (Scala2PreSuper, ImplClass),
       SPECIALIZED -> Specialized,
       DEFAULTINIT -> DefaultInit,
       VBRIDGE -> VBridge,
