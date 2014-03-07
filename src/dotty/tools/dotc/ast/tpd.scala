@@ -300,16 +300,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   def Import(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
-    untpd.Import(expr, selectors).withType(ctx.newImportSymbol(SharedTree(expr)).termRef).checked
+    untpd.Import(expr, selectors).withType(ctx.newImportSymbol(expr).termRef).checked
 
   def PackageDef(pid: RefTree, stats: List[Tree])(implicit ctx: Context): PackageDef =
     untpd.PackageDef(pid, stats).withType(pid.symbol.namedType).checked
 
   def Annotated(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated =
     untpd.Annotated(annot, arg).withType(AnnotatedType(Annotation(annot), arg.tpe)).checked
-
-  def SharedTree(tree: Tree)(implicit ctx: Context): SharedTree =
-    Trees.SharedTree(tree).withType(tree.tpe)
 
   // ------ Making references ------------------------------------------------------
 

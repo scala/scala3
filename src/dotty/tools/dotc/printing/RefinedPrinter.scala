@@ -331,8 +331,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextLocal(arg) ~~ annotText(annot)
       case EmptyTree =>
         "<empty>"
-      case SharedTree(shared) =>
-        toText(shared)
       case TypedSplice(t) =>
         toText(t)
       case ModuleDef(mods, name, impl) =>

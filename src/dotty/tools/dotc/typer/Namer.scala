@@ -373,7 +373,7 @@ class Namer { typer: Typer =>
       case imp: Import =>
         try {
           val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
-          ImportType(tpd.SharedTree(expr1))
+          ImportType(expr1)
         } catch {
           case ex: CyclicReference =>
             typr.println(s"error while completing ${imp.expr}")
