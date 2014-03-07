@@ -187,6 +187,20 @@ object ProtoTypes {
       typer.adapt(targ, formal)
     }
 
+    private var myTupled: Type = NoType
+
+    /** The same proto-type but with all arguments combined in a single tuple */
+    def tupled: FunProto = myTupled match {
+      case pt: FunProto =>
+        pt
+      case _ =>
+        myTupled = new FunProto(untpd.Tuple(args) :: Nil, resultType, typer)
+        tupled
+    }
+
+    /** Somebody called the `tupled` method of this prototype */
+    def isTupled: Boolean = myTupled.isInstanceOf[FunProto]
+
     override def toString = s"FunProto(${args mkString ","} => $resultType)"
 
     def map(tm: TypeMap)(implicit ctx: Context): FunProto =

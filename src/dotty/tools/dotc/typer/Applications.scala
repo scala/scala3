@@ -435,8 +435,17 @@ trait Applications extends Compatibility { self: Typer =>
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
-      val proto = new FunProto(tree.args, pt, this)
+      var proto = new FunProto(tree.args, pt, this)
       val fun1 = typedExpr(tree.fun, proto)
+
+      // Warning: The following line is dirty and fragile. We record that auto-tupling was demanded as
+      // a side effect in adapt. If it was, we assume the tupled proto-type in the rest of the application.
+      // This crucially relies on he fact that `proto` is used only in a single call of `adapt`,
+      // otherwise we would get possible cross-talk between different `adapt` calls using the same
+      // prototype. A cleaner alternative would be to return a modified prototype from `adapt` together with
+      // a modified tree but this would be more convoluted and less efficient.
+      if (proto.isTupled) proto = proto.tupled
+
       methPart(fun1).tpe match {
         case funRef: TermRef =>
           tryEither { implicit ctx =>
@@ -677,7 +686,10 @@ trait Applications extends Compatibility { self: Typer =>
         var argTypes = unapplyArgs(unapplyApp.tpe)
         for (argType <- argTypes) assert(!argType.isInstanceOf[TypeBounds], unapplyApp.tpe.show)
         val bunchedArgs = argTypes match {
-          case argType :: Nil if argType.isRepeatedParam => untpd.SeqLiteral(args) :: Nil
+          case argType :: Nil =>
+            if (argType.isRepeatedParam) untpd.SeqLiteral(args) :: Nil
+            else if (args.lengthCompare(1) > 0) untpd.Tuple(args) :: Nil
+            else args
           case _ => args
         }
         if (argTypes.length != bunchedArgs.length) {
