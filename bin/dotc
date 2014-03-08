@@ -1,0 +1,232 @@
+#!/bin/bash
+# This script is used for running compiler standalone(outside of sbt)
+# it's based on miniboxing script and paulp's launcher script
+
+
+# Configuration
+SCALA_VERSION=2.11.0-M7
+DOTTY_VERSION=0.1
+bootcp=true
+default_java_opts="-Xmx768m -Xms768m"
+programName=$(basename "$0")
+# uncomment next line to enable debug output
+#debug=true
+
+
+
+declare -a java_args scala_args residual_args
+unset verbose quiet cygwin toolcp colors saved_stty
+
+
+CompilerMain=dotty.tools.dotc.Main
+
+
+# Try to autodetect real location of the script
+DOTTY_ROOT="`readlink \"$0\"`"             #  relative, symbolic links resolved
+if [[ "$DOTTY_ROOT" == "" ]]; then
+  DOTTY_ROOT="$0"
+fi
+DOTTY_ROOT="`dirname \"$DOTTY_ROOT\"`"
+DOTTY_ROOT="`( cd \"$DOTTY_ROOT\" && pwd )`/.."  # absolute
+# autodetecting the compiler jar. this is location where sbt 'packages' it
+MAIN_JAR=$DOTTY_ROOT/target/scala-$SCALA_VERSION/dotty_$SCALA_VERSION-$DOTTY_VERSION-SNAPSHOT.jar
+
+function checkjar {
+  if [ ! -f "$1" ]
+  then
+    echo "The script is going to build the required jar file $1 by running \"sbt $2\""
+    cd $DOTTY_ROOT
+    sbt $2
+    cd -
+    if [ ! -f "$1" ]
+    then
+      echo "The required jar file has not been built by sbt. Please run \"sbt $2\""
+      exit 1
+    else
+      echo "The required jar file was built successfully."
+    fi
+  fi
+}
+
+checkjar $MAIN_JAR package
+
+# Autodetecting the scala-library location, in case it wasn't provided by an environment variable
+if [ "$SCALA_LIBRARY_JAR" == "" ]
+then  
+  SCALA_LIBRARY_JAR=$HOME/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-$SCALA_VERSION.jar
+  # this is location where sbt stores it in ivy cache
+fi
+# save as for scala-library now for scala-reflect
+if [ "$SCALA_REFLECT_JAR" == "" ]
+then  
+  SCALA_REFLECT_JAR=$HOME/.ivy2/cache/org.scala-lang/scala-reflect/jars/scala-reflect-$SCALA_VERSION.jar
+fi
+
+if [ ! -f "$SCALA_LIBRARY_JAR" -o ! -f "$SCALA_REFLECT_JAR" ]
+then
+  echo To use this script please set 
+  echo SCALA_LIBRARY_JAR to point to scala-library-$SCALA_VERSION.jar "(currently $SCALA_LIBRARY_JAR)"
+  echo SCALA_REFLECT_JAR to point to scala-reflect-$SCALA_VERSION.jar "(currently $SCALA_REFLECT_JAR)"
+fi
+
+ifdebug () {
+  [[ -n $debug ]] && eval "$@"
+}
+echoErr () {
+  echo >&2 "$@"
+}
+dlog () {
+  [[ -n $debug ]] && echoErr "$@"
+}
+
+die() {
+  echo "Aborting: $@"
+  exit 1
+}
+echoArgs () {
+  echoErr ""
+  for arg; do
+echoErr "$arg"
+  done
+echoErr ""
+}
+execCommand () {
+  ifdebug echoArgs "$@"
+  ignore="$(cat "$HOME/.scala_ignore_crashes" 2>/dev/null)"
+  if [[ $ignore == "true" ]]; then
+    "$@" 2>&1 | scala-crash-filter
+  else
+    $@
+  fi
+}
+
+# restore stty settings (echo in particular)
+restoreSttySettings () {
+  dlog "" && dlog "[restore stty] $saved_stty"
+  stty $saved_stty && saved_stty=""
+}
+
+onExit () {
+  [[ -n $saved_stty ]] && restoreSttySettings
+  exit $scala_exit_status
+}
+
+# Get debug set early
+for arg in "$@"; do
+  [[ $arg == "-d" ]] && debug=true
+done
+
+# to reenable echo if we are interrupted before completing.
+trap onExit INT
+
+# save terminal settings
+saved_stty="$(stty -g 2>/dev/null)"
+
+# clear on error so we don't later try to restore them
+[[ $? ]] || saved_stty=""
+dlog "[save stty] $saved_stty"
+
+if uname | grep -q ^CYGWIN; then
+cygwin="$(uname)"
+fi
+
+addJava () {
+  dlog "[addJava] arg = '$1'"
+  java_args=( "${java_args[@]}" "$1" )
+}
+addScala () {
+  dlog "[addScala] arg = '$1'"
+  scala_args=( "${scala_args[@]}" "$1" )
+}
+addResidual () {
+  dlog "[residual] arg = '$1'"
+  residual_args=( "${residual_args[@]}" "$1" )
+}
+
+onExit() {
+  [[ -n $saved_stty ]] && restoreSttySettings
+  exit $scala_exit_status
+}
+
+# to reenable echo if we are interrupted before completing.
+trap onExit INT
+
+# If using the boot classpath, also pass an empty classpath
+# to java to suppress "." from materializing.
+classpathArgs () {
+  if [[ -n $bootcp ]]; then
+echo "-Xbootclasspath/a:$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$MAIN_JAR -classpath $MAIN_JAR"
+  else
+echo "-classpath $SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$MAIN_JAR"
+  fi
+}
+
+# e.g. path -java-home /path/to/java_home
+require_arg () {
+  local type="$1"
+  local opt="$2"
+  local arg="$3"
+
+  if [[ -z "$arg" ]] || [[ "${arg:0:1}" == "-" ]]; then
+    die "$opt requires <$type> argument"
+  fi
+}
+
+
+
+
+
+while [[ $# -gt 0 ]]; do
+case "$1" in
+           --) shift; for arg; do addResidual "$arg"; done; set -- ;;
+     -h|-help) usage; exit 1 ;;
+  -v|-verbose) verbose=true && shift ;;
+    -d|-debug) debug=true && shift ;;
+    -q|-quiet) quiet=true && shift ;;
+
+        -repl) main_class=$ReplMain && shift ;;
+     -compile) main_class=$CompilerMain && shift ;;
+         -run) main_class=$ReplMain && shift ;;
+         -fsc) main_class=$FscMain && shift ;;
+      -bootcp) bootcp=true && shift ;;
+   -no-bootcp) unset bootcp && shift ;;
+      -colors) colors=true && shift ;;
+   -no-colors) unset colors && shift ;;
+      -jrebel) jrebel=true && shift ;;
+   -no-jrebel) unset jrebel && shift ;;
+
+      -toolcp) require_arg classpath "$1" "$2" && toolcp="$2" && shift 2 ;;
+   -java-home) require_arg path "$1" "$2" && java_cmd="$2/bin/java" && shift 2 ;;
+
+          # break out -D and -J options and add them to JAVA_OPTS as well
+          # so they reach the JVM in time to do some good. The -D options
+          # will be available as system properties.
+          -D*) addJava "$1" && addScala "$1" && shift ;;
+          -J*) addJava "${1:2}" && addScala "$1" && shift ;;
+            *) addResidual "$1" && shift ;;
+  esac
+done
+
+
+[[ -z $java_cmd ]] && prefix=${java_home:+$java_home/bin/} && java_cmd="${prefix}java"
+
+# note that variables which may intentionally be empty must not
+# be quoted: otherwise an empty string will appear as a command line
+# argument, and java will think that is the program to run.
+execCommand \
+  "$java_cmd" \
+  ${JAVA_OPTS:-$default_java_opts} \
+  "${java_args[@]}" \
+  "$(classpathArgs)" \
+  -Dscala.usejavacp=true \
+  "${CompilerMain}" \
+  "${scala_args[@]}" \
+  "${residual_args[@]}"
+
+# record the exit status lest it be overwritten:
+# then reenable echo and propagate the code.
+scala_exit_status=$?
+onExit
+
+
+#echo java -cp $MAIN_JAR: -Dscala.usejavacp=true dotty.tools.dotc.Main $@
