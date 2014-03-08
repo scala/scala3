@@ -170,17 +170,20 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** The type arguments of this type's base type instance wrt.`base`.
    *  Existential types in arguments are disallowed.
    */
-  final def baseArgTypes(base: Symbol)(implicit ctx: Context): List[Type] = baseArgInfos(base) mapConserve noBounds
+  final def baseArgTypes(base: Symbol)(implicit ctx: Context): List[Type] =
+    baseArgInfos(base) mapConserve noBounds
 
   /** The type arguments of this type's base type instance wrt.`base`.
    *  Existential types in arguments are approximanted by their lower bound.
    */
-  final def baseArgTypesLo(base: Symbol)(implicit ctx: Context): List[Type] = baseArgInfos(base) mapConserve boundsToLo
+  final def baseArgTypesLo(base: Symbol)(implicit ctx: Context): List[Type] =
+    baseArgInfos(base) mapConserve boundsToLo
 
   /** The type arguments of this type's base type instance wrt.`base`.
    *  Existential types in arguments are approximanted by their upper bound.
    */
-  final def baseArgTypesHi(base: Symbol)(implicit ctx: Context): List[Type] = baseArgInfos(base) mapConserve boundsToHi
+  final def baseArgTypesHi(base: Symbol)(implicit ctx: Context): List[Type] =
+    baseArgInfos(base) mapConserve boundsToHi
 
   /** The first type argument of the base type instance wrt `base` of this type */
   final def firstBaseArgInfo(base: Symbol)(implicit ctx: Context): Type = base.typeParams match {
@@ -193,8 +196,11 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** The base type including all type arguments of this type.
    *  Existential types in arguments are returned as TypeBounds instances.
    */
-  final def baseTypeWithArgs(base: Symbol)(implicit ctx: Context): Type =
-    self.baseTypeRef(base).appliedTo(baseArgInfos(base))
+  final def baseTypeWithArgs(base: Symbol)(implicit ctx: Context): Type = self.dealias match {
+    case AndType(tp1, tp2) => tp1.baseTypeWithArgs(base) & tp2.baseTypeWithArgs(base)
+    case OrType(tp1, tp2) => tp1.baseTypeWithArgs(base) | tp2.baseTypeWithArgs(base)
+    case _ => self.baseTypeRef(base).appliedTo(baseArgInfos(base))
+  }
 
   /** Translate a type of the form From[T] to To[T], keep other types as they are.
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
@@ -205,7 +211,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     else self
 
   /** If this is an encoding of a (partially) applied type, return its arguments,
-   *  otherwise return Nil. 
+   *  otherwise return Nil.
    *  Existential types in arguments are returned as TypeBounds instances.
    */
   final def argInfos(implicit ctx: Context): List[Type] = {
