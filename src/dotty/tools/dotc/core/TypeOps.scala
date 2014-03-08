@@ -77,6 +77,37 @@ trait TypeOps { this: Context =>
     def apply(tp: Type) = simplify(tp, this)
   }
 
+  /** Approximate union type by intersection of its dominators.
+   *  See Type#approximateUnion for an explanation.
+   */
+  def approximateUnion(tp: Type): Type = {
+    /** a faster version of cs1 intersect cs2 */
+    def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] = {
+      val cs2AsSet = new util.HashSet[ClassSymbol](100)
+      cs2.foreach(cs2AsSet.addEntry)
+      cs1.filter(cs2AsSet.contains)
+    }
+    /** The minimal set of classes in `cs` which derive all other classes in `cs` */
+    def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
+      case c :: rest =>
+        val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
+        if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
+    }
+    if (ctx.featureEnabled(defn.LanguageModuleClass, nme.keepUnions)) tp
+    else tp match {
+      case tp: OrType =>
+        val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
+        val doms = dominators(commonBaseClasses, Nil)
+        doms.map(tp.baseTypeWithArgs).reduceLeft(AndType.apply)
+      case tp @ AndType(tp1, tp2) =>
+        tp derived_& (approximateUnion(tp1), approximateUnion(tp2))
+      case tp: RefinedType =>
+        tp.derivedRefinedType(approximateUnion(tp.parent), tp.refinedName, tp.refinedInfo)
+      case _ =>
+        tp
+    }
+  }
+
   /** A type is volatile if its DNF contains an alternative of the form
    *  {P1, ..., Pn}, {N1, ..., Nk}, where the Pi are parent typerefs and the
    *  Nj are refinement names, and one the 4 following conditions is met:

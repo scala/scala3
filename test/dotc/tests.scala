@@ -43,6 +43,7 @@ class tests extends CompilerTest {
   @Test def pos_structural() = compileFile(posDir, "structural", twice)
   @Test def pos_i39 = compileFile(posDir, "i39", twice)
   @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess", twice)
+  @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion", twice)
 */
   @Test def pos_all = compileFiles(posDir, twice)
 
