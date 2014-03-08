@@ -881,6 +881,19 @@ object Types {
      */
     def simplified(implicit ctx: Context) = ctx.simplify(this, null)
 
+    /** Approximations of union types: We replace a union type Tn | ... | Tn
+     *  by the smallest intersection type of baseclass instances of T1,...,Tn.
+     *  Example: Given
+     *
+     *      trait C[+T]
+     *      trait D
+     *      class A extends C[A] with D
+     *      class B extends C[B] with D with E
+     *
+     *  we approximate `A | B` by `C[A | B] with D`
+     */
+    def approximateUnion(implicit ctx: Context) = ctx.approximateUnion(this)
+
     /** customized hash code of this type.
      *  NotCached for uncached types. Cached types
      *  compute hash and use it as the type's hashCode.
@@ -1387,6 +1400,10 @@ object Types {
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else AndType.make(tp1, tp2)
 
+    def derived_& (tp1: Type, tp2: Type)(implicit ctx: Context): Type =
+      if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
+      else tp1 & tp2
+
     def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       derivedAndType(tp1, tp2)
 
@@ -1767,10 +1784,38 @@ object Types {
         case OrType(tp1, tp2) => isSingleton(tp1) & isSingleton(tp2)
         case _ => false
       }
+      def isFullyDefined(tp: Type): Boolean = tp match {
+        case tp: TypeVar => tp.isInstantiated && isFullyDefined(tp.instanceOpt)
+        case tp: TypeProxy => isFullyDefined(tp.underlying)
+        case tp: AndOrType => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
+        case _ => true
+      }
+      def isOrType(tp: Type): Boolean = tp.stripTypeVar.dealias match {
+        case tp: OrType => true
+        case AndType(tp1, tp2) => isOrType(tp1) | isOrType(tp2)
+        case RefinedType(parent, _) => isOrType(parent)
+        case WildcardType(bounds: TypeBounds) => isOrType(bounds.hi)
+        case _ => false
+      }
+
+      // First, solve the constraint.
       var inst = ctx.typeComparer.approximation(origin, fromBelow)
+
+      // Then, approximate by (1.) and (2.) and simplify as follows.
+      // 1. If instance is from below and is a singleton type, yet
+      // upper bound is not a singleton type, widen the instance.
       if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
         inst = inst.widen
-      instantiateWith(inst.simplified)
+        
+      inst = inst.simplified
+
+      // 2. If instance is from below and is a fully-defined union type, yet upper bound
+      // is not a union type, approximate the union type from above by an intersection
+      // of all common base types.
+      if (fromBelow && isOrType(inst) && isFullyDefined(inst) && !isOrType(upperBound))
+        inst = inst.approximateUnion
+        
+      instantiateWith(inst)
     }
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
