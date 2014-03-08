@@ -988,7 +988,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case UNAPPLYtree =>
         val fun = readTreeRef()
         val args = until(end, readTreeRef)
-        UnApply(fun, Nil, args) // !!! this is wrong in general
+        UnApply(fun, Nil, args, defn.AnyType) // !!! this is wrong in general
 
       case ARRAYVALUEtree =>
         val elemtpt = readTreeRef()
@@ -1067,7 +1067,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         setSym()
         val qual = readTreeRef()
         val mix = readTypeNameRef()
-        Super(qual, mix)
+        Super(qual, mix, inConstrCall = false) // todo: revise
 
       case THIStree =>
         setSym()

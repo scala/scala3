@@ -19,7 +19,7 @@ import ErrorReporting._
 import Trees._
 import Names._
 import StdNames._
-import Inferencing._
+import ProtoTypes._
 import EtaExpansion._
 import collection.mutable
 import reflect.ClassTag
@@ -398,8 +398,9 @@ trait Applications extends Compatibility { self: Typer =>
 
     val result = {
       var typedArgs = typedArgBuf.toList
-      val ownType =
-        if (!success) ErrorType
+      val app0 = cpy.Apply(app, normalizedFun, typedArgs)
+      val app1 =
+        if (!success) app0.withType(ErrorType)
         else {
           if (!sameSeq(args, orderedArgs)) {
             // need to lift arguments to maintain evaluation order in the
@@ -411,9 +412,9 @@ trait Applications extends Compatibility { self: Typer =>
           }
           if (sameSeq(typedArgs, args)) // trick to cut down on tree copying
             typedArgs = args.asInstanceOf[List[Tree]]
-          methodType.instantiate(typedArgs.tpes)
+          assignType(app0, normalizedFun, typedArgs)
         }
-      wrapDefs(liftedDefs, cpy.Apply(app, normalizedFun, typedArgs).withType(ownType))
+      wrapDefs(liftedDefs, app1)
     }
   }
 
@@ -513,21 +514,11 @@ trait Applications extends Compatibility { self: Typer =>
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
     val typedArgs = tree.args mapconserve (typedType(_))
     val typedFn = typedExpr(tree.fun, PolyProto(typedArgs.tpes, pt))
-    val ownType = typedFn.tpe.widen match {
-      case pt: PolyType =>
-        checkBounds(typedArgs, pt, tree.pos)
-        val argTypes = typedArgs.tpes
-        if (argTypes.length == pt.paramNames.length)
-          pt.resultType.substParams(pt, typedArgs.tpes)
-        else {
-          ctx.error(i"wrong number of type parameters for ${typedFn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
-          ErrorType
-        }
+    typedFn.tpe.widen match {
+      case pt: PolyType => checkBounds(typedArgs, pt, tree.pos)
       case _ =>
-        ctx.error(s"${err.exprStr(typedFn)} does not take type parameters", tree.pos)
-        ErrorType
     }
-    cpy.TypeApply(tree, typedFn, typedArgs).withType(ownType)
+    assignType(cpy.TypeApply(tree, typedFn, typedArgs), typedFn, typedArgs)
   }
 
   def typedUnApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
@@ -577,13 +568,13 @@ trait Applications extends Compatibility { self: Typer =>
     /** Produce a typed qual.unappy or qual.unappySeq tree, or
      *  else if this fails follow a type alias and try again.
      */
-    val unapply = trySelectUnapply(qual) { sel =>
+    val unapplyFn = trySelectUnapply(qual) { sel =>
       val qual1 = followTypeAlias(qual)
       if (qual1.isEmpty) notAnExtractor(sel)
       else trySelectUnapply(qual1)(_ => notAnExtractor(sel))
     }
 
-    def fromScala2x = unapply.symbol.exists && (unapply.symbol.owner is Scala2x)
+    def fromScala2x = unapplyFn.symbol.exists && (unapplyFn.symbol.owner is Scala2x)
 
     def unapplyArgs(unapplyResult: Type)(implicit ctx: Context): List[Type] = {
       def extractorMemberType(tp: Type, name: Name) = {
@@ -609,7 +600,7 @@ trait Applications extends Compatibility { self: Typer =>
       // println(s"unapply $unapplyResult ${extractorMemberType(unapplyResult, nme.isDefined)}")
       if (extractorMemberType(unapplyResult, nme.isDefined) isRef defn.BooleanClass) {
         if (getTp.exists)
-          if (unapply.symbol.name == nme.unapplySeq) {
+          if (unapplyFn.symbol.name == nme.unapplySeq) {
             val seqArg = boundsToHi(getTp.firstBaseArgInfo(defn.SeqClass))
             if (seqArg.exists) return args map Function.const(seqArg)
           }
@@ -634,7 +625,7 @@ trait Applications extends Compatibility { self: Typer =>
         case _ => false
       }
 
-    unapply.tpe.widen match {
+    unapplyFn.tpe.widen match {
       case mt: MethodType if mt.paramTypes.length == 1 && !mt.isDependent =>
         val unapplyArgType = mt.paramTypes.head
         unapp.println(s"unapp arg tpe = ${unapplyArgType.show}, pt = ${pt.show}")
@@ -661,7 +652,7 @@ trait Applications extends Compatibility { self: Typer =>
                   // can open unsoundness holes. See SI-7952 for an example of the hole this opens.
                   if (ctx.settings.verbose.value) ctx.warning(msg, tree.pos)
                 } else {
-                  unapp.println(s" ${unapply.symbol.owner} ${unapply.symbol.owner is Scala2x}")
+                  unapp.println(s" ${unapplyFn.symbol.owner} ${unapplyFn.symbol.owner is Scala2x}")
                   ctx.error(msg, tree.pos)
                 }
               case _ =>
@@ -677,7 +668,7 @@ trait Applications extends Compatibility { self: Typer =>
           }
 
         val dummyArg = dummyTreeOfType(unapplyArgType)
-        val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapply, dummyArg :: Nil)))
+        val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
         val unapplyImplicits = unapplyApp match {
           case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2
           case Apply(unapply, `dummyArg` :: Nil) => Nil
@@ -695,12 +686,12 @@ trait Applications extends Compatibility { self: Typer =>
             List.fill(argTypes.length - args.length)(WildcardType)
         }
         val unapplyPatterns = (bunchedArgs, argTypes).zipped map (typed(_, _))
-        val result = cpy.UnApply(tree, unapply, unapplyImplicits, unapplyPatterns) withType ownType
+        val result = assignType(cpy.UnApply(tree, unapplyFn, unapplyImplicits, unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if ((ownType eq pt) || ownType.isError) result
         else Typed(result, TypeTree(ownType))
       case tp =>
-        val unapplyErr = if (tp.isError) unapply else notAnExtractor(unapply)
+        val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
         val typedArgsErr = args mapconserve (typed(_, defn.AnyType))
         cpy.UnApply(tree, unapplyErr, Nil, typedArgsErr) withType ErrorType
     }

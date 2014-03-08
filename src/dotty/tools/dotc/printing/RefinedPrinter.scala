@@ -7,7 +7,7 @@ import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annot
 import StdNames.nme
 import ast.{Trees, untpd}
 import typer.Namer
-import typer.Inferencing.{SelectionProto, ViewProto}
+import typer.ProtoTypes.{SelectionProto, ViewProto, FunProto}
 import Trees._
 import scala.annotation.switch
 
@@ -120,7 +120,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case ExprType(result) =>
         return "=> " ~ toText(result)
-      case typer.Inferencing.FunProto(args, resultType, _) =>
+      case FunProto(args, resultType, _) =>
         return "funproto(" ~ toTextGlobal(args, ", ") ~ "):" ~ toText(resultType)
       case _ =>
     }

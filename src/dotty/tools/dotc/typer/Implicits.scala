@@ -20,8 +20,8 @@ import Decorators._
 import Names._
 import StdNames._
 import Constants._
-import Inferencing._
 import Applications._
+import ProtoTypes._
 import ErrorReporting._
 import Hashable._
 import config.Config

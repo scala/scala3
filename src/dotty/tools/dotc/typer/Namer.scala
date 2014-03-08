@@ -7,7 +7,7 @@ import ast._
 import Trees._, Constants._, StdNames._, Scopes._, Denotations._
 import Contexts._, Symbols._, Types._, SymDenotations._, Names._, NameOps._, Flags._, Decorators._
 import ast.desugar, ast.desugar._
-import Inferencing._
+import ProtoTypes._
 import util.Positions._
 import util.{Attachment, SourcePosition, DotClass}
 import collection.mutable
@@ -58,14 +58,16 @@ trait NamerContextOps { this: Context =>
   /** The symbol (stored in some typer's symTree) of an enclosing context definition */
   def symOfContextTree(tree: untpd.Tree) = {
     def go(ctx: Context): Symbol = {
-      val typer = ctx.typer
-      if (typer == null) NoSymbol
-      else tree.getAttachment(typer.SymOfTree) match {
-        case Some(sym) => sym
-        case None =>
-          var cx = ctx.outer
-          while (cx.typer eq typer) cx = cx.outer
-          go(cx)
+      ctx.typeAssigner match {
+        case typer: Typer =>
+          tree.getAttachment(typer.SymOfTree) match {
+            case Some(sym) => sym
+            case None =>
+              var cx = ctx.outer
+              while (cx.typeAssigner eq typer) cx = cx.outer
+              go(cx)
+          }
+        case _ => NoSymbol
       }
     }
     go(this)
@@ -589,7 +591,7 @@ class Namer { typer: Typer =>
           (paramSymss.isEmpty || paramSymss.head.nonEmpty && (paramSymss.head.head is Implicit)))
         paramSymss = Nil :: paramSymss
       val restpe1 = // try to make anonymous functions non-dependent, so that they can be used in closures
-        if (name == nme.ANON_FUN) tpd.avoid(restpe, paramSymss.flatten)
+        if (name == nme.ANON_FUN) avoid(restpe, paramSymss.flatten)
         else restpe
       val monotpe =
         (paramSymss :\ restpe1) { (params, restpe) =>
