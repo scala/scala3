@@ -283,8 +283,9 @@ class Definitions {
   object FunctionType {
     def apply(args: List[Type], resultType: Type) =
       FunctionClass(args.length).typeRef.appliedTo(args ::: resultType :: Nil)
-    def unapply(ft: Type): Option[(List[Type], Type)] = { // Dotty deviation: Type annotation needed because inferred type
-                                                          // is Some[(List[Type], Type)] | None, which is not a legal unapply type.
+    def unapply(ft: Type)/*: Option[(List[Type], Type)]*/ = {
+      // -Xkeep-unions difference: unapply needs result type because inferred type
+      // is Some[(List[Type], Type)] | None, which is not a legal unapply type.
       val tsym = ft.typeSymbol
       lazy val targs = ft.argInfos
       if ((FunctionClasses contains tsym) &&
