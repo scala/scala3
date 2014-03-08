@@ -890,6 +890,19 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   /** Try to distribute `&` inside type, detect and handle conflicts */
   private def distributeAnd(tp1: Type, tp2: Type): Type = tp1 match {
+    // opportunistically merge same-named refinements
+    // this does not change anything semantically (i.e. merging or not merging
+    // gives =:= types), but it keeps the type smaller.
+    case tp1: RefinedType =>
+      tp2 match {
+        case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
+          tp1.derivedRefinedType(
+              tp1.parent & tp2.parent,
+              tp1.refinedName,
+              tp1.refinedInfo & tp2.refinedInfo)
+        case _ =>
+          NoType
+      }
     case tp1: TypeBounds =>
       tp2 match {
         case tp2: TypeBounds => tp1 & tp2
@@ -935,18 +948,6 @@ class TypeComparer(initctx: Context) extends DotClass {
         case _ =>
           rt1 & tp2
       }
-    case tp1: RefinedType =>
-      // opportunistically merge same-named refinements
-      // this does not change anything semantically (i.e. merging or not merging
-      // gives =:= types), but it keeps the type smaller.
-      tp2 match {
-        case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
-          tp1.derivedRefinedType(
-              tp1.parent & tp2.parent, tp1.refinedName,
-              tp1.refinedInfo & tp2.refinedInfo)
-        case _ =>
-          NoType
-      }
     case tp1: TypeVar if tp1.isInstantiated =>
       tp1.underlying & tp2
     case tp1: AnnotatedType =>
@@ -957,6 +958,16 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   /** Try to distribute `|` inside type, detect and handle conflicts */
   private def distributeOr(tp1: Type, tp2: Type): Type = tp1 match {
+    case tp1: RefinedType =>
+      tp2 match {
+        case tp2: RefinedType if tp1.refinedName == tp2.refinedName =>
+          tp1.derivedRefinedType(
+              tp1.parent | tp2.parent,
+              tp1.refinedName,
+              tp1.refinedInfo | tp2.refinedInfo)
+        case _ =>
+          NoType
+      }
     case tp1: TypeBounds =>
       tp2 match {
         case tp2: TypeBounds => tp1 | tp2
