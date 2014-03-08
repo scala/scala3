@@ -102,8 +102,19 @@ object Types {
     }
 
     /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
-    final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean =
-      classSymbol.derivesFrom(cls)
+    final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean = this match {
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        if (sym.isClass) sym.derivesFrom(cls) else tp.underlying.derivesFrom(cls)
+      case tp: TypeProxy =>
+        tp.underlying.derivesFrom(cls)
+      case tp: AndType =>
+        tp.tp1.derivesFrom(cls) || tp.tp2.derivesFrom(cls)
+      case tp: OrType =>
+        tp.tp1.derivesFrom(cls) && tp.tp2.derivesFrom(cls)
+      case _ =>
+        false
+    }
 
    /** A type T is a legal prefix in a type selection T#A if
      *  T is stable or T contains no uninstantiated type variables.
@@ -272,6 +283,7 @@ object Types {
 
     /** The base classes of this type as determined by ClassDenotation
      *  in linearization order, with the class itself as first element.
+     *  For AndTypes/OrTypes, the union/intersection of the operands' baseclasses.
      *  Inherited by all type proxies. `Nil` for all other types.
      */
     final def baseClasses(implicit ctx: Context): List[ClassSymbol] = track("baseClasses") {
@@ -280,6 +292,10 @@ object Types {
           tp.underlying.baseClasses
         case tp: ClassInfo =>
           tp.cls.baseClasses
+        case AndType(tp1, tp2) =>
+          tp1.baseClasses union tp2.baseClasses
+        case OrType(tp1, tp2) =>
+          tp1.baseClasses intersect tp2.baseClasses
         case _ => Nil
       }
     }
@@ -1895,7 +1911,7 @@ object Types {
 
     def | (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
       val v = this commonVariance that
-      if (v == 0 && (this.lo eq this.hi) && (that.lo eq that.hi))
+      if (v != 0 && (this.lo eq this.hi) && (that.lo eq that.hi))
         if (v > 0) derivedTypeAlias(this.hi | that.hi, v)
         else derivedTypeAlias(this.lo & that.lo, v)
       else derivedTypeBounds(this.lo & that.lo, this.hi | that.hi, v)
