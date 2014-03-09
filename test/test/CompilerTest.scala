@@ -22,12 +22,26 @@ class CompilerTest extends DottyTest {
   def compileFile(prefix: String, fileName: String, args: List[String] = Nil, xerrors: Int = 0): Unit =
     compileArgs((s"$prefix$fileName.scala" :: args).toArray, xerrors)
 
-  def compileDir(path: String, args: List[String] = Nil, xerrors: Int = 0): Unit = {
-    val dir = Directory(path)
+  def compileDir(path: String, args: List[String] = Nil, xerrors: Int = 0): Unit =
+    compileDir(Directory(path), args, xerrors)
+
+  def compileDir(dir: Directory, args: List[String], xerrors: Int): Unit = {
     val fileNames = dir.files.toArray.map(_.toString).filter(_ endsWith ".scala")
     compileArgs(fileNames ++ args, xerrors)
   }
 
+  def compileFiles(path: String, args: List[String] = Nil): Unit = {
+    val dir = Directory(path)
+    val fileNames = dir.files.toArray.map(_.toString).filter(_ endsWith ".scala")
+    for (name <- fileNames) {
+      println(s"testing $name")
+      compileArgs((name :: args).toArray, 0)
+    }
+    for (subdir <- dir.dirs) {
+      println(s"testing $subdir")
+      compileDir(subdir, args, 0)
+    }
+  }
 }
 object CompilerText extends App {
 
