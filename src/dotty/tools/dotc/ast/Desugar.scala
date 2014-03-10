@@ -24,16 +24,6 @@ object desugar {
 
 // ----- TypeTrees that refer to other tree's symbols -------------------
 
-  /** A marker tree used as the original for TypeTrees that get their type by taking
-   *  the typeRef of some other tree's symbol. (currently unused)
-   */
-  val TypeRefOfSym = new TypeTree(EmptyTree)
-
-  /** A marker tree used as the original for TypeTrees that get their type by taking
-   *  the result type of the info of some other tree's symbol.
-   */
-  val InfoOfSym = new TypeTree(EmptyTree)
-
   /** Attachment key containing TypeTrees whose type is computed
    *  from the symbol in this type. These type trees have marker trees
    *  TypeRefOfSym or InfoOfSym as their originals.
@@ -46,15 +36,19 @@ object desugar {
    */
   val OriginalSymbol = new Attachment.Key[Symbol]
 
-  /** A type tree that is marked to get its type by taking
-   *  the typeRef of some other tree's symbol. Enters the type tree
-   *  in the References attachment of the `original` tree as a side effect.
+  /** A type tree that gets its type from some other tree's symbol. Enters the
+   *  type tree in the References attachment of the `from` tree as a side effect.
    */
-  def refTypeTree(original: Tree, marker: TypeTree): TypeTree = {
-    val result = TypeTree(marker)
-    val existing = original.attachmentOrElse(References, Nil)
-    original.putAttachment(References, result :: existing)
-    result
+  abstract class DerivedTypeTree(from: Tree) extends TypeTree(EmptyTree) {
+    val existing = from.attachmentOrElse(References, Nil)
+    from.putAttachment(References, this :: existing)
+
+    /** The method that computes the type of this tree */
+    def derivedType(originalSym: Symbol)(implicit ctx: Context): Type
+  }
+
+  class SetterParam(vdef: ValDef) extends DerivedTypeTree(vdef) {
+    def derivedType(vsym: Symbol)(implicit ctx: Context) = vsym.info.resultType
   }
 
 // ----- Desugar methods -------------------------------------------------
@@ -73,7 +67,7 @@ object desugar {
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos ?
       // right now vdef maps via expandedTree to a thicket which concerns itself.
       // I don't see a problem with that but if there is one we can avoid it by making a copy here.
-      val setterParam = makeSyntheticParameter(tpt = refTypeTree(vdef, InfoOfSym))
+      val setterParam = makeSyntheticParameter(tpt = new SetterParam(vdef))
       val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
       val setter = cpy.DefDef(vdef,
         mods | Accessor, name.setterName, Nil, (setterParam :: Nil) :: Nil,
