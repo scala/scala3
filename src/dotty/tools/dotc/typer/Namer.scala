@@ -173,6 +173,11 @@ class Namer { typer: Typer =>
       enclosingClassNamed(mods.privateWithin, mods.pos)
 
     def record(sym: Symbol): Symbol = {
+      val refs = tree.attachmentOrElse(desugar.References, Nil)
+      if (refs.nonEmpty) {
+        tree.removeAttachment(desugar.References)
+        refs foreach (_.pushAttachment(desugar.OriginalSymbol, sym))
+      }
       tree.pushAttachment(SymOfTree, sym)
       sym
     }
@@ -516,10 +521,7 @@ class Namer { typer: Typer =>
          *  NoType if neither case holds.
          */
         val inherited =
-          if ((sym is Param) && sym.owner.isSetter) // fill in type from getter result type
-            defContext(sym.owner)
-              .denotNamed(sym.owner.asTerm.name.setterToGetter).info.widenExpr
-          else if (sym.owner.isTerm) NoType
+          if (sym.owner.isTerm) NoType
           else {
             // TODO: Look only at member of supertype instead?
             lazy val schema = paramFn(WildcardType)
@@ -578,7 +580,7 @@ class Namer { typer: Typer =>
         val rhsCtx = ctx.fresh addMode Mode.InferringReturnType
         def rhsType = typedAheadExpr(mdef.rhs, rhsProto)(rhsCtx).tpe.widen.approximateUnion
         def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)
-        inherited orElse lhsType
+        inherited orElse lhsType orElse WildcardType
       }
     paramFn(typedAheadType(mdef.tpt, pt).tpe)
   }

@@ -84,7 +84,7 @@ trait Checking extends NoChecking {
 
   /** Check that (return) type of implicit definition is not empty */
   override def checkImplicitTptNonEmpty(defTree: untpd.ValOrDefDef)(implicit ctx: Context): Unit = defTree.tpt match {
-    case TypeTree(original) if original.isEmpty =>
+    case TypeTree(untpd.EmptyTree) =>
       val resStr = if (defTree.isInstanceOf[untpd.DefDef]) "result " else ""
       ctx.error(i"${resStr}type of implicit definition needs to be given explicitly", defTree.pos)
     case _ =>

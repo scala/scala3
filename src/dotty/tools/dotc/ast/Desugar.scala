@@ -6,6 +6,7 @@ import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
+import util.Attachment
 import language.higherKinds
 import collection.mutable.ListBuffer
 import typer.ErrorReporting.InfoString
@@ -21,6 +22,43 @@ object desugar {
   /** Info of a variable in a pattern: The named tree and its type */
   private type VarInfo = (NameTree, Tree)
 
+// ----- TypeTrees that refer to other tree's symbols -------------------
+
+  /** A marker tree used as the original for TypeTrees that get their type by taking
+   *  the typeRef of some other tree's symbol. (currently unused)
+   */
+  val TypeRefOfSym = new TypeTree(EmptyTree)
+
+  /** A marker tree used as the original for TypeTrees that get their type by taking
+   *  the result type of the info of some other tree's symbol.
+   */
+  val InfoOfSym = new TypeTree(EmptyTree)
+
+  /** Attachment key containing TypeTrees whose type is computed
+   *  from the symbol in this type. These type trees have marker trees
+   *  TypeRefOfSym or InfoOfSym as their originals.
+   */
+  val References = new Attachment.Key[List[Tree]]
+
+  /** Attachment key for TypeTrees marked with TypeRefOfSym or InfoOfSym
+   *  which contains the symbol of the original tree from which this
+   *  TypeTree is derived.
+   */
+  val OriginalSymbol = new Attachment.Key[Symbol]
+
+  /** A type tree that is marked to get its type by taking
+   *  the typeRef of some other tree's symbol. Enters the type tree
+   *  in the References attachment of the `original` tree as a side effect.
+   */
+  def refTypeTree(original: Tree, marker: TypeTree): TypeTree = {
+    val result = TypeTree(marker)
+    val existing = original.attachmentOrElse(References, Nil)
+    original.putAttachment(References, result :: existing)
+    result
+  }
+
+// ----- Desugar methods -------------------------------------------------
+
   /**   var x: Int = expr
    *  ==>
    *    def x: Int = expr
@@ -35,7 +73,7 @@ object desugar {
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos ?
       // right now vdef maps via expandedTree to a thicket which concerns itself.
       // I don't see a problem with that but if there is one we can avoid it by making a copy here.
-      val setterParam = makeSyntheticParameter(tpt = TypeTree())
+      val setterParam = makeSyntheticParameter(tpt = refTypeTree(vdef, InfoOfSym))
       val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
       val setter = cpy.DefDef(vdef,
         mods | Accessor, name.setterName, Nil, (setterParam :: Nil) :: Nil,
