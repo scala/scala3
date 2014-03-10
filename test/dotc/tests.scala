@@ -12,36 +12,39 @@ class tests extends CompilerTest {
 //        "-Xprompt",
 //        "-explaintypes",
 //        "-Yshow-suppressed-errors",
-        "#runs", "2",
-        "-pagewidth", "160")
+        "-pagewidth", "160"
+    )
+  val twice = List("#runs", "2")
 
   val posDir = "./tests/pos/"
   val negDir = "./tests/neg/"
   val dotcDir = "./src/dotty/"
-
-  @Test def pos_Coder() = compileFile(posDir, "Coder")
-  @Test def pos_blockescapes() = compileFile(posDir, "blockescapes")
-  @Test def pos_collections() = compileFile(posDir, "collections")
-  @Test def pos_functions1() = compileFile(posDir, "functions1")
-  @Test def pos_implicits1() = compileFile(posDir, "implicits1")
-  @Test def pos_inferred() = compileFile(posDir, "inferred")
-  @Test def pos_Patterns() = compileFile(posDir, "Patterns")
-  @Test def pos_selftypes() = compileFile(posDir, "selftypes")
-  @Test def pos_varargs() = compileFile(posDir, "varargs")
-  @Test def pos_opassign() = compileFile(posDir, "opassign")
-  @Test def pos_typedapply() = compileFile(posDir, "typedapply")
-  @Test def pos_nameddefaults() = compileFile(posDir, "nameddefaults")
-  @Test def pos_desugar() = compileFile(posDir, "desugar")
-  @Test def pos_sigs() = compileFile(posDir, "sigs")
-  @Test def pos_typers() = compileFile(posDir, "typers")
-  @Test def pos_typedidents() = compileFile(posDir, "typedIdents")
-  @Test def pos_assignments() = compileFile(posDir, "assignments")
-  @Test def pos_packageobject() = compileFile(posDir, "packageobject")
-  @Test def pos_overloaded() = compileFile(posDir, "overloaded")
-  @Test def pos_templateParents() = compileFile(posDir, "templateParents")
-  @Test def pos_structural() = compileFile(posDir, "structural")
-  @Test def pos_i39 = compileFile(posDir, "i39")
-  @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess")
+/*
+  @Test def pos_Coder() = compileFile(posDir, "Coder", twice)
+  @Test def pos_blockescapes() = compileFile(posDir, "blockescapes", twice)
+  @Test def pos_collections() = compileFile(posDir, "collections", twice)
+  @Test def pos_functions1() = compileFile(posDir, "functions1", twice)
+  @Test def pos_implicits1() = compileFile(posDir, "implicits1", twice)
+  @Test def pos_inferred() = compileFile(posDir, "inferred", twice)
+  @Test def pos_Patterns() = compileFile(posDir, "Patterns", twice)
+  @Test def pos_selftypes() = compileFile(posDir, "selftypes", twice)
+  @Test def pos_varargs() = compileFile(posDir, "varargs", twice)
+  @Test def pos_opassign() = compileFile(posDir, "opassign", twice)
+  @Test def pos_typedapply() = compileFile(posDir, "typedapply", twice)
+  @Test def pos_nameddefaults() = compileFile(posDir, "nameddefaults", twice)
+  @Test def pos_desugar() = compileFile(posDir, "desugar", twice)
+  @Test def pos_sigs() = compileFile(posDir, "sigs", twice)
+  @Test def pos_typers() = compileFile(posDir, "typers", twice)
+  @Test def pos_typedidents() = compileFile(posDir, "typedIdents", twice)
+  @Test def pos_assignments() = compileFile(posDir, "assignments", twice)
+  @Test def pos_packageobject() = compileFile(posDir, "packageobject", twice)
+  @Test def pos_overloaded() = compileFile(posDir, "overloaded", twice)
+  @Test def pos_templateParents() = compileFile(posDir, "templateParents", twice)
+  @Test def pos_structural() = compileFile(posDir, "structural", twice)
+  @Test def pos_i39 = compileFile(posDir, "i39", twice)
+  @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess", twice)
+*/
+  @Test def pos_all = compileFiles(posDir, twice)
 
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
@@ -53,32 +56,34 @@ class tests extends CompilerTest {
   @Test def neg_templateParents() = compileFile(negDir, "templateParents", xerrors = 3)
   @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 1)
 
-  @Test def dotc = compileDir(dotcDir + "tools/dotc")
-  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast")
-  @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config")
-  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core")
-  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling")
-  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/core/transform")
-  @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing")
-  @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing")
-  @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting")
-  @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer")
-  @Test def dotc_util = compileDir(dotcDir + "tools/dotc/util")
-  @Test def tools_io = compileDir(dotcDir + "tools/io")
-  @Test def tools = compileDir(dotcDir + "tools")
+  @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)
+  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)
+  @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config", twice)
+  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", twice)
+  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", twice)
+  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/core/transform", twice)
+  @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing", twice)
+  @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing", twice)
+  @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting", twice)
+  @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", twice)
+  @Test def dotc_util = compileDir(dotcDir + "tools/dotc/util", twice)
+  @Test def tools_io = compileDir(dotcDir + "tools/io", twice)
+  @Test def tools = compileDir(dotcDir + "tools", twice)
 
   @Test def testNonCyclic = compileArgs(Array(
       dotcDir + "tools/dotc/CompilationUnit.scala",
       dotcDir + "tools/dotc/core/Types.scala",
       dotcDir + "tools/dotc/ast/Trees.scala",
       "-Ylog:frontend",
-      "-Xprompt"))
+      "-Xprompt",
+      "#runs", "2"))
 
   @Test def testIssue_34 = compileArgs(Array(
       dotcDir + "tools/dotc/config/Properties.scala",
       dotcDir + "tools/dotc/config/PathResolver.scala",
       "-Ylog:frontend",
-      "-Xprompt"))
+      "-Xprompt",
+      "#runs", "2"))
 
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }

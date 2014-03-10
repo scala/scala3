@@ -8,6 +8,7 @@ import collection.mutable
 import printing.{Printer, Showable}
 import printing.Texts._
 import config.Config
+import config.Printers._
 
 /** Constraint over undetermined type parameters
  *  @param myMap a map from PolyType to arrays.
@@ -304,5 +305,5 @@ trait ConstraintRunInfo { self: RunInfo =>
       maxConstraint = c
     }
   def printMaxConstraint()(implicit ctx: Context) =
-    if (maxSize > 0) println(s"max constraint = ${maxConstraint.show}")
+    if (maxSize > 0) typr.println(s"max constraint = ${maxConstraint.show}")
 }
