@@ -3,6 +3,8 @@ package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
 import SymDenotations._
+import config.Printers._
+import Decorators._
 import util.SimpleMap
 
 trait TypeOps { this: Context =>
@@ -75,7 +77,12 @@ trait TypeOps { this: Context =>
   }
 
   final def isVolatile(tp: Type): Boolean = {
-    /** Pre-filter to avoid expensive DNF computation */
+
+    /** Pre-filter to avoid expensive DNF computation
+     *  If needsChecking returns false it is guaranteed that
+     *  DNF does not contain intersections, or abstract types with upper
+     *  bounds that themselves need checking.
+     */
     def needsChecking(tp: Type, isPart: Boolean): Boolean = tp match {
       case tp: TypeRef =>
         tp.info match {
@@ -88,30 +95,61 @@ trait TypeOps { this: Context =>
         needsChecking(tp.parent, true)
       case tp: TypeProxy =>
         needsChecking(tp.underlying, isPart)
-      case AndType(l, r) =>
-        needsChecking(l, true) || needsChecking(r, true)
-      case OrType(l, r) =>
-        isPart || needsChecking(l, isPart) && needsChecking(r, isPart)
+      case tp: AndType =>
+        true
+      case tp: OrType =>
+        isPart || needsChecking(tp.tp1, isPart) && needsChecking(tp.tp2, isPart)
       case _ =>
         false
     }
+
     needsChecking(tp, false) && {
-      tp.DNF forall { case (parents, refinedNames) =>
+      DNF(tp) forall { case (parents, refinedNames) =>
         val absParents = parents filter (_.symbol is Deferred)
-        absParents.size >= 2 || {
-          val ap = absParents.head
-          ((parents exists (p =>
-                (p ne ap)
-             || p.memberNames(abstractTypeNameFilter, tp).nonEmpty
-             || p.memberNames(abstractTermNameFilter, tp).nonEmpty))
-          || (refinedNames & tp.memberNames(abstractTypeNameFilter, tp)).nonEmpty
-          || (refinedNames & tp.memberNames(abstractTermNameFilter, tp)).nonEmpty
-          || isVolatile(ap)
-          )
+        absParents.nonEmpty && {
+          absParents.lengthCompare(2) >= 0 || {
+            val ap = absParents.head
+            ((parents exists (p =>
+              (p ne ap)
+              || p.memberNames(abstractTypeNameFilter, tp).nonEmpty
+              || p.memberNames(abstractTermNameFilter, tp).nonEmpty))
+            || (refinedNames & tp.memberNames(abstractTypeNameFilter, tp)).nonEmpty
+            || (refinedNames & tp.memberNames(abstractTermNameFilter, tp)).nonEmpty
+            || isVolatile(ap))
+          }
         }
       }
     }
   }
+
+  /** The disjunctive normal form of this type.
+   *  This collects a set of alternatives, each alternative consisting
+   *  of a set of typerefs and a set of refinement names. Both sets are represented
+   *  as lists, to obtain a deterministic order. Collected are
+   *  all type refs reachable by following aliases and type proxies, and
+   *  collecting the elements of conjunctions (&) and disjunctions (|).
+   *  The set of refinement names in each alternative
+   *  are the set of names in refinement types encountered during the collection.
+   */
+  final def DNF(tp: Type): List[(List[TypeRef], Set[Name])] = ctx.traceIndented(s"DNF($this)", checks) {
+    tp.dealias match {
+      case tp: TypeRef =>
+        (tp :: Nil, Set[Name]()) :: Nil
+      case RefinedType(parent, name) =>
+        for ((ps, rs) <- DNF(parent)) yield (ps, rs + name)
+      case tp: TypeProxy =>
+        DNF(tp.underlying)
+      case AndType(l, r) =>
+        for ((lps, lrs) <- DNF(l); (rps, rrs) <- DNF(r))
+          yield (lps | rps, lrs | rrs)
+      case OrType(l, r) =>
+        DNF(l) | DNF(r)
+      case tp =>
+        TypeOps.emptyDNF
+    }
+  }
+
+
 
   private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
     val lazyInfo = new LazyType { // needed so we do not force `formal`.
@@ -215,6 +253,6 @@ trait TypeOps { this: Context =>
 }
 
 object TypeOps {
-
+  val emptyDNF = (Nil, Set[Name]()) :: Nil
   var track = false // !!!DEBUG
 }

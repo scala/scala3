@@ -23,6 +23,7 @@ trait NoChecking {
   def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
   def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = ()
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
+  def checkLegalPrefix(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type = tp
   def checkImplicitTptNonEmpty(defTree: untpd.ValOrDefDef)(implicit ctx: Context): Unit = ()
   def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
@@ -53,13 +54,17 @@ trait Checking extends NoChecking {
       if (!(bounds.lo <:< arg.tpe)) notConforms("lower", bounds.lo)
     }
 
-  /** Check that type `tp` is stable.
+  /** Check that type `tp` is stable. */
+  override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
+    if (!tp.isStable) ctx.error(i"$tp is not stable", pos)
+
+  /** Check that type `tp` is a legal prefix for '#'.
    *  @return The type itself
    */
-  override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
-    if (!tp.isStable) ctx.error(i"Prefix of type ${tp.widenIfUnstable} is not stable", pos)
+  override def checkLegalPrefix(tp: Type, pos: Position)(implicit ctx: Context): Unit =
+    if (!tp.isLegalPrefix) ctx.error(i"$tp is not a valid prefix for '#'", pos)
 
-  /** Check that `tp` is a class type with a stable prefix. Also, if `isFirst` is
+ /** Check that `tp` is a class type with a stable prefix. Also, if `isFirst` is
    *  false check that `tp` is a trait.
    *  @return  `tp` itself if it is a class or trait ref, ObjectClass.typeRef if not.
    */
