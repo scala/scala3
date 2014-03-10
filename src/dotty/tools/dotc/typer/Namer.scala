@@ -216,9 +216,10 @@ class Namer { typer: Typer =>
         checkNoConflict(name)
         val deferred = if (lacksDefinition(tree)) Deferred else EmptyFlags
         val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
+        val cctx = if (tree.name == nme.CONSTRUCTOR) ctx.outer else ctx
         record(ctx.newSymbol(
           ctx.owner, name, tree.mods.flags | deferred | method,
-          adjustIfModule(new Completer(tree), tree),
+          adjustIfModule(new Completer(tree)(cctx), tree),
           privateWithinClass(tree.mods), tree.pos))
       case tree: Import =>
         record(ctx.newSymbol(
