@@ -614,6 +614,7 @@ class Namer { typer: Typer =>
 
   def typeDefSig(tdef: TypeDef, sym: Symbol)(implicit ctx: Context): Type = {
     completeParams(tdef.tparams)
+    sym.info = TypeBounds.empty // avoid cyclic reference errors for F-bounds
     val tparamSyms = tdef.tparams map symbolOfTree
     val rhsType = typedAheadType(tdef.rhs).tpe
 

@@ -467,7 +467,7 @@ object Flags {
   final val ExpandedTypeParam = allOf(ExpandedName, TypeParam)
 
   /** A parameter or parameter accessor */
-  final val ParamOrAccessor = Param | Accessor
+  final val ParamOrAccessor = Param | ParamAccessor
 
   /** A covariant type parameter instance */
   final val LocalCovariant = allOf(Local, Covariant)
