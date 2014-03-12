@@ -1,0 +1,8 @@
+macro-bundle-object.scala:10: error: macro implementation has incompatible shape:
+ required: (c: scala.reflect.macros.blackbox.Context): c.Expr[Nothing]
+ or      : (c: scala.reflect.macros.blackbox.Context): c.Tree
+ found   : : Nothing
+number of parameter sections differ
+  def foo = macro Bundle.impl
+                         ^
+one error found

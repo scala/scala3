@@ -1,0 +1,16 @@
+divergent-implicit.scala:4: error: type mismatch;
+ found   : Int(1)
+ required: String
+  val x1: String = 1
+                   ^
+divergent-implicit.scala:14: error: type mismatch;
+ found   : Test2.Foo
+ required: Test2.Bar
+  val x: Bar = new Foo
+               ^
+divergent-implicit.scala:15: error: type mismatch;
+ found   : Test2.Baz
+ required: Test2.Bar
+  val y: Bar = new Baz
+               ^
+three errors found

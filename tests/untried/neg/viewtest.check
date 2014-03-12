@@ -1,0 +1,6 @@
+viewtest.scala:43: error: type mismatch;
+ found   : List[a(in method compareTo)]
+ required: List[a(in method view3)]
+        case y1: List[a] => compareLists(x, y1)
+                                            ^
+one error found

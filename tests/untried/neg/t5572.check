@@ -1,0 +1,16 @@
+t5572.scala:16: error: type mismatch;
+ found   : B
+ required: A
+    Z.transf(a, b) match {
+             ^
+t5572.scala:16: error: type mismatch;
+ found   : A
+ required: B
+    Z.transf(a, b) match {
+                ^
+t5572.scala:18: error: type mismatch;
+ found   : A
+ required: B
+        run(sth, b)
+                 ^
+three errors found

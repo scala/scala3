@@ -1,0 +1,6 @@
+unit2anyref.scala:2: error: type mismatch;
+ found   : Unit
+ required: AnyRef
+  val x: AnyRef = ()  // this should not succeed.
+                  ^
+one error found
