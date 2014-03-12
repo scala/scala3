@@ -35,11 +35,19 @@ object Implicits {
   val c: Int = y.elem
 
   val d: Int = z.foo("abc")
-  
+
   //import X.BarDeco
 
   println(z.bar)
 
-  val e: Int = z.foo(true) 
+  val e: Int = z.foo(true)
+
+  // Haoyi Li's example on scala-user:
+  
+  trait Modifier
+
+  implicit def stringNode(v: String): Modifier = new Modifier {}
+
+  val s: Modifier = Some("rd").getOrElse("")
 
 }
