@@ -76,6 +76,22 @@ trait TypeOps { this: Context =>
     def apply(tp: Type) = simplify(tp, this)
   }
 
+  /** A type is volatile if its DNF contains an alternative of the form
+   *  {P1, ..., Pn}, {N1, ..., Nk}, where the Pi are parent typerefs and the
+   *  Nj are refinement names, and one the 4 following conditions is met:
+   *
+   *  1. At least two of the parents Pi are abstract types.
+   *  2. One of the parents Pi is an abstract type, and one other type Pj,
+   *     j != i has an abstract member which has the same name as an
+   *     abstract member of the whole type.
+   *  3. One of the parents Pi is an abstract type, and one of the refinement
+   *     names Nj refers to an abstract member of the whole type.
+   *  4. One of the parents Pi is an an alias type with a volatile alias
+   *     or an abstract type with a volatile upper bound.
+   *
+   *  Lazy values are not allowed to have volatile type, as otherwise
+   *  unsoundness can result.
+   */
   final def isVolatile(tp: Type): Boolean = {
 
     /** Pre-filter to avoid expensive DNF computation
