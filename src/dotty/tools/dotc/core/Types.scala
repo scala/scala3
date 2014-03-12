@@ -1167,8 +1167,10 @@ object Types {
     def apply(prefix: Type, name: TermName)(implicit ctx: Context): TermRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, name).asInstanceOf[TermRef]
     def apply(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      if (prefix eq NoPrefix) unique(new NoPrefixTermRef(sym.name, sym))
-      else apply(prefix, sym.name) withSym sym
+      withSymAndName(prefix, sym, sym.name)
+    def withSymAndName(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef =
+      if (prefix eq NoPrefix) unique(new NoPrefixTermRef(name, sym))
+      else apply(prefix, name) withSym sym
     def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef =
       (if (prefix eq NoPrefix) apply(prefix, denot.symbol.asTerm) else apply(prefix, name)) withDenot denot
     def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
@@ -1182,8 +1184,10 @@ object Types {
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef =
       ctx.uniqueNamedTypes.enterIfNew(prefix, name).asInstanceOf[TypeRef]
     def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      if (prefix eq NoPrefix) unique(new NoPrefixTypeRef(sym.name, sym))
-      else apply(prefix, sym.name) withSym sym
+      withSymAndName(prefix, sym, sym.name)
+    def withSymAndName(prefix: Type, sym: TypeSymbol, name: TypeName)(implicit ctx: Context): TypeRef =
+      if (prefix eq NoPrefix) unique(new NoPrefixTypeRef(name, sym))
+      else apply(prefix, name) withSym sym
     def apply(prefix: Type, name: TypeName, denot: Denotation)(implicit ctx: Context): TypeRef =
       (if (prefix eq NoPrefix) apply(prefix, denot.symbol.asType) else apply(prefix, name)) withDenot denot
   }

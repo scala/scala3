@@ -132,7 +132,7 @@ trait Symbols { this: Context =>
         infoFn(module, modcls), privateWithin)
     val mdenot = SymDenotation(
         module, owner, name, modFlags | ModuleCreationFlags,
-        if (cdenot.isCompleted) TypeRef(owner.thisType, modclsName) withSym modcls
+        if (cdenot.isCompleted) TypeRef.withSymAndName(owner.thisType, modcls, modclsName)
         else new ModuleCompleter(modcls))
     module.denot = mdenot
     modcls.denot = cdenot
@@ -157,7 +157,7 @@ trait Symbols { this: Context =>
     newModuleSymbol(
         owner, name, modFlags, clsFlags,
         (module, modcls) => ClassInfo(
-          owner.thisType, modcls, parents, decls, TermRef(owner.thisType, name) withSym module),
+          owner.thisType, modcls, parents, decls, TermRef.withSymAndName(owner.thisType, module, name)),
         privateWithin, coord, assocFile)
 
   /** Create a package symbol with associated package class
