@@ -46,13 +46,16 @@ trait Checking extends NoChecking {
   }
 
   /** Check that type arguments `args` conform to corresponding bounds in `poly` */
-  override def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit =
+  override def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = {
+    val argTypes = args.tpes
+    def substituted(tp: Type) = tp.substParams(poly, argTypes)
     for ((arg, bounds) <- args zip poly.paramBounds) {
       def notConforms(which: String, bound: Type) =
         ctx.error(i"Type argument ${arg.tpe} does not conform to $which bound $bound", arg.pos)
-      if (!(arg.tpe <:< bounds.hi)) notConforms("upper", bounds.hi)
+      if (!(arg.tpe <:< substituted(bounds.hi))) notConforms("upper", bounds.hi)
       if (!(bounds.lo <:< arg.tpe)) notConforms("lower", bounds.lo)
     }
+  }
 
   /** Check that type `tp` is stable. */
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
