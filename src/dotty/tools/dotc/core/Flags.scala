@@ -395,9 +395,13 @@ object Flags {
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
   /** Flags representing source modifiers */
-  final val ModifierFlags =
+  final val SourceModifierFlags =
     commonFlags(Private, Protected, Abstract, Final,
      Sealed, Case, Implicit, Override, AbsOverride, Lazy)
+
+  /** Flags representing modifiers that can appear in trees */
+  final val ModifierFlags =
+    SourceModifierFlags | Trait | Module | Param | Synthetic | Package
 
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local
