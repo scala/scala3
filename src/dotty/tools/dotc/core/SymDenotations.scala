@@ -148,9 +148,9 @@ object SymDenotations {
       // completions.println(s"completing ${this.debugString}")
       try completer.complete(this)
       catch {
-      case ex: CyclicReference =>
-        completions.println(s"error while completing ${this.debugString}")
-        throw ex
+        case ex: CyclicReference =>
+          completions.println(s"error while completing ${this.debugString}")
+          throw ex
       }
       // completions.println(s"completed ${this.debugString}")
     }

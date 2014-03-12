@@ -216,9 +216,18 @@ class Namer { typer: Typer =>
         checkNoConflict(name)
         val deferred = if (lacksDefinition(tree)) Deferred else EmptyFlags
         val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
+
+        // to complete a constructor, move one context further out -- this
+        // is the context enclosing the class. Note that the context in which a
+        // constructor is recorded and the context in which it is completed are
+        // different: The former must have the class as owner (because the
+        // constructor is owned by the class), the latter must not (because
+        // constructor parameters are interpreted as if they are outside the class).
+        val cctx = if (tree.name == nme.CONSTRUCTOR) ctx.outer else ctx
+
         record(ctx.newSymbol(
           ctx.owner, name, tree.mods.flags | deferred | method,
-          adjustIfModule(new Completer(tree), tree),
+          adjustIfModule(new Completer(tree)(cctx), tree),
           privateWithinClass(tree.mods), tree.pos))
       case tree: Import =>
         record(ctx.newSymbol(
