@@ -145,9 +145,14 @@ object SymDenotations {
       if (myFlags is Touched) throw new CyclicReference(this)
       myFlags |= Touched
 
-      completions.println(s"completing ${this.debugString}")
-      completer.complete(this)
-      completions.println(s"completed ${this.debugString}")
+      // completions.println(s"completing ${this.debugString}")
+      try completer.complete(this)
+      catch {
+      case ex: CyclicReference =>
+        completions.println(s"error while completing ${this.debugString}")
+        throw ex
+      }
+      // completions.println(s"completed ${this.debugString}")
     }
 
     protected[dotc] final def info_=(tp: Type) = {
