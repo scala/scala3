@@ -106,7 +106,8 @@ object Types {
       classSymbol.derivesFrom(cls)
 
    /** A type T is a legal prefix in a type selection T#A if
-     *  T is stable or T contains no uninstantiated type variables.
+     *  T is stable or T contains no abstract types
+     *  !!! Todo: What about non-final vals that contain abstract types?
      */
     final def isLegalPrefix(implicit ctx: Context): Boolean =
       isStable || memberNames(abstractTypeNameFilter).isEmpty
@@ -126,25 +127,6 @@ object Types {
 
     /** Is some part of this type produced as a repair for an error? */
     final def isErroneous(implicit ctx: Context): Boolean = existsPart(_.isError)
-
-    /** A type is volatile if its DNF contains an alternative of the form
-     *  {P1, ..., Pn}, {N1, ..., Nk}, where the Pi are parent typerefs and the
-     *  Nj are refinement names, and one the 4 following conditions is met:
-     *
-     *  1. At least two of the parents Pi are abstract types.
-     *  2. One of the parents Pi is an abstract type, and one other type Pj,
-     *     j != i has an abstract member which has the same name as an
-     *     abstract member of the whole type.
-     *  3. One of the parents Pi is an abstract type, and one of the refinement
-     *     names Nj refers to an abstract member of the whole type.
-     *  4. One of the parents Pi is an abstract type with a volatile upper bound.
-     *
-     *  Lazy values are not allowed to have volatile type, as otherwise
-     *  unsoundness can result.
-     */
-    final def isVolatile(implicit ctx: Context): Boolean = track("isVolatile") {
-      ctx.isVolatile(this)
-    }
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     final def hasAnnotation(cls: ClassSymbol)(implicit ctx: Context): Boolean = stripTypeVar match {
@@ -740,31 +722,6 @@ object Types {
      */
     def typeParamNamed(name: TypeName)(implicit ctx: Context): Symbol =
       classSymbol.decls.lookup(name) orElse member(name).symbol
-
-    /** The disjunctive normal form of this type.
-     *  This collects a set of alternatives, each alternative consisting
-     *  of a set of typerefs and a set of refinement names. Both sets are represented
-     *  as lists, to obtain a deterministic order. Collected are
-     *  all type refs reachable by following aliases and type proxies, and
-     *  collecting the elements of conjunctions (&) and disjunctions (|).
-     *  The set of refinement names in each alternative
-     *  are the set of names in refinement types encountered during the collection.
-     */
-    final def DNF(implicit ctx: Context): List[(List[TypeRef], Set[Name])] = dealias match {
-      case tp: TypeRef =>
-        (tp :: Nil, Set[Name]()) :: Nil
-      case RefinedType(parent, name) =>
-        for ((ps, rs) <- parent.DNF) yield (ps, rs + name)
-      case tp: TypeProxy =>
-        tp.underlying.DNF
-      case AndType(l, r) =>
-        for ((lps, lrs) <- l.DNF; (rps, rrs) <- r.DNF)
-        yield (lps | rps, lrs | rrs)
-      case OrType(l, r) =>
-        l.DNF | r.DNF
-      case tp =>
-        emptyDNF
-    }
 
 // ----- Substitutions -----------------------------------------------------
 
