@@ -241,6 +241,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case SeqLiteral(elems) =>
         "[" ~ toTextGlobal(elems, ",") ~ "]"
+      case tpt: untpd.DerivedTypeTree =>
+        "<derived typetree watching " ~ toText(tpt.watched) ~ ">"
       case TypeTree(orig) =>
         if (tree.hasType) toText(tree.typeOpt) else toText(orig)
       case SingletonTypeTree(ref) =>
