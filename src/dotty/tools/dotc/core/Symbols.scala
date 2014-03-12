@@ -157,7 +157,7 @@ trait Symbols { this: Context =>
     newModuleSymbol(
         owner, name, modFlags, clsFlags,
         (module, modcls) => ClassInfo(
-          owner.thisType, modcls, parents, decls, TermRef(owner.thisType, name) withSym module),
+          owner.thisType, modcls, parents, decls, TermRef.withSymAndName(owner.thisType, module, name)),
         privateWithin, coord, assocFile)
 
   /** Create a package symbol with associated package class
