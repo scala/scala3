@@ -429,7 +429,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
     def search(from: Any): List[Tree] = ctx.debugTraceIndented(s"search(${show(from)})") {
       from match {
-        case tree: Tree @ unchecked =>
+        case tree: Tree => // Dotty problem: cannot write Tree @ unchecked, this currently gives a syntax error
           if (definedSym(tree) == sym) tree :: Nil
           else if (tree.envelope.contains(sym.pos)) {
             val p = search(tree.productIterator)
