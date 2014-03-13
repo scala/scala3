@@ -22,7 +22,6 @@ import StdNames._
 import ProtoTypes._
 import EtaExpansion._
 import collection.mutable
-import reflect.ClassTag
 import config.Printers._
 import TypeApplications._
 import language.implicitConversions

@@ -5,7 +5,7 @@ package ast
 import core._
 import Flags._, Trees._, Types._, Contexts._
 import Names._, StdNames._, NameOps._, Decorators._, Symbols._
-import util.HashSet
+import util.{HashSet, Attachment}
 
 trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
@@ -276,7 +276,100 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 }
 
-trait TypedTreeInfo extends TreeInfo[Type] {self: Trees.Instance[Type] =>
+trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
+
+  /** Key categories used by Namer and Typer */
+  class TypedAheadKey extends Attachment.Key[tpd.Tree]
+  class ExpandedTreeKey extends Attachment.Key[Tree]
+  class SymOfTreeKey extends Attachment.Key[Symbol]
+
+  /** A key for trees that have an expansion which was already inlined into
+   *  its surrounding statements. (These trees have their original ExpandedTree
+   *  attachment removed.)
+   */
+  val InlinedExpandedTree = new ExpandedTreeKey
+
+  /** The symbols defined by this tree. Follows trees referred to in ExpandedTree and
+   *  TypedAhead attachements. Also knows about SymOfTree attachment.
+   */
+  def definedSymbols(tree: Tree)(implicit ctx: Context): List[Symbol] = tree match {
+    case Thicket(trees) =>
+      trees.flatMap(definedSymbols)
+    case tree: DefTree =>
+      if (tree.hasType && tree.symbol.exists) tree.symbol :: Nil
+      else tree.allAttachments flatMap {
+        case (key: TypedAheadKey, tree1: Tree) => definedSymbols(tree1)
+        case (key: ExpandedTreeKey, Thicket(stats)) =>
+          stats.flatMap(stat => if (stat eq tree) Nil else definedSymbols(stat))
+        case (key: ExpandedTreeKey, tree1: Tree) => definedSymbols(tree1)
+        case (key: SymOfTreeKey, sym: Symbol) => sym :: Nil
+        case _ => Nil
+      }
+    case _ =>
+      Nil
+  }
+
+  /** Is `tree` a typed tree that defines the given symbol `sym`? */
+  def definesSym(tree: Tree, sym: Symbol)(implicit ctx: Context): Boolean =
+    definedSymbols(tree) contains sym
+
+  /** Going from child to parent, the path of tree nodes that starts
+   *  with a definition of symbol `sym` and ends with `root`, or Nil
+   *  if no such path exists.
+   *  Pre: `sym` must have a position.
+   */
+  def defPath(sym: Symbol, root: Tree)(implicit ctx: Context): List[Tree] = ctx.debugTraceIndented(s"defpath($sym with position ${sym.pos}, ${root.show})") {
+    def show(from: Any): String = from match {
+      case tree: Tree => s"${tree.show} with attachments ${tree.allAttachments}"
+      case x: printing.Showable => x.show
+      case x => x.toString
+    }
+    def search(from: Any): List[Tree] = ctx.debugTraceIndented(s"search(${show(from)})") {
+      from match {
+        case tree: Tree =>
+          if (definesSym(tree, sym)) tree :: Nil
+          else if (tree.envelope.contains(sym.pos)) {
+            val p = search(tree.productIterator)
+            if (p.isEmpty) p else tree :: p
+          } else Nil
+        case xs: Iterable[_] =>
+          search(xs.iterator)
+        case xs: Iterator[_] =>
+          xs.map(search).find(_.nonEmpty).getOrElse(Nil)
+        case _ =>
+          Nil
+      }
+    }
+    require(sym.pos.exists)
+    search(root)
+  }
+
+  /** The statement sequence that contains a definition of `sym`, or Nil
+   *  if none was found.
+   *  For a tree to be found, The symbol must have a position and its definition
+   *  tree must be reachable from come tree stored in an enclosing context.
+   */
+  def definingStats(sym: Symbol)(implicit ctx: Context): List[Tree] =
+    if (!sym.pos.exists || (ctx eq NoContext)) Nil
+    else if ((ctx.tree.envelope contains sym.pos) && !definesSym(ctx.tree, sym))
+      defPath(sym, ctx.tree) match {
+        case defn :: encl :: _ =>
+          def verify(stats: List[Tree]) =
+            if (stats exists (definesSym(_, sym))) stats else Nil
+          encl match {
+            case Block(stats, _) => verify(stats)
+            case Template(_, _, _, stats) => verify(stats)
+            case PackageDef(_, stats) => verify(stats)
+            case Thicket(stats) => verify(stats)
+            case _ => Nil
+          }
+        case nil =>
+          Nil
+      }
+    else definingStats(sym)(ctx.outer)
+}
+
+trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** Is tree a definition that has no side effects when
    *  evaluated as part of a block after the first time?
