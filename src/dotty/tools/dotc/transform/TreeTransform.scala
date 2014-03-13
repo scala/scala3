@@ -4,7 +4,6 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.ast.Trees._
-import java.util
 import scala.annotation.tailrec
 
 object TreeTransforms {
@@ -49,7 +48,6 @@ object TreeTransforms {
   class TreeTransform(group: TreeTransformer, idx: Int) {
 
     import tpd._
-    import group._
 
     def prepareForIdent(tree: Ident) = this
     def prepareForSelect(tree: Select) = this
@@ -81,6 +79,7 @@ object TreeTransforms {
     def prepareForDefDef(tree: DefDef) = this
     def prepareForTemplate(tree: Template) = this
     def prepareForPackageDef(tree: PackageDef) = this
+    def prepareForStats(trees: List[Tree]) = this
 
     def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo): Tree = tree
@@ -112,6 +111,7 @@ object TreeTransforms {
     def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformPackageDef(tree: PackageDef)(implicit ctx: Context, info: TransformerInfo): Tree = tree
+    def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[Tree] = trees
 
     /** Transform tree using all transforms of current group (including this one) */
     def transform(tree: Tree)(implicit ctx: Context): Tree = group.transform(tree)
@@ -125,7 +125,7 @@ object TreeTransforms {
 
   val NoTransform = new TreeTransform(null, -1)
 
-  type Mutator = (TreeTransform, tpd.Tree) => TreeTransform
+  type Mutator[T] = (TreeTransform, T) => TreeTransform
 
   class TransformerInfo(val transformers: Array[TreeTransform], val nx: NXTransformations) {}
 
@@ -219,6 +219,7 @@ object TreeTransforms {
       nxPrepTypeDef = index(transformations, "prepareForTypeDef")
       nxPrepTemplate = index(transformations, "prepareForTemplate")
       nxPrepPackageDef = index(transformations, "prepareForPackageDef")
+      nxPrepStats = index(transformations, "prepareForStats")
 
       nxTransIdent = index(transformations, "transformIdent")
       nxTransSelect = index(transformations, "transformSelect")
@@ -250,6 +251,7 @@ object TreeTransforms {
       nxTransTypeDef = index(transformations, "transformTypeDef")
       nxTransTemplate = index(transformations, "transformTemplate")
       nxTransPackageDef = index(transformations, "transformPackageDef")
+      nxTransStats = index(transformations, "transformStats")
     }
 
     def this(prev: NXTransformations, changedTansformation: TreeTransform, transformationIndex: Int, reuse: Boolean = false) = {
@@ -285,6 +287,7 @@ object TreeTransforms {
       nxPrepTypeDef = indexUpdate(prev.nxPrepTypeDef, changedTansformation, transformationIndex, "prepareForTypeDef", copy)
       nxPrepTemplate = indexUpdate(prev.nxPrepTemplate, changedTansformation, transformationIndex, "prepareForTemplate", copy)
       nxPrepPackageDef = indexUpdate(prev.nxPrepPackageDef, changedTansformation, transformationIndex, "prepareForPackageDef", copy)
+      nxPrepStats = indexUpdate(prev.nxPrepStats, changedTansformation, transformationIndex, "prepareForStats", copy)
 
       nxTransIdent = indexUpdate(prev.nxTransIdent, changedTansformation, transformationIndex, "transformIdent", copy)
       nxTransSelect = indexUpdate(prev.nxTransSelect, changedTansformation, transformationIndex, "transformSelect", copy)
@@ -316,6 +319,7 @@ object TreeTransforms {
       nxTransTypeDef = indexUpdate(prev.nxTransTypeDef, changedTansformation, transformationIndex, "transformTypeDef", copy)
       nxTransTemplate = indexUpdate(prev.nxTransTemplate, changedTansformation, transformationIndex, "transformTemplate", copy)
       nxTransPackageDef = indexUpdate(prev.nxTransPackageDef, changedTansformation, transformationIndex, "transformPackageDef", copy)
+      nxTransStats = indexUpdate(prev.nxTransStats, changedTansformation, transformationIndex, "transformStats", copy)
     }
 
     var nxPrepIdent: Array[Int] = _
@@ -348,6 +352,7 @@ object TreeTransforms {
     var nxPrepTypeDef: Array[Int] = _
     var nxPrepTemplate: Array[Int] = _
     var nxPrepPackageDef: Array[Int] = _
+    var nxPrepStats: Array[Int] = _
 
     var nxTransIdent: Array[Int] = _
     var nxTransSelect: Array[Int] = _
@@ -379,6 +384,7 @@ object TreeTransforms {
     var nxTransTypeDef: Array[Int] = _
     var nxTransTemplate: Array[Int] = _
     var nxTransPackageDef: Array[Int] = _
+    var nxTransStats: Array[Int] = _
   }
 
   /** A group of tree transforms that are applied in sequence during the same phase */
@@ -388,7 +394,6 @@ object TreeTransforms {
 
     protected def transformations: Array[(TreeTransformer, Int) => TreeTransform]
 
-    private val processedTrees = new util.IdentityHashMap[Tree, Tree]()
 
     override def run(implicit ctx: Context): Unit = {
       val curTree = ctx.compilationUnit.tpdTree
@@ -396,7 +401,7 @@ object TreeTransforms {
       ctx.compilationUnit.tpdTree = newTree
     }
 
-    def mutateTransformers(info: TransformerInfo, mutator: Mutator, mutationPlan: Array[Int], tree: Tree, cur: Int) = {
+    def mutateTransformers[T](info: TransformerInfo, mutator: Mutator[T], mutationPlan: Array[Int], tree: T, cur: Int) = {
       var transformersCopied = false
       var nxCopied = false
       var result = info.transformers
@@ -424,36 +429,37 @@ object TreeTransforms {
       else new TransformerInfo(result, resultNX)
     }
 
-    val prepForIdent: Mutator = (trans, tree) => trans.prepareForIdent(tree.asInstanceOf[Ident])
-    val prepForSelect: Mutator = (trans, tree) => trans.prepareForSelect(tree.asInstanceOf[Select])
-    val prepForThis: Mutator = (trans, tree) => trans.prepareForThis(tree.asInstanceOf[This])
-    val prepForSuper: Mutator = (trans, tree) => trans.prepareForSuper(tree.asInstanceOf[Super])
-    val prepForApply: Mutator = (trans, tree) => trans.prepareForApply(tree.asInstanceOf[Apply])
-    val prepForTypeApply: Mutator = (trans, tree) => trans.prepareForTypeApply(tree.asInstanceOf[TypeApply])
-    val prepForNew: Mutator = (trans, tree) => trans.prepareForNew(tree.asInstanceOf[New])
-    val prepForPair: Mutator = (trans, tree) => trans.prepareForPair(tree.asInstanceOf[Pair])
-    val prepForTyped: Mutator = (trans, tree) => trans.prepareForTyped(tree.asInstanceOf[Typed])
-    val prepForAssign: Mutator = (trans, tree) => trans.prepareForAssign(tree.asInstanceOf[Assign])
-    val prepForLiteral: Mutator = (trans, tree) => trans.prepareForLiteral(tree.asInstanceOf[Literal])
-    val prepForBlock: Mutator = (trans, tree) => trans.prepareForBlock(tree.asInstanceOf[Block])
-    val prepForIf: Mutator = (trans, tree) => trans.prepareForIf(tree.asInstanceOf[If])
-    val prepForClosure: Mutator = (trans, tree) => trans.prepareForClosure(tree.asInstanceOf[Closure])
-    val prepForMatch: Mutator = (trans, tree) => trans.prepareForMatch(tree.asInstanceOf[Match])
-    val prepForCaseDef: Mutator = (trans, tree) => trans.prepareForCaseDef(tree.asInstanceOf[CaseDef])
-    val prepForReturn: Mutator = (trans, tree) => trans.prepareForReturn(tree.asInstanceOf[Return])
-    val prepForTry: Mutator = (trans, tree) => trans.prepareForTry(tree.asInstanceOf[Try])
-    val prepForThrow: Mutator = (trans, tree) => trans.prepareForThrow(tree.asInstanceOf[Throw])
-    val prepForSeqLiteral: Mutator = (trans, tree) => trans.prepareForSeqLiteral(tree.asInstanceOf[SeqLiteral])
-    val prepForTypeTree: Mutator = (trans, tree) => trans.prepareForTypeTree(tree.asInstanceOf[TypeTree])
-    val prepForSelectFromTypeTree: Mutator = (trans, tree) => trans.prepareForSelectFromTypeTree(tree.asInstanceOf[SelectFromTypeTree])
-    val prepForBind: Mutator = (trans, tree) => trans.prepareForBind(tree.asInstanceOf[Bind])
-    val prepForAlternative: Mutator = (trans, tree) => trans.prepareForAlternative(tree.asInstanceOf[Alternative])
-    val prepForUnApply: Mutator = (trans, tree) => trans.prepareForUnApply(tree.asInstanceOf[UnApply])
-    val prepForValDef: Mutator = (trans, tree) => trans.prepareForValDef(tree.asInstanceOf[ValDef])
-    val prepForDefDef: Mutator = (trans, tree) => trans.prepareForDefDef(tree.asInstanceOf[DefDef])
-    val prepForTypeDef: Mutator = (trans, tree) => trans.prepareForTypeDef(tree.asInstanceOf[TypeDef])
-    val prepForTemplate: Mutator = (trans, tree) => trans.prepareForTemplate(tree.asInstanceOf[Template])
-    val prepForPackageDef: Mutator = (trans, tree) => trans.prepareForPackageDef(tree.asInstanceOf[PackageDef])
+    val prepForIdent: Mutator[Ident] = (trans, tree) => trans.prepareForIdent(tree)
+    val prepForSelect: Mutator[Select] = (trans, tree) => trans.prepareForSelect(tree)
+    val prepForThis: Mutator[This] = (trans, tree) => trans.prepareForThis(tree)
+    val prepForSuper: Mutator[Super] = (trans, tree) => trans.prepareForSuper(tree)
+    val prepForApply: Mutator[Apply] = (trans, tree) => trans.prepareForApply(tree)
+    val prepForTypeApply: Mutator[TypeApply] = (trans, tree) => trans.prepareForTypeApply(tree)
+    val prepForNew: Mutator[New] = (trans, tree) => trans.prepareForNew(tree)
+    val prepForPair: Mutator[Pair] = (trans, tree) => trans.prepareForPair(tree)
+    val prepForTyped: Mutator[Typed] = (trans, tree) => trans.prepareForTyped(tree)
+    val prepForAssign: Mutator[Assign] = (trans, tree) => trans.prepareForAssign(tree)
+    val prepForLiteral: Mutator[Literal] = (trans, tree) => trans.prepareForLiteral(tree)
+    val prepForBlock: Mutator[Block] = (trans, tree) => trans.prepareForBlock(tree)
+    val prepForIf: Mutator[If] = (trans, tree) => trans.prepareForIf(tree)
+    val prepForClosure: Mutator[Closure] = (trans, tree) => trans.prepareForClosure(tree)
+    val prepForMatch: Mutator[Match] = (trans, tree) => trans.prepareForMatch(tree)
+    val prepForCaseDef: Mutator[CaseDef] = (trans, tree) => trans.prepareForCaseDef(tree)
+    val prepForReturn: Mutator[Return] = (trans, tree) => trans.prepareForReturn(tree)
+    val prepForTry: Mutator[Try] = (trans, tree) => trans.prepareForTry(tree)
+    val prepForThrow: Mutator[Throw] = (trans, tree) => trans.prepareForThrow(tree)
+    val prepForSeqLiteral: Mutator[SeqLiteral] = (trans, tree) => trans.prepareForSeqLiteral(tree)
+    val prepForTypeTree: Mutator[TypeTree] = (trans, tree) => trans.prepareForTypeTree(tree)
+    val prepForSelectFromTypeTree: Mutator[SelectFromTypeTree] = (trans, tree) => trans.prepareForSelectFromTypeTree(tree)
+    val prepForBind: Mutator[Bind] = (trans, tree) => trans.prepareForBind(tree)
+    val prepForAlternative: Mutator[Alternative] = (trans, tree) => trans.prepareForAlternative(tree)
+    val prepForUnApply: Mutator[UnApply] = (trans, tree) => trans.prepareForUnApply(tree)
+    val prepForValDef: Mutator[ValDef] = (trans, tree) => trans.prepareForValDef(tree)
+    val prepForDefDef: Mutator[DefDef] = (trans, tree) => trans.prepareForDefDef(tree)
+    val prepForTypeDef: Mutator[TypeDef] = (trans, tree) => trans.prepareForTypeDef(tree)
+    val prepForTemplate: Mutator[Template] = (trans, tree) => trans.prepareForTemplate(tree)
+    val prepForPackageDef: Mutator[PackageDef] = (trans, tree) => trans.prepareForPackageDef(tree)
+    val prepForStats: Mutator[List[Tree]]= (trans, trees) => trans.prepareForStats(trees)
 
     def transform(t: Tree)(implicit ctx: Context): Tree = {
       val initialTransformations = transformations.zipWithIndex.map(x => x._1(this, x._2))
@@ -1060,8 +1066,19 @@ object TreeTransforms {
       }
     }
 
-    def transformStats(trees: List[Tree], info: TransformerInfo, current: Int)(implicit ctx: Context): List[Tree] =
-      transformL(trees, info, current)(ctx)
+    @tailrec
+    final private[TreeTransforms] def goStats(trees: List[Tree], cur: Int)(implicit ctx: Context, info: TransformerInfo): List[Tree] = {
+      if (cur < info.transformers.length) {
+        val stats = info.transformers(cur).transformStats(trees)
+        goStats(stats, info.nx.nxTransStats(cur + 1))
+      } else trees
+    }
+
+    def transformStats(trees: List[Tree], info: TransformerInfo, current: Int)(implicit ctx: Context): List[Tree] = {
+      val newInfo = mutateTransformers(info, prepForStats, info.nx.nxPrepStats, trees, current)
+      val newTrees = transformL(trees, newInfo, current)(ctx)
+      flatten(goStats(newTrees, newInfo.nx.nxTransStats(current))(ctx, newInfo))
+    }
 
     def transformL(trees: List[Tree], info: TransformerInfo, current: Int)(implicit ctx: Context): List[Tree] =
       flatten(trees mapConserve (x => transform(x, info, current)))
