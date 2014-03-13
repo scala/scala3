@@ -9,7 +9,7 @@ import Decorators._
 import language.higherKinds
 import collection.mutable.ListBuffer
 
-object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
+object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
 // ----- Tree cases that exist in untyped form only ------------------
 

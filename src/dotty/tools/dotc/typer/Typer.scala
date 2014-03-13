@@ -845,13 +845,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     xtree.removeAttachment(TypedAhead) match {
       case Some(ttree) => ttree
       case none =>
-        val sym = xtree.removeAttachment(SymOfTree) match {
-          case Some(sym) =>
-            sym.ensureCompleted()
-            sym
-          case none =>
-            NoSymbol
+        val sym = xtree.attachmentOrElse(SymOfTree, NoSymbol)
+        sym.ensureCompleted()
+
+        /** Cleanup: Remove SymOfTree attachment if redundant */
+        def symGC(tree: Tree) = {
+          if (initTree eq tree) initTree.removeAttachment(SymOfTree)
+          tree
         }
+
         def localContext = {
           val freshCtx = ctx.fresh.withTree(xtree)
           if (sym.exists) freshCtx.withOwner(sym)
@@ -865,13 +867,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.Bind => typedBind(tree, pt)
           case tree: untpd.ValDef =>
             if (tree.isEmpty) tpd.EmptyValDef
-            else typedValDef(tree, sym)(localContext.withNewScope)
+            else symGC(typedValDef(tree, sym)(localContext.withNewScope))
           case tree: untpd.DefDef =>
             val typer1 = nestedTyper.remove(sym).get
-            typer1.typedDefDef(tree, sym)(localContext.withTyper(typer1))
+            symGC(typer1.typedDefDef(tree, sym)(localContext.withTyper(typer1)))
           case tree: untpd.TypeDef =>
-            if (tree.isClassDef) typedClassDef(tree, sym.asClass)(localContext)
-            else typedTypeDef(tree, sym)(localContext.withNewScope)
+            symGC(
+              if (tree.isClassDef) typedClassDef(tree, sym.asClass)(localContext)
+              else typedTypeDef(tree, sym)(localContext.withNewScope))
           case _ => typedUnadapted(desugar(tree), pt)
         }
 
@@ -905,7 +908,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.ByNameTypeTree => typedByNameTypeTree(tree)
           case tree: untpd.TypeBoundsTree => typedTypeBoundsTree(tree)
           case tree: untpd.Alternative => typedAlternative(tree, pt)
-          case tree: untpd.Import => typedImport(tree, sym)
+          case tree: untpd.Import => symGC(typedImport(tree, sym))
           case tree: untpd.PackageDef => typedPackageDef(tree)
           case tree: untpd.Annotated => typedAnnotated(tree, pt)
           case tree: untpd.TypedSplice => tree.tree
@@ -943,6 +946,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case (mdef: untpd.DefTree) :: rest =>
         mdef.removeAttachment(ExpandedTree) match {
           case Some(xtree) =>
+            mdef.pushAttachment(untpd.InlinedExpandedTree, xtree)
+              // leave a trail that can be picked up by TreeInfo.definedSymbols
             traverse(xtree :: rest)
           case none =>
             buf += typed(mdef)

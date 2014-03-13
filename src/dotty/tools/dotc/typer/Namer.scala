@@ -98,9 +98,9 @@ class Namer { typer: Typer =>
 
   import untpd._
 
-  val TypedAhead = new Attachment.Key[tpd.Tree]
-  val ExpandedTree = new Attachment.Key[Tree]
-  val SymOfTree = new Attachment.Key[Symbol]
+  val TypedAhead = new TypedAheadKey
+  val ExpandedTree = new ExpandedTreeKey
+  val SymOfTree = new SymOfTreeKey
 
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.

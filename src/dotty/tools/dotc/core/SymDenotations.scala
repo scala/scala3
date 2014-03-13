@@ -9,6 +9,7 @@ import collection.mutable
 import collection.immutable.BitSet
 import scala.reflect.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
+import ast.untpd
 import annotation.tailrec
 import util.SimpleMap
 import util.Stats
@@ -601,22 +602,36 @@ object SymDenotations {
      *  NoSymbol if this module does not exist.
      */
     final def companionModule(implicit ctx: Context): Symbol =
-      if (owner.exists && name != tpnme.ANON_CLASS) // name test to avoid forcing, thereby causing cyclic reference errors
-        owner.info.decl(effectiveName.toTermName)
-          .suchThat(sym => (sym is Module) && sym.isCoDefinedWith(symbol))
-          .symbol
-      else NoSymbol
+      if (name == tpnme.ANON_CLASS)
+        NoSymbol // avoid forcing anon classes, this might cause cyclic reference errors
+      else
+        companionNamed(effectiveName.moduleClassName).sourceModule
 
     /** The class with the same (type-) name as this module or module class,
      *  and which is also defined in the same scope and compilation unit.
      *  NoSymbol if this class does not exist.
      */
     final def companionClass(implicit ctx: Context): Symbol =
-      if (owner.exists)
-        owner.info.decl(effectiveName.toTypeName)
-          .suchThat(sym => sym.isClass && sym.isCoDefinedWith(symbol))
-          .symbol
-      else NoSymbol
+      companionNamed(effectiveName.toTypeName).symbol
+
+    /** Find companion class symbol with given name, or NoSymbol if none exists.
+     *  Two strategies: If owner is a class, look in its members, otherwise
+     *  determine the definining statement sequence and search its trees.
+     */
+    private def companionNamed(name: TypeName)(implicit ctx: Context): SymDenotation = {
+      if (owner.isClass)
+        owner.info.decl(name).suchThat(_.isCoDefinedWith(symbol))
+      else if (owner.exists) {
+        val syms =
+          for {
+            stat <- untpd.definingStats(symbol).iterator
+            sym <- untpd.definedSymbols(stat)
+            if sym.name == name
+          } yield sym
+        if (syms.hasNext) syms.next.denot else NoDenotation
+      }
+      else NoDenotation
+    }.asSymDenotation
 
     /** If this is a class, the module class of its companion object.
      *  If this is a module class, its companion class.
