@@ -74,10 +74,10 @@ object Attachment {
       else nx.removeAttachment(key)
     }
 
-    /** The list of all values attached to this container. */
-    final def allAttachments: List[Any] = {
+    /** The list of all keys and values attached to this container. */
+    final def allAttachments: List[(Key[_], Any)] = {
       val nx = next
-      if (nx == null) Nil else nx.value :: nx.allAttachments
+      if (nx == null) Nil else (nx.key, nx.value) :: nx.allAttachments
     }
   }
 
