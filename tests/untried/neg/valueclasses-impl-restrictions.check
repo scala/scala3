@@ -1,0 +1,13 @@
+valueclasses-impl-restrictions.scala:3: error: implementation restriction: nested object is not allowed in value class
+This restriction is planned to be removed in subsequent releases.
+      object X
+             ^
+valueclasses-impl-restrictions.scala:9: error: implementation restriction: nested trait is not allowed in value class
+This restriction is planned to be removed in subsequent releases.
+  trait I2 {
+        ^
+valueclasses-impl-restrictions.scala:23: error: implementation restriction: nested class is not allowed in value class
+This restriction is planned to be removed in subsequent releases.
+  private[this] class I2(val q: String)
+                      ^
+three errors found

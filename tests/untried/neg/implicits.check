@@ -1,0 +1,14 @@
+implicits.scala:38: error: type mismatch;
+ found   : test2.HSome[String,test2.HMap]
+ required: Int
+  foo(set)
+      ^
+implicits.scala:46: error: type mismatch;
+ found   : List[Any]
+ required: List[Mxml]
+        children.toList.flatMap ( e => {
+                                ^
+implicits.scala:66: error: could not find implicit value for parameter x: Nothing
+  foo {
+      ^
+three errors found

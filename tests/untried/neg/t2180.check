@@ -1,0 +1,6 @@
+t2180.scala:3: error: type mismatch;
+ found   : List[Any]
+ required: List[Mxml]
+    children.toList.flatMap ( e => {
+                            ^
+one error found

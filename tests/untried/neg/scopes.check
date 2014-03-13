@@ -1,0 +1,26 @@
+scopes.scala:3: error: t is already defined as type t
+  type t = Float
+       ^
+scopes.scala:5: error: x is already defined as value x
+  val x: Float = .0f;
+      ^
+scopes.scala:8: error: y is already defined as value y
+    val y: Float = .0f
+        ^
+scopes.scala:6: warning: a pure expression does nothing in statement position; you may be omitting necessary parentheses
+  {
+  ^
+scopes.scala:11: error: x is already defined as value x
+  def f1(x: Int, x: Float) = x
+                 ^
+scopes.scala:12: error: y is already defined as value y
+  def f2(x: Int)(y: Int, y: Float) = x + y
+                         ^
+scopes.scala:13: error: x is already defined as value x
+  val closure = (x: Int, x: Float) => x
+                          ^
+scopes.scala:15: error: x is already defined as value x
+    case x::x => x
+            ^
+one warning found
+7 errors found

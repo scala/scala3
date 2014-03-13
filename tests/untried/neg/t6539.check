@@ -1,0 +1,16 @@
+Test_2.scala:2: error: cto may only be used as an argument to m
+  M.cto // error
+    ^
+Test_2.scala:3: error: cto may only be used as an argument to m
+  M.m(M.cto, ()) // error
+        ^
+Test_2.scala:5: error: cto may only be used as an argument to m
+  M.cto // error
+    ^
+Test_2.scala:9: error: splice must be enclosed within a reify {} block
+    val splice = expr.splice
+                      ^
+Test_2.scala:10: error: cannot use value except for signatures of macro implementations
+    val value = expr.value
+                     ^
+5 errors found

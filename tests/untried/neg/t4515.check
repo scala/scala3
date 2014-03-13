@@ -1,0 +1,16 @@
+t4515.scala:37: error: type mismatch;
+ found   : _$1 where type _$1
+ required: _$2
+        handler.onEvent(target, ctx.getEvent, node, ctx)
+                                    ^
+t4515.scala:37: error: type mismatch;
+ found   : Main.DerivedPushNode[_$1] where type _$1
+ required: Main.PushNode[_$2]
+        handler.onEvent(target, ctx.getEvent, node, ctx)
+                                              ^
+t4515.scala:37: error: type mismatch;
+ found   : Main.PushEventContext[_$1] where type _$1
+ required: Main.PushEventContext[_$2]
+        handler.onEvent(target, ctx.getEvent, node, ctx)
+                                                    ^
+three errors found
