@@ -826,7 +826,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = track("typedAnnotated") {
-    val annot1 = typed(tree.annot, defn.AnnotationClass.typeRef)
+    val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type)
       assignType(cpy.Annotated(tree, annot1, arg1), annot1, arg1)

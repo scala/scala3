@@ -810,7 +810,7 @@ object Parsers {
 
     def typeDependingOn(location: Location.Value): Tree =
       if (location == Location.InParens) typ()
-      else if (location == Location.InPattern) withType()
+      else if (location == Location.InPattern) refinedType()
       else infixType()
 
 /* ----------- EXPRESSIONS ------------------------------------------------ */
