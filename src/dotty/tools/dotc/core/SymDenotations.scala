@@ -9,6 +9,7 @@ import collection.mutable
 import collection.immutable.BitSet
 import scala.reflect.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
+import ast._
 import annotation.tailrec
 import util.SimpleMap
 import util.Stats
@@ -193,6 +194,18 @@ object SymDenotations {
     /** Does this denotation have an annotation matching the given class symbol? */
     final def hasAnnotation(cls: Symbol)(implicit ctx: Context) =
       dropOtherAnnotations(annotations, cls).nonEmpty
+
+    /** Optionally, the arguments of the first annotation matching the given class symbol */
+    final def getAnnotationArgs(cls: Symbol)(implicit ctx: Context): Option[List[tpd.Tree]] =
+      dropOtherAnnotations(annotations, cls) match {
+        case annot :: _ =>
+          Some(
+            annot.tree match {
+              case Trees.Apply(_, args) => args
+              case _ => Nil
+            })
+        case nil => None
+      }
 
     /** Add given annotation to the annotations of this denotation */
     final def addAnnotation(annot: Annotation): Unit =

@@ -266,6 +266,40 @@ trait TypeOps { this: Context =>
     }
     parentRefs
   }
+
+  /** Is `feature` enabled in class `owner`?
+   *  This is the case if one of the following two alternatives holds:
+   *
+   *  1. The feature is imported by a named import
+   *
+   *       import owner.feature
+   *
+   *  (the feature may be bunched with others, or renamed, but wildcard imports
+   *  don't count).
+   *
+   *  2. The feature is enabled by a compiler option
+   *
+   *       - language:<prefix>feature
+   *
+   *  where <prefix> is the full name of the owner followed by a "." minus
+   *  the prefix "dotty.language.".
+   */
+  def featureEnabled(owner: ClassSymbol, feature: TermName): Boolean = {
+    def toPrefix(sym: Symbol): String =
+      if (sym eq defn.LanguageModuleClass) "" else toPrefix(sym.owner) + sym.name + "."
+    def featureName = toPrefix(owner) + feature
+    def hasImport(implicit ctx: Context): Boolean = (
+         ctx.importInfo != null
+      && (   (ctx.importInfo.site.typeSymbol eq owner)
+          && ctx.importInfo.originals.contains(feature)
+          ||
+          { var c = ctx.outer
+            while (c.importInfo eq ctx.importInfo) c = c.outer
+            hasImport(c)
+          }))
+    def hasOption = ctx.base.settings.language.value exists (s => s == featureName || s == "_")
+    hasImport || hasOption
+  }
 }
 
 object TypeOps {
