@@ -103,8 +103,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: TypeRef =>
         toTextPrefix(tp.prefix) ~ selectionString(tp)
       case tp: RefinedType =>
-        // return tp.toString // !!! DEBUG
-        val parent :: (refined: List[RefinedType]) =
+        val parent :: (refined: List[RefinedType @unchecked]) =
           refinementChain(tp).reverse
         toTextLocal(parent) ~ "{" ~ Text(refined map toTextRefinement, "; ").close ~ "}"
       case AndType(tp1, tp2) =>

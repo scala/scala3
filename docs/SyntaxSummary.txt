@@ -191,13 +191,13 @@ grammar.
   CaseClause        ::=  `case' (Pattern [Guard] `=>' Block | INT)              CaseDef(pat, guard?, block)   // block starts at =>
 
   Pattern           ::=  Pattern1 { `|' Pattern1 }                              Alternative(pats)
-  Pattern1          ::=  PatVar `:' SimpleType                                  Bind(name, Typed(Ident(wildcard), tpe))
+  Pattern1          ::=  PatVar `:' RefinedType                                 Bind(name, Typed(Ident(wildcard), tpe))
                       |  Pattern2
   Pattern2          ::=  [varid `@'] InfixPattern                               Bind(name, pat)
   InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }                InfixOp(pat, op, pat)
   SimplePattern     ::=  PatVar                                                 Ident(wildcard)
-                      |  Literal                                                Bind(name, Ident(wildcard))                      |  Literal
-                      |  `(' [Patterns] `)'                             Parens(pats) Tuple(pats)
+                      |  Literal                                                Bind(name, Ident(wildcard))
+                      |  `(' [Patterns] `)'                                     Parens(pats) Tuple(pats)
                       |  XmlPattern
                       |  SimplePattern1 [TypeArgs] [ArgumentPatterns]
   SimplePattern1    ::=  Path
