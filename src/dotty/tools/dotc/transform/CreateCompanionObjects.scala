@@ -25,7 +25,7 @@ abstract class CreateCompanionObjects(group: TreeTransformer, idx: Int) extends 
 
   /** Given class definition should return true if companion object creation should be enforced
     */
-  def predicate(cls: TypeDef): Boolean
+  def predicate(cls: TypeDef)(implicit ctx:Context): Boolean
 
   override def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[tpd.Tree] = {
     @tailrec
