@@ -2,13 +2,17 @@ package dotty.tools
 package dotc
 package core
 
-import SymDenotations.{ SymDenotation, NoDenotation }
+import SymDenotations.{ SymDenotation, ClassDenotation, NoDenotation }
 import Contexts.{Context, ContextBase}
 import Names.{Name, PreName}
 import Names.TypeName
 import Symbols.NoSymbol
 import Symbols._
-import Types._, Periods._, Flags._, Transformers._, Decorators._
+import Types._
+import Periods._
+import Flags._
+import Transformers._
+import Decorators._
 import transform.Erasure
 import printing.Texts._
 import printing.Printer
@@ -184,6 +188,9 @@ object Denotations {
 
     def requiredMethod(name: PreName)(implicit ctx: Context): TermSymbol =
       info.member(name.toTermName).requiredSymbol(_ is Method).asTerm
+
+    def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol =
+      info.member(name.toTermName).requiredSymbol(_.info.isParameterless).asTerm
 
     /** The denotation that has a type matching `targetType` when seen
      *  as a member of type `site`, `NoDenotation` if none exists.
@@ -514,6 +521,10 @@ object Denotations {
             if (next eq cur)
               startPid = cur.validFor.firstPhaseId
             else {
+              next match {
+                case next: ClassDenotation => next.resetFlag(Frozen)
+                case _ =>
+              }
               cur.nextInRun = next
               cur = next
             }
