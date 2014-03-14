@@ -233,6 +233,7 @@ class Definitions {
   lazy val AnnotationDefaultAnnot = ctx.requiredClass("dotty.annotation.internal.AnnotationDefault")
   lazy val ThrowsAnnot = ctx.requiredClass("scala.throws")
   lazy val UncheckedAnnot = ctx.requiredClass("scala.unchecked")
+  lazy val VolatileAnnot = ctx.requiredClass("scala.volatile")
 
   // convenient one-parameter method types
   def methOfAny(tp: Type) = MethodType(List(AnyType), tp)
@@ -266,6 +267,7 @@ class Definitions {
   def JavaRepeatedParamType = JavaRepeatedParamClass.typeRef
   def ThrowableType = ThrowableClass.typeRef
   def OptionType = OptionClass.typeRef
+  def VolatileAnnotType = VolatileAnnot.typeRef
 
   def ClassType(arg: Type)(implicit ctx: Context) = {
     val ctype = ClassClass.typeRef

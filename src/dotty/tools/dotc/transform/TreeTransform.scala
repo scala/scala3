@@ -113,13 +113,16 @@ object TreeTransforms {
     def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[Tree] = trees
 
     /** Transform tree using all transforms of current group (including this one) */
-    def transform(tree: Tree)(implicit ctx: Context): Tree = group.transform(tree)
+    def transform(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = group.transform(tree, info, 0)
 
     /** Transform subtree using all transforms following the current one in this group */
     def transformFollowingDeep(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = group.transform(tree, info, idx + 1)
 
     /** Transform single node using all transforms following the current one in this group */
     def transformFollowing(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = group.transformSingle(tree, idx + 1)
+
+    /** perform context-dependant initialization */
+    def init(implicit ctx:Context): Unit = {}
   }
 
   val NoTransform = new TreeTransform(null, -1)
@@ -402,7 +405,7 @@ object TreeTransforms {
       var nxCopied = false
       var result = info.transformers
       var resultNX = info.nx
-      var i = mutationPlan(cur)
+      var i = mutationPlan(0) // if TreeTransform.transform() method didn't exist we could have used mutationPlan(cur)
       val l = result.length
       var allDone = i < l
       while (i < l) {
@@ -458,7 +461,9 @@ object TreeTransforms {
     val prepForStats: Mutator[List[Tree]]= (trans, trees) => trans.prepareForStats(trees)
 
     def transform(t: Tree)(implicit ctx: Context): Tree = {
+      println(name)
       val initialTransformations = transformations.zipWithIndex.map(x => x._1(this, x._2))
+      initialTransformations.foreach(_.init)
       transform(t, new TransformerInfo(initialTransformations, new NXTransformations(initialTransformations)), 0)
     }
 

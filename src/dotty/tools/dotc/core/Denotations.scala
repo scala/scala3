@@ -501,6 +501,9 @@ object Denotations {
     def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
       val valid = myValidFor
+      if(valid.code < 0) {
+        println("EEEEEEEE")
+      }
       if (valid.runId != currentPeriod.runId) bringForward.current
       else {
         var cur = this

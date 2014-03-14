@@ -8,15 +8,35 @@ import Symbols._
 import typer.{FrontEnd, Typer, Mode, ImportInfo}
 import reporting.ConsoleReporter
 import dotty.tools.dotc.core.Phases.Phase
+import dotty.tools.dotc.transform.{LazyValsCreateCompanionObjects, LazyValTranformContext}
+import dotty.tools.dotc.transform.TreeTransforms.{TreeTransform, TreeTransformer}
+import dotty.tools.dotc.transform.PostTyperTransformers.PostTyperTransformer
 
 class Compiler {
 
-  def phases: List[Phase] = List(
-      new FrontEnd,
-      new transform.SamplePhase)
+  def postTyperTransform = new PostTyperTransformer {
+    override def name: String = "PostTyperTransformations"
+    override protected def transformations: Array[(TreeTransformer, Int) => TreeTransform] =
+    Array(new LazyValsCreateCompanionObjects(_, _))
+  }
+
+  def lazyValsPhase = new TreeTransformer with DenotTransformer{
+
+    val lazyValsContext = new LazyValTranformContext()
+    override protected def transformations: Array[(TreeTransformer, Int) => TreeTransform] = {
+
+      Array(lazyValsContext.transformer(_, _))
+    }
+
+    override def name: String = "LazyVals"
+  }
+
+  def phases: List[Phase] = List(new FrontEnd, postTyperTransform, lazyValsPhase, new transform.SamplePhase)
 
   var runId = 1
-  def nextRunId = { runId += 1; runId }
+  def nextRunId = {
+    runId += 1; runId
+  }
 
   def rootContext(implicit ctx: Context): Context = {
     ctx.definitions.init(ctx)

@@ -46,7 +46,7 @@ class tests extends CompilerTest {
 */
   @Test def pos_all = compileFiles(posDir, twice)
 
-  @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
+  /*@Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
   @Test def neg_typedidents() = compileFile(negDir, "typedIdents", xerrors = 2)
   @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)
@@ -56,11 +56,12 @@ class tests extends CompilerTest {
   @Test def neg_templateParents() = compileFile(negDir, "templateParents", xerrors = 3)
   @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 1)
   @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 4)
+  */
 
-  @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)
-  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)
+  /*@Test def dotc = compileDir(dotcDir + "tools/dotc", twice)
+  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)*/
   @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config", twice)
-  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", twice)
+  /*@Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", twice)
   @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", twice)
   @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/core/transform", twice)
   @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing", twice)
@@ -85,6 +86,7 @@ class tests extends CompilerTest {
       "-Ylog:frontend",
       "-Xprompt",
       "#runs", "2"))
+      */
 
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }
