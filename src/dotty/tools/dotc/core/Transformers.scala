@@ -9,19 +9,10 @@ import Denotations._
 import java.lang.AssertionError
 import dotty.tools.dotc.util.DotClass
 
-trait Transformers
-
 object Transformers {
 
   trait TransformerBase { self: ContextBase =>
-
-    def transformersFor(ref: SingleDenotation): TransformerGroup = ref match {
-      case _: SymDenotation => symTransformers
-      case _ => refTransformers
-    }
-
-    val symTransformers = new TransformerGroup
-    val refTransformers = new TransformerGroup
+    val infoTransformers = new TransformerGroup
   }
 
   /** A transformer group contains a sequence of transformers,
@@ -35,40 +26,44 @@ object Transformers {
    */
   class TransformerGroup {
 
-    /** A transformer transforms denotations at a given phase */
-    abstract class Transformer extends DotClass {
-
-      /** The phase at the start of which the denotations are transformed */
-      val phaseId: Int
-
-      /** The last phase during which the transformed denotations are valid */
-      def lastPhaseId = nextTransformer(phaseId).phaseId - 1
-
-      /** The validity period of the transformer in the given context */
-      def validFor(implicit ctx: Context): Period =
-        Period(ctx.runId, phaseId, lastPhaseId)
-
-      /** The transformation method */
-      def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation
-    }
-
-    /** A sentinel transformer object */
-    object NoTransformer extends Transformer {
-      val phaseId = MaxPossiblePhaseId + 1
-      override def lastPhaseId = phaseId - 1 // TODO JZ Probably off-by-N error here. MO: Don't think so: we want empty validity period.
-      def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
-        unsupported("transform")
-    }
-
     private val nxTransformer =
       Array.fill[Transformer](MaxPossiblePhaseId + 1)(NoTransformer)
 
     def nextTransformer(pid: PhaseId) = nxTransformer(pid)
 
-    def install(pid: PhaseId, trans: Transformer): Unit =
+    def install(pid: PhaseId, transFn: TransformerGroup => Transformer): Unit =
       if ((pid > NoPhaseId) && (nxTransformer(pid).phaseId > pid)) {
-        nxTransformer(pid) = trans
-        install(pid - 1, trans)
+        val trans = transFn(this)
+        trans._phaseId = pid
+        nxTransformer(pid) = transFn(this)
+        install(pid - 1, transFn)
       }
+
+    /** A sentinel transformer object */
+    object NoTransformer extends Transformer(this) {
+      _phaseId = MaxPossiblePhaseId + 1
+      override def lastPhaseId = phaseId - 1 // TODO JZ Probably off-by-N error here. MO: Don't think so: we want empty validity period.
+      def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
+        unsupported("transform")
+    }
+  }
+
+  /** A transformer transforms denotations at a given phase */
+  abstract class Transformer(group: TransformerGroup) extends DotClass {
+
+    private[Transformers] var _phaseId: PhaseId = _
+
+    /** The phase at the start of which the denotations are transformed */
+    def phaseId: PhaseId = _phaseId
+
+    /** The last phase during which the transformed denotations are valid */
+    def lastPhaseId = group.nextTransformer(phaseId).phaseId - 1
+
+    /** The validity period of the transformer in the given context */
+    def validFor(implicit ctx: Context): Period =
+      Period(ctx.runId, phaseId, lastPhaseId)
+
+    /** The transformation method */
+    def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation
   }
 }

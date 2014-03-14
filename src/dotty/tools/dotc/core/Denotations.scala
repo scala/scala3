@@ -192,6 +192,9 @@ object Denotations {
     def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol =
       info.member(name.toTermName).requiredSymbol(_.info.isParameterless).asTerm
 
+    def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol =
+      info.member(name.toTypeName).requiredSymbol(_.isClass).asClass
+
     /** The denotation that has a type matching `targetType` when seen
      *  as a member of type `site`, `NoDenotation` if none exists.
      */
@@ -515,8 +518,7 @@ object Denotations {
           } else {
             // not found, cur points to highest existing variant
             var startPid = cur.validFor.lastPhaseId + 1
-            val transformers = ctx.transformersFor(cur)
-            val transformer = transformers.nextTransformer(startPid)
+            val transformer = ctx.infoTransformers.nextTransformer(startPid)
             next = transformer.transform(cur).syncWithParents
             if (next eq cur)
               startPid = cur.validFor.firstPhaseId
