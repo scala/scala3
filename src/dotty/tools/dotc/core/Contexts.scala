@@ -361,7 +361,7 @@ object Contexts {
    *  compiler run.
    */
   class ContextBase extends ContextState
-                       with Transformers.TransformerBase
+                       with DenotTransformers.DenotTransformerBase
                        with Denotations.DenotationsBase
                        with Phases.PhasesBase {
 

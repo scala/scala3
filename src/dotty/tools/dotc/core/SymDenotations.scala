@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Periods._, Contexts._, Symbols._, Denotations._, Names._, NameOps._, Annotations._
-import Types._, Flags._, Decorators._, Transformers._, StdNames._, Scopes._
+import Types._, Flags._, Decorators._, DenotTransformers._, StdNames._, Scopes._
 import NameOps._
 import Scopes.Scope
 import collection.mutable

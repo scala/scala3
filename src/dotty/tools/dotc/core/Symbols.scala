@@ -3,7 +3,6 @@ package dotc
 package core
 
 import Periods._
-import Transformers._
 import Names._
 import Scopes._
 import Flags._

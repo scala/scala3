@@ -2,16 +2,16 @@ package dotty.tools.dotc
 package transform
 
 import TreeTransforms._
+import core.DenotTransformers._
 import core.Denotations._
 import core.Contexts._
 import ast.Trees._
 import ast.tpd.{Apply, Tree, cpy}
-import core.Transformers._
 
 class SamplePhase extends TreeTransformer {
 
   def init(implicit ctx: Context) = {
-    ctx.base.infoTransformers.install(id, new UncurryInfoTransform(_))
+    ctx.base.denotTransformers.install(id, new UncurryDenotTransform(_))
   }
 
   def name = "sample"
@@ -20,7 +20,7 @@ class SamplePhase extends TreeTransformer {
 
 }
 
-class UncurryInfoTransform(group: TransformerGroup) extends Transformer(group) {
+class UncurryDenotTransform(group: DenotTransformerGroup) extends DenotTransformer(group) {
 
   def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ???
 
