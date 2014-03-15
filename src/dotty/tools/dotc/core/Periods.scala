@@ -34,7 +34,7 @@ abstract class Periods extends DotClass { self: Context =>
    */
   def stablePeriod = {
     var first = phaseId
-    val transformers = base.infoTransformers
+    val transformers = base.denotTransformers
     val nxTrans = transformers.nextTransformer(first)
     while (first - 1 > NoPhaseId &&
            (transformers.nextTransformer(first - 1) eq nxTrans)) {

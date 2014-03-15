@@ -9,10 +9,10 @@ import Denotations._
 import java.lang.AssertionError
 import dotty.tools.dotc.util.DotClass
 
-object Transformers {
+object DenotTransformers {
 
-  trait TransformerBase { self: ContextBase =>
-    val infoTransformers = new TransformerGroup
+  trait DenotTransformerBase { self: ContextBase =>
+    val denotTransformers = new DenotTransformerGroup
   }
 
   /** A transformer group contains a sequence of transformers,
@@ -24,14 +24,14 @@ object Transformers {
    *  full symbol denotations, refTransformers translate only symbol references
    *  of type Unique/JointRefDenotation.
    */
-  class TransformerGroup {
+  class DenotTransformerGroup {
 
     private val nxTransformer =
-      Array.fill[Transformer](MaxPossiblePhaseId + 1)(NoTransformer)
+      Array.fill[DenotTransformer](MaxPossiblePhaseId + 1)(NoTransformer)
 
     def nextTransformer(pid: PhaseId) = nxTransformer(pid)
 
-    def install(pid: PhaseId, transFn: TransformerGroup => Transformer): Unit =
+    def install(pid: PhaseId, transFn: DenotTransformerGroup => DenotTransformer): Unit =
       if ((pid > NoPhaseId) && (nxTransformer(pid).phaseId > pid)) {
         val trans = transFn(this)
         trans._phaseId = pid
@@ -40,7 +40,7 @@ object Transformers {
       }
 
     /** A sentinel transformer object */
-    object NoTransformer extends Transformer(this) {
+    object NoTransformer extends DenotTransformer(this) {
       _phaseId = MaxPossiblePhaseId + 1
       override def lastPhaseId = phaseId - 1 // TODO JZ Probably off-by-N error here. MO: Don't think so: we want empty validity period.
       def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
@@ -49,9 +49,9 @@ object Transformers {
   }
 
   /** A transformer transforms denotations at a given phase */
-  abstract class Transformer(group: TransformerGroup) extends DotClass {
+  abstract class DenotTransformer(group: DenotTransformerGroup) extends DotClass {
 
-    private[Transformers] var _phaseId: PhaseId = _
+    private[DenotTransformers] var _phaseId: PhaseId = _
 
     /** The phase at the start of which the denotations are transformed */
     def phaseId: PhaseId = _phaseId

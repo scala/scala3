@@ -11,7 +11,7 @@ import Symbols._
 import Types._
 import Periods._
 import Flags._
-import Transformers._
+import DenotTransformers._
 import Decorators._
 import transform.Erasure
 import printing.Texts._
@@ -518,7 +518,7 @@ object Denotations {
           } else {
             // not found, cur points to highest existing variant
             var startPid = cur.validFor.lastPhaseId + 1
-            val transformer = ctx.infoTransformers.nextTransformer(startPid)
+            val transformer = ctx.denotTransformers.nextTransformer(startPid)
             next = transformer.transform(cur).syncWithParents
             if (next eq cur)
               startPid = cur.validFor.firstPhaseId
