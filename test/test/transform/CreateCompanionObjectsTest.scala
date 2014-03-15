@@ -22,7 +22,7 @@ class CreateCompanionObjectsTest extends DottyTest {
 
   import tpd._
 
-  //@Test
+  @Test
   def shouldCreateNonExistingObjectsInPackage = checkCompile("frontend", "class A{} ") {
     (tree, context) =>
       implicit val ctx = context
@@ -46,7 +46,7 @@ class CreateCompanionObjectsTest extends DottyTest {
       )
   }
 
-  //@Test
+  @Test
   def shouldCreateNonExistingObjectsInBlock = checkCompile("frontend", "class D {def p = {class A{}; 1}} ") {
     (tree, context) =>
       implicit val ctx = context
@@ -68,7 +68,7 @@ class CreateCompanionObjectsTest extends DottyTest {
       )
   }
 
-  //@Test
+  @Test
   def shouldCreateNonExistingObjectsInTemplate = checkCompile("frontend", "class D {class A{}; } ") {
     (tree, context) =>
       implicit val ctx = context
@@ -90,7 +90,7 @@ class CreateCompanionObjectsTest extends DottyTest {
       )
   }
 
-  //@Test
+  @Test
   def shouldCreateOnlyIfAskedFor = checkCompile("frontend", "class DONT {class CREATE{}; } ") {
     (tree, context) =>
       implicit val ctx = context
