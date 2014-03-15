@@ -19,7 +19,7 @@ import Annotations._
 import util.Positions._
 import StdNames._
 import NameOps._
-import ast.tpd.{TreeMapper, Tree}
+import ast.tpd.{TreeTypeMap, Tree}
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
@@ -278,7 +278,7 @@ trait Symbols { this: Context =>
     else {
       val copies: List[Symbol] = for (original <- originals) yield
         newNakedSymbol[original.ThisName](original.coord)
-      val treeMap = new TreeMapper(typeMap, ownerMap)
+      val treeMap = new TreeTypeMap(typeMap, ownerMap)
         .withSubstitution(originals, copies)
       (originals, copies).zipped foreach {(original, copy) =>
         val odenot = original.denot

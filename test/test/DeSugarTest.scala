@@ -22,7 +22,7 @@ class DeSugarTest extends ParserTest {
 
   val Expr = Mode(0)
 
-  object DeSugar extends UntypedTreeTransformer {
+  object DeSugar extends UntypedTreeMap {
     var curMode: Mode = Expr
     def withMode[T](mode: Mode)(op: => T) = {
       val saved = curMode

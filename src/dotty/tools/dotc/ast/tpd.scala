@@ -331,10 +331,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       new DeepFolder(op).apply(z, tree)
 
     def subst(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): ThisTree =
-      new TreeMapper(typeMap = new ctx.SubstSymMap(from, to)).apply(tree)
+      new TreeTypeMap(typeMap = new ctx.SubstSymMap(from, to)).apply(tree)
 
     def changeOwner(from: Symbol, to: Symbol)(implicit ctx: Context): ThisTree =
-      new TreeMapper(ownerMap = (sym => if (sym == from) to else sym)).apply(tree)
+      new TreeTypeMap(ownerMap = (sym => if (sym == from) to else sym)).apply(tree)
 
     def appliedToTypes(targs: List[Type])(implicit ctx: Context): Tree =
       if (targs.isEmpty) tree else TypeApply(tree, targs map (TypeTree(_)))
@@ -344,7 +344,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def tpes: List[Type] = xs map (_.tpe)
   }
 
-  class TreeMapper(val typeMap: TypeMap = IdentityTypeMap, val ownerMap: Symbol => Symbol = identity _)(implicit ctx: Context) extends TreeTransformer {
+  class TreeTypeMap(val typeMap: TypeMap = IdentityTypeMap, val ownerMap: Symbol => Symbol = identity _)(implicit ctx: Context) extends TreeMap {
     override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = super.transform {
       tree.withType(typeMap(tree.tpe)) match {
         case bind: tpd.Bind =>
@@ -375,7 +375,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** The current tree map composed with a substitution [from -> to] */
     def withSubstitution(from: List[Symbol], to: List[Symbol]) =
-      new TreeMapper(
+      new TreeTypeMap(
         typeMap andThen ((tp: Type) => tp.substSym(from, to)),
         ownerMap andThen (from zip to).toMap)
   }

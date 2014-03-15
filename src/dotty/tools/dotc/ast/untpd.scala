@@ -285,7 +285,7 @@ object untpd extends Trees.Instance[Untyped] with TreeInfo[Untyped] {
     }
   }
 
-  abstract class UntypedTreeTransformer(cpy: UntypedTreeCopier = untpd.cpy) extends TreeTransformer(cpy) {
+  abstract class UntypedTreeMap(cpy: UntypedTreeCopier = untpd.cpy) extends TreeMap(cpy) {
     override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case ModuleDef(mods, name, impl) =>
         cpy.ModuleDef(tree, mods, name, transformSub(impl))
