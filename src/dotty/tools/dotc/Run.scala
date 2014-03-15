@@ -30,7 +30,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
   def compileSources(sources: List[SourceFile]) = Stats.monitorHeartBeat {
     if (sources forall (_.exists)) {
       units = sources map (new CompilationUnit(_))
-      for (phase <- ctx.allPhases) {
+      for (phase <- ctx.allPhases.init) {
         if (!ctx.reporter.hasErrors)
           phase.runOn(units)
       }

@@ -325,6 +325,7 @@ object Contexts {
     def withProperty(prop: (String, Any)): this.type = withMoreProperties(moreProperties + prop)
 
     def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
+    def withPhase(phase: Phase): this.type = withPhase(phase.id)
 
     def withSetting[T](setting: Setting[T], value: T): this.type =
       withSettings(setting.updateIn(sstate, value))
@@ -361,7 +362,6 @@ object Contexts {
    *  compiler run.
    */
   class ContextBase extends ContextState
-                       with DenotTransformers.DenotTransformerBase
                        with Denotations.DenotationsBase
                        with Phases.PhasesBase {
 
@@ -459,6 +459,9 @@ object Contexts {
     // Phases state
     /** Phases by id */
     private[core] var phases: Array[Phase] = _
+
+    /** Next denotation transformer id */
+    private[core] var nextTransformerId: Array[Int] = _
 
     // Printers state
     /** Number of recursive invocations of a show method on cuyrrent stack */
