@@ -11,7 +11,9 @@ import dotty.tools.dotc.core.Phases.Phase
 
 class Compiler {
 
-  def phases: List[Phase] = List(new FrontEnd)
+  def phases: List[Phase] = List(
+      new FrontEnd,
+      new transform.SamplePhase)
 
   var runId = 1
   def nextRunId = { runId += 1; runId }

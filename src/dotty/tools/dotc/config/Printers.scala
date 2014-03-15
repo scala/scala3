@@ -23,5 +23,5 @@ object Printers {
   val completions = noPrinter
   val gadts = noPrinter
   val incremental = noPrinter
-
+  val config = noPrinter
 }
