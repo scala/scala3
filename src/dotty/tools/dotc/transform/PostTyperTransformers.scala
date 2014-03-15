@@ -12,7 +12,7 @@ import NameOps._
 
 object PostTyperTransformers {
 
-  import tpd.{TreeTransformer => _, _}
+  import tpd._
 
 
   /** A trait that's assumed by the transformers that run right after typer.

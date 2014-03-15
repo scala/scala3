@@ -1077,7 +1077,7 @@ object Trees {
       }
     }
 
-    abstract class TreeTransformer(val cpy: TreeCopier = inst.cpy) {
+    abstract class TreeMap(val cpy: TreeCopier = inst.cpy) {
 
       def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
         case Ident(name) =>
