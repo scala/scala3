@@ -616,6 +616,7 @@ object SymDenotations {
         owner.info.decl(effectiveName.toTypeName)
           .suchThat(sym => sym.isClass && sym.isCoDefinedWith(symbol))
           .symbol
+      //else ctx.defContext(symbol).denotNamed(effectiveName.toTypeName) ... todo: make completion 
       else NoSymbol
 
     /** If this is a class, the module class of its companion object.
