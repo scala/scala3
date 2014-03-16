@@ -5,6 +5,7 @@ import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
 import SymDenotations._
 import config.Printers._
 import Decorators._
+import StdNames._
 import util.SimpleMap
 
 trait TypeOps { this: Context =>
@@ -300,6 +301,10 @@ trait TypeOps { this: Context =>
     def hasOption = ctx.base.settings.language.value exists (s => s == featureName || s == "_")
     hasImport || hasOption
   }
+
+  /** Is auto-tupling enabled? */
+  def canAutoTuple =
+    !featureEnabled(defn.LanguageModuleClass, nme.noAutoTupling)
 }
 
 object TypeOps {
