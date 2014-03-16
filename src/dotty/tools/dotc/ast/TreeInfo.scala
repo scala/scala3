@@ -276,7 +276,11 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 }
 
-trait TypedTreeInfo extends TreeInfo[Type] {self: Trees.Instance[Type] =>
+trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
+  // todo: fill with methods from TreeInfo that only apply to untpd.Tree's
+}
+
+trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** Is tree a definition that has no side effects when
    *  evaluated as part of a block after the first time?
@@ -407,11 +411,67 @@ trait TypedTreeInfo extends TreeInfo[Type] {self: Trees.Instance[Type] =>
       false
   }
 
+  /** If `tree` is a DefTree, the symbol defined by it, otherwise NoSymbol */
+  def definedSym(tree: Tree)(implicit ctx: Context): Symbol =
+    if (tree.isDef) tree.symbol else NoSymbol
+
+  /** Going from child to parent, the path of tree nodes that starts
+   *  with a definition of symbol `sym` and ends with `root`, or Nil
+   *  if no such path exists.
+   *  Pre: `sym` must have a position.
+   */
+  def defPath(sym: Symbol, root: Tree)(implicit ctx: Context): List[Tree] = ctx.debugTraceIndented(s"defpath($sym with position ${sym.pos}, ${root.show})") {
+    def show(from: Any): String = from match {
+      case tree: Trees.Tree[_] => s"${tree.show} with attachments ${tree.allAttachments}"
+      case x: printing.Showable => x.show
+      case x => x.toString
+    }
+
+    def search(from: Any): List[Tree] = ctx.debugTraceIndented(s"search(${show(from)})") {
+      from match {
+        case tree: Tree => // Dotty problem: cannot write Tree @ unchecked, this currently gives a syntax error
+          if (definedSym(tree) == sym) tree :: Nil
+          else if (tree.envelope.contains(sym.pos)) {
+            val p = search(tree.productIterator)
+            if (p.isEmpty) p else tree :: p
+          } else Nil
+        case xs: Iterable[_] =>
+          search(xs.iterator)
+        case xs: Iterator[_] =>
+          xs.map(search).find(_.nonEmpty).getOrElse(Nil)
+        case _ =>
+          Nil
+      }
+    }
+    require(sym.pos.exists)
+    search(root)
+  }
+
+  /** The statement sequence that contains a definition of `sym`, or Nil
+   *  if none was found.
+   *  For a tree to be found, The symbol must have a position and its definition
+   *  tree must be reachable from come tree stored in an enclosing context.
+   */
+  def definingStats(sym: Symbol)(implicit ctx: Context): List[Tree] =
+    if (!sym.pos.exists || (ctx eq NoContext) || ctx.compilationUnit == null) Nil
+    else defPath(sym, ctx.compilationUnit.tpdTree) match {
+      case defn :: encl :: _ =>
+        def verify(stats: List[Tree]) =
+          if (stats exists (definedSym(_) == sym)) stats else Nil
+        encl match {
+          case Block(stats, _) => verify(stats)
+          case Template(_, _, _, stats) => verify(stats)
+          case PackageDef(_, stats) => verify(stats)
+          case _ => Nil
+        }
+      case nil =>
+        Nil
+    }
+}
+
   /** a Match(Typed(_, tpt), _) must be translated into a switch if isSwitchAnnotation(tpt.tpe)
   def isSwitchAnnotation(tpe: Type) = tpe hasAnnotation defn.SwitchClass
   */
-}
-
 
   /** Does list of trees start with a definition of
    *  a class of module with given name (ignoring imports)
