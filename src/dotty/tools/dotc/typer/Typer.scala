@@ -496,14 +496,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         errorType(s"missing parameter type for parameter ${param.name}$ofFun, expected = ${pt.show}", param.pos)
       }
 
-      if (protoFormals.length != params.length)
-        ctx.error(s"wrong number of parameters, expected: ${protoFormals.length}", tree.pos)
+      def protoFormal(i: Int): Type =
+        if (protoFormals.length == params.length) protoFormals(i)
+        else errorType(s"wrong number of parameters, expected: ${protoFormals.length}", tree.pos)
 
       val inferredParams: List[untpd.ValDef] =
-        for ((param, formal) <- params zip protoFormals) yield
+        for ((param, i) <- params.zipWithIndex) yield
           if (!param.tpt.isEmpty) param
           else {
-            val paramTpt = untpd.TypeTree(inferredParamType(param, formal))
+            val paramTpt = untpd.TypeTree(inferredParamType(param, protoFormal(i)))
             cpy.ValDef(param, param.mods, param.name, paramTpt, param.rhs)
           }
 
@@ -1135,7 +1136,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           else if (pt eq AnyFunctionProto) wtp.paramTypes.length
           else -1
         if (arity >= 0 && !tree.symbol.isConstructor)
-          typed(etaExpand(tree, wtp.paramNames take arity), pt)
+          typed(etaExpand(tree, wtp, arity), pt)
         else if (wtp.paramTypes.isEmpty)
           adaptInterpolated(tpd.Apply(tree, Nil), pt)
         else

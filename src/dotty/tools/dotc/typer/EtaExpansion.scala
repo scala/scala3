@@ -95,25 +95,35 @@ object EtaExpansion {
 
   /** Eta-expanding a tree means converting a method reference to a function value.
    *  @param    tree       The tree to expand
-   *  @param    paramNames The names of the parameters to use in the expansion
-   *  Let `paramNames` be x1, ..., xn
+   *  @param    mt         The type of the method reference
+   *  @param    xarity     The arity of the expected function type
    *  and assume the lifted application of `tree` (@see liftApp) is
    *
    *         { val xs = es; expr }
    *
-   *  Then the eta-expansion is
+   *  If xarity matches the number of parameters in `mt`, the eta-expansion is
    *
-   *         { val xs = es; (x1, ..., xn) => expr(xx1, ..., xn) }
+   *         { val xs = es; (x1, ..., xn) => expr(x1, ..., xn) }
    *
-   *  This is an untyped tree, with `es` and `expr` as typed splices.
+   * Note that the function value's parameters are untyped, hence the type will
+   * be supplied by the environment (or if missing be supplied by the target
+   * method as a fallback). On the other hand, if `xarity` is different from
+   * the number of parameters in `mt`, then we cannot propagate parameter types
+   * from the expected type, and we fallback to using the method's original
+   * parameter types instead.
+   *
+   * In either case, the result is an untyped tree, with `es` and `expr` as typed splices.
    */
-  def etaExpand(tree: Tree, paramNames: List[TermName])(implicit ctx: Context): untpd.Tree = {
+  def etaExpand(tree: Tree, mt: MethodType, xarity: Int)(implicit ctx: Context): untpd.Tree = {
     import untpd._
     val defs = new mutable.ListBuffer[tpd.Tree]
     val lifted: Tree = TypedSplice(liftApp(defs, tree))
-    val params = paramNames map (name =>
-      ValDef(Modifiers(Synthetic | Param), name, TypeTree(), EmptyTree).withPos(tree.pos))
-    val ids = paramNames map (name =>
+    val paramTypes: List[Tree] =
+      if (mt.paramTypes.length == xarity) mt.paramTypes map (_ => TypeTree())
+      else mt.paramTypes map TypeTree
+    val params = (mt.paramNames, paramTypes).zipped.map((name, tpe) =>
+      ValDef(Modifiers(Synthetic | Param), name, TypeTree(tpe), EmptyTree).withPos(tree.pos))
+    val ids = mt.paramNames map (name =>
       Ident(name).withPos(tree.pos))
     val body = Apply(lifted, ids)
     val fn = untpd.Function(params, body)

@@ -5,7 +5,7 @@ class Foo {
   def foo(f: ((Int, Int)) => Int) = f
   def bar(x: Int, y: Int) = x + y
 
-  foo({ (x: Int, y: Int) => x + y }) // works
+  foo(((x: Int, y: Int) => x + y)) // works
   foo(pair2fun2(bar _)) // works
   foo(bar _) // error
   foo(bar)   // same error
