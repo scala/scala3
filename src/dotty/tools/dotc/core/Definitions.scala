@@ -215,6 +215,7 @@ class Definitions {
   lazy val JavaSerializableClass        = ctx.requiredClass("java.lang.Serializable")
   lazy val ComparableClass              = ctx.requiredClass("java.lang.Comparable")
   lazy val ProductClass                 = ctx.requiredClass("scala.Product")
+  lazy val LanguageModuleClass          = ctx.requiredModule("dotty.language").moduleClass.asClass
 
   // Annotation base classes
   lazy val AnnotationClass              = ctx.requiredClass("scala.annotation.Annotation")
@@ -283,13 +284,14 @@ class Definitions {
   object FunctionType {
     def apply(args: List[Type], resultType: Type) =
       FunctionClass(args.length).typeRef.appliedTo(args ::: resultType :: Nil)
-    def unapply(ft: Type): Option[(List[Type], Type)] = { // Dotty deviation: Type annotation needed because inferred type
-                                                          // is Some[(List[Type], Type)] | None, which is not a legal unapply type.
+    def unapply(ft: Type)/*: Option[(List[Type], Type)]*/ = {
+      // -language:keepUnions difference: unapply needs result type because inferred type
+      // is Some[(List[Type], Type)] | None, which is not a legal unapply type.
       val tsym = ft.typeSymbol
       lazy val targs = ft.argInfos
       if ((FunctionClasses contains tsym) &&
           (targs.length - 1 <= MaxFunctionArity) &&
-          (FunctionClass(targs.length - 1) == tsym)) Some((targs.init, targs.last)) // Dotty deviation: no auto-tupling
+          (FunctionClass(targs.length - 1) == tsym)) Some(targs.init, targs.last)
       else None
     }
   }

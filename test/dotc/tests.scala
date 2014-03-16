@@ -43,6 +43,7 @@ class tests extends CompilerTest {
   @Test def pos_structural() = compileFile(posDir, "structural", twice)
   @Test def pos_i39 = compileFile(posDir, "i39", twice)
   @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess", twice)
+  @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion", twice)
 */
   @Test def pos_all = compileFiles(posDir, twice)
 
@@ -56,6 +57,7 @@ class tests extends CompilerTest {
   @Test def neg_templateParents() = compileFile(negDir, "templateParents", xerrors = 3)
   @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 1)
   @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 4)
+  @Test def neg_autoTupling = compileFile(posDir, "autoTuplingTest", "-language:noAutoTupling" :: Nil, xerrors = 3)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)

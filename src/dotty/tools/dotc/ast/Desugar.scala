@@ -180,8 +180,9 @@ object desugar {
       constr1.mods, constr1.name, tparams, vparamss, constr1.tpt, constr1.rhs)
 
     // a reference to the class type, with all parameters given.
-    val classTypeRef: Tree = {
-        // Dotty deviation: Without type annotation infers Ident | AppliedTypeTree, which
+    val classTypeRef/*: Tree*/ = {
+        // -language:keepUnions difference: classTypeRef needs type annotation, otherwise
+        // infers Ident | AppliedTypeTree, which
         // renders the :\ in companions below untypable.
       val tycon = Ident(cdef.name) withPos cdef.pos.startPos
       val tparams = impl.constr.tparams
@@ -728,7 +729,7 @@ object desugar {
    */
   private object VarPattern {
     def unapply(tree: Tree)(implicit ctx: Context): Option[VarInfo] = tree match {
-      case id: Ident => Some((id, TypeTree())) // Dotty deviation: No auto-tupling
+      case id: Ident => Some(id, TypeTree())
       case Typed(id: Ident, tpt) => Some((id, tpt))
       case _ => None
     }
