@@ -5,6 +5,7 @@
 
 # Configuration
 SCALA_VERSION=2.11.0-M7
+SCALA_XML_VERSION=1.0.0-RC7
 DOTTY_VERSION=0.1
 bootcp=true
 default_java_opts="-Xmx768m -Xms768m"
@@ -61,12 +62,18 @@ if [ "$SCALA_REFLECT_JAR" == "" ]
 then  
   SCALA_REFLECT_JAR=$HOME/.ivy2/cache/org.scala-lang/scala-reflect/jars/scala-reflect-$SCALA_VERSION.jar
 fi
+# save as for scala-library now for scala-reflect
+if [ "$SCALA_XML_JAR" == "" ]
+then  
+  SCALA_XML_JAR=$HOME/.ivy2/cache/org.scala-lang.modules/scala-xml_$SCALA_VERSION/jars/scala-xml-$SCALA_VERSION-$SCALA_XML_VERSION.jar
+fi
 
 if [ ! -f "$SCALA_LIBRARY_JAR" -o ! -f "$SCALA_REFLECT_JAR" ]
 then
   echo To use this script please set 
   echo SCALA_LIBRARY_JAR to point to scala-library-$SCALA_VERSION.jar "(currently $SCALA_LIBRARY_JAR)"
   echo SCALA_REFLECT_JAR to point to scala-reflect-$SCALA_VERSION.jar "(currently $SCALA_REFLECT_JAR)"
+  echo SCALA_XML_JAR to point to scala-reflect-$SCALA_VERSION.jar "(currently $SCALA_XML_JAR)"
 fi
 
 ifdebug () {
@@ -155,9 +162,9 @@ trap onExit INT
 # to java to suppress "." from materializing.
 classpathArgs () {
   if [[ -n $bootcp ]]; then
-echo "-Xbootclasspath/a:$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$MAIN_JAR -classpath $MAIN_JAR"
+echo "-Xbootclasspath/a:$SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_XML_JAR:$MAIN_JAR -classpath $MAIN_JAR"
   else
-echo "-classpath $SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$MAIN_JAR"
+echo "-classpath $SCALA_LIBRARY_JAR:$SCALA_REFLECT_JAR:$SCALA_XML_JAR:$MAIN_JAR"
   fi
 }
 
