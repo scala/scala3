@@ -47,13 +47,13 @@ class tests extends CompilerTest {
   @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion", twice)
 */
   @Test def pos_all = compileFiles(posDir, twice)
-  @Test def pos_new = compileFiles(newDir, "-Xprompt" :: Nil)
+  @Test def new_all = compileFiles(newDir, twice)
 
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
   @Test def neg_typedidents() = compileFile(negDir, "typedIdents", xerrors = 2)
   @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)
-  @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 10)
+  @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 6)
   @Test def neg_privates() = compileFile(negDir, "privates", xerrors = 2)
   @Test def neg_rootImports = compileFile(negDir, "rootImplicits", xerrors = 2)
   @Test def neg_templateParents() = compileFile(negDir, "templateParents", xerrors = 3)
