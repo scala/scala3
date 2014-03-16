@@ -421,30 +421,19 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  Pre: `sym` must have a position.
    */
   def defPath(sym: Symbol, root: Tree)(implicit ctx: Context): List[Tree] = ctx.debugTraceIndented(s"defpath($sym with position ${sym.pos}, ${root.show})") {
-    def show(from: Any): String = from match {
-      case tree: Trees.Tree[_] => s"${tree.show} with attachments ${tree.allAttachments}"
-      case x: printing.Showable => x.show
-      case x => x.toString
-    }
-
-    def search(from: Any): List[Tree] = ctx.debugTraceIndented(s"search(${show(from)})") {
-      from match {
-        case tree: Tree => // Dotty problem: cannot write Tree @ unchecked, this currently gives a syntax error
-          if (definedSym(tree) == sym) tree :: Nil
-          else if (tree.envelope.contains(sym.pos)) {
-            val p = search(tree.productIterator)
-            if (p.isEmpty) p else tree :: p
-          } else Nil
-        case xs: Iterable[_] =>
-          search(xs.iterator)
-        case xs: Iterator[_] =>
-          xs.map(search).find(_.nonEmpty).getOrElse(Nil)
-        case _ =>
-          Nil
+    require(sym.pos.exists)
+    object accum extends TreeAccumulator[List[Tree]] {
+      def apply(x: List[Tree], tree: Tree): List[Tree] = {
+        if (tree.envelope.contains(sym.pos))
+          if (definedSym(tree) == sym) tree :: x
+          else {
+            val x1 = foldOver(x, tree)
+            if (x1 ne x) tree :: x1 else x1
+          }
+        else x
       }
     }
-    require(sym.pos.exists)
-    search(root)
+    accum(Nil, root)
   }
 
   /** The statement sequence that contains a definition of `sym`, or Nil
