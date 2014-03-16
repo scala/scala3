@@ -1072,8 +1072,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
-    def adaptToArgs(wtp: Type, pt: FunProto) = wtp match {
-      case _: MethodType | _: PolyType => tree
+    def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
+      case _: MethodType | _: PolyType =>
+        def isUnary = wtp.firstParamTypes match {
+          case ptype :: Nil => !ptype.isRepeatedParam
+          case _ => false
+        }
+        if (pt.args.lengthCompare(1) > 0 && isUnary) adaptToArgs(wtp, pt.tupled)
+        else tree
       case _ => tryInsertApply(tree, pt) {
         val more = tree match {
           case Apply(_, _) => " more"

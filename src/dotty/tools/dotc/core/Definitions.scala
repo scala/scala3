@@ -289,7 +289,7 @@ class Definitions {
       lazy val targs = ft.argInfos
       if ((FunctionClasses contains tsym) &&
           (targs.length - 1 <= MaxFunctionArity) &&
-          (FunctionClass(targs.length - 1) == tsym)) Some((targs.init, targs.last)) // Dotty deviation: no auto-tupling
+          (FunctionClass(targs.length - 1) == tsym)) Some(targs.init, targs.last)
       else None
     }
   }

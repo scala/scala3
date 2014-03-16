@@ -60,7 +60,7 @@ object Settings {
       copy(aliases = aliases :+ abbrv)(idx)
 
     def dependsOn[U](setting: Setting[U], value: U): Setting[T] =
-      copy(depends = depends :+ ((setting, value)))(idx) // Dotty deviation: no auto-tupling
+      copy(depends = depends :+ (setting, value))(idx)
 
     def valueIn(state: SettingsState): T =
       state.value(idx).asInstanceOf[T]
