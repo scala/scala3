@@ -65,7 +65,7 @@ object Implicits {
           case tpw =>
             //if (ctx.typer.isApplicable(tp, argType :: Nil, resultType))
             //  println(i"??? $tp is applicable to $this / typeSymbol = ${tpw.typeSymbol}")
-            true
+            !tpw.derivesFrom(defn.FunctionClass(1))
         }
 
         def discardForValueType(tpw: Type): Boolean = tpw match {
