@@ -215,7 +215,7 @@ class Definitions {
   lazy val JavaSerializableClass        = ctx.requiredClass("java.lang.Serializable")
   lazy val ComparableClass              = ctx.requiredClass("java.lang.Comparable")
   lazy val ProductClass                 = ctx.requiredClass("scala.Product")
-  lazy val LanguageModuleClass          = ctx.requiredModule("dotty.language").moduleClass
+  lazy val LanguageModuleClass          = ctx.requiredModule("dotty.language").moduleClass.asClass
 
   // Annotation base classes
   lazy val AnnotationClass              = ctx.requiredClass("scala.annotation.Annotation")

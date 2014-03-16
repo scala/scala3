@@ -685,6 +685,13 @@ object Types {
       case _ => Nil
     }
 
+    /** The parameter types in the first parameter section of a PolyType or MethodType, Empty list for others */
+    final def firstParamTypes: List[Type] = this match {
+      case mt: MethodType => mt.paramTypes
+      case pt: PolyType => pt.resultType.firstParamTypes
+      case _ => Nil
+    }
+
     /** Is this either not a method at all, or a parameterless method? */
     final def isParameterless: Boolean = this match {
       case mt: MethodType => false
