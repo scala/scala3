@@ -14,7 +14,7 @@ class LazyValsTest extends DottyTest {
         ))
       }
     }
-  /*
+
       @Test
       def localLong = {
         checkCompile("LazyVals", "class LocalLV { def m = { lazy val s = 1L;  s }}"){ (tree, ctx) =>
@@ -346,5 +346,4 @@ class LazyValsTest extends DottyTest {
             treeS.contains(moduleField) && treeS.contains(reuseFieldPattern))
       }
     }
-    */
 }
