@@ -330,6 +330,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def deepFold[T](z: T)(op: (T, tpd.Tree) => T) =
       new DeepFolder(op).apply(z, tree)
 
+    def find[T](pred: (tpd.Tree) => Boolean): Option[tpd.Tree] =
+      shallowFold[Option[tpd.Tree]](None)((accum, tree) => if (pred(tree)) Some(tree) else accum)
+
     def subst(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): ThisTree =
       new TreeMapper(typeMap = new ctx.SubstSymMap(from, to)).apply(tree)
 
