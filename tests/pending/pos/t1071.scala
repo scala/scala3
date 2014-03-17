@@ -15,3 +15,5 @@ object Test {
   c.a // error
 }
 
+// to fix this we'd need to check accessibility in the isMatchedBy of a SelectionProto,
+// so that we can insert an implicit if this does not work. Need to check performance impact of this.
