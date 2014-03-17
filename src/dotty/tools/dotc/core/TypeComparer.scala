@@ -201,7 +201,11 @@ class TypeComparer(initctx: Context) extends DotClass {
   def isNonBottomSubType(tp1: Type, tp2: Type): Boolean =
     !(tp2 isRef NothingClass) && isSubType(tp1, tp2)
 
-  def isSubType(tp1: Type, tp2: Type): Boolean = /*>|>*/ ctx.traceIndented(s"isSubType ${tp1.show} <:< ${tp2.show}", subtyping) /*<|<*/ {
+  private def traceInfo(tp1: Type, tp2: Type) =
+    s"${tp1.show} <:< ${tp2.show}" +
+    (if (ctx.settings.verbose.value) s"${tp1.getClass} ${tp2.getClass}" else "")
+
+  def isSubType(tp1: Type, tp2: Type): Boolean = /*>|>*/ ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) /*<|<*/ {
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
     else {
@@ -467,7 +471,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp2 @ MethodType(_, formals2) =>
       def compareMethod = tp1 match {
         case tp1 @ MethodType(_, formals1) =>
-          tp1.signature == tp2.signature &&
+          (tp1.signature sameParams tp2.signature) &&
             (if (Config.newMatch) subsumeParams(formals1, formals2, tp1.isJava, tp2.isJava)
              else matchingParams(formals1, formals2, tp1.isJava, tp2.isJava)) &&
             tp1.isImplicit == tp2.isImplicit && // needed?
