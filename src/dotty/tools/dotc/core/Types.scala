@@ -1774,7 +1774,7 @@ object Types {
       // upper bound is not a singleton type, widen the instance.
       if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
         inst = inst.widen
-        
+
       inst = inst.simplified
 
       // 2. If instance is from below and is a fully-defined union type, yet upper bound
@@ -1782,7 +1782,7 @@ object Types {
       // of all common base types.
       if (fromBelow && isOrType(inst) && isFullyDefined(inst) && !isOrType(upperBound))
         inst = inst.approximateUnion
-        
+
       instantiateWith(inst)
     }
 
@@ -2093,6 +2093,8 @@ object Types {
       case tp: TypeRef =>
         zeroParamClass(tp.underlying)
       case tp: RefinedType =>
+        zeroParamClass(tp.underlying)
+      case tp: TypeBounds =>
         zeroParamClass(tp.underlying)
       case tp: TypeVar =>
         zeroParamClass(tp.underlying)
