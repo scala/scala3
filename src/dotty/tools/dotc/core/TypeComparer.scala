@@ -536,7 +536,20 @@ class TypeComparer(initctx: Context) extends DotClass {
           (tp1.symbol eq NullClass) && tp2.dealias.typeSymbol.isNullableClass
       }
     case tp1: SingletonType =>
-      isNewSubType(tp1.underlying.widenExpr, tp2)
+      isNewSubType(tp1.underlying.widenExpr, tp2) || {
+        // if tp2 == p.type  and p: q.type then try   tp1 <:< q.type as a last effort.
+        tp2 match {
+          case tp2: TermRef =>
+            tp2.info match {
+              case tp2i: TermRef =>
+                isSubType(tp1, tp2i)
+              case _ =>
+                false
+            }
+          case _ =>
+            false
+        }
+      }
     case tp1: RefinedType =>
       isNewSubType(tp1.parent, tp2)
     case AndType(tp11, tp12) =>
