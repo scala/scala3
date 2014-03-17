@@ -20,8 +20,11 @@ import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 
 
-class LazyValsCreateCompanionObjects(group: TreeTransformer, idx:Int) extends CreateCompanionObjects(group, idx) {
-  import tpd._
+class LazyValsCreateCompanionObjects extends CreateCompanionObjects {
+   import tpd._
+
+
+  override def name: String = "lazyValsModules"
 
   /** Companion classes are required to hold offsets for volatile lazy vals */
   override def predicate(forClass: TypeDef)(implicit ctx: Context): Boolean = {
@@ -40,7 +43,7 @@ class LazyValTranformContext {
   import tpd._
 
 
-  def transformer(group: TreeTransformer, idx: Int) = new LazyValsTransform(group, idx)
+  def transformer = new LazyValsTransform
 
   /** this map contains mutable state of transformation: OffsetDefs to be appended to companion object definitions,
     * and number of bits currently used */
@@ -49,31 +52,32 @@ class LazyValTranformContext {
 
   val infoTransformerNewDefinitions = mutable.Map.empty[ClassSymbol, ListBuffer[Symbol]]
 
-  def addSym(owner:ClassSymbol, sym:Symbol) {
+  def addSym(owner: ClassSymbol, sym: Symbol) {
     infoTransformerNewDefinitions.get(owner) match {
-      case Some(x) => x+=sym
+      case Some(x) => x += sym
       case None => infoTransformerNewDefinitions.put(owner, ListBuffer(sym))
     }
   }
 
-  class LazyValsTransform(group: TreeTransformer, idx: Int) extends TreeTransform(group, idx) {
+  class LazyValsTransform extends TreeTransform with DenotTransformer {
 
+    override def name: String = "LazyVals"
 
     def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
       ref match {
-            case ref:SymDenotation if ref.symbol.isClass=>
-              val oldSym = ref.symbol.asClass
-              infoTransformerNewDefinitions.get(oldSym) match {
-                case Some(x) =>
-                  val den = ref.copySymDenotation()
-                  den.resetFlag(Flags.Frozen)
-                  x.foreach(stat => den.asClass.enter(stat))
-                  den
-                case None =>
-                  ref
-              }
-            case _ => ref
+        case ref: SymDenotation if ref.symbol.isClass =>
+          val oldSym = ref.symbol.asClass
+          infoTransformerNewDefinitions.get(oldSym) match {
+            case Some(x) =>
+              val den = ref.copySymDenotation()
+              den.resetFlag(Flags.Frozen)
+              x.foreach(stat => den.asClass.enter(stat))
+              den
+            case None =>
+              ref
           }
+        case _ => ref
+      }
     }
 
     override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo): Tree = {

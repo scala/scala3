@@ -7,8 +7,15 @@ import util.DotClass
 import DenotTransformers._
 import Denotations._
 import config.Printers._
+import scala.collection.mutable.{ListBuffer, ArrayBuffer}
+import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, TreeTransform}
+import dotty.tools.dotc.transform.PostTyperTransformers.PostTyperTransformer
+import dotty.tools.dotc.transform.TreeTransforms
+import TreeTransforms.Separator
 
-trait Phases { self: Context =>
+trait Phases {
+  self: Context =>
+
   import Phases._
 
   def phase: Phase = base.phases(period.phaseId)
@@ -32,9 +39,13 @@ trait Phases { self: Context =>
 
 object Phases {
 
-  trait PhasesBase { this: ContextBase =>
+  trait PhasesBase {
+    this: ContextBase =>
 
-    def allPhases = phases.tail // drop NoPhase at beginning
+    // drop NoPhase at beginning
+    def allPhases = squashedPhases.tail
+
+
 
     object NoPhase extends Phase {
       override def exists = false
@@ -61,11 +72,14 @@ object Phases {
       phases.find(_.name == name).getOrElse(NoPhase)
 
     /** Use the following phases in the order they are given.
-     *  The list should never contain NoPhase.
-     */
-    def usePhases(phases: List[Phase]) = {
+      * The list should never contain NoPhase.
+      * if squashing is enabled, consecutive TreeTransform(mini-phases) will be squashed to single phase.
+      * to indicate that at some point new phase creating should be forced TreeTransform.Separator should be used
+      */
+    def usePhases(phases: List[Phase], squash: Boolean = true) = {
       this.phases = (NoPhase :: phases ::: new TerminalPhase :: Nil).toArray
-      this.nextTransformerId = new Array[Int](this.phases.length)
+      this.nextDenotTransformerId = new Array[Int](this.phases.length)
+      this.denotTransformers = new Array[DenotTransformer](this.phases.length)
       var i = 0
       while (i < this.phases.length) {
         this.phases(i)._id = i
@@ -74,11 +88,55 @@ object Phases {
       var lastTransformerId = i
       while (i > 0) {
         i -= 1
-        if (this.phases(i).isInstanceOf[DenotTransformer]) lastTransformerId = i
-        nextTransformerId(i) = lastTransformerId
+        if (this.phases(i).isInstanceOf[DenotTransformer]) {
+          lastTransformerId = i
+          denotTransformers(i) = this.phases(i).asInstanceOf[DenotTransformer]
+        }
+        nextDenotTransformerId(i) = lastTransformerId
       }
+
+      if (squash) {
+        val squashedPhases = ListBuffer[Phase]()
+        val currentBlock = ListBuffer[TreeTransform]()
+        var postTyperEmmited = false
+        def pushBlock = {
+          if (!currentBlock.isEmpty) {
+            val trans = currentBlock.toArray
+            val block =
+              if (!postTyperEmmited) {
+                postTyperEmmited = true
+                new PostTyperTransformer {
+                  override def name: String = transformations.map(_.name).mkString("TreeTransform:{", ", ", "}")
+                  override protected def transformations: Array[TreeTransform] = trans
+                }
+              } else new TreeTransformer {
+                override def name: String = transformations.map(_.name).mkString("TreeTransform:{", ", ", "}")
+                override protected def transformations: Array[TreeTransform] = trans
+              }
+            squashedPhases += block
+            block._id = trans.head._id
+            currentBlock.clear()
+          }
+        }
+        var i = 0
+        while (i < this.phases.length) {
+          this.phases(i) match {
+            case transform: TreeTransform =>
+              if (transform.isInstanceOf[Separator]) pushBlock
+              else currentBlock += transform
+            case _ =>
+              pushBlock
+              squashedPhases += this.phases(i)
+          }
+          i += 1
+        }
+        this.squashedPhases = squashedPhases.toArray
+      }
+      this.phases = this.phases.filter(x => !(x.isInstanceOf[Separator]))
+
       config.println(s"Phases = ${this.phases.deep}")
-      config.println(s"nextTransformId = ${nextTransformerId.deep}")
+      config.println(s"squashedPhases = ${this.squashedPhases.deep}")
+      config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.deep}")
     }
 
     final val typerName = "typer"
@@ -110,12 +168,12 @@ object Phases {
     private[Phases] var _id = -1
 
     /** The sequence position of this phase in the given context where 0
-     *  is reserved for NoPhase and the first real phase is at position 1.
-     *  -1 if the phase is not installed in the context.
-     */
+      * is reserved for NoPhase and the first real phase is at position 1.
+      * -1 if the phase is not installed in the context.
+      */
     def id = _id
 
-    final def <= (that: Phase)(implicit ctx: Context) =
+    final def <=(that: Phase)(implicit ctx: Context) =
       exists && id <= that.id
 
     final def prev(implicit ctx: Context): Phase =
@@ -131,8 +189,9 @@ object Phases {
 
     final def erasedTypes(implicit ctx: Context): Boolean = ctx.erasurePhase <= this
     final def flatClasses(implicit ctx: Context): Boolean = ctx.flattenPhase <= this
-    final def refChecked (implicit ctx: Context): Boolean = ctx.refchecksPhase <= this
+    final def refChecked(implicit ctx: Context): Boolean = ctx.refchecksPhase <= this
 
     override def toString = name
   }
+
 }

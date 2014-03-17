@@ -19,7 +19,7 @@ import NameOps._
 
 /** A transformer that provides a convenient way to create companion objects
   */
-abstract class CreateCompanionObjects(group: TreeTransformer, idx: Int) extends TreeTransform(group, idx) {
+abstract class CreateCompanionObjects extends TreeTransform {
 
   import tpd._
 

@@ -15,9 +15,11 @@ class TreeTransformerTest extends DottyTest {
   def shouldReturnSameTreeIfUnchanged = checkCompile("frontend", "class A{ val d = 1}") {
     (tree, context) =>
       implicit val ctx = context
-      class EmptyTransform(group: TreeTransformer, idx: Int) extends TreeTransform(group, idx) {}
+      class EmptyTransform extends TreeTransform {
+        override def name: String = "empty"
+      }
       val transformer = new TreeTransformer {
-        override def transformations = Array(new EmptyTransform(_, _))
+        override def transformations = Array(new EmptyTransform)
 
         override def name: String = "test"
       }
@@ -32,12 +34,13 @@ class TreeTransformerTest extends DottyTest {
   def canReplaceConstant = checkCompile("frontend", "class A{ val d = 1}") {
     (tree, context) =>
       implicit val ctx = context
-      class ConstantTransform(group: TreeTransformer, idx: Int) extends TreeTransform(group, idx) {
+      class ConstantTransform extends TreeTransform {
 
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = tpd.Literal(Constant(2))
+        override def name: String = "canReplaceConstant"
       }
       val transformer = new TreeTransformer {
-        override def transformations = Array(new ConstantTransform(_, _))
+        override def transformations = Array(new ConstantTransform)
 
         override def name: String = "test"
       }
@@ -52,9 +55,10 @@ class TreeTransformerTest extends DottyTest {
   def canOverwrite = checkCompile("frontend", "class A{ val d = 1}") {
     (tree, context) =>
       implicit val ctx = context
-      class Transformation(group: TreeTransformer, idx: Int) extends TreeTransform(group, idx) {
+      class Transformation extends TreeTransform {
 
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = tpd.Literal(Constant(-1))
+        override def name: String = "canOverwrite"
 
         override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.ValDef = {
           Assert.assertTrue("transformation of children succeeded",
@@ -64,7 +68,7 @@ class TreeTransformerTest extends DottyTest {
         }
       }
       val transformer = new TreeTransformer {
-        override def transformations = Array(new Transformation(_, _))
+        override def transformations = Array(new Transformation)
 
         override def name: String = "test"
       }
@@ -79,7 +83,8 @@ class TreeTransformerTest extends DottyTest {
   def transformationOrder = checkCompile("frontend", "class A{ val d = 1}") {
     (tree, context) =>
       implicit val ctx = context
-      class Transformation1(group: TreeTransformer, idx: Int) extends TreeTransform(group, idx) {
+      class Transformation1 extends TreeTransform {
+        override def name: String = "transformationOrder1"
 
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
           Assert.assertTrue("correct constant",
@@ -95,7 +100,8 @@ class TreeTransformerTest extends DottyTest {
           tpd.cpy.ValDef(tree, tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(2)))
         }
       }
-      class Transformation2(group: TreeTransformer, idx: Int) extends TreeTransform(group, idx) {
+      class Transformation2 extends TreeTransform {
+        override def name: String = "transformationOrder2"
         override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.ValDef = {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(2))"
@@ -104,7 +110,7 @@ class TreeTransformerTest extends DottyTest {
         }
       }
       val transformer = new TreeTransformer {
-        override def transformations = Array(new Transformation1(_, _), new Transformation2(_, _))
+        override def transformations = Array(new Transformation1, new Transformation2)
 
         override def name: String = "test"
       }
@@ -120,7 +126,8 @@ class TreeTransformerTest extends DottyTest {
     (tree, context) =>
       implicit val ctx = context
       var transformed1 = 0
-      class Transformation1(group: TreeTransformer, idx: Int) extends TreeTransform(group, idx) {
+      class Transformation1 extends TreeTransform {
+        override def name: String = "invocationCount1"
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
           transformed1 += 1
           Assert.assertTrue("correct constant",
@@ -138,9 +145,9 @@ class TreeTransformerTest extends DottyTest {
         }
       }
       var transformed2 = 0
-      class Transformation2(group: TreeTransformer, idx: Int) extends TreeTransform(group, idx) {
+      class Transformation2 extends TreeTransform {
         var constantsSeen = 0
-
+        override def name: String = "invocationCount2"
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
           transformed2 += 1
           constantsSeen match {
@@ -167,7 +174,7 @@ class TreeTransformerTest extends DottyTest {
         }
       }
       val transformer = new TreeTransformer {
-        override def transformations = Array(new Transformation1(_, _), new Transformation2(_, _))
+        override def transformations = Array(new Transformation1, new Transformation2)
 
         override def name: String = "test"
       }

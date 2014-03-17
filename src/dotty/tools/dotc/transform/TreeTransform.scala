@@ -46,7 +46,10 @@ object TreeTransforms {
     *            (4) chain 7 out of 20 transformations over the resulting tree node. I believe the current algorithm is suitable
     *            for achieving this goal, but there can be no wasted cycles anywhere.
     */
-  class TreeTransform(group: TreeTransformer, idx: Int) {
+  abstract class TreeTransform extends Phase {
+
+    /** id of this treeTransform in group */
+    var idx: Int = _
 
     def prepareForIdent(tree: Ident) = this
     def prepareForSelect(tree: Select) = this
@@ -100,7 +103,7 @@ object TreeTransforms {
     def transformTry(tree: Try)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformThrow(tree: Throw)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformSeqLiteral(tree: SeqLiteral)(implicit ctx: Context, info: TransformerInfo): Tree = tree
-    def transformTypeTree(tree: TypeTree)(implicit ctx: Context): Tree = tree
+    def transformTypeTree(tree: TypeTree)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformSelectFromTypeTree(tree: SelectFromTypeTree)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformBind(tree: Bind)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformAlternative(tree: Alternative)(implicit ctx: Context, info: TransformerInfo): Tree = tree
@@ -113,23 +116,42 @@ object TreeTransforms {
     def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[Tree] = trees
 
     /** Transform tree using all transforms of current group (including this one) */
-    def transform(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = group.transform(tree, info, 0)
+    def transform(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = info.group.transform(tree, info, 0)
 
     /** Transform subtree using all transforms following the current one in this group */
-    def transformFollowingDeep(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = group.transform(tree, info, idx + 1)
+    def transformFollowingDeep(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = info.group.transform(tree, info, idx + 1)
 
     /** Transform single node using all transforms following the current one in this group */
-    def transformFollowing(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = group.transformSingle(tree, idx + 1)
+    def transformFollowing(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = info.group.transformSingle(tree, idx + 1)
 
     /** perform context-dependant initialization */
-    def init(implicit ctx:Context): Unit = {}
+    def init(implicit ctx:Context, info: TransformerInfo): Unit = {}
+
+    protected def mkTreeTransformer = new TreeTransformer {
+      override def name: String = TreeTransform.this.name
+      override protected def transformations = Array(TreeTransform.this)
+    }
+
+    override def run(implicit ctx: Context): Unit = {
+      mkTreeTransformer.run
+    }
   }
 
-  val NoTransform = new TreeTransform(null, -1)
+  val NoTransform = new TreeTransform {
+    override def name: String = "NoTransform"
+    idx = -1
+  }
+
+  class Separator extends TreeTransform {
+    override def name: String = "Separator"
+    idx = -1
+  }
 
   type Mutator[T] = (TreeTransform, T) => TreeTransform
 
-  class TransformerInfo(val transformers: Array[TreeTransform], val nx: NXTransformations) {}
+  class TransformerInfo(val transformers: Array[TreeTransform], val nx: NXTransformations, val group:TreeTransformer, val contexts:Array[Context]) {
+    assert(transformers.size == contexts.size)
+  }
 
   /**
    * This class maintains track of which methods are redefined in MiniPhases and creates execution plans for transformXXX and prepareXXX
@@ -392,7 +414,7 @@ object TreeTransforms {
   /** A group of tree transforms that are applied in sequence during the same phase */
   abstract class TreeTransformer extends Phase {
 
-    protected def transformations: Array[(TreeTransformer, Int) => TreeTransform]
+    protected def transformations: Array[TreeTransform]
 
     override def run(implicit ctx: Context): Unit = {
       val curTree = ctx.compilationUnit.tpdTree
@@ -425,7 +447,7 @@ object TreeTransforms {
       }
       if (allDone) null
       else if (!transformersCopied) info
-      else new TransformerInfo(result, resultNX)
+      else new TransformerInfo(result, resultNX, info.group, info.contexts)
     }
 
     val prepForIdent: Mutator[Ident] = (trans, tree) => trans.prepareForIdent(tree)
@@ -461,16 +483,23 @@ object TreeTransforms {
     val prepForStats: Mutator[List[Tree]]= (trans, trees) => trans.prepareForStats(trees)
 
     def transform(t: Tree)(implicit ctx: Context): Tree = {
-      println(name)
-      val initialTransformations = transformations.zipWithIndex.map(x => x._1(this, x._2))
-      initialTransformations.foreach(_.init)
-      transform(t, new TransformerInfo(initialTransformations, new NXTransformations(initialTransformations)), 0)
+      val initialTransformations = transformations
+      val contexts = initialTransformations.map(tr => ctx.fresh.withPhase(tr).ctx)
+      val info = new TransformerInfo(initialTransformations, new NXTransformations(initialTransformations), this, contexts)
+      initialTransformations.zipWithIndex.foreach{
+        case (transform, id) =>
+          transform.idx = id
+          transform.init(ctx, info)
+      }
+      transform(t, info, 0)
     }
 
     @tailrec
     final private[TreeTransforms] def goIdent(tree: Ident, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformIdent(tree) match {
+        val trans = info.transformers(cur)
+
+        trans.transformIdent(tree)(info.contexts(cur), info) match {
           case t: Ident => goIdent(t, info.nx.nxTransIdent(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -480,7 +509,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goSelect(tree: Select, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformSelect(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformSelect(tree)(info.contexts(cur), info) match {
           case t: Select => goSelect(t, info.nx.nxTransSelect(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -490,7 +520,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goThis(tree: This, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformThis(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformThis(tree)(info.contexts(cur), info) match {
           case t: This => goThis(t, info.nx.nxTransThis(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -500,7 +531,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goSuper(tree: Super, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformSuper(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformSuper(tree)(info.contexts(cur), info) match {
           case t: Super => goSuper(t, info.nx.nxTransSuper(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -510,7 +542,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goApply(tree: Apply, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformApply(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformApply(tree)(info.contexts(cur), info) match {
           case t: Apply => goApply(t, info.nx.nxTransApply(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -520,7 +553,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goTypeApply(tree: TypeApply, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformTypeApply(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformTypeApply(tree)(info.contexts(cur), info) match {
           case t: TypeApply => goTypeApply(t, info.nx.nxTransTypeApply(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -530,7 +564,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goNew(tree: New, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformNew(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformNew(tree)(info.contexts(cur), info) match {
           case t: New => goNew(t, info.nx.nxTransNew(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -540,7 +575,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goPair(tree: Pair, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformPair(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformPair(tree)(info.contexts(cur), info) match {
           case t: Pair => goPair(t, info.nx.nxTransPair(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -550,7 +586,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goTyped(tree: Typed, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformTyped(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformTyped(tree)(info.contexts(cur), info) match {
           case t: Typed => goTyped(t, info.nx.nxTransTyped(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -560,7 +597,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goAssign(tree: Assign, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformAssign(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformAssign(tree)(info.contexts(cur), info) match {
           case t: Assign => goAssign(t, info.nx.nxTransAssign(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -570,7 +608,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goLiteral(tree: Literal, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformLiteral(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformLiteral(tree)(info.contexts(cur), info) match {
           case t: Literal => goLiteral(t, info.nx.nxTransLiteral(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -580,7 +619,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goBlock(tree: Block, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformBlock(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformBlock(tree)(info.contexts(cur), info) match {
           case t: Block => goBlock(t, info.nx.nxTransBlock(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -590,7 +630,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goIf(tree: If, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformIf(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformIf(tree)(info.contexts(cur), info) match {
           case t: If => goIf(t, info.nx.nxTransIf(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -600,7 +641,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goClosure(tree: Closure, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformClosure(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformClosure(tree)(info.contexts(cur), info) match {
           case t: Closure => goClosure(t, info.nx.nxTransClosure(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -610,7 +652,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goMatch(tree: Match, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformMatch(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformMatch(tree)(info.contexts(cur), info) match {
           case t: Match => goMatch(t, info.nx.nxTransMatch(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -620,7 +663,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goCaseDef(tree: CaseDef, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformCaseDef(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformCaseDef(tree)(info.contexts(cur), info) match {
           case t: CaseDef => goCaseDef(t, info.nx.nxTransCaseDef(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -630,7 +674,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goReturn(tree: Return, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformReturn(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformReturn(tree)(info.contexts(cur), info) match {
           case t: Return => goReturn(t, info.nx.nxTransReturn(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -640,7 +685,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goTry(tree: Try, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformTry(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformTry(tree)(info.contexts(cur), info) match {
           case t: Try => goTry(t, info.nx.nxTransTry(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -650,7 +696,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goThrow(tree: Throw, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformThrow(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformThrow(tree)(info.contexts(cur), info) match {
           case t: Throw => goThrow(t, info.nx.nxTransThrow(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -660,7 +707,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goSeqLiteral(tree: SeqLiteral, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformSeqLiteral(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformSeqLiteral(tree)(info.contexts(cur), info) match {
           case t: SeqLiteral => goSeqLiteral(t, info.nx.nxTransSeqLiteral(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -670,7 +718,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goTypeTree(tree: TypeTree, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformTypeTree(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformTypeTree(tree)(info.contexts(cur), info) match {
           case t: TypeTree => goTypeTree(t, info.nx.nxTransTypeTree(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -680,7 +729,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goSelectFromTypeTree(tree: SelectFromTypeTree, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformSelectFromTypeTree(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformSelectFromTypeTree(tree)(info.contexts(cur), info) match {
           case t: SelectFromTypeTree => goSelectFromTypeTree(t, info.nx.nxTransSelectFromTypeTree(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -690,7 +740,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goBind(tree: Bind, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformBind(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformBind(tree)(info.contexts(cur), info) match {
           case t: Bind => goBind(t, info.nx.nxTransBind(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -700,7 +751,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goAlternative(tree: Alternative, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformAlternative(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformAlternative(tree)(info.contexts(cur), info) match {
           case t: Alternative => goAlternative(t, info.nx.nxTransAlternative(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -710,7 +762,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goValDef(tree: ValDef, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformValDef(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformValDef(tree)(info.contexts(cur), info) match {
           case t: ValDef => goValDef(t, info.nx.nxTransValDef(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -720,7 +773,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goDefDef(tree: DefDef, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformDefDef(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformDefDef(tree)(info.contexts(cur), info) match {
           case t: DefDef => goDefDef(t, info.nx.nxTransDefDef(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -730,7 +784,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goUnApply(tree: UnApply, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformUnApply(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformUnApply(tree)(info.contexts(cur), info) match {
           case t: UnApply => goUnApply(t, info.nx.nxTransUnApply(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -740,7 +795,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goTypeDef(tree: TypeDef, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformTypeDef(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformTypeDef(tree)(info.contexts(cur), info) match {
           case t: TypeDef => goTypeDef(t, info.nx.nxTransTypeDef(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -750,7 +806,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goTemplate(tree: Template, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformTemplate(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformTemplate(tree)(info.contexts(cur), info) match {
           case t: Template => goTemplate(t, info.nx.nxTransTemplate(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -760,7 +817,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goPackageDef(tree: PackageDef, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
-        info.transformers(cur).transformPackageDef(tree) match {
+        val trans = info.transformers(cur)
+        trans.transformPackageDef(tree)(info.contexts(cur), info) match {
           case t: PackageDef => goPackageDef(t, info.nx.nxTransPackageDef(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -1070,7 +1128,8 @@ object TreeTransforms {
     @tailrec
     final private[TreeTransforms] def goStats(trees: List[Tree], cur: Int)(implicit ctx: Context, info: TransformerInfo): List[Tree] = {
       if (cur < info.transformers.length) {
-        val stats = info.transformers(cur).transformStats(trees)
+        val trans = info.transformers(cur)
+        val stats = trans.transformStats(trees)
         goStats(stats, info.nx.nxTransStats(cur + 1))
       } else trees
     }

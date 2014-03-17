@@ -25,7 +25,7 @@ import collection.immutable.BitSet
 import printing._
 import config.{Settings, ScalaSettings, Platform, JavaPlatform}
 import language.implicitConversions
-
+import DenotTransformers.DenotTransformer
 object Contexts {
 
   /** A context is passed basically everywhere in dotc.
@@ -460,8 +460,13 @@ object Contexts {
     /** Phases by id */
     private[core] var phases: Array[Phase] = _
 
+    /** Phases with consecutive Transforms groupped into a single phase */
+    private [core] var squashedPhases: Array[Phase] = _
+
     /** Next denotation transformer id */
-    private[core] var nextTransformerId: Array[Int] = _
+    private[core] var nextDenotTransformerId: Array[Int] = _
+
+    private[core] var denotTransformers: Array[DenotTransformer] = _
 
     // Printers state
     /** Number of recursive invocations of a show method on cuyrrent stack */

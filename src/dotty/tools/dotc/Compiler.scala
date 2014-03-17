@@ -11,27 +11,14 @@ import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.{LazyValsCreateCompanionObjects, LazyValTranformContext}
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransform, TreeTransformer}
 import dotty.tools.dotc.transform.PostTyperTransformers.PostTyperTransformer
+import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
+import dotty.tools.dotc.core.Denotations.SingleDenotation
 
 class Compiler {
 
-  def postTyperTransform = new PostTyperTransformer {
-    override def name: String = "PostTyperTransformations"
-    override protected def transformations: Array[(TreeTransformer, Int) => TreeTransform] =
-    Array(new LazyValsCreateCompanionObjects(_, _))
-  }
-
-  def lazyValsPhase = new TreeTransformer with DenotTransformer{
-
-    val lazyValsContext = new LazyValTranformContext()
-    override protected def transformations: Array[(TreeTransformer, Int) => TreeTransform] = {
-
-      Array(lazyValsContext.transformer(_, _))
-    }
-
-    override def name: String = "LazyVals"
-  }
-
-  def phases: List[Phase] = List(new FrontEnd, postTyperTransform, lazyValsPhase, new transform.SamplePhase)
+  def phases: List[Phase] = List(new FrontEnd, new LazyValsCreateCompanionObjects,
+    new Separator, //force separataion between lazyVals and LVCreateCO
+    new LazyValTranformContext().transformer, new UncurryTreeTransform)
 
   var runId = 1
   def nextRunId = {

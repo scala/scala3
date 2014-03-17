@@ -501,9 +501,8 @@ object Denotations {
     def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
       val valid = myValidFor
-      if(valid.code < 0) {
-        println("EEEEEEEE")
-      }
+      assert(valid.code > 0, s"negative period $valid: ${valid.code}")
+
       if (valid.runId != currentPeriod.runId) bringForward.current
       else {
         var cur = this
@@ -517,12 +516,15 @@ object Denotations {
           if (next.validFor.code > valid.code) {
             // in this case, next.validFor contains currentPeriod
             cur = next
+            cur
           } else {
             // not found, cur points to highest existing variant
             var startPid = cur.validFor.lastPhaseId + 1
-            val transformer = ctx.phases(startPid - 1).asInstanceOf[DenotTransformer]
+            val nextTranformerId = ctx.nextDenotTransformerId(startPid)
+            val transformer = ctx.denotTransformers(nextTranformerId)
             //println(s"transforming with $transformer")
-            next = transformer.transform(cur).syncWithParents
+            if (currentPeriod.lastPhaseId > transformer.id)
+              next = transformer.transform(cur).syncWithParents
             if (next eq cur)
               startPid = cur.validFor.firstPhaseId
             else {
@@ -537,6 +539,7 @@ object Denotations {
             cur.validFor = Period(
               currentPeriod.runId, startPid, transformer.lastPhaseId)
             //println(s"new denot: $cur, valid for ${cur.validFor}")
+            cur.current // multiple transformations could be required
           }
         } else {
           // currentPeriod < end of valid; in this case a version must exist
@@ -548,8 +551,9 @@ object Denotations {
             cnt += 1
             assert(cnt <= MaxPossiblePhaseId, s"seems to be a loop in Denotations for $this, currentPeriod = $currentPeriod")
           }
+          cur
         }
-        cur
+
       }
     }
 
