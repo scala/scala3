@@ -2,9 +2,7 @@ package dotty.tools
 package dotc
 package parsing
 
-import collection.mutable
 import collection.immutable.BitSet
-import scala.annotation.switch
 
 object Tokens {
 

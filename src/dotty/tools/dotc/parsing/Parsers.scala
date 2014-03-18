@@ -13,14 +13,10 @@ import Flags._
 import Contexts._
 import Names._
 import ast.Trees._
-import ast.TreeInfo
 import Decorators._
 import StdNames._
 import util.Positions._
-import Types._
 import Constants._
-import NameOps._
-import util.Chars._
 import ScriptParsers._
 import annotation.switch
 import util.DotClass

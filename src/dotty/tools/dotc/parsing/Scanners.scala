@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package parsing
 
-import Tokens._
 import core.Names._, core.Contexts._, core.Decorators._, util.Positions._
 import core.StdNames._
 import util.SourceFile
@@ -10,9 +9,10 @@ import java.lang.Character.isDigit
 import scala.reflect.internal.Chars._
 import Tokens._
 import scala.annotation.{ switch, tailrec }
-import scala.collection.{ mutable, immutable }
-import mutable.{ ListBuffer, ArrayBuffer }
-import scala.xml.Utility.isNameStart
+import scala.collection.mutable
+import mutable.ListBuffer
+import Utility.isNameStart
+
 
 object Scanners {
 

@@ -2,12 +2,11 @@ package dotty.tools
 package dotc
 package parsing
 
-import scala.collection.{ mutable, immutable }
+import scala.collection.mutable
 import scala.xml.{ EntityRef, Text }
-import scala.xml.XML.{ xmlns }
 import core._
 import Flags.Mutable
-import Names._, NameOps._, StdNames._, Decorators._, ast.Trees._, ast.{tpd, untpd}, Constants._
+import Names._, StdNames._, ast.Trees._, ast.{tpd, untpd}
 import Symbols._, Contexts._
 import util.Positions._
 import Parsers.Parser
@@ -203,7 +202,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
 
     /** Extract all the namespaces from the attribute map. */
     val namespaces: List[Tree] =
-      for (z <- attrMap.keys.toList ; if z startsWith xmlns) yield {
+      for (z <- attrMap.keys.toList ; if z startsWith "xmlns") yield {
         val ns = splitPrefix(z) match {
           case (Some(_), rest)  => rest
           case _                => null

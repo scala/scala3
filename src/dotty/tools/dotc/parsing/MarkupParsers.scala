@@ -5,15 +5,12 @@ package parsing
 import scala.collection.mutable
 import mutable.{ Buffer, ArrayBuffer, ListBuffer }
 import scala.util.control.ControlThrowable
-import util.SourceFile
-import scala.xml.{ Text, TextBuffer }
-import scala.xml.Utility.{ isNameStart, isNameChar, isSpace }
-import scala.reflect.internal.Chars.{ SU, LF }
+import scala.reflect.internal.Chars.SU
 import Parsers._
 import util.Positions._
 import core._
-import ast.Trees._
 import Constants._
+import Utility._
 
 
 // XXX/Note: many/most of the functions in here are almost direct cut and pastes
@@ -50,7 +47,7 @@ object MarkupParsers {
 
   class MarkupParser(parser: Parser, final val preserveWS: Boolean) extends MarkupParserCommon {
 
-    import Tokens.{ EMPTY, LBRACE, RBRACE }
+    import Tokens.{ LBRACE, RBRACE }
 
     type PositionType = Position
     type InputType    = CharArrayReader
@@ -181,11 +178,20 @@ object MarkupParsers {
     }
 
     def appendText(pos: Position, ts: Buffer[Tree], txt: String): Unit = {
-      val toAppend =
-        if (preserveWS) Seq(txt)
-        else TextBuffer.fromString(txt).toText map (_.text)
+      def append(t: String) = ts append handle.text(pos, t)
 
-      toAppend foreach (t => ts append handle.text(pos, t))
+      if (preserveWS) append(txt)
+      else {
+        val sb = new StringBuilder()
+
+        txt foreach { c =>
+          if (!isSpace(c)) sb append c
+          else if (sb.isEmpty || !isSpace(sb.last)) sb append ' '
+        }
+
+        val trimmed = sb.toString.trim
+        if (!trimmed.isEmpty) append(trimmed)
+      }
     }
 
     /** adds entity/character to ts as side-effect
