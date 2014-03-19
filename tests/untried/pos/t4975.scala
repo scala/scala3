@@ -4,7 +4,7 @@ object ImplicitScope {
   def foo: Unit = {
     trait B
     object B {
-      implicit def ab = new A[B]
+      implicit def ab: ImplicitScope.A[B] = new A[B]
     }
 
     implicitly[A[B]]  // Error

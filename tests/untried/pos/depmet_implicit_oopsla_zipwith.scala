@@ -9,13 +9,13 @@ trait ZipWith[N, S] {
   def zipWith: N => S => T = n => f => manyApp(n)(continually(f))
 }
 object ZipWith {
-  implicit def ZeroZipWith[S] = new ZipWith[Zero, S] {
+  implicit def ZeroZipWith[S]: ZipWith[Zero,S]{type T = Stream[S]} = new ZipWith[Zero, S] {
     type T = Stream[S]
 
     def manyApp = n => xs => xs
   }
 
-  implicit def SuccZipWith[N, S, R](implicit zw: ZipWith[N, R]) =
+  implicit def SuccZipWith[N, S, R](implicit zw: ZipWith[N, R]): ZipWith[Succ[N],S => R]{type T = Stream[S] => zw.T; def zapp[A, B](xs: Stream[A => B],ys: Stream[A]): Stream[B]} =
     new ZipWith[Succ[N],S => R] {
       type T = Stream[S] => zw.T
 

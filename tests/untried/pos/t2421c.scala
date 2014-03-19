@@ -10,8 +10,8 @@ object Test {
 
   // generalised from t2421b to verify we check enough
   class G[X]
-  implicit def g[X] = new G[X]()
-  implicit def b[X <: B](implicit mx: G[X]) = new F[X]()
+  implicit def g[X]: Test.G[X] = new G[X]()
+  implicit def b[X <: B](implicit mx: G[X]): Test.F[X] = new F[X]()
 
   f
 }

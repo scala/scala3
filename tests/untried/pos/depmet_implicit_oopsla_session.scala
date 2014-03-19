@@ -11,7 +11,7 @@ object Sessions {
     def run(p: Stop, dp: Stop): Unit = {}
   }
 
-  implicit def InDual[A, B](implicit sessionDIn: Session[B]) =
+  implicit def InDual[A, B](implicit sessionDIn: Session[B]): Sessions.Session[Sessions.In[A,B]]{type Dual = Sessions.Out[A,sessionDIn.Dual]} =
     new Session[In[A, B]] {
       type Dual = Out[A, sessionDIn.Dual]
 
@@ -19,7 +19,7 @@ object Sessions {
         sessionDIn.run(p.func(dp.x), dp.y)
   }
 
-  implicit def OutDual[A, B](implicit sessionDOut: Session[B]) =
+  implicit def OutDual[A, B](implicit sessionDOut: Session[B]): Sessions.Session[Sessions.Out[A,B]]{type Dual = Sessions.In[A,sessionDOut.Dual]} =
     new Session[Out[A, B]] {
      type Dual = In[A, sessionDOut.Dual]
 

@@ -5,7 +5,7 @@ trait InvariantFunctor[F[_]] {
 object InvariantFunctor {
   import Endo._
 
-  implicit val EndoInvariantFunctor = new InvariantFunctor[Endo] {
+  implicit val EndoInvariantFunctor: InvariantFunctor[Endo] = new InvariantFunctor[Endo] {
     def xmap[A, B](ma: Endo[A], f: A => B, g: B => A): Endo[B] = (b: B) => f(ma(g(b)))
   }
 

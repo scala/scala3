@@ -10,7 +10,7 @@ class RichA {
 
 object Test {
 
-  implicit def AToRichA(a: A) = new RichA
+  implicit def AToRichA(a: A): RichA = new RichA
 
   val a = new A
   a.foo()
@@ -36,7 +36,7 @@ object test1 {
     def apply(t : T) = (s:T2) => f(t,s)
     def apply(p : (T,T2)) = f(p._1,p._2)
   }
-  implicit def g[T](f : (T,String) => String) = Foo(f)
+  implicit def g[T](f : (T,String) => String): test1.Foo[T,String] = Foo(f)
   def main(args : Array[String]) : Unit = {
     val f = (x:Int,s:String) => s + x
     println(f(1))
@@ -46,7 +46,7 @@ object test1 {
 object Main {
   def main(args : Array[String]): Unit = {
     val fn = (a : Int, str : String) => "a: " + a + ", str: " + str
-    implicit def fx[T](f : (T,String) => String) = (x:T) => f(x,null)
+    implicit def fx[T](f : (T,String) => String): T => String = (x:T) => f(x,null)
     println(fn(1))
     ()
   }

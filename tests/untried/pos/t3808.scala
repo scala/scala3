@@ -1,7 +1,7 @@
 object Test {
   def meh: Unit = {
     trait TC[I]
-    implicit val tci = new TC[Int]{}
+    implicit val tci: TC[Int] = new TC[Int]{}
 
     def baz[J : TC] : String = "meh"
 

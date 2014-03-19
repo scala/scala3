@@ -33,7 +33,7 @@ object Sessions {
   //            CD is the dual of Cont
   // -------------------------------------------[InDual]
   // Out[Data, CD] is the dual of In[Data, Cont]
-  implicit def InDual[Data, Cont](implicit cont: Session[Cont]) = new Session[In[Data, Cont]] {
+  implicit def InDual[Data, Cont](implicit cont: Session[Cont]): Sessions.Session[Sessions.In[Data,Cont]]{type Dual = Sessions.Out[Data,cont.Dual]} = new Session[In[Data, Cont]] {
     type Dual = Out[Data, cont.Dual]
 
     def run(self: Self, dual: Dual): Unit =
@@ -43,7 +43,7 @@ object Sessions {
   //            CD is the dual of Cont
   // -------------------------------------------[OutDual]
   // In[Data, CD] is the dual of Out[Data, Cont]
-  implicit def OutDual[Data, Cont](implicit cont: Session[Cont]) = new Session[Out[Data, Cont]] {
+  implicit def OutDual[Data, Cont](implicit cont: Session[Cont]): Sessions.Session[Sessions.Out[Data,Cont]]{type Dual = Sessions.In[Data,cont.Dual]} = new Session[Out[Data, Cont]] {
     type Dual = In[Data, cont.Dual]
 
     def run(self: Self, dual: Dual): Unit =

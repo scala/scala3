@@ -12,8 +12,8 @@ class Test {
   class Foo2 {
     def must(x: Int) = ()
   }
-  implicit def toFoo1(s: Elem) = new Foo1()
-  implicit def toFoo2(s: Elem) = new Foo2()
+  implicit def toFoo1(s: Elem): Test.this.Foo1 = new Foo1()
+  implicit def toFoo2(s: Elem): Test.this.Foo2 = new Foo2()
 
   def is: Unit = { (elem) }
 }
