@@ -8,21 +8,16 @@
 package dotty.tools.dotc
 package parsing
 
-import scala.xml._
-import scala.xml.parsing._
+import Utility._
+import scala.reflect.internal.Chars.SU
 
-import scala.io.Source
-import scala.xml.dtd._
-import scala.annotation.switch
-import Utility.Escapes.{ pairs => unescape }
 
-import Utility.SU
 
 /** This is not a public trait - it contains common code shared
  *  between the library level XML parser and the compiler's.
  *  All members should be accessed through those.
  */
-private[dotty] trait MarkupParserCommon extends TokenTests {
+private[dotty] trait MarkupParserCommon {
   protected def unreachable = scala.sys.error("Cannot be reached.")
 
   // type HandleType       // MarkupHandler, SymbolicXMLBuilder

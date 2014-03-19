@@ -2,21 +2,9 @@ package dotty.tools
 package dotc
 package parsing
 
-import util.{ SourceFile, FreshNameCreator }
+import util.SourceFile
 import core._
-import Flags._
 import Contexts._
-import Names._
-import ast.Trees._
-import Decorators._
-import StdNames._
-import util.Chars.isScalaLetter
-import util.Positions._
-import Types._
-import Constants._
-import NameOps._
-import scala.reflect.internal.Chars._
-import annotation.switch
 import Parsers._
 
 
