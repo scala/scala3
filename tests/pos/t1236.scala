@@ -4,7 +4,7 @@ trait Empty[E[_]] {
 
 object T {
   val ListEmpty = new Empty[List] {
-    def e[A]/*: List*/ = Nil  // uncomment to get crash
+    def e[B] = Nil
   }
 
   def foo[F[_]](q:(String,String)) = "hello"

@@ -137,6 +137,8 @@ class TypeApplications(val self: Type) extends AnyVal {
         tp.underlying.appliedTo(args)
       case AndType(l, r) =>
         l.appliedTo(args) & r
+      case tp: PolyType =>
+        tp.instantiate(args)
       case ErrorType =>
         self
     }

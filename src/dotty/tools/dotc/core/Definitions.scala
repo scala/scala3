@@ -359,12 +359,6 @@ class Definitions {
    */
   def hkTrait(vcs: List[Int]) = {
 
-    def varianceSuffix(v: Int) = v match {
-      case -1 => "N"
-      case  0 => "I"
-      case  1 => "P"
-    }
-
     def varianceFlags(v: Int) = v match {
       case -1 => Contravariant
       case  0 => Covariant
@@ -375,14 +369,13 @@ class Definitions {
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
         val cls = denot.asClass.classSymbol
         val paramDecls = newScope
-        for ((v, i) <- vcs.zipWithIndex)
-          newTypeParam(cls, tpnme.higherKindedParamName(i), varianceFlags(v), paramDecls)
+        for (i <- 0 until vcs.length)
+          newTypeParam(cls, tpnme.higherKindedParamName(i), EmptyFlags, paramDecls)
         denot.info = ClassInfo(ScalaPackageClass.thisType, cls, List(ObjectClass.typeRef), paramDecls)
       }
     }
 
-    val traitName =
-      tpnme.higherKindedTraitName(vcs.length) ++ (vcs map varianceSuffix).mkString
+    val traitName = tpnme.higherKindedTraitName(vcs)
 
     def createTrait = {
       val cls = newClassSymbol(

@@ -22,6 +22,7 @@ object Printers {
   val unapp: Printer = noPrinter
   val completions = noPrinter
   val gadts = noPrinter
+  val hk = noPrinter
   val incremental = noPrinter
   val config = noPrinter
 }

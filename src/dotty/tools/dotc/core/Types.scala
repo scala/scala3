@@ -123,7 +123,7 @@ object Types {
     final def isLegalPrefix(implicit ctx: Context): Boolean =
       isStable || {
         val absTypeNames = memberNames(abstractTypeNameFilter)
-        if (absTypeNames.nonEmpty) typr.println(s"abstract type members of ${this.showWithUnderlying}: $absTypeNames")
+        if (absTypeNames.nonEmpty) typr.println(s"abstract type members of ${this.showWithUnderlying()}: $absTypeNames")
         absTypeNames.isEmpty
       }
 
@@ -815,11 +815,11 @@ object Types {
     /** Convert to text */
     def toText(printer: Printer): Text = printer.toText(this)
 
-    /** Utility method to show the underlying type of a TypeProxy together
+    /** Utility method to show the underlying type of a TypeProxy chain together
      *  with the proxy type itself.
      */
-    def showWithUnderlying(implicit ctx: Context): String = this match {
-      case tp: TypeProxy => s"$show with underlying ${tp.underlying.show}"
+    def showWithUnderlying(n: Int = 1)(implicit ctx: Context): String = this match {
+      case tp: TypeProxy if n > 0 => s"$show with underlying ${tp.underlying.showWithUnderlying(n - 1)}"
       case _ => show
     }
 
@@ -1309,12 +1309,13 @@ object Types {
       lazy val underlyingTypeParams = parent.safeUnderlyingTypeParams
       lazy val originalTypeParam = underlyingTypeParams(refinedName.hkParamIndex)
 
-      /** drop any co/contra variance in refined info if variance disagrees
-       *  with new type param
+      /** Use variance of newly instantiated type parameter rather than the old hk argument
        */
-      def adjustedHKRefinedInfo(hkBounds: TypeBounds) = {
-        if (hkBounds.variance == originalTypeParam.info.bounds.variance) hkBounds
-        else TypeBounds(hkBounds.lo, hkBounds.hi)
+      def adjustedHKRefinedInfo(hkBounds: TypeBounds, underlyingTypeParam: TypeSymbol) = hkBounds match {
+        case tp @ TypeBounds(lo, hi) if lo eq hi =>
+          tp.derivedTypeBounds(lo, hi, underlyingTypeParam.variance)
+        case _ =>
+          hkBounds
       }
 
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))
@@ -1323,7 +1324,8 @@ object Types {
  //            && { println(s"deriving $refinedName $parent $underlyingTypeParams"); true }
                && refinedName.hkParamIndex < underlyingTypeParams.length
                && originalTypeParam.name != refinedName)
-        derivedRefinedType(parent, originalTypeParam.name, adjustedHKRefinedInfo(refinedInfo.bounds))
+        derivedRefinedType(parent, originalTypeParam.name,
+            adjustedHKRefinedInfo(refinedInfo.bounds, underlyingTypeParams(refinedName.hkParamIndex)))
       else
         RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
     }
