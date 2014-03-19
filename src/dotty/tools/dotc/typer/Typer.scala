@@ -209,7 +209,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           if (qualifies(defDenot)) {
             val curOwner = ctx.owner
             val found =
-              if (isSelfDenot(defDenot)) curOwner.thisType
+              if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
               else curOwner.thisType.select(name, defDenot)
             if (!(curOwner is Package) || (defDenot.symbol is Package) || isDefinedInCurrentUnit(defDenot))
               return checkNewOrShadowed(found, definition) // no need to go further out, we found highest prec entry
