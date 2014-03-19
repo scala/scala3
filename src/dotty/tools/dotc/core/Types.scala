@@ -121,7 +121,11 @@ object Types {
      *  !!! Todo: What about non-final vals that contain abstract types?
      */
     final def isLegalPrefix(implicit ctx: Context): Boolean =
-      isStable || memberNames(abstractTypeNameFilter).isEmpty
+      isStable || {
+        val absTypeNames = memberNames(abstractTypeNameFilter)
+        if (absTypeNames.nonEmpty) typr.println(s"abstract type members of ${this.showWithUnderlying}: $absTypeNames")
+        absTypeNames.isEmpty
+      }
 
     /** Is this type guaranteed not to have `null` as a value?
      *  For the moment this is only true for modules, but it could
@@ -810,6 +814,14 @@ object Types {
 
     /** Convert to text */
     def toText(printer: Printer): Text = printer.toText(this)
+
+    /** Utility method to show the underlying type of a TypeProxy together
+     *  with the proxy type itself.
+     */
+    def showWithUnderlying(implicit ctx: Context): String = this match {
+      case tp: TypeProxy => s"$show with underlying ${tp.underlying.show}"
+      case _ => show
+    }
 
     type VarianceMap = SimpleMap[TypeVar, Integer]
 
@@ -2407,7 +2419,15 @@ object Types {
   /** A filter for names of abstract types of a given type */
   object abstractTypeNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
-      name.isTypeName && ((pre member name).symbol is Deferred)
+      name.isTypeName && {
+        val mbr = pre.member(name)
+        (mbr.symbol is Deferred) && {
+          mbr.info match {
+            case TypeBounds(lo, hi) => lo ne hi
+            case _ => false
+          }
+        }
+      }
   }
 
   /** A filter for names of deferred term definitions of a given type */

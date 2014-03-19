@@ -63,6 +63,7 @@ class tests extends CompilerTest {
   @Test def neg_autoTupling = compileFile(posDir, "autoTuplingTest", "-language:noAutoTupling" :: Nil, xerrors = 3)
   @Test def neg_autoTupling2 = compileFile(negDir, "autoTuplingTest", xerrors = 3)
   @Test def neg_t0654_polyalias = compileFile(negDir, "t0654", xerrors = 2)
+  @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)
