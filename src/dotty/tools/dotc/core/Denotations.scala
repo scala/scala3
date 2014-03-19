@@ -11,7 +11,7 @@ import Symbols._
 import Types._
 import Periods._
 import Flags._
-import Transformers._
+import DenotTransformers._
 import Decorators._
 import transform.Erasure
 import printing.Texts._
@@ -191,6 +191,9 @@ object Denotations {
 
     def requiredValue(name: PreName)(implicit ctx: Context): TermSymbol =
       info.member(name.toTermName).requiredSymbol(_.info.isParameterless).asTerm
+
+    def requiredClass(name: PreName)(implicit ctx: Context): ClassSymbol =
+      info.member(name.toTypeName).requiredSymbol(_.isClass).asClass
 
     /** The denotation that has a type matching `targetType` when seen
      *  as a member of type `site`, `NoDenotation` if none exists.
@@ -387,7 +390,6 @@ object Denotations {
       if ((symbol eq this.symbol) && (info eq this.info)) this
       else newLikeThis(symbol, info)
 
-
     def orElse(that: => SingleDenotation) = if (this.exists) this else that
 
     def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
@@ -515,8 +517,8 @@ object Denotations {
           } else {
             // not found, cur points to highest existing variant
             var startPid = cur.validFor.lastPhaseId + 1
-            val transformers = ctx.transformersFor(cur)
-            val transformer = transformers.nextTransformer(startPid)
+            val transformer = ctx.phases(startPid - 1).asInstanceOf[DenotTransformer]
+            //println(s"transforming with $transformer")
             next = transformer.transform(cur).syncWithParents
             if (next eq cur)
               startPid = cur.validFor.firstPhaseId
@@ -525,20 +527,23 @@ object Denotations {
                 case next: ClassDenotation => next.resetFlag(Frozen)
                 case _ =>
               }
+              next.nextInRun = cur.nextInRun
               cur.nextInRun = next
               cur = next
             }
             cur.validFor = Period(
               currentPeriod.runId, startPid, transformer.lastPhaseId)
+            //println(s"new denot: $cur, valid for ${cur.validFor}")
           }
         } else {
-          // currentPeriod < valid; in this case a version must exist
+          // currentPeriod < end of valid; in this case a version must exist
           // but to be defensive we check for infinite loop anyway
           var cnt = 0
           while (!(cur.validFor contains currentPeriod)) {
+            //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
             cur = cur.nextInRun
             cnt += 1
-            assert(cnt <= MaxPossiblePhaseId, "seems to be a loop in Denotations")
+            assert(cnt <= MaxPossiblePhaseId, s"seems to be a loop in Denotations for $this, currentPeriod = $currentPeriod")
           }
         }
         cur

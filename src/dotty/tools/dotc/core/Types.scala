@@ -2169,7 +2169,7 @@ object Types {
       annot.derivedAnnotation(mapOver(annot.tree))
 
     def mapOver(tree: Tree): Tree =
-      new TreeMapper(this).apply(tree)
+      new TreeTypeMap(this).apply(tree)
 
     /** Can be overridden. By default, only the prefix is mapped. */
     protected def mapClassInfo(tp: ClassInfo): ClassInfo =

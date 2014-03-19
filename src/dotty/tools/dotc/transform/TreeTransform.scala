@@ -7,6 +7,7 @@ import dotty.tools.dotc.ast.Trees._
 import scala.annotation.tailrec
 
 object TreeTransforms {
+  import tpd._
 
   /** The base class of tree transforms. For each kind of tree K, there are
     * two methods which can be overridden:
@@ -46,8 +47,6 @@ object TreeTransforms {
     *            for achieving this goal, but there can be no wasted cycles anywhere.
     */
   class TreeTransform(group: TreeTransformer, idx: Int) {
-
-    import tpd._
 
     def prepareForIdent(tree: Ident) = this
     def prepareForSelect(tree: Select) = this
@@ -390,10 +389,7 @@ object TreeTransforms {
   /** A group of tree transforms that are applied in sequence during the same phase */
   abstract class TreeTransformer extends Phase {
 
-    import tpd.{TreeTransformer => _, _}
-
     protected def transformations: Array[(TreeTransformer, Int) => TreeTransform]
-
 
     override def run(implicit ctx: Context): Unit = {
       val curTree = ctx.compilationUnit.tpdTree
