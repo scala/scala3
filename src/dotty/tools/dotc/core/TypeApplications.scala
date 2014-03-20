@@ -10,6 +10,7 @@ import util.common._
 import Names._
 import Flags._
 import util.Positions.Position
+import config.Printers._
 import collection.mutable
 
 object TypeApplications {
@@ -195,13 +196,32 @@ class TypeApplications(val self: Type) extends AnyVal {
       NoType
   }
 
-  /** The base type including all type arguments of this type.
+  /** The base type including all type arguments and applicable refinements
+   *  of this type. Refinements are applicable if they refine a member of
+   *  the parent type which furthermore is not a name-mangled type parameter.
    *  Existential types in arguments are returned as TypeBounds instances.
    */
-  final def baseTypeWithArgs(base: Symbol)(implicit ctx: Context): Type = self.dealias match {
-    case AndType(tp1, tp2) => tp1.baseTypeWithArgs(base) & tp2.baseTypeWithArgs(base)
-    case OrType(tp1, tp2) => tp1.baseTypeWithArgs(base) | tp2.baseTypeWithArgs(base)
-    case _ => self.baseTypeRef(base).appliedTo(baseArgInfos(base))
+  final def baseTypeWithArgs(base: Symbol)(implicit ctx: Context): Type = ctx.traceIndented(s"btwa ${self.show} wrt $base", core, show = true) {
+    def default = self.baseTypeRef(base).appliedTo(baseArgInfos(base))
+    self match {
+      case tp: TypeRef =>
+        tp.info match {
+          case TypeBounds(_, hi) => hi.baseTypeWithArgs(base)
+          case _ => default
+        }
+      case tp @ RefinedType(parent, name) if !tp.member(name).symbol.is(ExpandedTypeParam) =>
+        val pbase = parent.baseTypeWithArgs(base)
+        if (pbase.member(name).exists) RefinedType(pbase, name, tp.refinedInfo)
+        else pbase
+      case tp: TermRef =>
+        tp.underlying.baseTypeWithArgs(base)
+      case AndType(tp1, tp2) =>
+        tp1.baseTypeWithArgs(base) & tp2.baseTypeWithArgs(base)
+      case OrType(tp1, tp2) =>
+        tp1.baseTypeWithArgs(base) | tp2.baseTypeWithArgs(base)
+      case _ =>
+        default
+    }
   }
 
   /** Translate a type of the form From[T] to To[T], keep other types as they are.
