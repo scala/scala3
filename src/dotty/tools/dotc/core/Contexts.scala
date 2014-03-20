@@ -273,7 +273,7 @@ object Contexts {
       newctx.implicitsCache = null
       newctx.setCreationTrace()
         // Dotty deviation: Scala2x allows access to private members implicitCache and setCreationTrace
-        // even from a subclass prefix. Dotty (and Java) do not. I think that's a bug in Scala2x.
+        // even from a subclass prefix. Dotty (and Java) do not. It's confirmed as a bug in Scala2x.
       newctx.asInstanceOf[FreshContext]
     }
 

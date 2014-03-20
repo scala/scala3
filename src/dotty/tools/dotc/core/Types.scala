@@ -102,8 +102,19 @@ object Types {
     }
 
     /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
-    final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean =
-      classSymbol.derivesFrom(cls)
+    final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean = this match {
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        if (sym.isClass) sym.derivesFrom(cls) else tp.underlying.derivesFrom(cls)
+      case tp: TypeProxy =>
+        tp.underlying.derivesFrom(cls)
+      case tp: AndType =>
+        tp.tp1.derivesFrom(cls) || tp.tp2.derivesFrom(cls)
+      case tp: OrType =>
+        tp.tp1.derivesFrom(cls) && tp.tp2.derivesFrom(cls)
+      case _ =>
+        false
+    }
 
    /** A type T is a legal prefix in a type selection T#A if
      *  T is stable or T contains no abstract types
@@ -254,6 +265,7 @@ object Types {
 
     /** The base classes of this type as determined by ClassDenotation
      *  in linearization order, with the class itself as first element.
+     *  For AndTypes/OrTypes, the union/intersection of the operands' baseclasses.
      *  Inherited by all type proxies. `Nil` for all other types.
      */
     final def baseClasses(implicit ctx: Context): List[ClassSymbol] = track("baseClasses") {
@@ -262,6 +274,10 @@ object Types {
           tp.underlying.baseClasses
         case tp: ClassInfo =>
           tp.cls.baseClasses
+        case AndType(tp1, tp2) =>
+          tp1.baseClasses union tp2.baseClasses
+        case OrType(tp1, tp2) =>
+          tp1.baseClasses intersect tp2.baseClasses
         case _ => Nil
       }
     }
@@ -685,6 +701,13 @@ object Types {
       case _ => Nil
     }
 
+    /** The parameter types in the first parameter section of a PolyType or MethodType, Empty list for others */
+    final def firstParamTypes: List[Type] = this match {
+      case mt: MethodType => mt.paramTypes
+      case pt: PolyType => pt.resultType.firstParamTypes
+      case _ => Nil
+    }
+
     /** Is this either not a method at all, or a parameterless method? */
     final def isParameterless: Boolean = this match {
       case mt: MethodType => false
@@ -821,6 +844,19 @@ object Types {
      *  maps poly params in the current constraint set back to their type vars.
      */
     def simplified(implicit ctx: Context) = ctx.simplify(this, null)
+
+    /** Approximations of union types: We replace a union type Tn | ... | Tn
+     *  by the smallest intersection type of baseclass instances of T1,...,Tn.
+     *  Example: Given
+     *
+     *      trait C[+T]
+     *      trait D
+     *      class A extends C[A] with D
+     *      class B extends C[B] with D with E
+     *
+     *  we approximate `A | B` by `C[A | B] with D`
+     */
+    def approximateUnion(implicit ctx: Context) = ctx.approximateUnion(this)
 
     /** customized hash code of this type.
      *  NotCached for uncached types. Cached types
@@ -1332,6 +1368,10 @@ object Types {
       if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
       else AndType.make(tp1, tp2)
 
+    def derived_& (tp1: Type, tp2: Type)(implicit ctx: Context): Type =
+      if ((tp1 eq this.tp1) && (tp2 eq this.tp2)) this
+      else tp1 & tp2
+
     def derivedAndOrType(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       derivedAndType(tp1, tp2)
 
@@ -1712,10 +1752,38 @@ object Types {
         case OrType(tp1, tp2) => isSingleton(tp1) & isSingleton(tp2)
         case _ => false
       }
+      def isFullyDefined(tp: Type): Boolean = tp match {
+        case tp: TypeVar => tp.isInstantiated && isFullyDefined(tp.instanceOpt)
+        case tp: TypeProxy => isFullyDefined(tp.underlying)
+        case tp: AndOrType => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
+        case _ => true
+      }
+      def isOrType(tp: Type): Boolean = tp.stripTypeVar.dealias match {
+        case tp: OrType => true
+        case AndType(tp1, tp2) => isOrType(tp1) | isOrType(tp2)
+        case RefinedType(parent, _) => isOrType(parent)
+        case WildcardType(bounds: TypeBounds) => isOrType(bounds.hi)
+        case _ => false
+      }
+
+      // First, solve the constraint.
       var inst = ctx.typeComparer.approximation(origin, fromBelow)
+
+      // Then, approximate by (1.) and (2.) and simplify as follows.
+      // 1. If instance is from below and is a singleton type, yet
+      // upper bound is not a singleton type, widen the instance.
       if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
         inst = inst.widen
-      instantiateWith(inst.simplified)
+        
+      inst = inst.simplified
+
+      // 2. If instance is from below and is a fully-defined union type, yet upper bound
+      // is not a union type, approximate the union type from above by an intersection
+      // of all common base types.
+      if (fromBelow && isOrType(inst) && isFullyDefined(inst) && !isOrType(upperBound))
+        inst = inst.approximateUnion
+        
+      instantiateWith(inst)
     }
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
@@ -1856,7 +1924,7 @@ object Types {
 
     def | (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
       val v = this commonVariance that
-      if (v == 0 && (this.lo eq this.hi) && (that.lo eq that.hi))
+      if (v != 0 && (this.lo eq this.hi) && (that.lo eq that.hi))
         if (v > 0) derivedTypeAlias(this.hi | that.hi, v)
         else derivedTypeAlias(this.lo & that.lo, v)
       else derivedTypeBounds(this.lo & that.lo, this.hi | that.hi, v)

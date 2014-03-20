@@ -5,6 +5,7 @@ import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
 import SymDenotations._
 import config.Printers._
 import Decorators._
+import StdNames._
 import util.SimpleMap
 
 trait TypeOps { this: Context =>
@@ -74,6 +75,37 @@ trait TypeOps { this: Context =>
 
   class SimplifyMap extends TypeMap {
     def apply(tp: Type) = simplify(tp, this)
+  }
+
+  /** Approximate union type by intersection of its dominators.
+   *  See Type#approximateUnion for an explanation.
+   */
+  def approximateUnion(tp: Type): Type = {
+    /** a faster version of cs1 intersect cs2 */
+    def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] = {
+      val cs2AsSet = new util.HashSet[ClassSymbol](100)
+      cs2.foreach(cs2AsSet.addEntry)
+      cs1.filter(cs2AsSet.contains)
+    }
+    /** The minimal set of classes in `cs` which derive all other classes in `cs` */
+    def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
+      case c :: rest =>
+        val accu1 = if (accu exists (_ derivesFrom c)) accu else c :: accu
+        if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
+    }
+    if (ctx.featureEnabled(defn.LanguageModuleClass, nme.keepUnions)) tp
+    else tp match {
+      case tp: OrType =>
+        val commonBaseClasses = tp.mapReduceOr(_.baseClasses)(intersect)
+        val doms = dominators(commonBaseClasses, Nil)
+        doms.map(tp.baseTypeWithArgs).reduceLeft(AndType.apply)
+      case tp @ AndType(tp1, tp2) =>
+        tp derived_& (approximateUnion(tp1), approximateUnion(tp2))
+      case tp: RefinedType =>
+        tp.derivedRefinedType(approximateUnion(tp.parent), tp.refinedName, tp.refinedInfo)
+      case _ =>
+        tp
+    }
   }
 
   /** A type is volatile if its DNF contains an alternative of the form
@@ -266,6 +298,44 @@ trait TypeOps { this: Context =>
     }
     parentRefs
   }
+
+  /** Is `feature` enabled in class `owner`?
+   *  This is the case if one of the following two alternatives holds:
+   *
+   *  1. The feature is imported by a named import
+   *
+   *       import owner.feature
+   *
+   *  (the feature may be bunched with others, or renamed, but wildcard imports
+   *  don't count).
+   *
+   *  2. The feature is enabled by a compiler option
+   *
+   *       - language:<prefix>feature
+   *
+   *  where <prefix> is the full name of the owner followed by a "." minus
+   *  the prefix "dotty.language.".
+   */
+  def featureEnabled(owner: ClassSymbol, feature: TermName): Boolean = {
+    def toPrefix(sym: Symbol): String =
+      if (sym eq defn.LanguageModuleClass) "" else toPrefix(sym.owner) + sym.name + "."
+    def featureName = toPrefix(owner) + feature
+    def hasImport(implicit ctx: Context): Boolean = (
+         ctx.importInfo != null
+      && (   (ctx.importInfo.site.widen.typeSymbol eq owner)
+          && ctx.importInfo.originals.contains(feature)
+          ||
+          { var c = ctx.outer
+            while (c.importInfo eq ctx.importInfo) c = c.outer
+            hasImport(c)
+          }))
+    def hasOption = ctx.base.settings.language.value exists (s => s == featureName || s == "_")
+    hasImport || hasOption
+  }
+
+  /** Is auto-tupling enabled? */
+  def canAutoTuple =
+    !featureEnabled(defn.LanguageModuleClass, nme.noAutoTupling)
 }
 
 object TypeOps {
