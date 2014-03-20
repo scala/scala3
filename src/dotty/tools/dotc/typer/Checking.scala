@@ -124,7 +124,7 @@ trait Checking extends NoChecking {
     for (decl <- cls.info.decls) {
       for (other <- seen(decl.name)) {
         typr.println(i"conflict? $decl $other")
-        if (decl.signature == other.signature) {
+        if (decl.signature matches other.signature) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit = {
             def ofType = if (decl.isType) "" else i": ${other.info}"
             def explanation =
