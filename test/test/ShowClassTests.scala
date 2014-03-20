@@ -66,7 +66,7 @@ class ShowClassTests extends DottyTest {
     showPackage(ctx.requiredPackage(path))
     val nstubs = Symbols.stubs.length
     debug_println(s"$nstubs stubs")
-    assert(nstubs <= expectedStubs, s"stubs found $nstubs, expected: $expectedStubs")
+    assert(nstubs <= expectedStubs, s"stubs found: $nstubs, expected: $expectedStubs\nstubs: ${Symbols.stubs.mkString(",")}")
   }
 
   def showClass(cls: Symbol)(implicit ctx: Context) = {
