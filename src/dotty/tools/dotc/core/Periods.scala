@@ -27,20 +27,16 @@ abstract class Periods extends DotClass { self: Context =>
 
   /** The period containing the current period where denotations do not change.
    *  We compute this by taking as first phase the first phase less or equal to
-   *  the current phase that has the same "nextTransformer". As last phase
-   *  we take the phaseId of the nextTransformer - 1. This has the advantage that
-   *  it works even if no transformer is installed other than the sentinel
-   *  NoTransformer, which is always installed automatically.
+   *  the current phase that has the same "nextTransformerId". As last phase
+   *  we take the next transformer id following the current phase.
    */
   def stablePeriod = {
     var first = phaseId
-    val transformers = base.symTransformers
-    val nxTrans = transformers.nextTransformer(first)
-    while (first - 1 > NoPhaseId &&
-           (transformers.nextTransformer(first - 1) eq nxTrans)) {
+    val nxTrans = ctx.base.nextDenotTransformerId(first)
+    while (first - 1 > NoPhaseId && (ctx.base.nextDenotTransformerId(first - 1) == nxTrans)) {
       first -= 1
     }
-    Period(runId, first, nxTrans.phaseId - 1)
+    Period(runId, first, nxTrans)
   }
 }
 
@@ -53,6 +49,8 @@ object Periods {
    *     runid                21 bits
    *     last phase id:        5 bits
    *     #phases before last:  5 bits
+   *
+   *     // Dmitry: sign == 0 isn't actually always true, in some cases phaseId == -1 is used for shifts, that easily creates code < 0
    */
   class Period(val code: Int) extends AnyVal {
 

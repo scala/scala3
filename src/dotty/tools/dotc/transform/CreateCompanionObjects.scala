@@ -19,13 +19,13 @@ import NameOps._
 
 /** A transformer that provides a convenient way to create companion objects
   */
-abstract class CreateCompanionObjects(group: TreeTransformer, idx: Int) extends TreeTransform(group, idx) {
+abstract class CreateCompanionObjects extends TreeTransform {
 
   import tpd._
 
   /** Given class definition should return true if companion object creation should be enforced
     */
-  def predicate(cls: TypeDef): Boolean
+  def predicate(cls: TypeDef)(implicit ctx: Context): Boolean
 
   override def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[tpd.Tree] = {
     @tailrec

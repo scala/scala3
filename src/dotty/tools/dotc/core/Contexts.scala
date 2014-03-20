@@ -25,7 +25,7 @@ import collection.immutable.BitSet
 import printing._
 import config.{Settings, ScalaSettings, Platform, JavaPlatform}
 import language.implicitConversions
-
+import DenotTransformers.DenotTransformer
 object Contexts {
 
   /** A context is passed basically everywhere in dotc.
@@ -325,6 +325,7 @@ object Contexts {
     def withProperty(prop: (String, Any)): this.type = withMoreProperties(moreProperties + prop)
 
     def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
+    def withPhase(phase: Phase): this.type = withPhase(phase.id)
 
     def withSetting[T](setting: Setting[T], value: T): this.type =
       withSettings(setting.updateIn(sstate, value))
@@ -361,7 +362,6 @@ object Contexts {
    *  compiler run.
    */
   class ContextBase extends ContextState
-                       with Transformers.TransformerBase
                        with Denotations.DenotationsBase
                        with Phases.PhasesBase {
 
@@ -387,7 +387,7 @@ object Contexts {
     def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)
 
     // Set up some phases to get started */
-    usePhases(SomePhase :: Nil)
+    usePhases(List(List(SomePhase)))
 
     /** The standard definitions */
     val definitions = new Definitions
@@ -459,6 +459,14 @@ object Contexts {
     // Phases state
     /** Phases by id */
     private[core] var phases: Array[Phase] = _
+
+    /** Phases with consecutive Transforms groupped into a single phase */
+    private [core] var squashedPhases: Array[Phase] = _
+
+    /** Next denotation transformer id */
+    private[core] var nextDenotTransformerId: Array[Int] = _
+
+    private[core] var denotTransformers: Array[DenotTransformer] = _
 
     // Printers state
     /** Number of recursive invocations of a show method on cuyrrent stack */
