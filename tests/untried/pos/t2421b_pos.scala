@@ -7,7 +7,7 @@ object Test {
   def f(implicit aa: F[A]) = println(aa)
 
   implicit def a : F[A] = new F[A]()
-  implicit def b[X <: B] = new F[X]()
+  implicit def b[X <: B]: Test.F[X] = new F[X]()
 
   f
 }

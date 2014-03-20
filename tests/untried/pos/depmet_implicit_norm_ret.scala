@@ -3,7 +3,7 @@ object Test{
 
   // fallback, lower priority (overloading rules apply: pick alternative in subclass lowest in subtyping lattice)
   class ZipWithDefault {
-    implicit def ZeroZipWith[S] = new ZipWith[S] {
+    implicit def ZeroZipWith[S]: Test.ZipWith[S]{type T = Stream[S]} = new ZipWith[S] {
       type T = Stream[S]
     }
   }
@@ -12,7 +12,7 @@ object Test{
     // def apply[S: ZipWith](s : S) = ?[ZipWith[S]].zipWith(s) // TODO: bug return type should be inferred
     def apply[S](s : S)(implicit zw: ZipWith[S]): zw.T = zw.zipWith(s)
 
-    implicit def SuccZipWith[S,R](implicit zWith : ZipWith[R]) = new ZipWith[S => R] {
+    implicit def SuccZipWith[S,R](implicit zWith : ZipWith[R]): Test.ZipWith[S => R]{type T = Stream[S] => zWith.T} = new ZipWith[S => R] {
       type T = Stream[S] => zWith.T // dependent types replace the associated types functionality
     }
   }

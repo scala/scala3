@@ -2,7 +2,7 @@ trait Higher[F[_]]
 
 trait Box[A]
 object Box {
-  implicit def HigherBox = new Higher[Box] {}
+  implicit def HigherBox: Higher[Box] = new Higher[Box] {}
 }
 
 object Foo {

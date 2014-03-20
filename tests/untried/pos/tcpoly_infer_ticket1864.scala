@@ -36,7 +36,7 @@ object App {
     implicit def richBuffer[T, B[U] <: Buffer[U]](buffer: B[T]): RichBuffer[T, B] =
       new RichBuffer[T, B](buffer)
 
-    implicit val rv = new ArrayBuffer[Int]
+    implicit val rv: scala.collection.mutable.ArrayBuffer[Int] = new ArrayBuffer[Int]
     val buf = new ArrayBuffer[Int]
     (1 to 5).foreach(buf += _)
     buf.mymap(x => x*x)

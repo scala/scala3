@@ -42,8 +42,8 @@ class Broken {
   }
   in {
     import scala.None
-    implicit def any2str1(a: Any) = ""
-    implicit def any2str2(a: Any) = ""
+    implicit def any2str1(a: Any): String = ""
+    implicit def any2str2(a: Any): String = ""
     T.foo("")
   }
 }

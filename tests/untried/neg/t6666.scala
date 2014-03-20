@@ -5,7 +5,7 @@ object F {
 }
 
 class COkay extends C(0) {
-  def this(a: Any) {
+  def this(a: Any) = {
     this()
     def x = "".toString
     F.byname(x)

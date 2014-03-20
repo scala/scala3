@@ -7,11 +7,11 @@ object ImplicitProblem {
     def eval: Int
   }
 
-  implicit def toRep0(n: Int) = new Rep[Int] {
+  implicit def toRep0(n: Int): ImplicitProblem.Rep[Int] = new Rep[Int] {
     def eval = 0
   }
 
-  implicit def toRepN[T](n: M[T])(implicit f: T => Rep[T]) = new Rep[M[T]] {
+  implicit def toRepN[T](n: M[T])(implicit f: T => Rep[T]): ImplicitProblem.Rep[ImplicitProblem.M[T]] = new Rep[M[T]] {
     def eval = f(nullval[T]).eval + 1
   }
 

@@ -24,7 +24,7 @@ object Test {
     def plus [I](op : Op[I]): Op[I] = op;
   }
 
-  implicit def iToRich(x : Double) =
+  implicit def iToRich(x : Double): Test.Rich =
     new Rich(x);
 
   // fails to compile

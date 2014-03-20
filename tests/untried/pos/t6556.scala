@@ -7,7 +7,7 @@ trait Adapter[X] {self =>
 }
 
 object Adapter {
-  implicit def adaptee[Adaptee](adapter: Adapter[Adaptee]) = adapter.adaptee
+  implicit def adaptee[Adaptee](adapter: Adapter[Adaptee]): Adaptee = adapter.adaptee
 }
 
 

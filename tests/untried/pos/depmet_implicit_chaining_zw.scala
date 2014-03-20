@@ -7,11 +7,11 @@ trait ZipWith[N, S] {
 }
 
 object ZipWith {
-  implicit def ZeroZipWith[S] = new ZipWith[Zero, S] {
+  implicit def ZeroZipWith[S]: ZipWith[Zero,S]{type T = Stream[S]} = new ZipWith[Zero, S] {
     type T = Stream[S]
   }
 
-  implicit def SuccZipWith[N, S, R](implicit zWith : ZipWith[N, R]) = new ZipWith[Succ[N], S => R] {
+  implicit def SuccZipWith[N, S, R](implicit zWith : ZipWith[N, R]): ZipWith[Succ[N],S => R]{type T = Stream[S] => zWith.T} = new ZipWith[Succ[N], S => R] {
     type T = Stream[S] => zWith.T // dependent types replace the associated types functionality
   }
 

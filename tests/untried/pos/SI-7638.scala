@@ -9,7 +9,7 @@ trait ArrayVectorOrder[@specialized(Int) A] extends Ordering[A] {
 }
 
 object vectorOrder {
-  implicit def arrayOrder[@specialized(Int) A]() =
+  implicit def arrayOrder[@specialized(Int) A](): miniboxing.tests.compile.ArrayVectorOrder[A] =
   /*
    * Before applying patch:
    *
