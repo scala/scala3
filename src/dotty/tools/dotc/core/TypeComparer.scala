@@ -640,14 +640,14 @@ class TypeComparer(initctx: Context) extends DotClass {
    *  if it is not instantiated we compare type parameter bounds
    *  and also compare variances.
    */
-  def isSubTypeHK(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubTypeHK(${tp1.show}, ${tp2.show}") {
+  def isSubTypeHK(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubTypeHK(${tp1.show}, ${tp2.show}", subtyping) {
     val tparams = tp1.typeParams
     val argInfos1 = tp1.argInfos
     val args1 =
       if (argInfos1.nonEmpty) argInfos1 // tp1 is instantiated, use the argument infos
       else { // tp1 is uninstantiated, use the parameter bounds
         val base = tp1.narrow
-        tparams.map(base.memberInfo) 
+        tparams.map(base.memberInfo)
       }
     val hkArgs = tp2.argInfos
     hk.println(s"isSubTypeHK: args1 = $args1, hkargs = $hkArgs")

@@ -625,11 +625,11 @@ object Types {
      *
      *  to just U
      */
-    def lookupRefined(pre: Type, name: Name)(implicit ctx: Context): Type = pre.stripTypeVar match {
+    def lookupRefined(name: Name)(implicit ctx: Context): Type = stripTypeVar match {
       case pre: RefinedType =>
-        if (pre.refinedName ne name) lookupRefined(pre.parent, name)
+        if (pre.refinedName ne name) pre.parent.lookupRefined(name)
         else pre.refinedInfo match {
-          case TypeBounds(lo, hi) if lo eq hi => hi
+          case TypeBounds(lo, hi) /*if lo eq hi*/ => hi
           case _ => NoType
         }
       case pre: WildcardType =>
@@ -643,7 +643,7 @@ object Types {
       case name: TermName =>
         TermRef(this, name)
       case name: TypeName =>
-        val res = lookupRefined(this, name)
+        val res = lookupRefined(name)
         if (res.exists) res else TypeRef(this, name)
     }
 
@@ -652,7 +652,7 @@ object Types {
       case name: TermName =>
         TermRef(this, name, denot)
       case name: TypeName =>
-        val res = lookupRefined(this, name)
+        val res = lookupRefined(name)
         if (res.exists) res else TypeRef(this, name, denot)
     }
 
@@ -660,7 +660,7 @@ object Types {
     def select(sym: Symbol)(implicit ctx: Context): Type =
       if (sym.isTerm) TermRef(this, sym.asTerm)
       else {
-        val res = lookupRefined(this, sym.name)
+        val res = lookupRefined(sym.name)
         if (res.exists) res else TypeRef(this, sym.asType)
       }
 
@@ -1114,7 +1114,7 @@ object Types {
     def derivedSelect(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
       else {
-        val res = lookupRefined(prefix, name)
+        val res = prefix.lookupRefined(name)
         if (res.exists) res else newLikeThis(prefix)
       }
 
@@ -2299,7 +2299,7 @@ object Types {
       case tp: TypeRef =>
         if (stopAtStatic && tp.symbol.isStatic) x
         else {
-          val tp1 = tp.lookupRefined(tp.prefix, tp.name)
+          val tp1 = tp.prefix.lookupRefined(tp.name)
           this(x, if (tp1.exists) tp1 else tp.prefix)
         }
       case tp: TermRef =>
