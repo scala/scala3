@@ -322,7 +322,7 @@ trait TypeOps { this: Context =>
     def featureName = toPrefix(owner) + feature
     def hasImport(implicit ctx: Context): Boolean = (
          ctx.importInfo != null
-      && (   (ctx.importInfo.site.typeSymbol eq owner)
+      && (   (ctx.importInfo.site.widen.typeSymbol eq owner)
           && ctx.importInfo.originals.contains(feature)
           ||
           { var c = ctx.outer
