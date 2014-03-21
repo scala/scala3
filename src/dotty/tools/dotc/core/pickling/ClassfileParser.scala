@@ -392,9 +392,16 @@ class ClassfileParser(
       case ENUM_TAG =>
         val t = pool.getType(index)
         val n = pool.getName(in.nextChar)
-        val s = t.typeSymbol.companionModule.decls.lookup(n)
-        assert(s != NoSymbol, t)
-        if (skip) None else Some(Literal(Constant(s)))
+        val module = t.typeSymbol.companionModule
+        val s = module.info.decls.lookup(n)
+        if (skip) {
+          None
+        } else if (s != NoSymbol) {
+          Some(Literal(Constant(s)))
+        } else {
+          ctx.warning(s"""While parsing annotations in ${in.file}, could not find $n in enum $module.\nThis is likely due to an implementation restriction: an annotation argument cannot refer to a member of the annotated class (SI-7014).""")
+          None
+        }
       case ARRAY_TAG =>
         val arr = new ArrayBuffer[Tree]()
         var hasError = false
