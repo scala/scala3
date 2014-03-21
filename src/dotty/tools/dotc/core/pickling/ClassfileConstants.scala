@@ -68,6 +68,10 @@ object ClassfileConstants {
   final val CONSTANT_INTFMETHODREF = 11
   final val CONSTANT_NAMEANDTYPE   = 12
 
+  final val CONSTANT_METHODHANDLE  = 15
+  final val CONSTANT_METHODTYPE    = 16
+  final val CONSTANT_INVOKEDYNAMIC = 18
+
   // tags describing the type of a literal in attribute values
   final val BYTE_TAG   = 'B'
   final val CHAR_TAG   = 'C'
