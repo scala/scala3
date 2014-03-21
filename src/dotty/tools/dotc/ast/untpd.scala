@@ -6,12 +6,13 @@ import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags._
 import Denotations._, SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
 import Decorators._
+import util.Attachment
 import language.higherKinds
 import collection.mutable.ListBuffer
 
 object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
-// ----- Tree cases that exist in untyped form only ------------------
+  // ----- Tree cases that exist in untyped form only ------------------
 
   trait OpTree extends Tree {
     def op: Name
@@ -60,6 +61,47 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     extends TypeDef(mods, name, rhs) {
     override def withName(name: Name)(implicit ctx: Context) = cpy.PolyTypeDef(this, mods, name.toTypeName, tparams, rhs)
   }
+
+  // ----- TypeTrees that refer to other tree's symbols -------------------
+
+  /** A type tree that gets its type from some other tree's symbol. Enters the
+   *  type tree in the References attachment of the `from` tree as a side effect.
+   */
+  abstract class DerivedTypeTree extends TypeTree(EmptyTree) {
+
+    private var myWatched: Tree = EmptyTree
+
+    /** The watched tree; used only for printing */
+    def watched: Tree = myWatched
+
+    /** Install the derived type tree as a dependency on `original` */
+    def watching(original: DefTree): this.type = {
+      myWatched = original
+      val existing = original.attachmentOrElse(References, Nil)
+      original.putAttachment(References, this :: existing)
+      this
+    }
+
+    /** A hook to ensure that all necessary symbols are completed so that
+     *  OriginalSymbol attachments are propagated to this tree
+     */
+    def ensureCompletions(implicit ctx: Context): Unit = ()
+
+    /** The method that computes the type of this tree */
+    def derivedType(originalSym: Symbol)(implicit ctx: Context): Type
+  }
+
+    /** Attachment key containing TypeTrees whose type is computed
+   *  from the symbol in this type. These type trees have marker trees
+   *  TypeRefOfSym or InfoOfSym as their originals.
+   */
+  val References = new Attachment.Key[List[Tree]]
+
+  /** Attachment key for TypeTrees marked with TypeRefOfSym or InfoOfSym
+   *  which contains the symbol of the original tree from which this
+   *  TypeTree is derived.
+   */
+  val OriginalSymbol = new Attachment.Key[Symbol]
 
   // ------ Creation methods for untyped only -----------------
 

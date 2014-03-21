@@ -72,6 +72,13 @@ trait NamerContextOps { this: Context =>
     }
     go(this)
   }
+
+  /** Context where `sym` is defined, assuming we are in a nested context. */
+  def defContext(sym: Symbol) =
+    outersIterator
+      .dropWhile(_.owner != sym)
+      .dropWhile(_.owner == sym)
+      .next
 }
 
 /** This class creates symbols from definitions and imports and gives them
@@ -173,6 +180,11 @@ class Namer { typer: Typer =>
       enclosingClassNamed(mods.privateWithin, mods.pos)
 
     def record(sym: Symbol): Symbol = {
+      val refs = tree.attachmentOrElse(References, Nil)
+      if (refs.nonEmpty) {
+        tree.removeAttachment(References)
+        refs foreach (_.pushAttachment(OriginalSymbol, sym))
+      }
       tree.pushAttachment(SymOfTree, sym)
       sym
     }
@@ -444,15 +456,25 @@ class Namer { typer: Typer =>
         if (self.isEmpty) NoType
         else if (cls is Module) cls.owner.thisType select sourceModule
         else createSymbol(self)
+
       // pre-set info, so that parent types can refer to type params
       denot.info = ClassInfo(cls.owner.thisType, cls, Nil, decls, selfInfo)
+
+      // Ensure constructor is completed so that any parameter accessors
+      // which have type trees deriving from its parameters can be
+      // completed in turn. Note that parent types access such parameter
+      // accessors, that's why the constructor needs to be completed before
+      // the parent types are elaborated.
+      index(constr)
+      symbolOfTree(constr).ensureCompleted()
+
       val parentTypes = ensureFirstIsClass(parents map checkedParentType)
       val parentRefs = ctx.normalizeToClassRefs(parentTypes, cls, decls)
       typr.println(s"completing $denot, parents = $parents, parentTypes = $parentTypes, parentRefs = $parentRefs")
 
-      index(constr)
       index(rest)(inClassContext(selfInfo))
       denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
+      // make sure constr parameters are all entered because we refer to them in desugarings:
     }
   }
 
@@ -502,13 +524,6 @@ class Namer { typer: Typer =>
       if (!mdef.tpt.isEmpty) WildcardType
       else {
 
-        /** Context where `sym` is defined */
-        def defContext(sym: Symbol) =
-          ctx.outersIterator
-            .dropWhile(_.owner != sym)
-            .dropWhile(_.owner == sym)
-            .next
-
         /** An type for this definition that might be inherited from elsewhere:
          *  If this is a setter parameter, the corresponding getter type.
          *  If this is a class member, the conjunction of all result types
@@ -516,10 +531,7 @@ class Namer { typer: Typer =>
          *  NoType if neither case holds.
          */
         val inherited =
-          if ((sym is Param) && sym.owner.isSetter) // fill in type from getter result type
-            defContext(sym.owner)
-              .denotNamed(sym.owner.asTerm.name.setterToGetter).info.widenExpr
-          else if (sym.owner.isTerm) NoType
+          if (sym.owner.isTerm) NoType
           else {
             // TODO: Look only at member of supertype instead?
             lazy val schema = paramFn(WildcardType)
@@ -557,7 +569,7 @@ class Namer { typer: Typer =>
               if (original.isConstructorName && (sym.owner is ModuleClass))
                 sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
               else
-                defContext(sym).denotNamed(original)
+                ctx.defContext(sym).denotNamed(original)
             def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
               case params :: paramss1 =>
                 if (idx < params.length) wildApprox(params(idx))
@@ -578,7 +590,7 @@ class Namer { typer: Typer =>
         val rhsCtx = ctx.fresh addMode Mode.InferringReturnType
         def rhsType = typedAheadExpr(mdef.rhs, rhsProto)(rhsCtx).tpe.widen.approximateUnion
         def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)
-        inherited orElse lhsType
+        inherited orElse lhsType orElse WildcardType
       }
     paramFn(typedAheadType(mdef.tpt, pt).tpe)
   }

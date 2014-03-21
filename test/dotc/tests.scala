@@ -18,6 +18,7 @@ class tests extends CompilerTest {
 
   val posDir = "./tests/pos/"
   val negDir = "./tests/neg/"
+  val newDir = "./tests/new/"
   val dotcDir = "./src/dotty/"
 /*
   @Test def pos_Coder() = compileFile(posDir, "Coder", twice)
@@ -46,6 +47,7 @@ class tests extends CompilerTest {
   @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion", twice)
 */
   @Test def pos_all = compileFiles(posDir, twice)
+  @Test def pos_new = compileFiles(newDir, "-Xprompt" :: Nil)
 
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
