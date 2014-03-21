@@ -496,6 +496,13 @@ class ClassfileParser(
         case tpnme.ExceptionsATTR =>
           parseExceptions(attrLen)
 
+        case tpnme.CodeATTR =>
+          if (sym.owner is Flags.Interface) {
+            sym.setFlag(Flags.DefaultMethod)
+            ctx.log(s"$sym in ${sym.owner} is a java8+ default method.")
+          }
+          in.skip(attrLen)
+
         case _ =>
       }
       in.bp = end
