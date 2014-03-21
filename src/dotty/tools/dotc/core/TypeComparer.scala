@@ -649,13 +649,13 @@ class TypeComparer(initctx: Context) extends DotClass {
         val base = tp1.narrow
         tparams.map(base.memberInfo)
       }
-    val hkArgs = tp2.argInfos
-    hk.println(s"isSubTypeHK: args1 = $args1, hkargs = $hkArgs")
-    val boundsOK = (args1 corresponds hkArgs)(isSubType)
+    val hkBounds = tp2.argInfos.map(_.asInstanceOf[TypeBounds])
+    val boundsOK = (hkBounds corresponds args1)(_ contains _)
     val variancesOK =
       argInfos1.nonEmpty || (tparams corresponds tp2.typeSymbol.name.hkVariances) { (tparam, v) =>
         v == 0 || tparam.variance == v
       }
+    hk.println(s"isSubTypeHK: args1 = $args1, hk-bounds = $hkBounds $boundsOK $variancesOK")
     boundsOK && variancesOK
   }
 

@@ -1926,7 +1926,10 @@ object Types {
       if (lo eq tp) this
       else TypeAlias(tp, variance)
 
-    def contains(tp: Type)(implicit ctx: Context) = lo <:< tp && tp <:< hi
+    def contains(tp: Type)(implicit ctx: Context) = tp match {
+      case tp: TypeBounds => lo <:< tp.lo && tp.hi <:< hi
+      case _ => lo <:< tp && tp <:< hi
+    }
 
     def & (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
       val v = this commonVariance that
