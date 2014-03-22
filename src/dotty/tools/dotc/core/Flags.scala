@@ -342,6 +342,9 @@ object Flags {
   /** Symbol is a Java-style varargs method */
   final val JavaVarargs = termFlag(38, "<varargs>")
 
+  /** Symbol is a Java default method */
+  final val DefaultMethod = termFlag(39, "<defaultmethod>")
+
   // Flags following this one are not pickled
 
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */

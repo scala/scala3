@@ -392,9 +392,16 @@ class ClassfileParser(
       case ENUM_TAG =>
         val t = pool.getType(index)
         val n = pool.getName(in.nextChar)
-        val s = t.typeSymbol.companionModule.decls.lookup(n)
-        assert(s != NoSymbol, t)
-        if (skip) None else Some(Literal(Constant(s)))
+        val module = t.typeSymbol.companionModule
+        val s = module.info.decls.lookup(n)
+        if (skip) {
+          None
+        } else if (s != NoSymbol) {
+          Some(Literal(Constant(s)))
+        } else {
+          ctx.warning(s"""While parsing annotations in ${in.file}, could not find $n in enum $module.\nThis is likely due to an implementation restriction: an annotation argument cannot refer to a member of the annotated class (SI-7014).""")
+          None
+        }
       case ARRAY_TAG =>
         val arr = new ArrayBuffer[Tree]()
         var hasError = false
@@ -488,6 +495,13 @@ class ClassfileParser(
 
         case tpnme.ExceptionsATTR =>
           parseExceptions(attrLen)
+
+        case tpnme.CodeATTR =>
+          if (sym.owner is Flags.Interface) {
+            sym.setFlag(Flags.DefaultMethod)
+            ctx.log(s"$sym in ${sym.owner} is a java8+ default method.")
+          }
+          in.skip(attrLen)
 
         case _ =>
       }
@@ -759,10 +773,13 @@ class ClassfileParser(
         (in.nextByte.toInt: @switch) match {
           case CONSTANT_UTF8 | CONSTANT_UNICODE =>
             in.skip(in.nextChar)
-          case CONSTANT_CLASS | CONSTANT_STRING =>
+          case CONSTANT_CLASS | CONSTANT_STRING | CONSTANT_METHODTYPE =>
             in.skip(2)
+          case CONSTANT_METHODHANDLE =>
+            in.skip(3)
           case CONSTANT_FIELDREF | CONSTANT_METHODREF | CONSTANT_INTFMETHODREF
-             | CONSTANT_NAMEANDTYPE | CONSTANT_INTEGER | CONSTANT_FLOAT =>
+             | CONSTANT_NAMEANDTYPE | CONSTANT_INTEGER | CONSTANT_FLOAT
+             | CONSTANT_INVOKEDYNAMIC =>
             in.skip(4)
           case CONSTANT_LONG | CONSTANT_DOUBLE =>
             in.skip(8)
