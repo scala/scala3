@@ -11,6 +11,7 @@ import collection.mutable.ListBuffer
 import config.Printers._
 import typer.ErrorReporting.InfoString
 import typer.Mode
+import reporting.parser.errors._
 
 object desugar {
 
@@ -349,9 +350,9 @@ object desugar {
     val implicitWrappers =
       if (mods is Implicit) {
         if (ctx.owner is Package)
-          ctx.error("implicit classes may not be toplevel", cdef.pos)
+          ctx.report(ImplicitToplevelClass(cdef.pos))
         if (mods is Case)
-          ctx.error("implicit classes may not case classes", cdef.pos)
+          ctx.report(ImplicitCaseClass(cdef.pos))
 
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
