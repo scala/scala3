@@ -524,7 +524,7 @@ object Denotations {
             val transformer = ctx.denotTransformers(nextTranformerId)
             //println(s"transforming with $transformer")
             if (currentPeriod.lastPhaseId > transformer.id)
-              next = transformer.transform(cur).syncWithParents
+              next = transformer.transform(cur)(ctx.withPhase(startPid)).syncWithParents
             if (next eq cur)
               startPid = cur.validFor.firstPhaseId
             else {
