@@ -46,4 +46,32 @@ package object reporting {
   }
 
   class SuppressedMessage extends Exception
+
+  trait CompilerError { self: Diagnostic => }
+  trait CompilerWarning { self: Diagnostic => }
+  trait CompilerInfo { self: Diagnostic =>
+    def isVerbose: Boolean
+  }
+
+  trait ParserDiagnostic { self: Diagnostic => }
+  trait TyperDiagnostic { self: Diagnostic => }
+
+  class ParserError(msgFn: => String, pos: SourcePosition, base: ContextBase)
+    extends Diagnostic(msgFn, pos, ERROR, base) with CompilerError with ParserDiagnostic
+
+  class ParserWarning(msgFn: => String, pos: SourcePosition, base: ContextBase)
+    extends Diagnostic(msgFn, pos, WARNING, base) with CompilerWarning with ParserDiagnostic
+
+  class ParserInfo(msgFn: => String, val isVerbose: Boolean, pos: SourcePosition, base: ContextBase)
+    extends Diagnostic(msgFn, pos, if (isVerbose) VerboseINFO else INFO, base) with CompilerInfo with ParserDiagnostic
+
+  class TyperError(msgFn: => String, pos: SourcePosition, base: ContextBase)
+    extends Diagnostic(msgFn, pos, ERROR, base) with CompilerError with TyperDiagnostic
+
+  class TyperWarning(msgFn: => String, pos: SourcePosition, base: ContextBase)
+    extends Diagnostic(msgFn, pos, WARNING, base) with CompilerWarning with TyperDiagnostic
+
+  class TyperInfo(msgFn: => String, val isVerbose: Boolean, pos: SourcePosition, base: ContextBase)
+    extends Diagnostic(msgFn, pos, if (isVerbose) VerboseINFO else INFO, base) with CompilerInfo with TyperDiagnostic
+
 }
