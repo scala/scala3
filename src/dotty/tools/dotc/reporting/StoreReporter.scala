@@ -4,7 +4,6 @@ package reporting
 
 import core.Contexts.Context
 import collection.mutable
-import Reporter.Diagnostic
 import config.Printers._
 
 /**

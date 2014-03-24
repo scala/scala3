@@ -4,7 +4,6 @@ package reporting
 
 import scala.collection.mutable
 import util.{SourcePosition, SourceFile}
-import Reporter.{Severity, Diagnostic}
 import core.Contexts.Context
 
 /**

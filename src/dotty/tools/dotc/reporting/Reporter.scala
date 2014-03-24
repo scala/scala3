@@ -10,72 +10,7 @@ import collection.mutable
 import config.Settings.Setting
 import config.Printers
 import java.lang.System.currentTimeMillis
-
-object Reporter {
-
-  class Diagnostic(msgFn: => String, val pos: SourcePosition, val severity: Severity, base: ContextBase) extends Exception {
-    private var myMsg: String = null
-    private var myIsSuppressed: Boolean = false
-    def msg: String = {
-      if (myMsg == null)
-        try myMsg = msgFn
-        catch {
-          case ex: SuppressedMessage =>
-            myIsSuppressed = true
-            val saved = base.suppressNonSensicalErrors
-            base.suppressNonSensicalErrors = false
-            try myMsg = msgFn
-            finally base.suppressNonSensicalErrors = saved
-        }
-      myMsg
-    }
-    def isSuppressed = { msg; myIsSuppressed }
-    override def toString = s"$severity at $pos: $msg"
-    override def getMessage() = msg
-
-    def promotedSeverity(implicit ctx: Context): Severity =
-      if (isConditionalWarning(severity) && enablingOption(severity).value) WARNING
-      else severity
-  }
-
-  def Diagnostic(msgFn: => String, pos: SourcePosition, severity: Severity)(implicit ctx: Context) =
-    new Diagnostic(msgFn, pos, severity, ctx.base)
-
-  class Severity(val level: Int) extends AnyVal {
-    override def toString = this match {
-      case VerboseINFO => "VerboseINFO"
-      case INFO => "INFO"
-      case DeprecationWARNING => "DeprecationWARNING"
-      case UncheckedWARNING => "UncheckedWARNING"
-      case FeatureWARNING => "FeatureWARNING"
-      case WARNING => "WARNING"
-      case ERROR => "ERROR"
-    }
-  }
-
-  final val VerboseINFO = new Severity(0)
-  final val INFO = new Severity(1)
-  final val DeprecationWARNING = new Severity(2)
-  final val UncheckedWARNING = new Severity(3)
-  final val FeatureWARNING = new Severity(4)
-  final val WARNING = new Severity(5)
-  final val ERROR = new Severity(6)
-
-  def isConditionalWarning(s: Severity) =
-    DeprecationWARNING.level <= s.level && s.level <= FeatureWARNING.level
-
-  val conditionalWarnings = List(DeprecationWARNING, UncheckedWARNING, FeatureWARNING)
-
-  private def enablingOption(warning: Severity)(implicit ctx: Context) = warning match {
-    case DeprecationWARNING => ctx.settings.deprecation
-    case UncheckedWARNING   => ctx.settings.unchecked
-    case FeatureWARNING     => ctx.settings.feature
-  }
-
-  class SuppressedMessage extends Exception
-}
-
-import Reporter._
+import Severity._
 
 trait Reporting { this: Context =>
 
