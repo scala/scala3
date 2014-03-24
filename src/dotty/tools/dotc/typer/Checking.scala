@@ -17,6 +17,7 @@ import Uniques._
 import ErrorReporting.{errorType, InfoString}
 import config.Printers._
 import collection.mutable
+import reporting.typer.errors._
 
 trait NoChecking {
   import tpd._
@@ -59,7 +60,7 @@ trait Checking extends NoChecking {
 
   /** Check that type `tp` is stable. */
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
-    if (!tp.isStable) ctx.error(i"$tp is not stable", pos)
+    if (!tp.isStable) ctx.report(NotStableError(tp, pos))
 
   /** Check that type `tp` is a legal prefix for '#'.
    *  @return The type itself

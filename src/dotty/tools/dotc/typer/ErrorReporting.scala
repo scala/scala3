@@ -10,7 +10,7 @@ import Applications._, Implicits._
 import util.Positions._
 import printing.Showable
 import printing.Disambiguation.disambiguated
-import reporting.Reporter.SuppressedMessage
+import reporting.SuppressedMessage
 
 object ErrorReporting {
 

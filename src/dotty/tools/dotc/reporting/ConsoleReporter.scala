@@ -5,7 +5,6 @@ package reporting
 import scala.collection.mutable
 import util.SourcePosition
 import core.Contexts._
-import Reporter._
 import java.io.{ BufferedReader, IOException, PrintWriter }
 import scala.reflect.internal.util._
 
@@ -41,9 +40,9 @@ class ConsoleReporter(
   }
 
   override def doReport(d: Diagnostic)(implicit ctx: Context): Unit =
-    if (d.severity != ERROR || count(d.severity.level) <= ErrorLimit && !d.isSuppressed) {
+    if (d.severity != Severity.ERROR || count(d.severity.level) <= ErrorLimit && !d.isSuppressed) {
       printMessageAndPos(label(d.severity) + d.msg, d.pos)
-      if (d.severity == ERROR && ctx.settings.prompt.value) displayPrompt()
+      if (d.severity == Severity.ERROR && ctx.settings.prompt.value) displayPrompt()
     }
 
   def displayPrompt(): Unit = {
