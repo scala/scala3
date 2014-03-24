@@ -201,7 +201,11 @@ class TypeComparer(initctx: Context) extends DotClass {
   def isNonBottomSubType(tp1: Type, tp2: Type): Boolean =
     !(tp2 isRef NothingClass) && isSubType(tp1, tp2)
 
-  def isSubType(tp1: Type, tp2: Type): Boolean = /*>|>*/ ctx.traceIndented(s"isSubType ${tp1.show} <:< ${tp2.show}", subtyping) /*<|<*/ {
+  private def traceInfo(tp1: Type, tp2: Type) =
+    s"${tp1.show} <:< ${tp2.show}" +
+    (if (ctx.settings.verbose.value) s"${tp1.getClass} ${tp2.getClass}" else "")
+
+  def isSubType(tp1: Type, tp2: Type): Boolean = /*>|>*/ ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) /*<|<*/ {
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
     else {
@@ -408,8 +412,7 @@ class TypeComparer(initctx: Context) extends DotClass {
             val base = tp1.baseTypeRef(cls2)
             if (base.exists && (base ne tp1)) return isSubType(base, tp2)
             if ( cls2 == defn.SingletonClass && tp1.isStable
-              || cls2 == defn.NotNullClass && tp1.isNotNull
-              || (defn.hkTraits contains cls2) && isSubTypeHK(tp1, tp2)) return true
+               || cls2 == defn.NotNullClass && tp1.isNotNull) return true
           }
           fourthTry(tp1, tp2)
       }
@@ -426,7 +429,9 @@ class TypeComparer(initctx: Context) extends DotClass {
           }
         case _ => tp2
       }
-      def compareRefined: Boolean = tp1.widen match {
+      def compareRefined: Boolean =
+        if (defn.hkTraits contains parent2.typeSymbol) isSubTypeHK(tp1, tp2)
+        else tp1.widen match {
         case tp1 @ RefinedType(parent1, name1) if nameMatches(name1, name2, tp1, tp2) =>
           // optimized case; all info on tp1.name2 is in refinement tp1.refinedInfo.
           isSubType(tp1.refinedInfo, tp2.refinedInfo) && {
@@ -439,7 +444,7 @@ class TypeComparer(initctx: Context) extends DotClass {
             case mbr: SingleDenotation => qualifies(mbr)
             case _ => mbr hasAltWith qualifies
           }
-          def hasMatchingMember(name: Name): Boolean = /*>|>*/ ctx.traceIndented(s"hasMatchingMember($name) ${tp1.member(name)}", subtyping) /*<|<*/ (
+          def hasMatchingMember(name: Name): Boolean = /*>|>*/ ctx.traceIndented(s"hasMatchingMember($name) ${tp1.member(name).info.show}", subtyping) /*<|<*/ (
                memberMatches(tp1 member name)
             ||
                { // special case for situations like:
@@ -467,7 +472,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp2 @ MethodType(_, formals2) =>
       def compareMethod = tp1 match {
         case tp1 @ MethodType(_, formals1) =>
-          tp1.signature == tp2.signature &&
+          (tp1.signature sameParams tp2.signature) &&
             (if (Config.newMatch) subsumeParams(formals1, formals2, tp1.isJava, tp2.isJava)
              else matchingParams(formals1, formals2, tp1.isJava, tp2.isJava)) &&
             tp1.isImplicit == tp2.isImplicit && // needed?
@@ -532,7 +537,20 @@ class TypeComparer(initctx: Context) extends DotClass {
           (tp1.symbol eq NullClass) && tp2.dealias.typeSymbol.isNullableClass
       }
     case tp1: SingletonType =>
-      isNewSubType(tp1.underlying.widenExpr, tp2)
+      isNewSubType(tp1.underlying.widenExpr, tp2) || {
+        // if tp2 == p.type  and p: q.type then try   tp1 <:< q.type as a last effort.
+        tp2 match {
+          case tp2: TermRef =>
+            tp2.info match {
+              case tp2i: TermRef =>
+                isSubType(tp1, tp2i)
+              case _ =>
+                false
+            }
+          case _ =>
+            false
+        }
+      }
     case tp1: RefinedType =>
       isNewSubType(tp1.parent, tp2)
     case AndType(tp11, tp12) =>
@@ -612,20 +630,33 @@ class TypeComparer(initctx: Context) extends DotClass {
    *  This is the case if `tp1` and `tp2` have the same number
    *  of type parameters, the bounds of tp1's paremeters
    *  are contained in the corresponding bounds of tp2's parameters
-   *  and the variances of correesponding parameters agree.
+   *  and the variances of the parameters agree.
+   *  The variances agree if the supertype parameter is invariant,
+   *  or both parameters have the same variance.
+   *
+   *  Note: When we get to isSubTypeHK, it might be that tp1 is
+   *  instantiated, or not. If it is instantiated, we compare
+   *  actual argument infos against higher-kinded bounds,
+   *  if it is not instantiated we compare type parameter bounds
+   *  and also compare variances.
    */
-  def isSubTypeHK(tp1: Type, tp2: Type): Boolean = {
+  def isSubTypeHK(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubTypeHK(${tp1.show}, ${tp2.show}", subtyping) {
     val tparams = tp1.typeParams
-    val hkArgs = tp2.argInfos
-    (hkArgs.length == tparams.length) && {
-      val base = tp1.narrow
-      (tparams, hkArgs).zipped.forall { (tparam, hkArg) =>
-        isSubType(base.memberInfo(tparam), hkArg.bounds) // TODO: base.memberInfo needed?
-      } &&
-        (tparams, tp2.typeSymbol.typeParams).zipped.forall { (tparam, tparam2) =>
-          tparam.variance == tparam2.variance
-        }
-    }
+    val argInfos1 = tp1.argInfos
+    val args1 =
+      if (argInfos1.nonEmpty) argInfos1 // tp1 is instantiated, use the argument infos
+      else { // tp1 is uninstantiated, use the parameter bounds
+        val base = tp1.narrow
+        tparams.map(base.memberInfo)
+      }
+    val hkBounds = tp2.argInfos.map(_.asInstanceOf[TypeBounds])
+    val boundsOK = (hkBounds corresponds args1)(_ contains _)
+    val variancesOK =
+      argInfos1.nonEmpty || (tparams corresponds tp2.typeSymbol.name.hkVariances) { (tparam, v) =>
+        v == 0 || tparam.variance == v
+      }
+    hk.println(s"isSubTypeHK: args1 = $args1, hk-bounds = $hkBounds $boundsOK $variancesOK")
+    boundsOK && variancesOK
   }
 
   def trySetType(tr: NamedType, bounds: TypeBounds): Boolean =

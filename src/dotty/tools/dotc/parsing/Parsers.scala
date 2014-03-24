@@ -2071,6 +2071,7 @@ object Parsers {
 
       topstats() match {
         case List(stat @ PackageDef(_, _)) => stat
+        case Nil => EmptyTree  // without this case we'd get package defs without positions
         case stats => PackageDef(Ident(nme.EMPTY_PACKAGE), stats)
       }
     }

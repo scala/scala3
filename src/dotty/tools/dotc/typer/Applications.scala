@@ -785,9 +785,13 @@ trait Applications extends Compatibility { self: Typer =>
     }}
 
     /** Drop any implicit parameter section */
-    def stripImplicit(tp: Type) = tp match {
-      case mt: ImplicitMethodType if !mt.isDependent => mt.resultType // todo: make sure implicit method types are not dependent
-      case _ => tp
+    def stripImplicit(tp: Type): Type = tp match {
+      case mt: ImplicitMethodType if !mt.isDependent =>
+        mt.resultType // todo: make sure implicit method types are not dependent
+      case pt: PolyType =>
+        pt.derivedPolyType(pt.paramNames, pt.paramBounds, stripImplicit(pt.resultType))
+      case _ =>
+        tp
     }
 
     val owner1 = alt1.symbol.owner
@@ -799,6 +803,8 @@ trait Applications extends Compatibility { self: Typer =>
     def winsType1  = isAsSpecific(alt1, tp1, alt2, tp2)
     def winsOwner2 = isDerived(owner2, owner1)
     def winsType2  = isAsSpecific(alt2, tp2, alt1, tp1)
+
+    implicits.println(i"isAsGood($alt1, $alt2)? $tp1 $tp2 $winsOwner1 $winsType1 $winsOwner2 $winsType2")
 
     // Assume the following probabilities:
     //

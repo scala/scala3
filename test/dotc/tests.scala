@@ -47,7 +47,7 @@ class tests extends CompilerTest {
   @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion", twice)
 */
   @Test def pos_all = compileFiles(posDir, twice)
-  @Test def pos_new = compileFiles(newDir, "-Xprompt" :: Nil)
+  @Test def new_all = compileFiles(newDir, twice)
 
   @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
@@ -57,11 +57,14 @@ class tests extends CompilerTest {
   @Test def neg_privates() = compileFile(negDir, "privates", xerrors = 2)
   @Test def neg_rootImports = compileFile(negDir, "rootImplicits", xerrors = 2)
   @Test def neg_templateParents() = compileFile(negDir, "templateParents", xerrors = 3)
-  @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 1)
-  @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 4)
-  @Test def neg_companions = compileFile(negDir, "companions", xerrors = 1)
   @Test def neg_autoTupling = compileFile(posDir, "autoTuplingTest", "-language:noAutoTupling" :: Nil, xerrors = 3)
   @Test def neg_autoTupling2 = compileFile(negDir, "autoTuplingTest", xerrors = 3)
+  @Test def neg_companions = compileFile(negDir, "companions", xerrors = 1)
+  @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 1)
+  @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 4)
+  @Test def neg_t0273_doubledefs = compileFile(negDir, "t0273", xerrors = 1)
+  @Test def neg_t0654_polyalias = compileFile(negDir, "t0654", xerrors = 2)
+  @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)

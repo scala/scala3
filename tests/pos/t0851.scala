@@ -5,7 +5,7 @@ object test1 {
     def apply(t : T) = (s:T2) => f(t,s)
     def apply(p : (T,T2)) = f(p._1,p._2)
   }
-  implicit def g[T](f : (T,String) => String): test.test1.Foo[T,String] = Foo(f)
+  implicit def g[T](f : (T,String) => String): Foo[T, String] = Foo(f)
   def main(args : Array[String]) : Unit = {
     val f = (x:Int,s:String) => s + x
     println(f(1))

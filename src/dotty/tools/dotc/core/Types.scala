@@ -121,7 +121,11 @@ object Types {
      *  !!! Todo: What about non-final vals that contain abstract types?
      */
     final def isLegalPrefix(implicit ctx: Context): Boolean =
-      isStable || memberNames(abstractTypeNameFilter).isEmpty
+      isStable || {
+        val absTypeNames = memberNames(abstractTypeNameFilter)
+        if (absTypeNames.nonEmpty) typr.println(s"abstract type members of ${this.showWithUnderlying()}: $absTypeNames")
+        absTypeNames.isEmpty
+      }
 
     /** Is this type guaranteed not to have `null` as a value?
      *  For the moment this is only true for modules, but it could
@@ -621,11 +625,11 @@ object Types {
      *
      *  to just U
      */
-    def lookupRefined(pre: Type, name: Name)(implicit ctx: Context): Type = pre.stripTypeVar match {
+    def lookupRefined(name: Name)(implicit ctx: Context): Type = stripTypeVar match {
       case pre: RefinedType =>
-        if (pre.refinedName ne name) lookupRefined(pre.parent, name)
+        if (pre.refinedName ne name) pre.parent.lookupRefined(name)
         else pre.refinedInfo match {
-          case TypeBounds(lo, hi) if lo eq hi => hi
+          case TypeBounds(lo, hi) /*if lo eq hi*/ => hi
           case _ => NoType
         }
       case pre: WildcardType =>
@@ -639,7 +643,7 @@ object Types {
       case name: TermName =>
         TermRef(this, name)
       case name: TypeName =>
-        val res = lookupRefined(this, name)
+        val res = lookupRefined(name)
         if (res.exists) res else TypeRef(this, name)
     }
 
@@ -648,7 +652,7 @@ object Types {
       case name: TermName =>
         TermRef(this, name, denot)
       case name: TypeName =>
-        val res = lookupRefined(this, name)
+        val res = lookupRefined(name)
         if (res.exists) res else TypeRef(this, name, denot)
     }
 
@@ -656,7 +660,7 @@ object Types {
     def select(sym: Symbol)(implicit ctx: Context): Type =
       if (sym.isTerm) TermRef(this, sym.asTerm)
       else {
-        val res = lookupRefined(this, sym.name)
+        val res = lookupRefined(sym.name)
         if (res.exists) res else TypeRef(this, sym.asType)
       }
 
@@ -810,6 +814,14 @@ object Types {
 
     /** Convert to text */
     def toText(printer: Printer): Text = printer.toText(this)
+
+    /** Utility method to show the underlying type of a TypeProxy chain together
+     *  with the proxy type itself.
+     */
+    def showWithUnderlying(n: Int = 1)(implicit ctx: Context): String = this match {
+      case tp: TypeProxy if n > 0 => s"$show with underlying ${tp.underlying.showWithUnderlying(n - 1)}"
+      case _ => show
+    }
 
     type VarianceMap = SimpleMap[TypeVar, Integer]
 
@@ -1102,7 +1114,7 @@ object Types {
     def derivedSelect(prefix: Type)(implicit ctx: Context): Type =
       if (prefix eq this.prefix) this
       else {
-        val res = lookupRefined(prefix, name)
+        val res = prefix.lookupRefined(name)
         if (res.exists) res else newLikeThis(prefix)
       }
 
@@ -1297,12 +1309,13 @@ object Types {
       lazy val underlyingTypeParams = parent.safeUnderlyingTypeParams
       lazy val originalTypeParam = underlyingTypeParams(refinedName.hkParamIndex)
 
-      /** drop any co/contra variance in refined info if variance disagrees
-       *  with new type param
+      /** Use variance of newly instantiated type parameter rather than the old hk argument
        */
-      def adjustedHKRefinedInfo(hkBounds: TypeBounds) = {
-        if (hkBounds.variance == originalTypeParam.info.bounds.variance) hkBounds
-        else TypeBounds(hkBounds.lo, hkBounds.hi)
+      def adjustedHKRefinedInfo(hkBounds: TypeBounds, underlyingTypeParam: TypeSymbol) = hkBounds match {
+        case tp @ TypeBounds(lo, hi) if lo eq hi =>
+          tp.derivedTypeBounds(lo, hi, underlyingTypeParam.variance)
+        case _ =>
+          hkBounds
       }
 
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))
@@ -1311,7 +1324,8 @@ object Types {
  //            && { println(s"deriving $refinedName $parent $underlyingTypeParams"); true }
                && refinedName.hkParamIndex < underlyingTypeParams.length
                && originalTypeParam.name != refinedName)
-        derivedRefinedType(parent, originalTypeParam.name, adjustedHKRefinedInfo(refinedInfo.bounds))
+        derivedRefinedType(parent, originalTypeParam.name,
+            adjustedHKRefinedInfo(refinedInfo.bounds, underlyingTypeParams(refinedName.hkParamIndex)))
       else
         RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
     }
@@ -1774,7 +1788,7 @@ object Types {
       // upper bound is not a singleton type, widen the instance.
       if (fromBelow && isSingleton(inst) && !isSingleton(upperBound))
         inst = inst.widen
-        
+
       inst = inst.simplified
 
       // 2. If instance is from below and is a fully-defined union type, yet upper bound
@@ -1782,7 +1796,7 @@ object Types {
       // of all common base types.
       if (fromBelow && isOrType(inst) && isFullyDefined(inst) && !isOrType(upperBound))
         inst = inst.approximateUnion
-        
+
       instantiateWith(inst)
     }
 
@@ -1912,7 +1926,10 @@ object Types {
       if (lo eq tp) this
       else TypeAlias(tp, variance)
 
-    def contains(tp: Type)(implicit ctx: Context) = lo <:< tp && tp <:< hi
+    def contains(tp: Type)(implicit ctx: Context) = tp match {
+      case tp: TypeBounds => lo <:< tp.lo && tp.hi <:< hi
+      case _ => lo <:< tp && tp <:< hi
+    }
 
     def & (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
       val v = this commonVariance that
@@ -2093,6 +2110,8 @@ object Types {
       case tp: TypeRef =>
         zeroParamClass(tp.underlying)
       case tp: RefinedType =>
+        zeroParamClass(tp.underlying)
+      case tp: TypeBounds =>
         zeroParamClass(tp.underlying)
       case tp: TypeVar =>
         zeroParamClass(tp.underlying)
@@ -2283,7 +2302,7 @@ object Types {
       case tp: TypeRef =>
         if (stopAtStatic && tp.symbol.isStatic) x
         else {
-          val tp1 = tp.lookupRefined(tp.prefix, tp.name)
+          val tp1 = tp.prefix.lookupRefined(tp.name)
           this(x, if (tp1.exists) tp1 else tp.prefix)
         }
       case tp: TermRef =>
@@ -2405,7 +2424,15 @@ object Types {
   /** A filter for names of abstract types of a given type */
   object abstractTypeNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
-      name.isTypeName && ((pre member name).symbol is Deferred)
+      name.isTypeName && {
+        val mbr = pre.member(name)
+        (mbr.symbol is Deferred) && {
+          mbr.info match {
+            case TypeBounds(lo, hi) => lo ne hi
+            case _ => false
+          }
+        }
+      }
   }
 
   /** A filter for names of deferred term definitions of a given type */

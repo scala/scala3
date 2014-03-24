@@ -79,7 +79,9 @@ object ProtoTypes {
     override def isMatchedBy(tp1: Type)(implicit ctx: Context) = {
       name == nme.WILDCARD || {
         val mbr = tp1.member(name)
-        def qualifies(m: SingleDenotation) = compat.normalizedCompatible(m.info, memberProto)
+        def qualifies(m: SingleDenotation) =
+          memberProto.isRef(defn.UnitClass) ||
+          compat.normalizedCompatible(m.info, memberProto)
         mbr match { // hasAltWith inlined for performance
           case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
           case _ => mbr hasAltWith qualifies

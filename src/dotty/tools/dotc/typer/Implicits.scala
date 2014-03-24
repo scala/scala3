@@ -65,7 +65,7 @@ object Implicits {
           case tpw =>
             //if (ctx.typer.isApplicable(tp, argType :: Nil, resultType))
             //  println(i"??? $tp is applicable to $this / typeSymbol = ${tpw.typeSymbol}")
-            true
+            !tpw.derivesFrom(defn.FunctionClass(1))
         }
 
         def discardForValueType(tpw: Type): Boolean = tpw match {
@@ -418,11 +418,6 @@ trait Implicits { self: Typer =>
 
   /** An implicit search; parameters as in `inferImplicit` */
   class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position)(implicit ctx: Context) {
-
-    pt match {
-      case pt: TypeVar => assert(pt.isInstantiated) //!!! DEBUG
-      case _ =>
-    }
 
     private def nestedContext = ctx.fresh.withNewMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
