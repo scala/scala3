@@ -712,7 +712,7 @@ trait Applications extends Compatibility { self: Typer =>
    *  @param  resultType   The expected result type of the application
    */
   def isApplicable(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean = {
-    val nestedContext = ctx.fresh.withExploreTyperState
+    val nestedContext = ctx.fresh.setExploreTyperState
     new ApplicableToTrees(methRef, targs, args, resultType)(nestedContext).success
   }
 
@@ -720,7 +720,7 @@ trait Applications extends Compatibility { self: Typer =>
    *  @param  resultType   The expected result type of the application
    */
   def isApplicable(methRef: TermRef, args: List[Type], resultType: Type)(implicit ctx: Context): Boolean = {
-    val nestedContext = ctx.fresh.withExploreTyperState
+    val nestedContext = ctx.fresh.setExploreTyperState
     new ApplicableToTypes(methRef, args, resultType)(nestedContext).success
   }
 

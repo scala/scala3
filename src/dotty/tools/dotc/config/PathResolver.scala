@@ -135,7 +135,7 @@ object PathResolver {
 
   def fromPathString(path: String)(implicit ctx: Context): JavaClassPath = {
     val settings = ctx.settings.classpath.update(path)
-    new PathResolver()(ctx.fresh.withSettings(settings)).result
+    new PathResolver()(ctx.fresh.setSettings(settings)).result
   }
 
   /** With no arguments, show the interesting values in Environment and Defaults.
@@ -152,7 +152,7 @@ object PathResolver {
       val ArgsSummary(sstate, rest, errors) =
         ctx.settings.processArguments(args.toList, true)
       errors.foreach(println)
-      val pr = new PathResolver()(ctx.fresh.withSettings(sstate))
+      val pr = new PathResolver()(ctx.fresh.setSettings(sstate))
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))
       println("RESIDUAL: 'scala %s'\n".format(rest.mkString(" ")))
       pr.result.show

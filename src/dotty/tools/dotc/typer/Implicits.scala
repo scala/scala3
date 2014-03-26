@@ -50,13 +50,13 @@ object Implicits {
           case mt: MethodType =>
             mt.isImplicit ||
             mt.paramTypes.length != 1 ||
-            !(argType <:< mt.paramTypes.head)(ctx.fresh.withExploreTyperState)
+            !(argType <:< mt.paramTypes.head)(ctx.fresh.setExploreTyperState)
           case poly: PolyType =>
             poly.resultType match {
               case mt: MethodType =>
                 mt.isImplicit ||
                 mt.paramTypes.length != 1 ||
-                !(argType <:< wildApprox(mt.paramTypes.head)(ctx.fresh.withExploreTyperState))
+                !(argType <:< wildApprox(mt.paramTypes.head)(ctx.fresh.setExploreTyperState))
               case rtp =>
                 discardForView(wildApprox(rtp), argType)
             }
@@ -90,7 +90,7 @@ object Implicits {
       }
 
       if (refs.isEmpty) refs
-      else refs filter (refMatches(_)(ctx.fresh.withExploreTyperState.addMode(Mode.TypevarsMissContext))) // create a defensive copy of ctx to avoid constraint pollution
+      else refs filter (refMatches(_)(ctx.fresh.setExploreTyperState.addMode(Mode.TypevarsMissContext))) // create a defensive copy of ctx to avoid constraint pollution
     }
   }
 
@@ -370,7 +370,7 @@ trait Implicits { self: Typer =>
              }
            case _ =>
          }
-         inferView(dummyTreeOfType(from), to)(ctx.fresh.withExploreTyperState).isInstanceOf[SearchSuccess]
+         inferView(dummyTreeOfType(from), to)(ctx.fresh.setExploreTyperState).isInstanceOf[SearchSuccess]
        }
     )
 
@@ -419,7 +419,7 @@ trait Implicits { self: Typer =>
   /** An implicit search; parameters as in `inferImplicit` */
   class ImplicitSearch(protected val pt: Type, protected val argument: Tree, pos: Position)(implicit ctx: Context) {
 
-    private def nestedContext = ctx.fresh.withNewMode(ctx.mode &~ Mode.ImplicitsEnabled)
+    private def nestedContext = ctx.fresh.setNewMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
     private def implicitProto(resultType: Type, f: Type => Type) =
       if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
@@ -457,7 +457,7 @@ trait Implicits { self: Typer =>
             pt)
         val generated1 = adapt(generated, pt)
         lazy val shadowing =
-          typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)(nestedContext.withNewTyperState)
+          typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)(nestedContext.setNewTyperState)
         def refMatches(shadowing: Tree): Boolean =
           ref.symbol == closureBody(shadowing).symbol || {
             shadowing match {
@@ -485,12 +485,12 @@ trait Implicits { self: Typer =>
           val history = ctx.searchHistory nest wildProto
           val result =
             if (history eq ctx.searchHistory) divergingImplicit(ref)
-            else typedImplicit(ref)(nestedContext.withNewTyperState.withSearchHistory(history))
+            else typedImplicit(ref)(nestedContext.setNewTyperState.setSearchHistory(history))
           result match {
             case fail: SearchFailure =>
               rankImplicits(pending1, acc)
             case best: SearchSuccess =>
-              val newPending = pending1 filter (isAsGood(_, best.ref)(nestedContext.withExploreTyperState))
+              val newPending = pending1 filter (isAsGood(_, best.ref)(nestedContext.setExploreTyperState))
               rankImplicits(newPending, best :: acc)
           }
         case nil => acc
@@ -499,7 +499,7 @@ trait Implicits { self: Typer =>
       /** Convert a (possibly empty) list of search successes into a single search result */
       def condense(hits: List[SearchSuccess]): SearchResult = hits match {
         case best :: alts =>
-          alts find (alt => isAsGood(alt.ref, best.ref)(ctx.fresh.withExploreTyperState)) match {
+          alts find (alt => isAsGood(alt.ref, best.ref)(ctx.fresh.setExploreTyperState)) match {
             case Some(alt) =>
             /* !!! DEBUG
               println(i"ambiguous refs: ${hits map (_.ref) map (_.show) mkString ", "}")

@@ -587,7 +587,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             assignType(cpy.CaseDef(tree, pat, guard1, body1), body1)
           }
           val doCase: () => CaseDef =
-            () => caseRest(typedPattern(tree.pat, selType))(ctx.fresh.withNewScope)
+            () => caseRest(typedPattern(tree.pat, selType))(ctx.fresh.setNewScope)
           (doCase /: gadtSyms)((op, tsym) => tsym.withGADTFlexType(op))()
         }
 
@@ -835,7 +835,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val pid1 = typedExpr(tree.pid, AnySelectionProto)
     val pkg = pid1.symbol
     val packageContext =
-      if (pkg is Package) ctx.fresh.withOwner(pkg.moduleClass).withTree(tree)
+      if (pkg is Package) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
       else {
         ctx.error(i"$pkg is not a packge", tree.pos)
         ctx
@@ -872,8 +872,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             NoSymbol
         }
         def localContext = {
-          val freshCtx = ctx.fresh.withTree(xtree)
-          if (sym.exists) freshCtx.withOwner(sym)
+          val freshCtx = ctx.fresh.setTree(xtree)
+          if (sym.exists) freshCtx.setOwner(sym)
           else freshCtx // can happen for self defs
         }
 
@@ -884,13 +884,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.Bind => typedBind(tree, pt)
           case tree: untpd.ValDef =>
             if (tree.isEmpty) tpd.EmptyValDef
-            else typedValDef(tree, sym)(localContext.withNewScope)
+            else typedValDef(tree, sym)(localContext.setNewScope)
           case tree: untpd.DefDef =>
             val typer1 = nestedTyper.remove(sym).get
-            typer1.typedDefDef(tree, sym)(localContext.withTyper(typer1))
+            typer1.typedDefDef(tree, sym)(localContext.setTyper(typer1))
           case tree: untpd.TypeDef =>
             if (tree.isClassDef) typedClassDef(tree, sym.asClass)(localContext)
-            else typedTypeDef(tree, sym)(localContext.withNewScope)
+            else typedTypeDef(tree, sym)(localContext.setNewScope)
           case _ => typedUnadapted(desugar(tree), pt)
         }
 
@@ -904,7 +904,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.Typed => typedTyped(tree, pt)
           case tree: untpd.NamedArg => typedNamedArg(tree, pt)
           case tree: untpd.Assign => typedAssign(tree, pt)
-          case tree: untpd.Block => typedBlock(desugar.block(tree), pt)(ctx.fresh.withNewScope)
+          case tree: untpd.Block => typedBlock(desugar.block(tree), pt)(ctx.fresh.setNewScope)
           case tree: untpd.If => typedIf(tree, pt)
           case tree: untpd.Function => typedFunction(tree, pt)
           case tree: untpd.Closure => typedClosure(tree, pt)
@@ -970,7 +970,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case Thicket(stats) :: rest =>
         traverse(stats ++ rest)
       case stat :: rest =>
-        val nestedCtx = if (exprOwner == ctx.owner) ctx else ctx.fresh.withOwner(exprOwner)
+        val nestedCtx = if (exprOwner == ctx.owner) ctx else ctx.fresh.setOwner(exprOwner)
         buf += typed(stat)(nestedCtx)
         traverse(rest)
       case nil =>
@@ -987,7 +987,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     typed(tree, pt)(ctx addMode Mode.Pattern)
 
   def tryEither[T](op: Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context) = {
-    val nestedCtx = ctx.fresh.withNewTyperState
+    val nestedCtx = ctx.fresh.setNewTyperState
     val result = op(nestedCtx)
     if (nestedCtx.reporter.hasErrors)
       fallBack(result, nestedCtx.typerState)
