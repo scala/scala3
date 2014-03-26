@@ -280,9 +280,9 @@ object Contexts {
     final def withMode(mode: Mode): Context =
       if (mode != this.mode) fresh.withNewMode(mode) else this
 
-    def withPhase(phase: PhaseId): Context =
-      if (this.phaseId == phaseId) this else fresh.withPhase(phase)
-    def withPhase(phase: Phase): Context =
+    final def withPhase(phase: PhaseId): Context =
+      if (this.phaseId == phaseId) this else fresh.withNewPhase(phase)
+    final def withPhase(phase: Phase): Context =
       withPhase(phase.id)
 
     final def addMode(mode: Mode): Context = withMode(this.mode | mode)
@@ -329,8 +329,8 @@ object Contexts {
 
     def withProperty(prop: (String, Any)): this.type = withMoreProperties(moreProperties + prop)
 
-    override def withPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
-    override def withPhase(phase: Phase): this.type = withPhase(phase.id)
+    def withNewPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
+    def withNewPhase(phase: Phase): this.type = withNewPhase(phase.id)
 
     def withSetting[T](setting: Setting[T], value: T): this.type =
       withSettings(setting.updateIn(sstate, value))

@@ -1066,7 +1066,7 @@ object Types {
       if (d.exists || ctx.phaseId == FirstPhaseId)
         d
       else {// name has changed; try load in earlier phase and make current
-        val d = denot(ctx.fresh.withPhase(ctx.phaseId - 1)).current
+        val d = denot(ctx.withPhase(ctx.phaseId - 1)).current
         if (d.exists) d
         else throw new Error(s"failure to reload $this")
       }

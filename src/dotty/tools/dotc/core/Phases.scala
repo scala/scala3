@@ -163,7 +163,7 @@ object Phases {
     def run(implicit ctx: Context): Unit
 
     def runOn(units: List[CompilationUnit])(implicit ctx: Context): Unit =
-      for (unit <- units) run(ctx.fresh.withPhase(this).withCompilationUnit(unit))
+      for (unit <- units) run(ctx.fresh.withNewPhase(this).withCompilationUnit(unit))
 
     def description: String = name
 
