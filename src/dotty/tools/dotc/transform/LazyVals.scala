@@ -1,7 +1,7 @@
-package dotty.tools.dotc.transform
+package dotty.tools.dotc
+package transform
 
 import scala.collection.mutable
-import dotty.tools.dotc._
 import core._
 import Contexts._
 import Symbols._
@@ -107,7 +107,7 @@ class LazyValTranformContext {
         }
       }
     }
-    /** Replace a local lazy val inside a method, 
+    /** Replace a local lazy val inside a method,
       * with a LazyHolder from
       * dotty.runtime(eg dotty.runtime.LazyInt)
       */

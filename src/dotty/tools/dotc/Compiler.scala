@@ -19,8 +19,8 @@ import dotty.tools.dotc.transform.TreeTransforms.Separator
 class Compiler {
 
   def phases: List[List[Phase]] = List(
-      List(new FrontEnd), List(new LazyValsCreateCompanionObjects),
-      //force separataion between lazyVals and LVCreateCO
+      List(new FrontEnd),
+      List(new LazyValsCreateCompanionObjects),      //force separataion between lazyVals and LVCreateCO
       List(new LazyValTranformContext().transformer, new UncurryTreeTransform)
   )
 

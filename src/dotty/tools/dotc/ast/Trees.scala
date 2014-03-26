@@ -384,6 +384,7 @@ object Trees {
   trait DefTree[-T >: Untyped] extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] <: DefTree[T]
     override def isDef = true
+    def namedType = tpe.asInstanceOf[NamedType]
   }
 
   /** Tree defines a new symbol and carries modifiers.

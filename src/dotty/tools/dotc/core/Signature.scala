@@ -38,8 +38,8 @@ case class Signature private (paramsSig: List[TypeName], resSig: TypeName) {
   /** Construct a signature by prepending the signature names of the given `params`
    *  to the parameter part of this signature.
    */
-  def ++:(params: List[Type])(implicit ctx: Context) =
-    Signature((params map sigName) ++ paramsSig, resSig)
+  def prepend(params: List[Type], isJava: Boolean)(implicit ctx: Context) =
+    Signature((params.map(sigName(_, isJava))) ++ paramsSig, resSig)
 
 }
 
@@ -51,6 +51,6 @@ object Signature {
   val NotAMethod = Signature(List(), EmptyTypeName)
 
   /** The signature of a method with no parameters and result type `resultType`. */
-  def apply(resultType: Type)(implicit ctx: Context): Signature =
-    apply(Nil, sigName(resultType))
+  def apply(resultType: Type, isJava: Boolean)(implicit ctx: Context): Signature =
+    apply(Nil, sigName(resultType, isJava))
 }

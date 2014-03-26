@@ -170,6 +170,9 @@ class Definitions {
 
   lazy val UnitClass = valueClassSymbol("scala.Unit", BoxedUnitClass, java.lang.Void.TYPE, UnitEnc)
   lazy val BooleanClass = valueClassSymbol("scala.Boolean", BoxedBooleanClass, java.lang.Boolean.TYPE, BooleanEnc)
+
+    lazy val Boolean_and = BooleanClass.requiredMethod(nme.ZAND)
+
   lazy val ByteClass = valueClassSymbol("scala.Byte", BoxedByteClass, java.lang.Byte.TYPE, ByteEnc)
   lazy val ShortClass = valueClassSymbol("scala.Short", BoxedShortClass, java.lang.Short.TYPE, ShortEnc)
   lazy val CharClass = valueClassSymbol("scala.Char", BoxedCharClass, java.lang.Character.TYPE, CharEnc)
@@ -192,7 +195,7 @@ class Definitions {
   lazy val EqualsPatternClass     = specialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, AnyType)
 
   lazy val RepeatedParamClass     = specialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, SeqType)
-  lazy val JavaRepeatedParamClass = specialPolyClass(tpnme.JAVA_REPEATED_PARAM_CLASS, Covariant, ArrayType)
+  lazy val JavaRepeatedParamClass = specialPolyClass(tpnme.JAVA_REPEATED_PARAM_CLASS, Covariant, ArrayClass.typeRef)
 
   // fundamental classes
   lazy val StringClass                  = ctx.requiredClass("java.lang.String")
@@ -250,8 +253,7 @@ class Definitions {
   def NothingType: Type = NothingClass.typeRef
   def NullType: Type = NullClass.typeRef
   def SeqType: Type = SeqClass.typeRef
-  def ArrayType: Type = ArrayClass.typeRef
-  def ObjectArrayType = ArrayType.appliedTo(ObjectType)
+  def ObjectArrayType = ArrayType(ObjectType)
 
   def UnitType: Type = UnitClass.typeRef
   def BooleanType: Type = BooleanClass.typeRef
@@ -295,6 +297,29 @@ class Definitions {
           (targs.length - 1 <= MaxFunctionArity) &&
           (FunctionClass(targs.length - 1) == tsym)) Some(targs.init, targs.last)
       else None
+    }
+  }
+
+  object ArrayType {
+    def apply(elem: Type) =
+      ArrayClass.typeRef.appliedTo(elem :: Nil)
+    def unapply(tp: Type) = tp.dealias match {
+      case at: RefinedType if (at isRef ArrayClass) && at.argInfos.length == 1 => Some(at.argInfos.head)
+      case _ => None
+    }
+  }
+
+  object MultiArrayType {
+    def apply(elem: Type, ndims: Int): Type =
+      if (ndims == 0) elem else ArrayType(apply(elem, ndims - 1))
+    def unapply(tp: Type): Option[(Type, Int)] = tp match {
+      case ArrayType(elemtp) =>
+        elemtp match {
+          case MultiArrayType(finalElemTp, n) => Some(finalElemTp, n + 1)
+          case _ => Some(elemtp, 1)
+        }
+      case _ =>
+        None
     }
   }
 
@@ -390,7 +415,7 @@ class Definitions {
     hkTraitOfArity.getOrElseUpdate(vcs, createTrait)
   }
 
-  // ----- Value class machinery ------------------------------------------
+  // ----- primitive value class machinery ------------------------------------------
 
   lazy val ScalaValueClasses: collection.Set[Symbol] = Set(
     UnitClass,

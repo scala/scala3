@@ -379,6 +379,11 @@ object Symbols {
     /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
     def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
 
+    /** Is this symbol a user-defined value class? */
+    final def isDerivedValueClass(implicit ctx: Context): Boolean =
+      false && // value classes are not supported yet
+      isClass && denot.derivesFrom(defn.AnyValClass) && !isPrimitiveValueClass
+
     /** Is symbol a primitive value class? */
     def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains this
 
