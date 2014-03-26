@@ -13,7 +13,7 @@ import java.lang.System.currentTimeMillis
 
 object Reporter {
 
-  class Diagnostic(msgFn: => String, val pos: SourcePosition, val severity: Severity, base: ContextBase) extends Exception {
+  class Diagnostic(msgFn: => String, val pos: SourcePosition, val severity: Severity) extends Exception {
     private var myMsg: String = null
     private var myIsSuppressed: Boolean = false
     def msg: String = {
@@ -22,10 +22,7 @@ object Reporter {
         catch {
           case ex: SuppressedMessage =>
             myIsSuppressed = true
-            val saved = base.suppressNonSensicalErrors
-            base.suppressNonSensicalErrors = false
-            try myMsg = msgFn
-            finally base.suppressNonSensicalErrors = saved
+            myMsg = "<suppressed message>"
         }
       myMsg
     }
@@ -38,8 +35,8 @@ object Reporter {
       else severity
   }
 
-  def Diagnostic(msgFn: => String, pos: SourcePosition, severity: Severity)(implicit ctx: Context) =
-    new Diagnostic(msgFn, pos, severity, ctx.base)
+  def Diagnostic(msgFn: => String, pos: SourcePosition, severity: Severity) =
+    new Diagnostic(msgFn, pos, severity)
 
   class Severity(val level: Int) extends AnyVal {
     override def toString = this match {
