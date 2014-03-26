@@ -182,6 +182,9 @@ class Definitions {
   lazy val DoubleClass = valueClassSymbol("scala.Double", BoxedDoubleClass, java.lang.Double.TYPE, DoubleEnc)
 
   lazy val BoxedUnitClass = ctx.requiredClass("scala.runtime.BoxedUnit")
+
+    lazy val BoxedUnit_UNIT = BoxedUnitClass.linkedClass.requiredValue("UNIT")
+
   lazy val BoxedBooleanClass = ctx.requiredClass("java.lang.Boolean")
   lazy val BoxedByteClass = ctx.requiredClass("java.lang.Byte")
   lazy val BoxedShortClass = ctx.requiredClass("java.lang.Short")
@@ -427,6 +430,8 @@ class Definitions {
     LongClass,
     FloatClass,
     DoubleClass)
+
+  lazy val ScalaBoxedClasses = ScalaValueClasses map boxedClass
 
   private[this] val _boxedClass = mutable.Map[Symbol, Symbol]()
   private[this] val _unboxedClass = mutable.Map[Symbol, Symbol]()

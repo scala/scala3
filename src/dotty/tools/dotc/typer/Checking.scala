@@ -18,26 +18,13 @@ import ErrorReporting.{errorType, InfoString}
 import config.Printers._
 import collection.mutable
 
-trait NoChecking {
-  import tpd._
-  def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
-  def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = ()
-  def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
-  def checkLegalPrefix(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
-  def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type = tp
-  def checkImplicitTptNonEmpty(defTree: untpd.ValOrDefDef)(implicit ctx: Context): Unit = ()
-  def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
-  def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
-  def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
-}
-
-trait Checking extends NoChecking {
+trait Checking {
 
   import tpd._
 
   /** Check that Java statics and packages can only be used in selections.
    */
-  override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = {
+  def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = {
     if (!proto.isInstanceOf[SelectionProto]) {
       val sym = tree.tpe.termSymbol
       if ((sym is Package) || (sym is JavaModule)) ctx.error(i"$sym is not a value", tree.pos)
@@ -46,7 +33,7 @@ trait Checking extends NoChecking {
   }
 
   /** Check that type arguments `args` conform to corresponding bounds in `poly` */
-  override def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = {
+  def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = {
     val argTypes = args.tpes
     def substituted(tp: Type) = tp.substParams(poly, argTypes)
     for ((arg, bounds) <- args zip poly.paramBounds) {
@@ -58,20 +45,20 @@ trait Checking extends NoChecking {
   }
 
   /** Check that type `tp` is stable. */
-  override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
+  def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
     if (!tp.isStable) ctx.error(i"$tp is not stable", pos)
 
   /** Check that type `tp` is a legal prefix for '#'.
    *  @return The type itself
    */
-  override def checkLegalPrefix(tp: Type, pos: Position)(implicit ctx: Context): Unit =
+  def checkLegalPrefix(tp: Type, pos: Position)(implicit ctx: Context): Unit =
     if (!tp.isLegalPrefix) ctx.error(i"$tp is not a valid prefix for '#'", pos)
 
  /** Check that `tp` is a class type with a stable prefix. Also, if `isFirst` is
    *  false check that `tp` is a trait.
    *  @return  `tp` itself if it is a class or trait ref, ObjectClass.typeRef if not.
    */
-  override def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type =
+  def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type =
     tp.underlyingClassRef match {
       case tref: TypeRef =>
         checkStable(tref.prefix, pos)
@@ -83,7 +70,7 @@ trait Checking extends NoChecking {
   }
 
   /** Check that (return) type of implicit definition is not empty */
-  override def checkImplicitTptNonEmpty(defTree: untpd.ValOrDefDef)(implicit ctx: Context): Unit = defTree.tpt match {
+  def checkImplicitTptNonEmpty(defTree: untpd.ValOrDefDef)(implicit ctx: Context): Unit = defTree.tpt match {
     case tpt: untpd.DerivedTypeTree =>
     case TypeTree(untpd.EmptyTree) =>
       val resStr = if (defTree.isInstanceOf[untpd.DefDef]) "result " else ""
@@ -94,7 +81,7 @@ trait Checking extends NoChecking {
   /** Check that a non-implicit parameter making up the first parameter section of an
    *  implicit conversion is not a singleton type.
    */
-  override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = vparamss match {
+  def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = vparamss match {
     case (vparam :: Nil) :: _ if !(vparam.symbol is Implicit) =>
       if (vparam.tpt.tpe.isInstanceOf[SingletonType])
         ctx.error(s"implicit conversion may not have a parameter of singleton type", vparam.tpt.pos)
@@ -105,7 +92,7 @@ trait Checking extends NoChecking {
    *  their lower bound conforms to their upper cound. If a type argument is
    *  infeasible, issue and error and continue with upper bound.
    */
-  override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp match {
+  def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp match {
     case tp: RefinedType =>
       tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasible(tp.refinedInfo, pos, where))
     case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
@@ -116,7 +103,7 @@ trait Checking extends NoChecking {
   }
 
   /** Check that class does not define */
-  override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = {
+  def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = {
     val seen = new mutable.HashMap[Name, List[Symbol]] {
       override def default(key: Name) = Nil
     }
@@ -147,4 +134,17 @@ trait Checking extends NoChecking {
   def checkInstantiatable(cls: ClassSymbol, pos: Position): Unit = {
     ??? // to be done in later phase: check that class `cls` is legal in a new.
   }
+}
+
+trait NoChecking extends Checking {
+  import tpd._
+  override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
+  override def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = ()
+  override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
+  override def checkLegalPrefix(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
+  override def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type = tp
+  override def checkImplicitTptNonEmpty(defTree: untpd.ValOrDefDef)(implicit ctx: Context): Unit = ()
+  override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
+  override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
+  override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
 }

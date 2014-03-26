@@ -181,6 +181,14 @@ object NameOps {
       name.drop(tpnme.HK_TRAIT_PREFIX.length).toList.map(varianceOfSuffix)
     }
 
+    /** The name of the generic runtime operation corresponding to an array operation */
+    def genericArrayOp: TermName = name match {
+      case nme.apply => nme.array_apply
+      case nme.length => nme.array_length
+      case nme.update => nme.array_update
+      case nme.clone_ => nme.array_clone
+    }
+
     /** If name length exceeds allowable limit, replace part of it by hash */
     def compactified(implicit ctx: Context): TermName = termName(compactify(name.toString))
   }

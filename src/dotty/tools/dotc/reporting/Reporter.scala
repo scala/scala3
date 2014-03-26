@@ -106,8 +106,16 @@ trait Reporting { this: Context =>
   def incompleteInputError(msg: String, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
     reporter.incomplete(Diagnostic(msg, pos, ERROR))(ctx)
 
+  /** Log msg if current phase or its precedessor is mentioned in
+   *  settings.log.
+   *  The reason we also pick the predecessor is that during the
+   *  tree transform of phase X, we often are already in phase X+1.
+   *  It's convenient to have logging work independently of whether
+   *  we have advanced the phase or not.
+   */
   def log(msg: => String): Unit =
-    if (this.settings.log.value.containsPhase(phase))
+    if (this.settings.log.value.containsPhase(phase) ||
+        this.settings.log.value.containsPhase(phase.prev))
       echo(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg")
 
   def debuglog(msg: => String): Unit =

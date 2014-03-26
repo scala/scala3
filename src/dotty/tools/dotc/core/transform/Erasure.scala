@@ -7,6 +7,10 @@ import util.DotClass
 
 object Erasure {
 
+  case class ErasedValueType(cls: ClassSymbol, underlying: Type) extends CachedGroundType {
+    override def computeHash = doHash(cls, underlying)
+  }
+
   private def erasureIdx(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcardOK: Boolean) =
     (if (isJava) 1 else 0) +
     (if (isSemi) 2 else 0) +
@@ -123,10 +127,14 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
       val parent = tp.parent
       if (parent isRef defn.ArrayClass) eraseArray(tp)
       else this(parent)
-    case tp: ConstantType =>
+    case tp: TermRef =>
+      val sym = tp.symbol
+      if (sym.owner is Package) sym.termRef
+      else tp.derivedSelect(this(tp.prefix))
+    case _: ThisType | _: ConstantType =>
       tp
     case tp: TypeProxy =>
-       this(tp.underlying)
+      this(tp.underlying)
     case AndType(tp1, tp2) =>
       mergeAnd(this(tp1), this(tp2))
     case OrType(tp1, tp2) =>
@@ -138,7 +146,7 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
     case tp: PolyType =>
       this(tp.resultType)
     case tp @ ClassInfo(pre, cls, classParents, decls, _) =>
-      def eraseTypeRef = this.asInstanceOf[TypeRef => TypeRef]
+      def eraseTypeRef(p: TypeRef) = this(p).asInstanceOf[TypeRef]
       val parents: List[TypeRef] =
         if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
         else if (cls eq defn.ArrayClass) defn.ObjectClass.typeRef :: Nil
