@@ -588,9 +588,9 @@ trait Applications extends Compatibility { self: Typer =>
       def extractorMemberType(tp: Type, name: Name) = {
         val ref = tp member name
         if (ref.isOverloaded)
-          errorType(s"Overloaded reference to ${ref.show} is not allowed in extractor", tree.pos)
+          errorType(i"Overloaded reference to $ref is not allowed in extractor", tree.pos)
         else if (ref.info.isInstanceOf[PolyType])
-          errorType(s"Reference to polymorphic ${ref.show}: ${ref.info.show} is not allowed in extractor", tree.pos)
+          errorType(i"Reference to polymorphic $ref: ${ref.info} is not allowed in extractor", tree.pos)
         else
           ref.info.widenExpr.dealias
       }
@@ -618,7 +618,7 @@ trait Applications extends Compatibility { self: Typer =>
       if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
       else if (unapplyResult isRef defn.BooleanClass) Nil
       else {
-        ctx.error(s"${unapplyResult.show} is not a valid result type of an unapply method of an extractor", tree.pos)
+        ctx.error(i"$unapplyResult is not a valid result type of an unapply method of an extractor", tree.pos)
         Nil
       }
     }
@@ -636,7 +636,7 @@ trait Applications extends Compatibility { self: Typer =>
     unapplyFn.tpe.widen match {
       case mt: MethodType if mt.paramTypes.length == 1 && !mt.isDependent =>
         val unapplyArgType = mt.paramTypes.head
-        unapp.println(s"unapp arg tpe = ${unapplyArgType.show}, pt = ${pt.show}")
+        unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $pt")
         def wpt = widenForMatchSelector(pt) // needed?
         val ownType =
           if (pt <:< unapplyArgType) {

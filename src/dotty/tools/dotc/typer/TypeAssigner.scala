@@ -204,7 +204,7 @@ trait TypeAssigner {
       case Nil =>
         errorType(d"$mix does not name a parent class of $cls", tree.pos)
       case p :: q :: _ =>
-        errorType(s"ambiguous parent class qualifier", tree.pos)
+        errorType("ambiguous parent class qualifier", tree.pos)
     }
     val owntype =
       if (!mix.isEmpty) findMixinSuper(cls.info)
@@ -217,9 +217,9 @@ trait TypeAssigner {
     val ownType = fn.tpe.widen match {
       case fntpe @ MethodType(_, ptypes) =>
         if (sameLength(ptypes, args)) fntpe.instantiate(args.tpes)
-        else errorType(s"wrong number of parameters for ${fn.tpe}; expected: ${ptypes.length}", tree.pos)
+        else errorType(i"wrong number of parameters for ${fn.tpe}; expected: ${ptypes.length}", tree.pos)
       case t =>
-        errorType(s"${err.exprStr(fn)} does not take parameters", tree.pos)
+        errorType(i"${err.exprStr(fn)} does not take parameters", tree.pos)
     }
     tree.withType(ownType)
   }
@@ -231,7 +231,7 @@ trait TypeAssigner {
         if (sameLength(argTypes, pt.paramNames)) pt.instantiate(argTypes)
         else errorType(d"wrong number of type parameters for ${fn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
       case _ =>
-        errorType(s"${err.exprStr(fn)} does not take type parameters", tree.pos)
+        errorType(i"${err.exprStr(fn)} does not take type parameters", tree.pos)
     }
     tree.withType(ownType)
   }

@@ -490,15 +490,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         }
         val ofFun =
           if (nme.syntheticParamNames(args.length + 1) contains param.name)
-            s" of expanded function ${tree.show}"
+            i" of expanded function $tree"
           else
             ""
-        errorType(s"missing parameter type for parameter ${param.name}$ofFun, expected = ${pt.show}", param.pos)
+        errorType(i"missing parameter type for parameter ${param.name}$ofFun, expected = $pt", param.pos)
       }
 
       def protoFormal(i: Int): Type =
         if (protoFormals.length == params.length) protoFormals(i)
-        else errorType(s"wrong number of parameters, expected: ${protoFormals.length}", tree.pos)
+        else errorType(i"wrong number of parameters, expected: ${protoFormals.length}", tree.pos)
 
       val inferredParams: List[untpd.ValDef] =
         for ((param, i) <- params.zipWithIndex) yield
@@ -700,7 +700,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
     val res = cpy.RefinedTypeTree(tree, tpt1, refinements1) withType
       (tpt1.tpe /: refinements1)(addRefinement)
-    typr.println(s"typed refinement: ${res.tpe.show}")
+    typr.println(i"typed refinement: ${res.tpe}")
     res
   }
 
@@ -728,7 +728,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = track("typedBind") {
     val body1 = typed(tree.body, pt)
-    typr.println(s"typed bind ${tree.show} pt = ${pt.show} bodytpe = ${body1.tpe.show}")
+    typr.println(i"typed bind $tree pt = $pt bodytpe = ${body1.tpe}")
     val sym = ctx.newSymbol(ctx.owner, tree.name.asTermName, EmptyFlags, body1.tpe, coord = tree.pos)
     assignType(cpy.Bind(tree, tree.name, body1), sym)
   }
@@ -951,7 +951,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (s"typing ${tree.show}", typr, show = true) /*<|<*/ {
+  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
     if (!tree.isEmpty && ctx.typerState.isGlobalCommittable) assert(tree.pos.exists, tree)
     try adapt(typedUnadapted(tree, pt), pt)
     catch {
@@ -1158,7 +1158,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (tree.tpe <:< pt) tree
         else if (ctx.mode is Mode.Pattern) tree // no subtype check for pattern
         else {
-          typr.println(s"adapt to subtype ${tree.tpe.show} !<:< ${pt.show}")
+          typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
           //typr.println(TypeComparer.explained(implicit ctx => tree.tpe <:< pt))
           adaptToSubType(wtp)
         }
