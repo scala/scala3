@@ -647,7 +647,7 @@ trait Applications extends Compatibility { self: Typer =>
             maximizeType(unapplyArgType) match {
               case Some(tvar) =>
                 def msg =
-                  i"""There is no best instantiation of pattern type $unapplyArgType
+                  d"""There is no best instantiation of pattern type $unapplyArgType
                      |that makes it a subtype of selector type $pt.
                      |Non-variant type variable ${tvar.origin} cannot be uniquely instantiated.""".stripMargin
                 if (fromScala2x) {
@@ -671,7 +671,7 @@ trait Applications extends Compatibility { self: Typer =>
             unapp.println("Neither sub nor super")
             unapp.println(TypeComparer.explained(implicit ctx => unapplyArgType <:< wpt))
             errorType(
-              i"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $wpt",
+              d"Pattern type $unapplyArgType is neither a subtype nor a supertype of selector type $wpt",
               tree.pos)
           }
 
@@ -692,7 +692,7 @@ trait Applications extends Compatibility { self: Typer =>
           case _ => args
         }
         if (argTypes.length != bunchedArgs.length) {
-          ctx.error(i"wrong number of argument patterns for $qual; expected: ($argTypes%, %)", tree.pos)
+          ctx.error(d"wrong number of argument patterns for $qual; expected: ($argTypes%, %)", tree.pos)
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
         }

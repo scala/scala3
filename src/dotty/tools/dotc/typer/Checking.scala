@@ -14,7 +14,7 @@ import util.{Stats, SimpleMap}
 import util.common._
 import Decorators._
 import Uniques._
-import ErrorReporting.errorType
+import ErrorReporting.{errorType, DiagnosticString}
 import config.Printers._
 import collection.mutable
 
@@ -27,7 +27,7 @@ trait Checking {
   def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = {
     if (!proto.isInstanceOf[SelectionProto]) {
       val sym = tree.tpe.termSymbol
-      if ((sym is Package) || (sym is JavaModule)) ctx.error(i"$sym is not a value", tree.pos)
+      if ((sym is Package) || (sym is JavaModule)) ctx.error(d"$sym is not a value", tree.pos)
     }
     tree
   }
@@ -38,7 +38,7 @@ trait Checking {
     def substituted(tp: Type) = tp.substParams(poly, argTypes)
     for ((arg, bounds) <- args zip poly.paramBounds) {
       def notConforms(which: String, bound: Type) =
-        ctx.error(i"Type argument ${arg.tpe} does not conform to $which bound $bound", arg.pos)
+        ctx.error(d"Type argument ${arg.tpe} does not conform to $which bound $bound", arg.pos)
       if (!(arg.tpe <:< substituted(bounds.hi))) notConforms("upper", bounds.hi)
       if (!(bounds.lo <:< arg.tpe)) notConforms("lower", bounds.lo)
     }
@@ -46,13 +46,13 @@ trait Checking {
 
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
-    if (!tp.isStable) ctx.error(i"$tp is not stable", pos)
+    if (!tp.isStable) ctx.error(d"$tp is not stable", pos)
 
   /** Check that type `tp` is a legal prefix for '#'.
    *  @return The type itself
    */
   def checkLegalPrefix(tp: Type, pos: Position)(implicit ctx: Context): Unit =
-    if (!tp.isLegalPrefix) ctx.error(i"$tp is not a valid prefix for '#'", pos)
+    if (!tp.isLegalPrefix) ctx.error(d"$tp is not a valid prefix for '#'", pos)
 
  /** Check that `tp` is a class type with a stable prefix. Also, if `isFirst` is
    *  false check that `tp` is a trait.
@@ -62,10 +62,10 @@ trait Checking {
     tp.underlyingClassRef match {
       case tref: TypeRef =>
         checkStable(tref.prefix, pos)
-        if (traitReq && !(tref.symbol is Trait)) ctx.error(i"$tref is not a trait", pos)
+        if (traitReq && !(tref.symbol is Trait)) ctx.error(d"$tref is not a trait", pos)
         tp
     case _ =>
-      ctx.error(i"$tp is not a class type", pos)
+      ctx.error(d"$tp is not a class type", pos)
       defn.ObjectClass.typeRef
   }
 
@@ -74,7 +74,7 @@ trait Checking {
     case tpt: untpd.DerivedTypeTree =>
     case TypeTree(untpd.EmptyTree) =>
       val resStr = if (defTree.isInstanceOf[untpd.DefDef]) "result " else ""
-      ctx.error(i"${resStr}type of implicit definition needs to be given explicitly", defTree.pos)
+      ctx.error(d"${resStr}type of implicit definition needs to be given explicitly", defTree.pos)
     case _ =>
   }
 
@@ -96,7 +96,7 @@ trait Checking {
     case tp: RefinedType =>
       tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasible(tp.refinedInfo, pos, where))
     case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
-      ctx.error(i"no type exists between low bound $lo and high bound $hi$where", pos)
+      ctx.error(d"no type exists between low bound $lo and high bound $hi$where", pos)
       tp.derivedTypeAlias(hi)
     case _ =>
       tp
@@ -113,17 +113,17 @@ trait Checking {
         typr.println(i"conflict? $decl $other")
         if (decl.signature matches other.signature) {
           def doubleDefError(decl: Symbol, other: Symbol): Unit = {
-            def ofType = if (decl.isType) "" else i": ${other.info}"
+            def ofType = if (decl.isType) "" else d": ${other.info}"
             def explanation =
               if (!decl.isSourceMethod) ""
               else "\n (both definitions have the same erased type signature)"
-            ctx.error(i"$decl is already defined as $other$ofType$explanation", decl.pos)
+            ctx.error(d"$decl is already defined as $other$ofType$explanation", decl.pos)
           }
           if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
         }
         if ((decl is HasDefaultParams) && (other is HasDefaultParams)) {
-          ctx.error(i"two or more overloaded variants of $decl have default arguments")
+          ctx.error(d"two or more overloaded variants of $decl have default arguments")
           decl resetFlag HasDefaultParams
         }
       }
