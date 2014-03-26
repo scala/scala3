@@ -5,7 +5,7 @@ package ast
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._
-import CheckTrees._, Denotations._
+import CheckTrees._, Denotations._, Decorators._
 import config.Printers._
 
 /** Some creators for typed trees */
@@ -27,6 +27,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Select(qualifier: Tree, tp: NamedType)(implicit ctx: Context): Select =
     untpd.Select(qualifier, tp.name).withType(tp)
 
+  def Select(qualifier: Tree, sym: Symbol)(implicit ctx: Context): Select =
+    untpd.Select(qualifier, sym.name).withType(qualifier.tpe select sym)
+
   def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit ctx: Context) =
     untpd.SelectWithSig(qualifier, name, sig)
       .withType(TermRef.withSig(qualifier.tpe, name.asTermName, sig))
@@ -45,6 +48,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def Apply(fn: Tree, args: List[Tree])(implicit ctx: Context): Apply =
     ta.assignType(untpd.Apply(fn, args), fn, args)
+
+  def ensureApplied(fn: Tree)(implicit ctx: Context): Tree =
+    if (fn.tpe.widen.isParameterless) fn else Apply(fn, Nil)
 
   def TypeApply(fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
     ta.assignType(untpd.TypeApply(fn, args), fn, args)
@@ -165,6 +171,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ValDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): ValDef =
     ta.assignType(untpd.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs), sym)
 
+  def SyntheticValDef(name: TermName, rhs: Tree)(implicit ctx: Context): ValDef =
+    ValDef(ctx.newSymbol(ctx.owner, name, Synthetic, rhs.tpe, coord = rhs.pos), rhs)
+
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     ta.assignType(DefDef(sym, Function.const(rhs) _), sym)
 
@@ -234,8 +243,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case pre => SelectFromTypeTree(TypeTree(pre), tp)
     } // no checks necessary
 
-  def ref(sym: Symbol)(implicit ctx: Context): tpd.NameTree =
+  def ref(sym: Symbol)(implicit ctx: Context): NameTree =
     ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
+
+  def singleton(tp: Type)(implicit ctx: Context): Tree = tp match {
+    case tp: TermRef => ref(tp)
+    case ThisType(cls) => This(cls)
+    case SuperType(qual, _) => singleton(qual)
+    case ConstantType(value) => Literal(value)
+  }
 
   // ------ Creating typed equivalents of trees that exist only in untyped form -------
 
@@ -382,6 +398,27 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         typeMap andThen ((tp: Type) => tp.substSym(from, to)),
         ownerMap andThen (from zip to).toMap)
   }
+
+  // convert a numeric with a toXXX method
+  def numericConversion(tree: Tree, numericCls: Symbol)(implicit ctx: Context): Tree = {
+    val mname      = ("to" + numericCls.name).toTermName
+    val conversion = tree.tpe member mname
+    assert(conversion.symbol.exists, s"$tree => $numericCls")
+    ensureApplied(Select(tree, conversion.symbol.termRef))
+  }
+
+  def evalOnce(tree: Tree)(within: Tree => Tree)(implicit ctx: Context) = {
+    if (isIdempotentExpr(tree)) within(tree)
+    else {
+      val vdef = SyntheticValDef(ctx.freshName("ev$").toTermName, tree)
+      Block(vdef :: Nil, within(Ident(vdef.namedType)))
+    }
+  }
+
+  def runtimeCall(name: TermName, args: List[Tree])(implicit ctx: Context): Tree = ???
+
+  def mkAnd(tree1: Tree, tree2: Tree)(implicit ctx: Context) =
+    Apply(Select(tree1, defn.Boolean_and), tree2 :: Nil)
 
   // ensure that constructors are fully applied?
   // ensure that normal methods are fully applied?
