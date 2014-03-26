@@ -220,7 +220,7 @@ abstract class Reporter {
   def report(d: Diagnostic)(implicit ctx: Context): Unit =
     if (!isHidden(d)) {
       doReport(d)
-      count(d.promotedSeverity.level) += 1
+      if (!d.isSuppressed) count(d.promotedSeverity.level) += 1
     }
 
   def incomplete(d: Diagnostic)(implicit ctx: Context): Unit =
