@@ -105,4 +105,32 @@ object ErrorReporting {
 
   def err(implicit ctx: Context): Errors = new Errors
 
+  /** The d string interpolator works like the i string interpolator, but marks nonsensical errors
+   *  using `<nonsensical>...</nonsensical>` tags.
+   *  Note: Instead of these tags, it would be nicer to return a data structure containing the message string
+   *  and a boolean indicating whether the message is sensical, but then we cannot use string operations
+   *  like concatenation, stripMargin etc on the values returned by d"...", and in the current error
+   *  message composition methods, this is crucial.
+   */
+  implicit class DiagnosticString(val sc: StringContext) extends AnyVal {
+    import DiagnosticString._
+    def d(args: Any*)(implicit ctx: Context): String = {
+      def isSensical(arg: Any): Boolean = arg match {
+        case tpe: Type if tpe.isErroneous => false
+        case NoType => false
+        case sym: Symbol if sym.isCompleted =>
+          sym.info != ErrorType && sym.info != TypeAlias(ErrorType) && sym.info != NoType
+        case _ => true
+      }
+
+      val s = new InfoString(sc).i(args)
+      if (args.forall(isSensical(_))) s else nonSensicalStartTag + s + nonSensicalEndTag
+    }
+  }
+
+  object DiagnosticString {
+    final val nonSensicalStartTag = "<nonsensical>"
+    final val nonSensicalEndTag = "</nonsensical>"
+  }
+
 }
