@@ -42,18 +42,18 @@ class Compiler {
     ctx.usePhases(phases)
     val rootScope = new MutableScope
     val bootstrap = ctx.fresh
-      .withPeriod(Period(nextRunId, FirstPhaseId))
-      .withScope(rootScope)
+      .setPeriod(Period(nextRunId, FirstPhaseId))
+      .setScope(rootScope)
     rootScope.enter(ctx.definitions.RootPackage)(bootstrap)
     val start = bootstrap.fresh
-      .withOwner(defn.RootClass)
-      .withTyper(new Typer)
-      .withNewMode(Mode.ImplicitsEnabled)
-      .withTyperState(new MutableTyperState(ctx.typerState, new ConsoleReporter()(ctx), isCommittable = true))
+      .setOwner(defn.RootClass)
+      .setTyper(new Typer)
+      .setNewMode(Mode.ImplicitsEnabled)
+      .setTyperState(new MutableTyperState(ctx.typerState, new ConsoleReporter()(ctx), isCommittable = true))
     ctx.definitions.init(start) // set context of definitions to start
     def addImport(ctx: Context, sym: Symbol) =
-      ctx.fresh.withImportInfo(ImportInfo.rootImport(sym)(ctx))
-    (start.withRunInfo(new RunInfo(start)) /: defn.RootImports)(addImport)
+      ctx.fresh.setImportInfo(ImportInfo.rootImport(sym)(ctx))
+    (start.setRunInfo(new RunInfo(start)) /: defn.RootImports)(addImport)
   }
 
   def newRun(implicit ctx: Context): Run = {

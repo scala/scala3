@@ -2,6 +2,7 @@ package dotty.tools.dotc.core
 
 import Contexts._
 import dotty.tools.dotc.util.DotClass
+import dotty.tools.dotc.core.Phases.Phase
 
 /** Periods are the central "clock" of the compiler.
  *  A period consists of a run id and a phase id.
@@ -19,7 +20,7 @@ abstract class Periods extends DotClass { self: Context =>
 
   /** Execute `op` at given period */
   def atPeriod[T](pd: Period)(op: Context => T): T =
-    op(ctx.fresh.withPeriod(pd))
+    op(ctx.fresh.setPeriod(pd))
 
   /** Execute `op` at given phase id */
   def atPhase[T](pid: PhaseId)(op: Context => T): T =

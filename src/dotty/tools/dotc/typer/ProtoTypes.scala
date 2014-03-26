@@ -38,7 +38,7 @@ object ProtoTypes {
 
     /** Test compatibility after normalization in a fresh typerstate. */
     def normalizedCompatible(tp: Type, pt: Type)(implicit ctx: Context) = {
-      val nestedCtx = ctx.fresh.withExploreTyperState
+      val nestedCtx = ctx.fresh.setExploreTyperState
       isCompatible(normalize(tp, pt)(nestedCtx), pt)(nestedCtx)
     }
 
