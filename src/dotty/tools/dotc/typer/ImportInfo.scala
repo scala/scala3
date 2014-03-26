@@ -7,7 +7,7 @@ import ast.Trees._
 import core._
 import util.SimpleMap
 import Symbols._, Names._, Denotations._, Types._, Contexts._, StdNames._, Flags._
-import typer.ErrorReporting.InfoString
+import Decorators.InfoString
 
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */

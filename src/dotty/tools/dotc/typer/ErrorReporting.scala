@@ -105,42 +105,4 @@ object ErrorReporting {
 
   def err(implicit ctx: Context): Errors = new Errors
 
-  /** Implementation of i"..." string interpolator */
-  implicit class InfoString(val sc: StringContext) extends AnyVal {
-
-    def i(args: Any*)(implicit ctx: Context): String = {
-
-      def isSensical(arg: Any): Boolean = arg match {
-        case tpe: Type if tpe.isErroneous => false
-        case NoType => false
-        case sym: Symbol if sym.isCompleted =>
-          sym.info != ErrorType && sym.info != TypeAlias(ErrorType) && sym.info != NoType
-        case _ => true
-      }
-
-      def treatArg(arg: Any, suffix: String): (Any, String) = arg match {
-        case arg: List[_] if suffix.nonEmpty && suffix.head == '%' =>
-          val (rawsep, rest) = suffix.tail.span(_ != '%')
-          val sep = StringContext.treatEscapes(rawsep)
-          if (rest.nonEmpty) (arg map treatSingleArg mkString sep, rest.tail)
-          else (arg, suffix)
-        case _ =>
-          (treatSingleArg(arg), suffix)
-      }
-
-      def treatSingleArg(arg: Any) : Any = arg match {
-        case arg: Showable => arg.show
-        case _ => arg
-      }
-
-      if (ctx.reporter.hasErrors &&
-          ctx.suppressNonSensicalErrors &&
-          !ctx.settings.YshowSuppressedErrors.value &&
-          !args.forall(isSensical(_)))
-        throw new SuppressedMessage
-      val prefix :: suffixes = sc.parts.toList
-      val (args1, suffixes1) = (args, suffixes).zipped.map(treatArg(_, _)).unzip
-      new StringContext(prefix :: suffixes1.toList: _*).s(args1: _*)
-    }
-  }
 }

@@ -14,7 +14,7 @@ import util.{Stats, SimpleMap}
 import util.common._
 import Decorators._
 import Uniques._
-import ErrorReporting.{errorType, InfoString}
+import ErrorReporting.errorType
 import config.Printers._
 import collection.mutable
 
