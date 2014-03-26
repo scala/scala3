@@ -129,6 +129,8 @@ object Periods {
 
   final val InitialPeriod = Period(InitialRunId, FirstPhaseId)
 
+  final val InvalidPeriod = Period(NoRunId, NoPhaseId)
+
   /** An ordinal number for compiler runs. First run has number 1. */
   type RunId = Int
   final val NoRunId = 0

@@ -280,10 +280,14 @@ object Contexts {
     final def withMode(mode: Mode): Context =
       if (mode != this.mode) fresh.setMode(mode) else this
 
-    final def withPhase(phase: PhaseId): Context =
-      if (this.phaseId == phaseId) this else fresh.setPhase(phase)
+    /**
+     * This method will always return a phase period equal to phaseId, thus will never return squashed phases
+     */
+    final def withPhase(phaseId: PhaseId): Context =
+      if (this.phaseId == phaseId) this else fresh.setPhase(phaseId)
     final def withPhase(phase: Phase): Context =
-      withPhase(phase.id)
+      if (this.period == phase.period) this else fresh.setPhase(phase)
+
 
     final def addMode(mode: Mode): Context = withMode(this.mode | mode)
     final def maskMode(mode: Mode): Context = withMode(this.mode & mode)
@@ -330,7 +334,7 @@ object Contexts {
     def setProperty(prop: (String, Any)): this.type = setMoreProperties(moreProperties + prop)
 
     def setPhase(pid: PhaseId): this.type = setPeriod(Period(runId, pid))
-    def setPhase(phase: Phase): this.type = setPhase(phase.id)
+    def setPhase(phase: Phase): this.type = setPeriod(Period(runId, phase.start, phase.end))
 
     def setSetting[T](setting: Setting[T], value: T): this.type =
       setSettings(setting.updateIn(sstate, value))

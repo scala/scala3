@@ -12,13 +12,14 @@ import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, TreeTransform
 import dotty.tools.dotc.transform.PostTyperTransformers.PostTyperTransformer
 import dotty.tools.dotc.transform.TreeTransforms
 import TreeTransforms.Separator
+import Periods._
 
 trait Phases {
   self: Context =>
 
   import Phases._
 
-  def phase: Phase = base.phases(period.phaseId)
+  def phase: Phase = base.phases(period.firstPhaseId)
 
   def phasesStack: List[Phase] =
     if ((this eq NoContext) || !phase.exists) Nil
@@ -66,6 +67,7 @@ object Phases {
       override def lastPhaseId(implicit ctx: Context) = id
     }
 
+
     /** Use the following phases in the order they are given.
      *  The list should never contain NoPhase.
      *  if squashing is enabled, phases in same subgroup will be squashed to single phase.
@@ -112,7 +114,7 @@ object Phases {
                 override protected def transformations: Array[TreeTransform] = transforms.toArray
               }
             squashedPhases += block
-            block.init(this, phasess(i).head.id)
+            block.init(this, phasess(i).head.id, phasess(i).last.id)
           } else squashedPhases += phasess(i).head
           i += 1
         }
@@ -171,7 +173,7 @@ object Phases {
 
     def exists: Boolean = true
 
-    private var myId: PhaseId = -1
+    private var myPeriod: Period = Periods.InvalidPeriod
     private var myBase: ContextBase = null
     private var myErasedTypes = false
     private var myFlatClasses = false
@@ -181,32 +183,38 @@ object Phases {
      * is reserved for NoPhase and the first real phase is at position 1.
      * -1 if the phase is not installed in the context.
      */
-    def id = myId
+    def id = myPeriod.firstPhaseId
+
+    def period = myPeriod
+    def start = myPeriod.firstPhaseId
+    def end = myPeriod.lastPhaseId
 
     final def erasedTypes = myErasedTypes
     final def flatClasses = myFlatClasses
     final def refChecked = myRefChecked
 
-    protected[Phases] def init(base: ContextBase, id: Int): Unit = {
-      if (id >= FirstPhaseId)
-        assert(myId == -1, s"phase $this has already been used once; cannot be reused")
+    protected[Phases] def init(base: ContextBase, start: Int, end:Int): Unit = {
+      if (start >= FirstPhaseId)
+        assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")
       myBase = base
-      myId = id
+      myPeriod = Period(start, end)
       myErasedTypes = prev.name == erasureName   || prev.erasedTypes
       myFlatClasses = prev.name == flattenName   || prev.flatClasses
       myRefChecked  = prev.name == refChecksName || prev.refChecked
     }
 
+    protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
+
     final def <=(that: Phase)(implicit ctx: Context) =
       exists && id <= that.id
 
     final def prev: Phase =
-      if (id > FirstPhaseId) myBase.phases(id - 1) else myBase.NoPhase
+      if (id > FirstPhaseId) myBase.phases(start - 1) else myBase.NoPhase
 
     final def next: Phase =
-      if (hasNext) myBase.phases(id + 1) else myBase.NoPhase
+      if (hasNext) myBase.phases(end + 1) else myBase.NoPhase
 
-    final def hasNext = id >= FirstPhaseId && id + 1 < myBase.phases.length
+    final def hasNext = start >= FirstPhaseId && end + 1 < myBase.phases.length
 
     final def iterator =
       Iterator.iterate(this)(_.next) takeWhile (_.hasNext)
