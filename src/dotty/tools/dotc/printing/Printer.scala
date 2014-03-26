@@ -88,6 +88,11 @@ abstract class Printer {
   /** Textual representation of tree */
   def toText[T >: Untyped](tree: Tree[T]): Text
 
+  /** Perform string or text-producing operation `op` so that only a
+   *  summarized text with given recursion depth is shown
+   */
+  def summarized[T](depth: Int)(op: => T): T
+
   /** A plain printer without any embellishments */
   def plain: Printer
 }
