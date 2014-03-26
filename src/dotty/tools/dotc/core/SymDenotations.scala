@@ -805,8 +805,12 @@ object SymDenotations {
 
     /** The type parameters of this class */
     override final def typeParams(implicit ctx: Context): List[TypeSymbol] = {
-      def computeTypeParams = decls.filter(sym =>
-        (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
+      def computeTypeParams = {
+        if (ctx.phase.erasedTypes && (this ne defn.ArrayClass)) Nil
+        else if (this ne initial) initial.asSymDenotation.typeParams
+        else decls.filter(sym =>
+          (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
+      }
       if (myTypeParams == null) myTypeParams = computeTypeParams
       myTypeParams
     }
