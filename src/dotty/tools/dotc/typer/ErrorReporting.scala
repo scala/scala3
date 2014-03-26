@@ -115,6 +115,7 @@ object ErrorReporting {
     import DiagnosticString._
     def d(args: Any*)(implicit ctx: Context): String = {
       def isSensical(arg: Any): Boolean = arg match {
+        case l: Seq[_] => l.forall(isSensical(_))
         case tpe: Type if tpe.isErroneous => false
         case NoType => false
         case sym: Symbol if sym.isCompleted =>
