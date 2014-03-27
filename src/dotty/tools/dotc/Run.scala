@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 
 import core._
-import Contexts._, Periods._, Symbols._
+import Contexts._, Periods._, Symbols._, Phases._, Decorators._
 import io.PlainFile
 import util.{SourceFile, NoSource, Stats, SimpleMap}
 import reporting.Reporter
@@ -30,11 +30,27 @@ class Run(comp: Compiler)(implicit ctx: Context) {
   def compileSources(sources: List[SourceFile]) = Stats.monitorHeartBeat {
     if (sources forall (_.exists)) {
       units = sources map (new CompilationUnit(_))
-      for (phase <- ctx.allPhases.init) {
-        if (!ctx.reporter.hasErrors)
+      def stoppedBefore(phase: Phase) =
+        ctx.settings.YstopBefore.value.containsPhase(phase) ||
+        ctx.settings.YstopAfter.value.containsPhase(phase.prev)
+      val phasesToRun = ctx.allPhases.init
+        .takeWhile(!stoppedBefore(_))
+        .filterNot(ctx.settings.Yskip.value.containsPhase(_))
+      for (phase <- phasesToRun) {
+        if (!ctx.reporter.hasErrors) {
           phase.runOn(units)
+          if (ctx.settings.Xprint.value.containsPhase(phase))
+            for (unit <- units)
+              printTree(ctx.fresh.withNewPhase(phase).withCompilationUnit(unit))
+        }
       }
     }
+  }
+
+  private def printTree(implicit ctx: Context) = {
+    val unit = ctx.compilationUnit
+    println(s"result of $unit after ${ctx.phase}:")
+    println(unit.tpdTree.show)
   }
 
   def compile(sourceCode: String): Unit = {
