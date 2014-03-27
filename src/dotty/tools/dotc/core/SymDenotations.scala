@@ -147,7 +147,7 @@ object SymDenotations {
       myFlags |= Touched
 
       // completions.println(s"completing ${this.debugString}")
-      try completer.complete(this)
+      try completer.complete(this)(ctx.withPhase(validFor.firstPhaseId))
       catch {
         case ex: CyclicReference =>
           completions.println(s"error while completing ${this.debugString}")
