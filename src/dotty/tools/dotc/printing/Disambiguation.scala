@@ -75,7 +75,7 @@ object Disambiguation {
   def disambiguated(op: Context => String)(implicit ctx: Context): String = {
     val dctx = ctx.printer match {
       case dp: Printer => ctx
-      case _ => ctx.fresh.withPrinterFn(newPrinter)
+      case _ => ctx.fresh.setPrinterFn(newPrinter)
     }
     val res = op(dctx)
     dctx.printer match {

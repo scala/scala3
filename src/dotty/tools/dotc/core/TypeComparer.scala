@@ -1134,7 +1134,7 @@ object TypeComparer {
 
   /** Show trace of comparison operations when performing `op` as result string */
   def explained[T](op: Context => T)(implicit ctx: Context): String = {
-    val nestedCtx = ctx.fresh.withTypeComparerFn(new ExplainingTypeComparer(_))
+    val nestedCtx = ctx.fresh.setTypeComparerFn(new ExplainingTypeComparer(_))
     op(nestedCtx)
     nestedCtx.typeComparer.toString
   }

@@ -288,11 +288,11 @@ class Namer { typer: Typer =>
 
   /** A new context that summarizes an import statement */
   def importContext(sym: Symbol, selectors: List[Tree])(implicit ctx: Context) =
-    ctx.fresh.withImportInfo(new ImportInfo(sym, selectors))
+    ctx.fresh.setImportInfo(new ImportInfo(sym, selectors))
 
   /** A new context for the interior of a class */
   def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/)(implicit ctx: Context): Context = {
-    val localCtx: Context = ctx.fresh.withNewScope
+    val localCtx: Context = ctx.fresh.clearScope
     selfInfo match {
       case sym: Symbol if sym.exists && sym.name != nme.WILDCARD =>
         localCtx.scope.asInstanceOf[MutableScope].enter(sym)
@@ -330,7 +330,7 @@ class Namer { typer: Typer =>
   def indexExpanded(stat: Tree)(implicit ctx: Context): Context = expanded(stat) match {
     case pcl: PackageDef =>
       val pkg = createPackageSymbol(pcl.pid)
-      index(pcl.stats)(ctx.fresh.withOwner(pkg.moduleClass))
+      index(pcl.stats)(ctx.fresh.setOwner(pkg.moduleClass))
       invalidateCompanions(pkg, Trees.flatten(pcl.stats map expanded))
       ctx
     case imp: Import =>
@@ -380,19 +380,19 @@ class Namer { typer: Typer =>
   /** The completer of a symbol defined by a member def or import (except ClassSymbols) */
   class Completer(val original: Tree)(implicit ctx: Context) extends LazyType {
 
-    protected def localContext(owner: Symbol) = ctx.fresh.withOwner(owner).withTree(original)
+    protected def localContext(owner: Symbol) = ctx.fresh.setOwner(owner).setTree(original)
 
     private def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
         if (sym is Module) moduleValSig(sym)
-        else valOrDefDefSig(original, sym, Nil, identity)(localContext(sym).withNewScope)
+        else valOrDefDefSig(original, sym, Nil, identity)(localContext(sym).clearScope)
       case original: DefDef =>
         val typer1 = new Typer
         nestedTyper(sym) = typer1
-        typer1.defDefSig(original, sym)(localContext(sym).withTyper(typer1))
+        typer1.defDefSig(original, sym)(localContext(sym).setTyper(typer1))
       case original: TypeDef =>
         assert(!original.isClassDef)
-        typeDefSig(original, sym)(localContext(sym).withNewScope)
+        typeDefSig(original, sym)(localContext(sym).clearScope)
       case imp: Import =>
         try {
           val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
