@@ -19,7 +19,7 @@ abstract class Periods extends DotClass { self: Context =>
 
   /** Execute `op` at given period */
   def atPeriod[T](pd: Period)(op: Context => T): T =
-    op(ctx.fresh.withPeriod(pd))
+    op(ctx.fresh.setPeriod(pd))
 
   /** Execute `op` at given phase id */
   def atPhase[T](pid: PhaseId)(op: Context => T): T =

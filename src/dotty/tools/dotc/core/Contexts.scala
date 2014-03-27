@@ -278,10 +278,10 @@ object Contexts {
     }
 
     final def withMode(mode: Mode): Context =
-      if (mode != this.mode) fresh.withNewMode(mode) else this
+      if (mode != this.mode) fresh.setMode(mode) else this
 
     final def withPhase(phase: PhaseId): Context =
-      if (this.phaseId == phaseId) this else fresh.withNewPhase(phase)
+      if (this.phaseId == phaseId) this else fresh.setPhase(phase)
     final def withPhase(phase: Phase): Context =
       withPhase(phase.id)
 
@@ -306,36 +306,36 @@ object Contexts {
    *  of its attributes using the with... methods.
    */
   abstract class FreshContext extends Context {
-    def withPeriod(period: Period): this.type = { this.period = period; this }
-    def withNewMode(mode: Mode): this.type = { this.mode = mode; this }
-    def withTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
-    def withNewTyperState: this.type = withTyperState(typerState.fresh(isCommittable = true))
-    def withExploreTyperState: this.type = withTyperState(typerState.fresh(isCommittable = false))
-    def withPrinterFn(printer: Context => Printer): this.type = { this.printerFn = printer; this }
-    def withOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
-    def withSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
-    def withCompilationUnit(compilationUnit: CompilationUnit): this.type = { this.compilationUnit = compilationUnit; this }
-    def withTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
-    def withScope(scope: Scope): this.type = { this.scope = scope; this }
-    def withNewScope: this.type = { this.scope = newScope; this }
-    def withTypeAssigner(typeAssigner: TypeAssigner): this.type = { this.typeAssigner = typeAssigner; this }
-    def withTyper(typer: Typer): this.type = { this.scope = typer.scope; withTypeAssigner(typer) }
-    def withImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
-    def withRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
-    def withDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
-    def withTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
-    def withSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
-    def withMoreProperties(moreProperties: Map[String, Any]): this.type = { this.moreProperties = moreProperties; this }
+    def setPeriod(period: Period): this.type = { this.period = period; this }
+    def setMode(mode: Mode): this.type = { this.mode = mode; this }
+    def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
+    def clearTyperState: this.type = setTyperState(typerState.fresh(isCommittable = true))
+    def setExploreTyperState: this.type = setTyperState(typerState.fresh(isCommittable = false))
+    def setPrinterFn(printer: Context => Printer): this.type = { this.printerFn = printer; this }
+    def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
+    def setSettings(sstate: SettingsState): this.type = { this.sstate = sstate; this }
+    def setCompilationUnit(compilationUnit: CompilationUnit): this.type = { this.compilationUnit = compilationUnit; this }
+    def setTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
+    def setScope(scope: Scope): this.type = { this.scope = scope; this }
+    def clearScope: this.type = { this.scope = newScope; this }
+    def setTypeAssigner(typeAssigner: TypeAssigner): this.type = { this.typeAssigner = typeAssigner; this }
+    def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
+    def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
+    def setRunInfo(runInfo: RunInfo): this.type = { this.runInfo = runInfo; this }
+    def setDiagnostics(diagnostics: Option[StringBuilder]): this.type = { this.diagnostics = diagnostics; this }
+    def setTypeComparerFn(tcfn: Context => TypeComparer): this.type = { this.typeComparer = tcfn(this); this }
+    def setSearchHistory(searchHistory: SearchHistory): this.type = { this.searchHistory = searchHistory; this }
+    def setMoreProperties(moreProperties: Map[String, Any]): this.type = { this.moreProperties = moreProperties; this }
 
-    def withProperty(prop: (String, Any)): this.type = withMoreProperties(moreProperties + prop)
+    def setProperty(prop: (String, Any)): this.type = setMoreProperties(moreProperties + prop)
 
-    def withNewPhase(pid: PhaseId): this.type = withPeriod(Period(runId, pid))
-    def withNewPhase(phase: Phase): this.type = withNewPhase(phase.id)
+    def setPhase(pid: PhaseId): this.type = setPeriod(Period(runId, pid))
+    def setPhase(phase: Phase): this.type = setPhase(phase.id)
 
-    def withSetting[T](setting: Setting[T], value: T): this.type =
-      withSettings(setting.updateIn(sstate, value))
+    def setSetting[T](setting: Setting[T], value: T): this.type =
+      setSettings(setting.updateIn(sstate, value))
 
-    def withDebug = withSetting(base.settings.debug, true)
+    def setDebug = setSetting(base.settings.debug, true)
   }
 
   /** A class defining the initial context with given context base
