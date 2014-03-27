@@ -112,7 +112,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp: ViewProto =>
         return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
       case tp: TypeRef =>
-        if (tp.symbol is TypeParam | TypeArgument) {
+        if ((tp.symbol is TypeParam | TypeArgument) && !ctx.phase.erasedTypes) {
           return tp.info match {
             case TypeAlias(hi) => toText(hi)
             case _ => nameString(tp.symbol)

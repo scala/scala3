@@ -41,7 +41,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
           phase.runOn(units)
           if (ctx.settings.Xprint.value.containsPhase(phase))
             for (unit <- units)
-              printTree(ctx.fresh.withNewPhase(phase).withCompilationUnit(unit))
+              printTree(ctx.fresh.setPhase(phase).setCompilationUnit(unit))
         }
       }
     }

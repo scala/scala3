@@ -37,7 +37,7 @@ class Erasure extends Phase with DenotTransformer {
 
   def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
-    unit.tpdTree = eraser.typedExpr(unit.tpdTree)(ctx.fresh.withPhase(this.next))
+    unit.tpdTree = eraser.typedExpr(unit.tpdTree)(ctx.fresh.setPhase(this.next))
   }
 }
 
@@ -53,8 +53,10 @@ object Erasure {
     def isBox(sym: Symbol)(implicit ctx: Context) =
       sym.name == nme.box && (defn.ScalaValueClasses contains sym.owner)
 
-    def boxMethod(cls: ClassSymbol)(implicit ctx: Context) = cls.info.member(nme.box).symbol
-    def unboxMethod(cls: ClassSymbol)(implicit ctx: Context) = cls.info.member(nme.unbox).symbol
+    def boxMethod(cls: ClassSymbol)(implicit ctx: Context) =
+      cls.linkedClass.info.member(nme.box).symbol
+    def unboxMethod(cls: ClassSymbol)(implicit ctx: Context) =
+      cls.linkedClass.info.member(nme.unbox).symbol
 
     /** Isf this tree is an unbox operation which can be safely removed
      *  when enclosed in a box, the unboxed argument, otherwise EmptyTree.
@@ -65,7 +67,7 @@ object Erasure {
      */
     private def safelyRemovableUnboxArg(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case Apply(fn, arg :: Nil)
-      if isUnbox(fn.symbol) && (defn.ScalaBoxedClasses contains arg.tpe.typeSymbol) =>
+      if isUnbox(fn.symbol) && (defn.ScalaBoxedClasses contains arg.tpe.widen.typeSymbol) =>
         arg
       case _ =>
         EmptyTree
@@ -78,11 +80,11 @@ object Erasure {
       if (isIdempotentExpr(tree)) Block(tree :: Nil, const) else const
 
     final def box(tree: Tree, target: => String = "")(implicit ctx: Context): Tree = ctx.traceIndented(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
-      tree.tpe match {
+      tree.tpe.widen match {
         case ErasedValueType(clazz, _) =>
           New(clazz.typeRef, cast(tree, clazz.underlyingOfValueClass) :: Nil) // todo: use adaptToType?
-        case _ =>
-          val cls = tree.tpe.classSymbol
+        case tp =>
+          val cls = tp.classSymbol
           if (cls eq defn.UnitClass) constant(tree, ref(defn.BoxedUnit_UNIT))
           else if (cls eq defn.NothingClass) tree // a non-terminating expression doesn't need boxing
           else {
@@ -124,7 +126,7 @@ object Erasure {
       if (pt isRef defn.UnitClass) unbox(tree, pt)
       else (tree.tpe, pt) match {
         case (defn.ArrayType(treeElem), defn.ArrayType(ptElem))
-        if isPrimitiveValueType(treeElem) && !isPrimitiveValueType(ptElem) =>
+        if isPrimitiveValueType(treeElem.widen) && !isPrimitiveValueType(ptElem) =>
           // See SI-2386 for one example of when this might be necessary.
           cast(runtimeCall(nme.toObjectArray, tree :: Nil), pt)
         case _ =>
@@ -144,13 +146,13 @@ object Erasure {
     def adaptToType(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
       if (tree.tpe <:< pt)
         tree
-      else if (isErasedValueType(tree.tpe))
+      else if (isErasedValueType(tree.tpe.widen))
         adaptToType(box(tree), pt)
       else if (isErasedValueType(pt))
         adaptToType(unbox(tree, pt), pt)
-      else if (isPrimitiveValueType(tree.tpe) && !isPrimitiveValueType(pt))
+      else if (isPrimitiveValueType(tree.tpe.widen) && !isPrimitiveValueType(pt))
         adaptToType(box(tree), pt)
-      else if (isPrimitiveValueType(pt) && !isPrimitiveValueType(tree.tpe))
+      else if (isPrimitiveValueType(pt) && !isPrimitiveValueType(tree.tpe.widen))
         adaptToType(unbox(tree, pt), pt)
       else
         cast(tree, pt)
@@ -159,14 +161,14 @@ object Erasure {
   class Typer extends typer.Typer with NoChecking {
     import Boxing._
 
-    def box(tree: Tree): Tree = ???
-    def unbox(tree: Tree, target: Type): Tree = ???
-    def cast(tree: Tree, target: Type): Tree = ???
+    def erasedType(tree: untpd.Tree)(implicit ctx: Context): Type =
+     erasure(tree.tpe.asInstanceOf[Type])
 
     private def promote(tree: untpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
       assert(tree.hasType)
-      println(s"prompting ${tree.show}: ${tree.tpe.asInstanceOf[Type].showWithUnderlying(2)}")
-      tree.withType(erasure(tree.tpe.asInstanceOf[Type]))
+      val erased = erasedType(tree)(ctx.withPhase(ctx.erasurePhase))
+      ctx.log(s"promoting ${tree.show}: ${erased.showWithUnderlying()}")
+      tree.withType(erased)
     }
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
@@ -244,7 +246,10 @@ object Erasure {
       block // optimization, no checking needed, as block symbols do not change.
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
-      val ddef1 = untpd.cpy.DefDef(ddef, ddef.mods, ddef.name, Nil, ddef.vparamss, ddef.tpt, ddef.rhs)
+      val tpt1 = // keep UnitTypes intact in result position
+        if (ddef.tpt.typeOpt isRef defn.UnitClass) untpd.TypeTree(defn.UnitType) withPos ddef.tpt.pos
+        else ddef.tpt
+      val ddef1 = untpd.cpy.DefDef(ddef, ddef.mods, ddef.name, Nil, ddef.vparamss, tpt1, ddef.rhs)
       super.typedDefDef(ddef1, sym)
     }
 
@@ -280,7 +285,7 @@ object Erasure {
 
     override def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
       ctx.traceIndented(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
-        assert(ctx.phase == ctx.erasurePhase.next)
+        assert(ctx.phase == ctx.erasurePhase.next, ctx.phase)
         if (tree.isEmpty) tree else adaptToType(tree, pt)
     }
   }
