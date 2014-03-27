@@ -484,7 +484,7 @@ object TreeTransforms {
 
     def transform(t: Tree)(implicit ctx: Context): Tree = {
       val initialTransformations = transformations
-      val contexts = initialTransformations.map(tr => ctx.fresh.withPhase(tr).ctx)
+      val contexts = initialTransformations.map(tr => ctx.withPhase(tr).ctx)
       val info = new TransformerInfo(initialTransformations, new NXTransformations(initialTransformations), this, contexts)
       initialTransformations.zipWithIndex.foreach{
         case (transform, id) =>

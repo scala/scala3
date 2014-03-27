@@ -1028,7 +1028,7 @@ object Types {
           val sym = lastSymbol
           if (sym == null) loadDenot else denotOfSym(sym)
         case d: SymDenotation =>
-          if (ctx.stillValid(d)) d.current
+          if (d.validFor.runId == ctx.runId || ctx.stillValid(d)) d.current
           else {
             val newd = loadDenot
             if (newd.exists) newd else d.staleSymbolError
@@ -1066,7 +1066,7 @@ object Types {
       if (d.exists || ctx.phaseId == FirstPhaseId)
         d
       else {// name has changed; try load in earlier phase and make current
-        val d = denot(ctx.fresh.withPhase(ctx.phaseId - 1)).current
+        val d = denot(ctx.withPhase(ctx.phaseId - 1)).current
         if (d.exists) d
         else throw new Error(s"failure to reload $this")
       }

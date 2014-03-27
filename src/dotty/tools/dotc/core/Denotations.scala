@@ -19,6 +19,7 @@ import printing.Printer
 import io.AbstractFile
 import config.Config
 import util.common._
+import collection.mutable.ListBuffer
 import Decorators.SymbolIteratorDecorator
 
 /** Denotations represent the meaning of symbols and named types.
@@ -459,7 +460,7 @@ object Denotations {
      *  2) the union of all validity periods is a contiguous
      *     interval.
      */
-    var nextInRun: SingleDenotation = this
+    private var nextInRun: SingleDenotation = this
 
     /** The version of this SingleDenotation that was valid in the first phase
      *  of this run.
@@ -468,6 +469,17 @@ object Denotations {
       var current = nextInRun
       while (current.validFor.code > this.myValidFor.code) current = current.nextInRun
       current
+    }
+
+    def history: List[SingleDenotation] = {
+      val b = new ListBuffer[SingleDenotation]
+      var current = initial
+      do {
+        b += (current)
+        current = current.nextInRun
+      }
+      while (current ne initial)
+      b.toList
     }
 
     /** Move validity period of this denotation to a new run. Throw a StaleSymbol error
@@ -518,27 +530,30 @@ object Denotations {
             cur = next
             cur
           } else {
+            //println(s"might need new denot for $cur, valid for ${cur.validFor} at $currentPeriod")
             // not found, cur points to highest existing variant
-            var startPid = cur.validFor.lastPhaseId + 1
-            val nextTranformerId = ctx.nextDenotTransformerId(startPid)
-            val transformer = ctx.denotTransformers(nextTranformerId)
-            //println(s"transforming with $transformer")
-            if (currentPeriod.lastPhaseId > transformer.id)
-              next = transformer.transform(cur)(ctx.withPhase(startPid)).syncWithParents
-            if (next eq cur)
-              startPid = cur.validFor.firstPhaseId
+            val nextTransformerId = ctx.nextDenotTransformerId(cur.validFor.lastPhaseId)
+            if (currentPeriod.lastPhaseId <= nextTransformerId)
+              cur.validFor = Period(currentPeriod.runId, cur.validFor.firstPhaseId, nextTransformerId)
             else {
-              next match {
-                case next: ClassDenotation => next.resetFlag(Frozen)
-                case _ =>
+              var startPid = nextTransformerId + 1
+              val transformer = ctx.denotTransformers(nextTransformerId)
+              //println(s"transforming $this with $transformer")
+              next = transformer.transform(cur)(ctx.withPhase(transformer)).syncWithParents
+              if (next eq cur)
+                startPid = cur.validFor.firstPhaseId
+              else {
+                next match {
+                  case next: ClassDenotation => next.resetFlag(Frozen)
+                  case _ =>
+                }
+                next.nextInRun = cur.nextInRun
+                cur.nextInRun = next
+                cur = next
               }
-              next.nextInRun = cur.nextInRun
-              cur.nextInRun = next
-              cur = next
+              cur.validFor = Period(currentPeriod.runId, startPid, transformer.lastPhaseId)
+              //println(s"new denot: $cur, valid for ${cur.validFor}")
             }
-            cur.validFor = Period(
-              currentPeriod.runId, startPid, transformer.lastPhaseId)
-            //println(s"new denot: $cur, valid for ${cur.validFor}")
             cur.current // multiple transformations could be required
           }
         } else {
@@ -562,7 +577,7 @@ object Denotations {
         case denot: SymDenotation => s"in ${denot.owner}"
         case _ => ""
       }
-      def msg = s"stale symbol; $this#${symbol.id}$ownerMsg, defined in run ${myValidFor.runId}, is referred to in run ${ctx.period.runId}"
+      def msg = s"stale symbol; $this#${symbol.id} $ownerMsg, defined in run ${myValidFor.runId}, is referred to in run ${ctx.runId}"
       throw new StaleSymbol(msg)
     }
 

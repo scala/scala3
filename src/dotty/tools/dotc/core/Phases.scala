@@ -12,13 +12,14 @@ import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, TreeTransform
 import dotty.tools.dotc.transform.PostTyperTransformers.PostTyperTransformer
 import dotty.tools.dotc.transform.TreeTransforms
 import TreeTransforms.Separator
+import Periods._
 
 trait Phases {
   self: Context =>
 
   import Phases._
 
-  def phase: Phase = base.phases(period.phaseId)
+  def phase: Phase = base.phases(period.firstPhaseId)
 
   def phasesStack: List[Phase] =
     if ((this eq NoContext) || !phase.exists) Nil
@@ -45,8 +46,6 @@ object Phases {
     // drop NoPhase at beginning
     def allPhases = squashedPhases.tail
 
-
-
     object NoPhase extends Phase {
       override def exists = false
       def name = "<no phase>"
@@ -68,26 +67,24 @@ object Phases {
       override def lastPhaseId(implicit ctx: Context) = id
     }
 
-    def phaseNamed(name: String) =
-      phases.find(_.name == name).getOrElse(NoPhase)
 
     /** Use the following phases in the order they are given.
      *  The list should never contain NoPhase.
      *  if squashing is enabled, phases in same subgroup will be squashed to single phase.
      */
-    def usePhases(phases: List[List[Phase]], squash: Boolean = true) = {
-      this.phases = (NoPhase :: phases.flatten ::: new TerminalPhase :: Nil).toArray
-      this.nextDenotTransformerId = new Array[Int](this.phases.length)
-      this.denotTransformers = new Array[DenotTransformer](this.phases.length)
+    def usePhases(phasess: List[List[Phase]], squash: Boolean = false) = {
+      phases = (NoPhase :: phasess.flatten ::: new TerminalPhase :: Nil).toArray
+      nextDenotTransformerId = new Array[Int](phases.length)
+      denotTransformers = new Array[DenotTransformer](phases.length)
       var i = 0
-      while (i < this.phases.length) {
-        this.phases(i)._id = i
+      while (i < phases.length) {
+        phases(i).init(this, i)
         i += 1
       }
       var lastTransformerId = i
       while (i > 0) {
         i -= 1
-        this.phases(i) match {
+        phases(i) match {
           case transformer: DenotTransformer =>
             lastTransformerId = i
             denotTransformers(i) = transformer
@@ -100,11 +97,11 @@ object Phases {
         val squashedPhases = ListBuffer[Phase]()
         var postTyperEmmited = false
         var i = 0
-        while (i < phases.length) {
-          if (phases(i).length > 1) {
-            assert(phases(i).forall(x => x.isInstanceOf[TreeTransform]), "Only tree transforms can be squashed")
+        while (i < phasess.length) {
+          if (phasess(i).length > 1) {
+            assert(phasess(i).forall(x => x.isInstanceOf[TreeTransform]), "Only tree transforms can be squashed")
 
-            val transforms = phases(i).asInstanceOf[List[TreeTransform]]
+            val transforms = phasess(i).asInstanceOf[List[TreeTransform]]
             val block =
               if (!postTyperEmmited) {
                 postTyperEmmited = true
@@ -117,8 +114,8 @@ object Phases {
                 override protected def transformations: Array[TreeTransform] = transforms.toArray
               }
             squashedPhases += block
-            block._id = phases(i).head.id
-          } else squashedPhases += phases(i).head
+            block.init(this, phasess(i).head.id, phasess(i).last.id)
+          } else squashedPhases += phasess(i).head
           i += 1
         }
         this.squashedPhases = (NoPhase::squashedPhases.toList :::new TerminalPhase :: Nil).toArray
@@ -126,21 +123,40 @@ object Phases {
         this.squashedPhases = this.phases
       }
 
-      config.println(s"Phases = ${this.phases.deep}")
-      config.println(s"squashedPhases = ${this.squashedPhases.deep}")
+      config.println(s"Phases = ${phases.deep}")
+      config.println(s"squashedPhases = ${squashedPhases.deep}")
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.deep}")
     }
 
-    final val typerName = "typer"
-    final val refchecksName = "refchecks"
-    final val erasureName = "erasure"
-    final val flattenName = "flatten"
+    def phaseNamed(name: String) = phases.find(_.name == name).getOrElse(NoPhase)
 
-    lazy val typerPhase = phaseNamed(typerName)
-    lazy val refchecksPhase = phaseNamed(refchecksName)
-    lazy val erasurePhase = phaseNamed(erasureName)
-    lazy val flattenPhase = phaseNamed(flattenName)
+    /** A cache to compute the phase with given name, which
+     *  stores the phase as soon as phaseNamed returns something
+     *  different from NoPhase.
+     */
+    private class PhaseCache(name: String) {
+      private var myPhase: Phase = NoPhase
+      def phase = {
+        if (myPhase eq NoPhase) myPhase = phaseNamed(name)
+        myPhase
+      }
+    }
+
+    private val typerCache = new PhaseCache(typerName)
+    private val refChecksCache = new PhaseCache(refChecksName)
+    private val erasureCache = new PhaseCache(erasureName)
+    private val flattenCache = new PhaseCache(flattenName)
+
+    def typerPhase = typerCache.phase
+    def refchecksPhase = refChecksCache.phase
+    def erasurePhase = erasureCache.phase
+    def flattenPhase = flattenCache.phase
   }
+
+  final val typerName = "typer"
+  final val refChecksName = "refchecks"
+  final val erasureName = "erasure"
+  final val flattenName = "flatten"
 
   abstract class Phase extends DotClass {
 
@@ -149,7 +165,7 @@ object Phases {
     def run(implicit ctx: Context): Unit
 
     def runOn(units: List[CompilationUnit])(implicit ctx: Context): Unit =
-      for (unit <- units) run(ctx.fresh.withPhase(this).withCompilationUnit(unit))
+      for (unit <- units) run(ctx.fresh.setPhase(this).setCompilationUnit(unit))
 
     def description: String = name
 
@@ -157,31 +173,51 @@ object Phases {
 
     def exists: Boolean = true
 
-    private[Phases] var _id = -1
+    private var myPeriod: Period = Periods.InvalidPeriod
+    private var myBase: ContextBase = null
+    private var myErasedTypes = false
+    private var myFlatClasses = false
+    private var myRefChecked = false
 
     /** The sequence position of this phase in the given context where 0
      * is reserved for NoPhase and the first real phase is at position 1.
      * -1 if the phase is not installed in the context.
      */
-    def id = _id
+    def id = myPeriod.firstPhaseId
+
+    def period = myPeriod
+    def start = myPeriod.firstPhaseId
+    def end = myPeriod.lastPhaseId
+
+    final def erasedTypes = myErasedTypes
+    final def flatClasses = myFlatClasses
+    final def refChecked = myRefChecked
+
+    protected[Phases] def init(base: ContextBase, start: Int, end:Int): Unit = {
+      if (start >= FirstPhaseId)
+        assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")
+      myBase = base
+      myPeriod = Period(start, end)
+      myErasedTypes = prev.name == erasureName   || prev.erasedTypes
+      myFlatClasses = prev.name == flattenName   || prev.flatClasses
+      myRefChecked  = prev.name == refChecksName || prev.refChecked
+    }
+
+    protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
 
     final def <=(that: Phase)(implicit ctx: Context) =
       exists && id <= that.id
 
-    final def prev(implicit ctx: Context): Phase =
-      if (id > FirstPhaseId) ctx.phases(id - 1) else ctx.NoPhase
+    final def prev: Phase =
+      if (id > FirstPhaseId) myBase.phases(start - 1) else myBase.NoPhase
 
-    final def next(implicit ctx: Context): Phase =
-      if (hasNext) ctx.phases(id + 1) else ctx.NoPhase
+    final def next: Phase =
+      if (hasNext) myBase.phases(end + 1) else myBase.NoPhase
 
-    final def hasNext(implicit ctx: Context) = id + 1 < ctx.phases.length
+    final def hasNext = start >= FirstPhaseId && end + 1 < myBase.phases.length
 
-    final def iterator(implicit ctx: Context) =
+    final def iterator =
       Iterator.iterate(this)(_.next) takeWhile (_.hasNext)
-
-    final def erasedTypes(implicit ctx: Context): Boolean = ctx.erasurePhase <= this
-    final def flatClasses(implicit ctx: Context): Boolean = ctx.flattenPhase <= this
-    final def refChecked(implicit ctx: Context): Boolean = ctx.refchecksPhase <= this
 
     override def toString = name
   }
