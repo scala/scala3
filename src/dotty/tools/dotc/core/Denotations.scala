@@ -486,7 +486,7 @@ object Denotations {
      *  if denotation is no longer valid.
      */
     private def bringForward()(implicit ctx: Context): SingleDenotation = this match {
-      case denot: SymDenotation if ctx.stillValid(denot) =>
+      case denot: SymDenotation if ctx.isValidInRun(denot) =>
         if (denot.exists) assert(ctx.runId > validFor.runId, s"denotation $denot invalid in run ${ctx.runId}. ValidFor: $validFor")
         var d: SingleDenotation = denot
         do {

@@ -38,17 +38,18 @@ trait SymDenotations { this: Context =>
     result
   }
 
-  def stillValid(denot: SymDenotation): Boolean =
-    if (denot is ValidForever) true
+  def isValidInRun(denot: SymDenotation): Boolean =
+    if(denot.validFor.runId == this.runId) true
+    else if (denot is ValidForever) true
     else try {
       val owner = denot.owner.denot
       def isSelfSym = owner.infoOrCompleter match {
         case ClassInfo(_, _, _, _, selfInfo) => selfInfo == denot.symbol
         case _ => false
       }
-      stillValid(owner) && owner.isClass && (
-           (owner.decls.lookupAll(denot.name) contains denot.symbol)
-        || isSelfSym
+      isValidInRun(owner) && owner.isClass && (
+        (owner.decls.lookupAll(denot.name) contains denot.symbol)
+          || isSelfSym
         )
     } catch {
       case ex: StaleSymbol => false

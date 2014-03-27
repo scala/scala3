@@ -1028,7 +1028,7 @@ object Types {
           val sym = lastSymbol
           if (sym == null) loadDenot else denotOfSym(sym)
         case d: SymDenotation =>
-          if (d.validFor.runId == ctx.runId || ctx.stillValid(d)) d.current
+          if (ctx.isValidInRun(d)) d.current
           else {
             val newd = loadDenot
             if (newd.exists) newd else d.staleSymbolError
