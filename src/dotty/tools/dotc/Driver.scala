@@ -24,7 +24,7 @@ abstract class Driver extends DotClass {
 
   def process(args: Array[String]): Reporter = {
     val summary = CompilerCommand.distill(args)(initCtx)
-    implicit val ctx: Context = initCtx.fresh.withSettings(summary.sstate)
+    implicit val ctx: Context = initCtx.fresh.setSettings(summary.sstate)
     val fileNames = CompilerCommand.checkUsage(summary)
     try {
       doCompile(newCompiler(), fileNames)

@@ -249,7 +249,7 @@ class LazyValTranformContext {
       val flagSymbol = ctx.newSymbol(methodSymbol, "flag".toTermName, Flags.Mutable & Flags.Synthetic, defn.LongType)
       val flagDef = ValDef(flagSymbol, Literal(Constant(0L)))
 
-      val thiz = This(claz)(ctx.fresh.withOwner(claz))
+      val thiz = This(claz)(ctx.fresh.setOwner(claz))
 
       val resultSymbol = ctx.newSymbol(methodSymbol, "result".toTermName, Flags.Mutable & Flags.Synthetic, tp)
       val resultDef = ValDef(resultSymbol, Literal(initValue(tp.widen)))
@@ -313,7 +313,7 @@ class LazyValTranformContext {
 
         val tpe = x.tpe.widen
         val claz = x.symbol.owner.asClass
-        val thiz = This(claz)(ctx.fresh.withOwner(claz))
+        val thiz = This(claz)(ctx.fresh.setOwner(claz))
         val companion = claz.companionModule
         val helperModule = ctx.requiredModule("dotty.runtime.LazyVals")
         val getOffset = Select(Ident(helperModule.termRef), LazyVals.Names.getOffset.toTermName)

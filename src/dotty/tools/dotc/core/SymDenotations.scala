@@ -38,17 +38,18 @@ trait SymDenotations { this: Context =>
     result
   }
 
-  def stillValid(denot: SymDenotation): Boolean =
-    if (denot is ValidForever) true
+  def isValidInRun(denot: SymDenotation): Boolean =
+    if(denot.validFor.runId == this.runId) true
+    else if (denot is ValidForever) true
     else try {
       val owner = denot.owner.denot
       def isSelfSym = owner.infoOrCompleter match {
         case ClassInfo(_, _, _, _, selfInfo) => selfInfo == denot.symbol
         case _ => false
       }
-      stillValid(owner) && owner.isClass && (
-           (owner.decls.lookupAll(denot.name) contains denot.symbol)
-        || isSelfSym
+      isValidInRun(owner) && owner.isClass && (
+        (owner.decls.lookupAll(denot.name) contains denot.symbol)
+          || isSelfSym
         )
     } catch {
       case ex: StaleSymbol => false
@@ -805,8 +806,12 @@ object SymDenotations {
 
     /** The type parameters of this class */
     override final def typeParams(implicit ctx: Context): List[TypeSymbol] = {
-      def computeTypeParams = decls.filter(sym =>
-        (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
+      def computeTypeParams = {
+        if (ctx.phase.erasedTypes && (this ne defn.ArrayClass)) Nil
+        else if (this ne initial) initial.asSymDenotation.typeParams
+        else decls.filter(sym =>
+          (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
+      }
       if (myTypeParams == null) myTypeParams = computeTypeParams
       myTypeParams
     }
@@ -1352,7 +1357,7 @@ object SymDenotations {
       val (location, src) =
         if (file != null) (s" in $file", file.toString)
         else ("", "the signature")
-      val name = ctx.fresh.withSetting(ctx.settings.debugNames, true).nameString(denot.name)
+      val name = ctx.fresh.setSetting(ctx.settings.debugNames, true).nameString(denot.name)
       ctx.error(
         s"""|bad symbolic reference. A signature$location
             |refers to $name in ${denot.owner.showKind} ${denot.owner.showFullName} which is not available.
