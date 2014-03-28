@@ -39,6 +39,8 @@ import TypeApplications._
 /** A decorator that provides methods for modeling type application */
 class TypeApplications(val self: Type) extends AnyVal {
 
+  def canHaveTypeParams(implicit ctx: Context) = !ctx.erasedTypes || self.isRef(defn.ArrayClass)
+
   /** The type parameters of this type are:
    *  For a ClassInfo type, the type parameters of its class.
    *  For a typeref referring to a class, the type parameters of the class.
@@ -128,7 +130,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         defn.hkTrait(args map alwaysZero).typeParams
       }
 
-    if (args.isEmpty) self
+    if (args.isEmpty || !canHaveTypeParams) self
     else self match {
       case tp: TypeRef =>
         val tsym = tp.symbol
@@ -228,8 +230,11 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
    */
   def translateParameterized(from: ClassSymbol, to: ClassSymbol)(implicit ctx: Context): Type =
-    if (self derivesFrom from)
-      RefinedType(to.typeRef, to.typeParams.head.name, self.member(from.typeParams.head.name).info)
+    if (self.derivesFrom(from))
+      if (canHaveTypeParams)
+        RefinedType(to.typeRef, to.typeParams.head.name, self.member(from.typeParams.head.name).info)
+      else
+        to.typeRef
     else self
 
   /** If this is an encoding of a (partially) applied type, return its arguments,
