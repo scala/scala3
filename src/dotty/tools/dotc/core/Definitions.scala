@@ -218,6 +218,7 @@ class Definitions {
   lazy val OptionClass                  = ctx.requiredClass("scala.Option")
   lazy val BoxedNumberClass             = ctx.requiredClass("java.lang.Number")
   lazy val ThrowableClass               = ctx.requiredClass("java.lang.Throwable")
+  lazy val ClassCastExceptionClass      = ctx.requiredClass("java.lang.ClassCastException")
   lazy val JavaSerializableClass        = ctx.requiredClass("java.lang.Serializable")
   lazy val ComparableClass              = ctx.requiredClass("java.lang.Comparable")
   lazy val ProductClass                 = ctx.requiredClass("scala.Product")

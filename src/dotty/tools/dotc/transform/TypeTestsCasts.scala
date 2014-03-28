@@ -81,7 +81,7 @@ class TypeTestsCasts extends TreeTransform {
             Typed(qual, tree.args.head)
           else if (qualCls.isPrimitiveValueClass) {
             val argCls = argType.classSymbol
-            if (argCls.isPrimitiveValueClass) numericConversion(qual, argCls)
+            if (argCls.isPrimitiveValueClass) primitiveConversion(qual, argCls)
             else derivedTree(box(qual), defn.Object_asInstanceOf)
           }
           else
