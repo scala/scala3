@@ -1,7 +1,7 @@
 
 name := "dotty"
 
-scalaVersion in Global := "2.11.0-M7"
+scalaVersion in Global := "2.11.0-RC3"
 
 version in Global := "0.1-SNAPSHOT"
 
