@@ -97,7 +97,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val overrideVars = BooleanSetting("-Yoverride-vars", "Allow vars to be overridden.")
   val Yhelp = BooleanSetting("-Y", "Print a synopsis of private options.")
   val browse = PhasesSetting("-Ybrowse", "Browse the abstract syntax tree after")
-  val check = PhasesSetting("-Ycheck", "Check the tree at the end of")
+  val Ycheck = PhasesSetting("-Ycheck", "Check the tree at the end of")
   val YcheckTypedTrees = BooleanSetting("-YcheckTypedTrees", "Check all constructured typed trees for type correctness")
   val Yshow = PhasesSetting("-Yshow", "(Requires -Xshow-class or -Xshow-object) Show after")
   val Xcloselim = BooleanSetting("-Yclosure-elim", "Perform closure elimination.")
