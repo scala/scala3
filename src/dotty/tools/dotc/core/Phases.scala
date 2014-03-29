@@ -72,7 +72,7 @@ object Phases {
      *  The list should never contain NoPhase.
      *  if squashing is enabled, phases in same subgroup will be squashed to single phase.
      */
-    def usePhases(phasess: List[List[Phase]], squash: Boolean = false) = {
+    def usePhases(phasess: List[List[Phase]], squash: Boolean = true) = {
       phases = (NoPhase :: phasess.flatten ::: new TerminalPhase :: Nil).toArray
       nextDenotTransformerId = new Array[Int](phases.length)
       denotTransformers = new Array[DenotTransformer](phases.length)

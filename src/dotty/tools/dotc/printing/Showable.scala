@@ -4,6 +4,7 @@ package printing
 import core._
 
 import Contexts._, Texts._, Decorators._
+import config.Config.summarizeDepth
 
 trait Showable extends Any {
 
@@ -20,4 +21,13 @@ trait Showable extends Any {
 
   /** The string representation of this showable element. */
   def show(implicit ctx: Context): String = toText(ctx.printer).show
+
+  /** The summarized string representation of this showable element.
+   *  Recursion depth is limited to some smallish value. Default is
+   *  Config.summarizeDepth.
+   */
+  def showSummary(depth: Int)(implicit ctx: Context): String =
+    ctx.printer.summarized(depth)(show)
+
+  def showSummary(implicit ctx: Context): String = showSummary(summarizeDepth)
 }

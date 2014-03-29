@@ -298,23 +298,6 @@ class TypeApplications(val self: Type) extends AnyVal {
   def elemType(implicit ctx: Context): Type =
     firstBaseArgInfo(defn.SeqClass) orElse firstBaseArgInfo(defn.ArrayClass)
 
-  /** If this type is of the normalized form Array[...[Array[T]...]
-   *  return the number of Array wrappers and T.
-   *  Otherwise return 0 and the type itself
-   */
-  final def splitArray(implicit ctx: Context): (Int, Type) = {
-    def recur(n: Int, tp: Type): (Int, Type) = tp.stripTypeVar match {
-      case RefinedType(tycon, _) if tycon isRef defn.ArrayClass =>
-        tp.argInfos match {
-          case arg :: Nil => recur(n + 1, arg)
-          case _ => (n, tp)
-        }
-      case _ =>
-        (n, tp)
-    }
-    recur(0, self)
-  }
-
   /** Given a type alias
    *
    *      type T[boundSyms] = p.C[targs]

@@ -217,9 +217,9 @@ trait TypeAssigner {
     val ownType = fn.tpe.widen match {
       case fntpe @ MethodType(_, ptypes) =>
         if (sameLength(ptypes, args)) fntpe.instantiate(args.tpes)
-        else errorType(s"wrong number of type parameters for ${fn.tpe}; expected: ${ptypes.length}", tree.pos)
+        else errorType(s"wrong number of parameters for ${fn.tpe}; expected: ${ptypes.length}", tree.pos)
       case t =>
-        errorType(s"${err.exprStr(fn)} does not take type parameters", tree.pos)
+        errorType(s"${err.exprStr(fn)} does not take parameters", tree.pos)
     }
     tree.withType(ownType)
   }

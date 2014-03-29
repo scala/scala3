@@ -1214,6 +1214,10 @@ object SymDenotations {
       val cname = if (this is ImplClass) nme.IMPLCLASS_CONSTRUCTOR else nme.CONSTRUCTOR
       decls.denotsNamed(cname).first.symbol
     }
+
+    def underlyingOfValueClass: Type = ???
+
+    def valueClassUnbox: Symbol = ???
   }
 
   /** The denotation of a package class.

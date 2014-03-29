@@ -1072,9 +1072,6 @@ object Types {
       }
     }
 
-    def isType = name.isTypeName
-    def isTerm = name.isTermName
-
     def symbol(implicit ctx: Context): Symbol = {
       val now = ctx.period
       if (checkedPeriod == now ||
@@ -1083,6 +1080,9 @@ object Types {
     }
 
     def info(implicit ctx: Context): Type = denot.info
+
+    def isType = isInstanceOf[TypeRef]
+    def isTerm = isInstanceOf[TermRef]
 
     /** Guard against cycles that can arise if given `op`
      *  follows info. The prblematic cases are a type alias to itself or
@@ -1445,7 +1445,7 @@ object Types {
 
     protected def resultSignature(implicit ctx: Context) = resultType match {
       case rtp: SignedType => rtp.signature
-      case tp => Signature(tp)
+      case tp => Signature(tp, isJava = false)
     }
 
     final override def signature(implicit ctx: Context): Signature = {
@@ -1496,7 +1496,7 @@ object Types {
     }
 
     protected def computeSignature(implicit ctx: Context): Signature =
-      paramTypes ++: resultSignature
+      resultSignature.prepend(paramTypes, isJava)
 
     def derivedMethodType(paramNames: List[TermName], paramTypes: List[Type], restpe: Type)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramTypes eq this.paramTypes) && (restpe eq this.resultType)) this

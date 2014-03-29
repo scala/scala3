@@ -112,7 +112,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp: ViewProto =>
         return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
       case tp: TypeRef =>
-        if (tp.symbol is TypeParam | TypeArgument) {
+        if ((tp.symbol is TypeParam | TypeArgument) && !ctx.phase.erasedTypes) {
           return tp.info match {
             case TypeAlias(hi) => toText(hi)
             case _ => nameString(tp.symbol)
@@ -127,7 +127,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     super.toText(tp)
   }
 
-  override def toText[T >: Untyped](tree: Tree[T]): Text = {
+  override def toText[T >: Untyped](tree: Tree[T]): Text = controlled {
 
     def optDotPrefix(name: Name) = optText(name)(_ ~ ".")
 
@@ -242,7 +242,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case SeqLiteral(elems) =>
         "[" ~ toTextGlobal(elems, ",") ~ "]"
       case tpt: untpd.DerivedTypeTree =>
-        "<derived typetree watching " ~ toText(tpt.watched) ~ ">"
+        "<derived typetree watching " ~ summarized(toText(tpt.watched)) ~ ">"
       case TypeTree(orig) =>
         if (tree.hasType) toText(tree.typeOpt) else toText(orig)
       case SingletonTypeTree(ref) =>

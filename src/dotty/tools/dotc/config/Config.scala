@@ -27,4 +27,7 @@ object Config {
    *  Disadvantage: It might hide inconsistencies, so while debugging it's better to turn it off
    */
   final val newMatch = false
+
+  /** The recursion depth for showing a summarized string */
+  final val summarizeDepth = 2
 }

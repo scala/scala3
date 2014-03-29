@@ -7,6 +7,7 @@ import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annot
 import StdNames.nme
 import ast.Trees._, ast.untpd
 import java.lang.Integer.toOctalString
+import config.Config.summarizeDepth
 import scala.annotation.switch
 
 class PlainPrinter(_ctx: Context) extends Printer {
@@ -15,7 +16,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def maxToTextRecursions = 100
 
   protected final def controlled(op: => Text): Text =
-    if (ctx.toTextRecursions < maxToTextRecursions)
+    if (ctx.toTextRecursions < maxToTextRecursions && ctx.toTextRecursions < maxSummarized)
       try {
         ctx.toTextRecursions += 1
         op
@@ -23,12 +24,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
         ctx.toTextRecursions -= 1
       }
     else {
-      recursionLimitExceeded()
+      if (ctx.toTextRecursions >= maxToTextRecursions)
+        recursionLimitExceeded()
       "..."
     }
 
   protected def recursionLimitExceeded() = {
-    ctx.warning("Exceeded recursion depth attempting to print type.")
+    ctx.warning("Exceeded recursion depth attempting to print.")
     (new Throwable).printStackTrace
   }
 
@@ -392,6 +394,17 @@ class PlainPrinter(_ctx: Context) extends Printer {
         tree.fallbackToText(this)
     }
   }.close // todo: override in refined printer
+
+  private var maxSummarized = Int.MaxValue
+
+  def summarized[T](depth: Int)(op: => T): T = {
+    val saved = maxSummarized
+    maxSummarized = ctx.toTextRecursions + depth
+    try op
+    finally maxSummarized = depth
+  }
+
+  def summarized[T](op: => T): T = summarized(summarizeDepth)(op)
 
   def plain = this
 }
