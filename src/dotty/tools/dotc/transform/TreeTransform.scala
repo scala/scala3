@@ -129,7 +129,7 @@ object TreeTransforms {
 
     protected def mkTreeTransformer = new TreeTransformer {
       override def name: String = TreeTransform.this.name
-      override protected def transformations = Array(TreeTransform.this)
+      override def transformations = Array(TreeTransform.this)
     }
 
     override def run(implicit ctx: Context): Unit = {
@@ -414,7 +414,7 @@ object TreeTransforms {
   /** A group of tree transforms that are applied in sequence during the same phase */
   abstract class TreeTransformer extends Phase {
 
-    protected def transformations: Array[TreeTransform]
+    def transformations: Array[TreeTransform]
 
     override def run(implicit ctx: Context): Unit = {
       val curTree = ctx.compilationUnit.tpdTree
