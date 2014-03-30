@@ -13,6 +13,7 @@ import core.StdNames._
 import core.transform.Erasure.isUnboundedGeneric
 import typer.ErrorReporting._
 import ast.Trees._
+import Erasure.Boxing.box
 
 /** This transform normalizes type tests and type casts.
  *  Any remaining type tests
@@ -22,8 +23,6 @@ import ast.Trees._
  */
 class TypeTestsCasts extends TreeTransform {
   import ast.tpd._
-
-  def box(tree: Tree): Tree = ???
 
   override def name: String = "typeTestsCasts"
 
