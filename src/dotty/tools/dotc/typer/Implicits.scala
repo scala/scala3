@@ -457,7 +457,7 @@ trait Implicits { self: Typer =>
             pt)
         val generated1 = adapt(generated, pt)
         lazy val shadowing =
-          typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)(nestedContext.clearTyperState)
+          typed(untpd.Ident(ref.name) withPos pos.toSynthetic, funProto)(nestedContext.setNewTyperState)
         def refMatches(shadowing: Tree): Boolean =
           ref.symbol == closureBody(shadowing).symbol || {
             shadowing match {
@@ -485,7 +485,7 @@ trait Implicits { self: Typer =>
           val history = ctx.searchHistory nest wildProto
           val result =
             if (history eq ctx.searchHistory) divergingImplicit(ref)
-            else typedImplicit(ref)(nestedContext.clearTyperState.setSearchHistory(history))
+            else typedImplicit(ref)(nestedContext.setNewTyperState.setSearchHistory(history))
           result match {
             case fail: SearchFailure =>
               rankImplicits(pending1, acc)

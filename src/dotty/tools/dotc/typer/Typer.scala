@@ -587,7 +587,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             assignType(cpy.CaseDef(tree, pat, guard1, body1), body1)
           }
           val doCase: () => CaseDef =
-            () => caseRest(typedPattern(tree.pat, selType))(ctx.fresh.clearScope)
+            () => caseRest(typedPattern(tree.pat, selType))(ctx.fresh.setNewScope)
           (doCase /: gadtSyms)((op, tsym) => tsym.withGADTFlexType(op))()
         }
 
@@ -881,13 +881,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case tree: untpd.Bind => typedBind(tree, pt)
       case tree: untpd.ValDef =>
         if (tree.isEmpty) tpd.EmptyValDef
-        else typedValDef(tree, sym)(localContext.clearScope)
+        else typedValDef(tree, sym)(localContext.setNewScope)
       case tree: untpd.DefDef =>
         val typer1 = nestedTyper.remove(sym).get
         typer1.typedDefDef(tree, sym)(localContext.setTyper(typer1))
       case tree: untpd.TypeDef =>
         if (tree.isClassDef) typedClassDef(tree, sym.asClass)(localContext)
-        else typedTypeDef(tree, sym)(localContext.clearScope)
+        else typedTypeDef(tree, sym)(localContext.setNewScope)
       case _ => typedUnadapted(desugar(tree), pt)
     }
   }
@@ -909,7 +909,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.Typed => typedTyped(tree, pt)
           case tree: untpd.NamedArg => typedNamedArg(tree, pt)
           case tree: untpd.Assign => typedAssign(tree, pt)
-          case tree: untpd.Block => typedBlock(desugar.block(tree), pt)(ctx.fresh.clearScope)
+          case tree: untpd.Block => typedBlock(desugar.block(tree), pt)(ctx.fresh.setNewScope)
           case tree: untpd.If => typedIf(tree, pt)
           case tree: untpd.Function => typedFunction(tree, pt)
           case tree: untpd.Closure => typedClosure(tree, pt)
@@ -992,7 +992,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     typed(tree, pt)(ctx addMode Mode.Pattern)
 
   def tryEither[T](op: Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context) = {
-    val nestedCtx = ctx.fresh.clearTyperState
+    val nestedCtx = ctx.fresh.setNewTyperState
     val result = op(nestedCtx)
     if (nestedCtx.reporter.hasErrors)
       fallBack(result, nestedCtx.typerState)

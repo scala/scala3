@@ -316,7 +316,7 @@ object Contexts {
     def setPeriod(period: Period): this.type = { this.period = period; this }
     def setMode(mode: Mode): this.type = { this.mode = mode; this }
     def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
-    def clearTyperState: this.type = setTyperState(typerState.fresh(isCommittable = true))
+    def setNewTyperState: this.type = setTyperState(typerState.fresh(isCommittable = true))
     def setExploreTyperState: this.type = setTyperState(typerState.fresh(isCommittable = false))
     def setPrinterFn(printer: Context => Printer): this.type = { this.printerFn = printer; this }
     def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
@@ -324,7 +324,7 @@ object Contexts {
     def setCompilationUnit(compilationUnit: CompilationUnit): this.type = { this.compilationUnit = compilationUnit; this }
     def setTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
     def setScope(scope: Scope): this.type = { this.scope = scope; this }
-    def clearScope: this.type = { this.scope = newScope; this }
+    def setNewScope: this.type = { this.scope = newScope; this }
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = { this.typeAssigner = typeAssigner; this }
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }
