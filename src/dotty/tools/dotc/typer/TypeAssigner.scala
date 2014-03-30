@@ -228,7 +228,7 @@ trait TypeAssigner {
     val ownType = fn.tpe.widen match {
       case pt: PolyType =>
         val argTypes = args.tpes
-        if (sameLength(argTypes, pt.paramNames)) pt.instantiate(args.tpes)
+        if (sameLength(argTypes, pt.paramNames)) pt.instantiate(argTypes)
         else errorType(i"wrong number of type parameters for ${fn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
       case _ =>
         errorType(s"${err.exprStr(fn)} does not take type parameters", tree.pos)

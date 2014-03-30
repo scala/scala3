@@ -130,7 +130,7 @@ object Erasure {
           // See SI-2386 for one example of when this might be necessary.
           cast(runtimeCall(nme.toObjectArray, tree :: Nil), pt)
         case _ =>
-          println(s"casting from ${tree.showSummary}: ${tree.tpe.show} to ${pt.show}")
+          ctx.log(s"casting from ${tree.showSummary}: ${tree.tpe.show} to ${pt.show}")
           TypeApply(Select(tree, defn.Object_asInstanceOf), TypeTree(pt) :: Nil)
       }
 
@@ -173,8 +173,10 @@ object Erasure {
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
       val tree1 = promote(tree)
-      println(i"typed ident ${tree.name}: ${tree1.tpe} at phase ${ctx.phase}, history = ${tree1.symbol.history}")
-      tree1
+      tree1.tpe match {
+        case ThisType(cls) => This(cls) withPos tree.pos
+        case _ => tree1
+      }
     }
 
     /** Type check select nodes, applying the following rewritings exhaustively
@@ -226,8 +228,16 @@ object Erasure {
       recur(typed(tree.qualifier, AnySelectionProto))
     }
 
-    override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context) =
-      typedExpr(tree.fun, pt)
+    override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context) = {
+      val TypeApply(fun, args) = tree
+      val fun1 = typedExpr(fun, pt)
+      fun1.tpe.widen match {
+        case funTpe: PolyType =>
+          val args1 = args.mapconserve(typedType(_))
+          untpd.cpy.TypeApply(tree, fun1, args1).withType(funTpe.instantiate(args1.tpes))
+        case _ => fun1
+      }
+    }
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
       val Apply(fun, args) = tree
@@ -268,9 +278,8 @@ object Erasure {
 */
     override def typedNamed(tree: untpd.NameTree, pt: Type)(implicit ctx: Context): Tree = {
       if (tree eq untpd.EmptyValDef) return tpd.EmptyValDef
-      assert(tree.hasType, tree)
+      assert(tree.hasType, tree.show)
       val sym = tree.symbol
-      assert(sym.exists, tree)
       def localContext = ctx.fresh.setTree(tree).setOwner(sym)
       tree match {
         case tree: untpd.Ident => typedIdent(tree, pt)
@@ -288,5 +297,7 @@ object Erasure {
         assert(ctx.phase == ctx.erasurePhase.next, ctx.phase)
         if (tree.isEmpty) tree else adaptToType(tree, pt)
     }
+
+    override def index(trees: List[untpd.Tree])(implicit ctx: Context) = ctx
   }
 }

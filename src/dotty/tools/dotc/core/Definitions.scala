@@ -103,8 +103,8 @@ class Definitions {
     lazy val Object_!= = newMethod(ObjectClass, nme.NE, methOfAny(BooleanType), Final)
     lazy val Object_eq = newMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
     lazy val Object_ne = newMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
-    lazy val Object_isInstanceOf = newT1EmptyParamsMethod(ObjectClass, nme.isInstanceOf_Ob, _ => BooleanType, Final | Synthetic)
-    lazy val Object_asInstanceOf = newT1EmptyParamsMethod(ObjectClass, nme.asInstanceOf_Ob, PolyParam(_, 0), Final | Synthetic)
+    lazy val Object_isInstanceOf = newT1ParameterlessMethod(ObjectClass, nme.isInstanceOf_Ob, _ => BooleanType, Final | Synthetic)
+    lazy val Object_asInstanceOf = newT1ParameterlessMethod(ObjectClass, nme.asInstanceOf_Ob, PolyParam(_, 0), Final | Synthetic)
     lazy val Object_synchronized = newPolyMethod(ObjectClass, nme.synchronized_, 1,
         pt => MethodType(List(PolyParam(pt, 0)), PolyParam(pt, 0)), Final)
 

@@ -61,16 +61,11 @@ object Erasure {
    */
   def transformInfo(sym: Symbol, tp: Type)(implicit ctx: Context): Type = {
     val erase = erasureFn(sym is JavaDefined, isSemi = true, sym.isConstructor, wildcardOK = false)
-    if ((sym eq defn.Object_asInstanceOf) || sym.isType && (sym.owner eq defn.ArrayClass))
-      sym.info
-    else if ((sym eq defn.Object_isInstanceOf) || (sym eq defn.ArrayClass.primaryConstructor)) {
-      val tp @ PolyType(pnames) = sym.info
-      tp.derivedPolyType(pnames, TypeBounds.empty :: Nil, erase(tp.resultType))
-    }
-    else if (sym.isAbstractType)
-      TypeAlias(WildcardType)
-    else
-      erase(tp)
+    if ((sym eq defn.Object_asInstanceOf) ||
+        (sym eq defn.Object_isInstanceOf) ||
+        (sym.owner eq defn.ArrayClass) && (sym.isType || sym.isConstructor)) sym.info
+    else if (sym.isAbstractType) TypeAlias(WildcardType)
+    else erase(tp)
   }
 
   def isUnboundedGeneric(tp: Type)(implicit ctx: Context) = !(
@@ -120,7 +115,7 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
     case tp: TypeRef =>
       val sym = tp.symbol
       if (!sym.isClass)
-        if (sym.owner eq defn.ArrayClass) tp else this(tp.info)
+        if (sym.exists && (sym.owner eq defn.ArrayClass)) tp else this(tp.info) //!!!!
       else if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tp)
       else eraseNormalClassRef(tp)
     case tp: RefinedType =>
