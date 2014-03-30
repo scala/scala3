@@ -48,8 +48,8 @@ object PostTyperTransformers {
       reorder0(stats)
     }
 
-    override def transformStats(trees: List[tpd.Tree], info: TransformerInfo, current: Int)(implicit ctx: Context): List[tpd.Tree] =
-      super.transformStats(reorder(trees)(ctx, info), info, current)
+    override def transformStats(trees: List[tpd.Tree], exprOwner: Symbol, info: TransformerInfo, current: Int)(implicit ctx: Context): List[tpd.Tree] =
+      super.transformStats(reorder(trees)(ctx, info), exprOwner, info, current)
 
     override def transform(tree: tpd.Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): tpd.Tree = tree match {
       case tree: Import => EmptyTree

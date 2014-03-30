@@ -21,7 +21,7 @@ class Compiler {
     List(
       List(new FrontEnd),
       List(new LazyValsCreateCompanionObjects, new PatternMatcher),    //force separataion between lazyVals and LVCreateCO
-      List(new LazyValTranformContext().transformer, new TypeTestsCasts),
+      List(new LazyValTranformContext().transformer, new Splitter, new TypeTestsCasts),
       List(new Erasure),
       List(new UncurryTreeTransform)
     )

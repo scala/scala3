@@ -277,6 +277,9 @@ object Contexts {
       newctx.asInstanceOf[FreshContext]
     }
 
+    final def withOwner(owner: Symbol): Context =
+      if (owner ne this.owner) fresh.setOwner(owner) else this
+
     final def withMode(mode: Mode): Context =
       if (mode != this.mode) fresh.setMode(mode) else this
 
