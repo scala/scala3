@@ -51,7 +51,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
 
   private def printTree(ctx: Context) = {
     val unit = ctx.compilationUnit
-    println(s"result of $unit after ${ctx.phase}:")
+    println(s"result of $unit after ${ctx.phase.prev}:")
     println(unit.tpdTree.show(ctx))
   }
 
