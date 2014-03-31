@@ -273,35 +273,34 @@ object Denotations {
 
       def unionDenot(denot1: SingleDenotation, denot2: SingleDenotation): Denotation =
         if (denot1.signature matches denot2.signature) {
+          val sym1 = denot1.symbol
+          val sym2 = denot2.symbol
           val info1 = denot1.info
           val info2 = denot2.info
-          val sym2 = denot2.symbol
-          def sym2Accessible = sym2.isAccessibleFrom(pre)
-          if (info1 <:< info2 && sym2Accessible) denot2
+          val sameSym = sym1 eq sym2
+          if (sameSym && info1 <:< info2) denot2
+          else if (sameSym && info2 <:< info1) denot1
           else {
-            val sym1 = denot1.symbol
-            def sym1Accessible = sym1.isAccessibleFrom(pre)
-            if (info2 <:< info1 && sym1Accessible) denot1
-            else {
-              val owner2 = if (sym2 ne NoSymbol) sym2.owner else NoSymbol
-              /** Determine a symbol which is overridden by both sym1 and sym2.
-               *  Preference is given to accessible symbols.
-               */
-              def lubSym(overrides: Iterator[Symbol], previous: Symbol): Symbol =
-                if (!overrides.hasNext) previous
-                else {
-                  val candidate = overrides.next
-                  if (owner2 derivesFrom candidate.owner)
-                    if (candidate isAccessibleFrom pre) candidate
-                    else lubSym(overrides, previous orElse candidate)
-                  else
-                    lubSym(overrides, previous)
-                }
-              new JointRefDenotation(
-                lubSym(sym1.allOverriddenSymbols, NoSymbol),
-                info1 | info2,
-                denot1.validFor & denot2.validFor)
-            }
+            val jointSym =
+              if (sameSym) sym1
+              else {
+                val owner2 = if (sym2 ne NoSymbol) sym2.owner else NoSymbol
+                /** Determine a symbol which is overridden by both sym1 and sym2.
+                 *  Preference is given to accessible symbols.
+                 */
+                def lubSym(overrides: Iterator[Symbol], previous: Symbol): Symbol =
+                  if (!overrides.hasNext) previous
+                  else {
+                    val candidate = overrides.next
+                    if (owner2 derivesFrom candidate.owner)
+                      if (candidate isAccessibleFrom pre) candidate
+                      else lubSym(overrides, previous orElse candidate)
+                    else
+                      lubSym(overrides, previous)
+                  }
+                lubSym(sym1.allOverriddenSymbols, NoSymbol)
+              }
+            new JointRefDenotation(jointSym, info1 | info2, denot1.validFor & denot2.validFor)
           }
         }
         else NoDenotation
