@@ -7,6 +7,15 @@ import org.junit.Assert
 class LazyValsTest extends DottyTest {
 
     @Test
+    def doNotRewriteObjects = {
+      checkCompile("LazyVals", "object O"){ (tree, ctx) =>
+        Assert.assertTrue("local lazy shouldn't rewrite module instance definitions", tree.toString.contains(
+          "ValDef(Modifiers(final module <stable>,,List()),O,Ident(O$),Apply(Select(New(Ident(O$)),<init>),List()))"
+        ))
+      }
+    }
+
+    @Test
     def localInt = {
       checkCompile("LazyVals", "class LocalLV { def m = { lazy val s = 1;  s }}"){ (tree, ctx) =>
         Assert.assertTrue("local lazy int rewritten to class creation", tree.toString.contains(
