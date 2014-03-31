@@ -205,7 +205,8 @@ object Contexts {
 
     final def withPhase(phase: Phase): Context =
       withPhase(phase.id)
-  /** If -Ydebug is on, the top of the stack trace where this context
+
+   /** If -Ydebug is on, the top of the stack trace where this context
      *  was created, otherwise `null`.
      */
     private var creationTrace: Array[StackTraceElement] = _
@@ -298,6 +299,7 @@ object Contexts {
       setCreationTrace()
       this
     }
+
     /** A fresh clone of this context. */
     def fresh: FreshContext = clone.asInstanceOf[FreshContext].init(this)
 

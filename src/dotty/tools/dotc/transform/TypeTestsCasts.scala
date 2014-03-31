@@ -15,7 +15,8 @@ import typer.ErrorReporting._
 import ast.Trees._
 import Erasure.Boxing.box
 
-/** This transform normalizes type tests and type casts.
+/** This transform normalizes type tests and type casts,
+ *  also replacing type tests with singleton argument type with refference equality check
  *  Any remaining type tests
  *   - use the object methods $isInstanceOf and $asInstanceOf
  *   - have a reference type as receiver
