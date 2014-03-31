@@ -292,7 +292,7 @@ class Namer { typer: Typer =>
 
   /** A new context for the interior of a class */
   def inClassContext(selfInfo: DotClass /* Should be Type | Symbol*/)(implicit ctx: Context): Context = {
-    val localCtx: Context = ctx.fresh.clearScope
+    val localCtx: Context = ctx.fresh.setNewScope
     selfInfo match {
       case sym: Symbol if sym.exists && sym.name != nme.WILDCARD =>
         localCtx.scope.asInstanceOf[MutableScope].enter(sym)
@@ -385,14 +385,14 @@ class Namer { typer: Typer =>
     private def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
         if (sym is Module) moduleValSig(sym)
-        else valOrDefDefSig(original, sym, Nil, identity)(localContext(sym).clearScope)
+        else valOrDefDefSig(original, sym, Nil, identity)(localContext(sym).setNewScope)
       case original: DefDef =>
         val typer1 = new Typer
         nestedTyper(sym) = typer1
         typer1.defDefSig(original, sym)(localContext(sym).setTyper(typer1))
       case original: TypeDef =>
         assert(!original.isClassDef)
-        typeDefSig(original, sym)(localContext(sym).clearScope)
+        typeDefSig(original, sym)(localContext(sym).setNewScope)
       case imp: Import =>
         try {
           val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)

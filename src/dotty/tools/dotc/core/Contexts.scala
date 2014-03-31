@@ -181,6 +181,30 @@ object Contexts {
     protected def searchHistory_= (searchHistory: SearchHistory) = _searchHistory = searchHistory
     def searchHistory: SearchHistory = _searchHistory
 
+    private var phasedCtx: Context = _
+    private var phasedCtxs: Array[Context] = _
+
+
+    /** This context at given phase.
+     *  This method will always return a phase period equal to phaseId, thus will never return squashed phases
+     */
+    final def withPhase(phaseId: PhaseId): Context = {
+      if (this.phaseId == phaseId) this
+      else if (phasedCtx.phaseId == phaseId) phasedCtx
+      else if (phasedCtxs != null && phasedCtxs(phaseId) != null) phasedCtxs(phaseId)
+      else {
+        val ctx1 = fresh.setPhase(phaseId)
+        if (phasedCtx eq this) phasedCtx = ctx1
+        else {
+          if (phasedCtxs == null) phasedCtxs = new Array[Context](base.phases.length)
+          phasedCtxs(phaseId) = ctx1
+        }
+        ctx1
+      }
+    }
+
+    final def withPhase(phase: Phase): Context =
+      withPhase(phase.id)
   /** If -Ydebug is on, the top of the stack trace where this context
      *  was created, otherwise `null`.
      */
@@ -266,28 +290,22 @@ object Contexts {
     }
     */
 
-    /** A fresh clone of this context. */
-    def fresh: FreshContext = {
-      val newctx: Context = super.clone.asInstanceOf[FreshContext]
-      newctx.outer = this
-      newctx.implicitsCache = null
-      newctx.setCreationTrace()
-        // Dotty deviation: Scala2x allows access to private members implicitCache and setCreationTrace
-        // even from a subclass prefix. Dotty (and Java) do not. It's confirmed as a bug in Scala2x.
-      newctx.asInstanceOf[FreshContext]
+    protected def init(outer: Context): this.type = {
+      this.outer = outer
+      this.implicitsCache = null
+      this.phasedCtx = this
+      this.phasedCtxs = null
+      setCreationTrace()
+      this
     }
+    /** A fresh clone of this context. */
+    def fresh: FreshContext = clone.asInstanceOf[FreshContext].init(this)
+
+    final def withOwner(owner: Symbol): Context =
+      if (owner ne this.owner) fresh.setOwner(owner) else this
 
     final def withMode(mode: Mode): Context =
       if (mode != this.mode) fresh.setMode(mode) else this
-
-    /**
-     * This method will always return a phase period equal to phaseId, thus will never return squashed phases
-     */
-    final def withPhase(phaseId: PhaseId): Context =
-      if (this.phaseId == phaseId) this else fresh.setPhase(phaseId)
-    final def withPhase(phase: Phase): Context =
-      if (this.period == phase.period) this else fresh.setPhase(phase)
-
 
     final def addMode(mode: Mode): Context = withMode(this.mode | mode)
     final def maskMode(mode: Mode): Context = withMode(this.mode & mode)
@@ -313,7 +331,7 @@ object Contexts {
     def setPeriod(period: Period): this.type = { this.period = period; this }
     def setMode(mode: Mode): this.type = { this.mode = mode; this }
     def setTyperState(typerState: TyperState): this.type = { this.typerState = typerState; this }
-    def clearTyperState: this.type = setTyperState(typerState.fresh(isCommittable = true))
+    def setNewTyperState: this.type = setTyperState(typerState.fresh(isCommittable = true))
     def setExploreTyperState: this.type = setTyperState(typerState.fresh(isCommittable = false))
     def setPrinterFn(printer: Context => Printer): this.type = { this.printerFn = printer; this }
     def setOwner(owner: Symbol): this.type = { assert(owner != NoSymbol); this.owner = owner; this }
@@ -321,7 +339,7 @@ object Contexts {
     def setCompilationUnit(compilationUnit: CompilationUnit): this.type = { this.compilationUnit = compilationUnit; this }
     def setTree(tree: Tree[_ >: Untyped]): this.type = { this.tree = tree; this }
     def setScope(scope: Scope): this.type = { this.scope = scope; this }
-    def clearScope: this.type = { this.scope = newScope; this }
+    def setNewScope: this.type = { this.scope = newScope; this }
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = { this.typeAssigner = typeAssigner; this }
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
     def setImportInfo(importInfo: ImportInfo): this.type = { this.importInfo = importInfo; this }

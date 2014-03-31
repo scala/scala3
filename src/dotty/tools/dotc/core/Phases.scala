@@ -107,11 +107,11 @@ object Phases {
                 postTyperEmmited = true
                 new PostTyperTransformer {
                   override def name: String = transformations.map(_.name).mkString("TreeTransform:{", ", ", "}")
-                  override protected def transformations: Array[TreeTransform] = transforms.toArray
+                  override def transformations: Array[TreeTransform] = transforms.toArray
                 }
               } else new TreeTransformer {
                 override def name: String = transformations.map(_.name).mkString("TreeTransform:{", ", ", "}")
-                override protected def transformations: Array[TreeTransform] = transforms.toArray
+                override def transformations: Array[TreeTransform] = transforms.toArray
               }
             squashedPhases += block
             block.init(this, phasess(i).head.id, phasess(i).last.id)

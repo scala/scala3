@@ -1039,6 +1039,7 @@ object Types {
       }
       lastDenotation = d
       lastSymbol = d.symbol
+      checkedPeriod = ctx.period
       d
     }
 

@@ -6,6 +6,7 @@ import Contexts._, Periods._, Symbols._, Phases._, Decorators._
 import io.PlainFile
 import util.{SourceFile, NoSource, Stats, SimpleMap}
 import reporting.Reporter
+import transform.TreeChecker
 import java.io.{BufferedWriter, OutputStreamWriter}
 import scala.reflect.io.VirtualFile
 
@@ -39,18 +40,19 @@ class Run(comp: Compiler)(implicit ctx: Context) {
       for (phase <- phasesToRun) {
         if (!ctx.reporter.hasErrors) {
           phase.runOn(units)
-          if (ctx.settings.Xprint.value.containsPhase(phase))
-            for (unit <- units)
-              printTree(ctx.fresh.setPhase(phase).setCompilationUnit(unit))
+          def foreachUnit(op: Context => Unit)(implicit ctx: Context): Unit =
+            for (unit <- units) op(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
+          if (ctx.settings.Xprint.value.containsPhase(phase)) foreachUnit(printTree)
+          if (ctx.settings.Ycheck.value.containsPhase(phase)) foreachUnit(TreeChecker.check)
         }
       }
     }
   }
 
-  private def printTree(implicit ctx: Context) = {
+  private def printTree(ctx: Context) = {
     val unit = ctx.compilationUnit
     println(s"result of $unit after ${ctx.phase}:")
-    println(unit.tpdTree.show)
+    println(unit.tpdTree.show(ctx))
   }
 
   def compile(sourceCode: String): Unit = {

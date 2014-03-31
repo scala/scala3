@@ -6,6 +6,7 @@ import Symbols._
 import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer
 import util.Positions.Position, util.SourcePosition
 import collection.mutable.ListBuffer
+import dotty.tools.dotc.transform.TreeTransforms._
 import scala.language.implicitConversions
 
 /** This object provides useful implicit decorators for types defined elsewhere */
@@ -127,8 +128,10 @@ object Decorators {
    *  one of the names in the list of strings.
    */
   implicit class PhaseListDecorator(val names: List[String]) extends AnyVal {
-    def containsPhase(phase: Phase) =
-      names exists (phase.name.startsWith)
+    def containsPhase(phase: Phase): Boolean = phase  match {
+      case phase: TreeTransformer => phase.transformations.exists(containsPhase)
+      case _ => names exists (phase.name.startsWith)
+    }
   }
 
   implicit def sourcePos(pos: Position)(implicit ctx: Context): SourcePosition =

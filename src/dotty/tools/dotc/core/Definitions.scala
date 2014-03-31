@@ -103,8 +103,8 @@ class Definitions {
     lazy val Object_!= = newMethod(ObjectClass, nme.NE, methOfAny(BooleanType), Final)
     lazy val Object_eq = newMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
     lazy val Object_ne = newMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
-    lazy val Object_isInstanceOf = newT1EmptyParamsMethod(ObjectClass, nme.isInstanceOf_Ob, _ => BooleanType, Final | Synthetic)
-    lazy val Object_asInstanceOf = newT1EmptyParamsMethod(ObjectClass, nme.asInstanceOf_Ob, PolyParam(_, 0), Final | Synthetic)
+    lazy val Object_isInstanceOf = newT1ParameterlessMethod(ObjectClass, nme.isInstanceOf_Ob, _ => BooleanType, Final | Synthetic)
+    lazy val Object_asInstanceOf = newT1ParameterlessMethod(ObjectClass, nme.asInstanceOf_Ob, PolyParam(_, 0), Final | Synthetic)
     lazy val Object_synchronized = newPolyMethod(ObjectClass, nme.synchronized_, 1,
         pt => MethodType(List(PolyParam(pt, 0)), PolyParam(pt, 0)), Final)
 
@@ -218,6 +218,7 @@ class Definitions {
   lazy val OptionClass                  = ctx.requiredClass("scala.Option")
   lazy val BoxedNumberClass             = ctx.requiredClass("java.lang.Number")
   lazy val ThrowableClass               = ctx.requiredClass("java.lang.Throwable")
+  lazy val ClassCastExceptionClass      = ctx.requiredClass("java.lang.ClassCastException")
   lazy val JavaSerializableClass        = ctx.requiredClass("java.lang.Serializable")
   lazy val ComparableClass              = ctx.requiredClass("java.lang.Comparable")
   lazy val ProductClass                 = ctx.requiredClass("scala.Product")

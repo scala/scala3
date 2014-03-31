@@ -587,7 +587,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             assignType(cpy.CaseDef(tree, pat, guard1, body1), body1)
           }
           val doCase: () => CaseDef =
-            () => caseRest(typedPattern(tree.pat, selType))(ctx.fresh.clearScope)
+            () => caseRest(typedPattern(tree.pat, selType))(ctx.fresh.setNewScope)
           (doCase /: gadtSyms)((op, tsym) => tsym.withGADTFlexType(op))()
         }
 
@@ -775,7 +775,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
-  def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): TypeDef = track("typedTypeDef") {
+  def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedTypeDef") {
     val TypeDef(mods, name, rhs) = tdef
     val mods1 = typedModifiers(mods)
     val _ = typedType(rhs) // unused, typecheck only to remove from typedTree
@@ -858,39 +858,25 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedAsFunction(tree: untpd.Tree, pt: Type)(implicit ctx: Context): Tree =
     typed(tree, if (defn.isFunctionType(pt)) pt else AnyFunctionProto)
 
-  def typedNamed(xtree: untpd.NameTree, pt: Type)(implicit ctx: Context): Tree = {
-    val tree = xtree withName xtree.name.encode
-    val sym = xtree.removeAttachment(SymOfTree) match {
-      case Some(sym) =>
-        sym.ensureCompleted()
-        sym
-      case none =>
-        NoSymbol
-    }
-
-    def localContext = {
-      val freshCtx = ctx.fresh.setTree(xtree)
-      if (sym.exists) freshCtx.setOwner(sym)
-      else freshCtx // can happen for self defs
-    }
-
-    tree match {
-      case tree: untpd.Ident => typedIdent(tree, pt)
-      case tree: untpd.Select => typedSelect(tree, pt)
-      case tree: untpd.SelectFromTypeTree => typedSelectFromTypeTree(tree, pt)
-      case tree: untpd.Bind => typedBind(tree, pt)
-      case tree: untpd.ValDef =>
-        if (tree.isEmpty) tpd.EmptyValDef
-        else typedValDef(tree, sym)(localContext.clearScope)
-      case tree: untpd.DefDef =>
-        val typer1 = nestedTyper.remove(sym).get
-        typer1.typedDefDef(tree, sym)(localContext.setTyper(typer1))
-      case tree: untpd.TypeDef =>
-        if (tree.isClassDef) typedClassDef(tree, sym.asClass)(localContext)
-        else typedTypeDef(tree, sym)(localContext.clearScope)
-      case _ => typedUnadapted(desugar(tree), pt)
-    }
+  /** Retrieve symbol attached to given tree */
+  protected def retrieveSym(tree: untpd.Tree)(implicit ctx: Context) = tree.removeAttachment(SymOfTree) match {
+    case Some(sym) =>
+      sym.ensureCompleted()
+      sym
+    case none =>
+      NoSymbol
   }
+
+  /** A fresh local context with given tree and owner.
+   *  Owner might not exist (can happen for self valdefs), in which case
+   *  no owner is set in result context
+   */
+  protected def localContext(tree: untpd.Tree, owner: Symbol)(implicit ctx: Context): FreshContext = {
+    val freshCtx = ctx.fresh.setTree(tree)
+    if (owner.exists) freshCtx.setOwner(owner) else freshCtx
+  }
+
+  protected def localTyper(sym: Symbol): Typer = nestedTyper.remove(sym).get
 
   def typedUnadapted(initTree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = {
     record("typedUnadapted")
@@ -898,6 +884,26 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     xtree.removeAttachment(TypedAhead) match {
       case Some(ttree) => ttree
       case none =>
+
+        def typedNamed(tree: untpd.NameTree, pt: Type)(implicit ctx: Context): Tree = {
+          val sym = retrieveSym(xtree)
+          tree match {
+            case tree: untpd.Ident => typedIdent(tree, pt)
+            case tree: untpd.Select => typedSelect(tree, pt)
+            case tree: untpd.SelectFromTypeTree => typedSelectFromTypeTree(tree, pt)
+            case tree: untpd.Bind => typedBind(tree, pt)
+            case tree: untpd.ValDef =>
+              if (tree.isEmpty) tpd.EmptyValDef
+              else typedValDef(tree, sym)(localContext(tree, sym).setNewScope)
+            case tree: untpd.DefDef =>
+              val typer1 = localTyper(sym)
+              typer1.typedDefDef(tree, sym)(localContext(tree, sym).setTyper(typer1))
+            case tree: untpd.TypeDef =>
+              if (tree.isClassDef) typedClassDef(tree, sym.asClass)(localContext(tree, sym))
+              else typedTypeDef(tree, sym)(localContext(tree, sym).setNewScope)
+            case _ => typedUnadapted(desugar(tree), pt)
+          }
+        }
 
         def typedUnnamed(tree: untpd.Tree): Tree = tree match {
           case tree: untpd.Apply =>
@@ -909,7 +915,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.Typed => typedTyped(tree, pt)
           case tree: untpd.NamedArg => typedNamedArg(tree, pt)
           case tree: untpd.Assign => typedAssign(tree, pt)
-          case tree: untpd.Block => typedBlock(desugar.block(tree), pt)(ctx.fresh.clearScope)
+          case tree: untpd.Block => typedBlock(desugar.block(tree), pt)(ctx.fresh.setNewScope)
           case tree: untpd.If => typedIf(tree, pt)
           case tree: untpd.Function => typedFunction(tree, pt)
           case tree: untpd.Closure => typedClosure(tree, pt)
@@ -938,8 +944,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         }
 
         xtree match {
-          case xtree: untpd.NameTree => typedNamed(xtree, pt)
-          case xtree: untpd.Import => typedImport(xtree, xtree.removeAttachment(SymOfTree).get)
+          case xtree: untpd.NameTree => typedNamed(xtree withName xtree.name.encode, pt)
+          case xtree: untpd.Import => typedImport(xtree, retrieveSym(xtree))
           case xtree => typedUnnamed(xtree)
         }
     }
@@ -992,7 +998,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     typed(tree, pt)(ctx addMode Mode.Pattern)
 
   def tryEither[T](op: Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context) = {
-    val nestedCtx = ctx.fresh.clearTyperState
+    val nestedCtx = ctx.fresh.setNewTyperState
     val result = op(nestedCtx)
     if (nestedCtx.reporter.hasErrors)
       fallBack(result, nestedCtx.typerState)

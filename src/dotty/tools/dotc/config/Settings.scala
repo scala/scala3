@@ -223,7 +223,6 @@ object Settings {
       setting
     }
 
-
     def BooleanSetting(name: String, descr: String): Setting[Boolean] =
       publish(Setting(name, descr, false))
 

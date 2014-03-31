@@ -228,7 +228,7 @@ trait TypeAssigner {
     val ownType = fn.tpe.widen match {
       case pt: PolyType =>
         val argTypes = args.tpes
-        if (sameLength(argTypes, pt.paramNames)) pt.instantiate(args.tpes)
+        if (sameLength(argTypes, pt.paramNames)) pt.instantiate(argTypes)
         else errorType(i"wrong number of type parameters for ${fn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
       case _ =>
         errorType(s"${err.exprStr(fn)} does not take type parameters", tree.pos)
@@ -274,8 +274,12 @@ trait TypeAssigner {
   def assignType(tree: untpd.Throw)(implicit ctx: Context) =
     tree.withType(defn.NothingType)
 
-  def assignType(tree: untpd.SeqLiteral, elems: List[Tree])(implicit ctx: Context) =
-    tree.withType(defn.SeqType.appliedTo(ctx.typeComparer.lub(elems.tpes)))
+  def assignType(tree: untpd.SeqLiteral, elems: List[Tree])(implicit ctx: Context) = {
+    val ownType =
+      if (ctx.erasedTypes) defn.SeqType
+      else defn.SeqType.appliedTo(ctx.typeComparer.lub(elems.tpes))
+    tree.withType(ownType)
+  }
 
   def assignType(tree: untpd.SingletonTypeTree, ref: Tree)(implicit ctx: Context) =
     tree.withType(ref.tpe)
