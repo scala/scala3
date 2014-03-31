@@ -65,6 +65,8 @@ class tests extends CompilerTest {
   @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 1)
   @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 4)
   @Test def neg_t0273_doubledefs = compileFile(negDir, "t0273", xerrors = 1)
+  @Test def neg_t0586_structural = compileFile(negDir, "t0586", xerrors = 1)
+  @Test def neg_t0625_structural = compileFile(negDir, "t0625", xerrors = 1)
   @Test def neg_t0654_polyalias = compileFile(negDir, "t0654", xerrors = 2)
   @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
 

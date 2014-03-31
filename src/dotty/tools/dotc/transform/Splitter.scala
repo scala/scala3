@@ -3,10 +3,10 @@ package transform
 
 import TreeTransforms._
 import ast.Trees._
-import core.Contexts._
-import core.Types._
+import core._
+import Contexts._, Types._, Decorators._, Denotations._, Symbols._, SymDenotations._, Names._
 
-/** This transform makes usre every identifier and select node
+/** This transform makes sure every identifier and select node
  *  carries a symbol. To do this, certain qualifiers with a union type
  *  have to be "splitted" with a type test.
  *
@@ -24,4 +24,104 @@ class Splitter extends TreeTransform {
       This(cls) withPos tree.pos
     case _ => tree
   }
+
+  /** If we select a name, make sure the node has a symbol.
+   *  If necessary, split the qualifier with type tests.
+   *  Example: Assume:
+   *
+   *      class A { def f(x: S): T }
+   *      class B { def f(x: S): T }
+   *      def p(): A | B
+   *
+   *  Then   p().f(a)   translates to
+   *
+   *      val ev$1 = p()
+   *      if (ev$1.isInstanceOf[A]) ev$1.asInstanceOf[A].f(a)
+   *      else ev$1.asInstanceOf[B].f(a)
+   */
+  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) = {
+    val Select(qual, name) = tree
+
+    def memberDenot(tp: Type): SingleDenotation = {
+      val mbr = tp.member(name)
+      if (!mbr.isOverloaded) mbr.asSingleDenotation
+      else tree.tpe match {
+        case tref: TermRefWithSignature => mbr.atSignature(tref.sig)
+        case _ => ctx.error(s"cannot disambiguate overloaded member $mbr"); NoDenotation
+      }
+    }
+
+    def candidates(tp: Type): List[Symbol] = {
+      val mbr = memberDenot(tp)
+      if (mbr.symbol.exists) mbr.symbol :: Nil
+      else tp.widen match {
+        case tref: TypeRef =>
+          tref.info match {
+            case TypeBounds(_, hi) => candidates(hi)
+            case _ => Nil
+          }
+        case OrType(tp1, tp2) =>
+          candidates(tp1) | candidates(tp2)
+        case AndType(tp1, tp2) =>
+          candidates(tp1) & candidates(tp2)
+        case tpw =>
+          Nil
+      }
+    }
+
+    def isStructuralSelect(tp: Type): Boolean = tp.stripTypeVar match {
+      case tp: RefinedType => tp.refinedName == name || isStructuralSelect(tp)
+      case tp: TypeProxy => isStructuralSelect(tp.underlying)
+      case AndType(tp1, tp2) => isStructuralSelect(tp1) || isStructuralSelect(tp2)
+      case _ => false
+    }
+
+    if (tree.symbol.exists) tree
+    else {
+      def choose(qual: Tree, syms: List[Symbol]): Tree = {
+        def testOrCast(which: Symbol, mbr: Symbol) =
+          TypeApply(Select(qual, which), TypeTree(mbr.owner.typeRef) :: Nil)
+        def select(sym: Symbol) = {
+          val qual1 =
+            if (qual.tpe derivesFrom sym.owner) qual
+            else testOrCast(defn.Any_asInstanceOf, sym)
+          Select(qual1, sym) withPos tree.pos
+        }
+        syms match {
+          case Nil =>
+            def msg =
+              if (isStructuralSelect(qual.tpe))
+                s"cannot access member '$name' from structural type ${qual.tpe.widen.show}; use Dynamic instead"
+              else
+                s"no candidate symbols for ${tree.tpe.show} found in ${qual.tpe.show}"
+            ctx.error(msg, tree.pos)
+            tree
+          case sym :: Nil =>
+            select(sym)
+          case sym :: syms1 =>
+            If(testOrCast(defn.Any_isInstanceOf, sym), select(sym), choose(qual, syms1))
+        }
+      }
+      evalOnce(qual)(qual => choose(qual, candidates(qual.tpe)))
+    }
+  }
+
+  /** Distribute arguments among splitted branches */
+  def distribute(tree: GenericApply[Type], rebuild: (Tree, List[Tree]) => Context => Tree)(implicit ctx: Context) = {
+    def recur(fn: Tree): Tree = fn match {
+      case Block(stats, expr) => Block(stats, recur(expr))
+      case If(cond, thenp, elsep) => If(cond, recur(thenp), recur(elsep))
+      case _ => rebuild(fn, tree.args)(ctx) withPos tree.pos
+    }
+    recur(tree.fun)
+  }
+
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo) =
+    distribute(tree, typeApply)
+
+  override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
+    distribute(tree, apply)
+
+  private val typeApply = (fn: Tree, args: List[Tree]) => (ctx: Context) => TypeApply(fn, args)(ctx)
+  private val apply     = (fn: Tree, args: List[Tree]) => (ctx: Context) => Apply(fn, args)(ctx)
 }
