@@ -174,7 +174,7 @@ object SimpleMap {
           return {
             if (v eq bindings(i + 1)) this
             else {
-              val bindings1 = bindings.clone.asInstanceOf[Array[AnyRef]]
+              val bindings1 = bindings.clone
               bindings1(i + 1) = v
               new MapMore(bindings1)
             }
@@ -204,7 +204,7 @@ object SimpleMap {
         val v = value(i)
         val v1 = f(key(i), v)
         if ((v1 ne v) && (bindings1 eq bindings))
-          bindings1 = bindings.clone.asInstanceOf[Array[AnyRef]]
+          bindings1 = bindings.clone
         bindings1(i) = bindings(i)
         bindings1(i + 1) = v1
         i += 2

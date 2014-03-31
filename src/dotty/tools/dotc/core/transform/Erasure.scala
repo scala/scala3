@@ -17,7 +17,7 @@ object Erasure {
     (if (isConstructor) 4 else 0) +
     (if (wildcardOK) 8 else 0)
 
-  private var erasures = new Array[Erasure](16)
+  private val erasures = new Array[Erasure](16)
 
   for {
     isJava <- List(false, true)

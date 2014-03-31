@@ -181,6 +181,11 @@ object Contexts {
     protected def searchHistory_= (searchHistory: SearchHistory) = _searchHistory = searchHistory
     def searchHistory: SearchHistory = _searchHistory
 
+    /** Those fields are used to cache phases created in withPhase.
+      * phasedCtx is first phase with altered phase ever requested.
+      * phasedCtxs is array that uses phaseId's as indexes,
+      * contexts are created only on request and cached in this array
+      */
     private var phasedCtx: Context = _
     private var phasedCtxs: Array[Context] = _
 
