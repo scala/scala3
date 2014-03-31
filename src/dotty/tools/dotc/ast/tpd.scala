@@ -272,7 +272,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *
    *  gets expanded to
    *
-   *     <module> lazy val obj = new obj$
+   *     <module> val obj = new obj$
    *     <module> class obj$ extends parents { this: obj.type => decls }
    *
    *  (The following no longer applies:
