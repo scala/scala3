@@ -362,7 +362,7 @@ class LazyValTranformContext {
         val setFlag = Select(Ident(helperModule.termRef), LazyVals.Names.setFlag.toTermName)
         val wait = Select(Ident(helperModule.termRef), LazyVals.Names.wait4Notification.toTermName)
         val state = Select(Ident(helperModule.termRef), LazyVals.Names.state.toTermName)
-        val cas = Select(Ident(helperModule.termRef), LazyVals.Names.compareAndSet.toTermName)
+        val cas = Select(Ident(helperModule.termRef), LazyVals.Names.cas.toTermName)
 
         val accessor = mkThreadSafeDef(x.symbol.asTerm, claz, ord, containerSymbol, rhs, x.tpe, offset, getFlag, state, cas, setFlag, wait)
         if(flag eq EmptyTree)
