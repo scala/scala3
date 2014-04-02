@@ -13,7 +13,7 @@ import org.junit.Test
 class ShowClassTests extends DottyTest {
 
   def debug_println(msg: => Any) = {
-    if (!sys.props.isDefinedAt("dotty.travis.build"))
+    if (sys.props.isDefinedAt("test.ShowClassTests.verbose"))
       println(msg)
   }
 
