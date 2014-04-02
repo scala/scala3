@@ -15,7 +15,8 @@ import typer.ErrorReporting._
 import ast.Trees._
 import Erasure.Boxing.box
 
-/** This transform normalizes type tests and type casts.
+/** This transform normalizes type tests and type casts,
+ *  also replacing type tests with singleton argument type with refference equality check
  *  Any remaining type tests
  *   - use the object methods $isInstanceOf and $asInstanceOf
  *   - have a reference type as receiver
@@ -33,13 +34,13 @@ class TypeTestsCasts extends TreeTransform {
 
         def isPrimitive(tp: Type) = tp.classSymbol.isPrimitiveValueClass
 
-        def derivedTree(qual1: Tree, sym: Symbol) =
-          cpy.TypeApply(tree, Select(qual1, sym) withPos qual.pos, tree.args)
+        def derivedTree(qual1: Tree, sym: Symbol, tp: Type) =
+          cpy.TypeApply(tree, Select(qual1, sym) withPos qual.pos, List(TypeTree(tp)))
 
         def qualCls = qual.tpe.classSymbol
 
-        def transformIsInstanceOf(argType: Type): Tree = {
-          if (qual.tpe <:< argType)
+        def transformIsInstanceOf(expr:Tree, argType: Type): Tree = {
+          if (expr.tpe <:< argType)
             Literal(Constant(true)) withPos tree.pos
           else if (qualCls.isPrimitiveValueClass) {
             val argCls = argType.classSymbol
@@ -49,11 +50,11 @@ class TypeTestsCasts extends TreeTransform {
           else argType.dealias match {
             case _: SingletonType =>
               val cmpOp = if (argType derivesFrom defn.AnyValClass) defn.Any_equals else defn.Object_eq
-              Apply(Select(qual, cmpOp), singleton(argType) :: Nil)
+              Apply(Select(expr, cmpOp), singleton(argType) :: Nil)
             case AndType(tp1, tp2) =>
-              evalOnce(fun) { fun =>
-                val erased1 = transformIsInstanceOf(tp1)
-                val erased2 = transformIsInstanceOf(tp2)
+              evalOnce(expr) { fun =>
+                val erased1 = transformIsInstanceOf(fun, tp1)
+                val erased2 = transformIsInstanceOf(fun, tp2)
                 erased1 match {
                   case Literal(Constant(true)) => erased2
                   case _ =>
@@ -68,10 +69,10 @@ class TypeTestsCasts extends TreeTransform {
                 runtimeCall(nme.isArray, arg :: Literal(Constant(ndims)) :: Nil)
               if (ndims == 1) isArrayTest(qual)
               else evalOnce(qual) { qual1 =>
-                mkAnd(derivedTree(qual1, defn.Object_isInstanceOf), isArrayTest(qual1))
+                mkAnd(derivedTree(qual1, defn.Object_isInstanceOf, qual1.tpe), isArrayTest(qual1))
               }
             case _ =>
-              derivedTree(qual, defn.Object_isInstanceOf)
+              derivedTree(expr, defn.Object_isInstanceOf, argType)
           }
         }
 
@@ -81,14 +82,14 @@ class TypeTestsCasts extends TreeTransform {
           else if (qualCls.isPrimitiveValueClass) {
             val argCls = argType.classSymbol
             if (argCls.isPrimitiveValueClass) primitiveConversion(qual, argCls)
-            else derivedTree(box(qual), defn.Object_asInstanceOf)
+            else derivedTree(box(qual), defn.Object_asInstanceOf, argType)
           }
           else
-            derivedTree(qual, defn.Object_asInstanceOf)
+            derivedTree(qual, defn.Object_asInstanceOf, argType)
         }
 
         if (sym eq defn.Any_isInstanceOf)
-          transformIsInstanceOf(tree.args.head.tpe)
+          transformIsInstanceOf(qual, tree.args.head.tpe)
         else if (defn.asInstanceOfMethods contains sym)
           transformAsInstanceOf(tree.args.head.tpe)
         else tree
