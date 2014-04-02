@@ -23,8 +23,6 @@ object TreeTransforms {
     *
     * If all transforms in a group are NoTransforms, the tree is no longer traversed.
     *
-    * @param group The group this transform belongs to
-    * @param idx The index of this transform in its group
     *
     *            Performance analysis: Taking the dotty compiler frontend as a use case, we are aiming for a warm performance of
     *            about 4000 lines / sec. This means 6 seconds for a codebase of 24'000 lines. Of these the frontend consumes
@@ -346,6 +344,11 @@ object TreeTransforms {
       nxTransStats = indexUpdate(prev.nxTransStats, changedTansformation, transformationIndex, "transformStats", copy)
     }
 
+    /**
+     * Those arrays are used as "execution plan" in order to only execute non-tivial transformations\preparations
+     * for every integer i array(i) contains first non trivial transformation\preparation on particular tree subtype.
+     * If no nontrivial transformation are left stored value is greater than  transformers.size
+     */
     var nxPrepIdent: Array[Int] = _
     var nxPrepSelect: Array[Int] = _
     var nxPrepThis: Array[Int] = _

@@ -67,6 +67,38 @@ object Phases {
       override def lastPhaseId(implicit ctx: Context) = id
     }
 
+    /** Squash TreeTransform's beloning to same sublist to a single TreeTransformer
+      * Each TreeTransform gets own period,
+      * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
+      * first TreeTransformer emitted is PostTyperTransformer that simplifies trees, see it's documentation
+      */
+    private def squashPhases(phasess: List[List[Phase]]): Array[Phase] = {
+      val squashedPhases = ListBuffer[Phase]()
+      var postTyperEmmited = false
+      var i = 0
+      while (i < phasess.length) {
+        if (phasess(i).length > 1) {
+          assert(phasess(i).forall(x => x.isInstanceOf[TreeTransform]), "Only tree transforms can be squashed")
+
+          val transforms = phasess(i).asInstanceOf[List[TreeTransform]]
+          val block =
+            if (!postTyperEmmited) {
+              postTyperEmmited = true
+              new PostTyperTransformer {
+                override def name: String = transformations.map(_.name).mkString("TreeTransform:{", ", ", "}")
+                override def transformations: Array[TreeTransform] = transforms.toArray
+              }
+            } else new TreeTransformer {
+              override def name: String = transformations.map(_.name).mkString("TreeTransform:{", ", ", "}")
+              override def transformations: Array[TreeTransform] = transforms.toArray
+            }
+          squashedPhases += block
+          block.init(this, phasess(i).head.id, phasess(i).last.id)
+        } else squashedPhases += phasess(i).head
+        i += 1
+      }
+      (NoPhase :: squashedPhases.toList ::: new TerminalPhase :: Nil).toArray
+    }
 
     /** Use the following phases in the order they are given.
      *  The list should never contain NoPhase.
@@ -94,31 +126,7 @@ object Phases {
       }
 
       if (squash) {
-        val squashedPhases = ListBuffer[Phase]()
-        var postTyperEmmited = false
-        var i = 0
-        while (i < phasess.length) {
-          if (phasess(i).length > 1) {
-            assert(phasess(i).forall(x => x.isInstanceOf[TreeTransform]), "Only tree transforms can be squashed")
-
-            val transforms = phasess(i).asInstanceOf[List[TreeTransform]]
-            val block =
-              if (!postTyperEmmited) {
-                postTyperEmmited = true
-                new PostTyperTransformer {
-                  override def name: String = transformations.map(_.name).mkString("TreeTransform:{", ", ", "}")
-                  override def transformations: Array[TreeTransform] = transforms.toArray
-                }
-              } else new TreeTransformer {
-                override def name: String = transformations.map(_.name).mkString("TreeTransform:{", ", ", "}")
-                override def transformations: Array[TreeTransform] = transforms.toArray
-              }
-            squashedPhases += block
-            block.init(this, phasess(i).head.id, phasess(i).last.id)
-          } else squashedPhases += phasess(i).head
-          i += 1
-        }
-        this.squashedPhases = (NoPhase::squashedPhases.toList :::new TerminalPhase :: Nil).toArray
+        this.squashedPhases = squashPhases(phasess)
       } else {
         this.squashedPhases = this.phases
       }
