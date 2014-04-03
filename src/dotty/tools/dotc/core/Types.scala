@@ -1078,8 +1078,10 @@ object Types {
         this
       }
 
-    private[dotc] final def setDenot(denot: Denotation): Unit = {
-      if (Config.checkTermRefs) checkSymAssign(denot.symbol)
+    private[dotc] final def setDenot(denot: Denotation)(implicit ctx: Context): Unit = {
+      if (Config.checkTermRefs)
+        if (ctx.settings.YnoDoubleBindings.value)
+          checkSymAssign(denot.symbol)
       lastDenotation = denot
       lastSymbol = denot.symbol
     }
@@ -1092,8 +1094,14 @@ object Types {
         this
       }
 
-    private[dotc] final def setSym(sym: Symbol): Unit = {
-      if (Config.checkTermRefs) checkSymAssign(sym)
+    private[dotc] final def setSym(sym: Symbol)(implicit ctx: Context): Unit = {
+      if (Config.checkTermRefs)
+        if (ctx.settings.YnoDoubleBindings.value)
+          checkSymAssign(sym)
+      uncheckedSetSym(sym)
+    }
+
+    private[dotc] final def uncheckedSetSym(sym: Symbol): Unit = {
       lastDenotation = null
       lastSymbol = sym
       checkedPeriod = Nowhere
@@ -1238,7 +1246,7 @@ object Types {
   trait WithNonMemberSym extends NamedType {
     def fixedSym: Symbol
     assert(fixedSym ne NoSymbol)
-    setSym(fixedSym)
+    uncheckedSetSym(fixedSym)
 
     override def withDenot(denot: Denotation)(implicit ctx: Context): ThisType = {
       assert(denot.symbol eq fixedSym)
