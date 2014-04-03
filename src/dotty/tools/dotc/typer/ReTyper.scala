@@ -3,7 +3,7 @@ package typer
 
 import core.Contexts._
 import core.Types._
-import core.Symbols.Symbol
+import core.Symbols._
 import typer.ProtoTypes._
 import ast.{tpd, untpd}
 import ast.Trees._
@@ -47,6 +47,8 @@ class ReTyper extends Typer {
     val body1 = typed(tree.body, pt)
     untpd.cpy.Bind(tree, tree.name, body1).withType(tree.typeOpt)
   }
+
+  override def localDummy(cls: ClassSymbol, impl: untpd.Template)(implicit ctx: Context) = impl.symbol
 
   override def retrieveSym(tree: untpd.Tree)(implicit ctx: Context): Symbol = tree.symbol
 
