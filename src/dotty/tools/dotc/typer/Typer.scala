@@ -809,11 +809,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val parents1 = ensureConstrCall(ensureFirstIsClass(
         parents mapconserve typedParent, cdef.pos.toSynthetic))
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class memebers are not visible
-    val localDummy = ctx.newLocalDummy(cls, impl.pos)
-    val body1 = typedStats(body, localDummy)(inClassContext(self1.symbol))
+    val dummy = localDummy(cls, impl)
+    val body1 = typedStats(body, dummy)(inClassContext(self1.symbol))
     checkNoDoubleDefs(cls)
     val impl1 = cpy.Template(impl, constr1, parents1, self1, body1)
-      .withType(localDummy.termRef)
+      .withType(dummy.termRef)
     assignType(cpy.TypeDef(cdef, mods1, name, impl1), cls)
 
     // todo later: check that
@@ -824,6 +824,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     // 3. Types do not override classes.
     // 4. Polymorphic type defs override nothing.
   }
+
+  def localDummy(cls: ClassSymbol, impl: untpd.Template)(implicit ctx: Context): Symbol =
+    ctx.newLocalDummy(cls, impl.pos)
 
   def typedImport(imp: untpd.Import, sym: Symbol)(implicit ctx: Context): Import = track("typedImport") {
     val expr1 = typedExpr(imp.expr, AnySelectionProto)
