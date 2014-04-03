@@ -474,7 +474,6 @@ class Namer { typer: Typer =>
 
       index(rest)(inClassContext(selfInfo))
       denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
-      // make sure constr parameters are all entered because we refer to them in desugarings:
     }
   }
 

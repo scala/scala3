@@ -109,7 +109,8 @@ trait TypeAssigner {
           // it could be that we found an inaccessbile private member, but there is
           // an inherited non-private member with the same name and signature.
           val d2 = pre.nonPrivateMember(name)
-          if (reallyExists(d2) && firstTry) test(pre.select(name, d2), false)
+          if (reallyExists(d2) && firstTry)
+            test(pre.select(name, d2), false)
           else {
             val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
             val what = alts match {
