@@ -63,6 +63,17 @@ class LazyValTranformContext {
 
     override def name: String = "LazyVals"
 
+    /** List of names of phases that should have finished their processing of all compilation units
+      * before this phase starts */
+    override def runsAfterGroupsOf: Set[String] = Set("lazyValsModules")
+    /** List of names of phases that should have finished their processing of all compilation units
+      * before this phase starts */
+    override def runsAfter: Set[String] = Set("lazyValsModules")
+
+    /** List of names of phases that should have finished processing of tree
+      * before this phase starts processing same tree */
+    // override def ensureAfter: Set[String] = Set("mixin")
+
     def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
       ref match {
         case ref: SymDenotation if ref.symbol.isClass =>

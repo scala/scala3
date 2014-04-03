@@ -74,12 +74,24 @@ object Phases {
       */
     private def squashPhases(phasess: List[List[Phase]]): Array[Phase] = {
       val squashedPhases = ListBuffer[Phase]()
+      var prevPhases: Set[String] = Set.empty
       var postTyperEmmited = false
       var i = 0
       while (i < phasess.length) {
         if (phasess(i).length > 1) {
-          assert(phasess(i).forall(x => x.isInstanceOf[TreeTransform]), "Only tree transforms can be squashed")
+          val phasesInBlock: Set[String] = phasess(i).map(_.name).toSet
+          for(phase<-phasess(i)) {
+            phase match {
+              case p: TreeTransform =>
 
+                val unmetRequirements = p.runsAfterGroupsOf &~ prevPhases
+                assert(unmetRequirements.isEmpty,
+                  s"${phase.name} requires ${unmetRequirements.mkString(", ")} to be in different TreeTransformer")
+
+              case _ =>
+                assert(false, s"Only tree transforms can be squashed, ${phase.name} can not be squashed")
+            }
+          }
           val transforms = phasess(i).asInstanceOf[List[TreeTransform]]
           val block =
             if (!postTyperEmmited) {
@@ -93,6 +105,7 @@ object Phases {
               override def transformations: Array[TreeTransform] = transforms.toArray
             }
           squashedPhases += block
+          prevPhases ++= phasess(i).map(_.name)
           block.init(this, phasess(i).head.id, phasess(i).last.id)
         } else squashedPhases += phasess(i).head
         i += 1
@@ -106,11 +119,16 @@ object Phases {
      */
     def usePhases(phasess: List[List[Phase]], squash: Boolean = true) = {
       phases = (NoPhase :: phasess.flatten ::: new TerminalPhase :: Nil).toArray
+      var phasesAfter:Set[String] = Set.empty
       nextDenotTransformerId = new Array[Int](phases.length)
       denotTransformers = new Array[DenotTransformer](phases.length)
       var i = 0
       while (i < phases.length) {
         phases(i).init(this, i)
+        val unmetPreceedeRequirements = phases(i).runsAfter -- phasesAfter
+        assert(unmetPreceedeRequirements.isEmpty,
+          s"phase ${phases(i)} has unmet requirement: ${unmetPreceedeRequirements.mkString(", ")} should precede this phase")
+        phasesAfter += phases(i).name
         i += 1
       }
       var lastTransformerId = i
@@ -169,6 +187,9 @@ object Phases {
   abstract class Phase extends DotClass {
 
     def name: String
+
+    /** List of names of phases that should precede this phase */
+    def runsAfter: Set[String] = Set.empty
 
     def run(implicit ctx: Context): Unit
 
