@@ -102,13 +102,14 @@ trait Checking {
       tp
   }
 
-  /** Check that class does not define */
+  /** Check that class does not define same symbol twice */
   def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = {
     val seen = new mutable.HashMap[Name, List[Symbol]] {
       override def default(key: Name) = Nil
     }
     typr.println(i"check no double defs $cls")
-    for (decl <- cls.info.decls) {
+
+    def checkDecl(decl: Symbol): Unit = {
       for (other <- seen(decl.name)) {
         typr.println(i"conflict? $decl $other")
         if (decl.signature matches other.signature) {
@@ -128,6 +129,12 @@ trait Checking {
         }
       }
       seen(decl.name) = decl :: seen(decl.name)
+    }
+
+    cls.info.decls.foreach(checkDecl)
+    cls.info match {
+      case ClassInfo(_, _, _, _, selfSym: Symbol) => checkDecl(selfSym)
+      case _ =>
     }
   }
 

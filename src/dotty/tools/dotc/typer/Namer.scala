@@ -209,7 +209,7 @@ class Namer { typer: Typer =>
           ctx.error(s"${preExisting.showLocated} is compiled twice, runid = ${ctx.runId}", tree.pos)
         }
       else if ((!ctx.owner.isClass || name.isTypeName) && preExisting.exists) {
-        ctx.error(d"$name is already defined as $preExisting")
+        ctx.error(i"$name is already defined as $preExisting", tree.pos)
       }
     }
 
