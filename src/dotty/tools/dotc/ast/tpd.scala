@@ -103,11 +103,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  where the closure's type is the target type of the expression (FunctionN, unless
    *  otherwise specified).
    */
-  def Closure(meth: TermSymbol, rhsFn: List[List[Tree]] => Tree, targetType: Type = NoType)(implicit ctx: Context): Block = {
+  def Closure(meth: TermSymbol, rhsFn: List[List[Tree]] => Tree, targs: List[Tree] = Nil, targetType: Type = NoType)(implicit ctx: Context): Block = {
     val targetTpt = if (targetType.exists) TypeTree(targetType) else EmptyTree
+    val call =
+      if (targs.isEmpty) Ident(TermRef(NoPrefix, meth))
+      else TypeApply(Ident(TermRef(NoPrefix, meth)), targs)
     Block(
       DefDef(meth, rhsFn) :: Nil,
-      Closure(Nil, Ident(TermRef(NoPrefix, meth)), targetTpt))
+      Closure(Nil, call, targetTpt))
   }
 
   def CaseDef(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef =
