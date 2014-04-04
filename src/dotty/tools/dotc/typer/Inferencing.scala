@@ -15,7 +15,7 @@ import util.{Stats, SimpleMap}
 import util.common._
 import Decorators._
 import Uniques._
-import ErrorReporting.{errorType, InfoString}
+import ErrorReporting.{errorType, DiagnosticString}
 import config.Printers._
 import collection.mutable
 
@@ -153,7 +153,7 @@ trait Inferencing { this: Checking =>
     case _ =>
       // add synthetic class type
       val first :: _ = ensureFirstIsClass(parents.tpes)
-      TypeTree(checkFeasible(first, pos, i"\n in inferred parent $first")).withPos(pos) :: parents
+      TypeTree(checkFeasible(first, pos, d"\n in inferred parent $first")).withPos(pos) :: parents
   }
 
   /** Interpolate those undetermined type variables in the widened type of this tree

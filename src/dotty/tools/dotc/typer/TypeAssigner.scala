@@ -118,13 +118,13 @@ trait TypeAssigner {
               case sym :: Nil =>
                 if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated
               case _ =>
-                i"none of the overloaded alternatives named $name"
+                d"none of the overloaded alternatives named $name"
             }
             val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
             val whyNot = new StringBuffer
             alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
             if (!tpe.isError)
-              ctx.error(i"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
+              ctx.error(d"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
             ErrorType
           }
         } else if (d.symbol is TypeParamAccessor) // always dereference type param accessors
@@ -145,8 +145,8 @@ trait TypeAssigner {
     else {
       if (!site.isErroneous) {
         ctx.error(
-          if (name == nme.CONSTRUCTOR) i"$site does not have a constructor"
-          else i"$name is not a member of $site", pos)
+          if (name == nme.CONSTRUCTOR) d"$site does not have a constructor"
+          else d"$name is not a member of $site", pos)
       }
       ErrorType
     }
@@ -202,9 +202,9 @@ trait TypeAssigner {
       case p :: Nil =>
         p
       case Nil =>
-        errorType(i"$mix does not name a parent class of $cls", tree.pos)
+        errorType(d"$mix does not name a parent class of $cls", tree.pos)
       case p :: q :: _ =>
-        errorType(s"ambiguous parent class qualifier", tree.pos)
+        errorType("ambiguous parent class qualifier", tree.pos)
     }
     val owntype =
       if (!mix.isEmpty) findMixinSuper(cls.info)
@@ -217,9 +217,9 @@ trait TypeAssigner {
     val ownType = fn.tpe.widen match {
       case fntpe @ MethodType(_, ptypes) =>
         if (sameLength(ptypes, args)) fntpe.instantiate(args.tpes)
-        else errorType(s"wrong number of parameters for ${fn.tpe}; expected: ${ptypes.length}", tree.pos)
+        else errorType(i"wrong number of parameters for ${fn.tpe}; expected: ${ptypes.length}", tree.pos)
       case t =>
-        errorType(s"${err.exprStr(fn)} does not take parameters", tree.pos)
+        errorType(i"${err.exprStr(fn)} does not take parameters", tree.pos)
     }
     tree.withType(ownType)
   }
@@ -229,9 +229,9 @@ trait TypeAssigner {
       case pt: PolyType =>
         val argTypes = args.tpes
         if (sameLength(argTypes, pt.paramNames)) pt.instantiate(argTypes)
-        else errorType(i"wrong number of type parameters for ${fn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
+        else errorType(d"wrong number of type parameters for ${fn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
       case _ =>
-        errorType(s"${err.exprStr(fn)} does not take type parameters", tree.pos)
+        errorType(i"${err.exprStr(fn)} does not take type parameters", tree.pos)
     }
     tree.withType(ownType)
   }
@@ -296,7 +296,7 @@ trait TypeAssigner {
     val tparams = tycon.tpe.typeParams
     val ownType =
       if (sameLength(tparams, args)) tycon.tpe.appliedTo(args.tpes)
-      else errorType(i"wrong number of type arguments for ${tycon.tpe}, should be ${tparams.length}", tree.pos)
+      else errorType(d"wrong number of type arguments for ${tycon.tpe}, should be ${tparams.length}", tree.pos)
     tree.withType(ownType)
   }
 

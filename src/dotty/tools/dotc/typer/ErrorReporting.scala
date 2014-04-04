@@ -10,7 +10,6 @@ import Applications._, Implicits._
 import util.Positions._
 import printing.Showable
 import printing.Disambiguation.disambiguated
-import reporting.Reporter.SuppressedMessage
 
 object ErrorReporting {
 
@@ -33,7 +32,7 @@ object ErrorReporting {
             val treeSym = ctx.symOfContextTree(tree)
             if (treeSym.exists && treeSym.name == cycleSym.name && treeSym.owner == cycleSym.owner) {
               val result = if (cycleSym.isSourceMethod) " result" else ""
-              i"overloaded or recursive $cycleSym needs$result type"
+              d"overloaded or recursive $cycleSym needs$result type"
             }
             else errorMsg(msg, cx.outer)
           case _ =>
@@ -49,11 +48,11 @@ object ErrorReporting {
       case tp: FunProto =>
         val result = tp.resultType match {
           case tp: WildcardType => ""
-          case tp => i"and expected result type $tp"
+          case tp => d"and expected result type $tp"
         }
-        i"arguments (${tp.typedArgs.tpes}%, %)$result"
+        d"arguments (${tp.typedArgs.tpes}%, %)$result"
       case _ =>
-        i"expected type $tp"
+        d"expected type $tp"
     }
 
     def anonymousTypeMemberStr(tpe: Type) = {
@@ -62,12 +61,12 @@ object ErrorReporting {
           case _: PolyType | _: MethodType => "method"
           case _ => "value of type"
         }
-        i"$kind $tpe"
+        d"$kind $tpe"
     }
 
     def overloadedAltsStr(alts: List[SingleDenotation]) =
-      i"overloaded alternatives of ${denotStr(alts.head)} with types\n" +
-      i" ${alts map (_.info)}%\n %"
+      d"overloaded alternatives of ${denotStr(alts.head)} with types\n" +
+      d" ${alts map (_.info)}%\n %"
 
     def denotStr(denot: Denotation): String =
       if (denot.isOverloaded) overloadedAltsStr(denot.alternatives)
@@ -97,7 +96,7 @@ object ErrorReporting {
           case tp: TypeRef => s"with info ${tp.info} / ${tp.prefix.toString} / ${tp.prefix.dealias.toString}"
           case _ => ""
         }
-      i"""type mismatch:
+      d"""type mismatch:
            | found   : $found
            | required: $expected""".stripMargin + typerStateStr + explanationStr
     }
@@ -105,12 +104,18 @@ object ErrorReporting {
 
   def err(implicit ctx: Context): Errors = new Errors
 
-  /** Implementation of i"..." string interpolator */
-  implicit class InfoString(val sc: StringContext) extends AnyVal {
-
-    def i(args: Any*)(implicit ctx: Context): String = {
-
+  /** The d string interpolator works like the i string interpolator, but marks nonsensical errors
+   *  using `<nonsensical>...</nonsensical>` tags.
+   *  Note: Instead of these tags, it would be nicer to return a data structure containing the message string
+   *  and a boolean indicating whether the message is sensical, but then we cannot use string operations
+   *  like concatenation, stripMargin etc on the values returned by d"...", and in the current error
+   *  message composition methods, this is crucial.
+   */
+  implicit class DiagnosticString(val sc: StringContext) extends AnyVal {
+    import DiagnosticString._
+    def d(args: Any*)(implicit ctx: Context): String = {
       def isSensical(arg: Any): Boolean = arg match {
+        case l: Seq[_] => l.forall(isSensical(_))
         case tpe: Type if tpe.isErroneous => false
         case NoType => false
         case sym: Symbol if sym.isCompleted =>
@@ -118,29 +123,14 @@ object ErrorReporting {
         case _ => true
       }
 
-      def treatArg(arg: Any, suffix: String): (Any, String) = arg match {
-        case arg: List[_] if suffix.nonEmpty && suffix.head == '%' =>
-          val (rawsep, rest) = suffix.tail.span(_ != '%')
-          val sep = StringContext.treatEscapes(rawsep)
-          if (rest.nonEmpty) (arg map treatSingleArg mkString sep, rest.tail)
-          else (arg, suffix)
-        case _ =>
-          (treatSingleArg(arg), suffix)
-      }
-
-      def treatSingleArg(arg: Any) : Any = arg match {
-        case arg: Showable => arg.show
-        case _ => arg
-      }
-
-      if (ctx.reporter.hasErrors &&
-          ctx.suppressNonSensicalErrors &&
-          !ctx.settings.YshowSuppressedErrors.value &&
-          !args.forall(isSensical(_)))
-        throw new SuppressedMessage
-      val prefix :: suffixes = sc.parts.toList
-      val (args1, suffixes1) = (args, suffixes).zipped.map(treatArg(_, _)).unzip
-      new StringContext(prefix :: suffixes1.toList: _*).s(args1: _*)
+      val s = new InfoString(sc).i(args : _*)
+      if (args.forall(isSensical(_))) s else nonSensicalStartTag + s + nonSensicalEndTag
     }
   }
+
+  object DiagnosticString {
+    final val nonSensicalStartTag = "<nonsensical>"
+    final val nonSensicalEndTag = "</nonsensical>"
+  }
+
 }

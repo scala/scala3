@@ -10,26 +10,27 @@ import collection.mutable
 import config.Settings.Setting
 import config.Printers
 import java.lang.System.currentTimeMillis
+import typer.ErrorReporting.DiagnosticString
 
 object Reporter {
 
-  class Diagnostic(msgFn: => String, val pos: SourcePosition, val severity: Severity, base: ContextBase) extends Exception {
+  class Diagnostic(msgFn: => String, val pos: SourcePosition, val severity: Severity) extends Exception {
+    import DiagnosticString._
     private var myMsg: String = null
-    private var myIsSuppressed: Boolean = false
+    private var myIsNonSensical: Boolean = false
     def msg: String = {
-      if (myMsg == null)
-        try myMsg = msgFn
-        catch {
-          case ex: SuppressedMessage =>
-            myIsSuppressed = true
-            val saved = base.suppressNonSensicalErrors
-            base.suppressNonSensicalErrors = false
-            try myMsg = msgFn
-            finally base.suppressNonSensicalErrors = saved
+      if (myMsg == null) {
+        myMsg = msgFn
+        if (myMsg.contains(nonSensicalStartTag)) {
+          myIsNonSensical = true
+          // myMsg might be composed of several d"..." invocations -> nested nonsensical tags possible
+          myMsg = myMsg.replaceAllLiterally(nonSensicalStartTag, "").replaceAllLiterally(nonSensicalEndTag, "")
         }
+      }
       myMsg
     }
-    def isSuppressed = { msg; myIsSuppressed }
+    def isNonSensical = { msg; myIsNonSensical }
+    def isSuppressed(implicit ctx: Context): Boolean = !ctx.settings.YshowSuppressedErrors.value && isNonSensical
     override def toString = s"$severity at $pos: $msg"
     override def getMessage() = msg
 
@@ -38,8 +39,8 @@ object Reporter {
       else severity
   }
 
-  def Diagnostic(msgFn: => String, pos: SourcePosition, severity: Severity)(implicit ctx: Context) =
-    new Diagnostic(msgFn, pos, severity, ctx.base)
+  def Diagnostic(msgFn: => String, pos: SourcePosition, severity: Severity) =
+    new Diagnostic(msgFn, pos, severity)
 
   class Severity(val level: Int) extends AnyVal {
     override def toString = this match {
@@ -71,8 +72,6 @@ object Reporter {
     case UncheckedWARNING   => ctx.settings.unchecked
     case FeatureWARNING     => ctx.settings.feature
   }
-
-  class SuppressedMessage extends Exception
 }
 
 import Reporter._
@@ -221,7 +220,7 @@ abstract class Reporter {
   def report(d: Diagnostic)(implicit ctx: Context): Unit =
     if (!isHidden(d)) {
       doReport(d)
-      count(d.promotedSeverity.level) += 1
+      if (!d.isSuppressed) count(d.promotedSeverity.level) += 1
     }
 
   def incomplete(d: Diagnostic)(implicit ctx: Context): Unit =

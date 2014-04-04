@@ -3,7 +3,7 @@ package core
 
 import annotation.tailrec
 import Symbols._
-import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer
+import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer, printing.Showable
 import util.Positions.Position, util.SourcePosition
 import collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.TreeTransforms._
@@ -136,5 +136,36 @@ object Decorators {
 
   implicit def sourcePos(pos: Position)(implicit ctx: Context): SourcePosition =
     ctx.source.atPos(pos)
+
+  /** The i"..." string interpolator adds two features to the s interpolator:
+   *  1) On all Showables, `show` is called instead of `toString`
+   *  2) Lists can be formatted using the desired separator between two `%` signs,
+   *     eg `i"myList = (${myList}%, %)"`
+   */
+  implicit class InfoString(val sc: StringContext) extends AnyVal {
+
+    def i(args: Any*)(implicit ctx: Context): String = {
+
+      def treatArg(arg: Any, suffix: String): (Any, String) = arg match {
+        case arg: Seq[_] if suffix.nonEmpty && suffix.head == '%' =>
+          val (rawsep, rest) = suffix.tail.span(_ != '%')
+          val sep = StringContext.treatEscapes(rawsep)
+          if (rest.nonEmpty) (arg map treatSingleArg mkString sep, rest.tail)
+          else (arg, suffix)
+        case _ =>
+          (treatSingleArg(arg), suffix)
+      }
+
+      def treatSingleArg(arg: Any) : Any = arg match {
+        case arg: Showable => arg.show
+        case _ => arg
+      }
+
+      val prefix :: suffixes = sc.parts.toList
+      val (args1, suffixes1) = (args, suffixes).zipped.map(treatArg(_, _)).unzip
+      new StringContext(prefix :: suffixes1.toList: _*).s(args1: _*)
+    }
+  }
+
 }
 

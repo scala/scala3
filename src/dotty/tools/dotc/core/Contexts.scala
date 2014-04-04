@@ -511,9 +511,6 @@ object Contexts {
 
     protected[dotc] val indentTab = "  "
 
-    /** Should warnings and errors containing non-sensical strings be suppressed? */
-    private[dotc] var suppressNonSensicalErrors = true
-
     def reset() = {
       for ((_, set) <- uniqueSets) set.clear()
       for (i <- 0 until classOfId.length) classOfId(i) = null
