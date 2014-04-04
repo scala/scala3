@@ -572,6 +572,30 @@ object Denotations {
       }
     }
 
+    /** Install this denotation to be the result of the given denotation transformer.
+     *  This is the implementation of the same-named method in SymDenotations.
+     *  It's placed here because it needs access to private fields of SingleDenotation.
+     */
+    protected def installAfter(phase: DenotTransformer)(implicit ctx: Context): Unit = {
+      val targetId = phase.next.id
+      assert(ctx.phaseId == targetId,
+        s"denotation update for $this called in phase ${ctx.phase}, expected was ${phase.next}")
+      val current = symbol.current
+      this.nextInRun = current.nextInRun
+      this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
+      if (current.validFor.firstPhaseId == targetId) {
+        // replace current with this denotation
+        var prev = current
+        while (prev.nextInRun ne current) prev = prev.nextInRun
+        prev.nextInRun = this
+      }
+      else {
+        // insert this denotation after current
+        current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
+        current.nextInRun = this
+      }
+    }
+
     def staleSymbolError(implicit ctx: Context) = {
       def ownerMsg = this match {
         case denot: SymDenotation => s"in ${denot.owner}"
