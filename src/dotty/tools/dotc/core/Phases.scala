@@ -67,7 +67,6 @@ object Phases {
       override def lastPhaseId(implicit ctx: Context) = id
     }
 
-
     /** Use the following phases in the order they are given.
      *  The list should never contain NoPhase.
      *  if squashing is enabled, phases in same subgroup will be squashed to single phase.

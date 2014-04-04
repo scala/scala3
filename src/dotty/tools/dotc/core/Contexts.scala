@@ -181,9 +181,9 @@ object Contexts {
     protected def searchHistory_= (searchHistory: SearchHistory) = _searchHistory = searchHistory
     def searchHistory: SearchHistory = _searchHistory
 
+    /** Caches for withPhase */
     private var phasedCtx: Context = _
     private var phasedCtxs: Array[Context] = _
-
 
     /** This context at given phase.
      *  This method will always return a phase period equal to phaseId, thus will never return squashed phases
@@ -205,7 +205,8 @@ object Contexts {
 
     final def withPhase(phase: Phase): Context =
       withPhase(phase.id)
-  /** If -Ydebug is on, the top of the stack trace where this context
+
+    /** If -Ydebug is on, the top of the stack trace where this context
      *  was created, otherwise `null`.
      */
     private var creationTrace: Array[StackTraceElement] = _
@@ -298,6 +299,7 @@ object Contexts {
       setCreationTrace()
       this
     }
+
     /** A fresh clone of this context. */
     def fresh: FreshContext = clone.asInstanceOf[FreshContext].init(this)
 
