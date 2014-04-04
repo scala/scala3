@@ -37,7 +37,6 @@ class CreateCompanionObjectsTest extends DottyTest {
         override def name: String = "test"
       }
       val transformed = transformer.transform(tree).toString
-      println(transformed)
       val classPattern = "TypeDef(Modifiers(,,List()),A,"
       val classPos = transformed.indexOf(classPattern)
       val moduleClassPattern = "TypeDef(Modifiers(final module <synthetic>,,List()),A$"
