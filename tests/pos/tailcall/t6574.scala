@@ -4,7 +4,7 @@ class Bad[X, Y](val v: Int) extends AnyVal {
     this.foo[Z](a)(b)
   }
 
-  @annotation.tailrec final def differentReceiver {: Unit = 
+  @annotation.tailrec final def differentReceiver : Unit = {
     {(); new Bad[X, Y](0)}.differentReceiver
   }
 

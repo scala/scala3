@@ -47,6 +47,9 @@ class tests extends CompilerTest {
   @Test def pos_i39 = compileFile(posDir, "i39", doErase)
   @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess", doErase)
   @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion", doErase)
+  @Test def pos_tailcall = compileDir(posDir + "tailcall/", doErase)
+
+
 
   @Test def pos_all = compileFiles(posDir, twice)
   @Test def new_all = compileFiles(newDir, twice)
@@ -69,6 +72,12 @@ class tests extends CompilerTest {
   @Test def neg_t0625_structural = compileFile(negDir, "t0625", xerrors = 1)
   @Test def neg_t0654_polyalias = compileFile(negDir, "t0654", xerrors = 2)
   @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
+  @Test def neg_tailcall_t1672b = compileFile(negDir, "tailcall/t1672b", xerrors = 6)
+  @Test def neg_tailcall_t3275 = compileFile(negDir, "tailcall/t3275", xerrors = 1)
+  @Test def neg_tailcall_t6574 = compileFile(negDir, "tailcall/t6574", xerrors = 4)
+  @Test def neg_tailcall = compileFile(negDir, "tailcall/tailrec", xerrors = 7)
+  @Test def neg_tailcall2 = compileFile(negDir, "tailcall/tailrec-2", xerrors = 2)
+  @Test def neg_tailcall3 = compileFile(negDir, "tailcall/tailrec-3", xerrors = 2)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)
