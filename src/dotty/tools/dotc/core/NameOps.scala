@@ -50,6 +50,9 @@ object NameOps {
   implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
     import nme._
 
+    def likeTyped(n: Name): N =
+      (if (name.isTermName) n.toTermName else n.toTypeName).asInstanceOf[N]
+
     def isConstructorName = name == CONSTRUCTOR || name == IMPLCLASS_CONSTRUCTOR
     def isExceptionResultName = name startsWith EXCEPTION_RESULT_PREFIX
     def isImplClassName = name endsWith IMPL_CLASS_SUFFIX
@@ -62,6 +65,8 @@ object NameOps {
     def isTraitSetterName = isSetterName && (name containsSlice TRAIT_SETTER_SEPARATOR)
     def isSingletonName = name endsWith SINGLETON_SUFFIX
     def isModuleClassName = name endsWith MODULE_SUFFIX
+    def isImportName = name startsWith IMPORT
+    def isInheritedName = name.head == '(' && name.startsWith(nme.INHERITED)
 
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
@@ -131,6 +136,10 @@ object NameOps {
       val idx = name.lastIndexOfSlice(separator)
       if (idx < 0) name else (name drop (idx + separator.length)).asInstanceOf[N]
     }
+
+    def inheritedName: N = likeTyped(nme.INHERITED ++ name)
+
+    def revertInherited: N = likeTyped(name.drop(nme.INHERITED.length))
 
     /** Translate a name into a list of simple TypeNames and TermNames.
      *  In all segments before the last, type/term is determined by whether

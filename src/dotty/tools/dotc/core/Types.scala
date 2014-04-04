@@ -656,15 +656,6 @@ object Types {
         if (res.exists) res else TypeRef(this, name, denot)
     }
 
-    /** The type <this . name> , reduced if possible, with given denotation if unreduced */
-    def selectNonMember(name: Name, denot: Denotation)(implicit ctx: Context): Type = name match {
-      case name: TermName =>
-        TermRef(this, name, denot)
-      case name: TypeName =>
-        val res = lookupRefined(name)
-        if (res.exists) res else TypeRef(this, name, denot)
-    }
-
     /** The type <this . name> with given symbol, reduced if possible */
     def select(sym: Symbol)(implicit ctx: Context): Type =
       if (sym.isTerm) TermRef(this, sym.asTerm)
@@ -1079,7 +1070,7 @@ object Types {
       }
 
     private[dotc] final def setDenot(denot: Denotation)(implicit ctx: Context): Unit = {
-      if (Config.checkTermRefs)
+      if (Config.checkNoDoubleBindings)
         if (ctx.settings.YnoDoubleBindings.value)
           checkSymAssign(denot.symbol)
       lastDenotation = denot
@@ -1095,7 +1086,7 @@ object Types {
       }
 
     private[dotc] final def setSym(sym: Symbol)(implicit ctx: Context): Unit = {
-      if (Config.checkTermRefs)
+      if (Config.checkNoDoubleBindings)
         if (ctx.settings.YnoDoubleBindings.value)
           checkSymAssign(sym)
       uncheckedSetSym(sym)
@@ -1111,7 +1102,9 @@ object Types {
       TermRef.withSig(prefix, name.asTermName, sig)
 
     protected def loadDenot(implicit ctx: Context) = {
-      val d = prefix.member(name)
+      val d =
+        if (name.isInheritedName) prefix.nonPrivateMember(name.revertInherited)
+        else prefix.member(name)
       if (d.exists || ctx.phaseId == FirstPhaseId)
         d
       else {// name has changed; try load in earlier phase and make current
@@ -1171,6 +1164,11 @@ object Types {
      */
     protected def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
       NamedType(prefix, name)
+
+    /** Create a NamedType of the same kind as this type, but with a new name.
+     */
+    final def shadowed(implicit ctx: Context): NamedType =
+      NamedType(prefix, name.inheritedName)
 
     override def equals(that: Any) = that match {
       case that: NamedType =>

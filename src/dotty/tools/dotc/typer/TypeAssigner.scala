@@ -110,7 +110,7 @@ trait TypeAssigner {
           // an inherited non-private member with the same name and signature.
           val d2 = pre.nonPrivateMember(name)
           if (reallyExists(d2) && firstTry)
-            test(pre.select(name, d2), false)
+            test(tpe.shadowed.withDenot(d2), false)
           else {
             val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
             val what = alts match {
@@ -326,7 +326,7 @@ trait TypeAssigner {
     tree.withType(sym.typeRef)
 
   def assignType(tree: untpd.Import, sym: Symbol)(implicit ctx: Context) =
-    tree.withType(sym.termRef)
+    tree.withType(sym.nonMemberTermRef)
 
   def assignType(tree: untpd.Annotated, annot: Tree, arg: Tree)(implicit ctx: Context) =
     tree.withType(AnnotatedType(Annotation(annot), arg.tpe))

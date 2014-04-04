@@ -21,5 +21,12 @@ object unions {
   println(y.f)
   println(y.g(1.0))
 
+  class C {
+    private def foo = 0
+    class D extends C {
+      private def foo = 1
+      def test(cd: C | D, dc: D | C) = (cd.foo, dc.foo)
+    }
+  }
 
 }
