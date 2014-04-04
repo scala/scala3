@@ -1,4 +1,5 @@
-package dotty.tools.dotc.transform
+package dotty.tools.dotc
+package transform
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
@@ -7,6 +8,7 @@ import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Decorators._
 import scala.annotation.tailrec
+import config.Printers.transforms
 
 object TreeTransforms {
   import tpd._
@@ -1119,7 +1121,7 @@ object TreeTransforms {
         case tree => tree
       }
 
-    def transform(tree: Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree = {
+    def transform(tree: Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree = ctx.traceIndented(s"transforming ${tree.show} at ${ctx.phase}", transforms, show = true) {
       tree match {
         //split one big match into 2 smaller ones
         case tree: NameTree => transformNamed(tree, info, cur)
