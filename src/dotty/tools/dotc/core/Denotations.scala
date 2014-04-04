@@ -334,7 +334,7 @@ object Denotations {
     final def info(implicit ctx: Context) = infoOrCompleter
     final def validFor = denot1.validFor & denot2.validFor
     final def isType = false
-    def signature(implicit ctx: Context) = multiHasNot("signature")
+    final def signature(implicit ctx: Context) = Signature.OverloadedSignature
     def atSignature(sig: Signature)(implicit ctx: Context): SingleDenotation =
       denot1.atSignature(sig) orElse denot2.atSignature(sig)
     def current(implicit ctx: Context): Denotation =

@@ -13,6 +13,13 @@ object Config {
   final val checkConstraintsNonCyclic = true
 
   final val flagInstantiationToNothing = false
+  
+  /** Enable noDoubleDef checking if option "-YnoDoubleDefs" is set.
+    * The reason to have an option as well as the present global switch is
+    * that the noDoubleDef checking is done in a hotspot, and we do not
+    * want to incur the overhead of checking an option each time.
+    */
+  final val checkTermRefs = false
 
   /** Throw an exception if a deep subtype recursion is detected */
   final val flagDeepSubTypeRecursions = true
