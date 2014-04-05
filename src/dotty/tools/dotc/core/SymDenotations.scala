@@ -752,7 +752,7 @@ object SymDenotations {
 
     def debugString = toString+"#"+symbol.id // !!! DEBUG
 
-    // ----- copies ------------------------------------------------------
+    // ----- copies and transforms  ----------------------------------------
 
     protected def newLikeThis(s: Symbol, i: Type): SingleDenotation = new UniqueRefDenotation(s, i, validFor)
 
@@ -774,6 +774,10 @@ object SymDenotations {
       d.annotations = annotations1
       d
     }
+
+    /** Install this denotation as the result of the given denotation transformer. */
+    override def installAfter(phase: DenotTransformer)(implicit ctx: Context): Unit =
+      super.installAfter(phase)
   }
 
   /** The contents of a class definition during a period
