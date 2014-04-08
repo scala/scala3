@@ -29,7 +29,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.Select(qualifier, tp.name).withType(tp)
 
   def Select(qualifier: Tree, sym: Symbol)(implicit ctx: Context): Select =
-    untpd.Select(qualifier, sym.name).withType(qualifier.tpe select sym)
+    untpd.Select(qualifier, sym.name).withType(
+      TermRef.withSig(qualifier.tpe, sym.name.asTermName, sym.signature, sym.denot))
 
   def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit ctx: Context) =
     untpd.SelectWithSig(qualifier, name, sig)
@@ -259,10 +260,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** new C(args) */
   def New(tp: Type, args: List[Tree])(implicit ctx: Context): Apply = {
     val targs = tp.argTypes
+    val constr = tp.typeSymbol.primaryConstructor.asTerm
     Apply(
       Select(
         New(tp withoutArgs targs),
-        TermRef(tp.normalizedPrefix, tp.typeSymbol.primaryConstructor.asTerm))
+        TermRef.withSig(tp.normalizedPrefix, constr))
         .appliedToTypes(targs),
       args)
   }

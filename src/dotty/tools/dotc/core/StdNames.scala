@@ -100,6 +100,7 @@ object StdNames {
     val EXPAND_SEPARATOR: N           = "$$"
     val IMPL_CLASS_SUFFIX: N          = "$class"
     val IMPORT: N                     = "<import>"
+    val INHERITED: N                  = "(inherited)"  // tag to be used until we have proper name kinds
     val INTERPRETER_IMPORT_WRAPPER: N = "$iw"
     val INTERPRETER_LINE_PREFIX: N    = "line"
     val INTERPRETER_VAR_PREFIX: N     = "res"
@@ -109,6 +110,7 @@ object StdNames {
     val MODULE_VAR_SUFFIX: N          = "$module"
     val NAME_JOIN: N                  = NameTransformer.NAME_JOIN_STRING
     val USCORE_PARAM_PREFIX: N        = "_$"
+    val OVERLOADED: N                 = "<overloaded>"
     val PACKAGE: N                    = "package"
     val PACKAGE_CLS: N                = "package$"
     val PROTECTED_PREFIX: N           = "protected$"

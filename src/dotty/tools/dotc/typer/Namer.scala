@@ -209,7 +209,7 @@ class Namer { typer: Typer =>
           ctx.error(s"${preExisting.showLocated} is compiled twice, runid = ${ctx.runId}", tree.pos)
         }
       else if ((!ctx.owner.isClass || name.isTypeName) && preExisting.exists) {
-        ctx.error(d"$name is already defined as $preExisting")
+        ctx.error(i"$name is already defined as $preExisting", tree.pos)
       }
     }
 
@@ -474,7 +474,6 @@ class Namer { typer: Typer =>
 
       index(rest)(inClassContext(selfInfo))
       denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
-      // make sure constr parameters are all entered because we refer to them in desugarings:
     }
   }
 

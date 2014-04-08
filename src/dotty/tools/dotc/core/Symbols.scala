@@ -245,7 +245,7 @@ trait Symbols { this: Context =>
     for (name <- names) {
       val tparam = newNakedSymbol[TypeName](NoCoord)
       tparamBuf += tparam
-      trefBuf += TypeRef(owner.thisType, name) withSym tparam
+      trefBuf += TypeRef(owner.thisType, name).withSym(tparam, Signature.NotAMethod)
     }
     val tparams = tparamBuf.toList
     val bounds = boundsFn(trefBuf.toList)
@@ -319,7 +319,7 @@ object Symbols {
     type ThisName <: Name
 
     private[this] var _id: Int = nextId
-    //assert(_id != 5859)
+    //assert(_id != 12325)
 
     /** The unique id of this symbol */
     def id = _id

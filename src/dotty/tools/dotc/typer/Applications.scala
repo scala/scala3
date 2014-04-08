@@ -794,8 +794,8 @@ trait Applications extends Compatibility { self: Typer =>
         tp
     }
 
-    val owner1 = alt1.symbol.owner
-    val owner2 = alt2.symbol.owner
+    val owner1 = if (alt1.symbol.exists) alt1.symbol.owner else NoSymbol
+    val owner2 = if (alt2.symbol.exists) alt2.symbol.owner else NoSymbol
     val tp1 = stripImplicit(alt1.widen)
     val tp2 = stripImplicit(alt2.widen)
 

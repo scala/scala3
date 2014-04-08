@@ -14,7 +14,7 @@ class tests extends CompilerTest {
 //        "-Yshow-suppressed-errors",
         "-pagewidth", "160"
     )
-  val twice = List("#runs", "2")
+  val twice = List("#runs", "2", "-YnoDoubleBindings")
   val doErase = List("-Ystop-before:terminal")
 
   val posDir = "./tests/pos/"
@@ -55,7 +55,7 @@ class tests extends CompilerTest {
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
   @Test def neg_typedidents() = compileFile(negDir, "typedIdents", xerrors = 2)
   @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)
-  @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 10)
+  @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 13)
   @Test def neg_privates() = compileFile(negDir, "privates", xerrors = 2)
   @Test def neg_rootImports = compileFile(negDir, "rootImplicits", xerrors = 2)
   @Test def neg_templateParents() = compileFile(negDir, "templateParents", xerrors = 3)
@@ -65,6 +65,8 @@ class tests extends CompilerTest {
   @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 1)
   @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 4)
   @Test def neg_t0273_doubledefs = compileFile(negDir, "t0273", xerrors = 1)
+  @Test def neg_t0586_structural = compileFile(negDir, "t0586", xerrors = 1)
+  @Test def neg_t0625_structural = compileFile(negDir, "t0625", xerrors = 1)
   @Test def neg_t0654_polyalias = compileFile(negDir, "t0654", xerrors = 2)
   @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
 

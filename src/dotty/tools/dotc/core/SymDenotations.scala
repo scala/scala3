@@ -684,7 +684,8 @@ object SymDenotations {
 
     /** The symbol, in class `inClass`, that is overridden by this denotation. */
     final def overriddenSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol =
-      matchingSymbol(inClass, owner.thisType)
+      if ((this is Private) && (owner ne inClass)) NoSymbol
+      else matchingSymbol(inClass, owner.thisType)
 
     /** All symbols overriden by this denotation. */
     final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
@@ -730,6 +731,9 @@ object SymDenotations {
 
     override def termRefWithSig(implicit ctx: Context): TermRef =
       TermRef.withSig(owner.thisType, name.asTermName, signature, this)
+
+    def nonMemberTermRef(implicit ctx: Context): TermRef =
+      TermRef.withNonMemberSym(owner.thisType, name.asTermName, symbol.asTerm)
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
