@@ -32,7 +32,7 @@ class LazyValsCreateCompanionObjects extends CreateCompanionObjects {
       val body = forClass.rhs.asInstanceOf[Template].body
       body.exists {
         case x: ValDef =>
-          (x.mods is Flags.Lazy) && x.mods.annotations.exists(_.tpe == defn.VolatileAnnotType)
+          (x.mods is Flags.Lazy) && x.symbol.hasAnnotation(defn.VolatileAnnot)
         case _ => false
       }
     }
@@ -84,7 +84,7 @@ class LazyValTranformContext {
       if (!(tree.mods is Flags.Lazy)) tree
       else {
         val isField = tree.symbol.owner.isClass
-        val isVolatile = tree.mods.annotations.exists(_.tpe == defn.VolatileAnnotType)
+        val isVolatile = tree.symbol.hasAnnotation(defn.VolatileAnnot)
 
         if (isField) {
           if (isVolatile) transformFieldValDefVolatile(tree)
