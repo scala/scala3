@@ -33,6 +33,8 @@ object DottyBuild extends Build {
     // scalac options
     scalacOptions in Global ++= Seq("-feature", "-deprecation", "-language:_"),
 
+    javacOptions ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
+
     // enable verbose exception messages for JUnit
     testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "--run-listener=test.ContextEscapeDetector"),
     // Adjust classpath for running dotty
