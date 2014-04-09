@@ -738,8 +738,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     assignType(cpy.Alternative(tree, trees1), trees1)
   }
 
-  def typedModifiers(mods: untpd.Modifiers)(implicit ctx: Context): Modifiers = track("typedModifiers") {
+  def typedModifiers(mods: untpd.Modifiers, sym: Symbol)(implicit ctx: Context): Modifiers = track("typedModifiers") {
     val annotations1 = mods.annotations mapconserve typedAnnotation
+    for (tree <- annotations1) sym.addAnnotation(Annotation(tree))
     if (annotations1 eq mods.annotations) mods.asInstanceOf[Modifiers]
     else Modifiers(mods.flags, mods.privateWithin, annotations1)
   }
@@ -750,7 +751,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = track("typedValDef") {
     val ValDef(mods, name, tpt, rhs) = vdef
-    val mods1 = typedModifiers(mods)
+    val mods1 = typedModifiers(mods, sym)
     val tpt1 = typedType(tpt)
     if ((sym is Implicit) && sym.owner.isType) checkImplicitTptNonEmpty(vdef)
     val rhs1 = rhs match {
@@ -762,7 +763,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = track("typedDefDef") {
     val DefDef(mods, name, tparams, vparamss, tpt, rhs) = ddef
-    val mods1 = typedModifiers(mods)
+    val mods1 = typedModifiers(mods, sym)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
     if (sym is Implicit) {
@@ -777,7 +778,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedTypeDef") {
     val TypeDef(mods, name, rhs) = tdef
-    val mods1 = typedModifiers(mods)
+    val mods1 = typedModifiers(mods, sym)
     val _ = typedType(rhs) // unused, typecheck only to remove from typedTree
     assignType(cpy.TypeDef(tdef, mods1, name, TypeTree(sym.info)), sym)
   }
@@ -804,7 +805,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
 
     val TypeDef(mods, name, impl @ Template(constr, parents, self, body)) = cdef
-    val mods1 = typedModifiers(mods)
+    val mods1 = typedModifiers(mods, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parents1 = ensureConstrCall(ensureFirstIsClass(
         parents mapconserve typedParent, cdef.pos.toSynthetic))
