@@ -78,7 +78,7 @@ class Definitions {
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[ClassSymbol] = {
     val arr = new Array[ClassSymbol](arity)
-    for (i <- countFrom until arity) arr(i) = ctx.requiredClass("scala." + name + i)
+    for (i <- countFrom until arity) arr(i) = ctx.requiredClass(name + i)
     arr
   }
 
@@ -339,9 +339,10 @@ class Definitions {
 
   // ----- Symbol sets ---------------------------------------------------
 
-  lazy val FunctionClass = mkArityArray("Function", MaxFunctionArity, 0)
-  lazy val TupleClass = mkArityArray("Tuple", MaxTupleArity, 2)
-  lazy val ProductNClass = mkArityArray("Product", MaxTupleArity, 2)
+  lazy val AbstractFunctionClass = mkArityArray("runtime.AbstractFunction", MaxFunctionArity, 0)
+  lazy val FunctionClass = mkArityArray("scala.Function", MaxFunctionArity, 0)
+  lazy val TupleClass = mkArityArray("scala.Tuple", MaxTupleArity, 2)
+  lazy val ProductNClass = mkArityArray("scala.Product", MaxTupleArity, 2)
 
   lazy val FunctionClasses: Set[Symbol] = FunctionClass.toSet
   lazy val TupleClasses: Set[Symbol] = TupleClass.toSet
