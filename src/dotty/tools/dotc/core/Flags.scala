@@ -470,6 +470,15 @@ object Flags {
   /** Labeled `private` or `protected[local]` */
   final val PrivateOrLocal = Private | Local
 
+  /** Either a module or a final class */
+  final val ModuleOrFinal = ModuleClass | Final
+
+  /** Either mutable or lazy */
+  final val MutableOrLazy = Mutable | Lazy
+
+  /** Labeled `private` or `final` */
+  final val PrivateOrFinal = Private | Final
+
   /** A type parameter with synthesized name */
   final val ExpandedTypeParam = allOf(ExpandedName, TypeParam)
 

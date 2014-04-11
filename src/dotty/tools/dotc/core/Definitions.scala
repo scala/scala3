@@ -172,8 +172,9 @@ class Definitions {
 
   lazy val UnitClass = valueClassSymbol("scala.Unit", BoxedUnitClass, java.lang.Void.TYPE, UnitEnc)
   lazy val BooleanClass = valueClassSymbol("scala.Boolean", BoxedBooleanClass, java.lang.Boolean.TYPE, BooleanEnc)
-    lazy val Boolean_! = BooleanClass.requiredMethod(nme.UNARY_!)
+    lazy val Boolean_!   = BooleanClass.requiredMethod(nme.UNARY_!)
     lazy val Boolean_and = BooleanClass.requiredMethod(nme.ZAND)
+    lazy val Boolean_or  = BooleanClass.requiredMethod(nme.ZOR)
 
   lazy val ByteClass = valueClassSymbol("scala.Byte", BoxedByteClass, java.lang.Byte.TYPE, ByteEnc)
   lazy val ShortClass = valueClassSymbol("scala.Short", BoxedShortClass, java.lang.Short.TYPE, ShortEnc)
@@ -236,6 +237,7 @@ class Definitions {
   lazy val AnnotationClass              = ctx.requiredClass("scala.annotation.Annotation")
   lazy val ClassfileAnnotationClass     = ctx.requiredClass("scala.annotation.ClassfileAnnotation")
   lazy val StaticAnnotationClass        = ctx.requiredClass("scala.annotation.StaticAnnotation")
+  lazy val TailrecAnnotationClass       = ctx.requiredClass("scala.annotation.tailrec")
 
   // Annotation classes
   lazy val AliasAnnot = ctx.requiredClass("dotty.annotation.internal.Alias")

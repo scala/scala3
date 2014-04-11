@@ -586,6 +586,12 @@ object SymDenotations {
     final def enclosingClass(implicit ctx: Context): Symbol =
       if (isClass || !exists) symbol else owner.enclosingClass
 
+    final def isEffectivelyFinal(implicit ctx: Context): Boolean = {
+      (this.flags is Flags.PrivateOrFinal) || (!this.owner.isClass) ||
+        ((this.owner.flags is (Flags.ModuleOrFinal)) && (!this.flags.is(Flags.MutableOrLazy))) ||
+        (this.owner.isAnonymousClass)
+    }
+
     /** The class containing this denotation which has the given effective name.
      */
     final def enclosingClassNamed(name: Name)(implicit ctx: Context): Symbol = {

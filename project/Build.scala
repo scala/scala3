@@ -6,6 +6,12 @@ object DottyBuild extends Build {
 
   val TRAVIS_BUILD = "dotty.travis.build"
 
+  val agentOptions = List(
+    // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005",
+    // "-agentpath:/home/dark/opt/yjp-2013-build-13072/bin/linux-x86-64/libyjpagent.so"
+  )
+
+
   val defaults = Defaults.defaultSettings ++ Seq(
     // set sources to src/, tests to test/ and resources to resources/
     scalaSource in Compile := baseDirectory.value / "src",
@@ -51,12 +57,12 @@ object DottyBuild extends Build {
        // System.err.println("BOOTPATH: " + fullpath)
 
        val travis_build = // propagate if this is a travis build
-         if (sys.props.isDefinedAt(TRAVIS_BUILD)) 
+         if (sys.props.isDefinedAt(TRAVIS_BUILD))
            List(s"-D$TRAVIS_BUILD=${sys.props(TRAVIS_BUILD)}")
-         else 
+         else
            List()
 
-       travis_build ::: fullpath
+      agentOptions ::: travis_build ::: fullpath
     }
   )
 

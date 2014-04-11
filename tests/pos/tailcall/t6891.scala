@@ -1,4 +1,4 @@
-object O {
+object O6891 {
   implicit class Foo[A](val value: String) extends AnyVal {
     def bippy() = {
       @annotation.tailrec def loop(x: A): Unit = loop(x)

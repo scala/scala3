@@ -1,4 +1,4 @@
-object Test {
+object Test1772B {
   @annotation.tailrec
   def bar : Nothing = {
     try {
