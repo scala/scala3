@@ -482,6 +482,11 @@ object Symbols {
 
     private var superIdHint: Int = -1
 
+    /** The superclass of this class. */
+    def superClass(implicit ctx: Context): Symbol =
+      if (this.info.parents.isEmpty) NoSymbol
+      else  this.info.parents.head.typeSymbol
+
     override def superId(implicit ctx: Context): Int = {
       val hint = superIdHint
       if (hint >= 0 && hint <= ctx.lastSuperId && (ctx.classOfId(hint) eq this))
