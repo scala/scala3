@@ -30,7 +30,7 @@ class Compiler {
            new TypeTestsCasts,
            new InterceptedMethods),
       List(new Erasure),
-      List(new UncurryTreeTransform)
+      List(new UncurryTreeTransform, new CollectEntryPoints)
     )
 
   var runId = 1
