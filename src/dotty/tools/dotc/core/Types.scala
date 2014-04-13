@@ -449,7 +449,7 @@ object Types {
     final def implicitMembers(implicit ctx: Context): List[TermRef] = track("implicitMembers") {
       memberDenots(implicitFilter,
           (name, buf) => buf ++= member(name).altsWith(_ is Implicit))
-        .toList.map(_.termRefWithSig)
+        .toList.map(d => TermRef.withSig(this, d.symbol.asTerm))
     }
 
     /** The info of `sym`, seen as a member of this type. */
@@ -1311,7 +1311,7 @@ object Types {
       if (prefix eq NoPrefix) withNonMemberSym(prefix, name, sym)
       else {
         if (sym.defRunId != NoRunId && sym.isCompleted) withSig(prefix, name, sym.signature)
-        else  apply(prefix, name)
+        else apply(prefix, name)
       } withSym (sym, Signature.NotAMethod)
 
     def withSig(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
