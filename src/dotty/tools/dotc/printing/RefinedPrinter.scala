@@ -54,13 +54,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   override def toTextPrefix(tp: Type): Text = controlled {
+    def isOmittable(sym: Symbol) = isOmittablePrefix(sym) && !ctx.settings.verbose.value
     tp match {
       case ThisType(cls) =>
-        if (isOmittablePrefix(cls)) return ""
+        if (isOmittable(cls)) return ""
       case tp @ TermRef(pre, _) =>
         val sym = tp.symbol
         if (sym.isPackageObject) return toTextPrefix(pre)
-        if (isOmittablePrefix(sym)) return ""
+        if (isOmittable(sym)) return ""
       case _ =>
     }
     super.toTextPrefix(tp)
