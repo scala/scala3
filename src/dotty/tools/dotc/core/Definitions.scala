@@ -156,6 +156,8 @@ class Definitions {
 
   lazy val ScalaPredefModule = ctx.requiredModule("scala.Predef")
   lazy val ScalaRuntimeModule = ctx.requiredModule("scala.runtime.ScalaRunTime")
+  lazy val BoxesRunTimeModule     = ctx.requiredModule("scala.runtime.BoxesRunTime")
+  lazy val BoxesRunTimeClass      = BoxesRunTimeModule.moduleClass
   lazy val DottyPredefModule = ctx.requiredModule("dotty.DottyPredef")
   lazy val NilModule = ctx.requiredModule("scala.collection.immutable.Nil")
 
@@ -168,6 +170,10 @@ class Definitions {
       List(AnyClass.typeRef), EmptyScope)
   lazy val SeqClass: ClassSymbol = ctx.requiredClass("scala.collection.Seq")
   lazy val ArrayClass: ClassSymbol = ctx.requiredClass("scala.Array")
+    lazy val Array_apply                 = ctx.requiredMethod(ArrayClass, nme.apply)
+    lazy val Array_update                = ctx.requiredMethod(ArrayClass, nme.update)
+    lazy val Array_length                = ctx.requiredMethod(ArrayClass, nme.length)
+    lazy val Array_clone                 = ctx.requiredMethod(ArrayClass, nme.clone_)
   lazy val uncheckedStableClass: ClassSymbol = ctx.requiredClass("scala.annotation.unchecked.uncheckedStable")
 
   lazy val UnitClass = valueClassSymbol("scala.Unit", BoxedUnitClass, java.lang.Void.TYPE, UnitEnc)
@@ -211,8 +217,20 @@ class Definitions {
 
   // fundamental classes
   lazy val StringClass                  = ctx.requiredClass("java.lang.String")
+  lazy val StringModule                 = StringClass.moduleClass
 
     lazy val String_+ = newMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
+    lazy val String_valueOf_Object = StringModule.info.member(nme.valueOf).suchThat(_.info.firstParamTypes match {
+      case List(pt) => pt isRef ObjectClass
+      case _ => false
+    }).symbol
+
+  // in scalac modified to have Any as parrent
+
+  lazy val SerializableClass         = ctx.requiredClass("scala.Serializable")
+  lazy val JavaCloneableClass        = ctx.requiredClass("java.lang.Cloneable")
+  lazy val StringBuilderClass        = ctx.requiredClass("scala.collection.mutable.StringBuilder")
+  lazy val NullPointerExceptionClass = ctx.requiredClass(jnme.NPException)
 
   lazy val StringAddClass               = ctx.requiredClass("scala.runtime.StringAdd")
 
@@ -238,6 +256,11 @@ class Definitions {
   lazy val ClassfileAnnotationClass     = ctx.requiredClass("scala.annotation.ClassfileAnnotation")
   lazy val StaticAnnotationClass        = ctx.requiredClass("scala.annotation.StaticAnnotation")
   lazy val TailrecAnnotationClass       = ctx.requiredClass("scala.annotation.tailrec")
+  lazy val RemoteAnnot                   = ctx.requiredClass("scala.remote")
+  lazy val SerialVersionUIDAnnot         = ctx.requiredClass("scala.SerialVersionUID")
+  lazy val TransientAnnot                = ctx.requiredClass("scala.transient")
+  lazy val NativeAnnot                   = ctx.requiredClass("scala.native")
+  lazy val ScalaStrictFPAnnot            = ctx.requiredClass("scala.annotation.strictfp")
 
   // Annotation classes
   lazy val AliasAnnot = ctx.requiredClass("dotty.annotation.internal.Alias")
