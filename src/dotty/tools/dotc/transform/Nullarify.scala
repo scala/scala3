@@ -39,6 +39,10 @@ class Nullarify extends TreeTransform with InfoTransformer {
 
   override def name: String = "nullarify"
 
+  override def runsAfterGroupsOf: Set[String] = Set("splitter")
+    // assumes idents and selects have symbols; interferes with splitter distribution
+    // that's why it's "after group".
+
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =
     ctx.traceIndented(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
 
