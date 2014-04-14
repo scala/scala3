@@ -83,10 +83,11 @@ class TailRec extends TreeTransform with DenotTransformer {
   override def name: String = "tailrec"
 
   final val labelPrefix = "tailLabel"
+  final val labelFlags = Flags.Synthetic | Flags.Label
 
   private def mkLabel(method: Symbol, tp: Type)(implicit c: Context): TermSymbol = {
     val name = c.freshName(labelPrefix)
-    c.newSymbol(method, name.toTermName, Flags.Synthetic, tp)
+    c.newSymbol(method, name.toTermName, labelFlags , tp)
   }
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
@@ -95,7 +96,7 @@ class TailRec extends TreeTransform with DenotTransformer {
         if (dd.symbol.isEffectivelyFinal) && !((dd.symbol is Flags.Accessor) || (rhs0 eq EmptyTree)) =>
         val mandatory = dd.symbol.hasAnnotation(defn.TailrecAnnotationClass)
         cpy.DefDef(tree, mods, name, tparams, vparamss0, tpt, rhs = {
-            val owner = ctx.owner.enclosingClass
+            val owner = ctx.owner.enclosingClass.asClass
 
             val thisTpe = owner.thisType
 
@@ -112,16 +113,25 @@ class TailRec extends TreeTransform with DenotTransformer {
             // than first one will collect info about which transformations and rewritings should be applied
             // and second one will actually apply,
             // now this speculatively transforms tree and throws away result in many cases
-            val res = tpd.Closure(label, args => {
+            val res = tpd.DefDef(label, args => {
               val thiz = args.head.head
               val argMapping: Map[Symbol, Tree] = (vparamss0.flatten.map(_.symbol) zip args.tail.flatten).toMap
               val transformer = new TailRecElimination(dd.symbol, thiz, argMapping, owner, mandatory, label)
               val rhs = transformer.transform(rhs0)(ctx.withPhase(ctx.phase.next))
               rewrote = transformer.rewrote
               rhs
-            }, tparams)
+            })
 
-            if (rewrote) res
+            if (rewrote) {
+              val call =
+                if (tparams.isEmpty) Ident(label.termRef)
+                else TypeApply(Ident(label.termRef), tparams)
+              Block(
+                List(res),
+                vparamss0.foldLeft(Apply(call, List(This(owner))))
+                  {case (call, args) => Apply(call, args.map(x=> Ident(x.symbol.termRef)))}
+                )
+            }
             else {
               if (mandatory)
                 ctx.error("TailRec optimisation not applicable, method not tail recursive", dd.pos)
