@@ -341,6 +341,8 @@ class Definitions {
 
   lazy val AbstractFunctionClass = mkArityArray("scala.runtime.AbstractFunction", MaxFunctionArity, 0)
   lazy val FunctionClass = mkArityArray("scala.Function", MaxFunctionArity, 0)
+    lazy val Function0_apply = FunctionClass(0).requiredMethod(nme.apply)
+
   lazy val TupleClass = mkArityArray("scala.Tuple", MaxTupleArity, 2)
   lazy val ProductNClass = mkArityArray("scala.Product", MaxTupleArity, 2)
 
@@ -357,6 +359,7 @@ class Definitions {
 
   lazy val asInstanceOfMethods = Set[Symbol](Any_asInstanceOf, Object_asInstanceOf)
   lazy val isInstanceOfMethods = Set[Symbol](Any_isInstanceOf, Object_isInstanceOf)
+  lazy val typeTestsOrCasts    = asInstanceOfMethods ++ isInstanceOfMethods
 
   lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
 
@@ -440,7 +443,7 @@ class Definitions {
     LongClass,
     FloatClass,
     DoubleClass)
-  
+
   lazy val ScalaValueClasses: collection.Set[Symbol] = ScalaNumericValueClasses + UnitClass + BooleanClass
 
   lazy val ScalaBoxedClasses = ScalaValueClasses map boxedClass
