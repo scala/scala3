@@ -205,7 +205,7 @@ object Erasure {
         else recur(cast(qual, erasedPre))
 
       def recur(qual: Tree): Tree = {
-        val qualIsPrimitive = isPrimitiveValueType(qual.tpe)
+        val qualIsPrimitive = isPrimitiveValueType(qual.tpe.widen)
         val symIsPrimitive = sym.owner.isPrimitiveValueClass
         if ((sym.owner eq defn.AnyClass) || (sym.owner eq defn.AnyValClass))
           select(qual, defn.ObjectClass.info.decl(sym.name).symbol)
