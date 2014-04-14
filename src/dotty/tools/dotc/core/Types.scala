@@ -352,6 +352,12 @@ object Types {
           goThis(tp)
         case tp: TypeRef =>
           tp.denot.findMember(name, pre, excluded)
+        case tp: TermRef =>
+          go (tp.underlying match {
+            case mt: MethodType
+            if mt.paramTypes.isEmpty && (tp.symbol is Stable) => mt.resultType
+            case tp1 => tp1
+          })
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
@@ -1101,14 +1107,14 @@ object Types {
     private def withSig(sig: Signature)(implicit ctx: Context): NamedType =
       TermRef.withSig(prefix, name.asTermName, sig)
 
-    protected def loadDenot(implicit ctx: Context) = {
+    protected def loadDenot(implicit ctx: Context): Denotation = {
       val d =
         if (name.isInheritedName) prefix.nonPrivateMember(name.revertInherited)
         else prefix.member(name)
-      if (d.exists || ctx.phaseId == FirstPhaseId)
+      if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
         d
       else {// name has changed; try load in earlier phase and make current
-        val d = denot(ctx.withPhase(ctx.phaseId - 1)).current
+        val d = loadDenot(ctx.withPhase(ctx.phaseId - 1)).current
         if (d.exists) d
         else throw new Error(s"failure to reload $this")
       }
