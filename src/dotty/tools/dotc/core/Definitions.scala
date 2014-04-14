@@ -360,6 +360,15 @@ class Definitions {
 
   lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
 
+  // The given symbol is a method with the right name and signature to be a runnable java program.
+  def isJavaMainMethod(sym: Symbol) = (sym.name == nme.main) && (sym.info match {
+    case t@MethodType(_, ArrayType(el) :: Nil) => el =:= StringType && t.resultType.typeSymbol == UnitClass
+    case _                            => false
+  })
+  // The given class has a main method.
+  def hasJavaMainMethod(sym: Symbol): Boolean =
+    (sym.info member nme.main).suchThat(isJavaMainMethod).exists
+
   def isTupleType(tp: Type) = {
     val arity = tp.dealias.argInfos.length
     arity <= MaxTupleArity && (tp isRef TupleClass(arity))
