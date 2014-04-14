@@ -266,7 +266,7 @@ object Erasure {
       val statsFlatten = Trees.flatten(stats)
       val stats1 = super.typedStats(statsFlatten, exprOwner)
 
-      if (ctx.owner.isClass) addBridges(statsFlatten, stats1)(ctx) else stats1
+      if (ctx.owner.isClass) stats1:::addBridges(statsFlatten, stats1)(ctx) else stats1
     }
 
     // this implementation doesn't check for bridge clashes with value types!

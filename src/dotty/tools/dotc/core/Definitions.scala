@@ -77,8 +77,8 @@ class Definitions {
     newPolyMethod(cls, name, 1, pt => MethodType(Nil, Nil, resultTypeFn(pt)), flags)
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[ClassSymbol] = {
-    val arr = new Array[ClassSymbol](arity)
-    for (i <- countFrom until arity) arr(i) = ctx.requiredClass("scala." + name + i)
+    val arr = new Array[ClassSymbol](arity + 1)
+    for (i <- countFrom to arity) arr(i) = ctx.requiredClass(name + i)
     arr
   }
 
@@ -339,9 +339,10 @@ class Definitions {
 
   // ----- Symbol sets ---------------------------------------------------
 
-  lazy val FunctionClass = mkArityArray("Function", MaxFunctionArity, 0)
-  lazy val TupleClass = mkArityArray("Tuple", MaxTupleArity, 2)
-  lazy val ProductNClass = mkArityArray("Product", MaxTupleArity, 2)
+  lazy val AbstractFunctionClass = mkArityArray("scala.runtime.AbstractFunction", MaxFunctionArity, 0)
+  lazy val FunctionClass = mkArityArray("scala.Function", MaxFunctionArity, 0)
+  lazy val TupleClass = mkArityArray("scala.Tuple", MaxTupleArity, 2)
+  lazy val ProductNClass = mkArityArray("scala.Product", MaxTupleArity, 2)
 
   lazy val FunctionClasses: Set[Symbol] = FunctionClass.toSet
   lazy val TupleClasses: Set[Symbol] = TupleClass.toSet
