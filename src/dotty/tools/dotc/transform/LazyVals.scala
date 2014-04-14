@@ -68,7 +68,6 @@ class LazyValTranformContext {
     override def runsAfterGroupsOf: Set[String] = Set("lazyValsModules")
     /** List of names of phases that should have finished their processing of all compilation units
       * before this phase starts */
-    override def runsAfter: Set[String] = Set("lazyValsModules")
 
     /** List of names of phases that should have finished processing of tree
       * before this phase starts processing same tree */
