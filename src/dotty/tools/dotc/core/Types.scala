@@ -427,6 +427,11 @@ object Types {
       buf
     }
 
+    def members(fs: FlagSet, butNot: FlagSet)(implicit ctx: Context) = {
+      memberDenots(takeAllFilter,
+        (name, buf) => buf ++= member(name).altsWith(_ is(fs, butNot)))
+    }
+
     /** The set of abstract term members of this type. */
     final def abstractTermMembers(implicit ctx: Context): Seq[SingleDenotation] = track("abstractTermMembers") {
       memberDenots(abstractTermNameFilter,

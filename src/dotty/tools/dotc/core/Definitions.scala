@@ -156,6 +156,8 @@ class Definitions {
 
   lazy val ScalaPredefModule = ctx.requiredModule("scala.Predef")
   lazy val ScalaRuntimeModule = ctx.requiredModule("scala.runtime.ScalaRunTime")
+  lazy val BoxesRunTimeModule     = ctx.requiredModule("scala.runtime.BoxesRunTime")
+  lazy val BoxesRunTimeClass      = BoxesRunTimeModule.moduleClass
   lazy val DottyPredefModule = ctx.requiredModule("dotty.DottyPredef")
   lazy val NilModule = ctx.requiredModule("scala.collection.immutable.Nil")
 
@@ -168,6 +170,10 @@ class Definitions {
       List(AnyClass.typeRef), EmptyScope)
   lazy val SeqClass: ClassSymbol = ctx.requiredClass("scala.collection.Seq")
   lazy val ArrayClass: ClassSymbol = ctx.requiredClass("scala.Array")
+    lazy val Array_apply                 = ctx.requiredMethod(ArrayClass, nme.apply)
+    lazy val Array_update                = ctx.requiredMethod(ArrayClass, nme.update)
+    lazy val Array_length                = ctx.requiredMethod(ArrayClass, nme.length)
+    lazy val Array_clone                 = ctx.requiredMethod(ArrayClass, nme.clone_)
   lazy val uncheckedStableClass: ClassSymbol = ctx.requiredClass("scala.annotation.unchecked.uncheckedStable")
 
   lazy val UnitClass = valueClassSymbol("scala.Unit", BoxedUnitClass, java.lang.Void.TYPE, UnitEnc)
@@ -211,8 +217,20 @@ class Definitions {
 
   // fundamental classes
   lazy val StringClass                  = ctx.requiredClass("java.lang.String")
+  lazy val StringModule                 = StringClass.moduleClass
 
     lazy val String_+ = newMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
+    lazy val String_valueOf_Object = StringModule.info.member(nme.valueOf).suchThat(_.info.firstParamTypes match {
+      case List(pt) => pt.typeSymbol == ObjectClass
+      case _ => false
+    }).symbol
+
+  // in scalac modified to have Any as parrent
+
+  lazy val SerializableClass         = ctx.requiredClass("scala.Serializable")
+  lazy val JavaCloneableClass        = ctx.requiredClass("java.lang.Cloneable")
+  lazy val StringBuilderClass        = ctx.requiredClass("scala.collection.mutable.StringBuilder")
+  lazy val NullPointerExceptionClass = ctx.requiredClass(jnme.NPException)
 
   lazy val StringAddClass               = ctx.requiredClass("scala.runtime.StringAdd")
 
@@ -238,6 +256,11 @@ class Definitions {
   lazy val ClassfileAnnotationClass     = ctx.requiredClass("scala.annotation.ClassfileAnnotation")
   lazy val StaticAnnotationClass        = ctx.requiredClass("scala.annotation.StaticAnnotation")
   lazy val TailrecAnnotationClass       = ctx.requiredClass("scala.annotation.tailrec")
+  lazy val RemoteAttr                   = ctx.requiredClass("scala.remote")
+  lazy val SerialVersionUIDAttr         = ctx.requiredClass("scala.SerialVersionUID")
+  lazy val TransientAttr                = ctx.requiredClass("scala.transient")
+  lazy val NativeAttr                   = ctx.requiredClass("scala.native")
+  lazy val ScalaStrictFPAttr            = ctx.requiredClass("scala.annotation.strictfp")
 
   // Annotation classes
   lazy val AliasAnnot = ctx.requiredClass("dotty.annotation.internal.Alias")
@@ -359,6 +382,15 @@ class Definitions {
   lazy val isInstanceOfMethods = Set[Symbol](Any_isInstanceOf, Object_isInstanceOf)
 
   lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
+
+  // The given symbol is a method with the right name and signature to be a runnable java program.
+  def isJavaMainMethod(sym: Symbol) = (sym.name == nme.main) && (sym.info match {
+    case t@MethodType(_, ArrayType(el) :: Nil) => el =:= StringType && t.resultType.typeSymbol == UnitClass
+    case _                            => false
+  })
+  // The given class has a main method.
+  def hasJavaMainMethod(sym: Symbol): Boolean =
+    (sym.info member nme.main).suchThat(isJavaMainMethod).exists
 
   def isTupleType(tp: Type) = {
     val arity = tp.dealias.argInfos.length
