@@ -427,7 +427,7 @@ object Types {
         Set()
     }
 
-    private def memberDenots(keepOnly: NameFilter, f: (Name, mutable.Buffer[SingleDenotation]) => Unit)(implicit ctx: Context): Seq[SingleDenotation] = {
+    def memberDenots(keepOnly: NameFilter, f: (Name, mutable.Buffer[SingleDenotation]) => Unit)(implicit ctx: Context): Seq[SingleDenotation] = {
       val buf = mutable.ArrayBuffer[SingleDenotation]()
       for (name <- memberNames(keepOnly)) f(name, buf)
       buf
