@@ -2,7 +2,6 @@ package dotty.tools.dotc
 package transform
 
 import TreeTransforms._
-import core.DenotTransformers._
 import core.Denotations._
 import core.SymDenotations._
 import core.Contexts._
