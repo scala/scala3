@@ -49,7 +49,7 @@ class Nullarify extends TreeTransform with InfoTransformer {
     def transformArg(arg: Tree, formal: Type): Tree = formal match {
       case _: ExprType =>
         arg match {
-          case Apply(Select(qual, nme.apply), Nil) => qual
+          case Apply(Select(qual, nme.apply), Nil) if qual.tpe <:< defn.FunctionClass(0).typeRef => qual
           case _ =>
             val meth = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Synthetic,
                 MethodType(Nil, Nil, arg.tpe.widen))
