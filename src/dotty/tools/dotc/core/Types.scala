@@ -1314,11 +1314,12 @@ object Types {
       unique(new NonMemberTermRef(prefix, name, sym))
 
     def withSymAndName(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef =
-      if (prefix eq NoPrefix) withNonMemberSym(prefix, name, sym)
-      else {
-        if (sym.defRunId != NoRunId && sym.isCompleted) withSig(prefix, name, sym.signature)
-        else apply(prefix, name)
-      } withSym (sym, Signature.NotAMethod)
+      if (prefix eq NoPrefix)
+        withNonMemberSym(prefix, name, sym)
+      else if (sym.defRunId != NoRunId && sym.isCompleted) 
+        withSig(prefix, name, sym.signature) withSym (sym, sym.signature)
+      else
+        apply(prefix, name) withSym (sym, Signature.NotAMethod)
 
     def withSig(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
       unique(withSig(prefix, sym.name, sym.signature).withSym(sym, sym.signature))
