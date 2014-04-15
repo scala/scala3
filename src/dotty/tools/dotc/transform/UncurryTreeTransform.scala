@@ -7,10 +7,11 @@ import core.Denotations._
 import core.SymDenotations._
 import core.Contexts._
 import core.Types._
+import core.Symbols._
 import ast.Trees._
 import ast.tpd.{Apply, Tree, cpy}
 
-class UncurryTreeTransform extends TreeTransform with DenotTransformer {
+class UncurryTreeTransform extends TreeTransform with InfoTransformer {
 
   override def name: String = "uncurry"
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =
@@ -40,12 +41,6 @@ class UncurryTreeTransform extends TreeTransform with DenotTransformer {
       tp
   }
 
-  def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
-    val info1 = uncurry(ref.info)
-    if (info1 eq ref.info) ref
-    else ref match {
-      case ref: SymDenotation => ref.copySymDenotation(info = info1)
-      case _ => ref.derivedSingleDenotation(ref.symbol, info1)
-    }
-  }
+  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
+    uncurry(tp)
 }

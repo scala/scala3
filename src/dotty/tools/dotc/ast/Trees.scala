@@ -639,7 +639,7 @@ object Trees {
 
   /** => T */
   case class ByNameTypeTree[-T >: Untyped] private[ast] (result: Tree[T])
-  extends Tree[T] {
+  extends TypTree[T] {
     type ThisTree[-T >: Untyped] = ByNameTypeTree[T]
   }
 

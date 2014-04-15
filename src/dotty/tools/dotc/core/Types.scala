@@ -352,6 +352,12 @@ object Types {
           goThis(tp)
         case tp: TypeRef =>
           tp.denot.findMember(name, pre, excluded)
+        case tp: TermRef =>
+          go (tp.underlying match {
+            case mt: MethodType
+            if mt.paramTypes.isEmpty && (tp.symbol is Stable) => mt.resultType
+            case tp1 => tp1
+          })
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
@@ -449,7 +455,7 @@ object Types {
     final def implicitMembers(implicit ctx: Context): List[TermRef] = track("implicitMembers") {
       memberDenots(implicitFilter,
           (name, buf) => buf ++= member(name).altsWith(_ is Implicit))
-        .toList.map(_.termRefWithSig)
+        .toList.map(d => TermRef.withSig(this, d.symbol.asTerm))
     }
 
     /** The info of `sym`, seen as a member of this type. */
@@ -1101,14 +1107,14 @@ object Types {
     private def withSig(sig: Signature)(implicit ctx: Context): NamedType =
       TermRef.withSig(prefix, name.asTermName, sig)
 
-    protected def loadDenot(implicit ctx: Context) = {
+    protected def loadDenot(implicit ctx: Context): Denotation = {
       val d =
         if (name.isInheritedName) prefix.nonPrivateMember(name.revertInherited)
         else prefix.member(name)
-      if (d.exists || ctx.phaseId == FirstPhaseId)
+      if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
         d
       else {// name has changed; try load in earlier phase and make current
-        val d = denot(ctx.withPhase(ctx.phaseId - 1)).current
+        val d = loadDenot(ctx.withPhase(ctx.phaseId - 1)).current
         if (d.exists) d
         else throw new Error(s"failure to reload $this")
       }
@@ -1311,7 +1317,7 @@ object Types {
       if (prefix eq NoPrefix) withNonMemberSym(prefix, name, sym)
       else {
         if (sym.defRunId != NoRunId && sym.isCompleted) withSig(prefix, name, sym.signature)
-        else  apply(prefix, name)
+        else apply(prefix, name)
       } withSym (sym, Signature.NotAMethod)
 
     def withSig(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =

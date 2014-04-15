@@ -30,7 +30,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def Select(qualifier: Tree, sym: Symbol)(implicit ctx: Context): Select =
     untpd.Select(qualifier, sym.name).withType(
-      TermRef.withSig(qualifier.tpe, sym.name.asTermName, sym.signature, sym.denot))
+      TermRef.withSig(qualifier.tpe, sym.name.asTermName, sym.signature, sym.denot.asSeenFrom(qualifier.tpe)))
 
   def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit ctx: Context) =
     untpd.SelectWithSig(qualifier, name, sig)

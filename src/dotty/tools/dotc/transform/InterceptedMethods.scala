@@ -2,7 +2,6 @@ package dotty.tools.dotc
 package transform
 
 import TreeTransforms._
-import core.DenotTransformers._
 import core.Denotations._
 import core.SymDenotations._
 import core.Contexts._
@@ -27,7 +26,6 @@ import dotty.runtime.LazyVals
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
-import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 import StdNames._
 
 /** Replace member references as follows:

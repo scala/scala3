@@ -512,7 +512,7 @@ object Denotations {
     def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
       val valid = myValidFor
-      assert(valid.code > 0, s"negative period $valid: ${valid.code}")
+      assert(valid.code > 0)
 
       if (valid.runId != currentPeriod.runId) bringForward.current
       else {

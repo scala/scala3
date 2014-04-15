@@ -5,6 +5,7 @@ import Periods._
 import SymDenotations._
 import Contexts._
 import Types._
+import Symbols._
 import Denotations._
 import Phases._
 import java.lang.AssertionError
@@ -29,5 +30,20 @@ object DenotTransformers {
 
     /** The transformation method */
     def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation
+  }
+
+  trait InfoTransformer extends DenotTransformer {
+
+    def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type
+
+    /** The transformation method */
+    def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
+      val info1 = transformInfo(ref.info, ref.symbol)
+      if (info1 eq ref.info) ref
+      else ref match {
+        case ref: SymDenotation => ref.copySymDenotation(info = info1)
+        case _ => ref.derivedSingleDenotation(ref.symbol, info1)
+      }
+    }
   }
 }
