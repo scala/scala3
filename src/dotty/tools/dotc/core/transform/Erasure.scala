@@ -124,7 +124,7 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
       else this(parent)
     case tp: TermRef =>
       val sym = tp.symbol
-      if (sym.owner is Package) sym.termRef
+      if (sym.exists && (sym.owner is Package)) sym.termRef
       else tp.derivedSelect(this(tp.prefix))
     case _: ThisType | _: ConstantType =>
       tp
