@@ -486,9 +486,7 @@ object Denotations {
      */
     private def bringForward()(implicit ctx: Context): SingleDenotation = this match {
       case denot: SymDenotation if ctx.stillValid(denot) =>
-        if (denot.exists)
-          assert(ctx.runId > validFor.runId || ctx.runId == InitialRunId,
-            s"denotation $denot invalid in run ${ctx.runId}. ValidFor: $validFor")
+        if (denot.exists) assert(ctx.runId > validFor.runId, s"denotation $denot invalid in run ${ctx.runId}. ValidFor: $validFor")
         var d: SingleDenotation = denot
         do {
           d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
