@@ -61,8 +61,8 @@ object Erasure {
    */
   def transformInfo(sym: Symbol, tp: Type)(implicit ctx: Context): Type = {
     val erase = erasureFn(sym is JavaDefined, isSemi = true, sym.isConstructor, wildcardOK = false)
-    if ((sym eq defn.Object_asInstanceOf) ||
-        (sym eq defn.Object_isInstanceOf) ||
+    if ((sym eq defn.Any_asInstanceOf) ||
+        (sym eq defn.Any_isInstanceOf) ||
         (sym.owner eq defn.ArrayClass) && (sym.isType || sym.isConstructor)) sym.info
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else erase(tp)
