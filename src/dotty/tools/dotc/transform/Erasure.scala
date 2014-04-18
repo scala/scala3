@@ -198,7 +198,7 @@ object Erasure {
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       val sym = tree.symbol
-      assert(sym.exists)
+      assert(sym.exists, tree.show)
 
       def select(qual: Tree, sym: Symbol): Tree =
         untpd.cpy.Select(tree, qual, sym.name) withType qual.tpe.select(sym)
@@ -245,6 +245,8 @@ object Erasure {
         case mt: MethodType =>
           val args1 = args.zipWithConserve(mt.paramTypes)(typedExpr)
           untpd.cpy.Apply(tree, fun1, args1) withType mt.resultType
+        case _ =>
+          throw new MatchError(i"tree $tree has uxpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
       }
     }
 
