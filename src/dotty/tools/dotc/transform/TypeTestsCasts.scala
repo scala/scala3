@@ -68,10 +68,10 @@ class TypeTestsCasts extends TreeTransform {
                 runtimeCall(nme.isArray, arg :: Literal(Constant(ndims)) :: Nil)
               if (ndims == 1) isArrayTest(qual)
               else evalOnce(qual) { qual1 =>
-                mkAnd(derivedTree(qual1, defn.Object_isInstanceOf, qual1.tpe), isArrayTest(qual1))
+                mkAnd(derivedTree(qual1, defn.Any_isInstanceOf, qual1.tpe), isArrayTest(qual1))
               }
             case _ =>
-              derivedTree(expr, defn.Object_isInstanceOf, argType)
+              derivedTree(expr, defn.Any_isInstanceOf, argType)
           }
         }
 
@@ -81,10 +81,10 @@ class TypeTestsCasts extends TreeTransform {
           else if (qualCls.isPrimitiveValueClass) {
             val argCls = argType.classSymbol
             if (argCls.isPrimitiveValueClass) primitiveConversion(qual, argCls)
-            else derivedTree(box(qual), defn.Object_asInstanceOf, argType)
+            else derivedTree(box(qual), defn.Any_asInstanceOf, argType)
           }
           else
-            derivedTree(qual, defn.Object_asInstanceOf, argType)
+            derivedTree(qual, defn.Any_asInstanceOf, argType)
         }
 
         if (sym eq defn.Any_isInstanceOf)

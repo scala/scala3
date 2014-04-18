@@ -30,6 +30,12 @@ class Definitions {
   private def newCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope = newScope) =
     ctx.newCompleteClassSymbol(owner, name, flags | Permanent, parents, decls).entered
 
+  private def newTopClassSymbol(name: TypeName, flags: FlagSet, parents: List[TypeRef]) = {
+    val cls = newCompleteClassSymbol(ScalaPackageClass, name, flags, parents)
+    ensureConstructor(cls, EmptyScope)
+    cls
+  }
+
   private def newTypeParam(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
     scope.enter(newSymbol(cls, name, flags | TypeParamCreationFlags, TypeBounds.empty))
 
@@ -74,7 +80,7 @@ class Definitions {
     newPolyMethod(cls, name, 1, resultTypeFn, flags)
 
   private def newT1EmptyParamsMethod(cls: ClassSymbol, name: TermName, resultTypeFn: PolyType => Type, flags: FlagSet) =
-    newPolyMethod(cls, name, 1, pt => MethodType(Nil, Nil, resultTypeFn(pt)), flags)
+    newPolyMethod(cls, name, 1, pt => MethodType(Nil, resultTypeFn(pt)), flags)
 
   private def mkArityArray(name: String, arity: Int, countFrom: Int): Array[ClassSymbol] = {
     val arr = new Array[ClassSymbol](arity + 1)
@@ -95,57 +101,68 @@ class Definitions {
   lazy val JavaPackageVal = ctx.requiredPackage("java")
   lazy val JavaLangPackageVal = ctx.requiredPackage("java.lang")
 
-  lazy val ObjectClass = ctx.requiredClass("java.lang.Object")
-  lazy val AnyRefAlias: TypeSymbol = newAliasType(tpnme.AnyRef, ObjectType)
+  /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
+   *  because after erasure the Any and AnyVal references get remapped to the Object methods
+   *  which would result in a double binding assertion failure.
+   * Instead we do the following:
+   *
+   *  - Have some methods exist only in Any, and remap them with the Erasure denotation
+   *    transformer to be owned by Object.
+   *  - Have other methods exist only in Object.
+   * To achieve this, we synthesize all Any and Object methods; Object methods no longer get
+   * loaded from a classfile.
+   *
+   * There's a remaining question about `getClass`. In Scala2.x `getClass` was handled by compiler magic.
+   * This is deemed too cumersome for Dotty and therefore right now `getClass` gets no special treatment;
+   * it's just a method on `Any` which returns the raw type `java.lang.Class`. An alternative
+   * way to get better `getClass` typing would be to treat `getClass` as a method of a generic
+   * decorator which gets remapped in a later phase to Object#getClass. Then we could give it
+   * the right type without changing the typechecker:
+   *
+   *     implicit class AnyGetClass[T](val x: T) extends AnyVal {
+   *       def getClass: java.lang.Class[T] = ???
+   *     }
+   */
+  lazy val AnyClass: ClassSymbol = newTopClassSymbol(tpnme.Any, Abstract, Nil)
+  lazy val AnyValClass: ClassSymbol = newTopClassSymbol(tpnme.AnyVal, Abstract, AnyClass.typeRef :: Nil)
 
-    lazy val Object_## = newMethod(ObjectClass, nme.HASHHASH, ExprType(IntType), Final)
-    lazy val Object_== = newMethod(ObjectClass, nme.EQ, methOfAny(BooleanType), Final)
-    lazy val Object_!= = newMethod(ObjectClass, nme.NE, methOfAny(BooleanType), Final)
-    lazy val Object_eq = newMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
-    lazy val Object_ne = newMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
-    lazy val Object_isInstanceOf = newT1ParameterlessMethod(ObjectClass, nme.isInstanceOf_Ob, _ => BooleanType, Final | Synthetic)
-    lazy val Object_asInstanceOf = newT1ParameterlessMethod(ObjectClass, nme.asInstanceOf_Ob, PolyParam(_, 0), Final | Synthetic)
-    lazy val Object_synchronized = newPolyMethod(ObjectClass, nme.synchronized_, 1,
-        pt => MethodType(List(PolyParam(pt, 0)), PolyParam(pt, 0)), Final)
-
-    def Object_getClass  = objMethod(nme.getClass_)
-    def Object_clone     = objMethod(nme.clone_)
-    def Object_finalize  = objMethod(nme.finalize_)
-    def Object_notify    = objMethod(nme.notify_)
-    def Object_notifyAll = objMethod(nme.notifyAll_)
-    def Object_equals    = objMethod(nme.equals_)
-    def Object_hashCode  = objMethod(nme.hashCode_)
-    def Object_toString  = objMethod(nme.toString_)
-    private def objMethod(name: PreName) = ObjectClass.requiredMethod(name)
-
-  lazy val AnyClass: ClassSymbol = {
-    val cls = newCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil)
-    ensureConstructor(cls, EmptyScope)
-    cls
-  }
-
-  lazy val AnyValClass: ClassSymbol = ctx.requiredClass("scala.AnyVal")
-
-    lazy val AnyVal_getClass     = AnyValClass.requiredMethod(nme.getClass_)
     lazy val Any_==       = newMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
     lazy val Any_!=       = newMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final)
     lazy val Any_equals   = newMethod(AnyClass, nme.equals_, methOfAny(BooleanType))
-    lazy val Any_hashCode = newMethod(AnyClass, nme.hashCode_, ExprType(IntType))
-    lazy val Any_toString = newMethod(AnyClass, nme.toString_, ExprType(StringType))
+    lazy val Any_hashCode = newMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType))
+    lazy val Any_toString = newMethod(AnyClass, nme.toString_, MethodType(Nil, StringType))
     lazy val Any_##       = newMethod(AnyClass, nme.HASHHASH, ExprType(IntType), Final)
-
-    // Any_getClass requires special handling.  The return type is determined on
-    // a per-call-site basis as if the function being called were actually:
-    //
-    //    // Assuming `target.getClass()`
-    //    def getClass[T](target: T): Class[_ <: T]
-    //
-    // Since getClass is not actually a polymorphic method, this requires compiler
-    // participation.  At the "Any" level, the return type is Class[_] as it is in
-    // java.lang.Object.  Java also special cases the return type.
-    lazy val Any_getClass     = newMethod(AnyClass, nme.getClass_, ExprType(Object_getClass.info.resultType), Deferred)
+    lazy val Any_getClass = newMethod(AnyClass, nme.getClass_, MethodType(Nil, ClassClass.typeRef), Final)
     lazy val Any_isInstanceOf = newT1ParameterlessMethod(AnyClass, nme.isInstanceOf_, _ => BooleanType, Final)
     lazy val Any_asInstanceOf = newT1ParameterlessMethod(AnyClass, nme.asInstanceOf_, PolyParam(_, 0), Final)
+
+    def AnyMethods = List(Any_==, Any_!=, Any_equals, Any_hashCode,
+      Any_toString, Any_##, Any_getClass, Any_isInstanceOf, Any_asInstanceOf)
+
+  lazy val ObjectClass: ClassSymbol = {
+    val cls = ctx.requiredClass("java.lang.Object")
+    assert(!cls.isCompleted, "race for completing java.lang.Object")
+    cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
+    cls.linkedClass.info = NoType
+    ensureConstructor(cls, cls.decls)
+    cls
+  }
+  lazy val AnyRefAlias: TypeSymbol = newAliasType(tpnme.AnyRef, ObjectType)
+ 
+    lazy val Object_eq = newMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
+    lazy val Object_ne = newMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
+    lazy val Object_synchronized = newPolyMethod(ObjectClass, nme.synchronized_, 1,
+        pt => MethodType(List(PolyParam(pt, 0)), PolyParam(pt, 0)), Final)
+    lazy val Object_clone = newMethod(ObjectClass, nme.clone_, MethodType(Nil, ObjectType), Protected)
+    lazy val Object_finalize = newMethod(ObjectClass, nme.finalize_, MethodType(Nil, UnitType), Protected)
+    lazy val Object_notify = newMethod(ObjectClass, nme.notify_, MethodType(Nil, UnitType))
+    lazy val Object_notifyAll = newMethod(ObjectClass, nme.notifyAll_, MethodType(Nil, UnitType))
+    lazy val Object_wait = newMethod(ObjectClass, nme.wait_, MethodType(Nil, UnitType))
+    lazy val Object_waitL = newMethod(ObjectClass, nme.wait_, MethodType(LongType :: Nil, UnitType))
+    lazy val Object_waitLI = newMethod(ObjectClass, nme.wait_, MethodType(LongType :: IntType :: Nil, UnitType))
+
+    def ObjectMethods = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
+        Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
 
   lazy val NotNullClass = ctx.requiredClass("scala.NotNull")
 
@@ -380,8 +397,8 @@ class Definitions {
 
   lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
 
-  lazy val asInstanceOfMethods = Set[Symbol](Any_asInstanceOf, Object_asInstanceOf)
-  lazy val isInstanceOfMethods = Set[Symbol](Any_isInstanceOf, Object_isInstanceOf)
+  lazy val asInstanceOfMethods = Set[Symbol](Any_asInstanceOf)
+  lazy val isInstanceOfMethods = Set[Symbol](Any_isInstanceOf)
   lazy val typeTestsOrCasts    = asInstanceOfMethods ++ isInstanceOfMethods
 
   lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
@@ -518,11 +535,11 @@ class Definitions {
 
   /** Lists core classes that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
   lazy val syntheticCoreClasses = List(
+    AnyClass,
     AnyRefAlias,
     RepeatedParamClass,
     JavaRepeatedParamClass,
     ByNameParamClass2x,
-    AnyClass,
     AnyValClass,
     NullClass,
     NothingClass,
@@ -531,26 +548,7 @@ class Definitions {
     EmptyPackageVal)
 
     /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
-    lazy val syntheticCoreMethods = List(
-      Any_==,
-      Any_!=,
-      Any_equals,
-      Any_hashCode,
-      Any_toString,
-      Any_getClass,
-      Any_isInstanceOf,
-      Any_asInstanceOf,
-      Any_##,
-      Object_eq,
-      Object_ne,
-      Object_==,
-      Object_!=,
-      Object_##,
-      Object_synchronized,
-      Object_isInstanceOf,
-      Object_asInstanceOf,
-      String_+
-    )
+    lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+)
 
   private[this] var _isInitialized = false
   def isInitialized = _isInitialized
