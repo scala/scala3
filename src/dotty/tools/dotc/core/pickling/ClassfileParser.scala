@@ -891,8 +891,10 @@ class ClassfileParser(
     def getType(index: Int)(implicit ctx: Context): Type =
       sigToType(getExternalName(index))
 
-    def getSuperClass(index: Int)(implicit ctx: Context): Symbol =
-      if (index == 0) defn.AnyClass else getClassSymbol(index)
+    def getSuperClass(index: Int)(implicit ctx: Context): Symbol = {
+      assert(index != 0, "attempt to parse java.lang.Object from classfile")
+      getClassSymbol(index)
+    }
 
     def getConstant(index: Int)(implicit ctx: Context): Constant = {
       if (index <= 0 || len <= index) errorBadIndex(index)

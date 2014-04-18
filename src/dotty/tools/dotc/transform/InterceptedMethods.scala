@@ -28,6 +28,10 @@ import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import StdNames._
 
+// @DarkDimius The getClass scheme changed. We no longer can have
+// two different methods in Any and Object. The tests pass but I
+// am not sure Intercepted methods treats getClass right now.
+// Please check and delete comment when done.
 /** Replace member references as follows:
   *
   * - `x == y` for == in class Any becomes `x equals y` with equals in class Object.
@@ -50,12 +54,10 @@ class InterceptedMethods extends TreeTransform {
 
   /** perform context-dependant initialization */
   override def init(implicit ctx: Context, info: TransformerInfo): Unit = {
-    getClassMethods =  Set(defn.Any_getClass, defn.AnyVal_getClass)
-    poundPoundMethods = Set(defn.Any_##, defn.Object_##)
+    poundPoundMethods = Set(defn.Any_##)
     Any_comparisons = Set(defn.Any_==, defn.Any_!=)
-    interceptedMethods = getClassMethods ++ poundPoundMethods ++ Any_comparisons
-    primitiveGetClassMethods = Set[Symbol](defn.Any_getClass, defn.AnyVal_getClass) ++
-      defn.ScalaValueClasses.map(x => x.requiredMethod(nme.getClass_))
+    interceptedMethods = poundPoundMethods ++ Any_comparisons
+    primitiveGetClassMethods = Set[Symbol]() ++ defn.ScalaValueClasses.map(x => x.requiredMethod(nme.getClass_))
   }
 
   // this should be removed if we have guarantee that ## will get Apply node
@@ -97,7 +99,7 @@ class InterceptedMethods extends TreeTransform {
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
     def unknown = {
-      assert(false, s"The symbol '${tree.fun.symbol}' was interecepted but didn't match any cases, " +
+      assert(false, s"The symbol '${tree.fun.symbol.showLocated}' was intercepted but didn't match any cases, " +
         s"that means the intercepted methods set doesn't match the code")
       tree
     }
@@ -109,9 +111,9 @@ class InterceptedMethods extends TreeTransform {
             PoundPoundValue(qual)
           } else if (Any_comparisons contains tree.fun.symbol.asTerm) {
             if (tree.fun.symbol eq defn.Any_==) {
-              Apply(Select(qual, defn.Object_equals.termRef), tree.args)
+              Apply(Select(qual, defn.Any_equals), tree.args)
             } else if (tree.fun.symbol eq defn.Any_!=) {
-              Select(Apply(Select(qual, defn.Object_equals.termRef), tree.args), defn.Boolean_!.termRef)
+              Select(Apply(Select(qual, defn.Any_equals), tree.args), defn.Boolean_!)
             } else unknown
           } /* else if (isPrimitiveValueClass(qual.tpe.typeSymbol)) {
             // todo: this is needed to support value classes
@@ -128,7 +130,7 @@ class InterceptedMethods extends TreeTransform {
             //    we get a primitive form of _getClass trying to target a boxed value
             //    so we need replace that method name with Object_getClass to get correct behavior.
             //    See SI-5568.
-            Apply(Select(qual, defn.Object_getClass.termRef), Nil)
+            Apply(Select(qual, defn.Any_getClass), Nil)
           } else {
             unknown
           }
