@@ -36,6 +36,8 @@ trait Phases {
 
   def atPhaseNotLaterThanTyper[T](op: Context => T): T =
     atPhaseNotLaterThan(base.typerPhase)(op)
+
+  def isAfterTyper: Boolean = base.isAfterTyper(phase)
 }
 
 object Phases {
@@ -177,9 +179,11 @@ object Phases {
     def refchecksPhase = refChecksCache.phase
     def erasurePhase = erasureCache.phase
     def flattenPhase = flattenCache.phase
+
+    def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
   }
 
-  final val typerName = "typer"
+  final val typerName = "frontend"
   final val refChecksName = "refchecks"
   final val erasureName = "erasure"
   final val flattenName = "flatten"
