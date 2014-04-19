@@ -400,6 +400,7 @@ trait Implicits { self: Typer =>
    *  !!! todo: catch potential cycles
    */
   def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
+    assert(!ctx.isAfterTyper)
     ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       assert(!pt.isInstanceOf[ExprType])
       val isearch =
@@ -472,7 +473,7 @@ trait Implicits { self: Typer =>
           shadowedImplicit(ref, methPart(shadowing).tpe)
         }
         else
-          SearchSuccess(generated, ref, ctx.typerState)
+          SearchSuccess(generated1, ref, ctx.typerState)
       }}
 
       /** Given a list of implicit references, produce a list of all implicit search successes,
