@@ -125,12 +125,13 @@ object Decorators {
 
   /** Implements a test whether a list of strings representing phases contains
    *  a given phase. The test returns true if the given phase starts with
-   *  one of the names in the list of strings.
+   *  one of the names in the list of strings, or if the list of strings
+   *  contains "all".
    */
   implicit class PhaseListDecorator(val names: List[String]) extends AnyVal {
     def containsPhase(phase: Phase): Boolean = phase  match {
       case phase: TreeTransformer => phase.transformations.exists(containsPhase)
-      case _ => names exists (phase.name.startsWith)
+      case _ => names exists (n => n == "all" || phase.name.startsWith(n))
     }
   }
 
