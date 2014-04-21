@@ -260,7 +260,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         error(d"not found: $kind$name", tree.pos)
         ErrorType
       }
-    checkValue(tree.withType(ownType.underlyingIfRepeated), pt)
+    checkValue(tree.withType(ownType), pt)
   }
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
