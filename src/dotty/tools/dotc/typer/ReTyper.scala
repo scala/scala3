@@ -4,6 +4,7 @@ package typer
 import core.Contexts._
 import core.Types._
 import core.Symbols._
+import core.Decorators._
 import typer.ProtoTypes._
 import ast.{tpd, untpd}
 import ast.Trees._
@@ -20,7 +21,7 @@ class ReTyper extends Typer {
   import tpd._
 
   protected def promote(tree: untpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
-    assert(tree.hasType)
+    assert(tree.hasType, i"$tree ${tree.getClass} ${tree.uniqueId}")
     tree.withType(tree.typeOpt)
   }
 
@@ -55,4 +56,6 @@ class ReTyper extends Typer {
   override def localTyper(sym: Symbol) = this
 
   override def index(trees: List[untpd.Tree])(implicit ctx: Context) = ctx
+
+  override def checkImplicitTptNonEmpty(defTree: untpd.ValOrDefDef)(implicit ctx: Context): Unit = ()
 }
