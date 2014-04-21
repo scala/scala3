@@ -35,6 +35,9 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
    */
   def fresh(isCommittable: Boolean): TyperState = this
 
+  /** A fresh type state with the same constraint as this one and the given reporter */
+  def withReporter(reporter: Reporter) = new TyperState(reporter)
+
   /** Commit state so that it gets propagated to enclosing context */
   def commit()(implicit ctx: Context): Unit = unsupported("commit")
 
@@ -63,6 +66,9 @@ extends TyperState(reporter) {
 
   override def fresh(isCommittable: Boolean): TyperState =
     new MutableTyperState(this, new StoreReporter, isCommittable)
+
+  override def withReporter(reporter: Reporter) =
+    new MutableTyperState(this, reporter, isCommittable)
 
   override val isGlobalCommittable =
     isCommittable &&
