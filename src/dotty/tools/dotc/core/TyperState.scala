@@ -27,6 +27,9 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
    */
   def instType(tvar: TypeVar): Type = constraint.at(tvar.origin) match {
     case _: TypeBounds => NoType
+    case tp: PolyParam =>
+      var tvar1 = constraint.typeVarOfParam(tp)
+      if (tvar1.exists) tvar1 else tp
     case tp => tp
   }
 

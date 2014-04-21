@@ -66,7 +66,10 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends Showable {
   def typeVarOfParam(param: PolyParam): Type = {
     val entries = myMap(param.binder)
     if (entries == null) NoType
-    else typeVar(entries, param.paramNum)
+    else {
+      val tvar = typeVar(entries, param.paramNum)
+      if (tvar != null) tvar else NoType
+    }
   }
 
   /** A new constraint which is derived from this constraint by adding or replacing
