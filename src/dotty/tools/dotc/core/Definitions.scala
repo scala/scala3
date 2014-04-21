@@ -30,11 +30,8 @@ class Definitions {
   private def newCompleteClassSymbol(owner: Symbol, name: TypeName, flags: FlagSet, parents: List[TypeRef], decls: Scope = newScope) =
     ctx.newCompleteClassSymbol(owner, name, flags | Permanent, parents, decls).entered
 
-  private def newTopClassSymbol(name: TypeName, flags: FlagSet, parents: List[TypeRef]) = {
-    val cls = newCompleteClassSymbol(ScalaPackageClass, name, flags, parents)
-    ensureConstructor(cls, EmptyScope)
-    cls
-  }
+  private def newTopClassSymbol(name: TypeName, flags: FlagSet, parents: List[TypeRef]) =
+    completeClass(newCompleteClassSymbol(ScalaPackageClass, name, flags, parents))
 
   private def newTypeParam(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
     scope.enter(newSymbol(cls, name, flags | TypeParamCreationFlags, TypeBounds.empty))
@@ -88,6 +85,12 @@ class Definitions {
     arr
   }
 
+  private def completeClass(cls: ClassSymbol): ClassSymbol = {
+    ensureConstructor(cls, EmptyScope)
+    if (cls.linkedClass.exists) cls.linkedClass.info = NoType
+    cls
+  }
+
   lazy val RootClass: ClassSymbol = ctx.newPackageSymbol(
     NoSymbol, nme.ROOT, (root, rootcls) => ctx.rootLoader(root)).moduleClass.asClass
   lazy val RootPackage: TermSymbol = ctx.newSymbol(
@@ -123,8 +126,8 @@ class Definitions {
    *       def getClass: java.lang.Class[T] = ???
    *     }
    */
-  lazy val AnyClass: ClassSymbol = newTopClassSymbol(tpnme.Any, Abstract, Nil)
-  lazy val AnyValClass: ClassSymbol = newTopClassSymbol(tpnme.AnyVal, Abstract, AnyClass.typeRef :: Nil)
+  lazy val AnyClass: ClassSymbol = completeClass(newCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil))
+  lazy val AnyValClass: ClassSymbol = completeClass(newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyClass.typeRef)))
 
     lazy val Any_==       = newMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
     lazy val Any_!=       = newMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final)
@@ -143,12 +146,10 @@ class Definitions {
     val cls = ctx.requiredClass("java.lang.Object")
     assert(!cls.isCompleted, "race for completing java.lang.Object")
     cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
-    cls.linkedClass.info = NoType
-    ensureConstructor(cls, cls.decls)
-    cls
+    completeClass(cls)
   }
   lazy val AnyRefAlias: TypeSymbol = newAliasType(tpnme.AnyRef, ObjectType)
- 
+
     lazy val Object_eq = newMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
     lazy val Object_ne = newMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
     lazy val Object_synchronized = newPolyMethod(ObjectClass, nme.synchronized_, 1,
@@ -282,6 +283,7 @@ class Definitions {
   // Annotation classes
   lazy val AliasAnnot = ctx.requiredClass("dotty.annotation.internal.Alias")
   lazy val ChildAnnot = ctx.requiredClass("dotty.annotation.internal.Child")
+  lazy val RepeatedAnnot = ctx.requiredClass("dotty.annotation.internal.Repeated")
   lazy val InvariantBetweenClass = ctx.requiredClass("dotty.annotation.internal.InvariantBetween")
   lazy val CovariantBetweenClass = ctx.requiredClass("dotty.annotation.internal.CovariantBetween")
   lazy val ContravariantBetweenClass = ctx.requiredClass("dotty.annotation.internal.ContravariantBetween")
