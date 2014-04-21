@@ -9,8 +9,6 @@ import core.Contexts.Context
 import reporting.Reporter
 
 /* To do:
-s *   - Revise the way classes are inherited - when not followed by [...] or (...),
- *     assume the unparameterized type and forward type parameters as we do now for the synthetic head class.
  */
 object Main extends Driver {
   def resident(compiler: Compiler): Reporter = unsupported("resident") /*loop { line =>

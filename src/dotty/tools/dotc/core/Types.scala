@@ -597,7 +597,7 @@ object Types {
     final def objToAny(implicit ctx: Context) =
       if ((this isRef defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else this
 
-    /** If this is repeated parameter type, its underlying type,
+    /** If this is repeated parameter type, its underlying Seq type,
      *  else the type itself.
      */
     def underlyingIfRepeated(implicit ctx: Context): Type = this match {
@@ -1316,7 +1316,7 @@ object Types {
     def withSymAndName(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef =
       if (prefix eq NoPrefix)
         withNonMemberSym(prefix, name, sym)
-      else if (sym.defRunId != NoRunId && sym.isCompleted) 
+      else if (sym.defRunId != NoRunId && sym.isCompleted)
         withSig(prefix, name, sym.signature) withSym (sym, sym.signature)
       else
         apply(prefix, name) withSym (sym, Signature.NotAMethod)
@@ -1664,9 +1664,15 @@ object Types {
     def apply(paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
       apply(nme.syntheticParamNames(paramTypes.length), paramTypes, resultType)
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
+      def paramInfo(param: Symbol): Type = param.info match {
+        case AnnotatedType(annot, tp) if annot matches defn.RepeatedAnnot =>
+          tp.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)
+        case tp =>
+          tp
+      }
       def transformResult(mt: MethodType) =
         resultType.subst(params, (0 until params.length).toList map (MethodParam(mt, _)))
-      apply(params map (_.name.asTermName), params map (_.info))(transformResult _)
+      apply(params map (_.name.asTermName), params map paramInfo)(transformResult _)
     }
   }
 
