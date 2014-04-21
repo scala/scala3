@@ -12,7 +12,7 @@ class tests extends CompilerTest {
 //        "-Xprompt",
 //        "-explaintypes",
 //        "-Yshow-suppressed-errors",
-        "-pagewidth", "160"//, "-Ystop-before:terminal"
+        "-pagewidth", "160" //, "-Ycheck:front" , "-Ystop-before:terminal"
     )
   val twice = List("#runs", "2", "-YnoDoubleBindings")
   val doErase = List("-Ystop-before:terminal")
