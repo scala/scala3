@@ -40,6 +40,9 @@ class ReTyper extends Typer {
     untpd.cpy.SelectFromTypeTree(tree, qual1, tree.name).withType(tree.typeOpt)
   }
 
+  override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Literal =
+    promote(tree)
+
   override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree =
     promote(tree)
 
