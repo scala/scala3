@@ -46,7 +46,7 @@ object ProtoTypes {
      *  fits the given expected result type.
      */
     def constrainResult(mt: Type, pt: Type)(implicit ctx: Context): Boolean = pt match {
-      case FunProto(_, result, _) =>
+      case _: FunProto =>
         mt match {
           case mt: MethodType =>
             mt.isDependent || constrainResult(mt.resultType, pt.resultType)
@@ -60,6 +60,8 @@ object ProtoTypes {
           case _ =>
             isCompatible(mt, pt)
         }
+      case _: WildcardType =>
+        isCompatible(mt, pt)
       case _ =>
         true
     }
@@ -217,9 +219,8 @@ object ProtoTypes {
    */
   abstract case class ViewProto(argType: Type, override val resultType: Type)(implicit ctx: Context)
   extends CachedGroundType with ApplyingProto {
-    def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean = /*ctx.conditionalTraceIndented(lookingForInfo, i"?.info isMatchedBy $tp ${tp.getClass}")*/ {
+    def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean =
   	  ctx.typer.isApplicable(tp, argType :: Nil, resultType)
-    }
 
     def derivedViewProto(argType: Type, resultType: Type)(implicit ctx: Context) =
       if ((argType eq this.argType) && (resultType eq this.resultType)) this
@@ -352,17 +353,15 @@ object ProtoTypes {
       tp.derivedRefinedType(wildApprox(tp.parent, theMap), tp.refinedName, wildApprox(tp.refinedInfo, theMap))
     case tp: TypeBounds if tp.lo eq tp.hi => // default case, inlined for speed
       tp.derivedTypeAlias(wildApprox(tp.lo, theMap))
-    case PolyParam(pt, pnum) =>
-      WildcardType(wildApprox(pt.paramBounds(pnum)).bounds)
+    case tp @ PolyParam(poly, pnum) =>
+      ctx.typerState.constraint.at(tp) match {
+        case bounds: TypeBounds => wildApprox(WildcardType(bounds))
+        case _ => WildcardType(wildApprox(poly.paramBounds(pnum)).bounds)
+      }
     case MethodParam(mt, pnum) =>
       WildcardType(TypeBounds.upper(wildApprox(mt.paramTypes(pnum))))
     case tp: TypeVar =>
-      val inst = tp.instanceOpt
-      if (inst.exists) wildApprox(inst)
-      else ctx.typerState.constraint.at(tp.origin) match {
-        case bounds: TypeBounds => wildApprox(WildcardType(bounds))
-        case NoType => WildcardType
-      }
+      wildApprox(tp.underlying)
     case tp: AndType =>
       val tp1a = wildApprox(tp.tp1)
       val tp2a = wildApprox(tp.tp2)
