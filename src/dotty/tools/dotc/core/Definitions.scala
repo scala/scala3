@@ -178,6 +178,7 @@ class Definitions {
   lazy val BoxesRunTimeClass      = BoxesRunTimeModule.moduleClass
   lazy val DottyPredefModule = ctx.requiredModule("dotty.DottyPredef")
   lazy val NilModule = ctx.requiredModule("scala.collection.immutable.Nil")
+  lazy val PredefConformsClass = ctx.requiredClass("scala.Predef." + tpnme.Conforms)
 
 //  lazy val FunctionClass: ClassSymbol = ctx.requiredClass("scala.Function")
   lazy val SingletonClass: ClassSymbol =
