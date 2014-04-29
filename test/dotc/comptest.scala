@@ -15,7 +15,7 @@ object comptest extends CompilerTest {
       dotcDir + "tools/dotc/ast/Trees.scala",
       "#runs", "2",
       "-Ylog:frontend",
-      "-Xprompt"))
+      "-Xprompt"))(Nil)
 
 //    compileDir(dotcDir + "tools/dotc/printing", List("-Xprompt", "-Ylog:frontend", "#runs", "2", "-uniqid"))
 }

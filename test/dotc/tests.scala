@@ -5,15 +5,18 @@ import test._
 
 class tests extends CompilerTest {
 
-  override val defaultOptions =
-    List(
+  val noCheckOptions = List(
 //        "-verbose",
 //         "-Ylog:frontend",
 //        "-Xprompt",
 //        "-explaintypes",
 //        "-Yshow-suppressed-errors",
-        "-pagewidth", "160" //, "-Ycheck:front" , "-Ystop-before:terminal"
-    )
+        "-pagewidth", "160")
+
+  implicit val defaultOptions = noCheckOptions ++ List(
+    "-Ycheck:front"//, "-Ystop-before:terminal"
+  )
+
   val twice = List("#runs", "2", "-YnoDoubleBindings")
   val doErase = List("-Ystop-before:terminal")
 
@@ -68,7 +71,10 @@ class tests extends CompilerTest {
   @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 4)
   @Test def neg_t0273_doubledefs = compileFile(negDir, "t0273", xerrors = 1)
   @Test def neg_t0586_structural = compileFile(negDir, "t0586", xerrors = 1)
-  @Test def neg_t0625_structural = compileFile(negDir, "t0625", xerrors = 1)
+  @Test def neg_t0625_structural = compileFile(negDir, "t0625", xerrors = 1)(
+      defaultOptions = noCheckOptions)
+        // -Ycheck fails because there are structural types involving higher-kinded types.
+        // these are illegal, but are tested only later.
   @Test def neg_t0654_polyalias = compileFile(negDir, "t0654", xerrors = 2)
   @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
   @Test def neg_tailcall_t1672b = compileFile(negDir, "tailcall/t1672b", xerrors = 6)

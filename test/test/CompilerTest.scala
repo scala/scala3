@@ -8,29 +8,27 @@ import dotty.tools.dotc.reporting.Reporter
 
 class CompilerTest extends DottyTest {
 
-  def defaultOptions: List[String] = Nil
-
-  def compileArgs(args: Array[String], xerrors: Int = 0): Unit = {
+  def compileArgs(args: Array[String], xerrors: Int = 0)(implicit defaultOptions: List[String]): Unit = {
     val allArgs = args ++ defaultOptions
     val processor = if (allArgs.exists(_.startsWith("#"))) Bench else Main
     val nerrors = processor.process(allArgs, ctx).count(Reporter.ERROR.level)
     assert(nerrors == xerrors, s"Wrong # of errors. Expected: $xerrors, found: $nerrors")
   }
 
-  def compileLine(cmdLine: String, xerrors: Int = 0): Unit = compileArgs(cmdLine.split("\n"), xerrors)
+  def compileLine(cmdLine: String, xerrors: Int = 0)(implicit defaultOptions: List[String]): Unit = compileArgs(cmdLine.split("\n"), xerrors)
 
-  def compileFile(prefix: String, fileName: String, args: List[String] = Nil, xerrors: Int = 0): Unit =
+  def compileFile(prefix: String, fileName: String, args: List[String] = Nil, xerrors: Int = 0)(implicit defaultOptions: List[String]): Unit =
     compileArgs((s"$prefix$fileName.scala" :: args).toArray, xerrors)
 
-  def compileDir(path: String, args: List[String] = Nil, xerrors: Int = 0): Unit =
+  def compileDir(path: String, args: List[String] = Nil, xerrors: Int = 0)(implicit defaultOptions: List[String]): Unit =
     compileDir(Directory(path), args, xerrors)
 
-  def compileDir(dir: Directory, args: List[String], xerrors: Int): Unit = {
+  def compileDir(dir: Directory, args: List[String], xerrors: Int)(implicit defaultOptions: List[String]): Unit = {
     val fileNames = dir.files.toArray.map(_.toString).filter(_ endsWith ".scala")
     compileArgs(fileNames ++ args, xerrors)
   }
 
-  def compileFiles(path: String, args: List[String] = Nil): Unit = {
+  def compileFiles(path: String, args: List[String] = Nil)(implicit defaultOptions: List[String]): Unit = {
     val dir = Directory(path)
     val fileNames = dir.files.toArray.map(_.toString).filter(_ endsWith ".scala")
     for (name <- fileNames) {
@@ -43,7 +41,7 @@ class CompilerTest extends DottyTest {
     }
   }
 }
-object CompilerText extends App {
+object CompilerTest extends App {
 
 //  val dotcDir = "/Users/odersky/workspace/dotty/src/dotty/"
 
