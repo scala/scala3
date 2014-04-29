@@ -79,13 +79,50 @@ class TypeComparer(initctx: Context) extends DotClass {
     myAnyType
   }
 
+  /** Map that approximates each param in constraint by its lower bound */
+  val approxParams = new TypeMap {
+    def apply(tp: Type): Type = tp.stripTypeVar match {
+      case tp: PolyParam if constraint contains tp =>
+        this(constraint.bounds(tp).lo)
+      case tp =>
+        mapOver(tp)
+    }
+  }
+
+  /** Propagate new constraint by comparing all bounds */
+  def propagate: Boolean =
+    constraint.forallParams { poly =>
+      val TypeBounds(lo, hi) = constraint.bounds(poly)
+      isSubType(lo, hi)
+    }
+
+  /** Check whether the lower bounds of all parameters in this
+   *  constraint are a solution to the constraint.
+   */
+  def isSatisfiable: Boolean =
+    constraint.forallParams { poly =>
+      val TypeBounds(lo, hi) = constraint.bounds(poly)
+      isSubType(approxParams(lo), approxParams(hi)) ||
+        { ctx.log(i"sub fail $lo <:< $hi")
+          ctx.log(i"approximated = ${approxParams(lo)} <:< ${approxParams(hi)}")
+          ctx.log(TypeComparer.explained(implicit ctx => isSubType(approxParams(lo), approxParams(hi))))
+          false
+        }
+    }
+
   /** Update constraint for `param` to `bounds`, check that
    *  new constraint is still satisfiable.
    */
   private def updateConstraint(param: PolyParam, bounds: TypeBounds): Boolean = {
     val saved = constraint
     constraint = constraint.updated(param, bounds)
-    isSubType(bounds.lo, bounds.hi) ||
+
+    propagate &&
+    { isSatisfiable || {
+        ctx.log(i"SAT $constraint produced by $param $bounds is not satisfiable")
+        false
+      }
+    } ||
     { constraint = saved; false } // don't leave the constraint in unsatisfiable state
   }
 
@@ -101,7 +138,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       finally ignoreConstraint = saved
     val res =
       (param == bound) || (oldBounds eq newBounds) || updateConstraint(param, newBounds)
-    constr.println(s"add constraint $param ${if (fromBelow) ">:" else "<:"} $bound = $res")
+    constr.println(s"added1 constraint $param ${if (fromBelow) ">:" else "<:"} $bound = $res")
     if (res) constr.println(constraint.show)
     res
   }
@@ -127,7 +164,8 @@ class TypeComparer(initctx: Context) extends DotClass {
   def addConstraint(param: PolyParam, bound0: Type, fromBelow: Boolean): Boolean = {
     assert(!frozenConstraint)
     val bound = bound0.dealias.stripTypeVar
-    constr.println(s"adding ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} (${bound.getClass}) to ${constraint.show}")
+    def description = s"${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} (${bound.getClass}) to ${constraint.show}"
+    constr.println(s"adding $description")
     val res = bound match {
       case bound: PolyParam if constraint contains bound =>
         val TypeBounds(lo, hi) = constraint.bounds(bound)
@@ -150,7 +188,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       case bound => // !!! remove to keep the originals
         addConstraint1(param, bound, fromBelow)
     }
-    constr.println(s"added ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} = ${constraint.show}")
+    constr.println(s"added $description = ${constraint.show}")
     res
   }
 
@@ -656,7 +694,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         v == 0 || tparam.variance == v
       }
     hk.println(s"isSubTypeHK: args1 = $args1, hk-bounds = $hkBounds $boundsOK $variancesOK")
-    boundsOK && variancesOK
+    boundsOK && variancesOK || fourthTry(tp1, tp2)
   }
 
   def trySetType(tr: NamedType, bounds: TypeBounds): Boolean =

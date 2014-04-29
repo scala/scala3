@@ -77,6 +77,8 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends Showable {
    */
   private def updateEntries(pt: PolyType, entries: Array[Type])(implicit ctx: Context) : Constraint = {
     val res = new Constraint(myMap.updated(pt, entries))
+    //assert(res.domainPolys.filter(pt =>
+    //  pt.resultType.resultType.widen.classSymbol.name.toString == "Ensuring").length < 2) //DEBUG
     if (Config.checkConstraintsNonCyclic) checkNonCyclic(pt, entries)
     ctx.runInfo.recordConstraintSize(res)
     res
@@ -245,6 +247,16 @@ class Constraint(val myMap: SimpleMap[PolyType, Array[Type]]) extends Showable {
       n <- 0 until paramCount(entries)
       if isBounds(entries(n))
     } yield PolyParam(poly, n)
+
+  /** Check whether predicate holds for all parameters in constraint
+   */
+  def forallParams(p: PolyParam => Boolean): Boolean = {
+    myMap.foreachBinding { (poly, entries) =>
+      for (i <- 0 until paramCount(entries))
+        if (isBounds(entries(i)) && !p(PolyParam(poly, i))) return false
+    }
+    true
+  }
 
   /** Perform operation `op` on all typevars, or only on uninstantiated
    *  typevars, depending on whether `uninstOnly` is set or not.
