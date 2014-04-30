@@ -32,6 +32,11 @@ class TypeComparer(initctx: Context) extends DotClass {
    */
   protected var ignoreConstraint = false
 
+  /** Compare a solution of the constraint instead of the constrained parameters.
+   *  The solution maps every parameter to its lower bound.
+   */
+  protected var solvedConstraint = false
+
   private var needsGc = false
 
   /** Is a subtype check in course? In that case we may not
@@ -82,7 +87,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   /** Map that approximates each param in constraint by its lower bound */
   val approxParams = new TypeMap {
     def apply(tp: Type): Type = tp.stripTypeVar match {
-      case tp: PolyParam if constraint contains tp =>
+      case tp: PolyParam if !solvedConstraint && (constraint contains tp) =>
         this(constraint.bounds(tp).lo)
       case tp =>
         mapOver(tp)
@@ -99,16 +104,30 @@ class TypeComparer(initctx: Context) extends DotClass {
   /** Check whether the lower bounds of all parameters in this
    *  constraint are a solution to the constraint.
    */
-  def isSatisfiable: Boolean =
-    constraint.forallParams { poly =>
-      val TypeBounds(lo, hi) = constraint.bounds(poly)
-      isSubType(approxParams(lo), approxParams(hi)) ||
-        { ctx.log(i"sub fail $lo <:< $hi")
-          ctx.log(i"approximated = ${approxParams(lo)} <:< ${approxParams(hi)}")
-          ctx.log(TypeComparer.explained(implicit ctx => isSubType(approxParams(lo), approxParams(hi))))
-          false
-        }
-    }
+  def isSatisfiable(useSolved: Boolean): Boolean = {
+    val saved = solvedConstraint
+    solvedConstraint = true
+    try
+      constraint.forallParams { poly =>
+        val TypeBounds(lo, hi) = constraint.bounds(poly)
+        isSubType(approxParams(lo), approxParams(hi)) ||
+          {
+            ctx.log(i"sub fail $lo <:< $hi")
+            solvedConstraint = saved
+            ctx.log(i"approximated = ${approxParams(lo)} <:< ${approxParams(hi)}")
+            ctx.log(TypeComparer.explained(implicit ctx => isSubType(approxParams(lo), approxParams(hi))))
+            false
+          }
+      }
+    finally solvedConstraint = saved
+  }
+
+  def isSatisfiable: Boolean = {
+    val withSolved = isSatisfiable(true)
+    val withoutSolved = isSatisfiable(false)
+    assert(withSolved == withoutSolved, i"sat diff for $constraint, with solved: $withSolved, without: $withoutSolved")
+    withSolved
+  }
 
   /** Update constraint for `param` to `bounds`, check that
    *  new constraint is still satisfiable.
@@ -193,7 +212,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   }
 
   def isConstrained(param: PolyParam): Boolean =
-    !frozenConstraint && (constraint contains param)
+    !frozenConstraint && !solvedConstraint && (constraint contains param)
 
   /** Solve constraint set for given type parameter `param`.
    *  If `fromBelow` is true the parameter is approximated by its lower bound,
@@ -343,13 +362,15 @@ class TypeComparer(initctx: Context) extends DotClass {
       case tp2: ProtoType =>
         isMatchedByProto(tp2, tp1)
       case tp2: PolyParam =>
-        def comparePolyParam = {
-          tp2 == tp1 ||
-            isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
-              if (isConstrained(tp2)) addConstraint(tp2, tp1.widen, fromBelow = true)
-              else (ctx.mode is Mode.TypevarsMissContext) || secondTry(tp1, tp2)
-            }
-        }
+        def comparePolyParam =
+          tp2 == tp1 || {
+            if (solvedConstraint && (constraint contains tp2)) isSubType(tp1, bounds(tp2).lo)
+            else
+              isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
+                if (isConstrained(tp2)) addConstraint(tp2, tp1.widen, fromBelow = true)
+                else (ctx.mode is Mode.TypevarsMissContext) || secondTry(tp1, tp2)
+              }
+          }
         comparePolyParam
       case tp2: BoundType =>
         tp2 == tp1 || secondTry(tp1, tp2)
@@ -383,23 +404,25 @@ class TypeComparer(initctx: Context) extends DotClass {
     case OrType(tp11, tp12) =>
       isSubType(tp11, tp2) && isSubType(tp12, tp2)
     case tp1: PolyParam =>
-      def comparePolyParam = {
-        tp1 == tp2 ||
-        isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
-          if (isConstrained(tp1))
-            addConstraint(tp1, tp2, fromBelow = false) && {
-              if ((!frozenConstraint) &&
-                  (tp2 isRef defn.NothingClass) &&
-                  state.isGlobalCommittable) {
-                def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
-                if (Config.flagInstantiationToNothing) assert(false, msg)
-                else ctx.log(msg)
-              }
-              true
+      def comparePolyParam =
+        tp1 == tp2 || {
+          if (solvedConstraint && (constraint contains tp1)) isSubType(bounds(tp1).lo, tp2)
+          else
+            isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
+              if (isConstrained(tp1))
+                addConstraint(tp1, tp2, fromBelow = false) && {
+                  if ((!frozenConstraint) &&
+                    (tp2 isRef defn.NothingClass) &&
+                    state.isGlobalCommittable) {
+                    def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
+                    if (Config.flagInstantiationToNothing) assert(false, msg)
+                    else ctx.log(msg)
+                  }
+                  true
+                }
+              else (ctx.mode is Mode.TypevarsMissContext) || thirdTry(tp1, tp2)
             }
-          else (ctx.mode is Mode.TypevarsMissContext) || thirdTry(tp1, tp2)
         }
-      }
       comparePolyParam
     case tp1: BoundType =>
       tp1 == tp2 || thirdTry(tp1, tp2)
@@ -628,7 +651,7 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   /** Defer constraining type variables when compared against prototypes */
   def isMatchedByProto(proto: ProtoType, tp: Type) = tp.stripTypeVar match {
-    case tp: PolyParam if constraint contains tp => true
+    case tp: PolyParam if !solvedConstraint && (constraint contains tp) => true
     case _ => proto.isMatchedBy(tp)
   }
 
@@ -657,7 +680,7 @@ class TypeComparer(initctx: Context) extends DotClass {
    *  type variable with (the corresponding type in) `tp2` instead.
    */
   def isCappable(tp: Type): Boolean = tp match {
-    case tp: PolyParam => constraint contains tp
+    case tp: PolyParam => !solvedConstraint && (constraint contains tp)
     case tp: TypeProxy => isCappable(tp.underlying)
     case tp: AndOrType => isCappable(tp.tp1) || isCappable(tp.tp2)
     case _ => false
