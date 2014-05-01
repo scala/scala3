@@ -337,7 +337,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     tp2 match {
       case tp2: NamedType =>
         def compareNamed = {
-          implicit val ctx = this.ctx
+          implicit val ctx: Context = this.ctx // Dotty deviation: implicits need explicit type
           tp1 match {
             case tp1: NamedType =>
               val sym1 = tp1.symbol
@@ -673,6 +673,12 @@ class TypeComparer(initctx: Context) extends DotClass {
       i < tparams.length && tparams(i).name == name2
     }
 
+  /** Is type `tp` a TypeRef referring to a higher-kinded parameter? */
+  private def isHKRef(tp: Type) = tp match {
+    case TypeRef(_, name) => name.isHkParamName
+    case _ => false
+  }
+
   /** Can type `tp` be constrained from above by adding a constraint to
    *  a typevar that it refers to? In that case we have to be careful not
    *  to approximate with the lower bound of a type in `thirdTry`. Instead,
@@ -956,7 +962,11 @@ class TypeComparer(initctx: Context) extends DotClass {
     else {
       val t2 = distributeAnd(tp2, tp1)
       if (t2.exists) t2
-      else AndType(tp1, tp2)
+      else {
+        if (isHKRef(tp1)) tp2
+        else if (isHKRef(tp2)) tp1
+        else AndType(tp1, tp2)
+      }
     }
   }
 
@@ -976,7 +986,11 @@ class TypeComparer(initctx: Context) extends DotClass {
     else {
       val t2 = distributeOr(tp2, tp1)
       if (t2.exists) t2
-      else OrType(tp1, tp2)
+      else {
+        if (isHKRef(tp1)) tp1
+        else if (isHKRef(tp2)) tp2
+        else OrType(tp1, tp2)
+      }
     }
   }
 
