@@ -111,7 +111,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Encode the type resulting from applying this type to given arguments */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
 
-    def recur(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
+    def matchParams(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
       case arg :: args1 =>
         if (tparams.isEmpty) {
           println(s"applied type mismatch: $self $args, typeParams = $typeParams, tsym = ${self.typeSymbol.debugString}") // !!! DEBUG
@@ -119,32 +119,46 @@ class TypeApplications(val self: Type) extends AnyVal {
         }
         val tparam = tparams.head
         val tp1 = RefinedType(tp, tparam.name, arg.toBounds(tparam))
-        recur(tp1, tparams.tail, args1)
+        matchParams(tp1, tparams.tail, args1)
       case nil => tp
     }
 
-    def safeTypeParams(tsym: Symbol) =
-      if (tsym.isClass || !self.typeSymbol.isCompleting) typeParams
-      else {
-        ctx.warning("encountered F-bounded higher-kinded type parameters; assuming they are invariant")
-        defn.hkTrait(args map alwaysZero).typeParams
-      }
-
-    if (args.isEmpty || !canHaveTypeParams) self
-    else self match {
+    /** Instantiate type `tp` with `args`.
+     *  @param original  The original type for which we compute the type parameters
+     *                   This makes a difference for refinement types, because
+     *                   refinements bind type parameters and thereby remove them
+     *                   from `typeParams`.
+     */
+    def instantiate(tp: Type, original: Type): Type = tp match {
       case tp: TypeRef =>
         val tsym = tp.symbol
         if (tsym.isAliasType) tp.underlying.appliedTo(args)
-        else recur(tp, safeTypeParams(tsym), args)
+        else {
+          val safeTypeParams =
+            if (tsym.isClass || !tp.typeSymbol.isCompleting) original.typeParams
+            else {
+              ctx.warning("encountered F-bounded higher-kinded type parameters; assuming they are invariant")
+              defn.hkTrait(args map alwaysZero).typeParams
+            }
+          matchParams(tp, safeTypeParams, args)
+        }
+      case tp: RefinedType =>
+        tp.derivedRefinedType(
+          instantiate(tp.parent, original),
+          tp.refinedName,
+          tp.refinedInfo)
       case tp: TypeProxy =>
-        tp.underlying.appliedTo(args)
+        instantiate(tp.underlying, original)
       case AndType(l, r) =>
         l.appliedTo(args) & r
       case tp: PolyType =>
         tp.instantiate(args)
       case ErrorType =>
-        self
+        tp
     }
+
+    if (args.isEmpty || !canHaveTypeParams) self
+    else instantiate(self, self)
   }
 
   final def appliedTo(arg: Type)(implicit ctx: Context): Type = appliedTo(arg :: Nil)
