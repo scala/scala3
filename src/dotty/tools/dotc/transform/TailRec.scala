@@ -203,7 +203,8 @@ class TailRec extends TreeTransform with DenotTransformer {
           val methodWithTargs = if (targs.nonEmpty) TypeApply(method, targs) else method
           if (methodWithTargs.tpe.widen.isParameterless) methodWithTargs
           else argumentss.foldLeft(methodWithTargs) {
-            case (method, args) => Apply(method, args)
+            // case (method, args) => Apply(method, args) // Dotty deviation no auto-detupling yet. Interesting that one can do it in Scala2!
+            (method, args) => Apply(method, args)
           }
         }
         def fail(reason: String) = {
@@ -219,7 +220,7 @@ class TailRec extends TreeTransform with DenotTransformer {
           val recv = noTailTransform(reciever)
           if (recv.tpe.widen.isParameterless) method
           else argumentss.foldLeft(Apply(method, List(recv))) {
-            case (method, args) => Apply(method, args)
+            (method, args) => Apply(method, args) // Dotty deviation no auto-detupling yet.
           }
         }
 

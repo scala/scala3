@@ -148,7 +148,7 @@ object PathResolver {
       println(Defaults)
     }
     else {
-      implicit val ctx = (new ContextBase).initialCtx
+      implicit val ctx: Context = (new ContextBase).initialCtx // Dotty deviation: implicits need explicit type
       val ArgsSummary(sstate, rest, errors) =
         ctx.settings.processArguments(args.toList, true)
       errors.foreach(println)
