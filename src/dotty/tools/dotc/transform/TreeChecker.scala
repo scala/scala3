@@ -8,7 +8,7 @@ import core.SymDenotations._
 import core.Contexts._
 import core.Symbols._
 import core.Types._
-import core.Flags.Method
+import core.Flags._
 import core.Constants._
 import core.StdNames._
 import core.Decorators._
