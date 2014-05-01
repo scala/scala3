@@ -84,49 +84,75 @@ class TypeComparer(initctx: Context) extends DotClass {
     myAnyType
   }
 
-  /** Map that approximates each param in constraint by its lower bound */
+  /** Map that approximates each param in constraint by its lower bound.
+   *  Currently only used for diagnostics.
+   */
   val approxParams = new TypeMap {
     def apply(tp: Type): Type = tp.stripTypeVar match {
-      case tp: PolyParam if !solvedConstraint && (constraint contains tp) =>
+      case tp: PolyParam if constraint contains tp =>
         this(constraint.bounds(tp).lo)
       case tp =>
         mapOver(tp)
     }
   }
 
-  /** Propagate new constraint by comparing all bounds */
-  def propagate: Boolean =
-    constraint.forallParams { poly =>
-      val TypeBounds(lo, hi) = constraint.bounds(poly)
+  /** If `param` is contained in constraint, test whether its
+   *  bounds are non-empty. Otherwise return `true`.
+   */
+  private def checkBounds(param: PolyParam): Boolean = constraint.at(param) match {
+    case TypeBounds(lo, hi) =>
+      if (Stats.monitored) Stats.record("checkBounds")
       isSubType(lo, hi)
+    case _ => true
+  }
+
+  /** Test validity of constraint for parameter `changed` and of all
+   *  parameters that depend on it.
+   */
+  private def propagate(changed: PolyParam): Boolean =
+    if (Config.trackConstrDeps)
+      checkBounds(changed) &&
+      propagate(constraint.dependentParams(changed) - changed, Set(changed))
+    else
+      constraint forallParams checkBounds
+
+  /** Ensure validity of constraints for parameters `params` and of all
+   *  parameters that depend on them and that have not been tested
+   *  now or before. If `trackConstrDeps` is not set, do this for all
+   *  parameters in the constraint.
+   *  @param  seen  the set of parameters that have been tested before.
+   */
+  private def propagate(params: Set[PolyParam], seen: Set[PolyParam]): Boolean =
+    params.isEmpty ||
+    (params forall checkBounds) && {
+      val seen1 = seen ++ params
+      val nextParams = (Set[PolyParam]() /: params) { (ps, p) =>
+        ps ++ (constraint.dependentParams(p) -- seen1)
+      }
+      propagate(nextParams, seen1)
     }
 
   /** Check whether the lower bounds of all parameters in this
    *  constraint are a solution to the constraint.
+   *  As an optimization, when `trackConstrDeps` is set, we
+   *  only test that the solutions satisfy the constraints `changed`
+   *  and all parameters that depend on it.
    */
-  def isSatisfiable(useSolved: Boolean): Boolean = {
+  def isSatisfiable(changed: PolyParam): Boolean = {
     val saved = solvedConstraint
     solvedConstraint = true
     try
-      constraint.forallParams { poly =>
-        val TypeBounds(lo, hi) = constraint.bounds(poly)
-        isSubType(approxParams(lo), approxParams(hi)) ||
-          {
+      if (Config.trackConstrDeps) propagate(changed)
+      else
+        constraint.forallParams { param =>
+          checkBounds(param) || {
+            val TypeBounds(lo, hi) = constraint.bounds(param)
             ctx.log(i"sub fail $lo <:< $hi")
-            solvedConstraint = saved
             ctx.log(i"approximated = ${approxParams(lo)} <:< ${approxParams(hi)}")
-            ctx.log(TypeComparer.explained(implicit ctx => isSubType(approxParams(lo), approxParams(hi))))
             false
           }
-      }
+        }
     finally solvedConstraint = saved
-  }
-
-  def isSatisfiable: Boolean = {
-    val withSolved = isSatisfiable(true)
-    val withoutSolved = isSatisfiable(false)
-    assert(withSolved == withoutSolved, i"sat diff for $constraint, with solved: $withSolved, without: $withoutSolved")
-    withSolved
   }
 
   /** Update constraint for `param` to `bounds`, check that
@@ -136,13 +162,12 @@ class TypeComparer(initctx: Context) extends DotClass {
     val saved = constraint
     constraint = constraint.updated(param, bounds)
 
-    propagate &&
-    { isSatisfiable || {
-        ctx.log(i"SAT $constraint produced by $param $bounds is not satisfiable")
-        false
-      }
-    } ||
-    { constraint = saved; false } // don't leave the constraint in unsatisfiable state
+    if (propagate(param)) {
+      if (isSatisfiable(param)) return true
+      ctx.log(i"SAT $constraint produced by $param $bounds is not satisfiable")
+    }
+    constraint = saved // don't leave the constraint in unsatisfiable state
+    false
   }
 
   private def addConstraint1(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
