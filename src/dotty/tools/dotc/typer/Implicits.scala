@@ -400,7 +400,9 @@ trait Implicits { self: Typer =>
    *  !!! todo: catch potential cycles
    */
   def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
-    assert(!ctx.isAfterTyper)
+    assert(!ctx.isAfterTyper,
+      if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
+      else i"type error: ${argument.tpe} does not conform to $pt")
     ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       assert(!pt.isInstanceOf[ExprType])
       val isearch =
