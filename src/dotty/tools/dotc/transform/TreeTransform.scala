@@ -886,32 +886,33 @@ object TreeTransforms {
     final private[TreeTransforms] def transformNamed(tree: NameTree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree =
       tree match {
         case tree: Ident =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForIdent, info.nx.nxPrepIdent, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForIdent, info.nx.nxPrepIdent, tree, cur)
+            // Dotty deviation: implicits need explicit type
           if (mutatedInfo eq null) tree
           else goIdent(tree, mutatedInfo.nx.nxTransIdent(cur))
         case tree: Select =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForSelect, info.nx.nxPrepSelect, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForSelect, info.nx.nxPrepSelect, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val qual = transform(tree.qualifier, mutatedInfo, cur)
             goSelect(cpy.Select(tree, qual, tree.name), mutatedInfo.nx.nxTransSelect(cur))
           }
         case tree: SelectFromTypeTree =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForSelectFromTypeTree, info.nx.nxPrepSelectFromTypeTree, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForSelectFromTypeTree, info.nx.nxPrepSelectFromTypeTree, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val qual = transform(tree.qualifier, mutatedInfo, cur)
             goSelectFromTypeTree(cpy.SelectFromTypeTree(tree, qual, tree.name), mutatedInfo.nx.nxTransSelectFromTypeTree(cur))
           }
         case tree: Bind =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForBind, info.nx.nxPrepBind, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForBind, info.nx.nxPrepBind, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val body = transform(tree.body, mutatedInfo, mutatedInfo.nx.nxTransBind(cur))
             goBind(cpy.Bind(tree, tree.name, body), cur)
           }
         case tree: ValDef if !tree.isEmpty => // As a result of discussing with Martin: emptyValDefs shouldn't be copied // NAME
-          implicit val mutatedInfo = mutateTransformers(info, prepForValDef, info.nx.nxPrepValDef, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForValDef, info.nx.nxPrepValDef, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val nestedCtx = if (tree.symbol.exists) localContext(tree.symbol) else ctx
@@ -920,7 +921,7 @@ object TreeTransforms {
             goValDef(cpy.ValDef(tree, tree.mods, tree.name, tpt, rhs), mutatedInfo.nx.nxTransValDef(cur))
           }
         case tree: DefDef =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForDefDef, info.nx.nxPrepDefDef, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForDefDef, info.nx.nxPrepDefDef, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val nestedCtx = localContext(tree.symbol)
@@ -931,7 +932,7 @@ object TreeTransforms {
             goDefDef(cpy.DefDef(tree, tree.mods, tree.name, tparams, vparams, tpt, rhs), mutatedInfo.nx.nxTransDefDef(cur))
           }
         case tree: TypeDef =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForTypeDef, info.nx.nxPrepTypeDef, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForTypeDef, info.nx.nxPrepTypeDef, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val rhs = transform(tree.rhs, mutatedInfo, cur)(localContext(tree.symbol))
@@ -944,18 +945,18 @@ object TreeTransforms {
     final private[TreeTransforms] def transformUnnamed(tree: Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree =
       tree match {
         case tree: This =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForThis, info.nx.nxPrepThis, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForThis, info.nx.nxPrepThis, tree, cur)
           if (mutatedInfo eq null) tree
           else goThis(tree, mutatedInfo.nx.nxTransThis(cur))
         case tree: Super =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForSuper, info.nx.nxPrepSuper, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForSuper, info.nx.nxPrepSuper, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val qual = transform(tree.qual, mutatedInfo, cur)
             goSuper(cpy.Super(tree, qual, tree.mix), mutatedInfo.nx.nxTransSuper(cur))
           }
         case tree: Apply =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForApply, info.nx.nxPrepApply, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForApply, info.nx.nxPrepApply, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val fun = transform(tree.fun, mutatedInfo, cur)
@@ -963,7 +964,7 @@ object TreeTransforms {
             goApply(cpy.Apply(tree, fun, args), mutatedInfo.nx.nxTransApply(cur))
           }
         case tree: TypeApply =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForTypeApply, info.nx.nxPrepTypeApply, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForTypeApply, info.nx.nxPrepTypeApply, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val fun = transform(tree.fun, mutatedInfo, cur)
@@ -971,18 +972,18 @@ object TreeTransforms {
             goTypeApply(cpy.TypeApply(tree, fun, args), mutatedInfo.nx.nxTransTypeApply(cur))
           }
         case tree: Literal =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForLiteral, info.nx.nxPrepLiteral, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForLiteral, info.nx.nxPrepLiteral, tree, cur)
           if (mutatedInfo eq null) tree
           else goLiteral(tree, mutatedInfo.nx.nxTransLiteral(cur))
         case tree: New =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForNew, info.nx.nxPrepNew, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForNew, info.nx.nxPrepNew, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val tpt = transform(tree.tpt, mutatedInfo, cur)
             goNew(cpy.New(tree, tpt), mutatedInfo.nx.nxTransNew(cur))
           }
         case tree: Pair =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForPair, info.nx.nxPrepPair, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForPair, info.nx.nxPrepPair, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val left = transform(tree.left, mutatedInfo, cur)
@@ -990,7 +991,7 @@ object TreeTransforms {
             goPair(cpy.Pair(tree, left, right), mutatedInfo.nx.nxTransPair(cur))
           }
         case tree: Typed =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForTyped, info.nx.nxPrepTyped, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForTyped, info.nx.nxPrepTyped, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val expr = transform(tree.expr, mutatedInfo, cur)
@@ -998,7 +999,7 @@ object TreeTransforms {
             goTyped(cpy.Typed(tree, expr, tpt), mutatedInfo.nx.nxTransTyped(cur))
           }
         case tree: Assign =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForAssign, info.nx.nxPrepAssign, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForAssign, info.nx.nxPrepAssign, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val lhs = transform(tree.lhs, mutatedInfo, cur)
@@ -1006,7 +1007,7 @@ object TreeTransforms {
             goAssign(cpy.Assign(tree, lhs, rhs), mutatedInfo.nx.nxTransAssign(cur))
           }
         case tree: Block =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForBlock, info.nx.nxPrepBlock, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForBlock, info.nx.nxPrepBlock, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val stats = transformStats(tree.stats, ctx.owner, mutatedInfo, cur)
@@ -1014,7 +1015,7 @@ object TreeTransforms {
             goBlock(cpy.Block(tree, stats, expr), mutatedInfo.nx.nxTransBlock(cur))
           }
         case tree: If =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForIf, info.nx.nxPrepIf, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForIf, info.nx.nxPrepIf, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val cond = transform(tree.cond, mutatedInfo, cur)
@@ -1023,7 +1024,7 @@ object TreeTransforms {
             goIf(cpy.If(tree, cond, thenp, elsep), mutatedInfo.nx.nxTransIf(cur))
           }
         case tree: Closure =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForClosure, info.nx.nxPrepClosure, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForClosure, info.nx.nxPrepClosure, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val env = transformTrees(tree.env, mutatedInfo, cur)
@@ -1032,7 +1033,7 @@ object TreeTransforms {
             goClosure(cpy.Closure(tree, env, meth, tpt), mutatedInfo.nx.nxTransClosure(cur))
           }
         case tree: Match =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForMatch, info.nx.nxPrepMatch, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForMatch, info.nx.nxPrepMatch, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val selector = transform(tree.selector, mutatedInfo, cur)
@@ -1040,7 +1041,7 @@ object TreeTransforms {
             goMatch(cpy.Match(tree, selector, cases), mutatedInfo.nx.nxTransMatch(cur))
           }
         case tree: CaseDef =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForCaseDef, info.nx.nxPrepCaseDef, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForCaseDef, info.nx.nxPrepCaseDef, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val pat = transform(tree.pat, mutatedInfo, cur)
@@ -1049,7 +1050,7 @@ object TreeTransforms {
             goCaseDef(cpy.CaseDef(tree, pat, guard, body), mutatedInfo.nx.nxTransCaseDef(cur))
           }
         case tree: Return =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForReturn, info.nx.nxPrepReturn, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForReturn, info.nx.nxPrepReturn, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val expr = transform(tree.expr, mutatedInfo, cur)
@@ -1057,7 +1058,7 @@ object TreeTransforms {
             goReturn(cpy.Return(tree, expr, from), mutatedInfo.nx.nxTransReturn(cur))
           }
         case tree: Try =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForTry, info.nx.nxPrepTry, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForTry, info.nx.nxPrepTry, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val block = transform(tree.expr, mutatedInfo, cur)
@@ -1066,35 +1067,35 @@ object TreeTransforms {
             goTry(cpy.Try(tree, block, handler, finalizer), mutatedInfo.nx.nxTransTry(cur))
           }
         case tree: Throw =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForThrow, info.nx.nxPrepThrow, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForThrow, info.nx.nxPrepThrow, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val expr = transform(tree.expr, mutatedInfo, cur)
             goThrow(cpy.Throw(tree, expr), mutatedInfo.nx.nxTransThrow(cur))
           }
         case tree: SeqLiteral =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForSeqLiteral, info.nx.nxPrepSeqLiteral, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForSeqLiteral, info.nx.nxPrepSeqLiteral, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val elems = transformTrees(tree.elems, mutatedInfo, cur)
             goSeqLiteral(cpy.SeqLiteral(tree, elems), mutatedInfo.nx.nxTransLiteral(cur))
           }
         case tree: TypeTree =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForTypeTree, info.nx.nxPrepTypeTree, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForTypeTree, info.nx.nxPrepTypeTree, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val original = transform(tree.original, mutatedInfo, cur)
             goTypeTree(cpy.TypeTree(tree, original), mutatedInfo.nx.nxTransTypeTree(cur))
           }
         case tree: Alternative =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForAlternative, info.nx.nxPrepAlternative, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForAlternative, info.nx.nxPrepAlternative, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val trees = transformTrees(tree.trees, mutatedInfo, cur)
             goAlternative(cpy.Alternative(tree, trees), mutatedInfo.nx.nxTransAlternative(cur))
           }
         case tree: UnApply =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForUnApply, info.nx.nxPrepUnApply, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForUnApply, info.nx.nxPrepUnApply, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val fun = transform(tree.fun, mutatedInfo, cur)
@@ -1103,7 +1104,7 @@ object TreeTransforms {
             goUnApply(cpy.UnApply(tree, fun, implicits, patterns), mutatedInfo.nx.nxTransUnApply(cur))
           }
         case tree: Template =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForTemplate, info.nx.nxPrepTemplate, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForTemplate, info.nx.nxPrepTemplate, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val constr = transformSub(tree.constr, mutatedInfo, cur)
@@ -1113,7 +1114,7 @@ object TreeTransforms {
             goTemplate(cpy.Template(tree, constr, parents, self, body), mutatedInfo.nx.nxTransTemplate(cur))
           }
         case tree: PackageDef =>
-          implicit val mutatedInfo = mutateTransformers(info, prepForPackageDef, info.nx.nxPrepPackageDef, tree, cur)
+          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForPackageDef, info.nx.nxPrepPackageDef, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val nestedCtx = localContext(tree.symbol)

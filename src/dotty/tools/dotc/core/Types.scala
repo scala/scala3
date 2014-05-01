@@ -2276,7 +2276,7 @@ object Types {
 
     /** Map this function over given type */
     def mapOver(tp: Type): Type = {
-      implicit val ctx = this.ctx
+      implicit val ctx: Context = this.ctx // Dotty deviation: implicits need explicit type
       tp match {
         case tp: NamedType =>
           if (stopAtStatic && tp.symbol.isStatic) tp
