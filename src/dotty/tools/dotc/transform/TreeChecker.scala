@@ -8,6 +8,7 @@ import core.SymDenotations._
 import core.Contexts._
 import core.Symbols._
 import core.Types._
+import core.Flags.Method
 import core.Constants._
 import core.StdNames._
 import core.Decorators._
@@ -71,6 +72,24 @@ class TreeChecker {
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.isTerm || ctx.phase.prev.id <= ctx.typerPhase.id, tree.show + " at " + ctx.phase)
       super.typedSelect(tree, pt)
+    }
+
+    /** Check that all defined symbols have legal owners.
+     *  An owner is legal if it is either the same as the context's owner
+     *  or there's an owner chain of valdefs starting at the context's owner and
+     *  reaching up to the symbol's owner. The reason for this relaxed matching
+     *  is that we should be able to pull out an expression as an initializer
+     *  of a helper value without having to do a change owner traversal of the expression.
+     */
+    override def index(trees: List[untpd.Tree])(implicit ctx: Context): Context = {
+      def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
+        symOwner == ctxOwner ||
+        ctxOwner.isTerm && !(ctxOwner is Method | Lazy | Mutable) &&
+          ownerMatches(symOwner, ctxOwner.owner)
+      for (tree <- trees if tree.isDef)
+        assert(ownerMatches(tree.symbol.owner, ctx.owner),
+               i"bad owner; $tree has owner ${tree.symbol.owner}, expected was ${ctx.owner}")
+      super.index(trees)
     }
   }
 }
