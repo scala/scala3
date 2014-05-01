@@ -14,7 +14,7 @@ import collection.mutable
 class TyperState(val reporter: Reporter) extends DotClass with Showable {
 
   /** The current constraint set */
-  def constraint: Constraint = new Constraint(SimpleMap.Empty)
+  def constraint: Constraint = new Constraint(SimpleMap.Empty, SimpleMap.Empty)
   def constraint_=(c: Constraint): Unit = {}
 
   /** The uninstantiated variables */
@@ -48,7 +48,7 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
    *  type variable instantiation cannot be retracted anymore. Then, remove
    *  no-longer needed constraint entries.
    */
-  def gc(): Unit = ()
+  def gc()(implicit ctx: Context): Unit = ()
 
   /** Is it allowed to commit this state? */
   def isCommittable: Boolean = false
@@ -96,7 +96,7 @@ extends TyperState(reporter) {
     reporter.flush()
   }
 
-  override def gc(): Unit = {
+  override def gc()(implicit ctx: Context): Unit = {
     val toCollect = new mutable.ListBuffer[PolyType]
     constraint foreachTypeVar { tvar =>
       if (!tvar.inst.exists) {

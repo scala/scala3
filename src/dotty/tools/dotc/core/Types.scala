@@ -2119,11 +2119,12 @@ object Types {
 
     override def toString =
       if (lo eq hi) s"TypeAlias($lo)" else s"TypeBounds($lo, $hi)"
+
+    override def computeHash = unsupported("computeHash")
   }
 
   class CachedTypeBounds(lo: Type, hi: Type, hc: Int) extends TypeBounds(lo, hi) {
     myHash = hc
-    override def computeHash = unsupported("computeHash")
   }
 
   final class CoTypeBounds(lo: Type, hi: Type, hc: Int) extends CachedTypeBounds(lo, hi, hc) {
