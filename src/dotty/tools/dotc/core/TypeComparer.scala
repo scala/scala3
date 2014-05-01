@@ -161,7 +161,6 @@ class TypeComparer(initctx: Context) extends DotClass {
   private def updateConstraint(param: PolyParam, bounds: TypeBounds): Boolean = {
     val saved = constraint
     constraint = constraint.updated(param, bounds)
-
     if (propagate(param)) {
       if (isSatisfiable(param)) return true
       ctx.log(i"SAT $constraint produced by $param $bounds is not satisfiable")
