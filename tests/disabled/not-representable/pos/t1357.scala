@@ -1,3 +1,7 @@
+// Existential quantification cannot be expressed, and cannot be eliminated
+// because it's F-bounded. Trying to paramerize BinaryTree with T instead also fails
+// because the type alias cannot be represented
+
 object NonEmptyCons {
   def unapply[H, T](c: (H, T)): Option[(H, T)] = Some(c)
 }

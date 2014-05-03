@@ -1,6 +1,6 @@
 // foo.scala
 trait Foo {
-    def foo(arg: List[_])
+  def foo(arg: List[_])
 }
 trait FooImpl extends Foo {
     def foo(arg: List[_]): Unit = {}

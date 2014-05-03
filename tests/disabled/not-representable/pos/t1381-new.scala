@@ -1,4 +1,10 @@
-import scala.reflect.Manifest
+/* Gives
+
+   t1381-new.scala:6: error: V is not a valid prefix for '#'
+   type E = V#ValueType
+            ^
+ */
+import scala.reflect.runtime.universe._
 
 class D[V <: Variable]
 
