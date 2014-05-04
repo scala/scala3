@@ -40,11 +40,16 @@ class ConsoleReporter(
     }
   }
 
-  override def doReport(d: Diagnostic)(implicit ctx: Context): Unit =
-    if (d.severity != ERROR || count(d.severity.level) <= ErrorLimit && !d.isSuppressed) {
-      printMessageAndPos(label(d.severity) + d.msg, d.pos)
-      if (d.severity == ERROR && ctx.settings.prompt.value) displayPrompt()
-    }
+  override def doReport(d: Diagnostic)(implicit ctx: Context): Unit = d match {
+    case d: Error =>
+      printMessageAndPos(s"error: ${d.msg}", d.pos)
+      if (ctx.settings.prompt.value) displayPrompt()
+    case d: ConditionalWarning if !d.enablingOption.value =>
+    case d: Warning =>
+      printMessageAndPos(s"warning: ${d.msg}", d.pos)
+    case _ =>
+      printMessageAndPos(d.msg, d.pos)
+  }
 
   def displayPrompt(): Unit = {
     writer.print("\na)bort, s)tack, r)esume: ")

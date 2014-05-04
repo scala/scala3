@@ -183,10 +183,8 @@ object ProtoTypes {
     def typedArg(arg: untpd.Tree, formal: Type)(implicit ctx: Context): Tree = {
       var targ = myTypedArg(arg)
       if (targ == null) {
-        val counts = ctx.reporter.errorCounts
         targ = typer.typedUnadapted(arg, formal)
-        if (ctx.reporter.wasSilent(counts))
-          myTypedArg = myTypedArg.updated(arg, targ)
+        if (!ctx.reporter.hasPending) myTypedArg = myTypedArg.updated(arg, targ)
       }
       typer.adapt(targ, formal)
     }

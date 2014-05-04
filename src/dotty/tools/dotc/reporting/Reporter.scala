@@ -14,10 +14,17 @@ import typer.ErrorReporting.DiagnosticString
 
 object Reporter {
 
-  class Diagnostic(msgFn: => String, val pos: SourcePosition, val severity: Severity) extends Exception {
+  private val ERROR = 2
+  private val WARNING = 1
+  private val INFO = 0
+
+  class Diagnostic(msgFn: => String, val pos: SourcePosition, val level: Int) extends Exception {
     import DiagnosticString._
+
     private var myMsg: String = null
     private var myIsNonSensical: Boolean = false
+
+    /** The message to report */
     def msg: String = {
       if (myMsg == null) {
         myMsg = msgFn
@@ -29,48 +36,32 @@ object Reporter {
       }
       myMsg
     }
+
+    /** Report in current reporter */
+    def report(implicit ctx: Context) = ctx.reporter.report(this)
+
     def isNonSensical = { msg; myIsNonSensical }
     def isSuppressed(implicit ctx: Context): Boolean = !ctx.settings.YshowSuppressedErrors.value && isNonSensical
-    override def toString = s"$severity at $pos: $msg"
+
+    override def toString = s"$getClass at $pos: $msg"
     override def getMessage() = msg
-
-    def promotedSeverity(implicit ctx: Context): Severity =
-      if (isConditionalWarning(severity) && enablingOption(severity).value) WARNING
-      else severity
   }
 
-  def Diagnostic(msgFn: => String, pos: SourcePosition, severity: Severity) =
-    new Diagnostic(msgFn, pos, severity)
+  class Error(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, ERROR)
+  class Warning(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, WARNING)
+  class Info(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, INFO)
 
-  class Severity(val level: Int) extends AnyVal {
-    override def toString = this match {
-      case VerboseINFO => "VerboseINFO"
-      case INFO => "INFO"
-      case DeprecationWARNING => "DeprecationWARNING"
-      case UncheckedWARNING => "UncheckedWARNING"
-      case FeatureWARNING => "FeatureWARNING"
-      case WARNING => "WARNING"
-      case ERROR => "ERROR"
-    }
+  abstract class ConditionalWarning(msgFn: => String, pos: SourcePosition) extends Warning(msgFn, pos) {
+    def enablingOption(implicit ctx: Context): Setting[Boolean]
   }
-
-  final val VerboseINFO = new Severity(0)
-  final val INFO = new Severity(1)
-  final val DeprecationWARNING = new Severity(2)
-  final val UncheckedWARNING = new Severity(3)
-  final val FeatureWARNING = new Severity(4)
-  final val WARNING = new Severity(5)
-  final val ERROR = new Severity(6)
-
-  def isConditionalWarning(s: Severity) =
-    DeprecationWARNING.level <= s.level && s.level <= FeatureWARNING.level
-
-  val conditionalWarnings = List(DeprecationWARNING, UncheckedWARNING, FeatureWARNING)
-
-  private def enablingOption(warning: Severity)(implicit ctx: Context) = warning match {
-    case DeprecationWARNING => ctx.settings.deprecation
-    case UncheckedWARNING   => ctx.settings.unchecked
-    case FeatureWARNING     => ctx.settings.feature
+  class FeatureWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
+    def enablingOption(implicit ctx: Context) = ctx.settings.feature
+  }
+  class UncheckedWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
+    def enablingOption(implicit ctx: Context) = ctx.settings.unchecked
+  }
+  class DeprecationWarning(msgFn: => String, pos: SourcePosition) extends ConditionalWarning(msgFn, pos) {
+    def enablingOption(implicit ctx: Context) = ctx.settings.deprecation
   }
 }
 
@@ -80,30 +71,30 @@ trait Reporting { this: Context =>
 
   /** For sending messages that are printed only if -verbose is set */
   def inform(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(Diagnostic(msg, pos, VerboseINFO))
+    if (this.settings.verbose.value) echo(msg, pos)
 
   def echo(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(Diagnostic(msg, pos, INFO))
+    reporter.report(new Info(msg, pos))
 
   def deprecationWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(Diagnostic(msg, pos, DeprecationWARNING))
+    reporter.report(new DeprecationWarning(msg, pos))
 
   def uncheckedWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(Diagnostic(msg, pos, UncheckedWARNING))
+    reporter.report(new UncheckedWarning(msg, pos))
 
   def featureWarning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(Diagnostic(msg, pos, FeatureWARNING))
+    reporter.report(new FeatureWarning(msg, pos))
 
   def warning(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
-    reporter.report(Diagnostic(msg, pos, WARNING))
+    reporter.report(new Warning(msg, pos))
 
   def error(msg: => String, pos: SourcePosition = NoSourcePosition): Unit = {
     // println("*** ERROR: " + msg) // !!! DEBUG
-    reporter.report(Diagnostic(msg, pos, ERROR))
+    reporter.report(new Error(msg, pos))
   }
 
   def incompleteInputError(msg: String, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
-    reporter.incomplete(Diagnostic(msg, pos, ERROR))(ctx)
+    reporter.incomplete(new Error(msg, pos))(ctx)
 
   /** Log msg if current phase or its precedessor is mentioned in
    *  settings.log.
@@ -209,71 +200,54 @@ abstract class Reporter {
     finally incompleteHandler = saved
   }
 
-  protected def isHidden(d: Diagnostic)(implicit ctx: Context) = d.promotedSeverity match {
-    case VerboseINFO => !ctx.settings.verbose.value
-    case DeprecationWARNING | UncheckedWARNING | FeatureWARNING => true
-    case _ => false
+  var errorCount = 0
+  var warningCount = 0
+  def hasErrors = errorCount > 0
+  def hasWarnings = warningCount > 0
+
+  val unreportedWarnings = new mutable.HashMap[String, Int] {
+    override def default(key: String) = 0
   }
 
-  val count = new Array[Int](ERROR.level + 1)
-
-  def report(d: Diagnostic)(implicit ctx: Context): Unit =
-    if (!isHidden(d)) {
-      doReport(d)
-      if (!d.isSuppressed) count(d.promotedSeverity.level) += 1
+  def report(d: Diagnostic)(implicit ctx: Context): Unit = if (!isHidden(d)) {
+    doReport(d)
+    if (!d.isSuppressed) d match {
+      case d: ConditionalWarning if !d.enablingOption.value => unreportedWarnings(d.enablingOption.name) += 1
+      case d: Warning => warningCount += 1
+      case d: Error => errorCount += 1
+      case d: Info => // nothing to do here
+      // match error if d is something else
     }
+  }
 
   def incomplete(d: Diagnostic)(implicit ctx: Context): Unit =
     incompleteHandler(d)(ctx)
 
-  def hasErrors   = count(ERROR.level) > 0
-  def hasWarnings = count(WARNING.level) > 0
 
-  def errorCounts: Any = count.clone
-
-  def wasSilent[T](counts: Any): Boolean = {
-    val prevCount = counts.asInstanceOf[Array[Int]]
-    var i = 0
-    while (i < count.length) {
-      if (prevCount(i) != count(i)) return false
-      i += 1
-    }
-    true
+  /** Print a summary */
+  def printSummary(implicit ctx: Context): Unit = {
+    if (warningCount > 0) ctx.echo(countString(warningCount, "warning") + " found")
+    if (errorCount > 0) ctx.echo(countString(errorCount, "error") + " found")
+    for ((settingName, count) <- unreportedWarnings)
+      ctx.echo(s"there were $count ${settingName.tail} warning(s); re-run with $settingName for details")
   }
 
   /** Returns a string meaning "n elements". */
-  private def countElementsAsString(n: Int, elements: String): String =
-    n match {
-      case 0 => "no "    + elements + "s"
-      case 1 => "one "   + elements
-      case 2 => "two "   + elements + "s"
-      case 3 => "three " + elements + "s"
-      case 4 => "four "  + elements + "s"
-      case _ => n + " " + elements + "s"
-    }
-
-  protected def label(severity: Severity): String = severity match {
-    case ERROR   => "error: "
-    case WARNING => "warning: "
-    case _    => ""
+  private def countString(n: Int, elements: String): String = n match {
+    case 0 => "no " + elements + "s"
+    case 1 => "one " + elements
+    case 2 => "two " + elements + "s"
+    case 3 => "three " + elements + "s"
+    case 4 => "four " + elements + "s"
+    case _ => n + " " + elements + "s"
   }
 
-  protected def countString(severity: Severity) = {
-    assert(severity.level >= WARNING.level)
-    countElementsAsString(count(severity.level), label(severity).dropRight(2))
-  }
+  /** Should this diagnostic not be reported at all? */
+  def isHidden(d: Diagnostic)(implicit ctx: Context): Boolean = false
 
-  def printSummary(implicit ctx: Context): Unit = {
-    if (count(WARNING.level) > 0) ctx.echo(countString(WARNING) + " found")
-    if (  count(ERROR.level) > 0) ctx.echo(countString(ERROR  ) + " found")
-    for (cwarning <- conditionalWarnings) {
-      val unreported = count(cwarning.level)
-      if (unreported > 0) {
-        val what = enablingOption(cwarning).name.tail
-        ctx.warning(s"there were $unreported $what warning(s); re-run with -$what for details")
-      }
-    }
-  }
+  /** Does this reporter contain not yet reported errors or warnings? */
+  def hasPending: Boolean = false
 
+  /** Issue all error messages in this reporter to next outer one, or make sure they are written. */
   def flush()(implicit ctx: Context): Unit = {}
 }

@@ -4,7 +4,7 @@ package reporting
 
 import core.Contexts.Context
 import collection.mutable
-import Reporter.Diagnostic
+import Reporter.{Diagnostic, Error, Warning}
 import config.Printers._
 
 /**
@@ -18,6 +18,14 @@ class StoreReporter extends Reporter {
     typr.println(s">>>> StoredError: ${d.msg}") // !!! DEBUG
     if (infos == null) infos = new mutable.ListBuffer
     infos += d
+  }
+
+  override def hasPending: Boolean = infos != null && {
+    infos exists {
+      case d: Error => true
+      case d: Warning => true
+      case _ => false
+    }
   }
 
   override def flush()(implicit ctx: Context) =
