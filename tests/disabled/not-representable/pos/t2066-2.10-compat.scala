@@ -33,6 +33,7 @@ trait B3 extends A3 {
   override def f[T[_]] = () // okay
 }
 
+// These nested higher-kinded types are not parsable in Dotty=
 trait C3 extends A3 {
   override def f[T[-_]] = ()
 }
