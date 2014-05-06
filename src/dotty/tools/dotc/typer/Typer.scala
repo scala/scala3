@@ -70,6 +70,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *                   (3) Change pattern Idents id (but not wildcards) to id @ _
    */
   def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = track("typedIdent") {
+    val refctx = ctx
     val name = tree.name
 
     /** Method is necessary because error messages need to bind to
@@ -179,7 +180,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (imp.isWildcardImport) {
           val pre = imp.site
           if (!isDisabled(imp, pre) && !(imp.excluded contains name.toTermName)) {
-            val denot = pre.member(name)
+            val denot = pre.member(name).accessibleFrom(pre)(refctx)
             if (reallyExists(denot)) return pre.select(name, denot)
           }
         }
