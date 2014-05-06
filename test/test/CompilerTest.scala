@@ -13,7 +13,7 @@ class CompilerTest extends DottyTest {
   def compileArgs(args: Array[String], xerrors: Int = 0): Unit = {
     val allArgs = args ++ defaultOptions
     val processor = if (allArgs.exists(_.startsWith("#"))) Bench else Main
-    val nerrors = processor.process(allArgs).count(Reporter.ERROR.level)
+    val nerrors = processor.process(allArgs, ctx).count(Reporter.ERROR.level)
     assert(nerrors == xerrors, s"Wrong # of errors. Expected: $xerrors, found: $nerrors")
   }
 

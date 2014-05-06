@@ -22,8 +22,8 @@ abstract class Driver extends DotClass {
 
   protected def initCtx = (new ContextBase).initialCtx
 
-  def process(args: Array[String]): Reporter = {
-    val summary = CompilerCommand.distill(args)(initCtx)
+  def process(args: Array[String], rootCtx: Context): Reporter = {
+    val summary = CompilerCommand.distill(args)(rootCtx)
     implicit val ctx: Context = initCtx.fresh.setSettings(summary.sstate)
     val fileNames = CompilerCommand.checkUsage(summary)
     try {
@@ -41,7 +41,7 @@ abstract class Driver extends DotClass {
   }
 
   def main(args: Array[String]): Unit =
-    sys.exit(if (process(args).hasErrors) 1 else 0)
+    sys.exit(if (process(args, initCtx).hasErrors) 1 else 0)
 }
 
 class FatalError(msg: String) extends Exception

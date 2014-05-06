@@ -46,11 +46,11 @@ object Bench extends Driver {
     else (args(pos + 1).toInt, (args take pos) ++ (args drop (pos + 2)))
   }
 
-  override def process(args: Array[String]): Reporter = {
+  override def process(args: Array[String], rootCtx: Context): Reporter = {
     val (numCompilers, args1) = extractNumArg(args, "#compilers")
     val (numRuns, args2) = extractNumArg(args1, "#runs")
     this.numRuns = numRuns
-    ntimes(numCompilers)(super.process(args2))
+    ntimes(numCompilers)(super.process(args2, rootCtx))
   }
 }
 

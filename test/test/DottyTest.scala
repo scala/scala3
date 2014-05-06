@@ -14,11 +14,11 @@ import dotty.tools.dotc.Compiler
 import dotty.tools.dotc
 import dotty.tools.dotc.core.Phases.Phase
 
-class DottyTest {
+class DottyTest extends ContextEscapeDetection{
 
   dotty.tools.dotc.parsing.Scanners // initialize keywords
 
-  implicit val ctx: Context = {
+  implicit var ctx: Contexts.Context = {
     val base = new ContextBase
     import base.settings._
     val ctx = base.initialCtx.fresh
@@ -37,6 +37,10 @@ class DottyTest {
     ctx
   }
 
+  override def getCtx: Context = ctx
+  override def clearCtx() = {
+    ctx = null
+  }
   private def compilerWithChecker(phase: String)(assertion:(tpd.Tree, Context) => Unit) = new Compiler {
     override def phases = {
       val allPhases = super.phases
