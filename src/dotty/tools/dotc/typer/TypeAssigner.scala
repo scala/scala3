@@ -52,10 +52,14 @@ trait TypeAssigner {
       def apply(tp: Type) = tp match {
         case tp: TermRef if toAvoid(tp) && variance > 0 =>
           apply(tp.info)
-        case tp: TypeRef if toAvoid(tp.prefix) =>
+        case tp: TypeRef if (forbidden contains tp.symbol) || toAvoid(tp.prefix) =>
           tp.info match {
-            case TypeAlias(ref) => apply(ref)
-            case _ => mapOver(tp)
+            case TypeAlias(ref) =>
+              apply(ref)
+            case info: ClassInfo =>
+              mapOver(info.instantiatedParents.reduceLeft(AndType(_, _)))
+            case _ =>
+              mapOver(tp)
           }
         case tp: RefinedType =>
           val tp1 @ RefinedType(parent1, _) = mapOver(tp)
@@ -247,7 +251,7 @@ trait TypeAssigner {
     tree.withType(defn.UnitType)
 
   def assignType(tree: untpd.Block, stats: List[Tree], expr: Tree)(implicit ctx: Context) =
-    tree.withType(avoid(expr.tpe, localSyms(stats)))
+    tree.withType(avoid(expr.tpe, localSyms(stats) filter (_.isTerm)))
 
   def assignType(tree: untpd.If, thenp: Tree, elsep: Tree)(implicit ctx: Context) =
     tree.withType(thenp.tpe | elsep.tpe)
