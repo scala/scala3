@@ -104,6 +104,28 @@ class Definitions {
   lazy val JavaPackageVal = ctx.requiredPackage("java")
   lazy val JavaLangPackageVal = ctx.requiredPackage("java.lang")
 
+  /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
+   *  because after erasure the Any and AnyVal references get remapped to the Object methods
+   *  which would result in a double binding assertion failure.
+   * Instead we do the following:
+   *
+   *  - Have some methods exist only in Any, and remap them with the Erasure denotation
+   *    transformer to be owned by Object.
+   *  - Have other methods exist only in Object.
+   * To achieve this, we synthesize all Any and Object methods; Object methods no longer get
+   * loaded from a classfile.
+   *
+   * There's a remaining question about `getClass`. In Scala2.x `getClass` was handled by compiler magic.
+   * This is deemed too cumersome for Dotty and therefore right now `getClass` gets no special treatment;
+   * it's just a method on `Any` which returns the raw type `java.lang.Class`. An alternative
+   * way to get better `getClass` typing would be to treat `getClass` as a method of a generic
+   * decorator which gets remapped in a later phase to Object#getClass. Then we could give it
+   * the right type without changing the typechecker:
+   *
+   *     implicit class AnyGetClass[T](val x: T) extends AnyVal {
+   *       def getClass: java.lang.Class[T] = ???
+   *     }
+   */
   lazy val AnyClass: ClassSymbol = newTopClassSymbol(tpnme.Any, Abstract, Nil)
   lazy val AnyValClass: ClassSymbol = newTopClassSymbol(tpnme.AnyVal, Abstract, AnyClass.typeRef :: Nil)
 
