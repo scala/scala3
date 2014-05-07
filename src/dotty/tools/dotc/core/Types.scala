@@ -756,6 +756,11 @@ object Types {
     def typeParamNamed(name: TypeName)(implicit ctx: Context): Symbol =
       classSymbol.decls.lookup(name) orElse member(name).symbol
 
+    /** If this is a prototype with some ignored component, reveal one more
+     *  layer of it. Otherwise the type itself.
+     */
+    def deepenProto(implicit ctx: Context): Type = this
+
 // ----- Substitutions -----------------------------------------------------
 
     /** Substitute all types that refer in their symbol attribute to
@@ -1057,12 +1062,13 @@ object Types {
       if (owner.isTerm) d else d.asSeenFrom(prefix)
     }
 
-    private def checkSymAssign(sym: Symbol) =
+    private def checkSymAssign(sym: Symbol)(implicit ctx: Context) =
       assert(
         (lastSymbol eq sym) ||
         (lastSymbol eq null) ||
         (lastSymbol.defRunId != sym.defRunId) ||
-        (lastSymbol.defRunId == NoRunId),
+        (lastSymbol.defRunId == NoRunId) ||
+        (lastSymbol.infoOrCompleter == ErrorType),
         s"data race? overwriting symbol of $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id}")
 
     protected def sig: Signature = Signature.NotAMethod

@@ -1009,14 +1009,40 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  def tryInsertApply(tree: Tree, pt: Type)(fallBack: (Tree, TyperState) => Tree)(implicit ctx: Context): Tree =
-    tryEither {
-      implicit ctx =>
-        val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
-        if (sel.tpe.isError) sel else adapt(sel, pt)
-    } {
-      fallBack
+  /** Try to insert `.apply` so that the result conforms to prototype `pt`.
+   *  If that fails try to insert an implicit conversion around the qualifier
+   *  part of `tree`. If either result conforms to `pt`, adapt it, else
+   *  continue with `fallBack`.
+   */
+  def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: (Tree, TyperState) => Tree)(implicit ctx: Context): Tree =
+    tryEither { implicit ctx =>
+      val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
+      if (sel.tpe.isError) sel else adapt(sel, pt)
+    } { (failedTree, failedState) =>
+      val tree1 = tryInsertImplicit(tree, pt)
+      if (tree1 eq tree) fallBack(failedTree, failedState)
+      else adapt(tree1, pt)
     }
+
+  /** If this tree is a select node `qual.name`, try to insert an implicit conversion
+   *  `c` around `qual` so that `c(qual).name` conforms to `pt`. If that fails
+   *  return `tree` itself.
+   */
+  def tryInsertImplicit(tree: Tree, pt: ProtoType)(implicit ctx: Context): Tree = ctx.traceIndented(i"try ins impl $tree $pt") { tree match {
+    case Select(qual, name) =>
+      val normalizedProto = pt match {
+        case pt: FunProto => pt.derivedFunProto(pt.args, WildcardType, pt.typer) // drop result type, because views are disabled
+        case _ => pt
+      }
+      val qualProto = SelectionProto(name, normalizedProto, NoViewsAllowed)
+      tryEither { implicit ctx =>
+        val qual1 = adaptInterpolated(qual, qualProto)
+        if ((qual eq qual1) || ctx.reporter.hasErrors) tree
+        else typedSelect(cpy.Select(tree, untpd.TypedSplice(qual1), name), pt)
+      } { (_, _) => tree
+      }
+    case _ => tree
+  }}
 
   def adapt(tree: Tree, pt: Type)(implicit ctx: Context) = /*>|>*/ track("adapt") /*<|<*/ {
     /*>|>*/ ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
@@ -1087,7 +1113,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           def hasEmptyParams(denot: SingleDenotation) = denot.info.paramTypess == ListOfNil
           pt match {
             case pt: FunProto =>
-              tryInsertApply(tree, pt)((_, _) => noMatches)
+              tryInsertApplyOrImplicit(tree, pt)((_, _) => noMatches)
             case _ =>
               if (altDenots exists (_.info.paramTypess == ListOfNil))
                 typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt)
@@ -1113,7 +1139,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           adaptToArgs(wtp, pt.tupled)
         else
           tree
-      case _ => tryInsertApply(tree, pt) {
+      case _ => tryInsertApplyOrImplicit(tree, pt) {
         val more = tree match {
           case Apply(_, _) => " more"
           case _ => ""
@@ -1216,7 +1242,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             case pt: FunProto =>
               adaptToArgs(wtp, pt)
             case pt: PolyProto =>
-              tryInsertApply(tree, pt) {
+              tryInsertApplyOrImplicit(tree, pt) {
                 (_, _) => tree // error will be reported in typedTypeApply
               }
             case _ =>

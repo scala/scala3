@@ -368,7 +368,10 @@ trait Implicits { self: Typer =>
                  return defn.isValueSubClass(from.symbol, to.symbol)
                case _ =>
              }
+           case from: ValueType =>
+             ;
            case _ =>
+             return false
          }
          inferView(dummyTreeOfType(from), to)(ctx.fresh.setExploreTyperState).isInstanceOf[SearchSuccess]
        }
@@ -410,12 +413,15 @@ trait Implicits { self: Typer =>
         else new ImplicitSearch(pt, argument, pos)
       val result = isearch.bestImplicit
       result match {
-        case success: SearchSuccess =>
-          // println(s"committing to ${success.tstate.show}")
-          success.tstate.commit()
+        case result: SearchSuccess =>
+          result.tstate.commit()
+          result
+        case result: AmbiguousImplicits =>
+          val deepPt = pt.deepenProto
+          if (deepPt ne pt) inferImplicit(deepPt, argument, pos) else result
         case _ =>
+          result
       }
-      result
     }
   }
 
