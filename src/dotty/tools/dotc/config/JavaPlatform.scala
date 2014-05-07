@@ -5,7 +5,9 @@ package config
 import io.{AbstractFile,ClassPath,JavaClassPath,MergedClassPath,DeltaClassPath}
 import ClassPath.{ JavaContext, DefaultJavaContext }
 import core.Contexts._
-import core.SymDenotations._, core.Symbols._, core.{SymbolLoader, ClassfileLoader}
+import core.SymDenotations._, core.Symbols._, dotty.tools.dotc.core._
+import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
+import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._
 
 class JavaPlatform extends Platform {
 
@@ -16,6 +18,22 @@ class JavaPlatform extends Platform {
       currentClassPath = Some(new PathResolver().result)
     currentClassPath.get
   }
+
+  // The given symbol is a method with the right name and signature to be a runnable java program.
+  def isJavaMainMethod(sym: SymDenotation)(implicit ctx: Context) = {
+    val dn = defn
+    (sym.name == nme.main) && (sym.info match {
+      case t@MethodType(_, dn.ArrayType(el) :: Nil) => el =:= defn.StringType && (t.resultType isRef defn.UnitClass)
+      case _ => false
+    })
+  }
+
+  // The given class has a main method.
+  def hasJavaMainMethod(sym: Symbol)(implicit ctx: Context): Boolean =
+    (sym.info member nme.main).hasAltWith {
+      case x: SymDenotation => isJavaMainMethod(x)
+      case _ => false
+    }
 
   /** Update classpath with a substituted subentry */
   def updateClassPath(subst: Map[ClassPath, ClassPath]) =

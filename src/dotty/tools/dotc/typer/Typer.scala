@@ -956,7 +956,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
-    if (!tree.isEmpty && ctx.typerState.isGlobalCommittable) assert(tree.pos.exists, tree)
+    if (!tree.isEmpty && ctx.typerState.isGlobalCommittable) assert(tree.pos.exists, i"position not set for $tree")
     try adapt(typedUnadapted(tree, pt), pt)
     catch {
       case ex: CyclicReference => errorTree(tree, cyclicErrorMsg(ex))
