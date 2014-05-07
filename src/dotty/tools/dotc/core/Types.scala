@@ -2002,11 +2002,22 @@ object Types {
     // cached because baseType needs parents
     private var parentsCache: List[TypeRef] = null
 
+    /** The parent type refs as seen from the given prefix */
     override def parents(implicit ctx: Context): List[TypeRef] = {
       if (parentsCache == null)
         parentsCache = cls.classParents.mapConserve(rebase(_).asInstanceOf[TypeRef])
       parentsCache
     }
+
+    /** The parent types with all type arguments */
+    def instantiatedParents(implicit ctx: Context): List[Type] =
+      parents mapConserve { pref =>
+        ((pref: Type) /: pref.classSymbol.typeParams) { (parent, tparam) =>
+          val targSym = decls.lookup(tparam.name)
+          if (targSym.exists) RefinedType(parent, targSym.name, targSym.info)
+          else parent
+        }
+      }
 
     def derivedClassInfo(prefix: Type)(implicit ctx: Context) =
       if (prefix eq this.prefix) this

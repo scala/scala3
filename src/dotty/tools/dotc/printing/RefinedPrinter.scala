@@ -115,8 +115,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             case _ => nameString(tp.symbol)
           }
         }
+        else if (tp.symbol.isAnonymousClass)
+          return toText(tp.info)
       case ExprType(result) =>
         return "=> " ~ toText(result)
+      case tp: ClassInfo =>
+        return toTextParents(tp.instantiatedParents) ~ "{...}"
       case tp: SelectionProto =>
         return toText(RefinedType(WildcardType, tp.name, tp.memberProto))
       case tp: ViewProto =>
@@ -436,13 +440,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override protected def treatAsTypeArg(sym: Symbol) =
     sym.isType && (sym is ProtectedLocal) &&
       (sym.allOverriddenSymbols exists (_ is TypeParam))
-
-  override protected def reconstituteParent(cls: ClassSymbol, parent: Type): Type =
-    (parent /: parent.classSymbol.typeParams) { (parent, tparam) =>
-      val targSym = cls.decls.lookup(tparam.name)
-      if (targSym.exists) RefinedType(parent, targSym.name, targSym.info)
-      else parent
-    }
 
   override def toText(sym: Symbol): Text = {
     if (sym.name == nme.IMPORT) {
