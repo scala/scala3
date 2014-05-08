@@ -18,7 +18,7 @@ project/local-plugins.sbt
 .classpath
 .project
 .settings
-bin/
+classes/
 
 # idea
 .idea
