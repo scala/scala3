@@ -129,7 +129,7 @@ class TailRec extends TreeTransform with DenotTransformer {
               Block(
                 List(res),
                 vparamss0.foldLeft(Apply(call, List(This(owner))))
-                  {case (call, args) => Apply(call, args.map(x=> Ident(x.symbol.termRef)))}
+                  {(call, args) => Apply(call, args.map(x => Ident(x.symbol.termRef)))}
                 )
             }
             else {
