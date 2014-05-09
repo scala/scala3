@@ -38,7 +38,7 @@ abstract class CreateCompanionObjects extends TreeTransform {
           else {
             val moduleSymbol = ctx.newCompleteModuleSymbol(claz.symbol.owner, claz.name.toTermName, Flags.Synthetic, Flags.Synthetic, List(defn.ObjectClass.typeRef), Scopes.newScope)
             if (moduleSymbol.owner.isClass) moduleSymbol.entered
-            val companion = tpd.ModuleDef(moduleSymbol, List(EmptyTree))
+            val companion = tpd.ModuleDef(moduleSymbol, List(EmptyTree)).withPos(claz.pos)
             acc += claz
             acc += companion
             transformStats0(stats, acc)
