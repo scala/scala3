@@ -775,6 +775,10 @@ object Trees {
     override def isEmpty: Boolean = trees.isEmpty
     override def toList: List[Tree[T]] = flatten(trees)
     override def toString = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
+    override def withPos(pos: Position): this.type = {
+      val newTrees = trees.map(_.withPos(pos))
+      new Thicket[T](newTrees).asInstanceOf[this.type]
+    }
   }
 
   class EmptyValDef[T >: Untyped] extends ValDef[T](
