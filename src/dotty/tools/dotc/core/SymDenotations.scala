@@ -46,8 +46,9 @@ trait SymDenotations { this: Context =>
         case ClassInfo(_, _, _, _, selfInfo) => selfInfo == denot.symbol
         case _ => false
       }
-      stillValid(owner) && owner.isClass && (
-           (owner.decls.lookupAll(denot.name) contains denot.symbol)
+      stillValid(owner) && (
+           !owner.isClass
+        || (owner.decls.lookupAll(denot.name) contains denot.symbol)
         || isSelfSym
         )
     } catch {

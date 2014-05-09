@@ -166,17 +166,14 @@ trait TypeAssigner {
    *   - any further information it needs to access to compute that type.
    */
 
-  def assignType(tree: untpd.Ident, rawType: Type)(implicit ctx: Context) = {
-    tree.withType(if (tree.isType) rawType else rawType.underlyingIfRepeated)
-  }
+  def assignType(tree: untpd.Ident, tp: Type)(implicit ctx: Context) =
+    tree.withType(tp)
 
-  def assignType(tree: untpd.Select, qual: Tree)(implicit ctx: Context) = {
+  def assignType(tree: untpd.Select, qual: Tree)(implicit ctx: Context) =
     tree.withType(accessibleSelectionType(tree, qual))
-  }
 
-  def assignType(tree: untpd.SelectFromTypeTree, qual: Tree)(implicit ctx: Context) = {
+  def assignType(tree: untpd.SelectFromTypeTree, qual: Tree)(implicit ctx: Context) =
     tree.withType(accessibleSelectionType(tree, qual))
-  }
 
   def assignType(tree: untpd.New, tpt: Tree)(implicit ctx: Context) =
     tree.withType(tpt.tpe)

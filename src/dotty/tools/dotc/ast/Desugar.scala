@@ -751,7 +751,9 @@ object desugar {
           makeBinop(l, op, r)
       case PostfixOp(t, op) =>
         if ((ctx.mode is Mode.Type) && op == nme.raw.STAR)
-          AppliedTypeTree(ref(defn.RepeatedParamType), t)
+          Annotated(
+            New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil),
+            AppliedTypeTree(ref(defn.SeqClass.typeRef), t))
         else {
           assert(ctx.mode.isExpr, ctx.mode)
           Select(t, op)

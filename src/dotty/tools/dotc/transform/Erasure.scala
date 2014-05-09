@@ -33,7 +33,10 @@ class Erasure extends Phase with DenotTransformer {
   def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
     case ref: SymDenotation =>
       assert(ctx.phase == this, s"transforming $ref at ${ctx.phase}")
-      ref.copySymDenotation(info = transformInfo(ref.symbol, ref.info))
+      val owner = ref.owner
+      ref.copySymDenotation(
+        owner = if (owner eq defn.AnyClass) defn.ObjectClass else owner,
+        info = transformInfo(ref.symbol, ref.info))
     case ref =>
       ref.derivedSingleDenotation(ref.symbol, erasure(ref.info))
   }
@@ -136,7 +139,7 @@ object Erasure {
           cast(runtimeCall(nme.toObjectArray, tree :: Nil), pt)
         case _ =>
           ctx.log(s"casting from ${tree.showSummary}: ${tree.tpe.show} to ${pt.show}")
-          TypeApply(Select(tree, defn.Object_asInstanceOf), TypeTree(pt) :: Nil)
+          TypeApply(Select(tree, defn.Any_asInstanceOf), TypeTree(pt) :: Nil)
       }
 
     /** Adaptation of an expression `e` to an expected type `PT`, applying the following
@@ -195,7 +198,7 @@ object Erasure {
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       val sym = tree.symbol
-      assert(sym.exists)
+      assert(sym.exists, tree.show)
 
       def select(qual: Tree, sym: Symbol): Tree =
         untpd.cpy.Select(tree, qual, sym.name) withType qual.tpe.select(sym)
@@ -242,6 +245,8 @@ object Erasure {
         case mt: MethodType =>
           val args1 = args.zipWithConserve(mt.paramTypes)(typedExpr)
           untpd.cpy.Apply(tree, fun1, args1) withType mt.resultType
+        case _ =>
+          throw new MatchError(i"tree $tree has uxpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
       }
     }
 

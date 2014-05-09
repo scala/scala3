@@ -519,80 +519,92 @@ class Namer { typer: Typer =>
    *                  defined symbol, given its final return type
    */
   def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, typeParams: List[Symbol], paramFn: Type => Type)(implicit ctx: Context): Type = {
-    val pt =
-      if (!mdef.tpt.isEmpty) WildcardType
-      else {
 
-        /** An type for this definition that might be inherited from elsewhere:
-         *  If this is a setter parameter, the corresponding getter type.
-         *  If this is a class member, the conjunction of all result types
-         *  of overridden methods.
-         *  NoType if neither case holds.
-         */
-        val inherited =
-          if (sym.owner.isTerm) NoType
-          else {
-            // TODO: Look only at member of supertype instead?
-            lazy val schema = paramFn(WildcardType)
-            val site = sym.owner.thisType
-            ((NoType: Type) /: sym.owner.info.baseClasses.tail) { (tp, cls) =>
-              val iRawInfo =
-                cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema).info
-              val iInstInfo = iRawInfo match {
-                case iRawInfo: PolyType =>
-                  if (iRawInfo.paramNames.length == typeParams.length)
-                    iRawInfo.instantiate(typeParams map (_.typeRef))
-                  else NoType
-                case _ =>
-                  if (typeParams.isEmpty) iRawInfo
-                  else NoType
-              }
-              val iResType = iInstInfo.finalResultType.asSeenFrom(site, cls)
-              if (iResType.exists)
-                typr.println(s"using inherited type; raw: $iRawInfo, inst: $iInstInfo, inherited: $iResType")
-              tp & iResType
+    def inferredType = {
+      /** A type for this definition that might be inherited from elsewhere:
+       *  If this is a setter parameter, the corresponding getter type.
+       *  If this is a class member, the conjunction of all result types
+       *  of overridden methods.
+       *  NoType if neither case holds.
+       */
+      val inherited =
+        if (sym.owner.isTerm) NoType
+        else {
+          // TODO: Look only at member of supertype instead?
+          lazy val schema = paramFn(WildcardType)
+          val site = sym.owner.thisType
+          ((NoType: Type) /: sym.owner.info.baseClasses.tail) { (tp, cls) =>
+            val iRawInfo =
+              cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema).info
+            val iInstInfo = iRawInfo match {
+              case iRawInfo: PolyType =>
+                if (iRawInfo.paramNames.length == typeParams.length)
+                  iRawInfo.instantiate(typeParams map (_.typeRef))
+                else NoType
+              case _ =>
+                if (typeParams.isEmpty) iRawInfo
+                else NoType
             }
-          }
-
-        /** The proto-type to be used when inferring the result type from
-         *  the right hand side. This is `WildcardType` except if the definition
-         *  is a default getter. In that case, the proto-type is the type of
-         *  the corresponding parameter where bound parameters are replaced by
-         *  Wildcards.
-         */
-        def rhsProto = {
-          val name = sym.asTerm.name
-          val idx = name.defaultGetterIndex
-          if (idx < 0) WildcardType
-          else {
-            val original = name.defaultGetterToMethod
-            val meth: Denotation =
-              if (original.isConstructorName && (sym.owner is ModuleClass))
-                sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
-              else
-                ctx.defContext(sym).denotNamed(original)
-            def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
-              case params :: paramss1 =>
-                if (idx < params.length) wildApprox(params(idx))
-                else paramProto(paramss1, idx - params.length)
-              case nil =>
-                WildcardType
-            }
-            val defaultAlts = meth.altsWith(_.hasDefaultParams)
-            if (defaultAlts.length == 1)
-              paramProto(defaultAlts.head.info.widen.paramTypess, idx)
-            else
-              WildcardType
+            val iResType = iInstInfo.finalResultType.asSeenFrom(site, cls)
+            if (iResType.exists)
+              typr.println(s"using inherited type; raw: $iRawInfo, inst: $iInstInfo, inherited: $iResType")
+            tp & iResType
           }
         }
 
-        // println(s"final inherited for $sym: ${inherited.toString}") !!!
-        // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
-        val rhsCtx = ctx.fresh addMode Mode.InferringReturnType
-        def rhsType = typedAheadExpr(mdef.rhs, rhsProto)(rhsCtx).tpe.widen.approximateUnion
-        def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)
-        inherited orElse lhsType orElse WildcardType
+      /** The proto-type to be used when inferring the result type from
+       *  the right hand side. This is `WildcardType` except if the definition
+       *  is a default getter. In that case, the proto-type is the type of
+       *  the corresponding parameter where bound parameters are replaced by
+       *  Wildcards.
+       */
+      def rhsProto = {
+        val name = sym.asTerm.name
+        val idx = name.defaultGetterIndex
+        if (idx < 0) WildcardType
+        else {
+          val original = name.defaultGetterToMethod
+          val meth: Denotation =
+            if (original.isConstructorName && (sym.owner is ModuleClass))
+              sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
+            else
+              ctx.defContext(sym).denotNamed(original)
+          def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
+            case params :: paramss1 =>
+              if (idx < params.length) wildApprox(params(idx))
+              else paramProto(paramss1, idx - params.length)
+            case nil =>
+              WildcardType
+          }
+          val defaultAlts = meth.altsWith(_.hasDefaultParams)
+          if (defaultAlts.length == 1)
+            paramProto(defaultAlts.head.info.widen.paramTypess, idx)
+          else
+            WildcardType
+        }
       }
+
+      // println(s"final inherited for $sym: ${inherited.toString}") !!!
+      // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
+      val rhsCtx = ctx.fresh addMode Mode.InferringReturnType
+      def rhsType = typedAheadExpr(mdef.rhs, rhsProto)(rhsCtx).tpe.widen.approximateUnion
+      def lhsType = fullyDefinedType(rhsType, "right-hand side", mdef.pos)
+      if (inherited.exists) inherited
+      else {
+        if (sym is Implicit) {
+          val resStr = if (mdef.isInstanceOf[DefDef]) "result " else ""
+          ctx.error(d"${resStr}type of implicit definition needs to be given explicitly", mdef.pos)
+          sym.resetFlag(Implicit)
+        }
+        lhsType orElse WildcardType
+      }
+    }
+
+    val pt = mdef.tpt match {
+      case _: untpd.DerivedTypeTree => WildcardType
+      case TypeTree(untpd.EmptyTree) => inferredType
+      case _ => WildcardType
+    }
     paramFn(typedAheadType(mdef.tpt, pt).tpe)
   }
 

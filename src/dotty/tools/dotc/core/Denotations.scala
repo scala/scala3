@@ -600,7 +600,7 @@ object Denotations {
         case denot: SymDenotation => s"in ${denot.owner}"
         case _ => ""
       }
-      def msg = s"stale symbol; $this#${symbol.id} $ownerMsg, defined in run ${myValidFor.runId}, is referred to in run ${ctx.runId}"
+      def msg = s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${myValidFor}, is referred to in run ${ctx.period}"
       throw new StaleSymbol(msg)
     }
 

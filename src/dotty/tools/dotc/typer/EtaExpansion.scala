@@ -116,6 +116,7 @@ object EtaExpansion {
    */
   def etaExpand(tree: Tree, mt: MethodType, xarity: Int)(implicit ctx: Context): untpd.Tree = {
     import untpd._
+    assert(!ctx.isAfterTyper)
     val defs = new mutable.ListBuffer[tpd.Tree]
     val lifted: Tree = TypedSplice(liftApp(defs, tree))
     val paramTypes: List[Tree] =

@@ -54,7 +54,7 @@ class LazyValTranformContext {
 
   val infoTransformerNewDefinitions = mutable.Map.empty[ClassSymbol, ListBuffer[Symbol]]
 
-  def addSym(owner: ClassSymbol, sym: Symbol) {
+  def addSym(owner: ClassSymbol, sym: Symbol) = {
     infoTransformerNewDefinitions.get(owner) match {
       case Some(x) => x += sym
       case None => infoTransformerNewDefinitions.put(owner, ListBuffer(sym))

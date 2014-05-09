@@ -14,7 +14,7 @@ import collection.mutable
 class TyperState(val reporter: Reporter) extends DotClass with Showable {
 
   /** The current constraint set */
-  def constraint: Constraint = new Constraint(SimpleMap.Empty)
+  def constraint: Constraint = new Constraint(SimpleMap.Empty, SimpleMap.Empty)
   def constraint_=(c: Constraint): Unit = {}
 
   /** The uninstantiated variables */
@@ -27,6 +27,9 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
    */
   def instType(tvar: TypeVar): Type = constraint.at(tvar.origin) match {
     case _: TypeBounds => NoType
+    case tp: PolyParam =>
+      var tvar1 = constraint.typeVarOfParam(tp)
+      if (tvar1.exists) tvar1 else tp
     case tp => tp
   }
 
@@ -35,6 +38,9 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
    */
   def fresh(isCommittable: Boolean): TyperState = this
 
+  /** A fresh type state with the same constraint as this one and the given reporter */
+  def withReporter(reporter: Reporter) = new TyperState(reporter)
+
   /** Commit state so that it gets propagated to enclosing context */
   def commit()(implicit ctx: Context): Unit = unsupported("commit")
 
@@ -42,7 +48,7 @@ class TyperState(val reporter: Reporter) extends DotClass with Showable {
    *  type variable instantiation cannot be retracted anymore. Then, remove
    *  no-longer needed constraint entries.
    */
-  def gc(): Unit = ()
+  def gc()(implicit ctx: Context): Unit = ()
 
   /** Is it allowed to commit this state? */
   def isCommittable: Boolean = false
@@ -63,6 +69,9 @@ extends TyperState(reporter) {
 
   override def fresh(isCommittable: Boolean): TyperState =
     new MutableTyperState(this, new StoreReporter, isCommittable)
+
+  override def withReporter(reporter: Reporter) =
+    new MutableTyperState(this, reporter, isCommittable)
 
   override val isGlobalCommittable =
     isCommittable &&
@@ -87,7 +96,7 @@ extends TyperState(reporter) {
     reporter.flush()
   }
 
-  override def gc(): Unit = {
+  override def gc()(implicit ctx: Context): Unit = {
     val toCollect = new mutable.ListBuffer[PolyType]
     constraint foreachTypeVar { tvar =>
       if (!tvar.inst.exists) {

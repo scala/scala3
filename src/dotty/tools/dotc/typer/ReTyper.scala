@@ -4,6 +4,7 @@ package typer
 import core.Contexts._
 import core.Types._
 import core.Symbols._
+import core.Decorators._
 import typer.ProtoTypes._
 import ast.{tpd, untpd}
 import ast.Trees._
@@ -20,7 +21,7 @@ class ReTyper extends Typer {
   import tpd._
 
   protected def promote(tree: untpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
-    assert(tree.hasType)
+    assert(tree.hasType, i"$tree ${tree.getClass} ${tree.uniqueId}")
     tree.withType(tree.typeOpt)
   }
 
@@ -38,6 +39,9 @@ class ReTyper extends Typer {
     val qual1 = typed(tree.qualifier, AnySelectionProto)
     untpd.cpy.SelectFromTypeTree(tree, qual1, tree.name).withType(tree.typeOpt)
   }
+
+  override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Literal =
+    promote(tree)
 
   override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree =
     promote(tree)

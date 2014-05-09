@@ -69,15 +69,6 @@ trait Checking {
       defn.ObjectClass.typeRef
   }
 
-  /** Check that (return) type of implicit definition is not empty */
-  def checkImplicitTptNonEmpty(defTree: untpd.ValOrDefDef)(implicit ctx: Context): Unit = defTree.tpt match {
-    case tpt: untpd.DerivedTypeTree =>
-    case TypeTree(untpd.EmptyTree) =>
-      val resStr = if (defTree.isInstanceOf[untpd.DefDef]) "result " else ""
-      ctx.error(d"${resStr}type of implicit definition needs to be given explicitly", defTree.pos)
-    case _ =>
-  }
-
   /** Check that a non-implicit parameter making up the first parameter section of an
    *  implicit conversion is not a singleton type.
    */
@@ -150,7 +141,6 @@ trait NoChecking extends Checking {
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkLegalPrefix(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type = tp
-  override def checkImplicitTptNonEmpty(defTree: untpd.ValOrDefDef)(implicit ctx: Context): Unit = ()
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()

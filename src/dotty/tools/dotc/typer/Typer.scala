@@ -260,7 +260,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         error(d"not found: $kind$name", tree.pos)
         ErrorType
       }
-    checkValue(tree.withType(ownType.underlyingIfRepeated), pt)
+    checkValue(tree.withType(ownType), pt)
   }
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
@@ -753,7 +753,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val ValDef(mods, name, tpt, rhs) = vdef
     val mods1 = typedModifiers(mods, sym)
     val tpt1 = typedType(tpt)
-    if ((sym is Implicit) && sym.owner.isType) checkImplicitTptNonEmpty(vdef)
     val rhs1 = rhs match {
       case Ident(nme.WILDCARD) => rhs withType tpt1.tpe
       case _ => typedExpr(rhs, tpt1.tpe)
@@ -766,10 +765,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val mods1 = typedModifiers(mods, sym)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
-    if (sym is Implicit) {
-      if (sym.owner.isType) checkImplicitTptNonEmpty(ddef)
-      checkImplicitParamsNotSingletons(vparamss1)
-    }
+    if (sym is Implicit) checkImplicitParamsNotSingletons(vparamss1)
     val tpt1 = typedType(tpt)
     val rhs1 = typedExpr(rhs, tpt1.tpe)
     assignType(cpy.DefDef(ddef, mods1, name, tparams1, vparamss1, tpt1, rhs1), sym)
@@ -1137,7 +1133,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           def where = d"parameter $pname of $methodStr"
           inferImplicit(formal, EmptyTree, tree.pos.endPos) match {
             case SearchSuccess(arg, _, _) =>
-              arg
+              adapt(arg, formal)
             case ambi: AmbiguousImplicits =>
               implicitArgError(s"ambiguous implicits: ${ambi.explanation} of $where")
             case failure: SearchFailure =>

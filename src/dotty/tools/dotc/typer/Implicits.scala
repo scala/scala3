@@ -65,7 +65,7 @@ object Implicits {
           case tpw =>
             //if (ctx.typer.isApplicable(tp, argType :: Nil, resultType))
             //  println(i"??? $tp is applicable to $this / typeSymbol = ${tpw.typeSymbol}")
-            !tpw.derivesFrom(defn.FunctionClass(1))
+            !tpw.derivesFrom(defn.FunctionClass(1)) || tpw.isRef(defn.PredefConformsClass)
         }
 
         def discardForValueType(tpw: Type): Boolean = tpw match {
@@ -400,6 +400,9 @@ trait Implicits { self: Typer =>
    *  !!! todo: catch potential cycles
    */
   def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
+    assert(!ctx.isAfterTyper,
+      if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
+      else i"type error: ${argument.tpe} does not conform to $pt")
     ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       assert(!pt.isInstanceOf[ExprType])
       val isearch =
@@ -472,7 +475,7 @@ trait Implicits { self: Typer =>
           shadowedImplicit(ref, methPart(shadowing).tpe)
         }
         else
-          SearchSuccess(generated, ref, ctx.typerState)
+          SearchSuccess(generated1, ref, ctx.typerState)
       }}
 
       /** Given a list of implicit references, produce a list of all implicit search successes,

@@ -180,6 +180,8 @@ object Trees {
     def tokenPos: Seq[(Token, Position)] = ???
   }
 
+  private var nextId = 0
+
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Type` or `Untyped`.
    *  Untyped trees have type `Tree[Untyped]`.
@@ -203,6 +205,15 @@ object Trees {
                                         with Cloneable {
 
     if (Stats.enabled) ntrees += 1
+
+    /** A unique identifier for this tree. Used for debugging, and potentially
+     *  tracking presentation compiler interactions
+     */
+    val uniqueId = {
+      nextId += 1
+      //assert(nextId != 214, this)
+      nextId
+    }
 
     /** The type  constructor at the root of the tree */
     type ThisTree[T >: Untyped] <: Tree[T]

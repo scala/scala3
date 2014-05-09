@@ -210,8 +210,24 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
     ta.assignType(untpd.TypeDef(Modifiers(sym), sym.name, TypeTree(sym.info)), sym)
 
-  def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree])(implicit ctx: Context): TypeDef = {
-    val parents = cls.info.parents map (TypeTree(_))
+  def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree], superArgs: List[Tree] = Nil)(implicit ctx: Context): TypeDef = {
+    val firstParent :: otherParents = cls.info.parents
+    val superRef =
+      if (cls is Trait) TypeTree(firstParent)
+      else {
+        def isApplicable(ctpe: Type): Boolean = ctpe match {
+          case ctpe: PolyType =>
+            isApplicable(ctpe.instantiate(firstParent.argTypes))
+          case ctpe: MethodType =>
+            (superArgs corresponds ctpe.paramTypes)(_.tpe <:< _)
+          case _ =>
+            false
+        }
+        val constr = firstParent.decl(nme.CONSTRUCTOR).suchThat(constr => isApplicable(constr.info))
+        New(firstParent, constr.symbol.asTerm, superArgs)
+      }
+    val parents = superRef :: otherParents.map(TypeTree(_))
+
     val selfType =
       if (cls.classInfo.selfInfo ne NoType) ValDef(ctx.newSelfSym(cls))
       else EmptyValDef
@@ -260,10 +276,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   // ------ Creating typed equivalents of trees that exist only in untyped form -------
 
-  /** new C(args) */
-  def New(tp: Type, args: List[Tree])(implicit ctx: Context): Apply = {
+  /** new C(args), calling the primary constructor of C */
+  def New(tp: Type, args: List[Tree])(implicit ctx: Context): Apply =
+    New(tp, tp.typeSymbol.primaryConstructor.asTerm, args)
+
+  /** new C(args), calling given constructor `constr` of C */
+  def New(tp: Type, constr: TermSymbol, args: List[Tree])(implicit ctx: Context): Apply = {
     val targs = tp.argTypes
-    val constr = tp.typeSymbol.primaryConstructor.asTerm
     Apply(
       Select(
         New(tp withoutArgs targs),
