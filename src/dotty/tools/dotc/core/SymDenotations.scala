@@ -418,7 +418,7 @@ object SymDenotations {
 
     /** Is this symbol a class that does not extend `AnyVal`? */
     final def isNonValueClass(implicit ctx: Context): Boolean =
-      isClass && !derivesFrom(defn.AnyValClass)
+      isClass && !derivesFrom(defn.AnyValClass) && (symbol ne defn.NothingClass)
 
     /** Is this symbol a class references to which that are supertypes of null? */
     final def isNullableClass(implicit ctx: Context): Boolean =

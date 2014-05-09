@@ -28,7 +28,11 @@ object ErrorReporting {
     def errorMsg(msg: String, cx: Context): String =
       if (cx.mode is Mode.InferringReturnType) {
         cx.tree match {
-          case tree: Trees.ValOrDefDef[_] =>
+          case tree: untpd.ValOrDefDef =>
+              // Dotty deviation: Was Trees.ValOrDefDef[_], but this gives ValOrDefDef[Nothing] instead of
+              // ValOrDefDel[Null]. Scala handles it, but it looks accidental because bounds propagation
+              // fails if the parameter is invariant or cotravariant.
+              // See test pending/pos/boundspropagation.scala
             val treeSym = ctx.symOfContextTree(tree)
             if (treeSym.exists && treeSym.name == cycleSym.name && treeSym.owner == cycleSym.owner) {
               val result = if (cycleSym.isSourceMethod) " result" else ""
