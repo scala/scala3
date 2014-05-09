@@ -109,7 +109,10 @@ object Phases {
           squashedPhases += block
           prevPhases ++= phasess(i).map(_.name)
           block.init(this, phasess(i).head.id, phasess(i).last.id)
-        } else squashedPhases += phasess(i).head
+        } else {
+          squashedPhases += phasess(i).head
+          prevPhases += phasess(i).head.name
+        }
         i += 1
       }
       (NoPhase :: squashedPhases.toList ::: new TerminalPhase :: Nil).toArray
