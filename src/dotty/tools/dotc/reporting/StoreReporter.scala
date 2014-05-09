@@ -29,5 +29,8 @@ class StoreReporter extends Reporter {
   }
 
   override def flush()(implicit ctx: Context) =
-    if (infos != null) infos foreach ctx.reporter.report
+    if (infos != null) {
+      infos foreach ctx.reporter.report
+      infos = null
+    }
 }

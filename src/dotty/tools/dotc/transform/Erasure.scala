@@ -349,7 +349,7 @@ object Erasure {
       tpd.DefDef(bridge, { paramss: List[List[tpd.Tree]] =>
           val rhs = paramss.foldLeft(sel)((fun, vparams) =>
             fun.tpe.widen match {
-              case MethodType(names, types) => Apply(fun, (vparams, types).zipped.map(adapt))
+              case MethodType(names, types) => Apply(fun, (vparams, types).zipped.map(adapt(_, _, untpd.EmptyTree)))
               case a => error(s"can not resolve apply type $a")
 
             })
@@ -357,7 +357,7 @@ object Erasure {
       })
     }
 
-    override def adapt(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
+    override def adapt(tree: Tree, pt: Type, original: untpd.Tree)(implicit ctx: Context): Tree =
       ctx.traceIndented(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
         assert(ctx.phase == ctx.erasurePhase.next, ctx.phase)
         if (tree.isEmpty) tree else adaptToType(tree, pt)

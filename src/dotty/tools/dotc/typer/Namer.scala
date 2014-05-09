@@ -404,8 +404,18 @@ class Namer { typer: Typer =>
         }
     }
 
-    final override def complete(denot: SymDenotation)(implicit ctx: Context) =
+    final override def complete(denot: SymDenotation)(implicit ctx: Context) = {
+      if (completions != noPrinter && ctx.typerState != this.ctx.typerState) {
+        completions.println(completions.getClass.toString)
+        def levels(c: Context): Int =
+          if (c.typerState eq this.ctx.typerState) 0
+          else if (c.typerState == null) -1
+          else if (c.outer.typerState == c.typerState) levels(c.outer)
+          else levels(c.outer) + 1
+        completions.println(s"!!!completing ${denot.symbol.showLocated} in buried typerState, gap = ${levels(ctx)}")
+      }
       completeInCreationContext(denot)
+    }
 
     def completeInCreationContext(denot: SymDenotation): Unit =
       denot.info = typeSig(denot.symbol)

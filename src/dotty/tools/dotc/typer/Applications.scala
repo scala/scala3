@@ -346,7 +346,7 @@ trait Applications extends Compatibility { self: Typer =>
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =
-      typedArgBuf += adaptInterpolated(arg, formal.widenExpr)
+      typedArgBuf += adaptInterpolated(arg, formal.widenExpr, EmptyTree)
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList

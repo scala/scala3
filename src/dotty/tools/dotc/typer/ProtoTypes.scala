@@ -204,7 +204,7 @@ object ProtoTypes {
         targ = typer.typedUnadapted(arg, formal)
         if (!ctx.reporter.hasPending) myTypedArg = myTypedArg.updated(arg, targ)
       }
-      typer.adapt(targ, formal)
+      typer.adapt(targ, formal, arg)
     }
 
     private var myTupled: Type = NoType
@@ -236,7 +236,7 @@ object ProtoTypes {
    *
    *    []: argType => resultType
    */
-  abstract case class ViewProto(argType: Type, override val resultType: Type)(implicit ctx: Context)
+  abstract case class ViewProto(argType: Type, override val resultType: Type)
   extends CachedGroundType with ApplyingProto {
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean =
   	  ctx.typer.isApplicable(tp, argType :: Nil, resultType)
@@ -253,7 +253,7 @@ object ProtoTypes {
     override def deepenProto(implicit ctx: Context) = derivedViewProto(argType, resultType.deepenProto)
   }
 
-  class CachedViewProto(argType: Type, resultType: Type)(implicit ctx: Context) extends ViewProto(argType, resultType) {
+  class CachedViewProto(argType: Type, resultType: Type) extends ViewProto(argType, resultType) {
     override def computeHash = doHash(argType, resultType)
   }
 
@@ -373,7 +373,8 @@ object ProtoTypes {
     case tp @ PolyParam(poly, pnum) =>
       ctx.typerState.constraint.at(tp) match {
         case bounds: TypeBounds => wildApprox(WildcardType(bounds))
-        case _ => WildcardType(wildApprox(poly.paramBounds(pnum)).bounds)
+        case NoType => WildcardType(wildApprox(poly.paramBounds(pnum)).bounds)
+        case inst => wildApprox(inst)
       }
     case MethodParam(mt, pnum) =>
       WildcardType(TypeBounds.upper(wildApprox(mt.paramTypes(pnum))))
