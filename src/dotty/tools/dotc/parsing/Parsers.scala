@@ -447,10 +447,6 @@ object Parsers {
       if (tok == BACKQUOTED_IDENT) BackquotedIdent(name)
       else Ident(name)
 
-    /** IdentOrWildcard ::= id | `_' */
-    def identOrWildcard(): Name =
-      if (in.token == USCORE) { in.nextToken(); nme.WILDCARD } else ident()
-
     def wildcardIdent(): Ident =
       atPos(accept(USCORE)) { Ident(nme.WILDCARD) }
 
@@ -1478,7 +1474,12 @@ object Parsers {
           if (mods is VarianceFlags) in.nextToken()
         }
         atPos(tokenRange) {
-          val name = (if (isConcreteOwner) ident() else identOrWildcard()).toTypeName
+          val name =
+            if (isConcreteOwner || in.token != USCORE) ident().toTypeName
+            else {
+              in.nextToken()
+              ctx.freshName(nme.USCORE_PARAM_PREFIX).toTypeName
+            }
           val hkparams =
             if (ownerKind == ParamOwner.TypeParam) Nil
             else typeParamClauseOpt(ParamOwner.TypeParam)
