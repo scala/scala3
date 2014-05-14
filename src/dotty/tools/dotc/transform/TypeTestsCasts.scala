@@ -36,7 +36,7 @@ class TypeTestsCasts extends TreeTransform {
         def derivedTree(qual1: Tree, sym: Symbol, tp: Type) =
           cpy.TypeApply(tree, Select(qual1, sym) withPos qual.pos, List(TypeTree(tp)))
 
-        def qualCls = qual.tpe.classSymbol
+        def qualCls = qual.tpe.widen.classSymbol
 
         def transformIsInstanceOf(expr:Tree, argType: Type): Tree = {
           if (expr.tpe <:< argType)
