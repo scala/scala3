@@ -104,14 +104,14 @@ class tests extends CompilerTest {
       dotcDir + "tools/dotc/CompilationUnit.scala",
       dotcDir + "tools/dotc/core/Types.scala",
       dotcDir + "tools/dotc/ast/Trees.scala",
-      "-Ylog:frontend",
+      //"-Ylog:frontend",
       "-Xprompt",
       "#runs", "2"))
 
   @Test def testIssue_34 = compileArgs(Array(
       dotcDir + "tools/dotc/config/Properties.scala",
       dotcDir + "tools/dotc/config/PathResolver.scala",
-      "-Ylog:frontend",
+      //"-Ylog:frontend",
       "-Xprompt",
       "#runs", "2"))
 
