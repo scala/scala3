@@ -46,6 +46,11 @@ object Typer {
     val nothingBound = 0
     def isImportPrec(prec: Int) = prec == namedImport || prec == wildImport
   }
+
+  /** Assert tree has a position, unless it is empty or a typed splice */
+  def assertPositioned(tree: untpd.Tree)(implicit ctx: Context) =
+    if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable)
+      assert(tree.pos.exists, s"position not set for $tree # ${tree.uniqueId}")
 }
 
 class Typer extends Namer with TypeAssigner with Applications with Implicits with Inferencing with Checking {
@@ -953,7 +958,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
-    if (!tree.isEmpty && ctx.typerState.isGlobalCommittable) assert(tree.pos.exists, i"position not set for $tree")
+    assertPositioned(tree)
     try adapt(typedUnadapted(tree, pt), pt, tree)
     catch {
       case ex: CyclicReference => errorTree(tree, cyclicErrorMsg(ex))
