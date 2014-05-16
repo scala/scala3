@@ -413,5 +413,11 @@ object ProtoTypes {
   private lazy val dummyTree = untpd.Literal(Constant(null))
 
   /** Dummy tree to be used as an argument of a FunProto or ViewProto type */
-  def dummyTreeOfType(tp: Type): Tree = dummyTree withTypeUnchecked tp
+  object dummyTreeOfType {
+    def apply(tp: Type): Tree = dummyTree withTypeUnchecked tp
+    def unapply(tree: Tree): Option[Type] = tree match {
+      case Literal(Constant(null)) => Some(tree.tpe)
+      case _ => None
+    }
+  }
 }
