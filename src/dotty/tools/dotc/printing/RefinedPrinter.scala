@@ -3,7 +3,7 @@ package printing
 
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._
-import Contexts.Context, Scopes.Scope, Denotations._, Annotations.Annotation
+import Contexts.Context, Scopes.Scope, Denotations._, SymDenotations._, Annotations.Annotation
 import StdNames.nme
 import ast.{Trees, untpd}
 import typer.Namer
@@ -481,6 +481,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def toText(denot: Denotation): Text = denot match {
     case denot: MultiDenotation => denot.toString
+    case NoDenotation => "NoDenotation"
     case _ =>
       if (denot.symbol.exists) toText(denot.symbol)
       else "some " ~ toText(denot.info)

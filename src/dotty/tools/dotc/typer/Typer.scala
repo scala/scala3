@@ -328,7 +328,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val tpt1 = typedType(tree.tpt)
       val expr1 =
         if (isWildcard) tree.expr withType tpt1.tpe
-        else typedExpr(tree.expr, tpt1.tpe)
+        else typed(tree.expr, tpt1.tpe)
       assignType(cpy.Typed(tree, expr1, tpt1), tpt1)
     }
     tree.expr match {
@@ -957,7 +957,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
+  def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree, patternMode = ${ctx.mode is Mode.Pattern}", typr, show = true) /*<|<*/ {
     assertPositioned(tree)
     try adapt(typedUnadapted(tree, pt), pt, tree)
     catch {
