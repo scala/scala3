@@ -83,11 +83,6 @@ object ProtoTypes {
     override def deepenProto(implicit ctx: Context): Type = ignored
   }
 
-  def ignoreIfProto(tp: Type): Type = tp match {
-    case proto: ProtoType => IgnoredProto(proto)
-    case _ => tp
-  }
-
   /** A prototype for expressions [] that are part of a selection operation:
    *
    *       [ ].name: proto

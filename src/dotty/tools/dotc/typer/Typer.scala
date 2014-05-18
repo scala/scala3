@@ -1014,20 +1014,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  private def noResultProto(pt: Type) = pt match {
-    case pt: FunProto => pt.derivedFunProto(pt.args, WildcardType, pt.typer) // drop result type, because views are disabled
-    case _ => pt
-  }
-
-  /** Add apply node or implicit conversions. Three strategies are tried, and the first
-   *  that is succesful is picked. If none of the strategies are succesful, continues with
+  /** Add apply node or implicit conversions. Two strategies are tried, and the first
+   *  that is succesful is picked. If neither of the strategies are succesful, continues with
    *  `fallBack`.
    *
    *  1st strategy: Try to insert `.apply` so that the result conforms to prototype `pt`.
-   *  2nd strategy: If the expected type is a FunProto with a non-wildcard resulttype,
-   *    try to match against the FunProto with wildcard resulttype (this allows for an additional
-   *    implicit conversion on the result).
-   *  3rd stratgey: If tree is a select `qual.name`, try to insert an implicit conversion
+   *  2nd stratgey: If tree is a select `qual.name`, try to insert an implicit conversion
    *    around the qualifier part `qual` so that the result conforms to the expected type
    *    with wildcard result type.
    */
@@ -1036,22 +1028,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
       if (sel.tpe.isError) sel else adapt(sel, pt)
     } { (failedTree, failedState) =>
-      val tree1 = tryInsertImplicits(tree, pt)
+      val tree1 = tryInsertImplicitOnQualifier(tree, pt)
       if (tree1 eq tree) fallBack(failedTree, failedState)
-      else adapt(tree1, noResultProto(pt))
+      else adapt(tree1, pt)
     }
-
-  def tryInsertImplicits(tree: Tree, pt: ProtoType)(implicit ctx: Context): Tree = {
-    val normalizedProto = noResultProto(pt)
-    if (normalizedProto eq pt) tryInsertImplicitOnQualifier(tree, pt)
-    else tryEither { implicit ctx =>
-      val tree1 = adaptInterpolated(tree, normalizedProto, EmptyTree)
-      if (tree1 eq tree) ctx.error("no progress")
-      tree1
-    } { (_, _) =>
-      tryInsertImplicitOnQualifier(tree, normalizedProto)
-    }
-  }
 
   /** If this tree is a select node `qual.name`, try to insert an implicit conversion
    *  `c` around `qual` so that `c(qual).name` conforms to `pt`. If that fails

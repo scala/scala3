@@ -441,7 +441,7 @@ trait Applications extends Compatibility { self: Typer =>
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
-      var proto = new FunProto(tree.args, ignoreIfProto(pt), this)
+      var proto = new FunProto(tree.args, IgnoredProto(pt), this)
       val fun1 = typedExpr(tree.fun, proto)
 
       // Warning: The following line is dirty and fragile. We record that auto-tupling was demanded as
@@ -461,7 +461,7 @@ trait Applications extends Compatibility { self: Typer =>
             val result = app.result
             ConstFold(result)
           } { (failedVal, failedState) =>
-            val fun2 = tryInsertImplicits(fun1, proto)
+            val fun2 = tryInsertImplicitOnQualifier(fun1, proto)
             if (fun1 eq fun2) {
               failedState.commit()
               failedVal
