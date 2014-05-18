@@ -79,8 +79,8 @@ object ProtoTypes {
   }
 
   /** A class marking ignored prototypes that can be reviealed by `deepenProto` */
-  case class IgnoredProto(proto: ProtoType) extends UncachedGroundType with MatchAlways {
-    override def deepenProto(implicit ctx: Context): Type = proto
+  case class IgnoredProto(ignored: Type) extends UncachedGroundType with MatchAlways {
+    override def deepenProto(implicit ctx: Context): Type = ignored
   }
 
   def ignoreIfProto(tp: Type): Type = tp match {
@@ -145,7 +145,7 @@ object ProtoTypes {
     if (name.isConstructorName) WildcardType
     else tp match {
       case tp: UnapplyFunProto => new UnapplySelectionProto(name)
-      case tp => SelectionProto(name, ignoreIfProto(tp), typer)
+      case tp => SelectionProto(name, IgnoredProto(tp), typer)
     }
 
   /** A prototype for expressions [] that are in some unspecified selection operation
@@ -416,7 +416,7 @@ object ProtoTypes {
   object dummyTreeOfType {
     def apply(tp: Type): Tree = dummyTree withTypeUnchecked tp
     def unapply(tree: Tree): Option[Type] = tree match {
-      case Literal(Constant(null)) => Some(tree.tpe)
+      case Literal(Constant(null)) => Some(tree.typeOpt)
       case _ => None
     }
   }
