@@ -1,6 +1,6 @@
 trait Foo {
   object bar {
-    private[this] def fn() = 5
+    private def fn() = 5
   }
 }
 

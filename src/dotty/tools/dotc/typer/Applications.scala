@@ -346,7 +346,7 @@ trait Applications extends Compatibility { self: Typer =>
     init()
 
     def addArg(arg: Tree, formal: Type): Unit =
-      typedArgBuf += adaptInterpolated(arg, formal.widenExpr)
+      typedArgBuf += adaptInterpolated(arg, formal.widenExpr, EmptyTree)
 
     def makeVarArg(n: Int, elemFormal: Type): Unit = {
       val args = typedArgBuf.takeRight(n).toList
@@ -434,7 +434,7 @@ trait Applications extends Compatibility { self: Typer =>
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
-      var proto = new FunProto(tree.args, pt, this)
+      var proto = new FunProto(tree.args, ignoreIfProto(pt), this)
       val fun1 = typedExpr(tree.fun, proto)
 
       // Warning: The following line is dirty and fragile. We record that auto-tupling was demanded as
@@ -453,30 +453,13 @@ trait Applications extends Compatibility { self: Typer =>
               else new ApplyToUntyped(tree, fun1, funRef, proto, pt)
             val result = app.result
             ConstFold(result)
-          } { (failedVal, failedState) => fun1 match {
-              case Select(qual, name) =>
-                // try with prototype `[].name(args)`, this might succeed by inserting an
-                // implicit conversion around []. (an example is Int + BigInt).
-                tryEither { implicit ctx =>
-                  val simpleFunProto = new FunProto(tree.args, WildcardType, this) // drop result type, because views are disabled
-                  val selProto = SelectionProto(name, simpleFunProto, NoViewsAllowed)
-                  val qual1 = adaptInterpolated(qual, selProto)
-                  if (qual eq qual1) ctx.error("no progress")
-                  if (ctx.reporter.hasErrors) qual1
-                  else
-                    typedApply(
-                      cpy.Apply(tree,
-                        cpy.Select(fun1, untpd.TypedSplice(qual1), name),
-                        proto.typedArgs map untpd.TypedSplice),
-                      pt)
-                } { (_, _) =>
-                  failedState.commit()
-                  failedVal
-                }
-              case _ =>
-                failedState.commit()
-                failedVal
-            }
+          } { (failedVal, failedState) =>
+            val fun2 = tryInsertImplicit(fun1, proto)
+            if (fun1 eq fun2) {
+              failedState.commit()
+              failedVal
+            } else typedApply(
+              cpy.Apply(tree, untpd.TypedSplice(fun2), proto.typedArgs map untpd.TypedSplice), pt)
           }
         case _ =>
           fun1.tpe match {
@@ -771,7 +754,7 @@ trait Applications extends Compatibility { self: Typer =>
     def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = ctx.traceIndented(i"isAsSpecific $tp1 $tp2", overload) { tp1 match {
       case tp1: PolyType =>
         def bounds(tparamRefs: List[TypeRef]) = tp1.paramBounds map (_.substParams(tp1, tparamRefs))
-        val tparams = ctx.newTypeParams(alt1.symbol.owner, tp1.paramNames, EmptyFlags, bounds)
+        val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, bounds)
         isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
       case tp1: MethodType =>
         def repeatedToSingle(tp: Type) = if (tp.isRepeatedParam) tp.argTypesHi.head else tp
@@ -927,7 +910,14 @@ trait Applications extends Compatibility { self: Typer =>
         alts filter (normalizedCompatible(_, pt))
     }
     if (isDetermined(candidates)) candidates
-    else narrowMostSpecific(candidates)
+    else narrowMostSpecific(candidates) match {
+      case result @ (alt1 :: alt2 :: _) =>
+        val deepPt = pt.deepenProto
+        if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
+        else result
+      case result =>
+        result
+    }
   }
 }
 

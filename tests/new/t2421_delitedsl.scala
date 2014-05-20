@@ -8,7 +8,9 @@ trait DeliteDSL {
   }
 
   case class DeliteInt(x: Int) extends Forcible[Int]
-  implicit val forcibleInt: DeliteDSL.this.<~<[Int,DeliteDSL.this.Forcible[Int]] = Forcible.factory(DeliteInt(_: Int))
+
+  implicit val forcibleInt: DeliteDSL.this.<~<[Int,DeliteDSL.this.Forcible[Int]] =
+    Forcible.factory((x: Int) => DeliteInt(x))
 
   import scala.collection.Traversable
   class DeliteCollection[T](val xs: Traversable[T]) {

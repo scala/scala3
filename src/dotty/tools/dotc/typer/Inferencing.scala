@@ -58,7 +58,7 @@ trait Inferencing { this: Checking =>
     }
     private var toMaximize: Boolean = false
     def apply(x: Boolean, tp: Type): Boolean = tp.dealias match {
-      case _: WildcardType =>
+      case _: WildcardType | _: ProtoType =>
         false
       case tvar: TypeVar if !tvar.isInstantiated =>
         if (force == ForceDegree.none) false

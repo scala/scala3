@@ -70,6 +70,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *                   (3) Change pattern Idents id (but not wildcards) to id @ _
    */
   def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = track("typedIdent") {
+    val refctx = ctx
     val name = tree.name
 
     /** Method is necessary because error messages need to bind to
@@ -179,7 +180,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (imp.isWildcardImport) {
           val pre = imp.site
           if (!isDisabled(imp, pre) && !(imp.excluded contains name.toTermName)) {
-            val denot = pre.member(name)
+            val denot = pre.member(name).accessibleFrom(pre)(refctx)
             if (reallyExists(denot)) return pre.select(name, denot)
           }
         }
@@ -953,7 +954,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
     if (!tree.isEmpty && ctx.typerState.isGlobalCommittable) assert(tree.pos.exists, i"position not set for $tree")
-    try adapt(typedUnadapted(tree, pt), pt)
+    try adapt(typedUnadapted(tree, pt), pt, tree)
     catch {
       case ex: CyclicReference => errorTree(tree, cyclicErrorMsg(ex))
       case ex: FatalTypeError => errorTree(tree, ex.getMessage)
@@ -1008,20 +1009,46 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  def tryInsertApply(tree: Tree, pt: Type)(fallBack: (Tree, TyperState) => Tree)(implicit ctx: Context): Tree =
-    tryEither {
-      implicit ctx =>
-        val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
-        if (sel.tpe.isError) sel else adapt(sel, pt)
-    } {
-      fallBack
+  /** Try to insert `.apply` so that the result conforms to prototype `pt`.
+   *  If that fails try to insert an implicit conversion around the qualifier
+   *  part of `tree`. If either result conforms to `pt`, adapt it, else
+   *  continue with `fallBack`.
+   */
+  def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: (Tree, TyperState) => Tree)(implicit ctx: Context): Tree =
+    tryEither { implicit ctx =>
+      val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
+      if (sel.tpe.isError) sel else adapt(sel, pt)
+    } { (failedTree, failedState) =>
+      val tree1 = tryInsertImplicit(tree, pt)
+      if (tree1 eq tree) fallBack(failedTree, failedState)
+      else adapt(tree1, pt)
     }
 
-  def adapt(tree: Tree, pt: Type)(implicit ctx: Context) = /*>|>*/ track("adapt") /*<|<*/ {
+  /** If this tree is a select node `qual.name`, try to insert an implicit conversion
+   *  `c` around `qual` so that `c(qual).name` conforms to `pt`. If that fails
+   *  return `tree` itself.
+   */
+  def tryInsertImplicit(tree: Tree, pt: ProtoType)(implicit ctx: Context): Tree = ctx.traceIndented(i"try ins impl $tree $pt") { tree match {
+    case Select(qual, name) =>
+      val normalizedProto = pt match {
+        case pt: FunProto => pt.derivedFunProto(pt.args, WildcardType, pt.typer) // drop result type, because views are disabled
+        case _ => pt
+      }
+      val qualProto = SelectionProto(name, normalizedProto, NoViewsAllowed)
+      tryEither { implicit ctx =>
+        val qual1 = adaptInterpolated(qual, qualProto, EmptyTree)
+        if ((qual eq qual1) || ctx.reporter.hasErrors) tree
+        else typedSelect(cpy.Select(tree, untpd.TypedSplice(qual1), name), pt)
+      } { (_, _) => tree
+      }
+    case _ => tree
+  }}
+
+  def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = /*>|>*/ track("adapt") /*<|<*/ {
     /*>|>*/ ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
       interpolateUndetVars(tree)
       tree overwriteType tree.tpe.simplified
-      adaptInterpolated(tree, pt)
+      adaptInterpolated(tree, pt, original)
     }
   }
 
@@ -1063,7 +1090,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *  (14) When in mode EXPRmode, apply a view
    *  If all this fails, error
    */
-  def adaptInterpolated(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
+  def adaptInterpolated(tree: Tree, pt: Type, original: untpd.Tree)(implicit ctx: Context): Tree = {
 
     assert(pt.exists)
 
@@ -1077,7 +1104,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       def expectedStr = err.expectedTypeStr(pt)
       resolveOverloaded(alts, pt) match {
         case alt :: Nil =>
-          adapt(tree.withType(alt), pt)
+          adapt(tree.withType(alt), pt, original)
         case Nil =>
           def noMatches =
             errorTree(tree,
@@ -1086,7 +1113,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           def hasEmptyParams(denot: SingleDenotation) = denot.info.paramTypess == ListOfNil
           pt match {
             case pt: FunProto =>
-              tryInsertApply(tree, pt)((_, _) => noMatches)
+              tryInsertApplyOrImplicit(tree, pt)((_, _) => noMatches)
             case _ =>
               if (altDenots exists (_.info.paramTypess == ListOfNil))
                 typed(untpd.Apply(untpd.TypedSplice(tree), Nil), pt)
@@ -1112,7 +1139,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           adaptToArgs(wtp, pt.tupled)
         else
           tree
-      case _ => tryInsertApply(tree, pt) {
+      case _ => tryInsertApplyOrImplicit(tree, pt) {
         val more = tree match {
           case Apply(_, _) => " more"
           case _ => ""
@@ -1123,24 +1150,31 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     def adaptNoArgs(wtp: Type): Tree = wtp match {
       case wtp: ExprType =>
-        adaptInterpolated(tree.withType(wtp.resultType), pt)
+        adaptInterpolated(tree.withType(wtp.resultType), pt, original)
       case wtp: ImplicitMethodType if constrainResult(wtp, pt) =>
-        def implicitArgError(msg: => String): Tree = {
-          ctx.error(msg, tree.pos.endPos)
-          EmptyTree
-        }
-        val args = (wtp.paramNames, wtp.paramTypes).zipped map { (pname, formal) =>
-          def where = d"parameter $pname of $methodStr"
-          inferImplicit(formal, EmptyTree, tree.pos.endPos) match {
-            case SearchSuccess(arg, _, _) =>
-              adapt(arg, formal)
-            case ambi: AmbiguousImplicits =>
-              implicitArgError(s"ambiguous implicits: ${ambi.explanation} of $where")
-            case failure: SearchFailure =>
-              implicitArgError(d"no implicit argument of type $formal found for $where" + failure.postscript)
+        def addImplicitArgs = {
+          def implicitArgError(msg: => String): Tree = {
+            ctx.error(msg, tree.pos.endPos)
+            EmptyTree
           }
+          val args = (wtp.paramNames, wtp.paramTypes).zipped map { (pname, formal) =>
+            def where = d"parameter $pname of $methodStr"
+            inferImplicit(formal, EmptyTree, tree.pos.endPos) match {
+              case SearchSuccess(arg, _, _) =>
+                adapt(arg, formal)
+              case ambi: AmbiguousImplicits =>
+                implicitArgError(s"ambiguous implicits: ${ambi.explanation} of $where")
+              case failure: SearchFailure =>
+                implicitArgError(d"no implicit argument of type $formal found for $where" + failure.postscript)
+            }
+          }
+          adapt(tpd.Apply(tree, args), pt)
         }
-        adapt(tpd.Apply(tree, args), pt)
+        if ((pt eq WildcardType) || original.isEmpty) addImplicitArgs
+        else
+          ctx.typerState.tryWithFallback(addImplicitArgs) {
+            adapt(typed(original, WildcardType), pt, EmptyTree)
+          }
       case wtp: MethodType if !pt.isInstanceOf[SingletonType] =>
         val arity =
           if (defn.isFunctionType(pt)) defn.functionArity(pt)
@@ -1149,7 +1183,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (arity >= 0 && !tree.symbol.isConstructor)
           typed(etaExpand(tree, wtp, arity), pt)
         else if (wtp.paramTypes.isEmpty)
-          adaptInterpolated(tpd.Apply(tree, Nil), pt)
+          adaptInterpolated(tpd.Apply(tree, Nil), pt, EmptyTree)
         else
           errorTree(tree,
             d"""missing arguments for $methodStr
@@ -1208,14 +1242,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           if (pt.isInstanceOf[PolyProto]) tree
           else {
             val (_, tvars) = constrained(poly, tree)
-            adaptInterpolated(tree appliedToTypes tvars, pt)
+            adaptInterpolated(tree appliedToTypes tvars, pt, original)
           }
         case wtp =>
           pt match {
             case pt: FunProto =>
               adaptToArgs(wtp, pt)
             case pt: PolyProto =>
-              tryInsertApply(tree, pt) {
+              tryInsertApplyOrImplicit(tree, pt) {
                 (_, _) => tree // error will be reported in typedTypeApply
               }
             case _ =>

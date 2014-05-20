@@ -64,8 +64,8 @@ class tests extends CompilerTest {
   @Test def neg_privates() = compileFile(negDir, "privates", xerrors = 2)
   @Test def neg_rootImports = compileFile(negDir, "rootImplicits", xerrors = 2)
   @Test def neg_templateParents() = compileFile(negDir, "templateParents", xerrors = 3)
-  @Test def neg_autoTupling = compileFile(posDir, "autoTuplingTest", "-language:noAutoTupling" :: Nil, xerrors = 3)
-  @Test def neg_autoTupling2 = compileFile(negDir, "autoTuplingTest", xerrors = 3)
+  @Test def neg_autoTupling = compileFile(posDir, "autoTuplingTest", "-language:noAutoTupling" :: Nil, xerrors = 4)
+  @Test def neg_autoTupling2 = compileFile(negDir, "autoTuplingTest", xerrors = 4)
   @Test def neg_companions = compileFile(negDir, "companions", xerrors = 1)
   @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 1)
   @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 4)
@@ -83,6 +83,7 @@ class tests extends CompilerTest {
   @Test def neg_tailcall = compileFile(negDir, "tailcall/tailrec", xerrors = 7)
   @Test def neg_tailcall2 = compileFile(negDir, "tailcall/tailrec-2", xerrors = 2)
   @Test def neg_tailcall3 = compileFile(negDir, "tailcall/tailrec-3", xerrors = 2)
+  @Test def neg_t1843 = compileFile(negDir, "t1843", xerrors = 1)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)
@@ -103,14 +104,14 @@ class tests extends CompilerTest {
       dotcDir + "tools/dotc/CompilationUnit.scala",
       dotcDir + "tools/dotc/core/Types.scala",
       dotcDir + "tools/dotc/ast/Trees.scala",
-      "-Ylog:frontend",
+      //"-Ylog:frontend",
       "-Xprompt",
       "#runs", "2"))
 
   @Test def testIssue_34 = compileArgs(Array(
       dotcDir + "tools/dotc/config/Properties.scala",
       dotcDir + "tools/dotc/config/PathResolver.scala",
-      "-Ylog:frontend",
+      //"-Ylog:frontend",
       "-Xprompt",
       "#runs", "2"))
 

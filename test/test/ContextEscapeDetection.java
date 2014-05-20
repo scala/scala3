@@ -19,7 +19,7 @@ public abstract class ContextEscapeDetection {
         public final String testName;
 
     }
-    public static final List<TestContext> contexts = new LinkedList<>();
+    public static final List<TestContext> contexts = new LinkedList<TestContext>();
 
     public abstract Contexts.Context getCtx();
 
@@ -27,7 +27,7 @@ public abstract class ContextEscapeDetection {
 
     @Before
     public synchronized void stealContext() {
-        contexts.add(new TestContext(new WeakReference<>(this.getCtx()), this.getClass().getName()));
+        contexts.add(new TestContext(new WeakReference<Contexts.Context>(this.getCtx()), this.getClass().getName()));
     }
 
     @After

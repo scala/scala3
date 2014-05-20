@@ -4,7 +4,7 @@ package reporting
 
 import core.Contexts.Context
 import collection.mutable
-import Reporter.Diagnostic
+import Reporter.{Diagnostic, Error, Warning}
 import config.Printers._
 
 /**
@@ -20,6 +20,17 @@ class StoreReporter extends Reporter {
     infos += d
   }
 
+  override def hasPending: Boolean = infos != null && {
+    infos exists {
+      case d: Error => true
+      case d: Warning => true
+      case _ => false
+    }
+  }
+
   override def flush()(implicit ctx: Context) =
-    if (infos != null) infos foreach ctx.reporter.report
+    if (infos != null) {
+      infos foreach ctx.reporter.report
+      infos = null
+    }
 }

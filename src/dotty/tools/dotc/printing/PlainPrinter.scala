@@ -251,22 +251,21 @@ class PlainPrinter(_ctx: Context) extends Printer {
           case sym: Symbol if !sym.isCompleted => "this: ? =>"
           case _ => "this: " ~ atPrec(InfixPrec) { toText(tp.selfType) } ~ " =>"
         }
-        val parentsText = Text(cparents.map(p =>
-          toTextLocal(reconstituteParent(cls, p))), " with ")
         val trueDecls = otherDecls.filterNot(treatAsTypeArg)
         val declsText =
           if (trueDecls.isEmpty || !ctx.settings.debug.value) Text()
           else dclsText(trueDecls)
-        tparamsText ~ " extends " ~ parentsText ~ "{" ~ selfText ~ declsText ~
+        tparamsText ~ " extends " ~ toTextParents(tp.parents) ~ "{" ~ selfText ~ declsText ~
           "} at " ~ preText
       case _ =>
         ": " ~ toTextGlobal(tp)
     }
   }
 
+  protected def toTextParents(parents: List[Type]): Text = Text(parents.map(toTextLocal), " with ")
+
   protected def treatAsTypeParam(sym: Symbol): Boolean = false
   protected def treatAsTypeArg(sym: Symbol): Boolean = false
-  protected def reconstituteParent(cls: ClassSymbol, parent: Type): Type = parent
 
   /** String representation of symbol's kind. */
   def kindString(sym: Symbol): String = {

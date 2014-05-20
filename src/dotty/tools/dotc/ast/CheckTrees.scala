@@ -34,6 +34,7 @@ object CheckTrees {
       tp namedPartsWith (tp => isLocal(tp.symbol))
     def typeLeaks(tp: Type): Boolean = leakingTypes(tp).nonEmpty
     def classLeaks(sym: ClassSymbol): Boolean =
+      (ctx.owner is Method) || // can't hoist classes out of method bodies
       (sym.info.parents exists typeLeaks) ||
       (sym.decls.toList exists (t => typeLeaks(t.info)))
     leakingTypes(block.tpe)

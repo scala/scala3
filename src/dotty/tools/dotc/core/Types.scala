@@ -756,6 +756,11 @@ object Types {
     def typeParamNamed(name: TypeName)(implicit ctx: Context): Symbol =
       classSymbol.decls.lookup(name) orElse member(name).symbol
 
+    /** If this is a prototype with some ignored component, reveal one more
+     *  layer of it. Otherwise the type itself.
+     */
+    def deepenProto(implicit ctx: Context): Type = this
+
 // ----- Substitutions -----------------------------------------------------
 
     /** Substitute all types that refer in their symbol attribute to
@@ -1057,12 +1062,13 @@ object Types {
       if (owner.isTerm) d else d.asSeenFrom(prefix)
     }
 
-    private def checkSymAssign(sym: Symbol) =
+    private def checkSymAssign(sym: Symbol)(implicit ctx: Context) =
       assert(
         (lastSymbol eq sym) ||
         (lastSymbol eq null) ||
         (lastSymbol.defRunId != sym.defRunId) ||
-        (lastSymbol.defRunId == NoRunId),
+        (lastSymbol.defRunId == NoRunId) ||
+        (lastSymbol.infoOrCompleter == ErrorType),
         s"data race? overwriting symbol of $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id}")
 
     protected def sig: Signature = Signature.NotAMethod
@@ -1996,11 +2002,22 @@ object Types {
     // cached because baseType needs parents
     private var parentsCache: List[TypeRef] = null
 
+    /** The parent type refs as seen from the given prefix */
     override def parents(implicit ctx: Context): List[TypeRef] = {
       if (parentsCache == null)
         parentsCache = cls.classParents.mapConserve(rebase(_).asInstanceOf[TypeRef])
       parentsCache
     }
+
+    /** The parent types with all type arguments */
+    def instantiatedParents(implicit ctx: Context): List[Type] =
+      parents mapConserve { pref =>
+        ((pref: Type) /: pref.classSymbol.typeParams) { (parent, tparam) =>
+          val targSym = decls.lookup(tparam.name)
+          if (targSym.exists) RefinedType(parent, targSym.name, targSym.info)
+          else parent
+        }
+      }
 
     def derivedClassInfo(prefix: Type)(implicit ctx: Context) =
       if (prefix eq this.prefix) this

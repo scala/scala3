@@ -25,5 +25,5 @@ object Printers {
   val hk = noPrinter
   val incremental = noPrinter
   val config = noPrinter
-  val transforms = new Printer
+  val transforms = noPrinter
 }
