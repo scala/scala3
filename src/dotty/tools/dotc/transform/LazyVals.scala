@@ -379,7 +379,7 @@ class LazyValTranformContext {
         val state = Select(Ident(helperModule.termRef), LazyVals.Names.state.toTermName)
         val cas = Select(Ident(helperModule.termRef), LazyVals.Names.cas.toTermName)
 
-        val accessor = mkThreadSafeDef(x.symbol.asTerm, claz, ord, containerSymbol, rhs, x.tpe, offset, getFlag, state, cas, setFlag, wait)
+        val accessor = mkThreadSafeDef(x.symbol.asTerm, claz, ord, containerSymbol, rhs, tpe, offset, getFlag, state, cas, setFlag, wait)
         if(flag eq EmptyTree)
           Thicket(List(containerTree, accessor))
         else Thicket(List(containerTree, flag, accessor))
