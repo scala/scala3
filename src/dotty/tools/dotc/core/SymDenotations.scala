@@ -321,6 +321,9 @@ object SymDenotations {
     final def isAnonymousClass(implicit ctx: Context): Boolean =
       initial.asSymDenotation.name startsWith tpnme.ANON_CLASS
 
+    final def isRefinementClass(implicit ctx: Context): Boolean =
+      name.decode == tpnme.REFINE_CLASS
+
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean = {
       val poName = if (isType) nme.PACKAGE_CLS else nme.PACKAGE
@@ -700,6 +703,54 @@ object SymDenotations {
         owner.info.baseClasses.tail.iterator map overriddenSymbol filter (_.exists)
       else
         Iterator.empty
+
+    /** The symbol overriding this symbol in given subclass `ofclazz`.
+     *
+     *  @param ofclazz is a subclass of this symbol's owner
+     */
+    final def overridingSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol =
+      if (canMatchInheritedSymbols) matchingSymbol(inClass, inClass.thisType)
+      else NoSymbol
+
+    /** If false, this symbol cannot possibly participate in an override,
+     *  either as overrider or overridee. For internal use; you should consult
+     *  with isOverridingSymbol. This is used by isOverridingSymbol to escape
+     *  the recursive knot.
+     */
+    private def canMatchInheritedSymbols = (
+         owner.isClass
+      && !this.isClass
+      && !this.isConstructor
+    )
+
+    /** The symbol accessed by a super in the definition of this symbol when
+     *  seen from class `base`. This symbol is always concrete.
+     *  pre: `this.owner` is in the base class sequence of `base`.
+     */
+    final def superSymbolIn(base: Symbol)(implicit ctx: Context): Symbol = {
+      def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
+        case bc :: bcs1 =>
+          val sym = matchingSymbol(bcs.head, base.thisType)
+            .suchThat(alt => !(alt is Deferred)).symbol
+          if (sym.exists) sym else loop(bcs.tail)
+        case _ =>
+          NoSymbol
+      }
+      loop(base.info.baseClasses.dropWhile(owner != _).tail)
+    }
+
+
+    /** A a member of class `base` is incomplete if
+     *  (1) it is declared deferred or
+     *  (2) it is abstract override and its super symbol in `base` is
+     *      nonexistent or incomplete.
+     */
+    final def isIncompleteIn(base: Symbol)(implicit ctx: Context): Boolean =
+      (this is Deferred) ||
+      (this is AbsOverride) && {
+        val supersym = superSymbolIn(base)
+        supersym == NoSymbol || supersym.isIncompleteIn(base)
+      }
 
     /** The class or term symbol up to which this symbol is accessible,
      *  or RootClass if it is public.  As java protected statics are
