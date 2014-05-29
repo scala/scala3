@@ -69,7 +69,7 @@ is equivalent to
     Map { type Map$K <: AnyRef; type Map$V = Int }
 
 
-Type parameters in the Encodings
+Type parameters in the encodings
 --------------------------------
 
 The notion of type parameters makes sense even for encoded types,
@@ -191,7 +191,7 @@ We expand this to
     type Rep <: Lambda1
 
 The type parameters of `Rep` are the type parameters of its upper bound, so
-`Rep` is a uniary type constructor.
+`Rep` is a unary type constructor.
 
 More generally, a higher-kinded type declaration
 
@@ -217,8 +217,8 @@ would expand to
     Rep { type Arg1 = String } # Apply
 
 If we instantiate the higher-kinded type with a concrete type constructor (i.e. a parameterized
-trait or class, we have to do one extra adaptation to make it work. The parameterized trait
-or class has to be eta-expansed so that it comforms to the `Lambda` bound. For instance,
+trait or class), we have to do one extra adaptation to make it work. The parameterized trait
+or class has to be eta-expanded so that it comforms to the `Lambda` bound. For instance,
 
     type Rep = Set
 
@@ -296,7 +296,7 @@ Roughly, `#` was meant to encode Java's inner classes. In Java, given the classe
 
 The types `Outer#Inner`, `Sub1#Inner` and `Sub2#Inner` would all exist and be
 regarded as equal to each other. But if `Outer` had abstract type members this would
-not work, since that type member could be instantiated differently in `Sub1` and `Sub2`.
+not work, since an abstract type member could be instantiated differently in `Sub1` and `Sub2`.
 Assuming that `Sub1#Inner = Sub2#Inner` could then lead to a soundness hole. To avoid soundness
 problems, the types in `X#Y` were restricted so that `Y` was (an alias of) a class type and
 `X` was (an alias of) a class type with no abstract type members.
@@ -306,13 +306,13 @@ are more careful with the subtyping rules. Specifically:
 
     A # X  <:  B # X
 
-if either `A = B`, or the following three conditions hold:
+if either `A =:= B` (i.e. `A <: B` and `B <: A`), or the following three conditions hold:
 
   1. `X` is (an alias of) a class type,
   2. `B` is (an alias of) a class type without abstract type members.
   3. `A <: B`.
 
-In essence, we allow abstract types `X`, `Y` in a project `X#Y` but we prevent in this
+In essence, we allow abstract types `X`, `Y` in a projection `X#Y` but we prevent in this
 case hiding conflicting type information in a subtype widening.
 
 It would be good to study these rules formally, trying to verify their soundness.
