@@ -125,9 +125,16 @@ trait Applications extends Compatibility { self: Typer =>
     protected def init() = methType match {
       case methType: MethodType =>
         // apply the result type constraint, unless method type is dependent
-        if (!methType.isDependent)
+        if (!methType.isDependent) {
+          val savedConstraint = ctx.typerState.constraint
           if (!constrainResult(methType.resultType, resultType))
-            fail(err.typeMismatchStr(methType.resultType, resultType))
+            if (ctx.typerState.isCommittable)
+              // defer the problem until after the application;
+              // it might be healed by an implicit conversion
+              assert(ctx.typerState.constraint eq savedConstraint)
+            else
+              fail(err.typeMismatchStr(methType.resultType, resultType))
+        }
         // match all arguments with corresponding formal parameters
         matchArgs(orderedArgs, methType.paramTypes, 0)
       case _ =>
@@ -454,7 +461,7 @@ trait Applications extends Compatibility { self: Typer =>
             val result = app.result
             ConstFold(result)
           } { (failedVal, failedState) =>
-            val fun2 = tryInsertImplicit(fun1, proto)
+            val fun2 = tryInsertImplicits(fun1, proto)
             if (fun1 eq fun2) {
               failedState.commit()
               failedVal

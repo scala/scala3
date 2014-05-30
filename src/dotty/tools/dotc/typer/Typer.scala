@@ -1009,40 +1009,62 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  /** Try to insert `.apply` so that the result conforms to prototype `pt`.
-   *  If that fails try to insert an implicit conversion around the qualifier
-   *  part of `tree`. If either result conforms to `pt`, adapt it, else
-   *  continue with `fallBack`.
+  private def noResultProto(pt: Type) = pt match {
+    case pt: FunProto => pt.derivedFunProto(pt.args, WildcardType, pt.typer) // drop result type, because views are disabled
+    case _ => pt
+  }
+
+  /** Add apply node or implicit conversions. Three strategies are tried, and the first
+   *  that is succesful is picked. If none of the strategies are succesful, continues with
+   *  `fallBack`.
+   *
+   *  1st strategy: Try to insert `.apply` so that the result conforms to prototype `pt`.
+   *  2nd strategy: If the expected type is a FunProto with a non-wildcard resulttype,
+   *    try to match against the FunProto with wildcard resulttype (this allows for an additional
+   *    implicit conversion on the result).
+   *  3rd stratgey: If tree is a select `qual.name`, try to insert an implicit conversion
+   *    around the qualifier part `qual` so that the result conforms to the expected type
+   *    with wildcard result type.
    */
   def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: (Tree, TyperState) => Tree)(implicit ctx: Context): Tree =
     tryEither { implicit ctx =>
       val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
       if (sel.tpe.isError) sel else adapt(sel, pt)
     } { (failedTree, failedState) =>
-      val tree1 = tryInsertImplicit(tree, pt)
+      val tree1 = tryInsertImplicits(tree, pt)
       if (tree1 eq tree) fallBack(failedTree, failedState)
-      else adapt(tree1, pt)
+      else adapt(tree1, noResultProto(pt))
     }
+
+  def tryInsertImplicits(tree: Tree, pt: ProtoType)(implicit ctx: Context): Tree = {
+    val normalizedProto = noResultProto(pt)
+    if (normalizedProto eq pt) tryInsertImplicitOnQualifier(tree, pt)
+    else tryEither { implicit ctx =>
+      val tree1 = adaptInterpolated(tree, normalizedProto, EmptyTree)
+      if (tree1 eq tree) ctx.error("no progress")
+      tree1
+    } { (_, _) =>
+      tryInsertImplicitOnQualifier(tree, normalizedProto)
+    }
+  }
 
   /** If this tree is a select node `qual.name`, try to insert an implicit conversion
    *  `c` around `qual` so that `c(qual).name` conforms to `pt`. If that fails
    *  return `tree` itself.
    */
-  def tryInsertImplicit(tree: Tree, pt: ProtoType)(implicit ctx: Context): Tree = ctx.traceIndented(i"try ins impl $tree $pt") { tree match {
-    case Select(qual, name) =>
-      val normalizedProto = pt match {
-        case pt: FunProto => pt.derivedFunProto(pt.args, WildcardType, pt.typer) // drop result type, because views are disabled
-        case _ => pt
-      }
-      val qualProto = SelectionProto(name, normalizedProto, NoViewsAllowed)
-      tryEither { implicit ctx =>
-        val qual1 = adaptInterpolated(qual, qualProto, EmptyTree)
-        if ((qual eq qual1) || ctx.reporter.hasErrors) tree
-        else typedSelect(cpy.Select(tree, untpd.TypedSplice(qual1), name), pt)
-      } { (_, _) => tree
-      }
-    case _ => tree
-  }}
+  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ctx.traceIndented(i"try insert impl on qualifier $tree $pt") {
+    tree match {
+      case Select(qual, name) =>
+        val qualProto = SelectionProto(name, pt, NoViewsAllowed)
+        tryEither { implicit ctx =>
+          val qual1 = adaptInterpolated(qual, qualProto, EmptyTree)
+          if ((qual eq qual1) || ctx.reporter.hasErrors) tree
+          else typedSelect(cpy.Select(tree, untpd.TypedSplice(qual1), name), pt)
+        } { (_, _) => tree
+        }
+      case _ => tree
+    }
+  }
 
   def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = /*>|>*/ track("adapt") /*<|<*/ {
     /*>|>*/ ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
