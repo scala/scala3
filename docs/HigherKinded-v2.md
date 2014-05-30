@@ -102,10 +102,10 @@ Modelling polymorphic type declarations
 ---------------------------------------
 
 The partial application scheme gives us a new -- and quite elegant --
-way to do higher-kinded types. But how do we interprete the
+way to do certain higher-kinded types. But how do we interprete the
 poymorphic types that exist in current Scala?
 
-More concretely, current Scala allows us to write parameterize type
+More concretely, current Scala allows us to write parameterized type
 definitions, abstract types, and type parameters. In the new scheme,
 only classes (and traits) can have parameters and these are treated as
 equivalent to type members. Type aliases and abstract types do not
@@ -128,11 +128,11 @@ Here, `Lambda1` is a standard trait defined as follows:
 
     trait Lambda1[type Arg1, type Apply]
 
-According to our definitions of type parameters `Lambda1` has two type parameters
+According to our definitions of type parameters, `Lambda1` has two type parameters
 and `Pair` has one.
 
 There are `LambdaN` traits for higher arities as well. `Lambda` traits are special in that
-they influence how type applications are expanded: If standard type applicatuon `T[X1, ..., Xn]`
+they influence how type applications are expanded: If the standard type application `T[X1, ..., Xn]`
 leads to a subtype `S` of a type instance
 
       LambdaN { type Arg1 = T1; ...; type ArgN = Tn; type Apply ... }
@@ -145,7 +145,7 @@ For instance, the type instance `Pair[String]` would be expanded to
 
     Lambda1 { type Arg1 = String; type Apply = (Arg1, Arg1) } # Apply
 
-which turns out to be equal to `(String, String)`.
+which in turn equals `(String, String)`.
 
 2nd Example: Consider the two aliases
 
