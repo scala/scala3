@@ -33,8 +33,11 @@ class Definitions {
   private def newTopClassSymbol(name: TypeName, flags: FlagSet, parents: List[TypeRef]) =
     completeClass(newCompleteClassSymbol(ScalaPackageClass, name, flags, parents))
 
+  private def newTypeField(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
+    scope.enter(newSymbol(cls, name, flags, TypeBounds.empty))
+
   private def newTypeParam(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
-    scope.enter(newSymbol(cls, name, flags | TypeParamCreationFlags, TypeBounds.empty))
+    newTypeField(cls, name, flags | TypeParamCreationFlags, scope)
 
   private def newSyntheticTypeParam(cls: ClassSymbol, scope: MutableScope, paramFlags: FlagSet, suffix: String = "T0") =
     newTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName | paramFlags, scope)
@@ -512,7 +515,7 @@ class Definitions {
         val paramDecls = newScope
         for (i <- 0 until vcs.length)
           newTypeParam(cls, tpnme.lambdaArgName(i), varianceFlags(vcs(i)), paramDecls)
-        newTypeParam(cls, tpnme.Apply, EmptyFlags, paramDecls)
+        newTypeField(cls, tpnme.Apply, EmptyFlags, paramDecls)
         val parentTraitRefs =
           for (i <- 0 until vcs.length if vcs(i) != 0)
           yield lambdaTrait(vcs.updated(i, 0)).typeRef
