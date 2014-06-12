@@ -1420,6 +1420,19 @@ object Types {
 
     override def underlying(implicit ctx: Context) = parent
 
+    private def checkInst(implicit ctx: Context): this.type = {
+      if (Config.checkLambdaVariance)
+        refinedInfo match {
+          case refinedInfo: TypeBounds if refinedInfo.variance != 0 && refinedName.isLambdaArgName =>
+            val cls = parent.LambdaClass(forcing = false)
+            if (cls.exists)
+              assert(refinedInfo.variance == cls.typeParams.apply(refinedName.lambdaArgIndex).variance,
+                  s"variance mismatch for $this, $cls, ${cls.typeParams}, ${cls.typeParams.apply(refinedName.lambdaArgIndex).variance}, ${refinedInfo.variance}")
+          case _ =>
+        }
+      this
+    }
+
     /** Derived refined type, with a twist: A refinement with a higher-kinded type param placeholder
      *  is transformed to a refinement of the original type parameter if that one exists.
      */
@@ -1476,10 +1489,10 @@ object Types {
       else make(RefinedType(parent, names.head, infoFns.head), names.tail, infoFns.tail)
 
     def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType =
-      ctx.base.uniqueRefinedTypes.enterIfNew(new CachedRefinedType(parent, name, infoFn))
+      ctx.base.uniqueRefinedTypes.enterIfNew(new CachedRefinedType(parent, name, infoFn)).checkInst
 
     def apply(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType = {
-      ctx.base.uniqueRefinedTypes.enterIfNew(parent, name, info)
+      ctx.base.uniqueRefinedTypes.enterIfNew(parent, name, info).checkInst
     }
   }
 
