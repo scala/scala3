@@ -1757,7 +1757,7 @@ object Types {
       }
   }
 
-  // ----- Bound types: MethodParam, PolyParam, RefiendThis --------------------------
+  // ----- Bound types: MethodParam, PolyParam, RefinedThis --------------------------
 
   abstract class BoundType extends CachedProxyType with ValueType {
     type BT <: BindingType
@@ -1821,7 +1821,7 @@ object Types {
 
     // need to customize hashCode and equals to prevent infinite recursion for
     // refinements that refer to the refinement type via this
-    override def computeHash = identityHash
+    override def computeHash = addDelta(binder.identityHash, 41)
     override def equals(that: Any) = that match {
       case that: RefinedThis => this.binder eq that.binder
       case _ => false
