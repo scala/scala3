@@ -375,9 +375,10 @@ object Types {
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
         val rinfo = tp.refinedInfo.substThis(tp, pre)
-        if (name.isTypeName) // simplified case that runs more efficiently
-          pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
-        else
+        if (name.isTypeName) {// simplified case that runs more efficiently
+          val jointInfo = if (rinfo.isAlias) rinfo else pdenot.info & rinfo
+          pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
+        } else
           pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
       }
       def goThis(tp: ThisType) = {
