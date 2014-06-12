@@ -117,14 +117,15 @@ object Types {
     }
 
    /** A type T is a legal prefix in a type selection T#A if
-     *  T is stable or T contains no abstract types
+     *  T is stable or T contains no abstract types except possibly A.
      *  !!! Todo: What about non-final vals that contain abstract types?
      */
-    final def isLegalPrefix(implicit ctx: Context): Boolean =
+    final def isLegalPrefixFor(selector: Name)(implicit ctx: Context): Boolean =
       isStable || {
         val absTypeNames = memberNames(abstractTypeNameFilter)
         if (absTypeNames.nonEmpty) typr.println(s"abstract type members of ${this.showWithUnderlying()}: $absTypeNames")
-        absTypeNames.isEmpty
+        absTypeNames.isEmpty ||
+          absTypeNames.head == selector && absTypeNames.tail.isEmpty
       }
 
     /** Is this type guaranteed not to have `null` as a value?
