@@ -378,7 +378,7 @@ object Denotations {
         case info: SignedType =>
           try info.signature
           catch { // !!! DEBUG
-            case ex: MatchError =>
+            case ex: Throwable =>
               println(s"cannot take signature of ${info.show}")
               throw ex
           }

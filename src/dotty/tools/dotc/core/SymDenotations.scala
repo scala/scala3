@@ -321,9 +321,14 @@ object SymDenotations {
     final def isAnonymousClass(implicit ctx: Context): Boolean =
       initial.asSymDenotation.name startsWith tpnme.ANON_CLASS
 
+    /** Is this symbol a class representing a refinement? These classes
+     *  are used only temporarily in Typer and Unpickler as an intermediate
+     *  step for creating Refinement types.
+     */
     final def isRefinementClass(implicit ctx: Context): Boolean =
       name.decode == tpnme.REFINE_CLASS
 
+    /** is this symbol a trait representing a type lambda? */
     final def isLambdaTrait(implicit ctx: Context): Boolean =
       isClass && name.startsWith(tpnme.LambdaPrefix)
 
@@ -702,7 +707,7 @@ object SymDenotations {
 
     /** All symbols overriden by this denotation. */
     final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
-      if (exists)
+      if (exists && owner.isClass)
         owner.info.baseClasses.tail.iterator map overriddenSymbol filter (_.exists)
       else
         Iterator.empty
