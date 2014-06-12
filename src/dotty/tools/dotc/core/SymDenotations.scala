@@ -324,6 +324,9 @@ object SymDenotations {
     final def isRefinementClass(implicit ctx: Context): Boolean =
       name.decode == tpnme.REFINE_CLASS
 
+    final def isLambdaTrait(implicit ctx: Context): Boolean =
+      isClass && name.startsWith(tpnme.LambdaPrefix)
+
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean = {
       val poName = if (isType) nme.PACKAGE_CLS else nme.PACKAGE

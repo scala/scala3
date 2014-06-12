@@ -8,7 +8,9 @@ import Decorators._
 import util.Stats._
 import util.common._
 import Names._
+import NameOps._
 import Flags._
+import StdNames.tpnme
 import util.Positions.Position
 import config.Printers._
 import collection.mutable
@@ -107,6 +109,41 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   def uninstantiatedTypeParams(implicit ctx: Context): List[TypeSymbol] =
     typeParams filter (tparam => self.member(tparam.name).symbol == tparam)
+
+ /** If type `tp` is equal, aliased-to, or upperbounded-by a type of the form
+   *  `LambdaXYZ { ... }`, the class symbol of that type, otherwise NoSymbol.
+   *  @param forcing  if set, might force completion. If not, never forces
+   *                  but returns NoSymbol when it would have to otherwise.
+   */
+  def LambdaClass(forcing: Boolean)(implicit ctx: Context): Symbol = ctx.traceIndented(i"LambdaClass($self)", hk) { self.stripTypeVar match {
+    case self: TypeRef =>
+      val sym = self.symbol
+      if (sym.isLambdaTrait) sym
+      else if (sym.isClass || sym.isCompleting && !forcing) NoSymbol
+      else self.info.LambdaClass(forcing)
+    case self: TermRef =>
+      NoSymbol
+    case self: TypeProxy =>
+      self.underlying.LambdaClass(forcing)
+    case _ =>
+      NoSymbol
+  }}
+
+  /** Is type `tp` equal, aliased-to, or upperbounded-by a type of the form
+   *  `LambdaXYZ { ... }`?
+   */
+  def isLambda(implicit ctx: Context): Boolean =
+    LambdaClass(forcing = true).exists
+
+  /** Same is `isLambda`, except that symbol denotations are not forced
+   *  Symbols in completion count as not lambdas.
+   */
+  def isSafeLambda(implicit ctx: Context): Boolean =
+    LambdaClass(forcing = false).exists
+
+  /** Is type `tp` a Lambda with all Arg$ fields fully instantiated? */
+  def isInstantiatedLambda(tp: Type)(implicit ctx: Context): Boolean =
+    tp.isSafeLambda && tp.typeParams.forall(_.name == tpnme.Apply)
 
   /** Encode the type resulting from applying this type to given arguments */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
