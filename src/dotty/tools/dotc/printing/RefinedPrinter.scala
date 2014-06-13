@@ -110,9 +110,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case tp: TypeRef =>
         if ((tp.symbol is TypeParam | TypeArgument) && !ctx.phase.erasedTypes) {
-          return tp.info match {
-            case TypeAlias(hi) => toText(hi)
-            case _ => nameString(tp.symbol)
+          tp.info match {
+            case TypeAlias(hi) => return toText(hi)
+            case _ => if (tp.prefix.isInstanceOf[ThisType]) return nameString(tp.symbol)
           }
         }
         else if (tp.symbol.isAnonymousClass)
