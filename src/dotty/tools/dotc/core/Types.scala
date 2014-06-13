@@ -164,6 +164,21 @@ object Types {
       case _ => false
     }
 
+    /** Is this type a transitive refinement of the given type or class symbol?
+     *  This is true if the type consists of 0 or more refinements or other
+     *  non-singleton proxies that lead to the `prefix` type, or, if
+     *  `prefix` is a class symbol, lead to an instance type of this class.
+     */
+    def refines(prefix: AnyRef /* RefinedType | ClassSymbol */)(implicit ctx: Context): Boolean =
+      (this eq prefix) || {
+        this match {
+          case base: ClassInfo => base.cls eq prefix
+          case base: SingletonType => false
+          case base: TypeProxy => base.underlying refines prefix
+          case _ => false
+        }
+      }
+
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
@@ -635,11 +650,25 @@ object Types {
      */
     def lookupRefined(name: Name)(implicit ctx: Context): Type = stripTypeVar match {
       case pre: RefinedType =>
-        if (pre.refinedName ne name) pre.parent.lookupRefined(name)
+        def dependsOnThis(tp: Type): Boolean = tp match {
+          case tp @ TypeRef(RefinedThis(rt), _) if rt refines pre =>
+            tp.info match {
+              case TypeBounds(lo, hi) if lo eq hi => dependsOnThis(hi)
+              case _ => true
+            }
+          case RefinedThis(rt) =>
+            rt refines pre
+          case _ => false
+        }
+        if (pre.refinedName ne name)
+          pre.parent.lookupRefined(name)
         else pre.refinedInfo match {
-          case TypeBounds(lo, hi) /*if lo eq hi*/ => hi
+          case TypeBounds(lo, hi) if lo eq hi =>
+            if (hi.existsPart(dependsOnThis)) NoType else hi
           case _ => NoType
         }
+      case RefinedThis(rt) =>
+        rt.lookupRefined(name)
       case pre: WildcardType =>
         WildcardType
       case _ =>
