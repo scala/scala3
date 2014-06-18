@@ -31,6 +31,6 @@ object collections {
   (ints2, chrs).zipped foreach do2
 
   val xs = List(List(1), List(2), List(3)).iterator
-  println(xs.flatten)
+  println(/*scala.collection.TraversableOnce.flattenTraversableOnce*/(xs).flatten)
 
 }

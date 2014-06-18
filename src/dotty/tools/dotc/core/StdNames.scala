@@ -167,6 +167,7 @@ object StdNames {
     final val REIFY_TREECREATOR_PREFIX: N       = "$treecreator"
     final val REIFY_TYPECREATOR_PREFIX: N       = "$typecreator"
     final val LAMBDA_ARG_PREFIX: N              = "$hkArg$"
+    final val LAMBDA_ARG_PREFIXhead: Char       = LAMBDA_ARG_PREFIX.head
 
     final val Any: N             = "Any"
     final val AnyVal: N          = "AnyVal"
@@ -250,8 +251,6 @@ object StdNames {
     val SKOLEM: N                   = "<skolem>"
     val SPECIALIZED_INSTANCE: N     = "specInstance$"
     val THIS: N                     = "_$this"
-    val HK_PARAM_PREFIX: N          = "_$hk$"          // tbr
-    val HK_TRAIT_PREFIX: N          = "$HigherKinded$" // tbr
 
     final val Nil: N                = "Nil"
     final val Predef: N             = "Predef"
@@ -646,9 +645,6 @@ object StdNames {
 
     def syntheticTypeParamNames(num: Int): List[TypeName] =
       (0 until num).map(syntheticTypeParamName)(breakOut)
-
-    def higherKindedTraitName(vcs: List[Int]): TypeName = HK_TRAIT_PREFIX ++ vcs.map(varianceSuffix).mkString // tbr
-    def higherKindedParamName(n: Int) = HK_PARAM_PREFIX ++ n.toString //tbr
 
     def lambdaTraitName(vcs: List[Int]): TypeName = LambdaPrefix ++ vcs.map(varianceSuffix).mkString
     def lambdaArgName(n: Int) = LAMBDA_ARG_PREFIX ++ n.toString

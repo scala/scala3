@@ -164,15 +164,19 @@ object Types {
       case _ => false
     }
 
-    /** Is this type a transitive refinement of the given type or class symbol?
+    /** Is this type a transitive refinement of the given type?
      *  This is true if the type consists of 0 or more refinements or other
-     *  non-singleton proxies that lead to the `prefix` type, or, if
-     *  `prefix` is a class symbol, lead to an instance type of this class.
+     *  non-singleton proxies that lead to the `prefix` type. ClassInfos with
+     *  the same class are counted as equal for this purpose.
      */
-    def refines(prefix: AnyRef /* RefinedType | ClassSymbol */)(implicit ctx: Context): Boolean =
+    def refines(prefix: Type)(implicit ctx: Context): Boolean =
       (this eq prefix) || {
         this match {
-          case base: ClassInfo => base.cls eq prefix
+          case base: ClassInfo =>
+            prefix match {
+              case prefix: ClassInfo => base.cls eq prefix.cls
+              case _ => false
+            }
           case base: SingletonType => false
           case base: TypeProxy => base.underlying refines prefix
           case _ => false
@@ -502,7 +506,7 @@ object Types {
     }
 
     /** Is this type close enough to that type so that members
-     *  with the two type would override each other?
+     *  with the two type would override each other?d
      *  This means:
      *    - Either both types are polytypes with the same number of
      *      type parameters and their result types match after renaming
@@ -1466,26 +1470,15 @@ object Types {
      *  is transformed to a refinement of the original type parameter if that one exists.
      */
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
-      lazy val underlyingTypeParams = parent.safeUnderlyingTypeParams
-      lazy val originalTypeParam = underlyingTypeParams(refinedName.hkParamIndex)
-
-      /** Use variance of newly instantiated type parameter rather than the old hk argument
-       */
-      def adjustedHKRefinedInfo(hkBounds: TypeBounds, underlyingTypeParam: TypeSymbol) = hkBounds match {
-        case tp @ TypeBounds(lo, hi) if lo eq hi =>
-          tp.derivedTypeBounds(lo, hi, underlyingTypeParam.variance)
-        case _ =>
-          hkBounds
-      }
+      lazy val underlyingTypeParams = parent.rawTypeParams
 
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))
         this
-      else if (   refinedName.isHkParamName
- //            && { println(s"deriving $refinedName $parent $underlyingTypeParams"); true }
-               && refinedName.hkParamIndex < underlyingTypeParams.length
-               && originalTypeParam.name != refinedName)
-        derivedRefinedType(parent, originalTypeParam.name,
-            adjustedHKRefinedInfo(refinedInfo.bounds, underlyingTypeParams(refinedName.hkParamIndex)))
+      else if (   refinedName.isLambdaArgName
+               //&& { println(s"deriving $refinedName $parent $underlyingTypeParams"); true }
+               && refinedName.lambdaArgIndex < underlyingTypeParams.length
+               && !parent.isLambda)
+        derivedRefinedType(parent.EtaExpand, refinedName, refinedInfo)
       else
         RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
     }
@@ -2136,47 +2129,6 @@ object Types {
 
     /** If this type and that type have the same variance, this variance, otherwise 0 */
     final def commonVariance(that: TypeBounds): Int = (this.variance + that.variance) / 2
-
-    /** Given a the typebounds L..H of higher-kinded abstract type
-     *
-     *    type T[boundSyms] >: L <: H
-     *
-     *  produce its equivalent bounds L'..R that make no reference to the bound
-     *  symbols on the left hand side. The idea is to rewrite the declaration to
-     *
-     *      type T >: L' <: HigherKindedXYZ { type _$hk$i >: bL_i <: bH_i } & H'
-     *
-     *  where
-     *
-     *  - XYZ encodes the variants of the bound symbols using `P` (positive variance)
-     *    `N` (negative variance), `I` (invariant).
-     *  - bL_i is the lower bound of bound symbol #i under substitution `substBoundSyms`
-     *  - bH_i is the upper bound of bound symbol #i under substitution `substBoundSyms`
-     *  - `substBoundSyms` is the substitution that maps every bound symbol #i to the
-     *    reference `<this>._$hk$i`, where `<this>` is the RefinedThis referring to the
-     *    previous HigherKindedXYZ refined type.
-     *  - L' = substBoundSyms(L), H' = substBoundSyms(H)
-     *
-     *  Example:
-     *
-     *      type T[X <: F[X]] <: Traversable[X, T]
-     *
-     *  is rewritten to:
-     *
-     *      type T <: HigherKindedP { type _$hk$0 <: F[$_hk$0] } & Traversable[<this>._$hk$0, T]
-     *
-     *  @see Definitions.hkTrait
-     */
-    def higherKinded(boundSyms: List[Symbol])(implicit ctx: Context): TypeBounds = {
-      val parent = defn.hkTrait(boundSyms map (_.variance)).typeRef
-      val hkParamNames = boundSyms.indices.toList map tpnme.higherKindedParamName
-      def substBoundSyms(tp: Type)(rt: RefinedType): Type =
-        tp.subst(boundSyms, hkParamNames map (TypeRef(RefinedThis(rt), _)))
-      val hkParamInfoFns: List[RefinedType => Type] =
-        for (bsym <- boundSyms) yield substBoundSyms(bsym.info) _
-      val hkBound = RefinedType.make(parent, hkParamNames, hkParamInfoFns).asInstanceOf[RefinedType]
-      TypeBounds(substBoundSyms(lo)(hkBound), AndType(hkBound, substBoundSyms(hi)(hkBound)))
-    }
 
     override def toString =
       if (lo eq hi) s"TypeAlias($lo)" else s"TypeBounds($lo, $hi)"

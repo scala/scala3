@@ -438,26 +438,52 @@ class TypeComparer(initctx: Context) extends DotClass {
   def firstTry(tp1: Type, tp2: Type): Boolean = {
     tp2 match {
       case tp2: NamedType =>
+        // We treat two prefixes A.this, B.this as equivalent if
+        // A's selftype derives from B and B's selftype derives from A.
+        def equivalentThisTypes(tp1: Type, tp2: Type) = tp1 match {
+          case ThisType(cls1) =>
+            tp2 match {
+              case ThisType(cls2) =>
+                cls1.classInfo.selfType.derivesFrom(cls2) &&
+                cls2.classInfo.selfType.derivesFrom(cls1)
+              case _ => false
+            }
+          case _ => false
+        }
+        def isHKSubType = {
+          val lambda2 = tp2.prefix.LambdaClass(forcing = true)
+          lambda2.exists && isSubType(tp1.EtaLiftTo(lambda2.typeParams), tp2.prefix)
+        }
         def compareNamed = {
           implicit val ctx: Context = this.ctx // Dotty deviation: implicits need explicit type
           tp1 match {
             case tp1: NamedType =>
               val sym1 = tp1.symbol
               (if (sym1 eq tp2.symbol) (
-                ctx.erasedTypes
+                   ctx.erasedTypes
                 || sym1.isStaticOwner
-                || {
-                  val pre1 = tp1.prefix
-                  val pre2 = tp2.prefix
-                  isSubType(pre1, pre2) ||
-                    pre1.isInstanceOf[ThisType] && pre2.isInstanceOf[ThisType]
-                })
-              else
-                (tp1.name eq tp2.name) && isSubType(tp1.prefix, tp2.prefix)) || secondTryNamed(tp1, tp2)
+                || { // Implements: A # X  <:  B # X
+                     // if either A =:= B (i.e. A <: B and B <: A), or the following three conditions hold:
+                     //  1. X is a class type,
+                     //  2. B is a class type without abstract type members.
+                     //  3. A <: B.
+                     // Dealiasing is taken care of elsewhere.
+                     val pre1 = tp1.prefix
+                     val pre2 = tp2.prefix
+                     (  isSameType(pre1, pre2)
+                     || equivalentThisTypes(pre1, pre2)
+                     ||    sym1.isClass
+                        && pre2.classSymbol.exists
+                        && pre2.abstractTypeMembers.isEmpty
+                     )
+                   }
+                )
+              else (tp1.name eq tp2.name) && isSameType(tp1.prefix, tp2.prefix)
+             ) || secondTryNamed(tp1, tp2)
             case ThisType(cls) if cls eq tp2.symbol.moduleClass =>
               isSubType(cls.owner.thisType, tp2.prefix)
             case _ =>
-              secondTry(tp1, tp2)
+              tp2.name == tpnme.Apply && isHKSubType || secondTry(tp1, tp2)
           }
         }
         compareNamed
@@ -599,8 +625,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       compareNamed
     case tp2 @ RefinedType(parent2, name2) =>
       def compareRefined: Boolean = tp1.widen match {
-        case tp1 @ RefinedType(parent1, name1)
-        if nameMatches(name1, name2, tp1, tp2) => 
+        case tp1 @ RefinedType(parent1, name1) if name1 == name2 && name1.isTypeName =>
           // optimized case; all info on tp1.name1 is in refinement tp1.refinedInfo.
           isSubType(normalizedInfo(tp1), tp2.refinedInfo) && {
             val saved = pendingRefinedBases
@@ -627,12 +652,6 @@ class TypeComparer(initctx: Context) extends DotClass {
                    case _ => false
                  }
                }
-            ||
-               name.isHkParamName && {
-                 val idx = name.hkParamIndex
-                 val tparams = tp1.typeParams
-                 idx < tparams.length && hasMatchingMember(tparams(idx).name)
-               }
             )
           }
           val matchesParent = {
@@ -643,10 +662,13 @@ class TypeComparer(initctx: Context) extends DotClass {
             }
             finally pendingRefinedBases = saved
           }
-          matchesParent && (
-               name2 == nme.WILDCARD
-            || hasMatchingMember(name2)
-            || fourthTry(tp1, tp2))
+          (  matchesParent && (
+                name2 == nme.WILDCARD
+             || hasMatchingMember(name2)
+             || fourthTry(tp1, tp2)
+             ) 
+          || needsEtaLift(tp1, tp2) && isSubType(tp1.EtaLiftTo(tp2.typeParams), tp2)
+          )
       }
       compareRefined
     case OrType(tp21, tp22) =>
@@ -734,12 +756,13 @@ class TypeComparer(initctx: Context) extends DotClass {
         }
       }
     case tp1: RefinedType =>
-      val saved = pendingRefinedBases
-      try {
-        addPendingName(tp1.refinedName, tp1, tp1)
-        isNewSubType(tp1.parent, tp2)
-      }
-      finally pendingRefinedBases = saved
+      { val saved = pendingRefinedBases
+        try {
+          addPendingName(tp1.refinedName, tp1, tp1)
+          isNewSubType(tp1.parent, tp2)
+        }
+        finally pendingRefinedBases = saved
+      } || needsEtaLift(tp2, tp1) && isSubType(tp1, tp2.EtaLiftTo(tp1.typeParams))
     case AndType(tp11, tp12) =>
       isNewSubType(tp11, tp2) || isNewSubType(tp12, tp2)
     case _ =>
@@ -747,7 +770,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   }
 
   /** Like tp1 <:< tp2, but returns false immediately if we know that
-   *  the case was covered previouslky during subtyping.
+   *  the case was covered previously during subtyping.
    */
   private def isNewSubType(tp1: Type, tp2: Type): Boolean =
     if (isCovered(tp1) && isCovered(tp2)) {
@@ -781,30 +804,6 @@ class TypeComparer(initctx: Context) extends DotClass {
     case _ => proto.isMatchedBy(tp)
   }
 
-  /** Tow refinement names match if they are the same or one is the
-   *  name of a type parameter of its parent type, and the other is
-   *  the corresponding higher-kinded parameter name
-   */
-  private def nameMatches(name1: Name, name2: Name, tp1: Type, tp2: Type) =
-    name1.isTypeName &&
-    (name1 == name2 || isHKAlias(name1, name2, tp2) || isHKAlias(name2, name1, tp1))
-
-  /** Is name1 a higher-kinded parameter name and name2 a corresponding
-   *  type parameter name?
-   */
-  private def isHKAlias(name1: Name, name2: Name, tp2: Type) =
-    name1.isHkParamName && {
-      val i = name1.hkParamIndex
-      val tparams = tp2.safeUnderlyingTypeParams
-      i < tparams.length && tparams(i).name == name2
-    }
-
-  /** Is type `tp` a TypeRef referring to a higher-kinded parameter? */
-  private def isHKRef(tp: Type) = tp match {
-    case TypeRef(_, name) => name.isHkParamName
-    case _ => false
-  }
-
   /** Can type `tp` be constrained from above by adding a constraint to
    *  a typevar that it refers to? In that case we have to be careful not
    *  to approximate with the lower bound of a type in `thirdTry`. Instead,
@@ -818,38 +817,11 @@ class TypeComparer(initctx: Context) extends DotClass {
     case _ => false
   }
 
-  /** Is `tp1` a subtype of a type `tp2` of the form
-   *  `scala.HigerKindedXYZ { ... }?
-   *  This is the case if `tp1` and `tp2` have the same number
-   *  of type parameters, the bounds of tp1's paremeters
-   *  are contained in the corresponding bounds of tp2's parameters
-   *  and the variances of the parameters agree.
-   *  The variances agree if the supertype parameter is invariant,
-   *  or both parameters have the same variance.
-   *
-   *  Note: When we get to isSubTypeHK, it might be that tp1 is
-   *  instantiated, or not. If it is instantiated, we compare
-   *  actual argument infos against higher-kinded bounds,
-   *  if it is not instantiated we compare type parameter bounds
-   *  and also compare variances.
-   */
-  def isSubTypeHK(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubTypeHK(${tp1.show}, ${tp2.show}", subtyping) {
-    val tparams = tp1.typeParams
-    val argInfos1 = tp1.argInfos
-    val args1 =
-      if (argInfos1.nonEmpty) argInfos1 // tp1 is instantiated, use the argument infos
-      else { // tp1 is uninstantiated, use the parameter bounds
-        val base = tp1.narrow
-        tparams.map(base.memberInfo)
-      }
-    val hkBounds = tp2.argInfos.map(_.asInstanceOf[TypeBounds])
-    val boundsOK = (hkBounds corresponds args1)(_ contains _)
-    val variancesOK =
-      argInfos1.nonEmpty || (tparams corresponds tp2.typeSymbol.name.hkVariances) { (tparam, v) =>
-        v == 0 || tparam.variance == v
-      }
-    hk.println(s"isSubTypeHK: args1 = $args1, hk-bounds = $hkBounds $boundsOK $variancesOK")
-    boundsOK && variancesOK || fourthTry(tp1, tp2)
+  /** Does `tp` need to be eta lifted to be comparable to `target`? */
+  def needsEtaLift(tp: Type, target: RefinedType) = {
+    val name = target.refinedName
+    (name.isLambdaArgName || (name eq tpnme.Apply)) && target.isLambda &&
+    tp.exists && !tp.isLambda
   }
 
   def trySetType(tr: NamedType, bounds: TypeBounds): Boolean =
@@ -1093,9 +1065,10 @@ class TypeComparer(initctx: Context) extends DotClass {
       val t2 = distributeAnd(tp2, tp1)
       if (t2.exists) t2
       else {
-        if (isHKRef(tp1)) tp2
-        else if (isHKRef(tp2)) tp1
-        else AndType(tp1, tp2)
+        //if (isHKRef(tp1)) tp2
+        //else if (isHKRef(tp2)) tp1
+        //else
+        AndType(tp1, tp2)
       }
     }
   }
@@ -1117,9 +1090,10 @@ class TypeComparer(initctx: Context) extends DotClass {
       val t2 = distributeOr(tp2, tp1)
       if (t2.exists) t2
       else {
-        if (isHKRef(tp1)) tp1
-        else if (isHKRef(tp2)) tp2
-        else OrType(tp1, tp2)
+        //if (isHKRef(tp1)) tp1
+        //else if (isHKRef(tp2)) tp2
+        //else
+        OrType(tp1, tp2)
       }
     }
   }

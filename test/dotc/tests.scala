@@ -76,7 +76,6 @@ class tests extends CompilerTest {
       defaultOptions = noCheckOptions)
         // -Ycheck fails because there are structural types involving higher-kinded types.
         // these are illegal, but are tested only later.
-  @Test def neg_t0654_polyalias = compileFile(negDir, "t0654", xerrors = 2)
   @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
   @Test def neg_tailcall_t1672b = compileFile(negDir, "tailcall/t1672b", xerrors = 6)
   @Test def neg_tailcall_t3275 = compileFile(negDir, "tailcall/t3275", xerrors = 1)
@@ -85,7 +84,7 @@ class tests extends CompilerTest {
   @Test def neg_tailcall2 = compileFile(negDir, "tailcall/tailrec-2", xerrors = 2)
   @Test def neg_tailcall3 = compileFile(negDir, "tailcall/tailrec-3", xerrors = 2)
   @Test def neg_t1843 = compileFile(negDir, "t1843", xerrors = 1)
-  @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 13)
+  @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 2)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)

@@ -226,8 +226,13 @@ class Namer { typer: Typer =>
       case tree: MemberDef =>
         val name = tree.name.encode
         checkNoConflict(name)
-        val deferred = if (lacksDefinition(tree)) Deferred else EmptyFlags
+        val isDeferred = lacksDefinition(tree)
+        val deferred = if (isDeferred) Deferred else EmptyFlags
         val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
+        val higherKinded = tree match {
+          case tree: TypeDef if tree.tparams.nonEmpty && isDeferred => HigherKinded
+          case _ => EmptyFlags
+        }
 
         // to complete a constructor, move one context further out -- this
         // is the context enclosing the class. Note that the context in which a
@@ -238,7 +243,7 @@ class Namer { typer: Typer =>
         val cctx = if (tree.name == nme.CONSTRUCTOR) ctx.outer else ctx
 
         record(ctx.newSymbol(
-          ctx.owner, name, tree.mods.flags | deferred | method,
+          ctx.owner, name, tree.mods.flags | deferred | method | higherKinded,
           adjustIfModule(new Completer(tree)(cctx), tree),
           privateWithinClass(tree.mods), tree.pos))
       case tree: Import =>
@@ -453,7 +458,7 @@ class Namer { typer: Typer =>
           val Select(New(tpt), nme.CONSTRUCTOR) = core
           val targs1 = targs map (typedAheadType(_))
           val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
-          if (ptype.uninstantiatedTypeParams.isEmpty) ptype
+          if (ptype.typeParams.isEmpty) ptype
           else typedAheadExpr(parent).tpe
         }
 
@@ -661,17 +666,17 @@ class Namer { typer: Typer =>
     completeParams(tdef.tparams)
     sym.info = TypeBounds.empty // avoid cyclic reference errors for F-bounds
     val tparamSyms = tdef.tparams map symbolOfTree
+    val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
+    val toParameterize = tparamSyms.nonEmpty && !isDerived
+    val needsLambda = sym.allOverriddenSymbols.exists(_ is HigherKinded) && !isDerived
     val rhsType = typedAheadType(tdef.rhs).tpe
-
+    def abstractedRhsType =
+      if (needsLambda) rhsType.LambdaAbstract(tparamSyms)
+      else if (toParameterize) rhsType.parameterizeWith(tparamSyms)
+      else rhsType
     rhsType match {
-      case bounds: TypeBounds =>
-        if (tparamSyms.nonEmpty) bounds.higherKinded(tparamSyms)
-        else rhsType
-      case _ =>
-        val abstractedRhsType =
-          if (tparamSyms.nonEmpty) rhsType.LambdaAbstract(tparamSyms)(ctx.error(_, _))
-          else rhsType
-        TypeAlias(abstractedRhsType, if (sym is Local) sym.variance else 0)
+      case _: TypeBounds => abstractedRhsType
+      case _ => TypeAlias(abstractedRhsType, if (sym is Local) sym.variance else 0)
     }
   }
 }

@@ -510,10 +510,17 @@ trait Applications extends Compatibility { self: Typer =>
   }
 
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
-    val typedArgs = tree.args mapconserve (typedType(_))
+    var typedArgs = tree.args mapconserve (typedType(_))
     val typedFn = typedExpr(tree.fun, PolyProto(typedArgs.tpes, pt))
     typedFn.tpe.widen match {
-      case pt: PolyType => checkBounds(typedArgs, pt, tree.pos)
+      case pt: PolyType =>
+        def adaptTypeArg(tree: tpd.Tree, bound: Type): tpd.Tree =
+          if (bound.isLambda && !tree.tpe.isLambda && tree.tpe.typeParams.nonEmpty)
+            tree.withType(tree.tpe.EtaExpand)
+          else tree
+        if (typedArgs.length <= pt.paramBounds.length)
+          typedArgs = typedArgs.zipWithConserve(pt.paramBounds)(adaptTypeArg)
+        checkBounds(typedArgs, pt, tree.pos)
       case _ =>
     }
     assignType(cpy.TypeApply(tree, typedFn, typedArgs), typedFn, typedArgs)

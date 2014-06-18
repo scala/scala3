@@ -88,14 +88,13 @@ object NameOps {
     }
 
     /** Is this the name of a higher-kinded type parameter of a Lambda? */
-    def isLambdaArgName = name.startsWith(tpnme.LAMBDA_ARG_PREFIX)
-    def isHkParamName: Boolean = name(0) == '_' && name.startsWith(HK_PARAM_PREFIX) // tbr
+    def isLambdaArgName =
+      name(0) == tpnme.LAMBDA_ARG_PREFIXhead && name.startsWith(tpnme.LAMBDA_ARG_PREFIX)
 
     /** The index of the higher-kinded type parameter with this name.
      *  Pre: isLambdaArgName.
      */
     def lambdaArgIndex: Int = name.drop(name.lastIndexOf('$') + 1).toString.toInt
-    def hkParamIndex: Int = name.drop(name.lastIndexOf('$') + 1).toString.toInt // tbr
 
     /** If the name ends with $nn where nn are
       * all digits, strip the $ and the digits.
@@ -177,19 +176,6 @@ object NameOps {
         case idx =>
           mkName(name take idx, name(idx)) :: (name drop (idx + 1)).segments
       }
-    }
-
-    /** The variances of the higherKinded parameters of the trait named
-     *  by this name.
-     *  @pre The name is a higher-kinded trait name, i.e. it starts with HK_TRAIT_PREFIX
-     */
-    def hkVariances: List[Int] = { // tbr
-      def varianceOfSuffix(suffix: Char): Int = {
-        val idx = tpnme.varianceSuffixes.indexOf(suffix)
-        assert(idx >= 0)
-        idx - 1
-      }
-      name.drop(tpnme.HK_TRAIT_PREFIX.length).toList.map(varianceOfSuffix)
     }
 
     /** The name of the generic runtime operation corresponding to an array operation */
