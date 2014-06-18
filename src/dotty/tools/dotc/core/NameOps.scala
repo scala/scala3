@@ -47,6 +47,13 @@ object NameOps {
     }
   }
 
+  object SuperAccessorName {
+    val pre = nme.SUPER_PREFIX
+    def apply(name: TermName): TermName = pre ++ name
+    def unapply(name: TermName): Option[TermName] =
+      if (name startsWith pre) Some(name.drop(pre.length).asTermName) else None
+  }
+
   implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
     import nme._
 
@@ -59,7 +66,6 @@ object NameOps {
     def isLocalDummyName = name startsWith LOCALDUMMY_PREFIX
     def isLoopHeaderLabel = (name startsWith WHILE_PREFIX) || (name startsWith DO_WHILE_PREFIX)
     def isProtectedAccessorName = name startsWith PROTECTED_PREFIX
-    def isSuperAccessorName = name startsWith SUPER_PREFIX
     def isReplWrapperName = name containsSlice INTERPRETER_IMPORT_WRAPPER
     def isSetterName = name endsWith SETTER_SUFFIX
     def isTraitSetterName = isSetterName && (name containsSlice TRAIT_SETTER_SEPARATOR)
@@ -246,10 +252,6 @@ object NameOps {
       if (p >= 0) name.drop(p + DEFAULT_GETTER.length).toString.toInt - 1
       else -1
     }
-
-    /** The name of a super-accessor */
-    def superAccessorName: TermName =
-      SUPER_PREFIX ++ name
 
     /** The name of an accessor for protected symbols. */
     def protectedAccessorName: TermName =
