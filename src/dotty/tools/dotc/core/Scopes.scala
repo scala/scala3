@@ -18,6 +18,7 @@ import SymDenotations._
 import printing.Texts._
 import printing.Printer
 import util.common._
+import util.DotClass
 import SymDenotations.NoDenotation
 import collection.mutable.ListBuffer
 
@@ -55,7 +56,7 @@ object Scopes {
    *  or to delete them. These methods are provided by subclass
    *  MutableScope.
    */
-  abstract class Scope extends printing.Showable with Iterable[Symbol] {
+  abstract class Scope extends DotClass with printing.Showable with Iterable[Symbol] {
 
     /** The last scope-entry from which all others are reachable via `prev` */
     private[dotc] def lastEntry: ScopeEntry
@@ -77,8 +78,8 @@ object Scopes {
      */
     def iterator: Iterator[Symbol] = toList.iterator
 
-    /** Returns a new scope with the same content as this one. */
-    def cloneScope(implicit ctx: Context): Scope
+    /** Returns a new mutable scope with the same content as this one. */
+    def cloneScope(implicit ctx: Context): MutableScope
 
     /** Is the scope empty? */
     override def isEmpty: Boolean = lastEntry eq null
@@ -354,7 +355,7 @@ object Scopes {
     override def size = 0
     override def nestingLevel = 0
     override def toList = Nil
-    override def cloneScope(implicit ctx: Context): Scope = this
+    override def cloneScope(implicit ctx: Context): MutableScope = unsupported("cloneScope")
     override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = null
     override def lookupNextEntry(entry: ScopeEntry)(implicit ctx: Context): ScopeEntry = null
   }
