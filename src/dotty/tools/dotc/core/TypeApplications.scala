@@ -108,7 +108,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  @param forcing  if set, might force completion. If not, never forces
    *                  but returns NoSymbol when it would have to otherwise.
    */
-  def LambdaClass(forcing: Boolean)(implicit ctx: Context): Symbol = ctx.traceIndented(i"LambdaClass($self)", hk) { self.stripTypeVar match {
+  def LambdaClass(forcing: Boolean)(implicit ctx: Context): Symbol = track("LambdaClass") { self.stripTypeVar match {
     case self: TypeRef =>
       val sym = self.symbol
       if (sym.isLambdaTrait) sym
@@ -432,7 +432,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       val substitutedRHS = (rt: RefinedType) => {
         val argRefs = boundSyms.indices.toList.map(i =>
           RefinedThis(rt).select(tpnme.lambdaArgName(i)))
-        tp.bounds.subst(boundSyms, argRefs)
+        tp.subst(boundSyms, argRefs).bounds.withVariance(1)
       }
       val res = RefinedType(lambda.typeRef, tpnme.Apply, substitutedRHS)
       //println(i"lambda abstract $self wrt $boundSyms%, % --> $res")
@@ -475,8 +475,10 @@ class TypeApplications(val self: Type) extends AnyVal {
           param2.variance == param2.variance || param2.variance == 0
         if ((tycon.typeParams corresponds tparams)(variancesMatch)) {
           val expanded = tycon.EtaExpand
-          val res = (expanded /: targs)((partialInst, arg) =>
-            RefinedType(partialInst, partialInst.typeParams.head.name, arg.bounds))
+          val res = (expanded /: targs) { (partialInst, targ) =>
+            val tparam = partialInst.typeParams.head
+            RefinedType(partialInst, tparam.name, targ.bounds.withVariance(tparam.variance))
+          }
           hk.println(i"eta lifting $self --> $res")
           res
         }
@@ -484,6 +486,8 @@ class TypeApplications(val self: Type) extends AnyVal {
       case nil =>
         NoType
     }
-    if (tparams.isEmpty) NoType else tryLift(self.baseClasses)
+    if (tparams.isEmpty) NoType
+    else if (typeParams.nonEmpty) EtaExpand
+    else tryLift(self.baseClasses)
   }
 }

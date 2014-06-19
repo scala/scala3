@@ -2096,6 +2096,13 @@ object Types {
       if (lo eq tp) this
       else TypeAlias(tp, variance)
 
+    /** If this is an alias, a derived alias with the new variance,
+     *  Otherwise the type itself.
+     */
+    def withVariance(variance: Int)(implicit ctx: Context) =
+      if (lo ne hi) this
+      else derivedTypeBounds(lo, hi, variance)
+
     def contains(tp: Type)(implicit ctx: Context) = tp match {
       case tp: TypeBounds => lo <:< tp.lo && tp.hi <:< hi
       case _ => lo <:< tp && tp <:< hi
