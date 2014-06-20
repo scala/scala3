@@ -142,9 +142,15 @@ object Implicits {
           if (monitored) record(s"elided eligible refs", elided(this))
           eligibles
         case None =>
-          val eligibles = computeEligible(tp)
-          eligibleCache(tp) = eligibles
-          eligibles
+          val savedEphemeral = ctx.typerState.ephemeral
+          ctx.typerState.ephemeral = false
+          try {
+            val result = computeEligible(tp)
+            if (ctx.typerState.ephemeral) record("ephemeral cache miss: eligible")
+            else eligibleCache(tp) = result
+            result
+          }
+          finally ctx.typerState.ephemeral |= savedEphemeral
       }
     }
 
@@ -334,11 +340,22 @@ trait ImplicitRunInfo { self: RunInfo =>
     def iscope(tp: Type, isLifted: Boolean = false): OfTypeImplicits =
       if (tp.hash == NotCached || !Config.cacheImplicitScopes)
         ofTypeImplicits(collectCompanions(tp))
-      else implicitScopeCache.getOrElseUpdate(tp, {
-        val liftedTp = if (isLifted) tp else liftToClasses(tp)
-        if (liftedTp ne tp) iscope(liftedTp, isLifted = true)
-        else ofTypeImplicits(collectCompanions(tp))
-      })
+      else implicitScopeCache get tp match {
+        case Some(is) => is
+        case None =>
+          val savedEphemeral = ctx.typerState.ephemeral
+          ctx.typerState.ephemeral = false
+          try {
+            val liftedTp = if (isLifted) tp else liftToClasses(tp)
+            val result =
+              if (liftedTp ne tp) iscope(liftedTp, isLifted = true)
+              else ofTypeImplicits(collectCompanions(tp))
+            if (ctx.typerState.ephemeral) record("ephemeral cache miss: implicitScope")
+            else implicitScopeCache(tp) = result
+            result
+          }
+          finally ctx.typerState.ephemeral |= savedEphemeral
+        }
 
     iscope(tp)
   }

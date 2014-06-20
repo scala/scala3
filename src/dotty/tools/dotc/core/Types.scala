@@ -1075,24 +1075,32 @@ object Types {
 
     /** A second fallback to recompute the denotation if necessary */
     private def computeDenot(implicit ctx: Context): Denotation = {
-      val d = lastDenotation match {
-        case null =>
-          val sym = lastSymbol
-          if (sym == null) loadDenot else denotOfSym(sym)
-        case d: SymDenotation =>
-          if (d.validFor.runId == ctx.runId || ctx.stillValid(d)) d.current
-          else {
-            val newd = loadDenot
-            if (newd.exists) newd else d.staleSymbolError
-          }
-        case d =>
-          if (d.validFor.runId == ctx.period.runId) d.current
-          else loadDenot
+      val savedEphemeral = ctx.typerState.ephemeral
+      ctx.typerState.ephemeral = false
+      try {
+        val d = lastDenotation match {
+          case null =>
+            val sym = lastSymbol
+            if (sym == null) loadDenot else denotOfSym(sym)
+          case d: SymDenotation =>
+            if (d.validFor.runId == ctx.runId || ctx.stillValid(d)) d.current
+            else {
+              val newd = loadDenot
+              if (newd.exists) newd else d.staleSymbolError
+            }
+          case d =>
+            if (d.validFor.runId == ctx.period.runId) d.current
+            else loadDenot
+        }
+        if (ctx.typerState.ephemeral) record("ephemeral cache miss: loadDenot")
+        else {
+          lastDenotation = d
+          lastSymbol = d.symbol
+          checkedPeriod = ctx.period
+        }
+        d
       }
-      lastDenotation = d
-      lastSymbol = d.symbol
-      checkedPeriod = ctx.period
-      d
+      finally ctx.typerState.ephemeral |= savedEphemeral
     }
 
     private def denotOfSym(sym: Symbol)(implicit ctx: Context): Denotation = {
@@ -1974,7 +1982,11 @@ object Types {
     /** If the variable is instantiated, its instance, otherwise its origin */
     override def underlying(implicit ctx: Context): Type = {
       val inst = instanceOpt
-      if (inst.exists) inst else origin
+      if (inst.exists) inst
+      else {
+        ctx.typerState.ephemeral = true
+        origin
+      }
     }
 
     override def computeHash: Int = identityHash
