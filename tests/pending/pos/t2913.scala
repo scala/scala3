@@ -1,3 +1,5 @@
+import language.noAutoTupling // try with on and off
+
 class A {
   def foo(a: Int) = 0
 }

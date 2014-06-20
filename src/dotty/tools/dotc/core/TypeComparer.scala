@@ -860,7 +860,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   }
 
   /** The greatest lower bound of two types */
-  def glb(tp1: Type, tp2: Type): Type = /*>|>*/ ctx.traceIndented(s"glb(${tp1.show}, ${tp2.show})", typr, show = true) /*<|<*/ {
+  def glb(tp1: Type, tp2: Type): Type = /*>|>*/ ctx.traceIndented(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp2
     else if (!tp2.exists) tp1
@@ -892,7 +892,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   /** The least upper bound of two types
    *  @note  We do not admit singleton types in or-types as lubs.
    */
-  def lub(tp1: Type, tp2: Type): Type = /*>|>*/ ctx.traceIndented(s"lub(${tp1.show}, ${tp2.show})", typr, show = true) /*<|<*/ {
+  def lub(tp1: Type, tp2: Type): Type = /*>|>*/ ctx.traceIndented(s"lub(${tp1.show}, ${tp2.show})", subtyping, show = true) /*<|<*/ {
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp1
     else if (!tp2.exists) tp2

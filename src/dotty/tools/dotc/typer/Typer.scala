@@ -46,6 +46,11 @@ object Typer {
     val nothingBound = 0
     def isImportPrec(prec: Int) = prec == namedImport || prec == wildImport
   }
+
+  /** Assert tree has a position, unless it is empty or a typed splice */
+  def assertPositioned(tree: untpd.Tree)(implicit ctx: Context) =
+    if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable)
+      assert(tree.pos.exists, s"position not set for $tree # ${tree.uniqueId}")
 }
 
 class Typer extends Namer with TypeAssigner with Applications with Implicits with Inferencing with Checking {
@@ -323,7 +328,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val tpt1 = typedType(tree.tpt)
       val expr1 =
         if (isWildcard) tree.expr withType tpt1.tpe
-        else typedExpr(tree.expr, tpt1.tpe)
+        else typed(tree.expr, tpt1.tpe)
       assignType(cpy.Typed(tree, expr1, tpt1), tpt1)
     }
     tree.expr match {
@@ -953,7 +958,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
-    if (!tree.isEmpty && ctx.typerState.isGlobalCommittable) assert(tree.pos.exists, i"position not set for $tree")
+    assertPositioned(tree)
     try adapt(typedUnadapted(tree, pt), pt, tree)
     catch {
       case ex: CyclicReference => errorTree(tree, cyclicErrorMsg(ex))
@@ -1009,17 +1014,21 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  /** Try to insert `.apply` so that the result conforms to prototype `pt`.
-   *  If that fails try to insert an implicit conversion around the qualifier
-   *  part of `tree`. If either result conforms to `pt`, adapt it, else
-   *  continue with `fallBack`.
+  /** Add apply node or implicit conversions. Two strategies are tried, and the first
+   *  that is succesful is picked. If neither of the strategies are succesful, continues with
+   *  `fallBack`.
+   *
+   *  1st strategy: Try to insert `.apply` so that the result conforms to prototype `pt`.
+   *  2nd stratgey: If tree is a select `qual.name`, try to insert an implicit conversion
+   *    around the qualifier part `qual` so that the result conforms to the expected type
+   *    with wildcard result type.
    */
   def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: (Tree, TyperState) => Tree)(implicit ctx: Context): Tree =
     tryEither { implicit ctx =>
       val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt)
       if (sel.tpe.isError) sel else adapt(sel, pt)
     } { (failedTree, failedState) =>
-      val tree1 = tryInsertImplicit(tree, pt)
+      val tree1 = tryInsertImplicitOnQualifier(tree, pt)
       if (tree1 eq tree) fallBack(failedTree, failedState)
       else adapt(tree1, pt)
     }
@@ -1028,21 +1037,19 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    *  `c` around `qual` so that `c(qual).name` conforms to `pt`. If that fails
    *  return `tree` itself.
    */
-  def tryInsertImplicit(tree: Tree, pt: ProtoType)(implicit ctx: Context): Tree = ctx.traceIndented(i"try ins impl $tree $pt") { tree match {
-    case Select(qual, name) =>
-      val normalizedProto = pt match {
-        case pt: FunProto => pt.derivedFunProto(pt.args, WildcardType, pt.typer) // drop result type, because views are disabled
-        case _ => pt
-      }
-      val qualProto = SelectionProto(name, normalizedProto, NoViewsAllowed)
-      tryEither { implicit ctx =>
-        val qual1 = adaptInterpolated(qual, qualProto, EmptyTree)
-        if ((qual eq qual1) || ctx.reporter.hasErrors) tree
-        else typedSelect(cpy.Select(tree, untpd.TypedSplice(qual1), name), pt)
-      } { (_, _) => tree
-      }
-    case _ => tree
-  }}
+  def tryInsertImplicitOnQualifier(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ctx.traceIndented(i"try insert impl on qualifier $tree $pt") {
+    tree match {
+      case Select(qual, name) =>
+        val qualProto = SelectionProto(name, pt, NoViewsAllowed)
+        tryEither { implicit ctx =>
+          val qual1 = adaptInterpolated(qual, qualProto, EmptyTree)
+          if ((qual eq qual1) || ctx.reporter.hasErrors) tree
+          else typedSelect(cpy.Select(tree, untpd.TypedSplice(qual1), name), pt)
+        } { (_, _) => tree
+        }
+      case _ => tree
+    }
+  }
 
   def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = /*>|>*/ track("adapt") /*<|<*/ {
     /*>|>*/ ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {

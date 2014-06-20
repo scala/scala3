@@ -241,6 +241,14 @@ object desugar {
     val constr = cpy.DefDef(constr1,
       constr1.mods, constr1.name, constrTparams, constrVparamss, constr1.tpt, constr1.rhs)
 
+    // Add constructor type parameters to auxiliary constructors
+    val normalizedBody = body map {
+      case ddef: DefDef if ddef.name.isConstructorName =>
+        cpy.DefDef(ddef, ddef.mods, ddef.name, constrTparams, ddef.vparamss, ddef.tpt, ddef.rhs)
+      case stat =>
+        stat
+    }
+
     val derivedTparams = constrTparams map derivedTypeParam
     val derivedVparamss = constrVparamss nestedMap derivedTermParam
     val arity = constrVparamss.head.length
@@ -376,7 +384,7 @@ object desugar {
       }
       cpy.TypeDef(cdef, mods, name,
         cpy.Template(impl, constr, parents1, self1,
-          tparamAccessors ::: vparamAccessors ::: body ::: caseClassMeths))
+          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths))
     }
 
     // install the watch on classTycon

@@ -3,11 +3,11 @@ package printing
 
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._
-import Contexts.Context, Scopes.Scope, Denotations._, Annotations.Annotation
+import Contexts.Context, Scopes.Scope, Denotations._, SymDenotations._, Annotations.Annotation
 import StdNames.nme
 import ast.{Trees, untpd}
 import typer.Namer
-import typer.ProtoTypes.{SelectionProto, ViewProto, FunProto, IgnoredProto}
+import typer.ProtoTypes.{SelectionProto, ViewProto, FunProto, IgnoredProto, dummyTreeOfType}
 import Trees._
 import scala.annotation.switch
 
@@ -126,7 +126,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tp: ViewProto =>
         return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
       case FunProto(args, resultType, _) =>
-        return "funproto(" ~ toTextGlobal(args, ", ") ~ "):" ~ toText(resultType)
+        val argsText = args match {
+          case dummyTreeOfType(tp) :: Nil if !(tp isRef defn.NullClass) => "null: " ~ toText(tp)
+          case _ => toTextGlobal(args, ", ")
+        }
+        return "FunProto(" ~ argsText ~ "):" ~ toText(resultType)
       case tp: IgnoredProto =>
         return "?"
       case _ =>
@@ -477,6 +481,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def toText(denot: Denotation): Text = denot match {
     case denot: MultiDenotation => denot.toString
+    case NoDenotation => "NoDenotation"
     case _ =>
       if (denot.symbol.exists) toText(denot.symbol)
       else "some " ~ toText(denot.info)

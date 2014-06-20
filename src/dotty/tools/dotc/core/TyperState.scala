@@ -152,12 +152,13 @@ extends TyperState(r) {
     val savedConstraint = myConstraint
     myReporter = new StoreReporter
     val result = op
-    if (!reporter.hasErrors) result
-    else {
-      myReporter = savedReporter
-      myConstraint = savedConstraint
-      fallback
-    }
+    try
+      if (!reporter.hasErrors) result
+      else {
+        myConstraint = savedConstraint
+        fallback
+      }
+    finally myReporter = savedReporter
   }
 
   override def toText(printer: Printer): Text = constraint.toText(printer)
