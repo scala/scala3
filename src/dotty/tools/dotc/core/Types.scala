@@ -116,7 +116,7 @@ object Types {
         false
     }
 
-   /** A type T is a legal prefix in a type selection T#A if
+    /** A type T is a legal prefix in a type selection T#A if
      *  T is stable or T contains no abstract types except possibly A.
      *  !!! Todo: What about non-final vals that contain abstract types?
      */
@@ -169,19 +169,23 @@ object Types {
      *  non-singleton proxies that lead to the `prefix` type. ClassInfos with
      *  the same class are counted as equal for this purpose.
      */
-    def refines(prefix: Type)(implicit ctx: Context): Boolean =
-      (this eq prefix) || {
-        this match {
-          case base: ClassInfo =>
-            prefix match {
-              case prefix: ClassInfo => base.cls eq prefix.cls
-              case _ => false
-            }
-          case base: SingletonType => false
-          case base: TypeProxy => base.underlying refines prefix
-          case _ => false
+    def refines(prefix: Type)(implicit ctx: Context): Boolean = {
+      val prefix1 = prefix.dealias
+      def loop(tp: Type): Boolean =
+        (tp eq prefix1) || {
+          tp match {
+            case base: ClassInfo =>
+              prefix1 match {
+                case prefix1: ClassInfo => base.cls eq prefix1.cls
+                case _ => false
+              }
+            case base: SingletonType => false
+            case base: TypeProxy => loop(base.underlying)
+            case _ => false
+          }
         }
-      }
+      loop(this)
+    }
 
 // ----- Higher-order combinators -----------------------------------
 
@@ -394,7 +398,7 @@ object Types {
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
         val rinfo = tp.refinedInfo.substThis(tp, pre)
-        if (name.isTypeName) {// simplified case that runs more efficiently
+        if (name.isTypeName) { // simplified case that runs more efficiently
           val jointInfo = if (rinfo.isAlias) rinfo else pdenot.info & rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         } else
@@ -529,7 +533,7 @@ object Types {
      */
     final def baseTypeRef(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseTypeRef $base")*/ /*>|>*/ track("baseTypeRef") /*<|<*/ {
       base.denot match {
-        case classd: ClassDenotation => classd.baseTypeRefOf(this)//widen.dealias)
+        case classd: ClassDenotation => classd.baseTypeRefOf(this) //widen.dealias)
         case _ => NoType
       }
     }
@@ -1154,7 +1158,7 @@ object Types {
         else prefix.member(name)
       if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
         d
-      else {// name has changed; try load in earlier phase and make current
+      else { // name has changed; try load in earlier phase and make current
         val d = loadDenot(ctx.withPhase(ctx.phaseId - 1)).current
         if (d.exists) d
         else throw new Error(s"failure to reload $this")
@@ -2270,7 +2274,7 @@ object Types {
         if (absMems.size == 1)
           absMems.head.info match {
             case mt: MethodType if !mt.isDependent => Some(absMems.head)
-            case _=> None
+            case _ => None
           }
         else if (tp isRef defn.PartialFunctionClass)
           // To maintain compatibility with 2.x, we treat PartialFunction specially,
