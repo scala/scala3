@@ -450,9 +450,10 @@ class TypeComparer(initctx: Context) extends DotClass {
             }
           case _ => false
         }
-        def isHKSubType = {
+        def isHKSubType = tp2.name == tpnme.Apply && {
           val lambda2 = tp2.prefix.LambdaClass(forcing = true)
-          lambda2.exists && isSubType(tp1.EtaLiftTo(lambda2.typeParams), tp2.prefix)
+          lambda2.exists && !tp1.isLambda &&
+            isSubType(tp1.EtaLiftTo(lambda2.typeParams), tp2.prefix)
         }
         def compareNamed = {
           implicit val ctx: Context = this.ctx // Dotty deviation: implicits need explicit type
@@ -479,11 +480,11 @@ class TypeComparer(initctx: Context) extends DotClass {
                    }
                 )
               else (tp1.name eq tp2.name) && isSameType(tp1.prefix, tp2.prefix)
-             ) || secondTryNamed(tp1, tp2)
+             ) || isHKSubType || secondTryNamed(tp1, tp2)
             case ThisType(cls) if cls eq tp2.symbol.moduleClass =>
               isSubType(cls.owner.thisType, tp2.prefix)
             case _ =>
-              tp2.name == tpnme.Apply && isHKSubType || secondTry(tp1, tp2)
+              isHKSubType || secondTry(tp1, tp2)
           }
         }
         compareNamed
