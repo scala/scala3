@@ -48,8 +48,8 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  For a typeref referring to a class, the type parameters of the class.
    *  For a typeref referring to an alias or abstract type, the type parameters of
    *    its right hand side or upper bound.
-   *  For a refinement type, the type parameters of its parent, unless there's a
-   *  refinement with the same name.
+   *  For a refinement type, the type parameters of its parent, unless the refinement
+   *  re-binds the type parameter with a type-alias.
    *  For any other non-singleton type proxy, the type parameters of its underlying type.
    *  For any other type, the empty list.
    */
@@ -105,6 +105,7 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** If type `tp` is equal, aliased-to, or upperbounded-by a type of the form
    *  `LambdaXYZ { ... }`, the class symbol of that type, otherwise NoSymbol.
+   *  symbol of that type, otherwise NoSymbol.
    *  @param forcing  if set, might force completion. If not, never forces
    *                  but returns NoSymbol when it would have to otherwise.
    */
@@ -114,8 +115,6 @@ class TypeApplications(val self: Type) extends AnyVal {
       if (sym.isLambdaTrait) sym
       else if (sym.isClass || sym.isCompleting && !forcing) NoSymbol
       else self.info.LambdaClass(forcing)
-    case self: TermRef =>
-      NoSymbol
     case self: TypeProxy =>
       self.underlying.LambdaClass(forcing)
     case _ =>
