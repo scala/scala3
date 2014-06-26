@@ -654,7 +654,8 @@ object Types {
      *
      *    P { ... type T = / += / -= U ... } # T
      *
-     *  to just U
+     *  to just U. Does not perform the reduction if the resulting type would contain
+     *  a reference to the "this" of the current refined type.
      */
     def lookupRefined(name: Name)(implicit ctx: Context): Type = stripTypeVar match {
       case pre: RefinedType =>

@@ -23,7 +23,13 @@ class TyperState(r: Reporter) extends DotClass with Showable {
   /** The uninstantiated variables */
   def uninstVars = constraint.uninstVars
 
-  /** The ephemeral flag */
+  /** The ephemeral flag is set as a side effect if an operation accesses
+   *  the underlying type of a type variable. The reason we need this flag is
+   *  that any such operation is not referentially transparent; it might logically change
+   *  its value at the moment the type variable is instantiated. Caching code needs to
+   *  check the ephemeral flag; If the flag is set during an operation, the result
+   *  of that operation should not be cached.
+   */
   def ephemeral: Boolean = false
   def ephemeral_=(x: Boolean): Unit = ()
 
