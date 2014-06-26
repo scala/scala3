@@ -66,13 +66,13 @@ object NameOps {
     def isSingletonName = name endsWith SINGLETON_SUFFIX
     def isModuleClassName = name endsWith MODULE_SUFFIX
     def isImportName = name startsWith IMPORT
-    def isInheritedName = name.head == '(' && name.startsWith(nme.INHERITED)
+    def isInheritedName = name.length > 0 && name.head == '(' && name.startsWith(nme.INHERITED)
 
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
 
     /** Is name a variable name? */
-    def isVariableName: Boolean = {
+    def isVariableName: Boolean = name.length > 0 && {
       val first = name.head
       (((first.isLower && first.isLetter) || first == '_')
         && (name != false_)
@@ -84,12 +84,12 @@ object NameOps {
       case raw.NE | raw.LE | raw.GE | EMPTY =>
         false
       case _ =>
-        name.last == '=' && name.head != '=' && isOperatorPart(name.head)
+        name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.head)
     }
 
     /** Is this the name of a higher-kinded type parameter of a Lambda? */
     def isLambdaArgName =
-      name(0) == tpnme.LAMBDA_ARG_PREFIXhead && name.startsWith(tpnme.LAMBDA_ARG_PREFIX)
+      name.length > 0 && name.head == tpnme.LAMBDA_ARG_PREFIXhead && name.startsWith(tpnme.LAMBDA_ARG_PREFIX)
 
     /** The index of the higher-kinded type parameter with this name.
      *  Pre: isLambdaArgName.
