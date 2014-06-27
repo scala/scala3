@@ -1162,6 +1162,8 @@ object Trees {
           cpy.Alternative(tree, transform(trees))
         case UnApply(fun, implicits, patterns) =>
           cpy.UnApply(tree, transform(fun), transform(implicits), transform(patterns))
+        case EmptyValDef =>
+          tree
         case ValDef(mods, name, tpt, rhs) =>
           cpy.ValDef(tree, mods, name, transform(tpt), transform(rhs))
         case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
