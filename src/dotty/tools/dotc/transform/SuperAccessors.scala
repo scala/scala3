@@ -78,8 +78,8 @@ class SuperAccessors extends MacroTransform with DenotTransformer { thisTransfor
       buf += tree
     }
 
-    private def ensureSigned(tpe: Type)(implicit ctx: Context) = tpe match {
-      case tpe: SignedType => tpe
+    private def ensureMethodic(tpe: Type)(implicit ctx: Context) = tpe match {
+      case tpe: MethodicType => tpe
       case _ => ExprType(tpe)
     }
 
@@ -93,7 +93,7 @@ class SuperAccessors extends MacroTransform with DenotTransformer { thisTransfor
         ctx.debuglog(s"add super acc ${sym.showLocated} to $clazz")
         val acc = ctx.newSymbol(
             clazz, supername, SuperAccessor | Private | Artifact,
-            ensureSigned(sel.tpe.widenSingleton), coord = sym.coord).enteredAfter(thisTransformer)
+            ensureMethodic(sel.tpe.widenSingleton), coord = sym.coord).enteredAfter(thisTransformer)
         // Diagnostic for SI-7091
         if (!accDefs.contains(clazz))
           ctx.error(s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz is Package}. Accessor required for ${sel} (${sel.show})", sel.pos)
@@ -274,7 +274,7 @@ class SuperAccessors extends MacroTransform with DenotTransformer { thisTransfor
                       val alias = inheritedAccessor(sym)
                       if (alias.exists) {
                         def forwarder(implicit ctx: Context) = {
-                          sym.copySymDenotation(initFlags = sym.flags | Method, info = ensureSigned(sym.info))
+                          sym.copySymDenotation(initFlags = sym.flags | Method, info = ensureMethodic(sym.info))
                             .installAfter(thisTransformer)
                           val superAcc =
                             Select(Super(This(currentClass), tpnme.EMPTY, inConstrCall = false), alias)

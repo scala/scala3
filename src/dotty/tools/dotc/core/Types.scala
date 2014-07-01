@@ -1602,7 +1602,7 @@ object Types {
   // and therefore two different poly types would never be equal.
 
   /** A trait that mixes in functionality for signature caching */
-  trait SignedType extends Type {
+  trait MethodicType extends Type {
 
     private[this] var mySignature: Signature = _
     private[this] var mySignatureRunId: Int = NoRunId
@@ -1610,7 +1610,7 @@ object Types {
     protected def computeSignature(implicit ctx: Context): Signature
 
     protected def resultSignature(implicit ctx: Context) = try resultType match {
-      case rtp: SignedType => rtp.signature
+      case rtp: MethodicType => rtp.signature
       case tp => Signature(tp, isJava = false)
     }
     catch {
@@ -1628,7 +1628,7 @@ object Types {
     }
   }
 
-  trait MethodOrPoly extends SignedType
+  trait MethodOrPoly extends MethodicType
 
   abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])
       (resultTypeExp: MethodType => Type)
@@ -1755,7 +1755,7 @@ object Types {
   }
 
   abstract case class ExprType(override val resultType: Type)
-  extends CachedProxyType with TermType with SignedType {
+  extends CachedProxyType with TermType with MethodicType {
     override def underlying(implicit ctx: Context): Type = resultType
     protected def computeSignature(implicit ctx: Context): Signature = resultSignature
     def derivedExprType(resultType: Type)(implicit ctx: Context) =
