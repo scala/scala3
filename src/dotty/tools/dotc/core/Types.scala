@@ -1609,9 +1609,14 @@ object Types {
 
     protected def computeSignature(implicit ctx: Context): Signature
 
-    protected def resultSignature(implicit ctx: Context) = resultType match {
+    protected def resultSignature(implicit ctx: Context) = try resultType match {
       case rtp: SignedType => rtp.signature
       case tp => Signature(tp, isJava = false)
+    }
+    catch {
+      case ex: AssertionError =>
+        println(i"failure while taking result signture of $resultType")
+        throw ex
     }
 
     final override def signature(implicit ctx: Context): Signature = {
@@ -1717,6 +1722,8 @@ object Types {
     def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType
     def apply(paramNames: List[TermName], paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
       apply(paramNames, paramTypes)(_ => resultType)
+    def apply(paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
+      apply(nme.syntheticParamNames(paramTypes.length), paramTypes)(resultTypeExp)
     def apply(paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
       apply(nme.syntheticParamNames(paramTypes.length), paramTypes, resultType)
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {

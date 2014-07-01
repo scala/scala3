@@ -752,7 +752,7 @@ class ClassfileParser(
 
   private def setPrivateWithin(denot: SymDenotation, jflags: Int)(implicit ctx: Context): Unit = {
     if ((jflags & (JAVA_ACC_PRIVATE | JAVA_ACC_PUBLIC)) == 0)
-      denot.privateWithin = denot.enclosingPackage
+      denot.privateWithin = denot.enclosingPackageClass
   }
 
   private def isPrivate(flags: Int)     = (flags & JAVA_ACC_PRIVATE) != 0

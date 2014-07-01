@@ -49,7 +49,7 @@ object Signature {
    *  a type different from PolyType, MethodType, or ExprType.
    */
   val NotAMethod = Signature(List(), EmptyTypeName)
-  
+
   /** The signature of an overloaded denotation.
    */
   val OverloadedSignature = Signature(List(tpnme.OVERLOADED), EmptyTypeName)

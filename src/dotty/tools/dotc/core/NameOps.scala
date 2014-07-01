@@ -132,6 +132,9 @@ object NameOps {
       if (flags is (ModuleClass, butNot = Package)) name.asTypeName.moduleClassName.asInstanceOf[N]
       else name
 
+    /** The superaccessor for method with given name */
+    def superName: TermName =  (nme.SUPER_PREFIX ++ name).toTermName
+
     /** The expanded name of `name` relative to this class `base` with given `separator`
      */
     def expandedName(base: Symbol, separator: Name = nme.EXPAND_SEPARATOR)(implicit ctx: Context): N = {
@@ -255,11 +258,11 @@ object NameOps {
 
     /** The name of an accessor for protected symbols. */
     def protectedAccessorName: TermName =
-      PROTECTED_PREFIX ++ name
+      PROTECTED_PREFIX ++ name.unexpandedName()
 
     /** The name of a setter for protected symbols. Used for inherited Java fields. */
-    def protectedSetterName(name: Name): TermName =
-      PROTECTED_SET_PREFIX ++ name
+    def protectedSetterName: TermName =
+      PROTECTED_SET_PREFIX ++ name.unexpandedName()
 
     def moduleVarName: TermName =
       name ++ MODULE_VAR_SUFFIX

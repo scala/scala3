@@ -21,9 +21,17 @@ abstract class MacroTransform extends Phase {
     unit.tpdTree = newTransformer.transform(unit.tpdTree)
   }
 
-  def newTransformer: TransformerMap
+  protected def newTransformer(implicit ctx: Context): Transformer
 
-  class TransformerMap extends TreeMap {
+  class Transformer extends TreeMap {
+
+    protected def localCtx(tree: Tree)(implicit ctx: Context) =
+      ctx.fresh.setTree(tree).setOwner(tree.symbol)
+
+    /** The current enclosing class
+     *  @pre  We must be inside a class
+     */
+    def currentClass(implicit ctx: Context): ClassSymbol = ctx.owner.enclosingClass.asClass
 
     def transformStats(trees: List[Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
       val exprCtx = ctx.withOwner(exprOwner)
@@ -36,10 +44,9 @@ abstract class MacroTransform extends Phase {
     }
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-      def localCtx = ctx.fresh.setTree(tree).setOwner(tree.symbol)
       tree match {
         case _: PackageDef | _: MemberDef =>
-          super.transform(tree)(localCtx)
+          super.transform(tree)(localCtx(tree))
         case Template(constr, parents, self, body) =>
           cpy.Template(tree,
             transformSub(constr),
