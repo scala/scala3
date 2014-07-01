@@ -395,6 +395,14 @@ object SymDenotations {
     /** Is this a user defined "def" method? Excluded are accessors. */
     final def isSourceMethod(implicit ctx: Context) = this is (Method, butNot = Accessor)
 
+    /** This this a method in a value class that is implemented as an extension method? */
+    final def isMethodWithExtension(implicit ctx: Context) =
+      isSourceMethod &&
+      owner.isDerivedValueClass &&
+      !isConstructor &&
+      !is(SuperAccessor) &&
+      !is(Macro)
+
     /** Is this a setter? */
     final def isGetter(implicit ctx: Context) = (this is Accessor) && !originalName.isSetterName
 
@@ -447,7 +455,7 @@ object SymDenotations {
       def accessWithin(boundary: Symbol) =
         ctx.owner.isContainedIn(boundary) &&
           (!(this is JavaDefined) || // disregard package nesting for Java
-             ctx.owner.enclosingPackage == boundary.enclosingPackage)
+             ctx.owner.enclosingPackageClass == boundary.enclosingPackageClass)
 
       /** Are we within definition of linked class of `boundary`? */
       def accessWithinLinked(boundary: Symbol) = {
@@ -572,6 +580,12 @@ object SymDenotations {
         NoSymbol
     }
 
+    /** The field accessed by this getter or setter */
+    def accessedField(implicit ctx: Context): Symbol = {
+      val fieldName = if (isSetter) name.asTermName.setterToGetter else name
+      owner.info.decl(fieldName).suchThat(d => !(d is Method)).symbol
+    }
+
     /** The chain of owners of this denotation, starting with the denoting symbol itself */
     final def ownersIterator(implicit ctx: Context) = new Iterator[Symbol] {
       private[this] var current = symbol
@@ -624,8 +638,8 @@ object SymDenotations {
     }
 
     /** The package class containing this denotation */
-    final def enclosingPackage(implicit ctx: Context): Symbol =
-      if (this is PackageClass) symbol else owner.enclosingPackage
+    final def enclosingPackageClass(implicit ctx: Context): Symbol =
+      if (this is PackageClass) symbol else owner.enclosingPackageClass
 
     /** The module object with the same (term-) name as this class or module class,
      *  and which is also defined in the same scope and compilation unit.
@@ -746,7 +760,6 @@ object SymDenotations {
       }
       loop(base.info.baseClasses.dropWhile(owner != _).tail)
     }
-
 
     /** A a member of class `base` is incomplete if
      *  (1) it is declared deferred or
@@ -893,6 +906,15 @@ object SymDenotations {
     def classParents(implicit ctx: Context): List[TypeRef] = info match {
       case classInfo: ClassInfo => classInfo.classParents
       case _ => Nil
+    }
+
+    /** The symbol of the superclass, NoSymbol if no superclass exists */
+    def superClass(implicit ctx: Context): Symbol = classParents match {
+      case parent :: _ =>
+        val cls = parent.classSymbol
+        if (cls is Trait) NoSymbol else cls
+      case _ =>
+        NoSymbol
     }
 
     /** The denotation is fully completed: all attributes are fully defined.
@@ -1292,6 +1314,21 @@ object SymDenotations {
     def underlyingOfValueClass: Type = ???
 
     def valueClassUnbox: Symbol = ???
+
+    /** If this class has the same `decls` scope reference in `phase` and
+     *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
+     *  @pre  Can only be called in `phase.next`.
+     */
+    def ensureFreshScopeAfter(phase: DenotTransformer)(implicit ctx: Context): Unit = {
+      assert(ctx.phaseId == phase.next.id)
+      val prevCtx = ctx.withPhase(phase)
+      val ClassInfo(pre, _, ps, decls, selfInfo) = classInfo
+      if (classInfo(prevCtx).decls eq decls) {
+        copySymDenotation(
+          info = ClassInfo(pre, classSymbol, ps, decls.cloneScope, selfInfo),
+          initFlags = this.flags &~ Frozen).installAfter(phase)
+      }
+    }
   }
 
   /** The denotation of a package class.

@@ -16,6 +16,7 @@ import printing.Printer
 import Types._
 import Annotations._
 import util.Positions._
+import DenotTransformers._
 import StdNames._
 import NameOps._
 import ast.tpd.{TreeTypeMap, Tree}
@@ -370,6 +371,17 @@ object Symbols {
       this.owner.asClass.enter(this)
       if (this is Module) this.owner.asClass.enter(this.moduleClass)
       this
+    }
+
+    /** Enter this symbol in its class owner after given `phase`. Create a fresh
+     *  denotation for its owner class if the class has not yet already one
+     *  that starts being valid after `phase`.
+     *  @pre  Symbol is a class member
+     */
+    def enteredAfter(phase: DenotTransformer)(implicit ctx: Context): this.type = {
+      val nextCtx = ctx.withPhase(phase.next)
+      this.owner.asClass.ensureFreshScopeAfter(phase)(nextCtx)
+      entered(nextCtx)
     }
 
     /** This symbol, if it exists, otherwise the result of evaluating `that` */
