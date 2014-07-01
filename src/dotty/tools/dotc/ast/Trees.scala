@@ -361,6 +361,7 @@ object Trees {
     type ThisTree[-T >: Untyped] <: DenotingTree[T]
     override def denot(implicit ctx: Context) = tpe match {
       case tpe: NamedType => tpe.denot
+      case ThisType(cls) => cls.denot
       case _ => NoDenotation
     }
   }
