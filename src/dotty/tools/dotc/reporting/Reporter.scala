@@ -93,6 +93,9 @@ trait Reporting { this: Context =>
     reporter.report(new Error(msg, pos))
   }
 
+  def restrictionError(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
+    error(s"Implementation restriction: $msg", pos)
+
   def incompleteInputError(msg: String, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
     reporter.incomplete(new Error(msg, pos))(ctx)
 
