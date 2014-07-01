@@ -15,7 +15,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override protected def recursionLimitExceeded() = {}
 
-  protected val PrintableFlags = (SourceModifierFlags | Label | Module).toCommonFlags
+  protected val PrintableFlags = (SourceModifierFlags | Label | Module | Local).toCommonFlags
 
   /** The closest enclosing DefDef, TypeDef, or ClassDef node */
   private var currentOwner: untpd.Tree = untpd.EmptyTree
