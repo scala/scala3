@@ -512,7 +512,13 @@ object Denotations {
     def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
       val valid = myValidFor
-      assert(valid.code > 0)
+      if (valid.code <= 0) {
+        // can happen if we sit on a stale denotation which has been replaced
+        // wholesale by an installAfter; in this case, proceed to the next
+        // denotation and try again.
+        if (validFor == Nowhere && nextInRun.validFor != Nowhere) return nextInRun.current
+        assert(false)
+      }
 
       if (valid.runId != currentPeriod.runId) bringForward.current
       else {
@@ -551,6 +557,7 @@ object Denotations {
                 cur = next
               }
               cur.validFor = Period(currentPeriod.runId, startPid, transformer.lastPhaseId)
+              //printPeriods(cur)
               //println(s"new denot: $cur, valid for ${cur.validFor}")
             }
             cur.current // multiple transformations could be required
@@ -563,12 +570,29 @@ object Denotations {
             //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
             cur = cur.nextInRun
             cnt += 1
-            assert(cnt <= MaxPossiblePhaseId, s"seems to be a loop in Denotations for $this, currentPeriod = $currentPeriod")
+            if (cnt > MaxPossiblePhaseId) {
+              println(s"seems to be a loop in Denotations for $this, currentPeriod = $currentPeriod")
+              printPeriods(this)
+              assert(false)
+            }
           }
           cur
         }
 
       }
+    }
+
+    private def printPeriods(current: SingleDenotation): Unit = {
+      print(s"periods for $this:")
+      var cur = current
+      var cnt = 0
+      do {
+        print(" " + cur.validFor)
+        cur = cur.nextInRun
+        cnt += 1
+        if (cnt > MaxPossiblePhaseId) { println(" ..."); return }
+      } while (cur ne current)
+      println()
     }
 
     /** Install this denotation to be the result of the given denotation transformer.
@@ -581,6 +605,8 @@ object Denotations {
       assert(ctx.phaseId == targetId,
         s"denotation update for $this called in phase ${ctx.phase}, expected was ${phase.next}")
       val current = symbol.current
+      // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
+      // printPeriods(current)
       this.nextInRun = current.nextInRun
       this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
       if (current.validFor.firstPhaseId == targetId) {
@@ -588,12 +614,14 @@ object Denotations {
         var prev = current
         while (prev.nextInRun ne current) prev = prev.nextInRun
         prev.nextInRun = this
+        current.validFor = Nowhere
       }
       else {
         // insert this denotation after current
         current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
         current.nextInRun = this
       }
+      // printPeriods(this)
     }
 
     def staleSymbolError(implicit ctx: Context) = {
