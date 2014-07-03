@@ -1124,8 +1124,12 @@ object TreeTransforms {
             val stats = transformStats(tree.stats, tree.symbol, mutatedInfo, cur)(nestedCtx)
             goPackageDef(cpy.PackageDef(tree, pid, stats), mutatedInfo.nx.nxTransPackageDef(cur))
           }
+        case tree: Import => EmptyTree
+        case tree: NamedArg => transform(tree.arg, info, cur)
         case Thicket(trees) => cpy.Thicket(tree, transformTrees(trees, info, cur))
-        case tree => tree
+        case tree =>
+          if (tree.isType) transform(TypeTree(tree.tpe).withPos(tree.pos), info, cur)
+          else tree
       }
 
     def transform(tree: Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree = ctx.traceIndented(s"transforming ${tree.show} at ${ctx.phase}", transforms, show = true) {

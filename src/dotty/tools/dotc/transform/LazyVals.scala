@@ -19,25 +19,6 @@ import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 
-
-class LazyValsCreateCompanionObjects extends CreateCompanionObjects {
-   import tpd._
-
-
-  override def name: String = "lazyValsModules"
-
-  /** Companion classes are required to hold offsets for volatile lazy vals */
-  override def predicate(forClass: tpd.TypeDef)(implicit ctx: Context): Boolean = {
-    (!(forClass.symbol is Flags.Module)) && forClass.rhs.isInstanceOf[Template] && {
-      val body = forClass.rhs.asInstanceOf[Template].body
-      body.exists {
-        case x: ValDef =>
-          (x.mods is Flags.Lazy) && x.symbol.hasAnnotation(defn.VolatileAnnot)
-        case _ => false
-      }
-    }
-  }
-}
 class LazyValTranformContext {
 
   import tpd._
@@ -67,7 +48,7 @@ class LazyValTranformContext {
 
     /** List of names of phases that should have finished their processing of all compilation units
       * before this phase starts */
-    override def runsAfterGroupsOf: Set[String] = Set("lazyValsModules")
+
     /** List of names of phases that should have finished their processing of all compilation units
       * before this phase starts */
 

@@ -11,7 +11,6 @@ import reporting.ConsoleReporter
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform._
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransform, TreeTransformer}
-import dotty.tools.dotc.transform.PostTyperTransformers.PostTyperTransformer
 import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 
@@ -20,9 +19,9 @@ class Compiler {
   def phases: List[List[Phase]] =
     List(
       List(new FrontEnd),
+      List(new Companions),
       List(new SuperAccessors),
-      List(new LazyValsCreateCompanionObjects,
-           new TailRec),    //force separataion between lazyVals and LVCreateCO
+      List(new TailRec),
       List(new PatternMatcher,
            new LazyValTranformContext().transformer,
            new Splitter),
