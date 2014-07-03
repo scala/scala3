@@ -14,7 +14,7 @@ class tests extends CompilerTest {
         "-pagewidth", "160")
 
   implicit val defaultOptions = noCheckOptions ++ List(
-    "-Ycheck:super"//, "-Ystop-before:terminal"
+    "-Ycheck:extmethods"//, "-Ystop-before:terminal"
   )
 
   val twice = List("#runs", "2", "-YnoDoubleBindings")
@@ -47,7 +47,6 @@ class tests extends CompilerTest {
   @Test def pos_overloaded() = compileFile(posDir, "overloaded", doErase)
   @Test def pos_templateParents() = compileFile(posDir, "templateParents", doErase)
   @Test def pos_structural() = compileFile(posDir, "structural", doErase)
-  @Test def pos_i39 = compileFile(posDir, "i39", doErase)
   @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess", doErase)
   @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion", doErase)
   @Test def pos_tailcall = compileDir(posDir + "tailcall/", doErase)

@@ -21,6 +21,7 @@ class Compiler {
       List(new FrontEnd),
       List(new Companions),
       List(new SuperAccessors),
+      List(new ExtensionMethods),
       List(new TailRec),
       List(new PatternMatcher,
            new LazyValTranformContext().transformer,
