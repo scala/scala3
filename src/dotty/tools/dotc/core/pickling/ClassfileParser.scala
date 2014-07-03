@@ -48,8 +48,8 @@ class ClassfileParser(
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
       throw new IOException(
-        s"""class file $classfile is broken, reading aborted with $e.getClass
-           |${Option(e.getMessage).getOrElse("")}""".stripMargin)
+        sm"""class file $classfile is broken, reading aborted with $e.getClass
+            |${Option(e.getMessage).getOrElse("")}""")
   }
 
   private def parseHeader(): Unit = {
@@ -702,12 +702,12 @@ class ClassfileParser(
               getMember(owner, innerName.toTypeName)
             }
             assert(result ne NoSymbol,
-              s"""failure to resolve inner class:
-                 |externalName = $externalName,
-                 |outerName = $outerName,
-                 |innerName = $innerName
-                 |owner.fullName = owner.showFullName
-                 |while parsing ${classfile}""".stripMargin)
+              sm"""failure to resolve inner class:
+                  |externalName = $externalName,
+                  |outerName = $outerName,
+                  |innerName = $innerName
+                  |owner.fullName = owner.showFullName
+                  |while parsing ${classfile}""")
             result
 
           case None =>

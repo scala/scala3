@@ -48,7 +48,7 @@ import Symbols._
  *
  *  TODO: Rename phase to "Accessors" because it handles more than just super accessors
  */
-class SuperAccessors extends MacroTransform with DenotTransformer { thisTransformer =>
+class SuperAccessors extends MacroTransform with IdentityDenotTransformer { thisTransformer =>
 
   import tpd._
 
@@ -57,9 +57,6 @@ class SuperAccessors extends MacroTransform with DenotTransformer { thisTransfor
 
   protected def newTransformer(implicit ctx: Context): Transformer =
     new SuperAccTransformer
-
-  /** No transformation here, but new denotations are installed by the tree traversal */
-  def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref
 
   class SuperAccTransformer extends Transformer {
 
@@ -444,10 +441,10 @@ class SuperAccessors extends MacroTransform with DenotTransformer { thisTransfor
       val protectedAccessor = clazz.info.decl(accName).suchThat(_.signature == accType.signature).symbol orElse {
         val newAcc = ctx.newSymbol(
             clazz, accName, Artifact, accType, coord = tree.pos).enteredAfter(thisTransformer)
-        val code = polyDefDef(newAcc, targs => argss => {
-          val (receiver :: _) :: tail = argss
-          val base = Select(receiver, sym).appliedToTypes(targs)
-          (base /: argss)(Apply(_, _))
+        val code = polyDefDef(newAcc, trefs => vrefss => {
+          val (receiver :: _) :: tail = vrefss
+          val base = Select(receiver, sym).appliedToTypes(trefs)
+          (base /: vrefss)(Apply(_, _))
         })
         ctx.debuglog("created protected accessor: " + code)
         storeAccessorDefinition(clazz, code)
@@ -474,8 +471,8 @@ class SuperAccessors extends MacroTransform with DenotTransformer { thisTransfor
       val protectedAccessor = clazz.info.decl(accName).symbol orElse {
         val newAcc = ctx.newSymbol(
             clazz, accName, Artifact, accType, coord = tree.pos).enteredAfter(thisTransformer)
-        val code = DefDef(newAcc, argss => {
-          val (receiver :: value :: Nil) :: Nil = argss
+        val code = DefDef(newAcc, vrefss => {
+          val (receiver :: value :: Nil) :: Nil = vrefss
           Assign(Select(receiver, field), value).withPos(tree.pos)
         })
         ctx.debuglog("created protected setter: " + code)

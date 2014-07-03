@@ -46,4 +46,12 @@ object DenotTransformers {
       }
     }
   }
+
+  /** A `DenotTransformer` trait that has the identity as its `transform` method.
+   *  You might want to inherit from this trait so that new denotations can be
+   *  installed using `installAfter` and `enteredAfter` at the end of the phase.
+   */
+  trait IdentityDenotTransformer extends DenotTransformer {
+    def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref
+  }
 }

@@ -127,7 +127,7 @@ object ErrorReporting {
         case _ => true
       }
 
-      val s = new InfoString(sc).i(args : _*)
+      val s = new StringInterpolators(sc).i(args : _*)
       if (args.forall(isSensical(_))) s else nonSensicalStartTag + s + nonSensicalEndTag
     }
   }

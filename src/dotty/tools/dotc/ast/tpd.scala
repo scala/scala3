@@ -204,11 +204,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
     val (vparamss, rtp) = valueParamss(mtp)
     val targs = tparams map (_.typeRef)
-    val argss = vparamss map (_ map (vparam => Ident(vparam.termRef)))
+    val argss = vparamss.nestedMap(vparam => Ident(vparam.termRef))
     ta.assignType(
       untpd.DefDef(
         Modifiers(sym), sym.name, tparams map TypeDef,
-        vparamss map (_ map (ValDef(_))), TypeTree(rtp), rhsFn(targs)(argss)), sym)
+        vparamss.nestedMap(ValDef(_)), TypeTree(rtp), rhsFn(targs)(argss)), sym)
   }
 
   def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
@@ -384,6 +384,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def changeOwner(from: Symbol, to: Symbol)(implicit ctx: Context): ThisTree =
       new TreeTypeMap(ownerMap = (sym => if (sym == from) to else sym)).apply(tree)
 
+    def appliedToArg(arg: Tree)(implicit ctx: Context): Tree = appliedToArgs(arg :: Nil)
+
+    def appliedToArgs(args: List[Tree])(implicit ctx: Context): Tree =
+      if (args.isEmpty) tree else Apply(tree, args)
+
+    def appliedToArgss(argss: List[List[Tree]])(implicit ctx: Context): Tree =
+      ((tree: Tree) /: argss)(Apply(_, _))
+
     def appliedToTypes(targs: List[Type])(implicit ctx: Context): Tree =
       appliedToTypeTrees(targs map (TypeTree(_)))
 
@@ -395,7 +403,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def tpes: List[Type] = xs map (_.tpe)
   }
 
-  class TreeTypeMap(val typeMap: TypeMap = IdentityTypeMap, val ownerMap: Symbol => Symbol = identity _)(implicit ctx: Context) extends TreeMap {
+  class TreeTypeMap(val typeMap: Type => Type = IdentityTypeMap, val ownerMap: Symbol => Symbol = identity _)(implicit ctx: Context) extends TreeMap {
     override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = super.transform {
       tree.withType(typeMap(tree.tpe)) match {
         case bind: tpd.Bind =>

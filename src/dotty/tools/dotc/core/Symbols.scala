@@ -261,16 +261,14 @@ trait Symbols { this: Context =>
     newSymbol(owner, name, SyntheticArtifact,
       if (name.isTypeName) TypeAlias(ErrorType) else ErrorType)
 
-  type OwnerMap = Symbol => Symbol
-
   /** Map given symbols, subjecting all types to given type map and owner map.
    *  Cross symbol references are brought over from originals to copies.
    *  Do not copy any symbols if all attributes of all symbols stay the same.
    */
   def mapSymbols(
       originals: List[Symbol],
-      typeMap: TypeMap = IdentityTypeMap,
-      ownerMap: OwnerMap = identity)
+      typeMap: Type => Type = IdentityTypeMap,
+      ownerMap: Symbol => Symbol = identity)
   =
     if (originals forall (sym =>
         (typeMap(sym.info) eq sym.info) && (ownerMap(sym.owner) eq sym.owner)))

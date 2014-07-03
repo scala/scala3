@@ -212,6 +212,14 @@ object SymDenotations {
     final def addAnnotation(annot: Annotation): Unit =
       annotations = annot :: myAnnotations
 
+    /** Remove annotation with given class from this denotation */
+    final def removeAnnotation(cls: Symbol)(implicit ctx: Context): Unit =
+      annotations = myAnnotations.filterNot(_ matches cls)
+
+    /** Copy all annotations from given symbol by adding them to this symbol */
+    final def addAnnotations(from: Symbol)(implicit ctx: Context): Unit =
+      from.annotations.foreach(addAnnotation)
+
     @tailrec
     private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(implicit ctx: Context): List[Annotation] = anns match {
       case ann :: rest => if (ann matches cls) anns else dropOtherAnnotations(rest, cls)
@@ -861,6 +869,22 @@ object SymDenotations {
     /** Install this denotation as the result of the given denotation transformer. */
     override def installAfter(phase: DenotTransformer)(implicit ctx: Context): Unit =
       super.installAfter(phase)
+
+    /** Remove private modifier from symbol's definition. If this symbol
+     *  is not a constructor nor a static module, rename it by expanding its name to avoid name clashes
+     *  @param base  the fully qualified name of this class will be appended if name expansion is needed
+     */
+    final def makeNotPrivateAfter(base: Symbol, phase: DenotTransformer)(implicit ctx: Context): Unit = {
+      if (this.is(Private)) {
+        val newName =
+          if (this.is(Module) && isStatic || isClassConstructor) name
+          else {
+            if (this.is(Module)) moduleClass.makeNotPrivateAfter(base, phase)
+            name.expandedName(base)
+          }
+        copySymDenotation(name = newName, initFlags = flags &~ Private).installAfter(phase)
+      }
+    }
   }
 
   /** The contents of a class definition during a period
@@ -1311,9 +1335,17 @@ object SymDenotations {
       decls.denotsNamed(cname).first.symbol
     }
 
-    def underlyingOfValueClass: Type = ???
+    /** The member that of a derived value class that unboxes it. */
+    def valueClassUnbox(implicit ctx: Context): Symbol =
+      // (info.decl(nme.unbox)).orElse(...)      uncomment once we accept unbox methods
+      classInfo.decls
+        .find(d => d.isTerm && d.symbol.is(ParamAccessor))
+        .map(_.symbol)
+        .getOrElse(NoSymbol)
 
-    def valueClassUnbox: Symbol = ???
+    /** The unboxed type that underlies a derived value class */
+    def underlyingOfValueClass(implicit ctx: Context): Type =
+      valueClassUnbox.info.resultType
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
