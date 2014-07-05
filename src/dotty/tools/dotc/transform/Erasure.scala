@@ -98,7 +98,7 @@ object Erasure {
           else {
             assert(cls ne defn.ArrayClass)
             val arg = safelyRemovableUnboxArg(tree)
-            if (arg.isEmpty) Apply(ref(boxMethod(cls.asClass)), tree :: Nil)
+            if (arg.isEmpty) ref(boxMethod(cls.asClass)).appliedTo(tree)
             else {
               ctx.log(s"boxing an unbox: ${tree.symbol} -> ${arg.tpe}")
               arg
@@ -116,14 +116,16 @@ object Erasure {
               // via the unboxed type would yield a NPE (see SI-5866)
               unbox(tree, underlying)
             else
-              Apply(Select(adaptToType(tree, clazz.typeRef), clazz.valueClassUnbox), Nil)
+              adaptToType(tree, clazz.typeRef)
+                .select(clazz.valueClassUnbox)
+                .appliedToNone
           cast(tree1, pt)
         case _ =>
           val cls = pt.classSymbol
           if (cls eq defn.UnitClass) constant(tree, Literal(Constant(())))
           else {
             assert(cls ne defn.ArrayClass)
-            Apply(ref(unboxMethod(cls.asClass)), tree :: Nil)
+            ref(unboxMethod(cls.asClass)).appliedTo(tree)
           }
       }
     }
@@ -267,7 +269,7 @@ object Erasure {
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) =
       EmptyTree
 
-    override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[tpd.Tree] = {
+    override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
       val statsFlatten = Trees.flatten(stats)
       val stats1 = super.typedStats(statsFlatten, exprOwner)
 
@@ -343,7 +345,7 @@ object Erasure {
       bridge.entered // this should be safe, as we're executing in context of next phase
       ctx.debuglog(s"generating bridge from ${newDef.symbol} to $bridge")
 
-      val sel: Tree = tpd.Select(This(newDef.symbol.owner.asClass), newDef.symbol.termRef)
+      val sel: Tree = This(newDef.symbol.owner.asClass).select(newDef.symbol.termRef)
 
       val resultType = bridge.info.widen.resultType
       tpd.DefDef(bridge, { paramss: List[List[tpd.Tree]] =>

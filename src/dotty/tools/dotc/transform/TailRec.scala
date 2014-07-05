@@ -329,7 +329,7 @@ class TailRec extends TreeTransform with DenotTransformer {
                   val newDenot = d.copySymDenotation(initFlags = sym.flags &~ Flags.Local)
                   newDenot.installAfter(TailRec.this)
                 }
-                Select(thiz, sym)
+                thiz.select(sym)
               case _ => tree
             }
           }

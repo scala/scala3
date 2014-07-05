@@ -98,7 +98,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
         acc
       }
 
-      Select(This(clazz), superAcc) withPos sel.pos
+      This(clazz).select(superAcc).withPos(sel.pos)
     }
 
     private def transformArgs(formals: List[Type], args: List[Tree])(implicit ctx: Context) =
@@ -274,7 +274,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
                           sym.copySymDenotation(initFlags = sym.flags | Method, info = ensureMethodic(sym.info))
                             .installAfter(thisTransformer)
                           val superAcc =
-                            Select(Super(This(currentClass), tpnme.EMPTY, inConstrCall = false), alias)
+                            Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)
                           DefDef(sym, ensureConforms(superAcc, sym.info.widen))
                         }
                         return forwarder(ctx.withPhase(thisTransformer.next))
@@ -443,16 +443,18 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
             clazz, accName, Artifact, accType, coord = tree.pos).enteredAfter(thisTransformer)
         val code = polyDefDef(newAcc, trefs => vrefss => {
           val (receiver :: _) :: tail = vrefss
-          val base = Select(receiver, sym).appliedToTypes(trefs)
+          val base = receiver.select(sym).appliedToTypes(trefs)
           (base /: vrefss)(Apply(_, _))
         })
         ctx.debuglog("created protected accessor: " + code)
         storeAccessorDefinition(clazz, code)
         newAcc
       }
-      val res =
-        Apply(Select(This(clazz), protectedAccessor).appliedToTypeTrees(targs), qual :: Nil)
-          .withPos(tree.pos)
+      val res = This(clazz)
+        .select(protectedAccessor)
+        .appliedToTypeTrees(targs)
+        .appliedTo(qual)
+        .withPos(tree.pos)
       ctx.debuglog(s"Replaced $tree with $res")
       res
     }
@@ -473,13 +475,13 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
             clazz, accName, Artifact, accType, coord = tree.pos).enteredAfter(thisTransformer)
         val code = DefDef(newAcc, vrefss => {
           val (receiver :: value :: Nil) :: Nil = vrefss
-          Assign(Select(receiver, field), value).withPos(tree.pos)
+          Assign(receiver.select(field), value).withPos(tree.pos)
         })
         ctx.debuglog("created protected setter: " + code)
         storeAccessorDefinition(clazz, code)
         newAcc
       }
-      Select(This(clazz), protectedAccessor).withPos(tree.pos)
+      This(clazz).select(protectedAccessor).withPos(tree.pos)
     }
 
     /** Does `sym` need an accessor when accessed from `currentClass`?

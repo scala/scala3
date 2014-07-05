@@ -34,7 +34,7 @@ class TypeTestsCasts extends TreeTransform {
         def isPrimitive(tp: Type) = tp.classSymbol.isPrimitiveValueClass
 
         def derivedTree(qual1: Tree, sym: Symbol, tp: Type) =
-          cpy.TypeApply(tree, Select(qual1, sym) withPos qual.pos, List(TypeTree(tp)))
+          cpy.TypeApply(tree, qual1.select(sym).withPos(qual.pos), List(TypeTree(tp)))
 
         def qualCls = qual.tpe.classSymbol
 
@@ -49,7 +49,7 @@ class TypeTestsCasts extends TreeTransform {
           else argType.dealias match {
             case _: SingletonType =>
               val cmpOp = if (argType derivesFrom defn.AnyValClass) defn.Any_equals else defn.Object_eq
-              Apply(Select(expr, cmpOp), singleton(argType) :: Nil)
+              expr.select(cmpOp).appliedTo(singleton(argType))
             case AndType(tp1, tp2) =>
               evalOnce(expr) { fun =>
                 val erased1 = transformIsInstanceOf(fun, tp1)

@@ -80,12 +80,12 @@ class Splitter extends TreeTransform {
     else {
       def choose(qual: Tree, syms: List[Symbol]): Tree = {
         def testOrCast(which: Symbol, mbr: Symbol) =
-          TypeApply(Select(qual, which), TypeTree(mbr.owner.typeRef) :: Nil)
+          qual.select(which).appliedToType(mbr.owner.typeRef)
         def select(sym: Symbol) = {
           val qual1 =
             if (qual.tpe derivesFrom sym.owner) qual
             else testOrCast(defn.Any_asInstanceOf, sym)
-          Select(qual1, sym) withPos tree.pos
+          qual1.select(sym).withPos(tree.pos)
         }
         syms match {
           case Nil =>

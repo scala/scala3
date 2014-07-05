@@ -158,7 +158,7 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
           // which leaves the actual argument application for extensionCall.
           val forwarder = ref(extensionMeth.termRef)
             .appliedToTypes(origTParams.map(_.typeRef))
-            .appliedToArg(This(origClass))
+            .appliedTo(This(origClass))
             .appliedToArgss(vparamss.nestedMap(vparam => ref(vparam.symbol)))
             .withPos(rhs.pos)
           cpy.DefDef(tree, mods, name, tparams, vparamss, tpt, forwarder)

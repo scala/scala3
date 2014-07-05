@@ -25,17 +25,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Select(qualifier: Tree, name: Name)(implicit ctx: Context): Select =
     ta.assignType(untpd.Select(qualifier, name), qualifier)
 
-  def Select(qualifier: Tree, tp: NamedType)(implicit ctx: Context): Select =
-    untpd.Select(qualifier, tp.name).withType(tp)
-
-  def Select(qualifier: Tree, sym: Symbol)(implicit ctx: Context): Select =
-    untpd.Select(qualifier, sym.name).withType(
-      TermRef.withSig(qualifier.tpe, sym.name.asTermName, sym.signature, sym.denot.asSeenFrom(qualifier.tpe)))
-
-  def SelectWithSig(qualifier: Tree, name: Name, sig: Signature)(implicit ctx: Context) =
-    untpd.SelectWithSig(qualifier, name, sig)
-      .withType(TermRef.withSig(qualifier.tpe, name.asTermName, sig))
-
   def SelectFromTypeTree(qualifier: Tree, name: Name)(implicit ctx: Context): SelectFromTypeTree =
     ta.assignType(untpd.SelectFromTypeTree(qualifier, name), qualifier)
 
@@ -264,7 +253,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ref(tp: NamedType)(implicit ctx: Context): NameTree =
     if (tp.symbol.isStatic) Ident(tp)
     else tp.prefix match {
-      case pre: TermRef => Select(ref(pre), tp)
+      case pre: TermRef => ref(pre).select(tp)
       case pre => SelectFromTypeTree(TypeTree(pre), tp)
     } // no checks necessary
 
@@ -287,12 +276,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** new C(args), calling given constructor `constr` of C */
   def New(tp: Type, constr: TermSymbol, args: List[Tree])(implicit ctx: Context): Apply = {
     val targs = tp.argTypes
-    Apply(
-      Select(
-        New(tp withoutArgs targs),
-        TermRef.withSig(tp.normalizedPrefix, constr))
-        .appliedToTypes(targs),
-      args)
+    New(tp withoutArgs targs)
+      .select(TermRef.withSig(tp.normalizedPrefix, constr))
+      .appliedToTypes(targs)
+      .appliedToArgs(args)
   }
 
   /** An object def
@@ -384,13 +371,36 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def changeOwner(from: Symbol, to: Symbol)(implicit ctx: Context): ThisTree =
       new TreeTypeMap(ownerMap = (sym => if (sym == from) to else sym)).apply(tree)
 
-    def appliedToArg(arg: Tree)(implicit ctx: Context): Tree = appliedToArgs(arg :: Nil)
+    def select(name: Name)(implicit ctx: Context): Select =
+      Select(tree, name)
 
-    def appliedToArgs(args: List[Tree])(implicit ctx: Context): Tree =
-      if (args.isEmpty) tree else Apply(tree, args)
+    def select(tp: NamedType)(implicit ctx: Context): Select =
+      untpd.Select(tree, tp.name).withType(tp)
+
+    def select(sym: Symbol)(implicit ctx: Context): Select =
+      untpd.Select(tree, sym.name).withType(
+        TermRef.withSig(tree.tpe, sym.name.asTermName, sym.signature, sym.denot.asSeenFrom(tree.tpe)))
+
+    def selectWithSig(name: Name, sig: Signature)(implicit ctx: Context) =
+      untpd.SelectWithSig(tree, name, sig)
+        .withType(TermRef.withSig(tree.tpe, name.asTermName, sig))
+
+    def appliedTo(arg: Tree)(implicit ctx: Context): Tree =
+      appliedToArgs(arg :: Nil)
+
+    def appliedTo(arg: Tree, args: Tree*)(implicit ctx: Context): Tree =
+      appliedToArgs(arg :: args.toList)
+
+    def appliedToArgs(args: List[Tree])(implicit ctx: Context): Apply =
+      Apply(tree, args)
 
     def appliedToArgss(argss: List[List[Tree]])(implicit ctx: Context): Tree =
       ((tree: Tree) /: argss)(Apply(_, _))
+
+    def appliedToNone(implicit ctx: Context): Apply = appliedToArgs(Nil)
+
+    def appliedToType(targ: Type)(implicit ctx: Context): Tree =
+      appliedToTypes(targ :: Nil)
 
     def appliedToTypes(targs: List[Type])(implicit ctx: Context): Tree =
       appliedToTypeTrees(targs map (TypeTree(_)))
@@ -444,7 +454,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val mname      = ("to" + numericCls.name).toTermName
     val conversion = tree.tpe member mname
     if (conversion.symbol.exists)
-      ensureApplied(Select(tree, conversion.symbol.termRef))
+      ensureApplied(tree.select(conversion.symbol.termRef))
     else if (tree.tpe.widen isRef numericCls)
       tree
     else {
@@ -464,10 +474,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def runtimeCall(name: TermName, args: List[Tree])(implicit ctx: Context): Tree = ???
 
   def mkAnd(tree1: Tree, tree2: Tree)(implicit ctx: Context) =
-    Apply(Select(tree1, defn.Boolean_and), tree2 :: Nil)
+    tree1.select(defn.Boolean_and).appliedTo(tree2)
 
   def mkAsInstanceOf(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
-    TypeApply(Select(tree, defn.Any_asInstanceOf), TypeTree(pt) :: Nil)
+    tree.select(defn.Any_asInstanceOf).appliedToType(pt)
 
   def ensureConforms(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
     if (tree.tpe <:< pt) tree else mkAsInstanceOf(tree, pt)

@@ -1080,7 +1080,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         setSym()
         val qualifier = readTreeRef()
         val selector = readNameRef()
-        Select(qualifier, symbol.namedType)
+        qualifier.select(symbol.namedType)
       case IDENTtree =>
         setSymName()
         Ident(symbol.namedType)
