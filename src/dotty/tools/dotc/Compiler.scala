@@ -28,7 +28,8 @@ class Compiler {
            new Splitter),
       List(new Nullarify,
            new TypeTestsCasts,
-           new InterceptedMethods),
+           new InterceptedMethods,
+           new Literalize),
       List(new Erasure),
       List(new UncurryTreeTransform
         /* , new Constructors */)
