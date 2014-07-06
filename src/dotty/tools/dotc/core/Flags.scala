@@ -324,8 +324,8 @@ object Flags {
   /** Symbol is initialized to the default value, e.g. var x: T = _ */
   final val DefaultInit = termFlag(29, "<defaultinit>")
 
-  /** Symbol is a macro */
-  final val Macro = commonFlag(30, "<macro>")
+  /** Symbol is inlined */
+  final val Inline = commonFlag(30, "inline")
 
   /** Symbol is defined by a Java class */
   final val JavaDefined = commonFlag(31, "<java>")
@@ -395,14 +395,17 @@ object Flags {
   /** A definition that's initialized before the super call (Scala 2.x only) */
   final val Scala2PreSuper = termFlag(58, "<presuper>")
 
-  /** A method that is known to have inherited default parameters */
-  final val InheritedDefaultParams = termFlag(59, "<inherited-default-param>")
+  /** A macro (Scala 2.x only) */
+  final val Macro = commonFlag(59, "<macro>")
 
-  /** A method that is known to no default parameters */
-  final val NoDefaultParams = termFlag(60, "<no-default-param>")
+  /** A method that is known to have inherited default parameters */
+  final val InheritedDefaultParams = termFlag(60, "<inherited-default-param>")
+
+  /** A method that is known to have no default parameters */
+  final val NoDefaultParams = termFlag(61, "<no-default-param>")
 
   /** A denotation that is valid in all run-ids */
-  final val Permanent = commonFlag(61, "<permanent>")
+  final val Permanent = commonFlag(62, "<permanent>")
 
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
