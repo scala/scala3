@@ -55,7 +55,7 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
     decl match {
       case decl: SingleDenotation =>
         val alts = decl.alternatives
-        val index = alts indexOf imeth
+        val index = alts indexOf imeth.denot
         assert(index >= 0, alts+" does not contain "+imeth)
         def altName(index: Int) = (imeth.name+"$extension"+index).toTermName
         altName(index) #:: ((0 until alts.length).toStream filter (index != _) map altName)
