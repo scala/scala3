@@ -282,41 +282,46 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
-  /** Is tree a definition that has no side effects when
-   *  evaluated as part of a block after the first time?
+  /** The purity level of this statement.
+   *  @return   pure        if statement has no side effects
+   *            idempotent  if running the statement a second time has no side effects
+   *            impure      otherwise
    */
-  def isIdempotentDef(tree: tpd.Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
+  private def statPurity(tree: tpd.Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
     case EmptyTree
        | TypeDef(_, _, _)
        | Import(_, _)
        | DefDef(_, _, _, _, _, _) =>
-      true
+      Pure
     case ValDef(mods, _, _, rhs) =>
-      !(mods is Mutable) && isIdempotentExpr(rhs)
+      if (mods is Mutable) Impure else exprPurity(rhs)
     case _ =>
-      false
+      Impure
   }
 
-  /** Is tree an expression which can be inlined without affecting program semantics?
+  /** The purity level of this expression.
+   *  @return   pure        if expression has no side effects
+   *            idempotent  if running the expression a second time has no side effects
+   *            impure      otherwise
    *
-   *  Note that this is not called "isExprPure" since purity (lack of side-effects)
-   *  is not the litmus test.  References to modules and lazy vals are side-effecting,
-   *  both because side-effecting code may be executed and because the first reference
-   *  takes a different code path than all to follow; but they are safe to inline
-   *  because the expression result from evaluating them is always the same.
+   *  Note that purity and idempotency are different. References to modules and lazy
+   *  vals are impure (side-effecting) both because side-effecting code may be executed and because the first reference
+   *  takes a different code path than all to follow; but they are idempotent
+   *  because running the expression a second time gives the cached result.
    */
-  def isIdempotentExpr(tree: tpd.Tree)(implicit ctx: Context): Boolean = unsplice(tree) match {
+  private def exprPurity(tree: tpd.Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
     case EmptyTree
        | This(_)
        | Super(_, _)
        | Literal(_) =>
-      true
+      Pure
     case Ident(_) =>
-      isIdempotentRef(tree)
+      refPurity(tree)
     case Select(qual, _) =>
-      isIdempotentRef(tree) && isIdempotentExpr(qual)
+      refPurity(tree).min(
+       if (tree.symbol.is(Inline)) Pure else exprPurity(qual))
     case TypeApply(fn, _) =>
-      isIdempotentExpr(fn)
+      exprPurity(fn)
 /*
  * Not sure we'll need that. Comment out until we find out
     case Apply(Select(free @ Ident(_), nme.apply), _) if free.symbol.name endsWith nme.REIFY_FREE_VALUE_SUFFIX =>
@@ -326,21 +331,36 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case Apply(fn, Nil) =>
       // Note: After uncurry, field accesses are represented as Apply(getter, Nil),
       // so an Apply can also be pure.
-      // However, before typing, applications of nullary functional values are also
-      // Apply(function, Nil) trees. To prevent them from being treated as pure,
-      // we check that the callee is a method.
-      // The callee might also be a Block, which has a null symbol, so we guard against that (SI-7185)
-      fn.symbol != null && (fn.symbol is (Method, butNot = Lazy)) && isIdempotentExpr(fn)
+      if (fn.symbol is Stable) exprPurity(fn) else Impure
     case Typed(expr, _) =>
-      isIdempotentExpr(expr)
+      exprPurity(expr)
     case Block(stats, expr) =>
-      (stats forall isIdempotentDef) && isIdempotentExpr(expr)
+      (exprPurity(expr) /: stats.map(statPurity))(_ min _)
     case _ =>
-      false
+      Impure
   }
 
+  def isPureExpr(tree: tpd.Tree)(implicit ctx: Context) = exprPurity(tree) == Pure
+  def isIdempotentExpr(tree: tpd.Tree)(implicit ctx: Context) = exprPurity(tree) >= Idempotent
+
+  /** The purity level of this reference.
+   *  @return
+   *    pure        if reference is (nonlazy and stable) or to a parameterized function
+   *    idempotent  if reference is lazy and stable
+   *    impure      otherwise
+   *  @DarkDimius: need to make sure that lazy accessor methods have Lazy and Stable
+   *               flags set.
+   */
+  private def refPurity(tree: tpd.Tree)(implicit ctx: Context): PurityLevel =
+    if (!tree.tpe.widen.isParameterless) Pure
+    else if (!tree.symbol.is(Stable)) Impure
+    else if (tree.symbol.is(Lazy)) Idempotent
+    else Pure
+
+  def isPureRef(tree: tpd.Tree)(implicit ctx: Context) =
+    refPurity(tree) == Pure
   def isIdempotentRef(tree: tpd.Tree)(implicit ctx: Context) =
-    tree.symbol.isStable || !tree.tpe.widen.isParameterless
+    refPurity(tree) >= Idempotent
 
   /** Is symbol potentially a getter of a mutable variable?
    */
@@ -456,6 +476,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case nil =>
         Nil
     }
+
+  private class PurityLevel(val x: Int) {
+    def >= (that: PurityLevel) = x >= that.x
+    def min(that: PurityLevel) = new PurityLevel(x min that.x)
+  }
+
+  private val Pure = new PurityLevel(2)
+  private val Idempotent = new PurityLevel(1)
+  private val Impure = new PurityLevel(0)
 }
 
   /** a Match(Typed(_, tpt), _) must be translated into a switch if isSwitchAnnotation(tpt.tpe)

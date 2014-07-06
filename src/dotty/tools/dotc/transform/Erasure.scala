@@ -85,7 +85,7 @@ object Erasure {
     def isPrimitiveValueType(tpe: Type)(implicit ctx: Context): Boolean = tpe.classSymbol.isPrimitiveValueClass
 
     def constant(tree: Tree, const: Tree)(implicit ctx: Context) =
-      if (isIdempotentExpr(tree)) Block(tree :: Nil, const) else const
+      if (isPureExpr(tree)) Block(tree :: Nil, const) else const
 
     final def box(tree: Tree, target: => String = "")(implicit ctx: Context): Tree = ctx.traceIndented(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
