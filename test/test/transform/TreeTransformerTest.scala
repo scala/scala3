@@ -66,7 +66,7 @@ class TreeTransformerTest extends DottyTest {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(-1))"
           )
-          tpd.cpy.ValDef(tree, tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(2)))
+          tpd.cpy.ValDef(tree)(tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(2)))
         }
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
@@ -95,14 +95,14 @@ class TreeTransformerTest extends DottyTest {
           Assert.assertTrue("correct constant",
             tree.const.toString == "Constant(1)"
           )
-          tpd.cpy.Literal(tree, Constant(-1))
+          tpd.cpy.Literal(tree)(Constant(-1))
         }
 
         override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.ValDef = {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(-1))"
           )
-          tpd.cpy.ValDef(tree, tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(2)))
+          tpd.cpy.ValDef(tree)(tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(2)))
         }
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
@@ -113,7 +113,7 @@ class TreeTransformerTest extends DottyTest {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(2))"
           )
-          tpd.cpy.ValDef(tree, tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(3)))
+          tpd.cpy.ValDef(tree)(tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(3)))
         }
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
@@ -142,7 +142,7 @@ class TreeTransformerTest extends DottyTest {
           Assert.assertTrue("correct constant",
             tree.const.toString == "Constant(1)"
           )
-          tpd.cpy.Literal(tree, Constant(-1))
+          tpd.cpy.Literal(tree)(Constant(-1))
         }
 
         override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo) = {
@@ -150,7 +150,7 @@ class TreeTransformerTest extends DottyTest {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(-3))"
           )
-          tpd.cpy.ValDef(tree, tree.mods, tree.name, tree.tpt, transformFollowing(tpd.Literal(Constant(2))))
+          tpd.cpy.ValDef(tree)(tree.mods, tree.name, tree.tpt, transformFollowing(tpd.Literal(Constant(2))))
         }
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
@@ -173,7 +173,7 @@ class TreeTransformerTest extends DottyTest {
             case _ => Assert.fail("to many constants seen")
           }
           constantsSeen += 1
-          tpd.cpy.Literal(tree, Constant(-3))
+          tpd.cpy.Literal(tree)(Constant(-3))
         }
 
         override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo) = {
@@ -181,7 +181,7 @@ class TreeTransformerTest extends DottyTest {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(-3))"
           )
-          transformFollowing(tpd.cpy.ValDef(tree, tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(3))))
+          transformFollowing(tpd.cpy.ValDef(tree)(tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(3))))
         }
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)

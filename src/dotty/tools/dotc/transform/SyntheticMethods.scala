@@ -167,8 +167,8 @@ class SyntheticMethods extends MiniPhaseTransform with IdentityDenotTransformer 
 
   override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo) =
     if (ctx.owner.is(Case) || isDerivedValueClass(ctx.owner))
-      cpy.Template(impl, impl.constr, impl.parents, impl.self,
-          impl.body ++ syntheticMethods(ctx.owner.asClass)(ctx.withPhase(thisTransformer.next)))
+      cpy.Template(impl)(
+        body = impl.body ++ syntheticMethods(ctx.owner.asClass)(ctx.withPhase(thisTransformer.next)))
     else
       impl
 }

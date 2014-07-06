@@ -47,7 +47,7 @@ abstract class MacroTransform extends Phase {
       val exprCtx = ctx.withOwner(exprOwner)
       def transformStat(stat: Tree): Tree = stat match {
         case _: Import | _: DefTree => transform(stat)
-        case Thicket(stats) => cpy.Thicket(stat, stats mapConserve transformStat)
+        case Thicket(stats) => cpy.Thicket(stat)(stats mapConserve transformStat)
         case _ => transform(stat)(exprCtx)
       }
       flatten(trees.mapconserve(transformStat(_)))
@@ -60,7 +60,7 @@ abstract class MacroTransform extends Phase {
         case _: PackageDef | _: MemberDef =>
           super.transform(tree)(localCtx(tree))
         case Template(constr, parents, self, body) =>
-          cpy.Template(tree,
+          cpy.Template(tree)(
             transformSub(constr),
             transform(parents),
             transformSelf(self),
@@ -71,6 +71,6 @@ abstract class MacroTransform extends Phase {
     }
 
     def transformSelf(vd: ValDef)(implicit ctx: Context) =
-      cpy.ValDef(vd, vd.mods, vd.name, transform(vd.tpt), vd.rhs)
+      cpy.ValDef(vd)(vd.mods, vd.name, transform(vd.tpt), vd.rhs)
   }
 }

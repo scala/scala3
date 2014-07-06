@@ -366,9 +366,9 @@ class Namer { typer: Typer =>
             val Thicket(vdef :: (mcls @ TypeDef(_, _, impl: Template)) :: Nil) = mdef.attachment(ExpandedTree)
             cdef.attachmentOrElse(ExpandedTree, cdef) match {
               case Thicket(cls :: mval :: TypeDef(_, _, compimpl: Template) :: crest) =>
-                val mcls1 = cpy.TypeDef(mcls, mcls.mods, mcls.name,
-                    cpy.Template(impl, impl.constr, impl.parents, impl.self,
-                        compimpl.body ++ impl.body))
+                val mcls1 = cpy.TypeDef(mcls)(mcls.mods, mcls.name,
+                    cpy.Template(impl)(impl.constr, impl.parents, impl.self,
+                        compimpl.body ++ impl.body), Nil)
                 mdef.putAttachment(ExpandedTree, Thicket(vdef :: mcls1 :: Nil))
                 cdef.putAttachment(ExpandedTree, Thicket(cls :: crest))
               case _ =>

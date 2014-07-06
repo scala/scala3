@@ -222,7 +222,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
         // Don't transform patterns or strange trees will reach the matcher (ticket #4062)
         // TODO Query `ctx.mode is Pattern` instead.
         case CaseDef(pat, guard, body) =>
-          cpy.CaseDef(tree, pat, transform(guard), transform(body))
+          cpy.CaseDef(tree)(pat, transform(guard), transform(body))
 
         case TypeDef(_, _, impl: Template) =>
           val cls = sym.asClass
@@ -295,7 +295,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
             val body1 = forwardParamAccessors(transformStats(impl.body, tree.symbol))
             accDefs -= currentClass
             ownStats ++= body1
-            cpy.Template(tree, impl.constr, impl.parents, impl.self, body1)
+            cpy.Template(tree)(impl.constr, impl.parents, impl.self, body1)
           }
           transformTemplate
 
@@ -368,9 +368,9 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
           }
           transformSelect
 
-        case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-          val rhs1 = if (isMethodWithExtension(sym)) withInvalidOwner(transform(rhs)) else transform(rhs)
-          cpy.DefDef(tree, mods, name, tparams, vparamss, tpt, rhs1)
+        case tree@DefDef(_, _, _, _, _, rhs) =>
+          cpy.DefDef(tree)(
+            rhs = if (isMethodWithExtension(sym)) withInvalidOwner(transform(rhs)) else transform(rhs))
 
         case TypeApply(sel @ Select(qual, name), args) =>
           mayNeedProtectedAccessor(sel, args, goToSuper = true)
@@ -391,7 +391,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
 
         case Apply(fn, args) =>
           val MethodType(_, formals) = fn.tpe.widen
-          cpy.Apply(tree, transform(fn), transformArgs(formals, args))
+          cpy.Apply(tree)(transform(fn), transformArgs(formals, args))
 
         case _ =>
           super.transform(tree)

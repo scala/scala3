@@ -34,7 +34,7 @@ class TypeTestsCasts extends MiniPhaseTransform {
         def isPrimitive(tp: Type) = tp.classSymbol.isPrimitiveValueClass
 
         def derivedTree(qual1: Tree, sym: Symbol, tp: Type) =
-          cpy.TypeApply(tree, qual1.select(sym).withPos(qual.pos), List(TypeTree(tp)))
+          cpy.TypeApply(tree)(qual1.select(sym).withPos(qual.pos), List(TypeTree(tp)))
 
         def qualCls = qual.tpe.classSymbol
 

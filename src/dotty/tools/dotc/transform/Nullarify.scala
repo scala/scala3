@@ -72,7 +72,7 @@ class Nullarify extends MiniPhaseTransform with InfoTransformer {
     val MethodType(_, formals) = methType(funType, tree.fun)
 
     val args1 = tree.args.zipWithConserve(formals)(transformArg)
-    cpy.Apply(tree, tree.fun, args1) withType nullarify(tree.tpe)
+    cpy.Apply(tree)(tree.fun, args1) withType nullarify(tree.tpe)
   }
 
   /** Insert () or .apply() if the term refers to something that was converted to a
@@ -108,16 +108,15 @@ class Nullarify extends MiniPhaseTransform with InfoTransformer {
     insertParens(tree)
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    val DefDef(mods, name, tparams, vparamss, tpt, rhs) = tree
     val vparamss1 =
-      if (vparamss.isEmpty) Nil :: Nil
-      else vparamss nestedMap { vparam =>
+      if (tree.vparamss.isEmpty) Nil :: Nil
+      else tree.vparamss nestedMap { vparam =>
         val tp = vparam.tpt.tpe
         val tp1 = nullarifyParam(tp)
         if (tp eq tp1) vparam
-        else cpy.ValDef(vparam, vparam.mods, vparam.name, vparam.tpt.withType(tp1), vparam.rhs)
+        else cpy.ValDef(vparam)(tpt = vparam.tpt.withType(tp1))
       }
-    cpy.DefDef(tree, mods, name, tparams, vparamss1, tpt, rhs)
+    cpy.DefDef(tree)(vparamss = vparamss1)
   }
 
   def nullarify(tp: Type)(implicit ctx: Context): Type = tp match {

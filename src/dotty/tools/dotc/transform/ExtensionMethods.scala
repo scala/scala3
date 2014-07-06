@@ -165,7 +165,7 @@ class ExtensionMethods extends MacroTransform with DenotTransformer with FullPar
             val tree1 @ Template(constr, parents, selfType, body) = super.transform(tree)
             extensionDefs remove tree1.symbol.owner match {
               case Some(defns) if defns.nonEmpty =>
-                cpy.Template(tree1, constr, parents, selfType, body ++ defns)
+                cpy.Template(tree1)(constr, parents, selfType, body ++ defns)
               case _ =>
                 tree1
             }
@@ -178,7 +178,7 @@ class ExtensionMethods extends MacroTransform with DenotTransformer with FullPar
           val extensionMeth = extensionMethod(origMeth)
           ctx.log(s"Value class $origClass spawns extension method.\n  Old: ${origMeth.showDcl}\n  New: ${extensionMeth.showDcl}")
           extensionDefs(staticClass) += fullyParameterizedDef(extensionMeth, ddef)
-          cpy.DefDef(tree, ddef.mods, ddef.name, ddef.tparams, ddef.vparamss, ddef.tpt,
+          cpy.DefDef(tree)(ddef.mods, ddef.name, ddef.tparams, ddef.vparamss, ddef.tpt,
               forwarder(extensionMeth, ddef))
         case _ =>
           super.transform(tree)

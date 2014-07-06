@@ -22,5 +22,5 @@ class PatternMatcher extends MiniPhaseTransform {
   override def name: String = "patternMatcher"
 
   override def transformCaseDef(tree: CaseDef)(implicit ctx: Context, info: TransformerInfo): Tree =
-    cpy.CaseDef(tree, Literal(Constant("<eliminated pattern>")), tree.guard, tree.body)
+    cpy.CaseDef(tree)(Literal(Constant("<eliminated pattern>")), tree.guard, tree.body)
 }

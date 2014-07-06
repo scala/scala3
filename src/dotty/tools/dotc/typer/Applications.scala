@@ -404,7 +404,7 @@ trait Applications extends Compatibility { self: Typer =>
 
     val result = {
       var typedArgs = typedArgBuf.toList
-      val app0 = cpy.Apply(app, normalizedFun, typedArgs)
+      val app0 = cpy.Apply(app)(normalizedFun, typedArgs)
       val app1 =
         if (!success) app0.withType(ErrorType)
         else {
@@ -470,7 +470,7 @@ trait Applications extends Compatibility { self: Typer =>
               failedState.commit()
               failedVal
             } else typedApply(
-              cpy.Apply(tree, untpd.TypedSplice(fun2), proto.typedArgs map untpd.TypedSplice), pt)
+              cpy.Apply(tree)(untpd.TypedSplice(fun2), proto.typedArgs map untpd.TypedSplice), pt)
           }
         case _ =>
           fun1.tpe match {
@@ -527,7 +527,7 @@ trait Applications extends Compatibility { self: Typer =>
         checkBounds(typedArgs, pt, tree.pos)
       case _ =>
     }
-    assignType(cpy.TypeApply(tree, typedFn, typedArgs), typedFn, typedArgs)
+    assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
   }
 
   def typedUnApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
@@ -712,14 +712,14 @@ trait Applications extends Compatibility { self: Typer =>
             List.fill(argTypes.length - args.length)(WildcardType)
         }
         val unapplyPatterns = (bunchedArgs, argTypes).zipped map (typed(_, _))
-        val result = assignType(cpy.UnApply(tree, unapplyFn, unapplyImplicits, unapplyPatterns), ownType)
+        val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits, unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
         if ((ownType eq pt) || ownType.isError) result
         else Typed(result, TypeTree(ownType))
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
         val typedArgsErr = args mapconserve (typed(_, defn.AnyType))
-        cpy.UnApply(tree, unapplyErr, Nil, typedArgsErr) withType ErrorType
+        cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr) withType ErrorType
     }
   }
 
@@ -881,7 +881,7 @@ trait Applications extends Compatibility { self: Typer =>
     def treeShape(tree: untpd.Tree): Tree = tree match {
       case NamedArg(name, arg) =>
         val argShape = treeShape(arg)
-        cpy.NamedArg(tree, name, argShape).withType(argShape.tpe)
+        cpy.NamedArg(tree)(name, argShape).withType(argShape.tpe)
       case _ =>
         dummyTreeOfType(typeShape(tree))
     }

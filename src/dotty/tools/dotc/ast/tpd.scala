@@ -440,49 +440,49 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
       case tree@Select(qualifier, name) =>
-        val tree1 = cpy.Select(tree, transform(qualifier), name)
+        val tree1 = cpy.Select(tree)(transform(qualifier), name)
         propagateType(tree, tree1)
       case tree@Pair(left, right) =>
         val left1 = transform(left)
         val right1 = transform(right)
-        val tree1 = cpy.Pair(tree, left1, right1)
+        val tree1 = cpy.Pair(tree)(left1, right1)
         propagateType(tree, tree1)
       case tree@Block(stats, expr) =>
         val stats1 = transform(stats)
         val expr1 = transform(expr)
-        val tree1 = cpy.Block(tree, stats1, expr1)
+        val tree1 = cpy.Block(tree)(stats1, expr1)
         propagateType(tree, tree1)
       case tree@If(cond, thenp, elsep) =>
         val cond1 = transform(cond)
         val thenp1 = transform(thenp)
         val elsep1 = transform(elsep)
-        val tree1 = cpy.If(tree, cond1, thenp1, elsep1)
+        val tree1 = cpy.If(tree)(cond1, thenp1, elsep1)
         propagateType(tree, tree1)
       case tree@Match(selector, cases) =>
         val selector1 = transform(selector)
         val cases1 = transformSub(cases)
-        val tree1 = cpy.Match(tree, selector1, cases1)
+        val tree1 = cpy.Match(tree)(selector1, cases1)
         propagateType(tree, tree1)
       case tree@CaseDef(pat, guard, body) =>
         val pat1 = transform(pat)
         val guard1 = transform(guard)
         val body1 = transform(body)
-        val tree1 = cpy.CaseDef(tree, pat1, guard1, body1)
+        val tree1 = cpy.CaseDef(tree)(pat1, guard1, body1)
         propagateType(tree, tree1)
       case tree@Try(block, handler, finalizer) =>
         val expr1 = transform(block)
         val handler1 = transform(handler)
         val finalizer1 = transform(finalizer)
-        val tree1 = cpy.Try(tree, expr1, handler1, finalizer1)
+        val tree1 = cpy.Try(tree)(expr1, handler1, finalizer1)
         propagateType(tree, tree1)
       case tree@SeqLiteral(elems) =>
         val elems1 = transform(elems)
-        val tree1 = cpy.SeqLiteral(tree, elems1)
+        val tree1 = cpy.SeqLiteral(tree)(elems1)
         propagateType(tree, tree1)
       case tree@Annotated(annot, arg) =>
         val annot1 = transform(annot)
         val arg1 = transform(arg)
-        val tree1 = cpy.Annotated(tree, annot1, arg1)
+        val tree1 = cpy.Annotated(tree)(annot1, arg1)
         propagateType(tree, tree1)
       case _ => super.transform(tree)
     }
@@ -508,18 +508,18 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case ddef @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
           val (tmap1, tparams1) = transformDefs(ddef.tparams)
           val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)
-          cpy.DefDef(ddef, mods, name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(rhs))
+          cpy.DefDef(ddef)(mods, name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(rhs))
         case blk @ Block(stats, expr) =>
           val (tmap1, stats1) = transformDefs(stats)
           val expr1 = tmap1.transform(expr)
-          val tree1 = cpy.Block(blk, stats1, expr1)
+          val tree1 = cpy.Block(blk)(stats1, expr1)
           propagateType(blk, tree1)
         case cdef @ CaseDef(pat, guard, rhs) =>
           val tmap = withMappedSyms(patVars(pat))
           val pat1 = tmap.transform(pat)
           val guard1 = tmap.transform(guard)
           val rhs1 = tmap.transform(rhs)
-          val tree1 = cpy.CaseDef(tree, pat1, guard1, rhs1)
+          val tree1 = cpy.CaseDef(tree)(pat1, guard1, rhs1)
           propagateType(cdef, tree1)
         case tree1 =>
           super.transform(tree1)

@@ -225,7 +225,7 @@ object Erasure {
       assert(sym.exists, tree.show)
 
       def select(qual: Tree, sym: Symbol): Tree =
-        untpd.cpy.Select(tree, qual, sym.name) withType qual.tpe.select(sym)
+        untpd.cpy.Select(tree)(qual, sym.name) withType qual.tpe.select(sym)
 
       def selectArrayMember(qual: Tree, erasedPre: Type) =
         if (erasedPre isRef defn.ObjectClass) runtimeCall(tree.name.genericArrayOp, qual :: Nil)
@@ -257,7 +257,7 @@ object Erasure {
       fun1.tpe.widen match {
         case funTpe: PolyType =>
           val args1 = args.mapconserve(typedType(_))
-          untpd.cpy.TypeApply(tree, fun1, args1).withType(funTpe.instantiate(args1.tpes))
+          untpd.cpy.TypeApply(tree)(fun1, args1).withType(funTpe.instantiate(args1.tpes))
         case _ => fun1
       }
     }
@@ -268,7 +268,7 @@ object Erasure {
       fun1.tpe.widen match {
         case mt: MethodType =>
           val args1 = args.zipWithConserve(mt.paramTypes)(typedExpr)
-          untpd.cpy.Apply(tree, fun1, args1) withType mt.resultType
+          untpd.cpy.Apply(tree)(fun1, args1) withType mt.resultType
         case _ =>
           throw new MatchError(i"tree $tree has uxpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
       }
@@ -284,7 +284,7 @@ object Erasure {
       val tpt1 = // keep UnitTypes intact in result position
         if (ddef.tpt.typeOpt isRef defn.UnitClass) untpd.TypeTree(defn.UnitType) withPos ddef.tpt.pos
         else ddef.tpt
-      val ddef1 = untpd.cpy.DefDef(ddef, ddef.mods, ddef.name, Nil, ddef.vparamss, tpt1, ddef.rhs)
+      val ddef1 = untpd.cpy.DefDef(ddef)(tparams = Nil, tpt = tpt1)
       super.typedDefDef(ddef1, sym)
     }
 
