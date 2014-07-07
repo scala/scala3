@@ -4,6 +4,7 @@ package transform
 import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform, TreeTransformer}
 import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.{ mutable, immutable }
+import ValueClasses._
 import mutable.ListBuffer
 import scala.annotation.tailrec
 import core._
@@ -368,7 +369,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
           transformSelect
 
         case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-          val rhs1 = if (sym.isMethodWithExtension) withInvalidOwner(transform(rhs)) else transform(rhs)
+          val rhs1 = if (isMethodWithExtension(sym)) withInvalidOwner(transform(rhs)) else transform(rhs)
           cpy.DefDef(tree, mods, name, tparams, vparamss, tpt, rhs1)
 
         case TypeApply(sel @ Select(qual, name), args) =>

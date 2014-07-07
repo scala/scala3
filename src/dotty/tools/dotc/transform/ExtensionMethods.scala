@@ -6,6 +6,7 @@ package dotty.tools.dotc
 package transform
 
 import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform, TreeTransformer}
+import ValueClasses._
 import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.{ mutable, immutable }
 import mutable.ListBuffer
@@ -96,7 +97,7 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
       if (seen contains clazz)
         ctx.error("value class may not unbox to itself", pos)
       else {
-        val unboxed = clazz.underlyingOfValueClass.typeSymbol
+        val unboxed = underlyingOfValueClass(clazz).typeSymbol
         if (unboxed.isDerivedValueClass) checkNonCyclic(pos, seen + clazz, unboxed.asClass)
       }
 
@@ -122,7 +123,7 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
                 tree1
             }
           } else tree
-        case DefDef(mods, name, tparams, vparamss, tpt, rhs) if tree.symbol.isMethodWithExtension =>
+        case DefDef(mods, name, tparams, vparamss, tpt, rhs) if isMethodWithExtension(tree.symbol) =>
           val origMeth      = tree.symbol
           val origClass     = ctx.owner.asClass
           val origTParams   = tparams.map(_.symbol) ::: origClass.typeParams   // method type params ++ class type params

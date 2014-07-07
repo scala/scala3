@@ -22,6 +22,7 @@ import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import ast.Trees._
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Flags
+import ValueClasses._
 
 class Erasure extends Phase with DenotTransformer {
 
@@ -90,7 +91,7 @@ object Erasure {
     final def box(tree: Tree, target: => String = "")(implicit ctx: Context): Tree = ctx.traceIndented(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
         case ErasedValueType(clazz, _) =>
-          New(clazz.typeRef, cast(tree, clazz.underlyingOfValueClass) :: Nil) // todo: use adaptToType?
+          New(clazz.typeRef, cast(tree, underlyingOfValueClass(clazz)) :: Nil) // todo: use adaptToType?
         case tp =>
           val cls = tp.classSymbol
           if (cls eq defn.UnitClass) constant(tree, ref(defn.BoxedUnit_UNIT))
@@ -117,7 +118,7 @@ object Erasure {
               unbox(tree, underlying)
             else
               adaptToType(tree, clazz.typeRef)
-                .select(clazz.valueClassUnbox)
+                .select(valueClassUnbox(clazz))
                 .appliedToNone
           cast(tree1, pt)
         case _ =>

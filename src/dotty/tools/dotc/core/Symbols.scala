@@ -391,14 +391,8 @@ object Symbols {
 
     /** Is this symbol a user-defined value class? */
     final def isDerivedValueClass(implicit ctx: Context): Boolean =
-      false && // value classes are not supported yet
-      isClass && denot.derivesFrom(defn.AnyValClass) && !isPrimitiveValueClass
-
-    /** Is symbol a primitive value class? */
-    def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains this
-
-    /** Is symbol a phantom class for which no runtime representation exists? */
-    def isPhantomClass(implicit ctx: Context) = defn.PhantomClasses contains this
+      false  // will migrate to ValueClasses.isDerivedValueClass;
+               // unsupported value class code will continue to use this stub while it exists
 
     /** The current name of this symbol */
     final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]

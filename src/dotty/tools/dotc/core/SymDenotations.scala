@@ -329,6 +329,12 @@ object SymDenotations {
     final def isAnonymousClass(implicit ctx: Context): Boolean =
       initial.asSymDenotation.name startsWith tpnme.ANON_CLASS
 
+    /** Is symbol a primitive value class? */
+    def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains symbol
+
+    /** Is symbol a phantom class for which no runtime representation exists? */
+    def isPhantomClass(implicit ctx: Context) = defn.PhantomClasses contains symbol
+
     /** Is this symbol a class representing a refinement? These classes
      *  are used only temporarily in Typer and Unpickler as an intermediate
      *  step for creating Refinement types.
@@ -402,14 +408,6 @@ object SymDenotations {
 
     /** Is this a user defined "def" method? Excluded are accessors. */
     final def isSourceMethod(implicit ctx: Context) = this is (Method, butNot = Accessor)
-
-    /** This this a method in a value class that is implemented as an extension method? */
-    final def isMethodWithExtension(implicit ctx: Context) =
-      isSourceMethod &&
-      owner.isDerivedValueClass &&
-      !isConstructor &&
-      !is(SuperAccessor) &&
-      !is(Macro)
 
     /** Is this a setter? */
     final def isGetter(implicit ctx: Context) = (this is Accessor) && !originalName.isSetterName
@@ -1334,18 +1332,6 @@ object SymDenotations {
       val cname = if (this is ImplClass) nme.IMPLCLASS_CONSTRUCTOR else nme.CONSTRUCTOR
       decls.denotsNamed(cname).first.symbol
     }
-
-    /** The member that of a derived value class that unboxes it. */
-    def valueClassUnbox(implicit ctx: Context): Symbol =
-      // (info.decl(nme.unbox)).orElse(...)      uncomment once we accept unbox methods
-      classInfo.decls
-        .find(d => d.isTerm && d.symbol.is(ParamAccessor))
-        .map(_.symbol)
-        .getOrElse(NoSymbol)
-
-    /** The unboxed type that underlies a derived value class */
-    def underlyingOfValueClass(implicit ctx: Context): Type =
-      valueClassUnbox.info.resultType
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
