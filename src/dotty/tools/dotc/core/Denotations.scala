@@ -570,29 +570,12 @@ object Denotations {
             //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
             cur = cur.nextInRun
             cnt += 1
-            if (cnt > MaxPossiblePhaseId) {
-              println(s"seems to be a loop in Denotations for $this, currentPeriod = $currentPeriod")
-              printPeriods(this)
-              assert(false)
-            }
+            assert(cnt <= MaxPossiblePhaseId,
+              s"demanding denotation of $this outside defined interval: defined periods are${definedPeriodsString}")
           }
           cur
         }
-
       }
-    }
-
-    private def printPeriods(current: SingleDenotation): Unit = {
-      print(s"periods for $this:")
-      var cur = current
-      var cnt = 0
-      do {
-        print(" " + cur.validFor)
-        cur = cur.nextInRun
-        cnt += 1
-        if (cnt > MaxPossiblePhaseId) { println(" ..."); return }
-      } while (cur ne current)
-      println()
     }
 
     /** Install this denotation to be the result of the given denotation transformer.
@@ -642,6 +625,20 @@ object Denotations {
     override def toString =
       if (symbol == NoSymbol) symbol.toString
       else s"<SingleDenotation of type $infoOrCompleter>"
+
+
+    def definedPeriodsString: String = {
+      var sb = new StringBuilder()
+      var cur = this
+      var cnt = 0
+      do {
+        sb.append(" " + cur.validFor)
+        cur = cur.nextInRun
+        cnt += 1
+        if (cnt > MaxPossiblePhaseId) { sb.append(" ..."); cur = this }
+      } while (cur ne this)
+      sb.toString
+    }
 
     // ------ PreDenotation ops ----------------------------------------------
 
