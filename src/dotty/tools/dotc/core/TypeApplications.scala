@@ -8,7 +8,9 @@ import Decorators._
 import util.Stats._
 import util.common._
 import Names._
+import NameOps._
 import Flags._
+import StdNames.tpnme
 import util.Positions.Position
 import config.Printers._
 import collection.mutable
@@ -44,13 +46,12 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** The type parameters of this type are:
    *  For a ClassInfo type, the type parameters of its class.
    *  For a typeref referring to a class, the type parameters of the class.
-   *  For a typeref referring to an alias type, the type parameters of the aliased type.
-   *  For a typeref referring to an abstract type with a HigherKindedXYZ bound, the
-   *  type parameters of the HigherKinded class.
-   *  For a refinement type, the type parameters of its parent, unless there's a
-   *  refinement with the same name. Inherited by all other type proxies.
-   *  For an intersection type A & B, the type parameters of its left operand, A.
-   *  Empty list for all other types.
+   *  For a typeref referring to an alias or abstract type, the type parameters of
+   *    its right hand side or upper bound.
+   *  For a refinement type, the type parameters of its parent, unless the refinement
+   *  re-binds the type parameter with a type-alias.
+   *  For any other non-singleton type proxy, the type parameters of its underlying type.
+   *  For any other type, the empty list.
    */
   final def typeParams(implicit ctx: Context): List[TypeSymbol] = /*>|>*/ track("typeParams") /*<|<*/ {
     self match {
@@ -59,58 +60,85 @@ class TypeApplications(val self: Type) extends AnyVal {
       case tp: TypeRef =>
         val tsym = tp.typeSymbol
         if (tsym.isClass) tsym.typeParams
-        else if (tsym.info.isAlias) tp.underlying.typeParams
-        else tp.info.bounds.hi match {
-          case AndType(hkBound, other) if defn.hkTraits contains hkBound.typeSymbol =>
-            hkBound.typeSymbol.typeParams
-          case _ =>
-            Nil
-        }
+        else tp.underlying.typeParams
       case tp: RefinedType =>
-        tp.parent.typeParams filterNot (_.name == tp.refinedName)
+        val tparams = tp.parent.typeParams
+        tp.refinedInfo match {
+          case TypeBounds(lo, hi) if lo eq hi => tparams.filterNot(_.name == tp.refinedName)
+          case _ => tparams
+        }
+      case tp: SingletonType =>
+        Nil
       case tp: TypeProxy =>
         tp.underlying.typeParams
-      case tp: AndType =>
-        tp.tp1.typeParams
       case _ =>
         Nil
     }
   }
+
   /** The type parameters of the underlying class.
    *  This is like `typeParams`, except for 3 differences.
    *  First, it does not adjust type parameters in refined types. I.e. type arguments
    *  do not remove corresponding type parameters.
    *  Second, it will return Nil for BoundTypes because we might get a NullPointer exception
    *  on PolyParam#underlying otherwise (demonstrated by showClass test).
-   *  Third, it won't return higher-kinded type parameters.
+   *  Third, it won't return higher-kinded type parameters, i.e. the type parameters of
+   *  an abstract type are always empty.
    */
-  final def safeUnderlyingTypeParams(implicit ctx: Context): List[TypeSymbol] = {
-    def ifCompleted(sym: Symbol): Symbol = if (sym.isCompleted) sym else NoSymbol
+  final def rawTypeParams(implicit ctx: Context): List[TypeSymbol] = {
     self match {
       case tp: ClassInfo =>
         tp.cls.typeParams
       case tp: TypeRef =>
         val tsym = tp.typeSymbol
         if (tsym.isClass) tsym.typeParams
-        else if (tsym.isAliasType) tp.underlying.safeUnderlyingTypeParams
+        else if (tsym.isAliasType) tp.underlying.rawTypeParams
         else Nil
-      case tp: BoundType =>
+      case _: BoundType | _: SingletonType =>
         Nil
       case tp: TypeProxy =>
-        tp.underlying.safeUnderlyingTypeParams
-      case tp: AndType =>
-        tp.tp1.safeUnderlyingTypeParams
+        tp.underlying.rawTypeParams
       case _ =>
         Nil
     }
   }
 
-  def uninstantiatedTypeParams(implicit ctx: Context): List[TypeSymbol] =
-    typeParams filter (tparam => self.member(tparam.name).symbol == tparam)
+  /** If type `tp` is equal, aliased-to, or upperbounded-by a type of the form
+   *  `LambdaXYZ { ... }`, the class symbol of that type, otherwise NoSymbol.
+   *  symbol of that type, otherwise NoSymbol.
+   *  @param forcing  if set, might force completion. If not, never forces
+   *                  but returns NoSymbol when it would have to otherwise.
+   */
+  def LambdaClass(forcing: Boolean)(implicit ctx: Context): Symbol = track("LambdaClass") { self.stripTypeVar match {
+    case self: TypeRef =>
+      val sym = self.symbol
+      if (sym.isLambdaTrait) sym
+      else if (sym.isClass || sym.isCompleting && !forcing) NoSymbol
+      else self.info.LambdaClass(forcing)
+    case self: TypeProxy =>
+      self.underlying.LambdaClass(forcing)
+    case _ =>
+      NoSymbol
+  }}
+
+  /** Is type `tp` equal, aliased-to, or upperbounded-by a type of the form
+   *  `LambdaXYZ { ... }`?
+   */
+  def isLambda(implicit ctx: Context): Boolean =
+    LambdaClass(forcing = true).exists
+
+  /** Same is `isLambda`, except that symbol denotations are not forced
+   *  Symbols in completion count as not lambdas.
+   */
+  def isSafeLambda(implicit ctx: Context): Boolean =
+    LambdaClass(forcing = false).exists
+
+  /** Is type `tp` a Lambda with all Arg$ fields fully instantiated? */
+  def isInstantiatedLambda(tp: Type)(implicit ctx: Context): Boolean =
+    tp.isSafeLambda && tp.typeParams.isEmpty
 
   /** Encode the type resulting from applying this type to given arguments */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
-
     def matchParams(tp: Type, tparams: List[TypeSymbol], args: List[Type]): Type = args match {
       case arg :: args1 =>
         if (tparams.isEmpty) {
@@ -118,7 +146,11 @@ class TypeApplications(val self: Type) extends AnyVal {
           println(s"precomplete decls = ${self.typeSymbol.decls.toList.map(_.denot).mkString("\n  ")}")
         }
         val tparam = tparams.head
-        val tp1 = RefinedType(tp, tparam.name, arg.toBounds(tparam))
+        val arg1 =
+          if ((tparam is HigherKinded) && !arg.isLambda && arg.typeParams.nonEmpty)
+            arg.EtaExpand
+          else arg
+        val tp1 = RefinedType(tp, tparam.name, arg1.toBounds(tparam))
         matchParams(tp1, tparams.tail, args1)
       case nil => tp
     }
@@ -137,8 +169,8 @@ class TypeApplications(val self: Type) extends AnyVal {
           val safeTypeParams =
             if (tsym.isClass || !tp.typeSymbol.isCompleting) original.typeParams
             else {
-              ctx.warning("encountered F-bounded higher-kinded type parameters; assuming they are invariant")
-              defn.hkTrait(args map alwaysZero).typeParams
+              ctx.warning(i"encountered F-bounded higher-kinded type parameters for $tsym; assuming they are invariant")
+              defn.lambdaTrait(args map alwaysZero).typeParams
             }
           matchParams(tp, safeTypeParams, args)
         }
@@ -149,8 +181,6 @@ class TypeApplications(val self: Type) extends AnyVal {
           tp.refinedInfo)
       case tp: TypeProxy =>
         instantiate(tp.underlying, original)
-      case AndType(l, r) =>
-        l.appliedTo(args) & r
       case tp: PolyType =>
         tp.instantiate(args)
       case ErrorType =>
@@ -158,7 +188,10 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
 
     if (args.isEmpty || !canHaveTypeParams) self
-    else instantiate(self, self)
+    else {
+      val res = instantiate(self, self)
+      if (isInstantiatedLambda(res)) res.select(tpnme.Apply) else res
+    }
   }
 
   final def appliedTo(arg: Type)(implicit ctx: Context): Type = appliedTo(arg :: Nil)
@@ -326,12 +359,11 @@ class TypeApplications(val self: Type) extends AnyVal {
    *
    *      type T = RHS
    *
-   *  It is required that `C` is a class and that every bound symbol in `boundSyms` appears
-   *  as an argument in `targs`. If these requirements are not met an error is
-   *  signalled by calling the parameter `error`.
-   *
-   *  The rewriting replaces bound symbols by references to the
-   *  parameters of class C. Example:
+   *  There are two strategies how this is achieved.
+
+   *  1st strategy: Applies if `C` is a class such that every bound symbol in `boundSyms`
+   *  appears as an argument in `targs`, and in the same order. Then the rewriting replaces
+   *  bound symbols by references to the parameters of class C. Example:
    *
    *  Say we have:
    *
@@ -343,48 +375,118 @@ class TypeApplications(val self: Type) extends AnyVal {
    *
    *     type A = Triple { type T1 = (this.T2, this.T2); type T3 = String }
    *
-   *  If the RHS is an intersection type A & B, we Lambda abstract on A instead and
-   *  then recombine with & B.
+   *  2nd strategy: Used as a fallback if 1st strategy does not apply. It rewrites
+   *  the RHS to a typed lambda abstraction.
    */
-  def LambdaAbstract(boundSyms: List[Symbol])(error: (String, Position) => Unit)(implicit ctx: Context): Type = self match {
-    case AndType(l, r) =>
-      AndType(l.LambdaAbstract(boundSyms)(error), r)
-    case _ =>
-      val cls = self.typeSymbol
-      if (!cls.isClass)
-        error("right-hand side of parameterized alias type must refer to a class", cls.pos)
+  def parameterizeWith(boundSyms: List[Symbol])(implicit ctx: Context): Type = {
+    def matchParams(bsyms: List[Symbol], tparams: List[Symbol], targs: List[Type],
+                    correspondingParamName: Map[Symbol, TypeName]): Type = {
+      if (bsyms.isEmpty) {
+        val correspondingNames = correspondingParamName.values.toSet
 
-      val correspondingParamName: Map[Symbol, TypeName] = {
-        for {
-          (tparam, targ: TypeRef) <- cls.typeParams zip argInfos
-          if boundSyms contains targ.symbol
-        } yield targ.symbol -> tparam.name
-      }.toMap
+        def replacements(rt: RefinedType): List[Type] =
+          for (sym <- boundSyms)
+            yield TypeRef(RefinedThis(rt), correspondingParamName(sym))
 
-      val correspondingNames = correspondingParamName.values.toSet
-
-      def replacements(rt: RefinedType): List[Type] =
-        for (sym <- boundSyms) yield {
-          correspondingParamName get sym match {
-            case Some(name) =>
-              TypeRef(RefinedThis(rt), name)
-            case None =>
-              error(s"parameter $sym of type alias does not appear as type argument of the aliased $cls", sym.pos)
-              defn.AnyType
-          }
+        def rewrite(tp: Type): Type = tp match {
+          case tp @ RefinedType(parent, name: TypeName) =>
+            if (correspondingNames contains name) rewrite(parent)
+            else RefinedType(
+              rewrite(parent),
+              name,
+              rt => tp.refinedInfo.subst(boundSyms, replacements(rt)))
+          case tp =>
+            tp
         }
 
-      def rewrite(tp: Type): Type = tp match {
-        case tp @ RefinedType(parent, name: TypeName) =>
-          if (correspondingNames contains name) rewrite(parent)
-          else RefinedType(
-            rewrite(parent),
-            name,
-            rt => tp.refinedInfo.subst(boundSyms, replacements(rt)))
-        case tp =>
-          tp
+        rewrite(self)
       }
+      else if (tparams.isEmpty || targs.isEmpty)
+        LambdaAbstract(boundSyms)
+      else if (bsyms.head == targs.head.typeSymbol)
+        matchParams(bsyms.tail, tparams.tail, targs.tail,
+            correspondingParamName + (bsyms.head -> tparams.head.name.asTypeName))
+      else
+        matchParams(bsyms, tparams.tail, targs.tail, correspondingParamName)
+    }
+    val cls = self.typeSymbol
+    if (cls.isClass) matchParams(boundSyms, cls.typeParams, argInfos, Map())
+    else LambdaAbstract(boundSyms)
+  }
 
-      rewrite(self)
+  /** The typed lambda abstraction of this type `T` relative to `boundSyms`.
+   *  This is:
+   *
+   *      LambdaXYZ{ type Apply = subst(T) }
+   *
+   *  where XYZ reflets that variances of the bound symbols and
+   *  `subst` is a substitution that replaces every bound symbol sym_i by
+   *  `this.Arg$i`.
+   *
+   *  TypeBounds are lambda abstracting by lambda abstracting their upper bound.
+   */
+  def LambdaAbstract(boundSyms: List[Symbol])(implicit ctx: Context): Type = {
+    def expand(tp: Type) = {
+      val lambda = defn.lambdaTrait(boundSyms.map(_.variance))
+      val substitutedRHS = (rt: RefinedType) => {
+        val argRefs = boundSyms.indices.toList.map(i =>
+          RefinedThis(rt).select(tpnme.lambdaArgName(i)))
+        tp.subst(boundSyms, argRefs).bounds.withVariance(1)
+      }
+      val res = RefinedType(lambda.typeRef, tpnme.Apply, substitutedRHS)
+      //println(i"lambda abstract $self wrt $boundSyms%, % --> $res")
+      res
+    }
+    self match {
+      case self @ TypeBounds(lo, hi) =>
+        self.derivedTypeBounds(lo, expand(TypeBounds.upper(hi)))
+      case _ =>
+        expand(self)
+    }
+  }
+
+  /** Convert a type constructor `TC` with type parameters `T1, ..., Tn` to
+   *
+   *     LambdaXYZ { Apply = TC[$hkArg$0, ..., $hkArg$n] }
+   *
+   *  where XYZ is a corresponds to the variances of the type parameters.
+   */
+  def EtaExpand(implicit ctx: Context): Type = {
+    val tparams = typeParams
+    self.appliedTo(tparams map (_.typeRef)).LambdaAbstract(tparams)
+  }
+
+  /** If this type has a base type `B[T1, ..., Tn]` where the type parameters
+   *  of `B` match one-by-one the variances of `tparams`, convert it to
+   *
+   *     LambdaXYZ { type Apply = B[$hkArg$0, ..., $hkArg$n] }
+   *               { type $hkArg$0 = T1; ...; type $hkArg$n = Tn }
+   *
+   *  A type parameter matches a varianve V if it has V as its variance or if V == 0.
+   */
+  def EtaLiftTo(tparams: List[Symbol])(implicit ctx: Context): Type = {
+    def tryLift(bcs: List[ClassSymbol]): Type = bcs match {
+      case bc :: bcs1 =>
+        val tp = self.baseTypeWithArgs(bc)
+        val targs = tp.argInfos
+        val tycon = tp.withoutArgs(targs)
+        def variancesMatch(param1: Symbol, param2: Symbol) =
+          param2.variance == param2.variance || param2.variance == 0
+        if ((tycon.typeParams corresponds tparams)(variancesMatch)) {
+          val expanded = tycon.EtaExpand
+          val res = (expanded /: targs) { (partialInst, targ) =>
+            val tparam = partialInst.typeParams.head
+            RefinedType(partialInst, tparam.name, targ.bounds.withVariance(tparam.variance))
+          }
+          hk.println(i"eta lifting $self --> $res")
+          res
+        }
+        else tryLift(bcs1)
+      case nil =>
+        NoType
+    }
+    if (tparams.isEmpty) NoType
+    else if (typeParams.nonEmpty) EtaExpand
+    else tryLift(self.baseClasses)
   }
 }

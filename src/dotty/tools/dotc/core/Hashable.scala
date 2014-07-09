@@ -33,7 +33,7 @@ trait Hashable {
   private def finishHash(hashCode: Int, arity: Int): Int =
     avoidNotCached(hashing.finalizeHash(hashCode, arity))
 
-  protected final def identityHash = avoidNotCached(System.identityHashCode(this))
+  final def identityHash = avoidNotCached(System.identityHashCode(this))
 
   private def finishHash(seed: Int, arity: Int, tp: Type): Int = {
     val elemHash = tp.hash

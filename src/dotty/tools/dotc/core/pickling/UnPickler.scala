@@ -42,15 +42,15 @@ object UnPickler {
    *
    *      TempPolyType(List(v_1 T_1, ..., v_n T_n), lo .. hi)
    *
-   *  to a higher-kinded type appoximation (@see TypeBounds.higherKinded)
-  */
+   *  to a type lambda using `parameterizeWith/LambdaAbstract`.
+   */
   def depoly(tp: Type, denot: SymDenotation)(implicit ctx: Context): Type = tp match {
     case TempPolyType(tparams, restpe) =>
       if (denot.isAbstractType)
-        restpe.bounds.higherKinded(tparams)
+        restpe.LambdaAbstract(tparams) // bounds needed?
       else if (denot.isAliasType) {
         var err: Option[(String, Position)] = None
-        val result = restpe.LambdaAbstract(tparams) { (msg, pos) => err = Some((msg, pos)) }
+        val result = restpe.parameterizeWith(tparams)
         for ((msg, pos) <- err)
           ctx.warning(
             s"""$msg
@@ -571,6 +571,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
           case info =>
             tp.derivedRefinedType(parent1, name, info)
         }
+      case tp @ TypeRef(pre, tpnme.Apply) if pre.isLambda =>
+        elim(pre)
       case _ =>
         tp
     }

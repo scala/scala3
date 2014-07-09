@@ -247,7 +247,7 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
       sigName(tp.optBounds)
     case _ =>
       val erased = this(tp)
-      assert(erased ne tp)
+      assert(erased ne tp, tp)
       sigName(erased)
   }
 }

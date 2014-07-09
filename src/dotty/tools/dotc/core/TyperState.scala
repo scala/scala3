@@ -23,6 +23,16 @@ class TyperState(r: Reporter) extends DotClass with Showable {
   /** The uninstantiated variables */
   def uninstVars = constraint.uninstVars
 
+  /** The ephemeral flag is set as a side effect if an operation accesses
+   *  the underlying type of a type variable. The reason we need this flag is
+   *  that any such operation is not referentially transparent; it might logically change
+   *  its value at the moment the type variable is instantiated. Caching code needs to
+   *  check the ephemeral flag; If the flag is set during an operation, the result
+   *  of that operation should not be cached.
+   */
+  def ephemeral: Boolean = false
+  def ephemeral_=(x: Boolean): Unit = ()
+
   /** Gives for each instantiated type var that does not yet have its `inst` field
    *  set, the instance value stored in the constraint. Storing instances in constraints
    *  is done only in a temporary way for contexts that may be retracted
@@ -76,6 +86,12 @@ extends TyperState(r) {
   override def constraint = myConstraint
   override def constraint_=(c: Constraint) = myConstraint = c
 
+  private var myEphemeral: Boolean = previous.ephemeral
+
+  override def ephemeral = myEphemeral
+  override def ephemeral_=(x: Boolean): Unit = { myEphemeral = x }
+
+
   override def fresh(isCommittable: Boolean): TyperState =
     new MutableTyperState(this, new StoreReporter, isCommittable)
 
@@ -96,11 +112,11 @@ extends TyperState(r) {
     val targetState = ctx.typerState
     assert(isCommittable)
     targetState.constraint = constraint
-
     constraint foreachTypeVar { tvar =>
       if (tvar.owningState eq this)
         tvar.owningState = targetState
     }
+    targetState.ephemeral = ephemeral
     targetState.gc()
     reporter.flush()
   }

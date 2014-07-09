@@ -116,15 +116,16 @@ object Types {
         false
     }
 
-   /** A type T is a legal prefix in a type selection T#A if
-     *  T is stable or T contains no abstract types
+    /** A type T is a legal prefix in a type selection T#A if
+     *  T is stable or T contains no abstract types except possibly A.
      *  !!! Todo: What about non-final vals that contain abstract types?
      */
-    final def isLegalPrefix(implicit ctx: Context): Boolean =
+    final def isLegalPrefixFor(selector: Name)(implicit ctx: Context): Boolean =
       isStable || {
         val absTypeNames = memberNames(abstractTypeNameFilter)
         if (absTypeNames.nonEmpty) typr.println(s"abstract type members of ${this.showWithUnderlying()}: $absTypeNames")
-        absTypeNames.isEmpty
+        absTypeNames.isEmpty ||
+          absTypeNames.head == selector && absTypeNames.tail.isEmpty
       }
 
     /** Is this type guaranteed not to have `null` as a value?
@@ -161,6 +162,29 @@ object Types {
     def isAlias: Boolean = this match {
       case TypeBounds(lo, hi) => lo eq hi
       case _ => false
+    }
+
+    /** Is this type a transitive refinement of the given type?
+     *  This is true if the type consists of 0 or more refinements or other
+     *  non-singleton proxies that lead to the `prefix` type. ClassInfos with
+     *  the same class are counted as equal for this purpose.
+     */
+    def refines(prefix: Type)(implicit ctx: Context): Boolean = {
+      val prefix1 = prefix.dealias
+      def loop(tp: Type): Boolean =
+        (tp eq prefix1) || {
+          tp match {
+            case base: ClassInfo =>
+              prefix1 match {
+                case prefix1: ClassInfo => base.cls eq prefix1.cls
+                case _ => false
+              }
+            case base: SingletonType => false
+            case base: TypeProxy => loop(base.underlying)
+            case _ => false
+          }
+        }
+      loop(this)
     }
 
 // ----- Higher-order combinators -----------------------------------
@@ -374,9 +398,10 @@ object Types {
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
         val rinfo = tp.refinedInfo.substThis(tp, pre)
-        if (name.isTypeName) // simplified case that runs more efficiently
-          pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, rinfo)
-        else
+        if (name.isTypeName) { // simplified case that runs more efficiently
+          val jointInfo = if (rinfo.isAlias) rinfo else pdenot.info & rinfo
+          pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
+        } else
           pdenot & (new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId)), pre)
       }
       def goThis(tp: ThisType) = {
@@ -485,7 +510,7 @@ object Types {
     }
 
     /** Is this type close enough to that type so that members
-     *  with the two type would override each other?
+     *  with the two type would override each other?d
      *  This means:
      *    - Either both types are polytypes with the same number of
      *      type parameters and their result types match after renaming
@@ -508,7 +533,7 @@ object Types {
      */
     final def baseTypeRef(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseTypeRef $base")*/ /*>|>*/ track("baseTypeRef") /*<|<*/ {
       base.denot match {
-        case classd: ClassDenotation => classd.baseTypeRefOf(this)//widen.dealias)
+        case classd: ClassDenotation => classd.baseTypeRefOf(this) //widen.dealias)
         case _ => NoType
       }
     }
@@ -629,15 +654,30 @@ object Types {
      *
      *    P { ... type T = / += / -= U ... } # T
      *
-     *  to just U
+     *  to just U. Does not perform the reduction if the resulting type would contain
+     *  a reference to the "this" of the current refined type.
      */
     def lookupRefined(name: Name)(implicit ctx: Context): Type = stripTypeVar match {
       case pre: RefinedType =>
-        if (pre.refinedName ne name) pre.parent.lookupRefined(name)
+        def dependsOnThis(tp: Type): Boolean = tp match {
+          case tp @ TypeRef(RefinedThis(rt), _) if rt refines pre =>
+            tp.info match {
+              case TypeBounds(lo, hi) if lo eq hi => dependsOnThis(hi)
+              case _ => true
+            }
+          case RefinedThis(rt) =>
+            rt refines pre
+          case _ => false
+        }
+        if (pre.refinedName ne name)
+          pre.parent.lookupRefined(name)
         else pre.refinedInfo match {
-          case TypeBounds(lo, hi) /*if lo eq hi*/ => hi
+          case TypeBounds(lo, hi) if lo eq hi =>
+            if (hi.existsPart(dependsOnThis)) NoType else hi
           case _ => NoType
         }
+      case RefinedThis(rt) =>
+        rt.lookupRefined(name)
       case pre: WildcardType =>
         WildcardType
       case _ =>
@@ -1036,24 +1076,32 @@ object Types {
 
     /** A second fallback to recompute the denotation if necessary */
     private def computeDenot(implicit ctx: Context): Denotation = {
-      val d = lastDenotation match {
-        case null =>
-          val sym = lastSymbol
-          if (sym == null) loadDenot else denotOfSym(sym)
-        case d: SymDenotation =>
-          if (d.validFor.runId == ctx.runId || ctx.stillValid(d)) d.current
-          else {
-            val newd = loadDenot
-            if (newd.exists) newd else d.staleSymbolError
-          }
-        case d =>
-          if (d.validFor.runId == ctx.period.runId) d.current
-          else loadDenot
+      val savedEphemeral = ctx.typerState.ephemeral
+      ctx.typerState.ephemeral = false
+      try {
+        val d = lastDenotation match {
+          case null =>
+            val sym = lastSymbol
+            if (sym == null) loadDenot else denotOfSym(sym)
+          case d: SymDenotation =>
+            if (d.validFor.runId == ctx.runId || ctx.stillValid(d)) d.current
+            else {
+              val newd = loadDenot
+              if (newd.exists) newd else d.staleSymbolError
+            }
+          case d =>
+            if (d.validFor.runId == ctx.period.runId) d.current
+            else loadDenot
+        }
+        if (ctx.typerState.ephemeral) record("ephemeral cache miss: loadDenot")
+        else {
+          lastDenotation = d
+          lastSymbol = d.symbol
+          checkedPeriod = ctx.period
+        }
+        d
       }
-      lastDenotation = d
-      lastSymbol = d.symbol
-      checkedPeriod = ctx.period
-      d
+      finally ctx.typerState.ephemeral |= savedEphemeral
     }
 
     private def denotOfSym(sym: Symbol)(implicit ctx: Context): Denotation = {
@@ -1119,7 +1167,7 @@ object Types {
         else prefix.member(name)
       if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
         d
-      else {// name has changed; try load in earlier phase and make current
+      else { // name has changed; try load in earlier phase and make current
         val d = loadDenot(ctx.withPhase(ctx.phaseId - 1)).current
         if (d.exists) d
         else throw new Error(s"failure to reload $this")
@@ -1418,30 +1466,32 @@ object Types {
 
     override def underlying(implicit ctx: Context) = parent
 
+    private def checkInst(implicit ctx: Context): this.type = {
+      if (Config.checkLambdaVariance)
+        refinedInfo match {
+          case refinedInfo: TypeBounds if refinedInfo.variance != 0 && refinedName.isLambdaArgName =>
+            val cls = parent.LambdaClass(forcing = false)
+            if (cls.exists)
+              assert(refinedInfo.variance == cls.typeParams.apply(refinedName.lambdaArgIndex).variance,
+                  s"variance mismatch for $this, $cls, ${cls.typeParams}, ${cls.typeParams.apply(refinedName.lambdaArgIndex).variance}, ${refinedInfo.variance}")
+          case _ =>
+        }
+      this
+    }
+
     /** Derived refined type, with a twist: A refinement with a higher-kinded type param placeholder
      *  is transformed to a refinement of the original type parameter if that one exists.
      */
     def derivedRefinedType(parent: Type, refinedName: Name, refinedInfo: Type)(implicit ctx: Context): RefinedType = {
-      lazy val underlyingTypeParams = parent.safeUnderlyingTypeParams
-      lazy val originalTypeParam = underlyingTypeParams(refinedName.hkParamIndex)
-
-      /** Use variance of newly instantiated type parameter rather than the old hk argument
-       */
-      def adjustedHKRefinedInfo(hkBounds: TypeBounds, underlyingTypeParam: TypeSymbol) = hkBounds match {
-        case tp @ TypeBounds(lo, hi) if lo eq hi =>
-          tp.derivedTypeBounds(lo, hi, underlyingTypeParam.variance)
-        case _ =>
-          hkBounds
-      }
+      lazy val underlyingTypeParams = parent.rawTypeParams
 
       if ((parent eq this.parent) && (refinedName eq this.refinedName) && (refinedInfo eq this.refinedInfo))
         this
-      else if (   refinedName.isHkParamName
- //            && { println(s"deriving $refinedName $parent $underlyingTypeParams"); true }
-               && refinedName.hkParamIndex < underlyingTypeParams.length
-               && originalTypeParam.name != refinedName)
-        derivedRefinedType(parent, originalTypeParam.name,
-            adjustedHKRefinedInfo(refinedInfo.bounds, underlyingTypeParams(refinedName.hkParamIndex)))
+      else if (   refinedName.isLambdaArgName
+               //&& { println(s"deriving $refinedName $parent $underlyingTypeParams"); true }
+               && refinedName.lambdaArgIndex < underlyingTypeParams.length
+               && !parent.isLambda)
+        derivedRefinedType(parent.EtaExpand, refinedName, refinedInfo)
       else
         RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
     }
@@ -1474,10 +1524,10 @@ object Types {
       else make(RefinedType(parent, names.head, infoFns.head), names.tail, infoFns.tail)
 
     def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType =
-      ctx.base.uniqueRefinedTypes.enterIfNew(new CachedRefinedType(parent, name, infoFn))
+      ctx.base.uniqueRefinedTypes.enterIfNew(new CachedRefinedType(parent, name, infoFn)).checkInst
 
     def apply(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType = {
-      ctx.base.uniqueRefinedTypes.enterIfNew(parent, name, info)
+      ctx.base.uniqueRefinedTypes.enterIfNew(parent, name, info).checkInst
     }
   }
 
@@ -1756,7 +1806,7 @@ object Types {
       }
   }
 
-  // ----- Bound types: MethodParam, PolyParam, RefiendThis --------------------------
+  // ----- Bound types: MethodParam, PolyParam, RefinedThis --------------------------
 
   abstract class BoundType extends CachedProxyType with ValueType {
     type BT <: BindingType
@@ -1820,7 +1870,7 @@ object Types {
 
     // need to customize hashCode and equals to prevent infinite recursion for
     // refinements that refer to the refinement type via this
-    override def computeHash = identityHash
+    override def computeHash = addDelta(binder.identityHash, 41)
     override def equals(that: Any) = that match {
       case that: RefinedThis => this.binder eq that.binder
       case _ => false
@@ -1933,7 +1983,11 @@ object Types {
     /** If the variable is instantiated, its instance, otherwise its origin */
     override def underlying(implicit ctx: Context): Type = {
       val inst = instanceOpt
-      if (inst.exists) inst else origin
+      if (inst.exists) inst
+      else {
+        ctx.typerState.ephemeral = true
+        origin
+      }
     }
 
     override def computeHash: Int = identityHash
@@ -2059,6 +2113,13 @@ object Types {
       if (lo eq tp) this
       else TypeAlias(tp, variance)
 
+    /** If this is an alias, a derived alias with the new variance,
+     *  Otherwise the type itself.
+     */
+    def withVariance(variance: Int)(implicit ctx: Context) =
+      if (lo ne hi) this
+      else derivedTypeBounds(lo, hi, variance)
+
     def contains(tp: Type)(implicit ctx: Context) = tp match {
       case tp: TypeBounds => lo <:< tp.lo && tp.hi <:< hi
       case _ => lo <:< tp && tp <:< hi
@@ -2092,47 +2153,6 @@ object Types {
 
     /** If this type and that type have the same variance, this variance, otherwise 0 */
     final def commonVariance(that: TypeBounds): Int = (this.variance + that.variance) / 2
-
-    /** Given a the typebounds L..H of higher-kinded abstract type
-     *
-     *    type T[boundSyms] >: L <: H
-     *
-     *  produce its equivalent bounds L'..R that make no reference to the bound
-     *  symbols on the left hand side. The idea is to rewrite the declaration to
-     *
-     *      type T >: L' <: HigherKindedXYZ { type _$hk$i >: bL_i <: bH_i } & H'
-     *
-     *  where
-     *
-     *  - XYZ encodes the variants of the bound symbols using `P` (positive variance)
-     *    `N` (negative variance), `I` (invariant).
-     *  - bL_i is the lower bound of bound symbol #i under substitution `substBoundSyms`
-     *  - bH_i is the upper bound of bound symbol #i under substitution `substBoundSyms`
-     *  - `substBoundSyms` is the substitution that maps every bound symbol #i to the
-     *    reference `<this>._$hk$i`, where `<this>` is the RefinedThis referring to the
-     *    previous HigherKindedXYZ refined type.
-     *  - L' = substBoundSyms(L), H' = substBoundSyms(H)
-     *
-     *  Example:
-     *
-     *      type T[X <: F[X]] <: Traversable[X, T]
-     *
-     *  is rewritten to:
-     *
-     *      type T <: HigherKindedP { type _$hk$0 <: F[$_hk$0] } & Traversable[<this>._$hk$0, T]
-     *
-     *  @see Definitions.hkTrait
-     */
-    def higherKinded(boundSyms: List[Symbol])(implicit ctx: Context): TypeBounds = {
-      val parent = defn.hkTrait(boundSyms map (_.variance)).typeRef
-      val hkParamNames = boundSyms.indices.toList map tpnme.higherKindedParamName
-      def substBoundSyms(tp: Type)(rt: RefinedType): Type =
-        tp.subst(boundSyms, hkParamNames map (TypeRef(RefinedThis(rt), _)))
-      val hkParamInfoFns: List[RefinedType => Type] =
-        for (bsym <- boundSyms) yield substBoundSyms(bsym.info) _
-      val hkBound = RefinedType.make(parent, hkParamNames, hkParamInfoFns).asInstanceOf[RefinedType]
-      TypeBounds(substBoundSyms(lo)(hkBound), AndType(hkBound, substBoundSyms(hi)(hkBound)))
-    }
 
     override def toString =
       if (lo eq hi) s"TypeAlias($lo)" else s"TypeBounds($lo, $hi)"
@@ -2267,7 +2287,7 @@ object Types {
         if (absMems.size == 1)
           absMems.head.info match {
             case mt: MethodType if !mt.isDependent => Some(absMems.head)
-            case _=> None
+            case _ => None
           }
         else if (tp isRef defn.PartialFunctionClass)
           // To maintain compatibility with 2.x, we treat PartialFunction specially,

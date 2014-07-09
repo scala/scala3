@@ -66,13 +66,13 @@ object NameOps {
     def isSingletonName = name endsWith SINGLETON_SUFFIX
     def isModuleClassName = name endsWith MODULE_SUFFIX
     def isImportName = name startsWith IMPORT
-    def isInheritedName = name.head == '(' && name.startsWith(nme.INHERITED)
+    def isInheritedName = name.length > 0 && name.head == '(' && name.startsWith(nme.INHERITED)
 
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
 
     /** Is name a variable name? */
-    def isVariableName: Boolean = {
+    def isVariableName: Boolean = name.length > 0 && {
       val first = name.head
       (((first.isLower && first.isLetter) || first == '_')
         && (name != false_)
@@ -84,16 +84,17 @@ object NameOps {
       case raw.NE | raw.LE | raw.GE | EMPTY =>
         false
       case _ =>
-        name.last == '=' && name.head != '=' && isOperatorPart(name.head)
+        name.length > 0 && name.last == '=' && name.head != '=' && isOperatorPart(name.head)
     }
 
-    /** Is this the name of a higher-kinded type parameter? */
-    def isHkParamName: Boolean = name(0) == '_' && name.startsWith(HK_PARAM_PREFIX)
+    /** Is this the name of a higher-kinded type parameter of a Lambda? */
+    def isLambdaArgName =
+      name.length > 0 && name.head == tpnme.LAMBDA_ARG_PREFIXhead && name.startsWith(tpnme.LAMBDA_ARG_PREFIX)
 
     /** The index of the higher-kinded type parameter with this name.
-     *  Pre: isHkParamName.
+     *  Pre: isLambdaArgName.
      */
-    def hkParamIndex: Int = name.drop(name.lastIndexOf('$') + 1).toString.toInt
+    def lambdaArgIndex: Int = name.drop(name.lastIndexOf('$') + 1).toString.toInt
 
     /** If the name ends with $nn where nn are
       * all digits, strip the $ and the digits.
@@ -175,19 +176,6 @@ object NameOps {
         case idx =>
           mkName(name take idx, name(idx)) :: (name drop (idx + 1)).segments
       }
-    }
-
-    /** The variances of the higherKinded parameters of the trait named
-     *  by this name.
-     *  @pre The name is a higher-kinded trait name, i.e. it starts with HK_TRAIT_PREFIX
-     */
-    def hkVariances: List[Int] = {
-      def varianceOfSuffix(suffix: Char): Int = {
-        val idx = tpnme.varianceSuffixes.indexOf(suffix)
-        assert(idx >= 0)
-        idx - 1
-      }
-      name.drop(tpnme.HK_TRAIT_PREFIX.length).toList.map(varianceOfSuffix)
     }
 
     /** The name of the generic runtime operation corresponding to an array operation */

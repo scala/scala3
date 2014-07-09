@@ -7,8 +7,9 @@ object T {
     def e[B] = Nil
   }
 
+  // needs better type inference for hk types
   def foo[F[_]](q:(String,String)) = "hello"
   def foo[F[_]](e: Empty[F]) = "world"
 
-  val x = foo(ListEmpty)
+  val x = foo[List](ListEmpty)
 }
