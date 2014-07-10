@@ -828,6 +828,11 @@ object SymDenotations {
       else if (this is Contravariant) -1
       else 0
 
+    /** The flags to be used for a type parameter owned by this symbol.
+     *  Overridden by ClassDenotation.
+     */
+    def typeParamCreationFlags: FlagSet = TypeParam
+
     override def toString = {
       val kindString =
         if (myFlags is ModuleClass) "module class"
@@ -1079,6 +1084,8 @@ object SymDenotations {
         base.isClass && (
           (symbol eq defn.NothingClass) ||
             (symbol eq defn.NullClass) && (base ne defn.NothingClass))
+
+    final override def typeParamCreationFlags = ClassTypeParamCreationFlags
 
     private[this] var myMemberFingerPrint: FingerPrint = FingerPrint.unknown
 

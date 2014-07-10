@@ -251,7 +251,7 @@ trait Symbols { this: Context =>
     val tparams = tparamBuf.toList
     val bounds = boundsFn(trefBuf.toList)
     for ((name, tparam, bound) <- (names, tparams, bounds).zipped)
-      tparam.denot = SymDenotation(tparam, owner, name, flags | TypeParamCreationFlags, bound)
+      tparam.denot = SymDenotation(tparam, owner, name, flags | owner.typeParamCreationFlags, bound)
     tparams
   }
 

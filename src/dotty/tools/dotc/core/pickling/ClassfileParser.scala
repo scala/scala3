@@ -353,7 +353,7 @@ class ClassfileParser(
         val tpname = subName(':'.==).toTypeName
         val expname = if (owner.isClass) tpname.expandedName(owner) else tpname
         val s = ctx.newSymbol(
-          owner, expname, Flags.TypeParamCreationFlags,
+          owner, expname, owner.typeParamCreationFlags,
           typeParamCompleter(index), coord = indexCoord(index))
         if (owner.isClass) owner.asClass.enter(s, owner.decls)
         tparams = tparams + (tpname -> s)

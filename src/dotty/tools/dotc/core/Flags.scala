@@ -452,8 +452,8 @@ object Flags {
   /** The flags of the self symbol */
   final val SelfSymFlags = Private | Local | Deferred
 
-  /** The flags of a type parameter */
-  final val TypeParamCreationFlags = TypeParam | Deferred | Protected | Local
+  /** The flags of a class type parameter */
+  final def ClassTypeParamCreationFlags = TypeParam | Deferred | Protected | Local
 
   /** Flags that can apply to both a module val and a module class, except those that
     *  are added at creation anyway

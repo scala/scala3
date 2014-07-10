@@ -453,7 +453,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         var flags1 = flags
         if (flags is TypeParam) {
           name1 = name1.expandedName(owner)
-          flags1 |= TypeParamCreationFlags | ExpandedName
+          flags1 |= owner.typeParamCreationFlags | ExpandedName
         }
         ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
       case CLASSsym =>

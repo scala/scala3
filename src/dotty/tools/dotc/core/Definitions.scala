@@ -37,7 +37,7 @@ class Definitions {
     scope.enter(newSymbol(cls, name, flags, TypeBounds.empty))
 
   private def newTypeParam(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
-    newTypeField(cls, name, flags | TypeParamCreationFlags, scope)
+    newTypeField(cls, name, flags | ClassTypeParamCreationFlags, scope)
 
   private def newSyntheticTypeParam(cls: ClassSymbol, scope: MutableScope, paramFlags: FlagSet, suffix: String = "T0") =
     newTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName | paramFlags, scope)
