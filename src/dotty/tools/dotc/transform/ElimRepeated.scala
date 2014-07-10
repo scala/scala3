@@ -27,14 +27,6 @@ class ElimRepeated extends TreeTransform with InfoTransformer { thisTransformer 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
     elimRepeated(tp)
 
-  /** The transformation method */
-  override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
-    val ref1 = super.transform(ref)
-    if (ref1 ne ref)
-      println(i"elim repeated ${ref.getClass} for ${ref.symbol.showLocated}; ${ref.info} --> ${ref1.info}, validfor = ${ref1.validFor}")
-    ref1
-  }
-
   private def elimRepeated(tp: Type)(implicit ctx: Context): Type = tp.stripTypeVar match {
     case tp @ MethodType(paramNames, paramTypes) =>
       val resultType1 = elimRepeated(tp.resultType)
