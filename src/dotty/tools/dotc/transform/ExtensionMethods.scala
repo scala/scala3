@@ -12,6 +12,7 @@ import scala.collection.{ mutable, immutable }
 import mutable.ListBuffer
 import scala.annotation.tailrec
 import core._
+import Phases.Phase
 import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import TypeUtils._
@@ -29,11 +30,15 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
   /** the following two members override abstract members in Transform */
   val name: String = "extmethods"
 
+  override def runsAfter: Set[String] = Set("elimrepeated") // TODO: add tailrec
+
   def newTransformer(implicit ctx: Context): Transformer = new Extender
 
+  override def transformPhase(implicit ctx: Context): Phase = thisTransformer.next
+
   /** Generate stream of possible names for the extension version of given instance method `imeth`.
-   *  If the method is not overloaded, this stream consists of just "extension$imeth".
-   *  If the method is overloaded, the stream has as first element "extensionX$imeth", where X is the
+   *  If the method is not overloaded, this stream consists of just "imeth$extension".
+   *  If the method is overloaded, the stream has as first element "imeth$extenionX", where X is the
    *  index of imeth in the sequence of overloaded alternatives with the same name. This choice will
    *  always be picked as the name of the generated extension method.
    *  After this first choice, all other possible indices in the range of 0 until the number
@@ -43,6 +48,8 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
    */
   private def extensionNames(imeth: Symbol)(implicit ctx: Context): Stream[Name] = {
     val decl = imeth.owner.info.decl(imeth.name)
+
+    if (imeth.name.toString == "appliedTo") println(i"resolve: $decl")
 
     /** No longer needed for Dotty, as we are more disciplined with scopes now.
     // Bridge generation is done at phase `erasure`, but new scopes are only generated
@@ -54,14 +61,15 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
     val declTypeNoBridge = decl.filter(sym => !sym.isBridge).tpe
     */
     decl match {
-      case decl: SingleDenotation =>
+      case decl: MultiDenotation =>
         val alts = decl.alternatives
         val index = alts indexOf imeth.denot
         assert(index >= 0, alts+" does not contain "+imeth)
         def altName(index: Int) = (imeth.name+"$extension"+index).toTermName
+        if (imeth.name.toString == "appliedTo") println(i"resolve: $decl ${altName(index)}")
         altName(index) #:: ((0 until alts.length).toStream filter (index != _) map altName)
-      case tpe =>
-        assert(tpe != NoType, imeth.name+" not found in "+imeth.owner+"'s decls: "+imeth.owner.info.decls)
+      case decl =>
+        assert(decl.exists, imeth.name+" not found in "+imeth.owner+"'s decls: "+imeth.owner.info.decls)
         Stream((imeth.name+"$extension").toTermName)
     }
   }
@@ -98,20 +106,20 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
         ctx.error("value class may not unbox to itself", pos)
       else {
         val unboxed = underlyingOfValueClass(clazz).typeSymbol
-        if (unboxed.isDerivedValueClass) checkNonCyclic(pos, seen + clazz, unboxed.asClass)
+        if (isDerivedValueClass(unboxed)) checkNonCyclic(pos, seen + clazz, unboxed.asClass)
       }
 
     override def transform(tree: Tree)(implicit ctx: Context): Tree = {
       tree match {
         case tree: Template =>
-          if (ctx.owner.isDerivedValueClass) {
+          if (isDerivedValueClass(ctx.owner)) {
           /* This is currently redundant since value classes may not
              wrap over other value classes anyway.
             checkNonCyclic(ctx.owner.pos, Set(), ctx.owner) */
-            extensionDefs(ctx.owner.companionModule) = new mutable.ListBuffer[Tree]
+            extensionDefs(ctx.owner.linkedClass) = new mutable.ListBuffer[Tree]
             ctx.owner.primaryConstructor.makeNotPrivateAfter(NoSymbol, thisTransformer)
             // SI-7859 make param accessors accessible so the erasure can generate unbox operations.
-            val paramAccessors = ctx.owner.info.decls.filter(_.is(ParamAccessor))
+            val paramAccessors = ctx.owner.info.decls.filter(_.is(TermParamAccessor))
             paramAccessors.foreach(_.makeNotPrivateAfter(ctx.owner, thisTransformer))
             super.transform(tree)
           } else if (ctx.owner.isStaticOwner) {
@@ -128,8 +136,8 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
           val origClass     = ctx.owner.asClass
           val origTParams   = tparams.map(_.symbol) ::: origClass.typeParams   // method type params ++ class type params
           val origVParams   = vparamss.flatten map (_.symbol)
-          val staticClass   = origClass.companionClass
-          assert(staticClass.exists)
+          val staticClass   = origClass.linkedClass
+          assert(staticClass.exists, s"$origClass lacks companion, ${origClass.owner.definedPeriodsString} ${origClass.owner.info.decls} ${origClass.owner.info.decls}")
 
           val extensionMeth = ctx.atPhase(thisTransformer.next) { implicit ctx =>
             val extensionName = extensionNames(origMeth).head.toTermName
@@ -144,15 +152,18 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
           ctx.log(s"Value class $origClass spawns extension method.\n  Old: ${origMeth.showDcl}\n  New: ${extensionMeth.showDcl}")
 
           extensionDefs(staticClass) += polyDefDef(extensionMeth, trefs => vrefss => {
-            def methPart(tp: Type): MethodType = tp match {
-              case tp: PolyType => methPart(tp.resultType)
-              case tp: MethodType => tp
-            }
-            val substitutions: Type => Type = _
-              .subst(origTParams, trefs)
-              .substSym(origVParams, vrefss.flatten.map(_.symbol))
-              .substThis(origClass, MethodParam(methPart(extensionMeth.info), 0))
-            new TreeTypeMap(substitutions, Map(origMeth -> extensionMeth)).transform(rhs)
+            val thisRef :: argRefs = vrefss.flatten
+            new TreeTypeMap(
+              typeMap = _
+                .subst(origTParams, trefs)
+                .subst(origVParams, argRefs.map(_.tpe))
+                .substThis(origClass, thisRef.tpe),
+              ownerMap = (sym => if (sym eq origMeth) extensionMeth else sym),
+              treeMap = {
+                case tree: This if tree.symbol == origClass => thisRef
+                case tree => tree
+              }
+            ).transform(rhs)
           })
 
           // These three lines are assembling Foo.bar$extension[T1, T2, ...]($this)

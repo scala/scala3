@@ -14,7 +14,7 @@ class tests extends CompilerTest {
         "-pagewidth", "160")
 
   implicit val defaultOptions = noCheckOptions ++ List(
-    "-Ycheck:extmethods"//, "-Ystop-before:terminal"
+    "-Yskip:tailrec, -Ycheck:extmethods"//, "-Ystop-before:terminal"
   )
 
   val twice = List("#runs", "2", "-YnoDoubleBindings")
