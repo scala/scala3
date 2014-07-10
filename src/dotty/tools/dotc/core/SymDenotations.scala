@@ -83,6 +83,9 @@ object SymDenotations {
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = ownerIfExists
 
+    /** Same as owner, except returns NoSymbol for NoSymbol */
+    def maybeOwner: Symbol = if (exists) owner else NoSymbol
+
     /** The flag set */
     final def flags(implicit ctx: Context): FlagSet = { ensureCompleted(); myFlags }
 
@@ -987,6 +990,7 @@ object SymDenotations {
       mySuperClassBits = null
       myMemberFingerPrint = FingerPrint.unknown
       myMemberCache = null
+      myMemberCachePeriod = Nowhere
       memberNamesCache = SimpleMap.Empty
     }
 
@@ -1121,9 +1125,13 @@ object SymDenotations {
     }
 
     private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
+    private[this] var myMemberCachePeriod: Period = Nowhere
 
-    private def memberCache: LRUCache[Name, PreDenotation] = {
-      if (myMemberCache == null) myMemberCache = new LRUCache
+    private def memberCache(implicit ctx: Context): LRUCache[Name, PreDenotation] = {
+      if (myMemberCachePeriod != ctx.period) {
+        myMemberCache = new LRUCache
+        myMemberCachePeriod = ctx.period
+      }
       myMemberCache
     }
 
