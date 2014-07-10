@@ -5,6 +5,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.Flags.PackageVal
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Decorators._
 import scala.annotation.tailrec
@@ -883,7 +884,12 @@ object TreeTransforms {
         }
       } else tree
 
-    def localContext(owner: Symbol)(implicit ctx: Context) = ctx.fresh.setOwner(owner)
+    // TODO merge with localCtx in MacroTransform
+    // Generally: If we will keep MacroTransform, merge common behavior with TreeTransform
+    def localContext(sym: Symbol)(implicit ctx: Context) = {
+      val owner = if (sym is PackageVal) sym.moduleClass else sym
+      ctx.fresh.setOwner(owner)
+    }
 
     final private[TreeTransforms] def transformNamed(tree: NameTree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree =
       tree match {

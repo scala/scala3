@@ -7,6 +7,7 @@ import Phases._
 import ast.Trees._
 import Contexts._
 import Symbols._
+import Flags.PackageVal
 import Decorators._
 
 /** A base class for transforms.
@@ -18,15 +19,24 @@ abstract class MacroTransform extends Phase {
 
   override def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
-    unit.tpdTree = newTransformer.transform(unit.tpdTree)
+    unit.tpdTree = newTransformer.transform(unit.tpdTree)(ctx.withPhase(transformPhase))
   }
 
   protected def newTransformer(implicit ctx: Context): Transformer
 
+  /** The phase in which the transformation should be run.
+   *  By default this is the phase given by the this macro transformer,
+   *  but it could be overridden to be the phase following that one.
+   */
+  protected def transformPhase(implicit ctx: Context): Phase = this
+
   class Transformer extends TreeMap {
 
-    protected def localCtx(tree: Tree)(implicit ctx: Context) =
-      ctx.fresh.setTree(tree).setOwner(tree.symbol)
+    protected def localCtx(tree: Tree)(implicit ctx: Context) = {
+      val sym = tree.symbol
+      val owner = if (sym is PackageVal) sym.moduleClass else sym
+      ctx.fresh.setTree(tree).setOwner(owner)
+    }
 
     /** The current enclosing class
      *  @pre  We must be inside a class
