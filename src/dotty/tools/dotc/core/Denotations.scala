@@ -494,7 +494,8 @@ object Denotations {
         } while (d ne denot)
         initial.syncWithParents
       case _ =>
-        staleSymbolError
+        if (coveredInterval.containsPhaseId(ctx.phaseId)) staleSymbolError
+        else NoDenotation
     }
 
     /** Produce a denotation that is valid for the given context.
@@ -570,13 +571,15 @@ object Denotations {
             //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
             cur = cur.nextInRun
             cnt += 1
-            assert(cnt <= MaxPossiblePhaseId,
-              s"demanding denotation of $this outside defined interval: defined periods are${definedPeriodsString}")
+            assert(cnt <= MaxPossiblePhaseId, demandOutsideDefinedMsg)
           }
           cur
         }
       }
     }
+
+    private def demandOutsideDefinedMsg(implicit ctx: Context): String =
+      s"demanding denotation of $this at phase ${ctx.phase}(${ctx.phaseId}) outside defined interval: defined periods are${definedPeriodsString}"
 
     /** Install this denotation to be the result of the given denotation transformer.
      *  This is the implementation of the same-named method in SymDenotations.
@@ -616,6 +619,22 @@ object Denotations {
       throw new StaleSymbol(msg)
     }
 
+    /** The period (interval of phases) for which there exists 
+     *  a valid denotation in this flock.
+     */
+    def coveredInterval(implicit ctx: Context): Period = {
+      var cur = this
+      var cnt = 0
+      var interval = validFor
+      do {
+        cur = cur.nextInRun
+        cnt += 1
+        assert(cnt <= MaxPossiblePhaseId, demandOutsideDefinedMsg)
+        interval |= cur.validFor
+      } while (cur ne this)
+      interval
+    }
+
     /** For ClassDenotations only:
      *  If caches influenced by parent classes are still valid, the denotation
      *  itself, otherwise a freshly initialized copy.
@@ -643,7 +662,7 @@ object Denotations {
     // ------ PreDenotation ops ----------------------------------------------
 
     final def first = this
-    final def toDenot(pre: Type)(implicit ctx: Context) = this
+    final def toDenot(pre: Type)(implicit ctx: Context): Denotation = this
     final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol eq sym)
     final def containsSig(sig: Signature)(implicit ctx: Context) =
       exists && (signature matches sig)
@@ -790,7 +809,7 @@ object Denotations {
       else DenotUnion(this, that)
   }
 
-  case class DenotUnion(denots1: PreDenotation, denots2: PreDenotation) extends PreDenotation {
+  final case class DenotUnion(denots1: PreDenotation, denots2: PreDenotation) extends PreDenotation {
     assert(denots1.exists && denots2.exists, s"Union of non-existing denotations ($denots1) and ($denots2)")
     def exists = true
     def first = denots1.first
