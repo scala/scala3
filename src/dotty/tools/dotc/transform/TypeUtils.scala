@@ -7,6 +7,7 @@ import Contexts._
 import Symbols._
 import Decorators._
 import StdNames.nme
+import NameOps._
 import language.implicitConversions
 
 object TypeUtils {
@@ -36,10 +37,11 @@ class TypeUtils(val self: Type) extends AnyVal {
   def toStatic(clazz: ClassSymbol)(implicit ctx: Context): Type = {
     val (mtparamCount, origResult) = self match {
       case self @ PolyType(mtnames) => (mtnames.length, self.resultType)
+      case self: ExprType => (0, self.resultType)
       case _ => (0, self)
     }
     val ctparams = clazz.typeParams
-    val ctnames = ctparams.map(_.name)
+    val ctnames = ctparams.map(_.name.unexpandedName())
 
     /** The method result type, prior to mapping any type parameters */
     val resultType = {
@@ -112,4 +114,8 @@ class TypeUtils(val self: Type) extends AnyVal {
    case _ =>
       self
   }
+
+  /** The Seq type corresponding to this repeated parameter type */
+  def repeatedToSeq(implicit ctx: Context) =
+    self.translateParameterized(defn.RepeatedParamClass, defn.SeqClass)
 }
