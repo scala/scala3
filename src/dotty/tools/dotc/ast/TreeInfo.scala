@@ -354,7 +354,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   private def refPurity(tree: tpd.Tree)(implicit ctx: Context): PurityLevel =
     if (!tree.tpe.widen.isParameterless) Pure
     else if (!tree.symbol.is(Stable)) Impure
-    else if (tree.symbol.is(Lazy)) Idempotent
+    else if (tree.symbol.is(Lazy)) Idempotent // TODO add Module flag, sinxce Module vals or not Lazy from the start.
     else Pure
 
   def isPureRef(tree: tpd.Tree)(implicit ctx: Context) =

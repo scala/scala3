@@ -813,11 +813,15 @@ object Types {
         if (from1.isEmpty) ctx.subst1(this, from.head, to.head, null)
         else {
           val from2 = from1.tail
-          if (from2.isEmpty) ctx.subst2(this, from.head, to.head, from.tail.head, to.tail.head, null)
+          if (from2.isEmpty) ctx.subst2(this, from.head, to.head, from1.head, to.tail.head, null)
           else ctx.subst(this, from, to, null)
         }
       }
 
+/* Not needed yet:
+    final def substDealias(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type =
+      new ctx.SubstDealiasMap(from, to).apply(this)
+*/
     /** Substitute all types of the form `PolyParam(from, N)` by
      *  `PolyParam(to, N)`.
      */
