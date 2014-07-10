@@ -194,6 +194,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case _ => toTextGlobal(arg)
     }
 
+    def idText = if (ctx.settings.uniqid.value) "#" + tree.symbol.id else ""
+
     import untpd._
 
     var txt: Text = tree match {
@@ -283,18 +285,18 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "(" ~ toTextGlobal(patterns, ", ") ~ ")" ~
         ("(" ~ toTextGlobal(implicits, ", ") ~ ")" provided implicits.nonEmpty)
       case ValDef(mods, name, tpt, rhs) =>
-        modText(mods, if (mods is Mutable) "var" else "val") ~~ toText(name) ~
+        modText(mods, if (mods is Mutable) "var" else "val") ~~ toText(name) ~ idText ~
           optAscription(tpt) ~ optText(rhs)(" = " ~ _)
       case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
         atOwner(tree) {
-          val first = modText(mods, "def") ~~ toText(name) ~ tparamsText(tparams)
+          val first = modText(mods, "def") ~~ toText(name) ~ idText ~ tparamsText(tparams)
           addVparamssText(first, vparamss) ~ optAscription(tpt) ~ optText(rhs)(" = " ~ _)
         }
       case tree @ TypeDef(mods, name, rhs) =>
         atOwner(tree) {
           def typeDefText(rhsText: Text) = {
             val rhsText1 = if (tree.hasType) toText(tree.symbol.info) else rhsText
-            modText(mods, "type") ~~ toText(name) ~ tparamsText(tree.tparams) ~ rhsText1
+            modText(mods, "type") ~~ toText(name) ~ idText ~ tparamsText(tree.tparams) ~ rhsText1
           }
           rhs match {
             case impl: Template =>
