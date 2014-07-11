@@ -17,8 +17,9 @@ import Names.Name
 import NameOps._
 import TypeUtils._
 
-/** A transformer that provides a convenient way to create companion objects
-  */
+/** A transformer that removes repeated parameters (T*) from all types, replacing
+ *  them with Seq types.
+ */
 class ElimRepeated extends TreeTransform with InfoTransformer { thisTransformer =>
   import ast.tpd._
 

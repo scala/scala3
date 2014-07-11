@@ -79,13 +79,14 @@ class TypeUtils(val self: Type) extends AnyVal {
    */
   def dynamicSignature(implicit ctx: Context): Signature = self match {
     case self: PolyType => self.resultType.dynamicSignature
-    case self @ MethodType(nme.SELF, _) =>
+    case self @ MethodType(nme.SELF :: Nil, _) =>
       val normalizedResultType = self.resultType match {
         case rtp: MethodType => rtp
         case rtp => ExprType(rtp)
       }
       normalizedResultType.signature
-    case _ => Signature.NotAMethod
+    case _ =>
+      Signature.NotAMethod
   }
 
   /** The Seq type corresponding to this repeated parameter type */
