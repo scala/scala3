@@ -74,45 +74,18 @@ class TypeUtils(val self: Type) extends AnyVal {
     }
   }
 
-  /** Converts from the result of a `toStatic(clazz)` back to the original type.
-   *
-   *  To do this, it removes the `$this` argument from the parameter list a method,
-   *  and converts trailing type parameters of the method to the type parameters of
-   *  the given `clazz`.
-   *
-   *  If `stpe` is a `PolyType`, any parameters corresponding to class type parameters
-   *  are remapped and `$this` is removed from the result type.
-   *  If `stpe` is a `MethodType`, it may have a curried parameter list with the
-   *  `$this` alone in the first parameter list, in which case that parameter list
-   *  is dropped.  Or, since the curried lists disappear during uncurry, it may have
-   *  a single parameter list with `$this` as the first parameter, in which case that
-   *  parameter is removed from the list. Note that we do not need to adjust the result
-   *  type with substParams because at uncurry there are no more depdendent method types.
+  /** Assuming `self` is a result of a `toStatic` call, the signature of the
+   *  original method type `X` such that `self = X.toStatic`.
    */
-  def toDynamic(clazz: Symbol)(implicit ctx: Context): Type = self match {
-    case self: PolyType =>
-      // contains method type parameters, followed by class type parameters
-      val nparams = self.paramNames.length - clazz.typeParams.length
-      val (mNames, cNames) = self.paramNames.splitAt(nparams)
-      val (mBounds, cBounds) = self.paramBounds.splitAt(nparams)
-      val mappedParams =
-        (0 until nparams).toList.map(PolyParam(self, _)) ++ clazz.typeParams.map(_.typeRef)
-      def mapParams(tp: Type, pt: PolyType) = {
-        val mapped = (0 until nparams).toList.map(PolyParam(pt, _)) ++ clazz.typeParams.map(_.typeRef)
-        tp.substParams(self, mapped)
+  def dynamicSignature(implicit ctx: Context): Signature = self match {
+    case self: PolyType => self.resultType.dynamicSignature
+    case self @ MethodType(nme.SELF, _) =>
+      val normalizedResultType = self.resultType match {
+        case rtp: MethodType => rtp
+        case rtp => ExprType(rtp)
       }
-      val restpe = self.resultType.toDynamic(clazz).substParams(self, mappedParams)
-      if (nparams == 0) mapParams(restpe, self)
-      else PolyType(self.paramNames.take(nparams))(
-             pt => self.paramBounds.mapconserve(mapParams(_, pt).asInstanceOf[TypeBounds]),
-             pt => mapParams(restpe, pt))
-    case mt @ MethodType(nme.SELF :: otherNames, thizType :: otherTypes) =>
-      val remainder =
-        if (otherNames.isEmpty) mt.resultType
-        else MethodType(otherNames, otherTypes, mt.resultType)
-      remainder.substParam(MethodParam(mt, 0), clazz.thisType)
-   case _ =>
-      self
+      normalizedResultType.signature
+    case _ => Signature.NotAMethod
   }
 
   /** The Seq type corresponding to this repeated parameter type */

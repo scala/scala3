@@ -49,8 +49,6 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
   private def extensionNames(imeth: Symbol)(implicit ctx: Context): Stream[Name] = {
     val decl = imeth.owner.info.decl(imeth.name)
 
-    if (imeth.name.toString == "appliedTo") println(i"resolve: $decl")
-
     /** No longer needed for Dotty, as we are more disciplined with scopes now.
     // Bridge generation is done at phase `erasure`, but new scopes are only generated
     // for the phase after that. So bridges are visible in earlier phases.
@@ -66,7 +64,6 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
         val index = alts indexOf imeth.denot
         assert(index >= 0, alts+" does not contain "+imeth)
         def altName(index: Int) = (imeth.name+"$extension"+index).toTermName
-        if (imeth.name.toString == "appliedTo") println(i"resolve: $decl ${altName(index)}")
         altName(index) #:: ((0 until alts.length).toStream filter (index != _) map altName)
       case decl =>
         assert(decl.exists, imeth.name+" not found in "+imeth.owner+"'s decls: "+imeth.owner.info.decls)
@@ -80,7 +77,7 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
       // FIXME use toStatic instead?
       val companionInfo = imeth.owner.companionModule.info
       val candidates = extensionNames(imeth) map (companionInfo.decl(_).symbol) filter (_.exists)
-      val matching = candidates filter (alt => alt.info.toDynamic(imeth.owner) matches imeth.info)
+      val matching = candidates filter (_.info.dynamicSignature == imeth.signature)
       assert(matching.nonEmpty,
         sm"""|no extension method found for:
              |
@@ -92,7 +89,7 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
              |
              | Candidates (signatures normalized):
              |
-             | ${candidates.map(c => c.name + ":" + c.info.toDynamic(imeth.owner)).mkString("\n")}
+             | ${candidates.map(c => c.name + ":" + c.info.dynamicSignature).mkString("\n")}
              |
              | Eligible Names: ${extensionNames(imeth).mkString(",")}""")
       matching.head
