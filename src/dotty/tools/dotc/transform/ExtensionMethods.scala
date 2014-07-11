@@ -23,7 +23,7 @@ import Decorators._
  * Perform Step 1 in the inline classes SIP: Creates extension methods for all
  * methods in a value class, except parameter or super accessors, or constructors.
  */
-class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { thisTransformer =>
+class ExtensionMethods extends MacroTransform with InfoTransformer { thisTransformer =>
 
   import tpd._
 
@@ -31,6 +31,24 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
   val name: String = "extmethods"
 
   override def runsAfter: Set[String] = Set("elimrepeated") // TODO: add tailrec
+
+  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
+    case tp: ClassInfo if sym is ModuleClass =>
+      sym.linkedClass match {
+        case origClass: ClassSymbol if isDerivedValueClass(origClass) =>
+          val decls1 = tp.decls.cloneScope
+          ctx.atPhase(thisTransformer.next) { implicit ctx =>
+            for (decl <- origClass.classInfo.decls) {
+              if (isMethodWithExtension(decl))
+                decls1.enter(createExtensionMethod(decl, sym))
+            }
+          }
+          tp.derivedClassInfo(decls = decls1)
+        case _ => tp
+      }
+    case _ =>
+      tp
+  }
 
   def newTransformer(implicit ctx: Context): Transformer = new Extender
 
@@ -72,7 +90,7 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
   }
 
   /** Return the extension method that corresponds to given instance method `meth`. */
-  def extensionMethod(imeth: Symbol)(implicit ctx: Context): Symbol =
+  def extensionMethod(imeth: Symbol)(implicit ctx: Context): TermSymbol =
     ctx.atPhase(thisTransformer.next) { implicit ctx =>
       // FIXME use toStatic instead?
       val companionInfo = imeth.owner.companionModule.info
@@ -81,19 +99,30 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
       assert(matching.nonEmpty,
         sm"""|no extension method found for:
              |
-             |  $imeth:${imeth.info}
+             |  $imeth:${imeth.info.show} with signature ${imeth.signature}
              |
              | Candidates:
              |
-             | ${candidates.map(c => c.name + ":" + c.info).mkString("\n")}
+             | ${candidates.map(c => c.name + ":" + c.info.show).mkString("\n")}
              |
              | Candidates (signatures normalized):
              |
-             | ${candidates.map(c => c.name + ":" + c.info.dynamicSignature).mkString("\n")}
+             | ${candidates.map(c => c.name + ":" + c.info.signature + ":" + c.info.dynamicSignature).mkString("\n")}
              |
              | Eligible Names: ${extensionNames(imeth).mkString(",")}""")
-      matching.head
+      matching.head.asTerm
     }
+
+  private def createExtensionMethod(imeth: Symbol, staticClass: Symbol)(implicit ctx: Context): TermSymbol = {
+    assert(ctx.phase == thisTransformer.next)
+    val extensionName = extensionNames(imeth).head.toTermName
+    val extensionMeth = ctx.newSymbol(staticClass, extensionName,
+      imeth.flags | Final &~ (Override | Protected | AbsOverride),
+      imeth.info.toStatic(imeth.owner.asClass),
+      privateWithin = imeth.privateWithin, coord = imeth.coord)
+    extensionMeth.addAnnotations(from = imeth)
+    extensionMeth
+  }
 
   class Extender extends Transformer {
     private val extensionDefs = mutable.Map[Symbol, mutable.ListBuffer[Tree]]()
@@ -136,16 +165,8 @@ class ExtensionMethods extends MacroTransform with IdentityDenotTransformer { th
           val staticClass   = origClass.linkedClass
           assert(staticClass.exists, s"$origClass lacks companion, ${origClass.owner.definedPeriodsString} ${origClass.owner.info.decls} ${origClass.owner.info.decls}")
 
-          val extensionMeth = ctx.atPhase(thisTransformer.next) { implicit ctx =>
-            val extensionName = extensionNames(origMeth).head.toTermName
-            val extensionMeth = ctx.newSymbol(staticClass, extensionName,
-                  origMeth.flags | Final &~ (Override | Protected | AbsOverride),
-                  origMeth.info.toStatic(origClass),
-                  privateWithin = origMeth.privateWithin, coord = tree.pos)
-            extensionMeth.addAnnotations(from = origMeth)
-            origMeth.removeAnnotation(defn.TailrecAnnotationClass) // it's on the extension method, now.
-            extensionMeth.enteredAfter(thisTransformer)
-          }
+          val extensionMeth = extensionMethod(origMeth)
+
           ctx.log(s"Value class $origClass spawns extension method.\n  Old: ${origMeth.showDcl}\n  New: ${extensionMeth.showDcl}")
 
           extensionDefs(staticClass) += polyDefDef(extensionMeth, trefs => vrefss => {
