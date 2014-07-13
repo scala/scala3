@@ -10,7 +10,6 @@ import ValueClasses._
 import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.{ mutable, immutable }
 import mutable.ListBuffer
-import scala.annotation.tailrec
 import core._
 import Phases.Phase
 import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
@@ -23,7 +22,7 @@ import Decorators._
  * Perform Step 1 in the inline classes SIP: Creates extension methods for all
  * methods in a value class, except parameter or super accessors, or constructors.
  */
-class ExtensionMethods extends MacroTransform with DenotTransformer { thisTransformer =>
+class ExtensionMethods extends MacroTransform with DenotTransformer with FullParameterization { thisTransformer =>
 
   import tpd._
 
@@ -61,6 +60,11 @@ class ExtensionMethods extends MacroTransform with DenotTransformer { thisTransf
   def newTransformer(implicit ctx: Context): Transformer = new Extender
 
   override def transformPhase(implicit ctx: Context): Phase = thisTransformer.next
+
+  protected def rewiredTarget(target: Symbol, derived: Symbol)(implicit ctx: Context): Symbol =
+    if (isMethodWithExtension(target) &&
+        target.owner.linkedClass == derived.owner) extensionMethod(target)
+    else NoSymbol
 
   /** Generate stream of possible names for the extension version of given instance method `imeth`.
    *  If the method is not overloaded, this stream consists of just "imeth$extension".
@@ -103,7 +107,7 @@ class ExtensionMethods extends MacroTransform with DenotTransformer { thisTransf
       // FIXME use toStatic instead?
       val companionInfo = imeth.owner.companionModule.info
       val candidates = extensionNames(imeth) map (companionInfo.decl(_).symbol) filter (_.exists)
-      val matching = candidates filter (_.info.dynamicSignature == imeth.signature)
+      val matching = candidates filter (c => memberSignature(c.info) == imeth.signature)
       assert(matching.nonEmpty,
         sm"""|no extension method found for:
              |
@@ -115,7 +119,7 @@ class ExtensionMethods extends MacroTransform with DenotTransformer { thisTransf
              |
              | Candidates (signatures normalized):
              |
-             | ${candidates.map(c => c.name + ":" + c.info.signature + ":" + c.info.dynamicSignature).mkString("\n")}
+             | ${candidates.map(c => c.name + ":" + c.info.signature + ":" + memberSignature(c.info)).mkString("\n")}
              |
              | Eligible Names: ${extensionNames(imeth).mkString(",")}""")
       matching.head.asTerm
@@ -126,7 +130,7 @@ class ExtensionMethods extends MacroTransform with DenotTransformer { thisTransf
     val extensionName = extensionNames(imeth).head.toTermName
     val extensionMeth = ctx.newSymbol(staticClass, extensionName,
       imeth.flags | Final &~ (Override | Protected | AbsOverride),
-      imeth.info.toStatic(imeth.owner.asClass),
+      fullyParameterizedType(imeth.info, imeth.owner.asClass),
       privateWithin = imeth.privateWithin, coord = imeth.coord)
     extensionMeth.addAnnotations(from = imeth)(ctx.withPhase(thisTransformer))
       // need to change phase to add tailrec annotation which gets removed from original method in the same phase.
@@ -166,74 +170,16 @@ class ExtensionMethods extends MacroTransform with DenotTransformer { thisTransf
                 tree1
             }
           } else tree
-        case DefDef(mods, name, tparams, vparamss, tpt, rhs) if isMethodWithExtension(tree.symbol) =>
-          val origMeth      = tree.symbol
-          val origClass     = ctx.owner.asClass
-          val origTParams   = tparams.map(_.symbol) ::: origClass.typeParams   // method type params ++ class type params
-          val origVParams   = vparamss.flatten map (_.symbol)
-          val staticClass   = origClass.linkedClass
+        case ddef: DefDef if isMethodWithExtension(tree.symbol) =>
+          val origMeth = tree.symbol
+          val origClass = ctx.owner.asClass
+          val staticClass = origClass.linkedClass
           assert(staticClass.exists, s"$origClass lacks companion, ${origClass.owner.definedPeriodsString} ${origClass.owner.info.decls} ${origClass.owner.info.decls}")
-
           val extensionMeth = extensionMethod(origMeth)
-
           ctx.log(s"Value class $origClass spawns extension method.\n  Old: ${origMeth.showDcl}\n  New: ${extensionMeth.showDcl}")
-
-          def needsRewiring(sym: Symbol) = isMethodWithExtension(sym) && sym.owner == origClass
-
-          extensionDefs(staticClass) += polyDefDef(extensionMeth, trefs => vrefss => {
-            val thisRef :: argRefs = vrefss.flatten
-            def rewireToStatic(tree: Tree, targs: List[Tree])(implicit ctx: Context): Tree = {
-              def rewireCall(thisArg: Tree): Tree = {
-                val sym = tree.symbol
-                if (needsRewiring(sym)) {
-                  val base = thisArg.tpe.baseTypeWithArgs(origClass)
-                  assert(base.exists)
-                  ref(extensionMethod(sym).termRef)
-                    .appliedToTypeTrees(targs ++ base.argInfos.map(TypeTree(_)))
-                    .appliedTo(thisArg)
-                } else EmptyTree
-              }
-              tree match {
-                case Ident(_) => rewireCall(thisRef)
-                case Select(qual, _) => rewireCall(qual)
-                case tree @ TypeApply(fn, targs1) =>
-                  assert(targs.isEmpty)
-                  rewireToStatic(fn, targs1)
-                case Block(stats, expr) =>
-                  val expr1 = rewireToStatic(expr, targs)
-                  if (expr1.isEmpty) EmptyTree else Block(stats, expr1) withPos tree.pos
-                case _ => EmptyTree
-              }
-            }
-            val rewireType = new TypeMap {
-              def apply(tp: Type) = tp match {
-                case ref: TermRef if needsRewiring(ref.symbol) =>
-                  extensionMethod(ref.symbol).termRef
-                case _ =>
-                  mapOver(tp)
-              }
-            }
-            new TreeTypeMap(
-              typeMap = _
-                .subst(origTParams, trefs)
-                .subst(origVParams, argRefs.map(_.tpe))
-                .substThis(origClass, thisRef.tpe),
-              ownerMap = (sym => if (sym eq origMeth) extensionMeth else sym),
-              treeMap = {
-                case tree: This if tree.symbol == origClass => thisRef
-                case tree => rewireToStatic(tree, Nil) orElse tree
-              }
-            ).transform(rhs)
-          })
-
-          // These three lines are assembling Foo.bar$extension[T1, T2, ...]($this)
-          // which leaves the actual argument application for extensionCall.
-          val forwarder = ref(extensionMeth.termRef)
-            .appliedToTypes(origTParams.map(_.typeRef))
-            .appliedTo(This(origClass))
-            .appliedToArgss(vparamss.nestedMap(vparam => ref(vparam.symbol)))
-            .withPos(rhs.pos)
-          cpy.DefDef(tree, mods, name, tparams, vparamss, tpt, forwarder)
+          extensionDefs(staticClass) += fullyParameterizedDef(extensionMeth, ddef)
+          cpy.DefDef(tree, ddef.mods, ddef.name, ddef.tparams, ddef.vparamss, ddef.tpt,
+              forwarder(extensionMeth, ddef))
         case _ =>
           super.transform(tree)
       }

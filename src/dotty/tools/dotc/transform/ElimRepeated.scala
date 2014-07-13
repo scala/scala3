@@ -33,7 +33,8 @@ class ElimRepeated extends TreeTransform with InfoTransformer { thisTransformer 
       val resultType1 = elimRepeated(tp.resultType)
       val paramTypes1 =
         if (paramTypes.nonEmpty && paramTypes.last.isRepeatedParam) {
-          paramTypes.init :+ paramTypes.last.repeatedToSeq
+          paramTypes.init :+
+            paramTypes.last.translateParameterized(defn.RepeatedParamClass, defn.SeqClass)
         }
         else paramTypes
       tp.derivedMethodType(paramNames, paramTypes1, resultType1)
