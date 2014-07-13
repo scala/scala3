@@ -319,6 +319,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case _ => ""
   }
 
+  def annotsText(sym: Symbol): Text = Text(sym.annotations.map(toText))
+
   def dclText(sym: Symbol): Text =
     (toTextFlags(sym) ~~ keyString(sym) ~~
       (varianceString(sym) ~ nameString(sym)) ~ toTextRHS(sym.unforcedInfo)).close
