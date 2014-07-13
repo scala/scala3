@@ -1,10 +1,11 @@
 package dotty.tools.dotc
 package typer
 
-import core.Contexts._
-import core.Types._
-import core.Symbols._
-import core.Decorators._
+import core._
+import Contexts._
+import Types._
+import Symbols._
+import Decorators._
 import typer.ProtoTypes._
 import ast.{tpd, untpd}
 import ast.Trees._
@@ -59,4 +60,10 @@ class ReTyper extends Typer {
   override def localTyper(sym: Symbol) = this
 
   override def index(trees: List[untpd.Tree])(implicit ctx: Context) = ctx
+
+  override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType)(fallBack: (Tree, TyperState) => Tree)(implicit ctx: Context): Tree =
+    fallBack(tree, ctx.typerState)
+
+  override def addTypedModifiersAnnotations(mods: untpd.Modifiers, sym: Symbol)(implicit ctx: Context): Modifiers =
+    typedModifiers(mods, sym)
 }
