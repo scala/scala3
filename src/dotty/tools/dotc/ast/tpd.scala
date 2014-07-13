@@ -413,13 +413,23 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def tpes: List[Type] = xs map (_.tpe)
   }
 
+  /** A map that applies three functions together to a tree and makes sure
+   *  they are coordinated so that the result is well-typed. The functions are
+   *  @param  typeMap  A function from Type to type that gets applied to the
+   *                   type of every tree node and to all locally defined symbols
+   *  @param ownerMap  A function that translates owners of top-level local symbols
+   *                   defined in the mapped tree.
+   *  @param treeMap   A transformer that translates all encountered subtrees in
+   *                   prefix traversal order.
+   */
   final class TreeTypeMap(
       val typeMap: Type => Type = IdentityTypeMap,
       val ownerMap: Symbol => Symbol = identity _,
       val treeMap: Tree => Tree = identity _)(implicit ctx: Context) extends TreeMap {
 
-    override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = super.transform {
-      treeMap(tree).withType(typeMap(tree.tpe)) match {
+    override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
+      val tree1 = treeMap(tree)
+      tree1.withType(typeMap(tree1.tpe)) match {
         case ddef @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
           val (tmap1, tparams1) = transformDefs(ddef.tparams)
           val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)
@@ -431,7 +441,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           val tmap = withMappedSyms(patVars(pat))
           cpy.CaseDef(cdef, tmap.transform(pat), tmap.transform(guard), tmap.transform(rhs))
         case tree1 =>
-          tree1
+          super.transform(tree1)
       }
     }
 
