@@ -20,9 +20,9 @@ class Compiler {
     List(
       List(new FrontEnd),
       List(new Companions, new ElimRepeated /*, new ElimLocals*/),
-      List(new TailRec),
       List(new SuperAccessors),
       List(new ExtensionMethods),
+      List(new TailRec),
       List(new PatternMatcher,
            new LazyValTranformContext().transformer,
            new Splitter),

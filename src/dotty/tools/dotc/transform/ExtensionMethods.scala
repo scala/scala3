@@ -23,7 +23,7 @@ import Decorators._
  * Perform Step 1 in the inline classes SIP: Creates extension methods for all
  * methods in a value class, except parameter or super accessors, or constructors.
  */
-class ExtensionMethods extends MacroTransform with InfoTransformer { thisTransformer =>
+class ExtensionMethods extends MacroTransform with DenotTransformer { thisTransformer =>
 
   import tpd._
 
@@ -32,22 +32,30 @@ class ExtensionMethods extends MacroTransform with InfoTransformer { thisTransfo
 
   override def runsAfter: Set[String] = Set("elimrepeated") // TODO: add tailrec
 
-  override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
-    case tp: ClassInfo if sym is ModuleClass =>
-      sym.linkedClass match {
+  override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
+    case ref: ClassDenotation if ref is ModuleClass =>
+      ref.linkedClass match {
         case origClass: ClassSymbol if isDerivedValueClass(origClass) =>
-          val decls1 = tp.decls.cloneScope
+          val cinfo = ref.classInfo
+          val decls1 = cinfo.decls.cloneScope
           ctx.atPhase(thisTransformer.next) { implicit ctx =>
             for (decl <- origClass.classInfo.decls) {
               if (isMethodWithExtension(decl))
-                decls1.enter(createExtensionMethod(decl, sym))
+                decls1.enter(createExtensionMethod(decl, ref.symbol))
             }
           }
-          tp.derivedClassInfo(decls = decls1)
-        case _ => tp
+          if (decls1.isEmpty) ref
+          else ref.copySymDenotation(info = cinfo.derivedClassInfo(decls = decls1))
+        case _ =>
+          ref
       }
+    case ref: SymDenotation
+    if isMethodWithExtension(ref) && ref.hasAnnotation(defn.TailrecAnnotationClass) =>
+      val ref1 = ref.copySymDenotation()
+      ref1.removeAnnotation(defn.TailrecAnnotationClass)
+      ref1
     case _ =>
-      tp
+      ref
   }
 
   def newTransformer(implicit ctx: Context): Transformer = new Extender
@@ -120,7 +128,8 @@ class ExtensionMethods extends MacroTransform with InfoTransformer { thisTransfo
       imeth.flags | Final &~ (Override | Protected | AbsOverride),
       imeth.info.toStatic(imeth.owner.asClass),
       privateWithin = imeth.privateWithin, coord = imeth.coord)
-    extensionMeth.addAnnotations(from = imeth)
+    extensionMeth.addAnnotations(from = imeth)(ctx.withPhase(thisTransformer))
+      // need to change phase to add tailrec annotation which gets removed from original method in the same phase.
     extensionMeth
   }
 
@@ -169,8 +178,41 @@ class ExtensionMethods extends MacroTransform with InfoTransformer { thisTransfo
 
           ctx.log(s"Value class $origClass spawns extension method.\n  Old: ${origMeth.showDcl}\n  New: ${extensionMeth.showDcl}")
 
+          def needsRewiring(sym: Symbol) = isMethodWithExtension(sym) && sym.owner == origClass
+
           extensionDefs(staticClass) += polyDefDef(extensionMeth, trefs => vrefss => {
             val thisRef :: argRefs = vrefss.flatten
+            def rewireToStatic(tree: Tree, targs: List[Tree])(implicit ctx: Context): Tree = {
+              def rewireCall(thisArg: Tree): Tree = {
+                val sym = tree.symbol
+                if (needsRewiring(sym)) {
+                  val base = thisArg.tpe.baseTypeWithArgs(origClass)
+                  assert(base.exists)
+                  ref(extensionMethod(sym).termRef)
+                    .appliedToTypeTrees(targs ++ base.argInfos.map(TypeTree(_)))
+                    .appliedTo(thisArg)
+                } else EmptyTree
+              }
+              tree match {
+                case Ident(_) => rewireCall(thisRef)
+                case Select(qual, _) => rewireCall(qual)
+                case tree @ TypeApply(fn, targs1) =>
+                  assert(targs.isEmpty)
+                  rewireToStatic(fn, targs1)
+                case Block(stats, expr) =>
+                  val expr1 = rewireToStatic(expr, targs)
+                  if (expr1.isEmpty) EmptyTree else Block(stats, expr1) withPos tree.pos
+                case _ => EmptyTree
+              }
+            }
+            val rewireType = new TypeMap {
+              def apply(tp: Type) = tp match {
+                case ref: TermRef if needsRewiring(ref.symbol) =>
+                  extensionMethod(ref.symbol).termRef
+                case _ =>
+                  mapOver(tp)
+              }
+            }
             new TreeTypeMap(
               typeMap = _
                 .subst(origTParams, trefs)
@@ -179,7 +221,7 @@ class ExtensionMethods extends MacroTransform with InfoTransformer { thisTransfo
               ownerMap = (sym => if (sym eq origMeth) extensionMeth else sym),
               treeMap = {
                 case tree: This if tree.symbol == origClass => thisRef
-                case tree => tree
+                case tree => rewireToStatic(tree, Nil) orElse tree
               }
             ).transform(rhs)
           })

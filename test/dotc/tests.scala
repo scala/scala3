@@ -14,7 +14,7 @@ class tests extends CompilerTest {
         "-pagewidth", "160")
 
   implicit val defaultOptions = noCheckOptions ++ List(
-    "-Yskip:tailrec, -Ycheck:extmethods"//, "-Ystop-before:terminal"
+    "-Ycheck:extmethods"//, "-Ystop-before:terminal"
   )
 
   val twice = List("#runs", "2", "-YnoDoubleBindings")
@@ -78,7 +78,7 @@ class tests extends CompilerTest {
   @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
   @Test def neg_tailcall_t1672b = compileFile(negDir, "tailcall/t1672b", xerrors = 6)
   @Test def neg_tailcall_t3275 = compileFile(negDir, "tailcall/t3275", xerrors = 1)
-  @Test def neg_tailcall_t6574 = compileFile(negDir, "tailcall/t6574", xerrors = 4)
+  @Test def neg_tailcall_t6574 = compileFile(negDir, "tailcall/t6574", xerrors = 2)
   @Test def neg_tailcall = compileFile(negDir, "tailcall/tailrec", xerrors = 7)
   @Test def neg_tailcall2 = compileFile(negDir, "tailcall/tailrec-2", xerrors = 2)
   @Test def neg_tailcall3 = compileFile(negDir, "tailcall/tailrec-3", xerrors = 2)
