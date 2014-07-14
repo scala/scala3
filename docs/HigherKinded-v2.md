@@ -109,43 +109,98 @@ More concretely, current Scala allows us to write parameterized type
 definitions, abstract types, and type parameters. In the new scheme,
 only classes (and traits) can have parameters and these are treated as
 equivalent to type members. Type aliases and abstract types do not
-allow the definition of type members so we have to interprete
+allow the definition of parameterized types so we have to interprete
 polymorphic type aliases and abstract types specially.
 
-Modelling polymorphic type aliases
-----------------------------------
+Modelling polymorphic type aliases: simple case
+-----------------------------------------------
 
 A polymorphic type alias such as
 
-    type Pair[T] = (T, T)
+    type Pair[T] = Tuple2[T, T]
+
+where `Tuple2` is declared as
+
+    class Tuple2[T1, T2] ...
+
+is expanded to a monomorphic type alias like this:
+
+    type Pair = Tuple2 { type Tuple2$T2 = Tuple2$T1 }
+
+More generally, each type parameter of the left-hand side must
+appear as a type member of the right hand side type. Type members
+must appear in the same order as their corresponding type parameters.
+References to the type parameter are then translated to references to the
+type member. The type member itself is left uninstantiated.
+
+This technique can expand most polymorphic type aliases appearing
+in Scala codebases but not all of them. For instance, the following
+alias cannot be expanded, because the parameter type `T` is not a
+type member of the right-hand side `List[List[T]]`.
+
+    type List2[T] = List[List[T]]
+
+We scanned the Scala standard library for occurrences of polymorphic
+type aliases and determined that only two occurrences could not be expanded.
+In `io/Codec.scala`:
+
+    type Configure[T] = (T => T, Boolean)
+
+And in `collection/immutable/HashMap.scala`:
+
+    private type MergeFunction[A1, B1] = ((A1, B1), (A1, B1)) => (A1, B1)
+
+For these cases, we use a fall-back scheme that models a parameterized alias as a
+`Lambda` type.
+
+Modelling polymorphic type aliases: general case
+------------------------------------------------
+
+A polymorphic type alias such as
+
+    type List2D[T] = List[List[T]]
 
 is represented as a monomorphic type alias of a type lambda. Here's the expanded version of
 the definition above:
 
-    type Pair = Lambda1 { type Apply = (Arg1, Arg1) }
+    type List2D = Lambda$I { type Apply = List[List[$hkArg$0]] }
 
-Here, `Lambda1` is a standard trait defined as follows:
+Here, `Lambda$I` is a standard trait defined as follows:
 
-    trait Lambda1[type Arg1, type Apply]
+    trait Lambda$I[type $hkArg$0] { type +Apply }
 
-According to our definitions of type parameters, `Lambda1` has two type parameters
-and `Pair` has one.
+The `I` suffix of the `Lambda` trait indicates that it has one invariant type parameter (named $hkArg$0).
+Other suffixes are `P` for covariant type parameters, and `N` for contravariant type parameters. Lambda traits can
+have more than one type parameter. For instance, here is a trait with contravariant and covariant type parameters:
 
-There are `LambdaN` traits for higher arities as well. `Lambda` traits are special in that
+    trait Lambda$NP[type -$hkArg$0, +$hkArg1] { type +Apply } extends Lambda$IP with Lambda$PI
+
+Aside: the `+` prefix in front of `Apply` indicates that `Apply` is a covariant type field. Dotty
+admits variance annotations on type members).
+
+The definition of `Lambda$NP` shows that `Lambda` traits form a subtyping hierarchy: Traits which
+have covariant or contravariant type parameters are subtypes of traits which don't. The supertraits
+of `Lambda$NP` would themselves be written as follows.
+
+    trait Lambda$IP[type $hkArg$0, +$hkArg1] { type +Apply } extends Lambda$II
+    trait Lambda$NI[type -$hkArg$0, $hkArg1] { type +Apply } extends Lambda$II
+    trait Lambda$II[type -hkArg$0, $hkArg1] { type +Apply }
+
+`Lambda` traits are special in that
 they influence how type applications are expanded: If the standard type application `T[X1, ..., Xn]`
 leads to a subtype `S` of a type instance
 
-      LambdaN { type Arg1 = T1; ...; type ArgN = Tn; type Apply ... }
+    LambdaXYZ { type Arg1 = T1; ...; type ArgN = Tn; type Apply ... }
 
 where all argument fields `Arg1, ..., ArgN` are concretely defined
 and the definition of the `Apply` field may be either abstract or concrete, then the application
 is further expanded to `S # Apply`.
 
-For instance, the type instance `Pair[String]` would be expanded to
+For instance, the type instance `List2D[String]` would be expanded to
 
-    Lambda1 { type Arg1 = String; type Apply = (Arg1, Arg1) } # Apply
+    Lambda$I { type $hkArg$0 = String; type Apply = List[List[String]] } # Apply
 
-which in turn equals `(String, String)`.
+which in turn simplifies to `List[List[String]]`.
 
 2nd Example: Consider the two aliases
 
@@ -154,24 +209,24 @@ which in turn equals `(String, String)`.
 
 These expand as follows:
 
-    type RMap  = Lambda2 { self1 => type Apply = Map[self1.Arg2, self1.Arg1] }
-    type RRMap = Lambda2 { self2 => type Apply = RMap[self2.Arg2, self2.Arg1] }
+    type RMap  = Lambda$II { self1 => type Apply = Map[self1.$hkArg$1, self1.$hkArg$0] }
+    type RRMap = Lambda$II { self2 => type Apply = RMap[self2.$hkArg$1, self2.$hkArg$0] }
 
 Substituting the definition of `RMap` and expanding the type application gives:
 
-    type RRMap = Lambda2 { self2 => type Apply =
-                   Lambda2 { self1 => type Apply = Map[self1.Arg2, self1.Arg1] }
-                           { type Arg1 = self2.Arg2; type Arg2 = self2.Arg1 } # Apply }
+    type RRMap = Lambda$II { self2 => type Apply =
+                   Lambda$II { self1 => type Apply = Map[self1.$hkArg$1, self1.$hkArg$0] }
+                     { type $hkArg$0 = self2.$hkArg$1; type $hkArg$1 = self2.$hkArg$0 } # Apply }
 
-Substituting the definitions `self1.Arg{1,2}` gives:
+Substituting the definitions for `self1.$hkArg${1,2}` gives:
 
-    type RRMap = Lambda2 { self2 => type Apply =
-                   Lambda2 { self1 => type Apply = Map[self2.Arg1, self2.Arg2] }
-                           { type Arg1 = self2.Arg2; type Arg2 = self2.Arg1 } # Apply }
+    type RRMap = Lambda$II { self2 => type Apply =
+                   Lambda$II { self1 => type Apply = Map[self2.$hkArg$0, self2.$hkArg$1] }
+                      { type $hkArg$0 = self2.$hkArg$1; type $hkArg$1 = self2.$hkArg$0 } # Apply }
 
 Simplifiying the `# Apply` selection gives:
 
-    type RRMap = Lambda2 { self2 => type Apply = Map[self2.Arg1, self2.Arg2] }
+    type RRMap = Lambda$II { self2 => type Apply = Map[self2.$hkArg$0, self2.$hkArg$1] }
 
 This can be regarded as the eta-expanded version of `Map`. It has the same expansion as
 
@@ -188,25 +243,25 @@ Consider the higher-kinded type declaration
 
 We expand this to
 
-    type Rep <: Lambda1
+    type Rep <: Lambda$I
 
 The type parameters of `Rep` are the type parameters of its upper bound, so
 `Rep` is a unary type constructor.
 
 More generally, a higher-kinded type declaration
 
-     type T[X1 >: S1 <: U1, ..., XN >: S1 <: UN] >: SR <: UR
+     type T[v1 X1 >: S1 <: U1, ..., vn XN >: S1 <: UN] >: SR <: UR
 
 is encoded as
 
-     type T <: LambdaN { self =>
-       type Arg1 >: s(S1) <: s(U1)
+     type T <: LambdaV1...Vn { self =>
+       type v1 $hkArg$0 >: s(S1) <: s(U1)
        ...
-       type ArgN >: s(SN) <: s(UN)
+       type vn $hkArg$N >: s(SN) <: s(UN)
        type Apply >: s(SR) <: s(UR)
      }
 
-where `s` is the substitution `[XI := self.ArgI | I = 1,...,N]`.
+where `s` is the substitution `[XI := self.$hkArg$I | I = 1,...,N]`.
 
 If we instantiate `Rep` with a type argument, this is expanded as was explained before.
 
@@ -214,7 +269,7 @@ If we instantiate `Rep` with a type argument, this is expanded as was explained 
 
 would expand to
 
-    Rep { type Arg1 = String } # Apply
+    Rep { type $hkArg$0 = String } # Apply
 
 If we instantiate the higher-kinded type with a concrete type constructor (i.e. a parameterized
 trait or class), we have to do one extra adaptation to make it work. The parameterized trait
@@ -224,7 +279,7 @@ or class has to be eta-expanded so that it comforms to the `Lambda` bound. For i
 
 would expand to
 
-    type Rep = Lambda1 { type Apply = Set[Arg1] }
+    type Rep = Lambda1 { type Apply = Set[$hkArg$0] }
 
 Or,
 
@@ -232,7 +287,7 @@ Or,
 
 would expand to
 
-    type Rep = Lambda1 { type Apply = Map[String, Arg1] }
+    type Rep = Lambda1 { type Apply = Map[String, $hkArg$0] }
 
 
 Full example
@@ -247,13 +302,13 @@ Consider the higher-kinded `Functor` type class
 This would be represented as follows:
 
     class Functor[F <: Lambda1] {
-       def map[A, B](f: A => B): F { type Arg1 = A } # Apply  =>  F { type Arg1 = B } # Apply
+       def map[A, B](f: A => B): F { type $hkArg$0 = A } # Apply  =>  F { type $hkArg$0 = B } # Apply
     }
 
 The type `Functor[List]` would be represented as follows
 
     Functor {
-       type F = Lambda1 { type Apply = List[Arg1] }
+       type F = Lambda1 { type Apply = List[$hkArg$0] }
     }
 
 Now, assume we have a value
@@ -262,13 +317,13 @@ Now, assume we have a value
 
 Then `ml.map` would have type
 
-    s(F { type Arg1 = A } # Apply  =>  F { type Arg1 = B } # Apply)
+    s(F { type $hkArg$0 = A } # Apply  =>  F { type $hkArg$0 = B } # Apply)
 
-where `s` is the substitution of `[F := Lambda1 { type Apply = List[Arg1] }]`.
+where `s` is the substitution of `[F := Lambda1 { type Apply = List[$hkArg$0] }]`.
 This gives:
 
-    Lambda1 { type Apply = List[Arg1] } { type Arg1 = A } # Apply
-     =>  Lambda1 { type Apply = List[Arg1] } { type Arg1 = B } # Apply
+    Lambda1 { type Apply = List[$hkArg$0] } { type $hkArg$0 = A } # Apply
+     =>  Lambda1 { type Apply = List[$hkArg$0] } { type $hkArg$0 = B } # Apply
 
 This type simplifies to:
 
@@ -301,21 +356,15 @@ Assuming that `Sub1#Inner = Sub2#Inner` could then lead to a soundness hole. To 
 problems, the types in `X#Y` were restricted so that `Y` was (an alias of) a class type and
 `X` was (an alias of) a class type with no abstract type members.
 
-I believe we can drop this restriction and allow arbitrary type projects `X#Y` if we
-are more careful with the subtyping rules. Specifically:
+I believe we can go back to regarding `T#X` as a fundamental type constructor, the way it
+was done in pre-existential Scala, but with the following relaxed restriction:
 
-    A # X  <:  B # X
+    _In a type selection `T#x`, `T` is not allowed to have any abstract members different from `X`._
 
-if either `A =:= B` (i.e. `A <: B` and `B <: A`), or the following three conditions hold:
+This would typecheck the higher-kinded types examples, because they only project with `# Apply` once all
+`$hkArg$` type members are fully instantiated.
 
-  1. `X` is (an alias of) a class type,
-  2. `B` is (an alias of) a class type without abstract type members.
-  3. `A <: B`.
-
-In essence, we allow abstract types `X`, `Y` in a projection `X#Y` but we prevent in this
-case hiding conflicting type information in a subtype widening.
-
-It would be good to study these rules formally, trying to verify their soundness.
+It would be good to study this rule formally, trying to verify its soundness.
 
 
 
