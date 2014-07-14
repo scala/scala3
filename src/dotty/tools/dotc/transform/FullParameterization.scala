@@ -22,6 +22,31 @@ import ast.Trees._
  *    - implementations of trait methods
  *    - static protected accessors
  *    - local methods produced by tailrec transform
+ *
+ *  Note that the methods lift out type parameters of the class containing
+ *  the instance method, but not type parameters of enclosing classes. The
+ *  fully instantiated method therefore needs to be put in a scope "close"
+ *  to the original method, i.e. they need to share the same outer pointer.
+ *  Examples of legal positions are: in the companion object, or as a local
+ *  method inside the original method.
+ *
+ *  Note: The scheme does not handle yet methods where type parameter bounds
+ *  depend on value parameters of the enclosing class, as in:
+ *
+ *      class C(val a: String) extends AnyVal {
+ *        def foo[U <: a.type]: Unit = ...
+ *      }
+ *
+ *  The expansion of method `foo` would lead to
+ *
+ *      def foo$extension[U <: $this.a.type]($this: C): Unit = ...
+ *
+ *  which is not typable. Not clear yet what to do. Maybe allow PolyTypes
+ *  to follow method parameters and translate to the following:
+ *
+ *      def foo$extension($this: C)[U <: $this.a.type]: Unit = ...
+ *
+ *  @see class-dependent-extension-method.scala in pending/pos.
  */
 trait FullParameterization {
 
@@ -110,21 +135,21 @@ trait FullParameterization {
 
   /** Given an instance method definition `originalDef`, return a
    *  fully parameterized method definition derived from `originalDef`, which
-   *  has`derived` as symbol and  `fullyParameterizedType(originalDef.symbol.info)`
+   *  has `derived` as symbol and `fullyParameterizedType(originalDef.symbol.info)`
    *  as info.
    */
-  def fullyParameterizedDef(derived: TermSymbol, originalDef: DefDef)(implicit ctx: Context): Tree = {
-    val origMeth = originalDef.symbol
-    val origClass = origMeth.owner.asClass
-    val origTParams = allInstanceTypeParams(originalDef)
-    val origVParams = originalDef.vparamss.flatten map (_.symbol)
+  def fullyParameterizedDef(derived: TermSymbol, originalDef: DefDef)(implicit ctx: Context): Tree =
     polyDefDef(derived, trefs => vrefss => {
+      val origMeth = originalDef.symbol
+      val origClass = origMeth.owner.asClass
+      val origTParams = allInstanceTypeParams(originalDef)
+      val origVParams = originalDef.vparamss.flatten map (_.symbol)
       val thisRef :: argRefs = vrefss.flatten
 
       /** If tree should be rewired, the rewired tree, otherwise EmptyTree.
        *  @param   targs  Any type arguments passed to the rewired tree.
        */
-      def rewire(tree: Tree, targs: List[Tree])(implicit ctx: Context): Tree = {
+      def rewireTree(tree: Tree, targs: List[Tree])(implicit ctx: Context): Tree = {
         def rewireCall(thisArg: Tree): Tree = {
           val sym = tree.symbol
           val rewired = rewiredTarget(sym, derived)
@@ -141,28 +166,40 @@ trait FullParameterization {
           case Select(qual, _) => rewireCall(qual)
           case tree @ TypeApply(fn, targs1) =>
             assert(targs.isEmpty)
-            rewire(fn, targs1)
-          case Block(stats, expr) =>
-            // need special casing here, because an original termRef might leak out as
-            // the result of the Block if Block is copied using `cpy`.
-            val expr1 = rewire(expr, targs)
-            if (expr1.isEmpty) EmptyTree else Block(stats, expr1) withPos tree.pos
+            rewireTree(fn, targs1)
           case _ => EmptyTree
         }
       }
 
+      /** Type rewiring is needed because a previous reference to an instance
+       *  method might still persist in the types of enclosing nodes. Example:
+       *
+       *     if (true) this.imeth else this.imeth
+       *
+       *  is rewritten to
+       *
+       *      if (true) xmeth($this) else xmeth($this)
+       *
+       *  but the type `this.imeth` still persists as the result type of the `if`,
+       *  because it is kept by the `cpy` operation of the tree transformer.
+       *  It needs to be rewritten to the common result type of `imeth` and `xmeth`.
+       */
+      def rewireType(tpe: Type) = tpe match {
+        case tpe: TermRef if rewiredTarget(tpe.symbol, derived).exists => tpe.widen
+        case _ => tpe
+      }
+
       new TreeTypeMap(
-        typeMap = _
+        typeMap = rewireType(_)
           .subst(origTParams, trefs)
           .subst(origVParams, argRefs.map(_.tpe))
           .substThis(origClass, thisRef.tpe),
         ownerMap = (sym => if (sym eq origMeth) derived else sym),
         treeMap = {
           case tree: This if tree.symbol == origClass => thisRef
-          case tree => rewire(tree, Nil) orElse tree
+          case tree => rewireTree(tree, Nil) orElse tree
         }).transform(originalDef.rhs)
     })
-  }
 
   /** A forwarder expression which calls `derived`, passing along
    *  - the type parameters and enclosing class parameters of `originalDef`,
