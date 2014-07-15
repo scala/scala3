@@ -631,18 +631,6 @@ object Types {
     final def objToAny(implicit ctx: Context) =
       if ((this isRef defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else this
 
-    /** If this is repeated parameter type, its underlying Seq type,
-     *  or, if isJava is true, Array type, else the type itself.
-     */
-    def underlyingIfRepeated(isJava: Boolean)(implicit ctx: Context): Type = this match {
-      case rt @ RefinedType(tref: TypeRef, name) if tref.isRepeatedParam =>
-        RefinedType(
-          (if (isJava) defn.ArrayClass else defn.SeqClass).typeRef,
-          name, rt.refinedInfo)
-      case _ =>
-        this
-    }
-
     /** If this is a (possibly aliased, annotated, and/or parameterized) reference to
      *  a class, the class type ref, otherwise NoType.
      */
