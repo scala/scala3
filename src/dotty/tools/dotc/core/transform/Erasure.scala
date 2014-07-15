@@ -46,8 +46,12 @@ object Erasure {
 
   def erasure(tp: Type)(implicit ctx: Context): Type = scalaErasureFn(tp)
   def semiErasure(tp: Type)(implicit ctx: Context): Type = semiErasureFn(tp)
-  def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName =
-    (if (isJava) javaSigFn else scalaSigFn).sigName(tp)
+  def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName = {
+    val normTp =
+      if (tp.isRepeatedParam) tp.translateParameterized(defn.RepeatedParamClass, defn.SeqClass)
+      else tp
+    (if (isJava) javaSigFn else scalaSigFn).sigName(normTp)
+  }
 
   /**  The symbol's erased info. This is the type's erasure, except for the following symbols:
    *
