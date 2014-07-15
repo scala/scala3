@@ -139,7 +139,7 @@ object Erasure {
           cast(runtimeCall(nme.toObjectArray, tree :: Nil), pt)
         case _ =>
           ctx.log(s"casting from ${tree.showSummary}: ${tree.tpe.show} to ${pt.show}")
-          TypeApply(Select(tree, defn.Any_asInstanceOf), TypeTree(pt) :: Nil)
+          mkAsInstanceOf(tree, pt)
       }
 
     /** Adaptation of an expression `e` to an expected type `PT`, applying the following

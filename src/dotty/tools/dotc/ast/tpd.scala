@@ -182,7 +182,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     ta.assignType(DefDef(sym, Function.const(rhs) _), sym)
 
-  def DefDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Tree)(implicit ctx: Context): DefDef = {
+  def DefDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Tree)(implicit ctx: Context): DefDef =
+    polyDefDef(sym, Function.const(rhsFn))
+
+  def polyDefDef(sym: TermSymbol, rhsFn: List[Type] => List[List[Tree]] => Tree)(implicit ctx: Context): DefDef = {
     val (tparams, mtp) = sym.info match {
       case tp: PolyType =>
         val tparams = ctx.newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateBounds)
@@ -200,11 +203,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case tp => (Nil, tp)
     }
     val (vparamss, rtp) = valueParamss(mtp)
+    val targs = tparams map (_.typeRef)
     val argss = vparamss map (_ map (vparam => Ident(vparam.termRef)))
     ta.assignType(
       untpd.DefDef(
         Modifiers(sym), sym.name, tparams map TypeDef,
-        vparamss map (_ map (ValDef(_))), TypeTree(rtp), rhsFn(argss)), sym)
+        vparamss map (_ map (ValDef(_))), TypeTree(rtp), rhsFn(targs)(argss)), sym)
   }
 
   def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
@@ -381,7 +385,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       new TreeTypeMap(ownerMap = (sym => if (sym == from) to else sym)).apply(tree)
 
     def appliedToTypes(targs: List[Type])(implicit ctx: Context): Tree =
-      if (targs.isEmpty) tree else TypeApply(tree, targs map (TypeTree(_)))
+      appliedToTypeTrees(targs map (TypeTree(_)))
+
+    def appliedToTypeTrees(targs: List[Tree])(implicit ctx: Context): Tree =
+      if (targs.isEmpty) tree else TypeApply(tree, targs)
   }
 
   implicit class ListOfTreeDecorator(val xs: List[tpd.Tree]) extends AnyVal {
@@ -450,6 +457,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def mkAnd(tree1: Tree, tree2: Tree)(implicit ctx: Context) =
     Apply(Select(tree1, defn.Boolean_and), tree2 :: Nil)
+
+  def mkAsInstanceOf(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
+    TypeApply(Select(tree, defn.Any_asInstanceOf), TypeTree(pt) :: Nil)
+
+  def ensureConforms(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
+    if (tree.tpe <:< pt) tree else mkAsInstanceOf(tree, pt)
 
   // ensure that constructors are fully applied?
   // ensure that normal methods are fully applied?

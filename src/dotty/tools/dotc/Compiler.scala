@@ -20,6 +20,7 @@ class Compiler {
   def phases: List[List[Phase]] =
     List(
       List(new FrontEnd),
+      List(new SuperAccessors),
       List(new LazyValsCreateCompanionObjects,
            new TailRec),    //force separataion between lazyVals and LVCreateCO
       List(new PatternMatcher,

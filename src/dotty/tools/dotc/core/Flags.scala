@@ -102,8 +102,16 @@ object Flags {
       }
 
     /** The list of non-empty names of flags that are set in this FlagSet */
-    def flagStrings: Seq[String] =
-      (2 to MaxFlag).flatMap(flagString)
+    def flagStrings: Seq[String] = {
+      val rawStrings = (2 to MaxFlag).flatMap(flagString)
+      if (this is Local)
+        rawStrings.filter(_ != "<local>").map {
+          case "private" => "private[this]"
+          case "protected" => "protected[this]"
+          case str => str
+        }
+      else rawStrings
+    }
 
     /** The string representation of this flag set */
     override def toString = flagStrings.mkString(" ")
@@ -405,7 +413,10 @@ object Flags {
 
   /** Flags representing modifiers that can appear in trees */
   final val ModifierFlags =
-    SourceModifierFlags | Trait | Module | Param | Synthetic | Package
+    SourceModifierFlags | Module | Param | Synthetic | Package | Local
+      // | Trait is subsumed by commonFlags(Lazy) from SourceModifierFlags
+
+  assert(ModifierFlags.isTermFlags && ModifierFlags.isTypeFlags)
 
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local

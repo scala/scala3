@@ -375,7 +375,7 @@ object Denotations {
     final def signature(implicit ctx: Context): Signature = {
       if (isType) Signature.NotAMethod // don't force info if this is a type SymDenotation
       else info match {
-        case info: SignedType =>
+        case info: MethodicType =>
           try info.signature
           catch { // !!! DEBUG
             case ex: Throwable =>
@@ -574,6 +574,7 @@ object Denotations {
     /** Install this denotation to be the result of the given denotation transformer.
      *  This is the implementation of the same-named method in SymDenotations.
      *  It's placed here because it needs access to private fields of SingleDenotation.
+     *  @pre  Can only be called in `phase.next`.
      */
     protected def installAfter(phase: DenotTransformer)(implicit ctx: Context): Unit = {
       val targetId = phase.next.id
