@@ -256,7 +256,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ref(tp: NamedType)(implicit ctx: Context): NameTree =
     if (tp.symbol.isStatic || tp.prefix == NoPrefix) Ident(tp)
     else tp.prefix match {
-      case pre: TermRef => ref(pre).select(tp)
+      case pre: SingletonType => singleton(pre).select(tp)
       case pre => SelectFromTypeTree(TypeTree(pre), tp)
     } // no checks necessary
 
