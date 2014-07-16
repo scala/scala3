@@ -521,6 +521,9 @@ object Flags {
   /** A Java companion object */
   final val JavaModule = allOf(JavaDefined, Module)
 
+  /** A Java companion object */
+  final val JavaProtected = allOf(JavaDefined, Protected)
+
   /** Labeled private[this] */
   final val PrivateLocal = allOf(Private, Local)
 

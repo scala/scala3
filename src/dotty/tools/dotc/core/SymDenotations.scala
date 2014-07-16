@@ -589,10 +589,13 @@ object SymDenotations {
         NoSymbol
     }
 
-    /** The field accessed by this getter or setter */
-    def accessedField(implicit ctx: Context): Symbol = {
+    /** The field accessed by this getter or setter, or if it does not exist, the getter */
+    def accessedFieldOrGetter(implicit ctx: Context): Symbol = {
       val fieldName = if (isSetter) name.asTermName.setterToGetter else name
-      owner.info.decl(fieldName).suchThat(d => !(d is Method)).symbol
+      val d = owner.info.decl(fieldName)
+      val field = d.suchThat(!_.is(Method)).symbol
+      def getter = d.suchThat(_.info.isParameterless).symbol
+      field orElse getter
     }
 
     /** The chain of owners of this denotation, starting with the denoting symbol itself */
@@ -723,17 +726,29 @@ object SymDenotations {
       denot.symbol
     }
 
+    /** If false, this symbol cannot possibly participate in an override,
+     *  either as overrider or overridee.
+     */
+    final def canMatchInheritedSymbols(implicit ctx: Context): Boolean =
+      maybeOwner.isClass && !isConstructor && !is(Private)
+
     /** The symbol, in class `inClass`, that is overridden by this denotation. */
     final def overriddenSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol =
-      if ((this is Private) && (owner ne inClass)) NoSymbol
+      if (!canMatchInheritedSymbols && (owner ne inClass)) NoSymbol
       else matchingSymbol(inClass, owner.thisType)
 
     /** All symbols overriden by this denotation. */
     final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
-      if (exists && owner.isClass)
-        owner.info.baseClasses.tail.iterator map overriddenSymbol filter (_.exists)
-      else
-        Iterator.empty
+      if (!canMatchInheritedSymbols) Iterator.empty
+      else overriddenFromType(owner.info)
+
+    /** Returns all all matching symbols defined in parents of the selftype. */
+    final def extendedOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
+      if (!canMatchInheritedSymbols) Iterator.empty
+      else overriddenFromType(owner.asClass.classInfo.selfType)
+
+    private def overriddenFromType(tp: Type)(implicit ctx: Context): Iterator[Symbol] =
+      tp.baseClasses.tail.iterator map overriddenSymbol filter (_.exists)
 
     /** The symbol overriding this symbol in given subclass `ofclazz`.
      *
@@ -742,17 +757,6 @@ object SymDenotations {
     final def overridingSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol =
       if (canMatchInheritedSymbols) matchingSymbol(inClass, inClass.thisType)
       else NoSymbol
-
-    /** If false, this symbol cannot possibly participate in an override,
-     *  either as overrider or overridee. For internal use; you should consult
-     *  with isOverridingSymbol. This is used by isOverridingSymbol to escape
-     *  the recursive knot.
-     */
-    private def canMatchInheritedSymbols = (
-         owner.isClass
-      && !this.isClass
-      && !this.isConstructor
-    )
 
     /** The symbol accessed by a super in the definition of this symbol when
      *  seen from class `base`. This symbol is always concrete.
