@@ -24,6 +24,7 @@ class PostTyperTransformerTest extends DottyTest {
       implicit val ctx = context
       class EmptyTransform extends TreeTransform {
         override def name: String = "empty"
+        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new PostTyperTransformer {
         override def transformations = Array(new EmptyTransform)
@@ -43,6 +44,7 @@ class PostTyperTransformerTest extends DottyTest {
       implicit val ctx = context
       class EmptyTransform extends TreeTransform {
         override def name: String = "empty"
+        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new PostTyperTransformer {
         override def transformations = Array(new EmptyTransform)
@@ -62,6 +64,7 @@ class PostTyperTransformerTest extends DottyTest {
       implicit val ctx = context
       class EmptyTransform extends TreeTransform {
         override def name: String = "empty"
+        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new PostTyperTransformer {
         override def transformations = Array(new EmptyTransform)
@@ -85,6 +88,7 @@ class PostTyperTransformerTest extends DottyTest {
       implicit val ctx = context
       class EmptyTransform extends TreeTransform {
         override def name: String = "empty"
+        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new PostTyperTransformer {
         override def transformations = Array(new EmptyTransform)
@@ -108,6 +112,7 @@ class PostTyperTransformerTest extends DottyTest {
       implicit val ctx = context
       class EmptyTransform extends TreeTransform {
         override def name: String = "empty"
+        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new PostTyperTransformer {
         override def transformations = Array(new EmptyTransform)

@@ -42,6 +42,7 @@ class DottyTest extends ContextEscapeDetection{
     ctx = null
   }
   private def compilerWithChecker(phase: String)(assertion:(tpd.Tree, Context) => Unit) = new Compiler {
+    self =>
     override def phases = {
       val allPhases = super.phases
       val targetPhase = allPhases.flatten.find(p => p.name == phase).get
