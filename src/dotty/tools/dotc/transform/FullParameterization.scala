@@ -71,6 +71,8 @@ trait FullParameterization {
    *    object Foo {
    *      def extension$baz[B >: A <: Any, A >: Nothing <: AnyRef]($this: Foo[A])(x: B): List[B]
    *    }
+   *
+   *  If a self type is present, $this has this self type as its type.
    */
   def fullyParameterizedType(info: Type, clazz: ClassSymbol)(implicit ctx: Context): Type = {
     val (mtparamCount, origResult) = info match {
@@ -81,11 +83,11 @@ trait FullParameterization {
     val ctparams = clazz.typeParams
     val ctnames = ctparams.map(_.name.unexpandedName())
 
-    /** The method result type, prior to mapping any type parameters */
-    val resultType = {
-      val thisParamType = clazz.typeRef.appliedTo(ctparams.map(_.typeRef))
+    /** The method result type */
+    def resultType(mapClassParams: Type => Type) = {
+      val thisParamType = mapClassParams(clazz.classInfo.selfType)
       MethodType(nme.SELF :: Nil, thisParamType :: Nil)(mt =>
-        origResult.substThis(clazz, MethodParam(mt, 0)))
+        mapClassParams(origResult).substThis(clazz, MethodParam(mt, 0)))
     }
 
     /** Replace class type parameters by the added type parameters of the polytype `pt` */
@@ -98,17 +100,15 @@ trait FullParameterization {
     def mappedClassBounds(pt: PolyType): List[TypeBounds] =
       ctparams.map(tparam => mapClassParams(tparam.info, pt).bounds)
 
-    def mappedResultType(pt: PolyType): Type = mapClassParams(resultType, pt)
-
     info match {
       case info @ PolyType(mtnames) =>
         PolyType(mtnames ++ ctnames)(
           pt => (info.paramBounds ++ mappedClassBounds(pt))
             .mapConserve(_.subst(info, pt).bounds),
-          pt => mappedResultType(pt).subst(info, pt))
+          pt => resultType(mapClassParams(_, pt)).subst(info, pt))
       case _ =>
-        if (ctparams.isEmpty) resultType
-        else PolyType(ctnames)(mappedClassBounds, mappedResultType)
+        if (ctparams.isEmpty) resultType(identity)
+        else PolyType(ctnames)(mappedClassBounds, pt => resultType(mapClassParams(_, pt)))
     }
   }
 
