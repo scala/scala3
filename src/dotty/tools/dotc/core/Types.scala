@@ -2030,19 +2030,31 @@ object Types {
       decls: Scope,
       selfInfo: DotClass /* should be: Type | Symbol */) extends CachedGroundType with TypeType {
 
-    def selfType(implicit ctx: Context): Type = selfInfo match {
-      case NoType =>
-        if (selfTypeCache == null) selfTypeCache = computeSelfType(cls.typeRef, cls.typeParams)
-        selfTypeCache
-      case tp: Type => tp
-      case self: Symbol => self.info
+    /** The self type of a class is the conjunction of
+     *   - the explicit self type if given (or the info of a given self symbol), and
+     *   - the fully applied reference to the class itself.
+     */
+    def selfType(implicit ctx: Context): Type = {
+      if (selfTypeCache == null) {
+        def fullRef = fullyAppliedRef(cls.typeRef, cls.typeParams)
+        selfTypeCache = selfInfo match {
+          case NoType =>
+            fullRef
+          case tp: Type =>
+            if (cls is Module) tp else AndType(tp, fullRef)
+          case self: Symbol =>
+            assert(!(cls is Module))
+            AndType(self.info, fullRef)
+        }
+      }
+      selfTypeCache
     }
 
     private var selfTypeCache: Type = null
 
-    private def computeSelfType(base: Type, tparams: List[TypeSymbol])(implicit ctx: Context): Type = tparams match {
+    private def fullyAppliedRef(base: Type, tparams: List[TypeSymbol])(implicit ctx: Context): Type = tparams match {
       case tparam :: tparams1 =>
-        computeSelfType(
+        fullyAppliedRef(
           RefinedType(base, tparam.name, TypeRef(cls.thisType, tparam).toBounds(tparam)),
           tparams1)
       case nil =>
