@@ -875,11 +875,13 @@ object TreeTransforms {
       }
 
     final private[TreeTransforms] def transformSingle(tree: Tree, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree =
-      tree match {
-        // split one big match into 2 smaller ones
-        case tree: NameTree => goNamed(tree, cur)
-        case tree => goUnamed(tree, cur)
-      }
+      if (cur < info.transformers.length) {
+        tree match {
+          // split one big match into 2 smaller ones
+          case tree: NameTree => goNamed(tree, cur)
+          case tree => goUnamed(tree, cur)
+        }
+      } else tree
 
     def localContext(owner: Symbol)(implicit ctx: Context) = ctx.fresh.setOwner(owner)
 
