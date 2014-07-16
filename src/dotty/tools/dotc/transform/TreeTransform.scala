@@ -1129,11 +1129,13 @@ object TreeTransforms {
       }
 
     def transform(tree: Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree = ctx.traceIndented(s"transforming ${tree.show} at ${ctx.phase}", transforms, show = true) {
-      tree match {
-        //split one big match into 2 smaller ones
-        case tree: NameTree => transformNamed(tree, info, cur)
-        case tree => transformUnnamed(tree, info, cur)
-      }
+      if (cur < info.transformers.length) {
+        tree match {
+          //split one big match into 2 smaller ones
+          case tree: NameTree => transformNamed(tree, info, cur)
+          case tree => transformUnnamed(tree, info, cur)
+        }
+      } else tree
     }
 
     @tailrec
