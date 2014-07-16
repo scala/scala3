@@ -357,6 +357,10 @@ object Symbols {
     final def asType(implicit ctx: Context): TypeSymbol = { assert(isType, s"isType called on not-a-Type $this"); asInstanceOf[TypeSymbol] }
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
+    /** Special cased here, because it may be used on naked symbols in substituters */
+    final def isStatic(implicit ctx: Context): Boolean =
+      lastDenot != null && denot.isStatic
+
     /** A unique, densely packed integer tag for each class symbol, -1
      *  for all other symbols. To save memory, this method
      *  should be called only if class is a super class of some other class.

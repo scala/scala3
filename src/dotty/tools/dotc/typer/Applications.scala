@@ -767,8 +767,7 @@ trait Applications extends Compatibility { self: Typer =>
      */
     def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = ctx.traceIndented(i"isAsSpecific $tp1 $tp2", overload) { tp1 match {
       case tp1: PolyType =>
-        def bounds(tparamRefs: List[TypeRef]) = tp1.paramBounds map (_.substParams(tp1, tparamRefs))
-        val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, bounds)
+        val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateBounds)
         isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
       case tp1: MethodType =>
         def repeatedToSingle(tp: Type) = if (tp.isRepeatedParam) tp.argTypesHi.head else tp
