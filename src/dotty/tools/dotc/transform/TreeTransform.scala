@@ -875,11 +875,13 @@ object TreeTransforms {
       }
 
     final private[TreeTransforms] def transformSingle(tree: Tree, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree =
-      tree match {
-        // split one big match into 2 smaller ones
-        case tree: NameTree => goNamed(tree, cur)
-        case tree => goUnamed(tree, cur)
-      }
+      if (cur < info.transformers.length) {
+        tree match {
+          // split one big match into 2 smaller ones
+          case tree: NameTree => goNamed(tree, cur)
+          case tree => goUnamed(tree, cur)
+        }
+      } else tree
 
     def localContext(owner: Symbol)(implicit ctx: Context) = ctx.fresh.setOwner(owner)
 
@@ -1127,11 +1129,16 @@ object TreeTransforms {
       }
 
     def transform(tree: Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree = ctx.traceIndented(s"transforming ${tree.show} at ${ctx.phase}", transforms, show = true) {
-      tree match {
-        //split one big match into 2 smaller ones
-        case tree: NameTree => transformNamed(tree, info, cur)
-        case tree => transformUnnamed(tree, info, cur)
-      }
+      if (cur < info.transformers.length) {
+        // if cur > 0 then some of the symbols can be created by already performed transformations
+        // this means that their denotations could not exists in previous periods
+        val pctx = ctx.withPhase(info.transformers(cur))
+        tree match {
+          //split one big match into 2 smaller ones
+          case tree: NameTree => transformNamed(tree, info, cur)(pctx)
+          case tree => transformUnnamed(tree, info, cur)(pctx)
+        }
+      } else tree
     }
 
     @tailrec

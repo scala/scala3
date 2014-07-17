@@ -17,6 +17,7 @@ class TreeTransformerTest extends DottyTest {
       implicit val ctx = context
       class EmptyTransform extends TreeTransform {
         override def name: String = "empty"
+        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new TreeTransformer {
         override def transformations = Array(new EmptyTransform)
@@ -38,6 +39,7 @@ class TreeTransformerTest extends DottyTest {
 
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = tpd.Literal(Constant(2))
         override def name: String = "canReplaceConstant"
+        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new TreeTransformer {
         override def transformations = Array(new ConstantTransform)
@@ -66,11 +68,14 @@ class TreeTransformerTest extends DottyTest {
           )
           tpd.cpy.ValDef(tree, tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(2)))
         }
+
+        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new TreeTransformer {
         override def transformations = Array(new Transformation)
 
         override def name: String = "test"
+
       }
       val tr = transformer.transform(tree).toString
 
@@ -99,6 +104,8 @@ class TreeTransformerTest extends DottyTest {
           )
           tpd.cpy.ValDef(tree, tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(2)))
         }
+
+        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       class Transformation2 extends TreeTransform {
         override def name: String = "transformationOrder2"
@@ -108,6 +115,8 @@ class TreeTransformerTest extends DottyTest {
           )
           tpd.cpy.ValDef(tree, tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(3)))
         }
+
+        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new TreeTransformer {
         override def transformations = Array(new Transformation1, new Transformation2)
@@ -143,6 +152,8 @@ class TreeTransformerTest extends DottyTest {
           )
           tpd.cpy.ValDef(tree, tree.mods, tree.name, tree.tpt, transformFollowing(tpd.Literal(Constant(2))))
         }
+
+        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       var transformed2 = 0
       class Transformation2 extends TreeTransform {
@@ -172,6 +183,8 @@ class TreeTransformerTest extends DottyTest {
           )
           transformFollowing(tpd.cpy.ValDef(tree, tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(3))))
         }
+
+        init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new TreeTransformer {
         override def transformations = Array(new Transformation1, new Transformation2)

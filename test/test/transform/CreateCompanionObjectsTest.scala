@@ -32,6 +32,7 @@ class CreateCompanionObjectsTest extends DottyTest {
 
           override def name: String = "create all companion objects"
           override def predicate(cts: TypeDef)(implicit ctx:Context): Boolean = true
+          init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
         })
 
         override def name: String = "test"
@@ -56,6 +57,7 @@ class CreateCompanionObjectsTest extends DottyTest {
 
           override def name: String = "create all companion modules"
           override def predicate(cts: TypeDef)(implicit ctx:Context): Boolean = true
+          init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
         })
 
         override def name: String = "test"
@@ -79,6 +81,7 @@ class CreateCompanionObjectsTest extends DottyTest {
         override def transformations = Array(new CreateCompanionObjects {
           override def name: String = "create all companion modules"
           override def predicate(cts: TypeDef)(implicit ctx:Context): Boolean = true
+          init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
         })
 
         override def name: String = "test"
@@ -102,6 +105,7 @@ class CreateCompanionObjectsTest extends DottyTest {
         override def transformations = Array(new CreateCompanionObjects {
           override def name: String = "create all companion modules"
           override def predicate(cts: TypeDef)(implicit ctx:Context): Boolean = cts.name.toString.contains("CREATE")
+          init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
         })
 
         override def name: String = "test"
