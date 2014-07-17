@@ -52,11 +52,22 @@ trait FullParameterization {
 
   import tpd._
 
-  /** If references to original `target` from fully parameterized method `derived` should be
-   *  rewired to some fully parameterized method, that method symbol,
+  /** If references to original symbol `referenced` from within fully parameterized method
+   *  `derived` should be rewired to some fully parameterized method, the rewiring target symbol,
    *  otherwise NoSymbol.
    */
-  protected def rewiredTarget(target: Symbol, derived: Symbol)(implicit ctx: Context): Symbol
+  protected def rewiredTarget(referenced: Symbol, derived: Symbol)(implicit ctx: Context): Symbol
+
+  /** If references to some original symbol from given tree node within fully parameterized method
+   *  `derived` should be rewired to some fully parameterized method, the rewiring target symbol,
+   *  otherwise NoSymbol. By default implemented as
+   *
+   *      rewiredTarget(tree.symbol, derived)
+   *
+   *  but can be overridden.
+   */
+  protected def rewiredTarget(tree: Tree, derived: Symbol)(implicit ctx: Context): Symbol =
+    rewiredTarget(tree.symbol, derived)
 
   /** Converts the type `info` of a member of class `clazz` to a method type that
    *  takes the `this` of the class and any type parameters of the class
@@ -151,8 +162,7 @@ trait FullParameterization {
        */
       def rewireTree(tree: Tree, targs: List[Tree])(implicit ctx: Context): Tree = {
         def rewireCall(thisArg: Tree): Tree = {
-          val sym = tree.symbol
-          val rewired = rewiredTarget(sym, derived)
+          val rewired = rewiredTarget(tree, derived)
           if (rewired.exists) {
             val base = thisArg.tpe.baseTypeWithArgs(origClass)
             assert(base.exists)
