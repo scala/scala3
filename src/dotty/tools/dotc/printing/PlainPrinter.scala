@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package printing
 
 import core._
-import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._
+import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, Denotations._
 import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
 import ast.Trees._, ast.untpd
@@ -321,9 +321,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def annotsText(sym: Symbol): Text = Text(sym.annotations.map(toText))
 
-  def dclText(sym: Symbol): Text =
+  def dclText(sym: Symbol): Text = dclTextWithInfo(sym, sym.unforcedInfo)
+
+  def dclText(d: SingleDenotation): Text = dclTextWithInfo(d.symbol, Some(d.info))
+
+  private def dclTextWithInfo(sym: Symbol, info: Option[Type]): Text =
     (toTextFlags(sym) ~~ keyString(sym) ~~
-      (varianceString(sym) ~ nameString(sym)) ~ toTextRHS(sym.unforcedInfo)).close
+      (varianceString(sym) ~ nameString(sym)) ~ toTextRHS(info)).close
 
   def toText(sym: Symbol): Text =
     (kindString(sym) ~~ {
