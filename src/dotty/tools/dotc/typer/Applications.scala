@@ -735,9 +735,9 @@ trait Applications extends Compatibility { self: Typer =>
     onMethod(tp, isApplicable(_, args, resultType))
 
   private def onMethod(tp: Type, p: TermRef => Boolean)(implicit ctx: Context): Boolean = tp match {
-    case methRef: TermRef if methRef.widenSingleton.isInstanceOf[SignedType] =>
+    case methRef: TermRef if methRef.widenSingleton.isInstanceOf[MethodicType] =>
       p(methRef)
-    case mt: SignedType =>
+    case mt: MethodicType =>
       p(mt.narrow)
     case _ =>
       tp.member(nme.apply).hasAltWith(d => p(TermRef(tp, nme.apply, d)))
@@ -767,8 +767,7 @@ trait Applications extends Compatibility { self: Typer =>
      */
     def isAsSpecific(alt1: TermRef, tp1: Type, alt2: TermRef, tp2: Type): Boolean = ctx.traceIndented(i"isAsSpecific $tp1 $tp2", overload) { tp1 match {
       case tp1: PolyType =>
-        def bounds(tparamRefs: List[TypeRef]) = tp1.paramBounds map (_.substParams(tp1, tparamRefs))
-        val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, bounds)
+        val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateBounds)
         isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
       case tp1: MethodType =>
         def repeatedToSingle(tp: Type) = if (tp.isRepeatedParam) tp.argTypesHi.head else tp

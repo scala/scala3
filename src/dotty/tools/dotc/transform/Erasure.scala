@@ -22,6 +22,7 @@ import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import ast.Trees._
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Flags
+import ValueClasses._
 
 class Erasure extends Phase with DenotTransformer {
 
@@ -85,12 +86,12 @@ object Erasure {
     def isPrimitiveValueType(tpe: Type)(implicit ctx: Context): Boolean = tpe.classSymbol.isPrimitiveValueClass
 
     def constant(tree: Tree, const: Tree)(implicit ctx: Context) =
-      if (isIdempotentExpr(tree)) Block(tree :: Nil, const) else const
+      if (isPureExpr(tree)) Block(tree :: Nil, const) else const
 
     final def box(tree: Tree, target: => String = "")(implicit ctx: Context): Tree = ctx.traceIndented(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
         case ErasedValueType(clazz, _) =>
-          New(clazz.typeRef, cast(tree, clazz.underlyingOfValueClass) :: Nil) // todo: use adaptToType?
+          New(clazz.typeRef, cast(tree, underlyingOfValueClass(clazz)) :: Nil) // todo: use adaptToType?
         case tp =>
           val cls = tp.classSymbol
           if (cls eq defn.UnitClass) constant(tree, ref(defn.BoxedUnit_UNIT))
@@ -98,7 +99,7 @@ object Erasure {
           else {
             assert(cls ne defn.ArrayClass)
             val arg = safelyRemovableUnboxArg(tree)
-            if (arg.isEmpty) Apply(ref(boxMethod(cls.asClass)), tree :: Nil)
+            if (arg.isEmpty) ref(boxMethod(cls.asClass)).appliedTo(tree)
             else {
               ctx.log(s"boxing an unbox: ${tree.symbol} -> ${arg.tpe}")
               arg
@@ -116,14 +117,16 @@ object Erasure {
               // via the unboxed type would yield a NPE (see SI-5866)
               unbox(tree, underlying)
             else
-              Apply(Select(adaptToType(tree, clazz.typeRef), clazz.valueClassUnbox), Nil)
+              adaptToType(tree, clazz.typeRef)
+                .select(valueClassUnbox(clazz))
+                .appliedToNone
           cast(tree1, pt)
         case _ =>
           val cls = pt.classSymbol
           if (cls eq defn.UnitClass) constant(tree, Literal(Constant(())))
           else {
             assert(cls ne defn.ArrayClass)
-            Apply(ref(unboxMethod(cls.asClass)), tree :: Nil)
+            ref(unboxMethod(cls.asClass)).appliedTo(tree)
           }
       }
     }
@@ -139,7 +142,7 @@ object Erasure {
           cast(runtimeCall(nme.toObjectArray, tree :: Nil), pt)
         case _ =>
           ctx.log(s"casting from ${tree.showSummary}: ${tree.tpe.show} to ${pt.show}")
-          TypeApply(Select(tree, defn.Any_asInstanceOf), TypeTree(pt) :: Nil)
+          mkAsInstanceOf(tree, pt)
       }
 
     /** Adaptation of an expression `e` to an expected type `PT`, applying the following
@@ -267,7 +270,7 @@ object Erasure {
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) =
       EmptyTree
 
-    override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[tpd.Tree] = {
+    override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
       val statsFlatten = Trees.flatten(stats)
       val stats1 = super.typedStats(statsFlatten, exprOwner)
 
@@ -343,7 +346,7 @@ object Erasure {
       bridge.entered // this should be safe, as we're executing in context of next phase
       ctx.debuglog(s"generating bridge from ${newDef.symbol} to $bridge")
 
-      val sel: Tree = tpd.Select(This(newDef.symbol.owner.asClass), newDef.symbol.termRef)
+      val sel: Tree = This(newDef.symbol.owner.asClass).select(newDef.symbol.termRef)
 
       val resultType = bridge.info.widen.resultType
       tpd.DefDef(bridge, { paramss: List[List[tpd.Tree]] =>

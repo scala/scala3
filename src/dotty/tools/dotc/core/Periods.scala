@@ -67,6 +67,8 @@ object Periods {
     /** The first phase of this period */
     def firstPhaseId = lastPhaseId - (code & PhaseMask)
 
+    def containsPhaseId(id: PhaseId) = firstPhaseId <= id && id <= lastPhaseId
+
     /** Does this period contain given period? */
     def contains(that: Period): Boolean = {
       // Let    this = (r1, l1, d1), that = (r2, l2, d2)
@@ -105,6 +107,11 @@ object Periods {
           this.lastPhaseId min that.lastPhaseId)
       else
         Nowhere
+
+    def | (that: Period): Period =
+      Period(this.runId,
+          this.firstPhaseId min that.firstPhaseId,
+          this.lastPhaseId max that.lastPhaseId)
 
     override def toString = s"Period($firstPhaseId..$lastPhaseId, run = $runId)"
   }

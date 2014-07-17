@@ -146,7 +146,7 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
         if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
         else if (cls eq defn.ArrayClass) defn.ObjectClass.typeRef :: Nil
         else removeLaterObjects(classParents.mapConserve(eraseTypeRef))
-      tp.derivedClassInfo(this(pre), parents, this(tp.selfType))
+      tp.derivedClassInfo(this(pre), parents, decls, this(tp.selfType))
     case NoType | NoPrefix | ErrorType =>
       tp
     case tp: WildcardType if wildcardOK =>

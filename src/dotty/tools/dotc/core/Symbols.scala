@@ -16,6 +16,7 @@ import printing.Printer
 import Types._
 import Annotations._
 import util.Positions._
+import DenotTransformers._
 import StdNames._
 import NameOps._
 import ast.tpd.{TreeTypeMap, Tree}
@@ -250,7 +251,7 @@ trait Symbols { this: Context =>
     val tparams = tparamBuf.toList
     val bounds = boundsFn(trefBuf.toList)
     for ((name, tparam, bound) <- (names, tparams, bounds).zipped)
-      tparam.denot = SymDenotation(tparam, owner, name, flags | TypeParamCreationFlags, bound)
+      tparam.denot = SymDenotation(tparam, owner, name, flags | owner.typeParamCreationFlags, bound)
     tparams
   }
 
@@ -260,16 +261,14 @@ trait Symbols { this: Context =>
     newSymbol(owner, name, SyntheticArtifact,
       if (name.isTypeName) TypeAlias(ErrorType) else ErrorType)
 
-  type OwnerMap = Symbol => Symbol
-
   /** Map given symbols, subjecting all types to given type map and owner map.
    *  Cross symbol references are brought over from originals to copies.
    *  Do not copy any symbols if all attributes of all symbols stay the same.
    */
   def mapSymbols(
       originals: List[Symbol],
-      typeMap: TypeMap = IdentityTypeMap,
-      ownerMap: OwnerMap = identity)
+      typeMap: Type => Type = IdentityTypeMap,
+      ownerMap: Symbol => Symbol = identity)
   =
     if (originals forall (sym =>
         (typeMap(sym.info) eq sym.info) && (ownerMap(sym.owner) eq sym.owner)))
@@ -358,6 +357,10 @@ object Symbols {
     final def asType(implicit ctx: Context): TypeSymbol = { assert(isType, s"isType called on not-a-Type $this"); asInstanceOf[TypeSymbol] }
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
+    /** Special cased here, because it may be used on naked symbols in substituters */
+    final def isStatic(implicit ctx: Context): Boolean =
+      lastDenot != null && denot.isStatic
+
     /** A unique, densely packed integer tag for each class symbol, -1
      *  for all other symbols. To save memory, this method
      *  should be called only if class is a super class of some other class.
@@ -372,6 +375,17 @@ object Symbols {
       this
     }
 
+    /** Enter this symbol in its class owner after given `phase`. Create a fresh
+     *  denotation for its owner class if the class has not yet already one
+     *  that starts being valid after `phase`.
+     *  @pre  Symbol is a class member
+     */
+    def enteredAfter(phase: DenotTransformer)(implicit ctx: Context): this.type = {
+      val nextCtx = ctx.withPhase(phase.next)
+      this.owner.asClass.ensureFreshScopeAfter(phase)(nextCtx)
+      entered(nextCtx)
+    }
+
     /** This symbol, if it exists, otherwise the result of evaluating `that` */
     def orElse(that: => Symbol)(implicit ctx: Context) =
       if (this.exists) this else that
@@ -381,14 +395,8 @@ object Symbols {
 
     /** Is this symbol a user-defined value class? */
     final def isDerivedValueClass(implicit ctx: Context): Boolean =
-      false && // value classes are not supported yet
-      isClass && denot.derivesFrom(defn.AnyValClass) && !isPrimitiveValueClass
-
-    /** Is symbol a primitive value class? */
-    def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains this
-
-    /** Is symbol a phantom class for which no runtime representation exists? */
-    def isPhantomClass(implicit ctx: Context) = defn.PhantomClasses contains this
+      false  // will migrate to ValueClasses.isDerivedValueClass;
+               // unsupported value class code will continue to use this stub while it exists
 
     /** The current name of this symbol */
     final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]

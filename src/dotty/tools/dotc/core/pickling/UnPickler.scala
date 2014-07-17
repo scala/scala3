@@ -53,10 +53,10 @@ object UnPickler {
         val result = restpe.parameterizeWith(tparams)
         for ((msg, pos) <- err)
           ctx.warning(
-            s"""$msg
-               |originally parsed type : ${tp.show}
-               |will be approximated by: ${result.show}.
-               |Proceed at own risk.""".stripMargin)
+            sm"""$msg
+                |originally parsed type : ${tp.show}
+                |will be approximated by: ${result.show}.
+                |Proceed at own risk.""")
         result
       }
       else
@@ -161,8 +161,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
   protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(implicit ctx: Context) = {
     val ex = new BadSignature(
-      s"""error reading Scala signature of $classRoot from $source:
-         |error occured at position $readIndex: $msg""".stripMargin)
+      sm"""error reading Scala signature of $classRoot from $source:
+          |error occured at position $readIndex: $msg""")
     /*if (debug)*/ original.getOrElse(ex).printStackTrace() // !!! DEBUG
     throw ex
   }
@@ -453,7 +453,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         var flags1 = flags
         if (flags is TypeParam) {
           name1 = name1.expandedName(owner)
-          flags1 |= TypeParamCreationFlags | ExpandedName
+          flags1 |= owner.typeParamCreationFlags | ExpandedName
         }
         ctx.newSymbol(owner, name1, flags1, localMemberUnpickler, coord = start)
       case CLASSsym =>
@@ -1080,7 +1080,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         setSym()
         val qualifier = readTreeRef()
         val selector = readNameRef()
-        Select(qualifier, symbol.namedType)
+        qualifier.select(symbol.namedType)
       case IDENTtree =>
         setSymName()
         Ident(symbol.namedType)

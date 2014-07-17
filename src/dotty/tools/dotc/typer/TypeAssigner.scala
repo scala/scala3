@@ -279,7 +279,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.SeqLiteral, elems: List[Tree])(implicit ctx: Context) = {
     val ownType =
       if (ctx.erasedTypes) defn.SeqType
-      else defn.SeqType.appliedTo(ctx.typeComparer.lub(elems.tpes))
+      else defn.SeqType.appliedTo(ctx.typeComparer.lub(elems.tpes).widen)
     tree.withType(ownType)
   }
 

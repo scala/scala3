@@ -14,7 +14,7 @@ class tests extends CompilerTest {
         "-pagewidth", "160")
 
   implicit val defaultOptions = noCheckOptions ++ List(
-    "-Ycheck:front"//, "-Ystop-before:terminal"
+    "-Ycheck:extmethods"//, "-Ystop-before:terminal"
   )
 
   val twice = List("#runs", "2", "-YnoDoubleBindings")
@@ -47,7 +47,6 @@ class tests extends CompilerTest {
   @Test def pos_overloaded() = compileFile(posDir, "overloaded", doErase)
   @Test def pos_templateParents() = compileFile(posDir, "templateParents", doErase)
   @Test def pos_structural() = compileFile(posDir, "structural", doErase)
-  @Test def pos_i39 = compileFile(posDir, "i39", doErase)
   @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess", doErase)
   @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion", doErase)
   @Test def pos_tailcall = compileDir(posDir + "tailcall/", doErase)
@@ -79,7 +78,7 @@ class tests extends CompilerTest {
   @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
   @Test def neg_tailcall_t1672b = compileFile(negDir, "tailcall/t1672b", xerrors = 6)
   @Test def neg_tailcall_t3275 = compileFile(negDir, "tailcall/t3275", xerrors = 1)
-  @Test def neg_tailcall_t6574 = compileFile(negDir, "tailcall/t6574", xerrors = 4)
+  @Test def neg_tailcall_t6574 = compileFile(negDir, "tailcall/t6574", xerrors = 2)
   @Test def neg_tailcall = compileFile(negDir, "tailcall/tailrec", xerrors = 7)
   @Test def neg_tailcall2 = compileFile(negDir, "tailcall/tailrec-2", xerrors = 2)
   @Test def neg_tailcall3 = compileFile(negDir, "tailcall/tailrec-3", xerrors = 2)

@@ -48,8 +48,8 @@ class ClassfileParser(
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
       throw new IOException(
-        s"""class file $classfile is broken, reading aborted with $e.getClass
-           |${Option(e.getMessage).getOrElse("")}""".stripMargin)
+        sm"""class file $classfile is broken, reading aborted with $e.getClass
+            |${Option(e.getMessage).getOrElse("")}""")
   }
 
   private def parseHeader(): Unit = {
@@ -353,7 +353,7 @@ class ClassfileParser(
         val tpname = subName(':'.==).toTypeName
         val expname = if (owner.isClass) tpname.expandedName(owner) else tpname
         val s = ctx.newSymbol(
-          owner, expname, Flags.TypeParamCreationFlags,
+          owner, expname, owner.typeParamCreationFlags,
           typeParamCompleter(index), coord = indexCoord(index))
         if (owner.isClass) owner.asClass.enter(s, owner.decls)
         tparams = tparams + (tpname -> s)
@@ -702,12 +702,12 @@ class ClassfileParser(
               getMember(owner, innerName.toTypeName)
             }
             assert(result ne NoSymbol,
-              s"""failure to resolve inner class:
-                 |externalName = $externalName,
-                 |outerName = $outerName,
-                 |innerName = $innerName
-                 |owner.fullName = owner.showFullName
-                 |while parsing ${classfile}""".stripMargin)
+              sm"""failure to resolve inner class:
+                  |externalName = $externalName,
+                  |outerName = $outerName,
+                  |innerName = $innerName
+                  |owner.fullName = owner.showFullName
+                  |while parsing ${classfile}""")
             result
 
           case None =>
@@ -752,7 +752,7 @@ class ClassfileParser(
 
   private def setPrivateWithin(denot: SymDenotation, jflags: Int)(implicit ctx: Context): Unit = {
     if ((jflags & (JAVA_ACC_PRIVATE | JAVA_ACC_PUBLIC)) == 0)
-      denot.privateWithin = denot.enclosingPackage
+      denot.privateWithin = denot.enclosingPackageClass
   }
 
   private def isPrivate(flags: Int)     = (flags & JAVA_ACC_PRIVATE) != 0

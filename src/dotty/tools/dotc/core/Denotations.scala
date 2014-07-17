@@ -375,7 +375,7 @@ object Denotations {
     final def signature(implicit ctx: Context): Signature = {
       if (isType) Signature.NotAMethod // don't force info if this is a type SymDenotation
       else info match {
-        case info: SignedType =>
+        case info: MethodicType =>
           try info.signature
           catch { // !!! DEBUG
             case ex: Throwable =>
@@ -494,7 +494,8 @@ object Denotations {
         } while (d ne denot)
         initial.syncWithParents
       case _ =>
-        staleSymbolError
+        if (coveredInterval.containsPhaseId(ctx.phaseId)) staleSymbolError
+        else NoDenotation
     }
 
     /** Produce a denotation that is valid for the given context.
@@ -512,7 +513,13 @@ object Denotations {
     def current(implicit ctx: Context): SingleDenotation = {
       val currentPeriod = ctx.period
       val valid = myValidFor
-      assert(valid.code > 0)
+      if (valid.code <= 0) {
+        // can happen if we sit on a stale denotation which has been replaced
+        // wholesale by an installAfter; in this case, proceed to the next
+        // denotation and try again.
+        if (validFor == Nowhere && nextInRun.validFor != Nowhere) return nextInRun.current
+        assert(false)
+      }
 
       if (valid.runId != currentPeriod.runId) bringForward.current
       else {
@@ -551,6 +558,7 @@ object Denotations {
                 cur = next
               }
               cur.validFor = Period(currentPeriod.runId, startPid, transformer.lastPhaseId)
+              //printPeriods(cur)
               //println(s"new denot: $cur, valid for ${cur.validFor}")
             }
             cur.current // multiple transformations could be required
@@ -563,23 +571,28 @@ object Denotations {
             //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
             cur = cur.nextInRun
             cnt += 1
-            assert(cnt <= MaxPossiblePhaseId, s"seems to be a loop in Denotations for $this, currentPeriod = $currentPeriod")
+            assert(cnt <= MaxPossiblePhaseId, demandOutsideDefinedMsg)
           }
           cur
         }
-
       }
     }
+
+    private def demandOutsideDefinedMsg(implicit ctx: Context): String =
+      s"demanding denotation of $this at phase ${ctx.phase}(${ctx.phaseId}) outside defined interval: defined periods are${definedPeriodsString}"
 
     /** Install this denotation to be the result of the given denotation transformer.
      *  This is the implementation of the same-named method in SymDenotations.
      *  It's placed here because it needs access to private fields of SingleDenotation.
+     *  @pre  Can only be called in `phase.next`.
      */
     protected def installAfter(phase: DenotTransformer)(implicit ctx: Context): Unit = {
       val targetId = phase.next.id
       assert(ctx.phaseId == targetId,
         s"denotation update for $this called in phase ${ctx.phase}, expected was ${phase.next}")
       val current = symbol.current
+      // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
+      // printPeriods(current)
       this.nextInRun = current.nextInRun
       this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
       if (current.validFor.firstPhaseId == targetId) {
@@ -587,12 +600,14 @@ object Denotations {
         var prev = current
         while (prev.nextInRun ne current) prev = prev.nextInRun
         prev.nextInRun = this
+        current.validFor = Nowhere
       }
       else {
         // insert this denotation after current
         current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
         current.nextInRun = this
       }
+      // printPeriods(this)
     }
 
     def staleSymbolError(implicit ctx: Context) = {
@@ -602,6 +617,22 @@ object Denotations {
       }
       def msg = s"stale symbol; $this#${symbol.id} $ownerMsg, defined in ${myValidFor}, is referred to in run ${ctx.period}"
       throw new StaleSymbol(msg)
+    }
+
+    /** The period (interval of phases) for which there exists 
+     *  a valid denotation in this flock.
+     */
+    def coveredInterval(implicit ctx: Context): Period = {
+      var cur = this
+      var cnt = 0
+      var interval = validFor
+      do {
+        cur = cur.nextInRun
+        cnt += 1
+        assert(cnt <= MaxPossiblePhaseId, demandOutsideDefinedMsg)
+        interval |= cur.validFor
+      } while (cur ne this)
+      interval
     }
 
     /** For ClassDenotations only:
@@ -614,10 +645,24 @@ object Denotations {
       if (symbol == NoSymbol) symbol.toString
       else s"<SingleDenotation of type $infoOrCompleter>"
 
+
+    def definedPeriodsString: String = {
+      var sb = new StringBuilder()
+      var cur = this
+      var cnt = 0
+      do {
+        sb.append(" " + cur.validFor)
+        cur = cur.nextInRun
+        cnt += 1
+        if (cnt > MaxPossiblePhaseId) { sb.append(" ..."); cur = this }
+      } while (cur ne this)
+      sb.toString
+    }
+
     // ------ PreDenotation ops ----------------------------------------------
 
     final def first = this
-    final def toDenot(pre: Type)(implicit ctx: Context) = this
+    final def toDenot(pre: Type)(implicit ctx: Context): Denotation = this
     final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol eq sym)
     final def containsSig(sig: Signature)(implicit ctx: Context) =
       exists && (signature matches sig)
@@ -764,7 +809,7 @@ object Denotations {
       else DenotUnion(this, that)
   }
 
-  case class DenotUnion(denots1: PreDenotation, denots2: PreDenotation) extends PreDenotation {
+  final case class DenotUnion(denots1: PreDenotation, denots2: PreDenotation) extends PreDenotation {
     assert(denots1.exists && denots2.exists, s"Union of non-existing denotations ($denots1) and ($denots2)")
     def exists = true
     def first = denots1.first

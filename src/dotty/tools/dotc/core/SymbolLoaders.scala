@@ -12,7 +12,7 @@ import scala.compat.Platform.currentTime
 import dotty.tools.io.{ ClassPath, AbstractFile }
 import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, util.Positions._, Names._
 import StdNames._, NameOps._
-import Decorators.StringDecorator
+import Decorators.{StringDecorator, StringInterpolators}
 import pickling.ClassfileParser
 
 object SymbolLoaders {
@@ -69,8 +69,8 @@ class SymbolLoaders {
       // require yjp.jar at runtime. See SI-2089.
       if (ctx.settings.termConflict.isDefault)
         throw new TypeError(
-          s"""$owner contains object and package with same name: $pname
-             |one of them needs to be removed from classpath""".stripMargin)
+          sm"""$owner contains object and package with same name: $pname
+              |one of them needs to be removed from classpath""")
       else if (ctx.settings.termConflict.value == "package") {
         ctx.warning(
           s"Resolving package/object name conflict in favor of package ${preExisting.fullName}. The object will be inaccessible.")

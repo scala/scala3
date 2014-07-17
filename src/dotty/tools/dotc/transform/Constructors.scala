@@ -17,7 +17,8 @@ class Constructors extends TreeTransform {
       val claz = tree.symbol.enclosingClass.asClass
       val zuper = claz.info.parents.head.typeSymbol
       cpy.DefDef(tree, tree.mods, tree.name, tree.tparams, tree.vparamss, tree.tpt, rhs = {
-        val parentCall = Apply(Select(Super(This(claz), tpnme.EMPTY, true), zuper.primaryConstructor), Nil)
+        val parentCall =
+          Super(This(claz), tpnme.EMPTY, true).select(zuper.primaryConstructor).appliedToNone
         if(tree.rhs.isEmpty) parentCall
         else Block(List(parentCall), tree.rhs)
 

@@ -1,7 +1,6 @@
 package test
 
 import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.Symbols
 
 object showClass extends ShowClassTests {
 

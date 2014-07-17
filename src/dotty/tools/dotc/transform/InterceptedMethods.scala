@@ -91,9 +91,8 @@ class InterceptedMethods extends TreeTransform {
       def alt2 = defn.ScalaRuntimeModule.info.member(nme.hash_)
         .suchThat(_.info.firstParamTypes.head.typeSymbol == defn.AnyClass)
 
-      if (defn.ScalaNumericValueClasses contains s) {
-        tpd.Apply(Ident(alt1.termRef), List(tree))
-      } else tpd.Apply(Ident(alt2.termRef), List(tree))
+      Ident((if (defn.ScalaNumericValueClasses contains s) alt1 else alt2).termRef)
+        .appliedTo(tree)
     }
   }
 
@@ -111,9 +110,9 @@ class InterceptedMethods extends TreeTransform {
             PoundPoundValue(qual)
           } else if (Any_comparisons contains tree.fun.symbol.asTerm) {
             if (tree.fun.symbol eq defn.Any_==) {
-              Apply(Select(qual, defn.Any_equals), tree.args)
+              qual.select(defn.Any_equals).appliedToArgs(tree.args)
             } else if (tree.fun.symbol eq defn.Any_!=) {
-              Select(Apply(Select(qual, defn.Any_equals), tree.args), defn.Boolean_!)
+              qual.select(defn.Any_equals).appliedToArgs(tree.args).select(defn.Boolean_!)
             } else unknown
           } /* else if (isPrimitiveValueClass(qual.tpe.typeSymbol)) {
             // todo: this is needed to support value classes
@@ -130,7 +129,7 @@ class InterceptedMethods extends TreeTransform {
             //    we get a primitive form of _getClass trying to target a boxed value
             //    so we need replace that method name with Object_getClass to get correct behavior.
             //    See SI-5568.
-            Apply(Select(qual, defn.Any_getClass), Nil)
+            qual.select(defn.Any_getClass).appliedToNone
           } else {
             unknown
           }

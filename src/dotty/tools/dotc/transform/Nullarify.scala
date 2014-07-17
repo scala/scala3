@@ -85,11 +85,11 @@ class Nullarify extends TreeTransform with InfoTransformer {
     def result(implicit ctx: Context) = {
       tp1.widen match {
         case MethodType(Nil, _) if origType.widenExpr.isInstanceOf[ValueType] =>
-          Apply(tree1, Nil)
+          tree1.appliedToNone
         case _ =>
           origType match {
             case _: ExprType => // it's a by-name parameter
-              Apply(Select(tree1, defn.Function0_apply), Nil)
+              tree1.select(defn.Function0_apply).appliedToNone
             case _ =>
               tree1
           }

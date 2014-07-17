@@ -9,7 +9,6 @@ import Denotations._
 import config.Printers._
 import scala.collection.mutable.{ListBuffer, ArrayBuffer}
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, TreeTransform}
-import dotty.tools.dotc.transform.PostTyperTransformers.PostTyperTransformer
 import dotty.tools.dotc.transform.TreeTransforms
 import TreeTransforms.Separator
 import Periods._
@@ -72,12 +71,10 @@ object Phases {
     /** Squash TreeTransform's beloning to same sublist to a single TreeTransformer
       * Each TreeTransform gets own period,
       * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
-      * first TreeTransformer emitted is PostTyperTransformer that simplifies trees, see it's documentation
       */
     private def squashPhases(phasess: List[List[Phase]]): Array[Phase] = {
       val squashedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
-      var postTyperEmmited = false
       var i = 0
       while (i < phasess.length) {
         if (phasess(i).length > 1) {
@@ -95,17 +92,10 @@ object Phases {
             }
           }
           val transforms = phasess(i).asInstanceOf[List[TreeTransform]]
-          val block =
-            if (!postTyperEmmited) {
-              postTyperEmmited = true
-              new PostTyperTransformer {
-                override def name: String = transformations.map(_.name).mkString("TreeTransform:{", ", ", "}")
-                override def transformations: Array[TreeTransform] = transforms.toArray
-              }
-            } else new TreeTransformer {
-              override def name: String = transformations.map(_.name).mkString("TreeTransform:{", ", ", "}")
-              override def transformations: Array[TreeTransform] = transforms.toArray
-            }
+          val block = new TreeTransformer {
+            override def name: String = transformations.map(_.name).mkString("TreeTransform:{", ", ", "}")
+            override def transformations: Array[TreeTransform] = transforms.toArray
+          }
           squashedPhases += block
           prevPhases ++= phasess(i).map(_.name)
           block.init(this, phasess(i).head.id, phasess(i).last.id)

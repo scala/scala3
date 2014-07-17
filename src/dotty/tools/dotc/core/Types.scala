@@ -813,11 +813,15 @@ object Types {
         if (from1.isEmpty) ctx.subst1(this, from.head, to.head, null)
         else {
           val from2 = from1.tail
-          if (from2.isEmpty) ctx.subst2(this, from.head, to.head, from.tail.head, to.tail.head, null)
+          if (from2.isEmpty) ctx.subst2(this, from.head, to.head, from1.head, to.tail.head, null)
           else ctx.subst(this, from, to, null)
         }
       }
 
+/* Not needed yet:
+    final def substDealias(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type =
+      new ctx.SubstDealiasMap(from, to).apply(this)
+*/
     /** Substitute all types of the form `PolyParam(from, N)` by
      *  `PolyParam(to, N)`.
      */
@@ -1602,16 +1606,21 @@ object Types {
   // and therefore two different poly types would never be equal.
 
   /** A trait that mixes in functionality for signature caching */
-  trait SignedType extends Type {
+  trait MethodicType extends Type {
 
     private[this] var mySignature: Signature = _
     private[this] var mySignatureRunId: Int = NoRunId
 
     protected def computeSignature(implicit ctx: Context): Signature
 
-    protected def resultSignature(implicit ctx: Context) = resultType match {
-      case rtp: SignedType => rtp.signature
+    protected def resultSignature(implicit ctx: Context) = try resultType match {
+      case rtp: MethodicType => rtp.signature
       case tp => Signature(tp, isJava = false)
+    }
+    catch {
+      case ex: AssertionError =>
+        println(i"failure while taking result signture of $resultType")
+        throw ex
     }
 
     final override def signature(implicit ctx: Context): Signature = {
@@ -1623,7 +1632,7 @@ object Types {
     }
   }
 
-  trait MethodOrPoly extends SignedType
+  trait MethodOrPoly extends MethodicType
 
   abstract case class MethodType(paramNames: List[TermName], paramTypes: List[Type])
       (resultTypeExp: MethodType => Type)
@@ -1717,6 +1726,8 @@ object Types {
     def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType
     def apply(paramNames: List[TermName], paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
       apply(paramNames, paramTypes)(_ => resultType)
+    def apply(paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context): MethodType =
+      apply(nme.syntheticParamNames(paramTypes.length), paramTypes)(resultTypeExp)
     def apply(paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
       apply(nme.syntheticParamNames(paramTypes.length), paramTypes, resultType)
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
@@ -1748,7 +1759,7 @@ object Types {
   }
 
   abstract case class ExprType(override val resultType: Type)
-  extends CachedProxyType with TermType with SignedType {
+  extends CachedProxyType with TermType with MethodicType {
     override def underlying(implicit ctx: Context): Type = resultType
     protected def computeSignature(implicit ctx: Context): Signature = resultSignature
     def derivedExprType(resultType: Type)(implicit ctx: Context) =
@@ -2019,19 +2030,31 @@ object Types {
       decls: Scope,
       selfInfo: DotClass /* should be: Type | Symbol */) extends CachedGroundType with TypeType {
 
-    def selfType(implicit ctx: Context): Type = selfInfo match {
-      case NoType =>
-        if (selfTypeCache == null) selfTypeCache = computeSelfType(cls.typeRef, cls.typeParams)
-        selfTypeCache
-      case tp: Type => tp
-      case self: Symbol => self.info
+    /** The self type of a class is the conjunction of
+     *   - the explicit self type if given (or the info of a given self symbol), and
+     *   - the fully applied reference to the class itself.
+     */
+    def selfType(implicit ctx: Context): Type = {
+      if (selfTypeCache == null) {
+        def fullRef = fullyAppliedRef(cls.typeRef, cls.typeParams)
+        selfTypeCache = selfInfo match {
+          case NoType =>
+            fullRef
+          case tp: Type =>
+            if (cls is Module) tp else AndType(tp, fullRef)
+          case self: Symbol =>
+            assert(!(cls is Module))
+            AndType(self.info, fullRef)
+        }
+      }
+      selfTypeCache
     }
 
     private var selfTypeCache: Type = null
 
-    private def computeSelfType(base: Type, tparams: List[TypeSymbol])(implicit ctx: Context): Type = tparams match {
+    private def fullyAppliedRef(base: Type, tparams: List[TypeSymbol])(implicit ctx: Context): Type = tparams match {
       case tparam :: tparams1 =>
-        computeSelfType(
+        fullyAppliedRef(
           RefinedType(base, tparam.name, TypeRef(cls.thisType, tparam).toBounds(tparam)),
           tparams1)
       case nil =>
@@ -2077,8 +2100,8 @@ object Types {
       if (prefix eq this.prefix) this
       else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
-    def derivedClassInfo(prefix: Type = this.prefix, classParents: List[TypeRef] = classParents, selfInfo: DotClass = this.selfInfo)(implicit ctx: Context) =
-      if ((prefix eq this.prefix) && (classParents eq this.classParents) && (selfInfo eq this.selfInfo)) this
+    def derivedClassInfo(prefix: Type = this.prefix, classParents: List[TypeRef] = classParents, decls: Scope = this.decls, selfInfo: DotClass = this.selfInfo)(implicit ctx: Context) =
+      if ((prefix eq this.prefix) && (classParents eq this.classParents) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
       else ClassInfo(prefix, cls, classParents, decls, selfInfo)
 
     override def computeHash = doHash(cls, prefix)
@@ -2431,7 +2454,7 @@ object Types {
         case self: Type => this(self)
         case _ => tp.self
       }
-      tp.derivedClassInfo(prefix1, parents1, self1)
+      tp.derivedClassInfo(prefix1, parents1, tp.decls, self1)
     }
   }
 

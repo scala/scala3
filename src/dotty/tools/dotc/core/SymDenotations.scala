@@ -83,6 +83,9 @@ object SymDenotations {
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = ownerIfExists
 
+    /** Same as owner, except returns NoSymbol for NoSymbol */
+    def maybeOwner: Symbol = if (exists) owner else NoSymbol
+
     /** The flag set */
     final def flags(implicit ctx: Context): FlagSet = { ensureCompleted(); myFlags }
 
@@ -212,6 +215,14 @@ object SymDenotations {
     final def addAnnotation(annot: Annotation): Unit =
       annotations = annot :: myAnnotations
 
+    /** Remove annotation with given class from this denotation */
+    final def removeAnnotation(cls: Symbol)(implicit ctx: Context): Unit =
+      annotations = myAnnotations.filterNot(_ matches cls)
+
+    /** Copy all annotations from given symbol by adding them to this symbol */
+    final def addAnnotations(from: Symbol)(implicit ctx: Context): Unit =
+      from.annotations.foreach(addAnnotation)
+
     @tailrec
     private def dropOtherAnnotations(anns: List[Annotation], cls: Symbol)(implicit ctx: Context): List[Annotation] = anns match {
       case ann :: rest => if (ann matches cls) anns else dropOtherAnnotations(rest, cls)
@@ -320,6 +331,12 @@ object SymDenotations {
     /** Is this symbol an anonymous class? */
     final def isAnonymousClass(implicit ctx: Context): Boolean =
       initial.asSymDenotation.name startsWith tpnme.ANON_CLASS
+
+    /** Is symbol a primitive value class? */
+    def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains symbol
+
+    /** Is symbol a phantom class for which no runtime representation exists? */
+    def isPhantomClass(implicit ctx: Context) = defn.PhantomClasses contains symbol
 
     /** Is this symbol a class representing a refinement? These classes
      *  are used only temporarily in Typer and Unpickler as an intermediate
@@ -447,7 +464,7 @@ object SymDenotations {
       def accessWithin(boundary: Symbol) =
         ctx.owner.isContainedIn(boundary) &&
           (!(this is JavaDefined) || // disregard package nesting for Java
-             ctx.owner.enclosingPackage == boundary.enclosingPackage)
+             ctx.owner.enclosingPackageClass == boundary.enclosingPackageClass)
 
       /** Are we within definition of linked class of `boundary`? */
       def accessWithinLinked(boundary: Symbol) = {
@@ -572,6 +589,12 @@ object SymDenotations {
         NoSymbol
     }
 
+    /** The field accessed by this getter or setter */
+    def accessedField(implicit ctx: Context): Symbol = {
+      val fieldName = if (isSetter) name.asTermName.setterToGetter else name
+      owner.info.decl(fieldName).suchThat(d => !(d is Method)).symbol
+    }
+
     /** The chain of owners of this denotation, starting with the denoting symbol itself */
     final def ownersIterator(implicit ctx: Context) = new Iterator[Symbol] {
       private[this] var current = symbol
@@ -624,8 +647,8 @@ object SymDenotations {
     }
 
     /** The package class containing this denotation */
-    final def enclosingPackage(implicit ctx: Context): Symbol =
-      if (this is PackageClass) symbol else owner.enclosingPackage
+    final def enclosingPackageClass(implicit ctx: Context): Symbol =
+      if (this is PackageClass) symbol else owner.enclosingPackageClass
 
     /** The module object with the same (term-) name as this class or module class,
      *  and which is also defined in the same scope and compilation unit.
@@ -747,7 +770,6 @@ object SymDenotations {
       loop(base.info.baseClasses.dropWhile(owner != _).tail)
     }
 
-
     /** A a member of class `base` is incomplete if
      *  (1) it is declared deferred or
      *  (2) it is abstract override and its super symbol in `base` is
@@ -809,6 +831,11 @@ object SymDenotations {
       else if (this is Contravariant) -1
       else 0
 
+    /** The flags to be used for a type parameter owned by this symbol.
+     *  Overridden by ClassDenotation.
+     */
+    def typeParamCreationFlags: FlagSet = TypeParam
+
     override def toString = {
       val kindString =
         if (myFlags is ModuleClass) "module class"
@@ -848,6 +875,22 @@ object SymDenotations {
     /** Install this denotation as the result of the given denotation transformer. */
     override def installAfter(phase: DenotTransformer)(implicit ctx: Context): Unit =
       super.installAfter(phase)
+
+    /** Remove private modifier from symbol's definition. If this symbol
+     *  is not a constructor nor a static module, rename it by expanding its name to avoid name clashes
+     *  @param base  the fully qualified name of this class will be appended if name expansion is needed
+     */
+    final def makeNotPrivateAfter(base: Symbol, phase: DenotTransformer)(implicit ctx: Context): Unit = {
+      if (this.is(Private)) {
+        val newName =
+          if (this.is(Module) && isStatic || isClassConstructor) name
+          else {
+            if (this.is(Module)) moduleClass.makeNotPrivateAfter(base, phase)
+            name.expandedName(base)
+          }
+        copySymDenotation(name = newName, initFlags = flags &~ Private).installAfter(phase)
+      }
+    }
   }
 
   /** The contents of a class definition during a period
@@ -895,6 +938,15 @@ object SymDenotations {
       case _ => Nil
     }
 
+    /** The symbol of the superclass, NoSymbol if no superclass exists */
+    def superClass(implicit ctx: Context): Symbol = classParents match {
+      case parent :: _ =>
+        val cls = parent.classSymbol
+        if (cls is Trait) NoSymbol else cls
+      case _ =>
+        NoSymbol
+    }
+
     /** The denotation is fully completed: all attributes are fully defined.
      *  ClassDenotations compiled from source are first completed, then fully completed.
      *  @see Namer#ClassCompleter
@@ -938,6 +990,7 @@ object SymDenotations {
       mySuperClassBits = null
       myMemberFingerPrint = FingerPrint.unknown
       myMemberCache = null
+      myMemberCachePeriod = Nowhere
       memberNamesCache = SimpleMap.Empty
     }
 
@@ -1036,6 +1089,8 @@ object SymDenotations {
           (symbol eq defn.NothingClass) ||
             (symbol eq defn.NullClass) && (base ne defn.NothingClass))
 
+    final override def typeParamCreationFlags = ClassTypeParamCreationFlags
+
     private[this] var myMemberFingerPrint: FingerPrint = FingerPrint.unknown
 
     private def computeMemberFingerPrint(implicit ctx: Context): FingerPrint = {
@@ -1070,9 +1125,13 @@ object SymDenotations {
     }
 
     private[this] var myMemberCache: LRUCache[Name, PreDenotation] = null
+    private[this] var myMemberCachePeriod: Period = Nowhere
 
-    private def memberCache: LRUCache[Name, PreDenotation] = {
-      if (myMemberCache == null) myMemberCache = new LRUCache
+    private def memberCache(implicit ctx: Context): LRUCache[Name, PreDenotation] = {
+      if (myMemberCachePeriod != ctx.period) {
+        myMemberCache = new LRUCache
+        myMemberCachePeriod = ctx.period
+      }
       myMemberCache
     }
 
@@ -1289,9 +1348,20 @@ object SymDenotations {
       decls.denotsNamed(cname).first.symbol
     }
 
-    def underlyingOfValueClass: Type = ???
-
-    def valueClassUnbox: Symbol = ???
+    /** If this class has the same `decls` scope reference in `phase` and
+     *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
+     *  @pre  Can only be called in `phase.next`.
+     */
+    def ensureFreshScopeAfter(phase: DenotTransformer)(implicit ctx: Context): Unit = {
+      assert(ctx.phaseId == phase.next.id)
+      val prevCtx = ctx.withPhase(phase)
+      val ClassInfo(pre, _, ps, decls, selfInfo) = classInfo
+      if (classInfo(prevCtx).decls eq decls) {
+        copySymDenotation(
+          info = ClassInfo(pre, classSymbol, ps, decls.cloneScope, selfInfo),
+          initFlags = this.flags &~ Frozen).installAfter(phase)
+      }
+    }
   }
 
   /** The denotation of a package class.

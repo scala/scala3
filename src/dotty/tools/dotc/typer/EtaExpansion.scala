@@ -21,7 +21,7 @@ object EtaExpansion {
   import tpd._
 
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: String = "")(implicit ctx: Context): Tree =
-    if (isIdempotentExpr(expr)) expr
+    if (isPureExpr(expr)) expr
     else {
       val name = ctx.freshName(prefix).toTermName
       val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, expr.tpe.widen, coord = positionCoord(expr.pos))
@@ -83,7 +83,7 @@ object EtaExpansion {
       cpy.Apply(tree, liftApp(defs, fn), liftArgs(defs, fn.tpe, args))
     case TypeApply(fn, targs) =>
       cpy.TypeApply(tree, liftApp(defs, fn), targs)
-    case Select(pre, name) if tpd.isIdempotentRef(tree) =>
+    case Select(pre, name) if isPureRef(tree) =>
       cpy.Select(tree, liftApp(defs, pre), name)
     case Block(stats, expr) =>
       liftApp(defs ++= stats, expr)

@@ -102,8 +102,16 @@ object Flags {
       }
 
     /** The list of non-empty names of flags that are set in this FlagSet */
-    def flagStrings: Seq[String] =
-      (2 to MaxFlag).flatMap(flagString)
+    def flagStrings: Seq[String] = {
+      val rawStrings = (2 to MaxFlag).flatMap(flagString)
+      if (this is Local)
+        rawStrings.filter(_ != "<local>").map {
+          case "private" => "private[this]"
+          case "protected" => "protected[this]"
+          case str => str
+        }
+      else rawStrings
+    }
 
     /** The string representation of this flag set */
     override def toString = flagStrings.mkString(" ")
@@ -316,8 +324,8 @@ object Flags {
   /** Symbol is initialized to the default value, e.g. var x: T = _ */
   final val DefaultInit = termFlag(29, "<defaultinit>")
 
-  /** Symbol is a macro */
-  final val Macro = commonFlag(30, "<macro>")
+  /** Symbol is inlined */
+  final val Inline = commonFlag(30, "inline")
 
   /** Symbol is defined by a Java class */
   final val JavaDefined = commonFlag(31, "<java>")
@@ -387,14 +395,17 @@ object Flags {
   /** A definition that's initialized before the super call (Scala 2.x only) */
   final val Scala2PreSuper = termFlag(58, "<presuper>")
 
-  /** A method that is known to have inherited default parameters */
-  final val InheritedDefaultParams = termFlag(59, "<inherited-default-param>")
+  /** A macro (Scala 2.x only) */
+  final val Macro = commonFlag(59, "<macro>")
 
-  /** A method that is known to no default parameters */
-  final val NoDefaultParams = termFlag(60, "<no-default-param>")
+  /** A method that is known to have inherited default parameters */
+  final val InheritedDefaultParams = termFlag(60, "<inherited-default-param>")
+
+  /** A method that is known to have no default parameters */
+  final val NoDefaultParams = termFlag(61, "<no-default-param>")
 
   /** A denotation that is valid in all run-ids */
-  final val Permanent = commonFlag(61, "<permanent>")
+  final val Permanent = commonFlag(62, "<permanent>")
 
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
@@ -405,7 +416,10 @@ object Flags {
 
   /** Flags representing modifiers that can appear in trees */
   final val ModifierFlags =
-    SourceModifierFlags | Trait | Module | Param | Synthetic | Package
+    SourceModifierFlags | Module | Param | Synthetic | Package | Local
+      // | Trait is subsumed by commonFlags(Lazy) from SourceModifierFlags
+
+  assert(ModifierFlags.isTermFlags && ModifierFlags.isTypeFlags)
 
   /** Flags representing access rights */
   final val AccessFlags = Private | Protected | Local
@@ -438,8 +452,8 @@ object Flags {
   /** The flags of the self symbol */
   final val SelfSymFlags = Private | Local | Deferred
 
-  /** The flags of a type parameter */
-  final val TypeParamCreationFlags = TypeParam | Deferred | Protected | Local
+  /** The flags of a class type parameter */
+  final def ClassTypeParamCreationFlags = TypeParam | Deferred | Protected | Local
 
   /** Flags that can apply to both a module val and a module class, except those that
     *  are added at creation anyway

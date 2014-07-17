@@ -37,7 +37,7 @@ class Definitions {
     scope.enter(newSymbol(cls, name, flags, TypeBounds.empty))
 
   private def newTypeParam(cls: ClassSymbol, name: TypeName, flags: FlagSet, scope: MutableScope) =
-    newTypeField(cls, name, flags | TypeParamCreationFlags, scope)
+    newTypeField(cls, name, flags | ClassTypeParamCreationFlags, scope)
 
   private def newSyntheticTypeParam(cls: ClassSymbol, scope: MutableScope, paramFlags: FlagSet, suffix: String = "T0") =
     newTypeParam(cls, suffix.toTypeName.expandedName(cls), ExpandedName | paramFlags, scope)
@@ -409,20 +409,20 @@ class Definitions {
 
   lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
 
-  def isTupleType(tp: Type) = {
+  def isTupleType(tp: Type)(implicit ctx: Context) = {
     val arity = tp.dealias.argInfos.length
     arity <= MaxTupleArity && (tp isRef TupleClass(arity))
   }
 
-  def isProductSubType(tp: Type) =
+  def isProductSubType(tp: Type)(implicit ctx: Context) =
     (tp derivesFrom ProductClass) && tp.baseClasses.exists(ProductClasses contains _)
 
-  def isFunctionType(tp: Type) = {
+  def isFunctionType(tp: Type)(implicit ctx: Context) = {
     val arity = functionArity(tp)
     0 <= arity && arity <= MaxFunctionArity && (tp isRef FunctionClass(arity))
   }
 
-  def functionArity(tp: Type) = tp.dealias.argInfos.length - 1
+  def functionArity(tp: Type)(implicit ctx: Context) = tp.dealias.argInfos.length - 1
 
   // ----- LambdaXYZ traits ------------------------------------------
 
@@ -544,7 +544,7 @@ class Definitions {
   val BooleanEnc = 17
   val UnitEnc = 19
 
-  def isValueSubClass(cls1: Symbol, cls2: Symbol) =
+  def isValueSubClass(cls1: Symbol, cls2: Symbol)(implicit ctx: Context) =
     valueClassEnc(cls2) % valueClassEnc(cls1) == 0
 
   // ----- Initialization ---------------------------------------------------

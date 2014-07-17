@@ -205,7 +205,11 @@ trait Substituters { this: Context =>
   final class SubstMap(from: List[Symbol], to: List[Type]) extends DeepTypeMap {
     def apply(tp: Type): Type = subst(tp, from, to, this)
   }
-
+/* not needed yet
+  final class SubstDealiasMap(from: List[Symbol], to: List[Type]) extends SubstMap(from, to) {
+    override def apply(tp: Type): Type = subst(tp.dealias, from, to, this)
+  }
+*/
   final class SubstSymMap(from: List[Symbol], to: List[Symbol]) extends DeepTypeMap {
     def apply(tp: Type): Type = substSym(tp, from, to, this)
   }

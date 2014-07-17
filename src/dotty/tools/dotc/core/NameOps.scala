@@ -47,6 +47,13 @@ object NameOps {
     }
   }
 
+  object SuperAccessorName {
+    val pre = nme.SUPER_PREFIX
+    def apply(name: TermName): TermName = pre ++ name
+    def unapply(name: TermName): Option[TermName] =
+      if (name startsWith pre) Some(name.drop(pre.length).asTermName) else None
+  }
+
   implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
     import nme._
 
@@ -59,7 +66,6 @@ object NameOps {
     def isLocalDummyName = name startsWith LOCALDUMMY_PREFIX
     def isLoopHeaderLabel = (name startsWith WHILE_PREFIX) || (name startsWith DO_WHILE_PREFIX)
     def isProtectedAccessorName = name startsWith PROTECTED_PREFIX
-    def isSuperAccessorName = name startsWith SUPER_PREFIX
     def isReplWrapperName = name containsSlice INTERPRETER_IMPORT_WRAPPER
     def isSetterName = name endsWith SETTER_SUFFIX
     def isTraitSetterName = isSetterName && (name containsSlice TRAIT_SETTER_SEPARATOR)
@@ -125,6 +131,9 @@ object NameOps {
     def adjustIfModuleClass(flags: Flags.FlagSet): N =
       if (flags is (ModuleClass, butNot = Package)) name.asTypeName.moduleClassName.asInstanceOf[N]
       else name
+
+    /** The superaccessor for method with given name */
+    def superName: TermName =  (nme.SUPER_PREFIX ++ name).toTermName
 
     /** The expanded name of `name` relative to this class `base` with given `separator`
      */
@@ -247,17 +256,13 @@ object NameOps {
       else -1
     }
 
-    /** The name of a super-accessor */
-    def superAccessorName: TermName =
-      SUPER_PREFIX ++ name
-
     /** The name of an accessor for protected symbols. */
     def protectedAccessorName: TermName =
-      PROTECTED_PREFIX ++ name
+      PROTECTED_PREFIX ++ name.unexpandedName()
 
     /** The name of a setter for protected symbols. Used for inherited Java fields. */
-    def protectedSetterName(name: Name): TermName =
-      PROTECTED_SET_PREFIX ++ name
+    def protectedSetterName: TermName =
+      PROTECTED_SET_PREFIX ++ name.unexpandedName()
 
     def moduleVarName: TermName =
       name ++ MODULE_VAR_SUFFIX
