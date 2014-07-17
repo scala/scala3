@@ -57,19 +57,23 @@ class ElimRepeated extends TreeTransform with InfoTransformer { thisTransformer 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
     transformTypeOfTree(tree)
 
+  /** If method overrides a Java varargs method, add a varargs bridge.
+   */
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     assert(ctx.phase == thisTransformer)
-    def overridesJava = {
-      val overridden = tree.symbol.allOverriddenSymbols
-      overridden.hasNext && overridden.forall(_ is JavaDefined)
-    }
+    def overridesJava = tree.symbol.allOverriddenSymbols.exists(_ is JavaDefined)
     if (tree.symbol.info.isVarArgsMethod && overridesJava)
       addVarArgsBridge(tree)(ctx.withPhase(thisTransformer.next))
     else
       tree
   }
 
-  /** add varargs bridge method
+  /** Add a Java varargs bridge
+   *  @param  ddef  the original method definition which is assumed to override
+   *                a Java varargs method JM up to this phase.
+   *  @return  a thicket consisting of `ddef` and a varargs bridge method
+   *           which overrides the Java varargs method JM from this phase on
+   *           and forwards to `ddef`.
    */
   private def addVarArgsBridge(ddef: DefDef)(implicit ctx: Context): Tree = {
     val original = ddef.symbol.asTerm
@@ -87,6 +91,7 @@ class ElimRepeated extends TreeTransform with InfoTransformer { thisTransformer 
     Thicket(ddef, bridgeDef)
   }
 
+  /** Convert type from Scala to Java varargs method */
   private def toJavaVarArgs(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp: PolyType =>
       tp.derivedPolyType(tp.paramNames, tp.paramBounds, toJavaVarArgs(tp.resultType))
