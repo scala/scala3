@@ -142,7 +142,7 @@ trait FullParameterization {
    *  followed by the class parameters of its enclosing class.
    */
   private def allInstanceTypeParams(originalDef: DefDef)(implicit ctx: Context): List[Symbol] =
-    originalDef.tparams.map(_.symbol) ::: originalDef.symbol.owner.typeParams
+    originalDef.tparams.map(_.symbol) ::: originalDef.symbol.enclosingClass.typeParams
 
   /** Given an instance method definition `originalDef`, return a
    *  fully parameterized method definition derived from `originalDef`, which
@@ -152,7 +152,7 @@ trait FullParameterization {
   def fullyParameterizedDef(derived: TermSymbol, originalDef: DefDef)(implicit ctx: Context): Tree =
     polyDefDef(derived, trefs => vrefss => {
       val origMeth = originalDef.symbol
-      val origClass = origMeth.owner.asClass
+      val origClass = origMeth.enclosingClass.asClass
       val origTParams = allInstanceTypeParams(originalDef)
       val origVParams = originalDef.vparamss.flatten map (_.symbol)
       val thisRef :: argRefs = vrefss.flatten
@@ -219,7 +219,7 @@ trait FullParameterization {
   def forwarder(derived: TermSymbol, originalDef: DefDef)(implicit ctx: Context): Tree =
     ref(derived.termRef)
       .appliedToTypes(allInstanceTypeParams(originalDef).map(_.typeRef))
-      .appliedTo(This(originalDef.symbol.owner.asClass))
+      .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
       .appliedToArgss(originalDef.vparamss.nestedMap(vparam => ref(vparam.symbol)))
       .withPos(originalDef.rhs.pos)
 }
