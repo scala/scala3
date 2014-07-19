@@ -176,7 +176,7 @@ have more than one type parameter. For instance, here is a trait with contravari
     trait Lambda$NP[type -$hkArg$0, +$hkArg1] { type +Apply } extends Lambda$IP with Lambda$PI
 
 Aside: the `+` prefix in front of `Apply` indicates that `Apply` is a covariant type field. Dotty
-admits variance annotations on type members).
+admits variance annotations on type members.
 
 The definition of `Lambda$NP` shows that `Lambda` traits form a subtyping hierarchy: Traits which
 have covariant or contravariant type parameters are subtypes of traits which don't. The supertraits
