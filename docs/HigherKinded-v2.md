@@ -75,7 +75,7 @@ Type parameters in the encodings
 The notion of type parameters makes sense even for encoded types,
 which do not contain parameter lists in their syntax. Specifically,
 the type parameters of a type are a sequence of type fields that
-correspond to paraneters in the unencoded type. They are determined as
+correspond to parameters in the unencoded type. They are determined as
 follows.
 
  - The type parameters of a class or trait type are those parameter fields declared in the class
