@@ -173,7 +173,7 @@ The `I` suffix of the `Lambda` trait indicates that it has one invariant type pa
 Other suffixes are `P` for covariant type parameters, and `N` for contravariant type parameters. Lambda traits can
 have more than one type parameter. For instance, here is a trait with contravariant and covariant type parameters:
 
-    trait Lambda$NP[type -$hkArg$0, +$hkArg1] { type +Apply } extends Lambda$IP with Lambda$PI
+    trait Lambda$NP[type -$hkArg$0, +$hkArg1] { type +Apply } extends Lambda$IP with Lambda$NI
 
 Aside: the `+` prefix in front of `Apply` indicates that `Apply` is a covariant type field. Dotty
 admits variance annotations on type members.
