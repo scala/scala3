@@ -1166,9 +1166,7 @@ object Types {
       TermRef.withSig(prefix, name.asTermName, sig)
 
     protected def loadDenot(implicit ctx: Context): Denotation = {
-      val d =
-        if (name.isInheritedName) prefix.nonPrivateMember(name.revertInherited)
-        else prefix.member(name)
+      val d = asMemberOf(prefix)
       if (d.exists || ctx.phaseId == FirstPhaseId || !lastDenotation.isInstanceOf[SymDenotation])
         d
       else { // name has changed; try load in earlier phase and make current
@@ -1177,6 +1175,10 @@ object Types {
         else throw new Error(s"failure to reload $this")
       }
     }
+
+    protected def asMemberOf(prefix: Type)(implicit ctx: Context) =
+      if (name.isInheritedName) prefix.nonPrivateMember(name.revertInherited)
+      else prefix.member(name)
 
     def symbol(implicit ctx: Context): Symbol = {
       val now = ctx.period
@@ -1289,7 +1291,7 @@ object Types {
           sig != Signature.OverloadedSignature &&
           symbol.exists) {
         val ownSym = symbol
-        TermRef(prefix, name).withDenot(prefix.member(name).disambiguate(_ eq ownSym))
+        TermRef(prefix, name).withDenot(asMemberOf(prefix).disambiguate(_ eq ownSym))
       }
       else TermRef.withSig(prefix, name, sig)
     }
