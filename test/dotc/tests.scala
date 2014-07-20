@@ -49,6 +49,7 @@ class tests extends CompilerTest {
   @Test def pos_structural() = compileFile(posDir, "structural", doErase)
   @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess", doErase)
   @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion", doErase)
+  @Test def pos_zoo = compileFile(posDir, "zoo", doErase)
   @Test def pos_tailcall = compileDir(posDir + "tailcall/", doErase)
   @Test def pos_nullarify = compileFile(posDir, "nullarify", "-Ycheck:nullarify" :: doErase)
 
