@@ -32,7 +32,7 @@ object typers {
   }
 
   class List[+T] {
-    def :: (x: T) = new :: (x, this)
+    def :: [U >: T](x: U): List[U] = new :: (x, this)
 
     def len: Int = this match {
       case x :: xs1 => 1 + xs1.len

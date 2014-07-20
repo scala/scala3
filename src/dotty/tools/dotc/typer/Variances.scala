@@ -1,5 +1,5 @@
 package dotty.tools.dotc
-package transform
+package typer
 
 import dotty.tools.dotc.ast.{Trees, tpd}
 import core._
@@ -90,4 +90,14 @@ object Variances {
     case _ =>
       Bivariant
   }
+
+  def varianceString(v: Variance) =
+    if (v is Covariant) "covariant"
+    else if (v is Contravariant) "contravariant"
+    else "invariant"
+
+  def varianceString(v: Int) =
+    if (v > 0) "+"
+    else if (v < 0) "-"
+    else ""
 }
