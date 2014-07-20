@@ -70,7 +70,7 @@ class Splitter extends TreeTransform {
     }
 
     def isStructuralSelect(tp: Type): Boolean = tp.stripTypeVar match {
-      case tp: RefinedType => tp.refinedName == name || isStructuralSelect(tp)
+      case tp: RefinedType => tp.refinedName == name || isStructuralSelect(tp.parent)
       case tp: TypeProxy => isStructuralSelect(tp.underlying)
       case AndType(tp1, tp2) => isStructuralSelect(tp1) || isStructuralSelect(tp2)
       case _ => false

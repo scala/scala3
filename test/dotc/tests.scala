@@ -75,6 +75,7 @@ class tests extends CompilerTest {
       defaultOptions = noCheckOptions)
         // -Ycheck fails because there are structural types involving higher-kinded types.
         // these are illegal, but are tested only later.
+  @Test def neg_zoo = compileFile(negDir, "zoo", xerrors = 1)
   @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
   @Test def neg_tailcall_t1672b = compileFile(negDir, "tailcall/t1672b", xerrors = 6)
   @Test def neg_tailcall_t3275 = compileFile(negDir, "tailcall/t3275", xerrors = 1)
