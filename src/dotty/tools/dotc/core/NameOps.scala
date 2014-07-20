@@ -73,6 +73,7 @@ object NameOps {
     def isModuleClassName = name endsWith MODULE_SUFFIX
     def isImportName = name startsWith IMPORT
     def isInheritedName = name.length > 0 && name.head == '(' && name.startsWith(nme.INHERITED)
+    def isDefaultGetterName = name.isTermName && name.asTermName.defaultGetterIndex >= 0
 
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
