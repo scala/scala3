@@ -7,14 +7,16 @@ import Types._, Contexts._, Flags._, Symbols._, Annotations._, Trees._, NameOps.
 import Decorators._
 import Variances._
 
+/** Provides `check` method to check that all top-level definitions
+ *  in tree are variance correct. Does not recurse inside methods.
+ *  The method should be invoked once for each Template.
+ */
 object VarianceChecker {
   private case class VarianceError(tvar: Symbol, required: Variance)
   def check(tree: tpd.Tree)(implicit ctx: Context) =
     new VarianceChecker()(ctx).Traverser.traverse(tree)
 }
 
-/** See comments at scala.reflect.internal.Variance.
- */
 class VarianceChecker()(implicit ctx: Context) {
   import VarianceChecker._
   import tpd._
