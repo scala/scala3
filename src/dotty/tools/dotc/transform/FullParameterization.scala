@@ -98,7 +98,7 @@ trait FullParameterization {
     def resultType(mapClassParams: Type => Type) = {
       val thisParamType = mapClassParams(clazz.classInfo.selfType)
       MethodType(nme.SELF :: Nil, thisParamType :: Nil)(mt =>
-        mapClassParams(origResult).substThis(clazz, MethodParam(mt, 0)))
+        mapClassParams(origResult).substThisUnlessStatic(clazz, MethodParam(mt, 0)))
     }
 
     /** Replace class type parameters by the added type parameters of the polytype `pt` */
@@ -203,7 +203,7 @@ trait FullParameterization {
         typeMap = rewireType(_)
           .subst(origTParams, trefs)
           .subst(origVParams, argRefs.map(_.tpe))
-          .substThis(origClass, thisRef.tpe),
+          .substThisUnlessStatic(origClass, thisRef.tpe),
         ownerMap = (sym => if (sym eq origMeth) derived else sym),
         treeMap = {
           case tree: This if tree.symbol == origClass => thisRef
