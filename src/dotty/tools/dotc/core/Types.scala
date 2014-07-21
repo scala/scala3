@@ -832,6 +832,10 @@ object Types {
     final def substThis(cls: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
       ctx.substThis(this, cls, tp, null)
 
+    /** As substThis, but only is class is a static owner (i.e. a globally accessible object) */
+    final def substThisUnlessStatic(cls: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
+      if (cls.isStaticOwner) this else ctx.substThis(this, cls, tp, null)
+
     /** Substitute all occurrences of `RefinedThis(rt)` by `tp` */
     final def substThis(rt: RefinedType, tp: Type)(implicit ctx: Context): Type =
       ctx.substThis(this, rt, tp, null)
