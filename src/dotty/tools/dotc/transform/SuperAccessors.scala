@@ -356,7 +356,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
 
               case Super(_, mix) =>
                 if ((sym.isTerm) && !(sym is Method) || (sym is Accessor)) {
-                  ctx.error(s"super may be not be used on ${sym.accessedFieldOrGetter orElse sym}", tree.pos)
+                  ctx.error(s"super may be not be used on ${sym.underlyingSymbol}", tree.pos)
                 } else if (isDisallowed(sym)) {
                   ctx.error(s"super not allowed here: use this.${name.decode} instead", tree.pos)
                 }

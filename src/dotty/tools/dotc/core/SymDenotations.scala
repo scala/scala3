@@ -598,6 +598,13 @@ object SymDenotations {
       field orElse getter
     }
 
+    /** The field accessed by a getter or setter, or
+     *  if it does not exists, the getter of a setter, or
+     *  if that does not exist the symbol itself.
+     */
+    def underlyingSymbol(implicit ctx: Context): Symbol =
+      if (is(Accessor)) accessedFieldOrGetter orElse symbol else symbol
+
     /** The chain of owners of this denotation, starting with the denoting symbol itself */
     final def ownersIterator(implicit ctx: Context) = new Iterator[Symbol] {
       private[this] var current = symbol
