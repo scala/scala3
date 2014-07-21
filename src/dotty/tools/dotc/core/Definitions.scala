@@ -196,7 +196,6 @@ class Definitions {
     lazy val Array_update                = ctx.requiredMethod(ArrayClass, nme.update)
     lazy val Array_length                = ctx.requiredMethod(ArrayClass, nme.length)
     lazy val Array_clone                 = ctx.requiredMethod(ArrayClass, nme.clone_)
-  lazy val uncheckedStableClass: ClassSymbol = ctx.requiredClass("scala.annotation.unchecked.uncheckedStable")
 
   lazy val UnitClass = valueClassSymbol("scala.Unit", BoxedUnitClass, java.lang.Void.TYPE, UnitEnc)
   lazy val BooleanClass = valueClassSymbol("scala.Boolean", BoxedBooleanClass, java.lang.Boolean.TYPE, BooleanEnc)
@@ -296,6 +295,8 @@ class Definitions {
   lazy val AnnotationDefaultAnnot = ctx.requiredClass("dotty.annotation.internal.AnnotationDefault")
   lazy val ThrowsAnnot = ctx.requiredClass("scala.throws")
   lazy val UncheckedAnnot = ctx.requiredClass("scala.unchecked")
+  lazy val UncheckedStableAnnot = ctx.requiredClass("scala.annotation.unchecked.uncheckedStable")
+  lazy val UncheckedVarianceAnnot = ctx.requiredClass("scala.annotation.unchecked.uncheckedVariance")
   lazy val VolatileAnnot = ctx.requiredClass("scala.volatile")
 
   // convenient one-parameter method types

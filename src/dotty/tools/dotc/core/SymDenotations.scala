@@ -402,7 +402,7 @@ object SymDenotations {
     final def isStable(implicit ctx: Context) = {
       val isUnstable =
         (this is UnstableValue) ||
-        ctx.isVolatile(info) && !hasAnnotation(defn.uncheckedStableClass)
+        ctx.isVolatile(info) && !hasAnnotation(defn.UncheckedStableAnnot)
       (this is Stable) || isType || {
         if (isUnstable) false
         else { setFlag(Stable); true }

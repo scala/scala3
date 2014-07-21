@@ -500,6 +500,9 @@ object Flags {
   /** A parameter or parameter accessor */
   final val ParamOrAccessor = Param | ParamAccessor
 
+  /** A type parameter or type parameter accessor */
+  final val TypeParamOrAccessor = TypeParam | TypeParamAccessor
+
   /** A covariant type parameter instance */
   final val LocalCovariant = allOf(Local, Covariant)
 
