@@ -94,7 +94,7 @@ class TreeChecker {
           ownerMatches(symOwner, ctxOwner.owner)
       for (tree <- trees if tree.isDef)
         assert(ownerMatches(tree.symbol.owner, ctx.owner),
-               i"bad owner; $tree has owner ${tree.symbol.owner}, expected was ${ctx.owner}")
+               i"bad owner; $tree has owner ${tree.symbol.owner.showLocated}, expected was ${ctx.owner.showLocated}")
       super.index(trees)
     }
   }
