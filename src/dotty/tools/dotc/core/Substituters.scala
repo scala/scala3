@@ -240,7 +240,7 @@ trait Substituters { this: Context =>
     def apply(tp: Type): Type = subst(tp, from, to, this)
   }
 
-  final class SubstDealiasMap(from: List[Symbol], to: List[Type]) extends SubstMap(from, to) {
+  final class SubstDealiasMap(from: List[Symbol], to: List[Type]) extends DeepTypeMap {
     override def apply(tp: Type): Type = substDealias(tp, from, to, this)
   }
 
