@@ -818,10 +818,17 @@ object Types {
         }
       }
 
-/* Not needed yet:
+    /** Same as `subst` but follows aliases as a fallback. When faced with a reference
+     *  to an alias type, where normal substiution does not yield a new type, the
+     *  substitution is instead applied to the alias. If that yields a new type,
+     *  this type is returned, outherwise the original type (not the alias) is returned.
+     *  A use case for this method is if one wants to substitute the type parameters
+     *  of a class and also wants to substitute any parameter accessors that alias
+     *  the type parameters.
+     */
     final def substDealias(from: List[Symbol], to: List[Type])(implicit ctx: Context): Type =
-      new ctx.SubstDealiasMap(from, to).apply(this)
-*/
+      ctx.substDealias(this, from, to, null)
+
     /** Substitute all types of the form `PolyParam(from, N)` by
      *  `PolyParam(to, N)`.
      */

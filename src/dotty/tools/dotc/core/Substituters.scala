@@ -89,6 +89,40 @@ trait Substituters { this: Context =>
     }
   }
 
+  final def substDealias(tp: Type, from: List[Symbol], to: List[Type], theMap: SubstDealiasMap): Type = {
+    tp match {
+      case tp: NamedType =>
+        val sym = tp.symbol
+        var fs = from
+        var ts = to
+        while (fs.nonEmpty) {
+          if (fs.head eq sym) return ts.head
+          fs = fs.tail
+          ts = ts.tail
+        }
+        if (sym.isStatic && !existsStatic(from)) tp
+        else {
+          val prefix1 = substDealias(tp.prefix, from, to, theMap)
+          if (prefix1 ne tp.prefix) tp.derivedSelect(prefix1)
+          else if (sym.isAliasType) {
+            val hi = sym.info.bounds.hi
+            val hi1 = substDealias(hi, from, to, theMap)
+            if (hi1 eq hi) tp else hi1
+          }
+          else tp
+        }
+      case _: ThisType | _: BoundType | NoPrefix =>
+        tp
+      case tp: RefinedType =>
+        tp.derivedRefinedType(substDealias(tp.parent, from, to, theMap), tp.refinedName, substDealias(tp.refinedInfo, from, to, theMap))
+      case tp: TypeBounds if tp.lo eq tp.hi =>
+        tp.derivedTypeAlias(substDealias(tp.lo, from, to, theMap))
+      case _ =>
+        (if (theMap != null) theMap else new SubstDealiasMap(from, to))
+          .mapOver(tp)
+    }
+  }
+
   final def substSym(tp: Type, from: List[Symbol], to: List[Symbol], theMap: SubstSymMap): Type =
     tp match {
       case tp: NamedType =>
@@ -205,11 +239,11 @@ trait Substituters { this: Context =>
   final class SubstMap(from: List[Symbol], to: List[Type]) extends DeepTypeMap {
     def apply(tp: Type): Type = subst(tp, from, to, this)
   }
-/* not needed yet
+
   final class SubstDealiasMap(from: List[Symbol], to: List[Type]) extends SubstMap(from, to) {
-    override def apply(tp: Type): Type = subst(tp.dealias, from, to, this)
+    override def apply(tp: Type): Type = substDealias(tp, from, to, this)
   }
-*/
+
   final class SubstSymMap(from: List[Symbol], to: List[Symbol]) extends DeepTypeMap {
     def apply(tp: Type): Type = substSym(tp, from, to, this)
   }

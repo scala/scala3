@@ -104,7 +104,7 @@ trait FullParameterization {
     /** Replace class type parameters by the added type parameters of the polytype `pt` */
     def mapClassParams(tp: Type, pt: PolyType): Type = {
       val classParamsRange = (mtparamCount until mtparamCount + ctparams.length).toList
-      tp.subst(clazz.typeParams, classParamsRange map (PolyParam(pt, _)))
+      tp.substDealias(clazz.typeParams, classParamsRange map (PolyParam(pt, _)))
     }
 
     /** The bounds for the added type paraneters of the polytype `pt` */
@@ -201,7 +201,7 @@ trait FullParameterization {
 
       new TreeTypeMap(
         typeMap = rewireType(_)
-          .subst(origTParams, trefs)
+          .substDealias(origTParams, trefs)
           .subst(origVParams, argRefs.map(_.tpe))
           .substThisUnlessStatic(origClass, thisRef.tpe),
         ownerMap = (sym => if (sym eq origMeth) derived else sym),
