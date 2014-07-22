@@ -144,7 +144,7 @@ class LazyValTranformContext {
       *     flag = true
       *     target
       *     }
-      *   }`
+      *   }
       */
 
     def mkNonThreadSafeDef(target: Symbol, flag: Symbol, rhs: Tree)(implicit ctx: Context) = {
