@@ -1,6 +1,5 @@
+import sbt.Keys._
 import sbt._
-import Keys._
-import Process._
 
 object DottyBuild extends Build {
 
@@ -74,4 +73,51 @@ object DottyBuild extends Build {
   )
 
   lazy val dotty = Project(id = "dotty", base = file("."), settings = defaults)
+
+  lazy val benchmarkSettings = Defaults.defaultSettings ++ Seq(
+
+    // to get Scala 2.11
+    resolvers += Resolver.sonatypeRepo("releases"),
+
+    baseDirectory in (Test,run) := (baseDirectory in dotty).value,
+
+
+    libraryDependencies ++= Seq("com.storm-enroute" %% "scalameter" % "0.6" % Test,
+      "com.novocode" % "junit-interface" % "0.11-RC1"),
+    testFrameworks += new TestFramework("org.scalameter.ScalaMeterFramework"),
+
+    // scalac options
+    scalacOptions in Global ++= Seq("-feature", "-deprecation", "-language:_"),
+
+    javacOptions ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
+
+    fork in Test := true,
+    parallelExecution in Test := false,
+
+    // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
+    javaOptions <++= (dependencyClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
+      // put the Scala {library, reflect, compiler} in the classpath
+      val path = for {
+        file <- attList.map(_.data)
+        path = file.getAbsolutePath
+        prefix = if(path.endsWith(".jar")) "p" else "a"
+      } yield "-Xbootclasspath/"+ prefix +":" + path
+      // dotty itself needs to be in the bootclasspath
+      val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
+      // System.err.println("BOOTPATH: " + fullpath)
+
+      val travis_build = // propagate if this is a travis build
+        if (sys.props.isDefinedAt(TRAVIS_BUILD))
+          List(s"-D$TRAVIS_BUILD=${sys.props(TRAVIS_BUILD)}")
+        else
+          List()
+      val res = agentOptions ::: travis_build ::: fullpath
+      println("Running with javaOptions: " +res)
+      res
+    }
+  )
+
+
+  lazy val benchmarks = Project(id = "dotty-bench", settings = benchmarkSettings,
+    base = file("bench")) dependsOn(dotty % "compile->test")
 }
