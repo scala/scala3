@@ -32,11 +32,11 @@ object DenotTransformers {
     def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation
   }
 
+  /** A transformer that only transforms the info field of denotations */
   trait InfoTransformer extends DenotTransformer {
 
     def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type
 
-    /** The transformation method */
     def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
       val info1 = transformInfo(ref.info, ref.symbol)
       if (info1 eq ref.info) ref
@@ -44,6 +44,17 @@ object DenotTransformers {
         case ref: SymDenotation => ref.copySymDenotation(info = info1)
         case _ => ref.derivedSingleDenotation(ref.symbol, info1)
       }
+    }
+  }
+
+  /** A transformer that only transforms SymDenotations */
+  trait SymTransformer extends DenotTransformer {
+
+    def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation
+
+    def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
+      case ref: SymDenotation => transformSym(ref)
+      case _ => ref
     }
   }
 

@@ -22,7 +22,7 @@ class Compiler {
       List(new Companions),
       List(new SuperAccessors),
       // pickling and refchecks goes here
-      List(new ElimRepeated/*, new ElimLocals*/),
+      List(new ElimRepeated, new ElimLocals),
       List(new ExtensionMethods),
       List(new TailRec),
       List(new PatternMatcher,
