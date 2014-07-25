@@ -41,6 +41,9 @@ object DottyBuild extends Build {
 
     javacOptions ++= Seq("-Xlint:unchecked", "-Xlint:deprecation"),
 
+    // enable improved incremental compilation algorithm
+    incOptions := incOptions.value.withNameHashing(true),
+
     // enable verbose exception messages for JUnit
     testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "--run-listener=test.ContextEscapeDetector"),
     // Adjust classpath for running dotty
