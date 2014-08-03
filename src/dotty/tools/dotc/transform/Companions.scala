@@ -14,8 +14,7 @@ import Names.Name
 import NameOps._
 
 
-/** A transformer that provides a convenient way to create companion objects
-  */
+/** A transformer that creates companion objects for all classes except module classes. */
 class Companions extends TreeTransform with IdentityDenotTransformer { thisTransformer =>
   import ast.tpd._
 

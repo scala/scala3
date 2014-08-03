@@ -66,4 +66,6 @@ class ReTyper extends Typer {
 
   override def addTypedModifiersAnnotations(mods: untpd.Modifiers, sym: Symbol)(implicit ctx: Context): Modifiers =
     typedModifiers(mods, sym)
+
+  override def checkVariance(tree: Tree)(implicit ctx: Context) = ()
 }

@@ -844,7 +844,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     checkNoDoubleDefs(cls)
     val impl1 = cpy.Template(impl, constr1, parents1, self1, body1)
       .withType(dummy.termRef)
-    VarianceChecker.check(impl1)
+    checkVariance(impl1)
     assignType(cpy.TypeDef(cdef, mods1, name, impl1), cls)
 
     // todo later: check that
@@ -855,6 +855,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     // 3. Types do not override classes.
     // 4. Polymorphic type defs override nothing.
   }
+
+  /** Overridden in retyper */
+  def checkVariance(tree: Tree)(implicit ctx: Context) = VarianceChecker.check(tree)
 
   def localDummy(cls: ClassSymbol, impl: untpd.Template)(implicit ctx: Context): Symbol =
     ctx.newLocalDummy(cls, impl.pos)
