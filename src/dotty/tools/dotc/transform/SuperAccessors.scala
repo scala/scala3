@@ -220,7 +220,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
 
       try tree match {
         // Don't transform patterns or strange trees will reach the matcher (ticket #4062)
-        // TODO Drop once this runs after pattern matcher
+        // TODO Query `ctx.mode is Pattern` instead.
         case CaseDef(pat, guard, body) =>
           cpy.CaseDef(tree, pat, transform(guard), transform(body))
 

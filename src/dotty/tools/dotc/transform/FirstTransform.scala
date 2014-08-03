@@ -4,18 +4,26 @@ package transform
 import core._
 import Names._
 import TreeTransforms.{TransformerInfo, TreeTransform, TreeTransformer}
-import ast.Trees.flatten
+import ast.Trees._
 import Flags._
+import Types._
+import Constants.Constant
 import Contexts.Context
 import Symbols._
 import scala.collection.mutable
 import DenotTransformers._
+import typer.Checking
 import Names.Name
 import NameOps._
 
 
-/** A transformer that creates companion objects for all classes except module classes. */
-class Companions extends TreeTransform with IdentityDenotTransformer { thisTransformer =>
+/** The first tree transform
+ *   - ensures there are companion objects for all classes except module classes
+ *   - eliminates some kinds of trees: Imports, NamedArgs, all TypTrees other than TypeTree
+ *   - checks the bounds of AppliedTypeTrees
+ *   - stubs out native methods
+ */
+class FirstTransform extends TreeTransform with IdentityDenotTransformer { thisTransformer =>
   import ast.tpd._
 
   override def name = "companions"
@@ -61,6 +69,30 @@ class Companions extends TreeTransform with IdentityDenotTransformer { thisTrans
     addMissingCompanions(reorder(stats))
   }
 
+  override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) =
+    if (ddef.symbol.hasAnnotation(defn.NativeAnnot)) {
+      ddef.symbol.resetFlag(Deferred)
+      DefDef(ddef.symbol.asTerm,
+        _ => ref(defn.Sys_error).withPos(ddef.pos)
+          .appliedTo(Literal(Constant("native method stub"))))
+    } else ddef
+
   override def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[Tree] =
     ast.Trees.flatten(reorderAndComplete(trees)(ctx.withPhase(thisTransformer.next)))
+
+  override def transformOther(tree: Tree)(implicit ctx: Context, info: TransformerInfo) = tree match {
+    case tree: Import => EmptyTree
+    case tree: NamedArg => tree.arg
+/* not yet enabled
+    case AppliedTypeTree(tycon, args) =>
+
+      val tparams = tycon.tpe.typeSymbol.typeParams
+      Checking.checkBounds(
+        args, tparams.map(_.info.bounds), (tp, argTypes) => tp.substDealias(tparams, argTypes))
+      TypeTree(tree.tpe).withPos(tree.pos)
+*/
+    case tree =>
+      if (tree.isType) TypeTree(tree.tpe, tree).withPos(tree.pos)
+      else tree
+  }
 }

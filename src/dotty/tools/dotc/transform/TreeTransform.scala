@@ -6,6 +6,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Flags.PackageVal
+import dotty.tools.dotc.typer.Mode
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Decorators._
 import scala.annotation.tailrec
@@ -15,47 +16,48 @@ object TreeTransforms {
   import tpd._
 
   /** The base class of tree transforms. For each kind of tree K, there are
-    * two methods which can be overridden:
-    *
-    * prepareForK // return a new TreeTransform which gets applied to the K
-    * // node and its children
-    * transformK // transform node of type K
-    *
-    * If a transform does not need to visit a node or any of its children, it
-    * signals this fact by returning a NoTransform from a prepare method.
-    *
-    * If all transforms in a group are NoTransforms, the tree is no longer traversed.
-    *
-    *
-    *            Performance analysis: Taking the dotty compiler frontend as a use case, we are aiming for a warm performance of
-    *            about 4000 lines / sec. This means 6 seconds for a codebase of 24'000 lines. Of these the frontend consumes
-    *            over 2.5 seconds, erasure and code generation will most likely consume over 1 second each. So we would have
-    *            about 1 sec for all other transformations in our budget. Of this second, let's assume a maximum of 20% for
-    *            the general dispatch overhead as opposed to the concrete work done in transformations. So that leaves us with
-    *            0.2sec, or roughly 600M processor cycles.
-    *
-    *            Now, to the amount of work that needs to be done. The codebase produces of about 250'000 trees after typechecking.
-    *            Transformations are likely to make this bigger so let's assume 300K trees on average. We estimate to have about 100
-    *            micro-transformations. Let's say 5 transformation groups of 20 micro-transformations each. (by comparison,
-    *            scalac has in excess of 20 phases, and most phases do multiple transformations). There are then 30M visits
-    *            of a node by a transformation. Each visit has a budget of 20 processor cycles.
-    *
-    *            A more detailed breakdown: I assume that about one third of all transformations have real work to do for each node.
-    *            This might look high, but keep in mind that the most common nodes are Idents and Selects, and most transformations
-    *            touch these. By contrast the amount of work for generating new transformations should be negligible.
-    *
-    *            So, in 400 clock cycles we need to (1) perform a pattern match according to the type of node, (2) generate new
-    *            transformations if applicable, (3) reconstitute the tree node from the result of transforming the children, and
-    *            (4) chain 7 out of 20 transformations over the resulting tree node. I believe the current algorithm is suitable
-    *            for achieving this goal, but there can be no wasted cycles anywhere.
-    */
+   *  two methods which can be overridden:
+   *
+   *  prepareForK // return a new TreeTransform which gets applied to the K
+   *  // node and its children
+   *  transformK // transform node of type K
+   *
+   *  If a transform does not need to visit a node or any of its children, it
+   *  signals this fact by returning a NoTransform from a prepare method.
+   *
+   *  If all transforms in a group are NoTransforms, the tree is no longer traversed.
+   *
+   *
+   *            Performance analysis: Taking the dotty compiler frontend as a use case, we are aiming for a warm performance of
+   *            about 4000 lines / sec. This means 6 seconds for a codebase of 24'000 lines. Of these the frontend consumes
+   *            over 2.5 seconds, erasure and code generation will most likely consume over 1 second each. So we would have
+   *            about 1 sec for all other transformations in our budget. Of this second, let's assume a maximum of 20% for
+   *            the general dispatch overhead as opposed to the concrete work done in transformations. So that leaves us with
+   *            0.2sec, or roughly 600M processor cycles.
+   *
+   *            Now, to the amount of work that needs to be done. The codebase produces of about 250'000 trees after typechecking.
+   *            Transformations are likely to make this bigger so let's assume 300K trees on average. We estimate to have about 100
+   *            micro-transformations. Let's say 5 transformation groups of 20 micro-transformations each. (by comparison,
+   *            scalac has in excess of 20 phases, and most phases do multiple transformations). There are then 30M visits
+   *            of a node by a transformation. Each visit has a budget of 20 processor cycles.
+   *
+   *            A more detailed breakdown: I assume that about one third of all transformations have real work to do for each node.
+   *            This might look high, but keep in mind that the most common nodes are Idents and Selects, and most transformations
+   *            touch these. By contrast the amount of work for generating new transformations should be negligible.
+   *
+   *            So, in 400 clock cycles we need to (1) perform a pattern match according to the type of node, (2) generate new
+   *            transformations if applicable, (3) reconstitute the tree node from the result of transforming the children, and
+   *            (4) chain 7 out of 20 transformations over the resulting tree node. I believe the current algorithm is suitable
+   *            for achieving this goal, but there can be no wasted cycles anywhere.
+   */
   abstract class TreeTransform extends Phase {
 
     /** id of this treeTransform in group */
     var idx: Int = _
 
     /** List of names of phases that should have finished their processing of all compilation units
-      * before this phase starts */
+     *  before this phase starts
+     */
     def runsAfterGroupsOf: Set[String] = Set.empty
 
     def prepareForIdent(tree: Ident)(implicit ctx: Context) = this
@@ -121,6 +123,7 @@ object TreeTransforms {
     def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformPackageDef(tree: PackageDef)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[Tree] = trees
+    def transformOther(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = tree
 
     /** Transform tree using all transforms of current group (including this one) */
     def transform(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = info.group.transform(tree, info, 0)
@@ -132,7 +135,7 @@ object TreeTransforms {
     def transformFollowing(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = info.group.transformSingle(tree, idx + 1)
 
     /** perform context-dependant initialization */
-    def init(implicit ctx:Context, info: TransformerInfo): Unit = {}
+    def init(implicit ctx: Context, info: TransformerInfo): Unit = {}
 
     protected def mkTreeTransformer = new TreeTransformer {
       override def name: String = TreeTransform.this.name
@@ -156,12 +159,11 @@ object TreeTransforms {
 
   type Mutator[T] = (TreeTransform, T, Context) => TreeTransform
 
-  class TransformerInfo(val transformers: Array[TreeTransform], val nx: NXTransformations, val group:TreeTransformer)
+  class TransformerInfo(val transformers: Array[TreeTransform], val nx: NXTransformations, val group: TreeTransformer)
 
-  /**
-   * This class maintains track of which methods are redefined in MiniPhases and creates execution plans for transformXXX and prepareXXX
-   * Thanks to Martin for this idea
-   * @see NXTransformations.index for format of plan
+  /** This class maintains track of which methods are redefined in MiniPhases and creates execution plans for transformXXX and prepareXXX
+   *  Thanks to Martin for this idea
+   *  @see NXTransformations.index for format of plan
    */
   class NXTransformations {
 
@@ -170,11 +172,11 @@ object TreeTransforms {
       else hasRedefinedMethod(cls.getSuperclass, name)
 
     /** Create an index array `next` of size one larger than teh size of `transforms` such that
-      * for each index i, `next(i)` is the smallest index j such that
-      *
-      * i <= j
-      * j == transforms.length || transform(j) defines a non-default method with given `name`
-      */
+     *  for each index i, `next(i)` is the smallest index j such that
+     *
+     *  i <= j
+     *  j == transforms.length || transform(j) defines a non-default method with given `name`
+     */
     private def index(transformations: Array[TreeTransform], name: String): Array[Int] = {
       val len = transformations.length
       val next = new Array[Int](len + 1)
@@ -281,6 +283,7 @@ object TreeTransforms {
       nxTransTemplate = index(transformations, "transformTemplate")
       nxTransPackageDef = index(transformations, "transformPackageDef")
       nxTransStats = index(transformations, "transformStats")
+      nxTransOther = index(transformations, "transformOther")
     }
 
     def this(prev: NXTransformations, changedTansformation: TreeTransform, transformationIndex: Int, reuse: Boolean = false) = {
@@ -349,12 +352,12 @@ object TreeTransforms {
       nxTransTemplate = indexUpdate(prev.nxTransTemplate, changedTansformation, transformationIndex, "transformTemplate", copy)
       nxTransPackageDef = indexUpdate(prev.nxTransPackageDef, changedTansformation, transformationIndex, "transformPackageDef", copy)
       nxTransStats = indexUpdate(prev.nxTransStats, changedTansformation, transformationIndex, "transformStats", copy)
+      nxTransOther = indexUpdate(prev.nxTransOther, changedTansformation, transformationIndex, "transformOther", copy)
     }
 
-    /**
-     * Those arrays are used as "execution plan" in order to only execute non-tivial transformations\preparations
-     * for every integer i array(i) contains first non trivial transformation\preparation on particular tree subtype.
-     * If no nontrivial transformation are left stored value is greater than  transformers.size
+    /** Those arrays are used as "execution plan" in order to only execute non-tivial transformations\preparations
+     *  for every integer i array(i) contains first non trivial transformation\preparation on particular tree subtype.
+     *  If no nontrivial transformation are left stored value is greater than  transformers.size
      */
     var nxPrepIdent: Array[Int] = _
     var nxPrepSelect: Array[Int] = _
@@ -419,6 +422,7 @@ object TreeTransforms {
     var nxTransTemplate: Array[Int] = _
     var nxTransPackageDef: Array[Int] = _
     var nxTransStats: Array[Int] = _
+    var nxTransOther: Array[Int] = _
   }
 
   /** A group of tree transforms that are applied in sequence during the same phase */
@@ -490,12 +494,12 @@ object TreeTransforms {
     val prepForTypeDef: Mutator[TypeDef] = (trans, tree, ctx) => trans.prepareForTypeDef(tree)(ctx)
     val prepForTemplate: Mutator[Template] = (trans, tree, ctx) => trans.prepareForTemplate(tree)(ctx)
     val prepForPackageDef: Mutator[PackageDef] = (trans, tree, ctx) => trans.prepareForPackageDef(tree)(ctx)
-    val prepForStats: Mutator[List[Tree]]= (trans, trees, ctx) => trans.prepareForStats(trees)(ctx)
+    val prepForStats: Mutator[List[Tree]] = (trans, trees, ctx) => trans.prepareForStats(trees)(ctx)
 
     def transform(t: Tree)(implicit ctx: Context): Tree = {
       val initialTransformations = transformations
       val info = new TransformerInfo(initialTransformations, new NXTransformations(initialTransformations), this)
-      initialTransformations.zipWithIndex.foreach{
+      initialTransformations.zipWithIndex.foreach {
         case (transform, id) =>
           transform.idx = id
           transform.init(ctx, info)
@@ -833,6 +837,14 @@ object TreeTransforms {
       } else tree
     }
 
+    final private[TreeTransforms] def goOther(tree: Tree, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
+      if (cur < info.transformers.length) {
+        val trans = info.transformers(cur)
+        val t = trans.transformOther(tree)(ctx.withPhase(trans), info)
+        transformSingle(t, cur + 1)
+      } else tree
+    }
+
     final private[TreeTransforms] def goNamed(tree: NameTree, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree =
       tree match {
         case tree: Ident => goIdent(tree, info.nx.nxTransIdent(cur))
@@ -872,7 +884,7 @@ object TreeTransforms {
         case tree: Template => goTemplate(tree, info.nx.nxTransTemplate(cur))
         case tree: PackageDef => goPackageDef(tree, info.nx.nxTransPackageDef(cur))
         case Thicket(trees) => cpy.Thicket(tree, transformTrees(trees, info, cur))
-        case tree => tree
+        case tree => goOther(tree, info.nx.nxTransOther(cur))
       }
 
     final private[TreeTransforms] def transformSingle(tree: Tree, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree =
@@ -1052,7 +1064,7 @@ object TreeTransforms {
           implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForCaseDef, info.nx.nxPrepCaseDef, tree, cur)
           if (mutatedInfo eq null) tree
           else {
-            val pat = transform(tree.pat, mutatedInfo, cur)
+            val pat = transform(tree.pat, mutatedInfo, cur)(ctx.withMode(Mode.Pattern))
             val guard = transform(tree.guard, mutatedInfo, cur)
             val body = transform(tree.body, mutatedInfo, cur)
             goCaseDef(cpy.CaseDef(tree, pat, guard, body), mutatedInfo.nx.nxTransCaseDef(cur))
@@ -1130,12 +1142,10 @@ object TreeTransforms {
             val stats = transformStats(tree.stats, tree.symbol, mutatedInfo, cur)(nestedCtx)
             goPackageDef(cpy.PackageDef(tree, pid, stats), mutatedInfo.nx.nxTransPackageDef(cur))
           }
-        case tree: Import => EmptyTree
-        case tree: NamedArg => transform(tree.arg, info, cur)
         case Thicket(trees) => cpy.Thicket(tree, transformTrees(trees, info, cur))
         case tree =>
-          if (tree.isType) transform(TypeTree(tree.tpe).withPos(tree.pos), info, cur)
-          else tree
+          implicit val originalInfo: TransformerInfo = info
+          goOther(tree, info.nx.nxTransOther(cur))
       }
 
     def transform(tree: Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree = ctx.traceIndented(s"transforming ${tree.show} at ${ctx.phase}", transforms, show = true) {
