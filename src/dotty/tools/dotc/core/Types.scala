@@ -208,6 +208,10 @@ object Types {
     final def forallParts(p: Type => Boolean)(implicit ctx: Context): Boolean =
       !existsPart(!p(_))
 
+    /** Performs operation on all parts of this type */
+    final def foreachPart(p: Type => Unit)(implicit ctx: Context): Unit =
+      new ForeachAccumulator(p).apply((), this)
+
     /** The parts of this type which are type or term refs */
     final def namedParts(implicit ctx: Context): collection.Set[NamedType] =
       namedPartsWith(alwaysTrue)
@@ -217,9 +221,6 @@ object Types {
      */
     def namedPartsWith(p: NamedType => Boolean)(implicit ctx: Context): collection.Set[NamedType] =
       new NamedPartsAccumulator(p).apply(mutable.LinkedHashSet(), this)
-
-    // needed?
-    //final def foreach(f: Type => Unit): Unit = ???
 
     /** Map function `f` over elements of an AndType, rebuilding with function `g` */
     def mapReduceAnd[T](f: Type => T)(g: (T, T) => T)(implicit ctx: Context): T = stripTypeVar match {
@@ -2569,6 +2570,11 @@ object Types {
   class ExistsAccumulator(p: Type => Boolean)(implicit ctx: Context) extends TypeAccumulator[Boolean] {
     override def stopAtStatic = false
     def apply(x: Boolean, tp: Type) = x || p(tp) || foldOver(x, tp)
+  }
+
+  class ForeachAccumulator(p: Type => Unit)(implicit ctx: Context) extends TypeAccumulator[Unit] {
+    override def stopAtStatic = false
+    def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)
   }
 
   class NamedPartsAccumulator(p: NamedType => Boolean)(implicit ctx: Context) extends TypeAccumulator[mutable.Set[NamedType]] {
