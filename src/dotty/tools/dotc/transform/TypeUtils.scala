@@ -1,9 +1,15 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.core.Types._
-
-import scala.language.implicitConversions
+import core._
+import core.transform.Erasure.ErasedValueType
+import Types._
+import Contexts._
+import Symbols._
+import Decorators._
+import StdNames.nme
+import NameOps._
+import language.implicitConversions
 
 object TypeUtils {
   implicit def decorateTypeUtils(tpe: Type): TypeUtils = new TypeUtils(tpe)
@@ -15,4 +21,10 @@ object TypeUtils {
  */
 class TypeUtils(val self: Type) extends AnyVal {
 
-}
+  def isErasedValueType(implicit ctx: Context): Boolean =
+    self.isInstanceOf[ErasedValueType]
+
+  def isPrimitiveValueType(implicit ctx: Context): Boolean =
+    self.classSymbol.isPrimitiveValueClass
+
+ }

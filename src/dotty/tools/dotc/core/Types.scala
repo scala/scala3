@@ -158,6 +158,15 @@ object Types {
     def isRepeatedParam(implicit ctx: Context): Boolean =
       typeSymbol eq defn.RepeatedParamClass
 
+    /** Is this the type of a method that has a repeated parameter type as
+     *  last parameter type?
+     */
+    def isVarArgsMethod(implicit ctx: Context): Boolean = this match {
+      case tp: PolyType => tp.resultType.isVarArgsMethod
+      case MethodType(_, paramTypes) => paramTypes.nonEmpty && paramTypes.last.isRepeatedParam
+      case _ => false
+    }
+
     /** Is this an alias TypeBounds? */
     def isAlias: Boolean = this match {
       case TypeBounds(lo, hi) => lo eq hi
