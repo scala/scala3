@@ -107,6 +107,10 @@ class Definitions {
   lazy val JavaPackageVal = ctx.requiredPackage("java")
   lazy val JavaLangPackageVal = ctx.requiredPackage("java.lang")
 
+  // fundamental modules
+  lazy val SysPackage = ctx.requiredModule("scala.sys.package")
+    def Sys_error = ctx.requiredMethod(SysPackage.moduleClass.asClass, nme.error)
+
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
    *  which would result in a double binding assertion failure.
@@ -292,6 +296,7 @@ class Definitions {
   lazy val ScalaSignatureAnnot = ctx.requiredClass("scala.reflect.ScalaSignature")
   lazy val ScalaLongSignatureAnnot = ctx.requiredClass("scala.reflect.ScalaLongSignature")
   lazy val DeprecatedAnnot = ctx.requiredClass("scala.deprecated")
+  lazy val MigrationAnnot = ctx.requiredClass("scala.migration")
   lazy val AnnotationDefaultAnnot = ctx.requiredClass("dotty.annotation.internal.AnnotationDefault")
   lazy val ThrowsAnnot = ctx.requiredClass("scala.throws")
   lazy val UncheckedAnnot = ctx.requiredClass("scala.unchecked")
