@@ -555,18 +555,32 @@ trait Applications extends Compatibility { self: Typer =>
 
     /** A typed qual.unappy or qual.unappySeq tree, if this typechecks.
      *  Otherwise fallBack with (maltyped) qual.unapply as argument
+     *  Note: requires special handling for overloaded occurrences of
+     *  unapply or unapplySeq. We first try to find a non-overloaded
+     *  method which matches any type. If that fails, we try to find an
+     *  overloaded variant which matches one of the argument types.
+     *  In fact, overloaded unapply's are problematic because a non-
+     *  overloaded unapply does *not* need to be applicable to its argument
+     *  whereas overloaded variants need to have a conforming variant.
      */
     def trySelectUnapply(qual: untpd.Tree)(fallBack: Tree => Tree): Tree = {
-      val unappProto = new UnapplyFunProto(this)
-      tryEither {
-        implicit ctx => typedExpr(untpd.Select(qual, nme.unapply), unappProto)
-      } {
-        (sel, _) =>
-          tryEither {
-            implicit ctx => typedExpr(untpd.Select(qual, nme.unapplySeq), unappProto) // for backwards compatibility; will be dropped
-          } {
-            (_, _) => fallBack(sel)
-          }
+      val genericProto = new UnapplyFunProto(WildcardType, this)
+      def specificProto = new UnapplyFunProto(pt, this)
+      // try first for non-overloaded, then for overloaded ocurrences
+      def tryWithName(name: TermName)(fallBack: Tree => Tree)(implicit ctx: Context): Tree =
+        tryEither {
+          implicit ctx => typedExpr(untpd.Select(qual, name), genericProto)
+        } {
+          (sel, _) =>
+            tryEither {
+              implicit ctx => typedExpr(untpd.Select(qual, name), specificProto)
+            } {
+              (_, _) => fallBack(sel)
+            }
+        }
+      // try first for unapply, then for unapplySeq
+      tryWithName(nme.unapply) {
+        sel => tryWithName(nme.unapplySeq)(_ => fallBack(sel)) // for backwards compatibility; will be dropped
       }
     }
 
