@@ -200,14 +200,9 @@ object SymDenotations {
       dropOtherAnnotations(annotations, cls).nonEmpty
 
     /** Optionally, the arguments of the first annotation matching the given class symbol */
-    final def getAnnotationArgs(cls: Symbol)(implicit ctx: Context): Option[List[tpd.Tree]] =
+    final def getAnnotation(cls: Symbol)(implicit ctx: Context): Option[Annotation] =
       dropOtherAnnotations(annotations, cls) match {
-        case annot :: _ =>
-          Some(
-            annot.tree match {
-              case Trees.Apply(_, args) => args
-              case _ => Nil
-            })
+        case annot :: _ => Some(annot)
         case nil => None
       }
 

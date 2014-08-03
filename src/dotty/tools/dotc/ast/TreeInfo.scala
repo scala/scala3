@@ -103,9 +103,17 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   /** The number of arguments in an application */
   def numArgs(tree: Tree): Int = unsplice(tree) match {
     case Apply(fn, args) => numArgs(fn) + args.length
-    case TypeApply(fn, args) => numArgs(fn)
-    case Block(stats, expr) => numArgs(expr)
+    case TypeApply(fn, _) => numArgs(fn)
+    case Block(_, expr) => numArgs(expr)
     case _ => 0
+  }
+
+  /** The (last) list of arguments of an application */
+  def arguments(tree: Tree): List[Tree] = unsplice(tree) match {
+    case Apply(_, args) => args
+    case TypeApply(fn, _) => arguments(fn)
+    case Block(_, expr) => arguments(expr)
+    case _ => Nil
   }
 
   /** Is tree a self constructor call this(...)? I.e. a call to a constructor of the
