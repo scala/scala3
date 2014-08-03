@@ -191,9 +191,9 @@ object desugar {
 
   /** Fill in empty type bounds with Nothing/Any. Expand private local type parameters as follows:
    *
-   *     class C[T]
+   *     class C[v T]
    * ==>
-   *     class C { type C$T; type T = C$T }
+   *     class C { type v C$T; type v T = C$T }
    */
   def typeDef(tdef: TypeDef)(implicit ctx: Context): Tree = {
     val TypeDef(mods, name, rhs) = tdef
@@ -201,7 +201,8 @@ object desugar {
       val tparam = cpy.TypeDef(tdef,
         mods &~ PrivateLocal | ExpandedName, name.expandedName(ctx.owner), rhs, tdef.tparams)
       val alias = cpy.TypeDef(tdef,
-        Modifiers(PrivateLocalParamAccessor | Synthetic), name, refOfDef(tparam))
+        Modifiers(PrivateLocalParamAccessor | Synthetic | mods.flags & VarianceFlags),
+                  name, refOfDef(tparam))
       Thicket(tparam, alias)
     }
     else cpy.TypeDef(tdef, mods, name, rhs, tdef.tparams)
@@ -274,7 +275,13 @@ object desugar {
     //     def _1 = this.p1
     //     ...
     //     def _N = this.pN
-    //     def copy(p1: T1 = p1, ..., pN: TN = pN)(moreParams) = new C[...](p1, ..., pN)(moreParams)
+    //     def copy(p1: T1 = p1: @uncheckedVariance, ...,
+    //              pN: TN = pN: @uncheckedVariance)(moreParams) =
+    //       new C[...](p1, ..., pN)(moreParams)
+    //
+    // Note: copy default parameters need @uncheckedVariance; see
+    // neg/t1843-variances.scala for a test case. The test would give
+    // two errors without @uncheckedVariance, one of them spurious.
     val caseClassMeths =
       if (mods is Case) {
         def syntheticProperty(name: TermName, rhs: Tree) =
@@ -289,8 +296,10 @@ object desugar {
         val copyMeths =
           if (mods is Abstract) Nil
           else {
+            def copyDefault(vparam: ValDef) =
+              makeAnnotated(defn.UncheckedVarianceAnnot, refOfDef(vparam))
             val copyFirstParams = derivedVparamss.head.map(vparam =>
-              cpy.ValDef(vparam, vparam.mods, vparam.name, vparam.tpt, refOfDef(vparam)))
+              cpy.ValDef(vparam, vparam.mods, vparam.name, vparam.tpt, copyDefault(vparam)))
             val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
               cpy.ValDef(vparam, vparam.mods, vparam.name, vparam.tpt, EmptyTree))
             DefDef(synthetic, nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr) :: Nil

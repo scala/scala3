@@ -397,6 +397,28 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     ensureNoLocalRefs(assignType(cpy.Block(tree, stats1, expr1), stats1, expr1), pt)
   }
 
+  def escapingRefs(block: Block)(implicit ctx: Context): collection.Set[NamedType] = {
+    var hoisted: Set[Symbol] = Set()
+    lazy val locals = ctx.typeAssigner.localSyms(block.stats).toSet
+    def isLocal(sym: Symbol): Boolean =
+      (locals contains sym) && !isHoistableClass(sym)
+    def isHoistableClass(sym: Symbol) =
+      sym.isClass && {
+        (hoisted contains sym) || {
+          hoisted += sym
+          !classLeaks(sym.asClass)
+        }
+      }
+    def leakingTypes(tp: Type): collection.Set[NamedType] =
+      tp namedPartsWith (tp => isLocal(tp.symbol))
+    def typeLeaks(tp: Type): Boolean = leakingTypes(tp).nonEmpty
+    def classLeaks(sym: ClassSymbol): Boolean =
+      (ctx.owner is Method) || // can't hoist classes out of method bodies
+      (sym.info.parents exists typeLeaks) ||
+      (sym.decls.toList exists (t => typeLeaks(t.info)))
+    leakingTypes(block.tpe)
+  }
+
   /** Check that block's type can be expressed without references to locally defined
    *  symbols. The following two remedies are tried before giving up:
    *  1. If the expected type of the block is fully defined, pick it as the
@@ -406,7 +428,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    */
   protected def ensureNoLocalRefs(block: Block, pt: Type, forcedDefined: Boolean = false)(implicit ctx: Context): Tree = {
     val Block(stats, expr) = block
-    val leaks = CheckTrees.escapingRefs(block)
+    val leaks = escapingRefs(block)
     if (leaks.isEmpty) block
     else if (isFullyDefined(pt, ForceDegree.all)) {
       val expr1 = Typed(expr, TypeTree(pt))
@@ -822,6 +844,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     checkNoDoubleDefs(cls)
     val impl1 = cpy.Template(impl, constr1, parents1, self1, body1)
       .withType(dummy.termRef)
+    VarianceChecker.check(impl1)
     assignType(cpy.TypeDef(cdef, mods1, name, impl1), cls)
 
     // todo later: check that

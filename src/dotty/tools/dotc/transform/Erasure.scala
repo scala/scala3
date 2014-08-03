@@ -133,7 +133,10 @@ object Erasure {
 
     /** Generate a synthetic cast operation from tree.tpe to pt.
      */
-    def cast(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
+    def cast(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
+      // TODO: The commented out assertion fails for tailcall/t6574.scala
+      //       Fix the problem and enable the assertion.
+      // assert(!pt.isInstanceOf[SingletonType], pt)
       if (pt isRef defn.UnitClass) unbox(tree, pt)
       else (tree.tpe, pt) match {
         case (defn.ArrayType(treeElem), defn.ArrayType(ptElem))
@@ -144,6 +147,7 @@ object Erasure {
           ctx.log(s"casting from ${tree.showSummary}: ${tree.tpe.show} to ${pt.show}")
           mkAsInstanceOf(tree, pt)
       }
+    }
 
     /** Adaptation of an expression `e` to an expected type `PT`, applying the following
      *  rewritings exhaustively as long as the type of `e` is not a subtype of `PT`.

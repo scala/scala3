@@ -4,7 +4,7 @@ package printing
 import core._
 import Texts._, ast.Trees._
 import Types.Type, Symbols.Symbol, Contexts.Context, Scopes.Scope, Constants.Constant,
-       Names.Name, Denotations.Denotation, Annotations.Annotation
+       Names.Name, Denotations._, Annotations.Annotation
 
 /** The base class of all printers
  */
@@ -58,6 +58,9 @@ abstract class Printer {
 
   /** Textual representation of symbol's declaration */
   def dclText(sym: Symbol): Text
+
+  /** Textual representation of single denotation's declaration */
+  def dclText(sd: SingleDenotation): Text
 
   /** If symbol's owner is a printable class C, the text "in C", otherwise "" */
   def locationText(sym: Symbol): Text

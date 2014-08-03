@@ -2203,6 +2203,7 @@ object Types {
     override def variance = 1
     override def toString = "Co" + super.toString
   }
+
   final class ContraTypeBounds(lo: Type, hi: Type, hc: Int) extends CachedTypeBounds(lo, hi, hc) {
     override def variance = -1
     override def toString = "Contra" + super.toString

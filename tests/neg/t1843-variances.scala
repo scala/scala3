@@ -5,7 +5,7 @@
 */
 
 object Crash {
-  trait UpdateType[+A]
+  trait UpdateType[A]
   case class StateUpdate[+A](updateType : UpdateType[A], value : A)
   case object IntegerUpdateType extends UpdateType[Integer]
 

@@ -73,6 +73,7 @@ object NameOps {
     def isModuleClassName = name endsWith MODULE_SUFFIX
     def isImportName = name startsWith IMPORT
     def isInheritedName = name.length > 0 && name.head == '(' && name.startsWith(nme.INHERITED)
+    def isDefaultGetterName = name.isTermName && name.asTermName.defaultGetterIndex >= 0
 
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
@@ -251,9 +252,12 @@ object NameOps {
 
     /** If this is a default getter, its index (starting from 0), else -1 */
     def defaultGetterIndex: Int = {
-      val p = name.indexOfSlice(DEFAULT_GETTER)
-      if (p >= 0) name.drop(p + DEFAULT_GETTER.length).toString.toInt - 1
-      else -1
+      var i = name.length
+      while (i > 0 && name(i - 1).isDigit) i -= 1
+      if (i > 0 && i < name.length && name.take(i).endsWith(DEFAULT_GETTER))
+        name.drop(i).toString.toInt - 1
+      else
+        -1
     }
 
     /** The name of an accessor for protected symbols. */

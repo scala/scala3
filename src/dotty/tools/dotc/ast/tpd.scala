@@ -6,7 +6,7 @@ import core._
 import dotty.tools.dotc.transform.TypeUtils
 import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Symbols._
-import CheckTrees._, Denotations._, Decorators._
+import Denotations._, Decorators._
 import config.Printers._
 import typer.ErrorReporting._
 
@@ -134,7 +134,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     TypeTree(original.tpe, original)
 
   def TypeTree(tp: Type, original: Tree = EmptyTree)(implicit ctx: Context): TypeTree =
-    untpd.TypeTree(original).withType(tp).checked
+    untpd.TypeTree(original).withType(tp)
 
   def SingletonTypeTree(ref: Tree)(implicit ctx: Context): SingletonTypeTree =
     ta.assignType(untpd.SingletonTypeTree(ref), ref)
@@ -237,7 +237,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val localDummy = ((NoSymbol: Symbol) /: body)(findLocalDummy)
       .orElse(ctx.newLocalDummy(cls))
     val impl = untpd.Template(constr, parents, selfType, newTypeParams ++ body)
-      .withType(localDummy.termRef).checked
+      .withType(localDummy.termRef)
     ta.assignType(untpd.TypeDef(Modifiers(cls), cls.name, impl), cls)
   }
 
@@ -352,11 +352,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def isInstantiation: Boolean = tree match {
       case Apply(Select(New(_), nme.CONSTRUCTOR), _) => true
       case _ => false
-    }
-
-    def checked(implicit ctx: Context): ThisTree = {
-      if (ctx.settings.YcheckTypedTrees.value) checkType(tree)
-      tree
     }
 
     def shallowFold[T](z: T)(op: (T, tpd.Tree) => T) =

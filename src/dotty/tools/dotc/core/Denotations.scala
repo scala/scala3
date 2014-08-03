@@ -619,7 +619,7 @@ object Denotations {
       throw new StaleSymbol(msg)
     }
 
-    /** The period (interval of phases) for which there exists 
+    /** The period (interval of phases) for which there exists
      *  a valid denotation in this flock.
      */
     def coveredInterval(implicit ctx: Context): Period = {
@@ -641,10 +641,14 @@ object Denotations {
      */
     def syncWithParents(implicit ctx: Context): SingleDenotation = this
 
+    /** Show declaration string; useful for showing declarations
+     *  as seen from subclasses.
+     */
+    def showDcl(implicit ctx: Context): String = ctx.dclText(this).show
+
     override def toString =
       if (symbol == NoSymbol) symbol.toString
       else s"<SingleDenotation of type $infoOrCompleter>"
-
 
     def definedPeriodsString: String = {
       var sb = new StringBuilder()

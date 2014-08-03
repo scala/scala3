@@ -6,7 +6,7 @@ import ast._
 import core._
 import Trees._
 import Types._, ProtoTypes._, Contexts._, Decorators._, Denotations._, Symbols._
-import Applications._, Implicits._
+import Applications._, Implicits._, Flags._
 import util.Positions._
 import printing.Showable
 import printing.Disambiguation.disambiguated
@@ -47,6 +47,13 @@ object ErrorReporting {
   }
 
   class Errors(implicit ctx: Context) {
+
+    /** An explanatory note to be added to error messages
+     *  when there's a problem with abstract var defs */
+    def abstractVarMessage(sym: Symbol): String =
+      if (sym.underlyingSymbol.is(Mutable))
+        "\n(Note that variables need to be initialized to be defined)"
+      else ""
 
     def expectedTypeStr(tp: Type): String = tp match {
       case tp: FunProto =>
