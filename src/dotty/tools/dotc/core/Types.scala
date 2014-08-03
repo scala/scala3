@@ -156,7 +156,16 @@ object Types {
 
     /** Is this a type of a repeated parameter? */
     def isRepeatedParam(implicit ctx: Context): Boolean =
-      defn.RepeatedParamClasses contains typeSymbol
+      typeSymbol eq defn.RepeatedParamClass
+
+    /** Is this the type of a method that has a repeated parameter type as
+     *  last parameter type?
+     */
+    def isVarArgsMethod(implicit ctx: Context): Boolean = this match {
+      case tp: PolyType => tp.resultType.isVarArgsMethod
+      case MethodType(_, paramTypes) => paramTypes.nonEmpty && paramTypes.last.isRepeatedParam
+      case _ => false
+    }
 
     /** Is this an alias TypeBounds? */
     def isAlias: Boolean = this match {
@@ -622,16 +631,6 @@ object Types {
     final def objToAny(implicit ctx: Context) =
       if ((this isRef defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else this
 
-    /** If this is repeated parameter type, its underlying Seq type,
-     *  else the type itself.
-     */
-    def underlyingIfRepeated(implicit ctx: Context): Type = this match {
-      case rt @ RefinedType(tref: TypeRef, name) if defn.RepeatedParamClasses contains tref.symbol =>
-        RefinedType(defn.SeqClass.typeRef, name, rt.refinedInfo)
-      case _ =>
-        this
-    }
-
     /** If this is a (possibly aliased, annotated, and/or parameterized) reference to
      *  a class, the class type ref, otherwise NoType.
      */
@@ -867,7 +866,7 @@ object Types {
      */
     def toFunctionType(implicit ctx: Context): Type = this match {
       case mt @ MethodType(_, formals) if !mt.isDependent =>
-        defn.FunctionType(formals mapConserve (_.underlyingIfRepeated), mt.resultType)
+        defn.FunctionType(formals mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType)
     }
 
     /** The signature of this type. This is by default NotAMethod,

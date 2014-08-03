@@ -70,7 +70,7 @@ object UnPickler {
   }
 
   /** Convert array parameters denoting a repeated parameter of a Java method
-   *  to `JavaRepeatedParamClass` types.
+   *  to `RepeatedParamClass` types.
    */
   def arrayToRepeated(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp @ MethodType(paramNames, paramTypes) =>
@@ -85,7 +85,7 @@ object UnPickler {
       }
       tp.derivedMethodType(
         paramNames,
-        paramTypes.init :+ defn.JavaRepeatedParamType.appliedTo(elemtp),
+        paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp),
         tp.resultType)
     case tp @ PolyType(paramNames) =>
       tp.derivedPolyType(paramNames, tp.paramBounds, arrayToRepeated(tp.resultType))

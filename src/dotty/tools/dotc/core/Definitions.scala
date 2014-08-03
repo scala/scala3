@@ -235,7 +235,6 @@ class Definitions {
   lazy val EqualsPatternClass     = specialPolyClass(tpnme.EQUALS_PATTERN, EmptyFlags, AnyType)
 
   lazy val RepeatedParamClass     = specialPolyClass(tpnme.REPEATED_PARAM_CLASS, Covariant, SeqType)
-  lazy val JavaRepeatedParamClass = specialPolyClass(tpnme.JAVA_REPEATED_PARAM_CLASS, Covariant, ArrayClass.typeRef)
 
   // fundamental classes
   lazy val StringClass                  = ctx.requiredClass("java.lang.String")
@@ -327,7 +326,6 @@ class Definitions {
   def PairType: Type = PairClass.typeRef
   def StringType: Type = StringClass.typeRef
   def RepeatedParamType = RepeatedParamClass.typeRef
-  def JavaRepeatedParamType = JavaRepeatedParamClass.typeRef
   def ThrowableType = ThrowableClass.typeRef
   def OptionType = OptionClass.typeRef
   def VolatileAnnotType = VolatileAnnot.typeRef
@@ -395,8 +393,6 @@ class Definitions {
   lazy val FunctionClasses: Set[Symbol] = FunctionClass.toSet
   lazy val TupleClasses: Set[Symbol] = TupleClass.toSet
   lazy val ProductClasses: Set[Symbol] = ProductNClass.toSet
-
-  lazy val RepeatedParamClasses: Set[Symbol] = Set(RepeatedParamClass, JavaRepeatedParamClass)
 
   /** `Modules whose members are in the default namespace and their module classes */
   lazy val UnqualifiedOwners = RootImports.toSet ++ RootImports.map(_.moduleClass)
@@ -554,7 +550,6 @@ class Definitions {
     AnyClass,
     AnyRefAlias,
     RepeatedParamClass,
-    JavaRepeatedParamClass,
     ByNameParamClass2x,
     AnyValClass,
     NullClass,

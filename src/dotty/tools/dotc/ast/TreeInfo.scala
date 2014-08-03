@@ -175,7 +175,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   def isRepeatedParamType(tpt: Tree)(implicit ctx: Context) = tpt match {
     case tpt: TypeTree => tpt.typeOpt.isRepeatedParam
     case AppliedTypeTree(Select(_, tpnme.REPEATED_PARAM_CLASS), _)      => true
-    case AppliedTypeTree(Select(_, tpnme.JAVA_REPEATED_PARAM_CLASS), _) => true
     case _                                                              => false
   }
 

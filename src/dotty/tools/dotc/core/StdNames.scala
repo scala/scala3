@@ -160,7 +160,6 @@ object StdNames {
 
     final val BYNAME_PARAM_CLASS: N             = "<byname>"
     final val EQUALS_PATTERN: N                 = "<equals>"
-    final val JAVA_REPEATED_PARAM_CLASS: N      = "<repeated...>"
     final val LOCAL_CHILD: N                    = "<local child>"
     final val REPEATED_PARAM_CLASS: N           = "<repeated>"
     final val WILDCARD_STAR: N                  = "_*"
