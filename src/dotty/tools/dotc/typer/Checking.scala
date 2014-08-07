@@ -4,8 +4,16 @@ package typer
 
 import core._
 import ast._
-import Contexts._, Types._, Flags._, Denotations._, Names._, StdNames._, NameOps._, Symbols._
-import Trees._, ProtoTypes._
+import Contexts._
+import Types._
+import Flags._
+import Denotations._
+import Names._
+import StdNames._
+import NameOps._
+import Symbols._
+import Trees._
+import ProtoTypes._
 import Constants._
 import Scopes._
 import annotation.unchecked
@@ -14,13 +22,125 @@ import util.{Stats, SimpleMap}
 import util.common._
 import Decorators._
 import Uniques._
-import ErrorReporting.{errorType, DiagnosticString}
+import ErrorReporting.{err, errorType, DiagnosticString}
 import config.Printers._
 import collection.mutable
+import SymDenotations.NoCompleter
+
+object Checking {
+  import tpd._
+
+  /** A general checkBounds method that can be used for TypeApply nodes as
+   *  well as for AppliedTypeTree nodes.
+   */
+  def checkBounds(args: List[tpd.Tree], bounds: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context) = {
+    val argTypes = args.tpes
+    for ((arg, bounds) <- args zip bounds) {
+      def notConforms(which: String, bound: Type) = {
+        ctx.error(
+          d"Type argument ${arg.tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(arg.tpe, bound)}",
+          arg.pos)
+      }
+      def checkOverlapsBounds(lo: Type, hi: Type): Unit = {
+        //println(i"instantiating ${bounds.hi} with $argTypes")
+        //println(i" = ${instantiate(bounds.hi, argTypes)}")
+        val hiBound = instantiate(bounds.hi, argTypes)
+        if (!(lo <:< hiBound)) notConforms("upper", hiBound)
+        if (!(bounds.lo <:< hi)) notConforms("lower", bounds.lo)
+      }
+      arg.tpe match {
+        case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi)
+        case tp => checkOverlapsBounds(tp, tp)
+      }
+    }
+  }
+
+  /** A type map which checks that the only cycles in a type are F-bounds
+   *  and that protects all F-bounded references by LazyRefs.
+   */
+  class CheckNonCyclicMap(implicit ctx: Context) extends TypeMap {
+
+    /** Are cycles allowed within nested refinedInfos of currently checked type? */
+    private var nestedCycleOK = false
+
+    /** Are cycles allwoed within currently checked type? */
+    private var cycleOK = false
+
+    /** A diagnostic output string that indicates the position of the last
+     *  part of a type bounds checked by checkInfo. Possible choices:
+     *  alias, lower bound, upper bound.
+     */
+    var where: String = ""
+
+    /** Check info `tp` for cycles. Throw CyclicReference for illegal cycles,
+     *  break direct cycle with a LazyRef for legal, F-bounded cycles.
+     */
+    def checkInfo(tp: Type): Type = tp match {
+      case tp @ TypeBounds(lo, hi) =>
+        if (lo eq hi)
+          try tp.derivedTypeAlias(apply(lo))
+          finally where = "alias"
+        else {
+          val lo1 = try apply(lo) finally where = "lower bound"
+          val saved = nestedCycleOK
+          nestedCycleOK = true
+          try tp.derivedTypeBounds(lo1, apply(hi))
+          finally {
+            nestedCycleOK = saved
+            where = "upper bound"
+          }
+        }
+      case _ =>
+        tp
+    }
+
+    def apply(tp: Type) = tp match {
+      case tp @ RefinedType(parent, name) =>
+        val parent1 = this(parent)
+        val saved = cycleOK
+        cycleOK = nestedCycleOK
+        try tp.derivedRefinedType(parent1, name, this(tp.refinedInfo))
+        finally cycleOK = saved
+      case tp @ TypeRef(pre, name) =>
+        try {
+          // Check info of typeref recursively, marking the referred symbol
+          // with NoCompleter. This provokes a CyclicReference when the symbol
+          // is hit again. Without this precaution we could stackoverflow here.
+          val info = tp.info
+          val symInfo = tp.symbol.info
+          if (tp.symbol.exists) tp.symbol.info = SymDenotations.NoCompleter
+          try checkInfo(info)
+          finally if (tp.symbol.exists) tp.symbol.info = symInfo
+          tp
+        } catch {
+          case ex: CyclicReference =>
+            ctx.debuglog(i"cycle detected for $tp, $nestedCycleOK, $cycleOK")
+            if (cycleOK) LazyRef(() => tp) else throw ex
+        }
+      case _ => mapOver(tp)
+    }
+  }
+}
 
 trait Checking {
 
   import tpd._
+  import Checking._
+
+  /** Check that `info` of symbol `sym` is not cyclic.
+   *  @pre     sym is not yet initialized (i.e. its type is a Completer).
+   *  @return  `info` where every legal F-bounded reference is proctected
+   *                  by a `LazyRef`, or `ErrorType` if a cycle was detected and reported.
+   */
+  def checkNonCyclic(sym: Symbol, info: TypeBounds)(implicit ctx: Context): Type = {
+    val checker = new CheckNonCyclicMap
+    try checker.checkInfo(info)
+    catch {
+      case ex: CyclicReference =>
+        ctx.error(i"illegal cyclic reference: ${checker.where} $info of $sym refers back to the type itself", sym.pos)
+        ErrorType
+      }
+  }
 
   /** Check that Java statics and packages can only be used in selections.
    */
@@ -32,17 +152,13 @@ trait Checking {
     tree
   }
 
-  /** Check that type arguments `args` conform to corresponding bounds in `poly` */
-  def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = {
-    val argTypes = args.tpes
-    def substituted(tp: Type) = tp.substParams(poly, argTypes)
-    for ((arg, bounds) <- args zip poly.paramBounds) {
-      def notConforms(which: String, bound: Type) =
-        ctx.error(d"Type argument ${arg.tpe} does not conform to $which bound $bound", arg.pos)
-      if (!(arg.tpe <:< substituted(bounds.hi))) notConforms("upper", bounds.hi)
-      if (!(bounds.lo <:< arg.tpe)) notConforms("lower", bounds.lo)
-    }
-  }
+  /** Check that type arguments `args` conform to corresponding bounds in `poly`
+   *  Note: This does not check the bounds of AppliedTypeTrees. These
+   *  are handled by method checkBounds in FirstTransform
+   *  TODO: remove pos parameter
+   */
+  def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit =    Checking.checkBounds(
+      args, poly.paramBounds, (tp, argTypes) => tp.substParams(poly, argTypes))
 
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =

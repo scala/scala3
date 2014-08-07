@@ -315,7 +315,8 @@ class TypeComparer(initctx: Context) extends DotClass {
   private def rebase(tp: NamedType): Type = {
     def rebaseFrom(prefix: Type): Type = {
       rebaseQual(prefix, tp.name, considerBoth = true) match {
-        case rt: RefinedType if rt ne prefix => tp.derivedSelect(RefinedThis(rt))
+        case rt: RefinedType if rt ne prefix =>
+          tp.derivedSelect(RefinedThis(rt)).dealias // dealias to short-circuit cycles spanning type aliases or LazyRefs
         case _ => tp
       }
     }
@@ -511,6 +512,8 @@ class TypeComparer(initctx: Context) extends DotClass {
           case NoType => true
         }
         compareWild
+      case tp2: LazyRef =>
+        isSubType(tp1, tp2.ref)
       case tp2: AnnotatedType =>
         isSubType(tp1, tp2.tpe) // todo: refine?
       case AndType(tp21, tp22) =>
@@ -568,6 +571,8 @@ class TypeComparer(initctx: Context) extends DotClass {
         case _ => true
       }
       compareWild
+    case tp1: LazyRef =>
+      isSubType(tp1.ref, tp2)
     case tp1: AnnotatedType =>
       isSubType(tp1.tpe, tp2)
     case ErrorType =>

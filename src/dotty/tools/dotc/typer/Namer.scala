@@ -674,9 +674,11 @@ class Namer { typer: Typer =>
       if (needsLambda) rhsType.LambdaAbstract(tparamSyms)
       else if (toParameterize) rhsType.parameterizeWith(tparamSyms)
       else rhsType
-    rhsType match {
-      case _: TypeBounds => abstractedRhsType
+    val unsafeInfo = rhsType match {
+      case _: TypeBounds => abstractedRhsType.asInstanceOf[TypeBounds]
       case _ => TypeAlias(abstractedRhsType, if (sym is Local) sym.variance else 0)
     }
+    sym.info = NoCompleter
+    checkNonCyclic(sym, unsafeInfo)
   }
 }

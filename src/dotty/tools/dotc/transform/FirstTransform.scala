@@ -83,14 +83,11 @@ class FirstTransform extends TreeTransform with IdentityDenotTransformer { thisT
   override def transformOther(tree: Tree)(implicit ctx: Context, info: TransformerInfo) = tree match {
     case tree: Import => EmptyTree
     case tree: NamedArg => tree.arg
-/* not yet enabled
     case AppliedTypeTree(tycon, args) =>
-
       val tparams = tycon.tpe.typeSymbol.typeParams
       Checking.checkBounds(
         args, tparams.map(_.info.bounds), (tp, argTypes) => tp.substDealias(tparams, argTypes))
       TypeTree(tree.tpe).withPos(tree.pos)
-*/
     case tree =>
       if (tree.isType) TypeTree(tree.tpe, tree).withPos(tree.pos)
       else tree

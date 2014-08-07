@@ -1471,6 +1471,8 @@ object SymDenotations {
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = unsupported("complete")
   }
 
+  object NoCompleter extends NoCompleter
+
   /** A lazy type for modules that points to the module class.
    *  Needed so that `moduleClass` works before completion.
    *  Completion of modules is always completion of the underlying

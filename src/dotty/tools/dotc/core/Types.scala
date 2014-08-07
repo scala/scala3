@@ -31,6 +31,8 @@ import language.implicitConversions
 
 object Types {
 
+  private var recCount = 0
+
   /** The class of types.
    *  The principal subclasses and sub-objects are as follows:
    *
@@ -379,6 +381,8 @@ object Types {
      *  flags in `excluded` from consideration.
      */
     final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = try {
+      recCount += 1
+      assert(recCount < 20)
       @tailrec def go(tp: Type): Denotation = tp match {
         case tp: RefinedType =>
           if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
@@ -436,8 +440,10 @@ object Types {
       case ex: MergeError =>
         throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
       case ex: Throwable =>
-        println(s"error occurred during: $this: ${this.widen} member $name")
+        println(i"findMember exception for $this: ${this.widen} member $name")
         throw ex // DEBUG
+    } finally {
+      recCount -= 1
     }
 
     /** The set of names of members of this type that pass the given name filter
@@ -599,7 +605,9 @@ object Types {
       case _ => this
     }
 
-    /** Follow aliases until type is no longer an alias type. */
+    /** Follow aliases and derefernces LazyRefs and instantiated TypeVars until type
+     *  is no longer alias type, LazyRef, or instantiated type variable.
+     */
     final def dealias(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
         tp.info match {
@@ -609,6 +617,8 @@ object Types {
       case tp: TypeVar =>
         val tp1 = tp.instanceOpt
         if (tp1.exists) tp1.dealias else tp
+      case tp: LazyRef =>
+        tp.ref.dealias
       case tp => tp
     }
 
@@ -641,6 +651,14 @@ object Types {
       case tp: AnnotatedType => tp.underlying.underlyingClassRef
       case tp: RefinedType => tp.underlying.underlyingClassRef
       case _ => NoType
+    }
+
+    /** The chain of underlying types as long as type is a TypeProxy.
+     *  Useful for diagnostics
+     */
+    def underlyingChain(implicit ctx: Context): List[Type] = this match {
+      case tp: TypeProxy => tp :: tp.underlying.underlyingChain
+      case _ => Nil
     }
 
     /** A prefix-less termRef to a new skolem symbol that has the given type as info */
@@ -1467,6 +1485,12 @@ object Types {
   object ConstantType {
     def apply(value: Constant)(implicit ctx: Context) =
       unique(new CachedConstantType(value))
+  }
+
+  case class LazyRef(refFn: () => Type) extends UncachedProxyType with TermType {
+    lazy val ref = refFn()
+    override def underlying(implicit ctx: Context) = ref
+    override def toString = s"LazyRef($ref)"
   }
 
   // --- Refined Type ---------------------------------------------------------
@@ -2407,6 +2431,9 @@ object Types {
 
         case tp @ SuperType(thistp, supertp) =>
           tp.derivedSuperType(this(thistp), this(supertp))
+
+        case tp: LazyRef =>
+          LazyRef(() => this(tp.ref))
 
         case tp: ClassInfo =>
           mapClassInfo(tp)
