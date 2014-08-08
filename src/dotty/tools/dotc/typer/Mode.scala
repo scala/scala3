@@ -33,6 +33,7 @@ object Mode {
 
   val TypevarsMissContext = newMode(4, "TypevarsMissContext")
   val InSuperCall = newMode(5, "InSuperCall")
+  val CheckCyclic = newMode(6, "CheckCyclic")
 
   val PatternOrType = Pattern | Type
 }

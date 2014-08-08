@@ -147,7 +147,7 @@ object SymDenotations {
     }
 
     private def completeFrom(completer: LazyType)(implicit ctx: Context): Unit = {
-      if (myFlags is Touched) throw new CyclicReference(this)
+      if (myFlags is Touched) throw CyclicReference(this)
       myFlags |= Touched
 
       // completions.println(s"completing ${this.debugString}")
@@ -1034,7 +1034,7 @@ object SymDenotations {
       }
 
     private def computeBases(implicit ctx: Context): Unit = {
-      if (myBaseClasses eq Nil) throw new CyclicReference(this)
+      if (myBaseClasses eq Nil) throw CyclicReference(this)
       myBaseClasses = Nil
       val seen = new mutable.BitSet
       val locked = new mutable.BitSet
@@ -1294,7 +1294,7 @@ object SymDenotations {
               basetp = computeBaseTypeRefOf(tp)
               baseTypeRefCache.put(tp, basetp)
             } else if (basetp == NoPrefix) {
-              throw new CyclicReference(this)
+              throw CyclicReference(this)
             }
             basetp
           case _ =>

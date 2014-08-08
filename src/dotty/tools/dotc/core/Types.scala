@@ -1236,7 +1236,7 @@ object Types {
       if (ctx.underlyingRecursions < LogPendingUnderlyingThreshold)
         op
       else if (ctx.pendingUnderlying contains this)
-        throw new CyclicReference(symbol)
+        throw CyclicReference(symbol)
       else
         try {
           ctx.pendingUnderlying += this
@@ -1487,7 +1487,7 @@ object Types {
       unique(new CachedConstantType(value))
   }
 
-  case class LazyRef(refFn: () => Type) extends UncachedProxyType with TermType {
+  case class LazyRef(refFn: () => Type) extends UncachedProxyType with ValueType {
     lazy val ref = refFn()
     override def underlying(implicit ctx: Context) = ref
     override def toString = s"LazyRef($ref)"
@@ -2689,10 +2689,17 @@ object Types {
     extends FatalTypeError(
       s"""malformed type: $pre is not a legal prefix for $denot because it contains abstract type member${if (absMembers.size == 1) "" else "s"} ${absMembers.mkString(", ")}""")
 
-  class CyclicReference(val denot: SymDenotation)
+  class CyclicReference private (val denot: SymDenotation)
     extends FatalTypeError(s"cyclic reference involving $denot") {
     def show(implicit ctx: Context) = s"cyclic reference involving ${denot.show}"
-    printStackTrace()
+  }
+
+  object CyclicReference {
+    def apply(denot: SymDenotation)(implicit ctx: Context): CyclicReference = {
+      val ex = new CyclicReference(denot)
+      if (!(ctx.mode is typer.Mode.CheckCyclic)) ex.printStackTrace()
+      ex
+    }
   }
 
   class MergeError(msg: String) extends FatalTypeError(msg)

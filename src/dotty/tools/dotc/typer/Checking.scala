@@ -58,7 +58,7 @@ object Checking {
   /** A type map which checks that the only cycles in a type are F-bounds
    *  and that protects all F-bounded references by LazyRefs.
    */
-  class CheckNonCyclicMap(implicit ctx: Context) extends TypeMap {
+  class CheckNonCyclicMap(sym: Symbol, reportErrors: Boolean)(implicit ctx: Context) extends TypeMap {
 
     /** Are cycles allowed within nested refinedInfos of currently checked type? */
     private var nestedCycleOK = false
@@ -72,6 +72,9 @@ object Checking {
      */
     var where: String = ""
 
+    /** The last type top-level type checked when a CyclicReference occurs. */
+    var lastChecked: Type = NoType
+
     /** Check info `tp` for cycles. Throw CyclicReference for illegal cycles,
      *  break direct cycle with a LazyRef for legal, F-bounded cycles.
      */
@@ -79,15 +82,22 @@ object Checking {
       case tp @ TypeBounds(lo, hi) =>
         if (lo eq hi)
           try tp.derivedTypeAlias(apply(lo))
-          finally where = "alias"
+          finally {
+            where = "alias"
+            lastChecked = lo
+          }
         else {
-          val lo1 = try apply(lo) finally where = "lower bound"
+          val lo1 = try apply(lo) finally {
+            where = "lower bound"
+            lastChecked = lo
+          }
           val saved = nestedCycleOK
           nestedCycleOK = true
           try tp.derivedTypeBounds(lo1, apply(hi))
           finally {
             nestedCycleOK = saved
             where = "upper bound"
+            lastChecked = hi
           }
         }
       case _ =>
@@ -103,21 +113,56 @@ object Checking {
         finally cycleOK = saved
       case tp @ TypeRef(pre, name) =>
         try {
-          // Check info of typeref recursively, marking the referred symbol
+          // A prefix is interesting if it might contain (transitively) a reference
+          // to symbol `sym` itself. We only check references with interesting
+          // prefixes for cycles. This pruning is done in order not to force
+          // global symbols when doing the cyclicity check.
+          def isInteresting(prefix: Type): Boolean = prefix.stripTypeVar match {
+            case NoPrefix => true
+            case ThisType(cls) => sym.owner.isClass && cls.isContainedIn(sym.owner)
+            case prefix: NamedType => !prefix.symbol.isStaticOwner && isInteresting(prefix.prefix)
+            case SuperType(thistp, _) => isInteresting(thistp)
+            case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
+            case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
+            case _ => false
+          }
+          // If prefix is interesting, check info of typeref recursively, marking the referred symbol
           // with NoCompleter. This provokes a CyclicReference when the symbol
           // is hit again. Without this precaution we could stackoverflow here.
-          val info = tp.info
-          val symInfo = tp.symbol.info
-          if (tp.symbol.exists) tp.symbol.info = SymDenotations.NoCompleter
-          try checkInfo(info)
-          finally if (tp.symbol.exists) tp.symbol.info = symInfo
+          if (isInteresting(pre)) {
+            val info = tp.info
+            val symInfo = tp.symbol.info
+            if (tp.symbol.exists) tp.symbol.info = SymDenotations.NoCompleter
+            try checkInfo(info)
+            finally if (tp.symbol.exists) tp.symbol.info = symInfo
+          }
           tp
         } catch {
           case ex: CyclicReference =>
             ctx.debuglog(i"cycle detected for $tp, $nestedCycleOK, $cycleOK")
-            if (cycleOK) LazyRef(() => tp) else throw ex
+            if (cycleOK) LazyRef(() => tp)
+            else if (reportErrors) throw ex
+            else tp
         }
       case _ => mapOver(tp)
+    }
+  }
+
+  /** Check that `info` of symbol `sym` is not cyclic.
+   *  @pre     sym is not yet initialized (i.e. its type is a Completer).
+   *  @return  `info` where every legal F-bounded reference is proctected
+   *                  by a `LazyRef`, or `ErrorType` if a cycle was detected and reported.
+   */
+  def checkNonCyclic(sym: Symbol, info: Type, reportErrors: Boolean)(implicit ctx: Context): Type = {
+    val checker = new CheckNonCyclicMap(sym, reportErrors)(ctx.withMode(Mode.CheckCyclic))
+    try checker.checkInfo(info)
+    catch {
+      case ex: CyclicReference =>
+        if (reportErrors) {
+          ctx.error(i"illegal cyclic reference: ${checker.where} ${checker.lastChecked} of $sym refers back to the type itself", sym.pos)
+          ErrorType
+        }
+        else info
     }
   }
 }
@@ -125,22 +170,9 @@ object Checking {
 trait Checking {
 
   import tpd._
-  import Checking._
 
-  /** Check that `info` of symbol `sym` is not cyclic.
-   *  @pre     sym is not yet initialized (i.e. its type is a Completer).
-   *  @return  `info` where every legal F-bounded reference is proctected
-   *                  by a `LazyRef`, or `ErrorType` if a cycle was detected and reported.
-   */
-  def checkNonCyclic(sym: Symbol, info: TypeBounds)(implicit ctx: Context): Type = {
-    val checker = new CheckNonCyclicMap
-    try checker.checkInfo(info)
-    catch {
-      case ex: CyclicReference =>
-        ctx.error(i"illegal cyclic reference: ${checker.where} $info of $sym refers back to the type itself", sym.pos)
-        ErrorType
-      }
-  }
+  def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type =
+    Checking.checkNonCyclic(sym, info, reportErrors)
 
   /** Check that Java statics and packages can only be used in selections.
    */
@@ -252,6 +284,7 @@ trait Checking {
 
 trait NoChecking extends Checking {
   import tpd._
+  override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
   override def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()

@@ -679,6 +679,6 @@ class Namer { typer: Typer =>
       case _ => TypeAlias(abstractedRhsType, if (sym is Local) sym.variance else 0)
     }
     sym.info = NoCompleter
-    checkNonCyclic(sym, unsafeInfo)
+    checkNonCyclic(sym, unsafeInfo, reportErrors = true)
   }
 }

@@ -15,6 +15,7 @@ import printing.Texts._
 import printing.Printer
 import io.AbstractFile
 import util.common._
+import typer.Checking.checkNonCyclic
 import PickleBuffer._
 import scala.reflect.internal.pickling.PickleFormat._
 import Decorators._
@@ -516,7 +517,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             denot setFlag Scala2x
           case denot =>
             val tp1 = depoly(tp, denot)
-            denot.info = if (tag == ALIASsym) TypeAlias(tp1) else tp1
+            denot.info =
+              if (tag == ALIASsym) TypeAlias(tp1)
+              else if (denot.isType) checkNonCyclic(denot.symbol, tp1, reportErrors = false)
+                // we need the checkNonCyclic call to insert LazyRefs for F-bounded cycles
+              else tp1
             if (denot.isConstructor) addConstructorTypeParams(denot)
             if (atEnd) {
               assert(!(denot is SuperAccessor), denot)
