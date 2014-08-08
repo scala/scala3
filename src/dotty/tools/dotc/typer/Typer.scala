@@ -735,7 +735,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): AppliedTypeTree = track("typedAppliedTypeTree") {
     val tpt1 = typed(tree.tpt)
     val args1 = tree.args mapconserve (typed(_))
-    // todo in later phase: check arguments conform to parameter bounds
+    // check that arguments conform to bounds is done in phase FirstTransform
     assignType(cpy.AppliedTypeTree(tree, tpt1, args1), tpt1, args1)
   }
 
@@ -748,9 +748,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val TypeBoundsTree(lo, hi) = desugar.typeBoundsTree(tree)
     val lo1 = typed(lo)
     val hi1 = typed(hi)
-    // need to do in later phase, as this might cause a cyclic reference error. See pos/t0039.scala
-    //  if (!(lo1.tpe <:< hi1.tpe))
-    //    ctx.error(d"lower bound ${lo1.tpe} does not conform to upper bound ${hi1.tpe}", tree.pos)
+    if (!(lo1.tpe <:< hi1.tpe))
+      ctx.error(d"lower bound ${lo1.tpe} does not conform to upper bound ${hi1.tpe}", tree.pos)
     assignType(cpy.TypeBoundsTree(tree, lo1, hi1), lo1, hi1)
   }
 

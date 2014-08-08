@@ -1,10 +1,10 @@
 // covariant linked list
 abstract class M {
-  self =>
+  self: M =>
 
   type T
   final type selfType = M {type T <: self.T}
-  type actualSelfType >: self.type <: selfType
+  type actualSelfType >: self.type <: selfType // this no longer compiles because self.type is not a subtype of selfType
 
   def next: selfType
 
