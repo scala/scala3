@@ -180,7 +180,7 @@ object Phases {
   final val erasureName = "erasure"
   final val flattenName = "flatten"
 
-  abstract class Phase extends DotClass {
+  trait Phase extends DotClass {
 
     def name: String
 
