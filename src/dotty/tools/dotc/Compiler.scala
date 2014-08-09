@@ -6,7 +6,7 @@ import Contexts._
 import Periods._
 import Symbols._
 import Scopes._
-import typer.{FrontEnd, Typer, Mode, ImportInfo}
+import typer.{FrontEnd, Typer, Mode, ImportInfo, RefChecks}
 import reporting.ConsoleReporter
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform._
@@ -21,8 +21,8 @@ class Compiler {
       List(new FrontEnd),
       List(new FirstTransform),
       List(new SuperAccessors),
-      // pickling and refchecks goes here
-      List(/*new RefChecks,*/ new ElimRepeated, new ElimLocals),
+      // pickling goes here
+      List(/*new RefChecks, */new ElimRepeated, new ElimLocals),
       List(new ExtensionMethods),
       List(new TailRec),
       List(new PatternMatcher,

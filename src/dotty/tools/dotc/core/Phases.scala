@@ -10,7 +10,6 @@ import config.Printers._
 import scala.collection.mutable.{ListBuffer, ArrayBuffer}
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, TreeTransform}
 import dotty.tools.dotc.transform.TreeTransforms
-import TreeTransforms.Separator
 import Periods._
 
 trait Phases {
