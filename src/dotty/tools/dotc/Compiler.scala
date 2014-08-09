@@ -26,7 +26,7 @@ class Compiler {
       List(new ExtensionMethods),
       List(new TailRec),
       List(new PatternMatcher,
-           new LazyValTranformContext().transformer,
+           // new LazyValTranformContext().transformer, // disabled, awaiting fixes
            new Splitter),
       List(new Nullarify,
            new TypeTestsCasts,

@@ -444,7 +444,7 @@ object Flags {
   final val RetainedTypeArgFlags = VarianceFlags | ExpandedName | Protected | Local
 
   /** Modules always have these flags set */
-  final val ModuleCreationFlags = ModuleVal | Final | Stable
+  final val ModuleCreationFlags = ModuleVal | Lazy | Final | Stable
 
   /** Module classes always have these flags set */
   final val ModuleClassCreationFlags = ModuleClass | Final
