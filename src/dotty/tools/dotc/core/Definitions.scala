@@ -296,7 +296,7 @@ class Definitions {
   lazy val ScalaSignatureAnnot = ctx.requiredClass("scala.reflect.ScalaSignature")
   lazy val ScalaLongSignatureAnnot = ctx.requiredClass("scala.reflect.ScalaLongSignature")
   lazy val DeprecatedAnnot = ctx.requiredClass("scala.deprecated")
-  lazy val MigrationAnnot = ctx.requiredClass("scala.migration")
+  lazy val MigrationAnnot = ctx.requiredClass("scala.annotation.migration")
   lazy val AnnotationDefaultAnnot = ctx.requiredClass("dotty.annotation.internal.AnnotationDefault")
   lazy val ThrowsAnnot = ctx.requiredClass("scala.throws")
   lazy val UncheckedAnnot = ctx.requiredClass("scala.unchecked")
