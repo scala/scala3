@@ -10,7 +10,7 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.transform.TailRec._
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform}
+import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, MiniPhaseTransform}
 
 /**
  * A Tail Rec Transformer
@@ -62,7 +62,7 @@ import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform
  *             self recursive functions, that's why it's renamed to tailrec
  *             </p>
  */
-class TailRec extends TreeTransform with DenotTransformer with FullParameterization {
+class TailRec extends MiniPhaseTransform with DenotTransformer with FullParameterization {
 
   import dotty.tools.dotc.ast.tpd._
 

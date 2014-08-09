@@ -8,7 +8,7 @@ import DenotTransformers._
 import Denotations._
 import config.Printers._
 import scala.collection.mutable.{ListBuffer, ArrayBuffer}
-import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, TreeTransform}
+import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, MiniPhase, TreeTransform}
 import dotty.tools.dotc.transform.TreeTransforms
 import Periods._
 
@@ -80,7 +80,7 @@ object Phases {
           val phasesInBlock: Set[String] = phasess(i).map(_.name).toSet
           for(phase<-phasess(i)) {
             phase match {
-              case p: TreeTransform =>
+              case p: MiniPhase =>
 
                 val unmetRequirements = p.runsAfterGroupsOf &~ prevPhases
                 assert(unmetRequirements.isEmpty,
@@ -90,9 +90,9 @@ object Phases {
                 assert(false, s"Only tree transforms can be squashed, ${phase.name} can not be squashed")
             }
           }
-          val transforms = phasess(i).asInstanceOf[List[TreeTransform]]
+          val transforms = phasess(i).asInstanceOf[List[MiniPhase]].map(_.treeTransform)
           val block = new TreeTransformer {
-            override def name: String = transformations.map(_.name).mkString("TreeTransform:{", ", ", "}")
+            override def name: String = transformations.map(_.phase.name).mkString("TreeTransform:{", ", ", "}")
             override def transformations: Array[TreeTransform] = transforms.toArray
           }
           squashedPhases += block

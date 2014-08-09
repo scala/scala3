@@ -11,7 +11,7 @@ import core.Symbols._
 import ast.Trees._
 import ast.tpd.{Apply, Tree, cpy}
 
-class UncurryTreeTransform extends TreeTransform with InfoTransformer {
+class UncurryTreeTransform extends MiniPhaseTransform with InfoTransformer {
 
   override def name: String = "uncurry"
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =

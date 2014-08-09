@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.StdNames._
  *  Right now it's a dummy.
  *  Awaiting for real implemetation
  */
-class Constructors extends TreeTransform {
+class Constructors extends MiniPhaseTransform {
 
   override def name: String = "constructors"
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {

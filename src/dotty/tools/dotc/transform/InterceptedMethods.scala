@@ -40,7 +40,7 @@ import StdNames._
   *     using the most precise overload available
   * - `x.getClass` for getClass in primitives becomes `x.getClass` with getClass in class Object.
   */
-class InterceptedMethods extends TreeTransform {
+class InterceptedMethods extends MiniPhaseTransform {
 
   import tpd._
 

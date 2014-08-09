@@ -21,7 +21,7 @@ import Erasure.Boxing.box
  *   - have a reference type as receiver
  *   - can be translated directly to machine instructions
  */
-class TypeTestsCasts extends TreeTransform {
+class TypeTestsCasts extends MiniPhaseTransform {
   import ast.tpd._
 
   override def name: String = "typeTestsCasts"

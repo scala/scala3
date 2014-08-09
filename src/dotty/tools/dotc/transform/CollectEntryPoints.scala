@@ -1,6 +1,6 @@
 package dotty.tools.dotc.transform
 
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform, TreeTransformer}
+import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform, TreeTransformer, MiniPhaseTransform}
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import scala.collection.mutable.ListBuffer
@@ -23,7 +23,7 @@ import StdNames._
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.config.JavaPlatform
 
-class CollectEntryPoints extends TreeTransform {
+class CollectEntryPoints extends MiniPhaseTransform {
 
   /** perform context-dependant initialization */
   override def init(implicit ctx: Context, info: TransformerInfo): Unit = {

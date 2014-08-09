@@ -8,7 +8,7 @@ import Symbols._
 import Decorators._
 import NameOps._
 import StdNames.nme
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransformer, TreeTransform}
+import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransformer, MiniPhaseTransform}
 import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{untpd, tpd}
 import dotty.tools.dotc.core.Constants.Constant
@@ -43,7 +43,7 @@ class LazyValTranformContext {
     }
   }
 
-  class LazyValsTransform extends TreeTransform with DenotTransformer {
+  class LazyValsTransform extends MiniPhaseTransform with DenotTransformer {
 
     override def name: String = "LazyVals"
 

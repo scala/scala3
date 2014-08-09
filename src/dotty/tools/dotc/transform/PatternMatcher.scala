@@ -16,7 +16,7 @@ import ast.Trees._
 /** This transform eliminates patterns. Right now it's a dummy.
  *  Awaiting the real pattern matcher.
  */
-class PatternMatcher extends TreeTransform {
+class PatternMatcher extends MiniPhaseTransform {
   import ast.tpd._
 
   override def name: String = "patternMatcher"

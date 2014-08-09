@@ -3,7 +3,7 @@ package transform
 
 import core._
 import Names._
-import TreeTransforms.{TransformerInfo, TreeTransform, TreeTransformer}
+import TreeTransforms.{TransformerInfo, MiniPhaseTransform, TreeTransformer}
 import ast.Trees._
 import Flags._
 import Types._
@@ -23,7 +23,7 @@ import NameOps._
  *   - checks the bounds of AppliedTypeTrees
  *   - stubs out native methods
  */
-class FirstTransform extends TreeTransform with IdentityDenotTransformer { thisTransformer =>
+class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { thisTransformer =>
   import ast.tpd._
 
   override def name = "companions"

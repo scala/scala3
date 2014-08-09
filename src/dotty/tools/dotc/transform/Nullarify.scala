@@ -34,7 +34,7 @@ import ast.Trees._
  *      expr        ==>    () => expr  if other expr is an argument to a call-by-name parameter
  *
  */
-class Nullarify extends TreeTransform with InfoTransformer {
+class Nullarify extends MiniPhaseTransform with InfoTransformer {
   import ast.tpd._
 
   override def name: String = "nullarify"
