@@ -176,9 +176,9 @@ object Scopes {
 
     /** enter a symbol in this scope. */
     final def enter[T <: Symbol](sym: T)(implicit ctx: Context): T = {
-      if (sym.isType) {
+      if (sym.isType && ctx.phaseId <= ctx.typerPhase.id) {
         assert(lookup(sym.name) == NoSymbol,
-          s"duplicate type ${sym.debugString}; previous was ${lookup(sym.name).debugString}") // !!! DEBUG
+          s"duplicate ${sym.debugString}; previous was ${lookup(sym.name).debugString}") // !!! DEBUG
       }
       newScopeEntry(sym)
       sym
