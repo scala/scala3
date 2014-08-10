@@ -312,12 +312,12 @@ object desugar {
     def productConstr(n: Int) = {
       val tycon = ref(defn.ProductNClass(n).typeRef)
       val targs = constrVparamss.head map (_.tpt)
-      AppliedTypeTree(tycon, targs)
+      if (targs.isEmpty) tycon else AppliedTypeTree(tycon, targs)
     }
 
     // Case classes get a ProductN parent
     var parents1 = parents
-    if ((mods is Case) && 2 <= arity && arity <= Definitions.MaxTupleArity)
+    if ((mods is Case) && arity <= Definitions.MaxTupleArity)
       parents1 = parents1 :+ productConstr(arity)
 
     // The thicket which is the desugared version of the companion object
