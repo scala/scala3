@@ -23,6 +23,7 @@ object Printers {
   val completions = noPrinter
   val gadts = noPrinter
   val hk = noPrinter
+  val variances = noPrinter
   val incremental = noPrinter
   val config = noPrinter
   val transforms = noPrinter

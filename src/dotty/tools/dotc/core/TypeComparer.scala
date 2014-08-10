@@ -454,7 +454,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         def isHKSubType = tp2.name == tpnme.Apply && {
           val lambda2 = tp2.prefix.LambdaClass(forcing = true)
           lambda2.exists && !tp1.isLambda &&
-            isSubType(tp1.EtaLiftTo(lambda2.typeParams), tp2.prefix)
+            tp1.testLifted(lambda2.typeParams, isSubType(_, tp2.prefix))
         }
         def compareNamed = {
           implicit val ctx: Context = this.ctx // Dotty deviation: implicits need explicit type
@@ -673,7 +673,7 @@ class TypeComparer(initctx: Context) extends DotClass {
              || hasMatchingMember(name2)
              || fourthTry(tp1, tp2)
              )
-          || needsEtaLift(tp1, tp2) && isSubType(tp1.EtaLiftTo(tp2.typeParams), tp2)
+          || needsEtaLift(tp1, tp2) && tp1.testLifted(tp2.typeParams, isSubType(_, tp2))
           )
       }
       compareRefined
@@ -768,7 +768,7 @@ class TypeComparer(initctx: Context) extends DotClass {
           isNewSubType(tp1.parent, tp2)
         }
         finally pendingRefinedBases = saved
-      } || needsEtaLift(tp2, tp1) && isSubType(tp1, tp2.EtaLiftTo(tp1.typeParams))
+      } || needsEtaLift(tp2, tp1) && tp2.testLifted(tp1.typeParams, isSubType(tp1, _))
     case AndType(tp11, tp12) =>
       isNewSubType(tp11, tp2) || isNewSubType(tp12, tp2)
     case _ =>

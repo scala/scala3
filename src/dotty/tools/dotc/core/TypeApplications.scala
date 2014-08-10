@@ -463,16 +463,18 @@ class TypeApplications(val self: Type) extends AnyVal {
     self.appliedTo(tparams map (_.typeRef)).LambdaAbstract(tparams)
   }
 
-  /** If this type has a base type `B[T1, ..., Tn]` where the type parameters
-   *  of `B` match one-by-one the variances of `tparams`, convert it to
+  /** Test whether this type has a base type `B[T1, ..., Tn]` where the type parameters
+   *  of `B` match one-by-one the variances of `tparams`, and where the lambda
+   *  abstracted type
    *
    *     LambdaXYZ { type Apply = B[$hkArg$0, ..., $hkArg$n] }
    *               { type $hkArg$0 = T1; ...; type $hkArg$n = Tn }
    *
+   *  satisfies predicate `p`. Try base types in the order of ther occurrence in `baseClasses`.
    *  A type parameter matches a varianve V if it has V as its variance or if V == 0.
    */
-  def EtaLiftTo(tparams: List[Symbol])(implicit ctx: Context): Type = {
-    def tryLift(bcs: List[ClassSymbol]): Type = bcs match {
+  def testLifted(tparams: List[Symbol], p: Type => Boolean)(implicit ctx: Context): Boolean = {
+    def tryLift(bcs: List[ClassSymbol]): Boolean = bcs match {
       case bc :: bcs1 =>
         val tp = self.baseTypeWithArgs(bc)
         val targs = tp.argInfos
@@ -481,19 +483,20 @@ class TypeApplications(val self: Type) extends AnyVal {
           param2.variance == param2.variance || param2.variance == 0
         if ((tycon.typeParams corresponds tparams)(variancesMatch)) {
           val expanded = tycon.EtaExpand
-          val res = (expanded /: targs) { (partialInst, targ) =>
+          val lifted = (expanded /: targs) { (partialInst, targ) =>
             val tparam = partialInst.typeParams.head
             RefinedType(partialInst, tparam.name, targ.bounds.withVariance(tparam.variance))
           }
-          hk.println(i"eta lifting $self --> $res")
-          res
+          ctx.traceIndented(i"eta lifting $self --> $lifted", hk) {
+            p(lifted) || tryLift(bcs1)
+          }
         }
         else tryLift(bcs1)
       case nil =>
-        NoType
+        false
     }
-    if (tparams.isEmpty) NoType
-    else if (typeParams.nonEmpty) EtaExpand
+    if (tparams.isEmpty) false
+    else if (typeParams.nonEmpty) p(EtaExpand)
     else tryLift(self.baseClasses)
   }
 }
