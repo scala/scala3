@@ -35,10 +35,22 @@ class Erasure extends Phase with DenotTransformer {
   def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
     case ref: SymDenotation =>
       assert(ctx.phase == this, s"transforming $ref at ${ctx.phase}")
-      val owner = ref.owner
-      ref.copySymDenotation(
-        owner = if (owner eq defn.AnyClass) defn.ObjectClass else owner,
-        info = transformInfo(ref.symbol, ref.info))
+      if (ref.symbol eq defn.ObjectClass) {
+        // Aftre erasure, all former Any members are now Object members
+        val ClassInfo(pre, _, ps, decls, selfInfo) = ref.info
+        val extendedScope = decls.cloneScope
+        defn.AnyClass.classInfo.decls.foreach(extendedScope.enter)
+        ref.copySymDenotation(
+          info = transformInfo(ref.symbol,
+              ClassInfo(pre, defn.ObjectClass, ps, extendedScope, selfInfo))
+        )
+      }
+      else {
+        val owner = ref.owner
+        ref.copySymDenotation(
+          owner = if (owner eq defn.AnyClass) defn.ObjectClass else owner,
+          info = transformInfo(ref.symbol, ref.info))
+      }
     case ref =>
       ref.derivedSingleDenotation(ref.symbol, erasure(ref.info))
   }
@@ -296,9 +308,9 @@ object Erasure {
                 val newSymbol = member.symbol(ctx)
                 assert(oldSymbol.name(beforeCtx) == newSymbol.name,
                   s"${oldSymbol.name(beforeCtx)} bridging with ${newSymbol.name}")
-                val newOverriden = oldSymbol.denot.allOverriddenSymbols.toSet
-                val oldOverriden = newSymbol.allOverriddenSymbols(beforeCtx).toSet
-                val neededBridges = oldOverriden -- newOverriden
+                val newOverridden = oldSymbol.denot.allOverriddenSymbols.toSet // TODO: clarify new <-> old in a comment; symbols are swapped here
+                val oldOverridden = newSymbol.allOverriddenSymbols(beforeCtx).toSet // TODO: can we find a more efficient impl? newOverridden does not have to be a set!
+                val neededBridges = oldOverridden -- newOverridden
 
                 var minimalSet = Set[Symbol]()
                 // compute minimal set of bridges that are needed:
@@ -316,9 +328,9 @@ object Erasure {
                       )
                     clash match {
                       case Some(cl) =>
-                        ctx.error(s"bridge for method ${newSymbol.show(beforeCtx)}\n" +
-                          s"clashes with ${cl.symbol.show(beforeCtx)}\n" +
-                          s"both have same type after erasure: ${bridge.symbol.info.show}")
+                        ctx.error(i"bridge for method ${newSymbol.showLocated(beforeCtx)} of type ${newSymbol.info(beforeCtx)}\n" +
+                          i"clashes with ${cl.symbol.showLocated(beforeCtx)} of type ${cl.symbol.info(beforeCtx)}\n" +
+                          i"both have same type after erasure: ${bridge.symbol.info}")
                       case None => minimalSet += bridge
                     }
                   }
