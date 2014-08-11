@@ -109,7 +109,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           return (toTextLocal(tycon) ~ "[" ~ Text(args map argText, ", ") ~ "]").close
         }
       case tp: TypeRef =>
-        if ((tp.symbol is TypeParam | TypeArgument) && !ctx.phase.erasedTypes && !tp.symbol.isCompleting) {
+        if ((tp.symbol is TypeParam | TypeArgument | ExpandedName) && !ctx.phase.erasedTypes && !tp.symbol.isCompleting) {
           tp.info match {
             case TypeAlias(hi) => return toText(hi)
             case _ => if (tp.prefix.isInstanceOf[ThisType]) return nameString(tp.symbol)
