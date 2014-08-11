@@ -287,7 +287,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           val tree1 = rewriteTry(tree)
           propagateType(tree, tree1)
 
-        case Apply(fun, args) if fun.symbol == defn.Boolean_or || fun.symbol == defn.Boolean_and =>
+        case Apply(fun, args) if fun.symbol == defn.Boolean_|| || fun.symbol == defn.Boolean_&& =>
           tpd.cpy.Apply(tree, fun, transform(args))
 
         case Apply(fun, args) =>

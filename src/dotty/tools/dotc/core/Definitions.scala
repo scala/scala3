@@ -181,8 +181,17 @@ class Definitions {
 
   lazy val ScalaPredefModule = ctx.requiredModule("scala.Predef")
   lazy val ScalaRuntimeModule = ctx.requiredModule("scala.runtime.ScalaRunTime")
-  lazy val BoxesRunTimeModule     = ctx.requiredModule("scala.runtime.BoxesRunTime")
-  lazy val BoxesRunTimeClass      = BoxesRunTimeModule.moduleClass
+  lazy val ScalaRuntimeClass = ScalaRuntimeModule.moduleClass.asClass
+
+    def runtimeMethod(name: PreName) = ctx.requiredMethod(ScalaRuntimeClass, name)
+
+  lazy val BoxesRunTimeModule = ctx.requiredModule("scala.runtime.BoxesRunTime")
+  lazy val BoxesRunTimeClass = BoxesRunTimeModule.moduleClass.asClass
+  lazy val ScalaStaticsModule = ctx.requiredModule("scala.runtime.Statics")
+  lazy val ScalaStaticsClass = ScalaStaticsModule.moduleClass.asClass
+
+    def staticsMethod(name: PreName) = ctx.requiredMethod(ScalaStaticsClass, name)
+
   lazy val DottyPredefModule = ctx.requiredModule("dotty.DottyPredef")
   lazy val NilModule = ctx.requiredModule("scala.collection.immutable.Nil")
   lazy val PredefConformsClass = ctx.requiredClass("scala.Predef." + tpnme.Conforms)
@@ -204,8 +213,8 @@ class Definitions {
   lazy val UnitClass = valueClassSymbol("scala.Unit", BoxedUnitClass, java.lang.Void.TYPE, UnitEnc)
   lazy val BooleanClass = valueClassSymbol("scala.Boolean", BoxedBooleanClass, java.lang.Boolean.TYPE, BooleanEnc)
     lazy val Boolean_!   = BooleanClass.requiredMethod(nme.UNARY_!)
-    lazy val Boolean_and = BooleanClass.requiredMethod(nme.ZAND)
-    lazy val Boolean_or  = BooleanClass.requiredMethod(nme.ZOR)
+    lazy val Boolean_&& = BooleanClass.requiredMethod(nme.ZAND)
+    lazy val Boolean_||  = BooleanClass.requiredMethod(nme.ZOR)
 
   lazy val ByteClass = valueClassSymbol("scala.Byte", BoxedByteClass, java.lang.Byte.TYPE, ByteEnc)
   lazy val ShortClass = valueClassSymbol("scala.Short", BoxedShortClass, java.lang.Short.TYPE, ShortEnc)
@@ -273,6 +282,9 @@ class Definitions {
   lazy val JavaSerializableClass        = ctx.requiredClass("java.lang.Serializable")
   lazy val ComparableClass              = ctx.requiredClass("java.lang.Comparable")
   lazy val ProductClass                 = ctx.requiredClass("scala.Product")
+
+    lazy val Product_canEqual = ProductClass.requiredMethod(nme.canEqual_)
+
   lazy val LanguageModuleClass          = ctx.requiredModule("dotty.language").moduleClass.asClass
 
   // Annotation base classes
