@@ -288,11 +288,9 @@ object desugar {
           DefDef(synthetic, name, Nil, Nil, TypeTree(), rhs)
         val isDefinedMeth = syntheticProperty(nme.isDefined, Literal(Constant(true)))
         val productArityMeth = syntheticProperty(nme.productArity, Literal(Constant(arity)))
-        def selectorName(n: Int) =
-          if (arity == 1) nme.get else nme.selectorName(n)
         val caseParams = constrVparamss.head.toArray
         val productElemMeths = for (i <- 0 until arity) yield
-          syntheticProperty(selectorName(i), Select(This(EmptyTypeName), caseParams(i).name))
+          syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeName), caseParams(i).name))
         val copyMeths =
           if (mods is Abstract) Nil
           else {
