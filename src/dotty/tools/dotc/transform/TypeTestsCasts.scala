@@ -59,7 +59,7 @@ class TypeTestsCasts extends MiniPhaseTransform {
                   case _ =>
                     erased2 match {
                       case Literal(Constant(true)) => erased1
-                      case _ => mkAnd(erased1, erased2)
+                      case _ => erased1 and erased2
                     }
                 }
               }
@@ -68,7 +68,7 @@ class TypeTestsCasts extends MiniPhaseTransform {
                 runtimeCall(nme.isArray, arg :: Literal(Constant(ndims)) :: Nil)
               if (ndims == 1) isArrayTest(qual)
               else evalOnce(qual) { qual1 =>
-                mkAnd(derivedTree(qual1, defn.Any_isInstanceOf, qual1.tpe), isArrayTest(qual1))
+                derivedTree(qual1, defn.Any_isInstanceOf, qual1.tpe) and isArrayTest(qual1)
               }
             case _ =>
               derivedTree(expr, defn.Any_isInstanceOf, argType)

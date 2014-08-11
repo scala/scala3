@@ -405,6 +405,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def appliedToTypeTrees(targs: List[Tree])(implicit ctx: Context): Tree =
       if (targs.isEmpty) tree else TypeApply(tree, targs)
+
+    def isInstance(tp: Type)(implicit ctx: Context): Tree =
+      tree.select(defn.Any_isInstanceOf).appliedToType(tp)
+
+    def asInstance(tp: Type)(implicit ctx: Context): Tree =
+      tree.select(defn.Any_asInstanceOf).appliedToType(tp)
+
+    def ensureConforms(tp: Type)(implicit ctx: Context): Tree =
+      if (tree.tpe <:< tp) tree else asInstance(tp)
+
+    def and(that: Tree)(implicit ctx: Context): Tree =
+      tree.select(defn.Boolean_&&).appliedTo(that)
+
+    def or(that: Tree)(implicit ctx: Context): Tree =
+      tree.select(defn.Boolean_||).appliedTo(that)
   }
 
   implicit class ListOfTreeDecorator(val xs: List[tpd.Tree]) extends AnyVal {
@@ -647,15 +662,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   def runtimeCall(name: TermName, args: List[Tree])(implicit ctx: Context): Tree = ???
-
-  def mkAnd(tree1: Tree, tree2: Tree)(implicit ctx: Context) =
-    tree1.select(defn.Boolean_and).appliedTo(tree2)
-
-  def mkAsInstanceOf(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
-    tree.select(defn.Any_asInstanceOf).appliedToType(pt)
-
-  def ensureConforms(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
-    if (tree.tpe <:< pt) tree else mkAsInstanceOf(tree, pt)
 
   // ensure that constructors are fully applied?
   // ensure that normal methods are fully applied?

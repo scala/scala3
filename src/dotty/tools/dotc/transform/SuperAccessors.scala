@@ -276,7 +276,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
                             .installAfter(thisTransformer)
                           val superAcc =
                             Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)
-                          DefDef(sym, ensureConforms(superAcc, sym.info.widen))
+                          DefDef(sym, superAcc.ensureConforms(sym.info.widen))
                         }
                         return forwarder(ctx.withPhase(thisTransformer.next))
                       }

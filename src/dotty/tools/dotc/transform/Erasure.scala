@@ -157,7 +157,7 @@ object Erasure {
           cast(runtimeCall(nme.toObjectArray, tree :: Nil), pt)
         case _ =>
           ctx.log(s"casting from ${tree.showSummary}: ${tree.tpe.show} to ${pt.show}")
-          mkAsInstanceOf(tree, pt)
+          tree.asInstance(pt)
       }
     }
 
