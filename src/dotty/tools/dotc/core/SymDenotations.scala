@@ -714,15 +714,24 @@ object SymDenotations {
 
     /** The non-private symbol whose name and type matches the type of this symbol
      *  in the given class.
-     *  @param inClass   The class containing the symbol's definition
+     *  @param inClass   The class containing the result symbol's definition
      *  @param site      The base type from which member types are computed
      *
      *  inClass <-- find denot.symbol      class C { <-- symbol is here
      *
      *                   site: Subtype of both inClass and C
      */
-    final def matchingSymbol(inClass: Symbol, site: Type)(implicit ctx: Context): Symbol = {
+    final def matchingDecl(inClass: Symbol, site: Type)(implicit ctx: Context): Symbol = {
       var denot = inClass.info.nonPrivateDecl(name)
+      if (denot.isTerm) // types of the same name always match
+        denot = denot.matchingDenotation(site, site.memberInfo(symbol))
+      denot.symbol
+    }
+
+    /** The non-private member of `site` whose name and type matches the type of this symbol
+     */
+    final def matchingMember(site: Type)(implicit ctx: Context): Symbol = {
+      var denot = site.nonPrivateMember(name)
       if (denot.isTerm) // types of the same name always match
         denot = denot.matchingDenotation(site, site.memberInfo(symbol))
       denot.symbol
@@ -737,7 +746,7 @@ object SymDenotations {
     /** The symbol, in class `inClass`, that is overridden by this denotation. */
     final def overriddenSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol =
       if (!canMatchInheritedSymbols && (owner ne inClass)) NoSymbol
-      else matchingSymbol(inClass, owner.thisType)
+      else matchingDecl(inClass, owner.thisType)
 
     /** All symbols overriden by this denotation. */
     final def allOverriddenSymbols(implicit ctx: Context): Iterator[Symbol] =
@@ -757,7 +766,7 @@ object SymDenotations {
      *  @param ofclazz is a subclass of this symbol's owner
      */
     final def overridingSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol =
-      if (canMatchInheritedSymbols) matchingSymbol(inClass, inClass.thisType)
+      if (canMatchInheritedSymbols) matchingDecl(inClass, inClass.thisType)
       else NoSymbol
 
     /** The symbol accessed by a super in the definition of this symbol when
@@ -767,7 +776,7 @@ object SymDenotations {
     final def superSymbolIn(base: Symbol)(implicit ctx: Context): Symbol = {
       def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
         case bc :: bcs1 =>
-          val sym = matchingSymbol(bcs.head, base.thisType)
+          val sym = matchingDecl(bcs.head, base.thisType)
             .suchThat(alt => !(alt is Deferred)).symbol
           if (sym.exists) sym else loop(bcs.tail)
         case _ =>

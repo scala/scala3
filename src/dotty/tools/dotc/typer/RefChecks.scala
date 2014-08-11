@@ -17,6 +17,7 @@ import scala.util.{Try, Success, Failure}
 import config.{ScalaVersion, NoScalaVersion}
 import typer.ErrorReporting._
 import DenotTransformers._
+import ValueClasses.isDerivedValueClass
 
 object RefChecks {
   import tpd._
@@ -296,7 +297,7 @@ object RefChecks {
     printMixinOverrideErrors()
 
     // Verifying a concrete class has nothing unimplemented.
-    if (!clazz.is(Abstract)) {
+    if (!clazz.is(AbstractOrTrait)) {
       val abstractErrors = new mutable.ListBuffer[String]
       def abstractErrorMessage =
         // a little formatting polish
@@ -348,8 +349,8 @@ object RefChecks {
 
         val missingMethods = grouped.toList flatMap {
           case (name, syms) =>
-            if (syms exists (_.symbol.isSetter)) syms filterNot (_.symbol.isGetter)
-            else syms
+            val withoutSetters = syms filterNot (_.symbol.isSetter)
+            if (withoutSetters.nonEmpty) withoutSetters else syms
         }
 
         def stubImplementations: List[String] = {
@@ -461,7 +462,7 @@ object RefChecks {
       def checkNoAbstractDecls(bc: Symbol): Unit = {
         for (decl <- bc.info.decls) {
           if (decl.is(Deferred) && !ignoreDeferred(decl)) {
-            val impl = decl.matchingSymbol(bc, clazz.thisType)
+            val impl = decl.matchingMember(clazz.thisType)
             if (impl == NoSymbol || (decl.owner isSubClass impl.owner)) {
               abstractClassError(false, "there is a deferred declaration of " + infoString(decl) +
                 " which is not implemented in a subclass" + err.abstractVarMessage(decl))
@@ -485,7 +486,7 @@ object RefChecks {
         // Have to use matchingSymbol, not a method involving overridden symbols,
         // because the scala type system understands that an abstract method here does not
         // override a concrete method in Object. The jvm, however, does not.
-        val overridden = decl.matchingSymbol(defn.ObjectClass, defn.ObjectType)
+        val overridden = decl.matchingDecl(defn.ObjectClass, defn.ObjectType)
         if (overridden.is(Final))
           ctx.error("trait cannot redefine final method from class AnyRef", decl.pos)
       }
@@ -605,7 +606,7 @@ object RefChecks {
 
   /** Verify classes extending AnyVal meet the requirements */
   private def checkAnyValSubclass(clazz: Symbol)(implicit ctx: Context) =
-    if (clazz.isDerivedValueClass) {
+    if (isDerivedValueClass(clazz)) {
       if (clazz.is(Trait))
         ctx.error("Only classes (not traits) are allowed to extend AnyVal", clazz.pos)
       else if (clazz.is(Abstract))
@@ -632,7 +633,7 @@ object RefChecks {
     var refSym: Symbol = _
 
     override def enterReference(sym: Symbol, pos: Position): Unit =
-      if (sym.owner.isTerm)
+      if (sym.exists && sym.owner.isTerm)
         levelAndIndex.get(sym) match {
           case Some((level, idx)) if (level.maxIndex < idx) =>
             level.maxIndex = idx
@@ -676,7 +677,7 @@ class RefChecks extends MiniPhase with IdentityDenotTransformer { thisTransforme
   class Transform(currentLevel: RefChecks.OptLevelInfo = RefChecks.NoLevelInfo) extends TreeTransform {
     def phase = thisTransformer
     override def prepareForStats(trees: List[Tree])(implicit ctx: Context) = {
-      println(i"preparing for $trees%; %, owner = ${ctx.owner}")
+      // println(i"preparing for $trees%; %, owner = ${ctx.owner}")
       if (ctx.owner.isTerm) new Transform(new LevelInfo(currentLevel.levelAndIndex, trees))
       else this
     }
@@ -706,7 +707,7 @@ class RefChecks extends MiniPhase with IdentityDenotTransformer { thisTransforme
       checkOverloadedRestrictions(cls)
       checkAllOverrides(cls)
       checkAnyValSubclass(cls)
-      if (cls.isDerivedValueClass)
+      if (isDerivedValueClass(cls))
         cls.primaryConstructor.makeNotPrivateAfter(NoSymbol, thisTransformer) // SI-6601, must be done *after* pickler!
       tree
     }
@@ -721,7 +722,6 @@ class RefChecks extends MiniPhase with IdentityDenotTransformer { thisTransforme
     }
 
     override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = {
-      assert(ctx.phase.exists)
       checkUndesiredProperties(tree.symbol, tree.pos)
       currentLevel.enterReference(tree.symbol, tree.pos)
       tree
