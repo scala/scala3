@@ -304,7 +304,7 @@ object Flags {
   /** Info can be refined during GADT pattern match */
   final val GADTFlexType = typeFlag(25, "<gadt-flex-type>")
 
-  /** A case parameter (or its accessor, or a GADT skolem) */
+  /** A case parameter accessor */
   final val CaseAccessor = termFlag(26, "<caseaccessor>")
 
   /** An type parameter which is an alias for some other (non-visible) type parameter */

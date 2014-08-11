@@ -388,8 +388,9 @@ object desugar {
       val tparamAccessors = derivedTparams map { tdef =>
         cpy.TypeDef(tdef, originalTparams.next.mods, tdef.name, tdef.rhs, tdef.tparams)
       }
+      val caseAccessor = if (mods is Case) CaseAccessor else EmptyFlags
       val vparamAccessors = derivedVparamss.flatten map { vdef =>
-        cpy.ValDef(vdef, originalVparams.next.mods, vdef.name, vdef.tpt, vdef.rhs)
+        cpy.ValDef(vdef, originalVparams.next.mods | caseAccessor, vdef.name, vdef.tpt, vdef.rhs)
       }
       cpy.TypeDef(cdef, mods, name,
         cpy.Template(impl, constr, parents1, self1,
