@@ -231,13 +231,16 @@ object Denotations {
           else if (denot1.signature matches denot2.signature) {
             val info1 = denot1.info
             val info2 = denot2.info
+            val sym1 = denot1.symbol
             val sym2 = denot2.symbol
             val sym2Accessible = sym2.isAccessibleFrom(pre)
-            if (sym2Accessible && info2 <:< info1) denot2
+            def prefer(info1: Type, sym1: Symbol, info2: Type, sym2: Symbol) =
+              info1 <:< info2 &&
+              (sym1.isAsConcrete(sym2) || !(info2 <:< info1))
+            if (sym2Accessible && prefer(info2, sym2, info1, sym1)) denot2
             else {
-              val sym1 = denot1.symbol
               val sym1Accessible = sym1.isAccessibleFrom(pre)
-              if (sym1Accessible && info1 <:< info2) denot1
+              if (sym1Accessible && prefer(info1, sym1, info2, sym2)) denot1
               else if (sym1Accessible && sym2.exists && !sym2Accessible) denot1
               else if (sym2Accessible && sym1.exists && !sym1Accessible) denot2
               else {
