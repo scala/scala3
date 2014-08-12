@@ -324,7 +324,8 @@ object desugar {
       moduleDef(
         ModuleDef(
           Modifiers(Synthetic), name.toTermName,
-          Template(emptyConstructor, parentTpt :: Nil, EmptyValDef, defs))).toList
+          Template(emptyConstructor, parentTpt :: Nil, EmptyValDef, defs)))
+      .withPos(cdef.pos).toList
 
     // The companion object defifinitions, if a companion is needed, Nil otherwise.
     // companion definitions include:
@@ -338,7 +339,8 @@ object desugar {
     val companions =
       if (mods is Case) {
         val parent =
-          if (constrTparams.nonEmpty) anyRef // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
+          if (constrTparams.nonEmpty || constrVparamss.length > 1) anyRef
+            // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
           else (constrVparamss :\ classTypeRef) ((vparams, restpe) => Function(vparams map (_.tpt), restpe))
         val applyMeths =
           if (mods is Abstract) Nil
