@@ -202,7 +202,7 @@ object Denotations {
     def matchingDenotation(site: Type, targetType: Type)(implicit ctx: Context): SingleDenotation =
       if (isOverloaded)
         atSignature(targetType.signature).matchingDenotation(site, targetType)
-      else if (exists && !(site.memberInfo(symbol) matches targetType))
+      else if (exists && !site.memberInfo(symbol).matchesLoosely(targetType))
         NoDenotation
       else
         asSingleDenotation

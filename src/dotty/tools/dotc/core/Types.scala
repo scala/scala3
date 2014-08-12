@@ -544,6 +544,16 @@ object Types {
           this, that, alwaysMatchSimple = !ctx.phase.erasedTypes)
       }
 
+    /** This is the same as `matches` except that it also matches => T with T and
+     *  vice versa.
+     */
+    def matchesLoosely(that: Type)(implicit ctx: Context): Boolean =
+      (this matches that) || {
+        val thisResult = this.widenExpr
+        val thatResult = that.widenExpr
+        (this eq thisResult) != (that eq thatResult) && (thisResult matchesLoosely thatResult)
+      }
+
     /** The basetype TypeRef of this type with given class symbol,
      *  but without including any type arguments
      */
