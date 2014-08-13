@@ -72,11 +72,13 @@ object desugar {
 
   /** A type definition copied from `tdef` with a rhs typetree derived from it */
   def derivedTypeParam(tdef: TypeDef) =
-    cpy.TypeDef(tdef)(rhs = new DerivedFromParamTree() withPos tdef.rhs.pos watching tdef)
+    cpy.TypeDef(tdef)(
+      rhs = new DerivedFromParamTree() withPos tdef.rhs.pos watching tdef)
 
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
   def derivedTermParam(vdef: ValDef) =
-    cpy.ValDef(vdef)(tpt = new DerivedFromParamTree() withPos vdef.tpt.pos watching vdef)
+    cpy.ValDef(vdef)(
+      tpt = new DerivedFromParamTree() withPos vdef.tpt.pos watching vdef)
 
 // ----- Desugar methods -------------------------------------------------
 
@@ -157,7 +159,7 @@ object desugar {
     }
 
     def normalizedVparamss = vparamss map (_ map (vparam =>
-      cpy.ValDef(vparam)(vparam.mods, vparam.name, vparam.tpt, EmptyTree)))
+      cpy.ValDef(vparam)(rhs = EmptyTree)))
 
     def defaultGetters(vparamss: List[List[ValDef]], n: Int): List[DefDef] = vparamss match {
       case (vparam :: vparams) :: vparamss1 =>
@@ -194,18 +196,17 @@ object desugar {
    *     class C { type v C$T; type v T = C$T }
    */
   def typeDef(tdef: TypeDef)(implicit ctx: Context): Tree = {
-    val TypeDef(mods, name, rhs) = tdef
-    if (mods is PrivateLocalParam) {
+    if (tdef.mods is PrivateLocalParam) {
       val tparam = cpy.TypeDef(tdef)(
-        mods = mods &~ PrivateLocal | ExpandedName,
-        name = name.expandedName(ctx.owner))
+        mods = tdef.mods &~ PrivateLocal | ExpandedName,
+        name = tdef.name.expandedName(ctx.owner))
       val alias = cpy.TypeDef(tdef)(
-        mods = Modifiers(PrivateLocalParamAccessor | Synthetic | mods.flags & VarianceFlags),
+        mods = Modifiers(PrivateLocalParamAccessor | Synthetic | tdef.mods.flags & VarianceFlags),
         rhs = refOfDef(tparam),
         tparams = Nil)
       Thicket(tparam, alias)
     }
-    else cpy.TypeDef(tdef)(mods, name, rhs, tdef.tparams) // TODO: why copy?
+    else tdef
   }
 
   private val synthetic = Modifiers(Synthetic)
@@ -214,7 +215,7 @@ object desugar {
     cpy.TypeDef(tparam)(mods = Modifiers(Param))
 
   private def toDefParam(vparam: ValDef) =
-    cpy.ValDef(vparam)(Modifiers(Param | vparam.mods.flags & Implicit), vparam.name, vparam.tpt, vparam.rhs)
+    cpy.ValDef(vparam)(mods = Modifiers(Param | vparam.mods.flags & Implicit))
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
@@ -296,9 +297,9 @@ object desugar {
             def copyDefault(vparam: ValDef) =
               makeAnnotated(defn.UncheckedVarianceAnnot, refOfDef(vparam))
             val copyFirstParams = derivedVparamss.head.map(vparam =>
-              cpy.ValDef(vparam)(vparam.mods, vparam.name, vparam.tpt, copyDefault(vparam)))
+              cpy.ValDef(vparam)(rhs = copyDefault(vparam)))
             val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
-              cpy.ValDef(vparam)(vparam.mods, vparam.name, vparam.tpt, EmptyTree))
+              cpy.ValDef(vparam)(rhs = EmptyTree))
             DefDef(synthetic, nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr) :: Nil
           }
         copyMeths ::: isDefinedMeth :: productArityMeth :: productElemMeths.toList
@@ -378,22 +379,23 @@ object desugar {
     val self1 = {
       val selfType = if (self.tpt.isEmpty) classTypeRef else self.tpt
       if (self.isEmpty) self
-      else cpy.ValDef(self)(self.mods | SelfName, self.name, selfType, self.rhs)
+      else cpy.ValDef(self)(mods = self.mods | SelfName, tpt = selfType)
     }
 
     val cdef1 = {
       val originalTparams = constr1.tparams.toIterator
       val originalVparams = constr1.vparamss.toIterator.flatten
       val tparamAccessors = derivedTparams map { tdef =>
-        cpy.TypeDef(tdef)(originalTparams.next.mods, tdef.name, tdef.rhs, tdef.tparams)
+        cpy.TypeDef(tdef)(mods = originalTparams.next.mods)
       }
       val caseAccessor = if (mods is Case) CaseAccessor else EmptyFlags
       val vparamAccessors = derivedVparamss.flatten map { vdef =>
-        cpy.ValDef(vdef)(originalVparams.next.mods | caseAccessor, vdef.name, vdef.tpt, vdef.rhs)
+        cpy.ValDef(vdef)(mods = originalVparams.next.mods | caseAccessor)
       }
-      cpy.TypeDef(cdef)(mods, name,
-        cpy.Template(impl)(constr, parents1, self1,
-          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths), Nil)
+      cpy.TypeDef(cdef)(
+        rhs = cpy.Template(impl)(constr, parents1, self1,
+          tparamAccessors ::: vparamAccessors ::: normalizedBody ::: caseClassMeths),
+        tparams = Nil)
     }
 
     // install the watch on classTycon
@@ -414,18 +416,18 @@ object desugar {
    *    <module> final class name$ extends parents { self: name.type => body }
    */
   def moduleDef(mdef: ModuleDef)(implicit ctx: Context): Tree = {
-    val ModuleDef(mods, name, tmpl @ Template(constr, parents, self, body)) = mdef
+    val ModuleDef(mods, name, tmpl) = mdef
     if (mods is Package)
       PackageDef(Ident(name), cpy.ModuleDef(mdef)(mods &~ Package, nme.PACKAGE, tmpl) :: Nil)
     else {
       val clsName = name.moduleClassName
       val clsRef = Ident(clsName)
       val modul = ValDef(mods | ModuleCreationFlags, name, clsRef, New(clsRef, Nil)) withPos mdef.pos
-      val ValDef(selfMods, selfName, selfTpt, selfRhs) = self
-      if (!selfTpt.isEmpty) ctx.error("object definition may not have a self type", self.pos)
+      val ValDef(selfMods, selfName, selfTpt, selfRhs) = tmpl.self
+      if (!selfTpt.isEmpty) ctx.error("object definition may not have a self type", tmpl.self.pos)
       val clsSelf = ValDef(selfMods, selfName, SingletonTypeTree(Ident(name)), selfRhs)
-        .withPos(self.pos orElse tmpl.pos.startPos)
-      val clsTmpl = cpy.Template(tmpl)(constr, parents, clsSelf, body)
+        .withPos(tmpl.self.pos orElse tmpl.pos.startPos)
+      val clsTmpl = cpy.Template(tmpl)(self = clsSelf, body = tmpl.body)
       val cls = TypeDef(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags, clsName, clsTmpl)
       Thicket(modul, classDef(cls))
     }
@@ -502,8 +504,8 @@ object desugar {
    */
   def block(tree: Block)(implicit ctx: Context): Block = tree.expr match {
     case EmptyTree =>
-      cpy.Block(tree)(tree.stats,
-        unitLiteral withPos (if (tree.stats.isEmpty) tree.pos else tree.pos.endPos))
+      cpy.Block(tree)(
+        expr = unitLiteral withPos (if (tree.stats.isEmpty) tree.pos else tree.pos.endPos))
     case _ =>
       tree
   }

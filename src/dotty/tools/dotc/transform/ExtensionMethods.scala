@@ -162,10 +162,10 @@ class ExtensionMethods extends MacroTransform with DenotTransformer with FullPar
             paramAccessors.foreach(_.makeNotPrivateAfter(ctx.owner, thisTransformer))
             super.transform(tree)
           } else if (ctx.owner.isStaticOwner) {
-            val tree1 @ Template(constr, parents, selfType, body) = super.transform(tree)
+            val tree1 @ Template(_, _, _, body) = super.transform(tree)
             extensionDefs remove tree1.symbol.owner match {
               case Some(defns) if defns.nonEmpty =>
-                cpy.Template(tree1)(constr, parents, selfType, body ++ defns)
+                cpy.Template(tree1)(body = body ++ defns)
               case _ =>
                 tree1
             }

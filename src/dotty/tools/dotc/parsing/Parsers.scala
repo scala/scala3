@@ -963,7 +963,7 @@ object Parsers {
           val tpt = typeDependingOn(location)
           if (isWildcard(t) && location != Location.InPattern) {
             val vd :: rest = placeholderParams
-            placeholderParams = cpy.ValDef(vd)(vd.mods, vd.name, tpt, vd.rhs) :: rest
+            placeholderParams = cpy.ValDef(vd)(tpt = tpt) :: rest
           }
           Typed(t, tpt)
       }

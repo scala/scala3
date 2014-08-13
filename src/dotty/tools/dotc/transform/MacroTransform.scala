@@ -71,6 +71,6 @@ abstract class MacroTransform extends Phase {
     }
 
     def transformSelf(vd: ValDef)(implicit ctx: Context) =
-      cpy.ValDef(vd)(vd.mods, vd.name, transform(vd.tpt), vd.rhs)
+      cpy.ValDef(vd)(tpt = transform(vd.tpt))
   }
 }

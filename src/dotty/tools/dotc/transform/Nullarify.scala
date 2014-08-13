@@ -72,7 +72,7 @@ class Nullarify extends MiniPhaseTransform with InfoTransformer {
     val MethodType(_, formals) = methType(funType, tree.fun)
 
     val args1 = tree.args.zipWithConserve(formals)(transformArg)
-    cpy.Apply(tree)(tree.fun, args1) withType nullarify(tree.tpe)
+    cpy.Apply(tree)(args = args1) withType nullarify(tree.tpe)
   }
 
   /** Insert () or .apply() if the term refers to something that was converted to a
