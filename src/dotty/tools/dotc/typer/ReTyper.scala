@@ -32,13 +32,13 @@ class ReTyper extends Typer {
   override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
     assert(tree.hasType)
     val qual1 = typed(tree.qualifier, AnySelectionProto)
-    untpd.cpy.Select(tree)(qualifier = qual1).withType(tree.typeOpt)
+    untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
   }
 
   override def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): SelectFromTypeTree = {
     assert(tree.hasType)
     val qual1 = typed(tree.qualifier, AnySelectionProto)
-    untpd.cpy.SelectFromTypeTree(tree)(qualifier = qual1).withType(tree.typeOpt)
+    untpd.cpy.SelectFromTypeTree(tree)(qual1, tree.name).withType(tree.typeOpt)
   }
 
   override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Literal =
@@ -50,7 +50,7 @@ class ReTyper extends Typer {
   override def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = {
     assert(tree.hasType)
     val body1 = typed(tree.body, pt)
-    untpd.cpy.Bind(tree)(body = body1).withType(tree.typeOpt)
+    untpd.cpy.Bind(tree)(tree.name, body1).withType(tree.typeOpt)
   }
 
   override def localDummy(cls: ClassSymbol, impl: untpd.Template)(implicit ctx: Context) = impl.symbol

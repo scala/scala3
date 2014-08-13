@@ -504,8 +504,8 @@ object desugar {
    */
   def block(tree: Block)(implicit ctx: Context): Block = tree.expr match {
     case EmptyTree =>
-      cpy.Block(tree)(
-        expr = unitLiteral withPos (if (tree.stats.isEmpty) tree.pos else tree.pos.endPos))
+      cpy.Block(tree)(tree.stats,
+        unitLiteral withPos (if (tree.stats.isEmpty) tree.pos else tree.pos.endPos))
     case _ =>
       tree
   }

@@ -23,7 +23,7 @@ class UncurryTreeTransform extends MiniPhaseTransform with InfoTransformer {
         showType
         ctx.atNextPhase(showType(_))
         showType
-        cpy.Apply(tree)(args = args ++ tree.args)
+        cpy.Apply(tree)(tree.fun, args ++ tree.args)
       case _ => tree
     }}
 
