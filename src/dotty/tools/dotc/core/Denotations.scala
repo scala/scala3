@@ -553,7 +553,9 @@ object Denotations {
                 startPid = cur.validFor.firstPhaseId
               else {
                 next match {
-                  case next: ClassDenotation => next.resetFlag(Frozen)
+                  case next: ClassDenotation =>
+                    assert(!next.is(Package), s"illegal transfomation of package denotation by transformer ${ctx.withPhase(transformer).phase}")
+                    next.resetFlag(Frozen)
                   case _ =>
                 }
                 next.nextInRun = cur.nextInRun

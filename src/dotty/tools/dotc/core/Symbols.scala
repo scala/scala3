@@ -382,7 +382,11 @@ object Symbols {
      */
     def enteredAfter(phase: DenotTransformer)(implicit ctx: Context): this.type = {
       val nextCtx = ctx.withPhase(phase.next)
-      this.owner.asClass.ensureFreshScopeAfter(phase)(nextCtx)
+      if (this.owner.is(Package)) {
+        denot.validFor |= InitialPeriod
+        if (this is Module) this.moduleClass.validFor |= InitialPeriod
+      }
+      else this.owner.asClass.ensureFreshScopeAfter(phase)(nextCtx)
       entered(nextCtx)
     }
 
