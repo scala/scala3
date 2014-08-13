@@ -2,7 +2,7 @@ import language.higherKinds
 
 object hk0 {
 
-  class Base {
+  abstract class Base {
     type Rep[T]
     val strRep: Rep[String]
   }
@@ -13,7 +13,7 @@ object hk0 {
     val sr: Rep[String] = ""
   }
 
-  class Functor[F[_]] {
+  abstract class Functor[F[_]] {
     def map[A, B](f: A => B): F[A] => F[B]
   }
   val ml: Functor[List] = ???

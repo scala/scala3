@@ -102,6 +102,8 @@ object RefChecks {
    *  4. Check that every member with an `override` modifier
    *     overrides some other member.
    *  TODO check that classes are not overridden
+   *  TODO This still needs to be cleaned up; the current version is a staright port of what was there
+   *       before, but it looks too complicated and method bodies are far too large.
    */
   private def checkAllOverrides(clazz: Symbol)(implicit ctx: Context): Unit = {
     val self = clazz.thisType
@@ -116,11 +118,15 @@ object RefChecks {
         case List(MixinOverrideError(_, msg)) =>
           ctx.error(msg, clazz.pos)
         case MixinOverrideError(member, msg) :: others =>
-          val others1 = others.map(_.member.name.decode).filter(member.name.decode != _).distinct
-          ctx.error(
-            msg + (if (others1.isEmpty) ""
-            else ";\n other members with override errors are: " + (others1 mkString ", ")),
-            clazz.pos)
+          val others1 = others.map(_.member).filter(_.name != member.name).distinct
+          def othersMsg = {
+            val others1 = others.map(_.member)
+              .filter(_.name != member.name)
+              .map(_.show).distinct
+            if (others1.isEmpty) ""
+            else i";\n other members with override errors are:: $others1%, %"
+          }
+          ctx.error(msg + othersMsg, clazz.pos)
       }
     }
 
@@ -129,9 +135,9 @@ object RefChecks {
 
     def infoString0(sym: Symbol, showLocation: Boolean) = {
       val sym1 = sym.underlyingSymbol
-      if (showLocation) sym1.show
+      if (showLocation) sym1.showLocated
       else
-        sym1.showLocated +
+        sym1.show +
           (if (sym1.isAliasType) ", which equals " + self.memberInfo(sym1)
           else if (sym1.isAbstractType) " with bounds" + self.memberInfo(sym1)
           else if (sym1.is(Module)) ""
@@ -182,6 +188,8 @@ object RefChecks {
       }
 
       def overrideAccessError() = {
+        ctx.log(i"member: ${member.showLocated} ${member.flags}") // DEBUG
+        ctx.log(i"other: ${other.showLocated} ${other.flags}") // DEBUG
         val otherAccess = (other.flags & AccessFlags).toString
         overrideError("has weaker access privileges; it should be " +
           (if (otherAccess == "") "public" else "at least " + otherAccess))
@@ -331,7 +339,7 @@ object RefChecks {
       // 2. Check that only abstract classes have deferred members
       def checkNoAbstractMembers(): Unit = {
         // Avoid spurious duplicates: first gather any missing members.
-        val missing = clazz.info.abstractTermMembers.filterNot(ignoreDeferred)
+        val missing = clazz.thisType.abstractTermMembers.filterNot(ignoreDeferred)
         // Group missing members by the name of the underlying symbol,
         // to consolidate getters and setters.
         val grouped: Map[Name, Seq[SingleDenotation]] = missing groupBy (_.symbol.underlyingSymbol.name)
@@ -464,6 +472,9 @@ object RefChecks {
           if (decl.is(Deferred) && !ignoreDeferred(decl)) {
             val impl = decl.matchingMember(clazz.thisType)
             if (impl == NoSymbol || (decl.owner isSubClass impl.owner)) {
+              val impl1 = clazz.thisType.nonPrivateMember(decl.name) // DEBUG
+              ctx.log(i"${impl1}: ${impl1.info}") // DEBUG
+              ctx.log(i"${clazz.thisType.memberInfo(decl)}") // DEBUG
               abstractClassError(false, "there is a deferred declaration of " + infoString(decl) +
                 " which is not implemented in a subclass" + err.abstractVarMessage(decl))
             }
@@ -499,7 +510,7 @@ object RefChecks {
     def hasMatchingSym(inclazz: Symbol, member: Symbol): Boolean = {
 
       def isSignatureMatch(sym: Symbol) = !sym.isTerm ||
-        clazz.thisType.memberInfo(sym).matches(member.info)
+        clazz.thisType.memberInfo(sym).matchesLoosely(member.info)
 
       /* The rules for accessing members which have an access boundary are more
          * restrictive in java than scala.  Since java has no concept of package nesting,
@@ -626,7 +637,11 @@ object RefChecks {
     override val levelAndIndex: LevelAndIndex =
       ((outerLevelAndIndex, 0) /: stats) {(mi, stat) =>
         val (m, idx) = mi
-        (if (stat.symbol.exists) m.updated(stat.symbol, (this, idx)) else m, idx + 1)
+        val m1 = stat match {
+          case stat: MemberDef => m.updated(stat.symbol, (this, idx))
+          case _ => m
+        }
+        (m1, idx + 1)
       }._1
     var maxIndex: Int = Int.MinValue
     var refPos: Position = _
