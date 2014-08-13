@@ -25,7 +25,7 @@ import dotty.tools.dotc.core.Flags
 import ValueClasses._
 import TypeUtils._
 
-class Erasure extends Phase with DenotTransformer {
+class Erasure extends Phase with DenotTransformer { thisTransformer =>
 
   override def name: String = "erasure"
 
@@ -46,10 +46,15 @@ class Erasure extends Phase with DenotTransformer {
         )
       }
       else {
-        val owner = ref.owner
-        ref.copySymDenotation(
-          owner = if (owner eq defn.AnyClass) defn.ObjectClass else owner,
-          info = transformInfo(ref.symbol, ref.info))
+        val oldOwner = ref.owner
+        val newOwner = if (oldOwner eq defn.AnyClass) defn.ObjectClass else oldOwner
+        val oldInfo = ref.info
+        val newInfo = transformInfo(ref.symbol, oldInfo)
+        if ((oldOwner eq newOwner) && (oldInfo eq newInfo)) ref
+        else {
+          assert(!ref.is(Flags.PackageClass), s"trans $ref @ ${ctx.phase} oldOwner = $oldOwner, newOwner = $newOwner, oldInfo = $oldInfo, newInfo = $newInfo ${oldOwner eq newOwner} ${oldInfo eq newInfo}")
+          ref.copySymDenotation(owner = newOwner, info = newInfo)
+        }
       }
     case ref =>
       ref.derivedSingleDenotation(ref.symbol, erasure(ref.info))
@@ -359,7 +364,7 @@ object Erasure {
       }
       val bridge = ctx.newSymbol(newDef.symbol.owner,
         parentSym.name, parentSym.flags | Flags.Bridge, parentSym.info, coord = newDef.symbol.owner.coord).asTerm
-      bridge.entered // this should be safe, as we're executing in context of next phase
+      bridge.enteredAfter(ctx.phase.prev.asInstanceOf[DenotTransformer]) // this should be safe, as we're executing in context of next phase
       ctx.debuglog(s"generating bridge from ${newDef.symbol} to $bridge")
 
       val sel: Tree = This(newDef.symbol.owner.asClass).select(newDef.symbol.termRef)
