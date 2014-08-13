@@ -1095,23 +1095,6 @@ object Trees {
 
       // Copier methods with default arguments; these demand that the original tree
       // is of the same class as the copy. We only include trees with more than 2 elements here.
-
-      //def Select(tree: Select)(qualifier: Tree = tree.qualifier, name: Name = tree.name): Select =
-      //  Select(tree: Tree)(qualifier, name)
-      //def Super(tree: Super)(qual: Tree = tree.qual, mix: TypeName = tree.mix): Super =
-      //  Super(tree: Tree)(qual, mix)
-      //def Apply(tree: Apply)(fun: Tree = tree.fun, args: List[Tree] = tree.args): Apply =
-      //  Apply(tree: Tree)(fun, args)
-      //def TypeApply(tree: TypeApply)(fun: Tree = tree.fun, args: List[Tree] = tree.args): TypeApply =
-      //  TypeApply(tree: Tree)(fun, args)
-      //def Typed(tree: Typed)(expr: Tree = tree.expr, tpt: Tree = tree.tpt): Typed =
-      //  Typed(tree: Tree)(expr, tpt)
-      //def NamedArg(tree: NamedArg)(name: Name = tree.name, arg: Tree = tree.arg): NamedArg =
-      //  NamedArg(tree: Tree)(name, arg)
-      //def Assign(tree: Assign)(lhs: Tree = tree.lhs, rhs: Tree = tree.rhs): Assign =
-      //  Assign(tree: Tree)(lhs, rhs)
-      //def Block(tree: Block)(stats: List[Tree] = tree.stats, expr: Tree = tree.expr): Block =
-      //  Block(tree: Tree)(stats, expr)
       def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep): If =
         If(tree: Tree)(cond, thenp, elsep)
       def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt): Closure =
@@ -1120,20 +1103,8 @@ object Trees {
         Match(tree: Tree)(selector, cases)
       def CaseDef(tree: CaseDef)(pat: Tree = tree.pat, guard: Tree = tree.guard, body: Tree = tree.body): CaseDef =
         CaseDef(tree: Tree)(pat, guard, body)
-      //def Return(tree: Return)(expr: Tree = tree.expr, from: Tree = tree.from): Return =
-      //  Return(tree: Tree)(expr, from)
       def Try(tree: Try)(expr: Tree = tree.expr, handler: Tree = tree.handler, finalizer: Tree = tree.finalizer): Try =
         Try(tree: Tree)(expr, handler, finalizer)
-      //def SelectFromTypeTree(tree: SelectFromTypeTree)(qualifier: Tree = tree.qualifier, name: Name = tree.name):
-      //  SelectFromTypeTree = SelectFromTypeTree(tree: Tree)(qualifier, name)
-      //def RefinedTypeTree(tree: RefinedTypeTree)(tpt: Tree = tree.tpt, refinements: List[Tree] = tree.refinements):
-      //  RefinedTypeTree = RefinedTypeTree(tree: Tree)(tpt, refinements)
-      //def AppliedTypeTree(tree: AppliedTypeTree)(tpt: Tree = tree.tpt, args: List[Tree] = tree.args): AppliedTypeTree =
-      //  AppliedTypeTree(tree: Tree)(tpt, args)
-      //def TypeBoundsTree(tree: TypeBoundsTree)(lo: Tree = tree.lo, hi: Tree = tree.hi): TypeBoundsTree =
-      //  TypeBoundsTree(tree: Tree)(lo, hi)
-      //def Bind(tree: Bind)(name: Name = tree.name, body: Tree = tree.body): Bind =
-      //  Bind(tree: Tree)(name, body)
       def UnApply(tree: UnApply)(fun: Tree = tree.fun, implicits: List[Tree] = tree.implicits, patterns: List[Tree] = tree.patterns): UnApply =
         UnApply(tree: Tree)(fun, implicits, patterns)
       def ValDef(tree: ValDef)(mods: Modifiers = tree.mods, name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: Tree = tree.rhs): ValDef =
@@ -1144,12 +1115,6 @@ object Trees {
         TypeDef(tree: Tree)(mods, name, rhs, tparams)
       def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, self: ValDef = tree.self, body: List[Tree] = tree.body): Template =
         Template(tree: Tree)(constr, parents, self, body)
-      //def Import(tree: Import)(expr: Tree = tree.expr, selectors: List[untpd.Tree] = tree.selectors): Import =
-      //  Import(tree: Tree)(expr, selectors)
-      //def PackageDef(tree: PackageDef)(pid: RefTree = tree.pid, stats: List[Tree] = tree.stats): PackageDef =
-      //  PackageDef(tree: Tree)(pid, stats)
-      //def Annotated(tree: Annotated)(annot: Tree = tree.annot, arg: Tree = tree.arg): Annotated =
-      //  Annotated(tree: Tree)(annot, arg)
     }
 
     abstract class TreeMap(val cpy: TreeCopier = inst.cpy) {
