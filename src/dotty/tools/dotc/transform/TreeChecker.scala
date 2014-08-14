@@ -45,23 +45,18 @@ class TreeChecker {
           promote(tree)
         case _ =>
           val tree1 = super.typed(tree, pt)
-          def sameType(tp1: Type, tp2: Type) =
+          def isSubType(tp1: Type, tp2: Type) =
             (tp1 eq tp2) || // accept NoType / NoType
-            (tp1 =:= tp2)
-          def divergenceMsg = {
-            def explanation(tp1: Type, tp2: Type) =
-              if (tp1 <:< tp2) ""
-              else "\n why different:\n" + core.TypeComparer.explained((tp1 <:< tp2)(_))
+            (tp1 <:< tp2)
+          def divergenceMsg(tp1: Type, tp2: Type) =
             s"""Types differ
                |Original type : ${tree.typeOpt.show}
                |After checking: ${tree1.tpe.show}
                |Original tree : ${tree.show}
                |After checking: ${tree1.show}
-             """.stripMargin +
-             explanation(tree1.tpe, tree.typeOpt) +
-             explanation(tree.typeOpt, tree1.tpe)
-          }
-          assert(sameType(tree1.tpe, tree.typeOpt), divergenceMsg)
+               |Why different :
+             """.stripMargin + core.TypeComparer.explained((tp1 <:< tp2)(_))
+          assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
           tree1
         }
     } catch {
