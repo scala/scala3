@@ -912,6 +912,13 @@ object Trees {
 
     val cpy: TreeCopier
 
+    /** A class for copying trees. The copy methods avid creating a new tree
+     *  If all arguments stay the same.
+     
+     * Note: Some of the copy methods take a context.
+     * These are exactly those methods that are overridden in TypedTreeCopier
+     * so that they selectively retype themselves. Retyping needs a context.
+     */
     abstract class TreeCopier {
 
       def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[T]
@@ -926,7 +933,7 @@ object Trees {
         case tree: Ident if (name == tree.name) => tree
         case _ => finalize(tree, untpd.Ident(name))
       }
-      def Select(tree: Tree)(qualifier: Tree, name: Name): Select = tree match {
+      def Select(tree: Tree)(qualifier: Tree, name: Name)(implicit ctx: Context): Select = tree match {
         case tree: SelectWithSig =>
           if ((qualifier eq tree.qualifier) && (name == tree.name)) tree
           else finalize(tree, new SelectWithSig(qualifier, name, tree.sig))
@@ -957,7 +964,7 @@ object Trees {
         case tree: New if (tpt eq tree.tpt) => tree
         case _ => finalize(tree, untpd.New(tpt))
       }
-      def Pair(tree: Tree)(left: Tree, right: Tree): Pair = tree match {
+      def Pair(tree: Tree)(left: Tree, right: Tree)(implicit ctx: Context): Pair = tree match {
         case tree: Pair if (left eq tree.left) && (right eq tree.right) => tree
         case _ => finalize(tree, untpd.Pair(left, right))
       }
@@ -973,11 +980,11 @@ object Trees {
         case tree: Assign if (lhs eq tree.lhs) && (rhs eq tree.rhs) => tree
         case _ => finalize(tree, untpd.Assign(lhs, rhs))
       }
-      def Block(tree: Tree)(stats: List[Tree], expr: Tree): Block = tree match {
+      def Block(tree: Tree)(stats: List[Tree], expr: Tree)(implicit ctx: Context): Block = tree match {
         case tree: Block if (stats eq tree.stats) && (expr eq tree.expr) => tree
         case _ => finalize(tree, untpd.Block(stats, expr))
       }
-      def If(tree: Tree)(cond: Tree, thenp: Tree, elsep: Tree): If = tree match {
+      def If(tree: Tree)(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If = tree match {
         case tree: If if (cond eq tree.cond) && (thenp eq tree.thenp) && (elsep eq tree.elsep) => tree
         case _ => finalize(tree, untpd.If(cond, thenp, elsep))
       }
@@ -985,11 +992,11 @@ object Trees {
         case tree: Closure if (env eq tree.env) && (meth eq tree.meth) && (tpt eq tree.tpt) => tree
         case _ => finalize(tree, untpd.Closure(env, meth, tpt))
       }
-      def Match(tree: Tree)(selector: Tree, cases: List[CaseDef]): Match = tree match {
+      def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = tree match {
         case tree: Match if (selector eq tree.selector) && (cases eq tree.cases) => tree
         case _ => finalize(tree, untpd.Match(selector, cases))
       }
-      def CaseDef(tree: Tree)(pat: Tree, guard: Tree, body: Tree): CaseDef = tree match {
+      def CaseDef(tree: Tree)(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef = tree match {
         case tree: CaseDef if (pat eq tree.pat) && (guard eq tree.guard) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.CaseDef(pat, guard, body))
       }
@@ -997,7 +1004,7 @@ object Trees {
         case tree: Return if (expr eq tree.expr) && (from eq tree.from) => tree
         case _ => finalize(tree, untpd.Return(expr, from))
       }
-      def Try(tree: Tree)(expr: Tree, handler: Tree, finalizer: Tree): Try = tree match {
+      def Try(tree: Tree)(expr: Tree, handler: Tree, finalizer: Tree)(implicit ctx: Context): Try = tree match {
         case tree: Try if (expr eq tree.expr) && (handler eq tree.handler) && (finalizer eq tree.finalizer) => tree
         case _ => finalize(tree, untpd.Try(expr, handler, finalizer))
       }
@@ -1005,7 +1012,7 @@ object Trees {
         case tree: Throw if (expr eq tree.expr) => tree
         case _ => finalize(tree, untpd.Throw(expr))
       }
-      def SeqLiteral(tree: Tree)(elems: List[Tree]): SeqLiteral = tree match {
+      def SeqLiteral(tree: Tree)(elems: List[Tree])(implicit ctx: Context): SeqLiteral = tree match {
         case tree: JavaSeqLiteral =>
           if (elems eq tree.elems) tree
           else finalize(tree, new JavaSeqLiteral(elems))
@@ -1084,7 +1091,7 @@ object Trees {
         case tree: PackageDef if (pid eq tree.pid) && (stats eq tree.stats) => tree
         case _ => finalize(tree, untpd.PackageDef(pid, stats))
       }
-      def Annotated(tree: Tree)(annot: Tree, arg: Tree): Annotated = tree match {
+      def Annotated(tree: Tree)(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated = tree match {
         case tree: Annotated if (annot eq tree.annot) && (arg eq tree.arg) => tree
         case _ => finalize(tree, untpd.Annotated(annot, arg))
       }
@@ -1095,15 +1102,13 @@ object Trees {
 
       // Copier methods with default arguments; these demand that the original tree
       // is of the same class as the copy. We only include trees with more than 2 elements here.
-      def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep): If =
+      def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep)(implicit ctx: Context): If =
         If(tree: Tree)(cond, thenp, elsep)
       def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt): Closure =
         Closure(tree: Tree)(env, meth, tpt)
-      def Match(tree: Match)(selector: Tree = tree.selector, cases: List[CaseDef] = tree.cases): Match =
-        Match(tree: Tree)(selector, cases)
-      def CaseDef(tree: CaseDef)(pat: Tree = tree.pat, guard: Tree = tree.guard, body: Tree = tree.body): CaseDef =
+      def CaseDef(tree: CaseDef)(pat: Tree = tree.pat, guard: Tree = tree.guard, body: Tree = tree.body)(implicit ctx: Context): CaseDef =
         CaseDef(tree: Tree)(pat, guard, body)
-      def Try(tree: Try)(expr: Tree = tree.expr, handler: Tree = tree.handler, finalizer: Tree = tree.finalizer): Try =
+      def Try(tree: Try)(expr: Tree = tree.expr, handler: Tree = tree.handler, finalizer: Tree = tree.finalizer)(implicit ctx: Context): Try =
         Try(tree: Tree)(expr, handler, finalizer)
       def UnApply(tree: UnApply)(fun: Tree = tree.fun, implicits: List[Tree] = tree.implicits, patterns: List[Tree] = tree.patterns): UnApply =
         UnApply(tree: Tree)(fun, implicits, patterns)

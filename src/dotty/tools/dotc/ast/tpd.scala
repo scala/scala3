@@ -336,6 +336,88 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   class TypedTreeCopier extends TreeCopier {
     def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[Type] =
       copied.withTypeUnchecked(tree.tpe)
+
+    override def Pair(tree: Tree)(left: Tree, right: Tree)(implicit ctx: Context): Pair = {
+      val tree1 = untpd.cpy.Pair(tree)(left, right)
+      tree match {
+        case tree: Pair if (left.tpe eq tree.left.tpe) && (right.tpe eq tree.right.tpe) => tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, left, right)
+      }
+    }
+
+    override def Block(tree: Tree)(stats: List[Tree], expr: Tree)(implicit ctx: Context): Block = {
+      val tree1 = untpd.cpy.Block(tree)(stats, expr)
+      tree match {
+        case tree: Block if (expr.tpe eq tree.expr.tpe) => tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, stats, expr)
+      }
+    }
+
+    override def If(tree: Tree)(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If = {
+      val tree1 = untpd.cpy.If(tree)(cond, thenp, elsep)
+      tree match {
+        case tree: If if (thenp.tpe eq tree.thenp.tpe) && (elsep.tpe eq tree.elsep.tpe) => tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, thenp, elsep)
+      }
+    }
+
+    override def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = {
+      val tree1 = untpd.cpy.Match(tree)(selector, cases)
+      tree match {
+        case tree: Match if sameTypes(cases, tree.cases) => tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, cases)
+      }
+    }
+
+    override def CaseDef(tree: Tree)(pat: Tree, guard: Tree, body: Tree)(implicit ctx: Context): CaseDef = {
+      val tree1 = untpd.cpy.CaseDef(tree)(pat, guard, body)
+      tree match {
+        case tree: CaseDef if (body.tpe eq tree.body.tpe) => tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, body)
+      }
+    }
+
+    override def Try(tree: Tree)(expr: Tree, handler: Tree, finalizer: Tree)(implicit ctx: Context): Try = {
+      val tree1 = untpd.cpy.Try(tree)(expr, handler, finalizer)
+      tree match {
+        case tree: Try if (expr.tpe eq tree.expr.tpe) && (handler.tpe eq tree.handler.tpe) => tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, expr, handler)
+      }
+    }
+
+    override def SeqLiteral(tree: Tree)(elems: List[Tree])(implicit ctx: Context): SeqLiteral = {
+      val tree1 = untpd.cpy.SeqLiteral(tree)(elems)
+      tree match {
+        case tree: SeqLiteral if sameTypes(elems, tree.elems) => tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, elems)
+      }
+    }
+
+    override def Annotated(tree: Tree)(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated = {
+      val tree1 = untpd.cpy.Annotated(tree)(annot, arg)
+      tree match {
+        case tree: Annotated if (arg.tpe eq tree.arg.tpe) && (annot eq tree.annot) => tree1.withTypeUnchecked(tree.tpe)
+        case _ => ta.assignType(tree1, annot, arg)
+      }
+    }
+
+    override def Select(tree: Tree)(qualifier: Tree, name: Name)(implicit ctx: Context): Select = {
+      val tree1 = untpd.cpy.Select(tree)(qualifier, name)
+      tree match {
+        case tree: Select if (qualifier.tpe eq tree.qualifier.tpe) => tree1.withTypeUnchecked(tree.tpe)
+        case _ => tree.tpe match {
+          case tpe: NamedType => tree1.withType(tpe.derivedSelect(qualifier.tpe))
+          case _ => tree1.withTypeUnchecked(tree.tpe)
+        }
+      }
+    }
+
+    override def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep)(implicit ctx: Context): If =
+      If(tree: Tree)(cond, thenp, elsep)
+    override def CaseDef(tree: CaseDef)(pat: Tree = tree.pat, guard: Tree = tree.guard, body: Tree = tree.body)(implicit ctx: Context): CaseDef =
+      CaseDef(tree: Tree)(pat, guard, body)
+    override def Try(tree: Try)(expr: Tree = tree.expr, handler: Tree = tree.handler, finalizer: Tree = tree.finalizer)(implicit ctx: Context): Try =
+      Try(tree: Tree)(expr, handler, finalizer)
   }
 
   implicit class TreeOps[ThisTree <: tpd.Tree](val tree: ThisTree) extends AnyVal {

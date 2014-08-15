@@ -215,7 +215,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
           ctx.debuglog("Adding protected accessor for " + tree)
           transform(makeAccessor(sel, targs))
         }
-        else if (goToSuper) super.transform(tree)
+        else if (goToSuper) super.transform(tree)(ctx.withPhase(thisTransformer.next))
         else tree
 
       try tree match {
