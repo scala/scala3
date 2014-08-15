@@ -55,6 +55,8 @@ object TreeTransforms {
 
     def phase: MiniPhase
 
+    def treeTransformPhase: Phase = phase
+
     /** id of this treeTransform in group */
     var idx: Int = _
 
@@ -461,7 +463,7 @@ object TreeTransforms {
       var allDone = i < l
       while (i < l) {
         val oldTransform = result(i)
-        val newTransform = mutator(oldTransform, tree, ctx.withPhase(oldTransform.phase))
+        val newTransform = mutator(oldTransform, tree, ctx.withPhase(oldTransform.treeTransformPhase))
         allDone = allDone && (newTransform eq NoTransform)
         if (!(oldTransform eq newTransform)) {
           if (!transformersCopied) result = result.clone()
@@ -526,7 +528,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goIdent(tree: Ident, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformIdent(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformIdent(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Ident => goIdent(t, info.nx.nxTransIdent(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -537,7 +539,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goSelect(tree: Select, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformSelect(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformSelect(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Select => goSelect(t, info.nx.nxTransSelect(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -548,7 +550,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goThis(tree: This, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformThis(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformThis(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: This => goThis(t, info.nx.nxTransThis(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -559,7 +561,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goSuper(tree: Super, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformSuper(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformSuper(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Super => goSuper(t, info.nx.nxTransSuper(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -570,7 +572,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goApply(tree: Apply, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformApply(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformApply(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Apply => goApply(t, info.nx.nxTransApply(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -581,7 +583,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goTypeApply(tree: TypeApply, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformTypeApply(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformTypeApply(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: TypeApply => goTypeApply(t, info.nx.nxTransTypeApply(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -592,7 +594,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goNew(tree: New, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformNew(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformNew(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: New => goNew(t, info.nx.nxTransNew(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -603,7 +605,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goPair(tree: Pair, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformPair(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformPair(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Pair => goPair(t, info.nx.nxTransPair(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -614,7 +616,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goTyped(tree: Typed, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformTyped(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformTyped(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Typed => goTyped(t, info.nx.nxTransTyped(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -625,7 +627,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goAssign(tree: Assign, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformAssign(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformAssign(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Assign => goAssign(t, info.nx.nxTransAssign(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -636,7 +638,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goLiteral(tree: Literal, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformLiteral(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformLiteral(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Literal => goLiteral(t, info.nx.nxTransLiteral(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -647,7 +649,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goBlock(tree: Block, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformBlock(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformBlock(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Block => goBlock(t, info.nx.nxTransBlock(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -658,7 +660,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goIf(tree: If, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformIf(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformIf(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: If => goIf(t, info.nx.nxTransIf(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -669,7 +671,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goClosure(tree: Closure, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformClosure(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformClosure(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Closure => goClosure(t, info.nx.nxTransClosure(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -680,7 +682,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goMatch(tree: Match, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformMatch(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformMatch(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Match => goMatch(t, info.nx.nxTransMatch(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -691,7 +693,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goCaseDef(tree: CaseDef, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformCaseDef(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformCaseDef(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: CaseDef => goCaseDef(t, info.nx.nxTransCaseDef(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -702,7 +704,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goReturn(tree: Return, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformReturn(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformReturn(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Return => goReturn(t, info.nx.nxTransReturn(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -713,7 +715,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goTry(tree: Try, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformTry(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformTry(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Try => goTry(t, info.nx.nxTransTry(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -724,7 +726,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goThrow(tree: Throw, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformThrow(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformThrow(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Throw => goThrow(t, info.nx.nxTransThrow(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -735,7 +737,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goSeqLiteral(tree: SeqLiteral, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformSeqLiteral(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformSeqLiteral(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: SeqLiteral => goSeqLiteral(t, info.nx.nxTransSeqLiteral(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -746,7 +748,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goTypeTree(tree: TypeTree, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformTypeTree(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformTypeTree(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: TypeTree => goTypeTree(t, info.nx.nxTransTypeTree(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -757,7 +759,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goSelectFromTypeTree(tree: SelectFromTypeTree, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformSelectFromTypeTree(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformSelectFromTypeTree(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: SelectFromTypeTree => goSelectFromTypeTree(t, info.nx.nxTransSelectFromTypeTree(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -768,7 +770,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goBind(tree: Bind, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformBind(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformBind(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Bind => goBind(t, info.nx.nxTransBind(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -779,7 +781,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goAlternative(tree: Alternative, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformAlternative(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformAlternative(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Alternative => goAlternative(t, info.nx.nxTransAlternative(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -790,7 +792,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goValDef(tree: ValDef, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformValDef(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformValDef(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: ValDef => goValDef(t, info.nx.nxTransValDef(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -801,7 +803,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goDefDef(tree: DefDef, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformDefDef(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformDefDef(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: DefDef => goDefDef(t, info.nx.nxTransDefDef(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -812,7 +814,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goUnApply(tree: UnApply, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformUnApply(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformUnApply(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: UnApply => goUnApply(t, info.nx.nxTransUnApply(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -823,7 +825,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goTypeDef(tree: TypeDef, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformTypeDef(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformTypeDef(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: TypeDef => goTypeDef(t, info.nx.nxTransTypeDef(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -834,7 +836,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goTemplate(tree: Template, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformTemplate(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformTemplate(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: Template => goTemplate(t, info.nx.nxTransTemplate(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -845,7 +847,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goPackageDef(tree: PackageDef, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        trans.transformPackageDef(tree)(ctx.withPhase(trans.phase), info) match {
+        trans.transformPackageDef(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
           case t: PackageDef => goPackageDef(t, info.nx.nxTransPackageDef(cur + 1))
           case t => transformSingle(t, cur + 1)
         }
@@ -855,7 +857,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goOther(tree: Tree, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        val t = trans.transformOther(tree)(ctx.withPhase(trans.phase), info)
+        val t = trans.transformOther(tree)(ctx.withPhase(trans.treeTransformPhase), info)
         transformSingle(t, cur + 1)
       } else tree
     }
@@ -1167,7 +1169,7 @@ object TreeTransforms {
       if (cur < info.transformers.length) {
         // if cur > 0 then some of the symbols can be created by already performed transformations
         // this means that their denotations could not exists in previous period
-        val pctx = ctx.withPhase(info.transformers(cur).phase)
+        val pctx = ctx.withPhase(info.transformers(cur).treeTransformPhase)
         tree match {
           //split one big match into 2 smaller ones
           case tree: NameTree => transformNamed(tree, info, cur)(pctx)
