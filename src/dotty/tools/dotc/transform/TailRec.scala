@@ -126,7 +126,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
 
   }
 
-  class TailRecElimination(method: Symbol, enclosingClass: Symbol, thisType: Type, isMandatory: Boolean, label: Symbol) extends tpd.RetypingTreeMap {
+  class TailRecElimination(method: Symbol, enclosingClass: Symbol, thisType: Type, isMandatory: Boolean, label: Symbol) extends tpd.TreeMap {
 
     import dotty.tools.dotc.ast.tpd._
 
@@ -257,34 +257,29 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
       val res: Tree = tree match {
 
         case tree@Block(stats, expr) =>
-          val tree1 = tpd.cpy.Block(tree)(
+          tpd.cpy.Block(tree)(
             noTailTransforms(stats),
             transform(expr)
           )
-          propagateType(tree, tree1)
 
         case tree@CaseDef(_, _, body) =>
-          val tree1 = cpy.CaseDef(tree)(body = transform(body))
-          propagateType(tree, tree1)
+          cpy.CaseDef(tree)(body = transform(body))
 
         case tree@If(cond, thenp, elsep) =>
-          val tree1 = tpd.cpy.If(tree)(
+          tpd.cpy.If(tree)(
             noTailTransform(cond),
             transform(thenp),
             transform(elsep)
           )
-          propagateType(tree, tree1)
 
         case tree@Match(selector, cases) =>
-          val tree1 = tpd.cpy.Match(tree)(
+          tpd.cpy.Match(tree)(
             noTailTransform(selector),
             transformSub(cases)
           )
-          propagateType(tree, tree1)
 
         case tree: Try =>
-          val tree1 = rewriteTry(tree)
-          propagateType(tree, tree1)
+          rewriteTry(tree)
 
         case Apply(fun, args) if fun.symbol == defn.Boolean_|| || fun.symbol == defn.Boolean_&& =>
           tpd.cpy.Apply(tree)(fun, transform(args))
@@ -299,7 +294,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
         case tree: Select =>
           val sym = tree.symbol
           if (sym == method && ctx.tailPos) rewriteApply(tree, sym)
-          else propagateType(tree, tpd.cpy.Select(tree)(noTailTransform(tree.qualifier), tree.name))
+          else tpd.cpy.Select(tree)(noTailTransform(tree.qualifier), tree.name)
 
         case ValDef(_, _, _, _) | EmptyTree | Super(_, _) | This(_) |
              Literal(_) | TypeTree(_) | DefDef(_, _, _, _, _, _) | TypeDef(_, _, _) =>
