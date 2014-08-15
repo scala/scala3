@@ -914,7 +914,7 @@ object Trees {
 
     /** A class for copying trees. The copy methods avid creating a new tree
      *  If all arguments stay the same.
-     
+     *
      * Note: Some of the copy methods take a context.
      * These are exactly those methods that are overridden in TypedTreeCopier
      * so that they selectively retype themselves. Retyping needs a context.
@@ -948,19 +948,19 @@ object Trees {
         case tree: Super if (qual eq tree.qual) && (mix == tree.mix) => tree
         case _ => finalize(tree, untpd.Super(qual, mix))
       }
-      def Apply(tree: Tree)(fun: Tree, args: List[Tree]): Apply = tree match {
+      def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = tree match {
         case tree: Apply if (fun eq tree.fun) && (args eq tree.args) => tree
         case _ => finalize(tree, untpd.Apply(fun, args))
       }
-      def TypeApply(tree: Tree)(fun: Tree, args: List[Tree]): TypeApply = tree match {
+      def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = tree match {
         case tree: TypeApply if (fun eq tree.fun) && (args eq tree.args) => tree
         case _ => finalize(tree, untpd.TypeApply(fun, args))
       }
-      def Literal(tree: Tree)(const: Constant): Literal = tree match {
+      def Literal(tree: Tree)(const: Constant)(implicit ctx: Context): Literal = tree match {
         case tree: Literal if (const == tree.const) => tree
         case _ => finalize(tree, untpd.Literal(const))
       }
-      def New(tree: Tree)(tpt: Tree): New = tree match {
+      def New(tree: Tree)(tpt: Tree)(implicit ctx: Context): New = tree match {
         case tree: New if (tpt eq tree.tpt) => tree
         case _ => finalize(tree, untpd.New(tpt))
       }
@@ -968,15 +968,15 @@ object Trees {
         case tree: Pair if (left eq tree.left) && (right eq tree.right) => tree
         case _ => finalize(tree, untpd.Pair(left, right))
       }
-      def Typed(tree: Tree)(expr: Tree, tpt: Tree): Typed = tree match {
+      def Typed(tree: Tree)(expr: Tree, tpt: Tree)(implicit ctx: Context): Typed = tree match {
         case tree: Typed if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
         case _ => finalize(tree, untpd.Typed(expr, tpt))
       }
-      def NamedArg(tree: Tree)(name: Name, arg: Tree): NamedArg = tree match {
+      def NamedArg(tree: Tree)(name: Name, arg: Tree)(implicit ctx: Context): NamedArg = tree match {
         case tree: NamedArg if (name == tree.name) && (arg eq tree.arg) => tree
         case _ => finalize(tree, untpd.NamedArg(name, arg))
       }
-      def Assign(tree: Tree)(lhs: Tree, rhs: Tree): Assign = tree match {
+      def Assign(tree: Tree)(lhs: Tree, rhs: Tree)(implicit ctx: Context): Assign = tree match {
         case tree: Assign if (lhs eq tree.lhs) && (rhs eq tree.rhs) => tree
         case _ => finalize(tree, untpd.Assign(lhs, rhs))
       }
@@ -988,7 +988,7 @@ object Trees {
         case tree: If if (cond eq tree.cond) && (thenp eq tree.thenp) && (elsep eq tree.elsep) => tree
         case _ => finalize(tree, untpd.If(cond, thenp, elsep))
       }
-      def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree): Closure = tree match {
+      def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure = tree match {
         case tree: Closure if (env eq tree.env) && (meth eq tree.meth) && (tpt eq tree.tpt) => tree
         case _ => finalize(tree, untpd.Closure(env, meth, tpt))
       }
@@ -1000,7 +1000,7 @@ object Trees {
         case tree: CaseDef if (pat eq tree.pat) && (guard eq tree.guard) && (body eq tree.body) => tree
         case _ => finalize(tree, untpd.CaseDef(pat, guard, body))
       }
-      def Return(tree: Tree)(expr: Tree, from: Tree): Return = tree match {
+      def Return(tree: Tree)(expr: Tree, from: Tree)(implicit ctx: Context): Return = tree match {
         case tree: Return if (expr eq tree.expr) && (from eq tree.from) => tree
         case _ => finalize(tree, untpd.Return(expr, from))
       }
@@ -1008,7 +1008,7 @@ object Trees {
         case tree: Try if (expr eq tree.expr) && (handler eq tree.handler) && (finalizer eq tree.finalizer) => tree
         case _ => finalize(tree, untpd.Try(expr, handler, finalizer))
       }
-      def Throw(tree: Tree)(expr: Tree): Throw = tree match {
+      def Throw(tree: Tree)(expr: Tree)(implicit ctx: Context): Throw = tree match {
         case tree: Throw if (expr eq tree.expr) => tree
         case _ => finalize(tree, untpd.Throw(expr))
       }
@@ -1104,7 +1104,7 @@ object Trees {
       // is of the same class as the copy. We only include trees with more than 2 elements here.
       def If(tree: If)(cond: Tree = tree.cond, thenp: Tree = tree.thenp, elsep: Tree = tree.elsep)(implicit ctx: Context): If =
         If(tree: Tree)(cond, thenp, elsep)
-      def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt): Closure =
+      def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(implicit ctx: Context): Closure =
         Closure(tree: Tree)(env, meth, tpt)
       def CaseDef(tree: CaseDef)(pat: Tree = tree.pat, guard: Tree = tree.guard, body: Tree = tree.body)(implicit ctx: Context): CaseDef =
         CaseDef(tree: Tree)(pat, guard, body)
