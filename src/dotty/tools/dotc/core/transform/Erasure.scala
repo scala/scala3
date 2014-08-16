@@ -107,7 +107,8 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
    *   - For T1 & T2, erasure(T1)  (??)
    *   - For T1 | T2, the first base class in the linearization of T which is also a base class of T2
    *   - For a method type (Fs)scala.Unit, (|Fs|)scala.Unit.
-   *   - For any other method type (Fs)T, (|Fs|)|T|.
+   *   - For any other uncurried method type (Fs)T, (|Fs|)|T|.
+   *   - For a curried method type (Fs1)(Fs2)T, (|Fs1|,Es2)ET where (Es2)ET = |(Fs2)T|.
    *   - For a polymorphic type, the erasure of its result type.
    *   - For the class info type of java.lang.Object, the same type without any parents.
    *   - For a class info type of a value class, the same type without any parents.
@@ -140,8 +141,13 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
       this(tp.baseTypeRef(lubClass(tp1, tp2)))
     case tp: MethodType =>
       val paramErasure = erasureFn(tp.isJava, isSemi, isConstructor, wildcardOK)(_)
-      tp.derivedMethodType(
-        tp.paramNames, tp.paramTypes.mapConserve(paramErasure), eraseResult(tp.resultType))
+      val formals = tp.paramTypes.mapConserve(paramErasure)
+      eraseResult(tp.resultType) match {
+        case rt: MethodType =>
+          tp.derivedMethodType(tp.paramNames ++ rt.paramNames, formals ++ rt.paramTypes, rt.resultType)
+        case rt =>
+          tp.derivedMethodType(tp.paramNames, formals, rt)
+      }
     case tp: PolyType =>
       this(tp.resultType)
     case tp @ ClassInfo(pre, cls, classParents, decls, _) =>

@@ -264,13 +264,28 @@ object Erasure {
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
       val Apply(fun, args) = tree
-      val fun1 = typedExpr(fun, WildcardType)
-      fun1.tpe.widen match {
-        case mt: MethodType =>
-          val args1 = args.zipWithConserve(mt.paramTypes)(typedExpr)
-          untpd.cpy.Apply(tree)(fun1, args1) withType mt.resultType
+      fun match {
+        case fun: Apply =>
+          typedApply(fun, pt)(ctx.fresh.setTree(tree))
         case _ =>
-          throw new MatchError(i"tree $tree has uxpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
+          def nextOuter(ctx: Context): Context =
+            if (ctx.outer.tree eq tree) nextOuter(ctx.outer) else ctx.outer
+          def contextArgs(tree: untpd.Apply)(implicit ctx: Context): List[untpd.Tree] =
+            ctx.tree match {
+              case enclApp @ Apply(enclFun, enclArgs) if enclFun eq tree =>
+                enclArgs ++ contextArgs(enclApp)(nextOuter(ctx))
+              case _ =>
+                Nil
+            }
+          val allArgs = args ++ contextArgs(tree)
+          val fun1 = typedExpr(fun, WildcardType)
+          fun1.tpe.widen match {
+            case mt: MethodType =>
+              val allArgs1 = allArgs.zipWithConserve(mt.paramTypes)(typedExpr)
+              untpd.cpy.Apply(tree)(fun1, allArgs1) withType mt.resultType
+            case _ =>
+              throw new MatchError(i"tree $tree has unexpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
+          }
       }
     }
 

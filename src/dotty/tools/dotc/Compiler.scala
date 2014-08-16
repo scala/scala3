@@ -32,9 +32,7 @@ class Compiler {
            new TypeTestsCasts,
            new InterceptedMethods,
            new Literalize),
-      List(new Erasure)//,
-      //List(new UncurryTreeTransform
-      //  /* , new Constructors */)
+      List(new Erasure)
     )
 
   var runId = 1
