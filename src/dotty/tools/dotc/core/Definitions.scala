@@ -417,10 +417,6 @@ class Definitions {
 
   lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
 
-  lazy val asInstanceOfMethods = Set[Symbol](Any_asInstanceOf)
-  lazy val isInstanceOfMethods = Set[Symbol](Any_isInstanceOf)
-  lazy val typeTestsOrCasts    = asInstanceOfMethods ++ isInstanceOfMethods
-
   lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
 
   lazy val overriddenBySynthetic = Set[Symbol](Any_equals, Any_hashCode, Any_toString, Product_canEqual)

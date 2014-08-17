@@ -1,4 +1,4 @@
-object Patterns {
+object Patterns {/*
   ('1', "1") match {
     case (digit, str) => true
     case _ => false
@@ -25,7 +25,7 @@ object Patterns {
   def len[T](xs: List[T]): Int = xs match {
     case _ :: xs1 => 1 + len(xs1)
     case Nil => 0
-  }
+  }*/
 
   final def sameLength[T](xs: List[T], ys: List[T]): Boolean = xs match {
     case _ :: xs1 =>

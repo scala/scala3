@@ -30,7 +30,7 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
   override def name: String = "erasure"
 
   /** List of names of phases that should precede this phase */
-  override def runsAfter: Set[String] = Set("typeTestsCasts", "intercepted", "splitter", "nullarify")
+  override def runsAfter: Set[String] = Set("typeTestsCasts"/*, "intercepted"*/, "splitter", "elimRepeated")
 
   def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
     case ref: SymDenotation =>
@@ -100,8 +100,6 @@ object Erasure {
         EmptyTree
     }
 
-    def isErasedValueType(tpe: Type)(implicit ctx: Context): Boolean = tpe.isInstanceOf[ErasedValueType]
-
     def constant(tree: Tree, const: Tree)(implicit ctx: Context) =
       if (isPureExpr(tree)) Block(tree :: Nil, const) else const
 
@@ -169,25 +167,32 @@ object Erasure {
     /** Adaptation of an expression `e` to an expected type `PT`, applying the following
      *  rewritings exhaustively as long as the type of `e` is not a subtype of `PT`.
      *
+     *    e -> e()           if `e` appears not as the function part of an application
      *    e -> box(e)        if `e` is of erased value type
      *    e -> unbox(e, PT)  otherwise, if `PT` is an erased value type
      *    e -> box(e)        if `e` is of primitive type and `PT` is not a primitive type
      *    e -> unbox(e, PT)  if `PT` is a primitive type and `e` is not of primitive type
      *    e -> cast(e, PT)   otherwise
      */
-    def adaptToType(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
-      if (tree.tpe <:< pt)
-        tree
-      else if (tree.tpe.widen.isErasedValueType)
-        adaptToType(box(tree), pt)
-      else if (pt.isErasedValueType)
-        adaptToType(unbox(tree, pt), pt)
-      else if (tree.tpe.widen.isPrimitiveValueType && !pt.isPrimitiveValueType)
-        adaptToType(box(tree), pt)
-      else if (pt.isPrimitiveValueType && !tree.tpe.widen.isPrimitiveValueType)
-        adaptToType(unbox(tree, pt), pt)
-      else
-        cast(tree, pt)
+    def adaptToType(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
+      def makeConformant(tpw: Type): Tree = tpw match {
+        case MethodType(Nil, _) =>
+          adaptToType(tree.appliedToNone, pt)
+        case _ =>
+          if (tpw.isErasedValueType)
+            adaptToType(box(tree), pt)
+          else if (pt.isErasedValueType)
+            adaptToType(unbox(tree, pt), pt)
+          else if (tpw.isPrimitiveValueType && !pt.isPrimitiveValueType)
+            adaptToType(box(tree), pt)
+          else if (pt.isPrimitiveValueType && !tpw.isPrimitiveValueType)
+            adaptToType(unbox(tree, pt), pt)
+          else
+            cast(tree, pt)
+      }
+      if ((pt eq AnyFunctionProto) || tree.tpe <:< pt) tree
+      else makeConformant(tree.tpe.widen)
+    }
   }
 
   class Typer extends typer.ReTyper with NoChecking {
@@ -278,7 +283,7 @@ object Erasure {
                 Nil
             }
           val allArgs = args ++ contextArgs(tree)
-          val fun1 = typedExpr(fun, WildcardType)
+          val fun1 = typedExpr(fun, AnyFunctionProto)
           fun1.tpe.widen match {
             case mt: MethodType =>
               val allArgs1 = allArgs.zipWithConserve(mt.paramTypes)(typedExpr)
@@ -296,10 +301,12 @@ object Erasure {
       block // optimization, no checking needed, as block symbols do not change.
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
-      val tpt1 = // keep UnitTypes intact in result position
-        if (ddef.tpt.typeOpt isRef defn.UnitClass) untpd.TypeTree(defn.UnitType) withPos ddef.tpt.pos
-        else ddef.tpt
-      val ddef1 = untpd.cpy.DefDef(ddef)(tparams = Nil, tpt = tpt1)
+      val ddef1 = untpd.cpy.DefDef(ddef)(
+        tparams = Nil,
+        vparamss = if (ddef.vparamss.isEmpty) Nil :: Nil else ddef.vparamss,
+        tpt = // keep UnitTypes intact in result position
+          if (ddef.tpt.typeOpt isRef defn.UnitClass) untpd.TypeTree(defn.UnitType) withPos ddef.tpt.pos
+          else ddef.tpt)
       super.typedDefDef(ddef1, sym)
     }
 

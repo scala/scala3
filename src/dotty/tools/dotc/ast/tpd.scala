@@ -169,7 +169,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs), sym)
 
   def SyntheticValDef(name: TermName, rhs: Tree)(implicit ctx: Context): ValDef =
-    ValDef(ctx.newSymbol(ctx.owner, name, Synthetic, rhs.tpe, coord = rhs.pos), rhs)
+    ValDef(ctx.newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.pos), rhs)
 
   def DefDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
     ta.assignType(DefDef(sym, Function.const(rhs) _), sym)
@@ -348,21 +348,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply = {
-      val tree1 = untpd.cpy.Apply(tree)(fun, args)
-      tree match {
-        case tree: Apply if (fun.tpe.widen eq tree.fun.tpe.widen) && sameTypes(args, tree.args) => tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, fun, args)
-      }
-    }
+    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): Apply =
+      ta.assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
+      // Note: Reassigning the original type if `fun` and `args` have the same types as before
+      // does not work here: The computed type depends on the widened function type, not
+      // the function type itself. A treetransform may keep the function type the
+      // same but its widened type might change.
 
-    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply = {
-      val tree1 = untpd.cpy.TypeApply(tree)(fun, args)
-      tree match {
-        case tree: TypeApply if (fun.tpe.widen eq tree.fun.tpe.widen) && sameTypes(args, tree.args) => tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, fun, args)
-      }
-    }
+    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
+      ta.assignType(untpd.cpy.TypeApply(tree)(fun, args), fun, args)
+      // Same remark as for Apply
 
     override def Literal(tree: Tree)(const: Constant)(implicit ctx: Context): Literal =
       ta.assignType(untpd.cpy.Literal(tree)(const))
@@ -403,13 +398,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure = {
-      val tree1 = untpd.cpy.Closure(tree)(env, meth, tpt)
-      tree match {
-        case tree: Closure if (meth.tpe.widen eq tree.meth.tpe.widen) && (tpt eq tree.tpt) => tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, meth, tpt)
-      }
-    }
+    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(implicit ctx: Context): Closure =
+      ta.assignType(untpd.cpy.Closure(tree)(env, meth, tpt), meth, tpt)
+      // Same remark as for Apply
 
     override def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(implicit ctx: Context): Match = {
       val tree1 = untpd.cpy.Match(tree)(selector, cases)

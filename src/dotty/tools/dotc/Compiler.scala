@@ -28,7 +28,8 @@ class Compiler {
       List(new PatternMatcher,
            // new LazyValTranformContext().transformer, // disabled, awaiting fixes
            new Splitter),
-      List(new Nullarify,
+      List(new ElimByName),
+      List(
            new TypeTestsCasts,
            new InterceptedMethods,
            new Literalize),

@@ -202,14 +202,15 @@ trait Checking {
   def checkLegalPrefix(tp: Type, selector: Name, pos: Position)(implicit ctx: Context): Unit =
     if (!tp.isLegalPrefixFor(selector)) ctx.error(d"$tp is not a valid prefix for '# $selector'", pos)
 
- /** Check that `tp` is a class type with a stable prefix. Also, if `isFirst` is
-   *  false check that `tp` is a trait.
+ /**  Check that `tp` is a class type with a stable prefix. Also, if `traitReq` is
+   *  true check that `tp` is a trait.
+   *  Stability checking is disabled in phases after RefChecks.
    *  @return  `tp` itself if it is a class or trait ref, ObjectClass.typeRef if not.
    */
   def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type =
     tp.underlyingClassRef match {
       case tref: TypeRef =>
-        checkStable(tref.prefix, pos)
+        if (ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
         if (traitReq && !(tref.symbol is Trait)) ctx.error(d"$tref is not a trait", pos)
         tp
     case _ =>

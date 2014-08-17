@@ -104,12 +104,14 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
    *   - For a typeref P.C where C refers to a nested class, |P|.C.
    *   - For a typeref P.C where C refers to an alias type, the erasure of C's alias.
    *   - For a typeref P.C where C refers to an abstract type, the erasure of C's upper bound.
-   *   - For T1 & T2, erasure(T1)  (??)
+   *   - For T1 & T2, the merge of |T1| and |T2| (see mergeAnd)
    *   - For T1 | T2, the first base class in the linearization of T which is also a base class of T2
+   *   - For => T, ()T
    *   - For a method type (Fs)scala.Unit, (|Fs|)scala.Unit.
    *   - For any other uncurried method type (Fs)T, (|Fs|)|T|.
    *   - For a curried method type (Fs1)(Fs2)T, (|Fs1|,Es2)ET where (Es2)ET = |(Fs2)T|.
-   *   - For a polymorphic type, the erasure of its result type.
+   *   - For a polymorphic type [Ts](Ps)T, |(Ps)T|
+   *   _ For a polymorphic type [Ts]T where T is not a method type, ()|T| 
    *   - For the class info type of java.lang.Object, the same type without any parents.
    *   - For a class info type of a value class, the same type without any parents.
    *   - For any other class info type with parents Ps, the same type with
@@ -133,6 +135,8 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
       else tp.derivedSelect(this(tp.prefix))
     case _: ThisType | _: ConstantType =>
       tp
+    case ExprType(rt) =>
+      MethodType(Nil, Nil, this(rt))
     case tp: TypeProxy =>
       this(tp.underlying)
     case AndType(tp1, tp2) =>
@@ -149,7 +153,10 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
           tp.derivedMethodType(tp.paramNames, formals, rt)
       }
     case tp: PolyType =>
-      this(tp.resultType)
+      this(tp.resultType) match {
+        case rt: MethodType => rt
+        case rt => MethodType(Nil, Nil, rt)
+      }
     case tp @ ClassInfo(pre, cls, classParents, decls, _) =>
       if (cls is Package) tp
       else {

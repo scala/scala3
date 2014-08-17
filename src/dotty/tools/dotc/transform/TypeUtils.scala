@@ -16,8 +16,8 @@ object TypeUtils {
 
 }
 
-/** A decorator that provides methods for type transformations
- *  that are needed in the transofmer pipeline (not needed right now)
+/** A decorator that provides methods on types
+ *  that are needed in the transformer pipeline.
  */
 class TypeUtils(val self: Type) extends AnyVal {
 
@@ -26,5 +26,4 @@ class TypeUtils(val self: Type) extends AnyVal {
 
   def isPrimitiveValueType(implicit ctx: Context): Boolean =
     self.classSymbol.isPrimitiveValueClass
-
- }
+}

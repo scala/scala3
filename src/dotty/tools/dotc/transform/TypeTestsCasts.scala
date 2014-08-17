@@ -89,7 +89,7 @@ class TypeTestsCasts extends MiniPhaseTransform {
 
         if (sym eq defn.Any_isInstanceOf)
           transformIsInstanceOf(qual, tree.args.head.tpe)
-        else if (defn.asInstanceOfMethods contains sym)
+        else if (sym eq defn.Any_asInstanceOf)
           transformAsInstanceOf(tree.args.head.tpe)
         else tree
 
