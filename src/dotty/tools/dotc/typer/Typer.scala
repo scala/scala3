@@ -555,20 +555,23 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = track("typedClosure") {
     val env1 = tree.env mapconserve (typed(_))
     val meth1 = typedUnadapted(tree.meth)
-    val target = meth1.tpe.widen match {
-      case mt: MethodType =>
-        pt match {
-          case SAMType(meth) if !defn.isFunctionType(pt) && mt <:< meth.info =>
-            if (!isFullyDefined(pt, ForceDegree.all))
-              ctx.error(d"result type of closure is an underspecified SAM type $pt", tree.pos)
-            TypeTree(pt)
-          case _ =>
-            if (!mt.isDependent) EmptyTree
-            else throw new Error(i"internal error: cannot turn dependent method type $mt into closure, position = ${tree.pos}, raw type = ${mt.toString}") // !!! DEBUG. Eventually, convert to an error?
+    val target =
+      if (tree.tpt.isEmpty)
+        meth1.tpe.widen match {
+          case mt: MethodType =>
+            pt match {
+              case SAMType(meth) if !defn.isFunctionType(pt) && mt <:< meth.info =>
+                if (!isFullyDefined(pt, ForceDegree.all))
+                  ctx.error(d"result type of closure is an underspecified SAM type $pt", tree.pos)
+                TypeTree(pt)
+              case _ =>
+                if (!mt.isDependent) EmptyTree
+                else throw new Error(i"internal error: cannot turn dependent method type $mt into closure, position = ${tree.pos}, raw type = ${mt.toString}") // !!! DEBUG. Eventually, convert to an error?
+            }
+          case tp =>
+            throw new Error(i"internal error: closing over non-method $tp, pos = ${tree.pos}")
         }
-      case tp =>
-        throw new Error(i"internal error: closing over non-method $tp, pos = ${tree.pos}")
-    }
+      else typed(tree.tpt)
     assignType(cpy.Closure(tree)(env1, meth1, target), meth1, target)
   }
 

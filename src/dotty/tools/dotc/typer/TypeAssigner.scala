@@ -211,7 +211,7 @@ trait TypeAssigner {
     val owntype =
       if (!mix.isEmpty) findMixinSuper(cls.info)
       else if (inConstrCall) cls.info.firstParent
-      else cls.info.parents.reduceLeft((x: Type, y: Type) => AndType(x, y))
+      else cls.info.parents.reduceLeft((x: Type, y: Type) => x & y)
     tree.withType(SuperType(cls.thisType, owntype))
   }
 

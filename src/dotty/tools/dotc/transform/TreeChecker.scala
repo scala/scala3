@@ -92,6 +92,11 @@ class TreeChecker {
                i"bad owner; $tree has owner ${tree.symbol.owner}, expected was ${ctx.owner}")
       super.index(trees)
     }
+
+    override def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = {
+      if (ctx.mode.isExpr) assert(tree.tpe <:< pt, err.typeMismatchStr(tree.tpe, pt))
+      tree
+    }
   }
 }
 
