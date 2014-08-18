@@ -131,6 +131,29 @@ object Trees {
         found
       }
     }
+
+    /** The path from this node to `that` node, represented
+     *  as a list starting with `this`, ending with`that` where
+     *  every node is a child of its predecessor.
+     *  Nil if no such path exists.
+     */
+    def pathTo(that: Positioned): List[Positioned] = {
+      def childPath(it: Iterator[Any]): List[Positioned] =
+        if (it.hasNext) {
+          val cpath = it.next match {
+            case x: Positioned => x.pathTo(that)
+            case xs: List[_] => childPath(xs.iterator)
+            case _ => Nil
+          }
+          if (cpath.nonEmpty) cpath else childPath(it)
+        } else Nil
+      if (this eq that) this :: Nil
+      else if (this.envelope contains that.pos) {
+        val cpath = childPath(productIterator)
+        if (cpath.nonEmpty) this :: cpath else Nil
+      }
+      else Nil
+    }
   }
 
   /** Modifiers and annotations for definitions
@@ -225,7 +248,10 @@ object Trees {
      *  which implements copy-on-write. Another use-case is in method interpolateAndAdapt in Typer,
      *  where we overwrite with a simplified version of the type itself.
      */
-    private[dotc] def overwriteType(tpe: T) = myTpe = tpe
+    private[dotc] def overwriteType(tpe: T) = {
+      if (this.isInstanceOf[Template[_]]) assert(tpe.isInstanceOf[WithNonMemberSym], s"$this <--- $tpe")
+      myTpe = tpe
+    }
 
     /** The type of the tree. In case of an untyped tree,
      *   an UnAssignedTypeException is thrown. (Overridden by empty trees)
