@@ -628,21 +628,24 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedReturn(tree: untpd.Return)(implicit ctx: Context): Return = track("typedReturn") {
-    def enclMethInfo(cx: Context): (Tree, Type) = {
-      val owner = cx.owner
-      if (cx == NoContext || owner.isType) {
-        ctx.error("return outside method definition", tree.pos)
-        (EmptyTree, WildcardType)
+    def returnProto(owner: Symbol) =
+      if (owner.isConstructor) defn.UnitType else owner.info.finalResultType
+    def enclMethInfo(cx: Context): (Tree, Type) =
+      if (tree.from.isEmpty) {
+        val owner = cx.owner
+        if (cx == NoContext || owner.isType) {
+          ctx.error("return outside method definition", tree.pos)
+          (EmptyTree, WildcardType)
+        } else if (owner.isSourceMethod)
+          if (owner.isCompleted) {
+            val from = Ident(TermRef(NoPrefix, owner.asTerm))
+            val proto = returnProto(owner)
+            (from, proto)
+          } else (EmptyTree, errorType(d"$owner has return statement; needs result type", tree.pos))
+        else enclMethInfo(cx.outer)
       }
-      else if (owner.isSourceMethod)
-        if (owner.isCompleted) {
-          val from = Ident(TermRef(NoPrefix, owner.asTerm))
-          val proto = if (owner.isConstructor) defn.UnitType else owner.info.finalResultType
-          (from, proto)
-        }
-        else (EmptyTree, errorType(d"$owner has return statement; needs result type", tree.pos))
-      else enclMethInfo(cx.outer)
-    }
+      else
+        (tree.from.asInstanceOf[tpd.Tree], returnProto(tree.from.symbol))
     val (from, proto) = enclMethInfo(ctx)
     val expr1 = typedExpr(tree.expr orElse untpd.unitLiteral.withPos(tree.pos), proto)
     assignType(cpy.Return(tree)(expr1, from))
