@@ -399,7 +399,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def escapingRefs(block: Block)(implicit ctx: Context): collection.Set[NamedType] = {
     var hoisted: Set[Symbol] = Set()
-    lazy val locals = ctx.typeAssigner.localSyms(block.stats).toSet
+    lazy val locals = localSyms(block.stats).toSet
     def isLocal(sym: Symbol): Boolean =
       (locals contains sym) && !isHoistableClass(sym)
     def isHoistableClass(sym: Symbol) =

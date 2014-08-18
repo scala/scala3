@@ -75,9 +75,6 @@ trait TypeAssigner {
     widenMap(tp)
   }
 
-  def localSyms(stats: List[tpd.Tree])(implicit ctx: Context): List[Symbol] =
-    for (stat <- stats if stat.isDef) yield stat.symbol
-
   def seqToRepeated(tree: Tree)(implicit ctx: Context): Tree =
     Typed(tree, TypeTree(tree.tpe.widen.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)))
 

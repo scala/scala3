@@ -19,7 +19,8 @@ import util.Positions._
 import DenotTransformers._
 import StdNames._
 import NameOps._
-import ast.tpd.{TreeTypeMap, Tree}
+import ast.tpd.Tree
+import ast.TreeTypeMap
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
@@ -261,22 +262,14 @@ trait Symbols { this: Context =>
     newSymbol(owner, name, SyntheticArtifact,
       if (name.isTypeName) TypeAlias(ErrorType) else ErrorType)
 
-  /** Map given symbols, subjecting all types to given type map and owner map,
-   *  as well as to the substition [substFrom := substTo].
+  /** Map given symbols, subjecting their attributes to the mappings
+   *  defined in the given TreeTypeMap `ttmap`.
    *  Cross symbol references are brought over from originals to copies.
    *  Do not copy any symbols if all attributes of all symbols stay the same.
    */
-  def mapSymbols(
-      originals: List[Symbol],
-      typeMap: Type => Type = IdentityTypeMap,
-      ownerMap: Symbol => Symbol = identity,
-      substFrom: List[Symbol] = Nil,
-      substTo: List[Symbol] = Nil)
-  =
+  def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap) =
     if (originals forall (sym =>
-        (typeMap(sym.info) eq sym.info) &&
-        (sym.info.substSym(substFrom, substTo) eq sym.info) &&
-        (ownerMap(sym.owner) eq sym.owner)))
+        (ttmap.mapType(sym.info) eq sym.info) && (ttmap.ownerMap(sym.owner) eq sym.owner)))
       originals
     else {
       val copies: List[Symbol] = for (original <- originals) yield
@@ -286,19 +279,18 @@ trait Symbols { this: Context =>
           case _ =>
             newNakedSymbol[original.ThisName](original.coord)
         }
-      val treeMap = new TreeTypeMap(typeMap, ownerMap, substFrom = substFrom, substTo = substTo)
-        .withSubstitution(originals, copies)
+      val ttmap1 = ttmap.withSubstitution(originals, copies)
       (originals, copies).zipped foreach {(original, copy) =>
-        copy.denot = original.denot // preliminar denotation, so that we can access symbols in subsequent transform
+        copy.denot = original.denot // preliminary denotation, so that we can access symbols in subsequent transform
       }
       (originals, copies).zipped foreach {(original, copy) =>
         val odenot = original.denot
         copy.denot = odenot.copySymDenotation(
           symbol = copy,
-          owner = treeMap.ownerMap(odenot.owner),
-          info = treeMap.mapType(odenot.info),
-          privateWithin = ownerMap(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
-          annotations = odenot.annotations.mapConserve(treeMap.apply))
+          owner = ttmap1.ownerMap(odenot.owner),
+          info = ttmap1.mapType(odenot.info),
+          privateWithin = ttmap1.ownerMap(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
+          annotations = odenot.annotations.mapConserve(ttmap1.apply))
       }
       copies
     }

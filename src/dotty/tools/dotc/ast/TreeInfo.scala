@@ -420,6 +420,17 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
+  /** The variables defined by a pattern, in reverse order of their appearance. */
+  def patVars(tree: Tree)(implicit ctx: Context): List[Symbol] = {
+    val acc = new TreeAccumulator[List[Symbol]] {
+      def apply(syms: List[Symbol], tree: Tree) = tree match {
+        case Bind(_, body) => apply(tree.symbol :: syms, body)
+        case _ => foldOver(syms, tree)
+      }
+    }
+    acc(Nil, tree)
+  }
+
   /** Is this pattern node a catch-all or type-test pattern? */
   def isCatchCase(cdef: CaseDef)(implicit ctx: Context) = cdef match {
     case CaseDef(Typed(Ident(nme.WILDCARD), tpt), EmptyTree, _) =>
@@ -437,6 +448,10 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case _ =>
       false
   }
+
+  /** The symbols defined locally in a statement list */
+  def localSyms(stats: List[Tree])(implicit ctx: Context): List[Symbol] =
+    for (stat <- stats if stat.isDef && stat.symbol.exists) yield stat.symbol
 
   /** If `tree` is a DefTree, the symbol defined by it, otherwise NoSymbol */
   def definedSym(tree: Tree)(implicit ctx: Context): Symbol =

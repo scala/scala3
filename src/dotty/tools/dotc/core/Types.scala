@@ -17,7 +17,9 @@ import Periods._
 import util.Positions.Position
 import util.Stats._
 import util.{DotClass, SimpleMap}
-import ast.tpd._, printing.Texts._
+import ast.tpd._
+import ast.TreeTypeMap
+import printing.Texts._
 import ast.untpd
 import transform.Erasure
 import printing.Printer
@@ -2474,8 +2476,9 @@ object Types {
       }
     }
 
-    def mapOver(syms: List[Symbol]): List[Symbol] =
-      ctx.mapSymbols(syms, typeMap = this)
+    private def treeTypeMap = new TreeTypeMap(typeMap = this)
+
+    def mapOver(syms: List[Symbol]): List[Symbol] = ctx.mapSymbols(syms, treeTypeMap)
 
     def mapOver(scope: Scope): Scope = {
       val elems = scope.toList
@@ -2487,8 +2490,7 @@ object Types {
     def mapOver(annot: Annotation): Annotation =
       annot.derivedAnnotation(mapOver(annot.tree))
 
-    def mapOver(tree: Tree): Tree =
-      new TreeTypeMap(typeMap = this).apply(tree)
+    def mapOver(tree: Tree): Tree = treeTypeMap(tree)
 
     /** Can be overridden. By default, only the prefix is mapped. */
     protected def mapClassInfo(tp: ClassInfo): ClassInfo =
