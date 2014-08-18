@@ -130,12 +130,26 @@ trait Substituters { this: Context =>
         var fs = from
         var ts = to
         while (fs.nonEmpty) {
-          if (fs.head eq sym) return tp.prefix select ts.head
+          if (fs.head eq sym)
+            return tp match {
+              case tp: WithNonMemberSym => NamedType.withNonMemberSym(tp.prefix, ts.head)
+              case _ => substSym(tp.prefix, from, to, theMap) select ts.head
+            }
           fs = fs.tail
           ts = ts.tail
         }
         if (sym.isStatic && !existsStatic(from)) tp
         else tp.derivedSelect(substSym(tp.prefix, from, to, theMap))
+      case tp: ThisType =>
+        val sym = tp.cls
+        var fs = from
+        var ts = to
+        while (fs.nonEmpty) {
+          if (fs.head eq sym) return ThisType(ts.head.asClass)
+          fs = fs.tail
+          ts = ts.tail
+        }
+        tp
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
