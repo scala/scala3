@@ -325,7 +325,7 @@ object SymDenotations {
 
     /** Is this symbol an anonymous class? */
     final def isAnonymousClass(implicit ctx: Context): Boolean =
-      initial.asSymDenotation.name startsWith tpnme.ANON_CLASS
+      isClass && (initial.asSymDenotation.name startsWith tpnme.ANON_CLASS)
 
     /** Is symbol a primitive value class? */
     def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains symbol
