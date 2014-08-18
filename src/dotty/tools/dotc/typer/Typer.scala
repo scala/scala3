@@ -840,12 +840,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parents1 = ensureConstrCall(ensureFirstIsClass(
         parents mapconserve typedParent, cdef.pos.toSynthetic))
-    val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class memebers are not visible
+    val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     val dummy = localDummy(cls, impl)
     val body1 = typedStats(body, dummy)(inClassContext(self1.symbol))
     checkNoDoubleDefs(cls)
     val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
-      .withType(dummy.termRef)
+      .withType(dummy.nonMemberTermRef)
     checkVariance(impl1)
     assignType(cpy.TypeDef(cdef)(mods1, name, impl1, Nil), cls)
 
