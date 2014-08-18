@@ -75,6 +75,22 @@ class TreeChecker {
       super.typedSelect(tree, pt)
     }
 
+    private def checkOwner(tree: untpd.Tree)(implicit ctx: Context): Unit = {
+      def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
+        symOwner == ctxOwner ||
+        ctxOwner.isTerm && !(ctxOwner is Method | Lazy | Mutable) &&
+          ownerMatches(symOwner, ctxOwner.owner)
+      assert(ownerMatches(tree.symbol.owner, ctx.owner),
+             i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}")
+    }
+
+    override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = {
+      val TypeDef(_, _, impl @ Template(constr, _, _, _)) = cdef
+      checkOwner(impl)
+      checkOwner(impl.constr)
+      super.typedClassDef(cdef, cls)
+    }
+
     /** Check that all defined symbols have legal owners.
      *  An owner is legal if it is either the same as the context's owner
      *  or there's an owner chain of valdefs starting at the context's owner and
@@ -83,13 +99,7 @@ class TreeChecker {
      *  of a helper value without having to do a change owner traversal of the expression.
      */
     override def index(trees: List[untpd.Tree])(implicit ctx: Context): Context = {
-      def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
-        symOwner == ctxOwner ||
-        ctxOwner.isTerm && !(ctxOwner is Method | Lazy | Mutable) &&
-          ownerMatches(symOwner, ctxOwner.owner)
-      for (tree <- trees if tree.isDef)
-        assert(ownerMatches(tree.symbol.owner, ctx.owner),
-               i"bad owner; $tree has owner ${tree.symbol.owner}, expected was ${ctx.owner}")
+      for (tree <- trees if tree.isDef) checkOwner(tree)
       super.index(trees)
     }
 
