@@ -484,7 +484,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       shallowFold[Option[tpd.Tree]](None)((accum, tree) => if (pred(tree)) Some(tree) else accum)
 
     def subst(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): ThisTree =
-      new TreeTypeMap(typeMap = new ctx.SubstSymMap(from, to)).apply(tree)
+      new TreeTypeMap(substFrom = from, substTo = to).apply(tree)
 
     def changeOwner(from: Symbol, to: Symbol)(implicit ctx: Context): ThisTree =
       new TreeTypeMap(ownerMap = (sym => if (sym == from) to else sym)).apply(tree)
@@ -549,36 +549,66 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** A map that applies three functions together to a tree and makes sure
    *  they are coordinated so that the result is well-typed. The functions are
    *  @param  typeMap  A function from Type to type that gets applied to the
-   *                   type of every tree node and to all locally defined symbols
+   *                   type of every tree node and to all locally defined symbols,
+   *                   followed by the substitution [substFrom := substTo].
    *  @param ownerMap  A function that translates owners of top-level local symbols
    *                   defined in the mapped tree.
    *  @param treeMap   A transformer that translates all encountered subtrees in
    *                   prefix traversal order.
+   *  @param substFrom The symbols that need to be substituted
+   *  @param substTo   The substitution targets
+   *
+   *  The reason the substitution is broken out form the rest of the type map is
+   *  that all symbols have to be substituted at the same time. If we do not do this,
+   *  we risk data races on named types. Example: Say we have `outer#1.inner#2` and we
+   *  have two substitutons S1 = [outer#1 := outer#3], S2 = [inner#2 := inner#4] where
+   *  hashtags precede symbol ids. If we do S1 first, we get outer#2.inner#3. If we then
+   *  do S2 we get outer#2.inner#4. But that means that the named type outer#2.inner
+   *  gets two different denotations in the same period. Hence, if -YnoDoubleBindings is
+   *  set, we would get a data race assertion error.
    */
   final class TreeTypeMap(
       val typeMap: Type => Type = IdentityTypeMap,
       val ownerMap: Symbol => Symbol = identity _,
-      val treeMap: Tree => Tree = identity _)(implicit ctx: Context) extends TreeMap {
+      val treeMap: Tree => Tree = identity _,
+      val substFrom: List[Symbol] = Nil,
+      val substTo: List[Symbol] = Nil)(implicit ctx: Context) extends TreeMap {
+
+    def mapType(tp: Type) = typeMap(tp).substSym(substFrom, substTo)
 
     override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
       val tree1 = treeMap(tree)
-      tree1.withType(typeMap(tree1.tpe)) match {
-        case ddef @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-          val (tmap1, tparams1) = transformDefs(ddef.tparams)
-          val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)
-          cpy.DefDef(ddef)(mods, name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(rhs))
-        case blk @ Block(stats, expr) =>
-          val (tmap1, stats1) = transformDefs(stats)
-          val expr1 = tmap1.transform(expr)
-          cpy.Block(blk)(stats1, expr1)
-        case cdef @ CaseDef(pat, guard, rhs) =>
-          val tmap = withMappedSyms(patVars(pat))
-          val pat1 = tmap.transform(pat)
-          val guard1 = tmap.transform(guard)
-          val rhs1 = tmap.transform(rhs)
-          cpy.CaseDef(tree)(pat1, guard1, rhs1)
-        case tree1 =>
-          super.transform(tree1)
+      tree1 match {
+        case impl @ Template(constr, parents, self, body) =>
+          val selfToMap = if (self.symbol.exists) self.symbol :: Nil else Nil
+          val symsToMap = impl.symbol :: impl.constr.symbol :: selfToMap
+          val mappedSyms = ctx.mapSymbols(symsToMap, typeMap, ownerMap, substFrom, substTo)
+          val tmap = withSubstitution(symsToMap, mappedSyms)
+          val constr1 = tmap.transformSub(constr)
+          val parents1 = parents mapconserve transform
+          var self1 = tmap.transformSub(self)
+          if (self.symbol.exists) self1 = self1.withType(mappedSyms.last.termRef)
+          val body1 = tmap.transformStats(body)
+          cpy.Template(impl)(constr1, parents1, self1, body1).withType(mappedSyms.head.nonMemberTermRef)
+        case _ =>
+          tree1.withType(mapType(tree1.tpe)) match {
+            case ddef @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
+              val (tmap1, tparams1) = transformDefs(ddef.tparams)
+              val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)
+              cpy.DefDef(ddef)(mods, name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(rhs))
+            case blk @ Block(stats, expr) =>
+              val (tmap1, stats1) = transformDefs(stats)
+              val expr1 = tmap1.transform(expr)
+              cpy.Block(blk)(stats1, expr1)
+            case cdef @ CaseDef(pat, guard, rhs) =>
+              val tmap = withMappedSyms(patVars(pat))
+              val pat1 = tmap.transform(pat)
+              val guard1 = tmap.transform(guard)
+              val rhs1 = tmap.transform(rhs)
+              cpy.CaseDef(tree)(pat1, guard1, rhs1)
+            case tree1 =>
+              super.transform(tree1)
+          }
       }
     }
 
@@ -609,20 +639,27 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     /** The current tree map composed with a substitution [from -> to] */
     def withSubstitution(from: List[Symbol], to: List[Symbol]): TreeTypeMap =
       if (from eq to) this
-      else new TreeTypeMap(
-        typeMap andThen (_.substSym(from, to)),
-        ownerMap andThen { sym =>
-          val idx = from.indexOf(sym)
-          if (idx >= 0) to(idx) else sym
-        },
-        treeMap)
+      else {
+        // assert that substitution stays idempotent, assuming its parts are
+        assert(!from.exists(substTo contains _))
+        assert(!to.exists(substFrom contains _))
+        new TreeTypeMap(
+          typeMap,
+          ownerMap andThen { sym =>
+            val idx = from.indexOf(sym)
+            if (idx >= 0) to(idx) else sym
+          },
+          treeMap,
+          from ++ substFrom,
+          to ++ substTo)
+      }
 
     /** Apply `typeMap` and `ownerMap` to given symbols `syms`
      *  and return a treemap that contains the substitution
      *  between original and mapped symbols.
      */
     def withMappedSyms(syms: List[Symbol]): TreeTypeMap = {
-      val mapped = ctx.mapSymbols(syms, typeMap, ownerMap)
+      val mapped = ctx.mapSymbols(syms, typeMap, ownerMap, substFrom, substTo)
       withSubstitution(syms, mapped)
     }
   }

@@ -2475,7 +2475,7 @@ object Types {
     }
 
     def mapOver(syms: List[Symbol]): List[Symbol] =
-      ctx.mapSymbols(syms, this)
+      ctx.mapSymbols(syms, typeMap = this)
 
     def mapOver(scope: Scope): Scope = {
       val elems = scope.toList
@@ -2488,7 +2488,7 @@ object Types {
       annot.derivedAnnotation(mapOver(annot.tree))
 
     def mapOver(tree: Tree): Tree =
-      new TreeTypeMap(this).apply(tree)
+      new TreeTypeMap(typeMap = this).apply(tree)
 
     /** Can be overridden. By default, only the prefix is mapped. */
     protected def mapClassInfo(tp: ClassInfo): ClassInfo =

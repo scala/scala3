@@ -261,29 +261,42 @@ trait Symbols { this: Context =>
     newSymbol(owner, name, SyntheticArtifact,
       if (name.isTypeName) TypeAlias(ErrorType) else ErrorType)
 
-  /** Map given symbols, subjecting all types to given type map and owner map.
+  /** Map given symbols, subjecting all types to given type map and owner map,
+   *  as well as to the substition [substFrom := substTo].
    *  Cross symbol references are brought over from originals to copies.
    *  Do not copy any symbols if all attributes of all symbols stay the same.
    */
   def mapSymbols(
       originals: List[Symbol],
       typeMap: Type => Type = IdentityTypeMap,
-      ownerMap: Symbol => Symbol = identity)
+      ownerMap: Symbol => Symbol = identity,
+      substFrom: List[Symbol] = Nil,
+      substTo: List[Symbol] = Nil)
   =
     if (originals forall (sym =>
-        (typeMap(sym.info) eq sym.info) && (ownerMap(sym.owner) eq sym.owner)))
+        (typeMap(sym.info) eq sym.info) &&
+        (sym.info.substSym(substFrom, substTo) eq sym.info) &&
+        (ownerMap(sym.owner) eq sym.owner)))
       originals
     else {
       val copies: List[Symbol] = for (original <- originals) yield
-        newNakedSymbol[original.ThisName](original.coord)
-      val treeMap = new TreeTypeMap(typeMap, ownerMap)
+        original match {
+          case original: ClassSymbol =>
+            newNakedClassSymbol(original.coord, original.assocFile)
+          case _ =>
+            newNakedSymbol[original.ThisName](original.coord)
+        }
+      val treeMap = new TreeTypeMap(typeMap, ownerMap, substFrom = substFrom, substTo = substTo)
         .withSubstitution(originals, copies)
+      (originals, copies).zipped foreach {(original, copy) =>
+        copy.denot = original.denot // preliminar denotation, so that we can access symbols in subsequent transform
+      }
       (originals, copies).zipped foreach {(original, copy) =>
         val odenot = original.denot
         copy.denot = odenot.copySymDenotation(
           symbol = copy,
           owner = treeMap.ownerMap(odenot.owner),
-          info = treeMap.typeMap(odenot.info),
+          info = treeMap.mapType(odenot.info),
           privateWithin = ownerMap(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
           annotations = odenot.annotations.mapConserve(treeMap.apply))
       }
@@ -318,7 +331,7 @@ object Symbols {
     type ThisName <: Name
 
     private[this] var _id: Int = nextId
-    //assert(_id != 5859)
+    //assert(_id != 30214)
 
     /** The unique id of this symbol */
     def id = _id
@@ -479,7 +492,7 @@ object Symbols {
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
-  class ClassSymbol private[Symbols] (coord: Coord, assocFile: AbstractFile)
+  class ClassSymbol private[Symbols] (coord: Coord, val assocFile: AbstractFile)
     extends Symbol(coord) {
 
     type ThisName = TypeName
