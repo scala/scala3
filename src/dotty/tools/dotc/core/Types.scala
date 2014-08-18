@@ -1164,7 +1164,7 @@ object Types {
           // for overriddenBySynthetic symbols a TermRef such as SomeCaseClass.this.hashCode
           // might be rewritten from Object#hashCode to the hashCode generated at SyntheticMethods
       ),
-        s"data race? overwriting symbol of $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id}")
+        s"data race? overwriting symbol of ${this.show} / $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id}")
 
     protected def sig: Signature = Signature.NotAMethod
 
@@ -2505,11 +2505,11 @@ object Types {
     override def mapClassInfo(tp: ClassInfo) = {
       val prefix1 = this(tp.prefix)
       val parents1 = (tp.parents mapConserve this).asInstanceOf[List[TypeRef]]
-      val self1 = tp.self match {
-        case self: Type => this(self)
-        case _ => tp.self
+      val selfInfo1 = tp.selfInfo match {
+        case selfInfo: Type => this(selfInfo)
+        case selfInfo => selfInfo
       }
-      tp.derivedClassInfo(prefix1, parents1, tp.decls, self1)
+      tp.derivedClassInfo(prefix1, parents1, tp.decls, selfInfo1)
     }
   }
 
