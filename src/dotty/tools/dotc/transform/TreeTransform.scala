@@ -148,7 +148,7 @@ object TreeTransforms {
     def runsAfterGroupsOf: Set[String] = Set.empty
 
     protected def mkTreeTransformer = new TreeTransformer {
-      override def name: String = thisPhase.name
+      override def phaseName: String = thisPhase.phaseName
       override def transformations = Array(treeTransform)
     }
 

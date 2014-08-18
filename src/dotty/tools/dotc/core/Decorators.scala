@@ -131,7 +131,7 @@ object Decorators {
   implicit class PhaseListDecorator(val names: List[String]) extends AnyVal {
     def containsPhase(phase: Phase): Boolean = phase  match {
       case phase: TreeTransformer => phase.transformations.exists(trans => containsPhase(trans.phase))
-      case _ => names exists (n => n == "all" || phase.name.startsWith(n))
+      case _ => names exists (n => n == "all" || phase.phaseName.startsWith(n))
     }
   }
 

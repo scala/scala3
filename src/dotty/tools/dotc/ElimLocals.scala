@@ -11,7 +11,7 @@ import Flags.Local
 
 /** Widens all private[this] and protected[this] qualifiers to just private/protected */
 class ElimLocals extends MiniPhaseTransform with SymTransformer { thisTransformer =>
-  override def name = "elimLocals"
+  override def phaseName = "elimLocals"
 
   def transformSym(ref: SymDenotation)(implicit ctx: Context) =
     dropLocal(ref)

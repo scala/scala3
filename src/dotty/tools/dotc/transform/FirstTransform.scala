@@ -26,7 +26,7 @@ import NameOps._
 class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { thisTransformer =>
   import ast.tpd._
 
-  override def name = "companions"
+  override def phaseName = "companions"
 
   /** Reorder statements so that module classes always come after their companion classes, add missing companion classes */
   private def reorderAndComplete(stats: List[Tree])(implicit ctx: Context): List[Tree] = {

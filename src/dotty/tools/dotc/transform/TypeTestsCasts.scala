@@ -24,7 +24,7 @@ import Erasure.Boxing.box
 class TypeTestsCasts extends MiniPhaseTransform {
   import ast.tpd._
 
-  override def name: String = "typeTestsCasts"
+  override def phaseName: String = "typeTestsCasts"
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree = ctx.traceIndented(s"transforming ${tree.show}", show = true) {
     tree.fun match {

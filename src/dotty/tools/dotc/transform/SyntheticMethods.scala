@@ -34,7 +34,7 @@ import scala.language.postfixOps
 class SyntheticMethods extends MiniPhaseTransform with IdentityDenotTransformer { thisTransformer =>
   import ast.tpd._
 
-  val name = "synthetics"
+  override def phaseName = "synthetics"
 
   private var valueSymbols: List[Symbol] = _
   private var caseSymbols: List[Symbol] = _

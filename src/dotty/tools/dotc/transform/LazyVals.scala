@@ -45,7 +45,7 @@ class LazyValTranformContext {
 
   class LazyValsTransform extends MiniPhaseTransform with DenotTransformer {
 
-    override def name: String = "LazyVals"
+    override def phaseName: String = "LazyVals"
 
     /** List of names of phases that should have finished their processing of all compilation units
       * before this phase starts */

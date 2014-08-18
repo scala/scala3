@@ -27,7 +27,7 @@ class ExtensionMethods extends MacroTransform with DenotTransformer with FullPar
   import tpd._
 
   /** the following two members override abstract members in Transform */
-  val name: String = "extmethods"
+  override def phaseName: String = "extmethods"
 
   override def runsAfter: Set[String] = Set("elimRepeated") // TODO: add tailrec
 

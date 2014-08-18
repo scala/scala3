@@ -19,7 +19,7 @@ import ast.Trees._
 class PatternMatcher extends MiniPhaseTransform {
   import ast.tpd._
 
-  override def name: String = "patternMatcher"
+  override def phaseName: String = "patternMatcher"
 
   override def transformCaseDef(tree: CaseDef)(implicit ctx: Context, info: TransformerInfo): Tree =
     cpy.CaseDef(tree)(Literal(Constant("<eliminated pattern>")), tree.guard, tree.body)

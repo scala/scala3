@@ -38,7 +38,7 @@ import ast.Trees._
 class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
   import ast.tpd._
 
-  override def name: String = "elimByName"
+  override def phaseName: String = "elimByName"
 
   override def runsAfterGroupsOf: Set[String] = Set("splitter")
     // assumes idents and selects have symbols; interferes with splitter distribution

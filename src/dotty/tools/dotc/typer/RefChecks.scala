@@ -685,7 +685,7 @@ class RefChecks extends MiniPhase with IdentityDenotTransformer { thisTransforme
 
   import tpd._
 
-  val name: String = "refchecks"
+  override def phaseName: String = "refchecks"
 
   val treeTransform = new Transform(NoLevelInfo)
 

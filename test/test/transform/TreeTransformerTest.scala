@@ -16,13 +16,13 @@ class TreeTransformerTest extends DottyTest {
     (tree, context) =>
       implicit val ctx = context
       class EmptyTransform extends MiniPhaseTransform {
-        override def name: String = "empty"
+        override def phaseName: String = "empty"
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new TreeTransformer {
         override def transformations = Array(new EmptyTransform)
 
-        override def name: String = "test"
+        override def phaseName: String = "test"
       }
       val transformed = transformer.transform(tree)
 
@@ -38,13 +38,13 @@ class TreeTransformerTest extends DottyTest {
       class ConstantTransform extends MiniPhaseTransform {
 
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = tpd.Literal(Constant(2))
-        override def name: String = "canReplaceConstant"
+        override def phaseName: String = "canReplaceConstant"
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       val transformer = new TreeTransformer {
         override def transformations = Array(new ConstantTransform)
 
-        override def name: String = "test"
+        override def phaseName: String = "test"
       }
       val transformed = transformer.transform(tree)
 
@@ -60,7 +60,7 @@ class TreeTransformerTest extends DottyTest {
       class Transformation extends MiniPhaseTransform {
 
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = tpd.Literal(Constant(-1))
-        override def name: String = "canOverwrite"
+        override def phaseName: String = "canOverwrite"
 
         override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.ValDef = {
           Assert.assertTrue("transformation of children succeeded",
@@ -74,7 +74,7 @@ class TreeTransformerTest extends DottyTest {
       val transformer = new TreeTransformer {
         override def transformations = Array(new Transformation)
 
-        override def name: String = "test"
+        override def phaseName: String = "test"
 
       }
       val tr = transformer.transform(tree).toString
@@ -89,7 +89,7 @@ class TreeTransformerTest extends DottyTest {
     (tree, context) =>
       implicit val ctx = context
       class Transformation1 extends MiniPhaseTransform {
-        override def name: String = "transformationOrder1"
+        override def phaseName: String = "transformationOrder1"
 
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
           Assert.assertTrue("correct constant",
@@ -108,7 +108,7 @@ class TreeTransformerTest extends DottyTest {
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
       }
       class Transformation2 extends MiniPhaseTransform {
-        override def name: String = "transformationOrder2"
+        override def phaseName: String = "transformationOrder2"
         override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.ValDef = {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(2))"
@@ -121,7 +121,7 @@ class TreeTransformerTest extends DottyTest {
       val transformer = new TreeTransformer {
         override def transformations = Array(new Transformation1, new Transformation2)
 
-        override def name: String = "test"
+        override def phaseName: String = "test"
       }
       val tr = transformer.transform(tree).toString
 
@@ -136,7 +136,7 @@ class TreeTransformerTest extends DottyTest {
       implicit val ctx = context
       var transformed1 = 0
       class Transformation1 extends MiniPhaseTransform {
-        override def name: String = "invocationCount1"
+        override def phaseName: String = "invocationCount1"
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
           transformed1 += 1
           Assert.assertTrue("correct constant",
@@ -158,7 +158,7 @@ class TreeTransformerTest extends DottyTest {
       var transformed2 = 0
       class Transformation2 extends MiniPhaseTransform {
         var constantsSeen = 0
-        override def name: String = "invocationCount2"
+        override def phaseName: String = "invocationCount2"
         override def transformLiteral(tree: tpd.Literal)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
           transformed2 += 1
           constantsSeen match {
@@ -189,7 +189,7 @@ class TreeTransformerTest extends DottyTest {
       val transformer = new TreeTransformer {
         override def transformations = Array(new Transformation1, new Transformation2)
 
-        override def name: String = "test"
+        override def phaseName: String = "test"
       }
       val tr = transformer.transform(tree).toString
       Assert.assertTrue("transformations aren't invoked multiple times",

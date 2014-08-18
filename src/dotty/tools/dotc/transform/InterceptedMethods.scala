@@ -44,7 +44,7 @@ class InterceptedMethods extends MiniPhaseTransform {
 
   import tpd._
 
-  override def name: String = "intercepted"
+  override def phaseName: String = "intercepted"
 
   private var getClassMethods: Set[Symbol] = _
   private var poundPoundMethods: Set[Symbol] = _
@@ -64,7 +64,7 @@ class InterceptedMethods extends MiniPhaseTransform {
   override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): Tree = {
     if (tree.symbol.isTerm && poundPoundMethods.contains(tree.symbol.asTerm)) {
       val rewrite = PoundPoundValue(tree.qualifier)
-      ctx.log(s"$name rewrote $tree to $rewrite")
+      ctx.log(s"$phaseName rewrote $tree to $rewrite")
       rewrite
     }
     else tree
@@ -136,7 +136,7 @@ class InterceptedMethods extends MiniPhaseTransform {
         case _ =>
           unknown
       }
-      ctx.log(s"$name rewrote $tree to $rewrite")
+      ctx.log(s"$phaseName rewrote $tree to $rewrite")
       rewrite
     }
     else tree

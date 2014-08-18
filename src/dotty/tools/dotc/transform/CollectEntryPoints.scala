@@ -35,7 +35,7 @@ class CollectEntryPoints extends MiniPhaseTransform {
 
   def getEntryPoints = entryPoints.toList
 
-  override def name: String = "collectEntryPoints"
+  override def phaseName: String = "collectEntryPoints"
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     if (tree.symbol.owner.isClass && isJavaEntryPoint(tree.symbol)) {
       // collecting symbols for entry points here (as opposed to GenBCode where they are used)

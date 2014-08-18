@@ -27,7 +27,7 @@ import TypeUtils._
 
 class Erasure extends Phase with DenotTransformer { thisTransformer =>
 
-  override def name: String = "erasure"
+  override def phaseName: String = "erasure"
 
   /** List of names of phases that should precede this phase */
   override def runsAfter: Set[String] = Set("typeTestsCasts"/*, "intercepted"*/, "splitter", "elimRepeated")

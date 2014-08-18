@@ -54,7 +54,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
   import tpd._
 
   /** the following two members override abstract members in Transform */
-  val name: String = "superaccessors"
+  override def phaseName: String = "superaccessors"
 
   protected def newTransformer(implicit ctx: Context): Transformer =
     new SuperAccTransformer

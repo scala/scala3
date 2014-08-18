@@ -23,7 +23,7 @@ import TypeUtils._
 class ElimRepeated extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
   import ast.tpd._
 
-  override def name = "elimRepeated"
+  override def phaseName = "elimRepeated"
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
     elimRepeated(tp)

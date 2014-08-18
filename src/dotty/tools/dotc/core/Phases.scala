@@ -48,19 +48,19 @@ object Phases {
 
     object NoPhase extends Phase {
       override def exists = false
-      def name = "<no phase>"
+      def phaseName = "<no phase>"
       def run(implicit ctx: Context): Unit = unsupported("run")
       def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = unsupported("transform")
     }
 
     object SomePhase extends Phase {
-      def name = "<some phase>"
+      def phaseName = "<some phase>"
       def run(implicit ctx: Context): Unit = unsupported("run")
     }
 
     /** A sentinel transformer object */
     class TerminalPhase extends DenotTransformer {
-      def name = "terminal"
+      def phaseName = "terminal"
       def run(implicit ctx: Context): Unit = unsupported("run")
       def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
         unsupported("transform")
@@ -77,30 +77,30 @@ object Phases {
       var i = 0
       while (i < phasess.length) {
         if (phasess(i).length > 1) {
-          val phasesInBlock: Set[String] = phasess(i).map(_.name).toSet
+          val phasesInBlock: Set[String] = phasess(i).map(_.phaseName).toSet
           for(phase<-phasess(i)) {
             phase match {
               case p: MiniPhase =>
 
                 val unmetRequirements = p.runsAfterGroupsOf &~ prevPhases
                 assert(unmetRequirements.isEmpty,
-                  s"${phase.name} requires ${unmetRequirements.mkString(", ")} to be in different TreeTransformer")
+                  s"${phase.phaseName} requires ${unmetRequirements.mkString(", ")} to be in different TreeTransformer")
 
               case _ =>
-                assert(false, s"Only tree transforms can be squashed, ${phase.name} can not be squashed")
+                assert(false, s"Only tree transforms can be squashed, ${phase.phaseName} can not be squashed")
             }
           }
           val transforms = phasess(i).asInstanceOf[List[MiniPhase]].map(_.treeTransform)
           val block = new TreeTransformer {
-            override def name: String = transformations.map(_.phase.name).mkString("TreeTransform:{", ", ", "}")
+            override def phaseName: String = transformations.map(_.phase.phaseName).mkString("TreeTransform:{", ", ", "}")
             override def transformations: Array[TreeTransform] = transforms.toArray
           }
           squashedPhases += block
-          prevPhases ++= phasess(i).map(_.name)
+          prevPhases ++= phasess(i).map(_.phaseName)
           block.init(this, phasess(i).head.id, phasess(i).last.id)
         } else {
           squashedPhases += phasess(i).head
-          prevPhases += phasess(i).head.name
+          prevPhases += phasess(i).head.phaseName
         }
         i += 1
       }
@@ -122,7 +122,7 @@ object Phases {
         val unmetPreceedeRequirements = phases(i).runsAfter -- phasesAfter
         assert(unmetPreceedeRequirements.isEmpty,
           s"phase ${phases(i)} has unmet requirement: ${unmetPreceedeRequirements.mkString(", ")} should precede this phase")
-        phasesAfter += phases(i).name
+        phasesAfter += phases(i).phaseName
         i += 1
       }
       var lastTransformerId = i
@@ -148,7 +148,7 @@ object Phases {
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.deep}")
     }
 
-    def phaseNamed(name: String) = phases.find(_.name == name).getOrElse(NoPhase)
+    def phaseNamed(name: String) = phases.find(_.phaseName == name).getOrElse(NoPhase)
 
     /** A cache to compute the phase with given name, which
      *  stores the phase as soon as phaseNamed returns something
@@ -182,7 +182,7 @@ object Phases {
 
   trait Phase extends DotClass {
 
-    def name: String
+    def phaseName: String
 
     /** List of names of phases that should precede this phase */
     def runsAfter: Set[String] = Set.empty
@@ -192,7 +192,7 @@ object Phases {
     def runOn(units: List[CompilationUnit])(implicit ctx: Context): Unit =
       for (unit <- units) run(ctx.fresh.setPhase(this).setCompilationUnit(unit))
 
-    def description: String = name
+    def description: String = phaseName
 
     def checkable: Boolean = true
 
@@ -223,9 +223,9 @@ object Phases {
         assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")
       myBase = base
       myPeriod = Period(start, end)
-      myErasedTypes = prev.name == erasureName   || prev.erasedTypes
-      myFlatClasses = prev.name == flattenName   || prev.flatClasses
-      myRefChecked  = prev.name == refChecksName || prev.refChecked
+      myErasedTypes = prev.phaseName == erasureName   || prev.erasedTypes
+      myFlatClasses = prev.phaseName == flattenName   || prev.flatClasses
+      myRefChecked  = prev.phaseName == refChecksName || prev.refChecked
     }
 
     protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
@@ -244,6 +244,6 @@ object Phases {
     final def iterator =
       Iterator.iterate(this)(_.next) takeWhile (_.hasNext)
 
-    override def toString = name
+    override def toString = phaseName
   }
 }
