@@ -40,7 +40,7 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
 
   override def phaseName: String = "elimByName"
 
-  override def runsAfterGroupsOf: Set[String] = Set("splitter")
+  override def runsAfterGroupsOf = Set(classOf[Splitter])
     // assumes idents and selects have symbols; interferes with splitter distribution
     // that's why it's "after group".
 

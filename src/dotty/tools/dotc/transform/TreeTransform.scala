@@ -145,7 +145,7 @@ object TreeTransforms {
     /** List of names of phases that should have finished their processing of all compilation units
      *  before this phase starts
      */
-    def runsAfterGroupsOf: Set[String] = Set.empty
+    def runsAfterGroupsOf: Set[Class[_ <: Phase]] = Set.empty
 
     protected def mkTreeTransformer = new TreeTransformer {
       override def phaseName: String = thisPhase.phaseName

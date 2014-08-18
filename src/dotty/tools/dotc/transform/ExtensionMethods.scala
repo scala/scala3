@@ -29,7 +29,7 @@ class ExtensionMethods extends MacroTransform with DenotTransformer with FullPar
   /** the following two members override abstract members in Transform */
   override def phaseName: String = "extmethods"
 
-  override def runsAfter: Set[String] = Set("elimRepeated") // TODO: add tailrec
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[ElimRepeated])
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
     case ref: ClassDenotation if ref is ModuleClass =>

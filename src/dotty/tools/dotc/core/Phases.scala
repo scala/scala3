@@ -11,6 +11,8 @@ import scala.collection.mutable.{ListBuffer, ArrayBuffer}
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, MiniPhase, TreeTransform}
 import dotty.tools.dotc.transform.TreeTransforms
 import Periods._
+import typer.{FrontEnd, RefChecks}
+import dotty.tools.dotc.transform.{Erasure, Flatten}
 
 trait Phases {
   self: Context =>
@@ -73,7 +75,7 @@ object Phases {
       */
     private def squashPhases(phasess: List[List[Phase]]): Array[Phase] = {
       val squashedPhases = ListBuffer[Phase]()
-      var prevPhases: Set[String] = Set.empty
+      var prevPhases: Set[Class[_ <: Phase]] = Set.empty
       var i = 0
       while (i < phasess.length) {
         if (phasess(i).length > 1) {
@@ -96,11 +98,11 @@ object Phases {
             override def transformations: Array[TreeTransform] = transforms.toArray
           }
           squashedPhases += block
-          prevPhases ++= phasess(i).map(_.phaseName)
+          prevPhases ++= phasess(i).map(_.getClazz)
           block.init(this, phasess(i).head.id, phasess(i).last.id)
         } else {
           squashedPhases += phasess(i).head
-          prevPhases += phasess(i).head.phaseName
+          prevPhases += phasess(i).head.getClazz
         }
         i += 1
       }
@@ -113,7 +115,7 @@ object Phases {
      */
     def usePhases(phasess: List[List[Phase]], squash: Boolean = true) = {
       phases = (NoPhase :: phasess.flatten ::: new TerminalPhase :: Nil).toArray
-      var phasesAfter:Set[String] = Set.empty
+      var phasesAfter:Set[Class[_ <: Phase]] = Set.empty
       nextDenotTransformerId = new Array[Int](phases.length)
       denotTransformers = new Array[DenotTransformer](phases.length)
       var i = 0
@@ -122,7 +124,7 @@ object Phases {
         val unmetPreceedeRequirements = phases(i).runsAfter -- phasesAfter
         assert(unmetPreceedeRequirements.isEmpty,
           s"phase ${phases(i)} has unmet requirement: ${unmetPreceedeRequirements.mkString(", ")} should precede this phase")
-        phasesAfter += phases(i).phaseName
+        phasesAfter += phases(i).getClazz
         i += 1
       }
       var lastTransformerId = i
@@ -148,24 +150,24 @@ object Phases {
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.deep}")
     }
 
-    def phaseNamed(name: String) = phases.find(_.phaseName == name).getOrElse(NoPhase)
+    def phaseOfClass(pclass: Class[_]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
 
     /** A cache to compute the phase with given name, which
      *  stores the phase as soon as phaseNamed returns something
      *  different from NoPhase.
      */
-    private class PhaseCache(name: String) {
+    private class PhaseCache(pclass: Class[_ <: Phase]) {
       private var myPhase: Phase = NoPhase
       def phase = {
-        if (myPhase eq NoPhase) myPhase = phaseNamed(name)
+        if (myPhase eq NoPhase) myPhase = phaseOfClass(pclass)
         myPhase
       }
     }
 
-    private val typerCache = new PhaseCache(typerName)
-    private val refChecksCache = new PhaseCache(refChecksName)
-    private val erasureCache = new PhaseCache(erasureName)
-    private val flattenCache = new PhaseCache(flattenName)
+    private val typerCache = new PhaseCache(classOf[FrontEnd])
+    private val refChecksCache = new PhaseCache(classOf[RefChecks])
+    private val erasureCache = new PhaseCache(classOf[Erasure])
+    private val flattenCache = new PhaseCache(classOf[Flatten])
 
     def typerPhase = typerCache.phase
     def refchecksPhase = refChecksCache.phase
@@ -175,17 +177,12 @@ object Phases {
     def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
   }
 
-  final val typerName = "frontend"
-  final val refChecksName = "refchecks"
-  final val erasureName = "erasure"
-  final val flattenName = "flatten"
-
   trait Phase extends DotClass {
 
     def phaseName: String
 
     /** List of names of phases that should precede this phase */
-    def runsAfter: Set[String] = Set.empty
+    def runsAfter: Set[Class[_ <: Phase]] = Set.empty
 
     def run(implicit ctx: Context): Unit
 
@@ -223,9 +220,9 @@ object Phases {
         assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")
       myBase = base
       myPeriod = Period(start, end)
-      myErasedTypes = prev.phaseName == erasureName   || prev.erasedTypes
-      myFlatClasses = prev.phaseName == flattenName   || prev.flatClasses
-      myRefChecked  = prev.phaseName == refChecksName || prev.refChecked
+      myErasedTypes = prev.getClass == classOf[Erasure]   || prev.erasedTypes
+      myFlatClasses = prev.getClass == classOf[Flatten]   || prev.flatClasses
+      myRefChecked  = prev.getClass == classOf[RefChecks] || prev.refChecked
     }
 
     protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
@@ -245,5 +242,13 @@ object Phases {
       Iterator.iterate(this)(_.next) takeWhile (_.hasNext)
 
     override def toString = phaseName
+  }
+
+  /** Dotty deviation: getClass yields Class[_], instead of [Class <: <type of receiver>].
+   *  We can get back the old behavior using this decorator. We should also use the same
+   *  trick for standard getClass.
+   */
+  private implicit class getClassDeco[T](val x: T) extends AnyVal {
+    def getClazz: Class[_ <: T] = x.getClass.asInstanceOf[Class[_ <: T]]
   }
 }

@@ -24,13 +24,14 @@ import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Flags
 import ValueClasses._
 import TypeUtils._
+import com.sun.j3d.utils.behaviors.picking.Intersect
 
 class Erasure extends Phase with DenotTransformer { thisTransformer =>
 
   override def phaseName: String = "erasure"
 
   /** List of names of phases that should precede this phase */
-  override def runsAfter: Set[String] = Set("typeTestsCasts"/*, "intercepted"*/, "splitter", "elimRepeated")
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[TypeTestsCasts], classOf[InterceptedMethods], classOf[Splitter], classOf[ElimRepeated])
 
   def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
     case ref: SymDenotation =>
