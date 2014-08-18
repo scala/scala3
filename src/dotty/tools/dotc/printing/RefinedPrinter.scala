@@ -200,6 +200,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         annotsText(tree.symbol) ~~ dclText(tree.symbol)
       else treeText
 
+    def idText(tree: untpd.Tree): Text = {
+      if (ctx.settings.uniqid.value && tree.symbol.exists) s"#${tree.symbol.id}" else ""
+    }
+
     import untpd._
 
     var txt: Text = tree match {
@@ -213,7 +217,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case Select(qual, name) =>
         toTextLocal(qual) ~ ("." ~ toText(name) provided name != nme.CONSTRUCTOR)
       case This(name) =>
-        optDotPrefix(name) ~ "this"
+        optDotPrefix(name) ~ "this" ~ idText(tree)
       case Super(This(name), mix) =>
         optDotPrefix(name) ~ "super" ~ optText(mix)("[" ~ _ ~ "]")
       case Apply(fun, args) =>
@@ -309,7 +313,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             }
           rhs match {
             case impl: Template =>
-              modText(mods, if (mods is Trait) "trait" else "class") ~~ toText(name) ~ toText(impl) ~
+              modText(mods, if (mods is Trait) "trait" else "class") ~~ toText(name) ~~ idText(tree) ~ toText(impl) ~
               (if (tree.hasType && ctx.settings.verbose.value) s"[decls = ${tree.symbol.info.decls}]" else "")
             case rhs: TypeBoundsTree =>
               typeDefText(toText(rhs))
