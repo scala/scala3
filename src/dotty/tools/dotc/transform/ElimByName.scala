@@ -60,8 +60,8 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
             qual
           case _ =>
             val meth = ctx.newSymbol(
-                ctx.owner, nme.ANON_FUN, Synthetic, MethodType(Nil, Nil, arg.tpe.widen))
-            Closure(meth, _ => arg)
+                ctx.owner, nme.ANON_FUN, Synthetic | Method, MethodType(Nil, Nil, arg.tpe.widen))
+            Closure(meth, _ => arg.changeOwner(ctx.owner, meth))
         }
       case _ =>
         arg
