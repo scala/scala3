@@ -190,6 +190,8 @@ object Flags {
 
   /** Labeled with `private` modifier */
   final val Private = commonFlag(2, "private")
+  final val PrivateTerm = Private.toTermFlags
+  final val PrivateType = Private.toTypeFlags
 
   /** Labeled with `protected` modifier */
   final val Protected = commonFlag(3, "protected")
@@ -355,6 +357,9 @@ object Flags {
   final val DefaultMethod = termFlag(39, "<defaultmethod>")
 
   // Flags following this one are not pickled
+
+  /** Symbol with private access is accessed outside its private scope */
+  final val NotJavaPrivate = commonFlag(47, "<not-java-private>")
 
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
   final val Touched = commonFlag(48, "<touched>")

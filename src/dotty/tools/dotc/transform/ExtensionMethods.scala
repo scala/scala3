@@ -156,10 +156,6 @@ class ExtensionMethods extends MacroTransform with DenotTransformer with FullPar
              wrap over other value classes anyway.
             checkNonCyclic(ctx.owner.pos, Set(), ctx.owner) */
             extensionDefs(ctx.owner.linkedClass) = new mutable.ListBuffer[Tree]
-            ctx.owner.primaryConstructor.makeNotPrivateAfter(NoSymbol, thisTransformer)
-            // SI-7859 make param accessors accessible so the erasure can generate unbox operations.
-            val paramAccessors = ctx.owner.info.decls.filter(_.is(TermParamAccessor))
-            paramAccessors.foreach(_.makeNotPrivateAfter(ctx.owner, thisTransformer))
             super.transform(tree)
           } else if (ctx.owner.isStaticOwner) {
             val tree1 @ Template(_, _, _, body) = super.transform(tree)

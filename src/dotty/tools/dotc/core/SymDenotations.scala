@@ -805,7 +805,7 @@ object SymDenotations {
      */
     final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol = {
       val fs = flags
-      if (fs is Private) owner
+      if (fs is (Private, butNot = NotJavaPrivate)) owner
       else if (fs is StaticProtected) defn.RootClass
       else if (privateWithin.exists && !ctx.phase.erasedTypes) privateWithin
       else if (fs is Protected) base
@@ -890,22 +890,6 @@ object SymDenotations {
     /** Install this denotation as the result of the given denotation transformer. */
     override def installAfter(phase: DenotTransformer)(implicit ctx: Context): Unit =
       super.installAfter(phase)
-
-    /** Remove private modifier from symbol's definition. If this symbol
-     *  is not a constructor nor a static module, rename it by expanding its name to avoid name clashes
-     *  @param base  the fully qualified name of this class will be appended if name expansion is needed
-     */
-    final def makeNotPrivateAfter(base: Symbol, phase: DenotTransformer)(implicit ctx: Context): Unit = {
-      if (this.is(Private)) {
-        val newName =
-          if (this.is(Module) && isStatic || isClassConstructor) name
-          else {
-            if (this.is(Module)) moduleClass.makeNotPrivateAfter(base, phase)
-            name.expandedName(base)
-          }
-        copySymDenotation(name = newName, initFlags = flags &~ Private).installAfter(phase)
-      }
-    }
   }
 
   /** The contents of a class definition during a period

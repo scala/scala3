@@ -662,9 +662,9 @@ object RefChecks {
 }
 import RefChecks._
 
-/** Post-attribution checking and transformation.
+/** Post-attribution checking and transformation, which fulfills the following roles
  *
- *  This phase performs the following checks.
+ *  1. This phase performs the following checks.
  *
  *  - only one overloaded alternative defines default arguments
  *  - applyDynamic methods are not overloaded
@@ -673,15 +673,26 @@ import RefChecks._
  *  - this(...) constructor calls do not forward reference other definitions in their block (not even lazy vals).
  *  - no forward reference in a local block jumps over a non-lazy val definition.
  *
- *  It warns about references to symbols labeled deprecated or migration.
- *
- *  It performs the following transformations:
+ *  2. It warns about references to symbols labeled deprecated or migration.
+
+ *  3. It performs the following transformations:
  *
  *  - if (true) A else B  --> A
  *    if (false) A else B --> B
  *  - macro definitions are eliminated.
+ *
+ *  4. It makes members not private where necessary. The following members
+ *  cannot be private in the Java model:
+ *   - term members of traits
+ *   - the primary constructor of a value class
+ *   - the parameter accessor of a value class
+ *   - members accessed from an inner or companion class.
+ *  All these members are marked as NotJavaPrivate.
+ *  Unlike in Scala 2.x not-private members keep their name. It is
+ *  up to the backend to find a unique expanded name for them. The
+ *  rationale to do name changes that late is that they are very fragile.
  */
-class RefChecks extends MiniPhase with IdentityDenotTransformer { thisTransformer =>
+class RefChecks extends MiniPhase with SymTransformer { thisTransformer =>
 
   import tpd._
 
@@ -689,8 +700,38 @@ class RefChecks extends MiniPhase with IdentityDenotTransformer { thisTransforme
 
   val treeTransform = new Transform(NoLevelInfo)
 
+  /** Ensure the following members are not private:
+   *   - term members of traits
+   *   - the primary constructor of a value class
+   *   - the parameter accessor of a value class
+   */
+  override def transformSym(d: SymDenotation)(implicit ctx: Context) = {
+    def mustBePublicInValueClass = d.isPrimaryConstructor || d.is(ParamAccessor)
+    def mustBePublicInTrait = !d.is(Method) || d.isSetter || d.is(ParamAccessor)
+    def mustBePublic = {
+      val cls = d.owner
+      (isDerivedValueClass(cls) && mustBePublicInValueClass ||
+      cls.is(Trait) && mustBePublicInTrait)
+    }
+    if ((d is PrivateTerm) && mustBePublic) notPrivate(d) else d
+  }
+
+  /** Make private terms accessed from different classes non-private.
+   *  Note: this happens also for accesses between class and linked module class.
+   *  If we change the scheme at one point to make static module class computations
+   *  static members of the companion class, we should tighten the condition below.
+   */
+  private def ensurePrivateAccessible(d: SymDenotation)(implicit ctx: Context) =
+    if (d.is(PrivateTerm) && d.owner != ctx.owner.enclosingClass)
+      notPrivate(d).installAfter(thisTransformer)
+
+  private def notPrivate(d: SymDenotation)(implicit ctx: Context) =
+    d.copySymDenotation(initFlags = d.flags | NotJavaPrivate)
+
   class Transform(currentLevel: RefChecks.OptLevelInfo = RefChecks.NoLevelInfo) extends TreeTransform {
     def phase = thisTransformer
+    override def treeTransformPhase = thisTransformer.next
+
     override def prepareForStats(trees: List[Tree])(implicit ctx: Context) = {
       // println(i"preparing for $trees%; %, owner = ${ctx.owner}")
       if (ctx.owner.isTerm) new Transform(new LevelInfo(currentLevel.levelAndIndex, trees))
@@ -722,8 +763,6 @@ class RefChecks extends MiniPhase with IdentityDenotTransformer { thisTransforme
       checkOverloadedRestrictions(cls)
       checkAllOverrides(cls)
       checkAnyValSubclass(cls)
-      if (isDerivedValueClass(cls))
-        cls.primaryConstructor.makeNotPrivateAfter(NoSymbol, thisTransformer) // SI-6601, must be done *after* pickler!
       tree
     }
 
@@ -738,12 +777,14 @@ class RefChecks extends MiniPhase with IdentityDenotTransformer { thisTransforme
 
     override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = {
       checkUndesiredProperties(tree.symbol, tree.pos)
+      ensurePrivateAccessible(tree.symbol)
       currentLevel.enterReference(tree.symbol, tree.pos)
       tree
     }
 
     override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) = {
       checkUndesiredProperties(tree.symbol, tree.pos)
+      ensurePrivateAccessible(tree.symbol)
       tree
     }
 
