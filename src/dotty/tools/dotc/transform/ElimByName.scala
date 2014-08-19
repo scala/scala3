@@ -12,28 +12,18 @@ import SymUtils._
 import core.StdNames.nme
 import ast.Trees._
 
-/** This phase eliminates ExprTypes `=> T` and PolyTypes over value types `[X]T`.
- *  They are expressed in terms of nullary method or function types. More precisely:
+/** This phase eliminates ExprTypes `=> T` and replaces them by
+ *  nullary function types.  More precisely:
  *
- *  For types:
+ *  For parameter types:
  *
- *      => T        ==>    () => T      if T is the type of a parameter
- *                  ==>    ()T          otherwise
- *      [X]T        ==>    [X]()T
- *
- *  For definitions:
- *
- *      def f: R    ==>    def f(): R
- *      def f[X]: R ==>    def f[X](): R
- *      (x: => T)   ==>    (x: () => T)
+ *      => T        ==>    () => T
  *
  *  For terms:
  *
- *      f           ==>    f()         if f had type => T and is not a parameter
  *      x           ==>    x.apply()   if x is a parameter that had type => T
  *      e.apply()   ==>    e           if e.apply() is an argument to a call-by-name parameter
  *      expr        ==>    () => expr  if other expr is an argument to a call-by-name parameter
- *
  */
 class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
   import ast.tpd._
