@@ -55,6 +55,8 @@ object Signature {
   val OverloadedSignature = Signature(List(tpnme.OVERLOADED), EmptyTypeName)
 
   /** The signature of a method with no parameters and result type `resultType`. */
-  def apply(resultType: Type, isJava: Boolean)(implicit ctx: Context): Signature =
+  def apply(resultType: Type, isJava: Boolean)(implicit ctx: Context): Signature = {
+    assert(!resultType.isInstanceOf[ExprType])
     apply(Nil, sigName(resultType, isJava))
+  }
 }
