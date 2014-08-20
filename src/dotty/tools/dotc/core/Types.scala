@@ -1276,7 +1276,28 @@ object Types {
     protected def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
       NamedType(prefix, name)
 
-    /** Create a NamedType of the same kind as this type, but with a new name.
+    /** Create a NamedType of the same kind as this type, but with a "inherited name".
+     *  This is necessary to in situations like the following:
+     *
+     *    class B { def m: T1 }
+     *    class C extends B { private def m: T2; ... C.m }
+     *    object C extends C
+     *    object X { ... C.m }
+     *
+     *  The two references of C.m in class C and object X refer to different
+     *  definitions: The one in C refers to C#m whereas the one in X refers to B#m.
+     *  But the type C.m must have only one denotation, so it can't refer to two
+     *  members depending on context.
+     *
+     *  In situations like this, the reference in X would get the type
+     *  `<C.m>.shadowed` to make clear that we mean the inherited member, not
+     *  the private one.
+     *
+     *  Note: An alternative, possibly more robust scheme would be to give
+     *  private members special names. A private definition would have a special
+     *  name (say m' in the example above), but would be entered in its enclosing
+     *  under both private and public names, so it could still be found by looking up
+     *  the public name.
      */
     final def shadowed(implicit ctx: Context): NamedType =
       NamedType(prefix, name.inheritedName)
