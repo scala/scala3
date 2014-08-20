@@ -9,7 +9,6 @@ import core.Symbols._
 import core.Types._
 import core.Constants._
 import core.StdNames._
-import core.transform.Erasure.isUnboundedGeneric
 import typer.ErrorReporting._
 import ast.Trees._
 

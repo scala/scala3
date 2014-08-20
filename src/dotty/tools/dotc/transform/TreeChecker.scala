@@ -12,7 +12,6 @@ import core.Flags._
 import core.Constants._
 import core.StdNames._
 import core.Decorators._
-import core.transform.Erasure.isUnboundedGeneric
 import typer._
 import typer.ErrorReporting._
 import reporting.ThrowingReporter

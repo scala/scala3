@@ -16,7 +16,7 @@ import core.Constants._
 import typer.NoChecking
 import typer.ProtoTypes._
 import typer.ErrorReporting._
-import core.transform.Erasure._
+import core.TypeErasure._
 import core.Decorators._
 import dotty.tools.dotc.ast.{Trees, tpd, untpd}
 import ast.Trees._

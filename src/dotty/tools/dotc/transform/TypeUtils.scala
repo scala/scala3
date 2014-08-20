@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import core.transform.Erasure.ErasedValueType
+import TypeErasure.ErasedValueType
 import Types._
 import Contexts._
 import Symbols._

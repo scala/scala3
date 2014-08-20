@@ -1,11 +1,29 @@
 package dotty.tools.dotc
 package core
-package transform
 
 import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Flags.JavaDefined
 import util.DotClass
 
-object Erasure {
+/** Erased types are:
+ *
+ *  TypeRef(NoPrefix, denot is ClassDenotation)
+ *  TermRef(NoPrefix, denot is SymDenotation)
+ *  ThisType
+ *  SuperType
+ *  PolyParam, only for array types and isInstanceOf, asInstanceOf
+ *  RefinedType, parent* is Array class
+ *  TypeBounds, only for array types
+ *  AnnotatedType
+ *  MethodType ----+-- JavaMethodType
+ *  PolyType, only for array types and isInstanceOf, asInstanceOf
+ *  RefinedThis
+ *  ClassInfo
+ *  NoType
+ *  NoPrefix
+ *  WildcardType
+ *  ErrorType
+ */
+object TypeErasure {
 
   case class ErasedValueType(cls: ClassSymbol, underlying: Type) extends CachedGroundType {
     override def computeHash = doHash(cls, underlying)
@@ -17,7 +35,7 @@ object Erasure {
     (if (isConstructor) 4 else 0) +
     (if (wildcardOK) 8 else 0)
 
-  private val erasures = new Array[Erasure](16)
+  private val erasures = new Array[TypeErasure](16)
 
   for {
     isJava <- List(false, true)
@@ -25,7 +43,7 @@ object Erasure {
     isConstructor <- List(false, true)
     wildcardOK <- List(false, true)
   } erasures(erasureIdx(isJava, isSemi, isConstructor, wildcardOK)) =
-    new Erasure(isJava, isSemi, isConstructor, wildcardOK)
+    new TypeErasure(isJava, isSemi, isConstructor, wildcardOK)
 
   /** Produces an erasure function.
    *  @param isJava        Arguments should be treated the way Java does it
@@ -36,7 +54,7 @@ object Erasure {
    *  @param wildcardOK    Wildcards are acceptable (true when using the erasure
    *                       for computing a signature name).
    */
-  private def erasureFn(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcardOK: Boolean): Erasure =
+  private def erasureFn(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcardOK: Boolean): TypeErasure =
     erasures(erasureIdx(isJava, isSemi, isConstructor, wildcardOK))
 
   private val scalaErasureFn = erasureFn(isJava = false, isSemi = false, isConstructor = false, wildcardOK = false)
@@ -77,8 +95,22 @@ object Erasure {
     tp.classSymbol.isPrimitiveValueClass ||
     (tp.typeSymbol is JavaDefined))
 
+  def erasedLub(tp1: Type, tp2: Type)(implicit ctx: Context): Type = {
+    val cls2 = tp2.classSymbol
+    def loop(bcs: List[ClassSymbol], bestSoFar: ClassSymbol): ClassSymbol = bcs match {
+      case bc :: bcs1 =>
+        if (cls2.derivesFrom(bc))
+          if (!bc.is(Trait)) bc
+          else loop(bcs1, if (bestSoFar.derivesFrom(bc)) bestSoFar else bc)
+        else
+          loop(bcs1, bestSoFar)
+      case nil =>
+        bestSoFar
+    }
+    loop(tp1.baseClasses, defn.ObjectClass).typeRef
+  }
 }
-import Erasure._
+import TypeErasure._
 
 /**
  *  This is used as the Scala erasure during the erasure phase itself
@@ -86,7 +118,7 @@ import Erasure._
    *  are then later converted to the underlying parameter type in phase posterasure.
  *
  */
-class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcardOK: Boolean) extends DotClass {
+class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcardOK: Boolean) extends DotClass {
 
   /**  The erasure |T| of a type T. This is:
    *
@@ -95,7 +127,6 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
    *      - otherwise, if T <: Object, scala.Array+[|T|]
    *      - otherwise, if T is a type paramter coming from Java, scala.Array+[Object].
    *      - otherwise, Object
-   *   - For a constant type, NoType or NoPrefix, the type itself.
    *   - For all other type proxies: The erasure of the underlying type.
    *   - For a typeref scala.Any, scala.AnyVal, scala.Singleon or scala.NotNull: java.lang.Object.
    *   - For a typeref scala.Unit, scala.runtime.BoxedUnit.
@@ -116,13 +147,14 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
    *   - For a class info type of a value class, the same type without any parents.
    *   - For any other class info type with parents Ps, the same type with
    *     parents |Ps|, but with duplicate references of Object removed.
+   *   - For NoType or NoPrefix, the type itself.
    *   - For any other type, exception.
    */
   def apply(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp: TypeRef =>
       val sym = tp.symbol
       if (!sym.isClass)
-        if (sym.exists && (sym.owner eq defn.ArrayClass)) tp else this(tp.info) //!!!!
+        if (sym.exists && (sym.owner eq defn.ArrayClass)) tp else this(tp.info)
       else if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tp)
       else eraseNormalClassRef(tp)
     case tp: RefinedType =>
@@ -130,10 +162,9 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
       if (parent isRef defn.ArrayClass) eraseArray(tp)
       else this(parent)
     case tp: TermRef =>
-      val sym = tp.symbol
-      if (sym.exists && (sym.owner is Package)) sym.termRef
-      else tp.derivedSelect(this(tp.prefix))
-    case _: ThisType | _: ConstantType =>
+      assert(tp.symbol.exists, tp)
+      TermRef(NoPrefix, tp.symbol.asTerm)
+    case _: ThisType =>
       tp
     case ExprType(rt) =>
       MethodType(Nil, Nil, this(rt))
@@ -142,7 +173,7 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
     case AndType(tp1, tp2) =>
       mergeAnd(this(tp1), this(tp2))
     case OrType(tp1, tp2) =>
-      this(tp.baseTypeRef(lubClass(tp1, tp2)))
+      ctx.typeComparer.orType(this(tp1), this(tp2), erased = true)
     case tp: MethodType =>
       val paramErasure = erasureFn(tp.isJava, isSemi, isConstructor, wildcardOK)(_)
       val formals = tp.paramTypes.mapConserve(paramErasure)
@@ -209,14 +240,6 @@ class Erasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcard
         return defn.BoxedUnitClass
     }
     cls
-  }
-
-  private def lubClass(tp1: Type, tp2: Type)(implicit ctx: Context): ClassSymbol = {
-    var bcs1 = tp1.baseClasses
-    val bc2 = tp2.baseClasses.head
-    while (bcs1.nonEmpty && !bc2.derivesFrom(bcs1.head))
-      bcs1 = bcs1.tail
-    if (bcs1.isEmpty) defn.ObjectClass else bcs1.head
   }
 
   private def removeLaterObjects(trs: List[TypeRef])(implicit ctx: Context): List[TypeRef] = trs match {

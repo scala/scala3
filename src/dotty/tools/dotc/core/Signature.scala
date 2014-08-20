@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Names._, Types._, Contexts._, StdNames._
-import transform.Erasure.sigName
+import TypeErasure.sigName
 
 /** The signature of a denotation.
  *  Overloaded denotations with the same name are distinguished by
