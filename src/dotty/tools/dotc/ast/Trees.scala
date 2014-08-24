@@ -925,15 +925,6 @@ object Trees {
       case ys => Thicket(ys)
     }
 
-    // ----- Position handling -----------------------------------------
-
-    def foreachSubTreeOf(tree: Tree)(f: Tree => Unit): Unit = {
-      val traverser = new TreeTraverser {
-        def traverse(tree: Tree) = foldOver(f(tree), tree)
-      }
-      traverser.traverse(tree)
-    }
-
     // ----- Helper classes for copying, transforming, accumulating -----------------
 
     val cpy: TreeCopier
