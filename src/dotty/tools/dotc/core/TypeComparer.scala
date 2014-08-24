@@ -11,6 +11,7 @@ import printing.Disambiguation.disambiguated
 import util.{Stats, DotClass, SimpleMap}
 import config.Config
 import config.Printers._
+import TypeErasure.erasedLub
 
 /** Provides methods to compare types.
  */
@@ -654,7 +655,8 @@ class TypeComparer(initctx: Context) extends DotClass {
                { // special case for situations like:
                  //    foo <: C { type T = foo.T }
                  tp2.refinedInfo match {
-                   case TypeBounds(lo, hi) if lo eq hi => (tp1r select name) =:= lo
+                   case TypeBounds(lo, hi) if lo eq hi =>
+                     !ctx.phase.erasedTypes && (tp1r select name) =:= lo
                    case _ => false
                  }
                }
@@ -1088,19 +1090,22 @@ class TypeComparer(initctx: Context) extends DotClass {
    *  Sometimes, the disjunction of two types cannot be formed because
    *  the types are in conflict of each other. (@see `andType` for an enumeration
    *  of these cases). In cases of conflict a `MergeError` is raised.
+   *
+   *  @param erased   Apply erasure semantics. If erased is true, instead of creating
+   *                  an OrType, the lub will be computed using TypeCreator#erasedLub.
    */
-  final def orType(tp1: Type, tp2: Type) = {
+  final def orType(tp1: Type, tp2: Type, erased: Boolean = ctx.erasedTypes) = {
     val t1 = distributeOr(tp1, tp2)
     if (t1.exists) t1
     else {
       val t2 = distributeOr(tp2, tp1)
       if (t2.exists) t2
-      else {
+      else if (erased) erasedLub(tp1, tp2)
+      else
         //if (isHKRef(tp1)) tp1
         //else if (isHKRef(tp2)) tp2
         //else
         OrType(tp1, tp2)
-      }
     }
   }
 

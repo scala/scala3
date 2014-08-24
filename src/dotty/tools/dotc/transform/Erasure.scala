@@ -158,7 +158,7 @@ object Erasure {
         case (defn.ArrayType(treeElem), defn.ArrayType(ptElem))
         if treeElem.widen.isPrimitiveValueType && !ptElem.isPrimitiveValueType =>
           // See SI-2386 for one example of when this might be necessary.
-          cast(runtimeCall(nme.toObjectArray, tree :: Nil), pt)
+          cast(ref(defn.runtimeMethod(nme.toObjectArray)).appliedTo(tree), pt)
         case _ =>
           ctx.log(s"casting from ${tree.showSummary}: ${tree.tpe.show} to ${pt.show}")
           tree.asInstance(pt)
@@ -180,7 +180,9 @@ object Erasure {
         case MethodType(Nil, _) =>
           adaptToType(tree.appliedToNone, pt)
         case _ =>
-          if (tpw.isErasedValueType)
+          if (pt.isInstanceOf[ProtoType])
+            tree
+          else if (tpw.isErasedValueType)
             adaptToType(box(tree), pt)
           else if (pt.isErasedValueType)
             adaptToType(unbox(tree, pt), pt)
@@ -191,7 +193,7 @@ object Erasure {
           else
             cast(tree, pt)
       }
-      if ((pt eq AnyFunctionProto) || tree.tpe <:< pt) tree
+      if ((pt.isInstanceOf[FunProto]) || tree.tpe <:< pt) tree
       else makeConformant(tree.tpe.widen)
     }
   }
@@ -233,15 +235,18 @@ object Erasure {
       def select(qual: Tree, sym: Symbol): Tree =
         untpd.cpy.Select(tree)(qual, sym.name) withType qual.tpe.select(sym)
 
-      def selectArrayMember(qual: Tree, erasedPre: Type) =
-        if (erasedPre isRef defn.ObjectClass) runtimeCall(tree.name.genericArrayOp, qual :: Nil)
+      def selectArrayMember(qual: Tree, erasedPre: Type) = {
+        if (erasedPre isRef defn.ObjectClass) runtimeCallWithProtoArgs(tree.name.genericArrayOp, pt, qual)
         else recur(cast(qual, erasedPre))
+      }
 
       def recur(qual: Tree): Tree = {
         val qualIsPrimitive = qual.tpe.widen.isPrimitiveValueType
         val symIsPrimitive = sym.owner.isPrimitiveValueClass
-        if ((sym.owner eq defn.AnyClass) || (sym.owner eq defn.AnyValClass))
+        if ((sym.owner eq defn.AnyClass) || (sym.owner eq defn.AnyValClass)) {
+          assert(sym.isConstructor, s"${sym.showLocated}")
           select(qual, defn.ObjectClass.info.decl(sym.name).symbol)
+        }
         else if (qualIsPrimitive && !symIsPrimitive || qual.tpe.isErasedValueType)
           recur(box(qual))
         else if (!qualIsPrimitive && symIsPrimitive)
@@ -249,12 +254,24 @@ object Erasure {
         else if (qual.tpe.derivesFrom(sym.owner) || qual.isInstanceOf[Super])
           select(qual, sym)
         else if (sym.owner eq defn.ArrayClass)
-          selectArrayMember(qual, erasure(tree.qualifier.tpe))
+          selectArrayMember(qual, erasure(tree.qualifier.typeOpt.widen))
         else
           recur(cast(qual, sym.owner.typeRef))
       }
 
       recur(typed(tree.qualifier, AnySelectionProto))
+    }
+
+    private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {
+      val meth = defn.runtimeMethod(name)
+      val followingParams = meth.info.firstParamTypes.drop(args.length)
+      val followingArgs = protoArgs(pt).zipWithConserve(followingParams)(typedExpr).asInstanceOf[List[tpd.Tree]]
+      ref(defn.runtimeMethod(name)).appliedToArgs(args.toList ++ followingArgs)
+    }
+
+    private def protoArgs(pt: Type): List[untpd.Tree] = pt match {
+      case pt: FunProto => pt.args ++ protoArgs(pt.resultType)
+      case _ => Nil
     }
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context) = {
@@ -268,27 +285,29 @@ object Erasure {
       }
     }
 
+/*
+    private def contextArgs(tree: untpd.Tree)(implicit ctx: Context): List[untpd.Tree] = {
+      def nextOuter(ctx: Context): Context =
+        if (ctx.outer.tree eq tree) nextOuter(ctx.outer) else ctx.outer
+      ctx.tree match {
+        case enclApp @ Apply(enclFun, enclArgs) if enclFun eq tree =>
+          enclArgs ++ contextArgs(enclApp)(nextOuter(ctx))
+        case _ =>
+          Nil
+      }
+    }
+*/
+
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
       val Apply(fun, args) = tree
-      fun match {
-        case fun: Apply =>
-          typedApply(fun, pt)(ctx.fresh.setTree(tree))
-        case _ =>
-          def nextOuter(ctx: Context): Context =
-            if (ctx.outer.tree eq tree) nextOuter(ctx.outer) else ctx.outer
-          def contextArgs(tree: untpd.Apply)(implicit ctx: Context): List[untpd.Tree] =
-            ctx.tree match {
-              case enclApp @ Apply(enclFun, enclArgs) if enclFun eq tree =>
-                enclArgs ++ contextArgs(enclApp)(nextOuter(ctx))
-              case _ =>
-                Nil
-            }
-          val allArgs = args ++ contextArgs(tree)
-          val fun1 = typedExpr(fun, AnyFunctionProto)
+      typedExpr(fun, FunProto(args, pt, this)) match {
+        case fun1: Apply => // arguments passed in prototype were already passed
+          fun1
+        case fun1 =>
           fun1.tpe.widen match {
             case mt: MethodType =>
-              val allArgs1 = allArgs.zipWithConserve(mt.paramTypes)(typedExpr)
-              untpd.cpy.Apply(tree)(fun1, allArgs1) withType mt.resultType
+              val args1 = (args ++ protoArgs(pt)).zipWithConserve(mt.paramTypes)(typedExpr)
+              untpd.cpy.Apply(tree)(fun1, args1) withType mt.resultType
             case _ =>
               throw new MatchError(i"tree $tree has unexpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
           }
@@ -407,7 +426,19 @@ object Erasure {
     override def adapt(tree: Tree, pt: Type, original: untpd.Tree)(implicit ctx: Context): Tree =
       ctx.traceIndented(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
         assert(ctx.phase == ctx.erasurePhase.next, ctx.phase)
-        if (tree.isEmpty) tree else adaptToType(tree, pt)
+        if (tree.isEmpty) tree
+        else {
+          val tree1 = adaptToType(tree, pt)
+          tree1.tpe match {
+            case ref: TermRef =>
+              assert(
+                  ref.isInstanceOf[WithNonMemberSym] ||
+                  ref.denot.isInstanceOf[SymDenotation],
+                  i"non-sym type $ref of class ${ref.getClass} with denot of class ${ref.denot.getClass} of $tree1")
+            case _ =>
+          }
+          tree1
+        }
     }
   }
 }
