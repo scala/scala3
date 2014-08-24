@@ -56,6 +56,7 @@ class ReTyper extends Typer {
   override def localDummy(cls: ClassSymbol, impl: untpd.Template)(implicit ctx: Context) = impl.symbol
 
   override def retrieveSym(tree: untpd.Tree)(implicit ctx: Context): Symbol = tree.symbol
+  override def symbolOfTree(tree: untpd.Tree)(implicit ctx: Context): Symbol = tree.symbol
 
   override def localTyper(sym: Symbol) = this
 
