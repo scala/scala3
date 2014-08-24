@@ -1145,7 +1145,7 @@ object TreeTransforms {
           if (mutatedInfo eq null) tree
           else {
             val constr = transformSub(tree.constr, mutatedInfo, cur)
-            val parents = transformTrees(tree.parents, mutatedInfo, cur)
+            val parents = transformTrees(tree.parents, mutatedInfo, cur)(ctx.superCallContext)
             val self = transformSub(tree.self, mutatedInfo, cur)
             val body = transformStats(tree.body, tree.symbol, mutatedInfo, cur)
             goTemplate(cpy.Template(tree)(constr, parents, self, body), mutatedInfo.nx.nxTransTemplate(cur))

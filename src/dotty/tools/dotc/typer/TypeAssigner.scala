@@ -12,20 +12,12 @@ import config.Printers._
 trait TypeAssigner {
   import tpd._
 
-  /** The enclosing class, except if we are in a super call, in which case
-   *  it is the next outer one.
-   */
-  def effectiveEnclosingClass(implicit ctx: Context) = {
-    val enclClass = ctx.owner.enclosingClass
-    if ((ctx.mode is Mode.InSuperCall) && enclClass.exists) enclClass.owner.enclosingClass
-    else enclClass
-  }
-
   /** The qualifying class of a this or super with prefix `qual` (which might be empty).
    *  @param packageOk   The qualifier may refer to a package.
    */
   def qualifyingClass(tree: untpd.Tree, qual: Name, packageOK: Boolean)(implicit ctx: Context): Symbol = {
-    effectiveEnclosingClass.ownersIterator.find(o => qual.isEmpty || o.isClass && o.name == qual) match {
+    def qualifies(sym: Symbol) = sym.isClass && (qual.isEmpty || sym.name == qual)
+    ctx.outersIterator.map(_.owner).find(qualifies) match {
       case Some(c) if packageOK || !(c is Package) =>
         c
       case _ =>

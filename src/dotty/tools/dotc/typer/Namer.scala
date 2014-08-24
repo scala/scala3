@@ -462,7 +462,7 @@ class Namer { typer: Typer =>
         }
 
       def checkedParentType(parent: untpd.Tree): Type = {
-        val ptype = parentType(parent)(ctx.fresh addMode Mode.InSuperCall)
+        val ptype = parentType(parent)(ctx.superCallContext)
         if (cls.isRefinementClass) ptype
         else checkClassTypeWithStablePrefix(ptype, parent.pos, traitReq = parent ne parents.head)
       }

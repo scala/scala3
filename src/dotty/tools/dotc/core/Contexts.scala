@@ -12,6 +12,7 @@ import Scopes._
 import NameOps._
 import Uniques._
 import SymDenotations._
+import Flags.ParamAccessor
 import util.Positions._
 import ast.Trees._
 import ast.untpd
@@ -257,6 +258,55 @@ object Contexts {
       while (c != NoContext && !c.tree.isInstanceOf[Template[_]] && !c.tree.isInstanceOf[PackageDef[_]])
         c = c.outer
       c
+    }
+
+    /** The context for a supercall. This context is used for elaborating
+     *  the parents of a class and their arguments.
+     *  The context is computed from the current class context. It has
+     *
+     *  - as owner: The primary constructor of the class
+     *  - as outer context: The context enclosing the class context
+     *  - as scope: The parameter accessors in the class context
+     *  - as mode: inSuperCall
+     *
+     *  The reasons for this peculiar choice of attributes are as follows:
+     *
+     *  - The constructor must be the owner, because that's where any local methods or closures
+     *    should go.
+     *  - The context may not see any class members (inherited or defined), and should
+     *    instead see definitions defined in the outer context which might be shadowed by
+     *    such class members. That's why the outer context must be the outer context of the class.
+     *  - At the same time the context should see the parameter accessors of the current class,
+     *    that's why they get added to the local scope. An alternative would have been to have the
+     *    context see the constructor parameters instead, but then we'd need a final substitution step
+     *    from constructor parameters to class paramater accessors.
+     */
+    def superCallContext: Context = {
+      val locals = newScopeWith(owner.decls.filter(_ is ParamAccessor).toList: _*)
+      superOrThisCallContext(owner.primaryConstructor, locals)//.addMode(Mode.InSuperCall)
+    }
+
+    /** The context for the arguments of a this(...) constructor call.
+     *  The context is computed from the local auxiliary constructor context.
+     *  It has
+     *
+     *   - as owner: The auxiliary constructor
+     *   - as outer context: The context enclosing the enclosing class context
+     *   - as scope: The parameters of the auxiliary constructor.
+     *   - as mode: inSuperCall
+     */
+    def thisCallContext: Context = {
+      assert(owner.isClassConstructor)
+      val constrCtx = outersIterator.dropWhile(_.outer.owner == owner).next
+      var classCtx = outersIterator.dropWhile(!_.isClassDefContext).next
+      println(i"locals for this call: ${constrCtx.scope}")
+      classCtx.superOrThisCallContext(owner, constrCtx.scope)
+    }
+
+    /** The super= or this-call context with given owner and locals. */
+    private def superOrThisCallContext(owner: Symbol, locals: Scope): Context = {
+      assert(isClassDefContext)
+      outer.fresh.setOwner(owner).setScope(locals)//.addMode(Mode.InSuperCall)
     }
 
     /** The current source file; will be derived from current

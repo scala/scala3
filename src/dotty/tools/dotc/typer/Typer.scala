@@ -818,7 +818,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = track("typedClassDef") {
-    val superCtx = ctx.fresh addMode Mode.InSuperCall
+    val TypeDef(mods, name, impl @ Template(constr, parents, self, body)) = cdef
+    val superCtx = ctx.superCallContext
     def typedParent(tree: untpd.Tree): Tree =
       if (tree.isType) typedType(tree)(superCtx)
       else {
@@ -838,7 +839,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       else parents
     }
 
-    val TypeDef(mods, name, impl @ Template(constr, parents, self, body)) = cdef
     val mods1 = addTypedModifiersAnnotations(mods, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parents1 = ensureConstrCall(ensureFirstIsClass(
