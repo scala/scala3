@@ -267,7 +267,6 @@ object Contexts {
      *  - as owner: The primary constructor of the class
      *  - as outer context: The context enclosing the class context
      *  - as scope: The parameter accessors in the class context
-     *  - as mode: inSuperCall
      *
      *  The reasons for this peculiar choice of attributes are as follows:
      *
@@ -283,7 +282,7 @@ object Contexts {
      */
     def superCallContext: Context = {
       val locals = newScopeWith(owner.decls.filter(_ is ParamAccessor).toList: _*)
-      superOrThisCallContext(owner.primaryConstructor, locals)//.addMode(Mode.InSuperCall)
+      superOrThisCallContext(owner.primaryConstructor, locals)
     }
 
     /** The context for the arguments of a this(...) constructor call.
@@ -293,20 +292,18 @@ object Contexts {
      *   - as owner: The auxiliary constructor
      *   - as outer context: The context enclosing the enclosing class context
      *   - as scope: The parameters of the auxiliary constructor.
-     *   - as mode: inSuperCall
      */
-    def thisCallContext: Context = {
+    def thisCallArgContext: Context = {
       assert(owner.isClassConstructor)
       val constrCtx = outersIterator.dropWhile(_.outer.owner == owner).next
       var classCtx = outersIterator.dropWhile(!_.isClassDefContext).next
-      println(i"locals for this call: ${constrCtx.scope}")
-      classCtx.superOrThisCallContext(owner, constrCtx.scope)
+      classCtx.superOrThisCallContext(owner, constrCtx.scope).setTyperState(typerState)
     }
 
     /** The super= or this-call context with given owner and locals. */
-    private def superOrThisCallContext(owner: Symbol, locals: Scope): Context = {
+    private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext = {
       assert(isClassDefContext)
-      outer.fresh.setOwner(owner).setScope(locals)//.addMode(Mode.InSuperCall)
+      outer.fresh.setOwner(owner).setScope(locals)
     }
 
     /** The current source file; will be derived from current

@@ -445,7 +445,9 @@ trait Applications extends Compatibility { self: Typer =>
   def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
 
     def realApply(implicit ctx: Context): Tree = track("realApply") {
-      var proto = new FunProto(tree.args, IgnoredProto(pt), this)
+      def argCtx(implicit ctx: Context) =
+        if (untpd.isSelfConstrCall(tree)) ctx.thisCallArgContext else ctx
+      var proto = new FunProto(tree.args, IgnoredProto(pt), this)(argCtx)
       val fun1 = typedExpr(tree.fun, proto)
 
       // Warning: The following line is dirty and fragile. We record that auto-tupling was demanded as
@@ -461,7 +463,7 @@ trait Applications extends Compatibility { self: Typer =>
           tryEither { implicit ctx =>
             val app =
               if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
-              else new ApplyToUntyped(tree, fun1, funRef, proto, pt)
+              else new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx)
             val result = app.result
             ConstFold(result)
           } { (failedVal, failedState) =>

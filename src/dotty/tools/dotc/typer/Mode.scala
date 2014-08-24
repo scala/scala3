@@ -32,8 +32,7 @@ object Mode {
   val InferringReturnType = newMode(3, "InferringReturnType")
 
   val TypevarsMissContext = newMode(4, "TypevarsMissContext")
-  val InSuperCall = newMode(5, "InSuperCall")
-  val CheckCyclic = newMode(6, "CheckCyclic")
+  val CheckCyclic = newMode(5, "CheckCyclic")
 
   val PatternOrType = Pattern | Type
 }

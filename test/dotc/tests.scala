@@ -17,7 +17,7 @@ class tests extends CompilerTest {
     "-Ycheck:literalize"
   )
 
-  val twice = List("#runs", "2", "-YnoDoubleBindings")
+  val twice = List("#runs", "2", "-YnoDoubleBindings"/*, "-Ystop-before:terminal"*/)
   val doErase = List("-Ystop-before:terminal")
 
   val posDir = "./tests/pos/"
@@ -76,6 +76,7 @@ class tests extends CompilerTest {
       defaultOptions = noCheckOptions)
         // -Ycheck fails because there are structural types involving higher-kinded types.
         // these are illegal, but are tested only later.
+  @Test def neg_t1131_structural = compileFile(negDir, "t1131", xerrors = 1)
   @Test def neg_zoo = compileFile(negDir, "zoo", xerrors = 1)
   @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
   @Test def neg_tailcall_t1672b = compileFile(negDir, "tailcall/t1672b", xerrors = 6)
@@ -89,6 +90,7 @@ class tests extends CompilerTest {
   @Test def neg_t1843_variances = compileFile(negDir, "t1843-variances", xerrors = 1)
   @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 2)
   @Test def neg_variances = compileFile(negDir, "variances", xerrors = 2)
+  @Test def neg_badAuxConstr = compileFile(negDir, "badAuxConstr", xerrors = 2)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)
