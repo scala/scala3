@@ -91,8 +91,28 @@ trait TypeAssigner {
   /** If `tpe` is a named type, check that its denotation is accessible in the
    *  current context. Return the type with those alternatives as denotations
    *  which are accessible.
+   *
+   *  Also performs the following normalizations on the type `tpe`.
+   *  (1) parameter accessors are alwys dereferenced.
+   *  (2) if the owner of the denotation is a package object, it is assured
+   *      that the package object shows up as the prefix.
    */
   def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
+
+    def tryInsertPackageObj(tpe: NamedType, d: Denotation): Type = {
+      def tryInsert: Type =
+        if (!(d.symbol.maybeOwner is Package)) {
+          val symOwner = d.alternatives.head.symbol.owner
+          if (symOwner.isPackageObject) tpe.derivedSelect(symOwner.thisType)
+          else tpe
+        } else tpe
+      tpe.prefix match {
+        case ThisType(cls) if cls is Package => tryInsert
+        case pre: TermRef if pre.symbol is Package => tryInsert
+        case _ => tpe
+      }
+    }
+
     def test(tpe: Type, firstTry: Boolean): Type = tpe match {
       case tpe: NamedType =>
         val pre = tpe.prefix
@@ -121,10 +141,11 @@ trait TypeAssigner {
               ctx.error(d"$what cannot be accessed as a member of $pre$where.$whyNot", pos)
             ErrorType
           }
-        } else if (d.symbol is TypeParamAccessor) // always dereference type param accessors
+        }
+        else if (d.symbol is TypeParamAccessor) // always dereference type param accessors
           ensureAccessible(d.info.bounds.hi, superAccess, pos)
         else
-          tpe withDenot d
+          tryInsertPackageObj(tpe withDenot d, d)
       case _ =>
         tpe
     }
@@ -200,7 +221,10 @@ trait TypeAssigner {
     val owntype =
       if (!mix.isEmpty) findMixinSuper(cls.info)
       else if (inConstrCall) cls.info.firstParent
-      else cls.info.parents.reduceLeft((x: Type, y: Type) => x & y)
+      else {
+        val ps = cls.info.parents
+        if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
+      }
     tree.withType(SuperType(cls.thisType, owntype))
   }
 
