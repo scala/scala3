@@ -424,7 +424,7 @@ object Denotations {
      *  and at signature `NotAMethod`.
      */
     def valRef(implicit ctx: Context): TermRef =
-      TermRef.withSig(symbol.owner.thisType, symbol.name.asTermName, Signature.NotAMethod, this)
+      TermRef.withSigAndDenot(symbol.owner.thisType, symbol.name.asTermName, Signature.NotAMethod, this)
 
     /** The TermRef representing this term denotation at its original location
      *  at the denotation's signature.
@@ -432,7 +432,7 @@ object Denotations {
      *         denotation via a call to `info`.
      */
     def termRefWithSig(implicit ctx: Context): TermRef =
-      TermRef.withSig(symbol.owner.thisType, symbol.name.asTermName, signature, this)
+      TermRef.withSigAndDenot(symbol.owner.thisType, symbol.name.asTermName, signature, this)
 
     /** The NamedType representing this denotation at its original location.
      *  Same as either `typeRef` or `termRefWithSig` depending whether this denotes a type or not.

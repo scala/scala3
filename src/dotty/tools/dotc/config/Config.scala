@@ -48,4 +48,7 @@ object Config {
    *  variance of the underlying lambda class.
    */
   final val checkLambdaVariance = false
+
+  /** Check that certain types cannot be created in erasedTypes phases */
+  final val checkUnerased = true
 }

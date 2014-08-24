@@ -830,10 +830,10 @@ object SymDenotations {
       TermRef(owner.thisType, name.asTermName, this)
 
     override def valRef(implicit ctx: Context): TermRef =
-      TermRef.withSig(owner.thisType, name.asTermName, Signature.NotAMethod, this)
+      TermRef.withSigAndDenot(owner.thisType, name.asTermName, Signature.NotAMethod, this)
 
     override def termRefWithSig(implicit ctx: Context): TermRef =
-      TermRef.withSig(owner.thisType, name.asTermName, signature, this)
+      TermRef.withSigAndDenot(owner.thisType, name.asTermName, signature, this)
 
     def nonMemberTermRef(implicit ctx: Context): TermRef =
       TermRef.withNonMemberSym(owner.thisType, name.asTermName, symbol.asTerm)

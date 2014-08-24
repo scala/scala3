@@ -717,7 +717,7 @@ object Types {
     /** The type <this . name> , reduced if possible */
     def select(name: Name)(implicit ctx: Context): Type = name match {
       case name: TermName =>
-        TermRef(this, name)
+        TermRef.all(this, name)
       case name: TypeName =>
         val res = lookupRefined(name)
         if (res.exists) res else TypeRef(this, name)
@@ -1327,7 +1327,7 @@ object Types {
     override def isOverloaded(implicit ctx: Context) = denot.isOverloaded
 
     private def rewrap(sd: SingleDenotation)(implicit ctx: Context) =
-      TermRef.withSig(prefix, name, sd.signature, sd)
+      TermRef.withSigAndDenot(prefix, name, sd.signature, sd)
 
     def alternatives(implicit ctx: Context): List[TermRef] =
       denot.alternatives map rewrap
@@ -1357,7 +1357,7 @@ object Types {
           sig != Signature.OverloadedSignature &&
           symbol.exists) {
         val ownSym = symbol
-        TermRef(prefix, name).withDenot(asMemberOf(prefix).disambiguate(_ eq ownSym))
+        TermRef.all(prefix, name).withDenot(asMemberOf(prefix).disambiguate(_ eq ownSym))
       }
       else TermRef.withSig(prefix, name, sig)
     }
@@ -1409,9 +1409,23 @@ object Types {
   final class NonMemberTermRef(prefix: Type, name: TermName, val fixedSym: TermSymbol) extends TermRef(prefix, name) with WithNonMemberSym
   final class NonMemberTypeRef(prefix: Type, name: TypeName, val fixedSym: TypeSymbol) extends TypeRef(prefix, name) with WithNonMemberSym
 
+  /** Compute prefix at current phase. If current phase has erasure semantics
+   *  returns NoPrefix, otherwise the given prefix
+   */
+  private def atCurrentPhase(prefix: Type)(implicit ctx: Context) =
+    if (ctx.phase.erasedTypes) NoPrefix else prefix
+
+  /** Is the prefix seen at current phase the same as NoPrefix? */
+  private def isMissing(prefix: Type)(implicit ctx: Context) =
+    (prefix eq NoPrefix) || ctx.phase.erasedTypes
+
+  /** Assert current phase does not have erasure semantics */
+  private def assertUnerased()(implicit ctx: Context) =
+    if (Config.checkUnerased) assert(!ctx.phase.erasedTypes)
+
   object NamedType {
     def apply(prefix: Type, name: Name)(implicit ctx: Context) =
-      if (name.isTermName) TermRef(prefix, name.asTermName)
+      if (name.isTermName) TermRef.all(prefix, name.asTermName)
       else TypeRef(prefix, name.asTypeName)
     def apply(prefix: Type, name: Name, denot: Denotation)(implicit ctx: Context) =
       if (name.isTermName) TermRef(prefix, name.asTermName, denot)
@@ -1422,58 +1436,100 @@ object Types {
   }
 
   object TermRef {
-    def apply(prefix: Type, name: TermName)(implicit ctx: Context): TermRef =
-      ctx.uniqueNamedTypes.enterIfNew(prefix, name).asInstanceOf[TermRef]
 
+    /** Create term ref with given name, without specifying a signature.
+     *  Its meaning is the (potentially multi-) denotation of the member(s)
+     *  of prefix with given name.
+     */
+    def all(prefix: Type, name: TermName)(implicit ctx: Context): TermRef = {
+      ctx.uniqueNamedTypes.enterIfNew(atCurrentPhase(prefix), name).asInstanceOf[TermRef]
+    }
+
+    /** Create term ref referring to given symbol, taking the signature
+     *  from the symbol if it is completed, or creating a term ref without
+     *  signature, if symbol is not yet completed.
+     */
     def apply(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
       withSymAndName(prefix, sym, sym.name)
 
+    /** Create term ref to given initial denotation, taking the signature
+     *  from the denotation if it is completed, or creating a term ref without
+     *  signature, if denotation is not yet completed.
+     */
     def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef = {
-      if (prefix eq NoPrefix) apply(prefix, denot.symbol.asTerm)
+      if (isMissing(prefix)) apply(prefix, denot.symbol.asTerm)
       else denot match {
         case denot: SymDenotation if denot.isCompleted => withSig(prefix, name, denot.signature)
-        case _ => apply(prefix, name)
+        case _ => all(prefix, name)
       }
     } withDenot denot
 
+    /** Create a non-member term ref (which cannot be reloaded using `member`),
+     *  with given prefix, name, and signature
+     */
     def withNonMemberSym(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      unique(new NonMemberTermRef(prefix, name, sym))
+      unique(new NonMemberTermRef(atCurrentPhase(prefix), name, sym))
 
+    /** Create a term ref referring to given symbol with given name, taking the signature
+     *  from the symbol if it is completed, or creating a term ref without
+     *  signature, if symbol is not yet completed. This is very similar to TermRef(Type, Symbol),
+     *  except for two differences:
+     *  (1) The symbol might not yet have a denotation, so the name needs to be given explicitly.
+     *  (2) The name in the term ref need not be the same as the name of the Symbol.
+     */
     def withSymAndName(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef =
-      if (prefix eq NoPrefix)
+      if (isMissing(prefix))
         withNonMemberSym(prefix, name, sym)
       else if (sym.defRunId != NoRunId && sym.isCompleted)
         withSig(prefix, name, sym.signature) withSym (sym, sym.signature)
       else
-        apply(prefix, name) withSym (sym, Signature.NotAMethod)
+        all(prefix, name) withSym (sym, Signature.NotAMethod)
 
+    /** Create a term ref to given symbol, taking the signature from the symbol
+     *  (which must be completed).
+     */
     def withSig(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      unique(withSig(prefix, sym.name, sym.signature).withSym(sym, sym.signature))
+      if (isMissing(prefix)) withNonMemberSym(prefix, sym.name, sym)
+      else withSig(prefix, sym.name, sym.signature).withSym(sym, sym.signature)
 
+    /** Create a term ref with given prefix, name and signature */
     def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
-      unique(new TermRefWithSignature(prefix, name, sig))
+      unique(new TermRefWithSignature(atCurrentPhase(prefix), name, sig))
 
-    def withSig(prefix: Type, name: TermName, sig: Signature, denot: Denotation)(implicit ctx: Context): TermRef =
-      (if (prefix eq NoPrefix) apply(prefix, denot.symbol.asTerm)
+    /** Create a term ref with given prefix, name, signature, and initial denotation */
+    def withSigAndDenot(prefix: Type, name: TermName, sig: Signature, denot: Denotation)(implicit ctx: Context): TermRef =
+      (if (isMissing(prefix)) withNonMemberSym(prefix, denot.symbol.asTerm.name, denot.symbol.asTerm)
        else withSig(prefix, name, sig)) withDenot denot
   }
 
   object TypeRef {
+    /** Create type ref with given prefix and name */
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef =
-      ctx.uniqueNamedTypes.enterIfNew(prefix, name).asInstanceOf[TypeRef]
+      ctx.uniqueNamedTypes.enterIfNew(atCurrentPhase(prefix), name).asInstanceOf[TypeRef]
 
+    /** Create type ref to given symbol */
     def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
       withSymAndName(prefix, sym, sym.name)
 
+    /** Create a non-member type ref  (which cannot be reloaded using `member`),
+     *  with given prefix, name, and symbol.
+     */
     def withNonMemberSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      unique(new NonMemberTypeRef(prefix, name, sym))
+      unique(new NonMemberTypeRef(atCurrentPhase(prefix), name, sym))
 
+    /** Create a type ref referring to given symbol with given name.
+     *  This is very similar to TypeRef(Type, Symbol),
+     *  except for two differences:
+     *  (1) The symbol might not yet have a denotation, so the name needs to be given explicitly.
+     *  (2) The name in the type ref need not be the same as the name of the Symbol.
+     */
     def withSymAndName(prefix: Type, sym: TypeSymbol, name: TypeName)(implicit ctx: Context): TypeRef =
-      if (prefix eq NoPrefix) withNonMemberSym(prefix, name, sym)
+      if (isMissing(prefix)) withNonMemberSym(prefix, name, sym)
       else apply(prefix, name).withSym(sym, Signature.NotAMethod)
 
+    /** Create a type ref with given name and initial denotation */
     def apply(prefix: Type, name: TypeName, denot: Denotation)(implicit ctx: Context): TypeRef =
-      (if (prefix eq NoPrefix) apply(prefix, denot.symbol.asType) else apply(prefix, name)) withDenot denot
+      (if (isMissing(prefix)) apply(prefix, denot.symbol.asType) else apply(prefix, name)) withDenot denot
   }
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
@@ -1520,8 +1576,10 @@ object Types {
   final class CachedConstantType(value: Constant) extends ConstantType(value)
 
   object ConstantType {
-    def apply(value: Constant)(implicit ctx: Context) =
+    def apply(value: Constant)(implicit ctx: Context) = {
+      assertUnerased()
       unique(new CachedConstantType(value))
+    }
   }
 
   case class LazyRef(refFn: () => Type) extends UncachedProxyType with ValueType {
@@ -1644,6 +1702,7 @@ object Types {
       unchecked(tp1, tp2)
     }
     def unchecked(tp1: Type, tp2: Type)(implicit ctx: Context) = {
+      assertUnerased()
       unique(new CachedAndType(tp1, tp2))
     }
     def make(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
@@ -1667,8 +1726,10 @@ object Types {
   final class CachedOrType(tp1: Type, tp2: Type) extends OrType(tp1, tp2)
 
   object OrType {
-    def apply(tp1: Type, tp2: Type)(implicit ctx: Context) =
+    def apply(tp1: Type, tp2: Type)(implicit ctx: Context) = {
+      assertUnerased()
       unique(new CachedOrType(tp1, tp2))
+    }
     def make(tp1: Type, tp2: Type)(implicit ctx: Context): Type =
       if (tp1 eq tp2) tp1 else apply(tp1, tp2)
   }
@@ -1844,8 +1905,10 @@ object Types {
   final class CachedExprType(resultType: Type) extends ExprType(resultType)
 
   object ExprType {
-    def apply(resultType: Type)(implicit ctx: Context) =
+    def apply(resultType: Type)(implicit ctx: Context) = {
+      assertUnerased()
       unique(new CachedExprType(resultType))
+    }
   }
 
   case class PolyType(paramNames: List[TypeName])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => Type)
@@ -1907,10 +1970,10 @@ object Types {
     def paramNum: Int
   }
 
-  case class MethodParam(binder: MethodType, paramNum: Int) extends ParamType with SingletonType {
+  abstract case class MethodParam(binder: MethodType, paramNum: Int) extends ParamType with SingletonType {
     type BT = MethodType
     override def underlying(implicit ctx: Context): Type = binder.paramTypes(paramNum)
-    def copyBoundType(bt: BT) = MethodParam(bt, paramNum)
+    def copyBoundType(bt: BT) = new MethodParamImpl(bt, paramNum)
 
     // need to customize hashCode and equals to prevent infinite recursion for dep meth types.
     override def computeHash = addDelta(System.identityHashCode(binder), paramNum)
@@ -1922,6 +1985,15 @@ object Types {
     }
 
     override def toString = s"MethodParam(${binder.paramNames(paramNum)})"
+  }
+
+  class MethodParamImpl(binder: MethodType, paramNum: Int) extends MethodParam(binder, paramNum)
+
+  object MethodParam {
+    def apply(binder: MethodType, paramNum: Int)(implicit ctx: Context): MethodParam = {
+      assertUnerased()
+      new MethodParamImpl(binder, paramNum)
+    }
   }
 
   case class PolyParam(binder: PolyType, paramNum: Int) extends ParamType {
@@ -2111,15 +2183,17 @@ object Types {
     def selfType(implicit ctx: Context): Type = {
       if (selfTypeCache == null) {
         def fullRef = fullyAppliedRef(cls.typeRef, cls.typeParams)
-        selfTypeCache = selfInfo match {
-          case NoType =>
-            fullRef
-          case tp: Type =>
-            if (cls is Module) tp else AndType(tp, fullRef)
-          case self: Symbol =>
-            assert(!(cls is Module))
-            AndType(self.info, fullRef)
-        }
+        selfTypeCache =
+          if (ctx.erasedTypes) fullRef
+          else selfInfo match {
+            case NoType =>
+              fullRef
+            case tp: Type =>
+              if (cls is Module) tp else AndType(tp, fullRef)
+            case self: Symbol =>
+              assert(!(cls is Module))
+              AndType(self.info, fullRef)
+          }
       }
       selfTypeCache
     }

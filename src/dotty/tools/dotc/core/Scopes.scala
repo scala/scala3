@@ -298,7 +298,7 @@ object Scopes {
       while (e ne null) {
         if (e.sym is Implicit) {
           val d = e.sym.denot
-          irefs += TermRef.withSig(NoPrefix, e.sym.asTerm.name, d.signature, e.sym.denot)
+          irefs += TermRef.withSigAndDenot(NoPrefix, d.name.asTermName, d.signature, d)
         }
         e = e.prev
       }
