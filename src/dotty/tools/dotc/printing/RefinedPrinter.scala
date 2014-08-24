@@ -201,7 +201,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else treeText
 
     def idText(tree: untpd.Tree): Text = {
-      if (ctx.settings.uniqid.value && tree.symbol.exists) s"#${tree.symbol.id}" else ""
+      if (ctx.settings.uniqid.value && tree.hasType && tree.symbol.exists) s"#${tree.symbol.id}" else ""
     }
 
     import untpd._
