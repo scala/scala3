@@ -408,6 +408,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(this(this(x, pats), tpt), rhs)
       case tree: PolyTypeDef =>
         this(this(x, tree.tparams), tree.rhs)
+      case TypedSplice(tree) =>
+        this(x, tree)
       case _ =>
         super.foldOver(x, tree)
     }
