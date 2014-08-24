@@ -108,6 +108,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val debug = BooleanSetting("-Ydebug", "Increase the quantity of debugging output.")
   val debugNames = BooleanSetting("-YdebugNames", "Show name-space indicators when printing names")
   val debugTrace = BooleanSetting("-YdebugTrace", "Trace core operations")
+  val debugFlags = BooleanSetting("-YdebugFlags", "Print all flags of definitions")
   //val doc           = BooleanSetting    ("-Ydoc", "Generate documentation")
   val termConflict = ChoiceSetting("-Yresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
   val inline = BooleanSetting("-Yinline", "Perform inlining when possible.")

@@ -484,15 +484,18 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override protected def keyString(sym: Symbol): String = {
     val flags = sym.flagsUNSAFE
-    if (sym.isType && (flags is ExpandedTypeParam)) ""
+    if (sym.isType && sym.owner.isTerm) ""
     else super.keyString(sym)
   }
 
-  override def toTextFlags(sym: Symbol) = {
-    var flags = sym.flagsUNSAFE
-    if (flags is TypeParam) flags = flags &~ Protected
-    Text((flags & SourceModifierFlags).flagStrings map stringToText, " ")
-  }
+  override def toTextFlags(sym: Symbol) =
+    if (ctx.settings.debugFlags.value)
+      super.toTextFlags(sym)
+    else {
+      var flags = sym.flagsUNSAFE
+      if (flags is TypeParam) flags = flags &~ Protected
+      Text((flags & SourceModifierFlags).flagStrings map stringToText, " ")
+    }
 
   override def toText(denot: Denotation): Text = denot match {
     case denot: MultiDenotation => denot.toString
