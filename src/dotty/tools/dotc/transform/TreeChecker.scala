@@ -19,8 +19,15 @@ import ast.Trees._
 import ast.{tpd, untpd}
 import java.lang.AssertionError
 
-/** This transform eliminates patterns. Right now it's a dummy.
- *  Awaiting the real pattern matcher.
+/** Run by -Ycheck option after a given phase, this class retypes all syntax trees
+ *  and verifies that the type of each tree node so obtained conforms to the type found in the tree node.
+ *  It also performs the following checks:
+ *
+ *   - The owner of each definition is the same as the owner of the current typing context.
+ *   - Ident nodes do not refer to a denotation that would need a select to be accessible
+ *     (see tpd.needsSelect).
+ *   - After typer, identifiers and select nodes refer to terms only (all types should be
+ *     represented as TypeTrees then).
  */
 class TreeChecker {
   import ast.tpd._
@@ -65,12 +72,13 @@ class TreeChecker {
     }
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
-      assert(tree.isTerm || ctx.phase.prev.id <= ctx.typerPhase.id, tree.show + " at " + ctx.phase)
+      assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
+      assert(!needsSelect(tree.tpe), i"bad type ${tree.tpe} for $tree")
       super.typedIdent(tree, pt)
     }
 
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
-      assert(tree.isTerm || ctx.phase.prev.id <= ctx.typerPhase.id, tree.show + " at " + ctx.phase)
+      assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       super.typedSelect(tree, pt)
     }
 

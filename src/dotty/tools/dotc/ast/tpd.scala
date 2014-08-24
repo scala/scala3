@@ -35,7 +35,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.SelectFromTypeTree(qualifier, tp.name).withType(tp)
 
   def This(cls: ClassSymbol)(implicit ctx: Context): This =
-    ta.assignType(untpd.This(cls.name))
+    untpd.This(cls.name).withType(cls.thisType)
 
   def Super(qual: Tree, mix: TypeName, inConstrCall: Boolean)(implicit ctx: Context): Super =
     ta.assignType(untpd.Super(qual, mix), qual, inConstrCall)
@@ -252,9 +252,26 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   // ------ Making references ------------------------------------------------------
 
+  def prefixIsElidable(tp: NamedType)(implicit ctx: Context) = tp.prefix match {
+    case NoPrefix =>
+      true
+    case ThisType(cls) =>
+      cls.isStaticOwner ||
+      tp.symbol.is(ParamOrAccessor) && tp.symbol.maybeOwner.enclosingClass == cls
+    case pre: TermRef =>
+      pre.symbol.is(Module) && pre.symbol.isStatic
+    case _ =>
+      false
+  }
+
+  def needsSelect(tp: Type)(implicit ctx: Context) = tp match {
+    case tp: TermRef => !prefixIsElidable(tp)
+    case _ => false
+  }
+
   /** A tree representing the same reference as the given type */
   def ref(tp: NamedType)(implicit ctx: Context): NameTree =
-    if (tp.symbol.isStatic || tp.prefix == NoPrefix) Ident(tp)
+    if (prefixIsElidable(tp)) Ident(tp)
     else tp.prefix match {
       case pre: SingletonType => singleton(pre).select(tp)
       case pre => SelectFromTypeTree(TypeTree(pre), tp)

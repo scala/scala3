@@ -476,7 +476,7 @@ trait Implicits { self: Typer =>
 
       /** Try to typecheck an implicit reference */
       def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = track("typedImplicit") { ctx.traceIndented(i"typed implicit $ref, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
-        var generated: Tree = Ident(ref).withPos(pos)
+        var generated: Tree = tpd.ref(ref).withPos(pos)
         if (!argument.isEmpty)
           generated = typedUnadapted(
             untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),

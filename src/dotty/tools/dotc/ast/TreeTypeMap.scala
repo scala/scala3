@@ -48,6 +48,8 @@ final class TreeTypeMap(
       cpy.Template(impl)(constr1, parents1, self1, body1).withType(tmap.mapType(impl.tpe))
     case tree1 =>
       tree1.withType(mapType(tree1.tpe)) match {
+        case id: Ident if tpd.needsSelect(id.tpe) =>
+          ref(id.tpe.asInstanceOf[TermRef]).withPos(id.pos)
         case ddef @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
           val (tmap1, tparams1) = transformDefs(ddef.tparams)
           val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)

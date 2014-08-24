@@ -26,7 +26,7 @@ object EtaExpansion {
       val name = ctx.freshName(prefix).toTermName
       val sym = ctx.newSymbol(ctx.owner, name, EmptyFlags, expr.tpe.widen, coord = positionCoord(expr.pos))
       defs += ValDef(sym, expr)
-      Ident(sym.valRef)
+      ref(sym.valRef)
     }
 
   /** Lift out common part of lhs tree taking part in an operator assignment such as

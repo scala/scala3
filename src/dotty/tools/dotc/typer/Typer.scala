@@ -266,7 +266,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         error(d"not found: $kind$name", tree.pos)
         ErrorType
       }
-    checkValue(tree.withType(ownType), pt)
+
+    val tree1 = ownType match {
+      case ownType: NamedType if !prefixIsElidable(ownType) =>
+        ref(ownType).withPos(tree.pos)
+      case _ =>
+        tree.withType(ownType)
+    }
+
+    checkValue(tree1, pt)
   }
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {

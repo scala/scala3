@@ -261,7 +261,7 @@ trait Applications extends Compatibility { self: Typer =>
             findDefaultGetter(n + numArgs(normalizedFun)) match {
               case dref: NamedType =>
                 liftFun()
-                addTyped(treeToArg(spliceMeth(Ident(dref) withPos appPos, normalizedFun)), formal)
+                addTyped(treeToArg(spliceMeth(ref(dref) withPos appPos, normalizedFun)), formal)
                 matchArgs(args1, formals1, n + 1)
               case _ =>
                 missingArg(n)
