@@ -377,9 +377,9 @@ class Definitions {
   }
 
   object ArrayType {
-    def apply(elem: Type) =
+    def apply(elem: Type)(implicit ctx: Context) =
       ArrayClass.typeRef.appliedTo(elem :: Nil)
-    def unapply(tp: Type) = tp.dealias match {
+    def unapply(tp: Type)(implicit ctx: Context) = tp.dealias match {
       case at: RefinedType if (at isRef ArrayClass) && at.argInfos.length == 1 => Some(at.argInfos.head)
       case _ => None
     }

@@ -21,7 +21,7 @@ import ast.tpd._
 import ast.TreeTypeMap
 import printing.Texts._
 import ast.untpd
-import transform.Erasure
+import dotty.tools.dotc.transform.Erasure
 import printing.Printer
 import Hashable._
 import Uniques._
@@ -2183,17 +2183,17 @@ object Types {
     def selfType(implicit ctx: Context): Type = {
       if (selfTypeCache == null) {
         def fullRef = fullyAppliedRef(cls.typeRef, cls.typeParams)
-        selfTypeCache =
-          if (ctx.erasedTypes) fullRef
-          else selfInfo match {
-            case NoType =>
-              fullRef
-            case tp: Type =>
-              if (cls is Module) tp else AndType(tp, fullRef)
-            case self: Symbol =>
-              assert(!(cls is Module))
-              AndType(self.info, fullRef)
-          }
+        def withFullRef(tp: Type): Type =
+          if (ctx.erasedTypes) fullRef else AndType(tp, fullRef)
+        selfTypeCache = selfInfo match {
+          case NoType =>
+            fullRef
+          case tp: Type =>
+            if (cls is Module) tp else withFullRef(tp)
+          case self: Symbol =>
+            assert(!(cls is Module))
+            withFullRef(self.info)
+        }
       }
       selfTypeCache
     }
@@ -2210,7 +2210,7 @@ object Types {
     }
 
     def rebase(tp: Type)(implicit ctx: Context): Type =
-      if ((prefix eq cls.owner.thisType) || !cls.owner.isClass) tp
+      if ((prefix eq cls.owner.thisType) || !cls.owner.isClass || ctx.erasedTypes) tp
       else tp.substThis(cls.owner.asClass, prefix)
 
     private var typeRefCache: Type = null

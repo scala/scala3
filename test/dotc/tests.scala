@@ -17,7 +17,7 @@ class tests extends CompilerTest {
     "-Ycheck:literalize"
   )
 
-  val twice = List("#runs", "2", "-YnoDoubleBindings"/*, "-Ystop-before:terminal"*/)
+  val twice = List("#runs", "2", "-YnoDoubleBindings", "-Ystop-before:terminal")
   val doErase = List("-Ystop-before:terminal")
 
   val posDir = "./tests/pos/"

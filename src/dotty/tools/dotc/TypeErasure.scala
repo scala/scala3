@@ -109,6 +109,28 @@ object TypeErasure {
     }
     loop(tp1.baseClasses, defn.ObjectClass).typeRef
   }
+
+  def erasedGlb(tp1: Type, tp2: Type, isJava: Boolean)(implicit ctx: Context): Type = tp1 match {
+    case defn.ArrayType(elem1) =>
+      tp2 match {
+        case defn.ArrayType(elem2) => defn.ArrayType(erasedGlb(elem1, elem2, isJava))
+        case _ => defn.ObjectType
+      }
+    case _ =>
+      tp2 match {
+        case defn.ArrayType(_) => defn.ObjectType
+        case _ =>
+          val tsym1 = tp1.typeSymbol
+          val tsym2 = tp2.typeSymbol
+          if (!tsym2.exists) tp1
+          else if (!tsym1.exists) tp2
+          else if (!isJava && tsym1.derivesFrom(tsym2)) tp1
+          else if (!isJava && tsym2.derivesFrom(tsym1)) tp2
+          else if (tp1.typeSymbol.isRealClass) tp1
+          else if (tp2.typeSymbol.isRealClass) tp2
+          else tp1
+      }
+  }
 }
 import TypeErasure._
 
@@ -127,15 +149,15 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
    *      - otherwise, if T <: Object, scala.Array+[|T|]
    *      - otherwise, if T is a type paramter coming from Java, scala.Array+[Object].
    *      - otherwise, Object
-   *   - For all other type proxies: The erasure of the underlying type.
-   *   - For a typeref scala.Any, scala.AnyVal, scala.Singleon or scala.NotNull: java.lang.Object.
-   *   - For a typeref scala.Unit, scala.runtime.BoxedUnit.
-   *   - For a typeref whose symbol is owned by Array: The typeref itself
-   *   - For a typeref P.C where C refers to a toplevel class, P.C.
-   *   - For a typeref P.C where C refers to a nested class, |P|.C.
+   *   - For a term ref p.x, the type <noprefix> # x.
+   *   - For a typeref scala.Any, scala.AnyVal, scala.Singleon or scala.NotNull: |java.lang.Object|
+   *   - For a typeref scala.Unit, |scala.runtime.BoxedUnit|.
+   *   - For a typeref whose symbol is owned by Array: The typeref itself, with prefix = <noprefix>
+   *   - For a typeref P.C where C refers to a class, <noprefix> # C.
    *   - For a typeref P.C where C refers to an alias type, the erasure of C's alias.
    *   - For a typeref P.C where C refers to an abstract type, the erasure of C's upper bound.
-   *   - For T1 & T2, the merge of |T1| and |T2| (see mergeAnd)
+   *   - For all other type proxies: The erasure of the underlying type.
+   *   - For T1 & T2, the erased glb of |T1| and |T2| (see erasedGlb)
    *   - For T1 | T2, the first base class in the linearization of T which is also a base class of T2
    *   - For => T, ()T
    *   - For a method type (Fs)scala.Unit, (|Fs|)scala.Unit.
@@ -164,14 +186,12 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
     case tp: TermRef =>
       assert(tp.symbol.exists, tp)
       TermRef(NoPrefix, tp.symbol.asTerm)
-    case _: ThisType =>
-      tp
     case ExprType(rt) =>
       MethodType(Nil, Nil, this(rt))
     case tp: TypeProxy =>
       this(tp.underlying)
     case AndType(tp1, tp2) =>
-      mergeAnd(this(tp1), this(tp2))
+      erasedGlb(this(tp1), this(tp2), isJava)
     case OrType(tp1, tp2) =>
       ctx.typeComparer.orType(this(tp1), this(tp2), erased = true)
     case tp: MethodType =>
@@ -196,7 +216,8 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
           if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
           else if (cls eq defn.ArrayClass) defn.ObjectClass.typeRef :: Nil
           else removeLaterObjects(classParents.mapConserve(eraseTypeRef))
-        tp.derivedClassInfo(this(pre), parents, decls, this(tp.selfType))
+        tp.derivedClassInfo(NoPrefix, parents, decls, this(tp.selfType))
+          // can't replace selftype by NoType because this would lose the sourceModule link
       }
     case NoType | NoPrefix | ErrorType =>
       tp
@@ -215,9 +236,8 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
     unsupported("eraseDerivedValueClass")
 
   private def eraseNormalClassRef(tref: TypeRef)(implicit ctx: Context): Type = {
-    val sym = tref.symbol
-    if (sym.owner is Package) normalizeClass(sym.asClass).typeRef
-    else tref.derivedSelect(this(tref.prefix))
+    val cls = tref.symbol.asClass
+    (if (cls.owner is Package) normalizeClass(cls) else cls).typeRef
   }
 
   private def eraseResult(tp: Type)(implicit ctx: Context): Type = tp match {
@@ -245,28 +265,6 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
   private def removeLaterObjects(trs: List[TypeRef])(implicit ctx: Context): List[TypeRef] = trs match {
     case tr :: trs1 => tr :: trs1.filterNot(_ isRef defn.ObjectClass)
     case nil => nil
-  }
-
-  private def mergeAnd(tp1: Type, tp2: Type)(implicit ctx: Context): Type = tp1 match {
-    case defn.ArrayType(elem1) =>
-      tp2 match {
-        case defn.ArrayType(elem2) => defn.ArrayType(mergeAnd(elem1, elem2))
-        case _ => defn.ObjectType
-      }
-    case _ =>
-      tp2 match {
-        case defn.ArrayType(_) => defn.ObjectType
-        case _ =>
-          val tsym1 = tp1.typeSymbol
-          val tsym2 = tp2.typeSymbol
-          if (!tsym2.exists) tp1
-          else if (!tsym1.exists) tp2
-          else if (!isJava && tsym1.derivesFrom(tsym2)) tp1
-          else if (!isJava && tsym2.derivesFrom(tsym1)) tp2
-          else if (tp1.typeSymbol.isRealClass) tp1
-          else if (tp2.typeSymbol.isRealClass) tp2
-          else tp1
-      }
   }
 
   /** The name of the type as it is used in `Signature`s.

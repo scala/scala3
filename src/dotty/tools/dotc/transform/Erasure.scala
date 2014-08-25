@@ -175,12 +175,13 @@ object Erasure {
      *    e -> unbox(e, PT)  if `PT` is a primitive type and `e` is not of primitive type
      *    e -> cast(e, PT)   otherwise
      */
-    def adaptToType(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
-      def makeConformant(tpw: Type): Tree = tpw match {
-        case MethodType(Nil, _) =>
+    def adaptToType(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
+      if (pt.isInstanceOf[FunProto]) tree
+      else tree.tpe.widen match {
+        case MethodType(Nil, _) if tree.isTerm =>
           adaptToType(tree.appliedToNone, pt)
-        case _ =>
-          if (pt.isInstanceOf[ProtoType])
+        case tpw =>
+          if (pt.isInstanceOf[ProtoType] || tree.tpe <:< pt)
             tree
           else if (tpw.isErasedValueType)
             adaptToType(box(tree), pt)
@@ -193,9 +194,6 @@ object Erasure {
           else
             cast(tree, pt)
       }
-      if ((pt.isInstanceOf[FunProto]) || tree.tpe <:< pt) tree
-      else makeConformant(tree.tpe.widen)
-    }
   }
 
   class Typer extends typer.ReTyper with NoChecking {
@@ -254,7 +252,7 @@ object Erasure {
         else if (qual.tpe.derivesFrom(sym.owner) || qual.isInstanceOf[Super])
           select(qual, sym)
         else if (sym.owner eq defn.ArrayClass)
-          selectArrayMember(qual, erasure(tree.qualifier.typeOpt.widen))
+          selectArrayMember(qual, erasure(tree.qualifier.typeOpt.widen.finalResultType))
         else
           recur(cast(qual, sym.owner.typeRef))
       }

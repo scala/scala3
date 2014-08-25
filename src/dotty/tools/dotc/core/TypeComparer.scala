@@ -11,7 +11,7 @@ import printing.Disambiguation.disambiguated
 import util.{Stats, DotClass, SimpleMap}
 import config.Config
 import config.Printers._
-import TypeErasure.erasedLub
+import TypeErasure.{erasedLub, erasedGlb}
 
 /** Provides methods to compare types.
  */
@@ -1066,12 +1066,13 @@ class TypeComparer(initctx: Context) extends DotClass {
    *  Such TypeBounds can also be arbitrarily instantiated. In both cases we need to
    *  make sure that such types do not actually arise in source programs.
    */
-  final def andType(tp1: Type, tp2: Type) = ctx.traceIndented(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
+  final def andType(tp1: Type, tp2: Type, erased: Boolean = ctx.erasedTypes) = ctx.traceIndented(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
     if (t1.exists) t1
     else {
       val t2 = distributeAnd(tp2, tp1)
       if (t2.exists) t2
+      else if (erased) erasedGlb(tp1, tp2, isJava = false)
       else {
         //if (isHKRef(tp1)) tp2
         //else if (isHKRef(tp2)) tp1
