@@ -1018,10 +1018,11 @@ object SymDenotations {
     private[this] var myBaseClasses: List[ClassSymbol] = null
     private[this] var mySuperClassBits: BitSet = null
 
-	/** Invalidate baseTypeRefCache and superClassBits on new run */
+	  /** Invalidate baseTypeRefCache, baseClasses and superClassBits on new run */
     private def checkBasesUpToDate()(implicit ctx: Context) =
       if (baseTypeRefValid != ctx.runId) {
         baseTypeRefCache = new java.util.HashMap[CachedType, Type]
+        myBaseClasses = null
         mySuperClassBits = null
         baseTypeRefValid = ctx.runId
       }
@@ -1069,6 +1070,7 @@ object SymDenotations {
     def baseClasses(implicit ctx: Context): List[ClassSymbol] =
       if (classParents.isEmpty) classSymbol :: Nil // can happen when called too early in Namers
       else {
+        checkBasesUpToDate()
         if (myBaseClasses == null) computeBases
         myBaseClasses
       }
