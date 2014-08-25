@@ -13,7 +13,7 @@ import Periods._
 import Flags._
 import DenotTransformers._
 import Decorators._
-import transform.Erasure
+import dotc.transform.Erasure
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
@@ -495,7 +495,7 @@ object Denotations {
           d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
           d = d.nextInRun
         } while (d ne denot)
-        initial.syncWithParents
+        syncWithParents
       case _ =>
         if (coveredInterval.containsPhaseId(ctx.phaseId)) staleSymbolError
         else NoDenotation
@@ -524,7 +524,7 @@ object Denotations {
         assert(false)
       }
 
-      if (valid.runId != currentPeriod.runId) bringForward.current
+      if (valid.runId != currentPeriod.runId) initial.bringForward.current
       else {
         var cur = this
         if (currentPeriod.code > valid.code) {
