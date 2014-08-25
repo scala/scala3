@@ -270,14 +270,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** A tree representing the same reference as the given type */
-  def ref(tp: NamedType)(implicit ctx: Context): NameTree =
-    if (prefixIsElidable(tp)) Ident(tp)
+  def ref(tp: NamedType)(implicit ctx: Context): Tree =
+    if (tp.isType) TypeTree(tp)
+    else if (prefixIsElidable(tp)) Ident(tp)
     else tp.prefix match {
       case pre: SingletonType => singleton(pre).select(tp)
       case pre => SelectFromTypeTree(TypeTree(pre), tp)
     } // no checks necessary
 
-  def ref(sym: Symbol)(implicit ctx: Context): NameTree =
+  def ref(sym: Symbol)(implicit ctx: Context): Tree =
     ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
 
   def singleton(tp: Type)(implicit ctx: Context): Tree = tp match {

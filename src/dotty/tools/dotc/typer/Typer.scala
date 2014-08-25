@@ -729,10 +729,12 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     assert(tree.refinements.length == refinements1.length, s"${tree.refinements} != $refinements1")
     def addRefinement(parent: Type, refinement: Tree): Type = {
       typr.println(s"adding refinement $refinement")
+      def checkRef(tree: Tree, sym: Symbol) =
+        if (sym.maybeOwner == refineCls && tree.pos.start <= sym.pos.end)
+          ctx.error("illegal forward reference in refinement", tree.pos)
       foreachSubTreeOf(refinement) {
-        case tree: RefTree =>
-          if (tree.symbol.owner == refineCls && tree.pos.start <= tree.symbol.pos.end)
-            ctx.error("illegal forward reference in refinement", tree.pos)
+        case tree: RefTree => checkRef(tree, tree.symbol)
+        case tree: TypeTree => checkRef(tree, tree.tpe.typeSymbol)
         case _ =>
       }
       val rsym = refinement.symbol

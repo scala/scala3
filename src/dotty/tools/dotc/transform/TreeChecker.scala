@@ -73,7 +73,7 @@ class TreeChecker {
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
-      assert(!needsSelect(tree.tpe), i"bad type ${tree.tpe} for $tree")
+      assert(tree.isType || !needsSelect(tree.tpe), i"bad type ${tree.tpe} for $tree")
       super.typedIdent(tree, pt)
     }
 
