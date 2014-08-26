@@ -1353,13 +1353,13 @@ object Types {
     }
 
     override def newLikeThis(prefix: Type)(implicit ctx: Context): TermRef = {
-      if (sig != Signature.NotAMethod &&
-          sig != Signature.OverloadedSignature &&
-          symbol.exists) {
+      val candidate = TermRef.withSig(prefix, name, sig)
+      if (symbol.exists && !candidate.symbol.exists) { // recompute from previous symbol
         val ownSym = symbol
-        TermRef.all(prefix, name).withDenot(asMemberOf(prefix).disambiguate(_ eq ownSym))
+        val newd = asMemberOf(prefix)
+        candidate.withDenot(asMemberOf(prefix).suchThat(_ eq ownSym))
       }
-      else TermRef.withSig(prefix, name, sig)
+      else candidate
     }
 
     override def equals(that: Any) = that match {

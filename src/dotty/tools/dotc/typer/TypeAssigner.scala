@@ -49,7 +49,7 @@ trait TypeAssigner {
             case TypeAlias(ref) =>
               apply(ref)
             case info: ClassInfo =>
-              mapOver(info.instantiatedParents.reduceLeft(AndType(_, _)))
+              mapOver(info.instantiatedParents.reduceLeft(ctx.typeComparer.andType(_, _)))
             case _ =>
               mapOver(tp)
           }

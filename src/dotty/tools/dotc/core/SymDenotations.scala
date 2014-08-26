@@ -467,14 +467,17 @@ object SymDenotations {
         (linked ne NoSymbol) && accessWithin(linked)
       }
 
-      /** Is `pre` of the form C.this, where C is exactly the owner of this symbol,
+      /** Is `pre` the same as C.thisThis, where C is exactly the owner of this symbol,
        *  or, if this symbol is protected, a subclass of the owner?
        */
       def isCorrectThisType(pre: Type): Boolean = pre match {
         case ThisType(pclazz) =>
           (pclazz eq owner) ||
             (this is Protected) && pclazz.derivesFrom(owner)
-        case _ => false
+        case pre: TermRef =>
+          pre.symbol.moduleClass == owner
+        case _ =>
+          false
       }
 
       /** Is protected access to target symbol permitted? */
@@ -1002,11 +1005,13 @@ object SymDenotations {
       myThisType
     }
 
-    private def computeThisType(implicit ctx: Context): Type = ThisType(classSymbol) /*
-      if ((this is PackageClass) && !isRoot)
-        TermRef(owner.thisType, name.toTermName)
-      else
-        ThisType(classSymbol) */
+    private def computeThisType(implicit ctx: Context): Type =
+      if (this.is(Module, butNot = Package)) {
+        val pre = owner.thisType
+        if ((pre eq NoPrefix) || ctx.erasedTypes) pre select sourceModule
+        else TermRef.withSig(pre, name.sourceModuleName, Signature.NotAMethod)
+      }
+      else ThisType(classSymbol)
 
     private[this] var myTypeRef: TypeRef = null
 

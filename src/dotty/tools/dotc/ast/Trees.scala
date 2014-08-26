@@ -469,6 +469,15 @@ object Trees {
   case class This[-T >: Untyped] private[ast] (qual: TypeName)
     extends DenotingTree[T] with TermTree[T] {
     type ThisTree[-T >: Untyped] = This[T]
+    // Denotation of a This tree is always the udnerlying class; needs correction for modules.
+    override def denot(implicit ctx: Context): Denotation = {
+      tpe match {
+        case tpe @ TermRef(pre, _) if tpe.symbol is Module =>
+          tpe.symbol.moduleClass.denot.asSeenFrom(pre)
+        case _ =>
+          super.denot
+      }
+    }
   }
 
   /** C.super[mix], where qual = C.this */
