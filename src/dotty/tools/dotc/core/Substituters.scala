@@ -145,7 +145,7 @@ trait Substituters { this: Context =>
         var fs = from
         var ts = to
         while (fs.nonEmpty) {
-          if (fs.head eq sym) return ThisType(ts.head.asClass)
+          if (fs.head eq sym) return ts.head.asClass.thisType
           fs = fs.tail
           ts = ts.tail
         }

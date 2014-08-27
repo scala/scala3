@@ -613,7 +613,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case THIStpe =>
         val cls = readSymbolRef().asClass
         if (isRefinementClass(cls)) RefinedThis(refinementTypes(cls))
-        else ThisType(cls)
+        else cls.thisType
       case SINGLEtpe =>
         val pre = readTypeRef()
         val sym = readDisambiguatedSymbolRef(_.info.isParameterless)

@@ -1011,7 +1011,7 @@ object SymDenotations {
         if ((pre eq NoPrefix) || ctx.erasedTypes) pre select sourceModule
         else TermRef.withSig(pre, name.sourceModuleName, Signature.NotAMethod)
       }
-      else ThisType(classSymbol)
+      else ThisType.raw(classSymbol)
 
     private[this] var myTypeRef: TypeRef = null
 

@@ -1535,16 +1535,31 @@ object Types {
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
 
   /** The type cls.this */
-  abstract case class ThisType(cls: ClassSymbol) extends CachedProxyType with SingletonType {
-    override def underlying(implicit ctx: Context) = cls.classInfo.selfType
-    override def computeHash = doHash(cls)
+  abstract case class ThisType(private var myCls: ClassSymbol) extends CachedProxyType with SingletonType {
+    def cls(implicit ctx: Context): ClassSymbol =
+      try myCls.denot.symbol.asClass
+      catch {
+        case ex: StaleSymbol =>
+          def prevDenot(implicit ctx: Context) = myCls.denot
+          val prev = prevDenot(ctx.fresh.setPeriod(Period(myCls.defRunId, ctx.phaseId)))
+          myCls = prev.owner.info.member(prev.name).symbol.asClass
+          cls
+      }
+    override def underlying(implicit ctx: Context) =
+      try cls.classInfo.selfType
+      catch {
+        case ex: StaleSymbol =>
+          println(i"stale symbol when deref ${cls.id}")
+          throw ex
+      }
+    override def computeHash = doHash(myCls)
   }
 
   final class CachedThisType(cls: ClassSymbol) extends ThisType(cls)
 
   // TODO: consider hash before constructing types?
   object ThisType {
-    def apply(cls: ClassSymbol)(implicit ctx: Context) =
+    def raw(cls: ClassSymbol)(implicit ctx: Context) =
       unique(new CachedThisType(cls))
   }
 
