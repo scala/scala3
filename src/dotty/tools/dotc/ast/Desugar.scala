@@ -862,7 +862,7 @@ object desugar {
       case tree @ Bind(_, tree1) =>
         add(tree, TypeTree())
         collect(tree1)
-      case Typed(id: Ident, t) if isVarPattern(id) && id.name != nme.WILDCARD =>
+      case Typed(id: Ident, t) if isVarPattern(id) && id.name != nme.WILDCARD && !isWildcardStarArg(tree) =>
         add(id, t)
       case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD =>
         add(id, TypeTree())

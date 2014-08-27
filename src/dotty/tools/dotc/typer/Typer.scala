@@ -333,7 +333,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = track("typedTyped") {
     def regularTyped(isWildcard: Boolean) = {
-      val tpt1 = typedType(tree.tpt)
+      val tpt1 =
+        if (untpd.isWildcardStarArg(tree))
+          TypeTree(defn.SeqClass.typeRef.appliedTo(pt :: Nil))
+        else
+          typedType(tree.tpt)
       val expr1 =
         if (isWildcard) tree.expr withType tpt1.tpe
         else typed(tree.expr, tpt1.tpe)
@@ -344,7 +348,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if (id.name == nme.WILDCARD) regularTyped(isWildcard = true)
         else {
           import untpd._
-          typed(Bind(id.name, Typed(Ident(nme.WILDCARD), tree.tpt)).withPos(id.pos))
+          typed(Bind(id.name, Typed(Ident(nme.WILDCARD), tree.tpt)).withPos(id.pos), pt)
         }
       case _ =>
         if (untpd.isWildcardStarArg(tree))
