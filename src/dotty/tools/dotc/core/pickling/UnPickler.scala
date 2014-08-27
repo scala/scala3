@@ -629,18 +629,18 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         var pre = readTypeRef()
         val sym = readSymbolRef()
         pre match {
-          case ThisType(cls) =>
+          case thispre: ThisType =>
             // The problem is that class references super.C get pickled as
             // this.C. Dereferencing the member might then get an overriding class
             // instance. The problem arises for instance for LinkedHashMap#MapValues
             // and also for the inner Transform class in all views. We fix it by
             // replacing the this with the appropriate super.
-            if (sym.owner != cls) {
-              val overriding = cls.decls.lookup(sym.name)
+            if (sym.owner != thispre.cls) {
+              val overriding = thispre.cls.decls.lookup(sym.name)
               if (overriding.exists && overriding != sym) {
                 val base = pre.baseTypeWithArgs(sym.owner)
                 assert(base.exists)
-                pre = SuperType(pre, base)
+                pre = SuperType(thispre, base)
               }
             }
           case _ =>

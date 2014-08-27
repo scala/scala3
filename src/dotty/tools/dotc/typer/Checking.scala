@@ -119,7 +119,7 @@ object Checking {
           // global symbols when doing the cyclicity check.
           def isInteresting(prefix: Type): Boolean = prefix.stripTypeVar match {
             case NoPrefix => true
-            case ThisType(cls) => sym.owner.isClass && cls.isContainedIn(sym.owner)
+            case prefix: ThisType => sym.owner.isClass && prefix.cls.isContainedIn(sym.owner)
             case prefix: NamedType => !prefix.symbol.isStaticOwner && isInteresting(prefix.prefix)
             case SuperType(thistp, _) => isInteresting(thistp)
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)

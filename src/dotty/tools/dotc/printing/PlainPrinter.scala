@@ -190,8 +190,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
     tp match {
       case tp: TermRef =>
         toTextPrefix(tp.prefix) ~ selectionString(tp)
-      case ThisType(cls) =>
-        nameString(cls) + ".this"
+      case tp: ThisType =>
+        nameString(tp.cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>
         toTextRef(thistpe).map(_.replaceAll("""\bthis$""", "super"))
       case SuperType(thistpe, _) =>

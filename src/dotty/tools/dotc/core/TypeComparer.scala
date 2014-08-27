@@ -323,7 +323,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     }
     tp.prefix match {
       case RefinedThis(rt) => rebaseFrom(rt)
-      case ThisType(cls) => rebaseFrom(cls.info)
+      case pre: ThisType => rebaseFrom(pre.cls.info)
       case _ => tp
     }
   }
@@ -443,11 +443,11 @@ class TypeComparer(initctx: Context) extends DotClass {
         // We treat two prefixes A.this, B.this as equivalent if
         // A's selftype derives from B and B's selftype derives from A.
         def equivalentThisTypes(tp1: Type, tp2: Type) = tp1 match {
-          case ThisType(cls1) =>
+          case tp1: ThisType =>
             tp2 match {
-              case ThisType(cls2) =>
-                cls1.classInfo.selfType.derivesFrom(cls2) &&
-                cls2.classInfo.selfType.derivesFrom(cls1)
+              case tp2: ThisType =>
+                tp1.cls.classInfo.selfType.derivesFrom(tp2.cls) &&
+                tp2.cls.classInfo.selfType.derivesFrom(tp1.cls)
               case _ => false
             }
           case _ => false
@@ -483,8 +483,8 @@ class TypeComparer(initctx: Context) extends DotClass {
                 )
               else (tp1.name eq tp2.name) && isSameType(tp1.prefix, tp2.prefix)
              ) || isHKSubType || secondTryNamed(tp1, tp2)
-            case ThisType(cls) if cls eq tp2.symbol.moduleClass =>
-              isSubType(cls.owner.thisType, tp2.prefix)
+            case tp1: ThisType if tp1.cls eq tp2.symbol.moduleClass =>
+              isSubType(tp1.cls.owner.thisType, tp2.prefix)
             case _ =>
               isHKSubType || secondTry(tp1, tp2)
           }
@@ -529,8 +529,8 @@ class TypeComparer(initctx: Context) extends DotClass {
   def secondTry(tp1: Type, tp2: Type): Boolean = tp1 match {
     case tp1: NamedType =>
       tp2 match {
-        case ThisType(cls) if cls eq tp1.symbol.moduleClass =>
-          isSubType(tp1.prefix, cls.owner.thisType)
+        case tp2: ThisType if tp2.cls eq tp1.symbol.moduleClass =>
+          isSubType(tp1.prefix, tp2.cls.owner.thisType)
         case _ =>
           secondTryNamed(tp1, tp2)
       }

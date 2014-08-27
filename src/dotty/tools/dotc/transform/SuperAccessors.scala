@@ -551,7 +551,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
 
     /** Is 'tpe' the type of a member of an enclosing class? */
     private def isThisType(tpe: Type)(implicit ctx: Context): Boolean = tpe match {
-      case ThisType(cls) => !cls.is(PackageClass)
+      case tpe: ThisType => !tpe.cls.is(PackageClass)
       case tpe: TypeProxy => isThisType(tpe.underlying)
       case _ => false
     }

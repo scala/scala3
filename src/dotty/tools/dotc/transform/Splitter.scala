@@ -19,9 +19,9 @@ class Splitter extends MiniPhaseTransform {
 
   /** Replace self referencing idents with ThisTypes. */
   override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = tree.tpe match {
-    case ThisType(cls) =>
+    case tp: ThisType =>
       ctx.debuglog(s"owner = ${ctx.owner}, context = ${ctx}")
-      This(cls) withPos tree.pos
+      This(tp.cls) withPos tree.pos
     case _ => tree
   }
 

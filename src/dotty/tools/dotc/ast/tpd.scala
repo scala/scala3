@@ -255,9 +255,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def prefixIsElidable(tp: NamedType)(implicit ctx: Context) = tp.prefix match {
     case NoPrefix =>
       true
-    case ThisType(cls) =>
-      cls.isStaticOwner ||
-      tp.symbol.is(ParamOrAccessor) && tp.symbol.maybeOwner.enclosingClass == cls
+    case pre: ThisType =>
+      pre.cls.isStaticOwner ||
+      tp.symbol.is(ParamOrAccessor) && tp.symbol.maybeOwner.enclosingClass == pre.cls
     case pre: TermRef =>
       pre.symbol.is(Module) && pre.symbol.isStatic
     case _ =>
@@ -283,7 +283,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def singleton(tp: Type)(implicit ctx: Context): Tree = tp match {
     case tp: TermRef => ref(tp)
-    case ThisType(cls) => This(cls)
+    case tp: ThisType => This(tp.cls)
     case SuperType(qual, _) => singleton(qual)
     case ConstantType(value) => Literal(value)
   }

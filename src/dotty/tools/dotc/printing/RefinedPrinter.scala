@@ -45,9 +45,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def toTextRef(tp: SingletonType): Text = controlled {
     tp match {
-      case ThisType(cls) =>
-        if (cls.isAnonymousClass) return "this"
-        if (cls is ModuleClass) return fullNameString(cls.sourceModule)
+      case tp: ThisType =>
+        if (tp.cls.isAnonymousClass) return "this"
+        if (tp.cls is ModuleClass) return fullNameString(tp.cls.sourceModule)
       case _ =>
     }
     super.toTextRef(tp)
@@ -56,8 +56,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override def toTextPrefix(tp: Type): Text = controlled {
     def isOmittable(sym: Symbol) = isOmittablePrefix(sym) && !ctx.settings.verbose.value
     tp match {
-      case ThisType(cls) =>
-        if (isOmittable(cls)) return ""
+      case tp: ThisType =>
+        if (isOmittable(tp.cls)) return ""
       case tp @ TermRef(pre, _) =>
         val sym = tp.symbol
         if (sym.isPackageObject) return toTextPrefix(pre)

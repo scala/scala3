@@ -30,8 +30,8 @@ trait TypeOps { this: Context =>
           val sym = tp.symbol
           if (sym.isStatic) tp
           else tp.derivedSelect(asSeenFrom(tp.prefix, pre, cls, theMap))
-        case ThisType(thiscls) =>
-          toPrefix(pre, cls, thiscls)
+        case tp: ThisType =>
+          toPrefix(pre, cls, tp.cls)
         case _: BoundType | NoPrefix =>
           tp
         case tp: RefinedType =>
@@ -224,7 +224,7 @@ trait TypeOps { this: Context =>
    */
   def forwardRef(argSym: Symbol, from: Symbol, to: TypeBounds, cls: ClassSymbol, decls: Scope) =
     argSym.info match {
-      case info @ TypeBounds(lo2 @ TypeRef(ThisType(_), name), hi2) =>
+      case info @ TypeBounds(lo2 @ TypeRef(_: ThisType, name), hi2) =>
         if (name == from.name &&
             (lo2 eq hi2) &&
             info.variance == to.variance &&

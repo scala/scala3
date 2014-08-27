@@ -107,7 +107,7 @@ trait TypeAssigner {
           else tpe
         } else tpe
       tpe.prefix match {
-        case ThisType(cls) if cls is Package => tryInsert
+        case pre: ThisType if pre.cls is Package => tryInsert
         case pre: TermRef if pre.symbol is Package => tryInsert
         case _ => tpe
       }

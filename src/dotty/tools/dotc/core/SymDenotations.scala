@@ -471,9 +471,8 @@ object SymDenotations {
        *  or, if this symbol is protected, a subclass of the owner?
        */
       def isCorrectThisType(pre: Type): Boolean = pre match {
-        case ThisType(pclazz) =>
-          (pclazz eq owner) ||
-            (this is Protected) && pclazz.derivesFrom(owner)
+        case pre: ThisType =>
+          (pre.cls eq owner) || (this is Protected) && pre.cls.derivesFrom(owner)
         case pre: TermRef =>
           pre.symbol.moduleClass == owner
         case _ =>
@@ -1000,18 +999,26 @@ object SymDenotations {
 
     private[this] var myThisType: Type = null
 
+    /** The this-type depends on the kind of class:
+     *  - for a package class `p`:  ThisType(TypeRef(Noprefix, p))
+     *  - for a module class `m`: A term ref to m's source module.
+     *  - for all other classes `c` with owner `o`: ThisType(TypeRef(o.thisType, c))
+     */
     override def thisType(implicit ctx: Context): Type = {
       if (myThisType == null) myThisType = computeThisType
       myThisType
     }
 
     private def computeThisType(implicit ctx: Context): Type =
-      if (this.is(Module, butNot = Package)) {
+      if (this is Package)
+        ThisType.raw(TypeRef(NoPrefix, symbol.asType))
+      else {
         val pre = owner.thisType
-        if ((pre eq NoPrefix) || ctx.erasedTypes) pre select sourceModule
-        else TermRef.withSig(pre, name.sourceModuleName, Signature.NotAMethod)
+        if (this is Module)
+          if (isMissing(pre)) TermRef(pre, sourceModule.asTerm)
+          else TermRef.withSig(pre, name.sourceModuleName, Signature.NotAMethod)
+        else ThisType.raw(TypeRef(pre, symbol.asType))
       }
-      else ThisType.raw(classSymbol)
 
     private[this] var myTypeRef: TypeRef = null
 

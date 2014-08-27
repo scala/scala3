@@ -1416,7 +1416,7 @@ object Types {
     if (ctx.phase.erasedTypes) NoPrefix else prefix
 
   /** Is the prefix seen at current phase the same as NoPrefix? */
-  private def isMissing(prefix: Type)(implicit ctx: Context) =
+  def isMissing(prefix: Type)(implicit ctx: Context) =
     (prefix eq NoPrefix) || ctx.phase.erasedTypes
 
   /** Assert current phase does not have erasure semantics */
@@ -1534,33 +1534,24 @@ object Types {
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
 
-  /** The type cls.this */
-  abstract case class ThisType(private var myCls: ClassSymbol) extends CachedProxyType with SingletonType {
-    def cls(implicit ctx: Context): ClassSymbol =
-      try myCls.denot.symbol.asClass
-      catch {
-        case ex: StaleSymbol =>
-          def prevDenot(implicit ctx: Context) = myCls.denot
-          val prev = prevDenot(ctx.fresh.setPeriod(Period(myCls.defRunId, ctx.phaseId)))
-          myCls = prev.owner.info.member(prev.name).symbol.asClass
-          cls
-      }
-    override def underlying(implicit ctx: Context) =
-      try cls.classInfo.selfType
-      catch {
-        case ex: StaleSymbol =>
-          println(i"stale symbol when deref ${cls.id}")
-          throw ex
-      }
-    override def computeHash = doHash(myCls)
+  /** The type cls.this
+   *  @param tref    A type ref which indicates the class `cls`.
+   *  Note: we do not pass a class symbol directly, because symbols
+   *  do not survive runs whereas typerefs do.
+   */
+  abstract case class ThisType(tref: TypeRef) extends CachedProxyType with SingletonType {
+    def cls(implicit ctx: Context): ClassSymbol = tref.symbol.asClass
+    override def underlying(implicit ctx: Context): Type =
+      if (ctx.erasedTypes) tref else cls.classInfo.selfType
+    override def computeHash = doHash(tref)
   }
 
-  final class CachedThisType(cls: ClassSymbol) extends ThisType(cls)
+  final class CachedThisType(tref: TypeRef) extends ThisType(tref)
 
-  // TODO: consider hash before constructing types?
   object ThisType {
-    def raw(cls: ClassSymbol)(implicit ctx: Context) =
-      unique(new CachedThisType(cls))
+    /** Normally one should use ClassSymbol#thisType instead */
+    def raw(tref: TypeRef)(implicit ctx: Context) =
+      unique(new CachedThisType(tref))
   }
 
   /** The type of a super reference cls.super where
