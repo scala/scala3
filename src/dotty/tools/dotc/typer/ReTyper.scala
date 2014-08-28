@@ -30,7 +30,7 @@ class ReTyper extends Typer {
     promote(tree)
 
   override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
-    assert(tree.hasType)
+    assert(tree.hasType, tree)
     val qual1 = typed(tree.qualifier, AnySelectionProto)
     untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
   }
@@ -67,6 +67,8 @@ class ReTyper extends Typer {
 
   override def addTypedModifiersAnnotations(mods: untpd.Modifiers, sym: Symbol)(implicit ctx: Context): Modifiers =
     typedModifiers(mods, sym)
+
+  override def encodeName(tree: untpd.NameTree)(implicit ctx: Context) = tree
 
   override def checkVariance(tree: Tree)(implicit ctx: Context) = ()
 }

@@ -996,12 +996,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         }
 
         xtree match {
-          case xtree: untpd.NameTree => typedNamed(xtree withName xtree.name.encode, pt)
+          case xtree: untpd.NameTree => typedNamed(encodeName(xtree), pt)
           case xtree: untpd.Import => typedImport(xtree, retrieveSym(xtree))
           case xtree => typedUnnamed(xtree)
         }
     }
   }
+
+  protected def encodeName(tree: untpd.NameTree)(implicit ctx: Context) = tree withName tree.name.encode
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
     assertPositioned(tree)
