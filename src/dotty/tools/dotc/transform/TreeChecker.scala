@@ -17,6 +17,7 @@ import typer.ErrorReporting._
 import reporting.ThrowingReporter
 import ast.Trees._
 import ast.{tpd, untpd}
+import util.SourcePosition
 import java.lang.AssertionError
 
 /** Run by -Ycheck option after a given phase, this class retypes all syntax trees
@@ -111,7 +112,10 @@ class TreeChecker {
     }
 
     override def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = {
-      if (ctx.mode.isExpr) assert(tree.tpe <:< pt, err.typeMismatchStr(tree.tpe, pt))
+      if (ctx.mode.isExpr)
+        assert(tree.tpe <:< pt,
+            s"error at ${sourcePos(tree.pos)}\n" +
+            err.typeMismatchStr(tree.tpe, pt))
       tree
     }
   }
