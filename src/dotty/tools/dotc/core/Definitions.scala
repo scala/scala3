@@ -330,7 +330,6 @@ class Definitions {
   def NothingType: Type = NothingClass.typeRef
   def NullType: Type = NullClass.typeRef
   def SeqType: Type = SeqClass.typeRef
-  def ObjectArrayType = ArrayType(ObjectType)
 
   def UnitType: Type = UnitClass.typeRef
   def BooleanType: Type = BooleanClass.typeRef

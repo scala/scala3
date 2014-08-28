@@ -196,6 +196,14 @@ object NameOps {
       case nme.clone_ => nme.array_clone
     }
 
+    /** The name of the primitive runtime operation corresponding to an array operation */
+    def primitiveArrayOp: TermName = name match {
+      case nme.apply => nme.primitive.arrayApply
+      case nme.length => nme.primitive.arrayLength
+      case nme.update => nme.primitive.arrayUpdate
+      case nme.CONSTRUCTOR => nme.primitive.arrayConstructor
+    }
+
     /** If name length exceeds allowable limit, replace part of it by hash */
     def compactified(implicit ctx: Context): TermName = termName(compactify(name.toString))
   }

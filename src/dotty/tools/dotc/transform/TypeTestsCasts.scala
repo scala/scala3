@@ -86,7 +86,7 @@ class TypeTestsCasts extends MiniPhaseTransform {
             else derivedTree(box(qual), defn.Any_asInstanceOf, argType)
           }
           else if (argCls.isPrimitiveValueClass)
-            unbox(qual, argType)
+            unbox(qual.ensureConforms(defn.ObjectType), argType)
           else
             derivedTree(qual, defn.Any_asInstanceOf, argType)
         }

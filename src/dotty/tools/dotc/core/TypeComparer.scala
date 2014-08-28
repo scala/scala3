@@ -735,6 +735,12 @@ class TypeComparer(initctx: Context) extends DotClass {
           false
       }
       compareClassInfo
+    case JavaArrayType(elem2) =>
+      def compareJavaArray = tp1 match {
+        case JavaArrayType(elem1) => isSubType(elem1, elem2)
+        case _ => fourthTry(tp1, tp2)
+      }
+      compareJavaArray
     case _ =>
       fourthTry(tp1, tp2)
   }
@@ -773,6 +779,8 @@ class TypeComparer(initctx: Context) extends DotClass {
       } || needsEtaLift(tp2, tp1) && tp2.testLifted(tp1.typeParams, isSubType(tp1, _))
     case AndType(tp11, tp12) =>
       isNewSubType(tp11, tp2) || isNewSubType(tp12, tp2)
+    case JavaArrayType(elem1) =>
+      tp2 isRef ObjectClass
     case _ =>
       false
   }

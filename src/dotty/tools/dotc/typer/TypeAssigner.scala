@@ -5,7 +5,7 @@ package typer
 import core._
 import ast._
 import Scopes._, Contexts._, Constants._, Types._, Symbols._, Names._, Flags._, Decorators._
-import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._
+import ErrorReporting._, Annotations._, Denotations._, SymDenotations._, StdNames._, TypeErasure._
 import util.Positions._
 import config.Printers._
 
@@ -183,8 +183,21 @@ trait TypeAssigner {
   def assignType(tree: untpd.Ident, tp: Type)(implicit ctx: Context) =
     tree.withType(tp)
 
-  def assignType(tree: untpd.Select, qual: Tree)(implicit ctx: Context) =
-    tree.withType(accessibleSelectionType(tree, qual))
+  def assignType(tree: untpd.Select, qual: Tree)(implicit ctx: Context): Select = {
+    def arrayElemType = {
+      val JavaArrayType(elemtp) = qual.tpe.widen
+      elemtp
+    }
+    val p = nme.primitive
+    val tp = tree.name match {
+      case p.arrayApply => MethodType(defn.IntType :: Nil, arrayElemType)
+      case p.arrayUpdate => MethodType(defn.IntType :: arrayElemType :: Nil, defn.UnitType)
+      case p.arrayLength => MethodType(Nil, defn.IntType)
+      case p.arrayConstructor => MethodType(defn.IntType :: Nil, qual.tpe)
+      case _ => accessibleSelectionType(tree, qual)
+    }
+    tree.withType(tp)
+  }
 
   def assignType(tree: untpd.SelectFromTypeTree, qual: Tree)(implicit ctx: Context) =
     tree.withType(accessibleSelectionType(tree, qual))

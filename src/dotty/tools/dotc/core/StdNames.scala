@@ -635,6 +635,16 @@ object StdNames {
     def newBitmapName(bitmapPrefix: TermName, n: Int): TermName = bitmapPrefix ++ n.toString
 
     def selectorName(n: Int): TermName = "_" + (n + 1)
+
+    object primitive {
+      val arrayApply: TermName  = "[]apply"
+      val arrayUpdate: TermName = "[]update"
+      val arrayLength: TermName = "[]length"
+      val arrayConstructor: TermName = "[]<init>"
+      val names: Set[Name] = Set(arrayApply, arrayUpdate, arrayLength, arrayConstructor)
+    }
+
+    def isPrimitiveName(name: Name) = primitive.names.contains(name)
   }
 
   class ScalaTypeNames extends ScalaNames[TypeName] {

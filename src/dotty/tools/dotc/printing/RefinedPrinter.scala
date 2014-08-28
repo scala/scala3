@@ -122,6 +122,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         return "=> " ~ toText(result)
       case tp: ClassInfo =>
         return toTextParents(tp.instantiatedParents) ~ "{...}"
+      case JavaArrayType(elemtp) =>
+        return toText(elemtp) ~ "[]"
       case tp: SelectionProto =>
         return toText(RefinedType(WildcardType, tp.name, tp.memberProto))
       case tp: ViewProto =>

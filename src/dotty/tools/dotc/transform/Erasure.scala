@@ -24,7 +24,7 @@ import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Flags
 import ValueClasses._
 import TypeUtils._
-import com.sun.j3d.utils.behaviors.picking.Intersect
+import typer.Mode
 
 class Erasure extends Phase with DenotTransformer { thisTransformer =>
 
@@ -51,10 +51,13 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
         val newOwner = if (oldOwner eq defn.AnyClass) defn.ObjectClass else oldOwner
         val oldInfo = ref.info
         val newInfo = transformInfo(ref.symbol, oldInfo)
-        if ((oldOwner eq newOwner) && (oldInfo eq newInfo)) ref
+        val oldFlags = ref.flags
+        val newFlags = ref.flags &~ Flags.HasDefaultParams // HasDefaultParams needs to be dropped because overriding might become overloading
+        // TODO: define derivedSymDenotation?
+        if ((oldOwner eq newOwner) && (oldInfo eq newInfo) && (oldFlags == newFlags)) ref
         else {
           assert(!ref.is(Flags.PackageClass), s"trans $ref @ ${ctx.phase} oldOwner = $oldOwner, newOwner = $newOwner, oldInfo = $oldInfo, newInfo = $newInfo ${oldOwner eq newOwner} ${oldInfo eq newInfo}")
-          ref.copySymDenotation(owner = newOwner, info = newInfo)
+          ref.copySymDenotation(owner = newOwner, initFlags = newFlags, info = newInfo)
         }
       }
     case ref =>
@@ -155,7 +158,7 @@ object Erasure {
       // assert(!pt.isInstanceOf[SingletonType], pt)
       if (pt isRef defn.UnitClass) unbox(tree, pt)
       else (tree.tpe, pt) match {
-        case (defn.ArrayType(treeElem), defn.ArrayType(ptElem))
+        case (JavaArrayType(treeElem), JavaArrayType(ptElem))
         if treeElem.widen.isPrimitiveValueType && !ptElem.isPrimitiveValueType =>
           // See SI-2386 for one example of when this might be necessary.
           cast(ref(defn.runtimeMethod(nme.toObjectArray)).appliedTo(tree), pt)
@@ -209,22 +212,24 @@ object Erasure {
     }
 
     /** Type check select nodes, applying the following rewritings exhaustively
-     *  on selections `e.m`.
+     *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`
+     *  is the erased type of the selection's original qualifier expression.
      *
-     *      e.m1 -> e.m2        if `m1` is a member of Any or AnyVal and `m2` is
-     *                          the same-named member in Object.
-     *      e.m -> box(e).m     if `e` is primitive and `m` is a member or a reference class
-     *                          or `e` has an erased value class type.
-     *      e.m -> unbox(e).m   if `e` is not primitive and `m` is a member of a primtive type.
+     *      e.m1 -> e.m2          if `m1` is a member of Any or AnyVal and `m2` is
+     *                            the same-named member in Object.
+     *      e.m -> box(e).m       if `e` is primitive and `m` is a member or a reference class
+     *                            or `e` has an erased value class type.
+     *      e.m -> unbox(e).m     if `e` is not primitive and `m` is a member of a primtive type.
+     *      e.m -> cast(e, OT).m  if the type of `e` does not conform to OT and `m`
+     *                            is not an array operation.
      *
-     *  Additionally, if the type of `e` does not derive from the type `OT` of the owner of `m`,
-     *  the following rewritings are performed, where `ET` is the erased type of the selection's
-     *  original qualifier expression.
+     *  If `m` is an array operation, i.e. one of the members apply, update, length, clone, and
+     *  <init> of class Array, we additionally try the following rewritings:
      *
-     *      e.m -> cast(OT).m   if `m` is not an array operation
-     *      e.m -> cast(ET).m   if `m` is an array operation and `ET` is an array type
-     *      e.m -> runtime.array_m(e)
-     *                          if `m` is an array operation and `ET` is Object
+     *      e.m -> runtime.array_m(e)   if ET is Object
+     *      e.m -> cast(e, ET).m        if the type of `e` does not conform to ET
+     *      e.clone -> e.clone'         where clone' is Object's clone method
+     *      e.m -> e.[]m                if `m` is an array operation other than `clone`.
      */
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       val sym = tree.symbol
@@ -233,10 +238,15 @@ object Erasure {
       def select(qual: Tree, sym: Symbol): Tree =
         untpd.cpy.Select(tree)(qual, sym.name) withType qual.tpe.select(sym)
 
-      def selectArrayMember(qual: Tree, erasedPre: Type) = {
-        if (erasedPre isRef defn.ObjectClass) runtimeCallWithProtoArgs(tree.name.genericArrayOp, pt, qual)
-        else recur(cast(qual, erasedPre))
-      }
+      def selectArrayMember(qual: Tree, erasedPre: Type): Tree =
+        if (erasedPre isRef defn.ObjectClass)
+          runtimeCallWithProtoArgs(tree.name.genericArrayOp, pt, qual)
+        else if (!(qual.tpe <:< erasedPre))
+          selectArrayMember(cast(qual, erasedPre), erasedPre)
+        else if (sym == defn.Array_clone)
+          untpd.cpy.Select(tree)(qual, tree.name).withType(defn.Object_clone.termRef)
+        else
+          assignType(untpd.cpy.Select(tree)(qual, tree.name.primitiveArrayOp), qual)
 
       def recur(qual: Tree): Tree = {
         val qualIsPrimitive = qual.tpe.widen.isPrimitiveValueType
@@ -249,10 +259,10 @@ object Erasure {
           recur(box(qual))
         else if (!qualIsPrimitive && symIsPrimitive)
           recur(unbox(qual, sym.owner.typeRef))
-        else if (qual.tpe.derivesFrom(sym.owner) || qual.isInstanceOf[Super])
-          select(qual, sym)
         else if (sym.owner eq defn.ArrayClass)
           selectArrayMember(qual, erasure(tree.qualifier.typeOpt.widen.finalResultType))
+        else if (qual.tpe.derivesFrom(sym.owner) || qual.isInstanceOf[Super])
+          select(qual, sym)
         else
           recur(cast(qual, sym.owner.typeRef))
       }
@@ -274,7 +284,7 @@ object Erasure {
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context) = {
       val TypeApply(fun, args) = tree
-      val fun1 = typedExpr(fun, pt)
+      val fun1 = typedExpr(fun, WildcardType)
       fun1.tpe.widen match {
         case funTpe: PolyType =>
           val args1 = args.mapconserve(typedType(_))
@@ -282,19 +292,6 @@ object Erasure {
         case _ => fun1
       }
     }
-
-/*
-    private def contextArgs(tree: untpd.Tree)(implicit ctx: Context): List[untpd.Tree] = {
-      def nextOuter(ctx: Context): Context =
-        if (ctx.outer.tree eq tree) nextOuter(ctx.outer) else ctx.outer
-      ctx.tree match {
-        case enclApp @ Apply(enclFun, enclArgs) if enclFun eq tree =>
-          enclArgs ++ contextArgs(enclApp)(nextOuter(ctx))
-        case _ =>
-          Nil
-      }
-    }
-*/
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
       val Apply(fun, args) = tree
@@ -425,6 +422,7 @@ object Erasure {
       ctx.traceIndented(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
         assert(ctx.phase == ctx.erasurePhase.next, ctx.phase)
         if (tree.isEmpty) tree
+        else if (ctx.mode is Mode.Pattern) tree // TODO: replace with assertion once pattern matcher is active
         else {
           val tree1 = adaptToType(tree, pt)
           tree1.tpe match {
