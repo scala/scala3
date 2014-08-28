@@ -12,10 +12,10 @@ import core.StdNames._
 import core.TypeErasure.isUnboundedGeneric
 import typer.ErrorReporting._
 import ast.Trees._
-import Erasure.Boxing.box
+import Erasure.Boxing._
 
 /** This transform normalizes type tests and type casts,
- *  also replacing type tests with singleton argument type with refference equality check
+ *  also replacing type tests with singleton argument type with reference equality check
  *  Any remaining type tests
  *   - use the object methods $isInstanceOf and $asInstanceOf
  *   - have a reference type as receiver
@@ -36,16 +36,18 @@ class TypeTestsCasts extends MiniPhaseTransform {
         def derivedTree(qual1: Tree, sym: Symbol, tp: Type) =
           cpy.TypeApply(tree)(qual1.select(sym).withPos(qual.pos), List(TypeTree(tp)))
 
-        def qualCls = qual.tpe.classSymbol
+        def qualCls = qual.tpe.widen.classSymbol
 
         def transformIsInstanceOf(expr:Tree, argType: Type): Tree = {
+          def argCls = argType.classSymbol
           if (expr.tpe <:< argType)
             Literal(Constant(true)) withPos tree.pos
           else if (qualCls.isPrimitiveValueClass) {
-            val argCls = argType.classSymbol
             if (argCls.isPrimitiveValueClass) Literal(Constant(qualCls == argCls))
             else errorTree(tree, "isInstanceOf cannot test if value types are references")
           }
+          else if (argCls.isPrimitiveValueClass)
+            transformIsInstanceOf(expr, defn.boxedClass(argCls).typeRef)
           else argType.dealias match {
             case _: SingletonType =>
               val cmpOp = if (argType derivesFrom defn.AnyValClass) defn.Any_equals else defn.Object_eq
@@ -76,13 +78,15 @@ class TypeTestsCasts extends MiniPhaseTransform {
         }
 
         def transformAsInstanceOf(argType: Type): Tree = {
+          def argCls = argType.classSymbol
           if (qual.tpe <:< argType)
             Typed(qual, tree.args.head)
           else if (qualCls.isPrimitiveValueClass) {
-            val argCls = argType.classSymbol
             if (argCls.isPrimitiveValueClass) primitiveConversion(qual, argCls)
             else derivedTree(box(qual), defn.Any_asInstanceOf, argType)
           }
+          else if (argCls.isPrimitiveValueClass)
+            unbox(qual, argType)
           else
             derivedTree(qual, defn.Any_asInstanceOf, argType)
         }
