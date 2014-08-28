@@ -192,7 +192,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val params = (paramNames, paramTypes).zipped.map(valueParam)
         val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.termRef)))
         (params :: paramss, rtp)
-      case tp => (Nil, tp)
+      case tp => (Nil, tp.widenExpr)
     }
     val (vparamss, rtp) = valueParamss(mtp)
     val targs = tparams map (_.typeRef)
@@ -563,8 +563,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def isInstance(tp: Type)(implicit ctx: Context): Tree =
       tree.select(defn.Any_isInstanceOf).appliedToType(tp)
 
-    def asInstance(tp: Type)(implicit ctx: Context): Tree =
+    def asInstance(tp: Type)(implicit ctx: Context): Tree = {
+      assert(tp.isValueType, i"bad cast: $tree.asInstanceOf[$tp]")
       tree.select(defn.Any_asInstanceOf).appliedToType(tp)
+    }
 
     def ensureConforms(tp: Type)(implicit ctx: Context): Tree =
       if (tree.tpe <:< tp) tree else asInstance(tp)
