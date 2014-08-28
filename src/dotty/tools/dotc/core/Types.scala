@@ -658,7 +658,10 @@ object Types {
      *  a class, the class type ref, otherwise NoType.
      */
     def underlyingClassRef(implicit ctx: Context): Type = dealias match {
-      case tp: TypeRef if tp.symbol.isClass => tp
+      case tp: TypeRef =>
+        if (tp.symbol.isClass) tp
+        else if (tp.symbol.isAliasType) tp.underlying.underlyingClassRef
+        else NoType
       case tp: TypeVar => tp.underlying.underlyingClassRef
       case tp: AnnotatedType => tp.underlying.underlyingClassRef
       case tp: RefinedType => tp.underlying.underlyingClassRef
@@ -2387,6 +2390,17 @@ object Types {
 
   // Special type objects and classes -----------------------------------------------------
 
+  /** The type of an erased array */
+  abstract case class JavaArrayType(elemType: Type) extends CachedGroundType with ValueType {
+    override def computeHash = doHash(elemType)
+    def derivedJavaArrayType(elemtp: Type)(implicit ctx: Context) =
+      if (elemtp eq this.elemType) this else JavaArrayType(elemtp)
+  }
+  final class CachedJavaArrayType(elemType: Type) extends JavaArrayType(elemType)
+  object JavaArrayType {
+    def apply(elemType: Type)(implicit ctx: Context) = unique(new CachedJavaArrayType(elemType))
+  }
+
   /** The type of an import clause tree */
   case class ImportType(expr: Tree) extends UncachedGroundType
 
@@ -2569,6 +2583,9 @@ object Types {
         case tp @ WildcardType =>
           tp.derivedWildcardType(mapOver(tp.optBounds))
 
+        case tp: JavaArrayType =>
+          tp.derivedJavaArrayType(this(tp.elemType))
+
         case tp: ProtoType =>
           tp.map(this)
 
@@ -2698,6 +2715,9 @@ object Types {
 
       case tp: WildcardType =>
         this(x, tp.optBounds)
+
+      case tp: JavaArrayType =>
+        this(x, tp.elemType)
 
       case tp: ProtoType =>
         tp.fold(x, this)
