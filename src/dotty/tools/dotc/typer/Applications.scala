@@ -476,10 +476,8 @@ trait Applications extends Compatibility { self: Typer =>
           }
         case _ =>
           fun1.tpe match {
-            case ErrorType =>
-              tree.withType(ErrorType)
-            case tp =>
-              throw new Error(s"unexpected type.\n fun1 = $fun1,\n methPart(fun1) = ${methPart(fun1)},\n methPart(fun1).tpe = ${methPart(fun1).tpe},\n tpe = $tp")
+            case ErrorType => tree.withType(ErrorType)
+            case tp => handleUnexpectedFunType(tree, fun1)
           }
       }
     }
@@ -514,6 +512,10 @@ trait Applications extends Compatibility { self: Typer =>
       }
     else realApply
   }
+
+  /** Overridden in ReTyper to handle primitive operations that can be generated after erasure */
+  protected def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(implicit ctx: Context): Tree =
+    throw new Error(s"unexpected type.\n fun = $fun,\n methPart(fun) = ${methPart(fun)},\n methPart(fun).tpe = ${methPart(fun).tpe},\n tpe = ${fun.tpe}")
 
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
     var typedArgs = tree.args mapconserve (typedType(_))

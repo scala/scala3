@@ -213,9 +213,9 @@ trait Checking {
         if (ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
         if (traitReq && !(tref.symbol is Trait)) ctx.error(d"$tref is not a trait", pos)
         tp
-    case _ =>
-      ctx.error(d"$tp is not a class type", pos)
-      defn.ObjectClass.typeRef
+      case _ =>
+        ctx.error(d"$tp is not a class type", pos)
+        defn.ObjectClass.typeRef
   }
 
   /** Check that a non-implicit parameter making up the first parameter section of an
