@@ -1102,8 +1102,23 @@ object Types {
     // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
     // (2) lastDenotation != null    =>  lastSymbol != null
 
+    /** There is a denotation computed which is valid (somewhere in) the
+     *  current run.
+     */
     def denotationIsCurrent(implicit ctx: Context) =
       lastDenotation != null && lastDenotation.validFor.runId == ctx.runId
+
+    /** The the denotation is current, its symbol, otherwise NoDenotation.
+     *
+     *  Note: This operation does not force the denotation, and is therefore
+     *  timing dependent. It should only be used if the outcome of the
+     *  essential computation does not depend on the symbol being present or not.
+     *  It's currently used to take an optimized path in substituters and
+     *  type accumulators, as well as to be safe in diagnostiic printing.
+     *  Normally, it's better to use `symbol`, not `currentSymbol`.
+     */
+    def currentSymbol(implicit ctx: Context) =
+      if (denotationIsCurrent) symbol else NoSymbol
 
     /** The denotation currently denoted by this type */
     final def denot(implicit ctx: Context): Denotation = {
@@ -2659,7 +2674,7 @@ object Types {
           this(x, if (tp1.exists) tp1 else tp.prefix)
         }
       case tp: TermRef =>
-        if (stopAtStatic && tp.denotationIsCurrent && tp.symbol.isStatic) x
+        if (stopAtStatic && tp.currentSymbol.isStatic) x
         else this(x, tp.prefix)
 
       case _: ThisType
