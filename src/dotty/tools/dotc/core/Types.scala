@@ -33,7 +33,7 @@ import language.implicitConversions
 
 object Types {
 
-  private var recCount = 0
+  private var recCount = 0 // used temporarily for debugging. TODO: remove
 
   /** The class of types.
    *  The principal subclasses and sub-objects are as follows:
