@@ -12,7 +12,7 @@ trait Substituters { this: Context =>
       case tp: BoundType =>
         if (tp.binder eq from) tp.copyBoundType(to.asInstanceOf[tp.BT]) else tp
       case tp: NamedType =>
-        if (tp.symbol.isStatic) tp
+        if (tp.denotationIsCurrent && tp.symbol.isStatic) tp
         else tp.derivedSelect(subst(tp.prefix, from, to, theMap))
       case _: ThisType | NoPrefix =>
         tp
@@ -184,7 +184,7 @@ trait Substituters { this: Context =>
       case tp @ RefinedThis(rt) =>
         if (rt eq from) to else tp
       case tp: NamedType =>
-        if (tp.symbol.isStatic) tp
+        if (tp.denotationIsCurrent && tp.symbol.isStatic) tp
         else tp.derivedSelect(substThis(tp.prefix, from, to, theMap))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp

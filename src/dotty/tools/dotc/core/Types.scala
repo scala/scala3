@@ -1102,7 +1102,8 @@ object Types {
     // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
     // (2) lastDenotation != null    =>  lastSymbol != null
 
-    def knownDenotation: Boolean = lastDenotation != null
+    def denotationIsCurrent(implicit ctx: Context) =
+      lastDenotation != null && lastDenotation.validFor.runId == ctx.runId
 
     /** The denotation currently denoted by this type */
     final def denot(implicit ctx: Context): Denotation = {
@@ -2658,7 +2659,7 @@ object Types {
           this(x, if (tp1.exists) tp1 else tp.prefix)
         }
       case tp: TermRef =>
-        if (stopAtStatic && tp.symbol.isStatic) x
+        if (stopAtStatic && tp.denotationIsCurrent && tp.symbol.isStatic) x
         else this(x, tp.prefix)
 
       case _: ThisType
