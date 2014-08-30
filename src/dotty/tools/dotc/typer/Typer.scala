@@ -283,7 +283,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     checkValue(assignType(cpy.Select(tree)(qual1, tree.name), qual1), pt)
   }
 
-  def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): SelectFromTypeTree = track("typedSelectFromTypeTree") {
+  def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): Tree = track("typedSelectFromTypeTree") {
     val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt, this))
     checkLegalPrefix(qual1.tpe, tree.name, qual1.pos)
     assignType(cpy.SelectFromTypeTree(tree)(qual1, tree.name), qual1)

@@ -126,10 +126,22 @@ class TreeChecker {
   def assertErased(tp: Type, tree: Tree = EmptyTree)(implicit ctx: Context): Unit =
     assert(isErasedType(tp), i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase}")
 
+  /** Assert that tree type and its widened underlying type are erased.
+   *  Also assert that term refs have fixed symbols (so we are sure
+   *  they need not be reloaded using member; this would likely fail as signatures
+   *  may change after erasure).
+   */
   def assertErased(tree: Tree)(implicit ctx: Context): Unit = {
     assertErased(tree.typeOpt, tree)
     if (!(tree.symbol == defn.Any_isInstanceOf || tree.symbol == defn.Any_asInstanceOf))
       assertErased(tree.typeOpt.widen, tree)
+    if (ctx.mode.isExpr)
+      tree.tpe match {
+        case ref: TermRef =>
+          assert(ref.denot.isInstanceOf[SymDenotation],
+            i"non-sym type $ref of class ${ref.getClass} with denot of class ${ref.denot.getClass} of $tree")
+        case _ =>
+      }
   }
 }
 

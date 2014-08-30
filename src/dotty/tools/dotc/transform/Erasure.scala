@@ -270,6 +270,9 @@ object Erasure {
       recur(typed(tree.qualifier, AnySelectionProto))
     }
 
+    override def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context) =
+      untpd.Ident(tree.name).withPos(tree.pos).withType(erasedType(tree))
+
     private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {
       val meth = defn.runtimeMethod(name)
       val followingParams = meth.info.firstParamTypes.drop(args.length)
@@ -420,18 +423,7 @@ object Erasure {
         assert(ctx.phase == ctx.erasurePhase.next, ctx.phase)
         if (tree.isEmpty) tree
         else if (ctx.mode is Mode.Pattern) tree // TODO: replace with assertion once pattern matcher is active
-        else {
-          val tree1 = adaptToType(tree, pt)
-          tree1.tpe match {
-            case ref: TermRef =>
-              assert(
-                  ref.isInstanceOf[WithNonMemberSym] ||
-                  ref.denot.isInstanceOf[SymDenotation],
-                  i"non-sym type $ref of class ${ref.getClass} with denot of class ${ref.denot.getClass} of $tree1")
-            case _ =>
-          }
-          tree1
-        }
-    }
+        else adaptToType(tree, pt)
+      }
   }
 }
