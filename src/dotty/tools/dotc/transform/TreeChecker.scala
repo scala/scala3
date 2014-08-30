@@ -12,6 +12,7 @@ import core.Flags._
 import core.Constants._
 import core.StdNames._
 import core.Decorators._
+import core.TypeErasure.isErasedType
 import typer._
 import typer.ErrorReporting._
 import reporting.ThrowingReporter
@@ -42,7 +43,7 @@ class TreeChecker {
 
   object Checker extends ReTyper {
     override def typed(tree: untpd.Tree, pt: Type)(implicit ctx: Context) = try {
-      tree match {
+      val res = tree match {
         case _: untpd.UnApply =>
           // can't recheck patterns
           tree.asInstanceOf[tpd.Tree]
@@ -66,6 +67,8 @@ class TreeChecker {
           assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
           tree1
         }
+      if (ctx.erasedTypes) assertErased(res)
+      res
     } catch {
       case ex: Throwable =>
         println(i"exception while checking $tree of class ${tree.getClass} # ${tree.uniqueId}")
@@ -118,6 +121,15 @@ class TreeChecker {
             err.typeMismatchStr(tree.tpe, pt))
       tree
     }
+  }
+
+  def assertErased(tp: Type, tree: Tree = EmptyTree)(implicit ctx: Context): Unit =
+    assert(isErasedType(tp), i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase}")
+
+  def assertErased(tree: Tree)(implicit ctx: Context): Unit = {
+    assertErased(tree.typeOpt, tree)
+    if (!(tree.symbol == defn.Any_isInstanceOf || tree.symbol == defn.Any_asInstanceOf))
+      assertErased(tree.typeOpt.widen, tree)
   }
 }
 

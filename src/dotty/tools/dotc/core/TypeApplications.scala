@@ -41,8 +41,6 @@ import TypeApplications._
 /** A decorator that provides methods for modeling type application */
 class TypeApplications(val self: Type) extends AnyVal {
 
-  def canHaveTypeParams(implicit ctx: Context) = !ctx.erasedTypes || self.isRef(defn.ArrayClass)
-
   /** The type parameters of this type are:
    *  For a ClassInfo type, the type parameters of its class.
    *  For a typeref referring to a class, the type parameters of the class.
@@ -187,7 +185,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         tp
     }
 
-    if (args.isEmpty || !canHaveTypeParams) self
+    if (args.isEmpty || ctx.erasedTypes) self
     else {
       val res = instantiate(self, self)
       if (isInstantiatedLambda(res)) res.select(tpnme.Apply) else res
@@ -278,10 +276,8 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def translateParameterized(from: ClassSymbol, to: ClassSymbol)(implicit ctx: Context): Type =
     if (self.derivesFrom(from))
-      if (canHaveTypeParams)
-        RefinedType(to.typeRef, to.typeParams.head.name, self.member(from.typeParams.head.name).info)
-      else
-        to.typeRef
+      if (ctx.erasedTypes) to.typeRef
+      else RefinedType(to.typeRef, to.typeParams.head.name, self.member(from.typeParams.head.name).info)
     else self
 
   /** If this is repeated parameter type, its underlying Seq type,

@@ -834,7 +834,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       if (tree.isType) typedType(tree)(superCtx)
       else {
         val result = typedExpr(tree)(superCtx)
-        if ((cls is Trait) && result.tpe.classSymbol.isRealClass)
+        if ((cls is Trait) && result.tpe.classSymbol.isRealClass && !ctx.isAfterTyper)
           ctx.error(s"trait may not call constructor of ${result.tpe.classSymbol}", tree.pos)
         result
       }

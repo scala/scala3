@@ -1,17 +1,18 @@
 package dotty.tools.dotc
 package core
 
-import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Flags.JavaDefined
+import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators._, Flags.JavaDefined
 import util.DotClass
 
 /** Erased types are:
  *
- *  TypeRef(NoPrefix, denot is ClassDenotation)
- *  TermRef(NoPrefix, denot is SymDenotation)
+ *  TypeRef(prefix is ignored, denot is ClassDenotation)
+ *  TermRef(prefix is ignored, denot is SymDenotation)
  *  JavaArrayType
  *  AnnotatedType
- *  MethodType ----+-- JavaMethodType
- *  ClassInfo
+ *  MethodType
+ *  ThisType
+ *  ClassInfo (NoPrefix, ...)
  *  NoType
  *  NoPrefix
  *  WildcardType
@@ -21,6 +22,30 @@ import util.DotClass
  *
  */
 object TypeErasure {
+
+  /** A predicate that tests whether a type is a legal erased type. Only asInstanceOf and
+   *  isInstanceOf may have types that do not satisfy the predicate.
+   */
+  def isErasedType(tp: Type)(implicit ctx: Context): Boolean = tp match {
+    case tp: TypeRef =>
+      tp.symbol.isClass
+    case _: TermRef =>
+      true
+    case JavaArrayType(elem) =>
+      isErasedType(elem)
+    case AnnotatedType(_, tp) =>
+      isErasedType(tp)
+    case ThisType(tref) =>
+      isErasedType(tref)
+    case tp: MethodType =>
+      tp.paramTypes.forall(isErasedType) && isErasedType(tp.resultType)
+    case tp @ ClassInfo(pre, _, parents, decls, _) =>
+      isErasedType(pre) && parents.forall(isErasedType) //&& decls.forall(sym => isErasedType(sym.info)) && isErasedType(tp.selfType)
+    case NoType | NoPrefix | WildcardType | ErrorType =>
+      true
+    case _ =>
+      false
+  }
 
   case class ErasedValueType(cls: ClassSymbol, underlying: Type) extends CachedGroundType {
     override def computeHash = doHash(cls, underlying)
@@ -179,6 +204,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
    *   - For a typeref P.C where C refers to a class, <noprefix> # C.
    *   - For a typeref P.C where C refers to an alias type, the erasure of C's alias.
    *   - For a typeref P.C where C refers to an abstract type, the erasure of C's upper bound.
+   *   - For a this-type C.this, the type itself.
    *   - For all other type proxies: The erasure of the underlying type.
    *   - For T1 & T2, the erased glb of |T1| and |T2| (see erasedGlb)
    *   - For T1 | T2, the first base class in the linearization of T which is also a base class of T2
@@ -208,6 +234,8 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
     case tp: TermRef =>
       assert(tp.symbol.exists, tp)
       TermRef(NoPrefix, tp.symbol.asTerm)
+    case ThisType(_) =>
+      tp
     case ExprType(rt) =>
       MethodType(Nil, Nil, this(rt))
     case tp: TypeProxy =>

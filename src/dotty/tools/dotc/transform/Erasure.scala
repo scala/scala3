@@ -309,9 +309,6 @@ object Erasure {
       }
     }
 
-    override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree =
-      promote(tree)
-
     override def ensureNoLocalRefs(block: Block, pt: Type, forcedDefined: Boolean = false)(implicit ctx: Context): Tree =
       block // optimization, no checking needed, as block symbols do not change.
 

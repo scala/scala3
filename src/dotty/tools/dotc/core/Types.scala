@@ -1588,8 +1588,9 @@ object Types {
   final class CachedSuperType(thistpe: Type, supertpe: Type) extends SuperType(thistpe, supertpe)
 
   object SuperType {
-    def apply(thistpe: Type, supertpe: Type)(implicit ctx: Context) =
-      unique(new CachedSuperType(thistpe, supertpe))
+    def apply(thistpe: Type, supertpe: Type)(implicit ctx: Context): Type =
+      if (ctx.erasedTypes) thistpe
+      else unique(new CachedSuperType(thistpe, supertpe))
   }
 
   /** A constant type with  single `value`. */
@@ -1684,10 +1685,13 @@ object Types {
       if (names.isEmpty) parent
       else make(RefinedType(parent, names.head, infoFns.head), names.tail, infoFns.tail)
 
-    def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType =
+    def apply(parent: Type, name: Name, infoFn: RefinedType => Type)(implicit ctx: Context): RefinedType = {
+      assert(!ctx.erasedTypes)
       ctx.base.uniqueRefinedTypes.enterIfNew(new CachedRefinedType(parent, name, infoFn)).checkInst
+    }
 
     def apply(parent: Type, name: Name, info: Type)(implicit ctx: Context): RefinedType = {
+      assert(!ctx.erasedTypes)
       ctx.base.uniqueRefinedTypes.enterIfNew(parent, name, info).checkInst
     }
   }
