@@ -361,9 +361,9 @@ class Definitions {
     sym.owner.linkedClass.typeRef
 
   object FunctionType {
-    def apply(args: List[Type], resultType: Type) =
+    def apply(args: List[Type], resultType: Type)(implicit ctx: Context) =
       FunctionClass(args.length).typeRef.appliedTo(args ::: resultType :: Nil)
-    def unapply(ft: Type)/*: Option[(List[Type], Type)]*/ = {
+    def unapply(ft: Type)(implicit ctx: Context)/*: Option[(List[Type], Type)]*/ = {
       // -language:keepUnions difference: unapply needs result type because inferred type
       // is Some[(List[Type], Type)] | None, which is not a legal unapply type.
       val tsym = ft.typeSymbol
@@ -385,9 +385,9 @@ class Definitions {
   }
 
   object MultiArrayType {
-    def apply(elem: Type, ndims: Int): Type =
+    def apply(elem: Type, ndims: Int)(implicit ctx: Context): Type =
       if (ndims == 0) elem else ArrayType(apply(elem, ndims - 1))
-    def unapply(tp: Type): Option[(Type, Int)] = tp match {
+    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp match {
       case ArrayType(elemtp) =>
         elemtp match {
           case MultiArrayType(finalElemTp, n) => Some(finalElemTp, n + 1)
