@@ -20,6 +20,7 @@ import NameOps._
 /** The first tree transform
  *   - ensures there are companion objects for all classes except module classes
  *   - eliminates some kinds of trees: Imports, NamedArgs, all TypTrees other than TypeTree
+ *   - converts Select/Ident/SelectFromTypeTree nodes that refer to types to TypeTrees.
  *   - checks the bounds of AppliedTypeTrees
  *   - stubs out native methods
  */
@@ -80,6 +81,18 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { 
   override def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[Tree] =
     ast.Trees.flatten(reorderAndComplete(trees)(ctx.withPhase(thisTransformer.next)))
 
+  private def normalizeType(tree: Tree)(implicit ctx: Context) =
+    if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) else tree
+
+  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) =
+    normalizeType(tree)
+
+  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
+    normalizeType(tree)
+
+  override def transformSelectFromTypeTree(tree: SelectFromTypeTree)(implicit ctx: Context, info: TransformerInfo) =
+    normalizeType(tree)
+
   override def transformOther(tree: Tree)(implicit ctx: Context, info: TransformerInfo) = tree match {
     case tree: Import => EmptyTree
     case tree: NamedArg => tree.arg
@@ -87,9 +100,8 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { 
       val tparams = tycon.tpe.typeSymbol.typeParams
       Checking.checkBounds(
         args, tparams.map(_.info.bounds), (tp, argTypes) => tp.substDealias(tparams, argTypes))
-      TypeTree(tree.tpe).withPos(tree.pos)
+      normalizeType(tree)
     case tree =>
-      if (tree.isType) TypeTree(tree.tpe, tree).withPos(tree.pos)
-      else tree
+      normalizeType(tree)
   }
 }
