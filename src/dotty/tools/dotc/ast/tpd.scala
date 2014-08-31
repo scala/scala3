@@ -252,17 +252,26 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   // ------ Making references ------------------------------------------------------
 
-  def prefixIsElidable(tp: NamedType)(implicit ctx: Context) = tp.prefix match {
-    case NoPrefix =>
-      true
-    case pre: ThisType =>
-      pre.cls.isStaticOwner ||
-      tp.symbol.is(ParamOrAccessor) && tp.symbol.maybeOwner.enclosingClass == pre.cls
-    case pre: TermRef =>
-      pre.symbol.is(Module) && pre.symbol.isStatic
-    case _ =>
-      false
-  }
+  def prefixIsElidable(tp: NamedType)(implicit ctx: Context) =
+    try
+      tp.prefix match {
+        case NoPrefix =>
+          true
+        case pre: ThisType =>
+          pre.cls.isStaticOwner ||
+            tp.symbol.is(ParamOrAccessor) && ctx.owner.enclosingClass.derivesFrom(pre.cls)
+        case pre: TermRef =>
+          pre.symbol.is(Module) && pre.symbol.isStatic
+        case _ =>
+          false
+      }
+    catch {
+      case ex: NotDefinedHere => false
+        // NotDefinedHere can happen if we create a reference during unpickling
+        // (which will be at phase frontend), but the request comes at a later
+        // phase from within a context with owners that are not yet defined at
+        // phase frontend. An example case arises when compiling pos/i143.scala
+    }
 
   def needsSelect(tp: Type)(implicit ctx: Context) = tp match {
     case tp: TermRef => !prefixIsElidable(tp)

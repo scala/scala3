@@ -576,7 +576,7 @@ object Denotations {
             //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
             cur = cur.nextInRun
             cnt += 1
-            assert(cnt <= MaxPossiblePhaseId, demandOutsideDefinedMsg)
+            if (cnt > MaxPossiblePhaseId) throw new NotDefinedHere(demandOutsideDefinedMsg)
           }
           cur
         }
@@ -888,6 +888,11 @@ object Denotations {
   /** An exception for accessing symbols that are no longer valid in current run */
   class StaleSymbol(msg: => String) extends Exception {
     util.Stats.record("stale symbol")
+    override def getMessage() = msg
+  }
+
+  class NotDefinedHere(msg: => String) extends Exception {
+    util.Stats.record("not defined here")
     override def getMessage() = msg
   }
 }
