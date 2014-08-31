@@ -6,6 +6,7 @@ import Types._
 import Contexts._
 import Symbols._
 import Decorators._
+import Names._
 import StdNames.nme
 import NameOps._
 import language.implicitConversions
@@ -21,4 +22,6 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   def isTypeTestOrCast(implicit ctx: Context): Boolean =
     self == defn.Any_asInstanceOf || self == defn.Any_isInstanceOf
+
+  def outerAccName(implicit ctx: Context): TermName = nme.OUTER.expandedName(self)
 }
