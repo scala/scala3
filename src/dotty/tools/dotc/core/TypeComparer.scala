@@ -440,18 +440,6 @@ class TypeComparer(initctx: Context) extends DotClass {
   def firstTry(tp1: Type, tp2: Type): Boolean = {
     tp2 match {
       case tp2: NamedType =>
-        // We treat two prefixes A.this, B.this as equivalent if
-        // A's selftype derives from B and B's selftype derives from A.
-        def equivalentThisTypes(tp1: Type, tp2: Type) = tp1 match {
-          case tp1: ThisType =>
-            tp2 match {
-              case tp2: ThisType =>
-                tp1.cls.classInfo.selfType.derivesFrom(tp2.cls) &&
-                tp2.cls.classInfo.selfType.derivesFrom(tp1.cls)
-              case _ => false
-            }
-          case _ => false
-        }
         def isHKSubType = tp2.name == tpnme.Apply && {
           val lambda2 = tp2.prefix.LambdaClass(forcing = true)
           lambda2.exists && !tp1.isLambda &&
@@ -474,7 +462,6 @@ class TypeComparer(initctx: Context) extends DotClass {
                      val pre1 = tp1.prefix
                      val pre2 = tp2.prefix
                      (  isSameType(pre1, pre2)
-                     || equivalentThisTypes(pre1, pre2)
                      ||    sym1.isClass
                         && pre2.classSymbol.exists
                         && pre2.abstractTypeMembers.isEmpty
@@ -517,6 +504,16 @@ class TypeComparer(initctx: Context) extends DotClass {
         isSubType(tp1, tp2.ref)
       case tp2: AnnotatedType =>
         isSubType(tp1, tp2.tpe) // todo: refine?
+      case tp2: ThisType =>
+        tp1 match {
+          case tp1: ThisType =>
+            // We treat two prefixes A.this, B.this as equivalent if
+            // A's selftype derives from B and B's selftype derives from A.
+            tp1.cls.classInfo.selfType.derivesFrom(tp2.cls) &&
+            tp2.cls.classInfo.selfType.derivesFrom(tp1.cls)
+          case _ =>
+            secondTry(tp1, tp2)
+        }
       case AndType(tp21, tp22) =>
         isSubType(tp1, tp21) && isSubType(tp1, tp22)
       case ErrorType =>
