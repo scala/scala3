@@ -1,7 +1,9 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators._, Flags.JavaDefined
+import dotc.transform.OuterAccessors._
 import util.DotClass
 
 /** Erased types are:
@@ -110,6 +112,7 @@ object TypeErasure {
 
     if ((sym eq defn.Any_asInstanceOf) || (sym eq defn.Any_isInstanceOf)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
+    else if (sym.isConstructor) addOuterParam(sym.owner.asClass, erase(tp))
     else erase(tp)
   }
 

@@ -24,6 +24,7 @@ import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Flags
 import ValueClasses._
 import TypeUtils._
+import OuterAccessors._
 import typer.Mode
 
 class Erasure extends Phase with DenotTransformer { thisTransformer =>
@@ -304,7 +305,8 @@ object Erasure {
         case fun1 =>
           fun1.tpe.widen match {
             case mt: MethodType =>
-              val args1 = (args ++ protoArgs(pt)).zipWithConserve(mt.paramTypes)(typedExpr)
+              val outers = outerArgs(fun1) map untpd.TypedSplice
+              val args1 = (outers ::: args ++ protoArgs(pt)).zipWithConserve(mt.paramTypes)(typedExpr)
               untpd.cpy.Apply(tree)(fun1, args1) withType mt.resultType
             case _ =>
               throw new MatchError(i"tree $tree has unexpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")

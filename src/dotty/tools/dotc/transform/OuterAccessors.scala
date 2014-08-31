@@ -80,7 +80,7 @@ class OuterAccessors extends MiniPhaseTransform with InfoTransformer { thisTrans
       if (isTrait)
         newDefs += DefDef(outerAcc, EmptyTree)
       else {
-        val outerParamAcc = cls.info.decl(nme.OUTER).symbol.asTerm
+        val outerParamAcc = outerParamAccessor(cls).asTerm
         newDefs += ValDef(outerParamAcc, EmptyTree)
         newDefs += DefDef(outerAcc, ref(outerParamAcc))
       }
@@ -132,6 +132,10 @@ object OuterAccessors {
   def hasLocalInstantiation(cls: ClassSymbol)(implicit ctx: Context): Boolean =
     cls.owner.isTerm || cls.is(LocalInstantiationSite)
 
+  /** The outer parameter accessor of cass `cls` */
+  def outerParamAccessor(cls: ClassSymbol)(implicit ctx: Context) =
+    cls.info.decl(nme.OUTER).symbol
+
   /** Class has outer accessor. Can be called only after phase OuterAccessors. */
   def hasOuter(cls: ClassSymbol)(implicit ctx: Context): Boolean =
     cls.info.decl(cls.outerAccName).exists
@@ -160,5 +164,34 @@ object OuterAccessors {
       }
     case tpe: TypeProxy =>
       outerPrefix(tpe.underlying)
+  }
+
+  /** If `cls` has an outer parameter add one to the method type `tp`. */
+  def addOuterParam(cls: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
+    if (hasOuter(cls)) {
+      val mt @ MethodType(pnames, ptypes) = tp
+      mt.derivedMethodType(
+        nme.OUTER :: pnames, cls.owner.enclosingClass.typeRef :: ptypes, mt.resultType)
+    }
+    else tp
+
+  /** If function in an apply node is a constructor that needs to be passed an
+   *  outer argument, the singleton list with the argument, otherwise Nil.
+   */
+  def outerArgs(fun: Tree)(implicit ctx: Context): List[Tree] = {
+    if (fun.symbol.isConstructor) {
+      val cls = fun.symbol.owner.asClass
+      def outerArg(receiver: Tree): Tree = receiver match {
+        case New(tpt) => TypeTree(outerPrefix(tpt.tpe)).withPos(tpt.pos)
+        case This(_) => ref(outerParamAccessor(cls))
+        case TypeApply(Select(r, nme.asInstanceOf_), args) => outerArg(r) // cast was inserted, skip
+      }
+      if (hasOuter(cls))
+        methPart(fun) match {
+          case Select(receiver, _) => outerArg(receiver) :: Nil
+        }
+      else Nil
+    }
+    else Nil
   }
 }
