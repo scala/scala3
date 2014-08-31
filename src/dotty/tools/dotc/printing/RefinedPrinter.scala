@@ -116,7 +116,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             case _ => if (tp.prefix.isInstanceOf[ThisType]) return nameString(tp.symbol)
           }
         }
-        else if (tp.symbol.isAnonymousClass)
+        else if (tp.symbol.isAnonymousClass && !ctx.settings.uniqid.value)
           return toText(tp.info)
       case ExprType(result) =>
         return "=> " ~ toText(result)

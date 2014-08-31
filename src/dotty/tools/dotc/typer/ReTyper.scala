@@ -44,6 +44,9 @@ class ReTyper extends Typer {
   override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Literal =
     promote(tree)
 
+  override def typedThis(tree: untpd.This)(implicit ctc: Context): This =
+    promote(tree)
+
   override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree =
     promote(tree)
 
