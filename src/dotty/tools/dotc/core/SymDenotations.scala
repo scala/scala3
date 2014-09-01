@@ -11,6 +11,7 @@ import scala.reflect.io.AbstractFile
 import Decorators.SymbolIteratorDecorator
 import ast._
 import annotation.tailrec
+import typer.Mode
 import util.SimpleMap
 import util.Stats
 import config.Config
@@ -456,10 +457,21 @@ object SymDenotations {
     final def isAccessibleFrom(pre: Type, superAccess: Boolean = false, whyNot: StringBuffer = null)(implicit ctx: Context): Boolean = {
 
       /** Are we inside definition of `boundary`? */
-      def accessWithin(boundary: Symbol) =
-        ctx.owner.isContainedIn(boundary) &&
-          (!(this is JavaDefined) || // disregard package nesting for Java
-             ctx.owner.enclosingPackageClass == boundary.enclosingPackageClass)
+      def accessWithin(boundary: Symbol) = {
+        def test(implicit ctx: Context) =
+          ctx.owner.isContainedIn(boundary) &&
+            (!(this is JavaDefined) || // disregard package nesting for Java
+               ctx.owner.enclosingPackageClass == boundary.enclosingPackageClass)
+        try test
+        catch {
+          // It might be we are in a definition that is not defined at the
+          // period where the test is made. Retry with FutureDefsOK. The reason
+          // for not doing this outright is speed. We would like to avoid
+          // creating a new context object each time we call accessWithin.
+          // Note that the exception should be thrown only infrequently.
+          case ex: NotDefinedHere => test(ctx.withMode(Mode.FutureDefsOK))
+        }
+      }
 
       /** Are we within definition of linked class of `boundary`? */
       def accessWithinLinked(boundary: Symbol) = {

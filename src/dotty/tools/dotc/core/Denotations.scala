@@ -18,6 +18,7 @@ import printing.Texts._
 import printing.Printer
 import io.AbstractFile
 import config.Config
+import typer.Mode
 import util.common._
 import collection.mutable.ListBuffer
 import Decorators.SymbolIteratorDecorator
@@ -576,7 +577,11 @@ object Denotations {
             //println(s"searching: $cur at $currentPeriod, valid for ${cur.validFor}")
             cur = cur.nextInRun
             cnt += 1
-            if (cnt > MaxPossiblePhaseId) throw new NotDefinedHere(demandOutsideDefinedMsg)
+            if (cnt > MaxPossiblePhaseId)
+              if (ctx.mode is Mode.FutureDefsOK)
+                return current(ctx.withPhase(coveredInterval.firstPhaseId))
+              else
+                throw new NotDefinedHere(demandOutsideDefinedMsg)
           }
           cur
         }
