@@ -84,8 +84,10 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { 
   private def normalizeType(tree: Tree)(implicit ctx: Context) =
     if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) else tree
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) =
-    normalizeType(tree)
+  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = tree.tpe match {
+    case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
+    case _ => normalizeType(tree)
+  }
 
   override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
     normalizeType(tree)
@@ -104,4 +106,8 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { 
     case tree =>
       normalizeType(tree)
   }
+
+  // invariants: all modules have companion objects
+  // all types are TypeTrees
+  // all this types are explicit
 }
