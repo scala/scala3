@@ -112,7 +112,7 @@ object TypeErasure {
 
     if ((sym eq defn.Any_asInstanceOf) || (sym eq defn.Any_isInstanceOf)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
-    else if (sym.isConstructor) addOuterParam(sym.owner.asClass, erase(tp))
+    else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp))
     else erase(tp)
   }
 

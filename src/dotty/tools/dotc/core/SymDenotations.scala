@@ -464,7 +464,7 @@ object SymDenotations {
                ctx.owner.enclosingPackageClass == boundary.enclosingPackageClass)
         try test
         catch {
-          // It might be we are in a definition that is not defined at the
+          // It might be we are in a definition whose symbol is not defined at the
           // period where the test is made. Retry with FutureDefsOK. The reason
           // for not doing this outright is speed. We would like to avoid
           // creating a new context object each time we call accessWithin.

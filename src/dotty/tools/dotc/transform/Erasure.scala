@@ -106,7 +106,7 @@ object Erasure {
     }
 
     def constant(tree: Tree, const: Tree)(implicit ctx: Context) =
-      if (isPureExpr(tree)) Block(tree :: Nil, const) else const
+      if (isPureExpr(tree)) const else Block(tree :: Nil, const)
 
     final def box(tree: Tree, target: => String = "")(implicit ctx: Context): Tree = ctx.traceIndented(i"boxing ${tree.showSummary}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
@@ -274,6 +274,10 @@ object Erasure {
     override def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context) =
       untpd.Ident(tree.name).withPos(tree.pos).withType(erasedType(tree))
 
+    override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
+      if (tree.symbol == ctx.owner.enclosingClass || tree.symbol.isStaticOwner) promote(tree)
+      else outer.path(tree.symbol)
+
     private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {
       val meth = defn.runtimeMethod(name)
       val followingParams = meth.info.firstParamTypes.drop(args.length)
@@ -305,7 +309,7 @@ object Erasure {
         case fun1 =>
           fun1.tpe.widen match {
             case mt: MethodType =>
-              val outers = outerArgs(fun1) map untpd.TypedSplice
+              val outers = outer.args(fun1) map untpd.TypedSplice
               val args1 = (outers ::: args ++ protoArgs(pt)).zipWithConserve(mt.paramTypes)(typedExpr)
               untpd.cpy.Apply(tree)(fun1, args1) withType mt.resultType
             case _ =>
