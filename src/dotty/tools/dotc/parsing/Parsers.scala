@@ -1469,8 +1469,8 @@ object Parsers {
         }
         else mods = atPos(modStart) (mods | Param)
         if (ownerKind != ParamOwner.Def) {
-          if (isIdent(nme.raw.PLUS)) mods |= CovariantCommon
-          else if (isIdent(nme.raw.MINUS)) mods |= ContravariantCommon
+          if (isIdent(nme.raw.PLUS)) mods |= Covariant
+          else if (isIdent(nme.raw.MINUS)) mods |= Contravariant
           if (mods is VarianceFlags) in.nextToken()
         }
         atPos(tokenRange) {
