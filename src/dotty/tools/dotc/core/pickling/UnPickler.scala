@@ -421,7 +421,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
     def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
     def isModuleClassRoot = (name == moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)
-    def isModuleRoot = (name == moduleClassRoot.name.toTermName) && (owner == moduleClassRoot.owner) && (flags is Module)
+    def isModuleRoot = (name == moduleClassRoot.name.sourceModuleName) && (owner == moduleClassRoot.owner) && (flags is Module)
 
     //if (isClassRoot) println(s"classRoot of $classRoot found at $readIndex, flags = $flags") // !!! DEBUG
     //if (isModuleRoot) println(s"moduleRoot of $moduleRoot found at $readIndex, flags = $flags") // !!! DEBUG
