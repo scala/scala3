@@ -2864,7 +2864,11 @@ object Types {
   object CyclicReference {
     def apply(denot: SymDenotation)(implicit ctx: Context): CyclicReference = {
       val ex = new CyclicReference(denot)
-      if (!(ctx.mode is typer.Mode.CheckCyclic)) ex.printStackTrace()
+      if (!(ctx.mode is typer.Mode.CheckCyclic)) {
+        cyclicErrors.println(ex.getMessage)
+        for (elem <- ex.getStackTrace take 40)
+          cyclicErrors.println(elem.toString)
+      }
       ex
     }
   }

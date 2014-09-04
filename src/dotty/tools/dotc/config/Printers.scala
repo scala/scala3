@@ -27,4 +27,5 @@ object Printers {
   val incremental = noPrinter
   val config = noPrinter
   val transforms = noPrinter
+  val cyclicErrors = noPrinter
 }
