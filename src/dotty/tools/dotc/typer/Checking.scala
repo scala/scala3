@@ -182,7 +182,7 @@ trait Checking {
   def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = {
     if (!proto.isInstanceOf[SelectionProto]) {
       val sym = tree.tpe.termSymbol
-      if ((sym is Package) || (sym is JavaModule)) ctx.error(d"$sym is not a value", tree.pos)
+      if ((sym is Package) || ((sym is JavaModule) && !ctx.compilationUnit.isJava)) ctx.error(d"$sym is not a value", tree.pos)
     }
     tree
   }

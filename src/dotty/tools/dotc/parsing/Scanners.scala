@@ -58,10 +58,123 @@ object Scanners {
     }
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends CharArrayReader with TokenData {
-
+  abstract class ScannerCommon(source: SourceFile)(implicit ctx: Context) extends CharArrayReader with TokenData {
     val buf = source.content
 
+    // Errors -----------------------------------------------------------------
+
+    /** the last error offset
+      */
+    var errOffset: Offset = NoOffset
+
+
+    /** Generate an error at the given offset */
+    def error(msg: String, off: Offset = offset) = {
+      ctx.error(msg, source atPos Position(off))
+      token = ERROR
+      errOffset = off
+    }
+
+    /** signal an error where the input ended in the middle of a token */
+    def incompleteInputError(msg: String): Unit = {
+      ctx.incompleteInputError(msg, source atPos Position(offset))
+      token = EOF
+      errOffset = offset
+    }
+
+    // Setting token data ----------------------------------------------------
+
+    /** A character buffer for literals
+      */
+    val litBuf = new StringBuilder
+
+    /** append Unicode character to "litBuf" buffer
+      */
+    protected def putChar(c: Char): Unit = litBuf.append(c)
+
+    /** Return buffer contents and clear */
+    def flushBuf(buf: StringBuilder): String = {
+      val str = buf.toString
+      buf.clear()
+      str
+    }
+
+    /** Clear buffer and set name and token */
+    def finishNamed(idtoken: Token = IDENTIFIER, target: TokenData = this): Unit = {
+      target.name = flushBuf(litBuf).toTermName
+      target.token = idtoken
+      if (idtoken == IDENTIFIER) {
+        val idx = target.name.start
+        target.token = toToken(idx)
+      }
+    }
+    def toToken(idx: Int): Token
+
+    /** Clear buffer and set string */
+    def setStrVal() =
+      strVal = flushBuf(litBuf)
+
+    /** Convert current strVal to char value
+      */
+    def charVal: Char = if (strVal.length > 0) strVal.charAt(0) else 0
+
+    /** Convert current strVal, base to long value
+      *  This is tricky because of max negative value.
+      */
+    def intVal(negated: Boolean): Long = {
+      if (token == CHARLIT && !negated) {
+        charVal
+      } else {
+        var value: Long = 0
+        val divider = if (base == 10) 1 else 2
+        val limit: Long =
+          if (token == LONGLIT) Long.MaxValue else Int.MaxValue
+        var i = 0
+        val len = strVal.length
+        while (i < len) {
+          val d = digit2int(strVal charAt i, base)
+          if (d < 0) {
+            error("malformed integer number")
+            return 0
+          }
+          if (value < 0 ||
+            limit / (base / divider) < value ||
+            limit - (d / divider) < value * (base / divider) &&
+              !(negated && limit == value * base - 1 + d)) {
+            error("integer number too large")
+            return 0
+          }
+          value = value * base + d
+          i += 1
+        }
+        if (negated) -value else value
+      }
+    }
+
+    def intVal: Long = intVal(false)
+
+    /** Convert current strVal, base to double value
+      */
+    def floatVal(negated: Boolean): Double = {
+      val limit: Double =
+        if (token == DOUBLELIT) Double.MaxValue else Float.MaxValue
+      try {
+        val value: Double = java.lang.Double.valueOf(strVal).doubleValue()
+        if (value > limit)
+          error("floating point number too large")
+        if (negated) -value else value
+      } catch {
+        case _: NumberFormatException =>
+          error("malformed floating point number")
+          0.0
+      }
+    }
+
+    def floatVal: Double = floatVal(false)
+
+  }
+
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
     var keepComments = false
 
     /** All comments in the reverse order of their position in the source.
@@ -69,24 +182,11 @@ object Scanners {
      */
     var revComments: List[Comment] = Nil
 
-    /** the last error offset
-     */
-    var errOffset: Offset = NoOffset
-
     /** A buffer for comments */
     val commentBuf = new StringBuilder
 
-    /** A character buffer for literals
-     */
-    val litBuf = new StringBuilder
-
-    /** append Unicode character to "litBuf" buffer
-     */
-    protected def putChar(c: Char): Unit = litBuf.append(c)
-
-    /** Clear buffer and set string */
-    private def setStrVal() =
-      strVal = flushBuf(litBuf)
+    def toToken(idx: Int): Token =
+      if (idx >= 0 && idx <= lastKeywordStart) kwArray(idx) else IDENTIFIER
 
     private class TokenData0 extends TokenData
 
@@ -818,84 +918,6 @@ object Scanners {
         strVal = name.toString
       }
     }
-
-// Setting token data ----------------------------------------------------
-
-    /** Clear buffer and set name and token */
-    def finishNamed(idtoken: Token = IDENTIFIER, target: TokenData = this): Unit = {
-      target.name = flushBuf(litBuf).toTermName
-      target.token = idtoken
-      if (idtoken == IDENTIFIER) {
-        val idx = target.name.start
-        if (idx >= 0 && idx <= lastKeywordStart) target.token = kwArray(idx)
-      }
-    }
-
-    /** Return buffer contents and clear */
-    def flushBuf(buf: StringBuilder): String = {
-      val str = buf.toString
-      buf.clear()
-      str
-    }
-
-    /** Convert current strVal to char value
-     */
-    def charVal: Char = if (strVal.length > 0) strVal.charAt(0) else 0
-
-    /** Convert current strVal, base to long value
-     *  This is tricky because of max negative value.
-     */
-    def intVal(negated: Boolean): Long = {
-      if (token == CHARLIT && !negated) {
-        charVal
-      } else {
-        var value: Long = 0
-        val divider = if (base == 10) 1 else 2
-        val limit: Long =
-          if (token == LONGLIT) Long.MaxValue else Int.MaxValue
-        var i = 0
-        val len = strVal.length
-        while (i < len) {
-          val d = digit2int(strVal charAt i, base)
-          if (d < 0) {
-            error("malformed integer number")
-            return 0
-          }
-          if (value < 0 ||
-              limit / (base / divider) < value ||
-              limit - (d / divider) < value * (base / divider) &&
-              !(negated && limit == value * base - 1 + d)) {
-                error("integer number too large")
-                return 0
-              }
-          value = value * base + d
-          i += 1
-        }
-        if (negated) -value else value
-      }
-    }
-
-    def intVal: Long = intVal(false)
-
-    /** Convert current strVal, base to double value
-    */
-    def floatVal(negated: Boolean): Double = {
-      val limit: Double =
-        if (token == DOUBLELIT) Double.MaxValue else Float.MaxValue
-      try {
-        val value: Double = java.lang.Double.valueOf(strVal).doubleValue()
-        if (value > limit)
-          error("floating point number too large")
-        if (negated) -value else value
-      } catch {
-        case _: NumberFormatException =>
-          error("malformed floating point number")
-          0.0
-      }
-    }
-
-    def floatVal: Double = floatVal(false)
-
     override def toString =
       showTokenDetailed(token) + {
         if ((identifierTokens contains token) || (literalTokens contains token)) " " + name
@@ -930,22 +952,6 @@ object Scanners {
       nextToken()
     }
 
-// Errors -----------------------------------------------------------------
-
-    /** Generate an error at the given offset */
-    def error(msg: String, off: Offset = offset) = {
-      ctx.error(msg, source atPos Position(off))
-      token = ERROR
-      errOffset = off
-    }
-
-    /** signal an error where the input ended in the middle of a token */
-    def incompleteInputError(msg: String): Unit = {
-      ctx.incompleteInputError(msg, source atPos Position(offset))
-      token = EOF
-      errOffset = offset
-    }
-
    /* Initialization: read first char, then first token */
     nextChar()
     nextToken()
@@ -953,14 +959,5 @@ object Scanners {
 
   // ------------- keyword configuration -----------------------------------
 
-  private def start(tok: Token) = tokenString(tok).toTermName.start
-  private def sourceKeywords = keywords.toList.filterNot(kw => tokenString(kw) contains ' ')
-
-  private val lastKeywordStart = sourceKeywords.map(start).max
-
-  private val kwArray: Array[Token] = {
-    val arr = Array.fill(lastKeywordStart + 1)(IDENTIFIER)
-    for (kw <- sourceKeywords) arr(start(kw)) = kw
-    arr
-  }
+  val (lastKeywordStart, kwArray) = buildKeywordArray(keywords)
 }

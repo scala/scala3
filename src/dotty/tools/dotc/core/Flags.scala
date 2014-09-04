@@ -356,6 +356,12 @@ object Flags {
   /** Symbol is a Java-style varargs method */
   final val JavaVarargs = termFlag(37, "<varargs>")
 
+  /** Symbol is a Java default method */
+  final val DefaultMethod = termFlag(38, "<defaultmethod>")
+
+  /** Symbol is a Java enum */
+  final val Enum = commonFlag(40, "<enum>")
+
   // Flags following this one are not pickled
 
   /** Symbol always defines a fresh named type */
@@ -547,6 +553,9 @@ object Flags {
 
   /** A Java interface, potentially with default methods */
   final val JavaTrait = allOf(JavaDefined, Trait, NoInits)
+  
+    /** A Java interface */
+  final val JavaInterface = allOf(JavaDefined, Trait)
 
   /** A Java companion object */
   final val JavaModule = allOf(JavaDefined, Module)
