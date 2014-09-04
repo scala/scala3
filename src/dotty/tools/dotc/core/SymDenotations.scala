@@ -469,7 +469,7 @@ object SymDenotations {
           // for not doing this outright is speed. We would like to avoid
           // creating a new context object each time we call accessWithin.
           // Note that the exception should be thrown only infrequently.
-          case ex: NotDefinedHere => test(ctx.withMode(Mode.FutureDefsOK))
+          case ex: NotDefinedHere => test(ctx.addMode(Mode.FutureDefsOK))
         }
       }
 
@@ -637,8 +637,12 @@ object SymDenotations {
     /** The class containing this denotation.
      *  If this denotation is already a class, return itself
      */
-    final def enclosingClass(implicit ctx: Context): Symbol =
-      if (isClass || !exists) symbol else owner.enclosingClass
+    final def enclosingClass(implicit ctx: Context): Symbol = {
+      def enclClass(d: SymDenotation): Symbol =
+        if (d.isClass || !d.exists) d.symbol else enclClass(d.owner)
+      val cls = enclClass(this)
+      if (this is InSuperCall) cls.owner.enclosingClass else cls
+    }
 
     final def isEffectivelyFinal(implicit ctx: Context): Boolean = {
       (this.flags is Flags.PrivateOrFinal) || (!this.owner.isClass) ||
