@@ -42,7 +42,7 @@ class TreeChecker {
   }
 
   object Checker extends ReTyper {
-    override def typed(tree: untpd.Tree, pt: Type)(implicit ctx: Context) = try {
+    override def typed(tree: untpd.Tree, pt: Type)(implicit ctx: Context) = {
       val res = tree match {
         case _: untpd.UnApply =>
           // can't recheck patterns
@@ -69,10 +69,6 @@ class TreeChecker {
         }
       if (ctx.erasedTypes) assertErased(res)
       res
-    } catch {
-      case ex: Throwable =>
-        println(i"exception while checking $tree of class ${tree.getClass} # ${tree.uniqueId}")
-        throw ex
     }
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
