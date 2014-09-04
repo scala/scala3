@@ -267,7 +267,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
     try test
     catch { // See remark in SymDenotations#accessWithin
-      case ex: NotDefinedHere => test(ctx.withMode(Mode.FutureDefsOK))
+      case ex: NotDefinedHere => test(ctx.addMode(Mode.FutureDefsOK))
     }
   }
 

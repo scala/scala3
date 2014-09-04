@@ -125,7 +125,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case JavaArrayType(elemtp) =>
         return toText(elemtp) ~ "[]"
       case tp: SelectionProto =>
-        return toText(RefinedType(WildcardType, tp.name, tp.memberProto))
+        return "?{ " ~ toText(tp.name) ~ ": " ~ toText(tp.memberProto) ~ " }"
       case tp: ViewProto =>
         return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
       case FunProto(args, resultType, _) =>
@@ -180,11 +180,15 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def annotText(tree: untpd.Tree): Text = "@" ~ constrText(tree) // DD
 
+    def useSymbol = ctx.isAfterTyper(ctx.phase) && tree.symbol != null && tree.symbol.exists
+
     def modText(mods: untpd.Modifiers, kw: String): Text = { // DD
       val suppressKw = if (ownerIsClass) mods is ParamAndLocal else mods is Param
       val flagMask = if (suppressKw) PrintableFlags &~ Private else PrintableFlags
-      val modsText: Text = (mods.flags & flagMask).toString
-      Text(mods.annotations.map(annotText), " ") ~~ modsText ~~ (kw provided !suppressKw)
+      val flagsText: Text =
+        if (useSymbol) toTextFlags(tree.symbol)
+        else (mods.flags & flagMask).toString
+      Text(mods.annotations.map(annotText), " ") ~~ flagsText ~~ (kw provided !suppressKw)
     }
 
     def argText(arg: Tree[T]): Text = arg match {
@@ -198,8 +202,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     def dclTextOr(treeText: => Text) =
-      if (ctx.isAfterTyper(ctx.phase) && tree.symbol != null && tree.symbol.exists)
-        annotsText(tree.symbol) ~~ dclText(tree.symbol)
+      if (useSymbol) annotsText(tree.symbol) ~~ dclText(tree.symbol)
       else treeText
 
     def idText(tree: untpd.Tree): Text = {

@@ -1081,7 +1081,7 @@ object TreeTransforms {
           implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForCaseDef, info.nx.nxPrepCaseDef, tree, cur)
           if (mutatedInfo eq null) tree
           else {
-            val pat = transform(tree.pat, mutatedInfo, cur)(ctx.withMode(Mode.Pattern))
+            val pat = transform(tree.pat, mutatedInfo, cur)(ctx.addMode(Mode.Pattern))
             val guard = transform(tree.guard, mutatedInfo, cur)
             val body = transform(tree.body, mutatedInfo, cur)
             goCaseDef(cpy.CaseDef(tree)(pat, guard, body), mutatedInfo.nx.nxTransCaseDef(cur))

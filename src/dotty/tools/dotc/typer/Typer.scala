@@ -951,8 +951,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               val typer1 = localTyper(sym)
               typer1.typedDefDef(tree, sym)(localContext(tree, sym).setTyper(typer1))
             case tree: untpd.TypeDef =>
-              if (tree.isClassDef) typedClassDef(tree, sym.asClass)(localContext(tree, sym))
-              else typedTypeDef(tree, sym)(localContext(tree, sym).setNewScope)
+              if (tree.isClassDef)
+                typedClassDef(tree, sym.asClass)(localContext(tree, sym).setMode(ctx.mode &~ Mode.InSuperCall))
+              else
+                typedTypeDef(tree, sym)(localContext(tree, sym).setNewScope)
             case _ => typedUnadapted(desugar(tree), pt)
           }
         }

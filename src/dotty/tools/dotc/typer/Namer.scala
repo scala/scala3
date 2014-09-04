@@ -200,7 +200,7 @@ class Namer { typer: Typer =>
       }
       else completer
 
-    typr.println(i"creating symbol for $tree")
+    typr.println(i"creating symbol for $tree in ${ctx.mode}")
 
     def checkNoConflict(name: Name): Unit = {
       def preExisting = ctx.effectiveScope.lookup(name)
@@ -213,12 +213,13 @@ class Namer { typer: Typer =>
       }
     }
 
+    val inSuperCall = if (ctx.mode is Mode.InSuperCall) InSuperCall else EmptyFlags
     tree match {
       case tree: TypeDef if tree.isClassDef =>
         val name = tree.name.encode.asTypeName
         checkNoConflict(name)
         val cls = record(ctx.newClassSymbol(
-          ctx.owner, name, tree.mods.flags,
+          ctx.owner, name, tree.mods.flags | inSuperCall,
           cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
           privateWithinClass(tree.mods), tree.pos, ctx.source.file))
         cls.completer.asInstanceOf[ClassCompleter].init()
@@ -229,6 +230,8 @@ class Namer { typer: Typer =>
         val isDeferred = lacksDefinition(tree)
         val deferred = if (isDeferred) Deferred else EmptyFlags
         val method = if (tree.isInstanceOf[DefDef]) Method else EmptyFlags
+        val inSuperCall1 = if (tree.mods is ParamOrAccessor) EmptyFlags else inSuperCall
+          // suppress inSuperCall for constructor parameters
         val higherKinded = tree match {
           case tree: TypeDef if tree.tparams.nonEmpty && isDeferred => HigherKinded
           case _ => EmptyFlags
@@ -243,7 +246,7 @@ class Namer { typer: Typer =>
         val cctx = if (tree.name == nme.CONSTRUCTOR) ctx.outer else ctx
 
         record(ctx.newSymbol(
-          ctx.owner, name, tree.mods.flags | deferred | method | higherKinded,
+          ctx.owner, name, tree.mods.flags | deferred | method | higherKinded | inSuperCall1,
           adjustIfModule(new Completer(tree)(cctx), tree),
           privateWithinClass(tree.mods), tree.pos))
       case tree: Import =>
@@ -428,7 +431,7 @@ class Namer { typer: Typer =>
   class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
     withDecls(newScope)
 
-    protected implicit val ctx: Context = localContext(cls)
+    protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
 
     val TypeDef(_, name, impl @ Template(constr, parents, self, body)) = original
 

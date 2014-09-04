@@ -154,7 +154,7 @@ object Checking {
    *                  by a `LazyRef`, or `ErrorType` if a cycle was detected and reported.
    */
   def checkNonCyclic(sym: Symbol, info: Type, reportErrors: Boolean)(implicit ctx: Context): Type = {
-    val checker = new CheckNonCyclicMap(sym, reportErrors)(ctx.withMode(Mode.CheckCyclic))
+    val checker = new CheckNonCyclicMap(sym, reportErrors)(ctx.addMode(Mode.CheckCyclic))
     try checker.checkInfo(info)
     catch {
       case ex: CyclicReference =>

@@ -238,9 +238,6 @@ object Flags {
  /** A mutable var */
   final val Mutable = termFlag(12, "mutable")
 
-  /** Class symbol is defined in this/superclass constructor. */
-  final val InConstructor = typeFlag(12, "<inconstructor>")
-
   /** Symbol is local to current class (i.e. private[this] or protected[this]
    *  pre: Private or Protected are also set
    */
@@ -359,6 +356,9 @@ object Flags {
 
   // Flags following this one are not pickled
 
+  /** Symbol is defined in a super call */
+  final val InSuperCall = commonFlag(46, "<in supercall>")
+
   /** Symbol with private access is accessed outside its private scope */
   final val NotJavaPrivate = commonFlag(47, "<not-java-private>")
 
@@ -432,8 +432,8 @@ object Flags {
 
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
-    AccessFlags | Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon | Touched |
-    Static | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
+    AccessFlags | Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon |
+    InSuperCall | Touched | Static | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
     CaseAccessorOrTypeArgument | Frozen | Erroneous | ImplicitCommon | Permanent | SelfNameOrImplClass
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
@@ -476,7 +476,7 @@ object Flags {
 
   /** Flags that can apply to a module class */
   final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags |
-    InConstructor | ImplClass
+    InSuperCall | ImplClass
 
   /** Packages and package classes always have these flags set */
   final val PackageCreationFlags =

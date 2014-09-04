@@ -267,6 +267,7 @@ object Contexts {
      *  - as owner: The primary constructor of the class
      *  - as outer context: The context enclosing the class context
      *  - as scope: The parameter accessors in the class context
+     *  - with additional mode: InSuperCall
      *
      *  The reasons for this peculiar choice of attributes are as follows:
      *
@@ -303,7 +304,7 @@ object Contexts {
     /** The super= or this-call context with given owner and locals. */
     private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext = {
       assert(isClassDefContext)
-      outer.fresh.setOwner(owner).setScope(locals)
+      outer.fresh.setOwner(owner).setScope(locals).setMode(ctx.mode | Mode.InSuperCall)
     }
 
     /** The current source file; will be derived from current
