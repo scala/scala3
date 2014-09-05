@@ -157,10 +157,15 @@ object Decorators {
           (treatSingleArg(arg), suffix)
       }
 
-      def treatSingleArg(arg: Any) : Any = arg match {
-        case arg: Showable => arg.show
-        case _ => arg
-      }
+      def treatSingleArg(arg: Any) : Any =
+        try
+          arg match {
+            case arg: Showable => arg.show
+            case _ => arg
+          }
+        catch {
+          case ex: Exception => s"(missing due to $ex)"
+        }
 
       val prefix :: suffixes = sc.parts.toList
       val (args1, suffixes1) = (args, suffixes).zipped.map(treatArg(_, _)).unzip
