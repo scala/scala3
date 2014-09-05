@@ -1253,6 +1253,14 @@ object Types {
       else denot.symbol
     }
 
+    /** Retrieves currently valid symbol without necessarily updating denotation.
+     *  Assumes that symbols do not change between periods in the same run.
+     *  Used to get the class underlying a ThisType.
+     */
+    private[Types] def stableInRunSymbol(implicit ctx: Context): Symbol =
+      if (checkedPeriod.runId == ctx.runId) lastSymbol
+      else symbol
+
     def info(implicit ctx: Context): Type = denot.info
 
     def isType = isInstanceOf[TypeRef]
@@ -1526,7 +1534,7 @@ object Types {
   object TypeRef {
     /** Create type ref with given prefix and name */
     def apply(prefix: Type, name: TypeName)(implicit ctx: Context): TypeRef =
-      ctx.uniqueNamedTypes.enterIfNew(atCurrentPhase(prefix), name).asInstanceOf[TypeRef]
+      ctx.uniqueNamedTypes.enterIfNew(prefix, name).asInstanceOf[TypeRef]
 
     /** Create type ref to given symbol */
     def apply(prefix: Type, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
@@ -1536,7 +1544,7 @@ object Types {
      *  with given prefix, name, and symbol.
      */
     def withNonMemberSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      unique(new NonMemberTypeRef(atCurrentPhase(prefix), name, sym))
+      unique(new NonMemberTypeRef(prefix, name, sym))
 
     /** Create a type ref referring to given symbol with given name.
      *  This is very similar to TypeRef(Type, Symbol),
@@ -1545,12 +1553,12 @@ object Types {
      *  (2) The name in the type ref need not be the same as the name of the Symbol.
      */
     def withSymAndName(prefix: Type, sym: TypeSymbol, name: TypeName)(implicit ctx: Context): TypeRef =
-      if (isMissing(prefix)) withNonMemberSym(prefix, name, sym)
+      if (prefix eq NoPrefix) withNonMemberSym(prefix, name, sym)
       else apply(prefix, name).withSym(sym, Signature.NotAMethod)
 
     /** Create a type ref with given name and initial denotation */
     def apply(prefix: Type, name: TypeName, denot: Denotation)(implicit ctx: Context): TypeRef =
-      (if (isMissing(prefix)) apply(prefix, denot.symbol.asType) else apply(prefix, name)) withDenot denot
+      (if (prefix eq NoPrefix) apply(prefix, denot.symbol.asType) else apply(prefix, name)) withDenot denot
   }
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
@@ -1561,7 +1569,7 @@ object Types {
    *  do not survive runs whereas typerefs do.
    */
   abstract case class ThisType(tref: TypeRef) extends CachedProxyType with SingletonType {
-    def cls(implicit ctx: Context): ClassSymbol = tref.symbol.asClass
+    def cls(implicit ctx: Context): ClassSymbol = tref.stableInRunSymbol.asClass
     override def underlying(implicit ctx: Context): Type =
       if (ctx.erasedTypes) tref else cls.classInfo.selfType
     override def computeHash = doHash(tref)
