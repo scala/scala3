@@ -4,6 +4,7 @@ package core
 
 import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
 import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._
+import TypeApplications._
 import pickling.UnPickler.ensureConstructor
 import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
@@ -103,10 +104,10 @@ class Definitions {
   lazy val EmptyPackageVal = EmptyPackageClass.sourceModule.entered
 
   lazy val ScalaPackageVal = ctx.requiredPackage("scala")
+  lazy val ScalaMathPackageVal = ctx.requiredPackage("scala.math")
   lazy val ScalaPackageClass = ScalaPackageVal.moduleClass.asClass
   lazy val JavaPackageVal = ctx.requiredPackage("java")
   lazy val JavaLangPackageVal = ctx.requiredPackage("java.lang")
-
   // fundamental modules
   lazy val SysPackage = ctx.requiredModule("scala.sys.package")
     def Sys_error = ctx.requiredMethod(SysPackage.moduleClass.asClass, nme.error)
@@ -191,7 +192,6 @@ class Definitions {
   lazy val ScalaStaticsClass = ScalaStaticsModule.moduleClass.asClass
 
     def staticsMethod(name: PreName) = ctx.requiredMethod(ScalaStaticsClass, name)
-
   lazy val DottyPredefModule = ctx.requiredModule("dotty.DottyPredef")
   lazy val NilModule = ctx.requiredModule("scala.collection.immutable.Nil")
   lazy val PredefConformsClass = ctx.requiredClass("scala.Predef." + tpnme.Conforms)
@@ -204,11 +204,15 @@ class Definitions {
       ScalaPackageClass, tpnme.Singleton, Trait | Interface | Final,
       List(AnyClass.typeRef), EmptyScope)
   lazy val SeqClass: ClassSymbol = ctx.requiredClass("scala.collection.Seq")
+    lazy val Seq_apply = ctx.requiredMethod(SeqClass, nme.apply)
+    lazy val Seq_head = ctx.requiredMethod(SeqClass, nme.head)
   lazy val ArrayClass: ClassSymbol = ctx.requiredClass("scala.Array")
     lazy val Array_apply                 = ctx.requiredMethod(ArrayClass, nme.apply)
     lazy val Array_update                = ctx.requiredMethod(ArrayClass, nme.update)
     lazy val Array_length                = ctx.requiredMethod(ArrayClass, nme.length)
     lazy val Array_clone                 = ctx.requiredMethod(ArrayClass, nme.clone_)
+  lazy val traversableDropMethod  = ctx.requiredMethod(ScalaRuntimeModuleClass, nme.drop)
+  lazy val uncheckedStableClass: ClassSymbol = ctx.requiredClass("scala.annotation.unchecked.uncheckedStable")
 
   lazy val UnitClass = valueClassSymbol("scala.Unit", BoxedUnitClass, java.lang.Void.TYPE, UnitEnc)
   lazy val BooleanClass = valueClassSymbol("scala.Boolean", BoxedBooleanClass, java.lang.Boolean.TYPE, BooleanEnc)
@@ -220,6 +224,13 @@ class Definitions {
   lazy val ShortClass = valueClassSymbol("scala.Short", BoxedShortClass, java.lang.Short.TYPE, ShortEnc)
   lazy val CharClass = valueClassSymbol("scala.Char", BoxedCharClass, java.lang.Character.TYPE, CharEnc)
   lazy val IntClass = valueClassSymbol("scala.Int", BoxedIntClass, java.lang.Integer.TYPE, IntEnc)
+    lazy val Int_-   = IntClass.requiredMethod(nme.MINUS, List(IntType))
+    lazy val Int_+   = IntClass.requiredMethod(nme.PLUS, List(IntType))
+    lazy val Int_/   = IntClass.requiredMethod(nme.DIV, List(IntType))
+    lazy val Int_*   = IntClass.requiredMethod(nme.MUL, List(IntType))
+    lazy val Int_==   = IntClass.requiredMethod(nme.EQ, List(IntType))
+    lazy val Int_>=   = IntClass.requiredMethod(nme.GE, List(IntType))
+    lazy val Int_<=   = IntClass.requiredMethod(nme.LE, List(IntType))
   lazy val LongClass = valueClassSymbol("scala.Long", BoxedLongClass, java.lang.Long.TYPE, LongEnc)
     lazy val Long_XOR_Long = LongClass.info.member(nme.XOR).requiredSymbol(
       x => (x is Method) && (x.info.firstParamTypes.head isRef defn.LongClass)
@@ -264,6 +275,8 @@ class Definitions {
   lazy val JavaCloneableClass        = ctx.requiredClass("java.lang.Cloneable")
   lazy val StringBuilderClass        = ctx.requiredClass("scala.collection.mutable.StringBuilder")
   lazy val NullPointerExceptionClass = ctx.requiredClass(jnme.NPException)
+  lazy val MatchErrorClass           = ctx.requiredClass("scala.MatchError")
+  lazy val MatchErrorType            = MatchErrorClass.typeRef
 
   lazy val StringAddClass               = ctx.requiredClass("scala.runtime.StringAdd")
 
@@ -282,9 +295,7 @@ class Definitions {
   lazy val JavaSerializableClass        = ctx.requiredClass("java.lang.Serializable")
   lazy val ComparableClass              = ctx.requiredClass("java.lang.Comparable")
   lazy val ProductClass                 = ctx.requiredClass("scala.Product")
-
     lazy val Product_canEqual = ProductClass.requiredMethod(nme.canEqual_)
-
   lazy val LanguageModuleClass          = ctx.requiredModule("dotty.language").moduleClass.asClass
 
   // Annotation base classes
@@ -330,6 +341,7 @@ class Definitions {
   def NothingType: Type = NothingClass.typeRef
   def NullType: Type = NullClass.typeRef
   def SeqType: Type = SeqClass.typeRef
+  def ObjectArrayType = ArrayType(ObjectType)
 
   def UnitType: Type = UnitClass.typeRef
   def BooleanType: Type = BooleanClass.typeRef
@@ -411,18 +423,27 @@ class Definitions {
   lazy val TupleClasses: Set[Symbol] = TupleClass.toSet
   lazy val ProductClasses: Set[Symbol] = ProductNClass.toSet
 
+  lazy val RepeatedParamClasses: Set[Symbol] = Set(RepeatedParamClass, JavaRepeatedParamClass)
+
   /** `Modules whose members are in the default namespace and their module classes */
   lazy val UnqualifiedOwners = RootImports.toSet ++ RootImports.map(_.moduleClass)
 
   lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
 
+  lazy val asInstanceOfMethods = Set[Symbol](Any_asInstanceOf)
+  lazy val isInstanceOfMethods = Set[Symbol](Any_isInstanceOf)
+  lazy val typeTestsOrCasts    = asInstanceOfMethods ++ isInstanceOfMethods
+
   lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
 
   lazy val overriddenBySynthetic = Set[Symbol](Any_equals, Any_hashCode, Any_toString, Product_canEqual)
-
   def isTupleType(tp: Type)(implicit ctx: Context) = {
     val arity = tp.dealias.argInfos.length
     arity <= MaxTupleArity && (tp isRef TupleClass(arity))
+  }
+
+  def tupleType(elems: List[Type]) = {
+    TupleClass(elems.size).typeRef.appliedTo(elems)
   }
 
   def isProductSubType(tp: Type)(implicit ctx: Context) =
@@ -574,6 +595,7 @@ class Definitions {
     AnyClass,
     AnyRefAlias,
     RepeatedParamClass,
+    JavaRepeatedParamClass,
     ByNameParamClass2x,
     AnyValClass,
     NullClass,

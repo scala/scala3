@@ -257,7 +257,8 @@ object Trees {
      *   an UnAssignedTypeException is thrown. (Overridden by empty trees)
      */
     def tpe: T @uncheckedVariance = {
-      if (myTpe == null) throw new UnAssignedTypeException(this)
+      if (myTpe == null)
+        throw new UnAssignedTypeException(this)
       myTpe
     }
 
