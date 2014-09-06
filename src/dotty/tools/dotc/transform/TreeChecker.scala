@@ -13,6 +13,7 @@ import core.Constants._
 import core.StdNames._
 import core.Decorators._
 import core.TypeErasure.isErasedType
+import core.Phases.Phase
 import typer._
 import typer.ErrorReporting._
 import reporting.ThrowingReporter
@@ -34,14 +35,15 @@ import java.lang.AssertionError
 class TreeChecker {
   import ast.tpd._
 
-  def check(ctx: Context) = {
+  def check(phasesToRun: Seq[Phase], ctx: Context) = {
     println(s"checking ${ctx.compilationUnit} after phase ${ctx.phase.prev}")
     val checkingCtx = ctx.fresh
       .setTyperState(ctx.typerState.withReporter(new ThrowingReporter(ctx.typerState.reporter)))
-    Checker.typedExpr(ctx.compilationUnit.tpdTree)(checkingCtx)
+    val checker = new Checker(phasesToRun.takeWhile(_ ne ctx.phase) :+ ctx.phase)
+    checker.typedExpr(ctx.compilationUnit.tpdTree)(checkingCtx)
   }
 
-  object Checker extends ReTyper {
+  class Checker(phasesToCheck: Seq[Phase]) extends ReTyper {
     override def typed(tree: untpd.Tree, pt: Type)(implicit ctx: Context) = {
       val res = tree match {
         case _: untpd.UnApply =>
@@ -67,15 +69,7 @@ class TreeChecker {
           assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
           tree1
         }
-      if (ctx.erasedTypes) {
-        assertErased(res)
-        res match {
-          case res: This =>
-            assert(!ExplicitOuter.referencesOuter(ctx.owner.enclosingClass, res),
-              i"Reference to $res from ${ctx.owner.showLocated}")
-          case _ =>
-        }
-      }
+      phasesToCheck.foreach(_.checkPostCondition(res))
       res
     }
 
@@ -125,27 +119,6 @@ class TreeChecker {
             err.typeMismatchStr(tree.tpe, pt))
       tree
     }
-  }
-
-  def assertErased(tp: Type, tree: Tree = EmptyTree)(implicit ctx: Context): Unit =
-    assert(isErasedType(tp), i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase}")
-
-  /** Assert that tree type and its widened underlying type are erased.
-   *  Also assert that term refs have fixed symbols (so we are sure
-   *  they need not be reloaded using member; this would likely fail as signatures
-   *  may change after erasure).
-   */
-  def assertErased(tree: Tree)(implicit ctx: Context): Unit = {
-    assertErased(tree.typeOpt, tree)
-    if (!(tree.symbol == defn.Any_isInstanceOf || tree.symbol == defn.Any_asInstanceOf))
-      assertErased(tree.typeOpt.widen, tree)
-    if (ctx.mode.isExpr)
-      tree.tpe match {
-        case ref: TermRef =>
-          assert(ref.denot.isInstanceOf[SymDenotation],
-            i"non-sym type $ref of class ${ref.getClass} with denot of class ${ref.denot.getClass} of $tree")
-        case _ =>
-      }
   }
 }
 

@@ -71,6 +71,37 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
     val unit = ctx.compilationUnit
     unit.tpdTree = eraser.typedExpr(unit.tpdTree)(ctx.fresh.setPhase(this.next))
   }
+
+  override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context) = {
+    assertErased(tree)
+    tree match {
+      case res: tpd.This =>
+        assert(!ExplicitOuter.referencesOuter(ctx.owner.enclosingClass, res),
+          i"Reference to $res from ${ctx.owner.showLocated}")
+      case _ =>
+    }
+  }
+
+  /** Assert that tree type and its widened underlying type are erased.
+   *  Also assert that term refs have fixed symbols (so we are sure
+   *  they need not be reloaded using member; this would likely fail as signatures
+   *  may change after erasure).
+   */
+  def assertErased(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+    assertErased(tree.typeOpt, tree)
+    if (!(tree.symbol == defn.Any_isInstanceOf || tree.symbol == defn.Any_asInstanceOf))
+      assertErased(tree.typeOpt.widen, tree)
+    if (ctx.mode.isExpr)
+      tree.tpe match {
+        case ref: TermRef =>
+          assert(ref.denot.isInstanceOf[SymDenotation],
+            i"non-sym type $ref of class ${ref.getClass} with denot of class ${ref.denot.getClass} of $tree")
+        case _ =>
+      }
+  }
+
+  def assertErased(tp: Type, tree: tpd.Tree = tpd.EmptyTree)(implicit ctx: Context): Unit =
+    assert(isErasedType(tp), i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase}")
 }
 
 object Erasure {

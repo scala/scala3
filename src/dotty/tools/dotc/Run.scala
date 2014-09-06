@@ -37,17 +37,18 @@ class Run(comp: Compiler)(implicit ctx: Context) {
       val phasesToRun = ctx.allPhases.init
         .takeWhile(!stoppedBefore(_))
         .filterNot(ctx.settings.Yskip.value.containsPhase(_))
-      for (phase <- phasesToRun) {
+      for (phase <- phasesToRun)
         if (!ctx.reporter.hasErrors) {
           phase.runOn(units)
           def foreachUnit(op: Context => Unit)(implicit ctx: Context): Unit =
             for (unit <- units) op(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
           if (ctx.settings.Xprint.value.containsPhase(phase))
             foreachUnit(printTree)
-          if (ctx.settings.Ycheck.value.containsPhase(phase) && !ctx.reporter.hasErrors)
-            foreachUnit(TreeChecker.check)
+          if (ctx.settings.Ycheck.value.containsPhase(phase) && !ctx.reporter.hasErrors) {
+            assert(phase.isCheckable, s"phase $phase is not checkable")
+            foreachUnit(TreeChecker.check(phasesToRun, _))
+          }
         }
-      }
     }
   }
 

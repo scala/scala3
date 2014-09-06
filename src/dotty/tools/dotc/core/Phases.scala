@@ -12,6 +12,7 @@ import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, MiniPhase, Tr
 import dotty.tools.dotc.transform.TreeTransforms
 import Periods._
 import typer.{FrontEnd, RefChecks}
+import ast.tpd
 import dotty.tools.dotc.transform.{Erasure, Flatten}
 
 trait Phases {
@@ -191,7 +192,12 @@ object Phases {
 
     def description: String = phaseName
 
-    def checkable: Boolean = true
+    /** Output should be checkable by TreeChecker */
+    def isCheckable: Boolean = true
+
+    /** Check what the phase achieves, to be called at any point after it is finished.
+     */
+    def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = ()
 
     def exists: Boolean = true
 
