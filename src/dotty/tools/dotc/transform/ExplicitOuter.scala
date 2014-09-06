@@ -18,9 +18,8 @@ import collection.mutable
 
 /** This phase adds outer accessors to classes and traits that need them.
  *  Compared to Scala 2.x, it tries to minimize the set of classes
- *  that take outer accessors and also tries to minimize the number
- *  of objects referred to by outer accessors. This helps prevent space
- *  leaks.
+ *  that take outer accessors by scanning class implementations for
+ *  outer references.
  *
  *  The following things are delayed until erasure and are performed
  *  by class OuterOps:
@@ -43,7 +42,7 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
     case tp @ ClassInfo(_, cls, _, decls, _) if needsOuterAlways(cls) =>
       val newDecls = decls.cloneScope
-      newExplicitOuter(cls).foreach(newDecls.enter)
+      newOuterAccessors(cls).foreach(newDecls.enter)
       tp.derivedClassInfo(decls = newDecls)
     case _ =>
       tp
@@ -67,12 +66,12 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
     newOuterSym(cls, cls, nme.OUTER, Private | ParamAccessor)
 
   /** The outer accessor and potentially outer param accessor needed for class `cls` */
-  private def newExplicitOuter(cls: ClassSymbol)(implicit ctx: Context) =
+  private def newOuterAccessors(cls: ClassSymbol)(implicit ctx: Context) =
     newOuterAccessor(cls, cls) :: (if (cls is Trait) Nil else newOuterParamAccessor(cls) :: Nil)
 
   /** First, add outer accessors if a class does not have them yet and it references an outer this.
    *  If the class has outer accessors, implement them.
-   *  Furthermore, if a parent trait might have outer accessors (decided by needsOuterIfReferenced),
+   *  Furthermore, if a parent trait might have an outer accessor,
    *  provide an implementation for the outer accessor by computing the parent's
    *  outer from the parent type prefix. If the trait ends up not having an outer accessor
    *  after all, the implementation is redundant, but does not harm.
@@ -84,8 +83,10 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
   override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val cls = ctx.owner.asClass
     val isTrait = cls.is(Trait)
-    if (needsOuterIfReferenced(cls) && !needsOuterAlways(cls) && referencesOuter(cls, impl))
-      newExplicitOuter(cls).foreach(_.enteredAfter(thisTransformer))
+    if (needsOuterIfReferenced(cls) &&
+        !needsOuterAlways(cls) &&
+        existsSubTreeOf(impl)(referencesOuter(cls, _)))
+      newOuterAccessors(cls).foreach(_.enteredAfter(thisTransformer))
     if (hasOuter(cls)) {
       val newDefs = new mutable.ListBuffer[Tree]
       if (isTrait)
@@ -150,7 +151,15 @@ object ExplicitOuter {
   private def outerParamAccessor(cls: ClassSymbol)(implicit ctx: Context): TermSymbol =
     cls.info.decl(nme.OUTER).symbol.asTerm
 
-  /** The outer access of class `cls` */
+  /** The outer accessor of class `cls`. To find it is a bit tricky. The
+   *  class might have been moved with new owners between ExplicitOuter and Erasure,
+   *  where the method is also called. For instance, it might have been part
+   *  of a by-name argument, and therefore be moved under a closure method
+   *  by ElimByName. In that case looking up the method again at Erasure with the
+   *  fully qualified name `outerAccName` will fail, because the `outerAccName`'s
+   *  result is phase dependent. In that case we use a backup strategy where we search all
+   *  definitions in the class to find the one with the OuterAccessor flag.
+   */
   private def outerAccessor(cls: ClassSymbol)(implicit ctx: Context): Symbol =
     cls.info.member(outerAccName(cls)).suchThat(_ is OuterAccessor).symbol orElse
       cls.info.decls.find(_ is OuterAccessor).getOrElse(NoSymbol)
@@ -159,17 +168,28 @@ object ExplicitOuter {
   private def hasOuter(cls: ClassSymbol)(implicit ctx: Context): Boolean =
     needsOuterIfReferenced(cls) && outerAccessor(cls).exists
 
-  /** Template `impl` of class `cls` references an outer this which goes to
-   *  a class that is not a static owner.
+  /** Tree references a an outer class of `cls` which is not a static owner.
    */
-  private def referencesOuter(cls: ClassSymbol, impl: Template)(implicit ctx: Context): Boolean =
-    existsSubTreeOf(impl) {
+  def referencesOuter(cls: Symbol, tree: Tree)(implicit ctx: Context): Boolean = {
+    def isOuter(sym: Symbol) =
+      sym != cls && !sym.isStaticOwner && cls.isContainedIn(sym)
+    tree match {
       case thisTree @ This(_) =>
-        val thisCls = thisTree.symbol
-        thisCls != cls && !thisCls.isStaticOwner && cls.isContainedIn(thisCls)
+        isOuter(thisTree.symbol)
+      case id: Ident =>
+        id.tpe match {
+          case ref @ TermRef(NoPrefix, _) =>
+            ref.symbol.is(Method) && isOuter(id.symbol.owner.enclosingClass)
+            // methods will be placed in enclosing class scope by LambdaLift, so they will get
+            // an outer path then.
+          case _ => false
+        }
+      case nw: New =>
+        isOuter(nw.tpe.classSymbol.owner.enclosingClass)
       case _ =>
-        false
+       false
     }
+  }
 
   /** The outer prefix implied by type `tpe` */
   private def outerPrefix(tpe: Type)(implicit ctx: Context): Type = tpe match {
@@ -222,13 +242,16 @@ object ExplicitOuter {
       if (fun.symbol.isConstructor) {
         val cls = fun.symbol.owner.asClass
         def outerArg(receiver: Tree): Tree = receiver match {
-          case New(tpt) => TypeTree(outerPrefix(tpt.tpe)).withPos(tpt.pos)
-          case This(_) => ref(outerParamAccessor(cls))
-          case TypeApply(Select(r, nme.asInstanceOf_), args) => outerArg(r) // cast was inserted, skip
+          case New(tpt) =>
+            singleton(outerPrefix(tpt.tpe))
+          case This(_) =>
+            ref(outerParamAccessor(cls)) // will be rewried to outer argument of secondary constructor in phase Constructors
+          case TypeApply(Select(r, nme.asInstanceOf_), args) =>
+            outerArg(r) // cast was inserted, skip
         }
         if (hasOuter(cls))
           methPart(fun) match {
-            case Select(receiver, _) => outerArg(receiver) :: Nil
+            case Select(receiver, _) => outerArg(receiver).withPos(fun.pos) :: Nil
           }
         else Nil
       } else Nil

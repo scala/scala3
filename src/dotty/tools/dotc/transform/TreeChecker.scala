@@ -67,7 +67,15 @@ class TreeChecker {
           assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
           tree1
         }
-      if (ctx.erasedTypes) assertErased(res)
+      if (ctx.erasedTypes) {
+        assertErased(res)
+        res match {
+          case res: This =>
+            assert(!ExplicitOuter.referencesOuter(ctx.owner.enclosingClass, res),
+              i"Reference to $res from ${ctx.owner.showLocated}")
+          case _ =>
+        }
+      }
       res
     }
 

@@ -5,6 +5,7 @@ class Outer(elem: Int, val next: Outer) {
   }
 
   class InnerClass(x: Int) extends next.InnerTrait {
+    def this() = this(3)
     def bar = elem + x
   }
 
@@ -18,6 +19,7 @@ class Outer(elem: Int, val next: Outer) {
     }
 
     class InnerClass(x: Int) extends next.InnerTrait {
+      def this() = this(3)
       def bar = elem + x
     }
 
@@ -33,6 +35,18 @@ class Outer(elem: Int, val next: Outer) {
     val ec = new EmptyInnerClass
   }
 
+  def inner2 = {
+    class C {
+      val x = elem
+    }
+    class D {
+      new C
+    }
+    class E {
+      f()
+    }
+    def f() = ()
+  }
 }
 
 object Test extends App {

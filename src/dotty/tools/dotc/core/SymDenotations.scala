@@ -636,6 +636,11 @@ object SymDenotations {
 
     /** The class containing this denotation.
      *  If this denotation is already a class, return itself
+     *  Definitions flagged with InSuperCall are treated specially.
+     *  Their enclosing class is not the lexically enclosing class,
+     *  but in turn the enclosing class of the latter. This reflects
+     *  the context created by `Context#superCallContext`, `Contect#thisCallArgContext`
+     *  for these definitions.
      */
     final def enclosingClass(implicit ctx: Context): Symbol = {
       def enclClass(d: SymDenotation): Symbol =

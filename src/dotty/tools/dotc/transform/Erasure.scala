@@ -309,7 +309,7 @@ object Erasure {
         case fun1 =>
           fun1.tpe.widen match {
             case mt: MethodType =>
-              val outers = outer.args(fun1) map untpd.TypedSplice
+              val outers = outer.args(fun.asInstanceOf[tpd.Tree]) // can't use fun1 here because its type is already erased
               val args1 = (outers ::: args ++ protoArgs(pt)).zipWithConserve(mt.paramTypes)(typedExpr)
               untpd.cpy.Apply(tree)(fun1, args1) withType mt.resultType
             case _ =>
