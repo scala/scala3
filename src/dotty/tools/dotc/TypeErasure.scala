@@ -3,7 +3,7 @@ package dotc
 package core
 
 import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators._, Flags.JavaDefined
-import dotc.transform.OuterAccessors._
+import dotc.transform.ExplicitOuter._
 import util.DotClass
 
 /** Erased types are:

@@ -24,7 +24,7 @@ import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Flags
 import ValueClasses._
 import TypeUtils._
-import OuterAccessors._
+import ExplicitOuter._
 import typer.Mode
 
 class Erasure extends Phase with DenotTransformer { thisTransformer =>

@@ -16,17 +16,26 @@ import SymUtils._
 import util.Attachment
 import collection.mutable
 
-/** This phase decorates News and parent constructors of non-static inner classes
- *  with an attachment indicating the outer reference as a tree. This is necessary because
- *  outer prefixes are erased, and explicit outer runs only after erasure.
+/** This phase adds outer accessors to classes and traits that need them.
+ *  Compared to Scala 2.x, it tries to minimize the set of classes
+ *  that take outer accessors and also tries to minimize the number
+ *  of objects referred to by outer accessors. This helps prevent space
+ *  leaks.
+ *
+ *  The following things are delayed until erasure and are performed
+ *  by class OuterOps:
+ *
+ *   - add outer parameters to constructors
+ *   - pass outer arguments in constructor calls
+ *   - replace outer this by outer paths.
  */
-class OuterAccessors extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
-  import OuterAccessors._
+class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
+  import ExplicitOuter._
   import ast.tpd._
 
   val Outer = new Attachment.Key[Tree]
 
-  override def phaseName: String = "outerAccessors"
+  override def phaseName: String = "ExplicitOuter"
 
   override def treeTransformPhase = thisTransformer.next
 
@@ -34,7 +43,7 @@ class OuterAccessors extends MiniPhaseTransform with InfoTransformer { thisTrans
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
     case tp @ ClassInfo(_, cls, _, decls, _) if needsOuterAlways(cls) =>
       val newDecls = decls.cloneScope
-      newOuterAccessors(cls).foreach(newDecls.enter)
+      newExplicitOuter(cls).foreach(newDecls.enter)
       tp.derivedClassInfo(decls = newDecls)
     case _ =>
       tp
@@ -58,7 +67,7 @@ class OuterAccessors extends MiniPhaseTransform with InfoTransformer { thisTrans
     newOuterSym(cls, cls, nme.OUTER, Private | ParamAccessor)
 
   /** The outer accessor and potentially outer param accessor needed for class `cls` */
-  private def newOuterAccessors(cls: ClassSymbol)(implicit ctx: Context) =
+  private def newExplicitOuter(cls: ClassSymbol)(implicit ctx: Context) =
     newOuterAccessor(cls, cls) :: (if (cls is Trait) Nil else newOuterParamAccessor(cls) :: Nil)
 
   /** First, add outer accessors if a class does not have them yet and it references an outer this.
@@ -76,7 +85,7 @@ class OuterAccessors extends MiniPhaseTransform with InfoTransformer { thisTrans
     val cls = ctx.owner.asClass
     val isTrait = cls.is(Trait)
     if (needsOuterIfReferenced(cls) && !needsOuterAlways(cls) && referencesOuter(cls, impl))
-      newOuterAccessors(cls).foreach(_.enteredAfter(thisTransformer))
+      newExplicitOuter(cls).foreach(_.enteredAfter(thisTransformer))
     if (hasOuter(cls)) {
       val newDefs = new mutable.ListBuffer[Tree]
       if (isTrait)
@@ -107,7 +116,7 @@ class OuterAccessors extends MiniPhaseTransform with InfoTransformer { thisTrans
   }
 }
 
-object OuterAccessors {
+object ExplicitOuter {
   import ast.tpd._
 
   private val LocalInstantiationSite = Module | Private
@@ -146,7 +155,7 @@ object OuterAccessors {
     cls.info.member(outerAccName(cls)).suchThat(_ is OuterAccessor).symbol orElse
       cls.info.decls.find(_ is OuterAccessor).getOrElse(NoSymbol)
 
-  /** Class has an outer accessor. Can be called only after phase OuterAccessors. */
+  /** Class has an outer accessor. Can be called only after phase ExplicitOuter. */
   private def hasOuter(cls: ClassSymbol)(implicit ctx: Context): Boolean =
     needsOuterIfReferenced(cls) && outerAccessor(cls).exists
 

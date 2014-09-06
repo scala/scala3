@@ -54,7 +54,7 @@ class Compiler {
            new ElimRepeated,
            new ElimLocals),
       List(new ExtensionMethods),
-      List(new TailRec, new OuterAccessors),
+      List(new TailRec, new ExplicitOuter),
       List(new PatternMatcher,
            // new LazyValTranformContext().transformer, // disabled, awaiting fixes
            new Splitter),
