@@ -69,6 +69,11 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
   private def newOuterAccessors(cls: ClassSymbol)(implicit ctx: Context) =
     newOuterAccessor(cls, cls) :: (if (cls is Trait) Nil else newOuterParamAccessor(cls) :: Nil)
 
+  /** Ensure that class `cls` has outer accessors */
+  def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit = {
+    if (!hasOuter(cls)) newOuterAccessors(cls).foreach(_.enteredAfter(thisTransformer))
+  }
+
   /** First, add outer accessors if a class does not have them yet and it references an outer this.
    *  If the class has outer accessors, implement them.
    *  Furthermore, if a parent trait might have an outer accessor,
@@ -86,7 +91,7 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
     if (needsOuterIfReferenced(cls) &&
         !needsOuterAlways(cls) &&
         impl.existsSubTree(referencesOuter(cls, _)))
-      newOuterAccessors(cls).foreach(_.enteredAfter(thisTransformer))
+      ensureOuterAccessors(cls)
     if (hasOuter(cls)) {
       val newDefs = new mutable.ListBuffer[Tree]
       if (isTrait)
