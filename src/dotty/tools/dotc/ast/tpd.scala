@@ -356,22 +356,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       } else foldOver(sym, tree)
   }
 
-  // --- Higher order traversal methods -------------------------------
-
-  def foreachSubTreeOf(tree: Tree)(f: Tree => Unit): Unit = { //TODO should go in tpd.
-    val traverser = new TreeTraverser {
-      def traverse(tree: Tree) = foldOver(f(tree), tree)
-    }
-    traverser.traverse(tree)
-  }
-
-  def existsSubTreeOf(tree: Tree)(p: Tree => Boolean): Boolean = {
-    val acc = new TreeAccumulator[Boolean] {
-      def apply(x: Boolean, t: Tree) = x || p(t) || foldOver(x, t)
-    }
-    acc(false, tree)
-  }
-
   override val cpy = new TypedTreeCopier
 
   class TypedTreeCopier extends TreeCopier {
@@ -583,6 +567,22 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def or(that: Tree)(implicit ctx: Context): Tree =
       tree.select(defn.Boolean_||).appliedTo(that)
+
+    // --- Higher order traversal methods -------------------------------
+
+    def foreachSubTree(f: Tree => Unit): Unit = { //TODO should go in tpd.
+      val traverser = new TreeTraverser {
+        def traverse(tree: Tree) = foldOver(f(tree), tree)
+      }
+      traverser.traverse(tree)
+    }
+
+    def existsSubTree(p: Tree => Boolean): Boolean = {
+      val acc = new TreeAccumulator[Boolean] {
+        def apply(x: Boolean, t: Tree) = x || p(t) || foldOver(x, t)
+      }
+      acc(false, tree)
+    }
   }
 
   implicit class ListOfTreeDecorator(val xs: List[tpd.Tree]) extends AnyVal {

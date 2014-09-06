@@ -615,7 +615,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         def typedCase(tree: untpd.CaseDef): CaseDef = track("typedCase") {
           def caseRest(pat: Tree)(implicit ctx: Context) = {
             gadtSyms foreach (_.resetGADTFlexType)
-            foreachSubTreeOf(pat) {
+            pat foreachSubTree {
               case b: Bind =>
                 if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
                 else ctx.error(d"duplicate pattern variable: ${b.name}", b.pos)
@@ -732,7 +732,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       def checkRef(tree: Tree, sym: Symbol) =
         if (sym.maybeOwner == refineCls && tree.pos.start <= sym.pos.end)
           ctx.error("illegal forward reference in refinement", tree.pos)
-      foreachSubTreeOf(refinement) {
+      refinement foreachSubTree {
         case tree: RefTree => checkRef(tree, tree.symbol)
         case tree: TypeTree => checkRef(tree, tree.tpe.typeSymbol)
         case _ =>
