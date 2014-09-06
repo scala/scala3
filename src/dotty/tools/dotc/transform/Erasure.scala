@@ -318,9 +318,6 @@ object Erasure {
       }
     }
 
-    override def ensureNoLocalRefs(block: Block, pt: Type, forcedDefined: Boolean = false)(implicit ctx: Context): Tree =
-      block // optimization, no checking needed, as block symbols do not change.
-
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
       val ddef1 = untpd.cpy.DefDef(ddef)(
         tparams = Nil,

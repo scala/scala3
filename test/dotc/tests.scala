@@ -26,7 +26,7 @@ class tests extends CompilerTest {
 
   @Test def pos_erasure = compileFile(posDir, "erasure", doErase)
   @Test def pos_Coder() = compileFile(posDir, "Coder", doErase)
- // @Test def pos_blockescapes() = compileFile(posDir, "blockescapes", doErase)
+  @Test def pos_blockescapes() = compileFile(posDir, "blockescapes", doErase)
   @Test def pos_collections() = compileFile(posDir, "collections", doErase)
   @Test def pos_functions1() = compileFile(posDir, "functions1", doErase)
   @Test def pos_implicits1() = compileFile(posDir, "implicits1", doErase)
