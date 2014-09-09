@@ -36,10 +36,10 @@ class PatternMatcher extends MiniPhaseTransform {
   import dotty.tools.dotc.ast.tpd._
 
 
-  /** List of names of phases that should precede this phase */
-  override def runsAfter: Set[String] = Set("elimrepeated")
+  override def runsAfter = Set(classOf[ElimRepeated])
 
-  def name: String = "patternMatcher"
+  override def phaseName = "patternMatcher"
+
   var _id = 0
 
   override def transformMatch(tree: tpd.Match)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
@@ -542,7 +542,7 @@ class PatternMatcher extends MiniPhaseTransform {
         val nullCheck: Tree = ref(prevBinder).select(ctx.definitions.Object_ne).appliedTo(Literal(Constant(null)))
         val cond: Option[Tree] =
           if (binderKnownNonNull) extraCond
-          else extraCond.map(nullCheck.select(ctx.definitions.Boolean_and).appliedTo).orElse(Some(nullCheck))
+          else extraCond.map(nullCheck.select(ctx.definitions.Boolean_&&).appliedTo).orElse(Some(nullCheck))
 
         cond match {
           case Some(cond: Tree) =>
@@ -593,7 +593,7 @@ class PatternMatcher extends MiniPhaseTransform {
       object treeCondStrategy extends TypeTestCondStrategy {
         type Result = Tree
 
-        def and(a: Result, b: Result): Result                = a.select(ctx.definitions.Boolean_and).appliedTo(b)
+        def and(a: Result, b: Result): Result                = a.select(ctx.definitions.Boolean_&&).appliedTo(b)
         def tru                                              = Literal(Constant(true))
         def typeTest(testedBinder: Symbol, expectedTp: Type) = codegen._isInstanceOf(testedBinder, expectedTp)
         def nonNullTest(testedBinder: Symbol)                = ref(testedBinder).select(ctx.definitions.Object_ne).appliedTo(Literal(Constant(null)))
@@ -759,7 +759,7 @@ class PatternMatcher extends MiniPhaseTransform {
         //  - Scala's arrays are invariant (so we don't drop type tests unsoundly)
         if (extractorArgTypeTest) mkDefault
         else expectedTp match {
-          case ThisType(sym) if sym.flags is Flags.Module            => and(mkEqualsTest(ref(sym)), mkTypeTest) // must use == to support e.g. List() == Nil
+          case ThisType(tref) if tref.symbol.flags is Flags.Module            => and(mkEqualsTest(ref(tref.symbol)), mkTypeTest) // must use == to support e.g. List() == Nil
           case ConstantType(Constant(null)) if isAnyRef => mkEqTest(expTp(Literal(Constant(null))))
           case ConstantType(const)                      => mkEqualsTest(expTp(Literal(const)))
           case t:SingletonType                          => mkEqTest(singleton(expectedTp)) // SI-4577, SI-4897
@@ -1486,7 +1486,7 @@ class PatternMatcher extends MiniPhaseTransform {
             else         _.select(defn.Int_==).appliedTo(_)
 
           // `if (binder != null && $checkExpectedLength [== | >=] 0) then else zero`
-          (seqTree(binder).select(defn.Any_!=).appliedTo(Literal(Constant(null)))).select(defn.Boolean_and).appliedTo(compareOp(checkExpectedLength, Literal(Constant(0))))
+          (seqTree(binder).select(defn.Any_!=).appliedTo(Literal(Constant(null)))).select(defn.Boolean_&&).appliedTo(compareOp(checkExpectedLength, Literal(Constant(0))))
         }
 
       def checkedLength: Option[Int] =
@@ -1804,8 +1804,6 @@ class PatternMatcher extends MiniPhaseTransform {
         */
       def unapplyMethodTypes(tree:Tree, fun: Tree, args:List[Tree], resultType:Type, isSeq: Boolean): Extractor = {
         _id = _id + 1
-        if(_id == 3)
-          println("here")
 
         val whole    = fun.tpe.widen.paramTypess.headOption.flatMap(_.headOption).getOrElse(NoType)//firstParamType(method)
         val resultOfGet = extractorMemberType(resultType, nme.get)

@@ -211,7 +211,7 @@ class Definitions {
     lazy val Array_update                = ctx.requiredMethod(ArrayClass, nme.update)
     lazy val Array_length                = ctx.requiredMethod(ArrayClass, nme.length)
     lazy val Array_clone                 = ctx.requiredMethod(ArrayClass, nme.clone_)
-  lazy val traversableDropMethod  = ctx.requiredMethod(ScalaRuntimeModuleClass, nme.drop)
+  lazy val traversableDropMethod  = ctx.requiredMethod(ScalaRuntimeClass, nme.drop)
   lazy val uncheckedStableClass: ClassSymbol = ctx.requiredClass("scala.annotation.unchecked.uncheckedStable")
 
   lazy val UnitClass = valueClassSymbol("scala.Unit", BoxedUnitClass, java.lang.Void.TYPE, UnitEnc)
@@ -423,16 +423,10 @@ class Definitions {
   lazy val TupleClasses: Set[Symbol] = TupleClass.toSet
   lazy val ProductClasses: Set[Symbol] = ProductNClass.toSet
 
-  lazy val RepeatedParamClasses: Set[Symbol] = Set(RepeatedParamClass, JavaRepeatedParamClass)
-
   /** `Modules whose members are in the default namespace and their module classes */
   lazy val UnqualifiedOwners = RootImports.toSet ++ RootImports.map(_.moduleClass)
 
   lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
-
-  lazy val asInstanceOfMethods = Set[Symbol](Any_asInstanceOf)
-  lazy val isInstanceOfMethods = Set[Symbol](Any_isInstanceOf)
-  lazy val typeTestsOrCasts    = asInstanceOfMethods ++ isInstanceOfMethods
 
   lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
 
@@ -595,7 +589,6 @@ class Definitions {
     AnyClass,
     AnyRefAlias,
     RepeatedParamClass,
-    JavaRepeatedParamClass,
     ByNameParamClass2x,
     AnyValClass,
     NullClass,

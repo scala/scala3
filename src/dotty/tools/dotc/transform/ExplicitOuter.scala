@@ -29,7 +29,7 @@ import collection.mutable
  *   - replace outer this by outer paths.
  */
 class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
-  imoport ExplicitOuter._
+  import ExplicitOuter._
   import ast.tpd._
 
   val Outer = new Attachment.Key[Tree]
