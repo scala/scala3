@@ -19,6 +19,7 @@ import typer.ErrorReporting._
 import ast.Trees._
 import Applications._
 import TypeApplications._
+import TypeUtils._
 
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.core.Decorators._
@@ -36,13 +37,6 @@ class PatternMatcher extends MiniPhaseTransform {
   def name: String = "patternMatcher"
   var _id = 0
 
-  /*override def transformCaseDef(tree: CaseDef)(implicit ctx: Context, info: TransformerInfo): Tree =
-    cpy.CaseDef(tree, Literal(Constant("<eliminated pattern>")), tree.guard, tree.body)*/
-
-
-  /*case Try(block, catches, finalizer) =>
-  treeCopy.Try(tree, transform(block), translator.translateTry(transformTrees(catches).asInstanceOf[List[CaseDef]], tree.tpe, tree.pos), transform(finalizer))
-  case _ => super.transform(tree)*/
   override def transformMatch(tree: tpd.Match)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
       val origTp = tree.tpe
       // setType origTp intended for CPS -- TODO: is it necessary?
@@ -135,7 +129,10 @@ class PatternMatcher extends MiniPhaseTransform {
         DefDef(arg, body)
 
       def tupleSel(binder: Symbol)(i: Int): Tree = ref(binder).select(nme.productAccessorName(i)) // make tree that accesses the i'th component of the tuple referenced by binder
-      def index(tgt: Tree)(i: Int): Tree         = tgt.appliedTo(Literal(Constant(i)))
+      def index(tgt: Tree)(i: Int): Tree         = {
+        if (i > 0) tgt.select(defn.Seq_apply).appliedTo(Literal(Constant(i)))
+        else tgt.select(defn.Seq_head)
+      }
 
       // Right now this blindly calls drop on the result of the unapplySeq
       // unless it verifiably has no drop method (this is the case in particular
@@ -151,7 +148,7 @@ class PatternMatcher extends MiniPhaseTransform {
       }
 
       // NOTE: checker must be the target of the ==, that's the patmat semantics for ya
-      def _equals(checker: Tree, binder: Symbol): Tree = checker.select(defn.Any_equals).appliedTo(ref(binder))
+      def _equals(checker: Tree, binder: Symbol): Tree = checker.select(nme.equals_).appliedTo(ref(binder))
 
       // the force is needed mainly to deal with the GADT typing hack (we can't detect it otherwise as tp nor pt need contain an abstract type, we're just casting wildly)
       def _asInstanceOf(b: Symbol, tp: Type): Tree = if (b.info <:< tp) ref(b) else ref(b).select(defn.Any_asInstanceOf).appliedToType(tp)
@@ -288,15 +285,17 @@ class PatternMatcher extends MiniPhaseTransform {
         def flatMap(prev: Tree, b: Symbol, next: Tree): Tree = {
           val prevSym = freshSym(prev.pos, prev.tpe, "o")
           val getTp = extractorMemberType(prev.tpe, nme.get)
-          if(getTp.exists) {
-            Block(
-              List(ValDef(prevSym, prev)),
-              // must be isEmpty and get as we don't control the target of the call (prev is an extractor call)
-              ifThenElseZero(
-                ref(prevSym).select("isEmpty".toTermName).select(ctx.definitions.Boolean_!),
-                Substitution(b, ref(prevSym).select("get".toTermName))(next)
+          val isDefined = extractorMemberType(prev.tpe, nme.isDefined)
+
+          if ((isDefined isRef defn.BooleanClass) && getTp.exists) {
+              Block(
+                List(ValDef(prevSym, prev)),
+                // must be isEmpty and get as we don't control the target of the call (prev is an extractor call)
+                ifThenElseZero(
+                  ref(prevSym).select(nme.isDefined).select(ctx.definitions.Boolean_!),
+                  Substitution(b, ref(prevSym).select("get".toTermName))(next)
+                )
               )
-            )
           } else {
             assert(defn.isProductSubType(prev.tpe))
             Substitution(b, ref(prevSym))(next)
@@ -633,9 +632,9 @@ class PatternMatcher extends MiniPhaseTransform {
 
         def outerTest(testedBinder: Symbol, expectedTp: Type): Tree = {
           val expectedOuter = expectedTp.normalizedPrefix match {
-            case ThisType(clazz) => This(clazz)
-            case NoType          => Literal(Constant(true)) // fallback for SI-6183 todo?
-            case pre             => ref(pre.termSymbol)
+            //case ThisType(clazz) => This(clazz)
+            //case NoType          => Literal(Constant(true)) // fallback for SI-6183 todo?
+            case pre             => ref(pre.typeSymbol)
           }
 
           // ExplicitOuter replaces `Select(q, outerSym) OBJ_EQ expectedPrefix` by `Select(q, outerAccessor(outerSym.owner)) OBJ_EQ expectedPrefix`
@@ -700,10 +699,47 @@ class PatternMatcher extends MiniPhaseTransform {
       import TypeTestTreeMaker._
       ctx.debuglog("TTTM"+((prevBinder, extractorArgTypeTest, testedBinder, expectedTp, nextBinderTp)))
 
+      def needsOuterTest(patType: Type, selType: Type, currentOwner: Symbol) = false /* todo {
+        def createDummyClone(pre: Type): Type = {
+          val dummy = currentOwner.enclClass.newValue(nme.ANYname).setInfo(pre.widen)
+          singleType(ThisType(currentOwner.enclClass), dummy)
+        }
+        def maybeCreateDummyClone(pre: Type, sym: Symbol): Type = pre match {
+          case SingleType(pre1, sym1) =>
+            if (sym1.isModule && sym1.isStatic) {
+              NoType
+            } else if (sym1.isModule && sym.owner == sym1.moduleClass) {
+              val pre2 = maybeCreateDummyClone(pre1, sym1)
+              if (pre2 eq NoType) pre2
+              else singleType(pre2, sym1)
+            } else {
+              createDummyClone(pre)
+            }
+          case ThisType(clazz) =>
+            if (clazz.isModuleClass)
+              maybeCreateDummyClone(clazz.typeOfThis, sym)
+            else if (sym.owner == clazz && (sym.hasFlag(PRIVATE) || sym.privateWithin == clazz))
+              NoType
+            else
+              createDummyClone(pre)
+          case _ =>
+            NoType
+        }
+        // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
+        // generates an outer test based on `patType.prefix` with automatically dealises.
+        patType.dealias match {
+          case TypeRef(pre, sym, args) =>
+            val pre1 = maybeCreateDummyClone(pre, sym)
+            (pre1 ne NoType) && isPopulated(copyTypeRef(patType, pre1, sym, args), selType)
+          case _ =>
+            false
+        }
+      }*/
+
       lazy val outerTestNeeded = (
         (expectedTp.normalizedPrefix.typeSymbol ne NoSymbol)
           && !expectedTp.normalizedPrefix.typeSymbol.isPackageObject
-          && true //needsOuterTest(expectedTp, testedBinder.info, matchOwner) // todo
+          && needsOuterTest(expectedTp, testedBinder.info, matchOwner)
         )
 
       // the logic to generate the run-time test that follows from the fact that
@@ -757,7 +793,7 @@ class PatternMatcher extends MiniPhaseTransform {
           case ConstantType(Constant(null)) if isAnyRef => mkEqTest(expTp(Literal(Constant(null))))
           case ConstantType(const)                      => mkEqualsTest(expTp(Literal(const)))
           case t:SingletonType                          => mkEqTest(singleton(expectedTp)) // SI-4577, SI-4897
-          case ThisType(sym)                            => mkEqTest(expTp(This(sym)))
+          //case ThisType(sym)                            => mkEqTest(expTp(This(sym)))
           case _                                        => mkDefault
         }
       }
@@ -987,6 +1023,7 @@ class PatternMatcher extends MiniPhaseTransform {
       //setInfo debug.patmatResult(s"changing ${sym.defString} to")(repeatedToSeq(info))
 //      if(info!= NoType && !(sym.info =:= info))
 //        assert(false, "bug in porting pattern matcher")
+      ctx.debuglog(s"scalac would be resetting info of $sym from ${sym.info} to $info")
       sym
     }
 
@@ -1088,7 +1125,6 @@ class PatternMatcher extends MiniPhaseTransform {
       def translate(): List[TreeMaker] = nextStep() merge (_.translate())
 
       private def setInfo(paramType: Type): Boolean = {
-        ctx.warning(s"resetting info of $this to $paramType")
         setVarInfo(binder, paramType)
         true
       }
@@ -1344,8 +1380,12 @@ class PatternMatcher extends MiniPhaseTransform {
     object ExtractorCall {
       // TODO: check unargs == args
       def apply(tree: Tree, binder: Symbol): ExtractorCall = tree match {
-        case UnApply(unfun, implicits, args) => new ExtractorCallRegular(alignPatterns(tree), unfun.appliedTo(ref(binder)), args, tree.tpe) // extractor
-        case Typed(UnApply(unfun, implicits, args), tpt) => new ExtractorCallRegular(alignPatterns(tree), unfun.appliedTo(ref(binder)), args, tree.tpe) // extractor
+        case UnApply(unfun, implicits, args) =>
+          val synth = if(implicits.isEmpty) unfun.appliedTo(ref(binder)) else unfun.appliedTo(ref(binder)).appliedToArgs(implicits)
+          new ExtractorCallRegular(alignPatterns(synth), synth, args, tree.tpe) // extractor
+        case Typed(UnApply(unfun, implicits, args), tpt) =>
+          val synth = /*Typed(*/if(implicits.isEmpty) unfun.appliedTo(ref(binder)) else unfun.appliedTo(ref(binder)).appliedToArgs(implicits)//, tpt)
+          new ExtractorCallRegular(alignPatterns(synth), synth, args, tree.tpe) // extractor
         case Apply(fun, args)     => new ExtractorCallProd(alignPatterns(tree), fun, args, fun.tpe)      // case class
       }
     }
@@ -1404,7 +1444,7 @@ class PatternMatcher extends MiniPhaseTransform {
       // codegen.drop(seqTree(binder))(nbIndexingIndices)))).toList
       protected def seqTree(binder: Symbol)                = tupleSel(binder)(firstIndexingBinder + 1)
       protected def tupleSel(binder: Symbol)(i: Int): Tree = {
-        val accessors = if(defn.isProductSubType(binder.info)) productSelectors(binder.info) else binder.info.decls.filter(x => x.is(Flags.CaseAccessor) && x.is(Flags.Method)).toList
+        val accessors = if(defn.isProductSubType(binder.info)) productSelectors(binder.info) else binder.info.caseAccessors
         if (accessors.isDefinedAt(i-1)) ref(binder).select(accessors(i-1))
         else codegen.tupleSel(binder)(i) // this won't type check for case classes, as they do not inherit ProductN
       }
@@ -1437,7 +1477,8 @@ class PatternMatcher extends MiniPhaseTransform {
         else productElemsToN(binder, totalArity)
         )
 
-      val mathSignum = ref(defn.ScalaMathPackageVal).select("signum".toTermName)
+      val mathSignymSymbol = defn.ScalaMathPackageVal.requiredMethod("signum".toTermName, List(defn.IntType))
+      val mathSignum = ref(defn.ScalaMathPackageVal).select(mathSignymSymbol)
 
 
       private def compareInts(t1: Tree, t2: Tree) =
@@ -1486,7 +1527,7 @@ class PatternMatcher extends MiniPhaseTransform {
         * when `binderKnownNonNull` is `true`, `ProductExtractorTreeMaker` does not do a (redundant) null check on binder
         */
       def treeMaker(binder: Symbol, binderKnownNonNull: Boolean, pos: Position): TreeMaker = {
-        val paramAccessors = binder.info.costrParamAccessors
+        val paramAccessors = binder.info.caseAccessors
         // binders corresponding to mutable fields should be stored (SI-5158, SI-6070)
         // make an exception for classes under the scala package as they should be well-behaved,
         // to optimize matching on List
@@ -1645,7 +1686,7 @@ class PatternMatcher extends MiniPhaseTransform {
       *  @param  repeated  The sequence type which is extracted
       */
     final case class Extractor(whole: Type, fixed: List[Type], repeated: Repeated) {
-      if(fixed.isEmpty) {
+      if(fixed.isEmpty || whole == NoType) {
         println("here")
       }
       require(whole != NoType, s"expandTypes($whole, $fixed, $repeated)")
@@ -1782,19 +1823,20 @@ class PatternMatcher extends MiniPhaseTransform {
         *  Unfortunately the MethodType does not carry the information of whether
         *  it was unapplySeq, so we have to funnel that information in separately.
         */
-      def unapplyMethodTypes(method: Type, isSeq: Boolean): Extractor = {
+      def unapplyMethodTypes(tree:Tree, fun: Tree, args:List[Tree], isSeq: Boolean): Extractor = {
         _id = _id + 1
         if(_id == 3)
           println("here")
 
-        val whole    = method.paramTypess.headOption.flatMap(_.headOption).getOrElse(NoType)//firstParamType(method)
-        val result   = method.finalResultType
-        val expanded = (
+        val whole    = fun.tpe.widen.paramTypess.headOption.flatMap(_.headOption).getOrElse(NoType)//firstParamType(method)
+        val result   = tree.tpe.widen// fun.tpe.fin
+        //println(s"${_id}unapplyArgs(${result.widen}")
+        val expanded = /*(
           if (result =:= ctx.definitions.BooleanType) Nil
           else if(defn.isProductSubType(result)) productSelectorTypes(result)
           else if(result.classSymbol is Flags.CaseClass) result.decls.filter(x => x.is(Flags.CaseAccessor) && x.is(Flags.Method)).map(_.info).toList
           else result.select(nme.get) :: Nil
-          )
+          )*/ unapplyArgs(result, fun, args)
         expanded match {
           case init :+ last if isSeq => newExtractor(whole, init, repeatedFromSeq(last))
           case tps                   => newExtractor(whole, tps, NoRepeated)
@@ -1830,7 +1872,7 @@ class PatternMatcher extends MiniPhaseTransform {
         aligned
       }
 
-      def apply(sel: Tree, args: List[Tree]): Aligned = {
+      def apply(tree:Tree, sel: Tree, args: List[Tree]): Aligned = {
         val fn = sel match {
           case Unapplied(fn) => fn
           case _             => sel
@@ -1839,8 +1881,8 @@ class PatternMatcher extends MiniPhaseTransform {
         val isSeq = sel.symbol.name == nme.unapplySeq
         val isUnapply = sel.symbol.name == nme.unapply
         val extractor = sel.symbol.name match {
-          case nme.unapply    => unapplyMethodTypes(/*fn*/sel.tpe, isSeq = false)
-          case nme.unapplySeq => unapplyMethodTypes(/*fn*/sel.tpe, isSeq = true)
+          case nme.unapply    => unapplyMethodTypes(tree, /*fn*/sel, args, isSeq = false)
+          case nme.unapplySeq => unapplyMethodTypes(tree, /*fn*/sel, args, isSeq = true)
           case _              => applyMethodTypes(/*fn*/sel.tpe)
         }
 
@@ -1861,8 +1903,8 @@ class PatternMatcher extends MiniPhaseTransform {
 
       def apply(tree: Tree): Aligned = tree match {
         case Typed(tree, _)   => apply(tree)
-        case Apply(fn, args)   => apply(fn, args)
-        case UnApply(fn, implicits, args) => apply(fn, args)
+        case Apply(fn, args)   => apply(tree, fn, args)
+        case UnApply(fn, implicits, args) => apply(tree, fn, args)
       }
     }
   }
