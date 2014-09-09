@@ -30,6 +30,7 @@ import scala.reflect.internal.util.Collections
 /** This transform eliminates patterns. Right now it's a dummy.
  *  Awaiting the real pattern matcher.
  *  elimRepeated is required
+ * TODO: outer tests are not generated yet.
  */
 class PatternMatcher extends MiniPhaseTransform {
   import dotty.tools.dotc.ast.tpd._
@@ -1563,7 +1564,7 @@ class PatternMatcher extends MiniPhaseTransform {
         if (aligner.isSingle) ref(binder) :: Nil // special case for extractors
         else super.subPatRefs(binder)
 
-      protected def spliceApply(binder: Symbol): Tree = {
+      /*protected def spliceApply(binder: Symbol): Tree = {
         object splice extends TreeMap {
           def binderRef(pos: Position): Tree =
             ref(binder) //setPos pos
@@ -1580,7 +1581,7 @@ class PatternMatcher extends MiniPhaseTransform {
           }
         }
         splice transform extractorCallIncludingDummy
-      }
+      }*/
 
       override def rawSubPatTypes = aligner.extractor.varargsTypes
     }
@@ -1864,8 +1865,8 @@ class PatternMatcher extends MiniPhaseTransform {
         // Duplicated with `spliceApply`
         def unapply(tree: Tree): Option[Tree] = tree match {
           // SI-7868 Admit Select() to account for numeric widening, e.g. <unappplySelector>.toInt
-          case Apply(fun, (Ident(nme.SELECTOR_DUMMY)| Select(Ident(nme.SELECTOR_DUMMY), _)) :: Nil)
-          => Some(fun)
+          /*case Apply(fun, (Ident(nme.SELECTOR_DUMMY)| Select(Ident(nme.SELECTOR_DUMMY), _)) :: Nil)
+          => Some(fun)*/
           case Apply(fun, _) => unapply(fun)
           case _             => None
         }
