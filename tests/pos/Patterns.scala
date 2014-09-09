@@ -4,6 +4,30 @@ object Patterns {/*
     case _ => false
   }
 
+  object Breakdown {
+    def unapplySeq(x: Int): Some[List[String]] = Some(List("", "there"))
+  }
+
+  object Test2 {
+    42 match {
+      case Breakdown("") =>  // needed to trigger bug
+      case Breakdown("foo") =>  // needed to trigger bug
+      case Breakdown("", who) => println ("hello " + who)
+    }
+  }
+
+  val names = List("a", "b", "c")
+  object SeqExtractors {
+    val y = names match {
+      case List(x, z) => x
+      case List(x) => x
+      case List() => ""
+    }
+    val yy: String = y
+  }
+
+
+
   val xs = List('2' -> "ABC", '3' -> "DEF")
 
   xs filter {
