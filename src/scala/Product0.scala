@@ -21,4 +21,3 @@ trait Product0 extends Any with Product {
   override def productElement(n: Int) =
     throw new IndexOutOfBoundsException(n.toString())
 }
-
