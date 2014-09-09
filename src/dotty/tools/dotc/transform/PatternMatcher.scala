@@ -953,7 +953,7 @@ class PatternMatcher extends MiniPhaseTransform {
     object WildcardPattern {
       def unapply(pat: Tree): Boolean = pat match {
         case Bind(nme.WILDCARD, WildcardPattern()) => true // don't skip when binding an interesting symbol!
-        //case Star(WildcardPattern())               => true // dd todo:?
+        case t if(tpd.isWildcardArg(t))            => true
         case x: Ident                              => isVarPattern(x)
         case Alternative(ps)                       => ps forall unapply
         case EmptyTree                             => true
@@ -1208,38 +1208,37 @@ class PatternMatcher extends MiniPhaseTransform {
     // unlike translateMatch, we type our result before returning it
     def translateTry(caseDefs: List[CaseDef], pt: Type, pos: Position): List[CaseDef] =
     // if they're already simple enough to be handled by the back-end, we're done
-      if (caseDefs forall treeInfo.isCatchCase) caseDefs
+      if (caseDefs forall isCatchCase) caseDefs
       else {
         val swatches = { // switch-catches
         val bindersAndCases = caseDefs map { caseDef =>
             // generate a fresh symbol for each case, hoping we'll end up emitting a type-switch (we don't have a global scrut there)
             // if we fail to emit a fine-grained switch, have to do translateCase again with a single scrutSym (TODO: uniformize substitution on treemakers so we can avoid this)
-            val caseScrutSym = freshSym(pos, pureType(ThrowableTpe))
+            val caseScrutSym = freshSym(pos, pureType(ctx.definitions.ThrowableType))
             (caseScrutSym, propagateSubstitution(translateCase(caseScrutSym, pt)(caseDef), EmptySubstitution))
           }
 
           for(cases <- emitTypeSwitch(bindersAndCases, pt).toList
-              if cases forall treeInfo.isCatchCase; // must check again, since it's not guaranteed -- TODO: can we eliminate this? e.g., a type test could test for a trait or a non-trivial prefix, which are not handled by the back-end
-              cse <- cases) yield fixerUpper(matchOwner, pos)(cse).asInstanceOf[CaseDef]
+              if cases forall isCatchCase; // must check again, since it's not guaranteed -- TODO: can we eliminate this? e.g., a type test could test for a trait or a non-trivial prefix, which are not handled by the back-end
+              cse <- cases) yield /*fixerUpper(matchOwner, pos)*/(cse).asInstanceOf[CaseDef]
         }
 
         val catches = if (swatches.nonEmpty) swatches else {
-          val scrutSym = freshSym(pos, pureType(ThrowableTpe))
+          val scrutSym = freshSym(pos, pureType(ctx.definitions.ThrowableType))
           val casesNoSubstOnly = caseDefs map { caseDef => (propagateSubstitution(translateCase(scrutSym, pt)(caseDef), EmptySubstitution))}
 
-          val exSym = freshSym(pos, pureType(ThrowableTpe), "ex")
+          val exSym = freshSym(pos, pureType(ctx.definitions.ThrowableType), "ex")
 
           List(
-            atPos(pos) {
               CaseDef(
-                Bind(exSym, Ident(nme.WILDCARD)), // TODO: does this need fixing upping?
+                Bind(exSym, Ident(??? /*nme.WILDCARD*/)), // TODO: does this need fixing upping?
                 EmptyTree,
-                combineCasesNoSubstOnly(REF(exSym), scrutSym, casesNoSubstOnly, pt, matchOwner, Some(scrut => Throw(REF(exSym))))
+                combineCasesNoSubstOnly(ref(exSym), scrutSym, casesNoSubstOnly, pt, matchOwner, Some(scrut => Throw(ref(exSym))))
               )
-            })
+            )
         }
 
-        typer.typedCases(catches, ThrowableTpe, WildcardType)
+        /*typer.typedCases(*/catches/*, ctx.definitions.ThrowableType, WildcardType)*/
       }
 
     /**  The translation of `pat if guard => body` has two aspects:
@@ -1340,7 +1339,7 @@ class PatternMatcher extends MiniPhaseTransform {
     object ExtractorCall {
       // TODO: check unargs == args
       def apply(tree: Tree): ExtractorCall = tree match {
-        case UnApply(unfun, args) => new ExtractorCallRegular(alignPatterns(tree), unfun, args) // extractor
+        case UnApply(unfun, implicits, args) => new ExtractorCallRegular(alignPatterns(tree), unfun, args) // extractor
         case Apply(fun, args)     => new ExtractorCallProd(alignPatterns(tree), fun, args)      // case class
       }
     }
@@ -1352,7 +1351,15 @@ class PatternMatcher extends MiniPhaseTransform {
 
       // don't go looking for selectors if we only expect one pattern
       def rawSubPatTypes = aligner.extractedTypes
-      def resultInMonad  = if (isBool) UnitTpe else typeOfMemberNamedGet(resultType)
+
+      def typeArgOfBaseTypeOr(tp: Type, baseClass: Symbol)(or: => Type): Type = (tp.baseTypeWithArgs(baseClass)).argInfos match {
+        case x :: Nil => x
+        case _        => or
+      }
+
+      def typeOfMemberNamedGet(tp: Type)   = typeArgOfBaseTypeOr(tp, defn.OptionClass)(tp.member(nme.get).info)
+
+      def resultInMonad  = if (isBool) defn.UnitType else typeOfMemberNamedGet(resultType)
       def resultType     = fun.tpe.finalResultType
 
       /** Create the TreeMaker that embodies this extractor call
@@ -1421,8 +1428,12 @@ class PatternMatcher extends MiniPhaseTransform {
         else productElemsToN(binder, totalArity)
         )
 
+      val mathSignum = ref(defn.ScalaMathPackageVal).select("signum".toTermName)
+
+
       private def compareInts(t1: Tree, t2: Tree) =
-        gen.mkMethodCall(termMember(ScalaPackage, "math"), TermName("signum"), Nil, (t1 INT_- t2) :: Nil)
+        mathSignum.appliedTo(t1.select(defn.Int_-).appliedTo(t2))
+        //gen.mkMethodCall(termMember(ScalaPackage, "math"), TermName("signum"), Nil, (t1 INT_- t2) :: Nil)
 
       protected def lengthGuard(binder: Symbol): Option[Tree] =
       // no need to check unless it's an unapplySeq and the minimal length is non-trivially satisfied
@@ -1430,20 +1441,23 @@ class PatternMatcher extends MiniPhaseTransform {
           // `binder.lengthCompare(expectedLength)`
           // ...if binder has a lengthCompare method, otherwise
           // `scala.math.signum(binder.length - expectedLength)`
-          def checkExpectedLength = sequenceType member nme.lengthCompare match {
-            case NoSymbol => compareInts(Select(seqTree(binder), nme.length), LIT(expectedLength))
-            case lencmp   => (seqTree(binder) DOT lencmp)(LIT(expectedLength))
+          def checkExpectedLength: Tree = sequenceType.member(nme.lengthCompare) match {
+            case NoDenotation => compareInts(Select(seqTree(binder), nme.length), Literal(Constant(expectedLength)))
+            case x:SingleDenotation   => (seqTree(binder).select(x.symbol)).appliedTo(Literal(Constant(expectedLength)))
+            case _ =>
+              ctx.error("TODO: multiple lengthCompare")
+              EmptyTree
           }
 
           // the comparison to perform
           // when the last subpattern is a wildcard-star the expectedLength is but a lower bound
           // (otherwise equality is required)
           def compareOp: (Tree, Tree) => Tree =
-            if (aligner.isStar) _ INT_>= _
-            else         _ INT_== _
+            if (aligner.isStar) _.select(defn.Int_>=).appliedTo(_)
+            else         _.select(defn.Int_==).appliedTo(_)
 
           // `if (binder != null && $checkExpectedLength [== | >=] 0) then else zero`
-          (seqTree(binder) ANY_!= NULL) AND compareOp(checkExpectedLength, ZERO)
+          (seqTree(binder).select(defn.Any_!=).appliedTo(Literal(Constant(null)))).select(defn.Boolean_and).appliedTo(compareOp(checkExpectedLength, Literal(Constant(0))))
         }
 
       def checkedLength: Option[Int] =
@@ -1463,14 +1477,15 @@ class PatternMatcher extends MiniPhaseTransform {
         * when `binderKnownNonNull` is `true`, `ProductExtractorTreeMaker` does not do a (redundant) null check on binder
         */
       def treeMaker(binder: Symbol, binderKnownNonNull: Boolean, pos: Position): TreeMaker = {
-        val paramAccessors = binder.constrParamAccessors
+        val paramAccessors = binder.info.costrParamAccessors
         // binders corresponding to mutable fields should be stored (SI-5158, SI-6070)
         // make an exception for classes under the scala package as they should be well-behaved,
         // to optimize matching on List
         val mutableBinders = (
-          if (!binder.info.typeSymbol.hasTransOwner(ScalaPackageClass) &&
-            (paramAccessors exists (_.isMutable)))
-            subPatBinders.zipWithIndex.collect{ case (binder, idx) if paramAccessors(idx).isMutable => binder }
+          if (//!binder.info.typeSymbol.hasTransOwner(ScalaPackageClass) // TODO: DDD ???
+          // &&
+            (paramAccessors exists (_.hasAltWith(x => x.symbol is Flags.Mutable))))
+              subPatBinders.zipWithIndex.collect{ case (binder, idx) if paramAccessors(idx).hasAltWith(x => x.symbol is Flags.Mutable) => binder }
           else Nil
           )
 
@@ -1480,8 +1495,8 @@ class PatternMatcher extends MiniPhaseTransform {
 
       // reference the (i-1)th case accessor if it exists, otherwise the (i-1)th tuple component
       override protected def tupleSel(binder: Symbol)(i: Int): Tree = {
-        val accessors = binder.caseFieldAccessors
-        if (accessors isDefinedAt (i-1)) REF(binder) DOT accessors(i-1)
+        val accessors = product binder
+        if (accessors isDefinedAt (i-1)) ref(binder).select(accessors(i-1))
         else codegen.tupleSel(binder)(i) // this won't type check for case classes, as they do not inherit ProductN
       }
     }
@@ -1712,7 +1727,7 @@ class PatternMatcher extends MiniPhaseTransform {
       def NoType    = NoType
 
       def newPatterns(patterns: List[Tree]): Patterns = patterns match {
-        case init :+ last if isStar(last) => Patterns(init, last)
+        case init :+ last if tpd.isWildcardStarArg(last) => Patterns(init, last)
         case _                            => Patterns(patterns, NoPattern)
       }
       def elementTypeOf(tpe: Type) = {
