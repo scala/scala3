@@ -1807,14 +1807,23 @@ class PatternMatcher extends MiniPhaseTransform {
           println("here")
 
         val whole    = fun.tpe.widen.paramTypess.headOption.flatMap(_.headOption).getOrElse(NoType)//firstParamType(method)
-        val result   = tree.tpe.widen// fun.tpe.fin
+        val resultOfGet = extractorMemberType(resultType, nme.get)
+
         //println(s"${_id}unapplyArgs(${result.widen}")
-        val expanded = /*(
+        val expanded:List[Type] = /*(
           if (result =:= ctx.definitions.BooleanType) Nil
           else if(defn.isProductSubType(result)) productSelectorTypes(result)
           else if(result.classSymbol is Flags.CaseClass) result.decls.filter(x => x.is(Flags.CaseAccessor) && x.is(Flags.Method)).map(_.info).toList
           else result.select(nme.get) :: Nil
-          )*/ unapplyArgs(result, fun, args)
+          )*/
+          if ((extractorMemberType(resultType, nme.isDefined) isRef defn.BooleanClass) && resultOfGet.exists)
+            getUnapplySelectors(resultOfGet, args)
+          else if (defn.isProductSubType(resultType)) productSelectorTypes(resultType)
+          else {
+            ctx.error(i"invalid return type in Unapply node: $resultType")
+            Nil
+          }
+
         expanded match {
           case init :+ last if isSeq => newExtractor(whole, init, repeatedFromSeq(last))
           case tps                   => newExtractor(whole, tps, NoRepeated)
