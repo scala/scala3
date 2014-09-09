@@ -23,6 +23,7 @@ import scala.reflect.internal.util.Collections
 
 /** This transform eliminates patterns. Right now it's a dummy.
  *  Awaiting the real pattern matcher.
+ *  elimRepeated is required
  */
 class PatternMatcher extends MiniPhaseTransform {
   import dotty.tools.dotc.ast.tpd._
@@ -98,7 +99,7 @@ class PatternMatcher extends MiniPhaseTransform {
 
     // assert(owner ne null); assert(owner ne NoSymbol)
     def freshSym(pos: Position, tp: Type = NoType, prefix: String = "x") =
-      ctx.newSymbol(ctx.owner, freshName(prefix) ,Flags.Synthetic, tp, coord = pos)
+      ctx.newSymbol(ctx.owner, freshName(prefix), Flags.Synthetic, tp, coord = pos)
 
     def newSynthCaseLabel(name: String, tpe:Type) = ctx.newSymbol(ctx.owner, ctx.freshName(name).toTermName, Flags.Label, tpe)
       //NoSymbol.newLabel(freshName(name), NoPosition) setFlag treeInfo.SYNTH_CASE_FLAGS
@@ -937,7 +938,7 @@ class PatternMatcher extends MiniPhaseTransform {
     }
   }
 
-  trait MatchTranslator extends TreeMakers {
+  trait MatchTranslator extends TreeMakers with ScalacPatternExpanders {
 
     def isBackquoted(x: Ident) = x.isInstanceOf[BackquotedIdent]
 
@@ -1113,6 +1114,44 @@ class PatternMatcher extends MiniPhaseTransform {
       override def toString = if (subpatterns.isEmpty) "" else subpatterns.mkString("(", ", ", ")")
     }
 
+    def isSyntheticDefaultCase(cdef: CaseDef) = cdef match {
+      case CaseDef(Bind(nme.DEFAULT_CASE, _), EmptyTree, _) => true
+      case _                                                => false
+    }
+
+    def elimAnonymousClass(t: Type) = t match {
+      case t:TypeRef if t.symbol.isAnonymousClass =>
+        t.symbol.asClass.typeRef.asSeenFrom(t.prefix, t.symbol.owner)
+      case _ =>
+        t
+    }
+
+    /** Is this pattern node a catch-all or type-test pattern? */
+    def isCatchCase(cdef: CaseDef) = cdef match {
+      case CaseDef(Typed(Ident(nme.WILDCARD), tpt), EmptyTree, _) =>
+        isSimpleThrowable(tpt.tpe)
+      case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt)), EmptyTree, _) =>
+        isSimpleThrowable(tpt.tpe)
+      case _ =>
+        isDefaultCase(cdef)
+    }
+
+    def isNonBottomSubClass(thiz: Symbol, that: Symbol)(implicit ctx: Context): Boolean = (
+      (thiz eq that) || thiz.isError || that.isError ||
+        thiz.info.baseClasses.contains(that)
+      )
+
+    private def isSimpleThrowable(tp: Type)(implicit ctx: Context): Boolean = tp match {
+      case tp @ TypeRef(pre, _) =>
+        val sym = tp.symbol
+        (pre == NoPrefix || pre.widen.typeSymbol.isStatic) &&
+          (isNonBottomSubClass(sym, ctx.definitions.ThrowableClass)) &&  /* bq */ !(sym is Flags.Trait)
+      case _ =>
+        false
+    }
+
+
+
     /** Implement a pattern match by turning its cases (including the implicit failure case)
       * into the corresponding (monadic) extractors, and combining them with the `orElse` combinator.
       *
@@ -1127,37 +1166,38 @@ class PatternMatcher extends MiniPhaseTransform {
       val Match(selector, cases) = match_
 
       val (nonSyntheticCases, defaultOverride) = cases match {
-        case init :+ last if treeInfo isSyntheticDefaultCase last => (init, Some(((scrut: Tree) => last.body)))
+        case init :+ last if isSyntheticDefaultCase(last) => (init, Some(((scrut: Symbol) => last.body)))
         case _                                                    => (cases, None)
       }
 
-      checkMatchVariablePatterns(nonSyntheticCases)
+      // checkMatchVariablePatterns(nonSyntheticCases) // only used for warnings
 
       // we don't transform after uncurry
       // (that would require more sophistication when generating trees,
       //  and the only place that emits Matches after typers is for exception handling anyway)
-      if (phase.id >= currentRun.uncurryPhase.id)
-        devWarning(s"running translateMatch past uncurry (at $phase) on $selector match $cases")
+      /*if (phase.id >= currentRun.uncurryPhase.id)
+        devWarning(s"running translateMatch past uncurry (at $phase) on $selector match $cases")*/
 
-      debug.patmat("translating "+ cases.mkString("{", "\n", "}"))
+      println("translating "+ cases.mkString("{", "\n", "}"))
 
-      val start = if (Statistics.canEnable) Statistics.startTimer(patmatNanos) else null
+      //val start = if (Statistics.canEnable) Statistics.startTimer(patmatNanos) else null
 
-      val selectorTp = repeatedToSeq(elimAnonymousClass(selector.tpe.widen.withoutAnnotations))
+      val selectorTp = elimAnonymousClass(selector.tpe.widen/*withoutAnnotations*/)
 
       // when one of the internal cps-type-state annotations is present, strip all CPS annotations
-      val origPt  = removeCPSFromPt(match_.tpe)
+      ///val origPt  = removeCPSFromPt(match_.tpe)
       // relevant test cases: pos/existentials-harmful.scala, pos/gadt-gilles.scala, pos/t2683.scala, pos/virtpatmat_exist4.scala
       // pt is the skolemized version
-      val pt = repeatedToSeq(origPt)
+      val pt = match_.tpe //repeatedToSeq(origPt)
 
       // val packedPt = repeatedToSeq(typer.packedType(match_, context.owner))
-      val selectorSym = freshSym(selector.pos, pureType(selectorTp)) setFlag treeInfo.SYNTH_CASE_FLAGS
+      val selectorSym = freshSym(selector.pos, pureType(selectorTp))
+      selectorSym.setFlag(Flags.SyntheticCase)
 
       // pt = Any* occurs when compiling test/files/pos/annotDepMethType.scala  with -Xexperimental
       val combined = combineCases(selector, selectorSym, nonSyntheticCases map translateCase(selectorSym, pt), pt, matchOwner, defaultOverride)
 
-      if (Statistics.canEnable) Statistics.stopTimer(patmatNanos, start)
+      // if (Statistics.canEnable) Statistics.stopTimer(patmatNanos, start)
       combined
     }
 
