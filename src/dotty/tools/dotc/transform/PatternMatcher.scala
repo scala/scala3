@@ -1860,9 +1860,20 @@ class PatternMatcher extends MiniPhaseTransform {
         aligned
       }
 
+      object Applied {
+        // Duplicated with `spliceApply`
+        def unapply(tree: Tree): Option[Tree] = tree match {
+          // SI-7868 Admit Select() to account for numeric widening, e.g. <unappplySelector>.toInt
+          case Apply(fun, (Ident(nme.SELECTOR_DUMMY)| Select(Ident(nme.SELECTOR_DUMMY), _)) :: Nil)
+          => Some(fun)
+          case Apply(fun, _) => unapply(fun)
+          case _             => None
+        }
+      }
+
       def apply(tree:Tree, sel: Tree, args: List[Tree], resultType: Type): Aligned = {
         val fn = sel match {
-          case Unapplied(fn) => fn
+          case Applied(fn) => fn
           case _             => sel
         }
         val patterns  = newPatterns(args)

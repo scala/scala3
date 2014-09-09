@@ -13,17 +13,19 @@ import language.implicitConversions
 
 object TypeUtils {
   implicit def decorateTypeUtils(tpe: Type): TypeUtils = new TypeUtils(tpe)
-
 }
 
 /** A decorator that provides methods on types
  *  that are needed in the transformer pipeline.
  */
 class TypeUtils(val self: Type) extends AnyVal {
+  import TypeUtils._
 
   def isErasedValueType(implicit ctx: Context): Boolean =
     self.isInstanceOf[ErasedValueType]
 
   def isPrimitiveValueType(implicit ctx: Context): Boolean =
     self.classSymbol.isPrimitiveValueClass
+
+  def caseAccessors(implicit ctx:Context) = self.decls.filter(x => x.is(Flags.CaseAccessor) && x.is(Flags.Method)).toList
 }
