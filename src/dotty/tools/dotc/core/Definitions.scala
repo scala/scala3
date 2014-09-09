@@ -407,7 +407,7 @@ class Definitions {
     lazy val Function0_apply = FunctionClass(0).requiredMethod(nme.apply)
 
   lazy val TupleClass = mkArityArray("scala.Tuple", MaxTupleArity, 2)
-  lazy val ProductNClass = mkArityArray("scala.Product", MaxTupleArity, 2)
+  lazy val ProductNClass = mkArityArray("scala.Product", MaxTupleArity, 0)
 
   lazy val FunctionClasses: Set[Symbol] = FunctionClass.toSet
   lazy val TupleClasses: Set[Symbol] = TupleClass.toSet
