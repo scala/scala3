@@ -97,12 +97,12 @@ class PatternMatcher extends MiniPhaseTransform {
     def freshSym(pos: Position, tp: Type = NoType, prefix: String = "x") =
       ctx.newSymbol(ctx.owner, freshName(prefix) ,Flags.Synthetic, tp, coord = pos)
 
-    def newSynthCaseLabel(name: String) = ???
+    def newSynthCaseLabel(name: String, tpe:Type) = ctx.newSymbol(ctx.owner, ctx.freshName(name).toTermName, Flags.Label, tpe)
       //NoSymbol.newLabel(freshName(name), NoPosition) setFlag treeInfo.SYNTH_CASE_FLAGS
 
     // codegen relevant to the structure of the translation (how extractors are combined)
     trait AbsCodegen {
-      def matcher(scrut: Tree, scrutSym: Symbol, restpe: Type)(cases: List[Casegen => Tree], matchFailGen: Option[Tree => Tree]): Tree
+      def matcher(scrut: Tree, scrutSym: Symbol, restpe: Type)(cases: List[Casegen => Tree], matchFailGen: Option[Symbol => Tree]): Tree
 
       // local / context-free
       def _asInstanceOf(b: Symbol, tp: Type): Tree
@@ -156,6 +156,116 @@ class PatternMatcher extends MiniPhaseTransform {
       def _isInstanceOf(b: Symbol, tp: Type): Tree = ref(b).select(defn.Any_isInstanceOf).appliedToType(tp)
 
       def mkZero(tp: Type): Tree = initValue(tp)
+    }
+  }
+
+  trait OptimizedCodegen extends CodegenCore /*with TypedSubstitution*/ with MatchMonadInterface {
+    override def codegen: AbsCodegen = optimizedCodegen
+
+    // when we know we're targetting Option, do some inlining the optimizer won't do
+    // for example, `o.flatMap(f)` becomes `if(o == None) None else f(o.get)`, similarly for orElse and guard
+    //   this is a special instance of the advanced inlining optimization that takes a method call on
+    //   an object of a type that only has two concrete subclasses, and inlines both bodies, guarded by an if to distinguish the two cases
+    object optimizedCodegen extends CommonCodegen { //import CODE._
+
+      /** Inline runOrElse and get rid of Option allocations
+        *
+        * runOrElse(scrut: scrutTp)(matcher): resTp = matcher(scrut) getOrElse ${catchAll(`scrut`)}
+        * the matcher's optional result is encoded as a flag, keepGoing, where keepGoing == true encodes result.isEmpty,
+        * if keepGoing is false, the result Some(x) of the naive translation is encoded as matchRes == x
+        */
+      def matcher(scrut: Tree, scrutSym: Symbol, restpe: Type)(cases: List[Casegen => Tree], matchFailGen: Option[Symbol => Tree]): Tree = {
+        val matchRes = ctx.newSymbol(NoSymbol, ctx.freshName("x").toTermName, Flags.Synthetic | Flags.Param, restpe /*withoutAnnotations*/)
+          //NoSymbol.newValueParameter(newTermName("x"), NoPosition, newFlags = SYNTHETIC) setInfo restpe.withoutAnnotations
+        val mtype = MethodType(List("x".toTermName), List(restpe))(_=>restpe)
+        val matchEnd = newSynthCaseLabel("matchEnd", mtype)
+        val matchEndDef = DefDef(matchEnd, args => args.head.head)
+        var lastSymbol: TermSymbol = null
+        def newCaseSym = {
+          lastSymbol = newSynthCaseLabel(ctx.freshName("case"), MethodType(Nil, restpe))
+          lastSymbol
+        }
+
+        // must compute catchAll after caseLabels (side-effects nextCase)
+        // catchAll.isEmpty iff no synthetic default case needed (the (last) user-defined case is a default)
+        // if the last user-defined case is a default, it will never jump to the next case; it will go immediately to matchEnd
+        val catchAllDef = matchFailGen.map({ matchFailGen =>
+          DefDef(newCaseSym, _ => Block(List(matchEndDef), ref(matchEnd).appliedTo(matchFailGen(scrutSym))))
+        }) // at most 1 element
+
+
+
+        val caseDefs = cases.foldLeft[Tree](catchAllDef.getOrElse(matchEndDef)){ (acc: Tree, mkCase: Casegen => Tree) =>
+          val nextCase = lastSymbol.orElse(matchEnd)
+
+
+          DefDef(newCaseSym, _ => Block(List(acc), mkCase(new OptimizedCasegen(matchEnd, nextCase))))
+        }
+
+
+        // scrutSym == NoSymbol when generating an alternatives matcher
+        // val scrutDef = scrutSym.fold(List[Tree]())(ValDef(_, scrut) :: Nil) // for alternatives
+
+        // the generated block is taken apart in TailCalls under the following assumptions
+        // the assumption is once we encounter a case, the remainder of the block will consist of cases
+        // the prologue may be empty, usually it is the valdef that stores the scrut
+        // val (prologue, cases) = stats span (s => !s.isInstanceOf[LabelDef])
+        Block(
+          List(caseDefs),
+          ref(lastSymbol).appliedToNone
+        )
+      }
+
+      class OptimizedCasegen(matchEnd: Symbol, nextCase: Symbol) extends CommonCodegen with Casegen {
+        def matcher(scrut: Tree, scrutSym: Symbol, restpe: Type)(cases: List[Casegen => Tree], matchFailGen: Option[Symbol => Tree]): Tree =
+          optimizedCodegen.matcher(scrut, scrutSym, restpe)(cases, matchFailGen)
+
+        // only used to wrap the RHS of a body
+        // res: T
+        // returns MatchMonad[T]
+        def one(res: Tree): Tree = ref(matchEnd) appliedTo res // a jump to a case label is special-cased in typedApply
+        protected def zero: Tree = ref(nextCase) appliedToNone
+
+        // prev: MatchMonad[T]
+        // b: T
+        // next: MatchMonad[U]
+        // returns MatchMonad[U]
+        def flatMap(prev: Tree, b: Symbol, next: Tree): Tree = {
+          val prevSym = freshSym(prev.pos, prev.tpe, "o")
+          Block(
+            List(ValDef(prevSym, prev)),
+            // must be isEmpty and get as we don't control the target of the call (prev is an extractor call)
+            ifThenElseZero(
+              ref(prevSym).select("isEmpty".toTermName).select(ctx.definitions.Boolean_!),
+              /*Substitution(b, prevSym DOT vpmName.get)*/(next) // todo?
+            )
+          )
+        }
+
+        // cond: Boolean
+        // res: T
+        // nextBinder: T
+        // next == MatchMonad[U]
+        // returns MatchMonad[U]
+        def flatMapCond(cond: Tree, res: Tree, nextBinder: Symbol, next: Tree): Tree = {
+          val rest = Block(List(ValDef(nextBinder.asTerm, res)), next)
+          ifThenElseZero(cond, rest)
+        }
+
+        // guardTree: Boolean
+        // next: MatchMonad[T]
+        // returns MatchMonad[T]
+        def flatMapGuard(guardTree: Tree, next: Tree): Tree =
+          ifThenElseZero(guardTree, next)
+
+        def flatMapCondStored(cond: Tree, condSym: Symbol, res: Tree, nextBinder: Symbol, next: Tree): Tree =
+          ifThenElseZero(cond, Block(
+            List(Assign(ref(condSym), Literal(Constant(true))),
+              Assign(ref(nextBinder), res)),
+            next
+          ))
+      }
+
     }
   }
 }
