@@ -29,7 +29,7 @@ import collection.mutable
  *   - replace outer this by outer paths.
  */
 class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
-  import ExplicitOuter._
+  imoport ExplicitOuter._
   import ast.tpd._
 
   val Outer = new Attachment.Key[Tree]
@@ -71,7 +71,10 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
 
   /** Ensure that class `cls` has outer accessors */
   def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit = {
-    if (!hasOuter(cls)) newOuterAccessors(cls).foreach(_.enteredAfter(thisTransformer))
+    if (!hasOuter(cls)) {
+      assert(ctx.phaseId <= ctx.explicitOuter.id, "can add $outer symbols only before ExplicitOuter")
+      newOuterAccessors(cls).foreach(_.enteredAfter(thisTransformer))
+    }
   }
 
   /** First, add outer accessors if a class does not have them yet and it references an outer this.

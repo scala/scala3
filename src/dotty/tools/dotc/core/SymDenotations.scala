@@ -200,7 +200,7 @@ object SymDenotations {
     final def hasAnnotation(cls: Symbol)(implicit ctx: Context) =
       dropOtherAnnotations(annotations, cls).nonEmpty
 
-    /** Optionally, the arguments of the first annotation matching the given class symbol */
+    /** Optionally, get annotation matching the given class symbol */
     final def getAnnotation(cls: Symbol)(implicit ctx: Context): Option[Annotation] =
       dropOtherAnnotations(annotations, cls) match {
         case annot :: _ => Some(annot)

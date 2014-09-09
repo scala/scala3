@@ -691,6 +691,9 @@ import RefChecks._
  *  Unlike in Scala 2.x not-private members keep their name. It is
  *  up to the backend to find a unique expanded name for them. The
  *  rationale to do name changes that late is that they are very fragile.
+
+ *  todo: But RefChecks is not done yet. It's still a somewhat dirty port from the Scala 2 version.
+ *  todo: move untrivial logic to their own mini-phases
  */
 class RefChecks extends MiniPhase with SymTransformer { thisTransformer =>
 

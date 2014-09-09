@@ -85,7 +85,13 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { 
     if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) else tree
 
   override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = tree.tpe match {
-    case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
+    case tpe: ThisType =>
+      /*
+       A this reference hide in a self ident, and be subsequently missed
+        when deciding on whether outer accessors are needed and computing outer paths.
+        sWe do this normalization directly after Typer, because during typer the
+        ident should rest available for hyperlinking.*/
+      This(tpe.cls).withPos(tree.pos)
     case _ => normalizeType(tree)
   }
 
