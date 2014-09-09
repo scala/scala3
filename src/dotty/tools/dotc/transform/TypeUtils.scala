@@ -10,6 +10,8 @@ import StdNames.nme
 import NameOps._
 import language.implicitConversions
 
+import scala.language.implicitConversions
+
 object TypeUtils {
   implicit def decorateTypeUtils(tpe: Type): TypeUtils = new TypeUtils(tpe)
 }
@@ -18,6 +20,7 @@ object TypeUtils {
  *  that are needed in the transofmer pipeline (not needed right now)
  */
 class TypeUtils(val self: Type) extends AnyVal {
-  import TypeUtils._
+
+  def caseAccessors(implicit ctx:Context) = self.decls.filter(x => x.is(Flags.CaseAccessor) && x.is(Flags.Method)).toList
 
 }
