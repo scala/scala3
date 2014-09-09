@@ -345,6 +345,20 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Thicket(valdef, clsdef)
   }
 
+  def initValue(tpe: Types.Type)(implicit ctx: Context) = {
+    val tpw = tpe.widen
+
+    if (tpw =:= defn.IntType) Literal(Constant(0))
+    else if (tpw =:= defn.LongType) Literal(Constant(0L))
+    else if (tpw =:= defn.BooleanType) Literal(Constant(false))
+    else if (tpw =:= defn.CharType) Literal(Constant('\u0000'))
+    else if (tpw =:= defn.FloatType) Literal(Constant(0f))
+    else if (tpw =:= defn.DoubleType) Literal(Constant(0d))
+    else if (tpw =:= defn.ByteType) Literal(Constant(0.toByte))
+    else if (tpw =:= defn.ShortType) Literal(Constant(0.toShort))
+    else Literal(Constant(null)).select(defn.Any_asInstanceOf).appliedToType(tpe)
+  }
+
   private class FindLocalDummyAccumulator(cls: ClassSymbol)(implicit ctx: Context) extends TreeAccumulator[Symbol] {
     def apply(sym: Symbol, tree: Tree) =
       if (sym.exists) sym
@@ -618,7 +632,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  def runtimeCall(name: TermName, args: List[Tree])(implicit ctx: Context): Tree = ???
+  def runtimeCall(name: TermName, args: List[Tree])(implicit ctx: Context): Tree = {
+    Ident(defn.ScalaRuntimeModule.requiredMethod(name).termRef).appliedToArgs(args)
+  }
 
   // ensure that constructors are fully applied?
   // ensure that normal methods are fully applied?

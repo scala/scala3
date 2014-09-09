@@ -172,18 +172,6 @@ class LazyValTranformContext {
       If(cond, init, exp)
     }
 
-    def initValue(tpe: Types.Type)(implicit ctx: Context) =
-      if (tpe =:= defn.IntType) Constant(0)
-      else if (tpe =:= defn.LongType) Constant(0L)
-      else if (tpe =:= defn.BooleanType) Constant(false)
-      else if (tpe =:= defn.CharType)  Constant('\u0000')
-      else if (tpe =:= defn.FloatType) Constant(0f)
-      else if (tpe =:= defn.DoubleType) Constant(0d)
-      else if (tpe =:= defn.ByteType) Constant(0.toByte)
-      else if (tpe =:= defn.ShortType) Constant(0.toShort)
-      else Constant(null)
-
-
     def transformFieldValDefNonVolatile(x: ValDef)(implicit ctx: Context) = x match {
       case x@ValDef(mods, name, tpt, rhs) if (mods is Flags.Lazy) =>
         val claz = x.symbol.owner.asClass
@@ -193,8 +181,8 @@ class LazyValTranformContext {
         val containerSymbol = ctx.newSymbol(claz, containerName, (mods &~ Flags.Lazy | containerFlags).flags, tpe, coord = x.symbol.coord)
         addSym(claz, containerSymbol)
 
-        val containerTree = ValDef(containerSymbol, Literal(initValue(tpe)))
-        if (x.tpe.isNotNull && initValue(tpe).tag == Constants.NullTag) {
+        val containerTree = ValDef(containerSymbol, initValue(tpe))
+        if (x.tpe.isNotNull && tpe <:< defn.AnyRefType) { // can use 'null' value instead of flag
           val slowPath = DefDef(x.symbol.asTerm, mkDefNonThreadSafeNonNullable(containerSymbol, rhs))
           Thicket(List(containerTree, slowPath))
         }
@@ -252,7 +240,7 @@ class LazyValTranformContext {
       val thiz = This(claz)(ctx.fresh.setOwner(claz))
 
       val resultSymbol = ctx.newSymbol(methodSymbol, "result".toTermName, containerFlags, tp)
-      val resultDef = ValDef(resultSymbol, Literal(initValue(tp.widen)))
+      val resultDef = ValDef(resultSymbol, initValue(tp))
 
       val retrySymbol = ctx.newSymbol(methodSymbol, "retry".toTermName, containerFlags, defn.BooleanType)
       val retryDef = ValDef(retrySymbol, Literal(Constants.Constant(true)))
@@ -355,7 +343,7 @@ class LazyValTranformContext {
         val containerName = ctx.freshName(name.toString + StdNames.nme.LAZY_LOCAL).toTermName
         val containerSymbol = ctx.newSymbol(claz, containerName, (mods &~ Flags.Lazy | containerFlags).flags, tpe, coord = x.symbol.coord)
         addSym(claz, containerSymbol)
-        val containerTree = ValDef(containerSymbol, Literal(initValue(tpe)))
+        val containerTree = ValDef(containerSymbol, initValue(tpe))
 
         val offset = Select(Ident(companion.termRef), offsetSymbol.name)
         val getFlag = Select(Ident(helperModule.termRef), LazyVals.Names.get.toTermName)
