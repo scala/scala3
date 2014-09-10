@@ -34,7 +34,7 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
 
   val Outer = new Attachment.Key[Tree]
 
-  override def phaseName: String = "ExplicitOuter"
+  override def phaseName: String = "explicitOuter"
 
   override def treeTransformPhase = thisTransformer.next
 
@@ -277,8 +277,6 @@ object ExplicitOuter {
     } catch {
       case ex: ClassCastException =>
         throw new ClassCastException(i"no path exists from ${ctx.owner.enclosingClass} to $toCls")
-      case ex: AssertionError =>
-        throw new ClassCastException(i"no path exists from ${ctx.owner.enclosingClass} to $toCls\n because ${ex.getMessage}")
     }
   }
 }
