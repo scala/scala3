@@ -1599,8 +1599,7 @@ object Types {
 
   object SuperType {
     def apply(thistpe: Type, supertpe: Type)(implicit ctx: Context): Type =
-      if (ctx.erasedTypes) thistpe
-      else unique(new CachedSuperType(thistpe, supertpe))
+      unique(new CachedSuperType(thistpe, supertpe))
   }
 
   /** A constant type with  single `value`. */

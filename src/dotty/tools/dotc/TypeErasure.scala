@@ -14,6 +14,7 @@ import util.DotClass
  *  AnnotatedType
  *  MethodType
  *  ThisType
+ *  SuperType
  *  ClassInfo (NoPrefix, ...)
  *  NoType
  *  NoPrefix
@@ -43,7 +44,7 @@ object TypeErasure {
       tp.paramTypes.forall(isErasedType) && isErasedType(tp.resultType)
     case tp @ ClassInfo(pre, _, parents, decls, _) =>
       isErasedType(pre) && parents.forall(isErasedType) //&& decls.forall(sym => isErasedType(sym.info)) && isErasedType(tp.selfType)
-    case NoType | NoPrefix | WildcardType | ErrorType =>
+    case NoType | NoPrefix | WildcardType | ErrorType | SuperType(_, _) =>
       true
     case _ =>
       false
@@ -237,7 +238,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
     case tp: TermRef =>
       assert(tp.symbol.exists, tp)
       TermRef(NoPrefix, tp.symbol.asTerm)
-    case ThisType(_) =>
+    case ThisType(_) | SuperType(_, _) =>
       tp
     case ExprType(rt) =>
       MethodType(Nil, Nil, this(rt))
