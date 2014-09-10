@@ -267,8 +267,14 @@ object Erasure {
       val sym = tree.symbol
       assert(sym.exists, tree.show)
 
-      def select(qual: Tree, sym: Symbol): Tree =
-        untpd.cpy.Select(tree)(qual, sym.name) withType qual.tpe.select(sym)
+      def select(qual: Tree, sym: Symbol): Tree = {
+        val name = tree.typeOpt match {
+          case tp: NamedType if tp.name.isInheritedName => sym.name.inheritedName
+          case _ => sym.name
+        }
+        untpd.cpy.Select(tree)(qual, sym.name)
+          .withType(NamedType.withSymAndName(qual.tpe, sym, name))
+      }
 
       def selectArrayMember(qual: Tree, erasedPre: Type): Tree =
         if (erasedPre isRef defn.ObjectClass)
@@ -307,7 +313,10 @@ object Erasure {
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
       if (tree.symbol == ctx.owner.enclosingClass || tree.symbol.isStaticOwner) promote(tree)
-      else outer.path(tree.symbol)
+      else {
+        ctx.log(i"computing outer path from ${ctx.owner.ownersIterator.toList}%, % to ${tree.symbol}")
+        outer.path(tree.symbol)
+      }
 
     private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {
       val meth = defn.runtimeMethod(name)
