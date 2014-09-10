@@ -15,6 +15,7 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Types.MethodType
 import dotty.tools.dotc.core.Names.Name
 import dotty.runtime.LazyVals
+import SymUtils._
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
@@ -78,10 +79,9 @@ class LazyValTranformContext {
       if (!(tree.mods is Flags.Lazy)) tree
       else {
         val isField = tree.symbol.owner.isClass
-        val isVolatile = tree.symbol.hasAnnotation(defn.VolatileAnnot)
 
         if (isField) {
-          if (isVolatile) transformFieldValDefVolatile(tree)
+          if (tree.symbol.isVolatile) transformFieldValDefVolatile(tree)
           else transformFieldValDefNonVolatile(tree)
         }
         else transformLocalValDef(tree)

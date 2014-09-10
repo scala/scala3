@@ -20,4 +20,6 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   def isTypeTestOrCast(implicit ctx: Context): Boolean =
     self == defn.Any_asInstanceOf || self == defn.Any_isInstanceOf
+
+  def isVolatile(implicit ctx: Context) = self.hasAnnotation(defn.VolatileAnnot)
 }
