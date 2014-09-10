@@ -662,6 +662,14 @@ object SymDenotations {
       if (cls.effectiveName == name || !cls.exists) cls else cls.owner.enclosingClassNamed(name)
     }
 
+    /** The closest enclosing method containing this definition.
+     *  A local dummy owner is mapped to the primary constructor of the class.
+     */
+    final def enclosingMethod(implicit ctx: Context): Symbol =
+      if (this is Method) symbol
+      else if (this.isClass) primaryConstructor
+      else owner.enclosingMethod
+
     /** The top-level class containing this denotation,
      *  except for a toplevel module, where its module class is returned.
      */
@@ -901,7 +909,7 @@ object SymDenotations {
       privateWithin: Symbol = null,
       annotations: List[Annotation] = null)(implicit ctx: Context) =
     { // simulate default parameters, while also passing implicit context ctx to the default values
-      val initFlags1 = if (initFlags != UndefinedFlags) initFlags else this.flags
+      val initFlags1 = if (initFlags != UndefinedFlags) initFlags else this.flags &~ Frozen
       val info1 = if (info != null) info else this.info
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
@@ -1172,15 +1180,20 @@ object SymDenotations {
     /** Enter a symbol in current scope.
      *  Note: We require that this does not happen after the first time
      *  someone does a findMember on a subclass.
+     *  @param scope   The scope in which symbol should be entered.
+     *                 If this is EmptyScope, the scope is `decls`.
+     *  @param replace Replace any existing symbol with same name.
+     *                 This is always done if this denotes a package class.
      */
-    def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
+    def enter(sym: Symbol, scope: Scope = EmptyScope, replace: Boolean = false)(implicit ctx: Context): Unit = {
       val mscope = scope match {
         case scope: MutableScope => scope
         case _ => decls.asInstanceOf[MutableScope]
       }
-      if (this is PackageClass) { // replace existing symbols
+      if (replace || (this is PackageClass)) {
         val entry = mscope.lookupEntry(sym.name)
         if (entry != null) {
+          if (entry.sym == sym) return
           mscope.unlink(entry)
           entry.sym.denot = sym.denot // to avoid stale symbols
         }
@@ -1188,7 +1201,7 @@ object SymDenotations {
       enterNoReplace(sym, mscope)
     }
 
-    /** Enter a symbol in current scope without potentially replacing the old copy. */
+    /** Enter a symbol in given `scope` without potentially replacing the old copy. */
     def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
       require(!(this is Frozen))
       scope.enter(sym)

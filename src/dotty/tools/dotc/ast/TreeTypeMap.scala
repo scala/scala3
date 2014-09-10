@@ -45,6 +45,12 @@ final class TreeTypeMap(
       val parents1 = parents mapconserve transform
       var self1 = transformDefs(self :: Nil)._2.head
       val body1 = tmap.transformStats(body)
+      body1 foreach {
+        case mdef: MemberDef =>
+          val member = mdef.symbol
+          member.owner.asClass.enter(member, replace = true)
+        case _ =>
+      }
       cpy.Template(impl)(constr1, parents1, self1, body1).withType(tmap.mapType(impl.tpe))
     case tree1 =>
       tree1.withType(mapType(tree1.tpe)) match {
