@@ -39,7 +39,7 @@ class TreeChecker {
     println(s"checking ${ctx.compilationUnit} after phase ${ctx.phase.prev}")
     val checkingCtx = ctx.fresh
       .setTyperState(ctx.typerState.withReporter(new ThrowingReporter(ctx.typerState.reporter)))
-    val checker = new Checker(phasesToRun.takeWhile(_ ne ctx.phase) :+ ctx.phase)
+    val checker = new Checker(phasesToRun.takeWhile(_ ne ctx.phase))
     checker.typedExpr(ctx.compilationUnit.tpdTree)(checkingCtx)
   }
 
@@ -107,9 +107,9 @@ class TreeChecker {
      *  is that we should be able to pull out an expression as an initializer
      *  of a helper value without having to do a change owner traversal of the expression.
      */
-    override def index(trees: List[untpd.Tree])(implicit ctx: Context): Context = {
+    override def typedStats(trees: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
       for (tree <- trees if tree.isDef) checkOwner(tree)
-      super.index(trees)
+      super.typedStats(trees, exprOwner)
     }
 
     override def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = {
