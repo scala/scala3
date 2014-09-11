@@ -256,14 +256,28 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
 
       val res: Tree = tree match {
 
+        case Ident(qual) =>
+          val sym = tree.symbol
+          if (sym == method && ctx.tailPos) rewriteApply(tree, sym)
+          else tree
+
+        case tree: Select =>
+          val sym = tree.symbol
+          if (sym == method && ctx.tailPos) rewriteApply(tree, sym)
+          else tpd.cpy.Select(tree)(noTailTransform(tree.qualifier), tree.name)
+
+        case Apply(fun, args) =>
+          val meth = fun.symbol
+          if (meth == defn.Boolean_|| || meth == defn.Boolean_&&)
+            tpd.cpy.Apply(tree)(fun, transform(args))
+          else
+            rewriteApply(tree, meth)
+
         case tree@Block(stats, expr) =>
           tpd.cpy.Block(tree)(
             noTailTransforms(stats),
             transform(expr)
           )
-
-        case tree@CaseDef(_, _, body) =>
-          cpy.CaseDef(tree)(body = transform(body))
 
         case tree@If(cond, thenp, elsep) =>
           tpd.cpy.If(tree)(
@@ -271,6 +285,9 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
             transform(thenp),
             transform(elsep)
           )
+
+        case tree@CaseDef(_, _, body) =>
+          cpy.CaseDef(tree)(body = transform(body))
 
         case tree@Match(selector, cases) =>
           tpd.cpy.Match(tree)(
@@ -281,29 +298,16 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
         case tree: Try =>
           rewriteTry(tree)
 
-        case Apply(fun, args) if fun.symbol == defn.Boolean_|| || fun.symbol == defn.Boolean_&& =>
-          tpd.cpy.Apply(tree)(fun, transform(args))
-
-        case Apply(fun, args) =>
-          rewriteApply(tree, fun.symbol)
-
         case Alternative(_) | Bind(_, _) =>
           assert(false, "We should've never gotten inside a pattern")
           tree
-
-        case tree: Select =>
-          val sym = tree.symbol
-          if (sym == method && ctx.tailPos) rewriteApply(tree, sym)
-          else tpd.cpy.Select(tree)(noTailTransform(tree.qualifier), tree.name)
 
         case ValDef(_, _, _, _) | EmptyTree | Super(_, _) | This(_) |
              Literal(_) | TypeTree(_) | DefDef(_, _, _, _, _, _) | TypeDef(_, _, _) =>
           tree
 
-        case Ident(qual) =>
-          val sym = tree.symbol
-          if (sym == method && ctx.tailPos) rewriteApply(tree, sym)
-          else tree
+        case Return(expr, from) =>
+          tpd.cpy.Return(tree)(noTailTransform(expr), from)
 
         case _ =>
           super.transform(tree)
