@@ -48,35 +48,6 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
       tp
   }
 
-  /** A new outer accessor or param accessor */
-  private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(implicit ctx: Context) = {
-    ctx.newSymbol(owner, name, Synthetic | flags, cls.owner.enclosingClass.typeRef, coord = cls.coord)
-  }
-
-  /** A new outer accessor for class `cls` which is a member of `owner` */
-  private def newOuterAccessor(owner: ClassSymbol, cls: ClassSymbol)(implicit ctx: Context) = {
-    val deferredIfTrait = if (cls.is(Trait)) Deferred else EmptyFlags
-    val outerAccIfOwn = if (owner == cls) OuterAccessor else EmptyFlags
-    newOuterSym(owner, cls, outerAccName(cls),
-        Final | Method | Stable | outerAccIfOwn | deferredIfTrait)
-  }
-
-  /** A new param accessor for the outer field in class `cls` */
-  private def newOuterParamAccessor(cls: ClassSymbol)(implicit ctx: Context) =
-    newOuterSym(cls, cls, nme.OUTER, Private | ParamAccessor)
-
-  /** The outer accessor and potentially outer param accessor needed for class `cls` */
-  private def newOuterAccessors(cls: ClassSymbol)(implicit ctx: Context) =
-    newOuterAccessor(cls, cls) :: (if (cls is Trait) Nil else newOuterParamAccessor(cls) :: Nil)
-
-  /** Ensure that class `cls` has outer accessors */
-  def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit = {
-    if (!hasOuter(cls)) {
-      assert(ctx.phaseId <= ctx.explicitOuter.id, "can add $outer symbols only before ExplicitOuter")
-      newOuterAccessors(cls).foreach(_.enteredAfter(thisTransformer))
-    }
-  }
-
   /** First, add outer accessors if a class does not have them yet and it references an outer this.
    *  If the class has outer accessors, implement them.
    *  Furthermore, if a parent trait might have an outer accessor,
@@ -129,6 +100,36 @@ object ExplicitOuter {
   import ast.tpd._
 
   private val LocalInstantiationSite = Module | Private
+
+  /** Ensure that class `cls` has outer accessors */
+  def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit = {
+    assert(ctx.phaseId <= ctx.explicitOuter.id, "can add $outer symbols only before ExplicitOuter")
+    assert(ctx.phase.isInstanceOf[DenotTransformer], "adding outerAccessors requires being DenotTransformer")
+    if (!hasOuter(cls)) {
+      newOuterAccessors(cls).foreach(_.enteredAfter(ctx.phase.asInstanceOf[DenotTransformer]))
+    }
+  }
+
+  /** The outer accessor and potentially outer param accessor needed for class `cls` */
+  private def newOuterAccessors(cls: ClassSymbol)(implicit ctx: Context) =
+    newOuterAccessor(cls, cls) :: (if (cls is Trait) Nil else newOuterParamAccessor(cls) :: Nil)
+
+  /** A new outer accessor or param accessor */
+  private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(implicit ctx: Context) = {
+    ctx.newSymbol(owner, name, Synthetic | flags, cls.owner.enclosingClass.typeRef, coord = cls.coord)
+  }
+
+  /** A new param accessor for the outer field in class `cls` */
+  private def newOuterParamAccessor(cls: ClassSymbol)(implicit ctx: Context) =
+    newOuterSym(cls, cls, nme.OUTER, Private | ParamAccessor)
+
+  /** A new outer accessor for class `cls` which is a member of `owner` */
+  private def newOuterAccessor(owner: ClassSymbol, cls: ClassSymbol)(implicit ctx: Context) = {
+    val deferredIfTrait = if (cls.is(Trait)) Deferred else EmptyFlags
+    val outerAccIfOwn = if (owner == cls) OuterAccessor else EmptyFlags
+    newOuterSym(owner, cls, outerAccName(cls),
+      Final | Method | Stable | outerAccIfOwn | deferredIfTrait)
+  }
 
   private def outerAccName(cls: ClassSymbol)(implicit ctx: Context): TermName =
     nme.OUTER.expandedName(cls)
