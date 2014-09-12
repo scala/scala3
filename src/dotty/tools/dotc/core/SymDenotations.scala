@@ -666,7 +666,7 @@ object SymDenotations {
      *  A local dummy owner is mapped to the primary constructor of the class.
      */
     final def enclosingMethod(implicit ctx: Context): Symbol =
-      if (this is Method) symbol
+      if (this is (Method, butNot = Label)) symbol
       else if (this.isClass) primaryConstructor
       else owner.enclosingMethod
 
@@ -1320,6 +1320,8 @@ object SymDenotations {
             baseTypeRefOf(tp1) & baseTypeRefOf(tp2)
           case OrType(tp1, tp2) =>
             baseTypeRefOf(tp1) | baseTypeRefOf(tp2)
+          case JavaArrayType(_) if symbol == defn.ObjectClass =>
+            this.typeRef
           case _ =>
             NoType
         }
