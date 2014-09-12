@@ -184,8 +184,9 @@ trait TypeAssigner {
     tree.withType(tp)
 
   def assignType(tree: untpd.Select, qual: Tree)(implicit ctx: Context): Select = {
+    def qualType = qual.tpe.widen
     def arrayElemType = {
-      val JavaArrayType(elemtp) = qual.tpe.widen
+      val JavaArrayType(elemtp) = qualType
       elemtp
     }
     val p = nme.primitive
@@ -193,7 +194,8 @@ trait TypeAssigner {
       case p.arrayApply => MethodType(defn.IntType :: Nil, arrayElemType)
       case p.arrayUpdate => MethodType(defn.IntType :: arrayElemType :: Nil, defn.UnitType)
       case p.arrayLength => MethodType(Nil, defn.IntType)
-      case p.arrayConstructor => MethodType(defn.IntType :: Nil, qual.tpe)
+      case p.arrayConstructor => MethodType(defn.IntType :: Nil, qualType)
+      case nme.clone_ if qualType.isInstanceOf[JavaArrayType] => MethodType(Nil, qualType)
       case _ => accessibleSelectionType(tree, qual)
     }
     tree.withType(tp)

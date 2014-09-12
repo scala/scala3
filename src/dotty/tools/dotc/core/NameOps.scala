@@ -201,6 +201,7 @@ object NameOps {
       case nme.apply => nme.primitive.arrayApply
       case nme.length => nme.primitive.arrayLength
       case nme.update => nme.primitive.arrayUpdate
+      case nme.clone_ => nme.clone_
       case nme.CONSTRUCTOR => nme.primitive.arrayConstructor
     }
 

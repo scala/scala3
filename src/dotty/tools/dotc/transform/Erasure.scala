@@ -281,8 +281,6 @@ object Erasure {
           runtimeCallWithProtoArgs(tree.name.genericArrayOp, pt, qual)
         else if (!(qual.tpe <:< erasedPre))
           selectArrayMember(cast(qual, erasedPre), erasedPre)
-        else if (sym == defn.Array_clone)
-          untpd.cpy.Select(tree)(qual, tree.name).withType(defn.Object_clone.termRef)
         else
           assignType(untpd.cpy.Select(tree)(qual, tree.name.primitiveArrayOp), qual)
 
