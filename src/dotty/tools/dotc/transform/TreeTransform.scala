@@ -1166,16 +1166,22 @@ object TreeTransforms {
       }
 
     def transform(tree: Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree = ctx.traceIndented(s"transforming ${tree.show} at ${ctx.phase}", transforms, show = true) {
-      if (cur < info.transformers.length) {
-        // if cur > 0 then some of the symbols can be created by already performed transformations
-        // this means that their denotations could not exists in previous period
-        val pctx = ctx.withPhase(info.transformers(cur).treeTransformPhase)
-        tree match {
-          //split one big match into 2 smaller ones
-          case tree: NameTree => transformNamed(tree, info, cur)(pctx)
-          case tree => transformUnnamed(tree, info, cur)(pctx)
-        }
-      } else tree
+      try
+        if (cur < info.transformers.length) {
+          // if cur > 0 then some of the symbols can be created by already performed transformations
+          // this means that their denotations could not exists in previous period
+          val pctx = ctx.withPhase(info.transformers(cur).treeTransformPhase)
+          tree match {
+            //split one big match into 2 smaller ones
+            case tree: NameTree => transformNamed(tree, info, cur)(pctx)
+            case tree => transformUnnamed(tree, info, cur)(pctx)
+          }
+        } else tree
+      catch {
+        case ex: Throwable =>
+          println(i"exception while transforming $tree of class ${tree.getClass} # ${tree.uniqueId}")
+          throw ex
+      }
     }
 
     @tailrec
