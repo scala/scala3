@@ -1438,16 +1438,6 @@ object Types {
   final class NonMemberTermRef(prefix: Type, name: TermName, val fixedSym: TermSymbol) extends TermRef(prefix, name) with WithNonMemberSym
   final class NonMemberTypeRef(prefix: Type, name: TypeName, val fixedSym: TypeSymbol) extends TypeRef(prefix, name) with WithNonMemberSym
 
-  /** Compute prefix at current phase. If current phase has erasure semantics
-   *  returns NoPrefix, otherwise the given prefix
-   */
-  private def atCurrentPhase(prefix: Type)(implicit ctx: Context) =
-    if (ctx.phase.erasedTypes) NoPrefix else prefix
-
-  /** Is the prefix seen at current phase the same as NoPrefix? */
-  def isMissing(prefix: Type)(implicit ctx: Context) =
-    (prefix eq NoPrefix) || ctx.phase.erasedTypes
-
   /** Assert current phase does not have erasure semantics */
   private def assertUnerased()(implicit ctx: Context) =
     if (Config.checkUnerased) assert(!ctx.phase.erasedTypes)
@@ -1462,6 +1452,9 @@ object Types {
     def withNonMemberSym(prefix: Type, sym: Symbol)(implicit ctx: Context) =
       if (sym.isType) TypeRef.withNonMemberSym(prefix, sym.name.asTypeName, sym.asType)
       else TermRef.withNonMemberSym(prefix, sym.name.asTermName, sym.asTerm)
+    def withSymAndName(prefix: Type, sym: Symbol, name: Name)(implicit ctx: Context): NamedType =
+      if (sym.isType) TypeRef.withSymAndName(prefix, sym.asType, name.asTypeName)
+      else TermRef.withSymAndName(prefix, sym.asTerm, name.asTermName)
   }
 
   object TermRef {
@@ -1471,7 +1464,7 @@ object Types {
      *  of prefix with given name.
      */
     def all(prefix: Type, name: TermName)(implicit ctx: Context): TermRef = {
-      ctx.uniqueNamedTypes.enterIfNew(atCurrentPhase(prefix), name).asInstanceOf[TermRef]
+      ctx.uniqueNamedTypes.enterIfNew(prefix, name).asInstanceOf[TermRef]
     }
 
     /** Create term ref referring to given symbol, taking the signature
@@ -1486,7 +1479,7 @@ object Types {
      *  signature, if denotation is not yet completed.
      */
     def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef = {
-      if (isMissing(prefix)) apply(prefix, denot.symbol.asTerm)
+      if (prefix eq NoPrefix) apply(prefix, denot.symbol.asTerm)
       else denot match {
         case denot: SymDenotation if denot.isCompleted => withSig(prefix, name, denot.signature)
         case _ => all(prefix, name)
@@ -1497,7 +1490,7 @@ object Types {
      *  with given prefix, name, and signature
      */
     def withNonMemberSym(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      unique(new NonMemberTermRef(atCurrentPhase(prefix), name, sym))
+      unique(new NonMemberTermRef(prefix, name, sym))
 
     /** Create a term ref referring to given symbol with given name, taking the signature
      *  from the symbol if it is completed, or creating a term ref without
@@ -1507,7 +1500,7 @@ object Types {
      *  (2) The name in the term ref need not be the same as the name of the Symbol.
      */
     def withSymAndName(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef =
-      if (isMissing(prefix))
+      if (prefix eq NoPrefix)
         withNonMemberSym(prefix, name, sym)
       else if (sym.defRunId != NoRunId && sym.isCompleted)
         withSig(prefix, name, sym.signature) withSym (sym, sym.signature)
@@ -1518,16 +1511,16 @@ object Types {
      *  (which must be completed).
      */
     def withSig(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      if (isMissing(prefix)) withNonMemberSym(prefix, sym.name, sym)
+      if (prefix eq NoPrefix) withNonMemberSym(prefix, sym.name, sym)
       else withSig(prefix, sym.name, sym.signature).withSym(sym, sym.signature)
 
     /** Create a term ref with given prefix, name and signature */
     def withSig(prefix: Type, name: TermName, sig: Signature)(implicit ctx: Context): TermRef =
-      unique(new TermRefWithSignature(atCurrentPhase(prefix), name, sig))
+      unique(new TermRefWithSignature(prefix, name, sig))
 
     /** Create a term ref with given prefix, name, signature, and initial denotation */
     def withSigAndDenot(prefix: Type, name: TermName, sig: Signature, denot: Denotation)(implicit ctx: Context): TermRef =
-      (if (isMissing(prefix)) withNonMemberSym(prefix, denot.symbol.asTerm.name, denot.symbol.asTerm)
+      (if (prefix eq NoPrefix) withNonMemberSym(prefix, denot.symbol.asTerm.name, denot.symbol.asTerm)
        else withSig(prefix, name, sig)) withDenot denot
   }
 
