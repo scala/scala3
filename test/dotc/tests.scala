@@ -13,7 +13,7 @@ class tests extends CompilerTest {
 //        "-Yshow-suppressed-errors",
         "-pagewidth", "160")
 
-  implicit val defaultOptions = noCheckOptions ++ List("-Ycheck:literalize,capturedVars")
+  implicit val defaultOptions = noCheckOptions ++ List("-Ycheck:patternMatcher:literalize,capturedVars")
 
   val twice = List("#runs", "2", "-YnoDoubleBindings", "-Ystop-before:terminal")
   val doErase = List("-Ystop-before:terminal")
@@ -24,14 +24,14 @@ class tests extends CompilerTest {
   val dotcDir = "./src/dotty/"
 
 
-  @Test def pos_erasure = compileFile(posDir, "erasure", doErase)
+  /*@Test def pos_erasure = compileFile(posDir, "erasure", doErase)
   @Test def pos_Coder() = compileFile(posDir, "Coder", doErase)
   @Test def pos_blockescapes() = compileFile(posDir, "blockescapes", doErase)
   @Test def pos_collections() = compileFile(posDir, "collections", doErase)
   @Test def pos_functions1() = compileFile(posDir, "functions1", doErase)
   @Test def pos_implicits1() = compileFile(posDir, "implicits1", doErase)
-  @Test def pos_inferred() = compileFile(posDir, "inferred", doErase)
-  @Test def pos_Patterns() = compileFile(posDir, "Patterns", doErase)
+  @Test def pos_inferred() = compileFile(posDir, "inferred", doErase)*/
+  @Test def pos_Patterns() = compileFile(posDir, "Patterns", doErase)/*
   @Test def pos_selftypes() = compileFile(posDir, "selftypes", doErase)
   @Test def pos_varargs() = compileFile(posDir, "varargs", doErase)
   @Test def pos_opassign() = compileFile(posDir, "opassign", doErase)
@@ -119,7 +119,7 @@ class tests extends CompilerTest {
       dotcDir + "tools/dotc/config/PathResolver.scala",
       //"-Ylog:frontend",
       "-Xprompt",
-      "#runs", "2"))
+      "#runs", "2"))*/
 
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }

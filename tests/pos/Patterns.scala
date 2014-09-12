@@ -1,9 +1,9 @@
-object Patterns {/*
-  ('1', "1") match {
+object Patterns {
+  /*('1', "1") match {
     case (digit, str) => true
     case _ => false
   }
-
+*/
   object Breakdown {
     def unapplySeq(x: Int): Some[List[String]] = Some(List("", "there"))
   }
@@ -16,7 +16,7 @@ object Patterns {/*
     }
   }
 
-  val names = List("a", "b", "c")
+  /*val names = List("a", "b", "c")
   object SeqExtractors {
     val y = names match {
       case List(x, z) => x
@@ -49,14 +49,14 @@ object Patterns {/*
   def len[T](xs: List[T]): Int = xs match {
     case _ :: xs1 => 1 + len(xs1)
     case Nil => 0
-  }*/
+  }
 
   final def sameLength[T](xs: List[T], ys: List[T]): Boolean = xs match {
-    case _ :: xs1 =>
-      ys match {
-        case _ :: ys1 => sameLength(xs1, ys1)
-        case _ => false
-      }
-    case _ => ys.isEmpty
-  }
+    case _ :: xs1 => xs1.isEmpty
+    //  ys match {
+    //    case _ :: ys1 => sameLength(xs1, ys1)
+    //    case _ => false
+    //  }
+    //case _ => ys.isEmpty
+  }*/
 }
