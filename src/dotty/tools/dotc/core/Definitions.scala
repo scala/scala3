@@ -538,6 +538,15 @@ class Definitions {
     vcls
   }
 
+  /** The classes for which a Ref type exists. */
+  lazy val refClasses: collection.Set[Symbol] = ScalaNumericValueClasses + BooleanClass + ObjectClass
+
+  lazy val refClass: Map[Symbol, Symbol] =
+    refClasses.map(rc => rc -> ctx.requiredClass(s"scala.runtime.${rc.name}Ref")).toMap
+
+  lazy val volatileRefClass: Map[Symbol, Symbol] =
+    refClasses.map(rc => rc -> ctx.requiredClass(s"scala.runtime.Volatile${rc.name}Ref")).toMap
+
   def wrapArrayMethodName(elemtp: Type): TermName = {
     val cls = elemtp.classSymbol
     if (cls.isPrimitiveValueClass) nme.wrapXArray(cls.name)

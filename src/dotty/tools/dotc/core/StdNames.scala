@@ -344,6 +344,7 @@ object StdNames {
  //   val conforms : N             = "conforms" // Dotty deviation: no special treatment of conforms, so the occurrence of the name here would cause to unintended implicit shadowing. Should find a less common name for it in Predef.
     val copy: N                 = "copy"
     val currentMirror: N        = "currentMirror"
+    val create: N               = "create"
     val definitions: N          = "definitions"
     val delayedInit: N          = "delayedInit"
     val delayedInitArg: N       = "delayedInit$body"
@@ -484,6 +485,7 @@ object StdNames {
     val withFilter: N           = "withFilter"
     val withFilterIfRefutable: N = "withFilterIfRefutable$"
     val wrap: N                 = "wrap"
+    val zero: N                 = "zero"
     val zip: N                  = "zip"
 
     val synthSwitch: N          = "$synthSwitch"
