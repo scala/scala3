@@ -15,9 +15,13 @@ import Denotations._, Decorators._
  *  @param ownerMap  A function that translates owners of top-level local symbols
  *                   defined in the mapped tree.
  *  @param treeMap   A transformer that translates all encountered subtrees in
- *                   prefix traversal order.
- *  @param substFrom The symbols that need to be substituted
- *  @param substTo   The substitution targets
+ *                   prefix traversal orders
+ *  @param oldOwners Previous owners. If a top-level local symbol in the mapped tree
+ *                   has one of these as an owner, the owner is replaced by the corresponding
+ *                   symbol in `newOwners`.
+ *  @param newOwners New owners, replacing previous owners.
+ *  @param substFrom The symbols that need to be substituted.
+ *  @param substTo   The substitution targets.
  *
  *  The reason the substitution is broken out from the rest of the type map is
  *  that all symbols have to be substituted at the same time. If we do not do this,
@@ -30,28 +34,64 @@ import Denotations._, Decorators._
  */
 final class TreeTypeMap(
   val typeMap: Type => Type = IdentityTypeMap,
-  val ownerMap: Symbol => Symbol = identity _,
   val treeMap: tpd.Tree => tpd.Tree = identity _,
+  val oldOwners: List[Symbol] = Nil,
+  val newOwners: List[Symbol] = Nil,
   val substFrom: List[Symbol] = Nil,
   val substTo: List[Symbol] = Nil)(implicit ctx: Context) extends tpd.TreeMap {
   import tpd._
 
-  def mapType(tp: Type) = typeMap(tp).substSym(substFrom, substTo)
+  /** If `sym` is one of `oldOwners`, replace by corresponding symbol in `newOwners` */
+  def mapOwner(sym: Symbol) = {
+    def loop(from: List[Symbol], to: List[Symbol]): Symbol =
+      if (from.isEmpty) sym
+      else if (sym eq from.head) to.head
+      else loop(from.tail, to.tail)
+    loop(oldOwners, newOwners)
+  }
+
+  /** Replace occurrences of `This(oldOwner)` in some prefix of a type
+   *  by the corresponding `This(newOwner)`.
+   */
+  private val mapOwnerThis = new TypeMap {
+    private def mapPrefix(from: List[Symbol], to: List[Symbol], tp: Type): Type = from match {
+      case Nil => tp
+      case (cls: ClassSymbol) :: from1 => mapPrefix(from1, to.tail, tp.substThis(cls, to.head.thisType))
+      case _ :: from1 => mapPrefix(from1, to.tail, tp)
+    }
+    def apply(tp: Type): Type = tp match {
+      case tp: NamedType => tp.derivedSelect(mapPrefix(oldOwners, newOwners, tp.prefix))
+      case _ => mapOver(tp)
+    }
+  }
+
+  def mapType(tp: Type) =
+    mapOwnerThis(typeMap(tp).substSym(substFrom, substTo))
+
+  private def updateDecls(prevStats: List[Tree], newStats: List[Tree]): Unit =
+    if (prevStats.isEmpty) assert(newStats.isEmpty)
+    else {
+      prevStats.head match {
+        case pdef: MemberDef =>
+          val prevSym = pdef.symbol
+          val newSym = newStats.head.symbol
+          val newCls = newSym.owner.asClass
+          if (prevSym != newSym) newCls.replace(prevSym, newSym)
+        case _ =>
+      }
+      updateDecls(prevStats.tail, newStats.tail)
+    }
 
   override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = treeMap(tree) match {
     case impl @ Template(constr, parents, self, body) =>
       val tmap = withMappedSyms(impl.symbol :: impl.constr.symbol :: Nil)
-      val constr1 = tmap.transformSub(constr)
       val parents1 = parents mapconserve transform
-      var self1 = transformDefs(self :: Nil)._2.head
+      val (_, constr1 :: self1 :: Nil) = transformDefs(constr :: self :: Nil)
       val body1 = tmap.transformStats(body)
-      body1 foreach {
-        case mdef: MemberDef =>
-          val member = mdef.symbol
-          member.owner.asClass.enter(member, replace = true)
-        case _ =>
-      }
-      cpy.Template(impl)(constr1, parents1, self1, body1).withType(tmap.mapType(impl.tpe))
+      updateDecls(constr :: body, constr1 :: body1)
+      cpy.Template(impl)(
+        constr1.asInstanceOf[DefDef], parents1, self1.asInstanceOf[ValDef], body1)
+        .withType(tmap.mapType(impl.tpe))
     case tree1 =>
       tree1.withType(mapType(tree1.tpe)) match {
         case id: Ident if tpd.needsSelect(id.tpe) =>
@@ -104,15 +144,19 @@ final class TreeTypeMap(
     if (from eq to) this
     else {
       // assert that substitution stays idempotent, assuming its parts are
+      // TODO: It might be better to cater for the asserted-away conditions, by
+      // setting up a proper substitution abstraction with a compose operator that
+      // guarantees idempotence. But this might be too inefficient in some cases.
+      // We'll cross that bridge when we need to.
       assert(!from.exists(substTo contains _))
       assert(!to.exists(substFrom contains _))
+      assert(!from.exists(oldOwners contains _))
+      assert(!to.exists(newOwners contains _))
       new TreeTypeMap(
         typeMap,
-        ownerMap andThen { sym =>
-          val idx = from.indexOf(sym)
-          if (idx >= 0) to(idx) else sym
-        },
         treeMap,
+        from ++ oldOwners,
+        to ++ newOwners,
         from ++ substFrom,
         to ++ substTo)
     }

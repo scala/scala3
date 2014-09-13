@@ -356,6 +356,9 @@ object Flags {
 
   // Flags following this one are not pickled
 
+  /** Symbol always defines a fresh named type */
+  final val Fresh = commonFlag(45, "<fresh>")
+
   /** Symbol is defined in a super call */
   final val InSuperCall = commonFlag(46, "<in supercall>")
 
@@ -434,7 +437,8 @@ object Flags {
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon |
     InSuperCall | Touched | Static | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
-    CaseAccessorOrTypeArgument | Frozen | Erroneous | ImplicitCommon | Permanent | SelfNameOrImplClass
+    CaseAccessorOrTypeArgument | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent |
+    SelfNameOrImplClass
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion

@@ -867,7 +867,7 @@ object SymDenotations {
       TermRef.withSigAndDenot(owner.thisType, name.asTermName, signature, this)
 
     def nonMemberTermRef(implicit ctx: Context): TermRef =
-      TermRef.withNonMemberSym(owner.thisType, name.asTermName, symbol.asTerm)
+      TermRef.withFixedSym(owner.thisType, name.asTermName, symbol.asTerm)
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter
@@ -1182,15 +1182,13 @@ object SymDenotations {
      *  someone does a findMember on a subclass.
      *  @param scope   The scope in which symbol should be entered.
      *                 If this is EmptyScope, the scope is `decls`.
-     *  @param replace Replace any existing symbol with same name.
-     *                 This is always done if this denotes a package class.
      */
-    def enter(sym: Symbol, scope: Scope = EmptyScope, replace: Boolean = false)(implicit ctx: Context): Unit = {
+    def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
       val mscope = scope match {
         case scope: MutableScope => scope
         case _ => decls.asInstanceOf[MutableScope]
       }
-      if (replace || (this is PackageClass)) {
+      if (this is PackageClass) {
         val entry = mscope.lookupEntry(sym.name)
         if (entry != null) {
           if (entry.sym == sym) return
@@ -1210,6 +1208,17 @@ object SymDenotations {
         myMemberFingerPrint.include(sym.name)
       if (myMemberCache != null)
         myMemberCache invalidate sym.name
+    }
+
+    /** Replace symbol `prev` (if defined in current class) by symbol `replacement`.
+     *  If `prev` is not defined in current class, do nothing.
+     *  @pre `prev` and `replacement` have the same name.
+     */
+    def replace(prev: Symbol, replacement: Symbol)(implicit ctx: Context): Unit = {
+      require(!(this is Frozen))
+      decls.asInstanceOf[MutableScope].replace(prev, replacement)
+      if (myMemberCache != null)
+        myMemberCache invalidate replacement.name
     }
 
     /** Delete symbol from current scope.

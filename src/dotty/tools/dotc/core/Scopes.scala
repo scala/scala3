@@ -37,7 +37,9 @@ object Scopes {
    */
   private final val MaxRecursions = 1000
 
-  class ScopeEntry private[Scopes] (val name: Name, val sym: Symbol, val owner: Scope) {
+  class ScopeEntry private[Scopes] (val name: Name, _sym: Symbol, val owner: Scope) {
+
+    var sym: Symbol = _sym
 
     /** the next entry in the hash bucket
      */
@@ -245,6 +247,18 @@ object Scopes {
       var e = lookupEntry(sym.name)
       while (e ne null) {
         if (e.sym == sym) unlink(e)
+        e = lookupNextEntry(e)
+      }
+    }
+
+    /** Replace symbol `prev` (if it exists in current scope) by symbol `replacement`.
+     *  @pre `prev` and `replacement` have the same name.
+     */
+    final def replace(prev: Symbol, replacement: Symbol)(implicit ctx: Context): Unit = {
+      require(prev.name == replacement.name)
+      var e = lookupEntry(prev.name)
+      while (e ne null) {
+        if (e.sym == prev) e.sym = replacement
         e = lookupNextEntry(e)
       }
     }

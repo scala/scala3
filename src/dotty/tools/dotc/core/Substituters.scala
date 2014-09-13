@@ -132,7 +132,7 @@ trait Substituters { this: Context =>
         while (fs.nonEmpty) {
           if (fs.head eq sym)
             return tp match {
-              case tp: WithNonMemberSym => NamedType.withNonMemberSym(tp.prefix, ts.head)
+              case tp: WithFixedSym => NamedType.withFixedSym(tp.prefix, ts.head)
               case _ => substSym(tp.prefix, from, to, theMap) select ts.head
             }
           fs = fs.tail

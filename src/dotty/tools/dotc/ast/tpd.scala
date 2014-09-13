@@ -512,7 +512,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       new TreeTypeMap(substFrom = from, substTo = to).apply(tree)
 
     def changeOwner(from: Symbol, to: Symbol)(implicit ctx: Context): ThisTree =
-      new TreeTypeMap(ownerMap = (sym => if (sym == from) to else sym)).apply(tree)
+      new TreeTypeMap(oldOwners = from :: Nil, newOwners = to :: Nil).apply(tree)
 
     def select(name: Name)(implicit ctx: Context): Select =
       Select(tree, name)
@@ -522,7 +522,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def select(sym: Symbol)(implicit ctx: Context): Select =
       untpd.Select(tree, sym.name).withType(
-        if (ctx.erasedTypes) TermRef.withNonMemberSym(tree.tpe, sym.name.asTermName, sym.asTerm)
+        if (ctx.erasedTypes) TermRef.withFixedSym(tree.tpe, sym.name.asTermName, sym.asTerm)
         else TermRef.withSigAndDenot(tree.tpe, sym.name.asTermName, sym.signature, sym.denot.asSeenFrom(tree.tpe)))
 
     def selectWithSig(name: Name, sig: Signature)(implicit ctx: Context) =

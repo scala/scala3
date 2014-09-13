@@ -269,7 +269,8 @@ trait Symbols { this: Context =>
    */
   def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap) =
     if (originals forall (sym =>
-        (ttmap.mapType(sym.info) eq sym.info) && (ttmap.ownerMap(sym.owner) eq sym.owner)))
+        (ttmap.mapType(sym.info) eq sym.info) &&
+        !(ttmap.oldOwners contains sym.owner)))
       originals
     else {
       val copies: List[Symbol] = for (original <- originals) yield
@@ -285,11 +286,18 @@ trait Symbols { this: Context =>
       }
       (originals, copies).zipped foreach {(original, copy) =>
         val odenot = original.denot
+        val oinfo = original.info match {
+          case ClassInfo(pre, _, parents, decls, selfInfo) =>
+            assert(original.isClass)
+            ClassInfo(pre, copy.asClass, parents, decls, selfInfo)
+          case oinfo => oinfo
+        }
         copy.denot = odenot.copySymDenotation(
           symbol = copy,
-          owner = ttmap1.ownerMap(odenot.owner),
-          info = ttmap1.mapType(odenot.info),
-          privateWithin = ttmap1.ownerMap(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
+          owner = ttmap1.mapOwner(odenot.owner),
+          initFlags = odenot.flags &~ Frozen | Fresh,
+          info = ttmap1.mapType(oinfo),
+          privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
           annotations = odenot.annotations.mapConserve(ttmap1.apply))
       }
       copies
@@ -361,6 +369,9 @@ object Symbols {
     final def asTerm(implicit ctx: Context): TermSymbol = { assert(isTerm, s"asTerm called on not-a-Term $this" ); asInstanceOf[TermSymbol] }
     final def asType(implicit ctx: Context): TypeSymbol = { assert(isType, s"isType called on not-a-Type $this"); asInstanceOf[TypeSymbol] }
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
+
+    final def isFresh(implicit ctx: Context) =
+      lastDenot != null && (lastDenot is Fresh)
 
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(implicit ctx: Context): Boolean =

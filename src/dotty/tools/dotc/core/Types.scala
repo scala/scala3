@@ -1150,7 +1150,7 @@ object Types {
           case d: SymDenotation =>
             if (   d.validFor.runId == ctx.runId
                 || ctx.stillValid(d)
-                || this.isInstanceOf[WithNonMemberSym]) d.current
+                || this.isInstanceOf[WithFixedSym]) d.current
             else {
               val newd = loadDenot
               if (newd.exists) newd else d.staleSymbolError
@@ -1402,7 +1402,7 @@ object Types {
     override def computeHash = doHash((name, sig), prefix)
   }
 
-  trait WithNonMemberSym extends NamedType {
+  trait WithFixedSym extends NamedType {
     def fixedSym: Symbol
     assert(fixedSym ne NoSymbol)
     uncheckedSetSym(fixedSym)
@@ -1416,8 +1416,11 @@ object Types {
     override def withSym(sym: Symbol, signature: Signature)(implicit ctx: Context): ThisType =
       unsupported("withSym")
 
+    override def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
+      NamedType.withFixedSym(prefix, fixedSym)
+
     override def equals(that: Any) = that match {
-      case that: WithNonMemberSym => this.prefix == that.prefix && (this.fixedSym eq that.fixedSym)
+      case that: WithFixedSym => this.prefix == that.prefix && (this.fixedSym eq that.fixedSym)
       case _ => false
     }
     override def computeHash = doHash(fixedSym, prefix)
@@ -1435,8 +1438,8 @@ object Types {
     override def computeHash = unsupported("computeHash")
   }
 
-  final class NonMemberTermRef(prefix: Type, name: TermName, val fixedSym: TermSymbol) extends TermRef(prefix, name) with WithNonMemberSym
-  final class NonMemberTypeRef(prefix: Type, name: TypeName, val fixedSym: TypeSymbol) extends TypeRef(prefix, name) with WithNonMemberSym
+  final class TermRefWithFixedSym(prefix: Type, name: TermName, val fixedSym: TermSymbol) extends TermRef(prefix, name) with WithFixedSym
+  final class TypeRefWithFixedSym(prefix: Type, name: TypeName, val fixedSym: TypeSymbol) extends TypeRef(prefix, name) with WithFixedSym
 
   /** Assert current phase does not have erasure semantics */
   private def assertUnerased()(implicit ctx: Context) =
@@ -1449,9 +1452,9 @@ object Types {
     def apply(prefix: Type, name: Name, denot: Denotation)(implicit ctx: Context) =
       if (name.isTermName) TermRef(prefix, name.asTermName, denot)
       else TypeRef(prefix, name.asTypeName, denot)
-    def withNonMemberSym(prefix: Type, sym: Symbol)(implicit ctx: Context) =
-      if (sym.isType) TypeRef.withNonMemberSym(prefix, sym.name.asTypeName, sym.asType)
-      else TermRef.withNonMemberSym(prefix, sym.name.asTermName, sym.asTerm)
+    def withFixedSym(prefix: Type, sym: Symbol)(implicit ctx: Context) =
+      if (sym.isType) TypeRef.withFixedSym(prefix, sym.name.asTypeName, sym.asType)
+      else TermRef.withFixedSym(prefix, sym.name.asTermName, sym.asTerm)
     def withSymAndName(prefix: Type, sym: Symbol, name: Name)(implicit ctx: Context): NamedType =
       if (sym.isType) TypeRef.withSymAndName(prefix, sym.asType, name.asTypeName)
       else TermRef.withSymAndName(prefix, sym.asTerm, name.asTermName)
@@ -1479,7 +1482,8 @@ object Types {
      *  signature, if denotation is not yet completed.
      */
     def apply(prefix: Type, name: TermName, denot: Denotation)(implicit ctx: Context): TermRef = {
-      if (prefix eq NoPrefix) apply(prefix, denot.symbol.asTerm)
+      if ((prefix eq NoPrefix) || denot.symbol.isFresh)
+        apply(prefix, denot.symbol.asTerm)
       else denot match {
         case denot: SymDenotation if denot.isCompleted => withSig(prefix, name, denot.signature)
         case _ => all(prefix, name)
@@ -1489,8 +1493,8 @@ object Types {
     /** Create a non-member term ref (which cannot be reloaded using `member`),
      *  with given prefix, name, and signature
      */
-    def withNonMemberSym(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      unique(new NonMemberTermRef(prefix, name, sym))
+    def withFixedSym(prefix: Type, name: TermName, sym: TermSymbol)(implicit ctx: Context): TermRef =
+      unique(new TermRefWithFixedSym(prefix, name, sym))
 
     /** Create a term ref referring to given symbol with given name, taking the signature
      *  from the symbol if it is completed, or creating a term ref without
@@ -1500,8 +1504,8 @@ object Types {
      *  (2) The name in the term ref need not be the same as the name of the Symbol.
      */
     def withSymAndName(prefix: Type, sym: TermSymbol, name: TermName)(implicit ctx: Context): TermRef =
-      if (prefix eq NoPrefix)
-        withNonMemberSym(prefix, name, sym)
+      if ((prefix eq NoPrefix) || sym.isFresh)
+        withFixedSym(prefix, name, sym)
       else if (sym.defRunId != NoRunId && sym.isCompleted)
         withSig(prefix, name, sym.signature) withSym (sym, sym.signature)
       else
@@ -1511,7 +1515,7 @@ object Types {
      *  (which must be completed).
      */
     def withSig(prefix: Type, sym: TermSymbol)(implicit ctx: Context): TermRef =
-      if (prefix eq NoPrefix) withNonMemberSym(prefix, sym.name, sym)
+      if ((prefix eq NoPrefix) || sym.isFresh) withFixedSym(prefix, sym.name, sym)
       else withSig(prefix, sym.name, sym.signature).withSym(sym, sym.signature)
 
     /** Create a term ref with given prefix, name and signature */
@@ -1519,9 +1523,12 @@ object Types {
       unique(new TermRefWithSignature(prefix, name, sig))
 
     /** Create a term ref with given prefix, name, signature, and initial denotation */
-    def withSigAndDenot(prefix: Type, name: TermName, sig: Signature, denot: Denotation)(implicit ctx: Context): TermRef =
-      (if (prefix eq NoPrefix) withNonMemberSym(prefix, denot.symbol.asTerm.name, denot.symbol.asTerm)
-       else withSig(prefix, name, sig)) withDenot denot
+    def withSigAndDenot(prefix: Type, name: TermName, sig: Signature, denot: Denotation)(implicit ctx: Context): TermRef = {
+      if ((prefix eq NoPrefix) || denot.symbol.isFresh)
+        withFixedSym(prefix, denot.symbol.asTerm.name, denot.symbol.asTerm)
+      else
+        withSig(prefix, name, sig)
+    } withDenot denot
   }
 
   object TypeRef {
@@ -1536,8 +1543,8 @@ object Types {
     /** Create a non-member type ref  (which cannot be reloaded using `member`),
      *  with given prefix, name, and symbol.
      */
-    def withNonMemberSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
-      unique(new NonMemberTypeRef(prefix, name, sym))
+    def withFixedSym(prefix: Type, name: TypeName, sym: TypeSymbol)(implicit ctx: Context): TypeRef =
+      unique(new TypeRefWithFixedSym(prefix, name, sym))
 
     /** Create a type ref referring to given symbol with given name.
      *  This is very similar to TypeRef(Type, Symbol),
@@ -1546,12 +1553,14 @@ object Types {
      *  (2) The name in the type ref need not be the same as the name of the Symbol.
      */
     def withSymAndName(prefix: Type, sym: TypeSymbol, name: TypeName)(implicit ctx: Context): TypeRef =
-      if (prefix eq NoPrefix) withNonMemberSym(prefix, name, sym)
+      if ((prefix eq NoPrefix) || sym.isFresh) withFixedSym(prefix, name, sym)
       else apply(prefix, name).withSym(sym, Signature.NotAMethod)
 
     /** Create a type ref with given name and initial denotation */
-    def apply(prefix: Type, name: TypeName, denot: Denotation)(implicit ctx: Context): TypeRef =
-      (if (prefix eq NoPrefix) apply(prefix, denot.symbol.asType) else apply(prefix, name)) withDenot denot
+    def apply(prefix: Type, name: TypeName, denot: Denotation)(implicit ctx: Context): TypeRef = {
+      if ((prefix eq NoPrefix) || denot.symbol.isFresh) apply(prefix, denot.symbol.asType)
+      else apply(prefix, name)
+    } withDenot denot
   }
 
   // --- Other SingletonTypes: ThisType/SuperType/ConstantType ---------------------------
