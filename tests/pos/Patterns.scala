@@ -1,22 +1,40 @@
+import dotty.tools.dotc.core.Types._
+
 object Patterns {
-  /*('1', "1") match {
+  val d: Object = null
+  private def rebase(tp: NamedType): Type = {
+    def rebaseFrom(prefix: Type): Type = ???
+    tp.prefix match {
+      case RefinedThis(rt) => rebaseFrom(rt)
+      case pre: ThisType => rebaseFrom(pre)
+      case _ => tp
+    }
+  }
+  d match {
+    case WildcardType(bounds: TypeBounds) =>
+      bounds.variance
+  }
+
+  ('1', "1") match {
     case (digit, str) => true
     case _ => false
   }
-*/
+
+
+  def foo2(x: AnyRef) = x match { case x: Function0[Any] => x() }
   object Breakdown {
     def unapplySeq(x: Int): Some[List[String]] = Some(List("", "there"))
   }
 
   object Test2 {
     42 match {
-      case Breakdown("") =>  // needed to trigger bug
-      case Breakdown("foo") =>  // needed to trigger bug
-      case Breakdown("", who) => println ("hello " + who)
+      case a@Breakdown(f@"") =>  // needed to trigger bug
+      case b@Breakdown(d@"foo") =>  // needed to trigger bug
+      case c@Breakdown(e@"", who) => println ("hello " + who)
     }
   }
 
-  /*val names = List("a", "b", "c")
+  val names = List("a", "b", "c")
   object SeqExtractors {
     val y = names match {
       case List(x, z) => x
@@ -53,10 +71,10 @@ object Patterns {
 
   final def sameLength[T](xs: List[T], ys: List[T]): Boolean = xs match {
     case _ :: xs1 => xs1.isEmpty
-    //  ys match {
-    //    case _ :: ys1 => sameLength(xs1, ys1)
-    //    case _ => false
-    //  }
-    //case _ => ys.isEmpty
-  }*/
+      ys match {
+        case _ :: ys1 => sameLength(xs1, ys1)
+        case _ => false
+      }
+    case _ => ys.isEmpty
+  }
 }
