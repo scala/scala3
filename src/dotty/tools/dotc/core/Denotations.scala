@@ -603,26 +603,26 @@ object Denotations {
      */
     protected def installAfter(phase: DenotTransformer)(implicit ctx: Context): Unit = {
       val targetId = phase.next.id
-      assert(ctx.phaseId == targetId,
-        s"denotation update for $this called in phase ${ctx.phase}, expected was ${phase.next}")
-      val current = symbol.current
-      // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
-      // printPeriods(current)
-      this.nextInRun = current.nextInRun
-      this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
-      if (current.validFor.firstPhaseId == targetId) {
-        // replace current with this denotation
-        var prev = current
-        while (prev.nextInRun ne current) prev = prev.nextInRun
-        prev.nextInRun = this
-        current.validFor = Nowhere
-      }
+      if (ctx.phaseId != targetId) installAfter(phase)(ctx.withPhase(phase.next))
       else {
-        // insert this denotation after current
-        current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
-        current.nextInRun = this
-      }
+        val current = symbol.current
+        // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
+        // printPeriods(current)
+        this.nextInRun = current.nextInRun
+        this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
+        if (current.validFor.firstPhaseId == targetId) {
+          // replace current with this denotation
+          var prev = current
+          while (prev.nextInRun ne current) prev = prev.nextInRun
+          prev.nextInRun = this
+          current.validFor = Nowhere
+        } else {
+          // insert this denotation after current
+          current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
+          current.nextInRun = this
+        }
       // printPeriods(this)
+      }
     }
 
     def staleSymbolError(implicit ctx: Context) = {

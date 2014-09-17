@@ -1425,19 +1425,17 @@ object SymDenotations {
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
-     *  @pre  Can only be called in `phase.next`.
      */
-    def ensureFreshScopeAfter(phase: DenotTransformer)(implicit ctx: Context): Unit = {
-      assert(ctx.phaseId == phase.next.id)
-      val prevCtx = ctx.withPhase(phase)
-      val ClassInfo(pre, _, ps, decls, selfInfo) = classInfo
-      if (classInfo(prevCtx).decls eq decls) {
-        copySymDenotation(
-          info = ClassInfo(pre, classSymbol, ps, decls.cloneScope, selfInfo),
-          initFlags = this.flags &~ Frozen).installAfter(phase)
+    def ensureFreshScopeAfter(phase: DenotTransformer)(implicit ctx: Context): Unit =
+      if (ctx.phaseId != phase.next.id) ensureFreshScopeAfter(phase)(ctx.withPhase(phase.next))
+      else {
+        val prevCtx = ctx.withPhase(phase)
+        val ClassInfo(pre, _, ps, decls, selfInfo) = classInfo
+        if (classInfo(prevCtx).decls eq decls)
+          copySymDenotation(info = ClassInfo(pre, classSymbol, ps, decls.cloneScope, selfInfo))
+            .installAfter(phase)
       }
     }
-  }
 
   private case class Uncachable(tp: Type) extends UncachedGroundType
 
