@@ -372,6 +372,9 @@ object SymDenotations {
       recur(symbol)
     }
 
+    final def isProperlyContainedIn(boundary: Symbol)(implicit ctx: Context): Boolean =
+      symbol != boundary && isContainedIn(boundary)
+
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(implicit ctx: Context) =
       (this is Static) || this.exists && owner.isStaticOwner
@@ -916,7 +919,7 @@ object SymDenotations {
       privateWithin: Symbol = null,
       annotations: List[Annotation] = null)(implicit ctx: Context) =
     { // simulate default parameters, while also passing implicit context ctx to the default values
-      val initFlags1 = if (initFlags != UndefinedFlags) initFlags else this.flags &~ Frozen
+      val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags) &~ Frozen
       val info1 = if (info != null) info else this.info
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
