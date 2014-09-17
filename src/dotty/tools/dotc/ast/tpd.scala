@@ -358,7 +358,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else if (tpw isRef defn.ShortClass) Literal(Constant(0.toShort))
     else Literal(Constant(null)).select(defn.Any_asInstanceOf).appliedToType(tpe)
   }
-
   private class FindLocalDummyAccumulator(cls: ClassSymbol)(implicit ctx: Context) extends TreeAccumulator[Symbol] {
     def apply(sym: Symbol, tree: Tree) =
       if (sym.exists) sym
@@ -565,7 +564,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def appliedToArgss(argss: List[List[Tree]])(implicit ctx: Context): Tree =
       ((tree: Tree) /: argss)(Apply(_, _))
 
-    def appliedToNone(implicit ctx: Context): Tree = appliedToArgs(Nil)
+    def appliedToNone(implicit ctx: Context): Apply = appliedToArgs(Nil)
 
     def appliedIfMethod(implicit ctx: Context): Tree = {
       tree.tpe.widen match {
@@ -573,7 +572,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case _ => tree
       }
     }
-
 
     def appliedToType(targ: Type)(implicit ctx: Context): Tree =
       appliedToTypes(targ :: Nil)

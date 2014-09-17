@@ -69,7 +69,7 @@ trait TypeTestsCasts {
               }
             case defn.MultiArrayType(elem, ndims) if isUnboundedGeneric(elem) =>
               def isArrayTest(arg: Tree) =
-                runtimeCall(nme.isArray, arg :: Literal(Constant(ndims)) :: Nil)
+                ref(defn.runtimeMethod(nme.isArray)).appliedTo(arg, Literal(Constant(ndims)))
               if (ndims == 1) isArrayTest(qual)
               else evalOnce(qual) { qual1 =>
                 derivedTree(qual1, defn.Any_isInstanceOf, qual1.tpe) and isArrayTest(qual1)
