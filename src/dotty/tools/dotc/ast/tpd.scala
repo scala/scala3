@@ -653,6 +653,22 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Ident(defn.ScalaRuntimeModule.requiredMethod(name).termRef).appliedToArgs(args)
   }
 
+  /** A traverser that passes the enlcosing class or method as an argumenr
+   *  to the traverse method.
+   */
+  abstract class EnclosingMethodTraverser(implicit ctx: Context) extends TreeAccumulator[Symbol] {
+    def traverse(enclMeth: Symbol, tree: Tree): Unit
+    def apply(enclMeth: Symbol, tree: Tree) = {
+      tree match {
+        case _: DefTree if tree.symbol.exists =>
+          traverse(tree.symbol.enclosingMethod, tree)
+        case _ =>
+          traverse(enclMeth, tree)
+      }
+      enclMeth
+    }
+  }
+
   // ensure that constructors are fully applied?
   // ensure that normal methods are fully applied?
 

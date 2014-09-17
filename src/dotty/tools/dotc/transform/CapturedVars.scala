@@ -27,21 +27,16 @@ class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransfor
 
   private var captured: mutable.HashSet[Symbol] = _
 
-  private class CollectCaptured(implicit ctx: Context) extends TreeAccumulator[Symbol] {
-    def apply(enclMeth: Symbol, tree: Tree) = {
-      tree match {
-        case id: Ident =>
-          val sym = id.symbol
-          if (sym.is(Mutable, butNot = Method) && sym.owner.isTerm && sym.enclosingMethod != enclMeth) {
-            ctx.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
-            captured += sym
-          }
-        case tree: DefTree if tree.symbol.exists =>
-          foldOver(tree.symbol.enclosingMethod, tree)
-        case _ =>
-          foldOver(enclMeth, tree)
-      }
-      enclMeth
+  private class CollectCaptured(implicit ctx: Context) extends EnclosingMethodTraverser {
+    def traverse(enclMeth: Symbol, tree: Tree) = tree match {
+      case id: Ident =>
+        val sym = id.symbol
+        if (sym.is(Mutable, butNot = Method) && sym.owner.isTerm && sym.enclosingMethod != enclMeth) {
+          ctx.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
+          captured += sym
+        }
+      case _ =>
+        foldOver(enclMeth, tree)
     }
     def runOver(tree: Tree) = {
       captured = mutable.HashSet()
