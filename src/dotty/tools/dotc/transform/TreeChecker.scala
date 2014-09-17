@@ -85,10 +85,11 @@ class TreeChecker {
     }
 
     private def checkOwner(tree: untpd.Tree)(implicit ctx: Context): Unit = {
-      def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
+      def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean = {
         symOwner == ctxOwner ||
-        ctxOwner.isTerm && !(ctxOwner is Method | Lazy | Mutable) &&
+          ctxOwner.isTerm && (!(ctxOwner is Method | Lazy | Mutable) || (ctxOwner is Label)) &&
           ownerMatches(symOwner, ctxOwner.owner)
+      }
       assert(ownerMatches(tree.symbol.owner, ctx.owner),
              i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}")
     }
