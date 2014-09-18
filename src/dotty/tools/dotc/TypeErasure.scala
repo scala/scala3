@@ -8,8 +8,8 @@ import util.DotClass
 
 /** Erased types are:
  *
- *  TypeRef(prefix is ignored, denot is ClassDenotation)
- *  TermRef(prefix is ignored, denot is SymDenotation)
+ *  TypeRefWithFixedSym(denot is ClassDenotation)
+ *  TermRefWithFixedSym(denot is SymDenotation)
  *  JavaArrayType
  *  AnnotatedType
  *  MethodType
@@ -237,7 +237,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
       else this(parent)
     case tp: TermRef =>
       assert(tp.symbol.exists, tp)
-      TermRef(NoPrefix, tp.symbol.asTerm)
+      TermRef(this(tp.prefix), tp.symbol.asTerm)
     case ThisType(_) | SuperType(_, _) =>
       tp
     case ExprType(rt) =>
