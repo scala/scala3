@@ -84,13 +84,25 @@ object EtaExpansion {
     case TypeApply(fn, targs) =>
       cpy.TypeApply(tree)(liftApp(defs, fn), targs)
     case Select(pre, name) if isPureRef(tree) =>
-      cpy.Select(tree)(liftApp(defs, pre), name)
+      cpy.Select(tree)(liftPrefix(defs, pre), name)
     case Block(stats, expr) =>
       liftApp(defs ++= stats, expr)
     case New(tpt) =>
       tree
     case _ =>
       lift(defs, tree)
+  }
+
+  /** Lift prefix `pre` of an application `pre.f(...)` to
+   *
+   *     val x0 = pre
+   *     x0.f(...)
+   *
+   *  unless `pre` is a `New` or `pre` is idempotent.
+   */
+  def liftPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree = tree match {
+    case New(_) => tree
+    case _ => if (isIdempotentExpr(tree)) tree else lift(defs, tree)
   }
 
   /** Eta-expanding a tree means converting a method reference to a function value.
