@@ -594,7 +594,7 @@ trait Applications extends Compatibility { self: Typer =>
     def followTypeAlias(tree: untpd.Tree): untpd.Tree = {
       tree match {
         case tree: untpd.RefTree =>
-          val ttree = typedType(tree.withName(tree.name.toTypeName))
+          val ttree = typedType(untpd.rename(tree, tree.name.toTypeName))
           ttree.tpe match {
             case alias: TypeRef if alias.info.isAlias =>
               companionRef(alias) match {
