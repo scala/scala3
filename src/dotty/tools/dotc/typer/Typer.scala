@@ -1273,7 +1273,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
           pt match {
             case SAMType(meth)
-            if wtp <:< meth.info.toFunctionType =>
+            if wtp <:< meth.info.toFunctionType() =>
               // was ... && isFullyDefined(pt, ForceDegree.noBottom)
               // but this prevents case blocks from implementing polymorphic partial functions,
               // since we do not know the result parameter a priori. Have to wait until the
