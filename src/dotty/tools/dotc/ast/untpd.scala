@@ -58,9 +58,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree) extends DefTree
 
   class PolyTypeDef(mods: Modifiers, name: TypeName, override val tparams: List[TypeDef], rhs: Tree)
-    extends TypeDef(mods, name, rhs) {
-    override def withName(name: Name)(implicit ctx: Context) = cpy.PolyTypeDef(this)(mods, name.toTypeName, tparams, rhs)
-  }
+    extends TypeDef(mods, name, rhs)
 
   // ----- TypeTrees that refer to other tree's symbols -------------------
 
@@ -413,5 +411,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case _ =>
         super.foldOver(x, tree)
     }
+  }
+
+  override def rename(tree: NameTree, newName: Name)(implicit ctx: Context): tree.ThisTree[Untyped] = tree match {
+    case t: PolyTypeDef =>
+      cpy.PolyTypeDef(t)(t.mods, newName.asTypeName, t.tparams, t.rhs).asInstanceOf[tree.ThisTree[Untyped]]
+    case _ => super.rename(tree, newName)
   }
 }

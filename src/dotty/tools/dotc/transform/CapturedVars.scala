@@ -17,13 +17,13 @@ import SymUtils._
 import collection.{ mutable, immutable }
 import collection.mutable.{ LinkedHashMap, LinkedHashSet, TreeSet }
 
-class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransformer =>
+class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransform =>
   import ast.tpd._
 
   /** the following two members override abstract members in Transform */
   val phaseName: String = "capturedVars"
 
-  override def treeTransformPhase = thisTransformer.next
+  override def treeTransformPhase = thisTransform.next
 
   private var captured: mutable.HashSet[Symbol] = _
 
@@ -64,7 +64,7 @@ class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransfor
   }
 
   def capturedType(vble: Symbol)(implicit ctx: Context): Type = {
-    val oldInfo = vble.denot(ctx.withPhase(thisTransformer)).info
+    val oldInfo = vble.denot(ctx.withPhase(thisTransform)).info
     refCls(oldInfo.classSymbol, vble.isVolatile).typeRef
   }
 
@@ -86,7 +86,7 @@ class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransfor
   override def transformIdent(id: Ident)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val vble = id.symbol
     if (captured(vble))
-      (id select nme.elem).ensureConforms(vble.denot(ctx.withPhase(thisTransformer)).info)
+      (id select nme.elem).ensureConforms(vble.denot(ctx.withPhase(thisTransform)).info)
     else id
   }
 

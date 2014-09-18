@@ -390,7 +390,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                   case lhsCore: RefTree if setter.exists =>
                     val setterTypeRaw = pre select (setterName, setter)
                     val setterType = ensureAccessible(setterTypeRaw, isSuperSelection(lhsCore), tree.pos)
-                    val lhs2 = lhsCore.withName(setterName).withType(setterType)
+                    val lhs2 = untpd.rename(lhsCore, setterName).withType(setterType)
                     typed(cpy.Apply(tree)(untpd.TypedSplice(lhs2), tree.rhs :: Nil))
                   case _ =>
                     reassignmentToVal
@@ -1009,7 +1009,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
   }
 
-  protected def encodeName(tree: untpd.NameTree)(implicit ctx: Context) = tree withName tree.name.encode
+  protected def encodeName(tree: untpd.NameTree)(implicit ctx: Context): untpd.NameTree =
+    untpd.rename(tree, tree.name.encode)
 
   def typed(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = /*>|>*/ ctx.traceIndented (i"typing $tree", typr, show = true) /*<|<*/ {
     assertPositioned(tree)
