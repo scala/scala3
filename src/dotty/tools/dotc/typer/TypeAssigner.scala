@@ -285,7 +285,9 @@ trait TypeAssigner {
     tree.withType(thenp.tpe | elsep.tpe)
 
   def assignType(tree: untpd.Closure, meth: Tree, target: Tree)(implicit ctx: Context) =
-    tree.withType(if (target.isEmpty) meth.tpe.widen.toFunctionType else target.tpe)
+    tree.withType(
+        if (target.isEmpty) meth.tpe.widen.toFunctionType(tree.env.length)
+        else target.tpe)
 
   def assignType(tree: untpd.CaseDef, body: Tree)(implicit ctx: Context) =
     tree.withType(body.tpe)
