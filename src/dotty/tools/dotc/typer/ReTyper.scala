@@ -71,6 +71,9 @@ class ReTyper extends Typer {
   override def addTypedModifiersAnnotations(mods: untpd.Modifiers, sym: Symbol)(implicit ctx: Context): Modifiers =
     typedModifiers(mods, sym)
 
+  override def ensureConstrCall(cls: ClassSymbol, parents: List[Tree])(implicit ctx: Context): List[Tree] =
+    parents
+
   override def encodeName(tree: untpd.NameTree)(implicit ctx: Context) = tree
 
   override def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(implicit ctx: Context): Tree = fun.tpe match {
