@@ -1423,8 +1423,14 @@ object SymDenotations {
 
     override def primaryConstructor(implicit ctx: Context): Symbol = {
       val cname = if (this is ImplClass) nme.IMPLCLASS_CONSTRUCTOR else nme.CONSTRUCTOR
-      decls.denotsNamed(cname).first.symbol
+      decls.denotsNamed(cname).last.symbol // denotsNamed returns Symbols in reverse order of occurrence
     }
+
+    /** The parameter accessors of this class. Term and type accessors,
+     *  getters and setters are all returned int his list
+     */
+    def paramAccessors(implicit ctx: Context): List[Symbol] =
+      decls.filter(_ is ParamAccessor).toList
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.

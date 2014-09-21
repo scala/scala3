@@ -282,7 +282,7 @@ object Contexts {
      *    from constructor parameters to class paramater accessors.
      */
     def superCallContext: Context = {
-      val locals = newScopeWith(owner.decls.filter(_ is ParamAccessor).toList: _*)
+      val locals = newScopeWith(owner.asClass.paramAccessors: _*)
       superOrThisCallContext(owner.primaryConstructor, locals)
     }
 

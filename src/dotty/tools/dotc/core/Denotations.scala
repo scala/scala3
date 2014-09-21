@@ -681,6 +681,7 @@ object Denotations {
     // ------ PreDenotation ops ----------------------------------------------
 
     final def first = this
+    final def last = this
     final def toDenot(pre: Type)(implicit ctx: Context): Denotation = this
     final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol eq sym)
     final def containsSig(sig: Signature)(implicit ctx: Context) =
@@ -766,8 +767,9 @@ object Denotations {
     /** A denotation in the group exists */
     def exists: Boolean
 
-    /** First denotation in the group */
+    /** First/last denotation in the group */
     def first: Denotation
+    def last: Denotation
 
     /** Convert to full denotation by &-ing all elements */
     def toDenot(pre: Type)(implicit ctx: Context): Denotation
@@ -832,6 +834,7 @@ object Denotations {
     assert(denots1.exists && denots2.exists, s"Union of non-existing denotations ($denots1) and ($denots2)")
     def exists = true
     def first = denots1.first
+    def last = denots2.last
     def toDenot(pre: Type)(implicit ctx: Context) =
       (denots1 toDenot pre) & (denots2 toDenot pre, pre)
     def containsSym(sym: Symbol) =
