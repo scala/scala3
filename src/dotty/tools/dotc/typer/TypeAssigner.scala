@@ -235,7 +235,7 @@ trait TypeAssigner {
     }
     val owntype =
       if (!mix.isEmpty) findMixinSuper(cls.info)
-      else if (inConstrCall) cls.info.firstParent
+      else if (inConstrCall || ctx.erasedTypes) cls.info.firstParent
       else {
         val ps = cls.info.parents
         if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)

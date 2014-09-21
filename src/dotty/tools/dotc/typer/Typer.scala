@@ -374,8 +374,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case lhs =>
         val lhsCore = typedUnadapted(lhs)
         def lhs1 = typed(untpd.TypedSplice(lhsCore))
+        def canAssign(sym: Symbol) = // allow assignments from the primary constructor to class fields
+          sym.is(Mutable, butNot = Accessor) ||
+          ctx.owner.isPrimaryConstructor && !sym.is(Method) && sym.owner == ctx.owner.owner
         lhsCore.tpe match {
-          case ref: TermRef if ref.symbol is (Mutable, butNot = Accessor) =>
+          case ref: TermRef if canAssign(ref.symbol) =>
             assignType(cpy.Assign(tree)(lhs1, typed(tree.rhs, ref.info)))
           case _ =>
             def reassignmentToVal =
@@ -843,20 +846,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         result
       }
 
-    /** If this is a real class, make sure its first parent is a
-     *  constructor call. Cannot simply use a type.
-     */
-    def ensureConstrCall(parents: List[Tree]): List[Tree] = {
-      val firstParent :: otherParents = parents
-      if (firstParent.isType && !(cls is Trait))
-        typed(untpd.New(untpd.TypedSplice(firstParent), Nil))(superCtx) :: otherParents
-      else parents
-    }
-
     val mods1 = addTypedModifiersAnnotations(mods, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
-    val parents1 = ensureConstrCall(ensureFirstIsClass(
-        parents mapconserve typedParent, cdef.pos.toSynthetic))
+    val parentsWithClass = ensureFirstIsClass(parents mapconserve typedParent, cdef.pos.toSynthetic)
+    val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
     val self1 = typed(self)(ctx.outer).asInstanceOf[ValDef] // outer context where class members are not visible
     val dummy = localDummy(cls, impl)
     val body1 = typedStats(body, dummy)(inClassContext(self1.symbol))
@@ -873,6 +866,16 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     // 2. all private type members have consistent bounds
     // 3. Types do not override classes.
     // 4. Polymorphic type defs override nothing.
+  }
+
+  /** If this is a real class, make sure its first parent is a
+   *  constructor call. Cannot simply use a type. Overridden in ReTyper.
+   */
+  def ensureConstrCall(cls: ClassSymbol, parents: List[Tree])(implicit ctx: Context): List[Tree] = {
+    val firstParent :: otherParents = parents
+    if (firstParent.isType && !(cls is Trait))
+      typed(untpd.New(untpd.TypedSplice(firstParent), Nil)) :: otherParents
+    else parents
   }
 
   /** Overridden in retyper */
