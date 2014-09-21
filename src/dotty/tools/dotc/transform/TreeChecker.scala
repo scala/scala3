@@ -130,6 +130,9 @@ class TreeChecker {
       super.typedStats(trees, exprOwner)
     }
 
+    override def ensureNoLocalRefs(block: Block, pt: Type, forcedDefined: Boolean = false)(implicit ctx: Context): Tree =
+      block
+
     override def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = {
       def isPrimaryConstructorReturn =
         ctx.owner.isPrimaryConstructor && pt.isRef(ctx.owner.owner) && tree.tpe.isRef(defn.UnitClass)
