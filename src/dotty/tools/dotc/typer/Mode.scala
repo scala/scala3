@@ -34,5 +34,8 @@ object Mode {
   val TypevarsMissContext = newMode(4, "TypevarsMissContext")
   val InSuperCall = newMode(5, "InSuperCall")
 
+  /** Allow GADTFlexType labelled types to have their bounds adjusted */
+  val GADTflexible = newMode(8, "GADTflexible")
+
   val PatternOrType = Pattern | Type
 }
