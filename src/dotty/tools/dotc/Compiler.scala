@@ -63,8 +63,7 @@ class Compiler {
            new InterceptedMethods,
            new Literalize),
       List(new Erasure),
-      List(new CapturedVars),
-      List(new Constructors)/*,
+      List(new CapturedVars, new Constructors)/*,
       List(new LambdaLift)*/
     )
 
