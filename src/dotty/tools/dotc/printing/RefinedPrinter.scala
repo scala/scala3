@@ -326,10 +326,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
               typeDefText(optText(rhs)(" = " ~ _))
           }
         }
-      case Template(DefDef(mods, _, tparams, vparamss, _, _), parents, self, stats) =>
+      case Template(constr @ DefDef(mods, _, tparams, vparamss, _, rhs), parents, self, stats) =>
         val tparamsTxt = tparamsText(tparams)
+        val primaryConstrs = if (rhs.isEmpty) Nil else constr :: Nil
         val prefix: Text =
-          if (vparamss.isEmpty) tparamsTxt
+          if (vparamss.isEmpty || primaryConstrs.nonEmpty) tparamsTxt
           else {
             var modsText = modText(mods, "")
             if (mods.hasAnnotations && !mods.hasFlags) modsText = modsText ~~ " this"
@@ -340,7 +341,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           val selfName = if (self.name == nme.WILDCARD) "this" else self.name.toString
           (selfName ~ optText(self.tpt)(": " ~ _) ~ " =>").close
         } provided !self.isEmpty
-        val bodyText = "{" ~~ selfText ~~ toTextGlobal(stats, "\n") ~ "}"
+        val bodyText = "{" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: stats, "\n") ~ "}"
         prefix ~~ (" extends" provided ownerIsClass) ~~ parentsText ~~ bodyText
       case Import(expr, selectors) =>
         def selectorText(sel: Tree): Text = sel match {
