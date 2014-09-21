@@ -653,7 +653,7 @@ trait Applications extends Compatibility { self: Typer =>
     /** Can `subtp` be made to be a subtype of `tp`, possibly by dropping some
      *  refinements in `tp`?
      */
-    def isSubTypeOfParent(subtp: Type, tp: Type): Boolean =
+    def isSubTypeOfParent(subtp: Type, tp: Type)(implicit ctx: Context): Boolean =
       if (subtp <:< tp) true
       else tp match {
         case RefinedType(parent, _) => isSubTypeOfParent(subtp, parent)
@@ -671,7 +671,7 @@ trait Applications extends Compatibility { self: Typer =>
             //fullyDefinedType(unapplyArgType, "extractor argument", tree.pos)
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             selType
-          } else if (isSubTypeOfParent(unapplyArgType, wpt)) {
+          } else if (isSubTypeOfParent(unapplyArgType, wpt)(ctx.addMode(Mode.GADTflexible))) {
             maximizeType(unapplyArgType) match {
               case Some(tvar) =>
                 def msg =
@@ -703,7 +703,7 @@ trait Applications extends Compatibility { self: Typer =>
               tree.pos)
           }
 
-        val dummyArg = dummyTreeOfType(ownType)
+        val dummyArg = dummyTreeOfType(unapplyArgType)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
         val unapplyImplicits = unapplyApp match {
           case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2

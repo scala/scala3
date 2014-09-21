@@ -364,7 +364,7 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   private def traceInfo(tp1: Type, tp2: Type) =
     s"${tp1.show} <:< ${tp2.show}" +
-    (if (ctx.settings.verbose.value) s"${tp1.getClass} ${tp2.getClass}" else "")
+    (if (ctx.settings.verbose.value) s" ${tp1.getClass} ${tp2.getClass}${if (frozenConstraint) " frozen" else ""}" else "")
 
   def isSubType(tp1: Type, tp2: Type): Boolean = /*>|>*/ ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) /*<|<*/ {
     if (tp2 eq NoType) false
@@ -592,7 +592,8 @@ class TypeComparer(initctx: Context) extends DotClass {
           NamedType(tp1.prefix, tp1.name, sd.derivedSingleDenotation(sd.symbol, tp))
         secondTry(OrType.make(derivedRef(tp11), derivedRef(tp12)), tp2)
       case TypeBounds(lo1, hi1) =>
-        if ((tp1.symbol is GADTFlexType) && !isSubTypeWhenFrozen(hi1, tp2))
+        if ((ctx.mode is Mode.GADTflexible) && (tp1.symbol is GADTFlexType) &&
+            !isSubTypeWhenFrozen(hi1, tp2))
           trySetType(tp1, TypeBounds(lo1, hi1 & tp2))
         else if (lo1 eq hi1) isSubType(hi1, tp2)
         else tryRebase2nd
@@ -610,7 +611,8 @@ class TypeComparer(initctx: Context) extends DotClass {
       }
       def compareNamed: Boolean = tp2.info match {
         case TypeBounds(lo2, hi2) =>
-          if ((tp2.symbol is GADTFlexType) && !isSubTypeWhenFrozen(tp1, lo2))
+          if ((ctx.mode is Mode.GADTflexible) && (tp2.symbol is GADTFlexType) &&
+              !isSubTypeWhenFrozen(tp1, lo2))
             trySetType(tp2, TypeBounds(lo2 | tp1, hi2))
           else
             ((frozenConstraint || !isCappable(tp1)) && isSubType(tp1, lo2)

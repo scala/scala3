@@ -48,5 +48,8 @@ object Mode {
    */
   val FutureDefsOK = newMode(7, "FutureDefsOK")
 
+  /** Allow GADTFlexType labelled types to have their bounds adjusted */
+  val GADTflexible = newMode(8, "GADTflexible")
+
   val PatternOrType = Pattern | Type
 }
