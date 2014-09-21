@@ -269,7 +269,8 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
         val parents: List[TypeRef] =
           if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
           else removeLaterObjects(classParents.mapConserve(eraseTypeRef))
-        tp.derivedClassInfo(NoPrefix, parents, decls, this(tp.selfType))
+        val erasedDecls = decls.filteredScope(d => !d.isType || d.isClass)
+        tp.derivedClassInfo(NoPrefix, parents, erasedDecls, this(tp.selfType))
           // can't replace selftype by NoType because this would lose the sourceModule link
       }
     case NoType | NoPrefix | ErrorType | JavaArrayType(_) =>
