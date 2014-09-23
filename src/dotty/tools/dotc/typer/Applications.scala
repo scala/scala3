@@ -581,7 +581,7 @@ trait Applications extends Compatibility { self: Typer =>
     assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
   }
 
-  def typedUnApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
+  def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
     val Apply(qual, args) = tree
 
     def notAnExtractor(tree: Tree) =
@@ -620,7 +620,7 @@ trait Applications extends Compatibility { self: Typer =>
      */
     def trySelectUnapply(qual: untpd.Tree)(fallBack: Tree => Tree): Tree = {
       val genericProto = new UnapplyFunProto(WildcardType, this)
-      def specificProto = new UnapplyFunProto(pt, this)
+      def specificProto = new UnapplyFunProto(selType, this)
       // try first for non-overloaded, then for overloaded ocurrences
       def tryWithName(name: TermName)(fallBack: Tree => Tree)(implicit ctx: Context): Tree =
         tryEither {
@@ -662,20 +662,21 @@ trait Applications extends Compatibility { self: Typer =>
 
     unapplyFn.tpe.widen match {
       case mt: MethodType if mt.paramTypes.length == 1 && !mt.isDependent =>
+        val m = mt
         val unapplyArgType = mt.paramTypes.head
-        unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $pt")
-        def wpt = widenForMatchSelector(pt) // needed?
+        unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $selType")
+        def wpt = widenForMatchSelector(selType) // needed?
         val ownType =
-          if (pt <:< unapplyArgType) {
-            fullyDefinedType(unapplyArgType, "extractor argument", tree.pos)
+          if (selType <:< unapplyArgType) {
+            //fullyDefinedType(unapplyArgType, "extractor argument", tree.pos)
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
-            pt
+            selType
           } else if (isSubTypeOfParent(unapplyArgType, wpt)) {
             maximizeType(unapplyArgType) match {
               case Some(tvar) =>
                 def msg =
                   d"""There is no best instantiation of pattern type $unapplyArgType
-                     |that makes it a subtype of selector type $pt.
+                     |that makes it a subtype of selector type $selType.
                      |Non-variant type variable ${tvar.origin} cannot be uniquely instantiated.""".stripMargin
                 if (fromScala2x) {
                   // We can't issue an error here, because in Scala 2, ::[B] is invariant
@@ -702,7 +703,7 @@ trait Applications extends Compatibility { self: Typer =>
               tree.pos)
           }
 
-        val dummyArg = dummyTreeOfType(unapplyArgType)
+        val dummyArg = dummyTreeOfType(ownType)
         val unapplyApp = typedExpr(untpd.TypedSplice(Apply(unapplyFn, dummyArg :: Nil)))
         val unapplyImplicits = unapplyApp match {
           case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); args2
@@ -726,7 +727,7 @@ trait Applications extends Compatibility { self: Typer =>
         val unapplyPatterns = (bunchedArgs, argTypes).zipped map (typed(_, _))
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits, unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
-        if ((ownType eq pt) || ownType.isError) result
+        if ((ownType eq selType) || ownType.isError) result
         else Typed(result, TypeTree(ownType))
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)

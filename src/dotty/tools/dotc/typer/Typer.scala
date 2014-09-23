@@ -1050,8 +1050,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     typed(tree, pt)(ctx retractMode Mode.PatternOrType)
   def typedType(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree = // todo: retract mode between Type and Pattern?
     typed(tree, pt)(ctx addMode Mode.Type)
-  def typedPattern(tree: untpd.Tree, pt: Type = WildcardType)(implicit ctx: Context): Tree =
-    typed(tree, pt)(ctx addMode Mode.Pattern)
+  def typedPattern(tree: untpd.Tree, selType: Type = WildcardType)(implicit ctx: Context): Tree =
+    typed(tree, selType)(ctx addMode Mode.Pattern)
 
   def tryEither[T](op: Context => T)(fallBack: (T, TyperState) => T)(implicit ctx: Context) = {
     val nestedCtx = ctx.fresh.setNewTyperState
