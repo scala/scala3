@@ -4,6 +4,7 @@ package transform
 import TreeTransforms._
 import core.DenotTransformers._
 import core.Symbols._
+import core.SymDenotations._
 import core.Contexts._
 import core.Types._
 import core.Flags._
@@ -75,9 +76,12 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
     cpy.Apply(tree)(tree.fun, args1)
   }
 
+  private def becomesFunction(symd: SymDenotation)(implicit ctx: Context) =
+    (symd is Param) || (symd is (ParamAccessor, butNot = Method))
+
   override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val origDenot = originalDenotation(tree)
-    if ((origDenot is Param) && (origDenot.info.isInstanceOf[ExprType]))
+    if (becomesFunction(origDenot) && (origDenot.info.isInstanceOf[ExprType]))
       tree.select(defn.Function0_apply).appliedToNone
     else tree
   }
@@ -98,6 +102,6 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
   }
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
-    if (sym is Param) transformParamInfo(tp)
+    if (becomesFunction(sym)) transformParamInfo(tp)
     else elimByNameParams(tp)
 }
