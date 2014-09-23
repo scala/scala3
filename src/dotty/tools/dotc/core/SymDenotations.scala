@@ -1317,6 +1317,18 @@ object SymDenotations {
         case _ => bt
       }
 
+      def inCache(tp: Type) = baseTypeRefCache.containsKey(tp)
+
+      /** Can't cache types containing type variables which are uninstantiated
+       *  or whose instances can change, depending on typerstate.
+       */
+      def isCachable(tp: Type): Boolean = tp match {
+        case tp: TypeProxy => inCache(tp.underlying)
+        case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
+        case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
+        case _ => true
+      }
+
       def computeBaseTypeRefOf(tp: Type): Type = {
         Stats.record("computeBaseTypeOf")
         if (symbol.isStatic && tp.derivesFrom(symbol))
@@ -1333,9 +1345,6 @@ object SymDenotations {
               case _ =>
                 baseTypeRefOf(tp.underlying)
             }
-          case tp: TypeVar =>
-            if (tp.inst.exists) computeBaseTypeRefOf(tp.inst)
-            else Uncachable(computeBaseTypeRefOf(tp.underlying))
           case tp: TypeProxy =>
             baseTypeRefOf(tp.underlying)
           case AndType(tp1, tp2) =>
@@ -1356,15 +1365,9 @@ object SymDenotations {
             var basetp = baseTypeRefCache get tp
             if (basetp == null) {
               baseTypeRefCache.put(tp, NoPrefix)
-              val computedBT = computeBaseTypeRefOf(tp)
-              basetp = computedBT match {
-                case Uncachable(basetp) =>
-                  baseTypeRefCache.remove(tp)
-                  computedBT
-                case basetp =>
-              baseTypeRefCache.put(tp, basetp)
-                  basetp
-              }
+              basetp = computeBaseTypeRefOf(tp)
+              if (isCachable(tp)) baseTypeRefCache.put(tp, basetp)
+              else baseTypeRefCache.remove(tp)
             } else if (basetp == NoPrefix) {
               throw CyclicReference(this)
             }
@@ -1444,8 +1447,7 @@ object SymDenotations {
           copySymDenotation(info = ClassInfo(pre, classSymbol, ps, decls.cloneScope, selfInfo))
             .installAfter(phase)
       }
-    }
-  private case class Uncachable(tp: Type) extends UncachedGroundType
+  }
 
   /** The denotation of a package class.
    *  It overrides ClassDenotation to take account of package objects when looking for members
