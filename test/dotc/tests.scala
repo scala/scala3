@@ -13,7 +13,7 @@ class tests extends CompilerTest {
 //        "-Yshow-suppressed-errors",
         "-pagewidth", "160")
 
-  implicit val defaultOptions = noCheckOptions ++ List("-Ycheck:patternMatcher,outerAcc,erasure", "-Ystop-before:erasure")
+  implicit val defaultOptions = noCheckOptions ++ List("-Ycheck:patternMatcher,literalize,capturedVars", "-Ystop-before:erasure", "-uniqid", "-explaintypes", "-verbose", "-Ylog:splitter", "-Xprompt")
 
   val twice = List("#runs", "2", "-YnoDoubleBindings", "-Ystop-before:terminal")
   val doErase = List("-Ystop-before:terminal")
@@ -24,23 +24,24 @@ class tests extends CompilerTest {
   val dotcDir = "./src/dotty/"
 
 
-  @Test def pos_t2168_pat = compileFile(posDir, "t2168", doErase)
+  /*@Test def pos_t2168_pat = compileFile(posDir, "t2168", doErase)
   @Test def pos_erasure = compileFile(posDir, "erasure", doErase)
   @Test def pos_Coder() = compileFile(posDir, "Coder", doErase)
   @Test def pos_blockescapes() = compileFile(posDir, "blockescapes", doErase)
   @Test def pos_collections() = compileFile(posDir, "collections", doErase)
   @Test def pos_functions1() = compileFile(posDir, "functions1", doErase)
   @Test def pos_implicits1() = compileFile(posDir, "implicits1", doErase)
-  @Test def pos_inferred() = compileFile(posDir, "inferred", doErase)
-  @Test def pos_Patterns() = compileFile(posDir, "Patterns")
+  @Test def pos_inferred() = compileFile(posDir, "inferred", doErase)*/
+  @Test def pos_Patterns() = compileFile(posDir, "Patterns")/*
   @Test def pos_selftypes() = compileFile(posDir, "selftypes", doErase)
   @Test def pos_varargs() = compileFile(posDir, "varargs", doErase)
   @Test def pos_opassign() = compileFile(posDir, "opassign", doErase)
   @Test def pos_typedapply() = compileFile(posDir, "typedapply", doErase)
   @Test def pos_nameddefaults() = compileFile(posDir, "nameddefaults", doErase)
   @Test def pos_desugar() = compileFile(posDir, "desugar", doErase)
-  @Test def pos_sigs() = compileFile(posDir, "sigs", doErase)
-  @Test def pos_typers() = compileFile(posDir, "typers", doErase)
+  @Test def pos_sigs() = compileFile(posDir, "sigs", doErase)*/
+  //@Test def pos_typers() = compileFile(posDir, "typers", doErase)
+  /*
   @Test def pos_typedidents() = compileFile(posDir, "typedIdents", doErase)
   @Test def pos_assignments() = compileFile(posDir, "assignments", doErase)
   @Test def pos_packageobject() = compileFile(posDir, "packageobject", doErase)
@@ -119,12 +120,13 @@ class tests extends CompilerTest {
       "#runs", "2"))
 
   // fails <notype> doesn't take parameter
+
   @Test def testIssue_34 = compileArgs(Array(
       dotcDir + "tools/dotc/config/Properties.scala",
       dotcDir + "tools/dotc/config/PathResolver.scala",
       //"-Ylog:frontend",
       "-Xprompt",
       "#runs", "2"))
-
+*/
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }

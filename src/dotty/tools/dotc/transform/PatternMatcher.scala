@@ -1855,7 +1855,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       def unapplyMethodTypes(tree:Tree, fun: Tree, args:List[Tree], resultType:Type, isSeq: Boolean): Extractor = {
         _id = _id + 1
 
-        val whole    = fun.tpe.widen.paramTypess.headOption.flatMap(_.headOption).getOrElse(NoType)//firstParamType(method)
+        val whole    = tree.tpe// see scaladoc for Trees.Unapply
+              // fun.tpe.widen.paramTypess.headOption.flatMap(_.headOption).getOrElse(NoType)//firstParamType(method)
         val resultOfGet = extractorMemberType(resultType, nme.get)
 
         //println(s"${_id}unapplyArgs(${result.widen}")

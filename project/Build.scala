@@ -6,7 +6,7 @@ object DottyBuild extends Build {
   val TRAVIS_BUILD = "dotty.travis.build"
 
   val agentOptions = List(
-    "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
+    //"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
     // "-agentpath:/home/dark/opt/yjp-2013-build-13072/bin/linux-x86-64/libyjpagent.so"
   )
 

@@ -27,7 +27,7 @@ object Config {
   /** Show subtype traces for all deep subtype recursions */
   final val traceDeepSubTypeRecursions = false
 
-  final val verboseExplainSubtype = false
+  final val verboseExplainSubtype = true
 
   /** When set, use new signature-based matching.
    *  Advantantage of doing so: It's supposed to be faster
