@@ -543,11 +543,14 @@ object Flags {
   /** Labeled private[this] */
   final val PrivateLocal = allOf(Private, Local)
 
-  /** A private parameter accessor */
+  /** A private[this] parameter accessor */
   final val PrivateLocalParamAccessor = allOf(Private, Local, ParamAccessor)
 
-  /** A private parameter */
+  /** A private[this] parameter */
   final val PrivateLocalParam = allOf(Private, Local, Param)
+
+  /** A private parameter accessor */
+  final val PrivateParamAccessor = allOf(Private, ParamAccessor)
 
   /** A local parameter */
   final val ParamAndLocal = allOf(Param, Local)
