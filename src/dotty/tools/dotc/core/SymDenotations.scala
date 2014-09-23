@@ -1445,7 +1445,6 @@ object SymDenotations {
             .installAfter(phase)
       }
     }
-
   private case class Uncachable(tp: Type) extends UncachedGroundType
 
   /** The denotation of a package class.
