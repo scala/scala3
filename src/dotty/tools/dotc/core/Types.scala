@@ -1335,7 +1335,8 @@ object Types {
       case that: NamedType =>
         this.name == that.name &&
         this.prefix == that.prefix &&
-        !that.isInstanceOf[TermRefWithSignature]
+        !that.isInstanceOf[TermRefWithSignature] &&
+        !that.isInstanceOf[WithFixedSym]
       case _ =>
         false
     }
