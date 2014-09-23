@@ -1323,6 +1323,9 @@ object SymDenotations {
               case _ =>
                 baseTypeRefOf(tp.underlying)
             }
+          case tp: TypeVar =>
+            if (tp.inst.exists) computeBaseTypeRefOf(tp.inst)
+            else Uncachable(computeBaseTypeRefOf(tp.underlying))
           case tp: TypeProxy =>
             baseTypeRefOf(tp.underlying)
           case AndType(tp1, tp2) =>
@@ -1343,8 +1346,14 @@ object SymDenotations {
             var basetp = baseTypeRefCache get tp
             if (basetp == null) {
               baseTypeRefCache.put(tp, NoPrefix)
-              basetp = computeBaseTypeRefOf(tp)
+              basetp = computeBaseTypeRefOf(tp) match {
+                case Uncachable(basetp) =>
+                  baseTypeRefCache.remove(tp)
+                  basetp
+                case basetp =>
               baseTypeRefCache.put(tp, basetp)
+                  basetp
+              }
             } else if (basetp == NoPrefix) {
               throw CyclicReference(this)
             }
@@ -1421,6 +1430,8 @@ object SymDenotations {
       }
     }
   }
+
+  private case class Uncachable(tp: Type) extends UncachedGroundType
 
   /** The denotation of a package class.
    *  It overrides ClassDenotation to take account of package objects when looking for members
