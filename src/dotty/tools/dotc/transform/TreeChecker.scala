@@ -90,8 +90,10 @@ class TreeChecker {
           ctxOwner.isTerm && (!(ctxOwner is Method | Lazy | Mutable) || (ctxOwner is Label)) &&
           ownerMatches(symOwner, ctxOwner.owner)
       }
-      assert(ownerMatches(tree.symbol.owner, ctx.owner),
-             i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}")
+      if(!ownerMatches(tree.symbol.owner, ctx.owner)) {
+        assert(ownerMatches(tree.symbol.owner, ctx.owner),
+          i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}")
+      }
     }
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = {
@@ -113,8 +115,10 @@ class TreeChecker {
       super.typedStats(trees, exprOwner)
     }
 
+
     override def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = {
       if (ctx.mode.isExpr)
+        if(!(tree.tpe <:< pt))
         assert(tree.tpe <:< pt,
             s"error at ${sourcePos(tree.pos)}\n" +
             err.typeMismatchStr(tree.tpe, pt))

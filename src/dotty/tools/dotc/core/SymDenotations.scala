@@ -1346,10 +1346,11 @@ object SymDenotations {
             var basetp = baseTypeRefCache get tp
             if (basetp == null) {
               baseTypeRefCache.put(tp, NoPrefix)
-              basetp = computeBaseTypeRefOf(tp) match {
+              val computedBT = computeBaseTypeRefOf(tp)
+              basetp = computedBT match {
                 case Uncachable(basetp) =>
                   baseTypeRefCache.remove(tp)
-                  basetp
+                  computedBT
                 case basetp =>
               baseTypeRefCache.put(tp, basetp)
                   basetp

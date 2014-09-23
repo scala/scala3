@@ -171,7 +171,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         var replaced = 0
         val toAdapted = (from zip to) map {
           case (orig, nw) =>
-            nw.ensureConforms(orig.info)
+            nw.ensureConforms(AndType(orig.info, nw.tpe))
         }
 
         val identReplace: tpd.Tree => tpd.Tree = _ match {
@@ -264,14 +264,17 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
         val nextCases = (caseSyms.tail ::: List(matchFail)).map(ref(_).appliedToNone)
         val caseDefs = (cases zip caseSyms zip nextCases).foldRight[Tree](catchAllDefBody) {
-          case (((mkCase, sym), nextCase), acc) =>
-            val show = acc.show
+          // dotty deviation
+          //case (((mkCase, sym), nextCase), acc) =>
+          (x:(((Casegen => Tree), TermSymbol), Tree), acc: Tree) => x match {
+
+            case  ((mkCase, sym), nextCase) =>
             val body = mkCase(new OptimizedCasegen(nextCase)).ensureConforms(restpe)
 
             val caseBody = DefDef(sym, _ => Block(List(acc), body))
 
             Block(List(caseBody),ref(sym).appliedToNone)
-          }
+          }}
 
 
         // scrutSym == NoSymbol when generating an alternatives matcher
@@ -501,9 +504,9 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
             Block(Collections.map2(subPatBindersStored.toList, subPatRefsStored.toList)((bind, ref) => {
               // required in case original pattern had a more precise type
               // eg case s@"foo" =>  would be otherwise translated to s with type String instead of String("foo")
-              val refTpeWiden = ref.tpe.widen
-              val bindInfoWiden = bind.info.widen
-              val loc = bind.showFullName
+              def refTpeWiden = ref.tpe.widen
+              def bindInfoWiden = bind.info.widen
+              def loc = bind.showFullName
               if(!(ref.tpe <:< bind.info.widen)) {
                 ctx.debuglog(s"here ${bind.showFullName} expected: ${bindInfoWiden.show} got: ${refTpeWiden.show}")
               }
@@ -1869,6 +1872,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           if ((extractorMemberType(resultType, nme.isDefined) isRef defn.BooleanClass) && resultOfGet.exists)
             getUnapplySelectors(resultOfGet, args)
           else if (defn.isProductSubType(resultType)) productSelectorTypes(resultType)
+          else if (resultType =:= ctx.definitions.BooleanType) Nil
           else {
             ctx.error(i"invalid return type in Unapply node: $resultType")
             Nil
