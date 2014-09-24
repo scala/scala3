@@ -1336,6 +1336,7 @@ object Trees {
     abstract class TreeTraverser extends TreeAccumulator[Unit] {
       def traverse(tree: Tree): Unit
       def apply(x: Unit, tree: Tree) = traverse(tree)
+      protected def traverseChildren(tree: Tree) = foldOver((), tree)
     }
 
     /** Fold `f` over all tree nodes, in depth-first, prefix order */
@@ -1361,9 +1362,9 @@ object Trees {
         case tree: Bind => cpy.Bind(tree)(newName, tree.body)
         case tree: ValDef => cpy.ValDef(tree)(name = newName.asTermName)
         case tree: DefDef => cpy.DefDef(tree)(name = newName.asTermName)
+        case tree: untpd.PolyTypeDef => untpd.cpy.PolyTypeDef(tree)(tree.mods, newName.asTypeName, tree.tparams, tree.rhs)
         case tree: TypeDef => cpy.TypeDef(tree)(name = newName.asTypeName)
         case tree: SelectFromTypeTree => cpy.SelectFromTypeTree(tree)(tree.qualifier, newName)
-        case tree: untpd.PolyTypeDef => untpd.cpy.PolyTypeDef(tree)(tree.mods, newName.asTypeName, tree.tparams, tree.rhs)
       }
     }.asInstanceOf[tree.ThisTree[T]]
   }

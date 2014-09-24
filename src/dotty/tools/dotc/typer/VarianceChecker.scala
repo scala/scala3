@@ -125,7 +125,7 @@ class VarianceChecker()(implicit ctx: Context) {
           ctx.debuglog(s"Skipping variance check of ${sym.showDcl}")
         case tree: TypeDef =>
           checkVariance(sym)
-          foldOver((), tree)
+          traverseChildren(tree)
         case tree: ValDef =>
           checkVariance(sym)
         case DefDef(_, _, tparams, vparamss, _, _) =>
@@ -133,7 +133,7 @@ class VarianceChecker()(implicit ctx: Context) {
           tparams foreach traverse
           vparamss foreach (_ foreach traverse)
         case Template(_, _, _, body) =>
-          foldOver((), tree)
+          traverseChildren(tree)
         case _ =>
       }
     }
