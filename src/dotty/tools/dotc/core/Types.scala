@@ -255,6 +255,8 @@ object Types {
      *  value type, or because superclasses are ambiguous).
      */
     final def classSymbol(implicit ctx: Context): Symbol = this match {
+      case ConstantType(constant) =>
+        constant.tpe.classSymbol
       case tp: TypeRef =>
         val sym = tp.symbol
         if (sym.isClass) sym else tp.underlying.classSymbol

@@ -78,7 +78,7 @@ class TypeTestsCasts extends MiniPhaseTransform {
         }
 
         def transformAsInstanceOf(argType: Type): Tree = {
-          def argCls = argType.classSymbol
+          def argCls = argType.widen.classSymbol
           if (qual.tpe <:< argType)
             Typed(qual, tree.args.head)
           else if (qualCls.isPrimitiveValueClass) {
