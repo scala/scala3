@@ -32,7 +32,7 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
   override def phaseName: String = "erasure"
 
   /** List of names of phases that should precede this phase */
-  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[TypeTestsCasts], classOf[InterceptedMethods], classOf[Splitter], classOf[ElimRepeated])
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[InterceptedMethods], classOf[Splitter], classOf[ElimRepeated])
 
   def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
     case ref: SymDenotation =>
@@ -104,7 +104,7 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
     assert(isErasedType(tp), i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase}")
 }
 
-object Erasure {
+object Erasure extends TypeTestsCasts{
 
   import tpd._
 
@@ -173,7 +173,7 @@ object Erasure {
                 .appliedToNone
           cast(tree1, pt)
         case _ =>
-          val cls = pt.classSymbol
+          val cls = pt.widen.classSymbol
           if (cls eq defn.UnitClass) constant(tree, Literal(Constant(())))
           else {
             assert(cls ne defn.ArrayClass)
@@ -329,13 +329,18 @@ object Erasure {
     }
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context) = {
-      val TypeApply(fun, args) = tree
-      val fun1 = typedExpr(fun, WildcardType)
-      fun1.tpe.widen match {
-        case funTpe: PolyType =>
-          val args1 = args.mapconserve(typedType(_))
-          untpd.cpy.TypeApply(tree)(fun1, args1).withType(funTpe.instantiate(args1.tpes))
-        case _ => fun1
+      val ntree = interceptTypeApply(tree.asInstanceOf[TypeApply])
+
+      ntree match {
+        case TypeApply(fun, args) =>
+          val fun1 = typedExpr(fun, WildcardType)
+          fun1.tpe.widen match {
+            case funTpe: PolyType =>
+              val args1 = args.mapconserve(typedType(_))
+              untpd.cpy.TypeApply(tree)(fun1, args1).withType(funTpe.instantiate(args1.tpes))
+            case _ => fun1
+          }
+        case _ => typedExpr(ntree, pt)
       }
     }
 

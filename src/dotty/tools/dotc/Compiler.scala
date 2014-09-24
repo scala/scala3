@@ -60,7 +60,6 @@ class Compiler {
            // new LazyValTranformContext().transformer, // disabled, awaiting fixes
            new Splitter),
       List(new ElimByName,
-           new TypeTestsCasts,
            new InterceptedMethods,
            new Literalize),
       List(new Erasure),
