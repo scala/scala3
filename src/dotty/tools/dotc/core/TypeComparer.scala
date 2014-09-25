@@ -422,7 +422,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       pendingSubTypes = new mutable.HashSet[(Type, Type)]
       ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
       ctx.log(s"!!! constraint = ${constraint.show}")
-      assert(!Config.flagDeepSubTypeRecursions)
+      assert(!ctx.settings.YnoDeepSubtypes.value)
       if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
         ctx.log(TypeComparer.explained(implicit ctx => ctx.typeComparer.isSubType(tp1, tp2)))
     }

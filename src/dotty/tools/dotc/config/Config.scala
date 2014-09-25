@@ -21,9 +21,6 @@ object Config {
     */
   final val checkNoDoubleBindings = true
 
-  /** Throw an exception if a deep subtype recursion is detected */
-  final val flagDeepSubTypeRecursions = true
-
   /** Show subtype traces for all deep subtype recursions */
   final val traceDeepSubTypeRecursions = false
 

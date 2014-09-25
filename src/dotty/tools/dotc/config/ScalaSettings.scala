@@ -146,6 +146,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val YshowSuppressedErrors = BooleanSetting("-Yshow-suppressed-errors", "Also show follow-on errors and warnings that are normally supressed.")
   val Yheartbeat = BooleanSetting("-Yheartbeat", "show heartbeat stack trace of compiler operations.")
   val Yprintpos = BooleanSetting("-Yprintpos", "show tree positions")
+  val YnoDeepSubtypes = BooleanSetting("-YnoDeepSubtypes", "throw an exception on deep subtyping call stacks")
   def stop = YstopAfter
 
   /** Area-specific debug output.

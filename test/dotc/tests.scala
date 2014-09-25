@@ -13,7 +13,10 @@ class tests extends CompilerTest {
 //        "-Yshow-suppressed-errors",
         "-pagewidth", "160")
 
-  implicit val defaultOptions = noCheckOptions ++ List("-Ycheck:patternMatcher,literalize,capturedVars", "-Ystop-before:erasure"
+  implicit val defaultOptions = noCheckOptions ++ List(
+      "-YnoDeepSubtypes",
+      "-Ycheck:patternMatcher,literalize,capturedVars",
+      "-Ystop-before:erasure"
     /*,"-uniqid", "-explaintypes", "-verbose", "-Ylog:splitter", "-Xprompt", "-YnoDoubleBindings"*/
   )
 
@@ -100,8 +103,9 @@ class tests extends CompilerTest {
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)
   @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config", twice)
   @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", twice)
-  // @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", twice)
-  // @odesky, fails on assertion in TypeComparer:425
+  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", twice)(
+      defaultOptions diff List("-YnoDeepSubtypes"))
+  // @odesky, fails on assertion in TypeComparer:425 (fixed)
 
   @Test def dotc_core_transform = compileDir(dotcDir + "tools/dotc/core/transform", twice)
 
