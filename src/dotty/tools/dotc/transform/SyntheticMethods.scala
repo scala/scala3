@@ -41,14 +41,14 @@ class SyntheticMethods extends MiniPhaseTransform with IdentityDenotTransformer 
 
   override def init(implicit ctx: Context, info: TransformerInfo) = {
     valueSymbols = List(defn.Any_hashCode, defn.Any_equals)
-    caseSymbols = valueSymbols ++ List(defn.Any_toString, defn.Product_canEqual)
+    caseSymbols = valueSymbols ++ List(defn.Any_toString, defn.Product_canEqual, defn.Product_productArity)
   }
 
   /** The synthetic methods of the case or value class `clazz`.
    */
   def syntheticMethods(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
     val clazzType = clazz.typeRef
-    def accessors = clazz.decls.filter(_ is CaseAccessor)
+    def accessors = clazz.decls.filter(_ is CaseAccessor).toList
 
     val symbolsToSynthesize: List[Symbol] =
       if (clazz.is(Case)) caseSymbols
@@ -75,6 +75,7 @@ class SyntheticMethods extends MiniPhaseTransform with IdentityDenotTransformer 
         case nme.toString_ => forwardToRuntime
         case nme.equals_ => vrefss => equalsBody(vrefss.head.head)
         case nme.canEqual_ => vrefss => canEqualBody(vrefss.head.head)
+        case nme.productArity => vrefss => Literal(Constant(accessors.length))
       }
       ctx.log(s"adding $synthetic to $clazz at ${ctx.phase}")
       DefDef(synthetic, syntheticRHS(ctx.withOwner(synthetic)))

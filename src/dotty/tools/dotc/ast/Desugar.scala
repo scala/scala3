@@ -287,7 +287,6 @@ object desugar {
         def syntheticProperty(name: TermName, rhs: Tree) =
           DefDef(synthetic, name, Nil, Nil, TypeTree(), rhs)
         val isDefinedMeth = syntheticProperty(nme.isDefined, Literal(Constant(true)))
-        val productArityMeth = syntheticProperty(nme.productArity, Literal(Constant(arity)))
         val caseParams = constrVparamss.head.toArray
         val productElemMeths = for (i <- 0 until arity) yield
           syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeName), caseParams(i).name))
@@ -302,7 +301,7 @@ object desugar {
               cpy.ValDef(vparam)(rhs = EmptyTree))
             DefDef(synthetic, nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr) :: Nil
           }
-        copyMeths ::: isDefinedMeth :: productArityMeth :: productElemMeths.toList
+        copyMeths ::: isDefinedMeth :: productElemMeths.toList
       }
       else Nil
 

@@ -296,6 +296,7 @@ class Definitions {
   lazy val ComparableClass              = ctx.requiredClass("java.lang.Comparable")
   lazy val ProductClass                 = ctx.requiredClass("scala.Product")
     lazy val Product_canEqual = ProductClass.requiredMethod(nme.canEqual_)
+    lazy val Product_productArity = ProductClass.requiredMethod(nme.productArity)
   lazy val LanguageModuleClass          = ctx.requiredModule("dotty.language").moduleClass.asClass
 
   // Annotation base classes
