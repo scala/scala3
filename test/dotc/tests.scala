@@ -109,12 +109,12 @@ class tests extends CompilerTest {
   // @odersky, fails with datarace
 
   @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing", twice)
-  // @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing", twice)
-  // @odersky, elimByName creates symbol with incorrect owner
+  @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing", twice)
+  // @odersky, elimByName creates symbol with incorrect owner (fixed)
 
   @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting", twice)
-  // @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", twice)
-  // @odersky, elimByName creates symbol with incorrect owner
+  @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", twice)
+  // @odersky, elimByName creates symbol with incorrect owner (fixed)
 
   @Test def dotc_util = compileDir(dotcDir + "tools/dotc/util", twice)
   @Test def tools_io = compileDir(dotcDir + "tools/io", twice)

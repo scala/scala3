@@ -279,8 +279,8 @@ object SymDenotations {
         do {
           owner = owner.owner
           sep += separator
-        } while (!owner.isClass)
-        val fn = owner.skipPackageObject.fullNameSeparated(separator) ++ sep ++ name
+        } while (!owner.isClass && !owner.isPackageObject)
+        val fn = owner.fullNameSeparated(separator) ++ sep ++ name
         if (isType) fn.toTypeName else fn.toTermName
       }
 
@@ -562,6 +562,15 @@ object SymDenotations {
         result
       }
 
+    /** Symbol is an owner that would be skipped by effectiveOwner. Skipped are
+     *   - package objects
+     *   - labels
+     *   - non-lazy valdefs
+     */
+    def isWeakOwner(implicit ctx: Context): Boolean =
+      isPackageObject ||
+      isTerm && !is(MethodOrLazy, butNot = Label) && !isLocalDummy
+
     //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
     //    def isSkolem: Boolean = ???
 
@@ -625,14 +634,12 @@ object SymDenotations {
       }
     }
 
-    /** If this is a package object or its implementing class, its owner,
-     *  otherwise the denoting symbol.
-     */
-    final def skipPackageObject(implicit ctx: Context): Symbol =
-      if (isPackageObject) owner else symbol
+    /** If this is a weak owner, its owner, otherwise the denoting symbol. */
+    final def skipWeakOwner(implicit ctx: Context): Symbol =
+      if (isWeakOwner) owner.skipWeakOwner else symbol
 
-    /** The owner, skipping package objects. */
-    final def effectiveOwner(implicit ctx: Context) = owner.skipPackageObject
+    /** The owner, skipping package objects, labels and non-lazy valdefs. */
+    final def effectiveOwner(implicit ctx: Context) = owner.skipWeakOwner
 
     /** The class containing this denotation.
      *  If this denotation is already a class, return itself

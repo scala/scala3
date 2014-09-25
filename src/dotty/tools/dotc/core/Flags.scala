@@ -501,6 +501,9 @@ object Flags {
   /** Either mutable or lazy */
   final val MutableOrLazy = Mutable | Lazy
 
+  /** Either method or lazy */
+  final val MethodOrLazy = Method | Lazy
+
   /** Labeled `private` or `final` */
   final val PrivateOrFinal = Private | Final
 

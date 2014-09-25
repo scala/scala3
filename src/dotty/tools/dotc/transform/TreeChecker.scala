@@ -97,14 +97,13 @@ class TreeChecker {
     }
 
     private def checkOwner(tree: untpd.Tree)(implicit ctx: Context): Unit = {
-      def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean = {
+      def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
-          ctxOwner.isTerm && (!(ctxOwner is Method | Lazy | Mutable) || (ctxOwner is Label)) &&
-          ownerMatches(symOwner, ctxOwner.owner)
-      }
+        ctxOwner.isWeakOwner && ownerMatches(symOwner, ctxOwner.owner)
       if(!ownerMatches(tree.symbol.owner, ctx.owner)) {
         assert(ownerMatches(tree.symbol.owner, ctx.owner),
-          i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}")
+          i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}\n" +
+          i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
       }
     }
 
@@ -123,7 +122,11 @@ class TreeChecker {
      *  of a helper value without having to do a change owner traversal of the expression.
      */
     override def typedStats(trees: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
-      for (tree <- trees if tree.isDef) checkOwner(tree)
+      for (tree <- trees) tree match {
+        case tree: untpd.DefTree => checkOwner(tree)
+        case _: untpd.Thicket => assert(false, "unexpanded thicket in statement sequence")
+        case _ =>
+      }
       super.typedStats(trees, exprOwner)
     }
 

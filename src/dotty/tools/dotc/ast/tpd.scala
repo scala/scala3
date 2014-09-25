@@ -525,8 +525,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def subst(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): ThisTree =
       new TreeTypeMap(substFrom = from, substTo = to).apply(tree)
 
-    def changeOwner(from: Symbol, to: Symbol)(implicit ctx: Context): ThisTree =
-      new TreeTypeMap(oldOwners = from :: Nil, newOwners = to :: Nil).apply(tree)
+    /** Change owner from `from` to `to`. If `from` is a weak owner, also change its
+     *  owner to `to`, and continue until a non-weak owner is reached.
+     */
+    def changeOwner(from: Symbol, to: Symbol)(implicit ctx: Context): ThisTree = {
+      def loop(from: Symbol, froms: List[Symbol], tos: List[Symbol]): ThisTree = {
+        if (from.isWeakOwner) loop(from.owner, from :: froms, to :: tos)
+        else {
+          //println(i"change owner ${from :: froms}%, % ==> $tos of $tree")
+          new TreeTypeMap(oldOwners = from :: froms, newOwners = tos).apply(tree)
+        }
+      }
+      loop(from, Nil, to :: Nil)
+    }
 
     def select(name: Name)(implicit ctx: Context): Select =
       Select(tree, name)
