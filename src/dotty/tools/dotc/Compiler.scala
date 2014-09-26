@@ -57,7 +57,7 @@ class Compiler {
       List(new TailRec),
       List(new PatternMatcher,
            new ExplicitOuter,
-           // new LazyValTranformContext().transformer, // disabled, awaiting fixes
+           new LazyValTranformContext().transformer, // disabled, awaiting fixes
            new Splitter),
       List(new ElimByName,
            new InterceptedMethods,
