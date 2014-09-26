@@ -105,7 +105,7 @@ class LazyValTranformContext {
         val holderImpl = ctx.requiredClass("dotty.runtime." + holderType)
 
         val holderSymbol = ctx.newSymbol(x.symbol.owner, holderName, containerFlags, holderImpl.typeRef, coord = x.symbol.coord)
-        val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, List(valueInitter)))
+        val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, List(valueInitter.changeOwner(x.symbol, holderSymbol))))
         val methodBody = {
           val prefix = ref(holderSymbol).select("value".toTermName)
           if (holderType != "LazyRef") prefix
