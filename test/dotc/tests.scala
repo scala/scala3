@@ -40,6 +40,7 @@ class tests extends CompilerTest {
   @Test def pos_Patterns() = compileFile(posDir, "Patterns")
   @Test def pos_selftypes() = compileFile(posDir, "selftypes", doErase)
   @Test def pos_varargs() = compileFile(posDir, "varargs", doErase)
+  @Test def pos_vararg_patterns() = compileFile(posDir, "vararg-pattern", doErase)
   @Test def pos_opassign() = compileFile(posDir, "opassign", doErase)
   @Test def pos_typedapply() = compileFile(posDir, "typedapply", doErase)
   @Test def pos_nameddefaults() = compileFile(posDir, "nameddefaults", doErase)
