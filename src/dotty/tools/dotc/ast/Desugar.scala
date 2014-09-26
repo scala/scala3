@@ -99,7 +99,7 @@ object desugar {
       val setterParam = makeSyntheticParameter(tpt = (new SetterParamTree).watching(vdef))
       val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
       val setter = cpy.DefDef(vdef)(
-        mods | Accessor, name.setterName, Nil, (setterParam :: Nil) :: Nil,
+        (mods | Accessor) &~ CaseAccessor, name.setterName, Nil, (setterParam :: Nil) :: Nil,
         TypeTree(defn.UnitType), setterRhs) // rhs gets filled in later, when field is generated and getter has parameters
       Thicket(vdef, setter)
     }
