@@ -35,18 +35,11 @@ class LazyValTranformContext {
   class OffsetInfo(var defs: List[Tree], var ord:Int)
   val appendOffsetDefs = mutable.Map.empty[Name, OffsetInfo]
 
-  val infoTransformerNewDefinitions = mutable.Map.empty[ClassSymbol, ListBuffer[Symbol]]
-
-  def addSym(owner: ClassSymbol, sym: Symbol) = {
-    infoTransformerNewDefinitions.get(owner) match {
-      case Some(x) => x += sym
-      case None => infoTransformerNewDefinitions.put(owner, ListBuffer(sym))
-    }
-  }
-
   class LazyValsTransform extends MiniPhaseTransform with DenotTransformer {
 
     override def phaseName: String = "LazyVals"
+
+    override def treeTransformPhase = this.next
 
     /** List of names of phases that should have finished their processing of all compilation units
       * before this phase starts */
@@ -59,24 +52,11 @@ class LazyValTranformContext {
     // override def ensureAfter: Set[String] = Set("mixin")
 
     def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
-      ref match {
-        case ref: SymDenotation if ref.symbol.isClass =>
-          val oldSym = ref.symbol.asClass
-          infoTransformerNewDefinitions.get(oldSym) match {
-            case Some(x) =>
-              val den = ref.copySymDenotation()
-              den.resetFlag(Flags.Frozen)
-              x.foreach(stat => den.asClass.enter(stat))
-              den
-            case None =>
-              ref
-          }
-        case _ => ref
-      }
+      ref
     }
 
     override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-      if (!(tree.mods is Flags.Lazy)) tree
+      if (!(tree.mods is Flags.Lazy) || (tree.mods is Flags.ModuleVal)) tree
       else {
         val isField = tree.symbol.owner.isClass
 
@@ -148,8 +128,8 @@ class LazyValTranformContext {
       */
 
     def mkNonThreadSafeDef(target: Symbol, flag: Symbol, rhs: Tree)(implicit ctx: Context) = {
-      val cond = Ident(flag.termRef)
-      val exp = Ident(target.termRef)
+      val cond = ref(flag)
+      val exp = ref(target)
       val setFlag = Assign(cond, Literal(Constants.Constant(true)))
       val setTarget = Assign(exp, rhs)
       val init = Block(List(setFlag, setTarget), exp)
@@ -165,8 +145,8 @@ class LazyValTranformContext {
       * }
       */
     def mkDefNonThreadSafeNonNullable(target: Symbol, rhs: Tree)(implicit ctx: Context) = {
-      val cond = Ident(target.termRef).select(nme.eq).appliedTo(Literal(Constant(null)))
-      val exp = Ident(target.termRef)
+      val cond = ref(target).select(nme.eq).appliedTo(Literal(Constant(null)))
+      val exp = ref(target)
       val setTarget = Assign(exp, rhs)
       val init = Block(List(setTarget), exp)
       If(cond, init, exp)
@@ -178,8 +158,7 @@ class LazyValTranformContext {
         val tpe = x.tpe.widen
         assert(!(mods is Flags.Mutable))
         val containerName = ctx.freshName(name.toString + StdNames.nme.LAZY_LOCAL).toTermName
-        val containerSymbol = ctx.newSymbol(claz, containerName, (mods &~ Flags.Lazy | containerFlags).flags, tpe, coord = x.symbol.coord)
-        addSym(claz, containerSymbol)
+        val containerSymbol = ctx.newSymbol(claz, containerName, (mods &~ Flags.Lazy | containerFlags).flags, tpe, coord = x.symbol.coord).enteredAfter(this)
 
         val containerTree = ValDef(containerSymbol, initValue(tpe))
         if (x.tpe.isNotNull && tpe <:< defn.AnyRefType) { // can use 'null' value instead of flag
@@ -245,7 +224,7 @@ class LazyValTranformContext {
       val retrySymbol = ctx.newSymbol(methodSymbol, "retry".toTermName, containerFlags, defn.BooleanType)
       val retryDef = ValDef(retrySymbol, Literal(Constants.Constant(true)))
 
-      val whileCond = Ident(retrySymbol.termRef)
+      val whileCond = ref(retrySymbol)
 
       val compute = {
         val handlerSymbol = ctx.newSymbol(methodSymbol, "$anonfun".toTermName, Flags.Synthetic,
@@ -258,12 +237,12 @@ class LazyValTranformContext {
             Block(List(complete), Throw(exception))
         })
 
-        val compute = Assign(Ident(resultSymbol.termRef), rhs)
+        val compute = Assign(ref(resultSymbol), rhs)
         val tr = Try(compute, handler, EmptyTree)
-        val assign = Assign(Ident(target.termRef), Ident(resultSymbol.termRef))
+        val assign = Assign(ref(target), ref(resultSymbol))
         val complete = setFlagState.appliedTo(thiz, offset, computedState, Literal(Constant(ord)))
-        val noRetry = Assign(Ident(retrySymbol.termRef), Literal(Constants.Constant(false)))
-        val body = If(casFlag.appliedTo(thiz, offset, Ident(flagSymbol.termRef), computeState, Literal(Constant(ord))),
+        val noRetry = Assign(ref(retrySymbol), Literal(Constants.Constant(false)))
+        val body = If(casFlag.appliedTo(thiz, offset, ref(flagSymbol), computeState, Literal(Constant(ord))),
           Block(tr :: assign :: complete :: noRetry :: Nil, Literal(Constant(()))),
           Literal(Constant(())))
 
@@ -271,28 +250,28 @@ class LazyValTranformContext {
       }
 
       val waitFirst = {
-        val wait = waitOnLock.appliedTo(thiz, offset, Ident(flagSymbol.termRef), Literal(Constant(ord)))
+        val wait = waitOnLock.appliedTo(thiz, offset, ref(flagSymbol), Literal(Constant(ord)))
         CaseDef(computeState, EmptyTree, wait)
       }
 
       val waitSecond = {
-        val wait = waitOnLock.appliedTo(thiz, offset, Ident(flagSymbol.termRef), Literal(Constant(ord)))
+        val wait = waitOnLock.appliedTo(thiz, offset, ref(flagSymbol), Literal(Constant(ord)))
         CaseDef(notifyState, EmptyTree, wait)
       }
 
       val computed = {
-        val noRetry = Assign(Ident(retrySymbol.termRef), Literal(Constants.Constant(false)))
-        val result = Assign(Ident(resultSymbol.termRef), Ident(target.termRef))
+        val noRetry = Assign(ref(retrySymbol), Literal(Constants.Constant(false)))
+        val result = Assign(ref(resultSymbol), ref(target))
         val body = Block(noRetry :: result :: Nil, Literal(Constant(())))
         CaseDef(computedState, EmptyTree, body)
       }
 
-      val cases = Match(stateMask.appliedTo(Ident(flagSymbol.termRef), Literal(Constant(ord))),
+      val cases = Match(stateMask.appliedTo(ref(flagSymbol), Literal(Constant(ord))),
         List(compute, waitFirst, waitSecond, computed)) //todo: annotate with @switch
 
-      val whileBody = Block(List(Assign(Ident(flagSymbol.termRef), getFlag.appliedTo(thiz, offset))), cases)
+      val whileBody = Block(List(Assign(ref(flagSymbol), getFlag.appliedTo(thiz, offset))), cases)
       val cycle = untpd.WhileDo(whileCond, whileBody).withTypeUnchecked(defn.UnitType)
-      DefDef(methodSymbol, Block(resultDef :: retryDef :: flagDef :: cycle :: Nil, Ident(resultSymbol.termRef)))
+      DefDef(methodSymbol, Block(resultDef :: retryDef :: flagDef :: cycle :: Nil, ref(resultSymbol)))
     }
 
     def transformFieldValDefVolatile(x: ValDef)(implicit ctx: Context) = x match {
@@ -304,7 +283,7 @@ class LazyValTranformContext {
         val thiz = This(claz)(ctx.fresh.setOwner(claz))
         val companion = claz.companionModule
         val helperModule = ctx.requiredModule("dotty.runtime.LazyVals")
-        val getOffset = Select(Ident(helperModule.termRef), LazyVals.Names.getOffset.toTermName)
+        val getOffset = Select(ref(helperModule), LazyVals.Names.getOffset.toTermName)
         var offsetSymbol: TermSymbol = null
         var flag: Tree = EmptyTree
         var ord = 0
@@ -321,36 +300,33 @@ class LazyValTranformContext {
                 .suchThat(sym => (sym is Flags.Synthetic) && sym.isTerm)
                  .symbol.asTerm
             } else { // need to create a new flag
-              offsetSymbol = ctx.newSymbol(companion.moduleClass, (StdNames.nme.LAZY_FIELD_OFFSET + id.toString).toTermName, Flags.Synthetic, defn.LongType).entered
+              offsetSymbol = ctx.newSymbol(companion.moduleClass, (StdNames.nme.LAZY_FIELD_OFFSET + id.toString).toTermName, Flags.Synthetic, defn.LongType).enteredAfter(this)
               val flagName = (StdNames.nme.BITMAP_PREFIX + id.toString).toTermName
-              val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType)
-              addSym(claz, flagSymbol)
+              val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
               flag = ValDef(flagSymbol, Literal(Constants.Constant(0L)))
               val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thiz, Literal(Constant(flagName.toString))))
               info.defs = offsetTree :: info.defs
             }
 
           case None =>
-            offsetSymbol = ctx.newSymbol(companion.moduleClass, (StdNames.nme.LAZY_FIELD_OFFSET + "0").toTermName, Flags.Synthetic, defn.LongType).entered
+            offsetSymbol = ctx.newSymbol(companion.moduleClass, (StdNames.nme.LAZY_FIELD_OFFSET + "0").toTermName, Flags.Synthetic, defn.LongType).enteredAfter(this)
             val flagName = (StdNames.nme.BITMAP_PREFIX + "0").toTermName
-            val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType)
-            addSym(claz, flagSymbol)
+            val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
             flag = ValDef(flagSymbol, Literal(Constants.Constant(0L)))
             val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thiz, Literal(Constant(flagName.toString))))
             appendOffsetDefs += (companion.name.moduleClassName -> new OffsetInfo(List(offsetTree), ord))
         }
 
         val containerName = ctx.freshName(name.toString + StdNames.nme.LAZY_LOCAL).toTermName
-        val containerSymbol = ctx.newSymbol(claz, containerName, (mods &~ Flags.Lazy | containerFlags).flags, tpe, coord = x.symbol.coord)
-        addSym(claz, containerSymbol)
+        val containerSymbol = ctx.newSymbol(claz, containerName, (mods &~ Flags.Lazy | containerFlags).flags, tpe, coord = x.symbol.coord).enteredAfter(this)
         val containerTree = ValDef(containerSymbol, initValue(tpe))
 
-        val offset = Select(Ident(companion.termRef), offsetSymbol.name)
-        val getFlag = Select(Ident(helperModule.termRef), LazyVals.Names.get.toTermName)
-        val setFlag = Select(Ident(helperModule.termRef), LazyVals.Names.setFlag.toTermName)
-        val wait = Select(Ident(helperModule.termRef), LazyVals.Names.wait4Notification.toTermName)
-        val state = Select(Ident(helperModule.termRef), LazyVals.Names.state.toTermName)
-        val cas = Select(Ident(helperModule.termRef), LazyVals.Names.cas.toTermName)
+        val offset = Select(ref(companion), offsetSymbol.name)
+        val getFlag = Select(ref(helperModule), LazyVals.Names.get.toTermName)
+        val setFlag = Select(ref(helperModule), LazyVals.Names.setFlag.toTermName)
+        val wait = Select(ref(helperModule), LazyVals.Names.wait4Notification.toTermName)
+        val state = Select(ref(helperModule), LazyVals.Names.state.toTermName)
+        val cas = Select(ref(helperModule), LazyVals.Names.cas.toTermName)
 
         val accessor = mkThreadSafeDef(x.symbol.asTerm, claz, ord, containerSymbol, rhs, tpe, offset, getFlag, state, cas, setFlag, wait)
         if(flag eq EmptyTree)
