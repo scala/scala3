@@ -727,9 +727,14 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         - A parameterized type pattern scala.Array[T1], where T1 is a type pattern. // TODO
           This type pattern matches any non-null instance of type scala.Array[U1], where U1 is a type matched by T1.
       **/
-    case class TypeTestTreeMaker(prevBinder: Symbol, testedBinder: Symbol, expectedTp: Type, nextBinderTp: Type)(override val pos: Position, extractorArgTypeTest: Boolean = false) extends CondTreeMaker {
+    case class TypeTestTreeMaker(afterTest: Symbol, testedBinder: Symbol, expectedTp: Type, nextBinderTp: Type)(override val pos: Position, extractorArgTypeTest: Boolean = false) extends CondTreeMaker {
       import TypeTestTreeMaker._
+
       ctx.debuglog("TTTM"+((prevBinder, extractorArgTypeTest, testedBinder, expectedTp, nextBinderTp)))
+
+      val prevBinder = testedBinder
+
+      override lazy val nextBinder = afterTest.asTerm
 
       def needsOuterTest(patType: Type, selType: Type, currentOwner: Symbol) = {
         // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
@@ -741,6 +746,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
             false
         }
       }
+
+      override lazy val localSubstitution: Substitution = EmptySubstitution
 
       lazy val outerTestNeeded = (
         (expectedTp.normalizedPrefix.typeSymbol ne NoSymbol)
@@ -1093,7 +1100,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         // it tests the type, checks the outer pointer and casts to the expected type
         // TODO: the outer check is mandated by the spec for case classes, but we do it for user-defined unapplies as well [SPEC]
         // (the prefix of the argument passed to the unapply must equal the prefix of the type of the binder)
-        lazy val typeTest = TypeTestTreeMaker(binder, binder, paramType, paramType)(pos, extractorArgTypeTest = true)
+        lazy val typeTest = TypeTestTreeMaker(freshSym(pos, paramType), binder, paramType, paramType)(pos, extractorArgTypeTest = true)
         // check whether typetest implies binder is not null,
         // even though the eventual null check will be on typeTest.nextBinder
         // it'll be equal to binder casted to paramType anyway (and the type test is on binder)
@@ -1390,14 +1397,18 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
     object ExtractorCall {
       // TODO: check unargs == args
-      def apply(tree: Tree, binder: Symbol): ExtractorCall = tree match {
-        case UnApply(unfun, implicits, args) =>
-          val synth = if (implicits.isEmpty) unfun.appliedTo(ref(binder)) else unfun.appliedTo(ref(binder)).appliedToArgs(implicits)
-          new ExtractorCallRegular(alignPatterns(tree, synth.tpe), synth, args, synth.tpe) // extractor
-        case Typed(UnApply(unfun, implicits, args), tpt) =>
-          val synth = /*Typed(*/ if (implicits.isEmpty) unfun.appliedTo(ref(binder)) else unfun.appliedTo(ref(binder)).appliedToArgs(implicits) //, tpt)
-          new ExtractorCallRegular(alignPatterns(tree, synth.tpe), synth, args, synth.tpe) // extractor
-        case Apply(fun, args) => new ExtractorCallProd(alignPatterns(tree, tree.tpe), fun, args, fun.tpe) // case class
+      def apply(tree: Tree, binder: Symbol): ExtractorCall =  {
+        tree match {
+          case UnApply(unfun, implicits, args) =>
+            val castedBinder = ref(binder).ensureConforms(tree.tpe)
+            val synth = if (implicits.isEmpty) unfun.appliedTo(castedBinder) else unfun.appliedTo(castedBinder).appliedToArgs(implicits)
+            new ExtractorCallRegular(alignPatterns(tree, synth.tpe), synth, args, synth.tpe) // extractor
+          case Typed(unapply@ UnApply(unfun, implicits, args), tpt) =>
+            val castedBinder = ref(binder).ensureConforms(unapply.tpe)
+            val synth = /*Typed(*/ if (implicits.isEmpty) unfun.appliedTo(castedBinder) else unfun.appliedTo(castedBinder).appliedToArgs(implicits) //, tpt)
+            new ExtractorCallRegular(alignPatterns(tree, synth.tpe), synth, args, synth.tpe) // extractor
+          case Apply(fun, args) => new ExtractorCallProd(alignPatterns(tree, tree.tpe), fun, args, fun.tpe) // case class
+        }
       }
     }
 
