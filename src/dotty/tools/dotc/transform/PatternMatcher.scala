@@ -427,9 +427,9 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     case class SubstOnlyTreeMaker(prevBinder: Symbol, nextBinder: Symbol) extends TreeMaker {
       val pos = Positions.NoPosition
 
-      val localSubstitution = Substitution(prevBinder, ref(nextBinder))
-      def chainBefore(next: Tree)(casegen: Casegen): Tree = /*substitution(*/next//)
-      override def toString = "S" + localSubstitution
+      val localSubstitution = EmptySubstitution
+      def chainBefore(next: Tree)(casegen: Casegen): Tree = Block(List(ValDef(prevBinder.asTerm, ref(nextBinder))), next)
+      //override def toString = "S" + localSubstitution
     }
 
     sealed abstract class FunTreeMaker extends TreeMaker {
