@@ -150,8 +150,8 @@ final class TreeTypeMap(
       // We'll cross that bridge when we need to.
       assert(!from.exists(substTo contains _))
       assert(!to.exists(substFrom contains _))
-      assert(!from.exists(oldOwners contains _))
-      assert(!to.exists(newOwners contains _))
+      assert(!from.exists(newOwners contains _))
+      assert(!to.exists(oldOwners contains _))
       new TreeTypeMap(
         typeMap,
         treeMap,
