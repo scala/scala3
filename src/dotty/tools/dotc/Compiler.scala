@@ -52,9 +52,9 @@ class Compiler {
       // pickling goes here
       List(new RefChecks,
            new ElimRepeated,
-           new ElimLocals),
-      List(new ExtensionMethods),
-      List(new TailRec),
+           new ElimLocals,
+           new ExtensionMethods,
+           new TailRec),
       List(new PatternMatcher,
            new ExplicitOuter,
            new LazyValTranformContext().transformer, // disabled, awaiting fixes
