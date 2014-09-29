@@ -77,4 +77,16 @@ object Patterns {
       }
     case _ => ys.isEmpty
   }
+
+  class A{
+    class B
+  }
+  val a1 = new A
+  val a2 = new A
+  d match {
+    case t: a1.B =>
+      t
+    case t: a2.B =>
+      t
+  }
 }

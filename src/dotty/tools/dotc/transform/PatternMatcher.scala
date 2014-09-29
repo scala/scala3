@@ -666,14 +666,16 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           val expectedOuter = expectedTp.normalizedPrefix match {
             //case ThisType(clazz) => This(clazz)
             //case NoType          => Literal(Constant(true)) // fallback for SI-6183 todo?
-            case pre             => ref(pre.typeSymbol)
+            case pre             => ref(pre.termSymbol)
           }
 
           // ExplicitOuter replaces `Select(q, outerSym) OBJ_EQ expectedPrefix` by `Select(q, outerAccessor(outerSym.owner)) OBJ_EQ expectedPrefix`
           // if there's an outer accessor, otherwise the condition becomes `true` -- TODO: can we improve needsOuterTest so there's always an outerAccessor?
           // val outer = expectedTp.typeSymbol.newMethod(vpmName.outer, newFlags = SYNTHETIC | ARTIFACT) setInfo expectedTp.prefix
 
-          codegen._asInstanceOf(testedBinder, expectedTp).select("<outer>".toTermName).select(ctx.definitions.Object_eq).appliedTo(expectedOuter)
+          val expectedClass = expectedTp.dealias.classSymbol.asClass
+          ExplicitOuter.ensureOuterAccessors(expectedClass)
+          codegen._asInstanceOf(testedBinder, expectedTp).select(ExplicitOuter.outerAccessor(expectedClass)).select(ctx.definitions.Object_eq).appliedTo(expectedOuter)
         }
       }
 
@@ -750,11 +752,12 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       override lazy val localSubstitution: Substitution = EmptySubstitution
 
-      lazy val outerTestNeeded = (
-        (expectedTp.normalizedPrefix.typeSymbol ne NoSymbol)
-          && !expectedTp.normalizedPrefix.typeSymbol.isPackageObject
-          && false &&needsOuterTest(expectedTp, testedBinder.info, matchOwner)
-        )
+      def outerTestNeeded = {
+        val np = expectedTp.normalizedPrefix
+        val ts = np.termSymbol
+        (ts ne NoSymbol) && needsOuterTest(expectedTp, testedBinder.info, matchOwner)
+
+      }
 
       // the logic to generate the run-time test that follows from the fact that
       // a `prevBinder` is expected to have type `expectedTp`

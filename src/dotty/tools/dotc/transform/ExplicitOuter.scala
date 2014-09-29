@@ -13,6 +13,7 @@ import core.Names._
 import core.NameOps._
 import ast.Trees._
 import SymUtils._
+import dotty.tools.dotc.core.Phases.Phase
 import util.Attachment
 import collection.mutable
 
@@ -27,6 +28,8 @@ import collection.mutable
  *   - add outer parameters to constructors
  *   - pass outer arguments in constructor calls
  *   - replace outer this by outer paths.
+ *
+ *   needs to run after pattern matcher as it can add outer checks and force creation of $outer
  */
 class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
   import ExplicitOuter._
@@ -36,6 +39,10 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
 
   override def phaseName: String = "explicitOuter"
 
+  /** List of names of phases that should have finished their processing of all compilation units
+    * before this phase starts
+    */
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[PatternMatcher])
   override def treeTransformPhase = thisTransformer.next
 
   /** Add outer accessors if a class always needs an outer pointer */
@@ -171,7 +178,7 @@ object ExplicitOuter {
    *  result is phase dependent. In that case we use a backup strategy where we search all
    *  definitions in the class to find the one with the OuterAccessor flag.
    */
-  private def outerAccessor(cls: ClassSymbol)(implicit ctx: Context): Symbol =
+  def outerAccessor(cls: ClassSymbol)(implicit ctx: Context): Symbol =
     cls.info.member(outerAccName(cls)).suchThat(_ is OuterAccessor).symbol orElse
       cls.info.decls.find(_ is OuterAccessor).getOrElse(NoSymbol)
 
