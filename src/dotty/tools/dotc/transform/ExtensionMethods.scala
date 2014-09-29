@@ -5,7 +5,7 @@
 package dotty.tools.dotc
 package transform
 
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform, TreeTransformer}
+import dotty.tools.dotc.transform.TreeTransforms._
 import ValueClasses._
 import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.{ mutable, immutable }
@@ -22,7 +22,7 @@ import Decorators._
  * Perform Step 1 in the inline classes SIP: Creates extension methods for all
  * methods in a value class, except parameter or super accessors, or constructors.
  */
-class ExtensionMethods extends MacroTransform with DenotTransformer with FullParameterization { thisTransformer =>
+class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with FullParameterization { thisTransformer =>
 
   import tpd._
 
@@ -57,9 +57,7 @@ class ExtensionMethods extends MacroTransform with DenotTransformer with FullPar
       ref
   }
 
-  def newTransformer(implicit ctx: Context): Transformer = new Extender
-
-  override def transformPhase(implicit ctx: Context): Phase = thisTransformer.next
+  override def treeTransformPhase = thisTransformer.next
 
   protected def rewiredTarget(target: Symbol, derived: Symbol)(implicit ctx: Context): Symbol =
     if (isMethodWithExtension(target) &&
@@ -137,48 +135,53 @@ class ExtensionMethods extends MacroTransform with DenotTransformer with FullPar
     extensionMeth
   }
 
-  class Extender extends Transformer {
-    private val extensionDefs = mutable.Map[Symbol, mutable.ListBuffer[Tree]]()
+  private val extensionDefs = mutable.Map[Symbol, mutable.ListBuffer[Tree]]()
+  // TODO: this is state and should be per-run
+  // todo: check that when transformation finished map is empty
 
-    def checkNonCyclic(pos: Position, seen: Set[Symbol], clazz: ClassSymbol)(implicit ctx: Context): Unit =
-      if (seen contains clazz)
-        ctx.error("value class may not unbox to itself", pos)
-      else {
-        val unboxed = underlyingOfValueClass(clazz).typeSymbol
-        if (isDerivedValueClass(unboxed)) checkNonCyclic(pos, seen + clazz, unboxed.asClass)
-      }
-
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-      tree match {
-        case tree: Template =>
-          if (isDerivedValueClass(ctx.owner)) {
-          /* This is currently redundant since value classes may not
-             wrap over other value classes anyway.
-            checkNonCyclic(ctx.owner.pos, Set(), ctx.owner) */
-            extensionDefs(ctx.owner.linkedClass) = new mutable.ListBuffer[Tree]
-            super.transform(tree)
-          } else if (ctx.owner.isStaticOwner) {
-            val tree1 @ Template(_, _, _, body) = super.transform(tree)
-            extensionDefs remove tree1.symbol.owner match {
-              case Some(defns) if defns.nonEmpty =>
-                cpy.Template(tree1)(body = body ++ defns)
-              case _ =>
-                tree1
-            }
-          } else tree
-        case ddef: DefDef if isMethodWithExtension(tree.symbol) =>
-          val origMeth = tree.symbol
-          val origClass = ctx.owner.asClass
-          val staticClass = origClass.linkedClass
-          assert(staticClass.exists, s"$origClass lacks companion, ${origClass.owner.definedPeriodsString} ${origClass.owner.info.decls} ${origClass.owner.info.decls}")
-          val extensionMeth = extensionMethod(origMeth)
-          ctx.log(s"Value class $origClass spawns extension method.\n  Old: ${origMeth.showDcl}\n  New: ${extensionMeth.showDcl}")
-          extensionDefs(staticClass) += fullyParameterizedDef(extensionMeth, ddef)
-          cpy.DefDef(tree)(ddef.mods, ddef.name, ddef.tparams, ddef.vparamss, ddef.tpt,
-              forwarder(extensionMeth, ddef))
-        case _ =>
-          super.transform(tree)
-      }
+  private def checkNonCyclic(pos: Position, seen: Set[Symbol], clazz: ClassSymbol)(implicit ctx: Context): Unit =
+    if (seen contains clazz)
+      ctx.error("value class may not unbox to itself", pos)
+    else {
+      val unboxed = underlyingOfValueClass(clazz).typeSymbol
+      if (isDerivedValueClass(unboxed)) checkNonCyclic(pos, seen + clazz, unboxed.asClass)
     }
+
+  override def transformTemplate(tree: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    if (isDerivedValueClass(ctx.owner)) {
+      /* This is currently redundant since value classes may not
+         wrap over other value classes anyway.
+        checkNonCyclic(ctx.owner.pos, Set(), ctx.owner) */
+      tree
+    } else if (ctx.owner.isStaticOwner) {
+      extensionDefs remove tree.symbol.owner match {
+        case Some(defns) if defns.nonEmpty =>
+          cpy.Template(tree)(body = tree.body ++
+            defns.map(transformFollowing(_)))
+        case _ =>
+          tree
+      }
+    } else tree
+  }
+
+  override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    if (isMethodWithExtension(tree.symbol)) {
+      val origMeth = tree.symbol
+      val origClass = ctx.owner.asClass
+      val staticClass = origClass.linkedClass
+      assert(staticClass.exists, s"$origClass lacks companion, ${origClass.owner.definedPeriodsString} ${origClass.owner.info.decls} ${origClass.owner.info.decls}")
+      val extensionMeth = extensionMethod(origMeth)
+      ctx.log(s"Value class $origClass spawns extension method.\n  Old: ${origMeth.showDcl}\n  New: ${extensionMeth.showDcl}")
+      val store: ListBuffer[Tree] = extensionDefs.get(staticClass) match {
+        case Some(x) => x
+        case None =>
+          val newC = new ListBuffer[Tree]()
+          extensionDefs(staticClass) = newC
+          newC
+      }
+      store += fullyParameterizedDef(extensionMeth, tree)
+      cpy.DefDef(tree)(tree.mods, tree.name, tree.tparams, tree.vparamss, tree.tpt,
+        forwarder(extensionMeth, tree))
+    } else tree
   }
 }
