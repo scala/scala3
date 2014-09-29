@@ -134,6 +134,11 @@ object TreeTransforms {
     /** Transform single node using all transforms following the current one in this group */
     def transformFollowing(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = info.group.transformSingle(tree, idx + 1)
 
+    def atGroupEnd[T](action : Context => T)(implicit ctx: Context, info: TransformerInfo) = {
+      val last = info.transformers(info.transformers.length - 1)
+      action(ctx.withPhase(last.phase.next))
+    }
+
     /** perform context-dependant initialization */
     def init(implicit ctx: Context, info: TransformerInfo): Unit = {}
   }
