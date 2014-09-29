@@ -137,7 +137,7 @@ object ExplicitOuter {
     nme.OUTER.expandedName(cls)
 
   /** Class needs an outer pointer, provided there is a reference to an outer this in it. */
-  private def needsOuterIfReferenced(cls: ClassSymbol)(implicit ctx: Context): Boolean = !(
+  def needsOuterIfReferenced(cls: ClassSymbol)(implicit ctx: Context): Boolean = !(
     cls.isStatic ||
     cls.owner.enclosingClass.isStaticOwner ||
     cls.is(Interface)

@@ -740,8 +740,9 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
         // generates an outer test based on `patType.prefix` with automatically dealises.
         patType.dealias match {
-          case TypeRef(pre, name) =>
-            (pre ne NoType)// && isPopulated(copyTypeRef(patType, pre1, sym, args), selType)
+          case tref @ TypeRef(pre, name) =>
+            (pre ne NoPrefix) && tref.symbol.isClass &&
+            ExplicitOuter.needsOuterIfReferenced(tref.symbol.asClass)
           case _ =>
             false
         }
