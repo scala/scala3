@@ -47,12 +47,9 @@ trait TypeTestsCasts {
           def argCls = argType.classSymbol
           if (expr.tpe <:< argType)
             Literal(Constant(true)) withPos tree.pos
-          else if (qualCls.isPrimitiveValueClass) {
-            if (argCls.isPrimitiveValueClass) Literal(Constant(qualCls == argCls))
-            else errorTree(tree, "isInstanceOf cannot test if value types are references")
-          }
           else if (argCls.isPrimitiveValueClass)
-            transformIsInstanceOf(expr, defn.boxedClass(argCls).typeRef)
+            if (qualCls.isPrimitiveValueClass) Literal(Constant(qualCls == argCls))
+            else transformIsInstanceOf(expr, defn.boxedClass(argCls).typeRef)
           else argType.dealias match {
             case _: SingletonType =>
               val cmpOp = if (argType derivesFrom defn.AnyValClass) defn.Any_equals else defn.Object_eq
