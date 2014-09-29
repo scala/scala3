@@ -12,6 +12,7 @@ import core.StdNames._
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
 import dotty.tools.dotc.core
 import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
+import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.{TypeApplications, Flags}
 import dotty.tools.dotc.typer.Applications
 import dotty.tools.dotc.util.Positions
@@ -40,6 +41,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref
 
   override def runsAfter = Set(classOf[ElimRepeated])
+
+  override def runsAfterGroupsOf = Set(classOf[TailRec]) // tailrec is not capable of reversing the patmat tranformation made for tree
 
   override def phaseName = "patternMatcher"
 
