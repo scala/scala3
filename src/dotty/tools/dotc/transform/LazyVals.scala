@@ -19,7 +19,7 @@ import SymUtils._
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
-import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
+import dotty.tools.dotc.core.DenotTransformers.{IdentityDenotTransformer, DenotTransformer}
 
 class LazyValTranformContext {
 
@@ -35,7 +35,7 @@ class LazyValTranformContext {
   class OffsetInfo(var defs: List[Tree], var ord:Int)
   val appendOffsetDefs = mutable.Map.empty[Name, OffsetInfo]
 
-  class LazyValsTransform extends MiniPhaseTransform with DenotTransformer {
+  class LazyValsTransform extends MiniPhaseTransform with IdentityDenotTransformer {
 
     override def phaseName: String = "LazyVals"
 
@@ -50,10 +50,6 @@ class LazyValTranformContext {
     /** List of names of phases that should have finished processing of tree
       * before this phase starts processing same tree */
     // override def ensureAfter: Set[String] = Set("mixin")
-
-    def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
-      ref
-    }
 
     override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (!(tree.mods is Flags.Lazy) || (tree.mods is Flags.ModuleVal)) tree
