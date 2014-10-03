@@ -428,7 +428,7 @@ object SymDenotations {
 
     /** Does this symbol denote the primary constructor of its enclosing class? */
     final def isPrimaryConstructor(implicit ctx: Context) =
-      isConstructor && owner.primaryConstructor == this
+      isConstructor && owner.primaryConstructor.denot == this
 
     /** Is this a subclass of the given class `base`? */
     def isSubClass(base: Symbol)(implicit ctx: Context) = false
