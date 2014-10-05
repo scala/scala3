@@ -476,6 +476,7 @@ class TypeComparer(initctx: Context) extends DotClass {
                      ||    sym1.isClass
                         && pre2.classSymbol.exists
                         && pre2.abstractTypeMembers.isEmpty
+                        && isSubType(pre1, pre2)
                      )
                    }
                 )
