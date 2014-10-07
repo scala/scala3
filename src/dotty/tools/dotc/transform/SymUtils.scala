@@ -8,6 +8,7 @@ import Symbols._
 import Decorators._
 import Names._
 import StdNames._
+import NameOps._
 import Flags._
 import language.implicitConversions
 
@@ -46,4 +47,18 @@ class SymUtils(val self: Symbol) extends AnyVal {
       else loop(from.tail, to.tail)
     loop(from, to)
   }
+
+  def accessorNamed(name: TermName)(implicit ctx: Context): Symbol =
+    self.owner.info.decl(name).suchThat(_ is Accessor).symbol
+
+  def getter(implicit ctx: Context): Symbol =
+    if (self.isGetter) self else accessorNamed(self.asTerm.name.getterName)
+
+  def setter(implicit ctx: Context): Symbol =
+    if (self.isSetter) self
+    else accessorNamed(self.asTerm.name.setterName) orElse
+         accessorNamed(self.asTerm.name.traitSetterName)
+
+  def field(implicit ctx: Context): Symbol =
+    self.owner.info.decl(self.asTerm.name.fieldName).suchThat(!_.is(Method)).symbol
 }
