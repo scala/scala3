@@ -180,7 +180,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def annotText(tree: untpd.Tree): Text = "@" ~ constrText(tree) // DD
 
-    def useSymbol = ctx.isAfterTyper(ctx.phase) && tree.symbol != null && tree.symbol.exists
+    def useSymbol = ctx.isAfterTyper(ctx.phase) && tree.hasType && tree.symbol.exists
 
     def modText(mods: untpd.Modifiers, kw: String): Text = { // DD
       val suppressKw = if (ownerIsClass) mods is ParamAndLocal else mods is Param
