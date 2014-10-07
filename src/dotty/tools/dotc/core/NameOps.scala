@@ -68,10 +68,11 @@ object NameOps {
     def isProtectedAccessorName = name startsWith PROTECTED_PREFIX
     def isReplWrapperName = name containsSlice INTERPRETER_IMPORT_WRAPPER
     def isSetterName = name endsWith SETTER_SUFFIX
-    def isTraitSetterName = isSetterName && (name containsSlice TRAIT_SETTER_SEPARATOR)
+    def isTraitSetterName = isSetterName && (name containsSlice TRAIT_SETTER_PREFIX)
     def isSingletonName = name endsWith SINGLETON_SUFFIX
     def isModuleClassName = name endsWith MODULE_SUFFIX
     def isImportName = name startsWith IMPORT
+    def isFieldName = name endsWith LOCAL_SUFFIX
     def isInheritedName = name.length > 0 && name.head == '(' && name.startsWith(nme.INHERITED)
     def isDefaultGetterName = name.isTermName && name.asTermName.defaultGetterIndex >= 0
 
@@ -223,21 +224,34 @@ object NameOps {
   implicit class TermNameDecorator(val name: TermName) extends AnyVal {
     import nme._
 
-    /** The expanded setter name of `name` relative to this class `base`
-     */
-    def expandedSetterName(base: Symbol)(implicit ctx: Context): TermName =
-      name.expandedName(base, separator = TRAIT_SETTER_SEPARATOR)
+    def traitSetterName: TermName =
+      nme.TRAIT_SETTER_PREFIX ++ setterName
 
-    def setterName: TermName = name ++ SETTER_SUFFIX
+    def setterName: TermName =
+      if (name.isFieldName) name.fieldToGetter.setterName
+      else name ++ SETTER_SUFFIX
 
-    def setterToGetter: TermName = {
-      val p = name.indexOfSlice(TRAIT_SETTER_SEPARATOR)
+    def getterName: TermName =
+      if (name.isFieldName) fieldToGetter
+      else setterToGetter
+
+    def fieldName: TermName =
+      if (name.isSetterName) getterName.fieldName
+      else name ++ LOCAL_SUFFIX
+
+    private def setterToGetter: TermName = {
+      val p = name.indexOfSlice(TRAIT_SETTER_PREFIX)
       if (p >= 0)
-        (name drop (p + TRAIT_SETTER_SEPARATOR.length)).asTermName.setterToGetter
+        (name drop (p + TRAIT_SETTER_PREFIX.length)).asTermName.getterName
       else {
         assert(name.endsWith(SETTER_SUFFIX), name + " is referenced as a setter but has wrong name format")
         name.take(name.length - SETTER_SUFFIX.length).asTermName
       }
+    }
+
+    def fieldToGetter: TermName = {
+      assert(name.isFieldName)
+      name.take(name.length - LOCAL_SUFFIX.length).asTermName
     }
 
     /** Nominally, name$default$N, encoded for <init>
