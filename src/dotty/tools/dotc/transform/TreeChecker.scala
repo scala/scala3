@@ -20,6 +20,7 @@ import reporting.ThrowingReporter
 import ast.Trees._
 import ast.{tpd, untpd}
 import util.SourcePosition
+import ProtoTypes._
 import java.lang.AssertionError
 
 /** Run by -Ycheck option after a given phase, this class retypes all syntax trees
@@ -136,7 +137,7 @@ class TreeChecker {
     override def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = {
       def isPrimaryConstructorReturn =
         ctx.owner.isPrimaryConstructor && pt.isRef(ctx.owner.owner) && tree.tpe.isRef(defn.UnitClass)
-      if (ctx.mode.isExpr && !isPrimaryConstructorReturn)
+      if (ctx.mode.isExpr && !isPrimaryConstructorReturn && !pt.isInstanceOf[FunProto])
         assert(tree.tpe <:< pt,
             s"error at ${sourcePos(tree.pos)}\n" +
             err.typeMismatchStr(tree.tpe, pt))
