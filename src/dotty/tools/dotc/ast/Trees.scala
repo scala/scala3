@@ -812,7 +812,7 @@ object Trees {
   }
 
   class EmptyValDef[T >: Untyped] extends ValDef[T](
-    Modifiers[T](Private), nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T]) with WithoutTypeOrPos[T] {
+    Modifiers[T](PrivateLocal), nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T]) with WithoutTypeOrPos[T] {
     override def isEmpty: Boolean = true
   }
 

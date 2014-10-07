@@ -208,7 +208,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     makeConstructor(Modifiers(), Nil, Nil)
 
   def makeSelfDef(name: TermName, tpt: Tree)(implicit ctx: Context) =
-    ValDef(Modifiers(Private), name, tpt, EmptyTree)
+    ValDef(Modifiers(PrivateLocal), name, tpt, EmptyTree)
 
   def makeTupleOrParens(ts: List[Tree])(implicit ctx: Context) = ts match {
     case t :: Nil => Parens(t)
