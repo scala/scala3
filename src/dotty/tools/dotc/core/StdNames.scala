@@ -119,7 +119,7 @@ object StdNames {
     val SINGLETON_SUFFIX: N           = ".type"
     val SPECIALIZED_SUFFIX: N         = "$sp"
     val SUPER_PREFIX: N               = "super$"
-    val TRAIT_SETTER_SEPARATOR: N     = "$_setter_$"
+    val TRAIT_SETTER_PREFIX: N        = "_setter_$"
     val WHILE_PREFIX: N               = "while$"
 
     // value types (and AnyRef) are all used as terms as well
@@ -226,7 +226,7 @@ object StdNames {
     val LAZY_LOCAL: N               = "$lzy"
     val LAZY_FIELD_OFFSET: N        = "OFFSET$"
     val LAZY_SLOW_SUFFIX: N         = "$lzycompute"
-    val LOCAL_SUFFIX: N             = " "
+    val LOCAL_SUFFIX: N             = "$$local"
     val UNIVERSE_BUILD_PREFIX: N    = "$u.build."
     val UNIVERSE_BUILD: N           = "$u.build"
     val UNIVERSE_PREFIX: N          = "$u."

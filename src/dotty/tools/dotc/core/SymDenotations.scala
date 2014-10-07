@@ -612,7 +612,7 @@ object SymDenotations {
 
     /** The field accessed by this getter or setter, or if it does not exist, the getter */
     def accessedFieldOrGetter(implicit ctx: Context): Symbol = {
-      val fieldName = if (isSetter) name.asTermName.setterToGetter else name
+      val fieldName = if (isSetter) name.asTermName.getterName else name
       val d = owner.info.decl(fieldName)
       val field = d.suchThat(!_.is(Method)).symbol
       def getter = d.suchThat(_.info.isParameterless).symbol
