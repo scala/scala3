@@ -87,14 +87,35 @@ object TypeErasure {
   private val javaSigFn = erasureFn(isJava = true, isSemi = false, isConstructor = false, wildcardOK = true)
   private val semiErasureFn = erasureFn(isJava = false, isSemi = true, isConstructor = false, wildcardOK = false)
 
-  def erasure(tp: Type)(implicit ctx: Context): Type = scalaErasureFn(tp)
-  def semiErasure(tp: Type)(implicit ctx: Context): Type = semiErasureFn(tp)
+  /** The current context with a phase no later than erasure */
+  private def erasureCtx(implicit ctx: Context) =
+    if (ctx.erasedTypes) ctx.withPhase(ctx.erasurePhase) else ctx
+
+  def erasure(tp: Type)(implicit ctx: Context): Type = scalaErasureFn(tp)(erasureCtx)
+  def semiErasure(tp: Type)(implicit ctx: Context): Type = semiErasureFn(tp)(erasureCtx)
   def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName = {
     val normTp =
       if (tp.isRepeatedParam) tp.translateParameterized(defn.RepeatedParamClass, defn.SeqClass)
       else tp
-    (if (isJava) javaSigFn else scalaSigFn).sigName(normTp)
+    (if (isJava) javaSigFn else scalaSigFn).sigName(normTp)(erasureCtx)
   }
+
+  /** The erasure of a top-level reference. Differs from normal erasure in that
+   *  TermRefs are kept instead of being widened away.
+   */
+  def erasedRef(tp: Type)(implicit ctx: Context): Type = tp match {
+    case tp: TermRef =>
+      assert(tp.symbol.exists, tp)
+      TermRef(erasedRef(tp.prefix), tp.symbol.asTerm)
+    case tp =>
+      erasure(tp)
+  }
+
+  /** The erasure of a function result type. Differs from normal erasure in that
+   *  Unit is kept instead of being mapped to BoxedUnit.
+   */
+  def eraseResult(tp: Type)(implicit ctx: Context): Type =
+    scalaErasureFn.eraseResult(tp)(erasureCtx)
 
   /**  The symbol's erased info. This is the type's erasure, except for the following symbols:
    *
@@ -113,8 +134,8 @@ object TypeErasure {
 
     if ((sym eq defn.Any_asInstanceOf) || (sym eq defn.Any_isInstanceOf)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
-    else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp))
-    else erase(tp)
+    else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
+    else erase(tp)(erasureCtx)
   }
 
   def isUnboundedGeneric(tp: Type)(implicit ctx: Context) = !(
@@ -225,7 +246,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
    *   - For NoType or NoPrefix, the type itself.
    *   - For any other type, exception.
    */
-  def apply(tp: Type)(implicit ctx: Context): Type = tp match {
+  private def apply(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp: TypeRef =>
       val sym = tp.symbol
       if (!sym.isClass) this(tp.info)
@@ -236,8 +257,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
       if (parent isRef defn.ArrayClass) eraseArray(tp)
       else this(parent)
     case tp: TermRef =>
-      assert(tp.symbol.exists, tp)
-      TermRef(this(tp.prefix), tp.symbol.asTerm)
+      this(tp.widen)
     case ThisType(_) | SuperType(_, _) =>
       tp
     case ExprType(rt) =>
@@ -270,7 +290,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
           if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
           else removeLaterObjects(classParents.mapConserve(eraseTypeRef))
         val erasedDecls = decls.filteredScope(d => !d.isType || d.isClass)
-        tp.derivedClassInfo(NoPrefix, parents, erasedDecls, this(tp.selfType))
+        tp.derivedClassInfo(NoPrefix, parents, erasedDecls, erasedRef(tp.selfType))
           // can't replace selftype by NoType because this would lose the sourceModule link
       }
     case NoType | NoPrefix | ErrorType | JavaArrayType(_) =>
@@ -279,7 +299,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
       tp
   }
 
-  def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
+  private def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
     val defn.ArrayType(elemtp) = tp
     if (elemtp derivesFrom defn.NullClass) JavaArrayType(defn.ObjectType)
     else if (isUnboundedGeneric(elemtp))
@@ -328,7 +348,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
   /** The name of the type as it is used in `Signature`s.
    *  Need to ensure correspondence with erasure!
    */
-  def sigName(tp: Type)(implicit ctx: Context): TypeName = tp match {
+  private def sigName(tp: Type)(implicit ctx: Context): TypeName = tp match {
     case tp: TypeRef =>
       val sym = tp.symbol
       if (!sym.isClass) sigName(tp.info)
@@ -338,8 +358,8 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
       sigName(this(tp))
     case JavaArrayType(elem) =>
       sigName(elem) ++ "[]"
-    case tp: TypeBounds =>
-      sigName(tp.hi)
+    case tp: TermRef =>
+      sigName(tp.widen)
     case ExprType(rt) =>
       sigName(defn.FunctionType(Nil, rt))
     case tp: TypeProxy =>

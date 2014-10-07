@@ -234,7 +234,10 @@ object Erasure extends TypeTestsCasts{
   class Typer extends typer.ReTyper with NoChecking {
     import Boxing._
 
-    def erasedType(tree: untpd.Tree)(implicit ctx: Context): Type = erasure(tree.typeOpt)
+    def erasedType(tree: untpd.Tree)(implicit ctx: Context): Type = tree.typeOpt match {
+      case tp: TermRef if tree.isTerm => erasedRef(tp)
+      case tp => erasure(tp)
+    }
 
     override def promote(tree: untpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
       assert(tree.hasType)
@@ -366,8 +369,7 @@ object Erasure extends TypeTestsCasts{
         tparams = Nil,
         vparamss = ddef.vparamss.flatten :: Nil,
         tpt = // keep UnitTypes intact in result position
-          if (ddef.tpt.typeOpt isRef defn.UnitClass) untpd.TypeTree(defn.UnitType) withPos ddef.tpt.pos
-          else ddef.tpt)
+          untpd.TypedSplice(TypeTree(eraseResult(ddef.tpt.typeOpt)).withPos(ddef.tpt.pos)))
       super.typedDefDef(ddef1, sym)
     }
 
