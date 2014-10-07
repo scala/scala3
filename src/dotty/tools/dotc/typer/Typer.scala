@@ -394,7 +394,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
                     val setterTypeRaw = pre select (setterName, setter)
                     val setterType = ensureAccessible(setterTypeRaw, isSuperSelection(lhsCore), tree.pos)
                     val lhs2 = untpd.rename(lhsCore, setterName).withType(setterType)
-                    typed(cpy.Apply(tree)(untpd.TypedSplice(lhs2), tree.rhs :: Nil))
+                    typedUnadapted(cpy.Apply(tree)(untpd.TypedSplice(lhs2), tree.rhs :: Nil))
                   case _ =>
                     reassignmentToVal
                 }
