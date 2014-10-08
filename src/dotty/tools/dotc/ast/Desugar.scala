@@ -771,11 +771,12 @@ object desugar {
         else // l.op(r), or val x = r; l.op(x), plus handle named args specially
           makeBinop(l, op, r)
       case PostfixOp(t, op) =>
-        if ((ctx.mode is Mode.Type) && op == nme.raw.STAR)
+        if ((ctx.mode is Mode.Type) && op == nme.raw.STAR) {
+          val seqClass = if (ctx.compilationUnit.isJava) defn.ArrayClass else defn.SeqClass
           Annotated(
             New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil),
-            AppliedTypeTree(ref(defn.SeqClass.typeRef), t))
-        else {
+            AppliedTypeTree(ref(seqClass.typeRef), t))
+        } else {
           assert(ctx.mode.isExpr, ctx.mode)
           Select(t, op)
         }
