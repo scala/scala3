@@ -1931,7 +1931,9 @@ object Types {
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
       def paramInfo(param: Symbol): Type = param.info match {
         case AnnotatedType(annot, tp) if annot matches defn.RepeatedAnnot =>
-          tp.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)
+          val typeSym = param.info.typeSymbol.asClass
+          assert(typeSym == defn.SeqClass || typeSym == defn.ArrayClass)
+          tp.translateParameterized(typeSym, defn.RepeatedParamClass)
         case tp =>
           tp
       }

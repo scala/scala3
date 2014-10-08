@@ -284,7 +284,10 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  or, if isJava is true, Array type, else the type itself.
    */
   def underlyingIfRepeated(isJava: Boolean)(implicit ctx: Context): Type =
-    if (self.isRepeatedParam) translateParameterized(defn.RepeatedParamClass, defn.SeqClass)
+    if (self.isRepeatedParam) {
+      val seqClass = if(isJava) defn.ArrayClass else defn.SeqClass
+      translateParameterized(defn.RepeatedParamClass, seqClass)
+    }
     else self
 
   /** If this is an encoding of a (partially) applied type, return its arguments,
