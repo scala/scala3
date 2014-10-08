@@ -28,13 +28,13 @@ class CompilerTest extends DottyTest {
       case "-deep" :: args1 => (dir.deepFiles, args1)
       case _ => (dir.files, args)
     }
-    val fileNames = files.toArray.map(_.toString).filter(_ endsWith ".scala")
+    val fileNames = files.toArray.map(_.toString).filter(name => (name endsWith ".scala") || (name endsWith ".java"))
     compileArgs(fileNames ++ normArgs, xerrors)
   }
 
   def compileFiles(path: String, args: List[String] = Nil)(implicit defaultOptions: List[String]): Unit = {
     val dir = Directory(path)
-    val fileNames = dir.files.toArray.map(_.toString).filter(_ endsWith ".scala")
+    val fileNames = dir.files.toArray.map(_.toString).filter(name => (name endsWith ".scala") || (name endsWith ".java"))
     for (name <- fileNames) {
       println(s"testing $name")
       compileArgs((name :: args).toArray, 0)
