@@ -168,9 +168,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         selectors match {
           case Pair(Ident(from), Ident(Name)) :: rest =>
             val selName = if (name.isTypeName) from.toTypeName else from
-            checkUnambiguous(selectionType(site, selName, tree.pos))
+            checkUnambiguous(selectionType(site, selName, tree.pos)(refctx))
           case Ident(Name) :: rest =>
-            checkUnambiguous(selectionType(site, name, tree.pos))
+            checkUnambiguous(selectionType(site, name, tree.pos)(refctx))
           case _ :: rest =>
             namedImportRef(site, rest)
           case nil =>
@@ -278,9 +278,40 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = track("typedSelect") {
-    val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
-    if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
-    checkValue(assignType(cpy.Select(tree)(qual1, tree.name), qual1), pt)
+    def asSelect(implicit ctx: Context): Tree = {
+      val qual1 = typedExpr(tree.qualifier, selectionProto(tree.name, pt, this))
+      if (tree.name.isTypeName) checkStable(qual1.tpe, qual1.pos)
+      checkValue(assignType(cpy.Select(tree)(qual1, tree.name), qual1), pt)
+    }
+
+    def asJavaSelectFromTypeTree(implicit ctx: Context): Tree = {
+      // Translate names in Select/Ident nodes to type names.
+      def convertToTypeName(tree: untpd.Tree): Option[untpd.Tree] = tree match {
+        case Select(qual, name) => Some(untpd.Select(qual, name.toTypeName))
+        case Ident(name)        => Some(untpd.Ident(name.toTypeName))
+        case _                  => None
+      }
+
+      // Try to convert Select(qual, name) to a SelectFromTypeTree.
+      def convertToSelectFromType(qual: untpd.Tree, origName: Name): Option[untpd.SelectFromTypeTree] =
+        convertToTypeName(qual) match {
+          case Some(qual1)  => Some(untpd.SelectFromTypeTree(qual1 withPos qual.pos, origName.toTypeName))
+          case _            => None
+        }
+
+      convertToSelectFromType(tree.qualifier, tree.name) match {
+        case Some(sftt) =>
+          println(s"$tree converted to $sftt")
+          typedSelectFromTypeTree(sftt, pt)
+        case _ => ctx.error(d"Could not convert $tree to a SelectFromTypeTree"); EmptyTree
+      }
+    }
+
+    if(ctx.compilationUnit.isJava && tree.name.isTypeName) {
+      // SI-3120 Java uses the same syntax, A.B, to express selection from the
+      // value A and from the type A. We have to try both.
+      tryEither(tryCtx => asSelect(tryCtx))((_,_) => asJavaSelectFromTypeTree(ctx))
+    } else asSelect(ctx)
   }
 
   def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): Tree = track("typedSelectFromTypeTree") {
