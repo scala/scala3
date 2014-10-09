@@ -4,10 +4,7 @@ class B {
 class A extends B
 
 object Test {
-  def foo(a: A#X): Unit = {
-    return;
-  }
   def test(): Unit = {
-    foo(??? : B#X);
+    implicitly[B#X <:< A#X]
   }
 }
