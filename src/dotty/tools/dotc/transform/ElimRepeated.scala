@@ -63,7 +63,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer { thisTransfo
     assert(ctx.phase == thisTransformer)
     def overridesJava = tree.symbol.allOverriddenSymbols.exists(_ is JavaDefined)
     if (tree.symbol.info.isVarArgsMethod && overridesJava)
-      addVarArgsBridge(tree)(ctx.withPhase(thisTransformer.next))
+      addVarArgsBridge(tree)(ctx.withPhase(thisTransformer))
     else
       tree
   }
