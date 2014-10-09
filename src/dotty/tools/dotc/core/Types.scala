@@ -272,7 +272,7 @@ object Types {
         if (lsym isSubClass rsym) lsym
         else if (rsym isSubClass lsym) rsym
         else NoSymbol
-      case OrType(l, r) =>
+      case OrType(l, r) => // TODO does not conform to spec
         val lsym = l.classSymbol
         val rsym = r.classSymbol
         if (lsym isSubClass rsym) rsym
@@ -295,7 +295,7 @@ object Types {
       case AndType(l, r) =>
         l.classSymbols union r.classSymbols
       case OrType(l, r) =>
-        l.classSymbols intersect r.classSymbols
+        l.classSymbols intersect r.classSymbols // TODO does not conform to spec
       case _ =>
         Nil
     }
@@ -563,7 +563,7 @@ object Types {
      */
     final def baseTypeRef(base: Symbol)(implicit ctx: Context): Type = /*ctx.traceIndented(s"$this baseTypeRef $base")*/ /*>|>*/ track("baseTypeRef") /*<|<*/ {
       base.denot match {
-        case classd: ClassDenotation => classd.baseTypeRefOf(this) //widen.dealias)
+        case classd: ClassDenotation => classd.baseTypeRefOf(this)
         case _ => NoType
       }
     }
@@ -598,14 +598,15 @@ object Types {
     }
 
     /** Widen from singleton type to its underlying non-singleton
-     *  base type by applying one or more `underlying` dereferences,
+     *  base type by applying one or more `underlying` dereferences.
      */
-    final def widenSingleton(implicit ctx: Context): Type = this match {
+    final def widenSingleton(implicit ctx: Context): Type = stripTypeVar match {
       case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
       case _ => this
     }
 
     /** Widen from ExprType type to its result type.
+     *  (Note: no stripTypeVar needed because TypeVar's can't refer to ExprTypes.)
      */
     final def widenExpr: Type = this match {
       case tp: ExprType => tp.resultType
@@ -613,7 +614,7 @@ object Types {
     }
 
     /** Widen type if it is unstable (i.e. an EpxprType, or Termref to unstable symbol */
-    final def widenIfUnstable(implicit ctx: Context): Type = this match {
+    final def widenIfUnstable(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ExprType => tp.resultType.widenIfUnstable
       case tp: TermRef if !tp.symbol.isStable => tp.underlying.widenIfUnstable
       case _ => this
@@ -636,10 +637,16 @@ object Types {
       case tp => tp
     }
 
+    /** Peform successive widenings and dealiasings until none can be applied anymore */
+    final def widenDealias(implicit ctx: Context): Type = {
+      val res = this.widen.dealias
+      if (res eq this) res else res.widenDealias
+    }
+
     /** Widen from constant type to its underlying non-constant
      *  base type.
      */
-    final def deconst(implicit ctx: Context): Type = this match {
+    final def deconst(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ConstantType => tp.value.tpe
       case _ => this
     }
