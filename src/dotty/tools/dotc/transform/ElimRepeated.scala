@@ -11,7 +11,6 @@ import Contexts.Context
 import Symbols._
 import Denotations._, SymDenotations._
 import Decorators.StringInterpolators
-import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
 import scala.collection.mutable
 import DenotTransformers._
 import Names.Name
