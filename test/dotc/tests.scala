@@ -87,7 +87,7 @@ class tests extends CompilerTest {
   @Test def neg_t1843 = compileFile(negDir, "t1843", xerrors = 1)
   @Test def neg_t1843_variances = compileFile(negDir, "t1843-variances", xerrors = 1)
   @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 2)
-  @Test def neg_subtyping = compileFile(negDir, "subtyping", xerrors = 1)
+  @Test def neg_subtyping = compileFile(negDir, "subtyping", xerrors = 2)
   @Test def neg_variances = compileFile(negDir, "variances", xerrors = 2)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)
