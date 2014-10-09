@@ -736,8 +736,12 @@ class TypeComparer(initctx: Context) extends DotClass {
   def fourthTry(tp1: Type, tp2: Type): Boolean = tp1 match {
     case tp1: TypeRef =>
       tp1.info match {
-        case TypeBounds(lo1, hi1) =>
-          isSubType(hi1, tp2)
+        case TypeBounds(lo1, hi1) => tp2 match {
+          case tp2: NamedType if tp1.name == tp2.name =>
+            isSubType(tp1.info, tp2.info)
+          case _ =>
+            isSubType(hi1, tp2)
+        }
         case _ =>
           (tp1.symbol eq NothingClass) && tp2.isInstanceOf[ValueType] ||
           (tp1.symbol eq NullClass) && tp2.dealias.typeSymbol.isNullableClass
