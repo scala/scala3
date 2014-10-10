@@ -251,7 +251,8 @@ object PickleBuffer {
       SPECIALIZED -> Specialized,
       DEFAULTINIT -> DefaultInit,
       VBRIDGE -> VBridge,
-      VARARGS -> JavaVarargs)
+      VARARGS -> JavaVarargs,
+      ENUM -> Enum)
 
     // generate initial maps from Scala flags to Dotty flags
     val termMap, typeMap = new Array[Long](64)
