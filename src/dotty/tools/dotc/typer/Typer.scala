@@ -303,9 +303,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         }
 
       convertToSelectFromType(tree.qualifier, tree.name) match {
-        case Some(sftt) =>
-          println(s"$tree converted to $sftt")
-          typedSelectFromTypeTree(sftt, pt)
+        case Some(sftt) => typedSelectFromTypeTree(sftt, pt)
         case _ => ctx.error(d"Could not convert $tree to a SelectFromTypeTree"); EmptyTree
       }
     }
