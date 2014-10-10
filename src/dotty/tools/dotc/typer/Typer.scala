@@ -169,6 +169,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         selectors match {
           case Pair(Ident(from), Ident(Name)) :: rest =>
             val selName = if (name.isTypeName) from.toTypeName else from
+            // Pass refctx so that any errors are reported in the context of the
+            // reference instead of the context of the import.
             checkUnambiguous(selectionType(site, selName, tree.pos)(refctx))
           case Ident(Name) :: rest =>
             checkUnambiguous(selectionType(site, name, tree.pos)(refctx))
