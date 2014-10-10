@@ -31,6 +31,7 @@ class tests extends CompilerTest {
   val dotcDir = "./src/dotty/"
 
 
+  @Test def pos_t2168_pat = compileFile(posDir, "t2168", doErase)
   @Test def pos_erasure = compileFile(posDir, "erasure", doErase)
   @Test def pos_Coder() = compileFile(posDir, "Coder", doErase)
   @Test def pos_blockescapes() = compileFile(posDir, "blockescapes", doErase)
