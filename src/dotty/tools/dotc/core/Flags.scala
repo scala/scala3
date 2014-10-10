@@ -318,7 +318,7 @@ object Flags {
   /** An unpickled Scala 2.x class */
   final val Scala2x = typeFlag(26, "<scala-2.x>")
 
-  /** A method that has default params */ // TODO: drop
+  /** A method that has default params */
   final val DefaultParameterized = termFlag(27, "<defaultparam>")
 
   /** Symbol is initialized to the default value, e.g. var x: T = _ */
