@@ -8,8 +8,8 @@ import util.DotClass
 
 /** Erased types are:
  *
- *  TypeRefWithFixedSym(denot is ClassDenotation)
- *  TermRefWithFixedSym(denot is SymDenotation)
+ *  TypeRef(prefix is ignored, denot is ClassDenotation)
+ *  TermRef(prefix is ignored, denot is SymDenotation)
  *  JavaArrayType
  *  AnnotatedType
  *  MethodType
