@@ -13,6 +13,7 @@ import core.TypeErasure.isUnboundedGeneric
 import typer.ErrorReporting._
 import ast.Trees._
 import Erasure.Boxing._
+import core.TypeErasure._
 
 /** This transform normalizes type tests and type casts,
  *  also replacing type tests with singleton argument type with reference equality check
@@ -92,11 +93,11 @@ trait TypeTestsCasts {
           else
             derivedTree(qual, defn.Any_asInstanceOf, argType)
         }
-
+        def erasedArg = erasure(tree.args.head.tpe)
         if (sym eq defn.Any_isInstanceOf)
-          transformIsInstanceOf(qual, tree.args.head.tpe)
+          transformIsInstanceOf(qual, erasedArg)
         else if (sym eq defn.Any_asInstanceOf)
-          transformAsInstanceOf(tree.args.head.tpe)
+          transformAsInstanceOf(erasedArg)
         else tree
 
       case _ =>
