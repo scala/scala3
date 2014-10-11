@@ -1323,9 +1323,9 @@ object SymDenotations {
        *  or whose instances can change, depending on typerstate.
        */
       def isCachable(tp: Type): Boolean = tp match {
+        case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
         case tp: TypeProxy => inCache(tp.underlying)
         case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
-        case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
         case _ => true
       }
 
