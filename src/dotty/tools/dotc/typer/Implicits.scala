@@ -310,7 +310,7 @@ trait ImplicitRunInfo { self: RunInfo =>
               def addRef(companion: TermRef): Unit = {
                 val compSym = companion.symbol
                 if (compSym is Package)
-                  addRef(TermRef(companion, nme.PACKAGE))
+                  addRef(TermRef.withSig(companion, nme.PACKAGE, Signature.NotAMethod))
                 else if (compSym.exists)
                   comps += companion.asSeenFrom(pre, compSym.owner).asInstanceOf[TermRef]
               }
@@ -422,7 +422,7 @@ trait Implicits { self: Typer =>
   def inferImplicit(pt: Type, argument: Tree, pos: Position)(implicit ctx: Context): SearchResult = track("inferImplicit") {
     assert(!ctx.isAfterTyper,
       if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
-      else i"type error: ${argument.tpe} does not conform to $pt")
+      else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
     ctx.traceIndented(s"search implicit ${pt.show}, arg = ${argument.show}: ${argument.tpe.show}", implicits, show = true) {
       assert(!pt.isInstanceOf[ExprType])
       val isearch =
@@ -476,7 +476,7 @@ trait Implicits { self: Typer =>
 
       /** Try to typecheck an implicit reference */
       def typedImplicit(ref: TermRef)(implicit ctx: Context): SearchResult = track("typedImplicit") { ctx.traceIndented(i"typed implicit $ref, pt = $pt, implicitsEnabled == ${ctx.mode is ImplicitsEnabled}", implicits, show = true) {
-        var generated: Tree = Ident(ref).withPos(pos)
+        var generated: Tree = tpd.ref(ref).withPos(pos)
         if (!argument.isEmpty)
           generated = typedUnadapted(
             untpd.Apply(untpd.TypedSplice(generated), untpd.TypedSplice(argument) :: Nil),

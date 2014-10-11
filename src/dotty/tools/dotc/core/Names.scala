@@ -132,6 +132,8 @@ object Names {
       i < length
     }
 
+    def firstChar = chrs(start)
+
     // ----- Collections integration -------------------------------------
 
     override protected[this] def thisCollection: WrappedString = new WrappedString(repr.toString)

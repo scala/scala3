@@ -28,6 +28,12 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     compileSources(sources)
   }
 
+  /** TODO: There's a fundamental design problem here: We assmble phases using `squash`
+   *  when we first build the compiler. But we modify them with -Yskip, -Ystop
+   *  on each run. That modification needs to either trasnform the tree structure,
+   *  or we need to assmeble phases on each run, and take -Yskip, -Ystop into
+   *  account. I think the latter would be preferable.
+   */
   def compileSources(sources: List[SourceFile]) = Stats.monitorHeartBeat {
     if (sources forall (_.exists)) {
       units = sources map (new CompilationUnit(_))
@@ -36,18 +42,19 @@ class Run(comp: Compiler)(implicit ctx: Context) {
         ctx.settings.YstopAfter.value.containsPhase(phase.prev)
       val phasesToRun = ctx.allPhases.init
         .takeWhile(!stoppedBefore(_))
-        .filterNot(ctx.settings.Yskip.value.containsPhase(_))
-      for (phase <- phasesToRun) {
+        .filterNot(ctx.settings.Yskip.value.containsPhase(_)) // TODO: skip only subphase
+      for (phase <- phasesToRun)
         if (!ctx.reporter.hasErrors) {
           phase.runOn(units)
           def foreachUnit(op: Context => Unit)(implicit ctx: Context): Unit =
             for (unit <- units) op(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
           if (ctx.settings.Xprint.value.containsPhase(phase))
             foreachUnit(printTree)
-          if (ctx.settings.Ycheck.value.containsPhase(phase) && !ctx.reporter.hasErrors)
-            foreachUnit(TreeChecker.check)
+          if (ctx.settings.Ycheck.value.containsPhase(phase) && !ctx.reporter.hasErrors) {
+            assert(phase.isCheckable, s"phase $phase is not checkable")
+            foreachUnit(TreeChecker.check(phasesToRun, _))
+          }
         }
-      }
     }
   }
 

@@ -15,6 +15,7 @@ import printing.Texts._
 import printing.Printer
 import io.AbstractFile
 import util.common._
+import typer.Checking.checkNonCyclic
 import PickleBuffer._
 import scala.reflect.internal.pickling.PickleFormat._
 import Decorators._
@@ -420,7 +421,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
     def isClassRoot = (name == classRoot.name) && (owner == classRoot.owner) && !(flags is ModuleClass)
     def isModuleClassRoot = (name == moduleClassRoot.name) && (owner == moduleClassRoot.owner) && (flags is Module)
-    def isModuleRoot = (name == moduleClassRoot.name.toTermName) && (owner == moduleClassRoot.owner) && (flags is Module)
+    def isModuleRoot = (name == moduleClassRoot.name.sourceModuleName) && (owner == moduleClassRoot.owner) && (flags is Module)
 
     //if (isClassRoot) println(s"classRoot of $classRoot found at $readIndex, flags = $flags") // !!! DEBUG
     //if (isModuleRoot) println(s"moduleRoot of $moduleRoot found at $readIndex, flags = $flags") // !!! DEBUG
@@ -516,7 +517,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             denot setFlag Scala2x
           case denot =>
             val tp1 = depoly(tp, denot)
-            denot.info = if (tag == ALIASsym) TypeAlias(tp1) else tp1
+            denot.info =
+              if (tag == ALIASsym) TypeAlias(tp1)
+              else if (denot.isType) checkNonCyclic(denot.symbol, tp1, reportErrors = false)
+                // we need the checkNonCyclic call to insert LazyRefs for F-bounded cycles
+              else tp1
             if (denot.isConstructor) addConstructorTypeParams(denot)
             if (atEnd) {
               assert(!(denot is SuperAccessor), denot)
@@ -608,7 +613,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case THIStpe =>
         val cls = readSymbolRef().asClass
         if (isRefinementClass(cls)) RefinedThis(refinementTypes(cls))
-        else ThisType(cls)
+        else cls.thisType
       case SINGLEtpe =>
         val pre = readTypeRef()
         val sym = readDisambiguatedSymbolRef(_.info.isParameterless)
@@ -624,18 +629,18 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         var pre = readTypeRef()
         val sym = readSymbolRef()
         pre match {
-          case ThisType(cls) =>
+          case thispre: ThisType =>
             // The problem is that class references super.C get pickled as
             // this.C. Dereferencing the member might then get an overriding class
             // instance. The problem arises for instance for LinkedHashMap#MapValues
             // and also for the inner Transform class in all views. We fix it by
             // replacing the this with the appropriate super.
-            if (sym.owner != cls) {
-              val overriding = cls.decls.lookup(sym.name)
+            if (sym.owner != thispre.cls) {
+              val overriding = thispre.cls.decls.lookup(sym.name)
               if (overriding.exists && overriding != sym) {
                 val base = pre.baseTypeWithArgs(sym.owner)
                 assert(base.exists)
-                pre = SuperType(pre, base)
+                pre = SuperType(thispre, base)
               }
             }
           case _ =>

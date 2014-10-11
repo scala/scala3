@@ -19,7 +19,8 @@ import util.Positions._
 import DenotTransformers._
 import StdNames._
 import NameOps._
-import ast.tpd.{TreeTypeMap, Tree}
+import ast.tpd.Tree
+import ast.TreeTypeMap
 import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
@@ -261,31 +262,43 @@ trait Symbols { this: Context =>
     newSymbol(owner, name, SyntheticArtifact,
       if (name.isTypeName) TypeAlias(ErrorType) else ErrorType)
 
-  /** Map given symbols, subjecting all types to given type map and owner map.
+  /** Map given symbols, subjecting their attributes to the mappings
+   *  defined in the given TreeTypeMap `ttmap`.
    *  Cross symbol references are brought over from originals to copies.
    *  Do not copy any symbols if all attributes of all symbols stay the same.
    */
-  def mapSymbols(
-      originals: List[Symbol],
-      typeMap: Type => Type = IdentityTypeMap,
-      ownerMap: Symbol => Symbol = identity)
-  =
+  def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap) =
     if (originals forall (sym =>
-        (typeMap(sym.info) eq sym.info) && (ownerMap(sym.owner) eq sym.owner)))
+        (ttmap.mapType(sym.info) eq sym.info) &&
+        !(ttmap.oldOwners contains sym.owner)))
       originals
     else {
       val copies: List[Symbol] = for (original <- originals) yield
-        newNakedSymbol[original.ThisName](original.coord)
-      val treeMap = new TreeTypeMap(typeMap, ownerMap)
-        .withSubstitution(originals, copies)
+        original match {
+          case original: ClassSymbol =>
+            newNakedClassSymbol(original.coord, original.assocFile)
+          case _ =>
+            newNakedSymbol[original.ThisName](original.coord)
+        }
+      val ttmap1 = ttmap.withSubstitution(originals, copies)
+      (originals, copies).zipped foreach {(original, copy) =>
+        copy.denot = original.denot // preliminary denotation, so that we can access symbols in subsequent transform
+      }
       (originals, copies).zipped foreach {(original, copy) =>
         val odenot = original.denot
+        val oinfo = original.info match {
+          case ClassInfo(pre, _, parents, decls, selfInfo) =>
+            assert(original.isClass)
+            ClassInfo(pre, copy.asClass, parents, decls, selfInfo)
+          case oinfo => oinfo
+        }
         copy.denot = odenot.copySymDenotation(
           symbol = copy,
-          owner = treeMap.ownerMap(odenot.owner),
-          info = treeMap.typeMap(odenot.info),
-          privateWithin = ownerMap(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
-          annotations = odenot.annotations.mapConserve(treeMap.apply))
+          owner = ttmap1.mapOwner(odenot.owner),
+          initFlags = odenot.flags &~ Frozen | Fresh,
+          info = ttmap1.mapType(oinfo),
+          privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
+          annotations = odenot.annotations.mapConserve(ttmap1.apply))
       }
       copies
     }
@@ -318,7 +331,7 @@ object Symbols {
     type ThisName <: Name
 
     private[this] var _id: Int = nextId
-    //assert(_id != 5859)
+    //assert(_id != 30214)
 
     /** The unique id of this symbol */
     def id = _id
@@ -357,6 +370,9 @@ object Symbols {
     final def asType(implicit ctx: Context): TypeSymbol = { assert(isType, s"isType called on not-a-Type $this"); asInstanceOf[TypeSymbol] }
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
+    final def isFresh(implicit ctx: Context) =
+      lastDenot != null && (lastDenot is Fresh)
+
     /** Special cased here, because it may be used on naked symbols in substituters */
     final def isStatic(implicit ctx: Context): Boolean =
       lastDenot != null && denot.isStatic
@@ -382,7 +398,11 @@ object Symbols {
      */
     def enteredAfter(phase: DenotTransformer)(implicit ctx: Context): this.type = {
       val nextCtx = ctx.withPhase(phase.next)
-      this.owner.asClass.ensureFreshScopeAfter(phase)(nextCtx)
+      if (this.owner.is(Package)) {
+        denot.validFor |= InitialPeriod
+        if (this is Module) this.moduleClass.validFor |= InitialPeriod
+      }
+      else this.owner.asClass.ensureFreshScopeAfter(phase)(nextCtx)
       entered(nextCtx)
     }
 
@@ -475,7 +495,7 @@ object Symbols {
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
-  class ClassSymbol private[Symbols] (coord: Coord, assocFile: AbstractFile)
+  class ClassSymbol private[Symbols] (coord: Coord, val assocFile: AbstractFile)
     extends Symbol(coord) {
 
     type ThisName = TypeName

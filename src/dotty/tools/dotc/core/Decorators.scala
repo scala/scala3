@@ -130,8 +130,8 @@ object Decorators {
    */
   implicit class PhaseListDecorator(val names: List[String]) extends AnyVal {
     def containsPhase(phase: Phase): Boolean = phase  match {
-      case phase: TreeTransformer => phase.transformations.exists(containsPhase)
-      case _ => names exists (n => n == "all" || phase.name.startsWith(n))
+      case phase: TreeTransformer => phase.transformations.exists(trans => containsPhase(trans.phase))
+      case _ => names exists (n => n == "all" || phase.phaseName.startsWith(n))
     }
   }
 
@@ -157,10 +157,15 @@ object Decorators {
           (treatSingleArg(arg), suffix)
       }
 
-      def treatSingleArg(arg: Any) : Any = arg match {
-        case arg: Showable => arg.show
-        case _ => arg
-      }
+      def treatSingleArg(arg: Any) : Any =
+        try
+          arg match {
+            case arg: Showable => arg.show
+            case _ => arg
+          }
+        catch {
+          case ex: Exception => s"(missing due to $ex)"
+        }
 
       val prefix :: suffixes = sc.parts.toList
       val (args1, suffixes1) = (args, suffixes).zipped.map(treatArg(_, _)).unzip

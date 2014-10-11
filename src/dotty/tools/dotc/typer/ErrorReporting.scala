@@ -97,19 +97,21 @@ object ErrorReporting {
       errorTree(tree, typeMismatchStr(tree.tpe, pt) + implicitFailure.postscript)
     }
 
+    /** A subtype log explaining why `found` does not conform to `expected` */
+    def whyNoMatchStr(found: Type, expected: Type) =
+      if (ctx.settings.explaintypes.value)
+        "\n" + ctx.typerState.show + "\n" + TypeComparer.explained((found <:< expected)(_))
+      else
+        ""
+
     def typeMismatchStr(found: Type, expected: Type) = disambiguated { implicit ctx =>
-      val (typerStateStr, explanationStr) =
-        if (ctx.settings.explaintypes.value)
-          ("\n" + ctx.typerState.show, "\n" + TypeComparer.explained((found <:< expected)(_)))
-        else
-          ("", "")
       def infoStr = found match { // DEBUG
           case tp: TypeRef => s"with info ${tp.info} / ${tp.prefix.toString} / ${tp.prefix.dealias.toString}"
           case _ => ""
         }
       d"""type mismatch:
            | found   : $found
-           | required: $expected""".stripMargin + typerStateStr + explanationStr
+           | required: $expected""".stripMargin + whyNoMatchStr(found, expected)
     }
   }
 

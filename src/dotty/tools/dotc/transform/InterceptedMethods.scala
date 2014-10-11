@@ -40,11 +40,11 @@ import StdNames._
   *     using the most precise overload available
   * - `x.getClass` for getClass in primitives becomes `x.getClass` with getClass in class Object.
   */
-class InterceptedMethods extends TreeTransform {
+class InterceptedMethods extends MiniPhaseTransform {
 
   import tpd._
 
-  override def name: String = "intercepted"
+  override def phaseName: String = "intercepted"
 
   private var getClassMethods: Set[Symbol] = _
   private var poundPoundMethods: Set[Symbol] = _
@@ -64,7 +64,7 @@ class InterceptedMethods extends TreeTransform {
   override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): Tree = {
     if (tree.symbol.isTerm && poundPoundMethods.contains(tree.symbol.asTerm)) {
       val rewrite = PoundPoundValue(tree.qualifier)
-      ctx.log(s"$name rewrote $tree to $rewrite")
+      ctx.log(s"$phaseName rewrote $tree to $rewrite")
       rewrite
     }
     else tree
@@ -136,7 +136,7 @@ class InterceptedMethods extends TreeTransform {
         case _ =>
           unknown
       }
-      ctx.log(s"$name rewrote $tree to $rewrite")
+      ctx.log(s"$phaseName rewrote $tree to $rewrite")
       rewrite
     }
     else tree

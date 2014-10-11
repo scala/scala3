@@ -204,11 +204,13 @@ trait FullParameterization {
           .substDealias(origTParams, trefs)
           .subst(origVParams, argRefs.map(_.tpe))
           .substThisUnlessStatic(origClass, thisRef.tpe),
-        ownerMap = (sym => if (sym eq origMeth) derived else sym),
         treeMap = {
           case tree: This if tree.symbol == origClass => thisRef
           case tree => rewireTree(tree, Nil) orElse tree
-        }).transform(originalDef.rhs)
+        },
+        oldOwners = origMeth :: Nil,
+        newOwners = derived :: Nil
+      ).transform(originalDef.rhs)
     })
 
   /** A forwarder expression which calls `derived`, passing along

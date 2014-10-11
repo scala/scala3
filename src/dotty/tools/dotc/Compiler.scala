@@ -6,7 +6,7 @@ import Contexts._
 import Periods._
 import Symbols._
 import Scopes._
-import typer.{FrontEnd, Typer, Mode, ImportInfo}
+import typer.{FrontEnd, Typer, Mode, ImportInfo, RefChecks}
 import reporting.ConsoleReporter
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform._
@@ -16,25 +16,54 @@ import dotty.tools.dotc.core.Denotations.SingleDenotation
 
 class Compiler {
 
+  /** Meta-ordering constraint:
+   *
+   *  DenotTransformers that change the signature of  their denotation's info must go
+   *  after erasure. The reason is that denotations are permanently referred to by
+   *  TermRefs which contain a signature. If the signature of a symbol would change,
+   *  all refs to it would become outdated - they could not be dereferenced in the
+   *  new phase.
+   *
+   *  As an example, addGetters would change a field
+   *
+   *     val x: T
+   *
+   *  to a method
+   *
+   *     def x: T
+   *
+   *  but this would affect the signature of `x` (goes from NotAMethod to a method
+   *  signature). So we can't do this before erasure.
+   *
+   *  After erasure, signature changing denot-transformers are OK because erasure
+   *  will make sure that only term refs with fixed SymDenotations survive beyond it. This
+   *  is possible because:
+   *
+   *   - splitter has run, so every ident or select refers to a unique symbol
+   *   - after erasure, asSeenFrom is the identity, so every reference has a
+   *     plain SymDenotation, as opposed to a UniqueRefDenotation.
+   */
   def phases: List[List[Phase]] =
     List(
       List(new FrontEnd),
-      List(new Companions),
+      List(new FirstTransform,
+           new SyntheticMethods),
       List(new SuperAccessors),
-      // pickling and refchecks goes here
-      List(new ElimRepeated, new ElimLocals),
-      List(new ExtensionMethods),
-      List(new TailRec),
+      // pickling goes here
+      List(new RefChecks,
+           new ElimRepeated,
+           new ElimLocals,
+           new ExtensionMethods,
+           new TailRec),
       List(new PatternMatcher,
-           new LazyValTranformContext().transformer,
+           new ExplicitOuter,
+           new LazyValsTransform,
            new Splitter),
-      List(new Nullarify,
-           new TypeTestsCasts,
+      List(new ElimByName,
            new InterceptedMethods,
            new Literalize),
       List(new Erasure),
-      List(new UncurryTreeTransform
-        /* , new Constructors */)
+      List(new CapturedVars)
     )
 
   var runId = 1

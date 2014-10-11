@@ -11,6 +11,7 @@ import java.lang.Integer.toHexString
 import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
+import typer.Checking.checkNonCyclic
 import io.AbstractFile
 
 class ClassfileParser(
@@ -337,7 +338,11 @@ class ClassfileParser(
         val savedIndex = index
         try {
           index = start
-          denot.info = sig2typeBounds(tparams, skiptvs = false)
+          denot.info =
+            checkNonCyclic( // we need the checkNonCyclic call to insert LazyRefs for F-bounded cycles
+                denot.symbol,
+                sig2typeBounds(tparams, skiptvs = false),
+                reportErrors = false)
         } finally {
           index = savedIndex
         }

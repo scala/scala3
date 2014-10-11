@@ -4,6 +4,7 @@ package core
 
 import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
 import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._
+import TypeApplications._
 import pickling.UnPickler.ensureConstructor
 import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
@@ -103,9 +104,13 @@ class Definitions {
   lazy val EmptyPackageVal = EmptyPackageClass.sourceModule.entered
 
   lazy val ScalaPackageVal = ctx.requiredPackage("scala")
+  lazy val ScalaMathPackageVal = ctx.requiredPackage("scala.math")
   lazy val ScalaPackageClass = ScalaPackageVal.moduleClass.asClass
   lazy val JavaPackageVal = ctx.requiredPackage("java")
   lazy val JavaLangPackageVal = ctx.requiredPackage("java.lang")
+  // fundamental modules
+  lazy val SysPackage = ctx.requiredModule("scala.sys.package")
+    def Sys_error = ctx.requiredMethod(SysPackage.moduleClass.asClass, nme.error)
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
@@ -177,8 +182,16 @@ class Definitions {
 
   lazy val ScalaPredefModule = ctx.requiredModule("scala.Predef")
   lazy val ScalaRuntimeModule = ctx.requiredModule("scala.runtime.ScalaRunTime")
-  lazy val BoxesRunTimeModule     = ctx.requiredModule("scala.runtime.BoxesRunTime")
-  lazy val BoxesRunTimeClass      = BoxesRunTimeModule.moduleClass
+  lazy val ScalaRuntimeClass = ScalaRuntimeModule.moduleClass.asClass
+
+    def runtimeMethod(name: PreName) = ctx.requiredMethod(ScalaRuntimeClass, name)
+
+  lazy val BoxesRunTimeModule = ctx.requiredModule("scala.runtime.BoxesRunTime")
+  lazy val BoxesRunTimeClass = BoxesRunTimeModule.moduleClass.asClass
+  lazy val ScalaStaticsModule = ctx.requiredModule("scala.runtime.Statics")
+  lazy val ScalaStaticsClass = ScalaStaticsModule.moduleClass.asClass
+
+    def staticsMethod(name: PreName) = ctx.requiredMethod(ScalaStaticsClass, name)
   lazy val DottyPredefModule = ctx.requiredModule("dotty.DottyPredef")
   lazy val NilModule = ctx.requiredModule("scala.collection.immutable.Nil")
   lazy val PredefConformsClass = ctx.requiredClass("scala.Predef." + tpnme.Conforms)
@@ -191,22 +204,33 @@ class Definitions {
       ScalaPackageClass, tpnme.Singleton, Trait | Interface | Final,
       List(AnyClass.typeRef), EmptyScope)
   lazy val SeqClass: ClassSymbol = ctx.requiredClass("scala.collection.Seq")
+    lazy val Seq_apply = ctx.requiredMethod(SeqClass, nme.apply)
+    lazy val Seq_head = ctx.requiredMethod(SeqClass, nme.head)
   lazy val ArrayClass: ClassSymbol = ctx.requiredClass("scala.Array")
     lazy val Array_apply                 = ctx.requiredMethod(ArrayClass, nme.apply)
     lazy val Array_update                = ctx.requiredMethod(ArrayClass, nme.update)
     lazy val Array_length                = ctx.requiredMethod(ArrayClass, nme.length)
     lazy val Array_clone                 = ctx.requiredMethod(ArrayClass, nme.clone_)
+  lazy val traversableDropMethod  = ctx.requiredMethod(ScalaRuntimeClass, nme.drop)
+  lazy val uncheckedStableClass: ClassSymbol = ctx.requiredClass("scala.annotation.unchecked.uncheckedStable")
 
   lazy val UnitClass = valueClassSymbol("scala.Unit", BoxedUnitClass, java.lang.Void.TYPE, UnitEnc)
   lazy val BooleanClass = valueClassSymbol("scala.Boolean", BoxedBooleanClass, java.lang.Boolean.TYPE, BooleanEnc)
     lazy val Boolean_!   = BooleanClass.requiredMethod(nme.UNARY_!)
-    lazy val Boolean_and = BooleanClass.requiredMethod(nme.ZAND)
-    lazy val Boolean_or  = BooleanClass.requiredMethod(nme.ZOR)
+    lazy val Boolean_&& = BooleanClass.requiredMethod(nme.ZAND)
+    lazy val Boolean_||  = BooleanClass.requiredMethod(nme.ZOR)
 
   lazy val ByteClass = valueClassSymbol("scala.Byte", BoxedByteClass, java.lang.Byte.TYPE, ByteEnc)
   lazy val ShortClass = valueClassSymbol("scala.Short", BoxedShortClass, java.lang.Short.TYPE, ShortEnc)
   lazy val CharClass = valueClassSymbol("scala.Char", BoxedCharClass, java.lang.Character.TYPE, CharEnc)
   lazy val IntClass = valueClassSymbol("scala.Int", BoxedIntClass, java.lang.Integer.TYPE, IntEnc)
+    lazy val Int_-   = IntClass.requiredMethod(nme.MINUS, List(IntType))
+    lazy val Int_+   = IntClass.requiredMethod(nme.PLUS, List(IntType))
+    lazy val Int_/   = IntClass.requiredMethod(nme.DIV, List(IntType))
+    lazy val Int_*   = IntClass.requiredMethod(nme.MUL, List(IntType))
+    lazy val Int_==   = IntClass.requiredMethod(nme.EQ, List(IntType))
+    lazy val Int_>=   = IntClass.requiredMethod(nme.GE, List(IntType))
+    lazy val Int_<=   = IntClass.requiredMethod(nme.LE, List(IntType))
   lazy val LongClass = valueClassSymbol("scala.Long", BoxedLongClass, java.lang.Long.TYPE, LongEnc)
     lazy val Long_XOR_Long = LongClass.info.member(nme.XOR).requiredSymbol(
       x => (x is Method) && (x.info.firstParamTypes.head isRef defn.LongClass)
@@ -251,6 +275,8 @@ class Definitions {
   lazy val JavaCloneableClass        = ctx.requiredClass("java.lang.Cloneable")
   lazy val StringBuilderClass        = ctx.requiredClass("scala.collection.mutable.StringBuilder")
   lazy val NullPointerExceptionClass = ctx.requiredClass(jnme.NPException)
+  lazy val MatchErrorClass           = ctx.requiredClass("scala.MatchError")
+  lazy val MatchErrorType            = MatchErrorClass.typeRef
 
   lazy val StringAddClass               = ctx.requiredClass("scala.runtime.StringAdd")
 
@@ -269,6 +295,8 @@ class Definitions {
   lazy val JavaSerializableClass        = ctx.requiredClass("java.lang.Serializable")
   lazy val ComparableClass              = ctx.requiredClass("java.lang.Comparable")
   lazy val ProductClass                 = ctx.requiredClass("scala.Product")
+    lazy val Product_canEqual = ProductClass.requiredMethod(nme.canEqual_)
+    lazy val Product_productArity = ProductClass.requiredMethod(nme.productArity)
   lazy val LanguageModuleClass          = ctx.requiredModule("dotty.language").moduleClass.asClass
 
   // Annotation base classes
@@ -292,6 +320,7 @@ class Definitions {
   lazy val ScalaSignatureAnnot = ctx.requiredClass("scala.reflect.ScalaSignature")
   lazy val ScalaLongSignatureAnnot = ctx.requiredClass("scala.reflect.ScalaLongSignature")
   lazy val DeprecatedAnnot = ctx.requiredClass("scala.deprecated")
+  lazy val MigrationAnnot = ctx.requiredClass("scala.annotation.migration")
   lazy val AnnotationDefaultAnnot = ctx.requiredClass("dotty.annotation.internal.AnnotationDefault")
   lazy val ThrowsAnnot = ctx.requiredClass("scala.throws")
   lazy val UncheckedAnnot = ctx.requiredClass("scala.unchecked")
@@ -313,7 +342,6 @@ class Definitions {
   def NothingType: Type = NothingClass.typeRef
   def NullType: Type = NullClass.typeRef
   def SeqType: Type = SeqClass.typeRef
-  def ObjectArrayType = ArrayType(ObjectType)
 
   def UnitType: Type = UnitClass.typeRef
   def BooleanType: Type = BooleanClass.typeRef
@@ -345,9 +373,9 @@ class Definitions {
     sym.owner.linkedClass.typeRef
 
   object FunctionType {
-    def apply(args: List[Type], resultType: Type) =
+    def apply(args: List[Type], resultType: Type)(implicit ctx: Context) =
       FunctionClass(args.length).typeRef.appliedTo(args ::: resultType :: Nil)
-    def unapply(ft: Type)/*: Option[(List[Type], Type)]*/ = {
+    def unapply(ft: Type)(implicit ctx: Context)/*: Option[(List[Type], Type)]*/ = {
       // -language:keepUnions difference: unapply needs result type because inferred type
       // is Some[(List[Type], Type)] | None, which is not a legal unapply type.
       val tsym = ft.typeSymbol
@@ -360,18 +388,18 @@ class Definitions {
   }
 
   object ArrayType {
-    def apply(elem: Type) =
+    def apply(elem: Type)(implicit ctx: Context) =
       ArrayClass.typeRef.appliedTo(elem :: Nil)
-    def unapply(tp: Type) = tp.dealias match {
+    def unapply(tp: Type)(implicit ctx: Context) = tp.dealias match {
       case at: RefinedType if (at isRef ArrayClass) && at.argInfos.length == 1 => Some(at.argInfos.head)
       case _ => None
     }
   }
 
   object MultiArrayType {
-    def apply(elem: Type, ndims: Int): Type =
+    def apply(elem: Type, ndims: Int)(implicit ctx: Context): Type =
       if (ndims == 0) elem else ArrayType(apply(elem, ndims - 1))
-    def unapply(tp: Type): Option[(Type, Int)] = tp match {
+    def unapply(tp: Type)(implicit ctx: Context): Option[(Type, Int)] = tp match {
       case ArrayType(elemtp) =>
         elemtp match {
           case MultiArrayType(finalElemTp, n) => Some(finalElemTp, n + 1)
@@ -389,7 +417,7 @@ class Definitions {
     lazy val Function0_apply = FunctionClass(0).requiredMethod(nme.apply)
 
   lazy val TupleClass = mkArityArray("scala.Tuple", MaxTupleArity, 2)
-  lazy val ProductNClass = mkArityArray("scala.Product", MaxTupleArity, 2)
+  lazy val ProductNClass = mkArityArray("scala.Product", MaxTupleArity, 0)
 
   lazy val FunctionClasses: Set[Symbol] = FunctionClass.toSet
   lazy val TupleClasses: Set[Symbol] = TupleClass.toSet
@@ -400,15 +428,16 @@ class Definitions {
 
   lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
 
-  lazy val asInstanceOfMethods = Set[Symbol](Any_asInstanceOf)
-  lazy val isInstanceOfMethods = Set[Symbol](Any_isInstanceOf)
-  lazy val typeTestsOrCasts    = asInstanceOfMethods ++ isInstanceOfMethods
-
   lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
 
+  lazy val overriddenBySynthetic = Set[Symbol](Any_equals, Any_hashCode, Any_toString, Product_canEqual)
   def isTupleType(tp: Type)(implicit ctx: Context) = {
     val arity = tp.dealias.argInfos.length
     arity <= MaxTupleArity && (tp isRef TupleClass(arity))
+  }
+
+  def tupleType(elems: List[Type]) = {
+    TupleClass(elems.size).typeRef.appliedTo(elems)
   }
 
   def isProductSubType(tp: Type)(implicit ctx: Context) =
@@ -523,6 +552,15 @@ class Definitions {
     _valueClassEnc(vcls) = enc
     vcls
   }
+
+  /** The classes for which a Ref type exists. */
+  lazy val refClasses: collection.Set[Symbol] = ScalaNumericValueClasses + BooleanClass + ObjectClass
+
+  lazy val refClass: Map[Symbol, Symbol] =
+    refClasses.map(rc => rc -> ctx.requiredClass(s"scala.runtime.${rc.name}Ref")).toMap
+
+  lazy val volatileRefClass: Map[Symbol, Symbol] =
+    refClasses.map(rc => rc -> ctx.requiredClass(s"scala.runtime.Volatile${rc.name}Ref")).toMap
 
   def wrapArrayMethodName(elemtp: Type): TermName = {
     val cls = elemtp.classSymbol

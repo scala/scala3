@@ -15,10 +15,10 @@ import ast.Trees._
  *  The constant types are eliminated by erasure, so we need to keep
  *  the info about constantness in the trees.
  */
-class Literalize extends TreeTransform {
+class Literalize extends MiniPhaseTransform {
   import ast.tpd._
 
-  override def name: String = "literalize"
+  override def phaseName: String = "literalize"
 
   /** Note: Demanding idempotency instead of purity is strictly speaking too loose.
    *  Example

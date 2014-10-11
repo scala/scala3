@@ -12,11 +12,11 @@ object obj extends List[Number] with Set[Exception] {
   val e: Exception = x
 }
 
-class Functor[F <: TypeConstructor] {
+abstract class Functor[F <: TypeConstructor] {
   def map[A, B](f: F { type TypeArg <: A }): F { type TypeArg <: B }
 }
 
 implicit object ListFunctor extends Functor[List] {
-  def map[A, B](f: List[A]): List[B] = ???
+  override def map[A, B](f: List { type TypeArg <: A }): List { type TypeArg <: B } = ???
 }
 

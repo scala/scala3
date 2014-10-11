@@ -30,18 +30,21 @@ class ReTyper extends Typer {
     promote(tree)
 
   override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
-    assert(tree.hasType)
+    assert(tree.hasType, tree)
     val qual1 = typed(tree.qualifier, AnySelectionProto)
-    untpd.cpy.Select(tree, qual1, tree.name).withType(tree.typeOpt)
+    untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
   }
 
-  override def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): SelectFromTypeTree = {
+  override def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context): Tree = {
     assert(tree.hasType)
     val qual1 = typed(tree.qualifier, AnySelectionProto)
-    untpd.cpy.SelectFromTypeTree(tree, qual1, tree.name).withType(tree.typeOpt)
+    untpd.cpy.SelectFromTypeTree(tree)(qual1, tree.name).withType(tree.typeOpt)
   }
 
   override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Literal =
+    promote(tree)
+
+  override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
     promote(tree)
 
   override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree =
@@ -50,12 +53,13 @@ class ReTyper extends Typer {
   override def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = {
     assert(tree.hasType)
     val body1 = typed(tree.body, pt)
-    untpd.cpy.Bind(tree, tree.name, body1).withType(tree.typeOpt)
+    untpd.cpy.Bind(tree)(tree.name, body1).withType(tree.typeOpt)
   }
 
   override def localDummy(cls: ClassSymbol, impl: untpd.Template)(implicit ctx: Context) = impl.symbol
 
   override def retrieveSym(tree: untpd.Tree)(implicit ctx: Context): Symbol = tree.symbol
+  override def symbolOfTree(tree: untpd.Tree)(implicit ctx: Context): Symbol = tree.symbol
 
   override def localTyper(sym: Symbol) = this
 
@@ -66,6 +70,24 @@ class ReTyper extends Typer {
 
   override def addTypedModifiersAnnotations(mods: untpd.Modifiers, sym: Symbol)(implicit ctx: Context): Modifiers =
     typedModifiers(mods, sym)
+
+  override def encodeName(tree: untpd.NameTree)(implicit ctx: Context) = tree
+
+  override def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(implicit ctx: Context): Tree = fun.tpe match {
+    case mt @ MethodType(_, formals) =>
+      val args: List[Tree] = tree.args.zipWithConserve(formals)(typedExpr(_, _)).asInstanceOf[List[Tree]]
+      assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
+    case _ =>
+      super.handleUnexpectedFunType(tree, fun)
+  }
+
+  override def typed(tree: untpd.Tree, pt: Type)(implicit ctx: Context) =
+    try super.typed(tree, pt)
+    catch {
+      case ex: Throwable =>
+        println(i"exception while typing $tree of class ${tree.getClass} # ${tree.uniqueId}")
+        throw ex
+    }
 
   override def checkVariance(tree: Tree)(implicit ctx: Context) = ()
 }

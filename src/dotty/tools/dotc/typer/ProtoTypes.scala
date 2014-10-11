@@ -257,8 +257,8 @@ object ProtoTypes {
       unique(new CachedViewProto(argType, resultType))
   }
 
-  class UnapplyFunProto(typer: Typer)(implicit ctx: Context) extends FunProto(
-      untpd.TypedSplice(dummyTreeOfType(WildcardType)) :: Nil, WildcardType, typer)
+  class UnapplyFunProto(argType: Type, typer: Typer)(implicit ctx: Context) extends FunProto(
+    untpd.TypedSplice(dummyTreeOfType(argType)) :: Nil, WildcardType, typer)
 
   /** A prototype for expressions [] that are type-parameterized:
    *

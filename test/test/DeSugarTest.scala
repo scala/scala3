@@ -42,29 +42,29 @@ class DeSugarTest extends ParserTest {
         case PostfixOp(od, op) =>
           PostfixOp(transform(od), op)
         case Select(qual, name) =>
-          cpy.Select(tree1, transform(qual, Expr), name)
+          cpy.Select(tree1)(transform(qual, Expr), name)
         case Apply(fn, args) =>
-          cpy.Apply(tree1, transform(fn, Expr), transform(args))
+          cpy.Apply(tree1)(transform(fn, Expr), transform(args))
         case TypeApply(fn, args) =>
-          cpy.TypeApply(tree1, transform(fn, Expr), transform(args, Type))
+          cpy.TypeApply(tree1)(transform(fn, Expr), transform(args, Type))
         case New(tpt) =>
-          cpy.New(tree1, transform(tpt, Type))
+          cpy.New(tree1)(transform(tpt, Type))
         case Typed(expr, tpt) =>
-          cpy.Typed(tree1, transform(expr), transform(tpt, Type))
+          cpy.Typed(tree1)(transform(expr), transform(tpt, Type))
         case CaseDef(pat, guard, body) =>
-          cpy.CaseDef(tree1, transform(pat, Pattern), transform(guard), transform(body))
+          cpy.CaseDef(tree1)(transform(pat, Pattern), transform(guard), transform(body))
         case SeqLiteral(elems) =>
-          cpy.SeqLiteral(tree1, transform(elems))
+          cpy.SeqLiteral(tree1)(transform(elems))
         case UnApply(fun, implicits, patterns) =>
-          cpy.UnApply(tree1, transform(fun, Expr), transform(implicits), transform(patterns))
+          cpy.UnApply(tree1)(transform(fun, Expr), transform(implicits), transform(patterns))
         case ValDef(mods, name, tpt, rhs) =>
-          cpy.ValDef(tree1, mods, name, transform(tpt, Type), transform(rhs))
+          cpy.ValDef(tree1)(mods, name, transform(tpt, Type), transform(rhs))
         case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-          cpy.DefDef(tree1, mods, name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt, Type), transform(rhs))
+          cpy.DefDef(tree1)(mods, name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt, Type), transform(rhs))
         case tree1 @ TypeDef(mods, name, rhs) =>
-          cpy.TypeDef(tree1, mods, name, transform(rhs, Type), transformSub(tree1.tparams))
+          cpy.TypeDef(tree1)(mods, name, transform(rhs, Type), transformSub(tree1.tparams))
         case Template(constr, parents, self, body) =>
-          cpy.Template(tree1, transformSub(constr), transform(parents), transformSub(self), transform(body, Expr))
+          cpy.Template(tree1)(transformSub(constr), transform(parents), transformSub(self), transform(body, Expr))
         case Thicket(trees) =>
           Thicket(flatten(trees mapConserve super.transform))
         case tree1 =>

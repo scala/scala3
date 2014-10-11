@@ -37,7 +37,9 @@ object Scopes {
    */
   private final val MaxRecursions = 1000
 
-  class ScopeEntry private[Scopes] (val name: Name, val sym: Symbol, val owner: Scope) {
+  class ScopeEntry private[Scopes] (val name: Name, _sym: Symbol, val owner: Scope) {
+
+    var sym: Symbol = _sym
 
     /** the next entry in the hash bucket
      */
@@ -176,9 +178,9 @@ object Scopes {
 
     /** enter a symbol in this scope. */
     final def enter[T <: Symbol](sym: T)(implicit ctx: Context): T = {
-      if (sym.isType) {
+      if (sym.isType && ctx.phaseId <= ctx.typerPhase.id) {
         assert(lookup(sym.name) == NoSymbol,
-          s"duplicate type ${sym.debugString}; previous was ${lookup(sym.name).debugString}") // !!! DEBUG
+          s"duplicate ${sym.debugString}; previous was ${lookup(sym.name).debugString}") // !!! DEBUG
       }
       newScopeEntry(sym)
       sym
@@ -249,6 +251,18 @@ object Scopes {
       }
     }
 
+    /** Replace symbol `prev` (if it exists in current scope) by symbol `replacement`.
+     *  @pre `prev` and `replacement` have the same name.
+     */
+    final def replace(prev: Symbol, replacement: Symbol)(implicit ctx: Context): Unit = {
+      require(prev.name == replacement.name)
+      var e = lookupEntry(prev.name)
+      while (e ne null) {
+        if (e.sym == prev) e.sym = replacement
+        e = lookupNextEntry(e)
+      }
+    }
+
     /** Lookup a symbol entry matching given name.
      */
     override final def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
@@ -298,7 +312,7 @@ object Scopes {
       while (e ne null) {
         if (e.sym is Implicit) {
           val d = e.sym.denot
-          irefs += TermRef.withSig(NoPrefix, e.sym.asTerm.name, d.signature, e.sym.denot)
+          irefs += TermRef.withSigAndDenot(NoPrefix, d.name.asTermName, d.signature, d)
         }
         e = e.prev
       }

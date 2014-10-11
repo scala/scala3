@@ -4,7 +4,7 @@ package transform
 import core._
 import Names._
 import Types._
-import TreeTransforms.{TransformerInfo, TreeTransform, TreeTransformer}
+import TreeTransforms.{TransformerInfo, MiniPhaseTransform, TreeTransformer}
 import ast.Trees.flatten
 import Flags._
 import Contexts.Context
@@ -20,10 +20,10 @@ import TypeUtils._
 /** A transformer that removes repeated parameters (T*) from all types, replacing
  *  them with Seq types.
  */
-class ElimRepeated extends TreeTransform with InfoTransformer { thisTransformer =>
+class ElimRepeated extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
   import ast.tpd._
 
-  override def name = "elimrepeated"
+  override def phaseName = "elimRepeated"
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
     elimRepeated(tp)

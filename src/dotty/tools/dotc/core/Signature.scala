@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Names._, Types._, Contexts._, StdNames._
-import transform.Erasure.sigName
+import TypeErasure.sigName
 
 /** The signature of a denotation.
  *  Overloaded denotations with the same name are distinguished by
@@ -55,6 +55,8 @@ object Signature {
   val OverloadedSignature = Signature(List(tpnme.OVERLOADED), EmptyTypeName)
 
   /** The signature of a method with no parameters and result type `resultType`. */
-  def apply(resultType: Type, isJava: Boolean)(implicit ctx: Context): Signature =
+  def apply(resultType: Type, isJava: Boolean)(implicit ctx: Context): Signature = {
+    assert(!resultType.isInstanceOf[ExprType])
     apply(Nil, sigName(resultType, isJava))
+  }
 }

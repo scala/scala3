@@ -88,7 +88,7 @@ object typers {
   }
 
   class Refinements {
-    val y: C { type T; val key: T; def process(x: T): Int }
+    val y: C { type T; val key: T; def process(x: T): Int } = ???
   }
 
   object Accessibility {

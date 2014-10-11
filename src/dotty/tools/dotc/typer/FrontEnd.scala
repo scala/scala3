@@ -10,7 +10,7 @@ import util.Stats._
 
 class FrontEnd extends Phase {
 
-  def name = "frontend"
+  override def phaseName = "frontend"
 
   def monitor(doing: String)(body: => Unit)(implicit ctx: Context) =
     try body
