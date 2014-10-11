@@ -111,11 +111,11 @@ object ExplicitOuter {
   /** Ensure that class `cls` has outer accessors */
   def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit = {
     //todo: implementing  #165 would simplify this logic
-    val thisTransformer = ctx.phase.prev
-    assert(thisTransformer.id <= ctx.explicitOuter.id, "can add $outer symbols only before ExplicitOuter")
-    assert(thisTransformer.isInstanceOf[DenotTransformer], "adding outerAccessors requires being DenotTransformer")
+    val prevPhase = ctx.phase.prev
+    assert(prevPhase.id <= ctx.explicitOuter.id, "can add $outer symbols only before ExplicitOuter")
+    assert(prevPhase.isInstanceOf[DenotTransformer], "adding outerAccessors requires being DenotTransformer")
     if (!hasOuter(cls)) {
-      newOuterAccessors(cls).foreach(_.enteredAfter(thisTransformer.asInstanceOf[DenotTransformer]))
+      newOuterAccessors(cls).foreach(_.enteredAfter(prevPhase.asInstanceOf[DenotTransformer]))
     }
   }
 
