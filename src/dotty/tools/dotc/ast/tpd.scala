@@ -2,8 +2,8 @@ package dotty.tools
 package dotc
 package ast
 
+import transform.SymUtils._
 import core._
-import dotty.tools.dotc.transform.TypeUtils
 import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Symbols._
 import Denotations._, Decorators._
@@ -598,6 +598,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def or(that: Tree)(implicit ctx: Context): Tree =
       tree.select(defn.Boolean_||).appliedTo(that)
+
+    def becomes(rhs: Tree)(implicit ctx: Context): Tree =
+      if (tree.symbol is Method) {
+        val setr = tree match {
+          case Ident(_) =>
+            val setter = tree.symbol.setter
+            assert(setter.exists, tree.symbol.showLocated)
+            ref(tree.symbol.setter)
+          case Select(qual, _) => qual.select(tree.symbol.setter)
+        }
+        setr.appliedTo(rhs)
+      }
+      else Assign(tree, rhs)
 
     // --- Higher order traversal methods -------------------------------
 
