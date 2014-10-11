@@ -119,7 +119,7 @@ class tests extends CompilerTest {
 
   @Test def dotc_util = compileDir(dotcDir + "tools/dotc/util", twice)
   @Test def tools_io = compileDir(dotcDir + "tools/io", twice)
-  @Test def tools = compileDir(dotcDir + "tools", twice)(allowDeepSubtypes)
+  @Test def tools = compileDir(dotcDir + "tools", "-deep" :: twice)(allowDeepSubtypes)
 
   @Test def testNonCyclic = compileArgs(Array(
       dotcDir + "tools/dotc/CompilationUnit.scala",

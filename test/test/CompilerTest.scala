@@ -24,8 +24,12 @@ class CompilerTest extends DottyTest {
     compileDir(Directory(path), args, xerrors)
 
   def compileDir(dir: Directory, args: List[String], xerrors: Int)(implicit defaultOptions: List[String]): Unit = {
-    val fileNames = dir.deepFiles.toArray.map(_.toString).filter(_ endsWith ".scala")
-    compileArgs(fileNames ++ args, xerrors)
+    val (files, normArgs) = args match {
+      case "-deep" :: args1 => (dir.deepFiles, args1)
+      case _ => (dir.files, args)
+    }
+    val fileNames = files.toArray.map(_.toString).filter(_ endsWith ".scala")
+    compileArgs(fileNames ++ normArgs, xerrors)
   }
 
   def compileFiles(path: String, args: List[String] = Nil)(implicit defaultOptions: List[String]): Unit = {
