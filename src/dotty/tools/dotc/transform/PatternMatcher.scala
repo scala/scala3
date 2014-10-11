@@ -105,7 +105,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       def tupleSel(binder: Symbol)(i: Int): Tree = ref(binder).select(nme.productAccessorName(i)) // make tree that accesses the i'th component of the tuple referenced by binder
       def index(tgt: Tree)(i: Int): Tree         = {
         if (i > 0) tgt.select(defn.Seq_apply).appliedTo(Literal(Constant(i)))
-        else tgt.select(defn.Seq_head).appliedToNone
+        else tgt.select(defn.Seq_head).appliedIfMethod
       }
 
       // Right now this blindly calls drop on the result of the unapplySeq
@@ -232,7 +232,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         val matchFail = newSynthCaseLabel(ctx.freshName("matchFail"), MethodType(Nil, restpe))
         val catchAllDefBody = DefDef(matchFail, catchAllDef)
 
-        val nextCases = (caseSyms.tail ::: List(matchFail)).map(ref(_).appliedToNone)
+        val nextCases = (caseSyms.tail ::: List(matchFail)).map(ref(_).appliedIfMethod)
         val caseDefs = (cases zip caseSyms zip nextCases).foldRight[Tree](catchAllDefBody) {
           // dotty deviation
           //case (((mkCase, sym), nextCase), acc) =>
@@ -243,7 +243,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
             val caseBody = DefDef(sym, _ => Block(List(acc), body))
 
-            Block(List(caseBody),ref(sym).appliedToNone)
+            Block(List(caseBody),ref(sym).appliedIfMethod)
           }}
 
 
@@ -273,7 +273,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           val isDefined = extractorMemberType(prev.tpe, nme.isDefined)
 
           if ((isDefined isRef defn.BooleanClass) && getTp.exists) {
-            val prevValue = ref(prevSym).select("get".toTermName).appliedToNone
+            val prevValue = ref(prevSym).select("get".toTermName).appliedIfMethod
               Block(
                 List(ValDef(prevSym, prev)),
                 // must be isEmpty and get as we don't control the target of the call (prev is an extractor call)

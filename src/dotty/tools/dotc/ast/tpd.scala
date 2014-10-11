@@ -497,7 +497,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Try(tree: Tree)(expr, handler, finalizer)
   }
 
-  implicit class TreeOps[ThisTree <: tpd.Tree](val tree: ThisTree)/* extends AnyVal*/ {
+  implicit class TreeOps[ThisTree <: tpd.Tree](val tree: ThisTree) extends AnyVal {
 
     def isValue(implicit ctx: Context): Boolean =
       tree.isTerm && tree.tpe.widen.isValueType
@@ -565,8 +565,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def appliedToArgss(argss: List[List[Tree]])(implicit ctx: Context): Tree =
       ((tree: Tree) /: argss)(Apply(_, _))
 
-    def appliedToNone(implicit ctx: Context): Tree = {
-     tree.tpe.widen match {
+    def appliedToNone(implicit ctx: Context): Tree = appliedToArgs(Nil)
+
+    def appliedIfMethod(implicit ctx: Context): Tree = {
+      tree.tpe.widen match {
         case fntpe: MethodType => appliedToArgs(Nil)
         case _ => tree
       }
