@@ -40,6 +40,7 @@ object Patterns {
       case List(x, z) => x
       case List(x) => x
       case List() => ""
+      case x @ _ => x
     }
     val yy: String = y
   }
