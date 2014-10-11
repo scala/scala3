@@ -945,7 +945,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
     def isVarPattern(pat: Tree): Boolean = pat match {
       case x: BackquotedIdent => false
-      case x: Ident => nme.isVariableName(x.name)
+      case x: Ident => x.name.isVariableName
       case _ => false
     }
 
