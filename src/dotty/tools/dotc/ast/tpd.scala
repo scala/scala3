@@ -44,9 +44,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Apply(fn: Tree, args: List[Tree])(implicit ctx: Context): Apply =
     ta.assignType(untpd.Apply(fn, args), fn, args)
 
-  def ensureApplied(fn: Tree)(implicit ctx: Context): Tree =
-    if (fn.tpe.widen.isParameterless) fn else Apply(fn, Nil)
-
   def TypeApply(fn: Tree, args: List[Tree])(implicit ctx: Context): TypeApply =
     ta.assignType(untpd.TypeApply(fn, args), fn, args)
 
@@ -566,13 +563,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def appliedToNone(implicit ctx: Context): Apply = appliedToArgs(Nil)
 
-    def appliedIfMethod(implicit ctx: Context): Tree = {
-      tree.tpe.widen match {
-        case fntpe: MethodType => appliedToArgs(Nil)
-        case _ => tree
-      }
-    }
-
     def appliedToType(targ: Type)(implicit ctx: Context): Tree =
       appliedToTypes(targ :: Nil)
 
@@ -581,6 +571,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def appliedToTypeTrees(targs: List[Tree])(implicit ctx: Context): Tree =
       if (targs.isEmpty) tree else TypeApply(tree, targs)
+
+    def ensureApplied(implicit ctx: Context): Tree =
+      if (tree.tpe.widen.isParameterless) tree else tree.appliedToNone
 
     def isInstance(tp: Type)(implicit ctx: Context): Tree =
       tree.select(defn.Any_isInstanceOf).appliedToType(tp)
@@ -638,7 +631,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val mname      = ("to" + numericCls.name).toTermName
     val conversion = tree.tpe member mname
     if (conversion.symbol.exists)
-      ensureApplied(tree.select(conversion.symbol.termRef))
+      tree.select(conversion.symbol.termRef).ensureApplied
     else if (tree.tpe.widen isRef numericCls)
       tree
     else {

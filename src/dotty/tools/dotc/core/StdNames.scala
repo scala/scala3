@@ -685,15 +685,6 @@ object StdNames {
     def newBitmapName(bitmapPrefix: TermName, n: Int): TermName = bitmapPrefix ++ n.toString
 
     def selectorName(n: Int): TermName = "_" + (n + 1)
-    /** Is name a variable name? */
-    def isVariableName(name: Name): Boolean = {
-      val first = name.firstChar
-      (    ((first.isLower && first.isLetter) || first == '_')
-        && (name != nme.false_)
-        && (name != nme.true_)
-        && (name != nme.null_)
-        )
-    }
 
     object primitive {
       val arrayApply: TermName  = "[]apply"

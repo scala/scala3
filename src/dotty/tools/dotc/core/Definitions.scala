@@ -4,7 +4,6 @@ package core
 
 import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
 import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._
-import TypeApplications._
 import pickling.UnPickler.ensureConstructor
 import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
@@ -192,6 +191,7 @@ class Definitions {
   lazy val ScalaStaticsClass = ScalaStaticsModule.moduleClass.asClass
 
     def staticsMethod(name: PreName) = ctx.requiredMethod(ScalaStaticsClass, name)
+    
   lazy val DottyPredefModule = ctx.requiredModule("dotty.DottyPredef")
   lazy val NilModule = ctx.requiredModule("scala.collection.immutable.Nil")
   lazy val PredefConformsClass = ctx.requiredClass("scala.Predef." + tpnme.Conforms)

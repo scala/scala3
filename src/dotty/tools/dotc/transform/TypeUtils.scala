@@ -26,6 +26,4 @@ class TypeUtils(val self: Type) extends AnyVal {
 
   def isPrimitiveValueType(implicit ctx: Context): Boolean =
     self.classSymbol.isPrimitiveValueClass
-
-  def caseAccessors(implicit ctx:Context) = self.decls.filter(x => x.is(Flags.CaseAccessor) && x.is(Flags.Method)).toList
 }

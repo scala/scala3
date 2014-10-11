@@ -15,15 +15,12 @@ class tests extends CompilerTest {
 
   implicit val defaultOptions = noCheckOptions ++ List(
       "-YnoDeepSubtypes",
-      "-Ycheck:patternMatcher,literalize,capturedVars",
-      "-Ystop-before:erasure"
-    /*,"-uniqid", "-explaintypes", "-verbose", "-Ylog:splitter", "-Xprompt", "-YnoDoubleBindings"*/
+      "-Ycheck:patternMatcher,gettersSetters,constructors"
   )
 
-  val allowDeepSubtypes = defaultOptions diff List("-YnoDeepSubtypes")
-
-  val twice = List("#runs", "2", "-YnoDoubleBindings", "-Ystop-before:terminal")
+  val twice = List("#runs", "2", "-YnoDoubleBindings")
   val doErase = List("-Ystop-before:terminal")
+  val allowDeepSubtypes = defaultOptions diff List("-YnoDeepSubtypes")
 
   val posDir = "./tests/pos/"
   val negDir = "./tests/neg/"
@@ -102,7 +99,6 @@ class tests extends CompilerTest {
   @Test def neg_variances = compileFile(negDir, "variances", xerrors = 2)
   @Test def neg_badAuxConstr = compileFile(negDir, "badAuxConstr", xerrors = 2)
   @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
-
   @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)(allowDeepSubtypes)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)
   @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config", twice)
@@ -115,7 +111,7 @@ class tests extends CompilerTest {
   @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", twice)
   @Test def dotc_util = compileDir(dotcDir + "tools/dotc/util", twice)
   @Test def tools_io = compileDir(dotcDir + "tools/io", twice)
-  @Test def tools = compileDir(dotcDir + "tools", "-deep" :: twice)(allowDeepSubtypes)
+  //@Test def tools = compileDir(dotcDir + "tools", "-deep" :: Nil)(allowDeepSubtypes)
 
   @Test def testNonCyclic = compileArgs(Array(
       dotcDir + "tools/dotc/CompilationUnit.scala",
