@@ -200,7 +200,7 @@ object SymDenotations {
     final def hasAnnotation(cls: Symbol)(implicit ctx: Context) =
       dropOtherAnnotations(annotations, cls).nonEmpty
 
-    /** Optionally, get annotation matching the given class symbol */
+    /** Optionally, the annotation matching the given class symbol */
     final def getAnnotation(cls: Symbol)(implicit ctx: Context): Option[Annotation] =
       dropOtherAnnotations(annotations, cls) match {
         case annot :: _ => Some(annot)
@@ -431,7 +431,7 @@ object SymDenotations {
 
     /** Does this symbol denote the primary constructor of its enclosing class? */
     final def isPrimaryConstructor(implicit ctx: Context) =
-      isConstructor && owner.primaryConstructor.denot == this
+      isConstructor && owner.primaryConstructor == symbol
 
     /** Is this a subclass of the given class `base`? */
     def isSubClass(base: Symbol)(implicit ctx: Context) = false
