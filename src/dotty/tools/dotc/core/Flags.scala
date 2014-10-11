@@ -459,6 +459,9 @@ object Flags {
   /** Module classes always have these flags set */
   final val ModuleClassCreationFlags = ModuleClass | Final
 
+  /** Accessors always have these flags set */
+  final val AccessorCreationFlags = Method | Accessor
+
   /** The flags of the self symbol */
   final val SelfSymFlags = Private | Local | Deferred
 
