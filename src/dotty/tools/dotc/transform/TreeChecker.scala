@@ -46,7 +46,6 @@ class TreeChecker {
     case _ =>
       Nil
   }
-
   def check(phasesToRun: Seq[Phase], ctx: Context) = {
     println(s"checking ${ctx.compilationUnit} after phase ${ctx.phase.prev}")
     val checkingCtx = ctx.fresh
@@ -99,7 +98,8 @@ class TreeChecker {
     private def checkOwner(tree: untpd.Tree)(implicit ctx: Context): Unit = {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
-        ctxOwner.isWeakOwner && ownerMatches(symOwner, ctxOwner.owner)
+          ctxOwner.isWeakOwner && (!(ctxOwner is Method | Lazy | Mutable) || (ctxOwner is Label)) &&
+          ownerMatches(symOwner, ctxOwner.owner)
       if(!ownerMatches(tree.symbol.owner, ctx.owner)) {
         assert(ownerMatches(tree.symbol.owner, ctx.owner),
           i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}\n" +
@@ -130,10 +130,10 @@ class TreeChecker {
       super.typedStats(trees, exprOwner)
     }
 
-
     override def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = {
-      if (ctx.mode.isExpr)
-        if(!(tree.tpe <:< pt))
+      def isPrimaryConstructorReturn =
+        ctx.owner.isPrimaryConstructor && pt.isRef(ctx.owner.owner) && tree.tpe.isRef(defn.UnitClass)
+      if (ctx.mode.isExpr && !isPrimaryConstructorReturn)
         assert(tree.tpe <:< pt,
             s"error at ${sourcePos(tree.pos)}\n" +
             err.typeMismatchStr(tree.tpe, pt))

@@ -200,6 +200,11 @@ object Phases {
      */
     def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = ()
 
+    /** If set, allow missing or superfluous arguments in applications
+     *  and type applications.
+     */
+    def relaxedTyping: Boolean = false
+
     def exists: Boolean = true
 
     private var myPeriod: Period = Periods.InvalidPeriod

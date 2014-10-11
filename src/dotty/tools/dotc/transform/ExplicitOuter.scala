@@ -190,7 +190,7 @@ object ExplicitOuter {
    */
   def referencesOuter(cls: Symbol, tree: Tree)(implicit ctx: Context): Boolean = {
     def isOuter(sym: Symbol) =
-      sym != cls && !sym.isStaticOwner && cls.isContainedIn(sym)
+      !sym.isStaticOwner && cls.isProperlyContainedIn(sym)
     tree match {
       case thisTree @ This(_) =>
         isOuter(thisTree.symbol)

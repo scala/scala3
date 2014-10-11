@@ -8,8 +8,8 @@ import util.DotClass
 
 /** Erased types are:
  *
- *  TypeRef(prefix is ignored, denot is ClassDenotation)
- *  TermRef(prefix is ignored, denot is SymDenotation)
+ *  TypeRefWithFixedSym(denot is ClassDenotation)
+ *  TermRefWithFixedSym(denot is SymDenotation)
  *  JavaArrayType
  *  AnnotatedType
  *  MethodType
@@ -237,7 +237,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
       else this(parent)
     case tp: TermRef =>
       assert(tp.symbol.exists, tp)
-      TermRef(NoPrefix, tp.symbol.asTerm)
+      TermRef(this(tp.prefix), tp.symbol.asTerm)
     case ThisType(_) | SuperType(_, _) =>
       tp
     case ExprType(rt) =>
@@ -269,7 +269,8 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
         val parents: List[TypeRef] =
           if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
           else removeLaterObjects(classParents.mapConserve(eraseTypeRef))
-        tp.derivedClassInfo(NoPrefix, parents, decls, this(tp.selfType))
+        val erasedDecls = decls.filteredScope(d => !d.isType || d.isClass)
+        tp.derivedClassInfo(NoPrefix, parents, erasedDecls, this(tp.selfType))
           // can't replace selftype by NoType because this would lose the sourceModule link
       }
     case NoType | NoPrefix | ErrorType | JavaArrayType(_) =>

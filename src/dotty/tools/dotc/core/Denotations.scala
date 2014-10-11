@@ -603,26 +603,26 @@ object Denotations {
      */
     protected def installAfter(phase: DenotTransformer)(implicit ctx: Context): Unit = {
       val targetId = phase.next.id
-      assert(ctx.phaseId == targetId,
-        s"denotation update for $this called in phase ${ctx.phase}, expected was ${phase.next}")
-      val current = symbol.current
-      // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
-      // printPeriods(current)
-      this.nextInRun = current.nextInRun
-      this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
-      if (current.validFor.firstPhaseId == targetId) {
-        // replace current with this denotation
-        var prev = current
-        while (prev.nextInRun ne current) prev = prev.nextInRun
-        prev.nextInRun = this
-        current.validFor = Nowhere
-      }
+      if (ctx.phaseId != targetId) installAfter(phase)(ctx.withPhase(phase.next))
       else {
-        // insert this denotation after current
-        current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
-        current.nextInRun = this
-      }
+        val current = symbol.current
+        // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
+        // printPeriods(current)
+        this.nextInRun = current.nextInRun
+        this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
+        if (current.validFor.firstPhaseId == targetId) {
+          // replace current with this denotation
+          var prev = current
+          while (prev.nextInRun ne current) prev = prev.nextInRun
+          prev.nextInRun = this
+          current.validFor = Nowhere
+        } else {
+          // insert this denotation after current
+          current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
+          current.nextInRun = this
+        }
       // printPeriods(this)
+      }
     }
 
     def staleSymbolError(implicit ctx: Context) = {
@@ -681,6 +681,7 @@ object Denotations {
     // ------ PreDenotation ops ----------------------------------------------
 
     final def first = this
+    final def last = this
     final def toDenot(pre: Type)(implicit ctx: Context): Denotation = this
     final def containsSym(sym: Symbol): Boolean = hasUniqueSym && (symbol eq sym)
     final def containsSig(sig: Signature)(implicit ctx: Context) =
@@ -766,8 +767,9 @@ object Denotations {
     /** A denotation in the group exists */
     def exists: Boolean
 
-    /** First denotation in the group */
+    /** First/last denotation in the group */
     def first: Denotation
+    def last: Denotation
 
     /** Convert to full denotation by &-ing all elements */
     def toDenot(pre: Type)(implicit ctx: Context): Denotation
@@ -832,6 +834,7 @@ object Denotations {
     assert(denots1.exists && denots2.exists, s"Union of non-existing denotations ($denots1) and ($denots2)")
     def exists = true
     def first = denots1.first
+    def last = denots2.last
     def toDenot(pre: Type)(implicit ctx: Context) =
       (denots1 toDenot pre) & (denots2 toDenot pre, pre)
     def containsSym(sym: Symbol) =

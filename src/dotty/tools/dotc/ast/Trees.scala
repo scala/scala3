@@ -408,7 +408,6 @@ object Trees {
   abstract class NameTree[-T >: Untyped] extends DenotingTree[T] {
     type ThisTree[-T >: Untyped] <: NameTree[T]
     def name: Name
-    def withName(name1: Name)(implicit ctx: Context): untpd.NameTree
   }
 
   /** Tree refers by name to a denotation */
@@ -449,7 +448,6 @@ object Trees {
   case class Ident[-T >: Untyped] private[ast] (name: Name)
     extends RefTree[T] {
     type ThisTree[-T >: Untyped] = Ident[T]
-    def withName(name: Name)(implicit ctx: Context): untpd.Ident = untpd.cpy.Ident(this)(name)
     def qualifier: Tree[T] = genericEmptyTree
   }
 
@@ -460,7 +458,6 @@ object Trees {
   case class Select[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name)
     extends RefTree[T] {
     type ThisTree[-T >: Untyped] = Select[T]
-    def withName(name: Name)(implicit ctx: Context): untpd.Select = untpd.cpy.Select(this)(qualifier, name)
   }
 
   class SelectWithSig[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name, val sig: Signature)
@@ -656,7 +653,6 @@ object Trees {
   case class SelectFromTypeTree[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name)
     extends RefTree[T] {
     type ThisTree[-T >: Untyped] = SelectFromTypeTree[T]
-    def withName(name: Name)(implicit ctx: Context): untpd.SelectFromTypeTree = untpd.cpy.SelectFromTypeTree(this)(qualifier, name)
   }
 
   /** left & right */
@@ -702,7 +698,6 @@ object Trees {
     extends NameTree[T] with DefTree[T] with PatternTree[T] {
     type ThisTree[-T >: Untyped] = Bind[T]
     override def envelope: Position = pos union initialPos
-    def withName(name: Name)(implicit ctx: Context): untpd.Bind = untpd.cpy.Bind(this)(name, body)
   }
 
   /** tree_1 | ... | tree_n */
@@ -734,7 +729,6 @@ object Trees {
   case class ValDef[-T >: Untyped] private[ast] (mods: Modifiers[T], name: TermName, tpt: Tree[T], rhs: Tree[T])
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = ValDef[T]
-    def withName(name: Name)(implicit ctx: Context): untpd.ValDef = untpd.cpy.ValDef(this)(name = name.toTermName)
     assert(isEmpty || tpt != genericEmptyTree)
   }
 
@@ -742,7 +736,6 @@ object Trees {
   case class DefDef[-T >: Untyped] private[ast] (mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
-    def withName(name: Name)(implicit ctx: Context): untpd.DefDef = untpd.cpy.DefDef(this)(name = name.toTermName)
     assert(tpt != genericEmptyTree)
   }
 
@@ -754,7 +747,6 @@ object Trees {
   case class TypeDef[-T >: Untyped] private[ast] (mods: Modifiers[T], name: TypeName, rhs: Tree[T])
     extends MemberDef[T] {
     type ThisTree[-T >: Untyped] = TypeDef[T]
-    def withName(name: Name)(implicit ctx: Context): untpd.TypeDef = untpd.cpy.TypeDef(this)(name = name.toTypeName)
 
     /** Is this a definition of a class? */
     def isClassDef = rhs.isInstanceOf[Template[_]]
@@ -1344,6 +1336,7 @@ object Trees {
     abstract class TreeTraverser extends TreeAccumulator[Unit] {
       def traverse(tree: Tree): Unit
       def apply(x: Unit, tree: Tree) = traverse(tree)
+      protected def traverseChildren(tree: Tree) = foldOver((), tree)
     }
 
     /** Fold `f` over all tree nodes, in depth-first, prefix order */
@@ -1361,6 +1354,19 @@ object Trees {
         else foldOver(x1, tree)
       }
     }
+
+    def rename(tree: NameTree, newName: Name)(implicit ctx: Context): tree.ThisTree[T] = {
+      tree match {
+        case tree: Ident => cpy.Ident(tree)(newName)
+        case tree: Select => cpy.Select(tree)(tree.qualifier, newName)
+        case tree: Bind => cpy.Bind(tree)(newName, tree.body)
+        case tree: ValDef => cpy.ValDef(tree)(name = newName.asTermName)
+        case tree: DefDef => cpy.DefDef(tree)(name = newName.asTermName)
+        case tree: untpd.PolyTypeDef => untpd.cpy.PolyTypeDef(tree)(tree.mods, newName.asTypeName, tree.tparams, tree.rhs)
+        case tree: TypeDef => cpy.TypeDef(tree)(name = newName.asTypeName)
+        case tree: SelectFromTypeTree => cpy.SelectFromTypeTree(tree)(tree.qualifier, newName)
+      }
+    }.asInstanceOf[tree.ThisTree[T]]
   }
 }
   // ----- Helper functions and classes ---------------------------------------

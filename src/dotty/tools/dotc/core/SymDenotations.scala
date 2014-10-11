@@ -372,6 +372,9 @@ object SymDenotations {
       recur(symbol)
     }
 
+    final def isProperlyContainedIn(boundary: Symbol)(implicit ctx: Context): Boolean =
+      symbol != boundary && isContainedIn(boundary)
+
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(implicit ctx: Context) =
       (this is Static) || this.exists && owner.isStaticOwner
@@ -916,7 +919,7 @@ object SymDenotations {
       privateWithin: Symbol = null,
       annotations: List[Annotation] = null)(implicit ctx: Context) =
     { // simulate default parameters, while also passing implicit context ctx to the default values
-      val initFlags1 = if (initFlags != UndefinedFlags) initFlags else this.flags &~ Frozen
+      val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags) &~ Frozen
       val info1 = if (info != null) info else this.info
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
@@ -1314,6 +1317,18 @@ object SymDenotations {
         case _ => bt
       }
 
+      def inCache(tp: Type) = baseTypeRefCache.containsKey(tp)
+
+      /** Can't cache types containing type variables which are uninstantiated
+       *  or whose instances can change, depending on typerstate.
+       */
+      def isCachable(tp: Type): Boolean = tp match {
+        case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
+        case tp: TypeProxy => inCache(tp.underlying)
+        case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
+        case _ => true
+      }
+
       def computeBaseTypeRefOf(tp: Type): Type = {
         Stats.record("computeBaseTypeOf")
         if (symbol.isStatic && tp.derivesFrom(symbol))
@@ -1330,9 +1345,6 @@ object SymDenotations {
               case _ =>
                 baseTypeRefOf(tp.underlying)
             }
-          case tp: TypeVar =>
-            if (tp.inst.exists) computeBaseTypeRefOf(tp.inst)
-            else Uncachable(computeBaseTypeRefOf(tp.underlying))
           case tp: TypeProxy =>
             baseTypeRefOf(tp.underlying)
           case AndType(tp1, tp2) =>
@@ -1353,15 +1365,9 @@ object SymDenotations {
             var basetp = baseTypeRefCache get tp
             if (basetp == null) {
               baseTypeRefCache.put(tp, NoPrefix)
-              val computedBT = computeBaseTypeRefOf(tp)
-              basetp = computedBT match {
-                case Uncachable(basetp) =>
-                  baseTypeRefCache.remove(tp)
-                  computedBT
-                case basetp =>
-              baseTypeRefCache.put(tp, basetp)
-                  basetp
-              }
+              basetp = computeBaseTypeRefOf(tp)
+              if (isCachable(tp)) baseTypeRefCache.put(tp, basetp)
+              else baseTypeRefCache.remove(tp)
             } else if (basetp == NoPrefix) {
               throw CyclicReference(this)
             }
@@ -1420,26 +1426,28 @@ object SymDenotations {
 
     override def primaryConstructor(implicit ctx: Context): Symbol = {
       val cname = if (this is ImplClass) nme.IMPLCLASS_CONSTRUCTOR else nme.CONSTRUCTOR
-      decls.denotsNamed(cname).first.symbol
+      decls.denotsNamed(cname).last.symbol // denotsNamed returns Symbols in reverse order of occurrence
     }
+
+    /** The parameter accessors of this class. Term and type accessors,
+     *  getters and setters are all returned int his list
+     */
+    def paramAccessors(implicit ctx: Context): List[Symbol] =
+      decls.filter(_ is ParamAccessor).toList
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
-     *  @pre  Can only be called in `phase.next`.
      */
-    def ensureFreshScopeAfter(phase: DenotTransformer)(implicit ctx: Context): Unit = {
-      assert(ctx.phaseId == phase.next.id)
-      val prevCtx = ctx.withPhase(phase)
-      val ClassInfo(pre, _, ps, decls, selfInfo) = classInfo
-      if (classInfo(prevCtx).decls eq decls) {
-        copySymDenotation(
-          info = ClassInfo(pre, classSymbol, ps, decls.cloneScope, selfInfo),
-          initFlags = this.flags &~ Frozen).installAfter(phase)
+    def ensureFreshScopeAfter(phase: DenotTransformer)(implicit ctx: Context): Unit =
+      if (ctx.phaseId != phase.next.id) ensureFreshScopeAfter(phase)(ctx.withPhase(phase.next))
+      else {
+        val prevCtx = ctx.withPhase(phase)
+        val ClassInfo(pre, _, ps, decls, selfInfo) = classInfo
+        if (classInfo(prevCtx).decls eq decls)
+          copySymDenotation(info = ClassInfo(pre, classSymbol, ps, decls.cloneScope, selfInfo))
+            .installAfter(phase)
       }
-    }
   }
-
-  private case class Uncachable(tp: Type) extends UncachedGroundType
 
   /** The denotation of a package class.
    *  It overrides ClassDenotation to take account of package objects when looking for members
