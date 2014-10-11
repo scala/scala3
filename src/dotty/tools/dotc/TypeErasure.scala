@@ -31,7 +31,7 @@ object TypeErasure {
    */
   def isErasedType(tp: Type)(implicit ctx: Context): Boolean = tp match {
     case tp: TypeRef =>
-      tp.symbol.isClass
+      tp.symbol.isClass && tp.symbol != defn.AnyClass
     case _: TermRef =>
       true
     case JavaArrayType(elem) =>
@@ -168,7 +168,7 @@ object TypeErasure {
           def loop(bcs: List[ClassSymbol], bestSoFar: ClassSymbol): ClassSymbol = bcs match {
             case bc :: bcs1 =>
               if (cls2.derivesFrom(bc))
-                if (!bc.is(Trait)) bc
+                if (!bc.is(Trait) && bc != defn.AnyClass) bc
                 else loop(bcs1, if (bestSoFar.derivesFrom(bc)) bestSoFar else bc)
               else
                 loop(bcs1, bestSoFar)
