@@ -21,7 +21,7 @@ import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.DenotTransformers.{IdentityDenotTransformer, DenotTransformer}
 
-class LazyValTranformContext {
+class LazyValsTransform extends MiniPhaseTransform with IdentityDenotTransformer {
 
   import tpd._
 
@@ -35,17 +35,9 @@ class LazyValTranformContext {
   class OffsetInfo(var defs: List[Tree], var ord:Int)
   val appendOffsetDefs = mutable.Map.empty[Name, OffsetInfo]
 
-  class LazyValsTransform extends MiniPhaseTransform with IdentityDenotTransformer {
+  override def phaseName: String = "LazyVals"
 
-    override def phaseName: String = "LazyVals"
-
-    override def treeTransformPhase = this.next
-
-    /** List of names of phases that should have finished their processing of all compilation units
-      * before this phase starts */
-
-    /** List of names of phases that should have finished their processing of all compilation units
-      * before this phase starts */
+  override def treeTransformPhase = this.next
 
     /** List of names of phases that should have finished processing of tree
       * before this phase starts processing same tree */
@@ -329,8 +321,6 @@ class LazyValTranformContext {
           Thicket(List(containerTree, accessor))
         else Thicket(List(containerTree, flag, accessor))
     }
-
-  }
 }
 
 
