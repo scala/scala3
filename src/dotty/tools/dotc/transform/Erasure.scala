@@ -238,7 +238,7 @@ object Erasure extends TypeTestsCasts{
 
     override def promote(tree: untpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
       assert(tree.hasType)
-      val erased = erasedType(tree)(ctx.withPhase(ctx.erasurePhase))
+      val erased = erasedType(tree)
       ctx.log(s"promoting ${tree.show}: ${erased.showWithUnderlying()}")
       tree.withType(erased)
     }

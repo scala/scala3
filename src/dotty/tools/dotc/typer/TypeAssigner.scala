@@ -209,10 +209,11 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Literal)(implicit ctx: Context) =
     tree.withType {
-      tree.const.tag match {
+      val value = tree.const
+      value.tag match {
         case UnitTag => defn.UnitType
         case NullTag => defn.NullType
-        case _ => ConstantType(tree.const)
+        case _ => if (ctx.erasedTypes) value.tpe else ConstantType(value)
       }
     }
 
