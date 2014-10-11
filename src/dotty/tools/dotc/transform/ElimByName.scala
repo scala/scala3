@@ -76,14 +76,27 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
     cpy.Apply(tree)(tree.fun, args1)
   }
 
-  private def becomesFunction(symd: SymDenotation)(implicit ctx: Context) =
+  /** If denotation had an ExprType before, it now gets a function type */
+  private def exprBecomesFunction(symd: SymDenotation)(implicit ctx: Context) =
     (symd is Param) || (symd is (ParamAccessor, butNot = Method))
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    val origDenot = originalDenotation(tree)
-    if (becomesFunction(origDenot) && (origDenot.info.isInstanceOf[ExprType]))
+  /** Map `tree` to `tree.apply()` is `ftree` was of ExprType and becomes now a function */
+  private def applyIfFunction(tree: Tree, ftree: Tree)(implicit ctx: Context) = {
+    val origDenot = originalDenotation(ftree)
+    if (exprBecomesFunction(origDenot) && (origDenot.info.isInstanceOf[ExprType]))
       tree.select(defn.Function0_apply).appliedToNone
     else tree
+  }
+
+  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo): Tree =
+    applyIfFunction(tree, tree)
+
+  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree = tree match {
+    case TypeApply(Select(_, nme.asInstanceOf_), arg :: Nil) =>
+      // tree might be of form e.asInstanceOf[x.type] where x becomes a function.
+      // See pos/t296.scala
+      applyIfFunction(tree, arg)
+    case _ => tree
   }
 
   def elimByNameParams(tp: Type)(implicit ctx: Context): Type = tp match {
@@ -102,6 +115,6 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
   }
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
-    if (becomesFunction(sym)) transformParamInfo(tp)
+    if (exprBecomesFunction(sym)) transformParamInfo(tp)
     else elimByNameParams(tp)
 }
