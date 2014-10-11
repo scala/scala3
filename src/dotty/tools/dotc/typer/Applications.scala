@@ -672,7 +672,6 @@ trait Applications extends Compatibility { self: Typer =>
 
     unapplyFn.tpe.widen match {
       case mt: MethodType if mt.paramTypes.length == 1 && !mt.isDependent =>
-        val m = mt
         val unapplyArgType = mt.paramTypes.head
         unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $selType")
         def wpt = widenForMatchSelector(selType) // needed?
