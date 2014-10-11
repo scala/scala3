@@ -98,7 +98,7 @@ class TreeChecker {
     private def checkOwner(tree: untpd.Tree)(implicit ctx: Context): Unit = {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
-        ctxOwner.isWeakOwner && !(ctxOwner is Method | Lazy | Mutable) &&
+          ctxOwner.isWeakOwner && (!(ctxOwner is Method | Lazy | Mutable) || (ctxOwner is Label)) &&
           ownerMatches(symOwner, ctxOwner.owner)
       if(!ownerMatches(tree.symbol.owner, ctx.owner)) {
         assert(ownerMatches(tree.symbol.owner, ctx.owner),
