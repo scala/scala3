@@ -88,14 +88,14 @@ class LazyValTranformContext {
         val tpe = x.tpe.widen
 
         val holderType =
-          if (tpe =:= defn.IntType) "LazyInt"
-          else if (tpe =:= defn.LongType) "LazyLong"
-          else if (tpe =:= defn.BooleanType) "LazyBoolean"
-          else if (tpe =:= defn.FloatType) "LazyFloat"
-          else if (tpe =:= defn.DoubleType) "LazyDouble"
-          else if (tpe =:= defn.ByteType) "LazyByte"
-          else if (tpe =:= defn.CharType) "LazyChar"
-          else if (tpe =:= defn.ShortType) "LazyShort"
+          if (tpe isRef defn.IntClass) "LazyInt"
+          else if (tpe isRef defn.LongClass) "LazyLong"
+          else if (tpe isRef defn.BooleanClass) "LazyBoolean"
+          else if (tpe isRef defn.FloatClass) "LazyFloat"
+          else if (tpe isRef defn.DoubleClass) "LazyDouble"
+          else if (tpe isRef defn.ByteClass) "LazyByte"
+          else if (tpe isRef defn.CharClass) "LazyChar"
+          else if (tpe isRef defn.ShortClass) "LazyShort"
           else "LazyRef"
 
         val holderImpl = ctx.requiredClass("dotty.runtime." + holderType)

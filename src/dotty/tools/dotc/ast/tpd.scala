@@ -348,14 +348,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def initValue(tpe: Types.Type)(implicit ctx: Context) = {
     val tpw = tpe.widen
 
-    if (tpw =:= defn.IntType) Literal(Constant(0))
-    else if (tpw =:= defn.LongType) Literal(Constant(0L))
-    else if (tpw =:= defn.BooleanType) Literal(Constant(false))
-    else if (tpw =:= defn.CharType) Literal(Constant('\u0000'))
-    else if (tpw =:= defn.FloatType) Literal(Constant(0f))
-    else if (tpw =:= defn.DoubleType) Literal(Constant(0d))
-    else if (tpw =:= defn.ByteType) Literal(Constant(0.toByte))
-    else if (tpw =:= defn.ShortType) Literal(Constant(0.toShort))
+    if (tpw isRef defn.IntClass) Literal(Constant(0))
+    else if (tpw isRef defn.LongClass) Literal(Constant(0L))
+    else if (tpw isRef defn.BooleanClass) Literal(Constant(false))
+    else if (tpw isRef defn.CharClass) Literal(Constant('\u0000'))
+    else if (tpw isRef defn.FloatClass) Literal(Constant(0f))
+    else if (tpw isRef defn.DoubleClass) Literal(Constant(0d))
+    else if (tpw isRef defn.ByteClass) Literal(Constant(0.toByte))
+    else if (tpw isRef defn.ShortClass) Literal(Constant(0.toShort))
     else Literal(Constant(null)).select(defn.Any_asInstanceOf).appliedToType(tpe)
   }
 
