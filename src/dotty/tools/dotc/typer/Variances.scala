@@ -71,6 +71,7 @@ object Variances {
     case TermRef(pre, sym) =>
       varianceInType(pre)(tparam)
     case TypeRef(pre, sym) =>
+      /* @odersky  sym is a typeName here, comparison is always false */
       if (sym == tparam) Covariant else varianceInType(pre)(tparam)
     case tp @ TypeBounds(lo, hi) =>
       if (lo eq hi) compose(varianceInType(hi)(tparam), tp.variance)

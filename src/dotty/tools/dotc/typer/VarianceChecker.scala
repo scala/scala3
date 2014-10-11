@@ -6,6 +6,7 @@ import core._
 import Types._, Contexts._, Flags._, Symbols._, Annotations._, Trees._, NameOps._
 import Decorators._
 import Variances._
+import config.Printers.variances
 
 /** Provides `check` method to check that all top-level definitions
  *  in tree are variance correct. Does not recurse inside methods.
@@ -77,7 +78,7 @@ class VarianceChecker()(implicit ctx: Context) {
      *  explicitly (their TypeDefs will be passed here.) For MethodTypes, the
      *  same is true of the parameters (ValDefs).
      */
-    def apply(status: Option[VarianceError], tp: Type): Option[VarianceError] = ctx.traceIndented(s"variance checking $tp of $base at $variance") {
+    def apply(status: Option[VarianceError], tp: Type): Option[VarianceError] = ctx.traceIndented(s"variance checking $tp of $base at $variance", variances) {
       if (status.isDefined) status
       else tp match {
         case tp: TypeRef =>

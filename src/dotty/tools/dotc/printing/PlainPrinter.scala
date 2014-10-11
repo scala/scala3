@@ -94,7 +94,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     tp match {
       case tp: TypeType =>
         toTextRHS(tp)
-      case tp: TermRef if !tp.knownDenotation =>
+      case tp: TermRef if !tp.denotationIsCurrent =>
         toTextRef(tp) ~ ".type"
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"
@@ -182,7 +182,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     text.stripPrefix(objectPrefix).stripPrefix(packagePrefix)
 
   protected def selectionString(tp: NamedType) =
-    if (tp.knownDenotation && tp.symbol.exists) nameString(tp.symbol)
+    if (tp.currentSymbol.exists) nameString(tp.symbol)
     else nameString(tp.name)
 
   /** The string representation of this type used as a prefix */
@@ -190,8 +190,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
     tp match {
       case tp: TermRef =>
         toTextPrefix(tp.prefix) ~ selectionString(tp)
-      case ThisType(cls) =>
-        nameString(cls) + ".this"
+      case tp: ThisType =>
+        nameString(tp.cls) + ".this"
       case SuperType(thistpe: SingletonType, _) =>
         toTextRef(thistpe).map(_.replaceAll("""\bthis$""", "super"))
       case SuperType(thistpe, _) =>

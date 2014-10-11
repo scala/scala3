@@ -14,10 +14,15 @@ class tests extends CompilerTest {
         "-pagewidth", "160")
 
   implicit val defaultOptions = noCheckOptions ++ List(
-    "-Ycheck:tailrec"
+      "-YnoDeepSubtypes",
+      "-Ycheck:patternMatcher,literalize,capturedVars",
+      "-Ystop-before:erasure"
+    /*,"-uniqid", "-explaintypes", "-verbose", "-Ylog:splitter", "-Xprompt", "-YnoDoubleBindings"*/
   )
 
-  val twice = List("#runs", "2", "-YnoDoubleBindings")
+  val allowDeepSubtypes = defaultOptions diff List("-YnoDeepSubtypes")
+
+  val twice = List("#runs", "2", "-YnoDoubleBindings", "-Ystop-before:terminal")
   val doErase = List("-Ystop-before:terminal")
 
   val posDir = "./tests/pos/"
@@ -26,6 +31,7 @@ class tests extends CompilerTest {
   val dotcDir = "./src/dotty/"
 
 
+  @Test def pos_t2168_pat = compileFile(posDir, "t2168", doErase)
   @Test def pos_erasure = compileFile(posDir, "erasure", doErase)
   @Test def pos_Coder() = compileFile(posDir, "Coder", doErase)
   @Test def pos_blockescapes() = compileFile(posDir, "blockescapes", doErase)
@@ -33,15 +39,17 @@ class tests extends CompilerTest {
   @Test def pos_functions1() = compileFile(posDir, "functions1", doErase)
   @Test def pos_implicits1() = compileFile(posDir, "implicits1", doErase)
   @Test def pos_inferred() = compileFile(posDir, "inferred", doErase)
-  @Test def pos_Patterns() = compileFile(posDir, "Patterns", doErase)
+  @Test def pos_Patterns() = compileFile(posDir, "Patterns")
   @Test def pos_selftypes() = compileFile(posDir, "selftypes", doErase)
   @Test def pos_varargs() = compileFile(posDir, "varargs", doErase)
+  @Test def pos_vararg_patterns() = compileFile(posDir, "vararg-pattern", doErase)
   @Test def pos_opassign() = compileFile(posDir, "opassign", doErase)
   @Test def pos_typedapply() = compileFile(posDir, "typedapply", doErase)
   @Test def pos_nameddefaults() = compileFile(posDir, "nameddefaults", doErase)
   @Test def pos_desugar() = compileFile(posDir, "desugar", doErase)
   @Test def pos_sigs() = compileFile(posDir, "sigs", doErase)
   @Test def pos_typers() = compileFile(posDir, "typers", doErase)
+
   @Test def pos_typedidents() = compileFile(posDir, "typedIdents", doErase)
   @Test def pos_assignments() = compileFile(posDir, "assignments", doErase)
   @Test def pos_packageobject() = compileFile(posDir, "packageobject", doErase)
@@ -76,6 +84,7 @@ class tests extends CompilerTest {
       defaultOptions = noCheckOptions)
         // -Ycheck fails because there are structural types involving higher-kinded types.
         // these are illegal, but are tested only later.
+  @Test def neg_t1131_structural = compileFile(negDir, "t1131", xerrors = 1)
   @Test def neg_zoo = compileFile(negDir, "zoo", xerrors = 1)
   @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
   @Test def neg_tailcall_t1672b = compileFile(negDir, "tailcall/t1672b", xerrors = 6)
@@ -84,26 +93,33 @@ class tests extends CompilerTest {
   @Test def neg_tailcall = compileFile(negDir, "tailcall/tailrec", xerrors = 7)
   @Test def neg_tailcall2 = compileFile(negDir, "tailcall/tailrec-2", xerrors = 2)
   @Test def neg_tailcall3 = compileFile(negDir, "tailcall/tailrec-3", xerrors = 2)
+  @Test def neg_t1048 = compileFile(negDir, "t1048", xerrors = 1)
+  @Test def nef_t1279a = compileFile(negDir, "t1279a", xerrors = 1)
   @Test def neg_t1843 = compileFile(negDir, "t1843", xerrors = 1)
   @Test def neg_t1843_variances = compileFile(negDir, "t1843-variances", xerrors = 1)
   @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 2)
   @Test def neg_subtyping = compileFile(negDir, "subtyping", xerrors = 1)
   @Test def neg_variances = compileFile(negDir, "variances", xerrors = 2)
+  @Test def neg_badAuxConstr = compileFile(negDir, "badAuxConstr", xerrors = 2)
+  @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
 
-  @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)
+  @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)(allowDeepSubtypes)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)
   @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config", twice)
-  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", twice)
-  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", twice)
-  @Test def dotc_core_transform = compileDir(dotcDir + "tools/dotc/core/transform", twice)
+  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", twice)(allowDeepSubtypes)
+  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", twice)(allowDeepSubtypes)
+
   @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", twice)
+
   @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing", twice)
   @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing", twice)
+
   @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting", twice)
   @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", twice)
+
   @Test def dotc_util = compileDir(dotcDir + "tools/dotc/util", twice)
   @Test def tools_io = compileDir(dotcDir + "tools/io", twice)
-  @Test def tools = compileDir(dotcDir + "tools", twice)
+  @Test def tools = compileDir(dotcDir + "tools", twice)(allowDeepSubtypes)
 
   @Test def testNonCyclic = compileArgs(Array(
       dotcDir + "tools/dotc/CompilationUnit.scala",
@@ -112,6 +128,7 @@ class tests extends CompilerTest {
       //"-Ylog:frontend",
       "-Xprompt",
       "#runs", "2"))
+
 
   @Test def testIssue_34 = compileArgs(Array(
       dotcDir + "tools/dotc/config/Properties.scala",

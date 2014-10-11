@@ -8,7 +8,7 @@ import collection.mutable.HashMap
 import collection.immutable.BitSet
 import scala.annotation.tailrec
 
-/** A class that yields a kind of iterator (`Cursor`),
+/** A module that can produce a kind of iterator (`Cursor`),
  *  which yields all pairs of overriding/overridden symbols
  *  that are visible in some baseclass, unless there's a parent class
  *  that already contains the same pairs.
@@ -16,7 +16,7 @@ import scala.annotation.tailrec
  *  Adapted from the 2.9 version of OverridingPairs. The 2.10 version is IMO
  *  way too unwieldy to be maintained.
  */
-abstract class OverridingPairs {
+object OverridingPairs {
 
   /** The cursor class
    *  @param base   the base class that contains the overriding pairs
@@ -102,7 +102,7 @@ abstract class OverridingPairs {
     def hasNext: Boolean = curEntry ne null
 
     @tailrec
-    final def next: Unit = {
+    final def next(): Unit = {
       if (curEntry ne null) {
         overriding = curEntry.sym
         if (nextEntry ne null) {

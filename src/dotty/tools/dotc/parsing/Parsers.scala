@@ -274,9 +274,9 @@ object Parsers {
      */
     def convertToTypeId(tree: Tree): Tree = tree match {
       case id @ Ident(name) =>
-        cpy.Ident(id, name.toTypeName)
+        cpy.Ident(id)(name.toTypeName)
       case id @ Select(qual, name) =>
-        cpy.Select(id, qual, name.toTypeName)
+        cpy.Select(id)(qual, name.toTypeName)
       case _ =>
         syntaxError("identifier expected", tree.pos)
         tree
@@ -963,7 +963,7 @@ object Parsers {
           val tpt = typeDependingOn(location)
           if (isWildcard(t) && location != Location.InPattern) {
             val vd :: rest = placeholderParams
-            placeholderParams = cpy.ValDef(vd, vd.mods, vd.name, tpt, vd.rhs) :: rest
+            placeholderParams = cpy.ValDef(vd)(tpt = tpt) :: rest
           }
           Typed(t, tpt)
       }
@@ -1096,7 +1096,7 @@ object Parsers {
       if (in.token == LBRACE) blockExpr() :: Nil else parArgumentExprs()
 
     val argumentExpr = () => exprInParens() match {
-      case a @ Assign(Ident(id), rhs) => cpy.NamedArg(a, id, rhs)
+      case a @ Assign(Ident(id), rhs) => cpy.NamedArg(a)(id, rhs)
       case e => e
     }
 
@@ -1409,8 +1409,8 @@ object Parsers {
     /** Adjust start of annotation or constructor to position of preceding @ or new */
     def adjustStart(start: Offset)(tree: Tree): Tree = {
       val tree1 = tree match {
-        case Apply(fn, args) => cpy.Apply(tree, adjustStart(start)(fn), args)
-        case Select(qual, name) => cpy.Select(tree, adjustStart(start)(qual), name)
+        case Apply(fn, args) => cpy.Apply(tree)(adjustStart(start)(fn), args)
+        case Select(qual, name) => cpy.Select(tree)(adjustStart(start)(qual), name)
         case _ => tree
       }
       if (start < tree1.pos.start) tree1.withPos(tree1.pos.withStart(start))
@@ -1469,8 +1469,8 @@ object Parsers {
         }
         else mods = atPos(modStart) (mods | Param)
         if (ownerKind != ParamOwner.Def) {
-          if (isIdent(nme.raw.PLUS)) mods |= CovariantCommon
-          else if (isIdent(nme.raw.MINUS)) mods |= ContravariantCommon
+          if (isIdent(nme.raw.PLUS)) mods |= Covariant
+          else if (isIdent(nme.raw.MINUS)) mods |= Contravariant
           if (mods is VarianceFlags) in.nextToken()
         }
         atPos(tokenRange) {
@@ -1605,7 +1605,7 @@ object Parsers {
         imp
       case sel @ Select(qual, name) =>
         val selector = atPos(sel.pos.point) { Ident(name) }
-        cpy.Import(sel, qual, selector :: Nil)
+        cpy.Import(sel)(qual, selector :: Nil)
       case t =>
         accept(DOT)
         Import(t, Ident(nme.WILDCARD) :: Nil)
@@ -1687,7 +1687,7 @@ object Parsers {
           }
         } else EmptyTree
       lhs match {
-        case (id @ Ident(name: TermName)) :: Nil => cpy.ValDef(id, mods, name, tpt, rhs)
+        case (id @ Ident(name: TermName)) :: Nil => cpy.ValDef(id)(mods, name, tpt, rhs)
         case _ => PatDef(mods, lhs, tpt, rhs)
       }
     }

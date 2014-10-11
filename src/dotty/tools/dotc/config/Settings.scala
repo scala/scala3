@@ -18,6 +18,7 @@ object Settings {
   val IntTag = ClassTag.Int
   val StringTag = ClassTag(classOf[String])
   val ListTag = ClassTag(classOf[List[_]])
+  val VersionTag = ClassTag(classOf[ScalaVersion])
 
   class SettingsState(initialValues: Seq[Any]) {
     private var values = ArrayBuffer(initialValues: _*)
@@ -131,6 +132,11 @@ object Settings {
           } catch {
             case _: NumberFormatException =>
               fail(s"$arg2 is not an integer argument for $name", args2)
+          }
+        case (VersionTag, _) =>
+          ScalaVersion.parse(argRest) match {
+            case Success(v) => update(v, args)
+            case Failure(ex) => fail(ex.getMessage, args)
           }
         case (_, Nil) =>
           missingArg
@@ -246,5 +252,8 @@ object Settings {
 
     def PrefixSetting(name: String, pre: String, descr: String): Setting[List[String]] =
       publish(Setting(name, descr, Nil, prefix = pre))
+
+    def VersionSetting(name: String, descr: String, default: ScalaVersion = NoScalaVersion): Setting[ScalaVersion] =
+      publish(Setting(name, descr, default))
   }
 }

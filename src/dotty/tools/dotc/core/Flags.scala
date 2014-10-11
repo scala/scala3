@@ -190,6 +190,8 @@ object Flags {
 
   /** Labeled with `private` modifier */
   final val Private = commonFlag(2, "private")
+  final val PrivateTerm = Private.toTermFlags
+  final val PrivateType = Private.toTypeFlags
 
   /** Labeled with `protected` modifier */
   final val Protected = commonFlag(3, "protected")
@@ -236,9 +238,6 @@ object Flags {
  /** A mutable var */
   final val Mutable = termFlag(12, "mutable")
 
-  /** Class symbol is defined in this/superclass constructor. */
-  final val InConstructor = typeFlag(12, "<inconstructor>")
-
   /** Symbol is local to current class (i.e. private[this] or protected[this]
    *  pre: Private or Protected are also set
    */
@@ -274,20 +273,24 @@ object Flags {
   /** Symbol's name is expanded */
   final val ExpandedName = commonFlag(19, "<expandedname>")
 
-  /** A covariant type variable */
-  final val CovariantCommon = commonFlag(20, "<covariant>")
-  final val Covariant = CovariantCommon.toTypeFlags
+  /** A covariant type variable / an outer accessor */
+  final val CovariantOrOuter = commonFlag(20, "")
+  final val Covariant = typeFlag(20, "<covariant>")
+  final val OuterAccessor = termFlag(20, "<outer accessor>")
 
-  final val ContravariantCommon = commonFlag(21, "<contravariant>")
-  final val Contravariant = ContravariantCommon.toTypeFlags
+  /** A contravariant type variable / a label method */
+  final val ContravariantOrLabel = commonFlag(21, "")
+  final val Contravariant = typeFlag(21, "<contravariant>")
+  final val Label = termFlag(21, "<label>")
 
-  /** Method is a label. */
-  final val Label = termFlag(22, "<label>")
 
   /** A trait that has only abstract methods as members
    *  (and therefore can be represented by a Java interface
    */
   final val Interface = typeFlag(22, "interface")
+
+  /** Labeled with of abstract & override */
+  final val AbsOverride = termFlag(22, "abstract override")
 
   /** Labeled with `abstract` modifier (an abstract class)
    *  Note: You should never see Abstract on any symbol except a class.
@@ -295,66 +298,72 @@ object Flags {
    */
   final val Abstract = commonFlag(23, "abstract")
 
-  /** Labeled with of abstract & override (needed?) */
-  final val AbsOverride = termFlag(24, "abstract override")
-
   /** Method is assumed to be stable */
-  final val Stable = termFlag(25, "<stable>")
+  final val Stable = termFlag(24, "<stable>")
 
   /** Info can be refined during GADT pattern match */
-  final val GADTFlexType = typeFlag(25, "<gadt-flex-type>")
+  final val GADTFlexType = typeFlag(24, "<gadt-flex-type>")
 
-  /** A case parameter (or its accessor, or a GADT skolem) */
-  final val CaseAccessor = termFlag(26, "<caseaccessor>")
+  /** A case parameter accessor */
+  final val CaseAccessor = termFlag(25, "<caseaccessor>")
 
   /** An type parameter which is an alias for some other (non-visible) type parameter */
-  final val TypeArgument = typeFlag(26, "<type-param-inst>")
+  final val TypeArgument = typeFlag(25, "<type-param-inst>")
 
   final val CaseAccessorOrTypeArgument = CaseAccessor.toCommonFlags
 
   /** A super accessor */
-  final val SuperAccessor = termFlag(27, "<superaccessor>")
+  final val SuperAccessor = termFlag(26, "<superaccessor>")
 
   /** An unpickled Scala 2.x class */
-  final val Scala2x = typeFlag(27, "<scala-2.x>")
+  final val Scala2x = typeFlag(26, "<scala-2.x>")
 
   /** A method that has default params */ // TODO: drop
-  final val DefaultParameterized = termFlag(28, "<defaultparam>")
+  final val DefaultParameterized = termFlag(27, "<defaultparam>")
 
   /** Symbol is initialized to the default value, e.g. var x: T = _ */
-  final val DefaultInit = termFlag(29, "<defaultinit>")
+  final val DefaultInit = termFlag(28, "<defaultinit>")
 
   /** Symbol is inlined */
-  final val Inline = commonFlag(30, "inline")
+  final val Inline = commonFlag(29, "inline")
 
   /** Symbol is defined by a Java class */
-  final val JavaDefined = commonFlag(31, "<java>")
+  final val JavaDefined = commonFlag(30, "<java>")
 
   /** Symbol is implemented as a Java static */
-  final val Static = commonFlag(32, "<static>")
+  final val Static = commonFlag(31, "<static>")
 
   /** Variable is accessed from nested function. */
-  final val Captured = termFlag(33, "<captured>")
+  final val Captured = termFlag(32, "<captured>")
 
   /** Symbol should be ignored when typechecking; will be marked ACC_SYNTHETIC in bytecode */
-  final val Artifact = commonFlag(34, "<artifact>")
+  final val Artifact = commonFlag(33, "<artifact>")
 
   /** A bridge method. Set by Erasure */
-  final val Bridge = termFlag(35, "<bridge>")
+  final val Bridge = termFlag(34, "<bridge>")
 
-  /** Symbol is a Java varargs bridge */
-  final val VBridge = termFlag(36, "<vbridge>")
+  /** Symbol is a Java varargs bridge */ // (needed?)
+  final val VBridge = termFlag(35, "<vbridge>")
 
   /** Symbol is a method which should be marked ACC_SYNCHRONIZED */
-  final val Synchronized = termFlag(37, "<synchronized>")
+  final val Synchronized = termFlag(36, "<synchronized>")
 
   /** Symbol is a Java-style varargs method */
-  final val JavaVarargs = termFlag(38, "<varargs>")
+  final val JavaVarargs = termFlag(37, "<varargs>")
 
   /** Symbol is a Java default method */
-  final val DefaultMethod = termFlag(39, "<defaultmethod>")
+  final val DefaultMethod = termFlag(38, "<defaultmethod>")
 
   // Flags following this one are not pickled
+
+  /** Symbol always defines a fresh named type */
+  final val Fresh = commonFlag(45, "<fresh>")
+
+  /** Symbol is defined in a super call */
+  final val InSuperCall = commonFlag(46, "<in supercall>")
+
+  /** Symbol with private access is accessed outside its private scope */
+  final val NotJavaPrivate = commonFlag(47, "<not-java-private>")
 
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
   final val Touched = commonFlag(48, "<touched>")
@@ -426,9 +435,10 @@ object Flags {
 
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
-    AccessFlags | Module | Package | Deferred | MethodOrHKCommon | Param | Scala2ExistentialCommon | Touched |
-    Static | CovariantCommon | ContravariantCommon | ExpandedName | AccessorOrSealed |
-    CaseAccessorOrTypeArgument | Frozen | Erroneous | ImplicitCommon | Permanent | SelfNameOrImplClass
+    AccessFlags | Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon |
+    InSuperCall | Touched | Static | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
+    CaseAccessorOrTypeArgument | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent |
+    SelfNameOrImplClass
 
   assert(FromStartFlags.isTermFlags && FromStartFlags.isTypeFlags)
   // TODO: Should check that FromStartFlags do not change in completion
@@ -444,7 +454,7 @@ object Flags {
   final val RetainedTypeArgFlags = VarianceFlags | ExpandedName | Protected | Local
 
   /** Modules always have these flags set */
-  final val ModuleCreationFlags = ModuleVal | Final | Stable
+  final val ModuleCreationFlags = ModuleVal | Lazy | Final | Stable
 
   /** Module classes always have these flags set */
   final val ModuleClassCreationFlags = ModuleClass | Final
@@ -470,7 +480,7 @@ object Flags {
 
   /** Flags that can apply to a module class */
   final val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags |
-    InConstructor | ImplClass
+    InSuperCall | ImplClass
 
   /** Packages and package classes always have these flags set */
   final val PackageCreationFlags =
@@ -490,6 +500,9 @@ object Flags {
 
   /** Either mutable or lazy */
   final val MutableOrLazy = Mutable | Lazy
+
+  /** Either method or lazy */
+  final val MethodOrLazy = Method | Lazy
 
   /** Labeled `private` or `final` */
   final val PrivateOrFinal = Private | Final

@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Symbols._, Types._, util.Positions._, Contexts._, Constants._, ast.tpd._
+import config.ScalaVersion
 
 object Annotations {
 
@@ -15,6 +16,14 @@ object Annotations {
 
     def derivedAnnotation(tree: Tree)(implicit ctx: Context) =
       if (tree eq this.tree) this else Annotation(tree)
+
+    def arguments(implicit ctx: Context) = ast.tpd.arguments(tree)
+    def argument(i: Int)(implicit ctx: Context): Option[Tree] = {
+      val args = arguments
+      if (i < args.length) Some(args(i)) else None
+    }
+    def argumentConstant(i: Int)(implicit ctx: Context): Option[Constant] =
+      for (ConstantType(c) <- argument(i) map (_.tpe)) yield c
   }
 
   case class ConcreteAnnotation(t: Tree) extends Annotation {
@@ -59,7 +68,8 @@ object Annotations {
       deferred(atp.classSymbol, implicit ctx => New(atp, args))
 
     def makeAlias(sym: TermSymbol)(implicit ctx: Context) =
-      apply(defn.AliasAnnot, List(Ident(TermRef.withSig(sym.owner.thisType, sym.name, sym.signature, sym))))
+      apply(defn.AliasAnnot, List(
+        ref(TermRef.withSigAndDenot(sym.owner.thisType, sym.name, sym.signature, sym))))
 
     def makeChild(sym: Symbol)(implicit ctx: Context) =
       apply(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
@@ -68,5 +78,29 @@ object Annotations {
   def ThrowsAnnotation(cls: ClassSymbol)(implicit ctx: Context) = {
     val tref = cls.typeRef
     Annotation(defn.ThrowsAnnot.typeRef.appliedTo(tref), Ident(tref))
+  }
+
+  /** A decorator that provides queries for specific annotations
+   *  of a symbol.
+   */
+  implicit class AnnotInfo(val sym: Symbol) extends AnyVal {
+
+    def isDeprecated(implicit ctx: Context) =
+      sym.hasAnnotation(defn.DeprecatedAnnot)
+
+    def deprecationMessage(implicit ctx: Context) =
+      for (annot <- sym.getAnnotation(defn.DeprecatedAnnot);
+           arg <- annot.argumentConstant(0))
+      yield arg.stringValue
+
+    def migrationVersion(implicit ctx: Context) =
+      for (annot <- sym.getAnnotation(defn.MigrationAnnot);
+           arg <- annot.argumentConstant(1))
+      yield ScalaVersion.parse(arg.stringValue)
+
+    def migrationMessage(implicit ctx: Context) =
+      for (annot <- sym.getAnnotation(defn.MigrationAnnot);
+           arg <- annot.argumentConstant(0))
+      yield ScalaVersion.parse(arg.stringValue)
   }
 }

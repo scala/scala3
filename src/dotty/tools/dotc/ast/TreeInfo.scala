@@ -103,9 +103,17 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   /** The number of arguments in an application */
   def numArgs(tree: Tree): Int = unsplice(tree) match {
     case Apply(fn, args) => numArgs(fn) + args.length
-    case TypeApply(fn, args) => numArgs(fn)
-    case Block(stats, expr) => numArgs(expr)
+    case TypeApply(fn, _) => numArgs(fn)
+    case Block(_, expr) => numArgs(expr)
     case _ => 0
+  }
+
+  /** The (last) list of arguments of an application */
+  def arguments(tree: Tree): List[Tree] = unsplice(tree) match {
+    case Apply(_, args) => args
+    case TypeApply(fn, _) => arguments(fn)
+    case Block(_, expr) => arguments(expr)
+    case _ => Nil
   }
 
   /** Is tree a self constructor call this(...)? I.e. a call to a constructor of the
@@ -253,7 +261,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
    *  is an abstract typoe declaration
    */
   def lacksDefinition(mdef: MemberDef) = mdef match {
-    case mdef: ValOrDefDef => mdef.rhs.isEmpty && !mdef.name.isConstructorName
+    case mdef: ValOrDefDef => mdef.rhs.isEmpty && !mdef.name.isConstructorName && !mdef.mods.is(ParamAccessor)
     case mdef: TypeDef => mdef.rhs.isEmpty || mdef.rhs.isInstanceOf[TypeBoundsTree]
     case _ => false
   }
@@ -401,7 +409,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** Strips layers of `.asInstanceOf[T]` / `_.$asInstanceOf[T]()` from an expression */
   def stripCast(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = {
-    def isCast(sel: tpd.Tree) = defn.asInstanceOfMethods contains sel.symbol
+    def isCast(sel: tpd.Tree) = sel.symbol == defn.Any_asInstanceOf
     unsplice(tree) match {
       case TypeApply(sel @ Select(inner, _), _) if isCast(sel) =>
         stripCast(inner)
@@ -410,6 +418,17 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case t =>
         t
     }
+  }
+
+  /** The variables defined by a pattern, in reverse order of their appearance. */
+  def patVars(tree: Tree)(implicit ctx: Context): List[Symbol] = {
+    val acc = new TreeAccumulator[List[Symbol]] {
+      def apply(syms: List[Symbol], tree: Tree) = tree match {
+        case Bind(_, body) => apply(tree.symbol :: syms, body)
+        case _ => foldOver(syms, tree)
+      }
+    }
+    acc(Nil, tree)
   }
 
   /** Is this pattern node a catch-all or type-test pattern? */
@@ -429,6 +448,10 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case _ =>
       false
   }
+
+  /** The symbols defined locally in a statement list */
+  def localSyms(stats: List[Tree])(implicit ctx: Context): List[Symbol] =
+    for (stat <- stats if stat.isDef && stat.symbol.exists) yield stat.symbol
 
   /** If `tree` is a DefTree, the symbol defined by it, otherwise NoSymbol */
   def definedSym(tree: Tree)(implicit ctx: Context): Symbol =

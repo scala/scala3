@@ -12,7 +12,7 @@ trait Substituters { this: Context =>
       case tp: BoundType =>
         if (tp.binder eq from) tp.copyBoundType(to.asInstanceOf[tp.BT]) else tp
       case tp: NamedType =>
-        if (tp.symbol.isStatic) tp
+        if (tp.currentSymbol.isStatic) tp
         else tp.derivedSelect(subst(tp.prefix, from, to, theMap))
       case _: ThisType | NoPrefix =>
         tp
@@ -130,12 +130,26 @@ trait Substituters { this: Context =>
         var fs = from
         var ts = to
         while (fs.nonEmpty) {
-          if (fs.head eq sym) return tp.prefix select ts.head
+          if (fs.head eq sym)
+            return tp match {
+              case tp: WithFixedSym => NamedType.withFixedSym(tp.prefix, ts.head)
+              case _ => substSym(tp.prefix, from, to, theMap) select ts.head
+            }
           fs = fs.tail
           ts = ts.tail
         }
         if (sym.isStatic && !existsStatic(from)) tp
         else tp.derivedSelect(substSym(tp.prefix, from, to, theMap))
+      case tp: ThisType =>
+        val sym = tp.cls
+        var fs = from
+        var ts = to
+        while (fs.nonEmpty) {
+          if (fs.head eq sym) return ts.head.asClass.thisType
+          fs = fs.tail
+          ts = ts.tail
+        }
+        tp
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
@@ -149,10 +163,10 @@ trait Substituters { this: Context =>
 
   final def substThis(tp: Type, from: ClassSymbol, to: Type, theMap: SubstThisMap): Type =
     tp match {
-      case tp @ ThisType(clazz) =>
-        if (clazz eq from) to else tp
+      case tp: ThisType =>
+        if (tp.cls eq from) to else tp
       case tp: NamedType =>
-        if (tp.symbol.isStaticOwner) tp
+        if (tp.currentSymbol.isStaticOwner) tp
         else tp.derivedSelect(substThis(tp.prefix, from, to, theMap))
       case _: BoundType | NoPrefix =>
         tp
@@ -170,7 +184,7 @@ trait Substituters { this: Context =>
       case tp @ RefinedThis(rt) =>
         if (rt eq from) to else tp
       case tp: NamedType =>
-        if (tp.symbol.isStatic) tp
+        if (tp.currentSymbol.isStatic) tp
         else tp.derivedSelect(substThis(tp.prefix, from, to, theMap))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
@@ -188,7 +202,7 @@ trait Substituters { this: Context =>
       case tp: BoundType =>
         if (tp == from) to else tp
       case tp: NamedType =>
-        if (tp.symbol.isStatic) tp
+        if (tp.currentSymbol.isStatic) tp
         else tp.derivedSelect(substParam(tp.prefix, from, to, theMap))
       case _: ThisType | NoPrefix =>
         tp
@@ -206,7 +220,7 @@ trait Substituters { this: Context =>
       case tp: ParamType =>
         if (tp.binder == from) to(tp.paramNum) else tp
       case tp: NamedType =>
-        if (tp.symbol.isStatic) tp
+        if (tp.currentSymbol.isStatic) tp
         else tp.derivedSelect(substParams(tp.prefix, from, to, theMap))
       case _: ThisType | NoPrefix | _: RefinedThis =>
         tp

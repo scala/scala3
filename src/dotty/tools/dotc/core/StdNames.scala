@@ -266,6 +266,28 @@ object StdNames {
     val x_7 : N  = "x$7"
     val x_8 : N  = "x$8"
     val x_9 : N  = "x$9"
+    val _1 : N  = "_1"
+    val _2 : N  = "_2"
+    val _3 : N  = "_3"
+    val _4 : N  = "_4"
+    val _5 : N  = "_5"
+    val _6 : N  = "_6"
+    val _7 : N  = "_7"
+    val _8 : N  = "_8"
+    val _9 : N  = "_9"
+    val _10 : N = "_10"
+    val _11 : N = "_11"
+    val _12 : N = "_12"
+    val _13 : N = "_13"
+    val _14 : N = "_14"
+    val _15 : N = "_15"
+    val _16 : N = "_16"
+    val _17 : N = "_17"
+    val _18 : N = "_18"
+    val _19 : N = "_19"
+    val _20 : N = "_20"
+    val _21 : N = "_21"
+    val _22 : N = "_22"
 
     val ??? = encode("???")
 
@@ -344,6 +366,7 @@ object StdNames {
  //   val conforms : N             = "conforms" // Dotty deviation: no special treatment of conforms, so the occurrence of the name here would cause to unintended implicit shadowing. Should find a less common name for it in Predef.
     val copy: N                 = "copy"
     val currentMirror: N        = "currentMirror"
+    val create: N               = "create"
     val definitions: N          = "definitions"
     val delayedInit: N          = "delayedInit"
     val delayedInitArg: N       = "delayedInit$body"
@@ -484,6 +507,7 @@ object StdNames {
     val withFilter: N           = "withFilter"
     val withFilterIfRefutable: N = "withFilterIfRefutable$"
     val wrap: N                 = "wrap"
+    val zero: N                 = "zero"
     val zip: N                  = "zip"
 
     val synthSwitch: N          = "$synthSwitch"
@@ -626,6 +650,32 @@ object StdNames {
       case _  => termName("x$" + i)
     }
 
+    @switch def productAccessorName(j: Int): TermName = j match {
+      case 1  => nme._1
+      case 2  => nme._2
+      case 3  => nme._3
+      case 4  => nme._4
+      case 5  => nme._5
+      case 6  => nme._6
+      case 7  => nme._7
+      case 8  => nme._8
+      case 9  => nme._9
+      case 10 => nme._10
+      case 11 => nme._11
+      case 12 => nme._12
+      case 13 => nme._13
+      case 14 => nme._14
+      case 15 => nme._15
+      case 16 => nme._16
+      case 17 => nme._17
+      case 18 => nme._18
+      case 19 => nme._19
+      case 20 => nme._20
+      case 21 => nme._21
+      case 22 => nme._22
+      case _  => termName("_" + j)
+    }
+
     def syntheticParamNames(num: Int): List[TermName] =
       (0 until num).map(syntheticParamName)(breakOut)
 
@@ -635,6 +685,25 @@ object StdNames {
     def newBitmapName(bitmapPrefix: TermName, n: Int): TermName = bitmapPrefix ++ n.toString
 
     def selectorName(n: Int): TermName = "_" + (n + 1)
+    /** Is name a variable name? */
+    def isVariableName(name: Name): Boolean = {
+      val first = name.firstChar
+      (    ((first.isLower && first.isLetter) || first == '_')
+        && (name != nme.false_)
+        && (name != nme.true_)
+        && (name != nme.null_)
+        )
+    }
+
+    object primitive {
+      val arrayApply: TermName  = "[]apply"
+      val arrayUpdate: TermName = "[]update"
+      val arrayLength: TermName = "[]length"
+      val arrayConstructor: TermName = "[]<init>"
+      val names: Set[Name] = Set(arrayApply, arrayUpdate, arrayLength, arrayConstructor)
+    }
+
+    def isPrimitiveName(name: Name) = primitive.names.contains(name)
   }
 
   class ScalaTypeNames extends ScalaNames[TypeName] {

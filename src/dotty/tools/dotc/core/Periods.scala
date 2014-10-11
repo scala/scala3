@@ -129,7 +129,6 @@ object Periods {
     /** The interval consisting of all periods of given run id */
     def allInRun(rid: RunId) =
       apply(rid, 0, PhaseMask)
-
   }
 
   final val Nowhere = new Period(0)
