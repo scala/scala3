@@ -529,7 +529,7 @@ object Flags {
   final val HasDefaultParams = DefaultParameterized | InheritedDefaultParams
 
   /** Is valid forever */
-  final val ValidForever = Package | Permanent
+  final val ValidForever = Package | Permanent | Scala2ExistentialCommon
 
   /** Is a default parameter in Scala 2*/
   final val DefaultParameter = allOf(Param, DefaultParameterized)
