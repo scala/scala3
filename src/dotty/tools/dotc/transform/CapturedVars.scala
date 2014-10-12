@@ -17,31 +17,26 @@ import SymUtils._
 import collection.{ mutable, immutable }
 import collection.mutable.{ LinkedHashMap, LinkedHashSet, TreeSet }
 
-class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransformer =>
+class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransform =>
   import ast.tpd._
 
   /** the following two members override abstract members in Transform */
   val phaseName: String = "capturedVars"
 
-  override def treeTransformPhase = thisTransformer.next
+  override def treeTransformPhase = thisTransform.next
 
   private var captured: mutable.HashSet[Symbol] = _
 
-  private class CollectCaptured(implicit ctx: Context) extends TreeAccumulator[Symbol] {
-    def apply(enclMeth: Symbol, tree: Tree) = {
-      tree match {
-        case id: Ident =>
-          val sym = id.symbol
-          if (sym.is(Mutable, butNot = Method) && sym.owner.isTerm && sym.enclosingMethod != enclMeth) {
-            ctx.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
-            captured += sym
-          }
-        case tree: DefTree if tree.symbol.exists =>
-          foldOver(tree.symbol.enclosingMethod, tree)
-        case _ =>
-          foldOver(enclMeth, tree)
-      }
-      enclMeth
+  private class CollectCaptured(implicit ctx: Context) extends EnclosingMethodTraverser {
+    def traverse(enclMeth: Symbol, tree: Tree) = tree match {
+      case id: Ident =>
+        val sym = id.symbol
+        if (sym.is(Mutable, butNot = Method) && sym.owner.isTerm && sym.enclosingMethod != enclMeth) {
+          ctx.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
+          captured += sym
+        }
+      case _ =>
+        foldOver(enclMeth, tree)
     }
     def runOver(tree: Tree) = {
       captured = mutable.HashSet()
@@ -50,7 +45,7 @@ class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransfor
   }
 
   override def init(implicit ctx: Context, info: TransformerInfo): Unit =
-    (new CollectCaptured).runOver(ctx.compilationUnit.tpdTree)
+    (new CollectCaptured)(ctx.withPhase(thisTransform)).runOver(ctx.compilationUnit.tpdTree)
 
   override def transformSym(sd: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (captured(sd.symbol)) {
@@ -69,7 +64,7 @@ class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransfor
   }
 
   def capturedType(vble: Symbol)(implicit ctx: Context): Type = {
-    val oldInfo = vble.denot(ctx.withPhase(thisTransformer)).info
+    val oldInfo = vble.denot(ctx.withPhase(thisTransform)).info
     refCls(oldInfo.classSymbol, vble.isVolatile).typeRef
   }
 
@@ -91,7 +86,7 @@ class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransfor
   override def transformIdent(id: Ident)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val vble = id.symbol
     if (captured(vble))
-      (id select nme.elem).ensureConforms(vble.denot(ctx.withPhase(thisTransformer)).info)
+      (id select nme.elem).ensureConforms(vble.denot(ctx.withPhase(thisTransform)).info)
     else id
   }
 

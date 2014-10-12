@@ -132,8 +132,7 @@ trait Applications extends Compatibility { self: Typer =>
 
     protected def appPos: Position
 
-    /** If constructing trees, the current function part, which might be
-     *  affected by lifting. EmptyTree otherwise.
+    /** The current function part, which might be affected by lifting.
      */
     protected def normalizedFun: Tree
 
@@ -251,40 +250,52 @@ trait Applications extends Compatibility { self: Typer =>
     /** Find reference to default parameter getter for parameter #n in current
      *  parameter list, or NoType if none was found
      */
-    def findDefaultGetter(n: Int)(implicit ctx: Context): Type = {
-      val meth = methRef.symbol
-      val prefix =
-        if ((meth is Synthetic) && meth.name == nme.apply) nme.CONSTRUCTOR else methRef.name
-      def getterName = prefix.defaultGetterName(n)
-      def ref(pre: Type, sym: Symbol): Type =
-        if (pre.exists && sym.isTerm) pre select sym else NoType
-      if (meth.hasDefaultParams)
-        methRef.prefix match {
-          case NoPrefix =>
-            def findDefault(cx: Context): Type = {
-              if (cx eq NoContext) NoType
-              else if (cx.scope != cx.outer.scope &&
-                       cx.denotNamed(methRef.name).hasAltWith(_.symbol == meth)) {
-                val denot = cx.denotNamed(getterName)
-                assert(denot.exists, s"non-existent getter denotation ($denot) for getter($getterName)")
-                cx.owner.thisType.select(getterName, denot)
-              } else findDefault(cx.outer)
-            }
-            findDefault(ctx)
-          case mpre =>
-            val cls = meth.owner
-            val pre =
-              if (meth.isClassConstructor) {
-                // default getters for class constructors are found in the companion object
-                mpre.baseTypeRef(cls) match {
-                  case tp: TypeRef => ref(tp.prefix, cls.companionModule)
-                  case _ => NoType
-                }
-              } else mpre
-            val getter = pre.member(getterName)
-            ref(pre, getter.symbol)
+    def findDefaultGetter(n: Int)(implicit ctx: Context): Tree = {
+      val meth = methRef.symbol.asTerm
+      val receiver: Tree = methPart(normalizedFun) match {
+        case Select(receiver, _) => receiver
+        case mr => mr.tpe.normalizedPrefix match {
+          case mr: TermRef => ref(mr)
+          case _ => EmptyTree
         }
-      else NoType
+      }
+      val getterPrefix =
+        if ((meth is Synthetic) && meth.name == nme.apply) nme.CONSTRUCTOR else meth.name
+      def getterName = getterPrefix.defaultGetterName(n)
+      if (!meth.hasDefaultParams)
+        EmptyTree
+      else if (receiver.isEmpty) {
+        def findGetter(cx: Context): Tree = {
+          if (cx eq NoContext) EmptyTree
+          else if (cx.scope != cx.outer.scope &&
+            cx.denotNamed(meth.name).hasAltWith(_.symbol == meth)) {
+            val denot = cx.denotNamed(getterName)
+            assert(denot.exists, s"non-existent getter denotation ($denot) for getter($getterName)")
+            ref(TermRef(cx.owner.thisType, getterName, denot))
+          } else findGetter(cx.outer)
+        }
+        findGetter(ctx)
+      }
+      else {
+        def selectGetter(qual: Tree): Tree = {
+          val getterDenot = qual.tpe.member(getterName)
+          if (getterDenot.exists) qual.select(TermRef(qual.tpe, getterName, getterDenot))
+          else EmptyTree
+        }
+        if (!meth.isClassConstructor)
+          selectGetter(receiver)
+        else {
+          // default getters for class constructors are found in the companion object
+          val cls = meth.owner
+          val companion = cls.companionModule
+          receiver.tpe.baseTypeRef(cls) match {
+            case tp: TypeRef if companion.isTerm =>
+              selectGetter(ref(TermRef(tp.prefix, companion.asTerm)))
+            case _ =>
+              EmptyTree
+          }
+        }
+      }
     }
 
     /** Match re-ordered arguments against formal parameters
@@ -305,13 +316,12 @@ trait Applications extends Compatibility { self: Typer =>
           }
 
           def tryDefault(n: Int, args1: List[Arg]): Unit = {
-            findDefaultGetter(n + numArgs(normalizedFun)) match {
-              case dref: NamedType =>
-                liftFun()
-                addTyped(treeToArg(spliceMeth(ref(dref) withPos appPos, normalizedFun)), formal)
-                matchArgs(args1, formals1, n + 1)
-              case _ =>
-                missingArg(n)
+            liftFun()
+            val getter = findDefaultGetter(n + numArgs(normalizedFun))
+            if (getter.isEmpty) missingArg(n)
+            else {
+              addTyped(treeToArg(spliceMeth(getter withPos appPos, normalizedFun)), formal)
+              matchArgs(args1, formals1, n + 1)
             }
           }
 
@@ -364,7 +374,7 @@ trait Applications extends Compatibility { self: Typer =>
     def fail(msg: => String) =
       ok = false
     def appPos = NoPosition
-    def normalizedFun = EmptyTree
+    lazy val normalizedFun = ref(methRef)
     init()
   }
 
@@ -594,7 +604,7 @@ trait Applications extends Compatibility { self: Typer =>
     def followTypeAlias(tree: untpd.Tree): untpd.Tree = {
       tree match {
         case tree: untpd.RefTree =>
-          val ttree = typedType(tree.withName(tree.name.toTypeName))
+          val ttree = typedType(untpd.rename(tree, tree.name.toTypeName))
           ttree.tpe match {
             case alias: TypeRef if alias.info.isAlias =>
               companionRef(alias) match {

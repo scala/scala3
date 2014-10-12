@@ -421,7 +421,7 @@ object Flags {
   /** Flags representing source modifiers */
   final val SourceModifierFlags =
     commonFlags(Private, Protected, Abstract, Final,
-     Sealed, Case, Implicit, Override, AbsOverride, Lazy)
+     Sealed, Case, Implicit, Override, AbsOverride, Lazy, Static)
 
   /** Flags representing modifiers that can appear in trees */
   final val ModifierFlags =
@@ -458,6 +458,9 @@ object Flags {
 
   /** Module classes always have these flags set */
   final val ModuleClassCreationFlags = ModuleClass | Final
+
+  /** Accessors always have these flags set */
+  final val AccessorCreationFlags = Method | Accessor
 
   /** The flags of the self symbol */
   final val SelfSymFlags = Private | Local | Deferred
@@ -526,7 +529,7 @@ object Flags {
   final val HasDefaultParams = DefaultParameterized | InheritedDefaultParams
 
   /** Is valid forever */
-  final val ValidForever = Package | Permanent
+  final val ValidForever = Package | Permanent | Scala2ExistentialCommon
 
   /** Is a default parameter in Scala 2*/
   final val DefaultParameter = allOf(Param, DefaultParameterized)
@@ -543,11 +546,14 @@ object Flags {
   /** Labeled private[this] */
   final val PrivateLocal = allOf(Private, Local)
 
-  /** A private parameter accessor */
+  /** A private[this] parameter accessor */
   final val PrivateLocalParamAccessor = allOf(Private, Local, ParamAccessor)
 
-  /** A private parameter */
+  /** A private[this] parameter */
   final val PrivateLocalParam = allOf(Private, Local, Param)
+
+  /** A private parameter accessor */
+  final val PrivateParamAccessor = allOf(Private, ParamAccessor)
 
   /** A local parameter */
   final val ParamAndLocal = allOf(Param, Local)

@@ -90,7 +90,7 @@ object desugar {
   def valDef(vdef: ValDef)(implicit ctx: Context): Tree = {
     val ValDef(mods, name, tpt, rhs) = vdef
     def setterNeeded =
-      (mods is Mutable) && ctx.owner.isClass && (!(mods is Private) || (ctx.owner is Trait))
+      (mods is Mutable) && ctx.owner.isClass && (!(mods is PrivateLocal) || (ctx.owner is Trait))
     if (setterNeeded) {
       // todo: copy of vdef as getter needed?
       // val getter = ValDef(mods, name, tpt, rhs) withPos vdef.pos ?

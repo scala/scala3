@@ -906,10 +906,14 @@ object Types {
 
     /** Turn type into a function type.
      *  @pre this is a non-dependent method type.
+     *  @param drop  The number of trailing parameters that should be dropped
+     *               when forming the function type.
      */
-    def toFunctionType(implicit ctx: Context): Type = this match {
+    def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
       case mt @ MethodType(_, formals) if !mt.isDependent =>
-        defn.FunctionType(formals mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType)
+        val formals1 = if (dropLast == 0) formals else formals dropRight dropLast
+        defn.FunctionType(
+            formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType)
     }
 
     /** The signature of this type. This is by default NotAMethod,
@@ -1169,7 +1173,12 @@ object Types {
             else loadDenot
         }
         if (ctx.typerState.ephemeral) record("ephemeral cache miss: loadDenot")
-        else {
+        else if (d.exists) {
+          // Avoid storing NoDenotations in the cache - we will not be able to recover from
+          // them. The situation might arise that a type has NoDenotation in some later
+          // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
+          // is undefined after erasure.) We need to be able to do time travel back and
+          // forth also in these cases.
           lastDenotation = d
           lastSymbol = d.symbol
           checkedPeriod = ctx.period

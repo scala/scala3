@@ -43,14 +43,10 @@ trait SymDenotations { this: Context =>
     if (denot is ValidForever) true
     else try {
       val owner = denot.owner.denot
-      def isSelfSym = owner.infoOrCompleter match {
-        case ClassInfo(_, _, _, _, selfInfo) => selfInfo == denot.symbol
-        case _ => false
-      }
       stillValid(owner) && (
            !owner.isClass
         || (owner.decls.lookupAll(denot.name) contains denot.symbol)
-        || isSelfSym
+        || denot.isSelfSym
         )
     } catch {
       case ex: StaleSymbol => false
@@ -200,7 +196,7 @@ object SymDenotations {
     final def hasAnnotation(cls: Symbol)(implicit ctx: Context) =
       dropOtherAnnotations(annotations, cls).nonEmpty
 
-    /** Optionally, get annotation matching the given class symbol */
+    /** Optionally, the annotation matching the given class symbol */
     final def getAnnotation(cls: Symbol)(implicit ctx: Context): Option[Annotation] =
       dropOtherAnnotations(annotations, cls) match {
         case annot :: _ => Some(annot)
@@ -360,6 +356,23 @@ object SymDenotations {
     /** Is this symbol an abstract or alias type? */
     final def isAbstractOrAliasType = isType & !isClass
 
+    /** Is this the denotation of a self symbol of some class?
+     *  This is the case if one of two conditions holds:
+     *  1. It is the symbol referred to in the selfInfo part of the ClassInfo
+     *     which is the type of this symbol's owner.
+     *  2. This symbol is owned by a class, it's selfInfo field refers to a type
+     *     (indicating the self definition does not introduce a name), and the
+     *     symbol's name is "_".
+     *  TODO: Find a more robust way to characterize self symbols, maybe by
+     *       spending a Flag on them?
+     */
+    final def isSelfSym(implicit ctx: Context) = owner.infoOrCompleter match {
+      case ClassInfo(_, _, _, _, selfInfo) =>
+        selfInfo == symbol ||
+          selfInfo.isInstanceOf[Type] && name == nme.WILDCARD
+      case _ => false
+    }
+
     /** Is this definition contained in `boundary`?
      *  Same as `ownersIterator contains boundary` but more efficient.
      */
@@ -371,6 +384,9 @@ object SymDenotations {
         else recur(sym.owner)
       recur(symbol)
     }
+
+    final def isProperlyContainedIn(boundary: Symbol)(implicit ctx: Context): Boolean =
+      symbol != boundary && isContainedIn(boundary)
 
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(implicit ctx: Context) =
@@ -428,7 +444,7 @@ object SymDenotations {
 
     /** Does this symbol denote the primary constructor of its enclosing class? */
     final def isPrimaryConstructor(implicit ctx: Context) =
-      isConstructor && owner.primaryConstructor.denot == this
+      isConstructor && owner.primaryConstructor == symbol
 
     /** Is this a subclass of the given class `base`? */
     def isSubClass(base: Symbol)(implicit ctx: Context) = false
@@ -609,7 +625,7 @@ object SymDenotations {
 
     /** The field accessed by this getter or setter, or if it does not exist, the getter */
     def accessedFieldOrGetter(implicit ctx: Context): Symbol = {
-      val fieldName = if (isSetter) name.asTermName.setterToGetter else name
+      val fieldName = if (isSetter) name.asTermName.getterName else name
       val d = owner.info.decl(fieldName)
       val field = d.suchThat(!_.is(Method)).symbol
       def getter = d.suchThat(_.info.isParameterless).symbol
@@ -916,7 +932,7 @@ object SymDenotations {
       privateWithin: Symbol = null,
       annotations: List[Annotation] = null)(implicit ctx: Context) =
     { // simulate default parameters, while also passing implicit context ctx to the default values
-      val initFlags1 = if (initFlags != UndefinedFlags) initFlags else this.flags &~ Frozen
+      val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags) &~ Frozen
       val info1 = if (info != null) info else this.info
       val privateWithin1 = if (privateWithin != null) privateWithin else this.privateWithin
       val annotations1 = if (annotations != null) annotations else this.annotations
@@ -1314,6 +1330,18 @@ object SymDenotations {
         case _ => bt
       }
 
+      def inCache(tp: Type) = baseTypeRefCache.containsKey(tp)
+
+      /** Can't cache types containing type variables which are uninstantiated
+       *  or whose instances can change, depending on typerstate.
+       */
+      def isCachable(tp: Type): Boolean = tp match {
+        case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
+        case tp: TypeProxy => inCache(tp.underlying)
+        case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
+        case _ => true
+      }
+
       def computeBaseTypeRefOf(tp: Type): Type = {
         Stats.record("computeBaseTypeOf")
         if (symbol.isStatic && tp.derivesFrom(symbol))
@@ -1330,9 +1358,6 @@ object SymDenotations {
               case _ =>
                 baseTypeRefOf(tp.underlying)
             }
-          case tp: TypeVar =>
-            if (tp.inst.exists) computeBaseTypeRefOf(tp.inst)
-            else Uncachable(computeBaseTypeRefOf(tp.underlying))
           case tp: TypeProxy =>
             baseTypeRefOf(tp.underlying)
           case AndType(tp1, tp2) =>
@@ -1353,15 +1378,9 @@ object SymDenotations {
             var basetp = baseTypeRefCache get tp
             if (basetp == null) {
               baseTypeRefCache.put(tp, NoPrefix)
-              val computedBT = computeBaseTypeRefOf(tp)
-              basetp = computedBT match {
-                case Uncachable(basetp) =>
-                  baseTypeRefCache.remove(tp)
-                  computedBT
-                case basetp =>
-              baseTypeRefCache.put(tp, basetp)
-                  basetp
-              }
+              basetp = computeBaseTypeRefOf(tp)
+              if (isCachable(tp)) baseTypeRefCache.put(tp, basetp)
+              else baseTypeRefCache.remove(tp)
             } else if (basetp == NoPrefix) {
               throw CyclicReference(this)
             }
@@ -1420,26 +1439,28 @@ object SymDenotations {
 
     override def primaryConstructor(implicit ctx: Context): Symbol = {
       val cname = if (this is ImplClass) nme.IMPLCLASS_CONSTRUCTOR else nme.CONSTRUCTOR
-      decls.denotsNamed(cname).first.symbol
+      decls.denotsNamed(cname).last.symbol // denotsNamed returns Symbols in reverse order of occurrence
     }
+
+    /** The parameter accessors of this class. Term and type accessors,
+     *  getters and setters are all returned int his list
+     */
+    def paramAccessors(implicit ctx: Context): List[Symbol] =
+      decls.filter(_ is ParamAccessor).toList
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
-     *  @pre  Can only be called in `phase.next`.
      */
-    def ensureFreshScopeAfter(phase: DenotTransformer)(implicit ctx: Context): Unit = {
-      assert(ctx.phaseId == phase.next.id)
-      val prevCtx = ctx.withPhase(phase)
-      val ClassInfo(pre, _, ps, decls, selfInfo) = classInfo
-      if (classInfo(prevCtx).decls eq decls) {
-        copySymDenotation(
-          info = ClassInfo(pre, classSymbol, ps, decls.cloneScope, selfInfo),
-          initFlags = this.flags &~ Frozen).installAfter(phase)
+    def ensureFreshScopeAfter(phase: DenotTransformer)(implicit ctx: Context): Unit =
+      if (ctx.phaseId != phase.next.id) ensureFreshScopeAfter(phase)(ctx.withPhase(phase.next))
+      else {
+        val prevCtx = ctx.withPhase(phase)
+        val ClassInfo(pre, _, ps, decls, selfInfo) = classInfo
+        if (classInfo(prevCtx).decls eq decls)
+          copySymDenotation(info = ClassInfo(pre, classSymbol, ps, decls.cloneScope, selfInfo))
+            .installAfter(phase)
       }
-    }
   }
-
-  private case class Uncachable(tp: Type) extends UncachedGroundType
 
   /** The denotation of a package class.
    *  It overrides ClassDenotation to take account of package objects when looking for members

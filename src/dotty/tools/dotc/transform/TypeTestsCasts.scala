@@ -13,6 +13,7 @@ import core.TypeErasure.isUnboundedGeneric
 import typer.ErrorReporting._
 import ast.Trees._
 import Erasure.Boxing._
+import core.TypeErasure._
 
 /** This transform normalizes type tests and type casts,
  *  also replacing type tests with singleton argument type with reference equality check
@@ -69,7 +70,7 @@ trait TypeTestsCasts {
               }
             case defn.MultiArrayType(elem, ndims) if isUnboundedGeneric(elem) =>
               def isArrayTest(arg: Tree) =
-                runtimeCall(nme.isArray, arg :: Literal(Constant(ndims)) :: Nil)
+                ref(defn.runtimeMethod(nme.isArray)).appliedTo(arg, Literal(Constant(ndims)))
               if (ndims == 1) isArrayTest(qual)
               else evalOnce(qual) { qual1 =>
                 derivedTree(qual1, defn.Any_isInstanceOf, qual1.tpe) and isArrayTest(qual1)
@@ -92,11 +93,11 @@ trait TypeTestsCasts {
           else
             derivedTree(qual, defn.Any_asInstanceOf, argType)
         }
-
+        def erasedArg = erasure(tree.args.head.tpe)
         if (sym eq defn.Any_isInstanceOf)
-          transformIsInstanceOf(qual, tree.args.head.tpe)
+          transformIsInstanceOf(qual, erasedArg)
         else if (sym eq defn.Any_asInstanceOf)
-          transformAsInstanceOf(tree.args.head.tpe)
+          transformAsInstanceOf(erasedArg)
         else tree
 
       case _ =>

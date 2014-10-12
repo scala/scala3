@@ -209,10 +209,11 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Literal)(implicit ctx: Context) =
     tree.withType {
-      tree.const.tag match {
+      val value = tree.const
+      value.tag match {
         case UnitTag => defn.UnitType
         case NullTag => defn.NullType
-        case _ => ConstantType(tree.const)
+        case _ => if (ctx.erasedTypes) value.tpe else ConstantType(value)
       }
     }
 
@@ -235,7 +236,7 @@ trait TypeAssigner {
     }
     val owntype =
       if (!mix.isEmpty) findMixinSuper(cls.info)
-      else if (inConstrCall) cls.info.firstParent
+      else if (inConstrCall || ctx.erasedTypes) cls.info.firstParent
       else {
         val ps = cls.info.parents
         if (ps.isEmpty) defn.AnyType else ps.reduceLeft((x: Type, y: Type) => x & y)
@@ -246,7 +247,7 @@ trait TypeAssigner {
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
     val ownType = fn.tpe.widen match {
       case fntpe @ MethodType(_, ptypes) =>
-        if (sameLength(ptypes, args)) fntpe.instantiate(args.tpes)
+        if (sameLength(ptypes, args) || ctx.phase.prev.relaxedTyping) fntpe.instantiate(args.tpes)
         else errorType(i"wrong number of parameters for ${fn.tpe}; expected: ${ptypes.length}", tree.pos)
       case t =>
         errorType(i"${err.exprStr(fn)} does not take parameters", tree.pos)
@@ -258,7 +259,7 @@ trait TypeAssigner {
     val ownType = fn.tpe.widen match {
       case pt: PolyType =>
         val argTypes = args.tpes
-        if (sameLength(argTypes, pt.paramNames)) pt.instantiate(argTypes)
+        if (sameLength(argTypes, pt.paramNames)|| ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
         else errorType(d"wrong number of type parameters for ${fn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
       case _ =>
         errorType(i"${err.exprStr(fn)} does not take type parameters", tree.pos)
@@ -285,7 +286,9 @@ trait TypeAssigner {
     tree.withType(thenp.tpe | elsep.tpe)
 
   def assignType(tree: untpd.Closure, meth: Tree, target: Tree)(implicit ctx: Context) =
-    tree.withType(if (target.isEmpty) meth.tpe.widen.toFunctionType else target.tpe)
+    tree.withType(
+        if (target.isEmpty) meth.tpe.widen.toFunctionType(tree.env.length)
+        else target.tpe)
 
   def assignType(tree: untpd.CaseDef, body: Tree)(implicit ctx: Context) =
     tree.withType(body.tpe)

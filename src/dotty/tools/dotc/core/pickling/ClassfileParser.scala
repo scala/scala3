@@ -226,7 +226,9 @@ class ClassfileParser(
       while (!isDelimiter(sig(index))) { index += 1 }
       sig.slice(start, index)
     }
-    def sig2type(tparams: immutable.Map[Name,Symbol], skiptvs: Boolean): Type = {
+    // Warning: sigToType contains nested completers which might be forced in a later run!
+    // So local methods need their own ctx parameters.
+    def sig2type(tparams: immutable.Map[Name,Symbol], skiptvs: Boolean)(implicit ctx: Context): Type = {
       val tag = sig(index); index += 1
       (tag: @switch) match {
         case BYTE_TAG   => defn.ByteType
@@ -321,7 +323,7 @@ class ClassfileParser(
       }
     } // sig2type(tparams, skiptvs)
 
-    def sig2typeBounds(tparams: immutable.Map[Name, Symbol], skiptvs: Boolean): Type = {
+    def sig2typeBounds(tparams: immutable.Map[Name, Symbol], skiptvs: Boolean)(implicit ctx: Context): Type = {
       val ts = new ListBuffer[Type]
       while (sig(index) == ':') {
         index += 1
