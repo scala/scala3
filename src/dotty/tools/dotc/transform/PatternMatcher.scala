@@ -20,7 +20,7 @@ import typer.ErrorReporting._
 import ast.Trees._
 import Applications._
 import TypeApplications._
-import TypeUtils._
+import SymUtils._, core.NameOps._
 
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.core.Decorators._
@@ -112,7 +112,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       def tupleSel(binder: Symbol)(i: Int): Tree = ref(binder).select(nme.productAccessorName(i))
       def index(tgt: Tree)(i: Int): Tree         = {
         if (i > 0) tgt.select(defn.Seq_apply).appliedTo(Literal(Constant(i)))
-        else tgt.select(defn.Seq_head).appliedIfMethod
+        else tgt.select(defn.Seq_head).ensureApplied
       }
 
       // Right now this blindly calls drop on the result of the unapplySeq
@@ -237,7 +237,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         val matchFail = newSynthCaseLabel(ctx.freshName("matchFail"), MethodType(Nil, restpe))
         val catchAllDefBody = DefDef(matchFail, catchAllDef)
 
-        val nextCases = (caseSyms.tail ::: List(matchFail)).map(ref(_).appliedIfMethod)
+        val nextCases = (caseSyms.tail ::: List(matchFail)).map(ref(_).ensureApplied)
         val caseDefs = (cases zip caseSyms zip nextCases).foldRight[Tree](catchAllDefBody) {
           // dotty deviation
           //case (((mkCase, sym), nextCase), acc) =>
@@ -248,7 +248,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
             val caseBody = DefDef(sym, _ => Block(List(acc), body))
 
-            Block(List(caseBody),ref(sym).appliedIfMethod)
+            Block(List(caseBody),ref(sym).ensureApplied)
           }}
 
 
@@ -278,7 +278,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           val isDefined = extractorMemberType(prev.tpe, nme.isDefined)
 
           if ((isDefined isRef defn.BooleanClass) && getTp.exists) {
-            val prevValue = ref(prevSym).select("get".toTermName).appliedIfMethod
+            val prevValue = ref(prevSym).select("get".toTermName).ensureApplied
               Block(
                 List(ValDef(prevSym, prev)),
                 // must be isEmpty and get as we don't control the target of the call (prev is an extractor call)
@@ -1800,7 +1800,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           if ((extractorMemberType(resultType, nme.isDefined) isRef defn.BooleanClass) && resultOfGet.exists)
             getUnapplySelectors(resultOfGet, args)
           else if (defn.isProductSubType(resultType)) productSelectorTypes(resultType)
-          else if (resultType =:= defn.BooleanType) Nil
+          else if (resultType isRef defn.BooleanClass) Nil
           else {
             ctx.error(i"invalid return type in Unapply node: $resultType")
             Nil
