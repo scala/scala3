@@ -6,6 +6,7 @@ import core._
 import Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, Annotations._, Trees._, Symbols._
 import Denotations._, Decorators._
+import dotty.tools.dotc.transform.SymUtils._
 
 /** A map that applies three functions and a substitution together to a tree and
  *  makes sure they are coordinated so that the result is well-typed. The functions are
@@ -42,13 +43,7 @@ final class TreeTypeMap(
   import tpd._
 
   /** If `sym` is one of `oldOwners`, replace by corresponding symbol in `newOwners` */
-  def mapOwner(sym: Symbol) = {
-    def loop(from: List[Symbol], to: List[Symbol]): Symbol =
-      if (from.isEmpty) sym
-      else if (sym eq from.head) to.head
-      else loop(from.tail, to.tail)
-    loop(oldOwners, newOwners)
-  }
+  def mapOwner(sym: Symbol) = sym.subst(oldOwners, newOwners)
 
   /** Replace occurrences of `This(oldOwner)` in some prefix of a type
    *  by the corresponding `This(newOwner)`.

@@ -112,7 +112,7 @@ object ExplicitOuter {
   def ensureOuterAccessors(cls: ClassSymbol)(implicit ctx: Context): Unit = {
     //todo: implementing  #165 would simplify this logic
     val prevPhase = ctx.phase.prev
-    assert(prevPhase.id <= ctx.explicitOuter.id, "can add $outer symbols only before ExplicitOuter")
+    assert(prevPhase.id <= ctx.explicitOuterPhase.id, "can add $outer symbols only before ExplicitOuter")
     assert(prevPhase.isInstanceOf[DenotTransformer], "adding outerAccessors requires being DenotTransformer")
     if (!hasOuter(cls)) {
       newOuterAccessors(cls).foreach(_.enteredAfter(prevPhase.asInstanceOf[DenotTransformer]))
@@ -190,7 +190,7 @@ object ExplicitOuter {
    */
   def referencesOuter(cls: Symbol, tree: Tree)(implicit ctx: Context): Boolean = {
     def isOuter(sym: Symbol) =
-      sym != cls && !sym.isStaticOwner && cls.isContainedIn(sym)
+      !sym.isStaticOwner && cls.isProperlyContainedIn(sym)
     tree match {
       case thisTree @ This(_) =>
         isOuter(thisTree.symbol)

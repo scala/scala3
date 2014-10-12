@@ -234,11 +234,14 @@ object Erasure extends TypeTestsCasts{
   class Typer extends typer.ReTyper with NoChecking {
     import Boxing._
 
-    def erasedType(tree: untpd.Tree)(implicit ctx: Context): Type = erasure(tree.typeOpt)
+    def erasedType(tree: untpd.Tree)(implicit ctx: Context): Type = tree.typeOpt match {
+      case tp: TermRef if tree.isTerm => erasedRef(tp)
+      case tp => erasure(tp)
+    }
 
     override def promote(tree: untpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
       assert(tree.hasType)
-      val erased = erasedType(tree)(ctx.withPhase(ctx.erasurePhase))
+      val erased = erasedType(tree)
       ctx.log(s"promoting ${tree.show}: ${erased.showWithUnderlying()}")
       tree.withType(erased)
     }
@@ -364,10 +367,9 @@ object Erasure extends TypeTestsCasts{
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
       val ddef1 = untpd.cpy.DefDef(ddef)(
         tparams = Nil,
-        vparamss = if (ddef.vparamss.isEmpty) Nil :: Nil else ddef.vparamss,
+        vparamss = ddef.vparamss.flatten :: Nil,
         tpt = // keep UnitTypes intact in result position
-          if (ddef.tpt.typeOpt isRef defn.UnitClass) untpd.TypeTree(defn.UnitType) withPos ddef.tpt.pos
-          else ddef.tpt)
+          untpd.TypedSplice(TypeTree(eraseResult(ddef.tpt.typeOpt)).withPos(ddef.tpt.pos)))
       super.typedDefDef(ddef1, sym)
     }
 

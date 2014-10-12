@@ -56,10 +56,12 @@ object ErrorReporting {
       else ""
 
     def expectedTypeStr(tp: Type): String = tp match {
+      case tp: PolyProto =>
+        d"type arguments [${tp.targs}%, %] and ${expectedTypeStr(tp.resultType)}"
       case tp: FunProto =>
         val result = tp.resultType match {
-          case tp: WildcardType => ""
-          case tp => d"and expected result type $tp"
+          case _: WildcardType | _: IgnoredProto => ""
+          case tp => d" and expected result type $tp"
         }
         d"arguments (${tp.typedArgs.tpes}%, %)$result"
       case _ =>

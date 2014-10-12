@@ -24,17 +24,6 @@ class Compiler {
    *  all refs to it would become outdated - they could not be dereferenced in the
    *  new phase.
    *
-   *  As an example, addGetters would change a field
-   *
-   *     val x: T
-   *
-   *  to a method
-   *
-   *     def x: T
-   *
-   *  but this would affect the signature of `x` (goes from NotAMethod to a method
-   *  signature). So we can't do this before erasure.
-   *
    *  After erasure, signature changing denot-transformers are OK because erasure
    *  will make sure that only term refs with fixed SymDenotations survive beyond it. This
    *  is possible because:
@@ -57,13 +46,15 @@ class Compiler {
            new TailRec),
       List(new PatternMatcher,
            new ExplicitOuter,
-           new LazyValsTransform,
+           // new LazyValTranformContext().transformer, // disabled, awaiting fixes
            new Splitter),
       List(new ElimByName,
            new InterceptedMethods,
-           new Literalize),
+           new Literalize,
+           new GettersSetters),
       List(new Erasure),
-      List(new CapturedVars)
+      List(new CapturedVars, new Constructors)/*,
+      List(new LambdaLift)*/
     )
 
   var runId = 1
