@@ -1391,7 +1391,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         val accessors =
           if (defn.isProductSubType(binder.info))
             productSelectors(binder.info)
-          else binder.info.caseAccessors
+          else binder.caseAccessors
         val res =
         if (accessors.isDefinedAt(i - 1)) ref(binder).select(accessors(i - 1).name)
         else codegen.tupleSel(binder)(i) // this won't type check for case classes, as they do not inherit ProductN
@@ -1480,7 +1480,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         * when `binderKnownNonNull` is `true`, `ProductExtractorTreeMaker` does not do a (redundant) null check on binder
         */
       def treeMaker(binder: Symbol, binderKnownNonNull: Boolean, pos: Position, binderTypeTested: Type): TreeMaker = {
-        val paramAccessors = binder.info.caseAccessors
+        val paramAccessors = binder.caseAccessors
         // binders corresponding to mutable fields should be stored (SI-5158, SI-6070)
         // make an exception for classes under the scala package as they should be well-behaved,
         // to optimize matching on List
