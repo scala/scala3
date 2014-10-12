@@ -175,7 +175,7 @@ object Phases {
     def refchecksPhase = refChecksCache.phase
     def erasurePhase = erasureCache.phase
     def flattenPhase = flattenCache.phase
-    def explicitOuter = explicitOuterCache.phase
+    def explicitOuterPhase = explicitOuterCache.phase
     def gettersSettersPhase = gettersSettersCache.phase
 
     def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
