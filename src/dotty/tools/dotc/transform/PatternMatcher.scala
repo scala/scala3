@@ -394,6 +394,25 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       override def toString = "B"+((body, matchPt))
     }
 
+    /**
+     * In scalac for such block
+     *   x match {
+     *     case d => <body>
+     *   }
+     *
+     * d inside <body> was to be substitued by x.
+     *
+     * In dotty, SubstOnlyTreeMakers instead generate normal ValDef,
+     *   and does not create a new substitution.
+     *
+     * This was done for several reasons:
+     *  1) it is a lot easyer to Y-check,
+     *     as d type could be used in <body>.
+     *  2) it would simplify debugging of the generated code as
+     *     this works also for nested patterns, and previously they used unreadable names
+     *  3) It showed better(~30%), performance,
+     *     Rebuilding tree and propagating types was taking substantial time.
+     */
     case class SubstOnlyTreeMaker(prevBinder: Symbol, nextBinder: Symbol) extends TreeMaker {
       val pos = Positions.NoPosition
 
@@ -851,29 +870,25 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     def removeSubstOnly(makers: List[TreeMaker]) = makers filterNot (_.isInstanceOf[SubstOnlyTreeMaker])
 
     // a foldLeft to accumulate the localSubstitution left-to-right
-    // it drops SubstOnly tree makers, since their only goal in life is to propagate substitutions to the next tree maker, which is fullfilled by propagateSubstitution
+    // unlike in scalace it does not drop SubstOnly tree makers,
+    // as there could types having them as prefix
     def propagateSubstitution(treeMakers: List[TreeMaker], initial: Substitution): List[TreeMaker] = {
       var accumSubst: Substitution = initial
       treeMakers foreach { maker =>
         maker incorporateOuterSubstitution accumSubst
         accumSubst = maker.substitution
       }
-      removeSubstOnly(treeMakers)
+      treeMakers
     }
 
     // calls propagateSubstitution on the treemakers
     def combineCases(scrut: Tree, scrutSym: Symbol, casesRaw: List[List[TreeMaker]], pt: Type, owner: Symbol, matchFailGenOverride: Option[Symbol => Tree]): Tree = {
-      // drops SubstOnlyTreeMakers, since their effect is now contained in the TreeMakers that follow them
-      val casesNoSubstOnly = casesRaw map (propagateSubstitution(_, EmptySubstitution))
-      combineCasesNoSubstOnly(scrut, scrutSym, casesNoSubstOnly, pt, owner, matchFailGenOverride)
-    }
+      // unlike in scalac SubstOnlyTreeMakers are maintained.
+      val casesSubstitutionPropagated = casesRaw map (propagateSubstitution(_, EmptySubstitution))
 
-    // pt is the fully defined type of the cases (either pt or the lub of the types of the cases)
-    def combineCasesNoSubstOnly(scrut: Tree, scrutSym: Symbol, casesNoSubstOnly: List[List[TreeMaker]], pt: Type, owner: Symbol, matchFailGenOverride: Option[Symbol => Tree]): Tree =
-      /*fixerUpper(owner, scrut.pos)*/ {
-        def matchFailGen = matchFailGenOverride orElse Some((arg: Symbol) => Throw(New(defn.MatchErrorType, List(ref(arg)))))
+      def matchFailGen = matchFailGenOverride orElse Some((arg: Symbol) => Throw(New(defn.MatchErrorType, List(ref(arg)))))
 
-      ctx.debuglog("combining cases: "+ (casesNoSubstOnly.map(_.mkString(" >> ")).mkString("{", "\n", "}")))
+      ctx.debuglog("combining cases: "+ (casesSubstitutionPropagated.map(_.mkString(" >> ")).mkString("{", "\n", "}")))
 
         val (suppression, requireSwitch): (Suppression, Boolean) =
           /*if (settings.XnoPatmatAnalysis)*/ (Suppression.NoSuppression, false)
@@ -892,10 +907,10 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
               (Suppression.NoSuppression, false)
           }*/
 
-        emitSwitch(scrut, scrutSym, casesNoSubstOnly, pt, matchFailGenOverride, suppression.exhaustive).getOrElse{
+        emitSwitch(scrut, scrutSym, casesSubstitutionPropagated, pt, matchFailGenOverride, suppression.exhaustive).getOrElse{
           if (requireSwitch) ctx.warning("could not emit switch for @switch annotated match", scrut.pos)
 
-          if (casesNoSubstOnly nonEmpty) {
+          if (casesSubstitutionPropagated nonEmpty) {
             // before optimizing, check casesNoSubstOnly for presence of a default case,
             // since DCE will eliminate trivial cases like `case _ =>`, even if they're the last one
             // exhaustivity and reachability must be checked before optimization as well
@@ -903,15 +918,15 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
             //   ("trivial" depends on whether we're emitting a straight match or an exception, or more generally, any supertype of scrutSym.tpe is a no-op)
             //   irrefutability checking should use the approximation framework also used for CSE, unreachability and exhaustivity checking
             val synthCatchAll: Option[Symbol => Tree] =
-              if (casesNoSubstOnly.nonEmpty && {
-                val nonTrivLast = casesNoSubstOnly.last
+              if (casesSubstitutionPropagated.nonEmpty && {
+                val nonTrivLast = casesSubstitutionPropagated.last
                 nonTrivLast.nonEmpty && nonTrivLast.head.isInstanceOf[BodyTreeMaker]
               }) None
               else matchFailGen
 
-            analyzeCases(scrutSym, casesNoSubstOnly, pt, suppression)
+            analyzeCases(scrutSym, casesSubstitutionPropagated, pt, suppression)
 
-            val (cases, toHoist) = optimizeCases(scrutSym, casesNoSubstOnly, pt)
+            val (cases, toHoist) = optimizeCases(scrutSym, casesSubstitutionPropagated, pt)
 
             val matchRes = codegen.matcher(scrut, scrutSym, pt)(cases.map(x => combineExtractors(x) _), synthCatchAll)
 
