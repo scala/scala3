@@ -14,13 +14,13 @@ class tests extends CompilerTest {
         "-pagewidth", "160")
 
   implicit val defaultOptions = noCheckOptions ++ List(
-      "-YnoDeepSubtypes",
+      "-Yno-deep-subtypes",
       "-Ycheck:patternMatcher,gettersSetters,constructors"
   )
 
   val twice = List("#runs", "2", "-YnoDoubleBindings")
   val doErase = List("-Ystop-before:terminal")
-  val allowDeepSubtypes = defaultOptions diff List("-YnoDeepSubtypes")
+  val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
 
   val posDir = "./tests/pos/"
   val negDir = "./tests/neg/"
