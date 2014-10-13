@@ -979,6 +979,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       object SymbolAndTypeBound {
         def unapply(tree: Tree): Option[(Symbol, Type)] = tree match {
+          case SymbolBound(sym, Typed(_: UnApply, _)) => None // see comment in #189
           case SymbolBound(sym, TypeBound(tpe)) => Some(sym -> tpe)
           case TypeBound(tpe)                   => Some(binder -> tpe)
           case _                                => None
