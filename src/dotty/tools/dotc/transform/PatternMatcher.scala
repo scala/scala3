@@ -246,16 +246,14 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
             case  ((mkCase, sym), nextCase) =>
             val body = mkCase(new OptimizedCasegen(nextCase)).ensureConforms(restpe)
 
-            val caseBody = DefDef(sym, _ => Block(List(acc), body))
-
-            Block(List(caseBody),ref(sym).ensureApplied)
+            DefDef(sym, _ => Block(List(acc), body))
           }}
 
 
         // scrutSym == NoSymbol when generating an alternatives matcher
         // val scrutDef = scrutSym.fold(List[Tree]())(ValDef(_, scrut) :: Nil) // for alternatives
 
-        caseDefs
+        Block(List(caseDefs), ref(caseSyms.head).ensureApplied)
       }
 
       class OptimizedCasegen(nextCase: Tree) extends CommonCodegen with Casegen {
@@ -283,7 +281,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
                 List(ValDef(prevSym, prev)),
                 // must be isEmpty and get as we don't control the target of the call (prev is an extractor call)
                 ifThenElseZero(
-                  ref(prevSym).select(nme.isDefined).select(defn.Boolean_!),
+                  ref(prevSym).select(nme.isDefined),
                   Substitution(b, prevValue)(next)
                 )
               )
