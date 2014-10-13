@@ -12,7 +12,7 @@ object Functions {
     val x2: String => Int = x.foo
     val x3 = x.foo _
   }
-  
+
   object sams {
     abstract class Spore[T, U] {
       def run(x: T): U
@@ -22,9 +22,9 @@ object Functions {
       def run(x: T): U
     }
 
-    val x: String => String = {
+    val x33: String => String = x22 => x22 match {
       case "abc" => ""
-      case x => x
+      case x34 => x34
     }
     val y: PartialFunction[String, String] = x => x match {
       case "abc" => ""
