@@ -22,7 +22,8 @@ import collection.{ mutable, immutable }
 import collection.mutable.{ HashMap, HashSet, LinkedHashMap, LinkedHashSet, TreeSet }
 
 object LambdaLift {
-  val NJ = NameTransformer.NAME_JOIN_STRING
+  private val NJ = NameTransformer.NAME_JOIN_STRING
+  private class NoPath extends Exception
 }
 
 class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
@@ -125,7 +126,8 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
    *    }
    *  }
    */
-  private def markFree(sym: Symbol, enclosure: Symbol)(implicit ctx: Context): Boolean = {
+  private def markFree(sym: Symbol, enclosure: Symbol)(implicit ctx: Context): Boolean = try {
+    if (!enclosure.exists) throw new NoPath
     println(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
     (enclosure == sym.enclosure) || {
       ctx.debuglog(i"$enclosure != ${sym.enclosure}")
@@ -142,6 +144,11 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
         !enclosure.isClass
       }
     }
+  }
+  catch {
+    case ex: NoPath =>
+      println(i"error lambda lifting ${ctx.compilationUnit}: $sym is not visible from $enclosure")
+      throw ex
   }
 
   private def markCalled(callee: Symbol, caller: Symbol)(implicit ctx: Context): Unit = {
