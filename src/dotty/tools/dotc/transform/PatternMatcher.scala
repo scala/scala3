@@ -287,7 +287,10 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
               )
           } else {
             assert(defn.isProductSubType(prev.tpe))
-            Substitution(b, ref(prevSym))(next)
+            Block(
+              List(ValDef(prevSym, prev)),
+              Substitution(b, ref(prevSym))(next)
+            )
           }
         }
 
@@ -432,8 +435,10 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       val cond: Tree
       val res: Tree
 
-      lazy val nextBinder = freshSym(pos, nextBinderTp)
-      lazy val localSubstitution = Substitution(List(prevBinder), List(ref(nextBinder)))
+      val nextBinder: Symbol
+      lazy val localSubstitution =
+        if(nextBinder ne prevBinder) Substitution(List(prevBinder), List(ref(nextBinder)))
+        else EmptySubstitution
 
       def chainBefore(next: Tree)(casegen: Casegen): Tree =
         /*atPos(pos)(*/casegen.flatMapCond(cond, res, nextBinder, substitution(next))//)
@@ -728,7 +733,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       val prevBinder = testedBinder
 
-      override lazy val nextBinder = afterTest.asTerm
+      val nextBinder = afterTest.asTerm
 
       def needsOuterTest(patType: Type, selType: Type, currentOwner: Symbol) = {
         // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
@@ -823,13 +828,14 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     }
 
     // need to substitute to deal with existential types -- TODO: deal with existentials better, don't substitute (see RichClass during quick.comp)
-    case class EqualityTestTreeMaker(prevBinder: Symbol, patTree: Tree, override val pos: Position) extends CondTreeMaker {
-      val nextBinderTp = prevBinder.info.widen
+    case class EqualityTestTreeMaker(prevBinder: Symbol, subpatBinder: Symbol, patTree: Tree, override val pos: Position) extends CondTreeMaker {
+      val nextBinderTp = patTree.tpe & prevBinder.info
+      val nextBinder = if (prevBinder eq subpatBinder) freshSym(pos, nextBinderTp) else subpatBinder
 
       // NOTE: generate `patTree == patBinder`, since the extractor must be in control of the equals method (also, patBinder may be null)
       // equals need not be well-behaved, so don't intersect with pattern's (stabilized) type (unlike MaybeBoundTyped's accumType, where it's required)
       val cond = codegen._equals(patTree, prevBinder)
-      val res  = ref(prevBinder)
+      val res  = ref(prevBinder).ensureConforms(nextBinderTp)
       override def toString = "ET"+((prevBinder.name, patTree))
     }
 
@@ -1020,6 +1026,13 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         }
       }
 
+      object SymbolAndValueBound {
+        def unapply(tree: Tree): Option[(Symbol, Tree)] = tree match {
+          case SymbolBound(sym, ConstantPattern(const)) => Some(sym -> const)
+          case _                                => None
+        }
+      }
+
       object TypeBound {
         def unapply(tree: Tree): Option[Type] = tree match {
           case Typed(_, _)  => Some(tree.typeOpt)
@@ -1027,11 +1040,19 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         }
       }
 
+      object ConstantPattern {
+        def unapply(tree: Tree): Option[Tree] = tree match {
+          case Literal(Constant(_)) | Ident(_) | Select(_, _) | This(_) => Some(tree)
+          case _ => None
+        }
+      }
+
       private def rebindTo(pattern: Tree) = BoundTree(binder, pattern)
       private def step(treeMakers: TreeMaker*)(subpatterns: BoundTree*): TranslationStep = TranslationStep(treeMakers.toList, subpatterns.toList)
 
       private def bindingStep(sub: Symbol, subpattern: Tree) = step(SubstOnlyTreeMaker(sub, binder))(rebindTo(subpattern))
-      private def equalityTestStep()                         = step(EqualityTestTreeMaker(binder, tree, pos))()
+      private def equalityTestStep(testedSymbol: Symbol, constantSymbol: Symbol, constant: Tree)
+                                                             = step(EqualityTestTreeMaker(testedSymbol, constantSymbol, constant, pos))()
       private def typeTestStep(sub: Symbol, subPt: Type)     = step(TypeTestTreeMaker(sub, binder, subPt, sub.termRef)(pos))()
       private def alternativesStep(alts: List[Tree])         = step(AlternativesTreeMaker(binder, translatedAlts(alts), alts.head.pos))()
       private def translatedAlts(alts: List[Tree])           = alts map (alt => rebindTo(alt).translate())
@@ -1083,9 +1104,10 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         case _: UnApply | _: Apply| Typed(_: UnApply | _: Apply, _)   => extractorStep()
         case SymbolAndTypeBound(sym, tpe)                             => typeTestStep(sym, tpe)
         case TypeBound(tpe)                                           => typeTestStep(binder, tpe)
+        case SymbolAndValueBound(sym, const)                          => equalityTestStep(binder, sym, const)
         case SymbolBound(sym, expr)                                   => bindingStep(sym, expr)
         case WildcardPattern()                                        => noStep()
-        case Literal(Constant(_)) | Ident(_) | Select(_, _) | This(_) => equalityTestStep()
+        case ConstantPattern(const)                                   => equalityTestStep(binder, binder, const)
         case Alternative(alts)                                        => alternativesStep(alts)
         case _                                                        => ctx.error(unsupportedPatternMsg, pos) ; noStep()
       }
