@@ -278,6 +278,7 @@ object Scopes {
         if (e.sym == prev) e.sym = replacement
         e = lookupNextEntry(e)
       }
+      elemsCache = null
     }
 
     /** Lookup a symbol entry matching given name.

@@ -101,15 +101,17 @@ class TreeChecker {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
         ctxOwner.isWeakOwner && ownerMatches(symOwner, ctxOwner.owner)
-      if(!ownerMatches(tree.symbol.owner, ctx.owner)) {
-        assert(ownerMatches(tree.symbol.owner, ctx.owner),
-          i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}\n" +
-          i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
-      }
+      assert(ownerMatches(tree.symbol.owner, ctx.owner),
+        i"bad owner; ${tree.symbol} has owner ${tree.symbol.owner}, expected was ${ctx.owner}\n" +
+        i"owner chain = ${tree.symbol.ownersIterator.toList}%, %, ctxOwners = ${ctx.outersIterator.map(_.owner).toList}%, %")
     }
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = {
       val TypeDef(_, _, impl @ Template(constr, _, _, _)) = cdef
+      assert(cdef.symbol == cls)
+      assert(impl.symbol.owner == cls)
+      assert(constr.symbol.owner == cls)
+      assert(cls.primaryConstructor == constr.symbol, i"mismatch, primary constructor ${cls.primaryConstructor}, in tree = ${constr.symbol}")
       checkOwner(impl)
       checkOwner(impl.constr)
       super.typedClassDef(cdef, cls)
