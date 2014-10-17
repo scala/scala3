@@ -53,8 +53,8 @@ class Compiler {
            new Literalize,
            new GettersSetters),
       List(new Erasure),
-      List(new CapturedVars, new Constructors),
-      List(new LambdaLift)
+      List(new CapturedVars, new Constructors)/*,
+      List(new LambdaLift)*/
     )
 
   var runId = 1
