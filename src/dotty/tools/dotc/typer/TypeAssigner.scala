@@ -49,7 +49,21 @@ trait TypeAssigner {
             case TypeAlias(ref) =>
               apply(ref)
             case info: ClassInfo =>
-              mapOver(info.instantiatedParents.reduceLeft(ctx.typeComparer.andType(_, _)))
+              val parentType = info.instantiatedParents.reduceLeft(ctx.typeComparer.andType(_, _))
+              def addRefinement(parent: Type, decl: Symbol) = {
+                val inherited = parentType.findMember(decl.name, info.cls.thisType, Private)
+                val inheritedInfo = inherited.atSignature(decl.info .signature).info
+                if (inheritedInfo.exists && decl.info <:< inheritedInfo && !(inheritedInfo <:< decl.info))
+                  typr.echo(
+                    i"add ref $parent $decl --> ",
+                    RefinedType(parent, decl.name, decl.info))
+                else
+                  parent
+              }
+              val refinableDecls = info.decls.filterNot(
+                sym => sym.is(TypeParamAccessor | Private) || sym.isConstructor)
+              val fullType = (parentType /: refinableDecls)(addRefinement)
+              mapOver(fullType)
             case _ =>
               mapOver(tp)
           }
