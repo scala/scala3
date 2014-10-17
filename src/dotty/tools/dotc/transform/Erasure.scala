@@ -195,8 +195,8 @@ object Erasure extends TypeTestsCasts{
           // See SI-2386 for one example of when this might be necessary.
           cast(ref(defn.runtimeMethod(nme.toObjectArray)).appliedTo(tree), pt)
         case _ =>
-          ctx.log(s"casting from ${tree.showSummary}: ${tree.tpe.show} to ${pt.show}")
-          tree.asInstance(pt)
+          if (pt.isPrimitiveValueType) primitiveConversion(tree, pt.classSymbol)
+          else tree.asInstance(pt)
       }
     }
 
