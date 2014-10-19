@@ -410,6 +410,8 @@ object Types {
           goAnd(l, r)
         case OrType(l, r) =>
           goOr(l, r)
+        case tp: JavaArrayType =>
+          defn.ObjectType.findMember(name, pre, excluded)
         case ErrorType =>
           ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name)
         case _ =>
