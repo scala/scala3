@@ -267,7 +267,7 @@ trait Symbols { this: Context =>
    *  Cross symbol references are brought over from originals to copies.
    *  Do not copy any symbols if all attributes of all symbols stay the same.
    */
-  def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap) =
+  def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap): List[Symbol] =
     if (originals forall (sym =>
         (ttmap.mapType(sym.info) eq sym.info) &&
         !(ttmap.oldOwners contains sym.owner)))

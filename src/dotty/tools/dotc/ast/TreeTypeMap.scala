@@ -79,14 +79,25 @@ final class TreeTypeMap(
 
   override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = treeMap(tree) match {
     case impl @ Template(constr, parents, self, body) =>
-      val tmap = withMappedSyms(impl.symbol :: impl.constr.symbol :: Nil)
-      val parents1 = parents mapconserve transform
-      val (_, constr1 :: self1 :: Nil) = transformDefs(constr :: self :: Nil)
-      val body1 = tmap.transformStats(body)
-      updateDecls(constr :: body, constr1 :: body1)
-      cpy.Template(impl)(
-        constr1.asInstanceOf[DefDef], parents1, self1.asInstanceOf[ValDef], body1)
-        .withType(tmap.mapType(impl.tpe))
+      if (oldOwners contains impl.symbol.owner) {
+        val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
+        cpy.Template(impl)(
+          constr = tmap.transformSub(constr),
+          parents = parents mapconserve transform,
+          self = tmap.transformSub(self),
+          body = body mapconserve tmap.transform
+        ).withType(tmap.mapType(impl.tpe))
+      }
+      else {
+        val tmap = withMappedSyms(impl.symbol :: impl.constr.symbol :: Nil)
+        val parents1 = parents mapconserve transform
+        val (_, constr1 :: self1 :: Nil) = transformDefs(constr :: self :: Nil)
+        val body1 = tmap.transformStats(body)
+        updateDecls(constr :: body, constr1 :: body1)
+        cpy.Template(impl)(
+          constr1.asInstanceOf[DefDef], parents1, self1.asInstanceOf[ValDef], body1)
+          .withType(tmap.mapType(impl.tpe))
+      }
     case tree1 =>
       tree1.withType(mapType(tree1.tpe)) match {
         case id: Ident if tpd.needsSelect(id.tpe) =>
@@ -160,8 +171,24 @@ final class TreeTypeMap(
    *  and return a treemap that contains the substitution
    *  between original and mapped symbols.
    */
-  def withMappedSyms(syms: List[Symbol]): TreeTypeMap = {
-    val mapped = ctx.mapSymbols(syms, this)
-    withSubstitution(syms, mapped)
-  }
+  def withMappedSyms(syms: List[Symbol]): TreeTypeMap =
+    withMappedSyms(syms, ctx.mapSymbols(syms, this))
+
+  /** The tree map with the substitution between originals `syms`
+   *  and mapped symbols `mapped`. Also goes into mapped classes
+   *  and substitutes their declarations.
+   */
+  def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap =
+    if (mapped eq syms) this
+    else {
+      val substMap = withSubstitution(syms, mapped)
+      val mappedClasses = mapped.filter(_.isClass)
+      (substMap /: mappedClasses) { (tmap, cls) =>
+        val origDcls = cls.decls.toList
+        val mappedDcls = ctx.mapSymbols(origDcls, tmap)
+        val tmap1 = tmap.withMappedSyms(origDcls, mappedDcls)
+        (origDcls, mappedDcls).zipped.foreach(cls.asClass.replace)
+       tmap1
+      }
+    }
 }
