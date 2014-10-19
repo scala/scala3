@@ -10,6 +10,8 @@ import Types._
 import Constants.Constant
 import Contexts.Context
 import Symbols._
+import SymDenotations._
+import Decorators._
 import scala.collection.mutable
 import DenotTransformers._
 import typer.Checking
@@ -21,6 +23,7 @@ import NameOps._
  *   - ensures there are companion objects for all classes except module classes
  *   - eliminates some kinds of trees: Imports, NamedArgs, all TypTrees other than TypeTree
  *   - converts Select/Ident/SelectFromTypeTree nodes that refer to types to TypeTrees.
+ *   - inserts `.package` for selections of package object members
  *   - checks the bounds of AppliedTypeTrees
  *   - stubs out native methods
  */
@@ -28,6 +31,12 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { 
   import ast.tpd._
 
   override def phaseName = "companions"
+
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
+    case Select(qual, _) if tree.symbol.exists =>
+      assert(qual.tpe derivesFrom tree.symbol.owner, i"non member selection of ${tree.symbol.showLocated} from ${qual.tpe}")
+    case _ =>
+  }
 
   /** Reorder statements so that module classes always come after their companion classes, add missing companion classes */
   private def reorderAndComplete(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
@@ -96,7 +105,15 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { 
   }
 
   override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
-    normalizeType(tree)
+    normalizeType {
+      val qual = tree.qualifier
+      qual.symbol.moduleClass.denot match {
+        case pkg: PackageClassDenotation if tree.symbol.maybeOwner.isPackageObject =>
+          cpy.Select(tree)(qual select pkg.packageObj.symbol, tree.name)
+        case _ =>
+          tree
+      }
+    }
 
   override def transformSelectFromTypeTree(tree: SelectFromTypeTree)(implicit ctx: Context, info: TransformerInfo) =
     normalizeType(tree)
