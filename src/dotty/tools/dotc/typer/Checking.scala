@@ -105,6 +105,9 @@ object Checking {
     }
 
     def apply(tp: Type) = tp match {
+      case tp: TermRef =>
+        this(tp.info)
+        mapOver(tp)
       case tp @ RefinedType(parent, name) =>
         val parent1 = this(parent)
         val saved = cycleOK
