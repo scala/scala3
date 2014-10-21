@@ -666,10 +666,16 @@ object SymDenotations {
      *  for these definitions.
      */
     final def enclosingClass(implicit ctx: Context): Symbol = {
-      def enclClass(d: SymDenotation): Symbol =
-        if (d.isClass || !d.exists) d.symbol else enclClass(d.owner)
-      val cls = enclClass(this)
-      if (this is InSuperCall) cls.owner.enclosingClass else cls
+      def enclClass(sym: Symbol, skip: Boolean): Symbol = {
+        def newSkip = sym.is(InSuperCall) || sym.is(JavaStaticTerm)
+        if (!sym.exists)
+          NoSymbol
+        else if (sym.isClass)
+          if (skip) enclClass(sym.owner, newSkip) else sym
+        else
+          enclClass(sym.owner, skip || newSkip)
+      }
+      enclClass(symbol, false)
     }
 
     final def isEffectivelyFinal(implicit ctx: Context): Boolean = {
