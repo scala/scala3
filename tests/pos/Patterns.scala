@@ -1,3 +1,4 @@
+import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.core.Types._
 
 object Patterns {
@@ -13,6 +14,8 @@ object Patterns {
   d match {
     case WildcardType(bounds: TypeBounds) =>
       bounds.variance
+    case a @ Assign(Ident(id), rhs) => id
+    case a: Object => a
   }
 
   ('1', "1") match {

@@ -587,11 +587,22 @@ class TypeComparer(initctx: Context) extends DotClass {
       else thirdTry(tp1, tp2)
     }
     tp1.info match {
+      // There was the following code, which was meant to implement this logic:
+      //    If x has type A | B, then x.type <: C if
+      //    x.type <: C assuming x has type A, and
+      //    x.type <: C assuming x has type B.
+      // But it did not work, because derivedRef would always give back the same
+      // type and cache the denotation. So it ended up copmparing just one branch.
+      // The code seems to be unncessary for the tests and does not seems to help performance.
+      // So it is commented out. If we ever need to come back to this, we would have
+      // to create unchached TermRefs in order to avoid cross talk between the branches.
+      /*
       case OrType(tp11, tp12) =>
         val sd = tp1.denot.asSingleDenotation
         def derivedRef(tp: Type) =
           NamedType(tp1.prefix, tp1.name, sd.derivedSingleDenotation(sd.symbol, tp))
         secondTry(OrType.make(derivedRef(tp11), derivedRef(tp12)), tp2)
+      */
       case TypeBounds(lo1, hi1) =>
         if ((ctx.mode is Mode.GADTflexible) && (tp1.symbol is GADTFlexType) &&
             !isSubTypeWhenFrozen(hi1, tp2))
@@ -761,6 +772,8 @@ class TypeComparer(initctx: Context) extends DotClass {
           case tp2: TermRef =>
             tp2.info match {
               case tp2i: TermRef =>
+                isSubType(tp1, tp2i)
+              case ExprType(tp2i: TermRef) if (ctx.phase.id > ctx.gettersSettersPhase.id) =>
                 isSubType(tp1, tp2i)
               case _ =>
                 false

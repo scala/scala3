@@ -20,7 +20,7 @@ import typer.ErrorReporting._
 import ast.Trees._
 import Applications._
 import TypeApplications._
-import TypeUtils._
+import SymUtils._, core.NameOps._
 
 import dotty.tools.dotc.util.Positions.Position
 import dotty.tools.dotc.core.Decorators._
@@ -112,7 +112,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       def tupleSel(binder: Symbol)(i: Int): Tree = ref(binder).select(nme.productAccessorName(i))
       def index(tgt: Tree)(i: Int): Tree         = {
         if (i > 0) tgt.select(defn.Seq_apply).appliedTo(Literal(Constant(i)))
-        else tgt.select(defn.Seq_head).appliedIfMethod
+        else tgt.select(defn.Seq_head).ensureApplied
       }
 
       // Right now this blindly calls drop on the result of the unapplySeq
@@ -138,73 +138,28 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
   }
 
 
-    object Substitution {
-      def apply(from: Symbol, to: Tree) = new Substitution(List(from), List(to))
+    object Rebindings {
+      def apply(from: Symbol, to: Symbol) = new Rebindings(List(from), List(ref(to)))
       // requires sameLength(from, to)
       def apply(from: List[Symbol], to: List[Tree]) =
-        if (from nonEmpty) new Substitution(from, to) else EmptySubstitution
+        if (from nonEmpty) new Rebindings(from, to) else NoRebindings
     }
 
-    class Substitution(val from: List[Symbol], val to: List[Tree]) {
-
-      // We must explicitly type the trees that we replace inside some other tree, since the latter may already have been typed,
-      // and will thus not be retyped. This means we might end up with untyped subtrees inside bigger, typed trees.
-      def apply(tree: Tree): Tree = {
-        // according to -Ystatistics 10% of translateMatch's time is spent in this method...
-        // since about half of the typedSubst's end up being no-ops, the check below shaves off 5% of the time spent in typedSubst
-        /*if (!tree.exists { case i@Ident(_) => from contains i.symbol case _ => false}) tree
-        else*/
-
-        var replaced = 0
-        val toAdapted = (from zip to) map {
-          case (orig, nw) =>
-            if (nw.tpe <:< orig.info) nw else nw.ensureConforms(orig.info & nw.tpe)
-        }
-
-        val identReplace: Ident => Tree = { ident =>
-              def subst(from: List[Symbol], to: List[Tree]): Tree =
-                if (from.isEmpty) ident
-                else if (ident.symbol == from.head) {
-                  replaced += 1
-                  to.head //typedIfOrigTyped(to.head.shallowDuplicate.setPos(tree.pos), tree.tpe)
-                }
-                else subst(from.tail, to.tail)
-              subst(from, toAdapted)
-        }
-        val start = System.currentTimeMillis()
-        val res = new tpd.TreeMap() {
-          override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match{
-            case s: Ident => identReplace(s)
-            case _ => super.transform(tree)
-          }
-        }.transform(tree)
-        //new TreeTypeMap(treeMap = identReplace/*, substFrom = from, substTo = to.map(_.symbol)*/).transform(tree)
-
-        ctx.debuglog(s"${id} TreeTM replacing ${from.size} elems took ${(System.currentTimeMillis() - start)/1000.0} replaced:$replaced")
-        def treeSize = new ShallowFolder[Int]((a,b) => a + 1).apply(0, tree)
-
-        ctx.debuglog(s"location: ${ctx.owner.showFullName}, size: ${treeSize}")
-        res
-      }
-
-
-      // the substitution that chains `other` before `this` substitution
-      // forall t: Tree. this(other(t)) == (this >> other)(t)
-      def >>(other: Substitution): Substitution = {
-        if (other == EmptySubstitution) this
-        else if (this == EmptySubstitution) other
+    class Rebindings(val lhs: List[Symbol], val rhs: List[Tree]) {
+      def >>(other: Rebindings) = {
+        if (other eq NoRebindings) this
+        else if (this eq NoRebindings) other
         else {
-          val (fromFiltered, toFiltered) = (from, to).zipped filter { (f, t) => !other.from.contains(f)}
-          new Substitution(other.from ++ fromFiltered, other.to.map(apply) ++ toFiltered) // a quick benchmarking run indicates the `.map(apply)` is not too costly
+          assert((lhs.toSet ++ other.lhs.toSet).size == lhs.length + other.lhs.length, "no double assignments")
+          new Rebindings(this.lhs ++ other.lhs, this.rhs ++ other.rhs)
         }
       }
-      override def toString = (from.map(_.name) zip to) mkString("Substitution(", ", ", ")")
-    }
 
-    object EmptySubstitution extends Substitution(Nil, Nil) {
-      override def apply(tree: Tree): Tree = tree
-      override def >>(other: Substitution): Substitution = other
+      def emitValDefs: List[ValDef] = {
+        Collections.map2(lhs, rhs)((symbol, tree) => ValDef(symbol.asTerm, tree.ensureConforms(symbol.info)))
+      }
     }
+    object NoRebindings extends Rebindings(Nil, Nil)
 
 
   trait OptimizedCodegen extends CodegenCore {
@@ -237,7 +192,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         val matchFail = newSynthCaseLabel(ctx.freshName("matchFail"), MethodType(Nil, restpe))
         val catchAllDefBody = DefDef(matchFail, catchAllDef)
 
-        val nextCases = (caseSyms.tail ::: List(matchFail)).map(ref(_).appliedIfMethod)
+        val nextCases = (caseSyms.tail ::: List(matchFail)).map(ref(_).ensureApplied)
         val caseDefs = (cases zip caseSyms zip nextCases).foldRight[Tree](catchAllDefBody) {
           // dotty deviation
           //case (((mkCase, sym), nextCase), acc) =>
@@ -246,16 +201,14 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
             case  ((mkCase, sym), nextCase) =>
             val body = mkCase(new OptimizedCasegen(nextCase)).ensureConforms(restpe)
 
-            val caseBody = DefDef(sym, _ => Block(List(acc), body))
-
-            Block(List(caseBody),ref(sym).appliedIfMethod)
+            DefDef(sym, _ => Block(List(acc), body))
           }}
 
 
         // scrutSym == NoSymbol when generating an alternatives matcher
         // val scrutDef = scrutSym.fold(List[Tree]())(ValDef(_, scrut) :: Nil) // for alternatives
 
-        caseDefs
+        Block(List(caseDefs), ref(caseSyms.head).ensureApplied)
       }
 
       class OptimizedCasegen(nextCase: Tree) extends CommonCodegen with Casegen {
@@ -273,23 +226,28 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         // next: MatchMonad[U]
         // returns MatchMonad[U]
         def flatMap(prev: Tree, b: Symbol, next: Tree): Tree = {
-          val prevSym = freshSym(prev.pos, prev.tpe, "o")
+
           val getTp = extractorMemberType(prev.tpe, nme.get)
           val isDefined = extractorMemberType(prev.tpe, nme.isDefined)
 
           if ((isDefined isRef defn.BooleanClass) && getTp.exists) {
-            val prevValue = ref(prevSym).select("get".toTermName).appliedIfMethod
+            val tmpSym = freshSym(prev.pos, prev.tpe, "o")
+            val prevValue = ref(tmpSym).select("get".toTermName).ensureApplied
+
               Block(
-                List(ValDef(prevSym, prev)),
+                List(ValDef(tmpSym, prev)),
                 // must be isEmpty and get as we don't control the target of the call (prev is an extractor call)
                 ifThenElseZero(
-                  ref(prevSym).select(nme.isDefined).select(defn.Boolean_!),
-                  Substitution(b, prevValue)(next)
+                  ref(tmpSym).select(nme.isDefined),
+                  Block(List(ValDef(b.asTerm, prevValue)), next)
                 )
               )
           } else {
             assert(defn.isProductSubType(prev.tpe))
-            Substitution(b, ref(prevSym))(next)
+            Block(
+              List(ValDef(b.asTerm, prev)),
+              next //Substitution(b, ref(prevSym))(next)
+            )
           }
         }
 
@@ -341,23 +299,23 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     abstract class TreeMaker {
       def pos: Position
 
-      private[this] var currSub: Substitution = null
+      private[this] var currSub: Rebindings = null
 
       /** captures the scope and the value of the bindings in patterns
         * important *when* the substitution happens (can't accumulate and do at once after the full matcher has been constructed)
         */
-      def substitution: Substitution =
-        if (currSub eq null) localSubstitution
+      def rebindings: Rebindings =
+        if (currSub eq null) introducedRebindings
         else currSub
 
-      protected def localSubstitution: Substitution
+      protected def introducedRebindings: Rebindings
 
-      private[TreeMakers] def incorporateOuterSubstitution(outerSubst: Substitution): Unit = {
+      private[TreeMakers] def incorporateOuterRebinding(outerSubst: Rebindings): Unit = {
         if (currSub ne null) {
-          ctx.debuglog("BUG: incorporateOuterSubstitution called more than once for "+ ((this, currSub, outerSubst)))
+          ctx.debuglog("BUG: incorporateOuterRebinding called more than once for "+ ((this, currSub, outerSubst)))
           Thread.dumpStack()
         }
-        else currSub = outerSubst >> substitution
+        else currSub = outerSubst >> rebindings
       }
 
       /** The substitution that specifies the trees that compute the values of the subpattern binders.
@@ -372,14 +330,14 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         * TODO: clean this up, would be nicer to have some higher-level way to compute
         * the binders bound by this tree maker and the symbolic values that correspond to them
         */
-      def subPatternsAsSubstitution: Substitution = substitution
+      def subPatternsAsRebindings: Rebindings = rebindings
 
       // build Tree that chains `next` after the current extractor
       def chainBefore(next: Tree)(casegen: Casegen): Tree
     }
 
     sealed trait NoNewBinders extends TreeMaker {
-      protected val localSubstitution: Substitution = EmptySubstitution
+      protected val introducedRebindings: Rebindings = NoRebindings
     }
 
     case class TrivialTreeMaker(tree: Tree) extends TreeMaker with NoNewBinders {
@@ -392,15 +350,34 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       def pos = body.pos
 
       def chainBefore(next: Tree)(casegen: Casegen): Tree = // assert(next eq EmptyTree)
-        /*atPos(body.pos)*/(casegen.one(substitution(body))) // since SubstOnly treemakers are dropped, need to do it here
+        /*atPos(body.pos)*/(casegen.one(body)) // since SubstOnly treemakers are dropped, need to do it here
       override def toString = "B"+((body, matchPt))
     }
 
+    /**
+     * In scalac for such block
+     *   x match {
+     *     case d => <body>
+     *   }
+     *
+     * d inside <body> was to be substitued by x.
+     *
+     * In dotty, SubstOnlyTreeMakers instead generate normal ValDef,
+     *   and does not create a new substitution.
+     *
+     * This was done for several reasons:
+     *  1) it is a lot easyer to Y-check,
+     *     as d type could be used in <body>.
+     *  2) it would simplify debugging of the generated code as
+     *     this works also for nested patterns, and previously they used unreadable names
+     *  3) It showed better(~30%), performance,
+     *     Rebuilding tree and propagating types was taking substantial time.
+     */
     case class SubstOnlyTreeMaker(prevBinder: Symbol, nextBinder: Symbol) extends TreeMaker {
       val pos = Positions.NoPosition
 
-      val localSubstitution = EmptySubstitution
-      def chainBefore(next: Tree)(casegen: Casegen): Tree = Block(List(ValDef(prevBinder.asTerm, ref(nextBinder))), next)
+      val introducedRebindings = Rebindings(prevBinder, nextBinder)
+      def chainBefore(next: Tree)(casegen: Casegen): Tree = next
       //override def toString = "S" + localSubstitution
     }
 
@@ -415,11 +392,13 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       val cond: Tree
       val res: Tree
 
-      lazy val nextBinder = freshSym(pos, nextBinderTp)
-      lazy val localSubstitution = Substitution(List(prevBinder), List(ref(nextBinder)))
+      val nextBinder: Symbol
+      lazy val introducedRebindings =
+        if(nextBinder ne prevBinder) Rebindings(prevBinder, nextBinder)
+        else NoRebindings
 
       def chainBefore(next: Tree)(casegen: Casegen): Tree =
-        /*atPos(pos)(*/casegen.flatMapCond(cond, res, nextBinder, substitution(next))//)
+        /*atPos(pos)(*/casegen.flatMapCond(cond, res, nextBinder, next)//)
     }
 
     // unless we're optimizing, emit local variable bindings for all subpatterns of extractor/case class patterns
@@ -447,10 +426,10 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       private lazy val (stored, substed) = (subPatBinders, subPatRefs).zipped.partition{ case (sym, _) => storedBinders(sym) }
 
-      protected lazy val localSubstitution: Substitution = if (!emitVars) Substitution(subPatBinders, subPatRefs)
+      protected lazy val introducedRebindings:  Rebindings = if (!emitVars) Rebindings(subPatBinders, subPatRefs)
       else {
         val (subPatBindersSubstituted, subPatRefsSubstituted) = substed.unzip
-        Substitution(subPatBindersSubstituted.toList, subPatRefsSubstituted.toList)
+        Rebindings(subPatBindersSubstituted.toList, subPatRefsSubstituted.toList)
       }
 
       /** The substitution that specifies the trees that compute the values of the subpattern binders.
@@ -458,8 +437,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         * We pretend to replace the subpattern binders by subpattern refs
         * (Even though we don't do so anymore -- see SI-5158, SI-5739 and SI-6070.)
         */
-      override def subPatternsAsSubstitution =
-        Substitution(subPatBinders, subPatRefs) >> super.subPatternsAsSubstitution
+      override def subPatternsAsRebindings =
+        Rebindings(subPatBinders, subPatRefs) >> super.subPatternsAsRebindings
 
       def bindSubPats(in: Tree): Tree =
         if (!emitVars) in
@@ -527,13 +506,13 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       def chainBefore(next: Tree)(casegen: Casegen): Tree = {
         val condAndNext = extraCond match {
           case Some(cond: Tree) =>
-            casegen.ifThenElseZero(substitution(cond), bindSubPats(substitution(next)))
+            casegen.ifThenElseZero(cond, bindSubPats(next))
           case _ =>
-            bindSubPats(substitution(next))
+            bindSubPats(next)
         }
 
           if (extractorReturnsBoolean) casegen.flatMapCond(extractor, unitLiteral, nextBinder, condAndNext)
-          else casegen.flatMap(extractor, nextBinder, condAndNext)
+          else casegen.flatMap(extractor, nextBinder, condAndNext) // getType?
 
       }
 
@@ -583,13 +562,13 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
         cond match {
           case Some(cond: Tree) =>
-            casegen.ifThenElseZero(cond, bindSubPats(substitution(next)))
+            casegen.ifThenElseZero(cond, bindSubPats(next))
           case _ =>
-            bindSubPats(substitution(next))
+            bindSubPats(next)
         }
       }
 
-      override def toString = "P"+((prevBinder.name,  extraCond getOrElse "", localSubstitution))
+      override def toString = "P"+((prevBinder.name,  extraCond getOrElse "", introducedRebindings))
     }
 
     object IrrefutableExtractorTreeMaker {
@@ -711,7 +690,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       val prevBinder = testedBinder
 
-      override lazy val nextBinder = afterTest.asTerm
+      val nextBinder = afterTest.asTerm
 
       def needsOuterTest(patType: Type, selType: Type, currentOwner: Symbol) = {
         // See the test for SI-7214 for motivation for dealias. Later `treeCondStrategy#outerTest`
@@ -725,7 +704,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         }
       }
 
-      override lazy val localSubstitution: Substitution = EmptySubstitution
+      override lazy val introducedRebindings = NoRebindings
 
       def outerTestNeeded = {
         val np = expectedTp.normalizedPrefix
@@ -806,22 +785,23 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     }
 
     // need to substitute to deal with existential types -- TODO: deal with existentials better, don't substitute (see RichClass during quick.comp)
-    case class EqualityTestTreeMaker(prevBinder: Symbol, patTree: Tree, override val pos: Position) extends CondTreeMaker {
-      val nextBinderTp = prevBinder.info.widen
+    case class EqualityTestTreeMaker(prevBinder: Symbol, subpatBinder: Symbol, patTree: Tree, override val pos: Position) extends CondTreeMaker {
+      val nextBinderTp = patTree.tpe & prevBinder.info
+      val nextBinder = if (prevBinder eq subpatBinder) freshSym(pos, nextBinderTp) else subpatBinder
 
       // NOTE: generate `patTree == patBinder`, since the extractor must be in control of the equals method (also, patBinder may be null)
       // equals need not be well-behaved, so don't intersect with pattern's (stabilized) type (unlike MaybeBoundTyped's accumType, where it's required)
       val cond = codegen._equals(patTree, prevBinder)
-      val res  = ref(prevBinder)
+      val res  = ref(prevBinder).ensureConforms(nextBinderTp)
       override def toString = "ET"+((prevBinder.name, patTree))
     }
 
     case class AlternativesTreeMaker(prevBinder: Symbol, var altss: List[List[TreeMaker]], pos: Position) extends TreeMaker with NoNewBinders {
       // don't substitute prevBinder to nextBinder, a set of alternatives does not need to introduce a new binder, simply reuse the previous one
 
-      override private[TreeMakers] def incorporateOuterSubstitution(outerSubst: Substitution): Unit = {
-        super.incorporateOuterSubstitution(outerSubst)
-        altss = altss map (alts => propagateSubstitution(alts, substitution))
+      override private[TreeMakers] def incorporateOuterRebinding(outerSubst: Rebindings): Unit = {
+        super.incorporateOuterRebinding(outerSubst)
+        altss = altss map (alts => propagateRebindings(alts, rebindings))
       }
 
       def chainBefore(next: Tree)(codegenAlt: Casegen): Tree = {
@@ -833,7 +813,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
             )
 
           val findAltMatcher = codegenAlt.matcher(EmptyTree, NoSymbol, defn.BooleanType)(combinedAlts, Some((x: Symbol) => Literal(Constant(false))))
-          codegenAlt.ifThenElseZero(findAltMatcher, substitution(next))
+          codegenAlt.ifThenElseZero(findAltMatcher, next)
         }
       }
     }
@@ -841,41 +821,38 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     case class GuardTreeMaker(guardTree: Tree) extends TreeMaker with NoNewBinders {
       val pos = guardTree.pos
 
-      def chainBefore(next: Tree)(casegen: Casegen): Tree = casegen.flatMapGuard(substitution(guardTree), next)
+      def chainBefore(next: Tree)(casegen: Casegen): Tree = casegen.flatMapGuard(guardTree, next)
       override def toString = "G("+ guardTree +")"
     }
 
     // combineExtractors changes the current substitution's of the tree makers in `treeMakers`
     // requires propagateSubstitution(treeMakers) has been called
-    def combineExtractors(treeMakers: List[TreeMaker])(casegen: Casegen): Tree =
-      treeMakers.foldRight(EmptyTree: Tree)((a, b) => a.chainBefore(b)(casegen))
-
-    def removeSubstOnly(makers: List[TreeMaker]) = makers filterNot (_.isInstanceOf[SubstOnlyTreeMaker])
-
+    def combineExtractors(treeMakers: List[TreeMaker])(casegen: Casegen): Tree = {
+      val (testsMakers, guardAndBodyMakers) = treeMakers.span(t => !(t.isInstanceOf[NoNewBinders]))
+      val body = guardAndBodyMakers.foldRight(EmptyTree: Tree)((a, b) => a.chainBefore(b)(casegen))
+      val rebindings = guardAndBodyMakers.last.rebindings.emitValDefs
+      testsMakers.foldRight(Block(rebindings, body): Tree)((a, b) => a.chainBefore(b)(casegen))
+    }
     // a foldLeft to accumulate the localSubstitution left-to-right
-    // it drops SubstOnly tree makers, since their only goal in life is to propagate substitutions to the next tree maker, which is fullfilled by propagateSubstitution
-    def propagateSubstitution(treeMakers: List[TreeMaker], initial: Substitution): List[TreeMaker] = {
-      var accumSubst: Substitution = initial
+    // unlike in scalace it does not drop SubstOnly tree makers,
+    // as there could be types having them as prefix
+    def propagateRebindings(treeMakers: List[TreeMaker], initial: Rebindings): List[TreeMaker] = {
+      var accumSubst: Rebindings = initial
       treeMakers foreach { maker =>
-        maker incorporateOuterSubstitution accumSubst
-        accumSubst = maker.substitution
+        maker incorporateOuterRebinding accumSubst
+        accumSubst = maker.rebindings
       }
-      removeSubstOnly(treeMakers)
+      treeMakers
     }
 
     // calls propagateSubstitution on the treemakers
     def combineCases(scrut: Tree, scrutSym: Symbol, casesRaw: List[List[TreeMaker]], pt: Type, owner: Symbol, matchFailGenOverride: Option[Symbol => Tree]): Tree = {
-      // drops SubstOnlyTreeMakers, since their effect is now contained in the TreeMakers that follow them
-      val casesNoSubstOnly = casesRaw map (propagateSubstitution(_, EmptySubstitution))
-      combineCasesNoSubstOnly(scrut, scrutSym, casesNoSubstOnly, pt, owner, matchFailGenOverride)
-    }
+      // unlike in scalac SubstOnlyTreeMakers are maintained.
+      val casesRebindingPropagated = casesRaw map (propagateRebindings(_, NoRebindings))
 
-    // pt is the fully defined type of the cases (either pt or the lub of the types of the cases)
-    def combineCasesNoSubstOnly(scrut: Tree, scrutSym: Symbol, casesNoSubstOnly: List[List[TreeMaker]], pt: Type, owner: Symbol, matchFailGenOverride: Option[Symbol => Tree]): Tree =
-      /*fixerUpper(owner, scrut.pos)*/ {
-        def matchFailGen = matchFailGenOverride orElse Some((arg: Symbol) => Throw(New(defn.MatchErrorType, List(ref(arg)))))
+      def matchFailGen = matchFailGenOverride orElse Some((arg: Symbol) => Throw(New(defn.MatchErrorType, List(ref(arg)))))
 
-      ctx.debuglog("combining cases: "+ (casesNoSubstOnly.map(_.mkString(" >> ")).mkString("{", "\n", "}")))
+      ctx.debuglog("combining cases: "+ (casesRebindingPropagated.map(_.mkString(" >> ")).mkString("{", "\n", "}")))
 
         val (suppression, requireSwitch): (Suppression, Boolean) =
           /*if (settings.XnoPatmatAnalysis)*/ (Suppression.NoSuppression, false)
@@ -894,10 +871,10 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
               (Suppression.NoSuppression, false)
           }*/
 
-        emitSwitch(scrut, scrutSym, casesNoSubstOnly, pt, matchFailGenOverride, suppression.exhaustive).getOrElse{
+        emitSwitch(scrut, scrutSym, casesRebindingPropagated, pt, matchFailGenOverride, suppression.exhaustive).getOrElse{
           if (requireSwitch) ctx.warning("could not emit switch for @switch annotated match", scrut.pos)
 
-          if (casesNoSubstOnly nonEmpty) {
+          if (casesRebindingPropagated nonEmpty) {
             // before optimizing, check casesNoSubstOnly for presence of a default case,
             // since DCE will eliminate trivial cases like `case _ =>`, even if they're the last one
             // exhaustivity and reachability must be checked before optimization as well
@@ -905,15 +882,16 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
             //   ("trivial" depends on whether we're emitting a straight match or an exception, or more generally, any supertype of scrutSym.tpe is a no-op)
             //   irrefutability checking should use the approximation framework also used for CSE, unreachability and exhaustivity checking
             val synthCatchAll: Option[Symbol => Tree] =
-              if (casesNoSubstOnly.nonEmpty && {
-                val nonTrivLast = casesNoSubstOnly.last
+              if (casesRebindingPropagated.nonEmpty && {
+                val nonTrivLast = casesRebindingPropagated.last
                 nonTrivLast.nonEmpty && nonTrivLast.head.isInstanceOf[BodyTreeMaker]
               }) None
               else matchFailGen
 
-            analyzeCases(scrutSym, casesNoSubstOnly, pt, suppression)
+            analyzeCases(scrutSym, casesRebindingPropagated, pt, suppression)
 
-            val (cases, toHoist) = optimizeCases(scrutSym, casesNoSubstOnly, pt)
+            val (cases, toHoist) = optimizeCases(scrutSym, casesRebindingPropagated, pt)
+
 
             val matchRes = codegen.matcher(scrut, scrutSym, pt)(cases.map(x => combineExtractors(x) _), synthCatchAll)
 
@@ -945,7 +923,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
     def isVarPattern(pat: Tree): Boolean = pat match {
       case x: BackquotedIdent => false
-      case x: Ident => nme.isVariableName(x.name)
+      case x: Ident => x.name.isVariableName
       case _ => false
     }
 
@@ -1001,8 +979,16 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       object SymbolAndTypeBound {
         def unapply(tree: Tree): Option[(Symbol, Type)] = tree match {
+          case SymbolBound(sym, Typed(_: UnApply, _)) => None // see comment in #189
           case SymbolBound(sym, TypeBound(tpe)) => Some(sym -> tpe)
           case TypeBound(tpe)                   => Some(binder -> tpe)
+          case _                                => None
+        }
+      }
+
+      object SymbolAndValueBound {
+        def unapply(tree: Tree): Option[(Symbol, Tree)] = tree match {
+          case SymbolBound(sym, ConstantPattern(const)) => Some(sym -> const)
           case _                                => None
         }
       }
@@ -1014,11 +1000,19 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         }
       }
 
+      object ConstantPattern {
+        def unapply(tree: Tree): Option[Tree] = tree match {
+          case Literal(Constant(_)) | Ident(_) | Select(_, _) | This(_) => Some(tree)
+          case _ => None
+        }
+      }
+
       private def rebindTo(pattern: Tree) = BoundTree(binder, pattern)
       private def step(treeMakers: TreeMaker*)(subpatterns: BoundTree*): TranslationStep = TranslationStep(treeMakers.toList, subpatterns.toList)
 
       private def bindingStep(sub: Symbol, subpattern: Tree) = step(SubstOnlyTreeMaker(sub, binder))(rebindTo(subpattern))
-      private def equalityTestStep()                         = step(EqualityTestTreeMaker(binder, tree, pos))()
+      private def equalityTestStep(testedSymbol: Symbol, constantSymbol: Symbol, constant: Tree)
+                                                             = step(EqualityTestTreeMaker(testedSymbol, constantSymbol, constant, pos))()
       private def typeTestStep(sub: Symbol, subPt: Type)     = step(TypeTestTreeMaker(sub, binder, subPt, sub.termRef)(pos))()
       private def alternativesStep(alts: List[Tree])         = step(AlternativesTreeMaker(binder, translatedAlts(alts), alts.head.pos))()
       private def translatedAlts(alts: List[Tree])           = alts map (alt => rebindTo(alt).translate())
@@ -1072,7 +1066,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         case TypeBound(tpe)                                           => typeTestStep(binder, tpe)
         case SymbolBound(sym, expr)                                   => bindingStep(sym, expr)
         case WildcardPattern()                                        => noStep()
-        case Literal(Constant(_)) | Ident(_) | Select(_, _) | This(_) => equalityTestStep()
+        case ConstantPattern(const)                                   => equalityTestStep(binder, binder, const)
         case Alternative(alts)                                        => alternativesStep(alts)
         case _                                                        => ctx.error(unsupportedPatternMsg, pos) ; noStep()
       }
@@ -1391,7 +1385,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         val accessors =
           if (defn.isProductSubType(binder.info))
             productSelectors(binder.info)
-          else binder.info.caseAccessors
+          else binder.caseAccessors
         val res =
         if (accessors.isDefinedAt(i - 1)) ref(binder).select(accessors(i - 1).name)
         else codegen.tupleSel(binder)(i) // this won't type check for case classes, as they do not inherit ProductN
@@ -1480,7 +1474,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         * when `binderKnownNonNull` is `true`, `ProductExtractorTreeMaker` does not do a (redundant) null check on binder
         */
       def treeMaker(binder: Symbol, binderKnownNonNull: Boolean, pos: Position, binderTypeTested: Type): TreeMaker = {
-        val paramAccessors = binder.info.caseAccessors
+        val paramAccessors = binder.caseAccessors
         // binders corresponding to mutable fields should be stored (SI-5158, SI-6070)
         // make an exception for classes under the scala package as they should be well-behaved,
         // to optimize matching on List
@@ -1800,7 +1794,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           if ((extractorMemberType(resultType, nme.isDefined) isRef defn.BooleanClass) && resultOfGet.exists)
             getUnapplySelectors(resultOfGet, args)
           else if (defn.isProductSubType(resultType)) productSelectorTypes(resultType)
-          else if (resultType =:= defn.BooleanType) Nil
+          else if (resultType isRef defn.BooleanClass) Nil
           else {
             ctx.error(i"invalid return type in Unapply node: $resultType")
             Nil

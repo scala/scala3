@@ -68,11 +68,10 @@ object Variances {
 
   /** Compute variance of type parameter <code>tparam</code> in type <code>tp</code>. */
   def varianceInType(tp: Type)(tparam: Symbol)(implicit ctx: Context): Variance = tp match {
-    case TermRef(pre, sym) =>
+    case TermRef(pre, _) =>
       varianceInType(pre)(tparam)
-    case TypeRef(pre, sym) =>
-      /* @odersky  sym is a typeName here, comparison is always false */
-      if (sym == tparam) Covariant else varianceInType(pre)(tparam)
+    case tp @ TypeRef(pre, _) =>
+      if (tp.symbol == tparam) Covariant else varianceInType(pre)(tparam)
     case tp @ TypeBounds(lo, hi) =>
       if (lo eq hi) compose(varianceInType(hi)(tparam), tp.variance)
       else flip(varianceInType(lo)(tparam)) & varianceInType(hi)(tparam)

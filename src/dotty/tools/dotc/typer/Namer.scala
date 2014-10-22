@@ -632,10 +632,7 @@ class Namer { typer: Typer =>
     completeParams(tparams)
     vparamss foreach completeParams
     val isConstructor = name == nme.CONSTRUCTOR
-    val isSecondaryConstructor = isConstructor && sym != sym.owner.primaryConstructor
-    def typeParams =
-      if (isSecondaryConstructor) sym.owner.primaryConstructor.typeParams
-      else tparams map symbolOfTree
+    def typeParams = tparams map symbolOfTree
     def wrapMethType(restpe: Type): Type = {
       var paramSymss = vparamss.nestedMap(symbolOfTree)
       // Make sure constructor has one non-implicit parameter list

@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Symbols._, Types._, Contexts._, Names._, StdNames._, Constants._
+import Symbols._, Types._, Contexts._, Names._, StdNames._, Constants._, SymUtils._
 import scala.collection.{ mutable, immutable }
 import Flags._
 import TreeTransforms._
@@ -48,7 +48,7 @@ class SyntheticMethods extends MiniPhaseTransform with IdentityDenotTransformer 
    */
   def syntheticMethods(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
     val clazzType = clazz.typeRef
-    def accessors = clazz.decls.filter(_ is CaseAccessor).toList
+    lazy val accessors = clazz.caseAccessors
 
     val symbolsToSynthesize: List[Symbol] =
       if (clazz.is(Case)) caseSymbols
