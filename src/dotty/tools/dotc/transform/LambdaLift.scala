@@ -31,7 +31,7 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
   import ast.tpd._
 
   /** the following two members override abstract members in Transform */
-  val phaseName: String = "lambdalift"
+  val phaseName: String = "lambdaLift"
 
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Constructors])
     // Constructors has to happen before LambdaLift because the lambda lift logic
@@ -164,9 +164,13 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
       val sym = tree.symbol
       tree match {
         case tree: Ident =>
-          if (sym.maybeOwner.isTerm)
-            if (sym is (Method, butNot = Label)) markCalled(sym, enclosure)
+          if (sym.maybeOwner.isTerm) {
+            if (sym is Label)
+              assert(enclosure == sym.enclosure,
+                  i"attempt to refer to label $sym from nested $enclosure")
+            else if (sym is Method) markCalled(sym, enclosure)
             else if (sym.isTerm) markFree(sym, enclosure)
+          }
         case tree: Select =>
           if (sym.isConstructor && sym.owner.owner.isTerm)
             markCalled(sym, enclosure)
