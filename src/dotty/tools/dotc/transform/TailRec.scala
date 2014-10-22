@@ -311,7 +311,8 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
 
         case Return(expr, from) =>
           tpd.cpy.Return(tree)(noTailTransform(expr), from)
-
+        case t: DefDef =>
+          t // todo: could improve to handle DefDef's with a label flag calls to which are in tail position
         case _ =>
           super.transform(tree)
       }
