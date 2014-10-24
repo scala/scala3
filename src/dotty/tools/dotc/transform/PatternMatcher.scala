@@ -393,12 +393,14 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       val res: Tree
 
       val nextBinder: Symbol
-      lazy val introducedRebindings =
+      lazy val introducedRebindings = /*
         if(nextBinder ne prevBinder) Rebindings(prevBinder, nextBinder)
-        else NoRebindings
+        else */ NoRebindings
 
       def chainBefore(next: Tree)(casegen: Casegen): Tree =
-        /*atPos(pos)(*/casegen.flatMapCond(cond, res, nextBinder, next)//)
+        if(prevBinder ne nextBinder) // happens when typeTest is known to succeed
+          /*atPos(pos)(*/casegen.flatMapCond(cond, res, nextBinder, next)//)
+        else casegen.flatMapGuard(cond, next)
     }
 
     // unless we're optimizing, emit local variable bindings for all subpatterns of extractor/case class patterns
