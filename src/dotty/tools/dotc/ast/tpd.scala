@@ -9,6 +9,7 @@ import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Symbols.
 import Denotations._, Decorators._
 import config.Printers._
 import typer.Mode
+import collection.mutable
 import typer.ErrorReporting._
 
 import scala.annotation.tailrec
@@ -619,6 +620,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         def apply(x: Boolean, t: Tree) = x || p(t) || foldOver(x, t)
       }
       acc(false, tree)
+    }
+
+    def filterSubTrees(f: Tree => Boolean): List[Tree] = {
+      val buf = new mutable.ListBuffer[Tree]
+      foreachSubTree { tree => if (f(tree)) buf += tree }
+      buf.toList
     }
   }
 

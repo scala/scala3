@@ -610,27 +610,27 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           accu(Set.empty, selType)
         }
 
-        def typedCase(tree: untpd.CaseDef): CaseDef = track("typedCase") {
-          def caseRest(pat: Tree)(implicit ctx: Context) = {
-            gadtSyms foreach (_.resetGADTFlexType)
-            pat foreachSubTree {
-              case b: Bind =>
-                if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
-                else ctx.error(d"duplicate pattern variable: ${b.name}", b.pos)
-              case _ =>
-            }
-            val guard1 = typedExpr(tree.guard, defn.BooleanType)
-            val body1 = typedExpr(tree.body, pt)
-            assignType(cpy.CaseDef(tree)(pat, guard1, body1), body1)
-          }
-          val doCase: () => CaseDef =
-            () => caseRest(typedPattern(tree.pat, selType))(ctx.fresh.setNewScope)
-          (doCase /: gadtSyms)((op, tsym) => tsym.withGADTFlexType(op))()
-        }
-
-        val cases1 = tree.cases mapconserve typedCase
+        val cases1 = tree.cases mapconserve (typedCase(_, pt, selType, gadtSyms))
         assignType(cpy.Match(tree)(sel1, cases1), cases1)
     }
+  }
+
+  def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = track("typedCase") {
+    def caseRest(pat: Tree)(implicit ctx: Context) = {
+      gadtSyms foreach (_.resetGADTFlexType)
+      pat foreachSubTree {
+        case b: Bind =>
+          if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
+          else ctx.error(d"duplicate pattern variable: ${b.name}", b.pos)
+        case _ =>
+      }
+      val guard1 = typedExpr(tree.guard, defn.BooleanType)
+      val body1 = typedExpr(tree.body, pt)
+      assignType(cpy.CaseDef(tree)(pat, guard1, body1), body1)
+    }
+    val doCase: () => CaseDef =
+      () => caseRest(typedPattern(tree.pat, selType))(ctx.fresh.setNewScope)
+    (doCase /: gadtSyms)((op, tsym) => tsym.withGADTFlexType(op))()
   }
 
   def typedReturn(tree: untpd.Return)(implicit ctx: Context): Return = track("typedReturn") {

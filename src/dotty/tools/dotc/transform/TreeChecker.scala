@@ -20,6 +20,7 @@ import reporting.ThrowingReporter
 import ast.Trees._
 import ast.{tpd, untpd}
 import util.SourcePosition
+import collection.mutable
 import ProtoTypes._
 import java.lang.AssertionError
 
@@ -57,6 +58,32 @@ class TreeChecker {
   }
 
   class Checker(phasesToCheck: Seq[Phase]) extends ReTyper {
+
+    val definedSyms = new mutable.HashSet[Symbol]
+
+    def withDefinedSym[T](tree: untpd.Tree)(op: => T)(implicit ctx: Context): T = {
+      if (tree.isDef) {
+        //assert(!definedSyms.contains(tree.symbol), i"doubly defined symbol: ${tree.symbol}in $tree")
+        definedSyms += tree.symbol
+        //println(i"defined: ${tree.symbol}")
+        val res = op
+        definedSyms -= tree.symbol
+        //println(i"undefined: ${tree.symbol}")
+        res
+      }
+      else op
+    }
+
+    def withDefinedSyms[T](trees: List[untpd.Tree])(op: => T)(implicit ctx: Context) =
+      trees.foldRightBN(op)(withDefinedSym(_)(_))
+
+    def withDefinedSymss[T](vparamss: List[List[untpd.ValDef]])(op: => T)(implicit ctx: Context): T =
+      vparamss.foldRightBN(op)(withDefinedSyms(_)(_))
+
+    def assertDefined(tree: untpd.Tree)(implicit ctx: Context) =
+      if (tree.symbol.maybeOwner.isTerm)
+        ()//assert(definedSyms contains tree.symbol, i"undefined symbol ${tree.symbol}")
+
     override def typed(tree: untpd.Tree, pt: Type)(implicit ctx: Context) = {
       val res = tree match {
         case _: untpd.UnApply =>
@@ -88,7 +115,8 @@ class TreeChecker {
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
-      assert(tree.isType || !needsSelect(tree.tpe), i"bad type ${tree.tpe} for $tree")
+      assert(tree.isType || !needsSelect(tree.tpe), i"bad type ${tree.tpe} for $tree # ${tree.uniqueId}")
+      assertDefined(tree)
       super.typedIdent(tree, pt)
     }
 
@@ -116,6 +144,22 @@ class TreeChecker {
       checkOwner(impl.constr)
       super.typedClassDef(cdef, cls)
     }
+
+    override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) =
+      withDefinedSyms(ddef.tparams) {
+        withDefinedSymss(ddef.vparamss) {
+          super.typedDefDef(ddef, sym)
+        }
+      }
+
+    override def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = {
+      withDefinedSyms(tree.pat.asInstanceOf[tpd.Tree].filterSubTrees(_.isInstanceOf[ast.Trees.Bind[_]])) {
+        super.typedCase(tree, pt, selType, gadtSyms)
+      }
+    }
+
+    override def typedBlock(tree: untpd.Block, pt: Type)(implicit ctx: Context) =
+      withDefinedSyms(tree.stats) { super.typedBlock(tree, pt) }
 
     /** Check that all defined symbols have legal owners.
      *  An owner is legal if it is either the same as the context's owner
