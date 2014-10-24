@@ -280,6 +280,12 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
   }
 
   override def init(implicit ctx: Context, info: TransformerInfo) = {
+    free.clear()
+    proxyMap.clear()
+    called.clear()
+    calledFromInner.clear()
+    liftedOwner.clear()
+    liftedDefs.clear()
     assert(ctx.phase == thisTransform)
     (new CollectDependencies).traverse(NoSymbol, ctx.compilationUnit.tpdTree)
     computeFreeVars()
