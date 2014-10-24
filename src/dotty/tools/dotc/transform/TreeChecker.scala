@@ -63,7 +63,7 @@ class TreeChecker {
 
     def withDefinedSym[T](tree: untpd.Tree)(op: => T)(implicit ctx: Context): T = {
       if (tree.isDef) {
-        //assert(!definedSyms.contains(tree.symbol), i"doubly defined symbol: ${tree.symbol}in $tree")
+        assert(!definedSyms.contains(tree.symbol), i"doubly defined symbol: ${tree.symbol}in $tree")
         definedSyms += tree.symbol
         //println(i"defined: ${tree.symbol}")
         val res = op
@@ -82,7 +82,7 @@ class TreeChecker {
 
     def assertDefined(tree: untpd.Tree)(implicit ctx: Context) =
       if (tree.symbol.maybeOwner.isTerm)
-        ()//assert(definedSyms contains tree.symbol, i"undefined symbol ${tree.symbol}")
+        assert(definedSyms contains tree.symbol, i"undefined symbol ${tree.symbol}")
 
     override def typed(tree: untpd.Tree, pt: Type)(implicit ctx: Context) = {
       val res = tree match {
