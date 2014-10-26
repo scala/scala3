@@ -88,7 +88,7 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
   }
 
   def narrowLiftedOwner(sym: Symbol, owner: Symbol)(implicit ctx: Context) = {
-    println(i"narrow lifted $sym to $owner")
+    ctx.log(i"narrow lifted $sym to $owner")
     if (sym.owner.skipConstructor.isTerm &&
         owner.isProperlyContainedIn(liftedOwner(sym))) {
       changedLiftedOwner = true
@@ -128,7 +128,7 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
    */
   private def markFree(sym: Symbol, enclosure: Symbol)(implicit ctx: Context): Boolean = try {
     if (!enclosure.exists) throw new NoPath
-    println(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
+    ctx.log(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
     (enclosure == sym.enclosure) || {
       ctx.debuglog(i"$enclosure != ${sym.enclosure}")
       narrowLiftedOwner(enclosure, sym.enclosingClass)
@@ -202,7 +202,6 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
   private def computeFreeVars()(implicit ctx: Context): Unit =
     do {
       changedFreeVars = false
-      // println(s"called = ${called.toList map { case (from, to) => from.showLocated + " -> " + to.toList.map(_.showLocated) }}")
       for {
         caller <- called.keys
         callee <- called(caller)
