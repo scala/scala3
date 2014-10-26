@@ -53,7 +53,8 @@ class Compiler {
            new Literalize,
            new GettersSetters),
       List(new Erasure),
-      List(new CapturedVars, new Constructors),
+      List(new CapturedVars,
+           new Constructors),
       List(new LambdaLift)
     )
 

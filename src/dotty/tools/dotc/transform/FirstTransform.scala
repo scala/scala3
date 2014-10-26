@@ -123,7 +123,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { 
 
   override def transformOther(tree: Tree)(implicit ctx: Context, info: TransformerInfo) = tree match {
     case tree: Import => EmptyTree
-    case tree: NamedArg => tree.arg
+    case tree: NamedArg => transform(tree.arg)
     case AppliedTypeTree(tycon, args) =>
       val tparams = tycon.tpe.typeSymbol.typeParams
       Checking.checkBounds(

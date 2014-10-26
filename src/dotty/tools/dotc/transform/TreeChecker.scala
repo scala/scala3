@@ -54,7 +54,13 @@ class TreeChecker {
     val checkingCtx = ctx.fresh
       .setTyperState(ctx.typerState.withReporter(new ThrowingReporter(ctx.typerState.reporter)))
     val checker = new Checker(previousPhases(phasesToRun.toList)(ctx))
-    checker.typedExpr(ctx.compilationUnit.tpdTree)(checkingCtx)
+    try checker.typedExpr(ctx.compilationUnit.tpdTree)(checkingCtx)
+    catch {
+      case ex: Throwable =>
+        implicit val ctx: Context = checkingCtx
+        println(i"*** error while checking after phase ${checkingCtx.phase.prev} ***")
+        throw ex
+    }
   }
 
   class Checker(phasesToCheck: Seq[Phase]) extends ReTyper {
@@ -84,17 +90,17 @@ class TreeChecker {
       if (tree.symbol.maybeOwner.isTerm)
         assert(definedSyms contains tree.symbol, i"undefined symbol ${tree.symbol}")
 
-    override def typed(tree: untpd.Tree, pt: Type)(implicit ctx: Context) = {
+    override def typedUnadapted(tree: untpd.Tree, pt: Type)(implicit ctx: Context): tpd.Tree = {
       val res = tree match {
         case _: untpd.UnApply =>
           // can't recheck patterns
           tree.asInstanceOf[tpd.Tree]
         case _: untpd.TypedSplice | _: untpd.Thicket | _: EmptyValDef[_] =>
-          super.typed(tree)
+          super.typedUnadapted(tree)
         case _ if tree.isType =>
           promote(tree)
         case _ =>
-          val tree1 = super.typed(tree, pt)
+          val tree1 = super.typedUnadapted(tree, pt)
           def isSubType(tp1: Type, tp2: Type) =
             (tp1 eq tp2) || // accept NoType / NoType
             (tp1 <:< tp2)
@@ -106,9 +112,10 @@ class TreeChecker {
                |After checking: ${tree1.show}
                |Why different :
              """.stripMargin + core.TypeComparer.explained((tp1 <:< tp2)(_))
-          assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
+          if (tree.hasType) // it might not be typed because Typer sometimes constructs new untyped trees and resubmits them to typedUnadapted
+            assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
           tree1
-        }
+      }
       phasesToCheck.foreach(_.checkPostCondition(res))
       res
     }
@@ -183,10 +190,13 @@ class TreeChecker {
     override def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = {
       def isPrimaryConstructorReturn =
         ctx.owner.isPrimaryConstructor && pt.isRef(ctx.owner.owner) && tree.tpe.isRef(defn.UnitClass)
-      if (ctx.mode.isExpr && !isPrimaryConstructorReturn && !pt.isInstanceOf[FunProto])
+      if (ctx.mode.isExpr &&
+          !tree.isEmpty &&
+          !isPrimaryConstructorReturn &&
+          !pt.isInstanceOf[FunProto])
         assert(tree.tpe <:< pt,
             s"error at ${sourcePos(tree.pos)}\n" +
-            err.typeMismatchStr(tree.tpe, pt))
+            err.typeMismatchStr(tree.tpe, pt) + "tree = " + tree)
       tree
     }
   }
