@@ -2,32 +2,52 @@ package dotty.tools.dotc
 package transform
 
 import TreeTransforms._
-import core.DenotTransformers._
-import core.Symbols._
-import core.SymDenotations._
-import core.Contexts._
-import core.Types._
-import core.Flags._
-import core.Decorators._
+import core._
+import DenotTransformers._
+import Symbols._
+import SymDenotations._
+import Contexts._
+import Types._
+import Flags._
+import Decorators._
 import SymUtils._
+import util.Attachment
 import core.StdNames.nme
 import ast.Trees._
 
-/** This phase eliminates ExprTypes `=> T` and replaces them by
+object ElimByName {
+  val ByNameArg = new Attachment.Key[Unit]
+}
+
+/** This phase eliminates ExprTypes `=> T` as types of function parameters, and replaces them by
  *  nullary function types.  More precisely:
  *
- *  For parameter types:
+ *  For the types of parameter symbols:
  *
  *      => T        ==>    () => T
  *
- *  For terms:
+ *  Note that `=> T` types are not eliminated in MnethodTypes. This is done later at erasure.
+ *  Terms are rewritten as follows:
  *
  *      x           ==>    x.apply()   if x is a parameter that had type => T
+ *
+ *  Arguments to call-by-name parameters are translated as follows. First, the argument is
+ *  rewritten by the rules
+ *
  *      e.apply()   ==>    e           if e.apply() is an argument to a call-by-name parameter
  *      expr        ==>    () => expr  if other expr is an argument to a call-by-name parameter
+ *
+ *  This makes the argument compatible with a parameter type of () => T, which will be the
+ *  formal parameter type at erasure. But to be -Ycheckable until then, any argument
+ *  ARG rewritten by the rules above is again wrapped in an application ARG.apply(),
+ *  labelled with an `ByNameParam` attachment.
+ *
+ *  Erasure will later strip wrapped `.apply()` calls with ByNameParam attachments.
+ *
  */
 class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
   import ast.tpd._
+  import ElimByName._
 
   override def phaseName: String = "elimByName"
 
@@ -44,9 +64,9 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =
     ctx.traceIndented(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
 
-    def transformArg(arg: Tree, formal: Type): Tree = formal match {
-      case _: ExprType =>
-        arg match {
+    def transformArg(arg: Tree, formal: Type): Tree = formal.dealias match {
+      case formalExpr: ExprType =>
+        val argFun = arg match {
           case Apply(Select(qual, nme.apply), Nil) if qual.tpe derivesFrom defn.FunctionClass(0) =>
             qual
           case _ =>
@@ -54,24 +74,14 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
                 ctx.owner, nme.ANON_FUN, Synthetic | Method, MethodType(Nil, Nil, arg.tpe.widen))
             Closure(meth, _ => arg.changeOwner(ctx.owner, meth))
         }
+        val argApplied = argFun.select(defn.Function0_apply).appliedToNone
+        argApplied.putAttachment(ByNameArg, ())
+        argApplied
       case _ =>
         arg
     }
 
-    /** Given that `info` is the possibly curried) method type of the
-     *  tree's symbol, the method type that corresponds to the current application.
-     */
-    def matchingMethType(info: Type, tree: Tree): Type = tree match {
-      case Apply(fn, _) => matchingMethType(info.resultType, fn)
-      case _ => info
-    }
-
-    val origMethType = originalDenotation(tree.fun).info match {
-      case pt: PolyType => pt.resultType
-      case mt => mt
-    }
-
-    val MethodType(_, formals) = matchingMethType(origMethType, tree.fun)
+    val MethodType(_, formals) = tree.fun.tpe.widen
     val args1 = tree.args.zipWithConserve(formals)(transformArg)
     cpy.Apply(tree)(tree.fun, args1)
   }
@@ -99,22 +109,13 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
     case _ => tree
   }
 
-  def elimByNameParams(tp: Type)(implicit ctx: Context): Type = tp match {
-    case tp: PolyType =>
-      tp.derivedPolyType(tp.paramNames, tp.paramBounds, elimByNameParams(tp.resultType))
-    case tp: MethodType =>
-      tp.derivedMethodType(tp.paramNames, tp.paramTypes mapConserve transformParamInfo,
-          elimByNameParams(tp.resultType))
-    case _ =>
-      tp
-  }
+  override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo): Tree =
+    if (exprBecomesFunction(tree.symbol))
+      cpy.ValDef(tree)(tpt = tree.tpt.withType(tree.symbol.info))
+    else tree
 
-  def transformParamInfo(tp: Type)(implicit ctx: Context) = tp match {
-    case ExprType(rt) => defn.FunctionType(Nil, rt)
+  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp match {
+    case ExprType(rt) if exprBecomesFunction(sym) => defn.FunctionType(Nil, rt)
     case _ => tp
   }
-
-  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
-    if (exprBecomesFunction(sym)) transformParamInfo(tp)
-    else elimByNameParams(tp)
 }

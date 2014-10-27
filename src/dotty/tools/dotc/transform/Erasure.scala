@@ -62,7 +62,7 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
         }
       }
     case ref =>
-      ref.derivedSingleDenotation(ref.symbol, erasure(ref.info))
+      ref.derivedSingleDenotation(ref.symbol, eraseInfo(ref.info))
   }
 
   val eraser = new Erasure.Typer
@@ -350,7 +350,11 @@ object Erasure extends TypeTestsCasts{
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
       val Apply(fun, args) = tree
-      typedExpr(fun, FunProto(args, pt, this)) match {
+      if (tree.removeAttachment(ElimByName.ByNameArg).isDefined) {
+        val Select(qual, nme.apply) = fun
+        typedUnadapted(qual, pt)
+      }
+      else typedExpr(fun, FunProto(args, pt, this)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1
         case fun1 =>

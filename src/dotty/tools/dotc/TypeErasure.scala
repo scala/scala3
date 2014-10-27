@@ -111,6 +111,12 @@ object TypeErasure {
       erasure(tp)
   }
 
+  /** The erasure of a symbol's info. This is different of `erasure` in the way `ExprType`s are
+   *  treated. `eraseInfo` maps them them to nullary method types, whereas `erasure` maps them
+   *  to `Function0`.
+   */
+  def eraseInfo(tp: Type)(implicit ctx: Context): Type = scalaErasureFn.eraseInfo(tp)(erasureCtx)
+
   /** The erasure of a function result type. Differs from normal erasure in that
    *  Unit is kept instead of being mapped to BoxedUnit.
    */
@@ -135,7 +141,7 @@ object TypeErasure {
     if ((sym eq defn.Any_asInstanceOf) || (sym eq defn.Any_isInstanceOf)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
-    else erase(tp)(erasureCtx)
+    else eraseInfo(tp)(erasureCtx)
   }
 
   def isUnboundedGeneric(tp: Type)(implicit ctx: Context) = !(
@@ -263,7 +269,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
     case SuperType(thistpe, supertpe) =>
       SuperType(this(thistpe), this(supertpe))
     case ExprType(rt) =>
-      MethodType(Nil, Nil, this(rt))
+      defn.FunctionClass(0).typeRef
     case tp: TypeProxy =>
       this(tp.underlying)
     case AndType(tp1, tp2) =>
@@ -310,6 +316,11 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
         case _ => defn.ObjectType
       }
     else JavaArrayType(this(elemtp))
+  }
+
+  def eraseInfo(tp: Type)(implicit ctx: Context) = tp match {
+    case ExprType(rt) => MethodType(Nil, Nil, erasure(rt))
+    case tp => erasure(tp)
   }
 
   private def eraseDerivedValueClassRef(tref: TypeRef)(implicit ctx: Context): Type =

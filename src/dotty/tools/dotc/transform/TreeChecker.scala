@@ -196,7 +196,7 @@ class TreeChecker {
           !pt.isInstanceOf[FunProto])
         assert(tree.tpe <:< pt,
             s"error at ${sourcePos(tree.pos)}\n" +
-            err.typeMismatchStr(tree.tpe, pt) + "tree = " + tree)
+            err.typeMismatchStr(tree.tpe, pt) + "\ntree = " + tree)
       tree
     }
   }
