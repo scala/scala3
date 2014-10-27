@@ -408,16 +408,4 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
 
   override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo) =
     if (needsLifting(tree.symbol)) liftDef(tree) else tree
-  }
-
-
-/* done in lazyvals?
-        case Block(stats, expr0) =>
-          val (lzyVals, rest) = stats partition {
-            case stat: ValDef => stat.symbol.isLazy || stat.symbol.isModuleVar
-            case _            => false
-          }
-          if (lzyVals.isEmpty) tree
-          else treeCopy.Block(tree, lzyVals ::: rest, expr0)
-
-*/
+}
