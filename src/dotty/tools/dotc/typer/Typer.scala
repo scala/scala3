@@ -21,6 +21,7 @@ import Flags._
 import Decorators._
 import ErrorReporting._
 import EtaExpansion.etaExpand
+import dotty.tools.dotc.transform.Erasure.Boxing
 import util.Positions._
 import util.common._
 import util.SourcePosition
@@ -344,6 +345,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       assignType(cpy.Typed(tree)(expr1, tpt1), tpt1)
     }
     tree.expr match {
+      case ExceptionHandlerSel if (tree.tpt.tpe == defn.ThrowableType) =>
+        tree withType defn.ThrowableType
       case id: untpd.Ident if (ctx.mode is Mode.Pattern) && isVarPattern(id) =>
         if (id.name == nme.WILDCARD) regularTyped(isWildcard = true)
         else {
@@ -667,8 +670,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case h: untpd.Match if ((h.selector eq EmptyTree)                   // comes from parser
                                || (h.selector eq ExceptionHandlerSel)) => // during retyping
         val cases1 = typedCases(h.cases, defn.ThrowableType, pt)
-        assignType(untpd.Match(ExceptionHandlerSel, cases1), cases1)
+        assignType(untpd.Match(Typed(ExceptionHandlerSel, TypeTree(defn.ThrowableType)), cases1), cases1)
+      case Typed(handler, tpe) if ctx.phaseId > ctx.patmatPhase.id =>  // we are retyping an expanded pattern
+        typed(tree.handler, pt)
+      case Apply(bx, List(Typed(handler, tpe))) if ctx.erasedTypes && Boxing.isBox(bx.symbol) =>
+        typed(tree.handler, pt)
       case _ => typed(tree.handler, defn.FunctionType(defn.ThrowableType :: Nil, pt))
+
     }
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
     assignType(cpy.Try(tree)(expr1, handler1, finalizer1), expr1, handler1)
