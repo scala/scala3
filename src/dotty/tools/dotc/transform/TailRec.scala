@@ -231,17 +231,6 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
       }
 
       def rewriteTry(tree: Try): Try = {
-        def transformHandlers(t: Tree): Tree = {
-          t match {
-            case Block(List((d: DefDef)), cl@Closure(Nil, _, EmptyTree)) =>
-              val newDef = cpy.DefDef(d)(rhs = transform(d.rhs))
-              Block(List(newDef), cl)
-            case Match(Typed(ExceptionHandlerSel, _), _) =>
-              transform(t)
-            case _: Ident|_: Apply| _: TypeApply => t // handler is an external function
-            case _ => assert(false, s"failed to deconstruct try handler ${t.show}"); ???
-          }
-        }
         if (tree.finalizer eq EmptyTree) {
           // SI-1672 Catches are in tail position when there is no finalizer
           tpd.cpy.Try(tree)(

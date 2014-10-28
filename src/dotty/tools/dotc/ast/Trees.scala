@@ -804,7 +804,7 @@ object Trees {
     type ThisTree[-T >: Untyped] = Thicket[T]
     override def isEmpty: Boolean = trees.isEmpty
     override def toList: List[Tree[T]] = flatten(trees)
-    override def toString = if(this eq theExceptionHandlerSel) "ExceptionSel" else if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
+    override def toString = if (isEmpty) "EmptyTree" else "Thicket(" + trees.mkString(", ") + ")"
     override def withPos(pos: Position): this.type = {
       val newTrees = trees.map(_.withPos(pos))
       new Thicket[T](newTrees).asInstanceOf[this.type]
@@ -818,11 +818,9 @@ object Trees {
 
   val theEmptyTree: Thicket[Type] = Thicket(Nil)
   val theEmptyValDef = new EmptyValDef[Type]
-  val theExceptionHandlerSel: Thicket[Type] = Thicket(Nil)
 
   def genericEmptyValDef[T >: Untyped]: ValDef[T] = theEmptyValDef.asInstanceOf[ValDef[T]]
   def genericEmptyTree[T >: Untyped]: Thicket[T] = theEmptyTree.asInstanceOf[Thicket[T]]
-  def genericExceptionHandlerSel[T >: Untyped]: Thicket[T] = theExceptionHandlerSel.asInstanceOf[Thicket[T]]
 
   def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
     var buf: ListBuffer[Tree[T]] = null
@@ -913,7 +911,6 @@ object Trees {
     type Thicket = Trees.Thicket[T]
 
     val EmptyTree: Thicket = genericEmptyTree
-    val ExceptionHandlerSel: Thicket = genericExceptionHandlerSel // selector used in exception hanlder of Try nodes
     val EmptyValDef: ValDef = genericEmptyValDef
 
     // ----- Auxiliary creation methods ------------------

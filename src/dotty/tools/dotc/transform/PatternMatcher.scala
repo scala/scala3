@@ -1142,9 +1142,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       val selectorTp = elimAnonymousClass(sel.tpe.widen/*withoutAnnotations*/)
 
-      val selectorSym =
-        if (sel ne ExceptionHandlerSel) freshSym(sel.pos, selectorTp, "selector")
-        else freshSym(match_.pos, defn.ThrowableType, "ex")
+      val selectorSym = freshSym(sel.pos, selectorTp, "selector")
 
       val (nonSyntheticCases, defaultOverride) = cases match {
         case init :+ last if isSyntheticDefaultCase(last) => (init, Some(((scrut: Symbol) => last.body)))

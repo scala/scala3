@@ -345,8 +345,6 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       assignType(cpy.Typed(tree)(expr1, tpt1), tpt1)
     }
     tree.expr match {
-      case ExceptionHandlerSel if (tree.tpt.tpe == defn.ThrowableType) =>
-        tree withType defn.ThrowableType
       case id: untpd.Ident if (ctx.mode is Mode.Pattern) && isVarPattern(id) =>
         if (id.name == nme.WILDCARD) regularTyped(isWildcard = true)
         else {
