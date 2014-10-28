@@ -55,7 +55,8 @@ class Compiler {
       List(new Erasure),
       List(new CapturedVars,
            new Constructors),
-      List(new LambdaLift)
+      List(new LambdaLift,
+           new Flatten)
     )
 
   var runId = 1
