@@ -357,10 +357,7 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
 
   private def liftDef(tree: MemberDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val buf = liftedDefs(tree.symbol.owner)
-    transformFollowing(rename(tree, tree.symbol.name)) match {
-      case Thicket(trees) => buf ++= trees
-      case tree => buf += tree
-    }
+    transformFollowing(rename(tree, tree.symbol.name)).foreachInThicket(buf += _)
     EmptyTree
   }
 
