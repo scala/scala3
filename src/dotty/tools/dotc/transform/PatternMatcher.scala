@@ -779,10 +779,11 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       // is this purely a type test, e.g. no outer check, no equality tests (used in switch emission)
       //def isPureTypeTest = renderCondition(pureTypeTestChecker)
 
-      def impliesBinderNonNull(binder: Symbol):Boolean =
+      def impliesBinderNonNull(binder: Symbol): Boolean =
       // @odersky: scalac is able to infer in this method that nonNullImpliedByTestChecker.Result,
       // dotty instead infers type projection TreeMakers.this.TypeTestTreeMaker.TypeTestCondStrategy#Result
       // which in turn doesn't typecheck in this method. Can you please explain why?
+      // dotty deviation
         renderCondition(nonNullImpliedByTestChecker(binder)).asInstanceOf[Boolean]
 
       override def toString = "TT"+((expectedTp, testedBinder.name, nextBinderTp))
