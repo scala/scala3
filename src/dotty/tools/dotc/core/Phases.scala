@@ -9,7 +9,7 @@ import Denotations._
 import config.Printers._
 import scala.collection.mutable.{ListBuffer, ArrayBuffer}
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, MiniPhase, TreeTransform}
-import dotty.tools.dotc.transform.{TreeTransforms, ExplicitOuter, Erasure, Flatten, GettersSetters}
+import dotty.tools.dotc.transform._
 import Periods._
 import typer.{FrontEnd, RefChecks}
 import ast.tpd
@@ -167,6 +167,7 @@ object Phases {
     private val typerCache = new PhaseCache(classOf[FrontEnd])
     private val refChecksCache = new PhaseCache(classOf[RefChecks])
     private val erasureCache = new PhaseCache(classOf[Erasure])
+    private val patmatCache = new PhaseCache(classOf[PatternMatcher])
     private val flattenCache = new PhaseCache(classOf[Flatten])
     private val explicitOuterCache = new PhaseCache(classOf[ExplicitOuter])
     private val gettersSettersCache = new PhaseCache(classOf[GettersSetters])
@@ -174,6 +175,7 @@ object Phases {
     def typerPhase = typerCache.phase
     def refchecksPhase = refChecksCache.phase
     def erasurePhase = erasureCache.phase
+    def patmatPhase = patmatCache.phase
     def flattenPhase = flattenCache.phase
     def explicitOuterPhase = explicitOuterCache.phase
     def gettersSettersPhase = gettersSettersCache.phase
