@@ -32,7 +32,7 @@ class Flatten extends MiniPhaseTransform with SymTransformer { thisTransform =>
   private def liftIfNested(tree: Tree)(implicit ctx: Context, info: TransformerInfo) =
     if (ctx.owner is Package) tree
     else {
-      liftedDefs += transformFollowing(tree)
+      transformFollowing(tree).foreachInThicket(liftedDefs += _)
       EmptyTree
     }
 
