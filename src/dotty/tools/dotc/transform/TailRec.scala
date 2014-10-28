@@ -237,7 +237,9 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
             case Block(List((d: DefDef)), cl@Closure(Nil, _, EmptyTree)) =>
               val newDef = cpy.DefDef(d)(rhs = transform(d.rhs))
               Block(List(newDef), cl)
-            case t: Ident => t // handler is an external function
+            case Match(ExceptionHandlerSel, _) =>
+              transform(t)
+            case _: Ident|_: Apply| _: TypeApply => t // handler is an external function
             case _ => assert(false, s"failed to deconstruct try handler ${t.show}"); ???
           }
         }
