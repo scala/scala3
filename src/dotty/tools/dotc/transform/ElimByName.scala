@@ -40,10 +40,8 @@ object ElimByName {
  *  This makes the argument compatible with a parameter type of () => T, which will be the
  *  formal parameter type at erasure. But to be -Ycheckable until then, any argument
  *  ARG rewritten by the rules above is again wrapped in an application ARG.apply(),
- *  labelled with an `ByNameParam` attachment.
- *
- *  Erasure will later strip wrapped `.apply()` calls with ByNameParam attachments.
- *
+ *  labelled with a `ByNameParam` attachment. Erasure will later strip wrapped
+ *  `.apply()` calls with ByNameParam attachments.
  */
 class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
   import ast.tpd._
