@@ -666,20 +666,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = track("typedTry") {
     val expr1 = typed(tree.expr, pt)
-    val handler1: Tree = tree.handler match {
-      case h: untpd.Match if ((h.selector eq EmptyTree)                   // comes from parser
-                               || (h.selector eq ExceptionHandlerSel)) => // during retyping
-        val cases1 = typedCases(h.cases, defn.ThrowableType, pt)
-        assignType(untpd.Match(Typed(ExceptionHandlerSel, TypeTree(defn.ThrowableType)), cases1), cases1)
-      case Typed(handler, tpe) if ctx.phaseId > ctx.patmatPhase.id =>  // we are retyping an expanded pattern
-        typed(tree.handler, pt)
-      case Apply(bx, List(Typed(handler, tpe))) if ctx.erasedTypes && Boxing.isBox(bx.symbol) =>
-        typed(tree.handler, pt)
-      case _ => typed(tree.handler, defn.FunctionType(defn.ThrowableType :: Nil, pt))
-
-    }
+    val cases1 = typedCases(tree.cases, defn.ThrowableType, pt)
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
-    assignType(cpy.Try(tree)(expr1, handler1, finalizer1), expr1, handler1)
+    assignType(cpy.Try(tree)(expr1, cases1, finalizer1), expr1, cases1)
   }
 
   def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Throw = track("typedThrow") {

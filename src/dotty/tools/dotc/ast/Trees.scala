@@ -611,7 +611,7 @@ object Trees {
    *
    *    Match(EmptyTree, <case x: Throwable => $anonfun(x)>)
    */
-  case class Try[-T >: Untyped] private[ast] (expr: Tree[T], handler: Tree[T], finalizer: Tree[T])
+  case class Try[-T >: Untyped] private[ast] (expr: Tree[T], cases: List[CaseDef[T]], finalizer: Tree[T])
     extends TermTree[T] {
     type ThisTree[-T >: Untyped] = Try[T]
   }
@@ -1027,9 +1027,9 @@ object Trees {
         case tree: Return if (expr eq tree.expr) && (from eq tree.from) => tree
         case _ => finalize(tree, untpd.Return(expr, from))
       }
-      def Try(tree: Tree)(expr: Tree, handler: Tree, finalizer: Tree)(implicit ctx: Context): Try = tree match {
-        case tree: Try if (expr eq tree.expr) && (handler eq tree.handler) && (finalizer eq tree.finalizer) => tree
-        case _ => finalize(tree, untpd.Try(expr, handler, finalizer))
+      def Try(tree: Tree)(expr: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try = tree match {
+        case tree: Try if (expr eq tree.expr) && (cases eq tree.cases) && (finalizer eq tree.finalizer) => tree
+        case _ => finalize(tree, untpd.Try(expr, cases, finalizer))
       }
       def Throw(tree: Tree)(expr: Tree)(implicit ctx: Context): Throw = tree match {
         case tree: Throw if (expr eq tree.expr) => tree
@@ -1131,8 +1131,8 @@ object Trees {
         Closure(tree: Tree)(env, meth, tpt)
       def CaseDef(tree: CaseDef)(pat: Tree = tree.pat, guard: Tree = tree.guard, body: Tree = tree.body)(implicit ctx: Context): CaseDef =
         CaseDef(tree: Tree)(pat, guard, body)
-      def Try(tree: Try)(expr: Tree = tree.expr, handler: Tree = tree.handler, finalizer: Tree = tree.finalizer)(implicit ctx: Context): Try =
-        Try(tree: Tree)(expr, handler, finalizer)
+      def Try(tree: Try)(expr: Tree = tree.expr, cases: List[CaseDef] = tree.cases, finalizer: Tree = tree.finalizer)(implicit ctx: Context): Try =
+        Try(tree: Tree)(expr, cases, finalizer)
       def UnApply(tree: UnApply)(fun: Tree = tree.fun, implicits: List[Tree] = tree.implicits, patterns: List[Tree] = tree.patterns): UnApply =
         UnApply(tree: Tree)(fun, implicits, patterns)
       def ValDef(tree: ValDef)(mods: Modifiers = tree.mods, name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: Tree = tree.rhs): ValDef =
@@ -1184,8 +1184,8 @@ object Trees {
           cpy.CaseDef(tree)(transform(pat), transform(guard), transform(body))
         case Return(expr, from) =>
           cpy.Return(tree)(transform(expr), transformSub(from))
-        case Try(block, handler, finalizer) =>
-          cpy.Try(tree)(transform(block), transform(handler), transform(finalizer))
+        case Try(block, cases, finalizer) =>
+          cpy.Try(tree)(transform(block), transformSub(cases), transform(finalizer))
         case Throw(expr) =>
           cpy.Throw(tree)(transform(expr))
         case SeqLiteral(elems) =>

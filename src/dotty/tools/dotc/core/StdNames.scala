@@ -121,6 +121,7 @@ object StdNames {
     val SUPER_PREFIX: N               = "super$"
     val TRAIT_SETTER_PREFIX: N        = "_setter_$"
     val WHILE_PREFIX: N               = "while$"
+    val DEFAULT_EXCEPTION_NAME: N = "ex$"
 
     // value types (and AnyRef) are all used as terms as well
     // as (at least) arguments to the @specialize annotation.

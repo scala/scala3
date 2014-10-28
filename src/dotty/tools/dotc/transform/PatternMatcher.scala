@@ -51,7 +51,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
   override def transformMatch(tree: Match)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val translated = new Translator()(ctx).translator.translateMatch(tree)
 
-    Typed(translated.ensureConforms(tree.tpe), TypeTree(tree.tpe))
+    translated.ensureConforms(tree.tpe)
   }
 
   class Translator(implicit ctx: Context) {

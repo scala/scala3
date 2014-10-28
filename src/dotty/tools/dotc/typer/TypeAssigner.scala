@@ -313,12 +313,9 @@ trait TypeAssigner {
   def assignType(tree: untpd.Return)(implicit ctx: Context) =
     tree.withType(defn.NothingType)
 
-  def assignType(tree: untpd.Try, expr: Tree, handler: Tree)(implicit ctx: Context) = {
-    if(handler.isEmpty) tree.withType(expr.tpe)
-    else if(handler.tpe.derivesFrom(defn.FunctionClass(1))) {
-      val handlerTypeArgs = handler.tpe.baseArgTypesHi(defn.FunctionClass(1))
-      tree.withType(if (handlerTypeArgs.nonEmpty) expr.tpe | handlerTypeArgs(1) else expr.tpe /*| Object, as function returns boxed value ??? */)
-    } else tree.withType(expr.tpe | handler.tpe)
+  def assignType(tree: untpd.Try, expr: Tree, cases: List[CaseDef])(implicit ctx: Context) = {
+    if (cases.isEmpty) tree.withType(expr.tpe)
+    else tree.withType(ctx.typeComparer.lub(expr.tpe :: cases.tpes))
   }
 
   def assignType(tree: untpd.Throw)(implicit ctx: Context) =

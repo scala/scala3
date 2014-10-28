@@ -1104,9 +1104,9 @@ object TreeTransforms {
           if (mutatedInfo eq null) tree
           else {
             val block = transform(tree.expr, mutatedInfo, cur)
-            val handler = transform(tree.handler, mutatedInfo, cur)
+            val cases1 = tree.cases.mapConserve(transform(_, mutatedInfo, cur)).asInstanceOf[List[CaseDef]]
             val finalizer = transform(tree.finalizer, mutatedInfo, cur)
-            goTry(cpy.Try(tree)(block, handler, finalizer), mutatedInfo.nx.nxTransTry(cur))
+            goTry(cpy.Try(tree)(block, cases1, finalizer), mutatedInfo.nx.nxTransTry(cur))
           }
         case tree: Throw =>
           implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForThrow, info.nx.nxPrepThrow, tree, cur)

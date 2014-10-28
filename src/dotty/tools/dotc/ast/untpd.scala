@@ -123,7 +123,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Match(selector: Tree, cases: List[CaseDef]): Match = new Match(selector, cases)
   def CaseDef(pat: Tree, guard: Tree, body: Tree): CaseDef = new CaseDef(pat, guard, body)
   def Return(expr: Tree, from: Tree): Return = new Return(expr, from)
-  def Try(expr: Tree, handler: Tree, finalizer: Tree): Try = new Try(expr, handler, finalizer)
+  def Try(expr: Tree, cases: List[CaseDef], finalizer: Tree): Try = new Try(expr, cases, finalizer)
   def Throw(expr: Tree): Throw = new Throw(expr)
   def SeqLiteral(elems: List[Tree]): SeqLiteral = new SeqLiteral(elems)
   def JavaSeqLiteral(elems: List[Tree]): JavaSeqLiteral = new JavaSeqLiteral(elems)
