@@ -461,7 +461,7 @@ trait Applications extends Compatibility { self: Typer =>
 
     val result = {
       var typedArgs = typedArgBuf.toList
-      val app0 = cpy.Apply(app)(normalizedFun, typedArgs)
+      def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
         if (!success) app0.withType(ErrorType)
         else {
