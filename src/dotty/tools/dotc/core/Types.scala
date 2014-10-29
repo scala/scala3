@@ -35,6 +35,8 @@ object Types {
 
   private var recCount = 0 // used temporarily for debugging. TODO: remove
 
+  private var nextId = 0
+
   /** The class of types.
    *  The principal subclasses and sub-objects are as follows:
    *
@@ -69,6 +71,13 @@ object Types {
   abstract class Type extends DotClass with Hashable with printing.Showable {
 
 // ----- Tests -----------------------------------------------------
+
+    val uniqId = {
+      nextId = nextId + 1
+//      if(nextId == 19555)
+//        println("foo")
+      nextId
+    }
 
     /** Is this type different from NoType? */
     def exists: Boolean = true
