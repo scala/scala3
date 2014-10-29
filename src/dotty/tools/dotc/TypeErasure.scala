@@ -91,7 +91,9 @@ object TypeErasure {
   def semiErasure(tp: Type)(implicit ctx: Context): Type = semiErasureFn(tp)
   def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName = {
     val normTp =
-      if (tp.isRepeatedParam) tp.translateParameterized(defn.RepeatedParamClass, defn.SeqClass)
+      if (tp.isRepeatedParam)
+        if (isJava) tp.translateParameterized(defn.RepeatedParamClass, defn.ArrayClass)
+        else tp.translateParameterized(defn.RepeatedParamClass, defn.SeqClass)
       else tp
     (if (isJava) javaSigFn else scalaSigFn).sigName(normTp)
   }
