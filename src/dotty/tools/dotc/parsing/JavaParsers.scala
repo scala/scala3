@@ -369,7 +369,7 @@ object JavaParsers {
             flags |= Flags.Private
             in.nextToken()
           case STATIC =>
-            flags |= Flags.Static
+            flags |= Flags.JavaStatic
             in.nextToken()
           case ABSTRACT =>
             flags |= Flags.Abstract
@@ -524,7 +524,7 @@ object JavaParsers {
             }
           }
         } else {
-          if (inInterface) mods1 |= Flags.Final | Flags.Static
+          if (inInterface) mods1 |= Flags.Final | Flags.JavaStatic
           val result = fieldDecls(Position(offset), mods1, rtpt, name)
           accept(SEMI)
           result
@@ -582,7 +582,7 @@ object JavaParsers {
 
     def memberDecl(mods: Modifiers, parentToken: Int, parentTParams: List[TypeDef]): List[Tree] = in.token match {
       case CLASS | ENUM | INTERFACE | AT =>
-        typeDecl(if (definesInterface(parentToken)) mods | Flags.Static else mods)
+        typeDecl(if (definesInterface(parentToken)) mods | Flags.JavaStatic else mods)
       case _ =>
         termDecl(mods, parentToken, parentTParams)
     }
@@ -732,9 +732,9 @@ object JavaParsers {
         } else if (in.token == SEMI) {
           in.nextToken()
         } else {
-          if (in.token == ENUM || definesInterface(in.token)) mods |= Flags.Static
+          if (in.token == ENUM || definesInterface(in.token)) mods |= Flags.JavaStatic
           val decls = memberDecl(mods, parentToken, parentTParams)
-          (if ((mods is Flags.Static) || inInterface && !(decls exists (_.isInstanceOf[DefDef])))
+          (if ((mods is Flags.JavaStatic) || inInterface && !(decls exists (_.isInstanceOf[DefDef])))
             statics
           else
             members) ++= decls
@@ -802,12 +802,12 @@ object JavaParsers {
         }
       val predefs = List(
         DefDef(
-          Modifiers(Flags.JavaDefined | Flags.Static | Flags.Method), nme.values, List(),
+          Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method), nme.values, List(),
           ListOfNil,
           arrayOf(enumType),
           unimplementedExpr),
         DefDef(
-          Modifiers(Flags.JavaDefined | Flags.Static | Flags.Method), nme.valueOf, List(),
+          Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method), nme.valueOf, List(),
           List(List(makeParam("x", TypeTree(StringType)))),
           enumType,
           unimplementedExpr))
@@ -839,7 +839,7 @@ object JavaParsers {
           skipAhead()
           accept(RBRACE)
         }
-        ValDef(Modifiers(Flags.Enum | Flags.Stable | Flags.JavaDefined | Flags.Static), name.toTermName, enumType, unimplementedExpr)
+        ValDef(Modifiers(Flags.Enum | Flags.Stable | Flags.JavaDefined | Flags.JavaStatic), name.toTermName, enumType, unimplementedExpr)
       }
     }
 
