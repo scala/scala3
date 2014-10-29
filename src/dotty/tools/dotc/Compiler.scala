@@ -56,7 +56,8 @@ class Compiler {
       List(new CapturedVars,
            new Constructors),
       List(new LambdaLift,
-           new Flatten)
+           new Flatten,
+           new RestoreScopes)
     )
 
   var runId = 1
