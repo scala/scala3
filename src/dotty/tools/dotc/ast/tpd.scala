@@ -128,8 +128,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (tpe derivesFrom defn.SeqClass) SeqLiteral(elems) else JavaSeqLiteral(elems)
 
   def JavaSeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
-    new untpd.JavaSeqLiteral(elems)
-      .withType(defn.ArrayClass.typeRef.appliedTo(ctx.typeComparer.lub(elems.tpes)))
+    ta.assignType(new untpd.JavaSeqLiteral(elems), elems)
+
 
   def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
     TypeTree(original.tpe, original)

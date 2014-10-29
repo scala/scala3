@@ -304,11 +304,14 @@ trait TypeAssigner {
   def assignType(tree: untpd.Throw)(implicit ctx: Context) =
     tree.withType(defn.NothingType)
 
-  def assignType(tree: untpd.SeqLiteral, elems: List[Tree])(implicit ctx: Context) = {
-    val ownType =
-      if (ctx.erasedTypes) defn.SeqType
-      else defn.SeqType.appliedTo(ctx.typeComparer.lub(elems.tpes).widen)
-    tree.withType(ownType)
+  def assignType(tree: untpd.SeqLiteral, elems: List[Tree])(implicit ctx: Context) = tree match {
+    case tree: JavaSeqLiteral =>
+      tree.withType(defn.ArrayClass.typeRef.appliedTo(ctx.typeComparer.lub(elems.tpes)))
+    case _ =>
+      val ownType =
+        if (ctx.erasedTypes) defn.SeqType
+        else defn.SeqType.appliedTo(ctx.typeComparer.lub(elems.tpes).widen)
+      tree.withType(ownType)
   }
 
   def assignType(tree: untpd.SingletonTypeTree, ref: Tree)(implicit ctx: Context) =
