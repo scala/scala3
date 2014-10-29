@@ -618,8 +618,8 @@ object JavaParsers {
         if (statics.isEmpty) cdef
         else {
           val template = cdef.rhs.asInstanceOf[Template]
-          cpy.TypeDef(cdef, cdef.mods, cdef.name,
-            cpy.Template(template, template.constr, template.parents, template.self,
+          cpy.TypeDef(cdef)(cdef.mods, cdef.name,
+            cpy.Template(template)(template.constr, template.parents, template.self,
               importCompanionObject(cdef) :: template.body),
             cdef.tparams)
         }
