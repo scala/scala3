@@ -112,7 +112,7 @@ object JavaParsers {
     def makePackaging(pkg: RefTree, stats: List[Tree]): PackageDef =
       atPos(pkg.pos) {  PackageDef(pkg, stats) }
 
-    def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef]) = {
+    def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean) = {
       def pullOutFirstConstr(stats: List[Tree]): (Tree, List[Tree]) = stats match {
         case (meth: DefDef) :: rest if meth.name.isConstructorName => (meth, rest)
         case first :: rest =>
@@ -120,21 +120,26 @@ object JavaParsers {
           (constr, first :: tail)
         case nil => (EmptyTree, nil)
       }
-      val (constr, stats1) = pullOutFirstConstr(stats)
-      val constr1 = if(constr == EmptyTree) makeConstructor(List(), tparams) else constr.asInstanceOf[DefDef]
-      Template(constr1, parents, EmptyValDef, stats1)
+      var (constr1, stats1) = pullOutFirstConstr(stats)
+      if(constr1 == EmptyTree) constr1 = makeConstructor(List(), tparams)
+      // A dummy first constructor is needed for Java classes so that the real constructors see the
+      // import of the companion object. The constructor has parameter of type Unit so no Java code
+      // can call it.
+      if(needsDummyConstr) {
+        stats1 = constr1 :: stats1
+        constr1 = makeConstructor(List(scalaDot(tpnme.Unit)), tparams, Flags.JavaDefined | Flags.PrivateLocal)
+      }
+      Template(constr1.asInstanceOf[DefDef], parents, EmptyValDef, stats1)
     }
 
     def makeSyntheticParam(count: Int, tpt: Tree): ValDef =
       makeParam(nme.syntheticParamName(count), tpt)
-    def makeParam(name: String, tpt: Tree): ValDef =
-      makeParam(name.toTermName, tpt)
-    def makeParam(name: TermName, tpt: Tree, flags: FlagSet = Flags.Param): ValDef =
-      ValDef(Modifiers(flags | Flags.JavaDefined), name, tpt, EmptyTree)
+    def makeParam(name: TermName, tpt: Tree): ValDef =
+      ValDef(Modifiers(Flags.JavaDefined | Flags.PrivateLocalParamAccessor), name, tpt, EmptyTree)
 
-    def makeConstructor(formals: List[Tree], tparams: List[TypeDef]) = {
+    def makeConstructor(formals: List[Tree], tparams: List[TypeDef], flags: FlagSet = Flags.JavaDefined) = {
       val vparams = mapWithIndex(formals)((p, i) => makeSyntheticParam(i + 1, p))
-      DefDef(Modifiers(Flags.JavaDefined), nme.CONSTRUCTOR, tparams, List(vparams), TypeTree(), EmptyTree)
+      DefDef(Modifiers(flags), nme.CONSTRUCTOR, tparams, List(vparams), TypeTree(), EmptyTree)
     }
 
     // ------------- general parsing ---------------------------
@@ -447,7 +452,7 @@ object JavaParsers {
           PostfixOp(t, nme.raw.STAR)
         }
       }
-      varDecl(Position(in.offset), Modifiers(Flags.JavaDefined | Flags.Param), t, ident().toTermName, dontAddMutable = true)
+      varDecl(Position(in.offset), Modifiers(Flags.JavaDefined | Flags.Param), t, ident().toTermName)
     }
 
     def optThrows(): Unit = {
@@ -571,12 +576,12 @@ object JavaParsers {
       buf.toList
     }
 
-    def varDecl(pos: Position, mods: Modifiers, tpt: Tree, name: TermName, dontAddMutable: Boolean = false): ValDef = {
+    def varDecl(pos: Position, mods: Modifiers, tpt: Tree, name: TermName): ValDef = {
       val tpt1 = optArrayBrackets(tpt)
       if (in.token == EQUALS && !(mods is Flags.Param)) skipTo(COMMA, SEMI)
-      val mods1 = if (mods is Flags.Final) mods &~ Flags.Final else if(dontAddMutable) mods else mods | Flags.Mutable
+      val mods1 = if(mods is Flags.Final) mods else mods | Flags.Mutable
       atPos(pos) {
-        ValDef(mods1, name, tpt1, EmptyTree)
+        ValDef(mods1, name, tpt1, if(mods is Flags.Param) EmptyTree else unimplementedExpr)
       }
     }
 
@@ -590,7 +595,7 @@ object JavaParsers {
     def makeCompanionObject(cdef: TypeDef, statics: List[Tree]): Tree =
       atPos(cdef.pos) {
         ModuleDef((cdef.mods & (Flags.AccessFlags | Flags.JavaDefined)).toTermFlags, cdef.name.toTermName,
-          makeTemplate(List(), statics, List()))
+          makeTemplate(List(), statics, List(), false))
       }
 
     private val wild     = Ident(nme.WILDCARD) withPos Position(-1)
@@ -689,7 +694,7 @@ object JavaParsers {
       val interfaces = interfacesOpt()
       val (statics, body) = typeBody(CLASS, name, tparams)
       addCompanionObject(statics, atPos(offset) {
-        TypeDef(mods, name, makeTemplate(superclass :: interfaces, body, tparams))
+        TypeDef(mods, name, makeTemplate(superclass :: interfaces, body, tparams, true))
       })
     }
 
@@ -709,7 +714,7 @@ object JavaParsers {
       addCompanionObject(statics, atPos(offset) {
         TypeDef(mods | Flags.Trait | Flags.Interface | Flags.Abstract,
           name, tparams,
-          makeTemplate(parents, body, tparams))
+          makeTemplate(parents, body, tparams, false))
       })
     }
 
@@ -763,12 +768,12 @@ object JavaParsers {
       val name = identForType()
       val (statics, body) = typeBody(AT, name, List())
       val constructorParams = body.collect {
-        case dd: DefDef => makeParam(dd.name, dd.tpt, Flags.PrivateLocalParamAccessor)
+        case dd: DefDef => makeParam(dd.name, dd.tpt)
       }
       val constr = DefDef(Modifiers(Flags.JavaDefined), nme.CONSTRUCTOR,
         List(), List(constructorParams), TypeTree(), EmptyTree)
       val body1 = body.filterNot(_.isInstanceOf[DefDef])
-      val templ = makeTemplate(annotationParents, constr :: body1, List())
+      val templ = makeTemplate(annotationParents, constr :: body1, List(), false)
       addCompanionObject(statics, atPos(offset) {
         TypeDef(mods | Flags.Abstract, name, templ)
       })
@@ -808,7 +813,7 @@ object JavaParsers {
           unimplementedExpr),
         DefDef(
           Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method), nme.valueOf, List(),
-          List(List(makeParam("x", TypeTree(StringType)))),
+          List(List(makeParam("x".toTermName, TypeTree(StringType)))),
           enumType,
           unimplementedExpr))
       accept(RBRACE)
@@ -821,7 +826,7 @@ object JavaParsers {
         List(Literal(Constant(null)),Literal(Constant(0))))
       addCompanionObject(consts ::: statics ::: predefs, atPos(offset) {
         TypeDef(mods | Flags.Enum, name, List(),
-          makeTemplate(superclazz :: interfaces, body, List()))
+          makeTemplate(superclazz :: interfaces, body, List(), true))
       })
     }
 

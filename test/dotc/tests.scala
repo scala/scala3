@@ -135,7 +135,6 @@ class tests extends CompilerTest {
   val javaDir = "./tests/disabled/java-interop/"
   @Test def java_all = compileFiles(javaDir+"pos/")
 
-  @Test def java_2409 = compileDir(javaDir+"failing/t2409")
   @Test def java_1751 = compileDir(javaDir+"failing/t1751")
   @Test def java_294 = compileDir(javaDir+"failing/t294")
 
