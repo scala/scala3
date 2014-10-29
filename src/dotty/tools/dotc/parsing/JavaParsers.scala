@@ -770,7 +770,7 @@ object JavaParsers {
       val body1 = body.filterNot(_.isInstanceOf[DefDef])
       val templ = makeTemplate(annotationParents, constr :: body1, List())
       addCompanionObject(statics, atPos(offset) {
-        TypeDef(mods, name, templ)
+        TypeDef(mods | Flags.Abstract, name, templ)
       })
     }
 
