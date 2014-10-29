@@ -817,6 +817,16 @@ object desugar {
       case PatDef(mods, pats, tpt, rhs) =>
         val pats1 = if (tpt.isEmpty) pats else pats map (Typed(_, tpt))
         flatTree(pats1 map (makePatDef(mods, _, rhs)))
+      case ParsedTry(body, handler, finalizer) =>
+        handler match {
+          case Match(EmptyTree, cases) => Try(body, cases, finalizer)
+          case EmptyTree => Try(body, Nil, finalizer)
+          case _ =>
+            Try(body,
+              List(CaseDef(Ident(nme.DEFAULT_EXCEPTION_NAME), EmptyTree, Apply(handler, Ident(nme.DEFAULT_EXCEPTION_NAME)))),
+              finalizer)
+        }
+
     }
   }.withPos(tree.pos)
 
