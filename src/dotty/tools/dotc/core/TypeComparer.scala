@@ -515,6 +515,14 @@ class TypeComparer(initctx: Context) extends DotClass {
           case _ =>
             secondTry(tp1, tp2)
         }
+      case tp2: SuperType =>
+        tp1 match {
+          case tp1: SuperType =>
+            isSubType(tp1.thistpe, tp2.thistpe) &&
+            isSameType(tp1.supertpe, tp2.supertpe)
+          case _ =>
+            secondTry(tp1, tp2)
+        }
       case AndType(tp21, tp22) =>
         isSubType(tp1, tp21) && isSubType(tp1, tp22)
       case ErrorType =>

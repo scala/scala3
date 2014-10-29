@@ -31,7 +31,7 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
   import ast.tpd._
 
   /** the following two members override abstract members in Transform */
-  val phaseName: String = "lambdalift"
+  val phaseName: String = "lambdaLift"
 
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Constructors])
     // Constructors has to happen before LambdaLift because the lambda lift logic
@@ -88,7 +88,7 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
   }
 
   def narrowLiftedOwner(sym: Symbol, owner: Symbol)(implicit ctx: Context) = {
-    println(i"narrow lifted $sym")
+    ctx.log(i"narrow lifted $sym to $owner")
     if (sym.owner.skipConstructor.isTerm &&
         owner.isProperlyContainedIn(liftedOwner(sym))) {
       changedLiftedOwner = true
@@ -128,7 +128,7 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
    */
   private def markFree(sym: Symbol, enclosure: Symbol)(implicit ctx: Context): Boolean = try {
     if (!enclosure.exists) throw new NoPath
-    println(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
+    ctx.log(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
     (enclosure == sym.enclosure) || {
       ctx.debuglog(i"$enclosure != ${sym.enclosure}")
       narrowLiftedOwner(enclosure, sym.enclosingClass)
@@ -164,9 +164,13 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
       val sym = tree.symbol
       tree match {
         case tree: Ident =>
-          if (sym.maybeOwner.isTerm)
-            if (sym is (Method, butNot = Label)) markCalled(sym, enclosure)
+          if (sym.maybeOwner.isTerm) {
+            if (sym is Label)
+              assert(enclosure == sym.enclosure,
+                  i"attempt to refer to label $sym from nested $enclosure")
+            else if (sym is Method) markCalled(sym, enclosure)
             else if (sym.isTerm) markFree(sym, enclosure)
+          }
         case tree: Select =>
           if (sym.isConstructor && sym.owner.owner.isTerm)
             markCalled(sym, enclosure)
@@ -183,7 +187,7 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
         case tree: TypeDef =>
           if (sym.owner.isTerm) liftedOwner(sym) = sym.topLevelClass.owner
         case tree: Template =>
-          liftedDefs(enclosure) = new mutable.ListBuffer
+          liftedDefs(tree.symbol.owner) = new mutable.ListBuffer
         case _ =>
       }
       foldOver(enclosure, tree)
@@ -198,7 +202,6 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
   private def computeFreeVars()(implicit ctx: Context): Unit =
     do {
       changedFreeVars = false
-      // println(s"called = ${called.toList map { case (from, to) => from.showLocated + " -> " + to.toList.map(_.showLocated) }}")
       for {
         caller <- called.keys
         callee <- called(caller)
@@ -257,7 +260,7 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
   private def liftLocals()(implicit ctx: Context): Unit = {
     for ((local, lOwner) <- liftedOwner) {
       val (newOwner, maybeStatic) =
-        if (lOwner is Package) (local.topLevelClass, Static)
+        if (lOwner is Package) (local.topLevelClass, JavaStatic)
         else (lOwner, EmptyFlags)
       val maybeNotJavaPrivate = if (calledFromInner(local)) NotJavaPrivate else EmptyFlags
       local.copySymDenotation(
@@ -276,6 +279,12 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
   }
 
   override def init(implicit ctx: Context, info: TransformerInfo) = {
+    free.clear()
+    proxyMap.clear()
+    called.clear()
+    calledFromInner.clear()
+    liftedOwner.clear()
+    liftedDefs.clear()
     assert(ctx.phase == thisTransform)
     (new CollectDependencies).traverse(NoSymbol, ctx.compilationUnit.tpdTree)
     computeFreeVars()
@@ -292,8 +301,11 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
 
   private def proxy(sym: Symbol)(implicit ctx: Context): Symbol = {
     def searchIn(enclosure: Symbol): Symbol = {
-      if (!enclosure.exists)
-        throw new IllegalArgumentException(i"Could not find proxy for ${sym.showDcl} in ${sym.ownersIterator.toList}, currentOwner= $currentEnclosure")
+      if (!enclosure.exists) {
+        def enclosures(encl: Symbol): List[Symbol] =
+          if (encl.exists) encl :: enclosures(encl.enclosure) else Nil
+        throw new IllegalArgumentException(i"Could not find proxy for ${sym.showDcl} in ${sym.ownersIterator.toList}, encl = $currentEnclosure, owners = ${currentEnclosure.ownersIterator.toList}%, %; enclosures = ${enclosures(currentEnclosure)}%, %")
+      }
       ctx.debuglog(i"searching for $sym(${sym.owner}) in $enclosure")
       proxyMap get enclosure match {
         case Some(pmap) =>
@@ -309,13 +321,15 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
   }
 
   private def memberRef(sym: Symbol)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    val clazz = sym.owner
-    val qual = if (clazz.isStaticOwner) singleton(clazz.thisType) else outer.path(clazz)
+    val clazz = sym.enclosingClass
+    val qual =
+      if (clazz.isStaticOwner) singleton(clazz.thisType)
+      else outer(ctx.withPhase(thisTransform)).path(clazz)
     transformFollowingDeep(qual.select(sym))
   }
 
   private def proxyRef(sym: Symbol)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    val psym = proxy(sym)
+    val psym = proxy(sym)(ctx.withPhase(thisTransform))
     transformFollowingDeep(if (psym.owner.isTerm) ref(psym) else memberRef(psym))
   }
 
@@ -351,8 +365,11 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
   override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = {
     val sym = tree.symbol
     tree.tpe match {
-      case TermRef(NoPrefix, _) if sym.enclosure != currentEnclosure && !sym.isStatic =>
-        (if (sym is Method) memberRef(sym) else proxyRef(sym)).withPos(tree.pos)
+      case tpe @ TermRef(prefix, _) =>
+        if ((prefix eq NoPrefix) && sym.enclosure != currentEnclosure && !sym.isStatic)
+          (if (sym is Method) memberRef(sym) else proxyRef(sym)).withPos(tree.pos)
+        else if (!prefixIsElidable(tpe)) ref(tpe)
+        else tree
       case _ =>
         tree
     }
@@ -368,7 +385,9 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
     val sym = tree.symbol
     val proxyHolder = sym.skipConstructor
     if (needsLifting(proxyHolder)) {
-      val paramsAdded = addFreeParams(tree, proxies(proxyHolder)).asInstanceOf[DefDef]
+      var paramsAdded = addFreeParams(tree, proxies(proxyHolder)).asInstanceOf[DefDef]
+      if (sym.is(JavaStatic) && !paramsAdded.mods.is(JavaStatic))
+        paramsAdded = cpy.DefDef(paramsAdded)(mods = paramsAdded.mods | JavaStatic)
       if (sym.isConstructor) paramsAdded else liftDef(paramsAdded)
     }
     else tree
@@ -389,16 +408,4 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
 
   override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo) =
     if (needsLifting(tree.symbol)) liftDef(tree) else tree
-  }
-
-
-/* done in lazyvals?
-        case Block(stats, expr0) =>
-          val (lzyVals, rest) = stats partition {
-            case stat: ValDef => stat.symbol.isLazy || stat.symbol.isModuleVar
-            case _            => false
-          }
-          if (lzyVals.isEmpty) tree
-          else treeCopy.Block(tree, lzyVals ::: rest, expr0)
-
-*/
+}

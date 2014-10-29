@@ -393,12 +393,14 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       val res: Tree
 
       val nextBinder: Symbol
-      lazy val introducedRebindings =
+      lazy val introducedRebindings = /*
         if(nextBinder ne prevBinder) Rebindings(prevBinder, nextBinder)
-        else NoRebindings
+        else */ NoRebindings
 
       def chainBefore(next: Tree)(casegen: Casegen): Tree =
-        /*atPos(pos)(*/casegen.flatMapCond(cond, res, nextBinder, next)//)
+        if(prevBinder ne nextBinder) // happens when typeTest is known to succeed
+          /*atPos(pos)(*/casegen.flatMapCond(cond, res, nextBinder, next)//)
+        else casegen.flatMapGuard(cond, next)
     }
 
     // unless we're optimizing, emit local variable bindings for all subpatterns of extractor/case class patterns
@@ -426,6 +428,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       private lazy val (stored, substed) = (subPatBinders, subPatRefs).zipped.partition{ case (sym, _) => storedBinders(sym) }
 
+      // dd: this didn't yet trigger error. But I believe it would. if this causes double denition of symbol error this can be replaced with NoRebindings
       protected lazy val introducedRebindings:  Rebindings = if (!emitVars) Rebindings(subPatBinders, subPatRefs)
       else {
         val (subPatBindersSubstituted, subPatRefsSubstituted) = substed.unzip
@@ -946,7 +949,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         case Bind(nme.WILDCARD, _)                => true // don't skip when binding an interesting symbol!
         case Ident(nme.WILDCARD)                  => true
         case Alternative(ps)                      => ps forall unapply
-        case Typed(PatternBoundToUnderscore(), _) => true
+        case Typed(PatternBoundToUnderscore(), _) => false // true // Dmitry: change in dotty. Type test will be performed and the field must be stored
         case _                                    => false
       }
     }

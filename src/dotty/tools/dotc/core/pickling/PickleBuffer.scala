@@ -236,7 +236,7 @@ object PickleBuffer {
       JAVA -> JavaDefined,
       SYNTHETIC -> Synthetic,
       STABLE -> Stable,
-      STATIC -> Static,
+      STATIC -> JavaStatic,
       CASEACCESSOR -> CaseAccessor,
       DEFAULTPARAM -> (DefaultParameterized, Trait),
       BRIDGE -> Bridge,

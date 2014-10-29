@@ -15,7 +15,7 @@ class tests extends CompilerTest {
 
   implicit val defaultOptions = noCheckOptions ++ List(
       "-Yno-deep-subtypes",
-      "-Ycheck:patternMatcher,gettersSetters,constructors"
+      "-Ycheck:patternMatcher,gettersSetters,lambdaLift"
   )
 
   val twice = List("#runs", "2", "-YnoDoubleBindings")
@@ -99,12 +99,16 @@ class tests extends CompilerTest {
   @Test def neg_variances = compileFile(negDir, "variances", xerrors = 2)
   @Test def neg_badAuxConstr = compileFile(negDir, "badAuxConstr", xerrors = 2)
   @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
+  @Test def neg_t1569_failedAvoid = compileFile(negDir, "t1569-failedAvoid", xerrors = 1)
   @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)(allowDeepSubtypes)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", twice)
   @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config", twice)
   @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", twice)(allowDeepSubtypes)
   @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", twice)(allowDeepSubtypes)
-  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", twice)
+
+  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", twice)(defaultOptions ++ List("-Ycheck:pat,era,lam"))
+  //disabled, awaiting fix for call-by-name function types.
+
   @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing", twice)
   @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing", twice)
   @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting", twice)

@@ -179,7 +179,8 @@ object ExplicitOuter {
    *  definitions in the class to find the one with the OuterAccessor flag.
    */
   def outerAccessor(cls: ClassSymbol)(implicit ctx: Context): Symbol =
-    cls.info.member(outerAccName(cls)).suchThat(_ is OuterAccessor).symbol orElse
+    if (cls.isStatic) NoSymbol // fast return to avoid scanning package decls
+    else cls.info.member(outerAccName(cls)).suchThat(_ is OuterAccessor).symbol orElse
       cls.info.decls.find(_ is OuterAccessor).getOrElse(NoSymbol)
 
   /** Class has an outer accessor. Can be called only after phase ExplicitOuter. */

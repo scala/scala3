@@ -79,14 +79,13 @@ final class TreeTypeMap(
 
   override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = treeMap(tree) match {
     case impl @ Template(constr, parents, self, body) =>
-      val tmap = withMappedSyms(impl.symbol :: impl.constr.symbol :: Nil)
-      val parents1 = parents mapconserve transform
-      val (_, constr1 :: self1 :: Nil) = transformDefs(constr :: self :: Nil)
-      val body1 = tmap.transformStats(body)
-      updateDecls(constr :: body, constr1 :: body1)
+      val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
       cpy.Template(impl)(
-        constr1.asInstanceOf[DefDef], parents1, self1.asInstanceOf[ValDef], body1)
-        .withType(tmap.mapType(impl.tpe))
+          constr = tmap.transformSub(constr),
+          parents = parents mapconserve transform,
+          self = tmap.transformSub(self),
+          body = body mapconserve tmap.transform
+        ).withType(tmap.mapType(impl.tpe))
     case tree1 =>
       tree1.withType(mapType(tree1.tpe)) match {
         case id: Ident if tpd.needsSelect(id.tpe) =>
@@ -160,8 +159,24 @@ final class TreeTypeMap(
    *  and return a treemap that contains the substitution
    *  between original and mapped symbols.
    */
-  def withMappedSyms(syms: List[Symbol]): TreeTypeMap = {
-    val mapped = ctx.mapSymbols(syms, this)
-    withSubstitution(syms, mapped)
+  def withMappedSyms(syms: List[Symbol], mapAlways: Boolean = false): TreeTypeMap =
+    withMappedSyms(syms, ctx.mapSymbols(syms, this, mapAlways))
+
+  /** The tree map with the substitution between originals `syms`
+   *  and mapped symbols `mapped`. Also goes into mapped classes
+   *  and substitutes their declarations.
+   */
+  def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap = {
+    val symsChanged = syms ne mapped
+    val substMap = withSubstitution(syms, mapped)
+    val fullMap = (substMap /: mapped.filter(_.isClass)) { (tmap, cls) =>
+      val origDcls = cls.decls.toList
+      val mappedDcls = ctx.mapSymbols(origDcls, tmap)
+      val tmap1 = tmap.withMappedSyms(origDcls, mappedDcls)
+      if (symsChanged) (origDcls, mappedDcls).zipped.foreach(cls.asClass.replace)
+      tmap1
+    }
+    if (symsChanged || (fullMap eq substMap)) fullMap
+    else withMappedSyms(syms, mapAlways = true)
   }
 }

@@ -101,7 +101,7 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
   }
 
   def assertErased(tp: Type, tree: tpd.Tree = tpd.EmptyTree)(implicit ctx: Context): Unit =
-    assert(isErasedType(tp), i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase}")
+    assert(isErasedType(tp), i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase}")
 }
 
 object Erasure extends TypeTestsCasts{
@@ -183,6 +183,7 @@ object Erasure extends TypeTestsCasts{
     }
 
     /** Generate a synthetic cast operation from tree.tpe to pt.
+     *  Does not do any boxing/unboxing (this is handled upstream).
      */
     def cast(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
       // TODO: The commented out assertion fails for tailcall/t6574.scala
@@ -315,7 +316,7 @@ object Erasure extends TypeTestsCasts{
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
       if (tree.symbol == ctx.owner.enclosingClass || tree.symbol.isStaticOwner) promote(tree)
       else {
-        ctx.log(i"computing outer path from ${ctx.owner.ownersIterator.toList}%, % to ${tree.symbol}")
+        ctx.log(i"computing outer path from ${ctx.owner.ownersIterator.toList}%, % to ${tree.symbol}, encl class = ${ctx.owner.enclosingClass}")
         outer.path(tree.symbol)
       }
 
@@ -377,10 +378,8 @@ object Erasure extends TypeTestsCasts{
       EmptyTree
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
-      val statsFlatten = Trees.flatten(stats)
-      val stats1 = super.typedStats(statsFlatten, exprOwner)
-
-      if (ctx.owner.isClass) stats1:::addBridges(statsFlatten, stats1)(ctx) else stats1
+      val stats1 = Trees.flatten(super.typedStats(stats, exprOwner))
+      if (ctx.owner.isClass) stats1 ::: addBridges(stats, stats1)(ctx) else stats1
     }
 
     // this implementation doesn't check for bridge clashes with value types!

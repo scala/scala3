@@ -331,7 +331,9 @@ object Flags {
   final val JavaDefined = commonFlag(30, "<java>")
 
   /** Symbol is implemented as a Java static */
-  final val Static = commonFlag(31, "<static>")
+  final val JavaStatic = commonFlag(31, "<static>")
+  final val JavaStaticTerm = JavaStatic.toTermFlags
+  final val JavaStaticType = JavaStatic.toTypeFlags
 
   /** Variable is accessed from nested function. */
   final val Captured = termFlag(32, "<captured>")
@@ -421,7 +423,7 @@ object Flags {
   /** Flags representing source modifiers */
   final val SourceModifierFlags =
     commonFlags(Private, Protected, Abstract, Final,
-     Sealed, Case, Implicit, Override, AbsOverride, Lazy, Static)
+     Sealed, Case, Implicit, Override, AbsOverride, Lazy, JavaStatic)
 
   /** Flags representing modifiers that can appear in trees */
   final val ModifierFlags =
@@ -436,7 +438,7 @@ object Flags {
   /** Flags guaranteed to be set upon symbol creation */
   final val FromStartFlags =
     AccessFlags | Module | Package | Deferred | MethodOrHKCommon | Param | ParamAccessor | Scala2ExistentialCommon |
-    InSuperCall | Touched | Static | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
+    InSuperCall | Touched | JavaStatic | CovariantOrOuter | ContravariantOrLabel | ExpandedName | AccessorOrSealed |
     CaseAccessorOrTypeArgument | Fresh | Frozen | Erroneous | ImplicitCommon | Permanent |
     SelfNameOrImplClass
 
@@ -473,7 +475,7 @@ object Flags {
     */
   final val RetainedModuleValAndClassFlags: FlagSet =
     AccessFlags | Package | Case |
-    Synthetic | ExpandedName | JavaDefined | Static | Artifact |
+    Synthetic | ExpandedName | JavaDefined | JavaStatic | Artifact |
     Erroneous | Lifted | MixedIn | Specialized
 
   /** Flags that can apply to a module val */
@@ -487,7 +489,7 @@ object Flags {
 
   /** Packages and package classes always have these flags set */
   final val PackageCreationFlags =
-    Module | Package | Final | JavaDefined | Static
+    Module | Package | Final | JavaDefined
 
   /** These flags are pickled */
   final val PickledFlags = flagRange(FirstFlag, FirstNotPickledFlag)
@@ -562,7 +564,7 @@ object Flags {
   final val ProtectedLocal = allOf(Protected, Local)
 
   /** Java symbol which is `protected` and `static` */
-  final val StaticProtected = allOf(JavaDefined, Protected, Static)
+  final val StaticProtected = allOf(JavaDefined, Protected, JavaStatic)
 
   final val AbstractFinal = allOf(Abstract, Final)
   final val AbstractSealed = allOf(Abstract, Sealed)

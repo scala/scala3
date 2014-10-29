@@ -116,6 +116,8 @@ object Types {
         tp.tp1.derivesFrom(cls) || tp.tp2.derivesFrom(cls)
       case tp: OrType =>
         tp.tp1.derivesFrom(cls) && tp.tp2.derivesFrom(cls)
+      case tp: JavaArrayType =>
+        cls == defn.ObjectClass
       case _ =>
         false
     }
@@ -408,6 +410,8 @@ object Types {
           goAnd(l, r)
         case OrType(l, r) =>
           goOr(l, r)
+        case tp: JavaArrayType =>
+          defn.ObjectType.findMember(name, pre, excluded)
         case ErrorType =>
           ctx.newErrorSymbol(pre.classSymbol orElse defn.RootClass, name)
         case _ =>

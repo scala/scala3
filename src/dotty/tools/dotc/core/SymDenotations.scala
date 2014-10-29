@@ -390,7 +390,7 @@ object SymDenotations {
 
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(implicit ctx: Context) =
-      (this is Static) || this.exists && owner.isStaticOwner
+      (this is JavaStatic) || this.exists && owner.isStaticOwner
 
     /** Is this a package class or module class that defines static symbols? */
     final def isStaticOwner(implicit ctx: Context): Boolean =
@@ -666,10 +666,16 @@ object SymDenotations {
      *  for these definitions.
      */
     final def enclosingClass(implicit ctx: Context): Symbol = {
-      def enclClass(d: SymDenotation): Symbol =
-        if (d.isClass || !d.exists) d.symbol else enclClass(d.owner)
-      val cls = enclClass(this)
-      if (this is InSuperCall) cls.owner.enclosingClass else cls
+      def enclClass(sym: Symbol, skip: Boolean): Symbol = {
+        def newSkip = sym.is(InSuperCall) || sym.is(JavaStaticTerm)
+        if (!sym.exists)
+          NoSymbol
+        else if (sym.isClass)
+          if (skip) enclClass(sym.owner, newSkip) else sym
+        else
+          enclClass(sym.owner, skip || newSkip)
+      }
+      enclClass(symbol, false)
     }
 
     final def isEffectivelyFinal(implicit ctx: Context): Boolean = {
@@ -976,7 +982,7 @@ object SymDenotations {
     /** The type parameters of this class */
     override final def typeParams(implicit ctx: Context): List[TypeSymbol] = {
       def computeTypeParams = {
-        if (ctx.erasedTypes && (symbol ne defn.ArrayClass)) Nil
+        if (ctx.erasedTypes || is(Module)) Nil // fast return for modules to avoid scanning package decls
         else if (this ne initial) initial.asSymDenotation.typeParams
         else decls.filter(sym =>
           (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
