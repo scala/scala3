@@ -104,7 +104,7 @@ class GettersSetters extends MiniPhaseTransform with SymTransformer { thisTransf
   }
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree =
-    if (tree.symbol.isSetter && !tree.symbol.is(Deferred | ParamAccessor)) {
+    if (tree.symbol.isSetter && !tree.symbol.is(Deferred | ParamAccessor | JavaDefined)) {
       val Literal(Constant(())) = tree.rhs
       val initializer = Assign(ref(tree.symbol.field), ref(tree.vparamss.head.head.symbol))
       assert(initializer.hasType)
