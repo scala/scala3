@@ -845,7 +845,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       .select(TermRef.withSig(atp.normalizedPrefix, constr.termSymbol.asTerm))
       .appliedToTypes(targs)
     val apply = untpd.Apply(fun, args)
-    new typer.ApplyToTyped(apply, fun, constr, args, atp).result // needed to handle varargs
+    new typer.ApplyToTyped(apply, fun, constr, args, atp).result.asInstanceOf[tpd.Tree] // needed to handle varargs
+    // Dotty deviation, for scalac the last cast wouldn't be required
   }
 
   /** Read an annotation and as a side effect store it into
