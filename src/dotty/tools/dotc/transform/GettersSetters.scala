@@ -102,7 +102,7 @@ import Decorators._
   }
 
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree =
-    if (tree.symbol.isSetter && !tree.symbol.is(Deferred | ParamAccessor)) {
+    if (tree.symbol.isSetter && !tree.symbol.is(Deferred | ParamAccessor | JavaDefined)) {
       val Literal(Constant(())) = tree.rhs
       assert(tree.symbol.field.exists, i"no field for ${tree.symbol.showLocated}")
       val initializer = Assign(ref(tree.symbol.field), ref(tree.vparamss.head.head.symbol))
