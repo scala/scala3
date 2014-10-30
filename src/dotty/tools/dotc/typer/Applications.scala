@@ -388,6 +388,14 @@ trait Applications extends Compatibility { self: Typer =>
     def isVarArg(arg: Tree): Boolean = tpd.isWildcardStarArg(arg)
   }
 
+  /** Subclass of Application for applicability tests with type arguments and value
+    *  argument trees.
+    */
+  class ApplicableToTreesDirectly(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context) extends ApplicableToTrees(methRef, targs, args, resultType)(ctx) {
+    override def addArg(arg: TypedArg, formal: Type) =
+      ok = ok & (argType(arg, formal) <:< formal)
+  }
+
   /** Subclass of Application for applicability tests with value argument types. */
   class ApplicableToTypes(methRef: TermRef, args: List[Type], resultType: Type)(implicit ctx: Context)
   extends TestApplication(methRef, methRef, args, resultType) {
@@ -754,6 +762,14 @@ trait Applications extends Compatibility { self: Typer =>
     new ApplicableToTrees(methRef, targs, args, resultType)(nestedContext).success
   }
 
+  /** Is given method reference applicable to type arguments `targs` and argument trees `args` without invfering views?
+    *  @param  resultType   The expected result type of the application
+    */
+  def isDirectlyApplicable(methRef: TermRef, targs: List[Type], args: List[Tree], resultType: Type)(implicit ctx: Context): Boolean = {
+    val nestedContext = ctx.fresh.setExploreTyperState
+    new ApplicableToTreesDirectly(methRef, targs, args, resultType)(nestedContext).success
+  }
+
   /** Is given method reference applicable to argument types `args`?
    *  @param  resultType   The expected result type of the application
    */
@@ -886,7 +902,7 @@ trait Applications extends Compatibility { self: Typer =>
    *  to form the method type.
    *  todo: use techniques like for implicits to pick candidates quickly?
    */
-  def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type] = Nil)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
+  def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type] = Nil, resolveImplicits: Boolean = true)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 
@@ -943,7 +959,10 @@ trait Applications extends Compatibility { self: Typer =>
             alts
 
         def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] =
-          alts filter (isApplicable(_, targs, args, resultType))
+          alts filter ( alt =>
+            if (resolveImplicits) isApplicable(alt, targs, args, resultType)
+            else isDirectlyApplicable(alt, targs, args, resultType)
+          )
 
         val alts1 = narrowBySize(alts)
         if (isDetermined(alts1)) alts1
