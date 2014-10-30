@@ -840,7 +840,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       val proto = new FunProtoTyped(args, atp, typer)
       val alts = atp.member(nme.CONSTRUCTOR).alternatives.map(_.termRef)
 
-      val constructors = ctx.typer.resolveOverloaded(alts, proto)
+      val constructors = ctx.typer.resolveOverloaded(alts, proto, Nil, false)
       assert(constructors.size == 1) // this is parsed from bytecode tree. there's nothing user can do about it
 
       val constr = constructors.head
