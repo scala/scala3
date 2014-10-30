@@ -36,7 +36,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   override def nameString(name: Name): String = name.decode.toString
 
   override protected def simpleNameString(sym: Symbol): String =
-    sym.originalName.decode.toString
+    sym.name.decode.toString
 
   override protected def fullNameOwner(sym: Symbol) = {
     val owner = super.fullNameOwner(sym)
@@ -222,7 +222,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "`" ~ toText(id.name) ~ "`"
       case Ident(name) =>
         tree.typeOpt match {
-          case tp: NamedType if name != nme.WILDCARD => toTextPrefix(tp.prefix) ~ selectionString(tp)
+          case tp: NamedType if name != nme.WILDCARD =>
+            val pre = if (tp.symbol is JavaStatic) tp.prefix.widen else tp.prefix
+            toTextPrefix(pre) ~ selectionString(tp)
           case _ => toText(name)
         }
       case tree @ Select(qual, name) =>
