@@ -815,42 +815,37 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
    *  readAnnotation, readSymbolAnnotation, or readAnnotInfoArg
    */
   protected def readAnnotationContents(end: Int)(implicit ctx: Context): Tree = {
-    ctx.atPhase(ctx.typerPhase) { implicit ctx => // needed to enable implicit search
-                                                  // and fix circullar dependency between annotation.currect invoking
-                                                  // elimrepeated that reads the same annotation
+    val atp = readTypeRef()
+    val args = {
+      val t = new ListBuffer[Tree]
 
-      val atp = readTypeRef()
-      val args = {
-        val t = new ListBuffer[Tree]
-
-        while (readIndex != end) {
-          val argref = readNat()
-          t += {
-            if (isNameEntry(argref)) {
-              val name = at(argref, readName)
-              val arg = readClassfileAnnotArg(readNat())
-              NamedArg(name.asTermName, arg)
-            } else readAnnotArg(argref)
-          }
+      while (readIndex != end) {
+        val argref = readNat()
+        t += {
+          if (isNameEntry(argref)) {
+            val name = at(argref, readName)
+            val arg = readClassfileAnnotArg(readNat())
+            NamedArg(name.asTermName, arg)
+          } else readAnnotArg(argref)
         }
-        t.toList
       }
-      println(atp)
-      val typer = ctx.typer
-      val proto = new FunProtoTyped(args, atp, typer)
-      val alts = atp.member(nme.CONSTRUCTOR).alternatives.map(_.termRef)
-
-      val constructors = ctx.typer.resolveOverloaded(alts, proto, Nil, false)
-      assert(constructors.size == 1) // this is parsed from bytecode tree. there's nothing user can do about it
-
-      val constr = constructors.head
-      val targs = atp.argTypes
-      val fun = tpd.New(atp withoutArgs targs)
-        .select(TermRef.withSig(atp.normalizedPrefix, constr.termSymbol.asTerm))
-        .appliedToTypes(targs)
-      val apply = untpd.Apply(fun, args)
-      new typer.ApplyToTyped(apply, fun, constr, args, atp).result // needed to handle varargs
+      t.toList
     }
+    println(atp)
+    val typer = ctx.typer
+    val proto = new FunProtoTyped(args, atp, typer)
+    val alts = atp.member(nme.CONSTRUCTOR).alternatives.map(_.termRef)
+
+    val constructors = ctx.typer.resolveOverloaded(alts, proto, Nil)
+    assert(constructors.size == 1) // this is parsed from bytecode tree. there's nothing user can do about it
+
+    val constr = constructors.head
+    val targs = atp.argTypes
+    val fun = tpd.New(atp withoutArgs targs)
+      .select(TermRef.withSig(atp.normalizedPrefix, constr.termSymbol.asTerm))
+      .appliedToTypes(targs)
+    val apply = untpd.Apply(fun, args)
+    new typer.ApplyToTyped(apply, fun, constr, args, atp).result // needed to handle varargs
   }
 
   /** Read an annotation and as a side effect store it into

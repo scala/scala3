@@ -902,7 +902,7 @@ trait Applications extends Compatibility { self: Typer =>
    *  to form the method type.
    *  todo: use techniques like for implicits to pick candidates quickly?
    */
-  def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type] = Nil, resolveImplicits: Boolean = true)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
+  def resolveOverloaded(alts: List[TermRef], pt: Type, targs: List[Type] = Nil)(implicit ctx: Context): List[TermRef] = track("resolveOverloaded") {
 
     def isDetermined(alts: List[TermRef]) = alts.isEmpty || alts.tail.isEmpty
 
@@ -960,7 +960,7 @@ trait Applications extends Compatibility { self: Typer =>
 
         def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] =
           alts filter ( alt =>
-            if (resolveImplicits) isApplicable(alt, targs, args, resultType)
+            if (!ctx.isAfterTyper) isApplicable(alt, targs, args, resultType)
             else isDirectlyApplicable(alt, targs, args, resultType)
           )
 
