@@ -227,6 +227,16 @@ object ProtoTypes {
     override def deepenProto(implicit ctx: Context) = derivedFunProto(args, resultType.deepenProto, typer)
   }
 
+
+  /** A prototype for expressions that appear in function position
+   *
+   *  [](args): resultType, where args are known to be typed
+   */
+  class FunProtoTyped(args: List[tpd.Tree], resultType: Type, typer: Typer)(implicit ctx: Context) extends FunProto(args, resultType, typer)(ctx) {
+    override def typedArgs = args
+    override def argsAreTyped = true
+  }
+
   /** A prototype for implicitly inferred views:
    *
    *    []: argType => resultType
