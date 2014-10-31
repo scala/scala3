@@ -69,4 +69,19 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   /** `fullName` where `$' is the separator character */
   def flatName(implicit ctx: Context): Name = self.fullNameSeparated('$')
+
+  /** The traits mixed into this class in linearization order.
+   *  These are all inherited traits that are not also inherited by the superclass
+   */
+  def mixins(implicit ctx: Context): List[ClassSymbol] = {
+    val cls = self.asClass
+    val superCls = cls.classInfo.parents.head.symbol
+    cls.baseClasses.tail.takeWhile(_ ne superCls)
+  }
+
+  def initializer(implicit ctx: Context): TermSymbol =
+    self.owner.info.decl(InitializerName(self.asTerm.name)).symbol.asTerm
+
+  def isField(implicit ctx: Context): Boolean =
+    self.isTerm && !self.is(Method)
 }
