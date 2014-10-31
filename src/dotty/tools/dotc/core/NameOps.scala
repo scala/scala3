@@ -47,12 +47,14 @@ object NameOps {
     }
   }
 
-  object SuperAccessorName {
-    val pre = nme.SUPER_PREFIX
+  class PrefixNameExtractor(pre: TermName) {
     def apply(name: TermName): TermName = pre ++ name
     def unapply(name: TermName): Option[TermName] =
       if (name startsWith pre) Some(name.drop(pre.length).asTermName) else None
   }
+
+  object SuperAccessorName extends PrefixNameExtractor(nme.SUPER_PREFIX)
+  object InitializerName extends PrefixNameExtractor(nme.INITIALIZER_PREFIX)
 
   implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
     import nme._
