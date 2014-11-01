@@ -16,27 +16,39 @@ import NameOps._
 import Flags._
 import Decorators._
 
-/** Performs the following rewritings:
+/** Performs the following rewritings on fields of classes, where `x_L` is the "local name" of `x`:
  *
  *    val x: T = e
  *      -->  private val x_L: T = e
- *           <stable> def x: T = x_L                                  (if in class)
- *      -->  private notJavaPrivate var x_L: T = e
  *           <stable> def x: T = x_L
- *           private notJavaPrivate def x_=(x: T): Unit = x_L = x     (if in trait)
+ *
  *    var x: T = e
+ *    def x_=(y: T) = ()
  *      -->  private var x_L: T = e
  *           def x: T = x_L
  *           def x_=(x: T): Unit = x_L = x                            (if in class or trait)
+ *
  *    lazy val x: T = e
- *      -->  lazy def x = e
+ *      --> def x: T = e
+ *
+ *    val x: T
+ *      -->  <stable> def x: T
+ *
+ *    var x: T
+ *      -->  def x: T
+ *
+ *  Omitted from the rewritings are
+ *
+ *   - private[this] fields in non-trait classes
+ *   - fields generated for static modules (TODO: needed?)
+ *   - parameters, static fields, and fields coming from Java
  *
  *  Furthermore, assignements to mutable vars are replaced by setter calls
  *
  *     p.x = e
  *      -->  p.x_=(e)
  */
-class GettersSetters extends MiniPhaseTransform with SymTransformer { thisTransform =>
+ class GettersSetters extends MiniPhaseTransform with SymTransformer { thisTransform =>
   import ast.tpd._
 
   override def phaseName = "gettersSetters"
@@ -45,38 +57,34 @@ class GettersSetters extends MiniPhaseTransform with SymTransformer { thisTransf
 
   override def transformSym(d: SymDenotation)(implicit ctx: Context): SymDenotation = {
     def noGetterNeeded =
-      d.is(Method | Param | JavaDefined) ||
+      d.is(NoGetterNeeded) ||
       d.initial.asInstanceOf[SymDenotation].is(PrivateLocal) && !d.owner.is(Trait) ||
       d.is(Module) && d.isStatic ||
       d.isSelfSym
-    if (d.isTerm && (d.owner.isClass || d.is(Lazy)) && d.info.isValueType && !noGetterNeeded) {
+    if (d.isTerm && d.owner.isClass && d.info.isValueType && !noGetterNeeded) {
       val maybeStable = if (d.isStable) Stable else EmptyFlags
-      if (d.name.toString == "_") println(i"make accessor $d in ${d.owner} ${d.symbol.id}")
+      //if (d.name.toString == "_") println(i"make accessor $d in ${d.owner} ${d.symbol.id}")
       d.copySymDenotation(
         initFlags = d.flags | maybeStable | AccessorCreationFlags,
         info = ExprType(d.info))
     }
     else d
   }
+  private val NoGetterNeeded = Method | Param | JavaDefined | JavaStatic
+  private val NoFieldNeeded  = Lazy | Deferred | ParamAccessor
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     if (tree.symbol is Method) {
       val getter = tree.symbol.asTerm
       assert(getter is Accessor)
-      if (getter.is(Lazy | Deferred | ParamAccessor)) DefDef(getter, tree.rhs)
+      if (getter is NoFieldNeeded)
+        DefDef(getter, tree.rhs)
       else {
         val inTrait = getter.owner.is(Trait)
-        val maybePrivate =
-          if (inTrait) Private | NotJavaPrivate
-          else if (getter.owner.isClass) Private
-          else EmptyFlags
-        val maybeMutable =
-          if (inTrait || getter.is(Mutable)) Mutable
-          else EmptyFlags
         val field = ctx.newSymbol(
           owner = ctx.owner,
           name = getter.name.fieldName,
-          flags = maybePrivate | maybeMutable,
+          flags = Private | (getter.flags & Mutable),
           info = getter.info.resultType).enteredAfter(thisTransform)
         assert(tree.rhs.tpe.exists, tree.show)
         val fieldDef =
@@ -88,16 +96,7 @@ class GettersSetters extends MiniPhaseTransform with SymTransformer { thisTransf
         val rhs = ref(field)
         assert(rhs.hasType)
         val getterDef = DefDef(getter, rhs.ensureConforms(getter.info.widen))
-        if (!getter.is(Mutable) && inTrait) { // add a setter anyway, will be needed for mixin
-          val setter = ctx.newSymbol(
-              owner = ctx.owner,
-              name = getter.name.traitSetterName,
-              flags = (getter.flags & AccessFlags) | Accessor | maybePrivate,
-              info = MethodType(field.info :: Nil, defn.UnitType)).enteredAfter(thisTransform)
-          val setterDef = DefDef(setter.asTerm, vrefss => Assign(ref(field), vrefss.head.head))
-          Thicket(fieldDef, getterDef, setterDef)
-        }
-        else Thicket(fieldDef, getterDef)
+        Thicket(fieldDef, getterDef)
       }
     }
     else tree

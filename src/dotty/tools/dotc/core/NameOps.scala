@@ -70,7 +70,6 @@ object NameOps {
     def isProtectedAccessorName = name startsWith PROTECTED_PREFIX
     def isReplWrapperName = name containsSlice INTERPRETER_IMPORT_WRAPPER
     def isSetterName = name endsWith SETTER_SUFFIX
-    def isTraitSetterName = isSetterName && (name containsSlice TRAIT_SETTER_PREFIX)
     def isSingletonName = name endsWith SINGLETON_SUFFIX
     def isModuleClassName = name endsWith MODULE_SUFFIX
     def isImportName = name startsWith IMPORT
@@ -226,9 +225,6 @@ object NameOps {
   implicit class TermNameDecorator(val name: TermName) extends AnyVal {
     import nme._
 
-    def traitSetterName: TermName =
-      nme.TRAIT_SETTER_PREFIX ++ setterName
-
     def setterName: TermName =
       if (name.isFieldName) name.fieldToGetter.setterName
       else name ++ SETTER_SUFFIX
@@ -242,13 +238,8 @@ object NameOps {
       else name ++ LOCAL_SUFFIX
 
     private def setterToGetter: TermName = {
-      val p = name.indexOfSlice(TRAIT_SETTER_PREFIX)
-      if (p >= 0)
-        (name drop (p + TRAIT_SETTER_PREFIX.length)).asTermName.getterName
-      else {
-        assert(name.endsWith(SETTER_SUFFIX), name + " is referenced as a setter but has wrong name format")
-        name.take(name.length - SETTER_SUFFIX.length).asTermName
-      }
+      assert(name.endsWith(SETTER_SUFFIX), name + " is referenced as a setter but has wrong name format")
+      name.take(name.length - SETTER_SUFFIX.length).asTermName
     }
 
     def fieldToGetter: TermName = {
