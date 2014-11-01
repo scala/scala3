@@ -112,13 +112,17 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
       case stat: ValDef if !stat.rhs.isEmpty =>
         val vsym = stat.symbol
         val isym = vsym.initializer
-        val rhs = Block(initBuf.toList, stat.rhs.changeOwner(vsym, isym))
+        val rhs = Block(
+          initBuf.toList,
+          stat.rhs.changeOwner(vsym, isym).ensureConforms(isym.info.widen))
         initBuf.clear()
         List(
           cpy.ValDef(stat)(mods = stat.mods | Deferred, rhs = EmptyTree),
           DefDef(stat.symbol.initializer, rhs))
       case stat: DefDef if stat.symbol.isSetter =>
-        List(cpy.DefDef(stat)(rhs = EmptyTree))
+        List(cpy.DefDef(stat)(
+          mods = stat.mods | Deferred,
+          rhs = EmptyTree))
       case stat: DefTree =>
         List(stat)
       case stat =>
