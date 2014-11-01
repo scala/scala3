@@ -11,7 +11,10 @@ import SymDenotations._
 import Types._
 import Decorators._
 import DenotTransformers._
+import StdNames._
 import NameOps._
+import ast.Trees._
+import util.Positions._
 import collection.mutable
 
 /** This phase performs the following transformations:
@@ -155,22 +158,21 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
 
   private def superAccessors(cls: ClassSymbol, mixin: ClassSymbol)(implicit ctx: Context): List[Tree] =
     for (superAcc <- mixin.decls.filter(_ is SuperAccessor).toList)
-    yield polyDefDef(implementation(cls, superAcc), forwarder(cls, rebindSuper(cls, superAcc)))
+    yield polyDefDef(implementation(cls, superAcc.asTerm), forwarder(cls, rebindSuper(cls, superAcc)))
 
   private def traitInits(cls: ClassSymbol, mixin: ClassSymbol)(implicit ctx: Context): List[Tree] =
     for (field <- mixin.decls.filter(fld => fld.isField && !wasDeferred(fld)).toList)
-    yield DefDef(implementation(cls, field), ref(field.initializer).withPos(cls.pos))
+    yield ValDef(implementation(cls, field.asTerm), superRef(cls, field.initializer, cls.pos))
 
   private def setters(cls: ClassSymbol, mixin: ClassSymbol)(implicit ctx: Context): List[Tree] =
     for (setter <- mixin.decls.filter(setr => setr.isSetter && !wasDeferred(setr)).toList)
-    yield DefDef(implementation(cls, setter), unitLiteral.withPos(cls.pos))
+    yield DefDef(implementation(cls, setter.asTerm), unitLiteral.withPos(cls.pos))
 
-  private def implementation(cls: ClassSymbol, member: Symbol)(implicit ctx: Context): TermSymbol =
-    member.copy(owner = cls, flags = member.flags &~ Deferred)
-      .enteredAfter(thisTransform).asTerm
-
-  private def constrCall(cls: ClassSymbol, mixin: ClassSymbol)(implicit ctx: Context) =
-    mixinSuperRef(cls, mixin.primaryConstructor)
+  private def implementation(cls: ClassSymbol, member: TermSymbol)(implicit ctx: Context): TermSymbol =
+    member.copy(
+      owner = cls,
+      name = member.name.stripScala2LocalSuffix,
+      flags = member.flags &~ Deferred).enteredAfter(thisTransform).asTerm
 
   private def methodOverrides(cls: ClassSymbol, mixin: ClassSymbol)(implicit ctx: Context): List[Tree] = {
     def isOverridden(meth: Symbol) = meth.overridingSymbol(cls).is(Method, butNot = Deferred)
@@ -179,32 +181,66 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
       !isOverridden(meth) &&
       !meth.allOverriddenSymbols.forall(_ is Deferred)
     for (meth <- mixin.decls.toList if needsDisambiguation(meth))
-    yield polyDefDef(implementation(cls, meth), forwarder(cls, meth))
+    yield polyDefDef(implementation(cls, meth.asTerm), forwarder(cls, meth))
   }
 
   private def wasDeferred(sym: Symbol)(implicit ctx: Context) =
     ctx.atPhase(thisTransform) { implicit ctx => sym is Deferred }
 
-  private def mixinSuperRef(cls: ClassSymbol, target: Symbol)(implicit ctx: Context) =
-    Super(ref(cls), target.owner.name.asTypeName, inConstrCall = false).select(target)
+  private def superRef(cls: ClassSymbol, target: Symbol, pos: Position)(implicit ctx: Context) = {
+    val inTrait = target.owner is Trait
+    Super(
+      qual = This(cls),
+      mix = if (inTrait) target.owner.name.asTypeName else tpnme.EMPTY,
+      inConstrCall = target.isConstructor && !target.owner.is(Trait),
+      mixinClass = if (inTrait) target.owner else NoSymbol
+    ).select(target)
+  }
 
   private def forwarder(cls: ClassSymbol, target: Symbol)(implicit ctx: Context) =
     (targs: List[Type]) => (vrefss: List[List[Tree]]) =>
-      mixinSuperRef(cls, target).appliedToTypes(targs).appliedToArgss(vrefss).withPos(cls.pos)
+      superRef(cls, target, cls.pos).appliedToTypes(targs).appliedToArgss(vrefss)
 
   override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo) = {
     val cls = tree.symbol.owner.asClass
     val stats = tree.body
-    cpy.Template(tree)(body =
-      if (cls is Trait) traitDefs(cls, stats)
-      else
-        cls.mixins.flatMap { mixin =>
-          assert(mixin is Trait)
-          traitInits(cls, mixin) :::
-          constrCall(cls, mixin) ::
-          setters(cls, mixin)
-          superAccessors(cls, mixin) :::
-          methodOverrides(cls, mixin)
-        } ::: stats)
+    val superCls = cls.classInfo.parents.head.symbol
+    val mixins = cls.baseClasses.tail.takeWhile(_ ne superCls)
+
+    // If parent is a constructor call, pull out the call into a separate
+    // supercall constructor, which gets added to `superCalls`, and keep
+    // only the type.
+    val superCalls = new mutable.HashMap[Symbol, Tree]
+    def normalizeParent(tree: Tree) = tree match {
+      case superApp @ Apply(superSel @ Select(New(superType), nme.CONSTRUCTOR), superArgs) =>
+        val constr = superSel.symbol
+        superCalls(constr.owner) = superRef(cls, constr, superSel.pos).appliedToArgs(superArgs)
+        superType
+      case tree: TypeTree => tree
+    }
+    val parentTypeTrees = tree.parents.map(normalizeParent)
+
+    def supCalls(baseCls: Symbol): List[Tree] = superCalls.remove(baseCls) match {
+      case Some(call) => call :: Nil
+      case None =>
+        if (baseCls is Interface) Nil
+        else superRef(cls, baseCls.primaryConstructor, cls.pos).appliedToNone :: Nil
+    }
+
+    cpy.Template(tree)(
+      parents = parentTypeTrees,
+      body =
+        if (cls is Trait) traitDefs(cls, stats)
+        else {
+          val mixInits = mixins.flatMap { mixin =>
+            assert(mixin is Trait)
+            traitInits(cls, mixin) :::
+            supCalls(mixin) :::
+            setters(cls, mixin) :::
+            superAccessors(cls, mixin) :::
+            methodOverrides(cls, mixin)
+          }
+          supCalls(superCls) ::: mixInits ::: stats
+        })
   }
 }
