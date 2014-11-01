@@ -236,7 +236,7 @@ trait TypeAssigner {
     tree.withType(cls.thisType)
   }
 
-  def assignType(tree: untpd.Super, qual: Tree, inConstrCall: Boolean)(implicit ctx: Context) = {
+  def assignType(tree: untpd.Super, qual: Tree, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context) = {
     val mix = tree.mix
     val cls = qual.tpe.widen.typeSymbol
 
@@ -249,7 +249,8 @@ trait TypeAssigner {
         errorType("ambiguous parent class qualifier", tree.pos)
     }
     val owntype =
-      if (!mix.isEmpty) findMixinSuper(cls.info)
+      if (mixinClass.exists) mixinClass.typeRef
+      else if (!mix.isEmpty) findMixinSuper(cls.info)
       else if (inConstrCall || ctx.erasedTypes) cls.info.firstParent
       else {
         val ps = cls.info.parents

@@ -1,10 +1,10 @@
-trait B {
+trait B extends Object {
 
   val z: Int
 
 }
 
-trait T {
+trait T extends B {
 
   var x = 2
 
