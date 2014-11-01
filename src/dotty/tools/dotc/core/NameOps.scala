@@ -276,6 +276,9 @@ object NameOps {
         -1
     }
 
+    def stripScala2LocalSuffix: TermName =
+      if (name.endsWith(" ")) name.init.asTermName else name
+
     /** The name of an accessor for protected symbols. */
     def protectedAccessorName: TermName =
       PROTECTED_PREFIX ++ name.unexpandedName()
