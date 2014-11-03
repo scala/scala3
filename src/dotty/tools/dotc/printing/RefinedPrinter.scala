@@ -205,7 +205,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     def dclTextOr(treeText: => Text) =
-      if (useSymbol) annotsText(tree.symbol) ~~ dclText(tree.symbol)
+      if (useSymbol)
+        annotsText(tree.symbol) ~~ dclText(tree.symbol) ~
+        ( " <in " ~ toText(tree.symbol.owner) ~ ">" provided ctx.settings.debugOwners.value)
       else treeText
 
     def idText(tree: untpd.Tree): Text = {
