@@ -140,7 +140,7 @@ object TreeTransforms {
     }
 
     /** perform context-dependant initialization */
-    def init(implicit ctx: Context, info: TransformerInfo): Unit = {}
+    def init(transforms: Array[TreeTransform])(implicit ctx: Context): TreeTransform = this
   }
 
   /** A phase that defines a TreeTransform to be used in a group */
@@ -520,12 +520,9 @@ object TreeTransforms {
 
     def transform(t: Tree)(implicit ctx: Context): Tree = {
       val initialTransformations = transformations
-      val info = new TransformerInfo(initialTransformations, new NXTransformations(initialTransformations), this)
-      initialTransformations.zipWithIndex.foreach {
-        case (transform, id) =>
-          transform.idx = id
-          transform.init(ctx, info)
-      }
+      val actualTransformations = initialTransformations.map(_.init(initialTransformations))
+      val info = new TransformerInfo(actualTransformations, new NXTransformations(actualTransformations), this)
+
       transform(t, info, 0)
     }
 
