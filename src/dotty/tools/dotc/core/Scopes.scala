@@ -20,7 +20,7 @@ import printing.Printer
 import util.common._
 import util.DotClass
 import SymDenotations.NoDenotation
-import collection.mutable.ListBuffer
+import collection.mutable
 
 object Scopes {
 
@@ -172,12 +172,27 @@ object Scopes {
      */
     private var elemsCache: List[Symbol] = null
 
-    def cloneScope(implicit ctx: Context): MutableScope = newScopeWith(this.toList: _*)
+    /** Clone scope, taking care not to force the denotations of any symbols in the scope.
+     */
+    def cloneScope(implicit ctx: Context): MutableScope = {
+      val entries = new mutable.ArrayBuffer[ScopeEntry]
+      var e = lastEntry
+      while ((e ne null) && e.owner == this) {
+        entries += e
+        e = e.prev
+      }
+      val scope = newScope
+      for (i <- entries.length - 1 to 0 by -1) {
+        val e = entries(i)
+        scope.newScopeEntry(e.name, e.sym)
+      }
+      scope
+    }
 
-    /** create and enter a scope entry */
-    protected def newScopeEntry(sym: Symbol)(implicit ctx: Context): ScopeEntry = {
+    /** create and enter a scope entry with given name and symbol */
+    protected def newScopeEntry(name: Name, sym: Symbol)(implicit ctx: Context): ScopeEntry = {
       ensureCapacity(if (hashTable ne null) hashTable.length else MinHash)
-      val e = new ScopeEntry(sym.name, sym, this)
+      val e = new ScopeEntry(name, sym, this)
       e.prev = lastEntry
       lastEntry = e
       if (hashTable ne null) enterInHash(e)
@@ -185,6 +200,10 @@ object Scopes {
       elemsCache = null
       e
     }
+
+    /** create and enter a scope entry */
+    protected def newScopeEntry(sym: Symbol)(implicit ctx: Context): ScopeEntry =
+      newScopeEntry(sym.name, sym)
 
     private def enterInHash(e: ScopeEntry)(implicit ctx: Context): Unit = {
       val idx = e.name.hashCode & (hashTable.length - 1)
@@ -325,7 +344,7 @@ object Scopes {
     }
 
     override def implicitDecls(implicit ctx: Context): List[TermRef] = {
-      var irefs = new ListBuffer[TermRef]
+      var irefs = new mutable.ListBuffer[TermRef]
       var e = lastEntry
       while (e ne null) {
         if (e.sym is Implicit) {
