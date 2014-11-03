@@ -187,6 +187,10 @@ object ExplicitOuter {
   private def hasOuter(cls: ClassSymbol)(implicit ctx: Context): Boolean =
     needsOuterIfReferenced(cls) && outerAccessor(cls).exists
 
+  /** Class constructor takes an outer argument. Can be called only after phase ExplicitOuter. */
+  private def hasOuterParam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
+    !cls.is(Trait) && needsOuterIfReferenced(cls) && outerAccessor(cls).exists
+
   /** Tree references a an outer class of `cls` which is not a static owner.
    */
   def referencesOuter(cls: Symbol, tree: Tree)(implicit ctx: Context): Boolean = {
@@ -248,7 +252,7 @@ object ExplicitOuter {
 
     /** If `cls` has an outer parameter add one to the method type `tp`. */
     def addParam(cls: ClassSymbol, tp: Type): Type =
-      if (hasOuter(cls)) {
+      if (hasOuterParam(cls)) {
         val mt @ MethodType(pnames, ptypes) = tp
         mt.derivedMethodType(
           nme.OUTER :: pnames, cls.owner.enclosingClass.typeRef :: ptypes, mt.resultType)
@@ -264,11 +268,11 @@ object ExplicitOuter {
           case New(tpt) =>
             singleton(outerPrefix(tpt.tpe))
           case This(_) =>
-            ref(outerParamAccessor(cls)) // will be rewried to outer argument of secondary constructor in phase Constructors
+            ref(outerParamAccessor(cls)) // will be rewired to outer argument of secondary constructor in phase Constructors
           case TypeApply(Select(r, nme.asInstanceOf_), args) =>
             outerArg(r) // cast was inserted, skip
         }
-        if (hasOuter(cls))
+        if (hasOuterParam(cls))
           methPart(fun) match {
             case Select(receiver, _) => outerArg(receiver).withPos(fun.pos) :: Nil
           }
