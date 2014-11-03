@@ -44,8 +44,10 @@ class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransfor
     }
   }
 
-  override def init(implicit ctx: Context, info: TransformerInfo): Unit =
+  override def init(transforms: Array[TreeTransform])(implicit ctx: Context) = {
     (new CollectCaptured)(ctx.withPhase(thisTransform)).runOver(ctx.compilationUnit.tpdTree)
+    this
+  }
 
   override def transformSym(sd: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (captured(sd.symbol)) {

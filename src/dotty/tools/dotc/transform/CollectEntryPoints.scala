@@ -26,9 +26,10 @@ import dotty.tools.dotc.config.JavaPlatform
 class CollectEntryPoints extends MiniPhaseTransform {
 
   /** perform context-dependant initialization */
-  override def init(implicit ctx: Context, info: TransformerInfo): Unit = {
+  override def init(transforms: Array[TreeTransform])(implicit ctx: Context) = {
     entryPoints = collection.immutable.TreeSet.empty[Symbol](new SymbolOrdering())
     assert(ctx.platform.isInstanceOf[JavaPlatform], "Java platform specific phase")
+    this
   }
 
   private var entryPoints: Set[Symbol] = _

@@ -278,7 +278,7 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
     }
   }
 
-  override def init(implicit ctx: Context, info: TransformerInfo) = {
+  override def init(transforms: Array[TreeTransform])(implicit ctx: Context) = {
     free.clear()
     proxyMap.clear()
     called.clear()
@@ -291,6 +291,7 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
     computeLiftedOwners()
     generateProxies()(ctx.withPhase(thisTransform.next))
     liftLocals()(ctx.withPhase(thisTransform.next))
+    this
   }
 
   private def currentEnclosure(implicit ctx: Context) =
