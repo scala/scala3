@@ -2033,9 +2033,9 @@ object Types {
 
     def derivedPolyType(paramNames: List[TypeName], paramBounds: List[TypeBounds], restpe: Type)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramBounds eq this.paramBounds) && (restpe eq this.resultType)) this
-      else copy(paramNames, paramBounds, restpe)
+      else duplicate(paramNames, paramBounds, restpe)
 
-    def copy(paramNames: List[TypeName] = this.paramNames, paramBounds: List[TypeBounds] = this.paramBounds, restpe: Type)(implicit ctx: Context) =
+    def duplicate(paramNames: List[TypeName] = this.paramNames, paramBounds: List[TypeBounds] = this.paramBounds, restpe: Type)(implicit ctx: Context) =
       PolyType(paramNames)(
           x => paramBounds mapConserve (_.subst(this, x).bounds),
           x => restpe.subst(this, x))

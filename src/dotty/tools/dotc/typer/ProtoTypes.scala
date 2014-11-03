@@ -321,7 +321,7 @@ object ProtoTypes {
       yield new TypeVar(PolyParam(pt, n), state, owningTree)
 
     val added =
-      if (state.constraint contains pt) pt.copy(pt.paramNames, pt.paramBounds, pt.resultType)
+      if (state.constraint contains pt) pt.duplicate(pt.paramNames, pt.paramBounds, pt.resultType)
       else pt
     val tvars = if (owningTree.isEmpty) Nil else newTypeVars(added)
     state.constraint = state.constraint.add(added, tvars)
