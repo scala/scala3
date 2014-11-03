@@ -472,6 +472,10 @@ object Contexts {
 
     /** The standard definitions */
     val definitions = new Definitions
+
+    def squashed(p: Phase): Phase = {
+      squashedPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
+    }
   }
 
   /** The essential mutable state of a context base, collected into a common class */

@@ -217,18 +217,15 @@ class LazyValsTransform extends MiniPhaseTransform with IdentityDenotTransformer
       val compute = {
         val handlerSymbol = ctx.newSymbol(methodSymbol, "$anonfun".toTermName, Flags.Synthetic,
           MethodType(List("x$1".toTermName), List(defn.ThrowableType), defn.IntType))
-
-        val handler = Closure(handlerSymbol, {
-          args =>
-            val exception = args.head.head
-            val complete = setFlagState.appliedTo(thiz, offset, initState, Literal(Constant(ord)))
-            Block(List(complete), Throw(exception))
-        })
+        val caseSymbol = ctx.newSymbol(methodSymbol, nme.DEFAULT_EXCEPTION_NAME, Flags.Synthetic, defn.ThrowableType)
+        val complete = setFlagState.appliedTo(thiz, offset, initState, Literal(Constant(ord)))
+        val handler = CaseDef(Bind(caseSymbol, ref(caseSymbol)), EmptyTree,
+          Block(List(complete), Throw(ref(caseSymbol))
+        ))
 
         val compute = Assign(ref(resultSymbol), rhs)
-        val tr = Try(compute, handler, EmptyTree)
+        val tr = Try(compute, List(handler), EmptyTree)
         val assign = Assign(ref(target), ref(resultSymbol))
-        val complete = setFlagState.appliedTo(thiz, offset, computedState, Literal(Constant(ord)))
         val noRetry = Assign(ref(retrySymbol), Literal(Constants.Constant(false)))
         val body = If(casFlag.appliedTo(thiz, offset, ref(flagSymbol), computeState, Literal(Constant(ord))),
           Block(tr :: assign :: complete :: noRetry :: Nil, Literal(Constant(()))),

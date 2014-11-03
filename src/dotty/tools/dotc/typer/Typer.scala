@@ -21,6 +21,7 @@ import Flags._
 import Decorators._
 import ErrorReporting._
 import EtaExpansion.etaExpand
+import dotty.tools.dotc.transform.Erasure.Boxing
 import util.Positions._
 import util.common._
 import util.SourcePosition
@@ -590,29 +591,34 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val selType = widenForMatchSelector(
             fullyDefinedType(sel1.tpe, "pattern selector", tree.pos))
 
-        /** gadtSyms = "all type parameters of enclosing methods that appear
-         *              non-variantly in the selector type" todo: should typevars
-         *              which appear with variances +1 and -1 (in different
-         *              places) be considered as well?
-         */
-        val gadtSyms: Set[Symbol] = ctx.traceIndented(i"GADT syms of $selType", gadts) {
-          val accu = new TypeAccumulator[Set[Symbol]] {
-            def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
-              val tsyms1 = t match {
-                case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm && variance == 0 =>
-                  tsyms + tr.symbol
-                case _ =>
-                  tsyms
-              }
-              foldOver(tsyms1, t)
-            }
-          }
-          accu(Set.empty, selType)
-        }
-
-        val cases1 = tree.cases mapconserve (typedCase(_, pt, selType, gadtSyms))
+        val cases1 = typedCases(tree.cases, selType, pt)
         assignType(cpy.Match(tree)(sel1, cases1), cases1)
     }
+  }
+
+  def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context) = {
+
+    /** gadtSyms = "all type parameters of enclosing methods that appear
+      *              non-variantly in the selector type" todo: should typevars
+      *              which appear with variances +1 and -1 (in different
+      *              places) be considered as well?
+      */
+    val gadtSyms: Set[Symbol] = ctx.traceIndented(i"GADT syms of $selType", gadts) {
+      val accu = new TypeAccumulator[Set[Symbol]] {
+        def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
+          val tsyms1 = t match {
+            case tr: TypeRef if (tr.symbol is TypeParam) && tr.symbol.owner.isTerm && variance == 0 =>
+              tsyms + tr.symbol
+            case _ =>
+              tsyms
+          }
+          foldOver(tsyms1, t)
+        }
+      }
+      accu(Set.empty, selType)
+    }
+
+    cases mapconserve (typedCase(_, pt, selType, gadtSyms))
   }
 
   def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = track("typedCase") {
@@ -659,9 +665,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = track("typedTry") {
     val expr1 = typed(tree.expr, pt)
-    val handler1 = typed(tree.handler, defn.FunctionType(defn.ThrowableType :: Nil, pt))
+    val cases1 = typedCases(tree.cases, defn.ThrowableType, pt)
     val finalizer1 = typed(tree.finalizer, defn.UnitType)
-    assignType(cpy.Try(tree)(expr1, handler1, finalizer1), expr1, handler1)
+    assignType(cpy.Try(tree)(expr1, cases1, finalizer1), expr1, cases1)
   }
 
   def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Throw = track("typedThrow") {

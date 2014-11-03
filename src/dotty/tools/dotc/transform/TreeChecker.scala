@@ -50,7 +50,9 @@ class TreeChecker {
   }
 
   def check(phasesToRun: Seq[Phase], ctx: Context) = {
-    println(s"checking ${ctx.compilationUnit} after phase ${ctx.phase.prev}")
+    val prevPhase = ctx.phase.prev // can be a mini-phase
+    val squahsedPhase = ctx.squashed(prevPhase)
+    println(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
     val checkingCtx = ctx.fresh
       .setTyperState(ctx.typerState.withReporter(new ThrowingReporter(ctx.typerState.reporter)))
     val checker = new Checker(previousPhases(phasesToRun.toList)(ctx))

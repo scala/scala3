@@ -1035,7 +1035,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val block = readTreeRef()
         val finalizer = readTreeRef()
         val catches = until(end, readCaseDefRef)
-        Try(block, Match(EmptyTree, catches), finalizer)
+        Try(block, catches, finalizer)
 
       case THROWtree =>
         Throw(readTreeRef())

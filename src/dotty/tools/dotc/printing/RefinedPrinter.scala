@@ -141,6 +141,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     super.toText(tp)
   }
 
+  def blockText[T >: Untyped](trees: List[Tree[T]]): Text =
+    "{" ~ toText(trees, "\n") ~ "}"
+
   override def toText[T >: Untyped](tree: Tree[T]): Text = controlled {
 
     def optDotPrefix(name: Name) = optText(name)(_ ~ ".")
@@ -155,8 +158,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def addVparamssText(txt: Text, vparamss: List[List[ValDef[T]]]): Text =
       (txt /: vparamss)((txt, vparams) => txt ~ "(" ~ toText(vparams, ", ") ~ ")")
 
-    def blockText(trees: List[Tree[T]]): Text =
-      "{" ~ toText(trees, "\n") ~ "}"
+
 
     def caseBlockText(tree: Tree[T]): Text = tree match {
       case Block(stats, expr) => toText(stats :+ expr, "\n")
@@ -261,9 +263,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "case " ~ toText(pat) ~ optText(guard)(" if " ~ _) ~ " => " ~ caseBlockText(body)
       case Return(expr, from) =>
         changePrec(GlobalPrec) { "return" ~ optText(expr)(" " ~ _) }
-      case Try(expr, handler, finalizer) =>
+      case Try(expr, cases, finalizer) =>
         changePrec(GlobalPrec) {
-          "try " ~ toText(expr) ~ optText(handler)(" catch " ~ _) ~ optText(finalizer)(" finally " ~ _)
+          "try " ~ toText(expr) ~ optText(cases)(" catch " ~ _) ~ optText(finalizer)(" finally " ~ _)
         }
       case Throw(expr) =>
         changePrec(GlobalPrec) {
@@ -460,6 +462,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   def optText[T >: Untyped](tree: Tree[T])(encl: Text => Text): Text =
     if (tree.isEmpty) "" else encl(toText(tree))
+
+  def optText[T >: Untyped](tree: List[Tree[T]])(encl: Text => Text): Text =
+    if (tree.exists(!_.isEmpty)) "" else encl(blockText(tree))
 
   override protected def polyParamName(name: TypeName): TypeName =
     name.unexpandedName()

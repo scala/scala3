@@ -50,6 +50,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
   override def transformMatch(tree: Match)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val translated = new Translator()(ctx).translator.translateMatch(tree)
+
     translated.ensureConforms(tree.tpe)
   }
 
@@ -778,10 +779,11 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       // is this purely a type test, e.g. no outer check, no equality tests (used in switch emission)
       //def isPureTypeTest = renderCondition(pureTypeTestChecker)
 
-      def impliesBinderNonNull(binder: Symbol):Boolean =
+      def impliesBinderNonNull(binder: Symbol): Boolean =
       // @odersky: scalac is able to infer in this method that nonNullImpliedByTestChecker.Result,
       // dotty instead infers type projection TreeMakers.this.TypeTestTreeMaker.TypeTestCondStrategy#Result
       // which in turn doesn't typecheck in this method. Can you please explain why?
+      // dotty deviation
         renderCondition(nonNullImpliedByTestChecker(binder)).asInstanceOf[Boolean]
 
       override def toString = "TT"+((expectedTp, testedBinder.name, nextBinderTp))
@@ -1136,7 +1138,11 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       *   this could probably optimized... (but note that the matchStrategy must be solved for each nested patternmatch)
       */
     def translateMatch(match_ : Match): Tree = {
-      val Match(selector, cases) = match_
+      val Match(sel, cases) = match_
+
+      val selectorTp = elimAnonymousClass(sel.tpe.widen/*withoutAnnotations*/)
+
+      val selectorSym = freshSym(sel.pos, selectorTp, "selector")
 
       val (nonSyntheticCases, defaultOverride) = cases match {
         case init :+ last if isSyntheticDefaultCase(last) => (init, Some(((scrut: Symbol) => last.body)))
@@ -1155,8 +1161,6 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       //val start = if (Statistics.canEnable) Statistics.startTimer(patmatNanos) else null
 
-      val selectorTp = elimAnonymousClass(selector.tpe.widen/*withoutAnnotations*/)
-
       // when one of the internal cps-type-state annotations is present, strip all CPS annotations
       ///val origPt  = removeCPSFromPt(match_.tpe)
       // relevant test cases: pos/existentials-harmful.scala, pos/gadt-gilles.scala, pos/t2683.scala, pos/virtpatmat_exist4.scala
@@ -1164,14 +1168,13 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       val pt = match_.tpe.widen //repeatedToSeq(origPt)
 
       // val packedPt = repeatedToSeq(typer.packedType(match_, context.owner))
-      val selectorSym = freshSym(selector.pos, selectorTp, "selector")
       selectorSym.setFlag(Flags.SyntheticCase)
 
       // pt = Any* occurs when compiling test/files/pos/annotDepMethType.scala  with -Xexperimental
-      val combined = combineCases(selector, selectorSym, nonSyntheticCases map translateCase(selectorSym, pt), pt, ctx.owner, defaultOverride)
+      val combined = combineCases(sel, selectorSym, nonSyntheticCases map translateCase(selectorSym, pt), pt, ctx.owner, defaultOverride)
 
       // if (Statistics.canEnable) Statistics.stopTimer(patmatNanos, start)
-      Block(List(ValDef(selectorSym,selector)), combined)
+      Block(List(ValDef(selectorSym, sel)), combined)
     }
 
     // return list of typed CaseDefs that are supported by the backend (typed/bind/wildcard)

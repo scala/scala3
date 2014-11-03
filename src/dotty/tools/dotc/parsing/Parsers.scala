@@ -914,7 +914,7 @@ object Parsers {
           val finalizer =
             if (handler.isEmpty || in.token == FINALLY) { accept(FINALLY); expr() }
             else EmptyTree
-          Try(body, handler, finalizer)
+          ParsedTry(body, handler, finalizer)
         }
       case THROW =>
         atPos(in.skipToken()) { Throw(expr()) }
