@@ -192,8 +192,12 @@ object Phases {
 
     def run(implicit ctx: Context): Unit
 
-    def runOn(units: List[CompilationUnit])(implicit ctx: Context): Unit =
-      for (unit <- units) run(ctx.fresh.setPhase(this).setCompilationUnit(unit))
+    def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
+      units.map { unit =>
+        val unitCtx = ctx.fresh.setPhase(this).setCompilationUnit(unit)
+        run(unitCtx)
+        unitCtx.compilationUnit
+      }
 
     def description: String = phaseName
 

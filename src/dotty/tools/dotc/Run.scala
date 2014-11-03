@@ -46,7 +46,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
         .filterNot(ctx.settings.Yskip.value.containsPhase(_)) // TODO: skip only subphase
       for (phase <- phasesToRun)
         if (!ctx.reporter.hasErrors) {
-          phase.runOn(units)
+          units = phase.runOn(units)
           def foreachUnit(op: Context => Unit)(implicit ctx: Context): Unit =
             for (unit <- units) op(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
           if (ctx.settings.Xprint.value.containsPhase(phase))
