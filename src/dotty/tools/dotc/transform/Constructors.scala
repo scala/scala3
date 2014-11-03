@@ -152,10 +152,6 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
 
     val constrStats, clsStats = new mutable.ListBuffer[Tree]
 
-    def assign(vble: Symbol, rhs: Tree): Tree =
-      if (cls is Trait) ref(vble.setter).appliedTo(rhs)
-      else Assign(ref(vble), rhs)
-
     // Split class body into statements that go into constructor and
     // definitions that are kept as members of the class.
     def splitStats(stats: List[Tree]): Unit = stats match {
@@ -165,7 +161,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
             val sym = stat.symbol
             if (isRetained(sym)) {
               if (!rhs.isEmpty && !isWildcardArg(rhs))
-                constrStats += assign(sym, intoConstr(rhs)).withPos(stat.pos)
+                constrStats += Assign(ref(sym), intoConstr(rhs)).withPos(stat.pos)
               clsStats += cpy.ValDef(stat)(rhs = EmptyTree)
             }
             else if (!rhs.isEmpty) {
@@ -189,7 +185,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
 
     // The initializers for the retained accessors */
     val copyParams = accessorFields.filter(isRetained).map(acc =>
-      assign(acc, ref(acc.subst(accessors, paramSyms))).withPos(tree.pos))
+      Assign(ref(acc), ref(acc.subst(accessors, paramSyms))).withPos(tree.pos))
 
     // Drop accessors that are not retained from class scope
     val dropped = usage.dropped
