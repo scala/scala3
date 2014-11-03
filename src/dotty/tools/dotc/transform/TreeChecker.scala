@@ -74,12 +74,12 @@ class TreeChecker {
         everDefinedSyms.get(sym) match {
           case Some(t)  =>
             if(t ne tree)
-              ctx.warning(i"symbol ${sym} is defined at least twice in different parts of AST")
+              ctx.warning(i"symbol ${sym.fullName} is defined at least twice in different parts of AST")
             // should become an error
           case None =>
             everDefinedSyms(sym) = tree
         }
-        assert(!nowDefinedSyms.contains(sym), i"doubly defined symbol: ${sym} in $tree")
+        assert(!nowDefinedSyms.contains(sym), i"doubly defined symbol: ${sym.fullName} in $tree")
 
         if(ctx.settings.YcheckMods.value) {
           tree match {
