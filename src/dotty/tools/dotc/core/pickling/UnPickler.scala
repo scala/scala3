@@ -831,7 +831,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       }
       t.toList
     }
-    println(atp)
+    // println(atp)
     val typer = ctx.typer
     val proto = new FunProtoTyped(args, atp, typer)
     val alts = atp.member(nme.CONSTRUCTOR).alternatives.map(_.termRef)
