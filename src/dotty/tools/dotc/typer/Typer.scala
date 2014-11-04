@@ -1042,8 +1042,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case Thicket(stats) :: rest =>
         traverse(stats ++ rest)
       case stat :: rest =>
-        val nestedCtx = if (exprOwner == ctx.owner) ctx else ctx.fresh.setOwner(exprOwner)
-        buf += typed(stat)(nestedCtx)
+        buf += typed(stat)(ctx.exprContext(stat, exprOwner))
         traverse(rest)
       case nil =>
         buf.toList

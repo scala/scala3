@@ -1200,11 +1200,10 @@ object TreeTransforms {
 
     def transformStats(trees: List[Tree], exprOwner: Symbol, info: TransformerInfo, current: Int)(implicit ctx: Context): List[Tree] = {
       val newInfo = mutateTransformers(info, prepForStats, info.nx.nxPrepStats, trees, current)
-      val exprCtx = ctx.withOwner(exprOwner)
       def transformStat(stat: Tree): Tree = stat match {
         case _: Import | _: DefTree => transform(stat, newInfo, current)
         case Thicket(stats) => cpy.Thicket(stat)(stats mapConserve transformStat)
-        case _ => transform(stat, newInfo, current)(exprCtx)
+        case _ => transform(stat, newInfo, current)(ctx.exprContext(stat, exprOwner))
       }
       val newTrees = flatten(trees.mapconserve(transformStat))
       goStats(newTrees, newInfo.nx.nxTransStats(current))(ctx, newInfo)
