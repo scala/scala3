@@ -560,7 +560,7 @@ object SymDenotations {
     def membersNeedAsSeenFrom(pre: Type)(implicit ctx: Context) =
       !(  this.isTerm
        || this.isStaticOwner
-       || ctx.erasedTypes && symbol != defn.ArrayClass
+       || ctx.erasedTypes
        || (pre eq NoPrefix) || (pre eq thisType)
        )
 
