@@ -169,6 +169,37 @@ object TreeTransforms {
     def phase = this
  }
 
+  /** A helper trait to transform annotations on MemberDefs */
+  trait AnnotationTransformer extends MiniPhaseTransform {
+
+    val annotationTransformer = mkTreeTransformer
+
+    def transformAnnotations(tree: MemberDef)(implicit ctx: Context): MemberDef ={
+      val newAnnots = tree.mods.annotations.mapConserve(annotationTransformer.transform)
+      if (newAnnots eq tree.mods.annotations) tree
+      else {
+        val mods = tree.mods.copy(annotations = newAnnots)
+        tree match {
+          case t: DefDef  => cpy.DefDef(t)(mods = mods)
+          case t: ValDef  => cpy.ValDef(t)(mods = mods)
+          case t: TypeDef => cpy.TypeDef(t)(mods = mods)
+        }
+      }
+    }
+
+    override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+      transformAnnotations(tree)
+    }
+
+    override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+      transformAnnotations(tree)
+    }
+
+    override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+      transformAnnotations(tree)
+    }
+  }
+
   val NoTransform = new TreeTransform {
     def phase = unsupported("phase")
     idx = -1

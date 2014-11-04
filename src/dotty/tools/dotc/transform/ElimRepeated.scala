@@ -4,13 +4,15 @@ package transform
 import core._
 import Names._
 import Types._
-import TreeTransforms.{TransformerInfo, MiniPhaseTransform, TreeTransformer}
+import dotty.tools.dotc.transform.TreeTransforms.{AnnotationTransformer, TransformerInfo, MiniPhaseTransform, TreeTransformer}
 import ast.Trees.flatten
 import Flags._
 import Contexts.Context
 import Symbols._
 import Denotations._, SymDenotations._
 import Decorators.StringInterpolators
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
 import scala.collection.mutable
 import DenotTransformers._
 import Names.Name
@@ -20,38 +22,10 @@ import TypeUtils._
 /** A transformer that removes repeated parameters (T*) from all types, replacing
  *  them with Seq types.
  */
-class ElimRepeated extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
+class ElimRepeated extends MiniPhaseTransform with InfoTransformer with AnnotationTransformer { thisTransformer =>
   import ast.tpd._
 
   override def phaseName = "elimRepeated"
-
-  object annotTransformer extends TreeMap {
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = super.transform(tree) match {
-        case x @(_: Ident|_ :Select|_: Apply| _: TypeApply| _: DefDef) => transformTypeOfTree(x)
-        case x => x
-      }
-  }
-
-  /**
-   * Overriden to solve a particular problem with <repeated> not being eliminated inside annotation trees
-   * Dmitry: this should solve problem for now,
-   *         following YAGNI principle I am convinced that we shouldn't make a solution
-   *         for a generalized problem(transforming annotations trees)
-   *         that manifests itself only here.
-   */
-  override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
-    val info1 = transformInfo(ref.info, ref.symbol)
-
-    ref match {
-      case ref: SymDenotation =>
-        val annotTrees = ref.annotations.map(_.tree)
-        val annotTrees1 = annotTrees.mapConserve(annotTransformer.transform)
-        val annots1 = if(annotTrees eq annotTrees1) ref.annotations else annotTrees1.map(new ConcreteAnnotation(_))
-        if ((info1 eq ref.info) && (annots1 eq ref.annotations)) ref
-        else ref.copySymDenotation(info = info1, annotations = annots1)
-      case _ => if (info1 eq ref.info) ref else ref.derivedSingleDenotation(ref.symbol, info1)
-    }
-  }
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
     elimRepeated(tp)
@@ -89,17 +63,15 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer { thisTransfo
     transformTypeOfTree(tree)
 
   /** If method overrides a Java varargs method, add a varargs bridge.
+   *  Also transform trees inside method annotation
    */
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     assert(ctx.phase == thisTransformer)
     def overridesJava = tree.symbol.allOverriddenSymbols.exists(_ is JavaDefined)
-    val newAnnots = tree.mods.annotations.mapConserve(annotTransformer.transform)
-    val newTree = if (newAnnots eq tree.mods.annotations) tree
-      else cpy.DefDef(tree)(mods  = Modifiers(tree.mods.flags, tree.mods.privateWithin, newAnnots))
     if (tree.symbol.info.isVarArgsMethod && overridesJava)
-      addVarArgsBridge(newTree)(ctx.withPhase(thisTransformer.next))
-    else
-      newTree
+        addVarArgsBridge(tree)(ctx.withPhase(thisTransformer.next))
+     else
+      transformAnnotations(tree)
   }
 
   /** Add a Java varargs bridge
@@ -122,7 +94,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer { thisTransfo
         .appliedToArgs(vrefs :+ TreeGen.wrapArray(varArgRef, elemtp))
         .appliedToArgss(vrefss1)
     })
-    Thicket(ddef, bridgeDef)
+    Thicket(transformAnnotations(ddef), transformAnnotations(bridgeDef))
   }
 
   /** Convert type from Scala to Java varargs method */
