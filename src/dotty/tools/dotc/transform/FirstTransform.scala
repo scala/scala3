@@ -3,7 +3,7 @@ package transform
 
 import core._
 import Names._
-import TreeTransforms.{TransformerInfo, MiniPhaseTransform, TreeTransformer}
+import dotty.tools.dotc.transform.TreeTransforms.{AnnotationTransformer, TransformerInfo, MiniPhaseTransform, TreeTransformer}
 import ast.Trees._
 import Flags._
 import Types._
@@ -12,6 +12,8 @@ import Contexts.Context
 import Symbols._
 import SymDenotations._
 import Decorators._
+import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
+import dotty.tools.dotc.core.Denotations.SingleDenotation
 import scala.collection.mutable
 import DenotTransformers._
 import typer.Checking
@@ -27,10 +29,13 @@ import NameOps._
  *   - checks the bounds of AppliedTypeTrees
  *   - stubs out native methods
  */
-class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { thisTransformer =>
+class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer with AnnotationTransformer { thisTransformer =>
   import ast.tpd._
 
   override def phaseName = "firstTransform"
+
+
+  def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case Select(qual, _) if tree.symbol.exists =>
@@ -82,13 +87,16 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { 
     addMissingCompanions(reorder(stats))
   }
 
-  override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) =
+  override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
+    val r =
     if (ddef.symbol.hasAnnotation(defn.NativeAnnot)) {
       ddef.symbol.resetFlag(Deferred)
       DefDef(ddef.symbol.asTerm,
         _ => ref(defn.Sys_error).withPos(ddef.pos)
           .appliedTo(Literal(Constant("native method stub"))))
     } else ddef
+    transformAnnotations(r)
+  }
 
   override def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[Tree] =
     ast.Trees.flatten(reorderAndComplete(trees)(ctx.withPhase(thisTransformer.next)))
@@ -106,6 +114,8 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { 
       This(tpe.cls).withPos(tree.pos)
     case _ => normalizeType(tree)
   }
+
+
 
   override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
     normalizeType {
