@@ -277,7 +277,7 @@ object Erasure extends TypeTestsCasts{
           case _ => sym.name
         }
         untpd.cpy.Select(tree)(qual, sym.name)
-          .withType(NamedType.withSymAndName(qual.tpe, sym, name))
+          .withType(NamedType.withFixedSym(qual.tpe, sym))
       }
 
       def selectArrayMember(qual: Tree, erasedPre: Type): Tree =
