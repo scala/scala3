@@ -297,15 +297,20 @@ object Contexts {
     def thisCallArgContext: Context = {
       assert(owner.isClassConstructor)
       val constrCtx = outersIterator.dropWhile(_.outer.owner == owner).next
-      var classCtx = outersIterator.dropWhile(!_.isClassDefContext).next
-      classCtx.superOrThisCallContext(owner, constrCtx.scope).setTyperState(typerState)
+      superOrThisCallContext(owner, constrCtx.scope).setTyperState(typerState)
     }
 
     /** The super= or this-call context with given owner and locals. */
     private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext = {
-      assert(isClassDefContext)
-      outer.fresh.setOwner(owner).setScope(locals).setMode(ctx.mode | Mode.InSuperCall)
+      var classCtx = outersIterator.dropWhile(!_.isClassDefContext).next
+      classCtx.outer.fresh.setOwner(owner).setScope(locals).setMode(classCtx.mode | Mode.InSuperCall)
     }
+
+    /** The context of expression `expr` seen as a member of a statement sequence */
+    def exprContext(stat: Tree[_ >: Untyped], exprOwner: Symbol) =
+      if (exprOwner == this.owner) this
+      else if (untpd.isSuperConstrCall(stat) && this.owner.isClass) superCallContext
+      else ctx.fresh.setOwner(exprOwner)
 
     /** The current source file; will be derived from current
      *  compilation unit.
