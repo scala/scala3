@@ -238,7 +238,8 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Super, qual: Tree, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context) = {
     val mix = tree.mix
-    val cls = qual.tpe.widen.typeSymbol
+    val qtype @ ThisType(_) = qual.tpe
+    val cls = qtype.cls
 
     def findMixinSuper(site: Type): Type = site.parents filter (_.name == mix) match {
       case p :: Nil =>
