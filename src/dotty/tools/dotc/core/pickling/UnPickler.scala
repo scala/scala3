@@ -832,22 +832,10 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       t.toList
     }
     // println(atp)
-    val typer = ctx.typer
-    val proto = new FunProtoTyped(args, atp, typer)
-    val alts = atp.member(nme.CONSTRUCTOR).alternatives.map(_.termRef)
-
-    val constructors = ctx.typer.resolveOverloaded(alts, proto, Nil)
-    assert(constructors.size == 1) // this is parsed from bytecode tree. there's nothing user can do about it
-
-    val constr = constructors.head
     val targs = atp.argTypes
-    val fun = tpd.New(atp withoutArgs targs)
-      .select(TermRef.withSig(atp.normalizedPrefix, constr.termSymbol.asTerm))
-      .appliedToTypes(targs)
-    val apply = untpd.Apply(fun, args)
-    new typer.ApplyToTyped(apply, fun, constr, args, atp).result.asInstanceOf[tpd.Tree] // needed to handle varargs
-    // Dotty deviation, for scalac the last cast wouldn't be required
-  }
+
+    tpd.applyOverloaded(tpd.New(atp withoutArgs targs), nme.CONSTRUCTOR, args, targs, atp)
+}
 
   /** Read an annotation and as a side effect store it into
    *  the symbol it requests. Called at top-level, for all

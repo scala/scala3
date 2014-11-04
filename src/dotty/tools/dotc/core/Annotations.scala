@@ -3,6 +3,9 @@ package core
 
 import Symbols._, Types._, util.Positions._, Contexts._, Constants._, ast.tpd._
 import config.ScalaVersion
+import StdNames._
+import dotty.tools.dotc.ast.{tpd, untpd}
+import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
 
 object Annotations {
 
@@ -61,11 +64,23 @@ object Annotations {
     def apply(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
       apply(New(atp, args))
 
+    private def resolveConstructor(atp: Type, args:List[Tree])(implicit ctx: Context): Tree = {
+      val targs = atp.argTypes
+      tpd.applyOverloaded(New(atp withoutArgs targs), nme.CONSTRUCTOR, args, targs, atp)
+    }
+
+    def applyResolve(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation = {
+      apply(resolveConstructor(atp, args))
+    }
+
     def deferred(sym: Symbol, treeFn: Context => Tree)(implicit ctx: Context): Annotation =
       new LazyAnnotation(sym)(treeFn)
 
     def deferred(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
       deferred(atp.classSymbol, implicit ctx => New(atp, args))
+
+    def deferredResolve(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
+      deferred(atp.classSymbol, implicit ctx => resolveConstructor(atp, args))
 
     def makeAlias(sym: TermSymbol)(implicit ctx: Context) =
       apply(defn.AliasAnnot, List(

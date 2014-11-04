@@ -444,7 +444,7 @@ class ClassfileParser(
       }
     }
     if (hasError || skip) None
-    else Some(Annotation.deferred(attrType, argbuf.toList))
+    else Some(Annotation.deferredResolve(attrType, argbuf.toList))
   } catch {
     case f: FatalError => throw f // don't eat fatal errors, they mean a class was not found
     case ex: Throwable =>

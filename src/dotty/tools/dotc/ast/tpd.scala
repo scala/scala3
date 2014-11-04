@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package ast
 
+import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
 import transform.SymUtils._
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
@@ -676,6 +677,23 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       ctx.warning(i"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
       Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)) withPos tree.pos
     }
+  }
+  
+  def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type)(implicit ctx: Context): Tree = {
+    val typer = ctx.typer
+    val proto = new FunProtoTyped(args, expectedType, typer)
+    val alts = receiver.tpe.member(method).alternatives.map(_.termRef)
+
+    val alternatives = ctx.typer.resolveOverloaded(alts, proto, Nil)
+    assert(alternatives.size == 1) // this is parsed from bytecode tree. there's nothing user can do about it
+
+    val selected = alternatives.head
+    val fun = receiver
+      .select(TermRef.withSig(receiver.tpe.normalizedPrefix, selected.termSymbol.asTerm))
+      .appliedToTypes(targs)
+    val apply = untpd.Apply(fun, args)
+
+    new typer.ApplyToTyped(apply, fun, selected, args, expectedType).result.asInstanceOf[Tree] // needed to handle varargs
   }
 
   @tailrec
