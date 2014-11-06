@@ -4,10 +4,11 @@ class B {
 class A extends B
 
 object Test {
-  def foo(a: A#X): Unit = {
-    return;
+  def test1(): Unit = {
+    implicitly[B#X <:< A#X]
   }
-  def test(): Unit = {
-    foo(??? : B#X);
+  def test2(): Unit = {
+    val a : { type T; type U } = ???
+    implicitly[a.T <:< a.U]
   }
 }
