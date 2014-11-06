@@ -265,8 +265,8 @@ object ExplicitOuter {
       if (fun.symbol.isConstructor) {
         val cls = fun.symbol.owner.asClass
         def outerArg(receiver: Tree): Tree = receiver match {
-          case New(tpt) =>
-            singleton(outerPrefix(tpt.tpe))
+          case New(_) | Super(_, _) =>
+            singleton(outerPrefix(receiver.tpe))
           case This(_) =>
             ref(outerParamAccessor(cls)) // will be rewired to outer argument of secondary constructor in phase Constructors
           case TypeApply(Select(r, nme.asInstanceOf_), args) =>
