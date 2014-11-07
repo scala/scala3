@@ -303,7 +303,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if (flags is Mutable) "var"
     else if (flags is Package) "package"
     else if (flags is Module) "object"
-    else if (sym.isSourceMethod) "def"
+    else if (sym is Method) "def"
     else if (sym.isTerm && (!(flags is Param))) "val"
     else ""
   }
