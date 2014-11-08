@@ -247,6 +247,10 @@ object Erasure extends TypeTestsCasts{
       tree.withType(erased)
     }
 
+    override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Literal =
+      if (tree.typeOpt.isRef(defn.UnitClass)) tree.withType(tree.typeOpt)
+      else super.typedLiteral(tree)
+
     /** Type check select nodes, applying the following rewritings exhaustively
      *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`
      *  is the erased type of the selection's original qualifier expression.
@@ -369,12 +373,20 @@ object Erasure extends TypeTestsCasts{
       }
     }
 
+    override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): ValDef =
+      super.typedValDef(untpd.cpy.ValDef(vdef)(
+        tpt = untpd.TypedSplice(TypeTree(sym.info).withPos(vdef.tpt.pos))), sym)
+
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
+      val restpe = sym.info.resultType
       val ddef1 = untpd.cpy.DefDef(ddef)(
         tparams = Nil,
         vparamss = ddef.vparamss.flatten :: Nil,
-        tpt = // keep UnitTypes intact in result position
-          untpd.TypedSplice(TypeTree(eraseResult(ddef.tpt.typeOpt)).withPos(ddef.tpt.pos)))
+        tpt = untpd.TypedSplice(TypeTree(restpe).withPos(ddef.tpt.pos)),
+        rhs = ddef.rhs match {
+          case id @ Ident(nme.WILDCARD) => untpd.TypedSplice(id.withType(restpe))
+          case _ => ddef.rhs
+        })
       super.typedDefDef(ddef1, sym)
     }
 

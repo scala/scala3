@@ -4,6 +4,7 @@ package core
 
 import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators._, Flags.JavaDefined
 import dotc.transform.ExplicitOuter._
+import typer.Mode
 import util.DotClass
 
 /** Erased types are:
@@ -89,7 +90,7 @@ object TypeErasure {
 
   /** The current context with a phase no later than erasure */
   private def erasureCtx(implicit ctx: Context) =
-    if (ctx.erasedTypes) ctx.withPhase(ctx.erasurePhase) else ctx
+    if (ctx.erasedTypes) ctx.withPhase(ctx.erasurePhase).addMode(Mode.FutureDefsOK) else ctx
 
   def erasure(tp: Type)(implicit ctx: Context): Type = scalaErasureFn(tp)(erasureCtx)
   def semiErasure(tp: Type)(implicit ctx: Context): Type = semiErasureFn(tp)(erasureCtx)
@@ -141,7 +142,12 @@ object TypeErasure {
     if ((sym eq defn.Any_asInstanceOf) || (sym eq defn.Any_isInstanceOf)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
-    else eraseInfo(tp)(erasureCtx)
+    else eraseInfo(tp)(erasureCtx) match {
+      case einfo: MethodType if sym.isGetter && einfo.resultType.isRef(defn.UnitClass) =>
+        defn.BoxedUnitClass.typeRef
+      case einfo =>
+        einfo
+    }
   }
 
   def isUnboundedGeneric(tp: Type)(implicit ctx: Context) = !(
@@ -319,7 +325,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
   }
 
   def eraseInfo(tp: Type)(implicit ctx: Context) = tp match {
-    case ExprType(rt) => MethodType(Nil, Nil, erasure(rt))
+    case ExprType(rt) => MethodType(Nil, Nil, eraseResult(rt))
     case tp => erasure(tp)
   }
 
