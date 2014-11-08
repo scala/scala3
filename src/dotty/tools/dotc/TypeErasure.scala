@@ -108,6 +108,8 @@ object TypeErasure {
     case tp: TermRef =>
       assert(tp.symbol.exists, tp)
       TermRef(erasedRef(tp.prefix), tp.symbol.asTerm)
+    case tp: ThisType =>
+      tp
     case tp =>
       erasure(tp)
   }
@@ -271,7 +273,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
     case tp: TermRef =>
       this(tp.widen)
     case ThisType(_) =>
-      tp
+      this(tp.widen)
     case SuperType(thistpe, supertpe) =>
       SuperType(this(thistpe), this(supertpe))
     case ExprType(rt) =>
