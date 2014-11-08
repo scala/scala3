@@ -425,10 +425,14 @@ object SymDenotations {
     final def isSourceMethod(implicit ctx: Context) = this is (Method, butNot = Accessor)
 
     /** Is this a setter? */
-    final def isGetter(implicit ctx: Context) = (this is Accessor) && !originalName.isSetterName
+    final def isGetter(implicit ctx: Context) =
+      (this is Accessor) && !originalName.isSetterName && !originalName.isScala2LocalSuffix
 
     /** Is this a setter? */
-    final def isSetter(implicit ctx: Context) = (this is Accessor) && originalName.isSetterName
+    final def isSetter(implicit ctx: Context) =
+      (this is Accessor) &&
+      originalName.isSetterName &&
+      info.firstParamTypes.nonEmpty // to avoid being fooled by   var x_= : Unit = ...
 
     /** is this the constructor of a class? */
     final def isClassConstructor = name == nme.CONSTRUCTOR
@@ -892,8 +896,9 @@ object SymDenotations {
     override def valRef(implicit ctx: Context): TermRef =
       TermRef.withSigAndDenot(owner.thisType, name.asTermName, Signature.NotAMethod, this)
 
-    override def termRefWithSig(implicit ctx: Context): TermRef =
-      TermRef.withSigAndDenot(owner.thisType, name.asTermName, signature, this)
+    override def termRefWithSig(implicit ctx: Context): TermRef = // TODO generalize
+      if (ctx.erasedTypes) TermRef.withFixedSym(owner.thisType, name.asTermName, symbol.asTerm)
+      else TermRef.withSigAndDenot(owner.thisType, name.asTermName, signature, this)
 
     def nonMemberTermRef(implicit ctx: Context): TermRef =
       TermRef.withFixedSym(owner.thisType, name.asTermName, symbol.asTerm)
