@@ -1175,8 +1175,15 @@ object Types {
           case d =>
             if (d.validFor.runId != ctx.period.runId)
               loadDenot
-            else if (ctx.erasedTypes && lastSymbol != null)
-              denotOfSym(lastSymbol) // avoid keeping non-sym denotations after erasure; they violate the assertErased contract
+            // The following branch was used to avoid an assertErased error.
+            // It's idea was to void keeping non-sym denotations after erasure
+            // since they violate the assertErased contract. But the problem is
+            // that when seen again in an earlier phase the denotation is
+            // still seen as a SymDenotation, whereas it should be a SingleDenotation.
+            // That's why the branch is disabled.
+            //
+            //   else if (ctx.erasedTypes && lastSymbol != null)
+            //   denotOfSym(lastSymbol) 
             else
               d.current
         }
