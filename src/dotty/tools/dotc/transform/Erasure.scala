@@ -94,7 +94,8 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
     if (ctx.mode.isExpr)
       tree.tpe match {
         case ref: TermRef =>
-          assert(ref.denot.isInstanceOf[SymDenotation],
+          assert(ref.denot.isInstanceOf[SymDenotation] ||
+              ref.denot.isInstanceOf[UniqueRefDenotation],
             i"non-sym type $ref of class ${ref.getClass} with denot of class ${ref.denot.getClass} of $tree")
         case _ =>
       }
