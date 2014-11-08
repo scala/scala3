@@ -3,7 +3,7 @@ object blockescapes {
   { val x = 0; () }
   val x0 = { class Foo; new Foo }
   val x1 = {}
-  val x2 = { val z = 0 }
+  var x2 = { val z = 0 }
   val m1 = { val x = 2; x }
   
   trait T
