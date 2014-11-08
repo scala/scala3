@@ -76,7 +76,7 @@ object NameOps {
     def isFieldName = name endsWith LOCAL_SUFFIX
     def isInheritedName = name.length > 0 && name.head == '(' && name.startsWith(nme.INHERITED)
     def isDefaultGetterName = name.isTermName && name.asTermName.defaultGetterIndex >= 0
-
+    def isScala2LocalSuffix = name.endsWith(" ")
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
 
@@ -277,7 +277,7 @@ object NameOps {
     }
 
     def stripScala2LocalSuffix: TermName =
-      if (name.endsWith(" ")) name.init.asTermName else name
+      if (name.isScala2LocalSuffix) name.init.asTermName else name
 
     /** The name of an accessor for protected symbols. */
     def protectedAccessorName: TermName =
