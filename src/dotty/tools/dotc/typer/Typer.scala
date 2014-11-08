@@ -1245,6 +1245,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           typed(etaExpand(tree, wtp, arity), pt)
         else if (wtp.paramTypes.isEmpty)
           adaptInterpolated(tpd.Apply(tree, Nil), pt, EmptyTree)
+        else if (wtp.isImplicit)
+          err.typeMismatch(tree, pt)
         else
           errorTree(tree,
             d"""missing arguments for $methodStr
