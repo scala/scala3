@@ -149,7 +149,6 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
     def traitInits(mixin: ClassSymbol): List[Tree] =
       for (getter <- mixin.decls.filter(getr => getr.isGetter && !wasDeferred(getr)).toList)
         yield {
-        println(i"impl for getter $getter!")
         DefDef(implementation(getter.asTerm), superRef(initializer(getter)).appliedToNone)
       }
 
