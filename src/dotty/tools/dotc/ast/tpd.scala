@@ -6,7 +6,7 @@ import transform.SymUtils._
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Symbols._
-import Denotations._, Decorators._
+import Denotations._, Decorators._, DenotTransformers._
 import config.Printers._
 import typer.Mode
 import collection.mutable
@@ -535,6 +535,28 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         }
       }
       loop(from, Nil, to :: Nil)
+    }
+
+    /** After phase `trans`, set the owner of every definition in this tree that was formerly
+     *  owner by `from` to `to`.
+     */
+    def changeOwnerAfter(from: Symbol, to: Symbol, trans: DenotTransformer)(implicit ctx: Context): ThisTree = {
+      assert(ctx.phase == trans.next)
+      val traverser = new TreeTraverser {
+        def traverse(tree: Tree) = tree match {
+          case tree: DefTree =>
+            val sym = tree.symbol
+            if (sym.denot(ctx.withPhase(trans)).owner == from) {
+              println(i"change owner $from -> $to of $sym")
+              sym.copySymDenotation(owner = to).installAfter(trans)
+            }
+            if (sym.isWeakOwner) traverseChildren(tree)
+          case _ =>
+            traverseChildren(tree)
+        }
+      }
+      traverser.traverse(tree)
+      tree
     }
 
     def select(name: Name)(implicit ctx: Context): Select =
