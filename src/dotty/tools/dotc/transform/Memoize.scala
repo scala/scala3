@@ -37,28 +37,40 @@ import Decorators._
   override def phaseName = "memoize"
   override def treeTransformPhase = thisTransform.next
 
+  override def prepareForDefDef(tree: DefDef)(implicit ctx: Context) = {
+    val sym = tree.symbol
+    if (sym.isGetter && !sym.is(NoFieldNeeded)) {
+      // allocate field early so that initializer has the right owner for subsequeny phases in
+      // the group.
+      val maybeMutable = if (sym is Stable) EmptyFlags else Mutable
+      val field = ctx.newSymbol(
+        owner = ctx.owner,
+        name = sym.name.asTermName.fieldName,
+        flags = Private | maybeMutable,
+        info = sym.info.resultType,
+        coord = tree.pos).enteredAfter(thisTransform)
+      tree.rhs.changeOwnerAfter(sym, field, thisTransform)
+    }
+    this
+  }
+
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val sym = tree.symbol
+    def field = {
+      val field = sym.field.asTerm
+      assert(field.exists, i"no field for ${sym.showLocated} in ${sym.owner.info.decls.toList.map{_.showDcl}}%; %")
+      field
+    }
     if (sym.is(Accessor, butNot = NoFieldNeeded))
       if (sym.isGetter) {
-        val maybeMutable = if (sym is Stable) EmptyFlags else Mutable
-        println(i"add field for $sym")
-        val field = ctx.newSymbol(
-          owner = ctx.owner,
-          name = sym.name.asTermName.fieldName,
-          flags = Private | maybeMutable,
-          info = sym.info.resultType,
-          coord = tree.pos).enteredAfter(thisTransform)
-        var fieldInit = tree.rhs.changeOwner(sym, field)
-        val fieldDef = ValDef(field, fieldInit)
-        val getterDef = cpy.DefDef(tree)(rhs = ref(field))
+        val fieldDef = transformFollowing(ValDef(field, tree.rhs))
+        val getterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(ref(field)))
         Thicket(fieldDef, getterDef)
       }
       else if (sym.isSetter) {
         val Literal(Constant(())) = tree.rhs
-        assert(sym.field.exists, i"no field for ${sym.showLocated} in ${sym.owner.info.decls.toList.map{_.showDcl}}%; %")
-        val initializer = Assign(ref(sym.field), ref(tree.vparamss.head.head.symbol))
-        cpy.DefDef(tree)(rhs = initializer)
+        val initializer = Assign(ref(field), ref(tree.vparamss.head.head.symbol))
+        cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer))
       }
       else tree // curiously, some accessors from Scala2 have ' ' suffixes. They count as
                 // neither getters nor setters
