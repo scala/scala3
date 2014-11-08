@@ -356,6 +356,9 @@ object Flags {
   /** Symbol is a Java default method */
   final val DefaultMethod = termFlag(38, "<defaultmethod>")
 
+  /** Symbol is a Java enum */
+  final val Enum = commonFlag(40, "<enum>")
+
   // Flags following this one are not pickled
 
   /** Symbol always defines a fresh named type */

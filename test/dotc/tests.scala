@@ -129,5 +129,11 @@ class tests extends CompilerTest {
       "-Xprompt",
       "#runs", "2"))
 
+  val javaDir = "./tests/disabled/java-interop/"
+  @Test def java_all = compileFiles(javaDir+"pos/")
+
+  @Test def java_1751 = compileDir(javaDir+"failing/t1751")
+  @Test def java_294 = compileDir(javaDir+"failing/t294")
+
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }

@@ -50,9 +50,56 @@ object Parsers {
     if (source.isSelfContained) new ScriptParser(source)
     else new Parser(source)
 
-  class Parser(val source: SourceFile)(implicit ctx: Context) extends DotClass {
+  abstract class ParserCommon(val source: SourceFile)(implicit ctx: Context) extends DotClass {
 
-    val in = new Scanner(source)
+    val in: ScannerCommon
+
+    /* ------------- POSITIONS ------------------------------------------- */
+
+    def atPos[T <: Positioned](start: Offset, point: Offset, end: Offset)(t: T): T =
+      atPos(Position(start, end, point))(t)
+
+    def atPos[T <: Positioned](start: Offset, point: Offset)(t: T): T =
+      atPos(start, point, in.lastOffset)(t)
+
+    def atPos[T <: Positioned](start: Offset)(t: T): T =
+      atPos(start, start)(t)
+
+    def atPos[T <: Positioned](pos: Position)(t: T): T =
+      if (t.pos.isSourceDerived) t else t.withPos(pos)
+
+    def tokenRange = Position(in.offset, in.lastCharOffset, in.offset)
+
+    def sourcePos(off: Int = in.offset): SourcePosition =
+      source atPos Position(off)
+
+
+    /* ------------- ERROR HANDLING ------------------------------------------- */
+    /** The offset where the last syntax error was reported, or if a skip to a
+      *  safepoint occurred afterwards, the offset of the safe point.
+      */
+    protected var lastErrorOffset : Int = -1
+
+    /** Issue an error at given offset if beyond last error offset
+      *  and update lastErrorOffset.
+      */
+    def syntaxError(msg: String, offset: Int = in.offset): Unit =
+      if (offset > lastErrorOffset) {
+        syntaxError(msg, Position(offset))
+        lastErrorOffset = in.offset
+      }
+
+    /** Unconditionally issue an error at given position, without
+      *  updating lastErrorOffset.
+      */
+    def syntaxError(msg: String, pos: Position): Unit =
+      ctx.error(msg, source atPos pos)
+
+  }
+
+  class Parser(source: SourceFile)(implicit ctx: Context) extends ParserCommon(source) {
+
+    val in: Scanner = new Scanner(source)
 
     val openParens = new ParensCounters
 
@@ -83,25 +130,6 @@ object Parsers {
 
     def isStatSep: Boolean =
       in.token == NEWLINE || in.token == NEWLINES || in.token == SEMI
-
-/* ------------- POSITIONS ------------------------------------------- */
-
-    def atPos[T <: Positioned](start: Offset, point: Offset, end: Offset)(t: T): T =
-      atPos(Position(start, end, point))(t)
-
-    def atPos[T <: Positioned](start: Offset, point: Offset)(t: T): T =
-      atPos(start, point, in.lastOffset)(t)
-
-    def atPos[T <: Positioned](start: Offset)(t: T): T =
-      atPos(start, start)(t)
-
-    def atPos[T <: Positioned](pos: Position)(t: T): T =
-      if (t.pos.isSourceDerived) t else t.withPos(pos)
-
-    def tokenRange = Position(in.offset, in.lastCharOffset, in.offset)
-
-    def sourcePos(off: Int = in.offset): SourcePosition =
-      source atPos Position(off)
 
 /* ------------- ERROR HANDLING ------------------------------------------- */
 
@@ -175,26 +203,6 @@ object Parsers {
 
     def deprecationWarning(msg: String, offset: Int = in.offset) =
       ctx.deprecationWarning(msg, source atPos Position(offset))
-
-    /** The offset where the last syntax error was reported, or if a skip to a
-     *  safepoint occurred afterwards, the offset of the safe point.
-     */
-    private var lastErrorOffset : Int = -1
-
-    /** Issue an error at given offset if beyond last error offset
-     *  and update lastErrorOffset.
-     */
-    def syntaxError(msg: String, offset: Int = in.offset): Unit =
-      if (offset > lastErrorOffset) {
-        syntaxError(msg, Position(offset))
-        lastErrorOffset = in.offset
-      }
-
-    /** Unconditionally issue an error at given position, without
-     *  updating lastErrorOffset.
-     */
-    def syntaxError(msg: String, pos: Position): Unit =
-      ctx.error(msg, source atPos pos)
 
     /** Issue an error at current offset taht input is incomplete */
     def incompleteInputError(msg: String) =
