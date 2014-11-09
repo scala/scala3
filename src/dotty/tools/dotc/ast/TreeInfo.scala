@@ -26,14 +26,17 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   /** Is tree legal as a member definition of an interface?
    */
-  def isInterfaceMember(tree: Tree): Boolean = unsplice(tree) match {
-    case EmptyTree => true
-    case Import(_, _) => true
-    case TypeDef(_, _, _) => true
-    case DefDef(mods, _, _, _, _, __) => mods.flags is Deferred
-    case ValDef(mods, _, _, _) => mods is Deferred
+  def isPureInterfaceMember(tree: Tree): Boolean = unsplice(tree) match {
+    case EmptyTree | Import(_, _) | TypeDef(_, _, _) => true
+    case DefDef(_, _, _, _, _, rhs) => rhs.isEmpty
+    case ValDef(mods, _, _, rhs) => rhs.isEmpty
     case _ => false
   }
+
+  /** Is tree legal as a member definition of a no-init trait?
+   */
+  def isNoInitMember(tree: Tree): Boolean =
+    isPureInterfaceMember(tree) || unsplice(tree).isInstanceOf[DefDef]
 
   def isOpAssign(tree: Tree) = unsplice(tree) match {
     case Apply(fn, _ :: Nil) =>
