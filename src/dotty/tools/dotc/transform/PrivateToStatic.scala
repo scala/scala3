@@ -16,9 +16,12 @@ import Decorators._
 import ast.Trees._
 import TreeTransforms.TransformerInfo
 
-/** The preceding lambda lift and flatten phases move symbols to different scopes
- *  and rename them. This miniphase cleans up afterwards and makes sure that all
- *  class scopes contain the symbols defined in them.
+/** Makes private methods static, provided they not deferred, accessors, or static,
+ *  by rewriting a method `m` in class `C` as follows:
+ *
+ *     private def m(ps) = e
+ *
+ *     --> private static def($this: C, ps) = [this -> $this] e
  */
 class PrivateToStatic extends MiniPhase with SymTransformer { thisTransform =>
   import ast.tpd._
@@ -28,7 +31,7 @@ class PrivateToStatic extends MiniPhase with SymTransformer { thisTransform =>
   private val Immovable = Deferred | Accessor | JavaStatic
 
   def shouldBeStatic(sd: SymDenotation)(implicit ctx: Context) =
-    sd.current(ctx.withPhase(thisTransform)).asInstanceOf[SymDenotation]
+    sd.current(ctx.withPhase(thisTransform)).asSymDenotation
       .is(PrivateMethod, butNot = Immovable) &&
     (sd.owner.is(Trait) || sd.is(NotJavaPrivate))
 
@@ -68,6 +71,10 @@ class PrivateToStatic extends MiniPhase with SymTransformer { thisTransform =>
       if (shouldBeStatic(ctx.owner.enclosingMethod)) ref(thisParam).withPos(tree.pos)
       else tree
 
+    /** Rwrites a call to a method `m` which is made static as folows:
+     *
+     *    qual.m(args)  -->  m(qual, args)
+     */
     override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
       tree.fun match {
         case fun @ Select(qual, name) if shouldBeStatic(fun.symbol) =>
