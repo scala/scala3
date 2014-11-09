@@ -5,6 +5,7 @@ import core._
 import Types._
 import Contexts._
 import Symbols._
+import SymDenotations._
 import Decorators._
 import Names._
 import StdNames._
@@ -13,7 +14,8 @@ import Flags._
 import language.implicitConversions
 
 object SymUtils {
-  implicit def decorateSymUtils(sym: Symbol): SymUtils = new SymUtils(sym)
+  implicit def decorateSymbol(sym: Symbol): SymUtils = new SymUtils(sym)
+  implicit def decorateSymDenot(d: SymDenotation): SymUtils = new SymUtils(d.symbol)
 }
 
 /** A decorator that provides methods on symbols
@@ -64,4 +66,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   def field(implicit ctx: Context): Symbol =
     self.owner.info.decl(self.asTerm.name.fieldName).suchThat(!_.is(Method)).symbol
+
+  /** `fullName` where `$' is the separator character */
+  def flatName(implicit ctx: Context): Name = self.fullNameSeparated('$')
 }

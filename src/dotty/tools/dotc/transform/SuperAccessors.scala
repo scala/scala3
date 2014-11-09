@@ -295,7 +295,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
             val body1 = forwardParamAccessors(transformStats(impl.body, tree.symbol))
             accDefs -= currentClass
             ownStats ++= body1
-            cpy.Template(impl)(body = body1)
+            cpy.Template(impl)(body = ownStats.toList)
           }
           transformTemplate
 

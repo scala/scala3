@@ -347,6 +347,11 @@ object Trees {
       s
     }
 
+    /** If this is a thicket, gerform `op` on each of its trees
+     *  otherwise, perform `op` ion tree itself.
+     */
+    def foreachInThicket(op: Tree[T] => Unit): Unit = op(this)
+
     override def toText(printer: Printer) = printer.toText(this)
 
     override def hashCode(): Int = System.identityHashCode(this)
@@ -809,6 +814,8 @@ object Trees {
       val newTrees = trees.map(_.withPos(pos))
       new Thicket[T](newTrees).asInstanceOf[this.type]
     }
+    override def foreachInThicket(op: Tree[T] => Unit): Unit =
+      trees foreach (_.foreachInThicket(op))
   }
 
   class EmptyValDef[T >: Untyped] extends ValDef[T](

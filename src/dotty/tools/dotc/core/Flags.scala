@@ -512,6 +512,9 @@ object Flags {
   /** Labeled `private` or `final` */
   final val PrivateOrFinal = Private | Final
 
+  /** A private method */
+  final val PrivateMethod = allOf(Private, Method)
+
   /** A type parameter with synthesized name */
   final val ExpandedTypeParam = allOf(ExpandedName, TypeParam)
 

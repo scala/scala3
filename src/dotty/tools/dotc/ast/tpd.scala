@@ -263,7 +263,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case _ =>
         false
     }
-    try test
+    try test || tp.symbol.is(JavaStatic)
     catch { // See remark in SymDenotations#accessWithin
       case ex: NotDefinedHere => test(ctx.addMode(Mode.FutureDefsOK))
     }
