@@ -180,7 +180,7 @@ class TreeChecker {
     override def typedStats(trees: List[untpd.Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
       for (tree <- trees) tree match {
         case tree: untpd.DefTree => checkOwner(tree)
-        case _: untpd.Thicket => assert(false, "unexpanded thicket in statement sequence")
+        case _: untpd.Thicket => assert(false, i"unexpanded thicket $tree in statement sequence $trees%\n%")
         case _ =>
       }
       super.typedStats(trees, exprOwner)

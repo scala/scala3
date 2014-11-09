@@ -119,9 +119,9 @@ object StdNames {
     val SINGLETON_SUFFIX: N           = ".type"
     val SPECIALIZED_SUFFIX: N         = "$sp"
     val SUPER_PREFIX: N               = "super$"
-    val TRAIT_SETTER_PREFIX: N        = "_setter_$"
     val WHILE_PREFIX: N               = "while$"
-    val DEFAULT_EXCEPTION_NAME: N = "ex$"
+    val DEFAULT_EXCEPTION_NAME: N     = "ex$"
+    val INITIALIZER_PREFIX: N         = "initial$"
 
     // value types (and AnyRef) are all used as terms as well
     // as (at least) arguments to the @specialize annotation.

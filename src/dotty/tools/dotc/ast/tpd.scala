@@ -6,7 +6,7 @@ import transform.SymUtils._
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Symbols._
-import Denotations._, Decorators._
+import Denotations._, Decorators._, DenotTransformers._
 import config.Printers._
 import typer.Mode
 import collection.mutable
@@ -39,8 +39,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def This(cls: ClassSymbol)(implicit ctx: Context): This =
     untpd.This(cls.name).withType(cls.thisType)
 
-  def Super(qual: Tree, mix: TypeName, inConstrCall: Boolean)(implicit ctx: Context): Super =
-    ta.assignType(untpd.Super(qual, mix), qual, inConstrCall)
+  def Super(qual: Tree, mix: TypeName, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context): Super =
+    ta.assignType(untpd.Super(qual, mix), qual, inConstrCall, mixinClass)
 
   def Apply(fn: Tree, args: List[Tree])(implicit ctx: Context): Apply =
     ta.assignType(untpd.Apply(fn, args), fn, args)
@@ -263,7 +263,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case _ =>
         false
     }
-    try test
+    try test || tp.symbol.is(JavaStatic)
     catch { // See remark in SymDenotations#accessWithin
       case ex: NotDefinedHere => test(ctx.addMode(Mode.FutureDefsOK))
     }
@@ -527,13 +527,34 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      */
     def changeOwner(from: Symbol, to: Symbol)(implicit ctx: Context): ThisTree = {
       def loop(from: Symbol, froms: List[Symbol], tos: List[Symbol]): ThisTree = {
-        if (from.isWeakOwner) loop(from.owner, from :: froms, to :: tos)
+        if (from.isWeakOwner && !from.owner.isClass)
+          loop(from.owner, from :: froms, to :: tos)
         else {
           //println(i"change owner ${from :: froms}%, % ==> $tos of $tree")
           new TreeTypeMap(oldOwners = from :: froms, newOwners = tos).apply(tree)
         }
       }
       loop(from, Nil, to :: Nil)
+    }
+
+    /** After phase `trans`, set the owner of every definition in this tree that was formerly
+     *  owner by `from` to `to`.
+     */
+    def changeOwnerAfter(from: Symbol, to: Symbol, trans: DenotTransformer)(implicit ctx: Context): ThisTree = {
+      assert(ctx.phase == trans.next)
+      val traverser = new TreeTraverser {
+        def traverse(tree: Tree) = tree match {
+          case tree: DefTree =>
+            val sym = tree.symbol
+            if (sym.denot(ctx.withPhase(trans)).owner == from)
+              sym.copySymDenotation(owner = to).installAfter(trans)
+            if (sym.isWeakOwner) traverseChildren(tree)
+          case _ =>
+            traverseChildren(tree)
+        }
+      }
+      traverser.traverse(tree)
+      tree
     }
 
     def select(name: Name)(implicit ctx: Context): Select =

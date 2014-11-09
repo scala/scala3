@@ -46,16 +46,21 @@ class Compiler {
            new TailRec),
       List(new PatternMatcher,
            new ExplicitOuter,
-           // new LazyValTranformContext().transformer, // disabled, awaiting fixes
            new Splitter),
       List(new ElimByName,
            new InterceptedMethods,
            new Literalize,
-           new GettersSetters),
+           new Getters,
+           new ResolveSuper),
       List(new Erasure),
-      List(new CapturedVars,
+      List(new Mixin,
+           new Memoize, // TODO: Make LazyVals a part of this phase
+           new CapturedVars,
            new Constructors),
-      List(new LambdaLift)
+      List(new LambdaLift,
+           new Flatten,
+           new RestoreScopes),
+      List(new PrivateToStatic)
     )
 
   var runId = 1

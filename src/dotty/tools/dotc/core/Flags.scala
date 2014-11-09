@@ -287,7 +287,7 @@ object Flags {
   /** A trait that has only abstract methods as members
    *  (and therefore can be represented by a Java interface
    */
-  final val Interface = typeFlag(22, "interface")
+  final val PureInterface = typeFlag(22, "interface")
 
   /** Labeled with of abstract & override */
   final val AbsOverride = termFlag(22, "abstract override")
@@ -335,6 +335,9 @@ object Flags {
   final val JavaStaticTerm = JavaStatic.toTermFlags
   final val JavaStaticType = JavaStatic.toTypeFlags
 
+  /** Trait is not an interface, but does not have fields or intialization code */
+  final val NoInits = typeFlag(32, "<noInits>")
+
   /** Variable is accessed from nested function. */
   final val Captured = termFlag(32, "<captured>")
 
@@ -352,9 +355,6 @@ object Flags {
 
   /** Symbol is a Java-style varargs method */
   final val JavaVarargs = termFlag(37, "<varargs>")
-
-  /** Symbol is a Java default method */
-  final val DefaultMethod = termFlag(38, "<defaultmethod>")
 
   // Flags following this one are not pickled
 
@@ -464,6 +464,9 @@ object Flags {
   /** Accessors always have these flags set */
   final val AccessorCreationFlags = Method | Accessor
 
+  /** Pure interfaces always have these flags */
+  final val PureInterfaceCreationFlags = Trait | NoInits | PureInterface
+
   /** The flags of the self symbol */
   final val SelfSymFlags = Private | Local | Deferred
 
@@ -512,6 +515,9 @@ object Flags {
   /** Labeled `private` or `final` */
   final val PrivateOrFinal = Private | Final
 
+  /** A private method */
+  final val PrivateMethod = allOf(Private, Method)
+
   /** A type parameter with synthesized name */
   final val ExpandedTypeParam = allOf(ExpandedName, TypeParam)
 
@@ -536,8 +542,11 @@ object Flags {
   /** Is a default parameter in Scala 2*/
   final val DefaultParameter = allOf(Param, DefaultParameterized)
 
-  /** A Java interface */
-  final val JavaInterface = allOf(JavaDefined, Trait)
+  /** A trait that does not need to be initialized */
+  final val NoInitsTrait = allOf(Trait, NoInits)
+
+  /** A Java interface, potentially with default methods */
+  final val JavaTrait = allOf(JavaDefined, Trait, NoInits)
 
   /** A Java companion object */
   final val JavaModule = allOf(JavaDefined, Module)

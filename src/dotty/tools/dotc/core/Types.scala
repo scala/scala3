@@ -1173,8 +1173,19 @@ object Types {
               if (newd.exists) newd else d.staleSymbolError
             }
           case d =>
-            if (d.validFor.runId == ctx.period.runId) d.current
-            else loadDenot
+            if (d.validFor.runId != ctx.period.runId)
+              loadDenot
+            // The following branch was used to avoid an assertErased error.
+            // It's idea was to void keeping non-sym denotations after erasure
+            // since they violate the assertErased contract. But the problem is
+            // that when seen again in an earlier phase the denotation is
+            // still seen as a SymDenotation, whereas it should be a SingleDenotation.
+            // That's why the branch is disabled.
+            //
+            //   else if (ctx.erasedTypes && lastSymbol != null)
+            //   denotOfSym(lastSymbol) 
+            else
+              d.current
         }
         if (ctx.typerState.ephemeral) record("ephemeral cache miss: loadDenot")
         else if (d.exists) {
@@ -1623,8 +1634,10 @@ object Types {
   final class CachedSuperType(thistpe: Type, supertpe: Type) extends SuperType(thistpe, supertpe)
 
   object SuperType {
-    def apply(thistpe: Type, supertpe: Type)(implicit ctx: Context): Type =
+    def apply(thistpe: Type, supertpe: Type)(implicit ctx: Context): Type = {
+      assert(thistpe != NoPrefix)
       unique(new CachedSuperType(thistpe, supertpe))
+    }
   }
 
   /** A constant type with  single `value`. */
@@ -1817,7 +1830,7 @@ object Types {
     }
     catch {
       case ex: AssertionError =>
-        println(i"failure while taking result signture of $resultType")
+        println(i"failure while taking result signture of $this: $resultType")
         throw ex
     }
 
@@ -1837,7 +1850,7 @@ object Types {
     extends CachedGroundType with BindingType with TermType with MethodOrPoly with NarrowCached { thisMethodType =>
 
     override val resultType = resultTypeExp(this)
-    assert(resultType != NoType)
+    assert(resultType.exists)
     def isJava = false
     def isImplicit = false
 

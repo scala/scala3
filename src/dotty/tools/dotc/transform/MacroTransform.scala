@@ -44,11 +44,10 @@ abstract class MacroTransform extends Phase {
     def currentClass(implicit ctx: Context): ClassSymbol = ctx.owner.enclosingClass.asClass
 
     def transformStats(trees: List[Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
-      val exprCtx = ctx.withOwner(exprOwner)
       def transformStat(stat: Tree): Tree = stat match {
         case _: Import | _: DefTree => transform(stat)
         case Thicket(stats) => cpy.Thicket(stat)(stats mapConserve transformStat)
-        case _ => transform(stat)(exprCtx)
+        case _ => transform(stat)(ctx.exprContext(stat, exprOwner))
       }
       flatten(trees.mapconserve(transformStat(_)))
     }

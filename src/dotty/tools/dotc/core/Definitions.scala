@@ -191,7 +191,7 @@ class Definitions {
   lazy val ScalaStaticsClass = ScalaStaticsModule.moduleClass.asClass
 
     def staticsMethod(name: PreName) = ctx.requiredMethod(ScalaStaticsClass, name)
-    
+
   lazy val DottyPredefModule = ctx.requiredModule("dotty.DottyPredef")
   lazy val NilModule = ctx.requiredModule("scala.collection.immutable.Nil")
   lazy val PredefConformsClass = ctx.requiredClass("scala.Predef." + tpnme.Conforms)
@@ -201,7 +201,7 @@ class Definitions {
     // needed as a synthetic class because Scala 2.x refers to it in classfiles
     // but does not define it as an explicit class.
     newCompleteClassSymbol(
-      ScalaPackageClass, tpnme.Singleton, Trait | Interface | Final,
+      ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final,
       List(AnyClass.typeRef), EmptyScope)
   lazy val SeqClass: ClassSymbol = ctx.requiredClass("scala.collection.Seq")
     lazy val Seq_apply = ctx.requiredMethod(SeqClass, nme.apply)
@@ -506,7 +506,7 @@ class Definitions {
       val cls = newClassSymbol(
         ScalaPackageClass,
         traitName,
-        Trait | Interface | Synthetic,
+        PureInterfaceCreationFlags | Synthetic,
         completer)
       myLambdaTraits += cls
       cls

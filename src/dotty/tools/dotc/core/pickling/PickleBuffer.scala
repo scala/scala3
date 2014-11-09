@@ -220,7 +220,7 @@ object PickleBuffer {
       DEFERRED_PKL -> Deferred,
       FINAL_PKL -> Final,
       METHOD_PKL -> Method,
-      INTERFACE_PKL -> Interface,
+      INTERFACE_PKL -> PureInterface,
       MODULE_PKL -> Module,
       IMPLICIT_PKL -> Implicit,
       SEALED_PKL -> Sealed,

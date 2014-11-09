@@ -278,20 +278,20 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
     }
   }
 
-  override def init(implicit ctx: Context, info: TransformerInfo) = {
-    free.clear()
-    proxyMap.clear()
-    called.clear()
-    calledFromInner.clear()
-    liftedOwner.clear()
-    liftedDefs.clear()
-    assert(ctx.phase == thisTransform)
-    (new CollectDependencies).traverse(NoSymbol, ctx.compilationUnit.tpdTree)
-    computeFreeVars()
-    computeLiftedOwners()
-    generateProxies()(ctx.withPhase(thisTransform.next))
-    liftLocals()(ctx.withPhase(thisTransform.next))
-  }
+  override def init(implicit ctx: Context, info: TransformerInfo) =
+    ctx.atPhase(thisTransform) { implicit ctx =>
+      free.clear()
+      proxyMap.clear()
+      called.clear()
+      calledFromInner.clear()
+      liftedOwner.clear()
+      liftedDefs.clear()
+      (new CollectDependencies).traverse(NoSymbol, ctx.compilationUnit.tpdTree)
+      computeFreeVars()
+      computeLiftedOwners()
+      generateProxies()(ctx.withPhase(thisTransform.next))
+      liftLocals()(ctx.withPhase(thisTransform.next))
+    }
 
   private def currentEnclosure(implicit ctx: Context) =
     ctx.owner.enclosingMethod.skipConstructor
@@ -355,8 +355,9 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
       }
   }
 
-  private def liftDef(tree: MemberDef)(implicit ctx: Context): Tree = {
-    liftedDefs(tree.symbol.owner) += rename(tree, tree.symbol.name)
+  private def liftDef(tree: MemberDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
+    val buf = liftedDefs(tree.symbol.owner)
+    transformFollowing(rename(tree, tree.symbol.name)).foreachInThicket(buf += _)
     EmptyTree
   }
 

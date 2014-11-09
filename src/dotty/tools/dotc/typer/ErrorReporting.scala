@@ -35,7 +35,7 @@ object ErrorReporting {
               // See test pending/pos/boundspropagation.scala
             val treeSym = ctx.symOfContextTree(tree)
             if (treeSym.exists && treeSym.name == cycleSym.name && treeSym.owner == cycleSym.owner) {
-              val result = if (cycleSym.isSourceMethod) " result" else ""
+              val result = if (cycleSym is Method) " result" else ""
               d"overloaded or recursive $cycleSym needs$result type"
             }
             else errorMsg(msg, cx.outer)
