@@ -40,13 +40,14 @@ class FrontEnd extends Phase {
     record("retainedTypedTrees", unit.tpdTree.treeSize)
   }
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): Unit = {
+  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
     val unitContexts = units map (unit => ctx.fresh.setCompilationUnit(unit))
     unitContexts foreach (parse(_))
     record("parsedTrees", ast.Trees.ntrees)
     unitContexts foreach (enterSyms(_))
     unitContexts foreach (typeCheck(_))
     record("totalTrees", ast.Trees.ntrees)
+    unitContexts.map(_.compilationUnit)
   }
 
   override def run(implicit ctx: Context): Unit = {
