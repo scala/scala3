@@ -78,7 +78,7 @@ class PrivateToStatic extends MiniPhase with SymTransformer { thisTransform =>
     override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo) =
       tree.fun match {
         case fun @ Select(qual, name) if shouldBeStatic(fun.symbol) =>
-          println(i"mapping $tree to ${cpy.Ident(fun)(name)} (${qual :: tree.args}%, %)")
+          ctx.debuglog(i"mapping $tree to ${cpy.Ident(fun)(name)} (${qual :: tree.args}%, %)")
           cpy.Apply(tree)(ref(fun.symbol).withPos(fun.pos), qual :: tree.args)
         case _ =>
           tree
