@@ -13,10 +13,10 @@ import Decorators._
 import DenotTransformers._
 import StdNames._
 import NameOps._
+import Phases._
 import ast.Trees._
 import collection.mutable
 
-// todo: interface
 /** This phase performs the following transformations:
  *
  *  1. (done in `traitDefs`) Map every concrete trait getter
@@ -57,13 +57,19 @@ import collection.mutable
  *          3.3 (done in `setters`) For every concrete setter `<mods> def x_=(y: T)` in M:
  *
  *                <mods> def x_=(y: T) = ()
+ *
+ *  Conceptually, this is the second half of the previous mixin phase. It needs to run
+ *  after erasure because it copies references to possibly private inner classes and objects
+ *  into enclosing classes where they are not visible. This can only be done if all references
+ *  are symbolic.
  */
 class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "mixin"
-
   override def treeTransformPhase = thisTransform.next
+
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
 
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait))

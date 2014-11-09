@@ -37,6 +37,12 @@ import Decorators._
   override def phaseName = "memoize"
   override def treeTransformPhase = thisTransform.next
 
+  /** Should to run after mixin so that fields get generated in the
+   *  class that contains the concrete getter rather than the trait
+   *  that defines it.
+   */
+  override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Mixin])
+
   override def prepareForDefDef(tree: DefDef)(implicit ctx: Context) = {
     val sym = tree.symbol
     if (sym.isGetter && !sym.is(NoFieldNeeded)) {
