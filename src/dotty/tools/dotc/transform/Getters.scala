@@ -36,6 +36,8 @@ import Decorators._
  *
  *     p.x = e
  *      -->  p.x_=(e)
+ *
+ *  No fields are generated yet. This is done later in phase Memoize.
  */
 class Getters extends MiniPhaseTransform with SymTransformer { thisTransform =>
   import ast.tpd._

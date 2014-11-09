@@ -46,7 +46,6 @@ class Compiler {
            new TailRec),
       List(new PatternMatcher,
            new ExplicitOuter,
-           // new LazyValTranformContext().transformer, // disabled, awaiting fixes
            new Splitter),
       List(new ElimByName,
            new InterceptedMethods,
@@ -55,7 +54,7 @@ class Compiler {
            new ResolveSuper),
       List(new Erasure),
       List(new Mixin,
-           new Memoize,
+           new Memoize, // TODO: Make LazyVals a part of this phase
            new CapturedVars,
            new Constructors),
       List(new LambdaLift,

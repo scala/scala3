@@ -546,10 +546,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         def traverse(tree: Tree) = tree match {
           case tree: DefTree =>
             val sym = tree.symbol
-            if (sym.denot(ctx.withPhase(trans)).owner == from) {
-              println(i"change owner $from -> $to of $sym")
+            if (sym.denot(ctx.withPhase(trans)).owner == from)
               sym.copySymDenotation(owner = to).installAfter(trans)
-            }
             if (sym.isWeakOwner) traverseChildren(tree)
           case _ =>
             traverseChildren(tree)

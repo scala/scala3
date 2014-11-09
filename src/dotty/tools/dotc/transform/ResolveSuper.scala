@@ -39,6 +39,9 @@ import collection.mutable
  *
  *        A method in M needs to be disambiguated if it is concrete, not overridden in C,
  *        and if it overrides another concrete method.
+ *
+ *  This is the first part of what was the mixin phase. It is complemented by
+ *  Mixin, which runs after erasure.
  */
 class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
   import ast.tpd._
@@ -61,11 +64,11 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
       var bcs = cls.info.baseClasses.dropWhile(acc.owner != _).tail
       var sym: Symbol = NoSymbol
       val SuperAccessorName(memberName) = acc.name: Name // dotty deviation: ": Name" needed otherwise pattern type is neither a subtype nor a supertype of selector type
-      println(i"starting rebindsuper from $cls of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
+      ctx.debuglog(i"starting rebindsuper from $cls of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
       while (bcs.nonEmpty && sym == NoSymbol) {
         val other = bcs.head.info.nonPrivateDecl(memberName)
-        //if (ctx.settings.debug.value)
-          println(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
+        if (ctx.settings.debug.value)
+          ctx.log(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
         sym = other.matchingDenotation(cls.thisType, cls.thisType.memberInfo(acc)).symbol
         bcs = bcs.tail
       }
