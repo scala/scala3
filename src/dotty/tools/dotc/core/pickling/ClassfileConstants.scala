@@ -345,7 +345,7 @@ object ClassfileConstants {
       case JAVA_ACC_SYNTHETIC  => Synthetic
       case JAVA_ACC_STATIC     => JavaStatic
       case JAVA_ACC_ABSTRACT   => if (isAnnotation) EmptyFlags else if (isClass) Abstract else Deferred
-      case JAVA_ACC_INTERFACE  => if (isAnnotation) EmptyFlags else JavaInterface
+      case JAVA_ACC_INTERFACE  => if (isAnnotation) EmptyFlags else PureInterfaceCreationFlags | JavaDefined
       case _                   => EmptyFlags
     }
 
