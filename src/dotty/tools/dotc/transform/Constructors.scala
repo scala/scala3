@@ -109,32 +109,6 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
       }
     }
 
-    val superCalls = new mutable.ListBuffer[Tree]
-
-    // If parent is a constructor call, pull out the call into a separate
-    // supercall constructor, which gets appended to `superCalls`, and keep
-    // only the type.
-    def normalizeParent(tree: Tree) = tree match {
-      case superApp @ Apply(
-        superSel @ Select(
-          superNew @ New(superType),
-          nme.CONSTRUCTOR),
-        superArgs) =>
-        val toClass = !superType.symbol.is(Trait)
-        val mappedArgs = superArgs.map(intoConstr(_, inSuperCall = toClass))
-        val receiver =
-          if (toClass) Super(This(cls), tpnme.EMPTY, inConstrCall = true)
-          else This(cls)
-        superCalls +=
-          cpy.Apply(superApp)(
-            receiver.withPos(superNew.pos)
-              .select(superSel.symbol).withPos(superSel.pos),
-            mappedArgs)
-        superType
-      case tree: TypeTree => tree
-    }
-    val parentTypeTrees = tree.parents.map(normalizeParent)
-
     // Collect all private parameter accessors and value definitions that need
     // to be retained. There are several reasons why a parameter accessor or
     // definition might need to be retained:
@@ -172,15 +146,11 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
           traverse(stat)
       }
     }
-    usage.collect(superCalls.toList ++ tree.body)
+    usage.collect(tree.body)
 
     def isRetained(acc: Symbol) = !mightBeDropped(acc) || usage.retained(acc)
 
     val constrStats, clsStats = new mutable.ListBuffer[Tree]
-
-    def assign(vble: Symbol, rhs: Tree): Tree =
-      if (cls is Trait) ref(vble.setter).appliedTo(rhs)
-      else Assign(ref(vble), rhs)
 
     // Split class body into statements that go into constructor and
     // definitions that are kept as members of the class.
@@ -191,7 +161,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
             val sym = stat.symbol
             if (isRetained(sym)) {
               if (!rhs.isEmpty && !isWildcardArg(rhs))
-                constrStats += assign(sym, intoConstr(rhs)).withPos(stat.pos)
+                constrStats += Assign(ref(sym), intoConstr(rhs)).withPos(stat.pos)
               clsStats += cpy.ValDef(stat)(rhs = EmptyTree)
             }
             else if (!rhs.isEmpty) {
@@ -215,7 +185,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
 
     // The initializers for the retained accessors */
     val copyParams = accessorFields.filter(isRetained).map(acc =>
-      assign(acc, ref(acc.subst(accessors, paramSyms))).withPos(tree.pos))
+      Assign(ref(acc), ref(acc.subst(accessors, paramSyms))).withPos(tree.pos))
 
     // Drop accessors that are not retained from class scope
     val dropped = usage.dropped
@@ -226,10 +196,14 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
           decls = clsInfo.decls.filteredScope(!dropped.contains(_))))
     }
 
+    val (superCalls, followConstrStats) = constrStats.toList match {
+      case (sc: Apply) :: rest if sc.symbol.isConstructor => (sc :: Nil, rest)
+      case stats => (Nil, stats)
+    }
+
     cpy.Template(tree)(
       constr = cpy.DefDef(constr)(
-        rhs = Block(superCalls.toList ::: copyParams ::: constrStats.toList, unitLiteral)),
-      parents = parentTypeTrees,
+        rhs = Block(superCalls ::: copyParams ::: followConstrStats, unitLiteral)),
       body = clsStats.toList)
   }
 }

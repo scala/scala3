@@ -61,12 +61,17 @@ class SymUtils(val self: Symbol) extends AnyVal {
 
   def setter(implicit ctx: Context): Symbol =
     if (self.isSetter) self
-    else accessorNamed(self.asTerm.name.setterName) orElse
-         accessorNamed(self.asTerm.name.traitSetterName)
+    else accessorNamed(self.asTerm.name.setterName)
 
   def field(implicit ctx: Context): Symbol =
     self.owner.info.decl(self.asTerm.name.fieldName).suchThat(!_.is(Method)).symbol
 
   /** `fullName` where `$' is the separator character */
   def flatName(implicit ctx: Context): Name = self.fullNameSeparated('$')
+
+  def initializer(implicit ctx: Context): TermSymbol =
+    self.owner.info.decl(InitializerName(self.asTerm.name)).symbol.asTerm
+
+  def isField(implicit ctx: Context): Boolean =
+    self.isTerm && !self.is(Method)
 }

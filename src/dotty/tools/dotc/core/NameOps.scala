@@ -47,12 +47,14 @@ object NameOps {
     }
   }
 
-  object SuperAccessorName {
-    val pre = nme.SUPER_PREFIX
+  class PrefixNameExtractor(pre: TermName) {
     def apply(name: TermName): TermName = pre ++ name
     def unapply(name: TermName): Option[TermName] =
       if (name startsWith pre) Some(name.drop(pre.length).asTermName) else None
   }
+
+  object SuperAccessorName extends PrefixNameExtractor(nme.SUPER_PREFIX)
+  object InitializerName extends PrefixNameExtractor(nme.INITIALIZER_PREFIX)
 
   implicit class NameDecorator[N <: Name](val name: N) extends AnyVal {
     import nme._
@@ -68,14 +70,13 @@ object NameOps {
     def isProtectedAccessorName = name startsWith PROTECTED_PREFIX
     def isReplWrapperName = name containsSlice INTERPRETER_IMPORT_WRAPPER
     def isSetterName = name endsWith SETTER_SUFFIX
-    def isTraitSetterName = isSetterName && (name containsSlice TRAIT_SETTER_PREFIX)
     def isSingletonName = name endsWith SINGLETON_SUFFIX
     def isModuleClassName = name endsWith MODULE_SUFFIX
     def isImportName = name startsWith IMPORT
     def isFieldName = name endsWith LOCAL_SUFFIX
     def isInheritedName = name.length > 0 && name.head == '(' && name.startsWith(nme.INHERITED)
     def isDefaultGetterName = name.isTermName && name.asTermName.defaultGetterIndex >= 0
-
+    def isScala2LocalSuffix = name.endsWith(" ")
     def isModuleVarName(name: Name): Boolean =
       name.stripAnonNumberSuffix endsWith MODULE_VAR_SUFFIX
 
@@ -224,9 +225,6 @@ object NameOps {
   implicit class TermNameDecorator(val name: TermName) extends AnyVal {
     import nme._
 
-    def traitSetterName: TermName =
-      nme.TRAIT_SETTER_PREFIX ++ setterName
-
     def setterName: TermName =
       if (name.isFieldName) name.fieldToGetter.setterName
       else name ++ SETTER_SUFFIX
@@ -240,13 +238,8 @@ object NameOps {
       else name ++ LOCAL_SUFFIX
 
     private def setterToGetter: TermName = {
-      val p = name.indexOfSlice(TRAIT_SETTER_PREFIX)
-      if (p >= 0)
-        (name drop (p + TRAIT_SETTER_PREFIX.length)).asTermName.getterName
-      else {
-        assert(name.endsWith(SETTER_SUFFIX), name + " is referenced as a setter but has wrong name format")
-        name.take(name.length - SETTER_SUFFIX.length).asTermName
-      }
+      assert(name.endsWith(SETTER_SUFFIX), name + " is referenced as a setter but has wrong name format")
+      name.take(name.length - SETTER_SUFFIX.length).asTermName
     }
 
     def fieldToGetter: TermName = {
@@ -282,6 +275,9 @@ object NameOps {
       else
         -1
     }
+
+    def stripScala2LocalSuffix: TermName =
+      if (name.isScala2LocalSuffix) name.init.asTermName else name
 
     /** The name of an accessor for protected symbols. */
     def protectedAccessorName: TermName =

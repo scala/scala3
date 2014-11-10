@@ -425,10 +425,14 @@ object SymDenotations {
     final def isSourceMethod(implicit ctx: Context) = this is (Method, butNot = Accessor)
 
     /** Is this a setter? */
-    final def isGetter(implicit ctx: Context) = (this is Accessor) && !originalName.isSetterName
+    final def isGetter(implicit ctx: Context) =
+      (this is Accessor) && !originalName.isSetterName && !originalName.isScala2LocalSuffix
 
     /** Is this a setter? */
-    final def isSetter(implicit ctx: Context) = (this is Accessor) && originalName.isSetterName
+    final def isSetter(implicit ctx: Context) =
+      (this is Accessor) &&
+      originalName.isSetterName &&
+      info.firstParamTypes.nonEmpty // to avoid being fooled by   var x_= : Unit = ...
 
     /** is this the constructor of a class? */
     final def isClassConstructor = name == nme.CONSTRUCTOR
@@ -560,7 +564,7 @@ object SymDenotations {
     def membersNeedAsSeenFrom(pre: Type)(implicit ctx: Context) =
       !(  this.isTerm
        || this.isStaticOwner
-       || ctx.erasedTypes && symbol != defn.ArrayClass
+       || ctx.erasedTypes
        || (pre eq NoPrefix) || (pre eq thisType)
        )
 

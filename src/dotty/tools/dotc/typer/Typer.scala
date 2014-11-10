@@ -1042,8 +1042,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case Thicket(stats) :: rest =>
         traverse(stats ++ rest)
       case stat :: rest =>
-        val nestedCtx = if (exprOwner == ctx.owner) ctx else ctx.fresh.setOwner(exprOwner)
-        buf += typed(stat)(nestedCtx)
+        buf += typed(stat)(ctx.exprContext(stat, exprOwner))
         traverse(rest)
       case nil =>
         buf.toList
@@ -1246,6 +1245,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           typed(etaExpand(tree, wtp, arity), pt)
         else if (wtp.paramTypes.isEmpty)
           adaptInterpolated(tpd.Apply(tree, Nil), pt, EmptyTree)
+        else if (wtp.isImplicit)
+          err.typeMismatch(tree, pt)
         else
           errorTree(tree,
             d"""missing arguments for $methodStr

@@ -905,7 +905,7 @@ object TreeTransforms {
         case tree: UnApply => goUnApply(tree, info.nx.nxTransUnApply(cur))
         case tree: Template => goTemplate(tree, info.nx.nxTransTemplate(cur))
         case tree: PackageDef => goPackageDef(tree, info.nx.nxTransPackageDef(cur))
-        case Thicket(trees) => cpy.Thicket(tree)(transformTrees(trees, info, cur))
+        case Thicket(trees) => tree
         case tree => goOther(tree, info.nx.nxTransOther(cur))
       }
 
@@ -1164,7 +1164,8 @@ object TreeTransforms {
             val stats = transformStats(tree.stats, tree.symbol, mutatedInfo, cur)(nestedCtx)
             goPackageDef(cpy.PackageDef(tree)(pid, stats), mutatedInfo.nx.nxTransPackageDef(cur))
           }
-        case Thicket(trees) => cpy.Thicket(tree)(transformTrees(trees, info, cur))
+        case Thicket(trees) =>
+          cpy.Thicket(tree)(transformTrees(trees, info, cur))
         case tree =>
           implicit val originalInfo: TransformerInfo = info
           goOther(tree, info.nx.nxTransOther(cur))
@@ -1200,11 +1201,10 @@ object TreeTransforms {
 
     def transformStats(trees: List[Tree], exprOwner: Symbol, info: TransformerInfo, current: Int)(implicit ctx: Context): List[Tree] = {
       val newInfo = mutateTransformers(info, prepForStats, info.nx.nxPrepStats, trees, current)
-      val exprCtx = ctx.withOwner(exprOwner)
       def transformStat(stat: Tree): Tree = stat match {
         case _: Import | _: DefTree => transform(stat, newInfo, current)
         case Thicket(stats) => cpy.Thicket(stat)(stats mapConserve transformStat)
-        case _ => transform(stat, newInfo, current)(exprCtx)
+        case _ => transform(stat, newInfo, current)(ctx.exprContext(stat, exprOwner))
       }
       val newTrees = flatten(trees.mapconserve(transformStat))
       goStats(newTrees, newInfo.nx.nxTransStats(current))(ctx, newInfo)

@@ -288,7 +288,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if (flags is Mutable) "variable"
     else if (sym.isClassConstructor && sym.isPrimaryConstructor) "primary constructor"
     else if (sym.isClassConstructor) "constructor"
-    else if (sym.isSourceMethod) "method"
+    else if (sym.is(Method)) "method"
     else if (sym.isTerm) "value"
     else ""
   }
@@ -303,7 +303,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if (flags is Mutable) "var"
     else if (flags is Package) "package"
     else if (flags is Module) "object"
-    else if (sym.isSourceMethod) "def"
+    else if (sym is Method) "def"
     else if (sym.isTerm && (!(flags is Param))) "val"
     else ""
   }
