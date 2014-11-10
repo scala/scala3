@@ -896,9 +896,8 @@ object SymDenotations {
     override def valRef(implicit ctx: Context): TermRef =
       TermRef.withSigAndDenot(owner.thisType, name.asTermName, Signature.NotAMethod, this)
 
-    override def termRefWithSig(implicit ctx: Context): TermRef = // TODO generalize
-      if (ctx.erasedTypes) TermRef.withFixedSym(owner.thisType, name.asTermName, symbol.asTerm)
-      else TermRef.withSigAndDenot(owner.thisType, name.asTermName, signature, this)
+    override def termRefWithSig(implicit ctx: Context): TermRef =
+      TermRef.withSigAndDenot(owner.thisType, name.asTermName, signature, this)
 
     def nonMemberTermRef(implicit ctx: Context): TermRef =
       TermRef.withFixedSym(owner.thisType, name.asTermName, symbol.asTerm)
