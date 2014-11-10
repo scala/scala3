@@ -444,13 +444,13 @@ object Trees {
     private[ast] def rawMods: Modifiers[T] =
       if (myMods == null) genericEmptyModifiers else myMods
 
-    def withMods(mods: Modifiers[T @uncheckedVariance]): ThisTree[T] = { // TODO move to untpd.modsDeco?
-      val tree = if (myMods == null || (myMods == mods)) this else clone.asInstanceOf[MemberDef[T]]
+    def withMods(mods: Modifiers[Untyped]): ThisTree[Untyped] = {
+      val tree = if (myMods == null || (myMods == mods)) this else clone.asInstanceOf[MemberDef[Untyped]]
       tree.setMods(mods)
-      tree.asInstanceOf[ThisTree[T]]
+      tree.asInstanceOf[ThisTree[Untyped]]
     }
 
-    def withFlags(flags: FlagSet): ThisTree[T] = withMods(Modifiers(flags))
+    def withFlags(flags: FlagSet): ThisTree[Untyped] = withMods(Modifiers(flags))
 
     protected def setMods(mods: Modifiers[T @uncheckedVariance]) = myMods = mods
 
@@ -1253,13 +1253,10 @@ object Trees {
           val tpt1 = transform(tpt)
           val rhs1 = transform(rhs)
           cpy.ValDef(tree)(name, transform(tpt1), transform(rhs1))
-            .withMods(tree.rawMods)
         case tree @ DefDef(name, tparams, vparamss, tpt, rhs) =>
           cpy.DefDef(tree)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(rhs))
-            .withMods(tree.rawMods)
         case tree @ TypeDef(name, rhs) =>
           cpy.TypeDef(tree)(name, transform(rhs), tree.tparams)
-            .withMods(tree.rawMods)
         case Template(constr, parents, self, body) =>
           cpy.Template(tree)(transformSub(constr), transform(parents), transformSub(self), transformStats(body))
         case Import(expr, selectors) =>
