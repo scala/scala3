@@ -12,6 +12,7 @@ import core._
 import Flags._
 import Contexts._
 import Names._
+import ast.Positioned
 import ast.Trees._
 import Decorators._
 import StdNames._
