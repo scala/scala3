@@ -26,10 +26,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   /** mods object name impl */
-  case class ModuleDef(mods: Modifiers, name: TermName, impl: Template)
+  case class ModuleDef(name: TermName, impl: Template)
     extends MemberDef {
     type ThisTree[-T >: Untyped] <: Trees.NameTree[T] with Trees.MemberDef[T] with ModuleDef
-    def withName(name: Name)(implicit ctx: Context) = cpy.ModuleDef(this)(mods, name.toTermName, impl)
+    def withName(name: Name)(implicit ctx: Context) = cpy.ModuleDef(this)(name.toTermName, impl)
   }
 
   case class ParsedTry(expr: Tree, handler: Tree, finalizer: Tree) extends TermTree
@@ -59,8 +59,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree]) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree) extends DefTree
 
-  class PolyTypeDef(mods: Modifiers, name: TypeName, override val tparams: List[TypeDef], rhs: Tree)
-    extends TypeDef(mods, name, rhs)
+  class PolyTypeDef(name: TypeName, override val tparams: List[TypeDef], rhs: Tree)
+    extends TypeDef(name, rhs)
 
   // ----- TypeTrees that refer to other tree's symbols -------------------
 
@@ -142,9 +142,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Bind(name: Name, body: Tree): Bind = new Bind(name, body)
   def Alternative(trees: List[Tree]): Alternative = new Alternative(trees)
   def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree]): UnApply = new UnApply(fun, implicits, patterns)
-  def ValDef(mods: Modifiers, name: TermName, tpt: Tree, rhs: Tree): ValDef = new ValDef(mods, name, tpt, rhs)
-  def DefDef(mods: Modifiers, name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: Tree): DefDef = new DefDef(mods, name, tparams, vparamss, tpt, rhs)
-  def TypeDef(mods: Modifiers, name: TypeName, rhs: Tree): TypeDef = new TypeDef(mods, name, rhs)
+  def ValDef(name: TermName, tpt: Tree, rhs: Tree): ValDef = new ValDef(name, tpt, rhs)
+  def DefDef(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: Tree): DefDef = new DefDef(name, tparams, vparamss, tpt, rhs)
+  def TypeDef(name: TypeName, rhs: Tree): TypeDef = new TypeDef(name, rhs)
   def Template(constr: DefDef, parents: List[Tree], self: ValDef, body: List[Tree]): Template = new Template(constr, parents, self, body)
   def Import(expr: Tree, selectors: List[untpd.Tree]): Import = new Import(expr, selectors)
   def PackageDef(pid: RefTree, stats: List[Tree]): PackageDef = new PackageDef(pid, stats)
@@ -193,8 +193,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   def TypeTree(tpe: Type): TypedSplice = TypedSplice(TypeTree().withTypeUnchecked(tpe))
 
-  def TypeDef(mods: Modifiers, name: TypeName, tparams: List[TypeDef], rhs: Tree): TypeDef =
-    if (tparams.isEmpty) TypeDef(mods, name, rhs) else new PolyTypeDef(mods, name, tparams, rhs)
+  def TypeDef(name: TypeName, tparams: List[TypeDef], rhs: Tree): TypeDef =
+    if (tparams.isEmpty) TypeDef(name, rhs) else new PolyTypeDef(name, tparams, rhs)
 
   def unitLiteral = Literal(Constant(()))
 
@@ -203,14 +203,14 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   def scalaUnit(implicit ctx: Context) = ref(defn.UnitClass.typeRef)
 
-  def makeConstructor(mods: Modifiers, tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
-    DefDef(mods, nme.CONSTRUCTOR, tparams, vparamss, TypeTree(), rhs)
+  def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(implicit ctx: Context): DefDef =
+    DefDef(nme.CONSTRUCTOR, tparams, vparamss, TypeTree(), rhs)
 
   def emptyConstructor(implicit ctx: Context): DefDef =
-    makeConstructor(Modifiers(), Nil, Nil)
+    makeConstructor(Nil, Nil)
 
   def makeSelfDef(name: TermName, tpt: Tree)(implicit ctx: Context) =
-    ValDef(Modifiers(PrivateLocal), name, tpt, EmptyTree)
+    ValDef(name, tpt, EmptyTree).withFlags(PrivateLocal)
 
   def makeTupleOrParens(ts: List[Tree])(implicit ctx: Context) = ts match {
     case t :: Nil => Parens(t)
@@ -222,15 +222,15 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case _ => Tuple(ts)
   }
 
-  def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers = Modifiers())(implicit ctx: Context): ValDef =
-    ValDef(mods | Param, pname, tpe, EmptyTree)
+  def makeParameter(pname: TermName, tpe: Tree, mods: Modifiers = EmptyModifiers)(implicit ctx: Context): ValDef =
+    ValDef(pname, tpe, EmptyTree).withMods(mods | Param)
 
   def makeSyntheticParameter(n: Int = 1, tpt: Tree = TypeTree())(implicit ctx: Context): ValDef =
-    ValDef(Modifiers(SyntheticTermParam), nme.syntheticParamName(n), tpt, EmptyTree)
+    ValDef(nme.syntheticParamName(n), tpt, EmptyTree).withFlags(SyntheticTermParam)
 
   def refOfDef(tree: NameTree)(implicit ctx: Context) = Ident(tree.name)
 
-// ------- A decorator for producing a path to a location --------------
+// ------- Decorators -------------------------------------------------
 
   implicit class UntypedTreeDecorator(val self: Tree) extends AnyVal {
     def locateEnclosing(base: List[Tree], pos: Position): List[Tree] = {
@@ -245,21 +245,33 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     }
   }
 
+  implicit class modsDeco(val mdef: MemberDef)(implicit ctx: Context) extends ModsDeco {
+    def mods = mdef.rawMods
+  }
+
 // --------- Copier/Transformer/Accumulator classes for untyped trees -----
 
   override val cpy: UntypedTreeCopier = new UntypedTreeCopier
 
   class UntypedTreeCopier extends TreeCopier {
+
     def postProcess(tree: Tree, copied: Tree): copied.ThisTree[Untyped] =
       copied.asInstanceOf[copied.ThisTree[Untyped]]
 
-    def ModuleDef(tree: Tree)(mods: Modifiers, name: TermName, impl: Template) = tree match {
-      case tree: ModuleDef if (mods eq tree.mods) && (name eq tree.name) && (impl eq tree.impl) => tree
-      case _ => untpd.ModuleDef(mods, name, impl).withPos(tree.pos)
+    def postProcess(tree: Tree, copied: MemberDef): copied.ThisTree[Untyped] = {
+      tree match {
+        case tree: MemberDef => copied.withMods(tree.rawMods)
+        case _ => copied
+      }
+    }.asInstanceOf[copied.ThisTree[Untyped]]
+
+    def ModuleDef(tree: Tree)(name: TermName, impl: Template) = tree match {
+      case tree: ModuleDef if (name eq tree.name) && (impl eq tree.impl) => tree
+      case _ => untpd.ModuleDef(name, impl).withPos(tree.pos)
     }
-    def PolyTypeDef(tree: Tree)(mods: Modifiers, name: TypeName, tparams: List[TypeDef], rhs: Tree) = tree match {
-      case tree: PolyTypeDef if (mods eq tree.mods) && (name eq tree.name) && (tparams eq tree.tparams) && (rhs eq tree.rhs) => tree
-      case _ => new PolyTypeDef(mods, name, tparams, rhs).withPos(tree.pos)
+    def PolyTypeDef(tree: Tree)(name: TypeName, tparams: List[TypeDef], rhs: Tree) = tree match {
+      case tree: PolyTypeDef if (name eq tree.name) && (tparams eq tree.tparams) && (rhs eq tree.rhs) => tree
+      case _ => new PolyTypeDef(name, tparams, rhs).withPos(tree.pos)
     }
     def SymbolLit(tree: Tree)(str: String) = tree match {
       case tree: SymbolLit if (str == tree.str) => tree
@@ -329,8 +341,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   abstract class UntypedTreeMap(cpy: UntypedTreeCopier = untpd.cpy) extends TreeMap(cpy) {
     override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
-      case ModuleDef(mods, name, impl) =>
-        cpy.ModuleDef(tree)(mods, name, transformSub(impl))
+      case ModuleDef(name, impl) =>
+        cpy.ModuleDef(tree)(name, transformSub(impl))
       case SymbolLit(str) =>
         cpy.SymbolLit(tree)(str)
       case InterpolatedString(id, strings, elems) =>
@@ -364,7 +376,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case PatDef(mods, pats, tpt, rhs) =>
         cpy.PatDef(tree)(mods, transform(pats), transform(tpt), transform(rhs))
       case tree: PolyTypeDef =>
-        cpy.PolyTypeDef(tree)(tree.mods, tree.name, transformSub(tree.tparams), transform(tree.rhs))
+        cpy.PolyTypeDef(tree)(tree.name, transformSub(tree.tparams), transform(tree.rhs))
       case _ =>
         super.transform(tree)
     }
@@ -372,7 +384,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   abstract class UntypedTreeAccumulator[X] extends TreeAccumulator[X] {
     override def foldOver(x: X, tree: Tree): X = tree match {
-      case ModuleDef(mods, name, impl) =>
+      case ModuleDef(name, impl) =>
         this(x, impl)
       case SymbolLit(str) =>
         x
@@ -417,7 +429,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   override def rename(tree: NameTree, newName: Name)(implicit ctx: Context): tree.ThisTree[Untyped] = tree match {
     case t: PolyTypeDef =>
-      cpy.PolyTypeDef(t)(t.mods, newName.asTypeName, t.tparams, t.rhs).asInstanceOf[tree.ThisTree[Untyped]]
+      cpy.PolyTypeDef(t)(newName.asTypeName, t.tparams, t.rhs).asInstanceOf[tree.ThisTree[Untyped]]
     case _ => super.rename(tree, newName)
   }
 }

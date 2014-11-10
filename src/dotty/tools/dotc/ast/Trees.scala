@@ -13,6 +13,7 @@ import parsing.Tokens.Token
 import printing.Printer
 import util.{Stats, Attachment, DotClass}
 import annotation.unchecked.uncheckedVariance
+import language.implicitConversions
 
 object Trees {
 
@@ -435,10 +436,25 @@ object Trees {
    *  The envelope of a MemberDef contains the whole definition and his its point
    *  on the opening keyword (or the next token after that if keyword is missing).
    */
-  trait MemberDef[-T >: Untyped] extends NameTree[T] with DefTree[T] {
+  abstract class MemberDef[-T >: Untyped] extends NameTree[T] with DefTree[T] {
     type ThisTree[-T >: Untyped] <: MemberDef[T]
-    def mods: Modifiers[T]
-    override def envelope: Position = mods.pos union pos union initialPos
+
+    private[this] var myMods: Modifiers[T] = null
+
+    private[ast] def rawMods: Modifiers[T] =
+      if (myMods == null) genericEmptyModifiers else myMods
+
+    def withMods(mods: Modifiers[T @uncheckedVariance]): ThisTree[T] = { // TODO move to untpd.modsDeco?
+      val tree = if (myMods == null || (myMods == mods)) this else clone.asInstanceOf[MemberDef[T]]
+      tree.setMods(mods)
+      tree.asInstanceOf[ThisTree[T]]
+    }
+
+    def withFlags(flags: FlagSet): ThisTree[T] = withMods(Modifiers(flags))
+
+    protected def setMods(mods: Modifiers[T @uncheckedVariance]) = myMods = mods
+
+    override def envelope: Position = rawMods.pos union pos union initialPos
   }
 
   /** A ValDef or DefDef tree */
@@ -731,14 +747,14 @@ object Trees {
   }
 
   /** mods val name: tpt = rhs */
-  case class ValDef[-T >: Untyped] private[ast] (mods: Modifiers[T], name: TermName, tpt: Tree[T], rhs: Tree[T])
+  case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], rhs: Tree[T])
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = ValDef[T]
     assert(isEmpty || tpt != genericEmptyTree)
   }
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
-  case class DefDef[-T >: Untyped] private[ast] (mods: Modifiers[T], name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])
+  case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
     assert(tpt != genericEmptyTree)
@@ -749,7 +765,7 @@ object Trees {
    *  mods type name = rhs   or
    *  mods type name >: lo <: hi, if rhs = TypeBoundsTree(lo, hi) & (lo ne hi)
    */
-  case class TypeDef[-T >: Untyped] private[ast] (mods: Modifiers[T], name: TypeName, rhs: Tree[T])
+  case class TypeDef[-T >: Untyped] private[ast] (name: TypeName, rhs: Tree[T])
     extends MemberDef[T] {
     type ThisTree[-T >: Untyped] = TypeDef[T]
 
@@ -819,15 +835,18 @@ object Trees {
   }
 
   class EmptyValDef[T >: Untyped] extends ValDef[T](
-    Modifiers[T](PrivateLocal), nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T]) with WithoutTypeOrPos[T] {
+    nme.WILDCARD, genericEmptyTree[T], genericEmptyTree[T]) with WithoutTypeOrPos[T] {
     override def isEmpty: Boolean = true
+    setMods(Modifiers[T](PrivateLocal))
   }
 
   val theEmptyTree: Thicket[Type] = Thicket(Nil)
   val theEmptyValDef = new EmptyValDef[Type]
+  val theEmptyModifiers = new Modifiers()
 
-  def genericEmptyValDef[T >: Untyped]: ValDef[T] = theEmptyValDef.asInstanceOf[ValDef[T]]
-  def genericEmptyTree[T >: Untyped]: Thicket[T] = theEmptyTree.asInstanceOf[Thicket[T]]
+  def genericEmptyValDef[T >: Untyped]: ValDef[T]       = theEmptyValDef.asInstanceOf[ValDef[T]]
+  def genericEmptyTree[T >: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
+  def genericEmptyModifiers[T >: Untyped]: Modifiers[T] = theEmptyModifiers.asInstanceOf[Modifiers[T]]
 
   def flatten[T >: Untyped](trees: List[Tree[T]]): List[Tree[T]] = {
     var buf: ListBuffer[Tree[T]] = null
@@ -919,6 +938,7 @@ object Trees {
 
     val EmptyTree: Thicket = genericEmptyTree
     val EmptyValDef: ValDef = genericEmptyValDef
+    val EmptyModifiers: Modifiers = genericEmptyModifiers
 
     // ----- Auxiliary creation methods ------------------
 
@@ -935,6 +955,11 @@ object Trees {
       case ys => Thicket(ys)
     }
 
+    // ----- Accessing modifiers ----------------------------------------------------
+
+    abstract class ModsDeco { def mods: Modifiers }
+    implicit def modsDeco(mdef: MemberDef)(implicit ctx: Context): ModsDeco
+
     // ----- Helper classes for copying, transforming, accumulating -----------------
 
     val cpy: TreeCopier
@@ -949,8 +974,12 @@ object Trees {
     abstract class TreeCopier {
 
       def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[T]
+      def postProcess(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T]
 
       def finalize(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
+        postProcess(tree, copied withPos tree.pos)
+
+      def finalize(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T] =
         postProcess(tree, copied withPos tree.pos)
 
       def Ident(tree: Tree)(name: Name): Ident = tree match {
@@ -1094,17 +1123,17 @@ object Trees {
         case tree: UnApply if (fun eq tree.fun) && (implicits eq tree.implicits) && (patterns eq tree.patterns) => tree
         case _ => finalize(tree, untpd.UnApply(fun, implicits, patterns))
       }
-      def ValDef(tree: Tree)(mods: Modifiers, name: TermName, tpt: Tree, rhs: Tree): ValDef = tree match {
-        case tree: ValDef if (mods == tree.mods) && (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
-        case _ => finalize(tree, untpd.ValDef(mods, name, tpt, rhs))
+      def ValDef(tree: Tree)(name: TermName, tpt: Tree, rhs: Tree): ValDef = tree match {
+        case tree: ValDef if (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
+        case _ => finalize(tree, untpd.ValDef(name, tpt, rhs))
       }
-      def DefDef(tree: Tree)(mods: Modifiers, name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: Tree): DefDef = tree match {
-        case tree: DefDef if (mods == tree.mods) && (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
-        case _ => finalize(tree, untpd.DefDef(mods, name, tparams, vparamss, tpt, rhs))
+      def DefDef(tree: Tree)(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: Tree): DefDef = tree match {
+        case tree: DefDef if (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
+        case _ => finalize(tree, untpd.DefDef(name, tparams, vparamss, tpt, rhs))
       }
-      def TypeDef(tree: Tree)(mods: Modifiers, name: TypeName, rhs: Tree, tparams: List[untpd.TypeDef]): TypeDef = tree match {
-        case tree: TypeDef if (mods == tree.mods) && (name == tree.name) && (rhs eq tree.rhs) && (tparams eq tree.tparams) => tree
-        case _ => finalize(tree, untpd.TypeDef(mods, name, tparams, rhs))
+      def TypeDef(tree: Tree)(name: TypeName, rhs: Tree, tparams: List[untpd.TypeDef]): TypeDef = tree match {
+        case tree: TypeDef if (name == tree.name) && (rhs eq tree.rhs) && (tparams eq tree.tparams) => tree
+        case _ => finalize(tree, untpd.TypeDef(name, tparams, rhs))
       }
       def Template(tree: Tree)(constr: DefDef, parents: List[Tree], self: ValDef, body: List[Tree]): Template = tree match {
         case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (self eq tree.self) && (body eq tree.body) => tree
@@ -1139,12 +1168,12 @@ object Trees {
         Try(tree: Tree)(expr, cases, finalizer)
       def UnApply(tree: UnApply)(fun: Tree = tree.fun, implicits: List[Tree] = tree.implicits, patterns: List[Tree] = tree.patterns): UnApply =
         UnApply(tree: Tree)(fun, implicits, patterns)
-      def ValDef(tree: ValDef)(mods: Modifiers = tree.mods, name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: Tree = tree.rhs): ValDef =
-        ValDef(tree: Tree)(mods, name, tpt, rhs)
-      def DefDef(tree: DefDef)(mods: Modifiers = tree.mods, name: TermName = tree.name, tparams: List[TypeDef] = tree.tparams, vparamss: List[List[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: Tree = tree.rhs): DefDef =
-        DefDef(tree: Tree)(mods, name, tparams, vparamss, tpt, rhs)
-      def TypeDef(tree: TypeDef)(mods: Modifiers = tree.mods, name: TypeName = tree.name, rhs: Tree = tree.rhs, tparams: List[untpd.TypeDef] = tree.tparams): TypeDef =
-        TypeDef(tree: Tree)(mods, name, rhs, tparams)
+      def ValDef(tree: ValDef)(name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: Tree = tree.rhs): ValDef =
+        ValDef(tree: Tree)(name, tpt, rhs)
+      def DefDef(tree: DefDef)(name: TermName = tree.name, tparams: List[TypeDef] = tree.tparams, vparamss: List[List[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: Tree = tree.rhs): DefDef =
+        DefDef(tree: Tree)(name, tparams, vparamss, tpt, rhs)
+      def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs, tparams: List[untpd.TypeDef] = tree.tparams): TypeDef =
+        TypeDef(tree: Tree)(name, rhs, tparams)
       def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, self: ValDef = tree.self, body: List[Tree] = tree.body): Template =
         Template(tree: Tree)(constr, parents, self, body)
     }
@@ -1220,14 +1249,17 @@ object Trees {
           cpy.UnApply(tree)(transform(fun), transform(implicits), transform(patterns))
         case EmptyValDef =>
           tree
-        case ValDef(mods, name, tpt, rhs) =>
+        case tree @ ValDef(name, tpt, rhs) =>
           val tpt1 = transform(tpt)
           val rhs1 = transform(rhs)
-          cpy.ValDef(tree)(mods, name, transform(tpt1), transform(rhs1))
-        case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-          cpy.DefDef(tree)(mods, name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(rhs))
-        case tree @ TypeDef(mods, name, rhs) =>
-          cpy.TypeDef(tree)(mods, name, transform(rhs), tree.tparams)
+          cpy.ValDef(tree)(name, transform(tpt1), transform(rhs1))
+            .withMods(tree.rawMods)
+        case tree @ DefDef(name, tparams, vparamss, tpt, rhs) =>
+          cpy.DefDef(tree)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(rhs))
+            .withMods(tree.rawMods)
+        case tree @ TypeDef(name, rhs) =>
+          cpy.TypeDef(tree)(name, transform(rhs), tree.tparams)
+            .withMods(tree.rawMods)
         case Template(constr, parents, self, body) =>
           cpy.Template(tree)(transformSub(constr), transform(parents), transformSub(self), transformStats(body))
         case Import(expr, selectors) =>
@@ -1321,11 +1353,11 @@ object Trees {
           this(x, trees)
         case UnApply(fun, implicits, patterns) =>
           this(this(this(x, fun), implicits), patterns)
-        case ValDef(mods, name, tpt, rhs) =>
+        case ValDef(name, tpt, rhs) =>
           this(this(x, tpt), rhs)
-        case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
+        case DefDef(name, tparams, vparamss, tpt, rhs) =>
           this(this((this(x, tparams) /: vparamss)(apply), tpt), rhs)
-        case TypeDef(mods, name, rhs) =>
+        case TypeDef(name, rhs) =>
           this(x, rhs)
         case Template(constr, parents, self, body) =>
           this(this(this(this(x, constr), parents), self), body)
@@ -1369,163 +1401,10 @@ object Trees {
         case tree: Bind => cpy.Bind(tree)(newName, tree.body)
         case tree: ValDef => cpy.ValDef(tree)(name = newName.asTermName)
         case tree: DefDef => cpy.DefDef(tree)(name = newName.asTermName)
-        case tree: untpd.PolyTypeDef => untpd.cpy.PolyTypeDef(tree)(tree.mods, newName.asTypeName, tree.tparams, tree.rhs)
+        case tree: untpd.PolyTypeDef => untpd.cpy.PolyTypeDef(tree)(newName.asTypeName, tree.tparams, tree.rhs).withMods(tree.rawMods)
         case tree: TypeDef => cpy.TypeDef(tree)(name = newName.asTypeName)
         case tree: SelectFromTypeTree => cpy.SelectFromTypeTree(tree)(tree.qualifier, newName)
       }
     }.asInstanceOf[tree.ThisTree[T]]
   }
 }
-  // ----- Helper functions and classes ---------------------------------------
-/*
-
-  abstract class FullTreeTransformer[T >: Untyped, C] {
-    var sharedMemo: Map[SharedTree[T], SharedTree[T]] = Map()
-
-    def transform(tree: Tree[T], c: C): Tree[T] = tree match {
-      case Ident(name) =>
-        finishIdent(tree, tree, c, plugins)
-      case Select(qualifier, name) =>
-        finishSelect(tree.derivedSelect(transform(qualifier, c), name), tree, c, plugins)
-      case This(qual) =>
-        finishThis(tree, tree, c, plugins)
-      case Super(qual, mix) =>
-        finishSuper(tree.derivedSuper(transform(qual, c), mix), tree, c, plugins)
-      case Apply(fun, args) =>
-        finishApply(tree.derivedApply(transform(fun, c), transform(args, c)), tree, c, plugins)
-      case TypeApply(fun, args) =>
-        finishTypeApply(tree.derivedTypeApply(transform(fun, c), transform(args, c)), tree, c, plugins)
-      case Literal(const) =>
-        finishLiteral(tree, tree, c, plugins)
-      case New(tpt) =>
-        finishNew(tree.derivedNew(transform(tpt, c)), tree, c, plugins)
-      case Pair(left, right) =>
-        finishPair(tree.derivedPair(transform(left, c), transform(right, c)), tree, c, plugins)
-      case Typed(expr, tpt) =>
-        finishTyped(tree.derivedTyped(transform(expr, c), transform(tpt, c)), tree, c, plugins)
-      case NamedArg(name, arg) =>
-        finishNamedArg(tree.derivedNamedArg(name, transform(arg, c)), tree, c, plugins)
-      case Assign(lhs, rhs) =>
-        finishAssign(tree.derivedAssign(transform(lhs, c), transform(rhs, c)), tree, c, plugins)
-      case Block(stats, expr) =>
-        finishBlock(tree.derivedBlock(transform(stats, c), transform(expr, c)), tree, c, plugins)
-      case If(cond, thenp, elsep) =>
-        finishIf(tree.derivedIf(transform(cond, c), transform(thenp, c), transform(elsep, c)), tree, c, plugins)
-      case Closure(env, meth, tpt) =>
-        finishClosure(tree.derivedClosure(transform(env, c), transformSub(meth, c)), tree, c, plugins)
-      case Match(selector, cases) =>
-        finishMatch(tree.derivedMatch(transform(selector, c), transformSub(cases, c)), tree, c, plugins)
-      case CaseDef(pat, guard, body) =>
-        finishCaseDef(tree.derivedCaseDef(transform(pat, c), transform(guard, c), transform(body, c)), tree, c, plugins)
-      case Return(expr, from) =>
-        finishReturn(tree.derivedReturn(transform(expr, c), transform(from, c)), tree, c, plugins)
-      case Try(block, handler, finalizer) =>
-        finishTry(tree.derivedTry(transform(block, c), transform(handler, c), transform(finalizer, c)), tree, c, plugins)
-      case Throw(expr) =>
-        finishThrow(tree.derivedThrow(transform(expr, c)), tree, c, plugins)
-      case SeqLiteral(elems) =>
-        finishSeqLiteral(tree.derivedSeqLiteral(transform(elems, c)), tree, c, plugins)
-      case TypeTree(original) =>
-        finishTypeTree(tree, tree, c, plugins)
-      case SingletonTypeTree(ref) =>
-        finishSingletonTypeTree(tree.derivedSingletonTypeTree(transform(ref, c)), tree, c, plugins)
-      case SelectFromTypeTree(qualifier, name) =>
-        finishSelectFromTypeTree(tree.derivedSelectFromTypeTree(transform(qualifier, c), name), tree, c, plugins)
-      case AndTypeTree(left, right) =>
-        finishAndTypeTree(tree.derivedAndTypeTree(transform(left, c), transform(right, c)), tree, c, plugins)
-      case OrTypeTree(left, right) =>
-        finishOrTypeTree(tree.derivedOrTypeTree(transform(left, c), transform(right, c)), tree, c, plugins)
-      case RefinedTypeTree(tpt, refinements) =>
-        finishRefinedTypeTree(tree.derivedRefinedTypeTree(transform(tpt, c), transformSub(refinements, c)), tree, c, plugins)
-      case AppliedTypeTree(tpt, args) =>
-        finishAppliedTypeTree(tree.derivedAppliedTypeTree(transform(tpt, c), transform(args, c)), tree, c, plugins)
-      case TypeBoundsTree(lo, hi) =>
-        finishTypeBoundsTree(tree.derivedTypeBoundsTree(transform(lo, c), transform(hi, c)), tree, c, plugins)
-      case Bind(name, body) =>
-        finishBind(tree.derivedBind(name, transform(body, c)), tree, c, plugins)
-      case Alternative(trees) =>
-        finishAlternative(tree.derivedAlternative(transform(trees, c)), tree, c, plugins)
-      case UnApply(fun, args) =>
-        finishUnApply(tree.derivedUnApply(transform(fun, c), transform(args, c)), tree, c, plugins)
-      case ValDef(mods, name, tpt, rhs) =>
-        finishValDef(tree.derivedValDef(mods, name, transform(tpt, c), transform(rhs, c)), tree, c, plugins)
-      case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-        finishDefDef(tree.derivedDefDef(mods, name, transformSub(tparams, c), vparamss mapConserve (transformSub(_, c)), transform(tpt, c), transform(rhs, c)), tree, c, plugins)
-      case tree @ TypeDef(mods, name, rhs) =>
-        finishTypeDef(tree.derivedTypeDef(mods, name, transform(rhs, c), tree.tparams), tree, c, plugins)
-      case Template(constr, parents, self, body) =>
-        finishTemplate(tree.derivedTemplate(transformSub(constr, c), transform(parents, c), transformSub(self, c), transform(body, c)), tree, c, plugins)
-      case Import(expr, selectors) =>
-        finishImport(tree.derivedImport(transform(expr, c), selectors), tree, c, plugins)
-      case PackageDef(pid, stats) =>
-        finishPackageDef(tree.derivedPackageDef(transformSub(pid, c), transform(stats, c)), tree, c, plugins)
-      case Annotated(annot, arg) =>
-        finishAnnotated(tree.derivedAnnotated(transform(annot, c), transform(arg, c)), tree, c, plugins)
-      case EmptyTree =>
-        finishEmptyTree(tree, tree, c, plugins)
-      case tree @ SharedTree(shared) =>
-        finishSharedTree(
-          sharedMemo get tree match {
-          case Some(tree1) => tree1
-          case None =>
-            val tree1 = tree.derivedSharedTree(transform(shared, c))
-            sharedMemo = sharedMemo.updated(tree, tree1)
-            tree1
-        },
-        tree, c, plugins)
-    }
-    def transform(trees: List[Tree[T]], c: C): List[Tree[T]] =
-      flatten(trees) mapConserve (transform(_, c))
-    def transformSub(tree: Tree[T], c: C): tree.ThisTree[T] =
-      transform(tree, c).asInstanceOf[tree.ThisTree[T]]
-    def transformSub[TT <: Tree[T]](trees: List[TT], c: C): List[TT] =
-      transform(trees, c).asInstanceOf[List[TT]]
-
-    type Plugins >: Null
-    def plugins: Plugins = null
-
-    def finishIdent(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishSelect(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishThis(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishSuper(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishApply(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishTypeApply(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishLiteral(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishNew(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishPair(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishTyped(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishNamedArg(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishAssign(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishFunction(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishBlock(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishIf(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishClosure(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishMatch(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishCaseDef(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishReturn(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishTry(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishThrow(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishSeqLiteral(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishSingletonTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishSelectFromTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishAndTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishOrTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishRefinedTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishAppliedTypeTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishTypeBoundsTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishBind(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishAlternative(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishUnApply(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishValDef(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishDefDef(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishTypeDef(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishTemplate(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishImport(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishPackageDef(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishAnnotated(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishEmptyTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-    def finishSharedTree(tree: Tree[T], old: Tree[T], c: C, plugins: Plugins) = tree
-  }
-*/
-

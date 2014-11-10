@@ -224,7 +224,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
         case CaseDef(pat, guard, body) =>
           cpy.CaseDef(tree)(pat, transform(guard), transform(body))
 
-        case TypeDef(_, _, impl: Template) =>
+        case TypeDef(_, impl: Template) =>
           val cls = sym.asClass
           checkCompanionNameClashes(cls)
           expandQualifiedPrivates(cls)
@@ -368,7 +368,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
           }
           transformSelect
 
-        case tree@DefDef(_, _, _, _, _, rhs) =>
+        case tree @ DefDef(_, _, _, _, rhs) =>
           cpy.DefDef(tree)(
             rhs = if (isMethodWithExtension(sym)) withInvalidOwner(transform(rhs)) else transform(rhs))
 

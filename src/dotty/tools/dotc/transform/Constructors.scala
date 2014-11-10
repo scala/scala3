@@ -62,7 +62,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
 
   override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val cls = ctx.owner.asClass
-    val constr @ DefDef(_, nme.CONSTRUCTOR, Nil, vparams :: Nil, _, EmptyTree) = tree.constr
+    val constr @ DefDef(nme.CONSTRUCTOR, Nil, vparams :: Nil, _, EmptyTree) = tree.constr
 
     // Produce aligned accessors and constructor parameters. We have to adjust
     // for any outer parameters, which are last in the sequence of original
@@ -157,7 +157,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
     def splitStats(stats: List[Tree]): Unit = stats match {
       case stat :: stats1 =>
         stat match {
-          case stat @ ValDef(mods, name, tpt, rhs) if !stat.symbol.is(Lazy) =>
+          case stat @ ValDef(name, tpt, rhs) if !stat.symbol.is(Lazy) =>
             val sym = stat.symbol
             if (isRetained(sym)) {
               if (!rhs.isEmpty && !isWildcardArg(rhs))

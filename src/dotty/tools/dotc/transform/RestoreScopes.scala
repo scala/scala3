@@ -22,7 +22,7 @@ class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { t
   override def treeTransformPhase = thisTransform.next
 
   override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo) = {
-    val TypeDef(_, _, Template(constr, _, _, body)) = tree
+    val TypeDef(_, Template(constr, _, _, body)) = tree
     val restoredDecls = newScope
     for (stat <- constr :: body)
       if (stat.isInstanceOf[MemberDef] && stat.symbol.exists)

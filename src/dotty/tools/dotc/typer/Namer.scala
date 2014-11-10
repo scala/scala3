@@ -361,14 +361,14 @@ class Namer { typer: Typer =>
      */
     def mergeCompanionDefs() = {
       val classDef = mutable.Map[TypeName, TypeDef]()
-      for (cdef @ TypeDef(mods, name, _) <- stats)
+      for (cdef @ TypeDef(name, _) <- stats)
         if (cdef.isClassDef) classDef(name) = cdef
-      for (mdef @ ModuleDef(_, name, _) <- stats)
+      for (mdef @ ModuleDef(name, _) <- stats)
         classDef get name.toTypeName match {
           case Some(cdef) =>
-            val Thicket(vdef :: (mcls @ TypeDef(_, _, impl: Template)) :: Nil) = mdef.attachment(ExpandedTree)
+            val Thicket(vdef :: (mcls @ TypeDef(_, impl: Template)) :: Nil) = mdef.attachment(ExpandedTree)
             cdef.attachmentOrElse(ExpandedTree, cdef) match {
-              case Thicket(cls :: mval :: TypeDef(_, _, compimpl: Template) :: crest) =>
+              case Thicket(cls :: mval :: TypeDef(_, compimpl: Template) :: crest) =>
                 val mcls1 = cpy.TypeDef(mcls)(
                     rhs = cpy.Template(impl)(body = compimpl.body ++ impl.body))
                 mdef.putAttachment(ExpandedTree, Thicket(vdef :: mcls1 :: Nil))
@@ -433,7 +433,7 @@ class Namer { typer: Typer =>
 
     protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
 
-    val TypeDef(_, name, impl @ Template(constr, parents, self, body)) = original
+    val TypeDef(name, impl @ Template(constr, parents, self, body)) = original
 
     val (params, rest) = body span {
       case td: TypeDef => td.mods is Param
@@ -635,7 +635,7 @@ class Namer { typer: Typer =>
 
   /** The type signature of a DefDef with given symbol */
   def defDefSig(ddef: DefDef, sym: Symbol)(implicit ctx: Context) = {
-    val DefDef(_, name, tparams, vparamss, _, _) = ddef
+    val DefDef(name, tparams, vparamss, _, _) = ddef
     completeParams(tparams)
     vparamss foreach completeParams
     val isConstructor = name == nme.CONSTRUCTOR

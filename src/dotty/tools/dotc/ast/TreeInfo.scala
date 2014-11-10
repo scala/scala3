@@ -18,18 +18,18 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   def isDeclarationOrTypeDef(tree: Tree): Boolean = unsplice(tree) match {
-    case DefDef(_, _, _, _, _, EmptyTree)
-      | ValDef(_, _, _, EmptyTree)
-      | TypeDef(_, _, _) => true
+    case DefDef(_, _, _, _, EmptyTree)
+      | ValDef(_, _, EmptyTree)
+      | TypeDef(_, _) => true
     case _ => false
   }
 
   /** Is tree legal as a member definition of an interface?
    */
   def isPureInterfaceMember(tree: Tree): Boolean = unsplice(tree) match {
-    case EmptyTree | Import(_, _) | TypeDef(_, _, _) => true
-    case DefDef(_, _, _, _, _, rhs) => rhs.isEmpty
-    case ValDef(mods, _, _, rhs) => rhs.isEmpty
+    case EmptyTree | Import(_, _) | TypeDef(_, _) => true
+    case DefDef(_, _, _, _, rhs) => rhs.isEmpty
+    case ValDef(_, _, rhs) => rhs.isEmpty
     case _ => false
   }
 
@@ -91,7 +91,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   /** If tree is a closure, it's body, otherwise tree itself */
   def closureBody(tree: tpd.Tree): tpd.Tree = tree match {
-    case Block(DefDef(_, nme.ANON_FUN, _, _, _, rhs) :: Nil, Closure(_, _, _)) => rhs
+    case Block(DefDef(nme.ANON_FUN, _, _, _, rhs) :: Nil, Closure(_, _, _)) => rhs
     case _ => tree
   }
 
@@ -162,24 +162,8 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   /** The arguments to the first constructor in `stats`. */
   def firstConstructorArgs(stats: List[Tree]): List[Tree] = firstConstructor(stats) match {
-    case DefDef(_, _, _, args :: _, _, _) => args
+    case DefDef(_, _, args :: _, _, _) => args
     case _                                => Nil
-  }
-
-  /** The value definitions marked PRESUPER in this statement sequence */
-  def preSuperFields(stats: List[Tree]): List[ValDef] =
-    (stats filter isEarlyValDef).asInstanceOf[List[ValDef]]
-
-  def isEarlyDef(tree: Tree) = isEarlyValDef(tree) || isEarlyTypeDef(tree)
-
-  def isEarlyValDef(tree: Tree) = unsplice(tree) match {
-    case ValDef(mods, _, _, _) => mods is Scala2PreSuper
-    case _ => false
-  }
-
-  def isEarlyTypeDef(tree: Tree) = unsplice(tree) match {
-    case TypeDef(mods, _, _) => mods is Scala2PreSuper
-    case _ => false
   }
 
   /** Is tpt a vararg type of the form T* ? */
@@ -263,7 +247,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   /** True iff definition if a val or def with no right-hand-side, or it
    *  is an abstract typoe declaration
    */
-  def lacksDefinition(mdef: MemberDef) = mdef match {
+  def lacksDefinition(mdef: MemberDef)(implicit ctx: Context) = mdef match {
     case mdef: ValOrDefDef => mdef.rhs.isEmpty && !mdef.name.isConstructorName && !mdef.mods.is(ParamAccessor)
     case mdef: TypeDef => mdef.rhs.isEmpty || mdef.rhs.isInstanceOf[TypeBoundsTree]
     case _ => false
@@ -299,12 +283,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   private def statPurity(tree: tpd.Tree)(implicit ctx: Context): PurityLevel = unsplice(tree) match {
     case EmptyTree
-       | TypeDef(_, _, _)
+       | TypeDef(_, _)
        | Import(_, _)
-       | DefDef(_, _, _, _, _, _) =>
+       | DefDef(_, _, _, _, _) =>
       Pure
-    case ValDef(mods, _, _, rhs) =>
-      if (mods is Mutable) Impure else exprPurity(rhs)
+    case vdef @ ValDef(_, _, rhs) =>
+      if (vdef.mods is Mutable) Impure else exprPurity(rhs)
     case _ =>
       Impure
   }

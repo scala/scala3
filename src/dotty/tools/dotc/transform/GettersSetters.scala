@@ -89,7 +89,6 @@ import Decorators._
         assert(tree.rhs.tpe.exists, tree.show)
         val fieldDef =
           cpy.ValDef(tree)(
-            mods = tree.mods & EmptyFlags | field.flags,
             name = field.name,
             rhs = tree.rhs.changeOwner(getter, field).ensureConforms(field.info.widen)
           ).withType(field.valRef)

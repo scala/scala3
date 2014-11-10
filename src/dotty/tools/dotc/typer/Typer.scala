@@ -312,7 +312,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       case templ: untpd.Template =>
         import untpd._
         val x = tpnme.ANON_CLASS
-        val clsDef = TypeDef(Modifiers(Final), x, templ)
+        val clsDef = TypeDef(x, templ).withFlags(Final)
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
 	      val tpt1 = typedType(tree.tpt)
@@ -538,10 +538,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       val inferredParams: List[untpd.ValDef] =
         for ((param, i) <- params.zipWithIndex) yield
           if (!param.tpt.isEmpty) param
-          else {
-            val paramTpt = untpd.TypeTree(inferredParamType(param, protoFormal(i)))
-            cpy.ValDef(param)(param.mods, param.name, paramTpt, param.rhs)
-          }
+          else cpy.ValDef(param)(tpt = untpd.TypeTree(inferredParamType(param, protoFormal(i))))
 
       // Define result type of closure as the expected type, thereby pushing
       // down any implicit searches. We do this even if the expected type is not fully
@@ -729,7 +726,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val tpt1 = if (tree.tpt.isEmpty) TypeTree(defn.ObjectType) else typedAheadType(tree.tpt)
     val refineClsDef = desugar.refinedTypeToClass(tree)
     val refineCls = createSymbol(refineClsDef).asClass
-    val TypeDef(_, _, Template(_, _, _, refinements1)) = typed(refineClsDef)
+    val TypeDef(_, Template(_, _, _, refinements1)) = typed(refineClsDef)
     assert(tree.refinements.length == refinements1.length, s"${tree.refinements} != $refinements1")
     def addRefinement(parent: Type, refinement: Tree): Type = {
       typr.println(s"adding refinement $refinement")
@@ -785,10 +782,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     assignType(cpy.Alternative(tree)(trees1), trees1)
   }
 
-  def addTypedModifiersAnnotations(mods: untpd.Modifiers, sym: Symbol)(implicit ctx: Context): Modifiers = {
-    val mods1 = typedModifiers(mods, sym)
+  def addTypedModifiersAnnotations(mdef: untpd.MemberDef, sym: Symbol)(implicit ctx: Context): Unit = {
+    val mods1 = typedModifiers(untpd.modsDeco(mdef).mods, sym)
     for (tree <- mods1.annotations) sym.addAnnotation(Annotation(tree))
-    mods1
   }
 
   def typedModifiers(mods: untpd.Modifiers, sym: Symbol)(implicit ctx: Context): Modifiers = track("typedModifiers") {
@@ -802,37 +798,37 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = track("typedValDef") {
-    val ValDef(mods, name, tpt, rhs) = vdef
-    val mods1 = addTypedModifiersAnnotations(mods, sym)
+    val ValDef(name, tpt, rhs) = vdef
+    addTypedModifiersAnnotations(vdef, sym)
     val tpt1 = typedType(tpt)
     val rhs1 = rhs match {
       case Ident(nme.WILDCARD) => rhs withType tpt1.tpe
       case _ => typedExpr(rhs, tpt1.tpe)
     }
-    assignType(cpy.ValDef(vdef)(mods1, name, tpt1, rhs1), sym)
+    assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
   }
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = track("typedDefDef") {
-    val DefDef(mods, name, tparams, vparamss, tpt, rhs) = ddef
-    val mods1 = addTypedModifiersAnnotations(mods, sym)
+    val DefDef(name, tparams, vparamss, tpt, rhs) = ddef
+    addTypedModifiersAnnotations(ddef, sym)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
     if (sym is Implicit) checkImplicitParamsNotSingletons(vparamss1)
     val tpt1 = typedType(tpt)
     val rhs1 = typedExpr(rhs, tpt1.tpe)
-    assignType(cpy.DefDef(ddef)(mods1, name, tparams1, vparamss1, tpt1, rhs1), sym)
+    assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
     //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedTypeDef") {
-    val TypeDef(mods, name, rhs) = tdef
-    val mods1 = addTypedModifiersAnnotations(mods, sym)
+    val TypeDef(name, rhs) = tdef
+    addTypedModifiersAnnotations(tdef, sym)
     val _ = typedType(rhs) // unused, typecheck only to remove from typedTree
-    assignType(cpy.TypeDef(tdef)(mods1, name, TypeTree(sym.info), Nil), sym)
+    assignType(cpy.TypeDef(tdef)(name, TypeTree(sym.info), Nil), sym)
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = track("typedClassDef") {
-    val TypeDef(mods, name, impl @ Template(constr, parents, self, body)) = cdef
+    val TypeDef(name, impl @ Template(constr, parents, self, body)) = cdef
     val superCtx = ctx.superCallContext
     def typedParent(tree: untpd.Tree): Tree =
       if (tree.isType) typedType(tree)(superCtx)
@@ -843,7 +839,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         result
       }
 
-    val mods1 = addTypedModifiersAnnotations(mods, cls)
+    addTypedModifiersAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parentsWithClass = ensureFirstIsClass(parents mapconserve typedParent, cdef.pos.toSynthetic)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
@@ -854,7 +850,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val impl1 = cpy.Template(impl)(constr1, parents1, self1, body1)
       .withType(dummy.nonMemberTermRef)
     checkVariance(impl1)
-    assignType(cpy.TypeDef(cdef)(mods1, name, impl1, Nil), cls)
+    assignType(cpy.TypeDef(cdef)(name, impl1, Nil), cls)
 
     // todo later: check that
     //  1. If class is non-abstract, it is instantiatable:

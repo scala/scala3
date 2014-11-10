@@ -57,12 +57,12 @@ class DeSugarTest extends ParserTest {
           cpy.SeqLiteral(tree1)(transform(elems))
         case UnApply(fun, implicits, patterns) =>
           cpy.UnApply(tree1)(transform(fun, Expr), transform(implicits), transform(patterns))
-        case ValDef(mods, name, tpt, rhs) =>
-          cpy.ValDef(tree1)(mods, name, transform(tpt, Type), transform(rhs))
-        case DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
-          cpy.DefDef(tree1)(mods, name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt, Type), transform(rhs))
-        case tree1 @ TypeDef(mods, name, rhs) =>
-          cpy.TypeDef(tree1)(mods, name, transform(rhs, Type), transformSub(tree1.tparams))
+        case ValDef(name, tpt, rhs) =>
+          cpy.ValDef(tree1)(name, transform(tpt, Type), transform(rhs))
+        case DefDef(name, tparams, vparamss, tpt, rhs) =>
+          cpy.DefDef(tree1)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt, Type), transform(rhs))
+        case tree1 @ TypeDef(name, rhs) =>
+          cpy.TypeDef(tree1)(name, transform(rhs, Type), transformSub(tree1.tparams))
         case Template(constr, parents, self, body) =>
           cpy.Template(tree1)(transformSub(constr), transform(parents), transformSub(self), transform(body, Expr))
         case Thicket(trees) =>
@@ -75,8 +75,8 @@ class DeSugarTest extends ParserTest {
 
   def firstClass(stats: List[Tree]): String = stats match {
     case Nil => "<empty>"
-    case TypeDef(_, name, _) :: _ => name.toString
-    case ModuleDef(_, name, _) :: _ => name.toString
+    case TypeDef(name, _) :: _ => name.toString
+    case ModuleDef(name, _) :: _ => name.toString
     case (pdef: PackageDef) :: _ => firstClass(pdef)
     case stat :: stats => firstClass(stats)
   }

@@ -165,7 +165,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.UnApply(fun, implicits, patterns), proto)
 
   def ValDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): ValDef =
-    ta.assignType(untpd.ValDef(Modifiers(sym), sym.name, TypeTree(sym.info), rhs), sym)
+    ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym)
 
   def SyntheticValDef(name: TermName, rhs: Tree)(implicit ctx: Context): ValDef =
     ValDef(ctx.newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.pos), rhs)
@@ -198,12 +198,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val argss = vparamss.nestedMap(vparam => Ident(vparam.termRef))
     ta.assignType(
       untpd.DefDef(
-        Modifiers(sym), sym.name, tparams map TypeDef,
-        vparamss.nestedMap(ValDef(_)), TypeTree(rtp), rhsFn(targs)(argss)), sym)
+        sym.name,
+        tparams map TypeDef,
+        vparamss.nestedMap(ValDef(_)),
+        TypeTree(rtp),
+        rhsFn(targs)(argss)),
+      sym)
   }
 
   def TypeDef(sym: TypeSymbol)(implicit ctx: Context): TypeDef =
-    ta.assignType(untpd.TypeDef(Modifiers(sym), sym.name, TypeTree(sym.info)), sym)
+    ta.assignType(untpd.TypeDef(sym.name, TypeTree(sym.info)), sym)
 
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree], superArgs: List[Tree] = Nil)(implicit ctx: Context): TypeDef = {
     val firstParent :: otherParents = cls.info.parents
@@ -237,7 +241,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       .orElse(ctx.newLocalDummy(cls))
     val impl = untpd.Template(constr, parents, selfType, newTypeParams ++ body)
       .withType(localDummy.nonMemberTermRef)
-    ta.assignType(untpd.TypeDef(Modifiers(cls), cls.name, impl), cls)
+    ta.assignType(untpd.TypeDef(cls.name, impl), cls)
   }
 
   def Import(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
@@ -367,10 +371,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       } else foldOver(sym, tree)
   }
 
+  implicit class modsDeco(mdef: MemberDef)(implicit ctx: Context) extends ModsDeco {
+    def mods = if (mdef.hasType) Modifiers(mdef.symbol) else mdef.rawMods
+  }
+
   override val cpy = new TypedTreeCopier
 
   class TypedTreeCopier extends TreeCopier {
     def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[Type] =
+      copied.withTypeUnchecked(tree.tpe)
+    def postProcess(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[Type] =
       copied.withTypeUnchecked(tree.tpe)
 
     override def Select(tree: Tree)(qualifier: Tree, name: Name)(implicit ctx: Context): Select = {

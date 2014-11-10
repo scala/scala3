@@ -307,28 +307,28 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextLocal(extractor) ~
         "(" ~ toTextGlobal(patterns, ", ") ~ ")" ~
         ("(" ~ toTextGlobal(implicits, ", ") ~ ")" provided implicits.nonEmpty)
-      case tree @ ValDef(mods, name, tpt, rhs) =>
+      case tree @ ValDef(name, tpt, rhs) =>
         dclTextOr {
-          modText(mods, if (mods is Mutable) "var" else "val") ~~ nameIdText(tree) ~
+          modText(tree.mods, if (tree.mods is Mutable) "var" else "val") ~~ nameIdText(tree) ~
             optAscription(tpt)
         } ~ optText(rhs)(" = " ~ _)
-      case tree @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
+      case tree @ DefDef(name, tparams, vparamss, tpt, rhs) =>
         atOwner(tree) {
           dclTextOr {
-            val first = modText(mods, "def") ~~ nameIdText(tree) ~ tparamsText(tparams)
+            val first = modText(tree.mods, "def") ~~ nameIdText(tree) ~ tparamsText(tparams)
             addVparamssText(first, vparamss) ~ optAscription(tpt)
           } ~ optText(rhs)(" = " ~ _)
         }
-      case tree @ TypeDef(mods, name, rhs) =>
+      case tree @ TypeDef(name, rhs) =>
         atOwner(tree) {
           def typeDefText(rhsText: Text) =
             dclTextOr {
               val rhsText1 = if (tree.hasType) toText(tree.symbol.info) else rhsText
-              modText(mods, "type") ~~ nameIdText(tree) ~ tparamsText(tree.tparams) ~ rhsText1
+              modText(tree.mods, "type") ~~ nameIdText(tree) ~ tparamsText(tree.tparams) ~ rhsText1
             }
           rhs match {
             case impl: Template =>
-              modText(mods, if (mods is Trait) "trait" else "class") ~~ nameIdText(tree) ~ toText(impl) ~
+              modText(tree.mods, if (tree.mods is Trait) "trait" else "class") ~~ nameIdText(tree) ~ toText(impl) ~
               (if (tree.hasType && ctx.settings.verbose.value) s"[decls = ${tree.symbol.info.decls}]" else "")
             case rhs: TypeBoundsTree =>
               typeDefText(toText(rhs))
@@ -336,14 +336,14 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
               typeDefText(optText(rhs)(" = " ~ _))
           }
         }
-      case Template(constr @ DefDef(mods, _, tparams, vparamss, _, rhs), parents, self, stats) =>
+      case Template(constr @ DefDef(_, tparams, vparamss, _, rhs), parents, self, stats) =>
         val tparamsTxt = tparamsText(tparams)
         val primaryConstrs = if (rhs.isEmpty) Nil else constr :: Nil
         val prefix: Text =
           if (vparamss.isEmpty || primaryConstrs.nonEmpty) tparamsTxt
           else {
-            var modsText = modText(mods, "")
-            if (mods.hasAnnotations && !mods.hasFlags) modsText = modsText ~~ " this"
+            var modsText = modText(constr.mods, "")
+            if (constr.mods.hasAnnotations && !constr.mods.hasFlags) modsText = modsText ~~ " this"
             addVparamssText(tparamsTxt ~~ modsText, vparamss)
           }
         val parentsText = Text(parents map constrText, " with ")
@@ -377,9 +377,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         "<empty>"
       case TypedSplice(t) =>
         toText(t)
-      case tree @ ModuleDef(mods, name, impl) =>
+      case tree @ ModuleDef(name, impl) =>
         atOwner(tree) {
-          modText(mods, "object") ~~ nameIdText(tree) ~ toText(impl)
+          modText(tree.mods, "object") ~~ nameIdText(tree) ~ toText(impl)
         }
       case SymbolLit(str) =>
         "'" + str
@@ -395,16 +395,16 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case Function(args, body) =>
         var implicitSeen: Boolean = false
         def argToText(arg: Tree) = arg match {
-          case ValDef(mods, name, tpt, _) =>
+          case arg @ ValDef(name, tpt, _) =>
             val implicitText =
-              if ((mods is Implicit) && !implicitSeen) { implicitSeen = true; "implicit " }
+              if ((arg.mods is Implicit) && !implicitSeen) { implicitSeen = true; "implicit " }
               else ""
             implicitText ~ toText(name) ~ optAscription(tpt)
           case _ =>
             toText(arg)
         }
         val argsText = args match {
-          case (arg @ ValDef(_, _, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg)
+          case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg)
           case _ => "(" ~ Text(args map argToText, ", ") ~ ")"
         }
         changePrec(GlobalPrec) {

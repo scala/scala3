@@ -90,10 +90,10 @@ final class TreeTypeMap(
       tree1.withType(mapType(tree1.tpe)) match {
         case id: Ident if tpd.needsSelect(id.tpe) =>
           ref(id.tpe.asInstanceOf[TermRef]).withPos(id.pos)
-        case ddef @ DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
+        case ddef @ DefDef(name, tparams, vparamss, tpt, rhs) =>
           val (tmap1, tparams1) = transformDefs(ddef.tparams)
           val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)
-          cpy.DefDef(ddef)(mods, name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(rhs))
+          cpy.DefDef(ddef)(name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(rhs))
         case blk @ Block(stats, expr) =>
           val (tmap1, stats1) = transformDefs(stats)
           val expr1 = tmap1.transform(expr)
