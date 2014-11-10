@@ -503,8 +503,9 @@ class ClassfileParser(
           parseExceptions(attrLen)
 
         case tpnme.CodeATTR =>
-          if (sym.owner is Flags.Interface) {
-            sym.setFlag(Flags.DefaultMethod)
+          if (sym.owner is Flags.JavaTrait) {
+            sym.resetFlag(Flags.Deferred)
+            sym.owner.resetFlag(Flags.PureInterface)
             ctx.log(s"$sym in ${sym.owner} is a java8+ default method.")
           }
           in.skip(attrLen)
