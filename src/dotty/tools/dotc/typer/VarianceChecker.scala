@@ -128,7 +128,7 @@ class VarianceChecker()(implicit ctx: Context) {
           traverseChildren(tree)
         case tree: ValDef =>
           checkVariance(sym)
-        case DefDef(_, _, tparams, vparamss, _, _) =>
+        case DefDef(_, tparams, vparamss, _, _) =>
           checkVariance(sym)
           tparams foreach traverse
           vparamss foreach (_ foreach traverse)

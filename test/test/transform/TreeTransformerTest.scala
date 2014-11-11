@@ -66,7 +66,7 @@ class TreeTransformerTest extends DottyTest {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(-1))"
           )
-          tpd.cpy.ValDef(tree)(tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(2)))
+          tpd.cpy.ValDef(tree)(rhs = tpd.Literal(Constant(2)))
         }
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
@@ -102,7 +102,7 @@ class TreeTransformerTest extends DottyTest {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(-1))"
           )
-          tpd.cpy.ValDef(tree)(tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(2)))
+          tpd.cpy.ValDef(tree)(rhs = tpd.Literal(Constant(2)))
         }
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
@@ -113,7 +113,7 @@ class TreeTransformerTest extends DottyTest {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(2))"
           )
-          tpd.cpy.ValDef(tree)(tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(3)))
+          tpd.cpy.ValDef(tree)(rhs = tpd.Literal(Constant(3)))
         }
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
@@ -150,7 +150,7 @@ class TreeTransformerTest extends DottyTest {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(-3))"
           )
-          tpd.cpy.ValDef(tree)(tree.mods, tree.name, tree.tpt, transformFollowing(tpd.Literal(Constant(2))))
+          tpd.cpy.ValDef(tree)(rhs = transformFollowing(tpd.Literal(Constant(2))))
         }
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
@@ -181,7 +181,7 @@ class TreeTransformerTest extends DottyTest {
           Assert.assertTrue("transformation of children succeeded",
             tree.rhs.toString == "Literal(Constant(-3))"
           )
-          transformFollowing(tpd.cpy.ValDef(tree)(tree.mods, tree.name, tree.tpt, tpd.Literal(Constant(3))))
+          transformFollowing(tpd.cpy.ValDef(tree)(rhs = tpd.Literal(Constant(3))))
         }
 
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)

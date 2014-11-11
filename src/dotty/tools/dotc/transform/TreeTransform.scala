@@ -960,7 +960,7 @@ object TreeTransforms {
             val nestedCtx = if (tree.symbol.exists) localContext(tree.symbol) else ctx
             val tpt = transform(tree.tpt, mutatedInfo, cur)(nestedCtx)
             val rhs = transform(tree.rhs, mutatedInfo, cur)(nestedCtx)
-            goValDef(cpy.ValDef(tree)(tree.mods, tree.name, tpt, rhs), mutatedInfo.nx.nxTransValDef(cur))
+            goValDef(cpy.ValDef(tree)(tree.name, tpt, rhs), mutatedInfo.nx.nxTransValDef(cur))
           }
         case tree: DefDef =>
           implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForDefDef, info.nx.nxPrepDefDef, tree, cur)
@@ -971,14 +971,14 @@ object TreeTransforms {
             val vparams = tree.vparamss.mapConserve(x => transformSubTrees(x, mutatedInfo, cur)(nestedCtx))
             val tpt = transform(tree.tpt, mutatedInfo, cur)(nestedCtx)
             val rhs = transform(tree.rhs, mutatedInfo, cur)(nestedCtx)
-            goDefDef(cpy.DefDef(tree)(tree.mods, tree.name, tparams, vparams, tpt, rhs), mutatedInfo.nx.nxTransDefDef(cur))
+            goDefDef(cpy.DefDef(tree)(tree.name, tparams, vparams, tpt, rhs), mutatedInfo.nx.nxTransDefDef(cur))
           }
         case tree: TypeDef =>
           implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForTypeDef, info.nx.nxPrepTypeDef, tree, cur)
           if (mutatedInfo eq null) tree
           else {
             val rhs = transform(tree.rhs, mutatedInfo, cur)(localContext(tree.symbol))
-            goTypeDef(cpy.TypeDef(tree)(tree.mods, tree.name, rhs, tree.tparams), mutatedInfo.nx.nxTransTypeDef(cur))
+            goTypeDef(cpy.TypeDef(tree)(tree.name, rhs, tree.tparams), mutatedInfo.nx.nxTransTypeDef(cur))
           }
         case _ =>
           tree

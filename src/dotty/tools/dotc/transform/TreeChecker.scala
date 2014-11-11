@@ -144,7 +144,7 @@ class TreeChecker {
     }
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(implicit ctx: Context) = {
-      val TypeDef(_, _, impl @ Template(constr, _, _, _)) = cdef
+      val TypeDef(_, impl @ Template(constr, _, _, _)) = cdef
       assert(cdef.symbol == cls)
       assert(impl.symbol.owner == cls)
       assert(constr.symbol.owner == cls)

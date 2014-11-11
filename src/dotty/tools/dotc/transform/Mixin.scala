@@ -105,15 +105,11 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
             initBuf.toList.map(_.changeOwner(impl.symbol, isym)),
             stat.rhs.changeOwner(vsym, isym))
           initBuf.clear()
-          List(
-            cpy.DefDef(stat)(mods = stat.mods | Deferred, rhs = EmptyTree),
-            DefDef(isym, rhs))
+          cpy.DefDef(stat)(rhs = EmptyTree) :: DefDef(isym, rhs) :: Nil
         case stat: DefDef if stat.symbol.isSetter =>
-          List(cpy.DefDef(stat)(
-            mods = stat.mods | Deferred,
-            rhs = EmptyTree))
+          cpy.DefDef(stat)(rhs = EmptyTree) :: Nil
         case stat: DefTree =>
-          List(stat)
+          stat :: Nil
         case stat =>
           initBuf += stat
           Nil

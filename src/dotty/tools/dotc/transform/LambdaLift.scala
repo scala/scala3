@@ -386,9 +386,7 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
     val sym = tree.symbol
     val proxyHolder = sym.skipConstructor
     if (needsLifting(proxyHolder)) {
-      var paramsAdded = addFreeParams(tree, proxies(proxyHolder)).asInstanceOf[DefDef]
-      if (sym.is(JavaStatic) && !paramsAdded.mods.is(JavaStatic))
-        paramsAdded = cpy.DefDef(paramsAdded)(mods = paramsAdded.mods | JavaStatic)
+      val paramsAdded = addFreeParams(tree, proxies(proxyHolder)).asInstanceOf[DefDef]
       if (sym.isConstructor) paramsAdded else liftDef(paramsAdded)
     }
     else tree

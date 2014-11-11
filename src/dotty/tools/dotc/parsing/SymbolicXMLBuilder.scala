@@ -165,7 +165,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
 
   /** could optimize if args.length == 0, args.length == 1 AND args(0) is <: Node. */
   def makeXMLseq(pos: Position, args: Seq[Tree]) = {
-    val buffer = ValDef(Modifiers(), _buf, TypeTree(), New(_scala_xml_NodeBuffer, ListOfNil))
+    val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, ListOfNil))
     val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), List(t)))
 
     atPos(pos)( Block(buffer :: applies.toList, Ident(_buf)) )
@@ -235,9 +235,9 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(implicit ctx: Cont
         case _                  => handleUnprefixedAttribute(k, v)
       }
 
-    lazy val scopeDef     = ValDef(Modifiers(), _scope, _scala_xml_NamespaceBinding, Ident(_tmpscope))
-    lazy val tmpScopeDef  = ValDef(Modifiers(Mutable), _tmpscope, _scala_xml_NamespaceBinding, Ident(_scope))
-    lazy val metadataDef  = ValDef(Modifiers(Mutable), _md, _scala_xml_MetaData, _scala_xml_Null)
+    lazy val scopeDef     = ValDef(_scope, _scala_xml_NamespaceBinding, Ident(_tmpscope))
+    lazy val tmpScopeDef  = ValDef(_tmpscope, _scala_xml_NamespaceBinding, Ident(_scope)).withFlags(Mutable)
+    lazy val metadataDef  = ValDef(_md, _scala_xml_MetaData, _scala_xml_Null).withFlags(Mutable)
     val makeSymbolicAttrs = if (!attributes.isEmpty) Ident(_md) else _scala_xml_Null
 
     val (attrResult, nsResult) =

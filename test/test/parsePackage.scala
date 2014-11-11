@@ -25,8 +25,8 @@ object parsePackage extends ParserTest {
           tree
         case InterpolatedString(id, parts, elems) =>
           InterpolatedString(id, parts map (transformSub(_)), elems map transform)
-        case ModuleDef(mods, name, impl) =>
-          ModuleDef(mods, name, transformSub(impl))
+        case mdef @ ModuleDef(name, impl) =>
+          ModuleDef(name, transformSub(impl)).withMods(mdef.mods)
         case Function(params, body) =>
           Function(params map transform, body)
         case InfixOp(l, o, r) =>

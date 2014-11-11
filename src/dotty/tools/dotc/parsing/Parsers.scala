@@ -12,6 +12,7 @@ import core._
 import Flags._
 import Contexts._
 import Names._
+import ast.Positioned
 import ast.Trees._
 import Decorators._
 import StdNames._
@@ -1030,7 +1031,7 @@ object Parsers {
         case USCORE =>
           val start = in.skipToken()
           val pname = ctx.freshName(nme.USCORE_PARAM_PREFIX).toTermName
-          val param = ValDef(Modifiers(SyntheticTermParam), pname, TypeTree(), EmptyTree)
+          val param = ValDef(pname, TypeTree(), EmptyTree).withFlags(SyntheticTermParam)
             .withPos(Position(start))
           placeholderParams = param :: placeholderParams
           atPos(start) { Ident(pname) }
@@ -1486,7 +1487,7 @@ object Parsers {
           val bounds =
             if (isConcreteOwner) typeParamBounds(name)
             else typeBounds()
-          TypeDef(mods, name, hkparams, bounds)
+          TypeDef(name, hkparams, bounds).withMods(mods)
         }
       }
       commaSeparated(typeParam)
@@ -1550,7 +1551,7 @@ object Parsers {
             mods = mods.withPos(mods.pos.withStart(implicitOffset))
             implicitOffset = -1
           }
-          ValDef(addFlag(mods, implicitFlag), name, tpt, default)
+          ValDef(name, tpt, default).withMods(addFlag(mods, implicitFlag))
         }
       }
       def paramClause(): List[ValDef] = inParens {
@@ -1687,7 +1688,7 @@ object Parsers {
           }
         } else EmptyTree
       lhs match {
-        case (id @ Ident(name: TermName)) :: Nil => cpy.ValDef(id)(mods, name, tpt, rhs)
+        case (id @ Ident(name: TermName)) :: Nil => cpy.ValDef(id)(name, tpt, rhs).withMods(mods)
         case _ => PatDef(mods, lhs, tpt, rhs)
       }
     }
@@ -1705,7 +1706,7 @@ object Parsers {
           accept(EQUALS)
           atPos(in.offset) { constrExpr() }
         }
-        makeConstructor(mods, Nil, vparamss, rhs)
+        makeConstructor(Nil, vparamss, rhs).withMods(mods)
       } else {
         val name = ident()
         val tparams = typeParamClauseOpt(ParamOwner.Def)
@@ -1716,7 +1717,7 @@ object Parsers {
             accept(EQUALS)
             expr()
           } else EmptyTree
-        DefDef(mods | Method, name, tparams, vparamss, tpt, rhs)
+        DefDef(name, tparams, vparamss, tpt, rhs).withMods(mods | Method)
       }
     }
 
@@ -1758,9 +1759,9 @@ object Parsers {
         in.token match {
           case EQUALS =>
             in.nextToken()
-            TypeDef(mods, name, tparams, typ())
+            TypeDef(name, tparams, typ()).withMods(mods)
           case SUPERTYPE | SUBTYPE | SEMI | NEWLINE | NEWLINES | COMMA | RBRACE | EOF =>
-            TypeDef(mods, name, tparams, typeBounds())
+            TypeDef(name, tparams, typeBounds()).withMods(mods)
           case _ =>
             syntaxErrorOrIncomplete("`=', `>:', or `<:' expected")
             EmptyTree
@@ -1796,10 +1797,10 @@ object Parsers {
         val tparams = typeParamClauseOpt(ParamOwner.Class)
         val cmods = constrModsOpt()
         val vparamss = paramClauses(name, mods is Case)
-        makeConstructor(cmods, tparams, vparamss)
+        makeConstructor(tparams, vparamss).withMods(cmods)
       }
       val templ = templateOpt(constr)
-      TypeDef(mods, name, templ)
+      TypeDef(name, templ).withMods(mods)
     }
 
     /** ConstrMods        ::=  AccessModifier
@@ -1818,7 +1819,7 @@ object Parsers {
     def objectDef(mods: Modifiers): ModuleDef = {
       val name = ident()
       val template = templateOpt(emptyConstructor())
-      ModuleDef(mods, name, template)
+      ModuleDef(name, template).withMods(mods)
     }
 
 /* -------- TEMPLATES ------------------------------------------- */
@@ -1941,7 +1942,7 @@ object Parsers {
             case Typed(tree @ This(tpnme.EMPTY), tpt) =>
               self = makeSelfDef(nme.WILDCARD, tpt).withPos(first.pos)
             case _ =>
-              val ValDef(_, name, tpt, _) = convertToParam(first, expected = "self type clause")
+              val ValDef(name, tpt, _) = convertToParam(first, expected = "self type clause")
               self = makeSelfDef(name, tpt).withPos(first.pos)
           }
           in.nextToken()

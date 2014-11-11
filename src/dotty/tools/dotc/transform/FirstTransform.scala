@@ -30,7 +30,7 @@ import NameOps._
 class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer { thisTransformer =>
   import ast.tpd._
 
-  override def phaseName = "companions"
+  override def phaseName = "firstTransform"
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case Select(qual, _) if tree.symbol.exists =>

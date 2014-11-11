@@ -81,7 +81,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
     tree match {
-      case dd@DefDef(mods, name, tparams, vparamss0, tpt, rhs0)
+      case dd@DefDef(name, tparams, vparamss0, tpt, rhs0)
         if (dd.symbol.isEffectivelyFinal) && !((dd.symbol is Flags.Accessor) || (rhs0 eq EmptyTree) || (dd.symbol is Flags.Label)) =>
         val mandatory = dd.symbol.hasAnnotation(defn.TailrecAnnotationClass)
         atGroupEnd { implicit ctx: Context =>
@@ -296,8 +296,8 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           assert(false, "We should've never gotten inside a pattern")
           tree
 
-        case ValDef(_, _, _, _) | EmptyTree | Super(_, _) | This(_) |
-             Literal(_) | TypeTree(_) | DefDef(_, _, _, _, _, _) | TypeDef(_, _, _) =>
+        case ValDef(_, _, _) | EmptyTree | Super(_, _) | This(_) |
+             Literal(_) | TypeTree(_) | DefDef(_, _, _, _, _) | TypeDef(_, _) =>
           tree
 
         case Return(expr, from) =>

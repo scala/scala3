@@ -61,9 +61,7 @@ class PrivateToStatic extends MiniPhase with SymTransformer { thisTransform =>
       if (shouldBeStatic(tree.symbol)) {
         val thisParamDef = ValDef(thisParam.asTerm)
         val vparams :: Nil = tree.vparamss
-        cpy.DefDef(tree)(
-          mods = tree.mods | JavaStatic,
-          vparamss = (thisParamDef :: vparams) :: Nil)
+        cpy.DefDef(tree)(vparamss = (thisParamDef :: vparams) :: Nil)
       }
       else tree
 
