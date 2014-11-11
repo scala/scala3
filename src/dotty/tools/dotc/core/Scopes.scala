@@ -28,9 +28,11 @@ object Scopes {
   private final val FillFactor = 2.0/3.0
 
   /** A hashtable is created once current size exceeds MinHash * FillFactor
-   *  The initial hash table has twice that size (i.e 24).
+   *  The initial hash table has twice that size (i.e 16).
+   *  This value must be a power of two, so that the index of an element can
+   *  be computed as element.hashCode & (hashTable.length - 1)
    */
-  private final val MinHash = 12
+  private final val MinHash = 8
 
   /** The maximal permissible number of recursions when creating
    *  a hashtable
