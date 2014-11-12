@@ -2,7 +2,7 @@ language: scala
 script:
   - sbt -Ddotty.travis.build=yes update compile test
 jdk:
-  - oraclejdk7
+  - oraclejdk8
 notifications:
   email:
     - dotty-reports@googlegroups.com
