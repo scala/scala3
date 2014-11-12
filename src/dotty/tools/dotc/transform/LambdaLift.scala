@@ -278,20 +278,26 @@ class LambdaLift extends MiniPhaseTransform with IdentityDenotTransformer { this
     }
   }
 
-  override def init(implicit ctx: Context, info: TransformerInfo) =
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
     ctx.atPhase(thisTransform) { implicit ctx =>
-      free.clear()
-      proxyMap.clear()
-      called.clear()
-      calledFromInner.clear()
-      liftedOwner.clear()
-      liftedDefs.clear()
       (new CollectDependencies).traverse(NoSymbol, ctx.compilationUnit.tpdTree)
       computeFreeVars()
       computeLiftedOwners()
       generateProxies()(ctx.withPhase(thisTransform.next))
       liftLocals()(ctx.withPhase(thisTransform.next))
     }
+    this
+  }
+
+  override def transformUnit(tree: Tree)(implicit ctx: Context, info: TransformerInfo) = {
+    free.clear()
+    proxyMap.clear()
+    called.clear()
+    calledFromInner.clear()
+    liftedOwner.clear()
+    liftedDefs.clear()
+    tree
+  }
 
   private def currentEnclosure(implicit ctx: Context) =
     ctx.owner.enclosingMethod.skipConstructor

@@ -53,11 +53,12 @@ class InterceptedMethods extends MiniPhaseTransform {
   private var primitiveGetClassMethods: Set[Symbol] = _
 
   /** perform context-dependant initialization */
-  override def init(implicit ctx: Context, info: TransformerInfo): Unit = {
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
     poundPoundMethods = Set(defn.Any_##)
     Any_comparisons = Set(defn.Any_==, defn.Any_!=)
     interceptedMethods = poundPoundMethods ++ Any_comparisons
     primitiveGetClassMethods = Set[Symbol]() ++ defn.ScalaValueClasses.map(x => x.requiredMethod(nme.getClass_))
+    this
   }
 
   // this should be removed if we have guarantee that ## will get Apply node
