@@ -142,9 +142,6 @@ object TreeTransforms {
       val last = info.transformers(info.transformers.length - 1)
       action(ctx.withPhase(last.phase.next))
     }
-
-    /** perform context-dependant initialization */
-    def init(implicit ctx: Context, info: TransformerInfo): Unit = {}
   }
 
   /** A phase that defines a TreeTransform to be used in a group */
@@ -531,9 +528,7 @@ object TreeTransforms {
       val initialTransformations = transformations
       val info = new TransformerInfo(initialTransformations, new NXTransformations(initialTransformations), this)
       initialTransformations.zipWithIndex.foreach {
-        case (transform, id) =>
-          transform.idx = id
-          transform.init(ctx, info)
+        case (transform, id) => transform.idx = id
       }
       implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForUnit, info.nx.nxPrepUnit, t, 0)
       if (mutatedInfo eq null) t
