@@ -17,7 +17,7 @@ import SymUtils._
 import collection.{ mutable, immutable }
 import collection.mutable.{ LinkedHashMap, LinkedHashSet, TreeSet }
 
-class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransform =>
+class CapturedVars extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
   import ast.tpd._
 
   /** the following two members override abstract members in Transform */
@@ -44,16 +44,10 @@ class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransfor
     }
   }
 
-  override def init(implicit ctx: Context, info: TransformerInfo): Unit =
+  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
     (new CollectCaptured)(ctx.withPhase(thisTransform)).runOver(ctx.compilationUnit.tpdTree)
-
-  override def transformSym(sd: SymDenotation)(implicit ctx: Context): SymDenotation =
-    if (captured(sd.symbol)) {
-      val newd = sd.copySymDenotation(
-        info = refCls(sd.info.classSymbol, sd.hasAnnotation(defn.VolatileAnnot)).typeRef)
-      newd.removeAnnotation(defn.VolatileAnnot)
-      newd
-    } else sd
+    this
+  }
 
   /** The {Volatile|}{Int|Double|...|Object}Ref class corresponding to the class `cls`,
    *  depending on whether the reference should be @volatile
@@ -66,6 +60,17 @@ class CapturedVars extends MiniPhaseTransform with SymTransformer { thisTransfor
   def capturedType(vble: Symbol)(implicit ctx: Context): Type = {
     val oldInfo = vble.denot(ctx.withPhase(thisTransform)).info
     refCls(oldInfo.classSymbol, vble.isVolatile).typeRef
+  }
+
+  override def prepareForValDef(vdef: ValDef)(implicit ctx: Context) = {
+    val sym = vdef.symbol
+    if (captured contains sym) {
+      val newd = sym.denot(ctx.withPhase(thisTransform)).copySymDenotation(
+        info = refCls(sym.info.classSymbol, sym.hasAnnotation(defn.VolatileAnnot)).typeRef)
+      newd.removeAnnotation(defn.VolatileAnnot)
+      newd.installAfter(thisTransform)
+    }
+    this
   }
 
   override def transformValDef(vdef: ValDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
