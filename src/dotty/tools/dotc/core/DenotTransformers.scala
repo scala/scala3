@@ -38,13 +38,23 @@ object DenotTransformers {
     def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type
 
     def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
-      val info1 = transformInfo(ref.info, ref.symbol)
-      if (info1 eq ref.info) ref
-      else ref match {
-        case ref: SymDenotation => ref.copySymDenotation(info = info1)
-        case _ => ref.derivedSingleDenotation(ref.symbol, info1)
+      val sym = ref.symbol
+      if (sym.exists && !mayChange(sym)) ref
+      else {
+        val info1 = transformInfo(ref.info, ref.symbol)
+        if (info1 eq ref.info) ref
+        else ref match {
+          case ref: SymDenotation => ref.copySymDenotation(info = info1)
+          case _ => ref.derivedSingleDenotation(ref.symbol, info1)
+        }
       }
     }
+
+    /** Denotations with a symbol where `mayChange` is false are guaranteed to be
+     *  unaffected by this transform, so `transformInfo` need not be run. This
+     *  can save time, and more importantly, can help avoid forcing symbol completers.
+     */
+    protected def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = true
   }
 
   /** A transformer that only transforms SymDenotations */

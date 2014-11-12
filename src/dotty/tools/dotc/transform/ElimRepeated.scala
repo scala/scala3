@@ -28,6 +28,8 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer { thisTransfo
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
     elimRepeated(tp)
 
+  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym is Method
+
   private def elimRepeated(tp: Type)(implicit ctx: Context): Type = tp.stripTypeVar match {
     case tp @ MethodType(paramNames, paramTypes) =>
       val resultType1 = elimRepeated(tp.resultType)
