@@ -214,6 +214,10 @@ class ClassfileParser(
     }
   }
 
+  /** Map direct references to Object to references to Any */
+  final def objToAny(tp: Type)(implicit ctx: Context) =
+    if (tp.isDirectRef(defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else tp
+
   private def sigToType(sig: TermName, owner: Symbol = null)(implicit ctx: Context): Type = {
     var index = 0
     val end = sig.length
@@ -258,12 +262,12 @@ class ClassfileParser(
                     case variance @ ('+' | '-' | '*') =>
                       index += 1
                       val bounds = variance match {
-                        case '+' => TypeBounds.upper(sig2type(tparams, skiptvs).objToAny)
+                        case '+' => objToAny(TypeBounds.upper(sig2type(tparams, skiptvs)))
                         case '-' =>
                           val tp = sig2type(tparams, skiptvs)
                           // sig2type seems to return AnyClass regardless of the situation:
                           // we don't want Any as a LOWER bound.
-                          if (tp isRef defn.AnyClass) TypeBounds.empty
+                          if (tp.isDirectRef(defn.AnyClass)) TypeBounds.empty
                           else TypeBounds.lower(tp)
                         case '*' => TypeBounds.empty
                       }
@@ -310,7 +314,7 @@ class ClassfileParser(
           var paramnames = new ListBuffer[TermName]()
           while (sig(index) != ')') {
             paramnames += nme.syntheticParamName(paramtypes.length)
-            paramtypes += sig2type(tparams, skiptvs).objToAny
+            paramtypes += objToAny(sig2type(tparams, skiptvs))
           }
           index += 1
           val restype = sig2type(tparams, skiptvs)
@@ -328,7 +332,7 @@ class ClassfileParser(
       while (sig(index) == ':') {
         index += 1
         if (sig(index) != ':') // guard against empty class bound
-          ts += sig2type(tparams, skiptvs).objToAny
+          ts += objToAny(sig2type(tparams, skiptvs))
       }
       TypeBounds.upper(((NoType: Type) /: ts)(_ & _) orElse defn.AnyType)
     }
