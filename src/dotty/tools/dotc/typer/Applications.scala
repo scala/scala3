@@ -915,6 +915,10 @@ trait Applications extends Compatibility { self: Typer =>
     val candidates = pt match {
       case pt @ FunProto(args, resultType, _) =>
         val numArgs = args.length
+        val normArgs = args.mapConserve {
+          case Block(Nil, expr) => expr
+          case x => x
+        }
 
         def sizeFits(alt: TermRef, tp: Type): Boolean = tp match {
           case tp: PolyType => sizeFits(alt, tp.resultType)
@@ -933,22 +937,25 @@ trait Applications extends Compatibility { self: Typer =>
         def narrowBySize(alts: List[TermRef]): List[TermRef] =
           alts filter (alt => sizeFits(alt, alt.widen))
 
-        def narrowByShapes(alts: List[TermRef]): List[TermRef] =
-          if (args exists (_.isInstanceOf[untpd.Function]))
+        def narrowByShapes(alts: List[TermRef]): List[TermRef] = {
+          if (normArgs exists (_.isInstanceOf[untpd.Function]))
             if (args exists (_.isInstanceOf[Trees.NamedArg[_]]))
               narrowByTrees(alts, args map treeShape, resultType)
             else
-              narrowByTypes(alts, args map typeShape, resultType)
+              narrowByTypes(alts, normArgs map typeShape, resultType)
           else
             alts
+        }
 
         def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] =
           alts filter (isApplicable(_, targs, args, resultType))
 
         val alts1 = narrowBySize(alts)
+        //ctx.log(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
         if (isDetermined(alts1)) alts1
         else {
           val alts2 = narrowByShapes(alts1)
+          //ctx.log(i"narrowed by shape: ${alts1.map(_.symbol.showDcl)}%, %")
           if (isDetermined(alts2)) alts2
           else narrowByTrees(alts2, pt.typedArgs, resultType)
         }
