@@ -24,7 +24,7 @@ class TreeTransformerTest extends DottyTest {
 
         override def phaseName: String = "test"
       }
-      val transformed = transformer.transform(tree)
+      val transformed = transformer.macroTransform(tree)
 
       Assert.assertTrue("returns same tree if unmodified",
         tree eq transformed
@@ -46,7 +46,7 @@ class TreeTransformerTest extends DottyTest {
 
         override def phaseName: String = "test"
       }
-      val transformed = transformer.transform(tree)
+      val transformed = transformer.macroTransform(tree)
 
       Assert.assertTrue("returns same tree if unmodified",
         transformed.toString.contains("List(ValDef(Modifiers(,,List()),d,TypeTree[TypeRef(ThisType(module class scala),Int)],Literal(Constant(2)))")
@@ -77,7 +77,7 @@ class TreeTransformerTest extends DottyTest {
         override def phaseName: String = "test"
 
       }
-      val tr = transformer.transform(tree).toString
+      val tr = transformer.macroTransform(tree).toString
 
       Assert.assertTrue("node can rewrite children",
         tr.contains("Literal(Constant(2))") && !tr.contains("Literal(Constant(-1))")
@@ -123,7 +123,7 @@ class TreeTransformerTest extends DottyTest {
 
         override def phaseName: String = "test"
       }
-      val tr = transformer.transform(tree).toString
+      val tr = transformer.macroTransform(tree).toString
 
       Assert.assertTrue("node can rewrite children",
         tr.contains("Literal(Constant(3))")
@@ -191,7 +191,7 @@ class TreeTransformerTest extends DottyTest {
 
         override def phaseName: String = "test"
       }
-      val tr = transformer.transform(tree).toString
+      val tr = transformer.macroTransform(tree).toString
       Assert.assertTrue("transformations aren't invoked multiple times",
         transformed1 == 2 && transformed2 == 3
       )
