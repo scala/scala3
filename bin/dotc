@@ -185,6 +185,9 @@ case "$1" in
     -d|-debug) debug=true && shift ;;
     -q|-quiet) quiet=true && shift ;;
 
+    # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
+    -Oshort) addJava "-XX:+TieredCompilation -XX:TieredStopAtLevel=1" && shift ;;
+
         -repl) main_class=$ReplMain && shift ;;
      -compile) main_class=$CompilerMain && shift ;;
          -run) main_class=$ReplMain && shift ;;
