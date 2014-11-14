@@ -45,6 +45,8 @@ object Reporter {
 
     override def toString = s"$getClass at $pos: $msg"
     override def getMessage() = msg
+
+    def checkingStr: String = msgFn
   }
 
   class Error(msgFn: => String, pos: SourcePosition) extends Diagnostic(msgFn, pos, ERROR)
