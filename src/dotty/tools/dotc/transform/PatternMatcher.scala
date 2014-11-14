@@ -1376,8 +1376,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       def subPatTypes: List[Type] = typedPatterns map (_.tpe)
 
-      // there are `productArity` non-seq elements in the tuple.
-      protected def firstIndexingBinder = productArity
+      // there are `prodArity` non-seq elements in the tuple.
+      protected def firstIndexingBinder = prodArity
       protected def expectedLength      = elementArity
       protected def lastIndexingBinder  = totalArity - starArity - 1
 
@@ -1535,7 +1535,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       // the trees that select the subpatterns on the extractor's result, referenced by `binder`
       // require (totalArity > 0 && (!lastIsStar || isSeq))
       protected def subPatRefs(binder: Symbol, subpatBinders: List[Symbol], binderTypeTested: Type): List[Tree] = {
-        if(aligner.isSingle && aligner.extractor.productArity == 1 && defn.isTupleType(binder.info)) {
+        if(aligner.isSingle && aligner.extractor.prodArity == 1 && defn.isTupleType(binder.info)) {
           // special case for extractor
           // comparing with scalac additional assertions added
           val subpw = subpatBinders.head.info.widen
@@ -1577,13 +1577,13 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     *
     *  Here Pm/Fi is the last pattern to match the fixed arity section.
     *
-    *    productArity: the value of i, i.e. the number of non-sequence types in the extractor
+    *    prodArity: the value of i, i.e. the number of non-sequence types in the extractor
     *    nonStarArity: the value of j, i.e. the number of non-star patterns in the case definition
     *    elementArity: j - i, i.e. the number of non-star patterns which must match sequence elements
     *       starArity: 1 or 0 based on whether there is a star (sequence-absorbing) pattern
     *      totalArity: nonStarArity + starArity, i.e. the number of patterns in the case definition
     *
-    *  Note that productArity is a function only of the extractor, and
+    *  Note that prodArity is a function only of the extractor, and
     *  nonStar/star/totalArity are all functions of the patterns. The key
     *  value for aligning and typing the patterns is elementArity, as it
     *  is derived from both sets of information.
@@ -1651,7 +1651,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     final case class Extractor(whole: Type, fixed: List[Type], repeated: Repeated) {
       require(whole != NoType, s"expandTypes($whole, $fixed, $repeated)")
 
-      def productArity = fixed.length
+      def prodArity    = fixed.length
       def hasSeq       = repeated.exists
       def elementType  = repeated.elementType
       def sequenceType = repeated.sequenceType
@@ -1681,8 +1681,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       *  < 0: There are more products than patterns: compile time error.
       */
     final case class Aligned(patterns: Patterns, extractor: Extractor) {
-      def elementArity = patterns.nonStarArity - productArity
-      def productArity = extractor.productArity
+      def elementArity = patterns.nonStarArity - prodArity
+      def prodArity    = extractor.prodArity
       def starArity    = patterns.starArity
       def totalArity   = patterns.totalArity
 
@@ -1693,15 +1693,15 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       def typedNonStarPatterns = products ::: elements
       def typedPatterns        = typedNonStarPatterns ::: stars
 
-      def isBool   = !isSeq && productArity == 0
+      def isBool   = !isSeq && prodArity == 0
       def isSingle = !isSeq && totalArity == 1
       def isStar   = patterns.hasStar
       def isSeq    = extractor.hasSeq
 
       private def typedAsElement(pat: Pattern)  = TypedPat(pat, extractor.elementType)
       private def typedAsSequence(pat: Pattern) = TypedPat(pat, extractor.sequenceType)
-      private def productPats = patterns.fixed take productArity
-      private def elementPats = patterns.fixed drop productArity
+      private def productPats = patterns.fixed take prodArity
+      private def elementPats = patterns.fixed drop prodArity
       private def products    = (productPats, productTypes).zipped map TypedPat
       private def elements    = elementPats map typedAsElement
       private def stars       = patterns.starPatterns map typedAsSequence
@@ -1710,7 +1710,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       |Aligned {
       |   patterns  $patterns
       |  extractor  $extractor
-      |    arities  $productArity/$elementArity/$starArity  // product/element/star
+      |    arities  $prodArity/$elementArity/$starArity  // product/element/star
       |      typed  ${typedPatterns mkString ", "}
       |}""".stripMargin.trim
     }
@@ -1826,7 +1826,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         def offering      = extractor.offeringString
         def symString     = tree.symbol.showLocated
         def offerString   = if (extractor.isErroneous) "" else s" offering $offering"
-        def arityExpected = ( if (extractor.hasSeq) "at least " else "" ) + productArity
+        def arityExpected = ( if (extractor.hasSeq) "at least " else "" ) + prodArity
 
         def err(msg: String)         = ctx.error(msg, tree.pos)
         def warn(msg: String)        = ctx.warning(msg, tree.pos)
@@ -1871,12 +1871,12 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           *  process, we will tuple the extractor before creation Aligned so that
           *  it contains known good values.
           */
-        def productArity    = extractor.productArity
+        def prodArity       = extractor.prodArity
         def acceptMessage   = if (extractor.isErroneous) "" else s" to hold ${extractor.offeringString}"
-        val requiresTupling = isUnapply && patterns.totalArity == 1 && productArity > 1
+        val requiresTupling = isUnapply && patterns.totalArity == 1 && prodArity > 1
 
         //if (requiresTupling && effectivePatternArity(args) == 1)
-        //  currentUnit.deprecationWarning(sel.pos, s"${sel.symbol.owner} expects $productArity patterns$acceptMessage but crushing into $productArity-tuple to fit single pattern (SI-6675)")
+        //  currentUnit.deprecationWarning(sel.pos, s"${sel.symbol.owner} expects $prodArity patterns$acceptMessage but crushing into $prodArity-tuple to fit single pattern (SI-6675)")
 
         val normalizedExtractor =
           if (requiresTupling)
