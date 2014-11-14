@@ -33,7 +33,6 @@ object OverridingPairs {
     protected def exclude(sym: Symbol): Boolean =
       sym.isConstructor ||
       sym.is(Private) ||
-      sym.is(Module) && sym.is(Synthetic) || // TODO: move to refchecks
       sym.is(ExcludedType)
 
     /** The parents of base (may also be refined).

@@ -107,6 +107,7 @@ object RefChecks {
    */
   private def checkAllOverrides(clazz: Symbol)(implicit ctx: Context): Unit = {
     val self = clazz.thisType
+    var hasErrors = false
 
     case class MixinOverrideError(member: Symbol, msg: String)
 
@@ -135,14 +136,15 @@ object RefChecks {
 
     def infoString0(sym: Symbol, showLocation: Boolean) = {
       val sym1 = sym.underlyingSymbol
+      def info = self.memberInfo(sym1)
       if (showLocation) sym1.showLocated
       else
-        sym1.show +
-          (if (sym1.isAliasType) ", which equals " + self.memberInfo(sym1)
-          else if (sym1.isAbstractType) " with bounds" + self.memberInfo(sym1)
+        i"$sym1${
+          if (sym1.isAliasType) i", which equals $info"
+          else if (sym1.isAbstractType) i" with bounds $info"
           else if (sym1.is(Module)) ""
-          else if (sym1.isTerm) " of type " + self.memberInfo(sym1)
-          else "")
+          else if (sym1.isTerm) i" of type $info"
+          else ""}"
     }
 
     /* Check that all conditions for overriding `other` by `member`
@@ -171,10 +173,15 @@ object RefChecks {
         "overriding %s;\n %s %s%s".format(
           infoStringWithLocation(other), infoString(member), msg, addendum)
       }
-      def emitOverrideError(fullmsg: String) = {
-        if (member.owner == clazz) ctx.error(fullmsg, member.pos)
-        else mixinOverrideErrors += new MixinOverrideError(member, fullmsg)
-      }
+
+      def emitOverrideError(fullmsg: String) =
+        if (!(hasErrors && member.is(Synthetic) && member.is(Module))) {
+          // suppress errors relating toi synthetic companion objects if other override
+          // errors (e.g. relating to the companion class) have already been reported.
+          if (member.owner == clazz) ctx.error(fullmsg, member.pos)
+          else mixinOverrideErrors += new MixinOverrideError(member, fullmsg)
+          hasErrors = true
+        }
 
       def overrideError(msg: String) = {
         if (noErrorType)
