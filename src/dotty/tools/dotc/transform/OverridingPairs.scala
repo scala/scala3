@@ -4,7 +4,7 @@ package transform
 import core._
 import Flags._, Symbols._, Contexts._, Types._, Scopes._, Decorators._
 import util.HashSet
-import collection.mutable.HashMap
+import collection.mutable
 import collection.immutable.BitSet
 import scala.annotation.tailrec
 
@@ -33,7 +33,7 @@ object OverridingPairs {
     protected def exclude(sym: Symbol): Boolean =
       sym.isConstructor ||
       sym.is(Private) ||
-      sym.is(Module) && sym.is(Synthetic) ||
+      sym.is(Module) && sym.is(Synthetic) || // TODO: move to refchecks
       sym.is(ExcludedType)
 
     /** The parents of base (may also be refined).
@@ -75,7 +75,7 @@ object OverridingPairs {
     }
 
     private val subParents = {
-      val subParents = new HashMap[Symbol, BitSet]
+      val subParents = new mutable.HashMap[Symbol, BitSet]
       for (bc <- base.info.baseClasses)
         subParents(bc) = BitSet(parents.indices.filter(parents(_).derivesFrom(bc)): _*)
       subParents
@@ -88,7 +88,7 @@ object OverridingPairs {
      *  (maybe excluded because of hasCommonParentAsSubclass).
      *  These will not appear as overriding
      */
-    private val visited = new HashSet[ScopeEntry](64)
+    private val visited = new mutable.HashSet[Symbol]
 
     /** The current entry candidate for overriding
      */
@@ -104,43 +104,50 @@ object OverridingPairs {
     var overridden: Symbol = _
 
     //@M: note that next is called once during object initialization
-    def hasNext: Boolean = curEntry ne null
+    final def hasNext: Boolean = nextEntry ne null
 
-    @tailrec
-    final def next(): Unit = {
-      if (curEntry ne null) {
-        overriding = curEntry.sym
-        if (nextEntry ne null) {
-          val overridingOwner = overriding.owner
-          def qualifies(candidate: Symbol) =
-            candidate.canMatchInheritedSymbols &&
-            overriding.owner != candidate.owner &&
-            matches(overriding, candidate) &&
-            !exclude(candidate) &&
-            !exclude(overriding)
-          do {
-            do {
-              nextEntry = decls.lookupNextEntry(nextEntry);
-            } while ((nextEntry ne null) && !qualifies(nextEntry.sym))
-            if (nextEntry ne null) visited.addEntry(nextEntry)
-            // skip nextEntry if a class in `parents` is a subclass of the owners of both
-            // overriding and nextEntry.sym
-          } while ((nextEntry ne null) &&
-                   hasCommonParentAsSubclass(overridingOwner, nextEntry.sym.owner))
-          if (nextEntry ne null) {
-            overridden = nextEntry.sym;
-            //Console.println("yield: " + overriding + overriding.locationString + " / " + overridden + overridden.locationString);//DEBUG
-          } else {
-            do {
-              curEntry = curEntry.prev
-            } while ((curEntry ne null) && visited.contains(curEntry))
-            nextEntry = curEntry
-            next
+    /**  @post
+     *     curEntry   = the next candidate that may override something else
+     *     nextEntry  = curEntry
+     *     overriding = curEntry.sym
+     */
+    private def nextOverriding(): Unit = {
+      @tailrec def loop(): Unit =
+        if (curEntry ne null) {
+          overriding = curEntry.sym
+          if (visited.contains(overriding) || exclude(overriding)) {
+            curEntry = curEntry.prev
+            loop()
           }
         }
-      }
+      loop()
+      nextEntry = curEntry
     }
 
-    next
+    /** @post
+     *    hasNext    = there is another overriding pair
+     *    overriding = overriding member of the pair, provided hasNext is true
+     *    overridden = overridden member of the pair, provided hasNext is true
+     */
+    @tailrec final def next(): Unit =
+      if (nextEntry ne null) {
+        nextEntry = decls.lookupNextEntry(nextEntry)
+        if (nextEntry ne null) {
+          overridden = nextEntry.sym
+          if (overriding.owner != overridden.owner &&
+              matches(overriding, overridden) &&
+              !exclude(overridden)) {
+            visited += overridden
+            if (!hasCommonParentAsSubclass(overriding.owner, overridden.owner)) return
+          }
+        } else {
+          curEntry = curEntry.prev
+          nextOverriding()
+        }
+        next()
+      }
+
+    nextOverriding()
+    next()
   }
 }
