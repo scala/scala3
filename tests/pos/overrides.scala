@@ -6,7 +6,7 @@ class A[T] {
 
 class B extends A[Int] {
 
-  def f(x: Int)(y: Int) = y
+  override def f(x: Int)(y: Int) = y
 
   f(2)()
 

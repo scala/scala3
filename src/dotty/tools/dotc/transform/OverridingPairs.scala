@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Flags._, Symbols._, Contexts._, Types._, Scopes._
+import Flags._, Symbols._, Contexts._, Types._, Scopes._, Decorators._
 import util.HashSet
 import collection.mutable.HashMap
 import collection.immutable.BitSet
@@ -18,6 +18,8 @@ import scala.annotation.tailrec
  */
 object OverridingPairs {
 
+  private val ExcludedType = ExpandedName.toTypeFlags | TypeArgument
+
   /** The cursor class
    *  @param base   the base class that contains the overriding pairs
    */
@@ -29,7 +31,10 @@ object OverridingPairs {
      *  But it may be refined in subclasses.
      */
     protected def exclude(sym: Symbol): Boolean =
-      sym.isConstructor || sym.is(PrivateLocal)
+      sym.isConstructor ||
+      sym.is(Private) ||
+      sym.is(Module) && sym.is(Synthetic) ||
+      sym.is(ExcludedType)
 
     /** The parents of base (may also be refined).
      */
@@ -77,7 +82,7 @@ object OverridingPairs {
     }
 
     private def hasCommonParentAsSubclass(cls1: Symbol, cls2: Symbol): Boolean =
-      (subParents(cls1) intersect subParents(cls2)).isEmpty
+      (subParents(cls1) intersect subParents(cls2)).nonEmpty
 
     /** The scope entries that have already been visited as overridden
      *  (maybe excluded because of hasCommonParentAsSubclass).
@@ -107,21 +112,16 @@ object OverridingPairs {
         overriding = curEntry.sym
         if (nextEntry ne null) {
           val overridingOwner = overriding.owner
+          def qualifies(candidate: Symbol) =
+            candidate.canMatchInheritedSymbols &&
+            overriding.owner != candidate.owner &&
+            matches(overriding, candidate) &&
+            !exclude(candidate) &&
+            !exclude(overriding)
           do {
             do {
               nextEntry = decls.lookupNextEntry(nextEntry);
-              /* DEBUG
-              if ((nextEntry ne null) &&
-                  !(nextEntry.sym hasFlag PRIVATE) &&
-                  !(overriding.owner == nextEntry.sym.owner) &&
-                  !matches(overriding, nextEntry.sym))
-                println("skipping "+overriding+":"+self.memberType(overriding)+overriding.locationString+" to "+nextEntry.sym+":"+self.memberType(nextEntry.sym)+nextEntry.sym.locationString)
-              */
-              } while ((nextEntry ne null) &&
-                       (//!!!!nextEntry.sym.canMatchInheritedSymbols ||
-                        (overriding.owner == nextEntry.sym.owner) ||
-                        (!matches(overriding, nextEntry.sym)) ||
-                        (exclude(overriding))))
+            } while ((nextEntry ne null) && !qualifies(nextEntry.sym))
             if (nextEntry ne null) visited.addEntry(nextEntry)
             // skip nextEntry if a class in `parents` is a subclass of the owners of both
             // overriding and nextEntry.sym

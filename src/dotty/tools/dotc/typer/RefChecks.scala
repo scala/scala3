@@ -246,7 +246,7 @@ object RefChecks {
       } else if (!other.is(Deferred) && member.isClass) {
         overrideError("cannot be used here - classes can only override abstract types")
       } else if (other.isEffectivelyFinal) { // (1.2)
-        overrideError("cannot override final member")
+        overrideError(i"cannot override final member ${other.showLocated}")
       } else if (!other.is(Deferred) && !isDefaultGetter(other.name) && !member.is(AnyOverrideOrSynthetic)) {
         // (*) Synthetic exclusion for (at least) default getters, fixes SI-5178. We cannot assign the OVERRIDE flag to
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.

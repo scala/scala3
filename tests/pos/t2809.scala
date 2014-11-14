@@ -12,7 +12,7 @@ package p2 { // all being in the same package compiles fine
   }
 
   abstract class T3 extends T2 {
-    class A {
+    class A2 {
       bug()
     }
   }
