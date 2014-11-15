@@ -197,8 +197,6 @@ trait TypeOps { this: Context =>
     }
   }
 
-
-
   private def enterArgBinding(formal: Symbol, info: Type, cls: ClassSymbol, decls: Scope) = {
     val lazyInfo = new LazyType { // needed so we do not force `formal`.
       def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
@@ -207,7 +205,11 @@ trait TypeOps { this: Context =>
       }
     }
     val typeArgFlag = if (formal is Local) TypeArgument else EmptyFlags
-    val sym = ctx.newSymbol(cls, formal.name, formal.flagsUNSAFE & RetainedTypeArgFlags | typeArgFlag, lazyInfo)
+    val sym = ctx.newSymbol(
+      cls, formal.name,
+      formal.flagsUNSAFE & RetainedTypeArgFlags | typeArgFlag | Override,
+      lazyInfo,
+      coord = cls.coord)
     cls.enter(sym, decls)
   }
 

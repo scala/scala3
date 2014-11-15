@@ -30,10 +30,7 @@ object OverridingPairs {
     /** Symbols to exclude: Here these are constructors and private locals.
      *  But it may be refined in subclasses.
      */
-    protected def exclude(sym: Symbol): Boolean =
-      sym.isConstructor ||
-      sym.is(Private) ||
-      sym.is(ExcludedType)
+    protected def exclude(sym: Symbol): Boolean = !sym.memberCanMatchInheritedSymbols
 
     /** The parents of base (may also be refined).
      */
