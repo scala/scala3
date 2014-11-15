@@ -5,7 +5,7 @@ import transform._
 import core._
 import config._
 import Symbols._, SymDenotations._, Types._, Contexts._, Decorators._, Flags._, Names._, NameOps._
-import StdNames._, Denotations._, Scopes._, Constants.Constant
+import StdNames._, Denotations._, Scopes._, Constants.Constant, SymUtils._
 import Annotations._
 import util.Positions._
 import scala.collection.{ mutable, immutable }
@@ -28,9 +28,6 @@ object RefChecks {
   private val defaultMethodFilter = new NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = isDefaultGetter(name)
   }
-
-  private val AnyOverride = Override | AbsOverride
-  private val AnyOverrideOrSynthetic = AnyOverride | Synthetic
 
   /** Only one overloaded alternative is allowed to define default arguments */
   private def checkOverloadedRestrictions(clazz: Symbol)(implicit ctx: Context): Unit = {
@@ -254,8 +251,10 @@ object RefChecks {
         overrideError("cannot be used here - classes can only override abstract types")
       } else if (other.isEffectivelyFinal) { // (1.2)
         overrideError(i"cannot override final member ${other.showLocated}")
-      } else if (!other.is(Deferred) && !isDefaultGetter(other.name) && !member.is(AnyOverrideOrSynthetic)) {
-        // (*) Synthetic exclusion for (at least) default getters, fixes SI-5178. We cannot assign the OVERRIDE flag to
+      } else if (!other.is(Deferred) &&
+                 !isDefaultGetter(other.name) &&
+                 !member.isAnyOverride) {
+        // (*) Exclusion for default getters, fixes SI-5178. We cannot assign the Override flag to
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
         if (member.owner != clazz && other.owner != clazz && !(other.owner derivesFrom member.owner))
           emitOverrideError(
@@ -266,13 +265,13 @@ object RefChecks {
           overrideError("needs `override' modifier")
       } else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride)) {
         overrideError("needs `abstract override' modifiers")
-      } else if (member.is(AnyOverride) && other.is(Accessor) &&
+      } else if (member.is(Override) && other.is(Accessor) &&
         other.accessedFieldOrGetter.is(Mutable, butNot = Lazy)) {
         // !?! this is not covered by the spec. We need to resolve this either by changing the spec or removing the test here.
         // !!! is there a !?! convention? I'm !!!ing this to make sure it turns up on my searches.
         if (!ctx.settings.overrideVars.value)
           overrideError("cannot override a mutable variable")
-      } else if (member.is(AnyOverride) &&
+      } else if (member.isAnyOverride &&
         !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&
         !member.is(Deferred) && !other.is(Deferred) &&
         intersectionIsEmpty(member.extendedOverriddenSymbols, other.extendedOverriddenSymbols)) {
@@ -550,7 +549,7 @@ object RefChecks {
 
     // 4. Check that every defined member with an `override` modifier overrides some other member.
     for (member <- clazz.info.decls)
-      if (member.is(AnyOverride) && !(clazz.thisType.baseClasses exists (hasMatchingSym(_, member)))) {
+      if (member.isAnyOverride && !(clazz.thisType.baseClasses exists (hasMatchingSym(_, member)))) {
         // for (bc <- clazz.info.baseClasses.tail) Console.println("" + bc + " has " + bc.info.decl(member.name) + ":" + bc.info.decl(member.name).tpe);//DEBUG
 
         val nonMatching = clazz.info.member(member.name).altsWith(alt => alt.owner != clazz && !alt.is(Final))
@@ -563,7 +562,8 @@ object RefChecks {
             val superSigs = ms.map(_.showDcl).mkString("\n")
             issueError(s".\nNote: the super classes of ${member.owner} contain the following, non final members named ${member.name}:\n${superSigs}")
         }
-        member.resetFlag(AnyOverride)
+        member.resetFlag(Override)
+        member.resetFlag(AbsOverride)
       }
   }
 
