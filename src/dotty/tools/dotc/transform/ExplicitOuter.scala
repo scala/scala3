@@ -55,6 +55,8 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
       tp
   }
 
+  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isClass
+
   /** First, add outer accessors if a class does not have them yet and it references an outer this.
    *  If the class has outer accessors, implement them.
    *  Furthermore, if a parent trait might have an outer accessor,

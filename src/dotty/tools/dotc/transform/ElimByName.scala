@@ -116,4 +116,6 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
     case ExprType(rt) if exprBecomesFunction(sym) => defn.FunctionType(Nil, rt)
     case _ => tp
   }
+
+  override def mayChange(sym: Symbol)(implicit ctx: Context): Boolean = sym.isTerm
 }

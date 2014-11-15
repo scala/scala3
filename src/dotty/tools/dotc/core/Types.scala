@@ -105,6 +105,15 @@ object Types {
         false
     }
 
+    /** Is this type a (neither aliased nor applied) reference to class `sym`? */
+    def isDirectRef(sym: Symbol)(implicit ctx: Context): Boolean = stripTypeVar match {
+      case this1: TypeRef =>
+        this1.name == sym.name && // avoid forcing info if names differ
+        (this1.symbol eq sym)
+      case _ =>
+        false
+    }
+
     /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
     final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean = this match {
       case tp: TypeRef =>
@@ -662,10 +671,6 @@ object Types {
       case tp @ RefinedType(tycon, _) => tycon.unrefine
       case _ => this
     }
-
-    /** Map references to Object to references to Any; needed for Java interop */
-    final def objToAny(implicit ctx: Context) =
-      if ((this isRef defn.ObjectClass) && !ctx.phase.erasedTypes) defn.AnyType else this
 
     /** If this is a (possibly aliased, annotated, and/or parameterized) reference to
      *  a class, the class type ref, otherwise NoType.
