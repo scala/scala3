@@ -142,8 +142,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case AnnotatedType(annot, tpe) =>
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
-        val suffix = if (tp.isInstantiated) "'" else "?"
-        toTextLocal(tp.instanceOpt orElse tp.origin) ~ suffix // debug for now, so that we can see where the TypeVars are.
+        if (tp.isInstantiated)
+          toTextLocal(tp.instanceOpt) ~ "'" // debug for now, so that we can see where the TypeVars are.
+        else
+          "(" ~ toText(tp.origin) ~ "?" ~
+          toText(ctx.typerState.constraint.bounds(tp.origin)) ~ ")"
       case _ =>
         tp.fallbackToText(this)
     }
