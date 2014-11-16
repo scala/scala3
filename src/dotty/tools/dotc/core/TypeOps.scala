@@ -56,7 +56,13 @@ trait TypeOps { this: Context =>
   final def simplify(tp: Type, theMap: SimplifyMap): Type = tp match {
     case tp: NamedType =>
       if (tp.symbol.isStatic) tp
-      else tp.derivedSelect(simplify(tp.prefix, theMap))
+      else tp.derivedSelect(simplify(tp.prefix, theMap)) match {
+        case tp1: NamedType if tp1.denotationIsCurrent =>
+          val tp2 = tp1.reduceProjection
+          //if (tp2 ne tp1) println(i"simplified $tp1 -> $tp2")
+          tp2
+        case tp1 => tp1
+      }
     case tp: PolyParam =>
       typerState.constraint.typeVarOfParam(tp) orElse tp
     case  _: ThisType | _: BoundType | NoPrefix =>

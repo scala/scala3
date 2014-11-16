@@ -1309,6 +1309,39 @@ object Types {
       if (name.isInheritedName) prefix.nonPrivateMember(name.revertInherited)
       else prefix.member(name)
 
+    /** Reduce a type-ref `T { X = U; ... } # X`  to   `U`
+     *  provided `U` does not refer with a RefinedThis to the
+     *  refinement type `T { X = U; ... }`.
+     */
+    def reduceProjection(implicit ctx: Context) =
+      if (projectsRefinement(prefix))
+        info match {
+          case TypeBounds(lo, hi) if (lo eq hi) && !dependsOnRefinedThis(hi) => hi
+          case _ => this
+        }
+      else this
+
+    private def projectsRefinement(tp: Type)(implicit ctx: Context): Boolean = tp.stripTypeVar match {
+      case tp: RefinedType => (tp.refinedName eq name) || projectsRefinement(tp.parent)
+      case _ => false
+    }
+
+    private def dependsOnRefinedThis(tp: Type)(implicit ctx: Context): Boolean = tp.stripTypeVar match {
+      case tp @ TypeRef(RefinedThis(rt), _) if rt refines prefix =>
+        tp.info match {
+          case TypeBounds(lo, hi) if lo eq hi => dependsOnRefinedThis(hi)
+          case _ => true
+        }
+      case RefinedThis(rt) => rt refines prefix
+      case tp: NamedType =>
+        !tp.symbol.isStatic && dependsOnRefinedThis(tp.prefix)
+      case tp: RefinedType => dependsOnRefinedThis(tp.refinedInfo) || dependsOnRefinedThis(tp.parent)
+      case tp: TypeBounds => dependsOnRefinedThis(tp.lo) || dependsOnRefinedThis(tp.hi)
+      case tp: AnnotatedType => dependsOnRefinedThis(tp.underlying)
+      case tp: AndOrType => dependsOnRefinedThis(tp.tp1) || dependsOnRefinedThis(tp.tp2)
+      case _ => false
+    }
+
     def symbol(implicit ctx: Context): Symbol = {
       val now = ctx.period
       if (checkedPeriod == now ||
