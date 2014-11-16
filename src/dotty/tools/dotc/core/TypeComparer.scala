@@ -699,7 +699,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       }
       compareRefined
     case OrType(tp21, tp22) =>
-      isSubType(tp1, tp21) || isSubType(tp1, tp22) || fourthTry(tp1, tp2)
+      eitherIsSubType(tp1, tp21, tp1, tp22) || fourthTry(tp1, tp2)
     case tp2 @ MethodType(_, formals2) =>
       def compareMethod = tp1 match {
         case tp1 @ MethodType(_, formals1) =>
@@ -799,11 +799,50 @@ class TypeComparer(initctx: Context) extends DotClass {
         finally pendingRefinedBases = saved
       } || needsEtaLift(tp2, tp1) && tp2.testLifted(tp1.typeParams, isSubType(tp1, _))
     case AndType(tp11, tp12) =>
-      isNewSubType(tp11, tp2) || isNewSubType(tp12, tp2)
+      eitherIsSubType(tp11, tp2, tp12, tp2)
     case JavaArrayType(elem1) =>
       tp2 isRef ObjectClass
     case _ =>
       false
+  }
+
+  /** Returns true iff either `tp11 <:< tp21` or `tp12 <:< tp22`, trying at the same time
+   *  to keep the constraint as wide as possible. Specifically, if
+   *
+   *    tp11 <:< tp12 = true   with post-constraint c1
+   *    tp12 <:< tp22 = true   with post-constraint c2
+   *
+   *  and c1 subsumes c2, then c2 is kept as the post-constraint of the result,
+   *  otherwise c1 is kept.
+   *
+   *  This method is used to approximate a solution in one of the following cases
+   *
+   *     T1 & T2 <:< T3
+   *     T1 <:< T2 | T3
+   *
+   *  In the first case (the second one is analogous), we have a choice whether we
+   *  want to establish the subtyping judgement using
+   *
+   *     T1 <:< T3   or    T2 <:< T3
+   *
+   *  as a precondition. Either precondition might constrain type variables.
+   *  The purpose of this method is to pick the precondition that constrains less.
+   *  The method is not complete, because sometimes there is no best solution. Example:
+   *
+   *     A? & B?  <:  T
+   *
+   *  Here, each precondition leads to a different constraint, and neither of
+   *  the two post-constraints subsumes the other.
+   */
+  def eitherIsSubType(tp11: Type, tp21: Type, tp12: Type, tp22: Type) = {
+    val preConstraint = constraint
+    isSubType(tp11, tp21) && {
+      val leftConstraint = constraint
+      constraint = preConstraint
+      if (isSubType(tp12, tp22) && !subsumes(leftConstraint, constraint, preConstraint))
+        constraint = leftConstraint
+      true
+    } || isSubType(tp12, tp22)
   }
 
   /** Like tp1 <:< tp2, but returns false immediately if we know that
@@ -1342,6 +1381,26 @@ class TypeComparer(initctx: Context) extends DotClass {
     case _ =>
       false
   }
+
+  /** Constraint `c1` subsumes constraint `c2`, if under `c2` as constaint we have
+   *  for all poly params `p` defined in `c2` as `p >: L2 <: U2`:
+   *
+   *     c1 defines p with bounds p >: L1 <: U1, and
+   *     L2 <: L1, and
+   *     U1 <: U2
+   *
+   *  Both `c1` and `c2` are required to derive from constraint `pre`, possibly
+   *  narrowing it with further bounds.
+   */
+  def subsumes(c1: Constraint, c2: Constraint, pre: Constraint): Boolean =
+    if (c2 eq pre) true
+    else if (c1 eq pre) false
+    else {
+      val saved = constraint
+      try
+        c2.forallParams(p => c1.contains(p) && isSubType(c1.bounds(p), c2.bounds(p)))
+      finally constraint = saved
+    }
 
   /** A new type comparer of the same type as this one, using the given context. */
   def copyIn(ctx: Context) = new TypeComparer(ctx)
