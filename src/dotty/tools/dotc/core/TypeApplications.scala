@@ -200,8 +200,10 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def toBounds(tparam: Symbol)(implicit ctx: Context): TypeBounds = self match {
     case self: TypeBounds => // this can happen for wildcard args
-      self
+      self & tparam.info.bounds
     case _ =>
+      // no within-bounds check done here because of risk of cycles. Thsi is done later
+      // for source generated types using checkBounds.
       val v = tparam.variance
       if (v > 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.upper(self)
       else if (v < 0 && !(tparam is Local) && !(tparam is ExpandedTypeParam)) TypeBounds.lower(self)
