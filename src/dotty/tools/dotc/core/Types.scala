@@ -397,7 +397,7 @@ object Types {
      */
     final def findMember(name: Name, pre: Type, excluded: FlagSet)(implicit ctx: Context): Denotation = try {
       recCount += 1
-      assert(recCount < 20)
+      assert(recCount < 40)
       @tailrec def go(tp: Type): Denotation = tp match {
         case tp: RefinedType =>
           if (name eq tp.refinedName) goRefined(tp) else go(tp.parent)
