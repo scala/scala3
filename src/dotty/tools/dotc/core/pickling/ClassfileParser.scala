@@ -422,7 +422,7 @@ class ClassfileParser(
             case None => hasError = true
           }
         if (hasError) None
-        else if (skip) None else Some(SeqLiteral(arr.toList))
+        else if (skip) None else Some(JavaSeqLiteral(arr.toList))
       case ANNOTATION_TAG =>
         parseAnnotation(index, skip) map (_.tree)
     }
