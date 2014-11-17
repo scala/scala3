@@ -18,8 +18,6 @@ import scala.annotation.tailrec
  */
 object OverridingPairs {
 
-  private val ExcludedType = ExpandedName.toTypeFlags | TypeArgument
-
   /** The cursor class
    *  @param base   the base class that contains the overriding pairs
    */
@@ -111,7 +109,7 @@ object OverridingPairs {
       @tailrec def loop(): Unit =
         if (curEntry ne null) {
           overriding = curEntry.sym
-          if (visited.contains(overriding) || exclude(overriding)) {
+          if (visited.contains(overriding)) {
             curEntry = curEntry.prev
             loop()
           }
@@ -130,9 +128,7 @@ object OverridingPairs {
         nextEntry = decls.lookupNextEntry(nextEntry)
         if (nextEntry ne null) {
           overridden = nextEntry.sym
-          if (overriding.owner != overridden.owner &&
-              matches(overriding, overridden) &&
-              !exclude(overridden)) {
+          if (overriding.owner != overridden.owner && matches(overriding, overridden)) {
             visited += overridden
             if (!hasCommonParentAsSubclass(overriding.owner, overridden.owner)) return
           }
