@@ -23,6 +23,7 @@ class tests extends CompilerTest {
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
 
   val posDir = "./tests/pos/"
+  val posSpecialDir = "./tests/pos-special/"
   val negDir = "./tests/neg/"
   val newDir = "./tests/new/"
   val dotcDir = "./src/dotty/"
@@ -57,6 +58,7 @@ class tests extends CompilerTest {
   @Test def pos_tailcall = compileDir(posDir + "tailcall/", doErase)
   @Test def pos_nullarify = compileFile(posDir, "nullarify", "-Ycheck:nullarify" :: doErase)
   @Test def pos_subtyping = compileFile(posDir, "subtyping", doErase)
+  @Test def pos_t2613 = compileFile(posSpecialDir, "t2613", doErase)(allowDeepSubtypes)
 
   @Test def pos_all = compileFiles(posDir, twice)
   @Test def new_all = compileFiles(newDir, twice)
