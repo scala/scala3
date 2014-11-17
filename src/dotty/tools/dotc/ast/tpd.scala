@@ -679,7 +679,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
   
-  def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type)(implicit ctx: Context): Tree = {
+  def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type, isAnnotConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val typer = ctx.typer
     val proto = new FunProtoTyped(args, expectedType, typer)
     val alts = receiver.tpe.member(method).alternatives.map(_.termRef)
@@ -691,9 +691,29 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val fun = receiver
       .select(TermRef.withSig(receiver.tpe.normalizedPrefix, selected.termSymbol.asTerm))
       .appliedToTypes(targs)
-    val apply = untpd.Apply(fun, args)
 
-    new typer.ApplyToTyped(apply, fun, selected, args, expectedType).result.asInstanceOf[Tree] // needed to handle varargs
+    val callArgs: List[Tree] = if(args.isEmpty) Nil else {
+      val lastParamType = selected.widen.paramTypess.head.last
+      val lastParam = args.last
+      if (isAnnotConstructor && !(lastParam.tpe <:< lastParamType)) {
+        val defn = ctx.definitions
+        val prefix = args.take(selected.widen.paramTypess.head.size - 1)
+        lastParamType match {
+          case defn.ArrayType(el) =>
+            lastParam.tpe match {
+              case defn.ArrayType(el2) if (el2 <:< el) => // we have a JavaSeqLiteral with a more precise type
+                prefix ::: List(tpd.Typed(lastParam, TypeTree(defn.ArrayType(el))))
+              case _ =>
+                ???
+            }
+          //case defn.ArrayType(el) if(lastParam)
+          case _ => args
+        }
+      } else args
+    }
+
+    val apply = untpd.Apply(fun, callArgs)
+    new typer.ApplyToTyped(apply, fun, selected, callArgs, expectedType).result.asInstanceOf[Tree] // needed to handle varargs
   }
 
   @tailrec
