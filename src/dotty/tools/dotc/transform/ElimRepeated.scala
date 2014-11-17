@@ -57,7 +57,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
     transformTypeOfTree(tree)
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =
-    transformTypeOfTree(tree)
+    transformTypeOfTree(tree) // should also transform the tree if argument needs adaptation
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
     transformTypeOfTree(tree)
@@ -71,7 +71,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
     if (tree.symbol.info.isVarArgsMethod && overridesJava)
         addVarArgsBridge(tree)(ctx.withPhase(thisTransformer.next))
      else
-      transformAnnotations(tree)
+      tree
   }
 
   /** Add a Java varargs bridge
@@ -94,7 +94,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
         .appliedToArgs(vrefs :+ TreeGen.wrapArray(varArgRef, elemtp))
         .appliedToArgss(vrefss1)
     })
-    Thicket(transformAnnotations(ddef), transformAnnotations(bridgeDef))
+    Thicket(ddef, bridgeDef)
   }
 
   /** Convert type from Scala to Java varargs method */

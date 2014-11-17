@@ -88,14 +88,12 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
   }
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
-    val r =
     if (ddef.symbol.hasAnnotation(defn.NativeAnnot)) {
       ddef.symbol.resetFlag(Deferred)
       DefDef(ddef.symbol.asTerm,
         _ => ref(defn.Sys_error).withPos(ddef.pos)
           .appliedTo(Literal(Constant("native method stub"))))
     } else ddef
-    transformAnnotations(r)
   }
 
   override def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[Tree] =

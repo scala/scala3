@@ -184,37 +184,12 @@ object TreeTransforms {
       ref match {
         case ref: SymDenotation =>
           val annotTrees = ref.annotations.map(_.tree)
-          val annotTrees1 = annotTrees.mapConserve(annotationTransformer.transform)
+          val annotTrees1 = annotTrees.mapConserve(annotationTransformer.macroTransform)
           val annots1 = if(annotTrees eq annotTrees1) ref.annotations else annotTrees1.map(new ConcreteAnnotation(_))
           if ((info1 eq ref.info) && (annots1 eq ref.annotations)) ref
           else ref.copySymDenotation(info = info1, annotations = annots1)
         case _ => if (info1 eq ref.info) ref else ref.derivedSingleDenotation(ref.symbol, info1)
       }
-    }
-
-    def transformAnnotations(tree: MemberDef)(implicit ctx: Context): MemberDef ={
-      val newAnnots = tree.mods.annotations.mapConserve(annotationTransformer.transform)
-      if (newAnnots eq tree.mods.annotations) tree
-      else {
-        val mods = tree.mods.copy(annotations = newAnnots)
-        tree match {
-          case t: DefDef  => cpy.DefDef(t)(mods = mods)
-          case t: ValDef  => cpy.ValDef(t)(mods = mods)
-          case t: TypeDef => cpy.TypeDef(t)(mods = mods)
-        }
-      }
-    }
-
-    override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-      transformAnnotations(tree)
-    }
-
-    override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-      transformAnnotations(tree)
-    }
-
-    override def transformValDef(tree: tpd.ValDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
-      transformAnnotations(tree)
     }
   }
 
