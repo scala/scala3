@@ -68,7 +68,14 @@ object DottyBuild extends Build {
          else
            List()
 
-      agentOptions ::: travis_build ::: fullpath
+       val tuning =
+         if (sys.props.isDefinedAt("Oshort"))
+           // Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
+           List("-XX:+TieredCompilation", "-XX:TieredStopAtLevel=1")
+        else
+          List()
+
+      tuning ::: agentOptions ::: travis_build ::: fullpath
     }
   )
 
