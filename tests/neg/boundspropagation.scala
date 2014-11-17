@@ -1,5 +1,5 @@
 // scalac fails for test2/3
-// dotc used to fail for all three
+// dotc fails for all three
 object test1 {
   class Tree[-T >: Null]
 
@@ -8,7 +8,7 @@ object test1 {
     case y: Tree[_] => y
   }
 }
-/*object test2 {
+object test2 {
   class Tree[T >: Null]
 
 
@@ -22,6 +22,5 @@ object test3 {
 
   def f(x: Any): Tree[Null] = x match {
     case y: Tree[_] => y
-   }
+  }
 }
-*/
