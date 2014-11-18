@@ -57,3 +57,14 @@ class X {
 class Y extends X {
   def f: A[Int] = ???
 }
+
+
+class A1
+class B1
+
+class X1 {
+  def f(): A1 = ???
+}
+class Y1 extends X1 {
+  override def f(): B1 = ???
+}

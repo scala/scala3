@@ -533,6 +533,22 @@ object Types {
       ctx.typeComparer.isSameType(this, that)
     }
 
+    /** Is this type a legal type for a member that overrides another
+     *  member of type `that`? This is the same as `<:<`, except that
+     *  the types ()T and => T are identified, and T is seen as overriding
+     *  either type.
+     */
+    final def overrides(that: Type)(implicit ctx: Context) = {
+      def result(tp: Type): Type = tp match {
+        case ExprType(_) | MethodType(Nil, _) => tp.resultType
+        case _ => tp
+      }
+      this <:< that || {
+        val rthat = result(that)
+        (rthat ne that) && result(this) <:< rthat
+      }
+    }
+
     /** Is this type close enough to that type so that members
      *  with the two type would override each other?d
      *  This means:

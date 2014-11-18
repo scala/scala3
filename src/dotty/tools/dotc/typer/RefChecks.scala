@@ -134,14 +134,13 @@ object RefChecks {
     def infoString0(sym: Symbol, showLocation: Boolean) = {
       val sym1 = sym.underlyingSymbol
       def info = self.memberInfo(sym1)
-      if (showLocation) sym1.showLocated
-      else
-        i"$sym1${
-          if (sym1.isAliasType) i", which equals $info"
-          else if (sym1.isAbstractType) i" with bounds $info"
-          else if (sym1.is(Module)) ""
-          else if (sym1.isTerm) i" of type $info"
-          else ""}"
+      i"${if (showLocation) sym1.showLocated else sym1}${
+        if (sym1.isAliasType) i", which equals $info"
+        else if (sym1.isAbstractType) i" with bounds $info"
+        else if (sym1.is(Module)) ""
+        else if (sym1.isTerm) i" of type $info"
+        else ""
+      }"
     }
 
     /* Check that all conditions for overriding `other` by `member`
@@ -287,6 +286,10 @@ object RefChecks {
         overrideError("cannot be used here - term macros cannot override abstract methods")
       } else if (other.is(Macro) && !member.is(Macro)) { // (1.10)
         overrideError("cannot be used here - only term macros can override term macros")
+      } else if (member.isTerm && !isDefaultGetter(member.name) && !(memberTp overrides otherTp)) {
+        // types don't need to have their bounds in an overriding relationship
+        // since we automatically form their intersection when selecting.
+        overrideError("has incompatible type" + err.whyNoMatchStr(memberTp, otherTp))
       } else {
         checkOverrideDeprecated()
       }

@@ -240,20 +240,8 @@ object Denotations {
             val sym1 = denot1.symbol
             val sym2 = denot2.symbol
             val sym2Accessible = sym2.isAccessibleFrom(pre)
-            def resultType(tp: Type) = tp match {
-              case tp @ MethodType(Nil, _) => tp.resultType
-              case ExprType(rt) => rt
-              case _ => NoType
-            }
-            def isAsGood(tp1: Type, tp2: Type) =
-              tp1 <:< tp2 || {
-                val rtp1 = resultType(tp1)
-                val rtp2 = resultType(tp2)
-                rtp1 <:< rtp2
-              }
             def prefer(info1: Type, sym1: Symbol, info2: Type, sym2: Symbol) =
-              isAsGood(info1, info2) &&
-              (sym1.isAsConcrete(sym2) || !(info2 <:< info1))
+              info1.overrides(info2) && (sym1.isAsConcrete(sym2) || !info2.overrides(info1))
             if (sym2Accessible && prefer(info2, sym2, info1, sym1)) denot2
             else {
               val sym1Accessible = sym1.isAccessibleFrom(pre)
