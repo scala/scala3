@@ -68,3 +68,14 @@ class X1 {
 class Y1 extends X1 {
   override def f(): B1 = ???
 }
+
+class X2 {
+  type T = A1
+}
+class Y2 extends X2 {
+  type T = B1
+}
+
+class X3 {
+  override type T = A1
+}
