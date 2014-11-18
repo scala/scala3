@@ -67,19 +67,39 @@ class TreeChecker {
 
   class Checker(phasesToCheck: Seq[Phase]) extends ReTyper {
 
-    val definedSyms = new mutable.HashSet[Symbol]
+    val nowDefinedSyms = new mutable.HashSet[Symbol]
+    val everDefinedSyms = new mutable.HashMap[Symbol, Tree]
 
-    def withDefinedSym[T](tree: untpd.Tree)(op: => T)(implicit ctx: Context): T = {
-      if (tree.isDef) {
-        assert(!definedSyms.contains(tree.symbol), i"doubly defined symbol: ${tree.symbol}in $tree")
-        definedSyms += tree.symbol
+    def withDefinedSym[T](tree: untpd.Tree)(op: => T)(implicit ctx: Context): T = tree match {
+      case tree: DefTree =>
+        val sym = tree.symbol
+        everDefinedSyms.get(sym) match {
+          case Some(t)  =>
+            if(t ne tree)
+              ctx.warning(i"symbol ${sym.fullName} is defined at least twice in different parts of AST")
+            // should become an error
+          case None =>
+            everDefinedSyms(sym) = tree
+        }
+        assert(!nowDefinedSyms.contains(sym), i"doubly defined symbol: ${sym.fullName} in $tree")
+
+        if(ctx.settings.YcheckMods.value) {
+          tree match {
+            case t: MemberDef =>
+              if (t.name ne sym.name) ctx.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
+              if (sym.flags != t.mods.flags) ctx.warning(s"symbol ${sym.fullName} flags ${sym.flags} doesn't match AST definition flags ${t.mods.flags}")
+            // todo: compare trees inside annotations
+            case _ =>
+          }
+        }
+
+        nowDefinedSyms += tree.symbol
         //println(i"defined: ${tree.symbol}")
         val res = op
-        definedSyms -= tree.symbol
+        nowDefinedSyms -= tree.symbol
         //println(i"undefined: ${tree.symbol}")
         res
-      }
-      else op
+      case _ => op
     }
 
     def withDefinedSyms[T](trees: List[untpd.Tree])(op: => T)(implicit ctx: Context) =
@@ -90,7 +110,7 @@ class TreeChecker {
 
     def assertDefined(tree: untpd.Tree)(implicit ctx: Context) =
       if (tree.symbol.maybeOwner.isTerm)
-        assert(definedSyms contains tree.symbol, i"undefined symbol ${tree.symbol}")
+        assert(nowDefinedSyms contains tree.symbol, i"undefined symbol ${tree.symbol}")
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type)(implicit ctx: Context): tpd.Tree = {
       val res = tree match {
