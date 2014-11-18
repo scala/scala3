@@ -805,7 +805,13 @@ object SymDenotations {
      *  either as overrider or overridee.
      */
     final def canMatchInheritedSymbols(implicit ctx: Context): Boolean =
-      maybeOwner.isClass && !isConstructor && !is(Private)
+      maybeOwner.isClass && memberCanMatchInheritedSymbols
+
+    /** If false, this class member cannot possibly participate in an override,
+     *  either as overrider or overridee.
+     */
+    final def memberCanMatchInheritedSymbols(implicit ctx: Context): Boolean =
+      !isConstructor && !is(Private)
 
     /** The symbol, in class `inClass`, that is overridden by this denotation. */
     final def overriddenSymbol(inClass: ClassSymbol)(implicit ctx: Context): Symbol =

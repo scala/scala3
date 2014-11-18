@@ -241,8 +241,7 @@ object Denotations {
             val sym2 = denot2.symbol
             val sym2Accessible = sym2.isAccessibleFrom(pre)
             def prefer(info1: Type, sym1: Symbol, info2: Type, sym2: Symbol) =
-              info1 <:< info2 &&
-              (sym1.isAsConcrete(sym2) || !(info2 <:< info1))
+              info1.overrides(info2) && (sym1.isAsConcrete(sym2) || !info2.overrides(info1))
             if (sym2Accessible && prefer(info2, sym2, info1, sym1)) denot2
             else {
               val sym1Accessible = sym1.isAccessibleFrom(pre)

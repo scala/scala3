@@ -74,6 +74,8 @@ class tests extends CompilerTest {
   @Test def neg_autoTupling = compileFile(posDir, "autoTuplingTest", "-language:noAutoTupling" :: Nil, xerrors = 4)
   @Test def neg_autoTupling2 = compileFile(negDir, "autoTuplingTest", xerrors = 4)
   @Test def neg_companions = compileFile(negDir, "companions", xerrors = 1)
+  @Test def neg_over = compileFile(negDir, "over", xerrors = 1)
+  @Test def neg_overrides = compileFile(negDir, "overrides", xerrors = 5)
   @Test def neg_projections = compileFile(negDir, "projections", xerrors = 1)
   @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 1)
   @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 4)
