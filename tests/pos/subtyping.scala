@@ -6,9 +6,6 @@ class A {
 }
 object test {
 
-  class B
-  class C
-
   def tag1[T](x: T): String & T = ???
   def tag2[T](x: T): T & String = ???
 

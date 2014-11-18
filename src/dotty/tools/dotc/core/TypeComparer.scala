@@ -1382,7 +1382,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       false
   }
 
-  /** Constraint `c1` subsumes constraint `c2`, if under `c2` as constaint we have
+  /** Constraint `c1` subsumes constraint `c2`, if under `c2` as constraint we have
    *  for all poly params `p` defined in `c2` as `p >: L2 <: U2`:
    *
    *     c1 defines p with bounds p >: L1 <: U1, and
