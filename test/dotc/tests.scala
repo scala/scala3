@@ -51,6 +51,7 @@ class tests extends CompilerTest {
   @Test def pos_assignments() = compileFile(posDir, "assignments", doErase)
   @Test def pos_packageobject() = compileFile(posDir, "packageobject", doErase)
   @Test def pos_overloaded() = compileFile(posDir, "overloaded", doErase)
+  @Test def pos_overrides() = compileFile(posDir, "overrides", doErase)
   @Test def pos_templateParents() = compileFile(posDir, "templateParents", doErase)
   @Test def pos_structural() = compileFile(posDir, "structural", doErase)
   @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess", doErase)
