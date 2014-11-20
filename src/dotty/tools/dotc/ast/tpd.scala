@@ -692,24 +692,31 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       .select(TermRef.withSig(receiver.tpe.normalizedPrefix, selected.termSymbol.asTerm))
       .appliedToTypes(targs)
 
-    val callArgs: List[Tree] = if(args.isEmpty) Nil else {
-      val lastParamType = selected.widen.paramTypess.head.last
-      val lastParam = args.last
-      if (isAnnotConstructor && !(lastParam.tpe <:< lastParamType)) {
+    def adaptLastArg(lastParam: Tree, expectedType: Type) = {
+      if (isAnnotConstructor && !(lastParam.tpe <:< expectedType)) {
         val defn = ctx.definitions
         val prefix = args.take(selected.widen.paramTypess.head.size - 1)
-        lastParamType match {
+        expectedType match {
           case defn.ArrayType(el) =>
             lastParam.tpe match {
-              case defn.ArrayType(el2) if (el2 <:< el) => // we have a JavaSeqLiteral with a more precise type
+              case defn.ArrayType(el2) if (el2 <:< el) =>
+                // we have a JavaSeqLiteral with a more precise type
+                // we cannot construct a tree as JavaSeqLiteral infered to precise type
+                // if we add typed than it would be both type-correct and
+                // will pass Ycheck
                 prefix ::: List(tpd.Typed(lastParam, TypeTree(defn.ArrayType(el))))
               case _ =>
                 ???
             }
-          //case defn.ArrayType(el) if(lastParam)
           case _ => args
         }
       } else args
+    }
+
+    val callArgs: List[Tree] = if(args.isEmpty) Nil else {
+      val expectedType = selected.widen.paramTypess.head.last
+      val lastParam = args.last
+      adaptLastArg(lastParam, expectedType)
     }
 
     val apply = untpd.Apply(fun, callArgs)
