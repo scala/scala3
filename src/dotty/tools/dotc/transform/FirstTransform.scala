@@ -28,6 +28,7 @@ import NameOps._
  *   - inserts `.package` for selections of package object members
  *   - checks the bounds of AppliedTypeTrees
  *   - stubs out native methods
+ *   - removes java-defined ASTs
  */
 class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer with AnnotationTransformer { thisTransformer =>
   import ast.tpd._
@@ -84,7 +85,10 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
         Thicket(stat :: newCompanion(stat.name.toTermName).trees)
       case stat => stat
     }
-    addMissingCompanions(reorder(stats))
+
+    def skipJava(stats: List[Tree]): List[Tree] = stats.filter(t => !(t.symbol is Flags.JavaDefined))
+    
+    addMissingCompanions(reorder(skipJava(stats)))
   }
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
