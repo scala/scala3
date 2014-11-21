@@ -33,9 +33,9 @@ object Checking {
   /** A general checkBounds method that can be used for TypeApply nodes as
    *  well as for AppliedTypeTree nodes.
    */
-  def checkBounds(args: List[tpd.Tree], bounds: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context) = {
+  def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context) = {
     val argTypes = args.tpes
-    for ((arg, bounds) <- args zip bounds) {
+    for ((arg, bounds) <- args zip boundss) {
       def notConforms(which: String, bound: Type) = {
         ctx.error(
           d"Type argument ${arg.tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(arg.tpe, bound)}",
