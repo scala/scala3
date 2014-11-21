@@ -2142,7 +2142,7 @@ object Types {
 
   case class RefinedThis(binder: RefinedType) extends BoundType with SingletonType {
     type BT = RefinedType
-    override def underlying(implicit ctx: Context) = binder.parent
+    override def underlying(implicit ctx: Context) = binder
     def copyBoundType(bt: BT) = RefinedThis(bt)
 
     // need to customize hashCode and equals to prevent infinite recursion for
