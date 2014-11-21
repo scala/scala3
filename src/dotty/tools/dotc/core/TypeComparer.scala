@@ -690,30 +690,13 @@ class TypeComparer(initctx: Context) extends DotClass {
       def compareRefined: Boolean = tp1.widen match {
         case tp1 @ RefinedType(parent1, name1) if name1 == name2 && name1.isTypeName =>
           normalizedInfo(tp1) match {
-            case bounds1 @ TypeBounds(lo1, hi1) =>
-              val fastResult = isSubType(bounds1, tp2.refinedInfo) && {
+            case bounds1 @ TypeBounds(lo1, hi1) if lo1 eq hi1 =>
+              isSubType(bounds1, tp2.refinedInfo) && {
                 val saved = pendingRefinedBases
                 try {
                   addPendingName(name1, tp1, tp2)
                   isSubType(parent1, parent2)
                 } finally pendingRefinedBases = saved
-              }
-              if (lo1 eq hi1) fastResult
-              else {
-                val slowResult = compareRefinedSlow
-                if (fastResult != slowResult) {
-                  println(i"!!! difference for $tp1 <: $tp2, fast = $fastResult, ${memberMatches(tp1.member(name1))}, slow = $slowResult ${lo1.getClass} ${hi1.getClass}")
-                  println(TypeComparer.explained(implicit ctx => tp1 <:< parent2))
-                  val tp1r = rebaseQual(tp1, name1)
-                  println(s"rebased = $tp1r / ${narrowRefined(tp1r)}")
-                  val mbr = narrowRefined(tp1r) member name1
-                  println(i"member = $mbr : ${mbr.info} / ${mbr.getClass}")
-                  val mbr2 = (tp1r) member name1
-                  println(i"member = $mbr2 : ${mbr2.info} / ${mbr2.getClass}")
-                  println(TypeComparer.explained(implicit ctx => mbr.info <:< tp2.refinedInfo))
-                  compareRefinedSlow
-                }
-                slowResult
               }
             case _ =>
               compareRefinedSlow
