@@ -12,7 +12,7 @@ trait TypeOps { this: Context =>
 
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 
-    def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.debugTraceIndented(s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
+    def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
       if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
         tp
       else if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists)
@@ -24,7 +24,7 @@ trait TypeOps { this: Context =>
         toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
     }
 
-    /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track , s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
+    /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
       tp match {
         case tp: NamedType =>
           val sym = tp.symbol

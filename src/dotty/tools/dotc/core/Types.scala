@@ -719,8 +719,11 @@ object Types {
       case _ => Nil
     }
 
-    /** A prefix-less termRef to a new skolem symbol that has the given type as info */
-    def narrow(implicit ctx: Context): TermRef = TermRef(NoPrefix, ctx.newSkolem(this))
+    /** A prefix-less refined this or a termRef to a new skolem symbol
+     *  that has the given type as info
+     */
+    def narrow(implicit ctx: Context): TermRef =
+      TermRef(NoPrefix, ctx.newSkolem(this))
 
     // ----- Normalizing typerefs over refined types ----------------------------
 

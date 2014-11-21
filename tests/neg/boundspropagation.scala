@@ -24,3 +24,17 @@ object test3 {
     case y: Tree[_] => y
   }
 }
+
+// Example contributed by Jason. I believe this should not typecheck,
+// even though scalac does typecheck it.
+object test4 {
+  class Base {
+    type N
+
+    class Tree[-S, -T >: Option[S]]
+
+    def g(x: Any): Tree[_, _ <: Option[N]] = x match {
+      case y: Tree[_, _] => y
+    }
+  }
+}
