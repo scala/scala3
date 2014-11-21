@@ -33,27 +33,11 @@ object Checking {
   /** A general checkBounds method that can be used for TypeApply nodes as
    *  well as for AppliedTypeTree nodes.
    */
-  def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context) = {
-    val argTypes = args.tpes
-    for ((arg, bounds) <- args zip boundss) {
-      def notConforms(which: String, bound: Type) = {
-        ctx.error(
+  def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context) =
+    for ((arg, which, bound) <- ctx.boundsViolations(args, boundss, instantiate))
+      ctx.error(
           d"Type argument ${arg.tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(arg.tpe, bound)}",
           arg.pos)
-      }
-      def checkOverlapsBounds(lo: Type, hi: Type): Unit = {
-        //println(i"instantiating ${bounds.hi} with $argTypes")
-        //println(i" = ${instantiate(bounds.hi, argTypes)}")
-        val hiBound = instantiate(bounds.hi, argTypes)
-        if (!(lo <:< hiBound)) notConforms("upper", hiBound)
-        if (!(bounds.lo <:< hi)) notConforms("lower", bounds.lo)
-      }
-      arg.tpe match {
-        case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi)
-        case tp => checkOverlapsBounds(tp, tp)
-      }
-    }
-  }
 
   /** A type map which checks that the only cycles in a type are F-bounds
    *  and that protects all F-bounded references by LazyRefs.
@@ -192,10 +176,9 @@ trait Checking {
   /** Check that type arguments `args` conform to corresponding bounds in `poly`
    *  Note: This does not check the bounds of AppliedTypeTrees. These
    *  are handled by method checkBounds in FirstTransform
-   *  TODO: remove pos parameter
    */
-  def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit =    Checking.checkBounds(
-      args, poly.paramBounds, (tp, argTypes) => tp.substParams(poly, argTypes))
+  def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit =
+    Checking.checkBounds(args, poly.paramBounds, _.substParams(poly, _))
 
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
@@ -292,7 +275,7 @@ trait NoChecking extends Checking {
   import tpd._
   override def checkNonCyclic(sym: Symbol, info: TypeBounds, reportErrors: Boolean)(implicit ctx: Context): Type = info
   override def checkValue(tree: Tree, proto: Type)(implicit ctx: Context): tree.type = tree
-  override def checkBounds(args: List[tpd.Tree], poly: PolyType, pos: Position)(implicit ctx: Context): Unit = ()
+  override def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit = ()
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkLegalPrefix(tp: Type, selector: Name, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type = tp

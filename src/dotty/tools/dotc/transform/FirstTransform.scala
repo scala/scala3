@@ -141,12 +141,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
       val tparams = tycon.tpe.typeSymbol.typeParams
       val bounds = tparams.map(tparam =>
         tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
-      def instantiateUpperBound(tp: Type, argTypes: List[Type]): Type = {
-        tp.substDealias(tparams, argTypes).bounds.hi
-          // not that argTypes can contain a TypeBounds type for arguments that are
-          // not fully determined. In that case we need to check against the hi bound.
-      }
-      Checking.checkBounds(args, bounds, instantiateUpperBound)
+      Checking.checkBounds(args, bounds, _.substDealias(tparams, _))
       normalizeType(tree)
     case tree =>
       normalizeType(tree)

@@ -7,6 +7,8 @@ import config.Printers._
 import Decorators._
 import StdNames._
 import util.SimpleMap
+import collection.mutable
+import ast.tpd._
 
 trait TypeOps { this: Context =>
 
@@ -305,6 +307,40 @@ trait TypeOps { this: Context =>
       forwardRefs(formals(name), refinedInfo, parentRefs)
     }
     parentRefs
+  }
+
+  /** An argument bounds violation is a triple consisting of
+   *   - the argument tree
+   *   - a string "upper" or "lower" indicating which bound is violated
+   *   - the violated bound
+   */
+  type BoundsViolation = (Tree, String, Type)
+
+  /** The list of violations where arguments are not within bounds.
+   *  @param  args          The arguments
+   *  @param  boundss       The list of type bounds
+   *  @param  instantiate   A function that maps a bound type and the list of argument types to a resulting type.
+   *                        Needed to handle bounds that refer to other bounds.
+   */
+  def boundsViolations(args: List[Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context): List[BoundsViolation] = {
+    val argTypes = args.tpes
+    val violations = new mutable.ListBuffer[BoundsViolation]
+    for ((arg, bounds) <- args zip boundss) {
+      def checkOverlapsBounds(lo: Type, hi: Type): Unit = {
+        //println(i"instantiating ${bounds.hi} with $argTypes")
+        //println(i" = ${instantiate(bounds.hi, argTypes)}")
+        val hiBound = instantiate(bounds.hi, argTypes.mapConserve(_.bounds.hi))
+          // Note that argTypes can contain a TypeBounds type for arguments that are
+          // not fully determined. In that case we need to check against the hi bound of the argument.
+        if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
+        if (!(bounds.lo <:< hi)) violations += ((arg, "lower", bounds.lo))
+      }
+      arg.tpe match {
+        case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi)
+        case tp => checkOverlapsBounds(tp, tp)
+      }
+    }
+    violations.toList
   }
 
   /** Is `feature` enabled in class `owner`?
