@@ -97,7 +97,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       }
     tp match {
       case tp: RefinedType =>
-        val args = tp.argInfos
+        val args = tp.argInfos(interpolate = false)
         if (args.nonEmpty) {
           val tycon = tp.unrefine
           val cls = tycon.typeSymbol
