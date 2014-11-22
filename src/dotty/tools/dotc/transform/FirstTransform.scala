@@ -86,7 +86,8 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
       case stat => stat
     }
 
-    def skipJava(stats: List[Tree]): List[Tree] = stats.filter(t => !(t.symbol is Flags.JavaDefined))
+    def skipJava(stats: List[Tree]): List[Tree] = // packages get a JavaDefined flag. Dont skip them
+      stats.filter(t => !(t.symbol is(Flags.JavaDefined, Flags.Package)))
     
     addMissingCompanions(reorder(skipJava(stats)))
   }
