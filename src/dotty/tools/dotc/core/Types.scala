@@ -104,9 +104,10 @@ object Types {
      */
     def isRef(sym: Symbol)(implicit ctx: Context): Boolean = stripTypeVar match {
       case this1: TypeRef =>
-        val thissym = this1.symbol
-        if (thissym.isAliasType) this1.info.bounds.hi.isRef(sym)
-        else thissym eq sym
+        this1.info match { // see comment in Namers/typeDefSig
+          case TypeBounds(lo, hi) if lo eq hi => hi.isRef(sym)
+          case _ =>  this1.symbol eq sym
+        }
       case this1: RefinedType =>
         // make sure all refinements are type arguments
         this1.parent.isRef(sym) && this.argInfos.nonEmpty

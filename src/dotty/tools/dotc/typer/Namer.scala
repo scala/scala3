@@ -673,7 +673,17 @@ class Namer { typer: Typer =>
 
   def typeDefSig(tdef: TypeDef, sym: Symbol)(implicit ctx: Context): Type = {
     completeParams(tdef.tparams)
-    setDummyInfo(sym)
+    sym.info = TypeBounds.empty
+      // Temporarily set info of defined type T to ` >: Nothing <: Any.
+      // This is done to avoid cyclic reference errors for F-bounds.
+      // This is subtle: `sym` has now an empty TypeBounds, but is not automatically
+      // made an abstract type. If it had been made an abstract type, it would count as an
+      // abstract type of its enclosing class, which might make that class an invalid
+      // prefix. I verified this would lead to an error when compiling io.ClassPath.
+      // A distilled version is in pos/prefix.scala.
+      //
+      // The scheme critically relies on an implementation detail of isRef, which
+      // inspects a TypeRef's info, instead of simply dealiasing alias types.
     val tparamSyms = tdef.tparams map symbolOfTree
     val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
     val toParameterize = tparamSyms.nonEmpty && !isDerived
@@ -689,22 +699,5 @@ class Namer { typer: Typer =>
     }
     sym.info = NoCompleter
     checkNonCyclic(sym, unsafeInfo, reportErrors = true)
-  }
-
-  /** Temporarily set info of defined type T to
-   *
-   *     T >: dummyLo <: dummyHi
-   *     type dummyLo, dummyHi
-   *
-   *  This is done to avoid cyclic reference errors for F-bounds.
-   *  The type is intentionally chosen so that it cannot possibly be
-   *  elided when taking a union or intersection.
-   */
-  private def setDummyInfo(sym: Symbol)(implicit ctx: Context): Unit = {
-    def dummyBound(name: TypeName) =
-      ctx.newSymbol(sym.owner, name, Synthetic | Deferred, TypeBounds.empty)
-    val dummyLo = dummyBound(tpnme.DummyLo)
-    val dummyHi = dummyBound(tpnme.DummyHi)
-    sym.info = TypeBounds(TypeRef(NoPrefix, dummyLo), TypeRef(NoPrefix, dummyHi))
   }
 }
