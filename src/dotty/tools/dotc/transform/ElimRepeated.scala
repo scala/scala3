@@ -4,13 +4,15 @@ package transform
 import core._
 import Names._
 import Types._
-import TreeTransforms.{TransformerInfo, MiniPhaseTransform, TreeTransformer}
+import dotty.tools.dotc.transform.TreeTransforms.{AnnotationTransformer, TransformerInfo, MiniPhaseTransform, TreeTransformer}
 import ast.Trees.flatten
 import Flags._
 import Contexts.Context
 import Symbols._
 import Denotations._, SymDenotations._
 import Decorators.StringInterpolators
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
 import scala.collection.mutable
 import DenotTransformers._
 import Names.Name
@@ -20,7 +22,7 @@ import TypeUtils._
 /** A transformer that removes repeated parameters (T*) from all types, replacing
  *  them with Seq types.
  */
-class ElimRepeated extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
+class ElimRepeated extends MiniPhaseTransform with InfoTransformer with AnnotationTransformer { thisTransformer =>
   import ast.tpd._
 
   override def phaseName = "elimRepeated"
@@ -34,9 +36,10 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer { thisTransfo
     case tp @ MethodType(paramNames, paramTypes) =>
       val resultType1 = elimRepeated(tp.resultType)
       val paramTypes1 =
-        if (paramTypes.nonEmpty && paramTypes.last.isRepeatedParam)
-          paramTypes.init :+ paramTypes.last.underlyingIfRepeated(tp.isJava)
-        else paramTypes
+        if (paramTypes.nonEmpty && paramTypes.last.isRepeatedParam) {
+          val last = paramTypes.last.underlyingIfRepeated(tp.isJava)
+          paramTypes.init :+ last
+        } else paramTypes
       tp.derivedMethodType(paramNames, paramTypes1, resultType1)
     case tp: PolyType =>
       tp.derivedPolyType(tp.paramNames, tp.paramBounds, elimRepeated(tp.resultType))
@@ -54,19 +57,20 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer { thisTransfo
     transformTypeOfTree(tree)
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree =
-    transformTypeOfTree(tree)
+    transformTypeOfTree(tree) // should also transform the tree if argument needs adaptation
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
     transformTypeOfTree(tree)
 
   /** If method overrides a Java varargs method, add a varargs bridge.
+   *  Also transform trees inside method annotation
    */
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     assert(ctx.phase == thisTransformer)
     def overridesJava = tree.symbol.allOverriddenSymbols.exists(_ is JavaDefined)
     if (tree.symbol.info.isVarArgsMethod && overridesJava)
-      addVarArgsBridge(tree)(ctx.withPhase(thisTransformer.next))
-    else
+        addVarArgsBridge(tree)(ctx.withPhase(thisTransformer.next))
+     else
       tree
   }
 

@@ -243,7 +243,10 @@ class Namer { typer: Typer =>
         // different: The former must have the class as owner (because the
         // constructor is owned by the class), the latter must not (because
         // constructor parameters are interpreted as if they are outside the class).
-        val cctx = if (tree.name == nme.CONSTRUCTOR) ctx.outer else ctx
+        // Don't do this for Java constructors because they need to see the import
+        // of the companion object, and it is not necessary for them because they
+        // have no implementation.
+        val cctx = if (tree.name == nme.CONSTRUCTOR && !(tree.mods is JavaDefined)) ctx.outer else ctx
 
         record(ctx.newSymbol(
           ctx.owner, name, tree.mods.flags | deferred | method | higherKinded | inSuperCall1,

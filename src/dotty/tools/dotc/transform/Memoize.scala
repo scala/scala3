@@ -82,5 +82,5 @@ import Decorators._
                 // neither getters nor setters
     else tree
   }
-  private val NoFieldNeeded  = Lazy | Deferred | ParamAccessor
+  private val NoFieldNeeded  = Lazy | Deferred | ParamAccessor | JavaDefined
 }

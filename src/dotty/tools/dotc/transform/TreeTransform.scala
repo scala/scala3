@@ -2,8 +2,12 @@ package dotty.tools.dotc
 package transform
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Annotations.ConcreteAnnotation
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.DenotTransformers.{InfoTransformer, DenotTransformer}
+import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Phases.Phase
+import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Flags.PackageVal
 import dotty.tools.dotc.typer.Mode
@@ -168,6 +172,26 @@ object TreeTransforms {
     def treeTransform = this
     def phase = this
  }
+
+  /** A helper trait to transform annotations on MemberDefs */
+  trait AnnotationTransformer extends MiniPhaseTransform with InfoTransformer {
+
+    val annotationTransformer = mkTreeTransformer
+
+    override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
+      val info1 = transformInfo(ref.info, ref.symbol)
+
+      ref match {
+        case ref: SymDenotation =>
+          val annotTrees = ref.annotations.map(_.tree)
+          val annotTrees1 = annotTrees.mapConserve(annotationTransformer.macroTransform)
+          val annots1 = if(annotTrees eq annotTrees1) ref.annotations else annotTrees1.map(new ConcreteAnnotation(_))
+          if ((info1 eq ref.info) && (annots1 eq ref.annotations)) ref
+          else ref.copySymDenotation(info = info1, annotations = annots1)
+        case _ => if (info1 eq ref.info) ref else ref.derivedSingleDenotation(ref.symbol, info1)
+      }
+    }
+  }
 
   val NoTransform = new TreeTransform {
     def phase = unsupported("phase")

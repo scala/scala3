@@ -9,8 +9,9 @@ import java.lang.Double.longBitsToDouble
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, NameOps._, Flags._, Constants._, Annotations._
+import dotty.tools.dotc.typer.ProtoTypes.{FunProtoTyped, FunProto}
 import util.Positions._
-import ast.Trees, ast.tpd._, ast.untpd
+import dotty.tools.dotc.ast.{tpd, Trees, untpd}, ast.tpd._
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
@@ -815,19 +816,26 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
    */
   protected def readAnnotationContents(end: Int)(implicit ctx: Context): Tree = {
     val atp = readTypeRef()
-    val args = new ListBuffer[Tree]
-    while (readIndex != end) {
-      val argref = readNat()
-      args += {
-        if (isNameEntry(argref)) {
-          val name = at(argref, readName)
-          val arg = readClassfileAnnotArg(readNat())
-          NamedArg(name.asTermName, arg)
-        } else readAnnotArg(argref)
+    val args = {
+      val t = new ListBuffer[Tree]
+
+      while (readIndex != end) {
+        val argref = readNat()
+        t += {
+          if (isNameEntry(argref)) {
+            val name = at(argref, readName)
+            val arg = readClassfileAnnotArg(readNat())
+            NamedArg(name.asTermName, arg)
+          } else readAnnotArg(argref)
+        }
       }
+      t.toList
     }
-    New(atp, args.toList)
-  }
+    // println(atp)
+    val targs = atp.argTypes
+
+    tpd.applyOverloaded(tpd.New(atp withoutArgs targs), nme.CONSTRUCTOR, args, targs, atp)
+}
 
   /** Read an annotation and as a side effect store it into
    *  the symbol it requests. Called at top-level, for all

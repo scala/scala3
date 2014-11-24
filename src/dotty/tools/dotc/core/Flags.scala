@@ -318,7 +318,7 @@ object Flags {
   /** An unpickled Scala 2.x class */
   final val Scala2x = typeFlag(26, "<scala-2.x>")
 
-  /** A method that has default params */ // TODO: drop
+  /** A method that has default params */
   final val DefaultParameterized = termFlag(27, "<defaultparam>")
 
   /** Symbol is initialized to the default value, e.g. var x: T = _ */
@@ -355,6 +355,12 @@ object Flags {
 
   /** Symbol is a Java-style varargs method */
   final val JavaVarargs = termFlag(37, "<varargs>")
+
+  /** Symbol is a Java default method */
+  final val DefaultMethod = termFlag(38, "<defaultmethod>")
+
+  /** Symbol is a Java enum */
+  final val Enum = commonFlag(40, "<enum>")
 
   // Flags following this one are not pickled
 
@@ -547,6 +553,9 @@ object Flags {
 
   /** A Java interface, potentially with default methods */
   final val JavaTrait = allOf(JavaDefined, Trait, NoInits)
+  
+    /** A Java interface */
+  final val JavaInterface = allOf(JavaDefined, Trait)
 
   /** A Java companion object */
   final val JavaModule = allOf(JavaDefined, Module)

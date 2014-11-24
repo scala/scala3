@@ -227,6 +227,16 @@ object ProtoTypes {
     override def deepenProto(implicit ctx: Context) = derivedFunProto(args, resultType.deepenProto, typer)
   }
 
+
+  /** A prototype for expressions that appear in function position
+   *
+   *  [](args): resultType, where args are known to be typed
+   */
+  class FunProtoTyped(args: List[tpd.Tree], resultType: Type, typer: Typer)(implicit ctx: Context) extends FunProto(args, resultType, typer)(ctx) {
+    override def typedArgs = args
+    override def argsAreTyped = true
+  }
+
   /** A prototype for implicitly inferred views:
    *
    *    []: argType => resultType
@@ -311,7 +321,7 @@ object ProtoTypes {
       yield new TypeVar(PolyParam(pt, n), state, owningTree)
 
     val added =
-      if (state.constraint contains pt) pt.copy(pt.paramNames, pt.paramBounds, pt.resultType)
+      if (state.constraint contains pt) pt.duplicate(pt.paramNames, pt.paramBounds, pt.resultType)
       else pt
     val tvars = if (owningTree.isEmpty) Nil else newTypeVars(added)
     state.constraint = state.constraint.add(added, tvars)

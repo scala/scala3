@@ -35,6 +35,8 @@ object Types {
 
   private var recCount = 0 // used temporarily for debugging. TODO: remove
 
+  private var nextId = 0
+
   /** The class of types.
    *  The principal subclasses and sub-objects are as follows:
    *
@@ -69,6 +71,13 @@ object Types {
   abstract class Type extends DotClass with Hashable with printing.Showable {
 
 // ----- Tests -----------------------------------------------------
+
+    val uniqId = {
+      nextId = nextId + 1
+//      if(nextId == 19555)
+//        println("foo")
+      nextId
+    }
 
     /** Is this type different from NoType? */
     def exists: Boolean = true
@@ -1965,7 +1974,9 @@ object Types {
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
       def paramInfo(param: Symbol): Type = param.info match {
         case AnnotatedType(annot, tp) if annot matches defn.RepeatedAnnot =>
-          tp.translateParameterized(defn.SeqClass, defn.RepeatedParamClass)
+          val typeSym = param.info.typeSymbol.asClass
+          assert(typeSym == defn.SeqClass || typeSym == defn.ArrayClass)
+          tp.translateParameterized(typeSym, defn.RepeatedParamClass)
         case tp =>
           tp
       }
@@ -2024,9 +2035,9 @@ object Types {
 
     def derivedPolyType(paramNames: List[TypeName], paramBounds: List[TypeBounds], restpe: Type)(implicit ctx: Context) =
       if ((paramNames eq this.paramNames) && (paramBounds eq this.paramBounds) && (restpe eq this.resultType)) this
-      else copy(paramNames, paramBounds, restpe)
+      else duplicate(paramNames, paramBounds, restpe)
 
-    def copy(paramNames: List[TypeName], paramBounds: List[TypeBounds], restpe: Type)(implicit ctx: Context) =
+    def duplicate(paramNames: List[TypeName] = this.paramNames, paramBounds: List[TypeBounds] = this.paramBounds, restpe: Type)(implicit ctx: Context) =
       PolyType(paramNames)(
           x => paramBounds mapConserve (_.subst(this, x).bounds),
           x => restpe.subst(this, x))

@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package ast
 
+import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
 import transform.SymUtils._
 import core._
 import util.Positions._, Types._, Contexts._, Constants._, Names._, Flags._
@@ -126,8 +127,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (tpe derivesFrom defn.SeqClass) SeqLiteral(elems) else JavaSeqLiteral(elems)
 
   def JavaSeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
-    new untpd.JavaSeqLiteral(elems)
-      .withType(defn.ArrayClass.typeRef.appliedTo(ctx.typeComparer.lub(elems.tpes)))
+    ta.assignType(new untpd.JavaSeqLiteral(elems), elems)
+
 
   def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
     TypeTree(original.tpe, original)
@@ -676,6 +677,50 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       ctx.warning(i"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
       Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)) withPos tree.pos
     }
+  }
+  
+  def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type, isAnnotConstructor: Boolean = false)(implicit ctx: Context): Tree = {
+    val typer = ctx.typer
+    val proto = new FunProtoTyped(args, expectedType, typer)
+    val alts = receiver.tpe.member(method).alternatives.map(_.termRef)
+
+    val alternatives = ctx.typer.resolveOverloaded(alts, proto, Nil)
+    assert(alternatives.size == 1) // this is parsed from bytecode tree. there's nothing user can do about it
+
+    val selected = alternatives.head
+    val fun = receiver
+      .select(TermRef.withSig(receiver.tpe.normalizedPrefix, selected.termSymbol.asTerm))
+      .appliedToTypes(targs)
+
+    def adaptLastArg(lastParam: Tree, expectedType: Type) = {
+      if (isAnnotConstructor && !(lastParam.tpe <:< expectedType)) {
+        val defn = ctx.definitions
+        val prefix = args.take(selected.widen.paramTypess.head.size - 1)
+        expectedType match {
+          case defn.ArrayType(el) =>
+            lastParam.tpe match {
+              case defn.ArrayType(el2) if (el2 <:< el) =>
+                // we have a JavaSeqLiteral with a more precise type
+                // we cannot construct a tree as JavaSeqLiteral infered to precise type
+                // if we add typed than it would be both type-correct and
+                // will pass Ycheck
+                prefix ::: List(tpd.Typed(lastParam, TypeTree(defn.ArrayType(el))))
+              case _ =>
+                ???
+            }
+          case _ => args
+        }
+      } else args
+    }
+
+    val callArgs: List[Tree] = if(args.isEmpty) Nil else {
+      val expectedType = selected.widen.paramTypess.head.last
+      val lastParam = args.last
+      adaptLastArg(lastParam, expectedType)
+    }
+
+    val apply = untpd.Apply(fun, callArgs)
+    new typer.ApplyToTyped(apply, fun, selected, callArgs, expectedType).result.asInstanceOf[Tree] // needed to handle varargs
   }
 
   @tailrec
