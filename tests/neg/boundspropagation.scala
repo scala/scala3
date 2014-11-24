@@ -38,3 +38,7 @@ object test4 {
     }
   }
 }
+
+class Test5 {
+"": ({ type U = this.type })#U
+}
