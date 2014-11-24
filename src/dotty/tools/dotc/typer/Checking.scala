@@ -168,9 +168,13 @@ object Checking {
     def forwardRef(tree: Tree) = flag("forward", tree)
     def selfRef(tree: Tree) = flag("self", tree)
     val checkTree = new TreeAccumulator[Unit] {
+      private var seen = Set[Symbol]()
       def checkRef(tree: Tree, sym: Symbol) =
-        if (sym.maybeOwner == refineCls && tree.pos.start <= sym.pos.end) forwardRef(tree)
+        if (sym.maybeOwner == refineCls && !seen(sym)) forwardRef(tree)
       def apply(x: Unit, tree: Tree) = tree match {
+        case tree: MemberDef =>
+          foldOver(x, tree)
+          seen += tree.symbol
         case tree @ Select(This(_), _) =>
           checkRef(tree, tree.symbol)
         case tree: RefTree =>
