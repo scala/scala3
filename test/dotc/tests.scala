@@ -104,7 +104,7 @@ class tests extends CompilerTest {
   @Test def neg_badAuxConstr = compileFile(negDir, "badAuxConstr", xerrors = 2)
   @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
   @Test def neg_t1569_failedAvoid = compileFile(negDir, "t1569-failedAvoid", xerrors = 1)
-  @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 6)
+  @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 8)
   @Test def neg_boundspropagation = compileFile(negDir, "boundspropagation", xerrors = 4)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", twice)(allowDeepSubtypes)

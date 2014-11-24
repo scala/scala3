@@ -304,6 +304,8 @@ object StdNames {
     val ArrayAnnotArg: N        = "ArrayAnnotArg"
     val Constant: N             = "Constant"
     val ConstantType: N         = "ConstantType"
+    val DummyHi: N              = "DummyHi"
+    val DummyLo: N              = "DummyLo"
     val ExistentialTypeTree: N  = "ExistentialTypeTree"
     val Flag : N                = "Flag"
     val Ident: N                = "Ident"
