@@ -20,6 +20,7 @@ import NameOps._
 import Flags._
 import Decorators._
 import ErrorReporting._
+import Checking._
 import EtaExpansion.etaExpand
 import dotty.tools.dotc.transform.Erasure.Boxing
 import util.Positions._
@@ -761,14 +762,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     assert(tree.refinements.length == refinements1.length, s"${tree.refinements} != $refinements1")
     def addRefinement(parent: Type, refinement: Tree): Type = {
       typr.println(s"adding refinement $refinement")
-      def checkRef(tree: Tree, sym: Symbol) =
-        if (sym.maybeOwner == refineCls && tree.pos.start <= sym.pos.end)
-          ctx.error("illegal forward reference in refinement", tree.pos)
-      refinement foreachSubTree {
-        case tree: RefTree => checkRef(tree, tree.symbol)
-        case tree: TypeTree => checkRef(tree, tree.tpe.typeSymbol)
-        case _ =>
-      }
+      checkRefinementNonCyclic(refinement, refineCls)
       val rsym = refinement.symbol
       val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
       RefinedType(parent, rsym.name, rt => rinfo.substThis(refineCls, RefinedThis(rt)))

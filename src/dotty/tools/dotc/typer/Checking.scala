@@ -152,6 +152,54 @@ object Checking {
         else info
     }
   }
+
+  /** Check that refinement satisfies the following two conditions
+   *  1. No part of it refers to a symbol that's defined in the same refinement
+   *     at a textually later point.
+   *  2. All references to the refinement itself via `this` are followed by
+   *     selections.
+   *  Note: It's not yet clear what exactly we want to allow and what we want to rule out.
+   *  This depends also on firming up the DOT calculus. For the moment we only issue
+   *  deprecated warnings, not errors.
+   */
+  def checkRefinementNonCyclic(refinement: Tree, refineCls: ClassSymbol)(implicit ctx: Context): Unit = {
+    def flag(what: String, tree: Tree) =
+      ctx.deprecationWarning(i"$what reference in refinement is deprecated", tree.pos)
+    def forwardRef(tree: Tree) = flag("forward", tree)
+    def selfRef(tree: Tree) = flag("self", tree)
+    val checkTree = new TreeAccumulator[Unit] {
+      def checkRef(tree: Tree, sym: Symbol) =
+        if (sym.maybeOwner == refineCls && tree.pos.start <= sym.pos.end) forwardRef(tree)
+      def apply(x: Unit, tree: Tree) = tree match {
+        case tree @ Select(This(_), _) =>
+          checkRef(tree, tree.symbol)
+        case tree: RefTree =>
+          checkRef(tree, tree.symbol)
+          foldOver(x, tree)
+        case tree: This =>
+          selfRef(tree)
+        case tree: TypeTree =>
+          val checkType = new TypeAccumulator[Unit] {
+            def apply(x: Unit, tp: Type): Unit = tp match {
+              case tp: NamedType =>
+                checkRef(tree, tp.symbol)
+                tp.prefix match {
+                  case pre: ThisType =>
+                  case pre => foldOver(x, pre)
+                }
+              case tp: ThisType if tp.cls == refineCls =>
+                selfRef(tree)
+              case _ =>
+                foldOver(x, tp)
+            }
+          }
+          checkType((), tree.tpe)
+        case _ =>
+          foldOver(x, tree)
+      }
+    }
+    checkTree((), refinement)
+  }
 }
 
 trait Checking {
