@@ -222,8 +222,10 @@ object RefChecks {
       }
 
       /* Is the intersection between given two lists of overridden symbols empty? */
-      def intersectionIsEmpty(syms1: Iterator[Symbol], syms2: Iterator[Symbol]) =
-        !(syms1 exists (syms2 contains _))
+      def intersectionIsEmpty(syms1: Iterator[Symbol], syms2: Iterator[Symbol]) = {
+        val set2 = syms2.toSet
+        !(syms1 exists (set2 contains _))
+      }
 
       // o: public | protected        | package-protected  (aka java's default access)
       // ^-may be overridden by member with access privileges-v
@@ -274,6 +276,8 @@ object RefChecks {
         !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&
         !member.is(Deferred) && !other.is(Deferred) &&
         intersectionIsEmpty(member.extendedOverriddenSymbols, other.extendedOverriddenSymbols)) {
+        println(i"${member.extendedOverriddenSymbols.toList.map(_.showLocated)}%, %")
+        println(i"${other.extendedOverriddenSymbols.toList.map(_.showLocated)}%, %")
         overrideError("cannot override a concrete member without a third member that's overridden by both " +
           "(this rule is designed to prevent ``accidental overrides'')")
       } else if (other.isStable && !member.isStable) { // (1.4)
