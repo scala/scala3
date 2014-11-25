@@ -398,7 +398,7 @@ class Definitions {
     def apply(elem: Type)(implicit ctx: Context) =
       if (ctx.erasedTypes) JavaArrayType(elem)
       else ArrayClass.typeRef.appliedTo(elem :: Nil)
-    def unapply(tp: Type)(implicit ctx: Context) = tp.dealias match {
+    def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealias match {
       case at: RefinedType if (at isRef ArrayClass) && at.argInfos.length == 1 => Some(at.argInfos.head)
       case _ => None
     }
