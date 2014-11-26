@@ -7,12 +7,14 @@ import config.Printers._
 import Decorators._
 import StdNames._
 import util.SimpleMap
+import collection.mutable
+import ast.tpd._
 
 trait TypeOps { this: Context =>
 
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 
-    def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.debugTraceIndented(s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
+    def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"toPrefix($pre, $cls, $thiscls)") /*<|<*/ {
       if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
         tp
       else if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists)
@@ -24,7 +26,7 @@ trait TypeOps { this: Context =>
         toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
     }
 
-    /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track , s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
+    /*>|>*/ ctx.conditionalTraceIndented(TypeOps.track, s"asSeen ${tp.show} from (${pre.show}, ${cls.show})", show = true) /*<|<*/ { // !!! DEBUG
       tp match {
         case tp: NamedType =>
           val sym = tp.symbol
@@ -56,7 +58,13 @@ trait TypeOps { this: Context =>
   final def simplify(tp: Type, theMap: SimplifyMap): Type = tp match {
     case tp: NamedType =>
       if (tp.symbol.isStatic) tp
-      else tp.derivedSelect(simplify(tp.prefix, theMap))
+      else tp.derivedSelect(simplify(tp.prefix, theMap)) match {
+        case tp1: NamedType if tp1.denotationIsCurrent =>
+          val tp2 = tp1.reduceProjection
+          //if (tp2 ne tp1) println(i"simplified $tp1 -> $tp2")
+          tp2
+        case tp1 => tp1
+      }
     case tp: PolyParam =>
       typerState.constraint.typeVarOfParam(tp) orElse tp
     case  _: ThisType | _: BoundType | NoPrefix =>
@@ -299,6 +307,40 @@ trait TypeOps { this: Context =>
       forwardRefs(formals(name), refinedInfo, parentRefs)
     }
     parentRefs
+  }
+
+  /** An argument bounds violation is a triple consisting of
+   *   - the argument tree
+   *   - a string "upper" or "lower" indicating which bound is violated
+   *   - the violated bound
+   */
+  type BoundsViolation = (Tree, String, Type)
+
+  /** The list of violations where arguments are not within bounds.
+   *  @param  args          The arguments
+   *  @param  boundss       The list of type bounds
+   *  @param  instantiate   A function that maps a bound type and the list of argument types to a resulting type.
+   *                        Needed to handle bounds that refer to other bounds.
+   */
+  def boundsViolations(args: List[Tree], boundss: List[TypeBounds], instantiate: (Type, List[Type]) => Type)(implicit ctx: Context): List[BoundsViolation] = {
+    val argTypes = args.tpes
+    val violations = new mutable.ListBuffer[BoundsViolation]
+    for ((arg, bounds) <- args zip boundss) {
+      def checkOverlapsBounds(lo: Type, hi: Type): Unit = {
+        //println(i"instantiating ${bounds.hi} with $argTypes")
+        //println(i" = ${instantiate(bounds.hi, argTypes)}")
+        val hiBound = instantiate(bounds.hi, argTypes.mapConserve(_.bounds.hi))
+          // Note that argTypes can contain a TypeBounds type for arguments that are
+          // not fully determined. In that case we need to check against the hi bound of the argument.
+        if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
+        if (!(bounds.lo <:< hi)) violations += ((arg, "lower", bounds.lo))
+      }
+      arg.tpe match {
+        case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi)
+        case tp => checkOverlapsBounds(tp, tp)
+      }
+    }
+    violations.toList
   }
 
   /** Is `feature` enabled in class `owner`?

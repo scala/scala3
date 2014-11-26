@@ -139,8 +139,9 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
     case tree: NamedArg => transform(tree.arg)
     case AppliedTypeTree(tycon, args) =>
       val tparams = tycon.tpe.typeSymbol.typeParams
-      Checking.checkBounds(
-        args, tparams.map(_.info.bounds), (tp, argTypes) => tp.substDealias(tparams, argTypes))
+      val bounds = tparams.map(tparam =>
+        tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
+      Checking.checkBounds(args, bounds, _.substDealias(tparams, _))
       normalizeType(tree)
     case tree =>
       normalizeType(tree)

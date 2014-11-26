@@ -293,8 +293,9 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** If this is an encoding of a (partially) applied type, return its arguments,
    *  otherwise return Nil.
    *  Existential types in arguments are returned as TypeBounds instances.
+   *  @param interpolate   See argInfo
    */
-  final def argInfos(implicit ctx: Context): List[Type] = {
+  final def argInfos(interpolate: Boolean)(implicit ctx: Context): List[Type] = {
     var tparams: List[TypeSymbol] = null
     def recur(tp: Type, refineCount: Int): mutable.ListBuffer[Type] = tp.stripTypeVar match {
       case tp @ RefinedType(tycon, name) =>
@@ -304,7 +305,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           if (tparams == null) tparams = tycon.typeParams
           if (buf.size < tparams.length) {
             val tparam = tparams(buf.size)
-            if (name == tparam.name) buf += tp.refinedInfo.argInfo(tparam)
+            if (name == tparam.name) buf += tp.refinedInfo.argInfo(tparam, interpolate)
             else null
           } else null
         }
@@ -315,6 +316,8 @@ class TypeApplications(val self: Type) extends AnyVal {
     val buf = recur(self, 0)
     if (buf == null) Nil else buf.toList
   }
+
+  final def argInfos(implicit ctx: Context): List[Type] = argInfos(interpolate = true)
 
   /** Argument types where existential types in arguments are disallowed */
   def argTypes(implicit ctx: Context) = argInfos mapConserve noBounds
@@ -338,16 +341,27 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** If this is the image of a type argument to type parameter `tparam`,
    *  recover the type argument, otherwise NoType.
+   *  @param interpolate   If true, replace type bounds as arguments corresponding to
+   *                       variant type parameters by their dominating element. I.e. an argument
+   *
+   *                           T <: U
+   *
+   *                       for a covariant type-parameter becomes U, and an argument
+   *
+   *                           T >: L
+   *
+   *                       for a contravariant type-parameter becomes L.
    */
-  final def argInfo(tparam: Symbol)(implicit ctx: Context): Type = self match {
+  final def argInfo(tparam: Symbol, interpolate: Boolean = true)(implicit ctx: Context): Type = self match {
     case TypeBounds(lo, hi) =>
       if (lo eq hi) hi
-      else {
+      else if (interpolate) {
         val v = tparam.variance
         if (v > 0 && (lo isRef defn.NothingClass)) hi
         else if (v < 0 && (hi isRef defn.AnyClass)) lo
-        else self // it's wildcard type; return its bounds
+        else self
       }
+      else self
     case _ =>
       NoType
   }

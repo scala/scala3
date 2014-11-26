@@ -432,7 +432,7 @@ object SymDenotations {
     final def isSetter(implicit ctx: Context) =
       (this is Accessor) &&
       originalName.isSetterName &&
-      info.firstParamTypes.nonEmpty // to avoid being fooled by   var x_= : Unit = ...
+      (!isCompleted || info.firstParamTypes.nonEmpty) // to avoid being fooled by   var x_= : Unit = ...
 
     /** is this the constructor of a class? */
     final def isClassConstructor = name == nme.CONSTRUCTOR

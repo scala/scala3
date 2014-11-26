@@ -593,7 +593,7 @@ trait Applications extends Compatibility { self: Typer =>
           else tree
         if (typedArgs.length <= pt.paramBounds.length)
           typedArgs = typedArgs.zipWithConserve(pt.paramBounds)(adaptTypeArg)
-        checkBounds(typedArgs, pt, tree.pos)
+        checkBounds(typedArgs, pt)
       case _ =>
     }
     assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)

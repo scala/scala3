@@ -27,3 +27,16 @@ class E {
   }
   val x: F#T = ???
 }
+
+class T1 {
+  type X = (U, U) // cycle
+  type U = X & Int
+}
+class T2 {
+  type X = (U, U) // cycle
+  type U = X | Int
+}
+object T12 {
+  ??? : (T1 {})#U
+  ??? : (T2 {})#U
+}
