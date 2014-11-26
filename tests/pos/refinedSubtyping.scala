@@ -17,3 +17,46 @@ class Test {
   y = x
 
 }
+
+class Test2 {
+
+  trait A
+  trait B
+
+  class C { type T }
+
+  type T1 = C { type T <: A } { type T <: B }
+
+  type U1 = C { type T <: B } { type T <: A }
+
+  var x: T1 = _
+  var y: U1 = _
+
+  x = y
+  y = x
+}
+
+
+class Test3 {
+
+  trait A
+  trait B
+
+  class C { type T }
+
+  type T1 = C { type T <: A }
+  type T2 = T1 { type T <: B }
+
+  type U1 = C { type T <: B }
+  type U2 = U1 { type T <: A }
+
+  var x: T2 = _
+  var y: U2 = _
+
+  val x1 = x
+  val y1 = y
+
+  x = y
+  y = x
+
+}
