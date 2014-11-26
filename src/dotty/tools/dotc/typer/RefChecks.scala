@@ -222,8 +222,10 @@ object RefChecks {
       }
 
       /* Is the intersection between given two lists of overridden symbols empty? */
-      def intersectionIsEmpty(syms1: Iterator[Symbol], syms2: Iterator[Symbol]) =
-        !(syms1 exists (syms2 contains _))
+      def intersectionIsEmpty(syms1: Iterator[Symbol], syms2: Iterator[Symbol]) = {
+        val set2 = syms2.toSet
+        !(syms1 exists (set2 contains _))
+      }
 
       // o: public | protected        | package-protected  (aka java's default access)
       // ^-may be overridden by member with access privileges-v

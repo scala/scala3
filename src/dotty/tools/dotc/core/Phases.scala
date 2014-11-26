@@ -220,6 +220,7 @@ object Phases {
     private var myErasedTypes = false
     private var myFlatClasses = false
     private var myRefChecked = false
+    private var mySymbolicRefs = false
 
     /** The sequence position of this phase in the given context where 0
      * is reserved for NoPhase and the first real phase is at position 1.
@@ -231,18 +232,20 @@ object Phases {
     def start = myPeriod.firstPhaseId
     def end = myPeriod.lastPhaseId
 
-    final def erasedTypes = myErasedTypes
-    final def flatClasses = myFlatClasses
-    final def refChecked = myRefChecked
+    final def erasedTypes = myErasedTypes   // Phase is after erasure
+    final def flatClasses = myFlatClasses   // Phase is after flatten
+    final def refChecked = myRefChecked     // Phase is after RefChecks
+    final def symbolicRefs = mySymbolicRefs // Phase is after ResolveSuper, newly generated TermRefs should be symbolic
 
     protected[Phases] def init(base: ContextBase, start: Int, end:Int): Unit = {
       if (start >= FirstPhaseId)
         assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")
       myBase = base
       myPeriod = Period(start, end)
-      myErasedTypes = prev.getClass == classOf[Erasure]   || prev.erasedTypes
-      myFlatClasses = prev.getClass == classOf[Flatten]   || prev.flatClasses
-      myRefChecked  = prev.getClass == classOf[RefChecks] || prev.refChecked
+      myErasedTypes  = prev.getClass == classOf[Erasure]      || prev.erasedTypes
+      myFlatClasses  = prev.getClass == classOf[Flatten]      || prev.flatClasses
+      myRefChecked   = prev.getClass == classOf[RefChecks]    || prev.refChecked
+      mySymbolicRefs = prev.getClass == classOf[ResolveSuper] || prev.symbolicRefs
     }
 
     protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
