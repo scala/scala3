@@ -112,7 +112,7 @@ class tests extends CompilerTest {
   @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config", twice)
   @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", twice)(allowDeepSubtypes)
   @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", twice)(allowDeepSubtypes)
-  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", twice)
+  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", twice)(allowDeepSubtypes)
 
   @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing", twice)
   @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing", twice)
