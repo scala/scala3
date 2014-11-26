@@ -1,4 +1,5 @@
-
+// tests that a refinement subtype satisfies all constraint
+// of its refinemen supertype
 class Test3 {
 
   trait A
