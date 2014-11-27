@@ -6,7 +6,7 @@
 package dotty.tools.dotc
 package backend.jvm
 
-import dotty.tools.backend.jvm.GenBCode
+import dotty.tools.backend.jvm.GenBCodePipeline
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.Types.{ErrorType, Type}
 
@@ -32,7 +32,7 @@ import core.Symbols.{Symbol, NoSymbol}
  *
  * Inspired from the `scalac` compiler.
  */
-class DottyPrimitives(ctx: Context, genBcode: GenBCode) {
+class DottyPrimitives(ctx: Context) {
   import scala.tools.nsc.backend.ScalaPrimitives._
 
   private lazy val primitives: immutable.Map[Symbol, Int] = init
@@ -55,9 +55,8 @@ class DottyPrimitives(ctx: Context, genBcode: GenBCode) {
   def getPrimitive(fun: Symbol, tpe: Type)(implicit ctx: Context): Int = {
     val defn = ctx.definitions
     val code = getPrimitive(fun)
-    import genBcode.bTypes._
 
-    def elementType = tpe.widenDealias match {
+    def elementType: Type = tpe.widenDealias match {
       case defn.ArrayType(el) => el
       case _ =>
         ctx.error(s"expected Array $tpe")
@@ -67,43 +66,42 @@ class DottyPrimitives(ctx: Context, genBcode: GenBCode) {
     code match {
 
       case APPLY =>
-        genBcode.toTypeKind(elementType) match {
-          case BOOL    => ZARRAY_GET
-          case BYTE    => BARRAY_GET
-          case SHORT   => SARRAY_GET
-          case CHAR    => CARRAY_GET
-          case INT     => IARRAY_GET
-          case LONG    => LARRAY_GET
-          case FLOAT   => FARRAY_GET
-          case DOUBLE  => DARRAY_GET
-          case _       => OARRAY_GET
+        elementType.classSymbol match {
+          case defn.BooleanClass    => ZARRAY_GET
+          case defn.ByteClass       => BARRAY_GET
+          case defn.ShortClass      => SARRAY_GET
+          case defn.CharClass       => CARRAY_GET
+          case defn.IntClass        => IARRAY_GET
+          case defn.LongClass       => LARRAY_GET
+          case defn.FloatClass      => FARRAY_GET
+          case defn.DoubleClass     => DARRAY_GET
+          case _                    => OARRAY_GET
         }
 
       case UPDATE =>
-        genBcode.toTypeKind(elementType) match {
-          case BOOL    => ZARRAY_SET
-          case BYTE    => BARRAY_SET
-          case SHORT   => SARRAY_SET
-          case CHAR    => CARRAY_SET
-          case INT     => IARRAY_SET
-          case LONG    => LARRAY_SET
-          case FLOAT   => FARRAY_SET
-          case DOUBLE  => DARRAY_SET
-          case _       => OARRAY_SET
-
+        elementType.classSymbol match {
+          case defn.BooleanClass    => ZARRAY_SET
+          case defn.ByteClass       => BARRAY_SET
+          case defn.ShortClass      => SARRAY_SET
+          case defn.CharClass       => CARRAY_SET
+          case defn.IntClass        => IARRAY_SET
+          case defn.LongClass       => LARRAY_SET
+          case defn.FloatClass      => FARRAY_SET
+          case defn.DoubleClass     => DARRAY_SET
+          case _                    => OARRAY_SET
         }
 
       case LENGTH =>
-        genBcode.toTypeKind(elementType) match {
-          case BOOL    => ZARRAY_LENGTH
-          case BYTE    => BARRAY_LENGTH
-          case SHORT   => SARRAY_LENGTH
-          case CHAR    => CARRAY_LENGTH
-          case INT     => IARRAY_LENGTH
-          case LONG    => LARRAY_LENGTH
-          case FLOAT   => FARRAY_LENGTH
-          case DOUBLE  => DARRAY_LENGTH
-          case _       => OARRAY_LENGTH
+        elementType.classSymbol match {
+          case defn.BooleanClass    => ZARRAY_LENGTH
+          case defn.ByteClass       => BARRAY_LENGTH
+          case defn.ShortClass      => SARRAY_LENGTH
+          case defn.CharClass       => CARRAY_LENGTH
+          case defn.IntClass        => IARRAY_LENGTH
+          case defn.LongClass       => LARRAY_LENGTH
+          case defn.FloatClass      => FARRAY_LENGTH
+          case defn.DoubleClass     => DARRAY_LENGTH
+          case _                    => OARRAY_LENGTH
         }
 
       case _ =>
@@ -149,11 +147,11 @@ class DottyPrimitives(ctx: Context, genBcode: GenBCode) {
     // java.lang.Object
     addPrimitive(defn.Object_eq, ID)
     addPrimitive(defn.Object_ne, NI)
-    addPrimitive(defn.Any_==, EQ)
-    addPrimitive(defn.Any_!=, NE)
+ /*   addPrimitive(defn.Any_==, EQ)
+    addPrimitive(defn.Any_!=, NE)*/
     addPrimitive(defn.Object_synchronized, SYNCHRONIZED)
-    addPrimitive(defn.Any_isInstanceOf, IS)
-    addPrimitive(defn.Any_asInstanceOf, AS)
+    /*addPrimitive(defn.Any_isInstanceOf, IS)
+    addPrimitive(defn.Any_asInstanceOf, AS)*/
 
     // java.lang.String
     addPrimitive(defn.String_+, CONCAT)
