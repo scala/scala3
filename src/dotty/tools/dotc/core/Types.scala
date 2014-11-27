@@ -29,6 +29,7 @@ import collection.{mutable, Seq, breakOut}
 import config.Config
 import config.Printers._
 import annotation.tailrec
+import Flags.FlagSet
 import language.implicitConversions
 
 object Types {
@@ -524,6 +525,18 @@ object Types {
       memberDenots(implicitFilter,
           (name, buf) => buf ++= member(name).altsWith(_ is Implicit))
         .toList.map(d => TermRef.withSig(this, d.symbol.asTerm))
+    }
+
+    /** The set of implicit members of this type */
+    final def memberClasses(implicit ctx: Context): Seq[SingleDenotation] = track("implicitMembers") {
+      memberDenots(takeAllFilter,
+        (name, buf) => buf ++= member(name).altsWith(x => x.isClass))
+    }
+
+    /** The set of implicit members of this type */
+    final def membersBasedOnFlags(requiredFlags: FlagSet, excludedFlags: FlagSet)(implicit ctx: Context): Seq[SingleDenotation] = track("implicitMembers") {
+      memberDenots(takeAllFilter,
+        (name, buf) => buf ++= member(name).altsWith(x => x.is(requiredFlags, excludedFlags)))
     }
 
     /** The info of `sym`, seen as a member of this type. */
