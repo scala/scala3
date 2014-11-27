@@ -73,7 +73,12 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait))
       sym.copySymDenotation(initFlags = sym.flags | Deferred)
-    else
+    else if(sym.is(Scala2x) && sym.is(Trait, JavaDefined)) { // fixup scala2 traits to become interfaces
+      val info = sym.asClass.classInfo
+      val parents: List[TypeRef] = defn.ObjectType.asInstanceOf[TypeRef] :: info.parents // new superClass is object
+      val newInfo = info.derivedClassInfo(classParents = parents)
+      sym.copySymDenotation(initFlags = sym.flags | JavaInterface, info = newInfo)
+    } else
       sym
 
   private def initializer(sym: Symbol)(implicit ctx: Context): TermSymbol = {
