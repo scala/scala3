@@ -61,7 +61,7 @@ class tests extends CompilerTest {
   @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess")
   @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion")
   @Test def pos_tailcall = compileDir(posDir + "tailcall/")
-  @Test def pos_nullarify = compileFile(posDir, "nullarify", "-Ycheck:nullarify" :: doErase)
+  @Test def pos_nullarify = compileFile(posDir, "nullarify", "-Ycheck:nullarify" :: Nil)
   @Test def pos_subtyping = compileFile(posDir, "subtyping")
   @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
 
@@ -128,6 +128,8 @@ class tests extends CompilerTest {
   @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", twice)
   @Test def dotc_util = compileDir(dotcDir + "tools/dotc/util", twice)
   @Test def tools_io = compileDir(dotcDir + "tools/io", twice)
+
+  @Test def helloWorld = compileFile(posDir, "HelloWorld", doEmitBytecode)
   //@Test def tools = compileDir(dotcDir + "tools", "-deep" :: Nil)(allowDeepSubtypes)
 
   @Test def testNonCyclic = compileArgs(Array(
