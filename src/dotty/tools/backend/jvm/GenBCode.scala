@@ -1,12 +1,14 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.dotc.CompilationUnit
-import dotty.tools.dotc.ast.Trees.PackageDef
+import dotty.tools.dotc.ast.Trees.{ValDef, PackageDef}
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Phases.Phase
 
+import scala.collection.mutable
+import scala.tools.asm.{ClassVisitor, MethodVisitor, FieldVisitor}
 import scala.tools.nsc.Settings
-import scala.tools.nsc.backend.jvm.{FileConflictException, BCodeSyncAndTry, BackendInterface, AsmUtils}
+import scala.tools.nsc.backend.jvm._
 import dotty.tools.dotc
 import dotty.tools.dotc.backend.jvm.DottyPrimitives
 import dotty.tools.dotc.transform.Erasure
@@ -28,22 +30,26 @@ import tpd._
 
 import scala.tools.nsc.backend.jvm.opt.LocalOpt
 
-/**
- * Created by dark on 24/11/14.
- */
-abstract class GenBCode extends Phase with BCodeSyncAndTry{
+class GenBCode extends Phase {
+  def phaseName: String = "genBCode"
+  private val entryPoints = new mutable.HashSet[Symbol]()
+  def registerEntryPoint(sym: Symbol) = entryPoints += sym
 
-  val int: DottyBackendInterface
-  implicit val ctx: Context
 
-  def entryPoints: List[Symbol] = ???
-  def tree: Tree = ???
-  def toTypeKind(t: Type)(implicit ctx: Context): bTypes.BType = ???
-  val phaseName = "jvm"
+  def run(implicit ctx: Context): Unit = {
+    new GenBCodePipeline(entryPoints.toList,  new DottyBackendInterface()(ctx))(ctx).run(ctx.compilationUnit.tpdTree)
+    entryPoints.clear()
+  }
+}
+
+class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInterface)(implicit val ctx: Context) extends BCodeSyncAndTry{
+
+  var tree: Tree = _
 
   final class PlainClassBuilder(cunit: CompilationUnit) extends SyncAndTryBuilder(cunit)
 
-  class BCodePhase() {
+
+//  class BCodePhase() {
 
     private var bytecodeWriter  : BytecodeWriter   = null
     private var mirrorCodeGen   : JMirrorBuilder   = null
@@ -54,7 +60,7 @@ abstract class GenBCode extends Phase with BCodeSyncAndTry{
     case class Item1(arrivalPos: Int, cd: TypeDef, cunit: CompilationUnit) {
       def isPoison = { arrivalPos == Int.MaxValue }
     }
-    private val poison1 = Item1(Int.MaxValue, null, ???)
+    private val poison1 = Item1(Int.MaxValue, null, ctx.compilationUnit)
     private val q1 = new java.util.LinkedList[Item1]
 
     /* ---------------- q2 ---------------- */
@@ -263,7 +269,9 @@ abstract class GenBCode extends Phase with BCodeSyncAndTry{
      *    (c) tear down (closing the classfile-writer and clearing maps)
      *
      */
-    def run() {
+    def run(t: Tree) {
+      this.tree = t
+
       // val bcodeStart = Statistics.startTimer(BackendStats.bcodeTimer)
 
       // val initStart = Statistics.startTimer(BackendStats.bcodeInitTimer)
@@ -326,6 +334,7 @@ abstract class GenBCode extends Phase with BCodeSyncAndTry{
         tree match {
           case EmptyTree            => ()
           case PackageDef(_, stats) => stats foreach gen
+          case ValDef(name, tpt, rhs) => () // module val not emmited
           case cd: TypeDef         =>
             q1 add Item1(arrivalPos, cd, int.currentUnit)
             arrivalPos += 1
@@ -377,5 +386,5 @@ abstract class GenBCode extends Phase with BCodeSyncAndTry{
       assert(q3.isEmpty, s"Some classfiles weren't written to disk: $q3")
 
     }
-  } // end of class BCodePhase
+  //} // end of class BCodePhase
 }
