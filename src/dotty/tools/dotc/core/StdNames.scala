@@ -510,6 +510,9 @@ object StdNames {
     val wrap: N                 = "wrap"
     val zero: N                 = "zero"
     val zip: N                  = "zip"
+    val nothingRuntimeClass: N  = "scala.runtime.Nothing$"
+    val nullRuntimeClass: N     = "scala.runtime.Null$"
+
 
     val synthSwitch: N          = "$synthSwitch"
 
