@@ -30,7 +30,8 @@ object DottyBuild extends Build {
     
     // get reflect and xml onboard
     libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value,
-                                "org.scala-lang.modules" %% "scala-xml" % "1.0.1"),
+                                "org.scala-lang.modules" %% "scala-xml" % "1.0.1",
+                                "me.d-d" % "scala-compiler" % "2.11.5-20141127-151222-084cc06425"),
 
     // get junit onboard
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11-RC1" % "test",
@@ -53,7 +54,7 @@ object DottyBuild extends Build {
 
     // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
     javaOptions <++= (managedClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
-       // put the Scala {library, reflect, compiler} in the classpath
+       // put the Scala {library, reflect} in the classpath
        val path = for {
          file <- attList.map(_.data)
          path = file.getAbsolutePath
