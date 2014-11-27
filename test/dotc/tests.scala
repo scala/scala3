@@ -15,8 +15,12 @@ class tests extends CompilerTest {
 
   implicit val defaultOptions = noCheckOptions ++ List(
       "-Yno-deep-subtypes",
-      "-Ycheck:resolveSuper,mixin,restoreScopes"
+      "-Ycheck:resolveSuper,mixin,restoreScopes",
+      "-dest", "./out/",
+      "-Ystop-before:collectEntryPoints"
   )
+
+  val doEmitBytecode = List("-Ystop-before:terminal")
 
   val twice = List("#runs", "2", "-YnoDoubleBindings")
 
