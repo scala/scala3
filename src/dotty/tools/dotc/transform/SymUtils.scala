@@ -53,9 +53,6 @@ class SymUtils(val self: Symbol) extends AnyVal {
   final def skipConstructor(implicit ctx: Context): Symbol =
     if (self.isConstructor) self.owner else self
 
-  final def isAnonymousFunction(implicit ctx: Context): Boolean =
-    self.is(Method) && (self.denot.initial.asSymDenotation.name startsWith nme.ANON_FUN)
-
   /** The logically enclosing method or class for this symbol.
    *  Instead of constructors one always picks the enclosing class.
    */
