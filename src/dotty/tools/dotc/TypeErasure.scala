@@ -142,7 +142,7 @@ object TypeErasure {
       tp.derivedPolyType(
         tp.paramNames, tp.paramNames map (Function.const(TypeBounds.upper(defn.ObjectType))), tp.resultType)
 
-    if ((sym eq defn.Any_asInstanceOf) || (sym eq defn.Any_isInstanceOf)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
+    if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
     else eraseInfo(tp)(erasureCtx) match {
@@ -153,10 +153,24 @@ object TypeErasure {
     }
   }
 
-  def isUnboundedGeneric(tp: Type)(implicit ctx: Context) = !(
-    (tp derivesFrom defn.ObjectClass) ||
-    tp.classSymbol.isPrimitiveValueClass ||
-    (tp.typeSymbol is JavaDefined))
+  /** Is `tp` an abstract type or polymorphic type parameter that has `Any`
+   *  as upper bound and that is not Java defined? Arrays of such types are
+   *  erased to `Object` instead of `ObjectArray`.
+   */
+  def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp match {
+    case tp: TypeRef =>
+      tp.symbol.isAbstractType &&
+      !tp.derivesFrom(defn.ObjectClass) &&
+      !tp.typeSymbol.is(JavaDefined)
+    case tp: PolyParam =>
+      !tp.derivesFrom(defn.ObjectClass) &&
+      !tp.binder.resultType.isInstanceOf[JavaMethodType]
+    case tp: TypeProxy => isUnboundedGeneric(tp.underlying)
+    case tp: AndType => isUnboundedGeneric(tp.tp1) || isUnboundedGeneric(tp.tp2)
+    case tp: OrType => isUnboundedGeneric(tp.tp1) && isUnboundedGeneric(tp.tp2)
+    case _ => false
+  }
+
 
   /** The erased least upper bound is computed as follows
    *  - if both argument are arrays, an array of the lub of the element types

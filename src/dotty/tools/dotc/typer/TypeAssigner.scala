@@ -208,7 +208,6 @@ trait TypeAssigner {
       case p.arrayApply => MethodType(defn.IntType :: Nil, arrayElemType)
       case p.arrayUpdate => MethodType(defn.IntType :: arrayElemType :: Nil, defn.UnitType)
       case p.arrayLength => MethodType(Nil, defn.IntType)
-      case p.arrayConstructor => MethodType(defn.IntType :: Nil, qualType)
       case nme.clone_ if qualType.isInstanceOf[JavaArrayType] => MethodType(Nil, qualType)
       case _ => accessibleSelectionType(tree, qual)
     }

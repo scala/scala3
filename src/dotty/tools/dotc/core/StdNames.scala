@@ -433,7 +433,6 @@ object StdNames {
     val moduleClass : N         = "moduleClass"
     val name: N                 = "name"
     val ne: N                   = "ne"
-    val newArray: N             = "newArray"
     val newFreeTerm: N          = "newFreeTerm"
     val newFreeType: N          = "newFreeType"
     val newNestedSymbol: N      = "newNestedSymbol"
@@ -691,8 +690,7 @@ object StdNames {
       val arrayApply: TermName  = "[]apply"
       val arrayUpdate: TermName = "[]update"
       val arrayLength: TermName = "[]length"
-      val arrayConstructor: TermName = "[]<init>"
-      val names: Set[Name] = Set(arrayApply, arrayUpdate, arrayLength, arrayConstructor)
+      val names: Set[Name] = Set(arrayApply, arrayUpdate, arrayLength)
     }
 
     def isPrimitiveName(name: Name) = primitive.names.contains(name)

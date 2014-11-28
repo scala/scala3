@@ -193,6 +193,10 @@ class Definitions {
     def staticsMethod(name: PreName) = ctx.requiredMethod(ScalaStaticsClass, name)
 
   lazy val DottyPredefModule = ctx.requiredModule("dotty.DottyPredef")
+  lazy val DottyArraysModule = ctx.requiredModule("dotty.runtime.Arrays")
+
+    def newRefArrayMethod = ctx.requiredMethod(DottyArraysModule.moduleClass.asClass, "newRefArray")
+
   lazy val NilModule = ctx.requiredModule("scala.collection.immutable.Nil")
   lazy val PredefConformsClass = ctx.requiredClass("scala.Predef." + tpnme.Conforms)
 
@@ -211,6 +215,7 @@ class Definitions {
     lazy val Array_update                = ctx.requiredMethod(ArrayClass, nme.update)
     lazy val Array_length                = ctx.requiredMethod(ArrayClass, nme.length)
     lazy val Array_clone                 = ctx.requiredMethod(ArrayClass, nme.clone_)
+    lazy val ArrayConstructor            = ctx.requiredMethod(ArrayClass, nme.CONSTRUCTOR)
   lazy val traversableDropMethod  = ctx.requiredMethod(ScalaRuntimeClass, nme.drop)
   lazy val uncheckedStableClass: ClassSymbol = ctx.requiredClass("scala.annotation.unchecked.uncheckedStable")
 
@@ -427,6 +432,8 @@ class Definitions {
   lazy val UnqualifiedOwners = RootImports.toSet ++ RootImports.map(_.moduleClass)
 
   lazy val PhantomClasses = Set[Symbol](AnyClass, AnyValClass, NullClass, NothingClass)
+
+  lazy val isPolymorphicAfterErasure = Set[Symbol](Any_isInstanceOf, Any_asInstanceOf, newRefArrayMethod)
 
   lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
 
