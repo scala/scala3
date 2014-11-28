@@ -298,6 +298,19 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case ConstantType(value) => Literal(value)
   }
 
+  /** A tree representing a `newXYZArray` operation of the right
+   *  kind for the given element type. No type arguments or
+   *  `length` arguments are given.
+   */
+  def newArray(elemType: Type)(implicit ctx: Context) = {
+    val elemClass = elemType.classSymbol
+    val kind =
+      if (TypeErasure.isUnboundedGeneric(elemType)) "Generic"
+      else if (elemClass.isPrimitiveValueClass) elemClass.name.toString
+      else "Ref"
+    ref(defn.DottyArraysModule).select(s"new${kind}Array".toTermName)
+  }
+
   // ------ Creating typed equivalents of trees that exist only in untyped form -------
 
   /** new C(args), calling the primary constructor of C */
@@ -678,7 +691,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)) withPos tree.pos
     }
   }
-  
+
   def applyOverloaded(receiver: Tree, method: TermName, args: List[Tree], targs: List[Type], expectedType: Type, isAnnotConstructor: Boolean = false)(implicit ctx: Context): Tree = {
     val typer = ctx.typer
     val proto = new FunProtoTyped(args, expectedType, typer)

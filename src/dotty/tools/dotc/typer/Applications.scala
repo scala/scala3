@@ -596,7 +596,16 @@ trait Applications extends Compatibility { self: Typer =>
         checkBounds(typedArgs, pt)
       case _ =>
     }
-    assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
+    val res = assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
+    if (res.symbol == defn.ArrayConstructor) {
+      val defn.ArrayType(elemType) = res.tpe.widen.resultType
+      val newArr = tpd.newArray(elemType).withPos(tree.pos)
+      newArr.tpe.widen match {
+        case _: PolyType => newArr.appliedToTypeTrees(typedArgs)
+        case _ => newArr
+      }
+    }
+    else res
   }
 
   def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
