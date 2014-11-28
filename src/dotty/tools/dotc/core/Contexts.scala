@@ -120,7 +120,7 @@ object Contexts {
     protected def scope_=(scope: Scope) = _scope = scope
     def scope: Scope = _scope
 
-    /** The current type assigner ot typer */
+    /** The current type assigner or typer */
     private[this] var _typeAssigner: TypeAssigner = _
     protected def typeAssigner_=(typeAssigner: TypeAssigner) = _typeAssigner = typeAssigner
     def typeAssigner: TypeAssigner = _typeAssigner
