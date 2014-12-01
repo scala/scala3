@@ -67,8 +67,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   type ArrayValue      = NonExistentTree
   type ApplyDynamic    = NonExistentTree
   type ModuleDef       = NonExistentTree
-  type LabelDef        = NonExistentTree
-
+  type LabelDef        = tpd.DefDef
 
   val NoSymbol = Symbols.NoSymbol
   val NoPosition: Position = Positions.NoPosition
@@ -215,6 +214,8 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   }
 
   def emitAsmp: Option[String] = None
+
+  def shouldEmitJumpAfterLabels = true
 
   def dumpClasses: Option[String] =
     if(ctx.settings.Ydumpclasses.isDefault) None
@@ -549,6 +550,9 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
           }
         case Types.ClassInfo(_, sym, _, _, _)           => primitiveOrClassToBType(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
 
+        case t: MethodType => // triggers for LabelDefs
+          t.resultType.toTypeKind(ct)(storage)
+
         /* AnnotatedType should (probably) be eliminated by erasure. However we know it happens for
          * meta-annotated annotations (@(ann @getter) val x = 0), so we don't emit a warning.
          * The type in the AnnotationInfo is an AnnotatedTpe. Tested in jvm/annotations.scala.
@@ -671,9 +675,15 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   }
 
   object LabelDef extends LabelDeconstructor {
-    def _1: Name = ???
-    def _2: List[Ident] = ???
-    def _3: Tree = ???
+    def _1: Name = field.name
+    def _2: List[Symbol] = field.vparamss.flatMap(_.map(_.symbol))
+    def _3: Tree = field.rhs
+
+    override def unapply(s: LabelDef): DottyBackendInterface.this.LabelDef.type = {
+      if(s.symbol is Flags.Label) this.field = s
+      else this.field = null
+      this
+    }
   }
 
   object Typed extends TypedDeconstrutor {

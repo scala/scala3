@@ -15,7 +15,7 @@ import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 
 
-import dotty.tools.backend.jvm.GenBCode
+import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
 
 class Compiler {
 
@@ -64,7 +64,7 @@ class Compiler {
       List(new LambdaLift,
            new Flatten,
            new RestoreScopes),
-      List(new PrivateToStatic, new CollectEntryPoints),
+      List(new PrivateToStatic, new CollectEntryPoints, new LabelDefs),
       List(new GenBCode)
     )
 
