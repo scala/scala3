@@ -265,7 +265,26 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
 
 
   def isQualifierSafeToElide(qual: Tree): Boolean = false // todo: implement
-  def getLabelDefOwners(t: Tree): Map[Tree, List[LabelDef]] = Map.empty
+  def getLabelDefOwners(tree: Tree): Map[Tree, List[LabelDef]] = {
+    // for each rhs of a defdef returns LabelDefs inside this DefDef
+    val res = new collection.mutable.HashMap[Tree, List[LabelDef]]()
+
+    val t = new TreeTraverser {
+      var outerRhs: Tree = tree
+
+      def traverse(tree: tpd.Tree): Unit = tree match {
+        case t: DefDef =>
+          if (t.symbol is Flags.Label)
+            res.put(outerRhs, t :: res.getOrElse(outerRhs, Nil))
+          else outerRhs = t
+          traverseChildren(t)
+        case _ => traverseChildren(tree)
+      }
+    }
+
+    t.traverse(tree)
+    res.toMap
+  }
 
   // todo: remove
   def isMaybeBoxed(sym: Symbol) = {
