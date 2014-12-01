@@ -130,6 +130,7 @@ class tests extends CompilerTest {
   @Test def tools_io = compileDir(dotcDir + "tools/io", twice)
 
   @Test def helloWorld = compileFile(posDir, "HelloWorld", doEmitBytecode)
+  @Test def labels = compileFile(posDir, "Labels", doEmitBytecode)
   //@Test def tools = compileDir(dotcDir + "tools", "-deep" :: Nil)(allowDeepSubtypes)
 
   @Test def testNonCyclic = compileArgs(Array(
