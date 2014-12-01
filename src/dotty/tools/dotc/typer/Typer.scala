@@ -1326,7 +1326,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           if (pt.isInstanceOf[PolyProto]) tree
           else {
             val (_, tvars) = constrained(poly, tree)
-            adaptInterpolated(tree appliedToTypes tvars, pt, original)
+            convertNewArray(
+              adaptInterpolated(tree.appliedToTypes(tvars), pt, original))
           }
         case wtp =>
           pt match {

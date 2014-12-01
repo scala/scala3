@@ -204,7 +204,6 @@ object NameOps {
       case nme.length => nme.primitive.arrayLength
       case nme.update => nme.primitive.arrayUpdate
       case nme.clone_ => nme.clone_
-      case nme.CONSTRUCTOR => nme.primitive.arrayConstructor
     }
 
     /** If name length exceeds allowable limit, replace part of it by hash */

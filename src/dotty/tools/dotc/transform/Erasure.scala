@@ -89,7 +89,7 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
    */
   def assertErased(tree: tpd.Tree)(implicit ctx: Context): Unit = {
     assertErased(tree.typeOpt, tree)
-    if (!(tree.symbol == defn.Any_isInstanceOf || tree.symbol == defn.Any_asInstanceOf))
+    if (!defn.isPolymorphicAfterErasure(tree.symbol))
       assertErased(tree.typeOpt.widen, tree)
     if (ctx.mode.isExpr)
       tree.tpe match {

@@ -596,7 +596,16 @@ trait Applications extends Compatibility { self: Typer =>
         checkBounds(typedArgs, pt)
       case _ =>
     }
-    assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
+    convertNewArray(
+      assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs))
+  }
+
+  /** Rewrite `new Array[T]` trees to calls of newXYZArray methods. */
+  def convertNewArray(tree: Tree)(implicit ctx: Context): Tree = tree match {
+    case TypeApply(tycon, targs) if tycon.symbol == defn.ArrayConstructor =>
+      newArray(targs.head, tree.pos)
+    case _ =>
+      tree
   }
 
   def typedUnApply(tree: untpd.Apply, selType: Type)(implicit ctx: Context): Tree = track("typedUnApply") {
