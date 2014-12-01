@@ -676,7 +676,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   }
 
   object Try extends TryDeconstructor {
-    def _1: Tree = field.tree
+    def _1: Tree = field.expr
     def _2: List[Tree] = field.cases
     def _3: Tree = field.finalizer
   }
