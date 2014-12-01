@@ -7,8 +7,11 @@ package dotty.tools.dotc
 package backend.jvm
 
 import dotty.tools.backend.jvm.GenBCodePipeline
+import dotty.tools.dotc.ast.Trees.{Select, Apply}
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.core.Types.{ErrorType, Type}
+import dotty.tools.dotc.core.StdNames._
+import dotty.tools.dotc.core.Types.{JavaArrayType, ErrorType, Type}
 
 import scala.collection.{ mutable, immutable }
 
@@ -52,12 +55,22 @@ class DottyPrimitives(ctx: Context) {
    * @param tpe The type of the receiver object. It is used only for array
    *            operations
    */
-  def getPrimitive(fun: Symbol, tpe: Type)(implicit ctx: Context): Int = {
+  def getPrimitive(app: tpd.Apply, tpe: Type)(implicit ctx: Context): Int = {
+    val fun = app.fun.symbol
     val defn = ctx.definitions
-    val code = getPrimitive(fun)
+    val code = app.fun match {
+      case Select(_, nme.primitive.arrayLength) =>
+        LENGTH
+      case Select(_, nme.primitive.arrayUpdate) =>
+        UPDATE
+      case Select(_, nme.primitive.arrayApply) =>
+        APPLY
+      case _ => getPrimitive(fun)
+    }
 
     def elementType: Type = tpe.widenDealias match {
       case defn.ArrayType(el) => el
+      case JavaArrayType(el) => el
       case _ =>
         ctx.error(s"expected Array $tpe")
         ErrorType
@@ -391,7 +404,9 @@ class DottyPrimitives(ctx: Context) {
     primitives.toMap
   }
 
-  def isPrimitive(sym: Symbol): Boolean = primitives contains sym
+  def isPrimitive(sym: Symbol): Boolean = {
+    (primitives contains sym) || sym == NoSymbol // the only trees that do not have a symbol assigned are array.{update,select,length}
+  }
 
 }
 

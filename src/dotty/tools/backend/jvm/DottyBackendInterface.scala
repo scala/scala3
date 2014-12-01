@@ -134,12 +134,17 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     (x, Erasure.Boxing.boxMethod(x.asClass))
   }.toMap
   def unboxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses.map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
+
+  private val mkArrayNames: Set[String] = Set("Byte", "Float", "Char", "Double", "Boolean", "Unit", "Long", "Int", "Short", "Ref")
+
+  override lazy val syntheticArrayConstructors: Set[Symbol] = mkArrayNames.map(nm => ctx.requiredMethod(toDenot(defn.DottyArraysModule).moduleClass.asClass, s"new${nm}Array"))
+
   def isBox(sym: Symbol): Boolean = Erasure.Boxing.isBox(sym)
   def isUnbox(sym: Symbol): Boolean = Erasure.Boxing.isUnbox(sym)
 
   val primitives: Primitives = new Primitives {
     val primitives = new DottyPrimitives(ctx)
-    def getPrimitive(methodSym: Symbol, reciever: Type): Int = primitives.getPrimitive(methodSym, reciever)
+    def getPrimitive(app: Apply, reciever: Type): Int = primitives.getPrimitive(app, reciever)
 
     def getPrimitive(sym: Symbol): Int = primitives.getPrimitive(sym)
 
