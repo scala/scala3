@@ -130,8 +130,10 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   val AbstractPartialFunctionClass: Symbol = defn.AbstractPartialFunctionClass
   val String_valueOf: Symbol = defn.String_valueOf_Object
 
-  def boxMethods: Map[Symbol, Symbol] = defn.ScalaBoxedClasses.map(x => (x, Erasure.Boxing.boxMethod(x.asClass))).toMap
-  def unboxMethods: Map[Symbol, Symbol] = defn.ScalaBoxedClasses.map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
+  def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses.map{x =>
+    (x, Erasure.Boxing.boxMethod(x.asClass))
+  }.toMap
+  def unboxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses.map(x => (x, Erasure.Boxing.unboxMethod(x.asClass))).toMap
   def isBox(sym: Symbol): Boolean = Erasure.Boxing.isBox(sym)
   def isUnbox(sym: Symbol): Boolean = Erasure.Boxing.isUnbox(sym)
 
