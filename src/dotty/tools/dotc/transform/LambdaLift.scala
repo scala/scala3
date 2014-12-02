@@ -257,8 +257,8 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       case mt @ MethodType(pnames, ptypes) =>
         val ps = proxies(local.skipConstructor)
         MethodType(
-          pnames ++ ps.map(_.name.asTermName),
-          ptypes ++ ps.map(_.info),
+          ps.map(_.name.asTermName) ++ pnames,
+          ps.map(_.info) ++ ptypes,
           mt.resultType)
       case info => info
     }
@@ -340,7 +340,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
 
     private def addFreeArgs(sym: Symbol, args: List[Tree])(implicit ctx: Context, info: TransformerInfo) =
       free get sym match {
-        case Some(fvs) => args ++ fvs.toList.map(proxyRef(_))
+        case Some(fvs) => fvs.toList.map(proxyRef(_)) ++ args
         case _ => args
       }
 
@@ -354,9 +354,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
           transformFollowingDeep(ValDef(proxy.asTerm).withPos(tree.pos)).asInstanceOf[ValDef])
         tree match {
           case tree: DefDef =>
-            cpy.DefDef(tree)(vparamss = tree.vparamss.map(_ ++ freeParamDefs))
+            cpy.DefDef(tree)(vparamss = tree.vparamss.map(freeParamDefs ++ _))
           case tree: Template =>
-            cpy.Template(tree)(body = tree.body ++ freeParamDefs)
+            cpy.Template(tree)(body = freeParamDefs ++ tree.body)
         }
     }
 
