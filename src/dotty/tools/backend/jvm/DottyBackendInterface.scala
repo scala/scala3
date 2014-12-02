@@ -444,7 +444,16 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     // navigation
     def owner: Symbol = toDenot(sym).owner
     def rawowner: Symbol = owner
-    def originalOwner: Symbol = toDenot(sym)(ctx.withPhase(ctx.typerPhase)).owner
+    def originalOwner: Symbol = {
+      try {
+        val original = toDenot(sym).initial
+        val validity = original.validFor
+        val shiftedContext = ctx.withPhase(validity.phaseId)
+        toDenot(sym)(shiftedContext).maybeOwner
+      } catch {
+        case e: NotDefinedHere => NoSymbol // todo: do we have a method to tests this?
+      }
+    }
     def parentSymbols: List[Symbol] = toDenot(sym).info.parents.map(_.typeSymbol)
     def superClass: Symbol = toDenot(sym).superClass
     def enclClass: Symbol = toDenot(sym).enclosingClass
