@@ -68,6 +68,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   type ApplyDynamic    = NonExistentTree
   type ModuleDef       = NonExistentTree
   type LabelDef        = tpd.DefDef
+  type Closure         = tpd.Closure
 
   val NoSymbol = Symbols.NoSymbol
   val NoPosition: Position = Positions.NoPosition
@@ -100,6 +101,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   val BoxesRunTimeClass      = toDenot(BoxesRunTimeModule).moduleClass.asClass
 
   val nme_valueOf: Name = StdNames.nme.valueOf
+  val nme_apply = StdNames.nme.apply
   val NothingClass: Symbol = defn.NothingClass
   val NullClass: Symbol = defn.NullClass
   val ObjectClass: Symbol = defn.ObjectClass
@@ -180,6 +182,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   implicit val ApplyDynamicTag: ClassTag[ApplyDynamic] = ClassTag[ApplyDynamic](classOf[ApplyDynamic])
   implicit val SuperTag: ClassTag[Super] = ClassTag[Super](classOf[Super])
   implicit val ConstantClassTag: ClassTag[Constant] = ClassTag[Constant](classOf[Constant])
+  implicit val ClosureTag: ClassTag[Closure] = ClassTag[Closure](classOf[Closure])
 
   /* dont emit any annotations for now*/
   def isRuntimeVisible(annot: Annotation): Boolean = false
@@ -774,6 +777,19 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def _2: Name = field.name
     def _4: Template = field.rhs.asInstanceOf[Template]
     def _3: List[TypeDef] = Nil
+  }
+
+  object Closure extends ClosureDeconstructor {
+    def _1 = field.env
+    def _2 = field.meth
+    def _3 = {
+      val t = field.tpt.tpe.typeSymbol
+      if(t.exists) t
+      else {
+        val arity = field.meth.tpe.widenDealias.paramTypes.size - _1.size
+        ctx.requiredClass(("scala.compat.java8.JFunction"+arity).toTermName)
+      }
+    }
   }
 
   def currentUnit = ctx.compilationUnit
