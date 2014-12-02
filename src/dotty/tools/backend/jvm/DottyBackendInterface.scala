@@ -544,7 +544,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def members: List[Symbol] =
       tp.memberDenots(takeAllFilter, (name, buf) => buf ++= member(name).alternatives).map(_.symbol).toList
 
-    def typeSymbol: Symbol = tp.typeSymbol
+    def typeSymbol: Symbol = tp.widenDealias.typeSymbol
 
     def =:=(other: Type): Boolean = tp =:= other
 
