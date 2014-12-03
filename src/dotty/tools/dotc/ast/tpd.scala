@@ -129,7 +129,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def JavaSeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
     ta.assignType(new untpd.JavaSeqLiteral(elems), elems)
 
-
   def TypeTree(original: Tree)(implicit ctx: Context): TypeTree =
     TypeTree(original.tpe, original)
 
