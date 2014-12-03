@@ -1159,7 +1159,7 @@ object TreeTransforms {
           if (mutatedInfo eq null) tree
           else {
             val elems = transformTrees(tree.elems, mutatedInfo, cur)
-            goSeqLiteral(cpy.SeqLiteral(tree)(elems), mutatedInfo.nx.nxTransLiteral(cur))
+            goSeqLiteral(cpy.SeqLiteral(tree)(elems), mutatedInfo.nx.nxTransSeqLiteral(cur))
           }
         case tree: TypeTree =>
           implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForTypeTree, info.nx.nxPrepTypeTree, tree, cur)
