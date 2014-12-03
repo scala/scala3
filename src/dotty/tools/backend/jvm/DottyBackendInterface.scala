@@ -796,7 +796,10 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
       if(t.exists) t
       else {
         val arity = field.meth.tpe.widenDealias.paramTypes.size - _1.size
-        ctx.requiredClass(("scala.compat.java8.JFunction"+arity).toTermName)
+        val returnsUnit = field.meth.tpe.widenDealias.resultType.classSymbol == UnitClass
+        if(returnsUnit)
+          ctx.requiredClass(("scala.compat.java8.JProcedure"+arity).toTermName)
+        else ctx.requiredClass(("scala.compat.java8.JFunction"+arity).toTermName)
       }
     }
   }
