@@ -127,7 +127,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
             catch {
               case ex: Throwable =>
                 ex.printStackTrace()
-                error(s"Error while emitting ${int.sourceFileFor(item.cunit)}\n${ex.getMessage}")
+                ctx.error(s"Error while emitting ${int.sourceFileFor(item.cunit)}\n${ex.getMessage}")
             }
           }
         }
@@ -224,7 +224,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
             } catch {
               case ex: Throwable =>
                 ex.printStackTrace()
-                error(s"Error while emitting ${item.plain.name}\n${ex.getMessage}")
+                ctx.error(s"Error while emitting ${item.plain.name}\n${ex.getMessage}")
             }
           }
         }
@@ -358,7 +358,7 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
           }
           catch {
             case e: FileConflictException =>
-              error(s"error writing $jclassName: ${e.getMessage}")
+              ctx.error(s"error writing $jclassName: ${e.getMessage}")
           }
         }
       }
