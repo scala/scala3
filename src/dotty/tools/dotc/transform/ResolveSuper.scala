@@ -50,31 +50,31 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
 
   override def treeTransformPhase = thisTransform.next
 
+  /** Returns the symbol that is accessed by a super-accessor in a mixin composition.
+   *
+   *  @param base       The class in which everything is mixed together
+   *  @param member     The symbol statically referred to by the superaccessor in the trait
+   */
+  private def rebindSuper(base: Symbol, acc: Symbol)(implicit ctx: Context): Symbol = {
+    var bcs = base.info.baseClasses.dropWhile(acc.owner != _).tail
+    var sym: Symbol = NoSymbol
+    val SuperAccessorName(memberName) = acc.name: Name // dotty deviation: ": Name" needed otherwise pattern type is neither a subtype nor a supertype of selector type
+    ctx.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
+    while (bcs.nonEmpty && sym == NoSymbol) {
+      val other = bcs.head.info.nonPrivateDecl(memberName)
+      if (ctx.settings.debug.value)
+        ctx.log(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
+      sym = other.matchingDenotation(base.thisType, base.thisType.memberInfo(acc)).symbol
+      bcs = bcs.tail
+    }
+    assert(sym.exists)
+    sym
+  }
+
   override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo) = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisTransform)
     import ops._
-
-    /** Returns the symbol that is accessed by a super-accessor in a mixin composition.
-     *
-     *  @param base       The class in which everything is mixed together
-     *  @param member     The symbol statically referred to by the superaccessor in the trait
-     */
-    def rebindSuper(base: Symbol, acc: Symbol): Symbol = {
-      var bcs = cls.info.baseClasses.dropWhile(acc.owner != _).tail
-      var sym: Symbol = NoSymbol
-      val SuperAccessorName(memberName) = acc.name: Name // dotty deviation: ": Name" needed otherwise pattern type is neither a subtype nor a supertype of selector type
-      ctx.debuglog(i"starting rebindsuper from $cls of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
-      while (bcs.nonEmpty && sym == NoSymbol) {
-        val other = bcs.head.info.nonPrivateDecl(memberName)
-        if (ctx.settings.debug.value)
-          ctx.log(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
-        sym = other.matchingDenotation(cls.thisType, cls.thisType.memberInfo(acc)).symbol
-        bcs = bcs.tail
-      }
-      assert(sym.exists)
-      sym
-    }
 
     def superAccessors(mixin: ClassSymbol): List[Tree] =
       for (superAcc <- mixin.decls.filter(_ is SuperAccessor).toList)
@@ -94,5 +94,18 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
 
     cpy.Template(impl)(body = overrides ::: impl.body)
   }
+
+  override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
+    val meth = ddef.symbol.asTerm
+    if (meth.is(SuperAccessor, butNot = Deferred)) {
+      assert(ddef.rhs.isEmpty)
+      val cls = meth.owner.asClass
+      val ops = new MixinOps(cls, thisTransform)
+      import ops._
+      polyDefDef(meth, forwarder(rebindSuper(cls, meth)))
+    }
+    else ddef
+  }
+
   private val PrivateOrDeferred = Private | Deferred
 }

@@ -89,8 +89,9 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
 
       val superAcc = clazz.info.decl(supername).suchThat(_.signature == sym.signature).symbol orElse {
         ctx.debuglog(s"add super acc ${sym.showLocated} to $clazz")
+        val maybeDeferred = if (clazz is Trait) Deferred else EmptyFlags
         val acc = ctx.newSymbol(
-            clazz, supername, SuperAccessor | Private | Artifact | Method,
+            clazz, supername, SuperAccessor | Private | Artifact | Method | maybeDeferred,
             ensureMethodic(sel.tpe.widenSingleton), coord = sym.coord).enteredAfter(thisTransformer)
         // Diagnostic for SI-7091
         if (!accDefs.contains(clazz))
