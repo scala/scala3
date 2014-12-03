@@ -361,7 +361,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val constrSym = modcls.primaryConstructor orElse ctx.newDefaultConstructor(modcls).entered
     val constr = DefDef(constrSym.asTerm, EmptyTree)
     val clsdef = ClassDef(modcls, constr, body)
-    val valdef = ValDef(sym, New(modcls.typeRef))
+    val valdef = ValDef(sym, New(modcls.typeRef).select(constrSym).appliedToNone)
     Thicket(valdef, clsdef)
   }
 
