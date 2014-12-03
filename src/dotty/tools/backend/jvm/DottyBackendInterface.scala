@@ -457,8 +457,8 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def parentSymbols: List[Symbol] = toDenot(sym).info.parents.map(_.typeSymbol)
     def superClass: Symbol = toDenot(sym).superClass
     def enclClass: Symbol = toDenot(sym).enclosingClass
-    def linkedClassOfClass: Symbol = toDenot(sym).companionModule
-    def linkedClass: Symbol = linkedClassOfClass //exitingPickler(sym.linkedClassOfClass)
+    def linkedClassOfClass: Symbol = linkedClass
+    def linkedClass: Symbol = toDenot(sym).linkedClass //exitingPickler(sym.linkedClassOfClass)
     def companionClass: Symbol = toDenot(sym).companionClass
     def companionModule: Symbol = toDenot(sym).companionModule
     def companionSymbol: Symbol = if (sym is Flags.Module) companionClass else companionModule
