@@ -48,6 +48,7 @@ class Compiler {
            new ExplicitOuter,
            new Splitter),
       List(new ElimByName,
+           new SeqLiterals,
            new InterceptedMethods,
            new Literalize,
            new Getters,
