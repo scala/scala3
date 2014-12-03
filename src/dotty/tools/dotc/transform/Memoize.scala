@@ -43,6 +43,12 @@ import Decorators._
    */
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Mixin])
 
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
+    case tree: DefDef if !tree.symbol.is(Lazy | Deferred) =>
+      assert(!tree.rhs.isEmpty, i"unimplemented: $tree")
+    case _ =>
+  }
+
   override def prepareForDefDef(tree: DefDef)(implicit ctx: Context) = {
     val sym = tree.symbol
     if (sym.isGetter && !sym.is(NoFieldNeeded)) {
@@ -74,7 +80,7 @@ import Decorators._
         Thicket(fieldDef, getterDef)
       }
       else if (sym.isSetter) {
-        val Literal(Constant(())) = tree.rhs
+        if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs }
         val initializer = Assign(ref(field), ref(tree.vparamss.head.head.symbol))
         cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer))
       }
@@ -82,5 +88,5 @@ import Decorators._
                 // neither getters nor setters
     else tree
   }
-  private val NoFieldNeeded  = Lazy | Deferred | ParamAccessor | JavaDefined
+  private val NoFieldNeeded  = Lazy | Deferred | JavaDefined
 }
