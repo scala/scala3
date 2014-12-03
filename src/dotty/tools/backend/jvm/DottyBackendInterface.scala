@@ -105,6 +105,8 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   val NothingClass: Symbol = defn.NothingClass
   val NullClass: Symbol = defn.NullClass
   val ObjectClass: Symbol = defn.ObjectClass
+  val Object_Type: Type = defn.ObjectType
+  val Throwable_Type: Type = defn.ThrowableType
   val Object_isInstanceOf: Symbol = defn.Any_isInstanceOf
   val Object_asInstanceOf: Symbol = defn.Any_asInstanceOf
   val Object_equals: Symbol = defn.Any_equals
@@ -484,7 +486,9 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def serialVUID: Option[Long] = None
 
 
-    def freshLocal(cunit: CompilationUnit, name: String, pos: Position, flags: Flags): Symbol = ???
+    def freshLocal(cunit: CompilationUnit, name: String, tpe: Type, pos: Position, flags: Flags): Symbol = {
+      ctx.newSymbol(sym, name.toTermName, FlagSet(flags), tpe, NoSymbol, pos)
+    }
 
     def getter(clz: Symbol): Symbol = decorateSymbol(sym).getter
     def setter(clz: Symbol): Symbol = decorateSymbol(sym).setter
