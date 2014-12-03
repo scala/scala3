@@ -413,6 +413,12 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def isJavaDefined: Boolean = sym is Flags.JavaDefined
     def isDeferred: Boolean = sym is Flags.Deferred
     def isPrivate: Boolean = sym is Flags.Private
+    def getsJavaFinalFlag: Boolean =
+      isFinal &&  !sym.isClassConstructor && !(sym is Flags.Mutable) &&  !(sym.enclosingClass is Flags.JavaInterface)
+
+    def getsJavaPrivateFlag: Boolean =
+      isPrivate //|| (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
+
     def isFinal: Boolean = sym is Flags.Final
     def isStaticMember: Boolean = (sym is Flags.JavaStatic) || (owner is Flags.ImplClass)
     def isBottomClass: Boolean = (sym ne defn.NullClass) && (sym ne defn.NothingClass)
