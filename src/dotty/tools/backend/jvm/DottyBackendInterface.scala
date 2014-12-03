@@ -390,7 +390,9 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def thisType: Type = toDenot(sym).thisType
 
     // tests
-    def isClass: Boolean = sym.isClass
+    def isClass: Boolean = {
+      sym.isClass && (sym.isPackageObject || !(sym is Flags.Package))
+    }
     def isType: Boolean = sym.isType
     def isAnonymousClass: Boolean = toDenot(sym).isAnonymousClass
     def isConstructor: Boolean = toDenot(sym).isConstructor
@@ -414,7 +416,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def isDeferred: Boolean = sym is Flags.Deferred
     def isPrivate: Boolean = sym is Flags.Private
     def getsJavaFinalFlag: Boolean =
-      isFinal &&  !sym.isClassConstructor && !(sym is Flags.Mutable) &&  !(sym.enclosingClass is Flags.JavaInterface)
+      isFinal &&  !toDenot(sym).isClassConstructor && !(sym is Flags.Mutable) &&  !(sym.enclosingClass is Flags.JavaInterface)
 
     def getsJavaPrivateFlag: Boolean =
       isPrivate //|| (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
@@ -438,7 +440,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
       (sym is Flags.Module) && !(sym is Flags.ImplClass) /// !sym.isNestedClass
     def isJavaEntryPoint: Boolean = CollectEntryPoints.isJavaEntyPoint(sym)
 
-    def isClassConstructor: Boolean = sym.name == nme.CONSTRUCTOR
+    def isClassConstructor: Boolean = toDenot(sym).isClassConstructor
 
     /**
      * True for module classes of modules that are top-level or owned only by objects. Module classes
@@ -454,10 +456,14 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def rawowner: Symbol = owner
     def originalOwner: Symbol = {
       try {
-        val original = toDenot(sym).initial
-        val validity = original.validFor
-        val shiftedContext = ctx.withPhase(validity.phaseId)
-        toDenot(sym)(shiftedContext).maybeOwner
+        if (sym.exists) {
+          val original = toDenot(sym).initial
+          val validity = original.validFor
+          val shiftedContext = ctx.withPhase(validity.phaseId)
+          val r = toDenot(sym)(shiftedContext).maybeOwner
+          if(r is Flags.Package) NoSymbol
+          else r
+        } else NoSymbol
       } catch {
         case e: NotDefinedHere => NoSymbol // todo: do we have a method to tests this?
       }
