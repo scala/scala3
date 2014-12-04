@@ -45,7 +45,7 @@ object Uniques {
     private def findPrevious(h: Int, prefix: Type, name: Name): NamedType = {
       var e = findEntryByHash(h)
       while (e != null) {
-        if ((e.prefix == prefix) && (e.name eq name)) return e
+        if ((e.prefix eq prefix) && (e.name eq name)) return e
         e = nextEntryByHash(h)
       }
       e
@@ -71,7 +71,7 @@ object Uniques {
     private def findPrevious(h: Int, lo: Type, hi: Type, variance: Int): TypeBounds = {
       var e = findEntryByHash(h)
       while (e != null) {
-        if ((e.lo == lo) && (e.hi == hi) && (e.variance == variance)) return e
+        if ((e.lo eq lo) && (e.hi eq hi) && (e.variance == variance)) return e
         e = nextEntryByHash(h)
       }
       e
@@ -87,7 +87,8 @@ object Uniques {
       if (h == NotCached) newBounds
       else {
         val r = findPrevious(h, lo, hi, variance)
-        if (r ne null) r else addEntryAfterScan(newBounds)
+        if (r ne null) r
+        else addEntryAfterScan(newBounds)
       }
     }
   }
@@ -99,7 +100,7 @@ object Uniques {
     private def findPrevious(h: Int, parent: Type, refinedName: Name, refinedInfo: Type): RefinedType = {
       var e = findEntryByHash(h)
       while (e != null) {
-        if ((e.parent == parent) && (e.refinedName eq refinedName) && (e.refinedInfo == refinedInfo))
+        if ((e.parent eq parent) && (e.refinedName eq refinedName) && (e.refinedInfo eq refinedInfo))
           return e
         e = nextEntryByHash(h)
       }
