@@ -64,7 +64,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   type Super           = tpd.Super
   type Modifiers       = tpd.Modifiers
   type Annotation      = NonExistentTree
-  type ArrayValue      = NonExistentTree
+  type ArrayValue      = tpd.JavaSeqLiteral
   type ApplyDynamic    = NonExistentTree
   type ModuleDef       = NonExistentTree
   type LabelDef        = tpd.DefDef
@@ -750,8 +750,13 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def _2: Name = field.mix
   }
   object ArrayValue extends ArrayValueDeconstructor {
-    def _1: Tree = ???
-    def _2: List[Tree] = ???
+    def _1: Type = field.tpe match {
+      case JavaArrayType(elem) => elem
+      case _ =>
+        ctx.error(s"JavaSeqArray with type ${field.tpe} reached backend: $field", field.pos)
+        ErrorType
+    }
+    def _2: List[Tree] = field.elems
   }
   object Match extends MatchDeconstructor {
     def _1: Tree = field.selector
