@@ -413,6 +413,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def isSetter: Boolean = toDenot(sym).isSetter
     def isGetClass: Boolean = sym eq defn.Any_getClass
     def isJavaDefined: Boolean = sym is Flags.JavaDefined
+    def isJavaDefaultMethod: Boolean = !((sym is Flags.Deferred)  || toDenot(sym).isClassConstructor)
     def isDeferred: Boolean = sym is Flags.Deferred
     def isPrivate: Boolean = sym is Flags.Private
     def getsJavaFinalFlag: Boolean =
@@ -431,7 +432,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def isVarargsMethod: Boolean = sym is Flags.JavaVarargs
     def isDeprecated: Boolean = false
     def isMutable: Boolean = sym is Flags.Mutable
-    def hasAbstractFlag: Boolean = sym is Flags.Abstract
+    def hasAbstractFlag: Boolean = (sym is Flags.Abstract) || (sym is Flags.JavaInterface)
     def hasModuleFlag: Boolean = sym is Flags.Module
     def isSynchronized: Boolean = sym is Flags.Synchronized
     def isNonBottomSubClass(other: Symbol): Boolean = sym.derivesFrom(other)
