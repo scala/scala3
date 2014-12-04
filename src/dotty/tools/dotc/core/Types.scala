@@ -673,6 +673,8 @@ object Types {
         if (tp1.exists) tp1.dealias else tp
       case tp: LazyRef =>
         tp.ref.dealias
+      case tp: AnnotatedType =>
+        tp.derivedAnnotatedType(tp.annot, tp.tpe.dealias)
       case tp => tp
     }
 
@@ -2497,6 +2499,8 @@ object Types {
     def derivedAnnotatedType(annot: Annotation, tpe: Type) =
       if ((annot eq this.annot) && (tpe eq this.tpe)) this
       else AnnotatedType(annot, tpe)
+
+    override def stripTypeVar(implicit ctx: Context): Type = tpe.stripTypeVar
   }
 
   object AnnotatedType {
