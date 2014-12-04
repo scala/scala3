@@ -34,7 +34,7 @@ class Compiler {
    */
   def phases: List[List[Phase]] =
     List(
-      List(new FrontEnd),
+      List(new FrontEnd)/*,
       List(new FirstTransform,
            new SyntheticMethods),
       List(new SuperAccessors),
@@ -62,6 +62,7 @@ class Compiler {
            new Flatten,
            new RestoreScopes),
       List(new PrivateToStatic)
+      */
     )
 
   var runId = 1
@@ -87,7 +88,7 @@ class Compiler {
     rootScope.enter(ctx.definitions.RootPackage)(bootstrap)
     val start = bootstrap.fresh
       .setOwner(defn.RootClass)
-      .setTyper(new Typer)
+      .setTyper(new Reim)
       .setMode(Mode.ImplicitsEnabled)
       .setTyperState(new MutableTyperState(ctx.typerState, new ConsoleReporter()(ctx), isCommittable = true))
     ctx.definitions.init(start) // set context of definitions to start
