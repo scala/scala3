@@ -1777,23 +1777,23 @@ object Parsers {
       }
     }
 
-    /**  TmplDef ::= ([`case'] `class' | `trait') ClassDef
+    /** TmplDef ::= ([`case'] `class' | `trait') ClassDef
      *            |  [`case'] `object' ObjectDef
      */
     def tmplDef(start: Int, mods: Modifiers): Tree = in.token match {
       case TRAIT =>
         classDef(posMods(start, mods | Trait))
-        case CLASS =>
-          classDef(posMods(start, mods))
-        case CASECLASS =>
-          classDef(posMods(start, mods | Case))
-        case OBJECT =>
-          objectDef(posMods(start, mods | Module))
-        case CASEOBJECT =>
-          objectDef(posMods(start, mods | Case | Module))
-        case _ =>
-          syntaxErrorOrIncomplete("expected start of definition")
-          EmptyTree
+      case CLASS =>
+        classDef(posMods(start, mods))
+      case CASECLASS =>
+        classDef(posMods(start, mods | Case))
+      case OBJECT =>
+        objectDef(posMods(start, mods | Module))
+      case CASEOBJECT =>
+        objectDef(posMods(start, mods | Case | Module))
+      case _ =>
+        syntaxErrorOrIncomplete("expected start of definition")
+        EmptyTree
     }
 
     /** ClassDef ::= Id [ClsTypeParamClause]

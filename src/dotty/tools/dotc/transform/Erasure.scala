@@ -293,6 +293,18 @@ object Erasure extends TypeTestsCasts{
         else
           assignType(untpd.cpy.Select(tree)(qual, tree.name.primitiveArrayOp), qual)
 
+      def adaptIfSuper(qual: Tree): Tree = qual match {
+        case Super(thisQual, tpnme.EMPTY) =>
+          val SuperType(thisType, supType) = qual.tpe
+          if (sym.owner is Flags.Trait)
+            cpy.Super(qual)(thisQual, sym.owner.asClass.name)
+              .withType(SuperType(thisType, sym.owner.typeRef))
+          else
+            qual.withType(SuperType(thisType, thisType.firstParent))
+        case _ =>
+          qual
+      }
+
       def recur(qual: Tree): Tree = {
         val qualIsPrimitive = qual.tpe.widen.isPrimitiveValueType
         val symIsPrimitive = sym.owner.isPrimitiveValueClass
@@ -306,10 +318,13 @@ object Erasure extends TypeTestsCasts{
           recur(unbox(qual, sym.owner.typeRef))
         else if (sym.owner eq defn.ArrayClass)
           selectArrayMember(qual, erasure(tree.qualifier.typeOpt.widen.finalResultType))
-        else if (qual.tpe.derivesFrom(sym.owner) || qual.isInstanceOf[Super])
-          select(qual, sym)
-        else
-          recur(cast(qual, sym.owner.typeRef))
+        else {
+          val qual1 = adaptIfSuper(qual)
+          if (qual1.tpe.derivesFrom(sym.owner) || qual1.isInstanceOf[Super])
+            select(qual1, sym)
+          else
+            recur(cast(qual1, sym.owner.typeRef))
+        }
       }
 
       recur(typed(tree.qualifier, AnySelectionProto))
@@ -416,7 +431,8 @@ object Erasure extends TypeTestsCasts{
                   s"${oldSymbol.name(beforeCtx)} bridging with ${newSymbol.name}")
                 val newOverridden = oldSymbol.denot.allOverriddenSymbols.toSet // TODO: clarify new <-> old in a comment; symbols are swapped here
                 val oldOverridden = newSymbol.allOverriddenSymbols(beforeCtx).toSet // TODO: can we find a more efficient impl? newOverridden does not have to be a set!
-                val neededBridges = oldOverridden -- newOverridden
+                def stillInBaseClass(sym: Symbol) = ctx.owner derivesFrom sym.owner
+                val neededBridges = (oldOverridden -- newOverridden).filter(stillInBaseClass)
 
                 var minimalSet = Set[Symbol]()
                 // compute minimal set of bridges that are needed:
