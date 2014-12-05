@@ -30,15 +30,24 @@ class SymUtils(val self: Symbol) extends AnyVal {
     else parents.head.symbol
   }
 
+
+  /**
+   * For a class: All interfaces implemented by a class except for those inherited through the superclass.
+   * For a trait: all parent traits
+   */
+
+  def superInterfaces(implicit ctx: Context) = {
+    val superCls = self.superClass
+    val baseClasses = self.asClass.baseClasses
+    if (baseClasses.isEmpty) Nil
+    else baseClasses.tail.takeWhile(_ ne superCls).reverse
+
+  }
+
   /** All interfaces implemented by a class, except for those inherited through the superclass. */
   def mixins(implicit ctx: Context) = {
-    val superCls = self.superClass
     if (self is Trait) Nil
-    else {
-      val baseClasses = self.asClass.baseClasses
-      if (baseClasses.isEmpty) Nil
-      else baseClasses.tail.takeWhile(_ ne superCls).reverse
-    }
+    else superInterfaces
   }
 
   def isTypeTestOrCast(implicit ctx: Context): Boolean =
