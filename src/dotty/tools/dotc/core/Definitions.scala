@@ -269,7 +269,7 @@ class Definitions {
 
   // fundamental classes
   lazy val StringClass                  = ctx.requiredClass("java.lang.String")
-  lazy val StringModule                 = StringClass.moduleClass
+  lazy val StringModule                 = StringClass.linkedClass
 
     lazy val String_+ = newMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
     lazy val String_valueOf_Object = StringModule.info.member(nme.valueOf).suchThat(_.info.firstParamTypes match {
