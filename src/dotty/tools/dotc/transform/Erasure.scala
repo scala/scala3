@@ -340,7 +340,7 @@ object Erasure extends TypeTestsCasts{
         outer.path(tree.symbol)
       }
 
-   private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {
+    private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {
       val meth = defn.runtimeMethod(name)
       val followingParams = meth.info.firstParamTypes.drop(args.length)
       val followingArgs = protoArgs(pt).zipWithConserve(followingParams)(typedExpr).asInstanceOf[List[tpd.Tree]]
