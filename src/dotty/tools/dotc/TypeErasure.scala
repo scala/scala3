@@ -317,19 +317,15 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
       if (cls is Package) tp
       else {
         def eraseTypeRef(p: TypeRef) = this(p).asInstanceOf[TypeRef]
-        val parents: List[TypeRef] = {
+        val parents: List[TypeRef] =
           if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
-          else {
-            def normalize(trs: List[TypeRef])(implicit ctx: Context): List[TypeRef] = trs match {
-              case tr :: trs1 =>
-                assert(!tr.classSymbol.is(Trait), cls)
-                val tr1 = if (cls is Trait) defn.ObjectClass.typeRef else tr
-                tr1 :: trs1.filterNot(_ isRef defn.ObjectClass)
-              case nil => nil
-            }
-            normalize(classParents.mapConserve(eraseTypeRef))
+          else classParents.mapConserve(eraseTypeRef) match {
+            case tr :: trs1 =>
+              assert(!tr.classSymbol.is(Trait), cls)
+              val tr1 = if (cls is Trait) defn.ObjectClass.typeRef else tr
+              tr1 :: trs1.filterNot(_ isRef defn.ObjectClass)
+            case nil => nil
           }
-        }
         val erasedDecls = decls.filteredScope(d => !d.isType || d.isClass)
         tp.derivedClassInfo(NoPrefix, parents, erasedDecls, erasedRef(tp.selfType))
           // can't replace selftype by NoType because this would lose the sourceModule link
