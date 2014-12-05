@@ -270,6 +270,15 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
 
 
   def isQualifierSafeToElide(qual: Tree): Boolean = tpd.isIdempotentExpr(qual)
+  def desugarIdent(i: Ident): Option[Select] = {
+    i.tpe match {
+      case TermRef(prefix: TermRef, name) =>
+        Some(tpd.ref(prefix).select(i.symbol))
+      case TermRef(prefix: ThisType, name) =>
+        Some(tpd.This(prefix.cls).select(i.symbol))
+      case _ => None
+    }
+  }
   def getLabelDefOwners(tree: Tree): Map[Tree, List[LabelDef]] = {
     // for each rhs of a defdef returns LabelDefs inside this DefDef
     val res = new collection.mutable.HashMap[Tree, List[LabelDef]]()
