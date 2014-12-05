@@ -211,7 +211,9 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   }
 
   def requiredModule[T](implicit evidence: ClassTag[T]): Symbol = {
-    ctx.requiredModule(erasureString(evidence.runtimeClass).toTermName)
+    val moduleName = erasureString(evidence.runtimeClass)
+    val className = if (moduleName.endsWith("$")) moduleName.dropRight(1)  else moduleName
+    ctx.requiredModule(className.toTermName)
   }
 
 
