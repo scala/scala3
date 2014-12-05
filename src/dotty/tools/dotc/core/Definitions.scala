@@ -172,6 +172,11 @@ class Definitions {
     def ObjectMethods = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
 
+  /** Dummy method needed by elimByName */
+  lazy val dummyApply = newPolyMethod(
+      RootClass, nme.dummyApply, 1,
+      pt => MethodType(List(FunctionType(Nil, PolyParam(pt, 0))), PolyParam(pt, 0)))
+
   lazy val NotNullClass = ctx.requiredClass("scala.NotNull")
 
   lazy val NothingClass: ClassSymbol = newCompleteClassSymbol(

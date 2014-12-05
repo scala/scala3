@@ -370,10 +370,8 @@ object Erasure extends TypeTestsCasts{
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
       val Apply(fun, args) = tree
-      if (tree.removeAttachment(ElimByName.ByNameArg).isDefined) {
-        val Select(qual, nme.apply) = fun
-        typedUnadapted(qual, pt)
-      }
+      if (fun.symbol == defn.dummyApply)
+        typedUnadapted(args.head, pt)
       else typedExpr(fun, FunProto(args, pt, this)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1
