@@ -367,8 +367,11 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** The element type of a sequence or array */
-  def elemType(implicit ctx: Context): Type =
-    firstBaseArgInfo(defn.SeqClass) orElse firstBaseArgInfo(defn.ArrayClass)
+  def elemType(implicit ctx: Context): Type = self match {
+    case defn.ArrayType(elemtp) => elemtp
+    case JavaArrayType(elemtp) => elemtp
+    case _ => firstBaseArgInfo(defn.SeqClass)
+  }
 
   /** Given a type alias
    *

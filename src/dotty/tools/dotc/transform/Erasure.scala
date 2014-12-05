@@ -375,7 +375,7 @@ object Erasure extends TypeTestsCasts{
     }
 
     override def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context) =
-      super.typedSeqLiteral(tree, tree.typeOpt)
+      super.typedSeqLiteral(tree, erasure(tree.typeOpt))
         // proto type of typed seq literal is original type; this makes elements be adapted to correct type.
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): ValDef =
