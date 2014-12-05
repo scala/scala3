@@ -527,7 +527,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
      * All interfaces implemented by a class, except for those inherited through the superclass.
      *
      */
-    def superInterfaces: List[Symbol] = sym.mixins
+    def superInterfaces: List[Symbol] = decorateSymbol(sym).superInterfaces
 
     /**
      * True for module classes of package level objects. The backend will generate a mirror class for
