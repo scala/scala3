@@ -36,7 +36,7 @@ class Compiler {
   def phases: List[List[Phase]] =
     List(
       List(new FrontEnd),
-      List(new Reim.ReimPhase)/*,
+      List(new Reim.ReimPhase),
       List(new FirstTransform,
            new SyntheticMethods),
       List(new SuperAccessors),
@@ -64,7 +64,6 @@ class Compiler {
            new Flatten,
            new RestoreScopes),
       List(new PrivateToStatic)
-      */
     )
 
   var runId = 1
