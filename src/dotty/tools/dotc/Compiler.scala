@@ -39,7 +39,7 @@ class Compiler {
   def phases: List[List[Phase]] =
     List(
       List(new FrontEnd),
-      List(new Reim.ReimPhase)/*,
+      List(new Reim.ReimPhase),
       List(new FirstTransform,
            new SyntheticMethods),
       List(new SuperAccessors),
@@ -71,7 +71,6 @@ class Compiler {
            new RestoreScopes),
       List(/*new PrivateToStatic,*/ new CollectEntryPoints, new LabelDefs),
       List(new GenBCode)
-      */
     )
 
   var runId = 1
