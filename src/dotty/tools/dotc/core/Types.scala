@@ -622,6 +622,10 @@ object Types {
      */
     def stripTypeVar(implicit ctx: Context): Type = this
 
+    /** Remove all AnnotatedTypes wrapping this type.
+      */
+    def stripAnnots(implicit ctx: Context): Type = this
+
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences,
      *  Also go from => T to T.
@@ -2506,6 +2510,7 @@ object Types {
       else AnnotatedType(annot, tpe)
 
     override def stripTypeVar(implicit ctx: Context): Type = tpe.stripTypeVar
+    override def stripAnnots(implicit ctx: Context): Type = tpe.stripAnnots
   }
 
   object AnnotatedType {
