@@ -266,6 +266,11 @@ object Trees {
     override def denot(implicit ctx: Context) = tpe match {
       case tpe: NamedType => tpe.denot
       case tpe: ThisType => tpe.cls.denot
+      case tpe: AnnotatedType => tpe.stripAnnots match {
+        case tpe: NamedType => tpe.denot
+        case tpe: ThisType => tpe.cls.denot
+        case _ => NoDenotation
+      }
       case _ => NoDenotation
     }
   }
