@@ -2461,33 +2461,32 @@ object Types {
     override def toString =
       if (lo eq hi) s"TypeAlias($lo)" else s"TypeBounds($lo, $hi)"
 
-    override def computeHash = unsupported("computeHash")
   }
 
-  class CachedTypeBounds(lo: Type, hi: Type, hc: Int) extends TypeBounds(lo, hi) {
+  class CachedTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi) {
+    override def computeHash = doHash(variance, lo, hi)
+  }
+
+  class TypeAlias(val alias: Type, override val variance: Int, hc: Int) extends TypeBounds(alias, alias) {
     myHash = hc
-  }
-
-  final class CoTypeBounds(lo: Type, hi: Type, hc: Int) extends CachedTypeBounds(lo, hi, hc) {
-    override def variance = 1
-    override def toString = "Co" + super.toString
-  }
-
-  final class ContraTypeBounds(lo: Type, hi: Type, hc: Int) extends CachedTypeBounds(lo, hi, hc) {
-    override def variance = -1
-    override def toString = "Contra" + super.toString
+    override def computeHash = unsupported("computeHash")
   }
 
   object TypeBounds {
     def apply(lo: Type, hi: Type, variance: Int = 0)(implicit ctx: Context): TypeBounds =
-      ctx.uniqueTypeBounds.enterIfNew(lo, hi, variance)
+      if (lo eq hi) TypeAlias(lo, variance)
+      else unique {
+        assert(variance == 0)
+        new CachedTypeBounds(lo, hi)
+      }
     def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
     def upper(hi: Type, variance: Int = 0)(implicit ctx: Context) = apply(defn.NothingType, hi, variance)
     def lower(lo: Type, variance: Int = 0)(implicit ctx: Context) = apply(lo, defn.AnyType, variance)
   }
 
   object TypeAlias {
-    def apply(tp: Type, variance: Int = 0)(implicit ctx: Context) = TypeBounds(tp, tp, variance)
+    def apply(alias: Type, variance: Int = 0)(implicit ctx: Context) =
+      ctx.uniqueTypeAliases.enterIfNew(alias, variance)
     def unapply(tp: Type): Option[Type] = tp match {
       case TypeBounds(lo, hi) if lo eq hi => Some(lo)
       case _ => None

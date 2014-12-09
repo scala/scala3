@@ -526,13 +526,13 @@ object Contexts {
     private[core] val uniqueNamedTypes = new NamedTypeUniques
 
     /** A table for hash consing unique type bounds */
-    private[core] val uniqueTypeBounds = new TypeBoundsUniques
+    private[core] val uniqueTypeAliases = new TypeAliasUniques
 
     private def uniqueSets = Map(
         "uniques" -> uniques,
         "uniqueRefinedTypes" -> uniqueRefinedTypes,
         "uniqueNamedTypes" -> uniqueNamedTypes,
-        "uniqueTypeBounds" -> uniqueTypeBounds)
+        "uniqueTypeAliases" -> uniqueTypeAliases)
 
     /** A map that associates label and size of all uniques sets */
     def uniquesSizes: Map[String, Int] = uniqueSets.mapValues(_.size)

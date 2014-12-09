@@ -24,7 +24,9 @@ object Constraint {
   private val addDep: DepDelta = (_ + _)
   private val removeDep: DepDelta = (_ - _)
 
-  private val NoTypeBounds = new TypeBounds(WildcardType, WildcardType){}
+  private val NoTypeBounds = new TypeBounds(WildcardType, WildcardType) {
+    override def computeHash = unsupported("computeHash")
+  }
 
   /** An accumulator that changes dependencies on `param`.
    *  @param  param       The parameter to which changed dependencies refer.
@@ -70,7 +72,7 @@ import Constraint._
  *  @param dependents a map from PolyTypes to arrays of Sets of PolyParams.
  *               The i'th set in an array corresponding to polytype `pt` contains
  *               those dependent `PolyParam`s `dp` that have `PolyParam(pt, i)` in their bounds in
- *               significant position. A position is significant if solving the 
+ *               significant position. A position is significant if solving the
  *               constraint for `(pt, i)` with a type higher than its lower bound
  *               would lead to a constraint for `dp` that was not looser than
  *               the existing constraint. Specifically, it means that all poly params
