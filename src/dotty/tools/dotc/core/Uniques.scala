@@ -80,7 +80,7 @@ object Uniques {
     def enterIfNew(alias: Type, variance: Int): TypeAlias = {
       val h = doHash(variance, alias)
       if (monitored) recordCaching(h, classOf[TypeAlias])
-      def newAlias = new TypeAlias(alias, variance, h)
+      def newAlias = new CachedTypeAlias(alias, variance, h)
       if (h == NotCached) newAlias
       else {
         val r = findPrevious(h, alias, variance)

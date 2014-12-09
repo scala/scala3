@@ -2467,9 +2467,11 @@ object Types {
     override def computeHash = doHash(variance, lo, hi)
   }
 
-  class TypeAlias(val alias: Type, override val variance: Int, hc: Int) extends TypeBounds(alias, alias) {
+  abstract class TypeAlias(val alias: Type, override val variance: Int) extends TypeBounds(alias, alias)
+
+  class CachedTypeAlias(alias: Type, variance: Int, hc: Int) extends TypeAlias(alias, variance) {
     myHash = hc
-    override def computeHash = unsupported("computeHash")
+    override def computeHash = doHash(variance, lo, hi)
   }
 
   object TypeBounds {
@@ -2488,7 +2490,7 @@ object Types {
     def apply(alias: Type, variance: Int = 0)(implicit ctx: Context) =
       ctx.uniqueTypeAliases.enterIfNew(alias, variance)
     def unapply(tp: Type): Option[Type] = tp match {
-      case TypeBounds(lo, hi) if lo eq hi => Some(lo)
+      case tp: TypeAlias => Some(tp.alias)
       case _ => None
     }
   }
