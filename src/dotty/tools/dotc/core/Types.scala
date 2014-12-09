@@ -662,7 +662,7 @@ object Types {
     final def dealias(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
         tp.info match {
-          case TypeBounds(lo, hi) if lo eq hi => hi.dealias
+          case TypeAlias(tp) => tp.dealias
           case _ => tp
         }
       case tp: TypeVar =>
@@ -739,7 +739,7 @@ object Types {
       def dependsOnRefinedThis(tp: Type): Boolean = tp.stripTypeVar match {
         case tp @ TypeRef(RefinedThis(rt), _) if rt refines this =>
           tp.info match {
-            case TypeBounds(lo, hi) if lo eq hi => dependsOnRefinedThis(hi)
+            case TypeAlias(alias) => dependsOnRefinedThis(alias)
             case _ => true
           }
         case RefinedThis(rt) => rt refines this
@@ -2402,11 +2402,6 @@ object Types {
       if ((lo eq this.lo) && (hi eq this.hi) && (variance == this.variance)) this
       else TypeBounds(lo, hi, variance)
 
-    /** pre: this is a type alias */
-    def derivedTypeAlias(tp: Type, variance: Int = this.variance)(implicit ctx: Context) =
-      if (lo eq tp) this
-      else TypeAlias(tp, variance)
-
     /** If this is an alias, a derived alias with the new variance,
      *  Otherwise the type itself.
      */
@@ -2421,17 +2416,21 @@ object Types {
 
     def & (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
       val v = this commonVariance that
-      if (v != 0 && (this.lo eq this.hi) && (that.lo eq that.hi))
-        if (v > 0) derivedTypeAlias(this.hi & that.hi, v)
-        else derivedTypeAlias(this.lo | that.lo, v)
+      if (v != 0) {
+        val thisAlias = this.asInstanceOf[TypeAlias]
+        if (v > 0) thisAlias.derivedTypeAlias(this.hi & that.hi, v)
+        else thisAlias.derivedTypeAlias(this.lo | that.lo, v)
+      }
       else derivedTypeBounds(this.lo | that.lo, this.hi & that.hi, v)
     }
 
     def | (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
       val v = this commonVariance that
-      if (v != 0 && (this.lo eq this.hi) && (that.lo eq that.hi))
-        if (v > 0) derivedTypeAlias(this.hi | that.hi, v)
-        else derivedTypeAlias(this.lo & that.lo, v)
+      if (v != 0) {
+        val thisAlias = this.asInstanceOf[TypeAlias]
+        if (v > 0) thisAlias.derivedTypeAlias(this.hi | that.hi, v)
+        else thisAlias.derivedTypeAlias(this.lo & that.lo, v)
+      }
       else derivedTypeBounds(this.lo & that.lo, this.hi | that.hi, v)
     }
 
@@ -2460,11 +2459,16 @@ object Types {
 
   }
 
-  class CachedTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi) {
+  class RealTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi) {
     override def computeHash = doHash(variance, lo, hi)
   }
 
-  abstract class TypeAlias(val alias: Type, override val variance: Int) extends TypeBounds(alias, alias)
+  abstract class TypeAlias(val alias: Type, override val variance: Int) extends TypeBounds(alias, alias) {
+    /** pre: this is a type alias */
+    def derivedTypeAlias(tp: Type, variance: Int = this.variance)(implicit ctx: Context) =
+      if (lo eq tp) this
+      else TypeAlias(tp, variance)
+  }
 
   class CachedTypeAlias(alias: Type, variance: Int, hc: Int) extends TypeAlias(alias, variance) {
     myHash = hc
@@ -2476,7 +2480,7 @@ object Types {
       if (lo eq hi) TypeAlias(lo, variance)
       else unique {
         assert(variance == 0)
-        new CachedTypeBounds(lo, hi)
+        new RealTypeBounds(lo, hi)
       }
     def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
     def upper(hi: Type, variance: Int = 0)(implicit ctx: Context) = apply(defn.NothingType, hi, variance)
@@ -2486,7 +2490,7 @@ object Types {
   object TypeAlias {
     def apply(alias: Type, variance: Int = 0)(implicit ctx: Context) =
       ctx.uniqueTypeAliases.enterIfNew(alias, variance)
-    def unapply(tp: Type): Option[Type] = tp match {
+    def unapply(tp: TypeAlias): Option[Type] = tp match {
       case tp: TypeAlias => Some(tp.alias)
       case _ => None
     }
@@ -2641,24 +2645,18 @@ object Types {
         case tp: RefinedType =>
           tp.derivedRefinedType(this(tp.parent), tp.refinedName, this(tp.refinedInfo))
 
+        case tp: TypeAlias =>
+          val saved = variance
+          variance = variance * tp.variance
+          val alias1 = this(tp.alias)
+          variance = saved
+          tp.derivedTypeAlias(alias1)
+
         case tp: TypeBounds =>
-          def mapOverBounds = {
-            val lo = tp.lo
-            val hi = tp.hi
-            if (lo eq hi) {
-              val saved = variance
-              variance = variance * tp.variance
-              val lo1 = this(lo)
-              variance = saved
-              tp.derivedTypeAlias(lo1)
-            } else {
-              variance = -variance
-              val lo1 = this(lo)
-              variance = -variance
-              tp.derivedTypeBounds(lo1, this(hi))
-            }
-          }
-          mapOverBounds
+          variance = -variance
+          val lo1 = this(tp.lo)
+          variance = -variance
+          tp.derivedTypeBounds(lo1, this(tp.hi))
 
         case tp: MethodType =>
           def mapOverMethod = {
@@ -2908,12 +2906,7 @@ object Types {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
       name.isTypeName && {
         val mbr = pre.member(name)
-        (mbr.symbol is Deferred) && {
-          mbr.info match {
-            case TypeBounds(lo, hi) => lo ne hi
-            case _ => false
-          }
-        }
+        (mbr.symbol is Deferred) && mbr.info.isInstanceOf[RealTypeBounds]
       }
   }
 

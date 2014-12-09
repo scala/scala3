@@ -373,8 +373,8 @@ object ProtoTypes {
       else tp.derivedSelect(wildApprox(tp.prefix, theMap))
     case tp: RefinedType => // default case, inlined for speed
       tp.derivedRefinedType(wildApprox(tp.parent, theMap), tp.refinedName, wildApprox(tp.refinedInfo, theMap))
-    case tp: TypeBounds if tp.lo eq tp.hi => // default case, inlined for speed
-      tp.derivedTypeAlias(wildApprox(tp.lo, theMap))
+    case tp: TypeAlias => // default case, inlined for speed
+      tp.derivedTypeAlias(wildApprox(tp.alias, theMap))
     case tp @ PolyParam(poly, pnum) =>
       ctx.typerState.constraint.at(tp) match {
         case bounds: TypeBounds => wildApprox(WildcardType(bounds))

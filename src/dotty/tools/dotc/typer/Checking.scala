@@ -63,26 +63,24 @@ object Checking {
      *  break direct cycle with a LazyRef for legal, F-bounded cycles.
      */
     def checkInfo(tp: Type): Type = tp match {
+      case tp @ TypeAlias(alias) =>
+        try tp.derivedTypeAlias(apply(alias))
+        finally {
+          where = "alias"
+          lastChecked = alias
+        }
       case tp @ TypeBounds(lo, hi) =>
-        if (lo eq hi)
-          try tp.derivedTypeAlias(apply(lo))
-          finally {
-            where = "alias"
-            lastChecked = lo
-          }
-        else {
-          val lo1 = try apply(lo) finally {
-            where = "lower bound"
-            lastChecked = lo
-          }
-          val saved = nestedCycleOK
-          nestedCycleOK = true
-          try tp.derivedTypeBounds(lo1, apply(hi))
-          finally {
-            nestedCycleOK = saved
-            where = "upper bound"
-            lastChecked = hi
-          }
+        val lo1 = try apply(lo) finally {
+          where = "lower bound"
+          lastChecked = lo
+        }
+        val saved = nestedCycleOK
+        nestedCycleOK = true
+        try tp.derivedTypeBounds(lo1, apply(hi))
+        finally {
+          nestedCycleOK = saved
+          where = "upper bound"
+          lastChecked = hi
         }
       case _ =>
         tp
@@ -277,7 +275,7 @@ trait Checking {
       tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasible(tp.refinedInfo, pos, where))
     case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
       ctx.error(d"no type exists between low bound $lo and high bound $hi$where", pos)
-      tp.derivedTypeAlias(hi)
+      TypeAlias(hi)
     case _ =>
       tp
   }
