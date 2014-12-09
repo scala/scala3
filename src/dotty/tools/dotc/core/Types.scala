@@ -2451,6 +2451,13 @@ object Types {
     /** If this type and that type have the same variance, this variance, otherwise 0 */
     final def commonVariance(that: TypeBounds): Int = (this.variance + that.variance) / 2
 
+    override def equals(that: Any): Boolean = that match {
+      case that: TypeBounds =>
+        (this.lo eq that.lo) && (this.hi eq that.hi) && this.variance == that.variance
+      case _ =>
+        false
+    }
+
     override def toString =
       if (lo eq hi) s"TypeAlias($lo)" else s"TypeBounds($lo, $hi)"
 
