@@ -2401,7 +2401,7 @@ object Types {
     /** The non-variant type bounds or alias type with given bounds */
     def derivedTypeBounds(lo: Type, hi: Type)(implicit ctx: Context) =
       if ((lo eq this.lo) && (hi eq this.hi) && (variance == 0)) this
-      else TypeBounds.orAlias(lo, hi)
+      else TypeBounds.real(lo, hi)
 
     /** If this is an alias, a derived alias with the new variance,
      *  Otherwise the type itself.
