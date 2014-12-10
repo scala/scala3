@@ -104,8 +104,8 @@ object Types {
      */
     def isRef(sym: Symbol)(implicit ctx: Context): Boolean = stripTypeVar match {
       case this1: TypeRef =>
-        this1.info match { // see comment in Namers/typeDefSig
-          case TypeBounds(lo, hi) if lo eq hi => hi.isRef(sym)
+        this1.info match { // see comment in Namer#typeDefSig
+          case TypeAlias(tp) => tp.isRef(sym)
           case _ =>  this1.symbol eq sym
         }
       case this1: RefinedType =>
@@ -193,10 +193,7 @@ object Types {
     }
 
     /** Is this an alias TypeBounds? */
-    def isAlias: Boolean = this match {
-      case TypeBounds(lo, hi) => lo eq hi
-      case _ => false
-    }
+    def isAlias: Boolean = this.isInstanceOf[TypeAlias]
 
     /** Is this type a transitive refinement of the given type?
      *  This is true if the type consists of 0 or more refinements or other
@@ -759,7 +756,7 @@ object Types {
         case pre: RefinedType =>
           if (pre.refinedName ne name) loop(pre.parent)
           else this.member(name).info match {
-            case TypeBounds(lo, hi) if (lo eq hi) && !dependsOnRefinedThis(hi) => hi
+            case TypeAlias(tp) if !dependsOnRefinedThis(tp) => tp
             case _ => NoType
           }
         case RefinedThis(rt) =>
@@ -1915,7 +1912,7 @@ object Types {
               case MethodParam(`thisMethodType`, _) => true
               case tp @ TypeRef(MethodParam(`thisMethodType`, _), name) =>
                 tp.info match { // follow type arguments to avoid dependency
-                  case TypeBounds(lo, hi) if lo eq hi => apply(x, hi)
+                  case TypeAlias(tp)=> apply(x, tp)
                   case _ => true
                 }
               case _ =>

@@ -668,8 +668,8 @@ class TypeComparer(initctx: Context) extends DotClass {
             { // special case for situations like:
               //    foo <: C { type T = foo.T }
               tp2.refinedInfo match {
-                case TypeBounds(lo, hi) if lo eq hi =>
-                  !ctx.phase.erasedTypes && (tp1r select name) =:= lo
+                case rinfo: TypeAlias =>
+                  !ctx.phase.erasedTypes && (tp1r select name) =:= rinfo.alias
                 case _ => false
               }
             })

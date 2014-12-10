@@ -142,9 +142,10 @@ trait TypeOps { this: Context =>
     def needsChecking(tp: Type, isPart: Boolean): Boolean = tp match {
       case tp: TypeRef =>
         tp.info match {
+          case TypeAlias(alias) =>
+            needsChecking(alias, isPart)
           case TypeBounds(lo, hi) =>
-            if (lo eq hi) needsChecking(hi, isPart)
-            else isPart || tp.controlled(isVolatile(hi))
+            isPart || tp.controlled(isVolatile(hi))
           case _ => false
         }
       case tp: RefinedType =>

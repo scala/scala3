@@ -62,7 +62,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case tp: RefinedType =>
         val tparams = tp.parent.typeParams
         tp.refinedInfo match {
-          case TypeBounds(lo, hi) if lo eq hi => tparams.filterNot(_.name == tp.refinedName)
+          case rinfo: TypeAlias => tparams.filterNot(_.name == tp.refinedName)
           case _ => tparams
         }
       case tp: SingletonType =>
@@ -353,9 +353,9 @@ class TypeApplications(val self: Type) extends AnyVal {
    *                       for a contravariant type-parameter becomes L.
    */
   final def argInfo(tparam: Symbol, interpolate: Boolean = true)(implicit ctx: Context): Type = self match {
+    case self: TypeAlias => self.alias
     case TypeBounds(lo, hi) =>
-      if (lo eq hi) hi
-      else if (interpolate) {
+      if (interpolate) {
         val v = tparam.variance
         if (v > 0 && (lo isRef defn.NothingClass)) hi
         else if (v < 0 && (hi isRef defn.AnyClass)) lo
