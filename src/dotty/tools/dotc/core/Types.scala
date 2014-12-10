@@ -2483,9 +2483,6 @@ object Types {
   object TypeBounds {
     def apply(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
       unique(new RealTypeBounds(lo, hi))
-    def orAlias(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
-      if (lo eq hi) TypeAlias(lo, 0)
-      else unique(new RealTypeBounds(lo, hi))
     def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
     def upper(hi: Type)(implicit ctx: Context) = apply(defn.NothingType, hi)
     def lower(lo: Type)(implicit ctx: Context) = apply(lo, defn.AnyType)

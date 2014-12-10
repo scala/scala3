@@ -656,7 +656,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         if (sym == defn.ByNameParamClass2x) ExprType(args.head)
         else tycon.appliedTo(args)
       case TYPEBOUNDStpe =>
-        TypeBounds.orAlias(readTypeRef(), readTypeRef())
+        TypeBounds(readTypeRef(), readTypeRef())
       case REFINEDtpe =>
         val clazz = readSymbolRef()
         val decls = symScope(clazz)
