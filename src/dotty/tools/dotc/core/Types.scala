@@ -2416,25 +2416,15 @@ object Types {
       case _ => lo <:< tp && tp <:< hi
     }
 
-    def & (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
-      val v = this commonVariance that
-      if (v != 0) {
-        val thisAlias = this.asInstanceOf[TypeAlias]
-        if (v > 0) thisAlias.derivedTypeAlias(this.hi & that.hi, v)
-        else thisAlias.derivedTypeAlias(this.lo | that.lo, v)
-      }
-      else derivedTypeBounds(this.lo | that.lo, this.hi & that.hi)
-    }
+    def & (that: TypeBounds)(implicit ctx: Context): TypeBounds =
+      if (this.lo <:< that.lo && that.hi <:< this.hi) that
+      else if (that.lo <:< this.lo && this.hi <:< that.hi) this
+      else TypeBounds.real(this.lo | that.lo, this.hi & that.hi)
 
-    def | (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
-      val v = this commonVariance that
-      if (v != 0) {
-        val thisAlias = this.asInstanceOf[TypeAlias]
-        if (v > 0) thisAlias.derivedTypeAlias(this.hi | that.hi, v)
-        else thisAlias.derivedTypeAlias(this.lo & that.lo, v)
-      }
-      else derivedTypeBounds(this.lo & that.lo, this.hi | that.hi)
-    }
+    def | (that: TypeBounds)(implicit ctx: Context): TypeBounds =
+      if (this.lo <:< that.lo && that.hi <:< this.hi) this
+      else if (that.lo <:< this.lo && this.hi <:< that.hi) that
+      else TypeBounds.real(this.lo & that.lo, this.hi | that.hi)
 
     override def & (that: Type)(implicit ctx: Context) = that match {
       case that: TypeBounds => this & that
@@ -2469,6 +2459,20 @@ object Types {
     def derivedTypeAlias(tp: Type, variance: Int = this.variance)(implicit ctx: Context) =
       if (lo eq tp) this
       else TypeAlias(tp, variance)
+
+    override def & (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
+      val v = this commonVariance that
+      if (v > 0) derivedTypeAlias(this.hi & that.hi, v)
+      else if (v < 0) derivedTypeAlias(this.lo | that.lo, v)
+      else super.& (that)
+    }
+
+    override def | (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
+      val v = this commonVariance that
+      if (v > 0) derivedTypeAlias(this.hi | that.hi, v)
+      else if (v < 0) derivedTypeAlias(this.lo & that.lo, v)
+      else super.| (that)
+    }
   }
 
   class CachedTypeAlias(alias: Type, variance: Int, hc: Int) extends TypeAlias(alias, variance) {
@@ -2478,8 +2482,7 @@ object Types {
 
   object TypeBounds {
     def real(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
-      if (lo eq hi) TypeAlias(lo, 0)
-      else unique(new RealTypeBounds(lo, hi))
+      unique(new RealTypeBounds(lo, hi))
     def orAlias(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
       if (lo eq hi) TypeAlias(lo, 0)
       else unique(new RealTypeBounds(lo, hi))
