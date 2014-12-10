@@ -619,7 +619,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       case TypeBounds(lo1, hi1) =>
         if ((ctx.mode is Mode.GADTflexible) && (tp1.symbol is GADTFlexType) &&
             !isSubTypeWhenFrozen(hi1, tp2))
-          trySetType(tp1, TypeBounds(lo1, hi1 & tp2))
+          trySetType(tp1, TypeBounds.real(lo1, hi1 & tp2))
         else if (lo1 eq hi1) isSubType(hi1, tp2)
         else tryRebase2nd
       case _ =>
@@ -638,7 +638,7 @@ class TypeComparer(initctx: Context) extends DotClass {
         case TypeBounds(lo2, hi2) =>
           if ((ctx.mode is Mode.GADTflexible) && (tp2.symbol is GADTFlexType) &&
               !isSubTypeWhenFrozen(tp1, lo2))
-            trySetType(tp2, TypeBounds(lo2 | tp1, hi2))
+            trySetType(tp2, TypeBounds.real(lo2 | tp1, hi2))
           else
             ((frozenConstraint || !isCappable(tp1)) && isSubType(tp1, lo2)
             || tryRebase3rd)

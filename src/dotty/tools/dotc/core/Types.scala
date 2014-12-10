@@ -2398,16 +2398,18 @@ object Types {
 
     override def underlying(implicit ctx: Context): Type = hi
 
-    def derivedTypeBounds(lo: Type, hi: Type, variance: Int = this.variance)(implicit ctx: Context) =
-      if ((lo eq this.lo) && (hi eq this.hi) && (variance == this.variance)) this
-      else TypeBounds(lo, hi, variance)
+    /** The non-variant type bounds or alias type with given bounds */
+    def derivedTypeBounds(lo: Type, hi: Type)(implicit ctx: Context) =
+      if ((lo eq this.lo) && (hi eq this.hi) && (variance == 0)) this
+      else TypeBounds.orAlias(lo, hi)
 
     /** If this is an alias, a derived alias with the new variance,
      *  Otherwise the type itself.
      */
-    def withVariance(variance: Int)(implicit ctx: Context) =
-      if (lo ne hi) this
-      else derivedTypeBounds(lo, hi, variance)
+    def withVariance(variance: Int)(implicit ctx: Context) = this match {
+      case tp: TypeAlias => tp.derivedTypeAlias(tp.alias, variance)
+      case _ => this
+    }
 
     def contains(tp: Type)(implicit ctx: Context) = tp match {
       case tp: TypeBounds => lo <:< tp.lo && tp.hi <:< hi
@@ -2421,7 +2423,7 @@ object Types {
         if (v > 0) thisAlias.derivedTypeAlias(this.hi & that.hi, v)
         else thisAlias.derivedTypeAlias(this.lo | that.lo, v)
       }
-      else derivedTypeBounds(this.lo | that.lo, this.hi & that.hi, v)
+      else derivedTypeBounds(this.lo | that.lo, this.hi & that.hi)
     }
 
     def | (that: TypeBounds)(implicit ctx: Context): TypeBounds = {
@@ -2431,7 +2433,7 @@ object Types {
         if (v > 0) thisAlias.derivedTypeAlias(this.hi | that.hi, v)
         else thisAlias.derivedTypeAlias(this.lo & that.lo, v)
       }
-      else derivedTypeBounds(this.lo & that.lo, this.hi | that.hi, v)
+      else derivedTypeBounds(this.lo & that.lo, this.hi | that.hi)
     }
 
     override def & (that: Type)(implicit ctx: Context) = that match {
@@ -2456,7 +2458,6 @@ object Types {
 
     override def toString =
       if (lo eq hi) s"TypeAlias($lo)" else s"TypeBounds($lo, $hi)"
-
   }
 
   class RealTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi) {
@@ -2476,15 +2477,15 @@ object Types {
   }
 
   object TypeBounds {
-    def apply(lo: Type, hi: Type, variance: Int = 0)(implicit ctx: Context): TypeBounds =
-      if (lo eq hi) TypeAlias(lo, variance)
-      else unique {
-        assert(variance == 0)
-        new RealTypeBounds(lo, hi)
-      }
-    def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
-    def upper(hi: Type, variance: Int = 0)(implicit ctx: Context) = apply(defn.NothingType, hi, variance)
-    def lower(lo: Type, variance: Int = 0)(implicit ctx: Context) = apply(lo, defn.AnyType, variance)
+    def real(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
+      if (lo eq hi) TypeAlias(lo, 0)
+      else unique(new RealTypeBounds(lo, hi))
+    def orAlias(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
+      if (lo eq hi) TypeAlias(lo, 0)
+      else unique(new RealTypeBounds(lo, hi))
+    def empty(implicit ctx: Context) = real(defn.NothingType, defn.AnyType)
+    def upper(hi: Type)(implicit ctx: Context) = real(defn.NothingType, hi)
+    def lower(lo: Type)(implicit ctx: Context) = real(lo, defn.AnyType)
   }
 
   object TypeAlias {
