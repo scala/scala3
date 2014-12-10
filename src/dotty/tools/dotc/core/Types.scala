@@ -2398,10 +2398,10 @@ object Types {
 
     override def underlying(implicit ctx: Context): Type = hi
 
-    /** The non-variant type bounds or alias type with given bounds */
+    /** The non-alias type bounds type with given bounds */
     def derivedTypeBounds(lo: Type, hi: Type)(implicit ctx: Context) =
       if ((lo eq this.lo) && (hi eq this.hi) && (variance == 0)) this
-      else TypeBounds.real(lo, hi)
+      else TypeBounds(lo, hi)
 
     /** If this is an alias, a derived alias with the new variance,
      *  Otherwise the type itself.
@@ -2419,12 +2419,12 @@ object Types {
     def & (that: TypeBounds)(implicit ctx: Context): TypeBounds =
       if (this.lo <:< that.lo && that.hi <:< this.hi) that
       else if (that.lo <:< this.lo && this.hi <:< that.hi) this
-      else TypeBounds.real(this.lo | that.lo, this.hi & that.hi)
+      else TypeBounds(this.lo | that.lo, this.hi & that.hi)
 
     def | (that: TypeBounds)(implicit ctx: Context): TypeBounds =
       if (this.lo <:< that.lo && that.hi <:< this.hi) this
       else if (that.lo <:< this.lo && this.hi <:< that.hi) that
-      else TypeBounds.real(this.lo & that.lo, this.hi | that.hi)
+      else TypeBounds(this.lo & that.lo, this.hi | that.hi)
 
     override def & (that: Type)(implicit ctx: Context) = that match {
       case that: TypeBounds => this & that
@@ -2481,14 +2481,14 @@ object Types {
   }
 
   object TypeBounds {
-    def real(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
+    def apply(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
       unique(new RealTypeBounds(lo, hi))
     def orAlias(lo: Type, hi: Type)(implicit ctx: Context): TypeBounds =
       if (lo eq hi) TypeAlias(lo, 0)
       else unique(new RealTypeBounds(lo, hi))
-    def empty(implicit ctx: Context) = real(defn.NothingType, defn.AnyType)
-    def upper(hi: Type)(implicit ctx: Context) = real(defn.NothingType, hi)
-    def lower(lo: Type)(implicit ctx: Context) = real(lo, defn.AnyType)
+    def empty(implicit ctx: Context) = apply(defn.NothingType, defn.AnyType)
+    def upper(hi: Type)(implicit ctx: Context) = apply(defn.NothingType, hi)
+    def lower(lo: Type)(implicit ctx: Context) = apply(lo, defn.AnyType)
   }
 
   object TypeAlias {
