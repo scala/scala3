@@ -163,7 +163,9 @@ class tests extends CompilerTest {
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir)
 
-  @Test def neg_reim = compileFile(negDir, "reim", xerrors = 9)
+  @Test def neg_reim = compileFile(negDir, "reim", xerrors = 4)
+  @Test def neg_reim2 = compileFile(negDir, "reim2", xerrors = 5)
+  @Test def neg_reimrefchecks = compileFile(negDir, "reimrefchecks", xerrors = 1)
 
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }

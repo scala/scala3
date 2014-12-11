@@ -6,7 +6,7 @@ import Contexts._
 import Periods._
 import Symbols._
 import Scopes._
-import dotty.tools.dotc.Reim.ReimPhase
+import dotty.tools.dotc.Reim.{ReimRefChecks, ReimPhase}
 import typer.{FrontEnd, Typer, Mode, ImportInfo, RefChecks}
 import reporting.ConsoleReporter
 import dotty.tools.dotc.core.Phases.Phase
@@ -43,7 +43,9 @@ class Compiler {
       List(new FirstTransform,
            new SyntheticMethods),
       List(new SuperAccessors),
+      List(new ReimRefChecks)
       //List(new Pickler), // Pickler needs to come last in a group since it should not pickle trees generated later
+    /*
       List(new RefChecks,
            new ElimRepeated,
            new ElimLocals,
@@ -71,6 +73,7 @@ class Compiler {
            new RestoreScopes),
       List(/*new PrivateToStatic,*/ new CollectEntryPoints, new LabelDefs),
       List(new GenBCode)
+      */
     )
 
   var runId = 1
