@@ -6,7 +6,7 @@ import core._
 import Types._, Symbols._, Annotations._, Contexts._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, MiniPhaseTransform}
-import dotty.tools.dotc.typer.{FrontEnd, Mode, ErrorReporting, Typer}
+import dotty.tools.dotc.typer._
 import ErrorReporting._
 
 
@@ -131,6 +131,20 @@ object Reim {
       else if(ctx.outer eq null) true
       else isThisMutable(thisSym)(ctx.outer)
     }
+  }
+
+  class ReimTypeComparer(initctx: Context) extends TypeComparer(initctx) {
+    override def isSubType(tp1: Type, tp2: Type): Boolean = super.isSubType(tp1, tp2) && {
+      val annot1 = tp1.getAnnotation
+      val annot2 = tp2.getAnnotation
+      annot1 != defn.ReadOnlyAnnot || annot2 == defn.ReadOnlyAnnot
+    }
+
+    override def copyIn(ctx: Context): TypeComparer = new ReimTypeComparer(ctx)
+  }
+
+  class ReimRefChecks extends RefChecks {
+    override def run(implicit ctx: Context): Unit = super.run(ctx.fresh.setTypeComparerFn(c => new ReimTypeComparer(c)))
   }
 }
 
