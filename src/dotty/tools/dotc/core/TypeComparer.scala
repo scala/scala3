@@ -200,7 +200,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case tp2: LazyRef =>
       isSubType(tp1, tp2.ref)
     case tp2: AnnotatedType =>
-      isSubType(tp1, tp2.tpe) // todo: refine?
+      isSubType(tp1.stripAnnots, tp2.stripAnnots) // todo: refine?
     case tp2: ThisType =>
       def compareThis = {
         val cls2 = tp2.cls
@@ -282,7 +282,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case tp1: LazyRef =>
       isSubType(tp1.ref, tp2)
     case tp1: AnnotatedType =>
-      isSubType(tp1.tpe, tp2)
+      isSubType(tp1.stripAnnots, tp2.stripAnnots)
     case OrType(tp11, tp12) =>
       isSubType(tp11, tp2) && isSubType(tp12, tp2)
     case ErrorType =>
