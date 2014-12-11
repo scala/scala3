@@ -1247,8 +1247,8 @@ class TypeComparer(initctx: Context) extends DotClass {
       }
     case tp1: TypeVar if tp1.isInstantiated =>
       tp1.underlying & tp2
-    case tp1: AnnotatedType =>
-      tp1.underlying & tp2
+//    case tp1: AnnotatedType =>
+//      tp1.underlying & tp2
     case _ =>
       NoType
   }
@@ -1307,8 +1307,8 @@ class TypeComparer(initctx: Context) extends DotClass {
       ExprType(rt1 | tp2.widenExpr)
     case tp1: TypeVar if tp1.isInstantiated =>
       tp1.underlying | tp2
-    case tp1: AnnotatedType =>
-      tp1.underlying | tp2
+//    case tp1: AnnotatedType =>
+//      tp1.underlying | tp2
     case _ =>
       NoType
   }
