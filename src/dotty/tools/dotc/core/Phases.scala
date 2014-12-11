@@ -250,7 +250,7 @@ object Phases {
 
     protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
 
-    final def <=(that: Phase)(implicit ctx: Context) =
+    final def <=(that: Phase) =
       exists && id <= that.id
 
     final def prev: Phase =
