@@ -509,7 +509,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       case tp2: LazyRef =>
         isSubType(tp1, tp2.ref)
       case tp2: AnnotatedType =>
-        isSubType(tp1, tp2.tpe) // todo: refine?
+        isSubType(tp1.stripAnnots, tp2.stripAnnots) // todo: refine?
       case tp2: ThisType =>
         tp1 match {
           case tp1: ThisType =>
@@ -586,7 +586,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     case tp1: LazyRef =>
       isSubType(tp1.ref, tp2)
     case tp1: AnnotatedType =>
-      isSubType(tp1.tpe, tp2)
+      isSubType(tp1.stripAnnots, tp2.stripAnnots)
     case ErrorType =>
       true
     case _ =>
