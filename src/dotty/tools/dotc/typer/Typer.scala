@@ -628,10 +628,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedCases(cases: List[untpd.CaseDef], selType: Type, pt: Type)(implicit ctx: Context) = {
 
     /** gadtSyms = "all type parameters of enclosing methods that appear
-      *              non-variantly in the selector type" todo: should typevars
-      *              which appear with variances +1 and -1 (in different
-      *              places) be considered as well?
-      */
+     *              non-variantly in the selector type" todo: should typevars
+     *              which appear with variances +1 and -1 (in different
+     *              places) be considered as well?
+     */
     val gadtSyms: Set[Symbol] = ctx.traceIndented(i"GADT syms of $selType", gadts) {
       val accu = new TypeAccumulator[Set[Symbol]] {
         def apply(tsyms: Set[Symbol], t: Type): Set[Symbol] = {
@@ -650,9 +650,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     cases mapconserve (typedCase(_, pt, selType, gadtSyms))
   }
 
+  /** Type a case. Overridden in ReTyper, that's why it's separate from
+   *  typedCases.
+   */
   def typedCase(tree: untpd.CaseDef, pt: Type, selType: Type, gadtSyms: Set[Symbol])(implicit ctx: Context): CaseDef = track("typedCase") {
+    val originalCtx = ctx
+
     def caseRest(pat: Tree)(implicit ctx: Context) = {
-      gadtSyms foreach (_.resetGADTFlexType)
       pat foreachSubTree {
         case b: Bind =>
           if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(b.symbol)
@@ -661,11 +665,21 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
       val body1 = typedExpr(tree.body, pt)
+        .ensureConforms(pt)(originalCtx) // insert a cast if body does not conform to expected type if we disregard gadt bounds
       assignType(cpy.CaseDef(tree)(pat, guard1, body1), body1)
     }
-    val doCase: () => CaseDef =
-      () => caseRest(typedPattern(tree.pat, selType))(ctx.fresh.setNewScope)
-    (doCase /: gadtSyms)((op, tsym) => tsym.withGADTFlexType(op))()
+
+    val gadtCtx =
+      if (gadtSyms.isEmpty) ctx
+      else {
+        val c = ctx.fresh.setFreshGADTBounds
+        for (sym <- gadtSyms)
+          if (!c.gadt.bounds.contains(sym))
+            c.gadt.bounds = c.gadt.bounds.updated(sym, TypeBounds.empty)
+        c
+      }
+    val pat1 = typedPattern(tree.pat, selType)(gadtCtx)
+    caseRest(pat1)(gadtCtx.fresh.setNewScope)
   }
 
   def typedReturn(tree: untpd.Return)(implicit ctx: Context): Return = track("typedReturn") {

@@ -146,6 +146,11 @@ object Contexts {
     protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
     def diagnostics: Option[StringBuilder] = _diagnostics
 
+    /** The current bounds in force for type parameters appearing in a GADT */
+    private var _gadt: GADTMap = _
+    protected def gadt_=(gadt: GADTMap) = _gadt = gadt
+    def gadt: GADTMap = _gadt
+
     /** A map in which more contextual properties can be stored */
     private var _moreProperties: Map[String, Any] = _
     protected def moreProperties_=(moreProperties: Map[String, Any]) = _moreProperties = moreProperties
@@ -418,6 +423,8 @@ object Contexts {
     def setSetting[T](setting: Setting[T], value: T): this.type =
       setSettings(setting.updateIn(sstate, value))
 
+    def setFreshGADTBounds: this.type = { this.gadt = new GADTMap(gadt.bounds); this }
+
     def setDebug = setSetting(base.settings.debug, true)
   }
 
@@ -439,6 +446,7 @@ object Contexts {
     moreProperties = Map.empty
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchHistory(0, Map())
+    gadt = new GADTMap(SimpleMap.Empty)
   }
 
   object NoContext extends Context {
@@ -592,6 +600,8 @@ object Contexts {
   class RunInfo(initctx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
     implicit val ctx: Context = initctx
   }
+
+  class GADTMap(var bounds: SimpleMap[Symbol, TypeBounds])
 
   /** Initial size of superId table */
   private final val InitialSuperIdsSize = 4096
