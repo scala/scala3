@@ -287,8 +287,8 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
       else this(parent)
     case tp: TermRef =>
       this(tp.widen)
-    case ThisType(_) =>
-      this(tp.widen)
+    case tp: ThisType =>
+      this(tp.cls.typeRef)
     case SuperType(thistpe, supertpe) =>
       SuperType(this(thistpe), this(supertpe))
     case ExprType(rt) =>
