@@ -547,12 +547,16 @@ object TreeTransforms {
     val prepForStats: Mutator[List[Tree]] = (trans, trees, ctx) => trans.prepareForStats(trees)(ctx)
     val prepForUnit: Mutator[Tree] = (trans, tree, ctx) => trans.prepareForUnit(tree)(ctx)
 
+    val initialTransformationsCache = transformations.zipWithIndex.map {
+      case (transform, id) =>
+        transform.idx = id
+        transform
+    }
+
+    val initialInfoCache = new TransformerInfo(initialTransformationsCache, new NXTransformations(initialTransformationsCache), this)
+
     def macroTransform(t: Tree)(implicit ctx: Context): Tree = {
-      val initialTransformations = transformations
-      val info = new TransformerInfo(initialTransformations, new NXTransformations(initialTransformations), this)
-      initialTransformations.zipWithIndex.foreach {
-        case (transform, id) => transform.idx = id
-      }
+      val info = initialInfoCache
       implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForUnit, info.nx.nxPrepUnit, t, 0)
       if (mutatedInfo eq null) t
       else goUnit(transform(t, mutatedInfo, 0), mutatedInfo.nx.nxTransUnit(0))
