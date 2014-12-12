@@ -198,12 +198,6 @@ object TreeTransforms {
     idx = -1
   }
 
-/* disabled; not needed anywhere
-  class Separator extends TreeTransform(phaseId) {
-    //override def name: String = "Separator"
-    idx = -1
-  }
-*/
   type Mutator[T] = (TreeTransform, T, Context) => TreeTransform
 
   class TransformerInfo(val transformers: Array[TreeTransform], val nx: NXTransformations, val group: TreeTransformer)
