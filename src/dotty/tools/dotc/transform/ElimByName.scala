@@ -15,10 +15,6 @@ import util.Attachment
 import core.StdNames.nme
 import ast.Trees._
 
-object ElimByName {
-  val ByNameArg = new Attachment.Key[Unit]
-}
-
 /** This phase eliminates ExprTypes `=> T` as types of function parameters, and replaces them by
  *  nullary function types.  More precisely:
  *
@@ -39,13 +35,15 @@ object ElimByName {
  *
  *  This makes the argument compatible with a parameter type of () => T, which will be the
  *  formal parameter type at erasure. But to be -Ycheckable until then, any argument
- *  ARG rewritten by the rules above is again wrapped in an application ARG.apply(),
- *  labelled with a `ByNameParam` attachment. Erasure will later strip wrapped
- *  `.apply()` calls with ByNameParam attachments.
+ *  ARG rewritten by the rules above is again wrapped in an application DummyApply(ARG)
+ *  where
+ *
+ *     DummyApply: [T](() => T): T
+ *
+ *  is a synthetic method defined in Definitions. Erasure will later strip these DummyApply wrappers.
  */
 class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
   import ast.tpd._
-  import ElimByName._
 
   override def phaseName: String = "elimByName"
 
@@ -64,17 +62,16 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
 
     def transformArg(arg: Tree, formal: Type): Tree = formal.dealias match {
       case formalExpr: ExprType =>
+        val argType = arg.tpe.widen
         val argFun = arg match {
           case Apply(Select(qual, nme.apply), Nil) if qual.tpe derivesFrom defn.FunctionClass(0) =>
             qual
           case _ =>
             val meth = ctx.newSymbol(
-                ctx.owner, nme.ANON_FUN, Synthetic | Method, MethodType(Nil, Nil, arg.tpe.widen))
+                ctx.owner, nme.ANON_FUN, Synthetic | Method, MethodType(Nil, Nil, argType))
             Closure(meth, _ => arg.changeOwner(ctx.owner, meth))
         }
-        val argApplied = argFun.select(defn.Function0_apply).appliedToNone
-        argApplied.putAttachment(ByNameArg, ())
-        argApplied
+        ref(defn.dummyApply).appliedToType(argType).appliedTo(argFun)
       case _ =>
         arg
     }
