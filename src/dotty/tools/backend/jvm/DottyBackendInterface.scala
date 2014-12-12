@@ -121,7 +121,11 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   val LongClass: Symbol = defn.LongClass
   val FloatClass: Symbol = defn.FloatClass
   val DoubleClass: Symbol = defn.DoubleClass
-  val Array_clone: Symbol = defn.Array_clone
+  def isArrayClone(tree: Tree) = tree match {
+    case Select(qual, StdNames.nme.clone_) if qual.tpe.widen.isInstanceOf[JavaArrayType] => true
+    case _ => false
+  }
+
   val hashMethodSym: Symbol = NoSymbol // used to dispatch ## on primitives to ScalaRuntime.hash. Should be implemented by a miniphase
   val externalEqualsNumNum: Symbol = ctx.requiredMethod(BoxesRunTimeClass, nme.equalsNumNum)
   lazy val externalEqualsNumChar: Symbol = ??? // ctx.requiredMethod(BoxesRunTimeClass, nme.equalsNumChar) // this method is private
@@ -152,7 +156,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
 
     def getPrimitive(sym: Symbol): Int = primitives.getPrimitive(sym)
 
-    def isPrimitive(sym: Symbol): Boolean = primitives.isPrimitive(sym)
+    def isPrimitive(fun: Tree): Boolean = primitives.isPrimitive(fun)
   }
   implicit val TypeDefTag: ClassTag[TypeDef] = ClassTag[TypeDef](classOf[TypeDef])
   implicit val ApplyTag: ClassTag[Apply] = ClassTag[Apply](classOf[Apply])
@@ -434,7 +438,9 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
       isPrivate //|| (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
     def isFinal: Boolean = sym is Flags.Final
-    def isStaticMember: Boolean = (sym is Flags.JavaStatic) || (owner is Flags.ImplClass)
+    def isStaticMember: Boolean = (sym ne NoSymbol) && ((sym is Flags.JavaStatic) || (owner is Flags.ImplClass))
+      // guard against no sumbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
+
     def isBottomClass: Boolean = (sym ne defn.NullClass) && (sym ne defn.NothingClass)
     def isBridge: Boolean = sym is Flags.Bridge
     def isArtifact: Boolean = sym is Flags.Artifact

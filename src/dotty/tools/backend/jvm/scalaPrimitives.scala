@@ -7,9 +7,10 @@ package dotty.tools.dotc
 package backend.jvm
 
 import dotty.tools.backend.jvm.GenBCodePipeline
-import dotty.tools.dotc.ast.Trees.{Select, Apply}
-import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.ast.Trees.Select
+import dotty.tools.dotc.ast.tpd._
 import dotty.tools.dotc.core.Names.TermName
+import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Types.{JavaArrayType, ErrorType, Type}
 
@@ -42,7 +43,6 @@ class DottyPrimitives(ctx: Context) {
 
   /** Return the code for the given symbol. */
   def getPrimitive(sym: Symbol): Int = {
-    assert(isPrimitive(sym), "Unknown primitive " + sym)
     primitives(sym)
   }
 
@@ -55,7 +55,7 @@ class DottyPrimitives(ctx: Context) {
    * @param tpe The type of the receiver object. It is used only for array
    *            operations
    */
-  def getPrimitive(app: tpd.Apply, tpe: Type)(implicit ctx: Context): Int = {
+  def getPrimitive(app: Apply, tpe: Type)(implicit ctx: Context): Int = {
     val fun = app.fun.symbol
     val defn = ctx.definitions
     val code = app.fun match {
@@ -404,8 +404,13 @@ class DottyPrimitives(ctx: Context) {
     primitives.toMap
   }
 
-  def isPrimitive(sym: Symbol): Boolean = {
-    (primitives contains sym) || sym == NoSymbol // the only trees that do not have a symbol assigned are array.{update,select,length}
+  def isPrimitive(fun: Tree): Boolean = {
+    (primitives contains fun.symbol(ctx)) ||
+      (fun.symbol(ctx) == NoSymbol // the only trees that do not have a symbol assigned are array.{update,select,length,clone}}
+       && (fun match {
+        case Select(_, StdNames.nme.clone_) => false // but array.clone is NOT a primitive op.
+        case _ => true
+      }))
   }
 
 }
