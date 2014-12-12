@@ -218,7 +218,7 @@ object TreeTransforms {
      *  i <= j
      *  j == transforms.length || transform(j) defines a non-default method with given `name`
      */
-    private def index(transformations: Array[Class[_ <: TreeTransform]], name: String): Array[Int] = {
+    private def index(transformations: Array[Class[_]], name: String): Array[Int] = {
       val len = transformations.length
       val next = new Array[Int](len + 1)
       var nextTransform: Int = len
@@ -240,7 +240,7 @@ object TreeTransforms {
       next
     }
 
-    private def indexUpdate(prev: Array[Int], changedTansformation: Class[_ <: TreeTransform], index: Int, name: String, copy: Boolean = true) = {
+    private def indexUpdate(prev: Array[Int], changedTansformation: Class[_], index: Int, name: String, copy: Boolean = true) = {
       val isDefinedNow = hasRedefinedMethod(changedTansformation, name)
       val wasDefinedBefore = prev(index) == index
       if (isDefinedNow == wasDefinedBefore) prev
@@ -259,7 +259,7 @@ object TreeTransforms {
       }
     }
 
-    def this(transformations: Array[Class[_ <: TreeTransform]]) = {
+    def this(transformations: Array[Class[_]]) = {
       this()
       nxPrepIdent = index(transformations, "prepareForIdent")
       nxPrepSelect = index(transformations, "prepareForSelect")
@@ -330,7 +330,7 @@ object TreeTransforms {
     }
 
     def this(transformations: Array[TreeTransform]) = {
-      this(transformations.map(_.getClass))
+      this(transformations.map(_.getClass).asInstanceOf[Array[Class[_]]])
     }
 
     def this(prev: NXTransformations, changedTansformation: TreeTransform, transformationIndex: Int, reuse: Boolean = false) = {
