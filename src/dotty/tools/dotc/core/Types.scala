@@ -673,6 +673,8 @@ object Types {
         if (tp1.exists) tp1.dealias else tp
       case tp: LazyRef =>
         tp.ref.dealias
+      case tp: AnnotatedType =>
+        tp.derivedAnnotatedType(tp.annot, tp.tpe.dealias)
       case tp => tp
     }
 
