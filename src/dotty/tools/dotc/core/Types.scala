@@ -700,15 +700,20 @@ object Types {
 
     /** If this is a (possibly aliased, annotated, and/or parameterized) reference to
      *  a class, the class type ref, otherwise NoType.
+     *  @param  refinementOK   If `true` we also skip non-parameter refinements.
      */
-    def underlyingClassRef(implicit ctx: Context): Type = dealias match {
+    def underlyingClassRef(refinementOK: Boolean)(implicit ctx: Context): Type = dealias match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
-        else if (tp.symbol.isAliasType) tp.underlying.underlyingClassRef
+        else if (tp.symbol.isAliasType) tp.underlying.underlyingClassRef(refinementOK)
         else NoType
-      case tp: TypeVar => tp.underlying.underlyingClassRef
-      case tp: AnnotatedType => tp.underlying.underlyingClassRef
-      case tp: RefinedType => tp.underlying.underlyingClassRef
+      case tp: AnnotatedType => tp.underlying.underlyingClassRef(refinementOK)
+      case tp: RefinedType =>
+        if (refinementOK) tp.underlying.underlyingClassRef(refinementOK)
+        else {
+          val tycon = tp.withoutArgs(tp.argInfos)
+          if (tycon eq tp) NoType else tycon.underlyingClassRef(refinementOK)
+        }
       case _ => NoType
     }
 

@@ -248,7 +248,7 @@ trait Checking {
    *  @return  `tp` itself if it is a class or trait ref, ObjectClass.typeRef if not.
    */
   def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type =
-    tp.underlyingClassRef match {
+    tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
         if (ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
         if (traitReq && !(tref.symbol is Trait)) ctx.error(d"$tref is not a trait", pos)
