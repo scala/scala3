@@ -777,8 +777,13 @@ class TypeComparer(initctx: Context) extends DotClass {
         case TypeBounds(lo1, hi1) =>
           isSubType(hi1, tp2)
         case _ =>
+          def isNullable(tp: Type): Boolean = tp.dealias match {
+            case tp: TypeRef => tp.symbol.isNullableClass
+            case RefinedType(parent, _) => isNullable(parent)
+            case _ => false
+          }
           (tp1.symbol eq NothingClass) && tp2.isInstanceOf[ValueType] ||
-          (tp1.symbol eq NullClass) && tp2.dealias.typeSymbol.isNullableClass
+          (tp1.symbol eq NullClass) && isNullable(tp2)
       }
     case tp1: SingletonType =>
       isNewSubType(tp1.underlying.widenExpr, tp2) || {
