@@ -400,7 +400,9 @@ trait Implicits { self: Typer =>
   def inferView(from: Tree, to: Type)(implicit ctx: Context): SearchResult = track("inferView") {
     if (   (to isRef defn.AnyClass)
         || (to isRef defn.ObjectClass)
-        || (to isRef defn.UnitClass)) NoImplicitMatches
+        || (to isRef defn.UnitClass)
+        || (from.tpe isRef defn.NothingClass)
+        || (from.tpe isRef defn.NullClass)) NoImplicitMatches
     else
       try inferImplicit(to.stripTypeVar.widenExpr, from, from.pos)
       catch {
