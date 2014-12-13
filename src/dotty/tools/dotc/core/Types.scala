@@ -2502,6 +2502,8 @@ object Types {
     def derivedAnnotatedType(annot: Annotation, tpe: Type) =
       if ((annot eq this.annot) && (tpe eq this.tpe)) this
       else AnnotatedType(annot, tpe)
+
+    override def stripTypeVar(implicit ctx: Context): Type = tpe.stripTypeVar
   }
 
   object AnnotatedType {
