@@ -648,8 +648,7 @@ class TypeComparer(initctx: Context) extends DotClass {
           if (cls2.isClass) {
             val base = tp1.baseTypeRef(cls2)
             if (base.exists && (base ne tp1)) return isSubType(base, tp2)
-            if ( cls2 == defn.SingletonClass && tp1.isStable
-               || cls2 == defn.NotNullClass && tp1.isNotNull) return true
+            if (cls2 == defn.SingletonClass && tp1.isStable) return true
           }
           tryRebase3rd
       }

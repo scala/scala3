@@ -374,7 +374,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
 
   private def normalizeClass(cls: ClassSymbol)(implicit ctx: Context): ClassSymbol = {
     if (cls.owner == defn.ScalaPackageClass) {
-      if (cls == defn.AnyClass || cls == defn.AnyValClass || cls == defn.SingletonClass || cls == defn.NotNullClass)
+      if (cls == defn.AnyClass || cls == defn.AnyValClass || cls == defn.SingletonClass)
         return defn.ObjectClass
       if (cls == defn.UnitClass)
         return defn.BoxedUnitClass

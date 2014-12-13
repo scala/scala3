@@ -177,8 +177,6 @@ class Definitions {
       RootClass, nme.dummyApply, 1,
       pt => MethodType(List(FunctionType(Nil, PolyParam(pt, 0))), PolyParam(pt, 0)))
 
-  lazy val NotNullClass = ctx.requiredClass("scala.NotNull")
-
   lazy val NothingClass: ClassSymbol = newCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
   lazy val NullClass: ClassSymbol = newCompleteClassSymbol(
@@ -348,7 +346,6 @@ class Definitions {
   def AnyValType: Type = AnyValClass.typeRef
   def ObjectType: Type = ObjectClass.typeRef
   def AnyRefType: Type = AnyRefAlias.typeRef
-  def NotNullType: Type = NotNullClass.typeRef
   def NothingType: Type = NothingClass.typeRef
   def NullType: Type = NullClass.typeRef
   def SeqType: Type = SeqClass.typeRef
