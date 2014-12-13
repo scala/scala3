@@ -253,7 +253,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
    *      - otherwise, if T is a type paramter coming from Java, []Object
    *      - otherwise, Object
    *   - For a term ref p.x, the type <noprefix> # x.
-   *   - For a typeref scala.Any, scala.AnyVal, scala.Singleon or scala.NotNull: |java.lang.Object|
+   *   - For a typeref scala.Any, scala.AnyVal or scala.Singleton: |java.lang.Object|
    *   - For a typeref scala.Unit, |scala.runtime.BoxedUnit|.
    *   - For a typeref P.C where C refers to a class, <noprefix> # C.
    *   - For a typeref P.C where C refers to an alias type, the erasure of C's alias.
