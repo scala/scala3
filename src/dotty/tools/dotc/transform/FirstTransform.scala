@@ -124,7 +124,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
     normalizeType {
       val qual = tree.qualifier
       qual.symbol.moduleClass.denot match {
-        case pkg: PackageClassDenotation if tree.symbol.maybeOwner.isPackageObject =>
+        case pkg: PackageClassDenotation if !tree.symbol.maybeOwner.is(Package) =>
           cpy.Select(tree)(qual select pkg.packageObj.symbol, tree.name)
         case _ =>
           tree
