@@ -6,4 +6,5 @@ object test {
   class C extends Y
   type Z = A | B
   class D extends Z
+  abstract class A extends ({ val x: Int })
 }
