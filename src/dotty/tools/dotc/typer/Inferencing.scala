@@ -106,14 +106,15 @@ trait Inferencing { this: Checking =>
    *  class type reference where the class has a companion module, a reference to
    *  that companion module. Otherwise NoType
    */
-  def companionRef(tp: Type)(implicit ctx: Context): Type = tp.underlyingClassRef match {
-    case tp: TypeRef =>
-      val companion = tp.classSymbol.companionModule
-      if (companion.exists)
-        companion.valRef.asSeenFrom(tp.prefix, companion.symbol.owner)
-      else NoType
-    case _ => NoType
-  }
+  def companionRef(tp: Type)(implicit ctx: Context): Type =
+    tp.underlyingClassRef(refinementOK = true) match {
+      case tp: TypeRef =>
+        val companion = tp.classSymbol.companionModule
+        if (companion.exists)
+          companion.valRef.asSeenFrom(tp.prefix, companion.symbol.owner)
+        else NoType
+      case _ => NoType
+    }
 
   /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
    *  If that's not already the case, add one. The added class type CT is determined as follows.
