@@ -692,7 +692,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree
     else {
       ctx.warning(i"conversion from ${tree.tpe.widen} to ${numericCls.typeRef} will always fail at runtime.")
-      Throw(New(defn.ClassCastExceptionClass.typeRef, Nil)) withPos tree.pos
+      // primary constructor of ClassCastException wants a message
+      val msg = i"${tree.tpe.widen} cannot be cast to ${numericCls.typeRef}"
+      Throw(New(defn.ClassCastExceptionClass.typeRef, Literal(Constant(msg)) :: Nil)) withPos tree.pos
     }
   }
 
