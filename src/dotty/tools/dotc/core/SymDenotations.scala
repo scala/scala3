@@ -466,7 +466,7 @@ object SymDenotations {
 
     /** Is this symbol a class references to which that are supertypes of null? */
     final def isNullableClass(implicit ctx: Context): Boolean =
-      isNonValueClass && !(this is ModuleClass) // todo: check that class does not derive from NotNull?
+      isNonValueClass && !(this is ModuleClass)
 
     /** Is this definition accessible as a member of tree with type `pre`?
      *  @param pre          The type of the tree from which the selection is made

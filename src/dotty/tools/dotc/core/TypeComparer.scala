@@ -648,8 +648,7 @@ class TypeComparer(initctx: Context) extends DotClass {
           if (cls2.isClass) {
             val base = tp1.baseTypeRef(cls2)
             if (base.exists && (base ne tp1)) return isSubType(base, tp2)
-            if ( cls2 == defn.SingletonClass && tp1.isStable
-               || cls2 == defn.NotNullClass && tp1.isNotNull) return true
+            if (cls2 == defn.SingletonClass && tp1.isStable) return true
           }
           tryRebase3rd
       }
@@ -777,8 +776,13 @@ class TypeComparer(initctx: Context) extends DotClass {
         case TypeBounds(lo1, hi1) =>
           isSubType(hi1, tp2)
         case _ =>
+          def isNullable(tp: Type): Boolean = tp.dealias match {
+            case tp: TypeRef => tp.symbol.isNullableClass
+            case RefinedType(parent, _) => isNullable(parent)
+            case _ => false
+          }
           (tp1.symbol eq NothingClass) && tp2.isInstanceOf[ValueType] ||
-          (tp1.symbol eq NullClass) && tp2.dealias.typeSymbol.isNullableClass
+          (tp1.symbol eq NullClass) && isNullable(tp2)
       }
     case tp1: SingletonType =>
       isNewSubType(tp1.underlying.widenExpr, tp2) || {
