@@ -1,5 +1,5 @@
 object Test {
-  class Arb[_]
+  class Arb[X_909538798]
   implicit def foo[M[_], A]: Arb[M[A]] = null
   foo: Arb[List[Int]]
   type ListInt = List[Int]
@@ -9,7 +9,7 @@ object Test {
 object Test2 {
   import scala.collection.immutable.List
 
-  class Carb[_]
+  class Carb[X_1647473379]
   implicit def narrow[N, M[_], A](x: Carb[M[A]])(implicit ev: N <:< M[A]): Carb[N] = null
   implicit def bar[M[_], A]: Carb[M[A]] = null
 

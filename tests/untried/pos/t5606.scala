@@ -6,4 +6,4 @@
 
 
 
-case class CaseTest[_](someData:String)
+case class CaseTest[X_271044897](someData:String)
