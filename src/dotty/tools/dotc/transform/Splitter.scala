@@ -16,7 +16,6 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "splitter"
-  override def treeTransformPhase = thisTransform.next
 
   /** Replace self referencing idents with ThisTypes. */
   override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = tree.tpe match {

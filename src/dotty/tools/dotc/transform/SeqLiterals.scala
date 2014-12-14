@@ -18,11 +18,10 @@ import Decorators._
  *  is called directly. The reason for this step is that JavaSeqLiterals, being arrays
  *  keep a precise type after erasure, whereas SeqLiterals only get the erased type `Seq`,
  */
-class SeqLiterals extends MiniPhaseTransform { thisTransformer =>
+class SeqLiterals extends MiniPhaseTransform {
   import ast.tpd._
 
   override def phaseName = "seqLiterals"
-  override def treeTransformPhase = thisTransformer.next
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[PatternMatcher])
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {

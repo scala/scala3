@@ -25,8 +25,6 @@ class Flatten extends MiniPhaseTransform with SymTransformer { thisTransform =>
     else ref
   }
 
-  override def treeTransformPhase = thisTransform.next
-
   private val liftedDefs = new mutable.ListBuffer[Tree]
 
   private def liftIfNested(tree: Tree)(implicit ctx: Context, info: TransformerInfo) =

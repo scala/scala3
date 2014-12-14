@@ -35,7 +35,6 @@ class SyntheticMethods extends MiniPhaseTransform with IdentityDenotTransformer 
   import ast.tpd._
 
   override def phaseName = "synthetics"
-  override def treeTransformPhase = thisTransformer.next
 
   private var valueSymbols: List[Symbol] = _
   private var caseSymbols: List[Symbol] = _

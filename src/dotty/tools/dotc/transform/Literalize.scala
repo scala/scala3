@@ -19,7 +19,6 @@ class Literalize extends MiniPhaseTransform { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "literalize"
-  override def treeTransformPhase = thisTransform.next
 
   /** Note: Demanding idempotency instead of purity is strictly speaking too loose.
    *  Example

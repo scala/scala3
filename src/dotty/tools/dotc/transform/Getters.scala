@@ -43,7 +43,6 @@ class Getters extends MiniPhaseTransform with SymTransformer { thisTransform =>
   import ast.tpd._
 
   override def phaseName = "getters"
-  override def treeTransformPhase = thisTransform.next
 
   override def transformSym(d: SymDenotation)(implicit ctx: Context): SymDenotation = {
     def noGetterNeeded =

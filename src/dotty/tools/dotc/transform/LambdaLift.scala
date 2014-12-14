@@ -45,7 +45,6 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
 
   class LambdaLifter extends TreeTransform {
     override def phase = thisTransform
-    override def treeTransformPhase = thisTransform.next
 
     private type SymSet = TreeSet[Symbol]
 

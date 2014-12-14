@@ -45,7 +45,6 @@ class InterceptedMethods extends MiniPhaseTransform { thisTransform =>
   import tpd._
 
   override def phaseName: String = "intercepted"
-  override def treeTransformPhase = thisTransform.next
 
   private var getClassMethods: Set[Symbol] = _
   private var poundPoundMethods: Set[Symbol] = _

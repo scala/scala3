@@ -67,7 +67,6 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "mixin"
-  override def treeTransformPhase = thisTransform.next
 
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
 
