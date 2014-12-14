@@ -59,7 +59,7 @@ object TreeTransforms {
 
     def phase: MiniPhase
 
-    def treeTransformPhase: Phase = phase
+    def treeTransformPhase: Phase = phase.next
 
     /** id of this treeTransform in group */
     var idx: Int = _
