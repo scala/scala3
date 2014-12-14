@@ -62,13 +62,14 @@ import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, MiniPhaseTran
  *             self recursive functions, that's why it's renamed to tailrec
  *             </p>
  */
-class TailRec extends MiniPhaseTransform with DenotTransformer with FullParameterization {
+class TailRec extends MiniPhaseTransform with DenotTransformer with FullParameterization { thisTransform =>
 
   import dotty.tools.dotc.ast.tpd._
 
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref
 
   override def phaseName: String = "tailrec"
+  override def treeTransformPhase = thisTransform // TODO Make sure tailrec runs at next phase.
 
   final val labelPrefix = "tailLabel"
   final val labelFlags = Flags.Synthetic | Flags.Label

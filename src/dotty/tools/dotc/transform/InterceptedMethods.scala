@@ -40,11 +40,12 @@ import StdNames._
   *     using the most precise overload available
   * - `x.getClass` for getClass in primitives becomes `x.getClass` with getClass in class Object.
   */
-class InterceptedMethods extends MiniPhaseTransform {
+class InterceptedMethods extends MiniPhaseTransform { thisTransform =>
 
   import tpd._
 
   override def phaseName: String = "intercepted"
+  override def treeTransformPhase = thisTransform.next
 
   private var getClassMethods: Set[Symbol] = _
   private var poundPoundMethods: Set[Symbol] = _
