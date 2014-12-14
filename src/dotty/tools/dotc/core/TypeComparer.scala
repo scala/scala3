@@ -12,6 +12,7 @@ import util.{Stats, DotClass, SimpleMap}
 import config.Config
 import config.Printers._
 import TypeErasure.{erasedLub, erasedGlb}
+import scala.util.control.NonFatal
 
 /** Provides methods to compare types.
  */
@@ -401,7 +402,7 @@ class TypeComparer(initctx: Context) extends DotClass {
 
         result
       } catch {
-        case ex: Throwable =>
+        case NonFatal(ex) =>
           def showState =  {
             println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}, frozen = $frozenConstraint"))
             def explainPoly(tp: Type) = tp match {

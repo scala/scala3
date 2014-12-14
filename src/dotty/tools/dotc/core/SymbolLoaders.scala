@@ -14,6 +14,7 @@ import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, util
 import StdNames._, NameOps._
 import Decorators.{StringDecorator, StringInterpolators}
 import pickling.ClassfileParser
+import scala.util.control.NonFatal
 
 object SymbolLoaders {
   /** A marker trait for a completer that replaces the original
@@ -206,7 +207,7 @@ abstract class SymbolLoader extends LazyType {
     } catch {
       case ex: IOException =>
         signalError(ex)
-      case ex: Throwable =>
+      case NonFatal(ex) =>
         println(s"exception caught when loading $root: $ex")
         throw ex
     } finally {

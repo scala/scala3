@@ -4,6 +4,7 @@ import config.CompilerCommand
 import core.Contexts.{Context, ContextBase}
 import util.DotClass
 import reporting._
+import scala.util.control.NonFatal
 
 abstract class Driver extends DotClass {
 
@@ -29,14 +30,11 @@ abstract class Driver extends DotClass {
     try {
       doCompile(newCompiler(), fileNames)
     } catch {
-      case ex: Throwable =>
-        ex match {
-          case ex: FatalError  =>
-            ctx.error(ex.getMessage) // signals that we should fail compilation.
-            ctx.typerState.reporter
-          case _ =>
-            throw ex // unexpected error, tell the outside world.
-        }
+      case ex: FatalError  =>
+        ctx.error(ex.getMessage) // signals that we should fail compilation.
+        ctx.typerState.reporter
+      case NonFatal(ex) =>
+        throw(ex) // unexpected error, tell the outside world.
     }
   }
 

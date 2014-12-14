@@ -8,6 +8,7 @@ import dotty.tools.dotc.parsing.JavaParsers.JavaParser
 import parsing.Parsers.Parser
 import config.Printers._
 import util.Stats._
+import scala.util.control.NonFatal
 
 class FrontEnd extends Phase {
 
@@ -16,7 +17,7 @@ class FrontEnd extends Phase {
   def monitor(doing: String)(body: => Unit)(implicit ctx: Context) =
     try body
     catch {
-      case ex: Throwable =>
+      case NonFatal(ex) =>
         println(s"exception occured while $doing ${ctx.compilationUnit}")
         throw ex
     }

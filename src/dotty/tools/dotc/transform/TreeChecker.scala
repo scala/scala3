@@ -23,6 +23,7 @@ import util.SourcePosition
 import collection.mutable
 import ProtoTypes._
 import java.lang.AssertionError
+import scala.util.control.NonFatal
 
 /** Run by -Ycheck option after a given phase, this class retypes all syntax trees
  *  and verifies that the type of each tree node so obtained conforms to the type found in the tree node.
@@ -58,7 +59,7 @@ class TreeChecker {
     val checker = new Checker(previousPhases(phasesToRun.toList)(ctx))
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(checkingCtx)
     catch {
-      case ex: Throwable =>
+      case NonFatal(ex) =>
         implicit val ctx: Context = checkingCtx
         println(i"*** error while checking after phase ${checkingCtx.phase.prev} ***")
         throw ex
