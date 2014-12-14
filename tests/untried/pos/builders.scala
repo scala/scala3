@@ -1,18 +1,18 @@
 object builders {
 
   trait Builder[-From, +To, -Elem] {
-    def += (elem: Elem)
+    def += (elem: Elem): Unit
     def result: To
   }
 
-  implicit def iterableBuilder[A, B] = new Builder[Iterable[A], Iterable[B], B] {
+  implicit def iterableBuilder[A, B]: builders.Builder[Iterable[A],Iterable[B],B] = new Builder[Iterable[A], Iterable[B], B] {
     println("new iterable builder")
     private val buf = new scala.collection.mutable.ListBuffer[B]
     def += (elem: B): Unit = { buf += elem }
     def result: Iterable[B] = buf.toList
   }
 
-  implicit def listBuilder[A, B] = new Builder[List[A], List[B], B] {
+  implicit def listBuilder[A, B]: builders.Builder[List[A],List[B],B] = new Builder[List[A], List[B], B] {
     println("new list builder")
     private val buf = new scala.collection.mutable.ListBuffer[B]
     def += (elem: B): Unit = { buf += elem }

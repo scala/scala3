@@ -51,9 +51,12 @@ object DemoSpec extends DemoSpec with Property {
     }
 }
 
-class Demo(args: List[String]) extends {
-  val parsed = DemoSpec(args: _*)
-} with DemoSpec with Instance {
+class Demo(args: List[String]) extends DemoSpec with Instance {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+val parsed = DemoSpec(args: _*)
+// END copied early initializers
+
   import java.lang.reflect._
 
   def helpMsg = DemoSpec.helpMsg
