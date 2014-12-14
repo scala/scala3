@@ -396,15 +396,16 @@ object Symbols {
      *  that starts being valid after `phase`.
      *  @pre  Symbol is a class member
      */
-    def enteredAfter(phase: DenotTransformer)(implicit ctx: Context): this.type = {
-      val nextCtx = ctx.withPhase(phase.next)
-      if (this.owner.is(Package)) {
-        denot.validFor |= InitialPeriod
-        if (this is Module) this.moduleClass.validFor |= InitialPeriod
+    def enteredAfter(phase: DenotTransformer)(implicit ctx: Context): this.type =
+      if (ctx.phaseId != phase.next.id) enteredAfter(phase)(ctx.withPhase(phase.next))
+      else {
+        if (this.owner.is(Package)) {
+          denot.validFor |= InitialPeriod
+          if (this is Module) this.moduleClass.validFor |= InitialPeriod
+        }
+        else this.owner.asClass.ensureFreshScopeAfter(phase)
+        entered
       }
-      else this.owner.asClass.ensureFreshScopeAfter(phase)(nextCtx)
-      entered(nextCtx)
-    }
 
     /** This symbol, if it exists, otherwise the result of evaluating `that` */
     def orElse(that: => Symbol)(implicit ctx: Context) =
