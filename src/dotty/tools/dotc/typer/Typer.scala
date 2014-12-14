@@ -1017,6 +1017,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           case tree: untpd.PackageDef => typedPackageDef(tree)
           case tree: untpd.Annotated => typedAnnotated(tree, pt)
           case tree: untpd.TypedSplice => tree.tree
+          case tree:  untpd.UnApply => typedUnApply(tree, pt)
           case untpd.PostfixOp(tree, nme.WILDCARD) => typedAsFunction(tree, pt)
           case untpd.EmptyTree => tpd.EmptyTree
           case _ => typedUnadapted(desugar(tree), pt)
