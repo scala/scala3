@@ -622,6 +622,10 @@ object Types {
      */
     def stripTypeVar(implicit ctx: Context): Type = this
 
+    /** Remove all AnnotatedTypes wrapping this type.
+      */
+    def stripAnnots(implicit ctx: Context): Type = this
+
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences,
      *  Also go from => T to T.
@@ -673,6 +677,8 @@ object Types {
         if (tp1.exists) tp1.dealias else tp
       case tp: LazyRef =>
         tp.ref.dealias
+      case tp: AnnotatedType =>
+        tp.derivedAnnotatedType(tp.annot, tp.tpe.dealias)
       case tp => tp
     }
 
@@ -2502,6 +2508,9 @@ object Types {
     def derivedAnnotatedType(annot: Annotation, tpe: Type) =
       if ((annot eq this.annot) && (tpe eq this.tpe)) this
       else AnnotatedType(annot, tpe)
+
+    override def stripTypeVar(implicit ctx: Context): Type = tpe.stripTypeVar
+    override def stripAnnots(implicit ctx: Context): Type = tpe.stripAnnots
   }
 
   object AnnotatedType {
