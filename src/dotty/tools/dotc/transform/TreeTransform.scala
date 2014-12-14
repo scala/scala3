@@ -1233,7 +1233,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goStats(trees: List[Tree], cur: Int)(implicit ctx: Context, info: TransformerInfo): List[Tree] = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        val stats = trans.transformStats(trees)
+        val stats = trans.transformStats(trees)(ctx.withPhase(trans.treeTransformPhase), info)
         goStats(stats, info.nx.nxTransStats(cur + 1))
       } else trees
     }
