@@ -194,7 +194,7 @@ object Phases {
 
     def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
       units.map { unit =>
-        val unitCtx = ctx.fresh.setPhase(this).setCompilationUnit(unit)
+        val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
         run(unitCtx)
         unitCtx.compilationUnit
       }
