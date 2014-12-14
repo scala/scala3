@@ -177,6 +177,8 @@ object TreeTransforms {
   trait AnnotationTransformer extends MiniPhaseTransform with InfoTransformer {
 
     val annotationTransformer = mkTreeTransformer
+    override final def treeTransformPhase = this
+      // need to run at own phase because otherwise we get ahead of ourselves in transforming denotations
 
     override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
       val info1 = transformInfo(ref.info, ref.symbol)
