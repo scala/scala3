@@ -35,7 +35,6 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
 
   override def phaseName = "firstTransform"
 
-
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {

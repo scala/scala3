@@ -48,7 +48,6 @@ class PrivateToStatic extends MiniPhase with SymTransformer { thisTransform =>
 
   class Transform(thisParam: Symbol) extends TreeTransform {
     def phase = thisTransform
-    override def treeTransformPhase = thisTransform.next
 
     override def prepareForDefDef(tree: DefDef)(implicit ctx: Context) =
       if (shouldBeStatic(tree.symbol)) {

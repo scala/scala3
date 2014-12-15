@@ -59,7 +59,7 @@ object TreeTransforms {
 
     def phase: MiniPhase
 
-    def treeTransformPhase: Phase = phase
+    def treeTransformPhase: Phase = phase.next
 
     /** id of this treeTransform in group */
     var idx: Int = _
@@ -177,6 +177,8 @@ object TreeTransforms {
   trait AnnotationTransformer extends MiniPhaseTransform with InfoTransformer {
 
     val annotationTransformer = mkTreeTransformer
+    override final def treeTransformPhase = this
+      // need to run at own phase because otherwise we get ahead of ourselves in transforming denotations
 
     override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
       val info1 = transformInfo(ref.info, ref.symbol)
@@ -1236,7 +1238,7 @@ object TreeTransforms {
     final private[TreeTransforms] def goStats(trees: List[Tree], cur: Int)(implicit ctx: Context, info: TransformerInfo): List[Tree] = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
-        val stats = trans.transformStats(trees)
+        val stats = trans.transformStats(trees)(ctx.withPhase(trans.treeTransformPhase), info)
         goStats(stats, info.nx.nxTransStats(cur + 1))
       } else trees
     }

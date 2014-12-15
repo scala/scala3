@@ -51,8 +51,6 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
     // assumes idents and selects have symbols; interferes with splitter distribution
     // that's why it's "after group".
 
-  override def treeTransformPhase = thisTransformer.next
-
   /** The info of the tree's symbol at phase Nullarify (i.e. before transformation) */
   private def originalDenotation(tree: Tree)(implicit ctx: Context) =
     tree.symbol.denot(ctx.withPhase(thisTransformer))

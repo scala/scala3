@@ -26,7 +26,6 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisTransfo
 
   class Transform(captured: collection.Set[Symbol]) extends TreeTransform {
     def phase = thisTransform
-    override def treeTransformPhase = thisTransform.next
 
     private class CollectCaptured(implicit ctx: Context) extends EnclosingMethodTraverser {
       private val captured = mutable.HashSet[Symbol]()

@@ -57,8 +57,6 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
       ref
   }
 
-  override def treeTransformPhase = thisTransformer.next
-
   protected def rewiredTarget(target: Symbol, derived: Symbol)(implicit ctx: Context): Symbol =
     if (isMethodWithExtension(target) &&
         target.owner.linkedClass == derived.owner) extensionMethod(target)

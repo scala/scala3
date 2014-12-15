@@ -77,7 +77,10 @@ object Contexts {
 
     /** The current context */
     private[this] var _period: Period = _
-    protected def period_=(period: Period) = _period = period
+    protected def period_=(period: Period) = {
+      assert(period.firstPhaseId == period.lastPhaseId, period)
+      _period = period
+    }
     def period: Period = _period
 
     /** The scope nesting level */
@@ -193,7 +196,7 @@ object Contexts {
     /** This context at given phase.
      *  This method will always return a phase period equal to phaseId, thus will never return squashed phases
      */
-    final def withPhase(phaseId: PhaseId): Context = {
+    final def withPhase(phaseId: PhaseId): Context =
       if (this.phaseId == phaseId) this
       else if (phasedCtx.phaseId == phaseId) phasedCtx
       else if (phasedCtxs != null && phasedCtxs(phaseId) != null) phasedCtxs(phaseId)
@@ -206,7 +209,6 @@ object Contexts {
         }
         ctx1
       }
-    }
 
     final def withPhase(phase: Phase): Context =
       withPhase(phase.id)

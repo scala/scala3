@@ -792,7 +792,7 @@ class TypeComparer(initctx: Context) extends DotClass {
             tp2.info match {
               case tp2i: TermRef =>
                 isSubType(tp1, tp2i)
-              case ExprType(tp2i: TermRef) if (ctx.phase.id > ctx.gettersSettersPhase.id) =>
+              case ExprType(tp2i: TermRef) if (ctx.phase.id > ctx.gettersPhase.id) =>
                 isSubType(tp1, tp2i)
               case _ =>
                 false

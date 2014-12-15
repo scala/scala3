@@ -36,8 +36,6 @@ import scala.reflect.internal.util.Collections
 class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTransformer =>
   import dotty.tools.dotc.ast.tpd._
 
-  override def treeTransformPhase = thisTransformer.next
-
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref
 
   override def runsAfter = Set(classOf[ElimRepeated])

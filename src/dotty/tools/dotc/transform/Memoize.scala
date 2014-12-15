@@ -35,7 +35,6 @@ import Decorators._
   import ast.tpd._
 
   override def phaseName = "memoize"
-  override def treeTransformPhase = thisTransform.next
 
   /** Should to run after mixin so that fields get generated in the
    *  class that contains the concrete getter rather than the trait

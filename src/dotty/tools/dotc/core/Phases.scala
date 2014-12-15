@@ -170,7 +170,7 @@ object Phases {
     private val patmatCache = new PhaseCache(classOf[PatternMatcher])
     private val flattenCache = new PhaseCache(classOf[Flatten])
     private val explicitOuterCache = new PhaseCache(classOf[ExplicitOuter])
-    private val gettersSettersCache = new PhaseCache(classOf[GettersSetters])
+    private val gettersCache = new PhaseCache(classOf[Getters])
 
     def typerPhase = typerCache.phase
     def refchecksPhase = refChecksCache.phase
@@ -178,7 +178,7 @@ object Phases {
     def patmatPhase = patmatCache.phase
     def flattenPhase = flattenCache.phase
     def explicitOuterPhase = explicitOuterCache.phase
-    def gettersSettersPhase = gettersSettersCache.phase
+    def gettersPhase = gettersCache.phase
 
     def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
   }
@@ -194,7 +194,7 @@ object Phases {
 
     def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
       units.map { unit =>
-        val unitCtx = ctx.fresh.setPhase(this).setCompilationUnit(unit)
+        val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
         run(unitCtx)
         unitCtx.compilationUnit
       }

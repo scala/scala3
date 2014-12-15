@@ -15,7 +15,7 @@ import ast.Trees._
  *  The constant types are eliminated by erasure, so we need to keep
  *  the info about constantness in the trees.
  */
-class Literalize extends MiniPhaseTransform {
+class Literalize extends MiniPhaseTransform { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "literalize"

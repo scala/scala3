@@ -43,7 +43,6 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
     * before this phase starts
     */
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[PatternMatcher])
-  override def treeTransformPhase = thisTransformer.next
 
   /** Add outer accessors if a class always needs an outer pointer */
   override def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
