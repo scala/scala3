@@ -527,16 +527,16 @@ object Types {
         .toList.map(d => TermRef.withSig(this, d.symbol.asTerm))
     }
 
-    /** The set of implicit members of this type */
+    /** The set of member classes of this type */
     final def memberClasses(implicit ctx: Context): Seq[SingleDenotation] = track("implicitMembers") {
-      memberDenots(takeAllFilter,
+      memberDenots(typeNameFilter,
         (name, buf) => buf ++= member(name).altsWith(x => x.isClass))
     }
 
-    /** The set of implicit members of this type */
+    /** The set of members  of this type  having at least one of `requiredFlags` but none of  `excludedFlags` set */
     final def membersBasedOnFlags(requiredFlags: FlagSet, excludedFlags: FlagSet)(implicit ctx: Context): Seq[SingleDenotation] = track("implicitMembers") {
       memberDenots(takeAllFilter,
-        (name, buf) => buf ++= member(name).altsWith(x => x.is(requiredFlags, excludedFlags)))
+        (name, buf) => buf ++= member(name).altsWith(x => x.is(requiredFlags, butNot = excludedFlags)))
     }
 
     /** The info of `sym`, seen as a member of this type. */
