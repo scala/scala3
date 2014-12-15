@@ -273,7 +273,7 @@ class Definitions {
 
     lazy val String_+ = newMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
     lazy val String_valueOf_Object = StringModule.info.member(nme.valueOf).suchThat(_.info.firstParamTypes match {
-      case List(pt) => pt isRef AnyClass
+      case List(pt) => (pt isRef AnyClass) || (pt isRef ObjectClass)
       case _ => false
     }).symbol
 
