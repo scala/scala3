@@ -776,7 +776,10 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedAppliedTypeTree(tree: untpd.AppliedTypeTree)(implicit ctx: Context): AppliedTypeTree = track("typedAppliedTypeTree") {
     val tpt1 = typed(tree.tpt)
-    val args1 = tree.args mapconserve (typed(_))
+    val argPts =
+      if (ctx.mode is Mode.Pattern) tpt1.tpe.typeParams.map(_.info)
+      else tree.args.map(_ => WildcardType)
+    val args1 = tree.args.zipWithConserve(argPts)(typed(_, _)).asInstanceOf[List[Tree]]
     // check that arguments conform to bounds is done in phase FirstTransform
     assignType(cpy.AppliedTypeTree(tree)(tpt1, args1), tpt1, args1)
   }
@@ -798,7 +801,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = track("typedBind") {
     val body1 = typed(tree.body, pt)
     typr.println(i"typed bind $tree pt = $pt bodytpe = ${body1.tpe}")
-    val sym = ctx.newSymbol(ctx.owner, tree.name.asTermName, EmptyFlags, body1.tpe, coord = tree.pos)
+    val sym = ctx.newSymbol(ctx.owner, tree.name, EmptyFlags, body1.tpe, coord = tree.pos)
     assignType(cpy.Bind(tree)(tree.name, body1), sym)
   }
 
@@ -1339,7 +1342,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
               }
             case _ =>
               if (ctx.mode is Mode.Type)
-                if (tree.tpe <:< pt) tree
+                if ((ctx.mode is Mode.Pattern) || tree.tpe <:< pt) tree
                 else err.typeMismatch(tree, pt)
               else adaptNoArgs(wtp)
           }
