@@ -91,9 +91,10 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     }
 
     def narrowLiftedOwner(sym: Symbol, owner: Symbol)(implicit ctx: Context) = {
-      ctx.log(i"narrow lifted $sym to $owner")
-      if (sym.owner.skipConstructor.isTerm &&
-        owner.isProperlyContainedIn(liftedOwner(sym))) {
+      if (sym.owner.isTerm &&
+        owner.isProperlyContainedIn(liftedOwner(sym)) &&
+        owner != sym) {
+        ctx.log(i"narrow lifted $sym to $owner")
         changedLiftedOwner = true
         liftedOwner(sym) = owner
       }
@@ -132,9 +133,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     private def markFree(sym: Symbol, enclosure: Symbol)(implicit ctx: Context): Boolean = try {
       if (!enclosure.exists) throw new NoPath
       ctx.log(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
+      narrowLiftedOwner(enclosure, sym.enclosingClass)
       (enclosure == sym.enclosure) || {
         ctx.debuglog(i"$enclosure != ${sym.enclosure}")
-        narrowLiftedOwner(enclosure, sym.enclosingClass)
         if (enclosure.is(PackageClass) ||
           !markFree(sym, enclosure.skipConstructor.enclosure)) false
         else {
@@ -164,6 +165,13 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       def traverse(enclMeth: Symbol, tree: Tree) = try { //debug
         val enclosure = enclMeth.skipConstructor
         val sym = tree.symbol
+        def narrowTo(thisClass: ClassSymbol) = {
+          val enclClass = enclosure.enclosingClass
+          if (!thisClass.isStaticOwner)
+            narrowLiftedOwner(enclosure,
+              if (enclClass.isContainedIn(thisClass)) thisClass
+              else enclClass) // unknown this reference, play it safe and assume the narrowest possible owner
+        }
         tree match {
           case tree: Ident =>
             if (sym.maybeOwner.isTerm) {
@@ -172,17 +180,13 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
                   i"attempt to refer to label $sym from nested $enclosure")
               else if (sym is Method) markCalled(sym, enclosure)
               else if (sym.isTerm) markFree(sym, enclosure)
-            }
+            } else if (sym.maybeOwner.isClass)
+              narrowTo(sym.owner.asClass)
           case tree: Select =>
             if (sym.isConstructor && sym.owner.owner.isTerm)
               markCalled(sym, enclosure)
           case tree: This =>
-            val thisClass = tree.symbol.asClass
-            val enclClass = enclosure.enclosingClass
-            if (!thisClass.isStaticOwner && thisClass != enclClass)
-              narrowLiftedOwner(enclosure,
-                if (enclClass.isContainedIn(thisClass)) thisClass
-                else enclClass) // unknown this reference, play it safe and assume the narrowest possible owner
+            narrowTo(tree.symbol.asClass)
           case tree: DefDef =>
             if (sym.owner.isTerm && !sym.is(Label)) liftedOwner(sym) = sym.topLevelClass.owner
             else if (sym.isPrimaryConstructor && sym.owner.owner.isTerm) symSet(called, sym) += sym.owner

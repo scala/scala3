@@ -154,6 +154,13 @@ class TreeChecker {
       super.typedSelect(tree, pt)
     }
 
+    override def typedThis(tree: untpd.This)(implicit ctx: Context) = {
+      val res = super.typedThis(tree)
+      val cls = res.symbol
+      assert(cls.isStaticOwner || ctx.owner.isContainedIn(cls), i"error while typing $tree, ${ctx.owner} is not contained in $cls")
+      res
+    }
+
     private def checkOwner(tree: untpd.Tree)(implicit ctx: Context): Unit = {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
