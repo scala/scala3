@@ -994,8 +994,8 @@ object TreeTransforms {
           implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForBind, info.nx.nxPrepBind, tree, cur)
           if (mutatedInfo eq null) tree
           else {
-            val body = transform(tree.body, mutatedInfo, mutatedInfo.nx.nxTransBind(cur))
-            goBind(cpy.Bind(tree)(tree.name, body), cur)
+            val body = transform(tree.body, mutatedInfo, cur)
+            goBind(cpy.Bind(tree)(tree.name, body), mutatedInfo.nx.nxTransBind(cur))
           }
         case tree: ValDef if !tree.isEmpty => // As a result of discussing with Martin: emptyValDefs shouldn't be copied // NAME
           implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForValDef, info.nx.nxPrepValDef, tree, cur)
