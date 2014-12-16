@@ -119,7 +119,8 @@ object TypeErasure {
    *  treated. `eraseInfo` maps them them to nullary method types, whereas `erasure` maps them
    *  to `Function0`.
    */
-  def eraseInfo(tp: Type)(implicit ctx: Context): Type = scalaErasureFn.eraseInfo(tp)(erasureCtx)
+  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
+    scalaErasureFn.eraseInfo(tp, sym)(erasureCtx)
 
   /** The erasure of a function result type. Differs from normal erasure in that
    *  Unit is kept instead of being mapped to BoxedUnit.
@@ -145,7 +146,7 @@ object TypeErasure {
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
-    else eraseInfo(tp)(erasureCtx) match {
+    else eraseInfo(tp, sym)(erasureCtx) match {
       case einfo: MethodType if sym.isGetter && einfo.resultType.isRef(defn.UnitClass) =>
         defn.BoxedUnitClass.typeRef
       case einfo =>
@@ -347,8 +348,14 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
     else JavaArrayType(this(elemtp))
   }
 
-  def eraseInfo(tp: Type)(implicit ctx: Context) = tp match {
-    case ExprType(rt) => MethodType(Nil, Nil, eraseResult(rt))
+  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
+    case ExprType(rt) =>
+      if (sym is Param) apply(tp)
+        // Note that params with ExprTypes are eliminated by ElimByName,
+        // but potentially re-introduced by ResolveSuper, when we add
+        // forwarders to mixin methods.
+        // See doc comment for ElimByName for speculation how we could improve this.
+      else MethodType(Nil, Nil, eraseResult(rt))
     case tp => erasure(tp)
   }
 
