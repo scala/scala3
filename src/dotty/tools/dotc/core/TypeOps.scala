@@ -22,6 +22,8 @@ trait TypeOps { this: Context =>
           case SuperType(thispre, _) => thispre
           case _ => pre
         }
+      else if ((pre.termSymbol is Package) && !(thiscls is Package))
+        toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
       else
         toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
     }

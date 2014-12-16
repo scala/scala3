@@ -114,15 +114,15 @@ trait TypeAssigner {
   def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
 
     def tryInsertPackageObj(tpe: NamedType, d: Denotation): Type = {
-      def tryInsert: Type =
-        if (!(d.symbol.maybeOwner is Package)) {
-          val symOwner = d.alternatives.head.symbol.owner
-          if (symOwner.isPackageObject) tpe.derivedSelect(symOwner.thisType)
-          else tpe
-        } else tpe
+      def tryInsert(pkgClass: SymDenotation): Type = pkgClass match {
+        case pkgCls: PackageClassDenotation if !(d.symbol.maybeOwner is Package) =>
+          tpe.derivedSelect(pkgCls.packageObj.valRef)
+        case _ =>
+          tpe
+      }
       tpe.prefix match {
-        case pre: ThisType if pre.cls is Package => tryInsert
-        case pre: TermRef if pre.symbol is Package => tryInsert
+        case pre: ThisType if pre.cls is Package => tryInsert(pre.cls)
+        case pre: TermRef if pre.symbol is Package => tryInsert(pre.symbol.moduleClass)
         case _ => tpe
       }
     }
