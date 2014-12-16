@@ -12,7 +12,7 @@ trait TreesBase {
 }
 
 trait TreesApi extends TreesBase {
-  def Apply(x: String)
+  def Apply(x: String): Unit
 }
 
 class Universe extends TreesApi {

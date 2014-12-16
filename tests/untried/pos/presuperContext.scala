@@ -1,5 +1,10 @@
 class A {
-  class C extends { val x: A = this } with AnyRef
+  class C extends AnyRef {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+val x: A = this
+// END copied early initializers
+}
 }
 
 class B(x: Int)

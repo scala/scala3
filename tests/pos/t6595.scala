@@ -1,8 +1,11 @@
 import scala.annotation.switch
 
-class Foo extends {
-  final val b0 = 5
-} with AnyRef {
+class Foo extends AnyRef {
+// TODO NEEDS MANUAL CHANGE (early initializers)
+// BEGIN copied early initializers
+final val b0 = 5
+// END copied early initializers
+
   final val b1 = 10
 
   // Using the @switch annotation as a means of testing that the
