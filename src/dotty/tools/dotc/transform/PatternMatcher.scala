@@ -9,7 +9,7 @@ import core.Symbols._
 import core.Types._
 import core.Constants._
 import core.StdNames._
-import dotty.tools.dotc.ast.{TreeTypeMap, tpd}
+import dotty.tools.dotc.ast.{untpd, TreeTypeMap, tpd}
 import dotty.tools.dotc.core
 import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 import dotty.tools.dotc.core.Phases.Phase
@@ -50,6 +50,19 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     val translated = new Translator()(ctx).translator.translateMatch(tree)
 
     translated.ensureConforms(tree.tpe)
+  }
+
+
+  override def transformTry(tree: tpd.Try)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    val selector =
+      ctx.newSymbol(ctx.owner, ctx.freshName("ex").toTermName, Flags.Synthetic, defn.ThrowableType, coord = tree.pos)
+    val sel = Ident(selector.termRef).withPos(tree.pos)
+    val rethrow = tpd.CaseDef(sel, EmptyTree, Throw(ref(selector)))
+    val newCases = tpd.CaseDef(
+      Bind(selector,untpd.Ident(nme.WILDCARD).withPos(tree.pos).withType(selector.info)),
+      EmptyTree,
+      transformMatch(tpd.Match(sel, tree.cases ::: rethrow :: Nil)))
+    cpy.Try(tree)(tree.expr, newCases :: Nil, tree.finalizer)
   }
 
   class Translator(implicit ctx: Context) {
