@@ -357,8 +357,8 @@ trait TypeAssigner {
   def assignType(tree: untpd.TypeBoundsTree, lo: Tree, hi: Tree)(implicit ctx: Context) =
     tree.withType(TypeBounds(lo.tpe, hi.tpe))
 
-  def assignType(tree: untpd.Bind, sym: TermSymbol)(implicit ctx: Context) =
-    tree.withType(TermRef(NoPrefix, sym))
+  def assignType(tree: untpd.Bind, sym: Symbol)(implicit ctx: Context) =
+    tree.withType(NamedType.withFixedSym(NoPrefix, sym))
 
   def assignType(tree: untpd.Alternative, trees: List[Tree])(implicit ctx: Context) =
     tree.withType(ctx.typeComparer.lub(trees.tpes))

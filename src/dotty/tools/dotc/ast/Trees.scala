@@ -594,6 +594,8 @@ object Trees {
   case class Bind[-T >: Untyped] private[ast] (name: Name, body: Tree[T])
     extends NameTree[T] with DefTree[T] with PatternTree[T] {
     type ThisTree[-T >: Untyped] = Bind[T]
+    override def isType = name.isTypeName
+    override def isTerm = name.isTermName
     override def envelope: Position = pos union initialPos
   }
 
