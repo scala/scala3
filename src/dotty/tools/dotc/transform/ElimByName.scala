@@ -22,7 +22,7 @@ import ast.Trees._
  *
  *      => T        ==>    () => T
  *
- *  Note that `=> T` types are not eliminated in MnethodTypes. This is done later at erasure.
+ *  Note that `=> T` types are not eliminated in MethodTypes. This is done later at erasure.
  *  Terms are rewritten as follows:
  *
  *      x           ==>    x.apply()   if x is a parameter that had type => T
@@ -41,6 +41,17 @@ import ast.Trees._
  *     DummyApply: [T](() => T): T
  *
  *  is a synthetic method defined in Definitions. Erasure will later strip these DummyApply wrappers.
+ *
+ *  Note: This scheme to have inconsistent types between method types (whose formal types are still
+ *  ExprTypes and parameter valdefs (which are now FunctionTypes) is not pretty. There are two
+ *  other options which have been abandoned or not yet pursued.
+ *
+ *  Option 1: Transform => T to () => T also in method and function types. The problem with this is
+ *  that is that it rewuires to look at every type, and this forces too much, causing
+ *  Cyclic Reference errors. Abandoned for this reason.
+ *
+ *  Option 2: Merge ElimByName with erasure, or have it run immediately before. This has not been
+ *  tried yet.
  */
 class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
   import ast.tpd._
