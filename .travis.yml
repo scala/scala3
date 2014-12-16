@@ -1,5 +1,10 @@
 language: scala
 sudo: false
+cache:
+  directories:
+  - $HOME/.ivy2
+  - $HOME/.m2
+  - $HOME/.sbt
 script:
   - sbt -Ddotty.travis.build=yes update compile test
 jdk:
