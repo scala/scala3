@@ -675,7 +675,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val c = ctx.fresh.setFreshGADTBounds
         for (sym <- gadtSyms)
           if (!c.gadt.bounds.contains(sym))
-            c.gadt.bounds = c.gadt.bounds.updated(sym, TypeBounds.empty)
+            c.gadt.setBounds(sym, TypeBounds.empty)
         c
       }
     val pat1 = typedPattern(tree.pat, selType)(gadtCtx)

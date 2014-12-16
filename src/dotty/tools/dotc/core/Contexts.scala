@@ -601,7 +601,12 @@ object Contexts {
     implicit val ctx: Context = initctx
   }
 
-  class GADTMap(var bounds: SimpleMap[Symbol, TypeBounds])
+  class GADTMap(initBounds: SimpleMap[Symbol, TypeBounds]) {
+    private var myBounds = initBounds
+    def setBounds(sym: Symbol, b: TypeBounds): Unit =
+      myBounds = myBounds.updated(sym, b)
+    def bounds = myBounds
+  }
 
   /** Initial size of superId table */
   private final val InitialSuperIdsSize = 4096

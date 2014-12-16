@@ -919,7 +919,7 @@ class TypeComparer(initctx: Context) extends DotClass {
 
   def narrowGADTBounds(tr: NamedType, bounds: TypeBounds): Boolean =
     isSubType(bounds.lo, bounds.hi) &&
-    { ctx.gadt.bounds = ctx.gadt.bounds.updated(tr.symbol, bounds); true }
+    { ctx.gadt.setBounds(tr.symbol, bounds); true }
 
   // Tests around `matches`
 
