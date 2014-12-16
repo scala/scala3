@@ -1,4 +1,5 @@
 language: scala
+sudo: false
 script:
   - sbt -Ddotty.travis.build=yes update compile test
 jdk:
