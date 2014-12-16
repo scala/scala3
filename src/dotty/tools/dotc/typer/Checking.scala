@@ -162,13 +162,13 @@ object Checking {
    *  This depends also on firming up the DOT calculus. For the moment we only issue
    *  deprecated warnings, not errors.
    */
-  def checkRefinementNonCyclic(refinement: Tree, refineCls: ClassSymbol)(implicit ctx: Context): Unit = {
+  def checkRefinementNonCyclic(refinement: Tree, refineCls: ClassSymbol, seen: mutable.Set[Symbol])
+    (implicit ctx: Context): Unit = {
     def flag(what: String, tree: Tree) =
       ctx.deprecationWarning(i"$what reference in refinement is deprecated", tree.pos)
     def forwardRef(tree: Tree) = flag("forward", tree)
     def selfRef(tree: Tree) = flag("self", tree)
     val checkTree = new TreeAccumulator[Unit] {
-      private var seen = Set[Symbol]()
       def checkRef(tree: Tree, sym: Symbol) =
         if (sym.maybeOwner == refineCls && !seen(sym)) forwardRef(tree)
       def apply(x: Unit, tree: Tree) = tree match {
