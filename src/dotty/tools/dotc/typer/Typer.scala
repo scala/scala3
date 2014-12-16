@@ -759,10 +759,11 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val refineClsDef = desugar.refinedTypeToClass(tpt1, tree.refinements)
     val refineCls = createSymbol(refineClsDef).asClass
     val TypeDef(_, Template(_, _, _, refinements1)) = typed(refineClsDef)
+    val seen = mutable.Set[Symbol]()
     assert(tree.refinements.length == refinements1.length, s"${tree.refinements} != $refinements1")
     def addRefinement(parent: Type, refinement: Tree): Type = {
       typr.println(s"adding refinement $refinement")
-      checkRefinementNonCyclic(refinement, refineCls)
+      checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
       val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
       RefinedType(parent, rsym.name, rt => rinfo.substThis(refineCls, RefinedThis(rt)))
