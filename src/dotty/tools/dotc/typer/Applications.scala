@@ -763,6 +763,12 @@ trait Applications extends Compatibility { self: Typer =>
     }
   }
 
+  /** A typed unapply hook, can be overridden by re any-typers between frontend
+   *  and pattern matcher.
+   */
+  def typedUnApply(tree: untpd.UnApply, selType: Type)(implicit ctx: Context) =
+    throw new UnsupportedOperationException("cannot type check an UnApply node")
+
   /** Is given method reference applicable to type arguments `targs` and argument trees `args`?
    *  @param  resultType   The expected result type of the application
    */

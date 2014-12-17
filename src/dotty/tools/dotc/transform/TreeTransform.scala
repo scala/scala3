@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.util.DotClass
 import scala.annotation.tailrec
 import config.Printers.transforms
+import scala.util.control.NonFatal
 
 object TreeTransforms {
   import tpd._
@@ -1215,6 +1216,8 @@ object TreeTransforms {
           goOther(tree, info.nx.nxTransOther(cur))
       }
 
+    private var crashingTree: Tree = EmptyTree
+
     def transform(tree: Tree, info: TransformerInfo, cur: Int)(implicit ctx: Context): Tree = ctx.traceIndented(s"transforming ${tree.show} at ${ctx.phase}", transforms, show = true) {
       try
         if (cur < info.transformers.length) {
@@ -1228,8 +1231,11 @@ object TreeTransforms {
           }
         } else tree
       catch {
-        case ex: Throwable =>
-          println(i"exception while transforming $tree of class ${tree.getClass} # ${tree.uniqueId}")
+        case NonFatal(ex) =>
+          if (tree ne crashingTree) {
+            crashingTree = tree
+            println(i"exception while transforming $tree of class ${tree.getClass} # ${tree.uniqueId}")
+          }
           throw ex
       }
     }

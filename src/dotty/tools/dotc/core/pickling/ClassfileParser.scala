@@ -13,6 +13,7 @@ import scala.collection.mutable.{ ListBuffer, ArrayBuffer }
 import scala.annotation.switch
 import typer.Checking.checkNonCyclic
 import io.AbstractFile
+import scala.util.control.NonFatal
 
 class ClassfileParser(
     classfile: AbstractFile,
@@ -447,7 +448,7 @@ class ClassfileParser(
     else Some(Annotation.deferredResolve(attrType, argbuf.toList))
   } catch {
     case f: FatalError => throw f // don't eat fatal errors, they mean a class was not found
-    case ex: Throwable =>
+    case NonFatal(ex) =>
       // We want to be robust when annotations are unavailable, so the very least
       // we can do is warn the user about the exception
       // There was a reference to ticket 1135, but that is outdated: a reference to a class not on
