@@ -14,6 +14,9 @@ import ast.Trees._
 /** This phase rewrites idempotent expressions with constant types to Literals.
  *  The constant types are eliminated by erasure, so we need to keep
  *  the info about constantness in the trees.
+ *
+ *  The phase also makes sure that the constant of a literal is the same as the constant
+ *  in the type of the literal.
  */
 class Literalize extends MiniPhaseTransform { thisTransform =>
   import ast.tpd._
@@ -62,4 +65,9 @@ class Literalize extends MiniPhaseTransform { thisTransform =>
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
     literalize(tree)
+
+  override def transformLiteral(tree: Literal)(implicit ctx: Context, info: TransformerInfo): Tree = tree.tpe match {
+    case ConstantType(const) if tree.const.value != const.value => Literal(const)
+    case _ => tree
+  }
 }
