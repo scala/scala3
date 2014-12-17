@@ -2515,10 +2515,7 @@ object Types {
   object TypeAlias {
     def apply(alias: Type, variance: Int = 0)(implicit ctx: Context) =
       ctx.uniqueTypeAliases.enterIfNew(alias, variance)
-    def unapply(tp: TypeAlias): Option[Type] = tp match {
-      case tp: TypeAlias => Some(tp.alias)
-      case _ => None
-    }
+    def unapply(tp: TypeAlias): Option[Type] = Some(tp.alias)
   }
 
   // ----- Annotated and Import types -----------------------------------------------
