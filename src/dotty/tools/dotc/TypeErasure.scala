@@ -108,6 +108,10 @@ object TypeErasure {
   def erasedRef(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp: TermRef =>
       assert(tp.symbol.exists, tp)
+      if(tp.prefix.widenDealias.classSymbol.is(Flags.Package) && !tp.termSymbol.owner.is(Flags.Package))
+        // we are accessing a definition inside a package object
+        TermRef(erasedRef(tp.prefix).member(nme.PACKAGE).asSymDenotation.termRef, tp.symbol.asTerm)
+      else
       TermRef(erasedRef(tp.prefix), tp.symbol.asTerm)
     case tp: ThisType =>
       tp
