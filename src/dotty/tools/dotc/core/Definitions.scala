@@ -269,11 +269,11 @@ class Definitions {
 
   // fundamental classes
   lazy val StringClass                  = ctx.requiredClass("java.lang.String")
-  lazy val StringModule                 = StringClass.moduleClass
+  lazy val StringModule                 = StringClass.linkedClass
 
     lazy val String_+ = newMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
     lazy val String_valueOf_Object = StringModule.info.member(nme.valueOf).suchThat(_.info.firstParamTypes match {
-      case List(pt) => pt isRef ObjectClass
+      case List(pt) => (pt isRef AnyClass) || (pt isRef ObjectClass)
       case _ => false
     }).symbol
 
@@ -398,7 +398,7 @@ class Definitions {
     def apply(elem: Type)(implicit ctx: Context) =
       if (ctx.erasedTypes) JavaArrayType(elem)
       else ArrayClass.typeRef.appliedTo(elem :: Nil)
-    def unapply(tp: Type)(implicit ctx: Context) = tp.dealias match {
+    def unapply(tp: Type)(implicit ctx: Context): Option[Type] = tp.dealias match {
       case at: RefinedType if (at isRef ArrayClass) && at.argInfos.length == 1 => Some(at.argInfos.head)
       case _ => None
     }

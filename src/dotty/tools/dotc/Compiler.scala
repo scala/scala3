@@ -14,6 +14,9 @@ import dotty.tools.dotc.transform.TreeTransforms.{TreeTransform, TreeTransformer
 import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 
+
+import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
+
 class Compiler {
 
   /** Meta-ordering constraint:
@@ -61,7 +64,8 @@ class Compiler {
       List(new LambdaLift,
            new Flatten,
            new RestoreScopes),
-      List(new PrivateToStatic)
+      List(/*new PrivateToStatic,*/ new CollectEntryPoints, new LabelDefs),
+      List(new GenBCode)
     )
 
   var runId = 1

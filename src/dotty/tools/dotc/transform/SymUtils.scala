@@ -24,6 +24,32 @@ object SymUtils {
 class SymUtils(val self: Symbol) extends AnyVal {
   import SymUtils._
 
+  def superClass(implicit ctx: Context) = {
+    val parents = self.asClass.classInfo.parents
+    if (parents.isEmpty) NoSymbol
+    else parents.head.symbol
+  }
+
+
+  /**
+   * For a class: All interfaces implemented by a class except for those inherited through the superclass.
+   * For a trait: all parent traits
+   */
+
+  def superInterfaces(implicit ctx: Context) = {
+    val superCls = self.superClass
+    val baseClasses = self.asClass.baseClasses
+    if (baseClasses.isEmpty) Nil
+    else baseClasses.tail.takeWhile(_ ne superCls).reverse
+
+  }
+
+  /** All interfaces implemented by a class, except for those inherited through the superclass. */
+  def mixins(implicit ctx: Context) = {
+    if (self is Trait) Nil
+    else superInterfaces
+  }
+
   def isTypeTestOrCast(implicit ctx: Context): Boolean =
     self == defn.Any_asInstanceOf || self == defn.Any_isInstanceOf
 
@@ -35,9 +61,6 @@ class SymUtils(val self: Symbol) extends AnyVal {
   /** If this is a constructor, its owner: otherwise this. */
   final def skipConstructor(implicit ctx: Context): Symbol =
     if (self.isConstructor) self.owner else self
-
-  final def isAnonymousFunction(implicit ctx: Context): Boolean =
-    self.is(Method) && (self.denot.initial.asSymDenotation.name startsWith nme.ANON_FUN)
 
   /** The logically enclosing method or class for this symbol.
    *  Instead of constructors one always picks the enclosing class.

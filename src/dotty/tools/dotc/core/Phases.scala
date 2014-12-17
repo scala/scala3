@@ -3,6 +3,7 @@ package core
 
 import Periods._
 import Contexts._
+import dotty.tools.backend.jvm.GenBCode
 import util.DotClass
 import DenotTransformers._
 import Denotations._
@@ -171,6 +172,7 @@ object Phases {
     private val flattenCache = new PhaseCache(classOf[Flatten])
     private val explicitOuterCache = new PhaseCache(classOf[ExplicitOuter])
     private val gettersCache = new PhaseCache(classOf[Getters])
+    private val genBCodeCache = new PhaseCache(classOf[GenBCode])
 
     def typerPhase = typerCache.phase
     def refchecksPhase = refChecksCache.phase
@@ -179,6 +181,7 @@ object Phases {
     def flattenPhase = flattenCache.phase
     def explicitOuterPhase = explicitOuterCache.phase
     def gettersPhase = gettersCache.phase
+    def genBCodePhase = genBCodeCache.phase
 
     def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
   }
