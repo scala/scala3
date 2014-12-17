@@ -69,7 +69,7 @@ class Literalize extends MiniPhaseTransform { thisTransform =>
     literalize(tree)
 
   override def transformLiteral(tree: Literal)(implicit ctx: Context, info: TransformerInfo): Tree = tree.tpe match {
-    case ConstantType(const) if tree.const.value != const.value => Literal(const)
+    case ConstantType(const) if tree.const.value != const.value || (tree.const.tag != const.tag) => Literal(const)
     case _ => tree
   }
 
