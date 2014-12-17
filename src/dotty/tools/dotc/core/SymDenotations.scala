@@ -422,7 +422,7 @@ object SymDenotations {
     }
 
     /** Is this a user defined "def" method? Excluded are accessors. */
-    final def isSourceMethod(implicit ctx: Context) = this is (Method, butNot = Accessor)
+    final def isSourceMethod(implicit ctx: Context) = this is (Method, butNot = AccessorOrLabel)
 
     /** Is this a setter? */
     final def isGetter(implicit ctx: Context) =
@@ -1664,4 +1664,6 @@ object SymDenotations {
     private final val NumBits = NumWords << WordSizeLog
     private final val Mask = NumBits - 1
   }
+
+  val AccessorOrLabel = Accessor | Label
 }

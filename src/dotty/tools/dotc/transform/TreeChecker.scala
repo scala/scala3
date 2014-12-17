@@ -162,6 +162,12 @@ class TreeChecker {
       res
     }
 
+
+    override def typedReturn(tree: untpd.Return)(implicit ctx: Context): tpd.Return = {
+      assert(!(tree.from.symbol is Label), i"returns from labels aren't supported: $tree")
+      super.typedReturn(tree)
+    }
+
     private def checkOwner(tree: untpd.Tree)(implicit ctx: Context): Unit = {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
