@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
-import SymDenotations._
+import SymDenotations._, Denotations.Denotation
 import config.Printers._
 import Decorators._
 import StdNames._
@@ -222,6 +222,20 @@ trait TypeOps { this: Context =>
       lazyInfo,
       coord = cls.coord)
     cls.enter(sym, decls)
+  }
+
+  def makePackageObjPrefixExplicit(tpe: NamedType, d: Denotation): Type = {
+    def tryInsert(pkgClass: SymDenotation): Type = pkgClass match {
+      case pkgCls: PackageClassDenotation if !(d.symbol.maybeOwner is Package) =>
+        tpe.derivedSelect(pkgCls.packageObj.valRef)
+      case _ =>
+        tpe
+    }
+    tpe.prefix match {
+      case pre: ThisType if pre.cls is Package => tryInsert(pre.cls)
+      case pre: TermRef if pre.symbol is Package => tryInsert(pre.symbol.moduleClass)
+      case _ => tpe
+    }
   }
 
   /** If we have member definitions

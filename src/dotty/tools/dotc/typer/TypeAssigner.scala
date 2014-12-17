@@ -112,21 +112,6 @@ trait TypeAssigner {
    *      that the package object shows up as the prefix.
    */
   def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
-
-    def tryInsertPackageObj(tpe: NamedType, d: Denotation): Type = {
-      def tryInsert(pkgClass: SymDenotation): Type = pkgClass match {
-        case pkgCls: PackageClassDenotation if !(d.symbol.maybeOwner is Package) =>
-          tpe.derivedSelect(pkgCls.packageObj.valRef)
-        case _ =>
-          tpe
-      }
-      tpe.prefix match {
-        case pre: ThisType if pre.cls is Package => tryInsert(pre.cls)
-        case pre: TermRef if pre.symbol is Package => tryInsert(pre.symbol.moduleClass)
-        case _ => tpe
-      }
-    }
-
     def test(tpe: Type, firstTry: Boolean): Type = tpe match {
       case tpe: NamedType =>
         val pre = tpe.prefix
@@ -159,7 +144,7 @@ trait TypeAssigner {
         else if (d.symbol is TypeParamAccessor) // always dereference type param accessors
           ensureAccessible(d.info.bounds.hi, superAccess, pos)
         else
-          tryInsertPackageObj(tpe withDenot d, d)
+          ctx.makePackageObjPrefixExplicit(tpe withDenot d, d)
       case _ =>
         tpe
     }
