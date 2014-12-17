@@ -73,14 +73,15 @@ class Literalize extends MiniPhaseTransform { thisTransform =>
     case _ => tree
   }
 
-  /** Check that all literals have types matchin underlying constants
+  /** Check that all literals have types match underlying constants
     */
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
     tree match {
       case Literal(c @ Constant(treeValue)) =>
         tree.tpe match {
-          case ConstantType(typeValue) =>
-            assert(treeValue == typeValue.value, i"Type of Literal $tree is inconsistent with underlying constant")
+          case ConstantType(c2 @ Constant(typeValue)) =>
+            assert(treeValue == typeValue && c2.tag == c.tag,
+              i"Type of Literal $tree is inconsistent with underlying constant")
           case tpe =>
             assert(c.tpe =:= tpe, i"Type of Literal $tree is inconsistent with underlying constant type ${c.tpe}")
         }
