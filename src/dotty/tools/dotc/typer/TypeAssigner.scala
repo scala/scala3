@@ -144,7 +144,7 @@ trait TypeAssigner {
         else if (d.symbol is TypeParamAccessor) // always dereference type param accessors
           ensureAccessible(d.info.bounds.hi, superAccess, pos)
         else
-          ctx.makePackageObjPrefixExplicit(tpe withDenot d, d)
+          ctx.makePackageObjPrefixExplicit(tpe withDenot d)
       case _ =>
         tpe
     }

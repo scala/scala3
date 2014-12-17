@@ -224,9 +224,14 @@ trait TypeOps { this: Context =>
     cls.enter(sym, decls)
   }
 
-  def makePackageObjPrefixExplicit(tpe: NamedType, d: Denotation): Type = {
+  /** If `tpe` is of the form `p.x` where `p` refers to a package
+   *  but `x` is not owned by a package, expand it to
+   *
+   *      p.package.x
+   */
+  def makePackageObjPrefixExplicit(tpe: NamedType): Type = {
     def tryInsert(pkgClass: SymDenotation): Type = pkgClass match {
-      case pkgCls: PackageClassDenotation if !(d.symbol.maybeOwner is Package) =>
+      case pkgCls: PackageClassDenotation if !(tpe.symbol.maybeOwner is Package) =>
         tpe.derivedSelect(pkgCls.packageObj.valRef)
       case _ =>
         tpe
