@@ -1141,7 +1141,11 @@ object TreeTransforms {
           if (mutatedInfo eq null) tree
           else {
             val expr = transform(tree.expr, mutatedInfo, cur)
-            val from = transform(tree.from, mutatedInfo, cur)
+            val from = tree.from
+              // don't thansform the `from` part, as this is not a normal ident, but
+              // a pointer to the enclosing method. Transforming this as a normal ident
+              // can go wrong easily. If a transformation is needed, it should be
+              // the responsibility of the transformReturn method to handle this also.
             goReturn(cpy.Return(tree)(expr, from), mutatedInfo.nx.nxTransReturn(cur))
           }
         case tree: Try =>
