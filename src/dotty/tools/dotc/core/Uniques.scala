@@ -65,30 +65,27 @@ object Uniques {
     }
   }
 
-  final class TypeBoundsUniques extends HashSet[TypeBounds](initialUniquesCapacity) with Hashable {
-    override def hash(x: TypeBounds): Int = x.hash
+  final class TypeAliasUniques extends HashSet[TypeAlias](initialUniquesCapacity) with Hashable {
+    override def hash(x: TypeAlias): Int = x.hash
 
-    private def findPrevious(h: Int, lo: Type, hi: Type, variance: Int): TypeBounds = {
+    private def findPrevious(h: Int, alias: Type, variance: Int): TypeAlias = {
       var e = findEntryByHash(h)
       while (e != null) {
-        if ((e.lo eq lo) && (e.hi eq hi) && (e.variance == variance)) return e
+        if ((e.alias eq alias) && (e.variance == variance)) return e
         e = nextEntryByHash(h)
       }
       e
     }
 
-    def enterIfNew(lo: Type, hi: Type, variance: Int): TypeBounds = {
-      val h = doHash(variance, lo, hi)
-      if (monitored) recordCaching(h, classOf[TypeBounds])
-      def newBounds =
-        if (variance == 0) new CachedTypeBounds(lo, hi, h)
-        else if (variance == 1) new CoTypeBounds(lo, hi, h)
-        else new ContraTypeBounds(lo, hi, h)
-      if (h == NotCached) newBounds
+    def enterIfNew(alias: Type, variance: Int): TypeAlias = {
+      val h = doHash(variance, alias)
+      if (monitored) recordCaching(h, classOf[TypeAlias])
+      def newAlias = new CachedTypeAlias(alias, variance, h)
+      if (h == NotCached) newAlias
       else {
-        val r = findPrevious(h, lo, hi, variance)
+        val r = findPrevious(h, alias, variance)
         if (r ne null) r
-        else addEntryAfterScan(newBounds)
+        else addEntryAfterScan(newAlias)
       }
     }
   }

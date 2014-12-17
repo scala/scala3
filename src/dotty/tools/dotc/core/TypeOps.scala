@@ -43,8 +43,8 @@ trait TypeOps { this: Context =>
             asSeenFrom(tp.parent, pre, cls, theMap),
             tp.refinedName,
             asSeenFrom(tp.refinedInfo, pre, cls, theMap))
-        case tp: TypeBounds if tp.lo eq tp.hi =>
-          tp.derivedTypeAlias(asSeenFrom(tp.lo, pre, cls, theMap))
+        case tp: TypeAlias  =>
+          tp.derivedTypeAlias(asSeenFrom(tp.alias, pre, cls, theMap))
         case _ =>
           (if (theMap != null) theMap else new AsSeenFromMap(pre, cls))
             .mapOver(tp)
@@ -73,8 +73,8 @@ trait TypeOps { this: Context =>
       tp
     case tp: RefinedType =>
       tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
-    case tp: TypeBounds if tp.lo eq tp.hi =>
-      tp.derivedTypeAlias(simplify(tp.lo, theMap))
+    case tp: TypeAlias =>
+      tp.derivedTypeAlias(simplify(tp.alias, theMap))
     case AndType(l, r) =>
       simplify(l, theMap) & simplify(r, theMap)
     case OrType(l, r) =>
@@ -144,9 +144,10 @@ trait TypeOps { this: Context =>
     def needsChecking(tp: Type, isPart: Boolean): Boolean = tp match {
       case tp: TypeRef =>
         tp.info match {
+          case TypeAlias(alias) =>
+            needsChecking(alias, isPart)
           case TypeBounds(lo, hi) =>
-            if (lo eq hi) needsChecking(hi, isPart)
-            else isPart || tp.controlled(isVolatile(hi))
+            isPart || tp.controlled(isVolatile(hi))
           case _ => false
         }
       case tp: RefinedType =>
