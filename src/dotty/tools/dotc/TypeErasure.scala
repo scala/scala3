@@ -108,7 +108,9 @@ object TypeErasure {
   def erasedRef(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp: TermRef =>
       assert(tp.symbol.exists, tp)
-      TermRef(erasedRef(tp.prefix), tp.symbol.asTerm)
+      val tp1 = ctx.makePackageObjPrefixExplicit(tp)
+      if (tp1 ne tp) erasedRef(tp1)
+      else TermRef(erasedRef(tp.prefix), tp.symbol.asTerm)
     case tp: ThisType =>
       tp
     case tp =>
