@@ -33,8 +33,6 @@ abstract class Driver extends DotClass {
       case ex: FatalError  =>
         ctx.error(ex.getMessage) // signals that we should fail compilation.
         ctx.typerState.reporter
-      case NonFatal(ex) =>
-        throw(ex) // unexpected error, tell the outside world.
     }
   }
 
