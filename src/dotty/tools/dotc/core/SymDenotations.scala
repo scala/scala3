@@ -254,11 +254,10 @@ object SymDenotations {
     /** If this is a package class, the symbols entered in it
      *  before it is completed. (this is needed to eagerly enter synthetic
      *  aliases such as AnyRef into a package class without forcing it.
-     *  Right now, I believe the only usage is for the AnyRef alias
-     *  in Definitions.
+     *  Right now, the only usage is for the AnyRef alias in Definitions.
      */
-    final def preDecls(implicit ctx: Context): MutableScope = myInfo match {
-      case pinfo: SymbolLoaders # PackageLoader => pinfo.preDecls
+    final private[core] def currentPackageDecls(implicit ctx: Context): MutableScope = myInfo match {
+      case pinfo: SymbolLoaders # PackageLoader => pinfo.currentDecls
       case _ => unforcedDecls.asInstanceOf[MutableScope]
     }
 
