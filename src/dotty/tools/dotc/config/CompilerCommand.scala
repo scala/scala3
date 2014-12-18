@@ -19,11 +19,13 @@ object CompilerCommand extends DotClass {
     |Where multiple values are accepted, they should be comma-separated.
     |  example: -Xplugin:plugin1,plugin2
     |<phases> means one or a comma-separated list of:
-    |  (partial) phase names, phase ids, phase id ranges, or the string "all".
+    |  - (partial) phase names with an optional "+" suffix to include the next phase
+    |  - the string "all"
     |  example: -Xprint:all prints all phases.
-    |  example: -Xprint:expl,24-26 prints phases explicitouter, closelim, dce, jvm.
-    |  example: -Xprint:-4 prints only the phases up to typer.
-    |
+    |  example: -Xprint:front,mixin prints the frontend and mixin phases.
+    |  example: -Ylog:erasure+ logs the erasure phase and the phase after the erasure phase.
+    |           This is useful because during the tree transform of phase X, we often
+    |           already are in phase X+1.
   """.stripMargin.trim + "\n"
 
   def shortUsage = s"Usage: $cmdName <options> <source files>"
