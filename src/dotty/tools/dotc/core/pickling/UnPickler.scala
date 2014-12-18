@@ -445,7 +445,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
          )
         owner.asClass.enter(sym, symScope(owner))
       else if (isRefinementClass(owner))
-        symScope(owner).asInstanceOf[MutableScope].enter(sym)
+        symScope(owner).openForMutations.enter(sym)
       sym
     }
 

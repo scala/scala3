@@ -258,7 +258,7 @@ object SymDenotations {
      */
     final private[core] def currentPackageDecls(implicit ctx: Context): MutableScope = myInfo match {
       case pinfo: SymbolLoaders # PackageLoader => pinfo.currentDecls
-      case _ => unforcedDecls.asInstanceOf[MutableScope]
+      case _ => unforcedDecls.openForMutations
     }
 
     // ------ Names ----------------------------------------------
@@ -1235,7 +1235,7 @@ object SymDenotations {
     def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
       val mscope = scope match {
         case scope: MutableScope => scope
-        case _ => unforcedDecls.asInstanceOf[MutableScope]
+        case _ => unforcedDecls.openForMutations
       }
       if (this is PackageClass) {
         val entry = mscope.lookupEntry(sym.name)
@@ -1265,7 +1265,7 @@ object SymDenotations {
      */
     def replace(prev: Symbol, replacement: Symbol)(implicit ctx: Context): Unit = {
       require(!(this is Frozen))
-      unforcedDecls.asInstanceOf[MutableScope].replace(prev, replacement)
+      unforcedDecls.openForMutations.replace(prev, replacement)
       if (myMemberCache != null)
         myMemberCache invalidate replacement.name
     }
@@ -1276,7 +1276,7 @@ object SymDenotations {
      */
     def delete(sym: Symbol)(implicit ctx: Context) = {
       require(!(this is Frozen))
-      info.decls.asInstanceOf[MutableScope].unlink(sym)
+      info.decls.openForMutations.unlink(sym)
       if (myMemberFingerPrint != FingerPrint.unknown)
         computeMemberFingerPrint
       if (myMemberCache != null)

@@ -27,7 +27,7 @@ trait NamerContextOps { this: Context =>
   def enter(sym: Symbol): Symbol = {
     ctx.owner match {
       case cls: ClassSymbol => cls.enter(sym)
-      case _ => this.scope.asInstanceOf[MutableScope].enter(sym)
+      case _ => this.scope.openForMutations.enter(sym)
     }
     sym
   }
@@ -37,7 +37,7 @@ trait NamerContextOps { this: Context =>
     if (owner.isClass)
       if (outer.owner == owner) { // inner class scope; check whether we are referring to self
         if (scope.size == 1) {
-          val elem = scope.asInstanceOf[MutableScope].lastEntry
+          val elem = scope.lastEntry
           if (elem.name == name) return elem.sym.denot // return self
         }
         assert(scope.size <= 1, scope)
@@ -306,7 +306,7 @@ class Namer { typer: Typer =>
     val localCtx: Context = ctx.fresh.setNewScope
     selfInfo match {
       case sym: Symbol if sym.exists && sym.name != nme.WILDCARD =>
-        localCtx.scope.asInstanceOf[MutableScope].enter(sym)
+        localCtx.scope.openForMutations.enter(sym)
       case _ =>
     }
     localCtx
