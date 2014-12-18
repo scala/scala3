@@ -895,7 +895,7 @@ object Types {
      *  no symbol it tries `member` as an alternative.
      */
     def typeParamNamed(name: TypeName)(implicit ctx: Context): Symbol =
-      classSymbol.decls.lookup(name) orElse member(name).symbol
+      classSymbol.unforcedDecls.lookup(name) orElse member(name).symbol
 
     /** If this is a prototype with some ignored component, reveal one more
      *  layer of it. Otherwise the type itself.

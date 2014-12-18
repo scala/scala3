@@ -162,7 +162,7 @@ class SymbolLoaders {
           if (!maybeModuleClass(classRep))
             initializeFromClassPath(root.symbol, classRep)
         for (classRep <- classpath.classes)
-          if (maybeModuleClass(classRep) && !root.decls.lookup(classRep.name.toTypeName).exists)
+          if (maybeModuleClass(classRep) && !root.unforcedDecls.lookup(classRep.name.toTypeName).exists)
             initializeFromClassPath(root.symbol, classRep)
       }
       if (!root.isEmptyPackage)

@@ -454,7 +454,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     def classLeaks(sym: ClassSymbol): Boolean =
       (ctx.owner is Method) || // can't hoist classes out of method bodies
       (sym.info.parents exists typeLeaks) ||
-      (sym.decls.toList exists (t => typeLeaks(t.info)))
+      (sym.info.decls.toList exists (t => typeLeaks(t.info)))
     leakingTypes(block.tpe)
   }
 

@@ -52,7 +52,7 @@ trait NamerContextOps { this: Context =>
    *  the declarations of the current class.
    */
   def effectiveScope: Scope =
-    if (owner != null && owner.isClass) owner.asClass.decls
+    if (owner != null && owner.isClass) owner.asClass.unforcedDecls
     else scope
 
   /** The symbol (stored in some typer's symTree) of an enclosing context definition */

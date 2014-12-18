@@ -443,7 +443,7 @@ object Erasure extends TypeTestsCasts{
 
                   if (isRequired) {
                     // check for clashes
-                    val clash: Option[Symbol] = oldSymbol.owner.decls.lookupAll(bridge.name).find {
+                    val clash: Option[Symbol] = oldSymbol.owner.info.decls.lookupAll(bridge.name).find {
                       sym =>
                         (sym.name eq bridge.name) && sym.info.widen =:= bridge.info.widen
                     }.orElse(
