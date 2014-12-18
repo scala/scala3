@@ -128,15 +128,22 @@ object Decorators {
     def show(implicit ctx: Context) = text.mkString(ctx.settings.pageWidth.value)
   }
 
-  /** Implements a test whether a list of strings representing phases contains
-   *  a given phase. The test returns true if the given phase starts with
-   *  one of the names in the list of strings, or if the list of strings
-   *  contains "all".
+  /** Test whether a list of strings representing phases contains
+   *  a given phase. See [[config.CompilerCommand#explainAdvanced]] for the
+   *  exact meaning of "contains" here.
    */
   implicit class PhaseListDecorator(val names: List[String]) extends AnyVal {
-    def containsPhase(phase: Phase): Boolean = phase  match {
+    def containsPhase(phase: Phase): Boolean = phase match {
       case phase: TreeTransformer => phase.transformations.exists(trans => containsPhase(trans.phase))
-      case _ => names exists (n => n == "all" || phase.phaseName.startsWith(n))
+      case _ =>
+        names exists { name =>
+          name == "all" || {
+            val strippedName = name.stripSuffix("+")
+            val logNextPhase = name ne strippedName
+            phase.phaseName.startsWith(strippedName) ||
+              (logNextPhase && phase.prev.phaseName.startsWith(strippedName))
+          }
+        }
     }
   }
 
