@@ -342,11 +342,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
   private def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
     val defn.ArrayType(elemtp) = tp
     if (elemtp derivesFrom defn.NullClass) JavaArrayType(defn.ObjectType)
-    else if (isUnboundedGeneric(elemtp))
-      elemtp match {
-        case elemtp: TypeRef if elemtp.symbol.is(JavaDefined) => JavaArrayType(defn.ObjectType)
-        case _ => defn.ObjectType
-      }
+    else if (isUnboundedGeneric(elemtp)) defn.ObjectType
     else JavaArrayType(this(elemtp))
   }
 
