@@ -450,31 +450,6 @@ object Symbols {
      */
     def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
 
-// -------- GADT handling -----------------------------------------------
-
-    /** Perform given operation `op` where this symbol allows tightening of
-     *  its type bounds.
-     */
-    private[dotc] def withGADTFlexType[T](op: () => T)(implicit ctx: Context): () => T = { () =>
-      assert((denot is TypeParam) && denot.owner.isTerm)
-      val saved = denot
-      denot = denot.copySymDenotation(initFlags = denot.flags | GADTFlexType)
-      try op()
-      finally denot = saved
-    }
-
-    /** Disallow tightening of type bounds for this symbol from now on */
-    private[dotc] def resetGADTFlexType()(implicit ctx: Context): Unit = {
-      assert(denot is GADTFlexType)
-      denot = denot.copySymDenotation(initFlags = denot.flags &~ GADTFlexType)
-    }
-
-    /** Change info of this symbol to new, tightened type bounds */
-    private[core] def changeGADTInfo(bounds: TypeBounds)(implicit ctx: Context): Unit = {
-      assert(denot is GADTFlexType)
-      denot = denot.copySymDenotation(info = bounds)
-    }
-
 // -------- Printing --------------------------------------------------------
 
     /** The prefix string to be used when displaying this symbol without denotation */

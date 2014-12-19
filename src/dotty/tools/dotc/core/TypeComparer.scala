@@ -618,9 +618,12 @@ class TypeComparer(initctx: Context) extends DotClass {
         secondTry(OrType.make(derivedRef(tp11), derivedRef(tp12)), tp2)
       */
       case TypeBounds(lo1, hi1) =>
-        if ((ctx.mode is Mode.GADTflexible) && (tp1.symbol is GADTFlexType) &&
-            !isSubTypeWhenFrozen(hi1, tp2))
-          trySetType(tp1, TypeBounds(lo1, hi1 & tp2))
+        val gbounds1 = ctx.gadt.bounds(tp1.symbol)
+        if (gbounds1 != null)
+          isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
+            (ctx.mode is Mode.GADTflexible) &&
+             narrowGADTBounds(tp1, TypeBounds(gbounds1.lo, gbounds1.hi & tp2)) ||
+             tryRebase2nd
         else if (lo1 eq hi1) isSubType(hi1, tp2)
         else tryRebase2nd
       case _ =>
@@ -637,9 +640,12 @@ class TypeComparer(initctx: Context) extends DotClass {
       }
       def compareNamed: Boolean = tp2.info match {
         case TypeBounds(lo2, hi2) =>
-          if ((ctx.mode is Mode.GADTflexible) && (tp2.symbol is GADTFlexType) &&
-              !isSubTypeWhenFrozen(tp1, lo2))
-            trySetType(tp2, TypeBounds(lo2 | tp1, hi2))
+          val gbounds2 = ctx.gadt.bounds(tp2.symbol)
+          if (gbounds2 != null)
+            isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
+              (ctx.mode is Mode.GADTflexible) &&
+              narrowGADTBounds(tp2, TypeBounds(gbounds2.lo | tp1, gbounds2.hi)) ||
+             tryRebase3rd
           else
             ((frozenConstraint || !isCappable(tp1)) && isSubType(tp1, lo2)
             || tryRebase3rd)
@@ -912,9 +918,9 @@ class TypeComparer(initctx: Context) extends DotClass {
     tp.exists && !tp.isLambda
   }
 
-  def trySetType(tr: NamedType, bounds: TypeBounds): Boolean =
+  def narrowGADTBounds(tr: NamedType, bounds: TypeBounds): Boolean =
     isSubType(bounds.lo, bounds.hi) &&
-    { tr.symbol.changeGADTInfo(bounds); true }
+    { ctx.gadt.setBounds(tr.symbol, bounds); true }
 
   // Tests around `matches`
 
