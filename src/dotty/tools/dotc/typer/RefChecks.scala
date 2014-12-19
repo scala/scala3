@@ -184,12 +184,6 @@ object RefChecks {
           emitOverrideError(overrideErrorMsg(msg))
       }
 
-      def overrideTypeError() = {
-        if (noErrorType) {
-          emitOverrideError(overrideErrorMsg("has incompatible type"))
-        }
-      }
-
       def overrideAccessError() = {
         ctx.log(i"member: ${member.showLocated} ${member.flags}") // DEBUG
         ctx.log(i"other: ${other.showLocated} ${other.flags}") // DEBUG
