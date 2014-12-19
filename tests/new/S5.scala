@@ -1,4 +1,5 @@
-/* Here's a fragment of a Scala encoding for the Keris module system;
+/* Original comment:
+ * Here's a fragment of a Scala encoding for the Keris module system;
 ** the compiler claims:
 **
 ** S5.scala:28: value n in class N of type N.this._N.n
