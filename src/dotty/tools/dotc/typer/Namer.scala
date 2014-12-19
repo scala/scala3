@@ -673,7 +673,15 @@ class Namer { typer: Typer =>
 
   def typeDefSig(tdef: TypeDef, sym: Symbol)(implicit ctx: Context): Type = {
     completeParams(tdef.tparams)
-    sym.info = TypeBounds.empty
+    val tparamSyms = tdef.tparams map symbolOfTree
+    val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
+    val toParameterize = tparamSyms.nonEmpty && !isDerived
+    val needsLambda = sym.allOverriddenSymbols.exists(_ is HigherKinded) && !isDerived
+    def abstracted(tp: Type): Type = 
+      if (needsLambda) tp.LambdaAbstract(tparamSyms)
+      else if (toParameterize) tp.parameterizeWith(tparamSyms)
+      else tp
+    sym.info = abstracted(TypeBounds.empty)
       // Temporarily set info of defined type T to ` >: Nothing <: Any.
       // This is done to avoid cyclic reference errors for F-bounds.
       // This is subtle: `sym` has now an empty TypeBounds, but is not automatically
@@ -684,18 +692,10 @@ class Namer { typer: Typer =>
       //
       // The scheme critically relies on an implementation detail of isRef, which
       // inspects a TypeRef's info, instead of simply dealiasing alias types.
-    val tparamSyms = tdef.tparams map symbolOfTree
-    val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
-    val toParameterize = tparamSyms.nonEmpty && !isDerived
-    val needsLambda = sym.allOverriddenSymbols.exists(_ is HigherKinded) && !isDerived
     val rhsType = typedAheadType(tdef.rhs).tpe
-    def abstractedRhsType =
-      if (needsLambda) rhsType.LambdaAbstract(tparamSyms)
-      else if (toParameterize) rhsType.parameterizeWith(tparamSyms)
-      else rhsType
     val unsafeInfo = rhsType match {
-      case _: TypeBounds => abstractedRhsType.asInstanceOf[TypeBounds]
-      case _ => TypeAlias(abstractedRhsType, if (sym is Local) sym.variance else 0)
+      case _: TypeBounds => abstracted(rhsType).asInstanceOf[TypeBounds]
+      case _ => TypeAlias(abstracted(rhsType), if (sym is Local) sym.variance else 0)
     }
     sym.info = NoCompleter
     checkNonCyclic(sym, unsafeInfo, reportErrors = true)
