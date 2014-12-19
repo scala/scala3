@@ -160,11 +160,11 @@ object TypeErasure {
    *  as upper bound and that is not Java defined? Arrays of such types are
    *  erased to `Object` instead of `ObjectArray`.
    */
-  def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp match {
+  def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
     case tp: TypeRef =>
-      tp.symbol.isAbstractType &&
+      !tp.symbol.isClass &&
       !tp.derivesFrom(defn.ObjectClass) &&
-      !tp.typeSymbol.is(JavaDefined)
+      !tp.symbol.is(JavaDefined)
     case tp: PolyParam =>
       !tp.derivesFrom(defn.ObjectClass) &&
       !tp.binder.resultType.isInstanceOf[JavaMethodType]
