@@ -368,7 +368,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(const: Constant): Text = const.tag match {
     case StringTag => "\"" + escapedString(const.value.toString) + "\""
-    case ClazzTag => "classOf[" ~ toText(const.tpe) ~ "]"
+    case ClazzTag => "classOf[" ~ toText(const.tpe.firstBaseArgInfo(defn.ClassClass)) ~ "]"
     case CharTag => s"'${escapedChar(const.charValue)}'"
     case LongTag => const.longValue.toString + "L"
     case EnumTag => const.symbolValue.name.toString
