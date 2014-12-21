@@ -553,12 +553,15 @@ class ClassfileParser(
     newType
   }
 
-  /** Add a synthetic constructor and potentially also default getters which
+  /** Add synthetic constructor(s) and potentially also default getters which
    *  reflects the fields of the annotation with given `classInfo`.
    *  Annotations in Scala are assumed to get all their arguments as constructor
    *  parameters. For Java annotations we need to fake it by making up the constructor.
    *  Note that default getters have type Nothing. That's OK because we need
    *  them only to signal that the corresponding parameter is optional.
+   *  If the constructor takes as last parameter an array, it can also accept
+   *  a vararg argument. We solve this by creating two constructors, one with
+   *  an array, the other with a repeated parameter.
    */
   def addAnnotationConstructor(classInfo: Type, tparams: List[Symbol] = Nil)(implicit ctx: Context): Unit = {
     def addDefaultGetter(attr: Symbol, n: Int) =
@@ -574,21 +577,33 @@ class ClassfileParser(
       case classInfo: TempClassInfoType =>
         val attrs = classInfo.decls.toList.filter(_.isTerm)
         val targs = tparams.map(_.typeRef)
-        val methType = MethodType(
-          attrs.map(_.name.asTermName),
-          attrs.map(_.info.resultType),
-          classRoot.typeRef.appliedTo(targs))
-        val constr = ctx.newSymbol(
+        val paramNames = attrs.map(_.name.asTermName)
+        val paramTypes = attrs.map(_.info.resultType)
+        
+        def addConstr(ptypes: List[Type]) = {
+          val mtype = MethodType(paramNames, ptypes, classRoot.typeRef.appliedTo(targs))
+          val constrType = if (tparams.isEmpty) mtype else TempPolyType(tparams, mtype)
+          val constr = ctx.newSymbol(
             owner = classRoot.symbol,
             name = nme.CONSTRUCTOR,
             flags = Flags.Synthetic,
-            info = if (tparams.isEmpty) methType else TempPolyType(tparams, methType)
+            info = constrType
           ).entered
-        for ((attr, i) <- attrs.zipWithIndex)
-          if (attr.hasAnnotation(defn.AnnotationDefaultAnnot)) {
-            constr.setFlag(Flags.HasDefaultParams)
-            addDefaultGetter(attr, i)
-          }
+          for ((attr, i) <- attrs.zipWithIndex)
+            if (attr.hasAnnotation(defn.AnnotationDefaultAnnot)) {
+              constr.setFlag(Flags.HasDefaultParams)
+              addDefaultGetter(attr, i)
+            }
+        }
+        
+        addConstr(paramTypes)
+        if (paramTypes.nonEmpty)
+          paramTypes.last match {
+            case defn.ArrayType(elemtp) => 
+              addConstr(paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp))        
+            case _ =>
+        }
+          
     }
   }
 
