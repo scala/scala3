@@ -468,6 +468,7 @@ object StdNames {
     val selectTerm: N           = "selectTerm"
     val selectType: N           = "selectType"
     val self: N                 = "self"
+    val seqToArray: N           = "seqToArray"
     val setAccessible: N        = "setAccessible"
     val setAnnotations: N       = "setAnnotations"
     val setSymbol: N            = "setSymbol"
