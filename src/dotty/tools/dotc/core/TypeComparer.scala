@@ -661,11 +661,11 @@ class TypeComparer(initctx: Context) extends DotClass {
       }
       compareNamed
     case tp2 @ RefinedType(parent2, name2) =>
-        def qualifies(m: SingleDenotation) = isSubType(m.info, tp2.refinedInfo)
-        def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
-          case mbr: SingleDenotation => qualifies(mbr)
-          case _ => mbr hasAltWith qualifies
-        }
+      def qualifies(m: SingleDenotation) = isSubType(m.info, tp2.refinedInfo)
+      def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
+        case mbr: SingleDenotation => qualifies(mbr)
+        case _ => mbr hasAltWith qualifies
+      }
       def compareRefinedSlow: Boolean = {
         def hasMatchingMember(name: Name): Boolean = /*>|>*/ ctx.traceIndented(s"hasMatchingMember($name) ${tp1.member(name).info.show}", subtyping) /*<|<*/ {
           val tp1r = rebaseQual(tp1, name)
@@ -786,7 +786,9 @@ class TypeComparer(initctx: Context) extends DotClass {
           def isNullable(tp: Type): Boolean = tp.dealias match {
             case tp: TypeRef => tp.symbol.isNullableClass
             case RefinedType(parent, _) => isNullable(parent)
-            case _ => false
+            case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
+            case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
+            case _ => println(i"$tp of class ${tp.getClass} is not nullable"); false
           }
           (tp1.symbol eq NothingClass) && tp2.isInstanceOf[ValueType] ||
           (tp1.symbol eq NullClass) && isNullable(tp2)
