@@ -67,6 +67,7 @@ class tests extends CompilerTest {
   @Test def pos_subtyping = compileFile(posDir, "subtyping")
   @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
   @Test def pos_packageObj = compileFile(posDir, "i0239")
+  @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping")
 
   @Test def pos_all = compileFiles(posDir, failedOther)
 
@@ -119,6 +120,7 @@ class tests extends CompilerTest {
   @Test def neg_i0248_inherit_refined = compileFile(negDir, "i0248-inherit-refined", xerrors = 4)
   @Test def neg_i0281 = compileFile(negDir, "i0281-null-primitive-conforms", xerrors = 3)
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
+  @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", failedOther)(allowDeepSubtypes)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", failedOther) // similar to dotc_config
