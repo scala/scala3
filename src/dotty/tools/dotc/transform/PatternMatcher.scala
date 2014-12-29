@@ -40,7 +40,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
   override def runsAfter = Set(classOf[ElimRepeated])
 
-  override def runsAfterGroupsOf = Set(classOf[TailRec]) // tailrec is not capable of reversing the patmat tranformation made for tree
+  //override def runsAfterGroupsOf = Set(classOf[TailRec]) // tailrec is not capable of reversing the patmat tranformation made for tree
 
   override def phaseName = "patternMatcher"
 
