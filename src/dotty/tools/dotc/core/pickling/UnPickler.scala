@@ -343,7 +343,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         if (denot.exists && !denot1.exists) { // !!!DEBUG
           val alts = denot.alternatives map (d => d+":"+d.info+"/"+d.signature)
           System.err.println(s"!!! disambiguation failure: $alts")
-          val members = denot.alternatives.head.symbol.owner.decls.toList map (d => d+":"+d.info+"/"+d.signature)
+          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => d+":"+d.info+"/"+d.signature)
           System.err.println(s"!!! all members: $members")
         }
         if (tag == EXTref) sym else sym.moduleClass
@@ -445,7 +445,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
          )
         owner.asClass.enter(sym, symScope(owner))
       else if (isRefinementClass(owner))
-        symScope(owner).asInstanceOf[MutableScope].enter(sym)
+        symScope(owner).openForMutations.enter(sym)
       sym
     }
 
@@ -475,7 +475,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             val unpickler = new LocalUnpickler() withDecls symScope(cls)
             if (flags is ModuleClass)
               unpickler withSourceModule (implicit ctx =>
-                cls.owner.decls.lookup(cls.name.sourceModuleName)
+                cls.owner.info.decls.lookup(cls.name.sourceModuleName)
                   .suchThat(_ is Module).symbol)
             else unpickler
           }
@@ -637,7 +637,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             // and also for the inner Transform class in all views. We fix it by
             // replacing the this with the appropriate super.
             if (sym.owner != thispre.cls) {
-              val overriding = thispre.cls.decls.lookup(sym.name)
+              val overriding = thispre.cls.info.decls.lookup(sym.name)
               if (overriding.exists && overriding != sym) {
                 val base = pre.baseTypeWithArgs(sym.owner)
                 assert(base.exists)

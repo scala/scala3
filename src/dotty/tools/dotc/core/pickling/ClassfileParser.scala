@@ -368,7 +368,7 @@ class ClassfileParser(
         val s = ctx.newSymbol(
           owner, expname, owner.typeParamCreationFlags,
           typeParamCompleter(index), coord = indexCoord(index))
-        if (owner.isClass) owner.asClass.enter(s, owner.decls)
+        if (owner.isClass) owner.asClass.enter(s)
         tparams = tparams + (tpname -> s)
         sig2typeBounds(tparams, skiptvs = true)
         newTParams += s

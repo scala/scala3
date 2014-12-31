@@ -53,7 +53,7 @@ object OverridingPairs {
       def fillDecls(bcs: List[Symbol], deferred: Boolean): Unit = bcs match {
         case bc :: bcs1 =>
           fillDecls(bcs1, deferred)
-          var e = bc.info.decls.asInstanceOf[MutableScope].lastEntry
+          var e = bc.info.decls.lastEntry
           while (e != null) {
             if (e.sym.is(Deferred) == deferred && !exclude(e.sym))
               decls.enter(e.sym)

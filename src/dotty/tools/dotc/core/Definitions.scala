@@ -64,7 +64,7 @@ class Definitions {
 
   private def newAliasType(name: TypeName, tpe: Type, flags: FlagSet = EmptyFlags): TypeSymbol = {
     val sym = newSymbol(ScalaPackageClass, name, flags, TypeAlias(tpe))
-    ScalaPackageClass.preDecls.enter(sym)
+    ScalaPackageClass.currentPackageDecls.enter(sym)
     sym
   }
 

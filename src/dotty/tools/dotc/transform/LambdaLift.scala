@@ -275,7 +275,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
           initFlags = local.flags | Private | maybeStatic | maybeNotJavaPrivate,
           info = liftedInfo(local)).installAfter(thisTransform)
         if (local.isClass)
-          for (member <- local.asClass.decls)
+          for (member <- local.asClass.info.decls)
             if (member.isConstructor) {
               val linfo = liftedInfo(member)
               if (linfo ne member.info)

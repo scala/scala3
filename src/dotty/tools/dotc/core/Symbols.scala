@@ -192,7 +192,7 @@ trait Symbols { this: Context =>
     def stubCompleter = new StubInfo()
     val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
     println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
-    println(s"decls = ${normalizedOwner.decls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
+    println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     //if (base.settings.debug.value) throw new Error()
     val stub = name match {
       case name: TermName =>

@@ -141,7 +141,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case arg :: args1 =>
         if (tparams.isEmpty) {
           println(s"applied type mismatch: $self $args, typeParams = $typeParams, tsym = ${self.typeSymbol.debugString}") // !!! DEBUG
-          println(s"precomplete decls = ${self.typeSymbol.decls.toList.map(_.denot).mkString("\n  ")}")
+          println(s"precomplete decls = ${self.typeSymbol.unforcedDecls.toList.map(_.denot).mkString("\n  ")}")
         }
         val tparam = tparams.head
         val arg1 =
