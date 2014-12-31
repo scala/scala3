@@ -43,7 +43,7 @@ trait TypeAssigner {
       }
       def apply(tp: Type) = tp match {
         case tp: TermRef if toAvoid(tp) && variance > 0 =>
-          apply(tp.info)
+          apply(tp.info.widenExpr)
         case tp: TypeRef if (forbidden contains tp.symbol) || toAvoid(tp.prefix) =>
           tp.info match {
             case TypeAlias(ref) =>
