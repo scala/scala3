@@ -6,7 +6,7 @@ object Patterns {
   private def rebase(tp: NamedType): Type = {
     def rebaseFrom(prefix: Type): Type = ???
     tp.prefix match {
-      case RefinedThis(rt) => rebaseFrom(rt)
+      case RefinedThis(rt, _) => rebaseFrom(rt)
       case pre: ThisType => rebaseFrom(pre)
       case _ => tp
     }

@@ -761,12 +761,12 @@ object Types {
     def lookupRefined(name: Name)(implicit ctx: Context): Type = {
 
       def dependsOnRefinedThis(tp: Type): Boolean = tp.stripTypeVar match {
-        case tp @ TypeRef(RefinedThis(rt), _) if rt refines this =>
+        case tp @ TypeRef(RefinedThis(rt, _), _) if rt refines this =>
           tp.info match {
             case TypeAlias(alias) => dependsOnRefinedThis(alias)
             case _ => true
           }
-        case RefinedThis(rt) => rt refines this
+        case RefinedThis(rt, _) => rt refines this
         case tp: NamedType =>
           !tp.symbol.isStatic && dependsOnRefinedThis(tp.prefix)
         case tp: RefinedType => dependsOnRefinedThis(tp.refinedInfo) || dependsOnRefinedThis(tp.parent)
@@ -783,7 +783,7 @@ object Types {
             case TypeAlias(tp) if !dependsOnRefinedThis(tp) => tp
             case _ => NoType
           }
-        case RefinedThis(rt) =>
+        case RefinedThis(rt, _) =>
           rt.lookupRefined(name)
         case pre: WildcardType =>
           WildcardType
@@ -1741,6 +1741,40 @@ object Types {
     extends CachedProxyType with BindingType with ValueType {
 
     val refinedInfo: Type
+    
+    private var containsRefinedThisCache: Boolean = _
+    private var containsRefinedThisKnown: Boolean = false
+    
+    def containsRefinedThis(implicit ctx: Context): Boolean = {
+      def recur(tp: Type, level: Int): Boolean = tp.stripTypeVar match {
+        case tp @ TypeRef(RefinedThis(rt, `level`), _) =>
+          tp.info match {
+            case TypeAlias(alias) => recur(alias, level)
+            case _ => true
+          }
+        case RefinedThis(rt, `level`) => 
+          true
+        case tp: NamedType =>
+          !tp.symbol.isStatic && recur(tp.prefix, level)
+        case tp: RefinedType => 
+          recur(tp.refinedInfo, level + 1) || 
+          recur(tp.parent, level)
+        case tp: TypeBounds => 
+          recur(tp.lo, level) || 
+          recur(tp.hi, level)
+        case tp: AnnotatedType => 
+          recur(tp.underlying, level)
+        case tp: AndOrType => 
+          recur(tp.tp1, level) || recur(tp.tp2, level)
+        case _ => 
+          false
+      }
+      if (!containsRefinedThisKnown) {
+        containsRefinedThisCache = recur(refinedInfo, 0)
+        containsRefinedThisKnown = true
+      }
+      containsRefinedThisCache
+    }
 
     override def underlying(implicit ctx: Context) = parent
 
@@ -2167,7 +2201,7 @@ object Types {
     override def computeHash = doHash(paramNum, binder)
   }
 
-  case class RefinedThis(binder: RefinedType) extends BoundType with SingletonType {
+  case class RefinedThis(binder: RefinedType, level: Int = 0) extends BoundType with SingletonType {
     type BT = RefinedType
     override def underlying(implicit ctx: Context) = binder
     def copyBoundType(bt: BT) = RefinedThis(bt)

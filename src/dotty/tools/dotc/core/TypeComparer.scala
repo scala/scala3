@@ -328,7 +328,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       }
     }
     tp.prefix match {
-      case RefinedThis(rt) => rebaseFrom(rt)
+      case RefinedThis(rt, _) => rebaseFrom(rt)
       case pre: ThisType => rebaseFrom(pre.cls.info)
       case _ => tp
     }
@@ -357,22 +357,474 @@ class TypeComparer(initctx: Context) extends DotClass {
         (tp2 eq AnyType) && tp1.isValueType) return true
     isSubType(tp1, tp2)
   }
-
-  def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
+  
+  protected def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = isSubTypeWhenFrozen(tp1, tp2, tp1)
+  protected def isSubTypeWhenFrozen(tp1: Type, tp2: Type, pre: Type): Boolean = {
     val saved = frozenConstraint
     frozenConstraint = true
-    try isSubType(tp1, tp2)
+    try isSubType(tp1, tp2, pre)
     finally frozenConstraint = saved
   }
-
-  def isNonBottomSubType(tp1: Type, tp2: Type): Boolean =
-    !(tp2 isRef NothingClass) && isSubType(tp1, tp2)
 
   private def traceInfo(tp1: Type, tp2: Type) =
     s"${tp1.show} <:< ${tp2.show}" +
     (if (ctx.settings.verbose.value) s" ${tp1.getClass} ${tp2.getClass}${if (frozenConstraint) " frozen" else ""}" else "")
+    
+  def isSubType(tp1: Type, tp2: Type): Boolean = isSubType(tp1, tp2, tp1)
+  def isSubType(tp1: Type, tp2: Type, pre: Type): Boolean = /*>|>*/ ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) /*<|<*/ {
 
-  def isSubType(tp1: Type, tp2: Type): Boolean = /*>|>*/ ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) /*<|<*/ {
+    def firstTry(tp1: Type, tp2: Type): Boolean = {
+      tp2 match {
+        case tp2: NamedType =>
+          def isHKSubType = tp2.name == tpnme.Apply && {
+            val lambda2 = tp2.prefix.LambdaClass(forcing = true)
+            lambda2.exists && !tp1.isLambda &&
+              tp1.testLifted(lambda2.typeParams, isSubType(_, tp2.prefix))
+          }
+          def compareNamed = {
+            implicit val ctx: Context = this.ctx // Dotty deviation: implicits need explicit type
+            tp1 match {
+              case tp1: NamedType =>
+                val sym1 = tp1.symbol
+                (if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol)) (
+                  ctx.erasedTypes
+                  || sym1.isStaticOwner
+                  || { // Implements: A # X  <:  B # X
+                       // if either A =:= B (i.e. A <: B and B <: A), or the following three conditions hold:
+                       //  1. X is a class type,
+                       //  2. B is a class type without abstract type members.
+                       //  3. A <: B.
+                       // Dealiasing is taken care of elsewhere.
+                       val pre1 = tp1.prefix
+                       val pre2 = tp2.prefix
+                       (  isSameType(pre1, pre2)
+                       ||    sym1.isClass
+                          && pre2.classSymbol.exists
+                          && pre2.abstractTypeMembers.isEmpty
+                          && isSubType(pre1, pre2)
+                       )
+                     }
+                  )
+                else (tp1.name eq tp2.name) && isSameType(tp1.prefix, tp2.prefix)
+                ) || isHKSubType || secondTryNamed(tp1, tp2)
+              case tp1: ThisType if tp1.cls eq tp2.symbol.moduleClass =>
+                isSubType(tp1.cls.owner.thisType, tp2.prefix)
+              case _ =>
+                isHKSubType || secondTry(tp1, tp2)
+            }
+          }
+          compareNamed
+        case tp2: ProtoType =>
+          isMatchedByProto(tp2, tp1)
+        case tp2: PolyParam =>
+          def comparePolyParam =
+            tp2 == tp1 || {
+              if (solvedConstraint && (constraint contains tp2)) isSubType(tp1, bounds(tp2).lo, pre)
+              else
+                isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
+                  if (isConstrained(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
+                  else (ctx.mode is Mode.TypevarsMissContext) || secondTry(tp1, tp2)
+                }
+            }
+          comparePolyParam
+        case tp2: BoundType =>
+          tp2 == tp1 || secondTry(tp1, tp2)
+        case tp2: TypeVar =>
+          isSubType(tp1, tp2.underlying, pre)
+        case tp2: WildcardType =>
+          def compareWild = tp2.optBounds match {
+            case TypeBounds(_, hi) => isSubType(tp1, hi, pre)
+            case NoType => true
+          }
+          compareWild
+        case tp2: LazyRef =>
+          isSubType(tp1, tp2.ref, pre)
+        case tp2: AnnotatedType =>
+          isSubType(tp1, tp2.tpe, pre) // todo: refine?
+        case tp2: ThisType =>
+          tp1 match {
+            case tp1: ThisType =>
+              // We treat two prefixes A.this, B.this as equivalent if
+              // A's selftype derives from B and B's selftype derives from A.
+              tp1.cls.classInfo.selfType.derivesFrom(tp2.cls) &&
+                tp2.cls.classInfo.selfType.derivesFrom(tp1.cls)
+            case _ =>
+              secondTry(tp1, tp2)
+          }
+        case tp2: SuperType =>
+          tp1 match {
+            case tp1: SuperType =>
+              isSubType(tp1.thistpe, tp2.thistpe, pre) &&
+                isSameType(tp1.supertpe, tp2.supertpe)
+            case _ =>
+              secondTry(tp1, tp2)
+          }
+        case AndType(tp21, tp22) =>
+          isSubType(tp1, tp21, pre) && isSubType(tp1, tp22, pre)
+        case ErrorType =>
+          true
+        case _ =>
+          secondTry(tp1, tp2)
+      }
+    }
+
+    def secondTry(tp1: Type, tp2: Type): Boolean = tp1 match {
+      case tp1: NamedType =>
+        tp2 match {
+          case tp2: ThisType if tp2.cls eq tp1.symbol.moduleClass =>
+            isSubType(tp1.prefix, tp2.cls.owner.thisType)
+          case _ =>
+            secondTryNamed(tp1, tp2)
+        }
+      case OrType(tp11, tp12) =>
+        isSubType(tp11, tp2, pre) && isSubType(tp12, tp2, pre)
+      case tp1: PolyParam =>
+        def comparePolyParam =
+          tp1 == tp2 || {
+            if (solvedConstraint && (constraint contains tp1)) isSubType(bounds(tp1).lo, tp2, pre)
+            else
+              isSubTypeWhenFrozen(bounds(tp1).hi, tp2, pre) || {
+                if (isConstrained(tp1))
+                  addConstraint(tp1, tp2, fromBelow = false) && {
+                    if ((!frozenConstraint) &&
+                      (tp2 isRef defn.NothingClass) &&
+                      state.isGlobalCommittable) {
+                      def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
+                      if (Config.flagInstantiationToNothing) assert(false, msg)
+                      else ctx.log(msg)
+                    }
+                    true
+                  }
+                else (ctx.mode is Mode.TypevarsMissContext) || thirdTry(tp1, tp2)
+              }
+          }
+        comparePolyParam
+      case tp1: RefinedThis =>
+        tp2 match {
+          case tp2: RefinedThis if tp1.binder.parent =:= tp2.binder.parent => true
+            case _ => thirdTry(tp1, tp2)
+        }
+      case tp1: BoundType =>
+        tp1 == tp2 || thirdTry(tp1, tp2)
+      case tp1: TypeVar =>
+        (tp1 eq tp2) || isSubType(tp1.underlying, tp2, pre)
+      case tp1: WildcardType =>
+        def compareWild = tp1.optBounds match {
+          case TypeBounds(lo, _) => isSubType(lo, tp2, pre)
+          case _ => true
+        }
+        compareWild
+      case tp1: LazyRef =>
+        isSubType(tp1.ref, tp2, pre)
+      case tp1: AnnotatedType =>
+        isSubType(tp1.tpe, tp2, pre)
+      case ErrorType =>
+        true
+      case _ =>
+        thirdTry(tp1, tp2)
+    }
+
+    def secondTryNamed(tp1: NamedType, tp2: Type): Boolean = {
+          def tryRebase2nd = {
+            val tp1rebased = rebase(tp1)
+            if (tp1rebased ne tp1) isSubType(tp1rebased, tp2)
+            else thirdTry(tp1, tp2)
+          }
+      tp1.info match {
+        // There was the following code, which was meant to implement this logic:
+        //    If x has type A | B, then x.type <: C if
+        //    x.type <: C assuming x has type A, and
+        //    x.type <: C assuming x has type B.
+        // But it did not work, because derivedRef would always give back the same
+        // type and cache the denotation. So it ended up copmparing just one branch.
+        // The code seems to be unncessary for the tests and does not seems to help performance.
+        // So it is commented out. If we ever need to come back to this, we would have
+        // to create unchached TermRefs in order to avoid cross talk between the branches.
+        /*
+      case OrType(tp11, tp12) =>
+        val sd = tp1.denot.asSingleDenotation
+        def derivedRef(tp: Type) =
+          NamedType(tp1.prefix, tp1.name, sd.derivedSingleDenotation(sd.symbol, tp))
+        secondTry(OrType.make(derivedRef(tp11), derivedRef(tp12)), tp2)
+      */
+        case TypeBounds(lo1, hi1) =>
+          val gbounds1 = ctx.gadt.bounds(tp1.symbol)
+          if (gbounds1 != null)
+            isSubTypeWhenFrozen(gbounds1.hi, tp2, pre) ||
+              (ctx.mode is Mode.GADTflexible) &&
+              narrowGADTBounds(tp1, TypeBounds(gbounds1.lo, gbounds1.hi & tp2)) ||
+             tryRebase2nd
+          else if (lo1 eq hi1) isSubType(hi1, tp2, pre)
+        else tryRebase2nd
+        case _ =>
+        tryRebase2nd
+      }
+    }
+
+    def thirdTry(tp1: Type, tp2: Type): Boolean = tp2 match {
+      case tp2: NamedType =>
+              def tryRebase3rd = {
+                val tp2rebased = rebase(tp2)
+                if (tp2rebased ne tp2) isSubType(tp1, tp2rebased)
+                else fourthTry(tp1, tp2)
+              }
+        def compareNamed: Boolean = tp2.info match {
+          case TypeBounds(lo2, hi2) =>
+            val gbounds2 = ctx.gadt.bounds(tp2.symbol)
+            if (gbounds2 != null)
+              isSubTypeWhenFrozen(tp1, gbounds2.lo, pre) ||
+                (ctx.mode is Mode.GADTflexible) &&
+                narrowGADTBounds(tp2, TypeBounds(gbounds2.lo | tp1, gbounds2.hi)) ||
+                fourthTry(tp1, tp2)
+            else
+              ((frozenConstraint || !isCappable(tp1)) && isSubType(tp1, lo2, pre)
+                || tryRebase3rd)
+
+          case _ =>
+            val cls2 = tp2.symbol
+            if (cls2.isClass) {
+              val base = tp1.baseTypeRef(cls2)
+              if (base.exists && (base ne tp1)) return isSubType(base, tp2, pre)
+              if (cls2 == defn.SingletonClass && tp1.isStable) return true
+            }
+          tryRebase3rd
+        }
+        compareNamed
+      case tp2 @ RefinedType(parent2, name2) =>
+        def qualifies(m: SingleDenotation) = isSubType(m.info, tp2.refinedInfo)
+        def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
+          case mbr: SingleDenotation => qualifies(mbr)
+          case _ => mbr hasAltWith qualifies
+        }
+        def compareRefinedSlow: Boolean = {
+          def hasMatchingMember(name: Name): Boolean = /*>|>*/ ctx.traceIndented(s"hasMatchingMember($name) ${tp1.member(name).info.show}", subtyping) /*<|<*/ {
+          val tp1r = rebaseQual(tp1, name)
+          (memberMatches(narrowRefined(tp1r) member name)
+            ||
+            { // special case for situations like:
+              //    foo <: C { type T = foo.T }
+              tp2.refinedInfo match {
+                case rinfo: TypeAlias =>
+                  !ctx.phase.erasedTypes && (tp1r select name) =:= rinfo.alias
+                case _ => false
+              }
+            })
+        }
+        val matchesParent = {
+          val saved = pendingRefinedBases
+          try {
+            addPendingName(name2, tp2, tp2)
+            isSubType(tp1, parent2, pre)
+          } finally pendingRefinedBases = saved
+        }
+        (matchesParent && (
+              name2 == nme.WILDCARD
+              || hasMatchingMember(name2)
+              || fourthTry(tp1, tp2))
+              || needsEtaLift(tp1, tp2) && tp1.testLifted(tp2.typeParams, isSubType(_, tp2, pre)))
+        }
+        def compareRefined: Boolean = tp1.widen match {
+          case tp1 @ RefinedType(parent1, name1) if name1 == name2 && name1.isTypeName =>
+            normalizedInfo(tp1) match {
+              case bounds1: TypeAlias =>
+                isSubType(bounds1, tp2.refinedInfo) && {
+                val saved = pendingRefinedBases
+                try {
+                  addPendingName(name1, tp1, tp2)
+                  isSubType(parent1, parent2, pre)
+                } finally pendingRefinedBases = saved
+              }
+              case _ =>
+                compareRefinedSlow
+            }
+          case _ =>
+            compareRefinedSlow
+        }
+        compareRefined
+      case OrType(tp21, tp22) =>
+        eitherIsSubType(tp1, tp21, tp1, tp22) || fourthTry(tp1, tp2)
+      case tp2 @ MethodType(_, formals2) =>
+        def compareMethod = tp1 match {
+          case tp1 @ MethodType(_, formals1) =>
+            (tp1.signature sameParams tp2.signature) &&
+              (if (Config.newMatch) subsumeParams(formals1, formals2, tp1.isJava, tp2.isJava)
+              else matchingParams(formals1, formals2, tp1.isJava, tp2.isJava)) &&
+              tp1.isImplicit == tp2.isImplicit && // needed?
+              isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+          case _ =>
+            false
+        }
+        compareMethod
+      case tp2: PolyType =>
+        def comparePoly = tp1 match {
+          case tp1: PolyType =>
+            (tp1.signature sameParams tp2.signature) &&
+              matchingTypeParams(tp1, tp2) &&
+              isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
+          case _ =>
+            false
+        }
+        comparePoly
+      case tp2 @ ExprType(restpe2) =>
+        def compareExpr = tp1 match {
+          // We allow ()T to be a subtype of => T.
+          // We need some subtype relationship between them so that e.g.
+          // def toString   and   def toString()   don't clash when seen
+          // as members of the same type. And it seems most logical to take
+          // ()T <:< => T, since everything one can do with a => T one can
+          // also do with a ()T by automatic () insertion.
+          case tp1 @ MethodType(Nil, _) => isSubType(tp1.resultType, restpe2, pre)
+          case _ => isSubType(tp1.widenExpr, restpe2, pre)
+        }
+        compareExpr
+      case tp2 @ TypeBounds(lo2, hi2) =>
+        def compareTypeBounds = tp1 match {
+          case tp1 @ TypeBounds(lo1, hi1) =>
+            (tp2.variance > 0 && tp1.variance >= 0 || isSubType(lo2, lo1)) &&
+              (tp2.variance < 0 && tp1.variance <= 0 || isSubType(hi1, hi2, pre))
+          case tp1: ClassInfo =>
+            val tt = tp1.typeRef
+            isSubType(lo2, tt) && isSubType(tt, hi2, pre)
+          case _ =>
+            false
+        }
+        compareTypeBounds
+      case ClassInfo(pre2, cls2, _, _, _) =>
+        def compareClassInfo = tp1 match {
+          case ClassInfo(pre1, cls1, _, _, _) =>
+            (cls1 eq cls2) && isSubType(pre2, pre1)
+          case _ =>
+            false
+        }
+        compareClassInfo
+      case JavaArrayType(elem2) =>
+        def compareJavaArray = tp1 match {
+          case JavaArrayType(elem1) => isSubType(elem1, elem2)
+          case _ => fourthTry(tp1, tp2)
+        }
+        compareJavaArray
+      case _ =>
+        fourthTry(tp1, tp2)
+    }
+
+    def fourthTry(tp1: Type, tp2: Type): Boolean = tp1 match {
+      case tp1: TypeRef =>
+        tp1.info match {
+          case TypeBounds(lo1, hi1) =>
+            isSubType(hi1, tp2, pre)
+          case _ =>
+            def isNullable(tp: Type): Boolean = tp.dealias match {
+              case tp: TypeRef => tp.symbol.isNullableClass
+              case RefinedType(parent, _) => isNullable(parent)
+              case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
+              case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
+              case _ => println(i"$tp of class ${tp.getClass} is not nullable"); false
+            }
+            (tp1.symbol eq NothingClass) && tp2.isInstanceOf[ValueType] ||
+              (tp1.symbol eq NullClass) && isNullable(tp2)
+        }
+      case tp1: SingletonType =>
+        isNewSubType(tp1.underlying.widenExpr, tp2) || {
+          // if tp2 == p.type  and p: q.type then try   tp1 <:< q.type as a last effort.
+          tp2 match {
+            case tp2: TermRef =>
+              tp2.info match {
+                case tp2i: TermRef =>
+                  isSubType(tp1, tp2i, pre)
+                case ExprType(tp2i: TermRef) if (ctx.phase.id > ctx.gettersPhase.id) =>
+                  isSubType(tp1, tp2i, pre)
+                case _ =>
+                  false
+              }
+            case _ =>
+              false
+          }
+        }
+      case tp1: RefinedType =>
+      { val saved = pendingRefinedBases
+        try {
+          addPendingName(tp1.refinedName, tp1, tp1)
+          isNewSubType(tp1.parent, tp2)
+        }
+        finally pendingRefinedBases = saved
+      } || needsEtaLift(tp2, tp1) && tp2.testLifted(tp1.typeParams, isSubType(tp1, _, pre))
+      case AndType(tp11, tp12) =>
+        eitherIsSubType(tp11, tp2, tp12, tp2)
+      case JavaArrayType(elem1) =>
+        tp2 isRef ObjectClass
+      case _ =>
+        false
+    }
+
+    /** Returns true iff either `tp11 <:< tp21` or `tp12 <:< tp22`, trying at the same time
+     *  to keep the constraint as wide as possible. Specifically, if
+     *
+     *    tp11 <:< tp12 = true   with post-constraint c1
+     *    tp12 <:< tp22 = true   with post-constraint c2
+     *
+     *  and c1 subsumes c2, then c2 is kept as the post-constraint of the result,
+     *  otherwise c1 is kept.
+     *
+     *  This method is used to approximate a solution in one of the following cases
+     *
+     *     T1 & T2 <:< T3
+     *     T1 <:< T2 | T3
+     *
+     *  In the first case (the second one is analogous), we have a choice whether we
+     *  want to establish the subtyping judgement using
+     *
+     *     T1 <:< T3   or    T2 <:< T3
+     *
+     *  as a precondition. Either precondition might constrain type variables.
+     *  The purpose of this method is to pick the precondition that constrains less.
+     *  The method is not complete, because sometimes there is no best solution. Example:
+     *
+     *     A? & B?  <:  T
+     *
+     *  Here, each precondition leads to a different constraint, and neither of
+     *  the two post-constraints subsumes the other.
+     */
+    def eitherIsSubType(tp11: Type, tp21: Type, tp12: Type, tp22: Type) = {
+      val preConstraint = constraint
+      isSubType(tp11, tp21, pre) && {
+        val leftConstraint = constraint
+        constraint = preConstraint
+        if (isSubType(tp12, tp22, pre) && !subsumes(leftConstraint, constraint, preConstraint))
+          constraint = leftConstraint
+        true
+      } || isSubType(tp12, tp22, pre)
+    }
+
+    /** Like tp1 <:< tp2, but returns false immediately if we know that
+     *  the case was covered previously during subtyping.
+     */
+    def isNewSubType(tp1: Type, tp2: Type): Boolean =
+      if (isCovered(tp1) && isCovered(tp2)) {
+        //println(s"useless subtype: $tp1 <:< $tp2")
+        false
+      } else isSubType(tp1, tp2, pre)
+
+    def monitoredIsSubType(tp1: Type, tp2: Type) = {
+      if (pendingSubTypes == null) {
+        pendingSubTypes = new mutable.HashSet[(Type, Type)]
+        ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
+        ctx.log(s"!!! constraint = ${constraint.show}")
+        assert(!ctx.settings.YnoDeepSubtypes.value)
+        if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
+          ctx.log(TypeComparer.explained(implicit ctx => ctx.typeComparer.isSubType(tp1, tp2)))
+      }
+      val p = (tp1, tp2)
+      !pendingSubTypes(p) && {
+        try {
+          pendingSubTypes += p
+          firstTry(tp1, tp2)
+        } finally {
+          pendingSubTypes -= p
+        }
+      }
+    }
+      
+    // begin isSubType  
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
     else {
@@ -422,458 +874,6 @@ class TypeComparer(initctx: Context) extends DotClass {
       }
     }
   }
-
-  def monitoredIsSubType(tp1: Type, tp2: Type) = {
-    if (pendingSubTypes == null) {
-      pendingSubTypes = new mutable.HashSet[(Type, Type)]
-      ctx.log(s"!!! deep subtype recursion involving ${tp1.show} <:< ${tp2.show}, constraint = ${state.constraint.show}")
-      ctx.log(s"!!! constraint = ${constraint.show}")
-      assert(!ctx.settings.YnoDeepSubtypes.value)
-      if (Config.traceDeepSubTypeRecursions && !this.isInstanceOf[ExplainingTypeComparer])
-        ctx.log(TypeComparer.explained(implicit ctx => ctx.typeComparer.isSubType(tp1, tp2)))
-    }
-    val p = (tp1, tp2)
-    !pendingSubTypes(p) && {
-      try {
-        pendingSubTypes += p
-        firstTry(tp1, tp2)
-      } finally {
-        pendingSubTypes -= p
-      }
-    }
-  }
-
-  def firstTry(tp1: Type, tp2: Type): Boolean = {
-    tp2 match {
-      case tp2: NamedType =>
-        def isHKSubType = tp2.name == tpnme.Apply && {
-          val lambda2 = tp2.prefix.LambdaClass(forcing = true)
-          lambda2.exists && !tp1.isLambda &&
-            tp1.testLifted(lambda2.typeParams, isSubType(_, tp2.prefix))
-        }
-        def compareNamed = {
-          implicit val ctx: Context = this.ctx // Dotty deviation: implicits need explicit type
-          tp1 match {
-            case tp1: NamedType =>
-              val sym1 = tp1.symbol
-              (if ((sym1 ne NoSymbol) && (sym1 eq tp2.symbol)) (
-                   ctx.erasedTypes
-                || sym1.isStaticOwner
-                || { // Implements: A # X  <:  B # X
-                     // if either A =:= B (i.e. A <: B and B <: A), or the following three conditions hold:
-                     //  1. X is a class type,
-                     //  2. B is a class type without abstract type members.
-                     //  3. A <: B.
-                     // Dealiasing is taken care of elsewhere.
-                     val pre1 = tp1.prefix
-                     val pre2 = tp2.prefix
-                     (  isSameType(pre1, pre2)
-                     ||    sym1.isClass
-                        && pre2.classSymbol.exists
-                        && pre2.abstractTypeMembers.isEmpty
-                        && isSubType(pre1, pre2)
-                     )
-                   }
-                )
-              else (tp1.name eq tp2.name) && isSameType(tp1.prefix, tp2.prefix)
-             ) || isHKSubType || secondTryNamed(tp1, tp2)
-            case tp1: ThisType if tp1.cls eq tp2.symbol.moduleClass =>
-              isSubType(tp1.cls.owner.thisType, tp2.prefix)
-            case _ =>
-              isHKSubType || secondTry(tp1, tp2)
-          }
-        }
-        compareNamed
-      case tp2: ProtoType =>
-        isMatchedByProto(tp2, tp1)
-      case tp2: PolyParam =>
-        def comparePolyParam =
-          tp2 == tp1 || {
-            if (solvedConstraint && (constraint contains tp2)) isSubType(tp1, bounds(tp2).lo)
-            else
-              isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
-                if (isConstrained(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
-                else (ctx.mode is Mode.TypevarsMissContext) || secondTry(tp1, tp2)
-              }
-          }
-        comparePolyParam
-      case tp2: BoundType =>
-        tp2 == tp1 || secondTry(tp1, tp2)
-      case tp2: TypeVar =>
-        isSubType(tp1, tp2.underlying)
-      case tp2: WildcardType =>
-        def compareWild = tp2.optBounds match {
-          case TypeBounds(_, hi) => isSubType(tp1, hi)
-          case NoType => true
-        }
-        compareWild
-      case tp2: LazyRef =>
-        isSubType(tp1, tp2.ref)
-      case tp2: AnnotatedType =>
-        isSubType(tp1, tp2.tpe) // todo: refine?
-      case tp2: ThisType =>
-        tp1 match {
-          case tp1: ThisType =>
-            // We treat two prefixes A.this, B.this as equivalent if
-            // A's selftype derives from B and B's selftype derives from A.
-            tp1.cls.classInfo.selfType.derivesFrom(tp2.cls) &&
-            tp2.cls.classInfo.selfType.derivesFrom(tp1.cls)
-          case _ =>
-            secondTry(tp1, tp2)
-        }
-      case tp2: SuperType =>
-        tp1 match {
-          case tp1: SuperType =>
-            isSubType(tp1.thistpe, tp2.thistpe) &&
-            isSameType(tp1.supertpe, tp2.supertpe)
-          case _ =>
-            secondTry(tp1, tp2)
-        }
-      case AndType(tp21, tp22) =>
-        isSubType(tp1, tp21) && isSubType(tp1, tp22)
-      case ErrorType =>
-        true
-      case _ =>
-        secondTry(tp1, tp2)
-    }
-  }
-
-  def secondTry(tp1: Type, tp2: Type): Boolean = tp1 match {
-    case tp1: NamedType =>
-      tp2 match {
-        case tp2: ThisType if tp2.cls eq tp1.symbol.moduleClass =>
-          isSubType(tp1.prefix, tp2.cls.owner.thisType)
-        case _ =>
-          secondTryNamed(tp1, tp2)
-      }
-    case OrType(tp11, tp12) =>
-      isSubType(tp11, tp2) && isSubType(tp12, tp2)
-    case tp1: PolyParam =>
-      def comparePolyParam =
-        tp1 == tp2 || {
-          if (solvedConstraint && (constraint contains tp1)) isSubType(bounds(tp1).lo, tp2)
-          else
-            isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
-              if (isConstrained(tp1))
-                addConstraint(tp1, tp2, fromBelow = false) && {
-                  if ((!frozenConstraint) &&
-                    (tp2 isRef defn.NothingClass) &&
-                    state.isGlobalCommittable) {
-                    def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
-                    if (Config.flagInstantiationToNothing) assert(false, msg)
-                    else ctx.log(msg)
-                  }
-                  true
-                }
-              else (ctx.mode is Mode.TypevarsMissContext) || thirdTry(tp1, tp2)
-            }
-        }
-      comparePolyParam
-    case tp1: RefinedThis =>
-      tp2 match {
-        case tp2: RefinedThis if tp1.binder.parent =:= tp2.binder.parent => true
-        case _ => thirdTry(tp1, tp2)
-      }
-    case tp1: BoundType =>
-      tp1 == tp2 || thirdTry(tp1, tp2)
-    case tp1: TypeVar =>
-      (tp1 eq tp2) || isSubType(tp1.underlying, tp2)
-    case tp1: WildcardType =>
-      def compareWild = tp1.optBounds match {
-        case TypeBounds(lo, _) => isSubType(lo, tp2)
-        case _ => true
-      }
-      compareWild
-    case tp1: LazyRef =>
-      isSubType(tp1.ref, tp2)
-    case tp1: AnnotatedType =>
-      isSubType(tp1.tpe, tp2)
-    case ErrorType =>
-      true
-    case _ =>
-      thirdTry(tp1, tp2)
-  }
-
-  def secondTryNamed(tp1: NamedType, tp2: Type): Boolean = {
-    def tryRebase2nd = {
-      val tp1rebased = rebase(tp1)
-      if (tp1rebased ne tp1) isSubType(tp1rebased, tp2)
-      else thirdTry(tp1, tp2)
-    }
-    tp1.info match {
-      // There was the following code, which was meant to implement this logic:
-      //    If x has type A | B, then x.type <: C if
-      //    x.type <: C assuming x has type A, and
-      //    x.type <: C assuming x has type B.
-      // But it did not work, because derivedRef would always give back the same
-      // type and cache the denotation. So it ended up copmparing just one branch.
-      // The code seems to be unncessary for the tests and does not seems to help performance.
-      // So it is commented out. If we ever need to come back to this, we would have
-      // to create unchached TermRefs in order to avoid cross talk between the branches.
-      /*
-      case OrType(tp11, tp12) =>
-        val sd = tp1.denot.asSingleDenotation
-        def derivedRef(tp: Type) =
-          NamedType(tp1.prefix, tp1.name, sd.derivedSingleDenotation(sd.symbol, tp))
-        secondTry(OrType.make(derivedRef(tp11), derivedRef(tp12)), tp2)
-      */
-      case TypeBounds(lo1, hi1) =>
-        val gbounds1 = ctx.gadt.bounds(tp1.symbol)
-        if (gbounds1 != null)
-          isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
-            (ctx.mode is Mode.GADTflexible) &&
-             narrowGADTBounds(tp1, TypeBounds(gbounds1.lo, gbounds1.hi & tp2)) ||
-             tryRebase2nd
-        else if (lo1 eq hi1) isSubType(hi1, tp2)
-        else tryRebase2nd
-      case _ =>
-        tryRebase2nd
-    }
-  }
-
-  def thirdTry(tp1: Type, tp2: Type): Boolean = tp2 match {
-    case tp2: NamedType =>
-      def tryRebase3rd = {
-        val tp2rebased = rebase(tp2)
-        if (tp2rebased ne tp2) isSubType(tp1, tp2rebased)
-        else fourthTry(tp1, tp2)
-      }
-      def compareNamed: Boolean = tp2.info match {
-        case TypeBounds(lo2, hi2) =>
-          val gbounds2 = ctx.gadt.bounds(tp2.symbol)
-          if (gbounds2 != null)
-            isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
-              (ctx.mode is Mode.GADTflexible) &&
-              narrowGADTBounds(tp2, TypeBounds(gbounds2.lo | tp1, gbounds2.hi)) ||
-             tryRebase3rd
-          else
-            ((frozenConstraint || !isCappable(tp1)) && isSubType(tp1, lo2)
-            || tryRebase3rd)
-
-        case _ =>
-          val cls2 = tp2.symbol
-          if (cls2.isClass) {
-            val base = tp1.baseTypeRef(cls2)
-            if (base.exists && (base ne tp1)) return isSubType(base, tp2)
-            if (cls2 == defn.SingletonClass && tp1.isStable) return true
-          }
-          tryRebase3rd
-      }
-      compareNamed
-    case tp2 @ RefinedType(parent2, name2) =>
-      def qualifies(m: SingleDenotation) = isSubType(m.info, tp2.refinedInfo)
-      def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
-        case mbr: SingleDenotation => qualifies(mbr)
-        case _ => mbr hasAltWith qualifies
-      }
-      def compareRefinedSlow: Boolean = {
-        def hasMatchingMember(name: Name): Boolean = /*>|>*/ ctx.traceIndented(s"hasMatchingMember($name) ${tp1.member(name).info.show}", subtyping) /*<|<*/ {
-          val tp1r = rebaseQual(tp1, name)
-          (memberMatches(narrowRefined(tp1r) member name)
-            ||
-            { // special case for situations like:
-              //    foo <: C { type T = foo.T }
-              tp2.refinedInfo match {
-                case rinfo: TypeAlias =>
-                  !ctx.phase.erasedTypes && (tp1r select name) =:= rinfo.alias
-                case _ => false
-              }
-            })
-        }
-        val matchesParent = {
-          val saved = pendingRefinedBases
-          try {
-            addPendingName(name2, tp2, tp2)
-            isSubType(tp1, parent2)
-          } finally pendingRefinedBases = saved
-        }
-        (matchesParent && (
-          name2 == nme.WILDCARD
-          || hasMatchingMember(name2)
-          || fourthTry(tp1, tp2))
-          || needsEtaLift(tp1, tp2) && tp1.testLifted(tp2.typeParams, isSubType(_, tp2)))
-      }
-      def compareRefined: Boolean = tp1.widen match {
-        case tp1 @ RefinedType(parent1, name1) if name1 == name2 && name1.isTypeName =>
-          normalizedInfo(tp1) match {
-            case bounds1 @ TypeBounds(lo1, hi1) if lo1 eq hi1 =>
-              isSubType(bounds1, tp2.refinedInfo) && {
-                val saved = pendingRefinedBases
-                try {
-                  addPendingName(name1, tp1, tp2)
-                  isSubType(parent1, parent2)
-                } finally pendingRefinedBases = saved
-              }
-            case _ =>
-              compareRefinedSlow
-          }
-        case _ =>
-          compareRefinedSlow
-      }
-      compareRefined
-    case OrType(tp21, tp22) =>
-      eitherIsSubType(tp1, tp21, tp1, tp22) || fourthTry(tp1, tp2)
-    case tp2 @ MethodType(_, formals2) =>
-      def compareMethod = tp1 match {
-        case tp1 @ MethodType(_, formals1) =>
-          (tp1.signature sameParams tp2.signature) &&
-            (if (Config.newMatch) subsumeParams(formals1, formals2, tp1.isJava, tp2.isJava)
-             else matchingParams(formals1, formals2, tp1.isJava, tp2.isJava)) &&
-            tp1.isImplicit == tp2.isImplicit && // needed?
-            isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
-        case _ =>
-          false
-      }
-      compareMethod
-    case tp2: PolyType =>
-      def comparePoly = tp1 match {
-        case tp1: PolyType =>
-          (tp1.signature sameParams tp2.signature) &&
-          matchingTypeParams(tp1, tp2) &&
-          isSubType(tp1.resultType, tp2.resultType.subst(tp2, tp1))
-        case _ =>
-          false
-      }
-      comparePoly
-    case tp2 @ ExprType(restpe2) =>
-      def compareExpr = tp1 match {
-        // We allow ()T to be a subtype of => T.
-        // We need some subtype relationship between them so that e.g.
-        // def toString   and   def toString()   don't clash when seen
-        // as members of the same type. And it seems most logical to take
-        // ()T <:< => T, since everything one can do with a => T one can
-        // also do with a ()T by automatic () insertion.
-        case tp1 @ MethodType(Nil, _) => isSubType(tp1.resultType, restpe2)
-        case _ => isSubType(tp1.widenExpr, restpe2)
-      }
-      compareExpr
-    case tp2 @ TypeBounds(lo2, hi2) =>
-      def compareTypeBounds = tp1 match {
-        case tp1 @ TypeBounds(lo1, hi1) =>
-          (tp2.variance > 0 && tp1.variance >= 0 || isSubType(lo2, lo1)) &&
-          (tp2.variance < 0 && tp1.variance <= 0 || isSubType(hi1, hi2))
-        case tp1: ClassInfo =>
-          val tt = tp1.typeRef
-          isSubType(lo2, tt) && isSubType(tt, hi2)
-        case _ =>
-          false
-      }
-      compareTypeBounds
-    case ClassInfo(pre2, cls2, _, _, _) =>
-      def compareClassInfo = tp1 match {
-        case ClassInfo(pre1, cls1, _, _, _) =>
-          (cls1 eq cls2) && isSubType(pre2, pre1)
-        case _ =>
-          false
-      }
-      compareClassInfo
-    case JavaArrayType(elem2) =>
-      def compareJavaArray = tp1 match {
-        case JavaArrayType(elem1) => isSubType(elem1, elem2)
-        case _ => fourthTry(tp1, tp2)
-      }
-      compareJavaArray
-    case _ =>
-      fourthTry(tp1, tp2)
-  }
-
-  def fourthTry(tp1: Type, tp2: Type): Boolean = tp1 match {
-    case tp1: TypeRef =>
-      tp1.info match {
-        case TypeBounds(lo1, hi1) =>
-          isSubType(hi1, tp2)
-        case _ =>
-          def isNullable(tp: Type): Boolean = tp.dealias match {
-            case tp: TypeRef => tp.symbol.isNullableClass
-            case RefinedType(parent, _) => isNullable(parent)
-            case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
-            case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
-            case _ => println(i"$tp of class ${tp.getClass} is not nullable"); false
-          }
-          (tp1.symbol eq NothingClass) && tp2.isInstanceOf[ValueType] ||
-          (tp1.symbol eq NullClass) && isNullable(tp2)
-      }
-    case tp1: SingletonType =>
-      isNewSubType(tp1.underlying.widenExpr, tp2) || {
-        // if tp2 == p.type  and p: q.type then try   tp1 <:< q.type as a last effort.
-        tp2 match {
-          case tp2: TermRef =>
-            tp2.info match {
-              case tp2i: TermRef =>
-                isSubType(tp1, tp2i)
-              case ExprType(tp2i: TermRef) if (ctx.phase.id > ctx.gettersPhase.id) =>
-                isSubType(tp1, tp2i)
-              case _ =>
-                false
-            }
-          case _ =>
-            false
-        }
-      }
-    case tp1: RefinedType =>
-      { val saved = pendingRefinedBases
-        try {
-          addPendingName(tp1.refinedName, tp1, tp1)
-          isNewSubType(tp1.parent, tp2)
-        }
-        finally pendingRefinedBases = saved
-      } || needsEtaLift(tp2, tp1) && tp2.testLifted(tp1.typeParams, isSubType(tp1, _))
-    case AndType(tp11, tp12) =>
-      eitherIsSubType(tp11, tp2, tp12, tp2)
-    case JavaArrayType(elem1) =>
-      tp2 isRef ObjectClass
-    case _ =>
-      false
-  }
-
-  /** Returns true iff either `tp11 <:< tp21` or `tp12 <:< tp22`, trying at the same time
-   *  to keep the constraint as wide as possible. Specifically, if
-   *
-   *    tp11 <:< tp12 = true   with post-constraint c1
-   *    tp12 <:< tp22 = true   with post-constraint c2
-   *
-   *  and c1 subsumes c2, then c2 is kept as the post-constraint of the result,
-   *  otherwise c1 is kept.
-   *
-   *  This method is used to approximate a solution in one of the following cases
-   *
-   *     T1 & T2 <:< T3
-   *     T1 <:< T2 | T3
-   *
-   *  In the first case (the second one is analogous), we have a choice whether we
-   *  want to establish the subtyping judgement using
-   *
-   *     T1 <:< T3   or    T2 <:< T3
-   *
-   *  as a precondition. Either precondition might constrain type variables.
-   *  The purpose of this method is to pick the precondition that constrains less.
-   *  The method is not complete, because sometimes there is no best solution. Example:
-   *
-   *     A? & B?  <:  T
-   *
-   *  Here, each precondition leads to a different constraint, and neither of
-   *  the two post-constraints subsumes the other.
-   */
-  def eitherIsSubType(tp11: Type, tp21: Type, tp12: Type, tp22: Type) = {
-    val preConstraint = constraint
-    isSubType(tp11, tp21) && {
-      val leftConstraint = constraint
-      constraint = preConstraint
-      if (isSubType(tp12, tp22) && !subsumes(leftConstraint, constraint, preConstraint))
-        constraint = leftConstraint
-      true
-    } || isSubType(tp12, tp22)
-  }
-
-  /** Like tp1 <:< tp2, but returns false immediately if we know that
-   *  the case was covered previously during subtyping.
-   */
-  private def isNewSubType(tp1: Type, tp2: Type): Boolean =
-    if (isCovered(tp1) && isCovered(tp2)) {
-      //println(s"useless subtype: $tp1 <:< $tp2")
-      false
-    }
-    else isSubType(tp1, tp2)
 
   /** A type has been covered previously in subtype checking if it
    *  is some combination of TypeRefs that point to classes, where the
