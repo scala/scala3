@@ -759,29 +759,16 @@ object Types {
      *  a reference to the "this" of the current refined type.
      */
     def lookupRefined(name: Name)(implicit ctx: Context): Type = {
-
-      def dependsOnRefinedThis(tp: Type): Boolean = tp.stripTypeVar match {
-        case tp @ TypeRef(RefinedThis(rt, _), _) if rt refines this =>
-          tp.info match {
-            case TypeAlias(alias) => dependsOnRefinedThis(alias)
-            case _ => true
-          }
-        case RefinedThis(rt, _) => rt refines this
-        case tp: NamedType =>
-          !tp.symbol.isStatic && dependsOnRefinedThis(tp.prefix)
-        case tp: RefinedType => dependsOnRefinedThis(tp.refinedInfo) || dependsOnRefinedThis(tp.parent)
-        case tp: TypeBounds => dependsOnRefinedThis(tp.lo) || dependsOnRefinedThis(tp.hi)
-        case tp: AnnotatedType => dependsOnRefinedThis(tp.underlying)
-        case tp: AndOrType => dependsOnRefinedThis(tp.tp1) || dependsOnRefinedThis(tp.tp2)
-        case _ => false
-      }
-
       def loop(pre: Type): Type = pre.stripTypeVar match {
         case pre: RefinedType =>
           if (pre.refinedName ne name) loop(pre.parent)
-          else this.member(name).info match {
-            case TypeAlias(tp) if !dependsOnRefinedThis(tp) => tp
-            case _ => NoType
+          else pre.refinedInfo match {
+            case TypeAlias(tp) if !pre.refinementRefersToThis =>
+              this.member(name).info match {
+                case TypeAlias(tp) => tp
+                case _ => NoType
+              }
+            case _ => loop(pre.parent)
           }
         case RefinedThis(rt, _) =>
           rt.lookupRefined(name)
@@ -1742,12 +1729,12 @@ object Types {
 
     val refinedInfo: Type
     
-    private var containsRefinedThisCache: Boolean = _
-    private var containsRefinedThisKnown: Boolean = false
+    private var refinementRefersToThisCache: Boolean = _
+    private var refinementRefersToThisKnown: Boolean = false
     
-    def containsRefinedThis(implicit ctx: Context): Boolean = {
+    def refinementRefersToThis(implicit ctx: Context): Boolean = {
       def recur(tp: Type, level: Int): Boolean = tp.stripTypeVar match {
-        case tp @ TypeRef(RefinedThis(rt, `level`), _) =>
+        case tp @ TypeRef(RefinedThis(_, `level`), _) =>
           tp.info match {
             case TypeAlias(alias) => recur(alias, level)
             case _ => true
@@ -1769,11 +1756,11 @@ object Types {
         case _ => 
           false
       }
-      if (!containsRefinedThisKnown) {
-        containsRefinedThisCache = recur(refinedInfo, 0)
-        containsRefinedThisKnown = true
+      if (!refinementRefersToThisKnown) {
+        refinementRefersToThisCache = recur(refinedInfo, 0)
+        refinementRefersToThisKnown = true
       }
-      containsRefinedThisCache
+      refinementRefersToThisCache
     }
 
     override def underlying(implicit ctx: Context) = parent
