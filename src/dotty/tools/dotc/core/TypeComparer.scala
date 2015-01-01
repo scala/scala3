@@ -718,7 +718,7 @@ class TypeComparer(initctx: Context) extends DotClass {
               case RefinedType(parent, _) => isNullable(parent)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
-              case _ => println(i"$tp of class ${tp.getClass} is not nullable"); false
+              case _ => false
             }
             (tp1.symbol eq NothingClass) && tp2.isInstanceOf[ValueType] ||
               (tp1.symbol eq NullClass) && isNullable(tp2)
