@@ -330,7 +330,22 @@ trait TypeOps { this: Context =>
     }
     parentRefs
   }
-
+  
+  /** Map `C.this` types where `C` is `refineCls` to RefinedThis types with given level.
+   *  The level gets adjusted for nested refined types.
+   */
+  def thisToRefinedThis(rt: RefinedType, refineCls: Symbol, level: Int): TypeMap = new TypeMap {
+    def apply(tp: Type): Type = tp match {
+      case tp: ThisType if tp.cls eq refineCls => RefinedThis(rt, level)
+      case tp: RefinedType =>
+        tp.derivedRefinedType(
+          this(tp.parent), tp.refinedName,
+          thisToRefinedThis(rt, refineCls, level + 1)(tp.refinedInfo))
+      case _ =>
+        mapOver(tp)
+    }
+  }
+  
   /** An argument bounds violation is a triple consisting of
    *   - the argument tree
    *   - a string "upper" or "lower" indicating which bound is violated

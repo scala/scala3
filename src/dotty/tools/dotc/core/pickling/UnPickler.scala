@@ -158,9 +158,6 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   /** A map from symbols to their associated `decls` scopes */
   private val symScopes = mutable.AnyRefMap[Symbol, Scope]()
 
-  /** A map from refinement classes to their associated refinement types */
-  private val refinementTypes = mutable.AnyRefMap[Symbol, RefinedType]()
-
   protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(implicit ctx: Context) = {
     val ex = new BadSignature(
       sm"""error reading Scala signature of $classRoot from $source:
@@ -612,9 +609,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case NOPREFIXtpe =>
         NoPrefix
       case THIStpe =>
-        val cls = readSymbolRef().asClass
-        if (isRefinementClass(cls)) RefinedThis(refinementTypes(cls))
-        else cls.thisType
+        readSymbolRef().thisType
       case SINGLEtpe =>
         val pre = readTypeRef()
         val sym = readDisambiguatedSymbolRef(_.info.isParameterless)
@@ -666,11 +661,8 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         if (decls.isEmpty) parent
         else {
           def addRefinement(tp: Type, sym: Symbol) =
-            RefinedType(tp, sym.name, sym.info)
-          val result = (parent /: decls.toList)(addRefinement).asInstanceOf[RefinedType]
-          assert(!refinementTypes.isDefinedAt(clazz), clazz + "/" + decls)
-          refinementTypes(clazz) = result
-          result
+            RefinedType(tp, sym.name, ctx.thisToRefinedThis(_, clazz, 0)(sym.info))
+          (parent /: decls.toList)(addRefinement).asInstanceOf[RefinedType]
         }
       case CLASSINFOtpe =>
         val clazz = readSymbolRef()

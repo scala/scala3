@@ -181,8 +181,13 @@ trait Substituters { this: Context =>
 
   final def substThis(tp: Type, from: RefinedType, to: Type, theMap: SubstRefinedThisMap): Type =
     tp match {
-      case tp @ RefinedThis(rt, _) =>
-        if (rt eq from) to else tp
+      case tp @ RefinedThis(rt, level) =>
+        if (rt eq from) 
+          to match { // !!! TODO drop
+            case RefinedThis(rt1, -1) => RefinedThis(rt1, level)
+            case _ => to
+          }
+        else tp
       case tp: NamedType =>
         if (tp.currentSymbol.isStatic) tp
         else tp.derivedSelect(substThis(tp.prefix, from, to, theMap))

@@ -1805,7 +1805,7 @@ object Types {
                && !parent.isLambda)
         derivedRefinedType(parent.EtaExpand, refinedName, refinedInfo)
       else
-        RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
+        RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt, -1))) // !!! TODO: replace with simply `refinedInfo`
     }
 
     override def equals(that: Any) = that match {
@@ -2201,10 +2201,14 @@ object Types {
     override def computeHash = doHash(paramNum, binder)
   }
 
-  case class RefinedThis(binder: RefinedType, level: Int = 0) extends BoundType with SingletonType {
+  /** A reference to the `this` of an enclosing refined type.
+   *  @param level  The number of enclosing refined types between
+   *                the `this` reference and its target.
+   */
+  case class RefinedThis(binder: RefinedType, level: Int) extends BoundType with SingletonType {
     type BT = RefinedType
     override def underlying(implicit ctx: Context) = binder
-    def copyBoundType(bt: BT) = RefinedThis(bt)
+    def copyBoundType(bt: BT) = RefinedThis(bt, level)
 
     // need to customize hashCode and equals to prevent infinite recursion for
     // refinements that refer to the refinement type via this

@@ -409,7 +409,7 @@ class TypeApplications(val self: Type) extends AnyVal {
 
         def replacements(rt: RefinedType): List[Type] =
           for (sym <- boundSyms)
-            yield TypeRef(RefinedThis(rt), correspondingParamName(sym))
+            yield TypeRef(RefinedThis(rt, 0), correspondingParamName(sym))
 
         def rewrite(tp: Type): Type = tp match {
           case tp @ RefinedType(parent, name: TypeName) =>
@@ -453,7 +453,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       val lambda = defn.lambdaTrait(boundSyms.map(_.variance))
       val substitutedRHS = (rt: RefinedType) => {
         val argRefs = boundSyms.indices.toList.map(i =>
-          RefinedThis(rt).select(tpnme.lambdaArgName(i)))
+          RefinedThis(rt, 0).select(tpnme.lambdaArgName(i)))
         tp.subst(boundSyms, argRefs).bounds.withVariance(1)
       }
       val res = RefinedType(lambda.typeRef, tpnme.Apply, substitutedRHS)

@@ -309,7 +309,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   }
 
   private def narrowRefined(tp: Type): Type = tp match {
-    case tp: RefinedType => RefinedThis(tp)
+    case tp: RefinedType => RefinedThis(tp, 0) // !!! TODO check that we can drop narrowRefined entirely
     case _ => tp
   }
 
@@ -323,7 +323,7 @@ class TypeComparer(initctx: Context) extends DotClass {
     def rebaseFrom(prefix: Type): Type = {
       rebaseQual(prefix, tp.name, considerBoth = true) match {
         case rt: RefinedType if rt ne prefix =>
-          tp.derivedSelect(RefinedThis(rt)).dealias // dealias to short-circuit cycles spanning type aliases or LazyRefs
+          tp.derivedSelect(RefinedThis(rt, 0)).dealias // dealias to short-circuit cycles spanning type aliases or LazyRefs
         case _ => tp
       }
     }
