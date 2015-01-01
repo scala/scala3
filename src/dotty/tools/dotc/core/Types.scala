@@ -1734,15 +1734,13 @@ object Types {
     
     def refinementRefersToThis(implicit ctx: Context): Boolean = {
       def recur(tp: Type, level: Int): Boolean = tp.stripTypeVar match {
-        case tp @ TypeRef(RefinedThis(_, `level`), _) =>
-          tp.info match {
-            case TypeAlias(alias) => recur(alias, level)
-            case _ => true
-          }
         case RefinedThis(rt, `level`) => 
           true
         case tp: NamedType =>
-          !tp.symbol.isStatic && recur(tp.prefix, level)
+          tp.info match {
+            case TypeAlias(alias) => recur(alias, level)
+            case _ => !tp.symbol.isStatic && recur(tp.prefix, level)
+          }
         case tp: RefinedType => 
           recur(tp.refinedInfo, level + 1) || 
           recur(tp.parent, level)
