@@ -372,6 +372,8 @@ class TypeComparer(initctx: Context) extends DotClass {
       else {
         val saved = constraint
         val savedSuccessCount = successCount
+        val savedRLC = Types.reverseLevelCheck // !!! TODO: remove
+        Types.reverseLevelCheck = false
         try {
           recCount = recCount + 1
           val result =
@@ -413,6 +415,8 @@ class TypeComparer(initctx: Context) extends DotClass {
             constraint = saved
             successCount = savedSuccessCount
             throw ex
+        } finally {
+          Types.reverseLevelCheck = savedRLC
         }
       }
     }

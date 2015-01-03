@@ -407,17 +407,14 @@ class TypeApplications(val self: Type) extends AnyVal {
       if (bsyms.isEmpty) {
         val correspondingNames = correspondingParamName.values.toSet
 
-        def replacements(rt: RefinedType): List[Type] =
-          for (sym <- boundSyms)
-            yield TypeRef(RefinedThis(rt, 0), correspondingParamName(sym))
-
         def rewrite(tp: Type): Type = tp match {
           case tp @ RefinedType(parent, name: TypeName) =>
             if (correspondingNames contains name) rewrite(parent)
             else RefinedType(
               rewrite(parent),
               name,
-              rt => tp.refinedInfo.subst(boundSyms, replacements(rt)))
+              new ctx.SubstWithRefinedSelectMap(
+                _, boundSyms, boundSyms map correspondingParamName)(tp.refinedInfo))
           case tp =>
             tp
         }
@@ -452,9 +449,8 @@ class TypeApplications(val self: Type) extends AnyVal {
     def expand(tp: Type) = {
       val lambda = defn.lambdaTrait(boundSyms.map(_.variance))
       val substitutedRHS = (rt: RefinedType) => {
-        val argRefs = boundSyms.indices.toList.map(i =>
-          RefinedThis(rt, 0).select(tpnme.lambdaArgName(i)))
-        tp.subst(boundSyms, argRefs).bounds.withVariance(1)
+        val argNames = boundSyms.indices.toList.map(tpnme.lambdaArgName)
+        new ctx.SubstWithRefinedSelectMap(rt, boundSyms, argNames)(tp).bounds.withVariance(1)
       }
       val res = RefinedType(lambda.typeRef, tpnme.Apply, substitutedRHS)
       //println(i"lambda abstract $self wrt $boundSyms%, % --> $res")

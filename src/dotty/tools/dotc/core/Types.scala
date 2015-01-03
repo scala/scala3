@@ -436,7 +436,15 @@ object Types {
       }
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
-        val rinfo = tp.refinedInfo.substThis(tp, pre)
+        val rinfo = pre match {
+          case pre: RefinedType => tp.refinedInfo.substThis0(tp, RefinedThis(pre, -1))
+          case _ => tp.refinedInfo.substRefinedThis(0, pre)
+        }
+        if (Types.goRefinedCheck) {
+          val rinfo0 = tp.refinedInfo.substThis0(tp, pre)
+          if ((rinfo0 ne rinfo) && (rinfo0.show != rinfo.show))
+          println(s"findMember discrepancy for $tp , $name, pre = $pre, old = $rinfo0, new = $rinfo")
+        }
         if (name.isTypeName) { // simplified case that runs more efficiently
           val jointInfo = if (rinfo.isAlias) rinfo else pdenot.info & rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
@@ -747,6 +755,12 @@ object Types {
     def narrow(implicit ctx: Context): TermRef =
       TermRef(NoPrefix, ctx.newSkolem(this))
 
+    def ensureSingleton(implicit ctx: Context): SingletonType = stripTypeVar match {
+      case tp: SingletonType => tp
+      case tp: ValueType => narrow
+      case tp: TypeProxy => tp.underlying.ensureSingleton
+    }
+
     // ----- Normalizing typerefs over refined types ----------------------------
 
     /** If this is a refinement type that has a refinement for `name` (which might be followed
@@ -931,9 +945,13 @@ object Types {
     final def substThisUnlessStatic(cls: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
       if (cls.isStaticOwner) this else ctx.substThis(this, cls, tp, null)
 
-    /** Substitute all occurrences of `RefinedThis(rt)` by `tp` */
-    final def substThis(rt: RefinedType, tp: Type)(implicit ctx: Context): Type =
-      ctx.substThis(this, rt, tp, null)
+    /** Substitute all occurrences of `RefinedThis(rt)` by `tp` !!! TODO remove */
+    final def substThis0(rt: RefinedType, tp: Type)(implicit ctx: Context): Type =
+      ctx.substThis0(this, rt, tp, null)
+
+    /** Substitute all occurrences of `RefinedThis(level)` by `tp` */
+    final def substRefinedThis(level: Int, to: Type)(implicit ctx: Context): Type =
+      ctx.substRefinedThis(this, level, to, null)
 
     /** Substitute a bound type by some other type */
     final def substParam(from: ParamType, to: Type)(implicit ctx: Context): Type =
@@ -1760,10 +1778,47 @@ object Types {
       }
       refinementRefersToThisCache
     }
+    
+    def checkLevel(implicit ctx: Context): Unit = {
+      val checkAccu = new TypeAccumulator[Unit] {
+        var level = 0
+        def apply(x: Unit, tp: Type) = tp.stripTypeVar match {
+          case RefinedThis(rt, l) => 
+            def dominates(tp: Type, rt: RefinedType): Boolean = 
+              (tp eq rt) || {
+                tp match {
+                  case RefinedType(parent, _) => dominates(parent, rt)
+                  case _ => false
+                }
+              }
+            if (rt eq RefinedType.this) assert(l == level, RefinedType.this)
+            if (Types.reverseLevelCheck && l == level) 
+              assert(dominates(rt, RefinedType.this) || dominates(RefinedType.this, rt), 
+                  RefinedType.this)              
+          case tp: RefinedType => 
+            level += 1
+            apply(x, tp.refinedInfo)
+            level -= 1
+            apply(x, tp.parent)
+          case tp: TypeBounds => 
+            apply(x, tp.lo)
+            apply(x, tp.hi)
+          case tp: AnnotatedType => 
+            apply(x, tp.underlying)
+          case tp: AndOrType => 
+            apply(x, tp.tp1)
+            apply(x, tp.tp2)
+          case _ => 
+            foldOver(x, tp)
+        }
+      }
+      checkAccu((), refinedInfo)
+    }
 
     override def underlying(implicit ctx: Context) = parent
 
     private def checkInst(implicit ctx: Context): this.type = {
+      checkLevel
       if (Config.checkLambdaVariance)
         refinedInfo match {
           case refinedInfo: TypeBounds if refinedInfo.variance != 0 && refinedName.isLambdaArgName =>
@@ -1790,7 +1845,7 @@ object Types {
                && !parent.isLambda)
         derivedRefinedType(parent.EtaExpand, refinedName, refinedInfo)
       else
-        RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt, -1))) // !!! TODO: replace with simply `refinedInfo`
+        RefinedType(parent, refinedName, rt => refinedInfo.substThis0(this, RefinedThis(rt, -1))) // !!! TODO: replace with simply `refinedInfo`
     }
 
     override def equals(that: Any) = that match {
@@ -1802,7 +1857,7 @@ object Types {
         false
     }
     override def computeHash = doHash(refinedName, refinedInfo, parent)
-    override def toString = s"RefinedType($parent, $refinedName, $refinedInfo)"
+    override def toString = s"RefinedType($parent, $refinedName, $refinedInfo | $hashCode)" // !!! TODO: remove
   }
 
   class CachedRefinedType(parent: Type, refinedName: Name, infoFn: RefinedType => Type) extends RefinedType(parent, refinedName) {
@@ -2202,7 +2257,7 @@ object Types {
       case that: RefinedThis => this.binder eq that.binder
       case _ => false
     }
-    override def toString = s"RefinedThis(${binder.hashCode})"
+    override def toString = s"RefinedThis($level, ${binder.hashCode})"
   }
 
   // ------------ Type variables ----------------------------------------
@@ -3011,6 +3066,9 @@ object Types {
   // ----- Debug ---------------------------------------------------------
 
   var debugTrace = false
+  
+  var reverseLevelCheck = false
+  var goRefinedCheck = false
 
   val watchList = List[String](
   ) map (_.toTypeName)
