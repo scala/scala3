@@ -207,8 +207,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toText(value)
       case MethodParam(mt, idx) =>
         nameString(mt.paramNames(idx))
-      case RefinedThis(_, _) =>
-        "this"
+      case RefinedThis(_, level) =>
+        s"this<$level>"
     }
   }
 
