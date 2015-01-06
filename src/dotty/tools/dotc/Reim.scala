@@ -5,9 +5,14 @@ import dotty.tools.dotc.ast.tpd
 import core._
 import Types._, Symbols._, Annotations._, Contexts._
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, MiniPhaseTransform}
+import dotty.tools.dotc.core.SymDenotations.SymDenotation
+import dotty.tools.dotc.transform.OverridingPairs
+import dotty.tools.dotc.transform.TreeTransforms.{TreeTransform, MiniPhase, TransformerInfo, MiniPhaseTransform}
 import dotty.tools.dotc.typer._
 import ErrorReporting._
+import Decorators._
+
+import scala.annotation.tailrec
 
 
 object Reim {
@@ -124,11 +129,13 @@ object Reim {
 
     def isThisMutable(thisSym: Symbol)(implicit ctx: Context): Boolean = {
       val owner = ctx.owner
-      if(owner eq null) return true
-      if(owner == NoSymbol) return true
+      assert(owner ne null)
+      assert(owner != NoSymbol)
+//      if(owner eq null) return true
+//      if(owner == NoSymbol) return true
       if (owner == thisSym || ((owner is Flags.Method) && (owner.owner == thisSym)))
         !owner.hasAnnotation(defn.ReadOnlyAnnot)
-      else if(ctx.outer eq null) true
+//      else if(ctx.outer eq null) true
       else isThisMutable(thisSym)(ctx.outer)
     }
   }
@@ -145,6 +152,41 @@ object Reim {
 
   class ReimRefChecks extends RefChecks {
     override def run(implicit ctx: Context): Unit = super.run(ctx.fresh.setTypeComparerFn(c => new ReimTypeComparer(c)))
+  }
+
+  class ReimRefChecks2 extends MiniPhase { thisTransformer =>
+    val treeTransform = new TreeTransform {
+
+      override def transformApply(tree: tpd.Apply)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+        @tailrec def receiverAndMethod(tree: tpd.Tree): (Type, Symbol) = tree match {
+          case tree: tpd.Select => (tree.qualifier.tpe, tree.symbol)
+          case tree: tpd.Ident => tree.tpe match {
+            case tr: TermRef => (tr.prefix, tr.symbol)
+          }
+          case tree: tpd.TypeApply => receiverAndMethod(tree.fun) // polymorphic method
+          case tree: tpd.Apply => receiverAndMethod(tree.fun) // multiple parameter lists
+        }
+        val (receiverType, methodSym) = receiverAndMethod(tree.fun)
+        if((receiverType.getAnnotation == defn.ReadOnlyAnnot) && !methodSym.hasAnnotation(defn.ReadOnlyAnnot)) {
+          errorTree(tree, "call of method taking @mutable this on @readonly receiver")
+        } else  tree
+      }
+
+      override def transformTemplate(tree: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+        val cursor = new OverridingPairs.Cursor(ctx.owner)
+        while (cursor.hasNext) {
+          if(!cursor.overriding.hasAnnotation(defn.ReadOnlyAnnot) &&
+          cursor.overridden.hasAnnotation(defn.ReadOnlyAnnot))
+            ctx.error("method with @mutable this cannot override method with @readonly this", cursor.overriding.pos)
+          cursor.next()
+        }
+        tree
+      }
+
+      def phase = thisTransformer
+    }
+
+    def phaseName: String = "reimrefchecks2"
   }
 }
 

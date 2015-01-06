@@ -166,6 +166,10 @@ class tests extends CompilerTest {
   @Test def neg_reim = compileFile(negDir, "reim", xerrors = 4)
   @Test def neg_reim2 = compileFile(negDir, "reim2", xerrors = 5)
   @Test def neg_reimrefchecks = compileFile(negDir, "reimrefchecks", xerrors = 1)
+  @Test def neg_reimrefchecks2 = compileFile(negDir, "reimrefchecks2", xerrors = 1)
+  @Test def neg_reimrefchecks3 = compileFile(negDir, "reimrefchecks3", xerrors = 1)
+
+  @Test def reim_all = neg_reim; neg_reim2; neg_reimrefchecks; neg_reimrefchecks2; neg_reimrefchecks3
 
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }
