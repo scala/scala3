@@ -523,7 +523,7 @@ trait Applications extends Compatibility { self: Typer =>
       // a modified tree but this would be more convoluted and less efficient.
       if (proto.isTupled) proto = proto.tupled
 
-      methPart(fun1).tpe match {
+      methPart(fun1).tpe.stripAnnots match {
         case funRef: TermRef =>
           tryEither { implicit ctx =>
             val app =
