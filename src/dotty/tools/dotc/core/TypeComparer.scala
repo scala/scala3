@@ -381,7 +381,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       try {
         recCount = recCount + 1
         val result =
-          if (recCount < LogPendingSubTypesThreshold) firstTry(tp1, tp2)
+          if (recCount < LogPendingSubTypesThreshold) checkedIsSubType(tp1, tp2)
           else monitoredIsSubType(tp1, tp2)
         recCount = recCount - 1
         if (!result) constraint = saved
@@ -436,14 +436,242 @@ class TypeComparer(initctx: Context) extends DotClass {
     !pendingSubTypes(p) && {
       try {
         pendingSubTypes += p
-        firstTry(tp1, tp2)
+        checkedIsSubType(tp1, tp2)
       } finally {
         pendingSubTypes -= p
       }
     }
   }
 
-  def firstTry(tp1: Type, tp2: Type): Boolean = {
+  def checkedIsSubType(tp1: Type, tp2: Type): Boolean = {
+    val saved = constraint
+    val optimizedRes = optimizedIsSubType(tp1, tp2)
+    if (ctx.settings.YcheckSubType.value && SimpleIsSubType.isDefinedAt(tp1, tp2)) {
+      constraint = saved
+      val simpleRes = SimpleIsSubType(tp1, tp2)
+      assert(simpleRes == optimizedRes,
+        s"Disagreement on $tp1 <:< $tp2:\nOptimized Result: $optimizedRes, simple result: $simpleRes")
+    }
+    optimizedRes
+  }
+
+  // Simplified implementation of optimizedIsSubType. When possible, we give the
+  // name of the corresponding rule in the DOT calculus like "(REFL)", the names
+  // come from <http://lampwww.epfl.ch/~amin/dot/current_rules.pdf>.
+  object SimpleIsSubType extends PartialFunction[(Type, Type), Boolean] {
+    override def isDefinedAt(tps: (Type, Type)): Boolean = tps match {
+      // Checking chains of AndOrType like (A | B | C | D) requires a number of
+      // calls exponential in the length of the chain, skip them.
+      case (tp1: AndOrType, _) if tp1.tp1.isInstanceOf[AndOrType] ||
+        tp1.tp2.isInstanceOf[AndOrType] => false
+      case (_, tp2: AndOrType) if tp2.tp1.isInstanceOf[AndOrType] ||
+        tp2.tp2.isInstanceOf[AndOrType] => false
+
+      case (_: MethodicType, _) => false
+      case (_, _: MethodicType) => false
+      case (_: BoundType, _) => false
+      case (_, _: BoundType) => false
+      case (_: TypeVar, _) => false
+      case (_, _: TypeVar) => false
+      case (_: ProtoType, _) => false
+      case (_, _: ProtoType) => false
+      case (_: SingletonType, _: RefinedType) => false
+      case _ => partialIsSubType.isDefinedAt(tps)
+    }
+
+    override def apply(tps: (Type, Type)): Boolean = {
+      val (tp1, tp2) = tps
+      if (partialIsSubType(tp1, tp2))
+        return true
+      tp1 match {
+        case tp1: NamedType => tp1.info match {
+          // (TSEL-<:) with GADT handling
+          case TypeBounds(_, hi1) => ctx.gadt.bounds(tp1.symbol) match {
+            case TypeBounds(glo1, ghi1) =>
+              if (isSubTypeWhenFrozen(ghi1, tp2) ||
+                (ctx.mode is Mode.GADTflexible) &&
+                narrowGADTBounds(tp1, TypeBounds(glo1, ghi1 & tp2)))
+                return true
+            case _ =>
+              if (isSubType(hi1, tp2))
+                return true
+          }
+          case _ =>
+        }
+        case _ =>
+      }
+      tp2 match {
+        case tp2 : NamedType => tp2.info match {
+          // (<:-TSEL) with GADT handling
+          case TypeBounds(lo2, _) => ctx.gadt.bounds(tp2.symbol) match {
+            case TypeBounds(glo2, ghi2) =>
+              if (isSubTypeWhenFrozen(tp1, glo2) ||
+                (ctx.mode is Mode.GADTflexible) &&
+                narrowGADTBounds(tp2, TypeBounds(glo2 | tp1, ghi2)))
+                return true
+            case _ =>
+              if (isSubType(tp1, lo2))
+                return true
+          }
+          case _ =>
+        }
+        case _ =>
+      }
+      tp1 match {
+        case tp1: SingletonType =>
+          // From fourthTry
+          if (isSubType(tp1.underlying.widenExpr, tp2) || {
+            // if tp2 == p.type  and p: q.type then try   tp1 <:< q.type as a last effort.
+            tp2 match {
+              case tp2: TermRef =>
+                tp2.info match {
+                  case tp2i: TermRef =>
+                    isSubType(tp1, tp2i)
+                  case ExprType(tp2i: TermRef) if (ctx.phase.id > ctx.gettersPhase.id) =>
+                    isSubType(tp1, tp2i)
+                  case _ =>
+                    false
+                }
+              case _ =>
+                false
+            }
+          })
+            return true
+        case _ =>
+      }
+
+      rebasedType(tp1) match {
+        case Some(tp1rebased) =>
+          if (isSubType(tp1rebased, tp2))
+            return true
+        case None =>
+      }
+      rebasedType(tp2) match {
+        case Some(tp2rebased) =>
+          if (isSubType(tp1, tp2rebased))
+            return true
+        case None =>
+      }
+      false
+    }
+
+    private def rebasedType(tp: Type): Option[Type] = tp match {
+      case tp: NamedType =>
+        val tprebased = rebase(tp)
+        if (tprebased ne tp)
+          Some(tprebased)
+        else
+          None
+      case _ => None
+    }
+
+    private def partialIsSubType: PartialFunction[(Type, Type), Boolean] = {
+      case (_, NoType) =>
+        false
+      // (REFL)
+      case (tp1, tp2) if tp1 eq tp2 =>
+        true
+
+      // Types which don't exist (like Nothing#A) are not in any subtyping relation.
+      // These types cannot appear in user code but can be created by methods like
+      // Types#select
+      case (tp1: NamedType, _) if tp1.denot eq SymDenotations.NoDenotation =>
+        false
+      case (_, tp2: NamedType) if tp2.denot eq SymDenotations.NoDenotation =>
+        false
+
+      case (tp1, tp2: WildcardType) =>
+        // From firstTry
+        tp2.optBounds match {
+          case TypeBounds(_, hi) => isSubType(tp1, hi)
+          case NoType => true
+        }
+
+      case (tp1, tp2: AnnotatedType) =>
+        isSubType(tp1, tp2.tpe)
+
+      // (Bot-<:)
+      case (tp1 : TypeRef, tp2 : ValueType) if tp1.symbol eq NothingClass =>
+        true
+      case (tp1 : TypeRef, tp2) if tp1.symbol eq NullClass => {
+        // From fourthTry, modified because this case is before the cases
+        // handling AndType and OrType
+        def isNullable(tp: Type): Boolean = tp.dealias match {
+          case tp: TypeRef => tp.symbol.isNullableClass
+          case RefinedType(parent, _) => isNullable(parent)
+          case OrType(tp21, tp22) => isNullable(tp21) || isNullable(tp22)
+          case AndType(tp21, tp22) => isNullable(tp21) && isNullable(tp22)
+          case _ => false
+        }
+        isNullable(tp2)
+      }
+
+      case (tp1: NamedType, tp2: NamedType) if (tp1.symbol ne NoSymbol) && (tp1.symbol eq tp2.symbol) =>
+        // From firstTry#compareNamed
+        val sym1 = tp1.symbol
+        (ctx.erasedTypes
+          || sym1.isStaticOwner
+          || {
+            val pre1 = tp1.prefix
+            val pre2 = tp2.prefix
+            (  isSameType(pre1, pre2)
+              || sym1.isClass
+              && pre2.classSymbol.exists
+              && pre2.abstractTypeMembers.isEmpty
+              && isSubType(pre1, pre2)
+            )
+          })
+
+      case (tp1 : TypeRef, tp2 : TypeRef) if tp1.symbol.isClass && tp2.symbol.isClass =>
+        tp1.baseClasses contains tp2.symbol
+
+      case (tp1 : TypeRef, tp2 : TypeRef) if tp2.symbol.isClass =>
+        // From thirdTry#compareNamed
+        val cls2 = tp2.symbol
+        cls2.isClass && {
+          val base = tp1.baseTypeRef(cls2)
+          ((base.exists && (base ne tp1)) && isSubType(base, tp2)) ||
+          (cls2 == defn.SingletonClass && tp1.isStable)
+        }
+
+
+      case (tp1: NamedType, tp2: NamedType) if (tp1.prefix ne tp2.prefix) && (tp1.name eq tp2.name) =>
+        isSameType(tp1.prefix, tp2.prefix)
+
+      case (tp1: TermRef, tp2: ThisType) if tp2.cls eq tp1.symbol.moduleClass =>
+        // From secondTry
+        // TODO: Is this condition needed? If yes, we need a test to show the difference
+        isSubType(tp1.prefix, tp2.cls.owner.thisType)
+
+      case (tp1: ThisType, tp2: TermRef) if tp1.cls eq tp2.symbol.moduleClass =>
+        // From firstTry#compareNamed
+        // TODO: Is this condition needed? If yes, we need a test to show the difference
+        isSubType(tp1.cls.owner.thisType, tp2.prefix)
+
+      case (tp1: ThisType, tp2: ThisType) =>
+        // From firstTry
+        tp1.cls.classInfo.selfType.derivesFrom(tp2.cls) &&
+        tp2.cls.classInfo.selfType.derivesFrom(tp1.cls)
+
+      // (v-<:)
+      case (OrType(tp11, tp12), tp2) =>
+        isSubType(tp11, tp2) && isSubType(tp12, tp2)
+
+      // (<:-v1) and (<:-v2)
+      case (tp1, OrType(tp21, tp22)) =>
+        eitherIsSubType(tp1, tp21, tp1, tp22)
+
+      // (<:-^)
+      case (tp1, AndType(tp21, tp22)) =>
+        isSubType(tp1, tp21) && isSubType(tp1, tp22)
+
+      // (^1-<:) and (^2-<:)
+      case (AndType(tp11, tp12), tp2) =>
+        eitherIsSubType(tp11, tp2, tp12, tp2)
+    }
+  }
+
+  def optimizedIsSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"optimizedIsSubType ${traceInfo(tp1, tp2)}", subtyping) {
     tp2 match {
       case tp2: NamedType =>
         def isHKSubType = tp2.name == tpnme.Apply && {

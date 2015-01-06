@@ -101,6 +101,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val Ycheck = PhasesSetting("-Ycheck", "Check the tree at the end of")
   val YcheckMods = BooleanSetting("-Ycheck-mods", "Check that symbols and their defining trees have modifiers in sync")
   val YcheckTypedTrees = BooleanSetting("-YcheckTypedTrees", "Check all constructured typed trees for type correctness")
+  val YcheckSubType = BooleanSetting("-Ycheck-subtype", "Check calls to IsSubType.")
   val Yshow = PhasesSetting("-Yshow", "(Requires -Xshow-class or -Xshow-object) Show after")
   val Xcloselim = BooleanSetting("-Yclosure-elim", "Perform closure elimination.")
   val Ycompacttrees = BooleanSetting("-Ycompact-trees", "Use compact tree printer when displaying trees.")
