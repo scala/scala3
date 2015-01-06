@@ -475,7 +475,8 @@ class TypeComparer(initctx: Context) extends DotClass {
                      )
                    }
                 )
-              else (tp1.name eq tp2.name) && isSameType(tp1.prefix, tp2.prefix)
+              else (tp1.prefix ne tp2.prefix) && (tp1.name eq tp2.name)
+                && isSameType(tp1.prefix, tp2.prefix)
              ) || isHKSubType || secondTryNamed(tp1, tp2)
             case tp1: ThisType if tp1.cls eq tp2.symbol.moduleClass =>
               isSubType(tp1.cls.owner.thisType, tp2.prefix)
