@@ -164,17 +164,16 @@ extends TyperState(r) {
    *  found a better solution.
    */
   override def tryWithFallback[T](op: => T)(fallback: => T)(implicit ctx: Context): T = {
+    val storeReporter = new StoreReporter
     val savedReporter = myReporter
+    myReporter = storeReporter
     val savedConstraint = myConstraint
-    myReporter = new StoreReporter
-    val result = op
-    try
-      if (!reporter.hasErrors) result
-      else {
-        myConstraint = savedConstraint
-        fallback
-      }
-    finally myReporter = savedReporter
+    val result = try op finally myReporter = savedReporter
+    if (!storeReporter.hasErrors) result
+    else {
+      myConstraint = savedConstraint
+      fallback
+    }
   }
 
   override def toText(printer: Printer): Text = constraint.toText(printer)

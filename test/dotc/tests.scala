@@ -24,9 +24,6 @@ class tests extends CompilerTest {
   val failedUnderscore = List("-Ystop-before:collectEntryPoints") // #289
 
   val failedOther = List("-Ystop-before:collectEntryPoints") // some non-obvious reason. need to look deeper
-
-
-
   val twice = List("#runs", "2", "-YnoDoubleBindings")
 
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
