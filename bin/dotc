@@ -17,7 +17,7 @@ programName=$(basename "$0")
 
 
 declare -a java_args scala_args residual_args
-unset verbose quiet cygwin toolcp colors saved_stty
+unset verbose quiet cygwin toolcp colors saved_stty CDPATH
 
 
 CompilerMain=dotty.tools.dotc.Main
