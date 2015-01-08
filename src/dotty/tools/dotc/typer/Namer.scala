@@ -656,6 +656,7 @@ class Namer { typer: Typer =>
         (paramSymss :\ restpe1) { (params, restpe) =>
           val make =
             if (params.nonEmpty && (params.head is Implicit)) ImplicitMethodType
+            else if (ddef.mods.is(JavaDefined)) JavaMethodType
             else MethodType
           make.fromSymbols(params, restpe)
         }

@@ -2,7 +2,7 @@ package dotty.runtime
 
 import scala.reflect.ClassTag
 
-/** All but the first operation should be short-circuited and implemented specially by
+/** All but the first two operations should be short-circuited and implemented specially by
  *  the backend.
  */
 object Arrays {
@@ -12,7 +12,14 @@ object Arrays {
    */
   def newGenericArray[T](length: Int)(implicit tag: ClassTag[T]): Array[T] =
     tag.newArray(length)
-
+  
+  /** Convert a sequence to a Java array with element type given by `clazz`. */
+  def seqToArray[T](xs: Seq[T], clazz: Class[_]): Array[T] = {
+    val arr = java.lang.reflect.Array.newInstance(clazz, xs.length).asInstanceOf[Array[T]]
+    xs.copyToArray(arr)
+    arr
+  }
+  
   /** Create an array of type T. T must be of form Array[E], with
    *  E being a reference type.
    */
