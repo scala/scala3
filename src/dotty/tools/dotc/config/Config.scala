@@ -19,7 +19,7 @@ object Config {
    *  are tested for direct or indirect dependencies, each time a
    *  constraint is added in TypeComparer.
    */
-  final val checkConstraintsNonCyclicTrans = true
+  final val checkConstraintsNonCyclicTrans = false
   
   /** Type comparer will fail with an assert if the upper bound
    *  of a constrained parameter becomes Nothing. This should be turned
