@@ -600,7 +600,7 @@ object SymDenotations {
       isTerm && !is(MethodOrLazy, butNot = Label) && !isLocalDummy
 
     //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
-    //    def isSkolem: Boolean = ???
+    def isSkolem: Boolean = name == nme.SKOLEM
 
     // ------ access to related symbols ---------------------------------
 
