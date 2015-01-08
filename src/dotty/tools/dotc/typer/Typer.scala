@@ -323,7 +323,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = track("typedThis") {
-    assignType(tree)
+    val cls = qualifyingClass(tree, tree.qual, packageOK = false)
+    assignType(tree, cls)
   }
 
   def typedSuper(tree: untpd.Super, pt: Type)(implicit ctx: Context): Tree = track("typedSuper") {

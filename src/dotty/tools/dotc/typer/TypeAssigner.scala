@@ -215,10 +215,8 @@ trait TypeAssigner {
       }
     }
 
-  def assignType(tree: untpd.This)(implicit ctx: Context) = {
-    val cls = qualifyingClass(tree, tree.qual, packageOK = false)
+  def assignType(tree: untpd.This, cls: Symbol)(implicit ctx: Context) =
     tree.withType(cls.thisType)
-  }
 
   def assignType(tree: untpd.Super, qual: Tree, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context) = {
     val mix = tree.mix

@@ -38,7 +38,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     untpd.SelectFromTypeTree(qualifier, tp.name).withType(tp)
 
   def This(cls: ClassSymbol)(implicit ctx: Context): This =
-    untpd.This(cls.name).withType(cls.thisType)
+    ta.assignType(untpd.This(cls.name), cls)
 
   def Super(qual: Tree, mix: TypeName, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context): Super =
     ta.assignType(untpd.Super(qual, mix), qual, inConstrCall, mixinClass)
