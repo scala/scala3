@@ -450,7 +450,10 @@ trait Implicits { self: Typer =>
     private def nestedContext = ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
     private def implicitProto(resultType: Type, f: Type => Type) =
-      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
+      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe/*.widen*/), f(resultType)) 
+        // !!! TODO: check performance implications
+        // If we do the widen, SyntheticMethods, line 66 fails to compile
+        // val synthetic = sym.copy(...)
 
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
         d"found: ${argument.tpe}, expected: $pt")
