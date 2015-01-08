@@ -755,12 +755,6 @@ object Types {
     def narrow(implicit ctx: Context): TermRef =
       TermRef(NoPrefix, ctx.newSkolem(this))
 
-    def ensureSingleton(implicit ctx: Context): SingletonType = stripTypeVar match {
-      case tp: SingletonType => tp
-      case tp: ValueType => narrow
-      case tp: TypeProxy => tp.underlying.ensureSingleton
-    }
-
     // ----- Normalizing typerefs over refined types ----------------------------
 
     /** If this is a refinement type that has a refinement for `name` (which might be followed

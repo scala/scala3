@@ -16,7 +16,7 @@ import scala.util.control.NonFatal
 
 /** Provides methods to compare types.
  */
-class TypeComparer(initctx: Context) extends DotClass {
+class TypeComparer(initctx: Context) extends DotClass with Skolemization {
   implicit val ctx: Context = initctx
 
   val state = ctx.typerState
@@ -267,8 +267,7 @@ class TypeComparer(initctx: Context) extends DotClass {
       }
     }
  
-    val bound = (if (false) ctx.deSkolemize(bound0, toSuper = fromBelow) else bound0)
-      .dealias.stripTypeVar
+    val bound = deSkolemize(bound0, toSuper = fromBelow).dealias.stripTypeVar
     def description = s"${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} to ${constraint.show}"
     constr.println(s"adding $description")
     val res = addBi(param, bound, fromBelow)
@@ -794,24 +793,28 @@ class TypeComparer(initctx: Context) extends DotClass {
     ctdSubType(orig1, orig2)
   }
 
-  def hasMatchingMember(name: Name, orig1: Type, tp2: RefinedType): Boolean = /*>|>*/ ctx.traceIndented(s"hasMatchingMember($orig1 . $name, ${tp2.refinedInfo}) ${orig1.member(name).info.show}", subtyping) /*<|<*/ {
-    val base = orig1.ensureSingleton
-    var rinfo2 = tp2.refinedInfo.substRefinedThis(0, base)
-    def qualifies(m: SingleDenotation) = isSubType(m.info, rinfo2)
-    def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
-      case mbr: SingleDenotation => qualifies(mbr)
-      case _ => mbr hasAltWith qualifies
-    }
-    memberMatches(base member name) ||
-      orig1.isInstanceOf[SingletonType] &&
-      { // special case for situations like:
-        //    foo <: C { type T = foo.T }
-        rinfo2 match {
-          case rinfo2: TypeAlias =>
-            !ctx.phase.erasedTypes && (base select name) =:= rinfo2.alias
-          case _ => false
-        }
+  def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean = /*>|>*/ ctx.traceIndented(s"hasMatchingMember($tp1 . $name, ${tp2.refinedInfo}) ${tp1.member(name).info.show}", subtyping) /*<|<*/ {
+    val saved = skolemsOutstanding
+    try {
+      val base = ensureSingleton(tp1)
+      var rinfo2 = tp2.refinedInfo.substRefinedThis(0, base)
+      def qualifies(m: SingleDenotation) = isSubType(m.info, rinfo2)
+      def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
+        case mbr: SingleDenotation => qualifies(mbr)
+        case _ => mbr hasAltWith qualifies
       }
+      memberMatches(base member name) ||
+        tp1.isInstanceOf[SingletonType] &&
+        { // special case for situations like:
+          //    foo <: C { type T = foo.T }
+          rinfo2 match {
+            case rinfo2: TypeAlias =>
+              !ctx.phase.erasedTypes && (base select name) =:= rinfo2.alias
+            case _ => false
+          }
+        }
+    }
+    finally skolemsOutstanding = saved
   }
 
   /** A type has been covered previously in subtype checking if it
@@ -864,7 +867,7 @@ class TypeComparer(initctx: Context) extends DotClass {
   def narrowGADTBounds(tr: NamedType, bound: Type, fromBelow: Boolean): Boolean = 
     ctx.mode.is(Mode.GADTflexible) && {
     val tparam = tr.symbol
-    val bound1 = bound // ctx.deSkolemize(bound, toSuper = fromBelow)
+    val bound1 = deSkolemize(bound, toSuper = fromBelow)
     println(s"narrow gadt bound of $tparam: ${tparam.info} from ${if (fromBelow) "below" else "above"} to $bound1 ${bound1.isRef(tparam)}")
     !bound1.isRef(tparam) && { 
       val oldBounds = ctx.gadt.bounds(tparam)
@@ -1419,9 +1422,9 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.isSubType(tp1, tp2)
     }
 
-  override def hasMatchingMember(name: Name, orig1: Type, tp2: RefinedType): Boolean = 
-    traceIndented(s"hasMatchingMember(${show(orig1)} . $name, ${show(tp2.refinedInfo)}), member = ${show(orig1.member(name).info)}") {
-      super.hasMatchingMember(name, orig1, tp2)
+  override def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean = 
+    traceIndented(s"hasMatchingMember(${show(tp1)} . $name, ${show(tp2.refinedInfo)}), member = ${show(tp1.member(name).info)}") {
+      super.hasMatchingMember(name, tp1, tp2)
     }
 
   override def lub(tp1: Type, tp2: Type) =
