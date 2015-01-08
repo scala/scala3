@@ -10,8 +10,22 @@ object Config {
 
   final val checkCacheMembersNamed = false
 
+  /** When updating a connstraint bound, check that the constrained parameter
+   *  does not appear at the top-level of either of its bounds.
+   */
   final val checkConstraintsNonCyclic = true
-
+  
+  /** Like `checkConstraintsNonCyclic`, but all constrained parameters
+   *  are tested for direct or indirect dependencies, each time a
+   *  constraint is added in TypeComparer.
+   */
+  final val checkConstraintsNonCyclicTrans = true
+  
+  /** Type comparer will fail with an assert if the upper bound
+   *  of a constrained parameter becomes Nothing. This should be turned
+   *  on only for specific debugging as normally instantiation to Nothing
+   *  is not an error consdition. 
+   */
   final val flagInstantiationToNothing = false
 
   /** Enable noDoubleDef checking if option "-YnoDoubleDefs" is set.

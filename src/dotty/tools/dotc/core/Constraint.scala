@@ -231,6 +231,44 @@ class Constraint(private val myMap: ParamInfo,
     for (pt <- domainPolys) checkNonCyclic(pt, myMap(pt))
   }
 
+  /** Check that no constrained parameter contains itself as a bound,
+   *  either directly or indirectly. This should be not a structer criterion
+   *  than checkNonCyclic because transitivity should be eliminated always,
+   *  but it's good to be paranoid.
+   */
+  def checkNonCyclicTrans()(implicit ctx: Context): Unit = {
+    for (pt <- domainPolys) 
+      checkNonCyclicTrans(pt, myMap(pt))
+  }
+  
+  def checkNonCyclicTrans(pt: PolyType, entries: Array[Type])(implicit ctx: Context): Unit =
+    for ((entry, i) <- entries.zipWithIndex) {
+      def occursIn(params: Set[PolyParam], bound: Type, fromBelow: Boolean): Boolean = bound.stripTypeVar match {
+        case bound: PolyParam => 
+          params.contains(bound) || {
+            at(bound) match {
+              case TypeBounds(lo, hi) =>
+                occursIn(params + bound, if (fromBelow) lo else hi, fromBelow)
+              case _ =>
+                false
+            }
+          }
+        case bound: AndOrType =>
+          def occ1 = occursIn(params, bound.tp1, fromBelow)
+          def occ2 = occursIn(params, bound.tp2, fromBelow)
+          if (fromBelow == bound.isAnd) occ1 && occ2 else occ1 || occ2
+        case _ => false
+      }
+      val param = PolyParam(pt, i)
+      entry match {
+        case TypeBounds(lo, hi) =>
+          assert(!occursIn(Set(param), lo, fromBelow = true), s"$param occurs below $lo")
+          assert(!occursIn(Set(param), hi, fromBelow = false), s"$param occurs above $hi")
+        case _ =>
+      }
+    }
+  
+
   /** A new constraint which is derived from this constraint by updating
    *  the entry for parameter `param` to `tpe`.
    *  @pre  `this contains param`.
