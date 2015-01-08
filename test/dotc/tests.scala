@@ -126,7 +126,7 @@ class tests extends CompilerTest {
 
   @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", failedOther)(allowDeepSubtypes) // Cannot emit primitive conversion from V to Z
 
-  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", failedbyName)(allowDeepSubtypes)
+  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", failedbyName)
 
   @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing", failedOther)
     //  Expected primitive types I - Ljava/lang/Object

@@ -11,7 +11,8 @@ for(a <- Some(1);
     i <- Some(9);
     j <- Some(10);
     k <- Some(11);
-    l <- Some(12);
+    l <- Some(12)
+/*
     m <- Some(13);
     n <- Some(14);
     o <- Some(15);
@@ -39,7 +40,7 @@ for(a <- Some(1);
     l <- Some(12);
     m <- Some(13);
     n <- Some(14);
-    o <- Some(15)
+    o <- Some(15)*/
 //    p <- Some(16);
 //    q <- Some(17)
 //    r <- Some(18);
