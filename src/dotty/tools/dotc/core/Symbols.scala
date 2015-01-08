@@ -25,7 +25,7 @@ import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.DotClass
+import util.{NoSource, DotClass}
 
 /** Creation methods for symbols */
 trait Symbols { this: Context =>
@@ -515,6 +515,8 @@ object Symbols {
 
   object NoSymbol extends Symbol(NoCoord) {
     denot = NoDenotation
+
+    override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
   }
 
   implicit class Copier[N <: Name](sym: Symbol { type ThisName = N })(implicit ctx: Context) {
