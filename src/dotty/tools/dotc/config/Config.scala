@@ -43,7 +43,11 @@ object Config {
   /** Show subtype traces for all deep subtype recursions */
   final val traceDeepSubTypeRecursions = false
 
+  /** When explaining subtypes and this flag is set, also show the classes of the compared types. */
   final val verboseExplainSubtype = true
+  
+  /** If this flag is set, take the fast path when comparing same-named type-aliases and types */
+  final val fastPathForRefinedSubtype = true
 
   /** When set, use new signature-based matching.
    *  Advantantage of doing so: It's supposed to be faster

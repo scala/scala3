@@ -340,7 +340,7 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
     s"${tp1.show} <:< ${tp2.show}" +
     (if (ctx.settings.verbose.value) s" ${tp1.getClass} ${tp2.getClass}${if (frozenConstraint) " frozen" else ""}" else "")
 
-  def isSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)}, class1 = ${tp1.getClass}, class2 = ${tp2.getClass}", subtyping) /*<|<*/ {
+  def isSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)} ${if (Config.verboseExplainSubtype) s" ${tp1.getClass}, ${tp2.getClass}" else ""}", subtyping) /*<|<*/ {
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
     else {
@@ -622,7 +622,7 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
       def compareRefined: Boolean = {
         val tp1w = tp1.widen
         val skipped2 = skipMatching(tp1w, tp2)
-        if (skipped2 eq tp2) {
+        if ((skipped2 eq tp2) || !Config.fastPathForRefinedSubtype) {
           val name2 = tp2.refinedName
           val normalPath =
             isSubType(tp1, tp2.parent) &&
