@@ -160,11 +160,11 @@ object TypeErasure {
    *  as upper bound and that is not Java defined? Arrays of such types are
    *  erased to `Object` instead of `ObjectArray`.
    */
-  def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp match {
+  def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
     case tp: TypeRef =>
-      tp.symbol.isAbstractType &&
+      !tp.symbol.isClass &&
       !tp.derivesFrom(defn.ObjectClass) &&
-      !tp.typeSymbol.is(JavaDefined)
+      !tp.symbol.is(JavaDefined)
     case tp: PolyParam =>
       !tp.derivesFrom(defn.ObjectClass) &&
       !tp.binder.resultType.isInstanceOf[JavaMethodType]
@@ -342,11 +342,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
   private def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
     val defn.ArrayType(elemtp) = tp
     if (elemtp derivesFrom defn.NullClass) JavaArrayType(defn.ObjectType)
-    else if (isUnboundedGeneric(elemtp))
-      elemtp match {
-        case elemtp: TypeRef if elemtp.symbol.is(JavaDefined) => JavaArrayType(defn.ObjectType)
-        case _ => defn.ObjectType
-      }
+    else if (isUnboundedGeneric(elemtp)) defn.ObjectType
     else JavaArrayType(this(elemtp))
   }
 

@@ -1,3 +1,5 @@
+// Needs an implementation of beanproperty to work
+
 class ann(i: Int) extends scala.annotation.Annotation
 class cfann(x: String) extends annotation.ClassfileAnnotation
 

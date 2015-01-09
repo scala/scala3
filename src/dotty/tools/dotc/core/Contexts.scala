@@ -170,7 +170,11 @@ object Contexts {
       if (implicitsCache == null )
         implicitsCache = {
           val implicitRefs: List[TermRef] =
-            if (isClassDefContext) owner.thisType.implicitMembers
+            if (isClassDefContext) 
+              try owner.thisType.implicitMembers
+              catch {
+                case ex: CyclicReference => Nil
+              }
             else if (isImportContext) importInfo.importedImplicits
             else if (isNonEmptyScopeContext) scope.implicitDecls
             else Nil

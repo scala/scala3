@@ -81,7 +81,15 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
 
     def addMissingCompanions(stats: List[Tree]): List[Tree] = stats map {
       case stat: TypeDef if singleClassDefs contains stat.name =>
-        Thicket(stat :: newCompanion(stat.name.toTermName).trees)
+        val objName = stat.name.toTermName
+        val nameClash = stats.exists {
+          case other: MemberDef => 
+            other.name == objName && other.symbol.info.isParameterless
+          case _ =>
+            false
+        }
+        val uniqueName = if (nameClash) objName.avoidClashName else objName
+        Thicket(stat :: newCompanion(uniqueName).trees)
       case stat => stat
     }
 

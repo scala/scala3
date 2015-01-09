@@ -290,8 +290,12 @@ object desugar {
         val caseParams = constrVparamss.head.toArray
         val productElemMeths = for (i <- 0 until arity) yield
           syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeName), caseParams(i).name))
+        val hasRepeatedParam = constrVparamss.exists(_.exists {
+          case ValDef(_, PostfixOp(_, nme.raw.STAR), _) => true
+          case _ => false
+        })
         val copyMeths =
-          if (mods is Abstract) Nil
+          if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
           else {
             def copyDefault(vparam: ValDef) =
               makeAnnotated(defn.UncheckedVarianceAnnot, refOfDef(vparam))

@@ -171,9 +171,14 @@ object SymDenotations {
       myInfo = tp
     }
 
-    /** The name, except if this is a module class, strip the module class suffix */
+    /** The name, except 
+     *   - if this is a module class, strip the module class suffix 
+     *   - if this is a companion object with a clash-avoiding name, strip the 
+     *     "avoid clash" suffix
+     */
     def effectiveName(implicit ctx: Context) =
-      if (this is ModuleClass) name.stripModuleClassSuffix else name
+      if (this is ModuleClass) name.stripModuleClassSuffix 
+      else name.stripAvoidClashSuffix
 
     /** The privateWithin boundary, NoSymbol if no boundary is given.
      */

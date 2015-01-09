@@ -2976,7 +2976,7 @@ object Types {
       val ex = new CyclicReference(denot)
       if (!(ctx.mode is typer.Mode.CheckCyclic)) {
         cyclicErrors.println(ex.getMessage)
-        for (elem <- ex.getStackTrace take 40)
+        for (elem <- ex.getStackTrace take 50)
           cyclicErrors.println(elem.toString)
       }
       ex
