@@ -614,15 +614,24 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
           fourthTry(tp1, tp2)
         }
         compareNamed
-      case tp2 @ RefinedType(parent2, name2) =>
+      case tp2: RefinedType =>
         def compareRefined: Boolean = {
-          val normalPath =
-            ctdSubType(tp1, parent2) && (
-              name2 == nme.WILDCARD
-              || hasMatchingMember(name2, tp1, tp2)
-              || fourthTry(tp1, tp2))
-          normalPath ||
-            needsEtaLift(tp1, tp2) && tp1.testLifted(tp2.typeParams, isSubType(_, tp2))
+          val tp1w = tp1.widen
+          val skipped2 = skipMatching(tp1w, tp2)
+          if (skipped2 eq tp2) {
+            val name2 = tp2.refinedName
+            val normalPath =
+              ctdSubType(tp1, tp2.parent) && 
+                (  name2 == nme.WILDCARD
+                || hasMatchingMember(name2, tp1, tp2)
+                || fourthTry(tp1, tp2)
+                )
+            normalPath ||
+              needsEtaLift(tp1, tp2) && tp1.testLifted(tp2.typeParams, isSubType(_, tp2))
+          }
+          else // fast path, in particular for refinements resulting from parameterization.
+            ctdSubType(tp1, skipped2) &&
+            isSubRefinements(tp1w.asInstanceOf[RefinedType], tp2, skipped2)
         }
         compareRefined
       case OrType(tp21, tp22) =>
@@ -840,6 +849,33 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
     }
     finally skolemsOutstanding = saved
   }
+
+  /** Skip refinements in `tp2` which match corresponding refinements in `tp1`.
+   *  "Match" means: They appear in the same order, refine the same names, and
+   *  the refinement in `tp1` is an alias type.
+   *  @return  The parent type of `tp2` after skipping the matching refinements.
+   */
+  def skipMatching(tp1w: Type, tp2: RefinedType): Type = tp1w match {
+    case tp1w @ RefinedType(parent1, name1) 
+    if name1 == tp2.refinedName && tp1w.refinedInfo.isInstanceOf[TypeAlias] =>
+      tp2.parent match {
+        case parent2: RefinedType => skipMatching(parent1, parent2)
+        case parent2 => parent2
+      }
+    case _ => tp2
+  }
+
+  /** Are refinements in `tp1` pairwise subtypes of the refinements of `tp2`
+   *  up to parent type `limit`?
+   *  @pre `tp1` has the necessary number of refinements, they are type aliases,
+   *       and their names match the corresponding refinements in `tp2`.
+   *  The precondition is established by `skipMatching`.
+   */
+  def isSubRefinements(tp1: RefinedType, tp2: RefinedType, limit: Type): Boolean =
+    isSubType(tp1.refinedInfo, tp2.refinedInfo) && (
+      (tp2.parent eq limit) ||
+      isSubRefinements(
+        tp1.parent.asInstanceOf[RefinedType], tp2.parent.asInstanceOf[RefinedType], limit))
 
   /** A type has been covered previously in subtype checking if it
    *  is some combination of TypeRefs that point to classes, where the
