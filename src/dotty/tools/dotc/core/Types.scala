@@ -759,31 +759,18 @@ object Types {
      *  a reference to the "this" of the current refined type.
      */
     def lookupRefined(name: Name)(implicit ctx: Context): Type = {
-
-      def dependsOnRefinedThis(tp: Type): Boolean = tp.stripTypeVar match {
-        case tp @ TypeRef(RefinedThis(rt), _) if rt refines this =>
-          tp.info match {
-            case TypeAlias(alias) => dependsOnRefinedThis(alias)
-            case _ => true
-          }
-        case RefinedThis(rt) => rt refines this
-        case tp: NamedType =>
-          !tp.symbol.isStatic && dependsOnRefinedThis(tp.prefix)
-        case tp: RefinedType => dependsOnRefinedThis(tp.refinedInfo) || dependsOnRefinedThis(tp.parent)
-        case tp: TypeBounds => dependsOnRefinedThis(tp.lo) || dependsOnRefinedThis(tp.hi)
-        case tp: AnnotatedType => dependsOnRefinedThis(tp.underlying)
-        case tp: AndOrType => dependsOnRefinedThis(tp.tp1) || dependsOnRefinedThis(tp.tp2)
-        case _ => false
-      }
-
       def loop(pre: Type): Type = pre.stripTypeVar match {
         case pre: RefinedType =>
           if (pre.refinedName ne name) loop(pre.parent)
-          else this.member(name).info match {
-            case TypeAlias(tp) if !dependsOnRefinedThis(tp) => tp
-            case _ => NoType
+          else pre.refinedInfo match {
+            case TypeAlias(tp) if !pre.refinementRefersToThis =>
+              this.member(name).info match {
+                case TypeAlias(tp) => tp
+                case _ => NoType
+              }
+            case _ => loop(pre.parent)
           }
-        case RefinedThis(rt) =>
+        case RefinedThis(rt, _) =>
           rt.lookupRefined(name)
         case pre: WildcardType =>
           WildcardType
@@ -1741,6 +1728,38 @@ object Types {
     extends CachedProxyType with BindingType with ValueType {
 
     val refinedInfo: Type
+    
+    private var refinementRefersToThisCache: Boolean = _
+    private var refinementRefersToThisKnown: Boolean = false
+    
+    def refinementRefersToThis(implicit ctx: Context): Boolean = {
+      def recur(tp: Type, level: Int): Boolean = tp.stripTypeVar match {
+        case RefinedThis(rt, `level`) => 
+          true
+        case tp: NamedType =>
+          tp.info match {
+            case TypeAlias(alias) => recur(alias, level)
+            case _ => !tp.symbol.isStatic && recur(tp.prefix, level)
+          }
+        case tp: RefinedType => 
+          recur(tp.refinedInfo, level + 1) || 
+          recur(tp.parent, level)
+        case tp: TypeBounds => 
+          recur(tp.lo, level) || 
+          recur(tp.hi, level)
+        case tp: AnnotatedType => 
+          recur(tp.underlying, level)
+        case tp: AndOrType => 
+          recur(tp.tp1, level) || recur(tp.tp2, level)
+        case _ => 
+          false
+      }
+      if (!refinementRefersToThisKnown) {
+        refinementRefersToThisCache = recur(refinedInfo, 0)
+        refinementRefersToThisKnown = true
+      }
+      refinementRefersToThisCache
+    }
 
     override def underlying(implicit ctx: Context) = parent
 
@@ -1771,7 +1790,7 @@ object Types {
                && !parent.isLambda)
         derivedRefinedType(parent.EtaExpand, refinedName, refinedInfo)
       else
-        RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt)))
+        RefinedType(parent, refinedName, rt => refinedInfo.substThis(this, RefinedThis(rt, -1))) // !!! TODO: replace with simply `refinedInfo`
     }
 
     override def equals(that: Any) = that match {
@@ -2167,10 +2186,14 @@ object Types {
     override def computeHash = doHash(paramNum, binder)
   }
 
-  case class RefinedThis(binder: RefinedType) extends BoundType with SingletonType {
+  /** A reference to the `this` of an enclosing refined type.
+   *  @param level  The number of enclosing refined types between
+   *                the `this` reference and its target.
+   */
+  case class RefinedThis(binder: RefinedType, level: Int) extends BoundType with SingletonType {
     type BT = RefinedType
     override def underlying(implicit ctx: Context) = binder
-    def copyBoundType(bt: BT) = RefinedThis(bt)
+    def copyBoundType(bt: BT) = RefinedThis(bt, level)
 
     // need to customize hashCode and equals to prevent infinite recursion for
     // refinements that refer to the refinement type via this

@@ -112,7 +112,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val hideType = tp.symbol is TypeParam | TypeArgument | ExpandedName
         if (hideType && !ctx.phase.erasedTypes && !tp.symbol.isCompleting) {
           tp.info match {
-            case TypeAlias(hi) => return toText(hi)
+            case TypeAlias(alias) => return toText(alias)
             case _ => if (tp.prefix.isInstanceOf[ThisType]) return nameString(tp.symbol)
           }
         }
