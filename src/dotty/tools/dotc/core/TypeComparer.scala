@@ -126,18 +126,6 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
    *          L & L
    */
 
-  /** Map that approximates each param in constraint by its lower bound.
-   *  Currently only used for diagnostics.
-   */
-  val approxParams = new TypeMap {
-    def apply(tp: Type): Type = tp.stripTypeVar match {
-      case tp: PolyParam if constraint contains tp =>
-        this(constraint.bounds(tp).lo)
-      case tp =>
-        mapOver(tp)
-    }
-  }
-
   /** Test whether the lower bounds of all parameters in this
    *  constraint are a solution to the constraint.
    */
@@ -336,18 +324,12 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
         assert(isSatisfiable, constraint.show)
   }
 
-  private def traceInfo(tp1: Type, tp2: Type) =
-    s"${tp1.show} <:< ${tp2.show}" +
-    (if (ctx.settings.verbose.value) s" ${tp1.getClass} ${tp2.getClass}${if (frozenConstraint) " frozen" else ""}" else "")
-
   def isSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)} ${if (Config.verboseExplainSubtype) s" ${tp1.getClass}, ${tp2.getClass}" else ""}", subtyping) /*<|<*/ {
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
     else {
       val saved = constraint
       val savedSuccessCount = successCount
-      val savedRLC = Types.reverseLevelCheck // !!! TODO: remove
-      Types.reverseLevelCheck = false
       try {
         recCount = recCount + 1
         val result =
@@ -356,41 +338,15 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
         recCount = recCount - 1
         if (!result) constraint = saved
         else if (recCount == 0 && needsGc) state.gc()
-
-        def recordStatistics = {
-          // Stats.record(s"isSubType ${tp1.show} <:< ${tp2.show}")
-          totalCount += 1
-          if (result) successCount += 1 else successCount = savedSuccessCount
-          if (recCount == 0) {
-            Stats.record("successful subType", successCount)
-            Stats.record("total subType", totalCount)
-            successCount = 0
-            totalCount = 0
-          }
-        }
-        if (Stats.monitored) recordStatistics
-
+        if (Stats.monitored) recordStatistics(result, savedSuccessCount)
         result
       } catch {
         case NonFatal(ex) =>
-          def showState = {
-            println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}, frozen = $frozenConstraint"))
-            def explainPoly(tp: Type) = tp match {
-              case tp: PolyParam => println(s"polyparam ${tp.show} found in ${tp.binder.show}")
-              case tp: TypeRef if tp.symbol.exists => println(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
-              case tp: TypeVar => println(s"typevar ${tp.show}, origin = ${tp.origin}")
-              case _ => println(s"${tp.show} is a ${tp.getClass}")
-            }
-            explainPoly(tp1)
-            explainPoly(tp2)
-          }
-          if (ex.isInstanceOf[AssertionError]) showState
+          if (ex.isInstanceOf[AssertionError]) showGoal(tp1, tp2)
           recCount -= 1
           constraint = saved
           successCount = savedSuccessCount
           throw ex
-      } finally {
-        Types.reverseLevelCheck = savedRLC
       }
     }
   }
@@ -803,21 +759,19 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
     finally frozenConstraint = saved
   }
 
-  protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean = /*>|>*/ ctx.traceIndented(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}) ${tp1.member(name).info.show}", subtyping) /*<|<*/ {
+  protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean = {
     val saved = skolemsOutstanding
     try {
-      var base = tp1
-      var rinfo2 = tp2.refinedInfo
-      if (tp2.refinementRefersToThis) {
-        base = ensureSingleton(base)
-        rinfo2 = rinfo2.substRefinedThis(0, base)
-      }
+      def rebindNeeded = tp2.refinementRefersToThis
+      val base = if (rebindNeeded) ensureSingleton(tp1) else tp1
+      val rinfo2 = if (rebindNeeded) tp2.refinedInfo.substRefinedThis(0, base) else tp2.refinedInfo
       def qualifies(m: SingleDenotation) = isSubType(m.info, rinfo2)
       def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
         case mbr: SingleDenotation => qualifies(mbr)
         case _ => mbr hasAltWith qualifies
       }
-      memberMatches(base member name) ||
+      /*>|>*/ ctx.traceIndented(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}) ${tp1.member(name).info.show} $rinfo2", subtyping) /*<|<*/ {
+        memberMatches(base member name) ||
         tp1.isInstanceOf[SingletonType] &&
         { // special case for situations like:
           //    foo <: C { type T = foo.T }
@@ -827,6 +781,7 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
             case _ => false
           }
         }
+      }
     }
     finally skolemsOutstanding = saved
   }
@@ -1421,8 +1376,55 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
   /** A new type comparer of the same type as this one, using the given context. */
   def copyIn(ctx: Context) = new TypeComparer(ctx)
 
+  // ----------- Diagnostics --------------------------------------------------
+  
   /** A hook for showing subtype traces. Overridden in ExplainingTypeComparer */
   def traceIndented[T](str: String)(op: => T): T = op
+    
+  private def traceInfo(tp1: Type, tp2: Type) =
+    s"${tp1.show} <:< ${tp2.show}" +
+    (if (ctx.settings.verbose.value) s" ${tp1.getClass} ${tp2.getClass}${if (frozenConstraint) " frozen" else ""}" else "")
+
+  /** Map that approximates each param in constraint by its lower bound.
+   *  Currently only used for diagnostics.
+   */
+  val approxParams = new TypeMap {
+    def apply(tp: Type): Type = tp.stripTypeVar match {
+      case tp: PolyParam if constraint contains tp =>
+        this(constraint.bounds(tp).lo)
+      case tp =>
+        mapOver(tp)
+    }
+  }
+
+  /** Show subtype goal that led to an assertion failure */
+  def showGoal(tp1: Type, tp2: Type) = {
+    println(disambiguated(implicit ctx => s"assertion failure for ${tp1.show} <:< ${tp2.show}, frozen = $frozenConstraint"))
+    def explainPoly(tp: Type) = tp match {
+      case tp: PolyParam => println(s"polyparam ${tp.show} found in ${tp.binder.show}")
+      case tp: TypeRef if tp.symbol.exists => println(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
+      case tp: TypeVar => println(s"typevar ${tp.show}, origin = ${tp.origin}")
+      case _ => println(s"${tp.show} is a ${tp.getClass}")
+    }
+    explainPoly(tp1)
+    explainPoly(tp2)
+  }
+
+  /** Record statistics about the total number of subtype checks
+   *  and the number of "successful" subtype checks, i.e. checks
+   *  that form part of a subtype derivation tree that's ultimately successful.
+   */
+  def recordStatistics(result: Boolean, prevSuccessCount: Int) = {
+    // Stats.record(s"isSubType ${tp1.show} <:< ${tp2.show}")
+    totalCount += 1
+    if (result) successCount += 1 else successCount = prevSuccessCount
+    if (recCount == 0) {
+      Stats.record("successful subType", successCount)
+      Stats.record("total subType", totalCount)
+      successCount = 0
+      totalCount = 0
+    }
+  }
 }
 
 object TypeComparer {
