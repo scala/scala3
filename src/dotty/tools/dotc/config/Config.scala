@@ -21,6 +21,11 @@ object Config {
    */
   final val checkConstraintsNonCyclicTrans = false
   
+  /** Check that each constraint resulting from a subtype test
+   *  is satisfiable.
+   */
+  final val checkConstraintsSatisfiable = false
+  
   /** Type comparer will fail with an assert if the upper bound
    *  of a constrained parameter becomes Nothing. This should be turned
    *  on only for specific debugging as normally instantiation to Nothing

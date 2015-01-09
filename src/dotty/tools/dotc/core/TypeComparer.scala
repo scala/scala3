@@ -34,6 +34,18 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
    */
   protected var ignoreConstraint = false
 
+  def ignoringConstraint[T](op: => T): T = {
+      val savedIgnore = ignoreConstraint
+      val savedFrozen = frozenConstraint
+      ignoreConstraint = true
+      frozenConstraint = true
+      try op
+      finally {
+        ignoreConstraint = savedIgnore
+        frozenConstraint = savedFrozen        
+      }
+    }
+
   /** Compare a solution of the constraint instead of the constrained parameters.
    *  The solution maps every parameter to its lower bound.
    */
@@ -41,14 +53,9 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
 
   private var needsGc = false
   
-  /** Bounds for constrained parameters yet to be added to the constraint */
-  private var pendingBoundss: SimpleMap[PolyParam, TypeBounds] = SimpleMap.Empty
-
-  /** If `param` is in `needsSatCheck` then the constraint should be checked
-   *  for satisfiability after `param`'s bound are updated.
-   */
-  private var needsSatCheck: Set[PolyParam] = Set()
-
+  /** The parameters currently being constrained by addConstraint */
+  private var pendingParams: Set[PolyParam] = Set()
+  
   /** Is a subtype check in course? In that case we may not
    *  permanently instantiate type variables, because the corresponding
    *  constraint might still be retracted and the instantiation should
@@ -173,107 +180,117 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
      *  make sure 'B >: A' gets added and vice versa. Furthermore, if the constraint
      *  implies 'A <: B <: A', A and B get unified. 
      */
-    def addBi(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = 
+    def addc(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = 
       constraint.bounds(param) match {
         case TypeBounds(plo: PolyParam, phi) if (plo eq phi) && constraint.contains(plo) => 
-          addBi(plo, bound, fromBelow)
-        case _ =>
+          addc(plo, bound, fromBelow)
+        case pbounds0 =>
           bound match {
             case bound: PolyParam if constraint contains bound =>
-              val TypeBounds(lo, hi) = constraint.bounds(bound)
+              val bbounds0 @ TypeBounds(lo, hi) = constraint.bounds(bound)
               if (lo eq hi)
-                addBi(param, lo, fromBelow)
+                addc(param, lo, fromBelow)
               else if (param == bound)
                 true
               else if (fromBelow && param.occursIn(lo, fromBelow = true))
                 unify(param, bound)
               else if (!fromBelow && param.occursIn(hi, fromBelow = false))
                 unify(bound, param)
-              else
-                addUni(param, bound, fromBelow) &&
-                  addUni(bound, param, !fromBelow)
+              else {
+                val pbounds = prepare(param, bound, fromBelow)
+                val bbounds = prepare(bound, param, !fromBelow)
+                pbounds.exists && bbounds.exists && {
+                  install(param, pbounds.bounds, pbounds0)
+                  install(bound, bbounds.bounds, bbounds0)
+                  true
+                }
+              }
             case bound: AndOrType if fromBelow != bound.isAnd =>
-              addBi(param, bound.tp1, fromBelow) &&
-                addBi(param, bound.tp2, fromBelow)
+              addc(param, bound.tp1, fromBelow) &&
+                addc(param, bound.tp2, fromBelow)
             case bound: WildcardType =>
               true
             case bound => // !!! remove to keep the originals
-              addUni(param, bound, fromBelow)
+              val pbounds = prepare(param, bound, fromBelow)
+              pbounds.exists && {
+                install(param, pbounds.bounds, pbounds0)
+                true
+              }
           }
       }
     
-    /** Add constraint without propagating in the other direction or unifying */
-    def addUni(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
-      val oldBounds = constraint.bounds(param)
-      def narrowedBounds(bounds: TypeBounds): TypeBounds = {
-        val savedIgnore = ignoreConstraint
-        val savedFrozen = frozenConstraint
-        ignoreConstraint = true
-        frozenConstraint = true
-        try
-          if (fromBelow) bounds.derivedTypeBounds(bounds.lo | bound, bounds.hi)
-          else bounds.derivedTypeBounds(bounds.lo, bounds.hi & bound)
-        finally {
-          ignoreConstraint = savedIgnore
-          frozenConstraint = savedFrozen
-        }
+    /** Install bounds for param */
+    def install(param: PolyParam, newBounds: TypeBounds, oldBounds: TypeBounds): Unit = {
+      val curBounds = constraint.bounds(param)
+      constraint = constraint.updated(param, newBounds)
+      if (curBounds ne oldBounds) {
+        // In this case the bounds were updated previously by a recursive isSubType in 
+        // the satisfiability check of prepare. Reapply the previously added bounds, but
+        // go through a full addConstraint in order to eliminate any cyclic dependencies
+        // via unification. 
+        if (!ignoringConstraint(isSubType(curBounds.lo, newBounds.lo)))
+          addConstraint(param, curBounds.lo, fromBelow)
+        if (!ignoringConstraint(isSubType(newBounds.hi, curBounds.hi)))
+          addConstraint(param, curBounds.hi, !fromBelow)
       }
-      val newBounds = narrowedBounds(oldBounds)
-      (param == bound) || 
-      (oldBounds eq newBounds) || 
-      { val pendingBounds = pendingBoundss(param)
-        if (pendingBounds == null)
-          // Why the pendingBoundss tests? It is possible that recursive subtype invocations
-          // come back with another constraint for `param`. An example came up when compiling 
-          // ElimRepeated where we got the constraint
-          //
-          //      Coll <: IterableLike[Tree, Coll]
-          //
-          // and added 
-          //
-          //      List[Tree] <: Coll
-          //
-          // The recursive bounds test is then
-          //
-          //      List[Tree] <: IterableLike[Tree, Coll]
-          //
-          // and because of the F-bounded polymorphism in the supertype of List, 
-          // i.e. List[T] <: IterableLike[T, List[T]], this leads again to
-          //
-          //      List[Tree] <: Coll
-          try {
-            pendingBoundss = pendingBoundss.updated(param, newBounds)
-            isSubType(newBounds.lo, newBounds.hi) && {
-              constraint = constraint.updated(param, pendingBoundss(param))
-              if (needsSatCheck(param)) {
-                assert(isSatisfiable)
-                needsSatCheck -= param
-              }
+    }
+    
+    /** Compute new bounds for `param` and check whether they are
+     *  satisfiable. The check might in turn trigger other additions to the constraint.
+     *  @return  The new bounds for `param` (which are not installed yet), or 
+     *           NoType, if the new constraint would not be satisfiable.
+     */
+    def prepare(param: PolyParam, bound: Type, fromBelow: Boolean): Type = {
+      constr.println(s"prepare ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show}")
+      val oldBounds = constraint.bounds(param)
+      val newBounds = ignoringConstraint {
+        if (fromBelow) oldBounds.derivedTypeBounds(oldBounds.lo | bound, oldBounds.hi)
+        else oldBounds.derivedTypeBounds(oldBounds.lo, oldBounds.hi & bound)
+      }
+      val ok =
+        (param == bound) ||
+          (oldBounds eq newBounds) ||
+          {
+            if (pendingParams contains param) {
+              // Why the pendingParams test? It is possible that recursive subtype invocations
+              // come back with another constraint for `param`. An example came up when compiling 
+              // ElimRepeated where we got the constraint
+              //
+              //      Coll <: IterableLike[Tree, Coll]
+              //
+              // and added 
+              //
+              //      List[Tree] <: Coll
+              //
+              // The recursive bounds test is then
+              //
+              //      List[Tree] <: IterableLike[Tree, Coll]
+              //
+              // and because of the F-bounded polymorphism in the supertype of List, 
+              // i.e. List[T] <: IterableLike[T, List[T]], this leads again to
+              //
+              //      List[Tree] <: Coll
+              // 
+              // If a parameter is already pending, we avoid revisiting it here. 
+              // Instead we combine the bounds computed here with the originally
+              // computed bounds when installing the original type.
+              constr.println(i"deferred bounds: $param $newBounds")
               true
+            } else {
+              pendingParams += param
+              try isSubType(newBounds.lo, newBounds.hi)
+              finally pendingParams -= param
             }
           }
-          finally pendingBoundss = pendingBoundss.remove(param)
-        else {
-          // TODO: investigate - if the last line in this comment is uncommented, we get a cyclic
-          //       constraint error in tools/io. For now, we do without even though this
-          //       risks allowing unsatisfiable constraints to get through.
-          //       Unsatisfiable constraints are caught by an assertion that is executed later
-          //       in case we got here.
-          //pendingBoundss = pendingBoundss.updated(param, narrowedBounds(pendingBounds))
-
-          needsSatCheck += param
-          true
-        }
-      }
+      if (ok) newBounds else NoType
     }
  
     val bound = deSkolemize(bound0, toSuper = fromBelow).dealias.stripTypeVar
     def description = s"${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} to ${constraint.show}"
     constr.println(s"adding $description")
-    val res = addBi(param, bound, fromBelow)
+    val res = addc(param, bound, fromBelow)
     constr.println(s"added $description")
     if (Config.checkConstraintsNonCyclicTrans) constraint.checkNonCyclicTrans()
-    if (needsSatCheck(param)) assert(isSatisfiable)
     res
   }
 
@@ -313,7 +330,10 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
     if ((tp2 eq tp1) ||
         (tp2 eq WildcardType) ||
         (tp2 eq AnyType) && tp1.isValueType) return true
-    isSubType(tp1, tp2)
+    try isSubType(tp1, tp2)
+    finally 
+      if (Config.checkConstraintsSatisfiable) 
+        assert(isSatisfiable, constraint.show)
   }
 
   protected def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
