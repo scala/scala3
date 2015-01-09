@@ -766,14 +766,25 @@ object Types {
      *    P { ... type T = / += / -= U ... } # T
      *
      *  to just U. Does not perform the reduction if the resulting type would contain
-     *  a reference to the "this" of the current refined type.
+     *  a reference to the "this" of the current refined type. But does follow
+     *  aliases in order to avoid such references. Example:
+     *  
+     *      Lambda$I { type $hk$Arg0 = String, type Apply = this<0>.$hk$Arg0 } # Apply
+     *    
+     *  Here, the refinement for `Apply` has a refined this node, yet dereferencing ones more
+     *  yields `String` as the result of lookupRefined.
      */
     def lookupRefined(name: Name)(implicit ctx: Context): Type = {
       def loop(pre: Type): Type = pre.stripTypeVar match {
         case pre: RefinedType =>
           if (pre.refinedName ne name) loop(pre.parent)
           else pre.refinedInfo match {
-            case TypeAlias(tp) if !pre.refinementRefersToThis => tp
+            case TypeAlias(tp) => 
+              if (!pre.refinementRefersToThis) tp
+              else tp match {
+                case TypeRef(RefinedThis(_, 0), alias) => lookupRefined(alias)
+                case _ => NoType
+              }
             case _ => loop(pre.parent)
           }
         case RefinedThis(rt, _) =>
@@ -1743,29 +1754,8 @@ object Types {
     private var refinementRefersToThisKnown: Boolean = false
     
     def refinementRefersToThis(implicit ctx: Context): Boolean = {
-      def recur(tp: Type, level: Int): Boolean = tp.stripTypeVar match {
-        case RefinedThis(rt, `level`) => 
-          true
-        case tp: NamedType =>
-          tp.info match {
-            case TypeAlias(alias) => recur(alias, level)
-            case _ => !tp.symbol.isStatic && recur(tp.prefix, level)
-          }
-        case tp: RefinedType => 
-          recur(tp.refinedInfo, level + 1) || 
-          recur(tp.parent, level)
-        case tp: TypeBounds => 
-          recur(tp.lo, level) || 
-          recur(tp.hi, level)
-        case tp: AnnotatedType => 
-          recur(tp.underlying, level)
-        case tp: AndOrType => 
-          recur(tp.tp1, level) || recur(tp.tp2, level)
-        case _ => 
-          false
-      }
       if (!refinementRefersToThisKnown) {
-        refinementRefersToThisCache = recur(refinedInfo, 0)
+        refinementRefersToThisCache = refinedInfo.containsRefinedThis(0)
         refinementRefersToThisKnown = true
       }
       refinementRefersToThisCache
@@ -1837,7 +1827,8 @@ object Types {
                && !parent.isLambda)
         derivedRefinedType(parent.EtaExpand, refinedName, refinedInfo)
       else
-        RefinedType(parent, refinedName, rt => refinedInfo.substThis0(this, RefinedThis(rt, -1))) // !!! TODO: replace with simply `refinedInfo`
+        if (false) RefinedType(parent, refinedName, refinedInfo) 
+        else RefinedType(parent, refinedName, rt => refinedInfo.substThis0(this, RefinedThis(rt, -1))) // !!! TODO: replace with simply `refinedInfo`
     }
 
     override def equals(that: Any) = that match {

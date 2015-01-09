@@ -372,6 +372,31 @@ class TypeApplications(val self: Type) extends AnyVal {
     case JavaArrayType(elemtp) => elemtp
     case _ => firstBaseArgInfo(defn.SeqClass)
   }
+  
+  def containsRefinedThis(level: Int)(implicit ctx: Context): Boolean = {
+    def recur(tp: Type, level: Int): Boolean = tp.stripTypeVar match {
+      case RefinedThis(rt, `level`) =>
+        true
+      case tp: NamedType =>
+        tp.info match {
+          case TypeAlias(alias) => recur(alias, level)
+          case _ => !tp.symbol.isStatic && recur(tp.prefix, level)
+        }
+      case tp: RefinedType =>
+        recur(tp.refinedInfo, level + 1) ||
+          recur(tp.parent, level)
+      case tp: TypeBounds =>
+        recur(tp.lo, level) ||
+          recur(tp.hi, level)
+      case tp: AnnotatedType =>
+        recur(tp.underlying, level)
+      case tp: AndOrType =>
+        recur(tp.tp1, level) || recur(tp.tp2, level)
+      case _ =>
+        false
+    }
+    recur(self, level) 
+  }
 
   /** Given a type alias
    *
