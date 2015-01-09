@@ -787,13 +787,19 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
   }
 
   /** Skip refinements in `tp2` which match corresponding refinements in `tp1`.
-   *  "Match" means: They appear in the same order, refine the same names, and
-   *  the refinement in `tp1` is an alias type.
+   *  "Match" means: 
+   *   - they appear in the same order, 
+   *   - they refine the same names, 
+   *   - the refinement in `tp1` is an alias type, and 
+   *   - neither refinement refers back to the refined type via a refined this.
    *  @return  The parent type of `tp2` after skipping the matching refinements.
    */
-  private def skipMatching(tp1w: Type, tp2: RefinedType): Type = tp1w match {
-    case tp1w @ RefinedType(parent1, name1)
-    if name1 == tp2.refinedName && tp1w.refinedInfo.isInstanceOf[TypeAlias] =>
+  private def skipMatching(tp1: Type, tp2: RefinedType): Type = tp1 match {
+    case tp1 @ RefinedType(parent1, name1)
+    if name1 == tp2.refinedName && 
+       tp1.refinedInfo.isInstanceOf[TypeAlias] &&
+       !tp2.refinementRefersToThis &&
+       !tp1.refinementRefersToThis =>
       tp2.parent match {
         case parent2: RefinedType => skipMatching(parent1, parent2)
         case parent2 => parent2
@@ -805,6 +811,7 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
    *  up to parent type `limit`?
    *  @pre `tp1` has the necessary number of refinements, they are type aliases,
    *       and their names match the corresponding refinements in `tp2`.
+   *       Further, no refinement refers back to the refined type via a refined this.
    *  The precondition is established by `skipMatching`.
    */
   private def isSubRefinements(tp1: RefinedType, tp2: RefinedType, limit: Type): Boolean =

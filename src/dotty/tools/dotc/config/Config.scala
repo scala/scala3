@@ -47,7 +47,7 @@ object Config {
   final val verboseExplainSubtype = true
   
   /** If this flag is set, take the fast path when comparing same-named type-aliases and types */
-  final val fastPathForRefinedSubtype = false
+  final val fastPathForRefinedSubtype = true
 
   /** When set, use new signature-based matching.
    *  Advantantage of doing so: It's supposed to be faster
