@@ -773,11 +773,7 @@ object Types {
         case pre: RefinedType =>
           if (pre.refinedName ne name) loop(pre.parent)
           else pre.refinedInfo match {
-            case TypeAlias(tp) if !pre.refinementRefersToThis =>
-              this.member(name).info match {
-                case TypeAlias(tp) => tp
-                case _ => NoType
-              }
+            case TypeAlias(tp) if !pre.refinementRefersToThis => tp
             case _ => loop(pre.parent)
           }
         case RefinedThis(rt, _) =>
