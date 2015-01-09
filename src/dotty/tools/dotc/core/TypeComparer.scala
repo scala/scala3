@@ -796,8 +796,12 @@ class TypeComparer(initctx: Context) extends DotClass with Skolemization {
   def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean = /*>|>*/ ctx.traceIndented(s"hasMatchingMember($tp1 . $name, ${tp2.refinedInfo}) ${tp1.member(name).info.show}", subtyping) /*<|<*/ {
     val saved = skolemsOutstanding
     try {
-      val base = ensureSingleton(tp1)
-      var rinfo2 = tp2.refinedInfo.substRefinedThis(0, base)
+      var base = tp1
+      var rinfo2 = tp2.refinedInfo
+      if (tp2.refinementRefersToThis) {
+        base = ensureSingleton(base)
+        rinfo2 = rinfo2.substRefinedThis(0, base)
+      }
       def qualifies(m: SingleDenotation) = isSubType(m.info, rinfo2)
       def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
         case mbr: SingleDenotation => qualifies(mbr)

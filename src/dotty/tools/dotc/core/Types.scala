@@ -438,7 +438,9 @@ object Types {
         val pdenot = go(tp.parent)
         val rinfo = pre match {
           case pre: RefinedType => tp.refinedInfo.substThis0(tp, RefinedThis(pre, -1))
-          case _ => tp.refinedInfo.substRefinedThis(0, pre)
+          case _ => 
+            if (tp.refinementRefersToThis) tp.refinedInfo.substRefinedThis(0, pre)
+            else tp.refinedInfo
         }
         if (Types.goRefinedCheck) {
           val rinfo0 = tp.refinedInfo.substThis0(tp, pre)
