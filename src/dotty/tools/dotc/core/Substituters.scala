@@ -183,13 +183,8 @@ trait Substituters { this: Context =>
   // the target type from RefinedThis.
   final def substThis0(tp: Type, from: RefinedType, to: Type, theMap: SubstRefinedThisMap0): Type =
     tp match {
-      case tp @ RefinedThis(rt, level) =>
-        if (rt eq from) 
-          to match { // !!! TODO drop
-            case RefinedThis(rt1, -1) => RefinedThis(rt1, level)
-            case _ => to
-          }
-        else tp
+      case tp @ RefinedThis(rt) =>
+        if (rt eq from) to else tp
       case tp: NamedType =>
         if (tp.currentSymbol.isStatic) tp
         else tp.derivedSelect(substThis0(tp.prefix, from, to, theMap))
@@ -202,29 +197,6 @@ trait Substituters { this: Context =>
       case _ =>
         (if (theMap != null) theMap else new SubstRefinedThisMap0(from, to))
           .mapOver(tp)
-    }      
-      
-    final def substRefinedThis(tp: Type, level: Int, to: Type, theMap: SubstRefinedThisMap): Type =
-    tp match {
-      case tp @ RefinedThis(rt, l) if l == level =>
-        to
-      case tp: NamedType =>
-        if (tp.currentSymbol.isStatic) tp
-        else tp.derivedSelect(substRefinedThis(tp.prefix, level, to, theMap))
-      case _: ThisType | _: BoundType | NoPrefix =>
-        tp
-      case tp: RefinedType =>
-        tp.derivedRefinedType(
-            substRefinedThis(tp.parent, level, to, theMap), tp.refinedName, 
-            substRefinedThis(tp.refinedInfo, level + 1, to, theMap))
-      case tp: TypeAlias =>
-        tp.derivedTypeAlias(substRefinedThis(tp.alias, level, to, theMap))
-      case _ =>
-        val m = if (theMap != null) theMap else new SubstRefinedThisMap(to)
-        val saved = m.level
-        m.level = level
-        try m.mapOver(tp)
-        finally m.level = saved
     }
 
   final def substParam(tp: Type, from: ParamType, to: Type, theMap: SubstParamMap): Type =
@@ -300,50 +272,11 @@ trait Substituters { this: Context =>
     def apply(tp: Type): Type = substThis0(tp, from, to, this)
   }
 
-  final class SubstRefinedThisMap(to: Type) extends DeepTypeMap {
-    var level: Int = 0
-    def apply(tp: Type): Type = substRefinedThis(tp, level, to, this)
-  }
-
   final class SubstParamMap(from: ParamType, to: Type) extends DeepTypeMap {
     def apply(tp: Type) = substParam(tp, from, to, this)
   }
 
   final class SubstParamsMap(from: BindingType, to: List[Type]) extends DeepTypeMap {
     def apply(tp: Type) = substParams(tp, from, to, this)
-  }
-
-  /** Substitute every occurrence of symbol `from_i` with `RefinedThis(leve).select(to_i)`
-   *  where level represents the nesting level of the occurrence (i.e. number
-   *  of refinedInfos between substituted type and the occurrence.
-   *  TODO: Drop `rt` once it is dropped from RefinedThis
-   *  TODO: Apply to enclosing refined type instead of refined info. That way we
-   *        can optimize for types not containing any RefinedThis
-   */
-  final class SubstWithRefinedSelectMap(rt: RefinedType, from: List[Symbol], to: List[TypeName]) extends DeepTypeMap {
-    private var level = 0
-    def apply(tp: Type): Type = tp match {
-      case tp: NamedType =>
-        val sym = tp.symbol
-        var fs = from
-        var ts = to
-        while (fs.nonEmpty) {
-          if (fs.head eq sym) 
-            return RefinedThis(rt, level).select(ts.head)
-          fs = fs.tail
-          ts = ts.tail
-        }
-        if (sym.isStatic && !existsStatic(from)) tp
-        else tp.derivedSelect(apply(tp.prefix))
-      case tp: RefinedType =>
-        val parent1 = apply(tp.parent)
-        level += 1
-        try tp.derivedRefinedType(parent1, tp.refinedName, apply(tp.refinedInfo))
-        finally level -= 1
-      case tp: TypeAlias =>
-        tp.derivedTypeAlias(apply(tp.alias))
-      case _ =>
-        mapOver(tp)
-    }
   }
 }

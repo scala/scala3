@@ -373,29 +373,27 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => firstBaseArgInfo(defn.SeqClass)
   }
   
-  def containsRefinedThis(level: Int)(implicit ctx: Context): Boolean = {
-    def recur(tp: Type, level: Int): Boolean = tp.stripTypeVar match {
-      case RefinedThis(rt, `level`) =>
-        true
+  def containsRefinedThis(target: Type)(implicit ctx: Context): Boolean = {
+    def recur(tp: Type): Boolean = tp.stripTypeVar match {
+      case RefinedThis(tp) =>
+        tp eq target
       case tp: NamedType =>
         tp.info match {
-          case TypeAlias(alias) => recur(alias, level)
-          case _ => !tp.symbol.isStatic && recur(tp.prefix, level)
+          case TypeAlias(alias) => recur(alias)
+          case _ => !tp.symbol.isStatic && recur(tp.prefix)
         }
       case tp: RefinedType =>
-        recur(tp.refinedInfo, level + 1) ||
-          recur(tp.parent, level)
+        recur(tp.refinedInfo) || recur(tp.parent)
       case tp: TypeBounds =>
-        recur(tp.lo, level) ||
-          recur(tp.hi, level)
+        recur(tp.lo) || recur(tp.hi)
       case tp: AnnotatedType =>
-        recur(tp.underlying, level)
+        recur(tp.underlying)
       case tp: AndOrType =>
-        recur(tp.tp1, level) || recur(tp.tp2, level)
+        recur(tp.tp1) || recur(tp.tp2)
       case _ =>
         false
     }
-    recur(self, level) 
+    recur(self) 
   }
 
   /** Given a type alias
@@ -432,14 +430,16 @@ class TypeApplications(val self: Type) extends AnyVal {
       if (bsyms.isEmpty) {
         val correspondingNames = correspondingParamName.values.toSet
 
+       def replacements(rt: RefinedType): List[Type] =
+          for (sym <- boundSyms)
+            yield TypeRef(RefinedThis(rt), correspondingParamName(sym))
+
         def rewrite(tp: Type): Type = tp match {
           case tp @ RefinedType(parent, name: TypeName) =>
             if (correspondingNames contains name) rewrite(parent)
             else RefinedType(
-              rewrite(parent),
-              name,
-              new ctx.SubstWithRefinedSelectMap(
-                _, boundSyms, boundSyms map correspondingParamName)(tp.refinedInfo))
+              rewrite(parent), name,
+              rt => tp.refinedInfo.subst(boundSyms, replacements(rt)))
           case tp =>
             tp
         }
@@ -474,8 +474,9 @@ class TypeApplications(val self: Type) extends AnyVal {
     def expand(tp: Type) = {
       val lambda = defn.lambdaTrait(boundSyms.map(_.variance))
       val substitutedRHS = (rt: RefinedType) => {
-        val argNames = boundSyms.indices.toList.map(tpnme.lambdaArgName)
-        new ctx.SubstWithRefinedSelectMap(rt, boundSyms, argNames)(tp).bounds.withVariance(1)
+        val argRefs = boundSyms.indices.toList.map(i =>
+          RefinedThis(rt).select(tpnme.lambdaArgName(i)))
+        tp.subst(boundSyms, argRefs).bounds.withVariance(1)
       }
       val res = RefinedType(lambda.typeRef, tpnme.Apply, substitutedRHS)
       //println(i"lambda abstract $self wrt $boundSyms%, % --> $res")

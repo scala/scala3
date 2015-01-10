@@ -436,12 +436,9 @@ object Types {
       }
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
-        val rinfo = pre match {
-          case pre: RefinedType => tp.refinedInfo.substThis0(tp, RefinedThis(pre, -1))
-          case _ => 
-            if (tp.refinementRefersToThis) tp.refinedInfo.substRefinedThis(0, pre)
-            else tp.refinedInfo
-        }
+        val rinfo =
+          if (tp.refinementRefersToThis) tp.refinedInfo.substThis0(tp, pre)
+          else tp.refinedInfo
         if (name.isTypeName) { // simplified case that runs more efficiently
           val jointInfo = if (rinfo.isAlias) rinfo else pdenot.info & rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
@@ -777,12 +774,12 @@ object Types {
             case TypeAlias(tp) => 
               if (!pre.refinementRefersToThis) tp
               else tp match {
-                case TypeRef(RefinedThis(_, 0), alias) => lookupRefined(alias)
+                case TypeRef(RefinedThis(`pre`), alias) => lookupRefined(alias)
                 case _ => NoType
               }
             case _ => loop(pre.parent)
           }
-        case RefinedThis(rt, _) =>
+        case RefinedThis(rt) =>
           rt.lookupRefined(name)
         case pre: WildcardType =>
           WildcardType
@@ -946,10 +943,6 @@ object Types {
     /** Substitute all occurrences of `RefinedThis(rt)` by `tp` !!! TODO remove */
     final def substThis0(rt: RefinedType, tp: Type)(implicit ctx: Context): Type =
       ctx.substThis0(this, rt, tp, null)
-
-    /** Substitute all occurrences of `RefinedThis(level)` by `tp` */
-    final def substRefinedThis(level: Int, to: Type)(implicit ctx: Context): Type =
-      ctx.substRefinedThis(this, level, to, null)
 
     /** Substitute a bound type by some other type */
     final def substParam(from: ParamType, to: Type)(implicit ctx: Context): Type =
@@ -1750,49 +1743,15 @@ object Types {
     
     def refinementRefersToThis(implicit ctx: Context): Boolean = {
       if (!refinementRefersToThisKnown) {
-        refinementRefersToThisCache = refinedInfo.containsRefinedThis(0)
+        refinementRefersToThisCache = refinedInfo.containsRefinedThis(this)
         refinementRefersToThisKnown = true
       }
       refinementRefersToThisCache
-    }
-    
-    def checkLevel(implicit ctx: Context): Unit = {
-      val checkAccu = new TypeAccumulator[Unit] {
-        var level = 0
-        def apply(x: Unit, tp: Type) = tp.stripTypeVar match {
-          case RefinedThis(rt, l) => 
-            def dominates(tp: Type, rt: RefinedType): Boolean = 
-              (tp eq rt) || {
-                tp match {
-                  case RefinedType(parent, _) => dominates(parent, rt)
-                  case _ => false
-                }
-              }
-            if (rt eq RefinedType.this) assert(l == level, RefinedType.this)
-          case tp: RefinedType => 
-            level += 1
-            apply(x, tp.refinedInfo)
-            level -= 1
-            apply(x, tp.parent)
-          case tp: TypeBounds => 
-            apply(x, tp.lo)
-            apply(x, tp.hi)
-          case tp: AnnotatedType => 
-            apply(x, tp.underlying)
-          case tp: AndOrType => 
-            apply(x, tp.tp1)
-            apply(x, tp.tp2)
-          case _ => 
-            foldOver(x, tp)
-        }
-      }
-      checkAccu((), refinedInfo)
     }
 
     override def underlying(implicit ctx: Context) = parent
 
     private def checkInst(implicit ctx: Context): this.type = {
-      checkLevel
       if (Config.checkLambdaVariance)
         refinedInfo match {
           case refinedInfo: TypeBounds if refinedInfo.variance != 0 && refinedName.isLambdaArgName =>
@@ -1820,7 +1779,7 @@ object Types {
         derivedRefinedType(parent.EtaExpand, refinedName, refinedInfo)
       else
         if (false) RefinedType(parent, refinedName, refinedInfo) 
-        else RefinedType(parent, refinedName, rt => refinedInfo.substThis0(this, RefinedThis(rt, -1))) // !!! TODO: replace with simply `refinedInfo`
+        else RefinedType(parent, refinedName, rt => refinedInfo.substThis0(this, RefinedThis(rt)))
     }
 
     override def equals(that: Any) = that match {
@@ -2222,11 +2181,11 @@ object Types {
    *  @param level  The number of enclosing refined types between
    *                the `this` reference and its target.
    */
-  case class RefinedThis(binder: RefinedType, level: Int) extends BoundType with SingletonType {
+  case class RefinedThis(binder: RefinedType) extends BoundType with SingletonType {
     type BT = RefinedType
     override def underlying(implicit ctx: Context) = binder
-    def copyBoundType(bt: BT) = RefinedThis(bt, level)
-
+    def copyBoundType(bt: BT) = RefinedThis(bt)
+    
     // need to customize hashCode and equals to prevent infinite recursion for
     // refinements that refer to the refinement type via this
     override def computeHash = addDelta(binder.identityHash, 41)
@@ -2234,7 +2193,7 @@ object Types {
       case that: RefinedThis => this.binder eq that.binder
       case _ => false
     }
-    override def toString = s"RefinedThis($level, ${binder.hashCode})"
+    override def toString = s"RefinedThis(${binder.hashCode})"
   }
 
   // ------------ Type variables ----------------------------------------

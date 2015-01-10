@@ -660,8 +660,12 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val parent = parents.reduceLeft(AndType(_, _))
         if (decls.isEmpty) parent
         else {
-          def addRefinement(tp: Type, sym: Symbol) =
-            RefinedType(tp, sym.name, ctx.thisToRefinedThis(_, clazz, 0)(sym.info))
+          def addRefinement(tp: Type, sym: Symbol) = {
+            def subst(info: Type, rt: RefinedType) = 
+              if (clazz.isClass) info.substThis(clazz.asClass, RefinedThis(rt))
+              else info // turns out some symbols read into `clazz` are not classes, not sure why this is the case.
+            RefinedType(tp, sym.name, subst(sym.info, _))
+          }
           (parent /: decls.toList)(addRefinement).asInstanceOf[RefinedType]
         }
       case CLASSINFOtpe =>
