@@ -442,11 +442,6 @@ object Types {
             if (tp.refinementRefersToThis) tp.refinedInfo.substRefinedThis(0, pre)
             else tp.refinedInfo
         }
-        if (Types.goRefinedCheck) {
-          val rinfo0 = tp.refinedInfo.substThis0(tp, pre)
-          if ((rinfo0 ne rinfo) && (rinfo0.show != rinfo.show))
-          println(s"findMember discrepancy for $tp , $name, pre = $pre, old = $rinfo0, new = $rinfo")
-        }
         if (name.isTypeName) { // simplified case that runs more efficiently
           val jointInfo = if (rinfo.isAlias) rinfo else pdenot.info & rinfo
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
@@ -1774,9 +1769,6 @@ object Types {
                 }
               }
             if (rt eq RefinedType.this) assert(l == level, RefinedType.this)
-            if (Types.reverseLevelCheck && l == level) 
-              assert(dominates(rt, RefinedType.this) || dominates(RefinedType.this, rt), 
-                  RefinedType.this)              
           case tp: RefinedType => 
             level += 1
             apply(x, tp.refinedInfo)
@@ -3050,9 +3042,6 @@ object Types {
 
   var debugTrace = false
   
-  var reverseLevelCheck = false
-  var goRefinedCheck = false
-
   val watchList = List[String](
   ) map (_.toTypeName)
 

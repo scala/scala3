@@ -507,7 +507,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *     LambdaXYZ { type Apply = B[$hkArg$0, ..., $hkArg$n] }
    *               { type $hkArg$0 = T1; ...; type $hkArg$n = Tn }
    *
-   *  satisfies predicate `p`. Try base types in the order of ther occurrence in `baseClasses`.
+   *  satisfies predicate `p`. Try base types in the order of their occurrence in `baseClasses`.
    *  A type parameter matches a varianve V if it has V as its variance or if V == 0.
    */
   def testLifted(tparams: List[Symbol], p: Type => Boolean)(implicit ctx: Context): Boolean = {
