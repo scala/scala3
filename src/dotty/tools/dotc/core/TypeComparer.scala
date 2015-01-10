@@ -258,9 +258,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
             }
         }
       comparePolyParam
-    case SkolemType(binder1) =>
+    case tp1: SkolemType =>
       tp2 match {
-        case SkolemType(binder2) if binder1 == binder2 => true
+        case tp2: SkolemType if tp1 == tp2 => true
         case _ => thirdTry(tp1, tp2)
       }
     case tp1: BoundType =>
