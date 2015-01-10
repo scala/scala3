@@ -258,9 +258,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
             }
         }
       comparePolyParam
-    case RefinedThis(rt1) =>
+    case SkolemType(binder1) =>
       tp2 match {
-        case RefinedThis(rt2) if rt1 == rt2 => true
+        case SkolemType(binder2) if binder1 == binder2 => true
         case _ => thirdTry(tp1, tp2)
       }
     case tp1: BoundType =>
@@ -525,7 +525,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     try {
       def rebindNeeded = tp2.refinementRefersToThis
       val base = if (rebindNeeded) ensureSingleton(tp1) else tp1
-      val rinfo2 = if (rebindNeeded) tp2.refinedInfo.substThis0(tp2, base) else tp2.refinedInfo
+      val rinfo2 = if (rebindNeeded) tp2.refinedInfo.substSkolem(tp2, base) else tp2.refinedInfo
       def qualifies(m: SingleDenotation) = isSubType(m.info, rinfo2)
       def memberMatches(mbr: Denotation): Boolean = mbr match { // inlined hasAltWith for performance
         case mbr: SingleDenotation => qualifies(mbr)

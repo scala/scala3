@@ -662,7 +662,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         else {
           def addRefinement(tp: Type, sym: Symbol) = {
             def subst(info: Type, rt: RefinedType) = 
-              if (clazz.isClass) info.substThis(clazz.asClass, RefinedThis(rt))
+              if (clazz.isClass) info.substThis(clazz.asClass, SkolemType(rt))
               else info // turns out some symbols read into `clazz` are not classes, not sure why this is the case.
             RefinedType(tp, sym.name, subst(sym.info, _))
           }

@@ -49,7 +49,7 @@ object Types {
    *        |              |                +--- SuperType
    *        |              |                +--- ConstantType
    *        |              |                +--- MethodParam
-   *        |              |                +--- RefinedThis
+   *        |              |                +--- SkolemType
    *        |              +- PolyParam
    *        |              +- RefinedType
    *        |              +- TypeBounds
@@ -437,7 +437,7 @@ object Types {
       def goRefined(tp: RefinedType) = {
         val pdenot = go(tp.parent)
         val rinfo =
-          if (tp.refinementRefersToThis) tp.refinedInfo.substThis0(tp, pre)
+          if (tp.refinementRefersToThis) tp.refinedInfo.substSkolem(tp, pre)
           else tp.refinedInfo
         if (name.isTypeName) { // simplified case that runs more efficiently
           val jointInfo = if (rinfo.isAlias) rinfo else pdenot.info & rinfo
@@ -774,13 +774,13 @@ object Types {
             case TypeAlias(tp) => 
               if (!pre.refinementRefersToThis) tp
               else tp match {
-                case TypeRef(RefinedThis(`pre`), alias) => lookupRefined(alias)
+                case TypeRef(SkolemType(`pre`), alias) => lookupRefined(alias)
                 case _ => NoType
               }
             case _ => loop(pre.parent)
           }
-        case RefinedThis(rt) =>
-          rt.lookupRefined(name)
+        case SkolemType(binder) =>
+          binder.lookupRefined(name)
         case pre: WildcardType =>
           WildcardType
         case _ =>
@@ -940,9 +940,9 @@ object Types {
     final def substThisUnlessStatic(cls: ClassSymbol, tp: Type)(implicit ctx: Context): Type =
       if (cls.isStaticOwner) this else ctx.substThis(this, cls, tp, null)
 
-    /** Substitute all occurrences of `RefinedThis(rt)` by `tp` !!! TODO remove */
-    final def substThis0(rt: RefinedType, tp: Type)(implicit ctx: Context): Type =
-      ctx.substThis0(this, rt, tp, null)
+    /** Substitute all occurrences of `SkolemType(binder)` by `tp` */
+    final def substSkolem(binder: Type, tp: Type)(implicit ctx: Context): Type =
+      ctx.substSkolem(this, binder, tp, null)
 
     /** Substitute a bound type by some other type */
     final def substParam(from: ParamType, to: Type)(implicit ctx: Context): Type =
@@ -1334,7 +1334,7 @@ object Types {
      *  to an (unbounded) wildcard type.
      *
      *  (2) Reduce a type-ref `T { X = U; ... } # X`  to   `U`
-     *  provided `U` does not refer with a RefinedThis to the
+     *  provided `U` does not refer with a SkolemType to the
      *  refinement type `T { X = U; ... }`
      */
     def reduceProjection(implicit ctx: Context): Type = {
@@ -1743,7 +1743,7 @@ object Types {
     
     def refinementRefersToThis(implicit ctx: Context): Boolean = {
       if (!refinementRefersToThisKnown) {
-        refinementRefersToThisCache = refinedInfo.containsRefinedThis(this)
+        refinementRefersToThisCache = refinedInfo.containsSkolemType(this)
         refinementRefersToThisKnown = true
       }
       refinementRefersToThisCache
@@ -1779,7 +1779,7 @@ object Types {
         derivedRefinedType(parent.EtaExpand, refinedName, refinedInfo)
       else
         if (false) RefinedType(parent, refinedName, refinedInfo) 
-        else RefinedType(parent, refinedName, rt => refinedInfo.substThis0(this, RefinedThis(rt)))
+        else RefinedType(parent, refinedName, rt => refinedInfo.substSkolem(this, SkolemType(rt)))
     }
 
     override def equals(that: Any) = that match {
@@ -2109,10 +2109,10 @@ object Types {
       }
   }
 
-  // ----- Bound types: MethodParam, PolyParam, RefinedThis --------------------------
+  // ----- Bound types: MethodParam, PolyParam, SkolemType --------------------------
 
   abstract class BoundType extends CachedProxyType with ValueType {
-    type BT <: BindingType
+    type BT <: Type
     def binder: BT
     // Dotty deviation: copyBoundType was copy, but
     // dotty generates copy methods always automatically, and therefore
@@ -2175,25 +2175,20 @@ object Types {
     override def computeHash = doHash(paramNum, binder)
   }
 
-  /** A reference to the `this` of an enclosing refined type.
-   *  @param binder The refinement type referred to the RefinedThis when
-   *                it was created.
-   *  @param level  The number of enclosing refined types between
-   *                the `this` reference and its target.
-   */
-  case class RefinedThis(binder: RefinedType) extends BoundType with SingletonType {
-    type BT = RefinedType
+  /** A skolem type reference with underlying type `binder`. */
+  case class SkolemType(binder: Type) extends BoundType with SingletonType {
+    type BT = Type
     override def underlying(implicit ctx: Context) = binder
-    def copyBoundType(bt: BT) = RefinedThis(bt)
+    def copyBoundType(bt: BT) = SkolemType(bt)
     
     // need to customize hashCode and equals to prevent infinite recursion for
     // refinements that refer to the refinement type via this
     override def computeHash = addDelta(binder.identityHash, 41)
     override def equals(that: Any) = that match {
-      case that: RefinedThis => this.binder eq that.binder
+      case that: SkolemType => this.binder eq that.binder
       case _ => false
     }
-    override def toString = s"RefinedThis(${binder.hashCode})"
+    override def toString = s"SkolemType(${binder.hashCode})"
   }
 
   // ------------ Type variables ----------------------------------------
