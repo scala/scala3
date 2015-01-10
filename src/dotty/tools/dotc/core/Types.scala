@@ -2217,6 +2217,8 @@ object Types {
   }
 
   /** A reference to the `this` of an enclosing refined type.
+   *  @param binder The refinement type referred to the RefinedThis when
+   *                it was created.
    *  @param level  The number of enclosing refined types between
    *                the `this` reference and its target.
    */

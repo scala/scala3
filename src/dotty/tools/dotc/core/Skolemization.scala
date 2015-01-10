@@ -1,14 +1,16 @@
 package dotty.tools.dotc
 package core
 
-import Symbols._, Types._, Contexts._, Decorators._, NameOps._, StdNames._
+import Symbols._, Types._, Contexts._
 import collection.mutable
 
 trait Skolemization {
   
+  implicit val ctx: Context
+
   protected var skolemsOutstanding = false
   
-  def ensureSingleton(tp: Type)(implicit ctx: Context): SingletonType = tp.stripTypeVar match {
+  def ensureSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
     case tp: SingletonType => 
       tp
     case tp: ValueType => 
@@ -22,10 +24,10 @@ trait Skolemization {
    *  @param  toSuper   if true, return the smallest supertype of `tp` with this property
    *                    e;se return the largest subtype.
    */
-  final def deSkolemize(tp: Type, toSuper: Boolean)(implicit ctx: Context): Type = 
+  final def deSkolemize(tp: Type, toSuper: Boolean): Type = 
     if (skolemsOutstanding) deSkolemize(tp, if (toSuper) 1 else -1, Set()) else tp
 
-  private def deSkolemize(tp: Type, variance: Int, seen: Set[Symbol])(implicit ctx: Context): Type =
+  private def deSkolemize(tp: Type, variance: Int, seen: Set[Symbol]): Type =
     ctx.traceIndented(s"deskolemize $tp, variance = $variance, seen = $seen  =  ") {
     def approx(lo: Type = defn.NothingType, hi: Type = defn.AnyType, newSeen: Set[Symbol] = seen) = 
       if (variance == 0) NoType
@@ -94,17 +96,8 @@ trait Skolemization {
         deSkolemizeMap.mapOver(tp, variance, seen)
     }
   }
-
-  private var deSkolemizeMapCache: DeSkolemizeMap = null
   
-  private def deSkolemizeMap(implicit ctx: Context) = {
-    if (deSkolemizeMapCache == null || deSkolemizeMapCache.definingCtx != ctx)
-      deSkolemizeMapCache = new DeSkolemizeMap
-    deSkolemizeMapCache
-  }
-  
-  private class DeSkolemizeMap(implicit ctx: Context) extends TypeMap {
-    def definingCtx = ctx
+  object deSkolemizeMap extends TypeMap {
     private var seen: Set[Symbol] = _
     def apply(tp: Type) = deSkolemize(tp, variance, seen)
     def mapOver(tp: Type, variance: Int, seen: Set[Symbol]) = {
