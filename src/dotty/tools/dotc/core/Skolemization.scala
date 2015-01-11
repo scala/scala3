@@ -4,6 +4,14 @@ package core
 import Symbols._, Types._, Contexts._
 import collection.mutable
 
+/** Methods to add and remove skolemtypes.
+ *  
+ *  Skolem types are generated when comparing refinements. 
+ *  Two skolem types are equal if they refer to the same underlying type. 
+ *  To avoid unsoundness, skolem types have to be kept strictly local to the
+ *  comparison, they are not allowed to escape the lifetime of a comparison
+ *  by surviving in a context or in GADT bounds. 
+ */
 trait Skolemization {
   
   implicit val ctx: Context
@@ -15,30 +23,34 @@ trait Skolemization {
       tp
     case tp: ValueType => 
       skolemsOutstanding = true
-      tp.narrow
+      SkolemType(tp)
     case tp: TypeProxy => 
       ensureSingleton(tp.underlying)
   }
     
-  /** Approximate a type `tp` with a type that does not contain skolem termrefs.
+  /** Approximate a type `tp` with a type that does not contain skolem types.
    *  @param  toSuper   if true, return the smallest supertype of `tp` with this property
-   *                    e;se return the largest subtype.
+   *                    else return the largest subtype.
    */
   final def deSkolemize(tp: Type, toSuper: Boolean): Type = 
-    if (skolemsOutstanding) deSkolemize(tp, if (toSuper) 1 else -1, Set()) else tp
+    if (skolemsOutstanding) {
+      skolemsOutstanding = false
+      deSkolemize(tp, if (toSuper) 1 else -1, Set()) 
+    }
+    else tp
 
-  private def deSkolemize(tp: Type, variance: Int, seen: Set[Symbol]): Type =
+  private def deSkolemize(tp: Type, variance: Int, seen: Set[SkolemType]): Type =
     ctx.traceIndented(s"deskolemize $tp, variance = $variance, seen = $seen  =  ") {
-    def approx(lo: Type = defn.NothingType, hi: Type = defn.AnyType, newSeen: Set[Symbol] = seen) = 
+    def approx(lo: Type = defn.NothingType, hi: Type = defn.AnyType, newSeen: Set[SkolemType] = seen) = 
       if (variance == 0) NoType
       else deSkolemize(if (variance < 0) lo else hi, variance, newSeen)
     tp match {
+      case tp: SkolemType =>
+        if (seen contains tp) NoType
+        else approx(hi = tp.binder, newSeen = seen + tp)
       case tp: NamedType =>
         val sym = tp.symbol
-        if (sym.isSkolem) 
-          if (seen contains sym) NoType
-          else approx(hi = sym.info, newSeen = seen + sym)
-        else if (sym.isStatic) tp
+        if (sym.isStatic) tp
         else {
           val pre1 = deSkolemize(tp.prefix, variance, seen)
           if (pre1.exists && !pre1.isRef(defn.NothingClass)) tp.derivedSelect(pre1)
@@ -98,9 +110,9 @@ trait Skolemization {
   }
   
   object deSkolemizeMap extends TypeMap {
-    private var seen: Set[Symbol] = _
+    private var seen: Set[SkolemType] = _
     def apply(tp: Type) = deSkolemize(tp, variance, seen)
-    def mapOver(tp: Type, variance: Int, seen: Set[Symbol]) = {
+    def mapOver(tp: Type, variance: Int, seen: Set[SkolemType]) = {
       val savedVariance = this.variance
       val savedSeen = this.seen
       this.variance = variance
