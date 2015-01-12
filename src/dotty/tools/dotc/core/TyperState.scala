@@ -17,7 +17,7 @@ class TyperState(r: Reporter) extends DotClass with Showable {
   def reporter = r
 
   /** The current constraint set */
-  def constraint: Constraint = new Constraint(SimpleMap.Empty, SimpleMap.Empty)
+  def constraint: Constraint = new NaiveConstraint(SimpleMap.Empty)
   def constraint_=(c: Constraint): Unit = {}
 
   /** The uninstantiated variables */

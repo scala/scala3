@@ -62,8 +62,15 @@ trait ConstraintHandling {
     }
   }
 
+  protected def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
+    val saved = frozenConstraint
+    frozenConstraint = true
+    try isSubType(tp1, tp2)
+    finally frozenConstraint = saved
+  }
+
   /** The current bounds of type parameter `param` */
-  def bounds(param: PolyParam): TypeBounds = constraint at param match {
+  final def bounds(param: PolyParam): TypeBounds = constraint at param match {
     case bounds: TypeBounds if !ignoreConstraint => bounds
     case _ => param.binder.paramBounds(param.paramNum)
   }
@@ -204,7 +211,6 @@ trait ConstraintHandling {
           }
       if (ok) newBounds else NoType
     }
-
     val bound = deSkolemize(bound0, toSuper = fromBelow).dealias.stripTypeVar
     def description = s"${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} to ${constraint.show}"
     constr.println(s"adding $description")
@@ -214,13 +220,13 @@ trait ConstraintHandling {
     res
   }
 
-  def isConstrained(param: PolyParam): Boolean =
+  final def isConstrained(param: PolyParam): Boolean =
     !frozenConstraint && !solvedConstraint && (constraint contains param)
 
   /** Test whether the lower bounds of all parameters in this
    *  constraint are a solution to the constraint.
    */
-  def isSatisfiable: Boolean = {
+  final def isSatisfiable: Boolean = {
     val saved = solvedConstraint
     solvedConstraint = true
     try
@@ -244,7 +250,7 @@ trait ConstraintHandling {
    *  @return the instantiating type
    *  @pre `param` is in the constraint's domain.
    */
-  def approximation(param: PolyParam, fromBelow: Boolean): Type = {
+  final def approximation(param: PolyParam, fromBelow: Boolean): Type = {
     val avoidParam = new TypeMap {
       override def stopAtStatic = true
       def apply(tp: Type) = mapOver {
@@ -264,7 +270,7 @@ trait ConstraintHandling {
   /** Map that approximates each param in constraint by its lower bound.
    *  Currently only used for diagnostics.
    */
-  def approxParams = new TypeMap { // !!! Dotty problem: Turn this def into a val => -Ycheck:mix fails
+  final def approxParams = new TypeMap { // !!! Dotty problem: Turn this def into a val => -Ycheck:mix fails
     def apply(tp: Type): Type = tp.stripTypeVar match {
       case tp: PolyParam if constraint contains tp =>
         this(constraint.bounds(tp).lo)

@@ -16,4 +16,17 @@ object test {
 
 }
 
+object test2 {
+
+  class A
+  class B
+
+  val x: A | B = ???
+  val y: B | A = x
+
+  val a: A & B = ???
+  val b: B & A = a
+
+}
+
 

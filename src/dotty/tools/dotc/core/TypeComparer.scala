@@ -513,13 +513,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       false
     } else isSubType(tp1, tp2)
 
-  private def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
-    val saved = frozenConstraint
-    frozenConstraint = true
-    try isSubType(tp1, tp2)
-    finally frozenConstraint = saved
-  }
-
   protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean = {
     val saved = skolemsOutstanding
     try {

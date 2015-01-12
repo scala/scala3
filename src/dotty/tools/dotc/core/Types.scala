@@ -744,7 +744,7 @@ object Types {
     }
 
     /** A prefix-less refined this or a termRef to a new skolem symbol
-     *  that has the given type as info
+     *  that has the given type as info.
      */
     def narrow(implicit ctx: Context): TermRef =
       TermRef(NoPrefix, ctx.newSkolem(this))
