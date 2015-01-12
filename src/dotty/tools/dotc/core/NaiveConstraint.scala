@@ -304,7 +304,7 @@ class NaiveConstraint(private val myMap: ParamInfo) extends Constraint {
     val p1Bounds =
       dropParamIn(bounds(p1), p2.binder, p2.paramNum) &
       dropParamIn(bounds(p2), p1.binder, p1.paramNum)
-    this.updated(p1, p1Bounds).updated(p2, TypeAlias(p1))
+    this.updated(p1, p1Bounds).updated(p2, p1)
   }
 
   def add(poly: PolyType, tvars: List[TypeVar])(implicit ctx: Context): This = {

@@ -107,44 +107,41 @@ trait ConstraintHandling {
      *  make sure 'B >: A' gets added and vice versa. Furthermore, if the constraint
      *  implies 'A <: B <: A', A and B get unified.
      */
-    def addc(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean =
-      constraint.bounds(param) match {
-        case TypeBounds(plo: PolyParam, phi) if (plo eq phi) && constraint.contains(plo) =>
-          addc(plo, bound, fromBelow)
-        case pbounds0 =>
-          bound match {
-            case bound: PolyParam if constraint contains bound =>
-              val bbounds0 @ TypeBounds(lo, hi) = constraint.bounds(bound)
-              if (lo eq hi)
-                addc(param, lo, fromBelow)
-              else if (param == bound)
-                true
-              else if (fromBelow && param.occursIn(lo, fromBelow = true))
-                unify(param, bound)
-              else if (!fromBelow && param.occursIn(hi, fromBelow = false))
-                unify(bound, param)
-              else {
-                val pbounds = prepare(param, bound, fromBelow)
-                val bbounds = prepare(bound, param, !fromBelow)
-                pbounds.exists && bbounds.exists && {
-                  install(param, pbounds.bounds, pbounds0)
-                  install(bound, bbounds.bounds, bbounds0)
-                  true
-                }
-              }
-            case bound: AndOrType if fromBelow != bound.isAnd =>
-              addc(param, bound.tp1, fromBelow) &&
-                addc(param, bound.tp2, fromBelow)
-            case bound: WildcardType =>
+    def addc(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
+      val pbounds0 = constraint.bounds(param)
+      bound match {
+        case bound: PolyParam if constraint contains bound =>
+          val bbounds0 @ TypeBounds(lo, hi) = constraint.bounds(bound)
+          if (lo eq hi)
+            addc(param, lo, fromBelow)
+          else if (param == bound)
+            true
+          else if (fromBelow && param.occursIn(lo, fromBelow = true))
+            unify(param, bound)
+          else if (!fromBelow && param.occursIn(hi, fromBelow = false))
+            unify(bound, param)
+          else {
+            val pbounds = prepare(param, bound, fromBelow)
+            val bbounds = prepare(bound, param, !fromBelow)
+            pbounds.exists && bbounds.exists && {
+              install(param, pbounds.bounds, pbounds0)
+              install(bound, bbounds.bounds, bbounds0)
               true
-            case bound => // !!! remove to keep the originals
-              val pbounds = prepare(param, bound, fromBelow)
-              pbounds.exists && {
-                install(param, pbounds.bounds, pbounds0)
-                true
-              }
+            }
+          }
+        case bound: AndOrType if fromBelow != bound.isAnd =>
+          addc(param, bound.tp1, fromBelow) &&
+            addc(param, bound.tp2, fromBelow)
+        case bound: WildcardType =>
+          true
+        case bound => // !!! remove to keep the originals
+          val pbounds = prepare(param, bound, fromBelow)
+          pbounds.exists && {
+            install(param, pbounds.bounds, pbounds0)
+            true
           }
       }
+    }
 
     /** Install bounds for param */
     def install(param: PolyParam, newBounds: TypeBounds, oldBounds: TypeBounds): Unit = {
