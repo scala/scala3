@@ -68,8 +68,14 @@ trait ConstraintHandling {
     try isSubType(tp1, tp2)
     finally frozenConstraint = saved
   }
+  
+  protected def constraintImpliesSub(param: PolyParam, tp: Type): Boolean = 
+    isSubTypeWhenFrozen(bounds(param).hi, tp)
 
-  /** The current bounds of type parameter `param` */
+  protected def constraintImpliesSuper(param: PolyParam, tp: Type): Boolean = 
+    isSubTypeWhenFrozen(tp, bounds(param).lo)
+
+    /** The current bounds of type parameter `param` */
   final def bounds(param: PolyParam): TypeBounds = constraint at param match {
     case bounds: TypeBounds if !ignoreConstraint => bounds
     case _ => param.binder.paramBounds(param.paramNum)

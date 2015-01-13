@@ -180,7 +180,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
           tp2 == tp1 || {
             if (solvedConstraint && (constraint contains tp2)) isSubType(tp1, bounds(tp2).lo)
             else
-              isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
+              constraintImpliesSuper(tp2, tp1) || {
                 if (isConstrained(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
                 else (ctx.mode is Mode.TypevarsMissContext) || secondTry(tp1, tp2)
               }
@@ -242,7 +242,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         tp1 == tp2 || {
           if (solvedConstraint && (constraint contains tp1)) isSubType(bounds(tp1).lo, tp2)
           else
-            isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
+            constraintImpliesSub(tp1, tp2) || {
               if (isConstrained(tp1))
                 addConstraint(tp1, tp2, fromBelow = false) && {
                   if ((!frozenConstraint) &&
