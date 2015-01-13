@@ -2173,6 +2173,12 @@ object Types {
     override def toString = s"PolyParam(${binder.paramNames(paramNum)})"
 
     override def computeHash = doHash(paramNum, binder)
+    override def equals(that: Any) = that match {
+      case that: PolyParam =>
+        (this.binder eq that.binder) && this.paramNum == that.paramNum
+      case _ =>
+        false
+    }
   }
 
   /** A skolem type reference with underlying type `binder`. */
