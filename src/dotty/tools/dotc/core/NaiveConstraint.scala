@@ -99,12 +99,17 @@ class NaiveConstraint(private val myMap: ParamInfo) extends Constraint {
 
   private def isBounds(tp: Type) = tp.isInstanceOf[TypeBounds]
 
-  def at(param: PolyParam): Type = {
+  def at(param: PolyParam)(implicit ctx: Context): Type = {
+    val entries = myMap(param.binder)
+    if (entries == null) NoType else entries(param.paramNum)
+  }
+  
+  def entry(param: PolyParam) = {
     val entries = myMap(param.binder)
     if (entries == null) NoType else entries(param.paramNum)
   }
 
-  def bounds(param: PolyParam): TypeBounds = at(param).asInstanceOf[TypeBounds]
+  def bounds(param: PolyParam)(implicit ctx: Context): TypeBounds = at(param).asInstanceOf[TypeBounds]
   
   def nonParamBounds(param: PolyParam)(implicit ctx: Context): TypeBounds = {
     val bs @ TypeBounds(lo, hi) = bounds(param)
@@ -113,11 +118,11 @@ class NaiveConstraint(private val myMap: ParamInfo) extends Constraint {
     bs.derivedTypeBounds(lo1.orElse(defn.NothingType), hi1.orElse(defn.AnyType))
   }
   
-  def related(param1: PolyParam, param2: PolyParam, firstIsLower: Boolean)(implicit ctx: Context): Boolean = {
+  def related(param1: PolyParam, param2: PolyParam, inOrder: Boolean)(implicit ctx: Context): Boolean = {
     var isRelated = false
     def registerParam(p: PolyParam) = if (p == param2) isRelated = true
     val TypeBounds(lo, hi) = bounds(param1)
-    if (firstIsLower) splitParams(hi, seenFromBelow = true, registerParam)
+    if (inOrder) splitParams(hi, seenFromBelow = true, registerParam)
     else splitParams(lo, seenFromBelow = false, registerParam)
     isRelated
   }
@@ -202,13 +207,13 @@ class NaiveConstraint(private val myMap: ParamInfo) extends Constraint {
     updateEntries(param.binder, newEntries)
   }
   
-  def order(param: PolyParam, bound: PolyParam, fromBelow: Boolean)(implicit ctx: Context): This =
-    if (related(param, bound, firstIsLower = !fromBelow)) this
+  def order(param: PolyParam, bound: PolyParam, inOrder: Boolean)(implicit ctx: Context): This =
+    if (related(param, bound, inOrder)) this
     else {
       val oldBounds = bounds(param)
       val newBounds = 
-        if (fromBelow) TypeBounds(OrType(oldBounds.lo, bound), oldBounds.hi)
-        else TypeBounds(oldBounds.lo, AndType(oldBounds.hi, bound))
+        if (inOrder) TypeBounds(oldBounds.lo, AndType(oldBounds.hi, bound))
+        else TypeBounds(OrType(oldBounds.lo, bound), oldBounds.hi)
       updated(param, newBounds)
     }
   
@@ -285,20 +290,10 @@ class NaiveConstraint(private val myMap: ParamInfo) extends Constraint {
     result
   }
 
-  def replace(param: PolyParam, tp: Type)(implicit ctx: Context): This =
-    tp.dealias.stripTypeVar match {
-      case tp: PolyParam if this contains tp =>
-        val bs = bounds(tp)
-        if (tp == param)
-          this
-        else if (param.occursIn(bs.lo, fromBelow = true) ||
-                 param.occursIn(bs.hi, fromBelow = false))
-          unify(tp, param).uncheckedReplace(param, tp)
-        else
-          uncheckedReplace(param, tp)
-      case _ =>
-        uncheckedReplace(param, tp)
-    }
+  def replace(param: PolyParam, tp: Type)(implicit ctx: Context): This = {
+    val tp1 = tp.dealias.stripTypeVar
+    if (param == tp1) this else uncheckedReplace(param, tp1)
+  }
 
   def unify(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): This = {
     val p1Bounds =
@@ -366,7 +361,7 @@ class NaiveConstraint(private val myMap: ParamInfo) extends Constraint {
   def constraintText(indent: Int, printer: Printer): Text = {
     val assocs =
       for (param <- domainParams)
-      yield (" " * indent) ~ param.toText(printer) ~ at(param).toText(printer)
+      yield (" " * indent) ~ param.toText(printer) ~ entry(param).toText(printer)
     Text(assocs, "\n")
   }
 

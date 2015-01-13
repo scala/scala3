@@ -146,7 +146,13 @@ trait ConstraintHandling {
     /** Install bounds for param */
     def install(param: PolyParam, newBounds: TypeBounds, oldBounds: TypeBounds): Unit = {
       val curBounds = constraint.bounds(param)
-      constraint = constraint.updated(param, newBounds)
+      try {
+        constraint = constraint.updated(param, newBounds)
+      } catch {
+        case ex: AssertionError =>
+          println(i"error while updating $param $newBounds\n$constraint")
+          throw ex
+      }
       if (curBounds ne oldBounds) {
         // In this case the bounds were updated previously by a recursive isSubType in
         // the satisfiability check of prepare. Reapply the previously added bounds, but

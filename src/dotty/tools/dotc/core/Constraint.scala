@@ -34,7 +34,7 @@ abstract class Constraint extends Showable {
   /** The constraint for given type parameter `param`, or NoType if `param` is not part of
    *  the constraint domain.
    */
-  def at(param: PolyParam): Type
+  def at(param: PolyParam)(implicit ctx: Context): Type
   
   /** The type variable corresponding to parameter `param`, or
    *  NoType, if `param` is not in constrained or is not paired with a type variable.
@@ -44,7 +44,7 @@ abstract class Constraint extends Showable {
   /** The constraint bounds for given type parameter `param`.
    *  @pre `param` is not part of the constraint domain.
    */
-  def bounds(param: PolyParam): TypeBounds
+  def bounds(param: PolyParam)(implicit ctx: Context): TypeBounds
   
   /** The non-parameter bounds of this constraint.
    *  Poly params that are `related` are not contained in the return bounds.
@@ -76,10 +76,10 @@ abstract class Constraint extends Showable {
    */
   def updated(param: PolyParam, tp: Type)(implicit ctx: Context): This
   
-  /** A constraint that includes a the relationship `bound <: param` if `fromBelow` is true
-   *  or else `param <: bound` if `fromBelow` is false.
+  /** A constraint that includes a the relationship `param <: bound` if `inOrder` is true
+   *  or else `bound <: param` if `inOrdxer` is false.
    */
-  def order(param: PolyParam, bound: PolyParam, fromBelow: Boolean)(implicit ctx: Context): This
+  def order(param: PolyParam, bound: PolyParam, inOrder: Boolean)(implicit ctx: Context): This
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all occurrences

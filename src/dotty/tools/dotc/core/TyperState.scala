@@ -17,7 +17,7 @@ class TyperState(r: Reporter) extends DotClass with Showable {
   def reporter = r
 
   /** The current constraint set */
-  def constraint: Constraint = new NaiveConstraint(SimpleMap.Empty)
+  def constraint: Constraint = new NaiveConstraint(SimpleMap.Empty)//new TrackingConstraint(SimpleMap.Empty, Array(), Array())
   def constraint_=(c: Constraint): Unit = {}
 
   /** The uninstantiated variables */
@@ -38,7 +38,7 @@ class TyperState(r: Reporter) extends DotClass with Showable {
    *  is done only in a temporary way for contexts that may be retracted
    *  without also retracting the type var as a whole.
    */
-  def instType(tvar: TypeVar): Type = constraint.at(tvar.origin) match {
+  def instType(tvar: TypeVar)(implicit ctx: Context): Type = constraint.at(tvar.origin) match {
     case _: TypeBounds => NoType
     case tp: PolyParam =>
       var tvar1 = constraint.typeVarOfParam(tp)
