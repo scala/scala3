@@ -41,7 +41,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     result
   }
 
-  /** For stastics: count how many isSubTypes are part of succesful comparisons */
+  /** For statistics: count how many isSubTypes are part of successful comparisons */
   private var successCount = 0
   private var totalCount = 0
 

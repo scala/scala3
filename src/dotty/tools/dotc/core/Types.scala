@@ -593,7 +593,7 @@ object Types {
     }
 
     /** Is this type close enough to that type so that members
-     *  with the two type would override each other?d
+     *  with the two types would override each other?
      *  This means:
      *    - Either both types are polytypes with the same number of
      *      type parameters and their result types match after renaming
@@ -680,14 +680,14 @@ object Types {
       case _ => this
     }
 
-    /** Widen type if it is unstable (i.e. an EpxprType, or Termref to unstable symbol */
+    /** Widen type if it is unstable (i.e. an ExprType, or TermRef to unstable symbol */
     final def widenIfUnstable(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ExprType => tp.resultType.widenIfUnstable
       case tp: TermRef if !tp.symbol.isStable => tp.underlying.widenIfUnstable
       case _ => this
     }
 
-    /** Follow aliases and derefernces LazyRefs and instantiated TypeVars until type
+    /** Follow aliases and dereferences LazyRefs and instantiated TypeVars until type
      *  is no longer alias type, LazyRef, or instantiated type variable.
      */
     final def dealias(implicit ctx: Context): Type = this match {
@@ -706,7 +706,7 @@ object Types {
       case tp => tp
     }
 
-    /** Peform successive widenings and dealiasings until none can be applied anymore */
+    /** Perform successive widenings and dealiasings until none can be applied anymore */
     final def widenDealias(implicit ctx: Context): Type = {
       val res = this.widen.dealias
       if (res eq this) res else res.widenDealias
@@ -928,9 +928,9 @@ object Types {
       }
 
     /** Same as `subst` but follows aliases as a fallback. When faced with a reference
-     *  to an alias type, where normal substiution does not yield a new type, the
+     *  to an alias type, where normal substitution does not yield a new type, the
      *  substitution is instead applied to the alias. If that yields a new type,
-     *  this type is returned, outherwise the original type (not the alias) is returned.
+     *  this type is returned, otherwise the original type (not the alias) is returned.
      *  A use case for this method is if one wants to substitute the type parameters
      *  of a class and also wants to substitute any parameter accessors that alias
      *  the type parameters.
@@ -1153,7 +1153,7 @@ object Types {
     def map(tm: TypeMap)(implicit ctx: Context): ProtoType
   }
 
-  /** Implementations of this trait cache the resukts of `narrow`. */
+  /** Implementations of this trait cache the results of `narrow`. */
   trait NarrowCached extends Type {
     private var myNarrow: TermRef = null
     override def narrow(implicit ctx: Context): TermRef = {
@@ -1194,7 +1194,7 @@ object Types {
      *  timing dependent. It should only be used if the outcome of the
      *  essential computation does not depend on the symbol being present or not.
      *  It's currently used to take an optimized path in substituters and
-     *  type accumulators, as well as to be safe in diagnostiic printing.
+     *  type accumulators, as well as to be safe in diagnostic printing.
      *  Normally, it's better to use `symbol`, not `currentSymbol`.
      */
     def currentSymbol(implicit ctx: Context) =
@@ -2587,7 +2587,7 @@ object Types {
   /** The type of an import clause tree */
   case class ImportType(expr: Tree) extends UncachedGroundType
 
-  /** Sentinal for "missing type" */
+  /** Sentinel for "missing type" */
   case object NoType extends CachedGroundType {
     override def exists = false
     override def computeHash = hashSeed
