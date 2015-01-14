@@ -33,10 +33,7 @@ trait Skolemization {
    *                    else return the largest subtype.
    */
   final def deSkolemize(tp: Type, toSuper: Boolean): Type = 
-    if (skolemsOutstanding) {
-      skolemsOutstanding = false
-      deSkolemize(tp, if (toSuper) 1 else -1, Set()) 
-    }
+    if (skolemsOutstanding) deSkolemize(tp, if (toSuper) 1 else -1, Set()) 
     else tp
 
   private def deSkolemize(tp: Type, variance: Int, seen: Set[SkolemType]): Type =
