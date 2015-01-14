@@ -98,7 +98,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
           else monitoredIsSubType(tp1, tp2)
         recCount = recCount - 1
         if (!result) constraint = saved
-        else if (recCount == 0 && needsGc) state.gc()
+        else if (recCount == 0 && needsGc) {
+          state.gc()
+          needsGc = false
+        }
         if (Stats.monitored) recordStatistics(result, savedSuccessCount)
         result
       } catch {
