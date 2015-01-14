@@ -409,7 +409,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case ClassInfo(pre2, cls2, _, _, _) =>
       def compareClassInfo = tp1 match {
         case ClassInfo(pre1, cls1, _, _, _) =>
-          (cls1 eq cls2) && isSubType(pre2, pre1)
+          (cls1 eq cls2) && isSubType(pre1, pre2)
         case _ =>
           false
       }
