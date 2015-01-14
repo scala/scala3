@@ -932,14 +932,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case tp1: TypeBounds =>
       tp2 match {
         case tp2: TypeBounds => tp1 & tp2
+        case tp2: ClassInfo if tp1 contains tp2.typeRef => tp2
         case _ => andConflict(tp1, tp2)
       }
     case tp1: ClassInfo =>
       tp2 match {
-        case tp2: ClassInfo if tp1.cls eq tp2.cls =>
-          tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
-        case _ =>
-          andConflict(tp1, tp2)
+        case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix & tp2.prefix)
+        case tp2: TypeBounds if tp2 contains tp1.typeRef => tp1
+        case _ => andConflict(tp1, tp2)
       }
     case tp1 @ MethodType(names1, formals1) =>
       tp2 match {
@@ -997,14 +997,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case tp1: TypeBounds =>
       tp2 match {
         case tp2: TypeBounds => tp1 | tp2
+        case tp2: ClassInfo if tp1 contains tp2.typeRef => tp1
         case _ => orConflict(tp1, tp2)
       }
     case tp1: ClassInfo =>
       tp2 match {
-        case tp2: ClassInfo if tp1.cls eq tp2.cls =>
-          tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
-        case _ =>
-          orConflict(tp1, tp2)
+        case tp2: ClassInfo if tp1.cls eq tp2.cls => tp1.derivedClassInfo(tp1.prefix | tp2.prefix)
+        case tp2: TypeBounds if tp2 contains tp1.typeRef => tp2
+        case _ => orConflict(tp1, tp2)
       }
     case tp1 @ MethodType(names1, formals1) =>
       tp2 match {

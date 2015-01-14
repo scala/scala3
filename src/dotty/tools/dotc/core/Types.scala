@@ -2151,6 +2151,7 @@ object Types {
     }
   }
 
+  /** TODO Some docs would be nice here! */
   case class PolyParam(binder: PolyType, paramNum: Int) extends ParamType {
     type BT = PolyType
     def copyBoundType(bt: BT) = PolyParam(bt, paramNum)
