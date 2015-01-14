@@ -184,7 +184,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
             if (solvedConstraint && (constraint contains tp2)) isSubType(tp1, bounds(tp2).lo)
             else
               constraintImpliesSuper(tp2, tp1) || {
-                if (isConstrained(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
+                if (canConstrain(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
                 else (ctx.mode is Mode.TypevarsMissContext) || secondTry(tp1, tp2)
               }
           }
@@ -246,7 +246,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
           if (solvedConstraint && (constraint contains tp1)) isSubType(bounds(tp1).lo, tp2)
           else
             constraintImpliesSub(tp1, tp2) || {
-              if (isConstrained(tp1))
+              if (canConstrain(tp1))
                 addConstraint(tp1, tp2, fromBelow = false) && {
                   if ((!frozenConstraint) &&
                     (tp2 isRef defn.NothingClass) &&
@@ -449,6 +449,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
               case tp2i: TermRef =>
                 isSubType(tp1, tp2i)
               case ExprType(tp2i: TermRef) if (ctx.phase.id > ctx.gettersPhase.id) =>
+                // After getters, val x: T becomes def x: T
                 isSubType(tp1, tp2i)
               case _ =>
                 false
@@ -516,10 +517,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       false
     } else isSubType(tp1, tp2)
 
+  /** Does type `tp1` have a member with name `name` whose normalized type is a subtype of 
+   *  the normalized type of the refinement `tp2`?
+   *  Normalization is as follows: If `tp2` contains a skolem to its refinement type,
+   *  rebase both itself and the member info of `tp` on a freshly created skolem type.
+   */
   protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean = {
     val saved = skolemsOutstanding
     try {
-      def rebindNeeded = tp2.refinementRefersToThis
+      val rebindNeeded = tp2.refinementRefersToThis
       val base = if (rebindNeeded) ensureSingleton(tp1) else tp1
       val rinfo2 = if (rebindNeeded) tp2.refinedInfo.substSkolem(tp2, base) else tp2.refinedInfo
       def qualifies(m: SingleDenotation) = isSubType(m.info, rinfo2)
@@ -531,7 +537,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         memberMatches(base member name) ||
         tp1.isInstanceOf[SingletonType] &&
         { // special case for situations like:
-          //    foo <: C { type T = foo.T }
+          //    class C { type T }
+          //    val foo: C
+          //    foo.type <: C { type T = foo.T }
           rinfo2 match {
             case rinfo2: TypeAlias =>
               !ctx.phase.erasedTypes && (base select name) =:= rinfo2.alias

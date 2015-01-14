@@ -229,7 +229,7 @@ trait ConstraintHandling {
     res
   }
 
-  final def isConstrained(param: PolyParam): Boolean =
+  final def canConstrain(param: PolyParam): Boolean =
     !frozenConstraint && !solvedConstraint && (constraint contains param)
 
   /** Test whether the lower bounds of all parameters in this
