@@ -541,8 +541,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
           //    val foo: C
           //    foo.type <: C { type T = foo.T }
           rinfo2 match {
-            case rinfo2: TypeAlias =>
-              !ctx.phase.erasedTypes && (base select name) =:= rinfo2.alias
+            case rinfo2: TypeAlias => (base select name) =:= rinfo2.alias
             case _ => false
           }
         }
