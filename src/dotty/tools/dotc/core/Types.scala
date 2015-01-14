@@ -2040,6 +2040,7 @@ object Types {
       unique(new ImplicitMethodType(paramNames, paramTypes)(resultTypeExp))
   }
 
+  /** A by-name parameter type of the form `=> T`, or the type of a method with no parameter list. */
   abstract case class ExprType(override val resultType: Type)
   extends CachedProxyType with TermType with MethodicType {
     override def underlying(implicit ctx: Context): Type = resultType
