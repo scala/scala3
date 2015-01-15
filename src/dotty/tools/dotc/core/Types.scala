@@ -2040,6 +2040,7 @@ object Types {
       unique(new ImplicitMethodType(paramNames, paramTypes)(resultTypeExp))
   }
 
+  /** A by-name parameter type of the form `=> T`, or the type of a method with no parameter list. */
   abstract case class ExprType(override val resultType: Type)
   extends CachedProxyType with TermType with MethodicType {
     override def underlying(implicit ctx: Context): Type = resultType
@@ -2184,13 +2185,16 @@ object Types {
 
   // ------------ Type variables ----------------------------------------
 
-  /** A type variable is essentially a switch that models some part of a substitution.
+  /** In a TypeApply tree, a TypeVar is created for each argument type to be inferred.
+   *  Every type variable is referred to by exactly one inferred type parameter of some
+   *  TypeApply tree.
+   *
+   *  A type variable is essentially a switch that models some part of a substitution.
    *  It is first linked to `origin`, a poly param that's in the current constraint set.
    *  It can then be (once) instantiated to some other type. The instantiation is
    *  recorded in the type variable itself, or else, if the current type state
    *  is different from the variable's creation state (meaning unrolls are possible)
-   *  in the current typer state. Every type variable is referred to by exactly
-   *  one inferred type parameter in a TypeApply tree.
+   *  in the current typer state.
    *
    *  @param  origin        The parameter that's tracked by the type variable.
    *  @param  creatorState  The typer state in which the variable was created.
