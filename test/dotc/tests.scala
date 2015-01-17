@@ -16,6 +16,7 @@ class tests extends CompilerTest {
   implicit val defaultOptions = noCheckOptions ++ List(
       "-Yno-deep-subtypes",
       "-Ycheck:resolveSuper,mixin,restoreScopes",
+      "-Ycheck-subtype",
       "-d", "./out/"
   )
 
@@ -69,6 +70,7 @@ class tests extends CompilerTest {
   @Test def pos_subtyping = compileFile(posDir, "subtyping")
   @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
   @Test def pos_packageObj = compileFile(posDir, "i0239")
+  @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping")
 
   @Test def pos_all = compileFiles(posDir, failedOther)
 
@@ -99,12 +101,12 @@ class tests extends CompilerTest {
   @Test def neg_t1131_structural = compileFile(negDir, "t1131", xerrors = 1)
   @Test def neg_zoo = compileFile(negDir, "zoo", xerrors = 1)
   @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
-  @Test def neg_tailcall_t1672b = compileFile(negDir, "tailcall/t1672b", xerrors = 6)
+  /*@Test def neg_tailcall_t1672b = compileFile(negDir, "tailcall/t1672b", xerrors = 6)
   @Test def neg_tailcall_t3275 = compileFile(negDir, "tailcall/t3275", xerrors = 1)
   @Test def neg_tailcall_t6574 = compileFile(negDir, "tailcall/t6574", xerrors = 2)
   @Test def neg_tailcall = compileFile(negDir, "tailcall/tailrec", xerrors = 7)
   @Test def neg_tailcall2 = compileFile(negDir, "tailcall/tailrec-2", xerrors = 2)
-  @Test def neg_tailcall3 = compileFile(negDir, "tailcall/tailrec-3", xerrors = 2)
+  @Test def neg_tailcall3 = compileFile(negDir, "tailcall/tailrec-3", xerrors = 2)*/
   @Test def nef_t1279a = compileFile(negDir, "t1279a", xerrors = 1)
   @Test def neg_t1843_variances = compileFile(negDir, "t1843-variances", xerrors = 1)
   @Test def neg_t2660_ambi = compileFile(negDir, "t2660", xerrors = 2)
@@ -120,6 +122,7 @@ class tests extends CompilerTest {
   @Test def neg_i0091_infpaths = compileFile(negDir, "i0091-infpaths", xerrors = 3)
   @Test def neg_i0248_inherit_refined = compileFile(negDir, "i0248-inherit-refined", xerrors = 4)
   @Test def neg_i0281 = compileFile(negDir, "i0281-null-primitive-conforms", xerrors = 3)
+  @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", failedOther)(allowDeepSubtypes)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", failedOther) // similar to dotc_config
