@@ -85,7 +85,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         assert(isSatisfiable, constraint.show)
   }
 
-  def isSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)} ${if (Config.verboseExplainSubtype) s" ${tp1.getClass}, ${tp2.getClass}" else ""}", subtyping) /*<|<*/ {
+  def isSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) /*<|<*/ {
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
     else {
@@ -1118,26 +1118,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       false
   }
 
-  /** Constraint `c1` subsumes constraint `c2`, if under `c2` as constraint we have
-   *  for all poly params `p` defined in `c2` as `p >: L2 <: U2`:
-   *
-   *     c1 defines p with bounds p >: L1 <: U1, and
-   *     L2 <: L1, and
-   *     U1 <: U2
-   *
-   *  Both `c1` and `c2` are required to derive from constraint `pre`, possibly
-   *  narrowing it with further bounds.
-   */
-  def subsumes(c1: Constraint, c2: Constraint, pre: Constraint): Boolean =
-    if (c2 eq pre) true
-    else if (c1 eq pre) false
-    else {
-      val saved = constraint
-      try
-        c2.forallParams(p => c1.contains(p) && isSubType(c1.bounds(p), c2.bounds(p)))
-      finally constraint = saved
-    }
-
   /** A new type comparer of the same type as this one, using the given context. */
   def copyIn(ctx: Context) = new TypeComparer(ctx)
 
@@ -1147,8 +1127,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
   def traceIndented[T](str: String)(op: => T): T = op
     
   private def traceInfo(tp1: Type, tp2: Type) =
-    s"${tp1.show} <:< ${tp2.show}" +
-    (if (ctx.settings.verbose.value) s" ${tp1.getClass} ${tp2.getClass}${if (frozenConstraint) " frozen" else ""}" else "")
+    s"${tp1.show} <:< ${tp2.show}" + {
+      if (ctx.settings.verbose.value || Config.verboseExplainSubtype) {
+        s" ${tp1.getClass}, ${tp2.getClass}" + 
+        (if (frozenConstraint) " frozen" else "") + 
+        (if (ctx.mode is Mode.TypevarsMissContext) " tvars-miss-ctx" else "")
+      }
+      else ""
+    }
 
   /** Show subtype goal that led to an assertion failure */
   def showGoal(tp1: Type, tp2: Type) = {

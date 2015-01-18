@@ -31,30 +31,46 @@ abstract class Constraint extends Showable {
   /** Does this constraint contain the type variable `tvar` and is it uninstantiated? */
   def contains(tvar: TypeVar): Boolean
   
-  /** The constraint for given type parameter `param`, or NoType if `param` is not part of
+  /** The constraint entry for given type parameter `param`, or NoType if `param` is not part of
    *  the constraint domain.
    */
-  def at(param: PolyParam)(implicit ctx: Context): Type
+  def entry(param: PolyParam): Type
   
   /** The type variable corresponding to parameter `param`, or
    *  NoType, if `param` is not in constrained or is not paired with a type variable.
    */
   def typeVarOfParam(param: PolyParam): Type
-    
+      
+  /** Is it known that `param1 <:< param2`? */
+  def isLess(param1: PolyParam, param2: PolyParam)(implicit ctx: Context): Boolean
+
+  /** The parameters that are known to be smaller wrt <: than `param` */ 
+  def lower(param: PolyParam): List[PolyParam]
+  
+  /** The parameters that are known to be greater wrt <: than `param` */ 
+  def upper(param: PolyParam): List[PolyParam]
+  
+  /** lower(param) \ lower(butNot) */ 
+  def exclusiveLower(param: PolyParam, butNot: PolyParam): List[PolyParam]
+  
+  /** upper(param) \ upper(butNot) */ 
+  def exclusiveUpper(param: PolyParam, butNot: PolyParam): List[PolyParam]
+
   /** The constraint bounds for given type parameter `param`.
+   *  Poly params that are known to be smaller or greater than `param` 
+   *  are not contained in the return bounds.
    *  @pre `param` is not part of the constraint domain.
    */
-  def bounds(param: PolyParam)(implicit ctx: Context): TypeBounds
+  def nonParamBounds(param: PolyParam): TypeBounds
+
+  /** The lower bound of `param` including all known-to-be-smaller parameters */
+  def fullLowerBound(param: PolyParam)(implicit ctx: Context): Type
   
-  /** The non-parameter bounds of this constraint.
-   *  Poly params that are `related` are not contained in the return bounds.
-   */
-  def nonParamBounds(param: PolyParam)(implicit ctx: Context): TypeBounds
+  /** The upper bound of `param` including all known-to-be-greater parameters */
+  def fullUpperBound(param: PolyParam)(implicit ctx: Context): Type
   
-  /** If `firstIsLower` is `param1 <:< param2`?
-   *  Otherwise, is `param2 <:< param1`?
-   */
-  def related(param1: PolyParam, param2: PolyParam, firstIsLower: Boolean)(implicit ctx: Context): Boolean
+  /** The bounds of `param` including all known-to-be-smaller and -greater parameters */
+  def fullBounds(param: PolyParam)(implicit ctx: Context): TypeBounds
   
   /** A new constraint which is derived from this constraint by adding
    *  entries for all type parameters of `poly`.
@@ -66,26 +82,28 @@ abstract class Constraint extends Showable {
   def add(poly: PolyType, tvars: List[TypeVar])(implicit ctx: Context): This
 
   /** A new constraint which is derived from this constraint by updating
-   *  the entry for parameter `param` to `tpe`.
-   *  @pre  `this contains param`.
-   *  
+   *  the entry for parameter `param` to `tp`.
    *  `tp` can be one of the following:
    *  
    *   - A TypeBounds value, indicating new constraint bounds
    *   - Another type, indicating a solution for the parameter
+   * 
+   * @pre  `this contains param`.  
    */
-  def updated(param: PolyParam, tp: Type)(implicit ctx: Context): This
+  def updateEntry(param: PolyParam, tp: Type)(implicit ctx: Context): This
   
-  /** A constraint that includes a the relationship `param <: bound` if `inOrder` is true
-   *  or else `bound <: param` if `inOrdxer` is false.
+  /** A constraint that includes the relationship `p1 <: p2`
    */
-  def order(param: PolyParam, bound: PolyParam, inOrder: Boolean)(implicit ctx: Context): This
+  def addLess(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): This
+
+  /** A constraint resulting by adding p2 = p1 to this constraint, and at the same
+   *  time transferring all bounds of p2 to p1
+   */
+  def unify(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): This
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all occurrences
    *  of the parameter elsewhere in the constraint by type `tp`.
-   *  If `tp` is another polyparam, applies the necessary unifications to avoid a cyclic
-   *  constraint.
    */
   def replace(param: PolyParam, tp: Type)(implicit ctx: Context): This
   
@@ -98,11 +116,6 @@ abstract class Constraint extends Showable {
   
   /** A new constraint with all entries coming from `pt` removed. */
   def remove(pt: PolyType)(implicit ctx: Context): This
-
-  /** A constraint resulting by adding p2 = p1 to this constraint, and at the same
-   *  time transferring all bounds of p2 to p1
-   */
-  def unify(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): This
 
   /** The polytypes constrained by this constraint */
   def domainPolys: List[PolyType]
@@ -121,32 +134,6 @@ abstract class Constraint extends Showable {
   /** The uninstantiated typevars of this constraint */
   def uninstVars: collection.Seq[TypeVar]
 
- /** Check that no constrained parameter in `pt` contains itself as a bound */
-  def checkNonCyclic(pt: PolyType, entries: Array[Type])(implicit ctx: Context): Unit
-  
   /** Check that no constrained parameter contains itself as a bound */
   def checkNonCyclic()(implicit ctx: Context): Unit
-  
- /** Check that no constrained parameter contains itself as a bound,
-   *  either directly or indirectly. This should be not a stricter criterion
-   *  than checkNonCyclic because transitivity should be eliminated always,
-   *  but it's good to be paranoid.
-   */
-  def checkNonCyclicTrans()(implicit ctx: Context): Unit
-  
-  protected def splitParams(tp: Type, seenFromBelow: Boolean, handleParam: PolyParam => Unit)(implicit ctx: Context): Type = tp match {
-    case tp: PolyParam if contains(tp) => 
-      handleParam(tp)
-      NoType
-    case tp: AndOrType if seenFromBelow == tp.isAnd =>
-      val tp1 = splitParams(tp.tp1, seenFromBelow, handleParam)
-      val tp2 = splitParams(tp.tp2, seenFromBelow, handleParam)
-      if (tp1.exists)
-        if (tp2.exists) tp.derivedAndOrType(tp1, tp2)
-        else tp1
-      else if (tp2.exists) tp2
-      else NoType
-    case _ =>
-      tp
-  } 
 }

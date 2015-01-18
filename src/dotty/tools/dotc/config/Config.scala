@@ -58,12 +58,6 @@ object Config {
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2
 
-  /** Track dependencies for constraint propagation satisfiability checking
-   *  If turned off, constraint checking is simpler but potentially slower
-   *  for large constraints.
-   */
-  final val trackConstrDeps = true
-
   /** Check that variances of lambda arguments match the
    *  variance of the underlying lambda class.
    */

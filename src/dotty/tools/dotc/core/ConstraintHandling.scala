@@ -36,219 +36,118 @@ trait ConstraintHandling {
   implicit val ctx: Context
   
   def isSubType(tp1: Type, tp2: Type): Boolean
-  def deSkolemize(tp: Type, toSuper: Boolean): Type
   
   val state: TyperState
   import state.constraint
+  
+  private var addConstraintInvocations = 0
 
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint = false
 
-  /** If the constraint is ignored, subtype checks only take into account
-   *  declared bounds of PolyParams. Used when forming unions and intersectons
-   *  of constraint bounds
-   */
-  private var ignoreConstraint = false
-
-  private def ignoringConstraint[T](op: => T): T = {
-    val savedIgnore = ignoreConstraint
-    val savedFrozen = frozenConstraint
-    ignoreConstraint = true
-    frozenConstraint = true
-    try op
-    finally {
-      ignoreConstraint = savedIgnore
-      frozenConstraint = savedFrozen
+  private def addOneUpperBound(param: PolyParam, bound: Type): Boolean = 
+    constraint.entry(param) match {
+      case oldBounds @ TypeBounds(lo, hi) =>
+        val newHi = hi & bound
+        (newHi eq hi) || {
+          val newBounds = oldBounds.derivedTypeBounds(lo, newHi)
+          constraint = constraint.updateEntry(param, newBounds)
+          isSubType(lo, newHi)
+        }
+      case _ =>
+        true
     }
+      
+   private def addOneLowerBound(param: PolyParam, bound: Type): Boolean =
+    constraint.entry(param) match {
+      case oldBounds @ TypeBounds(lo, hi) =>
+        val newLo = lo | bound
+        (newLo eq lo) || {
+          val newBounds = oldBounds.derivedTypeBounds(newLo, hi)
+          constraint = constraint.updateEntry(param, newBounds)
+          isSubType(newLo, hi)
+        }
+      case _ =>
+        true
+    }
+   
+  protected def addUpperBound(param: PolyParam, bound: Type): Boolean = {
+    def description = i"constraint $param <: $bound to\n$constraint"
+    if (bound.isRef(defn.NothingClass) && ctx.typerState.isGlobalCommittable) {
+      def msg = s"!!! instantiated to Nothing: $param, constraint = ${constraint.show}"
+      if (Config.flagInstantiationToNothing) assert(false, msg)
+      else ctx.log(msg)
+    }
+    constr.println(i"adding $description")
+    val lower = constraint.lower(param)
+    val res = addOneUpperBound(param, bound) && lower.forall(addOneUpperBound(_, bound))
+    constr.println(i"added $description = $res")
+    res
   }
-
-  protected def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
+    
+  protected def addLowerBound(param: PolyParam, bound: Type): Boolean = {
+    def description = i"constraint $param >: $bound to\n$constraint"
+    constr.println(i"adding $description")
+    val upper = constraint.upper(param)
+    val res = addOneLowerBound(param, bound) && upper.forall(addOneLowerBound(_, bound))
+    constr.println(i"added $description = $res")
+    res
+  }
+ 
+  protected def addLess(p1: PolyParam, p2: PolyParam): Boolean = {
+    def description = i"ordering $p1 <: $p2 to\n$constraint"
+    val res =
+      if (constraint.isLess(p2, p1)) unify(p2, p1) 
+        // !!! this is direction dependent - unify(p1, p2) makes i94-nada loop forever.
+        //     Need to investigate why this is the case. 
+        //     The symptom is that we get a subtyping constraint of the form P { ... } <: P
+      else {
+        val down1 = p1 :: constraint.exclusiveLower(p1, p2)
+        val up2 = p2 :: constraint.exclusiveUpper(p2, p1)
+        val lo1 = constraint.nonParamBounds(p1).lo
+        val hi2 = constraint.nonParamBounds(p2).hi
+        constr.println(i"adding $description down1 = $down1, up2 = $up2")
+        constraint = constraint.addLess(p1, p2)
+        down1.forall(addOneUpperBound(_, hi2)) && up2.forall(addOneLowerBound(_, lo1))
+      }
+    constr.println(i"added $description = $res")
+    res
+  }
+  
+  /** Make p2 = p1, transfer all bounds of p2 to p1
+   *  @pre  less(p1)(p2)
+   */
+  private def unify(p1: PolyParam, p2: PolyParam): Boolean = {
+    constr.println(s"unifying $p1 $p2")
+    val down = constraint.exclusiveLower(p2, p1)
+    val up = constraint.exclusiveUpper(p1, p2)
+    constraint = constraint.unify(p1, p2)
+    val bounds = constraint.nonParamBounds(p1)
+    val lo = bounds.lo
+    val hi = bounds.hi
+    isSubType(lo, hi) &&
+    down.forall(addOneUpperBound(_, hi)) && 
+    up.forall(addOneLowerBound(_, lo))
+  }
+  
+  protected final def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
     val saved = frozenConstraint
     frozenConstraint = true
     try isSubType(tp1, tp2)
     finally frozenConstraint = saved
   }
-  
-  protected def constraintImpliesSub(param: PolyParam, tp: Type): Boolean = 
-    isSubTypeWhenFrozen(bounds(param).hi, tp)
-
-  protected def constraintImpliesSuper(param: PolyParam, tp: Type): Boolean = 
-    isSubTypeWhenFrozen(tp, bounds(param).lo)
-
-    /** The current bounds of type parameter `param` */
-  final def bounds(param: PolyParam): TypeBounds = constraint at param match {
-    case bounds: TypeBounds if !ignoreConstraint => bounds
-    case _ => param.binder.paramBounds(param.paramNum)
-  }
-
-  /** Compare a solution of the constraint instead of the constrained parameters.
-   *  The solution maps every parameter to its lower bound.
-   */
-  protected var solvedConstraint = false
-
-  /** The parameters currently being constrained by addConstraint */
-  private var pendingParams: Set[PolyParam] = Set()
-
-  /** Make p2 = p1, transfer all bounds of p2 to p1 */
-  private def unify(p1: PolyParam, p2: PolyParam): Boolean = {
-    constr.println(s"unifying $p1 $p2")
-    val constraint1 = constraint.unify(p1, p2)
-    val bounds = constraint1.bounds(p1)
-    isSubType(bounds.lo, bounds.hi) && { constraint = constraint1; true }
-  }
-
-  /** If current constraint set is not frozen, add the constraint
-   *
-   *      param >: bound   if fromBelow is true
-   *      param <: bound   otherwise
-   *
-   *  to the bounds of `param`. If `bound` is itself a constrained parameter, also
-   *  add the dual constraint to `bound`.
-   *  @pre `param` is in the constraint's domain
-   *  @return Whether the augmented constraint is still satisfiable.
-   */
-  def addConstraint(param: PolyParam, bound0: Type, fromBelow: Boolean): Boolean = {
-
-    /** Add bidirectional constraint. If new constraint implies 'A <: B' we also
-     *  make sure 'B >: A' gets added and vice versa. Furthermore, if the constraint
-     *  implies 'A <: B <: A', A and B get unified.
-     */
-    def addc(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
-      val pbounds0 = constraint.bounds(param)
-      bound match {
-        case bound: PolyParam if constraint contains bound =>
-          val bbounds0 @ TypeBounds(lo, hi) = constraint.bounds(bound)
-          if (lo eq hi)
-            addc(param, lo, fromBelow)
-          else if (param == bound)
-            true
-          else if (fromBelow && param.occursIn(lo, fromBelow = true))
-            unify(param, bound)
-          else if (!fromBelow && param.occursIn(hi, fromBelow = false))
-            unify(bound, param)
-          else {
-            val pbounds = prepare(param, bound, fromBelow)
-            val bbounds = prepare(bound, param, !fromBelow)
-            pbounds.exists && bbounds.exists && {
-              install(param, pbounds.bounds, pbounds0)
-              install(bound, bbounds.bounds, bbounds0)
-              true
-            }
-          }
-        case bound: AndOrType if fromBelow != bound.isAnd =>
-          addc(param, bound.tp1, fromBelow) &&
-            addc(param, bound.tp2, fromBelow)
-        case bound: WildcardType =>
-          true
-        case bound => // !!! remove to keep the originals
-          val pbounds = prepare(param, bound, fromBelow)
-          pbounds.exists && {
-            install(param, pbounds.bounds, pbounds0)
-            true
-          }
-      }
-    }
-
-    /** Install bounds for param */
-    def install(param: PolyParam, newBounds: TypeBounds, oldBounds: TypeBounds): Unit = {
-      val curBounds = constraint.bounds(param)
-      try {
-        constraint = constraint.updated(param, newBounds)
-      } catch {
-        case ex: AssertionError =>
-          println(i"error while updating $param $newBounds\n$constraint")
-          throw ex
-      }
-      if (curBounds ne oldBounds) {
-        // In this case the bounds were updated previously by a recursive isSubType in
-        // the satisfiability check of prepare. Reapply the previously added bounds, but
-        // go through a full addConstraint in order to eliminate any cyclic dependencies
-        // via unification.
-        if (!ignoringConstraint(isSubType(curBounds.lo, newBounds.lo)))
-          addConstraint(param, curBounds.lo, fromBelow)
-        if (!ignoringConstraint(isSubType(newBounds.hi, curBounds.hi)))
-          addConstraint(param, curBounds.hi, !fromBelow)
-      }
-    }
-
-    /** Compute new bounds for `param` and check whether they are
-     *  satisfiable. The check might in turn trigger other additions to the constraint.
-     *  @return  The new bounds for `param` (which are not installed yet), or
-     *           NoType, if the new constraint would not be satisfiable.
-     */
-    def prepare(param: PolyParam, bound: Type, fromBelow: Boolean): Type = {
-      constr.println(s"prepare ${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show}")
-      val oldBounds = constraint.bounds(param)
-      val newBounds = ignoringConstraint {
-        if (fromBelow) oldBounds.derivedTypeBounds(oldBounds.lo | bound, oldBounds.hi)
-        else oldBounds.derivedTypeBounds(oldBounds.lo, oldBounds.hi & bound)
-      }
-      val ok =
-        (param == bound) ||
-          (oldBounds eq newBounds) ||
-          {
-            if (pendingParams contains param) {
-              // Why the pendingParams test? It is possible that recursive subtype invocations
-              // come back with another constraint for `param`. An example came up when compiling
-              // ElimRepeated where we got the constraint
-              //
-              //      Coll <: IterableLike[Tree, Coll]
-              //
-              // and added
-              //
-              //      List[Tree] <: Coll
-              //
-              // The recursive bounds test is then
-              //
-              //      List[Tree] <: IterableLike[Tree, Coll]
-              //
-              // and because of the F-bounded polymorphism in the supertype of List,
-              // i.e. List[T] <: IterableLike[T, List[T]], this leads again to
-              //
-              //      List[Tree] <: Coll
-              //
-              // If a parameter is already pending, we avoid revisiting it here.
-              // Instead we combine the bounds computed here with the originally
-              // computed bounds when installing the original type.
-              constr.println(i"deferred bounds: $param $newBounds")
-              true
-            } else {
-              pendingParams += param
-              try isSubType(newBounds.lo, newBounds.hi)
-              finally pendingParams -= param
-            }
-          }
-      if (ok) newBounds else NoType
-    }
-    val bound = deSkolemize(bound0, toSuper = fromBelow).dealias.stripTypeVar
-    def description = s"${param.show} ${if (fromBelow) ">:>" else "<:<"} ${bound.show} to ${constraint.show}"
-    constr.println(s"adding $description")
-    val res = addc(param, bound, fromBelow)
-    constr.println(s"added $description")
-    if (Config.checkConstraintsNonCyclicTrans) constraint.checkNonCyclicTrans()
-    res
-  }
-
-  final def canConstrain(param: PolyParam): Boolean =
-    !frozenConstraint && !solvedConstraint && (constraint contains param)
 
   /** Test whether the lower bounds of all parameters in this
    *  constraint are a solution to the constraint.
    */
-  final def isSatisfiable: Boolean = {
-    val saved = solvedConstraint
-    solvedConstraint = true
-    try
-      constraint.forallParams { param =>
-        val TypeBounds(lo, hi) = constraint.at(param)
-        isSubType(lo, hi) || {
-          ctx.log(i"sub fail $lo <:< $hi")
-          ctx.log(i"approximated = ${approxParams(lo)} <:< ${approxParams(hi)}")
-          false
-        }
+  protected final def isSatisfiable: Boolean =
+    constraint.forallParams { param =>
+      val TypeBounds(lo, hi) = constraint.entry(param)
+      isSubType(lo, hi) || {
+        ctx.log(i"sub fail $lo <:< $hi")
+        false
       }
-    finally solvedConstraint = saved
-  }
+    }
 
   /** Solve constraint set for given type parameter `param`.
    *  If `fromBelow` is true the parameter is approximated by its lower bound,
@@ -269,22 +168,113 @@ trait ConstraintHandling {
         }
       }
     }
-    val bounds = constraint.bounds(param)
-    val bound = if (fromBelow) bounds.lo else bounds.hi
+    val bound = if (fromBelow) constraint.fullLowerBound(param) else constraint.fullUpperBound(param)
     val inst = avoidParam(bound)
     typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
     inst
   }
 
-  /** Map that approximates each param in constraint by its lower bound.
-   *  Currently only used for diagnostics.
+  /** Constraint `c1` subsumes constraint `c2`, if under `c2` as constraint we have
+   *  for all poly params `p` defined in `c2` as `p >: L2 <: U2`:
+   *
+   *     c1 defines p with bounds p >: L1 <: U1, and
+   *     L2 <: L1, and
+   *     U1 <: U2
+   *
+   *  Both `c1` and `c2` are required to derive from constraint `pre`, possibly
+   *  narrowing it with further bounds.
    */
-  final def approxParams = new TypeMap { // !!! Dotty problem: Turn this def into a val => -Ycheck:mix fails
-    def apply(tp: Type): Type = tp.stripTypeVar match {
-      case tp: PolyParam if constraint contains tp =>
-        this(constraint.bounds(tp).lo)
-      case tp =>
-        mapOver(tp)
+  protected final def subsumes(c1: Constraint, c2: Constraint, pre: Constraint): Boolean =
+    if (c2 eq pre) true
+    else if (c1 eq pre) false
+    else {
+      val saved = constraint
+      try
+        c2.forallParams(p => 
+          c1.contains(p) &&
+          c2.upper(p).forall(c1.isLess(p, _)) &&
+          isSubTypeWhenFrozen(c1.nonParamBounds(p), c2.nonParamBounds(p)))
+      finally constraint = saved
     }
+  
+  protected def solvedConstraint = false
+
+  /** The current bounds of type parameter `param` */
+  final def bounds(param: PolyParam): TypeBounds = constraint.entry(param) match {
+    case bounds: TypeBounds => bounds
+    case _ => param.binder.paramBounds(param.paramNum)
+  }
+  
+  def initialize(pt: PolyType): Boolean = {
+    //println(i"INIT**! $pt")
+    checkPropagated(i"initialized $pt") {
+      pt.paramNames.indices.forall { i =>
+        val param = PolyParam(pt, i)
+        val bounds = constraint.nonParamBounds(param)
+        val lower = constraint.lower(param)
+        val upper = constraint.upper(param)
+        if (lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass) ||
+          upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) println(i"INIT*** $pt")
+        lower.forall(addOneUpperBound(_, bounds.hi)) &&
+          upper.forall(addOneLowerBound(_, bounds.lo))
+      }
+    }
+  }
+
+  protected def constraintImpliesSub(param: PolyParam, tp: Type): Boolean = 
+    isSubTypeWhenFrozen(bounds(param).hi, tp)
+
+  protected def constraintImpliesSuper(param: PolyParam, tp: Type): Boolean = 
+    isSubTypeWhenFrozen(tp, bounds(param).lo)
+
+  final def canConstrain(param: PolyParam): Boolean =
+    !frozenConstraint && !solvedConstraint && (constraint contains param)
+
+  protected def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
+    def description = i"constr $param ${if (fromBelow) ">:" else "<:"} $bound:\n$constraint"
+    checkPropagated(s"adding $description")(true)
+    checkPropagated(s"added $description") {
+      addConstraintInvocations += 1
+      try bound.dealias.stripTypeVar match {
+        case bound: PolyParam if constraint contains bound =>
+          if (fromBelow) addLess(bound, param) else addLess(param, bound)
+        case bound: AndOrType if fromBelow != bound.isAnd =>
+          addConstraint(param, bound.tp1, fromBelow) && addConstraint(param, bound.tp2, fromBelow)
+        case bound: WildcardType =>
+          true
+        case bound: ErrorType =>
+          true
+        case _ =>
+          if (occursAtToplevel(param, bound)) fromBelow
+          else if (fromBelow) addLowerBound(param, bound)
+          else addUpperBound(param, bound)
+      }
+      finally addConstraintInvocations -= 1
+    }
+  }
+  
+  private def occursAtToplevel(param: Type, tp: Type): Boolean = tp match {
+    case tp: PolyParam => 
+      param == tp
+    case bound: TypeProxy => 
+      occursAtToplevel(param, bound.underlying)
+    case bound: AndOrType =>
+      occursAtToplevel(param, bound.tp1) || occursAtToplevel(param, bound.tp2)
+    case _ =>
+      false
+  }
+   
+  def checkPropagated(msg: => String)(result: Boolean): Boolean = {
+    if (result && addConstraintInvocations == 0) {
+      frozenConstraint = true
+      for (p <- constraint.domainParams) {
+        for (u <- constraint.upper(p))
+          assert(bounds(p).hi <:< bounds(u).hi, i"propagation failure for upper $p subsumes $u\n$msg")
+        for (l <- constraint.lower(p))
+          assert(bounds(l).lo <:< bounds(p).lo, i"propagation failure for lower $p subsumes $l\n$msg")
+      }
+      frozenConstraint = false
+    }
+    result
   }
 }

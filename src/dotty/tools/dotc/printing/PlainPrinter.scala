@@ -145,10 +145,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (tp.isInstantiated)
           toTextLocal(tp.instanceOpt) ~ "'" // debug for now, so that we can see where the TypeVars are.
         else {
-          val bounds = ctx.typerState.constraint.at(tp.origin) match {
-            case bounds: TypeBounds => bounds
-            case _ => TypeBounds.empty
-          }
+          val constr = ctx.typerState.constraint
+          val bounds = 
+            if (constr.contains(tp)) constr.fullBounds(tp.origin) 
+            else TypeBounds.empty 
           "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
         }
       case _ =>
