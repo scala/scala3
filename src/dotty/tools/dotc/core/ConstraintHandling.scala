@@ -245,23 +245,11 @@ trait ConstraintHandling {
         case bound: ErrorType =>
           true
         case _ =>
-          if (occursAtToplevel(param, bound)) fromBelow
-          else if (fromBelow) addLowerBound(param, bound)
+          if (fromBelow) addLowerBound(param, bound)
           else addUpperBound(param, bound)
       }
       finally addConstraintInvocations -= 1
     }
-  }
-  
-  private def occursAtToplevel(param: Type, tp: Type): Boolean = tp match {
-    case tp: PolyParam => 
-      param == tp
-    case bound: TypeProxy => 
-      occursAtToplevel(param, bound.underlying)
-    case bound: AndOrType =>
-      occursAtToplevel(param, bound.tp1) || occursAtToplevel(param, bound.tp2)
-    case _ =>
-      false
   }
    
   def checkPropagated(msg: => String)(result: Boolean): Boolean = {
