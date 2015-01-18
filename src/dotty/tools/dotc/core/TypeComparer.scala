@@ -183,9 +183,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
           tp2 == tp1 || {
             if (solvedConstraint && (constraint contains tp2)) isSubType(tp1, bounds(tp2).lo)
             else
+              (ctx.mode is Mode.TypevarsMissContext) || 
               constraintImpliesSuper(tp2, tp1) || {
                 if (canConstrain(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
-                else (ctx.mode is Mode.TypevarsMissContext) || secondTry(tp1, tp2)
+                else secondTry(tp1, tp2)
               }
           }
         comparePolyParam
@@ -241,23 +242,24 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case OrType(tp11, tp12) =>
       isSubType(tp11, tp2) && isSubType(tp12, tp2)
     case tp1: PolyParam =>
+      def flagNothingBound = {
+        if ((!frozenConstraint) &&
+          (tp2 isRef defn.NothingClass) &&
+          state.isGlobalCommittable) {
+          def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
+          if (Config.flagInstantiationToNothing) assert(false, msg)
+          else ctx.log(msg)
+        }
+        true
+      }
       def comparePolyParam =
         tp1 == tp2 || {
           if (solvedConstraint && (constraint contains tp1)) isSubType(bounds(tp1).lo, tp2)
           else
+            (ctx.mode is Mode.TypevarsMissContext) ||
             constraintImpliesSub(tp1, tp2) || {
-              if (canConstrain(tp1))
-                addConstraint(tp1, tp2, fromBelow = false) && {
-                  if ((!frozenConstraint) &&
-                    (tp2 isRef defn.NothingClass) &&
-                    state.isGlobalCommittable) {
-                    def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
-                    if (Config.flagInstantiationToNothing) assert(false, msg)
-                    else ctx.log(msg)
-                  }
-                  true
-                }
-              else (ctx.mode is Mode.TypevarsMissContext) || thirdTry(tp1, tp2)
+              if (canConstrain(tp1)) addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
+              else thirdTry(tp1, tp2)
             }
         }
       comparePolyParam

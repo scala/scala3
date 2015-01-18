@@ -241,7 +241,10 @@ trait ConstraintHandling {
         case bound: AndOrType if fromBelow != bound.isAnd =>
           addConstraint(param, bound.tp1, fromBelow) && addConstraint(param, bound.tp2, fromBelow)
         case bound: WildcardType =>
-          true
+          bound.optBounds match {
+            case TypeBounds(lo, hi) => addConstraint(param, if (fromBelow) lo else hi, fromBelow)
+            case NoType => true
+          }
         case bound: ErrorType =>
           true
         case _ =>
