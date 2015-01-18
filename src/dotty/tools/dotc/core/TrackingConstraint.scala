@@ -163,28 +163,8 @@ class TrackingConstraint(private val myMap: ParamInfo,
   def nonParamBounds(param: PolyParam): TypeBounds = 
     entry(param).asInstanceOf[TypeBounds]
   
-  def checkBound(param: PolyParam, bound: Type)(implicit ctx: Context): Type = {
-    assert(param != bound)
-    bound match {
-      case TypeBounds(lo, hi) =>
-        checkBound(param, lo)
-        checkBound(param, hi)
-      case bound: TypeVar =>
-        checkBound(param, bound.underlying)        
-      case bound: RefinedType => 
-        checkBound(param, bound.underlying)
-      case bound: AndOrType =>
-        checkBound(param, bound.tp1)
-        checkBound(param, bound.tp2)
-      case _ =>
-    }
-    bound
-  }
-
-  def fullLowerBound(param: PolyParam)(implicit ctx: Context): Type = {
-    val lo = checkBound(param, nonParamBounds(param).lo)
-    checkBound(param, (lo /: minLower(param))(_ | _))
-  }
+  def fullLowerBound(param: PolyParam)(implicit ctx: Context): Type =
+    (nonParamBounds(param).lo /: minLower(param))(_ | _)
 
   def fullUpperBound(param: PolyParam)(implicit ctx: Context): Type = 
     (nonParamBounds(param).hi /: minUpper(param))(_ & _)
@@ -263,7 +243,7 @@ class TrackingConstraint(private val myMap: ParamInfo,
         else if (contains(param.binder)) record(paramIndex(param))
         else param
       }
-      entries1(i) = checkBound(newParams(i), nonParamBounds(entries1(i), handleParam))
+      entries1(i) = nonParamBounds(entries1(i), handleParam)
     }
     newConstraint(myMap.updated(poly, entries1), less1, params1)
   }
@@ -298,9 +278,8 @@ class TrackingConstraint(private val myMap: ParamInfo,
     val entry = entries(param.paramNum)
     if (entry eq tp) this 
     else {
-      if (!tp.isInstanceOf[TypeBounds]) typr.println(i"inst entry $param to $tp")
       val entries1 = entries.clone
-      entries1(param.paramNum) = checkBound(param, tp)
+      entries1(param.paramNum) = tp
       newConstraint(myMap.updated(param.binder, entries1), less, params)
     }  
   }
@@ -346,7 +325,7 @@ class TrackingConstraint(private val myMap: ParamInfo,
             val newBounds = oldBounds.substParam(param, replacement).asInstanceOf[TypeBounds]
             if (oldBounds ne newBounds) {
               if (result eq entries) result = entries.clone
-              result(i) = checkBound(PolyParam(poly, i), dropParamIn(newBounds, poly, i))
+              result(i) = dropParamIn(newBounds, poly, i)
             }
           case _ =>
         }
