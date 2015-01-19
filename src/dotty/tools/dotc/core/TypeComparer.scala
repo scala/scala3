@@ -411,12 +411,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
           false
       }
       compareClassInfo
-    case JavaArrayType(elem2) =>
-      def compareJavaArray = tp1 match {
-        case JavaArrayType(elem1) => isSubType(elem1, elem2)
-        case _ => fourthTry(tp1, tp2)
-      }
-      compareJavaArray
     case _ =>
       fourthTry(tp1, tp2)
   }
@@ -444,30 +438,33 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
             (tp1.symbol eq NullClass) && isNullable(tp2)
       }
     case tp1: SingletonType =>
-      isNewSubType(tp1.underlying.widenExpr, tp2) || {
-        // if tp2 == p.type  and p: q.type then try   tp1 <:< q.type as a last effort.
-        tp2 match {
-          case tp2: TermRef =>
-            tp2.info match {
-              case tp2i: TermRef =>
-                isSubType(tp1, tp2i)
-              case ExprType(tp2i: TermRef) if (ctx.phase.id > ctx.gettersPhase.id) =>
-                // After getters, val x: T becomes def x: T
-                isSubType(tp1, tp2i)
-              case _ =>
-                false
-            }
-          case _ =>
-            false
-        }
+      /** if `tp2 == p.type` and `p: q.type` then try `tp1 <:< q.type` as a last effort.*/
+      def comparePaths = tp2 match {
+        case tp2: TermRef =>
+          tp2.info match {
+            case tp2i: TermRef =>
+              isSubType(tp1, tp2i)
+            case ExprType(tp2i: TermRef) if (ctx.phase.id > ctx.gettersPhase.id) =>
+              // After getters, val x: T becomes def x: T
+              isSubType(tp1, tp2i)
+            case _ =>
+              false
+          }
+        case _ =>
+          false
       }
+      isNewSubType(tp1.underlying.widenExpr, tp2) || comparePaths
     case tp1: RefinedType =>
        isNewSubType(tp1.parent, tp2) ||
          needsEtaLift(tp2, tp1) && tp2.testLifted(tp1.typeParams, isSubType(tp1, _))
     case AndType(tp11, tp12) =>
       eitherIsSubType(tp11, tp2, tp12, tp2)
     case JavaArrayType(elem1) =>
-      tp2 isRef ObjectClass
+      def compareJavaArray = tp2 match {
+        case JavaArrayType(elem2) => isSubType(elem1, elem2)
+        case _ => tp2 isRef ObjectClass
+      }
+      compareJavaArray 
     case _ =>
       false
   }
