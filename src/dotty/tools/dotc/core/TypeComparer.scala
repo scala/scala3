@@ -138,11 +138,22 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
   private def firstTry(tp1: Type, tp2: Type): Boolean = {
     tp2 match {
       case tp2: NamedType =>
-        def isHKSubType = tp2.name == tpnme.Apply && {
-          val lambda2 = tp2.prefix.LambdaClass(forcing = true)
-          lambda2.exists && !tp1.isLambda &&
-            tp1.testLifted(lambda2.typeParams, isSubType(_, tp2.prefix))
-        }
+        def compareHKOrAlias(info1: Type) = 
+          tp2.name == tpnme.Apply && {
+            val lambda2 = tp2.prefix.LambdaClass(forcing = true)
+            lambda2.exists && !tp1.isLambda &&
+              tp1.testLifted(lambda2.typeParams, isSubType(_, tp2.prefix))
+          } || {
+            tp2.info match {
+              case info2: TypeAlias => isSubType(tp1, info2.alias)
+              case _ =>
+                info1 match {
+                  case info1: TypeAlias => isSubType(info1.alias, tp2)
+                  case NoType => secondTry(tp1, tp2)
+                  case _ => thirdTryNamed(tp1, tp2)
+                }
+            }
+          }
         def compareNamed = {
           implicit val ctx: Context = this.ctx // Dotty deviation: implicits need explicit type
           tp1 match {
@@ -173,9 +184,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
                 (tp1.signature == tp1.signature) &&
                 !tp1.isInstanceOf[WithFixedSym] &&
                 !tp2.isInstanceOf[WithFixedSym]
-           ) || isHKSubType || secondTryNamed(tp1, tp2)
-            case _ =>
-              isHKSubType || secondTry(tp1, tp2)
+              ) || 
+              compareHKOrAlias(tp1.info)
+            case _ => 
+              compareHKOrAlias(NoType)
           }
         }
         compareNamed
@@ -238,7 +250,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
 
   private def secondTry(tp1: Type, tp2: Type): Boolean = tp1 match {
     case tp1: NamedType =>
-      secondTryNamed(tp1, tp2)
+      tp1.info match {
+        case info1: TypeAlias => isSubType(info1.alias, tp2)
+        case _ => thirdTry(tp1, tp2)
+      }
     case tp1: PolyParam =>
       def flagNothingBound = {
         if ((!frozenConstraint) &&
@@ -295,58 +310,31 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       thirdTry(tp1, tp2)
   }
 
-  private def secondTryNamed(tp1: NamedType, tp2: Type): Boolean = tp1.info match {
-    // There was the following code, which was meant to implement this logic:
-    //    If x has type A | B, then x.type <: C if
-    //    x.type <: C assuming x has type A, and
-    //    x.type <: C assuming x has type B.
-    // But it did not work, because derivedRef would always give back the same
-    // type and cache the denotation. So it ended up copmparing just one branch.
-    // The code seems to be unncessary for the tests and does not seems to help performance.
-    // So it is commented out. If we ever need to come back to this, we would have
-    // to create unchached TermRefs in order to avoid cross talk between the branches.
-    /*
-    case OrType(tp11, tp12) =>
-      val sd = tp1.denot.asSingleDenotation
-      def derivedRef(tp: Type) =
-        NamedType(tp1.prefix, tp1.name, sd.derivedSingleDenotation(sd.symbol, tp))
-      secondTry(OrType.make(derivedRef(tp11), derivedRef(tp12)), tp2)
-    */
-    case TypeBounds(lo1, hi1) =>
-      val gbounds1 = ctx.gadt.bounds(tp1.symbol)
-      if (gbounds1 != null)
-        isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
-          narrowGADTBounds(tp1, tp2, fromBelow = false) ||
-          thirdTry(tp1, tp2)
-      else if (lo1 eq hi1) isSubType(hi1, tp2)
-      else thirdTry(tp1, tp2)
-    case _ =>
-      thirdTry(tp1, tp2)
-  }
+  private def thirdTryNamed(tp1: Type, tp2: NamedType): Boolean = tp2.info match {
+    case TypeBounds(lo2, hi2) =>
+      def compareGADT: Boolean = {
+        val gbounds2 = ctx.gadt.bounds(tp2.symbol)
+        (gbounds2 != null) &&
+          (isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
+            narrowGADTBounds(tp2, tp1, isLowerBound = true))
+      }
+      ((frozenConstraint || !isCappable(tp1)) && isSubType(tp1, lo2) ||
+        compareGADT ||
+        fourthTry(tp1, tp2))
 
+    case _ =>
+      val cls2 = tp2.symbol
+      if (cls2.isClass) {
+        val base = tp1.baseTypeRef(cls2)
+        if (base.exists && (base ne tp1)) return isSubType(base, tp2)
+        if (cls2 == defn.SingletonClass && tp1.isStable) return true
+      }
+      fourthTry(tp1, tp2)
+  }
+  
   private def thirdTry(tp1: Type, tp2: Type): Boolean = tp2 match {
     case tp2: NamedType =>
-      def compareNamed: Boolean = tp2.info match {
-        case TypeBounds(lo2, hi2) =>
-          val gbounds2 = ctx.gadt.bounds(tp2.symbol)
-          if (gbounds2 != null)
-            isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
-            narrowGADTBounds(tp2, tp1, fromBelow = true) ||
-            fourthTry(tp1, tp2)
-          else
-            ((frozenConstraint || !isCappable(tp1)) && isSubType(tp1, lo2)
-              || fourthTry(tp1, tp2))
-
-        case _ =>
-          val cls2 = tp2.symbol
-          if (cls2.isClass) {
-            val base = tp1.baseTypeRef(cls2)
-            if (base.exists && (base ne tp1)) return isSubType(base, tp2)
-            if (cls2 == defn.SingletonClass && tp1.isStable) return true
-          }
-        fourthTry(tp1, tp2)
-      }
-      compareNamed
+      thirdTryNamed(tp1, tp2)
     case tp2: RefinedType =>
       def compareRefined: Boolean = {
         val tp1w = tp1.widen
@@ -437,7 +425,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case tp1: TypeRef =>
       tp1.info match {
         case TypeBounds(lo1, hi1) =>
-          isSubType(hi1, tp2)
+          def compareGADT = {
+            val gbounds1 = ctx.gadt.bounds(tp1.symbol)
+            (gbounds1 != null) &&
+              (isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
+              narrowGADTBounds(tp1, tp2, isLowerBound = false))
+          }
+          isSubType(hi1, tp2) || compareGADT
         case _ =>
           def isNullable(tp: Type): Boolean = tp.dealias match {
             case tp: TypeRef => tp.symbol.isNullableClass
@@ -634,15 +628,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     //})
   }
 
-  private def narrowGADTBounds(tr: NamedType, bound: Type, fromBelow: Boolean): Boolean =
+  private def narrowGADTBounds(tr: NamedType, bound: Type, isLowerBound: Boolean): Boolean =
     ctx.mode.is(Mode.GADTflexible) && {
     val tparam = tr.symbol
-    val bound1 = deSkolemize(bound, toSuper = fromBelow)
-    println(s"narrow gadt bound of $tparam: ${tparam.info} from ${if (fromBelow) "below" else "above"} to $bound1 ${bound1.isRef(tparam)}")
+    val bound1 = deSkolemize(bound, toSuper = isLowerBound)
+    println(s"narrow gadt bound of $tparam: ${tparam.info} from ${if (isLowerBound) "below" else "above"} to $bound1 ${bound1.isRef(tparam)}")
     !bound1.isRef(tparam) && {
       val oldBounds = ctx.gadt.bounds(tparam)
       val newBounds =
-        if (fromBelow) TypeBounds(oldBounds.lo | bound1, oldBounds.hi)
+        if (isLowerBound) TypeBounds(oldBounds.lo | bound1, oldBounds.hi)
         else TypeBounds(oldBounds.lo, oldBounds.hi & bound1)
       isSubType(newBounds.lo, newBounds.hi) &&
       { ctx.gadt.setBounds(tparam, newBounds); true }
