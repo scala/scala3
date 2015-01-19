@@ -193,18 +193,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         compareNamed
       case tp2: ProtoType =>
         isMatchedByProto(tp2, tp1)
-      case tp2: PolyParam =>
-        def comparePolyParam =
-          tp2 == tp1 || {
-            if (solvedConstraint && (constraint contains tp2)) isSubType(tp1, bounds(tp2).lo)
-            else
-              (ctx.mode is Mode.TypevarsMissContext) || 
-              constraintImpliesSuper(tp2, tp1) || {
-                if (canConstrain(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
-                else secondTry(tp1, tp2)
-              }
-          }
-        comparePolyParam
       case tp2: BoundType =>
         tp2 == tp1 || secondTry(tp1, tp2)
       case tp2: TypeVar =>
@@ -266,15 +254,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         true
       }
       def comparePolyParam =
-        tp1 == tp2 || {
-          if (solvedConstraint && (constraint contains tp1)) isSubType(bounds(tp1).lo, tp2)
-          else
-            (ctx.mode is Mode.TypevarsMissContext) ||
-            constraintImpliesSub(tp1, tp2) || {
-              if (canConstrain(tp1)) addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
-              else thirdTry(tp1, tp2)
-            }
-        }
+        (ctx.mode is Mode.TypevarsMissContext) ||
+          constraintImpliesSub(tp1, tp2) || {
+            if (canConstrain(tp1)) addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
+            else thirdTry(tp1, tp2)
+          }
       comparePolyParam
     case tp1: ThisType =>
       tp2 match {
@@ -288,8 +272,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         case tp2: SkolemType if tp1 == tp2 => true
         case _ => thirdTry(tp1, tp2)
       }
-    case tp1: BoundType =>
-      tp1 == tp2 || thirdTry(tp1, tp2)
     case tp1: TypeVar =>
       (tp1 eq tp2) || isSubType(tp1.underlying, tp2)
     case tp1: WildcardType =>
@@ -335,6 +317,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
   private def thirdTry(tp1: Type, tp2: Type): Boolean = tp2 match {
     case tp2: NamedType =>
       thirdTryNamed(tp1, tp2)
+    case tp2: PolyParam =>
+      def comparePolyParam =
+        (ctx.mode is Mode.TypevarsMissContext) ||
+          constraintImpliesSuper(tp2, tp1) || {
+            if (canConstrain(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
+            else fourthTry(tp1, tp2)
+          }
+      comparePolyParam
     case tp2: RefinedType =>
       def compareRefined: Boolean = {
         val tp1w = tp1.widen
@@ -599,7 +589,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
 
   /** Defer constraining type variables when compared against prototypes */
   def isMatchedByProto(proto: ProtoType, tp: Type) = tp.stripTypeVar match {
-    case tp: PolyParam if !solvedConstraint && (constraint contains tp) => true
+    case tp: PolyParam if constraint contains tp => true
     case _ => proto.isMatchedBy(tp)
   }
 
@@ -610,7 +600,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
    *  type variable with (the corresponding type in) `tp2` instead.
    */
   private def isCappable(tp: Type): Boolean = tp match {
-    case tp: PolyParam => !solvedConstraint && (constraint contains tp)
+    case tp: PolyParam => constraint contains tp
     case tp: TypeProxy => isCappable(tp.underlying)
     case tp: AndOrType => isCappable(tp.tp1) || isCappable(tp.tp2)
     case _ => false

@@ -197,8 +197,6 @@ trait ConstraintHandling {
       finally constraint = saved
     }
   
-  protected def solvedConstraint = false
-
   /** The current bounds of type parameter `param` */
   final def bounds(param: PolyParam): TypeBounds = constraint.entry(param) match {
     case bounds: TypeBounds => bounds
@@ -228,28 +226,24 @@ trait ConstraintHandling {
     isSubTypeWhenFrozen(tp, bounds(param).lo)
 
   final def canConstrain(param: PolyParam): Boolean =
-    !frozenConstraint && !solvedConstraint && (constraint contains param)
+    !frozenConstraint && (constraint contains param)
 
+  /** Add constraint `param <: bond` if `fromBelow` is true, `param >: bound` otherwise.
+   *  `bound` is assumed to be in normalized form, as specified in `firstTry` and
+   *  `secondTry` of `TypeComparer`. In particular, it should not be an alias type,
+   *  lazy ref, typevar, wildcard type, error type. In addition, upper bounds may
+   *  not be AndTypes and lower bounds may not be OrTypes.
+   */
   protected def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
     def description = i"constr $param ${if (fromBelow) ">:" else "<:"} $bound:\n$constraint"
     checkPropagated(s"adding $description")(true)
     checkPropagated(s"added $description") {
       addConstraintInvocations += 1
-      try bound.dealias.stripTypeVar match {
+      try bound match {
         case bound: PolyParam if constraint contains bound =>
           if (fromBelow) addLess(bound, param) else addLess(param, bound)
-        case bound: AndOrType if fromBelow != bound.isAnd =>
-          addConstraint(param, bound.tp1, fromBelow) && addConstraint(param, bound.tp2, fromBelow)
-        case bound: WildcardType =>
-          bound.optBounds match {
-            case TypeBounds(lo, hi) => addConstraint(param, if (fromBelow) lo else hi, fromBelow)
-            case NoType => true
-          }
-        case bound: ErrorType =>
-          true
         case _ =>
-          if (fromBelow) addLowerBound(param, bound)
-          else addUpperBound(param, bound)
+          if (fromBelow) addLowerBound(param, bound) else addUpperBound(param, bound)
       }
       finally addConstraintInvocations -= 1
     }
