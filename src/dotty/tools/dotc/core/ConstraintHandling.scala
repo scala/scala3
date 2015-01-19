@@ -203,8 +203,7 @@ trait ConstraintHandling {
     case _ => param.binder.paramBounds(param.paramNum)
   }
   
-  def initialize(pt: PolyType): Boolean = {
-    //println(i"INIT**! $pt")
+  def initialize(pt: PolyType): Boolean =
     checkPropagated(i"initialized $pt") {
       pt.paramNames.indices.forall { i =>
         val param = PolyParam(pt, i)
@@ -217,14 +216,8 @@ trait ConstraintHandling {
           upper.forall(addOneLowerBound(_, bounds.lo))
       }
     }
-  }
 
-  protected def constraintImpliesSub(param: PolyParam, tp: Type): Boolean = 
-    isSubTypeWhenFrozen(bounds(param).hi, tp)
-
-  protected def constraintImpliesSuper(param: PolyParam, tp: Type): Boolean = 
-    isSubTypeWhenFrozen(tp, bounds(param).lo)
-
+  /** Can `param` be constrained with new bounds? */
   final def canConstrain(param: PolyParam): Boolean =
     !frozenConstraint && (constraint contains param)
 
@@ -249,6 +242,7 @@ trait ConstraintHandling {
     }
   }
    
+  /** Check that constraint is fully propagated. See comment in Config.checkConstraintsPropagated */
   def checkPropagated(msg: => String)(result: Boolean): Boolean = {
     if (Config.checkConstraintsPropagated && result && addConstraintInvocations == 0) {
       frozenConstraint = true

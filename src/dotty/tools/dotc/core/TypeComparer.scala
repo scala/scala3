@@ -244,9 +244,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       }
     case tp1: PolyParam =>
       def flagNothingBound = {
-        if ((!frozenConstraint) &&
-          (tp2 isRef defn.NothingClass) &&
-          state.isGlobalCommittable) {
+        if (!frozenConstraint && tp2.isRef(defn.NothingClass) && state.isGlobalCommittable) {
           def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
           if (Config.flagInstantiationToNothing) assert(false, msg)
           else ctx.log(msg)
@@ -255,10 +253,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       }
       def comparePolyParam =
         (ctx.mode is Mode.TypevarsMissContext) ||
-          constraintImpliesSub(tp1, tp2) || {
-            if (canConstrain(tp1)) addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
-            else thirdTry(tp1, tp2)
-          }
+        isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
+          if (canConstrain(tp1)) addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
+          else thirdTry(tp1, tp2)
+        }
       comparePolyParam
     case tp1: ThisType =>
       tp2 match {
@@ -320,10 +318,10 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case tp2: PolyParam =>
       def comparePolyParam =
         (ctx.mode is Mode.TypevarsMissContext) ||
-          constraintImpliesSuper(tp2, tp1) || {
-            if (canConstrain(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
-            else fourthTry(tp1, tp2)
-          }
+        isSubTypeWhenFrozen(tp1, bounds(tp2).lo) || {
+          if (canConstrain(tp2)) addConstraint(tp2, tp1.widenExpr, fromBelow = true)
+          else fourthTry(tp1, tp2)
+        }
       comparePolyParam
     case tp2: RefinedType =>
       def compareRefined: Boolean = {
@@ -413,7 +411,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
             val gbounds1 = ctx.gadt.bounds(tp1.symbol)
             (gbounds1 != null) &&
               (isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
-              narrowGADTBounds(tp1, tp2, isLowerBound = false))
+               narrowGADTBounds(tp1, tp2, isLowerBound = false))
           }
           isSubType(hi1, tp2) || compareGADT
         case _ =>
