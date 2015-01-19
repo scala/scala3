@@ -174,8 +174,6 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
                 !tp1.isInstanceOf[WithFixedSym] &&
                 !tp2.isInstanceOf[WithFixedSym]
            ) || isHKSubType || secondTryNamed(tp1, tp2)
-            case tp1: ThisType if tp1.cls eq tp2.symbol.moduleClass =>
-              isSubType(tp1.cls.owner.thisType, tp2.prefix)
             case _ =>
               isHKSubType || secondTry(tp1, tp2)
           }
@@ -216,6 +214,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
             // A's selftype derives from B and B's selftype derives from A.
             tp1.cls.classInfo.selfType.derivesFrom(tp2.cls) &&
               tp2.cls.classInfo.selfType.derivesFrom(tp1.cls)
+          case tp1: TermRef if tp2.cls eq tp1.symbol.moduleClass =>
+            isSubType(tp1.prefix, tp2.cls.owner.thisType)
           case _ =>
             secondTry(tp1, tp2)
         }
@@ -238,14 +238,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
 
   private def secondTry(tp1: Type, tp2: Type): Boolean = tp1 match {
     case tp1: NamedType =>
-      tp2 match {
-        case tp2: ThisType if tp2.cls eq tp1.symbol.moduleClass =>
-          isSubType(tp1.prefix, tp2.cls.owner.thisType)
-        case _ =>
-          secondTryNamed(tp1, tp2)
-      }
-    case OrType(tp11, tp12) =>
-      isSubType(tp11, tp2) && isSubType(tp12, tp2)
+      secondTryNamed(tp1, tp2)
     case tp1: PolyParam =>
       def flagNothingBound = {
         if ((!frozenConstraint) &&
@@ -268,6 +261,13 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
             }
         }
       comparePolyParam
+    case tp1: ThisType =>
+      tp2 match {
+        case tp2: TermRef if tp1.cls eq tp2.symbol.moduleClass =>
+          isSubType(tp1.cls.owner.thisType, tp2.prefix)
+        case _ =>
+          thirdTry(tp1, tp2)
+      }
     case tp1: SkolemType =>
       tp2 match {
         case tp2: SkolemType if tp1 == tp2 => true
@@ -287,6 +287,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       isSubType(tp1.ref, tp2)
     case tp1: AnnotatedType =>
       isSubType(tp1.tpe, tp2)
+    case OrType(tp11, tp12) =>
+      isSubType(tp11, tp2) && isSubType(tp12, tp2)
     case ErrorType =>
       true
     case _ =>
