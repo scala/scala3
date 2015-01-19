@@ -26,6 +26,12 @@ object Config {
    */
   final val checkConstraintsSatisfiable = false
   
+  /** Check that each constraint is fully propagated. i.e.
+   *  If P <: Q then the upper bound of P is a subtype of the upper bound of Q
+   *  and the lower bound of Q is a subtype of the lower bound of P.
+   */
+  final val checkConstraintsPropagated = false
+  
   /** Type comparer will fail with an assert if the upper bound
    *  of a constrained parameter becomes Nothing. This should be turned
    *  on only for specific debugging as normally instantiation to Nothing

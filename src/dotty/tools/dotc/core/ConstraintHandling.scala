@@ -236,7 +236,7 @@ trait ConstraintHandling {
    */
   protected def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
     def description = i"constr $param ${if (fromBelow) ">:" else "<:"} $bound:\n$constraint"
-    checkPropagated(s"adding $description")(true)
+    //checkPropagated(s"adding $description")(true) // DEBUG in case following fails
     checkPropagated(s"added $description") {
       addConstraintInvocations += 1
       try bound match {
@@ -250,7 +250,7 @@ trait ConstraintHandling {
   }
    
   def checkPropagated(msg: => String)(result: Boolean): Boolean = {
-    if (result && addConstraintInvocations == 0) {
+    if (Config.checkConstraintsPropagated && result && addConstraintInvocations == 0) {
       frozenConstraint = true
       for (p <- constraint.domainParams) {
         for (u <- constraint.upper(p))
