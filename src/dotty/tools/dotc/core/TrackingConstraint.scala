@@ -286,7 +286,7 @@ class TrackingConstraint(private val myMap: ParamInfo,
 
   def unify(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): This = {
     val p1Bounds = (nonParamBounds(p1) & nonParamBounds(p2)).substParam(p2, p1)
-    this.updateEntry(p1, p1Bounds).updateEntry(p2, p1)
+    updateEntry(p1, p1Bounds).replace(p2, p1)
   }
 
 // ---------- Removals ------------------------------------------------------------
