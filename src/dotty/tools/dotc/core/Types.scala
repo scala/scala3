@@ -2727,7 +2727,7 @@ object Types {
 
         case tp @ AnnotatedType(annot, underlying) =>
           val underlying1 = this(underlying)
-          if (underlying1 eq underlying) tp else underlying1
+          if (underlying1 eq underlying) tp else tp.derivedAnnotatedType(annot, underlying1)
 
         case tp @ WildcardType =>
           tp.derivedWildcardType(mapOver(tp.optBounds))
