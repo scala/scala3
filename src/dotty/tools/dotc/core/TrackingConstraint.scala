@@ -288,6 +288,15 @@ class TrackingConstraint(private val myMap: ParamInfo,
     val p1Bounds = (nonParamBounds(p1) & nonParamBounds(p2)).substParam(p2, p1)
     updateEntry(p1, p1Bounds).replace(p2, p1)
   }
+  
+  def narrowBound(param: PolyParam, bound: Type, isUpper: Boolean)(implicit ctx: Context): This = {
+    val oldBounds @ TypeBounds(lo, hi) = nonParamBounds(param) 
+    val newBounds = 
+      if (isUpper) oldBounds.derivedTypeBounds(lo, hi & bound)
+      else oldBounds.derivedTypeBounds(lo | bound, hi)
+    if (newBounds eq oldBounds) this
+    else updateEntry(param, newBounds)
+  }
 
 // ---------- Removals ------------------------------------------------------------
 

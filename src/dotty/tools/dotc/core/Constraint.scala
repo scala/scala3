@@ -106,6 +106,12 @@ abstract class Constraint extends Showable {
    *  of the parameter elsewhere in the constraint by type `tp`.
    */
   def replace(param: PolyParam, tp: Type)(implicit ctx: Context): This
+
+  /** Narrow one of the bounds of type parameter `param`
+   *  If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
+   *  that `param >: bound`. 
+   */
+  def narrowBound(param: PolyParam, bound: Type, isUpper: Boolean)(implicit ctx: Context): This
   
   /** Is entry associated with `pt` removable?
    *  @param removedParam The index of a parameter which is still present in the

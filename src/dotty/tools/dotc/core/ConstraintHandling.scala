@@ -44,33 +44,17 @@ trait ConstraintHandling {
 
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint = false
-
-  private def addOneUpperBound(param: PolyParam, bound: Type): Boolean = 
-    constraint.entry(param) match {
-      case oldBounds @ TypeBounds(lo, hi) =>
-        val newHi = hi & bound
-        (newHi eq hi) || {
-          val newBounds = oldBounds.derivedTypeBounds(lo, newHi)
-          constraint = constraint.updateEntry(param, newBounds)
-          isSubType(lo, newHi)
-        }
-      case _ =>
-        true
-    }
-      
-   private def addOneLowerBound(param: PolyParam, bound: Type): Boolean =
-    constraint.entry(param) match {
-      case oldBounds @ TypeBounds(lo, hi) =>
-        val newLo = lo | bound
-        (newLo eq lo) || {
-          val newBounds = oldBounds.derivedTypeBounds(newLo, hi)
-          constraint = constraint.updateEntry(param, newBounds)
-          isSubType(newLo, hi)
-        }
-      case _ =>
-        true
-    }
    
+  private def addOneBound(param: PolyParam, bound: Type, isUpper: Boolean): Boolean =
+    !constraint.contains(param) || {
+      val c1 = constraint.narrowBound(param, bound, isUpper)
+      (c1 eq constraint) || {
+        constraint = c1
+        val TypeBounds(lo, hi) = constraint.entry(param)
+        isSubType(lo, hi)
+      }
+    }
+
   protected def addUpperBound(param: PolyParam, bound: Type): Boolean = {
     def description = i"constraint $param <: $bound to\n$constraint"
     if (bound.isRef(defn.NothingClass) && ctx.typerState.isGlobalCommittable) {
@@ -80,7 +64,9 @@ trait ConstraintHandling {
     }
     constr.println(i"adding $description")
     val lower = constraint.lower(param)
-    val res = addOneUpperBound(param, bound) && lower.forall(addOneUpperBound(_, bound))
+    val res =
+      addOneBound(param, bound, isUpper = true) &&
+      lower.forall(addOneBound(_, bound, isUpper = true))
     constr.println(i"added $description = $res")
     res
   }
@@ -89,7 +75,9 @@ trait ConstraintHandling {
     def description = i"constraint $param >: $bound to\n$constraint"
     constr.println(i"adding $description")
     val upper = constraint.upper(param)
-    val res = addOneLowerBound(param, bound) && upper.forall(addOneLowerBound(_, bound))
+    val res =
+      addOneBound(param, bound, isUpper = false) &&
+      upper.forall(addOneBound(_, bound, isUpper = false))
     constr.println(i"added $description = $res")
     res
   }
@@ -108,7 +96,8 @@ trait ConstraintHandling {
         val hi2 = constraint.nonParamBounds(p2).hi
         constr.println(i"adding $description down1 = $down1, up2 = $up2")
         constraint = constraint.addLess(p1, p2)
-        down1.forall(addOneUpperBound(_, hi2)) && up2.forall(addOneLowerBound(_, lo1))
+        down1.forall(addOneBound(_, hi2, isUpper = true)) &&
+        up2.forall(addOneBound(_, lo1, isUpper = false))
       }
     constr.println(i"added $description = $res")
     res
@@ -119,6 +108,7 @@ trait ConstraintHandling {
    */
   private def unify(p1: PolyParam, p2: PolyParam): Boolean = {
     constr.println(s"unifying $p1 $p2")
+    assert(constraint.isLess(p1, p2))
     val down = constraint.exclusiveLower(p2, p1)
     val up = constraint.exclusiveUpper(p1, p2)
     constraint = constraint.unify(p1, p2)
@@ -126,8 +116,8 @@ trait ConstraintHandling {
     val lo = bounds.lo
     val hi = bounds.hi
     isSubType(lo, hi) &&
-    down.forall(addOneUpperBound(_, hi)) && 
-    up.forall(addOneLowerBound(_, lo))
+    down.forall(addOneBound(_, hi, isUpper = true)) && 
+    up.forall(addOneBound(_, lo, isUpper = false))
   }
   
   protected final def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
@@ -203,6 +193,9 @@ trait ConstraintHandling {
     case _ => param.binder.paramBounds(param.paramNum)
   }
   
+  /** If `p` is a parameter of `pt`, propagate the non-parameter bounds
+   *  of `p` to the parameters known to be less or greater than `p`.
+   */
   def initialize(pt: PolyType): Boolean =
     checkPropagated(i"initialized $pt") {
       pt.paramNames.indices.forall { i =>
@@ -212,8 +205,8 @@ trait ConstraintHandling {
         val upper = constraint.upper(param)
         if (lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass) ||
           upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) println(i"INIT*** $pt")
-        lower.forall(addOneUpperBound(_, bounds.hi)) &&
-          upper.forall(addOneLowerBound(_, bounds.lo))
+        lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
+          upper.forall(addOneBound(_, bounds.lo, isUpper = false))
       }
     }
 
@@ -247,10 +240,14 @@ trait ConstraintHandling {
     if (Config.checkConstraintsPropagated && result && addConstraintInvocations == 0) {
       frozenConstraint = true
       for (p <- constraint.domainParams) {
+        def check(cond: => Boolean, q: PolyParam, ordering: String, explanation: String): Unit =
+          assert(cond, i"propagation failure for $p $ordering $q: $explanation\n$msg")
         for (u <- constraint.upper(p))
-          assert(bounds(p).hi <:< bounds(u).hi, i"propagation failure for upper $p subsumes $u\n$msg")
-        for (l <- constraint.lower(p))
-          assert(bounds(l).lo <:< bounds(p).lo, i"propagation failure for lower $p subsumes $l\n$msg")
+          check(bounds(p).hi <:< bounds(u).hi, u, "<:", "upper bound not propagated")
+        for (l <- constraint.lower(p)) {
+          check(bounds(l).lo <:< bounds(p).hi, l, ">:", "lower bound not propagated")
+          check(constraint.isLess(l, p), l, ">:", "reverse ordering (<:) missing")
+        }
       }
       frozenConstraint = false
     }
