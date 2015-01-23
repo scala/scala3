@@ -282,7 +282,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ref(tp: NamedType)(implicit ctx: Context): Tree =
     if (tp.isType) TypeTree(tp)
     else if (prefixIsElidable(tp)) Ident(tp)
-    else tp.prefix match {
+    else tp.prefix.stripAnnots match {
       case pre: SingletonType => singleton(pre).select(tp)
       case pre => SelectFromTypeTree(TypeTree(pre), tp)
     } // no checks necessary

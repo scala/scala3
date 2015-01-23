@@ -540,7 +540,7 @@ trait Applications extends Compatibility { self: Typer =>
               cpy.Apply(tree)(untpd.TypedSplice(fun2), proto.typedArgs map untpd.TypedSplice), pt)
           }
         case _ =>
-          fun1.tpe match {
+          fun1.tpe.stripAnnots match {
             case ErrorType => tree.withType(ErrorType)
             case tp => handleUnexpectedFunType(tree, fun1)
           }
@@ -694,7 +694,7 @@ trait Applications extends Compatibility { self: Typer =>
         unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $selType")
         def wpt = widenForMatchSelector(selType) // needed?
         val ownType =
-          if (selType <:< unapplyArgType) {
+          if (selType.stripAnnots <:< unapplyArgType) {
             //fullyDefinedType(unapplyArgType, "extractor argument", tree.pos)
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             selType
