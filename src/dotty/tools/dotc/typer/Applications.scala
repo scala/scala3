@@ -68,7 +68,7 @@ object Applications {
           if (seqArg.exists) return args map Function.const(seqArg)
         }
         else return getUnapplySelectors(getTp, args, pos)
-      else if (defn.isProductSubType(unapplyResult)) return productSelectorTypes(unapplyResult, pos)
+      else if (defn.isProductSubType(unapplyResult)) return productSelectorTypes(unapplyResult, pos).map(_.stripAnnots)
     }
     if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
     else if (unapplyResult isRef defn.BooleanClass) Nil

@@ -72,6 +72,8 @@ class SyntheticMethods extends MiniPhaseTransform with IdentityDenotTransformer 
         flags = sym.flags &~ Deferred | Synthetic | Override,
         coord = clazz.coord).enteredAfter(thisTransformer).asTerm
 
+      synthetic.addAnnotation(Annotations.Annotation(defn.ReadOnlyAnnot, Nil))
+
       def forwardToRuntime(vrefss: List[List[Tree]]): Tree =
         ref(defn.runtimeMethod("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefss.head)
 

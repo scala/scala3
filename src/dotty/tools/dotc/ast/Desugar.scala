@@ -218,6 +218,9 @@ object desugar {
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
+    def untpdReadOnly = Apply(Select(New(Select(Ident("dotty".toTermName), "readonly".toTypeName)), nme.CONSTRUCTOR), Nil).withPos(cdef.pos)
+    def untpdPolyRead = Apply(Select(New(Select(Ident("dotty".toTermName), "polyread".toTypeName)), nme.CONSTRUCTOR), Nil).withPos(cdef.pos)
+
     val TypeDef(name, impl @ Template(constr0, parents, self, body)) = cdef
     val mods = cdef.mods
 
@@ -284,7 +287,7 @@ object desugar {
     val caseClassMeths =
       if (mods is Case) {
         def syntheticProperty(name: TermName, rhs: Tree) =
-          DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
+            DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic.withAnnotations(List(untpdPolyRead)))
         val isDefinedMeth = syntheticProperty(nme.isDefined, Literal(Constant(true)))
         val caseParams = constrVparamss.head.toArray
         val productElemMeths = for (i <- 0 until arity) yield

@@ -1,36 +1,36 @@
 import dotty.readonly
 
 object reim {
-  @readonly def m: Box = { // ERROR 9
-    box = new Box // ERROR 1
+  @readonly def m: Box = {
+    val rwbox = new Box
+    box = rwbox // ERROR 1 ReimPhase
 
-    val robox = box: @readonly
-    robox.field = 5 // ERROR 2
+    val robox = rwbox: @readonly
+    robox.field = 5 // ERROR 2 ReimPhase
 
-    val rwbox2: Box = robox // ERROR 3
+    val rwbox2: Box = robox // ERROR 3 ReimTyper
 
-    val rwbox = box
 
     rwbox.field = 5
-    robox.field = 5 // ERROR 4
+    robox.field = 5 // ERROR 4 ReimPhase
 
     val robox2: Box @readonly = robox
     val robox3 = robox
 
     box.next = new Box
     rwbox.next.field = 5
-    robox.next.field = 5 // ERROR 5
+    robox.next.field = 5 // ERROR 5 ReimPhase
 
     def method(rwbox: Box, robox: Box @readonly) = rwbox
-    method(robox, rwbox) // ERROR 6
+    method(robox, rwbox) // ERROR 6 ReimTyper
 
     var localvar: Box = null
-    localvar = box
+    localvar = box // ERROR 9 ReimTyper
 
     {import rwbox.field; field = 5}
-    {import robox.field; field = 5} // ERROR 7
+    {import robox.field; field = 5} // ERROR 7 ReimPhase
 
-    robox // ERROR 8
+    robox // ERROR 8 ReimTyper
   }
 
   class Box {
