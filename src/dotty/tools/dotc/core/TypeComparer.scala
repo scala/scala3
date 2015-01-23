@@ -200,7 +200,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case tp2: LazyRef =>
       isSubType(tp1, tp2.ref)
     case tp2: AnnotatedType =>
-      isSubType(tp1, tp2.tpe) // todo: refine?
+      isSubType(tp1.stripAnnots, tp2.stripAnnots) // todo: refine?
     case tp2: ThisType =>
       def compareThis = {
         val cls2 = tp2.cls
@@ -282,7 +282,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case tp1: LazyRef =>
       isSubType(tp1.ref, tp2)
     case tp1: AnnotatedType =>
-      isSubType(tp1.tpe, tp2)
+      isSubType(tp1.stripAnnots, tp2.stripAnnots)
     case OrType(tp11, tp12) =>
       isSubType(tp11, tp2) && isSubType(tp12, tp2)
     case ErrorType =>
@@ -416,7 +416,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
           }
           isSubType(hi1, tp2) || compareGADT
         case _ =>
-          def isNullable(tp: Type): Boolean = tp.dealias match {
+          def isNullable(tp: Type): Boolean = tp.dealias.stripAnnots match {
             case tp: TypeRef => tp.symbol.isNullableClass
             case RefinedType(parent, _) => isNullable(parent)
             case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
@@ -453,7 +453,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         case JavaArrayType(elem2) => isSubType(elem1, elem2)
         case _ => tp2 isRef ObjectClass
       }
-      compareJavaArray 
+      compareJavaArray
+    case tp1: AnnotatedType =>
+      isSubType(tp1.stripAnnots, tp2.stripAnnots)
     case _ =>
       false
   }
@@ -599,7 +601,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
   }
 
   /** Defer constraining type variables when compared against prototypes */
-  def isMatchedByProto(proto: ProtoType, tp: Type) = tp.stripTypeVar match {
+  def isMatchedByProto(proto: ProtoType, tp: Type) = tp.stripTypeVar.stripAnnots match {
     case tp: PolyParam if constraint contains tp => true
     case _ => proto.isMatchedBy(tp)
   }
@@ -644,9 +646,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
   // Tests around `matches`
 
   /** A function implementing `tp1` matches `tp2`. */
-  final def matchesType(tp1: Type, tp2: Type, relaxed: Boolean): Boolean = tp1.widen match {
+  final def matchesType(tp1: Type, tp2: Type, relaxed: Boolean): Boolean = tp1.widen.stripAnnots match {
     case tp1: MethodType =>
-      tp2.widen match {
+      tp2.widen.stripAnnots match {
         case tp2: MethodType =>
           tp1.isImplicit == tp2.isImplicit &&
             matchingParams(tp1.paramTypes, tp2.paramTypes, tp1.isJava, tp2.isJava) &&
@@ -656,7 +658,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
             matchesType(tp1.resultType, tp2, relaxed)
       }
     case tp1: PolyType =>
-      tp2.widen match {
+      tp2.widen.stripAnnots match {
         case tp2: PolyType =>
           sameLength(tp1.paramNames, tp2.paramNames) &&
             matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
@@ -664,7 +666,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
           false
       }
     case _ =>
-      tp2.widen match {
+      tp2.widen.stripAnnots match {
         case _: PolyType =>
           false
         case tp2: MethodType =>

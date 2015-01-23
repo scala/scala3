@@ -62,7 +62,7 @@ object Checking {
     /** Check info `tp` for cycles. Throw CyclicReference for illegal cycles,
      *  break direct cycle with a LazyRef for legal, F-bounded cycles.
      */
-    def checkInfo(tp: Type): Type = tp match {
+    def checkInfo(tp: Type): Type = tp.stripAnnots match {
       case tp @ TypeAlias(alias) =>
         try tp.derivedTypeAlias(apply(alias))
         finally {
@@ -102,7 +102,7 @@ object Checking {
           // to symbol `sym` itself. We only check references with interesting
           // prefixes for cycles. This pruning is done in order not to force
           // global symbols when doing the cyclicity check.
-          def isInteresting(prefix: Type): Boolean = prefix.stripTypeVar match {
+          def isInteresting(prefix: Type): Boolean = prefix.stripTypeVar.stripAnnots match {
             case NoPrefix => true
             case prefix: ThisType => sym.owner.isClass && prefix.cls.isContainedIn(sym.owner)
             case prefix: NamedType => !prefix.symbol.isStaticOwner && isInteresting(prefix.prefix)
@@ -246,7 +246,7 @@ trait Checking {
    *  @return  `tp` itself if it is a class or trait ref, ObjectClass.typeRef if not.
    */
   def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type =
-    tp.underlyingClassRef(refinementOK = false) match {
+    tp.underlyingClassRef(refinementOK = false).stripAnnots match {
       case tref: TypeRef =>
         if (ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
         if (traitReq && !(tref.symbol is Trait)) ctx.error(d"$tref is not a trait", pos)
@@ -270,7 +270,7 @@ trait Checking {
    *  their lower bound conforms to their upper cound. If a type argument is
    *  infeasible, issue and error and continue with upper bound.
    */
-  def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp match {
+  def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp.stripAnnots match {
     case tp: RefinedType =>
       tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasible(tp.refinedInfo, pos, where))
     case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
@@ -310,7 +310,7 @@ trait Checking {
     }
 
     cls.info.decls.foreach(checkDecl)
-    cls.info match {
+    cls.info.stripAnnots match {
       case ClassInfo(_, _, _, _, selfSym: Symbol) => checkDecl(selfSym)
       case _ =>
     }

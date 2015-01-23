@@ -250,9 +250,9 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def baseTypeWithArgs(base: Symbol)(implicit ctx: Context): Type = ctx.traceIndented(s"btwa ${self.show} wrt $base", core, show = true) {
     def default = self.baseTypeRef(base).appliedTo(baseArgInfos(base))
-    self match {
+    self.stripAnnots match {
       case tp: TypeRef =>
-        tp.info match {
+        tp.info.stripAnnots match {
           case TypeBounds(_, hi) => hi.baseTypeWithArgs(base)
           case _ => default
         }
@@ -297,7 +297,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def argInfos(interpolate: Boolean)(implicit ctx: Context): List[Type] = {
     var tparams: List[TypeSymbol] = null
-    def recur(tp: Type, refineCount: Int): mutable.ListBuffer[Type] = tp.stripTypeVar match {
+    def recur(tp: Type, refineCount: Int): mutable.ListBuffer[Type] = tp.stripTypeVar.stripAnnots match {
       case tp @ RefinedType(tycon, name) =>
         val buf = recur(tycon, refineCount + 1)
         if (buf == null) null
@@ -352,7 +352,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *
    *                       for a contravariant type-parameter becomes L.
    */
-  final def argInfo(tparam: Symbol, interpolate: Boolean = true)(implicit ctx: Context): Type = self match {
+  final def argInfo(tparam: Symbol, interpolate: Boolean = true)(implicit ctx: Context): Type = self.stripAnnots match {
     case self: TypeAlias => self.alias
     case TypeBounds(lo, hi) =>
       if (interpolate) {
@@ -367,14 +367,14 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** The element type of a sequence or array */
-  def elemType(implicit ctx: Context): Type = self match {
+  def elemType(implicit ctx: Context): Type = self.stripAnnots match {
     case defn.ArrayType(elemtp) => elemtp
     case JavaArrayType(elemtp) => elemtp
     case _ => firstBaseArgInfo(defn.SeqClass)
   }
   
   def containsSkolemType(target: Type)(implicit ctx: Context): Boolean = {
-    def recur(tp: Type): Boolean = tp.stripTypeVar match {
+    def recur(tp: Type): Boolean = tp.stripTypeVar.stripAnnots match {
       case SkolemType(tp) =>
         tp eq target
       case tp: NamedType =>
@@ -434,7 +434,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           for (sym <- boundSyms)
             yield TypeRef(SkolemType(rt), correspondingParamName(sym))
 
-        def rewrite(tp: Type): Type = tp match {
+        def rewrite(tp: Type): Type = tp.stripAnnots match {
           case tp @ RefinedType(parent, name: TypeName) =>
             if (correspondingNames contains name) rewrite(parent)
             else RefinedType(
@@ -482,7 +482,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       //println(i"lambda abstract $self wrt $boundSyms%, % --> $res")
       res
     }
-    self match {
+    self.stripAnnots match {
       case self @ TypeBounds(lo, hi) =>
         self.derivedTypeBounds(lo, expand(TypeBounds.upper(hi)))
       case _ =>

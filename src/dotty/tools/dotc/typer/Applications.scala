@@ -68,7 +68,7 @@ object Applications {
           if (seqArg.exists) return args map Function.const(seqArg)
         }
         else return getUnapplySelectors(getTp, args, pos)
-      else if (defn.isProductSubType(unapplyResult)) return productSelectorTypes(unapplyResult, pos)
+      else if (defn.isProductSubType(unapplyResult)) return productSelectorTypes(unapplyResult, pos).map(_.stripAnnots)
     }
     if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
     else if (unapplyResult isRef defn.BooleanClass) Nil
@@ -153,7 +153,7 @@ trait Applications extends Compatibility { self: Typer =>
     /** The function's type after widening and instantiating polytypes
      *  with polyparams in constraint set
      */
-    val methType = funType.widen match {
+    val methType = funType.widen.stripAnnots match {
       case funType: MethodType => funType
       case funType: PolyType => constrained(funType).resultType
       case tp => tp //was: funType
@@ -168,7 +168,7 @@ trait Applications extends Compatibility { self: Typer =>
       else
         args
 
-    protected def init() = methType match {
+    protected def init() = methType.stripAnnots match {
       case methType: MethodType =>
         // apply the result type constraint, unless method type is dependent
         if (!methType.isDependent) {
@@ -254,7 +254,7 @@ trait Applications extends Compatibility { self: Typer =>
       val meth = methRef.symbol.asTerm
       val receiver: Tree = methPart(normalizedFun) match {
         case Select(receiver, _) => receiver
-        case mr => mr.tpe.normalizedPrefix match {
+        case mr => mr.tpe.normalizedPrefix.stripAnnots match {
           case mr: TermRef => ref(mr)
           case _ => EmptyTree
         }
@@ -523,7 +523,7 @@ trait Applications extends Compatibility { self: Typer =>
       // a modified tree but this would be more convoluted and less efficient.
       if (proto.isTupled) proto = proto.tupled
 
-      methPart(fun1).tpe match {
+      methPart(fun1).tpe.stripAnnots match {
         case funRef: TermRef =>
           tryEither { implicit ctx =>
             val app =
@@ -540,7 +540,7 @@ trait Applications extends Compatibility { self: Typer =>
               cpy.Apply(tree)(untpd.TypedSplice(fun2), proto.typedArgs map untpd.TypedSplice), pt)
           }
         case _ =>
-          fun1.tpe match {
+          fun1.tpe.stripAnnots match {
             case ErrorType => tree.withType(ErrorType)
             case tp => handleUnexpectedFunType(tree, fun1)
           }
@@ -585,7 +585,7 @@ trait Applications extends Compatibility { self: Typer =>
   def typedTypeApply(tree: untpd.TypeApply, pt: Type)(implicit ctx: Context): Tree = track("typedTypeApply") {
     var typedArgs = tree.args mapconserve (typedType(_))
     val typedFn = typedExpr(tree.fun, PolyProto(typedArgs.tpes, pt))
-    typedFn.tpe.widen match {
+    typedFn.tpe.widen.stripAnnots match {
       case pt: PolyType =>
         def adaptTypeArg(tree: tpd.Tree, bound: Type): tpd.Tree =
           if (bound.isLambda && !tree.tpe.isLambda && tree.tpe.typeParams.nonEmpty)
@@ -622,8 +622,8 @@ trait Applications extends Compatibility { self: Typer =>
       tree match {
         case tree: untpd.RefTree =>
           val ttree = typedType(untpd.rename(tree, tree.name.toTypeName))
-          ttree.tpe match {
-            case alias: TypeRef if alias.info.isAlias =>
+          ttree.tpe.stripAnnots match {
+            case alias: TypeRef if alias.info.stripAnnots.isAlias =>
               companionRef(alias) match {
                 case companion: TermRef => return untpd.ref(companion) withPos tree.pos
                 case _ =>
@@ -682,19 +682,19 @@ trait Applications extends Compatibility { self: Typer =>
      */
     def isSubTypeOfParent(subtp: Type, tp: Type)(implicit ctx: Context): Boolean =
       if (subtp <:< tp) true
-      else tp match {
+      else tp.stripAnnots match {
         case RefinedType(parent, _) => isSubTypeOfParent(subtp, parent)
         case _ => false
       }
 
-    unapplyFn.tpe.widen match {
+    unapplyFn.tpe.widen.stripAnnots match {
       case mt: MethodType if mt.paramTypes.length == 1 && !mt.isDependent =>
         val m = mt
         val unapplyArgType = mt.paramTypes.head
         unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $selType")
         def wpt = widenForMatchSelector(selType) // needed?
         val ownType =
-          if (selType <:< unapplyArgType) {
+          if (selType.stripAnnots <:< unapplyArgType) {
             //fullyDefinedType(unapplyArgType, "extractor argument", tree.pos)
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             selType
@@ -853,7 +853,7 @@ trait Applications extends Compatibility { self: Typer =>
     }}
 
     /** Drop any implicit parameter section */
-    def stripImplicit(tp: Type): Type = tp match {
+    def stripImplicit(tp: Type): Type = tp.stripAnnots match {
       case mt: ImplicitMethodType if !mt.isDependent =>
         mt.resultType // todo: make sure implicit method types are not dependent
       case pt: PolyType =>

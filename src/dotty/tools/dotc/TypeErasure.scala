@@ -38,7 +38,7 @@ object TypeErasure {
     case JavaArrayType(elem) =>
       isErasedType(elem)
     case AnnotatedType(_, tp) =>
-      isErasedType(tp)
+      false
     case ThisType(tref) =>
       isErasedType(tref)
     case tp: MethodType =>
@@ -105,7 +105,7 @@ object TypeErasure {
   /** The erasure of a top-level reference. Differs from normal erasure in that
    *  TermRefs are kept instead of being widened away.
    */
-  def erasedRef(tp: Type)(implicit ctx: Context): Type = tp match {
+  def erasedRef(tp: Type)(implicit ctx: Context): Type = tp.stripAnnots match {
     case tp: TermRef =>
       assert(tp.symbol.exists, tp)
       val tp1 = ctx.makePackageObjPrefixExplicit(tp)
@@ -160,7 +160,7 @@ object TypeErasure {
    *  as upper bound and that is not Java defined? Arrays of such types are
    *  erased to `Object` instead of `ObjectArray`.
    */
-  def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
+  def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias.stripAnnots match {
     case tp: TypeRef =>
       !tp.symbol.isClass &&
       !tp.derivesFrom(defn.ObjectClass) &&
@@ -186,14 +186,14 @@ object TypeErasure {
    *                    come after S.
    *  (the reason to pick last is that we prefer classes over traits that way).
    */
-  def erasedLub(tp1: Type, tp2: Type)(implicit ctx: Context): Type = tp1 match {
+  def erasedLub(tp1: Type, tp2: Type)(implicit ctx: Context): Type = tp1.stripAnnots match {
     case JavaArrayType(elem1) =>
-      tp2 match {
+      tp2.stripAnnots match {
         case JavaArrayType(elem2) => JavaArrayType(erasedLub(elem1, elem2))
         case _ => defn.ObjectType
       }
     case _ =>
-      tp2 match {
+      tp2.stripAnnots match {
         case JavaArrayType(_) => defn.ObjectType
         case _ =>
           val cls2 = tp2.classSymbol
@@ -216,14 +216,14 @@ object TypeErasure {
    *  - subtypes over supertypes, unless isJava is set
    *  - real classes over traits
    */
-  def erasedGlb(tp1: Type, tp2: Type, isJava: Boolean)(implicit ctx: Context): Type = tp1 match {
+  def erasedGlb(tp1: Type, tp2: Type, isJava: Boolean)(implicit ctx: Context): Type = tp1.stripAnnots match {
     case JavaArrayType(elem1) =>
-      tp2 match {
+      tp2.stripAnnots match {
         case JavaArrayType(elem2) => JavaArrayType(erasedGlb(elem1, elem2, isJava))
         case _ => tp1
       }
     case _ =>
-      tp2 match {
+      tp2.stripAnnots match {
         case JavaArrayType(_) => tp2
         case _ =>
           val tsym1 = tp1.typeSymbol
@@ -346,7 +346,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
     else JavaArrayType(this(elemtp))
   }
 
-  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
+  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp.stripAnnots match {
     case ExprType(rt) =>
       if (sym is Param) apply(tp)
         // Note that params with ExprTypes are eliminated by ElimByName,
@@ -365,7 +365,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
     (if (cls.owner is Package) normalizeClass(cls) else cls).typeRef
   }
 
-  private def eraseResult(tp: Type)(implicit ctx: Context): Type = tp match {
+  private def eraseResult(tp: Type)(implicit ctx: Context): Type = tp.stripAnnots match {
     case tp: TypeRef =>
       val sym = tp.typeSymbol
       if (sym eq defn.UnitClass) sym.typeRef

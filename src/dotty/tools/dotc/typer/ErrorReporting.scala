@@ -86,7 +86,7 @@ object ErrorReporting {
       else if (denot.symbol.exists) denot.symbol.showLocated
       else anonymousTypeMemberStr(denot.info)
 
-    def refStr(tp: Type): String = tp match {
+    def refStr(tp: Type): String = tp.stripAnnots match {
       case tp: NamedType => denotStr(tp.denot)
       case _ => anonymousTypeMemberStr(tp)
     }

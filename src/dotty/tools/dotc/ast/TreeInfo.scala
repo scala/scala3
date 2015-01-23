@@ -359,7 +359,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** Is symbol potentially a getter of a mutable variable?
    */
   def mayBeVarGetter(sym: Symbol)(implicit ctx: Context): Boolean = {
-    def maybeGetterType(tpe: Type): Boolean = tpe match {
+    def maybeGetterType(tpe: Type): Boolean = tpe.stripAnnots match {
       case _: ExprType | _: ImplicitMethodType => true
       case tpe: PolyType => maybeGetterType(tpe.resultType)
       case _ => false

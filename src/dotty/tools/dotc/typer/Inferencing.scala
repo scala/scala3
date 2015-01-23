@@ -107,7 +107,7 @@ trait Inferencing { this: Checking =>
    *  that companion module. Otherwise NoType
    */
   def companionRef(tp: Type)(implicit ctx: Context): Type =
-    tp.underlyingClassRef(refinementOK = true) match {
+    tp.underlyingClassRef(refinementOK = true).stripAnnots match {
       case tp: TypeRef =>
         val companion = tp.classSymbol.companionModule
         if (companion.exists)

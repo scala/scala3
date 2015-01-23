@@ -50,6 +50,8 @@ class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransf
       val newDecls = decls.cloneScope
       newOuterAccessors(cls).foreach(newDecls.enter)
       tp.derivedClassInfo(decls = newDecls)
+    case tp: AnnotatedType =>
+      tp.derivedAnnotatedType(tp.annot, transformInfo(tp.tpe, sym))
     case _ =>
       tp
   }
@@ -201,7 +203,7 @@ object ExplicitOuter {
       case thisTree @ This(_) =>
         isOuter(thisTree.symbol)
       case id: Ident =>
-        id.tpe match {
+        id.tpe.stripAnnots match {
           case ref @ TermRef(NoPrefix, _) =>
             ref.symbol.is(Method) && isOuter(id.symbol.owner.enclosingClass)
             // methods will be placed in enclosing class scope by LambdaLift, so they will get

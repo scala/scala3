@@ -382,7 +382,7 @@ object Denotations {
 
     final def signature(implicit ctx: Context): Signature = {
       if (isType) Signature.NotAMethod // don't force info if this is a type SymDenotation
-      else info match {
+      else info.stripAnnots match {
         case info: MethodicType =>
           try info.signature
           catch { // !!! DEBUG

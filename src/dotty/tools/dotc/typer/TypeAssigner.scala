@@ -31,7 +31,7 @@ trait TypeAssigner {
   def avoid(tp: Type, syms: => List[Symbol])(implicit ctx: Context): Type = {
     val widenMap = new TypeMap {
       lazy val forbidden = syms.toSet
-      def toAvoid(tp: Type): Boolean = tp match {
+      def toAvoid(tp: Type): Boolean = tp.stripAnnots match {
         case tp: TermRef =>
           val sym = tp.symbol
           sym.exists && (
@@ -112,9 +112,9 @@ trait TypeAssigner {
    *      that the package object shows up as the prefix.
    */
   def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
-    def test(tpe: Type, firstTry: Boolean): Type = tpe match {
+    def test(tpe: Type, firstTry: Boolean): Type = tpe.stripAnnots match {
       case tpe: NamedType =>
-        val pre = tpe.prefix
+        val pre = tpe.prefix.stripAnnots
         val name = tpe.name
         val d = tpe.denot.accessibleFrom(pre, superAccess)
         if (!d.exists) {
@@ -183,7 +183,7 @@ trait TypeAssigner {
     tree.withType(tp)
 
   def assignType(tree: untpd.Select, qual: Tree)(implicit ctx: Context): Select = {
-    def qualType = qual.tpe.widen
+    def qualType = qual.tpe.widen.stripAnnots
     def arrayElemType = {
       val JavaArrayType(elemtp) = qualType
       elemtp
@@ -222,7 +222,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Super, qual: Tree, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context) = {
     val mix = tree.mix
-    val qtype @ ThisType(_) = qual.tpe
+    val qtype @ ThisType(_) = qual.tpe.stripAnnots
     val cls = qtype.cls
 
     def findMixinSuper(site: Type): Type = site.parents filter (_.name == mix) match {
@@ -245,25 +245,30 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
-    val ownType = fn.tpe.widen match {
+    def recur(tp: Type): Type = tp.widen match {
       case fntpe @ MethodType(_, ptypes) =>
         if (sameLength(ptypes, args) || ctx.phase.prev.relaxedTyping) fntpe.instantiate(args.tpes)
         else errorType(i"wrong number of parameters for ${fn.tpe}; expected: ${ptypes.length}", tree.pos)
+      case tp: AnnotatedType =>
+        tp.derivedAnnotatedType(tp.annot, recur(tp.tpe))
       case t =>
         errorType(i"${err.exprStr(fn)} does not take parameters", tree.pos)
     }
+    val ownType = recur(fn.tpe)
     tree.withType(ownType)
   }
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
-    val ownType = fn.tpe.widen match {
+    def recur(tp: Type): Type = tp match {
       case pt: PolyType =>
         val argTypes = args.tpes
         if (sameLength(argTypes, pt.paramNames)|| ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
         else errorType(d"wrong number of type parameters for ${fn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, recur(tp.tpe))
       case _ =>
         errorType(i"${err.exprStr(fn)} does not take type parameters", tree.pos)
     }
+    val ownType = recur(fn.tpe.widen)
     tree.withType(ownType)
   }
 

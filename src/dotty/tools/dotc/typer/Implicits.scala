@@ -46,13 +46,13 @@ object Implicits {
 
       def refMatches(ref: TermRef)(implicit ctx: Context) = {
 
-        def discardForView(tpw: Type, argType: Type): Boolean = tpw match {
+        def discardForView(tpw: Type, argType: Type): Boolean = tpw.stripAnnots match {
           case mt: MethodType =>
             mt.isImplicit ||
             mt.paramTypes.length != 1 ||
             !(argType <:< mt.paramTypes.head)(ctx.fresh.setExploreTyperState)
           case poly: PolyType =>
-            poly.resultType match {
+            poly.resultType.stripAnnots match {
               case mt: MethodType =>
                 mt.isImplicit ||
                 mt.paramTypes.length != 1 ||
@@ -68,13 +68,13 @@ object Implicits {
             !tpw.derivesFrom(defn.FunctionClass(1)) || tpw.isRef(defn.PredefConformsClass)
         }
 
-        def discardForValueType(tpw: Type): Boolean = tpw match {
+        def discardForValueType(tpw: Type): Boolean = tpw.stripAnnots match {
           case mt: MethodType => !mt.isImplicit
           case mt: PolyType => discardForValueType(tpw.resultType)
           case _ => false
         }
 
-        def discard = pt match {
+        def discard = pt.stripAnnots match {
           case pt: ViewProto => discardForView(ref.widen, pt.argType)
           case _: ValueTypeOrProto => !defn.isFunctionType(pt) && discardForValueType(ref.widen)
           case _ => false
@@ -302,7 +302,7 @@ trait ImplicitRunInfo { self: RunInfo =>
     def collectCompanions(tp: Type): TermRefSet = track("computeImplicicScope") {
       ctx.traceIndented(i"collectCompanions($tp)", implicits) {
         val comps = new TermRefSet
-        tp match {
+        tp.stripAnnots match {
           case tp: NamedType =>
             val pre = tp.prefix
             comps ++= iscopeRefs(pre)
@@ -377,9 +377,9 @@ trait Implicits { self: Typer =>
        !from.isError
     && !to.isError
     && (ctx.mode is Mode.ImplicitsEnabled)
-    && { from.widenExpr match {
+    && { from.widenExpr.stripAnnots match {
            case from: TypeRef if defn.ScalaValueClasses contains from.symbol =>
-             to.widenExpr match {
+             to.widenExpr.stripAnnots match {
                case to: TypeRef if defn.ScalaValueClasses contains to.symbol =>
                  util.Stats.record("isValueSubClass")
                  return defn.isValueSubClass(from.symbol, to.symbol)

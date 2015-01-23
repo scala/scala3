@@ -271,7 +271,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         ErrorType
       }
 
-    val tree1 = ownType match {
+    val tree1 = ownType.stripAnnots match {
       case ownType: NamedType if !prefixIsElidable(ownType) =>
         ref(ownType).withPos(tree.pos)
       case _ =>
@@ -413,14 +413,14 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         def canAssign(sym: Symbol) = // allow assignments from the primary constructor to class fields
           sym.is(Mutable, butNot = Accessor) ||
           ctx.owner.isPrimaryConstructor && !sym.is(Method) && sym.owner == ctx.owner.owner
-        lhsCore.tpe match {
+        lhsCore.tpe.stripAnnots match {
           case ref: TermRef if canAssign(ref.symbol) =>
             assignType(cpy.Assign(tree)(lhs1, typed(tree.rhs, ref.info)))
           case _ =>
             def reassignmentToVal =
               errorTree(cpy.Assign(tree)(lhsCore, typed(tree.rhs, lhs1.tpe.widen)),
                   "reassignment to val")
-            lhsCore.tpe match {
+            lhsCore.tpe.stripAnnots match {
               case ref: TermRef => // todo: further conditions to impose on getter?
                 val pre = ref.prefix
                 val setterName = ref.name.setterName
@@ -549,7 +549,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
        */
       def inferredParamType(param: untpd.ValDef, formal: Type): Type = {
         if (isFullyDefined(formal, ForceDegree.noBottom)) return formal
-        calleeType.widen match {
+        calleeType.widen.stripAnnots match {
           case mtpe: MethodType =>
             val pos = params indexWhere (_.name == param.name)
             if (pos < mtpe.paramTypes.length) {
@@ -1244,7 +1244,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
-    def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
+    def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp.stripAnnots match {
       case _: MethodType | _: PolyType =>
         def isUnary = wtp.firstParamTypes match {
           case ptype :: Nil => !ptype.isRepeatedParam
@@ -1263,7 +1263,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
-    def adaptNoArgs(wtp: Type): Tree = wtp match {
+    def adaptNoArgs(wtp: Type): Tree = wtp.stripAnnots match {
       case wtp: ExprType =>
         adaptInterpolated(tree.withType(wtp.resultType), pt, original)
       case wtp: ImplicitMethodType if constrainResult(wtp, pt) =>
@@ -1326,7 +1326,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       tree match {
         case Closure(Nil, id @ Ident(nme.ANON_FUN), _)
         if defn.isFunctionType(wtp) && !defn.isFunctionType(pt) =>
-          pt match {
+          pt.stripAnnots match {
             case SAMType(meth)
             if wtp <:< meth.info.toFunctionType() =>
               // was ... && isFullyDefined(pt, ForceDegree.noBottom)
@@ -1350,7 +1350,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[_] => tree
-      case _ => tree.tpe.widen match {
+      case _ => tree.tpe.widen.stripAnnots match {
         case ErrorType =>
           tree
         case ref: TermRef =>

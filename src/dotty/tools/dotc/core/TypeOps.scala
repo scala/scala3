@@ -18,7 +18,7 @@ trait TypeOps { this: Context =>
       if ((pre eq NoType) || (pre eq NoPrefix) || (cls is PackageClass))
         tp
       else if (thiscls.derivesFrom(cls) && pre.baseTypeRef(thiscls).exists)
-        pre match {
+        pre.stripAnnots match {
           case SuperType(thispre, _) => thispre
           case _ => pre
         }
@@ -236,7 +236,7 @@ trait TypeOps { this: Context =>
       case _ =>
         tpe
     }
-    tpe.prefix match {
+    tpe.prefix.stripAnnots match {
       case pre: ThisType if pre.cls is Package => tryInsert(pre.cls)
       case pre: TermRef if pre.symbol is Package => tryInsert(pre.symbol.moduleClass)
       case _ => tpe
@@ -255,7 +255,7 @@ trait TypeOps { this: Context =>
    *  unless a definition for `argSym` already exists in the current scope.
    */
   def forwardRef(argSym: Symbol, from: Symbol, to: TypeBounds, cls: ClassSymbol, decls: Scope) =
-    argSym.info match {
+    argSym.info.stripAnnots match {
       case info @ TypeBounds(lo2 @ TypeRef(_: ThisType, name), hi2) =>
         if (name == from.name &&
             (lo2 eq hi2) &&
@@ -290,7 +290,7 @@ trait TypeOps { this: Context =>
      *  (2) X is not yet defined in current scope. This "short-circuiting" prevents
      *  long chains of aliases which would have to be traversed in type comparers.
      */
-    def forwardRefs(from: Symbol, to: Type, prefs: List[TypeRef]) = to match {
+    def forwardRefs(from: Symbol, to: Type, prefs: List[TypeRef]) = to.stripAnnots match {
       case to @ TypeBounds(lo1, hi1) if lo1 eq hi1 =>
         for (pref <- prefs)
           for (argSym <- pref.decls)
@@ -302,7 +302,7 @@ trait TypeOps { this: Context =>
     // println(s"normalizing $parents of $cls in ${cls.owner}") // !!! DEBUG
     var refinements: SimpleMap[TypeName, Type] = SimpleMap.Empty
     var formals: SimpleMap[TypeName, Symbol] = SimpleMap.Empty
-    def normalizeToRef(tp: Type): TypeRef = tp match {
+    def normalizeToRef(tp: Type): TypeRef = tp.stripAnnots match {
       case tp @ RefinedType(tp1, name: TypeName) =>
         val prevInfo = refinements(name)
         refinements = refinements.updated(name,
@@ -357,7 +357,7 @@ trait TypeOps { this: Context =>
         if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
         if (!(bounds.lo <:< hi)) violations += ((arg, "lower", bounds.lo))
       }
-      arg.tpe match {
+      arg.tpe.stripAnnots match {
         case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi)
         case tp => checkOverlapsBounds(tp, tp)
       }

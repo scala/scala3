@@ -177,14 +177,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     polyDefDef(sym, Function.const(rhsFn))
 
   def polyDefDef(sym: TermSymbol, rhsFn: List[Type] => List[List[Tree]] => Tree)(implicit ctx: Context): DefDef = {
-    val (tparams, mtp) = sym.info match {
+    val (tparams, mtp) = sym.info.stripAnnots match {
       case tp: PolyType =>
         val tparams = ctx.newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateBounds)
         (tparams, tp.instantiate(tparams map (_.typeRef)))
       case tp => (Nil, tp)
     }
 
-    def valueParamss(tp: Type): (List[List[TermSymbol]], Type) = tp match {
+    def valueParamss(tp: Type): (List[List[TermSymbol]], Type) = tp.stripAnnots match {
       case tp @ MethodType(paramNames, paramTypes) =>
         def valueParam(name: TermName, info: Type): TermSymbol =
           ctx.newSymbol(sym, name, TermParam, info)
@@ -256,7 +256,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   // ------ Making references ------------------------------------------------------
 
   def prefixIsElidable(tp: NamedType)(implicit ctx: Context) = {
-    def test(implicit ctx: Context) = tp.prefix match {
+    def test(implicit ctx: Context) = tp.prefix.stripAnnots match {
       case NoPrefix =>
         true
       case pre: ThisType =>
@@ -273,7 +273,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     }
   }
 
-  def needsSelect(tp: Type)(implicit ctx: Context) = tp match {
+  def needsSelect(tp: Type)(implicit ctx: Context) = tp.stripAnnots match {
     case tp: TermRef => !prefixIsElidable(tp)
     case _ => false
   }
@@ -282,7 +282,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ref(tp: NamedType)(implicit ctx: Context): Tree =
     if (tp.isType) TypeTree(tp)
     else if (prefixIsElidable(tp)) Ident(tp)
-    else tp.prefix match {
+    else tp.prefix.stripAnnots match {
       case pre: SingletonType => singleton(pre).select(tp)
       case pre => SelectFromTypeTree(TypeTree(pre), tp)
     } // no checks necessary
@@ -290,7 +290,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ref(sym: Symbol)(implicit ctx: Context): Tree =
     ref(NamedType(sym.owner.thisType, sym.name, sym.denot))
 
-  def singleton(tp: Type)(implicit ctx: Context): Tree = tp match {
+  def singleton(tp: Type)(implicit ctx: Context): Tree = tp.stripAnnots match {
     case tp: TermRef => ref(tp)
     case tp: ThisType => This(tp.cls)
     case SuperType(qual, _) => singleton(qual)

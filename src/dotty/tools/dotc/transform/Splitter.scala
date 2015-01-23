@@ -18,7 +18,7 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
   override def phaseName: String = "splitter"
 
   /** Replace self referencing idents with ThisTypes. */
-  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = tree.tpe match {
+  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = tree.tpe.stripAnnots match {
     case tp: ThisType =>
       ctx.debuglog(s"owner = ${ctx.owner}, context = ${ctx}")
       This(tp.cls) withPos tree.pos
@@ -45,7 +45,7 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
     def memberDenot(tp: Type): SingleDenotation = {
       val mbr = tp.member(name)
       if (!mbr.isOverloaded) mbr.asSingleDenotation
-      else tree.tpe match {
+      else tree.tpe.stripAnnots match {
         case tref: TermRefWithSignature => mbr.atSignature(tref.sig)
         case _ => ctx.error(s"cannot disambiguate overloaded member $mbr"); NoDenotation
       }
@@ -54,9 +54,9 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
     def candidates(tp: Type): List[Symbol] = {
       val mbr = memberDenot(tp)
       if (mbr.symbol.exists) mbr.symbol :: Nil
-      else tp.widen match {
+      else tp.widen.stripAnnots match {
         case tref: TypeRef =>
-          tref.info match {
+          tref.info.stripAnnots match {
             case TypeBounds(_, hi) => candidates(hi)
             case _ => Nil
           }
@@ -69,7 +69,7 @@ class Splitter extends MiniPhaseTransform { thisTransform =>
       }
     }
 
-    def isStructuralSelect(tp: Type): Boolean = tp.stripTypeVar match {
+    def isStructuralSelect(tp: Type): Boolean = tp.stripTypeVar.stripAnnots match {
       case tp: RefinedType => tp.refinedName == name || isStructuralSelect(tp.parent)
       case tp: TypeProxy => isStructuralSelect(tp.underlying)
       case AndType(tp1, tp2) => isStructuralSelect(tp1) || isStructuralSelect(tp2)

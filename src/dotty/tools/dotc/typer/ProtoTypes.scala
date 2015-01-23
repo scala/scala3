@@ -45,16 +45,16 @@ object ProtoTypes {
     /** Check that the result type of the current method
      *  fits the given expected result type.
      */
-    def constrainResult(mt: Type, pt: Type)(implicit ctx: Context): Boolean = pt match {
+    def constrainResult(mt: Type, pt: Type)(implicit ctx: Context): Boolean = pt.stripAnnots match {
       case _: FunProto =>
-        mt match {
+        mt.stripAnnots match {
           case mt: MethodType =>
             mt.isDependent || constrainResult(mt.resultType, pt.resultType)
           case _ =>
             true
         }
       case _: ValueTypeOrProto if !(pt isRef defn.UnitClass) =>
-        mt match {
+        mt.stripAnnots match {
           case mt: MethodType =>
             mt.isDependent || isCompatible(normalize(mt, pt), pt)
           case _ =>
@@ -138,7 +138,7 @@ object ProtoTypes {
    */
   def selectionProto(name: Name, tp: Type, typer: Typer)(implicit ctx: Context) =
     if (name.isConstructorName) WildcardType
-    else tp match {
+    else tp.stripAnnots match {
       case tp: UnapplyFunProto => new UnapplySelectionProto(name)
       case tp => SelectionProto(name, IgnoredProto(tp), typer)
     }
@@ -276,7 +276,7 @@ object ProtoTypes {
    */
   case class PolyProto(targs: List[Type], override val resultType: Type) extends UncachedGroundType with ProtoType {
     override def isMatchedBy(tp: Type)(implicit ctx: Context) = {
-      def isInstantiatable(tp: Type) = tp.widen match {
+      def isInstantiatable(tp: Type) = tp.widen.stripAnnots match {
         case PolyType(paramNames) => paramNames.length == targs.length
         case _ => false
       }
@@ -361,6 +361,7 @@ object ProtoTypes {
           }
         }
       case et: ExprType => et.resultType
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, normalize(tp.tpe, pt))
       case _ => tp
     }
   }

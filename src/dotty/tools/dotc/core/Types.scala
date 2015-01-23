@@ -94,6 +94,7 @@ object Types {
       case tp: TermRef => tp.termSymbol.isStable
       case _: SingletonType => true
       case NoPrefix => true
+      case tp: AnnotatedType => tp.tpe.isStable
       case _ => false
     }
 
@@ -103,7 +104,7 @@ object Types {
      *        It makes no sense for it to be an alias type because isRef would always
      *        return false in that case.
      */
-    def isRef(sym: Symbol)(implicit ctx: Context): Boolean = stripTypeVar match {
+    def isRef(sym: Symbol)(implicit ctx: Context): Boolean = stripTypeVar.stripAnnots match {
       case this1: TypeRef =>
         this1.info match { // see comment in Namer#typeDefSig
           case TypeAlias(tp) => tp.isRef(sym)
@@ -126,7 +127,7 @@ object Types {
     }
 
     /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
-    final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean = this match {
+    final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean = stripAnnots match {
       case tp: TypeRef =>
         val sym = tp.symbol
         if (sym.isClass) sym.derivesFrom(cls) else tp.underlying.derivesFrom(cls)
@@ -162,7 +163,7 @@ object Types {
       classSymbol is ModuleClass
 
     /** Is this type produced as a repair for an error? */
-    final def isError(implicit ctx: Context): Boolean = stripTypeVar match {
+    final def isError(implicit ctx: Context): Boolean = stripTypeVar.stripAnnots match {
       case ErrorType => true
       case tp => (tp.typeSymbol is Erroneous) || (tp.termSymbol is Erroneous)
     }
@@ -187,7 +188,7 @@ object Types {
     /** Is this the type of a method that has a repeated parameter type as
      *  last parameter type?
      */
-    def isVarArgsMethod(implicit ctx: Context): Boolean = this match {
+    def isVarArgsMethod(implicit ctx: Context): Boolean = stripAnnots match {
       case tp: PolyType => tp.resultType.isVarArgsMethod
       case MethodType(_, paramTypes) => paramTypes.nonEmpty && paramTypes.last.isRepeatedParam
       case _ => false
@@ -202,7 +203,7 @@ object Types {
      *  the same class are counted as equal for this purpose.
      */
     def refines(prefix: Type)(implicit ctx: Context): Boolean = {
-      val prefix1 = prefix.dealias
+      val prefix1 = prefix.dealias.stripAnnots
       def loop(tp: Type): Boolean =
         (tp eq prefix1) || {
           tp match {
@@ -246,13 +247,13 @@ object Types {
       new NamedPartsAccumulator(p).apply(mutable.LinkedHashSet(), this)
 
     /** Map function `f` over elements of an AndType, rebuilding with function `g` */
-    def mapReduceAnd[T](f: Type => T)(g: (T, T) => T)(implicit ctx: Context): T = stripTypeVar match {
+    def mapReduceAnd[T](f: Type => T)(g: (T, T) => T)(implicit ctx: Context): T = stripTypeVar.stripAnnots match {
       case AndType(tp1, tp2) => g(tp1.mapReduceAnd(f)(g), tp2.mapReduceAnd(f)(g))
       case _ => f(this)
     }
 
     /** Map function `f` over elements of an OrType, rebuilding with function `g` */
-    final def mapReduceOr[T](f: Type => T)(g: (T, T) => T)(implicit ctx: Context): T = stripTypeVar match {
+    final def mapReduceOr[T](f: Type => T)(g: (T, T) => T)(implicit ctx: Context): T = stripTypeVar.stripAnnots match {
       case OrType(tp1, tp2) => g(tp1.mapReduceOr(f)(g), tp2.mapReduceOr(f)(g))
       case _ => f(this)
     }
@@ -414,7 +415,7 @@ object Types {
         case tp: TypeRef =>
           tp.denot.findMember(name, pre, excluded)
         case tp: TermRef =>
-          go (tp.underlying match {
+          go (tp.underlying.stripAnnots match {
             case mt: MethodType
             if mt.paramTypes.isEmpty && (tp.symbol is Stable) => mt.resultType
             case tp1 => tp1
@@ -582,7 +583,7 @@ object Types {
      *  either type.
      */
     final def overrides(that: Type)(implicit ctx: Context) = {
-      def result(tp: Type): Type = tp match {
+      def result(tp: Type): Type = tp.stripAnnots match {
         case ExprType(_) | MethodType(Nil, _) => tp.resultType
         case _ => tp
       }
@@ -652,7 +653,7 @@ object Types {
 
     /** Remove all AnnotatedTypes wrapping this type.
       */
-    def stripAnnots(implicit ctx: Context): Type = this
+    def stripAnnots: Type = this
 
     /** Widen from singleton type to its underlying non-singleton
      *  base type by applying one or more `underlying` dereferences,
@@ -665,6 +666,7 @@ object Types {
      */
     final def widen(implicit ctx: Context): Type = widenSingleton match {
       case tp: ExprType => tp.resultType.widen
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, tp.tpe.widen)
       case tp => tp
     }
 
@@ -673,6 +675,7 @@ object Types {
      */
     final def widenSingleton(implicit ctx: Context): Type = stripTypeVar match {
       case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, tp.tpe.widenSingleton)
       case _ => this
     }
 
@@ -681,6 +684,7 @@ object Types {
      */
     final def widenExpr: Type = this match {
       case tp: ExprType => tp.resultType
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, tp.tpe.widenExpr)
       case _ => this
     }
 
@@ -688,6 +692,7 @@ object Types {
     final def widenIfUnstable(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ExprType => tp.resultType.widenIfUnstable
       case tp: TermRef if !tp.symbol.isStable => tp.underlying.widenIfUnstable
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, tp.tpe.widenIfUnstable)
       case _ => this
     }
 
@@ -696,7 +701,7 @@ object Types {
      */
     final def dealias(implicit ctx: Context): Type = this match {
       case tp: TypeRef =>
-        tp.info match {
+        tp.info.stripAnnots match {
           case TypeAlias(tp) => tp.dealias
           case _ => tp
         }
@@ -721,6 +726,7 @@ object Types {
      */
     final def deconst(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ConstantType => tp.value.tpe
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, tp.tpe.deconst)
       case _ => this
     }
 
@@ -729,6 +735,7 @@ object Types {
      */
     final def unrefine(implicit ctx: Context): Type = stripTypeVar match {
       case tp @ RefinedType(tycon, _) => tycon.unrefine
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, tp.tpe.unrefine)
       case _ => this
     }
 
@@ -736,12 +743,11 @@ object Types {
      *  a class, the class type ref, otherwise NoType.
      *  @param  refinementOK   If `true` we also skip non-parameter refinements.
      */
-    def underlyingClassRef(refinementOK: Boolean)(implicit ctx: Context): Type = dealias match {
+    def underlyingClassRef(refinementOK: Boolean)(implicit ctx: Context): Type = dealias.stripAnnots match {
       case tp: TypeRef =>
         if (tp.symbol.isClass) tp
         else if (tp.symbol.isAliasType) tp.underlying.underlyingClassRef(refinementOK)
         else NoType
-      case tp: AnnotatedType => tp.underlying.underlyingClassRef(refinementOK)
       case tp: RefinedType =>
         if (refinementOK) tp.underlying.underlyingClassRef(refinementOK)
         else {
@@ -783,7 +789,7 @@ object Types {
      *  yields `String` as the result of lookupRefined.
      */
     def lookupRefined(name: Name)(implicit ctx: Context): Type = {
-      def loop(pre: Type): Type = pre.stripTypeVar match {
+      def loop(pre: Type): Type = pre.stripTypeVar.stripAnnots match {
         case pre: RefinedType =>
           if (pre.refinedName ne name) loop(pre.parent)
           else pre.refinedInfo match {
@@ -858,21 +864,21 @@ object Types {
     }
 
     /** The parameter types of a PolyType or MethodType, Empty list for others */
-    final def paramTypess: List[List[Type]] = this match {
+    final def paramTypess: List[List[Type]] = stripAnnots match {
       case mt: MethodType => mt.paramTypes :: mt.resultType.paramTypess
       case pt: PolyType => pt.resultType.paramTypess
       case _ => Nil
     }
 
     /** The parameter types in the first parameter section of a PolyType or MethodType, Empty list for others */
-    final def firstParamTypes: List[Type] = this match {
+    final def firstParamTypes: List[Type] = stripAnnots match {
       case mt: MethodType => mt.paramTypes
       case pt: PolyType => pt.resultType.firstParamTypes
       case _ => Nil
     }
 
     /** Is this either not a method at all, or a parameterless method? */
-    final def isParameterless: Boolean = this match {
+    final def isParameterless: Boolean = stripAnnots match {
       case mt: MethodType => false
       case pt: PolyType => pt.resultType.isParameterless
       case _ => true
@@ -884,14 +890,14 @@ object Types {
     /** The final result type of a PolyType, MethodType, or ExprType, after skipping
      *  all parameter sections, the type itself for all others.
      */
-    def finalResultType: Type = resultType match {
+    def finalResultType: Type = resultType.stripAnnots match {
       case mt: MethodType => mt.resultType.finalResultType
       case pt: PolyType => pt.resultType.finalResultType
       case _ => resultType
     }
 
     /** This type seen as a TypeBounds */
-    final def bounds(implicit ctx: Context): TypeBounds = this match {
+    final def bounds(implicit ctx: Context): TypeBounds = stripAnnots match {
       case tp: TypeBounds => tp
       case ci: ClassInfo => TypeAlias(ci.typeRef)
       case wc: WildcardType =>
@@ -1917,7 +1923,7 @@ object Types {
 
     protected def computeSignature(implicit ctx: Context): Signature
 
-    protected def resultSignature(implicit ctx: Context) = try resultType match {
+    protected def resultSignature(implicit ctx: Context) = try resultType.stripAnnots match {
       case rtp: MethodicType => rtp.signature
       case tp => Signature(tp, isJava = false)
     }
@@ -1959,7 +1965,7 @@ object Types {
             tp match {
               case MethodParam(`thisMethodType`, _) => true
               case tp @ TypeRef(MethodParam(`thisMethodType`, _), name) =>
-                tp.info match { // follow type arguments to avoid dependency
+                tp.info.stripAnnots match { // follow type arguments to avoid dependency
                   case TypeAlias(tp)=> apply(x, tp)
                   case _ => true
                 }
@@ -2035,13 +2041,18 @@ object Types {
     def apply(paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
       apply(nme.syntheticParamNames(paramTypes.length), paramTypes, resultType)
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
-      def paramInfo(param: Symbol): Type = param.info match {
-        case AnnotatedType(annot, tp) if annot matches defn.RepeatedAnnot =>
-          val typeSym = param.info.typeSymbol.asClass
-          assert(typeSym == defn.SeqClass || typeSym == defn.ArrayClass)
-          tp.translateParameterized(typeSym, defn.RepeatedParamClass)
-        case tp =>
-          tp
+      def paramInfo(param: Symbol): Type = {
+        def recur(info: Type): Type = info match {
+          case AnnotatedType(annot, tp) if annot matches defn.RepeatedAnnot =>
+            val typeSym = param.info.typeSymbol.asClass
+            assert(typeSym == defn.SeqClass || typeSym == defn.ArrayClass)
+            tp.translateParameterized(typeSym, defn.RepeatedParamClass)
+          case tp: AnnotatedType =>
+            tp.derivedAnnotatedType(tp.annot, recur(tp.tpe))
+          case tp =>
+            tp
+        }
+        recur(param.info)
       }
       def transformResult(mt: MethodType) =
         resultType.subst(params, (0 until params.length).toList map (MethodParam(mt, _)))
@@ -2176,7 +2187,7 @@ object Types {
      *     - fromBelow and param <:< bound
      *     - !fromBelow and param >:> bound
      */
-    def occursIn(bound: Type, fromBelow: Boolean)(implicit ctx: Context): Boolean = bound.stripTypeVar match {
+    def occursIn(bound: Type, fromBelow: Boolean)(implicit ctx: Context): Boolean = bound.stripTypeVar.stripAnnots match {
       case bound: PolyParam => bound == this
       case bound: AndOrType =>
         def occ1 = occursIn(bound.tp1, fromBelow)
@@ -2268,7 +2279,7 @@ object Types {
      */
     def instantiate(fromBelow: Boolean)(implicit ctx: Context): Type = {
       def upperBound = ctx.typerState.constraint.fullUpperBound(origin)
-      def isSingleton(tp: Type): Boolean = tp match {
+      def isSingleton(tp: Type): Boolean = tp.stripAnnots match {
         case tp: SingletonType => true
         case AndType(tp1, tp2) => isSingleton(tp1) | isSingleton(tp2)
         case OrType(tp1, tp2) => isSingleton(tp1) & isSingleton(tp2)
@@ -2280,7 +2291,7 @@ object Types {
         case tp: AndOrType => isFullyDefined(tp.tp1) && isFullyDefined(tp.tp2)
         case _ => true
       }
-      def isOrType(tp: Type): Boolean = tp.stripTypeVar.dealias match {
+      def isOrType(tp: Type): Boolean = tp.stripTypeVar.dealias.stripAnnots match {
         case tp: OrType => true
         case AndType(tp1, tp2) => isOrType(tp1) | isOrType(tp2)
         case RefinedType(parent, _) => isOrType(parent)
@@ -2467,7 +2478,7 @@ object Types {
       case _ => this
     }
 
-    def contains(tp: Type)(implicit ctx: Context) = tp match {
+    def contains(tp: Type)(implicit ctx: Context) = tp.stripAnnots match {
       case tp: TypeBounds => lo <:< tp.lo && tp.hi <:< hi
       case _ => lo <:< tp && tp <:< hi
     }
@@ -2561,8 +2572,10 @@ object Types {
       if ((annot eq this.annot) && (tpe eq this.tpe)) this
       else AnnotatedType(annot, tpe)
 
-    override def stripTypeVar(implicit ctx: Context): Type = tpe.stripTypeVar
-    override def stripAnnots(implicit ctx: Context): Type = tpe.stripAnnots
+    override def stripTypeVar(implicit ctx: Context): Type = derivedAnnotatedType(annot, tpe.stripTypeVar)
+    override def stripAnnots: Type = tpe.stripAnnots
+    override def resultType: Type = tpe.resultType
+    override def signature(implicit ctx: Context): Signature = tpe.signature
   }
 
   object AnnotatedType {
@@ -2626,7 +2639,7 @@ object Types {
    *  denotation of the single abstract method as a member of the type.
    */
   object SAMType {
-    def zeroParamClass(tp: Type)(implicit ctx: Context): Type = tp match {
+    def zeroParamClass(tp: Type)(implicit ctx: Context): Type = tp.stripAnnots match {
       case tp: ClassInfo =>
         def zeroParams(tp: Type): Boolean = tp match {
           case pt: PolyType => zeroParams(pt.resultType)
@@ -2660,7 +2673,7 @@ object Types {
         val absMems = tp.abstractTermMembers
         // println(s"absMems: ${absMems map (_.show) mkString ", "}")
         if (absMems.size == 1)
-          absMems.head.info match {
+          absMems.head.info.stripAnnots match {
             case mt: MethodType if !mt.isDependent => Some(absMems.head)
             case _ => None
           }

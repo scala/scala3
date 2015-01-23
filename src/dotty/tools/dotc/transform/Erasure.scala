@@ -214,7 +214,7 @@ object Erasure extends TypeTestsCasts{
      */
     def adaptToType(tree: Tree, pt: Type)(implicit ctx: Context): Tree =
       if (pt.isInstanceOf[FunProto]) tree
-      else tree.tpe.widen match {
+      else tree.tpe.widen.stripAnnots match {
         case MethodType(Nil, _) if tree.isTerm =>
           adaptToType(tree.appliedToNone, pt)
         case tpw =>
@@ -236,9 +236,9 @@ object Erasure extends TypeTestsCasts{
   class Typer extends typer.ReTyper with NoChecking {
     import Boxing._
 
-    def erasedType(tree: untpd.Tree)(implicit ctx: Context): Type = tree.typeOpt match {
+    def erasedType(tree: untpd.Tree)(implicit ctx: Context): Type = tree.typeOpt.stripAnnots match {
       case tp: TermRef if tree.isTerm => erasedRef(tp)
-      case tp => erasure(tp)
+      case _ => erasure(tree.typeOpt)
     }
 
     override def promote(tree: untpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
@@ -306,18 +306,18 @@ object Erasure extends TypeTestsCasts{
       }
 
       def recur(qual: Tree): Tree = {
-        val qualIsPrimitive = qual.tpe.widen.isPrimitiveValueType
+        val qualIsPrimitive = qual.tpe.widen.stripAnnots.isPrimitiveValueType
         val symIsPrimitive = sym.owner.isPrimitiveValueClass
         if ((sym.owner eq defn.AnyClass) || (sym.owner eq defn.AnyValClass)) {
           assert(sym.isConstructor, s"${sym.showLocated}")
           select(qual, defn.ObjectClass.info.decl(sym.name).symbol)
         }
-        else if (qualIsPrimitive && !symIsPrimitive || qual.tpe.isErasedValueType)
+        else if (qualIsPrimitive && !symIsPrimitive || qual.tpe.stripAnnots.isErasedValueType)
           recur(box(qual))
         else if (!qualIsPrimitive && symIsPrimitive)
           recur(unbox(qual, sym.owner.typeRef))
         else if (sym.owner eq defn.ArrayClass)
-          selectArrayMember(qual, erasure(tree.qualifier.typeOpt.widen.finalResultType))
+          selectArrayMember(qual, erasure(tree.qualifier.typeOpt.widen.finalResultType.stripAnnots))
         else {
           val qual1 = adaptIfSuper(qual)
           if (qual1.tpe.derivesFrom(sym.owner) || qual1.isInstanceOf[Super])
@@ -376,7 +376,7 @@ object Erasure extends TypeTestsCasts{
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1
         case fun1 =>
-          fun1.tpe.widen match {
+          fun1.tpe.widen.stripAnnots match {
             case mt: MethodType =>
               val outers = outer.args(fun.asInstanceOf[tpd.Tree]) // can't use fun1 here because its type is already erased
               val args1 = (outers ::: args ++ protoArgs(pt)).zipWithConserve(mt.paramTypes)(typedExpr)
@@ -500,7 +500,12 @@ object Erasure extends TypeTestsCasts{
       })
     }
 
-    override def adapt(tree: Tree, pt: Type, original: untpd.Tree)(implicit ctx: Context): Tree =
+    override def adapt(tree: Tree, pt: Type, original: untpd.Tree)(implicit ctx: Context): Tree = {
+      val tree1 = adapt1(tree, pt, original)
+      tree1.withType(tree1.tpe.stripAnnots)
+    }
+
+    def adapt1(tree: Tree, pt: Type, original: untpd.Tree)(implicit ctx: Context): Tree =
       ctx.traceIndented(i"adapting ${tree.showSummary}: ${tree.tpe} to $pt", show = true) {
         assert(ctx.phase == ctx.erasurePhase.next, ctx.phase)
         if (tree.isEmpty) tree

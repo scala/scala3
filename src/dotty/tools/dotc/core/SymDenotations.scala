@@ -510,7 +510,7 @@ object SymDenotations {
       /** Is `pre` the same as C.thisThis, where C is exactly the owner of this symbol,
        *  or, if this symbol is protected, a subclass of the owner?
        */
-      def isCorrectThisType(pre: Type): Boolean = pre match {
+      def isCorrectThisType(pre: Type): Boolean = pre.stripAnnots match {
         case pre: ThisType =>
           (pre.cls eq owner) || (this is Protected) && pre.cls.derivesFrom(owner)
         case pre: TermRef =>
@@ -573,7 +573,7 @@ object SymDenotations {
       !(  this.isTerm
        || this.isStaticOwner
        || ctx.erasedTypes
-       || (pre eq NoPrefix) || (pre eq thisType)
+       || (pre.stripAnnots eq NoPrefix) || (pre.stripAnnots eq thisType.stripAnnots)
        )
 
     /** Is this symbol concrete, or that symbol deferred? */
@@ -617,7 +617,7 @@ object SymDenotations {
     /** The class implementing this module, NoSymbol if not applicable. */
     final def moduleClass(implicit ctx: Context): Symbol =
       if (this is ModuleVal)
-        myInfo match {
+        myInfo.stripAnnots match {
           case info: TypeRef           => info.symbol
           case ExprType(info: TypeRef) => info.symbol // needed after uncurry, when module terms might be accessor defs
           case info: LazyType          => info.moduleClass
@@ -626,7 +626,7 @@ object SymDenotations {
       else NoSymbol
 
     /** The module implemented by this module class, NoSymbol if not applicable. */
-    final def sourceModule(implicit ctx: Context): Symbol = myInfo match {
+    final def sourceModule(implicit ctx: Context): Symbol = myInfo.stripAnnots match {
       case ClassInfo(_, _, _, _, selfType: TermRef) if this is ModuleClass =>
         selfType.symbol
       case info: LazyType =>
@@ -1363,6 +1363,7 @@ object SymDenotations {
         case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
         case tp: TypeProxy => inCache(tp.underlying)
         case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)
+        case tp: AnnotatedType => isCachable(tp.tpe)
         case _ => true
       }
 

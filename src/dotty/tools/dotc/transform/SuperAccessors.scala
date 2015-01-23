@@ -76,8 +76,9 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
       buf += tree
     }
 
-    private def ensureMethodic(tpe: Type)(implicit ctx: Context) = tpe match {
+    private def ensureMethodic(tpe: Type)(implicit ctx: Context): Type = tpe match {
       case tpe: MethodicType => tpe
+      case tpe: AnnotatedType => tpe.derivedAnnotatedType(tpe.annot, ensureMethodic(tpe.tpe))
       case _ => ExprType(tpe)
     }
 
@@ -250,7 +251,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
           def forwardParamAccessors(stats: List[Tree]): List[Tree] = {
             val (superArgs, superParamNames) = impl.parents match {
               case superCall @ Apply(fn, args) :: _ =>
-                fn.tpe.widen match {
+                fn.tpe.widen.stripAnnots match {
                   case MethodType(paramNames, _) => (args, paramNames)
                   case _ => (Nil, Nil)
                 }
@@ -391,7 +392,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
           transformAssign
 
         case Apply(fn, args) =>
-          val MethodType(_, formals) = fn.tpe.widen
+          val MethodType(_, formals) = fn.tpe.widen.stripAnnots
           ctx.atPhase(thisTransformer.next) { implicit ctx =>
             cpy.Apply(tree)(transform(fn), transformArgs(formals, args))
           }
@@ -434,7 +435,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
       // has to take an object of exactly this type, otherwise it's more general
       val receiverType = if (isThisType(sym.info.finalResultType)) clazz.thisType else clazz.classInfo.selfType
       val accType = {
-        def accTypeOf(tpe: Type): Type = tpe match {
+        def accTypeOf(tpe: Type): Type = tpe.stripAnnots match {
           case tpe: PolyType =>
             tpe.derivedPolyType(tpe.paramNames, tpe.paramBounds, accTypeOf(tpe.resultType))
           case _ =>
