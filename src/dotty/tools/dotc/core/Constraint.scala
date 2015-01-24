@@ -102,8 +102,9 @@ abstract class Constraint extends Showable {
   def unify(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): This
 
   /** A new constraint which is derived from this constraint by removing
-   *  the type parameter `param` from the domain and replacing all occurrences
+   *  the type parameter `param` from the domain and replacing all top-level occurrences
    *  of the parameter elsewhere in the constraint by type `tp`.
+   *  Occurrences nested inside a refinement or prefix are not affected.
    */
   def replace(param: PolyParam, tp: Type)(implicit ctx: Context): This
 

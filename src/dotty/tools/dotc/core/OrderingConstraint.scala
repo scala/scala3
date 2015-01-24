@@ -308,28 +308,31 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
 // ---------- Removals ------------------------------------------------------------
 
-  /** Drop parameter `PolyParam(poly, n)` from `bounds`,
-   *  replacing with Nothing in the lower bound and by `Any` in the upper bound.
+  /** A new constraint which is derived from this constraint by removing
+   *  the type parameter `param` from the domain and replacing all top-level occurrences
+   *  of the parameter elsewhere in the constraint by type `tp`, or a conservative
+   *  approximation of it if that is needed to avoid cycles.
+   *  Occurrences nested inside a refinement or prefix are not affected.
+   *  
+   *  The reason we need to substitute top-level occurrences of the parameter
+   *  is to deal with situations like the following. Say we have in the constraint
+   *  
+   *      P <: Q & String
+   *      Q
+   *      
+   *  and we replace Q with P. Then substitution gives
+   *  
+   *      P <: P & String
+   *      
+   *  this would be a cyclic constraint is therefore changed by `normalize` and
+   *  `recombine` below to
+   *  
+   *      P <: String
+   *      
+   *  approximating the RHS occurrence of P with Any. Without the substitution we 
+   *  would not find out where we need to approximate. Occurrences of parameters
+   *  that are not top-level are not affected.
    */
-  private def dropParamIn(bounds: TypeBounds, poly: PolyType, n: Int)(implicit ctx: Context): TypeBounds = {
-    def drop(tp: Type): Type = tp match {
-      case tp: AndOrType =>
-        val tp1 = drop(tp.tp1)
-        val tp2 = drop(tp.tp2)
-        if (!tp1.exists) tp2
-        else if (!tp2.exists) tp1
-        else tp
-      case PolyParam(`poly`, `n`) => NoType
-      case _ => tp
-    }
-    def approx(tp: Type, limit: Type): Type = {
-      val tp1 = drop(tp)
-      if (tp1.exists || !tp.exists) tp1 else limit
-    }
-    bounds.derivedTypeBounds(
-        approx(bounds.lo, defn.NothingType), approx(bounds.hi, defn.AnyType))
-  }
-
   def replace(param: PolyParam, tp: Type)(implicit ctx: Context): OrderingConstraint = {
     val replacement = tp.dealias.stripTypeVar
     if (param == replacement) this 
@@ -337,22 +340,40 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       assert(replacement.isValueType)
       val poly = param.binder
       val idx = param.paramNum
+      
       def removeParam(ps: List[PolyParam]) = 
         ps.filterNot(p => p.binder.eq(poly) && p.paramNum == idx)
+        
       def replaceParam(tp: Type, atPoly: PolyType, atIdx: Int) = tp match {
-        case bounds: TypeBounds =>
-          val bounds1 = tp.substParam(param, replacement).asInstanceOf[TypeBounds]
-          if (bounds1 eq bounds) bounds
-          else dropParamIn(bounds1, atPoly, atIdx)
+        case bounds @ TypeBounds(lo, hi) =>
+                    
+          def recombine(andor: AndOrType, op: (Type, Boolean) => Type, isUpper: Boolean): Type = {
+            val tp1 = op(andor.tp1, isUpper)
+            val tp2 = op(andor.tp2, isUpper)
+            if ((tp1 eq andor.tp1) && (tp2 eq andor.tp2)) andor
+            else if (andor.isAnd) tp1 & tp2
+            else tp1 | tp2
+          }
+           
+          def normalize(tp: Type, isUpper: Boolean): Type = tp match {
+            case p: PolyParam if p.binder == atPoly && p.paramNum == atIdx =>
+              if (isUpper) defn.AnyType else defn.NothingType
+            case tp: AndOrType if isUpper == tp.isAnd => recombine(tp, normalize, isUpper)
+            case _ => tp
+          }
+
+          def replaceIn(tp: Type, isUpper: Boolean): Type = tp match {
+            case `param` => normalize(replacement, isUpper)
+            case tp: AndOrType if isUpper == tp.isAnd => recombine(tp, replaceIn, isUpper)
+            case _ => tp
+          }
+          
+          bounds.derivedTypeBounds(replaceIn(lo, isUpper = false), replaceIn(hi, isUpper = true))
         case _ => tp
       }
-      var current = this
-      if (isRemovable(poly, idx)) current = remove(poly) 
-      else {
-        current = updateEntry(param, replacement)
-        lowerLens.update(this, current, poly, idx, Nil)
-        upperLens.update(this, current, poly, idx, Nil)
-      }
+      
+      var current = 
+        if (isRemovable(poly, idx)) remove(poly) else updateEntry(param, replacement)
       current.foreachParam {(p, i) =>
         current = boundsLens.map(this, current, p, i, replaceParam(_, p, i))
         current = lowerLens.map(this, current, p, i, removeParam)
