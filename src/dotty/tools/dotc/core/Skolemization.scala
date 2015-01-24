@@ -7,6 +7,8 @@ import collection.mutable
 /** Methods to add and remove skolemtypes.
  *  
  *  Skolem types are generated when comparing refinements. 
+ *  A skolem type is simply a fresh singleton type that has a given type
+ *  as underlying type.
  *  Two skolem types are equal if they refer to the same underlying type. 
  *  To avoid unsoundness, skolem types have to be kept strictly local to the
  *  comparison, they are not allowed to escape the lifetime of a comparison

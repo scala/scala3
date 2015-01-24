@@ -88,7 +88,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         assert(isSatisfiable, constraint.show)
   }
 
-  def isSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) /*<|<*/ {
+  protected def isSubType(tp1: Type, tp2: Type): Boolean = ctx.traceIndented(s"isSubType ${traceInfo(tp1, tp2)}", subtyping) /*<|<*/ {
     if (tp2 eq NoType) false
     else if (tp1 eq tp2) true
     else {
@@ -179,7 +179,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
             else
               (tp1.name eq tp2.name) &&
               isSameType(tp1.prefix, tp2.prefix) &&
-              (tp1.signature == tp1.signature) &&
+              (tp1.signature == tp2.signature) &&
               !tp1.isInstanceOf[WithFixedSym] &&
               !tp2.isInstanceOf[WithFixedSym]
             ) ||

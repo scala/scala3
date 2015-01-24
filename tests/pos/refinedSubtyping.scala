@@ -60,7 +60,6 @@ class Test3 {
   y = x
 
 }
-/* Does not work yet:
 class Test4 {
 
   abstract class A { type T; val xz: Any }
@@ -70,4 +69,4 @@ class Test4 {
   val zz: A { val xz: T } = yy;
 
 }
-*/
+

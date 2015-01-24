@@ -35,7 +35,7 @@ trait ConstraintHandling {
   
   implicit val ctx: Context
   
-  def isSubType(tp1: Type, tp2: Type): Boolean
+  protected def isSubType(tp1: Type, tp2: Type): Boolean
   
   val state: TyperState
   import state.constraint
