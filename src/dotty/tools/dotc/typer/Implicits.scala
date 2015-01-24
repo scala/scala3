@@ -32,7 +32,7 @@ import collection.mutable
 object Implicits {
 
   /** A common base class of contextual implicits and of-type implicits which
-   *  represents as set of implicit references.
+   *  represents a set of implicit references.
    */
   abstract class ImplicitRefs(initctx: Context) {
     implicit val ctx: Context =

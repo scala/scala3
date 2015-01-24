@@ -223,13 +223,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       }
       compareThis
     case tp2: SuperType =>
-      tp1 match {
+      def compareSuper = tp1 match {
         case tp1: SuperType =>
           isSubType(tp1.thistpe, tp2.thistpe) &&
           isSameType(tp1.supertpe, tp2.supertpe)
         case _ =>
           secondTry(tp1, tp2)
       }
+      compareSuper
     case AndType(tp21, tp22) =>
       isSubType(tp1, tp21) && isSubType(tp1, tp22)
     case ErrorType =>
@@ -934,7 +935,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case tp1 @ MethodType(names1, formals1) =>
       tp2 match {
         case tp2 @ MethodType(names2, formals2)
-        if Config.newMatch && (tp1.isImplicit == tp2.isImplicit) && formals1.hasSameLengthAs(formals2) =>
+        if Config.newMatch && tp1.signature.sameParams(tp2.signature) &&
+           tp1.isImplicit == tp2.isImplicit =>
           tp1.derivedMethodType(
               mergeNames(names1, names2, nme.syntheticParamName),
               (formals1 zipWithConserve formals2)(_ | _),
@@ -999,7 +1001,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case tp1 @ MethodType(names1, formals1) =>
       tp2 match {
         case tp2 @ MethodType(names2, formals2)
-        if Config.newMatch && (tp1.isImplicit == tp2.isImplicit) && formals1.hasSameLengthAs(formals2) =>
+        if Config.newMatch && tp1.signature.sameParams(tp2.signature) &&
+           tp1.isImplicit == tp2.isImplicit =>
           tp1.derivedMethodType(
               mergeNames(names1, names2, nme.syntheticParamName),
               (formals1 zipWithConserve formals2)(_ & _),
