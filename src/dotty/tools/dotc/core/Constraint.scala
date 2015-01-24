@@ -103,7 +103,8 @@ abstract class Constraint extends Showable {
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all top-level occurrences
-   *  of the parameter elsewhere in the constraint by type `tp`.
+   *  of the parameter elsewhere in the constraint by type `tp`, or a conservative
+   *  approximation of it if that is needed to avoid cycles.
    *  Occurrences nested inside a refinement or prefix are not affected.
    */
   def replace(param: PolyParam, tp: Type)(implicit ctx: Context): This
