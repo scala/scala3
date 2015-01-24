@@ -50,6 +50,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
   private var myNullClass: ClassSymbol = null
   private var myObjectClass: ClassSymbol = null
   private var myAnyType: TypeRef = null
+  private var myNothingType: TypeRef = null
 
   def AnyClass = {
     if (myAnyClass == null) myAnyClass = defn.AnyClass
@@ -71,14 +72,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     if (myAnyType == null) myAnyType = AnyClass.typeRef
     myAnyType
   }
+  def NothingType = {
+    if (myNothingType == null) myNothingType = NothingClass.typeRef
+    myNothingType
+  }
 
   // Subtype testing `<:<`
 
   def topLevelSubType(tp1: Type, tp2: Type): Boolean = {
     if (tp2 eq NoType) return false
-    if ((tp2 eq tp1) ||
-        (tp2 eq WildcardType) ||
-        (tp2 eq AnyType) && tp1.isValueType) return true
+    if ((tp2 eq tp1) || (tp2 eq WildcardType)) return true
     try isSubType(tp1, tp2)
     finally
       if (Config.checkConstraintsSatisfiable)
@@ -381,8 +384,8 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case tp2 @ TypeBounds(lo2, hi2) =>
       def compareTypeBounds = tp1 match {
         case tp1 @ TypeBounds(lo1, hi1) =>
-          (tp2.variance > 0 && tp1.variance >= 0 || isSubType(lo2, lo1)) &&
-          (tp2.variance < 0 && tp1.variance <= 0 || isSubType(hi1, hi2))
+          (tp2.variance > 0 && tp1.variance >= 0 || (lo2 eq NothingType) || isSubType(lo2, lo1)) &&
+          (tp2.variance < 0 && tp1.variance <= 0 || (hi2 eq AnyType) || isSubType(hi1, hi2))
         case tp1: ClassInfo =>
           val tt = tp1.typeRef
           isSubType(lo2, tt) && isSubType(tt, hi2)
