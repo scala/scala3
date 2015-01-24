@@ -30,14 +30,14 @@ import TrackingConstraint._
  *               An instantiated type parameter is represented by having its instance type in
  *               the corresponding array entry.
  */
-class TrackingConstraint(private val myMap: ParamInfo, 
-                         private val less: Array[BitSet], 
+class TrackingConstraint(private val myMap: ParamInfo,
+                         private val less: Array[BitSet],
                          private val params: Array[PolyParam]) extends Constraint {
-  
+
   type This = TrackingConstraint
-  
+
   assert(less.length == params.length)
-  
+
   /** A new constraint which is derived from this constraint by adding or replacing
    *  the entries corresponding to `pt` with `entries`.
    */
@@ -47,19 +47,19 @@ class TrackingConstraint(private val myMap: ParamInfo,
     ctx.runInfo.recordConstraintSize(result, result.myMap.size)
     result
   }
-  
+
 // ----------- Basic indices --------------------------------------------------
 
   /** The immutable array of constrained polytypes */
   private val polyTypes = new Array[PolyType](myMap.size)
-  
+
   /** The start positions of parameters of constrained polytypes in `params` and `less` */
   private val polyStart = new Array[Int](myMap.size)
-  
+
   {
     var idx = 0
     var count = 0
-    myMap.foreachBinding { (pt, _) => 
+    myMap.foreachBinding { (pt, _) =>
       polyTypes(idx) = pt
       polyStart(idx) = count
       count += pt.paramNames.length
@@ -67,8 +67,8 @@ class TrackingConstraint(private val myMap: ParamInfo,
     }
     assert(count == params.length)
   }
-  
-  /** The index of given polytype `pt` in this constraint, 
+
+  /** The index of given polytype `pt` in this constraint,
    *  or `polyTypes.length` if constraint does not contain `pt`.
    */
   private def polyIndex(pt: PolyType): Int = {
@@ -76,16 +76,16 @@ class TrackingConstraint(private val myMap: ParamInfo,
     while (i < polyTypes.length && (polyTypes(i) ne pt)) i += 1
     i
   }
-  
+
   /** The index of the first parameter of given polytype `pt` in this constraint */
   private def polyStart(pt: PolyType): Int = this.polyStart.apply(polyIndex(pt))
-  
+
   /** The index of `param` in `params` and `less` */
   private def paramIndex(param: PolyParam): Int = {
     assert(contains(param.binder))
     polyStart(param.binder) + param.paramNum
   }
-  
+
   /** The number of type parameters in the given entry array */
   private def paramCount(entries: Array[Type]) = entries.length >> 1
 
@@ -98,7 +98,7 @@ class TrackingConstraint(private val myMap: ParamInfo,
     if (entries == null) NoType
     else entries(param.paramNum)
   }
-    
+
 // ----------- Contains tests --------------------------------------------------
 
   def contains(pt: PolyType): Boolean = polyIndex(pt) < polyTypes.length
@@ -116,59 +116,59 @@ class TrackingConstraint(private val myMap: ParamInfo,
   }
 
   private def isBounds(tp: Type) = tp.isInstanceOf[TypeBounds]
-  
+
 // ---------- Dependency handling ----------------------------------------------
-  
+
   private def upperBits(less: Array[BitSet], i: Int): BitSet = less(i)
-  
-  private def lowerBits(less: Array[BitSet], i: Int): BitSet = 
+
+  private def lowerBits(less: Array[BitSet], i: Int): BitSet =
     (BitSet() /: less.indices) ((bits, j) => if (less(j)(i)) bits + j else bits)
-    
+
   private def minUpperBits(less: Array[BitSet], i: Int): BitSet = {
     val all = upperBits(less, i)
     all.filterNot(j => all.exists(k => less(k)(j)))
   }
-  
+
   private def minLowerBits(less: Array[BitSet], i: Int): BitSet = {
     val all = lowerBits(less, i)
     all.filterNot(j => all.exists(k => less(j)(k)))
   }
-  
+
   private def overParams(op: (Array[BitSet], Int) => BitSet): PolyParam => List[PolyParam] = param =>
     op(less, paramIndex(param)).toList.map(params).filter(contains)
-    
+
   val allUpper = overParams(upperBits)
   val allLower = overParams(lowerBits)
   val minUpper = overParams(minUpperBits)
   val minLower = overParams(minLowerBits)
-  
+
   def upper(param: PolyParam): List[PolyParam] = allUpper(param)
   def lower(param: PolyParam): List[PolyParam] = allLower(param)
-  
+
   def exclusiveLower(param: PolyParam, butNot: PolyParam): List[PolyParam] = {
     val excluded = lowerBits(less, paramIndex(butNot))
     overParams(lowerBits(_, _) &~ excluded)(param)
   }
-    
+
   def exclusiveUpper(param: PolyParam, butNot: PolyParam): List[PolyParam] = {
     val excluded = upperBits(less, paramIndex(butNot))
     overParams(upperBits(_, _) &~ excluded)(param)
   }
-  
+
 // ---------- Info related to PolyParams -------------------------------------------
 
-  def isLess(param1: PolyParam, param2: PolyParam)(implicit ctx: Context): Boolean =
+  def isLess(param1: PolyParam, param2: PolyParam): Boolean =
     less(paramIndex(param1))(paramIndex(param2))
 
-  def nonParamBounds(param: PolyParam): TypeBounds = 
+  def nonParamBounds(param: PolyParam): TypeBounds =
     entry(param).asInstanceOf[TypeBounds]
-  
+
   def fullLowerBound(param: PolyParam)(implicit ctx: Context): Type =
     (nonParamBounds(param).lo /: minLower(param))(_ | _)
 
-  def fullUpperBound(param: PolyParam)(implicit ctx: Context): Type = 
+  def fullUpperBound(param: PolyParam)(implicit ctx: Context): Type =
     (nonParamBounds(param).hi /: minUpper(param))(_ & _)
-    
+
   def fullBounds(param: PolyParam)(implicit ctx: Context): TypeBounds =
     nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
 
@@ -180,16 +180,16 @@ class TrackingConstraint(private val myMap: ParamInfo,
       if (tvar != null) tvar else NoType
     }
   }
-  
+
 // ---------- Adding PolyTypes --------------------------------------------------
-   
+
   /** The bound type `tp` without dependent parameters
    *  NoType if type consists only of dependent parameters.
    *  @param seenFromBelow   If true, `bound` is an upper bound, else a lower bound.
    */
-  private def stripParams(tp: Type, handleParam: (PolyParam, Boolean) => Type, 
+  private def stripParams(tp: Type, handleParam: (PolyParam, Boolean) => Type,
       seenFromBelow: Boolean)(implicit ctx: Context): Type = tp match {
-    case tp: PolyParam => 
+    case tp: PolyParam =>
       handleParam(tp, seenFromBelow)
     case tp: AndOrType if seenFromBelow == tp.isAnd =>
       val tp1 = stripParams(tp.tp1, handleParam, seenFromBelow)
@@ -200,17 +200,17 @@ class TrackingConstraint(private val myMap: ParamInfo,
       else tp2
     case _ =>
       tp
-  } 
-  
+  }
+
   /** The bound type `tp` without dependent parameters.
    *  A top or bottom type if type consists only of dependent parameters.
    *  @param seenFromBelow   If true, `bound` is an upper bound, else a lower bound.
    */
-  private def nonParamType(tp: Type, handleParam: (PolyParam, Boolean) => Type, 
-      seenFromBelow: Boolean)(implicit ctx: Context): Type = 
+  private def nonParamType(tp: Type, handleParam: (PolyParam, Boolean) => Type,
+      seenFromBelow: Boolean)(implicit ctx: Context): Type =
     stripParams(tp, handleParam, seenFromBelow)
       .orElse(if (seenFromBelow) defn.AnyType else defn.NothingType)
-  
+
   /** The bounds of `tp1` without dependent parameters.
    *  @pre `tp` is a TypeBounds type.
    */
@@ -234,7 +234,7 @@ class TrackingConstraint(private val myMap: ParamInfo,
     for (i <- is) {
       def handleParam(param: PolyParam, seenFromBelow: Boolean): Type = {
         def record(paramIdx: Int): Type = {
-          less1 = 
+          less1 =
             if (seenFromBelow) updatedLess(less1, nparams + i, paramIdx)
             else updatedLess(less1, paramIdx, nparams + i)
           NoType
@@ -247,9 +247,9 @@ class TrackingConstraint(private val myMap: ParamInfo,
     }
     newConstraint(myMap.updated(poly, entries1), less1, params1)
   }
-  
+
 // ---------- Updates ------------------------------------------------------------
-  
+
   /** An updated partial order matrix that incorporates `less` and also reflects that `param` relates
    *  to `p2` wrt <:< if `inOrder` is true, `>:>` otherwise.
    */
@@ -267,31 +267,31 @@ class TrackingConstraint(private val myMap: ParamInfo,
         result
       }
     }
-  
+
   def addLess(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): This = {
     val less1 = updatedLess(less, paramIndex(p1), paramIndex(p2))
     if (less1 eq less) this else newConstraint(myMap, less1, params)
   }
-  
+
   def updateEntry(param: PolyParam, tp: Type)(implicit ctx: Context): This = {
     val entries = myMap(param.binder)
     val entry = entries(param.paramNum)
-    if (entry eq tp) this 
+    if (entry eq tp) this
     else {
       val entries1 = entries.clone
       entries1(param.paramNum) = tp
       newConstraint(myMap.updated(param.binder, entries1), less, params)
-    }  
+    }
   }
 
   def unify(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): This = {
     val p1Bounds = (nonParamBounds(p1) & nonParamBounds(p2)).substParam(p2, p1)
     updateEntry(p1, p1Bounds).replace(p2, p1)
   }
-  
+
   def narrowBound(param: PolyParam, bound: Type, isUpper: Boolean)(implicit ctx: Context): This = {
-    val oldBounds @ TypeBounds(lo, hi) = nonParamBounds(param) 
-    val newBounds = 
+    val oldBounds @ TypeBounds(lo, hi) = nonParamBounds(param)
+    val newBounds =
       if (isUpper) oldBounds.derivedTypeBounds(lo, hi & bound)
       else oldBounds.derivedTypeBounds(lo | bound, hi)
     if (newBounds eq oldBounds) this
@@ -342,8 +342,8 @@ class TrackingConstraint(private val myMap: ParamInfo,
       }
       result
     }
-    
-    if (param == replacement) this 
+
+    if (param == replacement) this
     else {
       assert(replacement.isValueType)
       val pt = param.binder
@@ -355,7 +355,7 @@ class TrackingConstraint(private val myMap: ParamInfo,
   def remove(pt: PolyType)(implicit ctx: Context): This = {
     val start = polyStart(pt)
     val skipped = pt.paramNames.length
-    
+
     def shrinkSet(bits: BitSet): BitSet =
       (BitSet() /: bits) ((res, i) =>
         if (i < start) res + i
@@ -364,12 +364,12 @@ class TrackingConstraint(private val myMap: ParamInfo,
     def shrinkArray[T: ClassTag](src: Array[T]) = {
       val dst = new Array[T](src.length - skipped)
       Array.copy(src, 0, dst, 0, start)
-      Array.copy(src, start + skipped, dst, start, dst.length - start) 
+      Array.copy(src, start + skipped, dst, start, dst.length - start)
       dst
     }
     newConstraint(
-      myMap = myMap remove pt, 
-      less = shrinkArray(less).map(shrinkSet(_)), 
+      myMap = myMap remove pt,
+      less = shrinkArray(less).map(shrinkSet(_)),
       params = shrinkArray(params))
   }
 
@@ -438,14 +438,14 @@ class TrackingConstraint(private val myMap: ParamInfo,
 
   def checkNonCyclic()(implicit ctx: Context): Unit =
     for (i <- params.indices) checkNonCyclic(i)
-  
+
 // ---------- toText -----------------------------------------------------
 
   override def toText(printer: Printer): Text = {
     def entryText(tp: Type) = tp match {
-      case tp: TypeBounds => 
+      case tp: TypeBounds =>
         tp.toText(printer)
-      case _ => 
+      case _ =>
         " := " ~ tp.toText(printer)
     }
     val indent = 3
@@ -469,7 +469,7 @@ class TrackingConstraint(private val myMap: ParamInfo,
             ups = minUpper(param)
             if ups.nonEmpty
           }
-          yield 
+          yield
             (" " * indent) ~ param.toText(printer) ~ " <: " ~
               Text(ups.map(_.toText(printer)), ", ")
         Text(deps, "\n")

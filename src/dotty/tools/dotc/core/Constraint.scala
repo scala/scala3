@@ -42,7 +42,7 @@ abstract class Constraint extends Showable {
   def typeVarOfParam(param: PolyParam): Type
       
   /** Is it known that `param1 <:< param2`? */
-  def isLess(param1: PolyParam, param2: PolyParam)(implicit ctx: Context): Boolean
+  def isLess(param1: PolyParam, param2: PolyParam): Boolean
 
   /** The parameters that are known to be smaller wrt <: than `param` */ 
   def lower(param: PolyParam): List[PolyParam]

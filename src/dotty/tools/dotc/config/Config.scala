@@ -13,7 +13,7 @@ object Config {
   /** When updating a connstraint bound, check that the constrained parameter
    *  does not appear at the top-level of either of its bounds.
    */
-  final val checkConstraintsNonCyclic = true
+  final val checkConstraintsNonCyclic = false
   
   /** Like `checkConstraintsNonCyclic`, but all constrained parameters
    *  are tested for direct or indirect dependencies, each time a
