@@ -77,7 +77,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
   private def mkLabel(method: Symbol)(implicit c: Context): TermSymbol = {
     val name = c.freshName(labelPrefix)
 
-    c.newSymbol(method, name.toTermName, labelFlags, fullyParameterizedType(method.info, method.enclosingClass.asClass))
+    c.newSymbol(method, name.toTermName, labelFlags, fullyParameterizedType(method.info, method.enclosingClass.asClass, abstractOverClass = false))
   }
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
@@ -109,8 +109,8 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
 
             if (rewrote) {
               val dummyDefDef = cpy.DefDef(tree)(rhs = rhsSemiTransformed)
-              val res = fullyParameterizedDef(label, dummyDefDef)
-              val call = forwarder(label, dd)
+              val res = fullyParameterizedDef(label, dummyDefDef, abstractOverClass = false)
+              val call = forwarder(label, dd, abstractOverClass = false)
               Block(List(res), call)
             } else {
               if (mandatory)
@@ -204,9 +204,13 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           c.debuglog("Rewriting tail recursive call:  " + tree.pos)
           rewrote = true
           val reciever = noTailTransform(recv)
-          val classTypeArgs = recv.tpe.baseTypeWithArgs(enclosingClass).argInfos
-          val trz = classTypeArgs.map(x => ref(x.typeSymbol))
-          val callTargs: List[tpd.Tree] = targs ::: trz
+
+          /*
+                 handling changed type arguments in sound way is hard, see test `i321`
+                 val classTypeArgs = recv.tpe.baseTypeWithArgs(enclosingClass).argInfos
+                 val trz = classTypeArgs.map(x => ref(x.typeSymbol))
+          */
+          val callTargs: List[tpd.Tree] = targs
           val method = Apply(if (callTargs.nonEmpty) TypeApply(Ident(label.termRef), callTargs) else Ident(label.termRef),
             List(reciever))
 
