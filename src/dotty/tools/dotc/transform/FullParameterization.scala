@@ -85,13 +85,13 @@ trait FullParameterization {
    *
    *  If a self type is present, $this has this self type as its type.
    */
-  def fullyParameterizedType(info: Type, clazz: ClassSymbol)(implicit ctx: Context): Type = {
+  def fullyParameterizedType(info: Type, clazz: ClassSymbol, abstractOverClass: Boolean = true)(implicit ctx: Context): Type = {
     val (mtparamCount, origResult) = info match {
       case info @ PolyType(mtnames) => (mtnames.length, info.resultType)
       case info: ExprType => (0, info.resultType)
       case _ => (0, info)
     }
-    val ctparams = clazz.typeParams
+    val ctparams = if(abstractOverClass) clazz.typeParams else Nil
     val ctnames = ctparams.map(_.name.unexpandedName())
 
     /** The method result type */
@@ -104,7 +104,7 @@ trait FullParameterization {
     /** Replace class type parameters by the added type parameters of the polytype `pt` */
     def mapClassParams(tp: Type, pt: PolyType): Type = {
       val classParamsRange = (mtparamCount until mtparamCount + ctparams.length).toList
-      tp.substDealias(clazz.typeParams, classParamsRange map (PolyParam(pt, _)))
+      tp.substDealias(ctparams, classParamsRange map (PolyParam(pt, _)))
     }
 
     /** The bounds for the added type paraneters of the polytype `pt` */
@@ -141,19 +141,21 @@ trait FullParameterization {
   /** The type parameters (skolems) of the method definition `originalDef`,
    *  followed by the class parameters of its enclosing class.
    */
-  private def allInstanceTypeParams(originalDef: DefDef)(implicit ctx: Context): List[Symbol] =
-    originalDef.tparams.map(_.symbol) ::: originalDef.symbol.enclosingClass.typeParams
+  private def allInstanceTypeParams(originalDef: DefDef, abstractOverClass: Boolean)(implicit ctx: Context): List[Symbol] =
+    if (abstractOverClass)
+      originalDef.tparams.map(_.symbol) ::: originalDef.symbol.enclosingClass.typeParams
+    else originalDef.tparams.map(_.symbol)
 
   /** Given an instance method definition `originalDef`, return a
    *  fully parameterized method definition derived from `originalDef`, which
    *  has `derived` as symbol and `fullyParameterizedType(originalDef.symbol.info)`
    *  as info.
    */
-  def fullyParameterizedDef(derived: TermSymbol, originalDef: DefDef)(implicit ctx: Context): Tree =
+  def fullyParameterizedDef(derived: TermSymbol, originalDef: DefDef, abstractOverClass: Boolean = true)(implicit ctx: Context): Tree =
     polyDefDef(derived, trefs => vrefss => {
       val origMeth = originalDef.symbol
       val origClass = origMeth.enclosingClass.asClass
-      val origTParams = allInstanceTypeParams(originalDef)
+      val origTParams = allInstanceTypeParams(originalDef, abstractOverClass)
       val origVParams = originalDef.vparamss.flatten map (_.symbol)
       val thisRef :: argRefs = vrefss.flatten
 
@@ -218,9 +220,9 @@ trait FullParameterization {
    *  - the `this` of the enclosing class,
    *  - the value parameters of the original method `originalDef`.
    */
-  def forwarder(derived: TermSymbol, originalDef: DefDef)(implicit ctx: Context): Tree =
+  def forwarder(derived: TermSymbol, originalDef: DefDef, abstractOverClass: Boolean = true)(implicit ctx: Context): Tree =
     ref(derived.termRef)
-      .appliedToTypes(allInstanceTypeParams(originalDef).map(_.typeRef))
+      .appliedToTypes(allInstanceTypeParams(originalDef, abstractOverClass).map(_.typeRef))
       .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
       .appliedToArgss(originalDef.vparamss.nestedMap(vparam => ref(vparam.symbol)))
       .withPos(originalDef.rhs.pos)
