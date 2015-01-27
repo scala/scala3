@@ -140,21 +140,14 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
 
   private def firstTry(tp1: Type, tp2: Type): Boolean = tp2 match {
     case tp2: NamedType =>
-      def compareHKOrAlias(info1: Type) =
-        tp2.name == tpnme.Apply && {
-          val lambda2 = tp2.prefix.LambdaClass(forcing = true)
-          lambda2.exists && !tp1.isLambda &&
-            tp1.testLifted(lambda2.typeParams, isSubType(_, tp2.prefix))
-        } || {
-          tp2.info match {
-            case info2: TypeAlias => isSubType(tp1, info2.alias)
-            case _ => info1 match {
-              case info1: TypeAlias => isSubType(info1.alias, tp2)
-              case NoType => secondTry(tp1, tp2)
-              case _ => thirdTryNamed(tp1, tp2)
-            }
-          }
+      def compareAlias(info1: Type) = tp2.info match {
+        case info2: TypeAlias => isSubType(tp1, info2.alias)
+        case _ => info1 match {
+          case info1: TypeAlias => isSubType(info1.alias, tp2)
+          case NoType => secondTry(tp1, tp2)
+          case _ => thirdTryNamed(tp1, tp2)
         }
+      }
       def compareNamed = {
         implicit val ctx: Context = this.ctx // Dotty deviation: implicits need explicit type
         tp1 match {
@@ -183,9 +176,12 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
               !tp1.isInstanceOf[WithFixedSym] &&
               !tp2.isInstanceOf[WithFixedSym]
             ) ||
-            compareHKOrAlias(tp1.info)
+            compareHK(tp1, tp2, inOrder = true) || 
+            compareHK(tp2, tp1, inOrder = false) ||
+            compareAlias(tp1.info)
           case _ =>
-            compareHKOrAlias(NoType)
+            compareHK(tp2, tp1, inOrder = false) || 
+            compareAlias(NoType)
         }
       }
       compareNamed
@@ -243,7 +239,9 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case tp1: NamedType =>
       tp1.info match {
         case info1: TypeAlias => isSubType(info1.alias, tp2)
-        case _ => thirdTry(tp1, tp2)
+        case _ => compareHK(tp1, tp2, inOrder = true) || thirdTry(tp1, tp2)
+          // Note: If we change the order here, doing compareHK first and following aliases second,
+          // we get a -Ycheck error when compiling dotc/transform. Need to investigate.
       }
     case tp1: PolyParam =>
       def flagNothingBound = {
@@ -460,6 +458,18 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       false
   }
 
+  /** If `projection` is of the form T # Apply where `T` is an instance of a Lambda class,
+   *  and `other` is not a type lambda projection, then convert `other` to a type lambda `U`, and
+   *  continue with `T <:< U` if `inOrder` is true and `U <:< T` otherwise.
+   */
+  def compareHK(projection: NamedType, other: Type, inOrder: Boolean) =
+    projection.name == tpnme.Apply && {
+      val lambda = projection.prefix.LambdaClass(forcing = true)
+      lambda.exists && !other.isLambda &&
+        other.testLifted(lambda.typeParams,
+          if (inOrder) isSubType(projection.prefix, _) else isSubType(_, projection.prefix))
+    }
+
   /** Returns true iff either `tp11 <:< tp21` or `tp12 <:< tp22`, trying at the same time
    *  to keep the constraint as wide as possible. Specifically, if
    *
@@ -524,7 +534,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         case mbr: SingleDenotation => qualifies(mbr)
         case _ => mbr hasAltWith qualifies
       }
-      /*>|>*/ ctx.traceIndented(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}) ${tp1.member(name).info.show} $rinfo2", subtyping) /*<|<*/ {
+      /*>|>*/ ctx.traceIndented(i"hasMatchingMember($base . $name :? ${tp2.refinedInfo}) ${base.member(name).info.show} $rinfo2", subtyping) /*<|<*/ {
         memberMatches(base member name) ||
         tp1.isInstanceOf[SingletonType] &&
         { // special case for situations like:
