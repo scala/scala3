@@ -400,10 +400,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     tree.lhs match {
       case lhs @ Apply(fn, args) =>
         typed(cpy.Apply(lhs)(untpd.Select(fn, nme.update), args :+ tree.rhs), pt)
-      case untpd.TypedSplice(Apply(Select(fn, app), args)) if app == nme.apply =>
-        typed(cpy.Apply(fn)(
-            untpd.Select(untpd.TypedSplice(fn), nme.update),
-            (args map untpd.TypedSplice) :+ tree.rhs), pt)
+      case untpd.TypedSplice(Apply(MaybePoly(Select(fn, app), targs), args)) if app == nme.apply =>
+        val rawUpdate: untpd.Tree = untpd.Select(untpd.TypedSplice(fn), nme.update)
+        val wrappedUpdate = 
+          if (targs.isEmpty) rawUpdate 
+          else untpd.TypeApply(rawUpdate, targs map untpd.TypedSplice)
+        val appliedUpdate = cpy.Apply(fn)(wrappedUpdate, (args map untpd.TypedSplice) :+ tree.rhs)
+        typed(appliedUpdate, pt)
       case lhs =>
         val lhsCore = typedUnadapted(lhs)
         def lhs1 = typed(untpd.TypedSplice(lhsCore))

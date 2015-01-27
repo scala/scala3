@@ -34,8 +34,11 @@ object EtaExpansion {
    *     lhs += expr
    */
   def liftAssigned(defs: mutable.ListBuffer[Tree], tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case Apply(fn @ Select(pre, name), args) =>
-      cpy.Apply(tree)(cpy.Select(fn)(lift(defs, pre), name), liftArgs(defs, fn.tpe, args))
+    case Apply(MaybePoly(fn @ Select(pre, name), targs), args) =>
+      cpy.Apply(tree)(
+        cpy.Select(fn)(
+          lift(defs, pre), name).appliedToTypeTrees(targs), 
+          liftArgs(defs, fn.tpe, args))
     case Select(pre, name) =>
       cpy.Select(tree)(lift(defs, pre), name)
     case _ =>
