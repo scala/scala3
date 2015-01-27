@@ -43,7 +43,7 @@ object OverridingPairs {
         val info1 = self.memberInfo(sym1)
         val info2 = self.memberInfo(sym2)
         // info1.signature == info2.signature &&  // TODO enable for speed
-        info1 matches info2
+        info1.widenExpr matches info2.widenExpr
       }
 
     /** The symbols that can take part in an overriding pair */

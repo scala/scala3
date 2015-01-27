@@ -100,3 +100,10 @@ trait TOverrider { this: TCommon =>
 class C2 extends C1 with TOverrider  // ... fails to override, here.
 
 }
+
+package p4 {
+
+  abstract class C[T] { def head: T }
+  case class D[T](head: Int) extends C[T]
+
+}
