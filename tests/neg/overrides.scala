@@ -79,3 +79,24 @@ class Y2 extends X2 {
 class X3 {
   override type T = A1
 }
+
+package p3 {
+
+// Dotty change of rules: Toverrider#f does not
+// override TCommon#f, hence the accidental override rule
+// applies.
+trait TCommon {
+  def f: String
+}
+
+class C1 extends TCommon {
+  def f = "in C1"
+}
+
+trait TOverrider { this: TCommon =>
+  override def f = "in TOverrider"   // The overridden self-type member...
+}
+
+class C2 extends C1 with TOverrider  // ... fails to override, here.
+
+}
