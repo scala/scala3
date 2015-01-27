@@ -593,22 +593,26 @@ object Types {
     }
 
     /** Is this type close enough to that type so that members
-     *  with the two type would override each other?d
+     *  with the two type would override each other?
      *  This means:
      *    - Either both types are polytypes with the same number of
      *      type parameters and their result types match after renaming
      *      corresponding type parameters
-     *    - Or both types are (possibly nullary) method types with equivalent parameter types
-     *      and matching result types
-     *    - Or both types are equivalent
-     *    - Or phase.erasedTypes is false and both types are neither method nor
-     *      poly types.
+     *    - Or both types are method types with =:=-equivalent(*) parameter types
+     *      and matching result types after renaming corresponding parameter types
+     *      if the method types are dependent.
+     *    - Or both types are =:=-equivalent
+     *    - Or phase.erasedTypes is false, and neither type takes 
+     *      term or type parameters.
+     *      
+     *  (*) when matching with a Java method, we also regard Any and Object as equivalent
+     *      parameter types.
      */
     def matches(that: Type)(implicit ctx: Context): Boolean =
       if (Config.newMatch) this.signature matches that.signature
       else track("matches") {
         ctx.typeComparer.matchesType(
-          this, that, alwaysMatchSimple = !ctx.phase.erasedTypes)
+          this, that, relaxed = !ctx.phase.erasedTypes)
       }
 
     /** This is the same as `matches` except that it also matches => T with T and
