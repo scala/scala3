@@ -42,8 +42,8 @@ object OverridingPairs {
       sym1.isType || {
         val info1 = self.memberInfo(sym1)
         val info2 = self.memberInfo(sym2)
-        // info1.signature == info2.signature &&  // TODO enable for speed
-        info1.widenExpr matches info2.widenExpr
+        info1.signature.sameParams(info2.signature) &&
+        info1.matches(info2)
       }
 
     /** The symbols that can take part in an overriding pair */
