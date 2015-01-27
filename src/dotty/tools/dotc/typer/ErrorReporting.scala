@@ -96,7 +96,7 @@ object ErrorReporting {
     def patternConstrStr(tree: Tree): String = ???
 
     def typeMismatch(tree: Tree, pt: Type, implicitFailure: SearchFailure = NoImplicitMatches): Tree = {
-      errorTree(tree, typeMismatchStr(tree.tpe, pt) + implicitFailure.postscript)
+      errorTree(tree, typeMismatchStr(normalize(tree.tpe, pt), pt) + implicitFailure.postscript)
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
