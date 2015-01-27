@@ -761,7 +761,7 @@ object Types {
      *  a reference to the "this" of the current refined type. But does follow
      *  aliases in order to avoid such references. Example:
      *  
-     *      Lambda$I { type $hk$Arg0 = String, type Apply = this<0>.$hk$Arg0 } # Apply
+     *      Lambda$I { type $hk$Arg0 = String, type Apply = Lambda$I{...}.$hk$Arg0 } # Apply
      *    
      *  Here, the refinement for `Apply` has a refined this node, yet dereferencing ones more
      *  yields `String` as the result of lookupRefined.

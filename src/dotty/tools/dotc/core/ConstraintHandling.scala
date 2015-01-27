@@ -218,7 +218,8 @@ trait ConstraintHandling {
    *  `bound` is assumed to be in normalized form, as specified in `firstTry` and
    *  `secondTry` of `TypeComparer`. In particular, it should not be an alias type,
    *  lazy ref, typevar, wildcard type, error type. In addition, upper bounds may
-   *  not be AndTypes and lower bounds may not be OrTypes.
+   *  not be AndTypes and lower bounds may not be OrTypes. This is assured by the
+   *  way isSubType is organized.
    */
   protected def addConstraint(param: PolyParam, bound: Type, fromBelow: Boolean): Boolean = {
     def description = i"constr $param ${if (fromBelow) ">:" else "<:"} $bound:\n$constraint"

@@ -376,7 +376,7 @@ object ProtoTypes {
       tp.derivedRefinedType(wildApprox(tp.parent, theMap), tp.refinedName, wildApprox(tp.refinedInfo, theMap))
     case tp: TypeAlias => // default case, inlined for speed
       tp.derivedTypeAlias(wildApprox(tp.alias, theMap))
-    case tp @ PolyParam(poly, pnum) => // !!! todo adapt to TrackingConstraint
+    case tp @ PolyParam(poly, pnum) => 
       ctx.typerState.constraint.entry(tp) match {
         case bounds: TypeBounds => wildApprox(WildcardType(bounds))
         case NoType => WildcardType(wildApprox(poly.paramBounds(pnum)).bounds)

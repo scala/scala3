@@ -14,10 +14,10 @@ import reflect.ClassTag
 
 object OrderingConstraint {
 
-  /** The type of `Constraint#boundsMap` */
+  /** The type of `OrderingConstraint#boundsMap` */
   type ParamBounds = SimpleMap[PolyType, Array[Type]]
   
-  /** The type of `Constraint#lowerMap`, `Constraint#upperMap` */
+  /** The type of `OrderingConstraint#lowerMap`, `OrderingConstraint#upperMap` */
   type ParamOrdering = SimpleMap[PolyType, Array[List[PolyParam]]]
   
   /** A new constraint with given maps */
@@ -117,10 +117,10 @@ import OrderingConstraint._
  *               
  *  @param lowerMap a map from PolyTypes to arrays. Each array entry corresponds
  *               to a parameter P of the polytype; it contains all constrained parameters
- *               Q that are known to be smaller than P, i.e. P <: Q. 
+ *               Q that are known to be smaller than P, i.e. Q <: P. 
  *  @param upperMap a map from PolyTypes to arrays. Each array entry corresponds
  *               to a parameter P of the polytype; it contains all constrained parameters
- *               Q that are known to be greater than P, i.e. Q <: P. 
+ *               Q that are known to be greater than P, i.e. P <: Q. 
  */
 class OrderingConstraint(private val boundsMap: ParamBounds, 
                          private val lowerMap : ParamOrdering, 
@@ -272,8 +272,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   
 // ---------- Updates ------------------------------------------------------------
   
-  /** An updated partial order matrix that incorporates `less` and also reflects that `param` relates
-   *  to `p2` wrt <:< if `inOrder` is true, `>:>` otherwise.
+  /** Add the fact `param1 <: param2` to the constraint `current` and propagate
+   *  `<:<` relationships between parameters ("edges") but not bounds.
    */
   private def order(current: This, param1: PolyParam, param2: PolyParam)(implicit ctx: Context): This =
     if (param1 == param2 || current.isLess(param1, param2)) this

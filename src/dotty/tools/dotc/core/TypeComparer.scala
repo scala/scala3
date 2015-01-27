@@ -299,7 +299,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         val gbounds2 = ctx.gadt.bounds(tp2.symbol)
         (gbounds2 != null) &&
           (isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
-            narrowGADTBounds(tp2, tp1, isLowerBound = true))
+            narrowGADTBounds(tp2, tp1, isUpper = false))
       }
       ((frozenConstraint || !isCappable(tp1)) && isSubType(tp1, lo2) ||
         compareGADT ||
@@ -414,7 +414,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
             val gbounds1 = ctx.gadt.bounds(tp1.symbol)
             (gbounds1 != null) &&
               (isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
-               narrowGADTBounds(tp1, tp2, isLowerBound = false))
+               narrowGADTBounds(tp1, tp2, isUpper = true))
           }
           isSubType(hi1, tp2) || compareGADT
         case _ =>
@@ -616,16 +616,20 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     //})
   }
 
-  private def narrowGADTBounds(tr: NamedType, bound: Type, isLowerBound: Boolean): Boolean =
+  /** Narrow gadt.bounds for the type parameter referenced by `tr` to include
+   *  `bound` as an upper or lower bound (which depends on `isUpper`).
+   *  Test that the resulting bounds are still satisfiable.
+   */
+  private def narrowGADTBounds(tr: NamedType, bound: Type, isUpper: Boolean): Boolean =
     ctx.mode.is(Mode.GADTflexible) && {
     val tparam = tr.symbol
-    val bound1 = deSkolemize(bound, toSuper = isLowerBound)
-    typr.println(s"narrow gadt bound of $tparam: ${tparam.info} from ${if (isLowerBound) "below" else "above"} to $bound1 ${bound1.isRef(tparam)}")
+    val bound1 = deSkolemize(bound, toSuper = !isUpper)
+    typr.println(s"narrow gadt bound of $tparam: ${tparam.info} from ${if (isUpper) "above" else "below"} to $bound1 ${bound1.isRef(tparam)}")
     !bound1.isRef(tparam) && {
       val oldBounds = ctx.gadt.bounds(tparam)
       val newBounds =
-        if (isLowerBound) TypeBounds(oldBounds.lo | bound1, oldBounds.hi)
-        else TypeBounds(oldBounds.lo, oldBounds.hi & bound1)
+        if (isUpper) TypeBounds(oldBounds.lo, oldBounds.hi & bound1)
+        else TypeBounds(oldBounds.lo | bound1, oldBounds.hi)
       isSubType(newBounds.lo, newBounds.hi) &&
       { ctx.gadt.setBounds(tparam, newBounds); true }
     }

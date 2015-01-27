@@ -92,11 +92,13 @@ abstract class Constraint extends Showable {
    */
   def updateEntry(param: PolyParam, tp: Type)(implicit ctx: Context): This
   
-  /** A constraint that includes the relationship `p1 <: p2`
+  /** A constraint that includes the relationship `p1 <: p2`. 
+   *  `<:` relationships between parameters ("edges") are propagated, but
+   *  non-parameter bounds are left alone.
    */
   def addLess(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): This
 
-  /** A constraint resulting by adding p2 = p1 to this constraint, and at the same
+  /** A constraint resulting from adding p2 = p1 to this constraint, and at the same
    *  time transferring all bounds of p2 to p1
    */
   def unify(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): This
