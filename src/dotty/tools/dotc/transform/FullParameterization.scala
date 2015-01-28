@@ -150,6 +150,8 @@ trait FullParameterization {
    *  fully parameterized method definition derived from `originalDef`, which
    *  has `derived` as symbol and `fullyParameterizedType(originalDef.symbol.info)`
    *  as info.
+   *  `abstractOverClass` defines weather the DefDef should abstract over type parameters
+   *  of class that contained original defDef
    */
   def fullyParameterizedDef(derived: TermSymbol, originalDef: DefDef, abstractOverClass: Boolean = true)(implicit ctx: Context): Tree =
     polyDefDef(derived, trefs => vrefss => {
@@ -216,7 +218,7 @@ trait FullParameterization {
     })
 
   /** A forwarder expression which calls `derived`, passing along
-   *  - the type parameters and enclosing class parameters of `originalDef`,
+   *  - if `abstractOverClass` the type parameters and enclosing class parameters of originalDef`,
    *  - the `this` of the enclosing class,
    *  - the value parameters of the original method `originalDef`.
    */

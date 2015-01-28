@@ -3,7 +3,7 @@ import scala.annotation.tailrec
  * Illustrates that abstracting over type arguments without triggering Ycheck failure is tricky
  *
  * go1.loop refers to type parameter of i321, and captures value f
- * if goo1.loop will abstract over T it will need to cast f or will trigger a Ycheck failure.
+ * if go1.loop will abstract over T it will need to cast f or will trigger a Ycheck failure.
  * One could decide to not abstract over type parameters in tail calls, but this leads us to go2 example
  *
  * In go2 we should abstract over i321.T, as we need to change it in recursive call.
