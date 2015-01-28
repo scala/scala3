@@ -113,7 +113,8 @@ import OrderingConstraint._
  *               polytype's type parameters. The second half might contain type variables that
  *               track the corresponding parameters, or is left empty (filled with nulls).
  *               An instantiated type parameter is represented by having its instance type in
- *               the corresponding array entry.
+ *               the corresponding array entry. The dual use of arrays for poly params
+ *               and typevars is to save space and hopefully gain some speed.
  *               
  *  @param lowerMap a map from PolyTypes to arrays. Each array entry corresponds
  *               to a parameter P of the polytype; it contains all constrained parameters
@@ -212,9 +213,46 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
 // ---------- Adding PolyTypes --------------------------------------------------
    
-  /** The bound type `tp` without dependent parameters
-   *  NoType if type consists only of dependent parameters.
-   *  @param seenFromBelow   If true, `bound` is an upper bound, else a lower bound.
+  /** The list of parameters P such that, for a fresh type parameter Q:
+   *  
+   *    Q <: tp  implies  Q <: P      and isUpper = true, or
+   *    tp <: Q  implies  P <: Q      and isUpper = false
+   */
+  def dependentParams(tp: Type, isUpper: Boolean): List[PolyParam] = tp match {
+    case param: PolyParam if contains(param) => 
+      param :: (if (isUpper) upper(param) else lower(param))
+    case tp: AndOrType =>
+      val ps1 = dependentParams(tp.tp1, isUpper)
+      val ps2 = dependentParams(tp.tp2, isUpper)
+      if (isUpper == tp.isAnd) ps1.union(ps2) else ps1.intersect(ps2)
+    case _ =>
+      Nil
+  }
+  
+  /** The bound type `tp` without constrained parameters which are clearly
+   *  dependent. A parameter in an upper bound is clearly dependent if it appears
+   *  in a hole of a context H given by:
+   *
+   *      H = []
+   *          H & T
+   *          T & H
+   *
+   *  (the idea is that a parameter P in a H context is guaranteed to be a supertype of the 
+   *   bounded parameter.)
+   *  Analogously, a parameter in a lower bound is clearly dependent if it appears
+   *  in a hole of a context H given by:
+   *
+   *      L = []
+   *          L | T
+   *          T | L
+   *     
+   *  "Clearly dependent" is not synonymous with "dependent" in the sense
+   *  it is defined in `dependentParams`. Dependent parameters are handled
+   *  in `updateEntry`. The idea of stripping off clearly dependent parameters
+   *  and to handle them separately is for efficiency, so that type expressions 
+   *  used as bounds become smaller.
+   *  
+   *  @param isUpper   If true, `bound` is an upper bound, else a lower bound.
    */
   private def stripParams(tp: Type, paramBuf: mutable.ListBuffer[PolyParam], 
       isUpper: Boolean)(implicit ctx: Context): Type = tp match {
@@ -232,9 +270,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       tp
   } 
   
-  /** The bound type `tp` without dependent parameters.
+  /** The bound type `tp` without clearly dependent parameters.
    *  A top or bottom type if type consists only of dependent parameters.
-   *  @param seenFromBelow   If true, `bound` is an upper bound, else a lower bound.
+   *  @param isUpper   If true, `bound` is an upper bound, else a lower bound.
    */
   private def normalizedType(tp: Type, paramBuf: mutable.ListBuffer[PolyParam], 
       isUpper: Boolean)(implicit ctx: Context): Type = 
@@ -259,7 +297,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       val bounds = nonParamBounds(param)
       val lo = normalizedType(bounds.lo, loBuf, isUpper = false)
       val hi = normalizedType(bounds.hi, hiBuf, isUpper = true)
-      current = boundsLens.update(this, current, poly, i, bounds.derivedTypeBounds(lo, hi))
+      current = updateEntry(current, param, bounds.derivedTypeBounds(lo, hi))
       current = (current /: loBuf)(order(_, _, param))
       current = (current /: hiBuf)(order(_, param, _))
       loBuf.clear()
@@ -289,9 +327,22 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   def addLess(param1: PolyParam, param2: PolyParam)(implicit ctx: Context): This =
     order(this, param1, param2)
+    
+  def updateEntry(current: This, param: PolyParam, tp: Type)(implicit ctx: Context): This = {
+    var current1 = boundsLens.update(this, current, param, tp)
+    tp match {
+      case TypeBounds(lo, hi) =>
+        for (p <- dependentParams(lo, isUpper = false)) 
+          current1 = order(current1, p, param)
+        for (p <- dependentParams(hi, isUpper = true)) 
+          current1 = order(current1, param, p)
+      case _ =>
+    }
+    current1
+  }
       
   def updateEntry(param: PolyParam, tp: Type)(implicit ctx: Context): This =
-    boundsLens.update(this, this, param, tp)
+    updateEntry(this, param, tp)
     
   def unify(p1: PolyParam, p2: PolyParam)(implicit ctx: Context): This = {
     val p1Bounds = (nonParamBounds(p1) & nonParamBounds(p2)).substParam(p2, p1)
