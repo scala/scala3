@@ -20,14 +20,14 @@ trait Skolemization {
 
   protected var skolemsOutstanding = false
   
-  def ensureSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
-    case tp: SingletonType => 
+  def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
+    case tp: SingletonType if tp.isStable => 
       tp
     case tp: ValueType => 
       skolemsOutstanding = true
       SkolemType(tp)
     case tp: TypeProxy => 
-      ensureSingleton(tp.underlying)
+      ensureStableSingleton(tp.underlying)
   }
     
   /** Approximate a type `tp` with a type that does not contain skolem types.
