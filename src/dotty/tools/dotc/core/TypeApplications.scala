@@ -285,7 +285,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def underlyingIfRepeated(isJava: Boolean)(implicit ctx: Context): Type =
     if (self.isRepeatedParam) {
-      val seqClass = if(isJava) defn.ArrayClass else defn.SeqClass
+      val seqClass = if (isJava) defn.ArrayClass else defn.SeqClass
       translateParameterized(defn.RepeatedParamClass, seqClass)
     }
     else self

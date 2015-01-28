@@ -680,7 +680,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
     case formal1 :: rest1 =>
       formals2 match {
         case formal2 :: rest2 =>
-          (isSameType(formal1, formal2)
+          (isSameType(formal1.underlyingIfRepeated(isJava1), formal2.underlyingIfRepeated(isJava2))
             || isJava1 && (formal2 isRef ObjectClass) && (formal1 isRef AnyClass)
             || isJava2 && (formal1 isRef ObjectClass) && (formal2 isRef AnyClass)) &&
           matchingParams(rest1, rest2, isJava1, isJava2)
