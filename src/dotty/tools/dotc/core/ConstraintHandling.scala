@@ -9,27 +9,14 @@ import config.Printers._
 
 /** Methods for adding constraints and solving them.
  *
- * Constraints are required to be in normalized form. This means
- * (1) if P <: Q in C then also Q >: P in C
- * (2) if P r Q in C and Q r R in C then also P r R in C, where r is <: or :>
- *
- * "P <: Q in C" means here: There is a constraint P <: H[Q],
- *     where H is the multi-hole context given by:
- *
- *      H = []
- *          H & T
- *          T & H
- *          H | H
- *
- *  (the idea is that a parameter Q in a H context is guaranteed to be a supertype of P).
- *
- * "P >: Q in C" means: There is a constraint P >: L[Q],
- *     where L is the multi-hole context given by:
- *
- *      L = []
- *          L | T
- *          T | L
- *          L & L
+ * What goes into a Constraint as opposed to a ConstrainHandler?
+ * 
+ * Constraint code is purely functional: Operations get constraints and produce new ones.
+ * Constraint code does not have access to a type-comparer. Anything regarding lubs and glbs has to be done 
+ * elsewhere.
+ * 
+ * By comparison: Constraint handlers are parts of type comparers and can use their functionality.
+ * Constraint handlers update the current constraint as a side effect.
  */
 trait ConstraintHandling {
   
@@ -59,7 +46,7 @@ trait ConstraintHandling {
     def description = i"constraint $param <: $bound to\n$constraint"
     if (bound.isRef(defn.NothingClass) && ctx.typerState.isGlobalCommittable) {
       def msg = s"!!! instantiated to Nothing: $param, constraint = ${constraint.show}"
-      if (Config.flagInstantiationToNothing) assert(false, msg)
+      if (Config.failOnInstantiationToNothing) assert(false, msg)
       else ctx.log(msg)
     }
     constr.println(i"adding $description")
@@ -86,9 +73,6 @@ trait ConstraintHandling {
     def description = i"ordering $p1 <: $p2 to\n$constraint"
     val res =
       if (constraint.isLess(p2, p1)) unify(p2, p1) 
-        // !!! this is direction dependent - unify(p1, p2) makes i94-nada loop forever.
-        //     Need to investigate why this is the case. 
-        //     The symptom is that we get a subtyping constraint of the form P { ... } <: P
       else {
         val down1 = p1 :: constraint.exclusiveLower(p1, p2)
         val up2 = p2 :: constraint.exclusiveUpper(p2, p1)
@@ -193,20 +177,24 @@ trait ConstraintHandling {
     case _ => param.binder.paramBounds(param.paramNum)
   }
   
-  /** If `p` is a parameter of `pt`, propagate the non-parameter bounds
-   *  of `p` to the parameters known to be less or greater than `p`.
+  /** Add polytype `pt`, possibly with type variables `tvars`, to current constraint 
+   *  and propagate all bounds.
+   *  @param tvars   See Constraint#add
    */
-  def initialize(pt: PolyType): Boolean =
-    checkPropagated(i"initialized $pt") {
-      pt.paramNames.indices.forall { i =>
-        val param = PolyParam(pt, i)
-        val bounds = constraint.nonParamBounds(param)
-        val lower = constraint.lower(param)
-        val upper = constraint.upper(param)
-        if (lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass) ||
-          upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) println(i"INIT*** $pt")
-        lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
-          upper.forall(addOneBound(_, bounds.lo, isUpper = false))
+  def addToConstraint(pt: PolyType, tvars: List[TypeVar]): Unit =
+    assert {
+      checkPropagated(i"initialized $pt") {
+        constraint = constraint.add(pt, tvars)
+        pt.paramNames.indices.forall { i =>
+          val param = PolyParam(pt, i)
+          val bounds = constraint.nonParamBounds(param)
+          val lower = constraint.lower(param)
+          val upper = constraint.upper(param)
+          if (lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass) ||
+            upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) println(i"INIT*** $pt")
+          lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
+            upper.forall(addOneBound(_, bounds.lo, isUpper = false))
+        }
       }
     }
 
@@ -239,6 +227,7 @@ trait ConstraintHandling {
   /** Check that constraint is fully propagated. See comment in Config.checkConstraintsPropagated */
   def checkPropagated(msg: => String)(result: Boolean): Boolean = {
     if (Config.checkConstraintsPropagated && result && addConstraintInvocations == 0) {
+      val saved = frozenConstraint
       frozenConstraint = true
       for (p <- constraint.domainParams) {
         def check(cond: => Boolean, q: PolyParam, ordering: String, explanation: String): Unit =
@@ -250,7 +239,7 @@ trait ConstraintHandling {
           check(constraint.isLess(l, p), l, ">:", "reverse ordering (<:) missing")
         }
       }
-      frozenConstraint = false
+      frozenConstraint = saved
     }
     result
   }

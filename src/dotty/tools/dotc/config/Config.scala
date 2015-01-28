@@ -37,7 +37,7 @@ object Config {
    *  on only for specific debugging as normally instantiation to Nothing
    *  is not an error consdition. 
    */
-  final val flagInstantiationToNothing = false
+  final val failOnInstantiationToNothing = false
 
   /** Enable noDoubleDef checking if option "-YnoDoubleDefs" is set.
     * The reason to have an option as well as the present global switch is

@@ -324,8 +324,7 @@ object ProtoTypes {
       if (state.constraint contains pt) pt.duplicate(pt.paramNames, pt.paramBounds, pt.resultType)
       else pt
     val tvars = if (owningTree.isEmpty) Nil else newTypeVars(added)
-    state.constraint = state.constraint.add(added, tvars)
-    ctx.typeComparer.initialize(added)
+    ctx.typeComparer.addToConstraint(added, tvars)
     (added, tvars)
   }
 

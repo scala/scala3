@@ -249,7 +249,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       def flagNothingBound = {
         if (!frozenConstraint && tp2.isRef(defn.NothingClass) && state.isGlobalCommittable) {
           def msg = s"!!! instantiated to Nothing: $tp1, constraint = ${constraint.show}"
-          if (Config.flagInstantiationToNothing) assert(false, msg)
+          if (Config.failOnInstantiationToNothing) assert(false, msg)
           else ctx.log(msg)
         }
         true
