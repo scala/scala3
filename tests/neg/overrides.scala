@@ -107,3 +107,17 @@ package p4 {
   case class D[T](head: Int) extends C[T]
 
 }
+
+package p5 {
+class A {
+  def m: String = "foo"
+}
+
+class B extends A {
+  override val m: Int = 42
+}
+
+class C extends A {
+  override def m: Int = 42
+}
+}
