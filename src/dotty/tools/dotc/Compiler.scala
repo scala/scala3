@@ -52,7 +52,8 @@ class Compiler {
       List(new PatternMatcher,
            new ExplicitOuter,
            new Splitter),
-      List(new ElimByName,
+      List(new LazyVals,
+           new ElimByName,
            new SeqLiterals,
            new InterceptedMethods,
            new Literalize,
@@ -60,7 +61,7 @@ class Compiler {
            new ResolveSuper),
       List(new Erasure),
       List(new Mixin,
-           new Memoize, // TODO: Make LazyVals a part of this phase
+           new Memoize,
            new CapturedVars,
            new Constructors),
       List(new LambdaLift,
