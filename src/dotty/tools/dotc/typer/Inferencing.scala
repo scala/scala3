@@ -204,7 +204,7 @@ trait Inferencing { this: Checking =>
       if (v == 1) tvar.instantiate(fromBelow = false)
       else if (v == -1) tvar.instantiate(fromBelow = true)
       else {
-        val bounds = ctx.typerState.constraint.bounds(tvar.origin)
+        val bounds = ctx.typerState.constraint.fullBounds(tvar.origin)
         if (!(bounds.hi <:< bounds.lo)) result = Some(tvar)
         tvar.instantiate(fromBelow = false)
       }

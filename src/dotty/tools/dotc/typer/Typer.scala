@@ -791,7 +791,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
       val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
-      RefinedType(parent, rsym.name, rt => rinfo.substThis(refineCls, RefinedThis(rt)))
+      RefinedType(parent, rsym.name, rt => rinfo.substThis(refineCls, SkolemType(rt)))
       // todo later: check that refinement is within bounds
     }
     val res = cpy.RefinedTypeTree(tree)(tpt1, refinements1) withType

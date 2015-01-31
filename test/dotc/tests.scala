@@ -24,9 +24,6 @@ class tests extends CompilerTest {
   val failedUnderscore = List("-Ystop-before:collectEntryPoints") // #289
 
   val failedOther = List("-Ystop-before:collectEntryPoints") // some non-obvious reason. need to look deeper
-
-
-
   val twice = List("#runs", "2", "-YnoDoubleBindings")
 
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
@@ -120,6 +117,7 @@ class tests extends CompilerTest {
   @Test def neg_i0091_infpaths = compileFile(negDir, "i0091-infpaths", xerrors = 3)
   @Test def neg_i0248_inherit_refined = compileFile(negDir, "i0248-inherit-refined", xerrors = 4)
   @Test def neg_i0281 = compileFile(negDir, "i0281-null-primitive-conforms", xerrors = 3)
+  @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", failedOther)(allowDeepSubtypes)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", failedOther) // similar to dotc_config
@@ -129,7 +127,7 @@ class tests extends CompilerTest {
 
   @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", failedOther)(allowDeepSubtypes) // Cannot emit primitive conversion from V to Z
 
-  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", failedbyName)(allowDeepSubtypes)
+  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", failedbyName)
 
   @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing", failedOther)
     //  Expected primitive types I - Ljava/lang/Object

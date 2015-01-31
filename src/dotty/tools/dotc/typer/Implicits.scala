@@ -32,7 +32,7 @@ import collection.mutable
 object Implicits {
 
   /** A common base class of contextual implicits and of-type implicits which
-   *  represents as set of implicit references.
+   *  represents a set of implicit references.
    */
   abstract class ImplicitRefs(initctx: Context) {
     implicit val ctx: Context =
@@ -450,7 +450,8 @@ trait Implicits { self: Typer =>
     private def nestedContext = ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
     private def implicitProto(resultType: Type, f: Type => Type) =
-      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
+      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType)) 
+        // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
 
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
         d"found: ${argument.tpe}, expected: $pt")

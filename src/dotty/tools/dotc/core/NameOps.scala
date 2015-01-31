@@ -355,5 +355,5 @@ object NameOps {
         case NO_NAME => primitivePostfixMethodName
         case name => name
       }
-    }
+  }
 }

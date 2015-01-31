@@ -256,6 +256,9 @@ trait Symbols { this: Context =>
     tparams
   }
 
+  /** Create a new skolem symbol. This is not the same as SkolemType, even though the
+   *  motivation (create a singleton referencing to a type) is similar.
+   */
   def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | Permanent, tp)
 
   def newErrorSymbol(owner: Symbol, name: Name) =

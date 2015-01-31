@@ -1,3 +1,5 @@
+// To compile this test, we need some more elaborate GADT capabilities.
+// Not sure yet we should invest to get them.
 class Channel[a]
 
 import collection.mutable.Set
@@ -16,7 +18,7 @@ object Test extends App {
   def f[b](x: ![b]): Int = x match {
     case send: ![c] =>
       send.chan match {
-        case IC => send.data
+        case IC => send.data  // Here, from the fact that `chan` is an IC, we need to conclude that `c` is Int.
       }
   }
 }

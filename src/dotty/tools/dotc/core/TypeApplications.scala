@@ -372,6 +372,29 @@ class TypeApplications(val self: Type) extends AnyVal {
     case JavaArrayType(elemtp) => elemtp
     case _ => firstBaseArgInfo(defn.SeqClass)
   }
+  
+  def containsSkolemType(target: Type)(implicit ctx: Context): Boolean = {
+    def recur(tp: Type): Boolean = tp.stripTypeVar match {
+      case SkolemType(tp) =>
+        tp eq target
+      case tp: NamedType =>
+        tp.info match {
+          case TypeAlias(alias) => recur(alias)
+          case _ => !tp.symbol.isStatic && recur(tp.prefix)
+        }
+      case tp: RefinedType =>
+        recur(tp.refinedInfo) || recur(tp.parent)
+      case tp: TypeBounds =>
+        recur(tp.lo) || recur(tp.hi)
+      case tp: AnnotatedType =>
+        recur(tp.underlying)
+      case tp: AndOrType =>
+        recur(tp.tp1) || recur(tp.tp2)
+      case _ =>
+        false
+    }
+    recur(self) 
+  }
 
   /** Given a type alias
    *
@@ -407,16 +430,15 @@ class TypeApplications(val self: Type) extends AnyVal {
       if (bsyms.isEmpty) {
         val correspondingNames = correspondingParamName.values.toSet
 
-        def replacements(rt: RefinedType): List[Type] =
+       def replacements(rt: RefinedType): List[Type] =
           for (sym <- boundSyms)
-            yield TypeRef(RefinedThis(rt), correspondingParamName(sym))
+            yield TypeRef(SkolemType(rt), correspondingParamName(sym))
 
         def rewrite(tp: Type): Type = tp match {
           case tp @ RefinedType(parent, name: TypeName) =>
             if (correspondingNames contains name) rewrite(parent)
             else RefinedType(
-              rewrite(parent),
-              name,
+              rewrite(parent), name,
               rt => tp.refinedInfo.subst(boundSyms, replacements(rt)))
           case tp =>
             tp
@@ -453,7 +475,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       val lambda = defn.lambdaTrait(boundSyms.map(_.variance))
       val substitutedRHS = (rt: RefinedType) => {
         val argRefs = boundSyms.indices.toList.map(i =>
-          RefinedThis(rt).select(tpnme.lambdaArgName(i)))
+          SkolemType(rt).select(tpnme.lambdaArgName(i)))
         tp.subst(boundSyms, argRefs).bounds.withVariance(1)
       }
       val res = RefinedType(lambda.typeRef, tpnme.Apply, substitutedRHS)
@@ -486,7 +508,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *     LambdaXYZ { type Apply = B[$hkArg$0, ..., $hkArg$n] }
    *               { type $hkArg$0 = T1; ...; type $hkArg$n = Tn }
    *
-   *  satisfies predicate `p`. Try base types in the order of ther occurrence in `baseClasses`.
+   *  satisfies predicate `p`. Try base types in the order of their occurrence in `baseClasses`.
    *  A type parameter matches a varianve V if it has V as its variance or if V == 0.
    */
   def testLifted(tparams: List[Symbol], p: Type => Boolean)(implicit ctx: Context): Boolean = {

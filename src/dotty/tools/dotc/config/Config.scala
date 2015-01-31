@@ -10,9 +10,34 @@ object Config {
 
   final val checkCacheMembersNamed = false
 
-  final val checkConstraintsNonCyclic = true
-
-  final val flagInstantiationToNothing = false
+  /** When updating a connstraint bound, check that the constrained parameter
+   *  does not appear at the top-level of either of its bounds.
+   */
+  final val checkConstraintsNonCyclic = false
+  
+  /** Like `checkConstraintsNonCyclic`, but all constrained parameters
+   *  are tested for direct or indirect dependencies, each time a
+   *  constraint is added in TypeComparer.
+   */
+  final val checkConstraintsNonCyclicTrans = false
+  
+  /** Check that each constraint resulting from a subtype test
+   *  is satisfiable.
+   */
+  final val checkConstraintsSatisfiable = false
+  
+  /** Check that each constraint is fully propagated. i.e.
+   *  If P <: Q then the upper bound of P is a subtype of the upper bound of Q
+   *  and the lower bound of Q is a subtype of the lower bound of P.
+   */
+  final val checkConstraintsPropagated = false
+  
+  /** Type comparer will fail with an assert if the upper bound
+   *  of a constrained parameter becomes Nothing. This should be turned
+   *  on only for specific debugging as normally instantiation to Nothing
+   *  is not an error consdition. 
+   */
+  final val failOnInstantiationToNothing = false
 
   /** Enable noDoubleDef checking if option "-YnoDoubleDefs" is set.
     * The reason to have an option as well as the present global switch is
@@ -24,7 +49,11 @@ object Config {
   /** Show subtype traces for all deep subtype recursions */
   final val traceDeepSubTypeRecursions = false
 
+  /** When explaining subtypes and this flag is set, also show the classes of the compared types. */
   final val verboseExplainSubtype = true
+  
+  /** If this flag is set, take the fast path when comparing same-named type-aliases and types */
+  final val fastPathForRefinedSubtype = true
 
   /** When set, use new signature-based matching.
    *  Advantantage of doing so: It's supposed to be faster
@@ -34,12 +63,6 @@ object Config {
 
   /** The recursion depth for showing a summarized string */
   final val summarizeDepth = 2
-
-  /** Track dependencies for constraint propagation satisfiability checking
-   *  If turned off, constraint checking is simpler but potentially slower
-   *  for large constraints.
-   */
-  final val trackConstrDeps = true
 
   /** Check that variances of lambda arguments match the
    *  variance of the underlying lambda class.

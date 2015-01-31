@@ -324,7 +324,7 @@ object ProtoTypes {
       if (state.constraint contains pt) pt.duplicate(pt.paramNames, pt.paramBounds, pt.resultType)
       else pt
     val tvars = if (owningTree.isEmpty) Nil else newTypeVars(added)
-    state.constraint = state.constraint.add(added, tvars)
+    ctx.typeComparer.addToConstraint(added, tvars)
     (added, tvars)
   }
 
@@ -375,8 +375,8 @@ object ProtoTypes {
       tp.derivedRefinedType(wildApprox(tp.parent, theMap), tp.refinedName, wildApprox(tp.refinedInfo, theMap))
     case tp: TypeAlias => // default case, inlined for speed
       tp.derivedTypeAlias(wildApprox(tp.alias, theMap))
-    case tp @ PolyParam(poly, pnum) =>
-      ctx.typerState.constraint.at(tp) match {
+    case tp @ PolyParam(poly, pnum) => 
+      ctx.typerState.constraint.entry(tp) match {
         case bounds: TypeBounds => wildApprox(WildcardType(bounds))
         case NoType => WildcardType(wildApprox(poly.paramBounds(pnum)).bounds)
         case inst => wildApprox(inst)
