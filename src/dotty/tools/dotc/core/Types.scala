@@ -419,6 +419,8 @@ object Types {
             if mt.paramTypes.isEmpty && (tp.symbol is Stable) => mt.resultType
             case tp1 => tp1
           })
+        case tp: PolyParam =>
+          goParam(tp)
         case tp: TypeProxy =>
           go(tp.underlying)
         case tp: ClassInfo =>
@@ -459,6 +461,16 @@ object Types {
           // As an example of this in the wild, see
           // loadClassWithPrivateInnerAndSubSelf in ShowClassTests
           go(tp.cls.typeRef) orElse d
+      }
+      def goParam(tp: PolyParam) = {
+        val next = tp.underlying
+        ctx.typerState.constraint.entry(tp) match {
+          case bounds: TypeBounds if bounds ne next =>
+            ctx.typerState.ephemeral = true
+            go(bounds.hi)
+          case _ =>
+            go(next)
+        }        
       }
       def goAnd(l: Type, r: Type) = go(l) & (go(r), pre)
       def goOr(l: Type, r: Type) = go(l) | (go(r), pre)
