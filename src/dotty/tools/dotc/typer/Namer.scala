@@ -654,9 +654,14 @@ class Namer { typer: Typer =>
         else restpe
       val monotpe =
         (paramSymss :\ restpe1) { (params, restpe) =>
+          val isJava = ddef.mods is JavaDefined
           val make =
             if (params.nonEmpty && (params.head is Implicit)) ImplicitMethodType
+            else if(isJava) JavaMethodType
             else MethodType
+          if(isJava) params.foreach { symbol =>
+            if(symbol.info.isDirectRef(defn.ObjectClass)) symbol.info = defn.AnyType
+          }
           make.fromSymbols(params, restpe)
         }
       if (typeParams.nonEmpty) PolyType.fromSymbols(typeParams, monotpe)
