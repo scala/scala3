@@ -74,23 +74,25 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
   final val labelPrefix = "tailLabel"
   final val labelFlags = Flags.Synthetic | Flags.Label
 
-  private def mkLabel(method: Symbol)(implicit c: Context): TermSymbol = {
+  private def mkLabel(method: Symbol, abstractOverClass: Boolean)(implicit c: Context): TermSymbol = {
     val name = c.freshName(labelPrefix)
 
-    c.newSymbol(method, name.toTermName, labelFlags, fullyParameterizedType(method.info, method.enclosingClass.asClass))
+    c.newSymbol(method, name.toTermName, labelFlags, fullyParameterizedType(method.info, method.enclosingClass.asClass, abstractOverClass))
   }
 
   override def transformDefDef(tree: tpd.DefDef)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    val sym = tree.symbol
     tree match {
       case dd@DefDef(name, tparams, vparamss0, tpt, rhs0)
-        if (dd.symbol.isEffectivelyFinal) && !((dd.symbol is Flags.Accessor) || (rhs0 eq EmptyTree) || (dd.symbol is Flags.Label)) =>
-        val mandatory = dd.symbol.hasAnnotation(defn.TailrecAnnotationClass)
+        if (sym.isEffectivelyFinal) && !((sym is Flags.Accessor) || (rhs0 eq EmptyTree) || (sym is Flags.Label)) =>
+        val mandatory = sym.hasAnnotation(defn.TailrecAnnotationClass)
         atGroupEnd { implicit ctx: Context =>
 
           cpy.DefDef(dd)(rhs = {
 
-            val origMeth = tree.symbol
-            val label = mkLabel(dd.symbol)
+            val defIsTopLevel = sym.owner.isClass
+            val origMeth = sym
+            val label = mkLabel(sym, abstractOverClass = defIsTopLevel)
             val owner = ctx.owner.enclosingClass.asClass
             val thisTpe = owner.thisType.widen
 
@@ -101,7 +103,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
             // and second one will actually apply,
             // now this speculatively transforms tree and throws away result in many cases
             val rhsSemiTransformed = {
-              val transformer = new TailRecElimination(dd.symbol, owner, thisTpe, mandatory, label)
+              val transformer = new TailRecElimination(origMeth, owner, thisTpe, mandatory, label, abstractOverClass = defIsTopLevel)
               val rhs = atGroupEnd(transformer.transform(rhs0)(_))
               rewrote = transformer.rewrote
               rhs
@@ -109,8 +111,8 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
 
             if (rewrote) {
               val dummyDefDef = cpy.DefDef(tree)(rhs = rhsSemiTransformed)
-              val res = fullyParameterizedDef(label, dummyDefDef)
-              val call = forwarder(label, dd)
+              val res = fullyParameterizedDef(label, dummyDefDef, abstractOverClass = defIsTopLevel)
+              val call = forwarder(label, dd, abstractOverClass = defIsTopLevel)
               Block(List(res), call)
             } else {
               if (mandatory)
@@ -130,7 +132,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
 
   }
 
-  class TailRecElimination(method: Symbol, enclosingClass: Symbol, thisType: Type, isMandatory: Boolean, label: Symbol) extends tpd.TreeMap {
+  class TailRecElimination(method: Symbol, enclosingClass: Symbol, thisType: Type, isMandatory: Boolean, label: Symbol, abstractOverClass: Boolean) extends tpd.TreeMap {
 
     import dotty.tools.dotc.ast.tpd._
 
@@ -179,9 +181,11 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
         val targs = typeArguments.map(noTailTransform)
         val argumentss = arguments.map(noTailTransforms)
 
-        val receiverIsSame = enclosingClass.typeRef.widen =:= recv.tpe.widen
-        val receiverIsSuper = (method.name eq sym) && enclosingClass.typeRef.widen <:< recv.tpe.widen
-        val receiverIsThis = recv.tpe.widen =:= thisType
+        val recvWiden = recv.tpe.widenDealias
+
+        val receiverIsSame = enclosingClass.typeRef.widenDealias =:= recvWiden
+        val receiverIsSuper = (method.name eq sym) && enclosingClass.typeRef.widen <:< recvWiden
+        val receiverIsThis = recv.tpe =:= thisType
 
         val isRecursiveCall = (method eq sym)
 
@@ -204,9 +208,13 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           c.debuglog("Rewriting tail recursive call:  " + tree.pos)
           rewrote = true
           val reciever = noTailTransform(recv)
-          val classTypeArgs = recv.tpe.baseTypeWithArgs(enclosingClass).argInfos
-          val trz = classTypeArgs.map(x => ref(x.typeSymbol))
-          val callTargs: List[tpd.Tree] = targs ::: trz
+
+          val callTargs: List[tpd.Tree] =
+            if(abstractOverClass) {
+              val classTypeArgs = recv.tpe.baseTypeWithArgs(enclosingClass).argInfos
+              targs ::: classTypeArgs.map(x => ref(x.typeSymbol))
+            } else targs
+
           val method = Apply(if (callTargs.nonEmpty) TypeApply(Ident(label.termRef), callTargs) else Ident(label.termRef),
             List(reciever))
 
