@@ -27,7 +27,8 @@ class LazyVals extends MiniPhaseTransform with SymTransformer {
 
 
   def transformSym(d: SymDenotation)(implicit ctx: Context): SymDenotation = {
-    if(d is(Flags.Lazy, butNot = Flags.ModuleVal)) {
+    if(d is(Flags.Lazy, butNot = Flags.ModuleVal | Flags.Method)) {
+      // Method flag is set on lazy vals coming from Unpickler. They are already methods and shouldn't be transformed twice
       d.copySymDenotation(
         initFlags = d.flags | Flags.Method,
         info = ExprType(d.info))
