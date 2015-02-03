@@ -14,7 +14,7 @@ import dotty.tools.dotc.ast.{untpd, tpd}
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Types.{ExprType, NoType, MethodType}
 import dotty.tools.dotc.core.Names.Name
-import dotty.runtime.LazyVals
+import dotty.runtime.{LazyVals => RLazyVals} // dotty deviation
 import SymUtils._
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
@@ -288,7 +288,7 @@ class LazyVals extends MiniPhaseTransform with SymTransformer {
         val thiz = This(claz)(ctx.fresh.setOwner(claz))
         val companion = claz.companionModule
         val helperModule = ctx.requiredModule("dotty.runtime.LazyVals")
-        val getOffset = Select(ref(helperModule), LazyVals.Names.getOffset.toTermName)
+        val getOffset = Select(ref(helperModule), RLazyVals.Names.getOffset.toTermName)
         var offsetSymbol: TermSymbol = null
         var flag: Tree = EmptyTree
         var ord = 0
@@ -296,7 +296,7 @@ class LazyVals extends MiniPhaseTransform with SymTransformer {
         // compute or create appropriate offsetSymol, bitmap and bits used by current ValDef
         appendOffsetDefs.get(companion.name.moduleClassName) match {
           case Some(info) =>
-            val flagsPerLong = 64 / LazyVals.BITS_PER_LAZY_VAL
+            val flagsPerLong = 64 / RLazyVals.BITS_PER_LAZY_VAL
             info.ord += 1
             ord = info.ord % flagsPerLong
             val id = info.ord / flagsPerLong
@@ -327,11 +327,11 @@ class LazyVals extends MiniPhaseTransform with SymTransformer {
         val containerTree = ValDef(containerSymbol, initValue(tpe))
 
         val offset = Select(ref(companion), offsetSymbol.name)
-        val getFlag = Select(ref(helperModule), LazyVals.Names.get.toTermName)
-        val setFlag = Select(ref(helperModule), LazyVals.Names.setFlag.toTermName)
-        val wait = Select(ref(helperModule), LazyVals.Names.wait4Notification.toTermName)
-        val state = Select(ref(helperModule), LazyVals.Names.state.toTermName)
-        val cas = Select(ref(helperModule), LazyVals.Names.cas.toTermName)
+        val getFlag = Select(ref(helperModule), RLazyVals.Names.get.toTermName)
+        val setFlag = Select(ref(helperModule), RLazyVals.Names.setFlag.toTermName)
+        val wait = Select(ref(helperModule), RLazyVals.Names.wait4Notification.toTermName)
+        val state = Select(ref(helperModule), RLazyVals.Names.state.toTermName)
+        val cas = Select(ref(helperModule), RLazyVals.Names.cas.toTermName)
 
         val accessor = mkThreadSafeDef(x.symbol.asTerm, claz, ord, containerSymbol, rhs, tpe, offset, getFlag, state, cas, setFlag, wait)
         if(flag eq EmptyTree)
