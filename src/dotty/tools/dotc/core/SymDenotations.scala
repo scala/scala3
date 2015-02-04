@@ -622,15 +622,22 @@ object SymDenotations {
      * the completers.
      */
     /** The class implementing this module, NoSymbol if not applicable. */
-    final def moduleClass(implicit ctx: Context): Symbol =
+    final def moduleClass(implicit ctx: Context): Symbol = {
+      def notFound = {println(s"missing module class for $name: $myInfo"); NoSymbol}
       if (this is ModuleVal)
         myInfo match {
           case info: TypeRef           => info.symbol
           case ExprType(info: TypeRef) => info.symbol // needed after uncurry, when module terms might be accessor defs
           case info: LazyType          => info.moduleClass
-          case _                       => println(s"missing module class for $name: $myInfo"); NoSymbol
+          case t: MethodType           =>
+            t.resultType match {
+              case info: TypeRef => info.symbol
+              case _ => notFound
+            }
+          case _ => notFound
         }
       else NoSymbol
+    }
 
     /** The module implemented by this module class, NoSymbol if not applicable. */
     final def sourceModule(implicit ctx: Context): Symbol = myInfo match {
