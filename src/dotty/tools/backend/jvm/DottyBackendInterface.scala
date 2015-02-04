@@ -493,7 +493,12 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def superClass: Symbol = toDenot(sym).superClass
     def enclClass: Symbol = toDenot(sym).enclosingClass
     def linkedClassOfClass: Symbol = linkedClass
-    def linkedClass: Symbol = toDenot(sym).linkedClass //exitingPickler(sym.linkedClassOfClass)
+    def linkedClass: Symbol = {
+      val ct = ctx.withPhase(ctx.flattenPhase.prev)
+      toDenot(sym)(ct).linkedClass(ct)
+      // java.util.Attributes.Name$ -> java$util$Attributes$Name$ no companion class after flatten
+      // see bug #348
+    } //exitingPickler(sym.linkedClassOfClass)
     def companionClass: Symbol = toDenot(sym).companionClass
     def companionModule: Symbol = toDenot(sym).companionModule
     def companionSymbol: Symbol = if (sym is Flags.Module) companionClass else companionModule
