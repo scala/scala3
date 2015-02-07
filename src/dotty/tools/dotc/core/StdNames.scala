@@ -226,6 +226,7 @@ object StdNames {
     val FAKE_LOCAL_THIS: N          = "this$"
     val IMPLCLASS_CONSTRUCTOR: N    = "$init$"
     val LAZY_LOCAL: N               = "$lzy"
+    val LAZY_LOCAL_INIT: N          = "$lzyINIT"
     val LAZY_FIELD_OFFSET: N        = "OFFSET$"
     val LAZY_SLOW_SUFFIX: N         = "$lzycompute"
     val LOCAL_SUFFIX: N             = "$$local"

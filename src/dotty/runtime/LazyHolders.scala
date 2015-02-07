@@ -3,38 +3,42 @@ package dotty.runtime
 /**
  * Classes used as holders for local lazy vals
  */
-class LazyInt(init: => Int) {
-  lazy val value = init
+class LazyInt {
+  var value: Int = _
+  @volatile var initialized: Boolean = false
 }
 
-class LazyLong(init: => Long) {
-  lazy val value = init
+class LazyLong {
+  var value: Long = _
+  @volatile var initialized: Boolean = false
 }
 
-class LazyBoolean(init: => Boolean) {
-  lazy val value = init
+class LazyBoolean {
+  var value: Boolean = _
+  @volatile var initialized: Boolean = false
 }
 
-class LazyDouble(init: => Double) {
-  lazy val value = init
+class LazyDouble {
+  var value: Double = _
+  @volatile var initialized: Boolean = false
 }
 
-class LazyFloat(init: => Float) {
-  lazy val value = init
+class LazyByte {
+  var value: Byte = _
+  @volatile var initialized: Boolean = false
 }
 
-class LazyByte(init: => Byte) {
-  lazy val value = init
+class LazyRef {
+  var value: AnyRef = _
+  @volatile var initialized: Boolean = false
 }
 
-class LazyRef(init: => AnyRef) {
-  lazy val value = init
+class LazyShort {
+  var value: Short = _
+  @volatile var initialized: Boolean = false
 }
 
-class LazyShort(init: => Short) {
-  lazy val value = init
-}
-
-class LazyChar(init: => Char) {
-  lazy val value = init
+class LazyChar {
+  var value: Char = _
+  @volatile var initialized: Boolean = false
 }

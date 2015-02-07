@@ -58,7 +58,7 @@ class Getters extends MiniPhaseTransform with SymTransformer { thisTransform =>
     }
     else d
   }
-  private val NoGetterNeeded = Method | Param | JavaDefined | JavaStatic
+  private val NoGetterNeeded = Method | Param | JavaDefined | JavaStatic | Lazy
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo): Tree =
     if (tree.symbol is Method) DefDef(tree.symbol.asTerm, tree.rhs) else tree
