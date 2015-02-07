@@ -288,6 +288,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     newConstraint(boundsMap.updated(poly, entries1), lowerMap, upperMap).init(poly)
   }
     
+  /** Split dependent parameters off the bounds for parameters in `poly`.
+   *  Update all bounds to be normalized and update ordering to account for
+   *  dependent parameters.
+   */
   private def init(poly: PolyType)(implicit ctx: Context): This = {
     var current = this
     val loBuf, hiBuf = new mutable.ListBuffer[PolyParam]
