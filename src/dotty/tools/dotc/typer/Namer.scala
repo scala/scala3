@@ -497,9 +497,9 @@ class Namer { typer: Typer =>
       denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
       if (cls is Trait) {
         if (body forall isNoInitMember) {
-          cls.setFlag(NoInits)
+          cls.setFlag(NoInits) // TODO set when unpickling
           if (body forall isPureInterfaceMember)
-            cls.setFlag(PureInterface)
+            cls.setFlag(PureInterface) // TODO set when unpickling
         }
       }
     }

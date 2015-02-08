@@ -333,7 +333,7 @@ object Flags {
   final val JavaStaticType = JavaStatic.toTypeFlags
 
   /** Trait is not an interface, but does not have fields or intialization code */
-  final val NoInits = typeFlag(32, "<noInits>")
+  final val NoInits = typeFlag(32, "<noInits>") // TODO reconstitute from context
 
   /** Variable is accessed from nested function. */
   final val Captured = termFlag(32, "<captured>")
@@ -345,7 +345,7 @@ object Flags {
   final val Bridge = termFlag(34, "<bridge>")
 
   /** Symbol is a Java varargs bridge */ // (needed?)
-  final val VBridge = termFlag(35, "<vbridge>")
+  final val VBridge = termFlag(35, "<vbridge>") // TODO remove
 
   /** Symbol is a method which should be marked ACC_SYNCHRONIZED */
   final val Synchronized = termFlag(36, "<synchronized>")
@@ -364,7 +364,7 @@ object Flags {
   /** Symbol always defines a fresh named type */
   final val Fresh = commonFlag(45, "<fresh>")
 
-  /** Symbol is defined in a super call */
+  /** Symbol is defined in a super call */ // TODO reconstitute from context
   final val InSuperCall = commonFlag(46, "<in supercall>")
 
   /** Symbol with private access is accessed outside its private scope */
@@ -551,7 +551,7 @@ object Flags {
   /** A Java interface, potentially with default methods */
   final val JavaTrait = allOf(JavaDefined, Trait, NoInits)
 
-    /** A Java interface */
+    /** A Java interface */ // TODO reconstitute from context
   final val JavaInterface = allOf(JavaDefined, Trait)
 
   /** A Java companion object */
