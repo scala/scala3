@@ -93,7 +93,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
     self.owner.info.decl(self.asTerm.name.fieldName).suchThat(!_.is(Method)).symbol
 
   /** `fullName` where `$' is the separator character */
-  def flatName(implicit ctx: Context): Name = self.fullNameSeparated('$')
+  def flatName(implicit ctx: Context): Name = self.flatName('$')
 
   def initializer(implicit ctx: Context): TermSymbol =
     self.owner.info.decl(InitializerName(self.asTerm.name)).symbol.asTerm

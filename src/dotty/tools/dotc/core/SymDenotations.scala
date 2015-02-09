@@ -292,6 +292,21 @@ object SymDenotations {
         if (isType) fn.toTypeName else fn.toTermName
       }
 
+
+    /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
+    def flatName(separator: Char = '$')(implicit ctx: Context): Name =
+      if (symbol == NoSymbol || owner == NoSymbol || owner.isEffectiveRoot || (owner is PackageClass)) name
+      else {
+        var owner = this
+        var sep = ""
+        do {
+          owner = owner.owner
+          sep += separator
+        } while (!owner.isClass && !owner.isPackageObject)
+        val fn = owner.flatName(separator) ++ sep ++ name
+        if (isType) fn.toTypeName else fn.toTermName
+      }
+
     /** `fullName` where `.' is the separator character */
     def fullName(implicit ctx: Context): Name = fullNameSeparated('.')
 
