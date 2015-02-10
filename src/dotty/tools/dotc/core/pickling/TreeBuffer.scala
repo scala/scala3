@@ -46,7 +46,7 @@ class TreeBuffer extends TastyBuffer(1000000) {
   }
     
   def adjusted(x: Addr): Addr = {
-    val idx = bestFit(offsets, x.index - 1)
+    val idx = bestFit(offsets, numOffsets, x.index - 1)
     if (idx < 0) x else x - delta(idx)
   }
 

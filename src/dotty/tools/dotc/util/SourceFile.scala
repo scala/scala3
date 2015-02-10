@@ -99,7 +99,7 @@ case class SourceFile(file: AbstractFile, content: Array[Char]) {
    *  Lines are numbered from 0
    */
   def offsetToLine(offset: Int): Int = {
-    lastLine = Util.bestFit(lineIndices, offset, lastLine)
+    lastLine = Util.bestFit(lineIndices, lineIndices.length, offset, lastLine)
     lastLine
   }
 
