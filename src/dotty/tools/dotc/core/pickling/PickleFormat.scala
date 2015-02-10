@@ -95,6 +95,7 @@ Standard-Section: "ASTs" Tree*
 
   Path          = Constant
                   TERMREFdirect        sym_ASTRef
+                  TERMREFstatic        fullyQualified_NameRef
                   TERMREFsymbol        qual_Type sym_ASTRef
                   TERMREF              qual_Type possiblySigned_NameRef
                   THIS          Length clsRef_Type
@@ -123,6 +124,7 @@ Standard-Section: "ASTs" Tree*
 
   Type          = Path
                   TYPEREFdirect        sym_ASTRef
+                  TYPEREFstatic        fullyQualified_NameRef
                   TYPEREFsymbol        qual_Type sym_ASTRef
                   TYPEREF              qual_Type possiblySigned_NameRef
                   SUPERtype     Length this_Type underlying_Type
@@ -135,9 +137,14 @@ Standard-Section: "ASTs" Tree*
                   ANDtype       Length left_Type right_Type
                   ORtype        Length left_Type right_Type
                   BYNAMEtype    Length underlying_Type
+                  POLYtype      Length result_Type NamesTypes      // needed for refinements
+                  METHODtype    Length result_Type NamesTypes      // needed for refinements
+                  PARAMtype     Length binder_ASTref paramNum_Nat  // needed for refinements
                   NOTYPE
                   NOPREFIX
                   SHARED               type_ASTRef
+  NamesTypes    = ParamType*
+  NameType      = paramName_NameRef typeOrBounds_ASTRef
 
   Modifier      = PRIVATE
                   INTERNAL						// package private
@@ -189,10 +196,10 @@ object PickleFormat {
 
   final val header = "5CA1AB1F"
   final val MajorVersion = 0
-  final val MinorVersion = 1
-  
+  final val MinorVersion = 2
+
   // Name tags
-  
+
   final val UTF8 = 1
   final val QUALIFIED = 2
   final val SIGNED = 3
@@ -200,7 +207,7 @@ object PickleFormat {
   final val MODULECLASS = 5
   final val SUPERACCESSOR = 6
   final val DEFAULTGETTER = 7
-  
+
 // AST tags
 
   final val EMPTYTREE = 0
@@ -241,20 +248,22 @@ object PickleFormat {
   final val SHARED = 96
   final val TERMREFdirect = 97
   final val TYPEREFdirect = 98
-  final val BYTEconst = 99
-  final val BYTEneg = 100
-  final val SHORTconst = 101
-  final val SHORTneg = 102
-  final val CHARconst = 103
-  final val INTconst = 104
-  final val INTneg = 105
-  final val LONGconst = 106
-  final val LONGneg = 107
-  final val FLOATconst = 108
-  final val DOUBLEconst = 109
-  final val STRINGconst = 110
-  final val PRIVATEqualified = 111
-  final val PROTECTEDqualified = 112
+  final val TERMREFstatic = 99
+  final val TYPEREFstatic = 100
+  final val BYTEconst = 101
+  final val BYTEneg = 102
+  final val SHORTconst = 103
+  final val SHORTneg = 104
+  final val CHARconst = 105
+  final val INTconst = 106
+  final val INTneg = 107
+  final val LONGconst = 108
+  final val LONGneg = 109
+  final val FLOATconst = 110
+  final val DOUBLEconst = 111
+  final val STRINGconst = 112
+  final val PRIVATEqualified = 113
+  final val PROTECTEDqualified = 114
 
   final val SELECT = 128
   final val TERMREFsymbol = 129
@@ -308,10 +317,137 @@ object PickleFormat {
   final val ANDtype = 203
   final val ORtype = 204
   final val BYNAMEtype = 205
-  final val IMPLICITARG = 206
-  
+  final val METHODtype = 206
+  final val POLYtype = 207
+  final val PARAMtype = 208
+  final val IMPLICITARG = 209
+
   final val firstSimpleTreeTag = EMPTYTREE
   final val firstNatTreeTag = SHARED
   final val firstTreeNatTreeTag = SELECT
   final val firstLengthTreeTag = PACKAGE
+
+  def nameTagToString(tag: Int): String = tag match {
+    case UTF8 => "UTF8"
+    case QUALIFIED => "QUALIFIED"
+    case SIGNED => "SIGNED"
+    case EXPANDED => "EXPANDED"
+    case MODULECLASS => "MODULECLASS"
+    case SUPERACCESSOR => "SUPERACCESSOR"
+    case DEFAULTGETTER => "DEFAULTGETTER"
+  }
+
+  def astTagToString(tag: Int): String = tag match {
+    case EMPTYTREE => "EMPTYTREE"
+    case NOTYPE => "NOTYPE"
+    case NOPREFIX => "NOPREFIX"
+    case UNITconst => "UNITconst"
+    case FALSEconst => "FALSEconst"
+    case TRUEconst => "TRUEconst"
+    case NULLconst => "NULLconst"
+    case PRIVATE => "PRIVATE"
+    case INTERNAL => "INTERNAL"
+    case PROTECTED => "PROTECTED"
+    case ABSTRACT => "ABSTRACT"
+    case FINAL => "FINAL"
+    case SEALED => "SEALED"
+    case CASE => "CASE"
+    case IMPLICIT => "IMPLICIT"
+    case LAZY => "LAZY"
+    case OVERRIDE => "OVERRIDE"
+    case INLINE => "INLINE"
+    case ABSOVERRIDE => "ABSOVERRIDE"
+    case STATIC => "STATIC"
+    case MODULE => "MODULE"
+    case LOCAL => "LOCAL"
+    case SYNTHETIC => "SYNTHETIC"
+    case ARTIFACT => "ARTIFACT"
+    case MUTABLE => "MUTABLE"
+    case LABEL => "LABEL"
+    case FIELDaccessor => "FIELDaccessor"
+    case PARAMaccessor => "PARAMaccessor"
+    case CASEaccessor => "CASEaccessor"
+    case COVARIANT => "COVARIANT"
+    case CONTRAVARIANT => "CONTRAVARIANT"
+    case SCALA2X => "SCALA2X"
+    case DEFAULTparameterized => "DEFAULTparameterized"
+    case DEFAULTinit => "DEFAULTinit"
+
+    case SHARED => "SHARED"
+    case TERMREFdirect => "TERMREFdirect"
+    case TYPEREFdirect => "TYPEREFdirect"
+    case TERMREFstatic => "TERMREFstatic"
+    case TYPEREFstatic => "TYPEREFstatic"
+    case BYTEconst => "BYTEconst"
+    case BYTEneg => "BYTEneg"
+    case SHORTconst => "SHORTconst"
+    case SHORTneg => "SHORTneg"
+    case CHARconst => "CHARconst"
+    case INTconst => "INTconst"
+    case INTneg => "INTneg"
+    case LONGconst => "LONGconst"
+    case LONGneg => "LONGneg"
+    case FLOATconst => "FLOATconst"
+    case DOUBLEconst => "DOUBLEconst"
+    case STRINGconst => "STRINGconst"
+    case PRIVATEqualified => "PRIVATEqualified"
+    case PROTECTEDqualified => "PROTECTEDqualified"
+
+    case SELECT => "SELECT"
+    case TERMREFsymbol => "TERMREFsymbol"
+    case TERMREF => "TERMREF"
+    case TYPEREFsymbol => "TYPEREFsymbol"
+    case TYPEREF => "TYPEREF"
+
+    case PACKAGE => "PACKAGE"
+    case VALDEF => "VALDEF"
+    case DEFDEF => "DEFDEF"
+    case TYPEDEF => "TYPEDEF"
+    case IMPORT => "IMPORT"
+    case TYPEPARAM => "TYPEPARAM"
+    case PARAMS => "PARAMS"
+    case PARAM => "PARAM"
+    case IMPORTED => "IMPORTED"
+    case RENAMED => "RENAMED"
+    case APPLY => "APPLY"
+    case TYPEAPPLY => "TYPEAPPLY"
+    case NEW => "NEW"
+    case PAIR => "PAIR"
+    case TYPED => "TYPED"
+    case NAMEDARG => "NAMEDARG"
+    case ASSIGN => "ASSIGN"
+    case BLOCK => "BLOCK"
+    case IF => "IF"
+    case CLOSURE => "CLOSURE"
+    case MATCH => "MATCH"
+    case RETURN => "RETURN"
+    case TRY => "TRY"
+    case THROW => "THROW"
+    case SEQLITERAL => "SEQLITERAL"
+    case JSEQLITERAL => "JSEQLITERAL"
+    case BIND => "BIND"
+    case ALTERNATIVE => "ALTERNATIVE"
+    case UNAPPLY => "UNAPPLY"
+    case ANNOTATED => "ANNOTATED"
+    case CASEDEF => "CASEDEF"
+    case IMPLICITarg => "IMPLICITarg"
+    case TEMPLATE => "TEMPLATE"
+    case THIS => "THIS"
+    case SUPER => "SUPER"
+    case CLASSconst => "CLASSconst"
+    case ENUMconst => "ENUMconst"
+    case SUPERtype => "SUPERtype"
+    case SKOLEMtype => "SKOLEMtype"
+    case REFINEDtype => "REFINEDtype"
+    case APPLIEDtype => "APPLIEDtype"
+    case TYPEBOUNDS => "TYPEBOUNDS"
+    case TYPEALIAS => "TYPEALIAS"
+    case ANDtype => "ANDtype"
+    case ORtype => "ORtype"
+    case BYNAMEtype => "BYNAMEtype"
+    case POLYtype => "POLYtype"
+    case METHODtype => "METHODtype"
+    case PARAMtype => "PARAMtype"
+    case IMPLICITARG => "IMPLICITARG"
+  }
 }

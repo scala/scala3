@@ -12,9 +12,9 @@ object TastyBuffer {
     if (nat < 128) 1 else natSize(nat >>> 7) + 1
 
   /** An address pointing to an index in a Tasty buffer's byte array */
-  class Addr(val index: Int) extends AnyVal {
-    def -(delta: Int): Addr = new Addr(this.index - delta)
-    def +(delta: Int): Addr = new Addr(this.index + delta)
+  case class Addr(val index: Int) extends AnyVal {
+    def -(delta: Int): Addr = Addr(this.index - delta)
+    def +(delta: Int): Addr = Addr(this.index + delta)
     
     def relativeTo(base: Addr): Addr = this - base.index - AddrWidth
   }
@@ -49,7 +49,7 @@ class TastyBuffer(initialSize: Int) {
   
   /** Write the first `n` bytes of `data`. */
   def writeBytes(data: Array[Byte], n: Int): Unit = {
-    while (bytes.length < length + data.length) bytes = dble(bytes)
+    while (bytes.length < length + n) bytes = dble(bytes)
     Array.copy(data, 0, bytes, length, n)
     length += n
   }
@@ -71,11 +71,11 @@ class TastyBuffer(initialSize: Int) {
     def writeNatPrefix(x: Long): Unit = {
       val y = x >>> 7
       if (y != 0L) writeNatPrefix(y)
-      writeByte(((x & 0x7f) | 0x80).toInt)
+      writeByte((x & 0x7f).toInt)
     }
     val y = x >>> 7
     if (y != 0L) writeNatPrefix(y)
-    writeByte((x & 0x7f).toInt)
+    writeByte(((x & 0x7f) | 0x80).toInt)
   }
   
   /** Write the `nbytes` least significant bytes of `x` in big endian format */
@@ -119,14 +119,14 @@ class TastyBuffer(initialSize: Int) {
     var idx = at.index
     do {
       b = bytes(idx)
-      x = (x << 7) + (b & 0x7f)
+      x = (x << 7) | (b & 0x7f)
       idx += 1
-    } while ((b & 0x80) != 0L)
+    } while ((b & 0x80) == 0)
     x
   }
 
   /** The address (represented as a natural number) at address `at` */
-  def getAddr(at: Addr) = new Addr(getNat(at))
+  def getAddr(at: Addr) = Addr(getNat(at))
 
   /** The smallest address equal to or following `at` which points to a non-zero byte */ 
   final def skipZeroes(at: Addr): Addr = 
@@ -139,7 +139,7 @@ class TastyBuffer(initialSize: Int) {
   }
 
   /** The address referring to the end of data written so far */
-  def currentAddr: Addr = new Addr(length)
+  def currentAddr: Addr = Addr(length)
   
   /** Reserve `AddrWidth` bytes to write an address into */
   def reserveAddr(): Addr = {
