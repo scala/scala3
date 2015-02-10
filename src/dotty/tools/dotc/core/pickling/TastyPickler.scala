@@ -9,7 +9,7 @@ import TastyBuffer._
 
 class TastyPickler {
       
-  private val sections = new mutable.ArrayBuffer[(TastyName.Ref, TastyBuffer)]
+  private val sections = new mutable.ArrayBuffer[(TastyName.NameRef, TastyBuffer)]
   
   private val headerBuffer = {
     val buf = new TastyBuffer(16)
@@ -24,7 +24,7 @@ class TastyPickler {
   def newSection(name: String, buf: TastyBuffer) = 
     sections += ((nameBuffer.nameIndex(name), buf))
   
-  def assembleParts: Array[Byte] = {
+  def assembleParts(): Array[Byte] = {
     def lengthWithLength(buf: TastyBuffer) = {
       buf.assemble()
       buf.length + natSize(buf.length)
@@ -44,7 +44,7 @@ class TastyPickler {
       all.writeNat(buf.length)
       all.writeBytes(buf.bytes, buf.length)
     }
-    assert(all.length == totalSize && all.bytes.length == totalSize)
+    assert(all.length == totalSize && all.bytes.length == totalSize, s"totalSize = $totalSize, all.length = ${all.length}, all.bytes.length = ${all.bytes.length}")
     all.bytes
   }
 }
