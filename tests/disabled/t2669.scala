@@ -1,4 +1,5 @@
 // #2629, #2639, #2669
+// dies in classfile parser while parsing java.util.Vector(requested by bakend)
 object Test2669 {
 
   def test[T](l: java.util.ArrayList[_ <: T]) = 1
