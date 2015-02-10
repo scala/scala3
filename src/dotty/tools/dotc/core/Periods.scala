@@ -46,7 +46,7 @@ object Periods {
    *  It is coded as follows:
    *
    *     sign, always 0        1 bit
-   *     runid                21 bits
+   *     runid                19 bits
    *     last phase id:        6 bits
    *     #phases before last:  6 bits
    *
