@@ -10,7 +10,6 @@ object Util {
    *                 as the first search point, otherwise use 
    *                 `candidates.length/2`.
    *  @pre   candidates is sorted
-   *  @pre   candidates(0) <= x
    */
   def bestFit(candidates: Array[Int], x: Int, hint: Int = -1): Int = {
     def recur(lo: Int, hi: Int, mid: Int): Int =
