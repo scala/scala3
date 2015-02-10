@@ -119,16 +119,26 @@ object Periods {
   object Period {
 
     /** The single-phase period consisting of given run id and phase id */
-    def apply(rid: RunId, pid: PhaseId): Period =
+    def apply(rid: RunId, pid: PhaseId): Period = {
+      assert(rid <= MaxPossibleRunId)
+      assert(pid <= MaxPossiblePhaseId)
       new Period(((rid << PhaseWidth) | pid) << PhaseWidth)
+    }
 
     /** The period consisting of given run id, and lo/hi phase ids */
-    def apply(rid: RunId, loPid: PhaseId, hiPid: PhaseId): Period =
+    def apply(rid: RunId, loPid: PhaseId, hiPid: PhaseId): Period = {
+      assert(rid <= MaxPossibleRunId)
+      assert(loPid <= MaxPossiblePhaseId)
+      assert(hiPid <= MaxPossiblePhaseId)
+
       new Period(((rid << PhaseWidth) | hiPid) << PhaseWidth | (hiPid - loPid))
+    }
 
     /** The interval consisting of all periods of given run id */
-    def allInRun(rid: RunId) =
+    def allInRun(rid: RunId) = {
+      assert(rid <= MaxPossibleRunId)
       apply(rid, 0, PhaseMask)
+    }
   }
 
   final val Nowhere = new Period(0)
@@ -141,6 +151,8 @@ object Periods {
   type RunId = Int
   final val NoRunId = 0
   final val InitialRunId = 1
+  final val RunWidth = java.lang.Integer.SIZE - PhaseWidth * 2 - 1/* sign */
+  final val MaxPossibleRunId = (1 << RunWidth) - 1
 
   /** An ordinal number for phases. First phase has number 1. */
   type PhaseId = Int
