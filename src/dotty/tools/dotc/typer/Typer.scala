@@ -472,7 +472,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val Block(stats, expr) = block
     val leaks = escapingRefs(block)
     if (leaks.isEmpty) block
-    else if (isFullyDefined(pt, ForceDegree.all)) {
+    else if (isFullyDefined(pt, ForceDegree.none)) {
       val expr1 = Typed(expr, TypeTree(pt))
       cpy.Block(block)(stats, expr1) withType expr1.tpe // no assignType here because avoid is redundant
     } else if (!forcedDefined) {
