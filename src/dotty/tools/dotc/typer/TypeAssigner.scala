@@ -28,9 +28,18 @@ trait TypeAssigner {
     }
   }
 
-  def avoid(tp: Type, syms: => List[Symbol])(implicit ctx: Context): Type = {
+  /** An upper approximation of the given type `tp` that does not refer to any symbol in `symsToAvoid`.
+   *  Approximation steps are:
+   *  
+   *   - follow aliases if the original refers to a forbidden symbol
+   *   - widen termrefs that refer to a forbidden symbol
+   *   - replace ClassInfos of forbidden classes by the intersection of their parents, refined by all 
+   *     non-private fields, methods, and type members.
+   *   - drop refinements referring to a forbidden symbol.
+   */
+  def avoid(tp: Type, symsToAvoid: => List[Symbol])(implicit ctx: Context): Type = {
     val widenMap = new TypeMap {
-      lazy val forbidden = syms.toSet
+      lazy val forbidden = symsToAvoid.toSet
       def toAvoid(tp: Type): Boolean = tp match {
         case tp: TermRef =>
           val sym = tp.symbol
