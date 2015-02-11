@@ -57,6 +57,7 @@ class tests extends CompilerTest {
   @Test def pos_packageobject() = compileFile(posDir, "packageobject")
   @Test def pos_overloaded() = compileFile(posDir, "overloaded")
   @Test def pos_overrides() = compileFile(posDir, "overrides")
+  @Test def pos_javaOverride() = compileDir(posDir + "java-override")
   @Test def pos_templateParents() = compileFile(posDir, "templateParents")
   @Test def pos_structural() = compileFile(posDir, "structural")
   @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess")
