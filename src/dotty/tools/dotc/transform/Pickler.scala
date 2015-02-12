@@ -13,17 +13,18 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
 
   override def phaseName: String = "pickler"
   
-  
   override def transformUnit(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    val pickler = new TastyPickler
-    new TreePickler(pickler, picklePositions = false).pickle(tree)
-    val bytes = pickler.assembleParts()
-    def rawBytes = 
-      bytes.iterator.grouped(10).toList.zipWithIndex.map { 
-        case (row, i) => s"${i}0: ${row.mkString(" ")}"
-      }
-    //println(s"written:\n${rawBytes.mkString("\n")}")
-    new TastyPrinter(bytes).printContents()
+    if (!ctx.compilationUnit.isJava) {
+      val pickler = new TastyPickler
+      new TreePickler(pickler, picklePositions = false).pickle(tree)
+      val bytes = pickler.assembleParts()
+      def rawBytes =
+        bytes.iterator.grouped(10).toList.zipWithIndex.map {
+          case (row, i) => s"${i}0: ${row.mkString(" ")}"
+        }
+      //println(s"written:\n${rawBytes.mkString("\n")}")
+      new TastyPrinter(bytes).printContents()
+    }
     tree
   }
 }
