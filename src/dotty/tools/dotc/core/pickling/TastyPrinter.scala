@@ -85,7 +85,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
           printTree()
           newLine()
           tag match {
-            case SELECT | TERMREF | TYPEREF => printName()
+            case IDENT | SELECT | TERMREF | TYPEREF => printName()
             case _ => printNat() 
           }
         }
