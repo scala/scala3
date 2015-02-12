@@ -61,8 +61,7 @@ class TastyBuffer(initialSize: Int) {
     writeLongNat(x.toLong & 0x00000000FFFFFFFFL)
     
   /**
-   * Like writeNat, but for longs. This is not the same as
-   * writeRaw, which writes in base 256. Note that the
+   * Like writeNat, but for longs. Note that the
    * binary representation of LongNat is identical to Nat
    * if the long value is in the range Int.MIN_VALUE to
    * Int.MAX_VALUE.
@@ -76,16 +75,6 @@ class TastyBuffer(initialSize: Int) {
     val y = x >>> 7
     if (y != 0L) writeNatPrefix(y)
     writeByte(((x & 0x7f) | 0x80).toInt)
-  }
-  
-  /** Write the `nbytes` least significant bytes of `x` in big endian format */
-  def writeRaw(x: Long, nbytes: Int): Unit = {
-    def recur(x: Long, n: Int): Unit = 
-      if (n > 0) {
-        recur(x >>> 8, n - 1)
-        writeByte((x & 0xff).toInt)
-      }
-    recur(x, nbytes)
   }
 
   // -- Address handling --------------------------------------------

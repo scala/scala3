@@ -113,8 +113,8 @@ Standard-Section: "ASTs" Tree*
                   INTneg               NegNat
                   LONGconst            LongNat
                   LONGneg              NegLongNat
-                  FLOATconst           FullInt
-                  DOUBLEconst          FullLong
+                  FLOATconst           LongNat
+                  DOUBLEconst          LongNat
                   STRINGconst          NameRef
                   NULLconst
                   CLASSconst    Length Type
