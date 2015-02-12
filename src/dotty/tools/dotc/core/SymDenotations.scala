@@ -338,7 +338,7 @@ object SymDenotations {
 
     /** Is this symbol the root class or its companion object? */
     final def isRoot: Boolean =
-      (name.toTermName == nme.ROOT) && (owner eq NoSymbol)
+      (name.toTermName == nme.ROOT || name == nme.ROOTPKG) && (owner eq NoSymbol)
 
     /** Is this symbol the empty package class or its companion object? */
     final def isEmptyPackage(implicit ctx: Context): Boolean =
