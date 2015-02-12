@@ -28,6 +28,7 @@ class TreeBuffer extends TastyBuffer(1000000) {
     numOffsets += 1
   }
        
+  /** Reserve space for a reference, to be adjusted later */
   def reserveRef(relative: Boolean): Addr = {
     val addr = currentAddr
     keepOffset(relative)
@@ -35,23 +36,28 @@ class TreeBuffer extends TastyBuffer(1000000) {
     addr
   }
 
+  /** Write reference right adjusted into freshly reserved field. */
   def writeRef(target: Addr) = {
     keepOffset(relative = false)
     fillAddr(reserveAddr(), target)
   }
   
+  /** Fill previously reserved field with a reference */
   def fillRef(at: Addr, target: Addr, relative: Boolean) = {
     val addr = if (relative) target.relativeTo(at) else target
     fillAddr(at, addr)
   }
   
+  /** The amount by which the bytes at the given address are shifted under compression */
   def deltaAt(at: Addr): Int = {
     val idx = bestFit(offsets, numOffsets, at.index - 1)
     if (idx < 0) 0 else delta(idx)
   }
     
+  /** The address to which `x` is translated under compression */
   def adjusted(x: Addr): Addr = x - deltaAt(x)
 
+  /** Compute all shift-deltas */
   private def computeDeltas() = {
     delta = new Array[Int](numOffsets)
     var lastDelta = 0
@@ -67,6 +73,7 @@ class TreeBuffer extends TastyBuffer(1000000) {
     }
   }
   
+  /** The absoluate or relative adjusted address at index `i` of `offsets` array*/
   private def adjustedOffset(i: Int): Addr = {
     val at = offset(i)
     val original = getAddr(at)
@@ -80,6 +87,7 @@ class TreeBuffer extends TastyBuffer(1000000) {
     } else adjusted(original)
   }
   
+  /** Adjust all offsets according to previously computed deltas */
   private def adjustOffsets(): Unit = {
     for (i <- 0 until numOffsets) {
       val corrected = adjustedOffset(i)
@@ -87,6 +95,10 @@ class TreeBuffer extends TastyBuffer(1000000) {
     }
   }
     
+  /** Adjust deltas to also take account references that will shrink (and thereby
+   *  generate additional zeroes that can be skipped) due to previously
+   *  computed adjustements.
+   */
   private def adjustDeltas(): Int = {
     val delta1 = new Array[Int](delta.length)
     var lastDelta = 0
@@ -103,7 +115,8 @@ class TreeBuffer extends TastyBuffer(1000000) {
     delta = delta1
     saved
   }
-    
+   
+  /** Compress pickle buffer, shifting bytes to close all skipped zeroes. */
   private def compress(): Int = {
     var lastDelta = 0
     var start = 0
@@ -126,20 +139,24 @@ class TreeBuffer extends TastyBuffer(1000000) {
     wasted
   }
   
+  /** Final assembly, involving the following steps:
+   *   - compute deltas
+   *   - adjust deltas until additional savings are < 1% of total
+   *   - adjust offsets according to the adjusted deltas
+   *   - shrink buffer, skipping zeroes.
+   */
   override def assemble(): Unit = {
     val origLength = length
     computeDeltas()
     //println(s"offsets: ${offsets.take(numOffsets).deep}")
     //println(s"deltas: ${delta.take(numOffsets).deep}")
-    if (true) {
-      var saved = 0
-      do {
-        saved = adjustDeltas()
-        println(s"adjusting deltas, saved = $saved")
-      } while (saved > 0 && length / saved < 100)
-    }
+    var saved = 0
+    do {
+      saved = adjustDeltas()
+      println(s"adjusting deltas, saved = $saved")
+    } while (saved > 0 && length / saved < 100)
     adjustOffsets()
     val wasted = compress()
-    println(s"original length: $origLength, compressed to: $length, wasted: $wasted")
+    println(s"original length: $origLength, compressed to: $length, wasted: $wasted") // DEBUG, for now.
   }
 }
