@@ -13,6 +13,9 @@ import scala.reflect.io.VirtualFile
 
 class Run(comp: Compiler)(implicit ctx: Context) {
 
+  assert(comp.phases.last.last.id <= Periods.MaxPossiblePhaseId)
+  assert(ctx.runId <= Periods.MaxPossibleRunId)
+
   var units: List[CompilationUnit] = _
 
   def getSource(fileName: String): SourceFile = {
