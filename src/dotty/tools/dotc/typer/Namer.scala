@@ -427,8 +427,15 @@ class Namer { typer: Typer =>
       completeInCreationContext(denot)
     }
 
-    def completeInCreationContext(denot: SymDenotation): Unit =
-      denot.info = typeSig(denot.symbol)
+    def completeInCreationContext(denot: SymDenotation): Unit = {
+      val symbol = denot.symbol
+      original match {
+        case original: MemberDef =>
+          typer.addTypedModifiersAnnotations(original, symbol)
+        case _: Import =>
+      }
+      denot.info = typeSig(symbol)
+    }
   }
 
   class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
@@ -472,6 +479,8 @@ class Namer { typer: Typer =>
         if (cls.isRefinementClass) ptype
         else checkClassTypeWithStablePrefix(ptype, parent.pos, traitReq = parent ne parents.head)
       }
+
+      typer.addTypedModifiersAnnotations(original, cls)(ictx)
 
       val selfInfo =
         if (self.isEmpty) NoType
