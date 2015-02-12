@@ -27,7 +27,6 @@ class tests extends CompilerTest {
   val twice = List("#runs", "2", "-YnoDoubleBindings")
 
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
-  val noPickling = allowDeepSubtypes ++ List("-Yskip:pickler")
 
   val posDir = "./tests/pos/"
   val posSpecialDir = "./tests/pos-special/"
@@ -52,7 +51,7 @@ class tests extends CompilerTest {
   @Test def pos_nameddefaults() = compileFile(posDir, "nameddefaults")
   @Test def pos_desugar() = compileFile(posDir, "desugar")
   @Test def pos_sigs() = compileFile(posDir, "sigs")
-  @Test def pos_typers() = compileFile(posDir, "typers")(noPickling)
+  @Test def pos_typers() = compileFile(posDir, "typers")
   @Test def pos_typedidents() = compileFile(posDir, "typedIdents")
   @Test def pos_assignments() = compileFile(posDir, "assignments")
   @Test def pos_packageobject() = compileFile(posDir, "packageobject")
@@ -62,14 +61,14 @@ class tests extends CompilerTest {
   @Test def pos_templateParents() = compileFile(posDir, "templateParents")
   @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess")
   @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion")
-  @Test def pos_tailcall = compileDir(posDir + "tailcall/")(noPickling)
+  @Test def pos_tailcall = compileDir(posDir + "tailcall/")
   @Test def pos_nullarify = compileFile(posDir, "nullarify", "-Ycheck:nullarify" :: Nil)
   @Test def pos_subtyping = compileFile(posDir, "subtyping")
   @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
   @Test def pos_packageObj = compileFile(posDir, "i0239")
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping")
 
-  @Test def pos_all = compileFiles(posDir, failedOther)(noPickling)
+  @Test def pos_all = compileFiles(posDir, failedOther)
 
   @Test def new_all = compileFiles(newDir, twice)
 
@@ -117,21 +116,21 @@ class tests extends CompilerTest {
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", failedOther)(allowDeepSubtypes)
-  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", failedOther)(noPickling) // similar to dotc_config
+  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", failedOther) // similar to dotc_config
   @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config", failedOther) // seems to mess up stack frames
-  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", failedUnderscore)(noPickling)
+  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", failedUnderscore)(allowDeepSubtypes)
   // fails due to This refference to a non-eclosing class. Need to check
 
-  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", failedOther)(noPickling) // Cannot emit primitive conversion from V to Z
+  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", failedOther)(allowDeepSubtypes) // Cannot emit primitive conversion from V to Z
 
-  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", failedbyName)(noPickling)
+  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", failedbyName)
 
   @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing", failedOther)
     //  Expected primitive types I - Ljava/lang/Object
     //  Tried to return an object where expected type was Integer
   @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing", twice)
   @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting", twice)
-  @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", failedOther)(noPickling) // similar to dotc_config
+  @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", failedOther) // similar to dotc_config
   //@Test def dotc_util = compileDir(dotcDir + "tools/dotc/util") //fails inside ExtensionMethods with ClassCastException
   @Test def tools_io = compileDir(dotcDir + "tools/io", failedOther) // similar to dotc_config
 
@@ -144,7 +143,7 @@ class tests extends CompilerTest {
       dotcDir + "tools/dotc/core/Types.scala",
       dotcDir + "tools/dotc/ast/Trees.scala",
       failedUnderscore.head,
-      "-Xprompt", "-Yskip:pickler",
+      "-Xprompt",
       "#runs", "2"))
 
   @Test def testIssue_34 = compileArgs(Array(
