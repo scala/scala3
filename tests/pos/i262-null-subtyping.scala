@@ -1,12 +1,9 @@
 object O {
-  // This compiles
-  val a: { type T } = null;
-  val b: Any { type T } = null;
+  trait Base extends Any { type T }
+  val a: Base { type T } = null;
+  val b: Any with Base { type T } = null;
 
-  // This doesn't:
-  // found   : Null
-  // required: AnyRef{T}
-  val c: AnyRef { type T } = null;
+  val c: AnyRef with Base { type T } = null;
 
   class A
   class B

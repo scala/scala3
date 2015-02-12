@@ -60,8 +60,4 @@ object typers {
         123
     }
   }
-
-  class Refinements {
-    val y: C { val x: T; type T }  // deprecated warning: illegal forward reference in refinement
-  }
 }
