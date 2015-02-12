@@ -530,7 +530,7 @@ trait Applications extends Compatibility { self: Typer =>
               if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
               else new ApplyToUntyped(tree, fun1, funRef, proto, pt)(argCtx)
             val result = app.result
-            ConstFold(result)
+            convertNewArray(ConstFold(result))
           } { (failedVal, failedState) =>
             val fun2 = tryInsertImplicitOnQualifier(fun1, proto)
             if (fun1 eq fun2) {
@@ -596,14 +596,14 @@ trait Applications extends Compatibility { self: Typer =>
         checkBounds(typedArgs, pt)
       case _ =>
     }
-    convertNewArray(
-      assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs))
+    assignType(cpy.TypeApply(tree)(typedFn, typedArgs), typedFn, typedArgs)
   }
 
-  /** Rewrite `new Array[T]` trees to calls of newXYZArray methods. */
-  def convertNewArray(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case TypeApply(tycon, targs) if tycon.symbol == defn.ArrayConstructor =>
-      newArray(targs.head, tree.pos)
+  /** Rewrite `new Array[T](....)` trees to calls of newXYZArray methods. */
+  def convertNewArray(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+    case Apply(TypeApply(tycon, targ :: Nil), args) if tycon.symbol == defn.ArrayConstructor =>
+      fullyDefinedType(tree.tpe, "array", tree.pos)
+      tpd.cpy.Apply(tree)(newArray(targ, tree.pos), args)
     case _ =>
       tree
   }
