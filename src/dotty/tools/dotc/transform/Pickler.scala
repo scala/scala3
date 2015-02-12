@@ -6,6 +6,7 @@ import TreeTransforms._
 import Contexts.Context
 import Decorators._
 import pickling._
+import config.Printers
 
 /** This miniphase pickles trees */
 class Pickler extends MiniPhaseTransform { thisTransform =>
@@ -22,8 +23,7 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
         bytes.iterator.grouped(10).toList.zipWithIndex.map {
           case (row, i) => s"${i}0: ${row.mkString(" ")}"
         }
-      //println(s"written:\n${rawBytes.mkString("\n")}")
-      new TastyPrinter(bytes).printContents()
+      if (Printers.pickling ne Printers.noPrinter) new TastyPrinter(bytes).printContents()
     }
     tree
   }
