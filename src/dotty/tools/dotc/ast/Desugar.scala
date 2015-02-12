@@ -864,18 +864,19 @@ object desugar {
    *  @param parentType   The type of `parent`
    */
   def refinedTypeToClass(parent: tpd.Tree, refinements: List[Tree])(implicit ctx: Context): TypeDef = {
-    def stripToCore(tp: Type): Type = tp match {
-      case tp: RefinedType if tp.argInfos.nonEmpty => tp // parameterized class type
-      case tp: TypeRef if tp.symbol.isClass => tp        // monomorphic class type
+    def stripToCore(tp: Type): List[Type] = tp match {
+      case tp: RefinedType if tp.argInfos.nonEmpty => tp :: Nil // parameterized class type
+      case tp: TypeRef if tp.symbol.isClass => tp :: Nil     // monomorphic class type
       case tp: TypeProxy => stripToCore(tp.underlying)
-      case _ => defn.AnyType
+      case AndType(tp1, tp2) => stripToCore(tp1) ::: stripToCore(tp2)
+      case _ => defn.AnyType :: Nil
     }
-    val parentCore = stripToCore(parent.tpe)
+    val parentCores = stripToCore(parent.tpe)
     val untpdParent = TypedSplice(parent)
-    val (classParent, self) =
-      if (parent.tpe eq parentCore) (untpdParent, EmptyValDef)
-      else (TypeTree(parentCore), ValDef(nme.WILDCARD, untpdParent, EmptyTree))
-    val impl = Template(emptyConstructor, classParent :: Nil, self, refinements)
+    val (classParents, self) =
+      if (parentCores.length == 1 && (parent.tpe eq parentCores.head)) (untpdParent :: Nil, EmptyValDef)
+      else (parentCores map TypeTree, ValDef(nme.WILDCARD, untpdParent, EmptyTree))
+    val impl = Template(emptyConstructor, classParents, self, refinements)
     TypeDef(tpnme.REFINE_CLASS, impl).withFlags(Trait)
   }
 
