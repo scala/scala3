@@ -348,7 +348,7 @@ object Erasure extends TypeTestsCasts{
     }
 
     private def protoArgs(pt: Type): List[untpd.Tree] = pt match {
-      case pt: FunProto => pt.args ++ protoArgs(pt.resultType)
+      case pt: FunProto => pt.args ++ protoArgs(pt.resType)
       case _ => Nil
     }
 

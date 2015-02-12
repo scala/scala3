@@ -162,9 +162,11 @@ object ProtoTypes {
    *
    *  [](args): resultType
    */
-  case class FunProto(args: List[untpd.Tree], override val resultType: Type, typer: Typer)(implicit ctx: Context)
+  case class FunProto(args: List[untpd.Tree], resType: Type, typer: Typer)(implicit ctx: Context)
   extends UncachedGroundType with ApplyingProto {
     private var myTypedArgs: List[Tree] = Nil
+    
+    override def resultType(implicit ctx: Context) = resType
 
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
     private var myTypedArg: SimpleMap[untpd.Tree, Tree] = SimpleMap.Empty
@@ -241,8 +243,11 @@ object ProtoTypes {
    *
    *    []: argType => resultType
    */
-  abstract case class ViewProto(argType: Type, override val resultType: Type)
+  abstract case class ViewProto(argType: Type, resType: Type)
   extends CachedGroundType with ApplyingProto {
+
+    override def resultType(implicit ctx: Context) = resType
+    
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean =
   	  ctx.typer.isApplicable(tp, argType :: Nil, resultType)
 
@@ -274,7 +279,10 @@ object ProtoTypes {
    *
    *    [] [targs] resultType
    */
-  case class PolyProto(targs: List[Type], override val resultType: Type) extends UncachedGroundType with ProtoType {
+  case class PolyProto(targs: List[Type], resType: Type) extends UncachedGroundType with ProtoType {
+
+    override def resultType(implicit ctx: Context) = resType
+
     override def isMatchedBy(tp: Type)(implicit ctx: Context) = {
       def isInstantiatable(tp: Type) = tp.widen match {
         case PolyType(paramNames) => paramNames.length == targs.length
@@ -284,8 +292,8 @@ object ProtoTypes {
     }
 
     def derivedPolyProto(targs: List[Type], resultType: Type) =
-      if ((targs eq this.targs) && (resultType eq this.resultType)) this
-      else PolyProto(targs, resultType)
+      if ((targs eq this.targs) && (resType eq this.resType)) this
+      else PolyProto(targs, resType)
 
     def map(tm: TypeMap)(implicit ctx: Context): PolyProto =
       derivedPolyProto(targs mapConserve tm, tm(resultType))
