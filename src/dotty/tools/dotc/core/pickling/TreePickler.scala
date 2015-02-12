@@ -129,17 +129,30 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
       case ConstantType(value) => 
         pickleConstant(value)
       case tpe: WithFixedSym =>
-        if (tpe.symbol.isStatic) {
+        val sym = tpe.symbol
+        if (sym.isStatic) {
           writeByte(if (tpe.isType) TYPEREFstatic else TERMREFstatic)
-          pickleName(qualifiedName(tpe.symbol))
+          pickleName(qualifiedName(sym))
         } 
         else if (tpe.prefix == NoPrefix) {
-          writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
-          pickleSym(tpe.symbol)
+          def pickleRef() = {
+            writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
+            pickleSym(sym)        
+          }
+          if (sym is Flags.BindDefinedType) {
+            registerDef(sym)
+            writeByte(BIND)
+            withLength {
+              pickleName(sym.name)
+              pickleType(sym.info)
+              pickleRef()
+            }
+          }
+          else pickleRef()
         }
         else {
           writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
-          pickleType(tpe.prefix); pickleSym(tpe.symbol)          
+          pickleType(tpe.prefix); pickleSym(sym)          
         }
       case tpe: TermRefWithSignature =>
         writeByte(TERMREF)
