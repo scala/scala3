@@ -17,9 +17,6 @@ Micro-syntax:
   Nat           = LongNat                 // value fits in an Int without overflow
   Digit         = 0 | ... | 127
   StopDigit     = 128 | ... | 255         // value = digit - 128
-  FullInt       = Byte Byte Byte Byte
-  FullLong      = Byte Byte Byte Byte Byte Byte Byte Byte
-  Byte          - 0 | ... | 255
 
 Macro-format:
 
@@ -62,6 +59,7 @@ Standard-Section: "ASTs" Tree*
                   RENAMED       Length from_NameRef to_NameRef
 
   Term          = Path
+                  IDENT                Type NameRef
                   SELECT               qual_Term possiblySigned_NameRef
                   SUPER         Length this_Term mixinTrait_Type?
                   APPLY         Length fn_Term arg_Term*
@@ -149,8 +147,8 @@ Standard-Section: "ASTs" Tree*
   Modifier      = PRIVATE
                   INTERNAL						// package private
                   PROTECTED
-                  PRIVATEqualified     qualifier_ASTRef		// will be dropped
-                  PROTECTEDqualified   qualifier_ASTRef 	// will be dropped
+                  PRIVATEqualified     Length qualifier_Type		// will be dropped
+                  PROTECTEDqualified   Length qualifier_Type 	// will be dropped
                   ABSTRACT
                   FINAL
                   SEALED
@@ -262,14 +260,13 @@ object PickleFormat {
   final val FLOATconst = 110
   final val DOUBLEconst = 111
   final val STRINGconst = 112
-  final val PRIVATEqualified = 113
-  final val PROTECTEDqualified = 114
 
-  final val SELECT = 128
-  final val TERMREFsymbol = 129
-  final val TERMREF = 130
-  final val TYPEREFsymbol = 131
-  final val TYPEREF = 132
+  final val IDENT = 128
+  final val SELECT = 129
+  final val TERMREFsymbol = 130
+  final val TERMREF = 131
+  final val TYPEREFsymbol = 132
+  final val TYPEREF = 133
 
   final val PACKAGE = 160
   final val VALDEF = 161
@@ -321,10 +318,12 @@ object PickleFormat {
   final val POLYtype = 207
   final val PARAMtype = 208
   final val IMPLICITARG = 209
+  final val PRIVATEqualified = 210
+  final val PROTECTEDqualified = 211
 
   final val firstSimpleTreeTag = EMPTYTREE
   final val firstNatTreeTag = SHARED
-  final val firstTreeNatTreeTag = SELECT
+  final val firstTreeNatTreeTag = IDENT
   final val firstLengthTreeTag = PACKAGE
 
   def nameTagToString(tag: Int): String = tag match {
@@ -390,9 +389,8 @@ object PickleFormat {
     case FLOATconst => "FLOATconst"
     case DOUBLEconst => "DOUBLEconst"
     case STRINGconst => "STRINGconst"
-    case PRIVATEqualified => "PRIVATEqualified"
-    case PROTECTEDqualified => "PROTECTEDqualified"
 
+    case IDENT => "IDENT"
     case SELECT => "SELECT"
     case TERMREFsymbol => "TERMREFsymbol"
     case TERMREF => "TERMREF"
@@ -449,5 +447,7 @@ object PickleFormat {
     case METHODtype => "METHODtype"
     case PARAMtype => "PARAMtype"
     case IMPLICITARG => "IMPLICITARG"
+    case PRIVATEqualified => "PRIVATEqualified"
+    case PROTECTEDqualified => "PROTECTEDqualified"
   }
 }
