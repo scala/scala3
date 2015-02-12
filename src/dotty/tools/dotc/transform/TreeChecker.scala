@@ -139,9 +139,28 @@ class TreeChecker {
             assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
           tree1
       }
+      checkNoOrphans(res.tpe)
       phasesToCheck.foreach(_.checkPostCondition(res))
       res
     }
+    
+    /** Check that PolyParams and MethodParams refer to an enclosing type */
+    def checkNoOrphans(tp: Type)(implicit ctx: Context) = new TypeMap() {
+      val definedBinders = mutable.Set[Type]()
+      def apply(tp: Type): Type = {
+        tp match {
+          case tp: BindingType => 
+            definedBinders += tp
+            mapOver(tp)
+            definedBinders -= tp
+          case tp: ParamType =>
+            assert(definedBinders.contains(tp.binder), s"orphan param: $tp")
+          case _ =>
+            mapOver(tp)
+        }
+        tp
+      }
+    }.apply(tp)
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
