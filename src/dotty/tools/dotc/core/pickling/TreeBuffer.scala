@@ -154,7 +154,7 @@ class TreeBuffer extends TastyBuffer(1000000) {
     var saved = 0
     do {
       saved = adjustDeltas()
-      println(s"adjusting deltas, saved = $saved")
+      pickling.println(s"adjusting deltas, saved = $saved")
     } while (saved > 0 && length / saved < 100)
     adjustOffsets()
     val wasted = compress()

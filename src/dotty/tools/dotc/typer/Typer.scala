@@ -834,7 +834,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = track("typedBind") {
     val body1 = typed(tree.body, pt)
     typr.println(i"typed bind $tree pt = $pt bodytpe = ${body1.tpe}")
-    val sym = ctx.newSymbol(ctx.owner, tree.name, EmptyFlags, body1.tpe, coord = tree.pos)
+    val flags = if (tree.isType) BindDefinedType else EmptyFlags
+    val sym = ctx.newSymbol(ctx.owner, tree.name, flags, body1.tpe, coord = tree.pos)
     assignType(cpy.Bind(tree)(tree.name, body1), sym)
   }
 

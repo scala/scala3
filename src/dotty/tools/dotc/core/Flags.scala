@@ -300,7 +300,7 @@ object Flags {
 
   /** Method is assumed to be stable */
   final val Stable = termFlag(24, "<stable>")
-
+  
   /** A case parameter accessor */
   final val CaseAccessor = termFlag(25, "<caseaccessor>")
 
@@ -317,6 +317,9 @@ object Flags {
 
   /** A method that has default params */
   final val DefaultParameterized = termFlag(27, "<defaultparam>")
+
+  /** A type that is defined by a type bind */
+  final val BindDefinedType = typeFlag(27, "<bind-defined>")
 
   /** Symbol is initialized to the default value, e.g. var x: T = _ */
   final val DefaultInit = termFlag(28, "<defaultinit>")
