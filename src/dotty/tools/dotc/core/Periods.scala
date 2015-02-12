@@ -120,23 +120,16 @@ object Periods {
 
     /** The single-phase period consisting of given run id and phase id */
     def apply(rid: RunId, pid: PhaseId): Period = {
-      assert(rid <= MaxPossibleRunId)
-      assert(pid <= MaxPossiblePhaseId)
       new Period(((rid << PhaseWidth) | pid) << PhaseWidth)
     }
 
     /** The period consisting of given run id, and lo/hi phase ids */
     def apply(rid: RunId, loPid: PhaseId, hiPid: PhaseId): Period = {
-      assert(rid <= MaxPossibleRunId)
-      assert(loPid <= MaxPossiblePhaseId)
-      assert(hiPid <= MaxPossiblePhaseId)
-
       new Period(((rid << PhaseWidth) | hiPid) << PhaseWidth | (hiPid - loPid))
     }
 
     /** The interval consisting of all periods of given run id */
     def allInRun(rid: RunId) = {
-      assert(rid <= MaxPossibleRunId)
       apply(rid, 0, PhaseMask)
     }
   }
