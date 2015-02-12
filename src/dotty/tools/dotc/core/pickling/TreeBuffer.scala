@@ -5,6 +5,7 @@ package pickling
 
 import util.Util.{bestFit, dble}
 import TastyBuffer.{Addr, AddrWidth}
+import config.Printers.pickling
 
 class TreeBuffer extends TastyBuffer(1000000) {
 
@@ -157,6 +158,6 @@ class TreeBuffer extends TastyBuffer(1000000) {
     } while (saved > 0 && length / saved < 100)
     adjustOffsets()
     val wasted = compress()
-    println(s"original length: $origLength, compressed to: $length, wasted: $wasted") // DEBUG, for now.
+    pickling.println(s"original length: $origLength, compressed to: $length, wasted: $wasted") // DEBUG, for now.
   }
 }
