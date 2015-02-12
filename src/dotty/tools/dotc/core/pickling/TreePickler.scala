@@ -88,10 +88,10 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
           pickleNum(LONGconst, LONGneg)
         case FloatTag => 
           writeByte(FLOATconst)
-          writeRaw(java.lang.Float.floatToRawIntBits(c.floatValue), 4)
+          writeNat(java.lang.Float.floatToRawIntBits(c.floatValue))
         case DoubleTag =>
           writeByte(DOUBLEconst)
-          writeRaw(java.lang.Double.doubleToRawLongBits(c.doubleValue), 8)
+          writeLongNat(java.lang.Double.doubleToRawLongBits(c.doubleValue))
         case StringTag =>
           writeByte(STRINGconst)
           writeNat(nameIndex(c.stringValue).index)
