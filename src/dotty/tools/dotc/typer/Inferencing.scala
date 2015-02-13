@@ -163,10 +163,18 @@ trait Inferencing { this: Checking =>
    *  If such a variable appears covariantly in type `tp` or does not appear at all,
    *  approximate it by its lower bound. Otherwise, if it appears contravariantly
    *  in type `tp` approximate it by its upper bound.
+   *  @param ownedBy  if it is different from NoSymbol, all type variables owned by 
+   *                  `ownedBy` qualify, independent of position.
+   *                  Without that second condition, it can be that certain variables escape
+   *                  interpolation, for instance when their tree was eta-lifted, so
+   *                  the typechecked tree is no longer the tree in which the variable
+   *                  was declared. A concrete example of this phenomenon can be
+   *                  observed when compiling core.TypeOps#asSeenFrom.
    */
-  def interpolateUndetVars(tree: Tree)(implicit ctx: Context): Unit = {
+  def interpolateUndetVars(tree: Tree, ownedBy: Symbol)(implicit ctx: Context): Unit = {
     val constraint = ctx.typerState.constraint
-    val qualifies = (tvar: TypeVar) => tree contains tvar.owningTree
+    val qualifies = (tvar: TypeVar) => 
+      (tree contains tvar.owningTree) || ownedBy.exists && tvar.owner == ownedBy
     def interpolate() = Stats.track("interpolateUndetVars") {
       val tp = tree.tpe.widen
       constr.println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${constraint.uninstVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
@@ -182,7 +190,7 @@ trait Inferencing { this: Checking =>
         }
       }
       if (changed) // instantiations might have uncovered new typevars to interpolate
-        interpolateUndetVars(tree)
+        interpolateUndetVars(tree, ownedBy)
       else
         for (tvar <- constraint.uninstVars)
           if (!(vs contains tvar) && qualifies(tvar)) {

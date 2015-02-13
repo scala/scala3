@@ -326,7 +326,7 @@ object ProtoTypes {
 
     def newTypeVars(pt: PolyType): List[TypeVar] =
       for (n <- (0 until pt.paramNames.length).toList)
-      yield new TypeVar(PolyParam(pt, n), state, owningTree)
+      yield new TypeVar(PolyParam(pt, n), state, owningTree, ctx.owner)
 
     val added =
       if (state.constraint contains pt) pt.duplicate(pt.paramNames, pt.paramBounds, pt.resultType)
