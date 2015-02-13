@@ -251,7 +251,7 @@ object Erasure extends TypeTestsCasts{
     override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Literal =
       if (tree.typeOpt.isRef(defn.UnitClass)) tree.withType(tree.typeOpt)
       else super.typedLiteral(tree)
-
+      
     /** Type check select nodes, applying the following rewritings exhaustively
      *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`
      *  is the erased type of the selection's original qualifier expression.
@@ -387,9 +387,29 @@ object Erasure extends TypeTestsCasts{
       }
     }
 
+    // The following four methods take as the proto-type the erasure of the pre-existing type,
+    // if the original proto-type is not a value type. 
+    // This makes all branches be adapted to the correct type.
     override def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context) =
       super.typedSeqLiteral(tree, erasure(tree.typeOpt))
-        // proto type of typed seq literal is original type; this makes elements be adapted to correct type.
+        // proto type of typed seq literal is original type; 
+
+    override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) =
+      super.typedIf(tree, adaptProto(tree, pt))
+   
+    override def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context) =
+      super.typedMatch(tree, adaptProto(tree, pt))
+    
+    override def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context) = 
+      super.typedTry(tree, adaptProto(tree, pt))
+
+    private def adaptProto(tree: untpd.Tree, pt: Type)(implicit ctx: Context) = {
+      if (pt.isValueType) pt else {
+        if(tree.typeOpt.derivesFrom(ctx.definitions.UnitClass))
+          tree.typeOpt
+        else erasure(tree.typeOpt)
+      }
+    }
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): ValDef =
       super.typedValDef(untpd.cpy.ValDef(vdef)(

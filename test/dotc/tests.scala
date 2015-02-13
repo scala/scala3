@@ -135,7 +135,7 @@ class tests extends CompilerTest {
   @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing", failedOther)
     //  Expected primitive types I - Ljava/lang/Object
     //  Tried to return an object where expected type was Integer
-  @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing", twice)
+  @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing", failedOther)
   @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting", twice)
   @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", failedOther) // similar to dotc_config
   //@Test def dotc_util = compileDir(dotcDir + "tools/dotc/util") //fails inside ExtensionMethods with ClassCastException
