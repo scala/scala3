@@ -54,7 +54,8 @@ object DottyBuild extends Build {
     parallelExecution in Test := false,
 
     // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
-    javaOptions <++= (unmanagedClasspath in Runtime, managedClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
+    javaOptions <++= (unmanagedClasspath in Runtime, managedClasspath in Runtime, packageBin in Compile) map { (attList0, attList1, bin) =>
+       val attList = attList0 ++ attList1
        // put the Scala {library, reflect} in the classpath
        val path = for {
          file <- attList.map(_.data)
