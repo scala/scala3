@@ -4,6 +4,7 @@ import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.tpd
 import core._
 import Types._, Symbols._, Annotations._, Contexts._
+import dotty.tools.dotc.config.Printers.{noPrinter, Printer}
 import dotty.tools.dotc.transform.OverridingPairs
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransform, MiniPhase, TransformerInfo, MiniPhaseTransform}
 import dotty.tools.dotc.typer.ProtoTypes.FunProto
@@ -15,6 +16,8 @@ import util.Attachment
 
 
 object Reim {
+  val reim: Printer = noPrinter
+
   sealed abstract class BoundSpec
   case object Hi extends BoundSpec
   case object Lo extends BoundSpec
@@ -69,7 +72,7 @@ object Reim {
         case tpe: ConstantType => Some(defn.MutableAnnot)
         case tpe: MethodParam => tpe.underlying.reimAnnotation(bound)
         // TODO: SkolemType
-        case tpe: PolyParam => ctx.typerState.constraint.bounds(tpe).reimAnnotation(bound)
+        case tpe: PolyParam => ctx.typerState.constraint.fullBounds(tpe).reimAnnotation(bound)
         case tpe: RefinedType => tpe.parent.reimAnnotation(bound)
         case tpe: TypeBounds => bound match {
           case Inferred => ifConsistent(tpe)
@@ -112,6 +115,9 @@ object Reim {
     def reimAnnotation(implicit ctx: Context): ClassSymbol =
       symbol.annotations.map(_.symbol).filter(isAnnotation(_))
         .headOption.getOrElse(defn.MutableAnnot).asInstanceOf[ClassSymbol]
+
+    def isVal(implicit ctx: Context): Boolean =
+      !(symbol.isClass || symbol.isType || (symbol is Method))
   }
 
   implicit class ClassSymbolDecorator(val symbol: ClassSymbol) extends AnyVal {
@@ -138,16 +144,20 @@ object Reim {
 
   class ReimTyper extends Typer {
 
-    private def explicitAnnotIfNeeded(tree: tpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
+    private def explicitAnnotIfNeeded(tree: tpd.Tree)(implicit ctx: Context) = {
       val reimAnnotation = tree.tpe.reimAnnotation(Inferred)
       if (reimAnnotation.exists(_ != tree.tpe.directReimAnnotation.getOrElse(defn.MutableAnnot)))
         tree.withType(tree.tpe.withAnnotation(reimAnnotation.get))
-      else tree.asInstanceOf[tree.ThisTree[Type]]
+      else tree
     }
 
-    // We need to override `assignType` because `adapt` is not called on `This`.
-    override def assignType(tree: untpd.This, cls: Symbol)(implicit ctx: Context) =
-      explicitAnnotIfNeeded(super.assignType(tree, cls))
+    private def checkValDefAnnot(tree: tpd.Tree)(implicit ctx: Context) = tree match {
+      case tree: tpd.ValDef =>
+        val annot = tree.tpe.reimAnnotation(Lo).get
+        if(annot == defn.MutableAnnot) tree.withType(tree.tpe.withAnnotation(defn.PolyReadAnnot))
+        else tree
+      case _ => tree
+    }
 
     override def adapt(tree0: tpd.Tree, pt: Type, original: untpd.Tree)(implicit ctx: Context): tpd.Tree = {
 
@@ -158,11 +168,13 @@ object Reim {
             case _: tpd.Ident | _: tpd.Select => tree
             case tree: tpd.Apply => fun(tree.fun)
             case tree: tpd.TypeApply => fun(tree.fun)
+            case tree: tpd.Typed => fun(tree.expr)
           }
           val receiverType = fun(tree).tpe.stripAnnots.asInstanceOf[TermRef].prefix
           var replacement = defn.MutableAnnot
           // is the receiver parameter polyread and is the argument receiver non-mutable?
           if(tree.symbol.reimAnnotation == defn.PolyReadAnnot) replacement = receiverType.reimAnnotation(Hi).get
+          reim.println(s"reimAnnotation of ${tree.symbol} is ${tree.symbol.reimAnnotation}")
           // do any polyread parameters have non-mutable arguments?
           original match {
             case original: untpd.Apply => for(arg <- original.args) {
@@ -182,7 +194,7 @@ object Reim {
         case _ =>
       }
 
-      val tree = explicitAnnotIfNeeded(viewPointAdapt(super.adapt(tree0, pt, original)))
+      val tree = checkValDefAnnot(explicitAnnotIfNeeded(viewPointAdapt(super.adapt(tree0, pt, original))))
 
       val dontCheck = (
            pt == WildcardType
@@ -256,9 +268,9 @@ object Reim {
 
   class ReimTypeComparer(initctx: Context) extends TypeComparer(initctx) {
     override def isSubType(tp1: Type, tp2: Type): Boolean = super.isSubType(tp1, tp2) && (
-      !tp1.stripAnnots.isValueType || !tp2.stripAnnots.isValueType || tp1 == tp2 || {
-      val annot1 = tp1.reimAnnotation(Hi).get
-      val annot2 = tp2.reimAnnotation(Lo).get
+      !tp1.widenExpr.stripAnnots.isValueType || !tp2.widenExpr.stripAnnots.isValueType || tp1 == tp2 || {
+      val annot1 = tp1.widenExpr.reimAnnotation(Hi).get
+      val annot2 = tp2.widenExpr.reimAnnotation(Lo).get
       annot1 <:< annot2
     })
 
@@ -270,6 +282,7 @@ object Reim {
     */
   class ReimRefChecks extends RefChecks {
     override def run(implicit ctx: Context): Unit = super.run(ctx.fresh.setTypeComparerFn(c => new ReimTypeComparer(c)))
+    override def phaseName: String = "reimrefchecks"
   }
 
   /** This phase checks addition Reim-specific subtyping relationships between symbols.
@@ -294,12 +307,18 @@ object Reim {
         if(tree.symbol is Method) checkReceiver(tree, tree) else tree
 
       override def transformTemplate(tree: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+        def adjustedAnnotation(symbol: Symbol): ClassSymbol =
+          if(symbol is Method) symbol.reimAnnotation
+          else defn.PolyReadAnnot
         val cursor = new OverridingPairs.Cursor(ctx.owner)
         while (cursor.hasNext) {
-          val overridingAnnot = cursor.overriding.reimAnnotation
-          val overriddenAnnot = cursor.overridden.reimAnnotation
+          val overridingAnnot = adjustedAnnotation(cursor.overriding)
+          val overriddenAnnot = adjustedAnnotation(cursor.overridden)
           if(!(overriddenAnnot <:< overridingAnnot))
             ctx.error(s"${cursor.overriding} with @${overridingAnnot.name} this cannot override ${cursor.overridden} with @${overriddenAnnot.name} this", cursor.overriding.pos)
+          // If a val overrides a method, the method's return type must be at least @polyread, since the val will be viewpoint-adapted.
+          if(cursor.overriding.isVal && !(defn.PolyReadAnnot <:< cursor.overridden.info.finalResultType.reimAnnotation(Lo).get))
+            ctx.error(s"${cursor.overriding} with @${overridingAnnot.name} cannot override ${cursor.overridden} that could return @mutable", cursor.overriding.pos)
           cursor.next()
         }
         tree
