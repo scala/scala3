@@ -19,7 +19,7 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
       val pickler = new TastyPickler
       new TreePickler(pickler, picklePositions = false).pickle(tree)
       val bytes = pickler.assembleParts()
-      def rawBytes =
+      def rawBytes = // not needed right now, but useful to print raw format.
         bytes.iterator.grouped(10).toList.zipWithIndex.map {
           case (row, i) => s"${i}0: ${row.mkString(" ")}"
         }

@@ -54,7 +54,7 @@ Standard-Section: "ASTs" Tree*
 
   TypeParam     = TYPEPARAM     Length NameRef Type Modifier*
   Params        = PARAMS        Length Param*
-  Param         = PARAM         Length NameRef Type Modifier
+  Param         = PARAM         Length NameRef Type Modifier*
   Selector      = IMPORTED      Length name_NameRef
                   RENAMED       Length from_NameRef to_NameRef
 
@@ -63,7 +63,7 @@ Standard-Section: "ASTs" Tree*
                   SELECT               qual_Term possiblySigned_NameRef
                   SUPER         Length this_Term mixinTrait_Type?
                   APPLY         Length fn_Term arg_Term*
-                  TYPEAPPLY     Length fn_Term arg_Term*
+                  TYPEAPPLY     Length fn_Term arg_Type*
                   NEW           Length cls_Type
                   PAIR          Length left_Term right_Term
                   TYPED         Length expr_Term ascription_Type
@@ -78,7 +78,7 @@ Standard-Section: "ASTs" Tree*
                   THROW         Length expr_Term
                   SEQLITERAL    Length elem_Term*
                   JSEQLITERAL   Length elem_Term*
-                  BIND          Length boundName_NameRef pat_Type pat_Term
+                  BIND          Length boundName_NameRef patType_Type pat_Term
                   ALTERNATIVE   Length alt_Term*
                   UNAPPLY       Length fun_Term ImplicitArg* pat_Term*
                   ANNOTATED     Length annot_Term underlying_Term
@@ -134,6 +134,7 @@ Standard-Section: "ASTs" Tree*
                   ANNOTATED     Length annot_Tree underlying_Type
                   ANDtype       Length left_Type right_Type
                   ORtype        Length left_Type right_Type
+                  BIND          Length boundName_NameRef underlying_Type selfRef_Type
                   BYNAMEtype    Length underlying_Type
                   POLYtype      Length result_Type NamesTypes      // needed for refinements
                   METHODtype    Length result_Type NamesTypes      // needed for refinements
@@ -177,10 +178,10 @@ Standard-Section: "ASTs" Tree*
 
 Note: Tree tags are grouped into 4 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 
-	Category 1 (tags 0-95):		tag
-	Category 2 (tags 96-127):	tag Nat
-	Category 3 (tags 128-159):	tag AST Nat
-	Category 4 (tags 160-255):  	tag Length <payload>
+	Category 1 (tags 0-63)   :	tag
+	Category 2 (tags 64-99)  :	tag Nat
+	Category 3 (tags 100-127):	tag AST Nat
+	Category 4 (tags 128-255):  tag Length <payload>
 
 Standard Section: "Positions" startPos_Index endPos_Index
 
@@ -194,7 +195,7 @@ object PickleFormat {
 
   final val header = "5CA1AB1F"
   final val MajorVersion = 0
-  final val MinorVersion = 2
+  final val MinorVersion = 3
 
   // Name tags
 
@@ -243,83 +244,83 @@ object PickleFormat {
   final val DEFAULTparameterized = 32
   final val DEFAULTinit = 33
 
-  final val SHARED = 96
-  final val TERMREFdirect = 97
-  final val TYPEREFdirect = 98
-  final val TERMREFstatic = 99
-  final val TYPEREFstatic = 100
-  final val BYTEconst = 101
-  final val BYTEneg = 102
-  final val SHORTconst = 103
-  final val SHORTneg = 104
-  final val CHARconst = 105
-  final val INTconst = 106
-  final val INTneg = 107
-  final val LONGconst = 108
-  final val LONGneg = 109
-  final val FLOATconst = 110
-  final val DOUBLEconst = 111
-  final val STRINGconst = 112
+  final val SHARED = 64
+  final val TERMREFdirect = 65
+  final val TYPEREFdirect = 66
+  final val TERMREFstatic = 67
+  final val TYPEREFstatic = 68
+  final val BYTEconst = 69
+  final val BYTEneg = 70
+  final val SHORTconst = 71
+  final val SHORTneg = 72
+  final val CHARconst = 73
+  final val INTconst = 74
+  final val INTneg = 75
+  final val LONGconst = 76
+  final val LONGneg = 77
+  final val FLOATconst = 78
+  final val DOUBLEconst = 79
+  final val STRINGconst = 80
 
-  final val IDENT = 128
-  final val SELECT = 129
-  final val TERMREFsymbol = 130
-  final val TERMREF = 131
-  final val TYPEREFsymbol = 132
-  final val TYPEREF = 133
+  final val IDENT = 100
+  final val SELECT = 101
+  final val TERMREFsymbol = 102
+  final val TERMREF = 103
+  final val TYPEREFsymbol = 104
+  final val TYPEREF = 105
 
-  final val PACKAGE = 160
-  final val VALDEF = 161
-  final val DEFDEF = 162
-  final val TYPEDEF = 163
-  final val IMPORT = 164
-  final val TYPEPARAM = 165
-  final val PARAMS = 166
-  final val PARAM = 167
-  final val IMPORTED = 168
-  final val RENAMED = 169
-  final val APPLY = 170
-  final val TYPEAPPLY = 171
-  final val NEW = 172
-  final val PAIR = 173
-  final val TYPED = 174
-  final val NAMEDARG = 175
-  final val ASSIGN = 176
-  final val BLOCK = 177
-  final val IF = 178
-  final val CLOSURE = 179
-  final val MATCH = 180
-  final val RETURN = 181
-  final val TRY = 182
-  final val THROW = 183
-  final val SEQLITERAL = 184
-  final val JSEQLITERAL = 185
-  final val BIND = 186
-  final val ALTERNATIVE = 187
-  final val UNAPPLY = 188
-  final val ANNOTATED = 189
-  final val CASEDEF = 190
-  final val IMPLICITarg = 191
-  final val TEMPLATE = 192
-  final val THIS = 193
-  final val SUPER = 194
-  final val CLASSconst = 195
-  final val ENUMconst = 196
-  final val SUPERtype = 197
-  final val SKOLEMtype = 198
-  final val REFINEDtype = 199
-  final val APPLIEDtype = 200
-  final val TYPEBOUNDS = 201
-  final val TYPEALIAS = 202
-  final val ANDtype = 203
-  final val ORtype = 204
-  final val BYNAMEtype = 205
-  final val METHODtype = 206
-  final val POLYtype = 207
-  final val PARAMtype = 208
-  final val IMPLICITARG = 209
-  final val PRIVATEqualified = 210
-  final val PROTECTEDqualified = 211
+  final val PACKAGE = 128
+  final val VALDEF = 129
+  final val DEFDEF = 130
+  final val TYPEDEF = 131
+  final val IMPORT = 132
+  final val TYPEPARAM = 133
+  final val PARAMS = 134
+  final val PARAM = 135
+  final val IMPORTED = 136
+  final val RENAMED = 137
+  final val APPLY = 138
+  final val TYPEAPPLY = 139
+  final val NEW = 140
+  final val PAIR = 141
+  final val TYPED = 142
+  final val NAMEDARG = 143
+  final val ASSIGN = 144
+  final val BLOCK = 145
+  final val IF = 146
+  final val CLOSURE = 147
+  final val MATCH = 148
+  final val RETURN = 149
+  final val TRY = 150
+  final val THROW = 151
+  final val SEQLITERAL = 152
+  final val JSEQLITERAL = 153
+  final val BIND = 154
+  final val ALTERNATIVE = 155
+  final val UNAPPLY = 156
+  final val ANNOTATED = 157
+  final val CASEDEF = 158
+  final val IMPLICITarg = 159
+  final val TEMPLATE = 160
+  final val THIS = 161
+  final val SUPER = 162
+  final val CLASSconst = 163
+  final val ENUMconst = 164
+  final val SUPERtype = 165
+  final val SKOLEMtype = 166
+  final val REFINEDtype = 167
+  final val APPLIEDtype = 168
+  final val TYPEBOUNDS = 169
+  final val TYPEALIAS = 170
+  final val ANDtype = 171
+  final val ORtype = 172
+  final val BYNAMEtype = 173
+  final val METHODtype = 174
+  final val POLYtype = 175
+  final val PARAMtype = 176
+  final val IMPLICITARG = 177
+  final val PRIVATEqualified = 178
+  final val PROTECTEDqualified = 179
 
   final val firstSimpleTreeTag = EMPTYTREE
   final val firstNatTreeTag = SHARED
