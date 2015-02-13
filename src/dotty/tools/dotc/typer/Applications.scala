@@ -153,7 +153,7 @@ trait Applications extends Compatibility { self: Typer =>
     /** The function's type after widening and instantiating polytypes
      *  with polyparams in constraint set
      */
-    val methType = funType.widen match {
+    val methType = funType.widen.stripAnnots match {
       case funType: MethodType => funType
       case funType: PolyType => constrained(funType).resultType
       case tp => tp //was: funType

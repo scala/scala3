@@ -243,13 +243,15 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
-    val ownType = fn.tpe.widen match {
+    def recur(tp: Type): Type = tp.widen match {
       case fntpe @ MethodType(_, ptypes) =>
         if (sameLength(ptypes, args) || ctx.phase.prev.relaxedTyping) fntpe.instantiate(args.tpes)
         else errorType(i"wrong number of parameters for ${fn.tpe}; expected: ${ptypes.length}", tree.pos)
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, recur(tp.tpe))
       case t =>
         errorType(i"${err.exprStr(fn)} does not take parameters", tree.pos)
     }
+    val ownType = recur(fn.tpe)
     tree.withType(ownType)
   }
 
