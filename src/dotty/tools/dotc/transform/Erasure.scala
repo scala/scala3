@@ -403,8 +403,13 @@ object Erasure extends TypeTestsCasts{
     override def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context) = 
       super.typedTry(tree, adaptProto(tree, pt))
 
-    private def adaptProto(tree: untpd.Tree, pt: Type)(implicit ctx: Context) = 
-      if (pt.isValueType) pt else erasure(tree.typeOpt)
+    private def adaptProto(tree: untpd.Tree, pt: Type)(implicit ctx: Context) = {
+      if (pt.isValueType) pt else {
+        if(tree.typeOpt.derivesFrom(ctx.definitions.UnitClass))
+          tree.typeOpt
+        else erasure(tree.typeOpt)
+      }
+    }
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context): ValDef =
       super.typedValDef(untpd.cpy.ValDef(vdef)(
