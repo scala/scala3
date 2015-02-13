@@ -251,6 +251,28 @@ object Erasure extends TypeTestsCasts{
     override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Literal =
       if (tree.typeOpt.isRef(defn.UnitClass)) tree.withType(tree.typeOpt)
       else super.typedLiteral(tree)
+      
+    override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context): If = {
+      val tree1 = super.typedIf(tree, pt)
+      if (pt.isValueType) tree1
+      else cpy.If(tree1)(thenp = adapt(tree1.thenp, tree1.tpe), elsep = adapt(tree1.elsep, tree1.tpe))
+    }
+    
+    override def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context): Match = {
+      val tree1 = super.typedMatch(tree, pt).asInstanceOf[Match]
+      if (pt.isValueType) tree1
+      else cpy.Match(tree1)(tree1.selector, tree1.cases.map(adaptCase(_, tree1.tpe)))
+    }
+    
+    override def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context): Try = {
+      val tree1 = super.typedTry(tree, pt)
+      if (pt.isValueType) tree1
+      else cpy.Try(tree1)(expr = adapt(tree1.expr, tree1.tpe), cases = tree1.cases.map(adaptCase(_, tree1.tpe)))
+    }
+
+    private def adaptCase(cdef: CaseDef, pt: Type)(implicit ctx: Context): CaseDef = 
+      cpy.CaseDef(cdef)(body = adapt(cdef.body, pt))
+      
 
     /** Type check select nodes, applying the following rewritings exhaustively
      *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`
