@@ -57,7 +57,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     val selector =
       ctx.newSymbol(ctx.owner, ctx.freshName("ex").toTermName, Flags.Synthetic, defn.ThrowableType, coord = tree.pos)
     val sel = Ident(selector.termRef).withPos(tree.pos)
-    val rethrow = tpd.CaseDef(sel, EmptyTree, Throw(ref(selector)))
+    val rethrow = tpd.CaseDef(EmptyTree, EmptyTree, Throw(ref(selector)))
     val newCases = tpd.CaseDef(
       Bind(selector,untpd.Ident(nme.WILDCARD).withPos(tree.pos).withType(selector.info)),
       EmptyTree,
