@@ -1,6 +1,57 @@
 package miniboxing.benchmarks.simple.generic
 
-import dotty.{mutable, readonly}
+import dotty.{polyread, mutable, readonly}
+
+// List
+abstract class List[+LT] extends Traversable[LT] with TraversableLike[LT, List[LT]] with Iterable[LT] with IterableLike[LT, List[LT]] with LinearSeqOptimized[LT] {
+
+  @readonly def iterator = new Iterator[LT] {
+    def next() = {
+      val tfoo = current.head
+      current = current.tail
+      tfoo
+    }
+    var current = List.this
+    def hasNext = current != Nil
+  }
+  @polyread def head: LT @polyread
+
+  @readonly def isEmpty: Boolean
+
+  @readonly @inline override final
+  def foreach[U](f: Function1[LT @readonly, U]): Unit = {
+    var these = this
+    while (!these.isEmpty) {
+      f(these.head)
+      these = these.tail
+    }
+  }
+
+  @polyread def tail: List[LT] @polyread
+  @readonly def size: Int
+
+  @polyread def ::[S >: LT](e1: S @polyread) : List[S] @polyread = new ::[S](e1, this)
+
+  @readonly def reverse: List[LT] = {
+    val it: Iterator[LT] = iterator
+    var list: List[LT] = Nil
+    while (it.hasNext) list = it.next :: list
+    list
+  }
+}
+
+case class ::[T](head: T, var tail: List[T]) extends List[T] {
+  @readonly def size = 1 + tail.size
+
+  @readonly def isEmpty: Boolean = false
+
+  @readonly override def toString = head.toString + " :: " + tail.toString
+}
+
+
+
+
+
 
 // Tuple
 case class Tuple2[+T1, +T2](__1: T1, __2: T2) {
@@ -42,11 +93,11 @@ class ListBuilder[T] extends Builder[T, List[T]] {
 
   def += (x: T): Unit = {
     if (start.isEmpty) {
-      last0 = new :: (x, Nil)
+//      last0 = new :: (x, Nil)
       start = last0
     } else {
       val last1 = last0.asInstanceOf[::[T]]
-      last0 = new :: (x, Nil)
+//      last0 = new :: (x, Nil)
       last1.tail = last0
     }
     len += 1
@@ -111,7 +162,7 @@ trait IterableLike[+T, +Repr] extends Traversable[T] {
 // Iterator
 trait Iterator[+T] {
   def hasNext(): Boolean
-  def next(): T
+  def next(): T @readonly
 }
 
 
@@ -119,9 +170,9 @@ trait LinearSeqOptimized[+A] extends Iterable[A] {
 
   @readonly def isEmpty: Boolean
 
-  @readonly def head: A
+  @polyread def head: A @polyread
 
-  @readonly def tail: LinearSeqOptimized[A]
+  @polyread def tail: LinearSeqOptimized[A] @polyread
 
   @readonly override /*IterableLike*/
   def foreach[B](f: Function1[A @readonly, B]): Unit = {
@@ -145,57 +196,11 @@ trait LinearSeqOptimized[+A] extends Iterable[A] {
 }
 
 
-// List
-abstract class List[+T] extends Traversable[T] with TraversableLike[T, List[T]] with Iterable[T] with IterableLike[T, List[T]] with LinearSeqOptimized[T] {
-
-  @readonly def iterator = new Iterator[T] {
-    var current = List.this
-    def hasNext = current != Nil
-    def next() = {
-      val t = current.head
-      current = current.tail
-      t
-    }
-  }
-
-  @readonly def isEmpty: Boolean
-
-  @readonly @inline override final
-  def foreach[U](f: Function1[T @readonly, U]): Unit = {
-    var these = this
-    while (!these.isEmpty) {
-      f(these.head)
-      these = these.tail
-    }
-  }
-
-  @readonly def head: T
-  @readonly def tail: List[T]
-  @readonly def size: Int
-
-  def ::[S >: T](e1: S) : List[S] = new ::[S](e1, this)
-
-  @readonly def reverse: List[T] = {
-    val it: Iterator[T] = iterator
-    var list: List[T] = Nil
-    while (it.hasNext) list = it.next :: list
-    list
-  }
-}
-
 object List {
   implicit def canBuildFrom[A]: CanBuildFrom[List[_], A, List[A]] =
     new CanBuildFrom[List[_], A, List[A]] {
       def apply = new ListBuilder[A]
     }
-}
-
-case class ::[T](head: T, var tail: List[T]) extends List[T] {
-  @readonly def size = 1 + tail.size
-
-  @readonly def isEmpty: Boolean = false
-
-  @readonly override def toString = head.toString + " :: " + tail.toString
 }
 
 case object Nil extends List[Nothing] {
