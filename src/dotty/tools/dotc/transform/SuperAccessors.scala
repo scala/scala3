@@ -369,9 +369,9 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
           }
           transformSelect
 
-        case tree @ DefDef(_, _, _, _, rhs) =>
+        case tree: DefDef =>
           cpy.DefDef(tree)(
-            rhs = if (isMethodWithExtension(sym)) withInvalidOwner(transform(rhs)) else transform(rhs))
+            rhs = if (isMethodWithExtension(sym)) withInvalidOwner(transform(tree.rhs)) else transform(tree.rhs))
 
         case TypeApply(sel @ Select(qual, name), args) =>
           mayNeedProtectedAccessor(sel, args, goToSuper = true)

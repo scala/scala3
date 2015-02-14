@@ -218,7 +218,7 @@ object desugar {
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
-    val TypeDef(name, impl @ Template(constr0, parents, self, body)) = cdef
+    val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
     val mods = cdef.mods
 
     val (constr1, defaultGetters) = defDef(constr0, isPrimaryConstructor = true) match {
@@ -242,7 +242,7 @@ object desugar {
     val constr = cpy.DefDef(constr1)(tparams = constrTparams, vparamss = constrVparamss)
 
     // Add constructor type parameters to auxiliary constructors
-    val normalizedBody = body map {
+    val normalizedBody = impl.body map {
       case ddef: DefDef if ddef.name.isConstructorName =>
         cpy.DefDef(ddef)(tparams = constrTparams)
       case stat =>
@@ -425,10 +425,10 @@ object desugar {
       val modul = ValDef(name, clsRef, New(clsRef, Nil))
         .withMods(mods | ModuleCreationFlags)
         .withPos(mdef.pos)
-      val ValDef(selfName, selfTpt, selfRhs) = tmpl.self
+      val ValDef(selfName, selfTpt, _) = tmpl.self
       val selfMods = tmpl.self.mods
       if (!selfTpt.isEmpty) ctx.error("object definition may not have a self type", tmpl.self.pos)
-      val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(name)), selfRhs)
+      val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(name)), tmpl.self.rhs)
         .withMods(selfMods)
         .withPos(tmpl.self.pos orElse tmpl.pos.startPos)
       val clsTmpl = cpy.Template(tmpl)(self = clsSelf, body = tmpl.body)

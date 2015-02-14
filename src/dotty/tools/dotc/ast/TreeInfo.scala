@@ -28,8 +28,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
    */
   def isPureInterfaceMember(tree: Tree): Boolean = unsplice(tree) match {
     case EmptyTree | Import(_, _) | TypeDef(_, _) => true
-    case DefDef(_, _, _, _, rhs) => rhs.isEmpty
-    case ValDef(_, _, rhs) => rhs.isEmpty
+    case defn: ValOrDefDef => defn.rhs.isEmpty
     case _ => false
   }
 
@@ -91,7 +90,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   /** If tree is a closure, it's body, otherwise tree itself */
   def closureBody(tree: tpd.Tree): tpd.Tree = tree match {
-    case Block(DefDef(nme.ANON_FUN, _, _, _, rhs) :: Nil, Closure(_, _, _)) => rhs
+    case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, Closure(_, _, _)) => meth.rhs
     case _ => tree
   }
 
@@ -287,8 +286,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
        | Import(_, _)
        | DefDef(_, _, _, _, _) =>
       Pure
-    case vdef @ ValDef(_, _, rhs) =>
-      if (vdef.mods is Mutable) Impure else exprPurity(rhs)
+    case vdef @ ValDef(_, _, _) =>
+      if (vdef.mods is Mutable) Impure else exprPurity(vdef.rhs)
     case _ =>
       Impure
   }
@@ -478,7 +477,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           if (stats exists (definedSym(_) == sym)) stats else Nil
         encl match {
           case Block(stats, _) => verify(stats)
-          case Template(_, _, _, stats) => verify(stats)
+          case encl: Template => verify(encl.body)
           case PackageDef(_, stats) => verify(stats)
           case _ => Nil
         }

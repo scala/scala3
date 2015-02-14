@@ -334,9 +334,9 @@ object Trees {
   }
 
   /** A ValDef or DefDef tree */
-  trait ValOrDefDef[-T >: Untyped] extends MemberDef[T] {
+  trait ValOrDefDef[-T >: Untyped] extends MemberDef[T] with WithLazyField[Tree[T]] {
     def tpt: Tree[T]
-    def rhs: Tree[T]
+    def rhs: Tree[T] = forceIfLazy
   }
 
   // ----------- Tree case classes ------------------------------------
@@ -619,17 +619,22 @@ object Trees {
   }
 
   /** mods val name: tpt = rhs */
-  case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], rhs: Tree[T])
+  case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: Any /*Tree[T] | Lazy[Tree[T]]*/)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = ValDef[T]
     assert(isEmpty || tpt != genericEmptyTree)
+    protected def maybeLazy = preRhs
+    protected def maybeLazy_=(x: Any) = preRhs = x
   }
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
-  case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]], vparamss: List[List[ValDef[T]]], tpt: Tree[T], rhs: Tree[T])
+  case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]], 
+      vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: Any /*Tree[T] | Lazy[Tree[T]]*/)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
     assert(tpt != genericEmptyTree)
+    protected def maybeLazy = preRhs
+    protected def maybeLazy_=(x: Any) = preRhs = x
   }
 
   /** mods class name template     or
@@ -652,9 +657,12 @@ object Trees {
   }
 
   /** extends parents { self => body } */
-  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], body: List[Tree[T]])
-    extends DefTree[T] {
+  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], private var preBody: Any /*List[Tree[T]] | Lazy[List[Tree]]]*/)
+    extends DefTree[T] with WithLazyField[List[Tree[T]]] {
     type ThisTree[-T >: Untyped] = Template[T]
+    protected def maybeLazy = preBody
+    protected def maybeLazy_=(x: Any) = preBody = x
+    def body: List[Tree[T]] = forceIfLazy
   }
 
   /** import expr.selectors
@@ -744,6 +752,33 @@ object Trees {
       xs = xs.tail
     }
     if (buf != null) buf.toList else trees
+  }
+
+  // ----- Lazy trees and tree sequences
+
+  /** A tree that can have a lazy field 
+   *  The field is represented by some private `var` which is
+   *  proxied by the `maybeLazy` accessors. Forcing the field will
+   *  set the `var` to the underlying value. 
+   */
+  trait WithLazyField[+T] {
+    protected def maybeLazy: Any
+    protected def maybeLazy_=(x: Any): Unit
+    def forceIfLazy: T = maybeLazy match {
+      case lzy: Lazy[T] => 
+        val x = lzy.complete
+        maybeLazy = x
+        x
+      case x: T @ unchecked => x
+    }
+  }
+
+  /** A base trait for lazy tree fields.
+   *  These can be instantiated with Lazy instances which
+   *  can delay tree construction until the field is first demanded.
+   */
+  trait Lazy[T] {
+    def complete: T
   }
 
   // ----- Generic Tree Instances, inherited from  `tpt` and `untpd`.
@@ -1114,16 +1149,16 @@ object Trees {
           cpy.UnApply(tree)(transform(fun), transform(implicits), transform(patterns))
         case EmptyValDef =>
           tree
-        case tree @ ValDef(name, tpt, rhs) =>
+        case tree @ ValDef(name, tpt, _) =>
           val tpt1 = transform(tpt)
-          val rhs1 = transform(rhs)
-          cpy.ValDef(tree)(name, tpt1, rhs1)
-        case tree @ DefDef(name, tparams, vparamss, tpt, rhs) =>
-          cpy.DefDef(tree)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(rhs))
+          val rhs1 = transform(tree.rhs)
+          cpy.ValDef(tree)(name, transform(tpt1), transform(rhs1))
+        case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
+          cpy.DefDef(tree)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(tree.rhs))
         case tree @ TypeDef(name, rhs) =>
           cpy.TypeDef(tree)(name, transform(rhs), tree.tparams)
-        case Template(constr, parents, self, body) =>
-          cpy.Template(tree)(transformSub(constr), transform(parents), transformSub(self), transformStats(body))
+        case tree @ Template(constr, parents, self, _) =>
+          cpy.Template(tree)(transformSub(constr), transform(parents), transformSub(self), transformStats(tree.body))
         case Import(expr, selectors) =>
           cpy.Import(tree)(transform(expr), selectors)
         case PackageDef(pid, stats) =>
@@ -1213,14 +1248,14 @@ object Trees {
           this(x, trees)
         case UnApply(fun, implicits, patterns) =>
           this(this(this(x, fun), implicits), patterns)
-        case ValDef(name, tpt, rhs) =>
-          this(this(x, tpt), rhs)
-        case DefDef(name, tparams, vparamss, tpt, rhs) =>
-          this(this((this(x, tparams) /: vparamss)(apply), tpt), rhs)
+        case tree @ ValDef(name, tpt, _) =>
+          this(this(x, tpt), tree.rhs)
+        case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
+          this(this((this(x, tparams) /: vparamss)(apply), tpt), tree.rhs)
         case TypeDef(name, rhs) =>
           this(x, rhs)
-        case Template(constr, parents, self, body) =>
-          this(this(this(this(x, constr), parents), self), body)
+        case tree @ Template(constr, parents, self, _) =>
+          this(this(this(this(x, constr), parents), self), tree.body)
         case Import(expr, selectors) =>
           this(x, expr)
         case PackageDef(pid, stats) =>

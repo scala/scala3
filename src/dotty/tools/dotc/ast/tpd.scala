@@ -161,7 +161,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree], proto: Type)(implicit ctx: Context): UnApply =
     ta.assignType(untpd.UnApply(fun, implicits, patterns), proto)
 
-  def ValDef(sym: TermSymbol, rhs: Tree = EmptyTree)(implicit ctx: Context): ValDef =
+  def ValDef(sym: TermSymbol, rhs: Any /*Tree | Lazy[Tree]*/ = EmptyTree)(implicit ctx: Context): ValDef =
     ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym)
 
   def SyntheticValDef(name: TermName, rhs: Tree)(implicit ctx: Context): ValDef =

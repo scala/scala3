@@ -436,9 +436,9 @@ class Namer { typer: Typer =>
 
     protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
 
-    val TypeDef(name, impl @ Template(constr, parents, self, body)) = original
+    val TypeDef(name, impl @ Template(constr, parents, self, _)) = original
 
-    val (params, rest) = body span {
+    val (params, rest) = impl.body span {
       case td: TypeDef => td.mods is Param
       case td: ValDef => td.mods is ParamAccessor
       case _ => false
@@ -496,9 +496,9 @@ class Namer { typer: Typer =>
       index(rest)(inClassContext(selfInfo))
       denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
       if (cls is Trait) {
-        if (body forall isNoInitMember) {
+        if (impl.body forall isNoInitMember) {
           cls.setFlag(NoInits)
-          if (body forall isPureInterfaceMember)
+          if (impl.body forall isPureInterfaceMember)
             cls.setFlag(PureInterface)
         }
       }

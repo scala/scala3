@@ -312,17 +312,17 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextLocal(extractor) ~
         "(" ~ toTextGlobal(patterns, ", ") ~ ")" ~
         ("(" ~ toTextGlobal(implicits, ", ") ~ ")" provided implicits.nonEmpty)
-      case tree @ ValDef(name, tpt, rhs) =>
+      case tree @ ValDef(name, tpt, _) =>
         dclTextOr {
           modText(tree.mods, if (tree.mods is Mutable) "var" else "val") ~~ nameIdText(tree) ~
             optAscription(tpt)
-        } ~ optText(rhs)(" = " ~ _)
-      case tree @ DefDef(name, tparams, vparamss, tpt, rhs) =>
+        } ~ optText(tree.rhs)(" = " ~ _)
+      case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
         atOwner(tree) {
           dclTextOr {
             val first = modText(tree.mods, "def") ~~ nameIdText(tree) ~ tparamsText(tparams)
             addVparamssText(first, vparamss) ~ optAscription(tpt)
-          } ~ optText(rhs)(" = " ~ _)
+          } ~ optText(tree.rhs)(" = " ~ _)
         }
       case tree @ TypeDef(name, rhs) =>
         atOwner(tree) {
@@ -341,9 +341,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
               typeDefText(optText(rhs)(" = " ~ _))
           }
         }
-      case Template(constr @ DefDef(_, tparams, vparamss, _, rhs), parents, self, stats) =>
+      case impl @ Template(constr @ DefDef(_, tparams, vparamss, _, _), parents, self, _) =>
         val tparamsTxt = tparamsText(tparams)
-        val primaryConstrs = if (rhs.isEmpty) Nil else constr :: Nil
+        val primaryConstrs = if (constr.rhs.isEmpty) Nil else constr :: Nil
         val prefix: Text =
           if (vparamss.isEmpty || primaryConstrs.nonEmpty) tparamsTxt
           else {
@@ -356,7 +356,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           val selfName = if (self.name == nme.WILDCARD) "this" else self.name.toString
           (selfName ~ optText(self.tpt)(": " ~ _) ~ " =>").close
         } provided !self.isEmpty
-        val bodyText = "{" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: stats, "\n") ~ "}"
+        val bodyText = "{" ~~ selfText ~~ toTextGlobal(primaryConstrs ::: impl.body, "\n") ~ "}"
         prefix ~~ (" extends" provided ownerIsClass) ~~ parentsText ~~ bodyText
       case Import(expr, selectors) =>
         def selectorText(sel: Tree): Text = sel match {
