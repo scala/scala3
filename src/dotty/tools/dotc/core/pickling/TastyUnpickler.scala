@@ -19,6 +19,8 @@ import TastyUnpickler._
 class TastyUnpickler(reader: TastyReader) {
   import reader._
     
+  def this(bytes: Array[Byte]) = this(new TastyReader(bytes))
+  
   private val sectionReader = new mutable.HashMap[String, TastyReader]
   val tastyName = new TastyName.Table
   

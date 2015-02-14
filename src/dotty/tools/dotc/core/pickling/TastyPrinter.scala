@@ -9,8 +9,7 @@ import TastyUnpickler._
 
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
   
-  val reader = new TastyReader(bytes)
-  val unpickler = new TastyUnpickler(reader)
+  val unpickler = new TastyUnpickler(bytes)
   import unpickler.{tastyName, unpickled}
   
   def nameToString(name: TastyName): String = name match {
