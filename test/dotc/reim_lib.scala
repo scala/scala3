@@ -15,8 +15,8 @@ class reim_lib extends CompilerTest {
 
   implicit val defaultOptions = noCheckOptions ++ List(
       "-Yno-deep-subtypes",
-      "-Ycheck:resolveSuper,mixin,restoreScopes",
-      "-Xprint:front"
+      "-Ycheck:resolveSuper,mixin,restoreScopes"
+//  , "-Xprint:front"
   )
 
   val twice = List("#runs", "2", "-YnoDoubleBindings")

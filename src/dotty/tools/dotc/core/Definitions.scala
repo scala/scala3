@@ -325,6 +325,7 @@ class Definitions {
   lazy val ReadOnlyAnnot                 = ctx.requiredClass("dotty.readonly")
   lazy val MutableAnnot                  = ctx.requiredClass("dotty.mutable")
   lazy val PolyReadAnnot                 = ctx.requiredClass("dotty.polyread")
+  lazy val NonRepAnnot                   = ctx.requiredClass("dotty.nonrep")
 
   // Annotation classes
   lazy val AliasAnnot = ctx.requiredClass("dotty.annotation.internal.Alias")

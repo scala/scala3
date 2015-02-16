@@ -14,7 +14,6 @@ import Decorators._
 import Flags._
 import util.Attachment
 
-
 object Reim {
   val reim: Printer = noPrinter
 
@@ -56,7 +55,7 @@ object Reim {
         case tpe: TypeRef => tpe.underlying.reimAnnotation(bound)
         case tpe: TermRef =>
           val symbol = tpe.symbol
-          if(symbol is Method) symbol.info.reimAnnotation(bound)
+          if(symbol.is(Method) || symbol.hasAnnotation(defn.NonRepAnnot)) symbol.info.reimAnnotation(bound)
           else bound match {
             case Inferred =>
               val preAnnot = tpe.prefix.reimAnnotation(Inferred)
@@ -113,8 +112,11 @@ object Reim {
 
   implicit class SymbolDecorator(val symbol: Symbol) extends AnyVal {
     def reimAnnotation(implicit ctx: Context): ClassSymbol =
+      reimAnnotationWithDefault(defn.MutableAnnot)
+
+    def reimAnnotationWithDefault(default: ClassSymbol)(implicit ctx: Context): ClassSymbol =
       symbol.annotations.map(_.symbol).filter(isAnnotation(_))
-        .headOption.getOrElse(defn.MutableAnnot).asInstanceOf[ClassSymbol]
+        .headOption.getOrElse(default).asInstanceOf[ClassSymbol]
 
     def isVal(implicit ctx: Context): Boolean =
       !(symbol.isClass || symbol.isType || (symbol is Method))
@@ -154,7 +156,8 @@ object Reim {
     private def checkValDefAnnot(tree: tpd.Tree)(implicit ctx: Context) = tree match {
       case tree: tpd.ValDef =>
         val annot = tree.tpe.reimAnnotation(Lo).get
-        if(annot == defn.MutableAnnot) tree.withType(tree.tpe.withAnnotation(defn.PolyReadAnnot))
+        if(annot == defn.MutableAnnot && !tree.symbol.hasAnnotation(defn.NonRepAnnot))
+          tree.withType(tree.tpe.withAnnotation(defn.PolyReadAnnot))
         else tree
       case _ => tree
     }
@@ -163,7 +166,8 @@ object Reim {
 
       /** Perform viewpoint adaptation on a method call. */
       def viewPointAdapt(tree: tpd.Tree): tpd.Tree =
-        if ((tree.symbol is Method) && (!tree.isInstanceOf[tpd.DefTree]) && (tree.tpe.reimAnnotation(Hi).get == defn.PolyReadAnnot)) {
+        if ((tree.symbol is Method) && (!tree.isInstanceOf[tpd.DefTree])
+          && (tree.tpe.reimAnnotation(Hi).get == defn.PolyReadAnnot || tree.symbol.isConstructor)) {
           def fun(tree: tpd.Tree): tpd.Tree = tree match {
             case _: tpd.Ident | _: tpd.Select => tree
             case tree: tpd.Apply => fun(tree.fun)
@@ -308,8 +312,8 @@ object Reim {
 
       override def transformTemplate(tree: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
         def adjustedAnnotation(symbol: Symbol): ClassSymbol =
-          if(symbol is Method) symbol.reimAnnotation
-          else defn.PolyReadAnnot
+          if(symbol.is(Method)) symbol.reimAnnotation
+          else defn.ReadOnlyAnnot
         val cursor = new OverridingPairs.Cursor(ctx.owner)
         while (cursor.hasNext) {
           val overridingAnnot = adjustedAnnotation(cursor.overriding)
@@ -317,8 +321,12 @@ object Reim {
           if(!(overriddenAnnot <:< overridingAnnot))
             ctx.error(s"${cursor.overriding} with @${overridingAnnot.name} this cannot override ${cursor.overridden} with @${overriddenAnnot.name} this", cursor.overriding.pos)
           // If a val overrides a method, the method's return type must be at least @polyread, since the val will be viewpoint-adapted.
-          if(cursor.overriding.isVal && !(defn.PolyReadAnnot <:< cursor.overridden.info.finalResultType.reimAnnotation(Lo).get))
-            ctx.error(s"${cursor.overriding} with @${overridingAnnot.name} cannot override ${cursor.overridden} that could return @mutable", cursor.overriding.pos)
+          if(cursor.overriding.isVal && !cursor.overriding.hasAnnotation(defn.NonRepAnnot))
+            if(!(defn.PolyReadAnnot <:< cursor.overridden.info.finalResultType.reimAnnotation(Lo).get))
+              ctx.error(s"${cursor.overriding} cannot override ${cursor.overridden} that could return @mutable", cursor.overriding.pos)
+            else if(cursor.overridden.is(Method) && defn.PolyReadAnnot != cursor.overridden.reimAnnotation)
+              ctx.error(s"${cursor.overriding} cannot override ${cursor.overridden} that does not have @polyread this", cursor.overriding.pos)
+
           cursor.next()
         }
         tree
