@@ -25,6 +25,7 @@ class tests extends CompilerTest {
 
   val failedOther = List("-Ystop-before:collectEntryPoints") // some non-obvious reason. need to look deeper
   val twice = List("#runs", "2", "-YnoDoubleBindings")
+  val staleSymbolError: List[String] = List()
 
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
 
@@ -70,7 +71,9 @@ class tests extends CompilerTest {
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping")
   @Test def pos_extmethods = compileFile(posDir, "extmethods")
 
-  @Test def pos_all = compileFiles(posDir, failedOther)
+  @Test def pos_all = compileFiles(posDir)
+
+
 
   @Test def new_all = compileFiles(newDir, twice)
 
@@ -158,8 +161,7 @@ class tests extends CompilerTest {
       dotcDir + "tools/dotc/config/Properties.scala",
       dotcDir + "tools/dotc/config/PathResolver.scala",
       //"-Ylog:frontend",
-      "-Xprompt",
-      "#runs", "2"))
+      "-Xprompt") ++ staleSymbolError)
 
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir)
