@@ -49,7 +49,11 @@ class SyntheticMethods extends MiniPhaseTransform with IdentityDenotTransformer 
    */
   def syntheticMethods(clazz: ClassSymbol)(implicit ctx: Context): List[Tree] = {
     val clazzType = clazz.typeRef
-    lazy val accessors = clazz.caseAccessors
+    lazy val accessors =
+      if (isDerivedValueClass(clazz))
+        clazz.termParamAccessors
+      else
+        clazz.caseAccessors
 
     val symbolsToSynthesize: List[Symbol] =
       if (clazz.is(Case)) caseSymbols
@@ -72,7 +76,8 @@ class SyntheticMethods extends MiniPhaseTransform with IdentityDenotTransformer 
         ref(defn.runtimeMethod("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefss.head)
 
       def syntheticRHS(implicit ctx: Context): List[List[Tree]] => Tree = synthetic.name match {
-        case nme.hashCode_ => vrefss => hashCodeBody
+        case nme.hashCode_ if isDerivedValueClass(clazz) => vrefss => valueHashCodeBody
+        case nme.hashCode_ => vrefss => caseHashCodeBody
         case nme.toString_ => forwardToRuntime
         case nme.equals_ => vrefss => equalsBody(vrefss.head.head)
         case nme.canEqual_ => vrefss => canEqualBody(vrefss.head.head)
@@ -118,9 +123,22 @@ class SyntheticMethods extends MiniPhaseTransform with IdentityDenotTransformer 
 
     /** The class
      *
+     *  class C(x: T) extends AnyVal
+     *
+     *  gets the hashCode method:
+     *
+     *    def hashCode: Int = x.hashCode()
+     */
+    def valueHashCodeBody(implicit ctx: Context): Tree = {
+      assert(accessors.length == 1)
+      ref(accessors.head).select(nme.hashCode_).ensureApplied
+    }
+
+    /** The class
+     *
      *    case class C(x: T, y: T)
      *
-     *  get the hashCode method:
+     *  gets the hashCode method:
      *
      *    def hashCode: Int = {
      *      <synthetic> var acc: Int = 0xcafebabe;
@@ -129,7 +147,7 @@ class SyntheticMethods extends MiniPhaseTransform with IdentityDenotTransformer 
      *      Statics.finalizeHash(acc, 2)
      *    }
      */
-    def hashCodeBody(implicit ctx: Context): Tree = {
+    def caseHashCodeBody(implicit ctx: Context): Tree = {
       val acc = ctx.newSymbol(ctx.owner, "acc".toTermName, Mutable | Synthetic, defn.IntType, coord = ctx.owner.pos)
       val accDef = ValDef(acc, Literal(Constant(0xcafebabe)))
       val mixes = for (accessor <- accessors.toList) yield
