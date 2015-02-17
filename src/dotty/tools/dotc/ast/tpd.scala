@@ -261,7 +261,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         true
       case pre: ThisType =>
         pre.cls.isStaticOwner ||
-          tp.symbol.is(ParamOrAccessor) && ctx.owner.enclosingClass.derivesFrom(pre.cls)
+          tp.symbol.is(ParamOrAccessor) && ctx.owner.enclosingClass == pre.cls
+          // was ctx.owner.enclosingClass.derivesFrom(pre.cls) which was not tight enough
+          // and was spuriously triggered in case inner class would inherit from outer one
+          // eg anonymous TypeMap inside TypeMap.andThen
       case pre: TermRef =>
         pre.symbol.is(Module) && pre.symbol.isStatic
       case _ =>
