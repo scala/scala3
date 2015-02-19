@@ -716,6 +716,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val (from, proto) =
       if (tree.from.isEmpty) enclMethInfo(ctx)
       else (tree.from.asInstanceOf[tpd.Tree], WildcardType)
+       // if from is given than tree.expr was already checked before
     val expr1 = typedExpr(tree.expr orElse untpd.unitLiteral.withPos(tree.pos), proto)
     assignType(cpy.Return(tree)(expr1, from))
   }
