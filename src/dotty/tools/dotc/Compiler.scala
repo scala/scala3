@@ -86,7 +86,7 @@ class Compiler {
    */
   def rootContext(implicit ctx: Context): Context = {
     ctx.definitions.init(ctx)
-    ctx.usePhases(phases)
+    ctx.setPhasePlan(phases)
     val rootScope = new MutableScope
     val bootstrap = ctx.fresh
       .setPeriod(Period(nextRunId, FirstPhaseId))
