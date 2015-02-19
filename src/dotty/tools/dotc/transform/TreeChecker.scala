@@ -167,7 +167,8 @@ class TreeChecker {
       val ret = super.typedReturn(tree)
       val from = if(ret.from.isEmpty) ctx.owner.enclosingMethod else ret.from.symbol
       val rType = from.info.finalResultType
-      assert(ret.expr.tpe  <:<  rType)
+      if(ctx.erasedTypes) // before erasure resultType could be a PolyParam. Nothing could be done about it.
+        assert(ret.expr.tpe  <:<  rType)
       ret
     }
 
