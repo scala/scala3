@@ -6,7 +6,7 @@ package pickling
 import ast.Trees._
 import PickleFormat._
 import core._
-import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._
+import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._
 import collection.mutable
 import TastyBuffer._
 
@@ -187,7 +187,7 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
         withLength { pickleType(tpe.lo, richTypes); pickleType(tpe.hi, richTypes) }
       case tpe: AnnotatedType =>
         writeByte(ANNOTATED)
-        withLength { pickleTree(tpe.annot.tree); pickleType(tpe.tpe, richTypes) }
+        withLength { pickleAnnotation(tpe.annot); pickleType(tpe.tpe, richTypes) }
       case tpe: AndOrType =>
         writeByte(if (tpe.isAnd) ANDtype else ORtype)
         withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }
@@ -385,9 +385,6 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
       case PackageDef(pid, stats) =>
         writeByte(PACKAGE)
         withLength { pickleType(pid.tpe); stats.foreach(pickleTree) }
-      case Annotated(annot, arg) =>
-        writeByte(ANNOTATED)
-        withLength { pickleTree(annot); pickleTree(arg) }
       case EmptyTree =>
         writeByte(EMPTYTREE)
     }}
@@ -450,7 +447,12 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
         if (flags is Covariant) writeByte(COVARIANT)
         if (flags is Contravariant) writeByte(CONTRAVARIANT)
       }
-      sym.annotations.foreach(ann => pickleTree(ann.tree))
+      sym.annotations.foreach(pickleAnnotation)
+    }
+    
+    def pickleAnnotation(ann: Annotation) = {
+      writeByte(ANNOTATION)
+      withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
     }
 
     pickleTree(tree)

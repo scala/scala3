@@ -81,13 +81,13 @@ Standard-Section: "ASTs" Tree*
                   BIND          Length boundName_NameRef patType_Type pat_Term
                   ALTERNATIVE   Length alt_Term*
                   UNAPPLY       Length fun_Term ImplicitArg* pat_Term*
-                  ANNOTATED     Length annot_Term underlying_Term
                   EMPTYTREE
 
   CaseDef       = CASEDEF       Length pat_Tree guard_Tree rhs_Tree
   ImplicitArg   = IMPLICITARG   Length arg_Tree
   Template      = TEMPLATE      Length parent_Tree* SelfDef? Stat* // Stat* always starts with the primary constructor.
   SelfDef       = Param
+  Annotation    = ANNOTATION    Length tycon_Symbol fullAnnotation_Tree
   ASTRef        = Nat                          		// byte position in AST payload
 
   Path          = Constant
@@ -174,7 +174,7 @@ Standard-Section: "ASTs" Tree*
                   DEFAULTparameterized				// Method with default params
                   DEFAULTinit					// variable with “_” initializer
                   INSUPERCALL         // defined the argument of a constructor supercall
-                  annotation_Term
+                  Annotation
 
 Note: Tree tags are grouped into 4 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 
@@ -320,8 +320,9 @@ object PickleFormat {
   final val POLYtype = 175
   final val PARAMtype = 176
   final val IMPLICITARG = 177
-  final val PRIVATEqualified = 178
-  final val PROTECTEDqualified = 179
+  final val ANNOTATION = 178
+  final val PRIVATEqualified = 179
+  final val PROTECTEDqualified = 180
 
   final val firstSimpleTreeTag = EMPTYTREE
   final val firstNatTreeTag = SHARED
@@ -450,6 +451,7 @@ object PickleFormat {
     case METHODtype => "METHODtype"
     case PARAMtype => "PARAMtype"
     case IMPLICITARG => "IMPLICITARG"
+    case ANNOTATION => "ANNOTATION"
     case PRIVATEqualified => "PRIVATEqualified"
     case PROTECTEDqualified => "PROTECTEDqualified"
   }
