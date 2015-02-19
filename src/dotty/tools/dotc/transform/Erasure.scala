@@ -340,6 +340,14 @@ object Erasure extends TypeTestsCasts{
         outer.path(tree.symbol)
       }
 
+
+    override def typedReturn(tree: untpd.Return)(implicit ctx: Context): tpd.Return = {
+      val from = if(tree.from.isEmpty) ctx.owner.enclosingMethod else tree.from.symbol
+      val expectedType = from.info.finalResultType
+      val subExpr = super.typed(tree.expr, expectedType)
+      tpd.Return(subExpr, tree.from.asInstanceOf[tpd.Tree])
+    }
+
     private def runtimeCallWithProtoArgs(name: Name, pt: Type, args: Tree*)(implicit ctx: Context): Tree = {
       val meth = defn.runtimeMethod(name)
       val followingParams = meth.info.firstParamTypes.drop(args.length)
