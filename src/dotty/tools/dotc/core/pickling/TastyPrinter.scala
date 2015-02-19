@@ -40,9 +40,9 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
     import PickleFormat._
     def unpickle(reader: TastyReader, tastyName: TastyName.Table): Text = {
       import reader._
-      val sb = new StringBuilder(s"${reader.end.index - reader.from.index} bytes of AST:")
+      val sb = new StringBuilder(s"${startAddr.index - endAddr.index} bytes of AST:")
       var indent = 0
-      def newLine() = print(f"\n ${currentAddr.index - from.index}%5d:" + " " * indent)
+      def newLine() = print(f"\n ${currentAddr.index - startAddr.index}%5d:" + " " * indent)
       def printNat() = print(" " + readNat())
       def printName() = {
         val idx = readNat()
@@ -96,7 +96,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
         indent -= 2
       }
       println(s"base = $currentAddr")
-      while (!atEnd) {
+      while (!isAtEnd) {
         printTree()
         newLine()
       }

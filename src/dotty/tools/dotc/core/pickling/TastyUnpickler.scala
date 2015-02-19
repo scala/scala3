@@ -67,15 +67,17 @@ class TastyUnpickler(reader: TastyReader) {
     check(magic.map(_.toChar).mkString == header, "not a TASTy file")
     val major = readNat()
     val minor = readNat()
-    check(major == MajorVersion && (major != 0 || minor == MinorVersion),
+    def versionMsg = 
       s"""TASTy signature has wrong version.
          | expected: $MajorVersion.$MinorVersion
-         | found   : $major.$minor""".stripMargin)
+         | found   : $major.$minor""".stripMargin
+    check(major == MajorVersion, versionMsg)
+    if (MajorVersion == 0) check(minor == MinorVersion, versionMsg)
     until(readEnd()) { tastyName.add(readName()) }
-    while (!atEnd) {
+    while (!isAtEnd) {
       val secName = readString()
       val secEnd = readEnd()
-      sectionReader(secName) = new TastyReader(bytes, currentAddr, secEnd)
+      sectionReader(secName) = new TastyReader(bytes, currentAddr.index, secEnd.index, currentAddr.index)
       skipTo(secEnd)
     }
   }

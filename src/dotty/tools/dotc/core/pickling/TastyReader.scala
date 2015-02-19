@@ -8,18 +8,40 @@ import TastyBuffer._
 import TastyName.NameRef
 import collection.mutable
 
-/** A byte array bufferfer that can be filled with bytes or natural numbers in TASTY format,
+/** A byte array buffer that can be filled with bytes or natural numbers in TASTY format,
  *  and that supports reading and patching addresses represented as natural numbers.
+ *  
+ *  @param bytes    The array containing data
+ *  @param from     The position from which to read
+ *  @param end      The position one greater than the last byte to be read
+ *  @param base     The index referenced by the logical zero address Addr(0) 
  */
-class TastyReader(val bytes: Array[Byte], val from: Addr, val end: Addr) {
+class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 0) {
   
-  def this(bytes: Array[Byte]) = this(bytes, Addr(0), Addr(bytes.length))
+  def this(bytes: Array[Byte]) = this(bytes, 0, bytes.length)
   
-  private var bp: Int = from.index
+  private var bp: Int = start
   
-  def currentAddr: Addr = Addr(bp)
+  def addr(idx: Int) = Addr(idx - base)
+  def index(addr: Addr) = addr.index + base
+  
+  /** The address of the first byte to read, respectively byte that was read */
+  def startAddr: Addr = addr(start)
+  
+  /** The address of the next byte to read */
+  def currentAddr: Addr = addr(bp)
+  
+  /** the address one greater than the last brte to read */
+  def endAddr: Addr = addr(end)
     
-  def atEnd: Boolean = bp == end.index
+  /** Have all bytes been read? */
+  def isAtEnd: Boolean = bp == end
+  
+  /** A new reader over the same array with the same address base, but with
+   *  specified start and end positions
+   */
+  def subReader(start: Addr, end: Addr): TastyReader = 
+    new TastyReader(bytes, index(start), index(end), base)
   
   /** Read a byte of data. */
   def readByte(): Int = {
@@ -27,6 +49,9 @@ class TastyReader(val bytes: Array[Byte], val from: Addr, val end: Addr) {
     bp += 1
     result
   }
+  
+  /** Returns the next byte of data to read without advancing the read position */
+  def nextByte: Int = bytes(bp)
   
   /** Read the next `n` bytes of `data`. */
   def readBytes(n: Int): Array[Byte] = {
@@ -54,25 +79,34 @@ class TastyReader(val bytes: Array[Byte], val from: Addr, val end: Addr) {
     } while ((b & 0x80) == 0)
     x
   }
-  
-  /** Read `nbytes` bytes in big endian format into a Long */
-  def readRaw(nbytes: Int): Unit = {
-    def recur(x: Long, n: Int): Long = 
-      if (n == 0) x else recur((x << 8) | (readByte & 0xff), n - 1)
-    recur(0, nbytes)
-  }
-  
+      
+  /** Read a natural number and return as a NameRef */
   def readNameRef() = NameRef(readNat())
   
+  /** Read a natural number and return as an address */  
+  def readAddr() = Addr(readNat())
+  
+  /** Read a length number and return the absolute end address implied by it,
+   *  given as <address following length field> + <length-value-read>.
+   */
   def readEnd(): Addr = Addr(readNat() + bp)
   
+  /** Set read position to the one pointed to by `addr` */
   def skipTo(addr: Addr): Unit = 
-    bp = addr.index
-  
+    bp = index(addr)
+ 
+  /** Perform `op` until `end` address is reached and collect results in a list. */
   def until[T](end: Addr)(op: => T): List[T] = {
     val buf = new mutable.ListBuffer[T]
-    while (bp < end.index) buf += op
-    assert(bp == end.index)
+    while (bp < index(end)) buf += op
+    assert(bp == index(end))
+    buf.toList
+  }
+
+  /** Perform `op` while cindition `cond` holds and collect results in a list. */
+  def collectWhile[T](cond: => Boolean)(op: => T): List[T] = {
+    val buf = new mutable.ListBuffer[T]
+    while (cond) buf += op
     buf.toList
   }
 }

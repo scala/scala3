@@ -21,7 +21,7 @@ object TastyBuffer {
 
   /** The maximal number of address bytes.
    *  Since addresses are written as base-128 natural numbers,
-   *  the value of 4 gives a maximal array size of 512M.
+   *  the value of 4 gives a maximal array size of 256M.
    */
   final val AddrWidth = 4
 }
