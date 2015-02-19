@@ -86,8 +86,7 @@ Standard-Section: "ASTs" Tree*
 
   CaseDef       = CASEDEF       Length pat_Tree guard_Tree rhs_Tree
   ImplicitArg   = IMPLICITARG   Length arg_Tree
-  Template      = TEMPLATE      Length parent_Tree* SelfDef? Stat*
-// if there is a primary constructor, it is the first statement in Stat*..
+  Template      = TEMPLATE      Length parent_Tree* SelfDef? Stat* // Stat* always starts with the primary constructor.
   SelfDef       = Param
   ASTRef        = Nat                          		// byte position in AST payload
 
@@ -174,6 +173,7 @@ Standard-Section: "ASTs" Tree*
                   SCALA2X						// Imported from Scala2.x
                   DEFAULTparameterized				// Method with default params
                   DEFAULTinit					// variable with “_” initializer
+                  INSUPERCALL         // defined the argument of a constructor supercall
                   annotation_Term
 
 Note: Tree tags are grouped into 4 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
@@ -243,6 +243,7 @@ object PickleFormat {
   final val SCALA2X = 31
   final val DEFAULTparameterized = 32
   final val DEFAULTinit = 33
+  final val INSUPERCALL = 34
 
   final val SHARED = 64
   final val TERMREFdirect = 65
@@ -372,6 +373,7 @@ object PickleFormat {
     case SCALA2X => "SCALA2X"
     case DEFAULTparameterized => "DEFAULTparameterized"
     case DEFAULTinit => "DEFAULTinit"
+    case INSUPERCALL => "INSUPERCALL"
 
     case SHARED => "SHARED"
     case TERMREFdirect => "TERMREFdirect"

@@ -366,7 +366,7 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
           tree.parents.foreach(pickleTree)
           if (!tree.self.isEmpty)
             pickleDef(PARAM, tree.self.symbol, tree.self.tpt, EmptyTree)
-          pickleTreeIfNonEmpty(tree.constr)
+          pickleTree(tree.constr)
           tree.body.foreach(pickleTree)
         }
       case Import(expr, selectors) =>
@@ -433,6 +433,7 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
       if (flags is Synthetic) writeByte(SYNTHETIC)
       if (flags is Artifact) writeByte(ARTIFACT)
       if (flags is Scala2x) writeByte(SCALA2X) 
+      if (flags is InSuperCall) writeByte(INSUPERCALL)
       if (sym.isTerm) {
         if (flags is Implicit) writeByte(IMPLICIT)
         if (flags is Lazy) writeByte(LAZY)
