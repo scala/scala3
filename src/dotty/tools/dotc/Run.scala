@@ -40,12 +40,10 @@ class Run(comp: Compiler)(implicit ctx: Context) {
    */
   def compileSources(sources: List[SourceFile]) = Stats.monitorHeartBeat {
     if (sources forall (_.exists)) {
-      val phases = ctx.squashPhases(ctx.phasePlan, ctx.settings.Yskip.value, ctx.settings.YstopAfter.value, ctx.settings.Ycheck.value)
+      val phases = ctx.squashPhases(ctx.phasePlan,
+        ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, ctx.settings.YstopAfter.value, ctx.settings.Ycheck.value)
       ctx.usePhases(phases)
       units = sources map (new CompilationUnit(_))
-      def stoppedBefore(phase: Phase) =
-        ctx.settings.YstopBefore.value.containsPhase(phase) ||
-          ctx.settings.YstopAfter.value.containsPhase(phase.prev)
       for (phase <- ctx.allPhases)
         if (!ctx.reporter.hasErrors) {
           if (ctx.settings.verbose.value) println(s"[$phase]")

@@ -78,24 +78,26 @@ object Phases {
       * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
       */
     def squashPhases(phasess: List[List[Phase]],
-                             phasesToSkip: List[String], stopPhases: List[String], YCheckAfter: List[String]): List[Phase] = {
+                             phasesToSkip: List[String], stopBeforePhases: List[String], stopAfterPhases: List[String], YCheckAfter: List[String]): List[Phase] = {
       val squashedPhases = ListBuffer[Phase]()
       var prevPhases: Set[Class[_ <: Phase]] = Set.empty
 
       var stop = false
       val filteredPhases = phasess.map(_.filter { p =>
-        stop = stop | stopPhases.contains(p.phaseName)
-        (!stop) && !phasesToSkip.contains(p.phaseName)
+        val pstop = stop
+        stop = stop | stopBeforePhases.contains(p.phaseName) | stopAfterPhases.contains(p.phaseName)
+        !(pstop || stopBeforePhases.contains(p.phaseName) || phasesToSkip.contains(p.phaseName))
       })
 
       var i = 0
 
-      while (i < phasess.length) {
-        if (phasess(i).nonEmpty) { //could be empty due to filtering
+      while (i < filteredPhases.length) {
+        if (filteredPhases(i).nonEmpty) { //could be empty due to filtering
+          val filteredPhaseBlock = filteredPhases(i)
           val phaseToAdd =
-            if (phasess(i).length > 1) {
-              val phasesInBlock: Set[String] = phasess(i).map(_.phaseName).toSet
-              for (phase <- phasess(i)) {
+            if (filteredPhaseBlock.length > 1) {
+              val phasesInBlock: Set[String] = filteredPhaseBlock.map(_.phaseName).toSet
+              for (phase <- filteredPhaseBlock) {
                 phase match {
                   case p: MiniPhase =>
                     val unmetRequirements = p.runsAfterGroupsOf &~ prevPhases
@@ -106,16 +108,16 @@ object Phases {
                     assert(false, s"Only tree transforms can be squashed, ${phase.phaseName} can not be squashed")
                 }
               }
-              val transforms = phasess(i).asInstanceOf[List[MiniPhase]].map(_.treeTransform)
+              val transforms = filteredPhaseBlock.asInstanceOf[List[MiniPhase]].map(_.treeTransform)
               val block = new TreeTransformer {
                 override def phaseName: String = transformations.map(_.phase.phaseName).mkString("TreeTransform:{", ", ", "}")
 
                 override def transformations: Array[TreeTransform] = transforms.toArray
               }
-              prevPhases ++= phasess(i).map(_.getClazz)
+              prevPhases ++= filteredPhaseBlock.map(_.getClazz)
               block
             } else { // block of a single phase, no squashing
-              val phase = phasess(i).head
+              val phase = filteredPhaseBlock.head
               prevPhases += phase.getClazz
               phase
             }
