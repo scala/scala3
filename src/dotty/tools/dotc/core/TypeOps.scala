@@ -10,7 +10,7 @@ import util.SimpleMap
 import collection.mutable
 import ast.tpd._
 
-trait TypeOps { this: Context =>
+trait TypeOps { this: Context => // TODO: Make standalone object.
 
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 
@@ -402,6 +402,23 @@ trait TypeOps { this: Context =>
   /** Is auto-tupling enabled? */
   def canAutoTuple =
     !featureEnabled(defn.LanguageModuleClass, nme.noAutoTupling)
+
+  def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(implicit ctx: Context): Type = {
+    val monotpe =
+      (valueParamss :\ resultType) { (params, resultType) =>
+        val make =
+          if (params.nonEmpty && (params.head is Implicit)) ImplicitMethodType
+          else if (isJava) JavaMethodType
+          else MethodType
+        if (isJava)
+          for (param <- params)
+            if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
+        make.fromSymbols(params, resultType)
+      }
+    if (typeParams.nonEmpty) PolyType.fromSymbols(typeParams, monotpe)
+    else if (valueParamss.isEmpty) ExprType(monotpe)
+    else monotpe
+  }
 }
 
 object TypeOps {

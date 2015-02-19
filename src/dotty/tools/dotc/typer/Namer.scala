@@ -652,21 +652,7 @@ class Namer { typer: Typer =>
       val restpe1 = // try to make anonymous functions non-dependent, so that they can be used in closures
         if (name == nme.ANON_FUN) avoid(restpe, paramSymss.flatten)
         else restpe
-      val monotpe =
-        (paramSymss :\ restpe1) { (params, restpe) =>
-          val isJava = ddef.mods is JavaDefined
-          val make =
-            if (params.nonEmpty && (params.head is Implicit)) ImplicitMethodType
-            else if(isJava) JavaMethodType
-            else MethodType
-          if(isJava) params.foreach { symbol =>
-            if(symbol.info.isDirectRef(defn.ObjectClass)) symbol.info = defn.AnyType
-          }
-          make.fromSymbols(params, restpe)
-        }
-      if (typeParams.nonEmpty) PolyType.fromSymbols(typeParams, monotpe)
-      else if (vparamss.isEmpty) ExprType(monotpe)
-      else monotpe
+      ctx.methodType(tparams map symbolOfTree, paramSymss, restpe1, isJava = ddef.mods is JavaDefined)
     }
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
