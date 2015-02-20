@@ -130,7 +130,7 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
         pickleConstant(value)
       case tpe: WithFixedSym =>
         val sym = tpe.symbol
-        if (sym.isStatic) {
+        if (sym.isStatic && sym.isType || sym.is(Flags.Module)) {
           writeByte(if (tpe.isType) TYPEREFstatic else TERMREFstatic)
           pickleName(qualifiedName(sym))
         } 
@@ -152,14 +152,14 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
         }
         else {
           writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
-          pickleType(tpe.prefix); pickleSym(sym)          
+          pickleSym(sym); pickleType(tpe.prefix)
         }
       case tpe: TermRefWithSignature =>
         writeByte(TERMREF)
-        pickleType(tpe.prefix); pickleNameAndSig(tpe.name, tpe.signature)
+        pickleNameAndSig(tpe.name, tpe.signature); pickleType(tpe.prefix)
       case tpe: NamedType =>
         writeByte(if (tpe.isType) TYPEREF else TERMREF)
-        pickleType(tpe.prefix); pickleName(tpe.name)
+        pickleName(tpe.name); pickleType(tpe.prefix)
       case tpe: ThisType =>
         writeByte(THIS)
         withLength { pickleType(tpe.tref) }
@@ -168,7 +168,7 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
         withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe)}
       case tpe: SkolemType =>
         writeByte(SKOLEMtype)
-        withLength { pickleType(tpe.underlying) }
+        writeRef(pickledTypes.get(tpe).asInstanceOf[Addr])
       case tpe: RefinedType =>
         val args = tpe.argInfos(interpolate = false)
         if (args.isEmpty) {
@@ -247,17 +247,17 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
           case tp: TermRef => pickleType(tp)
           case _ => 
              writeByte(IDENT)
-             pickleType(tree.tpe)
              pickleName(name)
+             pickleType(tree.tpe)
         }
       case This(_) => 
         pickleType(tree.tpe)
       case Select(qual, name) => 
         writeByte(SELECT)
-        pickleTree(qual)
         val sig = tree.tpe.signature
         if (sig == Signature.NotAMethod) pickleName(name)
         else pickleNameAndSig(name, sig)
+        pickleTree(qual)
       case Apply(fun, args) =>
         writeByte(APPLY)
         withLength {

@@ -59,8 +59,8 @@ Standard-Section: "ASTs" Tree*
                   RENAMED       Length from_NameRef to_NameRef
 
   Term          = Path
-                  IDENT                Type NameRef
-                  SELECT               qual_Term possiblySigned_NameRef
+                  IDENT                NameRef Type
+                  SELECT               possiblySigned_NameRef qual_Term
                   SUPER         Length this_Term mixinTrait_Type?
                   APPLY         Length fn_Term arg_Term*
                   TYPEAPPLY     Length fn_Term arg_Type*
@@ -92,11 +92,13 @@ Standard-Section: "ASTs" Tree*
 
   Path          = Constant
                   TERMREFdirect        sym_ASTRef
+                  TERMREFsymbol        sym_ASTRef qual_Type
                   TERMREFstatic        fullyQualified_NameRef
-                  TERMREFsymbol        qual_Type sym_ASTRef
-                  TERMREF              qual_Type possiblySigned_NameRef
+                  TERMREF              possiblySigned_NameRef qual_Type
                   THIS          Length clsRef_Type
+                  SKOLEMtype           refinedType_ASTref
                   SHARED               path_ASTRef
+
 
   Constant      = UNITconst
                   FALSEconst
@@ -121,16 +123,15 @@ Standard-Section: "ASTs" Tree*
 
   Type          = Path
                   TYPEREFdirect        sym_ASTRef
+                  TYPEREFsymbol        sym_ASTRef qual_Type
                   TYPEREFstatic        fullyQualified_NameRef
-                  TYPEREFsymbol        qual_Type sym_ASTRef
-                  TYPEREF              qual_Type possiblySigned_NameRef
+                  TYPEREF              possiblySigned_NameRef qual_Type
                   SUPERtype     Length this_Type underlying_Type
-                  SKOLEMtype    Length underlying_Type
-                  REFINEDtype   Length refinement_NameRef info_Type
+                  REFINEDtype   Length underlying_Type refinement_NameRef info_Type
                   APPLIEDtype   Length tycon_Type arg_Type*
                   TYPEBOUNDS    Length low_Type high_Type
                   TYPEALIAS     Length alias_Type
-                  ANNOTATED     Length annot_Tree underlying_Type
+                  ANNOTATED     Length Annotation underlying_Type
                   ANDtype       Length left_Type right_Type
                   ORtype        Length left_Type right_Type
                   BIND          Length boundName_NameRef underlying_Type selfRef_Type
@@ -139,7 +140,6 @@ Standard-Section: "ASTs" Tree*
                   METHODtype    Length result_Type NamesTypes      // needed for refinements
                   PARAMtype     Length binder_ASTref paramNum_Nat  // needed for refinements
                   NOTYPE
-                  NOPREFIX
                   SHARED               type_ASTRef
   NamesTypes    = ParamType*
   NameType      = paramName_NameRef typeOrBounds_ASTRef
@@ -180,7 +180,7 @@ Note: Tree tags are grouped into 4 categories that determine what follows, and t
 
 	Category 1 (tags 0-63)   :	tag
 	Category 2 (tags 64-99)  :	tag Nat
-	Category 3 (tags 100-127):	tag AST Nat
+	Category 3 (tags 100-127):	tag Nat AST
 	Category 4 (tags 128-255):  tag Length <payload>
 
 Standard Section: "Positions" startPos_Index endPos_Index
@@ -211,7 +211,6 @@ object PickleFormat {
 
   final val EMPTYTREE = 0
   final val NOTYPE = 1
-  final val NOPREFIX = 2
   final val UNITconst = 3
   final val FALSEconst = 4
   final val TRUEconst = 5
@@ -250,18 +249,19 @@ object PickleFormat {
   final val TYPEREFdirect = 66
   final val TERMREFstatic = 67
   final val TYPEREFstatic = 68
-  final val BYTEconst = 69
-  final val BYTEneg = 70
-  final val SHORTconst = 71
-  final val SHORTneg = 72
-  final val CHARconst = 73
-  final val INTconst = 74
-  final val INTneg = 75
-  final val LONGconst = 76
-  final val LONGneg = 77
-  final val FLOATconst = 78
-  final val DOUBLEconst = 79
-  final val STRINGconst = 80
+  final val SKOLEMtype = 69
+  final val BYTEconst = 70
+  final val BYTEneg = 71
+  final val SHORTconst = 72
+  final val SHORTneg = 73
+  final val CHARconst = 74
+  final val INTconst = 75
+  final val INTneg = 76
+  final val LONGconst = 77
+  final val LONGneg = 78
+  final val FLOATconst = 79
+  final val DOUBLEconst = 80
+  final val STRINGconst = 81
 
   final val IDENT = 100
   final val SELECT = 101
@@ -308,7 +308,6 @@ object PickleFormat {
   final val CLASSconst = 163
   final val ENUMconst = 164
   final val SUPERtype = 165
-  final val SKOLEMtype = 166
   final val REFINEDtype = 167
   final val APPLIEDtype = 168
   final val TYPEBOUNDS = 169
@@ -326,7 +325,7 @@ object PickleFormat {
 
   final val firstSimpleTreeTag = EMPTYTREE
   final val firstNatTreeTag = SHARED
-  final val firstTreeNatTreeTag = IDENT
+  final val firstNatASTTreeTag = IDENT
   final val firstLengthTreeTag = PACKAGE
 
   def nameTagToString(tag: Int): String = tag match {
@@ -342,7 +341,6 @@ object PickleFormat {
   def astTagToString(tag: Int): String = tag match {
     case EMPTYTREE => "EMPTYTREE"
     case NOTYPE => "NOTYPE"
-    case NOPREFIX => "NOPREFIX"
     case UNITconst => "UNITconst"
     case FALSEconst => "FALSEconst"
     case TRUEconst => "TRUEconst"
@@ -381,6 +379,7 @@ object PickleFormat {
     case TYPEREFdirect => "TYPEREFdirect"
     case TERMREFstatic => "TERMREFstatic"
     case TYPEREFstatic => "TYPEREFstatic"
+    case SKOLEMtype => "SKOLEMtype"
     case BYTEconst => "BYTEconst"
     case BYTEneg => "BYTEneg"
     case SHORTconst => "SHORTconst"
@@ -439,7 +438,6 @@ object PickleFormat {
     case CLASSconst => "CLASSconst"
     case ENUMconst => "ENUMconst"
     case SUPERtype => "SUPERtype"
-    case SKOLEMtype => "SKOLEMtype"
     case REFINEDtype => "REFINEDtype"
     case APPLIEDtype => "APPLIEDtype"
     case TYPEBOUNDS => "TYPEBOUNDS"

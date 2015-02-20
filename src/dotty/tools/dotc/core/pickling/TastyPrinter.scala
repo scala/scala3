@@ -36,13 +36,12 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
     unpickled(new TreeUnpickler)
   }
   
-  class TreeUnpickler extends SectionUnpickler[Text]("ASTs") {
+  class TreeUnpickler extends SectionUnpickler[Unit]("ASTs") {
     import PickleFormat._
-    def unpickle(reader: TastyReader, tastyName: TastyName.Table): Text = {
+    def unpickle(reader: TastyReader, tastyName: TastyName.Table): Unit = {
       import reader._
-      val sb = new StringBuilder(s"${startAddr.index - endAddr.index} bytes of AST:")
       var indent = 0
-      def newLine() = print(f"\n ${currentAddr.index - startAddr.index}%5d:" + " " * indent)
+      def newLine() = print(f"\n ${index(currentAddr) - index(startAddr)}%5d:" + " " * indent)
       def printNat() = print(" " + readNat())
       def printName() = {
         val idx = readNat()
@@ -80,13 +79,12 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
             skipTo(currentAddr)
           }
         }
-        else if (tag >= firstTreeNatTreeTag) { 
-          printTree()
-          newLine()
+        else if (tag >= firstNatASTTreeTag) { 
           tag match {
             case IDENT | SELECT | TERMREF | TYPEREF => printName()
             case _ => printNat() 
           }
+          printTree()
         }
         else if (tag >= firstNatTreeTag) 
           tag match {
@@ -95,12 +93,12 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
           }
         indent -= 2
       }
-      println(s"base = $currentAddr")
+      println(i"start = ${reader.startAddr}, base = $base, current = $currentAddr, end = $endAddr")
+      println(s"${endAddr.index - startAddr.index} bytes of AST, base = $currentAddr")
       while (!isAtEnd) {
         printTree()
         newLine()
       }
-      sb.toString
     }
   }
 }
