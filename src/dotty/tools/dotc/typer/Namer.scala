@@ -18,7 +18,7 @@ import config.Printers._
 import language.implicitConversions
 
 trait NamerContextOps { this: Context =>
-
+ 
   /** Enter symbol into current class, if current class is owner of current context,
    *  or into current scope, if not. Should always be called instead of scope.enter
    *  in order to make sure that updates to class members are reflected in
@@ -79,6 +79,48 @@ trait NamerContextOps { this: Context =>
       .dropWhile(_.owner != sym)
       .dropWhile(_.owner == sym)
       .next
+
+  /** The given type, unless `sym` is a constructor, in which case the
+   *  type of the constructed instance is returned
+   */
+  def effectiveResultType(sym: Symbol, typeParams: List[Symbol], given: Type) = 
+    if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams map (_.typeRef))
+    else given
+
+  /** The method type corresponding to given parameters and result type */
+  def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(implicit ctx: Context): Type = {
+    val monotpe =
+      (valueParamss :\ resultType) { (params, resultType) =>
+        val make =
+          if (params.nonEmpty && (params.head is Implicit)) ImplicitMethodType
+          else if (isJava) JavaMethodType
+          else MethodType
+        if (isJava)
+          for (param <- params)
+            if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
+        make.fromSymbols(params, resultType)
+      }
+    if (typeParams.nonEmpty) PolyType.fromSymbols(typeParams, monotpe)
+    else if (valueParamss.isEmpty) ExprType(monotpe)
+    else monotpe
+  }
+  
+  /** Find moduleClass/sourceModule in effective scope */
+  private def findModuleBuddy(name: Name)(implicit ctx: Context) = {
+    val scope = effectiveScope
+    val it = scope.lookupAll(name).filter(_ is Module)
+    assert(it.hasNext, s"no companion $name in $scope")
+    it.next
+  }      
+
+  /** Add moduleClass or sourceModule functionality to completer
+   *  for a module or module class
+   */
+  def adjustModuleCompleter(completer: LazyType, name: Name) = 
+    if (name.isTermName)
+      completer withModuleClass (_ => findModuleBuddy(name.moduleClassName))
+    else
+      completer withSourceModule (_ => findModuleBuddy(name.sourceModuleName))
 }
 
 /** This class creates symbols from definitions and imports and gives them
@@ -163,14 +205,6 @@ class Namer { typer: Typer =>
     }
   }
 
-  /** Find moduleClass/sourceModule in effective scope */
-  private def findModuleBuddy(name: Name)(implicit ctx: Context) = {
-    val scope = ctx.effectiveScope
-    val it = scope.lookupAll(name).filter(_ is Module)
-    assert(it.hasNext, s"no companion $name in $scope")
-    it.next
-  }
-
   /** If this tree is a member def or an import, create a symbol of it
    *  and store in symOfTree map.
    */
@@ -191,15 +225,9 @@ class Namer { typer: Typer =>
 
     /** Add moduleClass/sourceModule to completer if it is for a module val or class */
     def adjustIfModule(completer: LazyType, tree: MemberDef) =
-      if (tree.mods is Module) {
-        val name = tree.name.encode
-        if (name.isTermName)
-          completer withModuleClass (_ => findModuleBuddy(name.moduleClassName))
-        else
-          completer withSourceModule (_ => findModuleBuddy(name.sourceModuleName))
-      }
+      if (tree.mods is Module) ctx.adjustModuleCompleter(completer, tree.name.encode) 
       else completer
-
+      
     typr.println(i"creating symbol for $tree in ${ctx.mode}")
 
     def checkNoConflict(name: Name): Unit = {
@@ -657,7 +685,7 @@ class Namer { typer: Typer =>
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
-      wrapMethType(sym.owner.typeRef.appliedTo(typeParams map (_.typeRef)))
+      wrapMethType(ctx.effectiveResultType(sym, typeParams, NoType))
     }
     else valOrDefDefSig(ddef, sym, typeParams, wrapMethType)
   }
