@@ -23,7 +23,7 @@ import TypeErasure.sigName
  *
  *  The signatures of non-method types are always `NotAMethod`.
  */
-case class Signature private (paramsSig: List[TypeName], resSig: TypeName) {
+case class Signature(paramsSig: List[TypeName], resSig: TypeName) {
 
   /** Does this signature conincide with that signature on their parameter parts? */
   final def sameParams(that: Signature): Boolean = this.paramsSig == that.paramsSig

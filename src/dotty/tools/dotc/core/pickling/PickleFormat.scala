@@ -43,9 +43,9 @@ Macro-format:
 Note: Unqualified names in the name table are strings. The context decides whether a name is
 a type-name or a term-name. The same string can represent both.
 
-Standard-Section: "ASTs" Tree*
+Standard-Section: "ASTs" TopLevelStat*
 
-  Tree          = PACKAGE       Length Path Tree*
+  TopLevelStat  = PACKAGE       Length Path TopLevelStat*
                   Stat
 
   Stat          = Term
@@ -58,15 +58,18 @@ Standard-Section: "ASTs" Tree*
   TypeParam     = TYPEPARAM     Length NameRef Type Modifier*
   Params        = PARAMS        Length Param*
   Param         = PARAM         Length NameRef Type Modifier*
+  Template      = TEMPLATE      Length TypeParam* Param* Parent* Self? Stat* // Stat* always starts with the primary constructor.
+  Parent        = Application
+                  Type
+  Self          = SELFDEF       Length NameRef Type
   Selector      = IMPORTED      Length name_NameRef
                   RENAMED       Length from_NameRef to_NameRef
 
   Term          = Path
+                  Application
                   IDENT                NameRef Type
                   SELECT               possiblySigned_NameRef qual_Term
                   SUPER         Length this_Term mixinTrait_Type?
-                  APPLY         Length fn_Term arg_Term*
-                  TYPEAPPLY     Length fn_Term arg_Type*
                   NEW           Length cls_Type
                   PAIR          Length left_Term right_Term
                   TYPED         Length expr_Term ascription_Type
@@ -79,18 +82,16 @@ Standard-Section: "ASTs" Tree*
                   RETURN        Length meth_ASTRef expr_Term?
                   TRY           Length expr_Term CaseDef* finalizer_Term?
                   THROW         Length expr_Term
-                  SEQLITERAL    Length elem_Term*
-                  JSEQLITERAL   Length elem_Term*
+                  REPEATED      Length elem_Term*
                   BIND          Length boundName_NameRef patType_Type pat_Term
                   ALTERNATIVE   Length alt_Term*
-                  UNAPPLY       Length fun_Term ImplicitArg* pat_Term*
+                  UNAPPLY       Length fun_Term ImplicitArg* pat_Type pat_Term*
                   EMPTYTREE
-
-  CaseDef       = CASEDEF       Length pat_Tree guard_Tree rhs_Tree
+  Application   = APPLY         Length fn_Term arg_Term*
+                  TYPEAPPLY     Length fn_Term arg_Type*
+  CaseDef       = CASEDEF       Length pat_Tree rhs_Tree guard_Tree?
   ImplicitArg   = IMPLICITARG   Length arg_Tree
-  Template      = TEMPLATE      Length parent_Tree* SelfDef? Stat* // Stat* always starts with the primary constructor.
-  SelfDef       = Param
-  Annotation    = ANNOTATION    Length tycon_Symbol fullAnnotation_Tree
+  Annotation    = ANNOTATION    Length tycon_Symbol fullAnnotation_Term
   ASTRef        = Nat                          		// byte position in AST payload
 
   Path          = Constant
@@ -128,7 +129,7 @@ Standard-Section: "ASTs" Tree*
                   APPLIEDtype   Length tycon_Type arg_Type*
                   TYPEBOUNDS    Length low_Type high_Type
                   TYPEALIAS     Length alias_Type
-                  ANNOTATED     Length Annotation underlying_Type
+                  ANNOTATED     Length fullAnnotation_Term underlying_Type
                   ANDtype       Length left_Type right_Type
                   ORtype        Length left_Type right_Type
                   BIND          Length boundName_NameRef underlying_Type selfRef_Type
@@ -288,40 +289,47 @@ object PickleFormat {
   final val RETURN = 149
   final val TRY = 150
   final val THROW = 151
-  final val SEQLITERAL = 152
-  final val JSEQLITERAL = 153
-  final val BIND = 154
-  final val ALTERNATIVE = 155
-  final val UNAPPLY = 156
-  final val ANNOTATED = 157
-  final val CASEDEF = 158
-  final val IMPLICITarg = 159
-  final val TEMPLATE = 160
+  final val REPEATED = 152
+  final val BIND = 153
+  final val ALTERNATIVE = 154
+  final val UNAPPLY = 155
+  final val ANNOTATED = 156
+  final val CASEDEF = 157
+  final val IMPLICITarg = 158
+  final val TEMPLATE = 159
+  final val SELFDEF = 160
   final val THIS = 161
   final val SUPER = 162
   final val CLASSconst = 163
   final val ENUMconst = 164
   final val SUPERtype = 165
-  final val REFINEDtype = 167
-  final val APPLIEDtype = 168
-  final val TYPEBOUNDS = 169
-  final val TYPEALIAS = 170
-  final val ANDtype = 171
-  final val ORtype = 172
-  final val BYNAMEtype = 173
-  final val METHODtype = 174
-  final val POLYtype = 175
-  final val PARAMtype = 176
-  final val IMPLICITARG = 177
-  final val ANNOTATION = 178
-  final val PRIVATEqualified = 179
-  final val PROTECTEDqualified = 180
+  final val REFINEDtype = 166
+  final val APPLIEDtype = 167
+  final val TYPEBOUNDS = 168
+  final val TYPEALIAS = 169
+  final val ANDtype = 170
+  final val ORtype = 171
+  final val BYNAMEtype = 172
+  final val METHODtype = 173
+  final val POLYtype = 174
+  final val PARAMtype = 175
+  final val IMPLICITARG = 176
+  final val ANNOTATION = 177
+  final val PRIVATEqualified = 178
+  final val PROTECTEDqualified = 179
 
   final val firstSimpleTreeTag = EMPTYTREE
   final val firstNatTreeTag = SHARED
   final val firstNatASTTreeTag = IDENT
   final val firstLengthTreeTag = PACKAGE
 
+  def isDefTag(tag: Int) = tag match {
+    case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | SELFDEF => true
+    case _ => false
+  }
+  
+  def isParamTag(tag: Int) = tag == PARAM || tag == TYPEPARAM 
+   
   def nameTagToString(tag: Int): String = tag match {
     case UTF8 => "UTF8"
     case QUALIFIED => "QUALIFIED"
@@ -414,8 +422,7 @@ object PickleFormat {
     case RETURN => "RETURN"
     case TRY => "TRY"
     case THROW => "THROW"
-    case SEQLITERAL => "SEQLITERAL"
-    case JSEQLITERAL => "JSEQLITERAL"
+    case REPEATED => "REPEATED"
     case BIND => "BIND"
     case ALTERNATIVE => "ALTERNATIVE"
     case UNAPPLY => "UNAPPLY"
@@ -423,6 +430,7 @@ object PickleFormat {
     case CASEDEF => "CASEDEF"
     case IMPLICITarg => "IMPLICITarg"
     case TEMPLATE => "TEMPLATE"
+    case SELFDEF => "SELFDEF"
     case THIS => "THIS"
     case SUPER => "SUPER"
     case CLASSconst => "CLASSconst"

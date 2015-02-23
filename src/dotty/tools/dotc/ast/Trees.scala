@@ -19,8 +19,8 @@ object Trees {
 
   // Note: it would be more logical to make Untyped = Nothing.
   // However, this interacts in a bad way with Scala's current type inference.
-  // In fact, we cannot write soemthing like Select(pre, name), where pre is
-  // of type Tree[Nothing]; type inference will treat the Nothing as an uninstantited
+  // In fact, we cannot write something like Select(pre, name), where pre is
+  // of type Tree[Nothing]; type inference will treat the Nothing as an uninstantiated
   // value and will not infer Nothing as the type parameter for Select.
   // We should come back to this issue once type inference is changed.
   type Untyped = Null

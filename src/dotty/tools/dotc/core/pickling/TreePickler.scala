@@ -190,7 +190,7 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
         withLength { pickleType(tpe.lo, richTypes); pickleType(tpe.hi, richTypes) }
       case tpe: AnnotatedType =>
         writeByte(ANNOTATED)
-        withLength { pickleAnnotation(tpe.annot); pickleType(tpe.tpe, richTypes) }
+        withLength { pickleTree(tpe.annot.tree); pickleType(tpe.tpe, richTypes) }
       case tpe: AndOrType =>
         writeByte(if (tpe.isAnd) ANDtype else ORtype)
         withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }
@@ -313,7 +313,7 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
         withLength { pickleTree(selector); cases.foreach(pickleTree) }
       case CaseDef(pat, guard, rhs) =>
         writeByte(CASEDEF)
-        withLength { pickleTree(pat); pickleTree(guard); pickleTree(rhs) }
+        withLength { pickleTree(pat); pickleTree(rhs); pickleTreeIfNonEmpty(guard) }
       case Return(expr, from) =>
         writeByte(RETURN)
         withLength { pickleSym(from.symbol); pickleTreeIfNonEmpty(expr) }
@@ -324,7 +324,7 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
         writeByte(THROW)
         withLength { pickleTree(expr) }
       case SeqLiteral(elems) =>
-        writeByte(if (tree.isInstanceOf[JavaSeqLiteral]) JSEQLITERAL else SEQLITERAL)
+        writeByte(REPEATED)
         withLength { elems.foreach(pickleTree) }
       case TypeTree(original) =>
         pickleTpt(tree)
@@ -343,34 +343,37 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
             writeByte(IMPLICITARG)
             withLength { pickleTree(implicitArg) }
           }
+          pickleType(tree.tpe)
           patterns.foreach(pickleTree) 
         }
       case tree: ValDef =>
         pickleDef(VALDEF, tree.symbol, tree.tpt, tree.rhs)
       case tree: DefDef =>
         def pickleParams = {
-          for (tparam <- tree.tparams) 
-            pickleDef(TYPEPARAM, tparam.symbol, tparam.rhs, EmptyTree)
+          tree.tparams.foreach(pickleParam)
           for (vparams <- tree.vparamss) {
             writeByte(PARAMS)
-            withLength {
-              for (vparam <- vparams) 
-                pickleDef(PARAM, vparam.symbol, vparam.tpt, EmptyTree)
-            }
+            withLength { vparams.foreach(pickleParam) }
           }          
         }
         pickleDef(DEFDEF, tree.symbol, tree.tpt, tree.rhs, pickleParams)
       case tree: TypeDef =>
-        pickleDef(TYPEDEF, tree.symbol, tree.rhs, EmptyTree)
+        pickleDef(TYPEDEF, tree.symbol, tree.rhs)
       case tree: Template =>
         registerDef(tree.symbol)
         writeByte(TEMPLATE)
+        val (params, rest) = tree.body span {
+          case stat: TypeDef => stat.mods is Flags.Param
+          case stat: ValDef => stat.mods is Flags.ParamAccessor
+          case _ => false
+        }
         withLength {
+          params.foreach(pickleParam)
           tree.parents.foreach(pickleTree)
           if (!tree.self.isEmpty)
-            pickleDef(PARAM, tree.self.symbol, tree.self.tpt, EmptyTree)
+            pickleDef(SELFDEF, tree.self.symbol, tree.self.tpt)
           pickleTree(tree.constr)
-          tree.body.foreach(pickleTree)
+          rest.foreach(pickleTree)
         }
       case Import(expr, selectors) =>
         writeByte(IMPORT)
@@ -398,7 +401,7 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
     }
 
     
-    def pickleDef(tag: Int, sym: Symbol, tpt: Tree, rhs: Tree, pickleParams: => Unit = ()) = {
+    def pickleDef(tag: Int, sym: Symbol, tpt: Tree, rhs: Tree = EmptyTree, pickleParams: => Unit = ()) = {
       registerDef(sym)
       writeByte(tag)
       withLength {
@@ -411,6 +414,11 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
         if (tag == VALDEF || tag == DEFDEF) pickleTree(rhs)
         pickleModifiers(sym)
       }
+    }
+    
+    def pickleParam(tree: Tree): Unit = tree match {
+      case tree: ValDef => pickleDef(PARAM, tree.symbol, tree.tpt)
+      case tree: TypeDef => pickleDef(TYPEPARAM, tree.symbol, tree.rhs)      
     }
 
     def pickleModifiers(sym: Symbol): Unit = {
