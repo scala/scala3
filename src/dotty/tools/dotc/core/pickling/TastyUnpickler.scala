@@ -5,6 +5,7 @@ package pickling
 import scala.collection.mutable
 import PickleFormat._
 import Names.{Name, termName}
+import java.util.UUID
 
 object TastyUnpickler {  
   class UnpickleException(msg: String) extends Exception(msg)
@@ -62,17 +63,21 @@ class TastyUnpickler(reader: TastyReader) {
     result
   }
   
-  locally {
+  private def readHeader() = {
     val magic = readBytes(8)
     check(magic.map(_.toChar).mkString == header, "not a TASTy file")
     val major = readNat()
     val minor = readNat()
-    def versionMsg = 
+    check(major == MajorVersion && minor <= MinorVersion, 
       s"""TASTy signature has wrong version.
          | expected: $MajorVersion.$MinorVersion
-         | found   : $major.$minor""".stripMargin
-    check(major == MajorVersion, versionMsg)
-    if (MajorVersion == 0) check(minor == MinorVersion, versionMsg)
+         | found   : $major.$minor""".stripMargin)
+    new UUID(readUncompressedLong(), readUncompressedLong())
+  }
+  
+  val uuid = readHeader()
+  
+  locally {
     until(readEnd()) { tastyName.add(readName()) }
     while (!isAtEnd) {
       val secName = readString()
@@ -82,7 +87,7 @@ class TastyUnpickler(reader: TastyReader) {
     }
   }
   
-  def unpickled[R](sec: SectionUnpickler[R]): Option[R] = 
+  def unpickle[R](sec: SectionUnpickler[R]): Option[R] = 
     for (reader <- sectionReader.get(sec.name)) yield
       sec.unpickle(reader, tastyName)
 }

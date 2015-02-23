@@ -10,7 +10,7 @@ import TastyUnpickler._
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
   
   val unpickler = new TastyUnpickler(bytes)
-  import unpickler.{tastyName, unpickled}
+  import unpickler.{tastyName, unpickle}
   
   def nameToString(name: TastyName): String = name match {
     case Simple(name) => name.toString
@@ -33,7 +33,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
     println("Names:")
     printNames()
     println("Trees:")
-    unpickled(new TreeUnpickler)
+    unpickle(new TreeUnpickler)
   }
   
   class TreeUnpickler extends SectionUnpickler[Unit]("ASTs") {

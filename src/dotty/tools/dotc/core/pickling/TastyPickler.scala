@@ -6,16 +6,20 @@ package pickling
 import PickleFormat._
 import collection.mutable
 import TastyBuffer._
+import java.util.UUID
 
 class TastyPickler {
       
   private val sections = new mutable.ArrayBuffer[(TastyName.NameRef, TastyBuffer)]
   
   private val headerBuffer = {
-    val buf = new TastyBuffer(16)
+    val buf = new TastyBuffer(28)
     for (ch <- header) buf.writeByte(ch.toByte)
     buf.writeNat(MajorVersion)
     buf.writeNat(MinorVersion)
+    val uuid = UUID.randomUUID()
+    buf.writeUncompressedLong(uuid.getMostSignificantBits)
+    buf.writeUncompressedLong(uuid.getLeastSignificantBits)
     buf
   }
 

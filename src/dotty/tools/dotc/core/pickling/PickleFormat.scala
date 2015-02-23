@@ -22,8 +22,9 @@ Micro-syntax:
 
 Macro-format:
 
-  File          = Header majorVersion_Nat minorVersion_Nat nameTable_Length Name* Section*
+  File          = Header majorVersion_Nat minorVersion_Nat UUID nameTable_Length Name* Section*
   Header        = "5CA1AB1F"
+  UUID          = Byte*16
 
   Section       = NameRef Length Bytes
   Length        = Nat                    // length of rest of entry in bytes
