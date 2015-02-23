@@ -48,6 +48,12 @@ abstract class Positioned extends DotClass with Product {
    */
   def addPos(pos: Position): this.type = withPos(pos union this.pos)
 
+  /** Set position of this tree only, without performing
+   *  any checks of consistency with - or updates of - other positions.
+   *  Called from Unpickler when entering positions.
+   */
+  private[dotc] def setPosUnchecked(pos: Position) = curPos = pos
+
   /** If any children of this node do not have positions, set them to the given position,
    *  and transitively visit their children.
    */

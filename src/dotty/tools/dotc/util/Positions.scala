@@ -15,6 +15,9 @@ object Positions {
   private val StartEndMask: Long = (1L << StartEndBits) - 1
   private val SyntheticPointDelta = (1 << (64 - StartEndBits * 2)) - 1
 
+  /** The maximal representable offset in a position */
+  val MaxOffset = StartEndMask
+
   /** A position indicates a range between a start offset and an end offset.
    *  Positions can be synthetic or source-derived. A source-derived position
    *  has in addition a point lies somewhere between start and end. The point
