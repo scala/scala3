@@ -77,22 +77,26 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
         case BooleanTag => 
           writeByte(if (c.booleanValue) TRUEconst else FALSEconst)
         case ByteTag => 
-          pickleNum(BYTEconst, BYTEneg)
+          writeByte(BYTEconst)
+          writeInt(c.byteValue)
         case ShortTag => 
-          pickleNum(SHORTconst, SHORTneg)
+          writeByte(SHORTconst)
+          writeInt(c.shortValue)
         case CharTag => 
           writeByte(CHARconst)
           writeNat(c.charValue)
         case IntTag => 
-          pickleNum(INTconst, INTneg)
+          writeByte(INTconst)
+          writeInt(c.intValue)
         case LongTag => 
-          pickleNum(LONGconst, LONGneg)
+          writeByte(LONGconst)
+          writeLongInt(c.longValue)
         case FloatTag => 
           writeByte(FLOATconst)
-          writeNat(java.lang.Float.floatToRawIntBits(c.floatValue))
+          writeInt(java.lang.Float.floatToRawIntBits(c.floatValue))
         case DoubleTag =>
           writeByte(DOUBLEconst)
-          writeLongNat(java.lang.Double.doubleToRawLongBits(c.doubleValue))
+          writeLongInt(java.lang.Double.doubleToRawLongBits(c.doubleValue))
         case StringTag =>
           writeByte(STRINGconst)
           writeNat(nameIndex(c.stringValue).index)
@@ -111,8 +115,7 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
       val tpe = tpe0.stripTypeVar
       val prev = pickledTypes.get(tpe)
       if (prev == null) {
-        val addr = currentAddr
-        pickledTypes.put(tpe, addr)
+        pickledTypes.put(tpe, currentAddr)
         pickleNewType(tpe, richTypes)
       }
       else {

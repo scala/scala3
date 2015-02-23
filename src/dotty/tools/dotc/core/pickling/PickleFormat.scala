@@ -14,7 +14,9 @@ can be dropped without changing the grammar.
 Micro-syntax:
 
   LongNat       = Digit* StopDigit        // big endian, value fits in a Long without overflow
+  LongInt       = LongNat                 // big endian 2's complement, value fits in a Long without overflow
   Nat           = LongNat                 // value fits in an Int without overflow
+  Int           = LongInt                 // value fits in an Int without overflow
   Digit         = 0 | ... | 127
   StopDigit     = 128 | ... | 255         // value = digit - 128
 
@@ -103,23 +105,17 @@ Standard-Section: "ASTs" Tree*
   Constant      = UNITconst
                   FALSEconst
                   TRUEconst
-                  BYTEconst            Nat
-                  BYTEneg              NegNat
-                  SHORTconst           Nat
-                  SHORTneg             NegNat
+                  BYTEconst            Int
+                  SHORTconst           Int
                   CHARconst            Nat
-                  INTconst             Nat
-                  INTneg               NegNat
-                  LONGconst            LongNat
-                  LONGneg              NegLongNat
-                  FLOATconst           LongNat
-                  DOUBLEconst          LongNat
+                  INTconst             Int
+                  LONGconst            LongInt
+                  FLOATconst           Int
+                  DOUBLEconst          LongInt
                   STRINGconst          NameRef
                   NULLconst
                   CLASSconst    Length Type
                   ENUMconst     Length Path
-  NegNat        = Nat          					// negValue = -natValue - 1
-  NegLongNat    = LongNat     					// negValue = -natValue - 1
 
   Type          = Path
                   TYPEREFdirect        sym_ASTRef
@@ -186,8 +182,9 @@ Note: Tree tags are grouped into 4 categories that determine what follows, and t
 Standard Section: "Positions" startPos_Index endPos_Index
 
   Index         = Length Assoc*
-  Assoc         = Delta ASTRef               		// largest tree starting/ending at offset
-  Delta         = Nat                 			// # chars from last offset or start of file
+  Assoc         = offset_Delta addr_Delta   // largest tree starting/ending at offset
+  Delta         = Int                 	    // difference between consecutive offsets / tree addresses,
+                                            // First offset/address is always assumed to be 0
 
 **************************************************************************************/
 
@@ -195,7 +192,7 @@ object PickleFormat {
 
   final val header = "5CA1AB1F"
   final val MajorVersion = 0
-  final val MinorVersion = 3
+  final val MinorVersion = 4
 
   // Name tags
 
@@ -211,38 +208,38 @@ object PickleFormat {
 
   final val EMPTYTREE = 0
   final val NOTYPE = 1
-  final val UNITconst = 3
-  final val FALSEconst = 4
-  final val TRUEconst = 5
-  final val NULLconst = 6
-  final val PRIVATE = 7
-  final val INTERNAL = 8
-  final val PROTECTED = 9
-  final val ABSTRACT = 10
-  final val FINAL = 11
-  final val SEALED = 12
-  final val CASE = 13
-  final val IMPLICIT = 14
-  final val LAZY = 15
-  final val OVERRIDE = 16
-  final val INLINE = 17
-  final val ABSOVERRIDE = 18
-  final val STATIC = 19
-  final val MODULE = 20
-  final val LOCAL = 21
-  final val SYNTHETIC = 22
-  final val ARTIFACT = 23
-  final val MUTABLE = 24
-  final val LABEL = 25
-  final val FIELDaccessor = 26
-  final val PARAMaccessor = 27
-  final val CASEaccessor = 28
-  final val COVARIANT = 29
-  final val CONTRAVARIANT = 30
-  final val SCALA2X = 31
-  final val DEFAULTparameterized = 32
-  final val DEFAULTinit = 33
-  final val INSUPERCALL = 34
+  final val UNITconst = 2
+  final val FALSEconst = 3
+  final val TRUEconst = 4
+  final val NULLconst = 5
+  final val PRIVATE = 6
+  final val INTERNAL = 7
+  final val PROTECTED = 8
+  final val ABSTRACT = 9
+  final val FINAL = 10
+  final val SEALED = 11
+  final val CASE = 12
+  final val IMPLICIT = 13
+  final val LAZY = 14
+  final val OVERRIDE = 15
+  final val INLINE = 16
+  final val ABSOVERRIDE = 17
+  final val STATIC = 18
+  final val MODULE = 19
+  final val LOCAL = 20
+  final val SYNTHETIC = 21
+  final val ARTIFACT = 22
+  final val MUTABLE = 23
+  final val LABEL = 24
+  final val FIELDaccessor = 25
+  final val PARAMaccessor = 26
+  final val CASEaccessor = 27
+  final val COVARIANT = 28
+  final val CONTRAVARIANT = 29
+  final val SCALA2X = 30
+  final val DEFAULTparameterized = 31
+  final val DEFAULTinit = 32
+  final val INSUPERCALL = 33
 
   final val SHARED = 64
   final val TERMREFdirect = 65
@@ -251,17 +248,13 @@ object PickleFormat {
   final val TYPEREFstatic = 68
   final val SKOLEMtype = 69
   final val BYTEconst = 70
-  final val BYTEneg = 71
-  final val SHORTconst = 72
-  final val SHORTneg = 73
-  final val CHARconst = 74
-  final val INTconst = 75
-  final val INTneg = 76
-  final val LONGconst = 77
-  final val LONGneg = 78
-  final val FLOATconst = 79
-  final val DOUBLEconst = 80
-  final val STRINGconst = 81
+  final val SHORTconst = 71
+  final val CHARconst = 72
+  final val INTconst = 73
+  final val LONGconst = 74
+  final val FLOATconst = 75
+  final val DOUBLEconst = 76
+  final val STRINGconst = 77
 
   final val IDENT = 100
   final val SELECT = 101
@@ -381,14 +374,10 @@ object PickleFormat {
     case TYPEREFstatic => "TYPEREFstatic"
     case SKOLEMtype => "SKOLEMtype"
     case BYTEconst => "BYTEconst"
-    case BYTEneg => "BYTEneg"
     case SHORTconst => "SHORTconst"
-    case SHORTneg => "SHORTneg"
     case CHARconst => "CHARconst"
     case INTconst => "INTconst"
-    case INTneg => "INTneg"
     case LONGconst => "LONGconst"
-    case LONGneg => "LONGneg"
     case FLOATconst => "FLOATconst"
     case DOUBLEconst => "DOUBLEconst"
     case STRINGconst => "STRINGconst"

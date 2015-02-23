@@ -65,6 +65,11 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
    *  All but the last digits have bit 0x80 set.
    */
   def readNat(): Int = readLongNat.toInt
+  
+  /** Read an integer number in 2's complement big endian format, base 128.
+   *  All but the last digits have bit 0x80 set.
+   */
+  def readInt(): Int = readLongInt.toInt
     
   /** Read a natural number fitting in a Long in big endian format, base 128.
    *  All but the last digits have bit 0x80 set.
@@ -79,7 +84,28 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     } while ((b & 0x80) == 0)
     x
   }
-      
+  
+  /** Read a long integer number in 2's complement big endian format, base 128. */
+  def readLongInt(): Long = {
+    var b = bytes(bp)
+    var x = (b << 1).toByte >> 1 // sign extend with bit 6.
+    bp += 1
+    while ((b & 0x80) == 0) {
+      b = bytes(bp)
+      x = (x << 7) | (b & 0x7f)
+      bp += 1
+    }
+    x    
+  }
+  
+  /** Read an uncompressed Long stored in 8 bytes in big endian format */
+  def readUncompressedLong(): Long = {
+    var x = 0
+    for (i <- 0 to 7)
+      x = (x << 8) | (readByte() & 0xff)
+    x
+  }
+  
   /** Read a natural number and return as a NameRef */
   def readNameRef() = NameRef(readNat())
   
@@ -102,6 +128,10 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     assert(bp == index(end))
     buf.toList
   }
+
+  /** If before given `end` address, the result of `op`, otherwise `default` */
+  def ifBefore[T](end: Addr)(op: => T, default: T): T =
+    if (bp < index(end)) op else default
 
   /** Perform `op` while cindition `cond` holds and collect results in a list. */
   def collectWhile[T](cond: => Boolean)(op: => T): List[T] = {
