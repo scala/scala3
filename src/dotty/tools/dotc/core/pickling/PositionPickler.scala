@@ -15,15 +15,14 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: Tree => Option[Addr]) {
   pickler.newSection("Positions", buf)
   import buf._
     
-  def traverseAll(root: Tree, recorder: PositionRecorder)(implicit ctx: Context) = 
-    recorder.edge.traverseAll(root) { tree =>
-      if (tree.pos.exists)
-        for (addr <- addrOfTree(tree))
-          recorder.record(addr, recorder.edge.offset(tree.pos))
-    }
-  
-  def picklePositions(root: Tree)(implicit ctx: Context) = {
-    traverseAll(root, startPos)
-    traverseAll(root, endPos)
+  def picklePositions(roots: List[Tree])(implicit ctx: Context) = {
+    def traverseWith(recorder: PositionRecorder) = 
+      recorder.edge.traverseAll(roots) { tree =>
+        if (tree.pos.exists)
+          for (addr <- addrOfTree(tree))
+            recorder.record(addr, recorder.edge.offset(tree.pos))
+      }
+    traverseWith(startPos)
+    traverseWith(endPos)
   }
 }

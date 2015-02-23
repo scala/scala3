@@ -53,7 +53,7 @@ class TreePickler(pickler: TastyPickler) {
       forwardSymRefs(sym) = ref :: forwardSymRefs.getOrElse(sym, Nil)
   }
 
-  def pickle(tree: Tree)(implicit ctx: Context) = {
+  def pickle(trees: List[Tree])(implicit ctx: Context) = {
     
     def qualifiedName(sym: Symbol): TastyName =
       if (sym.isRoot || sym.owner.isRoot) TastyName.Simple(sym.name.toTermName)
@@ -467,7 +467,7 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
     }
 
-    pickleTree(tree)
+    trees.foreach(pickleTree)
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: ${forwardSymRefs.keySet.toList}%, %")
     compactify()
   }  
