@@ -6,6 +6,7 @@ package pickling
 import util.Util.{bestFit, dble}
 import TastyBuffer.{Addr, AddrWidth}
 import config.Printers.pickling
+import ast.tpd.Tree
 
 class TreeBuffer extends TastyBuffer(1000000) {
 
@@ -16,6 +17,13 @@ class TreeBuffer extends TastyBuffer(1000000) {
   private var isRelative = new Array[Boolean](initialOffsetSize)
   private var delta: Array[Int] = _
   private var numOffsets = 0
+
+  private[pickling] val pickledTrees = new java.util.IdentityHashMap[Tree, Any] // Value type is really Addr, but that's not compatible with null  
+  
+  def addrOfTree(tree: Tree): Option[Addr] = pickledTrees.get(tree) match {
+    case null => None
+    case n => Some(n.asInstanceOf[Addr])
+  }
             
   private def offset(i: Int): Addr = Addr(offsets(i))
 
@@ -74,7 +82,7 @@ class TreeBuffer extends TastyBuffer(1000000) {
     }
   }
   
-  /** The absoluate or relative adjusted address at index `i` of `offsets` array*/
+  /** The absolute or relative adjusted address at index `i` of `offsets` array*/
   private def adjustedOffset(i: Int): Addr = {
     val at = offset(i)
     val original = getAddr(at)
@@ -140,13 +148,21 @@ class TreeBuffer extends TastyBuffer(1000000) {
     wasted
   }
   
+  def adjustPickledTrees(): Unit = {
+    val it = pickledTrees.keySet.iterator
+    while (it.hasNext) {
+      val tree = it.next
+      pickledTrees.put(tree, adjusted(pickledTrees.get(tree).asInstanceOf[Addr]))
+    }
+  }
+  
   /** Final assembly, involving the following steps:
    *   - compute deltas
    *   - adjust deltas until additional savings are < 1% of total
    *   - adjust offsets according to the adjusted deltas
    *   - shrink buffer, skipping zeroes.
    */
-  override def assemble(): Unit = {
+  def compactify(): Unit = {
     val origLength = length
     computeDeltas()
     //println(s"offsets: ${offsets.take(numOffsets).deep}")
@@ -157,6 +173,7 @@ class TreeBuffer extends TastyBuffer(1000000) {
       pickling.println(s"adjusting deltas, saved = $saved")
     } while (saved > 0 && length / saved < 100)
     adjustOffsets()
+    adjustPickledTrees()
     val wasted = compress()
     pickling.println(s"original length: $origLength, compressed to: $length, wasted: $wasted") // DEBUG, for now.
   }

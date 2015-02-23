@@ -10,7 +10,7 @@ import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annot
 import collection.mutable
 import TastyBuffer._
 
-class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
+class TreePickler(pickler: TastyPickler) {
   val buf = new TreeBuffer
   pickler.newSection("ASTs", buf)
   import buf._
@@ -244,6 +244,7 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
       if (!tree.isEmpty) pickleTree(tree)
 
     def pickleTree(tree: Tree): Unit = try {
+      pickledTrees.put(tree, currentAddr)
       tree match {
       case Ident(name) =>
         tree.tpe match {
@@ -468,5 +469,6 @@ class TreePickler(pickler: TastyPickler, picklePositions: Boolean) {
 
     pickleTree(tree)
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: ${forwardSymRefs.keySet.toList}%, %")
+    compactify()
   }  
 }
