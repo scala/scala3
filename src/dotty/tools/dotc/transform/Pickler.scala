@@ -20,6 +20,8 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
       
       val treePkl = new TreePickler(pickler)
       treePkl.pickle(tree)
+      new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree)
+
       val bytes = pickler.assembleParts()
       def rawBytes = // not needed right now, but useful to print raw format.
         bytes.iterator.grouped(10).toList.zipWithIndex.map {
