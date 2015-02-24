@@ -23,12 +23,16 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
       new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
 
       val bytes = pickler.assembleParts()
+      ctx.compilationUnit.pickled = bytes
       def rawBytes = // not needed right now, but useful to print raw format.
         bytes.iterator.grouped(10).toList.zipWithIndex.map {
           case (row, i) => s"${i}0: ${row.mkString(" ")}"
         }
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
       if (Printers.pickling ne Printers.noPrinter) new TastyPrinter(bytes).printContents()
+      
+      //println(i"${new DottyUnpickler(bytes, rootSymbols(tree).map(_.denot).toSet, readPositions = true)(ctx).result}%\n%")
+      
     }
     tree
   }
