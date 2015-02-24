@@ -89,7 +89,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
         }
         else if (tag >= firstNatTreeTag) 
           tag match {
-            case TERMREFstatic | TYPEREFstatic | STRINGconst => printName()
+            case TERMREFpkg | TYPEREFpkg | STRINGconst => printName()
             case _ => printNat()
           }
         indent -= 2

@@ -133,8 +133,8 @@ class TreePickler(pickler: TastyPickler) {
         pickleConstant(value)
       case tpe: WithFixedSym =>
         val sym = tpe.symbol
-        if (sym.isStatic && sym.isType || sym.is(Flags.Module)) {
-          writeByte(if (tpe.isType) TYPEREFstatic else TERMREFstatic)
+        if (sym.is(Flags.Package)) {
+          writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
           pickleName(qualifiedName(sym))
         } 
         else if (tpe.prefix == NoPrefix) {

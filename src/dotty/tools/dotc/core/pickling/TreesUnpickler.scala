@@ -179,10 +179,20 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table,
         case TYPEREFsymbol | TERMREFsymbol =>
           val sym = readSymRef()
           NamedType.withFixedSym(readType(), sym)
-        case TYPEREFstatic =>
-          ctx.requiredClass(readName().toTypeName).typeRef
-        case TERMREFstatic =>
-          ctx.requiredModule(readName()).termRef
+        case TYPEREFpkg =>
+          val name = readName()
+          val pkg = 
+            if (name == nme.ROOT) defn.RootClass
+            else if (name == nme.EMPTY_PACKAGE) defn.EmptyPackageClass
+            else ctx.requiredPackage(name).moduleClass
+          pkg.typeRef
+        case TERMREFpkg =>
+          val name = readName()
+          val pkg = 
+            if (name == nme.ROOT) defn.RootPackage
+            else if (name == nme.EMPTY_PACKAGE) defn.EmptyPackageVal
+            else ctx.requiredPackage(name)
+          pkg.termRef
         case TYPEREF =>
           val name =  readName().toTypeName
           TypeRef(readType(), name)

@@ -97,7 +97,7 @@ Standard-Section: "ASTs" TopLevelStat*
   Path          = Constant
                   TERMREFdirect        sym_ASTRef
                   TERMREFsymbol        sym_ASTRef qual_Type
-                  TERMREFstatic        fullyQualified_NameRef
+                  TERMREFpkg           fullyQualified_NameRef
                   TERMREF              possiblySigned_NameRef qual_Type
                   THIS          Length clsRef_Type
                   SKOLEMtype           refinedType_ASTref
@@ -122,7 +122,7 @@ Standard-Section: "ASTs" TopLevelStat*
   Type          = Path
                   TYPEREFdirect        sym_ASTRef
                   TYPEREFsymbol        sym_ASTRef qual_Type
-                  TYPEREFstatic        fullyQualified_NameRef
+                  TYPEREFpkg           fullyQualified_NameRef
                   TYPEREF              possiblySigned_NameRef qual_Type
                   SUPERtype     Length this_Type underlying_Type
                   REFINEDtype   Length underlying_Type refinement_NameRef info_Type
@@ -246,8 +246,8 @@ object PickleFormat {
   final val SHARED = 64
   final val TERMREFdirect = 65
   final val TYPEREFdirect = 66
-  final val TERMREFstatic = 67
-  final val TYPEREFstatic = 68
+  final val TERMREFpkg = 67
+  final val TYPEREFpkg = 68
   final val SKOLEMtype = 69
   final val BYTEconst = 70
   final val SHORTconst = 71
@@ -379,8 +379,8 @@ object PickleFormat {
     case SHARED => "SHARED"
     case TERMREFdirect => "TERMREFdirect"
     case TYPEREFdirect => "TYPEREFdirect"
-    case TERMREFstatic => "TERMREFstatic"
-    case TYPEREFstatic => "TYPEREFstatic"
+    case TERMREFpkg => "TERMREFpkg"
+    case TYPEREFpkg => "TYPEREFpkg"
     case SKOLEMtype => "SKOLEMtype"
     case BYTEconst => "BYTEconst"
     case SHORTconst => "SHORTconst"
