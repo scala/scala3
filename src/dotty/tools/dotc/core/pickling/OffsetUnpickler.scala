@@ -32,6 +32,6 @@ class OffsetUnpickler(reader: TastyReader, edge: Edge) {
         tree.setPosUnchecked(edge.updateOffset(tree.pos, lastOffset))
       }
     }
-    assert(currentAddr == end)
+    // assert(currentAddr == end)
   }
 }

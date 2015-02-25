@@ -21,13 +21,11 @@ import typer.Mode
  *                        instead of creating a new symbol.
  *  @param readPositions  a flag indicating whether positions should be read
  */
-class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table,
-                     roots: Set[SymDenotation], readPositions: Boolean) {
+class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositions: Boolean) {
   import dotty.tools.dotc.core.pickling.PickleFormat._
   import TastyName._
   import tpd._
 
-  private val rootOwner = if (roots.isEmpty) NoSymbol else roots.head.owner
   private val symAtAddr  = new mutable.HashMap[Addr, Symbol]
   private val treeAtAddr = new mutable.HashMap[Addr, Tree]
   
@@ -52,6 +50,7 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table,
   class Completer(reader: TastyReader) extends LazyType {
     import reader._
     def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+      // println(i"complete ${denot.name}")
       treeAtAddr(currentAddr) = new TreeReader(reader).readIndexedDef()
     }
   }
@@ -256,10 +255,10 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table,
     /** Create symbol of definition node and enter in symAtAddr map */
     def createSymbol()(implicit ctx: Context): Unit = {
       val start = currentAddr
-      // println(s"creating symbol at $start")
       val tag = readByte()
       val end = readEnd()
       val name = if (tag == TYPEDEF || tag == TYPEPARAM) readName().toTypeName else readName()
+      // println(i"creating symbol $name at $start")
       skipParams()
       val isAbstractType = nextByte == TYPEBOUNDS
       val isClass = nextByte == TEMPLATE
@@ -284,19 +283,21 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table,
       }
       else if (isParamTag(tag)) flags |= Param
       val nameMatches = (_: Denotation).symbol.name == name
-      val isRoot = ctx.owner == rootOwner && roots.exists(nameMatches)
-      val completer = 
-        if (isRoot) new Completer(subReader(start, end)) with SymbolLoaders.SecondCompleter
+      val prevDenot: SymDenotation = 
+        if (ctx.owner.is(Package)) ctx.effectiveScope.lookup(name)
+        else NoDenotation // TODO check for double reads
+      var completer: LazyType = 
+        if (prevDenot.exists) new Completer(subReader(start, end)) with SymbolLoaders.SecondCompleter
         else new Completer(subReader(start, end))
-      def adjustIfModule(completer: Completer) = 
-        if (flags is Module) ctx.adjustModuleCompleter(completer, name) else completer
+      if (flags is Module) completer = ctx.adjustModuleCompleter(completer, name)
       val sym =
-        if (isRoot) {
-          val d = roots.find(nameMatches).get
-          d.info = completer
-          d.setFlag(flags)
-          d.privateWithin = privateWithin
-          d.symbol
+        if (prevDenot.exists) {
+          println(i"overwriting ${prevDenot.symbol} # ${prevDenot.hashCode}")
+          prevDenot.info = completer
+          prevDenot.setFlag(flags)
+          prevDenot.resetFlag(Touched) // allow one more completion
+          prevDenot.privateWithin = privateWithin
+          prevDenot.symbol
         } else if (isClass)
           ctx.newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord = start.index)
         else {
@@ -429,7 +430,8 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table,
       
       def ta =  ctx.typeAssigner
 
-      readName()
+      val name = readName()
+      // println(s"reading def of $name at $start")
       val tree = tag match {
         case DEFDEF =>
           val tparams = readParams[TypeDef](TYPEPARAM)(localCtx)
@@ -447,23 +449,30 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table,
           sym.info = readType()
           ValDef(sym.asTerm, readRhs(localCtx))
         case TYPEDEF | TYPEPARAM =>
-          if (sym.isClass)
-            ta.assignType(
-              untpd.TypeDef(sym.name.asTypeName, readTemplate(localCtx)),
-              sym)
+          if (sym.isClass) {
+            val cls = sym.asClass
+            val impl = readTemplate(localCtx)
+            cls.info = ClassInfo(
+                cls.owner.thisType, 
+                cls, 
+                impl.parents.map(_.tpe.asInstanceOf[TypeRef]),
+                cls.unforcedDecls,
+                if (impl.self.isEmpty) NoType else impl.self.tpt.tpe)
+            ta.assignType(untpd.TypeDef(sym.name.asTypeName, impl), sym)
+          }
           else {
             sym.info = readType()
             TypeDef(sym.asType)
           }
-        case PARAM | SELFDEF =>
+        case PARAM =>
           sym.info = readType()
           ValDef(sym.asTerm)
       }
       skipTo(end)
       addAddr(start, tree)
     }
-
-    def readTemplate(implicit ctx: Context): Template = {
+    
+    private def readTemplate(implicit ctx: Context): Template = {
       val start = currentAddr
       val cls = ctx.owner.asClass
       val localDummy = ctx.newLocalDummy(cls)
@@ -477,8 +486,14 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table,
           case _ => readTpt()
         }
       }
+      val self = 
+        if (nextByte == SELFDEF) {
+          readByte()
+          readEnd()
+          untpd.ValDef(readName(), readTpt(), EmptyTree).withType(NoType)
+        }
+        else EmptyValDef
       fork.indexStats(end)
-      val self = if (nextByte == SELFDEF) readIndexedDef().asInstanceOf[ValDef] else EmptyValDef
       val constr = readIndexedDef().asInstanceOf[DefDef]
       val lazyStats = readLater(end, _.readIndexedStats(localDummy, end))
       addAddr(start,
@@ -634,7 +649,7 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table,
           val end = readEnd()
           val pid = ref(readTermRef()).asInstanceOf[RefTree]
           addAddr(start,
-            PackageDef(pid, readStats(NoSymbol, end)(ctx.fresh.setOwner(pid.symbol))))     
+            PackageDef(pid, readStats(NoSymbol, end)(ctx.fresh.setOwner(pid.symbol.moduleClass))))     
         }
         else readIndexedStat(ctx.owner)
       }

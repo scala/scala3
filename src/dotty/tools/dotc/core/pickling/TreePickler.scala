@@ -371,8 +371,14 @@ class TreePickler(pickler: TastyPickler) {
         withLength {
           params.foreach(pickleParam)
           tree.parents.foreach(pickleTree)
-          if (!tree.self.isEmpty)
-            pickleDef(SELFDEF, tree.self.symbol, tree.self.tpt)
+          val cinfo @ ClassInfo(_, _, _, _, selfInfo) = tree.symbol.owner.info
+          if ((selfInfo ne NoType) || !tree.self.isEmpty) {
+            writeByte(SELFDEF)
+            withLength {
+              pickleName(tree.self.name)
+              pickleType(cinfo.selfType)
+            }
+          }
           pickleTree(tree.constr)
           rest.foreach(pickleTree)
         }

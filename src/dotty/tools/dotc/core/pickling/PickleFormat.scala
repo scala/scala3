@@ -324,7 +324,7 @@ object PickleFormat {
   final val firstLengthTreeTag = PACKAGE
 
   def isDefTag(tag: Int) = tag match {
-    case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | SELFDEF => true
+    case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM => true
     case _ => false
   }
   
