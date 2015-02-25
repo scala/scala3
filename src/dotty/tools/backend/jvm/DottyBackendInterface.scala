@@ -130,7 +130,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   val externalEqualsNumNum: Symbol = ctx.requiredMethod(BoxesRunTimeClass, nme.equalsNumNum)
   lazy val externalEqualsNumChar: Symbol = ??? // ctx.requiredMethod(BoxesRunTimeClass, nme.equalsNumChar) // this method is private
   val externalEqualsNumObject: Symbol = ctx.requiredMethod(BoxesRunTimeClass, nme.equalsNumObject)
-  val externalEquals: Symbol = ctx.requiredMethod(BoxesRunTimeClass, nme.equals_)
+  val externalEquals: Symbol = BoxesRunTimeClass.info.decl(nme.equals_).suchThat(toDenot(_).info.firstParamTypes.size == 2).symbol
   val MaxFunctionArity: Int = Definitions.MaxFunctionArity
   val FunctionClass: Array[Symbol] = defn.FunctionClass.asInstanceOf[Array[Symbol]]
   val AbstractFunctionClass: Array[Symbol] = defn.AbstractFunctionClass.asInstanceOf[Array[Symbol]]
