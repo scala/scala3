@@ -793,6 +793,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       typr.println(s"adding refinement $refinement")
       checkRefinementNonCyclic(refinement, refineCls, seen)
       val rsym = refinement.symbol
+      if ((rsym.is(Method) || rsym.isType) && rsym.allOverriddenSymbols.isEmpty)
+        ctx.error(i"refinement $rsym without matching type in parent $parent", refinement.pos)
       val rinfo = if (rsym is Accessor) rsym.info.resultType else rsym.info
       RefinedType(parent, rsym.name, rt => rinfo.substThis(refineCls, SkolemType(rt)))
       // todo later: check that refinement is within bounds
@@ -830,7 +832,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   def typedBind(tree: untpd.Bind, pt: Type)(implicit ctx: Context): Bind = track("typedBind") {
     val body1 = typed(tree.body, pt)
     typr.println(i"typed bind $tree pt = $pt bodytpe = ${body1.tpe}")
-    val sym = ctx.newSymbol(ctx.owner, tree.name, EmptyFlags, body1.tpe, coord = tree.pos)
+    val flags = if (tree.isType) BindDefinedType else EmptyFlags
+    val sym = ctx.newSymbol(ctx.owner, tree.name, flags, body1.tpe, coord = tree.pos)
     assignType(cpy.Bind(tree)(tree.name, body1), sym)
   }
 
@@ -1161,8 +1164,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def adapt(tree: Tree, pt: Type, original: untpd.Tree = untpd.EmptyTree)(implicit ctx: Context) = /*>|>*/ track("adapt") /*<|<*/ {
     /*>|>*/ ctx.traceIndented(i"adapting $tree of type ${tree.tpe} to $pt", typr, show = true) /*<|<*/ {
-      interpolateUndetVars(tree)
-      tree overwriteType tree.tpe.simplified
+      interpolateUndetVars(tree, if (tree.isDef) tree.symbol else NoSymbol)
+      tree.overwriteType(tree.tpe.simplified)
       adaptInterpolated(tree, pt, original)
     }
   }
@@ -1359,8 +1362,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
           if (pt.isInstanceOf[PolyProto]) tree
           else {
             val (_, tvars) = constrained(poly, tree)
-            convertNewArray(
-              adaptInterpolated(tree.appliedToTypes(tvars), pt, original))
+            adaptInterpolated(tree.appliedToTypes(tvars), pt, original)
           }
         case wtp =>
           pt match {

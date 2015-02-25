@@ -287,7 +287,7 @@ object Flags {
   /** A trait that has only abstract methods as members
    *  (and therefore can be represented by a Java interface
    */
-  final val PureInterface = typeFlag(22, "interface")
+  final val PureInterface = typeFlag(22, "interface") // TODO when unpickling, reconstitute from context
 
   /** Labeled with of abstract & override */
   final val AbsOverride = termFlag(22, "abstract override")
@@ -300,7 +300,7 @@ object Flags {
 
   /** Method is assumed to be stable */
   final val Stable = termFlag(24, "<stable>")
-
+  
   /** A case parameter accessor */
   final val CaseAccessor = termFlag(25, "<caseaccessor>")
 
@@ -318,6 +318,9 @@ object Flags {
   /** A method that has default params */
   final val DefaultParameterized = termFlag(27, "<defaultparam>")
 
+  /** A type that is defined by a type bind */
+  final val BindDefinedType = typeFlag(27, "<bind-defined>")
+
   /** Symbol is initialized to the default value, e.g. var x: T = _ */
   final val DefaultInit = termFlag(28, "<defaultinit>")
 
@@ -333,7 +336,7 @@ object Flags {
   final val JavaStaticType = JavaStatic.toTypeFlags
 
   /** Trait is not an interface, but does not have fields or intialization code */
-  final val NoInits = typeFlag(32, "<noInits>")
+  final val NoInits = typeFlag(32, "<noInits>") // TODO when unpickling, reconstitute from context
 
   /** Variable is accessed from nested function. */
   final val Captured = termFlag(32, "<captured>")
@@ -345,7 +348,7 @@ object Flags {
   final val Bridge = termFlag(34, "<bridge>")
 
   /** Symbol is a Java varargs bridge */ // (needed?)
-  final val VBridge = termFlag(35, "<vbridge>")
+  final val VBridge = termFlag(35, "<vbridge>") // TODO remove
 
   /** Symbol is a method which should be marked ACC_SYNCHRONIZED */
   final val Synchronized = termFlag(36, "<synchronized>")
@@ -364,7 +367,7 @@ object Flags {
   /** Symbol always defines a fresh named type */
   final val Fresh = commonFlag(45, "<fresh>")
 
-  /** Symbol is defined in a super call */
+  /** Symbol is defined in a super call */ // TODO when unpickling, reconstitute from context
   final val InSuperCall = commonFlag(46, "<in supercall>")
 
   /** Symbol with private access is accessed outside its private scope */
@@ -551,7 +554,7 @@ object Flags {
   /** A Java interface, potentially with default methods */
   final val JavaTrait = allOf(JavaDefined, Trait, NoInits)
 
-    /** A Java interface */
+    /** A Java interface */ // TODO when unpickling, reconstitute from context
   final val JavaInterface = allOf(JavaDefined, Trait)
 
   /** A Java companion object */

@@ -46,9 +46,9 @@ object Periods {
    *  It is coded as follows:
    *
    *     sign, always 0        1 bit
-   *     runid                21 bits
-   *     last phase id:        5 bits
-   *     #phases before last:  5 bits
+   *     runid                19 bits
+   *     last phase id:        6 bits
+   *     #phases before last:  6 bits
    *
    *     // Dmitry: sign == 0 isn't actually always true, in some cases phaseId == -1 is used for shifts, that easily creates code < 0
    */
@@ -153,7 +153,7 @@ object Periods {
   final val FirstPhaseId = 1
 
   /** The number of bits needed to encode a phase identifier. */
-  final val PhaseWidth = 5
+  final val PhaseWidth = 6
   final val PhaseMask = (1 << PhaseWidth) - 1
   final val MaxPossiblePhaseId = PhaseMask
 }
