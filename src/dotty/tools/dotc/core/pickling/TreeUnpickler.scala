@@ -21,7 +21,7 @@ import typer.Mode
  *                        instead of creating a new symbol.
  *  @param readPositions  a flag indicating whether positions should be read
  */
-class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositions: Boolean) {
+class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositions: Boolean) {
   import dotty.tools.dotc.core.pickling.PickleFormat._
   import TastyName._
   import tpd._
@@ -258,7 +258,6 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositi
       val tag = readByte()
       val end = readEnd()
       val name = if (tag == TYPEDEF || tag == TYPEPARAM) readName().toTypeName else readName()
-      // println(i"creating symbol $name at $start")
       skipParams()
       val isAbstractType = nextByte == TYPEBOUNDS
       val isClass = nextByte == TEMPLATE
@@ -271,6 +270,7 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositi
           result
         }
       val (givenFlags, annots, privateWithin) = readModifiers(end)
+      println(i"creating symbol $name at $start with flags $givenFlags")
       val lacksDefinition =
         rhsIsEmpty && !name.isConstructorName && !givenFlags.is(ParamOrAccessor) ||
         isAbstractType
@@ -432,7 +432,7 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositi
 
       val name = readName()
       // println(s"reading def of $name at $start")
-      val tree = tag match {
+      val tree: MemberDef = tag match {
         case DEFDEF =>
           val tparams = readParams[TypeDef](TYPEPARAM)(localCtx)
           val vparamss = readParamss(localCtx)
@@ -468,6 +468,10 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositi
           sym.info = readType()
           ValDef(sym.asTerm)
       }
+      val mods = 
+        if (sym.annotations.isEmpty) EmptyModifiers
+        else Modifiers(annotations = sym.annotations.map(_.tree))
+      tree.withMods(mods) // record annotations in tree so that tree positions can be filled in.
       skipTo(end)
       addAddr(start, tree)
     }
@@ -658,7 +662,7 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositi
     def readLater[T](end: Addr, op: TreeReader => T): Trees.Lazy[T] = {
       val localReader = fork
       skipTo(end)
-      new Trees.Lazy[T] { def complete: T = op(localReader) }
+      new LazyReader(localReader, op)
     }
     
 // ------ Hooks for positions ------------------------------------------------
@@ -678,4 +682,14 @@ class TreesUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositi
       else tree
     }
   }
+
+  class LazyReader[T](reader: TreeReader, op: TreeReader => T) extends Trees.Lazy[T] {
+    var posReader: Option[PositionReader] = None
+    def complete: T = {
+      val res = op(reader)
+      posReader.foreach(_.unpickle(res))
+      res
+    }  
+  }
+    
 }

@@ -32,13 +32,11 @@ class DottyUnpickler(bytes: Array[Byte], readPositions: Boolean = false)(implici
 
   class TreeSectionUnpickler()(implicit ctx: Context) extends SectionUnpickler[List[Tree]]("ASTs") {
     def unpickle(reader: TastyReader, tastyName: TastyName.Table): List[Tree] =
-      new TreesUnpickler(reader, tastyName, readPositions).unpickle()
+      new TreeUnpickler(reader, tastyName, readPositions).unpickle()
   }
   
   class PositionsSectionUnpickler(trees: List[Tree])(implicit ctx: Context) extends SectionUnpickler[Unit]("Positions") {
-    def unpickle(reader: TastyReader, tastyName: TastyName.Table): Unit = {
-      new OffsetUnpickler(reader, Edge.left).traverse(trees)
-      new OffsetUnpickler(reader, Edge.right).traverse(trees)
-    }
+    def unpickle(reader: TastyReader, tastyName: TastyName.Table): Unit =
+      new PositionReader(reader).unpickle(trees)
   }
 }

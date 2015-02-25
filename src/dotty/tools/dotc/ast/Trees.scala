@@ -309,7 +309,7 @@ object Trees {
 
   /** Tree defines a new symbol and carries modifiers.
    *  The position of a MemberDef contains only the defined identifier or pattern.
-   *  The envelope of a MemberDef contains the whole definition and his its point
+   *  The envelope of a MemberDef contains the whole definition and has its point
    *  on the opening keyword (or the next token after that if keyword is missing).
    */
   abstract class MemberDef[-T >: Untyped] extends NameTree[T] with DefTree[T] {
@@ -330,7 +330,7 @@ object Trees {
 
     protected def setMods(mods: Modifiers[T @uncheckedVariance]) = myMods = mods
 
-    override def envelope: Position = rawMods.pos union pos union initialPos
+    override def envelope: Position = rawMods.pos.union(pos).union(initialPos)
   }
 
   /** A ValDef or DefDef tree */
@@ -623,8 +623,8 @@ object Trees {
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = ValDef[T]
     assert(isEmpty || tpt != genericEmptyTree)
-    protected def maybeLazy = preRhs
-    protected def maybeLazy_=(x: Any) = preRhs = x
+    def unforced = preRhs
+    protected def force(x: Any) = preRhs = x
   }
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
@@ -633,8 +633,9 @@ object Trees {
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
     assert(tpt != genericEmptyTree)
-    protected def maybeLazy = preRhs
-    protected def maybeLazy_=(x: Any) = preRhs = x
+    def unforcedRhs = preRhs
+    def unforced = preRhs
+    protected def force(x: Any) = preRhs = x
   }
 
   /** mods class name template     or
@@ -660,8 +661,8 @@ object Trees {
   case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], private var preBody: Any /*List[Tree[T]] | Lazy[List[Tree]]]*/)
     extends DefTree[T] with WithLazyField[List[Tree[T]]] {
     type ThisTree[-T >: Untyped] = Template[T]
-    protected def maybeLazy = preBody
-    protected def maybeLazy_=(x: Any) = preBody = x
+    def unforced = preBody
+    protected def force(x: Any) = preBody = x
     def body: List[Tree[T]] = forceIfLazy
   }
 
@@ -758,16 +759,16 @@ object Trees {
 
   /** A tree that can have a lazy field 
    *  The field is represented by some private `var` which is
-   *  proxied by the `maybeLazy` accessors. Forcing the field will
+   *  proxied `unforced` and `force`. Forcing the field will
    *  set the `var` to the underlying value. 
    */
   trait WithLazyField[+T] {
-    protected def maybeLazy: Any
-    protected def maybeLazy_=(x: Any): Unit
-    def forceIfLazy: T = maybeLazy match {
+    def unforced: Any
+    protected def force(x: Any): Unit
+    def forceIfLazy: T = unforced match {
       case lzy: Lazy[T] => 
         val x = lzy.complete
-        maybeLazy = x
+        force(x)
         x
       case x: T @ unchecked => x
     }

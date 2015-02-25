@@ -102,26 +102,17 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
       }
     }
   }
-  
+
   class PositionUnpickler extends SectionUnpickler[Unit]("Positions") {
     def unpickle(reader: TastyReader, tastyName: TastyName.Table): Unit = {
       import reader._
-
-      def unpickleOffsets(edge: Edge): Unit = {
-        var lastOffset = 0
-        var lastAddr = 0
-        val length = readNat()
-        println(s"$length offset bytes")
-        val end = currentAddr + length
-        until(end) {
-          lastOffset += readInt()
-          lastAddr += readInt()
-          println(s"$lastOffset: $lastAddr")
-        }
+      var lastOffset = 0
+      var lastAddr = 0
+      while (!isAtEnd) {
+        lastOffset += readInt()
+        lastAddr += readInt()
+        println(s"$lastOffset: $lastAddr")
       }
-      
-      unpickleOffsets(Edge.left)
-      unpickleOffsets(Edge.right)
     }
   }
 }

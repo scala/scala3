@@ -181,11 +181,14 @@ Note: Tree tags are grouped into 4 categories that determine what follows, and t
 	Category 3 (tags 100-127):	tag Nat AST
 	Category 4 (tags 128-255):  tag Length <payload>
 
-Standard Section: "Positions" startPos_Index endPos_Index
+Standard Section: "Positions" Assoc*
 
-  Index         = Length Assoc*
-  Assoc         = offset_Delta addr_Delta   // largest tree starting/ending at offset
-  Delta         = Int                 	    // difference between consecutive offsets / tree addresses,
+  Assoc         = offset_Delta addr_Delta   // offsets and addresses determined by a tree traversal:
+                                            // For each node with positions <start..end>
+                                            //   start <encoding of children> end
+                                            // Offsets and addresses are difference encoded.
+                                            // Entries with same offset as previous entry are omitted.
+  Delta         = Int                 	    // Difference between consecutive offsets / tree addresses,
                                             // First offset/address is always assumed to be 0
 
 **************************************************************************************/
