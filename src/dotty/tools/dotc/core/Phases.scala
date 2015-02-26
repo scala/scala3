@@ -47,7 +47,7 @@ object Phases {
     this: ContextBase =>
 
     // drop NoPhase at beginning
-    def allPhases = (if(squashedPhases ne null) squashedPhases else phases).tail
+    def allPhases = (if (squashedPhases.nonEmpty) squashedPhases else phases).tail
 
     object NoPhase extends Phase {
       override def exists = false

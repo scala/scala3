@@ -567,8 +567,8 @@ object Contexts {
     /** Phases by id */
     private[core] var phases: Array[Phase] = _
 
-    /** Phases with consecutive Transforms groupped into a single phase, null if squashing is disabled */
-    private [core] var squashedPhases: Array[Phase] = _
+    /** Phases with consecutive Transforms groupped into a single phase, Empty array if squashing is disabled */
+    private [core] var squashedPhases: Array[Phase] = Array.empty[Phase]
 
     /** Next denotation transformer id */
     private[core] var nextDenotTransformerId: Array[Int] = _
