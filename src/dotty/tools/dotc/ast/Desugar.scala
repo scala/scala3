@@ -342,7 +342,10 @@ object desugar {
     val companions =
       if (mods is Case) {
         val parent =
-          if (constrTparams.nonEmpty || constrVparamss.length > 1) anyRef
+          if (constrTparams.nonEmpty || 
+              constrVparamss.length > 1 || 
+              mods.is(Abstract) || 
+              constr.mods.is(Private)) anyRef
             // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
           else (constrVparamss :\ classTypeRef) ((vparams, restpe) => Function(vparams map (_.tpt), restpe))
         val applyMeths =
