@@ -161,7 +161,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree], proto: Type)(implicit ctx: Context): UnApply =
     ta.assignType(untpd.UnApply(fun, implicits, patterns), proto)
 
-  def ValDef(sym: TermSymbol, rhs: Any /*Tree | Lazy[Tree]*/ = EmptyTree)(implicit ctx: Context): ValDef =
+  def ValDef(sym: TermSymbol, rhs: LazyTree = EmptyTree)(implicit ctx: Context): ValDef =
     ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym)
 
   def SyntheticValDef(name: TermName, rhs: Tree)(implicit ctx: Context): ValDef =
@@ -234,7 +234,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       for (tparam <- cls.typeParams if !(bodyTypeParams contains tparam))
       yield TypeDef(tparam)
     val findLocalDummy = new FindLocalDummyAccumulator(cls)
-    val localDummy = ((NoSymbol: Symbol) /: body)(findLocalDummy)
+    val localDummy = ((NoSymbol: Symbol) /: body)(findLocalDummy.apply)
       .orElse(ctx.newLocalDummy(cls))
     val impl = untpd.Template(constr, parents, selfType, newTypeParams ++ body)
       .withType(localDummy.nonMemberTermRef)
@@ -382,7 +382,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else Literal(Constant(null)).select(defn.Any_asInstanceOf).appliedToType(tpe)
   }
   private class FindLocalDummyAccumulator(cls: ClassSymbol)(implicit ctx: Context) extends TreeAccumulator[Symbol] {
-    def apply(sym: Symbol, tree: Tree) =
+    def apply(sym: Symbol, tree: Tree)(implicit ctx: Context) =
       if (sym.exists) sym
       else if (tree.isDef) {
         val owner = tree.symbol.owner
@@ -538,13 +538,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case _ => false
     }
 
-    def shallowFold[T](z: T)(op: (T, tpd.Tree) => T) =
+    def shallowFold[T](z: T)(op: (T, tpd.Tree) => T)(implicit ctx: Context) =
       new ShallowFolder(op).apply(z, tree)
 
-    def deepFold[T](z: T)(op: (T, tpd.Tree) => T) =
+    def deepFold[T](z: T)(op: (T, tpd.Tree) => T)(implicit ctx: Context) =
       new DeepFolder(op).apply(z, tree)
 
-    def find[T](pred: (tpd.Tree) => Boolean): Option[tpd.Tree] =
+    def find[T](pred: (tpd.Tree) => Boolean)(implicit ctx: Context): Option[tpd.Tree] =
       shallowFold[Option[tpd.Tree]](None)((accum, tree) => if (pred(tree)) Some(tree) else accum)
 
     def subst(from: List[Symbol], to: List[Symbol])(implicit ctx: Context): ThisTree =
@@ -571,7 +571,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def changeOwnerAfter(from: Symbol, to: Symbol, trans: DenotTransformer)(implicit ctx: Context): ThisTree = {
       assert(ctx.phase == trans.next)
       val traverser = new TreeTraverser {
-        def traverse(tree: Tree) = tree match {
+        def traverse(tree: Tree)(implicit ctx: Context) = tree match {
           case tree: DefTree =>
             val sym = tree.symbol
             if (sym.denot(ctx.withPhase(trans)).owner == from)
@@ -657,21 +657,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     // --- Higher order traversal methods -------------------------------
 
-    def foreachSubTree(f: Tree => Unit): Unit = { //TODO should go in tpd.
+    def foreachSubTree(f: Tree => Unit)(implicit ctx: Context): Unit = { //TODO should go in tpd.
       val traverser = new TreeTraverser {
-        def traverse(tree: Tree) = foldOver(f(tree), tree)
+        def traverse(tree: Tree)(implicit ctx: Context) = foldOver(f(tree), tree)
       }
       traverser.traverse(tree)
     }
 
-    def existsSubTree(p: Tree => Boolean): Boolean = {
+    def existsSubTree(p: Tree => Boolean)(implicit ctx: Context): Boolean = {
       val acc = new TreeAccumulator[Boolean] {
-        def apply(x: Boolean, t: Tree) = x || p(t) || foldOver(x, t)
+        def apply(x: Boolean, t: Tree)(implicit ctx: Context) = x || p(t) || foldOver(x, t)
       }
       acc(false, tree)
     }
 
-    def filterSubTrees(f: Tree => Boolean): List[Tree] = {
+    def filterSubTrees(f: Tree => Boolean)(implicit ctx: Context): List[Tree] = {
       val buf = new mutable.ListBuffer[Tree]
       foreachSubTree { tree => if (f(tree)) buf += tree }
       buf.toList
@@ -770,9 +770,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   /** A traverser that passes the enlcosing class or method as an argumenr
    *  to the traverse method.
    */
-  abstract class EnclosingMethodTraverser(implicit ctx: Context) extends TreeAccumulator[Symbol] {
-    def traverse(enclMeth: Symbol, tree: Tree): Unit
-    def apply(enclMeth: Symbol, tree: Tree) = {
+  abstract class EnclosingMethodTraverser extends TreeAccumulator[Symbol] {
+    def traverse(enclMeth: Symbol, tree: Tree)(implicit ctx: Context): Unit
+    def apply(enclMeth: Symbol, tree: Tree)(implicit ctx: Context) = {
       tree match {
         case _: DefTree if tree.symbol.exists =>
           traverse(tree.symbol.enclosingMethod, tree)

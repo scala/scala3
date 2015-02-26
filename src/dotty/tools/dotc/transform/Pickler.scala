@@ -31,7 +31,7 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
       if (Printers.pickling ne Printers.noPrinter) new TastyPrinter(bytes).printContents()
       
-      println(i"unpickled:\n ${new DottyUnpickler(bytes, readPositions = false).result}%\n%")
+      //println(i"unpickled:\n ${new DottyUnpickler(bytes, readPositions = false).result}%\n%")
       
     }
     tree

@@ -365,7 +365,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
             readByte()
             val end = readEnd()
             val sym = readType().typeSymbol
-            val lazyAnnotTree = readLater(end, _.readTerm())
+            val lazyAnnotTree = readLater(end, rdr => ctx => rdr.readTerm()(ctx))
             annots += Annotation.deferred(sym, _ => lazyAnnotTree.complete)
           case _ =>
             assert(false, s"illegal modifier tag at $currentAddr")
@@ -424,7 +424,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
         }
       }
       
-      def readRhs(implicit ctx: Context) = readLater(end, _.readTerm())
+      def readRhs(implicit ctx: Context) = 
+        if (nextByte == EMPTYTREE) EmptyTree
+        else readLater(end, rdr => ctx => rdr.readTerm()(ctx))
 
       def localCtx = ctx.fresh.setOwner(sym)
       
@@ -499,7 +501,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
         else EmptyValDef
       fork.indexStats(end)
       val constr = readIndexedDef().asInstanceOf[DefDef]
-      val lazyStats = readLater(end, _.readIndexedStats(localDummy, end))
+      val lazyStats = readLater(end, rdr => ctx => rdr.readIndexedStats(localDummy, end)(ctx))
       addAddr(start,
         untpd.Template(constr, parents, self, lazyStats)
           .withType(localDummy.nonMemberTermRef))
@@ -659,7 +661,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
       }
     }
 
-    def readLater[T](end: Addr, op: TreeReader => T)(implicit ctx: Context): Trees.Lazy[T] = {
+    def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context => T): Trees.Lazy[T] = {
       val localReader = fork
       skipTo(end)
       new LazyReader(localReader, op)
@@ -704,9 +706,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
       }
   }
 
-  class LazyReader[T](reader: TreeReader, op: TreeReader => T)(implicit ctx: Context) extends Trees.Lazy[T] with DeferredPosition {
-    def complete: T = {
-      val res = op(reader)
+  class LazyReader[T <: AnyRef](reader: TreeReader, op: TreeReader => Context => T) extends Trees.Lazy[T] with DeferredPosition {
+    def complete(implicit ctx: Context): T = {
+      val res = op(reader)(ctx)
       normalizePos(res, parentPos)
       res
     }  

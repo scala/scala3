@@ -161,8 +161,8 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       if (callee.enclosingClass != caller.enclosingClass) calledFromInner += callee
     }
 
-    private class CollectDependencies(implicit ctx: Context) extends EnclosingMethodTraverser {
-      def traverse(enclMeth: Symbol, tree: Tree) = try { //debug
+    private class CollectDependencies extends EnclosingMethodTraverser {
+      def traverse(enclMeth: Symbol, tree: Tree)(implicit ctx: Context) = try { //debug
         val enclosure = enclMeth.skipConstructor
         val sym = tree.symbol
         def narrowTo(thisClass: ClassSymbol) = {

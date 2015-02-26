@@ -114,7 +114,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
       private val seen = mutable.Set[Symbol](accessors: _*)
       val retained = mutable.Set[Symbol]()
       def dropped: collection.Set[Symbol] = seen -- retained
-      override def traverse(tree: Tree) = {
+      override def traverse(tree: Tree)(implicit ctx: Context) = {
         val sym = tree.symbol
         tree match {
           case Ident(_) | Select(This(_), _) if inConstr && seen(tree.symbol) =>

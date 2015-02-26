@@ -76,6 +76,9 @@ object Trees {
   }
 
   private var nextId = 0 // for debugging
+  
+  type LazyTree = AnyRef     /* really: Tree | Lazy[Tree] */
+  type LazyTreeList = AnyRef /* really: List[Tree] | Lazy[List[Tree]] */
 
   /** Trees take a parameter indicating what the type of their `tpe` field
    *  is. Two choices: `Type` or `Untyped`.
@@ -336,7 +339,8 @@ object Trees {
   /** A ValDef or DefDef tree */
   trait ValOrDefDef[-T >: Untyped] extends MemberDef[T] with WithLazyField[Tree[T]] {
     def tpt: Tree[T]
-    def rhs: Tree[T] = forceIfLazy
+    def unforcedRhs: LazyTree = unforced
+    def rhs(implicit ctx: Context): Tree[T] = forceIfLazy
   }
 
   // ----------- Tree case classes ------------------------------------
@@ -619,23 +623,22 @@ object Trees {
   }
 
   /** mods val name: tpt = rhs */
-  case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: Any /*Tree[T] | Lazy[Tree[T]]*/)
+  case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = ValDef[T]
     assert(isEmpty || tpt != genericEmptyTree)
     def unforced = preRhs
-    protected def force(x: Any) = preRhs = x
+    protected def force(x: AnyRef) = preRhs = x
   }
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
   case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]], 
-      vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: Any /*Tree[T] | Lazy[Tree[T]]*/)
+      vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
     assert(tpt != genericEmptyTree)
-    def unforcedRhs = preRhs
     def unforced = preRhs
-    protected def force(x: Any) = preRhs = x
+    protected def force(x: AnyRef) = preRhs = x
   }
 
   /** mods class name template     or
@@ -658,12 +661,13 @@ object Trees {
   }
 
   /** extends parents { self => body } */
-  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], private var preBody: Any /*List[Tree[T]] | Lazy[List[Tree]]]*/)
+  case class Template[-T >: Untyped] private[ast] (constr: DefDef[T], parents: List[Tree[T]], self: ValDef[T], private var preBody: LazyTreeList)
     extends DefTree[T] with WithLazyField[List[Tree[T]]] {
     type ThisTree[-T >: Untyped] = Template[T]
+    def unforcedBody = unforced
     def unforced = preBody
-    protected def force(x: Any) = preBody = x
-    def body: List[Tree[T]] = forceIfLazy
+    protected def force(x: AnyRef) = preBody = x
+    def body(implicit ctx: Context): List[Tree[T]] = forceIfLazy
   }
 
   /** import expr.selectors
@@ -762,10 +766,10 @@ object Trees {
    *  proxied `unforced` and `force`. Forcing the field will
    *  set the `var` to the underlying value. 
    */
-  trait WithLazyField[+T] {
-    def unforced: Any
-    protected def force(x: Any): Unit
-    def forceIfLazy: T = unforced match {
+  trait WithLazyField[+T <: AnyRef] {
+    def unforced: AnyRef
+    protected def force(x: AnyRef): Unit
+    def forceIfLazy(implicit ctx: Context): T = unforced match {
       case lzy: Lazy[T] => 
         val x = lzy.complete
         force(x)
@@ -778,8 +782,8 @@ object Trees {
    *  These can be instantiated with Lazy instances which
    *  can delay tree construction until the field is first demanded.
    */
-  trait Lazy[T] {
-    def complete: T
+  trait Lazy[T <: AnyRef] {
+    def complete(implicit ctx: Context): T
   }
 
   // ----- Generic Tree Instances, inherited from  `tpt` and `untpd`.
@@ -1026,20 +1030,20 @@ object Trees {
         case tree: UnApply if (fun eq tree.fun) && (implicits eq tree.implicits) && (patterns eq tree.patterns) => tree
         case _ => finalize(tree, untpd.UnApply(fun, implicits, patterns))
       }
-      def ValDef(tree: Tree)(name: TermName, tpt: Tree, rhs: Tree): ValDef = tree match {
-        case tree: ValDef if (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
+      def ValDef(tree: Tree)(name: TermName, tpt: Tree, rhs: LazyTree): ValDef = tree match {
+        case tree: ValDef if (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.ValDef(name, tpt, rhs))
       }
-      def DefDef(tree: Tree)(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: Tree): DefDef = tree match {
-        case tree: DefDef if (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
+      def DefDef(tree: Tree)(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree): DefDef = tree match {
+        case tree: DefDef if (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.DefDef(name, tparams, vparamss, tpt, rhs))
       }
       def TypeDef(tree: Tree)(name: TypeName, rhs: Tree, tparams: List[untpd.TypeDef]): TypeDef = tree match {
         case tree: TypeDef if (name == tree.name) && (rhs eq tree.rhs) && (tparams eq tree.tparams) => tree
         case _ => finalize(tree, untpd.TypeDef(name, tparams, rhs))
       }
-      def Template(tree: Tree)(constr: DefDef, parents: List[Tree], self: ValDef, body: List[Tree]): Template = tree match {
-        case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (self eq tree.self) && (body eq tree.body) => tree
+      def Template(tree: Tree)(constr: DefDef, parents: List[Tree], self: ValDef, body: LazyTreeList): Template = tree match {
+        case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (self eq tree.self) && (body eq tree.unforcedBody) => tree
         case _ => finalize(tree, untpd.Template(constr, parents, self, body))
       }
       def Import(tree: Tree)(expr: Tree, selectors: List[untpd.Tree]): Import = tree match {
@@ -1071,13 +1075,13 @@ object Trees {
         Try(tree: Tree)(expr, cases, finalizer)
       def UnApply(tree: UnApply)(fun: Tree = tree.fun, implicits: List[Tree] = tree.implicits, patterns: List[Tree] = tree.patterns): UnApply =
         UnApply(tree: Tree)(fun, implicits, patterns)
-      def ValDef(tree: ValDef)(name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: Tree = tree.rhs): ValDef =
+      def ValDef(tree: ValDef)(name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs): ValDef =
         ValDef(tree: Tree)(name, tpt, rhs)
-      def DefDef(tree: DefDef)(name: TermName = tree.name, tparams: List[TypeDef] = tree.tparams, vparamss: List[List[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: Tree = tree.rhs): DefDef =
+      def DefDef(tree: DefDef)(name: TermName = tree.name, tparams: List[TypeDef] = tree.tparams, vparamss: List[List[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs): DefDef =
         DefDef(tree: Tree)(name, tparams, vparamss, tpt, rhs)
       def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs, tparams: List[untpd.TypeDef] = tree.tparams): TypeDef =
         TypeDef(tree: Tree)(name, rhs, tparams)
-      def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, self: ValDef = tree.self, body: List[Tree] = tree.body): Template =
+      def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody): Template =
         Template(tree: Tree)(constr, parents, self, body)
     }
 
@@ -1181,10 +1185,10 @@ object Trees {
         transform(trees).asInstanceOf[List[Tr]]
     }
 
-    abstract class TreeAccumulator[X] extends ((X, Tree) => X) {
-      def apply(x: X, tree: Tree): X
-      def apply(x: X, trees: Traversable[Tree]): X = (x /: trees)(apply)
-      def foldOver(x: X, tree: Tree): X = tree match {
+    abstract class TreeAccumulator[X] {
+      def apply(x: X, tree: Tree)(implicit ctx: Context): X
+      def apply(x: X, trees: Traversable[Tree])(implicit ctx: Context): X = (x /: trees)(apply)
+      def foldOver(x: X, tree: Tree)(implicit ctx: Context): X = tree match {
         case Ident(name) =>
           x
         case Select(qualifier, name) =>
@@ -1269,21 +1273,21 @@ object Trees {
     }
 
     abstract class TreeTraverser extends TreeAccumulator[Unit] {
-      def traverse(tree: Tree): Unit
-      def apply(x: Unit, tree: Tree) = traverse(tree)
-      protected def traverseChildren(tree: Tree) = foldOver((), tree)
+      def traverse(tree: Tree)(implicit ctx: Context): Unit
+      def apply(x: Unit, tree: Tree)(implicit ctx: Context) = traverse(tree)
+      protected def traverseChildren(tree: Tree)(implicit ctx: Context) = foldOver((), tree)
     }
 
     /** Fold `f` over all tree nodes, in depth-first, prefix order */
     class DeepFolder[X](f: (X, Tree) => X) extends TreeAccumulator[X] {
-      def apply(x: X, tree: Tree): X = foldOver(f(x, tree), tree)
+      def apply(x: X, tree: Tree)(implicit ctx: Context): X = foldOver(f(x, tree), tree)
     }
 
     /** Fold `f` over all tree nodes, in depth-first, prefix order, but don't visit
      *  subtrees where `f` returns a different result for the root, i.e. `f(x, root) ne x`.
      */
     class ShallowFolder[X](f: (X, Tree) => X) extends TreeAccumulator[X] {
-      def apply(x: X, tree: Tree): X = {
+      def apply(x: X, tree: Tree)(implicit ctx: Context): X = {
         val x1 = f(x, tree)
         if (x1.asInstanceOf[AnyRef] ne x1.asInstanceOf[AnyRef]) x1
         else foldOver(x1, tree)

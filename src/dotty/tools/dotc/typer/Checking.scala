@@ -169,7 +169,7 @@ object Checking {
     val checkTree = new TreeAccumulator[Unit] {
       def checkRef(tree: Tree, sym: Symbol) =
         if (sym.maybeOwner == refineCls && !seen(sym)) forwardRef(tree)
-      def apply(x: Unit, tree: Tree) = tree match {
+      def apply(x: Unit, tree: Tree)(implicit ctx: Context) = tree match {
         case tree: MemberDef =>
           foldOver(x, tree)
           seen += tree.symbol
