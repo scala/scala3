@@ -17,22 +17,28 @@ import typer.Mode
 /** Unpickler for typed trees
  *  @param reader         the reader from which to unpickle
  *  @param tastyName      the nametable
- *  @param roots          a set of pre-existing symbols whose attributes should be overwritten
- *                        instead of creating a new symbol.
- *  @param readPositions  a flag indicating whether positions should be read
+ *  @param totalRange     the range position enclosing all returned trees,
+                          or NoPosition if positions should not be unpickled
+ *  @param positions      A map from 
  */
-class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositions: Boolean) {
+class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, 
+    totalRange: Position, positions: collection.Map[Addr, Position]) {
   import dotty.tools.dotc.core.pickling.PickleFormat._
   import TastyName._
   import tpd._
+  
+  def readPositions = totalRange.exists
 
   private val symAtAddr  = new mutable.HashMap[Addr, Symbol]
   private val treeAtAddr = new mutable.HashMap[Addr, Tree]
   
   private val typeAtAddr = new mutable.HashMap[Addr, Type] // currently populated only for types that are known to be SHAREd.
 
-  def unpickle()(implicit ctx: Context): List[Tree] =
-    new TreeReader(reader).readTopLevelStats()
+  def unpickle()(implicit ctx: Context): List[Tree] = {
+    val stats = new TreeReader(reader).readTopLevelStats()
+    normalizePos(stats, totalRange)
+    stats
+  }
     
   def toTermName(tname: TastyName): TermName = tname match {
     case Simple(name) => name
@@ -475,7 +481,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
         else Modifiers(annotations = sym.annotations.map(_.tree))
       tree.withMods(mods) // record annotations in tree so that tree positions can be filled in.
       skipTo(end)
-      addAddr(start, tree)
+      setPos(start, tree)
     }
     
     private def readTemplate(implicit ctx: Context): Template = {
@@ -502,7 +508,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
       fork.indexStats(end)
       val constr = readIndexedDef().asInstanceOf[DefDef]
       val lazyStats = readLater(end, rdr => ctx => rdr.readIndexedStats(localDummy, end)(ctx))
-      addAddr(start,
+      setPos(start,
         untpd.Template(constr, parents, self, lazyStats)
           .withType(localDummy.nonMemberTermRef))
     }
@@ -625,14 +631,14 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
         finally assert(currentAddr == end, s"$currentAddr $end ${astTagToString(tag)}")
       }
 
-      addAddr(start, 
+      setPos(start, 
         if (tag < firstLengthTreeTag) readSimpleTerm()
         else readLengthTerm())
     }
     
     def readTpt()(implicit ctx: Context) = {
       val start = currentAddr
-      addAddr(start, TypeTree(readType()))
+      setPos(start, TypeTree(readType()))
     }
 
     def readCases()(implicit ctx: Context): List[CaseDef] = 
@@ -643,7 +649,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
         val pat = readTerm()
         val rhs = readTerm()
         val guard = ifBefore(end)(readTerm(), EmptyTree)
-        addAddr(start, CaseDef(pat, guard, rhs))
+        setPos(start, CaseDef(pat, guard, rhs))
       }
 
     def readTopLevelStats()(implicit ctx: Context): List[Tree] = {
@@ -654,7 +660,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
           readByte()
           val end = readEnd()
           val pid = ref(readTermRef()).asInstanceOf[RefTree]
-          addAddr(start,
+          setPos(start,
             PackageDef(pid, readStats(NoSymbol, end)(ctx.fresh.setOwner(pid.symbol.moduleClass))))     
         }
         else readIndexedStat(ctx.owner)
@@ -668,20 +674,15 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
     }
     
 // ------ Hooks for positions ------------------------------------------------
-    
-    /** A temporary position encoding.
-     *  Start and end fields are each given the address of bytes from which tree is unpickled
-     *  These are later overridden with the actual offsets taken from the Positions section.
+          
+    /** Record address from which tree was created as a temporary position in the tree. 
+     *  The temporary position contains deltas relative to the position of the (as yet unknown)
+     *  parent node. It is marked as a non-synthetic source position. 
      */
-    def indexPosition(addr: Addr): Position = {
-      assert(addr.index < MaxOffset)
-      Position(addr.index, addr.index, 0)
-    }
-      
-    /** Record address from which tree was created as a temporary position in the tree. */
-    def addAddr[T <: Tree](addr: Addr, tree: T): T = {
-      if (readPositions) { tree.setPosUnchecked(indexPosition(addr)); tree }
-      else tree
+    def setPos[T <: Tree](addr: Addr, tree: T): T = {
+      if (readPositions)
+        tree.setPosUnchecked(positions.getOrElse(addr, Position(0, 0, 0)))
+      tree
     }
   }
   
@@ -696,8 +697,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
           assert(x.pos.exists)
           val absPos = Position(parentPos.start + x.pos.start, parentPos.end - x.pos.end)
           x.setPosUnchecked(absPos)
-          for (child <- x.productIterator) 
-            normalizePos(child, absPos)
+          x match {
+            case x: MemberDef => normalizePos(x.symbol.annotations, absPos)
+            case _ =>
+          }
+          normalizePos(x.productIterator, absPos)
         case x: DeferredPosition =>
           x.parentPos = parentPos
         case xs: List[_] =>

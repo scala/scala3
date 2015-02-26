@@ -185,8 +185,8 @@ Standard Section: "Positions" sourceLength_Nat Assoc*
 
   Assoc         = addr_Delta offset_Delta offset_Delta?
                                             // addr_Delta      :
-                                            //    Difference of address to last recorded node. Always > 0
-                                            //    (The initial base is -1, so a a first node of 0 would have a delta of 1).
+                                            //    Difference of address to last recorded node.
+                                            //    All but the first addr_Deltas are > 0, the first is >= 0.
                                             // 2nd offset_Delta:
                                             //    Difference of end offset of addressed node vs parent node. Always <= 0
                                             // 1st offset Delta, if delta >= 0 or 2nd offset delta exists

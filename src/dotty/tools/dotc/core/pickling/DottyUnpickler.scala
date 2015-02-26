@@ -6,6 +6,8 @@ package pickling
 import Contexts._, SymDenotations._
 import dotty.tools.dotc.ast.tpd
 import TastyUnpickler._, TastyBuffer._
+import util.Positions._
+import PositionUnpickler._
 
 object DottyUnpickler {
 
@@ -22,21 +24,25 @@ class DottyUnpickler(bytes: Array[Byte], readPositions: Boolean = false)(implici
   import tpd._
 
   val unpickler = new TastyUnpickler(bytes)
-
+  
   def result: List[Tree] = {
-    val trees = unpickler.unpickle(new TreeSectionUnpickler()).getOrElse(Nil)
-    if (readPositions)
-      unpickler.unpickle(new PositionsSectionUnpickler(trees))
-    trees
+    val (totalRange, positions) = 
+      if (readPositions) 
+        unpickler.unpickle(new PositionsSectionUnpickler())
+          .getOrElse((NoPosition, null))
+      else (NoPosition, null)
+    unpickler.unpickle(new TreeSectionUnpickler(totalRange, positions))
+      .getOrElse(Nil)
   }
 
-  class TreeSectionUnpickler()(implicit ctx: Context) extends SectionUnpickler[List[Tree]]("ASTs") {
+  class TreeSectionUnpickler(totalRange: Position, positions: AddrToPosition)(implicit ctx: Context) 
+      extends SectionUnpickler[List[Tree]]("ASTs") {
     def unpickle(reader: TastyReader, tastyName: TastyName.Table): List[Tree] =
-      new TreeUnpickler(reader, tastyName, readPositions).unpickle()
+      new TreeUnpickler(reader, tastyName, totalRange, positions).unpickle()
   }
   
-  class PositionsSectionUnpickler(trees: List[Tree])(implicit ctx: Context) extends SectionUnpickler[Unit]("Positions") {
-    def unpickle(reader: TastyReader, tastyName: TastyName.Table): Unit =
-      new PositionReader(reader).unpickle(trees)
+  class PositionsSectionUnpickler()(implicit ctx: Context) extends SectionUnpickler[(Position, AddrToPosition)]("Positions") {
+    def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
+      new PositionUnpickler(reader).unpickle()
   }
 }

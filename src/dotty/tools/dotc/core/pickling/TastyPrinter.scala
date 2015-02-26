@@ -6,6 +6,9 @@ import Contexts._, Decorators._
 import printing.Texts._
 import TastyName._
 import TastyUnpickler._
+import TastyBuffer.Addr
+import util.Positions.Position
+import collection.mutable
 
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
   
@@ -33,11 +36,11 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
     println("Names:")
     printNames()
     println("Trees:")
-    unpickle(new TreeUnpickler)
-    unpickle(new PositionUnpickler)
+    unpickle(new TreeSectionUnpickler)
+    unpickle(new PositionSectionUnpickler)
   }
   
-  class TreeUnpickler extends SectionUnpickler[Unit]("ASTs") {
+  class TreeSectionUnpickler extends SectionUnpickler[Unit]("ASTs") {
     import PickleFormat._
     def unpickle(reader: TastyReader, tastyName: TastyName.Table): Unit = {
       import reader._
@@ -103,16 +106,12 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
     }
   }
 
-  class PositionUnpickler extends SectionUnpickler[Unit]("Positions") {
+  class PositionSectionUnpickler extends SectionUnpickler[Unit]("Positions") {
     def unpickle(reader: TastyReader, tastyName: TastyName.Table): Unit = {
-      import reader._
-      var lastOffset = 0
-      var lastAddr = 0
-      while (!isAtEnd) {
-        lastOffset += readInt()
-        lastAddr += readInt()
-        println(s"$lastOffset: $lastAddr")
-      }
+      val (totalRange, positions) = new PositionUnpickler(reader).unpickle()
+      println(s"Positions in $totalRange:")
+      val sorted = positions.toSeq.sortBy(_._1.index)
+      for ((addr, pos) <- sorted) println(s"$addr: $pos")
     }
   }
 }
