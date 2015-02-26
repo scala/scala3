@@ -47,7 +47,7 @@ object Phases {
     this: ContextBase =>
 
     // drop NoPhase at beginning
-    def allPhases = squashedPhases.tail
+    def allPhases = (if (squashedPhases.nonEmpty) squashedPhases else phases).tail
 
     object NoPhase extends Phase {
       override def exists = false
@@ -70,68 +70,129 @@ object Phases {
       override def lastPhaseId(implicit ctx: Context) = id
     }
 
+    def phasePlan = this.phasesPlan
+    def setPhasePlan(phasess: List[List[Phase]]) = this.phasesPlan = phasess
+
     /** Squash TreeTransform's beloning to same sublist to a single TreeTransformer
       * Each TreeTransform gets own period,
       * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
       */
-    private def squashPhases(phasess: List[List[Phase]]): Array[Phase] = {
+    def squashPhases(phasess: List[List[Phase]],
+                             phasesToSkip: List[String], stopBeforePhases: List[String], stopAfterPhases: List[String], YCheckAfter: List[String]): List[Phase] = {
       val squashedPhases = ListBuffer[Phase]()
       var prevPhases: Set[Class[_ <: Phase]] = Set.empty
+
+      var stop = false
+      val filteredPhases = phasess.map(_.filter { p =>
+        val pstop = stop
+        stop = stop | stopBeforePhases.contains(p.phaseName) | stopAfterPhases.contains(p.phaseName)
+        !(pstop || stopBeforePhases.contains(p.phaseName) || phasesToSkip.contains(p.phaseName))
+      })
+
       var i = 0
-      while (i < phasess.length) {
-        if (phasess(i).length > 1) {
-          val phasesInBlock: Set[String] = phasess(i).map(_.phaseName).toSet
-          for(phase<-phasess(i)) {
-            phase match {
-              case p: MiniPhase =>
 
-                val unmetRequirements = p.runsAfterGroupsOf &~ prevPhases
-                assert(unmetRequirements.isEmpty,
-                  s"${phase.phaseName} requires ${unmetRequirements.mkString(", ")} to be in different TreeTransformer")
+      while (i < filteredPhases.length) {
+        if (filteredPhases(i).nonEmpty) { //could be empty due to filtering
+          val filteredPhaseBlock = filteredPhases(i)
+          val phaseToAdd =
+            if (filteredPhaseBlock.length > 1) {
+              val phasesInBlock: Set[String] = filteredPhaseBlock.map(_.phaseName).toSet
+              for (phase <- filteredPhaseBlock) {
+                phase match {
+                  case p: MiniPhase =>
+                    val unmetRequirements = p.runsAfterGroupsOf &~ prevPhases
+                    assert(unmetRequirements.isEmpty,
+                      s"${phase.phaseName} requires ${unmetRequirements.mkString(", ")} to be in different TreeTransformer")
 
-              case _ =>
-                assert(false, s"Only tree transforms can be squashed, ${phase.phaseName} can not be squashed")
+                  case _ =>
+                    assert(false, s"Only tree transforms can be squashed, ${phase.phaseName} can not be squashed")
+                }
+              }
+              val transforms = filteredPhaseBlock.asInstanceOf[List[MiniPhase]].map(_.treeTransform)
+              val block = new TreeTransformer {
+                override def phaseName: String = transformations.map(_.phase.phaseName).mkString("TreeTransform:{", ", ", "}")
+
+                override def transformations: Array[TreeTransform] = transforms.toArray
+              }
+              prevPhases ++= filteredPhaseBlock.map(_.getClazz)
+              block
+            } else { // block of a single phase, no squashing
+              val phase = filteredPhaseBlock.head
+              prevPhases += phase.getClazz
+              phase
             }
+          squashedPhases += phaseToAdd
+          val shouldAddYCheck = YCheckAfter.exists(nm => phaseToAdd.phaseName.contains(nm))
+          if (shouldAddYCheck) {
+            val checker = new TreeChecker
+
+            squashedPhases += checker
           }
-          val transforms = phasess(i).asInstanceOf[List[MiniPhase]].map(_.treeTransform)
-          val block = new TreeTransformer {
-            override def phaseName: String = transformations.map(_.phase.phaseName).mkString("TreeTransform:{", ", ", "}")
-            override def transformations: Array[TreeTransform] = transforms.toArray
-          }
-          squashedPhases += block
-          prevPhases ++= phasess(i).map(_.getClazz)
-          block.init(this, phasess(i).head.id, phasess(i).last.id)
-        } else {
-          squashedPhases += phasess(i).head
-          prevPhases += phasess(i).head.getClazz
         }
+
         i += 1
       }
-      (NoPhase :: squashedPhases.toList ::: new TerminalPhase :: Nil).toArray
+      squashedPhases.toList
     }
 
     /** Use the following phases in the order they are given.
      *  The list should never contain NoPhase.
      *  if squashing is enabled, phases in same subgroup will be squashed to single phase.
      */
-    def usePhases(phasess: List[List[Phase]], squash: Boolean = true) = {
-      phases = (NoPhase :: phasess.flatten ::: new TerminalPhase :: Nil).toArray
+    def usePhases(phasess: List[Phase], squash: Boolean = true) = {
+
+      val flatPhases = collection.mutable.ListBuffer[Phase]()
+
+      phasess.foreach(p => p match {
+        case t: TreeTransformer => flatPhases ++= t.transformations.map(_.phase)
+        case _ => flatPhases += p
+      })
+
+      phases = (NoPhase :: flatPhases.toList ::: new TerminalPhase :: Nil).toArray
       var phasesAfter:Set[Class[_ <: Phase]] = Set.empty
       nextDenotTransformerId = new Array[Int](phases.length)
       denotTransformers = new Array[DenotTransformer](phases.length)
-      var i = 0
-      while (i < phases.length) {
-        phases(i).init(this, i)
-        val unmetPreceedeRequirements = phases(i).runsAfter -- phasesAfter
+
+      var phaseId = 0
+      def nextPhaseId = {
+        phaseId += 1
+        phaseId // starting from 1 as NoPhase is 0
+      }
+
+      def checkRequirements(p: Phase) = {
+        val unmetPreceedeRequirements = p.runsAfter -- phasesAfter
         assert(unmetPreceedeRequirements.isEmpty,
-          s"phase ${phases(i)} has unmet requirement: ${unmetPreceedeRequirements.mkString(", ")} should precede this phase")
-        phasesAfter += phases(i).getClazz
+          s"phase ${p} has unmet requirement: ${unmetPreceedeRequirements.mkString(", ")} should precede this phase")
+        phasesAfter += p.getClazz
+
+      }
+      var i = 0
+
+      while (i < phasess.length) {
+        val phase = phasess(i)
+        phase match {
+          case t: TreeTransformer =>
+            val transforms = t.transformations
+            transforms.foreach{ x =>
+              checkRequirements(x.phase)
+              x.phase.init(this, nextPhaseId)}
+            t.init(this, transforms.head.phase.id, transforms.last.phase.id)
+          case _ =>
+            phase.init(this, nextPhaseId)
+            checkRequirements(phase)
+        }
+
         i += 1
       }
+
+      phases.last.init(this, nextPhaseId) // init terminal phase
+
+      i = phases.length
       var lastTransformerId = i
       while (i > 0) {
         i -= 1
-        phases(i) match {
+        val phase = phases(i)
+        phase match {
           case transformer: DenotTransformer =>
             lastTransformerId = i
             denotTransformers(i) = transformer
@@ -141,28 +202,31 @@ object Phases {
       }
 
       if (squash) {
-        this.squashedPhases = squashPhases(phasess)
+        this.squashedPhases = (NoPhase :: phasess).toArray
       } else {
         this.squashedPhases = this.phases
       }
 
       config.println(s"Phases = ${phases.deep}")
-      config.println(s"squashedPhases = ${squashedPhases.deep}")
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.deep}")
     }
 
     def phaseOfClass(pclass: Class[_]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
+
+    private val cachedPhases = collection.mutable.Set[PhaseCache]()
+    private def cleanPhaseCache = cachedPhases.foreach(_.myPhase = NoPhase)
 
     /** A cache to compute the phase with given name, which
      *  stores the phase as soon as phaseNamed returns something
      *  different from NoPhase.
      */
     private class PhaseCache(pclass: Class[_ <: Phase]) {
-      private var myPhase: Phase = NoPhase
+      var myPhase: Phase = NoPhase
       def phase = {
         if (myPhase eq NoPhase) myPhase = phaseOfClass(pclass)
         myPhase
       }
+      cachedPhases += this
     }
 
     private val typerCache = new PhaseCache(classOf[FrontEnd])
