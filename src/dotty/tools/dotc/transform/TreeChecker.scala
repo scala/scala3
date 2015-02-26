@@ -169,6 +169,16 @@ class TreeChecker extends Phase {
       }
     }.apply(tp)
 
+
+    override def typedReturn(tree: untpd.Return)(implicit ctx: Context): tpd.Return = {
+      val ret = super.typedReturn(tree)
+      val from = if (ret.from.isEmpty) ctx.owner.enclosingMethod else ret.from.symbol
+      val rType = from.info.finalResultType
+      if (ctx.erasedTypes) // before erasure resultType could be a PolyParam. Nothing could be done about it.
+        assert(ret.expr.tpe  <:<  rType)
+      ret
+    }
+
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       assert(tree.isType || !needsSelect(tree.tpe), i"bad type ${tree.tpe} for $tree # ${tree.uniqueId}")
