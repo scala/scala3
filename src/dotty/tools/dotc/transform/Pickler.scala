@@ -20,7 +20,7 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
       
       val treePkl = new TreePickler(pickler)
       treePkl.pickle(tree :: Nil)
-      new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
+      new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil, tree.pos)
 
       val bytes = pickler.assembleParts()
       ctx.compilationUnit.pickled = bytes

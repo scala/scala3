@@ -13,6 +13,7 @@ import TastyUnpickler._, TastyBuffer._
 import annotation.switch
 import scala.collection.{ mutable, immutable }
 import typer.Mode
+import PositionPickler._
 
 /** Unpickler for typed trees
  *  @param reader         the reader from which to unpickle
@@ -686,29 +687,14 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
     }
   }
   
-  trait DeferredPosition {
-    var parentPos: Position = NoPosition
+  private def setNormalized(tree: Tree, parentPos: Position): Unit = {
+    assert(tree.pos.exists)
+    val absPos = Position(parentPos.start + tree.pos.start, parentPos.end - tree.pos.end)
+    tree.setPosUnchecked(absPos)
   }
   
-  def normalizePos(x: Any, parentPos: Position)(implicit ctx: Context): Unit = {
-    if (parentPos.exists) 
-      x match {
-        case x: Tree @unchecked if !x.pos.isSynthetic =>
-          assert(x.pos.exists)
-          val absPos = Position(parentPos.start + x.pos.start, parentPos.end - x.pos.end)
-          x.setPosUnchecked(absPos)
-          x match {
-            case x: MemberDef => normalizePos(x.symbol.annotations, absPos)
-            case _ =>
-          }
-          normalizePos(x.productIterator, absPos)
-        case x: DeferredPosition =>
-          x.parentPos = parentPos
-        case xs: List[_] =>
-          xs.foreach(normalizePos(_, parentPos))
-        case _ =>
-      }
-  }
+  def normalizePos(x: Any, parentPos: Position)(implicit ctx: Context): Unit =
+    traverse(x, parentPos, setNormalized)
 
   class LazyReader[T <: AnyRef](reader: TreeReader, op: TreeReader => Context => T) extends Trees.Lazy[T] with DeferredPosition {
     def complete(implicit ctx: Context): T = {
