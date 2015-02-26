@@ -50,8 +50,8 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     result
   }
   
-  /** Returns the next byte of data to read without advancing the read position */
-  def nextByte: Int = bytes(bp)
+  /** Returns the next byte of data as a natural number without advancing the read position */  
+  def nextByte: Int = bytes(bp) & 0xff
   
   /** Read the next `n` bytes of `data`. */
   def readBytes(n: Int): Array[Byte] = {

@@ -27,8 +27,10 @@ class OffsetUnpickler(reader: TastyReader, edge: Edge) {
   def traverse(trees: List[tpd.Tree])(implicit ctx: Context) = {
     next()
     edge.traverseAll(trees) { tree =>
-      if (edge.offset(tree.pos) == nextAddr) next()
-      tree.setPosUnchecked(edge.updateOffset(tree.pos, lastOffset))
+      if (tree.pos.exists) { // TODO assign positions of tree nodes with NoPosition afterwards based on the context.
+        if (edge.offset(tree.pos) == nextAddr) next()
+        tree.setPosUnchecked(edge.updateOffset(tree.pos, lastOffset))
+      }
     }
     assert(currentAddr == end)
   }
