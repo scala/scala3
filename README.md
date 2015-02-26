@@ -1,6 +1,8 @@
 dotty
 =====
 
+[![Join the chat at https://gitter.im/lampepfl/dotty](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/lampepfl/dotty?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [![Build Status](https://travis-ci.org/lampepfl/dotty.png?branch=master)](https://travis-ci.org/lampepfl/dotty)
 
 Dotty is a platform to try out new language concepts and compiler technologies for Scala. The focus is mainly on simplification. We remove extraneous syntax (e.g. no XML literals), and try to boil down Scala's types into a smaller set of more fundamental constructors. The theory behind these constructors is researched in [DOT](http://www.cs.uwm.edu/~boyland/fool2012/papers/fool2012_submission_3.pdf), a calculus for dependent object types. 
