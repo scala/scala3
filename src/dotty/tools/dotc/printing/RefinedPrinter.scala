@@ -445,6 +445,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case PatDef(mods, pats, tpt, rhs) =>
         modText(mods, "val") ~~ toText(pats, ", ") ~ optAscription(tpt) ~
           optText(rhs)(" = " ~ _)
+      case ParsedTry(expr, handler, finalizer) =>
+        changePrec(GlobalPrec) {
+          "try " ~ toText(expr) ~ " catch {" ~ toText(handler) ~ "}" ~ optText(finalizer)(" finally " ~ _)
+        }
       case Thicket(trees) =>
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case _ =>
