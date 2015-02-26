@@ -603,7 +603,7 @@ class Namer { typer: Typer =>
             }
             val iResType = iInstInfo.finalResultType.asSeenFrom(site, cls)
             if (iResType.exists)
-              typr.println(s"using inherited type; raw: $iRawInfo, inst: $iInstInfo, inherited: $iResType")
+              typr.println(i"using inherited type for ${mdef.name}; raw: $iRawInfo, inst: $iInstInfo, inherited: $iResType")
             tp & iResType
           }
         }
