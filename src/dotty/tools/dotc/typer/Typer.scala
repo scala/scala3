@@ -188,7 +188,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       def wildImportRef(imp: ImportInfo): Type = {
         if (imp.isWildcardImport) {
           val pre = imp.site
-          if (!isDisabled(imp, pre) && !(imp.excluded contains name.toTermName)) {
+          if (!isDisabled(imp, pre) && !(imp.excluded contains name.toTermName) && name != nme.CONSTRUCTOR) {
             val denot = pre.member(name).accessibleFrom(pre)(refctx)
             if (reallyExists(denot)) return pre.select(name, denot)
           }
