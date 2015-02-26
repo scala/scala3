@@ -51,7 +51,7 @@ class PositionReader(reader: TastyReader, startOffset: Int, initNextOffset: Int,
         case tree: WithLazyField[_] =>
           tree.unforced match {
             case rdr: TreeUnpickler#LazyReader[_] =>
-              rdr.posReader = Some(fork)
+              //rdr.posReader = Some(fork)
               while (addr != nextAddr) next()
             case _ =>
           }

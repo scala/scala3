@@ -279,7 +279,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
       if (ctx.mode.is(Mode.InSuperCall) && !flags.is(ParamOrAccessor)) flags |= InSuperCall
       if (ctx.owner.isClass) {
         if (tag == TYPEPARAM) flags |= Param
-        else if (tag == PARAM) flags |= ParamAccessor // TODO: try to unify param and paramaccessor
+        else if (tag == PARAM) flags |= ParamAccessor
       }
       else if (isParamTag(tag)) flags |= Param
       val nameMatches = (_: Denotation).symbol.name == name
@@ -659,7 +659,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
       }
     }
 
-    def readLater[T](end: Addr, op: TreeReader => T): Trees.Lazy[T] = {
+    def readLater[T](end: Addr, op: TreeReader => T)(implicit ctx: Context): Trees.Lazy[T] = {
       val localReader = fork
       skipTo(end)
       new LazyReader(localReader, op)
@@ -682,14 +682,42 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, readPositio
       else tree
     }
   }
+  
+  trait DeferredPosition {
+    var parentPos: Position = NoPosition
+  }
+  
+  def normalizePos(x: Any, parentPos: Position)(implicit ctx: Context): Unit = {
+    if (parentPos.exists) 
+      x match {
+        case x: Tree @unchecked if !x.pos.isSynthetic =>
+          assert(x.pos.exists)
+          val absPos = Position(parentPos.start + x.pos.start, parentPos.end - x.pos.end)
+          x.setPosUnchecked(absPos)
+          for (child <- x.productIterator) 
+            normalizePos(child, absPos)
+        case x: DeferredPosition =>
+          x.parentPos = parentPos
+        case xs: List[_] =>
+          xs.foreach(normalizePos(_, parentPos))
+        case _ =>
+      }
+  }
 
-  class LazyReader[T](reader: TreeReader, op: TreeReader => T) extends Trees.Lazy[T] {
-    var posReader: Option[PositionReader] = None
+  class LazyReader[T](reader: TreeReader, op: TreeReader => T)(implicit ctx: Context) extends Trees.Lazy[T] with DeferredPosition {
     def complete: T = {
       val res = op(reader)
-      posReader.foreach(_.unpickle(res))
+      normalizePos(res, parentPos)
       res
     }  
   }
-    
+  
+  class LazyAnnotationReader(sym: Symbol, reader: TreeReader) 
+      extends LazyAnnotation(sym) with DeferredPosition {
+    def complete(implicit ctx: Context) = {
+      val res = reader.readTerm()
+      normalizePos(res, parentPos)
+      res
+    }
+  }
 }

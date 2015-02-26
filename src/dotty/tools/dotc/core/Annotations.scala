@@ -33,12 +33,13 @@ object Annotations {
     def tree(implicit ctx: Context): Tree = t
   }
 
-  case class LazyAnnotation(sym: Symbol)(treeFn: Context => Tree) extends Annotation {
+  abstract case class LazyAnnotation(sym: Symbol) extends Annotation {
     private var myTree: Tree = null
     def tree(implicit ctx: Context) = {
-      if (myTree == null) myTree = treeFn(ctx)
+      if (myTree == null) myTree = complete(ctx)
       myTree
     }
+    def complete(implicit ctx: Context): Tree
     override def symbol(implicit ctx: Context): Symbol = sym
   }
 
@@ -74,7 +75,9 @@ object Annotations {
     }
 
     def deferred(sym: Symbol, treeFn: Context => Tree)(implicit ctx: Context): Annotation =
-      new LazyAnnotation(sym)(treeFn)
+      new LazyAnnotation(sym) {
+        def complete(implicit ctx: Context) = treeFn(ctx)
+      }
 
     def deferred(atp: Type, args: List[Tree])(implicit ctx: Context): Annotation =
       deferred(atp.classSymbol, implicit ctx => New(atp, args))

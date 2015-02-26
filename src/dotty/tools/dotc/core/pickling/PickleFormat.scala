@@ -181,15 +181,21 @@ Note: Tree tags are grouped into 4 categories that determine what follows, and t
 	Category 3 (tags 100-127):	tag Nat AST
 	Category 4 (tags 128-255):  tag Length <payload>
 
-Standard Section: "Positions" Assoc*
+Standard Section: "Positions" sourceLength_Nat Assoc*
 
-  Assoc         = offset_Delta addr_Delta   // offsets and addresses determined by a tree traversal:
-                                            // For each node with positions <start..end>
-                                            //   start <encoding of children> end
+  Assoc         = addr_Delta offset_Delta offset_Delta?
+                                            // addr_Delta      :
+                                            //    Difference of address to last recorded node. Always > 0
+                                            //    (The initial base is -1, so a a first node of 0 would have a delta of 1).
+                                            // 2nd offset_Delta:
+                                            //    Difference of end offset of addressed node vs parent node. Always <= 0
+                                            // 1st offset Delta, if delta >= 0 or 2nd offset delta exists
+                                            //    Difference of start offset of addressed node vs parent node.
+                                            // 1st offset Delta, if delta < 0 and 2nd offset delta does not exist:
+                                            //    Difference of end offset of addressed node vs parent node.
                                             // Offsets and addresses are difference encoded.
-                                            // Entries with same offset as previous entry are omitted.
+                                            // Nodes which have the same positions as their parents are omitted.
   Delta         = Int                 	    // Difference between consecutive offsets / tree addresses,
-                                            // First offset/address is always assumed to be 0
 
 **************************************************************************************/
 
@@ -330,9 +336,9 @@ object PickleFormat {
     case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM => true
     case _ => false
   }
-  
-  def isParamTag(tag: Int) = tag == PARAM || tag == TYPEPARAM 
-   
+
+  def isParamTag(tag: Int) = tag == PARAM || tag == TYPEPARAM
+
   def nameTagToString(tag: Int): String = tag match {
     case UTF8 => "UTF8"
     case QUALIFIED => "QUALIFIED"
