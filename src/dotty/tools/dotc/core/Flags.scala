@@ -335,8 +335,8 @@ object Flags {
   final val JavaStaticTerm = JavaStatic.toTermFlags
   final val JavaStaticType = JavaStatic.toTypeFlags
 
-  /** Trait is not an interface, but does not have fields or intialization code */
-  final val NoInits = typeFlag(32, "<noInits>") // TODO when unpickling, reconstitute from context
+  /** Trait is not an interface, but does not have fields or initialization code */
+  final val NoInits = typeFlag(32, "<noInits>")
 
   /** Variable is accessed from nested function. */
   final val Captured = termFlag(32, "<captured>")
@@ -367,7 +367,7 @@ object Flags {
   /** Symbol always defines a fresh named type */
   final val Fresh = commonFlag(45, "<fresh>")
 
-  /** Symbol is defined in a super call */ // TODO when unpickling, reconstitute from context
+  /** Symbol is defined in a super call */
   final val InSuperCall = commonFlag(46, "<in supercall>")
 
   /** Symbol with private access is accessed outside its private scope */

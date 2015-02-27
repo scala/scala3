@@ -462,6 +462,7 @@ class TreePickler(pickler: TastyPickler) {
       } else {
         if (flags is Sealed) writeByte(SEALED)
         if (flags is Abstract) writeByte(ABSTRACT)      
+        if (flags is Trait) writeByte(TRAIT)
         if (flags is Covariant) writeByte(COVARIANT)
         if (flags is Contravariant) writeByte(CONTRAVARIANT)
       }

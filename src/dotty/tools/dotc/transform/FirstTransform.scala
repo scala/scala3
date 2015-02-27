@@ -119,7 +119,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
       /*
        A this reference hide in a self ident, and be subsequently missed
         when deciding on whether outer accessors are needed and computing outer paths.
-        sWe do this normalization directly after Typer, because during typer the
+        We do this normalization directly after Typer, because during typer the
         ident should rest available for hyperlinking.*/
       This(tpe.cls).withPos(tree.pos)
     case _ => normalizeType(tree)
