@@ -5,11 +5,12 @@ import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._
 import Contexts.Context, Scopes.Scope, Denotations._, SymDenotations._, Annotations.Annotation
 import StdNames.nme
-import ast.{Trees, untpd}
+import ast.{Trees, untpd, tpd}
 import typer.Namer
 import typer.ProtoTypes.{SelectionProto, ViewProto, FunProto, IgnoredProto, dummyTreeOfType}
 import Trees._
 import scala.annotation.switch
+import language.implicitConversions
 
 class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
@@ -146,6 +147,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def toText[T >: Untyped](tree: Tree[T]): Text = controlled {
 
+    /** Print modifiers form symbols if tree has type, overriding the untpd behavior. */
+    implicit def modsDeco(mdef: MemberDef[_]): tpd.ModsDeco = 
+      tpd.modsDeco(mdef.asInstanceOf[tpd.MemberDef])
+
     def optDotPrefix(name: Name) = optText(name)(_ ~ ".")
 
     def optAscription(tpt: untpd.Tree) = optText(tpt)(": " ~ _)
@@ -157,8 +162,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def addVparamssText(txt: Text, vparamss: List[List[ValDef[T]]]): Text =
       (txt /: vparamss)((txt, vparams) => txt ~ "(" ~ toText(vparams, ", ") ~ ")")
-
-
 
     def caseBlockText(tree: Tree[T]): Text = tree match {
       case Block(stats, expr) => toText(stats :+ expr, "\n")
@@ -184,13 +187,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
     def useSymbol =
       tree.hasType && tree.symbol.exists && ctx.settings.YprintSyms.value
-
+          
     def modText(mods: untpd.Modifiers, kw: String): Text = { // DD
       val suppressKw = if (ownerIsClass) mods is ParamAndLocal else mods is Param
       val flagMask = if (suppressKw) PrintableFlags &~ Private else PrintableFlags
-      val flagsText: Text =
-        if (useSymbol) toTextFlags(tree.symbol)
-        else (mods.flags & flagMask).toString
+      val flagsText = (mods.flags & flagMask).toString
       Text(mods.annotations.map(annotText), " ") ~~ flagsText ~~ (kw provided !suppressKw)
     }
 
@@ -333,7 +334,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             }
           rhs match {
             case impl: Template =>
-              modText(tree.mods, if (tree.mods is Trait) "trait" else "class") ~~ nameIdText(tree) ~ toText(impl) ~
+              modText(tree.mods, if ((tree).mods is Trait) "trait" else "class") ~~ nameIdText(tree) ~ toText(impl) ~
               (if (tree.hasType && ctx.settings.verbose.value) s"[decls = ${tree.symbol.info.decls}]" else "")
             case rhs: TypeBoundsTree =>
               typeDefText(toText(rhs))
@@ -522,7 +523,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     else {
       var flags = sym.flagsUNSAFE
       if (flags is TypeParam) flags = flags &~ Protected
-      Text((flags & SourceModifierFlags).flagStrings map stringToText, " ")
+      Text((flags & PrintableFlags).flagStrings map stringToText, " ")
     }
 
   override def toText(denot: Denotation): Text = denot match {

@@ -94,12 +94,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     tp match {
       case tp: TypeType =>
         toTextRHS(tp)
-      case tp: TermRef if !tp.denotationIsCurrent =>
+      case tp: TermRef if !tp.denotationIsCurrent || tp.symbol.is(Module) =>
         toTextRef(tp) ~ ".type"
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"
-      case tp: TermRef if tp.symbol is Module =>
-        toText(tp.underlying) ~ ".type"
       case tp: SingletonType =>
         toText(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
       case tp: TypeRef =>
