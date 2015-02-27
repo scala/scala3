@@ -7,7 +7,7 @@ import printing.Texts._
 import TastyName._
 import TastyUnpickler._
 import TastyBuffer.Addr
-import util.Positions.Position
+import util.Positions.{Position, offsetToInt}
 import collection.mutable
 
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
@@ -108,10 +108,11 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
 
   class PositionSectionUnpickler extends SectionUnpickler[Unit]("Positions") {
     def unpickle(reader: TastyReader, tastyName: TastyName.Table): Unit = {
+      print(s"${reader.endAddr.index - reader.currentAddr.index}")
       val (totalRange, positions) = new PositionUnpickler(reader).unpickle()
-      println(s"Positions in $totalRange:")
+      println(s" position bytes in $totalRange:")
       val sorted = positions.toSeq.sortBy(_._1.index)
-      for ((addr, pos) <- sorted) println(s"$addr: $pos")
+      for ((addr, pos) <- sorted) println(s"${addr.index}: ${offsetToInt(pos.start)} .. ${pos.end}")
     }
   }
 }

@@ -7,6 +7,7 @@ import Contexts.Context
 import Decorators._
 import pickling._
 import config.Printers
+import java.io.PrintStream
 
 /** This miniphase pickles trees */
 class Pickler extends MiniPhaseTransform { thisTransform =>
@@ -14,13 +15,22 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
 
   override def phaseName: String = "pickler"
   
+  private def output(name: String, msg: String) = {
+    val s = new PrintStream(name)
+    s.print(msg)
+    s.close
+  }
+  
   override def transformUnit(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = {
     if (!ctx.compilationUnit.isJava) {
       val pickler = new TastyPickler
       
+      val previous = if (ctx.settings.YtestPickler.value) tree.show else ""
+                  
       val treePkl = new TreePickler(pickler)
       treePkl.pickle(tree :: Nil)
-      new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil, tree.pos)
+      if (tree.pos.exists)
+        new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil, tree.pos)
 
       val bytes = pickler.assembleParts()
       ctx.compilationUnit.pickled = bytes
@@ -31,8 +41,18 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
       if (Printers.pickling ne Printers.noPrinter) new TastyPrinter(bytes).printContents()
       
-      //println(i"unpickled:\n ${new DottyUnpickler(bytes, readPositions = false).result}%\n%")
-      
+      if (ctx.settings.YtestPickler.value) {
+        val unpickled = i"${new DottyUnpickler(bytes, readPositions = false).result}%\n%"
+        println(i"previous :\n $previous")  
+        println(i"unpickled:\n $unpickled")
+        if (previous != unpickled) {
+          output("before-pickling.txt", previous)
+          output("after-pickling.txt", unpickled)
+          println("""pickling difference, for details:
+                    |
+                    |  diff before-pickling.txt after-pickling.txt""".stripMargin)
+        }
+      }
     }
     tree
   }

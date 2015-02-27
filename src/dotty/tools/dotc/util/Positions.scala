@@ -12,11 +12,17 @@ import language.implicitConversions
 object Positions {
 
   private val StartEndBits = 26
-  private val StartEndMask: Long = (1L << StartEndBits) - 1
+   val StartEndMask: Long = (1L << StartEndBits) - 1
   private val SyntheticPointDelta = (1 << (64 - StartEndBits * 2)) - 1
 
   /** The maximal representable offset in a position */
   val MaxOffset = StartEndMask
+
+  /** Convert offset `x` to an integer by sign extending the original
+   *  field of `StartEndBits` width.
+   */
+  def offsetToInt(x: Int) = 
+    x << (32 - StartEndBits) >> (32 - StartEndBits)
 
   /** A position indicates a range between a start offset and an end offset.
    *  Positions can be synthetic or source-derived. A source-derived position
@@ -111,12 +117,14 @@ object Positions {
     }
   }
 
-  private def fromOffsets(start: Int, end: Int, pointDelta: Int) =
+  private def fromOffsets(start: Int, end: Int, pointDelta: Int) = {
+    //assert(start <= end || start == 1 && end == 0, s"$start..$end")
     new Position(
       (start & StartEndMask).toLong |
       ((end & StartEndMask).toLong << StartEndBits) |
       (pointDelta.toLong << (StartEndBits * 2)))
-
+  }
+  
   /** A synthetic position with given start and end */
   def Position(start: Int, end: Int): Position = {
     val pos = fromOffsets(start, end, SyntheticPointDelta)
