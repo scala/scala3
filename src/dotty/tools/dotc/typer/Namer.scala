@@ -523,12 +523,10 @@ class Namer { typer: Typer =>
 
       index(rest)(inClassContext(selfInfo))
       denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
-      if (cls is Trait) {
-        if (impl.body forall isNoInitMember) {
-          cls.setFlag(NoInits)
-          if (impl.body forall isPureInterfaceMember)
-            cls.setFlag(PureInterface)
-        }
+      if (impl.body forall isNoInitMember) {
+        cls.setFlag(NoInits)
+        if (cls.is(Trait) && impl.body.forall(isPureInterfaceMember))
+          cls.setFlag(PureInterface)
       }
     }
   }
