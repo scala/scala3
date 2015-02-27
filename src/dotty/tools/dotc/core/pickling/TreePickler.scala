@@ -58,57 +58,44 @@ class TreePickler(pickler: TastyPickler) {
     def qualifiedName(sym: Symbol): TastyName =
       if (sym.isRoot || sym.owner.isRoot) TastyName.Simple(sym.name.toTermName)
       else TastyName.Qualified(nameIndex(qualifiedName(sym.owner)), nameIndex(sym.name))
-    
-    def pickleConstant(c: Constant): Unit = {
-      def pickleNum(nonNegTag: Int, negTag: Int) = {
-        val x = c.longValue
-        if (x < 0) {
-          writeByte(negTag)
-          writeLongNat(-(x + 1))
-        }
-        else {
-          writeByte(nonNegTag)
-          writeLongNat(x)
-        }
-      }
-      c.tag match {
-        case UnitTag => 
-          writeByte(UNITconst)
-        case BooleanTag => 
-          writeByte(if (c.booleanValue) TRUEconst else FALSEconst)
-        case ByteTag => 
-          writeByte(BYTEconst)
-          writeInt(c.byteValue)
-        case ShortTag => 
-          writeByte(SHORTconst)
-          writeInt(c.shortValue)
-        case CharTag => 
-          writeByte(CHARconst)
-          writeNat(c.charValue)
-        case IntTag => 
-          writeByte(INTconst)
-          writeInt(c.intValue)
-        case LongTag => 
-          writeByte(LONGconst)
-          writeLongInt(c.longValue)
-        case FloatTag => 
-          writeByte(FLOATconst)
-          writeInt(java.lang.Float.floatToRawIntBits(c.floatValue))
-        case DoubleTag =>
-          writeByte(DOUBLEconst)
-          writeLongInt(java.lang.Double.doubleToRawLongBits(c.doubleValue))
-        case StringTag =>
-          writeByte(STRINGconst)
-          writeNat(nameIndex(c.stringValue).index)
-        case NullTag => 
-          writeByte(NULLconst)
-        case ClazzTag =>
-          writeByte(CLASSconst)
-          withLength { pickleType(c.typeValue) }
-        case EnumTag =>
-          writeByte(ENUMconst)
-          withLength { pickleType(c.symbolValue.termRef) }          
-      }
+
+    def pickleConstant(c: Constant): Unit = c.tag match {
+      case UnitTag =>
+        writeByte(UNITconst)
+      case BooleanTag =>
+        writeByte(if (c.booleanValue) TRUEconst else FALSEconst)
+      case ByteTag =>
+        writeByte(BYTEconst)
+        writeInt(c.byteValue)
+      case ShortTag =>
+        writeByte(SHORTconst)
+        writeInt(c.shortValue)
+      case CharTag =>
+        writeByte(CHARconst)
+        writeNat(c.charValue)
+      case IntTag =>
+        writeByte(INTconst)
+        writeInt(c.intValue)
+      case LongTag =>
+        writeByte(LONGconst)
+        writeLongInt(c.longValue)
+      case FloatTag =>
+        writeByte(FLOATconst)
+        writeInt(java.lang.Float.floatToRawIntBits(c.floatValue))
+      case DoubleTag =>
+        writeByte(DOUBLEconst)
+        writeLongInt(java.lang.Double.doubleToRawLongBits(c.doubleValue))
+      case StringTag =>
+        writeByte(STRINGconst)
+        writeNat(nameIndex(c.stringValue).index)
+      case NullTag =>
+        writeByte(NULLconst)
+      case ClazzTag =>
+        writeByte(CLASSconst)
+        withLength { pickleType(c.typeValue) }
+      case EnumTag =>
+        writeByte(ENUMconst)
+        withLength { pickleType(c.symbolValue.termRef) }
     }
 
     def pickleType(tpe0: Type, richTypes: Boolean = false): Unit = try {
