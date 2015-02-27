@@ -68,6 +68,7 @@ class tests extends CompilerTest {
   @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
   @Test def pos_packageObj = compileFile(posDir, "i0239")
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping")
+  @Test def pos_extmethods = compileFile(posDir, "extmethods")
 
   @Test def pos_all = compileFiles(posDir, failedOther)
 
