@@ -715,7 +715,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
     val (from, proto) =
       if (tree.from.isEmpty) enclMethInfo(ctx)
-      else (tree.from.asInstanceOf[tpd.Tree], WildcardType)
+      else {
+        val from = tree.from.asInstanceOf[tpd.Tree]
+        val proto = 
+          if (ctx.erasedTypes) from.symbol.info.finalResultType 
+          else WildcardType // We cannot reliably detect the internal type view of polymorphic or dependent methods
+                            // because we do not know the internal type params and method params.
+                            // Hence no adaptation is possible, and we assume WildcardType as prototype.
+        (from, proto)
+      }
     val expr1 = typedExpr(tree.expr orElse untpd.unitLiteral.withPos(tree.pos), proto)
     assignType(cpy.Return(tree)(expr1, from))
   }
