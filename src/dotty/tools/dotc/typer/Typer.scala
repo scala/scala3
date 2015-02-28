@@ -347,8 +347,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val clsDef = TypeDef(x, templ).withFlags(Final)
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
-	      val tpt1 = typedType(tree.tpt)
-	      checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
+        val tpt1 = typedType(tree.tpt)
+        checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
         assignType(cpy.New(tree)(tpt1), tpt1)
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
     }
@@ -1366,9 +1366,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case poly: PolyType =>
           if (pt.isInstanceOf[PolyProto]) tree
           else {
-            val (_, tvars) = constrained(poly, tree)
+            var typeArgs = tree match {
+              case Select(New(tpt), nme.CONSTRUCTOR) => tpt.tpe.dealias.argTypesLo
+              case _ => Nil
+            }
+            if (typeArgs.isEmpty) typeArgs = constrained(poly, tree)._2
             convertNewArray(
-              adaptInterpolated(tree.appliedToTypes(tvars), pt, original))
+              adaptInterpolated(tree.appliedToTypes(typeArgs), pt, original))
           }
         case wtp =>
           pt match {
