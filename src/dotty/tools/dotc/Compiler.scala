@@ -6,6 +6,7 @@ import Contexts._
 import Periods._
 import Symbols._
 import Scopes._
+import parsing.Parsing
 import typer.{FrontEnd, Typer, Mode, ImportInfo, RefChecks}
 import reporting.ConsoleReporter
 import dotty.tools.dotc.core.Phases.Phase
@@ -37,6 +38,7 @@ class Compiler {
    */
   def phases: List[List[Phase]] =
     List(
+      List(new Parsing),
       List(new FrontEnd),
       List(new FirstTransform,
            new SyntheticMethods),

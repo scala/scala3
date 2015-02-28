@@ -9,6 +9,7 @@ import DenotTransformers._
 import Denotations._
 import config.Printers._
 import scala.collection.mutable.{ListBuffer, ArrayBuffer}
+import scala.util.control.NonFatal
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransformer, MiniPhase, TreeTransform}
 import dotty.tools.dotc.transform._
 import Periods._
@@ -279,6 +280,12 @@ object Phases {
      *  and type applications.
      */
     def relaxedTyping: Boolean = false
+    
+    /** If set, only proceed if there are no errors in run */
+    def stopOnError = true
+    
+    /** If set, result trees are untyped */
+    def untypedResult = false
 
     def exists: Boolean = true
 
@@ -330,6 +337,14 @@ object Phases {
 
     final def iterator =
       Iterator.iterate(this)(_.next) takeWhile (_.hasNext)
+
+    def monitor(doing: String)(body: => Unit)(implicit ctx: Context) =
+      try body
+      catch {
+        case NonFatal(ex) =>
+          println(s"exception occured while $doing ${ctx.compilationUnit}")
+          throw ex
+    }
 
     override def toString = phaseName
   }
