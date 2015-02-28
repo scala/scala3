@@ -147,10 +147,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def toText[T >: Untyped](tree: Tree[T]): Text = controlled {
 
-    /** Print modifiers form symbols if tree has type, overriding the untpd behavior. */
-    implicit def modsDeco(mdef: MemberDef[_]): tpd.ModsDeco = 
-      tpd.modsDeco(mdef.asInstanceOf[tpd.MemberDef])
-
     def optDotPrefix(name: Name) = optText(name)(_ ~ ".")
 
     def optAscription(tpt: untpd.Tree) = optText(tpt)(": " ~ _)
@@ -218,7 +214,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def nameIdText(tree: untpd.NameTree): Text =
       toText(tree.name) ~ idText(tree)
 
-    import untpd._
+    import untpd.{modsDeco => _, _}
+
+    /** Print modifiers form symbols if tree has type, overriding the untpd behavior. */
+    implicit def modsDeco(mdef: untpd.MemberDef)(implicit ctx: Context): untpd.ModsDeco = 
+      tpd.modsDeco(mdef.asInstanceOf[tpd.MemberDef]).asInstanceOf[untpd.ModsDeco]
 
     var txt: Text = tree match {
       case id: Trees.BackquotedIdent[_] =>
