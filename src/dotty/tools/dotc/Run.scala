@@ -44,26 +44,29 @@ class Run(comp: Compiler)(implicit ctx: Context) {
         ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, ctx.settings.YstopAfter.value, ctx.settings.Ycheck.value)
       ctx.usePhases(phases)
       units = sources map (new CompilationUnit(_))
-      for (phase <- ctx.allPhases)
-        if (!ctx.reporter.hasErrors) {
+      var stopped = false
+      for (phase <- ctx.allPhases) {
+        stopped |= phase.stopOnError && ctx.reporter.hasErrors
+        if (!stopped) {
           if (ctx.settings.verbose.value) println(s"[$phase]")
           units = phase.runOn(units)
           def foreachUnit(op: Context => Unit)(implicit ctx: Context): Unit =
             for (unit <- units) op(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
           if (ctx.settings.Xprint.value.containsPhase(phase))
             foreachUnit(printTree)
-
         }
+      }
     }
   }
 
   private def printTree(ctx: Context) = {
     val unit = ctx.compilationUnit
     val prevPhase = ctx.phase.prev // can be a mini-phase
-    val squahsedPhase = ctx.squashed(prevPhase)
+    val squashedPhase = ctx.squashed(prevPhase)
+    val tree = if (prevPhase.untypedResult) unit.untpdTree else unit.tpdTree
 
-    println(s"result of $unit after ${squahsedPhase}:")
-    println(unit.tpdTree.show(ctx))
+    println(s"result of $unit after ${squashedPhase}:")
+    println(tree.show(ctx))
   }
 
   def compile(sourceCode: String): Unit = {

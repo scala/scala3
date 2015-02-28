@@ -2,33 +2,16 @@ package dotty.tools.dotc
 package typer
 
 import core._
-import Phases._
-import Contexts._
-import dotty.tools.dotc.parsing.JavaParsers.JavaParser
-import parsing.Parsers.Parser
+import Phases.Phase
+import Contexts.Context
 import config.Printers._
 import util.Stats._
-import scala.util.control.NonFatal
 
 class FrontEnd extends Phase {
 
   override def phaseName = "frontend"
-
-  def monitor(doing: String)(body: => Unit)(implicit ctx: Context) =
-    try body
-    catch {
-      case NonFatal(ex) =>
-        println(s"exception occured while $doing ${ctx.compilationUnit}")
-        throw ex
-    }
-
-  def parse(implicit ctx: Context) = monitor("parsing") {
-    val unit = ctx.compilationUnit
-    unit.untpdTree =
-      if(unit.isJava) new JavaParser(unit.source).parse()
-      else new Parser(unit.source).parse()
-    typr.println("parsed:\n"+unit.untpdTree.show)
-  }
+  
+  override def stopOnError = false // always run FrontEnd, even if there are parse errors
 
   def enterSyms(implicit ctx: Context) = monitor("indexing") {
     val unit = ctx.compilationUnit
@@ -46,7 +29,6 @@ class FrontEnd extends Phase {
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
     val unitContexts = units map (unit => ctx.fresh.setCompilationUnit(unit))
-    unitContexts foreach (parse(_))
     record("parsedTrees", ast.Trees.ntrees)
     unitContexts foreach (enterSyms(_))
     unitContexts foreach (typeCheck(_))
@@ -55,7 +37,6 @@ class FrontEnd extends Phase {
   }
 
   override def run(implicit ctx: Context): Unit = {
-    parse
     enterSyms
     typeCheck
   }
