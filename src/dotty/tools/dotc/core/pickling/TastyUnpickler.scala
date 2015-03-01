@@ -41,7 +41,7 @@ class TastyUnpickler(reader: TastyReader) {
     val end = start + length
     val result = tag match {
       case UTF8 => 
-        skipTo(end)
+        goto(end)
         Simple(termName(bytes, start.index, length))
       case QUALIFIED =>
         Qualified(readNameRef(), readNameRef())
@@ -83,7 +83,7 @@ class TastyUnpickler(reader: TastyReader) {
       val secName = readString()
       val secEnd = readEnd()
       sectionReader(secName) = new TastyReader(bytes, currentAddr.index, secEnd.index, currentAddr.index)
-      skipTo(secEnd)
+      goto(secEnd)
     }
   }
   

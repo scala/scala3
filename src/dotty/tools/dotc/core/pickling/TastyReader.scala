@@ -118,7 +118,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   def readEnd(): Addr = addr(readNat() + bp)
   
   /** Set read position to the one pointed to by `addr` */
-  def skipTo(addr: Addr): Unit = 
+  def goto(addr: Addr): Unit = 
     bp = index(addr)
  
   /** Perform `op` until `end` address is reached and collect results in a list. */

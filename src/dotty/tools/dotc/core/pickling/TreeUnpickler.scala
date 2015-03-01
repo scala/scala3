@@ -68,12 +68,10 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
     def forkAt(start: Addr) = new TreeReader(subReader(start, endAddr))
     def fork = forkAt(currentAddr)
     
-    def skipTree(tag: Int): Unit = {
-      // println(s"skipping ${astTagToString(tag)} at $currentAddr")
-      if (tag >= firstLengthTreeTag) skipTo(readEnd())
+    def skipTree(tag: Int): Unit =
+      if (tag >= firstLengthTreeTag) goto(readEnd())
       else if (tag >= firstNatASTTreeTag) { readNat(); skipTree() }
       else if (tag >= firstNatTreeTag) readNat()
-    }
     def skipTree(): Unit = skipTree(readByte())
     
     def skipParams(): Unit =
@@ -95,7 +93,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
     
     /** Read names in an interleaved sequence of (parameter) names and types/bounds */
     def readParamNames[N <: Name](end: Addr): List[N] = 
-      until(end) { try readName().asInstanceOf[N] finally skipTree() }
+      until(end) { 
+        val name = readName().asInstanceOf[N]
+        skipTree() 
+        name
+      }
 
     /** Read types or bounds in an interleaved sequence of (parameter) names and types/bounds */
     def readParamTypes[T <: Type](end: Addr)(implicit ctx: Context): List[T] = 
@@ -107,8 +109,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
     /** Read a type */
     def readType()(implicit ctx: Context): Type = {
       val start = currentAddr
-      // println(s"read type at $start")
       val tag = readByte()
+      println(s"reading type ${astTagToString(tag)} at $start")
 
       def registeringType[T](tp: Type, op: => T): T = {
         typeAtAddr(start) = tp
@@ -125,7 +127,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
           (nameReader.readParamNames[N](end), paramReader)
         }
         
-        try { 
+        val result =
           (tag: @switch) match {
             case THIS =>
               ThisType.raw(readType().asInstanceOf[TypeRef])
@@ -135,7 +137,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
               val parent = readType()
               var name: Name = readName()
               if (nextByte == TYPEBOUNDS || nextByte == TYPEALIAS) name = name.toTypeName
-              RefinedType(parent, name, registeringType(_, readType()))
+              RefinedType(parent, name, rt => registeringType(rt, readType()))
+                // Note that the lambda is not equivalent to a wildcard closure!
+                // Eta expansion of the latter puts readType() out of the expression.
             case APPLIEDtype =>
               readType().appliedTo(until(end)(readType()))
             case TYPEBOUNDS =>
@@ -156,15 +160,17 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
               ExprType(readType())
             case POLYtype =>
               val (names, paramReader) = readNamesSkipParams[TypeName]
-              try PolyType(names)(
-                registeringType(_, paramReader.readParamTypes[TypeBounds](end)),
-                _ => readType())
-              finally skipTo(end)
+              val result = PolyType(names)(
+                pt => registeringType(pt, paramReader.readParamTypes[TypeBounds](end)),
+                pt => readType())
+              goto(end)
+              result
             case METHODtype =>
               val (names, paramReader) = readNamesSkipParams[TermName]
-              try MethodType(names, paramReader.readParamTypes[Type](end))(
-                registeringType(_, readType()))
-              finally skipTo(end)
+              val result = MethodType(names, paramReader.readParamTypes[Type](end))(
+                mt => registeringType(mt, readType()))
+              goto(end)
+              result
             case PARAMtype =>
               readTypeRef() match {
                 case binder: PolyType => PolyParam(binder, readNat())
@@ -177,8 +183,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
               readEnd()
               ConstantType(Constant(readTermRef().termSymbol))
           }
-        }
-        finally assert(currentAddr == end)
+        assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
+        result
       }
       
       def readSimpleType(): Type = (tag: @switch) match {
@@ -303,8 +309,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
         if (prevDenot.exists) {
           println(i"overwriting ${prevDenot.symbol} # ${prevDenot.hashCode}")
           prevDenot.info = completer
-          prevDenot.setFlag(flags)
-          prevDenot.resetFlag(Touched) // allow one more completion
+          prevDenot.flags = flags &~ Touched // allow one more completion
           prevDenot.privateWithin = privateWithin
           prevDenot.symbol
         } else if (isClass)
@@ -499,7 +504,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
         if (sym.annotations.isEmpty) EmptyModifiers
         else Modifiers(annotations = sym.annotations.map(_.tree))
       tree.withMods(mods) // record annotations in tree so that tree positions can be filled in.
-      skipTo(end)
+      goto(end)
       setPos(start, tree)
     }
     
@@ -553,8 +558,17 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
 
     def readTerm()(implicit ctx: Context): Tree = {
       val start = currentAddr
-      // println(s"reading term at $start")
       val tag = readByte()
+      println(s"reading term ${astTagToString(tag)} at $start")
+
+      def readPathTerm(): Tree = {
+        goto(start)
+        readPath() match {
+          case path: TermRef => ref(path)
+          case path: ThisType => This(path.cls)
+          case path: ConstantType => Literal(path.value)
+        }
+      }
 
       def readSimpleTerm(): Tree = tag match {
         case IDENT =>
@@ -572,13 +586,13 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
         case EMPTYTREE =>
           EmptyTree
         case _ =>
-          ref(readTermRef())
+          readPathTerm()
       }
 
       def readLengthTerm(): Tree = {
         val end = readEnd()
 
-        try {
+        val result =
           (tag: @switch) match {
             case SUPER => 
               val qual = readTerm()
@@ -608,7 +622,10 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
             case BLOCK =>
               val exprReader = fork
               skipTree()
-              Block(readStats(ctx.owner, end), exprReader.readTerm())(ctx.fresh.setNewScope)
+              val localCtx = ctx.fresh.setNewScope
+              val stats = readStats(ctx.owner, end)(localCtx)
+              val expr = exprReader.readTerm()(localCtx)
+              Block(stats, expr)
             case IF =>
               If(readTerm(), readTerm(), readTerm())
             case CLOSURE =>
@@ -646,9 +663,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
               val patType = readType()
               val argPats = until(end)(readTerm())
               UnApply(fn, implicitArgs, argPats, patType)
+            case _ =>
+              readPathTerm()
           }
-        }
-        finally assert(currentAddr == end, s"$currentAddr $end ${astTagToString(tag)}")
+        assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
+        result
       }
 
       setPos(start, 
@@ -689,7 +708,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
 
     def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context => T): Trees.Lazy[T] = {
       val localReader = fork
-      skipTo(end)
+      goto(end)
       new LazyReader(localReader, op)
     }
     

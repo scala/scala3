@@ -532,7 +532,10 @@ object Flags {
 
   /** A type parameter or type parameter accessor */
   final val TypeParamOrAccessor = TypeParam | TypeParamAccessor
-
+  
+  /** If symbol of a type alias has these flags, prefer the alias */ 
+  final val AliasPreferred = TypeParam | TypeArgument | ExpandedName
+  
   /** A covariant type parameter instance */
   final val LocalCovariant = allOf(Local, Covariant)
 

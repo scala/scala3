@@ -66,8 +66,10 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
               printName()
             case RENAMED =>
               printName(); printName()
-            case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | SELFDEF | BIND | REFINEDtype => 
+            case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | SELFDEF | BIND => 
               printName(); printTrees()
+            case REFINEDtype =>
+              printTree(); printName(); printTrees()
             case RETURN =>
               printNat(); printTrees() 
             case METHODtype | POLYtype =>
@@ -80,7 +82,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
           }
           if (currentAddr != end) {
             println(s"incomplete read, current = $currentAddr, end = $end")
-            skipTo(currentAddr)
+            goto(end)
           }
         }
         else if (tag >= firstNatASTTreeTag) { 

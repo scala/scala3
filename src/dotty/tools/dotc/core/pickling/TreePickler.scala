@@ -50,6 +50,7 @@ class TreePickler(pickler: TastyPickler) {
     case None =>
       val ref = reserveRef(relative = false)
       assert(!sym.is(Flags.Package), sym)
+      //assert(!sym.is(Flags.Param) || sym.owner.isClass, sym.showLocated) // TODO enable
       forwardSymRefs(sym) = ref :: forwardSymRefs.getOrElse(sym, Nil)
   }
 
@@ -118,6 +119,8 @@ class TreePickler(pickler: TastyPickler) {
     def pickleNewType(tpe: Type, richTypes: Boolean): Unit = tpe match {
       case ConstantType(value) => 
         pickleConstant(value)
+      case tpe: TypeRef if tpe.info.isAlias && tpe.symbol.is(Flags.AliasPreferred) =>
+        pickleType(tpe.info.bounds.hi)
       case tpe: WithFixedSym =>
         val sym = tpe.symbol
         if (sym.is(Flags.Package)) {
@@ -158,12 +161,16 @@ class TreePickler(pickler: TastyPickler) {
         withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe)}
       case tpe: SkolemType =>
         writeByte(SKOLEMtype)
-        writeRef(pickledTypes.get(tpe).asInstanceOf[Addr])
+        writeRef(pickledTypes.get(tpe.binder).asInstanceOf[Addr])
       case tpe: RefinedType =>
         val args = tpe.argInfos(interpolate = false)
         if (args.isEmpty) {
           writeByte(REFINEDtype)
-          withLength { pickleName(tpe.refinedName); pickleType(tpe.refinedInfo, richTypes = true) }
+          withLength { 
+            pickleType(tpe.parent)
+            pickleName(tpe.refinedName)
+            pickleType(tpe.refinedInfo, richTypes = true) 
+          }
         }
         else {
           writeByte(APPLIEDtype)

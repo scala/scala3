@@ -95,7 +95,7 @@ object SymDenotations {
     private def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
 
     /** Update the flag set */
-    private final def flags_=(flags: FlagSet): Unit =
+    final def flags_=(flags: FlagSet): Unit =
       myFlags = adaptFlags(flags)
 
     /** Set given flags(s) of this denotation */
