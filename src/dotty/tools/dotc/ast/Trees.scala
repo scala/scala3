@@ -1188,87 +1188,94 @@ object Trees {
     abstract class TreeAccumulator[X] {
       def apply(x: X, tree: Tree)(implicit ctx: Context): X
       def apply(x: X, trees: Traversable[Tree])(implicit ctx: Context): X = (x /: trees)(apply)
-      def foldOver(x: X, tree: Tree)(implicit ctx: Context): X = tree match {
-        case Ident(name) =>
-          x
-        case Select(qualifier, name) =>
-          this(x, qualifier)
-        case This(qual) =>
-          x
-        case Super(qual, mix) =>
-          this(x, qual)
-        case Apply(fun, args) =>
-          this(this(x, fun), args)
-        case TypeApply(fun, args) =>
-          this(this(x, fun), args)
-        case Literal(const) =>
-          x
-        case New(tpt) =>
-          this(x, tpt)
-        case Pair(left, right) =>
-          this(this(x, left), right)
-        case Typed(expr, tpt) =>
-          this(this(x, expr), tpt)
-        case NamedArg(name, arg) =>
-          this(x, arg)
-        case Assign(lhs, rhs) =>
-          this(this(x, lhs), rhs)
-        case Block(stats, expr) =>
-          this(this(x, stats), expr)
-        case If(cond, thenp, elsep) =>
-          this(this(this(x, cond), thenp), elsep)
-        case Closure(env, meth, tpt) =>
-          this(this(this(x, env), meth), tpt)
-        case Match(selector, cases) =>
-          this(this(x, selector), cases)
-        case CaseDef(pat, guard, body) =>
-          this(this(this(x, pat), guard), body)
-        case Return(expr, from) =>
-          this(this(x, expr), from)
-        case Try(block, handler, finalizer) =>
-          this(this(this(x, block), handler), finalizer)
-        case SeqLiteral(elems) =>
-          this(x, elems)
-        case TypeTree(original) =>
-          x
-        case SingletonTypeTree(ref) =>
-          this(x, ref)
-        case SelectFromTypeTree(qualifier, name) =>
-          this(x, qualifier)
-        case AndTypeTree(left, right) =>
-          this(this(x, left), right)
-        case OrTypeTree(left, right) =>
-          this(this(x, left), right)
-        case RefinedTypeTree(tpt, refinements) =>
-          this(this(x, tpt), refinements)
-        case AppliedTypeTree(tpt, args) =>
-          this(this(x, tpt), args)
-        case ByNameTypeTree(result) =>
-          this(x, result)
-        case TypeBoundsTree(lo, hi) =>
-          this(this(x, lo), hi)
-        case Bind(name, body) =>
-          this(x, body)
-        case Alternative(trees) =>
-          this(x, trees)
-        case UnApply(fun, implicits, patterns) =>
-          this(this(this(x, fun), implicits), patterns)
-        case tree @ ValDef(name, tpt, _) =>
-          this(this(x, tpt), tree.rhs)
-        case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
-          this(this((this(x, tparams) /: vparamss)(apply), tpt), tree.rhs)
-        case TypeDef(name, rhs) =>
-          this(x, rhs)
-        case tree @ Template(constr, parents, self, _) =>
-          this(this(this(this(x, constr), parents), self), tree.body)
-        case Import(expr, selectors) =>
-          this(x, expr)
-        case PackageDef(pid, stats) =>
-          this(this(x, pid), stats)
-        case Annotated(annot, arg) =>
-          this(this(x, annot), arg)
-        case Thicket(ts) =>
-          this(x, ts)
+      def foldOver(x: X, tree: Tree)(implicit ctx: Context): X = {
+        def localCtx = 
+          if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
+        tree match {
+          case Ident(name) =>
+            x
+          case Select(qualifier, name) =>
+            this(x, qualifier)
+          case This(qual) =>
+            x
+          case Super(qual, mix) =>
+            this(x, qual)
+          case Apply(fun, args) =>
+            this(this(x, fun), args)
+          case TypeApply(fun, args) =>
+            this(this(x, fun), args)
+          case Literal(const) =>
+            x
+          case New(tpt) =>
+            this(x, tpt)
+          case Pair(left, right) =>
+            this(this(x, left), right)
+          case Typed(expr, tpt) =>
+            this(this(x, expr), tpt)
+          case NamedArg(name, arg) =>
+            this(x, arg)
+          case Assign(lhs, rhs) =>
+            this(this(x, lhs), rhs)
+          case Block(stats, expr) =>
+            this(this(x, stats), expr)
+          case If(cond, thenp, elsep) =>
+            this(this(this(x, cond), thenp), elsep)
+          case Closure(env, meth, tpt) =>
+            this(this(this(x, env), meth), tpt)
+          case Match(selector, cases) =>
+            this(this(x, selector), cases)
+          case CaseDef(pat, guard, body) =>
+            this(this(this(x, pat), guard), body)
+          case Return(expr, from) =>
+            this(this(x, expr), from)
+          case Try(block, handler, finalizer) =>
+            this(this(this(x, block), handler), finalizer)
+          case SeqLiteral(elems) =>
+            this(x, elems)
+          case TypeTree(original) =>
+            x
+          case SingletonTypeTree(ref) =>
+            this(x, ref)
+          case SelectFromTypeTree(qualifier, name) =>
+            this(x, qualifier)
+          case AndTypeTree(left, right) =>
+            this(this(x, left), right)
+          case OrTypeTree(left, right) =>
+            this(this(x, left), right)
+          case RefinedTypeTree(tpt, refinements) =>
+            this(this(x, tpt), refinements)
+          case AppliedTypeTree(tpt, args) =>
+            this(this(x, tpt), args)
+          case ByNameTypeTree(result) =>
+            this(x, result)
+          case TypeBoundsTree(lo, hi) =>
+            this(this(x, lo), hi)
+          case Bind(name, body) =>
+            this(x, body)
+          case Alternative(trees) =>
+            this(x, trees)
+          case UnApply(fun, implicits, patterns) =>
+            this(this(this(x, fun), implicits), patterns)
+          case tree @ ValDef(name, tpt, _) =>
+            implicit val ctx: Context = localCtx
+            this(this(x, tpt), tree.rhs)
+          case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
+            implicit val ctx: Context = localCtx
+            this(this((this(x, tparams) /: vparamss)(apply), tpt), tree.rhs)
+          case TypeDef(name, rhs) =>
+            implicit val ctx: Context = localCtx
+            this(x, rhs)
+          case tree @ Template(constr, parents, self, _) =>
+            this(this(this(this(x, constr), parents), self), tree.body)
+          case Import(expr, selectors) =>
+            this(x, expr)
+          case PackageDef(pid, stats) =>
+            this(this(x, pid), stats)(localCtx)
+          case Annotated(annot, arg) =>
+            this(this(x, annot), arg)
+          case Thicket(ts) =>
+            this(x, ts)
+        }
       }
     }
 
