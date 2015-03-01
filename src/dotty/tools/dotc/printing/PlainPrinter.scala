@@ -11,7 +11,7 @@ import config.Config.summarizeDepth
 import scala.annotation.switch
 
 class PlainPrinter(_ctx: Context) extends Printer {
-  protected[this] implicit val ctx: Context = _ctx
+  protected[this] implicit def ctx: Context = _ctx
 
   protected def maxToTextRecursions = 100
 
