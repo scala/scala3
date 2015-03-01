@@ -8,6 +8,7 @@ import Decorators._
 import pickling._
 import config.Printers
 import java.io.PrintStream
+import Periods._
 
 /** This miniphase pickles trees */
 class Pickler extends MiniPhaseTransform { thisTransform =>
@@ -24,7 +25,7 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
   override def transformUnit(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = {
     if (!ctx.compilationUnit.isJava) {
       val pickler = new TastyPickler
-      
+      println(i"unpickling in run ${ctx.runId}")
       val previous = if (ctx.settings.YtestPickler.value) tree.show else ""
                   
       val treePkl = new TreePickler(pickler)
@@ -41,19 +42,24 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
       if (Printers.pickling ne Printers.noPrinter) new TastyPrinter(bytes).printContents()
       
-      if (ctx.settings.YtestPickler.value) {
-        val unpickled = i"${new DottyUnpickler(bytes, readPositions = false).result}%\n%"
-        println(i"previous :\n $previous")  
-        println(i"unpickled:\n $unpickled")
-        if (previous != unpickled) {
-          output("before-pickling.txt", previous)
-          output("after-pickling.txt", unpickled)
-          println("""pickling difference, for details:
-                    |
-                    |  diff before-pickling.txt after-pickling.txt""".stripMargin)
-        }
-      }
+      if (ctx.settings.YtestPickler.value)
+        unpickle(bytes, previous)(ctx.fresh.setPeriod(Period(ctx.runId + 1, FirstPhaseId)))
     }
-    tree
+    tree 
+  }
+
+  private def unpickle(bytes: Array[Byte], previous: String)(implicit ctx: Context) = {
+    println(i"unpickle run = ${ctx.runId}")
+    ctx.definitions.init
+    val unpickled = i"${new DottyUnpickler(bytes, readPositions = false).result}%\n%"
+    println(i"previous :\n $previous")
+    println(i"unpickled:\n $unpickled")
+    if (previous != unpickled) {
+      output("before-pickling.txt", previous)
+      output("after-pickling.txt", unpickled)
+      println(s"""pickling difference for ${ctx.compilationUnit}, for details:
+                 |
+                 |  diff before-pickling.txt after-pickling.txt""".stripMargin)
+    }
   }
 }
