@@ -60,7 +60,7 @@ final class TreeTypeMap(
 
   def mapType(tp: Type) =
     mapOwnerThis(typeMap(tp).substSym(substFrom, substTo))
-
+  
   private def updateDecls(prevStats: List[Tree], newStats: List[Tree]): Unit =
     if (prevStats.isEmpty) assert(newStats.isEmpty)
     else {

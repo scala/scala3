@@ -62,6 +62,7 @@ class Compiler {
            new ElimByName,
            new AugmentScala2Traits,
            new ResolveSuper),
+      List(new TypeSpecializer),
       List(new Erasure),
       List(new ElimErasedValueType,
            new VCElideAllocations,
