@@ -423,7 +423,7 @@ class Namer { typer: Typer =>
     private def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
         if (sym is Module) moduleValSig(sym)
-        else valOrDefDefSig(original, sym, Nil, identity)(localContext(sym).setNewScope)
+        else valOrDefDefSig(original, sym, Nil, Nil, identity)(localContext(sym).setNewScope)
       case original: DefDef =>
         val typer1 = new Typer
         nestedTyper(sym) = typer1
@@ -572,7 +572,7 @@ class Namer { typer: Typer =>
    *  @param paramFn  A wrapping function that produces the type of the
    *                  defined symbol, given its final return type
    */
-  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, typeParams: List[Symbol], paramFn: Type => Type)(implicit ctx: Context): Type = {
+  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, typeParams: List[Symbol], paramss: List[List[Symbol]], paramFn: Type => Type)(implicit ctx: Context): Type = {
 
     def inferredType = {
       /** A type for this definition that might be inherited from elsewhere:
@@ -660,14 +660,20 @@ class Namer { typer: Typer =>
       case TypeTree(untpd.EmptyTree) => 
         inferredType
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
-        typedAheadExpr(mdef.rhs, tpt.tpe)
-        typr.println(i"determine closure result type to be ${tpt.tpe}")
+        val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
+        mdef match {
+          case mdef: DefDef if mdef.name == nme.ANON_FUN =>
+            val hygienicType = avoid(rhsType, paramss.flatten)
+            hygienicType <:< tpt.tpe
+            typr.println(i"lifting $rhsType over $paramss -> $hygienicType = ${tpt.tpe}")
+          case _ =>
+        }
         WildcardType
       case _ => 
         WildcardType
     }
     paramFn(typedAheadType(mdef.tpt, tptProto).tpe)
-  }
+ }
 
   /** The type signature of a DefDef with given symbol */
   def defDefSig(ddef: DefDef, sym: Symbol)(implicit ctx: Context) = {
@@ -676,12 +682,13 @@ class Namer { typer: Typer =>
     vparamss foreach completeParams
     val isConstructor = name == nme.CONSTRUCTOR
     def typeParams = tparams map symbolOfTree
+    val paramSymss = {
+      val pss = vparamss.nestedMap(symbolOfTree)
+      if (isConstructor &&     // Make sure constructor has one non-implicit parameter list
+        (pss.isEmpty || pss.head.nonEmpty && (pss.head.head is Implicit))) Nil :: pss
+      else pss
+    }
     def wrapMethType(restpe: Type): Type = {
-      var paramSymss = vparamss.nestedMap(symbolOfTree)
-      // Make sure constructor has one non-implicit parameter list
-      if (isConstructor &&
-          (paramSymss.isEmpty || paramSymss.head.nonEmpty && (paramSymss.head.head is Implicit)))
-        paramSymss = Nil :: paramSymss
       val restpe1 = // try to make anonymous functions non-dependent, so that they can be used in closures
         if (name == nme.ANON_FUN) avoid(restpe, paramSymss.flatten)
         else restpe
@@ -692,7 +699,7 @@ class Namer { typer: Typer =>
       typedAheadType(ddef.tpt, defn.UnitType)
       wrapMethType(ctx.effectiveResultType(sym, typeParams, NoType))
     }
-    else valOrDefDefSig(ddef, sym, typeParams, wrapMethType)
+    else valOrDefDefSig(ddef, sym, typeParams, paramSymss, wrapMethType)
   }
 
   def typeDefSig(tdef: TypeDef, sym: Symbol)(implicit ctx: Context): Type = {

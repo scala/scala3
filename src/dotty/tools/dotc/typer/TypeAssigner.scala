@@ -87,6 +87,10 @@ trait TypeAssigner {
             parent1
           }
           else tp1
+        case tp: TypeVar if ctx.typerState.constraint.contains(tp) =>
+          val lo = ctx.typerState.constraint.fullLowerBound(tp.origin)
+          val lo1 = avoid(lo, syms)
+          if (lo1 ne lo) lo1 else tp
         case _ =>
           mapOver(tp)
       }
