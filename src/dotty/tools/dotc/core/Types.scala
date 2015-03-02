@@ -1940,7 +1940,13 @@ object Types {
       }
       else resType
 
-    private[this] var myDependencyStatus: DependencyStatus = Unknown
+    var myDependencyStatus: DependencyStatus = Unknown
+    
+    private def combine(x: DependencyStatus, y: DependencyStatus): DependencyStatus = {
+      val status = (x & StatusMask) max (y & StatusMask)
+      val provisional = (x | y) & Provisional
+      (if (status == TrueDeps) status else status | provisional).toByte
+    }
     
     /** The dependency status of this method. Some examples:
      *  
@@ -1951,26 +1957,27 @@ object Types {
      *                              // dependency can be eliminated by dealiasing.
      */
     private def dependencyStatus(implicit ctx: Context): DependencyStatus = {
-      if (myDependencyStatus == Unknown) {
+      if (myDependencyStatus != Unknown) myDependencyStatus
+      else {
         val isDepAcc = new TypeAccumulator[DependencyStatus] {
           def apply(x: DependencyStatus, tp: Type) = 
             if (x == TrueDeps) x
-            else x max {
+            else 
               tp match {
                 case MethodParam(`thisMethodType`, _) => TrueDeps
                 case tp @ TypeRef(MethodParam(`thisMethodType`, _), name) =>
                   tp.info match { // follow type alias to avoid dependency
-                    case TypeAlias(alias) => apply(x, alias) max FalseDeps
+                    case TypeAlias(alias) => combine(apply(x, alias), FalseDeps)
                     case _ => TrueDeps
                   }
-                case _ =>
-                  foldOver(x, tp)
+                case tp: TypeVar if !tp.isInstantiated => combine(x, Provisional)
+                case _ => foldOver(x, tp)
               }
-            }
         }
-        myDependencyStatus = isDepAcc(NoDeps, resType)
+        val result = isDepAcc(NoDeps, resType)
+        if ((result & Provisional) == 0) myDependencyStatus = result
+        (result & StatusMask).toByte
       }
-      myDependencyStatus
     }
 
     /** Does result type contain references to parameters of this method type,
@@ -2062,6 +2069,8 @@ object Types {
     private final val NoDeps: DependencyStatus = 1    // no dependent parameters found
     private final val FalseDeps: DependencyStatus = 2 // all dependent parameters are prefixes of non-depended alias types
     private final val TrueDeps: DependencyStatus = 3  // some truly dependent parameters exist
+    private final val StatusMask: DependencyStatus = 3 // the bits indicating actual dependency status
+    private final val Provisional: DependencyStatus = 4  // set if dependency status can still change due to type variable instantiations
   }
 
   object JavaMethodType extends MethodTypeCompanion {
