@@ -1408,12 +1408,7 @@ object Parsers {
     }
 
     /** Wrap annotation or constructor in New(...).<init> */
-    def wrapNew(tpt: Tree) = tpt match {
-      case AppliedTypeTree(tpt1, targs) =>
-        TypeApply(Select(New(tpt1), nme.CONSTRUCTOR), targs)
-      case _ =>
-        Select(New(tpt), nme.CONSTRUCTOR)
-    }
+    def wrapNew(tpt: Tree) = Select(New(tpt), nme.CONSTRUCTOR)
 
     /** Adjust start of annotation or constructor to position of preceding @ or new */
     def adjustStart(start: Offset)(tree: Tree): Tree = {
