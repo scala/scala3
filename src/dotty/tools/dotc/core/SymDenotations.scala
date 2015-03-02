@@ -456,8 +456,9 @@ object SymDenotations {
       }
     }
 
-    /** Is this a user defined "def" method? Excluded are accessors. */
-    final def isSourceMethod(implicit ctx: Context) = this is (Method, butNot = AccessorOrLabel)
+    /** Is this a user defined "def" method? Excluded are accessors and anonymous functions. */
+    final def isSourceMethod(implicit ctx: Context) = 
+      this.is(Method, butNot = AccessorOrLabel) && !isAnonymousFunction
 
     /** Is this a setter? */
     final def isGetter(implicit ctx: Context) =

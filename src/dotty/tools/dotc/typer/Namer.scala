@@ -653,13 +653,20 @@ class Namer { typer: Typer =>
         lhsType orElse WildcardType
       }
     }
-
-    val pt = mdef.tpt match {
-      case _: untpd.DerivedTypeTree => WildcardType
-      case TypeTree(untpd.EmptyTree) => inferredType
-      case _ => WildcardType
+    
+    val tptProto = mdef.tpt match {
+      case _: untpd.DerivedTypeTree => 
+        WildcardType
+      case TypeTree(untpd.EmptyTree) => 
+        inferredType
+      case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
+        typedAheadExpr(mdef.rhs, tpt.tpe)
+        typr.println(i"determine closure result type to be ${tpt.tpe}")
+        WildcardType
+      case _ => 
+        WildcardType
     }
-    paramFn(typedAheadType(mdef.tpt, pt).tpe)
+    paramFn(typedAheadType(mdef.tpt, tptProto).tpe)
   }
 
   /** The type signature of a DefDef with given symbol */
