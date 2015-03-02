@@ -47,6 +47,8 @@ trait TypeAssigner {
                sym.owner.isTerm && (forbidden contains sym)
             || !(sym.owner is Package) && toAvoid(tp.prefix)
             )
+        case tp: TypeRef =>
+          forbidden contains tp.symbol
         case _ =>
           false
       }
@@ -57,7 +59,7 @@ trait TypeAssigner {
           tp.info match {
             case TypeAlias(ref) =>
               apply(ref)
-            case info: ClassInfo =>
+            case info: ClassInfo if variance > 0 =>
               val parentType = info.instantiatedParents.reduceLeft(ctx.typeComparer.andType(_, _))
               def addRefinement(parent: Type, decl: Symbol) = {
                 val inherited = parentType.findMember(decl.name, info.cls.thisType, Private)
@@ -73,12 +75,14 @@ trait TypeAssigner {
                 sym => sym.is(TypeParamAccessor | Private) || sym.isConstructor)
               val fullType = (parentType /: refinableDecls)(addRefinement)
               mapOver(fullType)
+            case TypeBounds(lo, hi) if variance > 0 =>
+              apply(hi)
             case _ =>
               mapOver(tp)
           }
         case tp: RefinedType =>
           val tp1 @ RefinedType(parent1, _) = mapOver(tp)
-          if (tp1.refinedInfo existsPart toAvoid) {
+          if (tp1.refinedInfo.existsPart(toAvoid) && variance > 0) {
             typr.println(s"dropping refinement from $tp1")
             parent1
           }
