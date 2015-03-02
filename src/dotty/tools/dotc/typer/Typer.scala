@@ -445,12 +445,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val exprCtx = index(tree.stats)
     val stats1 = typedStats(tree.stats, ctx.owner)
     val expr1 = typedExpr(tree.expr, pt)(exprCtx)
-    ensureNoLocalRefs(assignType(cpy.Block(tree)(stats1, expr1), stats1, expr1), pt)
+    ensureNoLocalRefs(
+        assignType(cpy.Block(tree)(stats1, expr1), stats1, expr1), pt, localSyms(stats1))
   }
 
-  def escapingRefs(block: Block)(implicit ctx: Context): collection.Set[NamedType] = {
+  def escapingRefs(block: Tree, localSyms: => List[Symbol])(implicit ctx: Context): collection.Set[NamedType] = {
     var hoisted: Set[Symbol] = Set()
-    lazy val locals = localSyms(block.stats).toSet
+    lazy val locals = localSyms.toSet
     def leakingTypes(tp: Type): collection.Set[NamedType] =
       tp namedPartsWith (tp => locals.contains(tp.symbol))
     def typeLeaks(tp: Type): Boolean = leakingTypes(tp).nonEmpty
@@ -461,28 +462,31 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     leakingTypes(block.tpe)
   }
 
-  /** Check that block's type can be expressed without references to locally defined
+  /** Check that expression's type can be expressed without references to locally defined
    *  symbols. The following two remedies are tried before giving up:
-   *  1. If the expected type of the block is fully defined, pick it as the
+   *  1. If the expected type of the expression is fully defined, pick it as the
    *     type of the result expressed by adding a type ascription.
    *  2. If (1) fails, force all type variables so that the block's type is
    *     fully defined and try again.
    */
-  protected def ensureNoLocalRefs(block: Block, pt: Type, forcedDefined: Boolean = false)(implicit ctx: Context): Tree = {
-    val Block(stats, expr) = block
-    val leaks = escapingRefs(block)
-    if (leaks.isEmpty) block
-    else if (isFullyDefined(pt, ForceDegree.none)) {
-      val expr1 = Typed(expr, TypeTree(pt))
-      cpy.Block(block)(stats, expr1) withType expr1.tpe // no assignType here because avoid is redundant
-    } else if (!forcedDefined) {
-      fullyDefinedType(block.tpe, "block", block.pos)
-      val expr1 = Typed(expr, TypeTree(avoid(block.tpe, localSyms(stats))))
-      val block1 = cpy.Block(block)(stats, expr1) withType expr1.tpe // no assignType here because avoid is already done
-      ensureNoLocalRefs(block1, pt, forcedDefined = true)
+  protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol], forcedDefined: Boolean = false)(implicit ctx: Context): Tree = {
+    def ascribeType(tree: Tree, pt: Type): Tree = tree match {
+      case block @ Block(stats, expr) => 
+        val expr1 = ascribeType(expr, pt)
+        cpy.Block(block)(stats, expr1) withType expr1.tpe // no assignType here because avoid is redundant
+      case _ =>
+        Typed(tree, TypeTree(pt))
+    }
+    val leaks = escapingRefs(tree, localSyms)
+    if (leaks.isEmpty) tree
+    else if (isFullyDefined(pt, ForceDegree.none)) ascribeType(tree, pt)
+    else if (!forcedDefined) {
+      fullyDefinedType(tree.tpe, "block", tree.pos)
+      val tree1 = ascribeType(tree, avoid(tree.tpe, localSyms))
+      ensureNoLocalRefs(tree1, pt, localSyms, forcedDefined = true)
     } else
-      errorTree(block,
-          d"local definition of ${leaks.head.name} escapes as part of block's type ${block.tpe}"/*; full type: ${result.tpe.toString}"*/)
+      errorTree(tree,
+          d"local definition of ${leaks.head.name} escapes as part of expression's type ${tree.tpe}"/*; full type: ${result.tpe.toString}"*/)
   }
 
   def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) = track("typedIf") {
@@ -611,6 +615,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
             throw new Error(i"internal error: closing over non-method $tp, pos = ${tree.pos}")
         }
       else typed(tree.tpt)
+    //println(i"typing closure $tree : ${meth1.tpe.widen}")
     assignType(cpy.Closure(tree)(env1, meth1, target), meth1, target)
   }
 
@@ -667,7 +672,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case _ =>
       }
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
-      val body1 = typedExpr(tree.body, pt)
+      val body1 = ensureNoLocalRefs(typedExpr(tree.body, pt), pt, ctx.scope.toList)
         .ensureConforms(pt)(originalCtx) // insert a cast if body does not conform to expected type if we disregard gadt bounds
       assignType(cpy.CaseDef(tree)(pat, guard1, body1), body1)
     }
