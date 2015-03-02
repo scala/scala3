@@ -228,7 +228,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     def nameIdText(tree: untpd.NameTree): Text =
       toText(tree.name) ~ idText(tree)
 
-    def toTextTemplate(impl: Template, ofNew: Boolean): Text = {
+    def toTextTemplate(impl: Template, ofNew: Boolean = false): Text = {
       val Template(constr @ DefDef(_, tparams, vparamss, _, _), parents, self, _) = impl
       val tparamsTxt = withEnclosingDef(constr) { tparamsText(tparams) }
       val primaryConstrs = if (constr.rhs.isEmpty) Nil else constr :: Nil
@@ -372,7 +372,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         rhs match {
           case impl: Template =>
             modText(tree.mods, if ((tree).mods is Trait) "trait" else "class") ~~ 
-            nameIdText(tree) ~ withEnclosingDef(tree) { toTextTemplate(impl, ofNew = false) } ~
+            nameIdText(tree) ~ withEnclosingDef(tree) { toTextTemplate(impl) } ~
             (if (tree.hasType && ctx.settings.verbose.value) s"[decls = ${tree.symbol.info.decls}]" else "")
           case rhs: TypeBoundsTree =>
             typeDefText(toText(rhs))
@@ -397,6 +397,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val bodyText =
           if (currentPrecedence == TopLevelPrec) "\n" ~ statsText else " {" ~ statsText ~ "}"
         "package " ~ toTextLocal(pid) ~ bodyText
+      case tree: Template => 
+        toTextTemplate(tree)
       case Annotated(annot, arg) =>
         toTextLocal(arg) ~~ annotText(annot)
       case EmptyTree =>
@@ -405,7 +407,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(t)
       case tree @ ModuleDef(name, impl) =>
         withEnclosingDef(tree) {
-          modText(tree.mods, "object") ~~ nameIdText(tree) ~ toTextTemplate(impl, ofNew = false)
+          modText(tree.mods, "object") ~~ nameIdText(tree) ~ toTextTemplate(impl)
         }
       case SymbolLit(str) =>
         "'" + str
