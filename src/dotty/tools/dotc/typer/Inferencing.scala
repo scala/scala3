@@ -180,7 +180,7 @@ trait Inferencing { this: Checking =>
       constr.println(s"interpolate undet vars in ${tp.show}, pos = ${tree.pos}, mode = ${ctx.mode}, undets = ${constraint.uninstVars map (tvar => s"${tvar.show}@${tvar.owningTree.pos}")}")
       constr.println(s"qualifying undet vars: ${constraint.uninstVars filter qualifies map (tvar => s"$tvar / ${tvar.show}")}, constraint: ${constraint.show}")
 
-      val vs = tp.variances(qualifies)
+      val vs = variances(tp, qualifies)
       var changed = false
       vs foreachBinding { (tvar, v) =>
         if (v != 0) {
@@ -206,7 +206,7 @@ trait Inferencing { this: Checking =>
    *  typevar is not uniquely determined, return that typevar in a Some.
    */
   def maximizeType(tp: Type)(implicit ctx: Context): Option[TypeVar] = Stats.track("maximizeType") {
-    val vs = tp.variances(alwaysTrue)
+    val vs = variances(tp, alwaysTrue)
     var result: Option[TypeVar] = None
     vs foreachBinding { (tvar, v) =>
       if (v == 1) tvar.instantiate(fromBelow = false)
@@ -218,6 +218,41 @@ trait Inferencing { this: Checking =>
       }
     }
     result
+  }
+
+  type VarianceMap = SimpleMap[TypeVar, Integer]
+
+  /** All occurrences of type vars in this type that satisfy predicate
+   *  `include` mapped to their variances (-1/0/1) in this type, where
+   *  -1 means: only covariant occurrences
+   *  +1 means: only covariant occurrences
+   *  0 means: mixed or non-variant occurrences
+   *
+   *  Note: We intentionally use a relaxed version of variance here,
+   *  where the variance does not change under a prefix of a named type
+   *  (the strict version makes prefixes invariant). This turns out to be
+   *  better for type inference. In a nutshell, if a type variable occurs
+   *  like this:
+   *
+   *     (U? >: x.type) # T
+   *
+   *  we want to instantiate U to x.type right away. No need to wait further.
+   */
+  private def variances(tp: Type, include: TypeVar => Boolean)(implicit ctx: Context): VarianceMap = Stats.track("variances") {
+    val accu = new TypeAccumulator[VarianceMap] {
+      def apply(vmap: VarianceMap, t: Type): VarianceMap = t match {
+        case t: TypeVar if !t.isInstantiated && (ctx.typerState.constraint contains t) && include(t) =>
+          val v = vmap(t)
+          if (v == null) vmap.updated(t, variance)
+          else if (v == variance) vmap
+          else vmap.updated(t, 0)
+        case _ =>
+          foldOver(vmap, t)
+      }
+      override def applyToPrefix(vmap: VarianceMap, t: NamedType) =
+        apply(vmap, t.prefix)
+    }
+    accu(SimpleMap.Empty, tp)
   }
 }
 

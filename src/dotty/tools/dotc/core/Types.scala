@@ -1006,30 +1006,6 @@ object Types {
       case _ => show
     }
 
-    type VarianceMap = SimpleMap[TypeVar, Integer]
-
-    /** All occurrences of type vars in this type that satisfy predicate
-     *  `include` mapped to their variances (-1/0/1) in this type, where
-     *  -1 means: only covariant occurrences
-     *  +1 means: only covariant occurrences
-     *  0 means: mixed or non-variant occurrences
-     */
-    def variances(include: TypeVar => Boolean)(implicit ctx: Context): VarianceMap = track("variances") {
-      val accu = new TypeAccumulator[VarianceMap] {
-        def apply(vmap: VarianceMap, t: Type): VarianceMap = t match {
-          case t: TypeVar
-          if !t.isInstantiated && (ctx.typerState.constraint contains t) && include(t) =>
-            val v = vmap(t)
-            if (v == null) vmap.updated(t, variance)
-            else if (v == variance) vmap
-            else vmap.updated(t, 0)
-          case _ =>
-            foldOver(vmap, t)
-        }
-      }
-      accu(SimpleMap.Empty, this)
-    }
-
     /** A simplified version of this type which is equivalent wrt =:= to this type.
      *  This applies a typemap to the type which (as all typemaps) follows type
      *  variable instances and reduces typerefs over refined types. It also
@@ -2738,7 +2714,13 @@ object Types {
       tp match {
         case tp: NamedType =>
           if (stopAtStatic && tp.symbol.isStatic) tp
-          else tp.derivedSelect(this(tp.prefix))
+          else {
+            val saved = variance
+            variance = 0
+            val result = tp.derivedSelect(this(tp.prefix))
+            variance = saved
+            result
+          }
 
         case _: ThisType
           | _: BoundType
@@ -2871,17 +2853,25 @@ object Types {
     protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
 
     protected var variance = 1
-
+    
+    protected def applyToPrefix(x: T, tp: NamedType) = {
+      val saved = variance
+      variance = 0
+      val result = this(x, tp.prefix)
+      variance = saved
+      result
+    }
+    
     def foldOver(x: T, tp: Type): T = tp match {
       case tp: TypeRef =>
         if (stopAtStatic && tp.symbol.isStatic) x
         else {
           val tp1 = tp.prefix.lookupRefined(tp.name)
-          this(x, if (tp1.exists) tp1 else tp.prefix)
+          if (tp1.exists) this(x, tp1) else applyToPrefix(x, tp)
         }
       case tp: TermRef =>
         if (stopAtStatic && tp.currentSymbol.isStatic) x
-        else this(x, tp.prefix)
+        else applyToPrefix(x, tp)
 
       case _: ThisType
          | _: BoundType
