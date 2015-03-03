@@ -6,7 +6,7 @@ import TreeTransforms._
 import Contexts.Context
 import Decorators._
 import pickling._
-import config.Printers
+import config.Printers.{noPrinter, pickling}
 import java.io.PrintStream
 import Periods._
 
@@ -25,7 +25,7 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
   override def transformUnit(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = {
     if (!ctx.compilationUnit.isJava) {
       val pickler = new TastyPickler
-      println(i"unpickling in run ${ctx.runId}")
+      pickling.println(i"unpickling in run ${ctx.runId}")
       val previous = if (ctx.settings.YtestPickler.value) tree.show else ""
                   
       val treePkl = new TreePickler(pickler)
@@ -40,7 +40,7 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
           case (row, i) => s"${i}0: ${row.mkString(" ")}"
         }
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
-      if (Printers.pickling ne Printers.noPrinter) new TastyPrinter(bytes).printContents()
+      if (pickling ne noPrinter) new TastyPrinter(bytes).printContents()
       
       if (ctx.settings.YtestPickler.value)
         unpickle(bytes, previous)(ctx.fresh.setPeriod(Period(ctx.runId + 1, FirstPhaseId)))

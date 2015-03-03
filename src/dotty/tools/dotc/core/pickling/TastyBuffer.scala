@@ -18,6 +18,8 @@ object TastyBuffer {
     
     def relativeTo(base: Addr): Addr = this - base.index - AddrWidth
   }
+  
+  val NoAddr = Addr(-1)
 
   /** The maximal number of address bytes.
    *  Since addresses are written as base-128 natural numbers,
