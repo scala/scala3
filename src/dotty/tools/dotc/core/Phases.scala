@@ -3,6 +3,7 @@ package core
 
 import Periods._
 import Contexts._
+import dotty.tools.backend.jvm.GenBCode
 import util.DotClass
 import DenotTransformers._
 import Denotations._
@@ -170,7 +171,8 @@ object Phases {
     private val patmatCache = new PhaseCache(classOf[PatternMatcher])
     private val flattenCache = new PhaseCache(classOf[Flatten])
     private val explicitOuterCache = new PhaseCache(classOf[ExplicitOuter])
-    private val gettersSettersCache = new PhaseCache(classOf[GettersSetters])
+    private val gettersCache = new PhaseCache(classOf[Getters])
+    private val genBCodeCache = new PhaseCache(classOf[GenBCode])
 
     def typerPhase = typerCache.phase
     def refchecksPhase = refChecksCache.phase
@@ -178,7 +180,8 @@ object Phases {
     def patmatPhase = patmatCache.phase
     def flattenPhase = flattenCache.phase
     def explicitOuterPhase = explicitOuterCache.phase
-    def gettersSettersPhase = gettersSettersCache.phase
+    def gettersPhase = gettersCache.phase
+    def genBCodePhase = genBCodeCache.phase
 
     def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
   }
@@ -194,7 +197,7 @@ object Phases {
 
     def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
       units.map { unit =>
-        val unitCtx = ctx.fresh.setPhase(this).setCompilationUnit(unit)
+        val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
         run(unitCtx)
         unitCtx.compilationUnit
       }
@@ -241,7 +244,7 @@ object Phases {
       if (start >= FirstPhaseId)
         assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")
       myBase = base
-      myPeriod = Period(start, end)
+      myPeriod = Period(NoRunId, start, end)
       myErasedTypes  = prev.getClass == classOf[Erasure]      || prev.erasedTypes
       myFlatClasses  = prev.getClass == classOf[Flatten]      || prev.flatClasses
       myRefChecked   = prev.getClass == classOf[RefChecks]    || prev.refChecked
@@ -250,7 +253,7 @@ object Phases {
 
     protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
 
-    final def <=(that: Phase)(implicit ctx: Context) =
+    final def <=(that: Phase) =
       exists && id <= that.id
 
     final def prev: Phase =

@@ -62,7 +62,7 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
         }
       }
     case ref =>
-      ref.derivedSingleDenotation(ref.symbol, eraseInfo(ref.info))
+      ref.derivedSingleDenotation(ref.symbol, eraseInfo(ref.info, ref.symbol))
   }
 
   val eraser = new Erasure.Typer
@@ -251,7 +251,7 @@ object Erasure extends TypeTestsCasts{
     override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Literal =
       if (tree.typeOpt.isRef(defn.UnitClass)) tree.withType(tree.typeOpt)
       else super.typedLiteral(tree)
-
+      
     /** Type check select nodes, applying the following rewritings exhaustively
      *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`
      *  is the erased type of the selection's original qualifier expression.
@@ -348,7 +348,7 @@ object Erasure extends TypeTestsCasts{
     }
 
     private def protoArgs(pt: Type): List[untpd.Tree] = pt match {
-      case pt: FunProto => pt.args ++ protoArgs(pt.resultType)
+      case pt: FunProto => pt.args ++ protoArgs(pt.resType)
       case _ => Nil
     }
 
@@ -370,10 +370,8 @@ object Erasure extends TypeTestsCasts{
 
     override def typedApply(tree: untpd.Apply, pt: Type)(implicit ctx: Context): Tree = {
       val Apply(fun, args) = tree
-      if (tree.removeAttachment(ElimByName.ByNameArg).isDefined) {
-        val Select(qual, nme.apply) = fun
-        typedUnadapted(qual, pt)
-      }
+      if (fun.symbol == defn.dummyApply)
+        typedUnadapted(args.head, pt)
       else typedExpr(fun, FunProto(args, pt, this)) match {
         case fun1: Apply => // arguments passed in prototype were already passed
           fun1
@@ -386,6 +384,30 @@ object Erasure extends TypeTestsCasts{
             case _ =>
               throw new MatchError(i"tree $tree has unexpected type of function ${fun1.tpe.widen}, was ${fun.typeOpt.widen}")
           }
+      }
+    }
+
+    // The following four methods take as the proto-type the erasure of the pre-existing type,
+    // if the original proto-type is not a value type. 
+    // This makes all branches be adapted to the correct type.
+    override def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context) =
+      super.typedSeqLiteral(tree, erasure(tree.typeOpt))
+        // proto type of typed seq literal is original type; 
+
+    override def typedIf(tree: untpd.If, pt: Type)(implicit ctx: Context) =
+      super.typedIf(tree, adaptProto(tree, pt))
+   
+    override def typedMatch(tree: untpd.Match, pt: Type)(implicit ctx: Context) =
+      super.typedMatch(tree, adaptProto(tree, pt))
+    
+    override def typedTry(tree: untpd.Try, pt: Type)(implicit ctx: Context) = 
+      super.typedTry(tree, adaptProto(tree, pt))
+
+    private def adaptProto(tree: untpd.Tree, pt: Type)(implicit ctx: Context) = {
+      if (pt.isValueType) pt else {
+        if(tree.typeOpt.derivesFrom(ctx.definitions.UnitClass))
+          tree.typeOpt
+        else erasure(tree.typeOpt)
       }
     }
 
@@ -441,7 +463,7 @@ object Erasure extends TypeTestsCasts{
 
                   if (isRequired) {
                     // check for clashes
-                    val clash: Option[Symbol] = oldSymbol.owner.decls.lookupAll(bridge.name).find {
+                    val clash: Option[Symbol] = oldSymbol.owner.info.decls.lookupAll(bridge.name).find {
                       sym =>
                         (sym.name eq bridge.name) && sym.info.widen =:= bridge.info.widen
                     }.orElse(

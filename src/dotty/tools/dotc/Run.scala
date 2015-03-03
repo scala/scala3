@@ -13,6 +13,9 @@ import scala.reflect.io.VirtualFile
 
 class Run(comp: Compiler)(implicit ctx: Context) {
 
+  assert(comp.phases.last.last.id <= Periods.MaxPossiblePhaseId)
+  assert(ctx.runId <= Periods.MaxPossibleRunId)
+
   var units: List[CompilationUnit] = _
 
   def getSource(fileName: String): SourceFile = {
@@ -46,6 +49,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
         .filterNot(ctx.settings.Yskip.value.containsPhase(_)) // TODO: skip only subphase
       for (phase <- phasesToRun)
         if (!ctx.reporter.hasErrors) {
+          if (ctx.settings.verbose.value) println(s"[$phase]")
           units = phase.runOn(units)
           def foreachUnit(op: Context => Unit)(implicit ctx: Context): Unit =
             for (unit <- units) op(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))

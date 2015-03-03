@@ -4,15 +4,14 @@ package transform
 import core._
 import Symbols._, Types._, Contexts._, SymDenotations._, DenotTransformers._, Flags._
 import util.Positions._
+import SymUtils._
 import StdNames._, NameOps._
 
 class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: Context) {
   import ast.tpd._
 
-  val superCls: Symbol = cls.classInfo.parents.head.symbol
-  val mixins: List[ClassSymbol] =
-    if (cls is Trait) Nil
-    else cls.baseClasses.tail.takeWhile(_ ne superCls).reverse
+  val superCls: Symbol = cls.superClass
+  val mixins: List[ClassSymbol] = cls.mixins
 
   def implementation(member: TermSymbol): TermSymbol =
     member.copy(

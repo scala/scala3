@@ -8,3 +8,11 @@ class C extends T {
   override val y = 2
 
 }
+
+class D extends T {
+
+  def x(): String = ""
+
+}
+
+

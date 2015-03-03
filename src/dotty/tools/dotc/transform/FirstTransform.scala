@@ -35,7 +35,6 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
 
   override def phaseName = "firstTransform"
 
-
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp
 
   override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
@@ -82,7 +81,15 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
 
     def addMissingCompanions(stats: List[Tree]): List[Tree] = stats map {
       case stat: TypeDef if singleClassDefs contains stat.name =>
-        Thicket(stat :: newCompanion(stat.name.toTermName).trees)
+        val objName = stat.name.toTermName
+        val nameClash = stats.exists {
+          case other: MemberDef => 
+            other.name == objName && other.symbol.info.isParameterless
+          case _ =>
+            false
+        }
+        val uniqueName = if (nameClash) objName.avoidClashName else objName
+        Thicket(stat :: newCompanion(uniqueName).trees)
       case stat => stat
     }
 
@@ -124,7 +131,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
     normalizeType {
       val qual = tree.qualifier
       qual.symbol.moduleClass.denot match {
-        case pkg: PackageClassDenotation if tree.symbol.maybeOwner.isPackageObject =>
+        case pkg: PackageClassDenotation if !tree.symbol.maybeOwner.is(Package) =>
           cpy.Select(tree)(qual select pkg.packageObj.symbol, tree.name)
         case _ =>
           tree

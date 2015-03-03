@@ -48,8 +48,6 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
 
   override def phaseName: String = "resolveSuper"
 
-  override def treeTransformPhase = thisTransform.next
-
   /** Returns the symbol that is accessed by a super-accessor in a mixin composition.
    *
    *  @param base       The class in which everything is mixed together
@@ -77,7 +75,7 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
     import ops._
 
     def superAccessors(mixin: ClassSymbol): List[Tree] =
-      for (superAcc <- mixin.decls.filter(_ is SuperAccessor).toList)
+      for (superAcc <- mixin.info.decls.filter(_ is SuperAccessor).toList)
         yield polyDefDef(implementation(superAcc.asTerm), forwarder(rebindSuper(cls, superAcc)))
 
     def methodOverrides(mixin: ClassSymbol): List[Tree] = {
@@ -86,7 +84,7 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
         meth.is(Method, butNot = PrivateOrDeferred) &&
           !isOverridden(meth) &&
           !meth.allOverriddenSymbols.forall(_ is Deferred)
-      for (meth <- mixin.decls.toList if needsDisambiguation(meth))
+      for (meth <- mixin.info.decls.toList if needsDisambiguation(meth))
         yield polyDefDef(implementation(meth.asTerm), forwarder(meth))
     }
 

@@ -31,6 +31,12 @@ object Mode {
   val ImplicitsEnabled = newMode(2, "ImplicitsEnabled")
   val InferringReturnType = newMode(3, "InferringReturnType")
 
+  /** This mode bit is set if we collect information without reference to a valid 
+   *  context with typerstate and constraint. This is typically done when we 
+   *  cache the eligibility of implicits. Caching needs to be done across different constraints.
+   *  Therefore, if TypevarsMissContext is set, subtyping becomes looser, and assumes
+   *  that PolyParams can be sub- and supertypes of anything. See TypeComparer.
+   */
   val TypevarsMissContext = newMode(4, "TypevarsMissContext")
   val CheckCyclic = newMode(5, "CheckCyclic")
 

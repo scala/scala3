@@ -45,7 +45,7 @@ trait SymDenotations { this: Context =>
       val owner = denot.owner.denot
       stillValid(owner) && (
            !owner.isClass
-        || (owner.decls.lookupAll(denot.name) contains denot.symbol)
+        || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
         || denot.isSelfSym
         )
     } catch {
@@ -171,9 +171,14 @@ object SymDenotations {
       myInfo = tp
     }
 
-    /** The name, except if this is a module class, strip the module class suffix */
+    /** The name, except 
+     *   - if this is a module class, strip the module class suffix 
+     *   - if this is a companion object with a clash-avoiding name, strip the 
+     *     "avoid clash" suffix
+     */
     def effectiveName(implicit ctx: Context) =
-      if (this is ModuleClass) name.stripModuleClassSuffix else name
+      if (this is ModuleClass) name.stripModuleClassSuffix 
+      else name.stripAvoidClashSuffix
 
     /** The privateWithin boundary, NoSymbol if no boundary is given.
      */
@@ -234,24 +239,31 @@ object SymDenotations {
     final def ensureCompleted()(implicit ctx: Context): Unit = info
 
     /** The symbols defined in this class or object.
+     *  Careful! This coes not force the type, so is compilation order dependent.
+     *  This method should be used only in the following circumstances:
+     *  
+     *  1. When accessing type parameters or type parameter accessors (both are entered before 
+     *     completion). 
+     *  2. When obtaining the current scope in order to enter, rename or delete something there.
+     *  3. When playing it safe in order not to raise CylicReferences, e.g. for printing things
+     *     or taking more efficient shortcuts (e.g. the stillValid test).
      */
-    final def decls(implicit ctx: Context): Scope = myInfo match {
+    final def unforcedDecls(implicit ctx: Context): Scope = myInfo match {
       case cinfo: LazyType =>
         val knownDecls = cinfo.decls
         if (knownDecls ne EmptyScope) knownDecls
-        else { completeFrom(cinfo); decls } // complete-once
+        else { completeFrom(cinfo); unforcedDecls } // complete-once
       case _ => info.decls
     }
 
     /** If this is a package class, the symbols entered in it
      *  before it is completed. (this is needed to eagerly enter synthetic
      *  aliases such as AnyRef into a package class without forcing it.
-     *  Right now, I believe the only usage is for the AnyRef alias
-     *  in Definitions.
+     *  Right now, the only usage is for the AnyRef alias in Definitions.
      */
-    final def preDecls(implicit ctx: Context): MutableScope = myInfo match {
-      case pinfo: SymbolLoaders # PackageLoader => pinfo.preDecls
-      case _ => decls.asInstanceOf[MutableScope]
+    final private[core] def currentPackageDecls(implicit ctx: Context): MutableScope = myInfo match {
+      case pinfo: SymbolLoaders # PackageLoader => pinfo.currentDecls
+      case _ => unforcedDecls.openForMutations
     }
 
     // ------ Names ----------------------------------------------
@@ -277,6 +289,21 @@ object SymDenotations {
           sep += separator
         } while (!owner.isClass && !owner.isPackageObject)
         val fn = owner.fullNameSeparated(separator) ++ sep ++ name
+        if (isType) fn.toTypeName else fn.toTermName
+      }
+
+
+    /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
+    def flatName(separator: Char = '$')(implicit ctx: Context): Name =
+      if (symbol == NoSymbol || owner == NoSymbol || owner.isEffectiveRoot || (owner is PackageClass)) name
+      else {
+        var owner = this
+        var sep = ""
+        do {
+          owner = owner.owner
+          sep += separator
+        } while (!owner.isClass && !owner.isPackageObject)
+        val fn = owner.flatName(separator) ++ sep ++ name
         if (isType) fn.toTypeName else fn.toTermName
       }
 
@@ -323,6 +350,9 @@ object SymDenotations {
     /** Is this symbol an anonymous class? */
     final def isAnonymousClass(implicit ctx: Context): Boolean =
       isClass && (initial.asSymDenotation.name startsWith tpnme.ANON_CLASS)
+
+    final def isAnonymousFunction(implicit ctx: Context) =
+      this.symbol.is(Method) && (initial.asSymDenotation.name startsWith nme.ANON_FUN)
 
     /** Is symbol a primitive value class? */
     def isPrimitiveValueClass(implicit ctx: Context) = defn.ScalaValueClasses contains symbol
@@ -422,7 +452,7 @@ object SymDenotations {
     }
 
     /** Is this a user defined "def" method? Excluded are accessors. */
-    final def isSourceMethod(implicit ctx: Context) = this is (Method, butNot = Accessor)
+    final def isSourceMethod(implicit ctx: Context) = this is (Method, butNot = AccessorOrLabel)
 
     /** Is this a setter? */
     final def isGetter(implicit ctx: Context) =
@@ -466,7 +496,7 @@ object SymDenotations {
 
     /** Is this symbol a class references to which that are supertypes of null? */
     final def isNullableClass(implicit ctx: Context): Boolean =
-      isNonValueClass && !(this is ModuleClass) // todo: check that class does not derive from NotNull?
+      isNonValueClass && !(this is ModuleClass)
 
     /** Is this definition accessible as a member of tree with type `pre`?
      *  @param pre          The type of the tree from which the selection is made
@@ -592,7 +622,7 @@ object SymDenotations {
       isTerm && !is(MethodOrLazy, butNot = Label) && !isLocalDummy
 
     //    def isOverridable: Boolean = !!! need to enforce that classes cannot be redefined
-    //    def isSkolem: Boolean = ???
+    def isSkolem: Boolean = name == nme.SKOLEM
 
     // ------ access to related symbols ---------------------------------
 
@@ -607,15 +637,22 @@ object SymDenotations {
      * the completers.
      */
     /** The class implementing this module, NoSymbol if not applicable. */
-    final def moduleClass(implicit ctx: Context): Symbol =
+    final def moduleClass(implicit ctx: Context): Symbol = {
+      def notFound = {println(s"missing module class for $name: $myInfo"); NoSymbol}
       if (this is ModuleVal)
         myInfo match {
           case info: TypeRef           => info.symbol
           case ExprType(info: TypeRef) => info.symbol // needed after uncurry, when module terms might be accessor defs
           case info: LazyType          => info.moduleClass
-          case _                       => println(s"missing module class for $name: $myInfo"); NoSymbol
+          case t: MethodType           =>
+            t.resultType match {
+              case info: TypeRef => info.symbol
+              case _ => notFound
+            }
+          case _ => notFound
         }
       else NoSymbol
+    }
 
     /** The module implemented by this module class, NoSymbol if not applicable. */
     final def sourceModule(implicit ctx: Context): Symbol = myInfo match {
@@ -994,7 +1031,7 @@ object SymDenotations {
       def computeTypeParams = {
         if (ctx.erasedTypes || is(Module)) Nil // fast return for modules to avoid scanning package decls
         else if (this ne initial) initial.asSymDenotation.typeParams
-        else decls.filter(sym =>
+        else unforcedDecls.filter(sym =>
           (sym is TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
       }
       if (myTypeParams == null) myTypeParams = computeTypeParams
@@ -1225,7 +1262,7 @@ object SymDenotations {
     def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
       val mscope = scope match {
         case scope: MutableScope => scope
-        case _ => decls.asInstanceOf[MutableScope]
+        case _ => unforcedDecls.openForMutations
       }
       if (this is PackageClass) {
         val entry = mscope.lookupEntry(sym.name)
@@ -1255,7 +1292,7 @@ object SymDenotations {
      */
     def replace(prev: Symbol, replacement: Symbol)(implicit ctx: Context): Unit = {
       require(!(this is Frozen))
-      decls.asInstanceOf[MutableScope].replace(prev, replacement)
+      unforcedDecls.openForMutations.replace(prev, replacement)
       if (myMemberCache != null)
         myMemberCache invalidate replacement.name
     }
@@ -1266,7 +1303,7 @@ object SymDenotations {
      */
     def delete(sym: Symbol)(implicit ctx: Context) = {
       require(!(this is Frozen))
-      info.decls.asInstanceOf[MutableScope].unlink(sym)
+      info.decls.openForMutations.unlink(sym)
       if (myMemberFingerPrint != FingerPrint.unknown)
         computeMemberFingerPrint
       if (myMemberCache != null)
@@ -1278,7 +1315,7 @@ object SymDenotations {
      *  have existing symbols.
      */
     final def membersNamed(name: Name)(implicit ctx: Context): PreDenotation = {
-      val privates = decls.denotsNamed(name, selectPrivate)
+      val privates = info.decls.denotsNamed(name, selectPrivate)
       privates union nonPrivateMembersNamed(name).filterDisjoint(privates)
     }
 
@@ -1308,7 +1345,7 @@ object SymDenotations {
           (memberFingerPrint contains name)) {
         Stats.record("computeNPMembersNamed after fingerprint")
         ensureCompleted()
-        val ownDenots = decls.denotsNamed(name, selectNonPrivate)
+        val ownDenots = info.decls.denotsNamed(name, selectNonPrivate)
         if (debugTrace)  // DEBUG
           println(s"$this.member($name), ownDenots = $ownDenots")
         def collect(denots: PreDenotation, parents: List[TypeRef]): PreDenotation = parents match {
@@ -1455,14 +1492,14 @@ object SymDenotations {
 
     override def primaryConstructor(implicit ctx: Context): Symbol = {
       val cname = if (this is ImplClass) nme.IMPLCLASS_CONSTRUCTOR else nme.CONSTRUCTOR
-      decls.denotsNamed(cname).last.symbol // denotsNamed returns Symbols in reverse order of occurrence
+      info.decls.denotsNamed(cname).last.symbol // denotsNamed returns Symbols in reverse order of occurrence
     }
 
     /** The parameter accessors of this class. Term and type accessors,
      *  getters and setters are all returned int his list
      */
     def paramAccessors(implicit ctx: Context): List[Symbol] =
-      decls.filter(_ is ParamAccessor).toList
+      unforcedDecls.filter(_ is ParamAccessor).toList
 
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
@@ -1664,4 +1701,6 @@ object SymDenotations {
     private final val NumBits = NumWords << WordSizeLog
     private final val Mask = NumBits - 1
   }
+
+  private val AccessorOrLabel = Accessor | Label
 }

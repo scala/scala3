@@ -158,9 +158,6 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
   /** A map from symbols to their associated `decls` scopes */
   private val symScopes = mutable.AnyRefMap[Symbol, Scope]()
 
-  /** A map from refinement classes to their associated refinement types */
-  private val refinementTypes = mutable.AnyRefMap[Symbol, RefinedType]()
-
   protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(implicit ctx: Context) = {
     val ex = new BadSignature(
       sm"""error reading Scala signature of $classRoot from $source:
@@ -343,7 +340,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         if (denot.exists && !denot1.exists) { // !!!DEBUG
           val alts = denot.alternatives map (d => d+":"+d.info+"/"+d.signature)
           System.err.println(s"!!! disambiguation failure: $alts")
-          val members = denot.alternatives.head.symbol.owner.decls.toList map (d => d+":"+d.info+"/"+d.signature)
+          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => d+":"+d.info+"/"+d.signature)
           System.err.println(s"!!! all members: $members")
         }
         if (tag == EXTref) sym else sym.moduleClass
@@ -445,7 +442,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
          )
         owner.asClass.enter(sym, symScope(owner))
       else if (isRefinementClass(owner))
-        symScope(owner).asInstanceOf[MutableScope].enter(sym)
+        symScope(owner).openForMutations.enter(sym)
       sym
     }
 
@@ -475,7 +472,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             val unpickler = new LocalUnpickler() withDecls symScope(cls)
             if (flags is ModuleClass)
               unpickler withSourceModule (implicit ctx =>
-                cls.owner.decls.lookup(cls.name.sourceModuleName)
+                cls.owner.info.decls.lookup(cls.name.sourceModuleName)
                   .suchThat(_ is Module).symbol)
             else unpickler
           }
@@ -612,9 +609,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       case NOPREFIXtpe =>
         NoPrefix
       case THIStpe =>
-        val cls = readSymbolRef().asClass
-        if (isRefinementClass(cls)) RefinedThis(refinementTypes(cls))
-        else cls.thisType
+        readSymbolRef().thisType
       case SINGLEtpe =>
         val pre = readTypeRef()
         val sym = readDisambiguatedSymbolRef(_.info.isParameterless)
@@ -637,7 +632,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             // and also for the inner Transform class in all views. We fix it by
             // replacing the this with the appropriate super.
             if (sym.owner != thispre.cls) {
-              val overriding = thispre.cls.decls.lookup(sym.name)
+              val overriding = thispre.cls.info.decls.lookup(sym.name)
               if (overriding.exists && overriding != sym) {
                 val base = pre.baseTypeWithArgs(sym.owner)
                 assert(base.exists)
@@ -665,12 +660,13 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val parent = parents.reduceLeft(AndType(_, _))
         if (decls.isEmpty) parent
         else {
-          def addRefinement(tp: Type, sym: Symbol) =
-            RefinedType(tp, sym.name, sym.info)
-          val result = (parent /: decls.toList)(addRefinement).asInstanceOf[RefinedType]
-          assert(!refinementTypes.isDefinedAt(clazz), clazz + "/" + decls)
-          refinementTypes(clazz) = result
-          result
+          def addRefinement(tp: Type, sym: Symbol) = {
+            def subst(info: Type, rt: RefinedType) = 
+              if (clazz.isClass) info.substThis(clazz.asClass, SkolemType(rt))
+              else info // turns out some symbols read into `clazz` are not classes, not sure why this is the case.
+            RefinedType(tp, sym.name, subst(sym.info, _))
+          }
+          (parent /: decls.toList)(addRefinement).asInstanceOf[RefinedType]
         }
       case CLASSINFOtpe =>
         val clazz = readSymbolRef()

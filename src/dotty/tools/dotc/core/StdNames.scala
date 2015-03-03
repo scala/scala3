@@ -107,6 +107,7 @@ object StdNames {
     val INTERPRETER_WRAPPER_SUFFIX: N = "$object"
     val LOCALDUMMY_PREFIX: N          = "<local "       // owner of local blocks
     val MODULE_SUFFIX: N              = NameTransformer.MODULE_SUFFIX_STRING
+    val AVOID_CLASH_SUFFIX: N         = "$_avoid_name_clash_$"
     val MODULE_VAR_SUFFIX: N          = "$module"
     val NAME_JOIN: N                  = NameTransformer.NAME_JOIN_STRING
     val USCORE_PARAM_PREFIX: N        = "_$"
@@ -225,6 +226,7 @@ object StdNames {
     val FAKE_LOCAL_THIS: N          = "this$"
     val IMPLCLASS_CONSTRUCTOR: N    = "$init$"
     val LAZY_LOCAL: N               = "$lzy"
+    val LAZY_LOCAL_INIT: N          = "$lzyINIT"
     val LAZY_FIELD_OFFSET: N        = "OFFSET$"
     val LAZY_SLOW_SUFFIX: N         = "$lzycompute"
     val LOCAL_SUFFIX: N             = "$$local"
@@ -372,6 +374,7 @@ object StdNames {
     val delayedInit: N          = "delayedInit"
     val delayedInitArg: N       = "delayedInit$body"
     val drop: N                 = "drop"
+    val dummyApply: N           = "<dummy-apply>"
     val elem: N                 = "elem"
     val emptyValDef: N          = "emptyValDef"
     val ensureAccessible : N    = "ensureAccessible"
@@ -467,6 +470,7 @@ object StdNames {
     val selectTerm: N           = "selectTerm"
     val selectType: N           = "selectType"
     val self: N                 = "self"
+    val seqToArray: N           = "seqToArray"
     val setAccessible: N        = "setAccessible"
     val setAnnotations: N       = "setAnnotations"
     val setSymbol: N            = "setSymbol"
@@ -509,6 +513,9 @@ object StdNames {
     val wrap: N                 = "wrap"
     val zero: N                 = "zero"
     val zip: N                  = "zip"
+    val nothingRuntimeClass: N  = "scala.runtime.Nothing$"
+    val nullRuntimeClass: N     = "scala.runtime.Null$"
+
 
     val synthSwitch: N          = "$synthSwitch"
 

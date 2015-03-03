@@ -12,7 +12,7 @@ import Contexts._, Types._, Decorators._, Denotations._, Symbols._, SymDenotatio
  *
  *  For now, only self references are treated.
  */
-class Splitter extends MiniPhaseTransform {
+class Splitter extends MiniPhaseTransform { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "splitter"

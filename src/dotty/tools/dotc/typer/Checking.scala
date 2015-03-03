@@ -63,26 +63,24 @@ object Checking {
      *  break direct cycle with a LazyRef for legal, F-bounded cycles.
      */
     def checkInfo(tp: Type): Type = tp match {
+      case tp @ TypeAlias(alias) =>
+        try tp.derivedTypeAlias(apply(alias))
+        finally {
+          where = "alias"
+          lastChecked = alias
+        }
       case tp @ TypeBounds(lo, hi) =>
-        if (lo eq hi)
-          try tp.derivedTypeAlias(apply(lo))
-          finally {
-            where = "alias"
-            lastChecked = lo
-          }
-        else {
-          val lo1 = try apply(lo) finally {
-            where = "lower bound"
-            lastChecked = lo
-          }
-          val saved = nestedCycleOK
-          nestedCycleOK = true
-          try tp.derivedTypeBounds(lo1, apply(hi))
-          finally {
-            nestedCycleOK = saved
-            where = "upper bound"
-            lastChecked = hi
-          }
+        val lo1 = try apply(lo) finally {
+          where = "lower bound"
+          lastChecked = lo
+        }
+        val saved = nestedCycleOK
+        nestedCycleOK = true
+        try tp.derivedTypeBounds(lo1, apply(hi))
+        finally {
+          nestedCycleOK = saved
+          where = "upper bound"
+          lastChecked = hi
         }
       case _ =>
         tp
@@ -162,13 +160,13 @@ object Checking {
    *  This depends also on firming up the DOT calculus. For the moment we only issue
    *  deprecated warnings, not errors.
    */
-  def checkRefinementNonCyclic(refinement: Tree, refineCls: ClassSymbol)(implicit ctx: Context): Unit = {
+  def checkRefinementNonCyclic(refinement: Tree, refineCls: ClassSymbol, seen: mutable.Set[Symbol])
+    (implicit ctx: Context): Unit = {
     def flag(what: String, tree: Tree) =
       ctx.deprecationWarning(i"$what reference in refinement is deprecated", tree.pos)
     def forwardRef(tree: Tree) = flag("forward", tree)
     def selfRef(tree: Tree) = flag("self", tree)
     val checkTree = new TreeAccumulator[Unit] {
-      private var seen = Set[Symbol]()
       def checkRef(tree: Tree, sym: Symbol) =
         if (sym.maybeOwner == refineCls && !seen(sym)) forwardRef(tree)
       def apply(x: Unit, tree: Tree) = tree match {
@@ -248,7 +246,7 @@ trait Checking {
    *  @return  `tp` itself if it is a class or trait ref, ObjectClass.typeRef if not.
    */
   def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type =
-    tp.underlyingClassRef match {
+    tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
         if (ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
         if (traitReq && !(tref.symbol is Trait)) ctx.error(d"$tref is not a trait", pos)
@@ -277,7 +275,7 @@ trait Checking {
       tp.derivedRefinedType(tp.parent, tp.refinedName, checkFeasible(tp.refinedInfo, pos, where))
     case tp @ TypeBounds(lo, hi) if !(lo <:< hi) =>
       ctx.error(d"no type exists between low bound $lo and high bound $hi$where", pos)
-      tp.derivedTypeAlias(hi)
+      TypeAlias(hi)
     case _ =>
       tp
   }

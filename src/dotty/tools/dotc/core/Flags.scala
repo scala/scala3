@@ -301,9 +301,6 @@ object Flags {
   /** Method is assumed to be stable */
   final val Stable = termFlag(24, "<stable>")
 
-  /** Info can be refined during GADT pattern match */
-  final val GADTFlexType = typeFlag(24, "<gadt-flex-type>")
-
   /** A case parameter accessor */
   final val CaseAccessor = termFlag(25, "<caseaccessor>")
 
@@ -553,7 +550,7 @@ object Flags {
 
   /** A Java interface, potentially with default methods */
   final val JavaTrait = allOf(JavaDefined, Trait, NoInits)
-  
+
     /** A Java interface */
   final val JavaInterface = allOf(JavaDefined, Trait)
 

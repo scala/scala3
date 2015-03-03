@@ -6,7 +6,7 @@ import Contexts._
 import Periods._
 import Symbols._
 import Scopes._
-import dotty.tools.dotc.Reim.{ReimRefChecks, ReimPhase}
+import dotty.tools.dotc.Reim.{ReimRefChecks2, ReimRefChecks, ReimPhase}
 import typer.{FrontEnd, Typer, Mode, ImportInfo, RefChecks}
 import reporting.ConsoleReporter
 import dotty.tools.dotc.core.Phases.Phase
@@ -14,6 +14,9 @@ import dotty.tools.dotc.transform._
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransform, TreeTransformer}
 import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
+
+
+import dotty.tools.backend.jvm.{LabelDefs, GenBCode}
 
 class Compiler {
 
@@ -40,18 +43,22 @@ class Compiler {
       List(new FirstTransform,
            new SyntheticMethods),
       List(new SuperAccessors),
-      List(new ReimRefChecks)
+      List(new ReimRefChecks),
+      List(new ReimRefChecks2)
+      //List(new Pickler), // Pickler needs to come last in a group since it should not pickle trees generated later
     /*
-      // pickling goes here
       List(new RefChecks,
            new ElimRepeated,
            new ElimLocals,
-           new ExtensionMethods,
-           new TailRec),
+           new ExtensionMethods),
+      List(new TailRec), // TailRec needs to be in its own group for now.
+                         // Otherwise it produces -Ycheck incorrect code for
+                         // file core/Decorators.scala.
       List(new PatternMatcher,
            new ExplicitOuter,
            new Splitter),
-      List(new ElimByName,
+      List(new LazyVals,
+           new ElimByName,
            new SeqLiterals,
            new InterceptedMethods,
            new Literalize,
@@ -59,13 +66,14 @@ class Compiler {
            new ResolveSuper),
       List(new Erasure),
       List(new Mixin,
-           new Memoize, // TODO: Make LazyVals a part of this phase
+           new Memoize,
            new CapturedVars,
            new Constructors),
       List(new LambdaLift,
            new Flatten,
            new RestoreScopes),
-      List(new PrivateToStatic)
+      List(/*new PrivateToStatic,*/ new CollectEntryPoints, new LabelDefs),
+      List(new GenBCode)
       */
     )
 

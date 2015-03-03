@@ -146,7 +146,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
         if (needsExpansion(s)) {
           ctx.deprecationWarning(s"private qualified with a class has been deprecated, use package enclosing ${s.privateWithin} instead", s.pos)
           /* disabled for now
-          decls.asInstanceOf[MutableScope].unlink(s)
+          decls.openForMutations.unlink(s)
           s.copySymDenotation(name = s.name.expandedName(s.privateWithin))
             .installAfter(thisTransformer)
           decls1.enter(s)(nextCtx)
@@ -391,7 +391,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
           transformAssign
 
         case Apply(fn, args) =>
-          val MethodType(_, formals) = fn.tpe.widen
+          val MethodType(_, formals) = fn.tpe.widen.stripAnnots
           ctx.atPhase(thisTransformer.next) { implicit ctx =>
             cpy.Apply(tree)(transform(fn), transformArgs(formals, args))
           }

@@ -101,16 +101,12 @@ trait Reporting { this: Context =>
   def incompleteInputError(msg: String, pos: SourcePosition = NoSourcePosition)(implicit ctx: Context): Unit =
     reporter.incomplete(new Error(msg, pos))(ctx)
 
-  /** Log msg if current phase or its precedessor is mentioned in
-   *  settings.log.
-   *  The reason we also pick the predecessor is that during the
-   *  tree transform of phase X, we often are already in phase X+1.
-   *  It's convenient to have logging work independently of whether
-   *  we have advanced the phase or not.
+  /** Log msg if settings.log contains the current phase.
+   *  See [[config.CompilerCommand#explainAdvanced]] for the exact meaning of
+   *  "contains" here.
    */
   def log(msg: => String): Unit =
-    if (this.settings.log.value.containsPhase(phase) ||
-        this.settings.log.value.containsPhase(phase.prev))
+    if (this.settings.log.value.containsPhase(phase))
       echo(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg")
 
   def debuglog(msg: => String): Unit =
@@ -216,7 +212,7 @@ abstract class Reporter {
 
   def report(d: Diagnostic)(implicit ctx: Context): Unit = if (!isHidden(d)) {
     doReport(d)
-    if (!d.isSuppressed) d match {
+    d match {
       case d: ConditionalWarning if !d.enablingOption.value => unreportedWarnings(d.enablingOption.name) += 1
       case d: Warning => warningCount += 1
       case d: Error => errorCount += 1

@@ -39,12 +39,7 @@ object OverridingPairs {
      *  relative to <base>.this do
      */
     protected def matches(sym1: Symbol, sym2: Symbol): Boolean =
-      sym1.isType || {
-        val info1 = self.memberInfo(sym1)
-        val info2 = self.memberInfo(sym2)
-        // info1.signature == info2.signature &&  // TODO enable for speed
-        info1 matches info2
-      }
+      sym1.isType || self.memberInfo(sym1).matches(self.memberInfo(sym2))
 
     /** The symbols that can take part in an overriding pair */
     private val decls = {
@@ -53,7 +48,7 @@ object OverridingPairs {
       def fillDecls(bcs: List[Symbol], deferred: Boolean): Unit = bcs match {
         case bc :: bcs1 =>
           fillDecls(bcs1, deferred)
-          var e = bc.info.decls.asInstanceOf[MutableScope].lastEntry
+          var e = bc.info.decls.lastEntry
           while (e != null) {
             if (e.sym.is(Deferred) == deferred && !exclude(e.sym))
               decls.enter(e.sym)

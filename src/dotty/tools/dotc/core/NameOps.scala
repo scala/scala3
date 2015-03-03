@@ -72,6 +72,7 @@ object NameOps {
     def isSetterName = name endsWith SETTER_SUFFIX
     def isSingletonName = name endsWith SINGLETON_SUFFIX
     def isModuleClassName = name endsWith MODULE_SUFFIX
+    def isAvoidClashName = name endsWith AVOID_CLASH_SUFFIX
     def isImportName = name startsWith IMPORT
     def isFieldName = name endsWith LOCAL_SUFFIX
     def isInheritedName = name.length > 0 && name.head == '(' && name.startsWith(nme.INHERITED)
@@ -129,11 +130,19 @@ object NameOps {
     /** If name ends in module class suffix, drop it */
     def stripModuleClassSuffix: Name =
       if (isModuleClassName) name dropRight MODULE_SUFFIX.length else name
+      
+    /** Append a suffix so that this name does not clash with another name in the same scope */
+    def avoidClashName: TermName = (name ++ AVOID_CLASH_SUFFIX).toTermName
+
+    /** If name ends in "avoid clash" suffix, drop it */
+    def stripAvoidClashSuffix: Name =
+      if (isAvoidClashName) name dropRight AVOID_CLASH_SUFFIX.length else name
 
     /** If flags is a ModuleClass but not a Package, add module class suffix */
-    def adjustIfModuleClass(flags: Flags.FlagSet): N =
-      if (flags is (ModuleClass, butNot = Package)) name.asTypeName.moduleClassName.asInstanceOf[N]
-      else name
+    def adjustIfModuleClass(flags: Flags.FlagSet): N = {
+      if (flags is (ModuleClass, butNot = Package)) name.asTypeName.moduleClassName
+      else stripAvoidClashSuffix
+    }.asInstanceOf[N]
 
     /** The superaccessor for method with given name */
     def superName: TermName =  (nme.SUPER_PREFIX ++ name).toTermName
@@ -346,5 +355,5 @@ object NameOps {
         case NO_NAME => primitivePostfixMethodName
         case name => name
       }
-    }
+  }
 }

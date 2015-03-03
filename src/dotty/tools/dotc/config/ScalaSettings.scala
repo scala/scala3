@@ -26,8 +26,8 @@ class ScalaSettings extends Settings.SettingGroup {
   val nowarn = BooleanSetting("-nowarn", "Generate no warnings.")
   val print = BooleanSetting("-print", "Print program with Scala-specific features removed.")
   val target = ChoiceSetting("-target", "target", "Target platform for object files. All JVM 1.5 targets are deprecated.",
-    List("jvm-1.5", "jvm-1.5-fjbg", "jvm-1.5-asm", "jvm-1.6", "jvm-1.7", "msil"),
-    "jvm-1.6")
+    List("jvm-1.5", "jvm-1.5-fjbg", "jvm-1.5-asm", "jvm-1.6", "jvm-1.7", "jvm-1.8", "msil"),
+    "jvm-1.8")
   val unchecked = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.")
   val uniqid = BooleanSetting("-uniqid", "Uniquely tag all identifiers in debugging output.")
   val usejavacp = BooleanSetting("-usejavacp", "Utilize the java.class.path in classpath resolution.")
@@ -140,7 +140,6 @@ class ScalaSettings extends Settings.SettingGroup {
   val Ybuilderdebug = ChoiceSetting("-Ybuilder-debug", "manager", "Compile using the specified build manager.", List("none", "refined", "simple"), "none")
   val Yreifycopypaste = BooleanSetting("-Yreify-copypaste", "Dump the reified trees in copypasteable representation.")
   val Yreplsync = BooleanSetting("-Yrepl-sync", "Do not use asynchronous code for repl startup")
-  val Ynotnull = BooleanSetting("-Ynotnull", "Enable (experimental and incomplete) scala.NotNull.")
   val YmethodInfer = BooleanSetting("-Yinfer-argument-types", "Infer types for arguments of overriden methods.")
   val etaExpandKeepsStar = BooleanSetting("-Yeta-expand-keeps-star", "Eta-expand varargs methods to T* rather than Seq[T].  This is a temporary option to ease transition.")
   val Yinvalidate = StringSetting("-Yinvalidate", "classpath-entry", "Invalidate classpath entry before run", "")
@@ -168,7 +167,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val Yrepldebug = BooleanSetting("-Yrepl-debug", "Trace all repl activity.")
   val Ytyperdebug = BooleanSetting("-Ytyper-debug", "Trace all type assignments.")
   val Ypatmatdebug = BooleanSetting("-Ypatmat-debug", "Trace pattern matching translation.")
-  val Yexplainlowlevel = BooleanSetting("-Yexplainlowlevel", "When explaining type errors, show types at a lower level.")
+  val Yexplainlowlevel = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
   val YnoDoubleBindings = BooleanSetting("-YnoDoubleBindings", "Assert no namedtype is bound twice (should be enabled only if program is error-free).")
 
   val optimise = BooleanSetting("-optimise", "Generates faster bytecode by applying optimisations to the program") withAbbreviation "-optimize"

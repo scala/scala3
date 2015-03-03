@@ -25,7 +25,7 @@ import Denotations.{ Denotation, SingleDenotation, MultiDenotation }
 import collection.mutable
 import io.AbstractFile
 import language.implicitConversions
-import util.DotClass
+import util.{NoSource, DotClass}
 
 /** Creation methods for symbols */
 trait Symbols { this: Context =>
@@ -192,7 +192,7 @@ trait Symbols { this: Context =>
     def stubCompleter = new StubInfo()
     val normalizedOwner = if (owner is ModuleVal) owner.moduleClass else owner
     println(s"creating stub for ${name.show}, owner = ${normalizedOwner.denot.debugString}, file = $file")
-    println(s"decls = ${normalizedOwner.decls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
+    println(s"decls = ${normalizedOwner.unforcedDecls.toList.map(_.debugString).mkString("\n  ")}") // !!! DEBUG
     //if (base.settings.debug.value) throw new Error()
     val stub = name match {
       case name: TermName =>
@@ -256,6 +256,9 @@ trait Symbols { this: Context =>
     tparams
   }
 
+  /** Create a new skolem symbol. This is not the same as SkolemType, even though the
+   *  motivation (create a singleton referencing to a type) is similar.
+   */
   def newSkolem(tp: Type) = newSymbol(defn.RootClass, nme.SKOLEM, SyntheticArtifact | Permanent, tp)
 
   def newErrorSymbol(owner: Symbol, name: Name) =
@@ -396,15 +399,16 @@ object Symbols {
      *  that starts being valid after `phase`.
      *  @pre  Symbol is a class member
      */
-    def enteredAfter(phase: DenotTransformer)(implicit ctx: Context): this.type = {
-      val nextCtx = ctx.withPhase(phase.next)
-      if (this.owner.is(Package)) {
-        denot.validFor |= InitialPeriod
-        if (this is Module) this.moduleClass.validFor |= InitialPeriod
+    def enteredAfter(phase: DenotTransformer)(implicit ctx: Context): this.type =
+      if (ctx.phaseId != phase.next.id) enteredAfter(phase)(ctx.withPhase(phase.next))
+      else {
+        if (this.owner.is(Package)) {
+          denot.validFor |= InitialPeriod
+          if (this is Module) this.moduleClass.validFor |= InitialPeriod
+        }
+        else this.owner.asClass.ensureFreshScopeAfter(phase)
+        entered
       }
-      else this.owner.asClass.ensureFreshScopeAfter(phase)(nextCtx)
-      entered(nextCtx)
-    }
 
     /** This symbol, if it exists, otherwise the result of evaluating `that` */
     def orElse(that: => Symbol)(implicit ctx: Context) =
@@ -448,31 +452,6 @@ object Symbols {
      *  from source.
      */
     def pos: Position = if (coord.isPosition) coord.toPosition else NoPosition
-
-// -------- GADT handling -----------------------------------------------
-
-    /** Perform given operation `op` where this symbol allows tightening of
-     *  its type bounds.
-     */
-    private[dotc] def withGADTFlexType[T](op: () => T)(implicit ctx: Context): () => T = { () =>
-      assert((denot is TypeParam) && denot.owner.isTerm)
-      val saved = denot
-      denot = denot.copySymDenotation(initFlags = denot.flags | GADTFlexType)
-      try op()
-      finally denot = saved
-    }
-
-    /** Disallow tightening of type bounds for this symbol from now on */
-    private[dotc] def resetGADTFlexType()(implicit ctx: Context): Unit = {
-      assert(denot is GADTFlexType)
-      denot = denot.copySymDenotation(initFlags = denot.flags &~ GADTFlexType)
-    }
-
-    /** Change info of this symbol to new, tightened type bounds */
-    private[core] def changeGADTInfo(bounds: TypeBounds)(implicit ctx: Context): Unit = {
-      assert(denot is GADTFlexType)
-      denot = denot.copySymDenotation(info = bounds)
-    }
 
 // -------- Printing --------------------------------------------------------
 
@@ -539,6 +518,8 @@ object Symbols {
 
   object NoSymbol extends Symbol(NoCoord) {
     denot = NoDenotation
+
+    override def associatedFile(implicit ctx: Context): AbstractFile = NoSource.file
   }
 
   implicit class Copier[N <: Name](sym: Symbol { type ThisName = N })(implicit ctx: Context) {

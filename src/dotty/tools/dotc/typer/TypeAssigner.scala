@@ -43,7 +43,7 @@ trait TypeAssigner {
       }
       def apply(tp: Type) = tp match {
         case tp: TermRef if toAvoid(tp) && variance > 0 =>
-          apply(tp.info)
+          apply(tp.info.widenExpr)
         case tp: TypeRef if (forbidden contains tp.symbol) || toAvoid(tp.prefix) =>
           tp.info match {
             case TypeAlias(ref) =>
@@ -112,21 +112,6 @@ trait TypeAssigner {
    *      that the package object shows up as the prefix.
    */
   def ensureAccessible(tpe: Type, superAccess: Boolean, pos: Position)(implicit ctx: Context): Type = {
-
-    def tryInsertPackageObj(tpe: NamedType, d: Denotation): Type = {
-      def tryInsert: Type =
-        if (!(d.symbol.maybeOwner is Package)) {
-          val symOwner = d.alternatives.head.symbol.owner
-          if (symOwner.isPackageObject) tpe.derivedSelect(symOwner.thisType)
-          else tpe
-        } else tpe
-      tpe.prefix match {
-        case pre: ThisType if pre.cls is Package => tryInsert
-        case pre: TermRef if pre.symbol is Package => tryInsert
-        case _ => tpe
-      }
-    }
-
     def test(tpe: Type, firstTry: Boolean): Type = tpe match {
       case tpe: NamedType =>
         val pre = tpe.prefix
@@ -159,7 +144,7 @@ trait TypeAssigner {
         else if (d.symbol is TypeParamAccessor) // always dereference type param accessors
           ensureAccessible(d.info.bounds.hi, superAccess, pos)
         else
-          tryInsertPackageObj(tpe withDenot d, d)
+          ctx.makePackageObjPrefixExplicit(tpe withDenot d)
       case _ =>
         tpe
     }
@@ -230,10 +215,8 @@ trait TypeAssigner {
       }
     }
 
-  def assignType(tree: untpd.This)(implicit ctx: Context) = {
-    val cls = qualifyingClass(tree, tree.qual, packageOK = false)
+  def assignType(tree: untpd.This, cls: Symbol)(implicit ctx: Context) =
     tree.withType(cls.thisType)
-  }
 
   def assignType(tree: untpd.Super, qual: Tree, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context) = {
     val mix = tree.mix
@@ -260,25 +243,29 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
-    val ownType = fn.tpe.widen match {
+    def recur(tp: Type): Type = tp.widen match {
       case fntpe @ MethodType(_, ptypes) =>
         if (sameLength(ptypes, args) || ctx.phase.prev.relaxedTyping) fntpe.instantiate(args.tpes)
         else errorType(i"wrong number of parameters for ${fn.tpe}; expected: ${ptypes.length}", tree.pos)
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, recur(tp.tpe))
       case t =>
         errorType(i"${err.exprStr(fn)} does not take parameters", tree.pos)
     }
+    val ownType = recur(fn.tpe)
     tree.withType(ownType)
   }
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
-    val ownType = fn.tpe.widen match {
+    def recur(tp: Type): Type = tp match {
       case pt: PolyType =>
         val argTypes = args.tpes
         if (sameLength(argTypes, pt.paramNames)|| ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
         else errorType(d"wrong number of type parameters for ${fn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, recur(tp.tpe))
       case _ =>
         errorType(i"${err.exprStr(fn)} does not take type parameters", tree.pos)
     }
+    val ownType = recur(fn.tpe.widen)
     tree.withType(ownType)
   }
 
@@ -355,10 +342,10 @@ trait TypeAssigner {
     tree.withType(ExprType(result.tpe))
 
   def assignType(tree: untpd.TypeBoundsTree, lo: Tree, hi: Tree)(implicit ctx: Context) =
-    tree.withType(TypeBounds(lo.tpe, hi.tpe))
+    tree.withType(if (lo eq hi) TypeAlias(lo.tpe) else TypeBounds(lo.tpe, hi.tpe))
 
-  def assignType(tree: untpd.Bind, sym: TermSymbol)(implicit ctx: Context) =
-    tree.withType(TermRef(NoPrefix, sym))
+  def assignType(tree: untpd.Bind, sym: Symbol)(implicit ctx: Context) =
+    tree.withType(NamedType.withFixedSym(NoPrefix, sym))
 
   def assignType(tree: untpd.Alternative, trees: List[Tree])(implicit ctx: Context) =
     tree.withType(ctx.typeComparer.lub(trees.tpes))

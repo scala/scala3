@@ -31,8 +31,6 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
   override def phaseName: String = "constructors"
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
 
-  override def treeTransformPhase = thisTransform.next
-
   /** Symbols that are owned by either <local dummy> or a class field move into the
    *  primary constructor.
    */

@@ -108,7 +108,9 @@ object TypeErasure {
   def erasedRef(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp: TermRef =>
       assert(tp.symbol.exists, tp)
-      TermRef(erasedRef(tp.prefix), tp.symbol.asTerm)
+      val tp1 = ctx.makePackageObjPrefixExplicit(tp)
+      if (tp1 ne tp) erasedRef(tp1)
+      else TermRef(erasedRef(tp.prefix), tp.symbol.asTerm)
     case tp: ThisType =>
       tp
     case tp =>
@@ -119,7 +121,8 @@ object TypeErasure {
    *  treated. `eraseInfo` maps them them to nullary method types, whereas `erasure` maps them
    *  to `Function0`.
    */
-  def eraseInfo(tp: Type)(implicit ctx: Context): Type = scalaErasureFn.eraseInfo(tp)(erasureCtx)
+  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
+    scalaErasureFn.eraseInfo(tp, sym)(erasureCtx)
 
   /** The erasure of a function result type. Differs from normal erasure in that
    *  Unit is kept instead of being mapped to BoxedUnit.
@@ -145,7 +148,7 @@ object TypeErasure {
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
-    else eraseInfo(tp)(erasureCtx) match {
+    else eraseInfo(tp, sym)(erasureCtx) match {
       case einfo: MethodType if sym.isGetter && einfo.resultType.isRef(defn.UnitClass) =>
         defn.BoxedUnitClass.typeRef
       case einfo =>
@@ -157,11 +160,11 @@ object TypeErasure {
    *  as upper bound and that is not Java defined? Arrays of such types are
    *  erased to `Object` instead of `ObjectArray`.
    */
-  def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp match {
+  def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
     case tp: TypeRef =>
-      tp.symbol.isAbstractType &&
+      !tp.symbol.isClass &&
       !tp.derivesFrom(defn.ObjectClass) &&
-      !tp.typeSymbol.is(JavaDefined)
+      !tp.symbol.is(JavaDefined)
     case tp: PolyParam =>
       !tp.derivesFrom(defn.ObjectClass) &&
       !tp.binder.resultType.isInstanceOf[JavaMethodType]
@@ -253,7 +256,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
    *      - otherwise, if T is a type paramter coming from Java, []Object
    *      - otherwise, Object
    *   - For a term ref p.x, the type <noprefix> # x.
-   *   - For a typeref scala.Any, scala.AnyVal, scala.Singleon or scala.NotNull: |java.lang.Object|
+   *   - For a typeref scala.Any, scala.AnyVal or scala.Singleton: |java.lang.Object|
    *   - For a typeref scala.Unit, |scala.runtime.BoxedUnit|.
    *   - For a typeref P.C where C refers to a class, <noprefix> # C.
    *   - For a typeref P.C where C refers to an alias type, the erasure of C's alias.
@@ -287,8 +290,8 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
       else this(parent)
     case tp: TermRef =>
       this(tp.widen)
-    case ThisType(_) =>
-      this(tp.widen)
+    case tp: ThisType =>
+      this(tp.cls.typeRef)
     case SuperType(thistpe, supertpe) =>
       SuperType(this(thistpe), this(supertpe))
     case ExprType(rt) =>
@@ -339,16 +342,18 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
   private def eraseArray(tp: RefinedType)(implicit ctx: Context) = {
     val defn.ArrayType(elemtp) = tp
     if (elemtp derivesFrom defn.NullClass) JavaArrayType(defn.ObjectType)
-    else if (isUnboundedGeneric(elemtp))
-      elemtp match {
-        case elemtp: TypeRef if elemtp.symbol.is(JavaDefined) => JavaArrayType(defn.ObjectType)
-        case _ => defn.ObjectType
-      }
+    else if (isUnboundedGeneric(elemtp)) defn.ObjectType
     else JavaArrayType(this(elemtp))
   }
 
-  def eraseInfo(tp: Type)(implicit ctx: Context) = tp match {
-    case ExprType(rt) => MethodType(Nil, Nil, eraseResult(rt))
+  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
+    case ExprType(rt) =>
+      if (sym is Param) apply(tp)
+        // Note that params with ExprTypes are eliminated by ElimByName,
+        // but potentially re-introduced by ResolveSuper, when we add
+        // forwarders to mixin methods.
+        // See doc comment for ElimByName for speculation how we could improve this.
+      else MethodType(Nil, Nil, eraseResult(rt))
     case tp => erasure(tp)
   }
 
@@ -374,7 +379,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
 
   private def normalizeClass(cls: ClassSymbol)(implicit ctx: Context): ClassSymbol = {
     if (cls.owner == defn.ScalaPackageClass) {
-      if (cls == defn.AnyClass || cls == defn.AnyValClass || cls == defn.SingletonClass || cls == defn.NotNullClass)
+      if (cls == defn.AnyClass || cls == defn.AnyValClass || cls == defn.SingletonClass)
         return defn.ObjectClass
       if (cls == defn.UnitClass)
         return defn.BoxedUnitClass

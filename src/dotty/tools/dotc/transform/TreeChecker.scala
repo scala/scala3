@@ -23,6 +23,7 @@ import util.SourcePosition
 import collection.mutable
 import ProtoTypes._
 import java.lang.AssertionError
+import scala.util.control.NonFatal
 
 /** Run by -Ycheck option after a given phase, this class retypes all syntax trees
  *  and verifies that the type of each tree node so obtained conforms to the type found in the tree node.
@@ -58,7 +59,7 @@ class TreeChecker {
     val checker = new Checker(previousPhases(phasesToRun.toList)(ctx))
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(checkingCtx)
     catch {
-      case ex: Throwable =>
+      case NonFatal(ex) =>
         implicit val ctx: Context = checkingCtx
         println(i"*** error while checking after phase ${checkingCtx.phase.prev} ***")
         throw ex
@@ -138,9 +139,28 @@ class TreeChecker {
             assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
           tree1
       }
+      checkNoOrphans(res.tpe)
       phasesToCheck.foreach(_.checkPostCondition(res))
       res
     }
+    
+    /** Check that PolyParams and MethodParams refer to an enclosing type */
+    def checkNoOrphans(tp: Type)(implicit ctx: Context) = new TypeMap() {
+      val definedBinders = mutable.Set[Type]()
+      def apply(tp: Type): Type = {
+        tp match {
+          case tp: BindingType => 
+            definedBinders += tp
+            mapOver(tp)
+            definedBinders -= tp
+          case tp: ParamType =>
+            assert(definedBinders.contains(tp.binder), s"orphan param: $tp")
+          case _ =>
+            mapOver(tp)
+        }
+        tp
+      }
+    }.apply(tp)
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
@@ -152,6 +172,13 @@ class TreeChecker {
     override def typedSelect(tree: untpd.Select, pt: Type)(implicit ctx: Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       super.typedSelect(tree, pt)
+    }
+
+    override def typedThis(tree: untpd.This)(implicit ctx: Context) = {
+      val res = super.typedThis(tree)
+      val cls = res.symbol
+      assert(cls.isStaticOwner || ctx.owner.isContainedIn(cls), i"error while typing $tree, ${ctx.owner} is not contained in $cls")
+      res
     }
 
     private def checkOwner(tree: untpd.Tree)(implicit ctx: Context): Unit = {

@@ -19,8 +19,6 @@ class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { t
   import ast.tpd._
   override def phaseName = "restoreScopes"
 
-  override def treeTransformPhase = thisTransform.next
-
   override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo) = {
     val TypeDef(_, Template(constr, _, _, body)) = tree
     val restoredDecls = newScope

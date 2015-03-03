@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._, Scopes._
-import SymDenotations._
+import SymDenotations._, Denotations.Denotation
 import config.Printers._
 import Decorators._
 import StdNames._
@@ -22,6 +22,8 @@ trait TypeOps { this: Context =>
           case SuperType(thispre, _) => thispre
           case _ => pre
         }
+      else if ((pre.termSymbol is Package) && !(thiscls is Package))
+        toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
       else
         toPrefix(pre.baseTypeRef(cls).normalizedPrefix, cls.owner, thiscls)
     }
@@ -41,8 +43,8 @@ trait TypeOps { this: Context =>
             asSeenFrom(tp.parent, pre, cls, theMap),
             tp.refinedName,
             asSeenFrom(tp.refinedInfo, pre, cls, theMap))
-        case tp: TypeBounds if tp.lo eq tp.hi =>
-          tp.derivedTypeAlias(asSeenFrom(tp.lo, pre, cls, theMap))
+        case tp: TypeAlias  =>
+          tp.derivedTypeAlias(asSeenFrom(tp.alias, pre, cls, theMap))
         case _ =>
           (if (theMap != null) theMap else new AsSeenFromMap(pre, cls))
             .mapOver(tp)
@@ -71,8 +73,8 @@ trait TypeOps { this: Context =>
       tp
     case tp: RefinedType =>
       tp.derivedRefinedType(simplify(tp.parent, theMap), tp.refinedName, simplify(tp.refinedInfo, theMap))
-    case tp: TypeBounds if tp.lo eq tp.hi =>
-      tp.derivedTypeAlias(simplify(tp.lo, theMap))
+    case tp: TypeAlias =>
+      tp.derivedTypeAlias(simplify(tp.alias, theMap))
     case AndType(l, r) =>
       simplify(l, theMap) & simplify(r, theMap)
     case OrType(l, r) =>
@@ -84,7 +86,7 @@ trait TypeOps { this: Context =>
   class SimplifyMap extends TypeMap {
     def apply(tp: Type) = simplify(tp, this)
   }
-
+  
   /** Approximate union type by intersection of its dominators.
    *  See Type#approximateUnion for an explanation.
    */
@@ -142,9 +144,10 @@ trait TypeOps { this: Context =>
     def needsChecking(tp: Type, isPart: Boolean): Boolean = tp match {
       case tp: TypeRef =>
         tp.info match {
+          case TypeAlias(alias) =>
+            needsChecking(alias, isPart)
           case TypeBounds(lo, hi) =>
-            if (lo eq hi) needsChecking(hi, isPart)
-            else isPart || tp.controlled(isVolatile(hi))
+            isPart || tp.controlled(isVolatile(hi))
           case _ => false
         }
       case tp: RefinedType =>
@@ -219,6 +222,25 @@ trait TypeOps { this: Context =>
       lazyInfo,
       coord = cls.coord)
     cls.enter(sym, decls)
+  }
+
+  /** If `tpe` is of the form `p.x` where `p` refers to a package
+   *  but `x` is not owned by a package, expand it to
+   *
+   *      p.package.x
+   */
+  def makePackageObjPrefixExplicit(tpe: NamedType): Type = {
+    def tryInsert(pkgClass: SymDenotation): Type = pkgClass match {
+      case pkgCls: PackageClassDenotation if !(tpe.symbol.maybeOwner is Package) =>
+        tpe.derivedSelect(pkgCls.packageObj.valRef)
+      case _ =>
+        tpe
+    }
+    tpe.prefix match {
+      case pre: ThisType if pre.cls is Package => tryInsert(pre.cls)
+      case pre: TermRef if pre.symbol is Package => tryInsert(pre.symbol.moduleClass)
+      case _ => tpe
+    }
   }
 
   /** If we have member definitions
@@ -308,7 +330,7 @@ trait TypeOps { this: Context =>
     }
     parentRefs
   }
-
+  
   /** An argument bounds violation is a triple consisting of
    *   - the argument tree
    *   - a string "upper" or "lower" indicating which bound is violated

@@ -145,10 +145,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         if (tp.isInstantiated)
           toTextLocal(tp.instanceOpt) ~ "'" // debug for now, so that we can see where the TypeVars are.
         else {
-          val bounds = ctx.typerState.constraint.at(tp.origin) match {
-            case bounds: TypeBounds => bounds
-            case _ => TypeBounds.empty
-          }
+          val constr = ctx.typerState.constraint
+          val bounds = 
+            if (constr.contains(tp)) constr.fullBounds(tp.origin) 
+            else TypeBounds.empty 
           "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
         }
       case _ =>
@@ -207,8 +207,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toText(value)
       case MethodParam(mt, idx) =>
         nameString(mt.paramNames(idx))
-      case RefinedThis(_) =>
-        "this"
+      case sk: SkolemType =>
+        sk.binder match {
+          case rt: RefinedType => s"${nameString(rt.typeSymbol)}{...}.this"
+          case _ => "<skolem>"
+        }
     }
   }
 
@@ -368,7 +371,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(const: Constant): Text = const.tag match {
     case StringTag => "\"" + escapedString(const.value.toString) + "\""
-    case ClazzTag => "classOf[" ~ toText(const.tpe) ~ "]"
+    case ClazzTag => "classOf[" ~ toText(const.tpe.firstBaseArgInfo(defn.ClassClass)) ~ "]"
     case CharTag => s"'${escapedChar(const.charValue)}'"
     case LongTag => const.longValue.toString + "L"
     case EnumTag => const.symbolValue.name.toString

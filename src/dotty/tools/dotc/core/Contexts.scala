@@ -77,7 +77,10 @@ object Contexts {
 
     /** The current context */
     private[this] var _period: Period = _
-    protected def period_=(period: Period) = _period = period
+    protected def period_=(period: Period) = {
+      assert(period.firstPhaseId == period.lastPhaseId, period)
+      _period = period
+    }
     def period: Period = _period
 
     /** The scope nesting level */
@@ -143,6 +146,11 @@ object Contexts {
     protected def diagnostics_=(diagnostics: Option[StringBuilder]) = _diagnostics = diagnostics
     def diagnostics: Option[StringBuilder] = _diagnostics
 
+    /** The current bounds in force for type parameters appearing in a GADT */
+    private var _gadt: GADTMap = _
+    protected def gadt_=(gadt: GADTMap) = _gadt = gadt
+    def gadt: GADTMap = _gadt
+
     /** A map in which more contextual properties can be stored */
     private var _moreProperties: Map[String, Any] = _
     protected def moreProperties_=(moreProperties: Map[String, Any]) = _moreProperties = moreProperties
@@ -162,7 +170,11 @@ object Contexts {
       if (implicitsCache == null )
         implicitsCache = {
           val implicitRefs: List[TermRef] =
-            if (isClassDefContext) owner.thisType.implicitMembers
+            if (isClassDefContext) 
+              try owner.thisType.implicitMembers
+              catch {
+                case ex: CyclicReference => Nil
+              }
             else if (isImportContext) importInfo.importedImplicits
             else if (isNonEmptyScopeContext) scope.implicitDecls
             else Nil
@@ -193,7 +205,7 @@ object Contexts {
     /** This context at given phase.
      *  This method will always return a phase period equal to phaseId, thus will never return squashed phases
      */
-    final def withPhase(phaseId: PhaseId): Context = {
+    final def withPhase(phaseId: PhaseId): Context =
       if (this.phaseId == phaseId) this
       else if (phasedCtx.phaseId == phaseId) phasedCtx
       else if (phasedCtxs != null && phasedCtxs(phaseId) != null) phasedCtxs(phaseId)
@@ -206,7 +218,6 @@ object Contexts {
         }
         ctx1
       }
-    }
 
     final def withPhase(phase: Phase): Context =
       withPhase(phase.id)
@@ -416,6 +427,8 @@ object Contexts {
     def setSetting[T](setting: Setting[T], value: T): this.type =
       setSettings(setting.updateIn(sstate, value))
 
+    def setFreshGADTBounds: this.type = { this.gadt = new GADTMap(gadt.bounds); this }
+
     def setDebug = setSetting(base.settings.debug, true)
   }
 
@@ -437,6 +450,7 @@ object Contexts {
     moreProperties = Map.empty
     typeComparer = new TypeComparer(this)
     searchHistory = new SearchHistory(0, Map())
+    gadt = new GADTMap(SimpleMap.Empty)
   }
 
   object NoContext extends Context {
@@ -526,13 +540,13 @@ object Contexts {
     private[core] val uniqueNamedTypes = new NamedTypeUniques
 
     /** A table for hash consing unique type bounds */
-    private[core] val uniqueTypeBounds = new TypeBoundsUniques
+    private[core] val uniqueTypeAliases = new TypeAliasUniques
 
     private def uniqueSets = Map(
         "uniques" -> uniques,
         "uniqueRefinedTypes" -> uniqueRefinedTypes,
         "uniqueNamedTypes" -> uniqueNamedTypes,
-        "uniqueTypeBounds" -> uniqueTypeBounds)
+        "uniqueTypeAliases" -> uniqueTypeAliases)
 
     /** A map that associates label and size of all uniques sets */
     def uniquesSizes: Map[String, Int] = uniqueSets.mapValues(_.size)
@@ -589,6 +603,13 @@ object Contexts {
   /** Info that changes on each compiler run */
   class RunInfo(initctx: Context) extends ImplicitRunInfo with ConstraintRunInfo {
     implicit val ctx: Context = initctx
+  }
+
+  class GADTMap(initBounds: SimpleMap[Symbol, TypeBounds]) {
+    private var myBounds = initBounds
+    def setBounds(sym: Symbol, b: TypeBounds): Unit =
+      myBounds = myBounds.updated(sym, b)
+    def bounds = myBounds
   }
 
   /** Initial size of superId table */

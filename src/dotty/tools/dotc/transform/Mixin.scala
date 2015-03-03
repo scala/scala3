@@ -67,7 +67,6 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "mixin"
-  override def treeTransformPhase = thisTransform.next
 
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
 
@@ -149,13 +148,13 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
       ctx.atPhase(thisTransform) { implicit ctx => sym is Deferred }
 
     def traitInits(mixin: ClassSymbol): List[Tree] =
-      for (getter <- mixin.decls.filter(getr => getr.isGetter && !wasDeferred(getr)).toList)
+      for (getter <- mixin.info.decls.filter(getr => getr.isGetter && !wasDeferred(getr)).toList)
         yield {
         DefDef(implementation(getter.asTerm), superRef(initializer(getter)).appliedToNone)
       }
 
     def setters(mixin: ClassSymbol): List[Tree] =
-      for (setter <- mixin.decls.filter(setr => setr.isSetter && !wasDeferred(setr)).toList)
+      for (setter <- mixin.info.decls.filter(setr => setr.isSetter && !wasDeferred(setr)).toList)
         yield DefDef(implementation(setter.asTerm), unitLiteral.withPos(cls.pos))
 
     cpy.Template(impl)(

@@ -27,7 +27,7 @@ trait NamerContextOps { this: Context =>
   def enter(sym: Symbol): Symbol = {
     ctx.owner match {
       case cls: ClassSymbol => cls.enter(sym)
-      case _ => this.scope.asInstanceOf[MutableScope].enter(sym)
+      case _ => this.scope.openForMutations.enter(sym)
     }
     sym
   }
@@ -37,7 +37,7 @@ trait NamerContextOps { this: Context =>
     if (owner.isClass)
       if (outer.owner == owner) { // inner class scope; check whether we are referring to self
         if (scope.size == 1) {
-          val elem = scope.asInstanceOf[MutableScope].lastEntry
+          val elem = scope.lastEntry
           if (elem.name == name) return elem.sym.denot // return self
         }
         assert(scope.size <= 1, scope)
@@ -52,7 +52,7 @@ trait NamerContextOps { this: Context =>
    *  the declarations of the current class.
    */
   def effectiveScope: Scope =
-    if (owner != null && owner.isClass) owner.asClass.decls
+    if (owner != null && owner.isClass) owner.asClass.unforcedDecls
     else scope
 
   /** The symbol (stored in some typer's symTree) of an enclosing context definition */
@@ -306,7 +306,7 @@ class Namer { typer: Typer =>
     val localCtx: Context = ctx.fresh.setNewScope
     selfInfo match {
       case sym: Symbol if sym.exists && sym.name != nme.WILDCARD =>
-        localCtx.scope.asInstanceOf[MutableScope].enter(sym)
+        localCtx.scope.openForMutations.enter(sym)
       case _ =>
     }
     localCtx
@@ -427,8 +427,15 @@ class Namer { typer: Typer =>
       completeInCreationContext(denot)
     }
 
-    def completeInCreationContext(denot: SymDenotation): Unit =
-      denot.info = typeSig(denot.symbol)
+    def completeInCreationContext(denot: SymDenotation): Unit = {
+      val symbol = denot.symbol
+      original match {
+        case original: MemberDef =>
+          typer.addTypedModifiersAnnotations(original, symbol)
+        case _: Import =>
+      }
+      denot.info = typeSig(symbol)
+    }
   }
 
   class ClassCompleter(cls: ClassSymbol, original: TypeDef)(ictx: Context) extends Completer(original)(ictx) {
@@ -472,6 +479,8 @@ class Namer { typer: Typer =>
         if (cls.isRefinementClass) ptype
         else checkClassTypeWithStablePrefix(ptype, parent.pos, traitReq = parent ne parents.head)
       }
+
+      typer.addTypedModifiersAnnotations(original, cls)(ictx)
 
       val selfInfo =
         if (self.isEmpty) NoType
@@ -654,9 +663,14 @@ class Namer { typer: Typer =>
         else restpe
       val monotpe =
         (paramSymss :\ restpe1) { (params, restpe) =>
+          val isJava = ddef.mods is JavaDefined
           val make =
             if (params.nonEmpty && (params.head is Implicit)) ImplicitMethodType
+            else if(isJava) JavaMethodType
             else MethodType
+          if(isJava) params.foreach { symbol =>
+            if(symbol.info.isDirectRef(defn.ObjectClass)) symbol.info = defn.AnyType
+          }
           make.fromSymbols(params, restpe)
         }
       if (typeParams.nonEmpty) PolyType.fromSymbols(typeParams, monotpe)
@@ -673,7 +687,15 @@ class Namer { typer: Typer =>
 
   def typeDefSig(tdef: TypeDef, sym: Symbol)(implicit ctx: Context): Type = {
     completeParams(tdef.tparams)
-    sym.info = TypeBounds.empty
+    val tparamSyms = tdef.tparams map symbolOfTree
+    val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
+    val toParameterize = tparamSyms.nonEmpty && !isDerived
+    val needsLambda = sym.allOverriddenSymbols.exists(_ is HigherKinded) && !isDerived
+    def abstracted(tp: Type): Type = 
+      if (needsLambda) tp.LambdaAbstract(tparamSyms)
+      else if (toParameterize) tp.parameterizeWith(tparamSyms)
+      else tp
+    sym.info = abstracted(TypeBounds.empty)
       // Temporarily set info of defined type T to ` >: Nothing <: Any.
       // This is done to avoid cyclic reference errors for F-bounds.
       // This is subtle: `sym` has now an empty TypeBounds, but is not automatically
@@ -684,18 +706,10 @@ class Namer { typer: Typer =>
       //
       // The scheme critically relies on an implementation detail of isRef, which
       // inspects a TypeRef's info, instead of simply dealiasing alias types.
-    val tparamSyms = tdef.tparams map symbolOfTree
-    val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
-    val toParameterize = tparamSyms.nonEmpty && !isDerived
-    val needsLambda = sym.allOverriddenSymbols.exists(_ is HigherKinded) && !isDerived
     val rhsType = typedAheadType(tdef.rhs).tpe
-    def abstractedRhsType =
-      if (needsLambda) rhsType.LambdaAbstract(tparamSyms)
-      else if (toParameterize) rhsType.parameterizeWith(tparamSyms)
-      else rhsType
     val unsafeInfo = rhsType match {
-      case _: TypeBounds => abstractedRhsType.asInstanceOf[TypeBounds]
-      case _ => TypeAlias(abstractedRhsType, if (sym is Local) sym.variance else 0)
+      case _: TypeBounds => abstracted(rhsType).asInstanceOf[TypeBounds]
+      case _ => TypeAlias(abstracted(rhsType), if (sym is Local) sym.variance else 0)
     }
     sym.info = NoCompleter
     checkNonCyclic(sym, unsafeInfo, reportErrors = true)

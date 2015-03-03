@@ -32,7 +32,7 @@ import collection.mutable
 object Implicits {
 
   /** A common base class of contextual implicits and of-type implicits which
-   *  represents as set of implicit references.
+   *  represents a set of implicit references.
    */
   abstract class ImplicitRefs(initctx: Context) {
     implicit val ctx: Context =
@@ -337,25 +337,29 @@ trait ImplicitRunInfo { self: RunInfo =>
    /** The implicit scope of type `tp`
      *  @param isLifted    Type `tp` is the result of a `liftToClasses` application
      */
-    def iscope(tp: Type, isLifted: Boolean = false): OfTypeImplicits =
+    def iscope(tp: Type, isLifted: Boolean = false): OfTypeImplicits = {
+      def computeIScope(cacheResult: Boolean) = {
+        val savedEphemeral = ctx.typerState.ephemeral
+        ctx.typerState.ephemeral = false
+        try {
+          val liftedTp = if (isLifted) tp else liftToClasses(tp)
+          val result =
+            if (liftedTp ne tp) iscope(liftedTp, isLifted = true)
+            else ofTypeImplicits(collectCompanions(tp))
+          if (ctx.typerState.ephemeral) record("ephemeral cache miss: implicitScope")
+          else if(cacheResult) implicitScopeCache(tp) = result
+          result
+        }
+        finally ctx.typerState.ephemeral |= savedEphemeral
+      }
+
       if (tp.hash == NotCached || !Config.cacheImplicitScopes)
-        ofTypeImplicits(collectCompanions(tp))
+        computeIScope(cacheResult = false)
       else implicitScopeCache get tp match {
         case Some(is) => is
-        case None =>
-          val savedEphemeral = ctx.typerState.ephemeral
-          ctx.typerState.ephemeral = false
-          try {
-            val liftedTp = if (isLifted) tp else liftToClasses(tp)
-            val result =
-              if (liftedTp ne tp) iscope(liftedTp, isLifted = true)
-              else ofTypeImplicits(collectCompanions(tp))
-            if (ctx.typerState.ephemeral) record("ephemeral cache miss: implicitScope")
-            else implicitScopeCache(tp) = result
-            result
-          }
-          finally ctx.typerState.ephemeral |= savedEphemeral
-        }
+        case None => computeIScope(cacheResult = true)
+      }
+    }
 
     iscope(tp)
   }
@@ -400,7 +404,9 @@ trait Implicits { self: Typer =>
   def inferView(from: Tree, to: Type)(implicit ctx: Context): SearchResult = track("inferView") {
     if (   (to isRef defn.AnyClass)
         || (to isRef defn.ObjectClass)
-        || (to isRef defn.UnitClass)) NoImplicitMatches
+        || (to isRef defn.UnitClass)
+        || (from.tpe isRef defn.NothingClass)
+        || (from.tpe isRef defn.NullClass)) NoImplicitMatches
     else
       try inferImplicit(to.stripTypeVar.widenExpr, from, from.pos)
       catch {
@@ -448,7 +454,8 @@ trait Implicits { self: Typer =>
     private def nestedContext = ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
     private def implicitProto(resultType: Type, f: Type => Type) =
-      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
+      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType)) 
+        // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
 
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
         d"found: ${argument.tpe}, expected: $pt")

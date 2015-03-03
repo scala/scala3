@@ -10,12 +10,17 @@ import core.Flags._
 import core.Decorators._
 import core.StdNames.nme
 import ast.Trees._
+import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.core.Constants._
 
 /** This phase rewrites idempotent expressions with constant types to Literals.
  *  The constant types are eliminated by erasure, so we need to keep
  *  the info about constantness in the trees.
+ *
+ *  The phase also makes sure that the constant of a literal is the same as the constant
+ *  in the type of the literal.
  */
-class Literalize extends MiniPhaseTransform {
+class Literalize extends MiniPhaseTransform { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "literalize"
@@ -62,4 +67,25 @@ class Literalize extends MiniPhaseTransform {
 
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
     literalize(tree)
+
+  override def transformLiteral(tree: Literal)(implicit ctx: Context, info: TransformerInfo): Tree = tree.tpe match {
+    case ConstantType(const) if tree.const.value != const.value || (tree.const.tag != const.tag) => Literal(const)
+    case _ => tree
+  }
+
+  /** Check that all literals have types match underlying constants
+    */
+  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = {
+    tree match {
+      case Literal(c @ Constant(treeValue)) =>
+        tree.tpe match {
+          case ConstantType(c2 @ Constant(typeValue)) =>
+            assert(treeValue == typeValue && c2.tag == c.tag,
+              i"Type of Literal $tree is inconsistent with underlying constant")
+          case tpe =>
+            assert(c.tpe =:= tpe, i"Type of Literal $tree is inconsistent with underlying constant type ${c.tpe}")
+        }
+      case _ =>
+    }
+  }
 }

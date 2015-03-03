@@ -184,12 +184,6 @@ object RefChecks {
           emitOverrideError(overrideErrorMsg(msg))
       }
 
-      def overrideTypeError() = {
-        if (noErrorType) {
-          emitOverrideError(overrideErrorMsg("has incompatible type"))
-        }
-      }
-
       def overrideAccessError() = {
         ctx.log(i"member: ${member.showLocated} ${member.flags}") // DEBUG
         ctx.log(i"other: ${other.showLocated} ${other.flags}") // DEBUG
@@ -745,7 +739,6 @@ class RefChecks extends MiniPhase with SymTransformer { thisTransformer =>
 
   class Transform(currentLevel: RefChecks.OptLevelInfo = RefChecks.NoLevelInfo) extends TreeTransform {
     def phase = thisTransformer
-    override def treeTransformPhase = thisTransformer.next
 
     override def prepareForStats(trees: List[Tree])(implicit ctx: Context) = {
       // println(i"preparing for $trees%; %, owner = ${ctx.owner}")

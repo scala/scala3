@@ -59,7 +59,6 @@ object desugar {
           case tp: NamedType if tp.symbol.owner eq originalOwner =>
             val defctx = ctx.outersIterator.dropWhile(_.scope eq ctx.scope).next
             var local = defctx.denotNamed(tp.name).suchThat(_ is ParamOrAccessor).symbol
-            typr.println(s"rewiring ${tp.symbol} from ${originalOwner.showLocated} to ${local.showLocated}, current owner = ${ctx.owner.showLocated}")
             if (local.exists) (defctx.owner.thisType select local).dealias
             else throw new Error(s"no matching symbol for ${sym.showLocated} in ${defctx.owner} / ${defctx.effectiveScope}")
           case _ =>
@@ -219,6 +218,9 @@ object desugar {
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
+    def untpdReadOnly = Apply(Select(New(Select(Ident("dotty".toTermName), "readonly".toTypeName)), nme.CONSTRUCTOR), Nil).withPos(cdef.pos)
+    def untpdPolyRead = Apply(Select(New(Select(Ident("dotty".toTermName), "polyread".toTypeName)), nme.CONSTRUCTOR), Nil).withPos(cdef.pos)
+
     val TypeDef(name, impl @ Template(constr0, parents, self, body)) = cdef
     val mods = cdef.mods
 
@@ -285,13 +287,17 @@ object desugar {
     val caseClassMeths =
       if (mods is Case) {
         def syntheticProperty(name: TermName, rhs: Tree) =
-          DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic)
+            DefDef(name, Nil, Nil, TypeTree(), rhs).withMods(synthetic.withAnnotations(List(untpdPolyRead)))
         val isDefinedMeth = syntheticProperty(nme.isDefined, Literal(Constant(true)))
         val caseParams = constrVparamss.head.toArray
         val productElemMeths = for (i <- 0 until arity) yield
           syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeName), caseParams(i).name))
+        val hasRepeatedParam = constrVparamss.exists(_.exists {
+          case ValDef(_, PostfixOp(_, nme.raw.STAR), _) => true
+          case _ => false
+        })
         val copyMeths =
-          if (mods is Abstract) Nil
+          if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
           else {
             def copyDefault(vparam: ValDef) =
               makeAnnotated(defn.UncheckedVarianceAnnot, refOfDef(vparam))

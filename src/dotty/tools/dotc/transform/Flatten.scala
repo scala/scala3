@@ -19,13 +19,11 @@ class Flatten extends MiniPhaseTransform with SymTransformer { thisTransform =>
   def transformSym(ref: SymDenotation)(implicit ctx: Context) = {
     if (ref.isClass && !ref.is(Package) && !ref.owner.is(Package)) {
       ref.copySymDenotation(
-        name = ref.flatName,
+        name = ref.flatName(),
         owner = ref.enclosingPackageClass)
     }
     else ref
   }
-
-  override def treeTransformPhase = thisTransform.next
 
   private val liftedDefs = new mutable.ListBuffer[Tree]
 

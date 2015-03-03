@@ -24,6 +24,32 @@ object SymUtils {
 class SymUtils(val self: Symbol) extends AnyVal {
   import SymUtils._
 
+  def superClass(implicit ctx: Context) = {
+    val parents = self.asClass.classInfo.parents
+    if (parents.isEmpty) NoSymbol
+    else parents.head.symbol
+  }
+
+
+  /**
+   * For a class: All interfaces implemented by a class except for those inherited through the superclass.
+   * For a trait: all parent traits
+   */
+
+  def superInterfaces(implicit ctx: Context) = {
+    val superCls = self.superClass
+    val baseClasses = self.asClass.baseClasses
+    if (baseClasses.isEmpty) Nil
+    else baseClasses.tail.takeWhile(_ ne superCls).reverse
+
+  }
+
+  /** All interfaces implemented by a class, except for those inherited through the superclass. */
+  def mixins(implicit ctx: Context) = {
+    if (self is Trait) Nil
+    else superInterfaces
+  }
+
   def isTypeTestOrCast(implicit ctx: Context): Boolean =
     self == defn.Any_asInstanceOf || self == defn.Any_isInstanceOf
 
@@ -35,9 +61,6 @@ class SymUtils(val self: Symbol) extends AnyVal {
   /** If this is a constructor, its owner: otherwise this. */
   final def skipConstructor(implicit ctx: Context): Symbol =
     if (self.isConstructor) self.owner else self
-
-  final def isAnonymousFunction(implicit ctx: Context): Boolean =
-    self.is(Method) && (self.denot.initial.asSymDenotation.name startsWith nme.ANON_FUN)
 
   /** The logically enclosing method or class for this symbol.
    *  Instead of constructors one always picks the enclosing class.
@@ -56,8 +79,11 @@ class SymUtils(val self: Symbol) extends AnyVal {
   def accessorNamed(name: TermName)(implicit ctx: Context): Symbol =
     self.owner.info.decl(name).suchThat(_ is Accessor).symbol
 
+  def termParamAccessors(implicit ctx: Context): List[Symbol] =
+    self.info.decls.filter(_ is TermParamAccessor).toList
+
   def caseAccessors(implicit ctx:Context) =
-    self.decls.filter(_ is CaseAccessor).toList
+    self.info.decls.filter(_ is CaseAccessor).toList
 
   def getter(implicit ctx: Context): Symbol =
     if (self.isGetter) self else accessorNamed(self.asTerm.name.getterName)
@@ -70,7 +96,7 @@ class SymUtils(val self: Symbol) extends AnyVal {
     self.owner.info.decl(self.asTerm.name.fieldName).suchThat(!_.is(Method)).symbol
 
   /** `fullName` where `$' is the separator character */
-  def flatName(implicit ctx: Context): Name = self.fullNameSeparated('$')
+  def flatName(implicit ctx: Context): Name = self.flatName('$')
 
   def initializer(implicit ctx: Context): TermSymbol =
     self.owner.info.decl(InitializerName(self.asTerm.name)).symbol.asTerm

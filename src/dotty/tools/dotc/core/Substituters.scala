@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import Types._, Symbols._, Contexts._
+import Types._, Symbols._, Contexts._, Names._
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
@@ -18,8 +18,8 @@ trait Substituters { this: Context =>
         tp
       case tp: RefinedType =>
         tp.derivedRefinedType(subst(tp.parent, from, to, theMap), tp.refinedName, subst(tp.refinedInfo, from, to, theMap))
-      case tp: TypeBounds if tp.lo eq tp.hi =>
-        tp.derivedTypeAlias(subst(tp.lo, from, to, theMap))
+      case tp: TypeAlias =>
+        tp.derivedTypeAlias(subst(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstBindingMap(from, to))
           .mapOver(tp)
@@ -36,8 +36,8 @@ trait Substituters { this: Context =>
         tp
       case tp: RefinedType =>
         tp.derivedRefinedType(subst1(tp.parent, from, to, theMap), tp.refinedName, subst1(tp.refinedInfo, from, to, theMap))
-      case tp: TypeBounds if tp.lo eq tp.hi =>
-        tp.derivedTypeAlias(subst1(tp.lo, from, to, theMap))
+      case tp: TypeAlias =>
+        tp.derivedTypeAlias(subst1(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new Subst1Map(from, to))
           .mapOver(tp)
@@ -56,8 +56,8 @@ trait Substituters { this: Context =>
         tp
       case tp: RefinedType =>
         tp.derivedRefinedType(subst2(tp.parent, from1, to1, from2, to2, theMap), tp.refinedName, subst2(tp.refinedInfo, from1, to1, from2, to2, theMap))
-      case tp: TypeBounds if tp.lo eq tp.hi =>
-        tp.derivedTypeAlias(subst2(tp.lo, from1, to1, from2, to2, theMap))
+      case tp: TypeAlias =>
+        tp.derivedTypeAlias(subst2(tp.alias, from1, to1, from2, to2, theMap))
       case _ =>
         (if (theMap != null) theMap else new Subst2Map(from1, to1, from2, to2))
           .mapOver(tp)
@@ -81,8 +81,8 @@ trait Substituters { this: Context =>
         tp
       case tp: RefinedType =>
         tp.derivedRefinedType(subst(tp.parent, from, to, theMap), tp.refinedName, subst(tp.refinedInfo, from, to, theMap))
-      case tp: TypeBounds if tp.lo eq tp.hi =>
-        tp.derivedTypeAlias(subst(tp.lo, from, to, theMap))
+      case tp: TypeAlias =>
+        tp.derivedTypeAlias(subst(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstMap(from, to))
           .mapOver(tp)
@@ -115,8 +115,8 @@ trait Substituters { this: Context =>
         tp
       case tp: RefinedType =>
         tp.derivedRefinedType(substDealias(tp.parent, from, to, theMap), tp.refinedName, substDealias(tp.refinedInfo, from, to, theMap))
-      case tp: TypeBounds if tp.lo eq tp.hi =>
-        tp.derivedTypeAlias(substDealias(tp.lo, from, to, theMap))
+      case tp: TypeAlias =>
+        tp.derivedTypeAlias(substDealias(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstDealiasMap(from, to))
           .mapOver(tp)
@@ -154,8 +154,8 @@ trait Substituters { this: Context =>
         tp
       case tp: RefinedType =>
         tp.derivedRefinedType(substSym(tp.parent, from, to, theMap), tp.refinedName, substSym(tp.refinedInfo, from, to, theMap))
-      case tp: TypeBounds if tp.lo eq tp.hi =>
-        tp.derivedTypeAlias(substSym(tp.lo, from, to, theMap))
+      case tp: TypeAlias =>
+        tp.derivedTypeAlias(substSym(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstSymMap(from, to))
           .mapOver(tp)
@@ -172,28 +172,28 @@ trait Substituters { this: Context =>
         tp
       case tp: RefinedType =>
         tp.derivedRefinedType(substThis(tp.parent, from, to, theMap), tp.refinedName, substThis(tp.refinedInfo, from, to, theMap))
-      case tp: TypeBounds if tp.lo eq tp.hi =>
-        tp.derivedTypeAlias(substThis(tp.lo, from, to, theMap))
+      case tp: TypeAlias =>
+        tp.derivedTypeAlias(substThis(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstThisMap(from, to))
           .mapOver(tp)
     }
 
-  final def substThis(tp: Type, from: RefinedType, to: Type, theMap: SubstRefinedThisMap): Type =
+  final def substSkolem(tp: Type, from: Type, to: Type, theMap: SubstSkolemMap): Type =
     tp match {
-      case tp @ RefinedThis(rt) =>
-        if (rt eq from) to else tp
+      case tp @ SkolemType(binder) =>
+        if (binder eq from) to else tp
       case tp: NamedType =>
         if (tp.currentSymbol.isStatic) tp
-        else tp.derivedSelect(substThis(tp.prefix, from, to, theMap))
+        else tp.derivedSelect(substSkolem(tp.prefix, from, to, theMap))
       case _: ThisType | _: BoundType | NoPrefix =>
         tp
       case tp: RefinedType =>
-        tp.derivedRefinedType(substThis(tp.parent, from, to, theMap), tp.refinedName, substThis(tp.refinedInfo, from, to, theMap))
-      case tp: TypeBounds if tp.lo eq tp.hi =>
-        tp.derivedTypeAlias(substThis(tp.lo, from, to, theMap))
+        tp.derivedRefinedType(substSkolem(tp.parent, from, to, theMap), tp.refinedName, substSkolem(tp.refinedInfo, from, to, theMap))
+      case tp: TypeAlias =>
+        tp.derivedTypeAlias(substSkolem(tp.alias, from, to, theMap))
       case _ =>
-        (if (theMap != null) theMap else new SubstRefinedThisMap(from, to))
+        (if (theMap != null) theMap else new SubstSkolemMap(from, to))
           .mapOver(tp)
     }
 
@@ -208,8 +208,8 @@ trait Substituters { this: Context =>
         tp
       case tp: RefinedType =>
         tp.derivedRefinedType(substParam(tp.parent, from, to, theMap), tp.refinedName, substParam(tp.refinedInfo, from, to, theMap))
-      case tp: TypeBounds if tp.lo eq tp.hi =>
-        tp.derivedTypeAlias(substParam(tp.lo, from, to, theMap))
+      case tp: TypeAlias =>
+        tp.derivedTypeAlias(substParam(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstParamMap(from, to))
           .mapOver(tp)
@@ -222,12 +222,12 @@ trait Substituters { this: Context =>
       case tp: NamedType =>
         if (tp.currentSymbol.isStatic) tp
         else tp.derivedSelect(substParams(tp.prefix, from, to, theMap))
-      case _: ThisType | NoPrefix | _: RefinedThis =>
+      case _: ThisType | NoPrefix | _: SkolemType =>
         tp
       case tp: RefinedType =>
         tp.derivedRefinedType(substParams(tp.parent, from, to, theMap), tp.refinedName, substParams(tp.refinedInfo, from, to, theMap))
-      case tp: TypeBounds if tp.lo eq tp.hi =>
-        tp.derivedTypeAlias(substParams(tp.lo, from, to, theMap))
+      case tp: TypeAlias =>
+        tp.derivedTypeAlias(substParams(tp.alias, from, to, theMap))
       case _ =>
         (if (theMap != null) theMap else new SubstParamsMap(from, to))
           .mapOver(tp)
@@ -266,8 +266,8 @@ trait Substituters { this: Context =>
     def apply(tp: Type): Type = substThis(tp, from, to, this)
   }
 
-  final class SubstRefinedThisMap(from: RefinedType, to: Type) extends DeepTypeMap {
-    def apply(tp: Type): Type = substThis(tp, from, to, this)
+  final class SubstSkolemMap(from: Type, to: Type) extends DeepTypeMap {
+    def apply(tp: Type): Type = substSkolem(tp, from, to, this)
   }
 
   final class SubstParamMap(from: ParamType, to: Type) extends DeepTypeMap {

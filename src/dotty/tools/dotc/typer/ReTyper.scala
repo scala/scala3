@@ -9,6 +9,7 @@ import Decorators._
 import typer.ProtoTypes._
 import ast.{tpd, untpd}
 import ast.Trees._
+import scala.util.control.NonFatal
 
 /** A version of Typer that keeps all symbols defined and referenced in a
  *  previously typed tree.
@@ -91,7 +92,7 @@ class ReTyper extends Typer {
   override def typedUnadapted(tree: untpd.Tree, pt: Type)(implicit ctx: Context) =
     try super.typedUnadapted(tree, pt)
     catch {
-      case ex: Throwable =>
+      case NonFatal(ex) =>
         println(i"exception while typing $tree of class ${tree.getClass} # ${tree.uniqueId}")
         throw ex
     }

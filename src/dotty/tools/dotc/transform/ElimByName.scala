@@ -15,10 +15,6 @@ import util.Attachment
 import core.StdNames.nme
 import ast.Trees._
 
-object ElimByName {
-  val ByNameArg = new Attachment.Key[Unit]
-}
-
 /** This phase eliminates ExprTypes `=> T` as types of function parameters, and replaces them by
  *  nullary function types.  More precisely:
  *
@@ -26,7 +22,7 @@ object ElimByName {
  *
  *      => T        ==>    () => T
  *
- *  Note that `=> T` types are not eliminated in MnethodTypes. This is done later at erasure.
+ *  Note that `=> T` types are not eliminated in MethodTypes. This is done later at erasure.
  *  Terms are rewritten as follows:
  *
  *      x           ==>    x.apply()   if x is a parameter that had type => T
@@ -39,21 +35,32 @@ object ElimByName {
  *
  *  This makes the argument compatible with a parameter type of () => T, which will be the
  *  formal parameter type at erasure. But to be -Ycheckable until then, any argument
- *  ARG rewritten by the rules above is again wrapped in an application ARG.apply(),
- *  labelled with a `ByNameParam` attachment. Erasure will later strip wrapped
- *  `.apply()` calls with ByNameParam attachments.
+ *  ARG rewritten by the rules above is again wrapped in an application DummyApply(ARG)
+ *  where
+ *
+ *     DummyApply: [T](() => T): T
+ *
+ *  is a synthetic method defined in Definitions. Erasure will later strip these DummyApply wrappers.
+ *
+ *  Note: This scheme to have inconsistent types between method types (whose formal types are still
+ *  ExprTypes and parameter valdefs (which are now FunctionTypes) is not pretty. There are two
+ *  other options which have been abandoned or not yet pursued.
+ *
+ *  Option 1: Transform => T to () => T also in method and function types. The problem with this is
+ *  that is that it rewuires to look at every type, and this forces too much, causing
+ *  Cyclic Reference errors. Abandoned for this reason.
+ *
+ *  Option 2: Merge ElimByName with erasure, or have it run immediately before. This has not been
+ *  tried yet.
  */
 class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransformer =>
   import ast.tpd._
-  import ElimByName._
 
   override def phaseName: String = "elimByName"
 
   override def runsAfterGroupsOf = Set(classOf[Splitter])
     // assumes idents and selects have symbols; interferes with splitter distribution
     // that's why it's "after group".
-
-  override def treeTransformPhase = thisTransformer.next
 
   /** The info of the tree's symbol at phase Nullarify (i.e. before transformation) */
   private def originalDenotation(tree: Tree)(implicit ctx: Context) =
@@ -64,17 +71,16 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
 
     def transformArg(arg: Tree, formal: Type): Tree = formal.dealias match {
       case formalExpr: ExprType =>
+        val argType = arg.tpe.widen
         val argFun = arg match {
           case Apply(Select(qual, nme.apply), Nil) if qual.tpe derivesFrom defn.FunctionClass(0) =>
             qual
           case _ =>
             val meth = ctx.newSymbol(
-                ctx.owner, nme.ANON_FUN, Synthetic | Method, MethodType(Nil, Nil, arg.tpe.widen))
+                ctx.owner, nme.ANON_FUN, Synthetic | Method, MethodType(Nil, Nil, argType))
             Closure(meth, _ => arg.changeOwner(ctx.owner, meth))
         }
-        val argApplied = argFun.select(defn.Function0_apply).appliedToNone
-        argApplied.putAttachment(ByNameArg, ())
-        argApplied
+        ref(defn.dummyApply).appliedToType(argType).appliedTo(argFun)
       case _ =>
         arg
     }

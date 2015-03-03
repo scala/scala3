@@ -386,7 +386,7 @@ object Denotations {
         case info: MethodicType =>
           try info.signature
           catch { // !!! DEBUG
-            case ex: Throwable =>
+            case scala.util.control.NonFatal(ex) =>
               println(s"cannot take signature of ${info.show}")
               throw ex
           }

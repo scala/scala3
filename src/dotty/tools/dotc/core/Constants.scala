@@ -169,7 +169,7 @@ object Constants {
     def convertTo(pt: Type)(implicit ctx: Context): Constant = {
       def lowerBound(pt: Type): Type = pt.dealias.stripTypeVar match {
         case tref: TypeRef if !tref.symbol.isClass => lowerBound(tref.info.bounds.lo)
-        case param: PolyParam => lowerBound(ctx.typeComparer.bounds(param).lo)
+        case param: PolyParam => lowerBound(ctx.typerState.constraint.nonParamBounds(param).lo)
         case pt => pt
       }
       val target = lowerBound(pt).typeSymbol

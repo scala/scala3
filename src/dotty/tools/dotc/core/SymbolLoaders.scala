@@ -14,6 +14,7 @@ import Contexts._, Symbols._, Flags._, SymDenotations._, Types._, Scopes._, util
 import StdNames._, NameOps._
 import Decorators.{StringDecorator, StringInterpolators}
 import pickling.ClassfileParser
+import scala.util.control.NonFatal
 
 object SymbolLoaders {
   /** A marker trait for a completer that replaces the original
@@ -147,13 +148,13 @@ class SymbolLoaders {
     override def sourceModule(implicit ctx: Context) = _sourceModule
     def description = "package loader " + classpath.name
 
-    private[core] val preDecls: MutableScope = newScope
+    private[core] val currentDecls: MutableScope = newScope
 
     def doComplete(root: SymDenotation)(implicit ctx: Context): Unit = {
       assert(root is PackageClass, root)
  	    def maybeModuleClass(classRep: ClassPath#ClassRep) = classRep.name.last == '$'
       val pre = root.owner.thisType
-      root.info = ClassInfo(pre, root.symbol.asClass, Nil, preDecls, pre select sourceModule)
+      root.info = ClassInfo(pre, root.symbol.asClass, Nil, currentDecls, pre select sourceModule)
       if (!sourceModule.isCompleted)
         sourceModule.completer.complete(sourceModule)
       if (!root.isRoot) {
@@ -161,7 +162,7 @@ class SymbolLoaders {
           if (!maybeModuleClass(classRep))
             initializeFromClassPath(root.symbol, classRep)
         for (classRep <- classpath.classes)
-          if (maybeModuleClass(classRep) && !root.decls.lookup(classRep.name.toTypeName).exists)
+          if (maybeModuleClass(classRep) && !root.unforcedDecls.lookup(classRep.name.toTypeName).exists)
             initializeFromClassPath(root.symbol, classRep)
       }
       if (!root.isEmptyPackage)
@@ -206,7 +207,7 @@ abstract class SymbolLoader extends LazyType {
     } catch {
       case ex: IOException =>
         signalError(ex)
-      case ex: Throwable =>
+      case NonFatal(ex) =>
         println(s"exception caught when loading $root: $ex")
         throw ex
     } finally {

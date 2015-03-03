@@ -35,7 +35,7 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
     case ref: ClassDenotation if ref is ModuleClass =>
       ref.linkedClass match {
         case origClass: ClassSymbol if isDerivedValueClass(origClass) =>
-          val cinfo = ref.classInfo
+          val cinfo = ref.classInfo // ./tests/pos/t2667.scala dies here for module class AnyVal$
           val decls1 = cinfo.decls.cloneScope
           ctx.atPhase(thisTransformer.next) { implicit ctx =>
             for (decl <- origClass.classInfo.decls) {
@@ -56,8 +56,6 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
     case _ =>
       ref
   }
-
-  override def treeTransformPhase = thisTransformer.next
 
   protected def rewiredTarget(target: Symbol, derived: Symbol)(implicit ctx: Context): Symbol =
     if (isMethodWithExtension(target) &&
