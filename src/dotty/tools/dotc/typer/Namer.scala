@@ -664,8 +664,11 @@ class Namer { typer: Typer =>
         mdef match {
           case mdef: DefDef if mdef.name == nme.ANON_FUN =>
             val hygienicType = avoid(rhsType, paramss.flatten)
-            hygienicType <:< tpt.tpe
-            typr.println(i"lifting $rhsType over $paramss -> $hygienicType = ${tpt.tpe}")
+            if (!(hygienicType <:< tpt.tpe))
+              ctx.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
+                i"it is not a supertype of the hygienic type $hygienicType", mdef.pos)
+            //println(i"lifting $rhsType over $paramss -> $hygienicType = ${tpt.tpe}")
+            //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
           case _ =>
         }
         WildcardType
