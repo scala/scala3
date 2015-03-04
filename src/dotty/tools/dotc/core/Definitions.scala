@@ -99,8 +99,12 @@ class Definitions {
   lazy val RootPackage: TermSymbol = ctx.newSymbol(
     NoSymbol, nme.ROOTPKG, PackageCreationFlags, TypeRef(NoPrefix, RootClass))
 
-  lazy val EmptyPackageClass = ctx.newCompletePackageSymbol(RootClass, nme.EMPTY_PACKAGE).moduleClass.asClass
-  lazy val EmptyPackageVal = EmptyPackageClass.sourceModule.entered
+  lazy val EmptyPackageVal = ctx.newCompletePackageSymbol(RootClass, nme.EMPTY_PACKAGE).entered
+  lazy val EmptyPackageClass = EmptyPackageVal.moduleClass.asClass
+
+  /** A package in which we can place all methods that are interpreted specially by the compiler */
+  lazy val OpsPackageVal = ctx.newCompletePackageSymbol(RootClass, nme.OPS_PACKAGE).entered
+  lazy val OpsPackageClass = OpsPackageVal.moduleClass.asClass
 
   lazy val ScalaPackageVal = ctx.requiredPackage("scala")
   lazy val ScalaMathPackageVal = ctx.requiredPackage("scala.math")
@@ -171,10 +175,10 @@ class Definitions {
 
     def ObjectMethods = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
-
+        
   /** Dummy method needed by elimByName */
   lazy val dummyApply = newPolyMethod(
-      RootClass, nme.dummyApply, 1,
+      OpsPackageClass, nme.dummyApply, 1,
       pt => MethodType(List(FunctionType(Nil, PolyParam(pt, 0))), PolyParam(pt, 0)))
 
   lazy val NothingClass: ClassSymbol = newCompleteClassSymbol(
@@ -605,7 +609,8 @@ class Definitions {
     NothingClass,
     SingletonClass,
     EqualsPatternClass,
-    EmptyPackageVal)
+    EmptyPackageVal,
+    OpsPackageClass)
 
     /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
     lazy val syntheticCoreMethods = AnyMethods ++ ObjectMethods ++ List(String_+)
