@@ -2,16 +2,17 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import TreeTransforms._
 import Contexts.Context
 import Decorators._
 import pickling._
 import config.Printers.{noPrinter, pickling}
 import java.io.PrintStream
 import Periods._
+import Phases._
+import collection.mutable
 
 /** This miniphase pickles trees */
-class Pickler extends MiniPhaseTransform { thisTransform =>
+class Pickler extends Phase {
   import ast.tpd._
 
   override def phaseName: String = "pickler"
@@ -22,36 +23,48 @@ class Pickler extends MiniPhaseTransform { thisTransform =>
     s.close
   }
   
-  override def transformUnit(tree: Tree)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    if (!ctx.compilationUnit.isJava) {
-      val pickler = new TastyPickler
+  private val beforePickling = new mutable.HashMap[CompilationUnit, String]
+  
+  override def run(implicit ctx: Context): Unit = {
+    val unit = ctx.compilationUnit
+    if (!unit.isJava) {
+      val tree = unit.tpdTree
       pickling.println(i"unpickling in run ${ctx.runId}")
-      val previous = if (ctx.settings.YtestPickler.value) tree.show else ""
-                  
+      if (ctx.settings.YtestPickler.value) beforePickling(unit) = tree.show
+
+      val pickler = new TastyPickler            
       val treePkl = new TreePickler(pickler)
       treePkl.pickle(tree :: Nil)
       if (tree.pos.exists)
         new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil, tree.pos)
 
-      val bytes = pickler.assembleParts()
-      ctx.compilationUnit.pickled = bytes
+      unit.pickled = pickler.assembleParts()
       def rawBytes = // not needed right now, but useful to print raw format.
-        bytes.iterator.grouped(10).toList.zipWithIndex.map {
+        unit.pickled.iterator.grouped(10).toList.zipWithIndex.map {
           case (row, i) => s"${i}0: ${row.mkString(" ")}"
         }
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
-      if (pickling ne noPrinter) new TastyPrinter(bytes).printContents()
-      
-      if (ctx.settings.YtestPickler.value)
-        unpickle(bytes, previous)(ctx.fresh.setPeriod(Period(ctx.runId + 1, FirstPhaseId)))
-    }
-    tree 
+      if (pickling ne noPrinter) new TastyPrinter(unit.pickled).printContents()
+    } 
   }
-
-  private def unpickle(bytes: Array[Byte], previous: String)(implicit ctx: Context) = {
-    println(i"unpickle run = ${ctx.runId}")
+  
+  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+    val result = super.runOn(units)
+    if (ctx.settings.YtestPickler.value) 
+      testUnpickler(units)(ctx.fresh.setPeriod(Period(ctx.runId + 1, FirstPhaseId)))
+    result
+  }
+  
+  private def testUnpickler(units: List[CompilationUnit])(implicit ctx: Context): Unit = {
+    println(i"testing unpickler at run ${ctx.runId}")
     ctx.definitions.init
-    val unpickled = i"${new DottyUnpickler(bytes, readPositions = false).result}%\n%"
+    for (unit <- units) {
+      unpickle(unit.pickled, beforePickling(unit))
+    }
+  }
+  
+  private def unpickle(bytes: Array[Byte], previous: String)(implicit ctx: Context) = {
+    val unpickled = i"${new DottyUnpickler(bytes, Set(), readPositions = false).result}%\n%"
     println(i"previous :\n $previous")
     println(i"unpickled:\n $unpickled")
     if (previous != unpickled) {
