@@ -18,11 +18,12 @@ import PositionPickler._
 /** Unpickler for typed trees
  *  @param reader         the reader from which to unpickle
  *  @param tastyName      the nametable
+ *  @param roots          a set of SymDenotations that should be completed by unpickling
  *  @param totalRange     the range position enclosing all returned trees,
                           or NoPosition if positions should not be unpickled
  *  @param positions      A map from 
  */
-class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, 
+class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[SymDenotation],
     totalRange: Position, positions: collection.Map[Addr, Position]) {
   import dotty.tools.dotc.core.pickling.PickleFormat._
   import TastyName._
@@ -306,7 +307,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table,
         else new Completer(subReader(start, end))
       if (flags is Module) completer = ctx.adjustModuleCompleter(completer, name)
       val sym =
-        if (prevDenot.exists) {
+        if (roots contains prevDenot) {
           println(i"overwriting ${prevDenot.symbol} # ${prevDenot.hashCode}")
           prevDenot.info = completer
           prevDenot.flags = flags &~ Touched // allow one more completion

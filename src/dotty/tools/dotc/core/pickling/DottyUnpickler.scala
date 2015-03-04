@@ -18,9 +18,10 @@ object DottyUnpickler {
 /** Unpickle symbol table information descending from a class and/or module root
  *  from an array of bytes.
  *  @param bytes         bytearray from which we unpickle
+ *  @param roots         a set of SymDenotations that should be completed by unpickling
  *  @param readPositions if true, trees get decorated with position information.
  */
-class DottyUnpickler(bytes: Array[Byte], readPositions: Boolean = false)(implicit ctx: Context) {
+class DottyUnpickler(bytes: Array[Byte], roots: Set[SymDenotation], readPositions: Boolean = false)(implicit ctx: Context) {
   import tpd._
 
   val unpickler = new TastyUnpickler(bytes)
@@ -38,7 +39,7 @@ class DottyUnpickler(bytes: Array[Byte], readPositions: Boolean = false)(implici
   class TreeSectionUnpickler(totalRange: Position, positions: AddrToPosition)(implicit ctx: Context) 
       extends SectionUnpickler[List[Tree]]("ASTs") {
     def unpickle(reader: TastyReader, tastyName: TastyName.Table): List[Tree] =
-      new TreeUnpickler(reader, tastyName, totalRange, positions).unpickle()
+      new TreeUnpickler(reader, tastyName, roots, totalRange, positions).unpickle()
   }
   
   class PositionsSectionUnpickler()(implicit ctx: Context) extends SectionUnpickler[(Position, AddrToPosition)]("Positions") {
