@@ -50,8 +50,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   Stat
 
   Stat          = Term
-                  VALDEF         Length NameRef Type rhs_Tree Modifier*
-                  DEFDEF         Length NameRef TypeParam* Params* return_Type rhs_Tree
+                  VALDEF         Length NameRef Type rhs_Term? Modifier*
+                  DEFDEF         Length NameRef TypeParam* Params* return_Type rhs_Term?
                                         Modifier*
                   TYPEDEF        Length NameRef (Type | Template) Modifier*
                   IMPORT         Length qual_Term Selector*
@@ -61,8 +61,7 @@ Standard-Section: "ASTs" TopLevelStat*
 
   TypeParam     = TYPEPARAM      Length NameRef Type Modifier*
   Params        = PARAMS         Length Param*
-                  IMPLICITPARAMS Length Param*                                // not yet used                   
-  Param         = PARAM          Length NameRef Type Modifier*
+  Param         = PARAM          Length NameRef Type rhs_Term? Modifier*  // rhs_Term is present in the case of an aliased class parameter
   Template      = TEMPLATE       Length TypeParam* Param* Parent* Self? Stat* // Stat* always starts with the primary constructor.
   Parent        = Application
                   Type
@@ -94,8 +93,8 @@ Standard-Section: "ASTs" TopLevelStat*
   Application   = APPLY          Length fn_Term arg_Term*
 
                   TYPEAPPLY      Length fn_Term arg_Type*
-  CaseDef       = CASEDEF        Length pat_Tree rhs_Tree guard_Tree?
-  ImplicitArg   = IMPLICITARG    Length arg_Tree
+  CaseDef       = CASEDEF        Length pat_Term rhs_Tree guard_Tree?
+  ImplicitArg   = IMPLICITARG    Length arg_Term
   ASTRef        = Nat                          		// byte position in AST payload
 
   Path          = Constant
@@ -122,7 +121,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   NULLconst
                   CLASSconst     Length Type
                   ENUMconst      Length Path
- 
+
   Type          = Path
                   TYPEREFdirect         sym_ASTRef
                   TYPEREFsymbol         sym_ASTRef qual_Type
@@ -132,7 +131,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   REFINEDtype    Length underlying_Type refinement_NameRef info_Type
                   APPLIEDtype    Length tycon_Type arg_Type*
                   TYPEBOUNDS     Length low_Type high_Type
-                  TYPEALIAS      Length alias_Type
+                  TYPEALIAS      Length alias_Type (COVARIANT | CONTRAVARIANT)?
                   ANNOTATED      Length fullAnnotation_Term underlying_Type
                   ANDtype        Length left_Type right_Type
                   ORtype         Length left_Type right_Type
@@ -170,7 +169,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   MUTABLE 						// a var
                   LABEL						// method generated as a label
                   FIELDaccessor					// getter or setter
-                  PARAMaccessor					// getter or setter for class param
                   CASEaccessor					// getter for case class param
                   COVARIANT					// type param marked “+”
                   CONTRAVARIANT					// type param marked “-”
@@ -210,7 +208,7 @@ object PickleFormat {
 
   final val header = "5CA1AB1F"
   final val MajorVersion = 0
-  final val MinorVersion = 4
+  final val MinorVersion = 5
 
   // Name tags
 
@@ -251,14 +249,13 @@ object PickleFormat {
   final val MUTABLE = 24
   final val LABEL = 25
   final val FIELDaccessor = 26
-  final val PARAMaccessor = 27
-  final val CASEaccessor = 28
-  final val COVARIANT = 29
-  final val CONTRAVARIANT = 30
-  final val SCALA2X = 31
-  final val DEFAULTparameterized = 32
-  final val DEFAULTinit = 33
-  final val INSUPERCALL = 34
+  final val CASEaccessor = 27
+  final val COVARIANT = 28
+  final val CONTRAVARIANT = 29
+  final val SCALA2X = 30
+  final val DEFAULTparameterized = 31
+  final val DEFAULTinit = 32
+  final val INSUPERCALL = 33
 
   final val SHARED = 64
   final val TERMREFdirect = 65
@@ -289,7 +286,6 @@ object PickleFormat {
   final val IMPORT = 132
   final val TYPEPARAM = 133
   final val PARAMS = 134
-  final val IMPLICITPARAMS = 135
   final val PARAM = 136
   final val IMPORTED = 137
   final val RENAMED = 138
@@ -343,6 +339,41 @@ object PickleFormat {
 
   def isParamTag(tag: Int) = tag == PARAM || tag == TYPEPARAM
 
+  def isModifierTag(tag: Int) = tag match {
+    case PRIVATE
+       | INTERNAL
+       | PROTECTED
+       | ABSTRACT
+       | FINAL
+       | SEALED
+       | CASE
+       | IMPLICIT
+       | LAZY
+       | OVERRIDE
+       | INLINE
+       | ABSOVERRIDE
+       | STATIC
+       | MODULE
+       | TRAIT
+       | LOCAL
+       | SYNTHETIC
+       | ARTIFACT
+       | MUTABLE
+       | LABEL
+       | FIELDaccessor
+       | CASEaccessor
+       | COVARIANT
+       | CONTRAVARIANT
+       | SCALA2X
+       | DEFAULTparameterized
+       | DEFAULTinit
+       | INSUPERCALL
+       | ANNOTATION
+       | PRIVATEqualified
+       | PROTECTEDqualified => true
+    case _ => false
+   }
+
   def nameTagToString(tag: Int): String = tag match {
     case UTF8 => "UTF8"
     case QUALIFIED => "QUALIFIED"
@@ -381,7 +412,6 @@ object PickleFormat {
     case MUTABLE => "MUTABLE"
     case LABEL => "LABEL"
     case FIELDaccessor => "FIELDaccessor"
-    case PARAMaccessor => "PARAMaccessor"
     case CASEaccessor => "CASEaccessor"
     case COVARIANT => "COVARIANT"
     case CONTRAVARIANT => "CONTRAVARIANT"

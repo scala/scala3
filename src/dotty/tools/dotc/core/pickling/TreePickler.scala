@@ -173,7 +173,7 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(SKOLEMtype)
         writeRef(pickledTypes.get(tpe.binder).asInstanceOf[Addr])
       case tpe: RefinedType =>
-        val args = tpe.argInfos(interpolate = false)
+        val args = tpe.argInfos(interpolate = true)
         if (args.isEmpty) {
           writeByte(REFINEDtype)
           withLength { 
@@ -188,7 +188,14 @@ class TreePickler(pickler: TastyPickler) {
         }
       case tpe: TypeAlias =>
         writeByte(TYPEALIAS)
-        withLength { pickleType(tpe.alias, richTypes) }
+        withLength { 
+          pickleType(tpe.alias, richTypes) 
+          tpe.variance match {
+            case 1 => writeByte(COVARIANT)
+            case -1 => writeByte(CONTRAVARIANT)
+            case 0 =>
+          }
+        }
       case tpe: TypeBounds =>
         writeByte(TYPEBOUNDS)
         withLength { pickleType(tpe.lo, richTypes); pickleType(tpe.hi, richTypes) }
@@ -248,7 +255,7 @@ class TreePickler(pickler: TastyPickler) {
     
     def pickleTpt(tpt: Tree): Unit = pickleType(tpt.tpe) // TODO correlate with original when generating positions
     
-    def pickleTreeIfNonEmpty(tree: Tree): Unit = 
+    def pickleTreeUnlessEmpty(tree: Tree): Unit = 
       if (!tree.isEmpty) pickleTree(tree)
 
     def pickleTree(tree: Tree): Unit = try {
@@ -323,13 +330,13 @@ class TreePickler(pickler: TastyPickler) {
         withLength { pickleTree(selector); cases.foreach(pickleTree) }
       case CaseDef(pat, guard, rhs) =>
         writeByte(CASEDEF)
-        withLength { pickleTree(pat); pickleTree(rhs); pickleTreeIfNonEmpty(guard) }
+        withLength { pickleTree(pat); pickleTree(rhs); pickleTreeUnlessEmpty(guard) }
       case Return(expr, from) =>
         writeByte(RETURN)
-        withLength { pickleSymRef(from.symbol); pickleTreeIfNonEmpty(expr) }
+        withLength { pickleSymRef(from.symbol); pickleTreeUnlessEmpty(expr) }
       case Try(block, cases, finalizer) =>
         writeByte(TRY)
-        withLength { pickleTree(block); cases.foreach(pickleTree); pickleTreeIfNonEmpty(finalizer) }
+        withLength { pickleTree(block); cases.foreach(pickleTree); pickleTreeUnlessEmpty(finalizer) }
       case Throw(expr) =>
         writeByte(THROW)
         withLength { pickleTree(expr) }
@@ -372,9 +379,9 @@ class TreePickler(pickler: TastyPickler) {
       case tree: Template =>
         registerDef(tree.symbol)
         writeByte(TEMPLATE)
-        val (params, rest) = tree.body span {
-          case stat: TypeDef => stat.mods is Flags.Param
-          case stat: ValDef => stat.mods is Flags.ParamAccessor
+        val (params, rest) = tree.body partition {
+          case stat: TypeDef => stat.symbol is Flags.Param
+          case stat: ValOrDefDef => stat.symbol is Flags.ParamAccessor
           case _ => false
         }
         withLength {
@@ -426,13 +433,14 @@ class TreePickler(pickler: TastyPickler) {
           case tpt: TypeTree => pickleTpt(tpt)
           case _ => pickleTree(tpt)
         }
-        if (tag == VALDEF || tag == DEFDEF) pickleTree(rhs)
+        pickleTreeUnlessEmpty(rhs)
         pickleModifiers(sym)
       }
     }
     
     def pickleParam(tree: Tree): Unit = tree match {
       case tree: ValDef => pickleDef(PARAM, tree.symbol, tree.tpt)
+      case tree: DefDef => pickleDef(PARAM, tree.symbol, tree.tpt, tree.rhs)
       case tree: TypeDef => pickleDef(TYPEPARAM, tree.symbol, tree.rhs)      
     }
     
@@ -473,7 +481,6 @@ class TreePickler(pickler: TastyPickler) {
         if (flags is AbsOverride) writeByte(ABSOVERRIDE)
         if (flags is Mutable) writeByte(MUTABLE)
         if (flags is Accessor) writeByte(FIELDaccessor)
-        if (flags is ParamAccessor) writeByte(PARAMaccessor)
         if (flags is CaseAccessor) writeByte(CASEaccessor)  
         if (flags is DefaultParameterized) writeByte(DEFAULTparameterized)
         if (flags is DefaultInit) writeByte(DEFAULTinit)
