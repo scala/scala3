@@ -62,11 +62,9 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
           val end = currentAddr + len
           def printTrees() = until(end)(printTree())
           tag match {
-            case IMPORTED => 
-              printName()
             case RENAMED =>
               printName(); printName()
-            case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | SELFDEF | BIND => 
+            case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | BIND => 
               printName(); printTrees()
             case REFINEDtype =>
               printTree(); printName(); printTrees()
@@ -87,14 +85,16 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
         }
         else if (tag >= firstNatASTTreeTag) { 
           tag match {
-            case IDENT | SELECT | TERMREF | TYPEREF => printName()
+            case IDENT | SELECT | TERMREF | TYPEREF | SELFDEF => printName()
             case _ => printNat() 
           }
           printTree()
         }
+        else if (tag >= firstASTTreeTag) 
+          printTree()
         else if (tag >= firstNatTreeTag) 
           tag match {
-            case TERMREFpkg | TYPEREFpkg | STRINGconst => printName()
+            case TERMREFpkg | TYPEREFpkg | STRINGconst | IMPORTED => printName()
             case _ => printNat()
           }
         indent -= 2

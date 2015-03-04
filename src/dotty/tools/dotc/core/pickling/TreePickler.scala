@@ -103,10 +103,10 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(NULLconst)
       case ClazzTag =>
         writeByte(CLASSconst)
-        withLength { pickleType(c.typeValue) }
+        pickleType(c.typeValue)
       case EnumTag =>
         writeByte(ENUMconst)
-        withLength { pickleType(c.symbolValue.termRef) }
+        pickleType(c.symbolValue.termRef)
     }
 
     def pickleType(tpe0: Type, richTypes: Boolean = false): Unit = try {
@@ -165,7 +165,7 @@ class TreePickler(pickler: TastyPickler) {
         pickleName(tpe.name); pickleType(tpe.prefix)
       case tpe: ThisType =>
         writeByte(THIS)
-        withLength { pickleType(tpe.tref) }
+        pickleType(tpe.tref)
       case tpe: SuperType =>
         writeByte(SUPERtype)
         withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe)}
@@ -302,7 +302,7 @@ class TreePickler(pickler: TastyPickler) {
         }
       case New(tpt) =>
         writeByte(NEW)
-        withLength { pickleTpt(tpt) }
+        pickleTpt(tpt)
       case Pair(left, right) =>
         writeByte(PAIR)
         withLength { pickleTree(left); pickleTree(right) }
@@ -357,8 +357,8 @@ class TreePickler(pickler: TastyPickler) {
         withLength { 
           pickleTree(fun)
           for (implicitArg <- implicits) {
-            writeByte(IMPLICITARG)
-            withLength { pickleTree(implicitArg) }
+            writeByte(IMPLICITarg)
+            pickleTree(implicitArg)
           }
           pickleType(tree.tpe)
           patterns.foreach(pickleTree) 
@@ -390,10 +390,8 @@ class TreePickler(pickler: TastyPickler) {
           val cinfo @ ClassInfo(_, _, _, _, selfInfo) = tree.symbol.owner.info
           if ((selfInfo ne NoType) || !tree.self.isEmpty) {
             writeByte(SELFDEF)
-            withLength {
-              pickleName(tree.self.name)
-              pickleType(cinfo.selfType)
-            }
+            pickleName(tree.self.name)
+            pickleType(cinfo.selfType)
           }
           pickleStats(tree.constr :: rest)
         }
@@ -407,7 +405,7 @@ class TreePickler(pickler: TastyPickler) {
               withLength { pickleName(from); pickleName(to) }
             case Ident(name) =>
               writeByte(IMPORTED)
-              withLength { pickleName(name) }
+              pickleName(name)
           }
         }
       case PackageDef(pid, stats) =>
@@ -460,7 +458,7 @@ class TreePickler(pickler: TastyPickler) {
       val privateWithin = sym.privateWithin
       if (privateWithin.exists) {
         writeByte(if (flags is Protected) PROTECTEDqualified else PRIVATEqualified)
-        withLength { pickleType(privateWithin.typeRef) }
+        pickleType(privateWithin.typeRef)
       }
       if (flags is Private) writeByte(PRIVATE)
       if (flags is Protected) if (!privateWithin.exists) writeByte(PROTECTED)

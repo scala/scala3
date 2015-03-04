@@ -72,6 +72,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
     def skipTree(tag: Int): Unit =
       if (tag >= firstLengthTreeTag) goto(readEnd())
       else if (tag >= firstNatASTTreeTag) { readNat(); skipTree() }
+      else if (tag >= firstASTTreeTag) skipTree()
       else if (tag >= firstNatTreeTag) readNat()
     def skipTree(): Unit = skipTree(readByte())
     
@@ -130,8 +131,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
         
         val result =
           (tag: @switch) match {
-            case THIS =>
-              ThisType.raw(readType().asInstanceOf[TypeRef])
             case SUPERtype =>
               SuperType(readType(), readType())
             case REFINEDtype =>
@@ -190,10 +189,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
                 case binder: MethodType => MethodParam(binder, readNat())
               }
             case CLASSconst =>
-              readEnd()
               ConstantType(Constant(readType()))
             case ENUMconst =>
-              readEnd()
               ConstantType(Constant(readTermRef().termSymbol))
           }
         assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
@@ -228,6 +225,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
             case name: TermName => TermRef.all(readType(), name)
             case (name: TermName, sig: Signature) => TermRef.withSig(readType(), name, sig)
           }
+        case THIS =>
+          ThisType.raw(readType().asInstanceOf[TypeRef])
         case SKOLEMtype =>
           SkolemType(readTypeRef())
         case NOTYPE =>
@@ -391,11 +390,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
           case INSUPERCALL => addFlag(InSuperCall)
           case PRIVATEqualified => 
             readByte()
-            readEnd()
             privateWithin = readType().typeSymbol
           case PROTECTEDqualified =>
             addFlag(Protected)
-            readEnd()
             privateWithin = readType().typeSymbol
           case ANNOTATION =>
             readByte()
@@ -549,7 +546,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
       val self = 
         if (nextByte == SELFDEF) {
           readByte()
-          readEnd()
           untpd.ValDef(readName(), readTpt(), EmptyTree).withType(NoType)
         }
         else EmptyValDef
@@ -622,6 +618,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
             case name: Name => readQual(name).select(name)
             case (name: Name, sig: Signature) => readQual(name).selectWithSig(name, sig)
           }
+        case NEW =>
+          New(readTpt())
         case EMPTYTREE =>
           EmptyTree
         case _ =>
@@ -648,8 +646,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
               tpd.Apply(fn, until(end)(readArg()))
             case TYPEAPPLY =>
               tpd.TypeApply(readTerm(), until(end)(readTpt()))
-            case NEW =>
-              New(readTpt())
             case PAIR =>
               Pair(readTerm(), readTerm())
             case TYPED =>
@@ -694,9 +690,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
             case UNAPPLY =>
               val fn = readTerm()
               val implicitArgs = 
-                collectWhile(nextByte == IMPLICITARG) {
+                collectWhile(nextByte == IMPLICITarg) {
                   readByte()
-                  readEnd()
                   readTerm()
                 }
               val patType = readType()
