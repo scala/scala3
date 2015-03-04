@@ -200,7 +200,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           
     def modText(mods: untpd.Modifiers, kw: String): Text = { // DD
       val suppressKw = if (enclDefIsClass) mods is ParamAndLocal else mods is Param
-      val flagMask = if (suppressKw) PrintableFlags &~ Private else PrintableFlags
+      val flagMask = 
+        if (ctx.settings.debugFlags.value) AllFlags
+        else if (suppressKw) PrintableFlags &~ Private 
+        else PrintableFlags
       val flagsText = (mods.flags & flagMask).toString
       Text(mods.annotations.map(annotText), " ") ~~ flagsText ~~ (kw provided !suppressKw)
     }
@@ -261,7 +264,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case tree @ Select(qual, name) =>
         toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided name != nme.CONSTRUCTOR)
       case This(name) =>
-        optDotPrefix(name) ~ "this" ~ idText(tree)
+        val isLocal = tree.typeOpt match {
+          case tp: ThisType => tp.cls == ctx.owner.enclosingClass
+          case _ => false
+        }
+        (optDotPrefix(name) provided !isLocal) ~ "this" ~ idText(tree)
       case Super(This(name), mix) =>
         optDotPrefix(name) ~ "super" ~ optText(mix)("[" ~ _ ~ "]")
       case Apply(fun, args) =>
