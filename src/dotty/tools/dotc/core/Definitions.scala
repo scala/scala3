@@ -180,6 +180,10 @@ class Definitions {
   lazy val dummyApply = newPolyMethod(
       OpsPackageClass, nme.dummyApply, 1,
       pt => MethodType(List(FunctionType(Nil, PolyParam(pt, 0))), PolyParam(pt, 0)))
+      
+  /** Method representing a throw */
+  lazy val throwMethod = newMethod(OpsPackageClass, nme.THROWkw, 
+      MethodType(List(ThrowableType), NothingType))
 
   lazy val NothingClass: ClassSymbol = newCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))

@@ -236,7 +236,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case Super(This(name), mix) =>
         optDotPrefix(name) ~ "super" ~ optText(mix)("[" ~ _ ~ "]")
       case Apply(fun, args) =>
-        toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
+        if (fun.hasType && fun.symbol == defn.throwMethod)
+          changePrec (GlobalPrec) {
+            "throw " ~ toText(args.head)
+          }
+        else
+          toTextLocal(fun) ~ "(" ~ toTextGlobal(args, ", ") ~ ")"
       case TypeApply(fun, args) =>
         toTextLocal(fun) ~ "[" ~ toTextGlobal(args, ", ") ~ "]"
       case Literal(c) =>

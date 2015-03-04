@@ -735,9 +735,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     assignType(cpy.Try(tree)(expr1, cases1, finalizer1), expr1, cases1)
   }
 
-  def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Throw = track("typedThrow") {
+  def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Tree = track("typedThrow") {
     val expr1 = typed(tree.expr, defn.ThrowableType)
-    assignType(cpy.Throw(tree)(expr1))
+    Throw(expr1).withPos(tree.pos)
   }
 
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = track("typedSeqLiteral") {

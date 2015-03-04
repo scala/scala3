@@ -50,6 +50,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     override def isTerm = trees.isEmpty || trees.head.isTerm
     override def isType = !isTerm
   }
+  case class Throw(expr: Tree) extends TermTree
   case class WhileDo(cond: Tree, body: Tree) extends TermTree
   case class DoWhile(body: Tree, cond: Tree) extends TermTree
   case class ForYield(enums: List[Tree], expr: Tree) extends TermTree
@@ -126,7 +127,6 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def CaseDef(pat: Tree, guard: Tree, body: Tree): CaseDef = new CaseDef(pat, guard, body)
   def Return(expr: Tree, from: Tree): Return = new Return(expr, from)
   def Try(expr: Tree, cases: List[CaseDef], finalizer: Tree): Try = new Try(expr, cases, finalizer)
-  def Throw(expr: Tree): Throw = new Throw(expr)
   def SeqLiteral(elems: List[Tree]): SeqLiteral = new SeqLiteral(elems)
   def JavaSeqLiteral(elems: List[Tree]): JavaSeqLiteral = new JavaSeqLiteral(elems)
   def TypeTree(original: Tree): TypeTree = new TypeTree(original)
@@ -305,6 +305,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: Tuple if (trees eq tree.trees) => tree
       case _ => untpd.Tuple(trees).withPos(tree.pos)
     }
+    def Throw(tree: Tree)(expr: Tree) = tree match {
+      case tree: Throw if (expr eq tree.expr) => tree
+      case _ => untpd.Throw(expr).withPos(tree.pos)
+    }
     def WhileDo(tree: Tree)(cond: Tree, body: Tree) = tree match {
       case tree: WhileDo if (cond eq tree.cond) && (body eq tree.body) => tree
       case _ => untpd.WhileDo(cond, body).withPos(tree.pos)
@@ -359,6 +363,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.Parens(tree)(transform(t))
       case Tuple(trees) =>
         cpy.Tuple(tree)(transform(trees))
+      case Throw(expr) =>
+        cpy.Throw(tree)(transform(expr))
       case WhileDo(cond, body) =>
         cpy.WhileDo(tree)(transform(cond), transform(body))
       case DoWhile(body, cond) =>
@@ -402,6 +408,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(x, t)
       case Tuple(trees) =>
         this(x, trees)
+      case Throw(expr) =>
+        this(x, expr)
       case WhileDo(cond, body) =>
         this(this(x, cond), body)
       case DoWhile(body, cond) =>

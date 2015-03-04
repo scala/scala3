@@ -513,12 +513,6 @@ object Trees {
     type ThisTree[-T >: Untyped] = Try[T]
   }
 
-  /** throw expr */
-  case class Throw[-T >: Untyped] private[ast] (expr: Tree[T])
-    extends TermTree[T] {
-    type ThisTree[-T >: Untyped] = Throw[T]
-  }
-
   /** Seq(elems) */
   case class SeqLiteral[-T >: Untyped] private[ast] (elems: List[Tree[T]])
     extends Tree[T] {
@@ -790,7 +784,6 @@ object Trees {
     type CaseDef = Trees.CaseDef[T]
     type Return = Trees.Return[T]
     type Try = Trees.Try[T]
-    type Throw = Trees.Throw[T]
     type SeqLiteral = Trees.SeqLiteral[T]
     type JavaSeqLiteral = Trees.JavaSeqLiteral[T]
     type TypeTree = Trees.TypeTree[T]
@@ -941,10 +934,6 @@ object Trees {
       def Try(tree: Tree)(expr: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try = tree match {
         case tree: Try if (expr eq tree.expr) && (cases eq tree.cases) && (finalizer eq tree.finalizer) => tree
         case _ => finalize(tree, untpd.Try(expr, cases, finalizer))
-      }
-      def Throw(tree: Tree)(expr: Tree)(implicit ctx: Context): Throw = tree match {
-        case tree: Throw if (expr eq tree.expr) => tree
-        case _ => finalize(tree, untpd.Throw(expr))
       }
       def SeqLiteral(tree: Tree)(elems: List[Tree])(implicit ctx: Context): SeqLiteral = tree match {
         case tree: JavaSeqLiteral =>
@@ -1097,8 +1086,6 @@ object Trees {
           cpy.Return(tree)(transform(expr), transformSub(from))
         case Try(block, cases, finalizer) =>
           cpy.Try(tree)(transform(block), transformSub(cases), transform(finalizer))
-        case Throw(expr) =>
-          cpy.Throw(tree)(transform(expr))
         case SeqLiteral(elems) =>
           cpy.SeqLiteral(tree)(transform(elems))
         case TypeTree(original) =>
@@ -1200,8 +1187,6 @@ object Trees {
           this(this(x, expr), from)
         case Try(block, handler, finalizer) =>
           this(this(this(x, block), handler), finalizer)
-        case Throw(expr) =>
-          this(x, expr)
         case SeqLiteral(elems) =>
           this(x, elems)
         case TypeTree(original) =>
