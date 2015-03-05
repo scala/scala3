@@ -141,7 +141,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
         if (tp.isInstantiated)
-          toTextLocal(tp.instanceOpt) ~ ("'" provided !ctx.settings.YtestPickler.value) // debug for now, so that we can see where the TypeVars are.
+          if (ctx.settings.YtestPickler.value) toText(tp.instanceOpt)
+          else toTextLocal(tp.instanceOpt) // debug for now, so that we can see where the TypeVars are.
         else {
           val constr = ctx.typerState.constraint
           val bounds = 
