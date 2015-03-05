@@ -27,6 +27,20 @@ class TreePickler(pickler: TastyPickler) {
     fillRef(lengthAddr, currentAddr, relative = true)
   }
   
+  private var makeSymbolicRefsTo: Symbol = NoSymbol
+
+  /** All references to members of class `sym` are pickled
+   *  as symbolic references. Used to pickle the self info of a class.
+   *  Without this precaution we get an infinite cycle when unpickling pos/extmethods.scala
+   *  The problem arises when a self type of a trait is a type parameter of the same trait.
+   */
+  private def withSymbolicRefsTo[T](sym: Symbol)(op: => T): T = {
+    val saved = makeSymbolicRefsTo
+    makeSymbolicRefsTo = sym
+    try op
+    finally makeSymbolicRefsTo = saved
+  }
+  
   def preRegister(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case tree: MemberDef => 
       if (!symRefs.contains(tree.symbol)) symRefs(tree.symbol) = NoAddr
@@ -165,9 +179,12 @@ class TreePickler(pickler: TastyPickler) {
           // instantiated lambdas are pickled as APPLIEDTYPE; #Apply will 
           // be reconstituted when unpickling.
           pickleType(tpe.prefix)
-        else {
-          writeByte(if (tpe.isType) TYPEREF else TERMREF)
-          pickleName(tpe.name); pickleType(tpe.prefix)
+        else tpe.prefix match {
+          case prefix: ThisType if prefix.cls == makeSymbolicRefsTo =>
+            pickleType(NamedType.withFixedSym(tpe.prefix, tpe.symbol))
+          case _ =>
+            writeByte(if (tpe.isType) TYPEREF else TERMREF)
+            pickleName(tpe.name); pickleType(tpe.prefix)
         }
       case tpe: ThisType =>
         writeByte(THIS)
@@ -397,10 +414,12 @@ class TreePickler(pickler: TastyPickler) {
           if ((selfInfo ne NoType) || !tree.self.isEmpty) {
             writeByte(SELFDEF)
             pickleName(tree.self.name)
-            pickleType {
-              cinfo.selfInfo match {
-                case sym: Symbol => sym.info
-                case tp: Type => tp
+            withSymbolicRefsTo(tree.symbol.owner) {
+              pickleType {
+                cinfo.selfInfo match {
+                  case sym: Symbol => sym.info
+                  case tp: Type => tp
+                }
               }
             }
           }

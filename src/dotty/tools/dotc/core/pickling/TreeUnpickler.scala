@@ -202,7 +202,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
           NamedType.withFixedSym(NoPrefix, readSymRef())
         case TYPEREFsymbol | TERMREFsymbol =>
           val sym = readSymRef()
-          NamedType.withFixedSym(readType(), sym)
+          val prefix = readType()
+          val res = NamedType.withFixedSym(prefix, sym)
+          if (prefix.isInstanceOf[ThisType]) res.withDenot(sym.denot) else res
+            // without this precaution we get an infinite cycle when unpickling pos/extmethods.scala
+            // the problem arises when a self type of a trait is a type parameter of the same trait.
         case TYPEREFpkg =>
           val name = readName()
           val pkg = 
