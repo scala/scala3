@@ -6,7 +6,7 @@ package pickling
 import ast.Trees._
 import PickleFormat._
 import core._
-import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._
+import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme
 import collection.mutable
 import TastyBuffer._
 
@@ -161,8 +161,14 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(TERMREF)
         pickleNameAndSig(tpe.name, tpe.signature); pickleType(tpe.prefix)
       case tpe: NamedType =>
-        writeByte(if (tpe.isType) TYPEREF else TERMREF)
-        pickleName(tpe.name); pickleType(tpe.prefix)
+        if (tpe.name == tpnme.Apply && tpe.prefix.argInfos.nonEmpty && tpe.prefix.isInstantiatedLambda)
+          // instantiated lambdas are pickled as APPLIEDTYPE; #Apply will 
+          // be reconstituted when unpickling.
+          pickleType(tpe.prefix)
+        else {
+          writeByte(if (tpe.isType) TYPEREF else TERMREF)
+          pickleName(tpe.name); pickleType(tpe.prefix)
+        }
       case tpe: ThisType =>
         writeByte(THIS)
         pickleType(tpe.tref)
@@ -391,7 +397,12 @@ class TreePickler(pickler: TastyPickler) {
           if ((selfInfo ne NoType) || !tree.self.isEmpty) {
             writeByte(SELFDEF)
             pickleName(tree.self.name)
-            pickleType(cinfo.selfType)
+            pickleType {
+              cinfo.selfInfo match {
+                case sym: Symbol => sym.info
+                case tp: Type => tp
+              }
+            }
           }
           pickleStats(tree.constr :: rest)
         }

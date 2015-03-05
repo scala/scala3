@@ -132,8 +132,8 @@ class TypeApplications(val self: Type) extends AnyVal {
     LambdaClass(forcing = false).exists
 
   /** Is type `tp` a Lambda with all Arg$ fields fully instantiated? */
-  def isInstantiatedLambda(tp: Type)(implicit ctx: Context): Boolean =
-    tp.isSafeLambda && tp.typeParams.isEmpty
+  def isInstantiatedLambda(implicit ctx: Context): Boolean =
+    isSafeLambda && typeParams.isEmpty
 
   /** Encode the type resulting from applying this type to given arguments */
   final def appliedTo(args: List[Type])(implicit ctx: Context): Type = /*>|>*/ track("appliedTo") /*<|<*/ {
@@ -188,7 +188,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     if (args.isEmpty || ctx.erasedTypes) self
     else {
       val res = instantiate(self, self)
-      if (isInstantiatedLambda(res)) res.select(tpnme.Apply) else res
+      if (res.isInstantiatedLambda) res.select(tpnme.Apply) else res
     }
   }
 

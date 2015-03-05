@@ -86,7 +86,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    */
   private def refinementChain(tp: Type): List[Type] =
     tp :: (tp match {
-      case RefinedType(parent, _) => refinementChain(parent)
+      case RefinedType(parent, _) => refinementChain(parent.stripTypeVar)
       case _ => Nil
     })
 
