@@ -29,8 +29,6 @@ import Decorators._
 import tpd._
 import StdNames.nme
 
-case class DummyThrow(expr: tpd.Tree) extends tpd.TermTree
-
 class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   trait NonExistentTree extends tpd.Tree
   type Symbol          = Symbols.Symbol
@@ -50,7 +48,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   type Ident           = tpd.Ident
   type If              = tpd.If
   type ValDef          = tpd.ValDef
-  type Throw           = DummyThrow
+  type Throw           = tpd.Apply
   type Return          = tpd.Return
   type Block           = tpd.Block
   type Typed           = tpd.Typed
@@ -715,7 +713,16 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   }
 
   object Throw extends ThrowDeconstructor {
-    def get = field.expr
+    def get = field.args.head
+
+    override def unapply(s: Throw): DottyBackendInterface.this.Throw.type = {
+      if (s.fun.symbol eq defn.throwMethod) {
+        field = s
+      } else {
+        field = null
+      }
+      this
+    }
   }
 
   object New extends NewDeconstructor {
