@@ -44,7 +44,7 @@ class Compiler {
       List(new Pickler), // Pickler needs to come last in a group since it should not pickle trees generated later
       List(new RefChecks,
            new ElimRepeated,
-           new ElimLocals,
+           new NormalizeFlags,
            new ExtensionMethods),
       List(new TailRec), // TailRec needs to be in its own group for now.
                          // Otherwise it produces -Ycheck incorrect code for

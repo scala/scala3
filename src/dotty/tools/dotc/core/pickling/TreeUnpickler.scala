@@ -286,9 +286,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
     }
 
     /** Create symbol of definition node and enter in symAtAddr map 
-     *  @return  flag set over PureInterface | NoInits according to form of definition
+     *  @return  true iff the definition does not contain initialization code
      */
-    def createSymbol()(implicit ctx: Context): FlagSet = {
+    def createSymbol()(implicit ctx: Context): Boolean = {
       val start = currentAddr
       val tag = readByte()
       val end = readEnd()
@@ -340,11 +340,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
         completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
-
-      var resultFlags: FlagSet = EmptyFlags
-      if (tag != VALDEF || rhsIsEmpty) resultFlags |= NoInits
-      if (tag != VALDEF && tag != DEFDEF || rhsIsEmpty) resultFlags |= PureInterface
-      resultFlags
+      tag != VALDEF || rhsIsEmpty
     }
 
     /** Read modifier list into triplet of flags, annotations and a privateWithin 
@@ -409,18 +405,18 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
     
     /** Create symbols for a definitions in statement sequence between
      *  current address and `end`.
-     *  @return  flag set over PureInterface | NoInits according to forms of statements
+     *  @return  true iff none of the statements contains initialization code
      */
-    def indexStats(end: Addr)(implicit ctx: Context): FlagSet = {
-      val statFlags = 
+    def indexStats(end: Addr)(implicit ctx: Context): Boolean = {
+      val noInitss = 
         until(end) { 
           nextByte match {
             case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM => createSymbol() 
-            case EMPTYTREE | IMPORT => skipTree(); PureInterface | NoInits
-            case _ => skipTree(); EmptyFlags
+            case EMPTYTREE | IMPORT => skipTree(); true
+            case _ => skipTree(); false
           }
         }
-      ((PureInterface | NoInits) /: statFlags) (_ & _)
+      noInitss.forall(_ == true)
     }
     
     /** Create symbols the longest consecutive sequence of parameters with given
@@ -506,7 +502,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
             setClsInfo(
               ctx.normalizeToClassRefs(impl.parents.map(_.tpe), cls, cls.unforcedDecls),
               if (impl.self.isEmpty) NoType else impl.self.tpt.tpe)
-            if (!cls.is(Trait)) cls.resetFlag(PureInterface)
             ta.assignType(untpd.TypeDef(sym.name.asTypeName, impl), sym)
           }
           else {
@@ -549,8 +544,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
           untpd.ValDef(readName(), readTpt(), EmptyTree).withType(NoType)
         }
         else EmptyValDef
-      val additionalFlags = fork.indexStats(end) // PureInterface or NoInits
-      cls.setFlag(additionalFlags)               // PureInterface will be reset later if cls is not a trait
+      val noInits = fork.indexStats(end)
+      if (noInits) cls.setFlag(NoInits)
       val constr = readIndexedDef().asInstanceOf[DefDef]
 
       def mergeTypeParamsAndAliases(tparams: List[TypeDef], stats: List[Tree]): (List[Tree], List[Tree]) = 

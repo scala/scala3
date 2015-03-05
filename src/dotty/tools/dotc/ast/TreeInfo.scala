@@ -24,18 +24,13 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => false
   }
 
-  /** Is tree legal as a member definition of an interface?
+  /** Does tree contain an initialization part when seen as a member of a class or trait?
    */
-  def isPureInterfaceMember(tree: Tree): Boolean = unsplice(tree) match {
+  def isNoInitMember(tree: Tree): Boolean = unsplice(tree) match {
     case EmptyTree | Import(_, _) | TypeDef(_, _) => true
-    case defn: ValOrDefDef => defn.unforcedRhs == EmptyTree
+    case tree: ValDef => tree.unforcedRhs == EmptyTree
     case _ => false
   }
-
-  /** Is tree legal as a member definition of a no-init trait?
-   */
-  def isNoInitMember(tree: Tree): Boolean =
-    isPureInterfaceMember(tree) || unsplice(tree).isInstanceOf[DefDef]
 
   def isOpAssign(tree: Tree) = unsplice(tree) match {
     case Apply(fn, _ :: Nil) =>
