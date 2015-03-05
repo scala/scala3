@@ -176,7 +176,7 @@ object Decorators {
             case _ => arg
           }
         catch {
-          case ex: Exception => s"(missing due to $ex)"
+          case ex: Exception => throw ex // s"(missing due to $ex)"
         }
 
       val prefix :: suffixes = sc.parts.toList

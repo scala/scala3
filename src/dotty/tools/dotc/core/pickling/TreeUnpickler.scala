@@ -614,7 +614,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
             readTerm()(localCtx)
           }
           readNameSplitSig match {
-            case name: Name => readQual(name).select(name)
+            case name: Name => readQual(name).selectWithSig(name, Signature.NotAMethod)
             case (name: Name, sig: Signature) => readQual(name).selectWithSig(name, sig)
           }
         case NEW =>
@@ -667,13 +667,13 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
               val tpt = readTpt()
               Closure(until(end)(readTerm()), meth, tpt)
             case MATCH =>
-              Match(readTerm(), readCases())
+              Match(readTerm(), readCases(end))
             case RETURN =>
               val from = readSymRef()
               val expr = ifBefore(end)(readTerm(), EmptyTree)
               Return(expr, Ident(from.termRef))
             case TRY =>
-              Try(readTerm(), readCases(), ifBefore(end)(readTerm(), EmptyTree))
+              Try(readTerm(), readCases(end), ifBefore(end)(readTerm(), EmptyTree))
             case THROW =>
               Throw(readTerm())
             case REPEATED =>
@@ -714,30 +714,33 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
       if (tp.exists) setPos(start, TypeTree(tp)) else EmptyTree
     }
 
-    def readCases()(implicit ctx: Context): List[CaseDef] = 
-      collectWhile(nextByte == CASEDEF) {
+    def readCases(end: Addr)(implicit ctx: Context): List[CaseDef] = 
+      collectWhile(nextByte == CASEDEF && currentAddr != end) { readCase()(ctx.fresh.setNewScope) }
+
+    def readCase()(implicit ctx: Context): CaseDef = {
+      val start = currentAddr
+      readByte()
+      val end = readEnd()
+      val pat = readTerm()
+      val rhs = readTerm()
+      val guard = ifBefore(end)(readTerm(), EmptyTree)
+      setPos(start, CaseDef(pat, guard, rhs))
+    }
+    
+    def readTopLevelStat()(implicit ctx: Context): Tree = 
+      if (nextByte == PACKAGE) {
         val start = currentAddr
         readByte()
         val end = readEnd()
-        val pat = readTerm()
-        val rhs = readTerm()
-        val guard = ifBefore(end)(readTerm(), EmptyTree)
-        setPos(start, CaseDef(pat, guard, rhs))
+        val pid = ref(readTermRef()).asInstanceOf[RefTree]
+        setPos(start,
+          PackageDef(pid, readTopLevelStats()(localContext(pid.symbol.moduleClass))))
       }
+      else readIndexedStat(ctx.owner)
 
     def readTopLevelStats()(implicit ctx: Context): List[Tree] = {
       fork.indexStats(endAddr)
-      until(endAddr) {
-        if (nextByte == PACKAGE) {
-          val start = currentAddr
-          readByte()
-          val end = readEnd()
-          val pid = ref(readTermRef()).asInstanceOf[RefTree]
-          setPos(start,
-            PackageDef(pid, readStats(NoSymbol, end)(localContext(pid.symbol.moduleClass))))
-        }
-        else readIndexedStat(ctx.owner)
-      }
+      until(endAddr)(readTopLevelStat)
     }
 
     def readLater[T <: AnyRef](end: Addr, op: TreeReader => Context => T): Trees.Lazy[T] = {
