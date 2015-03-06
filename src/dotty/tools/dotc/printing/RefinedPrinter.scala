@@ -200,10 +200,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           
     def modText(mods: untpd.Modifiers, kw: String): Text = { // DD
       val suppressKw = if (enclDefIsClass) mods is ParamAndLocal else mods is Param
-      val flagMask = 
+      var flagMask = 
         if (ctx.settings.debugFlags.value) AllFlags
         else if (suppressKw) PrintableFlags &~ Private 
         else PrintableFlags
+      if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= Implicit // drop implicit from classes
       val flagsText = (mods.flags & flagMask).toString
       Text(mods.annotations.map(annotText), " ") ~~ flagsText ~~ (kw provided !suppressKw)
     }
