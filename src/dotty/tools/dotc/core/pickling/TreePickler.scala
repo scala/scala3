@@ -196,7 +196,7 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(SKOLEMtype)
         writeRef(pickledTypes.get(tpe.binder).asInstanceOf[Addr])
       case tpe: RefinedType =>
-        val args = tpe.argInfos(interpolate = true)
+        val args = tpe.argInfos(interpolate = false)
         if (args.isEmpty) {
           writeByte(REFINEDtype)
           withLength { 
