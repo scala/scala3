@@ -87,6 +87,14 @@ trait NamerContextOps { this: Context =>
     if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams map (_.typeRef))
     else given
 
+  /** if isConstructor, make sure it has one non-implicit parameter list */
+  def normalizeIfConstructor(paramSymss: List[List[Symbol]], isConstructor: Boolean) =
+    if (isConstructor &&
+      (paramSymss.isEmpty || paramSymss.head.nonEmpty && (paramSymss.head.head is Implicit)))
+      Nil :: paramSymss
+    else
+      paramSymss
+
   /** The method type corresponding to given parameters and result type */
   def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(implicit ctx: Context): Type = {
     val monotpe =
@@ -681,12 +689,7 @@ class Namer { typer: Typer =>
     vparamss foreach completeParams
     val isConstructor = name == nme.CONSTRUCTOR
     def typeParams = tparams map symbolOfTree
-    val paramSymss = {
-      val pss = vparamss.nestedMap(symbolOfTree)
-      if (isConstructor &&     // Make sure constructor has one non-implicit parameter list
-        (pss.isEmpty || pss.head.nonEmpty && (pss.head.head is Implicit))) Nil :: pss
-      else pss
-    }
+    val paramSymss = ctx.normalizeIfConstructor(vparamss.nestedMap(symbolOfTree), isConstructor)
     def wrapMethType(restpe: Type): Type = {
       val restpe1 = // try to make anonymous functions non-dependent, so that they can be used in closures
         if (name == nme.ANON_FUN) avoid(restpe, paramSymss.flatten)
