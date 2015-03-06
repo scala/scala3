@@ -104,7 +104,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             toTextTuple(args.init)
         argStr ~ " => " ~ toText(args.last)
       }
-    tp match {
+    homogenize(tp) match {
       case tp: RefinedType =>
         val args = tp.argInfos(interpolate = false)
         if (args.nonEmpty) {
@@ -137,7 +137,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         return "?{ " ~ toText(tp.name) ~ ": " ~ toText(tp.memberProto) ~ " }"
       case tp: ViewProto =>
         return toText(tp.argType) ~ " ?=>? " ~ toText(tp.resultType)
-      case FunProto(args, resultType, _) =>
+      case tp @ FunProto(args, resultType, _) =>
         val argsText = args match {
           case dummyTreeOfType(tp) :: Nil if !(tp isRef defn.NullClass) => "null: " ~ toText(tp)
           case _ => toTextGlobal(args, ", ")
@@ -252,7 +252,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     var txt: Text = tree match {
-      case id: Trees.BackquotedIdent[_] =>
+      case id: Trees.BackquotedIdent[_] if !homogenizedView =>
         "`" ~ toText(id.name) ~ "`"
       case Ident(name) =>
         tree.typeOpt match {
