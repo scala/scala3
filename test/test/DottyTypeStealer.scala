@@ -24,7 +24,7 @@ object DottyTypeStealer {
         }
       }
       val d = new DeepFolder[List[ValDef]](findValDef).foldOver(Nil, tree)
-      tp = d.map(_.tpe.widen)
+      tp = d.map(_.tpe.widen).reverse
       scontext = context
     }
     (scontext, tp)
