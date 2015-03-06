@@ -215,10 +215,8 @@ trait TypeAssigner {
       }
     }
 
-  def assignType(tree: untpd.This)(implicit ctx: Context) = {
-    val cls = qualifyingClass(tree, tree.qual, packageOK = false)
+  def assignType(tree: untpd.This, cls: Symbol)(implicit ctx: Context) =
     tree.withType(cls.thisType)
-  }
 
   def assignType(tree: untpd.Super, qual: Tree, inConstrCall: Boolean, mixinClass: Symbol = NoSymbol)(implicit ctx: Context) = {
     val mix = tree.mix
@@ -245,25 +243,29 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.Apply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
-    val ownType = fn.tpe.widen match {
+    def recur(tp: Type): Type = tp.widen match {
       case fntpe @ MethodType(_, ptypes) =>
         if (sameLength(ptypes, args) || ctx.phase.prev.relaxedTyping) fntpe.instantiate(args.tpes)
         else errorType(i"wrong number of parameters for ${fn.tpe}; expected: ${ptypes.length}", tree.pos)
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, recur(tp.tpe))
       case t =>
         errorType(i"${err.exprStr(fn)} does not take parameters", tree.pos)
     }
+    val ownType = recur(fn.tpe)
     tree.withType(ownType)
   }
 
   def assignType(tree: untpd.TypeApply, fn: Tree, args: List[Tree])(implicit ctx: Context) = {
-    val ownType = fn.tpe.widen match {
+    def recur(tp: Type): Type = tp match {
       case pt: PolyType =>
         val argTypes = args.tpes
         if (sameLength(argTypes, pt.paramNames)|| ctx.phase.prev.relaxedTyping) pt.instantiate(argTypes)
         else errorType(d"wrong number of type parameters for ${fn.tpe}; expected: ${pt.paramNames.length}", tree.pos)
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, recur(tp.tpe))
       case _ =>
         errorType(i"${err.exprStr(fn)} does not take type parameters", tree.pos)
     }
+    val ownType = recur(fn.tpe.widen)
     tree.withType(ownType)
   }
 

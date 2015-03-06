@@ -68,7 +68,7 @@ object Applications {
           if (seqArg.exists) return args map Function.const(seqArg)
         }
         else return getUnapplySelectors(getTp, args, pos)
-      else if (defn.isProductSubType(unapplyResult)) return productSelectorTypes(unapplyResult, pos)
+      else if (defn.isProductSubType(unapplyResult)) return productSelectorTypes(unapplyResult, pos).map(_.stripAnnots)
     }
     if (unapplyResult derivesFrom defn.SeqClass) seqSelector :: Nil
     else if (unapplyResult isRef defn.BooleanClass) Nil
@@ -153,7 +153,7 @@ trait Applications extends Compatibility { self: Typer =>
     /** The function's type after widening and instantiating polytypes
      *  with polyparams in constraint set
      */
-    val methType = funType.widen match {
+    val methType = funType.widen.stripAnnots match {
       case funType: MethodType => funType
       case funType: PolyType => constrained(funType).resultType
       case tp => tp //was: funType
@@ -523,7 +523,7 @@ trait Applications extends Compatibility { self: Typer =>
       // a modified tree but this would be more convoluted and less efficient.
       if (proto.isTupled) proto = proto.tupled
 
-      methPart(fun1).tpe match {
+      methPart(fun1).tpe.stripAnnots match {
         case funRef: TermRef =>
           tryEither { implicit ctx =>
             val app =
@@ -540,7 +540,7 @@ trait Applications extends Compatibility { self: Typer =>
               cpy.Apply(tree)(untpd.TypedSplice(fun2), proto.typedArgs map untpd.TypedSplice), pt)
           }
         case _ =>
-          fun1.tpe match {
+          fun1.tpe.stripAnnots match {
             case ErrorType => tree.withType(ErrorType)
             case tp => handleUnexpectedFunType(tree, fun1)
           }
@@ -694,7 +694,7 @@ trait Applications extends Compatibility { self: Typer =>
         unapp.println(i"unapp arg tpe = $unapplyArgType, pt = $selType")
         def wpt = widenForMatchSelector(selType) // needed?
         val ownType =
-          if (selType <:< unapplyArgType) {
+          if (selType.stripAnnots <:< unapplyArgType) {
             //fullyDefinedType(unapplyArgType, "extractor argument", tree.pos)
             unapp.println(i"case 1 $unapplyArgType ${ctx.typerState.constraint}")
             selType

@@ -140,11 +140,16 @@ class Definitions {
   lazy val AnyClass: ClassSymbol = completeClass(newCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil))
   lazy val AnyValClass: ClassSymbol = completeClass(newCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyClass.typeRef)))
 
-    lazy val Any_==       = newMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
-    lazy val Any_!=       = newMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final)
-    lazy val Any_equals   = newMethod(AnyClass, nme.equals_, methOfAny(BooleanType))
-    lazy val Any_hashCode = newMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType))
-    lazy val Any_toString = newMethod(AnyClass, nme.toString_, MethodType(Nil, StringType))
+  def annotated(symbol: TermSymbol, annot: ClassSymbol) = {
+    symbol.addAnnotation(Annotations.Annotation(annot, Nil))
+    symbol
+  }
+
+    lazy val Any_==       = annotated(newMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final), ReadOnlyAnnot)
+    lazy val Any_!=       = annotated(newMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final), ReadOnlyAnnot)
+    lazy val Any_equals   = annotated(newMethod(AnyClass, nme.equals_, methOfAny(BooleanType)), ReadOnlyAnnot)
+    lazy val Any_hashCode = annotated(newMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType)), ReadOnlyAnnot)
+    lazy val Any_toString = annotated(newMethod(AnyClass, nme.toString_, MethodType(Nil, StringType)), ReadOnlyAnnot)
     lazy val Any_##       = newMethod(AnyClass, nme.HASHHASH, ExprType(IntType), Final)
     lazy val Any_getClass = newMethod(AnyClass, nme.getClass_, MethodType(Nil, ClassClass.typeRef), Final)
     lazy val Any_isInstanceOf = newT1ParameterlessMethod(AnyClass, nme.isInstanceOf_, _ => BooleanType, Final)
@@ -161,8 +166,8 @@ class Definitions {
   }
   lazy val AnyRefAlias: TypeSymbol = newAliasType(tpnme.AnyRef, ObjectType)
 
-    lazy val Object_eq = newMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final)
-    lazy val Object_ne = newMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final)
+    lazy val Object_eq = annotated(newMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final), ReadOnlyAnnot)
+    lazy val Object_ne = annotated(newMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final), ReadOnlyAnnot)
     lazy val Object_synchronized = newPolyMethod(ObjectClass, nme.synchronized_, 1,
         pt => MethodType(List(PolyParam(pt, 0)), PolyParam(pt, 0)), Final)
     lazy val Object_clone = newMethod(ObjectClass, nme.clone_, MethodType(Nil, ObjectType), Protected)
@@ -325,6 +330,11 @@ class Definitions {
   lazy val TransientAnnot                = ctx.requiredClass("scala.transient")
   lazy val NativeAnnot                   = ctx.requiredClass("scala.native")
   lazy val ScalaStrictFPAnnot            = ctx.requiredClass("scala.annotation.strictfp")
+  lazy val ReadOnlyAnnot                 = ctx.requiredClass("dotty.readonly")
+  lazy val MutableAnnot                  = ctx.requiredClass("dotty.mutable")
+  lazy val PolyReadAnnot                 = ctx.requiredClass("dotty.polyread")
+  lazy val NonRepAnnot                   = ctx.requiredClass("dotty.nonrep")
+  lazy val PureAnnot                     = ctx.requiredClass("dotty.pure")
 
   // Annotation classes
   lazy val AliasAnnot = ctx.requiredClass("dotty.annotation.internal.Alias")

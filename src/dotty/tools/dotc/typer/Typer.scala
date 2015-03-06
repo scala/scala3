@@ -323,7 +323,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedThis(tree: untpd.This)(implicit ctx: Context): Tree = track("typedThis") {
-    assignType(tree)
+    val cls = qualifyingClass(tree, tree.qual, packageOK = false)
+    assignType(tree, cls)
   }
 
   def typedSuper(tree: untpd.Super, pt: Type)(implicit ctx: Context): Tree = track("typedSuper") {
@@ -864,7 +865,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = track("typedValDef") {
     val ValDef(name, tpt, rhs) = vdef
-    addTypedModifiersAnnotations(vdef, sym)
+//    addTypedModifiersAnnotations(vdef, sym)
     val tpt1 = typedType(tpt)
     val rhs1 = rhs match {
       case Ident(nme.WILDCARD) => rhs withType tpt1.tpe
@@ -875,7 +876,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(implicit ctx: Context) = track("typedDefDef") {
     val DefDef(name, tparams, vparamss, tpt, rhs) = ddef
-    addTypedModifiersAnnotations(ddef, sym)
+//    addTypedModifiersAnnotations(ddef, sym)
     val tparams1 = tparams mapconserve (typed(_).asInstanceOf[TypeDef])
     val vparamss1 = vparamss nestedMapconserve (typed(_).asInstanceOf[ValDef])
     if (sym is Implicit) checkImplicitParamsNotSingletons(vparamss1)
@@ -887,7 +888,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context): Tree = track("typedTypeDef") {
     val TypeDef(name, rhs) = tdef
-    addTypedModifiersAnnotations(tdef, sym)
+//    addTypedModifiersAnnotations(tdef, sym)
     val _ = typedType(rhs) // unused, typecheck only to remove from typedTree
     assignType(cpy.TypeDef(tdef)(name, TypeTree(sym.info), Nil), sym)
   }
@@ -904,7 +905,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         result
       }
 
-    addTypedModifiersAnnotations(cdef, cls)
+//    addTypedModifiersAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parentsWithClass = ensureFirstIsClass(parents mapconserve typedParent, cdef.pos.toSynthetic)
     val parents1 = ensureConstrCall(cls, parentsWithClass)(superCtx)
@@ -1252,7 +1253,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
-    def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
+    def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp.stripAnnots match {
       case _: MethodType | _: PolyType =>
         def isUnary = wtp.firstParamTypes match {
           case ptype :: Nil => !ptype.isRepeatedParam

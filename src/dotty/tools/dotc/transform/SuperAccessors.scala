@@ -391,7 +391,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
           transformAssign
 
         case Apply(fn, args) =>
-          val MethodType(_, formals) = fn.tpe.widen
+          val MethodType(_, formals) = fn.tpe.widen.stripAnnots
           ctx.atPhase(thisTransformer.next) { implicit ctx =>
             cpy.Apply(tree)(transform(fn), transformArgs(formals, args))
           }

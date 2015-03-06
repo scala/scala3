@@ -94,6 +94,7 @@ object Types {
       case tp: TermRef => tp.termSymbol.isStable
       case _: SingletonType => true
       case NoPrefix => true
+      case tp: AnnotatedType => tp.tpe.isStable
       case _ => false
     }
 
@@ -665,6 +666,7 @@ object Types {
      */
     final def widen(implicit ctx: Context): Type = widenSingleton match {
       case tp: ExprType => tp.resultType.widen
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, tp.tpe.widen)
       case tp => tp
     }
 
@@ -673,6 +675,7 @@ object Types {
      */
     final def widenSingleton(implicit ctx: Context): Type = stripTypeVar match {
       case tp: SingletonType if !tp.isOverloaded => tp.underlying.widenSingleton
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, tp.tpe.widenSingleton)
       case _ => this
     }
 
@@ -681,6 +684,7 @@ object Types {
      */
     final def widenExpr: Type = this match {
       case tp: ExprType => tp.resType
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, tp.tpe.widenExpr)
       case _ => this
     }
 
@@ -688,6 +692,7 @@ object Types {
     final def widenIfUnstable(implicit ctx: Context): Type = stripTypeVar match {
       case tp: ExprType => tp.resultType.widenIfUnstable
       case tp: TermRef if !tp.symbol.isStable => tp.underlying.widenIfUnstable
+      case tp: AnnotatedType => tp.derivedAnnotatedType(tp.annot, tp.tpe.widenIfUnstable)
       case _ => this
     }
 
@@ -2602,7 +2607,7 @@ object Types {
       if ((annot eq this.annot) && (tpe eq this.tpe)) this
       else AnnotatedType(annot, tpe)
 
-    override def stripTypeVar(implicit ctx: Context): Type = tpe.stripTypeVar
+    override def stripTypeVar(implicit ctx: Context): Type = derivedAnnotatedType(annot, tpe.stripTypeVar)
     override def stripAnnots(implicit ctx: Context): Type = tpe.stripAnnots
   }
 
