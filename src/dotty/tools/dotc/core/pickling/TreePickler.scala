@@ -404,7 +404,8 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(TEMPLATE)
         val (params, rest) = tree.body partition {
           case stat: TypeDef => stat.symbol is Flags.Param
-          case stat: ValOrDefDef => stat.symbol is Flags.ParamAccessor
+          case stat: ValOrDefDef => 
+            stat.symbol.is(Flags.ParamAccessor) && !stat.symbol.isSetter
           case _ => false
         }
         withLength {
