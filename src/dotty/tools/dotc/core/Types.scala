@@ -30,6 +30,7 @@ import config.Config
 import config.Printers._
 import annotation.tailrec
 import Flags.FlagSet
+import typer.Mode
 import language.implicitConversions
 
 object Types {
@@ -981,7 +982,7 @@ object Types {
      *               when forming the function type.
      */
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
-      case mt @ MethodType(_, formals) if !mt.isDependent =>
+      case mt @ MethodType(_, formals) if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
         val formals1 = if (dropLast == 0) formals else formals dropRight dropLast
         defn.FunctionType(
             formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType)

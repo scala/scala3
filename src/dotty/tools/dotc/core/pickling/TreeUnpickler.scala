@@ -35,9 +35,12 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
   private val treeAtAddr = new mutable.HashMap[Addr, Tree]
   
   private val typeAtAddr = new mutable.HashMap[Addr, Type] // currently populated only for types that are known to be SHAREd.
+  
+  private var stubs: Set[Symbol] = Set() 
 
   def unpickle()(implicit ctx: Context): List[Tree] = {
-    val stats = new TreeReader(reader).readTopLevelStats()
+    val stats = new TreeReader(reader)
+      .readTopLevelStats()(ctx.addMode(Mode.AllowDependentFunctions))
     normalizePos(stats, totalRange)
     stats
   }
@@ -106,7 +109,20 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
       until(end) { readNat(); readType().asInstanceOf[T] }
 
     /** Read referece to definition and return symbol created at that definition */
-    def readSymRef()(implicit ctx: Context): Symbol = symAtAddr(readAddr())
+    def readSymRef()(implicit ctx: Context): Symbol = {
+      val start = currentAddr
+      val addr = readAddr()
+      symAtAddr get addr match {
+        case Some(sym) => sym
+        case None =>
+          // Create a stub; owner might be wrong but will be overwritten later.
+          forkAt(addr).createSymbol()
+          val sym = symAtAddr(addr)
+          ctx.log(i"forward reference to $sym")
+          stubs += sym
+          sym
+      }
+    }
 
     /** Read a type */
     def readType()(implicit ctx: Context): Type = {
@@ -335,7 +351,17 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
         } else if (isClass)
           ctx.newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord = start.index)
         else {
-          ctx.newSymbol(ctx.owner, name, flags, completer, privateWithin, coord = start.index)
+          val sym = symAtAddr.get(start) match {
+            case Some(preExisting) =>
+              assert(stubs contains preExisting)
+              stubs -= preExisting
+              preExisting
+            case none =>
+              ctx.newNakedSymbol(start.index)
+          }
+          val denot = ctx.SymDenotation(symbol = sym, owner = ctx.owner, name, flags, completer, privateWithin)
+          sym.denot = denot
+          sym
         } // TODO set position
       sym.annotations = annots
       ctx.enter(sym)
@@ -774,7 +800,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table, roots: Set[
   class LazyReader[T <: AnyRef](reader: TreeReader, op: TreeReader => Context => T) extends Trees.Lazy[T] with DeferredPosition {
     def complete(implicit ctx: Context): T = {
       // println(i"starting to read at ${reader.reader.currentAddr}")
-      val res = op(reader)(ctx)
+      val res = op(reader)(ctx.addMode(Mode.AllowDependentFunctions))
       normalizePos(res, parentPos)
       res
     }  
