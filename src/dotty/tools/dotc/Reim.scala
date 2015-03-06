@@ -55,6 +55,9 @@ object Reim {
         case tpe: TypeRef => tpe.underlying.reimAnnotation(bound)
         case tpe: TermRef =>
           val symbol = tpe.symbol
+
+          if (tpe.prefix == NoPrefix && !insidePureBoundary(tpe.symbol)) return Some(defn.ReadOnlyAnnot)
+
           if(symbol.is(Method) || symbol.hasAnnotation(defn.NonRepAnnot)) symbol.info.reimAnnotation(bound)
           else bound match {
             case Inferred =>
@@ -221,6 +224,34 @@ object Reim {
     }
   }
 
+  /** Does the given symbol have a @pure annotation? */
+  def isPure(sym: Symbol)(implicit ctx: Context): Boolean = {
+    if (sym.isCompleted) {
+      sym.annotations.exists(_.symbol == defn.PureAnnot)
+    } else {
+      // Evil hack: We only need the annotations, but the symbol is not yet completed.
+      // So we reach into the completer to get the corresponding tree, and look at the
+      // annotations on the tree.
+      val typer = ctx.typer
+      val completer = sym.completer.asInstanceOf[typer.Completer]
+      val tree = completer.original.asInstanceOf[untpd.MemberDef]
+      val annots = untpd.modsDeco(tree).mods.annotations.mapconserve(typer.typedAnnotation)
+      annots.exists(_.symbol.owner == defn.PureAnnot)
+    }
+  }
+
+  /** Is the given symbol not outside a @pure-delimited boundary? (As seen from the current context.) */
+  def insidePureBoundary(symbol: Symbol)(implicit ctx: Context): Boolean = {
+    val ctx_owner = ctx.owner
+    if (!ctx_owner.exists) true   // no @pure found
+    else {
+      val sym_owner = symbol.owner
+      if (sym_owner == ctx_owner) true   // symbol is owned by current context owner, so no @pure
+      else if (isPure(ctx_owner)) false
+      else insidePureBoundary(symbol)(ctx.outer)
+    }
+  }
+
   def getAnnotationOfThis(thisSym: Symbol)(implicit ctx: Context): ClassSymbol = {
     val owner = ctx.owner
     assert(owner ne null)
@@ -247,7 +278,8 @@ object Reim {
           case Nil => defn.MutableAnnot
           case head :: tail =>
             val symbol = head.symbol
-            if (isAnnotation(symbol)) symbol.asInstanceOf[ClassSymbol] else annot(tail)
+            // TODO: I think we need to test symbol.owner here, not symbol (which could be a constructor)... verify?
+            if (isAnnotation(symbol.owner)) symbol.owner.asInstanceOf[ClassSymbol] else annot(tail)
         }
         annot(annots)
       }
@@ -263,7 +295,10 @@ object Reim {
       tree.lhs match {
         case _: tpd.Select | _: tpd.Ident =>
           val annot = tree.lhs.tpe.stripAnnots match {
-            case tr: TermRef => tr.prefix.reimAnnotation(Hi).get
+            case tr: TermRef =>
+              if (tr.prefix == NoPrefix) {
+                if (insidePureBoundary(tr.symbol)) defn.MutableAnnot else defn.ReadOnlyAnnot
+              } else tr.prefix.reimAnnotation(Hi).get
           }
           if(annot == defn.MutableAnnot) tree
           else errorTree(tree, s"assignment to field of @${annot.name} reference")
