@@ -304,9 +304,6 @@ trait TypeAssigner {
     else tree.withType(ctx.typeComparer.lub(expr.tpe :: cases.tpes))
   }
 
-  def assignType(tree: untpd.Throw)(implicit ctx: Context) =
-    tree.withType(defn.NothingType)
-
   def assignType(tree: untpd.SeqLiteral, elems: List[Tree])(implicit ctx: Context) = tree match {
     case tree: JavaSeqLiteral =>
       tree.withType(defn.ArrayType(ctx.typeComparer.lub(elems.tpes).widen))
