@@ -15,34 +15,37 @@ object DottyUnpickler {
   class BadSignature(msg: String) extends RuntimeException(msg)
 }
 
-/** Unpickle symbol table information descending from a class and/or module root
- *  from an array of bytes.
- *  @param bytes         bytearray from which we unpickle
- *  @param roots         a set of SymDenotations that should be completed by unpickling
- *  @param readPositions if true, trees get decorated with position information.
+/** A class for unpickling Tasty trees and symbols.
+ *  @param bytes         the bytearray containing the Tasty file from which we unpickle
  */
-class DottyUnpickler(bytes: Array[Byte], roots: Set[SymDenotation], readPositions: Boolean = false)(implicit ctx: Context) {
+class DottyUnpickler(bytes: Array[Byte]) {
   import tpd._
 
-  val unpickler = new TastyUnpickler(bytes)
+  private val unpickler = new TastyUnpickler(bytes)
+  private val treeUnpickler = unpickler.unpickle(new TreeSectionUnpickler).get
   
-  def result: List[Tree] = {
-    val (totalRange, positions) = 
-      if (readPositions) 
-        unpickler.unpickle(new PositionsSectionUnpickler())
-          .getOrElse((NoPosition, null))
-      else (NoPosition, null)
-    unpickler.unpickle(new TreeSectionUnpickler(totalRange, positions))
-      .getOrElse(Nil)
+  /** Enter all toplevel classes and objects into their scopes
+   *  @param roots          a set of SymDenotations that should be overwritten by unpickling
+   */
+  def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit = 
+    treeUnpickler.enterTopLevel(roots)
+  
+  /** The unpickled trees 
+   *  @param readPositions if true, trees get decorated with position information.
+   */
+  def body(readPositions: Boolean = false)(implicit ctx: Context): List[Tree] = {
+    if (readPositions)
+      for ((totalRange, positions) <- unpickler.unpickle(new PositionsSectionUnpickler()))
+        treeUnpickler.usePositions(totalRange, positions)
+    treeUnpickler.unpickle()
   }
 
-  class TreeSectionUnpickler(totalRange: Position, positions: AddrToPosition)(implicit ctx: Context) 
-      extends SectionUnpickler[List[Tree]]("ASTs") {
-    def unpickle(reader: TastyReader, tastyName: TastyName.Table): List[Tree] =
-      new TreeUnpickler(reader, tastyName, roots, totalRange, positions).unpickle()
+  private class TreeSectionUnpickler extends SectionUnpickler[TreeUnpickler]("ASTs") {
+    def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
+      new TreeUnpickler(reader, tastyName)
   }
   
-  class PositionsSectionUnpickler()(implicit ctx: Context) extends SectionUnpickler[(Position, AddrToPosition)]("Positions") {
+  private class PositionsSectionUnpickler extends SectionUnpickler[(Position, AddrToPosition)]("Positions") {
     def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
       new PositionUnpickler(reader).unpickle()
   }

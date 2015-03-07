@@ -30,5 +30,5 @@ object Printers {
   val config = noPrinter
   val transforms = noPrinter
   val cyclicErrors = noPrinter
-  val pickling = new Printer
+  val pickling = noPrinter
 }

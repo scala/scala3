@@ -56,20 +56,26 @@ class Pickler extends Phase {
   }
   
   private def testUnpickler(units: List[CompilationUnit])(implicit ctx: Context): Unit = {
-    println(i"testing unpickler at run ${ctx.runId}")
+    pickling.println(i"testing unpickler at run ${ctx.runId}")
     ctx.definitions.init
-    val unpickled = for (unit <- units) yield
-      new DottyUnpickler(unit.pickled, Set(), readPositions = false).result
-    for ((unpickled, unit) <- unpickled zip units)
+    val unpicklers = 
+      for (unit <- units) yield {
+        val unpickler = new DottyUnpickler(unit.pickled)
+        unpickler.enter(roots = Set())
+        unpickler
+      }  
+    for ((unpickler, unit) <- unpicklers zip units) {
+      val unpickled = unpickler.body(readPositions = false)
       testSame(i"$unpickled%\n%", beforePickling(unit))
+    }
   }
-  
+
   private def testSame(unpickled: String, previous: String)(implicit ctx: Context) = 
     if (previous != unpickled) {
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)
-      println(s"""pickling difference for ${ctx.compilationUnit}, for details:
-                 |
-                 |  diff before-pickling.txt after-pickling.txt""".stripMargin)
+      ctx.error(s"""pickling difference for ${ctx.compilationUnit}, for details:
+                   |
+                   |  diff before-pickling.txt after-pickling.txt""".stripMargin)
     }
 }
