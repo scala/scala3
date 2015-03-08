@@ -66,15 +66,15 @@ class Pickler extends Phase {
       }  
     for ((unpickler, unit) <- unpicklers zip units) {
       val unpickled = unpickler.body(readPositions = false)
-      testSame(i"$unpickled%\n%", beforePickling(unit))
+      testSame(i"$unpickled%\n%", beforePickling(unit), unit)
     }
   }
 
-  private def testSame(unpickled: String, previous: String)(implicit ctx: Context) = 
+  private def testSame(unpickled: String, previous: String, unit: CompilationUnit)(implicit ctx: Context) = 
     if (previous != unpickled) {
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)
-      ctx.error(s"""pickling difference for ${ctx.compilationUnit}, for details:
+      ctx.error(s"""pickling difference for $unit, for details:
                    |
                    |  diff before-pickling.txt after-pickling.txt""".stripMargin)
     }
