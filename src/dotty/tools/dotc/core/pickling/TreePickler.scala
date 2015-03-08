@@ -6,7 +6,7 @@ package pickling
 import ast.Trees._
 import PickleFormat._
 import core._
-import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme
+import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
 import TastyBuffer._
 
@@ -296,9 +296,13 @@ class TreePickler(pickler: TastyPickler) {
         pickleType(tree.tpe)
       case Select(qual, name) => 
         writeByte(SELECT)
+        val realName = tree.tpe match {
+          case tp: NamedType if tp.name.isShadowedName => tp.name
+          case _ => name
+        }
         val sig = tree.tpe.signature
-        if (sig == Signature.NotAMethod) pickleName(name)
-        else pickleNameAndSig(name, sig)
+        if (sig == Signature.NotAMethod) pickleName(realName)
+        else pickleNameAndSig(realName, sig)
         pickleTree(qual)
       case Apply(fun, args) =>
         writeByte(APPLY)

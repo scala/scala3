@@ -7,7 +7,8 @@ object templateParents {
   class F extends C[Boolean](true) {
     def foo = x
   }
-  new C("abc") with D
+  val cd = new C("abc") with D
+  cd.x
 
 }
 

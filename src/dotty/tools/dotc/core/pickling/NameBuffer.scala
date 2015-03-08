@@ -5,7 +5,7 @@ package pickling
 
 import collection.mutable
 import Names.{Name, chrs}
-import Decorators._
+import Decorators._, NameOps._
 import TastyBuffer._
 import scala.io.Codec
 import TastyName._
@@ -23,7 +23,13 @@ class NameBuffer extends TastyBuffer(100000) {
       nameRefs(name) = ref
       ref
   }
-  def nameIndex(name: Name): NameRef = nameIndex(Simple(name.toTermName))
+  def nameIndex(name: Name): NameRef = {
+    val tname = 
+      if (name.isShadowedName) Shadowed(nameIndex(name.revertShadowed))
+      else Simple(name.toTermName)
+    nameIndex(tname)
+  }
+  
   def nameIndex(str: String): NameRef = nameIndex(str.toTermName)
   
   private def withLength(op: => Unit): Unit = {
@@ -63,6 +69,9 @@ class NameBuffer extends TastyBuffer(100000) {
     case DefaultGetter(method, paramNumber) =>
       writeByte(DEFAULTGETTER)
       withLength { writeNameRef(method); writeNat(paramNumber) }
+    case Shadowed(original) =>
+      writeByte(SHADOWED)
+      withLength { writeNameRef(original) }
   }
   
   override def assemble(): Unit = {

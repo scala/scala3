@@ -69,6 +69,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     case Simple(name) => name
     case Qualified(qual, name) => toTermName(qual) ++ "." ++ toTermName(name)
     case Signed(original, params, result) => toTermName(original)
+    case Shadowed(original) => toTermName(original).shadowedName
     case Expanded(original) => ???
     case ModuleClass(original) => toTermName(original).moduleClassName.toTermName
     case SuperAccessor(accessed) => ???
@@ -686,10 +687,17 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               if (name == nme.CONSTRUCTOR) ctx.fresh.addMode(Mode.InSuperCall) else ctx
             readTerm()(localCtx)
           }
-          readNameSplitSig match {
-            case name: Name => readQual(name).selectWithSig(name, Signature.NotAMethod)
-            case (name: Name, sig: Signature) => readQual(name).selectWithSig(name, sig)
+          def readRest(name: Name, sig: Signature) = {
+            val unshadowed = if (name.isShadowedName) name.revertShadowed else name
+            val sel = readQual(unshadowed).selectWithSig(unshadowed, sig)
+            if (unshadowed != name) sel.withType(sel.tpe.asInstanceOf[NamedType].shadowed)
+            else sel
           }
+          readNameSplitSig match {
+            case name: Name => readRest(name, Signature.NotAMethod)
+            case (name: Name, sig: Signature) => readRest(name, sig)
+          }
+          
         case NEW =>
           New(readTpt())
         case EMPTYTREE =>

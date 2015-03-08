@@ -36,6 +36,7 @@ Macro-format:
                   MODULECLASS    Length module_NameRef
                   SUPERACCESSOR  Length accessed_NameRef
                   DEFAULTGETTER  Length method_NameRef paramNumber_Nat
+                  SHADOWED       Length original_NameRef
                   MANGLED        Length mangle_NameRef name_NameRef
                   ...
 
@@ -220,6 +221,7 @@ object PickleFormat {
   final val MODULECLASS = 5
   final val SUPERACCESSOR = 6
   final val DEFAULTGETTER = 7
+  final val SHADOWED = 8
 
 // AST tags
 

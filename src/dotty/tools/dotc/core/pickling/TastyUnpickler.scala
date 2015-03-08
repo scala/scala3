@@ -58,6 +58,8 @@ class TastyUnpickler(reader: TastyReader) {
         SuperAccessor(readNameRef())
       case DEFAULTGETTER =>
         DefaultGetter(readNameRef(), readNat())
+      case SHADOWED =>
+        Shadowed(readNameRef())
     }
     assert(currentAddr == end, s"bad name $result $start $currentAddr $end")
     result
