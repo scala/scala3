@@ -1320,7 +1320,7 @@ object Types {
     }
 
     protected def asMemberOf(prefix: Type)(implicit ctx: Context) =
-      if (name.isInheritedName) prefix.nonPrivateMember(name.revertInherited)
+      if (name.isShadowedName) prefix.nonPrivateMember(name.revertShadowed)
       else prefix.member(name)
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
@@ -1418,7 +1418,7 @@ object Types {
      *  the public name.
      */
     final def shadowed(implicit ctx: Context): NamedType =
-      NamedType(prefix, name.inheritedName)
+      NamedType(prefix, name.shadowedName)
 
     override def equals(that: Any) = that match {
       case that: NamedType =>

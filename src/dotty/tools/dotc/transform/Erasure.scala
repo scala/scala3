@@ -278,7 +278,7 @@ object Erasure extends TypeTestsCasts{
 
       def select(qual: Tree, sym: Symbol): Tree = {
         val name = tree.typeOpt match {
-          case tp: NamedType if tp.name.isInheritedName => sym.name.inheritedName
+          case tp: NamedType if tp.name.isShadowedName => sym.name.shadowedName
           case _ => sym.name
         }
         untpd.cpy.Select(tree)(qual, sym.name)

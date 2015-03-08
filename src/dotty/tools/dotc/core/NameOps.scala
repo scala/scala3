@@ -75,7 +75,7 @@ object NameOps {
     def isAvoidClashName = name endsWith AVOID_CLASH_SUFFIX
     def isImportName = name startsWith IMPORT
     def isFieldName = name endsWith LOCAL_SUFFIX
-    def isInheritedName = name.length > 0 && name.head == '(' && name.startsWith(nme.INHERITED)
+    def isShadowedName = name.length > 0 && name.head == '(' && name.startsWith(nme.SHADOWED)
     def isDefaultGetterName = name.isTermName && name.asTermName.defaultGetterIndex >= 0
     def isScala2LocalSuffix = name.endsWith(" ")
     def isModuleVarName(name: Name): Boolean =
@@ -159,9 +159,9 @@ object NameOps {
       if (idx < 0) name else (name drop (idx + separator.length)).asInstanceOf[N]
     }
 
-    def inheritedName: N = likeTyped(nme.INHERITED ++ name)
+    def shadowedName: N = likeTyped(nme.SHADOWED ++ name)
 
-    def revertInherited: N = likeTyped(name.drop(nme.INHERITED.length))
+    def revertShadowed: N = likeTyped(name.drop(nme.SHADOWED.length))
 
     /** Translate a name into a list of simple TypeNames and TermNames.
      *  In all segments before the last, type/term is determined by whether
