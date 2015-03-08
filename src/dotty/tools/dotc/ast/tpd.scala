@@ -183,8 +183,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def valueParamss(tp: Type): (List[List[TermSymbol]], Type) = tp match {
       case tp @ MethodType(paramNames, paramTypes) =>
-        def valueParam(name: TermName, info: Type): TermSymbol =
-          ctx.newSymbol(sym, name, TermParam, info)
+        def valueParam(name: TermName, info: Type): TermSymbol = {
+          val maybeImplicit = if (tp.isInstanceOf[ImplicitMethodType]) Implicit else EmptyFlags
+          ctx.newSymbol(sym, name, TermParam | maybeImplicit, info)
+        }
         val params = (paramNames, paramTypes).zipped.map(valueParam)
         val (paramss, rtp) = valueParamss(tp.instantiate(params map (_.termRef)))
         (params :: paramss, rtp)

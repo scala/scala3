@@ -476,7 +476,7 @@ class Namer { typer: Typer =>
 
     val (params, rest) = impl.body span {
       case td: TypeDef => td.mods is Param
-      case td: ValDef => td.mods is ParamAccessor
+      case vd: ValDef => vd.mods is ParamAccessor
       case _ => false
     }
 

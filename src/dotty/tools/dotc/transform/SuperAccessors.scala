@@ -76,6 +76,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
       buf += tree
     }
 
+    /** Turn types which are not methodic into ExprTypes. */
     private def ensureMethodic(tpe: Type)(implicit ctx: Context) = tpe match {
       case tpe: MethodicType => tpe
       case _ => ExprType(tpe)
@@ -293,9 +294,17 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
           def transformTemplate = {
             val ownStats = new ListBuffer[Tree]
             accDefs(currentClass) = ownStats
-            val body1 = forwardParamAccessors(transformStats(impl.body, tree.symbol))
+            // write super accessors after parameters and type aliases (so
+            // that order is stable under pickling/unpickling)
+            val (params, rest) = impl.body span {
+              case td: TypeDef => !td.isClassDef
+              case vd: ValOrDefDef => vd.symbol.flags is ParamAccessor
+              case _ => false
+            }
+            ownStats ++= params
+            val rest1 = forwardParamAccessors(transformStats(rest, tree.symbol))
             accDefs -= currentClass
-            ownStats ++= body1
+            ownStats ++= rest1
             cpy.Template(impl)(body = ownStats.toList)
           }
           transformTemplate
