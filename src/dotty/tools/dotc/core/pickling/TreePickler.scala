@@ -312,8 +312,13 @@ class TreePickler(pickler: TastyPickler) {
           pickleTree(fun)
           args.foreach(pickleTpt)
         }
-      case Literal(const) =>
-        pickleConstant(const)
+      case Literal(const1) =>
+        pickleConstant {
+          tree.tpe match {
+            case ConstantType(const2) => const2
+            case _ => const1
+          }
+        }
       case Super(qual, mix) =>
         writeByte(SUPER)
         withLength { 
