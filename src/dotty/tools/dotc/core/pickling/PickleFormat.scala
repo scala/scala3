@@ -84,7 +84,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   MATCH          Length sel_Term CaseDef*
                   RETURN         Length meth_ASTRef expr_Term?
                   TRY            Length expr_Term CaseDef* finalizer_Term?
-                  THROW          Length expr_Term
                   REPEATED       Length elem_Term*
                   BIND           Length boundName_NameRef patType_Type pat_Term
                   ALTERNATIVE    Length alt_Term*
@@ -313,7 +312,6 @@ object PickleFormat {
   final val MATCH = 149
   final val RETURN = 150
   final val TRY = 151
-  final val THROW = 152
   final val REPEATED = 153
   final val BIND = 154
   final val ALTERNATIVE = 155
@@ -469,7 +467,6 @@ object PickleFormat {
     case MATCH => "MATCH"
     case RETURN => "RETURN"
     case TRY => "TRY"
-    case THROW => "THROW"
     case REPEATED => "REPEATED"
     case BIND => "BIND"
     case ALTERNATIVE => "ALTERNATIVE"

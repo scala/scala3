@@ -369,9 +369,6 @@ class TreePickler(pickler: TastyPickler) {
       case Try(block, cases, finalizer) =>
         writeByte(TRY)
         withLength { pickleTree(block); cases.foreach(pickleTree); pickleTreeUnlessEmpty(finalizer) }
-      case Throw(expr) =>
-        writeByte(THROW)
-        withLength { pickleTree(expr) }
       case SeqLiteral(elems) =>
         writeByte(REPEATED)
         withLength { elems.foreach(pickleTree) }

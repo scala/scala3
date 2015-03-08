@@ -761,8 +761,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               Return(expr, Ident(from.termRef))
             case TRY =>
               Try(readTerm(), readCases(end), ifBefore(end)(readTerm(), EmptyTree))
-            case THROW =>
-              Throw(readTerm())
             case REPEATED =>
               SeqLiteral(until(end)(readTerm()))
             case BIND =>
