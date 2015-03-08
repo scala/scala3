@@ -161,7 +161,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     implicit def modsDeco(mdef: untpd.MemberDef)(implicit ctx: Context): untpd.ModsDeco = 
       tpd.modsDeco(mdef.asInstanceOf[tpd.MemberDef]).asInstanceOf[untpd.ModsDeco]
 
-    def optDotPrefix(name: Name) = optText(name)(_ ~ ".")
+    def isLocalThis(tree: Tree) = tree.typeOpt match {
+      case tp: ThisType => tp.cls == ctx.owner.enclosingClass
+      case _ => false
+    }
+
+    def optDotPrefix(tree: This) = optText(tree.qual)(_ ~ ".") provided !isLocalThis(tree)
 
     def optAscription(tpt: untpd.Tree) = optText(tpt)(": " ~ _)
       // Dotty deviation: called with an untpd.Tree, so cannot be a untpd.Tree[T] (seems to be a Scala2 problem to allow this)
@@ -268,14 +273,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case tree @ Select(qual, name) =>
         toTextLocal(qual) ~ ("." ~ nameIdText(tree) provided name != nme.CONSTRUCTOR)
-      case This(name) =>
-        val isLocal = tree.typeOpt match {
-          case tp: ThisType => tp.cls == ctx.owner.enclosingClass
-          case _ => false
-        }
-        (optDotPrefix(name) provided !isLocal) ~ "this" ~ idText(tree)
-      case Super(This(name), mix) =>
-        optDotPrefix(name) ~ "super" ~ optText(mix)("[" ~ _ ~ "]")
+      case tree: This =>
+        optDotPrefix(tree) ~ "this" ~ idText(tree)
+      case Super(qual: This, mix) =>
+        optDotPrefix(qual) ~ "super" ~ optText(mix)("[" ~ _ ~ "]")
       case Apply(fun, args) =>
         if (fun.hasType && fun.symbol == defn.throwMethod)
           changePrec (GlobalPrec) {
