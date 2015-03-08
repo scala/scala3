@@ -787,10 +787,10 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         assert(currentAddr == end, s"$start $currentAddr $end ${astTagToString(tag)}")
         result
       }
-
-      setPos(start, 
-        if (tag < firstLengthTreeTag) readSimpleTerm()
-        else readLengthTerm())
+      
+      val tree = if (tag < firstLengthTreeTag) readSimpleTerm() else readLengthTerm()
+      tree.overwriteType(tree.tpe.simplified)
+      setPos(start, tree)
     }
     
     def readTpt()(implicit ctx: Context) = {

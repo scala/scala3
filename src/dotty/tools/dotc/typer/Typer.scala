@@ -475,7 +475,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val expr1 = ascribeType(expr, pt)
         cpy.Block(block)(stats, expr1) withType expr1.tpe // no assignType here because avoid is redundant
       case _ =>
-        Typed(tree, TypeTree(pt))
+        Typed(tree, TypeTree(pt.simplified))
     }
     val leaks = escapingRefs(tree, localSyms)
     if (leaks.isEmpty) tree

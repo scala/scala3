@@ -32,7 +32,7 @@ class tests extends CompilerTest {
   val newDir = "./tests/new/"
   val dotcDir = "./src/dotty/"
 
-  @Test def pickle_pickleOK = compileDir(posDir + "pickleOK/", testPickling)
+  @Test def pickle_pickleOK = compileDir(posDir + "pickleOK/", "-Xprint-types" :: testPickling)
   @Test def pickle_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", testPickling)
 
   @Test def pos_t2168_pat = compileFile(posDir, "t2168")
