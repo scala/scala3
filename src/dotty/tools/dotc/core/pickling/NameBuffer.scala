@@ -32,6 +32,14 @@ class NameBuffer extends TastyBuffer(100000) {
   
   def nameIndex(str: String): NameRef = nameIndex(str.toTermName)
   
+  def fullNameIndex(name: Name): NameRef = {
+    val pos = name.lastIndexOf('.')
+    if (pos > 0)
+      nameIndex(Qualified(fullNameIndex(name.take(pos)), nameIndex(name.drop(pos + 1))))
+    else
+      nameIndex(name)
+  }
+  
   private def withLength(op: => Unit): Unit = {
     val lengthAddr = currentAddr
     writeByte(0)

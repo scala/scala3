@@ -14,7 +14,7 @@ class TreePickler(pickler: TastyPickler) {
   val buf = new TreeBuffer
   pickler.newSection("ASTs", buf)
   import buf._
-  import pickler.nameBuffer.nameIndex
+  import pickler.nameBuffer.{nameIndex, fullNameIndex}
   import ast.tpd._
 
   private val symRefs = new mutable.HashMap[Symbol, Addr]
@@ -61,7 +61,7 @@ class TreePickler(pickler: TastyPickler) {
   private def pickleName(name: TastyName) = writeNat(nameIndex(name).index)
   private def pickleNameAndSig(name: Name, sig: Signature) = {
     val Signature(params, result) = sig
-    pickleName(TastyName.Signed(nameIndex(name), params.map(nameIndex), nameIndex(result)))
+    pickleName(TastyName.Signed(nameIndex(name), params.map(fullNameIndex), fullNameIndex(result)))
   }
 
   private def pickleSymRef(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
