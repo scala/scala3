@@ -347,6 +347,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         isAbstractType
       var flags = givenFlags
       if (lacksDefinition) flags |= Deferred
+      if (tag == DEFDEF) flags |= Method
       if (ctx.mode.is(Mode.InSuperCall) && !flags.is(ParamOrAccessor)) flags |= InSuperCall
       if (ctx.owner.isClass) {
         if (tag == TYPEPARAM) flags |= Param | ExpandedName // TODO check name to determine ExpandedName
@@ -584,6 +585,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
             ValDef(sym.asTerm)
           }
           else {
+            sym.setFlag(Method)
             sym.info = ExprType(info)
             pickling.println(i"reading param alias $name -> $currentAddr")
             DefDef(Nil, Nil, TypeTree(info))
@@ -693,9 +695,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           }
           def readRest(name: Name, sig: Signature) = {
             val unshadowed = if (name.isShadowedName) name.revertShadowed else name
-            val sel = readQual(unshadowed).selectWithSig(unshadowed, sig)
-            if (unshadowed != name) sel.withType(sel.tpe.asInstanceOf[NamedType].shadowed)
-            else sel
+            val qual = readQual(name)
+            untpd.Select(qual, unshadowed)
+              .withType(TermRef.withSig(qual.tpe.widenIfUnstable, name.asTermName, sig))
           }
           readNameSplitSig match {
             case name: Name => readRest(name, Signature.NotAMethod)
