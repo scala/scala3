@@ -252,6 +252,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       prefix ~ (" extends" provided !ofNew) ~~ parentsText ~~ bodyText
     }
 
+    def toTextPackageId(pid: Tree): Text = 
+      if (homogenizedView) toTextLocal(pid.tpe)
+      else toTextLocal(pid)
+
     var txt: Text = tree match {
       case id: Trees.BackquotedIdent[_] if !homogenizedView =>
         "`" ~ toText(id.name) ~ "`"
@@ -282,7 +286,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case TypeApply(fun, args) =>
         toTextLocal(fun) ~ "[" ~ toTextGlobal(args, ", ") ~ "]"
       case Literal(c) =>
-        toText(c)
+        tree.typeOpt match {
+          case ConstantType(tc) => toText(tc)
+          case _ => toText(c)
+        }
       case New(tpt) =>
         "new " ~ {
           tpt match {
@@ -404,7 +411,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
         val bodyText =
           if (currentPrecedence == TopLevelPrec) "\n" ~ statsText else " {" ~ statsText ~ "}"
-        "package " ~ toTextLocal(pid) ~ bodyText
+        "package " ~ toTextPackageId(pid) ~ bodyText
       case tree: Template => 
         toTextTemplate(tree)
       case Annotated(annot, arg) =>
@@ -509,7 +516,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   def optText[T >: Untyped](tree: List[Tree[T]])(encl: Text => Text): Text =
     if (tree.exists(!_.isEmpty)) encl(blockText(tree)) else ""
-
+      
   override protected def polyParamName(name: TypeName): TypeName =
     name.unexpandedName
 
