@@ -578,11 +578,15 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
             TypeDef(sym.asType)
           }
         case PARAM =>
-          sym.info = readType()
-          if (noRhs(end)) ValDef(sym.asTerm)
+          val info = readType()
+          if (noRhs(end)) {
+            sym.info = info
+            ValDef(sym.asTerm)
+          }
           else {
+            sym.info = ExprType(info)
             pickling.println(i"reading param alias $name -> $currentAddr")
-            DefDef(Nil, Nil, TypeTree(sym.info))
+            DefDef(Nil, Nil, TypeTree(info))
           }
       }
       val mods = 
