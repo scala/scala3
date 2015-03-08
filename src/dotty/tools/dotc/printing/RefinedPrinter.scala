@@ -84,7 +84,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       if (!tsym.exists) super.refinementNameString(tp)
       else {
         val name = tsym.originalName
-        nameString(if (tsym is ExpandedTypeParam) name.asTypeName.unexpandedName() else name)
+        nameString(if (tsym is ExpandedTypeParam) name.asTypeName.unexpandedName else name)
       }
     }
 
@@ -511,7 +511,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     if (tree.exists(!_.isEmpty)) encl(blockText(tree)) else ""
 
   override protected def polyParamName(name: TypeName): TypeName =
-    name.unexpandedName()
+    name.unexpandedName
 
   override protected def treatAsTypeParam(sym: Symbol): Boolean = sym is TypeParam
 

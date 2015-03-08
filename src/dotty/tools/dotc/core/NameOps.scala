@@ -149,14 +149,17 @@ object NameOps {
 
     /** The expanded name of `name` relative to this class `base` with given `separator`
      */
-    def expandedName(base: Symbol, separator: Name = nme.EXPAND_SEPARATOR)(implicit ctx: Context): N = {
-      val prefix = if (base is Flags.ExpandedName) base.name else base.fullNameSeparated('$')
-      name.fromName(prefix ++ separator ++ name).asInstanceOf[N]
-    }
+    def expandedName(base: Symbol)(implicit ctx: Context): N =
+      expandedName(if (base is Flags.ExpandedName) base.name else base.fullNameSeparated('$'))
 
-    def unexpandedName(separator: Name = nme.EXPAND_SEPARATOR): N = {
-      val idx = name.lastIndexOfSlice(separator)
-      if (idx < 0) name else (name drop (idx + separator.length)).asInstanceOf[N]
+    /** The expanded name of `name` relative to `basename` with given `separator`
+     */
+    def expandedName(prefix: Name)(implicit ctx: Context): N =
+      name.fromName(prefix ++ nme.EXPAND_SEPARATOR ++ name).asInstanceOf[N]
+
+    def unexpandedName: N = {
+      val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
+      if (idx < 0) name else (name drop (idx + nme.EXPAND_SEPARATOR.length)).asInstanceOf[N]
     }
 
     def shadowedName: N = likeTyped(nme.SHADOWED ++ name)
@@ -289,11 +292,11 @@ object NameOps {
 
     /** The name of an accessor for protected symbols. */
     def protectedAccessorName: TermName =
-      PROTECTED_PREFIX ++ name.unexpandedName()
+      PROTECTED_PREFIX ++ name.unexpandedName
 
     /** The name of a setter for protected symbols. Used for inherited Java fields. */
     def protectedSetterName: TermName =
-      PROTECTED_SET_PREFIX ++ name.unexpandedName()
+      PROTECTED_SET_PREFIX ++ name.unexpandedName
 
     def moduleVarName: TermName =
       name ++ MODULE_VAR_SUFFIX
