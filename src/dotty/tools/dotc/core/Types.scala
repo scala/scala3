@@ -29,10 +29,12 @@ import Uniques._
 import collection.{mutable, Seq, breakOut}
 import config.Config
 import config.Printers._
+import dotty.tools.sameLength
 import annotation.tailrec
 import Flags.FlagSet
 import typer.Mode
 import language.implicitConversions
+import scala.collection.mutable.ListBuffer
 
 object Types {
 
@@ -2220,9 +2222,10 @@ object Types {
 
     protected def computeSignature(implicit ctx: Context) = resultSignature
 
-    def instantiate(argTypes: List[Type])(implicit ctx: Context): Type =
+    def instantiate(argTypes: List[Type])(implicit ctx: Context): Type = {
+      assert(sameLength(argTypes, paramNames))
       resultType.substParams(this, argTypes)
-
+    }
     def instantiateBounds(argTypes: List[Type])(implicit ctx: Context): List[TypeBounds] =
       paramBounds.mapConserve(_.substParams(this, argTypes).bounds)
 
@@ -2234,6 +2237,48 @@ object Types {
       PolyType(paramNames)(
           x => paramBounds mapConserve (_.subst(this, x).bounds),
           x => resType.subst(this, x))
+
+    /** Instantiate only some type parameters.
+      * @param argNum which parameters should be instantiated
+      * @param argTypes which types should be used for Instatiation
+      * @return a PolyType with (this.paramNames - argNum.size) type parameters left abstract
+      */
+    def instantiate(argNum: List[Int], argTypes: List[Type])(implicit ctx: Context) = {
+      // merge original args list with supplied one
+      def mergeArgs(pp: PolyType, nxt: Int, id: Int, until: Int, argT: List[Type], argN: List[Int], res: ListBuffer[Type]): List[Type] =
+        if (id < until && argT.nonEmpty) {
+          if (argN.head == id) // we replace this poly param by supplied one
+            mergeArgs(pp, nxt, id + 1, until, argT.tail, argN.tail, res += argT.head)
+          else { // we create a PolyParam that is still not instantiated
+            val nw = PolyParam(pp, nxt)
+            res += nw
+            mergeArgs(pp, nxt + 1, id + 1, until, argT, argN, res)
+          }
+        } else {
+          res ++= nxt.until(nxt + until - id).map(PolyParam(pp, _))
+          res.toList
+        }
+      def args(pp: PolyType) = mergeArgs(pp, 0, 0, argTypes.length, argTypes, argNum, ListBuffer.empty)
+
+      def pnames(origPnames: List[TypeName] = paramNames, argN: List[Int] = argNum, id: Int = 0, tmp: ListBuffer[TypeName] = ListBuffer.empty): List[TypeName] = {
+        if (argN.isEmpty) {
+          tmp ++= origPnames
+          tmp.toList
+        }
+        else if (id == argN.head) {
+          pnames(origPnames.tail, argN.tail, id + 1, tmp)
+        } else {
+          pnames(origPnames.tail, argN, id + 1, tmp += origPnames.head)
+        }
+      }
+
+      PolyType(pnames())(
+        x => {
+          val a = args(x)
+          paramBounds mapConserve (_.substParams(this, a).bounds)
+        },
+        x => resType.substParams(this, args(x)))
+    }
 
     // need to override hashCode and equals to be object identity
     // because paramNames by itself is not discriminatory enough
