@@ -137,7 +137,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   ORtype         Length left_Type right_Type
                   BIND           Length boundName_NameRef bounds_Type selfRef_Type
                                         // for type-variables defined in a type pattern
-                                        // bounds = type bounds, selfRef = reference to type itself.                  BYNAMEtype    Length underlying_Type
+                                        // bounds = type bounds, selfRef = reference to type itself.                  
+                  BYNAMEtype            underlying_Type
                   POLYtype       Length result_Type NamesTypes      // needed for refinements
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   PARAMtype      Length binder_ASTref paramNum_Nat  // needed for refinements
@@ -224,7 +225,6 @@ object PickleFormat {
 
 // AST tags
 
-  final val EMPTYTREE = 0
   final val NOTYPE = 1
   final val UNITconst = 2
   final val FALSEconst = 3
@@ -278,10 +278,11 @@ object PickleFormat {
   final val THIS = 96
   final val CLASSconst = 97
   final val ENUMconst = 98
-  final val NEW = 99
-  final val IMPLICITarg = 100
-  final val PRIVATEqualified = 101
-  final val PROTECTEDqualified = 102
+  final val BYNAMEtype = 99
+  final val NEW = 100
+  final val IMPLICITarg = 101
+  final val PRIVATEqualified = 102
+  final val PROTECTEDqualified = 103
 
   final val IDENT = 112
   final val SELECT = 113
@@ -327,13 +328,12 @@ object PickleFormat {
   final val TYPEALIAS = 170
   final val ANDtype = 171
   final val ORtype = 172
-  final val BYNAMEtype = 173
   final val METHODtype = 174
   final val POLYtype = 175
   final val PARAMtype = 176
   final val ANNOTATION = 178
 
-  final val firstSimpleTreeTag = EMPTYTREE
+  final val firstSimpleTreeTag = NOTYPE
   final val firstNatTreeTag = SHARED
   final val firstASTTreeTag = THIS
   final val firstNatASTTreeTag = IDENT
@@ -387,7 +387,6 @@ object PickleFormat {
   }
 
   def astTagToString(tag: Int): String = tag match {
-    case EMPTYTREE => "EMPTYTREE"
     case NOTYPE => "NOTYPE"
     case UNITconst => "UNITconst"
     case FALSEconst => "FALSEconst"

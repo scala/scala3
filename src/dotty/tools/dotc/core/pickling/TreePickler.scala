@@ -230,7 +230,7 @@ class TreePickler(pickler: TastyPickler) {
         withLength { pickleType(tpe.tp1, richTypes); pickleType(tpe.tp2, richTypes) }
       case tpe: ExprType =>
         writeByte(BYNAMEtype)
-        withLength { pickleType(tpe.underlying) }
+        pickleType(tpe.underlying)
       case tpe: MethodType if richTypes =>
         writeByte(METHODtype)
         pickleMethodic(tpe.resultType, tpe.paramNames, tpe.paramTypes)
@@ -448,8 +448,6 @@ class TreePickler(pickler: TastyPickler) {
       case PackageDef(pid, stats) =>
         writeByte(PACKAGE)
         withLength { pickleType(pid.tpe); pickleStats(stats) }
-      case EmptyTree =>
-        writeByte(EMPTYTREE)
     }}
     catch {
       case ex: AssertionError =>
@@ -486,7 +484,7 @@ class TreePickler(pickler: TastyPickler) {
 
     def pickleStats(stats: List[Tree]) = {
       stats.foreach(preRegister)
-      stats.foreach(pickleTree)
+      stats.foreach(stat => if (!stat.isEmpty) pickleTree(stat))
     }
 
     def pickleModifiers(sym: Symbol): Unit = {
@@ -534,7 +532,7 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
     }
 
-    trees.foreach(pickleTree)
+    trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: ${forwardSymRefs.keySet.toList}%, %")
     compactify()
   }  

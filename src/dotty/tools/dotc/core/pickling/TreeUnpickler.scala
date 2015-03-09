@@ -204,8 +204,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               symAtAddr(start) = 
                 ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType())
               readType()
-            case BYNAMEtype =>
-              ExprType(readType())
             case POLYtype =>
               val (names, paramReader) = readNamesSkipParams[TypeName]
               val result = PolyType(names)(
@@ -298,6 +296,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           ConstantType(Constant(readName().toString))
         case NULLconst =>
           ConstantType(Constant(null))
+        case BYNAMEtype =>
+          ExprType(readType())
       }
       
       if (tag < firstLengthTreeTag) readSimpleType() else readLengthType()
@@ -464,7 +464,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           nextByte match {
             case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM => 
               createSymbol() 
-            case EMPTYTREE | IMPORT => 
+            case IMPORT => 
               skipTree()
               true
             case PACKAGE => 
@@ -706,8 +706,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           
         case NEW =>
           New(readTpt())
-        case EMPTYTREE =>
-          EmptyTree
         case _ =>
           readPathTerm()
       }
