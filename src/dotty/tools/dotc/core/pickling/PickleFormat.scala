@@ -135,9 +135,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   ANNOTATED      Length fullAnnotation_Term underlying_Type
                   ANDtype        Length left_Type right_Type
                   ORtype         Length left_Type right_Type
-                  BIND           Length boundName_NameRef bounds_Type selfRef_Type
+                  BIND           Length boundName_NameRef bounds_Type
                                         // for type-variables defined in a type pattern
-                                        // bounds = type bounds, selfRef = reference to type itself.                  
                   BYNAMEtype            underlying_Type
                   POLYtype       Length result_Type NamesTypes      // needed for refinements
                   METHODtype     Length result_Type NamesTypes      // needed for refinements

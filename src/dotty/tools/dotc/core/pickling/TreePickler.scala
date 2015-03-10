@@ -250,8 +250,6 @@ class TreePickler(pickler: TastyPickler) {
         pickleType(tpe.ref)
       case NoType =>
         writeByte(NOTYPE)
-//      case NoPrefix =>    // not sure we need this!
-//        writeByte(NOPREFIX)
     }} catch {
       case ex: AssertionError => 
         println(i"error while pickling type $tpe")

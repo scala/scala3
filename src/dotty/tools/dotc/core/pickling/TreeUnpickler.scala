@@ -201,9 +201,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
             case ORtype =>
               OrType(readType(), readType())
             case BIND =>
-              symAtAddr(start) = 
-                ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType())
-              readType()
+              val sym = ctx.newSymbol(ctx.owner, readName().toTypeName, BindDefinedType, readType())
+              symAtAddr(start) = sym
+              TypeRef.withFixedSym(NoPrefix, sym.name, sym)
             case POLYtype =>
               val (names, paramReader) = readNamesSkipParams[TypeName]
               val result = PolyType(names)(
