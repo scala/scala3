@@ -430,7 +430,9 @@ object SymDenotations {
     final def isCoDefinedWith(that: Symbol)(implicit ctx: Context) =
       (this.effectiveOwner == that.effectiveOwner) &&
       (  !(this.effectiveOwner is PackageClass)
-      || { val thisFile = this.symbol.associatedFile
+        || this.isAbsent || that.isAbsent
+        || { // check if they are defined in the same file(or a jar)
+           val thisFile = this.symbol.associatedFile
            val thatFile = that.symbol.associatedFile
            (  thisFile == null
            || thatFile == null
