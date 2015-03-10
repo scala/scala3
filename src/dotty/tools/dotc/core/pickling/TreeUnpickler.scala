@@ -267,8 +267,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           ThisType.raw(readType().asInstanceOf[TypeRef])
         case SKOLEMtype =>
           SkolemType(readTypeRef())
-        case NOTYPE =>
-          NoType
         case SHARED =>
           val ref = readAddr()
           typeAtAddr.getOrElseUpdate(ref, forkAt(ref).readType())
@@ -747,10 +745,10 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               Block(stats, expr)
             case IF =>
               If(readTerm(), readTerm(), readTerm())
-            case CLOSURE =>
+            case LAMBDA =>
               val meth = readTerm()
-              val tpt = readTpt()
-              Closure(until(end)(readTerm()), meth, tpt)
+              val tpt = ifBefore(end)(readTpt(), EmptyTree)
+              Closure(Nil, meth, tpt)
             case MATCH =>
               Match(readTerm(), readCases(end))
             case RETURN =>

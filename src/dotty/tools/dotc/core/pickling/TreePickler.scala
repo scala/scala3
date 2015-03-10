@@ -248,8 +248,6 @@ class TreePickler(pickler: TastyPickler) {
         assert(pickleParamType(tpe), s"orphan method parameter: $tpe")
       case tpe: LazyRef =>
         pickleType(tpe.ref)
-      case NoType =>
-        writeByte(NOTYPE)
     }} catch {
       case ex: AssertionError => 
         println(i"error while pickling type $tpe")
@@ -353,8 +351,12 @@ class TreePickler(pickler: TastyPickler) {
         writeByte(IF)
         withLength{ pickleTree(cond); pickleTree(thenp); pickleTree(elsep) }
       case Closure(env, meth, tpt) => 
-        writeByte(CLOSURE)
-        withLength{ pickleTree(meth); pickleTpt(tpt); env.foreach(pickleTree) }
+        writeByte(LAMBDA)
+        assert(env.isEmpty)
+        withLength{ 
+          pickleTree(meth)
+          if (tpt.tpe.exists) pickleTpt(tpt) 
+        }
       case Match(selector, cases) =>
         writeByte(MATCH)
         withLength { pickleTree(selector); cases.foreach(pickleTree) }
