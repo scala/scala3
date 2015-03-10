@@ -774,7 +774,7 @@ class ClassfileParser(
                   |externalName = $externalName,
                   |outerName = $outerName,
                   |innerName = $innerName
-                  |owner.fullName = owner.showFullName
+                  |owner.fullName = ${owner.showFullName}
                   |while parsing ${classfile}""")
             result
 
