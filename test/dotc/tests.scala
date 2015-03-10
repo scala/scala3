@@ -36,7 +36,7 @@ class tests extends CompilerTest {
   val dotcDir = "./src/dotty/"
 
   @Test def pos_t2168_pat = compileFile(posDir, "t2168")
-  @Test def pos_erasure = compileFile(posDir, "erasure")
+/*  @Test def pos_erasure = compileFile(posDir, "erasure")
   @Test def pos_Coder() = compileFile(posDir, "Coder")
   @Test def pos_blockescapes() = compileFile(posDir, "blockescapes")
   @Test def pos_collections() = compileFile(posDir, "collections")
@@ -124,21 +124,22 @@ class tests extends CompilerTest {
   @Test def neg_i0281 = compileFile(negDir, "i0281-null-primitive-conforms", xerrors = 3)
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
-
-  @Test def dotc = compileDir(dotcDir + "tools/dotc", failedOther)(allowDeepSubtypes)
+*/
+  /*@Test def dotc = compileDir(dotcDir + "tools/dotc", failedOther)(allowDeepSubtypes)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", failedOther) // similar to dotc_config
   @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config", failedOther) // seems to mess up stack frames
   @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", failedUnderscore)(allowDeepSubtypes)
   // fails due to This refference to a non-eclosing class. Need to check
 
   @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", failedOther)(allowDeepSubtypes) // Cannot emit primitive conversion from V to Z
+*/
+  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform")
 
-  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", failedbyName)
-
-  @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing", failedOther)
+  @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing")
     //  Expected primitive types I - Ljava/lang/Object
     //  Tried to return an object where expected type was Integer
-  @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing", failedOther)
+  @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing")
+  /*
   @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting", twice)
   @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", failedOther) // similar to dotc_config
   //@Test def dotc_util = compileDir(dotcDir + "tools/dotc/util") //fails inside ExtensionMethods with ClassCastException
@@ -165,6 +166,6 @@ class tests extends CompilerTest {
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir)
 
-
+*/
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }
