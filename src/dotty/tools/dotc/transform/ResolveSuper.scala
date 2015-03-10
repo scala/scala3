@@ -48,6 +48,8 @@ class ResolveSuper extends MiniPhaseTransform with IdentityDenotTransformer { th
 
   override def phaseName: String = "resolveSuper"
 
+  override def runsAfter = Set(classOf[ElimByName]) // verified empirically, need to figure out what the reason is. 
+
   /** Returns the symbol that is accessed by a super-accessor in a mixin composition.
    *
    *  @param base       The class in which everything is mixed together
