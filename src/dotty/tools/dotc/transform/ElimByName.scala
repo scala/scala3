@@ -47,7 +47,7 @@ import ast.Trees._
  *  other options which have been abandoned or not yet pursued.
  *
  *  Option 1: Transform => T to () => T also in method and function types. The problem with this is
- *  that is that it rewuires to look at every type, and this forces too much, causing
+ *  that is that it requires to look at every type, and this forces too much, causing
  *  Cyclic Reference errors. Abandoned for this reason.
  *
  *  Option 2: Merge ElimByName with erasure, or have it run immediately before. This has not been
