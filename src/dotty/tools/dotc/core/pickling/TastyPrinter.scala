@@ -24,6 +24,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
     case ModuleClass(original) => nameRefToString(original) + "/MODULECLASS"
     case SuperAccessor(accessed) => nameRefToString(accessed) + "/SUPERACCESSOR"
     case DefaultGetter(meth, num) => nameRefToString(meth) + "/DEFAULTGETTER" + num
+    case Shadowed(original) => nameRefToString(original) + "/SHADOWED"
   }
       
   def nameRefToString(ref: NameRef): String = nameToString(tastyName(ref))
