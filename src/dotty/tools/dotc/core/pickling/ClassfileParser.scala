@@ -50,7 +50,7 @@ class ClassfileParser(
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
       throw new IOException(
-        sm"""class file $classfile is broken, reading aborted with $e.getClass
+        sm"""class file $classfile is broken, reading aborted with ${e.getClass}
             |${Option(e.getMessage).getOrElse("")}""")
   }
 
