@@ -525,7 +525,9 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
       if (linkedClass.isTopLevelModuleClass) /*exitingPickler*/ linkedClass.memberClasses
       else Nil
     }
-    def fieldSymbols: List[Symbol] = toDenot(sym).info.memberClasses.map(_.symbol).toList
+    def fieldSymbols: List[Symbol] = {
+      toDenot(sym).info.decls.filter(p => p.isTerm && !p.is(Flags.Method)).toList
+    }
     def methodSymbols: List[Symbol] =
       for (f <- toDenot(sym).info.decls.toList if !f.isMethod && f.isTerm && !f.isModule) yield f
     def serialVUID: Option[Long] = None
