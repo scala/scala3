@@ -497,7 +497,7 @@ class TreePickler(pickler: TastyPickler) {
       }
       if (flags is Private) writeByte(PRIVATE)
       if (flags is Protected) if (!privateWithin.exists) writeByte(PROTECTED)
-      if (flags is Final) writeByte(FINAL)
+      if ((flags is Final) && !(sym is Module)) writeByte(FINAL)
       if (flags is Case) writeByte(CASE)
       if (flags is Override) writeByte(OVERRIDE)
       if (flags is Inline) writeByte(INLINE)
@@ -510,13 +510,12 @@ class TreePickler(pickler: TastyPickler) {
       if (flags is InSuperCall) writeByte(INSUPERCALL)
       if (sym.isTerm) {
         if (flags is Implicit) writeByte(IMPLICIT)
-        if (flags is Lazy) writeByte(LAZY)
+        if ((flags is Lazy) && !(sym is Module)) writeByte(LAZY)
         if (flags is AbsOverride) writeByte(ABSOVERRIDE)
         if (flags is Mutable) writeByte(MUTABLE)
         if (flags is Accessor) writeByte(FIELDaccessor)
         if (flags is CaseAccessor) writeByte(CASEaccessor)  
         if (flags is DefaultParameterized) writeByte(DEFAULTparameterized)
-        if (flags is DefaultInit) writeByte(DEFAULTinit)
       } else {
         if (flags is Sealed) writeByte(SEALED)
         if (flags is Abstract) writeByte(ABSTRACT)      

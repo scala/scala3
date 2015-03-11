@@ -321,9 +321,6 @@ object Flags {
   /** A type that is defined by a type bind */
   final val BindDefinedType = typeFlag(27, "<bind-defined>")
 
-  /** Symbol is initialized to the default value, e.g. var x: T = _ */
-  final val DefaultInit = termFlag(28, "<defaultinit>")
-
   /** Symbol is inlined */
   final val Inline = commonFlag(29, "inline")
 

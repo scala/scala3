@@ -79,11 +79,11 @@ Standard-Section: "ASTs" TopLevelStat*
                   NAMEDARG       Length paramName_NameRef arg_Term
                   ASSIGN         Length lhs_Term rhs_Term
                   BLOCK          Length expr_Term Stat*
+                  LAMBDA         Length meth_Term target_Type
                   IF             Length cond_Term then_Term else_Term
-                  CLOSURE        Length meth_Term target_Type env_Term*
                   MATCH          Length sel_Term CaseDef*
-                  RETURN         Length meth_ASTRef expr_Term?
                   TRY            Length expr_Term CaseDef* finalizer_Term?
+                  RETURN         Length meth_ASTRef expr_Term?
                   REPEATED       Length elem_Term*
                   BIND           Length boundName_NameRef patType_Type pat_Term
                   ALTERNATIVE    Length alt_Term*
@@ -141,7 +141,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   POLYtype       Length result_Type NamesTypes      // needed for refinements
                   METHODtype     Length result_Type NamesTypes      // needed for refinements
                   PARAMtype      Length binder_ASTref paramNum_Nat  // needed for refinements
-                  NOTYPE
                   SHARED                type_ASTRef
   NamesTypes    = ParamType*
   NameType      = paramName_NameRef typeOrBounds_ASTRef
@@ -174,7 +173,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   CONTRAVARIANT			    // type param marked “-”
                   SCALA2X						    // Imported from Scala2.x
                   DEFAULTparameterized  // Method with default params
-                  DEFAULTinit					  // variable with “_” initializer
                   INSUPERCALL           // defined in the argument of a constructor supercall
                   Annotation
   Annotation    = ANNOTATION     Length tycon_Type fullAnnotation_Term
@@ -224,7 +222,6 @@ object PickleFormat {
 
 // AST tags
 
-  final val NOTYPE = 1
   final val UNITconst = 2
   final val FALSEconst = 3
   final val TRUEconst = 4
@@ -255,8 +252,7 @@ object PickleFormat {
   final val CONTRAVARIANT = 29
   final val SCALA2X = 30
   final val DEFAULTparameterized = 31
-  final val DEFAULTinit = 32
-  final val INSUPERCALL = 33
+  final val INSUPERCALL = 32
 
   final val SHARED = 64
   final val TERMREFdirect = 65
@@ -308,7 +304,7 @@ object PickleFormat {
   final val ASSIGN = 145
   final val BLOCK = 146
   final val IF = 147
-  final val CLOSURE = 148
+  final val LAMBDA = 148
   final val MATCH = 149
   final val RETURN = 150
   final val TRY = 151
@@ -332,7 +328,7 @@ object PickleFormat {
   final val PARAMtype = 176
   final val ANNOTATION = 178
 
-  final val firstSimpleTreeTag = NOTYPE
+  final val firstSimpleTreeTag = UNITconst
   final val firstNatTreeTag = SHARED
   final val firstASTTreeTag = THIS
   final val firstNatASTTreeTag = IDENT
@@ -367,7 +363,6 @@ object PickleFormat {
        | CONTRAVARIANT
        | SCALA2X
        | DEFAULTparameterized
-       | DEFAULTinit
        | INSUPERCALL
        | ANNOTATION
        | PRIVATEqualified
@@ -386,7 +381,6 @@ object PickleFormat {
   }
 
   def astTagToString(tag: Int): String = tag match {
-    case NOTYPE => "NOTYPE"
     case UNITconst => "UNITconst"
     case FALSEconst => "FALSEconst"
     case TRUEconst => "TRUEconst"
@@ -417,7 +411,6 @@ object PickleFormat {
     case CONTRAVARIANT => "CONTRAVARIANT"
     case SCALA2X => "SCALA2X"
     case DEFAULTparameterized => "DEFAULTparameterized"
-    case DEFAULTinit => "DEFAULTinit"
     case INSUPERCALL => "INSUPERCALL"
 
     case SHARED => "SHARED"
@@ -461,7 +454,7 @@ object PickleFormat {
     case ASSIGN => "ASSIGN"
     case BLOCK => "BLOCK"
     case IF => "IF"
-    case CLOSURE => "CLOSURE"
+    case LAMBDA => "LAMBDA"
     case MATCH => "MATCH"
     case RETURN => "RETURN"
     case TRY => "TRY"

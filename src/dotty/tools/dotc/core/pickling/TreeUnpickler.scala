@@ -322,6 +322,24 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       val lctx = ctx.fresh.setOwner(owner)
       if (owner.isClass) lctx.setScope(owner.unforcedDecls) else lctx.setNewScope
     }
+    
+    private def normalizeFlags(tag: Int, givenFlags: FlagSet, name: Name, isAbstractType: Boolean, rhsIsEmpty: Boolean)(implicit ctx: Context): FlagSet = {
+      val lacksDefinition =
+        rhsIsEmpty && !name.isConstructorName && !givenFlags.is(ParamOrAccessor) ||
+        isAbstractType
+      var flags = givenFlags
+      if (lacksDefinition) flags |= Deferred
+      if (tag == DEFDEF) flags |= Method
+      if (givenFlags is Module)
+        flags = flags | (if (tag == VALDEF) ModuleCreationFlags else ModuleClassCreationFlags)
+      if (ctx.mode.is(Mode.InSuperCall) && !flags.is(ParamOrAccessor)) flags |= InSuperCall
+      if (ctx.owner.isClass) {
+        if (tag == TYPEPARAM) flags |= Param | ExpandedName // TODO check name to determine ExpandedName
+        else if (tag == PARAM) flags |= ParamAccessor
+      }
+      else if (isParamTag(tag)) flags |= Param
+      flags
+    }
 
     /** Create symbol of definition node and enter in symAtAddr map 
      *  @return  true iff the definition does not contain initialization code
@@ -340,18 +358,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       if (!rhsIsEmpty) skipTree()
       val (givenFlags, annots, privateWithin) = readModifiers(end)
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
-      val lacksDefinition =
-        rhsIsEmpty && !name.isConstructorName && !givenFlags.is(ParamOrAccessor) ||
-        isAbstractType
-      var flags = givenFlags
-      if (lacksDefinition) flags |= Deferred
-      if (tag == DEFDEF) flags |= Method
-      if (ctx.mode.is(Mode.InSuperCall) && !flags.is(ParamOrAccessor)) flags |= InSuperCall
-      if (ctx.owner.isClass) {
-        if (tag == TYPEPARAM) flags |= Param | ExpandedName // TODO check name to determine ExpandedName
-        else if (tag == PARAM) flags |= ParamAccessor
-      }
-      else if (isParamTag(tag)) flags |= Param
+      val flags = normalizeFlags(tag, givenFlags, name, isAbstractType, rhsIsEmpty)
       val nameMatches = (_: Denotation).symbol.name == name
       val prevDenot: SymDenotation = 
         if (ctx.owner.is(Package)) ctx.effectiveScope.lookup(name)
@@ -431,7 +438,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           case CONTRAVARIANT => addFlag(Contravariant)
           case SCALA2X => addFlag(Scala2x)
           case DEFAULTparameterized => addFlag(DefaultParameterized)
-          case DEFAULTinit => addFlag(DefaultInit)
           case INSUPERCALL => addFlag(InSuperCall)
           case PRIVATEqualified => 
             readByte()
