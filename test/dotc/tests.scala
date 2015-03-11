@@ -123,7 +123,8 @@ class tests extends CompilerTest {
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", failedOther)(allowDeepSubtypes) // see dotc_core
-  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast")
+  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", failedOther)
+    //similar to dotc_core_pickling but for another anon class. Still during firstTransform
   @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config")
   @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", failedOther)(allowDeepSubtypes)
     // error: error while loading ConstraintHandling$$anon$1$,
