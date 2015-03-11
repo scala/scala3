@@ -36,7 +36,7 @@ import Decorators._
 
   override def phaseName = "memoize"
 
-  /** Should to run after mixin so that fields get generated in the
+  /** Should run after mixin so that fields get generated in the
    *  class that contains the concrete getter rather than the trait
    *  that defines it.
    */
