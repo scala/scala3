@@ -52,7 +52,7 @@ class TastyUnpickler(reader: TastyReader) {
         Signed(original, params, result)
       case EXPANDED =>
         Expanded(readNameRef())
-      case MODULECLASS =>
+      case OBJECTCLASS =>
         ModuleClass(readNameRef())
       case SUPERACCESSOR =>
         SuperAccessor(readNameRef())
@@ -65,9 +65,9 @@ class TastyUnpickler(reader: TastyReader) {
     result
   }
   
-  private def readHeader() = {
-    val magic = readBytes(8)
-    check(magic.map(_.toChar).mkString == header, "not a TASTy file")
+  private def readHeader(): UUID = {
+    for (i <- 0 until header.length)
+      check(readByte() == header(i), "not a TASTy file")
     val major = readNat()
     val minor = readNat()
     check(major == MajorVersion && minor <= MinorVersion, 

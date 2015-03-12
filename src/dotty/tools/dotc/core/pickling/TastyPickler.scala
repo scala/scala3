@@ -13,7 +13,7 @@ class TastyPickler {
   private val sections = new mutable.ArrayBuffer[(TastyName.NameRef, TastyBuffer)]
   
   private val headerBuffer = {
-    val buf = new TastyBuffer(28)
+    val buf = new TastyBuffer(24)
     for (ch <- header) buf.writeByte(ch.toByte)
     buf.writeNat(MajorVersion)
     buf.writeNat(MinorVersion)

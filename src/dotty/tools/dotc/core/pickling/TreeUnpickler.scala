@@ -425,7 +425,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           case INLINE => addFlag(Inline)
           case ABSOVERRIDE => addFlag(AbsOverride)
           case STATIC => addFlag(JavaStatic)
-          case MODULE => addFlag(Module)
+          case OBJECT => addFlag(Module)
           case TRAIT => addFlag(Trait)
           case LOCAL => addFlag(Local)
           case SYNTHETIC => addFlag(Synthetic)

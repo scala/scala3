@@ -69,7 +69,7 @@ class NameBuffer extends TastyBuffer(100000) {
       writeByte(EXPANDED)
       withLength { writeNameRef(original) }
     case ModuleClass(module) =>
-      writeByte(MODULECLASS)
+      writeByte(OBJECTCLASS)
       withLength { writeNameRef(module) }
     case SuperAccessor(accessed) =>
       writeByte(SUPERACCESSOR)
