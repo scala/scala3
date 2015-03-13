@@ -12,7 +12,10 @@ import Flags._
 object ValueClasses {
 
   def isDerivedValueClass(d: SymDenotation)(implicit ctx: Context) =
-    d.isClass && d.derivesFrom(defn.AnyValClass) && !d.isPrimitiveValueClass
+    d.isClass &&
+      (d.symbol ne defn.AnyValClass) &&
+      d.derivesFrom(defn.AnyValClass) &&
+      !d.isPrimitiveValueClass
 
   def isMethodWithExtension(d: SymDenotation)(implicit ctx: Context) =
     d.isSourceMethod &&
