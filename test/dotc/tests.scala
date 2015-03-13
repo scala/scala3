@@ -2,6 +2,7 @@ package dotc
 
 import org.junit.Test
 import test._
+import java.io.File
 
 class tests extends CompilerTest {
 
@@ -19,7 +20,6 @@ class tests extends CompilerTest {
       "-d", "./out/"
   )
 
-  val doEmitBytecode = List("-Ystop-before:terminal")
   val failedbyName = List("-Ystop-before:collectEntryPoints") // #288
   val failedUnderscore = List("-Ystop-before:collectEntryPoints") // #289
 
@@ -28,99 +28,7 @@ class tests extends CompilerTest {
 
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
 
-  val posDir = "./tests/pos/"
-  val posSpecialDir = "./tests/pos-special/"
-  val negDir = "./tests/neg/"
-  val newDir = "./tests/new/"
   val dotcDir = "./src/dotty/"
-
-  @Test def pos_t2168_pat = compileFile(posDir, "t2168")
-  @Test def pos_erasure = compileFile(posDir, "erasure")
-  @Test def pos_Coder() = compileFile(posDir, "Coder")
-  @Test def pos_blockescapes() = compileFile(posDir, "blockescapes")
-  @Test def pos_collections() = compileFile(posDir, "collections")
-  @Test def pos_functions1() = compileFile(posDir, "functions1")
-  @Test def pos_implicits1() = compileFile(posDir, "implicits1")
-  @Test def pos_inferred() = compileFile(posDir, "inferred")
-  @Test def pos_Patterns() = compileFile(posDir, "Patterns")
-  @Test def pos_selftypes() = compileFile(posDir, "selftypes")
-  @Test def pos_varargs() = compileFile(posDir, "varargs")
-  @Test def pos_vararg_patterns() = compileFile(posDir, "vararg-pattern")
-  @Test def pos_opassign() = compileFile(posDir, "opassign")
-  @Test def pos_typedapply() = compileFile(posDir, "typedapply")
-  @Test def pos_nameddefaults() = compileFile(posDir, "nameddefaults")
-  @Test def pos_desugar() = compileFile(posDir, "desugar")
-  @Test def pos_sigs() = compileFile(posDir, "sigs")
-  @Test def pos_typers() = compileFile(posDir, "typers")
-  @Test def pos_typedidents() = compileFile(posDir, "typedIdents")
-  @Test def pos_assignments() = compileFile(posDir, "assignments")
-  @Test def pos_packageobject() = compileFile(posDir, "packageobject")
-  @Test def pos_overloaded() = compileFile(posDir, "overloaded")
-  @Test def pos_overrides() = compileFile(posDir, "overrides")
-  @Test def pos_javaOverride() = compileDir(posDir + "java-override")
-  @Test def pos_templateParents() = compileFile(posDir, "templateParents")
-  @Test def pos_structural() = compileFile(posDir, "structural")
-  @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess")
-  @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion")
-  @Test def pos_tailcall = compileDir(posDir + "tailcall/")
-  @Test def pos_nullarify = compileFile(posDir, "nullarify", "-Ycheck:nullarify" :: Nil)
-  @Test def pos_subtyping = compileFile(posDir, "subtyping")
-  @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
-  @Test def pos_packageObj = compileFile(posDir, "i0239")
-  @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping")
-
-  @Test def pos_all = compileFiles(posDir, failedOther)
-
-  @Test def new_all = compileFiles(newDir, twice)
-
-  @Test def neg_blockescapes() = compileFile(negDir, "blockescapesNeg", xerrors = 1)
-  @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
-  @Test def neg_typedidents() = compileFile(negDir, "typedIdents", xerrors = 2)
-  @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)
-  @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 12)
-  @Test def neg_privates() = compileFile(negDir, "privates", xerrors = 2)
-  @Test def neg_rootImports = compileFile(negDir, "rootImplicits", xerrors = 2)
-  @Test def neg_templateParents() = compileFile(negDir, "templateParents", xerrors = 3)
-  @Test def neg_autoTupling = compileFile(posDir, "autoTuplingTest", "-language:noAutoTupling" :: Nil, xerrors = 4)
-  @Test def neg_autoTupling2 = compileFile(negDir, "autoTuplingTest", xerrors = 4)
-  @Test def neg_companions = compileFile(negDir, "companions", xerrors = 1)
-  @Test def neg_over = compileFile(negDir, "over", xerrors = 3)
-  @Test def neg_overrides = compileFile(negDir, "overrides", xerrors = 11)
-  @Test def neg_projections = compileFile(negDir, "projections", xerrors = 1)
-  @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 1)
-  @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 4)
-  @Test def neg_t0273_doubledefs = compileFile(negDir, "t0273", xerrors = 1)
-  @Test def neg_t0586_structural = compileFile(negDir, "t0586", xerrors = 1)
-  @Test def neg_t0625_structural = compileFile(negDir, "t0625", xerrors = 1)(
-      defaultOptions = noCheckOptions)
-        // -Ycheck fails because there are structural types involving higher-kinded types.
-        // these are illegal, but are tested only later.
-  @Test def neg_t1131_structural = compileFile(negDir, "t1131", xerrors = 1)
-  @Test def neg_zoo = compileFile(negDir, "zoo", xerrors = 1)
-  @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
-  @Test def neg_tailcall_t1672b = compileFile(negDir, "tailcall/t1672b", xerrors = 6)
-  @Test def neg_tailcall_t3275 = compileFile(negDir, "tailcall/t3275", xerrors = 1)
-  @Test def neg_tailcall_t6574 = compileFile(negDir, "tailcall/t6574", xerrors = 2)
-  @Test def neg_tailcall = compileFile(negDir, "tailcall/tailrec", xerrors = 7)
-  @Test def neg_tailcall2 = compileFile(negDir, "tailcall/tailrec-2", xerrors = 2)
-  @Test def neg_tailcall3 = compileFile(negDir, "tailcall/tailrec-3", xerrors = 2)
-  @Test def nef_t1279a = compileFile(negDir, "t1279a", xerrors = 1)
-  @Test def neg_t1843_variances = compileFile(negDir, "t1843-variances", xerrors = 1)
-  @Test def neg_t2660_ambi = compileFile(negDir, "t2660", xerrors = 2)
-  @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 2)
-  @Test def neg_subtyping = compileFile(negDir, "subtyping", xerrors = 2)
-  @Test def neg_variances = compileFile(negDir, "variances", xerrors = 2)
-  @Test def neg_badAuxConstr = compileFile(negDir, "badAuxConstr", xerrors = 2)
-  @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
-  @Test def neg_t1569_failedAvoid = compileFile(negDir, "t1569-failedAvoid", xerrors = 1)
-  @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 8)
-  @Test def neg_boundspropagation = compileFile(negDir, "boundspropagation", xerrors = 4)
-  @Test def neg_refinedSubtyping = compileFile(negDir, "refinedSubtyping", xerrors = 2)
-  @Test def neg_i0091_infpaths = compileFile(negDir, "i0091-infpaths", xerrors = 3)
-  @Test def neg_i0248_inherit_refined = compileFile(negDir, "i0248-inherit-refined", xerrors = 4)
-  @Test def neg_i0281 = compileFile(negDir, "i0281-null-primitive-conforms", xerrors = 3)
-  @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
-  @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
 
   @Test def dotc = compileDir(dotcDir + "tools/dotc", failedOther)(allowDeepSubtypes)
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", failedOther) // similar to dotc_config
@@ -141,8 +49,6 @@ class tests extends CompilerTest {
   //@Test def dotc_util = compileDir(dotcDir + "tools/dotc/util") //fails inside ExtensionMethods with ClassCastException
   @Test def tools_io = compileDir(dotcDir + "tools/io", failedOther) // similar to dotc_config
 
-  @Test def helloWorld = compileFile(posDir, "HelloWorld", doEmitBytecode)
-  @Test def labels = compileFile(posDir, "Labels", doEmitBytecode)
   //@Test def tools = compileDir(dotcDir + "tools", "-deep" :: Nil)(allowDeepSubtypes)
 
   @Test def testNonCyclic = compileArgs(Array(
@@ -160,9 +66,82 @@ class tests extends CompilerTest {
       "-Xprompt",
       "#runs", "2"))
 
-  val javaDir = "./tests/pos/java-interop/"
-  @Test def java_all = compileFiles(javaDir)
-
-
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
+
+
+  // =========== PARTEST MIGRATION NOTES =========
+  // Most pos and neg tests have been moved to tests/partest-tests/, run with
+  // sbt test or test-only partest
+
+  // =========== non-partest-able tests ==========
+  // Partest checks that mixed java and scala sources compile individually, but
+  // here the scala source depends on the java source.
+  val nonPPosDir = "./tests/non-partest-tests/pos/"
+  @Test def nonpartest_pos_javaOverride() = compileDir(nonPPosDir + "java-override")
+  @Test def nonpartest_pos_java_all = compileFiles(nonPPosDir + "java-interop/")
+
+  // =========== tests failing both here and in partest ========
+  // copy back to ./tests/partest-tests/pos/ once these tests are fixed
+  val failingPosDir = "./tests/failing/pos/"
+
+  // failing with "error: Error while emitting typers.scala
+  // assertion failed: Trying to access the this of another class"
+  @Test def pos_typers() = compileFile(failingPosDir, "typers")
+
+  // error: type p$C$$A overrides nothing: object `package` extends C[String]
+  @Test def pos_packageObj = compileFile(failingPosDir, "i0239")
+  @Test def pos_packageObj2 = compileFile(failingPosDir, "i239-packageObj")
+
+
+  // =========== partest flags ============
+  // default options are read from __defaultFlags.flags in the same directory
+  // as the test unless there's a test-specific .flags file with the same name
+  // as the test target (in which case defaultFlags is ignored).
+
+  // the pos tests that were compiled with failedOther above have been moved to
+  // pos-failedOther with corresponding defaultFlags
+
+  // removed unknown -Xfatal-warnings flag from:
+  // pos/tailcall/t4649.flags (becomes empty, so deleted)
+  // pos/tailcall/t6891.flags
+  // pos-failedOther/t2799.flags
+
+  // pos/nullarify added flags file for additional "-Ycheck:nullarify"
+
+  // The following files need deep subtypes and have thus a flags file that
+  // contains all defaultFlags except for "-Yno-deep-subtypes":
+  // pos/t2613
+
+  // neg/t0625 used noCheckOptions from above. Previous comment: "-Ycheck fails
+  // because there are structural types involving higher-kinded types. these
+  // are illegal, but are tested only later."
+
+  // added additional -Ystop-before:terminal to
+  // pos/HelloWorld
+  // pos/Labels
+
+  // ========== partest groups ===========
+  // The following tests originally have files in different groups (name ending
+  // in _1 resp. _2), but the second compilation doesn't get the classes from
+  // the first (because there are no class files yet?). Quick fix: removed
+  // grouping by removing the underscore.
+  // pos-failedOther/t1029
+  // pos-failedOther/t1942
+  // pos-failedOther/t2726
+  // pos-failedOther/t2741
+  // pos-failedOther/t2764
+
+  // ========== neg tests ================
+  // I added error number testing, for each neg test listed here with an
+  // expected number of errors I created a target.nerr file with the number
+  // that gets checked.
+
+  // The neg directory contains additional tests that weren't listed here,
+  // they all pass (=compilation fails) except for the following tests that
+  // were moved to "./tests/failing/neg/":
+  // t0625.scala [expected compilation failure, but compilation passed]
+  // t0654.scala [expected compilation failure, but compilation passed]
+  // t1164.scala [expected compilation failure, but compilation passed]
+  // tailcall [throws an exception while typechecking]
+
 }
