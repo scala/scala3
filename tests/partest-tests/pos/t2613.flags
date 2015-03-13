@@ -1,0 +1,1 @@
+-pagewidth 160 -Ycheck:tailrec,resolveSuper,mixin,restoreScopes -d ./out/
