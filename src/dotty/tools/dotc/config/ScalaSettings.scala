@@ -39,6 +39,7 @@ class ScalaSettings extends Settings.SettingGroup {
   val defines = PrefixSetting("-Dproperty=value", "-D", "Pass -Dproperty=value directly to the runtime system.")
   val toolcp = PathSetting("-toolcp", "Add to the runner classpath.", "")
   val nobootcp = BooleanSetting("-nobootcp", "Do not use the boot classpath for the scala jars.")
+  val strict = BooleanSetting("-strict", "Use strict type rules, which means some formerly legal code does not typecheck anymore.")
 
   val argfiles = BooleanSetting("@<file>", "A text file containing compiler arguments (options and source files)")
   val classpath = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"

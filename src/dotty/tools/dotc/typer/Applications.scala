@@ -716,7 +716,7 @@ trait Applications extends Compatibility { self: Typer =>
                   if (ctx.settings.verbose.value) ctx.warning(msg, tree.pos)
                 } else {
                   unapp.println(s" ${unapplyFn.symbol.owner} ${unapplyFn.symbol.owner is Scala2x}")
-                  ctx.error(msg, tree.pos)
+                  ctx.strictWarning(msg, tree.pos)
                 }
               case _ =>
             }
