@@ -13,8 +13,8 @@ object ValueClasses {
 
   def isDerivedValueClass(d: SymDenotation)(implicit ctx: Context) =
     d.isClass &&
-      (d.symbol ne defn.AnyValClass) &&
       d.derivesFrom(defn.AnyValClass) &&
+      (d.symbol ne defn.AnyValClass) &&
       !d.isPrimitiveValueClass
 
   def isMethodWithExtension(d: SymDenotation)(implicit ctx: Context) =
