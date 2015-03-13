@@ -17,6 +17,7 @@ import Types._
 import Decorators._
 import DenotTransformers._
 import util.Positions._
+import Constants.Constant
 import collection.mutable
 
 /** This transform
@@ -64,20 +65,13 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
 
     // Produce aligned accessors and constructor parameters. We have to adjust
     // for any outer parameters, which are last in the sequence of original
-    // parameter accessors but should come first in the constructor parameter list.
-    var accessors = cls.paramAccessors.filterNot(_.isSetter)
-    var vparamsWithOuter = vparams
-    if (!accessors.hasSameLengthAs(vparams)) {
-      accessors.reverse match {
-        case last :: _ if (last.name == nme.OUTER) =>
-          accessors = last :: accessors.init // align wth calling convention
-          vparamsWithOuter = ValDef(last.asTerm) :: vparams
-        case _ =>
-      }
-      assert(accessors.hasSameLengthAs(vparamsWithOuter),
-        i"lengths differ for $cls, param accs = $accessors, params = ($vparamsWithOuter%, %)")
+    // parameter accessors but come first in the constructor parameter list.
+    val accessors = cls.paramAccessors.filterNot(_.isSetter)
+    val vparamsWithOuterLast = vparams match {
+      case vparam :: rest if vparam.name == nme.OUTER => rest ::: vparam :: Nil
+      case _ => vparams
     }
-    val paramSyms = vparamsWithOuter map (_.symbol)
+    val paramSyms = vparamsWithOuterLast map (_.symbol)
 
     // Adjustments performed when moving code into the constructor:
     //  (1) Replace references to param accessors by constructor parameters
@@ -179,11 +173,27 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
     }
     splitStats(tree.body)
 
-    val accessorFields = accessors.filterNot(_ is Method)
-
     // The initializers for the retained accessors */
-    val copyParams = accessorFields.filter(isRetained).map(acc =>
-      Assign(ref(acc), ref(acc.subst(accessors, paramSyms))).withPos(tree.pos))
+    val copyParams = accessors flatMap { acc =>
+      if (!isRetained(acc)) Nil
+      else {
+        val target = if (acc.is(Method)) acc.field else acc
+        if (!target.exists) Nil // this case arises when the parameter accessor is an alias
+        else {
+          val param = acc.subst(accessors, paramSyms)
+          val assigns = Assign(ref(target), ref(param)).withPos(tree.pos) :: Nil
+          if (acc.name != nme.OUTER) assigns
+          else {
+            // insert test: if ($outer eq null) throw new NullPointerException
+            val nullTest = 
+              If(ref(param).select(defn.Object_eq).appliedTo(Literal(Constant(null))),
+                 Throw(New(defn.NullPointerExceptionClass.typeRef, Nil)),
+                 unitLiteral)
+            nullTest :: assigns
+          }
+        }
+      }
+    }
 
     // Drop accessors that are not retained from class scope
     val dropped = usage.dropped

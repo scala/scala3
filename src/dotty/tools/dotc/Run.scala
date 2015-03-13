@@ -40,14 +40,11 @@ class Run(comp: Compiler)(implicit ctx: Context) {
    */
   def compileSources(sources: List[SourceFile]) = Stats.monitorHeartBeat {
     if (sources forall (_.exists)) {
+      val phases = ctx.squashPhases(ctx.phasePlan,
+        ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, ctx.settings.YstopAfter.value, ctx.settings.Ycheck.value)
+      ctx.usePhases(phases)
       units = sources map (new CompilationUnit(_))
-      def stoppedBefore(phase: Phase) =
-        ctx.settings.YstopBefore.value.containsPhase(phase) ||
-        ctx.settings.YstopAfter.value.containsPhase(phase.prev)
-      val phasesToRun = ctx.allPhases.init
-        .takeWhile(!stoppedBefore(_))
-        .filterNot(ctx.settings.Yskip.value.containsPhase(_)) // TODO: skip only subphase
-      for (phase <- phasesToRun)
+      for (phase <- ctx.allPhases)
         if (!ctx.reporter.hasErrors) {
           if (ctx.settings.verbose.value) println(s"[$phase]")
           units = phase.runOn(units)
@@ -55,10 +52,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
             for (unit <- units) op(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
           if (ctx.settings.Xprint.value.containsPhase(phase))
             foreachUnit(printTree)
-          if (ctx.settings.Ycheck.value.containsPhase(phase) && !ctx.reporter.hasErrors) {
-            assert(phase.isCheckable, s"phase $phase is not checkable")
-            foreachUnit(TreeChecker.check(phasesToRun, _))
-          }
+
         }
     }
   }

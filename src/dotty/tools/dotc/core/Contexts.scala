@@ -487,13 +487,13 @@ object Contexts {
     def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = platform.rootLoader(root)
 
     // Set up some phases to get started */
-    usePhases(List(List(SomePhase)))
+    usePhases(List(SomePhase))
 
     /** The standard definitions */
     val definitions = new Definitions
 
     def squashed(p: Phase): Phase = {
-      squashedPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
+      allPhases.find(_.period.containsPhaseId(p.id)).getOrElse(NoPhase)
     }
   }
 
@@ -560,12 +560,15 @@ object Contexts {
      *  of underlying during a controlled operation exists. */
     private[core] val pendingUnderlying = new mutable.HashSet[Type]
 
+
+    private [core] var phasesPlan: List[List[Phase]] = _
+
     // Phases state
     /** Phases by id */
     private[core] var phases: Array[Phase] = _
 
-    /** Phases with consecutive Transforms groupped into a single phase */
-    private [core] var squashedPhases: Array[Phase] = _
+    /** Phases with consecutive Transforms groupped into a single phase, Empty array if squashing is disabled */
+    private [core] var squashedPhases: Array[Phase] = Array.empty[Phase]
 
     /** Next denotation transformer id */
     private[core] var nextDenotTransformerId: Array[Int] = _

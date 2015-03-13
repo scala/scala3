@@ -419,7 +419,7 @@ object Erasure extends TypeTestsCasts{
       val restpe = sym.info.resultType
       val ddef1 = untpd.cpy.DefDef(ddef)(
         tparams = Nil,
-        vparamss = ddef.vparamss.flatten :: Nil,
+        vparamss = (outer.paramDefs(sym) ::: ddef.vparamss.flatten) :: Nil,
         tpt = untpd.TypedSplice(TypeTree(restpe).withPos(ddef.tpt.pos)),
         rhs = ddef.rhs match {
           case id @ Ident(nme.WILDCARD) => untpd.TypedSplice(id.withType(restpe))

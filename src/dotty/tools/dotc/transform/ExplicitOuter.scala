@@ -297,5 +297,14 @@ object ExplicitOuter {
       case ex: ClassCastException =>
         throw new ClassCastException(i"no path exists from ${ctx.owner.enclosingClass} to $toCls")
     }
+    
+    /** The outer parameter definition of a constructor if it needs one */ 
+    def paramDefs(constr: Symbol): List[ValDef] = 
+      if (constr.isConstructor && hasOuterParam(constr.owner.asClass)) {
+        val MethodType(outerName :: _, outerType :: _) = constr.info
+        val outerSym = ctx.newSymbol(constr, outerName, Param, outerType)
+        ValDef(outerSym) :: Nil
+      }
+      else Nil
   }
 }

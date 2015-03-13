@@ -53,11 +53,11 @@ class Compiler {
            new ExplicitOuter,
            new Splitter),
       List(new LazyVals,
-           new ElimByName,
            new SeqLiterals,
            new InterceptedMethods,
            new Literalize,
            new Getters,
+           new ElimByName,
            new ResolveSuper),
       List(new Erasure),
       List(new Mixin,
@@ -86,7 +86,7 @@ class Compiler {
    */
   def rootContext(implicit ctx: Context): Context = {
     ctx.definitions.init(ctx)
-    ctx.usePhases(phases)
+    ctx.setPhasePlan(phases)
     val rootScope = new MutableScope
     val bootstrap = ctx.fresh
       .setPeriod(Period(nextRunId, FirstPhaseId))
@@ -104,10 +104,8 @@ class Compiler {
   }
 
   def newRun(implicit ctx: Context): Run = {
-    try new Run(this)(rootContext)
-    finally {
-      ctx.base.reset()
-      ctx.runInfo.clear()
-    }
+    ctx.base.reset()
+    ctx.runInfo.clear()
+    new Run(this)(rootContext)
   }
 }

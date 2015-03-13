@@ -35,8 +35,15 @@ import scala.util.control.NonFatal
  *   - After typer, identifiers and select nodes refer to terms only (all types should be
  *     represented as TypeTrees then).
  */
-class TreeChecker {
+class TreeChecker extends Phase {
   import ast.tpd._
+
+
+  def phaseName: String = "Ycheck"
+
+  def run(implicit ctx: Context): Unit = {
+    check(ctx.allPhases, ctx)
+  }
 
   private def previousPhases(phases: List[Phase])(implicit ctx: Context): List[Phase] = phases match {
     case (phase: TreeTransformer) :: phases1 =>

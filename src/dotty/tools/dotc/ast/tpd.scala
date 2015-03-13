@@ -117,9 +117,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Try(block: Tree, cases: List[CaseDef], finalizer: Tree)(implicit ctx: Context): Try =
     ta.assignType(untpd.Try(block, cases, finalizer), block, cases)
 
-  def Throw(expr: Tree)(implicit ctx: Context): Throw =
-    ta.assignType(untpd.Throw(expr))
-
   def SeqLiteral(elems: List[Tree])(implicit ctx: Context): SeqLiteral =
     ta.assignType(untpd.SeqLiteral(elems), elems)
 
@@ -252,6 +249,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def Annotated(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated =
     ta.assignType(untpd.Annotated(annot, arg), annot, arg)
+    
+  def Throw(expr: Tree)(implicit ctx: Context): Tree = 
+    ref(defn.throwMethod).appliedTo(expr)
 
   // ------ Making references ------------------------------------------------------
 
@@ -492,9 +492,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case _ => ta.assignType(tree1, expr, cases)
       }
     }
-
-    override def Throw(tree: Tree)(expr: Tree)(implicit ctx: Context): Throw =
-      ta.assignType(untpd.cpy.Throw(tree)(expr))
 
     override def SeqLiteral(tree: Tree)(elems: List[Tree])(implicit ctx: Context): SeqLiteral = {
       val tree1 = untpd.cpy.SeqLiteral(tree)(elems)

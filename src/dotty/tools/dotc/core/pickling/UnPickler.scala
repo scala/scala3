@@ -106,7 +106,8 @@ object UnPickler {
       case TempPolyType(tps, cinfo) => (tps, cinfo)
       case cinfo => (Nil, cinfo)
     }
-    val parentRefs = ctx.normalizeToClassRefs(parents, cls, decls)
+    var parentRefs = ctx.normalizeToClassRefs(parents, cls, decls)
+    if (parentRefs.isEmpty) parentRefs = defn.ObjectClass.typeRef :: Nil
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
       if (tsym.exists) tsym.setFlag(TypeParam)

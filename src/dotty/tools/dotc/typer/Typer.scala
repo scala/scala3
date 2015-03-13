@@ -347,8 +347,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val clsDef = TypeDef(x, templ).withFlags(Final)
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
-	      val tpt1 = typedType(tree.tpt)
-	      checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
+        val tpt1 = typedType(tree.tpt)
+        checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
         assignType(cpy.New(tree)(tpt1), tpt1)
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
     }
@@ -715,7 +715,15 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     }
     val (from, proto) =
       if (tree.from.isEmpty) enclMethInfo(ctx)
-      else (tree.from.asInstanceOf[tpd.Tree], WildcardType)
+      else {
+        val from = tree.from.asInstanceOf[tpd.Tree]
+        val proto = 
+          if (ctx.erasedTypes) from.symbol.info.finalResultType 
+          else WildcardType // We cannot reliably detect the internal type view of polymorphic or dependent methods
+                            // because we do not know the internal type params and method params.
+                            // Hence no adaptation is possible, and we assume WildcardType as prototype.
+        (from, proto)
+      }
     val expr1 = typedExpr(tree.expr orElse untpd.unitLiteral.withPos(tree.pos), proto)
     assignType(cpy.Return(tree)(expr1, from))
   }
@@ -727,9 +735,9 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     assignType(cpy.Try(tree)(expr1, cases1, finalizer1), expr1, cases1)
   }
 
-  def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Throw = track("typedThrow") {
+  def typedThrow(tree: untpd.Throw)(implicit ctx: Context): Tree = track("typedThrow") {
     val expr1 = typed(tree.expr, defn.ThrowableType)
-    assignType(cpy.Throw(tree)(expr1))
+    Throw(expr1).withPos(tree.pos)
   }
 
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(implicit ctx: Context): SeqLiteral = track("typedSeqLiteral") {
@@ -1358,9 +1366,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         case poly: PolyType =>
           if (pt.isInstanceOf[PolyProto]) tree
           else {
-            val (_, tvars) = constrained(poly, tree)
+            var typeArgs = tree match {
+              case Select(New(tpt), nme.CONSTRUCTOR) => tpt.tpe.dealias.argTypesLo
+              case _ => Nil
+            }
+            if (typeArgs.isEmpty) typeArgs = constrained(poly, tree)._2
             convertNewArray(
-              adaptInterpolated(tree.appliedToTypes(tvars), pt, original))
+              adaptInterpolated(tree.appliedToTypes(typeArgs), pt, original))
           }
         case wtp =>
           pt match {

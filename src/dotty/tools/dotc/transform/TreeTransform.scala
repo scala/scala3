@@ -83,7 +83,6 @@ object TreeTransforms {
     def prepareForCaseDef(tree: CaseDef)(implicit ctx: Context) = this
     def prepareForReturn(tree: Return)(implicit ctx: Context) = this
     def prepareForTry(tree: Try)(implicit ctx: Context) = this
-    def prepareForThrow(tree: Throw)(implicit ctx: Context) = this
     def prepareForSeqLiteral(tree: SeqLiteral)(implicit ctx: Context) = this
     def prepareForTypeTree(tree: TypeTree)(implicit ctx: Context) = this
     def prepareForSelectFromTypeTree(tree: SelectFromTypeTree)(implicit ctx: Context) = this
@@ -117,7 +116,6 @@ object TreeTransforms {
     def transformCaseDef(tree: CaseDef)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformReturn(tree: Return)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformTry(tree: Try)(implicit ctx: Context, info: TransformerInfo): Tree = tree
-    def transformThrow(tree: Throw)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformSeqLiteral(tree: SeqLiteral)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformTypeTree(tree: TypeTree)(implicit ctx: Context, info: TransformerInfo): Tree = tree
     def transformSelectFromTypeTree(tree: SelectFromTypeTree)(implicit ctx: Context, info: TransformerInfo): Tree = tree
@@ -282,7 +280,6 @@ object TreeTransforms {
       nxPrepMatch = index(transformations, "prepareForMatch")
       nxPrepReturn = index(transformations, "prepareForReturn")
       nxPrepTry = index(transformations, "prepareForTry")
-      nxPrepThrow = index(transformations, "prepareForThrow")
       nxPrepSeqLiteral = index(transformations, "prepareForSeqLiteral")
       nxPrepTypeTree = index(transformations, "prepareForTypeTree")
       nxPrepSelectFromTypeTree = index(transformations, "prepareForSelectFromTypeTree")
@@ -315,7 +312,6 @@ object TreeTransforms {
       nxTransCaseDef = index(transformations, "transformCaseDef")
       nxTransReturn = index(transformations, "transformReturn")
       nxTransTry = index(transformations, "transformTry")
-      nxTransThrow = index(transformations, "transformThrow")
       nxTransSeqLiteral = index(transformations, "transformSeqLiteral")
       nxTransTypeTree = index(transformations, "transformTypeTree")
       nxTransSelectFromTypeTree = index(transformations, "transformSelectFromTypeTree")
@@ -358,7 +354,6 @@ object TreeTransforms {
       nxPrepCaseDef = indexUpdate(prev.nxPrepCaseDef, changedTransformationClass, transformationIndex, "prepareForCaseDef", copy)
       nxPrepReturn = indexUpdate(prev.nxPrepReturn, changedTransformationClass, transformationIndex, "prepareForReturn", copy)
       nxPrepTry = indexUpdate(prev.nxPrepTry, changedTransformationClass, transformationIndex, "prepareForTry", copy)
-      nxPrepThrow = indexUpdate(prev.nxPrepThrow, changedTransformationClass, transformationIndex, "prepareForThrow", copy)
       nxPrepSeqLiteral = indexUpdate(prev.nxPrepSeqLiteral, changedTransformationClass, transformationIndex, "prepareForSeqLiteral", copy)
       nxPrepTypeTree = indexUpdate(prev.nxPrepTypeTree, changedTransformationClass, transformationIndex, "prepareForTypeTree", copy)
       nxPrepSelectFromTypeTree = indexUpdate(prev.nxPrepSelectFromTypeTree, changedTransformationClass, transformationIndex, "prepareForSelectFromTypeTree", copy)
@@ -390,7 +385,6 @@ object TreeTransforms {
       nxTransCaseDef = indexUpdate(prev.nxTransCaseDef, changedTransformationClass, transformationIndex, "transformCaseDef", copy)
       nxTransReturn = indexUpdate(prev.nxTransReturn, changedTransformationClass, transformationIndex, "transformReturn", copy)
       nxTransTry = indexUpdate(prev.nxTransTry, changedTransformationClass, transformationIndex, "transformTry", copy)
-      nxTransThrow = indexUpdate(prev.nxTransThrow, changedTransformationClass, transformationIndex, "transformThrow", copy)
       nxTransSeqLiteral = indexUpdate(prev.nxTransSeqLiteral, changedTransformationClass, transformationIndex, "transformSeqLiteral", copy)
       nxTransTypeTree = indexUpdate(prev.nxTransTypeTree, changedTransformationClass, transformationIndex, "transformTypeTree", copy)
       nxTransSelectFromTypeTree = indexUpdate(prev.nxTransSelectFromTypeTree, changedTransformationClass, transformationIndex, "transformSelectFromTypeTree", copy)
@@ -428,7 +422,6 @@ object TreeTransforms {
     var nxPrepCaseDef: Array[Int] = _
     var nxPrepReturn: Array[Int] = _
     var nxPrepTry: Array[Int] = _
-    var nxPrepThrow: Array[Int] = _
     var nxPrepSeqLiteral: Array[Int] = _
     var nxPrepTypeTree: Array[Int] = _
     var nxPrepSelectFromTypeTree: Array[Int] = _
@@ -461,7 +454,6 @@ object TreeTransforms {
     var nxTransCaseDef: Array[Int] = _
     var nxTransReturn: Array[Int] = _
     var nxTransTry: Array[Int] = _
-    var nxTransThrow: Array[Int] = _
     var nxTransSeqLiteral: Array[Int] = _
     var nxTransTypeTree: Array[Int] = _
     var nxTransSelectFromTypeTree: Array[Int] = _
@@ -535,7 +527,6 @@ object TreeTransforms {
     val prepForCaseDef: Mutator[CaseDef] = (trans, tree, ctx) => trans.prepareForCaseDef(tree)(ctx)
     val prepForReturn: Mutator[Return] = (trans, tree, ctx) => trans.prepareForReturn(tree)(ctx)
     val prepForTry: Mutator[Try] = (trans, tree, ctx) => trans.prepareForTry(tree)(ctx)
-    val prepForThrow: Mutator[Throw] = (trans, tree, ctx) => trans.prepareForThrow(tree)(ctx)
     val prepForSeqLiteral: Mutator[SeqLiteral] = (trans, tree, ctx) => trans.prepareForSeqLiteral(tree)(ctx)
     val prepForTypeTree: Mutator[TypeTree] = (trans, tree, ctx) => trans.prepareForTypeTree(tree)(ctx)
     val prepForSelectFromTypeTree: Mutator[SelectFromTypeTree] = (trans, tree, ctx) => trans.prepareForSelectFromTypeTree(tree)(ctx)
@@ -764,17 +755,6 @@ object TreeTransforms {
     }
 
     @tailrec
-    final private[TreeTransforms] def goThrow(tree: Throw, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
-      if (cur < info.transformers.length) {
-        val trans = info.transformers(cur)
-        trans.transformThrow(tree)(ctx.withPhase(trans.treeTransformPhase), info) match {
-          case t: Throw => goThrow(t, info.nx.nxTransThrow(cur + 1))
-          case t => transformSingle(t, cur + 1)
-        }
-      } else tree
-    }
-
-    @tailrec
     final private[TreeTransforms] def goSeqLiteral(tree: SeqLiteral, cur: Int)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (cur < info.transformers.length) {
         val trans = info.transformers(cur)
@@ -943,7 +923,6 @@ object TreeTransforms {
         case tree: CaseDef => goCaseDef(tree, info.nx.nxTransCaseDef(cur))
         case tree: Return => goReturn(tree, info.nx.nxTransReturn(cur))
         case tree: Try => goTry(tree, info.nx.nxTransTry(cur))
-        case tree: Throw => goThrow(tree, info.nx.nxTransThrow(cur))
         case tree: SeqLiteral => goSeqLiteral(tree, info.nx.nxTransLiteral(cur))
         case tree: TypeTree => goTypeTree(tree, info.nx.nxTransTypeTree(cur))
         case tree: Alternative => goAlternative(tree, info.nx.nxTransAlternative(cur))
@@ -1156,13 +1135,6 @@ object TreeTransforms {
             val cases1 = tree.cases.mapConserve(transform(_, mutatedInfo, cur)).asInstanceOf[List[CaseDef]]
             val finalizer = transform(tree.finalizer, mutatedInfo, cur)
             goTry(cpy.Try(tree)(block, cases1, finalizer), mutatedInfo.nx.nxTransTry(cur))
-          }
-        case tree: Throw =>
-          implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForThrow, info.nx.nxPrepThrow, tree, cur)
-          if (mutatedInfo eq null) tree
-          else {
-            val expr = transform(tree.expr, mutatedInfo, cur)
-            goThrow(cpy.Throw(tree)(expr), mutatedInfo.nx.nxTransThrow(cur))
           }
         case tree: SeqLiteral =>
           implicit val mutatedInfo: TransformerInfo = mutateTransformers(info, prepForSeqLiteral, info.nx.nxPrepSeqLiteral, tree, cur)
