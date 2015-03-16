@@ -40,7 +40,8 @@ case class DottyPartestTask(taskDef: TaskDef) extends Task {
   def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
     val forkedCp    = scala.util.Properties.javaClassPath
     val classLoader = new URLClassLoader(forkedCp.split(File.pathSeparator).map(new File(_).toURI.toURL))
-    val runner      = SBTRunner(Framework.fingerprint, eventHandler, loggers, new File(DottyPartestConfig.testRoot), classLoader, null, null, Array.empty[String])
+    val runner      = new DottySBTSuiteRunner(Framework.fingerprint, eventHandler, loggers, new File(DottyPartestConfig.testRoot),
+        classLoader, null, null, Array.empty[String])
 
     if (Runtime.getRuntime().maxMemory() / (1024*1024) < 800)
       loggers foreach (_.warn(s"Low heap size detected (~ ${Runtime.getRuntime().maxMemory() / (1024*1024)}M). Please add the following to your build.sbt: javaOptions in Test +=" + "\"-Xmx1G\""))
@@ -55,15 +56,6 @@ case class DottyPartestTask(taskDef: TaskDef) extends Task {
     }
 
     Array()
-  }
-
-  type SBTRunner = { def execute(kinds: Array[String]): String }
-
-  // use reflection to instantiate scala.tools.partest.nest.SBTRunner,
-  // casting to the structural type SBTRunner above so that method calls on the result will be invoked reflectively as well
-  private def SBTRunner(partestFingerprint: Fingerprint, eventHandler: EventHandler, loggers: Array[Logger], srcDir: File, testClassLoader: URLClassLoader, javaCmd: File, javacCmd: File, scalacArgs: Array[String]): SBTRunner = {
-    val runnerClass = Class.forName("dotty.partest.DottySBTSuiteRunner")
-    runnerClass.getConstructors()(0).newInstance(partestFingerprint, eventHandler, loggers, srcDir, testClassLoader, javaCmd, javacCmd, scalacArgs).asInstanceOf[SBTRunner]
   }
 
   /** A possibly zero-length array of string tags associated with this task. */

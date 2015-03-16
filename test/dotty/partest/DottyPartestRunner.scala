@@ -108,7 +108,7 @@ class DottyRunner(testFile: File, suiteRunner: SuiteRunner) extends nest.Runner(
 
     def nerrIsOk(reason: String) = {
       import scala.util.matching.Regex
-      val nerrFinder = """compilation failed with (\d\d?) errors""".r
+      val nerrFinder = """compilation failed with (\d\d+) errors""".r
       reason match {
         case nerrFinder(found) => 
           SFile(FileOps(testFile) changeExtension "nerr").safeSlurp match {
