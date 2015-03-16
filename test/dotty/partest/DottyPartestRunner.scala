@@ -101,10 +101,15 @@ class DottyRunner(testFile: File, suiteRunner: SuiteRunner) extends nest.Runner(
     import TestState.{ Crash, Fail }
     import scala.reflect.internal.FatalError
 
-    sealed abstract class State
-    case class FoundFailed() extends State
-    case class FailedWithWrongNErr(expected: String, found: String) extends State
-    case class NoneFailed() extends State
+    sealed abstract class NegTestState
+    // Don't get confused, the neg test passes when compilation fails for at
+    // least one round (optionally checking the number of compiler errors and
+    // compiler console output)
+    case class CompFailed() extends NegTestState
+    // the neg test fails when all rounds return either of these:
+    case class CompFailedButWrongNErr(expected: String, found: String) extends NegTestState
+    case class CompFailedButWrongDiff() extends NegTestState
+    case class CompSucceeded() extends NegTestState
 
     def nerrIsOk(reason: String) = {
       import scala.util.matching.Regex
@@ -112,10 +117,10 @@ class DottyRunner(testFile: File, suiteRunner: SuiteRunner) extends nest.Runner(
       reason match {
         case nerrFinder(found) => 
           SFile(FileOps(testFile) changeExtension "nerr").safeSlurp match {
-            case Some(exp) if (exp != found) => FailedWithWrongNErr(exp, found)
-            case _ => FoundFailed
+            case Some(exp) if (exp != found) => CompFailedButWrongNErr(exp, found)
+            case _ => CompFailed
           }
-        case _ => FoundFailed
+        case _ => CompFailed
       }
     }
   
@@ -129,19 +134,31 @@ class DottyRunner(testFile: File, suiteRunner: SuiteRunner) extends nest.Runner(
 
     val failureStates = compFailingRounds.map({ case (result, _) => result match {
       // or, OK, we'll let you crash the compiler with a FatalError if you supply a check file
-      case Crash(_, t, _) if !checkFile.canRead || !t.isInstanceOf[FatalError] => NoneFailed
-      case Fail(_, reason, _) => if (diffIsOk) nerrIsOk(reason) else NoneFailed
-      case _ => if (diffIsOk) FoundFailed else NoneFailed
+      case Crash(_, t, _) if !checkFile.canRead || !t.isInstanceOf[FatalError] => CompSucceeded
+      case Fail(_, reason, _) => if (diffIsOk) nerrIsOk(reason) else CompFailedButWrongDiff
+      case _ => if (diffIsOk) CompFailed else CompFailedButWrongDiff
     }})
 
-    if (failureStates.exists({ case FoundFailed => true; case _ => false })) {
+    if (failureStates.exists({ case CompFailed => true; case _ => false })) {
       true
     } else {
       val existsNerr = failureStates.exists({ 
-        case FailedWithWrongNErr(exp, found) => nextTestActionFailing(s"wrong number of compilation errors, expected: $exp, found: $found"); true
+        case CompFailedButWrongNErr(exp, found) => nextTestActionFailing(s"wrong number of compilation errors, expected: $exp, found: $found"); true
         case _ => false
       })
-      if (existsNerr) false else nextTestActionFailing("expected compilation failure")
+      if (existsNerr) {
+        false 
+      } else {
+        val existsDiff = failureStates.exists({ 
+          case CompFailedButWrongDiff() => nextTestActionFailing(s"output differs"); true
+          case _ => false
+        })
+        if (existsDiff) {
+          false
+        } else {
+          nextTestActionFailing("expected compilation failure")
+        }
+      }
     }
   }
 }
