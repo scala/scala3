@@ -31,6 +31,7 @@ object DottyBuild extends Build {
     // get reflect and xml onboard
     libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value,
                                 "org.scala-lang.modules" %% "scala-xml" % "1.0.1",
+                                "org.scala-lang.modules" %% "scala-partest" % "1.0.5" % "test",
                                 "me.d-d" % "scala-compiler" % "2.11.5-20141212-151631-beaa78b033",
                                 "jline" % "jline" % "2.12"),
 
@@ -52,6 +53,15 @@ object DottyBuild extends Build {
     fork in run := true,
     fork in Test := true,
     parallelExecution in Test := false,
+    // partest
+    testFrameworks += new TestFramework("dotty.partest.Framework"),
+    definedTests in Test += (new sbt.TestDefinition("partest",
+      // marker fingerprint since there are no test classes to be discovered by sbt:
+      new sbt.testing.AnnotatedFingerprint {
+        def isModule = true
+        def annotationName = "partest"
+      }, true, Array())
+    ),
 
     // http://grokbase.com/t/gg/simple-build-tool/135ke5y90p/sbt-setting-jvm-boot-paramaters-for-scala
     javaOptions <++= (managedClasspath in Runtime, packageBin in Compile) map { (attList, bin) =>
