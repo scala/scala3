@@ -123,13 +123,16 @@ class tests extends CompilerTest {
   // ========== partest groups ===========
   // The following tests originally have files in different groups (name ending
   // in _1 resp. _2), but the second compilation doesn't get the classes from
-  // the first (because there are no class files yet?). Quick fix: removed
-  // grouping by removing the underscore.
+  // the first (because there are no class files yet?).
+  // Quick fix: removed grouping by replacing the underscore with a dash:
   // pos-failedOther/t1029
   // pos-failedOther/t1942
   // pos-failedOther/t2726
   // pos-failedOther/t2741
-  // pos-failedOther/t2764
+
+  // pos/java-interop tests don't work with partest yet because again classes
+  // don't make it accross compilation runs. Moved to non-partest-tests/pos/
+
 
   // ========== neg tests ================
   // I added error number testing, for each neg test listed here with an

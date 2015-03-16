@@ -104,7 +104,7 @@ class DottyRunner(testFile: File, suiteRunner: SuiteRunner) extends nest.Runner(
     sealed abstract class State
     case class FoundFailed() extends State
     case class FailedWithWrongNErr(expected: String, found: String) extends State
-    case class NotFailed() extends State
+    case class NoneFailed() extends State
 
     def nerrIsOk(reason: String) = {
       import scala.util.matching.Regex
@@ -129,9 +129,9 @@ class DottyRunner(testFile: File, suiteRunner: SuiteRunner) extends nest.Runner(
 
     val failureStates = compFailingRounds.map({ case (result, _) => result match {
       // or, OK, we'll let you crash the compiler with a FatalError if you supply a check file
-      case Crash(_, t, _) if !checkFile.canRead || !t.isInstanceOf[FatalError] => NotFailed
-      case Fail(_, reason, _) => if (diffIsOk) nerrIsOk(reason) else NotFailed
-      case _ => if (diffIsOk) FoundFailed else NotFailed
+      case Crash(_, t, _) if !checkFile.canRead || !t.isInstanceOf[FatalError] => NoneFailed
+      case Fail(_, reason, _) => if (diffIsOk) nerrIsOk(reason) else NoneFailed
+      case _ => if (diffIsOk) FoundFailed else NoneFailed
     }})
 
     if (failureStates.exists({ case FoundFailed => true; case _ => false })) {
