@@ -1,0 +1,1 @@
+ -Ycheck:extmethods -pagewidth 160 -Yno-deep-subtypes -Ycheck:tailrec,resolveSuper,mixin,restoreScopes -d ./out/
