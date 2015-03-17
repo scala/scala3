@@ -35,9 +35,46 @@ import scala.util.control.NonFatal
  *   - After typer, identifiers and select nodes refer to terms only (all types should be
  *     represented as TypeTrees then).
  */
-class TreeChecker extends Phase {
+class TreeChecker extends Phase with SymTransformer {
   import ast.tpd._
 
+
+  private val seenClasses = collection.mutable.HashMap[String, Symbol]()
+  private val seenModuleVals = collection.mutable.HashMap[String, Symbol]()
+
+  def printError(str: String) = {
+    println(Console.RED + "[error] " + Console.WHITE  + str)
+  }
+
+  val NoSuperClass = Trait | Package
+
+  def testDuplicate(sym: Symbol, registry: mutable.Map[String, Symbol], typ: String)(implicit ctx: Context) = {
+    val name = sym.fullName.toString
+    if (registry.contains(name))
+      if (this.flatClasses || !(sym.isAnonymousFunction || sym.isAnonymousClass || sym.isAnonymousModuleVal))
+        printError(s"$typ defined twice $sym ${sym.id} ${registry(name).id}")
+    registry(name) = sym
+  }
+
+
+  def transformSym(symd: SymDenotation)(implicit ctx: Context): SymDenotation = {
+    val sym = symd.symbol
+
+    if (sym.isClass) {
+      val validSuperclass = defn.ScalaValueClasses.contains(sym) ||  defn.syntheticCoreClasses.contains(sym) ||
+        (sym eq defn.ObjectClass) || (sym is NoSuperClass) || (sym.asClass.superClass.exists)
+      if (!validSuperclass)
+        printError(s"$sym has no superclass set")
+
+      testDuplicate(sym, seenClasses, "class")
+
+    } else if (sym is ModuleVal) {
+      testDuplicate(sym, seenModuleVals, "module val")
+    }
+
+
+    symd
+  }
 
   def phaseName: String = "Ycheck"
 
