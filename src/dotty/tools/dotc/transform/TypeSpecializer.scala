@@ -3,18 +3,26 @@ package dotty.tools.dotc.transform
 import dotty.tools.dotc.ast.TreeTypeMap
 import dotty.tools.dotc.ast.tpd._
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.core.{Symbols, Flags}
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, MiniPhaseTransform}
 import dotty.tools.dotc.core.Decorators._
-import scala.collection.mutable.{ListBuffer, ArrayBuffer}
+import scala.collection.mutable
 
 class TypeSpecializer extends MiniPhaseTransform {
   
-  override def phaseName = "Type Specializer"
+  override def phaseName = "specialize"
 
   final val maxTparamsToSpecialize = 2
-  
+
+  private val specializationRequests: mutable.HashMap[Symbol, List[List[Type]]] = mutable.HashMap.empty
+
+  def registerSpecializationRequest(method: Symbol)(arguments: List[Type])(implicit ctx: Context) = {
+    assert(ctx.phaseId <= this.period.phaseId)
+    val prev = specializationRequests.getOrElse(method, List.empty)
+    specializationRequests.put(method, arguments :: prev)
+  }
+
   private final def specialisedTypes(implicit ctx: Context) =
     Map(ctx.definitions.ByteType -> "$mcB$sp",
     ctx.definitions.BooleanType -> "$mcZ$sp",
@@ -25,24 +33,30 @@ class TypeSpecializer extends MiniPhaseTransform {
     ctx.definitions.DoubleType -> "$mcD$sp",
     ctx.definitions.CharType -> "$mcC$sp",
     ctx.definitions.UnitType -> "$mcV$sp")
-  
+
+  def shouldSpecializeForAll(sym: Symbols.Symbol)(implicit ctx: Context): Boolean = {
+    // either -Yspecialize:all is given, or sym has @specialize annotation
+    sym.denot.hasAnnotation(ctx.definitions.specializedAnnot) || (ctx.settings.Yspecialize.value == "all")
+  }
+
+  def shouldSpecializeForSome(sym: Symbol)(implicit ctx: Context): List[List[Type]] = {
+    specializationRequests.getOrElse(sym, Nil)
+  }
+
+
+
+
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
 
-    def rewireType(tpe: Type) = tpe match {
-        case tpe: TermRef => tpe.widen
-        case _ => tpe
-      }
-    
     tree.tpe.widen match {
         
       case poly: PolyType if !(tree.symbol.isPrimaryConstructor
-                               || (tree.symbol is Flags.Label)
-                               || (tree.tparams.length > maxTparamsToSpecialize)) => {
+                               || (tree.symbol is Flags.Label)) => {
         val origTParams = tree.tparams.map(_.symbol)
         val origVParams = tree.vparamss.flatten.map(_.symbol)
         println(s"specializing ${tree.symbol} for Tparams: ${origTParams.length}")
 
-        def specialize(instatiations: collection.mutable.ListBuffer[Type], names: collection.mutable.ArrayBuffer[String]): Tree = {
+        def specialize(instatiations: List[Type], names: List[String]): Tree = {
 
           val newSym = ctx.newSymbol(tree.symbol.owner, (tree.name + names.mkString).toTermName, tree.symbol.flags | Flags.Synthetic, poly.instantiate(instatiations.toList))
           polyDefDef(newSym, { tparams => vparams => {
@@ -58,29 +72,25 @@ class TypeSpecializer extends MiniPhaseTransform {
           })
         }
 
-        def generateSpecializations(remainingTParams: List[TypeDef])
-                                  (instatiated: ArrayBuffer[TypeDef], instatiations: ListBuffer[Type],
-                                    names: ArrayBuffer[String]): Iterable[Tree] = {
+        def generateSpecializations(remainingTParams: List[TypeDef], remainingBounds: List[TypeBounds])
+                                  (instatiations: List[Type],
+                                    names: List[String]): Iterable[Tree] = {
           if (remainingTParams.nonEmpty) {
             val typeToSpecialize = remainingTParams.head
-            specialisedTypes.flatMap { tpnme =>
+            val bounds = remainingBounds.head
+            specialisedTypes.filter{ tpnme =>
+              bounds.contains(tpnme._1)
+            }.flatMap { tpnme =>
               val tpe = tpnme._1
               val nme = tpnme._2
-              instatiated.+=(typeToSpecialize)
-              instatiations.+=(tpe)
-              names.+=(nme)
-              val r = generateSpecializations(remainingTParams.tail)(instatiated, instatiations, names)
-              instatiated.drop(1)
-              instatiations.drop(1)
-              names.drop(1)
-              r
+              generateSpecializations(remainingTParams.tail, remainingBounds.tail)(tpe :: instatiations, nme :: names)
             }
           } else
-            List(specialize(instatiations, names))
+            List(specialize(instatiations.reverse, names.reverse))
         }
 
 
-        Thicket(tree :: generateSpecializations(tree.tparams)(ArrayBuffer.empty, ListBuffer.empty, ArrayBuffer.empty).toList)
+        Thicket(tree :: generateSpecializations(tree.tparams, poly.paramBounds)(List.empty, List.empty).toList)
       }
       case _ => tree
     }
