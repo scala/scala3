@@ -117,19 +117,6 @@ object TypeErasure {
       erasure(tp)
   }
 
-  /** The erasure of a symbol's info. This is different of `erasure` in the way `ExprType`s are
-   *  treated. `eraseInfo` maps them them to nullary method types, whereas `erasure` maps them
-   *  to `Function0`.
-   */
-  def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type =
-    scalaErasureFn.eraseInfo(tp, sym)(erasureCtx)
-
-  /** The erasure of a function result type. Differs from normal erasure in that
-   *  Unit is kept instead of being mapped to BoxedUnit.
-   */
-  def eraseResult(tp: Type)(implicit ctx: Context): Type =
-    scalaErasureFn.eraseResult(tp)(erasureCtx)
-
   /**  The symbol's erased info. This is the type's erasure, except for the following symbols:
    *
    *   - For $asInstanceOf           : [T]T
@@ -148,7 +135,7 @@ object TypeErasure {
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractType) TypeAlias(WildcardType)
     else if (sym.isConstructor) outer.addParam(sym.owner.asClass, erase(tp)(erasureCtx))
-    else eraseInfo(tp, sym)(erasureCtx) match {
+    else erase.eraseInfo(tp, sym)(erasureCtx) match {
       case einfo: MethodType if sym.isGetter && einfo.resultType.isRef(defn.UnitClass) =>
         defn.BoxedUnitClass.typeRef
       case einfo =>
@@ -346,6 +333,10 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
     else JavaArrayType(this(elemtp))
   }
 
+  /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s are
+   *  treated. `eraseInfo` maps them them to nullary method types, whereas `apply` maps them
+   *  to `Function0`.
+   */
   def eraseInfo(tp: Type, sym: Symbol)(implicit ctx: Context) = tp match {
     case ExprType(rt) =>
       if (sym is Param) apply(tp)
@@ -354,7 +345,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
         // forwarders to mixin methods.
         // See doc comment for ElimByName for speculation how we could improve this.
       else MethodType(Nil, Nil, eraseResult(rt))
-    case tp => erasure(tp)
+    case tp => this(tp)
   }
 
   private def eraseDerivedValueClassRef(tref: TypeRef)(implicit ctx: Context): Type =
@@ -365,6 +356,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
     (if (cls.owner is Package) normalizeClass(cls) else cls).typeRef
   }
 
+  /** The erasure of a function result type. */
   private def eraseResult(tp: Type)(implicit ctx: Context): Type = tp match {
     case tp: TypeRef =>
       val sym = tp.typeSymbol
