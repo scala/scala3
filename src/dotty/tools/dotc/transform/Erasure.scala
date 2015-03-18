@@ -78,6 +78,13 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
       case res: tpd.This =>
         assert(!ExplicitOuter.referencesOuter(ctx.owner.enclosingClass, res),
           i"Reference to $res from ${ctx.owner.showLocated}")
+      case ret: tpd.Return =>
+        // checked only after erasure, as checking before erasure is complicated
+        // due presence of type params in returned types
+        val from = if (ret.from.isEmpty) ctx.owner.enclosingMethod else ret.from.symbol
+        val rType = from.info.finalResultType
+        assert(ret.expr.tpe <:< rType,
+          i"Returned value:${ret.expr}  does not conform to result type(${ret.expr.tpe.widen} of method $from")
       case _ =>
     }
   }
