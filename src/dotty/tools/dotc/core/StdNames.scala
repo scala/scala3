@@ -226,6 +226,7 @@ object StdNames {
     val ANYname: N                  = "<anyname>"
     val CONSTRUCTOR: N              = Names.CONSTRUCTOR.toString
     val DEFAULT_CASE: N             = "defaultCase$"
+    val EVT2U: N                    = "evt2u$"
     val EQEQ_LOCAL_VAR: N           = "eqEqTemp$"
     val FAKE_LOCAL_THIS: N          = "this$"
     val IMPLCLASS_CONSTRUCTOR: N    = "$init$"
@@ -257,6 +258,7 @@ object StdNames {
     val SKOLEM: N                   = "<skolem>"
     val SPECIALIZED_INSTANCE: N     = "specInstance$"
     val THIS: N                     = "_$this"
+    val U2EVT: N                    = "u2evt$"
 
     final val Nil: N                = "Nil"
     final val Predef: N             = "Predef"

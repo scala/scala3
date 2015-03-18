@@ -192,6 +192,8 @@ object Erasure extends TypeTestsCasts{
 
     /** Generate a synthetic cast operation from tree.tpe to pt.
      *  Does not do any boxing/unboxing (this is handled upstream).
+     *  Casts from and to ErasedValueType are special, see the explanation
+     *  in ExtensionMethods#transform.
      */
     def cast(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
       // TODO: The commented out assertion fails for tailcall/t6574.scala
@@ -203,9 +205,18 @@ object Erasure extends TypeTestsCasts{
         if treeElem.widen.isPrimitiveValueType && !ptElem.isPrimitiveValueType =>
           // See SI-2386 for one example of when this might be necessary.
           cast(ref(defn.runtimeMethod(nme.toObjectArray)).appliedTo(tree), pt)
+        case (_, ErasedValueType(cls, _)) =>
+          ref(u2evt(cls)).appliedTo(tree)
         case _ =>
-          if (pt.isPrimitiveValueType) primitiveConversion(tree, pt.classSymbol)
-          else tree.asInstance(pt)
+          tree.tpe.widen match {
+            case ErasedValueType(cls, _) =>
+              ref(evt2u(cls)).appliedTo(tree)
+            case _ =>
+              if (pt.isPrimitiveValueType)
+                primitiveConversion(tree, pt.classSymbol)
+              else
+                tree.asInstance(pt)
+          }
       }
     }
 
