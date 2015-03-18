@@ -36,6 +36,7 @@ class Pickler extends Phase {
       val treePkl = new TreePickler(pickler)
       treePkl.pickle(tree :: Nil)
       unit.addrOfTree = treePkl.buf.addrOfTree
+      unit.addrOfSym = treePkl.addrOfSym
       if (tree.pos.exists)
         new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil, tree.pos)
 

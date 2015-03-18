@@ -26,7 +26,11 @@ class TreePickler(pickler: TastyPickler) {
     op
     fillRef(lengthAddr, currentAddr, relative = true)
   }
-  
+
+  def addrOfSym(sym: Symbol): Option[Addr] = {
+    symRefs.get(sym)
+  }
+
   private var makeSymbolicRefsTo: Symbol = NoSymbol
 
   /** All references to members of class `sym` are pickled
