@@ -3,6 +3,7 @@ package printing
 
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._
+import TypeErasure.ErasedValueType
 import Contexts.Context, Scopes.Scope, Denotations._, SymDenotations._, Annotations.Annotation
 import StdNames.nme
 import ast.{Trees, untpd, tpd}
@@ -132,6 +133,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           return toText(tp.info)
       case ExprType(result) =>
         return "=> " ~ toText(result)
+      case ErasedValueType(clazz, underlying) =>
+        return "ErasedValueType(" ~ toText(clazz.typeRef) ~ ", " ~ toText(underlying) ~ ")"
       case tp: ClassInfo =>
         return toTextParents(tp.instantiatedParents) ~ "{...}"
       case JavaArrayType(elemtp) =>
