@@ -1,8 +1,10 @@
 package dotty.tools
 package dotc
 
+import dotty.tools.dotc.core.pickling.{TastyBuffer, TastyPickler}
 import util.SourceFile
 import ast.{tpd, untpd}
+import TastyBuffer._
 
 class CompilationUnit(val source: SourceFile) {
 
@@ -14,5 +16,7 @@ class CompilationUnit(val source: SourceFile) {
 
   def isJava = source.file.name.endsWith(".java")
   
-  var pickled: Array[Byte] = Array()
+  lazy val pickled: TastyPickler = new TastyPickler()
+
+  var addrOfTree: tpd.Tree => Option[Addr] = (_ => None)
 }

@@ -32,19 +32,19 @@ class Pickler extends Phase {
       pickling.println(i"unpickling in run ${ctx.runId}")
       if (ctx.settings.YtestPickler.value) beforePickling(unit) = tree.show
 
-      val pickler = new TastyPickler            
+      val pickler = unit.pickled
       val treePkl = new TreePickler(pickler)
       treePkl.pickle(tree :: Nil)
+      unit.addrOfTree = treePkl.buf.addrOfTree
       if (tree.pos.exists)
         new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil, tree.pos)
 
-      unit.pickled = pickler.assembleParts()
       def rawBytes = // not needed right now, but useful to print raw format.
-        unit.pickled.iterator.grouped(10).toList.zipWithIndex.map {
+        unit.pickled.assembleParts().iterator.grouped(10).toList.zipWithIndex.map {
           case (row, i) => s"${i}0: ${row.mkString(" ")}"
         }
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
-      if (pickling ne noPrinter) new TastyPrinter(unit.pickled).printContents()
+      if (pickling ne noPrinter) new TastyPrinter(pickler.assembleParts()).printContents()
     } 
   }
   
@@ -60,7 +60,7 @@ class Pickler extends Phase {
     ctx.definitions.init
     val unpicklers = 
       for (unit <- units) yield {
-        val unpickler = new DottyUnpickler(unit.pickled)
+        val unpickler = new DottyUnpickler(unit.pickled.assembleParts())
         unpickler.enter(roots = Set())
         unpickler
       }  
