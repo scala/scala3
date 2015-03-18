@@ -88,6 +88,7 @@ object typers {
   }
 
   class Refinements {
+    trait C { type T; def process(x: T): Int }
     val y: C { type T; val key: T; def process(x: T): Int } = ???
   }
 
