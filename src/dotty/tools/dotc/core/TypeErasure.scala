@@ -55,9 +55,9 @@ object TypeErasure {
     override def computeHash = doHash(cls, underlying)
   }
 
-  private def erasureIdx(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcardOK: Boolean) =
+  private def erasureIdx(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean) =
     (if (isJava) 1 else 0) +
-    (if (isSemi) 2 else 0) +
+    (if (semiEraseVCs) 2 else 0) +
     (if (isConstructor) 4 else 0) +
     (if (wildcardOK) 8 else 0)
 
@@ -65,41 +65,32 @@ object TypeErasure {
 
   for {
     isJava <- List(false, true)
-    isSemi <- List(false, true)
+    semiEraseVCs <- List(false, true)
     isConstructor <- List(false, true)
     wildcardOK <- List(false, true)
-  } erasures(erasureIdx(isJava, isSemi, isConstructor, wildcardOK)) =
-    new TypeErasure(isJava, isSemi, isConstructor, wildcardOK)
+  } erasures(erasureIdx(isJava, semiEraseVCs, isConstructor, wildcardOK)) =
+    new TypeErasure(isJava, semiEraseVCs, isConstructor, wildcardOK)
 
-  /** Produces an erasure function.
-   *  @param isJava        Arguments should be treated the way Java does it
-   *  @param isSemi        Value classes are mapped in an intermediate step to
-   *                       ErasedValueClass types, instead of going directly to
-   *                       the erasure of the underlying type.
-   *  @param isConstructor Argument forms part of the type of a constructor
-   *  @param wildcardOK    Wildcards are acceptable (true when using the erasure
-   *                       for computing a signature name).
+  /** Produces an erasure function. See the documentation of the class [[TypeErasure]]
+   *  for a description of each parameter.
    */
-  private def erasureFn(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcardOK: Boolean): TypeErasure =
-    erasures(erasureIdx(isJava, isSemi, isConstructor, wildcardOK))
-
-  private val scalaErasureFn = erasureFn(isJava = false, isSemi = false, isConstructor = false, wildcardOK = false)
-  private val scalaSigFn = erasureFn(isJava = false, isSemi = false, isConstructor = false, wildcardOK = true)
-  private val javaSigFn = erasureFn(isJava = true, isSemi = false, isConstructor = false, wildcardOK = true)
-  private val semiErasureFn = erasureFn(isJava = false, isSemi = true, isConstructor = false, wildcardOK = false)
+  private def erasureFn(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean): TypeErasure =
+    erasures(erasureIdx(isJava, semiEraseVCs, isConstructor, wildcardOK))
 
   /** The current context with a phase no later than erasure */
   private def erasureCtx(implicit ctx: Context) =
     if (ctx.erasedTypes) ctx.withPhase(ctx.erasurePhase).addMode(Mode.FutureDefsOK) else ctx
 
-  def erasure(tp: Type)(implicit ctx: Context): Type = scalaErasureFn(tp)(erasureCtx)
-  def semiErasure(tp: Type)(implicit ctx: Context): Type = semiErasureFn(tp)(erasureCtx)
+  def erasure(tp: Type, semiEraseVCs: Boolean = true)(implicit ctx: Context): Type =
+    erasureFn(isJava = false, semiEraseVCs, isConstructor = false, wildcardOK = false)(tp)(erasureCtx)
+
   def sigName(tp: Type, isJava: Boolean)(implicit ctx: Context): TypeName = {
     val seqClass = if (isJava) defn.ArrayClass else defn.SeqClass
     val normTp =
       if (tp.isRepeatedParam) tp.translateParameterized(defn.RepeatedParamClass, seqClass)
       else tp
-    (if (isJava) javaSigFn else scalaSigFn).sigName(normTp)(erasureCtx)
+    val erase = erasureFn(isJava, semiEraseVCs = false, isConstructor = false, wildcardOK = true)
+    erase.sigName(normTp)(erasureCtx)
   }
 
   /** The erasure of a top-level reference. Differs from normal erasure in that
@@ -126,7 +117,7 @@ object TypeErasure {
    *                                   isJava, isConstructor set according to symbol.
    */
   def transformInfo(sym: Symbol, tp: Type)(implicit ctx: Context): Type = {
-    val erase = erasureFn(sym is JavaDefined, isSemi = true, sym.isConstructor, wildcardOK = false)
+    val erase = erasureFn(sym is JavaDefined, semiEraseVCs = true, sym.isConstructor, wildcardOK = false)
 
     def eraseParamBounds(tp: PolyType): Type =
       tp.derivedPolyType(
@@ -228,12 +219,15 @@ object TypeErasure {
 import TypeErasure._
 
 /**
- *  This is used as the Scala erasure during the erasure phase itself
-   *  It differs from normal erasure in that value classes are erased to ErasedValueTypes which
-   *  are then later converted to the underlying parameter type in phase posterasure.
- *
+ *  @param isJava        Arguments should be treated the way Java does it
+ *  @param semiEraseVCs  If true, value classes are semi-erased to ErasedValueType
+ *                       (they will be fully erased in [[ElimErasedValueType]]).
+ *                       If false, they are erased like normal classes.
+ *  @param isConstructor Argument forms part of the type of a constructor
+ *  @param wildcardOK    Wildcards are acceptable (true when using the erasure
+ *                       for computing a signature name).
  */
-class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wildcardOK: Boolean) extends DotClass {
+class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean) extends DotClass {
 
   /**  The erasure |T| of a type T. This is:
    *
@@ -290,7 +284,7 @@ class TypeErasure(isJava: Boolean, isSemi: Boolean, isConstructor: Boolean, wild
     case OrType(tp1, tp2) =>
       ctx.typeComparer.orType(this(tp1), this(tp2), erased = true)
     case tp: MethodType =>
-      val paramErasure = erasureFn(tp.isJava, isSemi, isConstructor, wildcardOK)(_)
+      val paramErasure = erasureFn(tp.isJava, semiEraseVCs, isConstructor, wildcardOK)(_)
       val formals = tp.paramTypes.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {
         case rt: MethodType =>
