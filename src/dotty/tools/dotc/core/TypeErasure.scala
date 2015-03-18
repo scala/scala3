@@ -3,6 +3,7 @@ package dotc
 package core
 
 import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Decorators._, Flags.JavaDefined
+import Uniques.unique
 import dotc.transform.ExplicitOuter._
 import typer.Mode
 import util.DotClass
@@ -51,8 +52,30 @@ object TypeErasure {
       false
   }
 
-  case class ErasedValueType(cls: ClassSymbol, underlying: Type) extends CachedGroundType {
-    override def computeHash = doHash(cls, underlying)
+  /** A type representing the semi-erasure of a derived value class, see SIP-15
+   *  where it's called "C$unboxed" for a class C.
+   *  Derived value classes are erased to this type during Erasure (when
+   *  semiEraseVCs = true) and subsequently erased to their underlying type
+   *  during ElimErasedValueType. This type is outside the normal Scala class
+   *  hierarchy: it is a subtype of no other type and is a supertype only of
+   *  Nothing. This is because this type is only useful for type adaptation (see
+   *  [[Erasure.Boxing#adaptToType]]).
+   *
+   *  @param   cls               The value class symbol
+   *  @param   erasedUnderlying  The erased type of the single field of the value class
+   */
+  abstract case class ErasedValueType(cls: ClassSymbol, erasedUnderlying: Type)
+  extends CachedGroundType with ValueType {
+    override def computeHash = doHash(cls, erasedUnderlying)
+  }
+
+  final class CachedErasedValueType(cls: ClassSymbol, erasedUnderlying: Type)
+    extends ErasedValueType(cls, erasedUnderlying)
+
+  object ErasedValueType {
+    def apply(cls: ClassSymbol, erasedUnderlying: Type)(implicit ctx: Context) = {
+      unique(new CachedErasedValueType(cls, erasedUnderlying))
+    }
   }
 
   private def erasureIdx(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean, wildcardOK: Boolean) =
