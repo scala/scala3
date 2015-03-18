@@ -75,7 +75,7 @@ object NameOps {
     def isAvoidClashName = name endsWith AVOID_CLASH_SUFFIX
     def isImportName = name startsWith IMPORT
     def isFieldName = name endsWith LOCAL_SUFFIX
-    def isInheritedName = name.length > 0 && name.head == '(' && name.startsWith(nme.INHERITED)
+    def isShadowedName = name.length > 0 && name.head == '(' && name.startsWith(nme.SHADOWED)
     def isDefaultGetterName = name.isTermName && name.asTermName.defaultGetterIndex >= 0
     def isScala2LocalSuffix = name.endsWith(" ")
     def isModuleVarName(name: Name): Boolean =
@@ -149,19 +149,22 @@ object NameOps {
 
     /** The expanded name of `name` relative to this class `base` with given `separator`
      */
-    def expandedName(base: Symbol, separator: Name = nme.EXPAND_SEPARATOR)(implicit ctx: Context): N = {
-      val prefix = if (base is Flags.ExpandedName) base.name else base.fullNameSeparated('$')
-      name.fromName(prefix ++ separator ++ name).asInstanceOf[N]
+    def expandedName(base: Symbol)(implicit ctx: Context): N =
+      expandedName(if (base is Flags.ExpandedName) base.name else base.fullNameSeparated('$'))
+
+    /** The expanded name of `name` relative to `basename` with given `separator`
+     */
+    def expandedName(prefix: Name)(implicit ctx: Context): N =
+      name.fromName(prefix ++ nme.EXPAND_SEPARATOR ++ name).asInstanceOf[N]
+
+    def unexpandedName: N = {
+      val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
+      if (idx < 0) name else (name drop (idx + nme.EXPAND_SEPARATOR.length)).asInstanceOf[N]
     }
 
-    def unexpandedName(separator: Name = nme.EXPAND_SEPARATOR): N = {
-      val idx = name.lastIndexOfSlice(separator)
-      if (idx < 0) name else (name drop (idx + separator.length)).asInstanceOf[N]
-    }
+    def shadowedName: N = likeTyped(nme.SHADOWED ++ name)
 
-    def inheritedName: N = likeTyped(nme.INHERITED ++ name)
-
-    def revertInherited: N = likeTyped(name.drop(nme.INHERITED.length))
+    def revertShadowed: N = likeTyped(name.drop(nme.SHADOWED.length))
 
     /** Translate a name into a list of simple TypeNames and TermNames.
      *  In all segments before the last, type/term is determined by whether
@@ -289,11 +292,11 @@ object NameOps {
 
     /** The name of an accessor for protected symbols. */
     def protectedAccessorName: TermName =
-      PROTECTED_PREFIX ++ name.unexpandedName()
+      PROTECTED_PREFIX ++ name.unexpandedName
 
     /** The name of a setter for protected symbols. Used for inherited Java fields. */
     def protectedSetterName: TermName =
-      PROTECTED_SET_PREFIX ++ name.unexpandedName()
+      PROTECTED_SET_PREFIX ++ name.unexpandedName
 
     def moduleVarName: TermName =
       name ++ MODULE_VAR_SUFFIX

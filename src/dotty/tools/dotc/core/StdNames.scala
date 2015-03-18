@@ -100,7 +100,6 @@ object StdNames {
     val EXPAND_SEPARATOR: N           = "$$"
     val IMPL_CLASS_SUFFIX: N          = "$class"
     val IMPORT: N                     = "<import>"
-    val INHERITED: N                  = "(inherited)"  // tag to be used until we have proper name kinds
     val INTERPRETER_IMPORT_WRAPPER: N = "$iw"
     val INTERPRETER_LINE_PREFIX: N    = "line"
     val INTERPRETER_VAR_PREFIX: N     = "res"
@@ -118,6 +117,7 @@ object StdNames {
     val PROTECTED_PREFIX: N           = "protected$"
     val PROTECTED_SET_PREFIX: N       = PROTECTED_PREFIX + "set"
     val ROOT: N                       = "<root>"
+    val SHADOWED: N                  = "(shadowed)"  // tag to be used until we have proper name kinds
     val SINGLETON_SUFFIX: N           = ".type"
     val SPECIALIZED_SUFFIX: N         = "$sp"
     val SUPER_PREFIX: N               = "super$"

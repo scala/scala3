@@ -11,7 +11,7 @@ import config.Config.summarizeDepth
 import scala.annotation.switch
 
 class PlainPrinter(_ctx: Context) extends Printer {
-  protected[this] implicit val ctx: Context = _ctx
+  protected[this] implicit def ctx: Context = _ctx
 
   protected def maxToTextRecursions = 100
 
@@ -32,6 +32,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def recursionLimitExceeded() = {
     ctx.warning("Exceeded recursion depth attempting to print.")
     (new Throwable).printStackTrace
+  }
+  
+  /** If true, tweak output so it is the same before and after pickling */
+  protected def homogenizedView: Boolean = ctx.settings.YtestPickler.value
+  
+  def homogenize(tp: Type): Type = tp match {
+    case tp: TypeVar if homogenizedView && tp.isInstantiated => homogenize(tp.instanceOpt)
+    case _ => tp
   }
 
   /** Render elements alternating with `sep` string */
@@ -86,20 +94,18 @@ class PlainPrinter(_ctx: Context) extends Printer {
    */
   private def refinementChain(tp: Type): List[Type] =
     tp :: (tp match {
-      case RefinedType(parent, _) => refinementChain(parent)
+      case RefinedType(parent, _) => refinementChain(parent.stripTypeVar)
       case _ => Nil
     })
 
   def toText(tp: Type): Text = controlled {
-    tp match {
+    homogenize(tp) match {
       case tp: TypeType =>
         toTextRHS(tp)
-      case tp: TermRef if !tp.denotationIsCurrent =>
+      case tp: TermRef if !tp.denotationIsCurrent || tp.symbol.is(Module) =>
         toTextRef(tp) ~ ".type"
       case tp: TermRef if tp.denot.isOverloaded =>
         "<overloaded " ~ toTextRef(tp) ~ ">"
-      case tp: TermRef if tp.symbol is Module =>
-        toText(tp.underlying) ~ ".type"
       case tp: SingletonType =>
         toText(tp.underlying) ~ "(" ~ toTextRef(tp) ~ ")"
       case tp: TypeRef =>
@@ -249,8 +255,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           else " = "
           eql ~ toText(lo)
         } else
-          (if (lo == defn.NothingType) Text() else " >: " ~ toText(lo)) ~
-            (if (hi == defn.AnyType) Text() else " <: " ~ toText(hi))
+          (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo)) ~
+            (if (hi isRef defn.AnyClass) Text() else " <: " ~ toText(hi))
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
         val preText = toTextLocal(pre)
         val (tparams, otherDecls) = decls.toList partition treatAsTypeParam

@@ -10,7 +10,7 @@ import util.SimpleMap
 import collection.mutable
 import ast.tpd._
 
-trait TypeOps { this: Context =>
+trait TypeOps { this: Context => // TODO: Make standalone object.
 
   final def asSeenFrom(tp: Type, pre: Type, cls: Symbol, theMap: AsSeenFromMap): Type = {
 

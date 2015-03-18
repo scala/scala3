@@ -295,7 +295,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     val t = new TreeTraverser {
       var outerRhs: Tree = tree
 
-      def traverse(tree: tpd.Tree): Unit = tree match {
+      def traverse(tree: tpd.Tree)(implicit ctx: Context): Unit = tree match {
         case t: DefDef =>
           if (t.symbol is Flags.Label)
             res.put(outerRhs, t :: res.getOrElse(outerRhs, Nil))

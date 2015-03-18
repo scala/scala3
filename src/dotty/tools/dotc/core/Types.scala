@@ -30,6 +30,7 @@ import config.Config
 import config.Printers._
 import annotation.tailrec
 import Flags.FlagSet
+import typer.Mode
 import language.implicitConversions
 
 object Types {
@@ -981,7 +982,7 @@ object Types {
      *               when forming the function type.
      */
     def toFunctionType(dropLast: Int = 0)(implicit ctx: Context): Type = this match {
-      case mt @ MethodType(_, formals) if !mt.isDependent =>
+      case mt @ MethodType(_, formals) if !mt.isDependent || ctx.mode.is(Mode.AllowDependentFunctions) =>
         val formals1 = if (dropLast == 0) formals else formals dropRight dropLast
         defn.FunctionType(
             formals1 mapConserve (_.underlyingIfRepeated(mt.isJava)), mt.resultType)
@@ -1004,30 +1005,6 @@ object Types {
     def showWithUnderlying(n: Int = 1)(implicit ctx: Context): String = this match {
       case tp: TypeProxy if n > 0 => s"$show with underlying ${tp.underlying.showWithUnderlying(n - 1)}"
       case _ => show
-    }
-
-    type VarianceMap = SimpleMap[TypeVar, Integer]
-
-    /** All occurrences of type vars in this type that satisfy predicate
-     *  `include` mapped to their variances (-1/0/1) in this type, where
-     *  -1 means: only covariant occurrences
-     *  +1 means: only covariant occurrences
-     *  0 means: mixed or non-variant occurrences
-     */
-    def variances(include: TypeVar => Boolean)(implicit ctx: Context): VarianceMap = track("variances") {
-      val accu = new TypeAccumulator[VarianceMap] {
-        def apply(vmap: VarianceMap, t: Type): VarianceMap = t match {
-          case t: TypeVar
-          if !t.isInstantiated && (ctx.typerState.constraint contains t) && include(t) =>
-            val v = vmap(t)
-            if (v == null) vmap.updated(t, variance)
-            else if (v == variance) vmap
-            else vmap.updated(t, 0)
-          case _ =>
-            foldOver(vmap, t)
-        }
-      }
-      accu(SimpleMap.Empty, this)
     }
 
     /** A simplified version of this type which is equivalent wrt =:= to this type.
@@ -1343,7 +1320,7 @@ object Types {
     }
 
     protected def asMemberOf(prefix: Type)(implicit ctx: Context) =
-      if (name.isInheritedName) prefix.nonPrivateMember(name.revertInherited)
+      if (name.isShadowedName) prefix.nonPrivateMember(name.revertShadowed)
       else prefix.member(name)
 
     /** (1) Reduce a type-ref `W # X` or `W { ... } # U`, where `W` is a wildcard type
@@ -1441,7 +1418,7 @@ object Types {
      *  the public name.
      */
     final def shadowed(implicit ctx: Context): NamedType =
-      NamedType(prefix, name.inheritedName)
+      NamedType(prefix, name.shadowedName)
 
     override def equals(that: Any) = that match {
       case that: NamedType =>
@@ -1964,7 +1941,13 @@ object Types {
       }
       else resType
 
-    private[this] var myDependencyStatus: DependencyStatus = Unknown
+    var myDependencyStatus: DependencyStatus = Unknown
+    
+    private def combine(x: DependencyStatus, y: DependencyStatus): DependencyStatus = {
+      val status = (x & StatusMask) max (y & StatusMask)
+      val provisional = (x | y) & Provisional
+      (if (status == TrueDeps) status else status | provisional).toByte
+    }
     
     /** The dependency status of this method. Some examples:
      *  
@@ -1975,26 +1958,27 @@ object Types {
      *                              // dependency can be eliminated by dealiasing.
      */
     private def dependencyStatus(implicit ctx: Context): DependencyStatus = {
-      if (myDependencyStatus == Unknown) {
+      if (myDependencyStatus != Unknown) myDependencyStatus
+      else {
         val isDepAcc = new TypeAccumulator[DependencyStatus] {
           def apply(x: DependencyStatus, tp: Type) = 
             if (x == TrueDeps) x
-            else x max {
+            else 
               tp match {
                 case MethodParam(`thisMethodType`, _) => TrueDeps
                 case tp @ TypeRef(MethodParam(`thisMethodType`, _), name) =>
                   tp.info match { // follow type alias to avoid dependency
-                    case TypeAlias(alias) => apply(x, alias) max FalseDeps
+                    case TypeAlias(alias) => combine(apply(x, alias), FalseDeps)
                     case _ => TrueDeps
                   }
-                case _ =>
-                  foldOver(x, tp)
+                case tp: TypeVar if !tp.isInstantiated => combine(x, Provisional)
+                case _ => foldOver(x, tp)
               }
-            }
         }
-        myDependencyStatus = isDepAcc(NoDeps, resType)
+        val result = isDepAcc(NoDeps, resType)
+        if ((result & Provisional) == 0) myDependencyStatus = result
+        (result & StatusMask).toByte
       }
-      myDependencyStatus
     }
 
     /** Does result type contain references to parameters of this method type,
@@ -2086,6 +2070,8 @@ object Types {
     private final val NoDeps: DependencyStatus = 1    // no dependent parameters found
     private final val FalseDeps: DependencyStatus = 2 // all dependent parameters are prefixes of non-depended alias types
     private final val TrueDeps: DependencyStatus = 3  // some truly dependent parameters exist
+    private final val StatusMask: DependencyStatus = 3 // the bits indicating actual dependency status
+    private final val Provisional: DependencyStatus = 4  // set if dependency status can still change due to type variable instantiations
   }
 
   object JavaMethodType extends MethodTypeCompanion {
@@ -2269,8 +2255,12 @@ object Types {
    *  @param  creatorState  The typer state in which the variable was created.
    *  @param  owningTree    The function part of the TypeApply tree tree that introduces
    *                        the type variable.
+   *  @paran  owner         The current owner if the context where the variable was created.
+   *  
+   *  `owningTree` and `owner` are used to determine whether a type-variable can be instantiated
+   *  at some given point. See `Inferencing#interpolateUndetVars`.
    */
-  final class TypeVar(val origin: PolyParam, creatorState: TyperState, val owningTree: untpd.Tree) extends CachedProxyType with ValueType {
+  final class TypeVar(val origin: PolyParam, creatorState: TyperState, val owningTree: untpd.Tree, val owner: Symbol) extends CachedProxyType with ValueType {
 
     /** The permanent instance type of the the variable, or NoType is none is given yet */
     private[core] var inst: Type = NoType
@@ -2602,7 +2592,8 @@ object Types {
       if ((annot eq this.annot) && (tpe eq this.tpe)) this
       else AnnotatedType(annot, tpe)
 
-    override def stripTypeVar(implicit ctx: Context): Type = tpe.stripTypeVar
+    override def stripTypeVar(implicit ctx: Context): Type = 
+      derivedAnnotatedType(annot, tpe.stripTypeVar)
     override def stripAnnots(implicit ctx: Context): Type = tpe.stripAnnots
   }
 
@@ -2734,7 +2725,13 @@ object Types {
       tp match {
         case tp: NamedType =>
           if (stopAtStatic && tp.symbol.isStatic) tp
-          else tp.derivedSelect(this(tp.prefix))
+          else {
+            val saved = variance
+            variance = 0
+            val result = tp.derivedSelect(this(tp.prefix))
+            variance = saved
+            result
+          }
 
         case _: ThisType
           | _: BoundType
@@ -2867,17 +2864,25 @@ object Types {
     protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
 
     protected var variance = 1
-
+    
+    protected def applyToPrefix(x: T, tp: NamedType) = {
+      val saved = variance
+      variance = 0
+      val result = this(x, tp.prefix)
+      variance = saved
+      result
+    }
+    
     def foldOver(x: T, tp: Type): T = tp match {
       case tp: TypeRef =>
         if (stopAtStatic && tp.symbol.isStatic) x
         else {
           val tp1 = tp.prefix.lookupRefined(tp.name)
-          this(x, if (tp1.exists) tp1 else tp.prefix)
+          if (tp1.exists) this(x, tp1) else applyToPrefix(x, tp)
         }
       case tp: TermRef =>
         if (stopAtStatic && tp.currentSymbol.isStatic) x
-        else this(x, tp.prefix)
+        else applyToPrefix(x, tp)
 
       case _: ThisType
          | _: BoundType

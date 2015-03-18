@@ -18,7 +18,7 @@ import config.Printers._
 import language.implicitConversions
 
 trait NamerContextOps { this: Context =>
-
+ 
   /** Enter symbol into current class, if current class is owner of current context,
    *  or into current scope, if not. Should always be called instead of scope.enter
    *  in order to make sure that updates to class members are reflected in
@@ -79,6 +79,56 @@ trait NamerContextOps { this: Context =>
       .dropWhile(_.owner != sym)
       .dropWhile(_.owner == sym)
       .next
+
+  /** The given type, unless `sym` is a constructor, in which case the
+   *  type of the constructed instance is returned
+   */
+  def effectiveResultType(sym: Symbol, typeParams: List[Symbol], given: Type) = 
+    if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams map (_.typeRef))
+    else given
+
+  /** if isConstructor, make sure it has one non-implicit parameter list */
+  def normalizeIfConstructor(paramSymss: List[List[Symbol]], isConstructor: Boolean) =
+    if (isConstructor &&
+      (paramSymss.isEmpty || paramSymss.head.nonEmpty && (paramSymss.head.head is Implicit)))
+      Nil :: paramSymss
+    else
+      paramSymss
+
+  /** The method type corresponding to given parameters and result type */
+  def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(implicit ctx: Context): Type = {
+    val monotpe =
+      (valueParamss :\ resultType) { (params, resultType) =>
+        val make =
+          if (params.nonEmpty && (params.head is Implicit)) ImplicitMethodType
+          else if (isJava) JavaMethodType
+          else MethodType
+        if (isJava)
+          for (param <- params)
+            if (param.info.isDirectRef(defn.ObjectClass)) param.info = defn.AnyType
+        make.fromSymbols(params, resultType)
+      }
+    if (typeParams.nonEmpty) PolyType.fromSymbols(typeParams, monotpe)
+    else if (valueParamss.isEmpty) ExprType(monotpe)
+    else monotpe
+  }
+  
+  /** Find moduleClass/sourceModule in effective scope */
+  private def findModuleBuddy(name: Name)(implicit ctx: Context) = {
+    val scope = effectiveScope
+    val it = scope.lookupAll(name).filter(_ is Module)
+    assert(it.hasNext, s"no companion $name in $scope")
+    it.next
+  }      
+
+  /** Add moduleClass or sourceModule functionality to completer
+   *  for a module or module class
+   */
+  def adjustModuleCompleter(completer: LazyType, name: Name) = 
+    if (name.isTermName)
+      completer withModuleClass (_ => findModuleBuddy(name.moduleClassName))
+    else
+      completer withSourceModule (_ => findModuleBuddy(name.sourceModuleName))
 }
 
 /** This class creates symbols from definitions and imports and gives them
@@ -163,14 +213,6 @@ class Namer { typer: Typer =>
     }
   }
 
-  /** Find moduleClass/sourceModule in effective scope */
-  private def findModuleBuddy(name: Name)(implicit ctx: Context) = {
-    val scope = ctx.effectiveScope
-    val it = scope.lookupAll(name).filter(_ is Module)
-    assert(it.hasNext, s"no companion $name in $scope")
-    it.next
-  }
-
   /** If this tree is a member def or an import, create a symbol of it
    *  and store in symOfTree map.
    */
@@ -191,15 +233,9 @@ class Namer { typer: Typer =>
 
     /** Add moduleClass/sourceModule to completer if it is for a module val or class */
     def adjustIfModule(completer: LazyType, tree: MemberDef) =
-      if (tree.mods is Module) {
-        val name = tree.name.encode
-        if (name.isTermName)
-          completer withModuleClass (_ => findModuleBuddy(name.moduleClassName))
-        else
-          completer withSourceModule (_ => findModuleBuddy(name.sourceModuleName))
-      }
+      if (tree.mods is Module) ctx.adjustModuleCompleter(completer, tree.name.encode) 
       else completer
-
+      
     typr.println(i"creating symbol for $tree in ${ctx.mode}")
 
     def checkNoConflict(name: Name): Unit = {
@@ -395,7 +431,7 @@ class Namer { typer: Typer =>
     private def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
         if (sym is Module) moduleValSig(sym)
-        else valOrDefDefSig(original, sym, Nil, identity)(localContext(sym).setNewScope)
+        else valOrDefDefSig(original, sym, Nil, Nil, identity)(localContext(sym).setNewScope)
       case original: DefDef =>
         val typer1 = new Typer
         nestedTyper(sym) = typer1
@@ -436,11 +472,11 @@ class Namer { typer: Typer =>
 
     protected implicit val ctx: Context = localContext(cls).setMode(ictx.mode &~ Mode.InSuperCall)
 
-    val TypeDef(name, impl @ Template(constr, parents, self, body)) = original
+    val TypeDef(name, impl @ Template(constr, parents, self, _)) = original
 
-    val (params, rest) = body span {
+    val (params, rest) = impl.body span {
       case td: TypeDef => td.mods is Param
-      case td: ValDef => td.mods is ParamAccessor
+      case vd: ValDef => vd.mods is ParamAccessor
       case _ => false
     }
 
@@ -495,13 +531,7 @@ class Namer { typer: Typer =>
 
       index(rest)(inClassContext(selfInfo))
       denot.info = ClassInfo(cls.owner.thisType, cls, parentRefs, decls, selfInfo)
-      if (cls is Trait) {
-        if (body forall isNoInitMember) {
-          cls.setFlag(NoInits)
-          if (body forall isPureInterfaceMember)
-            cls.setFlag(PureInterface)
-        }
-      }
+      if (impl.body forall isNoInitMember) cls.setFlag(NoInits)
     }
   }
 
@@ -546,7 +576,7 @@ class Namer { typer: Typer =>
    *  @param paramFn  A wrapping function that produces the type of the
    *                  defined symbol, given its final return type
    */
-  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, typeParams: List[Symbol], paramFn: Type => Type)(implicit ctx: Context): Type = {
+  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, typeParams: List[Symbol], paramss: List[List[Symbol]], paramFn: Type => Type)(implicit ctx: Context): Type = {
 
     def inferredType = {
       /** A type for this definition that might be inherited from elsewhere:
@@ -575,7 +605,7 @@ class Namer { typer: Typer =>
             }
             val iResType = iInstInfo.finalResultType.asSeenFrom(site, cls)
             if (iResType.exists)
-              typr.println(s"using inherited type; raw: $iRawInfo, inst: $iInstInfo, inherited: $iResType")
+              typr.println(i"using inherited type for ${mdef.name}; raw: $iRawInfo, inst: $iInstInfo, inherited: $iResType")
             tp & iResType
           }
         }
@@ -627,14 +657,30 @@ class Namer { typer: Typer =>
         lhsType orElse WildcardType
       }
     }
-
-    val pt = mdef.tpt match {
-      case _: untpd.DerivedTypeTree => WildcardType
-      case TypeTree(untpd.EmptyTree) => inferredType
-      case _ => WildcardType
+    
+    val tptProto = mdef.tpt match {
+      case _: untpd.DerivedTypeTree => 
+        WildcardType
+      case TypeTree(untpd.EmptyTree) => 
+        inferredType
+      case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
+        val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
+        mdef match {
+          case mdef: DefDef if mdef.name == nme.ANON_FUN =>
+            val hygienicType = avoid(rhsType, paramss.flatten)
+            if (!(hygienicType <:< tpt.tpe))
+              ctx.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
+                i"it is not a supertype of the hygienic type $hygienicType", mdef.pos)
+            //println(i"lifting $rhsType over $paramss -> $hygienicType = ${tpt.tpe}")
+            //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
+          case _ =>
+        }
+        WildcardType
+      case _ => 
+        WildcardType
     }
-    paramFn(typedAheadType(mdef.tpt, pt).tpe)
-  }
+    paramFn(typedAheadType(mdef.tpt, tptProto).tpe)
+ }
 
   /** The type signature of a DefDef with given symbol */
   def defDefSig(ddef: DefDef, sym: Symbol)(implicit ctx: Context) = {
@@ -643,37 +689,19 @@ class Namer { typer: Typer =>
     vparamss foreach completeParams
     val isConstructor = name == nme.CONSTRUCTOR
     def typeParams = tparams map symbolOfTree
+    val paramSymss = ctx.normalizeIfConstructor(vparamss.nestedMap(symbolOfTree), isConstructor)
     def wrapMethType(restpe: Type): Type = {
-      var paramSymss = vparamss.nestedMap(symbolOfTree)
-      // Make sure constructor has one non-implicit parameter list
-      if (isConstructor &&
-          (paramSymss.isEmpty || paramSymss.head.nonEmpty && (paramSymss.head.head is Implicit)))
-        paramSymss = Nil :: paramSymss
       val restpe1 = // try to make anonymous functions non-dependent, so that they can be used in closures
         if (name == nme.ANON_FUN) avoid(restpe, paramSymss.flatten)
         else restpe
-      val monotpe =
-        (paramSymss :\ restpe1) { (params, restpe) =>
-          val isJava = ddef.mods is JavaDefined
-          val make =
-            if (params.nonEmpty && (params.head is Implicit)) ImplicitMethodType
-            else if(isJava) JavaMethodType
-            else MethodType
-          if(isJava) params.foreach { symbol =>
-            if(symbol.info.isDirectRef(defn.ObjectClass)) symbol.info = defn.AnyType
-          }
-          make.fromSymbols(params, restpe)
-        }
-      if (typeParams.nonEmpty) PolyType.fromSymbols(typeParams, monotpe)
-      else if (vparamss.isEmpty) ExprType(monotpe)
-      else monotpe
+      ctx.methodType(tparams map symbolOfTree, paramSymss, restpe1, isJava = ddef.mods is JavaDefined)
     }
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
-      wrapMethType(sym.owner.typeRef.appliedTo(typeParams map (_.typeRef)))
+      wrapMethType(ctx.effectiveResultType(sym, typeParams, NoType))
     }
-    else valOrDefDefSig(ddef, sym, typeParams, wrapMethType)
+    else valOrDefDefSig(ddef, sym, typeParams, paramSymss, wrapMethType)
   }
 
   def typeDefSig(tdef: TypeDef, sym: Symbol)(implicit ctx: Context): Type = {

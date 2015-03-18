@@ -249,7 +249,6 @@ object PickleBuffer {
       EXPANDEDNAME -> ExpandedName,
       IMPLCLASS -> (Scala2PreSuper, ImplClass),
       SPECIALIZED -> Specialized,
-      DEFAULTINIT -> DefaultInit,
       VBRIDGE -> VBridge,
       VARARGS -> JavaVarargs,
       ENUM -> Enum)

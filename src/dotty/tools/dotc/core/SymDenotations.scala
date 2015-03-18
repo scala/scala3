@@ -95,7 +95,7 @@ object SymDenotations {
     private def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
 
     /** Update the flag set */
-    private final def flags_=(flags: FlagSet): Unit =
+    final def flags_=(flags: FlagSet): Unit =
       myFlags = adaptFlags(flags)
 
     /** Set given flags(s) of this denotation */
@@ -271,7 +271,7 @@ object SymDenotations {
     /** The name with which the denoting symbol was created */
     final def originalName(implicit ctx: Context) = {
       val d = initial.asSymDenotation
-      if (d is ExpandedName) d.name.unexpandedName() else d.name // !!!DEBUG, was: effectiveName
+      if (d is ExpandedName) d.name.unexpandedName else d.name // !!!DEBUG, was: effectiveName
     }
 
     /** The encoded full path name of this denotation, where outer names and inner names
@@ -338,7 +338,7 @@ object SymDenotations {
 
     /** Is this symbol the root class or its companion object? */
     final def isRoot: Boolean =
-      (name.toTermName == nme.ROOT) && (owner eq NoSymbol)
+      (name.toTermName == nme.ROOT || name == nme.ROOTPKG) && (owner eq NoSymbol)
 
     /** Is this symbol the empty package class or its companion object? */
     final def isEmptyPackage(implicit ctx: Context): Boolean =
@@ -423,7 +423,7 @@ object SymDenotations {
 
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(implicit ctx: Context) =
-      (this is JavaStatic) || this.exists && owner.isStaticOwner
+      (this is JavaStatic) || this.exists && owner.isStaticOwner || this.isRoot
 
     /** Is this a package class or module class that defines static symbols? */
     final def isStaticOwner(implicit ctx: Context): Boolean =
@@ -456,8 +456,9 @@ object SymDenotations {
       }
     }
 
-    /** Is this a user defined "def" method? Excluded are accessors. */
-    final def isSourceMethod(implicit ctx: Context) = this is (Method, butNot = AccessorOrLabel)
+    /** Is this a user defined "def" method? Excluded are accessors and anonymous functions. */
+    final def isSourceMethod(implicit ctx: Context) = 
+      this.is(Method, butNot = AccessorOrLabel) && !isAnonymousFunction
 
     /** Is this a setter? */
     final def isGetter(implicit ctx: Context) =

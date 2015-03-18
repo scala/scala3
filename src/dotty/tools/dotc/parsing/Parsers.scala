@@ -61,7 +61,7 @@ object Parsers {
       atPos(Position(start, end, point))(t)
 
     def atPos[T <: Positioned](start: Offset, point: Offset)(t: T): T =
-      atPos(start, point, in.lastOffset)(t)
+      atPos(start, point, in.lastOffset max start)(t)
 
     def atPos[T <: Positioned](start: Offset)(t: T): T =
       atPos(start, start)(t)

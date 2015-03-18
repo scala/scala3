@@ -83,7 +83,8 @@ class LazyVals extends MiniPhaseTransform with SymTransformer {
       * dotty.runtime(eg dotty.runtime.LazyInt)
       */
     def transformLocalValDef(x: ValDef)(implicit ctx: Context) = x match {
-      case x@ValDef(name, tpt, valueInitter) =>
+      case ValDef(name, tpt, _) =>
+        val valueInitter = x.rhs
         val holderName = ctx.freshName(name.toString + StdNames.nme.LAZY_LOCAL).toTermName
         val initName = ctx.freshName(name.toString + StdNames.nme.LAZY_LOCAL_INIT).toTermName
         val tpe = x.tpe.widen
@@ -162,7 +163,7 @@ class LazyVals extends MiniPhaseTransform with SymTransformer {
     }
 
     def transformFieldValDefNonVolatile(x: ValDef)(implicit ctx: Context) = x match {
-      case x@ValDef(name, tpt, rhs) if (x.mods is Flags.Lazy) =>
+      case ValDef(name, tpt, _) if (x.mods is Flags.Lazy) =>
         val claz = x.symbol.owner.asClass
         val tpe = x.tpe.widen
         assert(!(x.mods is Flags.Mutable))
@@ -171,17 +172,16 @@ class LazyVals extends MiniPhaseTransform with SymTransformer {
 
         val containerTree = ValDef(containerSymbol, initValue(tpe))
         if (x.tpe.isNotNull && tpe <:< defn.AnyRefType) { // can use 'null' value instead of flag
-          val slowPath = DefDef(x.symbol.asTerm, mkDefNonThreadSafeNonNullable(containerSymbol, rhs))
+          val slowPath = DefDef(x.symbol.asTerm, mkDefNonThreadSafeNonNullable(containerSymbol, x.rhs))
           Thicket(List(containerTree, slowPath))
         }
         else {
           val flagName = ctx.freshName(name.toString + StdNames.nme.BITMAP_PREFIX).toTermName
           val flagSymbol = ctx.newSymbol(x.symbol.owner, flagName,  containerFlags, defn.BooleanType)
           val flag = ValDef(flagSymbol, Literal(Constants.Constant(false)))
-          val slowPath = DefDef(x.symbol.asTerm, mkNonThreadSafeDef(ref(containerSymbol), ref(flagSymbol), rhs))
+          val slowPath = DefDef(x.symbol.asTerm, mkNonThreadSafeDef(ref(containerSymbol), ref(flagSymbol), x.rhs))
           Thicket(List(containerTree, flag, slowPath))
         }
-
     }
 
     /** Create non-threadsafe lazy accessor equivalent to such code
@@ -281,7 +281,7 @@ class LazyVals extends MiniPhaseTransform with SymTransformer {
     }
 
     def transformFieldValDefVolatile(x: ValDef)(implicit ctx: Context) = x match {
-      case x@ValDef(name, tpt, rhs) if (x.mods is Flags.Lazy) =>
+      case ValDef(name, tpt, _) if (x.mods is Flags.Lazy) =>
         assert(!(x.mods is Flags.Mutable))
 
         val tpe = x.tpe.widen
@@ -334,7 +334,7 @@ class LazyVals extends MiniPhaseTransform with SymTransformer {
         val state = Select(ref(helperModule), RLazyVals.Names.state.toTermName)
         val cas = Select(ref(helperModule), RLazyVals.Names.cas.toTermName)
 
-        val accessor = mkThreadSafeDef(x.symbol.asTerm, claz, ord, containerSymbol, rhs, tpe, offset, getFlag, state, cas, setFlag, wait)
+        val accessor = mkThreadSafeDef(x.symbol.asTerm, claz, ord, containerSymbol, x.rhs, tpe, offset, getFlag, state, cas, setFlag, wait)
         if(flag eq EmptyTree)
           Thicket(List(containerTree, accessor))
         else Thicket(List(containerTree, flag, accessor))

@@ -109,9 +109,9 @@ trait Reporting { this: Context =>
    *  See [[config.CompilerCommand#explainAdvanced]] for the exact meaning of
    *  "contains" here.
    */
-  def log(msg: => String): Unit =
+  def log(msg: => String, pos: SourcePosition = NoSourcePosition): Unit =
     if (this.settings.log.value.containsPhase(phase))
-      echo(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg")
+      echo(s"[log ${ctx.phasesStack.reverse.mkString(" -> ")}] $msg", pos)
 
   def debuglog(msg: => String): Unit =
     if (ctx.debug) log(msg)

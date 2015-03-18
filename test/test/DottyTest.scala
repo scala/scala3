@@ -27,7 +27,7 @@ class DottyTest /*extends ContextEscapeDetection*/ {
       //      .withSetting(debugTrace, true)
       //      .withSetting(prompt, true)
       //.setSetting(Ylogcp, true)
-      .setSetting(printtypes, true)
+      //.setSetting(printtypes, true)
       .setSetting(pageWidth, 90)
       .setSetting(log, List("<some"))
     //   .withTyperState(new TyperState(new ConsoleReporter()(base.initialCtx)))

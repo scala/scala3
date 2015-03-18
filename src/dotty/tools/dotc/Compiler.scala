@@ -41,10 +41,10 @@ class Compiler {
       List(new FirstTransform,
            new SyntheticMethods),
       List(new SuperAccessors),
-      //List(new Pickler), // Pickler needs to come last in a group since it should not pickle trees generated later
+      List(new Pickler), // Pickler needs to come last in a group since it should not pickle trees generated later
       List(new RefChecks,
            new ElimRepeated,
-           new ElimLocals,
+           new NormalizeFlags,
            new ExtensionMethods),
       List(new TailRec), // TailRec needs to be in its own group for now.
                          // Otherwise it produces -Ycheck incorrect code for

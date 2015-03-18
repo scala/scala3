@@ -24,19 +24,13 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => false
   }
 
-  /** Is tree legal as a member definition of an interface?
+  /** Does tree contain an initialization part when seen as a member of a class or trait?
    */
-  def isPureInterfaceMember(tree: Tree): Boolean = unsplice(tree) match {
+  def isNoInitMember(tree: Tree): Boolean = unsplice(tree) match {
     case EmptyTree | Import(_, _) | TypeDef(_, _) => true
-    case DefDef(_, _, _, _, rhs) => rhs.isEmpty
-    case ValDef(_, _, rhs) => rhs.isEmpty
+    case tree: ValDef => tree.unforcedRhs == EmptyTree
     case _ => false
   }
-
-  /** Is tree legal as a member definition of a no-init trait?
-   */
-  def isNoInitMember(tree: Tree): Boolean =
-    isPureInterfaceMember(tree) || unsplice(tree).isInstanceOf[DefDef]
 
   def isOpAssign(tree: Tree) = unsplice(tree) match {
     case Apply(fn, _ :: Nil) =>
@@ -90,8 +84,8 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   }
 
   /** If tree is a closure, it's body, otherwise tree itself */
-  def closureBody(tree: tpd.Tree): tpd.Tree = tree match {
-    case Block(DefDef(nme.ANON_FUN, _, _, _, rhs) :: Nil, Closure(_, _, _)) => rhs
+  def closureBody(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {
+    case Block((meth @ DefDef(nme.ANON_FUN, _, _, _, _)) :: Nil, Closure(_, _, _)) => meth.rhs
     case _ => tree
   }
 
@@ -244,12 +238,14 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   /** Is this case guarded? */
   def isGuardedCase(cdef: CaseDef) = cdef.guard ne EmptyTree
 
-  /** True iff definition if a val or def with no right-hand-side, or it
+  /** True iff definition is a val or def with no right-hand-side, or it
    *  is an abstract typoe declaration
    */
   def lacksDefinition(mdef: MemberDef)(implicit ctx: Context) = mdef match {
-    case mdef: ValOrDefDef => mdef.rhs.isEmpty && !mdef.name.isConstructorName && !mdef.mods.is(ParamAccessor)
-    case mdef: TypeDef => mdef.rhs.isEmpty || mdef.rhs.isInstanceOf[TypeBoundsTree]
+    case mdef: ValOrDefDef => 
+      mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.is(ParamAccessor)
+    case mdef: TypeDef => 
+      mdef.rhs.isEmpty || mdef.rhs.isInstanceOf[TypeBoundsTree]
     case _ => false
   }
 
@@ -287,8 +283,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
        | Import(_, _)
        | DefDef(_, _, _, _, _) =>
       Pure
-    case vdef @ ValDef(_, _, rhs) =>
-      if (vdef.mods is Mutable) Impure else exprPurity(rhs)
+    case vdef @ ValDef(_, _, _) =>
+      if (vdef.mods is Mutable) Impure else exprPurity(vdef.rhs)
     case _ =>
       Impure
   }
@@ -410,7 +406,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** The variables defined by a pattern, in reverse order of their appearance. */
   def patVars(tree: Tree)(implicit ctx: Context): List[Symbol] = {
     val acc = new TreeAccumulator[List[Symbol]] {
-      def apply(syms: List[Symbol], tree: Tree) = tree match {
+      def apply(syms: List[Symbol], tree: Tree)(implicit ctx: Context) = tree match {
         case Bind(_, body) => apply(tree.symbol :: syms, body)
         case _ => foldOver(syms, tree)
       }
@@ -452,7 +448,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   def defPath(sym: Symbol, root: Tree)(implicit ctx: Context): List[Tree] = ctx.debugTraceIndented(s"defpath($sym with position ${sym.pos}, ${root.show})") {
     require(sym.pos.exists)
     object accum extends TreeAccumulator[List[Tree]] {
-      def apply(x: List[Tree], tree: Tree): List[Tree] = {
+      def apply(x: List[Tree], tree: Tree)(implicit ctx: Context): List[Tree] = {
         if (tree.envelope.contains(sym.pos))
           if (definedSym(tree) == sym) tree :: x
           else {
@@ -478,7 +474,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           if (stats exists (definedSym(_) == sym)) stats else Nil
         encl match {
           case Block(stats, _) => verify(stats)
-          case Template(_, _, _, stats) => verify(stats)
+          case encl: Template => verify(encl.body)
           case PackageDef(_, stats) => verify(stats)
           case _ => Nil
         }

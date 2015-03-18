@@ -501,7 +501,7 @@ trait Implicits { self: Typer =>
         if (ctx.typerState.reporter.hasErrors)
           nonMatchingImplicit(ref)
         else if (contextual && !shadowing.tpe.isError && !refMatches(shadowing)) {
-          implicits.println(i"SHADOWING $ref is shadowed by $shadowing")
+          implicits.println(i"SHADOWING $ref in ${ref.termSymbol.owner} is shadowed by $shadowing in ${shadowing.symbol.owner}")
           shadowedImplicit(ref, methPart(shadowing).tpe)
         }
         else

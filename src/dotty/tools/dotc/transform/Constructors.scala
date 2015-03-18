@@ -114,7 +114,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
       private val seen = mutable.Set[Symbol](accessors: _*)
       val retained = mutable.Set[Symbol]()
       def dropped: collection.Set[Symbol] = seen -- retained
-      override def traverse(tree: Tree) = {
+      override def traverse(tree: Tree)(implicit ctx: Context) = {
         val sym = tree.symbol
         tree match {
           case Ident(_) | Select(This(_), _) if inConstr && seen(tree.symbol) =>
@@ -149,14 +149,14 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
     def splitStats(stats: List[Tree]): Unit = stats match {
       case stat :: stats1 =>
         stat match {
-          case stat @ ValDef(name, tpt, rhs) if !stat.symbol.is(Lazy) =>
+          case stat @ ValDef(name, tpt, _) if !stat.symbol.is(Lazy) =>
             val sym = stat.symbol
             if (isRetained(sym)) {
-              if (!rhs.isEmpty && !isWildcardArg(rhs))
-                constrStats += Assign(ref(sym), intoConstr(rhs)).withPos(stat.pos)
+              if (!stat.rhs.isEmpty && !isWildcardArg(stat.rhs))
+                constrStats += Assign(ref(sym), intoConstr(stat.rhs)).withPos(stat.pos)
               clsStats += cpy.ValDef(stat)(rhs = EmptyTree)
             }
-            else if (!rhs.isEmpty) {
+            else if (!stat.rhs.isEmpty) {
               sym.copySymDenotation(
                 initFlags = sym.flags &~ Private,
                 owner = constr.symbol).installAfter(thisTransform)

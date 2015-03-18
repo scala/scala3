@@ -19,6 +19,11 @@ class tests extends CompilerTest {
       "-d", "./out/"
   )
 
+  val doEmitBytecode = List("-Ystop-before:terminal")
+  val failedbyName = List("-Ystop-before:collectEntryPoints") // #288
+  val failedUnderscore = List("-Ystop-before:collectEntryPoints") // #289
+  val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler")
+
   val failedOther = List("-Ystop-before:collectEntryPoints") // some non-obvious reason. need to look deeper
   val twice = List("#runs", "2", "-YnoDoubleBindings")
   val staleSymbolError: List[String] = List()
@@ -30,6 +35,12 @@ class tests extends CompilerTest {
   val negDir = "./tests/neg/"
   val newDir = "./tests/new/"
   val dotcDir = "./src/dotty/"
+  val picklingDir = "./tests/pickling"
+
+  @Test def pickle_pickleOK = compileDir(picklingDir, testPickling)
+  @Test def pickle_pickling = compileDir(dotcDir + "tools/dotc/core/pickling/", testPickling)
+
+  //@Test def pickle_core = compileDir(dotcDir + "tools/dotc/core", testPickling, xerrors = 2) // two spurious comparison errors in Types and TypeOps
 
   @Test def pos_t2168_pat = compileFile(posDir, "t2168")
   @Test def pos_erasure = compileFile(posDir, "erasure")
@@ -56,7 +67,6 @@ class tests extends CompilerTest {
   @Test def pos_overrides() = compileFile(posDir, "overrides")
   @Test def pos_javaOverride() = compileDir(posDir + "java-override")
   @Test def pos_templateParents() = compileFile(posDir, "templateParents")
-  @Test def pos_structural() = compileFile(posDir, "structural")
   @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess")
   @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion")
   @Test def pos_tailcall = compileDir(posDir + "tailcall/")
@@ -87,16 +97,10 @@ class tests extends CompilerTest {
   @Test def neg_over = compileFile(negDir, "over", xerrors = 3)
   @Test def neg_overrides = compileFile(negDir, "overrides", xerrors = 11)
   @Test def neg_projections = compileFile(negDir, "projections", xerrors = 1)
-  @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 1)
-  @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 4)
+  @Test def neg_i39 = compileFile(negDir, "i39", xerrors = 2)
+  @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 6)
   @Test def neg_t0273_doubledefs = compileFile(negDir, "t0273", xerrors = 1)
-  @Test def neg_t0586_structural = compileFile(negDir, "t0586", xerrors = 1)
-  @Test def neg_t0625_structural = compileFile(negDir, "t0625", xerrors = 1)(
-      defaultOptions = noCheckOptions)
-        // -Ycheck fails because there are structural types involving higher-kinded types.
-        // these are illegal, but are tested only later.
-  @Test def neg_t1131_structural = compileFile(negDir, "t1131", xerrors = 1)
-  @Test def neg_zoo = compileFile(negDir, "zoo", xerrors = 1)
+  @Test def neg_zoo = compileFile(negDir, "zoo", xerrors = 12)
   @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
   @Test def neg_tailcall_t1672b = compileFile(negDir, "tailcall/t1672b", xerrors = 6)
   @Test def neg_tailcall_t3275 = compileFile(negDir, "tailcall/t3275", xerrors = 1)
@@ -108,13 +112,13 @@ class tests extends CompilerTest {
   @Test def neg_t1843_variances = compileFile(negDir, "t1843-variances", xerrors = 1)
   @Test def neg_t2660_ambi = compileFile(negDir, "t2660", xerrors = 2)
   @Test def neg_t2994 = compileFile(negDir, "t2994", xerrors = 2)
-  @Test def neg_subtyping = compileFile(negDir, "subtyping", xerrors = 2)
+  @Test def neg_subtyping = compileFile(negDir, "subtyping", xerrors = 4)
   @Test def neg_variances = compileFile(negDir, "variances", xerrors = 2)
   @Test def neg_badAuxConstr = compileFile(negDir, "badAuxConstr", xerrors = 2)
   @Test def neg_typetest = compileFile(negDir, "typetest", xerrors = 1)
   @Test def neg_t1569_failedAvoid = compileFile(negDir, "t1569-failedAvoid", xerrors = 1)
   @Test def neg_cycles = compileFile(negDir, "cycles", xerrors = 8)
-  @Test def neg_boundspropagation = compileFile(negDir, "boundspropagation", xerrors = 4)
+  @Test def neg_boundspropagation = compileFile(negDir, "boundspropagation", xerrors = 5)
   @Test def neg_refinedSubtyping = compileFile(negDir, "refinedSubtyping", xerrors = 2)
   @Test def neg_i0091_infpaths = compileFile(negDir, "i0091-infpaths", xerrors = 3)
   @Test def neg_i0248_inherit_refined = compileFile(negDir, "i0248-inherit-refined", xerrors = 4)
@@ -178,7 +182,6 @@ class tests extends CompilerTest {
 
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir)
-
-
+  
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }

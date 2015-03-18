@@ -218,7 +218,7 @@ object desugar {
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(implicit ctx: Context): Tree = {
-    val TypeDef(name, impl @ Template(constr0, parents, self, body)) = cdef
+    val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
     val mods = cdef.mods
 
     val (constr1, defaultGetters) = defDef(constr0, isPrimaryConstructor = true) match {
@@ -242,7 +242,7 @@ object desugar {
     val constr = cpy.DefDef(constr1)(tparams = constrTparams, vparamss = constrVparamss)
 
     // Add constructor type parameters to auxiliary constructors
-    val normalizedBody = body map {
+    val normalizedBody = impl.body map {
       case ddef: DefDef if ddef.name.isConstructorName =>
         cpy.DefDef(ddef)(tparams = constrTparams)
       case stat =>
@@ -342,7 +342,10 @@ object desugar {
     val companions =
       if (mods is Case) {
         val parent =
-          if (constrTparams.nonEmpty || constrVparamss.length > 1) anyRef
+          if (constrTparams.nonEmpty || 
+              constrVparamss.length > 1 || 
+              mods.is(Abstract) || 
+              constr.mods.is(Private)) anyRef
             // todo: also use anyRef if constructor has a dependent method type (or rule that out)!
           else (constrVparamss :\ classTypeRef) ((vparams, restpe) => Function(vparams map (_.tpt), restpe))
         val applyMeths =
@@ -425,10 +428,10 @@ object desugar {
       val modul = ValDef(name, clsRef, New(clsRef, Nil))
         .withMods(mods | ModuleCreationFlags)
         .withPos(mdef.pos)
-      val ValDef(selfName, selfTpt, selfRhs) = tmpl.self
+      val ValDef(selfName, selfTpt, _) = tmpl.self
       val selfMods = tmpl.self.mods
       if (!selfTpt.isEmpty) ctx.error("object definition may not have a self type", tmpl.self.pos)
-      val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(name)), selfRhs)
+      val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(name)), tmpl.self.rhs)
         .withMods(selfMods)
         .withPos(tmpl.self.pos orElse tmpl.pos.startPos)
       val clsTmpl = cpy.Template(tmpl)(self = clsSelf, body = tmpl.body)
@@ -864,18 +867,19 @@ object desugar {
    *  @param parentType   The type of `parent`
    */
   def refinedTypeToClass(parent: tpd.Tree, refinements: List[Tree])(implicit ctx: Context): TypeDef = {
-    def stripToCore(tp: Type): Type = tp match {
-      case tp: RefinedType if tp.argInfos.nonEmpty => tp // parameterized class type
-      case tp: TypeRef if tp.symbol.isClass => tp        // monomorphic class type
+    def stripToCore(tp: Type): List[Type] = tp match {
+      case tp: RefinedType if tp.argInfos.nonEmpty => tp :: Nil // parameterized class type
+      case tp: TypeRef if tp.symbol.isClass => tp :: Nil     // monomorphic class type
       case tp: TypeProxy => stripToCore(tp.underlying)
-      case _ => defn.AnyType
+      case AndType(tp1, tp2) => stripToCore(tp1) ::: stripToCore(tp2)
+      case _ => defn.AnyType :: Nil
     }
-    val parentCore = stripToCore(parent.tpe)
+    val parentCores = stripToCore(parent.tpe)
     val untpdParent = TypedSplice(parent)
-    val (classParent, self) =
-      if (parent.tpe eq parentCore) (untpdParent, EmptyValDef)
-      else (TypeTree(parentCore), ValDef(nme.WILDCARD, untpdParent, EmptyTree))
-    val impl = Template(emptyConstructor, classParent :: Nil, self, refinements)
+    val (classParents, self) =
+      if (parentCores.length == 1 && (parent.tpe eq parentCores.head)) (untpdParent :: Nil, EmptyValDef)
+      else (parentCores map TypeTree, ValDef(nme.WILDCARD, untpdParent, EmptyTree))
+    val impl = Template(emptyConstructor, classParents, self, refinements)
     TypeDef(tpnme.REFINE_CLASS, impl).withFlags(Trait)
   }
 

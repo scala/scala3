@@ -6,9 +6,10 @@ object Test {
   val z = new Array[Unit](10)
 }
 object Test2 {
-  val w: Array[String] = new Array(10)
+  val w: Array[Any] = new Array(10)
   val x: Array[Int] = new Array(10)
   def f[T: reflect.ClassTag]: Array[T] = new Array(10)
   val y: Array[Any] = new Array(10)
   val z: Array[Unit] = new Array(10)
 }
+

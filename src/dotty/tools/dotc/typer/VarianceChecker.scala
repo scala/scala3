@@ -116,7 +116,7 @@ class VarianceChecker()(implicit ctx: Context) {
       case None =>
     }
 
-    override def traverse(tree: Tree) = {
+    override def traverse(tree: Tree)(implicit ctx: Context) = {
       def sym = tree.symbol
       // No variance check for private/protected[this] methods/values.
       def skip = !sym.exists || sym.is(Local)

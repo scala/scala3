@@ -29,7 +29,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisTransfo
 
     private class CollectCaptured(implicit ctx: Context) extends EnclosingMethodTraverser {
       private val captured = mutable.HashSet[Symbol]()
-      def traverse(enclMeth: Symbol, tree: Tree) = tree match {
+      def traverse(enclMeth: Symbol, tree: Tree)(implicit ctx: Context) = tree match {
         case id: Ident =>
           val sym = id.symbol
           if (sym.is(Mutable, butNot = Method) && sym.owner.isTerm && sym.enclosingMethod != enclMeth) {
