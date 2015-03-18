@@ -27,7 +27,6 @@ class tests extends CompilerTest {
   val failedOther = List("-Ystop-before:collectEntryPoints") // some non-obvious reason. need to look deeper
   val twice = List("#runs", "2", "-YnoDoubleBindings")
   val staleSymbolError: List[String] = List()
-  val testPickling = List("-Ytest-pickler", "-Ystop-after:pickler")
 
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
 
