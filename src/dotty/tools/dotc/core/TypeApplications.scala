@@ -509,7 +509,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *               { type $hkArg$0 = T1; ...; type $hkArg$n = Tn }
    *
    *  satisfies predicate `p`. Try base types in the order of their occurrence in `baseClasses`.
-   *  A type parameter matches a varianve V if it has V as its variance or if V == 0.
+   *  A type parameter matches a variance V if it has V as its variance or if V == 0.
    */
   def testLifted(tparams: List[Symbol], p: Type => Boolean)(implicit ctx: Context): Boolean = {
     def tryLift(bcs: List[ClassSymbol]): Boolean = bcs match {
@@ -534,7 +534,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         false
     }
     if (tparams.isEmpty) false
-    else if (typeParams.nonEmpty) p(EtaExpand)
+    else if (typeParams.nonEmpty) p(EtaExpand) || tryLift(self.baseClasses)
     else tryLift(self.baseClasses)
   }
 }
