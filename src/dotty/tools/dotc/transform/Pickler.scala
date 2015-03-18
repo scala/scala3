@@ -11,7 +11,7 @@ import Periods._
 import Phases._
 import collection.mutable
 
-/** This miniphase pickles trees */
+/** This phase pickles trees */
 class Pickler extends Phase {
   import ast.tpd._
 
