@@ -490,10 +490,22 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
       }
     }
     def parentSymbols: List[Symbol] = toDenot(sym).info.parents.map(_.typeSymbol)
-    def superClass: Symbol = toDenot(sym).superClass
+    def superClass: Symbol =  {
+      val t = toDenot(sym).superClass
+      if (t.exists) t
+      else if (sym is Flags.ModuleClass) {
+        // workaround #371
+
+        println(s"Warning: mocking up superclass for $sym")
+        ObjectClass
+      }
+      else t
+    }
     def enclClass: Symbol = toDenot(sym).enclosingClass
     def linkedClassOfClass: Symbol = linkedClass
-    def linkedClass: Symbol = toDenot(sym).linkedClass //exitingPickler(sym.linkedClassOfClass)
+    def linkedClass: Symbol = {
+      toDenot(sym)(ctx).linkedClass(ctx)
+    } //exitingPickler(sym.linkedClassOfClass)
     def companionClass: Symbol = toDenot(sym).companionClass
     def companionModule: Symbol = toDenot(sym).companionModule
     def companionSymbol: Symbol = if (sym is Flags.Module) companionClass else companionModule
@@ -513,7 +525,9 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
       if (linkedClass.isTopLevelModuleClass) /*exitingPickler*/ linkedClass.memberClasses
       else Nil
     }
-    def fieldSymbols: List[Symbol] = toDenot(sym).info.memberClasses.map(_.symbol).toList
+    def fieldSymbols: List[Symbol] = {
+      toDenot(sym).info.decls.filter(p => p.isTerm && !p.is(Flags.Method)).toList
+    }
     def methodSymbols: List[Symbol] =
       for (f <- toDenot(sym).info.decls.toList if !f.isMethod && f.isTerm && !f.isModule) yield f
     def serialVUID: Option[Long] = None

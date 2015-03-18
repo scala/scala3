@@ -19,12 +19,9 @@ class tests extends CompilerTest {
       "-d", "./out/"
   )
 
-  val doEmitBytecode = List("-Ystop-before:terminal")
-  val failedbyName = List("-Ystop-before:collectEntryPoints") // #288
-  val failedUnderscore = List("-Ystop-before:collectEntryPoints") // #289
-
   val failedOther = List("-Ystop-before:collectEntryPoints") // some non-obvious reason. need to look deeper
   val twice = List("#runs", "2", "-YnoDoubleBindings")
+  val staleSymbolError: List[String] = List()
 
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
 
@@ -70,7 +67,9 @@ class tests extends CompilerTest {
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping")
   @Test def pos_extmethods = compileFile(posDir, "extmethods")
 
-  @Test def pos_all = compileFiles(posDir, failedOther)
+  @Test def pos_all = compileFiles(posDir)
+
+
 
   @Test def new_all = compileFiles(newDir, twice)
 
@@ -123,43 +122,59 @@ class tests extends CompilerTest {
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
 
-  @Test def dotc = compileDir(dotcDir + "tools/dotc", failedOther)(allowDeepSubtypes)
-  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", failedOther) // similar to dotc_config
-  @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config", failedOther) // seems to mess up stack frames
-  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", failedUnderscore)(allowDeepSubtypes)
-  // fails due to This refference to a non-eclosing class. Need to check
+  @Test def dotc = compileDir(dotcDir + "tools/dotc", failedOther)(allowDeepSubtypes) // see dotc_core
+  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", failedOther)
+    //similar to dotc_core_pickling but for another anon class. Still during firstTransform
+  @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config")
+  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", failedOther)(allowDeepSubtypes)
+    // error: error while loading ConstraintHandling$$anon$1$,
+    // class file 'target/scala-2.11/dotty_2.11-0.1-SNAPSHOT.jar(dotty/tools/dotc/core/ConstraintHandling$$anon$1.class)'
+    // has location not matching its contents: contains class $anon
 
-  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", failedOther)(allowDeepSubtypes) // Cannot emit primitive conversion from V to Z
+  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", failedOther)(allowDeepSubtypes)
+    // exception caught when loading class ClassfileParser$$anon$1: dotty.tools.dotc.core.Denotations$NotDefinedHere:
+    // demanding denotation of module class ClassfileParser$$anon$1$ at phase frontend(1) outside defined interval:
+    // defined periods are Period(31..36, run = 2) Period(3..24, run = 2) Period(25..26, run = 2)
+    // Period(27..28, run = 2) Period(29..29, run = 2) Period(30..30, run = 2)
+    // inside FirstTransform 	at dotty.tools.dotc.transform.FirstTransform.transform(FirstTransform.scala:33)
+    // weird.
 
-  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", failedbyName)
+  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform")
 
-  @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing", failedOther)
-    //  Expected primitive types I - Ljava/lang/Object
-    //  Tried to return an object where expected type was Integer
-  @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing", failedOther)
+  @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing")
+
+  @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing")
+
   @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting", twice)
-  @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", failedOther) // similar to dotc_config
-  //@Test def dotc_util = compileDir(dotcDir + "tools/dotc/util") //fails inside ExtensionMethods with ClassCastException
-  @Test def tools_io = compileDir(dotcDir + "tools/io", failedOther) // similar to dotc_config
 
-  @Test def helloWorld = compileFile(posDir, "HelloWorld", doEmitBytecode)
-  @Test def labels = compileFile(posDir, "Labels", doEmitBytecode)
+  @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", failedOther)
+    // error: error while loading Checking$$anon$2$,
+    // class file 'target/scala-2.11/dotty_2.11-0.1-SNAPSHOT.jar(dotty/tools/dotc/typer/Checking$$anon$2.class)'
+    // has location not matching its contents: contains class $anon
+
+  @Test def dotc_util = compileDir(dotcDir + "tools/dotc/util", failedOther)
+    // java.lang.ClassCastException: dotty.tools.dotc.core.Types$NoType$ cannot be cast to dotty.tools.dotc.core.Types$ClassInfo
+    // at dotty.tools.dotc.core.SymDenotations$ClassDenotation.classInfo(SymDenotations.scala:1026)
+    // at dotty.tools.dotc.transform.ExtensionMethods.transform(ExtensionMethods.scala:38)
+
+  @Test def tools_io = compileDir(dotcDir + "tools/io", failedOther) // inner class has symbol <none>
+
+  @Test def helloWorld = compileFile(posDir, "HelloWorld")
+  @Test def labels = compileFile(posDir, "Labels")
   //@Test def tools = compileDir(dotcDir + "tools", "-deep" :: Nil)(allowDeepSubtypes)
 
   @Test def testNonCyclic = compileArgs(Array(
       dotcDir + "tools/dotc/CompilationUnit.scala",
       dotcDir + "tools/dotc/core/Types.scala",
       dotcDir + "tools/dotc/ast/Trees.scala",
-      failedUnderscore.head,
-      "-Xprompt",
-      "#runs", "2"))
+      "-Xprompt"
+      ) ++ staleSymbolError)
 
   @Test def testIssue_34 = compileArgs(Array(
       dotcDir + "tools/dotc/config/Properties.scala",
       dotcDir + "tools/dotc/config/PathResolver.scala",
       //"-Ylog:frontend",
-      "-Xprompt",
-      "#runs", "2"))
+      "-Xprompt") ++ staleSymbolError)
 
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir)

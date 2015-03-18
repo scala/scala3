@@ -50,7 +50,7 @@ class ClassfileParser(
     case e: RuntimeException =>
       if (ctx.debug) e.printStackTrace()
       throw new IOException(
-        sm"""class file $classfile is broken, reading aborted with $e.getClass
+        sm"""class file $classfile is broken, reading aborted with ${e.getClass}
             |${Option(e.getMessage).getOrElse("")}""")
   }
 
@@ -774,7 +774,7 @@ class ClassfileParser(
                   |externalName = $externalName,
                   |outerName = $outerName,
                   |innerName = $innerName
-                  |owner.fullName = owner.showFullName
+                  |owner.fullName = ${owner.showFullName}
                   |while parsing ${classfile}""")
             result
 
