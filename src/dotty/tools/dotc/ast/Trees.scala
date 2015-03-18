@@ -1157,7 +1157,7 @@ object Trees {
         case tree @ ValDef(name, tpt, _) =>
           val tpt1 = transform(tpt)
           val rhs1 = transform(tree.rhs)
-          cpy.ValDef(tree)(name, transform(tpt1), transform(rhs1))
+          cpy.ValDef(tree)(name, tpt1, rhs1)
         case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
           cpy.DefDef(tree)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(tree.rhs))
         case tree @ TypeDef(name, rhs) =>
