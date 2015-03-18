@@ -36,7 +36,8 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
   override def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = ref match {
     case ref: ClassDenotation if ref is ModuleClass =>
       ref.linkedClass match {
-        case origClass: ClassSymbol if isDerivedValueClass(origClass) =>
+        // In Scala 2, extension methods are added before pickling so we should not generate them again
+        case origClass: ClassSymbol if isDerivedValueClass(origClass) && !(origClass is Scala2x) =>
           val cinfo = ref.classInfo
           val decls1 = cinfo.decls.cloneScope
           ctx.atPhase(thisTransformer.next) { implicit ctx =>
