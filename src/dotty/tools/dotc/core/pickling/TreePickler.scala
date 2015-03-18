@@ -531,8 +531,16 @@ class TreePickler(pickler: TastyPickler) {
       withLength { pickleType(ann.symbol.typeRef); pickleTree(ann.tree) }
     }
 
+    def updateMapWithDeltas[T](mp: collection.mutable.Map[T, Addr]) = {
+      mp.map{
+        case (key, addr) => (key, adjusted(addr))
+      }.foreach(mp += _)
+    }
+
+
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: ${forwardSymRefs.keySet.toList}%, %")
     compactify()
-  }  
+    updateMapWithDeltas(symRefs)
+  }
 }
