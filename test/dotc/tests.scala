@@ -19,7 +19,6 @@ class tests extends CompilerTest {
       "-d", "./out/"
   )
 
-  val doEmitBytecode = List("-Ystop-before:terminal")
   val failedbyName = List("-Ystop-before:collectEntryPoints") // #288
   val failedUnderscore = List("-Ystop-before:collectEntryPoints") // #289
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler")
@@ -145,7 +144,7 @@ class tests extends CompilerTest {
 
   @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform")
 
-  @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing")
+  @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing", failedOther)
 
   @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing")
 
