@@ -60,7 +60,7 @@ class TreeChecker extends Phase with SymTransformer {
   def transformSym(symd: SymDenotation)(implicit ctx: Context): SymDenotation = {
     val sym = symd.symbol
 
-    if (sym.isClass) {
+    if (sym.isClass && !sym.isAbsent) {
       val validSuperclass = defn.ScalaValueClasses.contains(sym) ||  defn.syntheticCoreClasses.contains(sym) ||
         (sym eq defn.ObjectClass) || (sym is NoSuperClass) || (sym.asClass.superClass.exists)
       if (!validSuperclass)
