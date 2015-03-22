@@ -418,9 +418,12 @@ object Symbols {
     def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
 
     /** Is this symbol a user-defined value class? */
-    final def isDerivedValueClass(implicit ctx: Context): Boolean =
+    final def isDerivedValueClass(implicit ctx: Context): Boolean = {
+      this.derivesFrom(defn.AnyValClass)(ctx.withPhase(denot.validFor.firstPhaseId))
+        // Simulate ValueClasses.isDerivedValueClass
       false  // will migrate to ValueClasses.isDerivedValueClass;
                // unsupported value class code will continue to use this stub while it exists
+    }
 
     /** The current name of this symbol */
     final def name(implicit ctx: Context): ThisName = denot.name.asInstanceOf[ThisName]
