@@ -11,11 +11,15 @@ import Flags._
 /** Methods that apply to user-defined value classes */
 object ValueClasses {
 
-  def isDerivedValueClass(d: SymDenotation)(implicit ctx: Context) =
-    d.isClass &&
-      d.derivesFrom(defn.AnyValClass) &&
-      (d.symbol ne defn.AnyValClass) &&
-      !d.isPrimitiveValueClass
+  def isDerivedValueClass(d: SymDenotation)(implicit ctx: Context) = {
+    val di = d.initial.asSymDenotation
+    di.isClass &&
+    di.derivesFrom(defn.AnyValClass)(ctx.withPhase(di.validFor.firstPhaseId)) &&
+      // need to check derivesFrom at initialPhase to avoid cyclic references caused
+      // by forcing in transformInfo
+    (di.symbol ne defn.AnyValClass) &&
+    !di.isPrimitiveValueClass
+  }
 
   def isMethodWithExtension(d: SymDenotation)(implicit ctx: Context) =
     d.isSourceMethod &&
