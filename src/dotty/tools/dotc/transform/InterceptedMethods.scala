@@ -103,7 +103,7 @@ class InterceptedMethods extends MiniPhaseTransform { thisTransform =>
         s"that means the intercepted methods set doesn't match the code")
       tree
     }
-    if (tree.fun.symbol.isTerm && tree.args.isEmpty &&
+    if (tree.fun.symbol.isTerm &&
         (interceptedMethods contains tree.fun.symbol.asTerm)) {
       val rewrite: Tree = tree.fun match {
         case Select(qual, name) =>
