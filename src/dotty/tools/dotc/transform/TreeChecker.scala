@@ -67,11 +67,7 @@ class TreeChecker extends Phase with SymTransformer {
         printError(s"$sym has no superclass set")
 
       testDuplicate(sym, seenClasses, "class")
-
-    } else if (sym is ModuleVal) {
-      testDuplicate(sym, seenModuleVals, "module val")
     }
-
 
     symd
   }
