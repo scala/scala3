@@ -83,8 +83,8 @@ object StdNames {
     final val HASHkw: N      = kw("#")
     final val ATkw: N        = kw("@")
 
-    val ANON_CLASS: N            = "$anon"
-    val ANON_FUN: N              = "$anonfun"
+    val ANON_CLASS: N                 = "$anon"
+    val ANON_FUN: N                   = "$anonfun"
     val BITMAP_PREFIX: N              = "bitmap$"
     val BITMAP_NORMAL: N              = BITMAP_PREFIX         // initialization bitmap for public/protected lazy vals
     val BITMAP_TRANSIENT: N           = BITMAP_PREFIX + "trans$"    // initialization bitmap for transient lazy vals
@@ -117,13 +117,15 @@ object StdNames {
     val PROTECTED_PREFIX: N           = "protected$"
     val PROTECTED_SET_PREFIX: N       = PROTECTED_PREFIX + "set"
     val ROOT: N                       = "<root>"
-    val SHADOWED: N                  = "(shadowed)"  // tag to be used until we have proper name kinds
+    val SHADOWED: N                   = "(shadowed)"  // tag to be used until we have proper name kinds
     val SINGLETON_SUFFIX: N           = ".type"
     val SPECIALIZED_SUFFIX: N         = "$sp"
     val SUPER_PREFIX: N               = "super$"
     val WHILE_PREFIX: N               = "while$"
     val DEFAULT_EXCEPTION_NAME: N     = "ex$"
     val INITIALIZER_PREFIX: N         = "initial$"
+    val COMPANION_MODULE_METHOD: N    = "companion$module"
+    val COMPANION_CLASS_METHOD: N     = "compaion$class"
 
     // value types (and AnyRef) are all used as terms as well
     // as (at least) arguments to the @specialize annotation.

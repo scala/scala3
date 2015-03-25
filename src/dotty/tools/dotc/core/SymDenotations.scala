@@ -773,11 +773,31 @@ object SymDenotations {
         companionNamed(effectiveName.moduleClassName).sourceModule
 
     /** The class with the same (type-) name as this module or module class,
-     *  and which is also defined in the same scope and compilation unit.
-     *  NoSymbol if this class does not exist.
-     */
-    final def companionClass(implicit ctx: Context): Symbol =
-      companionNamed(effectiveName.toTypeName)
+      *  and which is also defined in the same scope and compilation unit.
+      *  NoSymbol if this class does not exist.
+      */
+    final def companionClass(implicit ctx: Context): Symbol = {
+      val companionMethod = info.decls.denotsNamed(nme.COMPANION_CLASS_METHOD, selectPrivate).first
+
+      if (companionMethod.exists)
+        companionMethod.info.resultType.classSymbol
+      else {
+        /*
+        val scalac = companionNamed(effectiveName.toTypeName)
+
+        if (scalac.exists) {
+          println(s"scalac returned companion class for $this to be $scalac")
+        }
+        */
+        NoSymbol
+      }
+    }
+
+    final def scalacLinkedClass(implicit ctx: Context): Symbol =
+      if (this is ModuleClass) companionNamed(effectiveName.toTypeName)
+      else if (this.isClass) companionModule.moduleClass
+      else NoSymbol
+
 
     /** Find companion class symbol with given name, or NoSymbol if none exists.
      *  Three alternative strategies:

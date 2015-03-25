@@ -330,6 +330,13 @@ object desugar {
             .withMods(synthetic))
       .withPos(cdef.pos).toList
 
+    def companionClassGeterMethod =
+      DefDef(nme.COMPANION_CLASS_METHOD, Nil, Nil, Ident(name),
+        /*Select(Select(
+          Select(Ident(nme.ROOTPKG), nme.scala_),
+          nme.Predef), nme.???)*/ Ident(nme.???))
+      .withMods(synthetic | Private)
+
     // The companion object defifinitions, if a companion is needed, Nil otherwise.
     // companion definitions include:
     // 1. If class is a case class case class C[Ts](p1: T1, ..., pN: TN)(moreParams):
@@ -359,11 +366,15 @@ object desugar {
           DefDef(nme.unapply, derivedTparams, (unapplyParam :: Nil) :: Nil, TypeTree(), unapplyRHS)
             .withMods(synthetic)
         }
-        companionDefs(parent, applyMeths ::: unapplyMeth :: defaultGetters)
+        companionDefs(parent, companionClassGeterMethod :: applyMeths ::: unapplyMeth :: defaultGetters)
       }
-      else if (defaultGetters.nonEmpty)
-        companionDefs(anyRef, defaultGetters)
-      else Nil
+      else {
+        val methods = if (!(mods is Synthetic | Module)) companionClassGeterMethod :: defaultGetters else defaultGetters
+
+        if(methods.nonEmpty)
+          companionDefs(anyRef, methods)
+        else Nil
+      }
 
     // For an implicit class C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, .., pMN: TMN), the method
     //     synthetic implicit C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, ..., pMN: TMN): C[Ts] =
@@ -409,6 +420,8 @@ object desugar {
     flatTree(cdef1 :: companions ::: implicitWrappers)
   }
 
+  val AccessOrSynthetic = AccessFlags | Synthetic
+
   /** Expand
    *
    *    object name extends parents { self => body }
@@ -436,7 +449,7 @@ object desugar {
         .withPos(tmpl.self.pos orElse tmpl.pos.startPos)
       val clsTmpl = cpy.Template(tmpl)(self = clsSelf, body = tmpl.body)
       val cls = TypeDef(clsName, clsTmpl)
-        .withMods(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags)
+        .withMods(mods.toTypeFlags & AccessOrSynthetic | ModuleClassCreationFlags)
       Thicket(modul, classDef(cls))
     }
   }
