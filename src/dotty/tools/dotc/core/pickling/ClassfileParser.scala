@@ -130,8 +130,18 @@ class ClassfileParser(
     for (i <- 0 until in.nextChar) parseMember(method = true)
     classInfo = parseAttributes(classRoot.symbol, classInfo)
     if (isAnnotation) addAnnotationConstructor(classInfo)
+    if (classRoot.exists) syntecizeCompanionMethod(nme.COMPANION_CLASS_METHOD, classRoot, moduleRoot)
+
     setClassInfo(classRoot, classInfo)
     setClassInfo(moduleRoot, staticInfo)
+  }
+
+  def syntecizeCompanionMethod(name: TermName, ret: SymDenotation, owner: SymDenotation)(implicit ctx: Context) = {
+    if(owner.exists) ctx.newSymbol(
+      owner = owner.symbol,
+      name = name,
+      flags = Flags.Synthetic | Flags.Private,
+      info = ExprType(ret.typeRef)).entered
   }
 
   /** Add type parameters of enclosing classes */

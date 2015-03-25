@@ -118,6 +118,16 @@ object UnPickler {
         denot.owner.thisType select denot.sourceModule
       else selfInfo
     if (!(denot.flagsUNSAFE is JavaModule)) ensureConstructor(denot.symbol.asClass, decls)
+    if (denot.flagsUNSAFE is Module) {
+      val scalacCompanion = denot.classSymbol.scalacLinkedClass
+      if (scalacCompanion.exists)
+      ctx.newSymbol(
+        owner = denot.classSymbol,
+        name = nme.COMPANION_CLASS_METHOD,
+        flags = Flags.Synthetic | Flags.Private,
+        info = ExprType(scalacCompanion.typeRef)).entered
+    }
+
     denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)
   }
 }
