@@ -164,7 +164,9 @@ object Positions {
 
   /** An index coordinate */
   implicit def indexCoord(n: Int): Coord = new Coord(n + 1)
-  implicit def positionCoord(pos: Position): Coord = new Coord(-(pos.point + 1))
+  implicit def positionCoord(pos: Position): Coord =
+    if (pos.exists) new Coord(-(pos.point + 1))
+    else NoCoord
 
   /** A sentinel for a missing coordinate */
   val NoCoord = new Coord(0)
