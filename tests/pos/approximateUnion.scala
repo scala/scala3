@@ -10,8 +10,8 @@ object approximateUnion {
     trait B extends C[B] with D
 
     val coin = true
-    val x = if (coin) new A else new B
-    val y = Some(if (coin) new A else new B)
+    val x = if (coin) new A{} else new B{}
+    val y = Some(if (coin) new A{} else new B{} )
 
     val xtest: C[A | B] & D = x
     val ytest: Some[C[A | B] & D] = y
@@ -22,8 +22,8 @@ object approximateUnion {
     trait B extends C[X[B]] with D with E
 
     val coin = true
-    val x = if (coin) new A else new B
-    val y = Some(if (coin) new A else new B)
+    val x = if (coin) new A{} else new B{}
+    val y = Some(if (coin) new A{} else new B{})
 
     val xtest: C[X[A & B]] & D = x
     val ytest: Some[C[X[A & B]] & D] = y
@@ -42,8 +42,8 @@ object approximateUnion2 {
     trait B extends C[B] with D
 
     val coin = true
-    val x = if (coin) new A else new B
-    val y = Some(if (coin) new A else new B)
+    val x = if (coin) new A{} else new B{}
+    val y = Some(if (coin) new A{} else new B{})
 
     val xtest: C[_ >: A & B <: A | B] & D = x
     val ytest: Some[C[_ >: A & B <: A | B] & D] = y
@@ -54,8 +54,8 @@ object approximateUnion2 {
     trait B extends C[X[B]] with D with E
 
     val coin = true
-    val x = if (coin) new A else new B
-    val y = Some(if (coin) new A else new B)
+    val x = if (coin) new A{} else new B{}
+    val y = Some(if (coin) new A{} else new B{})
 
     val xtest: C[_ >: X[A | B] <: X[A & B]] & D = x
     val ytest: Some[C[_ >: X[A | B] <: X[A & B]]] = y
@@ -74,8 +74,8 @@ object approximateUnion3 {
     trait B extends C[B] with D
 
     val coin = true
-    val x = if (coin) new A else new B
-    val y = Some(if (coin) new A else new B)
+    val x = if (coin) new A{} else new B{}
+    val y = Some(if (coin) new A{} else new B{})
 
     val xtest: C[A & B] & D = x
     val ytest: Some[C[A & B] & D] = y
@@ -86,8 +86,8 @@ object approximateUnion3 {
     trait B extends C[X[B]] with D with E
 
     val coin = true
-    val x = if (coin) new A else new B
-    val y = Some(if (coin) new A else new B)
+    val x = if (coin) new A{} else new B{}
+    val y = Some(if (coin) new A{} else new B{})
 
     val xtest: C[X[A | B]] & D = x
     val ytest2: Some[C[X[A | B]] & D] = y

@@ -452,7 +452,8 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def isVarargsMethod: Boolean = sym is Flags.JavaVarargs
     def isDeprecated: Boolean = false
     def isMutable: Boolean = sym is Flags.Mutable
-    def hasAbstractFlag: Boolean = (sym is Flags.Abstract) || (sym is Flags.JavaInterface)
+    def hasAbstractFlag: Boolean =
+      (sym is Flags.Abstract) || (sym is Flags.JavaInterface) || (sym is Flags.Trait)
     def hasModuleFlag: Boolean = sym is Flags.Module
     def isSynchronized: Boolean = sym is Flags.Synchronized
     def isNonBottomSubClass(other: Symbol): Boolean = sym.derivesFrom(other)
