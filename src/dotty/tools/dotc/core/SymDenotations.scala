@@ -744,7 +744,8 @@ object SymDenotations {
     final def enclosingMethod(implicit ctx: Context): Symbol =
       if (this is (Method, butNot = Label)) symbol
       else if (this.isClass) primaryConstructor
-      else owner.enclosingMethod
+      else if (this.exists) owner.enclosingMethod
+      else NoSymbol
 
     /** The top-level class containing this denotation,
      *  except for a toplevel module, where its module class is returned.
