@@ -64,14 +64,14 @@ class InterceptedMethods extends MiniPhaseTransform { thisTransform =>
   // this should be removed if we have guarantee that ## will get Apply node
   override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): Tree = {
     if (tree.symbol.isTerm && poundPoundMethods.contains(tree.symbol.asTerm)) {
-      val rewrite = PoundPoundValue(tree.qualifier)
+      val rewrite = poundPoundValue(tree.qualifier)
       ctx.log(s"$phaseName rewrote $tree to $rewrite")
       rewrite
     }
     else tree
   }
 
-  private def PoundPoundValue(tree: Tree)(implicit ctx: Context) = {
+  private def poundPoundValue(tree: Tree)(implicit ctx: Context) = {
     val s = tree.tpe.widen.typeSymbol
     if (s == defn.NullClass) Literal(Constant(0))
     else {
@@ -108,7 +108,7 @@ class InterceptedMethods extends MiniPhaseTransform { thisTransform =>
       val rewrite: Tree = tree.fun match {
         case Select(qual, name) =>
           if (poundPoundMethods contains tree.fun.symbol.asTerm) {
-            PoundPoundValue(qual)
+            poundPoundValue(qual)
           } else if (Any_comparisons contains tree.fun.symbol.asTerm) {
             if (tree.fun.symbol eq defn.Any_==) {
               qual.select(defn.Any_equals).appliedToArgs(tree.args)
