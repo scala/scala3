@@ -1556,7 +1556,13 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           //val spr = subPatRefs(binder)
           assert(go && go1)
           ref(binder) :: Nil
-        } else subPatRefs(binder)
+        } else {
+          lazy val getTp = extractorMemberType(binderTypeTested, nme.get)
+          if ((aligner.isSingle && aligner.extractor.prodArity == 1) && ((extractorMemberType(binderTypeTested, nme.isDefined) isRef defn.BooleanClass) && getTp.exists))
+            List(ref(binder))
+          else
+            subPatRefs(binder)
+        }
       }
 
       /*protected def spliceApply(binder: Symbol): Tree = {
