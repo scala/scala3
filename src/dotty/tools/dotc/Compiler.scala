@@ -67,7 +67,7 @@ class Compiler {
       List(new LambdaLift,
            new Flatten,
            new RestoreScopes),
-      List(/*new PrivateToStatic,*/ new CollectEntryPoints, new LabelDefs, new ElimWildcardIdents),
+      List(/*new PrivateToStatic,*/ new CollectEntryPoints, new LabelDefs, new ElimWildcardIdents, new TraitConstructors),
       List(new GenBCode)
     )
 
