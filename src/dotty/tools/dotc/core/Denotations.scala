@@ -611,7 +611,10 @@ object Denotations {
         val current = symbol.current
         // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
         // printPeriods(current)
-        this.nextInRun = current.nextInRun
+        if (current.nextInRun ne current)
+          this.nextInRun = current.nextInRun
+        else
+          this.nextInRun = this
         this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
         if (current.validFor.firstPhaseId == targetId) {
           // replace current with this denotation
@@ -622,6 +625,7 @@ object Denotations {
         } else {
           // insert this denotation after current
           current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
+          this.nextInRun = current.nextInRun
           current.nextInRun = this
         }
       // printPeriods(this)
