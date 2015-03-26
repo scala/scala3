@@ -395,7 +395,8 @@ object RefChecks {
 
         for (member <- missing) {
           val memberSym = member.symbol
-          def undefined(msg: String) = abstractClassError(false, member.showDcl + " is not defined" + msg)
+          def undefined(msg: String) =
+            abstractClassError(false, member.showDcl + " is not defined" + msg)
           val underlying = memberSym.underlyingSymbol
 
           // Give a specific error message for abstract vars based on why it fails:

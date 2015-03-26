@@ -411,7 +411,7 @@ class Namer { typer: Typer =>
             case _ =>
           }
         }
-      for (mdef @ ModuleDef(name, _) <- stats) {
+      for (mdef @ ModuleDef(name, _) <- stats if !mdef.mods.is(Flags.Package)) {
         val typName = name.toTypeName
         val Thicket(vdef :: (mcls @ TypeDef(_, impl: Template)) :: Nil) = mdef.attachment(ExpandedTree)
         moduleDef(typName) = mcls

@@ -232,7 +232,8 @@ trait Checking {
 
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
-    if (!tp.isStable) ctx.error(d"$tp is not stable", pos)
+    if (!tp.isStable)
+      ctx.error(d"$tp is not stable", pos)
 
   /** Check that type `tp` is a legal prefix for '#'.
    *  @return The type itself
