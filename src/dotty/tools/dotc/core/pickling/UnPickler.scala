@@ -120,12 +120,9 @@ object UnPickler {
     if (!(denot.flagsUNSAFE is JavaModule)) ensureConstructor(denot.symbol.asClass, decls)
     if (denot.flagsUNSAFE is Module) {
       val scalacCompanion = denot.classSymbol.scalacLinkedClass
-      if (scalacCompanion.exists)
-      ctx.newSymbol(
-        owner = denot.classSymbol,
-        name = nme.COMPANION_CLASS_METHOD,
-        flags = Flags.Synthetic | Flags.Private,
-        info = ExprType(scalacCompanion.typeRef)).entered
+      val companionClassMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, scalacCompanion, denot.classSymbol)
+      if (companionClassMethod.exists)
+        companionClassMethod.entered
     }
 
     denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)

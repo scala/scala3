@@ -78,16 +78,8 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
         defn.ObjectClass.typeRef :: Nil, Scopes.newScope)
       val mc = modul.moduleClass
       if (ctx.owner.isClass) modul.enteredAfter(thisTransformer)
-      ctx.newSymbol(
-        owner = mc,
-        name = nme.COMPANION_CLASS_METHOD,
-        flags = Flags.Synthetic | Flags.Private,
-        info = ExprType(forClass.typeRef)).enteredAfter(thisTransformer)
-      ctx.newSymbol(
-        owner = forClass,
-        name = nme.COMPANION_MODULE_METHOD,
-        flags = Flags.Synthetic | Flags.Private,
-        info = ExprType(mc.typeRef)).enteredAfter(thisTransformer)
+      ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, forClass, mc).enteredAfter(thisTransformer)
+      ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, mc, forClass).enteredAfter(thisTransformer)
       ModuleDef(modul, Nil)
     }
 

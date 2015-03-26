@@ -432,18 +432,10 @@ class Namer { typer: Typer =>
     }
 
     def createLinks(classTree: TypeDef, moduleTree: TypeDef)(implicit ctx: Context) = {
-      val claz = ctx.denotNamed(classTree.name.encode)
-      val modl = ctx.denotNamed(moduleTree.name.encode)
-      ctx.newSymbol(
-        owner = modl.symbol,
-        name = nme.COMPANION_CLASS_METHOD,
-        flags = Flags.Synthetic | Flags.Private,
-        info = ExprType(claz.symbol.typeRef)).entered
-      ctx.newSymbol(
-        owner = claz.symbol,
-        name = nme.COMPANION_MODULE_METHOD,
-        flags = Flags.Synthetic | Flags.Private,
-        info = ExprType(modl.symbol.typeRef)).entered
+      val claz = ctx.denotNamed(classTree.name.encode).symbol
+      val modl = ctx.denotNamed(moduleTree.name.encode).symbol
+      ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, modl).entered
+      ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, modl, claz).entered
     }
 
     def createCompanionLinks(implicit ctx: Context): Unit = {
