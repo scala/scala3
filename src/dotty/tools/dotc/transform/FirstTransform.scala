@@ -19,6 +19,7 @@ import DenotTransformers._
 import typer.Checking
 import Names.Name
 import NameOps._
+import StdNames._
 
 
 /** The first tree transform
@@ -72,10 +73,21 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
       case Nil => Nil
     }
 
-    def newCompanion(name: TermName): Thicket = {
+    def newCompanion(name: TermName, forClass: Symbol): Thicket = {
       val modul = ctx.newCompleteModuleSymbol(ctx.owner, name, Synthetic, Synthetic,
         defn.ObjectClass.typeRef :: Nil, Scopes.newScope)
+      val mc = modul.moduleClass
       if (ctx.owner.isClass) modul.enteredAfter(thisTransformer)
+      ctx.newSymbol(
+        owner = mc,
+        name = nme.COMPANION_CLASS_METHOD,
+        flags = Flags.Synthetic | Flags.Private,
+        info = ExprType(forClass.typeRef)).enteredAfter(thisTransformer)
+      ctx.newSymbol(
+        owner = forClass,
+        name = nme.COMPANION_MODULE_METHOD,
+        flags = Flags.Synthetic | Flags.Private,
+        info = ExprType(mc.typeRef)).enteredAfter(thisTransformer)
       ModuleDef(modul, Nil)
     }
 
@@ -89,7 +101,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
             false
         }
         val uniqueName = if (nameClash) objName.avoidClashName else objName
-        Thicket(stat :: newCompanion(uniqueName).trees)
+        Thicket(stat :: newCompanion(uniqueName, stat.symbol).trees)
       case stat => stat
     }
 
