@@ -14,6 +14,7 @@ import typer.ErrorReporting._
 import ast.Trees._
 import Erasure.Boxing._
 import core.TypeErasure._
+import ValueClasses._
 
 /** This transform normalizes type tests and type casts,
  *  also replacing type tests with singleton argument type with reference equality check
@@ -90,7 +91,9 @@ trait TypeTestsCasts {
           }
           else if (argCls.isPrimitiveValueClass)
             unbox(qual.ensureConforms(defn.ObjectType), argType)
-          else
+          else if (isDerivedValueClass(argCls)) {
+            qual // adaptToType in Erasure will do the necessary type adaptation
+          } else
             derivedTree(qual, defn.Any_asInstanceOf, argType)
         }
         def erasedArg = erasure(tree.args.head.tpe, semiEraseVCs = false)

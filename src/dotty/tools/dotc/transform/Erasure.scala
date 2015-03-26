@@ -170,15 +170,29 @@ object Erasure extends TypeTestsCasts{
     def unbox(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ctx.traceIndented(i"unboxing ${tree.showSummary}: ${tree.tpe} as a $pt") {
       pt match {
         case ErasedValueType(clazz, underlying) =>
+          def unboxedTree(t: Tree) =
+            adaptToType(t, clazz.typeRef)
+            .select(valueClassUnbox(clazz))
+            .appliedToNone
+
+          // Null unboxing needs to be treated separately since we cannot call a method on null.
+          // "Unboxing" null to underlying is equivalent to doing null.asInstanceOf[underlying]
+          // See tests/pos/valueclasses/nullAsInstanceOfVC.scala for cases where this might happen.
           val tree1 =
-            if ((tree.tpe isRef defn.NullClass) && underlying.isPrimitiveValueType)
-              // convert `null` directly to underlying type, as going
-              // via the unboxed type would yield a NPE (see SI-5866)
-              unbox(tree, underlying)
-            else
-              adaptToType(tree, clazz.typeRef)
-                .select(valueClassUnbox(clazz))
-                .appliedToNone
+            if (tree.tpe isRef defn.NullClass)
+              adaptToType(tree, underlying)
+            else if (!(tree.tpe <:< clazz.typeRef)) {
+              assert(!(tree.tpe.typeSymbol.isPrimitiveValueClass))
+              val nullTree = Literal(Constant(null))
+              val unboxedNull = adaptToType(nullTree, underlying)
+
+              evalOnce(tree) { t =>
+                If(t.select(defn.Object_eq).appliedTo(nullTree),
+                  unboxedNull,
+                  unboxedTree(t))
+              }
+            } else unboxedTree(tree)
+
           cast(tree1, pt)
         case _ =>
           val cls = pt.widen.classSymbol

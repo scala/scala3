@@ -76,6 +76,7 @@ class tests extends CompilerTest {
   @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess", twice)
   @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion", twice)
   @Test def pos_tailcall = compileDir(posDir, "tailcall", twice)
+  @Test def pos_valueclasses = compileDir(posDir, "valueclasses", twice)
   @Test def pos_nullarify = compileFile(posDir, "nullarify", args = "-Ycheck:nullarify" :: Nil)
   @Test def pos_subtyping = compileFile(posDir, "subtyping", twice)
   @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
