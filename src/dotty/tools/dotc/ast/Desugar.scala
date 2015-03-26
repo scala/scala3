@@ -330,13 +330,6 @@ object desugar {
             .withMods(synthetic))
       .withPos(cdef.pos).toList
 
-    def companionClassGeterMethod =
-      DefDef(nme.COMPANION_CLASS_METHOD, Nil, Nil, Ident(name),
-        /*Select(Select(
-          Select(Ident(nme.ROOTPKG), nme.scala_),
-          nme.Predef), nme.???)*/ Ident(nme.???))
-      .withMods(synthetic | Private)
-
     // The companion object defifinitions, if a companion is needed, Nil otherwise.
     // companion definitions include:
     // 1. If class is a case class case class C[Ts](p1: T1, ..., pN: TN)(moreParams):
@@ -366,13 +359,11 @@ object desugar {
           DefDef(nme.unapply, derivedTparams, (unapplyParam :: Nil) :: Nil, TypeTree(), unapplyRHS)
             .withMods(synthetic)
         }
-        companionDefs(parent, companionClassGeterMethod :: applyMeths ::: unapplyMeth :: defaultGetters)
+        companionDefs(parent, applyMeths ::: unapplyMeth :: defaultGetters)
       }
       else {
-        val methods = if (!(mods is Synthetic | Module)) companionClassGeterMethod :: defaultGetters else defaultGetters
-
-        if(methods.nonEmpty)
-          companionDefs(anyRef, methods)
+        if (defaultGetters.nonEmpty)
+          companionDefs(anyRef, defaultGetters)
         else Nil
       }
 
