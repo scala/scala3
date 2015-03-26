@@ -496,13 +496,18 @@ object SymDenotations {
      */
     def derivesFrom(base: Symbol)(implicit ctx: Context) = false
 
-    /** Is this symbol a class that does not extend `AnyVal`? */
-    final def isNonValueClass(implicit ctx: Context): Boolean =
-      isClass && !derivesFrom(defn.AnyValClass) && (symbol ne defn.NothingClass)
+    /** Is this symbol a class that extends `AnyVal`? */
+    final def isValueClass(implicit ctx: Context): Boolean = {
+      val di = this.initial.asSymDenotation
+      di.isClass &&
+      di.derivesFrom(defn.AnyValClass)(ctx.withPhase(di.validFor.firstPhaseId))
+        // We call derivesFrom at the initial phase both because AnyVal does not exist
+        // after Erasure and to avoid cyclic references caused by forcing denotations
+    }
 
     /** Is this symbol a class references to which that are supertypes of null? */
     final def isNullableClass(implicit ctx: Context): Boolean =
-      isNonValueClass && !(this is ModuleClass)
+      isClass && !isValueClass && !(this is ModuleClass)
 
     /** Is this definition accessible as a member of tree with type `pre`?
      *  @param pre          The type of the tree from which the selection is made

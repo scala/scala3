@@ -12,13 +12,9 @@ import Flags._
 object ValueClasses {
 
   def isDerivedValueClass(d: SymDenotation)(implicit ctx: Context) = {
-    val di = d.initial.asSymDenotation
-    di.isClass &&
-    di.derivesFrom(defn.AnyValClass)(ctx.withPhase(di.validFor.firstPhaseId)) &&
-      // need to check derivesFrom at initialPhase to avoid cyclic references caused
-      // by forcing in transformInfo
-    (di.symbol ne defn.AnyValClass) &&
-    !di.isPrimitiveValueClass
+    d.isValueClass &&
+    (d.initial.symbol ne defn.AnyValClass) && // Compare the initial symbol because AnyVal does not exist after erasure
+    !d.isPrimitiveValueClass
   }
 
   def isMethodWithExtension(d: SymDenotation)(implicit ctx: Context) =
