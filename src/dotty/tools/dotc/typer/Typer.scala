@@ -963,7 +963,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
     val packageContext =
       if (pkg is Package) ctx.fresh.setOwner(pkg.moduleClass).setTree(tree)
       else {
-        ctx.error(d"$pkg is not a packge", tree.pos)
+        ctx.error(d"$pkg is not a package", tree.pos)
         ctx
       }
     val stats1 = typedStats(tree.stats, pkg.moduleClass)(packageContext)
