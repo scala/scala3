@@ -380,6 +380,7 @@ trait Implicits { self: Typer =>
   override def viewExists(from: Type, to: Type)(implicit ctx: Context): Boolean = (
        !from.isError
     && !to.isError
+    && !ctx.isAfterTyper
     && (ctx.mode is Mode.ImplicitsEnabled)
     && { from.widenExpr match {
            case from: TypeRef if defn.ScalaValueClasses contains from.symbol =>
