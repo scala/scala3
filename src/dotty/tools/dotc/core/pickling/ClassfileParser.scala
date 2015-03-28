@@ -92,6 +92,10 @@ class ClassfileParser(
       if (c != classRoot.symbol) mismatchError(c)
     }
 
+    if(classRoot.symbol.id == 4812) {
+      println("bar")
+    }
+
     addEnclosingTParams()
 
     if (unpickleOrParseInnerClasses()) return
@@ -130,10 +134,12 @@ class ClassfileParser(
     for (i <- 0 until in.nextChar) parseMember(method = true)
     classInfo = parseAttributes(classRoot.symbol, classInfo)
     if (isAnnotation) addAnnotationConstructor(classInfo)
+
     val companionClassMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, classRoot, moduleRoot)
     if (companionClassMethod.exists) companionClassMethod.entered
-
-
+    val companionModuleMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, moduleRoot, classRoot)
+    if (companionModuleMethod.exists) companionModuleMethod.entered
+    
     setClassInfo(classRoot, classInfo)
     setClassInfo(moduleRoot, staticInfo)
   }
