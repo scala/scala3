@@ -217,7 +217,7 @@ abstract class SymbolLoader extends LazyType {
           denot.markAbsent()
       postProcess(root)
       if (!root.isRoot)
-        postProcess(root.linkedClass.denot)
+        postProcess(root.scalacLinkedClass.denot)
     }
   }
 }

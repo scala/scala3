@@ -239,7 +239,7 @@ object SymDenotations {
     final def ensureCompleted()(implicit ctx: Context): Unit = info
 
     /** The symbols defined in this class or object.
-     *  Careful! This coes not force the type, so is compilation order dependent.
+     *  Careful! This does not force the type, so is compilation order dependent.
      *  This method should be used only in the following circumstances:
      *  
      *  1. When accessing type parameters or type parameter accessors (both are entered before 
@@ -766,11 +766,15 @@ object SymDenotations {
      *  and which is also defined in the same scope and compilation unit.
      *  NoSymbol if this module does not exist.
      */
-    final def companionModule(implicit ctx: Context): Symbol =
-      if (name == tpnme.ANON_CLASS)
-        NoSymbol // avoid forcing anon classes, this might cause cyclic reference errors
+    final def companionModule(implicit ctx: Context): Symbol = {
+      val companionMethod = info.decls.denotsNamed(nme.COMPANION_MODULE_METHOD, selectPrivate).first
+
+      if (companionMethod.exists)
+        companionMethod.info.resultType.classSymbol.sourceModule
       else
-        companionNamed(effectiveName.moduleClassName).sourceModule
+        NoSymbol
+    }
+
 
     /** The class with the same (type-) name as this module or module class,
       *  and which is also defined in the same scope and compilation unit.
@@ -781,21 +785,13 @@ object SymDenotations {
 
       if (companionMethod.exists)
         companionMethod.info.resultType.classSymbol
-      else {
-        /*
-        val scalac = companionNamed(effectiveName.toTypeName)
-
-        if (scalac.exists) {
-          println(s"scalac returned companion class for $this to be $scalac")
-        }
-        */
+      else
         NoSymbol
-      }
     }
 
     final def scalacLinkedClass(implicit ctx: Context): Symbol =
       if (this is ModuleClass) companionNamed(effectiveName.toTypeName)
-      else if (this.isClass) companionModule.moduleClass
+      else if (this.isClass) companionNamed(effectiveName.moduleClassName).sourceModule.moduleClass
       else NoSymbol
 
 
