@@ -707,9 +707,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val alternatives = ctx.typer.resolveOverloaded(alts, proto, Nil)
     assert(alternatives.size == 1) // this is parsed from bytecode tree. there's nothing user can do about it
 
+    val prefixTpe =
+      if (method eq nme.CONSTRUCTOR)
+        receiver.tpe.normalizedPrefix // <init> methods are part of the enclosing scope
+      else
+        receiver.tpe
+
     val selected = alternatives.head
     val fun = receiver
-      .select(TermRef.withSig(receiver.tpe.normalizedPrefix, selected.termSymbol.asTerm))
+      .select(TermRef.withSig(prefixTpe, selected.termSymbol.asTerm))
       .appliedToTypes(targs)
 
     def adaptLastArg(lastParam: Tree, expectedType: Type) = {
