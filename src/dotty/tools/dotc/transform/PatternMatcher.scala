@@ -643,8 +643,12 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           // val outer = expectedTp.typeSymbol.newMethod(vpmName.outer, newFlags = SYNTHETIC | ARTIFACT) setInfo expectedTp.prefix
 
           val expectedClass = expectedTp.dealias.classSymbol.asClass
-          ExplicitOuter.ensureOuterAccessors(expectedClass)
-          codegen._asInstanceOf(testedBinder, expectedTp).select(ExplicitOuter.outerAccessor(expectedClass)).select(defn.Object_eq).appliedTo(expectedOuter)
+          val test = codegen._asInstanceOf(testedBinder, expectedTp)
+          val outerAccessorTested = ctx.atPhase(ctx.explicitOuterPhase.next) { implicit ctx =>
+              ExplicitOuter.ensureOuterAccessors(expectedClass)
+              test.select(ExplicitOuter.outerAccessor(expectedClass)).select(defn.Object_eq).appliedTo(expectedOuter)
+            }
+          outerAccessorTested
         }
       }
 
