@@ -1275,7 +1275,7 @@ object SymDenotations {
       myMemberCache
     }
 
-    /** Enter a symbol in current scope.
+    /** Enter a symbol in current scope, and future scopes of same denotation.
      *  Note: We require that this does not happen after the first time
      *  someone does a findMember on a subclass.
      *  @param scope   The scope in which symbol should be entered.
@@ -1283,7 +1283,9 @@ object SymDenotations {
      */
     def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
       val mscope = scope match {
-        case scope: MutableScope => scope
+        case scope: MutableScope =>
+          assert(this.nextInRun == this) // we are not going to bring this symbol into future
+          scope
         case _ => unforcedDecls.openForMutations
       }
       if (this is PackageClass) {
@@ -1295,6 +1297,10 @@ object SymDenotations {
         }
       }
       enterNoReplace(sym, mscope)
+      val nxt = this.nextInRun
+      if((nxt ne this) && (nxt.validFor.code > this.validFor.code)) {
+        this.nextInRun.asSymDenotation.asClass.enter(sym)
+      }
     }
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
