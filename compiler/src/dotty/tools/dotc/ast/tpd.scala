@@ -572,7 +572,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def Block(tree: Tree)(stats: List[Tree], expr: Tree)(implicit ctx: Context): Block = {
       val tree1 = untpdCpy.Block(tree)(stats, expr)
       tree match {
-        case tree: Block if expr.tpe eq tree.expr.tpe => tree1.withTypeUnchecked(tree.tpe)
+        case tree: Block if (expr.tpe eq tree.expr.tpe) && (expr.tpe eq tree.tpe) =>
+          // the second guard is needed in case avoid somehow widened the type.
+          // if it did it could potentially need to rewiden it
+          // eg {val s = ...; s}
+          // changing type of s should change type of block, though type of expr is unchanged - TermRef(s)
+          tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, stats, expr)
       }
     }
@@ -580,7 +585,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def If(tree: Tree)(cond: Tree, thenp: Tree, elsep: Tree)(implicit ctx: Context): If = {
       val tree1 = untpdCpy.If(tree)(cond, thenp, elsep)
       tree match {
-        case tree: If if (thenp.tpe eq tree.thenp.tpe) && (elsep.tpe eq tree.elsep.tpe) => tree1.withTypeUnchecked(tree.tpe)
+        case tree: If if (thenp.tpe eq tree.thenp.tpe) && (elsep.tpe eq tree.elsep.tpe) &&
+          ((tree.tpe eq thenp.tpe) || (tree.tpe eq elsep.tpe)) =>
+          // last guard is needed in case previous if had computed a widened ORType that needs to be recomputed
+          // eg {val a = ...; val b = ...; if(...) a else b}
+          // changing type of a or b should change type of if, though types of both trees remain unchanged
+          tree1.withTypeUnchecked(tree.tpe)
         case _ => ta.assignType(tree1, thenp, elsep)
       }
     }
