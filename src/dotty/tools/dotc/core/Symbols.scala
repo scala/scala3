@@ -162,11 +162,17 @@ trait Symbols { this: Context =>
         privateWithin, coord, assocFile)
 
   def synthesizeCompanionMethod(name: TermName, ret: SymDenotation, owner: SymDenotation)(implicit ctx: Context) = {
-    if(owner.exists && ret.exists && !owner.isAbsent && !ret.isAbsent) ctx.newSymbol(
-      owner = owner.symbol,
-      name = name,
-      flags = Flags.Synthetic | Flags.Private,
-      info = ExprType(ret.typeRef))
+    if(owner.exists && ret.exists && !owner.isAbsent && !ret.isAbsent) {
+      val existing = owner.unforcedDecls.lookup(name)
+      if (existing.exists) existing
+      else
+      ctx.newSymbol(
+        owner = owner.symbol,
+        name = name,
+        flags = Flags.Synthetic | Flags.Private,
+        info = ExprType(ret.typeRef))
+
+    }
     else NoSymbol
   }
 
