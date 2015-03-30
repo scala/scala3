@@ -767,12 +767,14 @@ object SymDenotations {
      *  NoSymbol if this module does not exist.
      */
     final def companionModule(implicit ctx: Context): Symbol = {
-      val companionMethod = info.decls.denotsNamed(nme.COMPANION_MODULE_METHOD, selectPrivate).first
-
-      if (companionMethod.exists)
-        companionMethod.info.resultType.classSymbol.sourceModule
-      else
-        NoSymbol
+      if (this.flagsUNSAFE is Flags.Module) this.sourceModule
+      else {
+        val companionMethod = info.decls.denotsNamed(nme.COMPANION_MODULE_METHOD, selectPrivate).first
+        if (companionMethod.exists)
+          companionMethod.info.resultType.classSymbol.sourceModule
+        else
+          NoSymbol
+      }
     }
 
 
