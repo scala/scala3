@@ -495,7 +495,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         if (isModuleRoot) {
           moduleRoot setFlag flags
           moduleRoot.symbol
-        } else ctx.newSymbol(owner, name.asTermName, flags, localMemberUnpickler, coord = start)
+        } else ctx.newSymbol(owner, name.asTermName, flags,
+          new LocalUnpickler() withModuleClass(implicit ctx =>
+            owner.info.decls.lookup(name.moduleClassName)
+              .suchThat(_ is Module).symbol)
+          , coord = start)
       case _ =>
         errorBadSignature("bad symbol tag: " + tag)
     })
