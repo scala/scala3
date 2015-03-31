@@ -45,10 +45,8 @@ class Compiler {
       List(new RefChecks,
            new ElimRepeated,
            new NormalizeFlags,
-           new ExtensionMethods),
-      List(new TailRec), // TailRec needs to be in its own group for now.
-                         // Otherwise it produces -Ycheck incorrect code for
-                         // file core/Decorators.scala.
+           new ExtensionMethods,
+           new TailRec),
       List(new PatternMatcher,
            new ExplicitOuter,
            new Splitter),
