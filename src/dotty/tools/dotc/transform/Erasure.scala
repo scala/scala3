@@ -491,12 +491,12 @@ object Erasure extends TypeTestsCasts{
                   sym => makeBridgeDef(member, sym)(ctx)
                 }
                 emittedBridges ++= bridgeImplementations
-                traverse(newTail, oldTail)
+                traverse(newTail, oldTail, emittedBridges)
               case notADefDef :: oldTail =>
-                traverse(after, oldTail)
+                traverse(after, oldTail, emittedBridges)
             }
           case notADefDef :: newTail =>
-            traverse(newTail, before)
+            traverse(newTail, before, emittedBridges)
         }
       }
 
