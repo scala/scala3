@@ -504,19 +504,27 @@ object Erasure extends TypeTestsCasts{
     }
 
     def makeBridgeDef(newDef: tpd.DefDef, parentSym: Symbol)(implicit ctx: Context): tpd.DefDef = {
+      val newDefSym = newDef.symbol
+      val currentClass = newDefSym.owner.asClass
+
       def error(reason: String) = {
-        assert(false, s"failure creating bridge from ${newDef.symbol} to ${parentSym}, reason: $reason")
+        assert(false, s"failure creating bridge from ${newDefSym} to ${parentSym}, reason: $reason")
         ???
       }
-      val bridge = ctx.newSymbol(newDef.symbol.owner,
-        parentSym.name, parentSym.flags | Flags.Bridge, parentSym.info, coord = newDef.symbol.owner.coord).asTerm
+      val bridge = ctx.newSymbol(currentClass,
+        parentSym.name, parentSym.flags | Flags.Bridge, parentSym.info, coord = newDefSym.owner.coord).asTerm
       bridge.enteredAfter(ctx.phase.prev.asInstanceOf[DenotTransformer]) // this should be safe, as we're executing in context of next phase
-      ctx.debuglog(s"generating bridge from ${newDef.symbol} to $bridge")
+      ctx.debuglog(s"generating bridge from ${newDefSym} to $bridge")
 
-      val sel: Tree = This(newDef.symbol.owner.asClass).select(newDef.symbol.termRef)
+      val sel: Tree = This(currentClass).select(newDefSym.termRef)
 
-      val resultType = bridge.info.widen.resultType
+      val resultType = parentSym.info.widen.resultType
+
+      val bridgeCtx = ctx.withOwner(bridge)
+
       tpd.DefDef(bridge, { paramss: List[List[tpd.Tree]] =>
+          implicit val ctx: Context = bridgeCtx
+
           val rhs = paramss.foldLeft(sel)((fun, vparams) =>
             fun.tpe.widen match {
               case MethodType(names, types) => Apply(fun, (vparams, types).zipped.map(adapt(_, _, untpd.EmptyTree)))
