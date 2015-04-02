@@ -1286,7 +1286,11 @@ object SymDenotations {
     def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
       val mscope = scope match {
         case scope: MutableScope =>
-          assert(this.nextInRun == this) // we are not going to bring this symbol into future
+          // if enter gets a scope as an argument,
+          // than this is a scope that will eventually become decls of this symbol.
+          // And this should only happen if this is first time the scope of symbol
+          // is computed, ie symbol yet has no future.
+          assert(this.nextInRun == this)
           scope
         case _ => unforcedDecls.openForMutations
       }
@@ -1300,7 +1304,7 @@ object SymDenotations {
       }
       enterNoReplace(sym, mscope)
       val nxt = this.nextInRun
-      if((nxt ne this) && (nxt.validFor.code > this.validFor.code)) {
+      if (nxt.validFor.code > this.validFor.code) {
         this.nextInRun.asSymDenotation.asClass.enter(sym)
       }
     }

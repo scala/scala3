@@ -361,11 +361,10 @@ object desugar {
         }
         companionDefs(parent, applyMeths ::: unapplyMeth :: defaultGetters)
       }
-      else {
-        if (defaultGetters.nonEmpty)
+      else if (defaultGetters.nonEmpty)
           companionDefs(anyRef, defaultGetters)
-        else Nil
-      }
+      else Nil
+
 
     // For an implicit class C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, .., pMN: TMN), the method
     //     synthetic implicit C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, ..., pMN: TMN): C[Ts] =
