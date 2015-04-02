@@ -6,12 +6,9 @@ import DenotTransformers.IdentityDenotTransformer
 import Contexts.Context
 import Symbols._
 import Scopes._
-import collection.mutable
 import TreeTransforms.MiniPhaseTransform
 import SymDenotations._
 import ast.Trees._
-import NameOps._
-import typer.Mode
 import TreeTransforms.TransformerInfo
 
 /** The preceding lambda lift and flatten phases move symbols to different scopes
@@ -21,18 +18,6 @@ import TreeTransforms.TransformerInfo
 class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
   import ast.tpd._
   override def phaseName = "restoreScopes"
-
-  private def invalidateUndefinedCompanions(pkg: ClassSymbol, cls: ClassSymbol)(implicit ctx: Context): Unit = {
-    val otherNames = 
-      if (cls is Flags.Module) 
-        List(cls.name.sourceModuleName, cls.name.stripModuleClassSuffix.toTypeName)
-      else
-        List(cls.name.toTermName, cls.name.moduleClassName)
-    for (otherName <- otherNames) {
-      val other = pkg.info.decl(otherName).asSymDenotation
-      if (other.exists && !other.isCompleted) other.markAbsent
-    }    
-  }
 
   override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo) = {
     val TypeDef(_, impl: Template) = tree
@@ -46,8 +31,6 @@ class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { t
     val cls = tree.symbol.asClass
     val pkg = cls.owner.asClass
     pkg.enter(cls) 
-    invalidateUndefinedCompanions(pkg, cls)(
-        ctx.withPhase(cls.initial.validFor.phaseId).addMode(Mode.FutureDefsOK))
     val cinfo = cls.classInfo
     tree.symbol.copySymDenotation(
       info = cinfo.derivedClassInfo( // Dotty deviation: Cannot expand cinfo inline without a type error

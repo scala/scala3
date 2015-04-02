@@ -5,6 +5,10 @@ import core._
 import DenotTransformers.SymTransformer
 import Phases.Phase
 import Contexts.Context
+import Symbols._
+import Names.Name
+import NameOps._
+import typer.Mode
 import Flags._
 import SymUtils._
 import SymDenotations.SymDenotation
@@ -16,11 +20,35 @@ class Flatten extends MiniPhaseTransform with SymTransformer { thisTransform =>
   import ast.tpd._
   override def phaseName = "flatten"
 
+  /** Mark absent any companion classes or objects of the flattened version of `cls`
+   *  in package `pkg` which are not yet completed. These are inner classes entered
+   *  into the package scope by reading their class files. They should never be read
+   *  because their information is superseded by the lifted class info.
+   */
+  private def invalidateUndefinedCompanions(pkg: ClassSymbol, cls: ClassSymbol)(implicit ctx: Context): Unit = {
+    def invalidate(otherName: Name) = {
+      val other = pkg.info.decl(otherName).asSymDenotation
+      if (other.exists && !other.isCompleted) other.markAbsent
+    }
+    if (cls is Flags.Module)  {
+      invalidate(cls.name.sourceModuleName)
+      invalidate(cls.name.stripModuleClassSuffix.toTypeName)
+    }
+    else {
+      invalidate(cls.name.toTermName)
+      invalidate(cls.name.moduleClassName)
+    }
+  }
+
   def transformSym(ref: SymDenotation)(implicit ctx: Context) = {
     if (ref.isClass && !ref.is(Package) && !ref.owner.is(Package)) {
+      val cls = ref.symbol.asClass
+      val pkg = ref.enclosingPackageClass.asClass
+      invalidateUndefinedCompanions(pkg, cls)(
+         ctx.withPhase(cls.initial.validFor.phaseId).addMode(Mode.FutureDefsOK))      
       ref.copySymDenotation(
         name = ref.flatName(),
-        owner = ref.enclosingPackageClass)
+        owner = pkg)
     }
     else ref
   }
