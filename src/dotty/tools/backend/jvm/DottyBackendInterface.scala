@@ -485,7 +485,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
           val original = toDenot(sym).initial
           val validity = original.validFor
           val shiftedContext = ctx.withPhase(validity.phaseId)
-          val r = toDenot(sym)(shiftedContext).maybeOwner
+          val r = toDenot(sym)(shiftedContext).maybeOwner.enclosingClass(shiftedContext)
           r
         } else NoSymbol
       } catch {
