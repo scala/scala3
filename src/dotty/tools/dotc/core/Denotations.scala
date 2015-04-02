@@ -493,6 +493,9 @@ object Denotations {
       b.toList
     }
 
+    /** Invalidate all caches and fields that depend on base classes and their contents */
+    def invalidateInheritedInfo(): Unit = ()
+ 
     /** Move validity period of this denotation to a new run. Throw a StaleSymbol error
      *  if denotation is no longer valid.
      */
@@ -502,9 +505,10 @@ object Denotations {
         var d: SingleDenotation = denot
         do {
           d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
+          d.invalidateInheritedInfo()
           d = d.nextInRun
         } while (d ne denot)
-        syncWithParents
+        this
       case _ =>
         if (coveredInterval.containsPhaseId(ctx.phaseId)) staleSymbolError
         else NoDenotation

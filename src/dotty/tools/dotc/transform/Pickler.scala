@@ -65,6 +65,7 @@ class Pickler extends Phase {
         unpickler.enter(roots = Set())
         unpickler
       }  
+    pickling.println("************* entered toplevel ***********")
     for ((unpickler, unit) <- unpicklers zip units) {
       val unpickled = unpickler.body(readPositions = false)
       testSame(i"$unpickled%\n%", beforePickling(unit), unit)
