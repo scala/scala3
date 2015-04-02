@@ -292,7 +292,7 @@ trait Symbols { this: Context =>
         val oinfo = original.info match {
           case ClassInfo(pre, _, parents, decls, selfInfo) =>
             assert(original.isClass)
-            ClassInfo(pre, copy.asClass, parents, decls, selfInfo)
+            ClassInfo(pre, copy.asClass, parents, decls.cloneScope, selfInfo)
           case oinfo => oinfo
         }
         copy.denot = odenot.copySymDenotation(
