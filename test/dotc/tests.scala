@@ -149,7 +149,7 @@ class tests extends CompilerTest {
 
   @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing")
 
-  @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting", twice)
+  @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting")
 
   @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", failedOther)
     // error: error while loading Checking$$anon$2$,

@@ -471,7 +471,7 @@ object Denotations {
      *  2) the union of all validity periods is a contiguous
      *     interval.
      */
-    private var nextInRun: SingleDenotation = this
+    protected var nextInRun: SingleDenotation = this
 
     /** The version of this SingleDenotation that was valid in the first phase
      *  of this run.
@@ -611,7 +611,10 @@ object Denotations {
         val current = symbol.current
         // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
         // printPeriods(current)
-        this.nextInRun = current.nextInRun
+        if (current.nextInRun ne current)
+          this.nextInRun = current.nextInRun
+        else
+          this.nextInRun = this
         this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
         if (current.validFor.firstPhaseId == targetId) {
           // replace current with this denotation
@@ -622,6 +625,7 @@ object Denotations {
         } else {
           // insert this denotation after current
           current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
+          this.nextInRun = current.nextInRun
           current.nextInRun = this
         }
       // printPeriods(this)

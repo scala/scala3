@@ -239,7 +239,7 @@ object SymDenotations {
     final def ensureCompleted()(implicit ctx: Context): Unit = info
 
     /** The symbols defined in this class or object.
-     *  Careful! This coes not force the type, so is compilation order dependent.
+     *  Careful! This does not force the type, so is compilation order dependent.
      *  This method should be used only in the following circumstances:
      *  
      *  1. When accessing type parameters or type parameter accessors (both are entered before 
@@ -772,18 +772,36 @@ object SymDenotations {
      *  and which is also defined in the same scope and compilation unit.
      *  NoSymbol if this module does not exist.
      */
-    final def companionModule(implicit ctx: Context): Symbol =
-      if (name == tpnme.ANON_CLASS)
-        NoSymbol // avoid forcing anon classes, this might cause cyclic reference errors
-      else
-        companionNamed(effectiveName.moduleClassName).sourceModule
+    final def companionModule(implicit ctx: Context): Symbol = {
+      if (this.flagsUNSAFE is Flags.Module) this.sourceModule
+      else {
+        val companionMethod = info.decls.denotsNamed(nme.COMPANION_MODULE_METHOD, selectPrivate).first
+        if (companionMethod.exists)
+          companionMethod.info.resultType.classSymbol.sourceModule
+        else
+          NoSymbol
+      }
+    }
+
 
     /** The class with the same (type-) name as this module or module class,
-     *  and which is also defined in the same scope and compilation unit.
-     *  NoSymbol if this class does not exist.
-     */
-    final def companionClass(implicit ctx: Context): Symbol =
-      companionNamed(effectiveName.toTypeName)
+      *  and which is also defined in the same scope and compilation unit.
+      *  NoSymbol if this class does not exist.
+      */
+    final def companionClass(implicit ctx: Context): Symbol = {
+      val companionMethod = info.decls.denotsNamed(nme.COMPANION_CLASS_METHOD, selectPrivate).first
+
+      if (companionMethod.exists)
+        companionMethod.info.resultType.classSymbol
+      else
+        NoSymbol
+    }
+
+    final def scalacLinkedClass(implicit ctx: Context): Symbol =
+      if (this is ModuleClass) companionNamed(effectiveName.toTypeName)
+      else if (this.isClass) companionNamed(effectiveName.moduleClassName).sourceModule.moduleClass
+      else NoSymbol
+
 
     /** Find companion class symbol with given name, or NoSymbol if none exists.
      *  Three alternative strategies:
@@ -1265,7 +1283,7 @@ object SymDenotations {
       myMemberCache
     }
 
-    /** Enter a symbol in current scope.
+    /** Enter a symbol in current scope, and future scopes of same denotation.
      *  Note: We require that this does not happen after the first time
      *  someone does a findMember on a subclass.
      *  @param scope   The scope in which symbol should be entered.
@@ -1273,7 +1291,13 @@ object SymDenotations {
      */
     def enter(sym: Symbol, scope: Scope = EmptyScope)(implicit ctx: Context): Unit = {
       val mscope = scope match {
-        case scope: MutableScope => scope
+        case scope: MutableScope =>
+          // if enter gets a scope as an argument,
+          // than this is a scope that will eventually become decls of this symbol.
+          // And this should only happen if this is first time the scope of symbol
+          // is computed, ie symbol yet has no future.
+          assert(this.nextInRun == this)
+          scope
         case _ => unforcedDecls.openForMutations
       }
       if (this is PackageClass) {
@@ -1285,11 +1309,15 @@ object SymDenotations {
         }
       }
       enterNoReplace(sym, mscope)
+      val nxt = this.nextInRun
+      if (nxt.validFor.code > this.validFor.code) {
+        this.nextInRun.asSymDenotation.asClass.enter(sym)
+      }
     }
 
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
     def enterNoReplace(sym: Symbol, scope: MutableScope)(implicit ctx: Context): Unit = {
-      require(!(this is Frozen))
+      require((sym.denot.flagsUNSAFE is Private) ||  !(this is Frozen))
       scope.enter(sym)
 
       if (myMemberFingerPrint != FingerPrint.unknown)

@@ -161,6 +161,15 @@ trait Symbols { this: Context =>
           owner.thisType, modcls, parents, decls, TermRef.withSymAndName(owner.thisType, module, name)),
         privateWithin, coord, assocFile)
 
+  def synthesizeCompanionMethod(name: Name, target: SymDenotation, owner: SymDenotation)(implicit ctx: Context) =
+    if(owner.exists && target.exists && !owner.isAbsent && !target.isAbsent) {
+      val existing = owner.unforcedDecls.lookup(name)
+
+      existing.orElse{
+        ctx.newSymbol(owner.symbol, name, Flags.Synthetic | Flags.Private, ExprType(target.typeRef))
+      }
+    } else NoSymbol
+
   /** Create a package symbol with associated package class
    *  from its non-info fields and a lazy type for loading the package's members.
    */

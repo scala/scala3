@@ -362,8 +362,9 @@ object desugar {
         companionDefs(parent, applyMeths ::: unapplyMeth :: defaultGetters)
       }
       else if (defaultGetters.nonEmpty)
-        companionDefs(anyRef, defaultGetters)
+          companionDefs(anyRef, defaultGetters)
       else Nil
+
 
     // For an implicit class C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, .., pMN: TMN), the method
     //     synthetic implicit C[Ts](p11: T11, ..., p1N: T1N) ... (pM1: TM1, ..., pMN: TMN): C[Ts] =
@@ -409,6 +410,8 @@ object desugar {
     flatTree(cdef1 :: companions ::: implicitWrappers)
   }
 
+  val AccessOrSynthetic = AccessFlags | Synthetic
+
   /** Expand
    *
    *    object name extends parents { self => body }
@@ -436,7 +439,7 @@ object desugar {
         .withPos(tmpl.self.pos orElse tmpl.pos.startPos)
       val clsTmpl = cpy.Template(tmpl)(self = clsSelf, body = tmpl.body)
       val cls = TypeDef(clsName, clsTmpl)
-        .withMods(mods.toTypeFlags & AccessFlags | ModuleClassCreationFlags)
+        .withMods(mods.toTypeFlags & AccessOrSynthetic | ModuleClassCreationFlags)
       Thicket(modul, classDef(cls))
     }
   }

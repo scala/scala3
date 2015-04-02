@@ -118,6 +118,24 @@ object UnPickler {
         denot.owner.thisType select denot.sourceModule
       else selfInfo
     if (!(denot.flagsUNSAFE is JavaModule)) ensureConstructor(denot.symbol.asClass, decls)
+
+    val scalacCompanion = denot.classSymbol.scalacLinkedClass
+
+    def registerCompanionPair(module: Symbol, claz: Symbol) = {
+      val companionClassMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, claz, module)
+      if (companionClassMethod.exists)
+        companionClassMethod.entered
+      val companionModuleMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, module, claz)
+      if (companionModuleMethod.exists)
+        companionModuleMethod.entered
+    }
+
+    if (denot.flagsUNSAFE is Module) {
+      registerCompanionPair(denot.classSymbol, scalacCompanion)
+    } else {
+      registerCompanionPair(scalacCompanion, denot.classSymbol)
+    }
+
     denot.info = ClassInfo(denot.owner.thisType, denot.classSymbol, parentRefs, decls, ost)
   }
 }
@@ -483,7 +501,11 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         if (isModuleRoot) {
           moduleRoot setFlag flags
           moduleRoot.symbol
-        } else ctx.newSymbol(owner, name.asTermName, flags, localMemberUnpickler, coord = start)
+        } else ctx.newSymbol(owner, name.asTermName, flags,
+          new LocalUnpickler() withModuleClass(implicit ctx =>
+            owner.info.decls.lookup(name.moduleClassName)
+              .suchThat(_ is Module).symbol)
+          , coord = start)
       case _ =>
         errorBadSignature("bad symbol tag: " + tag)
     })

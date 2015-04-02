@@ -217,7 +217,7 @@ abstract class SymbolLoader extends LazyType {
           denot.markAbsent()
       postProcess(root)
       if (!root.isRoot)
-        postProcess(root.linkedClass.denot)
+        postProcess(root.scalacLinkedClass.denot)
     }
   }
 }
@@ -229,7 +229,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
   def description = "class file "+ classfile.toString
 
   def rootDenots(rootDenot: ClassDenotation)(implicit ctx: Context): (ClassDenotation, ClassDenotation) = {
-    val linkedDenot = rootDenot.linkedClass.denot match {
+    val linkedDenot = rootDenot.scalacLinkedClass.denot match {
       case d: ClassDenotation => d
       case d =>
         // this can happen if the companion if shadowed by a val or type
