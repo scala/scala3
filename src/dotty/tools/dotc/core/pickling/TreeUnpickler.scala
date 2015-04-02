@@ -359,41 +359,41 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       val (givenFlags, annots, privateWithin) = readModifiers(end)
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
       val flags = normalizeFlags(tag, givenFlags, name, isAbstractType, rhsIsEmpty)
-      val nameMatches = (_: Denotation).symbol.name == name
-      val prevDenot: SymDenotation = 
-        if (ctx.owner.is(Package)) ctx.effectiveScope.lookup(name)
-        else NoDenotation // TODO check for double reads
-      var completer: LazyType = 
-        if (prevDenot.exists) new Completer(subReader(start, end)) with SymbolLoaders.SecondCompleter
-        else new Completer(subReader(start, end))
-      if (flags is Module) completer = ctx.adjustModuleCompleter(completer, name)
+      def adjustIfModule(completer: LazyType) = 
+        if (flags is Module) ctx.adjustModuleCompleter(completer, name) else completer
       val sym =
-        if (roots contains prevDenot) {
-          pickling.println(i"overwriting ${prevDenot.symbol} # ${prevDenot.hashCode}")
-          prevDenot.info = completer
-          prevDenot.flags = flags &~ Touched // allow one more completion
-          prevDenot.privateWithin = privateWithin
-          prevDenot.symbol
-        } else if (isClass)
-          ctx.newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord = start.index)
-        else {
-          val sym = symAtAddr.get(start) match {
-            case Some(preExisting) =>
-              assert(stubs contains preExisting)
-              stubs -= preExisting
-              preExisting
-            case none =>
-              ctx.newNakedSymbol(start.index)
-          }
-          val denot = ctx.SymDenotation(symbol = sym, owner = ctx.owner, name, flags, completer, privateWithin)
-          sym.denot = denot
-          sym
+        roots.find(root => (root.owner eq ctx.owner) && root.name == name) match {
+          case Some(rootd) =>
+            pickling.println(i"overwriting ${rootd.symbol} # ${rootd.hashCode}")
+            rootd.info = adjustIfModule(
+                new Completer(subReader(start, end)) with SymbolLoaders.SecondCompleter)
+            rootd.flags = flags &~ Touched // allow one more completion
+            rootd.privateWithin = privateWithin
+            rootd.symbol
+          case _ =>
+            val completer = adjustIfModule(new Completer(subReader(start, end)))
+            if (isClass)
+              ctx.newClassSymbol(ctx.owner, name.asTypeName, flags, completer, 
+                  privateWithin, coord = start.index)
+            else {
+              val sym = symAtAddr.get(start) match {
+                case Some(preExisting) =>
+                  assert(stubs contains preExisting)
+                  stubs -= preExisting
+                  preExisting
+                case none =>
+                  ctx.newNakedSymbol(start.index)
+              }
+              val denot = ctx.SymDenotation(symbol = sym, owner = ctx.owner, name, flags, completer, privateWithin)
+              sym.denot = denot
+              sym
+            }
         } // TODO set position
       sym.annotations = annots
       ctx.enter(sym)
       symAtAddr(start) = sym
       if (isClass) {
-        completer.withDecls(newScope)
+        sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
       tag != VALDEF || rhsIsEmpty
