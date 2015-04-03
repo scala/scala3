@@ -135,7 +135,7 @@ class tests extends CompilerTest {
     // class file 'target/scala-2.11/dotty_2.11-0.1-SNAPSHOT.jar(dotty/tools/dotc/core/ConstraintHandling$$anon$1.class)'
     // has location not matching its contents: contains class $anon
 
-  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", failedOther)(allowDeepSubtypes)
+  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling")(allowDeepSubtypes)
     // exception caught when loading class ClassfileParser$$anon$1: dotty.tools.dotc.core.Denotations$NotDefinedHere:
     // demanding denotation of module class ClassfileParser$$anon$1$ at phase frontend(1) outside defined interval:
     // defined periods are Period(31..36, run = 2) Period(3..24, run = 2) Period(25..26, run = 2)
