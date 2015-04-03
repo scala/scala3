@@ -41,15 +41,19 @@ trait SymDenotations { this: Context =>
 
   def stillValid(denot: SymDenotation): Boolean =
     if (denot is ValidForever) true
-    else try {
-      val owner = denot.owner.denot
-      stillValid(owner) && (
-           !owner.isClass
-        || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
-        || denot.isSelfSym
-        )
-    } catch {
-      case ex: StaleSymbol => false
+    else {
+      val initial = denot.initial
+      if (initial ne denot) 
+        ctx.withPhase(initial.validFor.firstPhaseId).stillValid(initial.asSymDenotation)
+      else try {
+        val owner = denot.owner.denot
+        stillValid(owner) && (
+          !owner.isClass
+          || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
+          || denot.isSelfSym)
+      } catch {
+        case ex: StaleSymbol => false
+      }
     }
 }
 
@@ -72,8 +76,6 @@ object SymDenotations {
 
     /** Debug only
     override def validFor_=(p: Period) = {
-      if (name == "Trees".toTermName && p.runId == 3)
-        assert(symbol.id != 6161)
       super.validFor_=(p)
     }
     */
