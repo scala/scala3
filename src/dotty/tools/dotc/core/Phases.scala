@@ -81,6 +81,7 @@ object Phases {
                              phasesToSkip: List[String], stopBeforePhases: List[String], stopAfterPhases: List[String], YCheckAfter: List[String]): List[Phase] = {
       val squashedPhases = ListBuffer[Phase]()
       var prevPhases: Set[Class[_ <: Phase]] = Set.empty
+      val YCheckAll = YCheckAfter.contains("all")
 
       var stop = false
       val filteredPhases = phasess.map(_.filter { p =>
@@ -122,7 +123,7 @@ object Phases {
               phase
             }
           squashedPhases += phaseToAdd
-          val shouldAddYCheck = YCheckAfter.exists(nm => phaseToAdd.phaseName.contains(nm))
+          val shouldAddYCheck = YCheckAfter.exists(nm => phaseToAdd.phaseName.contains(nm)) || YCheckAll
           if (shouldAddYCheck) {
             val checker = new TreeChecker
 
