@@ -15,7 +15,7 @@ import Flags._, Symbols._
  *     or alias type definition or a deferred val or def.
  */
 class NormalizeFlags extends MiniPhaseTransform with SymTransformer { thisTransformer =>
-  override def phaseName = "elimLocals"
+  override def phaseName = "normalizeFlags"
 
   def transformSym(ref: SymDenotation)(implicit ctx: Context) = {
     var newFlags = ref.flags &~ Local
