@@ -57,6 +57,7 @@ class Compiler {
            new ResolveSuper),
       List(new Erasure),
       List(new ElimErasedValueType,
+           new VCInline,
            new Mixin,
            new LazyVals,
            new Memoize,
