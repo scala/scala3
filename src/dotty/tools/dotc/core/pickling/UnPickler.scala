@@ -368,7 +368,10 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       def fromName(name: Name): Symbol = name.toTermName match {
         case nme.ROOT => loadingMirror.RootClass
         case nme.ROOTPKG => loadingMirror.RootPackage
-        case _ => adjust(owner.info.decl(name))
+        case _ => 
+          def declIn(owner: Symbol) = adjust(owner.info.decl(name))
+          val sym = declIn(owner)
+          if (sym.exists || owner.ne(defn.ObjectClass)) sym else declIn(defn.AnyClass)
       }
 
       def nestedObjectSymbol: Symbol = {
