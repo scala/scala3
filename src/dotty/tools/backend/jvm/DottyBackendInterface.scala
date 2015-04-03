@@ -13,7 +13,7 @@ import scala.collection.mutable
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.WeakHashSet
 import scala.reflect.io.{Directory, PlainDirectory, AbstractFile}
-import scala.tools.asm.{ClassVisitor, FieldVisitor, MethodVisitor}
+import scala.tools.asm.{AnnotationVisitor, ClassVisitor, FieldVisitor, MethodVisitor}
 import scala.tools.nsc.backend.jvm.{BCodeHelpers, BackendInterface}
 import dotty.tools.dotc.core._
 import Periods._
@@ -27,6 +27,7 @@ import java.lang.AssertionError
 import dotty.tools.dotc.util.{Positions, DotClass}
 import Decorators._
 import tpd._
+import scala.tools.asm
 import StdNames.nme
 import NameOps._
 
@@ -64,7 +65,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   type New             = tpd.New
   type Super           = tpd.Super
   type Modifiers       = tpd.Modifiers
-  type Annotation      = NonExistentTree
+  type Annotation      = Annotations.Annotation
   type ArrayValue      = tpd.JavaSeqLiteral
   type ApplyDynamic    = NonExistentTree
   type ModuleDef       = NonExistentTree
@@ -139,6 +140,13 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   val AbstractPartialFunctionClass: Symbol = defn.AbstractPartialFunctionClass
   val String_valueOf: Symbol = defn.String_valueOf_Object
 
+  lazy val AnnotationRetentionAttr = ctx.requiredClass("java.lang.annotation.Retention")
+  lazy val AnnotationRetentionSourceAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
+  lazy val AnnotationRetentionClassAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
+  lazy val AnnotationRetentionRuntimeAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
+
+
+
   def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses.map{x =>
     (x, Erasure.Boxing.boxMethod(x.asClass))
   }.toMap
@@ -192,13 +200,121 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   implicit val ClosureTag: ClassTag[Closure] = ClassTag[Closure](classOf[Closure])
 
   /* dont emit any annotations for now*/
-  def isRuntimeVisible(annot: Annotation): Boolean = false
-  def shouldEmitAnnotation(annot: Annotation): Boolean = false
+  def isRuntimeVisible(annot: Annotation): Boolean = {
+    annot.atp.typeSymbol.getAnnotation(AnnotationRetentionAttr) match {
+      case Some(retentionAnnot) =>
+        retentionAnnot.tree.find(_.symbol == AnnotationRetentionRuntimeAttr).isDefined
+      case _ =>
+        // SI-8926: if the annotation class symbol doesn't have a @RetentionPolicy annotation, the
+        // annotation is emitted with visibility `RUNTIME`
+        // dotty bug: #389
+        true
+    }
+  }
 
-  def emitAnnotations(cw: ClassVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen): Unit = ()
-  def emitAnnotations(mw: MethodVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen): Unit = ()
-  def emitAnnotations(fw: FieldVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen): Unit = ()
-  def emitParamAnnotations(jmethod: MethodVisitor, pannotss: List[List[Annotation]], bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen): Unit = ()
+  def shouldEmitAnnotation(annot: Annotation): Boolean = {
+    annot.symbol.isJavaDefined &&
+      retentionPolicyOf(annot) != AnnotationRetentionSourceAttr &&
+      annot.args.isEmpty
+  }
+
+  private def retentionPolicyOf(annot: Annotation): Symbol =
+    annot.atp.typeSymbol.getAnnotation(AnnotationRetentionAttr).
+      flatMap(_.argument(0).map(_.symbol)).getOrElse(AnnotationRetentionClassAttr)
+
+  private def emitArgument(av:   AnnotationVisitor,
+                           name: String,
+                           arg:  Tree, bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen) {
+    (arg: @unchecked) match {
+
+      case Literal(const @ Constant(_)) =>
+        const.tag match {
+          case BooleanTag | ByteTag | ShortTag | CharTag | IntTag | LongTag | FloatTag | DoubleTag => av.visit(name, const.value)
+          case StringTag =>
+            assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
+            av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
+          case ClazzTag => av.visit(name, const.typeValue.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
+          case EnumTag =>
+            val edesc = innerClasesStore.typeDescriptor(const.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
+          val evalue = const.symbolValue.name.toString // value the actual enumeration value.
+            av.visitEnum(name, edesc, evalue)
+        }
+      case Apply(fun, args) if (fun.symbol == defn.ArrayClass.primaryConstructor ||
+        (toDenot(fun.symbol).owner == defn.ArrayClass.linkedClass && fun.symbol.name == nme_apply)) =>
+        val arrAnnotV: AnnotationVisitor = av.visitArray(name)
+        val flatArgs = args.flatMap {
+          case t: tpd.SeqLiteral => t.elems
+          case e => List(e)
+        }
+        for(arg <- flatArgs) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }
+        arrAnnotV.visitEnd()
+/*
+      case sb @ ScalaSigBytes(bytes) =>
+        // see http://www.scala-lang.org/sid/10 (Storage of pickled Scala signatures in class files)
+        // also JVMS Sec. 4.7.16.1 The element_value structure and JVMS Sec. 4.4.7 The CONSTANT_Utf8_info Structure.
+        if (sb.fitsInOneString) {
+          av.visit(name, BCodeAsmCommon.strEncode(sb))
+        } else {
+          val arrAnnotV: asm.AnnotationVisitor = av.visitArray(name)
+          for(arg <- BCodeAsmCommon.arrEncode(sb)) { arrAnnotV.visit(name, arg) }
+          arrAnnotV.visitEnd()
+        }          // for the lazy val in ScalaSigBytes to be GC'ed, the invoker of emitAnnotations() should hold the ScalaSigBytes in a method-local var that doesn't escape.
+
+      case NestedAnnotArg(annInfo) =>
+        val AnnotationInfo(typ, args, assocs) = annInfo
+        assert(args.isEmpty, args)
+        val desc = innerClasesStore.typeDescriptor(typ.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the nested annotation class
+      val nestedVisitor = av.visitAnnotation(name, desc)
+        emitAssocs(nestedVisitor, assocs, bcodeStore)(innerClasesStore)
+    */}
+  }
+
+  override def emitAnnotations(cw: asm.ClassVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen) {
+    for(annot <- annotations; if shouldEmitAnnotation(annot)) {
+      val typ = annot.atp
+      val assocs = annot.assocs
+      val av = cw.visitAnnotation(innerClasesStore.typeDescriptor(typ.asInstanceOf[bcodeStore.int.Type]), isRuntimeVisible(annot))
+      emitAssocs(av, assocs, bcodeStore)(innerClasesStore)
+    }
+  }
+
+  private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)], bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen) {
+    for ((name, value) <- assocs) {
+      emitArgument(av, name.toString(), value.asInstanceOf[Tree], bcodeStore)(innerClasesStore)
+    }
+    av.visitEnd()
+  }
+
+  override def emitAnnotations(mw: asm.MethodVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen) {
+    for(annot <- annotations; if shouldEmitAnnotation(annot)) {
+      val typ = annot.atp
+      val assocs = annot.assocs
+      val av = mw.visitAnnotation(innerClasesStore.typeDescriptor(typ.asInstanceOf[bcodeStore.int.Type]), isRuntimeVisible(annot))
+      emitAssocs(av, assocs, bcodeStore)(innerClasesStore)
+    }
+  }
+
+  override def emitAnnotations(fw: asm.FieldVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen) {
+    for(annot <- annotations; if shouldEmitAnnotation(annot)) {
+      val typ = annot.atp
+      val assocs = annot.assocs
+      val av = fw.visitAnnotation(innerClasesStore.typeDescriptor(typ.asInstanceOf[bcodeStore.int.Type]), isRuntimeVisible(annot))
+      emitAssocs(av, assocs, bcodeStore)(innerClasesStore)
+    }
+  }
+
+  override def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]], bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen) {
+    val annotationss = pannotss map (_ filter shouldEmitAnnotation)
+    if (annotationss forall (_.isEmpty)) return
+    for ((annots, idx) <- annotationss.zipWithIndex;
+         annot <- annots) {
+      val typ = annot.atp
+      val assocs = annot.assocs
+      val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, innerClasesStore.typeDescriptor(typ.asInstanceOf[bcodeStore.int.Type]), isRuntimeVisible(annot))
+      emitAssocs(pannVisitor, assocs, bcodeStore)(innerClasesStore)
+    }
+  }
+
   def getAnnotPickle(jclassName: String, sym: Symbol): Option[Annotation] = None
 
 
@@ -371,11 +487,19 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   implicit def annotHelper(a: Annotation): AnnotationHelper = new AnnotationHelper {
     def atp: Type = a.tree.tpe
 
-    def assocs: List[(Name, Object)] = ???
+    def assocs: List[(Name, Tree)] = {
+      a.tree match {
+        case Apply(fun, args) =>
+          fun.tpe.widen match {
+            case MethodType(names, _) =>
+              names zip args
+          }
+      }
+    }
 
     def symbol: Symbol = a.tree.symbol
 
-    def args: List[Tree] = ???
+    def args: List[Tree] = List.empty // those arguments to scala-defined annotations. they are never emmited
   }
 
 
@@ -526,7 +650,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     // members
     def primaryConstructor: Symbol = toDenot(sym).primaryConstructor
     def nestedClasses: List[Symbol] = memberClasses //exitingPhase(currentRun.lambdaliftPhase)(sym.memberClasses)
-    def memberClasses: List[Symbol] = toDenot(sym).info.memberClasses(ctx.withPhase(ctx.flattenPhase.prev)).map(_.symbol).toList
+    def memberClasses: List[Symbol] = toDenot(sym).info.memberClasses.map(_.symbol).toList
     def annotations: List[Annotation] = Nil
     def companionModuleMembers: List[Symbol] =  {
       // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
@@ -690,7 +814,12 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
 
     def summaryString: String = tp.showSummary
 
-    def params: List[Symbol] = Nil // used only for emmiting annotations
+    def params: List[Symbol] =
+      Nil // backend uses this to emmit annotations on parameter lists of forwarders
+          // to static methods of companion class
+          // in Dotty this link does not exists: there is no way to get from method type
+          // to inner symbols of DefDef
+          // todo: somehow handle.
 
     def parents: List[Type] = tp.parents
   }
