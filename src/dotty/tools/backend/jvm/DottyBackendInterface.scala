@@ -28,6 +28,7 @@ import dotty.tools.dotc.util.{Positions, DotClass}
 import Decorators._
 import tpd._
 import scala.tools.asm
+import NameOps._
 import StdNames.nme
 import NameOps._
 
@@ -139,12 +140,13 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   val PartialFunctionClass: Symbol = defn.PartialFunctionClass
   val AbstractPartialFunctionClass: Symbol = defn.AbstractPartialFunctionClass
   val String_valueOf: Symbol = defn.String_valueOf_Object
+  lazy val Predef_classOf: Symbol = ctx.requiredMethod(toDenot(defn.ScalaPredefModule).moduleClass.asClass, nme.classOf)
 
   lazy val AnnotationRetentionAttr = ctx.requiredClass("java.lang.annotation.Retention")
   lazy val AnnotationRetentionSourceAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
   lazy val AnnotationRetentionClassAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
   lazy val AnnotationRetentionRuntimeAttr = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
-
+  lazy val JavaAnnotationClass = ctx.requiredClass("java.lang.annotation.Annotation")
 
 
   def boxMethods: Map[Symbol, Symbol] = defn.ScalaValueClasses.map{x =>
@@ -236,13 +238,34 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
           case ClazzTag => av.visit(name, const.typeValue.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
           case EnumTag =>
             val edesc = innerClasesStore.typeDescriptor(const.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
-          val evalue = const.symbolValue.name.toString // value the actual enumeration value.
+            val evalue = const.symbolValue.name.toString // value the actual enumeration value.
             av.visitEnum(name, edesc, evalue)
         }
+      case t: TypeApply if (t.fun.symbol == Predef_classOf) =>
+        av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
+      case t: Select =>
+        if (t.symbol.denot.is(Flags.Enum)) {
+          val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
+          val evalue = t.symbol.name.toString // value the actual enumeration value.
+          av.visitEnum(name, edesc, evalue)
+        } else {
+          assert(toDenot(t.symbol).name.toTermName.defaultGetterIndex >= 0) // this should be default getter. do not emmit.
+        }
+      case t: SeqLiteral =>
+        val arrAnnotV: AnnotationVisitor = av.visitArray(name)
+        for(arg <- t.elems) { emitArgument(arrAnnotV, null, arg, bcodeStore)(innerClasesStore) }
+        arrAnnotV.visitEnd()
+
       case Apply(fun, args) if (fun.symbol == defn.ArrayClass.primaryConstructor ||
         (toDenot(fun.symbol).owner == defn.ArrayClass.linkedClass && fun.symbol.name == nme_apply)) =>
         val arrAnnotV: AnnotationVisitor = av.visitArray(name)
-        val flatArgs = args.flatMap {
+
+        var actualArgs = if (fun.tpe.isInstanceOf[ImplicitMethodType]) {
+          // generic array method, need to get implicit argument out of the way
+          fun.asInstanceOf[Apply].args
+        } else args
+
+        val flatArgs = actualArgs.flatMap {
           case t: tpd.SeqLiteral => t.elems
           case e => List(e)
         }
@@ -259,14 +282,14 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
           for(arg <- BCodeAsmCommon.arrEncode(sb)) { arrAnnotV.visit(name, arg) }
           arrAnnotV.visitEnd()
         }          // for the lazy val in ScalaSigBytes to be GC'ed, the invoker of emitAnnotations() should hold the ScalaSigBytes in a method-local var that doesn't escape.
-
-      case NestedAnnotArg(annInfo) =>
-        val AnnotationInfo(typ, args, assocs) = annInfo
-        assert(args.isEmpty, args)
+*/
+      case t @ Apply(constr, args) if t.tpe.derivesFrom(JavaAnnotationClass) =>
+        val typ = t.tpe.classSymbol.denot.info
+        val assocs = assocsFromApply(t)
         val desc = innerClasesStore.typeDescriptor(typ.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the nested annotation class
-      val nestedVisitor = av.visitAnnotation(name, desc)
+        val nestedVisitor = av.visitAnnotation(name, desc)
         emitAssocs(nestedVisitor, assocs, bcodeStore)(innerClasesStore)
-    */}
+    }
   }
 
   override def emitAnnotations(cw: asm.ClassVisitor, annotations: List[Annotation], bcodeStore: BCodeHelpers)(innerClasesStore: bcodeStore.BCInnerClassGen) {
@@ -487,19 +510,21 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   implicit def annotHelper(a: Annotation): AnnotationHelper = new AnnotationHelper {
     def atp: Type = a.tree.tpe
 
-    def assocs: List[(Name, Tree)] = {
-      a.tree match {
-        case Apply(fun, args) =>
-          fun.tpe.widen match {
-            case MethodType(names, _) =>
-              names zip args
-          }
-      }
-    }
+    def assocs: List[(Name, Tree)] = assocsFromApply(a.tree)
 
     def symbol: Symbol = a.tree.symbol
 
     def args: List[Tree] = List.empty // those arguments to scala-defined annotations. they are never emmited
+  }
+
+  def assocsFromApply(tree: Tree) = {
+    tree match {
+      case Apply(fun, args) =>
+        fun.tpe.widen match {
+          case MethodType(names, _) =>
+            names zip args
+        }
+    }
   }
 
 
