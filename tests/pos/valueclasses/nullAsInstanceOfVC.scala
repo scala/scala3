@@ -1,3 +1,5 @@
+package nullAsInstanceOfVC
+
 // These issues were originally reported in SI-5866 and SI-8097
 // FIXME: Make this a run test once we have run tests.
 
