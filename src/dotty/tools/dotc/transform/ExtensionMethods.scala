@@ -36,6 +36,7 @@ import SymUtils._
 class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with FullParameterization { thisTransformer =>
 
   import tpd._
+  import ExtensionMethods._
 
   /** the following two members override abstract members in Transform */
   override def phaseName: String = "extmethods"
@@ -88,65 +89,6 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
     if (isMethodWithExtension(target) &&
         target.owner.linkedClass == derived.owner) extensionMethod(target)
     else NoSymbol
-
-  /** Generate stream of possible names for the extension version of given instance method `imeth`.
-   *  If the method is not overloaded, this stream consists of just "imeth$extension".
-   *  If the method is overloaded, the stream has as first element "imeth$extenionX", where X is the
-   *  index of imeth in the sequence of overloaded alternatives with the same name. This choice will
-   *  always be picked as the name of the generated extension method.
-   *  After this first choice, all other possible indices in the range of 0 until the number
-   *  of overloaded alternatives are returned. The secondary choices are used to find a matching method
-   *  in `extensionMethod` if the first name has the wrong type. We thereby gain a level of insensitivity
-   *  of how overloaded types are ordered between phases and picklings.
-   */
-  private def extensionNames(imeth: Symbol)(implicit ctx: Context): Stream[Name] = {
-    val decl = imeth.owner.info.decl(imeth.name)
-
-    /** No longer needed for Dotty, as we are more disciplined with scopes now.
-    // Bridge generation is done at phase `erasure`, but new scopes are only generated
-    // for the phase after that. So bridges are visible in earlier phases.
-    //
-    // `info.member(imeth.name)` filters these out, but we need to use `decl`
-    // to restrict ourselves to members defined in the current class, so we
-    // must do the filtering here.
-    val declTypeNoBridge = decl.filter(sym => !sym.isBridge).tpe
-    */
-    decl match {
-      case decl: MultiDenotation =>
-        val alts = decl.alternatives
-        val index = alts indexOf imeth.denot
-        assert(index >= 0, alts + " does not contain " + imeth)
-        def altName(index: Int) = (imeth.name + "$extension" + index).toTermName
-        altName(index) #:: ((0 until alts.length).toStream filter (index != _) map altName)
-      case decl =>
-        assert(decl.exists, imeth.name + " not found in " + imeth.owner + "'s decls: " + imeth.owner.info.decls)
-        Stream((imeth.name + "$extension").toTermName)
-    }
-  }
-
-  /** Return the extension method that corresponds to given instance method `meth`. */
-  def extensionMethod(imeth: Symbol)(implicit ctx: Context): TermSymbol =
-    ctx.atPhase(thisTransformer.next) { implicit ctx =>
-      // FIXME use toStatic instead?
-      val companionInfo = imeth.owner.companionModule.info
-      val candidates = extensionNames(imeth) map (companionInfo.decl(_).symbol) filter (_.exists)
-      val matching = candidates filter (c => memberSignature(c.info) == imeth.signature)
-      assert(matching.nonEmpty,
-        sm"""|no extension method found for:
-             |
-             |  $imeth:${imeth.info.show} with signature ${imeth.signature}
-             |
-             | Candidates:
-             |
-             | ${candidates.map(c => c.name + ":" + c.info.show).mkString("\n")}
-             |
-             | Candidates (signatures normalized):
-             |
-             | ${candidates.map(c => c.name + ":" + c.info.signature + ":" + memberSignature(c.info)).mkString("\n")}
-             |
-             | Eligible Names: ${extensionNames(imeth).mkString(",")}""")
-      matching.head.asTerm
-    }
 
   private def createExtensionMethod(imeth: Symbol, staticClass: Symbol)(implicit ctx: Context): TermSymbol = {
     assert(ctx.phase == thisTransformer.next)
@@ -208,4 +150,65 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
       cpy.DefDef(tree)(rhs = atGroupEnd(forwarder(extensionMeth, tree)(_)))
     } else tree
   }
+}
+
+object ExtensionMethods {
+  /** Generate stream of possible names for the extension version of given instance method `imeth`.
+   *  If the method is not overloaded, this stream consists of just "imeth$extension".
+   *  If the method is overloaded, the stream has as first element "imeth$extenionX", where X is the
+   *  index of imeth in the sequence of overloaded alternatives with the same name. This choice will
+   *  always be picked as the name of the generated extension method.
+   *  After this first choice, all other possible indices in the range of 0 until the number
+   *  of overloaded alternatives are returned. The secondary choices are used to find a matching method
+   *  in `extensionMethod` if the first name has the wrong type. We thereby gain a level of insensitivity
+   *  of how overloaded types are ordered between phases and picklings.
+   */
+  private def extensionNames(imeth: Symbol)(implicit ctx: Context): Stream[Name] = {
+    val decl = imeth.owner.info.decl(imeth.name)
+
+    /** No longer needed for Dotty, as we are more disciplined with scopes now.
+    // Bridge generation is done at phase `erasure`, but new scopes are only generated
+    // for the phase after that. So bridges are visible in earlier phases.
+    //
+    // `info.member(imeth.name)` filters these out, but we need to use `decl`
+    // to restrict ourselves to members defined in the current class, so we
+    // must do the filtering here.
+    val declTypeNoBridge = decl.filter(sym => !sym.isBridge).tpe
+    */
+    decl match {
+      case decl: MultiDenotation =>
+        val alts = decl.alternatives
+        val index = alts indexOf imeth.denot
+        assert(index >= 0, alts + " does not contain " + imeth)
+        def altName(index: Int) = (imeth.name + "$extension" + index).toTermName
+        altName(index) #:: ((0 until alts.length).toStream filter (index != _) map altName)
+      case decl =>
+        assert(decl.exists, imeth.name + " not found in " + imeth.owner + "'s decls: " + imeth.owner.info.decls)
+        Stream((imeth.name + "$extension").toTermName)
+    }
+  }
+
+  /** Return the extension method that corresponds to given instance method `meth`. */
+  def extensionMethod(imeth: Symbol)(implicit ctx: Context): TermSymbol =
+    ctx.atPhase(ctx.extensionMethodsPhase.next) { implicit ctx =>
+      // FIXME use toStatic instead?
+      val companionInfo = imeth.owner.companionModule.info
+      val candidates = extensionNames(imeth) map (companionInfo.decl(_).symbol) filter (_.exists)
+      val matching = candidates filter (c => FullParameterization.memberSignature(c.info) == imeth.signature)
+      assert(matching.nonEmpty,
+        sm"""|no extension method found for:
+             |
+             |  $imeth:${imeth.info.show} with signature ${imeth.signature}
+             |
+             | Candidates:
+             |
+             | ${candidates.map(c => c.name + ":" + c.info.show).mkString("\n")}
+             |
+             | Candidates (signatures normalized):
+             |
+             | ${candidates.map(c => c.name + ":" + c.info.signature + ":" + FullParameterization.memberSignature(c.info)).mkString("\n")}
+             |
+             | Eligible Names: ${extensionNames(imeth).mkString(",")}""")
+      matching.head.asTerm
+    }
 }
