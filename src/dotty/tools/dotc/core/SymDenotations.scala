@@ -716,6 +716,9 @@ object SymDenotations {
      *  but in turn the enclosing class of the latter. This reflects
      *  the context created by `Context#superCallContext`, `Contect#thisCallArgContext`
      *  for these definitions.
+     *
+     *  Note, that as packages have ClassSymbols, top level classes will have an `enclosingClass`
+     *  with Package flag set.
      */
     final def enclosingClass(implicit ctx: Context): Symbol = {
       def enclClass(sym: Symbol, skip: Boolean): Symbol = {

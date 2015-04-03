@@ -28,6 +28,7 @@ import dotty.tools.dotc.util.{Positions, DotClass}
 import Decorators._
 import tpd._
 import StdNames.nme
+import NameOps._
 
 class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   trait NonExistentTree extends tpd.Tree
@@ -382,7 +383,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def toTypeName: Name = n.toTypeName
     def isTypeName: Boolean = n.isTypeName
     def toTermName: Name = n.toTermName
-    def dropModule: Name = ???
+    def dropModule: Name = n.stripModuleClassSuffix
 
     def len: Int = n.length
     def offset: Int = n.start
@@ -409,7 +410,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
 
     // tests
     def isClass: Boolean = {
-      sym.isClass && (sym.isPackageObject || !(sym is Flags.Package))
+      sym.isPackageObject || (sym.isClass)
     }
     def isType: Boolean = sym.isType
     def isAnonymousClass: Boolean = toDenot(sym).isAnonymousClass
@@ -475,16 +476,17 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
 
     // navigation
     def owner: Symbol = toDenot(sym).owner
-    def rawowner: Symbol = owner
+    def rawowner: Symbol = {
+      originalOwner
+    }
     def originalOwner: Symbol = {
       try {
         if (sym.exists) {
           val original = toDenot(sym).initial
           val validity = original.validFor
           val shiftedContext = ctx.withPhase(validity.phaseId)
-          val r = toDenot(sym)(shiftedContext).maybeOwner
-          if(r is Flags.Package) NoSymbol
-          else r
+          val r = toDenot(sym)(shiftedContext).maybeOwner.enclosingClass(shiftedContext)
+          r
         } else NoSymbol
       } catch {
         case e: NotDefinedHere => NoSymbol // todo: do we have a method to tests this?
@@ -511,14 +513,20 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def companionModule: Symbol = toDenot(sym).companionModule
     def companionSymbol: Symbol = if (sym is Flags.Module) companionClass else companionModule
     def moduleClass: Symbol = toDenot(sym).moduleClass
-    def enclosingClassSym: Symbol = enclClass //todo is handled specially for JavaDefined symbols in scalac
+    def enclosingClassSym: Symbol = {
+      if(this.isClass) {
+        val ct = ctx.withPhase(ctx.flattenPhase.prev)
+        toDenot(sym)(ct).owner.enclosingClass(ct)
+      }
+      else sym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
+    } //todo is handled specially for JavaDefined symbols in scalac
 
 
 
     // members
     def primaryConstructor: Symbol = toDenot(sym).primaryConstructor
     def nestedClasses: List[Symbol] = memberClasses //exitingPhase(currentRun.lambdaliftPhase)(sym.memberClasses)
-    def memberClasses: List[Symbol] = toDenot(sym).info.memberClasses.map(_.symbol).toList
+    def memberClasses: List[Symbol] = toDenot(sym).info.memberClasses(ctx.withPhase(ctx.flattenPhase.prev)).map(_.symbol).toList
     def annotations: List[Annotation] = Nil
     def companionModuleMembers: List[Symbol] =  {
       // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
