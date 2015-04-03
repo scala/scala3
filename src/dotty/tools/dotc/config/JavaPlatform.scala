@@ -4,9 +4,8 @@ package config
 
 import io.{AbstractFile,ClassPath,JavaClassPath,MergedClassPath,DeltaClassPath}
 import ClassPath.{ JavaContext, DefaultJavaContext }
-import core.Contexts._
-import core.SymDenotations._, core.Symbols._, dotty.tools.dotc.core._
-import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
+import core._
+import Symbols._, Types._, Contexts._, Denotations._, SymDenotations._, StdNames._, Names._
 import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._
 
 class JavaPlatform extends Platform {
