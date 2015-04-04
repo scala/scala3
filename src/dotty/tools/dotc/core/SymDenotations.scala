@@ -41,15 +41,19 @@ trait SymDenotations { this: Context =>
 
   def stillValid(denot: SymDenotation): Boolean =
     if (denot is ValidForever) true
-    else try {
-      val owner = denot.owner.denot
-      stillValid(owner) && (
-           !owner.isClass
-        || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
-        || denot.isSelfSym
-        )
-    } catch {
-      case ex: StaleSymbol => false
+    else {
+      val initial = denot.initial
+      if (initial ne denot) 
+        ctx.withPhase(initial.validFor.firstPhaseId).stillValid(initial.asSymDenotation)
+      else try {
+        val owner = denot.owner.denot
+        stillValid(owner) && (
+          !owner.isClass
+          || (owner.unforcedDecls.lookupAll(denot.name) contains denot.symbol)
+          || denot.isSelfSym)
+      } catch {
+        case ex: StaleSymbol => false
+      }
     }
 }
 
@@ -70,6 +74,12 @@ object SymDenotations {
 
     override def hasUniqueSym: Boolean = exists
 
+    /** Debug only
+    override def validFor_=(p: Period) = {
+      super.validFor_=(p)
+    }
+    */
+    
     // ------ Getting and setting fields -----------------------------
 
     private[this] var myFlags: FlagSet = adaptFlags(initFlags)
@@ -171,13 +181,13 @@ object SymDenotations {
       myInfo = tp
     }
 
-    /** The name, except 
-     *   - if this is a module class, strip the module class suffix 
-     *   - if this is a companion object with a clash-avoiding name, strip the 
+    /** The name, except
+     *   - if this is a module class, strip the module class suffix
+     *   - if this is a companion object with a clash-avoiding name, strip the
      *     "avoid clash" suffix
      */
     def effectiveName(implicit ctx: Context) =
-      if (this is ModuleClass) name.stripModuleClassSuffix 
+      if (this is ModuleClass) name.stripModuleClassSuffix
       else name.stripAvoidClashSuffix
 
     /** The privateWithin boundary, NoSymbol if no boundary is given.
@@ -195,7 +205,7 @@ object SymDenotations {
 
     /** Update the annotations of this denotation */
     private[core] final def annotations_=(annots: List[Annotation]): Unit =
-       myAnnotations = annots
+      myAnnotations = annots
 
     /** Does this denotation have an annotation matching the given class symbol? */
     final def hasAnnotation(cls: Symbol)(implicit ctx: Context) =
@@ -241,9 +251,9 @@ object SymDenotations {
     /** The symbols defined in this class or object.
      *  Careful! This does not force the type, so is compilation order dependent.
      *  This method should be used only in the following circumstances:
-     *  
-     *  1. When accessing type parameters or type parameter accessors (both are entered before 
-     *     completion). 
+     *
+     *  1. When accessing type parameters or type parameter accessors (both are entered before
+     *     completion).
      *  2. When obtaining the current scope in order to enter, rename or delete something there.
      *  3. When playing it safe in order not to raise CylicReferences, e.g. for printing things
      *     or taking more efficient shortcuts (e.g. the stillValid test).
@@ -291,7 +301,6 @@ object SymDenotations {
         val fn = owner.fullNameSeparated(separator) ++ sep ++ name
         if (isType) fn.toTypeName else fn.toTermName
       }
-
 
     /** The encoded flat name of this denotation, where joined names are separated by `separator` characters. */
     def flatName(separator: Char = '$')(implicit ctx: Context): Name =
@@ -457,7 +466,7 @@ object SymDenotations {
     }
 
     /** Is this a user defined "def" method? Excluded are accessors and anonymous functions. */
-    final def isSourceMethod(implicit ctx: Context) = 
+    final def isSourceMethod(implicit ctx: Context) =
       this.is(Method, butNot = AccessorOrLabel) && !isAnonymousFunction
 
     /** Is this a setter? */
@@ -649,7 +658,7 @@ object SymDenotations {
      */
     /** The class implementing this module, NoSymbol if not applicable. */
     final def moduleClass(implicit ctx: Context): Symbol = {
-      def notFound = {println(s"missing module class for $name: $myInfo"); NoSymbol}
+      def notFound = { println(s"missing module class for $name: $myInfo"); NoSymbol }
       if (this is ModuleVal)
         myInfo match {
           case info: TypeRef           => info.symbol
@@ -1002,7 +1011,7 @@ object SymDenotations {
       s"$kindString $name"
     }
 
-    def debugString = toString+"#"+symbol.id // !!! DEBUG
+    def debugString = toString + "#" + symbol.id // !!! DEBUG
 
     // ----- copies and transforms  ----------------------------------------
 
@@ -1097,8 +1106,8 @@ object SymDenotations {
 
     private var firstRunId: RunId = initRunId
 
-    /** If caches influenced by parent classes are still valid, the denotation
-     *  itself, otherwise a freshly initialized copy.
+    /** invalidate caches influenced by parent classes if one of the parents
+     *  is younger than the denotation itself.
      */
     override def syncWithParents(implicit ctx: Context): SingleDenotation = {
       def isYounger(tref: TypeRef) = tref.symbol.denot match {
@@ -1124,7 +1133,7 @@ object SymDenotations {
     }
 
     /** Invalidate all caches and fields that depend on base classes and their contents */
-    private def invalidateInheritedInfo(): Unit = {
+    override def invalidateInheritedInfo(): Unit = {
       myBaseClasses = null
       mySuperClassBits = null
       myMemberFingerPrint = FingerPrint.unknown
@@ -1168,7 +1177,7 @@ object SymDenotations {
     private[this] var myBaseClasses: List[ClassSymbol] = null
     private[this] var mySuperClassBits: BitSet = null
 
-	  /** Invalidate baseTypeRefCache, baseClasses and superClassBits on new run */
+    /** Invalidate baseTypeRefCache, baseClasses and superClassBits on new run */
     private def checkBasesUpToDate()(implicit ctx: Context) =
       if (baseTypeRefValid != ctx.runId) {
         baseTypeRefCache = new java.util.HashMap[CachedType, Type]
