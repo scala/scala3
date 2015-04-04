@@ -325,7 +325,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     
     private def normalizeFlags(tag: Int, givenFlags: FlagSet, name: Name, isAbstractType: Boolean, rhsIsEmpty: Boolean)(implicit ctx: Context): FlagSet = {
       val lacksDefinition =
-        rhsIsEmpty && !name.isConstructorName && !givenFlags.is(ParamOrAccessor) ||
+        rhsIsEmpty && 
+          name.isTermName && !name.isConstructorName && !givenFlags.is(ParamOrAccessor) ||
         isAbstractType
       var flags = givenFlags
       if (lacksDefinition) flags |= Deferred
