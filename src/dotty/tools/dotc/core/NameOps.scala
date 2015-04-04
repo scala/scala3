@@ -147,19 +147,25 @@ object NameOps {
     /** The superaccessor for method with given name */
     def superName: TermName =  (nme.SUPER_PREFIX ++ name).toTermName
 
-    /** The expanded name of `name` relative to this class `base` with given `separator`
+    /** The expanded name of `name` relative to given class `base`.
      */
     def expandedName(base: Symbol)(implicit ctx: Context): N =
       expandedName(if (base is Flags.ExpandedName) base.name else base.fullNameSeparated('$'))
 
     /** The expanded name of `name` relative to `basename` with given `separator`
      */
-    def expandedName(prefix: Name)(implicit ctx: Context): N =
+    def expandedName(prefix: Name): N =
       name.fromName(prefix ++ nme.EXPAND_SEPARATOR ++ name).asInstanceOf[N]
 
     def unexpandedName: N = {
       val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
       if (idx < 0) name else (name drop (idx + nme.EXPAND_SEPARATOR.length)).asInstanceOf[N]
+    }
+    
+    def expandedPrefix: N = {
+      val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
+      assert(idx >= 0)
+      name.take(idx).asInstanceOf[N]
     }
 
     def shadowedName: N = likeTyped(nme.SHADOWED ++ name)

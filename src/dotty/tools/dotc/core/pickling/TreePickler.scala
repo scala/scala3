@@ -8,6 +8,7 @@ import PickleFormat._
 import core._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
+import NameOps._
 import TastyBuffer._
 
 class TreePickler(pickler: TastyPickler) {
@@ -61,13 +62,19 @@ class TreePickler(pickler: TastyPickler) {
     }
   }
 
-  private def pickleName(name: Name) = writeNat(nameIndex(name).index)
-  private def pickleName(name: TastyName) = writeNat(nameIndex(name).index)
+  private def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
+  private def pickleName(name: TastyName): Unit = writeNat(nameIndex(name).index)
   private def pickleNameAndSig(name: Name, sig: Signature) = {
     val Signature(params, result) = sig
     pickleName(TastyName.Signed(nameIndex(name), params.map(fullNameIndex), fullNameIndex(result)))
   }
-
+  
+  private def pickleName(sym: Symbol)(implicit ctx: Context): Unit =
+    if (sym is Flags.ExpandedName) 
+      pickleName(TastyName.Expanded(
+        nameIndex(sym.name.expandedPrefix), nameIndex(sym.name.unexpandedName)))
+    else pickleName(sym.name)
+      
   private def pickleSymRef(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
     case Some(label) =>
       if (label != NoAddr) writeRef(label) else pickleForwardSymRef(sym)
@@ -464,7 +471,7 @@ class TreePickler(pickler: TastyPickler) {
       registerDef(sym)
       writeByte(tag)
       withLength {
-        pickleName(sym.name)
+        pickleName(sym)
         pickleParams
         tpt match {
           case tpt: TypeTree => pickleTpt(tpt)

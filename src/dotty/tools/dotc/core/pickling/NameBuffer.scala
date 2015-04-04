@@ -65,9 +65,9 @@ class NameBuffer extends TastyBuffer(100000) {
     case Signed(original, params, result) => 
       writeByte(SIGNED)
       withLength { writeNameRef(original); writeNameRef(result); params.foreach(writeNameRef) }
-    case Expanded(original) =>
+    case Expanded(prefix, original) =>
       writeByte(EXPANDED)
-      withLength { writeNameRef(original) }
+      withLength { writeNameRef(prefix); writeNameRef(original) }
     case ModuleClass(module) =>
       writeByte(OBJECTCLASS)
       withLength { writeNameRef(module) }

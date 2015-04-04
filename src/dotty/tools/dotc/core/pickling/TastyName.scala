@@ -15,7 +15,7 @@ object TastyName {
   case class Simple(name: TermName) extends TastyName
   case class Qualified(qualified: NameRef, selector: NameRef) extends TastyName
   case class Signed(original: NameRef, params: List[NameRef], result: NameRef) extends TastyName 
-  case class Expanded(original: NameRef) extends TastyName
+  case class Expanded(prefix: NameRef, original: NameRef) extends TastyName
   case class ModuleClass(module: NameRef) extends TastyName
   case class SuperAccessor(accessed: NameRef) extends TastyName
   case class DefaultGetter(method: NameRef, num: Int) extends TastyName

@@ -5,6 +5,7 @@ package pickling
 import Contexts._, Decorators._
 import printing.Texts._
 import TastyName._
+import StdNames._
 import TastyUnpickler._
 import TastyBuffer.Addr
 import util.Positions.{Position, offsetToInt}
@@ -20,7 +21,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
     case Qualified(qual, name) => nameRefToString(qual) + "." + nameRefToString(name)
     case Signed(original, params, result) => 
       i"${nameRefToString(original)}@${params.map(nameRefToString)}%,%:${nameRefToString(result)}"
-    case Expanded(original) => nameRefToString(original) + "/EXPANDED"
+    case Expanded(prefix, original) => s"$prefix${nme.EXPAND_SEPARATOR}$original"
     case ModuleClass(original) => nameRefToString(original) + "/MODULECLASS"
     case SuperAccessor(accessed) => nameRefToString(accessed) + "/SUPERACCESSOR"
     case DefaultGetter(meth, num) => nameRefToString(meth) + "/DEFAULTGETTER" + num

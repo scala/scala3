@@ -70,7 +70,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     case Qualified(qual, name) => toTermName(qual) ++ "." ++ toTermName(name)
     case Signed(original, params, result) => toTermName(original)
     case Shadowed(original) => toTermName(original).shadowedName
-    case Expanded(original) => ???
+    case Expanded(prefix, original) => toTermName(original).expandedName(toTermName(prefix)) 
     case ModuleClass(original) => toTermName(original).moduleClassName.toTermName
     case SuperAccessor(accessed) => ???
     case DefaultGetter(meth, num) => ???
@@ -334,7 +334,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         flags = flags | (if (tag == VALDEF) ModuleCreationFlags else ModuleClassCreationFlags)
       if (ctx.mode.is(Mode.InSuperCall) && !flags.is(ParamOrAccessor)) flags |= InSuperCall
       if (ctx.owner.isClass) {
-        if (tag == TYPEPARAM) flags |= Param | ExpandedName // TODO check name to determine ExpandedName
+        if (tag == TYPEPARAM) flags |= Param
         else if (tag == PARAM) flags |= ParamAccessor
       }
       else if (isParamTag(tag)) flags |= Param
@@ -348,7 +348,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       val start = currentAddr
       val tag = readByte()
       val end = readEnd()
-      val name = if (tag == TYPEDEF || tag == TYPEPARAM) readName().toTypeName else readName()
+      val rawName = tastyName(readNameRef())
+      var name: Name = toTermName(rawName)
+      if (tag == TYPEDEF || tag == TYPEPARAM) name = name.toTypeName
       skipParams()
       val isAbstractType = nextByte == TYPEBOUNDS
       val isClass = nextByte == TEMPLATE
@@ -357,8 +359,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       val rhsIsEmpty = noRhs(end)
       if (!rhsIsEmpty) skipTree()
       val (givenFlags, annots, privateWithin) = readModifiers(end)
+      val expandedFlag = if (rawName.isInstanceOf[TastyName.Expanded]) ExpandedName else EmptyFlags
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
-      val flags = normalizeFlags(tag, givenFlags, name, isAbstractType, rhsIsEmpty)
+      val flags = normalizeFlags(tag, givenFlags | expandedFlag, name, isAbstractType, rhsIsEmpty)
       def adjustIfModule(completer: LazyType) = 
         if (flags is Module) ctx.adjustModuleCompleter(completer, name) else completer
       val sym =
