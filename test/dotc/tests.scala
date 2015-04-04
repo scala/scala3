@@ -39,6 +39,8 @@ class tests extends CompilerTest {
 
   @Test def pickle_pickleOK = compileDir(picklingDir, testPickling)
   @Test def pickle_pickling = compileDir(dotcDir + "tools/dotc/core/pickling/", testPickling)
+  @Test def pickle_Trees = compileFile(dotcDir, "tools/dotc/ast/Trees", testPickling)
+  @Test def pickle_untpd = compileFile(dotcDir, "tools/dotc/ast/untpd", testPickling)
 
   //@Test def pickle_core = compileDir(dotcDir + "tools/dotc/core", testPickling, xerrors = 2) // two spurious comparison errors in Types and TypeOps
 
