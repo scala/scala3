@@ -37,10 +37,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** If true, tweak output so it is the same before and after pickling */
   protected def homogenizedView: Boolean = ctx.settings.YtestPickler.value
   
-  def homogenize(tp: Type): Type = tp match {
-    case tp: TypeVar if homogenizedView && tp.isInstantiated => homogenize(tp.instanceOpt)
-    case _ => tp
-  }
+  def homogenize(tp: Type): Type = 
+    if (homogenizedView)
+      tp match {
+        case tp: TypeVar if tp.isInstantiated => homogenize(tp.instanceOpt)
+        case AndType(tp1, tp2) => homogenize(tp1) & homogenize(tp2)
+        case OrType(tp1, tp2) => homogenize(tp1) | homogenize(tp2)
+        case _ => tp
+      }
+    else tp
 
   /** Render elements alternating with `sep` string */
   protected def toText(elems: Traversable[Showable], sep: String) =
