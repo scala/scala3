@@ -332,7 +332,6 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       if (tag == DEFDEF) flags |= Method
       if (givenFlags is Module)
         flags = flags | (if (tag == VALDEF) ModuleCreationFlags else ModuleClassCreationFlags)
-      if (ctx.mode.is(Mode.InSuperCall) && !flags.is(ParamOrAccessor)) flags |= InSuperCall
       if (ctx.owner.isClass) {
         if (tag == TYPEPARAM) flags |= Param
         else if (tag == PARAM) flags |= ParamAccessor
