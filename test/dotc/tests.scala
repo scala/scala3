@@ -37,6 +37,7 @@ class tests extends CompilerTest {
   val dotcDir = "./src/dotty/"
   val picklingDir = "./tests/pickling"
 
+  /*
   @Test def pickle_pickleOK = compileDir(picklingDir, testPickling)
   @Test def pickle_pickling = compileDir(dotcDir + "tools/dotc/core/pickling/", testPickling)
 
@@ -76,9 +77,12 @@ class tests extends CompilerTest {
   @Test def pos_packageObj = compileFile(posDir, "i0239")
   @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping")
   @Test def pos_extmethods = compileFile(posDir, "extmethods")
+*/
+  @Test def pos_classpath = compileFile(posDir, "empty-foo", List("-d" , "./", "#runs", "30"))
+  @Test def pos_classpath1 = compileFile(posDir, "empty-foo", List("-d" , "./", "#runs", "30"))
 
-  @Test def pos_all = compileFiles(posDir)
-
+  //@Test def pos_all = compileFiles(posDir)
+/*
 
 
   @Test def new_all = compileFiles(newDir, twice)
@@ -182,6 +186,6 @@ class tests extends CompilerTest {
 
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir)
-  
+*/
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }
