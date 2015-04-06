@@ -1506,8 +1506,11 @@ object Types {
     override def withSym(sym: Symbol, signature: Signature)(implicit ctx: Context): ThisType =
       unsupported("withSym")
 
-    override def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
-      NamedType.withFixedSym(prefix, fixedSym)
+    override def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType = {
+      var newSym = prefix.member(fixedSym.name).symbol
+      if (!newSym.exists) newSym = fixedSym
+      NamedType.withFixedSym(prefix, newSym)
+    }
 
     override def equals(that: Any) = that match {
       case that: WithFixedSym => this.prefix == that.prefix && (this.fixedSym eq that.fixedSym)
