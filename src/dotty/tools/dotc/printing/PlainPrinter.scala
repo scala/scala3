@@ -43,7 +43,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
         case tp: TypeVar if tp.isInstantiated => homogenize(tp.instanceOpt)
         case AndType(tp1, tp2) => homogenize(tp1) & homogenize(tp2)
         case OrType(tp1, tp2) => homogenize(tp1) | homogenize(tp2)
-        case _ => tp
+        case _ => 
+          val tp1 = tp.simplifyApply
+          if (tp1 eq tp) tp else homogenize(tp1)
       }
     else tp
 
