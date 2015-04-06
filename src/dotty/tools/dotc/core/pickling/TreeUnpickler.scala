@@ -570,17 +570,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           sym.info = readType()
           ValDef(sym.asTerm, readRhs(localCtx))
         case TYPEDEF | TYPEPARAM =>
-          if (sym.isClass) {
-            val cls = sym.asClass
-            def setClsInfo(parents: List[TypeRef], selfType: Type) = 
-              cls.info = ClassInfo(cls.owner.thisType, cls, parents, cls.unforcedDecls, selfType)
-            setClsInfo(Nil, NoType)
-            val impl = readTemplate(localCtx)
-            setClsInfo(
-              ctx.normalizeToClassRefs(impl.parents.map(_.tpe), cls, cls.unforcedDecls),
-              if (impl.self.isEmpty) NoType else impl.self.tpt.tpe)
-            ta.assignType(untpd.TypeDef(sym.name.asTypeName, impl), sym)
-          }
+          if (sym.isClass)
+            ta.assignType(untpd.TypeDef(sym.name.asTypeName, readTemplate(localCtx)), sym)
           else {
             sym.info = readType()
             TypeDef(sym.asType)
@@ -609,6 +600,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     private def readTemplate(implicit ctx: Context): Template = {
       val start = currentAddr
       val cls = ctx.owner.asClass
+      def setClsInfo(parents: List[TypeRef], selfType: Type) = 
+        cls.info = ClassInfo(cls.owner.thisType, cls, parents, cls.unforcedDecls, selfType)
+      setClsInfo(Nil, NoType)
       val localDummy = ctx.newLocalDummy(cls)
       assert(readByte() == TEMPLATE)
       val end = readEnd()
@@ -620,12 +614,14 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           case _ => readTpt()
         }
       }
-      val self = 
+      val parentRefs = ctx.normalizeToClassRefs(parents.map(_.tpe), cls, cls.unforcedDecls)
+       val self = 
         if (nextByte == SELFDEF) {
           readByte()
           untpd.ValDef(readName(), readTpt(), EmptyTree).withType(NoType)
         }
         else EmptyValDef
+      setClsInfo(parentRefs, if (self.isEmpty) NoType else self.tpt.tpe)
       val noInits = fork.indexStats(end)
       if (noInits) cls.setFlag(NoInits)
       val constr = readIndexedDef().asInstanceOf[DefDef]
