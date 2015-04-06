@@ -102,6 +102,17 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     def skipParams(): Unit =
       while (nextByte == PARAMS || nextByte == TYPEPARAM) skipTree()
 
+    /** The next tag, following through SHARED tags */
+    def nextUnsharedTag: Int = {
+      val tag = nextByte
+      if (tag == SHARED) {
+        val lookAhead = fork
+        lookAhead.reader.readByte()
+        forkAt(lookAhead.reader.readAddr()).nextUnsharedTag
+      }
+      else tag
+    }
+    
     def readName(): TermName = toTermName(readNameRef())
 
     def readNameSplitSig()(implicit ctx: Context): Any /* TermName | (TermName, Signature) */ =
@@ -352,8 +363,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       var name: Name = toTermName(rawName)
       if (tag == TYPEDEF || tag == TYPEPARAM) name = name.toTypeName
       skipParams()
-      val isAbstractType = nextByte == TYPEBOUNDS
-      val isClass = nextByte == TEMPLATE
+      val ttag = nextUnsharedTag
+      val isAbstractType = ttag == TYPEBOUNDS
+      val isClass = ttag == TEMPLATE
       val templateStart = currentAddr
       skipTree() // tpt
       val rhsIsEmpty = noRhs(end)
