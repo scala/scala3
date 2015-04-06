@@ -1,3 +1,5 @@
+package t6260a
+
 final class Option[+A](val value: A) extends AnyVal
 
 // Was: sandbox/test.scala:21: error: bridge generated for member method f: ()Option[A] in class Bar
