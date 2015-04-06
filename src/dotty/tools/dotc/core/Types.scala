@@ -1256,9 +1256,14 @@ object Types {
     private def checkSymAssign(sym: Symbol)(implicit ctx: Context) =
       assert(
         (lastSymbol eq sym) ||
-        (lastSymbol eq null) ||
-        (lastSymbol.defRunId != sym.defRunId) ||
-        (lastSymbol.defRunId == NoRunId) ||
+        (lastSymbol eq null) || {
+          val lastDefRunId = lastDenotation match {
+            case d: SymDenotation => d.validFor.runId
+            case _ => lastSymbol.defRunId
+          }
+          (lastDefRunId != sym.defRunId) ||
+          (lastDefRunId == NoRunId)
+        } ||
         (lastSymbol.infoOrCompleter == ErrorType ||
         defn.overriddenBySynthetic.contains(lastSymbol)
           // for overriddenBySynthetic symbols a TermRef such as SomeCaseClass.this.hashCode
