@@ -480,7 +480,7 @@ object Types {
       case ex: MergeError =>
         throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
       case ex: Throwable =>
-        println(i"findMember exception for $this: ${this.widen} member $name")
+        println(s"findMember exception for $this member $name")
         throw ex // DEBUG
     } finally {
       recCount -= 1
@@ -1159,6 +1159,11 @@ object Types {
     private[this] var lastSymbol: Symbol = _
     private[this] var checkedPeriod = Nowhere
 
+    /** Provided for debugging, can be used to intercept assignments of uncommon denotations
+     */  
+    private def checkDenot(d: Denotation)(implicit ctx: Context) = {
+    }
+    
     // Invariants:
     // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
     // (2) lastDenotation != null    =>  lastSymbol != null
@@ -1238,6 +1243,7 @@ object Types {
           // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
           // is undefined after erasure.) We need to be able to do time travel back and
           // forth also in these cases.
+          checkDenot(d)
           lastDenotation = d
           lastSymbol = d.symbol
           checkedPeriod = ctx.period
@@ -1285,6 +1291,7 @@ object Types {
       if (Config.checkNoDoubleBindings)
         if (ctx.settings.YnoDoubleBindings.value)
           checkSymAssign(denot.symbol)
+      checkDenot(denot)
       lastDenotation = denot
       lastSymbol = denot.symbol
     }
@@ -1511,11 +1518,8 @@ object Types {
     override def withSym(sym: Symbol, signature: Signature)(implicit ctx: Context): ThisType =
       unsupported("withSym")
 
-    override def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType = {
-      var newSym = prefix.member(fixedSym.name).symbol
-      if (!newSym.exists) newSym = fixedSym
-      NamedType.withFixedSym(prefix, newSym)
-    }
+    override def newLikeThis(prefix: Type)(implicit ctx: Context): NamedType =
+      NamedType.withFixedSym(prefix, fixedSym)
 
     override def equals(that: Any) = that match {
       case that: WithFixedSym => this.prefix == that.prefix && (this.fixedSym eq that.fixedSym)

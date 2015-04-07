@@ -246,26 +246,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         case TYPEREFdirect | TERMREFdirect => 
           NamedType.withFixedSym(NoPrefix, readSymRef())
         case TYPEREFsymbol | TERMREFsymbol =>
-          val sym = readSymRef()
-          val prefix = readType()
-          val res = NamedType.withFixedSym(prefix, sym)
-          if (prefix.isInstanceOf[ThisType]) res.withDenot(sym.denot) else res
-            // without this precaution we get an infinite cycle when unpickling pos/extmethods.scala
-            // the problem arises when a self type of a trait is a type parameter of the same trait.
+          readSymNameRef()
         case TYPEREFpkg =>
-          val name = readName()
-          val pkg = 
-            if (name == nme.ROOT) defn.RootClass
-            else if (name == nme.EMPTY_PACKAGE) defn.EmptyPackageClass
-            else ctx.requiredPackage(name).moduleClass
-          pkg.typeRef
+          readPackageRef().moduleClass.typeRef
         case TERMREFpkg =>
-          val name = readName()
-          val pkg = 
-            if (name == nme.ROOT) defn.RootPackage
-            else if (name == nme.EMPTY_PACKAGE) defn.EmptyPackageVal
-            else ctx.requiredPackage(name)
-          pkg.termRef
+          readPackageRef().termRef
         case TYPEREF =>
           val name =  readName().toTypeName
           TypeRef(readType(), name)
@@ -310,6 +295,25 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       }
       
       if (tag < firstLengthTreeTag) readSimpleType() else readLengthType()
+    }
+    
+    private def readSymNameRef()(implicit ctx: Context): Type = {
+      val sym = readSymRef()
+      val prefix = readType()
+      val res = NamedType.withSymAndName(prefix, sym, sym.name)
+      prefix match {
+        case prefix: ThisType if prefix.cls eq sym.owner => res.withDenot(sym.denot)
+          // without this precaution we get an infinite cycle when unpickling pos/extmethods.scala
+          // the problem arises when a self type of a trait is a type parameter of the same trait.
+        case _ => res
+      }      
+    }
+    
+    private def readPackageRef()(implicit ctx: Context): TermSymbol = {
+      val name = readName()
+      if (name == nme.ROOT) defn.RootPackage
+      else if (name == nme.EMPTY_PACKAGE) defn.EmptyPackageVal
+      else ctx.requiredPackage(name)
     }
     
     def readTypeRef(): Type = 
