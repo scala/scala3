@@ -183,17 +183,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
             case REFINEDtype =>
               val parent = readType()
               var name: Name = readName()
-              if (nextByte == SHARED) {
-                val refinedInfo = readType()
-                if (refinedInfo.isInstanceOf[TypeBounds]) name = name.toTypeName
-                RefinedType(parent, name, refinedInfo)
-              }
-              else {
-                if (nextByte == TYPEBOUNDS || nextByte == TYPEALIAS) name = name.toTypeName
-                RefinedType(parent, name, rt => registeringType(rt, readType()))
-                  // Note that the lambda is not equivalent to a wildcard closure!
-                  // Eta expansion of the latter puts readType() out of the expression.
-              }
+              val ttag = nextUnsharedTag
+              if (ttag == TYPEBOUNDS || ttag == TYPEALIAS) name = name.toTypeName
+              RefinedType(parent, name, rt => registeringType(rt, readType()))
+                // Note that the lambda "rt => ..." is not equivalent to a wildcard closure!
+                // Eta expansion of the latter puts readType() out of the expression.
             case APPLIEDtype =>
               readType().appliedTo(until(end)(readType()))
             case TYPEBOUNDS =>
