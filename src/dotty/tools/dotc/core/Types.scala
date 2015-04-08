@@ -1158,11 +1158,6 @@ object Types {
     private[this] var lastDenotation: Denotation = _
     private[this] var lastSymbol: Symbol = _
     private[this] var checkedPeriod = Nowhere
-
-    /** Provided for debugging, can be used to intercept assignments of uncommon denotations
-     */  
-    private def checkDenot(d: Denotation)(implicit ctx: Context) = {
-    }
     
     // Invariants:
     // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
@@ -1243,9 +1238,7 @@ object Types {
           // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
           // is undefined after erasure.) We need to be able to do time travel back and
           // forth also in these cases.
-          checkDenot(d)
-          lastDenotation = d
-          lastSymbol = d.symbol
+          setDenot(d)
           checkedPeriod = ctx.period
         }
         d
@@ -1291,7 +1284,9 @@ object Types {
       if (Config.checkNoDoubleBindings)
         if (ctx.settings.YnoDoubleBindings.value)
           checkSymAssign(denot.symbol)
-      checkDenot(denot)
+
+      // additional checks that intercept `denot` can be added here
+      
       lastDenotation = denot
       lastSymbol = denot.symbol
     }
