@@ -1,6 +1,6 @@
 language: scala
 script:
-  - sbt -Ddotty.travis.build=yes update compile test
+  - sbt -Ddotty.travis.build=yes update compile test scalastyle
 jdk:
   - oraclejdk8
 notifications:
