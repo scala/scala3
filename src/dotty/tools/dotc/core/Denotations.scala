@@ -476,12 +476,14 @@ object Denotations {
     /** The version of this SingleDenotation that was valid in the first phase
      *  of this run.
      */
-    def initial: SingleDenotation = {
-      var current = nextInRun
-      while (current.validFor.code > this.myValidFor.code) current = current.nextInRun
-      current
-    }
-
+    def initial: SingleDenotation = 
+      if (validFor == Nowhere) this
+      else {
+        var current = nextInRun
+        while (current.validFor.code > this.myValidFor.code) current = current.nextInRun
+        current
+      }
+      
     def history: List[SingleDenotation] = {
       val b = new ListBuffer[SingleDenotation]
       var current = initial
@@ -493,6 +495,9 @@ object Denotations {
       b.toList
     }
 
+    /** Invalidate all caches and fields that depend on base classes and their contents */
+    def invalidateInheritedInfo(): Unit = ()
+ 
     /** Move validity period of this denotation to a new run. Throw a StaleSymbol error
      *  if denotation is no longer valid.
      */
@@ -502,9 +507,10 @@ object Denotations {
         var d: SingleDenotation = denot
         do {
           d.validFor = Period(ctx.period.runId, d.validFor.firstPhaseId, d.validFor.lastPhaseId)
+          d.invalidateInheritedInfo()
           d = d.nextInRun
         } while (d ne denot)
-        syncWithParents
+        this
       case _ =>
         if (coveredInterval.containsPhaseId(ctx.phaseId)) staleSymbolError
         else NoDenotation
@@ -611,16 +617,13 @@ object Denotations {
         val current = symbol.current
         // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
         // printPeriods(current)
-        if (current.nextInRun ne current)
-          this.nextInRun = current.nextInRun
-        else
-          this.nextInRun = this
         this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
         if (current.validFor.firstPhaseId == targetId) {
           // replace current with this denotation
           var prev = current
           while (prev.nextInRun ne current) prev = prev.nextInRun
           prev.nextInRun = this
+          this.nextInRun = current.nextInRun
           current.validFor = Nowhere
         } else {
           // insert this denotation after current

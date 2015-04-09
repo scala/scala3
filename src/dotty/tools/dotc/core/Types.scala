@@ -480,7 +480,7 @@ object Types {
       case ex: MergeError =>
         throw new MergeError(s"${ex.getMessage} as members of type ${pre.show}")
       case ex: Throwable =>
-        println(i"findMember exception for $this: ${this.widen} member $name")
+        println(s"findMember exception for $this member $name")
         throw ex // DEBUG
     } finally {
       recCount -= 1
@@ -1158,7 +1158,7 @@ object Types {
     private[this] var lastDenotation: Denotation = _
     private[this] var lastSymbol: Symbol = _
     private[this] var checkedPeriod = Nowhere
-
+    
     // Invariants:
     // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
     // (2) lastDenotation != null    =>  lastSymbol != null
@@ -1238,8 +1238,7 @@ object Types {
           // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
           // is undefined after erasure.) We need to be able to do time travel back and
           // forth also in these cases.
-          lastDenotation = d
-          lastSymbol = d.symbol
+          setDenot(d)
           checkedPeriod = ctx.period
         }
         d
@@ -1256,9 +1255,14 @@ object Types {
     private def checkSymAssign(sym: Symbol)(implicit ctx: Context) =
       assert(
         (lastSymbol eq sym) ||
-        (lastSymbol eq null) ||
-        (lastSymbol.defRunId != sym.defRunId) ||
-        (lastSymbol.defRunId == NoRunId) ||
+        (lastSymbol eq null) || {
+          val lastDefRunId = lastDenotation match {
+            case d: SymDenotation => d.validFor.runId
+            case _ => lastSymbol.defRunId
+          }
+          (lastDefRunId != sym.defRunId) ||
+          (lastDefRunId == NoRunId)
+        } ||
         (lastSymbol.infoOrCompleter == ErrorType ||
         defn.overriddenBySynthetic.contains(lastSymbol)
           // for overriddenBySynthetic symbols a TermRef such as SomeCaseClass.this.hashCode
@@ -1280,6 +1284,9 @@ object Types {
       if (Config.checkNoDoubleBindings)
         if (ctx.settings.YnoDoubleBindings.value)
           checkSymAssign(denot.symbol)
+
+      // additional checks that intercept `denot` can be added here
+      
       lastDenotation = denot
       lastSymbol = denot.symbol
     }

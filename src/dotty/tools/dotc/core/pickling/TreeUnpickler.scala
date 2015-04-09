@@ -70,7 +70,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     case Qualified(qual, name) => toTermName(qual) ++ "." ++ toTermName(name)
     case Signed(original, params, result) => toTermName(original)
     case Shadowed(original) => toTermName(original).shadowedName
-    case Expanded(original) => ???
+    case Expanded(prefix, original) => toTermName(original).expandedName(toTermName(prefix)) 
     case ModuleClass(original) => toTermName(original).moduleClassName.toTermName
     case SuperAccessor(accessed) => ???
     case DefaultGetter(meth, num) => ???
@@ -102,6 +102,17 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     def skipParams(): Unit =
       while (nextByte == PARAMS || nextByte == TYPEPARAM) skipTree()
 
+    /** The next tag, following through SHARED tags */
+    def nextUnsharedTag: Int = {
+      val tag = nextByte
+      if (tag == SHARED) {
+        val lookAhead = fork
+        lookAhead.reader.readByte()
+        forkAt(lookAhead.reader.readAddr()).nextUnsharedTag
+      }
+      else tag
+    }
+    
     def readName(): TermName = toTermName(readNameRef())
 
     def readNameSplitSig()(implicit ctx: Context): Any /* TermName | (TermName, Signature) */ =
@@ -172,17 +183,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
             case REFINEDtype =>
               val parent = readType()
               var name: Name = readName()
-              if (nextByte == SHARED) {
-                val refinedInfo = readType()
-                if (refinedInfo.isInstanceOf[TypeBounds]) name = name.toTypeName
-                RefinedType(parent, name, refinedInfo)
-              }
-              else {
-                if (nextByte == TYPEBOUNDS || nextByte == TYPEALIAS) name = name.toTypeName
-                RefinedType(parent, name, rt => registeringType(rt, readType()))
-                  // Note that the lambda is not equivalent to a wildcard closure!
-                  // Eta expansion of the latter puts readType() out of the expression.
-              }
+              val ttag = nextUnsharedTag
+              if (ttag == TYPEBOUNDS || ttag == TYPEALIAS) name = name.toTypeName
+              RefinedType(parent, name, rt => registeringType(rt, readType()))
+                // Note that the lambda "rt => ..." is not equivalent to a wildcard closure!
+                // Eta expansion of the latter puts readType() out of the expression.
             case APPLIEDtype =>
               readType().appliedTo(until(end)(readType()))
             case TYPEBOUNDS =>
@@ -235,26 +240,11 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         case TYPEREFdirect | TERMREFdirect => 
           NamedType.withFixedSym(NoPrefix, readSymRef())
         case TYPEREFsymbol | TERMREFsymbol =>
-          val sym = readSymRef()
-          val prefix = readType()
-          val res = NamedType.withFixedSym(prefix, sym)
-          if (prefix.isInstanceOf[ThisType]) res.withDenot(sym.denot) else res
-            // without this precaution we get an infinite cycle when unpickling pos/extmethods.scala
-            // the problem arises when a self type of a trait is a type parameter of the same trait.
+          readSymNameRef()
         case TYPEREFpkg =>
-          val name = readName()
-          val pkg = 
-            if (name == nme.ROOT) defn.RootClass
-            else if (name == nme.EMPTY_PACKAGE) defn.EmptyPackageClass
-            else ctx.requiredPackage(name).moduleClass
-          pkg.typeRef
+          readPackageRef().moduleClass.typeRef
         case TERMREFpkg =>
-          val name = readName()
-          val pkg = 
-            if (name == nme.ROOT) defn.RootPackage
-            else if (name == nme.EMPTY_PACKAGE) defn.EmptyPackageVal
-            else ctx.requiredPackage(name)
-          pkg.termRef
+          readPackageRef().termRef
         case TYPEREF =>
           val name =  readName().toTypeName
           TypeRef(readType(), name)
@@ -301,6 +291,25 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       if (tag < firstLengthTreeTag) readSimpleType() else readLengthType()
     }
     
+    private def readSymNameRef()(implicit ctx: Context): Type = {
+      val sym = readSymRef()
+      val prefix = readType()
+      val res = NamedType.withSymAndName(prefix, sym, sym.name)
+      prefix match {
+        case prefix: ThisType if prefix.cls eq sym.owner => res.withDenot(sym.denot)
+          // without this precaution we get an infinite cycle when unpickling pos/extmethods.scala
+          // the problem arises when a self type of a trait is a type parameter of the same trait.
+        case _ => res
+      }      
+    }
+    
+    private def readPackageRef()(implicit ctx: Context): TermSymbol = {
+      val name = readName()
+      if (name == nme.ROOT) defn.RootPackage
+      else if (name == nme.EMPTY_PACKAGE) defn.EmptyPackageVal
+      else ctx.requiredPackage(name)
+    }
+    
     def readTypeRef(): Type = 
       typeAtAddr(readAddr())
 
@@ -325,16 +334,16 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     
     private def normalizeFlags(tag: Int, givenFlags: FlagSet, name: Name, isAbstractType: Boolean, rhsIsEmpty: Boolean)(implicit ctx: Context): FlagSet = {
       val lacksDefinition =
-        rhsIsEmpty && !name.isConstructorName && !givenFlags.is(ParamOrAccessor) ||
+        rhsIsEmpty && 
+          name.isTermName && !name.isConstructorName && !givenFlags.is(ParamOrAccessor) ||
         isAbstractType
       var flags = givenFlags
       if (lacksDefinition) flags |= Deferred
       if (tag == DEFDEF) flags |= Method
       if (givenFlags is Module)
         flags = flags | (if (tag == VALDEF) ModuleCreationFlags else ModuleClassCreationFlags)
-      if (ctx.mode.is(Mode.InSuperCall) && !flags.is(ParamOrAccessor)) flags |= InSuperCall
       if (ctx.owner.isClass) {
-        if (tag == TYPEPARAM) flags |= Param | ExpandedName // TODO check name to determine ExpandedName
+        if (tag == TYPEPARAM) flags |= Param
         else if (tag == PARAM) flags |= ParamAccessor
       }
       else if (isParamTag(tag)) flags |= Param
@@ -348,52 +357,56 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       val start = currentAddr
       val tag = readByte()
       val end = readEnd()
-      val name = if (tag == TYPEDEF || tag == TYPEPARAM) readName().toTypeName else readName()
+      val rawName = tastyName(readNameRef())
+      var name: Name = toTermName(rawName)
+      if (tag == TYPEDEF || tag == TYPEPARAM) name = name.toTypeName
       skipParams()
-      val isAbstractType = nextByte == TYPEBOUNDS
-      val isClass = nextByte == TEMPLATE
+      val ttag = nextUnsharedTag
+      val isAbstractType = ttag == TYPEBOUNDS
+      val isClass = ttag == TEMPLATE
       val templateStart = currentAddr
       skipTree() // tpt
       val rhsIsEmpty = noRhs(end)
       if (!rhsIsEmpty) skipTree()
       val (givenFlags, annots, privateWithin) = readModifiers(end)
+      val expandedFlag = if (rawName.isInstanceOf[TastyName.Expanded]) ExpandedName else EmptyFlags
       pickling.println(i"creating symbol $name at $start with flags $givenFlags")
-      val flags = normalizeFlags(tag, givenFlags, name, isAbstractType, rhsIsEmpty)
-      val nameMatches = (_: Denotation).symbol.name == name
-      val prevDenot: SymDenotation = 
-        if (ctx.owner.is(Package)) ctx.effectiveScope.lookup(name)
-        else NoDenotation // TODO check for double reads
-      var completer: LazyType = 
-        if (prevDenot.exists) new Completer(subReader(start, end)) with SymbolLoaders.SecondCompleter
-        else new Completer(subReader(start, end))
-      if (flags is Module) completer = ctx.adjustModuleCompleter(completer, name)
+      val flags = normalizeFlags(tag, givenFlags | expandedFlag, name, isAbstractType, rhsIsEmpty)
+      def adjustIfModule(completer: LazyType) = 
+        if (flags is Module) ctx.adjustModuleCompleter(completer, name) else completer
       val sym =
-        if (roots contains prevDenot) {
-          pickling.println(i"overwriting ${prevDenot.symbol} # ${prevDenot.hashCode}")
-          prevDenot.info = completer
-          prevDenot.flags = flags &~ Touched // allow one more completion
-          prevDenot.privateWithin = privateWithin
-          prevDenot.symbol
-        } else if (isClass)
-          ctx.newClassSymbol(ctx.owner, name.asTypeName, flags, completer, privateWithin, coord = start.index)
-        else {
-          val sym = symAtAddr.get(start) match {
-            case Some(preExisting) =>
-              assert(stubs contains preExisting)
-              stubs -= preExisting
-              preExisting
-            case none =>
-              ctx.newNakedSymbol(start.index)
-          }
-          val denot = ctx.SymDenotation(symbol = sym, owner = ctx.owner, name, flags, completer, privateWithin)
-          sym.denot = denot
-          sym
+        roots.find(root => (root.owner eq ctx.owner) && root.name == name) match {
+          case Some(rootd) =>
+            pickling.println(i"overwriting ${rootd.symbol} # ${rootd.hashCode}")
+            rootd.info = adjustIfModule(
+                new Completer(subReader(start, end)) with SymbolLoaders.SecondCompleter)
+            rootd.flags = flags &~ Touched // allow one more completion
+            rootd.privateWithin = privateWithin
+            rootd.symbol
+          case _ =>
+            val completer = adjustIfModule(new Completer(subReader(start, end)))
+            if (isClass)
+              ctx.newClassSymbol(ctx.owner, name.asTypeName, flags, completer, 
+                  privateWithin, coord = start.index)
+            else {
+              val sym = symAtAddr.get(start) match {
+                case Some(preExisting) =>
+                  assert(stubs contains preExisting)
+                  stubs -= preExisting
+                  preExisting
+                case none =>
+                  ctx.newNakedSymbol(start.index)
+              }
+              val denot = ctx.SymDenotation(symbol = sym, owner = ctx.owner, name, flags, completer, privateWithin)
+              sym.denot = denot
+              sym
+            }
         } // TODO set position
       sym.annotations = annots
       ctx.enter(sym)
       symAtAddr(start) = sym
       if (isClass) {
-        completer.withDecls(newScope)
+        sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(localContext(sym))
       }
       tag != VALDEF || rhsIsEmpty
@@ -567,17 +580,8 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           sym.info = readType()
           ValDef(sym.asTerm, readRhs(localCtx))
         case TYPEDEF | TYPEPARAM =>
-          if (sym.isClass) {
-            val cls = sym.asClass
-            def setClsInfo(parents: List[TypeRef], selfType: Type) = 
-              cls.info = ClassInfo(cls.owner.thisType, cls, parents, cls.unforcedDecls, selfType)
-            setClsInfo(Nil, NoType)
-            val impl = readTemplate(localCtx)
-            setClsInfo(
-              ctx.normalizeToClassRefs(impl.parents.map(_.tpe), cls, cls.unforcedDecls),
-              if (impl.self.isEmpty) NoType else impl.self.tpt.tpe)
-            ta.assignType(untpd.TypeDef(sym.name.asTypeName, impl), sym)
-          }
+          if (sym.isClass)
+            ta.assignType(untpd.TypeDef(sym.name.asTypeName, readTemplate(localCtx)), sym)
           else {
             sym.info = readType()
             TypeDef(sym.asType)
@@ -606,6 +610,9 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     private def readTemplate(implicit ctx: Context): Template = {
       val start = currentAddr
       val cls = ctx.owner.asClass
+      def setClsInfo(parents: List[TypeRef], selfType: Type) = 
+        cls.info = ClassInfo(cls.owner.thisType, cls, parents, cls.unforcedDecls, selfType)
+      setClsInfo(Nil, NoType)
       val localDummy = ctx.newLocalDummy(cls)
       assert(readByte() == TEMPLATE)
       val end = readEnd()
@@ -617,12 +624,14 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           case _ => readTpt()
         }
       }
-      val self = 
+      val parentRefs = ctx.normalizeToClassRefs(parents.map(_.tpe), cls, cls.unforcedDecls)
+       val self = 
         if (nextByte == SELFDEF) {
           readByte()
           untpd.ValDef(readName(), readTpt(), EmptyTree).withType(NoType)
         }
         else EmptyValDef
+      setClsInfo(parentRefs, if (self.isEmpty) NoType else self.tpt.tpe)
       val noInits = fork.indexStats(end)
       if (noInits) cls.setFlag(NoInits)
       val constr = readIndexedDef().asInstanceOf[DefDef]

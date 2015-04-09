@@ -8,6 +8,7 @@ import PickleFormat._
 import core._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
+import NameOps._
 import TastyBuffer._
 
 class TreePickler(pickler: TastyPickler) {
@@ -31,20 +32,6 @@ class TreePickler(pickler: TastyPickler) {
     symRefs.get(sym)
   }
 
-  private var makeSymbolicRefsTo: Symbol = NoSymbol
-
-  /** All references to members of class `sym` are pickled
-   *  as symbolic references. Used to pickle the self info of a class.
-   *  Without this precaution we get an infinite cycle when unpickling pos/extmethods.scala
-   *  The problem arises when a self type of a trait is a type parameter of the same trait.
-   */
-  private def withSymbolicRefsTo[T](sym: Symbol)(op: => T): T = {
-    val saved = makeSymbolicRefsTo
-    makeSymbolicRefsTo = sym
-    try op
-    finally makeSymbolicRefsTo = saved
-  }
-  
   def preRegister(tree: Tree)(implicit ctx: Context): Unit = tree match {
     case tree: MemberDef => 
       if (!symRefs.contains(tree.symbol)) symRefs(tree.symbol) = NoAddr
@@ -61,13 +48,19 @@ class TreePickler(pickler: TastyPickler) {
     }
   }
 
-  private def pickleName(name: Name) = writeNat(nameIndex(name).index)
-  private def pickleName(name: TastyName) = writeNat(nameIndex(name).index)
+  private def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
+  private def pickleName(name: TastyName): Unit = writeNat(nameIndex(name).index)
   private def pickleNameAndSig(name: Name, sig: Signature) = {
     val Signature(params, result) = sig
     pickleName(TastyName.Signed(nameIndex(name), params.map(fullNameIndex), fullNameIndex(result)))
   }
-
+  
+  private def pickleName(sym: Symbol)(implicit ctx: Context): Unit =
+    if (sym is Flags.ExpandedName) 
+      pickleName(TastyName.Expanded(
+        nameIndex(sym.name.expandedPrefix), nameIndex(sym.name.unexpandedName)))
+    else pickleName(sym.name)
+      
   private def pickleSymRef(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
     case Some(label) =>
       if (label != NoAddr) writeRef(label) else pickleForwardSymRef(sym)
@@ -80,6 +73,11 @@ class TreePickler(pickler: TastyPickler) {
     val ref = reserveRef(relative = false)
     assert(!sym.is(Flags.Package), sym)
     forwardSymRefs(sym) = ref :: forwardSymRefs.getOrElse(sym, Nil)  
+  }
+  
+  private def isLocallyDefined(sym: Symbol)(implicit ctx: Context) = symRefs.get(sym) match {
+    case Some(label) => assert(sym.exists); label != NoAddr
+    case None => false
   }
 
   def pickle(trees: List[Tree])(implicit ctx: Context) = {
@@ -155,7 +153,8 @@ class TreePickler(pickler: TastyPickler) {
           writeByte(if (tpe.isType) TYPEREFpkg else TERMREFpkg)
           pickleName(qualifiedName(sym))
         } 
-        else if (tpe.prefix == NoPrefix) {
+        else {
+          assert(tpe.prefix == NoPrefix)
           def pickleRef() = {
             writeByte(if (tpe.isType) TYPEREFdirect else TERMREFdirect)
             pickleSymRef(sym)        
@@ -171,10 +170,6 @@ class TreePickler(pickler: TastyPickler) {
           }
           else pickleRef()
         }
-        else {
-          writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
-          pickleSymRef(sym); pickleType(tpe.prefix)
-        }
       case tpe: TermRefWithSignature =>
         writeByte(TERMREF)
         pickleNameAndSig(tpe.name, tpe.signature); pickleType(tpe.prefix)
@@ -183,12 +178,13 @@ class TreePickler(pickler: TastyPickler) {
           // instantiated lambdas are pickled as APPLIEDTYPE; #Apply will 
           // be reconstituted when unpickling.
           pickleType(tpe.prefix)
-        else tpe.prefix match {
-          case prefix: ThisType if prefix.cls == makeSymbolicRefsTo =>
-            pickleType(NamedType.withFixedSym(tpe.prefix, tpe.symbol))
-          case _ =>
-            writeByte(if (tpe.isType) TYPEREF else TERMREF)
-            pickleName(tpe.name); pickleType(tpe.prefix)
+        else if (isLocallyDefined(tpe.symbol)) {
+          writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
+          pickleSymRef(tpe.symbol); pickleType(tpe.prefix)
+        }
+        else { 
+          writeByte(if (tpe.isType) TYPEREF else TERMREF)
+          pickleName(tpe.name); pickleType(tpe.prefix)
         }
       case tpe: ThisType =>
         writeByte(THIS)
@@ -425,12 +421,10 @@ class TreePickler(pickler: TastyPickler) {
           if ((selfInfo ne NoType) || !tree.self.isEmpty) {
             writeByte(SELFDEF)
             pickleName(tree.self.name)
-            withSymbolicRefsTo(tree.symbol.owner) {
-              pickleType {
-                cinfo.selfInfo match {
-                  case sym: Symbol => sym.info
-                  case tp: Type => tp
-                }
+            pickleType {
+              cinfo.selfInfo match {
+                case sym: Symbol => sym.info
+                case tp: Type => tp
               }
             }
           }
@@ -464,7 +458,7 @@ class TreePickler(pickler: TastyPickler) {
       registerDef(sym)
       writeByte(tag)
       withLength {
-        pickleName(sym.name)
+        pickleName(sym)
         pickleParams
         tpt match {
           case tpt: TypeTree => pickleTpt(tpt)

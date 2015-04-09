@@ -191,6 +191,17 @@ class TypeApplications(val self: Type) extends AnyVal {
       if (res.isInstantiatedLambda) res.select(tpnme.Apply) else res
     }
   }
+  
+  /** Simplify a fully instantiated type of the form `LambdaX{... type Apply = T } # Apply` to `T`. 
+   */
+  def simplifyApply(implicit ctx: Context): Type = self match {
+    case self @ TypeRef(prefix, tpnme.Apply) if prefix.isInstantiatedLambda =>
+      prefix.member(tpnme.Apply).info match {
+        case TypeAlias(alias) => alias
+        case _ => self
+      }
+    case _ => self
+  }
 
   final def appliedTo(arg: Type)(implicit ctx: Context): Type = appliedTo(arg :: Nil)
   final def appliedTo(arg1: Type, arg2: Type)(implicit ctx: Context): Type = appliedTo(arg1 :: arg2 :: Nil)

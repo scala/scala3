@@ -39,45 +39,46 @@ class tests extends CompilerTest {
 
   @Test def pickle_pickleOK = compileDir(picklingDir, testPickling)
   @Test def pickle_pickling = compileDir(dotcDir + "tools/dotc/core/pickling/", testPickling)
-
+  @Test def pickle_ast = compileDir(dotcDir + "tools/dotc/ast/", testPickling)
+  
   //@Test def pickle_core = compileDir(dotcDir + "tools/dotc/core", testPickling, xerrors = 2) // two spurious comparison errors in Types and TypeOps
 
-  @Test def pos_t2168_pat = compileFile(posDir, "t2168")
-  @Test def pos_erasure = compileFile(posDir, "erasure")
-  @Test def pos_Coder() = compileFile(posDir, "Coder")
-  @Test def pos_blockescapes() = compileFile(posDir, "blockescapes")
-  @Test def pos_collections() = compileFile(posDir, "collections")
-  @Test def pos_functions1() = compileFile(posDir, "functions1")
-  @Test def pos_implicits1() = compileFile(posDir, "implicits1")
-  @Test def pos_inferred() = compileFile(posDir, "inferred")
-  @Test def pos_Patterns() = compileFile(posDir, "Patterns")
-  @Test def pos_selftypes() = compileFile(posDir, "selftypes")
-  @Test def pos_varargs() = compileFile(posDir, "varargs")
-  @Test def pos_vararg_patterns() = compileFile(posDir, "vararg-pattern")
-  @Test def pos_opassign() = compileFile(posDir, "opassign")
-  @Test def pos_typedapply() = compileFile(posDir, "typedapply")
-  @Test def pos_nameddefaults() = compileFile(posDir, "nameddefaults")
-  @Test def pos_desugar() = compileFile(posDir, "desugar")
-  @Test def pos_sigs() = compileFile(posDir, "sigs")
-  @Test def pos_typers() = compileFile(posDir, "typers")
-  @Test def pos_typedidents() = compileFile(posDir, "typedIdents")
-  @Test def pos_assignments() = compileFile(posDir, "assignments")
-  @Test def pos_packageobject() = compileFile(posDir, "packageobject")
-  @Test def pos_overloaded() = compileFile(posDir, "overloaded")
-  @Test def pos_overrides() = compileFile(posDir, "overrides")
-  @Test def pos_javaOverride() = compileDir(posDir + "java-override")
-  @Test def pos_templateParents() = compileFile(posDir, "templateParents")
-  @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess")
-  @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion")
-  @Test def pos_tailcall = compileDir(posDir + "tailcall/")
+  @Test def pos_t2168_pat = compileFile(posDir, "t2168", twice)
+  @Test def pos_erasure = compileFile(posDir, "erasure", twice)
+  @Test def pos_Coder() = compileFile(posDir, "Coder", twice)
+  @Test def pos_blockescapes() = compileFile(posDir, "blockescapes", twice)
+  @Test def pos_collections() = compileFile(posDir, "collections", twice)
+  @Test def pos_functions1() = compileFile(posDir, "functions1", twice)
+  @Test def pos_implicits1() = compileFile(posDir, "implicits1", twice)
+  @Test def pos_inferred() = compileFile(posDir, "inferred", twice)
+  @Test def pos_Patterns() = compileFile(posDir, "Patterns", twice)
+  @Test def pos_selftypes() = compileFile(posDir, "selftypes", twice)
+  @Test def pos_varargs() = compileFile(posDir, "varargs", twice)
+  @Test def pos_vararg_patterns() = compileFile(posDir, "vararg-pattern", twice)
+  @Test def pos_opassign() = compileFile(posDir, "opassign", twice)
+  @Test def pos_typedapply() = compileFile(posDir, "typedapply", twice)
+  @Test def pos_nameddefaults() = compileFile(posDir, "nameddefaults", twice)
+  @Test def pos_desugar() = compileFile(posDir, "desugar", twice)
+  @Test def pos_sigs() = compileFile(posDir, "sigs", twice)
+  @Test def pos_typers() = compileFile(posDir, "typers", twice)
+  @Test def pos_typedidents() = compileFile(posDir, "typedIdents", twice)
+  @Test def pos_assignments() = compileFile(posDir, "assignments", twice)
+  @Test def pos_packageobject() = compileFile(posDir, "packageobject", twice)
+  @Test def pos_overloaded() = compileFile(posDir, "overloaded", twice)
+  @Test def pos_overrides() = compileFile(posDir, "overrides", twice)
+  @Test def pos_javaOverride() = compileDir(posDir + "java-override", twice)
+  @Test def pos_templateParents() = compileFile(posDir, "templateParents", twice)
+  @Test def pos_overloadedAccess = compileFile(posDir, "overloadedAccess", twice)
+  @Test def pos_approximateUnion = compileFile(posDir, "approximateUnion", twice)
+  @Test def pos_tailcall = compileDir(posDir + "tailcall/", twice)
   @Test def pos_nullarify = compileFile(posDir, "nullarify", "-Ycheck:nullarify" :: Nil)
-  @Test def pos_subtyping = compileFile(posDir, "subtyping")
+  @Test def pos_subtyping = compileFile(posDir, "subtyping", twice)
   @Test def pos_t2613 = compileFile(posSpecialDir, "t2613")(allowDeepSubtypes)
-  @Test def pos_packageObj = compileFile(posDir, "i0239")
-  @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping")
-  @Test def pos_extmethods = compileFile(posDir, "extmethods")
+  @Test def pos_packageObj = compileFile(posDir, "i0239", twice)
+  @Test def pos_anonClassSubtyping = compileFile(posDir, "anonClassSubtyping", twice)
+  @Test def pos_extmethods = compileFile(posDir, "extmethods", twice)
 
-  @Test def pos_all = compileFiles(posDir)
+  @Test def pos_all = compileFiles(posDir) // twice omitted to make tests run faster
 
 
 
@@ -126,16 +127,16 @@ class tests extends CompilerTest {
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
 
-  @Test def dotc = compileDir(dotcDir + "tools/dotc", failedOther)(allowDeepSubtypes) // see dotc_core
-  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", failedOther)
+  @Test def dotc = compileDir(dotcDir + "tools/dotc", failedOther)(allowDeepSubtypes ++ twice) // see dotc_core
+  @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", failedOther ++ twice)
     //similar to dotc_core_pickling but for another anon class. Still during firstTransform
-  @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config")
-  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", failedOther)(allowDeepSubtypes)
+  @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config", twice)
+  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", failedOther)(allowDeepSubtypes) // !!!twice gives "data race?" error in InterceptedMethods
     // error: error while loading ConstraintHandling$$anon$1$,
     // class file 'target/scala-2.11/dotty_2.11-0.1-SNAPSHOT.jar(dotty/tools/dotc/core/ConstraintHandling$$anon$1.class)'
     // has location not matching its contents: contains class $anon
 
-  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling")(allowDeepSubtypes)
+  @Test def dotc_core_pickling = compileDir(dotcDir + "tools/dotc/core/pickling", failedOther)(allowDeepSubtypes)// twice omitted to make tests run faster
     // exception caught when loading class ClassfileParser$$anon$1: dotty.tools.dotc.core.Denotations$NotDefinedHere:
     // demanding denotation of module class ClassfileParser$$anon$1$ at phase frontend(1) outside defined interval:
     // defined periods are Period(31..36, run = 2) Period(3..24, run = 2) Period(25..26, run = 2)
@@ -143,28 +144,28 @@ class tests extends CompilerTest {
     // inside FirstTransform 	at dotty.tools.dotc.transform.FirstTransform.transform(FirstTransform.scala:33)
     // weird.
 
-  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform")
+  @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform")// twice omitted to make tests run faster
 
-  @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing")
+  @Test def dotc_parsing = compileDir(dotcDir + "tools/dotc/parsing")// twice omitted to make tests run faster
 
-  @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing")
+  @Test def dotc_printing = compileDir(dotcDir + "tools/dotc/printing") // twice omitted to make tests run faster
 
-  @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting")
+  @Test def dotc_reporting = compileDir(dotcDir + "tools/dotc/reporting") // twice omitted to make tests run faster
 
-  @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", failedOther)
+  @Test def dotc_typer = compileDir(dotcDir + "tools/dotc/typer", failedOther) // twice omitted to make tests run faster
     // error: error while loading Checking$$anon$2$,
     // class file 'target/scala-2.11/dotty_2.11-0.1-SNAPSHOT.jar(dotty/tools/dotc/typer/Checking$$anon$2.class)'
     // has location not matching its contents: contains class $anon
 
-  @Test def dotc_util = compileDir(dotcDir + "tools/dotc/util", failedOther)
+  @Test def dotc_util = compileDir(dotcDir + "tools/dotc/util", failedOther ++ twice)
     // java.lang.ClassCastException: dotty.tools.dotc.core.Types$NoType$ cannot be cast to dotty.tools.dotc.core.Types$ClassInfo
     // at dotty.tools.dotc.core.SymDenotations$ClassDenotation.classInfo(SymDenotations.scala:1026)
     // at dotty.tools.dotc.transform.ExtensionMethods.transform(ExtensionMethods.scala:38)
 
-  @Test def tools_io = compileDir(dotcDir + "tools/io", failedOther) // inner class has symbol <none>
+  @Test def tools_io = compileDir(dotcDir + "tools/io", failedOther ++ twice) // inner class has symbol <none>
 
-  @Test def helloWorld = compileFile(posDir, "HelloWorld")
-  @Test def labels = compileFile(posDir, "Labels")
+  @Test def helloWorld = compileFile(posDir, "HelloWorld", twice)
+  @Test def labels = compileFile(posDir, "Labels", twice)
   //@Test def tools = compileDir(dotcDir + "tools", "-deep" :: Nil)(allowDeepSubtypes)
 
   @Test def testNonCyclic = compileArgs(Array(
@@ -172,16 +173,16 @@ class tests extends CompilerTest {
       dotcDir + "tools/dotc/core/Types.scala",
       dotcDir + "tools/dotc/ast/Trees.scala",
       "-Xprompt"
-      ) ++ staleSymbolError)
+      ) ++ staleSymbolError ++ twice)
 
   @Test def testIssue_34 = compileArgs(Array(
       dotcDir + "tools/dotc/config/Properties.scala",
       dotcDir + "tools/dotc/config/PathResolver.scala",
       //"-Ylog:frontend",
-      "-Xprompt") ++ staleSymbolError)
+      "-Xprompt") ++ staleSymbolError ++ twice)
 
   val javaDir = "./tests/pos/java-interop/"
-  @Test def java_all = compileFiles(javaDir)
+  @Test def java_all = compileFiles(javaDir, twice)
   
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }

@@ -269,7 +269,7 @@ object PickleFormat {
   final val DOUBLEconst = 76
   final val STRINGconst = 77
   final val IMPORTED = 78
-  
+
   final val THIS = 96
   final val CLASSconst = 97
   final val ENUMconst = 98
