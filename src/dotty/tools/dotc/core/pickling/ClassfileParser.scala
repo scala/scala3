@@ -92,10 +92,6 @@ class ClassfileParser(
       if (c != classRoot.symbol) mismatchError(c)
     }
 
-    if (classRoot.symbol.id == 4812) {
-      println("bar")
-    }
-
     addEnclosingTParams()
 
     if (unpickleOrParseInnerClasses()) return
