@@ -25,7 +25,7 @@ class tests extends CompilerTest {
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler")
 
   val failedOther = List("-Ystop-before:collectEntryPoints") // some non-obvious reason. need to look deeper
-  val twice = List("#runs", "2", "-YnoDoubleBindings")
+  val twice = List("#runs", "2", "-Yno-double-bindings")
   val staleSymbolError: List[String] = List()
 
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
@@ -130,8 +130,8 @@ class tests extends CompilerTest {
   @Test def dotc = compileDir(dotcDir + "tools/dotc", failedOther)(allowDeepSubtypes ++ twice) // see dotc_core
   @Test def dotc_ast = compileDir(dotcDir + "tools/dotc/ast", failedOther ++ twice)
     //similar to dotc_core_pickling but for another anon class. Still during firstTransform
-  @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config", twice)
-  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", failedOther)(allowDeepSubtypes) // !!!twice gives "data race?" error in InterceptedMethods
+  @Test def dotc_config = compileDir(dotcDir + "tools/dotc/config")
+  @Test def dotc_core = compileDir(dotcDir + "tools/dotc/core", failedOther)("-Yno-double-bindings" :: allowDeepSubtypes)// twice omitted to make tests run faster
     // error: error while loading ConstraintHandling$$anon$1$,
     // class file 'target/scala-2.11/dotty_2.11-0.1-SNAPSHOT.jar(dotty/tools/dotc/core/ConstraintHandling$$anon$1.class)'
     // has location not matching its contents: contains class $anon
