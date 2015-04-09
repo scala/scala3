@@ -1,26 +1,26 @@
 object t1 {
-	case object Const {
-	}
+    case object Const {
+    }
 
-	class Var
-	{
+    class Var
+    {
 
 } // missing brace
 
 object t2 {
-	case class Const() {
-	}
+    case class Const() {
+    }
 
-	class Var
-	{
+    class Var
+    {
 
 } // missing brace
 
 object t3 {
-	final case class Const() {
-	}
+    final case class Const() {
+    }
 
-	class Var
-	{
+    class Var
+    {
 
 } // missing brace

@@ -1,4 +1,4 @@
 object Test {
-	// ensure that parameter names are untouched by lambdalift
-	new C().foo(a = 0)
+    // ensure that parameter names are untouched by lambdalift
+    new C().foo(a = 0)
 }

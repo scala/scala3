@@ -1,5 +1,5 @@
 trait Functor[a] {
-	type MyType[a]
+    type MyType[a]
 }
 
 object Test {

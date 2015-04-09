@@ -312,7 +312,7 @@ object LispAny extends Lisp {
     case 'cond :: ('else :: expr :: Nil) :: rest =>
         normalize(expr);
     case 'cond :: (test :: expr :: Nil) :: rest =>
-	normalize('if :: test :: expr :: ('cond :: rest) :: Nil)
+    normalize('if :: test :: expr :: ('cond :: rest) :: Nil)
     case 'cond :: 'else :: expr :: Nil =>
       normalize(expr)
     case h :: t =>

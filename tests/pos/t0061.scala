@@ -5,6 +5,6 @@ object O {
   case class testA() extends testClass ;
 
   def ga( x:testClass ) = x match {
-	  case testA() => ()
+      case testA() => ()
   }
 }

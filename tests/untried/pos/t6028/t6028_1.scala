@@ -1,3 +1,3 @@
 class C {
-	def foo(a: Int): Unit = () => a
+    def foo(a: Int): Unit = () => a
 }

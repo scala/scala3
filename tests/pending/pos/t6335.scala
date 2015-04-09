@@ -12,14 +12,14 @@ object E extends Z {
 }
 
 trait Z {
-	def Z = 0
+    def Z = 0
 }
 
 object Test {
-	import E._
-	0.xx
+    import E._
+    0.xx
 
-	"".yy
+    "".yy
 
   true.zz
 }

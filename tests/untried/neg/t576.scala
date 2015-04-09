@@ -6,7 +6,7 @@ abstract class BaseListXXX {
   }
 }
 trait PriorityTreeXXX extends BaseListXXX {
-	type Node <: BasicTreeNode;
+    type Node <: BasicTreeNode;
 
   trait BasicTreeNode extends BaseNode {
     def sibling: Node;

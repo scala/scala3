@@ -13,7 +13,7 @@ trait IdPK
 class TestSubject extends KeyedMapper[Long, TestSubject] with IdPK
 
 class TestRun extends KeyedMapper[Long, TestRun] with IdPK {
-	object testSubject extends MappedForeignKey[Long, TestRun, TestSubject]
+    object testSubject extends MappedForeignKey[Long, TestRun, TestSubject]
 }
 
 object TestRun extends TestRun with KeyedMetaMapper[Long, TestRun]

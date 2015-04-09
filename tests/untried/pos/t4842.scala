@@ -13,14 +13,14 @@ class Blerg (x: AnyRef) {
 
 
 class Outer {
-	class Inner (x: AnyRef) {
-	  def this() = {
-	    this(new { class Bar { println(Bar.this); new { println(Bar.this) } }; new Bar } ) // okay
-	  }
+    class Inner (x: AnyRef) {
+      def this() = {
+        this(new { class Bar { println(Bar.this); new { println(Bar.this) } }; new Bar } ) // okay
+      }
 
-	  def this(x: Boolean) = {
-	    this(new { println(Outer.this) } ) // okay
-	  }
-	}
+      def this(x: Boolean) = {
+        this(new { println(Outer.this) } ) // okay
+      }
+    }
 }
 

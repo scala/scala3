@@ -20,7 +20,7 @@ abstract class Linked {
   abstract class Node0 {
     self: Node =>
 
-  	var next : Node = _;
+    var next : Node = _;
     var prev : Node = _;
 
     def get(dir : Dir) = if (dir == BEFORE) prev; else next;
