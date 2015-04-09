@@ -561,14 +561,14 @@ object Contexts {
     private[core] val pendingUnderlying = new mutable.HashSet[Type]
 
 
-    private [core] var phasesPlan: List[List[Phase]] = _
+    private[core] var phasesPlan: List[List[Phase]] = _
 
     // Phases state
     /** Phases by id */
     private[core] var phases: Array[Phase] = _
 
     /** Phases with consecutive Transforms groupped into a single phase, Empty array if squashing is disabled */
-    private [core] var squashedPhases: Array[Phase] = Array.empty[Phase]
+    private[core] var squashedPhases: Array[Phase] = Array.empty[Phase]
 
     /** Next denotation transformer id */
     private[core] var nextDenotTransformerId: Array[Int] = _
