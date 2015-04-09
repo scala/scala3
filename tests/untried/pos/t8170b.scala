@@ -13,13 +13,13 @@ object ScalaZeee {
      type Folded[N[X] >: M[X], U, F <: HFold[N, U]] <: U
   }
 }
- 
+
 object TypelevelUsage {
   import ScalaZeee._
   type T = GenericCons[Some, String, KNil.type]
   val klist1: T = ???
   type T2 = klist1.Folded[Option, Int, HFold[Option, Int]]
   val count2: T2 = ???
-   
+
   count2.ensuring(x => true).toChar // trigger an implicit search
 }

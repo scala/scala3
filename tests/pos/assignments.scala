@@ -4,7 +4,7 @@ object assignments {
   var i = 0
   a(i) = a(i) * 2
   a(i+1) += 1
-  
+
   class C {
     var myX = 0
     def x = myX
@@ -13,11 +13,11 @@ object assignments {
     x = x + 1
     x *= 2
   }
-  
+
   var c = new C
   c.x =c.x + 1
   c.x *= 2
-  
+
   val cc = c
   import cc._
   x = x + 1

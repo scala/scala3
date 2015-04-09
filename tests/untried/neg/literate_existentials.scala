@@ -54,7 +54,7 @@ object LiterateExistentials {
 //  V1 <: Any
 //
 //  Which simplify to:
-//  V1 >: String <: Any 
+//  V1 >: String <: Any
 //
 //  That's not inconsistent, so we can say that:
 //  T <: U forSome { type X1 >: L1 <: H1 }
@@ -62,7 +62,7 @@ object LiterateExistentials {
 //  Nothing <: A forSome { type A >: String <: Any }
 
 // Now to ask the compiler:
-  
+
   implicitly[Nothing <:< (A forSome { type A >: String <: Any })]
 
 
@@ -85,15 +85,15 @@ object LiterateExistentials {
 //
 //  Which simplify to:
 //
-//  V1 >: lub(Int, String) <: Any 
+//  V1 >: lub(Int, String) <: Any
 //
-//  V1 >: Any <: Any 
+//  V1 >: Any <: Any
 //
 //  We have demonstrated consistency! We can say that:
 //    T :< (U forSome { type U >: L1 <: H1 })
 //  Under our bindings, this is:
 //    Int :< (M forSome { type M >: String <: Any })
-  
+
   implicitly[Int <:< (M forSome { type M >: String <: Any })]
 
 
@@ -179,7 +179,7 @@ object LiterateExistentials {
 //  Nothing <: V1
 //  V1 <: String
 //
-//  V1 >: Int <: String 
+//  V1 >: Int <: String
 //
 //  Alas! These are inconsistent! There is no supertype of Int that is a
 //  subtype of String! Our substitution rule does not allow us to claim that our

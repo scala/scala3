@@ -1,6 +1,6 @@
 abstract class X[T]{
   def go2(x:T)(y:T = x): T = y
-  def go: T 
+  def go: T
   def go1(x: T) = x
 }
 

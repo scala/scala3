@@ -1,7 +1,7 @@
 trait Cov[+A]
 trait Inv[-A]
 
-object varianceExploit {  
+object varianceExploit {
   type l[-a] = Cov[a]
   type x = {type l[-a] = Cov[a]}
   def foo[M[_]] = ()

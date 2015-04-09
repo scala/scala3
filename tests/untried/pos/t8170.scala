@@ -22,6 +22,6 @@ this = {AliasArgsTypeRef@3004}"Test#7680.a#14899.T#14823[O#7702.X#7793]"
     info = namer: [F#14824 <: O#7703.X#7793]F#14824
 result = {AbstractNoArgsTypeRef@3237}"F#24451"
 tp = {PolyType@3235}"[F#14824 <: O#7703.X#7793]F#14824"
-tparams = 
+tparams =
   (0)  = {AbstractTypeSymbol@3247}"type F#24451"
 */

@@ -1,5 +1,5 @@
 package test {
-  object `package` {} 
+  object `package` {}
 }
 
 package object foo {}

@@ -5,6 +5,6 @@ class Test {
 }
 
 object BindingsY {
-  def select1(root: String, steps: String*) = ()  
+  def select1(root: String, steps: String*) = ()
   def select1(root: Any, steps: String*) = ()
 }

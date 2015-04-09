@@ -9,6 +9,6 @@ object IW {
 }
 object Mac {
   def mac(s: String): String = macro macImpl
-  def macImpl(c: Context)(s: c.Expr[String]): c.Expr[String] = 
+  def macImpl(c: Context)(s: c.Expr[String]): c.Expr[String] =
     c.universe.reify(IW.foo(s.splice))
 }
