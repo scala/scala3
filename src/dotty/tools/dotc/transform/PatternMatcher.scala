@@ -141,7 +141,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       }
 
       // NOTE: checker must be the target of the ==, that's the patmat semantics for ya
-      def _equals(checker: Tree, binder: Symbol): Tree = checker.select(nme.equals_).appliedTo(ref(binder))
+      def _equals(checker: Tree, binder: Symbol): Tree =
+        tpd.applyOverloaded(checker, nme.EQ, List(ref(binder)), List.empty, defn.BooleanType)
 
       // the force is needed mainly to deal with the GADT typing hack (we can't detect it otherwise as tp nor pt need contain an abstract type, we're just casting wildly)
       def _asInstanceOf(b: Symbol, tp: Type): Tree = ref(b).ensureConforms(tp) // andType here breaks t1048

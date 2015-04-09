@@ -30,7 +30,7 @@ import dotty.tools.dotc.transform.SymUtils._
  *  have two substitutons S1 = [outer#1 := outer#3], S2 = [inner#2 := inner#4] where
  *  hashtags precede symbol ids. If we do S1 first, we get outer#2.inner#3. If we then
  *  do S2 we get outer#2.inner#4. But that means that the named type outer#2.inner
- *  gets two different denotations in the same period. Hence, if -YnoDoubleBindings is
+ *  gets two different denotations in the same period. Hence, if -Yno-double-bindings is
  *  set, we would get a data race assertion error.
  */
 final class TreeTypeMap(
