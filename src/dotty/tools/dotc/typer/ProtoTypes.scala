@@ -249,7 +249,7 @@ object ProtoTypes {
     override def resultType(implicit ctx: Context) = resType
     
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean =
-  	  ctx.typer.isApplicable(tp, argType :: Nil, resultType)
+      ctx.typer.isApplicable(tp, argType :: Nil, resultType)
 
     def derivedViewProto(argType: Type, resultType: Type)(implicit ctx: Context) =
       if ((argType eq this.argType) && (resultType eq this.resultType)) this

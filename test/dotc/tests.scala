@@ -141,7 +141,7 @@ class tests extends CompilerTest {
     // demanding denotation of module class ClassfileParser$$anon$1$ at phase frontend(1) outside defined interval:
     // defined periods are Period(31..36, run = 2) Period(3..24, run = 2) Period(25..26, run = 2)
     // Period(27..28, run = 2) Period(29..29, run = 2) Period(30..30, run = 2)
-    // inside FirstTransform 	at dotty.tools.dotc.transform.FirstTransform.transform(FirstTransform.scala:33)
+    // inside FirstTransform    at dotty.tools.dotc.transform.FirstTransform.transform(FirstTransform.scala:33)
     // weird.
 
   @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform")// twice omitted to make tests run faster
