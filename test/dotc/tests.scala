@@ -14,21 +14,21 @@ class tests extends CompilerTest {
         "-pagewidth", "160")
 
   implicit val defaultOptions = noCheckOptions ++ List(
-      "-Yno-deep-subtypes",
+      "-Yno-deep-subtypes", "-Yno-double-bindings",
       "-Ycheck:tailrec,resolveSuper,mixin,restoreScopes",
       "-d", "./out/"
   )
 
   val doEmitBytecode = List("-Ystop-before:terminal")
   val failedbyName = List("-Ystop-before:collectEntryPoints") // #288
-  val failedUnderscore = List("-Ystop-before:collectEntryPoints") // #289
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler")
 
   val failedOther = List("-Ystop-before:collectEntryPoints") // some non-obvious reason. need to look deeper
-  val twice = List("#runs", "2", "-Yno-double-bindings")
+  val twice = List("#runs", "2")
   val staleSymbolError: List[String] = List()
 
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
+  val allowDoubleBindings = defaultOptions diff List("-Yno-double-bindings")
 
   val posDir = "./tests/pos/"
   val posSpecialDir = "./tests/pos-special/"
