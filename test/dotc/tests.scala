@@ -14,21 +14,21 @@ class tests extends CompilerTest {
         "-pagewidth", "160")
 
   implicit val defaultOptions = noCheckOptions ++ List(
-      "-Yno-deep-subtypes",
+      "-Yno-deep-subtypes", "-Yno-double-bindings",
       "-Ycheck:tailrec,resolveSuper,mixin,restoreScopes",
       "-d", "./out/"
   )
 
   val doEmitBytecode = List("-Ystop-before:terminal")
   val failedbyName = List("-Ystop-before:collectEntryPoints") // #288
-  val failedUnderscore = List("-Ystop-before:collectEntryPoints") // #289
   val testPickling = List("-Xprint-types", "-Ytest-pickler", "-Ystop-after:pickler")
 
   val failedOther = List("-Ystop-before:collectEntryPoints") // some non-obvious reason. need to look deeper
-  val twice = List("#runs", "2", "-Yno-double-bindings")
+  val twice = List("#runs", "2")
   val staleSymbolError: List[String] = List()
 
   val allowDeepSubtypes = defaultOptions diff List("-Yno-deep-subtypes")
+  val allowDoubleBindings = defaultOptions diff List("-Yno-double-bindings")
 
   val posDir = "./tests/pos/"
   val posSpecialDir = "./tests/pos-special/"
@@ -88,7 +88,7 @@ class tests extends CompilerTest {
   @Test def neg_typedapply() = compileFile(negDir, "typedapply", xerrors = 4)
   @Test def neg_typedidents() = compileFile(negDir, "typedIdents", xerrors = 2)
   @Test def neg_assignments() = compileFile(negDir, "assignments", xerrors = 3)
-  @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 12)
+  @Test def neg_typers() = compileFile(negDir, "typers", xerrors = 12)(allowDoubleBindings)
   @Test def neg_privates() = compileFile(negDir, "privates", xerrors = 2)
   @Test def neg_rootImports = compileFile(negDir, "rootImplicits", xerrors = 2)
   @Test def neg_templateParents() = compileFile(negDir, "templateParents", xerrors = 3)
