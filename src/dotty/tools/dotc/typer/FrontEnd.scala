@@ -25,7 +25,7 @@ class FrontEnd extends Phase {
   def parse(implicit ctx: Context) = monitor("parsing") {
     val unit = ctx.compilationUnit
     unit.untpdTree =
-      if(unit.isJava) new JavaParser(unit.source).parse()
+      if (unit.isJava) new JavaParser(unit.source).parse()
       else new Parser(unit.source).parse()
     typr.println("parsed:\n" + unit.untpdTree.show)
   }

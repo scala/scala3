@@ -554,7 +554,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
         assert(referencingClass.isClass, referencingClass)
         referencingClass
       }
-      else if(referencingClass.owner.enclosingClass.exists)
+      else if (referencingClass.owner.enclosingClass.exists)
         hostForAccessorOf(sym, referencingClass.owner.enclosingClass.asClass)
       else
         referencingClass

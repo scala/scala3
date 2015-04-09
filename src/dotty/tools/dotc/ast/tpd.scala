@@ -776,7 +776,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       } else args
     }
 
-    val callArgs: List[Tree] = if(args.isEmpty) Nil else {
+    val callArgs: List[Tree] = if (args.isEmpty) Nil else {
       val expectedType = selected.widen.paramTypess.head.last
       val lastParam = args.last
       adaptLastArg(lastParam, expectedType)

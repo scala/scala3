@@ -347,7 +347,7 @@ trait ImplicitRunInfo { self: RunInfo =>
             if (liftedTp ne tp) iscope(liftedTp, isLifted = true)
             else ofTypeImplicits(collectCompanions(tp))
           if (ctx.typerState.ephemeral) record("ephemeral cache miss: implicitScope")
-          else if(cacheResult) implicitScopeCache(tp) = result
+          else if (cacheResult) implicitScopeCache(tp) = result
           result
         }
         finally ctx.typerState.ephemeral |= savedEphemeral

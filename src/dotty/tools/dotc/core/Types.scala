@@ -76,7 +76,7 @@ object Types {
 
     val uniqId = {
       nextId = nextId + 1
-//      if(nextId == 19555)
+//      if (nextId == 19555)
 //        println("foo")
       nextId
     }

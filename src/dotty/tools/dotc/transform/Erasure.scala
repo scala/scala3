@@ -412,7 +412,7 @@ object Erasure extends TypeTestsCasts{
 
     private def adaptProto(tree: untpd.Tree, pt: Type)(implicit ctx: Context) = {
       if (pt.isValueType) pt else {
-        if(tree.typeOpt.derivesFrom(ctx.definitions.UnitClass))
+        if (tree.typeOpt.derivesFrom(ctx.definitions.UnitClass))
           tree.typeOpt
         else erasure(tree.typeOpt)
       }

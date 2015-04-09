@@ -27,7 +27,7 @@ class LazyVals extends MiniPhaseTransform with SymTransformer {
 
 
   def transformSym(d: SymDenotation)(implicit ctx: Context): SymDenotation = {
-    if(d is(Flags.Lazy, butNot = Flags.ModuleVal | Flags.Method)) {
+    if (d is(Flags.Lazy, butNot = Flags.ModuleVal | Flags.Method)) {
       // Method flag is set on lazy vals coming from Unpickler. They are already methods and shouldn't be transformed twice
       d.copySymDenotation(
         initFlags = d.flags | Flags.Method,
@@ -301,7 +301,7 @@ class LazyVals extends MiniPhaseTransform with SymTransformer {
             info.ord += 1
             ord = info.ord % flagsPerLong
             val id = info.ord / flagsPerLong
-            if(ord != 0) { // there are unused bits in already existing flag
+            if (ord != 0) { // there are unused bits in already existing flag
               offsetSymbol = companion.moduleClass.info.decl((StdNames.nme.LAZY_FIELD_OFFSET + id.toString).toTermName)
                 .suchThat(sym => (sym is Flags.Synthetic) && sym.isTerm)
                  .symbol.asTerm
@@ -335,7 +335,7 @@ class LazyVals extends MiniPhaseTransform with SymTransformer {
         val cas = Select(ref(helperModule), RLazyVals.Names.cas.toTermName)
 
         val accessor = mkThreadSafeDef(x.symbol.asTerm, claz, ord, containerSymbol, x.rhs, tpe, offset, getFlag, state, cas, setFlag, wait)
-        if(flag eq EmptyTree)
+        if (flag eq EmptyTree)
           Thicket(List(containerTree, accessor))
         else Thicket(List(containerTree, flag, accessor))
     }

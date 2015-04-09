@@ -116,7 +116,7 @@ class TreeChecker extends Phase with SymTransformer {
         val sym = tree.symbol
         everDefinedSyms.get(sym) match {
           case Some(t)  =>
-            if(t ne tree)
+            if (t ne tree)
               ctx.warning(i"symbol ${sym.fullName} is defined at least twice in different parts of AST")
             // should become an error
           case None =>
@@ -124,7 +124,7 @@ class TreeChecker extends Phase with SymTransformer {
         }
         assert(!nowDefinedSyms.contains(sym), i"doubly defined symbol: ${sym.fullName} in $tree")
 
-        if(ctx.settings.YcheckMods.value) {
+        if (ctx.settings.YcheckMods.value) {
           tree match {
             case t: MemberDef =>
               if (t.name ne sym.name) ctx.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")

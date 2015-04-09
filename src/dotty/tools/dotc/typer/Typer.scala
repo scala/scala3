@@ -309,7 +309,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
-    if(ctx.compilationUnit.isJava && tree.name.isTypeName) {
+    if (ctx.compilationUnit.isJava && tree.name.isTypeName) {
       // SI-3120 Java uses the same syntax, A.B, to express selection from the
       // value A and from the type A. We have to try both.
       tryEither(tryCtx => asSelect(tryCtx))((_,_) => asJavaSelectFromTypeTree(ctx))

@@ -162,7 +162,7 @@ trait Symbols { this: Context =>
         privateWithin, coord, assocFile)
 
   def synthesizeCompanionMethod(name: Name, target: SymDenotation, owner: SymDenotation)(implicit ctx: Context) =
-    if(owner.exists && target.exists && !owner.isAbsent && !target.isAbsent) {
+    if (owner.exists && target.exists && !owner.isAbsent && !target.isAbsent) {
       val existing = owner.unforcedDecls.lookup(name)
 
       existing.orElse{

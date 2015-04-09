@@ -179,7 +179,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     override def codegen: AbsCodegen = optimizedCodegen
 
     // when we know we're targetting Option, do some inlining the optimizer won't do
-    // for example, `o.flatMap(f)` becomes `if(o == None) None else f(o.get)`, similarly for orElse and guard
+    // for example, `o.flatMap(f)` becomes `if (o == None) None else f(o.get)`, similarly for orElse and guard
     //   this is a special instance of the advanced inlining optimization that takes a method call on
     //   an object of a type that only has two concrete subclasses, and inlines both bodies, guarded by an if to distinguish the two cases
     object optimizedCodegen extends CommonCodegen {
@@ -407,11 +407,11 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
 
       val nextBinder: Symbol
       lazy val introducedRebindings = /*
-        if(nextBinder ne prevBinder) Rebindings(prevBinder, nextBinder)
+        if (nextBinder ne prevBinder) Rebindings(prevBinder, nextBinder)
         else */ NoRebindings
 
       def chainBefore(next: Tree)(casegen: Casegen): Tree =
-        if(prevBinder ne nextBinder) // happens when typeTest is known to succeed
+        if (prevBinder ne nextBinder) // happens when typeTest is known to succeed
           /*atPos(pos)(*/casegen.flatMapCond(cond, res, nextBinder, next)//)
         else casegen.flatMapGuard(cond, next)
     }
@@ -477,7 +477,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
               def refTpeWiden = ref.tpe.widen
               def bindInfoWiden = bind.info.widen
               def loc = bind.showFullName
-              if(!(ref.tpe <:< bind.info.widen)) {
+              if (!(ref.tpe <:< bind.info.widen)) {
                 ctx.debuglog(s"here ${bind.showFullName} expected: ${bindInfoWiden.show} got: ${refTpeWiden.show}")
               }
               val refCasted = ref.ensureConforms(bind.info)
@@ -954,7 +954,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
     object WildcardPattern {
       def unapply(pat: Tree): Boolean = pat match {
         case Bind(nme.WILDCARD, WildcardPattern()) => true // don't skip when binding an interesting symbol!
-        case t if(tpd.isWildcardArg(t))            => true
+        case t if (tpd.isWildcardArg(t))            => true
         case x: Ident                              => isVarPattern(x)
         case Alternative(ps)                       => ps forall unapply
         case EmptyTree                             => true
@@ -1424,7 +1424,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           else genDrop(binder, expectedLength)
           )
         // this error-condition has already been checked by checkStarPatOK:
-        //   if(isSeq) assert(firstIndexingBinder + nbIndexingIndices + (if(lastIsStar) 1 else 0) == totalArity, "(resultInMonad, ts, subPatTypes, subPats)= " +(resultInMonad, ts, subPatTypes, subPats))
+        //   if (isSeq) assert(firstIndexingBinder + nbIndexingIndices + (if (lastIsStar) 1 else 0) == totalArity, "(resultInMonad, ts, subPatTypes, subPats)= " +(resultInMonad, ts, subPatTypes, subPats))
 
         // [1] there are `firstIndexingBinder` non-seq tuple elements preceding the Seq
         // [2] then we have to index the binder that represents the sequence for the remaining subpatterns, except for...
@@ -1440,7 +1440,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       // require (nbSubPats > 0 && (!lastIsStar || isSeq))
       protected def subPatRefs(binder: Symbol): List[Tree] = {
         val refs = if (totalArity > 0 && isSeq) subPatRefsSeq(binder)
-        else if(defn.isProductSubType(binder.info)) productElemsToN(binder, totalArity)
+        else if (defn.isProductSubType(binder.info)) productElemsToN(binder, totalArity)
         else ref(binder):: Nil
         val refsSymbols = refs.map(_.symbol)  // just for debugging
         refs
@@ -1551,7 +1551,7 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       // the trees that select the subpatterns on the extractor's result, referenced by `binder`
       // require (totalArity > 0 && (!lastIsStar || isSeq))
       protected def subPatRefs(binder: Symbol, subpatBinders: List[Symbol], binderTypeTested: Type): List[Tree] = {
-        if(aligner.isSingle && aligner.extractor.prodArity == 1 && defn.isTupleType(binder.info)) {
+        if (aligner.isSingle && aligner.extractor.prodArity == 1 && defn.isTupleType(binder.info)) {
           // special case for extractor
           // comparing with scalac additional assertions added
           val subpw = subpatBinders.head.info.widen
@@ -1815,8 +1815,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
         //println(s"${_id}unapplyArgs(${result.widen}")
         val expanded:List[Type] = /*(
           if (result =:= defn.BooleanType) Nil
-          else if(defn.isProductSubType(result)) productSelectorTypes(result)
-          else if(result.classSymbol is Flags.CaseClass) result.decls.filter(x => x.is(Flags.CaseAccessor) && x.is(Flags.Method)).map(_.info).toList
+          else if (defn.isProductSubType(result)) productSelectorTypes(result)
+          else if (result.classSymbol is Flags.CaseClass) result.decls.filter(x => x.is(Flags.CaseAccessor) && x.is(Flags.Method)).map(_.info).toList
           else result.select(nme.get) :: Nil
           )*/
           if ((extractorMemberType(resultType, nme.isDefined) isRef defn.BooleanClass) && resultOfGet.exists)

@@ -69,7 +69,7 @@ object Utility {
       else sb append c
     }
 
-    if(!sb.isEmpty) // flush buffer
+    if (!sb.isEmpty) // flush buffer
       nb += text(sb.toString())
 
     nb.toList

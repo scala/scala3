@@ -376,7 +376,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   def shouldEmitJumpAfterLabels = true
 
   def dumpClasses: Option[String] =
-    if(ctx.settings.Ydumpclasses.isDefault) None
+    if (ctx.settings.Ydumpclasses.isDefault) None
     else Some(ctx.settings.Ydumpclasses.value)
 
   def mainClass: Option[String] =
@@ -423,7 +423,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
       case TermRef(prefix: ThisType, name) =>
         Some(tpd.This(prefix.cls).select(i.symbol))
       case TermRef(NoPrefix, name) =>
-        if(i.symbol is Flags.Method) Some(This(i.symbol.enclosingClass).select(i.symbol)) // workaround #342 todo: remove after fixed
+        if (i.symbol is Flags.Method) Some(This(i.symbol.enclosingClass).select(i.symbol)) // workaround #342 todo: remove after fixed
         else None
       case _ => None
     }
@@ -663,7 +663,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def companionSymbol: Symbol = if (sym is Flags.Module) companionClass else companionModule
     def moduleClass: Symbol = toDenot(sym).moduleClass
     def enclosingClassSym: Symbol = {
-      if(this.isClass) {
+      if (this.isClass) {
         val ct = ctx.withPhase(ctx.flattenPhase.prev)
         toDenot(sym)(ct).owner.enclosingClass(ct)
       }
@@ -792,7 +792,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
           t.info match {
 
             case _ =>
-              if(!t.symbol.isClass) nonClassTypeRefToBType(t.symbol)  // See comment on nonClassTypeRefToBType
+              if (!t.symbol.isClass) nonClassTypeRefToBType(t.symbol)  // See comment on nonClassTypeRefToBType
               else primitiveOrClassToBType(t.symbol) // Common reference to a type such as scala.Int or java.lang.String
           }
         case Types.ClassInfo(_, sym, _, _, _)           => primitiveOrClassToBType(sym) // We get here, for example, for genLoadModule, which invokes toTypeKind(moduleClassSymbol.info)
@@ -942,7 +942,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def _3: Tree = field.rhs
 
     override def unapply(s: LabelDef): DottyBackendInterface.this.LabelDef.type = {
-      if(s.symbol is Flags.Label) this.field = s
+      if (s.symbol is Flags.Label) this.field = s
       else this.field = null
       this
     }
@@ -1021,11 +1021,11 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def _2 = field.meth
     def _3 = {
       val t = field.tpt.tpe.typeSymbol
-      if(t.exists) t
+      if (t.exists) t
       else {
         val arity = field.meth.tpe.widenDealias.paramTypes.size - _1.size
         val returnsUnit = field.meth.tpe.widenDealias.resultType.classSymbol == UnitClass
-        if(returnsUnit)
+        if (returnsUnit)
           ctx.requiredClass(("scala.compat.java8.JProcedure" + arity).toTermName)
         else ctx.requiredClass(("scala.compat.java8.JFunction" + arity).toTermName)
       }

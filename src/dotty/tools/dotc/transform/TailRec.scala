@@ -210,7 +210,7 @@ class TailRec extends MiniPhaseTransform with DenotTransformer with FullParamete
           val reciever = noTailTransform(recv)
 
           val callTargs: List[tpd.Tree] =
-            if(abstractOverClass) {
+            if (abstractOverClass) {
               val classTypeArgs = recv.tpe.baseTypeWithArgs(enclosingClass).argInfos
               targs ::: classTypeArgs.map(x => ref(x.typeSymbol))
             } else targs

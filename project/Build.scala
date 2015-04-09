@@ -109,7 +109,7 @@ object DottyBuild extends Build {
       val path = for {
         file <- attList.map(_.data)
         path = file.getAbsolutePath
-        prefix = if(path.endsWith(".jar")) "p" else "a"
+        prefix = if (path.endsWith(".jar")) "p" else "a"
       } yield "-Xbootclasspath/" + prefix + ":" + path
       // dotty itself needs to be in the bootclasspath
       val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
