@@ -103,6 +103,10 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   val BoxesRunTimeModule     = ctx.requiredModule("scala.runtime.BoxesRunTime")
   val BoxesRunTimeClass      = toDenot(BoxesRunTimeModule).moduleClass.asClass
 
+   // require LambdaMetafactory: scalac uses getClassIfDefined, but we need those always.
+  override lazy val LambdaMetaFactory = ctx.requiredClass("java.lang.invoke.LambdaMetafactory")
+  override lazy val MethodHandle      = ctx.requiredClass("java.lang.invoke.MethodHandle")
+
   val nme_valueOf: Name = StdNames.nme.valueOf
   val nme_apply = StdNames.nme.apply
   val NothingClass: Symbol = defn.NothingClass
