@@ -83,7 +83,8 @@ object Utility {
    * See [66]
    */
   def parseCharRef(ch: () => Char, nextch: () => Unit, reportSyntaxError: String => Unit, reportTruncatedError: String => Unit): String = {
-    val hex  = (ch() == 'x') && { nextch(); true }
+    val hex  = ch() == 'x'
+    if (hex) nextch()
     val base = if (hex) 16 else 10
     var i = 0
     while (ch() != ';') {

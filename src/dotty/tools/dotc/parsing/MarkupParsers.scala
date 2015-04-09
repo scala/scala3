@@ -421,7 +421,9 @@ object MarkupParsers {
       xSpaceOpt
 
       val ts = new ArrayBuffer[Tree]
-      val isEmptyTag = (ch == '/') && { nextch ; true }
+
+      val isEmptyTag = ch == '/'
+      if (isEmptyTag) nextch()
       xToken('>')
 
       if (!isEmptyTag) {
