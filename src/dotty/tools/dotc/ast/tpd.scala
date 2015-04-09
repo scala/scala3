@@ -588,63 +588,97 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree
     }
 
+    /** A select node with the given selector name and a computed type */
     def select(name: Name)(implicit ctx: Context): Select =
       Select(tree, name)
 
+    /** A select node with the given type */
     def select(tp: NamedType)(implicit ctx: Context): Select =
       untpd.Select(tree, tp.name).withType(tp)
 
+    /** A select node that selects the given symbol. Note: Need to make sure this
+     *  is in fact the symbol you would get when you select with the symbol's name,
+     *  otherwise a data race may occur which would be flagged by -Yno-double-bindings.
+     */
     def select(sym: Symbol)(implicit ctx: Context): Select =
       untpd.Select(tree, sym.name).withType(
         TermRef.withSigAndDenot(tree.tpe, sym.name.asTermName, sym.signature, sym.denot.asSeenFrom(tree.tpe)))
 
-    def selectWithSig(name: Name, sig: Signature)(implicit ctx: Context) =
+    /** A select node with the given selector name and signature and a computed type */
+    def selectWithSig(name: Name, sig: Signature)(implicit ctx: Context): Tree =
       untpd.SelectWithSig(tree, name, sig)
         .withType(TermRef.withSig(tree.tpe, name.asTermName, sig))
 
+    /** A select node with selector name and signature taken from `sym`. 
+     *  Note: Use this method instead of select(sym) if the referenced symbol
+     *  might be overridden in the type of the qualifier prefix. See note
+     *  on select(sym: Symbol). 
+     */
+    def selectWithSig(sym: Symbol)(implicit ctx: Context): Tree =
+      selectWithSig(sym.name, sym.signature)
+
+    /** A unary apply node with given argument: `tree(arg)` */
     def appliedTo(arg: Tree)(implicit ctx: Context): Tree =
       appliedToArgs(arg :: Nil)
 
+    /** An apply node with given arguments: `tree(arg, args0, ..., argsN)` */
     def appliedTo(arg: Tree, args: Tree*)(implicit ctx: Context): Tree =
       appliedToArgs(arg :: args.toList)
 
+    /** An apply node with given argument list `tree(args(0), ..., args(args.length - 1))` */
     def appliedToArgs(args: List[Tree])(implicit ctx: Context): Apply =
       Apply(tree, args)
 
+    /** The current tree applied to given argument lists: 
+     *  `tree (argss(0)) ... (argss(argss.length -1))`
+     */
     def appliedToArgss(argss: List[List[Tree]])(implicit ctx: Context): Tree =
       ((tree: Tree) /: argss)(Apply(_, _))
 
+    /** The current tree applied to (): `tree()` */
     def appliedToNone(implicit ctx: Context): Apply = appliedToArgs(Nil)
 
+    /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToType(targ: Type)(implicit ctx: Context): Tree =
       appliedToTypes(targ :: Nil)
 
+    /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
     def appliedToTypes(targs: List[Type])(implicit ctx: Context): Tree =
       appliedToTypeTrees(targs map (TypeTree(_)))
 
+    /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
     def appliedToTypeTrees(targs: List[Tree])(implicit ctx: Context): Tree =
       if (targs.isEmpty) tree else TypeApply(tree, targs)
 
+    /** Apply to `()` unless tree's widened type is parameterless */
     def ensureApplied(implicit ctx: Context): Tree =
       if (tree.tpe.widen.isParameterless) tree else tree.appliedToNone
 
+    /** `tree.isInstanceOf[tp]` */
     def isInstance(tp: Type)(implicit ctx: Context): Tree =
       tree.select(defn.Any_isInstanceOf).appliedToType(tp)
 
+    /** tree.asInstanceOf[`tp`] */
     def asInstance(tp: Type)(implicit ctx: Context): Tree = {
       assert(tp.isValueType, i"bad cast: $tree.asInstanceOf[$tp]")
       tree.select(defn.Any_asInstanceOf).appliedToType(tp)
     }
 
+    /** `tree.asInstanceOf[tp]` unless tree's type already conforms to `tp` */
     def ensureConforms(tp: Type)(implicit ctx: Context): Tree =
       if (tree.tpe <:< tp) tree else asInstance(tp)
 
+    /** `this && that`, for boolean trees `this`, `that` */
     def and(that: Tree)(implicit ctx: Context): Tree =
       tree.select(defn.Boolean_&&).appliedTo(that)
 
+    /** `this || that`, for boolean trees `this`, `that` */
     def or(that: Tree)(implicit ctx: Context): Tree =
       tree.select(defn.Boolean_||).appliedTo(that)
 
+    /** The translation of `tree = rhs`. 
+     *  This is either the tree as an assignment, to a setter call.
+     */
     def becomes(rhs: Tree)(implicit ctx: Context): Tree =
       if (tree.symbol is Method) {
         val setr = tree match {
@@ -660,13 +694,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     // --- Higher order traversal methods -------------------------------
 
-    def foreachSubTree(f: Tree => Unit)(implicit ctx: Context): Unit = { //TODO should go in tpd.
+    /** Apply `f` to each subtree of this tree */
+    def foreachSubTree(f: Tree => Unit)(implicit ctx: Context): Unit = { 
       val traverser = new TreeTraverser {
         def traverse(tree: Tree)(implicit ctx: Context) = foldOver(f(tree), tree)
       }
       traverser.traverse(tree)
     }
 
+    /** Is there a subtree of this tree that satisfies predicate `p`? */
     def existsSubTree(p: Tree => Boolean)(implicit ctx: Context): Boolean = {
       val acc = new TreeAccumulator[Boolean] {
         def apply(x: Boolean, t: Tree)(implicit ctx: Context) = x || p(t) || foldOver(x, t)
@@ -674,6 +710,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       acc(false, tree)
     }
 
+    /** All subtrees of this tree that satisfy predicate `p`. */
     def filterSubTrees(f: Tree => Boolean)(implicit ctx: Context): List[Tree] = {
       val buf = new mutable.ListBuffer[Tree]
       foreachSubTree { tree => if (f(tree)) buf += tree }

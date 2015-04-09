@@ -111,9 +111,9 @@ class InterceptedMethods extends MiniPhaseTransform { thisTransform =>
             poundPoundValue(qual)
           } else if (Any_comparisons contains tree.fun.symbol.asTerm) {
             if (tree.fun.symbol eq defn.Any_==) {
-              qual.select(defn.Any_equals).appliedToArgs(tree.args)
+              qual.selectWithSig(defn.Any_equals).appliedToArgs(tree.args)
             } else if (tree.fun.symbol eq defn.Any_!=) {
-              qual.select(defn.Any_equals).appliedToArgs(tree.args).select(defn.Boolean_!)
+              qual.selectWithSig(defn.Any_equals).appliedToArgs(tree.args).select(defn.Boolean_!)
             } else unknown
           } /* else if (isPrimitiveValueClass(qual.tpe.typeSymbol)) {
             // todo: this is needed to support value classes
@@ -130,7 +130,7 @@ class InterceptedMethods extends MiniPhaseTransform { thisTransform =>
             //    we get a primitive form of _getClass trying to target a boxed value
             //    so we need replace that method name with Object_getClass to get correct behavior.
             //    See SI-5568.
-            qual.select(defn.Any_getClass).appliedToNone
+            qual.selectWithSig(defn.Any_getClass).appliedToNone
           } else {
             unknown
           }
