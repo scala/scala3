@@ -290,7 +290,7 @@ object Scanners {
       }
 
       postProcessToken()
-      // print("["+this+"]")
+      // print("[" + this +"]")
     }
 
     def postProcessToken() = {
@@ -375,7 +375,7 @@ object Scanners {
               case ' ' | '\t' | '\n' | '{' | '(' | '>' if isNameStart(ch) || ch == '!' || ch == '?' =>
                 token = XMLSTART
               case _ =>
-                // Console.println("found '<', but last is '"+in.last+"'"); // DEBUG
+                // Console.println("found '<', but last is '" + in.last +"'"); // DEBUG
                 putChar('<')
                 getOperatorRest()
             }

@@ -472,7 +472,7 @@ object Symbols {
 
     override def toString: String =
       if (lastDenot == null) s"Naked$prefixString#$id"
-      else lastDenot.toString// +"#"+id // !!! DEBUG
+      else lastDenot.toString// + "#" + id // !!! DEBUG
 
     def toText(printer: Printer): Text = printer.toText(this)
 

@@ -193,7 +193,7 @@ object ByteCodecs {
   /**
    * Destructively decodes array xs and returns the length of the decoded array.
    *
-   * Sometimes returns (length+1) of the decoded array. Example:
+   * Sometimes returns (length + 1) of the decoded array. Example:
    *
    *   scala> val enc = reflect.generic.ByteCodecs.encode(Array(1,2,3))
    *   enc: Array[Byte] = Array(2, 5, 13, 1)

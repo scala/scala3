@@ -88,12 +88,12 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
       case decl: MultiDenotation =>
         val alts = decl.alternatives
         val index = alts indexOf imeth.denot
-        assert(index >= 0, alts+" does not contain "+imeth)
-        def altName(index: Int) = (imeth.name+"$extension"+index).toTermName
+        assert(index >= 0, alts + " does not contain " + imeth)
+        def altName(index: Int) = (imeth.name + "$extension" + index).toTermName
         altName(index) #:: ((0 until alts.length).toStream filter (index != _) map altName)
       case decl =>
-        assert(decl.exists, imeth.name+" not found in "+imeth.owner+"'s decls: "+imeth.owner.info.decls)
-        Stream((imeth.name+"$extension").toTermName)
+        assert(decl.exists, imeth.name + " not found in " + imeth.owner + "'s decls: " + imeth.owner.info.decls)
+        Stream((imeth.name + "$extension").toTermName)
     }
   }
 

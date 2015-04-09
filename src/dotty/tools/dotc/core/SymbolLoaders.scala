@@ -226,7 +226,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 
   override def sourceFileOrNull: AbstractFile = classfile
 
-  def description = "class file "+ classfile.toString
+  def description = "class file " + classfile.toString
 
   def rootDenots(rootDenot: ClassDenotation)(implicit ctx: Context): (ClassDenotation, ClassDenotation) = {
     val linkedDenot = rootDenot.scalacLinkedClass.denot match {
@@ -258,7 +258,7 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 }
 
 class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
-  def description = "source file "+ srcfile.toString
+  def description = "source file " + srcfile.toString
   override def sourceFileOrNull = srcfile
   def doComplete(root: SymDenotation)(implicit ctx: Context): Unit = unsupported("doComplete")
 }

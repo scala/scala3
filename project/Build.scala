@@ -110,7 +110,7 @@ object DottyBuild extends Build {
         file <- attList.map(_.data)
         path = file.getAbsolutePath
         prefix = if(path.endsWith(".jar")) "p" else "a"
-      } yield "-Xbootclasspath/"+ prefix +":" + path
+      } yield "-Xbootclasspath/" + prefix + ":" + path
       // dotty itself needs to be in the bootclasspath
       val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
       // System.err.println("BOOTPATH: " + fullpath)
@@ -121,7 +121,7 @@ object DottyBuild extends Build {
         else
           List()
       val res = agentOptions ::: travis_build ::: fullpath
-      println("Running with javaOptions: " +res)
+      println("Running with javaOptions: " + res)
       res
     }
   )

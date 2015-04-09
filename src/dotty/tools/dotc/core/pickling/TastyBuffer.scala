@@ -13,8 +13,8 @@ object TastyBuffer {
 
   /** An address pointing to an index in a Tasty buffer's byte array */
   case class Addr(val index: Int) extends AnyVal {
-    def -(delta: Int): Addr = Addr(this.index - delta)
-    def +(delta: Int): Addr = Addr(this.index + delta)
+    def - (delta: Int): Addr = Addr(this.index - delta)
+    def + (delta: Int): Addr = Addr(this.index + delta)
 
     def relativeTo(base: Addr): Addr = this - base.index - AddrWidth
   }

@@ -60,13 +60,13 @@ class AbstractFileReader(val file: AbstractFile) {
   /** extract a character at position bp from buf
    */
   def getChar(mybp: Int): Char =
-    (((buf(mybp) & 0xff) << 8) + (buf(mybp+1) & 0xff)).toChar
+    (((buf(mybp) & 0xff) << 8) + (buf(mybp + 1) & 0xff)).toChar
 
   /** extract an integer at position bp from buf
    */
   def getInt(mybp: Int): Int =
-    ((buf(mybp  ) & 0xff) << 24) + ((buf(mybp+1) & 0xff) << 16) +
-    ((buf(mybp+2) & 0xff) << 8) + (buf(mybp+3) & 0xff)
+    ((buf(mybp  ) & 0xff) << 24) + ((buf(mybp + 1) & 0xff) << 16) +
+    ((buf(mybp + 2) & 0xff) << 8) + (buf(mybp + 3) & 0xff)
 
   /** extract a long integer at position bp from buf
    */

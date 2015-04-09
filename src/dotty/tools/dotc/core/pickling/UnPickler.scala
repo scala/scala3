@@ -357,9 +357,9 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val denot1 = denot.disambiguate(d => p(d.symbol))
         val sym = denot1.symbol
         if (denot.exists && !denot1.exists) { // !!!DEBUG
-          val alts = denot.alternatives map (d => d+":"+d.info+"/"+d.signature)
+          val alts = denot.alternatives map (d => d + ":" + d.info + "/" + d.signature)
           System.err.println(s"!!! disambiguation failure: $alts")
-          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => d+":"+d.info+"/"+d.signature)
+          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => d + ":" + d.info + "/" + d.signature)
           System.err.println(s"!!! all members: $members")
         }
         if (tag == EXTref) sym else sym.moduleClass
@@ -532,7 +532,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             inforef = readNat()
             pw
           }
-        // println("reading type for "+denot) // !!! DEBUG
+        // println("reading type for " + denot) // !!! DEBUG
         val tp = at(inforef, readType)
         denot match {
           case denot: ClassDenotation =>

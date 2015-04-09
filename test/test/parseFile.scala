@@ -6,7 +6,7 @@ object parseFile extends ParserTest {
     if (args.isEmpty) println("usage: scala test.parseFile file1.scala ... fileN.scala")
     for (arg <- args) {
       val tree = parse(arg)
-      println("parsed: "+arg)
+      println("parsed: " + arg)
       println(tree.show)
     }
   }

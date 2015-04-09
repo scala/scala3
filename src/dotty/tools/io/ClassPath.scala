@@ -283,7 +283,7 @@ class SourcePath(dir: AbstractFile, val context: ClassPathContext) extends Class
   }
 
   lazy val (packages, classes) = traverse()
-  override def toString() = "sourcepath: "+ dir.toString()
+  override def toString() = "sourcepath: " + dir.toString()
 }
 
 /**
@@ -310,7 +310,7 @@ class DirectoryClassPath(val dir: AbstractFile, val context: ClassPathContext) e
   }
 
   lazy val (packages, classes) = traverse()
-  override def toString() = "directory classpath: "+ origin.getOrElse("?")
+  override def toString() = "directory classpath: " + origin.getOrElse("?")
 }
 
 class DeltaClassPath(original: MergedClassPath, subst: Map[ClassPath, ClassPath])
@@ -393,7 +393,7 @@ extends ClassPath {
     println("ClassPath %s has %d entries and results in:\n".format(name, entries.size))
     asClasspathString split ':' foreach (x => println("  " + x))
   }
-  override def toString() = "merged classpath "+ entries.mkString("(", "\n", ")")
+  override def toString() = "merged classpath " + entries.mkString("(", "\n", ")")
 }
 
 /**

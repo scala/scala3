@@ -27,19 +27,19 @@ class FrontEnd extends Phase {
     unit.untpdTree =
       if(unit.isJava) new JavaParser(unit.source).parse()
       else new Parser(unit.source).parse()
-    typr.println("parsed:\n"+unit.untpdTree.show)
+    typr.println("parsed:\n" + unit.untpdTree.show)
   }
 
   def enterSyms(implicit ctx: Context) = monitor("indexing") {
     val unit = ctx.compilationUnit
     ctx.typer.index(unit.untpdTree)
-    typr.println("entered: "+unit.source)
+    typr.println("entered: " + unit.source)
   }
 
   def typeCheck(implicit ctx: Context) = monitor("typechecking") {
     val unit = ctx.compilationUnit
     unit.tpdTree = ctx.typer.typedExpr(unit.untpdTree)
-    typr.println("typed: "+unit.source)
+    typr.println("typed: " + unit.source)
     record("retainedUntypedTrees", unit.untpdTree.treeSize)
     record("retainedTypedTrees", unit.tpdTree.treeSize)
   }

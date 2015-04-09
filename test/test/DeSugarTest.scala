@@ -84,11 +84,11 @@ class DeSugarTest extends ParserTest {
   def firstClass(tree: Tree): String = tree match {
     case PackageDef(pid, stats) =>
       pid.show + "." + firstClass(stats)
-    case _ => "??? "+tree.getClass
+    case _ => "??? " + tree.getClass
   }
 
   def desugarTree(tree: Tree): Tree = {
-    //println("***** desugaring "+firstClass(tree))
+    //println("***** desugaring " + firstClass(tree))
     DeSugar.transform(tree)
   }
 

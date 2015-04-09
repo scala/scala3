@@ -739,7 +739,7 @@ class ClassfileParser(
     def originalName = pool.getName(name)
 
     override def toString =
-      originalName + " in " + outerName + "(" + externalName +")"
+      originalName + " in " + outerName + "(" + externalName + ")"
   }
 
   object innerClasses extends scala.collection.mutable.HashMap[Name, InnerClassEntry] {

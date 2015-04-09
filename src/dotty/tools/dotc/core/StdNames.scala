@@ -709,7 +709,7 @@ object StdNames {
   class ScalaTypeNames extends ScalaNames[TypeName] {
     protected implicit def fromString(s: String): TypeName = typeName(s)
 
-    @switch def syntheticTypeParamName(i: Int): TypeName = "T"+i
+    @switch def syntheticTypeParamName(i: Int): TypeName = "T" + i
 
     def syntheticTypeParamNames(num: Int): List[TypeName] =
       (0 until num).map(syntheticTypeParamName)(breakOut)

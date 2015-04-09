@@ -491,7 +491,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
               false
           }
         }
-      noInitss.forall(_)
+      noInitss.forall(_ == true)
     }
 
     /** Process package with given operation `op`. The operation takes as arguments

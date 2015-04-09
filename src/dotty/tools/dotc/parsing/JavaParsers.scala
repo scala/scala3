@@ -314,7 +314,7 @@ object JavaParsers {
             /*
             TypeDef(
               Modifiers(Flags.JavaDefined | Flags.Deferred),
-              typeName("_$"+(wildnum += 1)),
+              typeName("_$" +(wildnum += 1)),
               List(),
               TypeBoundsTree(lo, hi))
               */
