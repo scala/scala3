@@ -1,7 +1,7 @@
 class Bippy(a: Int, b: Int) {
   private def this(c: Int) = this(c, c)           // warn
   private def bippy(x: Int): Int      = bippy(x)  // TODO: could warn
-  private def boop(x: Int)            = x+a+b     // warn
+  private def boop(x: Int)            = x + a + b     // warn
   final private val MILLIS1           = 2000      // no warn, might have been inlined
   final private val MILLIS2: Int      = 1000      // warn
   final private val HI_COMPANION: Int = 500       // no warn, accessed from companion

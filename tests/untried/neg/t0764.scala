@@ -29,7 +29,7 @@ _1.type <:< Node{type T = NextType} (because skolemization and _1's upper bound)
 Node{type T = NextType} <:< _1.type forSome val _1: Node{type T = NextType}
 because:
 Node{type T = NextType} <:< T forSome {type T <: Node{type T = NextType} with Singleton}
-because 
+because
 Node{type T = NextType} <:< Node{type T = NextType} with Singleton
 
 hmmm.. might the with Singleton be throwing a wrench in our existential house?

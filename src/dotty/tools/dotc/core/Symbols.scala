@@ -162,7 +162,7 @@ trait Symbols { this: Context =>
         privateWithin, coord, assocFile)
 
   def synthesizeCompanionMethod(name: Name, target: SymDenotation, owner: SymDenotation)(implicit ctx: Context) =
-    if(owner.exists && target.exists && !owner.isAbsent && !target.isAbsent) {
+    if (owner.exists && target.exists && !owner.isAbsent && !target.isAbsent) {
       val existing = owner.unforcedDecls.lookup(name)
 
       existing.orElse{
@@ -472,7 +472,7 @@ object Symbols {
 
     override def toString: String =
       if (lastDenot == null) s"Naked$prefixString#$id"
-      else lastDenot.toString// +"#"+id // !!! DEBUG
+      else lastDenot.toString// + "#" + id // !!! DEBUG
 
     def toText(printer: Printer): Text = printer.toText(this)
 

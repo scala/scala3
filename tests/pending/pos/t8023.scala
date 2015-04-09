@@ -4,7 +4,7 @@ import language._
 object Test {
   def foo = (null: Any) match {
     case a: A[k] =>
-      // error: kinds of the type arguments (k) do not conform to the 
+      // error: kinds of the type arguments (k) do not conform to the
       // expected kinds of the type parameters (type K) in class B.
       new B[k]()
   }

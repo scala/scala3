@@ -10,7 +10,7 @@ object B {
   var a : A = _
   var b : Boolean = false
   def y : A = {
-    if(b) {
+    if (b) {
       a = new A { type T = Int; var v = 1 }
       a
     } else {

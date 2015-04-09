@@ -44,7 +44,7 @@ import StdNames.nme
  *
  * <label> def foo(i: Int) = {
  *   <label> def bar = 0
- *   <label> def dough(i: Int) = if(i == 0) bar else foo(i-1)
+ *   <label> def dough(i: Int) = if (i == 0) bar else foo(i-1)
  *   dough(i)
  *   }
  *
@@ -54,7 +54,7 @@ import StdNames.nme
  *
  *                                                  \
  * <label> def foo(i: Int) = dough(i)
- * <label> def dough(i: Int) = if(i == 0) bar else foo(i-1)
+ * <label> def dough(i: Int) = if (i == 0) bar else foo(i-1)
  * <label> def bar = 2
  *   foo(100)
  *
@@ -64,7 +64,7 @@ import StdNames.nme
  *  <jump foo>
  *  <label> def foo(i: Int) = dough(i)
  *  // <jump a>                           // unreachable
- *  <label> def dough(i: Int) = if(i == 0) bar else foo(i-1)
+ *  <label> def dough(i: Int) = if (i == 0) bar else foo(i-1)
  *  // <jump a>                           // unreachable
  *  <label> def bar = 2
  *  // <jump a>                           // unreachable
@@ -107,7 +107,7 @@ class LabelDefs extends MiniPhaseTransform {
               labelLevel = labelLevel + 1
               val r = Block(moveLabels(t), t)
               labelLevel = labelLevel - 1
-              if(labelLevel == 0) beingAppended.clear()
+              if (labelLevel == 0) beingAppended.clear()
               r
             case _ => if (entryPoints.nonEmpty && labelDefs.nonEmpty) super.transform(tree) else tree
           }
@@ -206,14 +206,14 @@ class LabelDefs extends MiniPhaseTransform {
         labelCalls(r.symbol) = parentLabelCalls
         parentLabelCalls = st
 
-        if(shouldMoveLabel) {
+        if (shouldMoveLabel) {
           labelDefs(r.symbol) = r
           EmptyTree
         } else r
       case t: Apply if t.symbol is Flags.Label =>
         val sym = t.symbol
         parentLabelCalls = parentLabelCalls + t
-        if(owner != sym) callCounts(sym) = callCounts(sym) + 1
+        if (owner != sym) callCounts(sym) = callCounts(sym) + 1
         super.transform(tree)
       case _ =>
         super.transform(tree)

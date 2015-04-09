@@ -24,14 +24,14 @@ class NameBuffer extends TastyBuffer(100000) {
       ref
   }
   def nameIndex(name: Name): NameRef = {
-    val tname = 
+    val tname =
       if (name.isShadowedName) Shadowed(nameIndex(name.revertShadowed))
       else Simple(name.toTermName)
     nameIndex(tname)
   }
-  
+
   def nameIndex(str: String): NameRef = nameIndex(str.toTermName)
-  
+
   def fullNameIndex(name: Name): NameRef = {
     val pos = name.lastIndexOf('.')
     if (pos > 0)
@@ -39,7 +39,7 @@ class NameBuffer extends TastyBuffer(100000) {
     else
       nameIndex(name)
   }
-  
+
   private def withLength(op: => Unit): Unit = {
     val lengthAddr = currentAddr
     writeByte(0)
@@ -48,12 +48,12 @@ class NameBuffer extends TastyBuffer(100000) {
     assert(length < 128)
     putNat(lengthAddr, length, 1)
   }
-  
+
   def writeNameRef(ref: NameRef) = writeNat(ref.index)
-  
+
   def pickleName(name: TastyName): Unit = name match {
-    case Simple(name) => 
-      val bytes = 
+    case Simple(name) =>
+      val bytes =
         if (name.length == 0) new Array[Byte](0)
         else Codec.toUTF8(chrs, name.start, name.length)
       writeByte(UTF8)
@@ -62,7 +62,7 @@ class NameBuffer extends TastyBuffer(100000) {
     case Qualified(qualified, selector) =>
       writeByte(QUALIFIED)
       withLength { writeNameRef(qualified); writeNameRef(selector) }
-    case Signed(original, params, result) => 
+    case Signed(original, params, result) =>
       writeByte(SIGNED)
       withLength { writeNameRef(original); writeNameRef(result); params.foreach(writeNameRef) }
     case Expanded(prefix, original) =>
@@ -81,7 +81,7 @@ class NameBuffer extends TastyBuffer(100000) {
       writeByte(SHADOWED)
       withLength { writeNameRef(original) }
   }
-  
+
   override def assemble(): Unit = {
     var i = 0
     for ((name, ref) <- nameRefs) {

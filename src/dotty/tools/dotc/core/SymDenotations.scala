@@ -43,7 +43,7 @@ trait SymDenotations { this: Context =>
     if (denot is ValidForever) true
     else {
       val initial = denot.initial
-      if (initial ne denot) 
+      if (initial ne denot)
         ctx.withPhase(initial.validFor.firstPhaseId).stillValid(initial.asSymDenotation)
       else try {
         val owner = denot.owner.denot
@@ -79,7 +79,7 @@ object SymDenotations {
       super.validFor_=(p)
     }
     */
-    
+
     // ------ Getting and setting fields -----------------------------
 
     private[this] var myFlags: FlagSet = adaptFlags(initFlags)

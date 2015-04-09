@@ -16,15 +16,15 @@ class Pickler extends Phase {
   import ast.tpd._
 
   override def phaseName: String = "pickler"
-  
+
   private def output(name: String, msg: String) = {
     val s = new PrintStream(name)
     s.print(msg)
     s.close
   }
-  
+
   private val beforePickling = new mutable.HashMap[CompilationUnit, String]
-  
+
   override def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
     if (!unit.isJava) {
@@ -46,25 +46,25 @@ class Pickler extends Phase {
         }
       // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
       if (pickling ne noPrinter) new TastyPrinter(pickler.assembleParts()).printContents()
-    } 
+    }
   }
-  
+
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
     val result = super.runOn(units)
-    if (ctx.settings.YtestPickler.value) 
+    if (ctx.settings.YtestPickler.value)
       testUnpickler(units)(ctx.fresh.setPeriod(Period(ctx.runId + 1, FirstPhaseId)))
     result
   }
-  
+
   private def testUnpickler(units: List[CompilationUnit])(implicit ctx: Context): Unit = {
     pickling.println(i"testing unpickler at run ${ctx.runId}")
     ctx.definitions.init
-    val unpicklers = 
+    val unpicklers =
       for (unit <- units) yield {
         val unpickler = new DottyUnpickler(unit.pickler.assembleParts())
         unpickler.enter(roots = Set())
         unpickler
-      }  
+      }
     pickling.println("************* entered toplevel ***********")
     for ((unpickler, unit) <- unpicklers zip units) {
       val unpickled = unpickler.body(readPositions = false)
@@ -72,7 +72,7 @@ class Pickler extends Phase {
     }
   }
 
-  private def testSame(unpickled: String, previous: String, unit: CompilationUnit)(implicit ctx: Context) = 
+  private def testSame(unpickled: String, previous: String, unit: CompilationUnit)(implicit ctx: Context) =
     if (previous != unpickled) {
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)

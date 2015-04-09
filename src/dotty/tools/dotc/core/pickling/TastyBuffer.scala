@@ -6,19 +6,19 @@ package pickling
 import util.Util.dble
 
 object TastyBuffer {
-  
+
   /** The number of digits of the natural number `nat`, written in base 128 format. */
-  def natSize(nat: Int): Int = 
+  def natSize(nat: Int): Int =
     if (nat < 128) 1 else natSize(nat >>> 7) + 1
 
   /** An address pointing to an index in a Tasty buffer's byte array */
   case class Addr(val index: Int) extends AnyVal {
-    def -(delta: Int): Addr = Addr(this.index - delta)
-    def +(delta: Int): Addr = Addr(this.index + delta)
-    
+    def - (delta: Int): Addr = Addr(this.index - delta)
+    def + (delta: Int): Addr = Addr(this.index + delta)
+
     def relativeTo(base: Addr): Addr = this - base.index - AddrWidth
   }
-  
+
   val NoAddr = Addr(-1)
 
   /** The maximal number of address bytes.
@@ -33,13 +33,13 @@ import TastyBuffer._
  *  and that supports reading and patching addresses represented as natural numbers.
  */
 class TastyBuffer(initialSize: Int) {
-  
+
   /** The current byte array, will be expanded as needed */
   var bytes = new Array[Byte](initialSize)
-  
+
   /** The number of bytes written */
   var length = 0
-  
+
   // -- Output routines --------------------------------------------
 
   /** Write a byte of data. */
@@ -48,7 +48,7 @@ class TastyBuffer(initialSize: Int) {
     bytes(length) = b.toByte
     length += 1
   }
-  
+
   /** Write the first `n` bytes of `data`. */
   def writeBytes(data: Array[Byte], n: Int): Unit = {
     while (bytes.length < length + n) bytes = dble(bytes)
@@ -61,13 +61,13 @@ class TastyBuffer(initialSize: Int) {
    */
   def writeNat(x: Int): Unit =
     writeLongNat(x.toLong & 0x00000000FFFFFFFFL)
-    
+
   /** Write a natural number in 2's complement big endian format, base 128.
    *  All but the last digits have bit 0x80 set.
    */
-  def writeInt(x: Int): Unit = 
+  def writeInt(x: Int): Unit =
     writeLongInt(x)
-    
+
   /**
    * Like writeNat, but for longs. Note that the
    * binary representation of LongNat is identical to Nat
@@ -84,7 +84,7 @@ class TastyBuffer(initialSize: Int) {
     if (y != 0L) writePrefix(y)
     writeByte(((x & 0x7f) | 0x80).toInt)
   }
-  
+
   /** Like writeInt, but for longs */
   def writeLongInt(x: Long): Unit = {
     def writePrefix(x: Long): Unit = {
@@ -94,22 +94,22 @@ class TastyBuffer(initialSize: Int) {
     }
     val y = x >> 7
     if (y != 0L - ((x >> 6) & 1)) writePrefix(y)
-    writeByte(((x & 0x7f) | 0x80).toInt)    
+    writeByte(((x & 0x7f) | 0x80).toInt)
   }
-  
+
   /** Write an uncompressed Long stored in 8 bytes in big endian format */
   def writeUncompressedLong(x: Long): Unit = {
     var y = x
     val bytes = new Array[Byte](8)
     for (i <- 7 to 0 by -1) {
       bytes(i) = (y & 0xff).toByte
-      y = y >>> 8      
+      y = y >>> 8
     }
     writeBytes(bytes, 8)
   }
 
   // -- Address handling --------------------------------------------
-  
+
   /** Write natural number `x` right-adjusted in a field of `width` bytes
    *  starting with address `at`.
    */
@@ -125,10 +125,10 @@ class TastyBuffer(initialSize: Int) {
     }
     assert(y == 0, s"number $x too large to fit in $width bytes")
   }
-  
+
   /** The byte at given address */
   def getByte(at: Addr): Int = bytes(at.index)
-  
+
   /** The natural number at address `at` */
   def getNat(at: Addr): Int = getLongNat(at).toInt
 
@@ -148,8 +148,8 @@ class TastyBuffer(initialSize: Int) {
   /** The address (represented as a natural number) at address `at` */
   def getAddr(at: Addr) = Addr(getNat(at))
 
-  /** The smallest address equal to or following `at` which points to a non-zero byte */ 
-  final def skipZeroes(at: Addr): Addr = 
+  /** The smallest address equal to or following `at` which points to a non-zero byte */
+  final def skipZeroes(at: Addr): Addr =
     if (getByte(at) != 0) at else skipZeroes(at + 1)
 
   /** The address after the natural number found at address `at`. */
@@ -160,21 +160,21 @@ class TastyBuffer(initialSize: Int) {
 
   /** The address referring to the end of data written so far */
   def currentAddr: Addr = Addr(length)
-  
+
   /** Reserve `AddrWidth` bytes to write an address into */
   def reserveAddr(): Addr = {
     val result = currentAddr
     length += AddrWidth
     result
   }
-    
+
   /** Fill reserved space at address `at` with address `target` */
-  def fillAddr(at: Addr, target: Addr) = 
+  def fillAddr(at: Addr, target: Addr) =
     putNat(at, target.index, AddrWidth)
-    
+
   /** Write address without leading zeroes */
   def writeAddr(addr: Addr): Unit = writeNat(addr.index)
-      
+
   // -- Finalization --------------------------------------------
 
   /** Hook to be overridden in subclasses.

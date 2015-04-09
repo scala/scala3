@@ -55,7 +55,7 @@ object Main {
   }
 
   // some ints just to mix it up a bit
-  def succ4(x: Int, y: Int) = ((x+y): @switch) match {
+  def succ4(x: Int, y: Int) = ((x + y): @switch) match {
     case  1 => 5
     case  2 => 10
     case  3 => 20

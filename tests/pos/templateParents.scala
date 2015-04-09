@@ -1,11 +1,11 @@
 object templateParents {
 
   // traits do not call a constructor
-  class C[+T](x: T) 
+  class C[+T](x: T)
   trait D extends C[String]
   trait E extends C[Int]
   new C("abc") with D
-  
+
 }
 
 object templateParents1 {

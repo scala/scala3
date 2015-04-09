@@ -165,7 +165,7 @@ object ProtoTypes {
   case class FunProto(args: List[untpd.Tree], resType: Type, typer: Typer)(implicit ctx: Context)
   extends UncachedGroundType with ApplyingProto {
     private var myTypedArgs: List[Tree] = Nil
-    
+
     override def resultType(implicit ctx: Context) = resType
 
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
@@ -247,9 +247,9 @@ object ProtoTypes {
   extends CachedGroundType with ApplyingProto {
 
     override def resultType(implicit ctx: Context) = resType
-    
+
     def isMatchedBy(tp: Type)(implicit ctx: Context): Boolean =
-  	  ctx.typer.isApplicable(tp, argType :: Nil, resultType)
+      ctx.typer.isApplicable(tp, argType :: Nil, resultType)
 
     def derivedViewProto(argType: Type, resultType: Type)(implicit ctx: Context) =
       if ((argType eq this.argType) && (resultType eq this.resultType)) this
@@ -383,7 +383,7 @@ object ProtoTypes {
       tp.derivedRefinedType(wildApprox(tp.parent, theMap), tp.refinedName, wildApprox(tp.refinedInfo, theMap))
     case tp: TypeAlias => // default case, inlined for speed
       tp.derivedTypeAlias(wildApprox(tp.alias, theMap))
-    case tp @ PolyParam(poly, pnum) => 
+    case tp @ PolyParam(poly, pnum) =>
       ctx.typerState.constraint.entry(tp) match {
         case bounds: TypeBounds => wildApprox(WildcardType(bounds))
         case NoType => WildcardType(wildApprox(poly.paramBounds(pnum)).bounds)

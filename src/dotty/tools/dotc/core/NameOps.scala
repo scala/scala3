@@ -130,7 +130,7 @@ object NameOps {
     /** If name ends in module class suffix, drop it */
     def stripModuleClassSuffix: Name =
       if (isModuleClassName) name dropRight MODULE_SUFFIX.length else name
-      
+
     /** Append a suffix so that this name does not clash with another name in the same scope */
     def avoidClashName: TermName = (name ++ AVOID_CLASH_SUFFIX).toTermName
 
@@ -161,7 +161,7 @@ object NameOps {
       val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
       if (idx < 0) name else (name drop (idx + nme.EXPAND_SEPARATOR.length)).asInstanceOf[N]
     }
-    
+
     def expandedPrefix: N = {
       val idx = name.lastIndexOfSlice(nme.EXPAND_SEPARATOR)
       assert(idx >= 0)

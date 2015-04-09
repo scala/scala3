@@ -50,8 +50,8 @@ object Variances {
     for ((tp, tparam1) <- tps zip tparams1) {
       val v1 = varianceInType(tp)(tparam)
       v = v & (if (tparam1.is(Covariant)) v1
-	       else if (tparam1.is(Contravariant)) flip(v1)
-	       else cut(v1))
+           else if (tparam1.is(Contravariant)) flip(v1)
+           else cut(v1))
     }
     v
   }

@@ -14,28 +14,28 @@ object Config {
    *  does not appear at the top-level of either of its bounds.
    */
   final val checkConstraintsNonCyclic = false
-  
+
   /** Like `checkConstraintsNonCyclic`, but all constrained parameters
    *  are tested for direct or indirect dependencies, each time a
    *  constraint is added in TypeComparer.
    */
   final val checkConstraintsNonCyclicTrans = false
-  
+
   /** Check that each constraint resulting from a subtype test
    *  is satisfiable.
    */
   final val checkConstraintsSatisfiable = false
-  
+
   /** Check that each constraint is fully propagated. i.e.
    *  If P <: Q then the upper bound of P is a subtype of the upper bound of Q
    *  and the lower bound of Q is a subtype of the lower bound of P.
    */
   final val checkConstraintsPropagated = false
-  
+
   /** Type comparer will fail with an assert if the upper bound
    *  of a constrained parameter becomes Nothing. This should be turned
    *  on only for specific debugging as normally instantiation to Nothing
-   *  is not an error consdition. 
+   *  is not an error consdition.
    */
   final val failOnInstantiationToNothing = false
 
@@ -51,7 +51,7 @@ object Config {
 
   /** When explaining subtypes and this flag is set, also show the classes of the compared types. */
   final val verboseExplainSubtype = true
-  
+
   /** If this flag is set, take the fast path when comparing same-named type-aliases and types */
   final val fastPathForRefinedSubtype = true
 

@@ -12,28 +12,28 @@ class ComplexPolar(val _1: Double, val _2: Double) extends Complex {
 
 object ComplexRect {
   def unapply(z:Complex): Option[Complex] = {
-    if(z.isInstanceOf[ComplexRect]) Some(z) else z match {
+    if (z.isInstanceOf[ComplexRect]) Some(z) else z match {
       case ComplexPolar(mod, arg) =>
-	Some(new ComplexRect(mod*math.cos(arg), mod*math.sin(arg)))
+    Some(new ComplexRect(mod*math.cos(arg), mod*math.sin(arg)))
 } } }
 
 object ComplexPolar {
   def unapply(z:Complex): Option[Complex] = {
-    if(z.isInstanceOf[ComplexPolar]) Some(z) else z match {
+    if (z.isInstanceOf[ComplexPolar]) Some(z) else z match {
       case ComplexRect(re,im) =>
-	Some(new ComplexPolar(math.sqrt(re*re + im*im), math.atan(re/im)))
+    Some(new ComplexPolar(math.sqrt(re*re + im*im), math.atan(re/im)))
 } } }
 
 object Test {
   def main(args:Array[String]) = {
     new ComplexRect(1,1) match {
       case ComplexPolar(mod,arg) => // z @ ???
-	Console.println("mod"+mod+"arg"+arg)
+    Console.println("mod"+mod+"arg"+arg)
     }
     val Komplex = ComplexRect
     new ComplexPolar(math.sqrt(2),math.Pi / 4.0) match {
       case Komplex(re,im) => // z @ ???
-	Console.println("re"+re+" im"+im)
+    Console.println("re"+re+" im"+im)
     }
   }
 }

@@ -73,7 +73,7 @@ class ElimByName extends MiniPhaseTransform with InfoTransformer { thisTransform
       case formalExpr: ExprType =>
         val argType = arg.tpe.widen
         val argFun = arg match {
-          case Apply(Select(qual, nme.apply), Nil) 
+          case Apply(Select(qual, nme.apply), Nil)
           if qual.tpe.derivesFrom(defn.FunctionClass(0)) && isPureExpr(qual) =>
             qual
           case _ =>

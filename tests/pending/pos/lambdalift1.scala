@@ -6,10 +6,10 @@ object test {
     def print() = java.lang.System.out.println(x);
     class A() {
       def g() = {
-	class B() {
-	  def h() = print()
-	}
-	new B().h()
+    class B() {
+      def h() = print()
+    }
+    new B().h()
       }
     }
     new A().g()

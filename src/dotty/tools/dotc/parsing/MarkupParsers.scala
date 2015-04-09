@@ -394,7 +394,7 @@ object MarkupParsers {
         op
       }
       if (parser.in.token != RBRACE)
-        reportSyntaxError(" expected end of Scala "+kind)
+        reportSyntaxError(" expected end of Scala " + kind)
 
       res
     }
@@ -421,7 +421,9 @@ object MarkupParsers {
       xSpaceOpt
 
       val ts = new ArrayBuffer[Tree]
-      val isEmptyTag = (ch == '/') && { nextch ; true }
+
+      val isEmptyTag = ch == '/'
+      if (isEmptyTag) nextch()
       xToken('>')
 
       if (!isEmptyTag) {
@@ -448,7 +450,7 @@ object MarkupParsers {
             case _    => // text
               appendText(Position(start1, curOffset, start1), ts, xText)
               // here xEmbeddedBlock might be true:
-              // if (xEmbeddedBlock) throw new ApplicationError("after:"+text); // assert
+              // if (xEmbeddedBlock) throw new ApplicationError("after:" + text); // assert
           }
           true
         }

@@ -121,11 +121,11 @@ object JavaParsers {
         case nil => (EmptyTree, nil)
       }
       var (constr1, stats1) = pullOutFirstConstr(stats)
-      if(constr1 == EmptyTree) constr1 = makeConstructor(List(), tparams)
+      if (constr1 == EmptyTree) constr1 = makeConstructor(List(), tparams)
       // A dummy first constructor is needed for Java classes so that the real constructors see the
       // import of the companion object. The constructor has parameter of type Unit so no Java code
       // can call it.
-      if(needsDummyConstr) {
+      if (needsDummyConstr) {
         stats1 = constr1 :: stats1
         constr1 = makeConstructor(List(scalaDot(tpnme.Unit)), tparams, Flags.JavaDefined | Flags.PrivateLocal)
       }
@@ -314,7 +314,7 @@ object JavaParsers {
             /*
             TypeDef(
               Modifiers(Flags.JavaDefined | Flags.Deferred),
-              typeName("_$"+(wildnum += 1)),
+              typeName("_$" +(wildnum += 1)),
               List(),
               TypeBoundsTree(lo, hi))
               */
@@ -579,9 +579,9 @@ object JavaParsers {
     def varDecl(pos: Position, mods: Modifiers, tpt: Tree, name: TermName): ValDef = {
       val tpt1 = optArrayBrackets(tpt)
       if (in.token == EQUALS && !(mods is Flags.Param)) skipTo(COMMA, SEMI)
-      val mods1 = if(mods is Flags.Final) mods else mods | Flags.Mutable
+      val mods1 = if (mods is Flags.Final) mods else mods | Flags.Mutable
       atPos(pos) {
-        ValDef(name, tpt1, if(mods is Flags.Param) EmptyTree else unimplementedExpr).withMods(mods1)
+        ValDef(name, tpt1, if (mods is Flags.Param) EmptyTree else unimplementedExpr).withMods(mods1)
       }
     }
 

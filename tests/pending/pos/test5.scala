@@ -12,12 +12,12 @@ object test {
 
   class M[P]() {
       abstract class I[X]() {
-	  // Methods to check the type X and P as seen from instances of I
-	  def chk_ix(x: X): Unit = ();
-	  def chk_ip(p: P): Unit;
+      // Methods to check the type X and P as seen from instances of I
+      def chk_ix(x: X): Unit = ();
+      def chk_ip(p: P): Unit;
 
-	  // Value with type X as seen from instances of I
-	  def val_ix: X = val_ix;
+      // Value with type X as seen from instances of I
+      def val_ix: X = val_ix;
       }
 
       val i:I[G[P]] = null;
@@ -31,13 +31,13 @@ object test {
       val j:J[G[Q]] = null;
 
       abstract class J[Y]() extends I[G[Y]]() {
-	  // Values with types Y and X as seen from instances of J
-	  def val_jy: Y = val_jy;
-	  def val_jx: G[Y] = g[Y](val_jy);
+      // Values with types Y and X as seen from instances of J
+      def val_jy: Y = val_jy;
+      def val_jx: G[Y] = g[Y](val_jy);
 
-	  // Check type P
-	  chk_ip(val_mp);
-	  chk_ip(val_np);
+      // Check type P
+      chk_ip(val_mp);
+      chk_ip(val_np);
       }
 
       // Values with types Q, X.P, i.X, j.Y and j.X as seen from instances of N

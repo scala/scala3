@@ -21,7 +21,7 @@ class ScannerTest extends DottyTest {
     val scanner = new Scanner(source)
     var i = 0
     while (scanner.token != EOF) {
-//    print("["+scanner.token.show+"]")
+//    print("[" + scanner.token.show +"]")
       scanner.nextToken
 //      i += 1
 //      if (i % 10 == 0) println()

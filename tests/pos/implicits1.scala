@@ -43,7 +43,7 @@ object Implicits {
   val e: Int = z.foo(true)
 
   // Haoyi Li's example on scala-user:
-  
+
   trait Modifier
 
   implicit def stringNode(v: String): Modifier = new Modifier {}

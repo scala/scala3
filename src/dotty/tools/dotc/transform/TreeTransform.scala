@@ -186,7 +186,7 @@ object TreeTransforms {
         case ref: SymDenotation =>
           val annotTrees = ref.annotations.map(_.tree)
           val annotTrees1 = annotTrees.mapConserve(annotationTransformer.macroTransform)
-          val annots1 = if(annotTrees eq annotTrees1) ref.annotations else annotTrees1.map(new ConcreteAnnotation(_))
+          val annots1 = if (annotTrees eq annotTrees1) ref.annotations else annotTrees1.map(new ConcreteAnnotation(_))
           if ((info1 eq ref.info) && (annots1 eq ref.annotations)) ref
           else ref.copySymDenotation(info = info1, annotations = annots1)
         case _ => if (info1 eq ref.info) ref else ref.derivedSingleDenotation(ref.symbol, info1)

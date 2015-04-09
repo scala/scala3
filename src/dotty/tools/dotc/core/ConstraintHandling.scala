@@ -10,28 +10,28 @@ import config.Printers._
 /** Methods for adding constraints and solving them.
  *
  * What goes into a Constraint as opposed to a ConstrainHandler?
- * 
+ *
  * Constraint code is purely functional: Operations get constraints and produce new ones.
- * Constraint code does not have access to a type-comparer. Anything regarding lubs and glbs has to be done 
+ * Constraint code does not have access to a type-comparer. Anything regarding lubs and glbs has to be done
  * elsewhere.
- * 
+ *
  * By comparison: Constraint handlers are parts of type comparers and can use their functionality.
  * Constraint handlers update the current constraint as a side effect.
  */
 trait ConstraintHandling {
-  
+
   implicit val ctx: Context
-  
+
   protected def isSubType(tp1: Type, tp2: Type): Boolean
-  
+
   val state: TyperState
   import state.constraint
-  
+
   private var addConstraintInvocations = 0
 
   /** If the constraint is frozen we cannot add new bounds to the constraint. */
   protected var frozenConstraint = false
-   
+
   private def addOneBound(param: PolyParam, bound: Type, isUpper: Boolean): Boolean =
     !constraint.contains(param) || {
       val c1 = constraint.narrowBound(param, bound, isUpper)
@@ -57,7 +57,7 @@ trait ConstraintHandling {
     constr.println(i"added $description = $res")
     res
   }
-    
+
   protected def addLowerBound(param: PolyParam, bound: Type): Boolean = {
     def description = i"constraint $param >: $bound to\n$constraint"
     constr.println(i"adding $description")
@@ -68,11 +68,11 @@ trait ConstraintHandling {
     constr.println(i"added $description = $res")
     res
   }
- 
+
   protected def addLess(p1: PolyParam, p2: PolyParam): Boolean = {
     def description = i"ordering $p1 <: $p2 to\n$constraint"
     val res =
-      if (constraint.isLess(p2, p1)) unify(p2, p1) 
+      if (constraint.isLess(p2, p1)) unify(p2, p1)
       else {
         val down1 = p1 :: constraint.exclusiveLower(p1, p2)
         val up2 = p2 :: constraint.exclusiveUpper(p2, p1)
@@ -86,7 +86,7 @@ trait ConstraintHandling {
     constr.println(i"added $description = $res")
     res
   }
-  
+
   /** Make p2 = p1, transfer all bounds of p2 to p1
    *  @pre  less(p1)(p2)
    */
@@ -100,10 +100,10 @@ trait ConstraintHandling {
     val lo = bounds.lo
     val hi = bounds.hi
     isSubType(lo, hi) &&
-    down.forall(addOneBound(_, hi, isUpper = true)) && 
+    down.forall(addOneBound(_, hi, isUpper = true)) &&
     up.forall(addOneBound(_, lo, isUpper = false))
   }
-  
+
   protected final def isSubTypeWhenFrozen(tp1: Type, tp2: Type): Boolean = {
     val saved = frozenConstraint
     frozenConstraint = true
@@ -164,20 +164,20 @@ trait ConstraintHandling {
     else {
       val saved = constraint
       try
-        c2.forallParams(p => 
+        c2.forallParams(p =>
           c1.contains(p) &&
           c2.upper(p).forall(c1.isLess(p, _)) &&
           isSubTypeWhenFrozen(c1.nonParamBounds(p), c2.nonParamBounds(p)))
       finally constraint = saved
     }
-  
+
   /** The current bounds of type parameter `param` */
   final def bounds(param: PolyParam): TypeBounds = constraint.entry(param) match {
     case bounds: TypeBounds => bounds
     case _ => param.binder.paramBounds(param.paramNum)
   }
-  
-  /** Add polytype `pt`, possibly with type variables `tvars`, to current constraint 
+
+  /** Add polytype `pt`, possibly with type variables `tvars`, to current constraint
    *  and propagate all bounds.
    *  @param tvars   See Constraint#add
    */
@@ -223,7 +223,7 @@ trait ConstraintHandling {
       finally addConstraintInvocations -= 1
     }
   }
-   
+
   /** Check that constraint is fully propagated. See comment in Config.checkConstraintsPropagated */
   def checkPropagated(msg: => String)(result: Boolean): Boolean = {
     if (Config.checkConstraintsPropagated && result && addConstraintInvocations == 0) {

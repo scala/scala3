@@ -65,10 +65,10 @@ object ConstFold {
     case (nme.UNARY_~ , IntTag    ) => Constant(~x.intValue)
     case (nme.UNARY_~ , LongTag   ) => Constant(~x.longValue)
 
-    case (nme.UNARY_+ , IntTag    ) => Constant(+x.intValue)
-    case (nme.UNARY_+ , LongTag   ) => Constant(+x.longValue)
-    case (nme.UNARY_+ , FloatTag  ) => Constant(+x.floatValue)
-    case (nme.UNARY_+ , DoubleTag ) => Constant(+x.doubleValue)
+    case (nme.UNARY_+ , IntTag    ) => Constant(x.intValue)
+    case (nme.UNARY_+ , LongTag   ) => Constant(x.longValue)
+    case (nme.UNARY_+ , FloatTag  ) => Constant(x.floatValue)
+    case (nme.UNARY_+ , DoubleTag ) => Constant(x.doubleValue)
 
     case (nme.UNARY_- , IntTag    ) => Constant(-x.intValue)
     case (nme.UNARY_- , LongTag   ) => Constant(-x.longValue)

@@ -6,7 +6,7 @@ object Test extends App {
     throw new Exception
   } catch {
     case e : SpecialException => {
-      println("matched SpecialException: "+e)
+      println("matched SpecialException: " + e)
       assume(e.isInstanceOf[SpecialException])
     }
     case e : Exception => {

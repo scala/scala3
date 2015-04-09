@@ -12,16 +12,16 @@ import config.Printers._
 
 /** Constraint over undetermined type parameters. Constraints are built
  *  over values of the following types:
- *  
+ *
  *   - PolyType    A constraint constrains the type parameters of a set of PolyTypes
  *   - PolyParam   The parameters of the constrained polytypes
- *   - TypeVar     Every constrained parameter might be associated with a TypeVar 
+ *   - TypeVar     Every constrained parameter might be associated with a TypeVar
  *                 that has the PolyParam as origin.
  */
 abstract class Constraint extends Showable {
-  
+
   type This <: Constraint
-  
+
   /** Does the constraint's domain contain the type parameters of `pt`? */
   def contains(pt: PolyType): Boolean
 
@@ -30,34 +30,34 @@ abstract class Constraint extends Showable {
 
   /** Does this constraint contain the type variable `tvar` and is it uninstantiated? */
   def contains(tvar: TypeVar): Boolean
-  
+
   /** The constraint entry for given type parameter `param`, or NoType if `param` is not part of
    *  the constraint domain.
    */
   def entry(param: PolyParam): Type
-  
+
   /** The type variable corresponding to parameter `param`, or
    *  NoType, if `param` is not in constrained or is not paired with a type variable.
    */
   def typeVarOfParam(param: PolyParam): Type
-      
+
   /** Is it known that `param1 <:< param2`? */
   def isLess(param1: PolyParam, param2: PolyParam): Boolean
 
-  /** The parameters that are known to be smaller wrt <: than `param` */ 
+  /** The parameters that are known to be smaller wrt <: than `param` */
   def lower(param: PolyParam): List[PolyParam]
-  
-  /** The parameters that are known to be greater wrt <: than `param` */ 
+
+  /** The parameters that are known to be greater wrt <: than `param` */
   def upper(param: PolyParam): List[PolyParam]
-  
-  /** lower(param) \ lower(butNot) */ 
+
+  /** lower(param) \ lower(butNot) */
   def exclusiveLower(param: PolyParam, butNot: PolyParam): List[PolyParam]
-  
-  /** upper(param) \ upper(butNot) */ 
+
+  /** upper(param) \ upper(butNot) */
   def exclusiveUpper(param: PolyParam, butNot: PolyParam): List[PolyParam]
 
   /** The constraint bounds for given type parameter `param`.
-   *  Poly params that are known to be smaller or greater than `param` 
+   *  Poly params that are known to be smaller or greater than `param`
    *  are not contained in the return bounds.
    *  @pre `param` is not part of the constraint domain.
    */
@@ -65,16 +65,16 @@ abstract class Constraint extends Showable {
 
   /** The lower bound of `param` including all known-to-be-smaller parameters */
   def fullLowerBound(param: PolyParam)(implicit ctx: Context): Type
-  
+
   /** The upper bound of `param` including all known-to-be-greater parameters */
   def fullUpperBound(param: PolyParam)(implicit ctx: Context): Type
-  
+
   /** The bounds of `param` including all known-to-be-smaller and -greater parameters */
   def fullBounds(param: PolyParam)(implicit ctx: Context): TypeBounds
-  
+
   /** A new constraint which is derived from this constraint by adding
    *  entries for all type parameters of `poly`.
-   *  @param tvars   A list of type variables associated with the params, 
+   *  @param tvars   A list of type variables associated with the params,
    *                 or Nil if the constraint will just be checked for
    *                 satisfiability but will solved to give instances of
    *                 type variables.
@@ -84,15 +84,15 @@ abstract class Constraint extends Showable {
   /** A new constraint which is derived from this constraint by updating
    *  the entry for parameter `param` to `tp`.
    *  `tp` can be one of the following:
-   *  
+   *
    *   - A TypeBounds value, indicating new constraint bounds
    *   - Another type, indicating a solution for the parameter
-   * 
-   * @pre  `this contains param`.  
+   *
+   * @pre  `this contains param`.
    */
   def updateEntry(param: PolyParam, tp: Type)(implicit ctx: Context): This
-  
-  /** A constraint that includes the relationship `p1 <: p2`. 
+
+  /** A constraint that includes the relationship `p1 <: p2`.
    *  `<:` relationships between parameters ("edges") are propagated, but
    *  non-parameter bounds are left alone.
    */
@@ -113,17 +113,17 @@ abstract class Constraint extends Showable {
 
   /** Narrow one of the bounds of type parameter `param`
    *  If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
-   *  that `param >: bound`. 
+   *  that `param >: bound`.
    */
   def narrowBound(param: PolyParam, bound: Type, isUpper: Boolean)(implicit ctx: Context): This
-  
+
   /** Is entry associated with `pt` removable?
    *  @param removedParam The index of a parameter which is still present in the
    *                      entry array, but is going to be removed at the same step,
    *                      or -1 if no such parameter exists.
    */
   def isRemovable(pt: PolyType, removedParam: Int = -1): Boolean
-  
+
   /** A new constraint with all entries coming from `pt` removed. */
   def remove(pt: PolyType)(implicit ctx: Context): This
 

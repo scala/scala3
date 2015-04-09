@@ -18,7 +18,7 @@ trait S extends o.I {
 abstract class O() {
     type X;
     abstract trait I {
-	type Y;
+    type Y;
         def foo(x: X, y: Y): E = e;
     }
     val i:I { type Y = E } = null;

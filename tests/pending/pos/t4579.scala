@@ -312,7 +312,7 @@ object LispAny extends Lisp {
     case 'cond :: ('else :: expr :: Nil) :: rest =>
         normalize(expr);
     case 'cond :: (test :: expr :: Nil) :: rest =>
-	normalize('if :: test :: expr :: ('cond :: rest) :: Nil)
+    normalize('if :: test :: expr :: ('cond :: rest) :: Nil)
     case 'cond :: 'else :: expr :: Nil =>
       normalize(expr)
     case h :: t =>
@@ -400,7 +400,7 @@ object LispAny extends Lisp {
 
   val globalEnv = EmptyEnvironment
     .extend("=", Lambda{
-      case List(arg1, arg2) => if(arg1 == arg2) 1 else 0})
+      case List(arg1, arg2) => if (arg1 == arg2) 1 else 0})
     .extend("+", Lambda{
       case List(arg1: Int, arg2: Int) => arg1 + arg2
       case List(arg1: String, arg2: String) => arg1 + arg2})

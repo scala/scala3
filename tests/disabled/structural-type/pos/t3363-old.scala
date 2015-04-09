@@ -7,12 +7,12 @@ object TestCase {
         //if you inherit from MapOps[T] instead of MapOps[F] then code compiles fine
         implicit def map2ops[T,F](fs: Map[T,F]): TestCase.MapOps[F]{val m: Manifest[T]; def is(xs: List[T]): List[List[T]]} = new MapOps[F] {
           //if you remove this line, then code compiles
-	    lazy val m: Manifest[T] = sys.error("just something to make it compile")
-	    def is(xs: List[T]) = List(xs)
-	  }
+        lazy val m: Manifest[T] = sys.error("just something to make it compile")
+        def is(xs: List[T]) = List(xs)
+      }
 
-	  def main(args: Array[String]): Unit = {
-	    println(Map(1 -> "2") is List(2))
-	  }
+      def main(args: Array[String]): Unit = {
+        println(Map(1 -> "2") is List(2))
+      }
 
-	}
+    }

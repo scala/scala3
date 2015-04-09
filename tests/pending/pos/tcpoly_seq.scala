@@ -125,7 +125,7 @@ trait HOSeq {
   // TODO: the var tl approach does not seem to work because subtyping isn't fully working yet
   final case class ::[+b](hd: b, private val tl: List[b]) extends List[b] {
     def head = hd
-    def tail = if(tl==null) this else tl // hack
+    def tail = if (tl==null) this else tl // hack
     override def isEmpty: Boolean = false
   }
 

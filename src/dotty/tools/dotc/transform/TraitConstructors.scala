@@ -22,7 +22,7 @@ class TraitConstructors extends MiniPhaseTransform with SymTransformer {
   override def treeTransformPhase: Phase = this.phase
 
   def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
-    if(sym.isPrimaryConstructor && (sym.owner is Flags.Trait))
+    if (sym.isPrimaryConstructor && (sym.owner is Flags.Trait))
       sym.copySymDenotation(name = nme.INITIALIZER_PREFIX ++ sym.owner.fullName)
     else sym
   }

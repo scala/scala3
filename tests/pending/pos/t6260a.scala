@@ -1,7 +1,7 @@
 final class Option[+A](val value: A) extends AnyVal
 
 // Was: sandbox/test.scala:21: error: bridge generated for member method f: ()Option[A] in class Bar
-//      which overrides method f: ()Option[A] in class Foo" 
+//      which overrides method f: ()Option[A] in class Foo"
 abstract class Foo[A]                { def f(): Option[A] }
          class Bar[A] extends Foo[A] { def f(): Option[A] = ??? }
 

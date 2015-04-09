@@ -93,7 +93,7 @@ object Scopes {
 
     /** Lookup next entry with same name as this one */
     def lookupNextEntry(entry: ScopeEntry)(implicit ctx: Context): ScopeEntry
-    
+
     /** Lookup a symbol */
     final def lookup(name: Name)(implicit ctx: Context): Symbol = {
       val e = lookupEntry(name)
@@ -138,9 +138,9 @@ object Scopes {
     }
 
     def implicitDecls(implicit ctx: Context): List[TermRef] = Nil
-    
+
     def openForMutations: MutableScope = unsupported("openForMutations")
-    
+
     final def toText(printer: Printer): Text = printer.toText(this)
   }
 
@@ -376,7 +376,7 @@ object Scopes {
       }
       syms
     }
-    
+
     override def openForMutations: MutableScope = this
   }
 

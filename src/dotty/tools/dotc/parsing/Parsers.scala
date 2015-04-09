@@ -184,11 +184,11 @@ object Parsers {
               return
             skippedParens.change(LBRACKET, -1)
           case LBRACE =>
-            skippedParens.change(LBRACE, +1)
+            skippedParens.change(LBRACE, + 1)
           case LPAREN =>
-            skippedParens.change(LPAREN, +1)
+            skippedParens.change(LPAREN, + 1)
           case LBRACKET=>
-            skippedParens.change(LBRACKET, +1)
+            skippedParens.change(LBRACKET, + 1)
           case _ =>
             if (mustStartStat &&
                 in.isAfterLineEnd() &&
@@ -1984,7 +1984,7 @@ object Parsers {
           stats += defOrDcl(in.offset, Modifiers())
         } else if (!isStatSep) {
           syntaxErrorOrIncomplete(
-            "illegal start of declaration"+
+            "illegal start of declaration" +
             (if (inFunReturnType) " (possible cause: missing `=' in front of current method body)"
              else ""))
         }

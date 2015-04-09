@@ -9,9 +9,9 @@ import TastyBuffer._
 import java.util.UUID
 
 class TastyPickler {
-      
+
   private val sections = new mutable.ArrayBuffer[(TastyName.NameRef, TastyBuffer)]
-  
+
   private val headerBuffer = {
     val buf = new TastyBuffer(24)
     for (ch <- header) buf.writeByte(ch.toByte)
@@ -24,17 +24,17 @@ class TastyPickler {
   }
 
   val nameBuffer = new NameBuffer
-  
-  def newSection(name: String, buf: TastyBuffer) = 
+
+  def newSection(name: String, buf: TastyBuffer) =
     sections += ((nameBuffer.nameIndex(name), buf))
-  
+
   def assembleParts(): Array[Byte] = {
     def lengthWithLength(buf: TastyBuffer) = {
       buf.assemble()
       buf.length + natSize(buf.length)
     }
-    val totalSize = 
-      headerBuffer.length + 
+    val totalSize =
+      headerBuffer.length +
       lengthWithLength(nameBuffer) + {
         for ((nameRef, buf) <- sections) yield
           natSize(nameRef.index) + lengthWithLength(buf)

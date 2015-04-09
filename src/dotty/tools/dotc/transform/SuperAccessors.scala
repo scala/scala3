@@ -72,7 +72,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
     private val accDefs = mutable.Map[Symbol, ListBuffer[Tree]]()
 
     private def storeAccessorDefinition(clazz: Symbol, tree: Tree) = {
-      val buf = accDefs.getOrElse(clazz, sys.error("no acc def buf for "+clazz))
+      val buf = accDefs.getOrElse(clazz, sys.error("no acc def buf for " + clazz))
       buf += tree
     }
 
@@ -554,7 +554,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
         assert(referencingClass.isClass, referencingClass)
         referencingClass
       }
-      else if(referencingClass.owner.enclosingClass.exists)
+      else if (referencingClass.owner.enclosingClass.exists)
         hostForAccessorOf(sym, referencingClass.owner.enclosingClass.asClass)
       else
         referencingClass

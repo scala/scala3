@@ -309,7 +309,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       }
     }
 
-    if(ctx.compilationUnit.isJava && tree.name.isTypeName) {
+    if (ctx.compilationUnit.isJava && tree.name.isTypeName) {
       // SI-3120 Java uses the same syntax, A.B, to express selection from the
       // value A and from the type A. We have to try both.
       tryEither(tryCtx => asSelect(tryCtx))((_,_) => asJavaSelectFromTypeTree(ctx))
@@ -347,8 +347,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val clsDef = TypeDef(x, templ).withFlags(Final)
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
-	      val tpt1 = typedType(tree.tpt)
-	      checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
+          val tpt1 = typedType(tree.tpt)
+          checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
         assignType(cpy.New(tree)(tpt1), tpt1)
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
     }
@@ -402,8 +402,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         typed(cpy.Apply(lhs)(untpd.Select(fn, nme.update), args :+ tree.rhs), pt)
       case untpd.TypedSplice(Apply(MaybePoly(Select(fn, app), targs), args)) if app == nme.apply =>
         val rawUpdate: untpd.Tree = untpd.Select(untpd.TypedSplice(fn), nme.update)
-        val wrappedUpdate = 
-          if (targs.isEmpty) rawUpdate 
+        val wrappedUpdate =
+          if (targs.isEmpty) rawUpdate
           else untpd.TypeApply(rawUpdate, targs map untpd.TypedSplice)
         val appliedUpdate = cpy.Apply(fn)(wrappedUpdate, (args map untpd.TypedSplice) :+ tree.rhs)
         typed(appliedUpdate, pt)
@@ -471,7 +471,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    */
   protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol], forcedDefined: Boolean = false)(implicit ctx: Context): Tree = {
     def ascribeType(tree: Tree, pt: Type): Tree = tree match {
-      case block @ Block(stats, expr) => 
+      case block @ Block(stats, expr) =>
         val expr1 = ascribeType(expr, pt)
         cpy.Block(block)(stats, expr1) withType expr1.tpe // no assignType here because avoid is redundant
       case _ =>
@@ -722,8 +722,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
       if (tree.from.isEmpty) enclMethInfo(ctx)
       else {
         val from = tree.from.asInstanceOf[tpd.Tree]
-        val proto = 
-          if (ctx.erasedTypes) from.symbol.info.finalResultType 
+        val proto =
+          if (ctx.erasedTypes) from.symbol.info.finalResultType
           else WildcardType // We cannot reliably detect the internal type view of polymorphic or dependent methods
                             // because we do not know the internal type params and method params.
                             // Hence no adaptation is possible, and we assume WildcardType as prototype.

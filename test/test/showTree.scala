@@ -13,8 +13,8 @@ object showTree extends DeSugarTest {
 
   def test(arg: String) = {
     val tree: Tree = parse(arg)
-    println("result = "+tree.show)
-    println("desugared = "+DeSugar.transform(tree).show)
+    println("result = " + tree.show)
+    println("desugared = " + DeSugar.transform(tree).show)
   }
 
   def main(args: Array[String]): Unit = {

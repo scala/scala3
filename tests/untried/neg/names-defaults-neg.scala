@@ -98,7 +98,7 @@ object Test extends App {
   f3818(y = 1, m = 1)
 
   // DEFINITIONS
-  def test1(a: Int, b: String) = a +": "+ b
+  def test1(a: Int, b: String) = a +": " + b
   def test2(x: Unit) = println("test2")
   def test3(a: Int, b: Int) = a + b
   def test7(m: Int) = m

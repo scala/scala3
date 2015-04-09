@@ -40,7 +40,7 @@ class tests extends CompilerTest {
   @Test def pickle_pickleOK = compileDir(picklingDir, testPickling)
   @Test def pickle_pickling = compileDir(dotcDir + "tools/dotc/core/pickling/", testPickling)
   @Test def pickle_ast = compileDir(dotcDir + "tools/dotc/ast/", testPickling)
-  
+
   //@Test def pickle_core = compileDir(dotcDir + "tools/dotc/core", testPickling, xerrors = 2) // two spurious comparison errors in Types and TypeOps
 
   @Test def pos_t2168_pat = compileFile(posDir, "t2168", twice)
@@ -141,7 +141,7 @@ class tests extends CompilerTest {
     // demanding denotation of module class ClassfileParser$$anon$1$ at phase frontend(1) outside defined interval:
     // defined periods are Period(31..36, run = 2) Period(3..24, run = 2) Period(25..26, run = 2)
     // Period(27..28, run = 2) Period(29..29, run = 2) Period(30..30, run = 2)
-    // inside FirstTransform 	at dotty.tools.dotc.transform.FirstTransform.transform(FirstTransform.scala:33)
+    // inside FirstTransform    at dotty.tools.dotc.transform.FirstTransform.transform(FirstTransform.scala:33)
     // weird.
 
   @Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform")// twice omitted to make tests run faster
@@ -183,6 +183,6 @@ class tests extends CompilerTest {
 
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
-  
+
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }

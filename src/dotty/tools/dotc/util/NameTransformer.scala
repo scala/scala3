@@ -108,9 +108,9 @@ object NameTransformer {
       var unicode = false
       val c = name charAt i
       if (c == '$' && i + 2 < len) {
-        val ch1 = name.charAt(i+1)
+        val ch1 = name.charAt(i + 1)
         if ('a' <= ch1 && ch1 <= 'z') {
-          val ch2 = name.charAt(i+2)
+          val ch2 = name.charAt(i + 2)
           if ('a' <= ch2 && ch2 <= 'z') {
             ops = code2op((ch1 - 'a') * 26 + ch2 - 'a')
             while ((ops ne null) && !name.startsWith(ops.code, i)) ops = ops.next
@@ -129,7 +129,7 @@ object NameTransformer {
                      ((Character.isDigit(ch2)) ||
                      ('A' <= ch2 && ch2 <= 'F'))) {
             /* Skip past "$u", next four should be hexadecimal */
-            val hex = name.substring(i+2, i+6)
+            val hex = name.substring(i + 2, i + 6)
             try {
               val str = Integer.parseInt(hex, 16).toChar
               if (buf eq null) {

@@ -185,7 +185,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
           if (acc.name != nme.OUTER) assigns
           else {
             // insert test: if ($outer eq null) throw new NullPointerException
-            val nullTest = 
+            val nullTest =
               If(ref(param).select(defn.Object_eq).appliedTo(Literal(Constant(null))),
                  Throw(New(defn.NullPointerExceptionClass.typeRef, Nil)),
                  unitLiteral)

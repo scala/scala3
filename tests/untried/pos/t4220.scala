@@ -3,5 +3,5 @@
 class Boo(a: Int = 0)
 
 object test {
-	class Boo
+    class Boo
 }

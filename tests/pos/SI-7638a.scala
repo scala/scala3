@@ -37,16 +37,16 @@ object vectorOrder {
    * unhandled exception while transforming SI-7638.scala
    * error: uncaught exception during compilation: java.lang.UnsupportedOperationException
    * error: java.lang.UnsupportedOperationException: tail of empty list
-   * 	at scala.collection.immutable.Nil$.tail(List.scala:339)
-   * 	at scala.collection.immutable.Nil$.tail(List.scala:334)
-   * 	at scala.tools.nsc.transform.Mixin$$anonfun$scala$tools$nsc$transform$Mixin$$rebindSuper$1.apply(Mixin.scala:123)
-   * 	at scala.tools.nsc.transform.Mixin$$anonfun$scala$tools$nsc$transform$Mixin$$rebindSuper$1.apply(Mixin.scala:122)
-   * 	at scala.reflect.internal.SymbolTable.atPhase(SymbolTable.scala:207)
-   * 	at scala.reflect.internal.SymbolTable.afterPhase(SymbolTable.scala:216)
-   * 	at scala.tools.nsc.Global.afterPickler(Global.scala:1104)
-   * 	at scala.tools.nsc.transform.Mixin.scala$tools$nsc$transform$Mixin$$rebindSuper(Mixin.scala:122)
-   * 	at scala.tools.nsc.transform.Mixin$$anonfun$scala$tools$nsc$transform$Mixin$$mixinTraitMembers$1$1.apply(Mixin.scala:339)
-   * 	at scala.tools.nsc.transform.Mixin$$anonfun$scala$tools$nsc$transform$Mixin$$mixinTraitMembers$1$1.apply(Mixin.scala:292)
+   *    at scala.collection.immutable.Nil$.tail(List.scala:339)
+   *    at scala.collection.immutable.Nil$.tail(List.scala:334)
+   *    at scala.tools.nsc.transform.Mixin$$anonfun$scala$tools$nsc$transform$Mixin$$rebindSuper$1.apply(Mixin.scala:123)
+   *    at scala.tools.nsc.transform.Mixin$$anonfun$scala$tools$nsc$transform$Mixin$$rebindSuper$1.apply(Mixin.scala:122)
+   *    at scala.reflect.internal.SymbolTable.atPhase(SymbolTable.scala:207)
+   *    at scala.reflect.internal.SymbolTable.afterPhase(SymbolTable.scala:216)
+   *    at scala.tools.nsc.Global.afterPickler(Global.scala:1104)
+   *    at scala.tools.nsc.transform.Mixin.scala$tools$nsc$transform$Mixin$$rebindSuper(Mixin.scala:122)
+   *    at scala.tools.nsc.transform.Mixin$$anonfun$scala$tools$nsc$transform$Mixin$$mixinTraitMembers$1$1.apply(Mixin.scala:339)
+   *    at scala.tools.nsc.transform.Mixin$$anonfun$scala$tools$nsc$transform$Mixin$$mixinTraitMembers$1$1.apply(Mixin.scala:292)
    */
     new ArrayVectorOrder[A] { }
 }

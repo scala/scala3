@@ -30,7 +30,7 @@ class A extends Ring[A] {
 }
 
 class Poly[C <: Ring[C]](val c: C) extends Ring[Poly[C]] {
-  def +(that: Poly[C]) = new Poly(this.c+that.c)
+  def +(that: Poly[C]) = new Poly(this.c + that.c)
   def *(that: Poly[C]) = new Poly(this.c*that.c)
 }
 
@@ -41,14 +41,14 @@ object Test extends App {
   val a = new A
   val x = new Poly(new A)
 
-  println(x+a) // works
-  println(a+x) // works
+  println(x + a) // works
+  println(a + x) // works
 
   val y = new Poly(new Poly(new A))
 
-  println(x+y*x) // works
-  println(x*y+x) // works
-  println(y*x+x) // works
+  println(x + y*x) // works
+  println(x*y + x) // works
+  println(y*x + x) // works
 
-  println(x+x*y) // failed before
+  println(x + x*y) // failed before
 }

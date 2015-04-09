@@ -21,7 +21,7 @@ object Positions {
   /** Convert offset `x` to an integer by sign extending the original
    *  field of `StartEndBits` width.
    */
-  def offsetToInt(x: Int) = 
+  def offsetToInt(x: Int) =
     x << (32 - StartEndBits) >> (32 - StartEndBits)
 
   /** A position indicates a range between a start offset and an end offset.
@@ -124,7 +124,7 @@ object Positions {
       ((end & StartEndMask).toLong << StartEndBits) |
       (pointDelta.toLong << (StartEndBits * 2)))
   }
-  
+
   /** A synthetic position with given start and end */
   def Position(start: Int, end: Int): Position = {
     val pos = fromOffsets(start, end, SyntheticPointDelta)

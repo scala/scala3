@@ -875,7 +875,7 @@ class RefChecks extends MiniPhase with SymTransformer { thisTransformer =>
       def onSyms[T](f: List[Symbol] => T) = f(List(receiver, actual))
 
       // @MAT normalize for consistency in error message, otherwise only part is normalized due to use of `typeSymbol`
-      def typesString = normalizeAll(qual.tpe.widen)+" and "+normalizeAll(other.tpe.widen)
+      def typesString = normalizeAll(qual.tpe.widen)+" and " + normalizeAll(other.tpe.widen)
 
       /* Symbols which limit the warnings we can issue since they may be value types */
       val isMaybeValue = Set[Symbol](AnyClass, AnyRefClass, AnyValClass, ObjectClass, ComparableClass, JavaSerializableClass)
@@ -1057,7 +1057,7 @@ class RefChecks extends MiniPhase with SymTransformer { thisTransformer =>
                                                       // FIXME: reconcile this check with one in resetAttrs
           case _ => checkUndesiredProperties(sym, tree.pos)
         }
-        if(sym.isJavaDefined)
+        if (sym.isJavaDefined)
           sym.typeParams foreach (_.cookJavaRawInfo())
         if (!tp.isHigherKinded && !skipBounds)
           checkBounds(tree, pre, sym.owner, sym.typeParams, args)
@@ -1101,7 +1101,7 @@ class RefChecks extends MiniPhase with SymTransformer { thisTransformer =>
           }
 
         case tpt@TypeTree() =>
-          if(tpt.original != null) {
+          if (tpt.original != null) {
             tpt.original foreach {
               case dc@TypeTreeWithDeferredRefCheck() =>
                 applyRefchecksToAnnotations(dc.check()) // #2416
@@ -1384,7 +1384,7 @@ class RefChecks extends MiniPhase with SymTransformer { thisTransformer =>
             tree
 
           case treeInfo.WildcardStarArg(_) if !isRepeatedParamArg(tree) =>
-            unit.error(tree.pos, "no `: _*' annotation allowed here\n"+
+            unit.error(tree.pos, "no `: _*' annotation allowed here\n" +
               "(such annotations are only allowed in arguments to *-parameters)")
             tree
 

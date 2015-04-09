@@ -357,9 +357,9 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         val denot1 = denot.disambiguate(d => p(d.symbol))
         val sym = denot1.symbol
         if (denot.exists && !denot1.exists) { // !!!DEBUG
-          val alts = denot.alternatives map (d => d+":"+d.info+"/"+d.signature)
+          val alts = denot.alternatives map (d => d + ":" + d.info + "/" + d.signature)
           System.err.println(s"!!! disambiguation failure: $alts")
-          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => d+":"+d.info+"/"+d.signature)
+          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => d + ":" + d.info + "/" + d.signature)
           System.err.println(s"!!! all members: $members")
         }
         if (tag == EXTref) sym else sym.moduleClass
@@ -368,7 +368,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       def fromName(name: Name): Symbol = name.toTermName match {
         case nme.ROOT => loadingMirror.RootClass
         case nme.ROOTPKG => loadingMirror.RootPackage
-        case _ => 
+        case _ =>
           def declIn(owner: Symbol) = adjust(owner.info.decl(name))
           val sym = declIn(owner)
           if (sym.exists || owner.ne(defn.ObjectClass)) sym else declIn(defn.AnyClass)
@@ -532,7 +532,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
             inforef = readNat()
             pw
           }
-        // println("reading type for "+denot) // !!! DEBUG
+        // println("reading type for " + denot) // !!! DEBUG
         val tp = at(inforef, readType)
         denot match {
           case denot: ClassDenotation =>
@@ -687,7 +687,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         if (decls.isEmpty) parent
         else {
           def addRefinement(tp: Type, sym: Symbol) = {
-            def subst(info: Type, rt: RefinedType) = 
+            def subst(info: Type, rt: RefinedType) =
               if (clazz.isClass) info.substThis(clazz.asClass, SkolemType(rt))
               else info // turns out some symbols read into `clazz` are not classes, not sure why this is the case.
             RefinedType(tp, sym.name, subst(sym.info, _))
