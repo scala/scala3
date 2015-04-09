@@ -1,5 +1,5 @@
 object Test {
-  if(true) {
+  if (true) {
     <br>
   }else{
     <span>{"louenesee"}</span>

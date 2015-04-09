@@ -3,7 +3,7 @@ object O {
     def f:A;
   }
   class B extends A {
-    def f = if(1 == 2) new C else new D;
+    def f = if (1 == 2) new C else new D;
   }
   class C extends A {
     def f = this;

@@ -17,7 +17,7 @@ object SudokuSolver extends App {
   // Looping over a half-closed range of consecutive integers [l..u)
   // is factored out into a higher-order function
   def fold(f: (Int, Int) => Int, accu: Int, l: Int, u: Int): Int =
-    if(l==u) accu else fold(f, f(accu, l), l + 1, u)
+    if (l==u) accu else fold(f, f(accu, l), l + 1, u)
 
   // The search function examines each position on the board in turn,
   // trying the numbers 1..9 in each unfilled position

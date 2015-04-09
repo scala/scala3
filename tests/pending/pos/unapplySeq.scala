@@ -1,6 +1,6 @@
 object FooSeq {
   def unapplySeq(x:Any): Option[Product2[Int,Seq[String]]] = {
-    if(x.isInstanceOf[Bar]) {
+    if (x.isInstanceOf[Bar]) {
       val y = x.asInstanceOf[Bar]
       Some(y.size, y.name)
     } else None

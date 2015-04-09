@@ -36,9 +36,9 @@ class HASkipListView[ S <: Sys[ S ], A ]( private val l: HASkipList[ S, A ])( im
     val szm = sz - 1
     val keys = IndexedSeq.tabulate( sz ) { i =>
       val key     = n.key( i )
-      (key, if( isRight && i == szm ) "M" else key.toString)
+      (key, if ( isRight && i == szm ) "M" else key.toString)
     }
-    val chbo = if( n.isLeaf ) None else {
+    val chbo = if ( n.isLeaf ) None else {
       val nb = n.asBranch
       Some( IndexedSeq.tabulate( sz )( i => buildBoxMap( nb.down( i ), isRight && (i == szm) )))
     }
