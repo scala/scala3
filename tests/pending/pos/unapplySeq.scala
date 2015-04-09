@@ -9,12 +9,12 @@ object FooSeq {
   def main(args:Array[String]) = {
     val b = new Bar
     b match {
-      case FooSeq(s:Int,_,n:String) => Console.println("size "+s+" name "+n)
+      case FooSeq(s:Int,_,n:String) => Console.println("size " + s +" name "+ n)
     }
     b.size = 54
     b.name = List("large","L")
     b match {
-      case FooSeq(s:Int,_,n:String) => Console.println("size "+s+" name "+n)
+      case FooSeq(s:Int,_,n:String) => Console.println("size " + s +" name "+ n)
     }
   }
 }

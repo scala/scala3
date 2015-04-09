@@ -19,7 +19,7 @@ abstract class DirectedGraph extends Graph {
   class EdgeImpl(origin: Node, dest: Node) {
     def from = origin;
     def to = dest;
-    override def toString = ""+origin+" --> "+dest
+    override def toString = "" + origin +" --> "+ dest
   }
 
   class NodeImpl extends NodeIntf { self: Node =>
@@ -30,7 +30,7 @@ abstract class DirectedGraph extends Graph {
       edges = edge :: edges;
       edge;
     }
-    override def toString = "Node "+id
+    override def toString = "Node " + id
   }
 
   protected def newNode: Node;

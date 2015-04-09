@@ -18,13 +18,13 @@ package P { // `X' bound by package clause
         println("L12: " + x) // `x' refers to constant `3' here
         locally {
           import Q.X._ // `x' and `y' bound by wildcard import
-          println("L14: "+x)   // reference to `x' is ambiguous here
+          println("L14: " + x)   // reference to `x' is ambiguous here
           import X.y // `y' bound by explicit import
           println("L16: " + y) // `y' refers to `Q.X.y' here
           locally {
             import P.X._ // `x' and `y' bound by wildcard import
             val x = "abc" // `x' bound by local definition
-            println("L19: "+y) // reference to `y' is ambiguous here
+            println("L19: " + y) // reference to `y' is ambiguous here
             println("L20: " + x) // `x' refers to string ``abc'' here
           }
         }

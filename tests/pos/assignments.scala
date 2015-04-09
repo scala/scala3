@@ -3,7 +3,7 @@ object assignments {
   var a = Array(1, 2, 3)
   var i = 0
   a(i) = a(i) * 2
-  a(i+1) += 1
+  a(i + 1) += 1
 
   class C {
     var myX = 0

@@ -12,7 +12,7 @@ class Buffer {
     x match {
       case Put =>
       case Put(y) =>
-        println("returning "+y)
+        println("returning " + y)
     }
   }
 }

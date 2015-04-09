@@ -54,7 +54,7 @@ object Sessions {
   def addServer =
     In{x: Int =>
     In{y: Int => System.out.println("Thinking")
-    Out(x+y,
+    Out(x + y,
     Stop())}}
 
   def addClient =

@@ -4,8 +4,8 @@ object Labels {
   while(i>0) {
    var j = 0
    while(j<i) {
-   println(j+" " + i)
-   j = j +1
+   println(j +" " + i)
+   j = j + 1
    }
    i = i - 1}
    pattern(1)

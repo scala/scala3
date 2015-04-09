@@ -9,6 +9,6 @@ object Test {
     // Assuming } for ) after _* would not be not outlandish.
     // bad brace or paren after _*
     val <top>{a, z@_*)</top> = xml
-    println("A for "+ a +", ending with "+ z)
+    println("A for " + a +", ending with "+ z)
   }
 }

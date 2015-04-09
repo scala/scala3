@@ -26,6 +26,6 @@ object Test {
     val xml = <top><a>apple</a><b>boy</b><c>child</c></top>
     // bad brace or paren after _*
     val <top>{a, z@_*)}</top> = xml
-    println("A for "+ a +", ending with "+ z)
+    println("A for " + a +", ending with "+ z)
   }
 }

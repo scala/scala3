@@ -18,7 +18,7 @@ object Test {
   import Sub._
   val p = new Pos
   def f(x: Int): Int = x
-  f(p+1)
+  f(p + 1)
 }
 
 object test2 {
