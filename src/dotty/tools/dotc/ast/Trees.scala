@@ -76,7 +76,7 @@ object Trees {
   }
 
   private var nextId = 0 // for debugging
-  
+
   type LazyTree = AnyRef     /* really: Tree | Lazy[Tree] */
   type LazyTreeList = AnyRef /* really: List[Tree] | Lazy[List[Tree]] */
 
@@ -632,7 +632,7 @@ object Trees {
   }
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
-  case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]], 
+  case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
       vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
@@ -761,16 +761,16 @@ object Trees {
 
   // ----- Lazy trees and tree sequences
 
-  /** A tree that can have a lazy field 
+  /** A tree that can have a lazy field
    *  The field is represented by some private `var` which is
    *  proxied `unforced` and `force`. Forcing the field will
-   *  set the `var` to the underlying value. 
+   *  set the `var` to the underlying value.
    */
   trait WithLazyField[+T <: AnyRef] {
     def unforced: AnyRef
     protected def force(x: AnyRef): Unit
     def forceIfLazy(implicit ctx: Context): T = unforced match {
-      case lzy: Lazy[T] => 
+      case lzy: Lazy[T] =>
         val x = lzy.complete
         force(x)
         x
@@ -1189,7 +1189,7 @@ object Trees {
       def apply(x: X, tree: Tree)(implicit ctx: Context): X
       def apply(x: X, trees: Traversable[Tree])(implicit ctx: Context): X = (x /: trees)(apply)
       def foldOver(x: X, tree: Tree)(implicit ctx: Context): X = {
-        def localCtx = 
+        def localCtx =
           if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
         tree match {
           case Ident(name) =>

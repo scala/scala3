@@ -471,7 +471,7 @@ object Types {
             go(bounds.hi)
           case _ =>
             go(next)
-        }        
+        }
       }
       def goAnd(l: Type, r: Type) = go(l) & (go(r), pre)
       def goOr(l: Type, r: Type) = go(l) | (go(r), pre)
@@ -603,9 +603,9 @@ object Types {
      *      and matching result types after renaming corresponding parameter types
      *      if the method types are dependent.
      *    - Or both types are =:=-equivalent
-     *    - Or phase.erasedTypes is false, and neither type takes 
+     *    - Or phase.erasedTypes is false, and neither type takes
      *      term or type parameters.
-     *      
+     *
      *  (*) when matching with a Java method, we also regard Any and Object as equivalent
      *      parameter types.
      */
@@ -777,9 +777,9 @@ object Types {
      *  to just U. Does not perform the reduction if the resulting type would contain
      *  a reference to the "this" of the current refined type. But does follow
      *  aliases in order to avoid such references. Example:
-     *  
+     *
      *      Lambda$I { type $hk$Arg0 = String, type Apply = Lambda$I{...}.$hk$Arg0 } # Apply
-     *    
+     *
      *  Here, the refinement for `Apply` has a refined this node, yet dereferencing ones more
      *  yields `String` as the result of lookupRefined.
      */
@@ -788,7 +788,7 @@ object Types {
         case pre: RefinedType =>
           if (pre.refinedName ne name) loop(pre.parent)
           else pre.refinedInfo match {
-            case TypeAlias(tp) => 
+            case TypeAlias(tp) =>
               if (!pre.refinementRefersToThis) tp
               else tp match {
                 case TypeRef(SkolemType(`pre`), alias) => lookupRefined(alias)
@@ -1158,7 +1158,7 @@ object Types {
     private[this] var lastDenotation: Denotation = _
     private[this] var lastSymbol: Symbol = _
     private[this] var checkedPeriod = Nowhere
-    
+
     // Invariants:
     // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
     // (2) lastDenotation != null    =>  lastSymbol != null
@@ -1286,7 +1286,7 @@ object Types {
           checkSymAssign(denot.symbol)
 
       // additional checks that intercept `denot` can be added here
-      
+
       lastDenotation = denot
       lastSymbol = denot.symbol
     }
@@ -1737,10 +1737,10 @@ object Types {
     extends CachedProxyType with BindingType with ValueType {
 
     val refinedInfo: Type
-    
+
     private var refinementRefersToThisCache: Boolean = _
     private var refinementRefersToThisKnown: Boolean = false
-    
+
     def refinementRefersToThis(implicit ctx: Context): Boolean = {
       if (!refinementRefersToThisKnown) {
         refinementRefersToThisCache = refinedInfo.containsSkolemType(this)
@@ -1778,7 +1778,7 @@ object Types {
                && !parent.isLambda)
         derivedRefinedType(parent.EtaExpand, refinedName, refinedInfo)
       else
-        if (false) RefinedType(parent, refinedName, refinedInfo) 
+        if (false) RefinedType(parent, refinedName, refinedInfo)
         else RefinedType(parent, refinedName, rt => refinedInfo.substSkolem(this, SkolemType(rt)))
     }
 
@@ -1929,11 +1929,11 @@ object Types {
 
     def isJava = false
     def isImplicit = false
-    
+
     private val resType = resultTypeExp(this)
     assert(resType.exists)
-    
-    override def resultType(implicit ctx: Context): Type = 
+
+    override def resultType(implicit ctx: Context): Type =
       if (dependencyStatus == FalseDeps) { // dealias all false dependencies
         val dealiasMap = new TypeMap {
           def apply(tp: Type) = tp match {
@@ -1949,28 +1949,28 @@ object Types {
       else resType
 
     var myDependencyStatus: DependencyStatus = Unknown
-    
+
     private def combine(x: DependencyStatus, y: DependencyStatus): DependencyStatus = {
       val status = (x & StatusMask) max (y & StatusMask)
       val provisional = (x | y) & Provisional
       (if (status == TrueDeps) status else status | provisional).toByte
     }
-    
+
     /** The dependency status of this method. Some examples:
-     *  
+     *
      *    class C extends { type S; type T = String }
      *    def f(x: C)(y: Boolean)   // dependencyStatus = NoDeps
      *    def f(x: C)(y: x.S)       // dependencyStatus = TrueDeps
-     *    def f(x: C)(y: x.T)       // dependencyStatus = FalseDeps, i.e. 
+     *    def f(x: C)(y: x.T)       // dependencyStatus = FalseDeps, i.e.
      *                              // dependency can be eliminated by dealiasing.
      */
     private def dependencyStatus(implicit ctx: Context): DependencyStatus = {
       if (myDependencyStatus != Unknown) myDependencyStatus
       else {
         val isDepAcc = new TypeAccumulator[DependencyStatus] {
-          def apply(x: DependencyStatus, tp: Type) = 
+          def apply(x: DependencyStatus, tp: Type) =
             if (x == TrueDeps) x
-            else 
+            else
               tp match {
                 case MethodParam(`thisMethodType`, _) => TrueDeps
                 case tp @ TypeRef(MethodParam(`thisMethodType`, _), name) =>
@@ -1992,7 +1992,7 @@ object Types {
      *  which cannot be eliminated by de-aliasing?
      */
     def isDependent(implicit ctx: Context): Boolean = dependencyStatus == TrueDeps
-    
+
     protected def computeSignature(implicit ctx: Context): Signature =
       resultSignature.prepend(paramTypes, isJava)
 
@@ -2071,7 +2071,7 @@ object Types {
   object MethodType extends MethodTypeCompanion {
     def apply(paramNames: List[TermName], paramTypes: List[Type])(resultTypeExp: MethodType => Type)(implicit ctx: Context) =
       unique(new CachedMethodType(paramNames, paramTypes)(resultTypeExp))
-      
+
     private type DependencyStatus = Byte
     private final val Unknown: DependencyStatus = 0   // not yet computed
     private final val NoDeps: DependencyStatus = 1    // no dependent parameters found
@@ -2116,7 +2116,7 @@ object Types {
 
     val paramBounds = paramBoundsExp(this)
     val resType = resultTypeExp(this)
-    
+
     override def resultType(implicit ctx: Context) = resType
 
     protected def computeSignature(implicit ctx: Context) = resultSignature
@@ -2234,7 +2234,7 @@ object Types {
     type BT = Type
     override def underlying(implicit ctx: Context) = binder
     def copyBoundType(bt: BT) = SkolemType(bt)
-    
+
     // need to customize hashCode and equals to prevent infinite recursion for
     // refinements that refer to the refinement type via this
     override def computeHash = addDelta(binder.identityHash, 41)
@@ -2263,7 +2263,7 @@ object Types {
    *  @param  owningTree    The function part of the TypeApply tree tree that introduces
    *                        the type variable.
    *  @paran  owner         The current owner if the context where the variable was created.
-   *  
+   *
    *  `owningTree` and `owner` are used to determine whether a type-variable can be instantiated
    *  at some given point. See `Inferencing#interpolateUndetVars`.
    */
@@ -2599,7 +2599,7 @@ object Types {
       if ((annot eq this.annot) && (tpe eq this.tpe)) this
       else AnnotatedType(annot, tpe)
 
-    override def stripTypeVar(implicit ctx: Context): Type = 
+    override def stripTypeVar(implicit ctx: Context): Type =
       derivedAnnotatedType(annot, tpe.stripTypeVar)
     override def stripAnnots(implicit ctx: Context): Type = tpe.stripAnnots
   }
@@ -2871,7 +2871,7 @@ object Types {
     protected def applyToAnnot(x: T, annot: Annotation): T = x // don't go into annotations
 
     protected var variance = 1
-    
+
     protected def applyToPrefix(x: T, tp: NamedType) = {
       val saved = variance
       variance = 0
@@ -2879,7 +2879,7 @@ object Types {
       variance = saved
       result
     }
-    
+
     def foldOver(x: T, tp: Type): T = tp match {
       case tp: TypeRef =>
         if (stopAtStatic && tp.symbol.isStatic) x
@@ -3073,7 +3073,7 @@ object Types {
   // ----- Debug ---------------------------------------------------------
 
   var debugTrace = false
-  
+
   val watchList = List[String](
   ) map (_.toTypeName)
 

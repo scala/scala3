@@ -33,17 +33,17 @@ class PlainPrinter(_ctx: Context) extends Printer {
     ctx.warning("Exceeded recursion depth attempting to print.")
     (new Throwable).printStackTrace
   }
-  
+
   /** If true, tweak output so it is the same before and after pickling */
   protected def homogenizedView: Boolean = ctx.settings.YtestPickler.value
-  
-  def homogenize(tp: Type): Type = 
+
+  def homogenize(tp: Type): Type =
     if (homogenizedView)
       tp match {
         case tp: TypeVar if tp.isInstantiated => homogenize(tp.instanceOpt)
         case AndType(tp1, tp2) => homogenize(tp1) & homogenize(tp2)
         case OrType(tp1, tp2) => homogenize(tp1) | homogenize(tp2)
-        case _ => 
+        case _ =>
           val tp1 = tp.simplifyApply
           if (tp1 eq tp) tp else homogenize(tp1)
       }
@@ -159,9 +159,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toTextLocal(tp.instanceOpt) ~ "'" // debug for now, so that we can see where the TypeVars are.
         else {
           val constr = ctx.typerState.constraint
-          val bounds = 
-            if (constr.contains(tp)) constr.fullBounds(tp.origin) 
-            else TypeBounds.empty 
+          val bounds =
+            if (constr.contains(tp)) constr.fullBounds(tp.origin)
+            else TypeBounds.empty
           "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
         }
       case _ =>

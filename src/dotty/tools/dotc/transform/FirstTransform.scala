@@ -87,7 +87,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
       case stat: TypeDef if singleClassDefs contains stat.name =>
         val objName = stat.name.toTermName
         val nameClash = stats.exists {
-          case other: MemberDef => 
+          case other: MemberDef =>
             other.name == objName && other.symbol.info.isParameterless
           case _ =>
             false
@@ -99,7 +99,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
 
     def skipJava(stats: List[Tree]): List[Tree] = // packages get a JavaDefined flag. Dont skip them
       stats.filter(t => !(t.symbol is(Flags.JavaDefined, Flags.Package)))
-    
+
     addMissingCompanions(reorder(skipJava(stats)))
   }
 

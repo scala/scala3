@@ -183,13 +183,13 @@ class TreeChecker extends Phase with SymTransformer {
       phasesToCheck.foreach(_.checkPostCondition(res))
       res
     }
-    
+
     /** Check that PolyParams and MethodParams refer to an enclosing type */
     def checkNoOrphans(tp: Type)(implicit ctx: Context) = new TypeMap() {
       val definedBinders = mutable.Set[Type]()
       def apply(tp: Type): Type = {
         tp match {
-          case tp: BindingType => 
+          case tp: BindingType =>
             definedBinders += tp
             mapOver(tp)
             definedBinders -= tp

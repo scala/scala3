@@ -163,7 +163,7 @@ trait Inferencing { this: Checking =>
    *  If such a variable appears covariantly in type `tp` or does not appear at all,
    *  approximate it by its lower bound. Otherwise, if it appears contravariantly
    *  in type `tp` approximate it by its upper bound.
-   *  @param ownedBy  if it is different from NoSymbol, all type variables owned by 
+   *  @param ownedBy  if it is different from NoSymbol, all type variables owned by
    *                  `ownedBy` qualify, independent of position.
    *                  Without that second condition, it can be that certain variables escape
    *                  interpolation, for instance when their tree was eta-lifted, so
@@ -173,7 +173,7 @@ trait Inferencing { this: Checking =>
    */
   def interpolateUndetVars(tree: Tree, ownedBy: Symbol)(implicit ctx: Context): Unit = {
     val constraint = ctx.typerState.constraint
-    val qualifies = (tvar: TypeVar) => 
+    val qualifies = (tvar: TypeVar) =>
       (tree contains tvar.owningTree) || ownedBy.exists && tvar.owner == ownedBy
     def interpolate() = Stats.track("interpolateUndetVars") {
       val tp = tree.tpe.widen

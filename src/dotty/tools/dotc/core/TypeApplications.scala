@@ -191,8 +191,8 @@ class TypeApplications(val self: Type) extends AnyVal {
       if (res.isInstantiatedLambda) res.select(tpnme.Apply) else res
     }
   }
-  
-  /** Simplify a fully instantiated type of the form `LambdaX{... type Apply = T } # Apply` to `T`. 
+
+  /** Simplify a fully instantiated type of the form `LambdaX{... type Apply = T } # Apply` to `T`.
    */
   def simplifyApply(implicit ctx: Context): Type = self match {
     case self @ TypeRef(prefix, tpnme.Apply) if prefix.isInstantiatedLambda =>
@@ -383,7 +383,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     case JavaArrayType(elemtp) => elemtp
     case _ => firstBaseArgInfo(defn.SeqClass)
   }
-  
+
   def containsSkolemType(target: Type)(implicit ctx: Context): Boolean = {
     def recur(tp: Type): Boolean = tp.stripTypeVar match {
       case SkolemType(tp) =>
@@ -404,7 +404,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case _ =>
         false
     }
-    recur(self) 
+    recur(self)
   }
 
   /** Given a type alias

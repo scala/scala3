@@ -242,9 +242,9 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
    *  is an abstract typoe declaration
    */
   def lacksDefinition(mdef: MemberDef)(implicit ctx: Context) = mdef match {
-    case mdef: ValOrDefDef => 
+    case mdef: ValOrDefDef =>
       mdef.unforcedRhs == EmptyTree && !mdef.name.isConstructorName && !mdef.mods.is(ParamAccessor)
-    case mdef: TypeDef => 
+    case mdef: TypeDef =>
       mdef.rhs.isEmpty || mdef.rhs.isInstanceOf[TypeBoundsTree]
     case _ => false
   }

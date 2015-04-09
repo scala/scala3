@@ -23,14 +23,14 @@ class DottyUnpickler(bytes: Array[Byte]) {
 
   private val unpickler = new TastyUnpickler(bytes)
   private val treeUnpickler = unpickler.unpickle(new TreeSectionUnpickler).get
-  
+
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling
    */
-  def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit = 
+  def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit =
     treeUnpickler.enterTopLevel(roots)
-  
-  /** The unpickled trees 
+
+  /** The unpickled trees
    *  @param readPositions if true, trees get decorated with position information.
    */
   def body(readPositions: Boolean = false)(implicit ctx: Context): List[Tree] = {
@@ -44,7 +44,7 @@ class DottyUnpickler(bytes: Array[Byte]) {
     def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
       new TreeUnpickler(reader, tastyName)
   }
-  
+
   private class PositionsSectionUnpickler extends SectionUnpickler[(Position, AddrToPosition)]("Positions") {
     def unpickle(reader: TastyReader, tastyName: TastyName.Table) =
       new PositionUnpickler(reader).unpickle()

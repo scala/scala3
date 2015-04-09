@@ -27,7 +27,7 @@ object DottyBuild extends Build {
 
     // to get Scala 2.11
     resolvers += Resolver.sonatypeRepo("releases"),
-    
+
     // get reflect and xml onboard
     libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value,
                                 "org.scala-lang.modules" %% "scala-xml" % "1.0.1",
@@ -59,7 +59,7 @@ object DottyBuild extends Build {
        val path = for {
          file <- attList.map(_.data)
          path = file.getAbsolutePath
-       } yield "-Xbootclasspath/p:" + path       
+       } yield "-Xbootclasspath/p:" + path
        // dotty itself needs to be in the bootclasspath
        val fullpath = ("-Xbootclasspath/a:" + bin) :: path.toList
        // System.err.println("BOOTPATH: " + fullpath)

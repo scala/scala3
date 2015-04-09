@@ -476,14 +476,14 @@ object Denotations {
     /** The version of this SingleDenotation that was valid in the first phase
      *  of this run.
      */
-    def initial: SingleDenotation = 
+    def initial: SingleDenotation =
       if (validFor == Nowhere) this
       else {
         var current = nextInRun
         while (current.validFor.code > this.myValidFor.code) current = current.nextInRun
         current
       }
-      
+
     def history: List[SingleDenotation] = {
       val b = new ListBuffer[SingleDenotation]
       var current = initial
@@ -497,7 +497,7 @@ object Denotations {
 
     /** Invalidate all caches and fields that depend on base classes and their contents */
     def invalidateInheritedInfo(): Unit = ()
- 
+
     /** Move validity period of this denotation to a new run. Throw a StaleSymbol error
      *  if denotation is no longer valid.
      */

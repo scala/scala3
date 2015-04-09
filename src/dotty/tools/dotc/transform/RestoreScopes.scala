@@ -24,7 +24,7 @@ class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { t
 
   override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo) = {
     val TypeDef(_, impl: Template) = tree
-    // 
+    //
     val restoredDecls = newScope
     for (stat <- impl.constr :: impl.body)
       if (stat.isInstanceOf[MemberDef] && stat.symbol.exists)
@@ -33,7 +33,7 @@ class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { t
       // For top-level classes this does nothing.
     val cls = tree.symbol.asClass
     val pkg = cls.owner.asClass
-    pkg.enter(cls) 
+    pkg.enter(cls)
     val cinfo = cls.classInfo
     tree.symbol.copySymDenotation(
       info = cinfo.derivedClassInfo( // Dotty deviation: Cannot expand cinfo inline without a type error

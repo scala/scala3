@@ -11,20 +11,20 @@ import ast.tpd.Tree
 class TreeBuffer extends TastyBuffer(1000000) {
 
   private final val ItemsOverOffsets = 2
-    
+
   private val initialOffsetSize = bytes.length / (AddrWidth * ItemsOverOffsets)
   private var offsets = new Array[Int](initialOffsetSize)
   private var isRelative = new Array[Boolean](initialOffsetSize)
   private var delta: Array[Int] = _
   private var numOffsets = 0
 
-  private[pickling] val pickledTrees = new java.util.IdentityHashMap[Tree, Any] // Value type is really Addr, but that's not compatible with null  
-  
+  private[pickling] val pickledTrees = new java.util.IdentityHashMap[Tree, Any] // Value type is really Addr, but that's not compatible with null
+
   def addrOfTree(tree: Tree): Option[Addr] = pickledTrees.get(tree) match {
     case null => None
     case n => Some(n.asInstanceOf[Addr])
   }
-            
+
   private def offset(i: Int): Addr = Addr(offsets(i))
 
   private def keepOffset(relative: Boolean): Unit = {
@@ -36,7 +36,7 @@ class TreeBuffer extends TastyBuffer(1000000) {
     isRelative(numOffsets) = relative
     numOffsets += 1
   }
-       
+
   /** Reserve space for a reference, to be adjusted later */
   def reserveRef(relative: Boolean): Addr = {
     val addr = currentAddr
@@ -50,19 +50,19 @@ class TreeBuffer extends TastyBuffer(1000000) {
     keepOffset(relative = false)
     fillAddr(reserveAddr(), target)
   }
-  
+
   /** Fill previously reserved field with a reference */
   def fillRef(at: Addr, target: Addr, relative: Boolean) = {
     val addr = if (relative) target.relativeTo(at) else target
     fillAddr(at, addr)
   }
-  
+
   /** The amount by which the bytes at the given address are shifted under compression */
   def deltaAt(at: Addr): Int = {
     val idx = bestFit(offsets, numOffsets, at.index - 1)
     if (idx < 0) 0 else delta(idx)
   }
-    
+
   /** The address to which `x` is translated under compression */
   def adjusted(x: Addr): Addr = x - deltaAt(x)
 
@@ -77,11 +77,11 @@ class TreeBuffer extends TastyBuffer(1000000) {
       val skippedCount = skippedOff.index - off.index
       assert(skippedCount < AddrWidth, s"unset field at position $off")
       lastDelta += skippedCount
-      delta(i) = lastDelta 
+      delta(i) = lastDelta
       i += 1
     }
   }
-  
+
   /** The absolute or relative adjusted address at index `i` of `offsets` array*/
   private def adjustedOffset(i: Int): Addr = {
     val at = offset(i)
@@ -90,12 +90,12 @@ class TreeBuffer extends TastyBuffer(1000000) {
       val start = skipNat(at)
       val len1 = original + delta(i) - deltaAt(original + start.index)
       val len2 = adjusted(original + start.index) - adjusted(start).index
-      assert(len1 == len2, 
+      assert(len1 == len2,
           s"adjusting offset #$i: $at, original = $original, len1 = $len1, len2 = $len2")
       len1
     } else adjusted(original)
   }
-  
+
   /** Adjust all offsets according to previously computed deltas */
   private def adjustOffsets(): Unit = {
     for (i <- 0 until numOffsets) {
@@ -103,7 +103,7 @@ class TreeBuffer extends TastyBuffer(1000000) {
       fillAddr(offset(i), corrected)
     }
   }
-    
+
   /** Adjust deltas to also take account references that will shrink (and thereby
    *  generate additional zeroes that can be skipped) due to previously
    *  computed adjustements.
@@ -118,13 +118,13 @@ class TreeBuffer extends TastyBuffer(1000000) {
       delta1(i) = lastDelta
       i += 1
     }
-    val saved = 
+    val saved =
       if (numOffsets == 0) 0
       else delta1(numOffsets - 1) - delta(numOffsets - 1)
     delta = delta1
     saved
   }
-   
+
   /** Compress pickle buffer, shifting bytes to close all skipped zeroes. */
   private def compress(): Int = {
     var lastDelta = 0
@@ -147,7 +147,7 @@ class TreeBuffer extends TastyBuffer(1000000) {
     length -= lastDelta
     wasted
   }
-  
+
   def adjustPickledTrees(): Unit = {
     val it = pickledTrees.keySet.iterator
     while (it.hasNext) {
@@ -155,7 +155,7 @@ class TreeBuffer extends TastyBuffer(1000000) {
       pickledTrees.put(tree, adjusted(pickledTrees.get(tree).asInstanceOf[Addr]))
     }
   }
-  
+
   /** Final assembly, involving the following steps:
    *   - compute deltas
    *   - adjust deltas until additional savings are < 1% of total

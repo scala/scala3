@@ -12,14 +12,14 @@ import util.Positions.{Position, offsetToInt}
 import collection.mutable
 
 class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
-  
+
   val unpickler = new TastyUnpickler(bytes)
   import unpickler.{tastyName, unpickle}
-  
+
   def nameToString(name: TastyName): String = name match {
     case Simple(name) => name.toString
     case Qualified(qual, name) => nameRefToString(qual) + "." + nameRefToString(name)
-    case Signed(original, params, result) => 
+    case Signed(original, params, result) =>
       i"${nameRefToString(original)}@${params.map(nameRefToString)}%,%:${nameRefToString(result)}"
     case Expanded(prefix, original) => s"$prefix${nme.EXPAND_SEPARATOR}$original"
     case ModuleClass(original) => nameRefToString(original) + "/MODULECLASS"
@@ -27,13 +27,13 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
     case DefaultGetter(meth, num) => nameRefToString(meth) + "/DEFAULTGETTER" + num
     case Shadowed(original) => nameRefToString(original) + "/SHADOWED"
   }
-      
+
   def nameRefToString(ref: NameRef): String = nameToString(tastyName(ref))
-  
-  def printNames() = 
+
+  def printNames() =
     for ((name, idx) <- tastyName.contents.zipWithIndex)
       println(f"$idx%4d: " + nameToString(name))
-  
+
   def printContents(): Unit = {
     println("Names:")
     printNames()
@@ -41,7 +41,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
     unpickle(new TreeSectionUnpickler)
     unpickle(new PositionSectionUnpickler)
   }
-  
+
   class TreeSectionUnpickler extends SectionUnpickler[Unit]("ASTs") {
     import PickleFormat._
     def unpickle(reader: TastyReader, tastyName: TastyName.Table): Unit = {
@@ -66,12 +66,12 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
           tag match {
             case RENAMED =>
               printName(); printName()
-            case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | BIND => 
+            case VALDEF | DEFDEF | TYPEDEF | TYPEPARAM | PARAM | NAMEDARG | BIND =>
               printName(); printTrees()
             case REFINEDtype =>
               printTree(); printName(); printTrees()
             case RETURN =>
-              printNat(); printTrees() 
+              printNat(); printTrees()
             case METHODtype | POLYtype =>
               printTree()
               until(end) { printName(); printTree() }
@@ -85,16 +85,16 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
             goto(end)
           }
         }
-        else if (tag >= firstNatASTTreeTag) { 
+        else if (tag >= firstNatASTTreeTag) {
           tag match {
             case IDENT | SELECT | TERMREF | TYPEREF | SELFDEF => printName()
-            case _ => printNat() 
+            case _ => printNat()
           }
           printTree()
         }
-        else if (tag >= firstASTTreeTag) 
+        else if (tag >= firstASTTreeTag)
           printTree()
-        else if (tag >= firstNatTreeTag) 
+        else if (tag >= firstNatTreeTag)
           tag match {
             case TERMREFpkg | TYPEREFpkg | STRINGconst | IMPORTED => printName()
             case _ => printNat()

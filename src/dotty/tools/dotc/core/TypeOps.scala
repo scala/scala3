@@ -86,7 +86,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
   class SimplifyMap extends TypeMap {
     def apply(tp: Type) = simplify(tp, this)
   }
-  
+
   /** Approximate union type by intersection of its dominators.
    *  See Type#approximateUnion for an explanation.
    */
@@ -330,7 +330,7 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
     }
     parentRefs
   }
-  
+
   /** An argument bounds violation is a triple consisting of
    *   - the argument tree
    *   - a string "upper" or "lower" indicating which bound is violated

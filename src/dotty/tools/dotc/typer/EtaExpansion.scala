@@ -37,7 +37,7 @@ object EtaExpansion {
     case Apply(MaybePoly(fn @ Select(pre, name), targs), args) =>
       cpy.Apply(tree)(
         cpy.Select(fn)(
-          lift(defs, pre), name).appliedToTypeTrees(targs), 
+          lift(defs, pre), name).appliedToTypeTrees(targs),
           liftArgs(defs, fn.tpe, args))
     case Select(pre, name) =>
       cpy.Select(tree)(lift(defs, pre), name)

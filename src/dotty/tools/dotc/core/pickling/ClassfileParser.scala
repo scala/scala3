@@ -139,7 +139,7 @@ class ClassfileParser(
     if (companionClassMethod.exists) companionClassMethod.entered
     val companionModuleMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, moduleRoot, classRoot)
     if (companionModuleMethod.exists) companionModuleMethod.entered
-    
+
     setClassInfo(classRoot, classInfo)
     setClassInfo(moduleRoot, staticInfo)
   }
@@ -590,7 +590,7 @@ class ClassfileParser(
         val targs = tparams.map(_.typeRef)
         val paramNames = attrs.map(_.name.asTermName)
         val paramTypes = attrs.map(_.info.resultType)
-        
+
         def addConstr(ptypes: List[Type]) = {
           val mtype = MethodType(paramNames, ptypes, classRoot.typeRef.appliedTo(targs))
           val constrType = if (tparams.isEmpty) mtype else TempPolyType(tparams, mtype)
@@ -606,15 +606,15 @@ class ClassfileParser(
               addDefaultGetter(attr, i)
             }
         }
-        
+
         addConstr(paramTypes)
         if (paramTypes.nonEmpty)
           paramTypes.last match {
-            case defn.ArrayType(elemtp) => 
-              addConstr(paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp))        
+            case defn.ArrayType(elemtp) =>
+              addConstr(paramTypes.init :+ defn.RepeatedParamType.appliedTo(elemtp))
             case _ =>
         }
-          
+
     }
   }
 

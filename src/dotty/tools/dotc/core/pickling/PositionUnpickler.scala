@@ -24,11 +24,11 @@ class PositionUnpickler(reader: TastyReader) {
     while (!isAtEnd) {
       val delta1 = readDelta()
       val delta2 = readDelta()
-      val (startDelta, endDelta, indexDelta) = 
+      val (startDelta, endDelta, indexDelta) =
         if (delta2 <= 0) (delta1, -delta2, readDelta())
         else if (delta1 < 0) (0, -delta1, delta2)
         else (delta1, 0, delta2)
-      positions(curIndex) = Position(startDelta, endDelta, startDelta) 
+      positions(curIndex) = Position(startDelta, endDelta, startDelta)
         // make non-synthetic position; will be made synthetic by normalization.
       curIndex += indexDelta
     }

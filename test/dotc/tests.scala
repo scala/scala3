@@ -40,7 +40,7 @@ class tests extends CompilerTest {
   @Test def pickle_pickleOK = compileDir(picklingDir, testPickling)
   @Test def pickle_pickling = compileDir(dotcDir + "tools/dotc/core/pickling/", testPickling)
   @Test def pickle_ast = compileDir(dotcDir + "tools/dotc/ast/", testPickling)
-  
+
   //@Test def pickle_core = compileDir(dotcDir + "tools/dotc/core", testPickling, xerrors = 2) // two spurious comparison errors in Types and TypeOps
 
   @Test def pos_t2168_pat = compileFile(posDir, "t2168", twice)
@@ -183,6 +183,6 @@ class tests extends CompilerTest {
 
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
-  
+
   //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
 }

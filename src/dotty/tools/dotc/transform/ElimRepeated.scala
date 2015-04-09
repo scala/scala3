@@ -59,9 +59,9 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
     transformTypeOfTree(tree)
 
   override def transformApply(tree: Apply)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    val args1 = tree.args.map { 
+    val args1 = tree.args.map {
       case arg: Typed if isWildcardStarArg(arg) =>
-        if (tree.fun.symbol.is(JavaDefined) && arg.expr.tpe.derivesFrom(defn.SeqClass)) 
+        if (tree.fun.symbol.is(JavaDefined) && arg.expr.tpe.derivesFrom(defn.SeqClass))
           seqToArray(arg.expr)
         else arg.expr
       case arg => arg
@@ -71,7 +71,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
 
   /** Convert sequence argument to Java array */
   private def seqToArray(tree: Tree)(implicit ctx: Context): Tree = tree match {
-    case SeqLiteral(elems) => 
+    case SeqLiteral(elems) =>
       JavaSeqLiteral(elems)
     case _ =>
       val elemType = tree.tpe.firstBaseArgInfo(defn.SeqClass)
@@ -84,7 +84,7 @@ class ElimRepeated extends MiniPhaseTransform with InfoTransformer with Annotati
         .ensureConforms(defn.ArrayType(elemType))
           // Because of phantomclasses, the Java array's type might not conform to the resturn type
   }
-  
+
   override def transformTypeApply(tree: TypeApply)(implicit ctx: Context, info: TransformerInfo): Tree =
     transformTypeOfTree(tree)
 

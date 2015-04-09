@@ -455,7 +455,7 @@ trait Implicits { self: Typer =>
     private def nestedContext = ctx.fresh.setMode(ctx.mode &~ Mode.ImplicitsEnabled)
 
     private def implicitProto(resultType: Type, f: Type => Type) =
-      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType)) 
+      if (argument.isEmpty) f(resultType) else ViewProto(f(argument.tpe.widen), f(resultType))
         // Not clear whether we need to drop the `.widen` here. All tests pass with it in place, though.
 
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],

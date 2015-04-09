@@ -300,7 +300,7 @@ object Flags {
 
   /** Method is assumed to be stable */
   final val Stable = termFlag(24, "<stable>")
-  
+
   /** A case parameter accessor */
   final val CaseAccessor = termFlag(25, "<caseaccessor>")
 
@@ -499,7 +499,7 @@ object Flags {
 
   /** These flags are pickled */
   final val PickledFlags = flagRange(FirstFlag, FirstNotPickledFlag)
-  
+
   final val AllFlags = flagRange(FirstFlag, MaxFlag)
 
   /** An abstract class or a trait */
@@ -531,10 +531,10 @@ object Flags {
 
   /** A type parameter or type parameter accessor */
   final val TypeParamOrAccessor = TypeParam | TypeParamAccessor
-  
-  /** If symbol of a type alias has these flags, prefer the alias */ 
+
+  /** If symbol of a type alias has these flags, prefer the alias */
   final val AliasPreferred = TypeParam | TypeArgument | ExpandedName
-  
+
   /** A covariant type parameter instance */
   final val LocalCovariant = allOf(Local, Covariant)
 

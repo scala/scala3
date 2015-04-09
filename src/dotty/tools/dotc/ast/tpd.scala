@@ -251,8 +251,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def Annotated(annot: Tree, arg: Tree)(implicit ctx: Context): Annotated =
     ta.assignType(untpd.Annotated(annot, arg), annot, arg)
-    
-  def Throw(expr: Tree)(implicit ctx: Context): Tree = 
+
+  def Throw(expr: Tree)(implicit ctx: Context): Tree =
     ref(defn.throwMethod).appliedTo(expr)
 
   // ------ Making references ------------------------------------------------------
@@ -409,7 +409,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     override def Select(tree: Tree)(qualifier: Tree, name: Name)(implicit ctx: Context): Select = {
       val tree1 = untpd.cpy.Select(tree)(qualifier, name)
       tree match {
-        case tree: Select if (qualifier.tpe eq tree.qualifier.tpe) => 
+        case tree: Select if (qualifier.tpe eq tree.qualifier.tpe) =>
           tree1.withTypeUnchecked(tree.tpe)
         case _ => tree.tpe match {
           case tpe: NamedType => tree1.withType(tpe.derivedSelect(qualifier.tpe))
@@ -609,10 +609,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       untpd.SelectWithSig(tree, name, sig)
         .withType(TermRef.withSig(tree.tpe, name.asTermName, sig))
 
-    /** A select node with selector name and signature taken from `sym`. 
+    /** A select node with selector name and signature taken from `sym`.
      *  Note: Use this method instead of select(sym) if the referenced symbol
      *  might be overridden in the type of the qualifier prefix. See note
-     *  on select(sym: Symbol). 
+     *  on select(sym: Symbol).
      */
     def selectWithSig(sym: Symbol)(implicit ctx: Context): Tree =
       selectWithSig(sym.name, sym.signature)
@@ -629,7 +629,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def appliedToArgs(args: List[Tree])(implicit ctx: Context): Apply =
       Apply(tree, args)
 
-    /** The current tree applied to given argument lists: 
+    /** The current tree applied to given argument lists:
      *  `tree (argss(0)) ... (argss(argss.length -1))`
      */
     def appliedToArgss(argss: List[List[Tree]])(implicit ctx: Context): Tree =
@@ -676,7 +676,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def or(that: Tree)(implicit ctx: Context): Tree =
       tree.select(defn.Boolean_||).appliedTo(that)
 
-    /** The translation of `tree = rhs`. 
+    /** The translation of `tree = rhs`.
      *  This is either the tree as an assignment, to a setter call.
      */
     def becomes(rhs: Tree)(implicit ctx: Context): Tree =
@@ -695,7 +695,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     // --- Higher order traversal methods -------------------------------
 
     /** Apply `f` to each subtree of this tree */
-    def foreachSubTree(f: Tree => Unit)(implicit ctx: Context): Unit = { 
+    def foreachSubTree(f: Tree => Unit)(implicit ctx: Context): Unit = {
       val traverser = new TreeTraverser {
         def traverse(tree: Tree)(implicit ctx: Context) = foldOver(f(tree), tree)
       }

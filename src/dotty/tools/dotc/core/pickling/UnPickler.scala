@@ -368,7 +368,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
       def fromName(name: Name): Symbol = name.toTermName match {
         case nme.ROOT => loadingMirror.RootClass
         case nme.ROOTPKG => loadingMirror.RootPackage
-        case _ => 
+        case _ =>
           def declIn(owner: Symbol) = adjust(owner.info.decl(name))
           val sym = declIn(owner)
           if (sym.exists || owner.ne(defn.ObjectClass)) sym else declIn(defn.AnyClass)
@@ -687,7 +687,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
         if (decls.isEmpty) parent
         else {
           def addRefinement(tp: Type, sym: Symbol) = {
-            def subst(info: Type, rt: RefinedType) = 
+            def subst(info: Type, rt: RefinedType) =
               if (clazz.isClass) info.substThis(clazz.asClass, SkolemType(rt))
               else info // turns out some symbols read into `clazz` are not classes, not sure why this is the case.
             RefinedType(tp, sym.name, subst(sym.info, _))

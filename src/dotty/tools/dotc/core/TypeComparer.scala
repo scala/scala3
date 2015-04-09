@@ -163,7 +163,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
                  // Dealiasing is taken care of elsewhere.
                  val pre1 = tp1.prefix
                  val pre2 = tp2.prefix
-                 isSameType(pre1, pre2) || 
+                 isSameType(pre1, pre2) ||
                    sym1.isClass &&
                    pre2.classSymbol.exists &&
                    pre2.abstractTypeMembers.isEmpty &&
@@ -176,11 +176,11 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
               !tp1.isInstanceOf[WithFixedSym] &&
               !tp2.isInstanceOf[WithFixedSym]
             ) ||
-            compareHK(tp1, tp2, inOrder = true) || 
+            compareHK(tp1, tp2, inOrder = true) ||
             compareHK(tp2, tp1, inOrder = false) ||
             compareAlias(tp1.info)
           case _ =>
-            compareHK(tp2, tp1, inOrder = false) || 
+            compareHK(tp2, tp1, inOrder = false) ||
             compareAlias(NoType)
         }
       }
@@ -312,7 +312,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       }
       fourthTry(tp1, tp2)
   }
-  
+
   private def thirdTry(tp1: Type, tp2: Type): Boolean = tp2 match {
     case tp2: NamedType =>
       thirdTryNamed(tp1, tp2)
@@ -453,7 +453,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         case JavaArrayType(elem2) => isSubType(elem1, elem2)
         case _ => tp2 isRef ObjectClass
       }
-      compareJavaArray 
+      compareJavaArray
     case _ =>
       false
   }
@@ -518,7 +518,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
       false
     } else isSubType(tp1, tp2)
 
-  /** Does type `tp1` have a member with name `name` whose normalized type is a subtype of 
+  /** Does type `tp1` have a member with name `name` whose normalized type is a subtype of
    *  the normalized type of the refinement `tp2`?
    *  Normalization is as follows: If `tp2` contains a skolem to its refinement type,
    *  rebase both itself and the member info of `tp` on a freshly created skolem type.
@@ -552,16 +552,16 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
   }
 
   /** Skip refinements in `tp2` which match corresponding refinements in `tp1`.
-   *  "Match" means: 
-   *   - they appear in the same order, 
-   *   - they refine the same names, 
-   *   - the refinement in `tp1` is an alias type, and 
+   *  "Match" means:
+   *   - they appear in the same order,
+   *   - they refine the same names,
+   *   - the refinement in `tp1` is an alias type, and
    *   - neither refinement refers back to the refined type via a refined this.
    *  @return  The parent type of `tp2` after skipping the matching refinements.
    */
   private def skipMatching(tp1: Type, tp2: RefinedType): Type = tp1 match {
     case tp1 @ RefinedType(parent1, name1)
-    if name1 == tp2.refinedName && 
+    if name1 == tp2.refinedName &&
        tp1.refinedInfo.isInstanceOf[TypeAlias] &&
        !tp2.refinementRefersToThis &&
        !tp1.refinementRefersToThis =>
@@ -672,7 +672,7 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
         case _: PolyType =>
           false
         case tp2: MethodType =>
-          relaxed && tp2.paramNames.isEmpty && 
+          relaxed && tp2.paramNames.isEmpty &&
             matchesType(tp1, tp2.resultType, relaxed)
         case tp2 =>
           relaxed || isSameType(tp1, tp2)
@@ -1118,15 +1118,15 @@ class TypeComparer(initctx: Context) extends DotClass with ConstraintHandling wi
   def copyIn(ctx: Context) = new TypeComparer(ctx)
 
   // ----------- Diagnostics --------------------------------------------------
-  
+
   /** A hook for showing subtype traces. Overridden in ExplainingTypeComparer */
   def traceIndented[T](str: String)(op: => T): T = op
-    
+
   private def traceInfo(tp1: Type, tp2: Type) =
     s"${tp1.show} <:< ${tp2.show}" + {
       if (ctx.settings.verbose.value || Config.verboseExplainSubtype) {
-        s" ${tp1.getClass}, ${tp2.getClass}" + 
-        (if (frozenConstraint) " frozen" else "") + 
+        s" ${tp1.getClass}, ${tp2.getClass}" +
+        (if (frozenConstraint) " frozen" else "") +
         (if (ctx.mode is Mode.TypevarsMissContext) " tvars-miss-ctx" else "")
       }
       else ""

@@ -170,7 +170,7 @@ object Contexts {
       if (implicitsCache == null )
         implicitsCache = {
           val implicitRefs: List[TermRef] =
-            if (isClassDefContext) 
+            if (isClassDefContext)
               try owner.thisType.implicitMembers
               catch {
                 case ex: CyclicReference => Nil

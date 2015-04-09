@@ -18,7 +18,7 @@ import config.Printers._
 import language.implicitConversions
 
 trait NamerContextOps { this: Context =>
- 
+
   /** Enter symbol into current class, if current class is owner of current context,
    *  or into current scope, if not. Should always be called instead of scope.enter
    *  in order to make sure that updates to class members are reflected in
@@ -83,7 +83,7 @@ trait NamerContextOps { this: Context =>
   /** The given type, unless `sym` is a constructor, in which case the
    *  type of the constructed instance is returned
    */
-  def effectiveResultType(sym: Symbol, typeParams: List[Symbol], given: Type) = 
+  def effectiveResultType(sym: Symbol, typeParams: List[Symbol], given: Type) =
     if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams map (_.typeRef))
     else given
 
@@ -112,19 +112,19 @@ trait NamerContextOps { this: Context =>
     else if (valueParamss.isEmpty) ExprType(monotpe)
     else monotpe
   }
-  
+
   /** Find moduleClass/sourceModule in effective scope */
   private def findModuleBuddy(name: Name)(implicit ctx: Context) = {
     val scope = effectiveScope
     val it = scope.lookupAll(name).filter(_ is Module)
     assert(it.hasNext, s"no companion $name in $scope")
     it.next
-  }      
+  }
 
   /** Add moduleClass or sourceModule functionality to completer
    *  for a module or module class
    */
-  def adjustModuleCompleter(completer: LazyType, name: Name) = 
+  def adjustModuleCompleter(completer: LazyType, name: Name) =
     if (name.isTermName)
       completer withModuleClass (_ => findModuleBuddy(name.moduleClassName))
     else
@@ -233,9 +233,9 @@ class Namer { typer: Typer =>
 
     /** Add moduleClass/sourceModule to completer if it is for a module val or class */
     def adjustIfModule(completer: LazyType, tree: MemberDef) =
-      if (tree.mods is Module) ctx.adjustModuleCompleter(completer, tree.name.encode) 
+      if (tree.mods is Module) ctx.adjustModuleCompleter(completer, tree.name.encode)
       else completer
-      
+
     typr.println(i"creating symbol for $tree in ${ctx.mode}")
 
     def checkNoConflict(name: Name): Unit = {
@@ -689,11 +689,11 @@ class Namer { typer: Typer =>
         lhsType orElse WildcardType
       }
     }
-    
+
     val tptProto = mdef.tpt match {
-      case _: untpd.DerivedTypeTree => 
+      case _: untpd.DerivedTypeTree =>
         WildcardType
-      case TypeTree(untpd.EmptyTree) => 
+      case TypeTree(untpd.EmptyTree) =>
         inferredType
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
         val rhsType = typedAheadExpr(mdef.rhs, tpt.tpe).tpe
@@ -708,7 +708,7 @@ class Namer { typer: Typer =>
           case _ =>
         }
         WildcardType
-      case _ => 
+      case _ =>
         WildcardType
     }
     paramFn(typedAheadType(mdef.tpt, tptProto).tpe)
@@ -742,7 +742,7 @@ class Namer { typer: Typer =>
     val isDerived = tdef.rhs.isInstanceOf[untpd.DerivedTypeTree]
     val toParameterize = tparamSyms.nonEmpty && !isDerived
     val needsLambda = sym.allOverriddenSymbols.exists(_ is HigherKinded) && !isDerived
-    def abstracted(tp: Type): Type = 
+    def abstracted(tp: Type): Type =
       if (needsLambda) tp.LambdaAbstract(tparamSyms)
       else if (toParameterize) tp.parameterizeWith(tparamSyms)
       else tp
