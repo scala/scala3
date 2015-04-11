@@ -241,16 +241,20 @@ trait Checking {
   def checkLegalPrefix(tp: Type, selector: Name, pos: Position)(implicit ctx: Context): Unit =
     if (!tp.isLegalPrefixFor(selector)) ctx.error(d"$tp is not a valid prefix for '# $selector'", pos)
 
- /**  Check that `tp` is a class type with a stable prefix. Also, if `traitReq` is
-   *  true check that `tp` is a trait.
+  /** Check that `tp` is a class type with a stable prefix. Also:
+   *  If `traitReq` is true, check that `tp` refers to a trait.
+   *  If `concreteReq` is true, check that `tp` refers to a nonAbstract class. 
    *  Stability checking is disabled in phases after RefChecks.
    *  @return  `tp` itself if it is a class or trait ref, ObjectClass.typeRef if not.
    */
-  def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type =
+  def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean = false, concreteReq: Boolean = false)(implicit ctx: Context): Type =
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
         if (ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
-        if (traitReq && !(tref.symbol is Trait)) ctx.error(d"$tref is not a trait", pos)
+        if (traitReq && !(tref.symbol is Trait)) 
+          ctx.error(d"$tref is not a trait", pos)
+        if (concreteReq && false && (tref.symbol is AbstractOrTrait)) 
+          ctx.error(d"${tref.symbol} is abstract; cannot be instantiated, owner = ${ctx.owner}", pos)
         tp
       case _ =>
         ctx.error(d"$tp is not a class type", pos)
@@ -329,7 +333,7 @@ trait NoChecking extends Checking {
   override def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit = ()
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkLegalPrefix(tp: Type, selector: Name, pos: Position)(implicit ctx: Context): Unit = ()
-  override def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type = tp
+  override def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean, concreteReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
