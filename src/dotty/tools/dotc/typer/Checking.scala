@@ -243,18 +243,25 @@ trait Checking {
 
   /** Check that `tp` is a class type with a stable prefix. Also:
    *  If `traitReq` is true, check that `tp` refers to a trait.
-   *  If `concreteReq` is true, check that `tp` refers to a nonAbstract class. 
+   *  If `concreteReq` is true, check that `tp` refers to a nonAbstract class
+   *  and that the instance conforms to the self type of the created class.
    *  Stability checking is disabled in phases after RefChecks.
    *  @return  `tp` itself if it is a class or trait ref, ObjectClass.typeRef if not.
    */
   def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean = false, concreteReq: Boolean = false)(implicit ctx: Context): Type =
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
+        val cls = tref.symbol
         if (ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
-        if (traitReq && !(tref.symbol is Trait)) 
+        if (traitReq && !(cls is Trait)) 
           ctx.error(d"$tref is not a trait", pos)
-        if (concreteReq && false && (tref.symbol is AbstractOrTrait)) 
-          ctx.error(d"${tref.symbol} is abstract; cannot be instantiated, owner = ${ctx.owner}", pos)
+        if (concreteReq) {
+          if (cls.is(AbstractOrTrait))
+            ctx.error(d"$cls is abstract; cannot be instantiated", pos)
+          val selfType = tp.givenSelfType.asSeenFrom(tref.prefix, cls.owner)
+          if (!cls.is(Module) && selfType.exists && !(tp <:< selfType))
+            ctx.error(d"$tp does not conform to its self type $selfType; cannot be instantiated")
+        }
         tp
       case _ =>
         ctx.error(d"$tp is not a class type", pos)
