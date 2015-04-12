@@ -19,7 +19,15 @@ object Attachment {
       val nx = next
       if (nx == null) None
       else if (nx.key eq key) Some(nx.value.asInstanceOf[V])
-      else nx.getAttachment[V](key)
+      else nx.getAttachment(key)
+    }
+    
+    /** Does tree have an attachment corresponding to `key`? */
+    final def hasAttachment[V](key: Key[V]): Boolean = {
+      val nx = next
+      if (nx == null) false
+      else if (nx.key eq key) true
+      else nx.hasAttachment(key)
     }
 
     /** The attachment corresponding to `key`.
