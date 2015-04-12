@@ -155,9 +155,20 @@ class Namer { typer: Typer =>
 
   import untpd._
 
+  /** Untyped tree was already typed, the attachment value is its typed versuon */
   val TypedAhead = new Attachment.Key[tpd.Tree]
+
+  /** Tree was expanded to by desugaring; the attachment value is its expansion */
   val ExpandedTree = new Attachment.Key[Tree]
+
+  /** Tree has been assigned a symbol, which is the attachment value */
   val SymOfTree = new Attachment.Key[Symbol]
+
+  /** `New` node is part of a parent constructor of a class, and can therefore be abstract */
+  val ParentNew = new Attachment.Key[Unit]
+
+  /** `New` node is an annotation, can be abstract if the annotation is Java defined */
+  val AnnotNew = new Attachment.Key[Unit]
 
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
@@ -528,7 +539,8 @@ class Namer { typer: Typer =>
             case TypeApply(core, targs) => (core, targs)
             case core => (core, Nil)
           }
-          val Select(New(tpt), nme.CONSTRUCTOR) = core
+          val Select(nu @ New(tpt), nme.CONSTRUCTOR) = core
+          nu.putAttachment(ParentNew, ())
           val targs1 = targs map (typedAheadType(_))
           val ptype = typedAheadType(tpt).tpe appliedTo targs1.tpes
           if (ptype.typeParams.isEmpty) ptype

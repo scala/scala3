@@ -82,6 +82,12 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case Block(stats, expr) => methPart(expr)
     case mp => mp
   }
+  
+  /** If tree is an instance creation expression, its New node, otherwise tree itself */
+  def newPart(tree: Tree) = methPart(tree) match {
+    case Select(nu: untpd.New, nme.CONSTRUCTOR) => nu
+    case _ => tree
+  }
 
   /** If tree is a closure, it's body, otherwise tree itself */
   def closureBody(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree = tree match {

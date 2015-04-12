@@ -525,6 +525,7 @@ trait Applications extends Compatibility { self: Typer =>
 
       methPart(fun1).tpe match {
         case funRef: TermRef =>
+          labelAnnotArgs(funRef.symbol, tree)
           tryEither { implicit ctx =>
             val app =
               if (proto.argsAreTyped) new ApplyToTyped(tree, fun1, funRef, proto.typedArgs, pt)
@@ -576,6 +577,33 @@ trait Applications extends Compatibility { self: Typer =>
         }
       }
     else realApply
+  }
+
+  /** If `meth` is a constructor of a Java annotation used as an annotation
+   *  (as opposed to a normal `new`), label every `new` everywhere in its arguments
+   *  (including nested occurrences) as annotations. 
+   *  See pos/java-interop/t294 for examples.
+   *  This labeling is safe because Java annotations only accept constants and
+   *  other annotations as arguments, so a `new` must be an allocation site for
+   *  an annotation.
+   *  The labeling is necessary because we need to avoid flagging `new`'s of Java
+   *  annotation interfaces as errors because the interface is abstract.
+   */
+  private def labelAnnotArgs(meth: Symbol, app: untpd.Apply)(implicit ctx: Context): Unit = {
+    import untpd._
+    val isJavaAnnot = meth.isConstructor && meth.is(JavaDefined) && meth.owner.isAnnotation
+    if (newPart(app).hasAttachment(AnnotNew) && isJavaAnnot) {
+      val labelNewsAsAnnots = new TreeTraverser {
+        def traverse(tree: untpd.Tree)(implicit ctx: Context): Unit = {
+          tree match {
+            case tree: New => tree.putAttachment(AnnotNew, ())
+            case _ =>
+          }
+          traverseChildren(tree)
+        }
+      }
+      app.args.foreach(labelNewsAsAnnots.traverse)
+    }
   }
 
   /** Overridden in ReTyper to handle primitive operations that can be generated after erasure */
