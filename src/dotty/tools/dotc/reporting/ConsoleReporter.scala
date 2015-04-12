@@ -41,7 +41,7 @@ class ConsoleReporter(
   }
 
   override def doReport(d: Diagnostic)(implicit ctx: Context): Unit =
-    if (!d.isSuppressed) d match {
+    if (!d.isSuppressed || !hasErrors) d match {
       case d: Error =>
         printMessageAndPos(s"error: ${d.msg}", d.pos)
         if (ctx.settings.prompt.value) displayPrompt()
