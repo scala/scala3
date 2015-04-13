@@ -9,9 +9,10 @@ import Types._, Symbols._, Flags._, StdNames._
 import util.Positions._
 import ast.Trees._
 import typer.ErrorReporting._
+import DenotTransformers._
 
 /** This checks `New` nodes, verifying that they can be instantiated. */
-class InstChecks extends Phase {
+class InstChecks extends Phase with IdentityDenotTransformer {
   import ast.tpd._
 
   override def phaseName: String = "instchecks"
