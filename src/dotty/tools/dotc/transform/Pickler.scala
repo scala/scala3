@@ -27,26 +27,24 @@ class Pickler extends Phase {
 
   override def run(implicit ctx: Context): Unit = {
     val unit = ctx.compilationUnit
-    if (!unit.isJava) {
-      val tree = unit.tpdTree
-      pickling.println(i"unpickling in run ${ctx.runId}")
-      if (ctx.settings.YtestPickler.value) beforePickling(unit) = tree.show
+    val tree = unit.tpdTree
+    pickling.println(i"unpickling in run ${ctx.runId}")
+    if (ctx.settings.YtestPickler.value) beforePickling(unit) = tree.show
 
-      val pickler = unit.pickler
-      val treePkl = new TreePickler(pickler)
-      treePkl.pickle(tree :: Nil)
-      unit.addrOfTree = treePkl.buf.addrOfTree
-      unit.addrOfSym = treePkl.addrOfSym
-      if (tree.pos.exists)
-        new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil, tree.pos)
+    val pickler = unit.pickler
+    val treePkl = new TreePickler(pickler)
+    treePkl.pickle(tree :: Nil)
+    unit.addrOfTree = treePkl.buf.addrOfTree
+    unit.addrOfSym = treePkl.addrOfSym
+    if (tree.pos.exists)
+      new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil, tree.pos)
 
-      def rawBytes = // not needed right now, but useful to print raw format.
-        unit.pickler.assembleParts().iterator.grouped(10).toList.zipWithIndex.map {
-          case (row, i) => s"${i}0: ${row.mkString(" ")}"
-        }
-      // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
-      if (pickling ne noPrinter) new TastyPrinter(pickler.assembleParts()).printContents()
-    }
+    def rawBytes = // not needed right now, but useful to print raw format.
+      unit.pickler.assembleParts().iterator.grouped(10).toList.zipWithIndex.map {
+        case (row, i) => s"${i}0: ${row.mkString(" ")}"
+      }
+    // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
+    if (pickling ne noPrinter) new TastyPrinter(pickler.assembleParts()).printContents()
   }
 
   override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {

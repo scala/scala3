@@ -268,9 +268,7 @@ class TypeApplications(val self: Type) extends AnyVal {
           case _ => default
         }
       case tp @ RefinedType(parent, name) if !tp.member(name).symbol.is(ExpandedTypeParam) =>
-        val pbase = parent.baseTypeWithArgs(base)
-        if (pbase.member(name).exists) RefinedType(pbase, name, tp.refinedInfo)
-        else pbase
+        tp.wrapIfMember(parent.baseTypeWithArgs(base))
       case tp: TermRef =>
         tp.underlying.baseTypeWithArgs(base)
       case AndType(tp1, tp2) =>
@@ -281,7 +279,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         default
     }
   }
-
+  
   /** Translate a type of the form From[T] to To[T], keep other types as they are.
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
    */

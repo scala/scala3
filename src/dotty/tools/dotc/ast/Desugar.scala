@@ -786,7 +786,7 @@ object desugar {
             New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil),
             AppliedTypeTree(ref(seqClass.typeRef), t))
         } else {
-          assert(ctx.mode.isExpr, ctx.mode)
+          assert(ctx.mode.isExpr || ctx.reporter.hasErrors, ctx.mode)
           Select(t, op)
         }
       case PrefixOp(op, t) =>

@@ -354,7 +354,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(sym: Symbol): Text =
     (kindString(sym) ~~ {
-      if (hasMeaninglessName(sym)) simpleNameString(sym.owner) + idString(sym)
+      if (sym.isAnonymousClass) toText(sym.info.parents, " with ") ~ "{...}"
+      else if (hasMeaninglessName(sym)) simpleNameString(sym.owner) + idString(sym)
       else nameString(sym)
     }).close
 

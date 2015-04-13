@@ -51,7 +51,7 @@ class FrontEnd extends Phase {
     unitContexts foreach (enterSyms(_))
     unitContexts foreach (typeCheck(_))
     record("totalTrees", ast.Trees.ntrees)
-    unitContexts.map(_.compilationUnit)
+    unitContexts.map(_.compilationUnit).filter(!_.isJava)
   }
 
   override def run(implicit ctx: Context): Unit = {
