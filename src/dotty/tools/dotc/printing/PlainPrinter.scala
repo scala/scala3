@@ -40,9 +40,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def homogenize(tp: Type): Type =
     if (homogenizedView)
       tp match {
-        case tp: TypeVar if tp.isInstantiated => homogenize(tp.instanceOpt)
-        case AndType(tp1, tp2) => homogenize(tp1) & homogenize(tp2)
-        case OrType(tp1, tp2) => homogenize(tp1) | homogenize(tp2)
+        case tp: ThisType if tp.cls.is(Package) && !tp.cls.isEffectiveRoot => 
+          ctx.requiredPackage(tp.cls.fullName).termRef
+        case tp: TypeVar if tp.isInstantiated => 
+          homogenize(tp.instanceOpt)
+        case AndType(tp1, tp2) => 
+          homogenize(tp1) & homogenize(tp2)
+        case OrType(tp1, tp2) => 
+          homogenize(tp1) | homogenize(tp2)
         case _ =>
           val tp1 = tp.simplifyApply
           if (tp1 eq tp) tp else homogenize(tp1)
@@ -230,10 +235,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** The string representation of this type used as a prefix */
   protected def toTextPrefix(tp: Type): Text = controlled {
-    tp match {
+    homogenize(tp) match {
       case NoPrefix => ""
       case tp: SingletonType => toTextRef(tp) ~ "."
-      case _ => trimPrefix(toTextLocal(tp)) ~ "#"
+      case tp => trimPrefix(toTextLocal(tp)) ~ "#"
     }
   }
 
@@ -253,7 +258,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** String representation of a definition's type following its name */
   protected def toTextRHS(tp: Type): Text = controlled {
-    tp match {
+    homogenize(tp) match {
       case tp @ TypeBounds(lo, hi) =>
         if (lo eq hi) {
         val eql =
@@ -280,7 +285,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           else dclsText(trueDecls)
         tparamsText ~ " extends " ~ toTextParents(tp.parents) ~ "{" ~ selfText ~ declsText ~
           "} at " ~ preText
-      case _ =>
+      case tp =>
         ": " ~ toTextGlobal(tp)
     }
   }
