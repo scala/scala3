@@ -187,8 +187,14 @@ class TreePickler(pickler: TastyPickler) {
           pickleName(tpe.name); pickleType(tpe.prefix)
         }
       case tpe: ThisType =>
-        writeByte(THIS)
-        pickleType(tpe.tref)
+        if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot) {
+          writeByte(TERMREFpkg)
+          pickleName(qualifiedName(tpe.cls))
+        }
+        else {
+          writeByte(THIS)
+          pickleType(tpe.tref)
+        }
       case tpe: SuperType =>
         writeByte(SUPERtype)
         withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe)}
