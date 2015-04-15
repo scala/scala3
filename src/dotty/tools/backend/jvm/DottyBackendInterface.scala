@@ -858,18 +858,28 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
 
   object Select extends SelectDeconstructor {
 
-    override def isEmpty: Boolean = field match {
-      case t: tpd.Select => false
-      case t: tpd.Ident  => desugarIdent(t).isEmpty
-      case _ => true
-    }
+    var desugared: tpd.Select = null
 
-    def _1: Tree = field match {
-      case t: tpd.Select => t.qualifier
-      case t: tpd.Ident => desugarIdent(t).get
+    override def isEmpty: Boolean =
+      desugared eq null
+
+    def _1: Tree =  desugared.qualifier
+
+    def _2: Name = desugared.name
+
+    override def unapply(s: Select): this.type = {
+      s match {
+        case t: Select => desugared = t
+        case t: Ident  =>
+          desugarIdent(t) match {
+            case Some(t) => desugared = t
+            case None => desugared = null
+          }
+        case _ => desugared = null
+      }
+
+      this
     }
-    def _2: Name = field.name
-    
   }
 
   object Apply extends ApplyDeconstructor {
