@@ -61,7 +61,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   type Alternative     = tpd.Alternative
   type DefDef          = tpd.DefDef
   type Template        = tpd.Template
-  type Select          = tpd.Select
+  type Select          = tpd.Tree // Actually tpd.Select || tpd.Ident
   type Bind            = tpd.Bind
   type New             = tpd.New
   type Super           = tpd.Super
@@ -857,8 +857,19 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   }
 
   object Select extends SelectDeconstructor {
-    def _1: Tree = field.qualifier
+
+    override def isEmpty: Boolean = field match {
+      case t: tpd.Select => false
+      case t: tpd.Ident  => desugarIdent(t).isEmpty
+      case _ => true
+    }
+
+    def _1: Tree = field match {
+      case t: tpd.Select => t.qualifier
+      case t: tpd.Ident => desugarIdent(t).get
+    }
     def _2: Name = field.name
+    
   }
 
   object Apply extends ApplyDeconstructor {
