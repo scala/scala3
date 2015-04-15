@@ -32,10 +32,11 @@ object DottyBuild extends Build {
     libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value,
                                 "org.scala-lang.modules" %% "scala-xml" % "1.0.1",
                                 "me.d-d" % "scala-compiler" % "2.11.5-20150416-144435-09c4a520e1",
+                                "org.scala-lang.modules" %% "scala-partest" % "1.0.5" % "test",
                                 "jline" % "jline" % "2.12"),
 
     // get junit onboard
-    libraryDependencies += "com.novocode" % "junit-interface" % "0.11-RC1" % "test",
+    libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test",
 
     // scalac options
     scalacOptions in Global ++= Seq("-feature", "-deprecation", "-language:_"),
@@ -46,7 +47,13 @@ object DottyBuild extends Build {
     incOptions := incOptions.value.withNameHashing(true),
 
     // enable verbose exception messages for JUnit
-    testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "--run-listener=test.ContextEscapeDetector"),
+    testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "--run-listener=test.ContextEscapeDetector"),
+    // when this file is present, running test generates the files for partest
+    // otherwise it just executes the tests directly
+    createPartestFile := { new java.io.File("./tests", "runPartest.flag").createNewFile },
+    runPartestRunner <<= runTask(Test, "dotty.partest.DPConsoleRunner", "") dependsOn (test in Test),
+    deletePartestFile := { new java.io.File("./tests", "runPartest.flag").delete },
+
     // Adjust classpath for running dotty
     mainClass in (Compile, run) := Some("dotty.tools.dotc.Main"),
     fork in run := true,
@@ -79,7 +86,7 @@ object DottyBuild extends Build {
 
       tuning ::: agentOptions ::: travis_build ::: fullpath
     }
-  )
+  ) ++ addCommandAlias("partest", ";createPartestFile;runPartestRunner;deletePartestFile")
 
   lazy val dotty = Project(id = "dotty", base = file("."), settings = defaults)
 
@@ -92,7 +99,7 @@ object DottyBuild extends Build {
 
 
     libraryDependencies ++= Seq("com.storm-enroute" %% "scalameter" % "0.6" % Test,
-      "com.novocode" % "junit-interface" % "0.11-RC1"),
+      "com.novocode" % "junit-interface" % "0.11"),
     testFrameworks += new TestFramework("org.scalameter.ScalaMeterFramework"),
 
     // scalac options
@@ -129,4 +136,9 @@ object DottyBuild extends Build {
 
   lazy val benchmarks = Project(id = "dotty-bench", settings = benchmarkSettings,
     base = file("bench")) dependsOn(dotty % "compile->test")
+
+  lazy val createPartestFile = TaskKey[Unit]("createPartestFile", "Creates the tests/runPartest.flag file")
+  lazy val runPartestRunner = TaskKey[Unit]("runPartestRunner", "Runs partests")
+  lazy val deletePartestFile = TaskKey[Unit]("deletePartestFile", "Deletes the tests/runPartest.flag file")
+
 }
