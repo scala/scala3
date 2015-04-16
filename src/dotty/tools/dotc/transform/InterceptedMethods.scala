@@ -28,42 +28,35 @@ import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import StdNames._
 
-// @DarkDimius The getClass scheme changed. We no longer can have
-// two different methods in Any and Object. The tests pass but I
-// am not sure Intercepted methods treats getClass right now.
-// Please check and delete comment when done.
 /** Replace member references as follows:
   *
-  * - `x == y` for == in class Any becomes `x equals y` with equals in class Object.
-  * - `x != y` for != in class Any becomes `!(x equals y)` with equals in class Object.
-  * - `x.##` for ## in other classes becomes calls to ScalaRunTime.hash,
+  * - `x != y` for != in class Any becomes `!(x == y)` with == in class Any.
+  * - `x.##` for ## in NullClass becomes `0`
+  * - `x.##` for ## in Any becomes calls to ScalaRunTime.hash,
   *     using the most precise overload available
   * - `x.getClass` for getClass in primitives becomes `x.getClass` with getClass in class Object.
   */
-class InterceptedMethods extends MiniPhaseTransform { thisTransform =>
+class InterceptedMethods extends MiniPhaseTransform {
+  thisTransform =>
 
   import tpd._
 
   override def phaseName: String = "intercepted"
 
-  private var getClassMethods: Set[Symbol] = _
-  private var poundPoundMethods: Set[Symbol] = _
-  private var Any_comparisons: Set[Symbol] = _
-  private var interceptedMethods: Set[Symbol] = _
   private var primitiveGetClassMethods: Set[Symbol] = _
+
+  var Any_## : Symbol = _ // cached for performance reason
 
   /** perform context-dependant initialization */
   override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
-    poundPoundMethods = Set(defn.Any_##)
-    Any_comparisons = Set(defn.Any_==, defn.Any_!=)
-    interceptedMethods = poundPoundMethods ++ Any_comparisons
+    this.Any_## = defn.Any_##
     primitiveGetClassMethods = Set[Symbol]() ++ defn.ScalaValueClasses.map(x => x.requiredMethod(nme.getClass_))
     this
   }
 
   // this should be removed if we have guarantee that ## will get Apply node
   override def transformSelect(tree: tpd.Select)(implicit ctx: Context, info: TransformerInfo): Tree = {
-    if (tree.symbol.isTerm && poundPoundMethods.contains(tree.symbol.asTerm)) {
+    if (tree.symbol.isTerm && (Any_## eq tree.symbol.asTerm)) {
       val rewrite = poundPoundValue(tree.qualifier)
       ctx.log(s"$phaseName rewrote $tree to $rewrite")
       rewrite
@@ -103,43 +96,36 @@ class InterceptedMethods extends MiniPhaseTransform { thisTransform =>
         s"that means the intercepted methods set doesn't match the code")
       tree
     }
-    if (tree.fun.symbol.isTerm &&
-        (interceptedMethods contains tree.fun.symbol.asTerm)) {
-      val rewrite: Tree = tree.fun match {
-        case Select(qual, name) =>
-          if (poundPoundMethods contains tree.fun.symbol.asTerm) {
-            poundPoundValue(qual)
-          } else if (Any_comparisons contains tree.fun.symbol.asTerm) {
-            if (tree.fun.symbol eq defn.Any_==) {
-              qual.selectWithSig(defn.Any_equals).appliedToArgs(tree.args)
-            } else if (tree.fun.symbol eq defn.Any_!=) {
-              qual.selectWithSig(defn.Any_equals).appliedToArgs(tree.args).select(defn.Boolean_!)
-            } else unknown
-          } /* else if (isPrimitiveValueClass(qual.tpe.typeSymbol)) {
+    lazy val Select(qual, _) = tree.fun
+    val Any_## = this.Any_##
+    val Any_!= = defn.Any_!=
+    val rewrite: Tree = tree.fun.symbol match {
+      case Any_## =>
+          poundPoundValue(qual)
+      case Any_!= =>
+          qual.select(defn.Any_==).appliedToArgs(tree.args).select(defn.Boolean_!)
+        /*
+        /* else if (isPrimitiveValueClass(qual.tpe.typeSymbol)) {
             // todo: this is needed to support value classes
             // Rewrite 5.getClass to ScalaRunTime.anyValClass(5)
             global.typer.typed(gen.mkRuntimeCall(nme.anyValClass,
               List(qual, typer.resolveClassTag(tree.pos, qual.tpe.widen))))
           }*/
-          else if (primitiveGetClassMethods.contains(tree.fun.symbol)) {
-            // if we got here then we're trying to send a primitive getClass method to either
-            // a) an Any, in which cage Object_getClass works because Any erases to object. Or
-            //
-            // b) a non-primitive, e.g. because the qualifier's type is a refinement type where one parent
-            //    of the refinement is a primitive and another is AnyRef. In that case
-            //    we get a primitive form of _getClass trying to target a boxed value
-            //    so we need replace that method name with Object_getClass to get correct behavior.
-            //    See SI-5568.
-            qual.selectWithSig(defn.Any_getClass).appliedToNone
-          } else {
-            unknown
-          }
-        case _ =>
-          unknown
-      }
-      ctx.log(s"$phaseName rewrote $tree to $rewrite")
-      rewrite
+         */
+      case t if primitiveGetClassMethods.contains(t) =>
+          // if we got here then we're trying to send a primitive getClass method to either
+          // a) an Any, in which cage Object_getClass works because Any erases to object. Or
+          //
+          // b) a non-primitive, e.g. because the qualifier's type is a refinement type where one parent
+          //    of the refinement is a primitive and another is AnyRef. In that case
+          //    we get a primitive form of _getClass trying to target a boxed value
+          //    so we need replace that method name with Object_getClass to get correct behavior.
+          //    See SI-5568.
+          qual.selectWithSig(defn.Any_getClass).appliedToNone
+      case _ =>
+        tree
     }
-    else tree
+    ctx.log(s"$phaseName rewrote $tree to $rewrite")
+    rewrite
   }
 }
