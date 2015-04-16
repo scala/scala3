@@ -427,7 +427,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
       case TermRef(prefix: ThisType, name) =>
         Some(tpd.This(prefix.cls).select(i.symbol))
       case TermRef(NoPrefix, name) =>
-        if (i.symbol is Flags.Method) Some(This(i.symbol.enclosingClass).select(i.symbol)) // workaround #342 todo: remove after fixed
+        if (i.symbol is Flags.Method) Some(This(i.symbol.topLevelClass).select(i.symbol)) // workaround #342 todo: remove after fixed
         else None
       case _ => None
     }
