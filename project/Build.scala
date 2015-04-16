@@ -31,7 +31,7 @@ object DottyBuild extends Build {
     // get reflect and xml onboard
     libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value,
                                 "org.scala-lang.modules" %% "scala-xml" % "1.0.1",
-                                "me.d-d" % "scala-compiler" % "2.11.5-20150402-193021-0c75410da3",
+                                "me.d-d" % "scala-compiler" % "2.11.5-20150416-144435-09c4a520e1",
                                 "jline" % "jline" % "2.12"),
 
     // get junit onboard

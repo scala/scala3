@@ -6,7 +6,7 @@
 # Configuration
 SCALA_VERSION=2.11.5
 SCALA_BINARY_VERSION=2.11
-SCALA_COMPILER_VERSION=2.11.5-20150402-193021-0c75410da3
+SCALA_COMPILER_VERSION=2.11.5-20150416-144435-09c4a520e1
 DOTTY_VERSION=0.1
 JLINE_VERSION=2.12
 bootcp=true
@@ -57,13 +57,13 @@ checkjar $TEST_JAR test:package
 
 # Autodetecting the scala-library location, in case it wasn't provided by an environment variable
 if [ "$SCALA_LIBRARY_JAR" == "" ]
-then  
+then
   SCALA_LIBRARY_JAR=$HOME/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-$SCALA_VERSION.jar
   # this is location where sbt stores it in ivy cache
 fi
 # save as for scala-library now for scala-reflect
 if [ "$SCALA_REFLECT_JAR" == "" ]
-then  
+then
   SCALA_REFLECT_JAR=$HOME/.ivy2/cache/org.scala-lang/scala-reflect/jars/scala-reflect-$SCALA_VERSION.jar
 fi
 if [ "$SCALA_COMPILER_JAR" == "" ]
@@ -72,13 +72,13 @@ then
 fi
 
 if [ "$JLINE_JAR" == "" ]
-then  
+then
   JLINE_JAR=$HOME/.ivy2//cache/jline/jline/jars/jline-$JLINE_VERSION.jar
 fi
 
 if [ ! -f "$SCALA_LIBRARY_JAR" -o ! -f "$SCALA_REFLECT_JAR"  -o ! -f "$SCALA_COMPILER_JAR"  -o ! -f "$JLINE_JAR" ]
 then
-  echo To use this script please set 
+  echo To use this script please set
   echo SCALA_LIBRARY_JAR to point to scala-library-$SCALA_VERSION.jar "(currently $SCALA_LIBRARY_JAR)"
   echo SCALA_REFLECT_JAR to point to scala-reflect-$SCALA_VERSION.jar "(currently $SCALA_REFLECT_JAR)"
   echo SCALA_COMPILER_JAR to point to scala-compiler-$SCALA_VERSION.jar with bcode patches "(currently $SCALA_COMPILER_JAR)"
