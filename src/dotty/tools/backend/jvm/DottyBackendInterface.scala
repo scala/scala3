@@ -61,7 +61,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   type Alternative     = tpd.Alternative
   type DefDef          = tpd.DefDef
   type Template        = tpd.Template
-  type Select          = tpd.Select
+  type Select          = tpd.Tree // Actually tpd.Select || tpd.Ident
   type Bind            = tpd.Bind
   type New             = tpd.New
   type Super           = tpd.Super
@@ -243,7 +243,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
         }
       case t: TypeApply if (t.fun.symbol == Predef_classOf) =>
         av.visit(name, t.args.head.tpe.classSymbol.denot.info.toTypeKind(bcodeStore)(innerClasesStore).toASMType)
-      case t: Select =>
+      case t: tpd.Select =>
         if (t.symbol.denot.is(Flags.Enum)) {
           val edesc = innerClasesStore.typeDescriptor(t.tpe.asInstanceOf[bcodeStore.int.Type]) // the class descriptor of the enumeration class.
           val evalue = t.symbol.name.toString // value the actual enumeration value.
@@ -416,7 +416,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
 
 
   def isQualifierSafeToElide(qual: Tree): Boolean = tpd.isIdempotentExpr(qual)
-  def desugarIdent(i: Ident): Option[Select] = {
+  def desugarIdent(i: Ident): Option[tpd.Select] = {
     i.tpe match {
       case TermRef(prefix: TermRef, name) =>
         Some(tpd.ref(prefix).select(i.symbol))
@@ -857,8 +857,29 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   }
 
   object Select extends SelectDeconstructor {
-    def _1: Tree = field.qualifier
-    def _2: Name = field.name
+
+    var desugared: tpd.Select = null
+
+    override def isEmpty: Boolean =
+      desugared eq null
+
+    def _1: Tree =  desugared.qualifier
+
+    def _2: Name = desugared.name
+
+    override def unapply(s: Select): this.type = {
+      s match {
+        case t: tpd.Select => desugared = t
+        case t: Ident  =>
+          desugarIdent(t) match {
+            case Some(t) => desugared = t
+            case None => desugared = null
+          }
+        case _ => desugared = null
+      }
+
+      this
+    }
   }
 
   object Apply extends ApplyDeconstructor {
