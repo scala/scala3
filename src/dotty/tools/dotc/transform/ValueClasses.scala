@@ -7,6 +7,7 @@ import Symbols._
 import SymDenotations._
 import Contexts._
 import Flags._
+import StdNames._
 
 /** Methods that apply to user-defined value classes */
 object ValueClasses {
@@ -22,7 +23,8 @@ object ValueClasses {
       isDerivedValueClass(d.owner) &&
       !d.isConstructor &&
       !d.is(SuperAccessor) &&
-      !d.is(Macro)
+      !d.is(Macro) &&
+      !(d.name eq nme.COMPANION_MODULE_METHOD)
 
   /** The member that of a derived value class that unboxes it. */
   def valueClassUnbox(d: ClassDenotation)(implicit ctx: Context): Symbol =
