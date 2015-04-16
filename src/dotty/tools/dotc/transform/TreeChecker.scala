@@ -79,9 +79,7 @@ class TreeChecker extends Phase with SymTransformer {
       testDuplicate(sym, seenClasses, "class")
     }
 
-
-    // checkCompanion(symd) // disabled as it forces to much in presence of companion objects.
-                            // left in code as it could help reveal errors in some cases
+    checkCompanion(symd)
 
     symd
   }
