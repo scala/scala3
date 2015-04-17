@@ -90,6 +90,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       free.getOrElse(sym, Nil).toList.map(pm)
     }
 
+    /** Set `liftedOwner(sym)` to `owner` if `owner` is more deeply nested
+     *  than the previous value of `liftedowner(sym)`.
+     */
     def narrowLiftedOwner(sym: Symbol, owner: Symbol)(implicit ctx: Context) = {
       if (sym.owner.isTerm &&
         owner.isProperlyContainedIn(liftedOwner(sym)) &&
@@ -100,12 +103,22 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       }
     }
 
-    /** Mark symbol `sym` as being free in `enclosure`, unless `sym`
-     *  is defined in `enclosure` or there is a class between `enclosure`s owner
-     *  and the owner of `sym`. Also, update lifted owner of `enclosure` so
+    /** Mark symbol `sym` as being free in `enclosure`, unless `sym` is defined
+     *  in `enclosure` or there is an intermediate class properly containing `enclosure`
+     *  in which `sym` is also free. Also, update `liftedOwner` of `enclosure` so
      *  that `enclosure` can access `sym`, or its proxy in an intermediate class.
+     *  This means: 
+     *  
+     *    1. If there is an intermediate class in which `sym` is free, `enclosure`
+     *       must be contained in that class (in order to access the `sym proxy stored 
+     *       in the class).
+     *       
+     *    2. If there is no intermediate class, `enclosure` must be contained
+     *       in the class enclosing `sym`.
+     *       
      *  Return the closest enclosing intermediate class between `enclosure` and
-     *  the owner of sym, or NoSymbol is none exists.
+     *  the owner of sym, or NoSymbol if none exists.
+     *  
      *  pre: sym.owner.isTerm, (enclosure.isMethod || enclosure.isClass)
      *
      *  The idea of `markFree` is illustrated with an example:
@@ -139,7 +152,9 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
         ctx.debuglog(i"$enclosure != ${sym.enclosure}")
         val intermediate = 
           if (enclosure.is(PackageClass)) enclosure
-          else markFree(sym, enclosure.skipConstructor.enclosure)
+          else markFree(sym, enclosure.skipConstructor.enclosure) 
+            // `enclosure` might be a constructor, in which case we want the enclosure 
+            // of the enclosing class, so skipConstructor is needed here.
         if (intermediate.exists) {
           narrowLiftedOwner(enclosure, intermediate)
           intermediate
