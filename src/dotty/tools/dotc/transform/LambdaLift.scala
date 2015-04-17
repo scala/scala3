@@ -102,9 +102,10 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
 
     /** Mark symbol `sym` as being free in `enclosure`, unless `sym`
      *  is defined in `enclosure` or there is a class between `enclosure`s owner
-     *  and the owner of `sym`.
-     *  Return `true` if there is no class between `enclosure` and
-     *  the owner of sym.
+     *  and the owner of `sym`. Also, update lifted owner of `enclosure` so
+     *  that `enclosure` can access `sym`, or its proxy in an intermediate class.
+     *  Return the closest enclosing intermediate class between `enclosure` and
+     *  the owner of sym, or NoSymbol is none exists.
      *  pre: sym.owner.isTerm, (enclosure.isMethod || enclosure.isClass)
      *
      *  The idea of `markFree` is illustrated with an example:
@@ -130,22 +131,28 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
      *    }
      *  }
      */
-    private def markFree(sym: Symbol, enclosure: Symbol)(implicit ctx: Context): Boolean = try {
+    private def markFree(sym: Symbol, enclosure: Symbol)(implicit ctx: Context): Symbol = try {
       if (!enclosure.exists) throw new NoPath
-      ctx.log(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
-      narrowLiftedOwner(enclosure, sym.enclosingClass)
-      (enclosure == sym.enclosure) || {
+      if (enclosure == sym.enclosure) NoSymbol
+      else {
+        ctx.log(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
         ctx.debuglog(i"$enclosure != ${sym.enclosure}")
-        if (enclosure.is(PackageClass) ||
-          !markFree(sym, enclosure.skipConstructor.enclosure)) false
+        val intermediate = 
+          if (enclosure.is(PackageClass)) enclosure
+          else markFree(sym, enclosure.skipConstructor.enclosure)
+        if (intermediate.exists) {
+          narrowLiftedOwner(enclosure, intermediate)
+          intermediate
+        }
         else {
+          narrowLiftedOwner(enclosure, sym.enclosingClass)
           val ss = symSet(free, enclosure)
           if (!ss(sym)) {
             ss += sym
             changedFreeVars = true
             ctx.debuglog(i"$sym is free in $enclosure")
           }
-          !enclosure.isClass
+          if (enclosure.isClass) enclosure else NoSymbol
         }
       }
     } catch {
