@@ -25,7 +25,7 @@ import EtaExpansion.etaExpand
 import dotty.tools.dotc.transform.Erasure.Boxing
 import util.Positions._
 import util.common._
-import util.SourcePosition
+import util.{SourcePosition, Attachment}
 import collection.mutable
 import annotation.tailrec
 import Implicits._
@@ -347,8 +347,13 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         val clsDef = TypeDef(x, templ).withFlags(Final)
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
-          val tpt1 = typedType(tree.tpt)
-          checkClassTypeWithStablePrefix(tpt1.tpe, tpt1.pos, traitReq = false)
+	      val tpt1 = typedType(tree.tpt)
+        val cls = tpt1.tpe.classSymbol
+        val isJavaAnnot = 
+          tree.hasAttachment(AnnotNew) && cls.is(JavaDefined) && cls.isAnnotation
+        val canBeAbstract = 
+          tree.hasAttachment(ParentNew) || isJavaAnnot || ctx.isAfterTyper
+        checkClassTypeWithStablePrefix(tpt1.tpe, tree.pos, concreteReq = !canBeAbstract)
         assignType(cpy.New(tree)(tpt1), tpt1)
         // todo in a later phase: checkInstantiatable(cls, tpt1.pos)
     }
@@ -868,7 +873,8 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedAnnotation(annot: untpd.Tree)(implicit ctx: Context): Tree = track("typedAnnotation") {
-    typed(annot, defn.AnnotationClass.typeRef)
+    labelNew(annot, AnnotNew)
+    typedExpr(annot, defn.AnnotationClass.typeRef)
   }
 
   def typedValDef(vdef: untpd.ValDef, sym: Symbol)(implicit ctx: Context) = track("typedValDef") {
@@ -940,10 +946,19 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
    */
   def ensureConstrCall(cls: ClassSymbol, parents: List[Tree])(implicit ctx: Context): List[Tree] = {
     val firstParent :: otherParents = parents
-    if (firstParent.isType && !(cls is Trait))
-      typed(untpd.New(untpd.TypedSplice(firstParent), Nil)) :: otherParents
-    else parents
+    if (firstParent.isType && !(cls is Trait)) {
+      val constr = untpd.New(untpd.TypedSplice(firstParent), Nil)
+      labelNew(constr, ParentNew)
+      typed(constr) :: otherParents
+    } else parents
   }
+
+  /** If `tree` is an instance creation expression, attach the given label to its `New` node */
+  def labelNew(tree: untpd.Tree, label: Attachment.Key[Unit]): Unit = 
+    untpd.newPart(tree) match {
+      case nu: untpd.New => nu.putAttachment(label, ())
+      case _ =>
+    }
 
   /** Overridden in retyper */
   def checkVariance(tree: Tree)(implicit ctx: Context) = VarianceChecker.check(tree)
@@ -971,7 +986,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
   }
 
   def typedAnnotated(tree: untpd.Annotated, pt: Type)(implicit ctx: Context): Tree = track("typedAnnotated") {
-    val annot1 = typedExpr(tree.annot, defn.AnnotationClass.typeRef)
+    val annot1 = typedAnnotation(tree.annot)
     val arg1 = typed(tree.arg, pt)
     if (ctx.mode is Mode.Type)
       assignType(cpy.Annotated(tree)(annot1, arg1), annot1, arg1)

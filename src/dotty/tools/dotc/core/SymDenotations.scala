@@ -382,6 +382,10 @@ object SymDenotations {
     /** is this symbol a trait representing a type lambda? */
     final def isLambdaTrait(implicit ctx: Context): Boolean =
       isClass && name.startsWith(tpnme.LambdaPrefix)
+      
+    /** Is this symbol an annotation? */
+    final def isAnnotation(implicit ctx: Context): Boolean =
+      derivesFrom(defn.AnnotationClass)
 
     /** Is this symbol a package object or its module class? */
     def isPackageObject(implicit ctx: Context): Boolean = {
@@ -986,6 +990,9 @@ object SymDenotations {
 
     def nonMemberTermRef(implicit ctx: Context): TermRef =
       TermRef.withFixedSym(owner.thisType, name.asTermName, symbol.asTerm)
+      
+    def typeRefWithArgs(implicit ctx: Context): Type = 
+      typeRef.appliedTo(typeParams.map(_.typeRef))
 
     /** The variance of this type parameter or type member as an Int, with
      *  +1 = Covariant, -1 = Contravariant, 0 = Nonvariant, or not a type parameter

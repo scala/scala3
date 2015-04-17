@@ -232,7 +232,7 @@ trait Checking {
 
   /** Check that type `tp` is stable. */
   def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
-    if (!tp.isStable)
+    if (!tp.isStable && !tp.isErroneous)
       ctx.error(d"$tp is not stable", pos)
 
   /** Check that type `tp` is a legal prefix for '#'.
@@ -241,16 +241,27 @@ trait Checking {
   def checkLegalPrefix(tp: Type, selector: Name, pos: Position)(implicit ctx: Context): Unit =
     if (!tp.isLegalPrefixFor(selector)) ctx.error(d"$tp is not a valid prefix for '# $selector'", pos)
 
- /**  Check that `tp` is a class type with a stable prefix. Also, if `traitReq` is
-   *  true check that `tp` is a trait.
+  /** Check that `tp` is a class type with a stable prefix. Also:
+   *  If `traitReq` is true, check that `tp` refers to a trait.
+   *  If `concreteReq` is true, check that `tp` refers to a nonAbstract class
+   *  and that the instance conforms to the self type of the created class.
    *  Stability checking is disabled in phases after RefChecks.
    *  @return  `tp` itself if it is a class or trait ref, ObjectClass.typeRef if not.
    */
-  def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type =
+  def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean = false, concreteReq: Boolean = false)(implicit ctx: Context): Type =
     tp.underlyingClassRef(refinementOK = false) match {
       case tref: TypeRef =>
+        val cls = tref.symbol
         if (ctx.phase <= ctx.refchecksPhase) checkStable(tref.prefix, pos)
-        if (traitReq && !(tref.symbol is Trait)) ctx.error(d"$tref is not a trait", pos)
+        if (traitReq && !(cls is Trait)) 
+          ctx.error(d"$tref is not a trait", pos)
+        if (concreteReq) {
+          if (cls.is(AbstractOrTrait))
+            ctx.error(d"$cls is abstract; cannot be instantiated", pos)
+          val selfType = tp.givenSelfType.asSeenFrom(tref.prefix, cls.owner)
+          if (!cls.is(Module) && selfType.exists && !(tp <:< selfType))
+            ctx.error(d"$tp does not conform to its self type $selfType; cannot be instantiated")
+        }
         tp
       case _ =>
         ctx.error(d"$tp is not a class type", pos)
@@ -329,7 +340,7 @@ trait NoChecking extends Checking {
   override def checkBounds(args: List[tpd.Tree], poly: PolyType)(implicit ctx: Context): Unit = ()
   override def checkStable(tp: Type, pos: Position)(implicit ctx: Context): Unit = ()
   override def checkLegalPrefix(tp: Type, selector: Name, pos: Position)(implicit ctx: Context): Unit = ()
-  override def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean)(implicit ctx: Context): Type = tp
+  override def checkClassTypeWithStablePrefix(tp: Type, pos: Position, traitReq: Boolean, concreteReq: Boolean)(implicit ctx: Context): Type = tp
   override def checkImplicitParamsNotSingletons(vparamss: List[List[ValDef]])(implicit ctx: Context): Unit = ()
   override def checkFeasible(tp: Type, pos: Position, where: => String = "")(implicit ctx: Context): Type = tp
   override def checkNoDoubleDefs(cls: Symbol)(implicit ctx: Context): Unit = ()
