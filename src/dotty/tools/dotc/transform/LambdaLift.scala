@@ -294,7 +294,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
         local.copySymDenotation(
           owner = newOwner,
           name = newName(local),
-          initFlags = local.flags | Private | maybeStatic | maybeNotJavaPrivate,
+          initFlags = local.flags &~ InSuperCall | Private | maybeStatic | maybeNotJavaPrivate,
           info = liftedInfo(local)).installAfter(thisTransform)
         if (local.isClass)
           for (member <- local.asClass.info.decls)
