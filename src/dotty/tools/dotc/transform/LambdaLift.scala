@@ -394,8 +394,13 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       val sym = tree.symbol
       tree.tpe match {
         case tpe @ TermRef(prefix, _) =>
-          if ((prefix eq NoPrefix) && sym.enclosure != currentEnclosure && !sym.isStatic)
-            (if (sym is Method) memberRef(sym) else proxyRef(sym)).withPos(tree.pos)
+          if (prefix eq NoPrefix) 
+            if (sym.enclosure != currentEnclosure && !sym.isStatic)
+              (if (sym is Method) memberRef(sym) else proxyRef(sym)).withPos(tree.pos)
+            else if (sym.owner.isClass) // sym was lifted out
+              ref(sym).withPos(tree.pos)
+            else 
+              tree
           else if (!prefixIsElidable(tpe)) ref(tpe)
           else tree
         case _ =>
