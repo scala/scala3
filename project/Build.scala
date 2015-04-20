@@ -1,6 +1,7 @@
 import sbt.Keys._
 import sbt._
-
+import java.io.{ RandomAccessFile, File }
+import java.nio.channels.{ FileLock, OverlappingFileLockException }
 object DottyBuild extends Build {
 
   val TRAVIS_BUILD = "dotty.travis.build"
@@ -10,6 +11,7 @@ object DottyBuild extends Build {
     // "-agentpath:/home/dark/opt/yjp-2013-build-13072/bin/linux-x86-64/libyjpagent.so"
   )
 
+  var partestLock: FileLock = null
 
   val defaults = Defaults.defaultSettings ++ Seq(
     // set sources to src/, tests to test/ and resources to resources/
@@ -48,11 +50,14 @@ object DottyBuild extends Build {
 
     // enable verbose exception messages for JUnit
     testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "--run-listener=test.ContextEscapeDetector"),
-    // when this file is present, running test generates the files for partest
+    testOptions in Test += Tests.Cleanup({ () => if (partestLock != null) partestLock.release }),
+    // when this file is locked, running test generates the files for partest
     // otherwise it just executes the tests directly
-    createPartestFile := { new java.io.File("./tests", "runPartest.flag").createNewFile },
+    lockPartestFile := {
+      val partestLockFile = "." + File.separator + "tests" + File.separator + "partest.lock"
+      partestLock = new RandomAccessFile(partestLockFile, "rw").getChannel.tryLock
+    },
     runPartestRunner <<= runTask(Test, "dotty.partest.DPConsoleRunner", "") dependsOn (test in Test),
-    deletePartestFile := { new java.io.File("./tests", "runPartest.flag").delete },
 
     // Adjust classpath for running dotty
     mainClass in (Compile, run) := Some("dotty.tools.dotc.Main"),
@@ -86,7 +91,7 @@ object DottyBuild extends Build {
 
       tuning ::: agentOptions ::: travis_build ::: fullpath
     }
-  ) ++ addCommandAlias("partest", ";createPartestFile;runPartestRunner;deletePartestFile")
+  ) ++ addCommandAlias("partest", ";lockPartestFile;runPartestRunner")
 
   lazy val dotty = Project(id = "dotty", base = file("."), settings = defaults)
 
@@ -137,8 +142,7 @@ object DottyBuild extends Build {
   lazy val benchmarks = Project(id = "dotty-bench", settings = benchmarkSettings,
     base = file("bench")) dependsOn(dotty % "compile->test")
 
-  lazy val createPartestFile = TaskKey[Unit]("createPartestFile", "Creates the tests/runPartest.flag file")
+  lazy val lockPartestFile = TaskKey[Unit]("lockPartestFile", "Creates the file lock on  ./tests/partest.lock")
   lazy val runPartestRunner = TaskKey[Unit]("runPartestRunner", "Runs partests")
-  lazy val deletePartestFile = TaskKey[Unit]("deletePartestFile", "Deletes the tests/runPartest.flag file")
 
 }

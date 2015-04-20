@@ -6,7 +6,8 @@ import dotty.tools.dotc.reporting.Reporter
 import scala.collection.mutable.ListBuffer
 import scala.reflect.io.{ Path, Directory, File => SFile }
 import scala.tools.partest.nest.FileManager
-import java.io.{ File => JFile }
+import java.io.{ RandomAccessFile, File => JFile }
+
 import org.junit.Test
 
 
@@ -39,7 +40,14 @@ abstract class CompilerTest extends DottyTest {
   def partestableDir(prefix: String, dirName: String, args: List[String], xerrors: Int) = true
   def partestableList(testName: String, files: List[String], args: List[String], xerrors: Int) = true
 
-  val generatePartestFiles = new JFile("tests", "runPartest.flag").exists
+  val generatePartestFiles = {
+    val partestLockFile = "." + JFile.separator + "tests" + JFile.separator + "partest.lock"
+    val partestLock = new RandomAccessFile(partestLockFile, "rw").getChannel.tryLock
+    if (partestLock != null) { // file not locked by sbt -> don't generate partest
+      partestLock.release
+      false
+    } else true
+  }
 
   // Delete generated files from previous run
   if (generatePartestFiles)
