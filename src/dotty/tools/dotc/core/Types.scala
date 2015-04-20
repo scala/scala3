@@ -858,6 +858,13 @@ object Types {
       case _ => defn.AnyClass.typeRef
     }
 
+    /** the self type of the underlying classtype */
+    def givenSelfType(implicit ctx: Context): Type = this match {
+      case tp @ RefinedType(parent, name) => tp.wrapIfMember(parent.givenSelfType)
+      case tp: TypeProxy => tp.underlying.givenSelfType
+      case _ => NoType
+    }
+
     /** The parameter types of a PolyType or MethodType, Empty list for others */
     final def paramTypess(implicit ctx: Context): List[List[Type]] = this match {
       case mt: MethodType => mt.paramTypes :: mt.resultType.paramTypess
@@ -1781,7 +1788,12 @@ object Types {
         if (false) RefinedType(parent, refinedName, refinedInfo)
         else RefinedType(parent, refinedName, rt => refinedInfo.substSkolem(this, SkolemType(rt)))
     }
-
+    
+    /** Add this refinement to `parent`, provided If `refinedName` is a member of `parent`. */
+    def wrapIfMember(parent: Type)(implicit ctx: Context): Type =
+      if (parent.member(refinedName).exists) derivedRefinedType(parent, refinedName, refinedInfo)
+      else parent
+      
     override def equals(that: Any) = that match {
       case that: RefinedType =>
         this.parent == that.parent &&
@@ -2398,21 +2410,26 @@ object Types {
      *   - the fully applied reference to the class itself.
      */
     def selfType(implicit ctx: Context): Type = {
-      if (selfTypeCache == null) {
-        def fullRef = fullyAppliedRef(cls.typeRef, cls.typeParams)
-        def withFullRef(tp: Type): Type =
-          if (ctx.erasedTypes) fullRef else AndType(tp, fullRef)
-        selfTypeCache = selfInfo match {
-          case NoType =>
-            fullRef
-          case tp: Type =>
-            if (cls is Module) tp else withFullRef(tp)
-          case self: Symbol =>
-            assert(!(cls is Module))
-            withFullRef(self.info)
+      if (selfTypeCache == null)
+        selfTypeCache = {
+          def fullRef = fullyAppliedRef(cls.typeRef, cls.typeParams)
+          val given = givenSelfType
+          val raw = 
+            if (!given.exists) fullRef
+            else if (cls is Module) given
+            else if (ctx.erasedTypes) fullRef
+            else AndType(given, fullRef)
+          raw//.asSeenFrom(prefix, cls.owner)
         }
-      }
       selfTypeCache
+    }
+    
+    /** The explicitly given self type (self types of modules are assumed to be
+     *  explcitly given here).
+     */
+    override def givenSelfType(implicit ctx: Context): Type = selfInfo match {
+      case tp: Type => tp
+      case self: Symbol => self.info
     }
 
     private var selfTypeCache: Type = null

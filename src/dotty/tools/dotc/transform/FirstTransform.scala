@@ -35,6 +35,10 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
   import ast.tpd._
 
   override def phaseName = "firstTransform"
+  
+  override def runsAfter = Set(classOf[typer.InstChecks]) 
+    // This phase makes annotations disappear in types, so InstChecks should
+    // run before so that it can get at all annotations.
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp
 

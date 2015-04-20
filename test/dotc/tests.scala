@@ -138,6 +138,8 @@ class tests extends CompilerTest {
   @Test def neg_i0281 = compileFile(negDir, "i0281-null-primitive-conforms", xerrors = 3)
   @Test def neg_moduleSubtyping = compileFile(negDir, "moduleSubtyping", xerrors = 4)
   @Test def neg_escapingRefs = compileFile(negDir, "escapingRefs", xerrors = 2)
+  @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
+  @Test def neg_selfInheritance = compileFile(negDir, "selfInheritance", xerrors = 5)
 
   @Test def dotc = compileDir(toolsDir, "dotc", failedOther)(allowDeepSubtypes ++ twice) // see dotc_core
   @Test def dotc_ast = compileDir(dotcDir, "ast", failedOther ++ twice)
