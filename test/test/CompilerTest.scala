@@ -42,11 +42,17 @@ abstract class CompilerTest extends DottyTest {
 
   val generatePartestFiles = {
     val partestLockFile = "." + JFile.separator + "tests" + JFile.separator + "partest.lock"
-    val partestLock = new RandomAccessFile(partestLockFile, "rw").getChannel.tryLock
-    if (partestLock != null) { // file not locked by sbt -> don't generate partest
-      partestLock.release
-      false
-    } else true
+    try {
+      val partestLock = new RandomAccessFile(partestLockFile, "rw").getChannel.tryLock
+      if (partestLock != null) { // file not locked by sbt -> don't generate partest
+        partestLock.release
+        false
+      } else true
+    } catch {
+      // if sbt doesn't fork in Test, the tryLock request will throw instead of
+      // returning null, because locks are per JVM, not per thread
+      case ex: java.nio.channels.OverlappingFileLockException => true
+    }
   }
 
   // Delete generated files from previous run

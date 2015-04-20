@@ -1,7 +1,8 @@
 import sbt.Keys._
 import sbt._
 import java.io.{ RandomAccessFile, File }
-import java.nio.channels.{ FileLock, OverlappingFileLockException }
+import java.nio.channels.FileLock
+
 object DottyBuild extends Build {
 
   val TRAVIS_BUILD = "dotty.travis.build"
