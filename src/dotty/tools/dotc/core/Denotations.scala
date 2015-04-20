@@ -177,13 +177,15 @@ object Denotations {
     }
 
     /** Return symbol in this denotation that satisfies the given predicate.
-     *  Return a stubsymbol if denotation is a missing ref.
+     *  if generateStubs is specified, return a stubsymbol if denotation is a missing ref.
      *  Throw a `TypeError` if predicate fails to disambiguate symbol or no alternative matches.
      */
-    def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null)(implicit ctx: Context): Symbol =
+    def requiredSymbol(p: Symbol => Boolean, source: AbstractFile = null, generateStubs: Boolean = true)(implicit ctx: Context): Symbol =
       disambiguate(p) match {
         case MissingRef(ownerd, name) =>
-          ctx.newStubSymbol(ownerd.symbol, name, source)
+          if (generateStubs)
+            ctx.newStubSymbol(ownerd.symbol, name, source)
+          else NoSymbol
         case NoDenotation | _: NoQualifyingRef =>
           throw new TypeError(s"None of the alternatives of $this satisfies required predicate")
         case denot =>
@@ -874,8 +876,9 @@ object Denotations {
 
     /** The current denotation of the static reference given by path,
      *  or a MissingRef or NoQualifyingRef instance, if it does not exist.
+     *  if generateStubs is set, generates stubs for missing top-level symbols
      */
-    def staticRef(path: Name)(implicit ctx: Context): Denotation = {
+    def staticRef(path: Name, generateStubs: Boolean = true)(implicit ctx: Context): Denotation = {
       def recur(path: Name, len: Int): Denotation = {
         val point = path.lastIndexOf('.', len - 1)
         val owner =
@@ -887,7 +890,9 @@ object Denotations {
           val result = owner.info.member(name)
           if (result ne NoDenotation) result
           else {
-            val alt = missingHook(owner.symbol.moduleClass, name)
+            val alt =
+              if (generateStubs) missingHook(owner.symbol.moduleClass, name)
+              else NoSymbol
             if (alt.exists) alt.denot
             else MissingRef(owner, name)
           }

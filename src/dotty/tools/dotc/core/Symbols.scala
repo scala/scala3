@@ -325,6 +325,12 @@ trait Symbols { this: Context =>
   def requiredClass(path: PreName): ClassSymbol =
     base.staticRef(path.toTypeName).requiredSymbol(_.isClass).asClass
 
+  /** Get ClassSymbol if class is either defined in current compilation run
+   *  or present on classpath.
+   *  Returns NoSymbol otherwise. */
+  def getClassIfDefined(path: PreName): Symbol =
+    base.staticRef(path.toTypeName, generateStubs = false).requiredSymbol(_.isClass, generateStubs = false)
+
   def requiredModule(path: PreName): TermSymbol =
     base.staticRef(path.toTermName).requiredSymbol(_ is Module).asTerm
 
