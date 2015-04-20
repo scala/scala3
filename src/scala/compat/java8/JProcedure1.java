@@ -9,14 +9,13 @@ import scala.runtime.BoxedUnit;
 
 @FunctionalInterface
 public interface JProcedure1<T1> extends JFunction1<T1, BoxedUnit> {
- default void $init$() {
- }
+    default void $init$() {
+    }
 
- void applyVoid(T1 t1);
+    void applyVoid(T1 t1);
 
- default BoxedUnit apply(T1 t1) {
- applyVoid(t1);
- return BoxedUnit.UNIT;
- }
+    default BoxedUnit apply(T1 t1) {
+        applyVoid(t1);
+        return BoxedUnit.UNIT;
+    }
 }
-
