@@ -13,6 +13,7 @@ import ast.Trees._
 import NameOps._
 import typer.Mode
 import TreeTransforms.TransformerInfo
+import StdNames._
 
 /** The preceding lambda lift and flatten phases move symbols to different scopes
  *  and rename them. This miniphase cleans up afterwards and makes sure that all
@@ -33,6 +34,19 @@ class RestoreScopes extends MiniPhaseTransform with IdentityDenotTransformer { t
       // For top-level classes this does nothing.
     val cls = tree.symbol.asClass
     val pkg = cls.owner.asClass
+
+    // Bring back companion links
+    val companionClass  = cls.info.decls.lookup(nme.COMPANION_CLASS_METHOD)
+    val companionModule = cls.info.decls.lookup(nme.COMPANION_MODULE_METHOD)
+
+    if (companionClass.exists) {
+      restoredDecls.enter(companionClass)
+    }
+
+    if (companionModule.exists) {
+      restoredDecls.enter(companionModule)
+    }
+
     pkg.enter(cls)
     val cinfo = cls.classInfo
     tree.symbol.copySymDenotation(

@@ -161,12 +161,14 @@ trait Symbols { this: Context =>
           owner.thisType, modcls, parents, decls, TermRef.withSymAndName(owner.thisType, module, name)),
         privateWithin, coord, assocFile)
 
+  val companionMethodFlags = Flags.Synthetic | Flags.Private | Flags.Method
+
   def synthesizeCompanionMethod(name: Name, target: SymDenotation, owner: SymDenotation)(implicit ctx: Context) =
     if (owner.exists && target.exists && !owner.isAbsent && !target.isAbsent) {
       val existing = owner.unforcedDecls.lookup(name)
 
       existing.orElse{
-        ctx.newSymbol(owner.symbol, name, Flags.Synthetic | Flags.Private, ExprType(target.typeRef))
+        ctx.newSymbol(owner.symbol, name, companionMethodFlags , ExprType(target.typeRef))
       }
     } else NoSymbol
 

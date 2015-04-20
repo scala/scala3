@@ -56,6 +56,18 @@ class TreeChecker extends Phase with SymTransformer {
     registry(name) = sym
   }
 
+  def checkCompanion(symd: SymDenotation)(implicit ctx: Context): Unit = {
+    val cur = symd.linkedClass
+    val prev = ctx.atPhase(ctx.phase.prev) {
+      ct => {
+        implicit val ctx: Context = ct.withMode(Mode.FutureDefsOK)
+        symd.symbol.linkedClass
+      }
+    }
+
+    if (prev.exists)
+      assert(cur.exists, i"companion disappeared from $symd")
+  }
 
   def transformSym(symd: SymDenotation)(implicit ctx: Context): SymDenotation = {
     val sym = symd.symbol
@@ -68,6 +80,8 @@ class TreeChecker extends Phase with SymTransformer {
 
       testDuplicate(sym, seenClasses, "class")
     }
+
+    checkCompanion(symd)
 
     symd
   }
