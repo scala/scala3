@@ -65,9 +65,11 @@ class FunctionalInterfaces extends MiniPhaseTransform {
         if (shouldSpecialize(m)) {
           val interfaceName = (functionName ++ m.paramTypes.length.toString).specializedFor(m.resultType, m.paramTypes)
           // symbols loaded from classpath aren't defined in periods earlier than when they where loaded
-          val interface = ctx.withPhase(ctx.typerPhase).requiredClass(functionPackage ++ interfaceName)
-          val tpt = tpd.TypeTree(interface.asType.typeRef)
-          tpd.Closure(tree.env, tree.meth, tpt)
+          val interface = ctx.withPhase(ctx.typerPhase).getClassIfDefined(functionPackage ++ interfaceName)
+          if (interface.exists) {
+            val tpt = tpd.TypeTree(interface.asType.typeRef)
+            tpd.Closure(tree.env, tree.meth, tpt)
+          } else tree
         } else tree
       case _ =>
         tree
