@@ -39,8 +39,21 @@ class FunctionalInterfaces extends MiniPhaseTransform {
   val functionPackage = "scala.compat.java8.".toTermName
 
   override def prepareForUnit(tree: tpd.Tree)(implicit ctx: Context): TreeTransform = {
-    allowedReturnTypes   = defn.ScalaNumericValueClasses
-    allowedArgumentTypes = defn.ScalaNumericValueClasses + defn.BooleanClass
+    allowedReturnTypes   = Set(defn.UnitClass,
+                               defn.BooleanClass,
+                               defn.IntClass,
+                               defn.FloatClass,
+                               defn.LongClass,
+                               defn.DoubleClass,
+     /* only for Function0: */ defn.ByteClass,
+                               defn.ShortClass,
+                               defn.CharClass)
+
+    allowedArgumentTypes = Set(defn.IntClass,
+                               defn.LongClass,
+                               defn.DoubleClass,
+     /* only for Function1: */ defn.FloatClass)
+
     this
   }
 
