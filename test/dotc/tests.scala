@@ -174,6 +174,15 @@ class tests extends CompilerTest {
 
   @Test def dotc_transform = compileDir(dotcDir, "transform")// twice omitted to make tests run faster
 
+  val javaDir = "./tests/pos/java-interop/"
+  @Test def java_all = compileFiles(javaDir)
+
+  @Test def pos_specialization = compileFile(posDir, "specialization")
+
+  //@Test def dotc_compilercommand = compileFile(dotcDir + "tools/dotc/config/", "CompilerCommand")
+//@ Test def dotc_transform = compileDir(dotcDir + "tools/dotc/transform", failedbyName)
+
+
   @Test def dotc_parsing = compileDir(dotcDir, "parsing") // twice omitted to make tests run faster
 
   @Test def dotc_printing = compileDir(dotcDir, "printing") // twice omitted to make tests run faster
@@ -206,6 +215,9 @@ class tests extends CompilerTest {
 
   val javaDir = "./tests/pos/java-interop/"
   @Test def java_all = compileFiles(javaDir, twice)
+
+  @Test def pos_specialization = compileFile(posDir, "specialization")
+
   //@Test def dotc_compilercommand = compileFile(dotcDir + "config/", "CompilerCommand")
   
 }
