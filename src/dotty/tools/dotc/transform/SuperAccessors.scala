@@ -12,7 +12,7 @@ import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTrans
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import util.Positions._
 import Decorators._
-import Symbols._
+import Symbols._, TypeUtils._
 
 /** This phase performs the following functions, each of which could be split out in a
  *  mini-phase:
@@ -36,7 +36,7 @@ import Symbols._
  *  (1) Symbols accessed from super are not abstract, or are overridden by
  *  an abstract override.
  *
- *  (2) If a symbol accessed accessed from super is defined in a real class (not a trait),
+ *  (2) If a symbol accessed from super is defined in a real class (not a trait),
  *  there are no abstract members which override this member in Java's rules
  *  (see SI-4989; such an access would lead to illegal bytecode)
  *
@@ -93,7 +93,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
         val maybeDeferred = if (clazz is Trait) Deferred else EmptyFlags
         val acc = ctx.newSymbol(
             clazz, supername, SuperAccessor | Private | Artifact | Method | maybeDeferred,
-            ensureMethodic(sel.tpe.widenSingleton), coord = sym.coord).enteredAfter(thisTransformer)
+            sel.tpe.widenSingleton.ensureMethodic, coord = sym.coord).enteredAfter(thisTransformer)
         // Diagnostic for SI-7091
         if (!accDefs.contains(clazz))
           ctx.error(s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz is Package}. Accessor required for ${sel} (${sel.show})", sel.pos)
@@ -274,7 +274,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
                       val alias = inheritedAccessor(sym)
                       if (alias.exists) {
                         def forwarder(implicit ctx: Context) = {
-                          sym.copySymDenotation(initFlags = sym.flags | Method, info = ensureMethodic(sym.info))
+                          sym.copySymDenotation(initFlags = sym.flags | Method, info = sym.info.ensureMethodic)
                             .installAfter(thisTransformer)
                           val superAcc =
                             Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)
