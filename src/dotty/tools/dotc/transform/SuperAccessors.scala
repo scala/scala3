@@ -44,9 +44,6 @@ import Symbols._, TypeUtils._
  *
  *  (4) Super calls do not go to synthetic field accessors
  *
- *  (5) A class and its companion object do not both define a class or module with the
- *  same name.
- *
  *  TODO: Rename phase to "Accessors" because it handles more than just super accessors
  */
 class SuperAccessors extends MacroTransform 
@@ -103,61 +100,7 @@ class SuperAccessors extends MacroTransform
         }
       }
 
-    /** Check that a class and its companion object to not both define
-     *  a class or module with same name
-     */
-    private def checkCompanionNameClashes(cls: ClassSymbol)(implicit ctx: Context): Unit =
-      if (!(cls.owner is ModuleClass)) {
-        val other = cls.owner.linkedClass.info.decl(cls.name)
-        if (other.symbol.isClass)
-          ctx.error(s"name clash: ${cls.owner} defines $cls" + "\n" +
-                    s"and its companion ${cls.owner.companionModule} also defines $other",
-                    cls.pos)
-      }
-
-    /** Expand all declarations in this class which are private within a class.
-     *  Note: It's not sure whether this is the right way. Persumably, we expand
-     *  qualified privates to prvent them from overriding or be overridden by
-     *  symbols that are defined in classes where the qualified private is not
-     *  visible. But it seems a bit dubiuous to do this between type checking
-     *  and refchecks.
-     */
-    def expandQualifiedPrivates(cls: ClassSymbol)(implicit ctx: Context) = {
-      val decls = cls.info.decls
-      val decls1: MutableScope = newScope
-      def needsExpansion(sym: Symbol) =
-        sym.privateWithin.isClass &&
-          !(sym is Protected) &&
-          !(sym.privateWithin is ModuleClass) &&
-          !(sym is ExpandedName) &&
-          !sym.isConstructor
-      val nextCtx = ctx.withPhase(thisTransformer.next)
-      for (s <- decls) {
-        // !!! hacky to do this by mutation; would be better to do with an infotransformer
-        // !!! also, why is this done before pickling?
-        if (needsExpansion(s)) {
-          ctx.deprecationWarning(s"private qualified with a class has been deprecated, use package enclosing ${s.privateWithin} instead", s.pos)
-          /* disabled for now
-          decls.openForMutations.unlink(s)
-          s.copySymDenotation(name = s.name.expandedName(s.privateWithin))
-            .installAfter(thisTransformer)
-          decls1.enter(s)(nextCtx)
-          ctx.log(i"Expanded ${s.name}, ${s.name(nextCtx)}, sym")
-          */
-        }
-      }
-      /* Disabled for now:
-      if (decls1.nonEmpty) {
-        for (s <- decls)
-          if (!needsExpansion(s)) decls1.enter(s)(nextCtx)
-        val ClassInfo(pre, _, ps, _, selfInfo) = cls.classInfo
-        cls.copySymDenotation(info = ClassInfo(pre, cls, ps, decls1, selfInfo))
-          .installAfter(thisTransformer)
-      }
-      */
-    }
-
-    private def transformSuperSelect(sel: Select)(implicit ctx: Context): Tree = {
+   private def transformSuperSelect(sel: Select)(implicit ctx: Context): Tree = {
       val Select(sup @ Super(_, mix), name) = sel
       val sym   = sel.symbol
       assert(sup.symbol.exists, s"missing symbol in $sel: ${sup.tpe}")
@@ -216,12 +159,6 @@ class SuperAccessors extends MacroTransform
         // TODO Query `ctx.mode is Pattern` instead.
         case CaseDef(pat, guard, body) =>
           cpy.CaseDef(tree)(pat, transform(guard), transform(body))
-
-        case TypeDef(_, impl: Template) =>
-          val cls = sym.asClass
-          checkCompanionNameClashes(cls)
-          expandQualifiedPrivates(cls)
-          super.transform(tree)
 
         case impl: Template =>
 

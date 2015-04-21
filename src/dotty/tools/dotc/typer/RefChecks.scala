@@ -82,6 +82,18 @@ object RefChecks {
     case _ =>
   }
 
+  /** Check that a class and its companion object to not both define
+   *  a class or module with same name
+   */
+  private def checkCompanionNameClashes(cls: Symbol)(implicit ctx: Context): Unit =
+    if (!(cls.owner is ModuleClass)) {
+      val other = cls.owner.linkedClass.info.decl(cls.name)
+      if (other.symbol.isClass)
+        ctx.error(s"name clash: ${cls.owner} defines $cls" + "\n" +
+          s"and its companion ${cls.owner.companionModule} also defines $other",
+          cls.pos)
+    }
+
   // Override checking ------------------------------------------------------------
 
   /** 1. Check all members of class `clazz` for overriding conditions.
@@ -690,6 +702,7 @@ import RefChecks._
  *  - any value classes conform to rules laid down by `checkAnyValSubClass`.
  *  - this(...) constructor calls do not forward reference other definitions in their block (not even lazy vals).
  *  - no forward reference in a local block jumps over a non-lazy val definition.
+ *  - a class and its companion object do not both define a class or module with the same name.
  *
  *  2. It warns about references to symbols labeled deprecated or migration.
 
@@ -782,6 +795,7 @@ class RefChecks extends MiniPhase with SymTransformer { thisTransformer =>
       val cls = ctx.owner
       checkOverloadedRestrictions(cls)
       checkSelfType(cls)
+      checkCompanionNameClashes(cls)
       checkAllOverrides(cls)
       checkAnyValSubclass(cls)
       tree
