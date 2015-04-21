@@ -155,11 +155,6 @@ class SuperAccessors extends MacroTransform
         else tree
 
       try tree match {
-        // Don't transform patterns or strange trees will reach the matcher (ticket #4062)
-        // TODO Query `ctx.mode is Pattern` instead.
-        case CaseDef(pat, guard, body) =>
-          cpy.CaseDef(tree)(pat, transform(guard), transform(body))
-
         case impl: Template =>
 
           def transformTemplate = {
