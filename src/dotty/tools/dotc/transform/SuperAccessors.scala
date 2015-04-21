@@ -49,7 +49,9 @@ import Symbols._, TypeUtils._
  *
  *  TODO: Rename phase to "Accessors" because it handles more than just super accessors
  */
-class SuperAccessors extends MacroTransform with IdentityDenotTransformer { thisTransformer =>
+class SuperAccessors extends MacroTransform 
+                        with IdentityDenotTransformer 
+                        with ForwardParamAccessors { thisTransformer =>
 
   import tpd._
 
@@ -71,17 +73,6 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
 
     private val accDefs = mutable.Map[Symbol, ListBuffer[Tree]]()
 
-    private def storeAccessorDefinition(clazz: Symbol, tree: Tree) = {
-      val buf = accDefs.getOrElse(clazz, sys.error("no acc def buf for " + clazz))
-      buf += tree
-    }
-
-    /** Turn types which are not methodic into ExprTypes. */
-    private def ensureMethodic(tpe: Type)(implicit ctx: Context) = tpe match {
-      case tpe: MethodicType => tpe
-      case _ => ExprType(tpe)
-    }
-
     private def ensureAccessor(sel: Select)(implicit ctx: Context) = {
       val Select(qual, name) = sel
       val sym                = sel.symbol
@@ -97,7 +88,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
         // Diagnostic for SI-7091
         if (!accDefs.contains(clazz))
           ctx.error(s"Internal error: unable to store accessor definition in ${clazz}. clazz.hasPackageFlag=${clazz is Package}. Accessor required for ${sel} (${sel.show})", sel.pos)
-        else storeAccessorDefinition(clazz, DefDef(acc, EmptyTree))
+        else accDefs(clazz) += DefDef(acc, EmptyTree)
         acc
       }
 
@@ -234,63 +225,6 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
 
         case impl: Template =>
 
-          /** For all parameter accessors
-           *
-           *      val x: T = ...
-           *
-           *  if
-           *  (1) x is forwarded in the supercall to a parameter that's also named `x`
-           *  (2) the superclass parameter accessor for `x` is accessible from the current class to
-           *  change the accessor to
-           *
-           *      def x: T = super.x.asInstanceOf[T]
-           *
-           *  Do the same also if there are intermediate inaccessible parameter accessor forwarders.
-           *  The aim of this transformation is to avoid redundant parameter accessor fields.
-           */
-          def forwardParamAccessors(stats: List[Tree]): List[Tree] = {
-            val (superArgs, superParamNames) = impl.parents match {
-              case superCall @ Apply(fn, args) :: _ =>
-                fn.tpe.widen match {
-                  case MethodType(paramNames, _) => (args, paramNames)
-                  case _ => (Nil, Nil)
-                }
-              case _ => (Nil, Nil)
-            }
-            def inheritedAccessor(sym: Symbol): Symbol = {
-              val candidate = sym.owner.asClass.superClass
-                .info.decl(sym.name).suchThat(_ is (ParamAccessor, butNot = Mutable)).symbol
-              if (candidate.isAccessibleFrom(currentClass.thisType, superAccess = true)) candidate
-              else if (candidate is Method) inheritedAccessor(candidate)
-              else NoSymbol
-            }
-            def forwardParamAccessor(stat: Tree): Tree = {
-              stat match {
-                case stat: ValDef =>
-                  val sym = stat.symbol.asTerm
-                  if (sym is (PrivateLocalParamAccessor, butNot = Mutable)) {
-                    val idx = superArgs.indexWhere(_.symbol == sym)
-                    if (idx >= 0 && superParamNames(idx) == stat.name) { // supercall to like-named parameter
-                      val alias = inheritedAccessor(sym)
-                      if (alias.exists) {
-                        def forwarder(implicit ctx: Context) = {
-                          sym.copySymDenotation(initFlags = sym.flags | Method, info = sym.info.ensureMethodic)
-                            .installAfter(thisTransformer)
-                          val superAcc =
-                            Super(This(currentClass), tpnme.EMPTY, inConstrCall = false).select(alias)
-                          DefDef(sym, superAcc.ensureConforms(sym.info.widen))
-                        }
-                        return forwarder(ctx.withPhase(thisTransformer.next))
-                      }
-                    }
-                  }
-                case _ =>
-              }
-              stat
-            }
-            stats map forwardParamAccessor
-          }
-
           def transformTemplate = {
             val ownStats = new ListBuffer[Tree]
             accDefs(currentClass) = ownStats
@@ -298,16 +232,16 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
             // that order is stable under pickling/unpickling)
             val (params, rest) = impl.body span {
               case td: TypeDef => !td.isClassDef
-              case vd: ValOrDefDef => vd.symbol.flags is ParamAccessor
+              case vd: ValOrDefDef => vd.symbol is ParamAccessor
               case _ => false
             }
             ownStats ++= params
-            val rest1 = forwardParamAccessors(transformStats(rest, tree.symbol))
+            val rest1 = transformStats(rest, tree.symbol)
             accDefs -= currentClass
             ownStats ++= rest1
             cpy.Template(impl)(body = ownStats.toList)
           }
-          transformTemplate
+          forwardParamAccessors(transformTemplate)
 
         case TypeApply(sel @ Select(This(_), name), args) =>
           mayNeedProtectedAccessor(sel, args, goToSuper = false)
@@ -460,7 +394,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
           (base /: vrefss)(Apply(_, _))
         })
         ctx.debuglog("created protected accessor: " + code)
-        storeAccessorDefinition(clazz, code)
+        accDefs(clazz) += code
         newAcc
       }
       val res = This(clazz)
@@ -491,7 +425,7 @@ class SuperAccessors extends MacroTransform with IdentityDenotTransformer { this
           Assign(receiver.select(field), value).withPos(tree.pos)
         })
         ctx.debuglog("created protected setter: " + code)
-        storeAccessorDefinition(clazz, code)
+        accDefs(clazz) += code
         newAcc
       }
       This(clazz).select(protectedAccessor).withPos(tree.pos)
