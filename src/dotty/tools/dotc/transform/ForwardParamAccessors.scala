@@ -25,7 +25,7 @@ trait ForwardParamAccessors extends DenotTransformer { thisTransformer: MacroTra
   def currentClass(implicit ctx: Context) = ctx.owner.enclosingClass.asClass
 
   def forwardParamAccessors(impl: Template)(implicit ctx: Context): Template = {
-    def fwd(stats: List[Tree]): List[Tree] = {
+    def fwd(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
       val (superArgs, superParamNames) = impl.parents match {
         case superCall @ Apply(fn, args) :: _ =>
           fn.tpe.widen match {
@@ -68,6 +68,6 @@ trait ForwardParamAccessors extends DenotTransformer { thisTransformer: MacroTra
       stats map forwardParamAccessor
     }
 
-    cpy.Template(impl)(body = fwd(impl.body))
+    cpy.Template(impl)(body = fwd(impl.body)(ctx.withPhase(thisTransformer)))
   }
 }

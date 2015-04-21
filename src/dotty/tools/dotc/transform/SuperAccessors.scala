@@ -55,18 +55,36 @@ class SuperAccessors extends MacroTransform
   /** the following two members override abstract members in Transform */
   override def phaseName: String = "superaccessors"
 
+  override def transformPhase(implicit ctx: Context) = thisTransformer.next
+
   protected def newTransformer(implicit ctx: Context): Transformer =
     new SuperAccTransformer
 
   class SuperAccTransformer extends Transformer {
 
-    /** validCurrentOwner arrives undocumented, but I reverse engineer it to be
-     *  a flag for needsProtectedAccessor which is false while transforming either
-     *  a by-name argument block or a closure.  This excludes them from being
-     *  considered able to access protected members via subclassing (why?) which in turn
-     *  increases the frequency with which needsProtectedAccessor will be true.
+    /** Some parts of trees will get a new owner in subsequent phases.
+     *  These are value class methods, which will become extension methods.
+     *  (By-name arguments used to be included also, but these
+     *  don't get a new class anymore, they are just wrapped in a new method).
+     *  
+     *  These regions will have to be treated specially for the purpose
+     *  of adding accessors. For instance, super calls from these regions
+     *  always have to go through an accessor.
+     *  
+     *  The `invalidOwner` field, if different from NoSymbol,
+     *  contains the symbol that is not a valid owner.
      */
-    private var validCurrentOwner = true
+    private var invalidEnclClass: Symbol = NoSymbol
+
+    private def withInvalidCurrentClass[A](trans: => A)(implicit ctx: Context): A = {
+      val saved = invalidEnclClass
+      invalidEnclClass = ctx.owner
+      try trans
+      finally invalidEnclClass = saved
+    }
+    
+    private def validCurrentClass(implicit ctx: Context): Boolean = 
+      ctx.owner.enclosingClass != invalidEnclClass
 
     private val accDefs = mutable.Map[Symbol, ListBuffer[Tree]]()
 
@@ -92,15 +110,7 @@ class SuperAccessors extends MacroTransform
       This(clazz).select(superAcc).withPos(sel.pos)
     }
 
-    private def transformArgs(formals: List[Type], args: List[Tree])(implicit ctx: Context) =
-      args.zipWithConserve(formals) {(arg, formal) =>
-        formal match {
-          case _: ExprType => withInvalidOwner(transform(arg))
-          case _ => transform(arg)
-        }
-      }
-
-   private def transformSuperSelect(sel: Select)(implicit ctx: Context): Tree = {
+  private def transformSuperSelect(sel: Select)(implicit ctx: Context): Tree = {
       val Select(sup @ Super(_, mix), name) = sel
       val sym   = sel.symbol
       assert(sup.symbol.exists, s"missing symbol in $sel: ${sup.tpe}")
@@ -126,7 +136,7 @@ class SuperAccessors extends MacroTransform
 
         }
       if (name.isTermName && mix == tpnme.EMPTY &&
-          ((clazz is Trait) || clazz != ctx.owner.enclosingClass || !validCurrentOwner))
+          ((clazz is Trait) || clazz != ctx.owner.enclosingClass || !validCurrentClass))
         ensureAccessor(sel)(ctx.withPhase(thisTransformer.next))
       else sel
     }
@@ -246,7 +256,7 @@ class SuperAccessors extends MacroTransform
 
         case tree: DefDef =>
           cpy.DefDef(tree)(
-            rhs = if (isMethodWithExtension(sym)) withInvalidOwner(transform(tree.rhs)) else transform(tree.rhs))
+            rhs = if (isMethodWithExtension(sym)) withInvalidCurrentClass(transform(tree.rhs)) else transform(tree.rhs))
 
         case TypeApply(sel @ Select(qual, name), args) =>
           mayNeedProtectedAccessor(sel, args, goToSuper = true)
@@ -265,12 +275,6 @@ class SuperAccessors extends MacroTransform
           }
           transformAssign
 
-        case Apply(fn, args) =>
-          val MethodType(_, formals) = fn.tpe.widen
-          ctx.atPhase(thisTransformer.next) { implicit ctx =>
-            cpy.Apply(tree)(transform(fn), transformArgs(formals, args))
-          }
-
         case _ =>
           super.transform(tree)
       }
@@ -282,13 +286,6 @@ class SuperAccessors extends MacroTransform
           Console.println("TREE: " + tree)
           throw ex
       }
-    }
-
-    private def withInvalidOwner[A](trans: => A): A = {
-      val saved = validCurrentOwner
-      validCurrentOwner = false
-      try trans
-      finally validCurrentOwner = saved
     }
 
     /** Add a protected accessor, if needed, and return a tree that calls
@@ -382,7 +379,7 @@ class SuperAccessors extends MacroTransform
       val host = hostForAccessorOf(sym, clazz)
       val selfType = host.classInfo.selfType
       def accessibleThroughSubclassing =
-        validCurrentOwner && (selfType <:< sym.owner.typeRef) && !clazz.is(Trait)
+        validCurrentClass && (selfType <:< sym.owner.typeRef) && !clazz.is(Trait)
 
       val isCandidate = (
            sym.is(Protected)
