@@ -481,6 +481,58 @@ object Erasure extends TypeTestsCasts{
       super.typedDefDef(ddef1, sym)
     }
 
+    /** After erasure, we may have to replace the closure method by a bridge.
+     *  LambdaMetaFactory handles this automatically for most types, but we have
+     *  to deal with boxing and unboxing of value classes ourselves.
+     */
+    override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = {
+      val implClosure @ Closure(_, meth, _) = super.typedClosure(tree, pt)
+      implClosure.tpe match {
+        case SAMType(sam) =>
+          val implType = meth.tpe.widen
+
+          val List(implParamTypes) = implType.paramTypess
+          val List(samParamTypes) = sam.info.paramTypess
+          val implResultType = implType.resultType
+          val samResultType = sam.info.resultType
+
+          // Given a value class V with an underlying type U, the following code:
+          //   val f: Function1[V, V] = x => ...
+          // results in the creation of a closure and a method:
+          //   def $anonfun(v1: V): V = ...
+          //   val f: Function1[V, V] = closure($anonfun)
+          // After [[Erasure]] this method will look like:
+          //   def $anonfun(v1: ErasedValueType(V, U)): ErasedValueType(V, U) = ...
+          // And after [[ElimErasedValueType]] it will look like:
+          //   def $anonfun(v1: U): U = ...
+          // This method does not implement the SAM of Function1[V, V] anymore and
+          // needs to be replaced by a bridge:
+          //   def $anonfun$2(v1: V): V = new V($anonfun(v1.underlying))
+          //   val f: Function1 = closure($anonfun$2)
+          // In general, a bridge is needed when the signature of the closure method after
+          // Erasure contains an ErasedValueType but the corresponding type in the functional
+          // interface is not an ErasedValueType.
+          val bridgeNeeded =
+            (implResultType :: implParamTypes, samResultType :: samParamTypes).zipped.forall(
+              (implType, samType) => implType.isErasedValueType && !samType.isErasedValueType
+            )
+
+          if (bridgeNeeded) {
+            val bridge = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Flags.Synthetic | Flags.Method, sam.info)
+            val bridgeCtx = ctx.withOwner(bridge)
+            Closure(bridge, bridgeParamss => {
+              implicit val ctx: Context = bridgeCtx
+
+              val List(bridgeParams) = bridgeParamss
+              val rhs = Apply(meth, (bridgeParams, implParamTypes).zipped.map(adapt(_, _)))
+              adapt(rhs, sam.info.resultType)
+            })
+          } else implClosure
+        case _ =>
+          implClosure
+      }
+    }
+
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) =
       EmptyTree
 
