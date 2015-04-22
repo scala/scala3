@@ -23,7 +23,9 @@ import Symbols._, TypeUtils._
  *      field (corresponding = super class field is initialized with subclass field)
  *      (@see ForwardParamAccessors)
  *      
- *  (3) Check that `New` nodes can be instantiated, and that annotations are valid
+ *  (3) Add synthetic methods (@see SyntheticMethods)
+ *      
+ *  (4) Check that `New` nodes can be instantiated, and that annotations are valid
  *  
  *  The reason for making this a macro transform is that some functions (in particular
  *  super and protected accessors and instantiation checks) are naturally top-down and
@@ -46,7 +48,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     
   val superAcc = new SuperAccessors(thisTransformer)
   val paramFwd = new ParamForwarding(thisTransformer)
-
+  val synthMth = new SyntheticMethods(thisTransformer)
+  
   /** Check that `tp` refers to a nonAbstract class
    *  and that the instance conforms to the self type of the created class.
    */
@@ -99,9 +102,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           val saved = parentNews
           parentNews ++= impl.parents.flatMap(newPart)
           try 
-            paramFwd.forwardParamAccessors(
-              superAcc.wrapTemplate(impl)(
-                super.transform(_).asInstanceOf[Template]))
+            synthMth.addSyntheticMethods(
+              paramFwd.forwardParamAccessors(
+                superAcc.wrapTemplate(impl)(
+                  super.transform(_).asInstanceOf[Template])))
           finally parentNews = saved
         case tree @ TypeApply(sel: Select, args) =>
           val args1 = transform(args)
