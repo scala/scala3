@@ -39,7 +39,6 @@ class Compiler {
     List(
       List(new FrontEnd),
       List(new PostTyper),
-      List(new InstChecks),
       List(new FirstTransform,
            new SyntheticMethods),
       List(new Pickler), // Pickler needs to come last in a group since it should not pickle trees generated later
