@@ -5,7 +5,6 @@ import dotty.tools.dotc.transform.TreeTransforms.{TransformerInfo, TreeTransform
 import dotty.tools.dotc.ast.{Trees, tpd}
 import scala.collection.{ mutable, immutable }
 import ValueClasses._
-import mutable.ListBuffer
 import scala.annotation.tailrec
 import core._
 import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
@@ -14,22 +13,13 @@ import util.Positions._
 import Decorators._
 import Symbols._, TypeUtils._
 
-/** This phase performs the following functions, each of which could be split out in a
- *  mini-phase:
+/** This class performs the following functions:
  *
  *  (1) Adds super accessors for all super calls that either
  *  appear in a trait or have as a target a member of some outer class.
  *
- *  (2) Converts parameter fields that have the same name as a corresponding
- *  public parameter field in a superclass to a forwarder to the superclass
- *  field (corresponding = super class field is initialized with subclass field)
- *
- *  (3) Adds protected accessors if the access to the protected member happens
+ *  (2) Adds protected accessors if the access to the protected member happens
  *  in a class which is not a subclass of the member's owner.
- *
- *  (4) Finally, the phase used to mangle the names of class-members which are
- *  private up to an enclosing non-package class, in order to avoid overriding conflicts.
- *  This is currently disabled, and class-qualified private is deprecated.
  *
  *  It also checks that:
  *
@@ -43,24 +33,11 @@ import Symbols._, TypeUtils._
  *  (3) Super calls do not go to some synthetic members of Any (see isDisallowed)
  *
  *  (4) Super calls do not go to synthetic field accessors
- *
- *  TODO: Rename phase to "Accessors" because it handles more than just super accessors
  */
-class SuperAccessors extends MacroTransform 
-                        with IdentityDenotTransformer 
-                        with ForwardParamAccessors { thisTransformer =>
+class SuperAccessors(thisTransformer: DenotTransformer) {
 
   import tpd._
 
-  /** the following two members override abstract members in Transform */
-  override def phaseName: String = "superaccessors"
-
-  override def transformPhase(implicit ctx: Context) = thisTransformer.next
-
-  protected def newTransformer(implicit ctx: Context): Transformer =
-    new SuperAccTransformer
-
-  class SuperAccTransformer extends Transformer {
 
     /** Some parts of trees will get a new owner in subsequent phases.
      *  These are value class methods, which will become extension methods.
@@ -85,14 +62,16 @@ class SuperAccessors extends MacroTransform
     
     private def validCurrentClass(implicit ctx: Context): Boolean = 
       ctx.owner.enclosingClass != invalidEnclClass
+        
+    /** List buffers for new accessor definitions, indexed by class */
+    private val accDefs = mutable.Map[Symbol, mutable.ListBuffer[Tree]]()
 
-    private val accDefs = mutable.Map[Symbol, ListBuffer[Tree]]()
-
-    private def ensureAccessor(sel: Select)(implicit ctx: Context) = {
+    /** A super accessor call corresponding to `sel` */
+    private def superAccessorCall(sel: Select)(implicit ctx: Context) = {
       val Select(qual, name) = sel
-      val sym                = sel.symbol
-      val clazz              = qual.symbol.asClass
-      val supername          = name.superName
+      val sym = sel.symbol
+      val clazz = qual.symbol.asClass
+      val supername = name.superName
 
       val superAcc = clazz.info.decl(supername).suchThat(_.signature == sym.signature).symbol orElse {
         ctx.debuglog(s"add super acc ${sym.showLocated} to $clazz")
@@ -110,13 +89,20 @@ class SuperAccessors extends MacroTransform
       This(clazz).select(superAcc).withPos(sel.pos)
     }
 
-  private def transformSuperSelect(sel: Select)(implicit ctx: Context): Tree = {
+    /** Check selection `super.f` for conforming to rules. If necessary,
+     *  replace by a super accessor call.
+     */
+    private def transformSuperSelect(sel: Select)(implicit ctx: Context): Tree = {
       val Select(sup @ Super(_, mix), name) = sel
       val sym   = sel.symbol
       assert(sup.symbol.exists, s"missing symbol in $sel: ${sup.tpe}")
       val clazz = sup.symbol.asClass
 
-      if (sym is Deferred) {
+      if ((sym.isTerm) && !(sym is Method) || (sym is Accessor))
+        ctx.error(s"super may be not be used on ${sym.underlyingSymbol}", sel.pos)
+      else if (isDisallowed(sym))
+        ctx.error(s"super not allowed here: use this.${sel.name.decode} instead", sel.pos)
+      else if (sym is Deferred) {
         val member = sym.overridingSymbol(clazz)
         if (mix != tpnme.EMPTY ||
             !member.exists ||
@@ -137,12 +123,13 @@ class SuperAccessors extends MacroTransform
         }
       if (name.isTermName && mix == tpnme.EMPTY &&
           ((clazz is Trait) || clazz != ctx.owner.enclosingClass || !validCurrentClass))
-        ensureAccessor(sel)(ctx.withPhase(thisTransformer.next))
+        superAccessorCall(sel)(ctx.withPhase(thisTransformer.next))
       else sel
     }
 
-    // Disallow some super.XX calls targeting Any methods which would
-    // otherwise lead to either a compiler crash or runtime failure.
+    /** Disallow some super.XX calls targeting Any methods which would
+     *  otherwise lead to either a compiler crash or runtime failure.
+     */
     private def isDisallowed(sym: Symbol)(implicit ctx: Context) = {
       val d = defn
       import d._
@@ -153,147 +140,81 @@ class SuperAccessors extends MacroTransform
       (sym eq Any_##)
     }
 
-    override def transform(tree: Tree)(implicit ctx: Context): Tree = {
-      val sym = tree.symbol
-
-      def mayNeedProtectedAccessor(sel: Select, targs: List[Tree], goToSuper: Boolean) =
-        if (sym.exists && needsProtectedAccessor(sym, tree.pos)) {
-          ctx.debuglog("Adding protected accessor for " + tree)
-          transform(makeAccessor(sel, targs))
-        }
-        else if (goToSuper) super.transform(tree)(ctx.withPhase(thisTransformer.next))
-        else tree
-
-      try tree match {
-        case impl: Template =>
-
-          def transformTemplate = {
-            val ownStats = new ListBuffer[Tree]
-            accDefs(currentClass) = ownStats
-            // write super accessors after parameters and type aliases (so
-            // that order is stable under pickling/unpickling)
-            val (params, rest) = impl.body span {
-              case td: TypeDef => !td.isClassDef
-              case vd: ValOrDefDef => vd.symbol is ParamAccessor
-              case _ => false
-            }
-            ownStats ++= params
-            val rest1 = transformStats(rest, tree.symbol)
-            accDefs -= currentClass
-            ownStats ++= rest1
-            cpy.Template(impl)(body = ownStats.toList)
-          }
-          forwardParamAccessors(transformTemplate)
-
-        case TypeApply(sel @ Select(This(_), name), args) =>
-          mayNeedProtectedAccessor(sel, args, goToSuper = false)
-
-        case sel @ Select(qual, name) =>
-          def transformSelect = {
-
-            qual match {
-              case This(_) =>
-                // warn if they are selecting a private[this] member which
-                // also exists in a superclass, because they may be surprised
-                // to find out that a constructor parameter will shadow a
-                // field. See SI-4762.
-                /* to be added
-                if (settings.lint) {
-                  if (sym.isPrivateLocal && sym.paramss.isEmpty) {
-                    qual.symbol.ancestors foreach { parent =>
-                      parent.info.decls filterNot (x => x.isPrivate || x.isLocalToThis) foreach { m2 =>
-                        if (sym.name == m2.name && m2.isGetter && m2.accessed.isMutable) {
-                          unit.warning(sel.pos,
-                            sym.accessString + " " + sym.fullLocationString + " shadows mutable " + m2.name
-                              + " inherited from " + m2.owner + ".  Changes to " + m2.name + " will not be visible within "
-                              + sym.owner + " - you may want to give them distinct names.")
-                        }
-                      }
-                    }
-                  }
-                }
-                */
-
-                /*
-                 * A trait which extends a class and accesses a protected member
-                 *  of that class cannot implement the necessary accessor method
-                 *  because its implementation is in an implementation class (e.g.
-                 *  Foo$class) which inherits nothing, and jvm access restrictions
-                 *  require the call site to be in an actual subclass. So non-trait
-                 *  classes inspect their ancestors for any such situations and
-                 *  generate the accessors.  See SI-2296.
-                 */
-                // FIXME - this should be unified with needsProtectedAccessor, but some
-                // subtlety which presently eludes me is foiling my attempts.
-                val shouldEnsureAccessor = (
-                  (currentClass is Trait)
-                  && (sym is Protected)
-                  && sym.enclosingClass != currentClass
-                  && !(sym.owner is PackageClass) // SI-7091 no accessor needed package owned (ie, top level) symbols
-                  && !(sym.owner is Trait)
-                  && sym.owner.enclosingPackageClass != currentClass.enclosingPackageClass
-                  && qual.symbol.info.member(sym.name).exists
-                  && !needsProtectedAccessor(sym, tree.pos))
-                if (shouldEnsureAccessor) {
-                  ctx.log("Ensuring accessor for call to protected " + sym.showLocated + " from " + currentClass)
-                  ensureAccessor(sel)
-                } else
-                  mayNeedProtectedAccessor(sel, Nil, goToSuper = false)
-
-              case Super(_, mix) =>
-                if ((sym.isTerm) && !(sym is Method) || (sym is Accessor)) {
-                  ctx.error(s"super may be not be used on ${sym.underlyingSymbol}", tree.pos)
-                } else if (isDisallowed(sym)) {
-                  ctx.error(s"super not allowed here: use this.${name.decode} instead", tree.pos)
-                }
-                transformSuperSelect(sel)
-
-              case _ =>
-                mayNeedProtectedAccessor(sel, Nil, goToSuper = true)
-            }
-          }
-          transformSelect
-
-        case tree: DefDef =>
-          cpy.DefDef(tree)(
-            rhs = if (isMethodWithExtension(sym)) withInvalidCurrentClass(transform(tree.rhs)) else transform(tree.rhs))
-
-        case TypeApply(sel @ Select(qual, name), args) =>
-          mayNeedProtectedAccessor(sel, args, goToSuper = true)
-
-        case Assign(lhs @ Select(qual, name), rhs) =>
-          def transformAssign = {
-            if ((lhs.symbol is Mutable) &&
-              (lhs.symbol is JavaDefined) &&
-              needsProtectedAccessor(lhs.symbol, tree.pos)) {
-              ctx.debuglog("Adding protected setter for " + tree)
-              val setter = makeSetter(lhs)
-              ctx.debuglog("Replaced " + tree + " with " + setter)
-              transform(Apply(setter, qual :: rhs :: Nil))
-            } else
-              super.transform(tree)
-          }
-          transformAssign
-
-        case _ =>
-          super.transform(tree)
-      }
-      catch {
-        case ex : AssertionError =>
-          if (sym != null && sym != NoSymbol)
-            Console.println("TRANSFORM: " + tree.symbol.sourceFile)
-
-          Console.println("TREE: " + tree)
-          throw ex
-      }
+    /** Replace `sel` (or `sel[targs]` if `targs` is nonempty) with a protected accessor 
+     *  call, if necessary.
+     */
+    private def ensureProtectedAccessOK(sel: Select, targs: List[Tree])(implicit ctx: Context) = {
+      val sym = sel.symbol
+      if (sym.exists && needsProtectedAccessor(sym, sel.pos)) {
+        ctx.debuglog("Adding protected accessor for " + sel)
+        protectedAccessorCall(sel, targs)
+      } else sel
     }
 
     /** Add a protected accessor, if needed, and return a tree that calls
      *  the accessor and returns the same member. The result is already
      *  typed.
-     *  TODO why is targs needed? It looks like we can do without.
      */
-    private def makeAccessor(tree: Select, targs: List[Tree])(implicit ctx: Context): Tree = {
+    private def protectedAccessorCall(sel: Select, targs: List[Tree])(implicit ctx: Context): Tree = {
+      val Select(qual, _) = sel
+      val sym = sel.symbol.asTerm
+      val clazz = hostForAccessorOf(sym, currentClass)
+      assert(clazz.exists, sym)
+      ctx.debuglog("Decided for host class: " + clazz)
+
+      val accName = sym.name.protectedAccessorName
+
+      def isThisType(tpe: Type): Boolean = tpe match {
+        case tpe: ThisType => !tpe.cls.is(PackageClass)
+        case tpe: TypeProxy => isThisType(tpe.underlying)
+        case _ => false
+      }
+
+      // if the result type depends on the this type of an enclosing class, the accessor
+      // has to take an object of exactly this type, otherwise it's more general
+      val receiverType =
+        if (isThisType(sym.info.finalResultType)) clazz.thisType
+        else clazz.classInfo.selfType
+      val accType = {
+        def accTypeOf(tpe: Type): Type = tpe match {
+          case tpe: PolyType =>
+            tpe.derivedPolyType(tpe.paramNames, tpe.paramBounds, accTypeOf(tpe.resultType))
+          case _ =>
+            MethodType(receiverType :: Nil)(mt => tpe.substThis(sym.owner.asClass, MethodParam(mt, 0)))
+        }
+        accTypeOf(sym.info)
+      }
+      val protectedAccessor = clazz.info.decl(accName).suchThat(_.signature == accType.signature).symbol orElse {
+        val newAcc = ctx.newSymbol(
+          clazz, accName, Artifact, accType, coord = sel.pos).enteredAfter(thisTransformer)
+        val code = polyDefDef(newAcc, trefs => vrefss => {
+          val (receiver :: _) :: tail = vrefss
+          val base = receiver.select(sym).appliedToTypes(trefs)
+          (base /: vrefss)(Apply(_, _))
+        })
+        ctx.debuglog("created protected accessor: " + code)
+        accDefs(clazz) += code
+        newAcc
+      }
+      val res = This(clazz)
+        .select(protectedAccessor)
+        .appliedToTypeTrees(targs)
+        .appliedTo(qual)
+        .withPos(sel.pos)
+      ctx.debuglog(s"Replaced $sel with $res")
+      res
+    }
+    
+    def isProtectedAccessor(tree: Tree)(implicit ctx: Context): Boolean = tree match {
+      case Apply(TypeApply(Select(_, name), _), qual :: Nil) => name.isProtectedAccessorName
+      case _ => false
+    }
+    
+    /** Add a protected accessor, if needed, and return a tree that calls
+     *  the accessor and returns the same member. The result is already
+     *  typed.
+     */
+    private def protectedAccessor(tree: Select, targs: List[Tree])(implicit ctx: Context): Tree = {
       val Select(qual, _) = tree
       val sym = tree.symbol.asTerm
       val clazz = hostForAccessorOf(sym, currentClass)
@@ -304,16 +225,16 @@ class SuperAccessors extends MacroTransform
 
       // if the result type depends on the this type of an enclosing class, the accessor
       // has to take an object of exactly this type, otherwise it's more general
-      val receiverType = if (isThisType(sym.info.finalResultType)) clazz.thisType else clazz.classInfo.selfType
-      val accType = {
-        def accTypeOf(tpe: Type): Type = tpe match {
-          case tpe: PolyType =>
-            tpe.derivedPolyType(tpe.paramNames, tpe.paramBounds, accTypeOf(tpe.resultType))
-          case _ =>
-            MethodType(receiverType :: Nil)(mt => tpe.substThis(sym.owner.asClass, MethodParam(mt, 0)))
-        }
-        accTypeOf(sym.info)
+      val receiverType = 
+        if (isThisType(sym.info.finalResultType)) clazz.thisType 
+        else clazz.classInfo.selfType
+      def accTypeOf(tpe: Type): Type = tpe match {
+        case tpe: PolyType =>
+          tpe.derivedPolyType(tpe.paramNames, tpe.paramBounds, accTypeOf(tpe.resultType))
+        case _ =>
+          MethodType(receiverType :: Nil)(mt => tpe.substThis(sym.owner.asClass, MethodParam(mt, 0)))
       }
+      val accType = accTypeOf(sym.info)
       val protectedAccessor = clazz.info.decl(accName).suchThat(_.signature == accType.signature).symbol orElse {
         val newAcc = ctx.newSymbol(
             clazz, accName, Artifact, accType, coord = tree.pos).enteredAfter(thisTransformer)
@@ -338,7 +259,7 @@ class SuperAccessors extends MacroTransform
     /** Add an accessor for field, if needed, and return a selection tree for it .
      *  The result is not typed.
      */
-    private def makeSetter(tree: Select)(implicit ctx: Context): Tree = {
+    private def protectedSetter(tree: Select)(implicit ctx: Context): Tree = {
       val field = tree.symbol.asTerm
       val clazz = hostForAccessorOf(field, currentClass)
       assert(clazz.exists, field)
@@ -422,11 +343,85 @@ class SuperAccessors extends MacroTransform
       else
         referencingClass
 
-    /** Is 'tpe' the type of a member of an enclosing class? */
+    /** Is 'tpe' a ThisType, or a type proxy with a ThisType as transitively underlying type? */
     private def isThisType(tpe: Type)(implicit ctx: Context): Boolean = tpe match {
       case tpe: ThisType => !tpe.cls.is(PackageClass)
       case tpe: TypeProxy => isThisType(tpe.underlying)
       case _ => false
     }
-  }
+
+    /** Transform select node, adding super and protected accessors as needed */
+    def transformSelect(tree: Tree, targs: List[Tree])(implicit ctx: Context) = {
+      val sel @ Select(qual, name) = tree
+      val sym = sel.symbol
+      qual match {
+        case _: This =>
+          /*
+           * A trait which extends a class and accesses a protected member
+           *  of that class cannot implement the necessary accessor method
+           *  because its implementation is in an implementation class (e.g.
+           *  Foo$class) which inherits nothing, and jvm access restrictions
+           *  require the call site to be in an actual subclass. So non-trait
+           *  classes inspect their ancestors for any such situations and
+           *  generate the accessors.  See SI-2296.
+           */
+          // FIXME (from scalac's SuperAccessors)
+          // - this should be unified with needsProtectedAccessor, but some
+          // subtlety which presently eludes me is foiling my attempts.
+          val shouldEnsureAccessor = (
+            (currentClass is Trait)
+            && (sym is Protected)
+            && sym.enclosingClass != currentClass
+            && !(sym.owner is PackageClass) // SI-7091 no accessor needed package owned (ie, top level) symbols
+            && !(sym.owner is Trait)
+            && sym.owner.enclosingPackageClass != currentClass.enclosingPackageClass
+            && qual.symbol.info.member(sym.name).exists
+            && !needsProtectedAccessor(sym, sel.pos))
+          if (shouldEnsureAccessor) {
+            ctx.log("Ensuring accessor for call to protected " + sym.showLocated + " from " + currentClass)
+            superAccessorCall(sel)
+          } else
+            ensureProtectedAccessOK(sel, targs)
+
+        case Super(_, mix) =>
+          transformSuperSelect(sel)
+
+        case _ =>
+          ensureProtectedAccessOK(sel, targs)
+      }
+    }
+
+    /** Transform assignment, adding a protected setter if needed */
+    def transformAssign(tree: Tree)(implicit ctx: Context) = {
+      val Assign(lhs @ Select(qual, name), rhs) = tree
+      if ((lhs.symbol is Mutable) &&
+        (lhs.symbol is JavaDefined) &&
+        needsProtectedAccessor(lhs.symbol, tree.pos)) {
+        ctx.debuglog("Adding protected setter for " + tree)
+        val setter = protectedSetter(lhs)
+        ctx.debuglog("Replaced " + tree + " with " + setter)
+        setter.appliedTo(qual, rhs)
+      } 
+      else tree  
+    }
+    
+    /** Wrap template to template transform `op` with needed initialization and finalization */
+    def wrapTemplate(tree: Template)(op: Template => Template)(implicit ctx: Context) = {
+      accDefs(currentClass) = new mutable.ListBuffer[Tree]
+      val impl = op(tree)
+      val accessors = accDefs.remove(currentClass).get
+      if (accessors.isEmpty) impl
+      else {
+        val (params, rest) = impl.body span {
+          case td: TypeDef => !td.isClassDef
+          case vd: ValOrDefDef => vd.symbol.flags is ParamAccessor
+          case _ => false
+        }
+        cpy.Template(impl)(body = params ++ accessors ++ rest)     
+      }
+    }
+
+    /** Wrap `DefDef` producing operation `op`, potentially setting `invalidClass` info */
+    def wrapDefDef(ddef: DefDef)(op: => DefDef)(implicit ctx: Context) =
+      if (isMethodWithExtension(ddef.symbol)) withInvalidCurrentClass(op) else op
 }

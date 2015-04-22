@@ -19,11 +19,9 @@ import Contexts._, Types._, Symbols._, Flags._, TypeUtils._, DenotTransformers._
  *  Do the same also if there are intermediate inaccessible parameter accessor forwarders.
  *  The aim of this transformation is to avoid redundant parameter accessor fields.
  */
-trait ForwardParamAccessors extends DenotTransformer { thisTransformer: MacroTransform =>
+class ParamForwarding(thisTransformer: DenotTransformer) {
   import ast.tpd._
   
-  def currentClass(implicit ctx: Context) = ctx.owner.enclosingClass.asClass
-
   def forwardParamAccessors(impl: Template)(implicit ctx: Context): Template = {
     def fwd(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
       val (superArgs, superParamNames) = impl.parents match {
