@@ -150,7 +150,8 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
     def traitInits(mixin: ClassSymbol): List[Tree] =
       for (getter <- mixin.info.decls.filter(getr => getr.isGetter && !wasDeferred(getr)).toList)
         yield {
-        DefDef(implementation(getter.asTerm), superRef(initializer(getter)).appliedToNone)
+          // transformFollowing call is needed to make memoize & lazy vals run
+        transformFollowing(DefDef(implementation(getter.asTerm), superRef(initializer(getter)).appliedToNone))
       }
 
     def setters(mixin: ClassSymbol): List[Tree] =
@@ -163,7 +164,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
         if (cls is Trait) traitDefs(impl.body)
         else {
           val mixInits = mixins.flatMap { mixin =>
-            traitInits(mixin) ::: superCallOpt(mixin) ::: setters(mixin)
+            flatten(traitInits(mixin)) ::: superCallOpt(mixin) ::: setters(mixin)
           }
           superCallOpt(superCls) ::: mixInits ::: impl.body
         })
