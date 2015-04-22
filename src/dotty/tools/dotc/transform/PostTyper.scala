@@ -8,6 +8,7 @@ import ValueClasses._
 import scala.annotation.tailrec
 import core._
 import typer.ErrorReporting._
+import typer.Checking
 import Types._, Contexts._, Constants._, Names._, NameOps._, Flags._, DenotTransformers._
 import SymDenotations._, Symbols._, StdNames._, Annotations._, Trees._, Scopes._, Denotations._
 import util.Positions._
@@ -26,6 +27,14 @@ import Symbols._, TypeUtils._
  *  (3) Add synthetic methods (@see SyntheticMethods)
  *      
  *  (4) Check that `New` nodes can be instantiated, and that annotations are valid
+ *  
+ *  (5) Convert all trees representing types to TypeTrees.
+ *  
+ *  (6) Check the bounds of AppliedTypeTrees
+ *  
+ *  (7) Insert `.package` for selections of package object members
+ *  
+ *  (8) Replaces self references by name with `this`
  *  
  *  The reason for making this a macro transform is that some functions (in particular
  *  super and protected accessors and instantiation checks) are naturally top-down and
@@ -49,24 +58,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
   val superAcc = new SuperAccessors(thisTransformer)
   val paramFwd = new ParamForwarding(thisTransformer)
   val synthMth = new SyntheticMethods(thisTransformer)
-  
-  /** Check that `tp` refers to a nonAbstract class
-   *  and that the instance conforms to the self type of the created class.
-   */
-  private def checkInstantiable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
-    tp.underlyingClassRef(refinementOK = false) match {
-      case tref: TypeRef =>
-        val cls = tref.symbol
-        if (cls.is(AbstractOrTrait))
-          ctx.error(d"$cls is abstract; cannot be instantiated", pos)
-        if (!cls.is(Module)) {
-          val selfType = tp.givenSelfType.asSeenFrom(tref.prefix, cls.owner)
-          if (selfType.exists && !(tp <:< selfType))
-            ctx.error(d"$tp does not conform to its self type $selfType; cannot be instantiated")
-        }
-      case _ =>
-    }
-  
+    
   private def newPart(tree: Tree): Option[New] = methPart(tree) match {
     case Select(nu: New, _) => Some(nu)
     case _ => None
@@ -74,6 +66,22 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
   
   private def checkValidJavaAnnotation(annot: Tree)(implicit ctx: Context): Unit = {
     // TODO fill in
+  }
+
+  private def normalizeTypeTree(tree: Tree)(implicit ctx: Context) = {
+    def norm(tree: Tree) = if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) else tree
+    tree match {
+      case tree: TypeTree =>
+        tree
+      case AppliedTypeTree(tycon, args) =>
+        val tparams = tycon.tpe.typeSymbol.typeParams
+        val bounds = tparams.map(tparam =>
+          tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
+        Checking.checkBounds(args, bounds, _.substDealias(tparams, _))
+        norm(tree)
+      case _ => 
+        norm(tree)
+    } 
   }
 
   class PostTyperTransformer extends Transformer {
@@ -96,25 +104,41 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
     private def transformAnnots(tree: MemberDef)(implicit ctx: Context): Unit =
       tree.symbol.transformAnnotations(transformAnnot)
 
+    private def transformSelect(tree: Select, targs: List[Tree])(implicit ctx: Context) = {
+      val qual = tree.qualifier
+      qual.symbol.moduleClass.denot match {
+        case pkg: PackageClassDenotation if !tree.symbol.maybeOwner.is(Package) =>
+          assert(targs.isEmpty)
+          cpy.Select(tree)(qual select pkg.packageObj.symbol, tree.name)
+        case _ =>
+          superAcc.transformSelect(super.transform(tree), targs)
+      }
+    }
+      
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
-      try tree match {
-        case impl: Template =>
+      try normalizeTypeTree(tree) match {
+        case tree: Ident =>
+          tree.tpe match {
+            case tpe: ThisType => This(tpe.cls).withPos(tree.pos)
+            case _ => tree
+          }
+        case tree: Select =>
+          transformSelect(tree, Nil)
+        case tree @ TypeApply(sel: Select, args) =>
+          val args1 = transform(args)
+          val sel1 = transformSelect(sel, args1)
+          if (superAcc.isProtectedAccessor(sel1)) sel1 else cpy.TypeApply(tree)(sel1, args1)
+        case tree @ Assign(sel: Select, _) =>
+          superAcc.transformAssign(super.transform(tree))
+        case tree: Template =>
           val saved = parentNews
-          parentNews ++= impl.parents.flatMap(newPart)
+          parentNews ++= tree.parents.flatMap(newPart)
           try 
             synthMth.addSyntheticMethods(
               paramFwd.forwardParamAccessors(
-                superAcc.wrapTemplate(impl)(
+                superAcc.wrapTemplate(tree)(
                   super.transform(_).asInstanceOf[Template])))
           finally parentNews = saved
-        case tree @ TypeApply(sel: Select, args) =>
-          val args1 = transform(args)
-          val sel1 = superAcc.transformSelect(super.transform(sel), args1)
-          if (superAcc.isProtectedAccessor(sel1)) sel1 else cpy.TypeApply(tree)(sel1, args1)
-        case sel: Select =>
-          superAcc.transformSelect(super.transform(sel), Nil)
-        case tree @ Assign(sel: Select, _) =>
-          superAcc.transformAssign(super.transform(tree))
         case tree: DefDef =>
           transformAnnots(tree)
           superAcc.wrapDefDef(tree)(super.transform(tree).asInstanceOf[DefDef])
@@ -122,9 +146,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           transformAnnots(tree)
           super.transform(tree)
         case tree: New if !inJavaAnnot && !parentNews.contains(tree) =>
-          checkInstantiable(tree.tpe, tree.pos)
+          Checking.checkInstantiable(tree.tpe, tree.pos)
           super.transform(tree)
-        case Annotated(annot, annotated) =>
+        case tree @ Annotated(annot, annotated) =>
           cpy.Annotated(tree)(transformAnnot(annot), transform(annotated))
         case tree: TypeTree =>
           tree.withType(
@@ -133,7 +157,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
               case tpe => tpe
             }
           )
-        case _ =>
+        case tree =>
           super.transform(tree)
       }
       catch {
