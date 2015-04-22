@@ -29,7 +29,6 @@ import StdNames._
  *   - inserts `.package` for selections of package object members
  *   - checks the bounds of AppliedTypeTrees
  *   - stubs out native methods
- *   - removes java-defined ASTs
  */
 class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer with AnnotationTransformer { thisTransformer =>
   import ast.tpd._
@@ -97,10 +96,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
       case stat => stat
     }
 
-    def skipJava(stats: List[Tree]): List[Tree] = // packages get a JavaDefined flag. Dont skip them
-      stats.filter(t => !(t.symbol is(Flags.JavaDefined, Flags.Package)))
-
-    addMissingCompanions(reorder(skipJava(stats)))
+    addMissingCompanions(reorder(stats))
   }
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
