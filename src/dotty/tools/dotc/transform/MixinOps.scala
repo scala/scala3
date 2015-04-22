@@ -17,7 +17,7 @@ class MixinOps(cls: ClassSymbol, thisTransform: DenotTransformer)(implicit ctx: 
     member.copy(
       owner = cls,
       name = member.name.stripScala2LocalSuffix,
-      flags = member.flags &~ Deferred &~ Module,
+      flags = member.flags &~ Deferred,
       info = cls.thisType.memberInfo(member)).enteredAfter(thisTransform).asTerm
 
   def superRef(target: Symbol, pos: Position = cls.pos): Tree = {
