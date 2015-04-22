@@ -552,13 +552,17 @@ object Symbols {
         ctx.newSymbol(owner, name, flags, info, privateWithin, coord)
   }
 
-  implicit def defn(implicit ctx: Context): Definitions = ctx.definitions
-
   /** Makes all denotation operations available on symbols */
   implicit def toDenot(sym: Symbol)(implicit ctx: Context): SymDenotation = sym.denot
 
   /** Makes all class denotations available on class symbols */
   implicit def toClassDenot(cls: ClassSymbol)(implicit ctx: Context): ClassDenotation = cls.classDenot
+
+  /** The Definitions object */
+  def defn(implicit ctx: Context): Definitions = ctx.definitions
+  
+  /** The current class */
+  def currentClass(implicit ctx: Context): ClassSymbol = ctx.owner.enclosingClass.asClass
 
   var stubs: List[Symbol] = Nil // diagnostic
 }
