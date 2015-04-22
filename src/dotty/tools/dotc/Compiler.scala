@@ -39,8 +39,8 @@ class Compiler {
     List(
       List(new FrontEnd),
       List(new PostTyper),
-      List(new FirstTransform),
       List(new Pickler),
+      List(new FirstTransform),
       List(new RefChecks,
            new ElimRepeated,
            new NormalizeFlags,
