@@ -1788,12 +1788,12 @@ object Types {
         if (false) RefinedType(parent, refinedName, refinedInfo)
         else RefinedType(parent, refinedName, rt => refinedInfo.substSkolem(this, SkolemType(rt)))
     }
-    
+
     /** Add this refinement to `parent`, provided If `refinedName` is a member of `parent`. */
     def wrapIfMember(parent: Type)(implicit ctx: Context): Type =
       if (parent.member(refinedName).exists) derivedRefinedType(parent, refinedName, refinedInfo)
       else parent
-      
+
     override def equals(that: Any) = that match {
       case that: RefinedType =>
         this.parent == that.parent &&
@@ -2414,7 +2414,7 @@ object Types {
         selfTypeCache = {
           def fullRef = fullyAppliedRef(cls.typeRef, cls.typeParams)
           val given = givenSelfType
-          val raw = 
+          val raw =
             if (!given.exists) fullRef
             else if (cls is Module) given
             else if (ctx.erasedTypes) fullRef
@@ -2423,7 +2423,7 @@ object Types {
         }
       selfTypeCache
     }
-    
+
     /** The explicitly given self type (self types of modules are assumed to be
      *  explcitly given here).
      */
