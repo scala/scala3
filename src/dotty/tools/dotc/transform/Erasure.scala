@@ -502,6 +502,8 @@ object Erasure extends TypeTestsCasts{
 
       traverse(newStats, oldStats)
     }
+    
+    private final val NoBridgeFlags = Flags.Accessor | Flags.Deferred | Flags.Lazy
 
     /** Create a bridge DefDef which overrides a parent method.
      *
@@ -520,7 +522,7 @@ object Erasure extends TypeTestsCasts{
         ???
       }
       val bridge = ctx.newSymbol(currentClass,
-        parentSym.name, parentSym.flags | Flags.Bridge, parentSym.info, coord = newDefSym.owner.coord).asTerm
+        parentSym.name, parentSym.flags &~ NoBridgeFlags | Flags.Bridge, parentSym.info, coord = newDefSym.owner.coord).asTerm
       bridge.enteredAfter(ctx.phase.prev.asInstanceOf[DenotTransformer]) // this should be safe, as we're executing in context of next phase
       ctx.debuglog(s"generating bridge from ${newDefSym} to $bridge")
 
