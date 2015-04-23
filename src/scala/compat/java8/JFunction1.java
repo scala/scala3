@@ -91,7 +91,7 @@ public interface JFunction1<T1, R> extends scala.Function1<T1, R> {
     default double apply$mcDD$sp(double v1) {
         return (Double) apply((T1) ((Double) v1));
     }
-
+    
     default scala.Function1 compose$mcVI$sp(scala.Function1 g) {
         return compose(g);
     }
@@ -164,7 +164,7 @@ public interface JFunction1<T1, R> extends scala.Function1<T1, R> {
     default scala.Function1 compose$mcDD$sp(scala.Function1 g) {
         return compose(g);
     }
-
+    
     default scala.Function1 andThen$mcVI$sp(scala.Function1 g) {
         return andThen(g);
     }

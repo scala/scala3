@@ -540,6 +540,22 @@ object StdNames {
       final val isUnary: Set[Name] = Set(MINUS, PLUS, TILDE, BANG)
     }
 
+    object specializedTypeNames {
+      final val Boolean: N = "Z"
+      final val Byte: N    = "B"
+      final val Char: N    = "C"
+      final val Short: N   = "S"
+      final val Int: N     = "I"
+      final val Long: N    = "J"
+      final val Float: N   = "F"
+      final val Double: N  = "D"
+      final val Void: N    = "V"
+      final val Object: N  = "L"
+
+      final val prefix: N = "$mc"
+      final val suffix: N = "$sp"
+    }
+
     // value-conversion methods
     val toByte: N   = "toByte"
     val toShort: N  = "toShort"
