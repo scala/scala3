@@ -171,8 +171,11 @@ class TreePickler(pickler: TastyPickler) {
           else pickleRef()
         }
       case tpe: TermRefWithSignature =>
-        writeByte(TERMREF)
-        pickleNameAndSig(tpe.name, tpe.signature); pickleType(tpe.prefix)
+        if (tpe.symbol.is(Flags.Package)) picklePackageRef(tpe.symbol)
+        else {
+          writeByte(TERMREF)
+          pickleNameAndSig(tpe.name, tpe.signature); pickleType(tpe.prefix)
+        }
       case tpe: NamedType =>
         if (tpe.name == tpnme.Apply && tpe.prefix.argInfos.nonEmpty && tpe.prefix.isInstantiatedLambda)
           // instantiated lambdas are pickled as APPLIEDTYPE; #Apply will
@@ -187,8 +190,12 @@ class TreePickler(pickler: TastyPickler) {
           pickleName(tpe.name); pickleType(tpe.prefix)
         }
       case tpe: ThisType =>
-        writeByte(THIS)
-        pickleType(tpe.tref)
+        if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot) 
+          picklePackageRef(tpe.cls)
+        else {
+          writeByte(THIS)
+          pickleType(tpe.tref)
+        }
       case tpe: SuperType =>
         writeByte(SUPERtype)
         withLength { pickleType(tpe.thistpe); pickleType(tpe.supertpe)}
@@ -252,6 +259,11 @@ class TreePickler(pickler: TastyPickler) {
       case ex: AssertionError =>
         println(i"error while pickling type $tpe")
         throw ex
+    }
+    
+    def picklePackageRef(pkg: Symbol): Unit = {
+      writeByte(TERMREFpkg)
+      pickleName(qualifiedName(pkg))
     }
 
     def pickleMethodic(result: Type, names: List[Name], types: List[Type]) =
