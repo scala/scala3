@@ -110,6 +110,7 @@ class tests extends CompilerTest {
   @Test def neg_i50_volatile = compileFile(negDir, "i50-volatile", xerrors = 6)
   @Test def neg_t0273_doubledefs = compileFile(negDir, "t0273", xerrors = 1)
   @Test def neg_zoo = compileFile(negDir, "zoo", xerrors = 12)
+  @Test def neg_sam = compileFile(negDir, "sammy_poly", xerrors = 1)
   // TODO: this test file doesn't exist (anymore?), remove?
   // @Test def neg_t1192_legalPrefix = compileFile(negDir, "t1192", xerrors = 1)
 
