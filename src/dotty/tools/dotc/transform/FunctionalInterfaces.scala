@@ -26,8 +26,8 @@ class FunctionalInterfaces extends MiniPhaseTransform {
 
   def phaseName: String = "functionalInterfaces"
 
-  var allowedReturnTypes: Set[Symbol] = _ // moved here to make it explicit what specializations are generated
-  var allowedArgumentTypes: Set[Symbol] = _
+  private var allowedReturnTypes: Set[Symbol] = _ // moved here to make it explicit what specializations are generated
+  private var allowedArgumentTypes: Set[Symbol] = _
   val maxArgsCount = 2
 
   def shouldSpecialize(m: MethodType)(implicit ctx: Context) =
