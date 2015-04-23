@@ -563,7 +563,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           loop(from.owner, from :: froms, to :: tos)
         else {
           //println(i"change owner ${from :: froms}%, % ==> $tos of $tree")
-          new TreeTypeMap(oldOwners = from :: froms, newOwners = tos).apply(tree)
+          new TreeTypeMap(oldOwners = from :: froms, newOwners = tos)(ctx.withMode(Mode.FutureDefsOK)).apply(tree)
         }
       }
       loop(from, Nil, to :: Nil)
