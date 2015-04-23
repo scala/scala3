@@ -1043,6 +1043,12 @@ object SymDenotations {
     /** Install this denotation as the result of the given denotation transformer. */
     override def installAfter(phase: DenotTransformer)(implicit ctx: Context): Unit =
       super.installAfter(phase)
+
+    /** Apply a transformation `f` to all denotations in this group that start at or after
+     *  given phase. Denotations are replaced while keeping the same validity periods.
+     */
+    override def transformAfter(phase: DenotTransformer, f: SymDenotation => SymDenotation)(implicit ctx: Context): Unit =
+      super.transformAfter(phase, f)
   }
 
   /** The contents of a class definition during a period

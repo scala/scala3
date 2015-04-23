@@ -620,14 +620,9 @@ object Denotations {
         // println(s"installing $this after $phase/${phase.id}, valid = ${current.validFor}")
         // printPeriods(current)
         this.validFor = Period(ctx.runId, targetId, current.validFor.lastPhaseId)
-        if (current.validFor.firstPhaseId == targetId) {
-          // replace current with this denotation
-          var prev = current
-          while (prev.nextInRun ne current) prev = prev.nextInRun
-          prev.nextInRun = this
-          this.nextInRun = current.nextInRun
-          current.validFor = Nowhere
-        } else {
+        if (current.validFor.firstPhaseId == targetId)
+          replaceDenotation(current)
+        else {
           // insert this denotation after current
           current.validFor = Period(ctx.runId, current.validFor.firstPhaseId, targetId - 1)
           this.nextInRun = current.nextInRun
@@ -635,6 +630,31 @@ object Denotations {
         }
       // printPeriods(this)
       }
+    }
+
+    /** Apply a transformation `f` to all denotations in this group that start at or after
+     *  given phase. Denotations are replaced while keeping the same validity periods.
+     */
+    protected def transformAfter(phase: DenotTransformer, f: SymDenotation => SymDenotation)(implicit ctx: Context): Unit = {
+      var current = symbol.current
+      while (current.validFor.firstPhaseId < phase.id && (current ne symbol.current)) 
+        current = current.nextInRun
+      while (current.validFor.firstPhaseId >= phase.id) {
+        val current1: SingleDenotation = f(current.asSymDenotation)
+        if (current1 ne current) {
+          current1.validFor = current.validFor
+          current1.replaceDenotation(current)
+        }
+        current = current.nextInRun
+      }
+    }
+    
+    private def replaceDenotation(current: SingleDenotation): Unit = {
+      var prev = current
+      while (prev.nextInRun ne current) prev = prev.nextInRun
+      prev.nextInRun = this
+      this.nextInRun = current.nextInRun
+      current.validFor = Nowhere
     }
 
     def staleSymbolError(implicit ctx: Context) = {
