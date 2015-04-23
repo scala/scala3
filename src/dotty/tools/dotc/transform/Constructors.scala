@@ -95,9 +95,9 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
           if (noDirectRefsFrom(tree)) tree else super.transform(tree)
       }
 
-      def apply(tree: Tree, inSuperCall: Boolean = false)(implicit ctx: Context): Tree = {
+      def apply(tree: Tree, prevOwner: Symbol, inSuperCall: Boolean = false)(implicit ctx: Context): Tree = {
         this.excluded = if (inSuperCall) EmptyFlags else Mutable
-        transform(tree)
+        transform(tree).changeOwnerAfter(prevOwner, constr.symbol, thisTransform)
       }
     }
 
@@ -153,19 +153,19 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
             val sym = stat.symbol
             if (isRetained(sym)) {
               if (!stat.rhs.isEmpty && !isWildcardArg(stat.rhs))
-                constrStats += Assign(ref(sym), intoConstr(stat.rhs)).withPos(stat.pos)
+                constrStats += Assign(ref(sym), intoConstr(stat.rhs, sym)).withPos(stat.pos)
               clsStats += cpy.ValDef(stat)(rhs = EmptyTree)
             }
             else if (!stat.rhs.isEmpty) {
               sym.copySymDenotation(
                 initFlags = sym.flags &~ Private,
                 owner = constr.symbol).installAfter(thisTransform)
-              constrStats += intoConstr(stat)
+              constrStats += intoConstr(stat, sym)
             }
           case _: DefTree =>
             clsStats += stat
           case _ =>
-            constrStats += intoConstr(stat)
+            constrStats += intoConstr(stat, tree.symbol)
         }
         splitStats(stats1)
       case Nil =>
