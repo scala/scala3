@@ -31,18 +31,18 @@ import scala.language.postfixOps
  *    def equals(other: Any): Boolean
  *    def hashCode(): Int
  */
-class SyntheticMethods(thisTransformer: DenotTransformer) { 
+class SyntheticMethods(thisTransformer: DenotTransformer) {
   import ast.tpd._
 
   private var myValueSymbols: List[Symbol] = Nil
   private var myCaseSymbols: List[Symbol] = Nil
-  
+
   private def initSymbols(implicit ctx: Context) =
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
       myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual, defn.Product_productArity)
     }
-  
+
   def valueSymbols(implicit ctx: Context) = { initSymbols; myValueSymbols }
   def caseSymbols(implicit ctx: Context) = { initSymbols; myCaseSymbols }
 

@@ -16,26 +16,26 @@ import Decorators._
 import Symbols._, TypeUtils._
 
 /** A macro transform that runs immediately after typer and that performs the following functions:
- *  
+ *
  *  (1) Add super accessors and protected accessors (@see SuperAccessors)
- *  
+ *
  *  (2) Convert parameter fields that have the same name as a corresponding
  *      public parameter field in a superclass to a forwarder to the superclass
  *      field (corresponding = super class field is initialized with subclass field)
  *      (@see ForwardParamAccessors)
- *      
+ *
  *  (3) Add synthetic methods (@see SyntheticMethods)
- *      
+ *
  *  (4) Check that `New` nodes can be instantiated, and that annotations are valid
- *  
+ *
  *  (5) Convert all trees representing types to TypeTrees.
- *  
+ *
  *  (6) Check the bounds of AppliedTypeTrees
- *  
+ *
  *  (7) Insert `.package` for selections of package object members
- *  
+ *
  *  (8) Replaces self references by name with `this`
- *  
+ *
  *  The reason for making this a macro transform is that some functions (in particular
  *  super and protected accessors and instantiation checks) are naturally top-down and
  *  don't lend themselves to the bottom-up approach of a mini phase. The other two functions
@@ -54,16 +54,16 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
 
   protected def newTransformer(implicit ctx: Context): Transformer =
     new PostTyperTransformer
-    
+
   val superAcc = new SuperAccessors(thisTransformer)
   val paramFwd = new ParamForwarding(thisTransformer)
   val synthMth = new SyntheticMethods(thisTransformer)
-    
+
   private def newPart(tree: Tree): Option[New] = methPart(tree) match {
     case Select(nu: New, _) => Some(nu)
     case _ => None
   }
-  
+
   private def checkValidJavaAnnotation(annot: Tree)(implicit ctx: Context): Unit = {
     // TODO fill in
   }
@@ -79,17 +79,17 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
         Checking.checkBounds(args, bounds, _.substDealias(tparams, _))
         norm(tree)
-      case _ => 
+      case _ =>
         norm(tree)
-    } 
+    }
   }
 
   class PostTyperTransformer extends Transformer {
-    
+
     private var inJavaAnnot: Boolean = false
-    
+
     private var parentNews: Set[New] = Set()
-    
+
     private def transformAnnot(annot: Tree)(implicit ctx: Context): Tree = {
       val saved = inJavaAnnot
       inJavaAnnot = annot.symbol is JavaDefined
@@ -97,10 +97,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
       try transform(annot)
       finally inJavaAnnot = saved
     }
-    
+
     private def transformAnnot(annot: Annotation)(implicit ctx: Context): Annotation =
       annot.derivedAnnotation(transformAnnot(annot.tree))
-    
+
     private def transformAnnots(tree: MemberDef)(implicit ctx: Context): Unit =
       tree.symbol.transformAnnotations(transformAnnot)
 
@@ -114,7 +114,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
           superAcc.transformSelect(super.transform(tree), targs)
       }
     }
-      
+
     override def transform(tree: Tree)(implicit ctx: Context): Tree =
       try normalizeTypeTree(tree) match {
         case tree: Ident =>
@@ -133,7 +133,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer  { thisTran
         case tree: Template =>
           val saved = parentNews
           parentNews ++= tree.parents.flatMap(newPart)
-          try 
+          try
             synthMth.addSyntheticMethods(
               paramFwd.forwardParamAccessors(
                 superAcc.wrapTemplate(tree)(

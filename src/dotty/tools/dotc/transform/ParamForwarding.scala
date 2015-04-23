@@ -21,7 +21,7 @@ import Contexts._, Types._, Symbols._, Flags._, TypeUtils._, DenotTransformers._
  */
 class ParamForwarding(thisTransformer: DenotTransformer) {
   import ast.tpd._
-  
+
   def forwardParamAccessors(impl: Template)(implicit ctx: Context): Template = {
     def fwd(stats: List[Tree])(implicit ctx: Context): List[Tree] = {
       val (superArgs, superParamNames) = impl.parents match {

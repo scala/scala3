@@ -279,7 +279,7 @@ class TypeApplications(val self: Type) extends AnyVal {
         default
     }
   }
-  
+
   /** Translate a type of the form From[T] to To[T], keep other types as they are.
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
    */

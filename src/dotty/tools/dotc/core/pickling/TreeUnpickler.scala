@@ -669,7 +669,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
       case _ =>
         readTerm()(ctx.withOwner(exprOwner))
     }
-    
+
     def readImport()(implicit ctx: Context): Tree = {
       readByte()
       readEnd()

@@ -43,11 +43,11 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
      *  These are value class methods, which will become extension methods.
      *  (By-name arguments used to be included also, but these
      *  don't get a new class anymore, they are just wrapped in a new method).
-     *  
+     *
      *  These regions will have to be treated specially for the purpose
      *  of adding accessors. For instance, super calls from these regions
      *  always have to go through an accessor.
-     *  
+     *
      *  The `invalidOwner` field, if different from NoSymbol,
      *  contains the symbol that is not a valid owner.
      */
@@ -59,10 +59,10 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       try trans
       finally invalidEnclClass = saved
     }
-    
-    private def validCurrentClass(implicit ctx: Context): Boolean = 
+
+    private def validCurrentClass(implicit ctx: Context): Boolean =
       ctx.owner.enclosingClass != invalidEnclClass
-        
+
     /** List buffers for new accessor definitions, indexed by class */
     private val accDefs = mutable.Map[Symbol, mutable.ListBuffer[Tree]]()
 
@@ -140,7 +140,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       (sym eq Any_##)
     }
 
-    /** Replace `sel` (or `sel[targs]` if `targs` is nonempty) with a protected accessor 
+    /** Replace `sel` (or `sel[targs]` if `targs` is nonempty) with a protected accessor
      *  call, if necessary.
      */
     private def ensureProtectedAccessOK(sel: Select, targs: List[Tree])(implicit ctx: Context) = {
@@ -204,12 +204,12 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
       ctx.debuglog(s"Replaced $sel with $res")
       res
     }
-    
+
     def isProtectedAccessor(tree: Tree)(implicit ctx: Context): Boolean = tree match {
       case Apply(TypeApply(Select(_, name), _), qual :: Nil) => name.isProtectedAccessorName
       case _ => false
     }
-    
+
     /** Add a protected accessor, if needed, and return a tree that calls
      *  the accessor and returns the same member. The result is already
      *  typed.
@@ -225,8 +225,8 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
 
       // if the result type depends on the this type of an enclosing class, the accessor
       // has to take an object of exactly this type, otherwise it's more general
-      val receiverType = 
-        if (isThisType(sym.info.finalResultType)) clazz.thisType 
+      val receiverType =
+        if (isThisType(sym.info.finalResultType)) clazz.thisType
         else clazz.classInfo.selfType
       def accTypeOf(tpe: Type): Type = tpe match {
         case tpe: PolyType =>
@@ -401,10 +401,10 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
         val setter = protectedSetter(lhs)
         ctx.debuglog("Replaced " + tree + " with " + setter)
         setter.appliedTo(qual, rhs)
-      } 
-      else tree  
+      }
+      else tree
     }
-    
+
     /** Wrap template to template transform `op` with needed initialization and finalization */
     def wrapTemplate(tree: Template)(op: Template => Template)(implicit ctx: Context) = {
       accDefs(currentClass) = new mutable.ListBuffer[Tree]
@@ -417,7 +417,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
           case vd: ValOrDefDef => vd.symbol.flags is ParamAccessor
           case _ => false
         }
-        cpy.Template(impl)(body = params ++ accessors ++ rest)     
+        cpy.Template(impl)(body = params ++ accessors ++ rest)
       }
     }
 

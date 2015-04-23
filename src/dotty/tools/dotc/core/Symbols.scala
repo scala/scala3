@@ -560,7 +560,7 @@ object Symbols {
 
   /** The Definitions object */
   def defn(implicit ctx: Context): Definitions = ctx.definitions
-  
+
   /** The current class */
   def currentClass(implicit ctx: Context): ClassSymbol = ctx.owner.enclosingClass.asClass
 
