@@ -148,15 +148,15 @@ fi
 
 addJava () {
   dlog "[addJava] arg = '$1'"
-  java_args=( "${java_args[@]}" "$1" )
+  java_args+=("$1")
 }
 addScala () {
   dlog "[addScala] arg = '$1'"
-  scala_args=( "${scala_args[@]}" "$1" )
+  scala_args+=("$1")
 }
 addResidual () {
   dlog "[residual] arg = '$1'"
-  residual_args=( "${residual_args[@]}" "$1" )
+  residual_args+=("$1")
 }
 
 onExit() {
