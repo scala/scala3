@@ -175,14 +175,12 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         val outF = if (needsOutFolder) getOutFolder(claszSymbol, pcb.thisName) else null;
         val plainC = pcb.cnode
 
-        if ((!claszSymbol.companionClass.exists) || !claszSymbol.is(Flags.Module)) {
-          // generate TASTY on class if it is there, or on module if it has no companion class
-
-          val binary = ctx.compilationUnit.pickler.assembleParts()
-          val dataAttr = new CustomAttr(nme.DottyTASTYATTR.toString, binary)
-          plainC.visitAttribute(dataAttr)
-        }
-
+        if (claszSymbol.isClass) // @DarkDimius is this test needed here?
+          for (pickler <- ctx.compilationUnit.picklers.get(claszSymbol.asClass)) {
+            val binary = pickler.assembleParts()
+            val dataAttr = new CustomAttr(nme.DottyTASTYATTR.toString, binary)
+            plainC.visitAttribute(dataAttr)
+          }
 
         // -------------- bean info class, if needed --------------
         val beanC =
