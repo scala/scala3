@@ -50,7 +50,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
           val field = ctx.newSymbol(tree.symbol.owner, tree.symbol.name ++ StdNames.nme.MODULE_VAR_SUFFIX, containerFlags, tree.symbol.info.resultType, coord = tree.symbol.pos)
           val getter =
             tpd.DefDef(tree.symbol.asTerm, tpd.This(tree.symbol.enclosingClass.asClass).select(defn.Object_synchronized).appliedTo(
-              mkDefNonThreadSafeNonNullable(field, tree.rhs).ensureConforms(tree.tpe.widen.resultType.widen)))
+              mkDefNonThreadSafeNonNullable(field, tree.rhs).ensureConforms(tree.tpe.widen.resultType.widen)).ensureConforms(tree.tpe.widen.resultType.widen))
           val fieldVal = tpd.ValDef(field.asTerm, initValue(field.info.widen))
           Thicket(fieldVal, getter)
         } else {
@@ -114,7 +114,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, List()))
         val methodBody = {
           tpd.If(flag, EmptyTree, ref(initSymbol))
-          result.ensureConforms(tpe)
+          result.ensureApplied.ensureConforms(tpe)
           }
         val methodTree = DefDef(x.symbol.asTerm, methodBody)
         ctx.debuglog(s"found a lazy val ${x.show},\n rewrote with ${holderTree.show}")
@@ -144,10 +144,10 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       */
 
     def mkNonThreadSafeDef(target: Tree, flag: Tree, rhs: Tree)(implicit ctx: Context) = {
-      val setFlag = Assign(flag, Literal(Constants.Constant(true)))
-      val setTarget = Assign(target, rhs)
-      val init = Block(List(setFlag, setTarget), target)
-      If(flag, target, init)
+      val setFlag = flag.becomes(Literal(Constants.Constant(true)))
+      val setTarget = target.becomes(rhs)
+      val init = Block(List(setFlag, setTarget), target.ensureApplied)
+      If(flag.ensureApplied, target.ensureApplied, init)
     }
 
     /** Create non-threadsafe lazy accessor for not-nullable types  equivalent to such code
@@ -161,7 +161,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
     def mkDefNonThreadSafeNonNullable(target: Symbol, rhs: Tree)(implicit ctx: Context) = {
       val cond = ref(target).select(nme.eq).appliedTo(Literal(Constant(null)))
       val exp = ref(target)
-      val setTarget = Assign(exp, rhs)
+      val setTarget = exp.becomes(rhs)
       val init = Block(List(setTarget), exp)
       If(cond, init, exp)
     }
@@ -247,10 +247,10 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
           Block(List(complete), Throw(ref(caseSymbol))
         ))
 
-        val compute = Assign(ref(resultSymbol), rhs)
+        val compute = ref(resultSymbol).becomes(rhs)
         val tr = Try(compute, List(handler), EmptyTree)
-        val assign = Assign(ref(target), ref(resultSymbol))
-        val noRetry = Assign(ref(retrySymbol), Literal(Constants.Constant(false)))
+        val assign = ref(target).becomes(ref(resultSymbol))
+        val noRetry = ref(retrySymbol).becomes(Literal(Constants.Constant(false)))
         val body = If(casFlag.appliedTo(thiz, offset, ref(flagSymbol), computeState, Literal(Constant(ord))),
           Block(tr :: assign :: complete :: noRetry :: Nil, Literal(Constant(()))),
           Literal(Constant(())))
@@ -269,8 +269,8 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       }
 
       val computed = {
-        val noRetry = Assign(ref(retrySymbol), Literal(Constants.Constant(false)))
-        val result = Assign(ref(resultSymbol), ref(target))
+        val noRetry = ref(retrySymbol).becomes(Literal(Constants.Constant(false)))
+        val result = ref(resultSymbol).becomes(ref(target))
         val body = Block(noRetry :: result :: Nil, Literal(Constant(())))
         CaseDef(computedState, EmptyTree, body)
       }
@@ -278,7 +278,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       val cases = Match(stateMask.appliedTo(ref(flagSymbol), Literal(Constant(ord))),
         List(compute, waitFirst, waitSecond, computed)) //todo: annotate with @switch
 
-      val whileBody = Block(List(Assign(ref(flagSymbol), getFlag.appliedTo(thiz, offset))), cases)
+      val whileBody = Block(List(ref(flagSymbol).becomes(getFlag.appliedTo(thiz, offset))), cases)
       val cycle = untpd.WhileDo(whileCond, whileBody).withTypeUnchecked(defn.UnitType)
       DefDef(methodSymbol, Block(resultDef :: retryDef :: flagDef :: cycle :: Nil, ref(resultSymbol)))
     }
