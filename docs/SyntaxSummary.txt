@@ -112,8 +112,8 @@ grammar.
   ArgTypes          ::=  ArgType {`,' ArgType}
   FunArgType        ::=  ArgType
                       |  `=>' ArgType                                           PrefixOp(=>, t)
-  ParamType         ::=  FunArgType
-                      |  Type `*'                                               PostfixOp(t, "*")
+  ParamType         ::=  [`=>'] ParamValueType
+  ParamValueType    ::=  Type [`*']                                             PostfixOp(t, "*")
   TypeArgs          ::=  `[' ArgTypes `]'                                       ts
   Refinement        ::=  `{' [Dcl] {semi [Dcl]} `}'                             ds
   TypeBounds        ::=  [`>:' Type] [`<: Type] | INT                           TypeBoundsTree(lo, hi)

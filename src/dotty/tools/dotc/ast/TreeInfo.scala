@@ -160,11 +160,12 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _                                => Nil
   }
 
-  /** Is tpt a vararg type of the form T* ? */
-  def isRepeatedParamType(tpt: Tree)(implicit ctx: Context) = tpt match {
+  /** Is tpt a vararg type of the form T* or => T*? */
+  def isRepeatedParamType(tpt: Tree)(implicit ctx: Context): Boolean = tpt match {
+    case ByNameTypeTree(tpt1) => isRepeatedParamType(tpt1)
     case tpt: TypeTree => tpt.typeOpt.isRepeatedParam
-    case AppliedTypeTree(Select(_, tpnme.REPEATED_PARAM_CLASS), _)      => true
-    case _                                                              => false
+    case AppliedTypeTree(Select(_, tpnme.REPEATED_PARAM_CLASS), _) => true
+    case _ => false
   }
 
   /** Is name a left-associative operator? */

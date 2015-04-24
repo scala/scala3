@@ -330,7 +330,7 @@ trait Applications extends Compatibility { self: Typer =>
               case arg :: Nil if isVarArg(arg) =>
                 addTyped(arg, formal)
               case _ =>
-                val elemFormal = formal.argTypesLo.head
+                val elemFormal = formal.widenExpr.argTypesLo.head
                 args foreach (addTyped(_, elemFormal))
                 makeVarArg(args.length, elemFormal)
             }
@@ -842,7 +842,10 @@ trait Applications extends Compatibility { self: Typer =>
         val tparams = ctx.newTypeParams(alt1.symbol, tp1.paramNames, EmptyFlags, tp1.instantiateBounds)
         isAsSpecific(alt1, tp1.instantiate(tparams map (_.typeRef)), alt2, tp2)
       case tp1: MethodType =>
-        def repeatedToSingle(tp: Type) = if (tp.isRepeatedParam) tp.argTypesHi.head else tp
+        def repeatedToSingle(tp: Type): Type = tp match {
+          case tp @ ExprType(tp1) => tp.derivedExprType(repeatedToSingle(tp1))
+          case _ => if (tp.isRepeatedParam) tp.argTypesHi.head else tp
+        }
         isApplicable(alt2, tp1.paramTypes map repeatedToSingle, WildcardType) ||
         tp1.paramTypes.isEmpty && tp2.isInstanceOf[MethodOrPoly]
       case _ =>

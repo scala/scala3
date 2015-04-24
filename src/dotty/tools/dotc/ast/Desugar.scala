@@ -289,8 +289,13 @@ object desugar {
         val caseParams = constrVparamss.head.toArray
         val productElemMeths = for (i <- 0 until arity) yield
           syntheticProperty(nme.selectorName(i), Select(This(EmptyTypeName), caseParams(i).name))
+        def isRepeated(tree: Tree): Boolean = tree match {
+          case PostfixOp(_, nme.raw.STAR) => true
+          case ByNameTypeTree(tree1) => isRepeated(tree1)
+          case _ => false
+        }
         val hasRepeatedParam = constrVparamss.exists(_.exists {
-          case ValDef(_, PostfixOp(_, nme.raw.STAR), _) => true
+          case ValDef(_, tpt, _) => isRepeated(tpt)
           case _ => false
         })
         val copyMeths =

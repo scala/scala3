@@ -754,17 +754,21 @@ object Parsers {
       if (in.token == ARROW) atPos(in.skipToken()) { ByNameTypeTree(argType()) }
       else argType()
 
-    /** ParamType ::= FunArgType | ArgType `*'
+    /** ParamType ::= [`=>'] ParamValueType
      */
     def paramType(): Tree =
-      if (in.token == ARROW) funArgType()
-      else {
-        val t = argType()
-        if (isIdent(nme.raw.STAR)) {
-          in.nextToken()
-          atPos(t.pos.start) { PostfixOp(t, nme.raw.STAR) }
-        } else t
-      }
+      if (in.token == ARROW) atPos(in.skipToken()) { ByNameTypeTree(paramValueType()) }
+      else paramValueType()
+
+    /** ParamValueType ::= Type [`*']
+     */
+    def paramValueType(): Tree = {
+      val t = typ()
+      if (isIdent(nme.raw.STAR)) {
+        in.nextToken()
+        atPos(t.pos.start) { PostfixOp(t, nme.raw.STAR) }
+      } else t
+    }
 
     /** TypeArgs    ::= `[' ArgType {`,' ArgType} `]'
        */
