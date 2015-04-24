@@ -48,8 +48,11 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       else {
         if (tree.symbol is Flags.Module) {
           val field = ctx.newSymbol(tree.symbol.owner, tree.symbol.name ++ StdNames.nme.MODULE_VAR_SUFFIX, containerFlags, tree.symbol.info.resultType, coord = tree.symbol.pos)
-          tpd.This(tree.symbol.enclosingClass.asClass).select(defn.Object_synchronized).appliedTo(
-            mkDefNonThreadSafeNonNullable(field, tree.rhs).ensureConforms(tree.tpe.widen.resultType.widen))
+          val getter =
+            tpd.DefDef(tree.symbol.asTerm, tpd.This(tree.symbol.enclosingClass.asClass).select(defn.Object_synchronized).appliedTo(
+              mkDefNonThreadSafeNonNullable(field, tree.rhs).ensureConforms(tree.tpe.widen.resultType.widen)))
+          val fieldVal = tpd.ValDef(field.asTerm, initValue(field.info.widen))
+          Thicket(fieldVal, getter)
         } else {
           val isField = tree.symbol.owner.isClass
 
@@ -105,8 +108,8 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         val flag = ref(holderSymbol).select("initialized".toTermName)
         val initer = valueInitter.changeOwner(x.symbol, initSymbol)
         val initBody =
-          ref(holderSymbol).select(defn.Object_synchronized).appliedToType(tpe).appliedTo(
-          mkNonThreadSafeDef(result, flag, initer).ensureConforms(tpe))
+          ref(holderSymbol).select(defn.Object_synchronized).appliedTo(
+          mkNonThreadSafeDef(result, flag, initer)).ensureConforms(tpe)
         val initTree = DefDef(initSymbol, initBody)
         val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, List()))
         val methodBody = {
