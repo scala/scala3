@@ -637,9 +637,9 @@ object Denotations {
      */
     protected def transformAfter(phase: DenotTransformer, f: SymDenotation => SymDenotation)(implicit ctx: Context): Unit = {
       var current = symbol.current
-      while (current.validFor.firstPhaseId < phase.id && (current ne symbol.current)) 
+      while (current.validFor.firstPhaseId < phase.id && (current.nextInRun.validFor.code > current.validFor.code))
         current = current.nextInRun
-      while (current.validFor.firstPhaseId >= phase.id) {
+      while ((current.validFor.firstPhaseId >= phase.id) && (current.nextInRun.validFor.code > current.validFor.code)) {
         val current1: SingleDenotation = f(current.asSymDenotation)
         if (current1 ne current) {
           current1.validFor = current.validFor
@@ -648,7 +648,7 @@ object Denotations {
         current = current.nextInRun
       }
     }
-    
+
     private def replaceDenotation(current: SingleDenotation): Unit = {
       var prev = current
       while (prev.nextInRun ne current) prev = prev.nextInRun
