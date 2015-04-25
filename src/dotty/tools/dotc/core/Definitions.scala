@@ -335,6 +335,8 @@ class Definitions {
   lazy val ContravariantBetweenClass = ctx.requiredClass("dotty.annotation.internal.ContravariantBetween")
   lazy val ScalaSignatureAnnot = ctx.requiredClass("scala.reflect.ScalaSignature")
   lazy val ScalaLongSignatureAnnot = ctx.requiredClass("scala.reflect.ScalaLongSignature")
+  lazy val TASTYSignatureAnnot = ctx.requiredClass("scala.annotation.internal.TASTYSignature")
+  lazy val TASTYLongSignatureAnnot = ctx.requiredClass("scala.annotation.internal.TASTYLongSignature")
   lazy val DeprecatedAnnot = ctx.requiredClass("scala.deprecated")
   lazy val MigrationAnnot = ctx.requiredClass("scala.annotation.migration")
   lazy val AnnotationDefaultAnnot = ctx.requiredClass("dotty.annotation.internal.AnnotationDefault")
