@@ -28,3 +28,4 @@ classes/
 
 # Partest
 tests/partest-generated/
+/test-classes/
