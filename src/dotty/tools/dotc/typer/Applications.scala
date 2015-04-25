@@ -192,7 +192,7 @@ trait Applications extends Compatibility { self: Typer =>
     def success = ok
 
     protected def methodType = methType.asInstanceOf[MethodType]
-    private def methString: String = s"method ${methRef.name}: ${methType.show}"
+    private def methString: String = i"${methRef.symbol}: ${methType.show}"
 
     /** Re-order arguments to correctly align named arguments */
     def reorder[T >: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
