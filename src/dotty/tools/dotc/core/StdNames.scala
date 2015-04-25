@@ -215,7 +215,7 @@ object StdNames {
     final val RuntimeParamAnnotationATTR: N = "RuntimeVisibleParameterAnnotations" // RetentionPolicy.RUNTIME (annotations on parameters)
     final val ScalaATTR: N                  = "Scala"
     final val ScalaSignatureATTR: N         = "ScalaSig"
-    final val DottyTASTYATTR: N             = "DottyTASTY"
+    final val TASTYATTR: N                  = "TASTY"
     final val SignatureATTR: N              = "Signature"
     final val SourceFileATTR: N             = "SourceFile"
     final val SyntheticATTR: N              = "Synthetic"
