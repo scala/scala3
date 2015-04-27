@@ -38,23 +38,25 @@ class Run(comp: Compiler)(implicit ctx: Context) {
    *  or we need to assmeble phases on each run, and take -Yskip, -Ystop into
    *  account. I think the latter would be preferable.
    */
-  def compileSources(sources: List[SourceFile]) = Stats.monitorHeartBeat {
+  def compileSources(sources: List[SourceFile]) =
     if (sources forall (_.exists)) {
-      val phases = ctx.squashPhases(ctx.phasePlan,
-        ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, ctx.settings.YstopAfter.value, ctx.settings.Ycheck.value)
-      ctx.usePhases(phases)
       units = sources map (new CompilationUnit(_))
-      for (phase <- ctx.allPhases)
-        if (!ctx.reporter.hasErrors) {
-          if (ctx.settings.verbose.value) println(s"[$phase]")
-          units = phase.runOn(units)
-          def foreachUnit(op: Context => Unit)(implicit ctx: Context): Unit =
-            for (unit <- units) op(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
-          if (ctx.settings.Xprint.value.containsPhase(phase))
-            foreachUnit(printTree)
-
-        }
+      compileUnits()
     }
+
+  protected def compileUnits() = Stats.monitorHeartBeat {
+    val phases = ctx.squashPhases(ctx.phasePlan,
+      ctx.settings.Yskip.value, ctx.settings.YstopBefore.value, ctx.settings.YstopAfter.value, ctx.settings.Ycheck.value)
+    ctx.usePhases(phases)
+    for (phase <- ctx.allPhases)
+      if (!ctx.reporter.hasErrors) {
+        if (ctx.settings.verbose.value) println(s"[$phase]")
+        units = phase.runOn(units)
+        def foreachUnit(op: Context => Unit)(implicit ctx: Context): Unit =
+          for (unit <- units) op(ctx.fresh.setPhase(phase.next).setCompilationUnit(unit))
+        if (ctx.settings.Xprint.value.containsPhase(phase))
+          foreachUnit(printTree)
+      }
   }
 
   private def printTree(ctx: Context) = {
