@@ -65,7 +65,7 @@ object LazyVals {
     monitors(id)
   }
 
-  @inline def getOffset(obj: Object, name: String) = unsafe.objectFieldOffset(obj.getClass.getDeclaredField(name))
+  @inline def getOffset(clz: Class[_], name: String) = unsafe.objectFieldOffset(clz.getDeclaredField(name))
 
   object Names {
     final val state = "STATE"

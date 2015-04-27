@@ -289,7 +289,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
 
         val tpe = x.tpe.widen.resultType.widen
         val claz = x.symbol.owner.asClass
-        val thiz = This(claz)(ctx.fresh.setOwner(claz))
+        val thizClass = Literal(Constant(claz.info))
         val companion = claz.companionModule
         val helperModule = ctx.requiredModule("dotty.runtime.LazyVals")
         val getOffset = Select(ref(helperModule), RLazyValsNames_getOffset)
@@ -313,7 +313,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
               val flagName = (StdNames.nme.BITMAP_PREFIX + id.toString).toTermName
               val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
               flag = ValDef(flagSymbol, Literal(Constants.Constant(0L)))
-              val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thiz, Literal(Constant(flagName.toString))))
+              val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thizClass, Literal(Constant(flagName.toString))))
               info.defs = offsetTree :: info.defs
             }
 
@@ -322,7 +322,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
             val flagName = (StdNames.nme.BITMAP_PREFIX + "0").toTermName
             val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
             flag = ValDef(flagSymbol, Literal(Constants.Constant(0L)))
-            val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thiz, Literal(Constant(flagName.toString))))
+            val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thizClass, Literal(Constant(flagName.toString))))
             appendOffsetDefs += (companion.name.moduleClassName -> new OffsetInfo(List(offsetTree), ord))
         }
 
