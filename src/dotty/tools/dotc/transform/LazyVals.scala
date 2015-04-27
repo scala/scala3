@@ -1,6 +1,8 @@
 package dotty.tools.dotc
 package transform
 
+import dotty.tools.dotc.typer.Mode
+
 import scala.collection.mutable
 import core._
 import Contexts._
@@ -22,6 +24,7 @@ import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.DenotTransformers.{SymTransformer, IdentityDenotTransformer, DenotTransformer}
 
 class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
+  import LazyVals._
 
   import tpd._
 
@@ -44,24 +47,15 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
   override def runsAfter = Set(classOf[Mixin])
 
     override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-      if (!(tree.symbol is Flags.Lazy)) tree
+      if (!(tree.symbol is Flags.Lazy) || tree.symbol.owner.is(Flags.Trait)) tree
       else {
-        if (tree.symbol is Flags.Module) {
-          val field = ctx.newSymbol(tree.symbol.owner, tree.symbol.name ++ StdNames.nme.MODULE_VAR_SUFFIX, containerFlags, tree.symbol.info.resultType, coord = tree.symbol.pos)
-          val getter =
-            tpd.DefDef(tree.symbol.asTerm, tpd.This(tree.symbol.enclosingClass.asClass).select(defn.Object_synchronized).appliedTo(
-              mkDefNonThreadSafeNonNullable(field, tree.rhs).ensureConforms(tree.tpe.widen.resultType.widen)).ensureConforms(tree.tpe.widen.resultType.widen))
-          val fieldVal = tpd.ValDef(field.asTerm, initValue(field.info.widen))
-          Thicket(fieldVal, getter)
-        } else {
           val isField = tree.symbol.owner.isClass
 
           if (isField) {
-            if (tree.symbol.isVolatile) transformFieldValDefVolatile(tree)
+            if (tree.symbol.isVolatile || tree.symbol.is(Flags.Module)) transformFieldValDefVolatile(tree)
             else transformFieldValDefNonVolatile(tree)
           }
           else transformLocalValDef(tree)
-        }
       }
     }
 
@@ -279,8 +273,8 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       val cases = Match(stateMask.appliedTo(ref(flagSymbol), Literal(Constant(ord))),
         List(compute, waitFirst, waitSecond, computed, default)) //todo: annotate with @switch
 
-      val whileBody = Block(List(ref(flagSymbol).becomes(getFlag.appliedTo(thiz, offset))), cases)
-      val cycle = untpd.WhileDo(whileCond, whileBody).withTypeUnchecked(defn.UnitType)
+      val whileBody = List(ref(flagSymbol).becomes(getFlag.appliedTo(thiz, offset)), cases)
+      val cycle = WhileDo(methodSymbol, whileCond, whileBody)
       DefDef(methodSymbol, Block(resultDef :: retryDef :: flagDef :: cycle :: Nil, ref(resultSymbol)))
     }
 
