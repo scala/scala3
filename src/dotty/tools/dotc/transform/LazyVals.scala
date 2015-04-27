@@ -274,8 +274,10 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         CaseDef(computedState, EmptyTree, body)
       }
 
+      val default = CaseDef(untpd.Ident(nme.WILDCARD).withType(defn.LongType), EmptyTree, Literal(Constant(())))
+
       val cases = Match(stateMask.appliedTo(ref(flagSymbol), Literal(Constant(ord))),
-        List(compute, waitFirst, waitSecond, computed)) //todo: annotate with @switch
+        List(compute, waitFirst, waitSecond, computed, default)) //todo: annotate with @switch
 
       val whileBody = Block(List(ref(flagSymbol).becomes(getFlag.appliedTo(thiz, offset))), cases)
       val cycle = untpd.WhileDo(whileCond, whileBody).withTypeUnchecked(defn.UnitType)
