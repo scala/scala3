@@ -59,10 +59,10 @@ class Compiler {
       List(new Mixin,
            new LazyVals,
            new Memoize,
-           new CapturedVars,
+           new CapturedVars, // capturedVars has a transformUnit: no phases should introduce local mutable vars here
            new Constructors,
            new FunctionalInterfaces),
-      List(new LambdaLift,
+      List(new LambdaLift,   // in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new Flatten,
            new RestoreScopes),
       List(/*new PrivateToStatic,*/ new CollectEntryPoints, new LabelDefs, new ElimWildcardIdents, new TraitConstructors),
