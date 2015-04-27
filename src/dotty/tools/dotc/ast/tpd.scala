@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package ast
 
+import dotty.tools.dotc.transform.ExplicitOuter
 import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
 import transform.SymUtils._
 import core._
@@ -299,7 +300,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (tp.isType) TypeTree(tp)
     else if (prefixIsElidable(tp)) Ident(tp)
     else tp.prefix match {
-      case pre: SingletonType => singleton(pre).select(tp)
+      case pre: SingletonType =>
+        val prefix =
+          singleton(pre) match {
+            case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
+              // after erasure outer paths should be respected
+              new ExplicitOuter.OuterOps(ctx).path(t.tpe.widen.classSymbol)
+            case t =>
+              t
+          }
+        prefix.select(tp)
       case pre => SelectFromTypeTree(TypeTree(pre), tp)
     } // no checks necessary
 
