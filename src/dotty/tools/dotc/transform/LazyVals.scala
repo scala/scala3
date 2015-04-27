@@ -166,7 +166,10 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         val tpe = x.tpe.widen.resultType.widen
         assert(!(x.mods is Flags.Mutable))
         val containerName = ctx.freshName(x.name ++ StdNames.nme.LAZY_LOCAL).toTermName
-        val containerSymbol = ctx.newSymbol(claz, containerName, (x.mods &~ containerFlagsMask | containerFlags).flags, tpe, coord = x.symbol.coord).enteredAfter(this)
+        val containerSymbol = ctx.newSymbol(claz, containerName,
+          x.symbol.flags &~ containerFlagsMask | containerFlags | Flags.Private,
+          tpe, coord = x.symbol.coord
+        ).enteredAfter(this)
 
         val containerTree = ValDef(containerSymbol, initValue(tpe))
         if (x.tpe.isNotNull && tpe <:< defn.ObjectType) { // can use 'null' value instead of flag
@@ -175,7 +178,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         }
         else {
           val flagName = ctx.freshName(x.name ++ StdNames.nme.BITMAP_PREFIX).toTermName
-          val flagSymbol = ctx.newSymbol(x.symbol.owner, flagName,  containerFlags, defn.BooleanType)
+          val flagSymbol = ctx.newSymbol(x.symbol.owner, flagName,  containerFlags | Flags.Private, defn.BooleanType).entered
           val flag = ValDef(flagSymbol, Literal(Constants.Constant(false)))
           val slowPath = DefDef(x.symbol.asTerm, mkNonThreadSafeDef(ref(containerSymbol), ref(flagSymbol), x.rhs))
           Thicket(List(containerTree, flag, slowPath))
