@@ -97,7 +97,9 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
     def traitDefs(stats: List[Tree]): List[Tree] = {
       val initBuf = new mutable.ListBuffer[Tree]
       stats flatMap {
-        case stat: DefDef if stat.symbol.isGetter && !stat.rhs.isEmpty =>
+        case stat: DefDef if stat.symbol.isGetter && !stat.rhs.isEmpty && !stat.symbol.is(Flags.Lazy)  =>
+          // make initializer that has all effects of previous getter,
+          // replace getter rhs with empty tree.
           val vsym = stat.symbol
           val isym = initializer(vsym)
           val rhs = Block(
