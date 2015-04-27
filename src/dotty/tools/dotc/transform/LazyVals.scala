@@ -68,7 +68,8 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
           case None => tree
           case Some(data) =>
             val template = tree.rhs.asInstanceOf[Template]
-            ClassDef(tree.symbol.asClass, template.constr, data.defs.mapConserve(transformFollowingDeep) ::: template.body)
+            val newTemplate = cpy.Template(template)(body = data.defs ::: template.body)
+            cpy.TypeDef(tree)(rhs = newTemplate) //(ctx.withMode(Mode.FutureDefsOK))
         }
       }
     }
@@ -168,7 +169,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         val containerSymbol = ctx.newSymbol(claz, containerName, (x.mods &~ containerFlagsMask | containerFlags).flags, tpe, coord = x.symbol.coord).enteredAfter(this)
 
         val containerTree = ValDef(containerSymbol, initValue(tpe))
-        if (x.tpe.isNotNull && tpe <:< defn.AnyRefType) { // can use 'null' value instead of flag
+        if (x.tpe.isNotNull && tpe <:< defn.ObjectType) { // can use 'null' value instead of flag
           val slowPath = DefDef(x.symbol.asTerm, mkDefNonThreadSafeNonNullable(containerSymbol, x.rhs))
           Thicket(List(containerTree, slowPath))
         }
