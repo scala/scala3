@@ -503,6 +503,14 @@ object Erasure extends TypeTestsCasts{
       traverse(newStats, oldStats)
     }
 
+    /** Create a bridge DefDef which overrides a parent method.
+     *
+     *  @param newDef     The DefDef which needs bridging because its signature
+     *                    does not match the parent method signature
+     *  @param parentSym  A symbol corresponding to the parent method to override
+     *  @return           A new DefDef whose signature matches the parent method
+     *                    and whose body only contains a call to newDef
+     */
     def makeBridgeDef(newDef: tpd.DefDef, parentSym: Symbol)(implicit ctx: Context): tpd.DefDef = {
       val newDefSym = newDef.symbol
       val currentClass = newDefSym.owner.asClass
