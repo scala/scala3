@@ -28,9 +28,9 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
   def transformer = new LazyVals
 
   val containerFlags = Flags.Synthetic | Flags.Mutable | Flags.Lazy
-  val initFlags = Flags.Synthetic | Flags.Method
+  val initFlags      = Flags.Synthetic | Flags.Method
 
-  val containerFlagsMask = Flags.Lazy | Flags.Accessor
+  val containerFlagsMask = Flags.Method | Flags.Lazy | Flags.Accessor | Flags.Module
 
   /** this map contains mutable state of transformation: OffsetDefs to be appended to companion object definitions,
     * and number of bits currently used */
