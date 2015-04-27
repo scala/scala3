@@ -18,7 +18,7 @@ object DottyUnpickler {
 /** A class for unpickling Tasty trees and symbols.
  *  @param bytes         the bytearray containing the Tasty file from which we unpickle
  */
-class DottyUnpickler(bytes: Array[Byte]) {
+class DottyUnpickler(bytes: Array[Byte]) extends ClassfileParser.Embedded {
   import tpd._
 
   private val unpickler = new TastyUnpickler(bytes)

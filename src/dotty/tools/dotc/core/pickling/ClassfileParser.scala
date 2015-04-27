@@ -15,12 +15,18 @@ import typer.Checking.checkNonCyclic
 import io.AbstractFile
 import scala.util.control.NonFatal
 
+object ClassfileParser {
+  /** Marker trait for unpicklers that can be embedded in classfiles. */
+  trait Embedded
+}
+
 class ClassfileParser(
     classfile: AbstractFile,
     classRoot: ClassDenotation,
     moduleRoot: ClassDenotation)(ictx: Context) {
 
   import ClassfileConstants._
+  import ClassfileParser._
 
   protected val in = new AbstractFileReader(classfile)
 
@@ -41,7 +47,7 @@ class ClassfileParser(
   private def mismatchError(c: Symbol) =
     throw new IOException(s"class file '${in.file}' has location not matching its contents: contains $c")
 
-  def run()(implicit ctx: Context): Unit = try {
+  def run()(implicit ctx: Context): Option[Embedded] = try {
     ctx.debuglog("[class] >> " + classRoot.fullName)
     parseHeader
     this.pool = new ConstantPool
@@ -80,7 +86,7 @@ class ClassfileParser(
 
   var sawPrivateConstructor = false
 
-  def parseClass()(implicit ctx: Context): Unit = {
+  def parseClass()(implicit ctx: Context): Option[Embedded] = {
     val jflags       = in.nextChar
     val isAnnotation = hasAnnotation(jflags)
     val sflags       = FlagTranslation.classFlags(jflags)
@@ -93,8 +99,6 @@ class ClassfileParser(
     }
 
     addEnclosingTParams()
-
-    if (unpickleOrParseInnerClasses()) return
 
     /** Parse parents for Java classes. For Scala, return AnyRef, since the real type will be unpickled.
      *  Updates the read pointer of 'in'. */
@@ -114,32 +118,35 @@ class ClassfileParser(
       superType :: ifaces
     }
 
-    var classInfo: Type = TempClassInfoType(parseParents, instanceScope, classRoot.symbol)
+    val result = unpickleOrParseInnerClasses()
+    if (!result.isDefined) {
+      var classInfo: Type = TempClassInfoType(parseParents, instanceScope, classRoot.symbol)
       // might be reassigned by later parseAttributes
-    val staticInfo = TempClassInfoType(List(), staticScope, moduleRoot.symbol)
+      val staticInfo = TempClassInfoType(List(), staticScope, moduleRoot.symbol)
 
-    enterOwnInnerClasses
+      enterOwnInnerClasses
 
-    classRoot.setFlag(sflags)
-    moduleRoot.setFlag(Flags.JavaDefined | Flags.ModuleClassCreationFlags)
-    setPrivateWithin(classRoot, jflags)
-    setPrivateWithin(moduleRoot, jflags)
-    setPrivateWithin(moduleRoot.sourceModule, jflags)
+      classRoot.setFlag(sflags)
+      moduleRoot.setFlag(Flags.JavaDefined | Flags.ModuleClassCreationFlags)
+      setPrivateWithin(classRoot, jflags)
+      setPrivateWithin(moduleRoot, jflags)
+      setPrivateWithin(moduleRoot.sourceModule, jflags)
 
-    for (i <- 0 until in.nextChar) parseMember(method = false)
-    for (i <- 0 until in.nextChar) parseMember(method = true)
-    classInfo = parseAttributes(classRoot.symbol, classInfo)
-    if (isAnnotation) addAnnotationConstructor(classInfo)
+      for (i <- 0 until in.nextChar) parseMember(method = false)
+      for (i <- 0 until in.nextChar) parseMember(method = true)
+      classInfo = parseAttributes(classRoot.symbol, classInfo)
+      if (isAnnotation) addAnnotationConstructor(classInfo)
 
-    val companionClassMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, classRoot, moduleRoot)
-    if (companionClassMethod.exists) companionClassMethod.entered
-    val companionModuleMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, moduleRoot, classRoot)
-    if (companionModuleMethod.exists) companionModuleMethod.entered
+      val companionClassMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_CLASS_METHOD, classRoot, moduleRoot)
+      if (companionClassMethod.exists) companionClassMethod.entered
+      val companionModuleMethod = ctx.synthesizeCompanionMethod(nme.COMPANION_MODULE_METHOD, moduleRoot, classRoot)
+      if (companionModuleMethod.exists) companionModuleMethod.entered
 
-    setClassInfo(classRoot, classInfo)
-    setClassInfo(moduleRoot, staticInfo)
+      setClassInfo(classRoot, classInfo)
+      setClassInfo(moduleRoot, staticInfo)
+    }
+    result
   }
-
 
   /** Add type parameters of enclosing classes */
   def addEnclosingTParams()(implicit ctx: Context): Unit = {
@@ -644,7 +651,7 @@ class ClassfileParser(
    *  Restores the old `bp`.
    *  @return true iff classfile is from Scala, so no Java info needs to be read.
    */
-  def unpickleOrParseInnerClasses()(implicit ctx: Context): Boolean = {
+  def unpickleOrParseInnerClasses()(implicit ctx: Context): Option[Embedded] = {
     val oldbp = in.bp
     try {
       skipSuperclasses()
@@ -664,15 +671,16 @@ class ClassfileParser(
         i < attrs
       }
 
-      def unpickleScala(bytes: Array[Byte]): Boolean = {
-        new Scala2Unpickler(bytes, classRoot, moduleRoot)(ctx).run()
-        true
+      def unpickleScala(bytes: Array[Byte]): Some[Embedded] = {
+        val unpickler = new Scala2Unpickler(bytes, classRoot, moduleRoot)(ctx)
+        unpickler.run()
+        Some(unpickler)
       }
 
-      def unpickleTASTY(bytes: Array[Byte]): Boolean = {
-        new DottyUnpickler(bytes)
-          .enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))
-        true
+      def unpickleTASTY(bytes: Array[Byte]): Some[Embedded]  = {
+        val unpickler = new DottyUnpickler(bytes)
+        unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))
+        Some(unpickler)
       }
 
       def parseScalaSigBytes: Array[Byte] = {
@@ -739,7 +747,7 @@ class ClassfileParser(
           }
         }
       }
-      false
+      None
     } finally in.bp = oldbp
   }
 

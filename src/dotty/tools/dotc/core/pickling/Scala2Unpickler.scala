@@ -148,7 +148,7 @@ object Scala2Unpickler {
  *  @param filename   filename associated with bytearray, only used for error messages
  */
 class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(ictx: Context)
-  extends PickleBuffer(bytes, 0, -1) {
+  extends PickleBuffer(bytes, 0, -1) with ClassfileParser.Embedded {
 
   def showPickled() = {
     atReadPos(0, () => {
