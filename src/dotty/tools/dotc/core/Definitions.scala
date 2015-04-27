@@ -4,7 +4,7 @@ package core
 
 import Types._, Contexts._, Symbols._, Denotations._, SymDenotations._, StdNames._, Names._
 import Flags._, Scopes._, Decorators._, NameOps._, util.Positions._
-import pickling.UnPickler.ensureConstructor
+import pickling.Scala2Unpickler.ensureConstructor
 import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
 import PartialFunction._
@@ -99,7 +99,8 @@ class Definitions {
   lazy val RootPackage: TermSymbol = ctx.newSymbol(
     NoSymbol, nme.ROOTPKG, PackageCreationFlags, TypeRef(NoPrefix, RootClass))
 
-  lazy val EmptyPackageVal = ctx.newCompletePackageSymbol(RootClass, nme.EMPTY_PACKAGE).entered
+  lazy val EmptyPackageVal = ctx.newPackageSymbol(
+    RootClass, nme.EMPTY_PACKAGE, (emptypkg, emptycls) => ctx.rootLoader(emptypkg)).entered
   lazy val EmptyPackageClass = EmptyPackageVal.moduleClass.asClass
 
   /** A package in which we can place all methods that are interpreted specially by the compiler */
