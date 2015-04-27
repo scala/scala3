@@ -24,7 +24,7 @@ import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
 
-object UnPickler {
+object Scala2Unpickler {
 
   /** Exception thrown if classfile is corrupted */
   class BadSignature(msg: String) extends RuntimeException(msg)
@@ -147,7 +147,7 @@ object UnPickler {
  *  @param moduleroot the top-level module class which is unpickled, or NoSymbol if inapplicable
  *  @param filename   filename associated with bytearray, only used for error messages
  */
-class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(ictx: Context)
+class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot: ClassDenotation)(ictx: Context)
   extends PickleBuffer(bytes, 0, -1) {
 
   def showPickled() = {
@@ -159,7 +159,7 @@ class UnPickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClassRoot:
 
   // print("unpickling "); showPickled() // !!! DEBUG
 
-  import UnPickler._
+  import Scala2Unpickler._
 
   val moduleRoot = moduleClassRoot.sourceModule(ictx).denot(ictx)
   assert(moduleRoot.isTerm)

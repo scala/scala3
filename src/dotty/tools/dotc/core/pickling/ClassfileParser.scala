@@ -4,7 +4,7 @@ package core
 package pickling
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
-import SymDenotations._, UnPickler._, Constants._, Annotations._, util.Positions._
+import SymDenotations._, Scala2Unpickler._, Constants._, Annotations._, util.Positions._
 import ast.tpd._
 import java.io.{ File, IOException }
 import java.lang.Integer.toHexString
@@ -665,7 +665,7 @@ class ClassfileParser(
       }
 
       def unpickleScala(bytes: Array[Byte]): Boolean = {
-        new UnPickler(bytes, classRoot, moduleRoot)(ctx).run()
+        new Scala2Unpickler(bytes, classRoot, moduleRoot)(ctx).run()
         true
       }
 
