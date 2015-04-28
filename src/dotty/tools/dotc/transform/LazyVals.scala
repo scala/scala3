@@ -172,7 +172,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         val containerSymbol = ctx.newSymbol(claz, containerName,
           x.symbol.flags &~ containerFlagsMask | containerFlags | Flags.Private,
           tpe, coord = x.symbol.coord
-        ).enteredAfter(this)
+        ).entered
 
         val containerTree = ValDef(containerSymbol, initValue(tpe))
         if (x.tpe.isNotNull && tpe <:< defn.ObjectType) { // can use 'null' value instead of flag
@@ -312,7 +312,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
             } else { // need to create a new flag
               offsetSymbol = ctx.newSymbol(companion.moduleClass, (StdNames.nme.LAZY_FIELD_OFFSET + id.toString).toTermName, Flags.Synthetic, defn.LongType).enteredAfter(this)
               val flagName = (StdNames.nme.BITMAP_PREFIX + id.toString).toTermName
-              val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
+              val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).entered
               flag = ValDef(flagSymbol, Literal(Constants.Constant(0L)))
               val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thizClass, Literal(Constant(flagName.toString))))
               info.defs = offsetTree :: info.defs
@@ -321,17 +321,17 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
           case None =>
             offsetSymbol = ctx.newSymbol(companion.moduleClass, (StdNames.nme.LAZY_FIELD_OFFSET + "0").toTermName, Flags.Synthetic, defn.LongType).enteredAfter(this)
             val flagName = (StdNames.nme.BITMAP_PREFIX + "0").toTermName
-            val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
+            val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).entered
             flag = ValDef(flagSymbol, Literal(Constants.Constant(0L)))
             val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thizClass, Literal(Constant(flagName.toString))))
-            appendOffsetDefs += (companion.name.moduleClassName -> new OffsetInfo(List(offsetTree), ord))
+            appendOffsetDefs += (companion.moduleClass -> new OffsetInfo(List(offsetTree), ord))
         }
 
         val containerName = ctx.freshName(x.name ++ StdNames.nme.LAZY_LOCAL).toTermName
-        val containerSymbol = ctx.newSymbol(claz, containerName, (x.mods &~ containerFlagsMask | containerFlags).flags, tpe, coord = x.symbol.coord).enteredAfter(this)
+        val containerSymbol = ctx.newSymbol(claz, containerName, (x.mods &~ containerFlagsMask | containerFlags).flags, tpe, coord = x.symbol.coord).entered
         val containerTree = ValDef(containerSymbol, initValue(tpe))
 
-        val offset =  Select(ref(companion), offsetSymbol.name)
+        val offset =  ref(companion).ensureApplied.select(offsetSymbol)
         val getFlag = Select(ref(helperModule), RLazyValsNames_get)
         val setFlag = Select(ref(helperModule), RLazyValsNames_setFlag)
         val wait =    Select(ref(helperModule), RLazyValsNames_wait4Notification)
