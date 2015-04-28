@@ -321,7 +321,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
           case None =>
             offsetSymbol = ctx.newSymbol(companion.moduleClass, (StdNames.nme.LAZY_FIELD_OFFSET + "0").toTermName, Flags.Synthetic, defn.LongType).enteredAfter(this)
             val flagName = (StdNames.nme.BITMAP_PREFIX + "0").toTermName
-            val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).entered
+            val flagSymbol = ctx.newSymbol(claz, flagName, containerFlags, defn.LongType).enteredAfter(this)
             flag = ValDef(flagSymbol, Literal(Constants.Constant(0L)))
             val offsetTree = ValDef(offsetSymbol, getOffset.appliedTo(thizClass, Literal(Constant(flagName.toString))))
             appendOffsetDefs += (companion.moduleClass -> new OffsetInfo(List(offsetTree), ord))
