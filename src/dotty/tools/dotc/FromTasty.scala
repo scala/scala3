@@ -66,18 +66,17 @@ object FromTasty extends Driver {
               case info: ClassfileLoader =>
                 info.load(clsd) match {
                   case Some(unpickler: DottyUnpickler) =>
-                    val (List(unpickled), source) = unpickler.body(readPositions = false)
+                    val (List(unpickled), source) = unpickler.body(readPositions = true)
                     val unit1 = new CompilationUnit(source)
                     unit1.tpdTree = unpickled
                     unit1
                   case _ =>
-                    cannotUnpickle(s"it does not have a TASTY attribute")
+                    cannotUnpickle(s"its class file ${info.classfile} does not have a TASTY attribute")
                 }
               case info =>
                 cannotUnpickle(s"its info of type ${info.getClass} is not a ClassfileLoader")
             }
           case _ =>
-            println(defn.EmptyPackageClass.info.decls)
             ctx.error(s"class not found: $className")
             unit
         }

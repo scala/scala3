@@ -89,7 +89,7 @@ class Pickler extends Phase {
       }
     pickling.println("************* entered toplevel ***********")
     for ((cls, unpickler) <- unpicklers) {
-      val (unpickled, source) = unpickler.body(readPositions = false)
+      val (unpickled, source) = unpickler.body(readPositions = true)
       testSame(i"$unpickled%\n%", beforePickling(cls), cls, source)
     }
   }

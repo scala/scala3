@@ -860,11 +860,12 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     }
   }
 
-  private def setNormalized(tree: Tree, parentPos: Position): Unit = {
-    assert(tree.pos.exists)
-    val absPos = Position(parentPos.start + offsetToInt(tree.pos.start), parentPos.end - tree.pos.end)
-    tree.setPosUnchecked(absPos)
-  }
+  private def setNormalized(tree: Tree, parentPos: Position): Unit =
+    tree.setPosUnchecked(
+      if (tree.pos.exists)
+        Position(parentPos.start + offsetToInt(tree.pos.start), parentPos.end - tree.pos.end)
+      else
+        parentPos)
 
   def normalizePos(x: Any, parentPos: Position)(implicit ctx: Context): Unit =
     traverse(x, parentPos, setNormalized)
