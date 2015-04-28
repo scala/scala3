@@ -66,13 +66,9 @@ object FromTasty extends Driver {
               case info: ClassfileLoader =>
                 info.load(clsd) match {
                   case Some(unpickler: DottyUnpickler) =>
-                    val (List(unpickled), sources) = unpickler.body(readPositions = false)
-                    val unit1 = sources.get(unpickled) match {
-                      case Some(source) => new CompilationUnit(source)
-                      case _ => unit
-                    }
+                    val (List(unpickled), source) = unpickler.body(readPositions = false)
+                    val unit1 = new CompilationUnit(source)
                     unit1.tpdTree = unpickled
-                    unit1.embeddedSources = sources - unpickled
                     unit1
                   case _ =>
                     cannotUnpickle(s"it does not have a TASTY attribute")

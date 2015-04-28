@@ -185,6 +185,8 @@ Note: Tree tags are grouped into 5 categories that determine what follows, and t
   Category 4 (tags 112-127):  tag Nat AST
   Category 5 (tags 128-255):  tag Length <payload>
 
+Standard Section: "Sourcefile" sourcefile_NameRef
+
 Standard Section: "Positions" sourceLength_Nat Assoc*
 
   Assoc         = addr_Delta offset_Delta offset_Delta?
