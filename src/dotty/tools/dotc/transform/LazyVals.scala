@@ -22,6 +22,7 @@ import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.DenotTransformers.{SymTransformer, IdentityDenotTransformer, DenotTransformer}
+import Erasure.Boxing.adaptToType
 
 class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
   import LazyVals._
@@ -103,8 +104,10 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         val flag = ref(holderSymbol).select(nme_initialized)
         val initer = valueInitter.changeOwner(x.symbol, initSymbol)
         val initBody =
-          ref(holderSymbol).select(defn.Object_synchronized).appliedTo(
-          mkNonThreadSafeDef(result, flag, initer)).ensureConforms(tpe)
+          adaptToType(
+            ref(holderSymbol).select(defn.Object_synchronized).appliedTo(
+              adaptToType(mkNonThreadSafeDef(result, flag, initer), defn.ObjectType)),
+            tpe)
         val initTree = DefDef(initSymbol, initBody)
         val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, List()))
         val methodBody = {
