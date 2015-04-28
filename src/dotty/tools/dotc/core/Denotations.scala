@@ -645,7 +645,7 @@ object Denotations {
           current1.validFor = current.validFor
           current1.replaceDenotation(current)
         }
-        current = current.nextInRun
+        current = current1.nextInRun
       }
     }
 
