@@ -11,7 +11,7 @@ import Contexts._, Types._, Symbols._, Flags._, TypeUtils._, DenotTransformers._
  *
  *  if
  *  (1) x is forwarded in the supercall to a parameter that's also named `x`
- *  (2) the superclass parameter accessor for `x` is accessible from the current class to
+ *  (2) the superclass parameter accessor for `x` is accessible from the current class
  *  change the accessor to
  *
  *      def x: T = super.x.asInstanceOf[T]

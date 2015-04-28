@@ -48,7 +48,7 @@ class SuperAccessors(thisTransformer: DenotTransformer) {
      *  of adding accessors. For instance, super calls from these regions
      *  always have to go through an accessor.
      *
-     *  The `invalidOwner` field, if different from NoSymbol,
+     *  The `invalidEnclClass` field, if different from NoSymbol,
      *  contains the symbol that is not a valid owner.
      */
     private var invalidEnclClass: Symbol = NoSymbol
