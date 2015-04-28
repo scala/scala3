@@ -79,7 +79,7 @@ object DottyBuild extends Build {
 
        val travis_build = // propagate if this is a travis build
          if (sys.props.isDefinedAt(TRAVIS_BUILD))
-           List(s"-D$TRAVIS_BUILD=${sys.props(TRAVIS_BUILD)}")
+           List(s"-D$TRAVIS_BUILD=${sys.props(TRAVIS_BUILD)}", "-Xmx1g", "-Xss2m")
          else
            List()
 
