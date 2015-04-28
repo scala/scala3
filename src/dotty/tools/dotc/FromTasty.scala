@@ -16,6 +16,17 @@ import Decorators._
 import dotty.tools.dotc.transform.Pickler
 import pickling.DottyUnpickler
 
+/** Compiler for TASTY files.
+ *  Usage:
+ *
+ *    scala dotty.tools.dotc.FromTasty (option | classname)*
+ *
+ *  Options are as for dotc.
+ *  Classnames are fully qualified names of top-level classes that need to have a TASTY attribute.
+ *  Example:
+ *
+ *    scala dotty.tools.dotc.FromTasty -Xprint:front extMethods.T
+ */
 object FromTasty extends Driver {
   override def newCompiler(): Compiler = new TASTYCompiler
 
