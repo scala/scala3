@@ -38,7 +38,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
   /** this map contains mutable state of transformation: OffsetDefs to be appended to companion object definitions,
     * and number of bits currently used */
   class OffsetInfo(var defs: List[Tree], var ord:Int)
-  val appendOffsetDefs = mutable.Map.empty[Name, OffsetInfo]
+  val appendOffsetDefs = mutable.Map.empty[Symbol, OffsetInfo]
 
   override def phaseName: String = "LazyVals"
 
@@ -64,7 +64,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
     override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
       if (!tree.symbol.isClass) tree
       else {
-        appendOffsetDefs.get(tree.symbol.name) match {
+        appendOffsetDefs.get(tree.symbol) match {
           case None => tree
           case Some(data) =>
             val template = tree.rhs.asInstanceOf[Template]
@@ -296,7 +296,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         var ord = 0
 
         // compute or create appropriate offsetSymol, bitmap and bits used by current ValDef
-        appendOffsetDefs.get(companion.name.moduleClassName) match {
+        appendOffsetDefs.get(companion.moduleClass) match {
           case Some(info) =>
             val flagsPerLong = 64 / RLazyVals.BITS_PER_LAZY_VAL
             info.ord += 1
