@@ -338,7 +338,7 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
           name.isTermName && !name.isConstructorName && !givenFlags.is(ParamOrAccessor) ||
         isAbstractType
       var flags = givenFlags
-      if (lacksDefinition) flags |= Deferred
+      if (lacksDefinition && tag != PARAM) flags |= Deferred
       if (tag == DEFDEF) flags |= Method
       if (givenFlags is Module)
         flags = flags | (if (tag == VALDEF) ModuleCreationFlags else ModuleClassCreationFlags)
