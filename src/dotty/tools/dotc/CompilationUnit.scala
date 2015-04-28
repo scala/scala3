@@ -19,11 +19,11 @@ class CompilationUnit(val source: SourceFile) {
   def isJava = source.file.name.endsWith(".java")
 
   /**
-   * Pickler used to create TASTY sections.
+   * Picklers used to create TASTY sections, indexed by toplevel class to which they belong.
    * Sections: Header, ASTs and Positions are populated by `pickler` phase.
    * Subsequent phases can add new sections.
    */
-  lazy val pickler: TastyPickler = new TastyPickler()
+  var picklers: Map[ClassSymbol, TastyPickler] = Map()
 
   /**
    * Addresses in TASTY file of trees, stored by pickling.

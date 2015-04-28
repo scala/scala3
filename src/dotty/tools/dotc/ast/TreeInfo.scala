@@ -461,6 +461,34 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     accum(Nil, root)
   }
 
+
+  /** The top level classes in this tree, including only those module classes that
+   *  are not a linked class of some other class in the result.
+   */
+  def topLevelClasses(tree: Tree)(implicit ctx: Context): List[ClassSymbol] = tree match {
+    case PackageDef(_, stats) => stats.flatMap(topLevelClasses)
+    case tdef: TypeDef if tdef.symbol.isClass => tdef.symbol.asClass :: Nil
+    case _ => Nil
+  }
+
+  /** The tree containing only the top-level classes and objects matching either `cls` or its companion object */
+  def sliceTopLevel(tree: Tree, cls: ClassSymbol)(implicit ctx: Context): List[Tree] = tree match {
+    case PackageDef(pid, stats) =>
+      cpy.PackageDef(tree)(pid, stats.flatMap(sliceTopLevel(_, cls))) :: Nil
+    case tdef: TypeDef =>
+      val sym = tdef.symbol
+      assert(sym.isClass)
+      if (cls == sym || cls == sym.linkedClass) tdef :: Nil
+      else Nil
+    case vdef: ValDef =>
+      val sym = vdef.symbol
+      assert(sym is Module)
+      if (cls == sym.companionClass || cls == sym.moduleClass) vdef :: Nil
+      else Nil
+    case tree =>
+      tree :: Nil
+  }
+
   /** The statement sequence that contains a definition of `sym`, or Nil
    *  if none was found.
    *  For a tree to be found, The symbol must have a position and its definition

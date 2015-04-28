@@ -664,8 +664,14 @@ class ClassfileParser(
         i < attrs
       }
 
-      def unpickle(bytes: Array[Byte]): Boolean = {
+      def unpickleScala(bytes: Array[Byte]): Boolean = {
         new UnPickler(bytes, classRoot, moduleRoot)(ctx).run()
+        true
+      }
+
+      def unpickleTASTY(bytes: Array[Byte]): Boolean = {
+        new DottyUnpickler(bytes)
+          .enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))
         true
       }
 
@@ -688,6 +694,11 @@ class ClassfileParser(
         pool.getBytes(entries.toList)
       }
 
+      if (scan(tpnme.TASTYATTR)) {
+        val attrLen = in.nextInt
+        return unpickleTASTY(in.nextBytes(attrLen))
+      }
+
       if (scan(tpnme.RuntimeAnnotationATTR)) {
         val attrLen = in.nextInt
         val nAnnots = in.nextChar
@@ -698,12 +709,16 @@ class ClassfileParser(
           var j = 0
           while (j < nArgs) {
             val argName = pool.getName(in.nextChar)
-            if (attrClass == defn.ScalaSignatureAnnot && argName == nme.bytes)
-              return unpickle(parseScalaSigBytes)
-            else if (attrClass == defn.ScalaLongSignatureAnnot && argName == nme.bytes)
-              return unpickle(parseScalaLongSigBytes)
-            else
-              parseAnnotArg(skip = true)
+            if (argName == nme.bytes)
+              if (attrClass == defn.ScalaSignatureAnnot)
+                return unpickleScala(parseScalaSigBytes)
+              else if (attrClass == defn.ScalaLongSignatureAnnot)
+                return unpickleScala(parseScalaLongSigBytes)
+              else if (attrClass == defn.TASTYSignatureAnnot)
+                return unpickleTASTY(parseScalaSigBytes)
+              else if (attrClass == defn.TASTYLongSignatureAnnot)
+                return unpickleTASTY(parseScalaLongSigBytes)
+            parseAnnotArg(skip = true)
             j += 1
           }
           i += 1

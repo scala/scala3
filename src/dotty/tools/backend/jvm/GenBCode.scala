@@ -6,7 +6,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Phases.Phase
 
 import scala.collection.mutable
-import scala.tools.asm.{ClassVisitor, MethodVisitor, FieldVisitor}
+import scala.tools.asm.{CustomAttr, ClassVisitor, MethodVisitor, FieldVisitor}
 import scala.tools.nsc.Settings
 import scala.tools.nsc.backend.jvm._
 import dotty.tools.dotc
@@ -27,6 +27,7 @@ import scala.tools.asm
 import scala.tools.asm.tree._
 import dotty.tools.dotc.util.{Positions, DotClass}
 import tpd._
+import StdNames._
 
 import scala.tools.nsc.backend.jvm.opt.LocalOpt
 
@@ -173,6 +174,13 @@ class GenBCodePipeline(val entryPoints: List[Symbol], val int: DottyBackendInter
         pcb.genPlainClass(cd)
         val outF = if (needsOutFolder) getOutFolder(claszSymbol, pcb.thisName) else null;
         val plainC = pcb.cnode
+
+        if (claszSymbol.isClass) // @DarkDimius is this test needed here?
+          for (pickler <- ctx.compilationUnit.picklers.get(claszSymbol.asClass)) {
+            val binary = pickler.assembleParts()
+            val dataAttr = new CustomAttr(nme.TASTYATTR.toString, binary)
+            plainC.visitAttribute(dataAttr)
+          }
 
         // -------------- bean info class, if needed --------------
         val beanC =
