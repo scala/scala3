@@ -6,7 +6,7 @@ import Contexts._
 import Periods._
 import Symbols._
 import Scopes._
-import typer.{FrontEnd, Typer, Mode, ImportInfo, RefChecks, InstChecks}
+import typer.{FrontEnd, Typer, Mode, ImportInfo, RefChecks}
 import reporting.ConsoleReporter
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform._
@@ -38,11 +38,9 @@ class Compiler {
   def phases: List[List[Phase]] =
     List(
       List(new FrontEnd),
-      List(new InstChecks),
-      List(new FirstTransform,
-           new SyntheticMethods),
-      List(new SuperAccessors),
-      List(new Pickler), // Pickler needs to come last in a group since it should not pickle trees generated later
+      List(new PostTyper),
+      List(new Pickler),
+      List(new FirstTransform),
       List(new RefChecks,
            new ElimRepeated,
            new NormalizeFlags,

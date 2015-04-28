@@ -39,6 +39,23 @@ object Checking {
           d"Type argument ${arg.tpe} does not conform to $which bound $bound ${err.whyNoMatchStr(arg.tpe, bound)}",
           arg.pos)
 
+  /** Check that `tp` refers to a nonAbstract class
+   *  and that the instance conforms to the self type of the created class.
+   */
+  def checkInstantiable(tp: Type, pos: Position)(implicit ctx: Context): Unit =
+    tp.underlyingClassRef(refinementOK = false) match {
+      case tref: TypeRef =>
+        val cls = tref.symbol
+        if (cls.is(AbstractOrTrait))
+          ctx.error(d"$cls is abstract; cannot be instantiated", pos)
+        if (!cls.is(Module)) {
+          val selfType = tp.givenSelfType.asSeenFrom(tref.prefix, cls.owner)
+          if (selfType.exists && !(tp <:< selfType))
+            ctx.error(d"$tp does not conform to its self type $selfType; cannot be instantiated")
+        }
+      case _ =>
+    }
+
   /** A type map which checks that the only cycles in a type are F-bounds
    *  and that protects all F-bounded references by LazyRefs.
    */

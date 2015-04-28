@@ -6,6 +6,7 @@ import Types._
 import Contexts._
 import Symbols._
 import Decorators._
+import TypeUtils._
 import StdNames.nme
 import NameOps._
 import ast._
@@ -128,14 +129,8 @@ trait FullParameterization {
    */
   def memberSignature(info: Type)(implicit ctx: Context): Signature = info match {
     case info: PolyType => memberSignature(info.resultType)
-    case info @ MethodType(nme.SELF :: Nil, _) =>
-      val normalizedResultType = info.resultType match {
-        case rtp: MethodType => rtp
-        case rtp => ExprType(rtp)
-      }
-      normalizedResultType.signature
-    case _ =>
-      Signature.NotAMethod
+    case info @ MethodType(nme.SELF :: Nil, _) => info.resultType.ensureMethodic.signature
+    case _ => Signature.NotAMethod
   }
 
   /** The type parameters (skolems) of the method definition `originalDef`,

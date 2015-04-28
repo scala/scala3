@@ -31,19 +31,20 @@ import scala.language.postfixOps
  *    def equals(other: Any): Boolean
  *    def hashCode(): Int
  */
-class SyntheticMethods extends MiniPhaseTransform with IdentityDenotTransformer { thisTransformer =>
+class SyntheticMethods(thisTransformer: DenotTransformer) {
   import ast.tpd._
 
-  override def phaseName = "synthetics"
+  private var myValueSymbols: List[Symbol] = Nil
+  private var myCaseSymbols: List[Symbol] = Nil
 
-  private var valueSymbols: List[Symbol] = _
-  private var caseSymbols: List[Symbol] = _
+  private def initSymbols(implicit ctx: Context) =
+    if (myValueSymbols.isEmpty) {
+      myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
+      myCaseSymbols = myValueSymbols ++ List(defn.Any_toString, defn.Product_canEqual, defn.Product_productArity)
+    }
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context) = {
-    valueSymbols = List(defn.Any_hashCode, defn.Any_equals)
-    caseSymbols = valueSymbols ++ List(defn.Any_toString, defn.Product_canEqual, defn.Product_productArity)
-    this
-  }
+  def valueSymbols(implicit ctx: Context) = { initSymbols; myValueSymbols }
+  def caseSymbols(implicit ctx: Context) = { initSymbols; myCaseSymbols }
 
   /** The synthetic methods of the case or value class `clazz`.
    */
@@ -185,10 +186,9 @@ class SyntheticMethods extends MiniPhaseTransform with IdentityDenotTransformer 
     symbolsToSynthesize flatMap syntheticDefIfMissing
   }
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context, info: TransformerInfo) =
+  def addSyntheticMethods(impl: Template)(implicit ctx: Context) =
     if (ctx.owner.is(Case) || isDerivedValueClass(ctx.owner))
-      cpy.Template(impl)(
-        body = impl.body ++ syntheticMethods(ctx.owner.asClass))
+      cpy.Template(impl)(body = impl.body ++ syntheticMethods(ctx.owner.asClass))
     else
       impl
 }

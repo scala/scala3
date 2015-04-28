@@ -228,8 +228,8 @@ trait Symbols { this: Context =>
     newSymbol(cls, nme.localDummyName(cls), EmptyFlags, NoType)
 
   /** Create an import symbol pointing back to given qualifier `expr`. */
-  def newImportSymbol(expr: Tree, coord: Coord = NoCoord) =
-    newSymbol(NoSymbol, nme.IMPORT, EmptyFlags, ImportType(expr), coord = coord)
+  def newImportSymbol(owner: Symbol, expr: Tree, coord: Coord = NoCoord) =
+    newSymbol(owner, nme.IMPORT, EmptyFlags, ImportType(expr), coord = coord)
 
   /** Create a class constructor symbol for given class `cls`. */
   def newConstructor(cls: ClassSymbol, flags: FlagSet, paramNames: List[TermName], paramTypes: List[Type], privateWithin: Symbol = NoSymbol, coord: Coord = NoCoord) =
@@ -558,13 +558,17 @@ object Symbols {
         ctx.newSymbol(owner, name, flags, info, privateWithin, coord)
   }
 
-  implicit def defn(implicit ctx: Context): Definitions = ctx.definitions
-
   /** Makes all denotation operations available on symbols */
   implicit def toDenot(sym: Symbol)(implicit ctx: Context): SymDenotation = sym.denot
 
   /** Makes all class denotations available on class symbols */
   implicit def toClassDenot(cls: ClassSymbol)(implicit ctx: Context): ClassDenotation = cls.classDenot
+
+  /** The Definitions object */
+  def defn(implicit ctx: Context): Definitions = ctx.definitions
+
+  /** The current class */
+  def currentClass(implicit ctx: Context): ClassSymbol = ctx.owner.enclosingClass.asClass
 
   var stubs: List[Symbol] = Nil // diagnostic
 }

@@ -24,21 +24,13 @@ import StdNames._
 
 /** The first tree transform
  *   - ensures there are companion objects for all classes except module classes
- *   - eliminates some kinds of trees: Imports, NamedArgs, all TypTrees other than TypeTree
- *   - converts Select/Ident/SelectFromTypeTree nodes that refer to types to TypeTrees.
- *   - inserts `.package` for selections of package object members
- *   - checks the bounds of AppliedTypeTrees
+ *   - eliminates some kinds of trees: Imports, NamedArgs
  *   - stubs out native methods
- *   - removes java-defined ASTs
  */
 class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer with AnnotationTransformer { thisTransformer =>
   import ast.tpd._
 
   override def phaseName = "firstTransform"
-  
-  override def runsAfter = Set(classOf[typer.InstChecks]) 
-    // This phase makes annotations disappear in types, so InstChecks should
-    // run before so that it can get at all annotations.
 
   def transformInfo(tp: Type, sym: Symbol)(implicit ctx: Context): Type = tp
 
@@ -101,10 +93,7 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
       case stat => stat
     }
 
-    def skipJava(stats: List[Tree]): List[Tree] = // packages get a JavaDefined flag. Dont skip them
-      stats.filter(t => !(t.symbol is(Flags.JavaDefined, Flags.Package)))
-
-    addMissingCompanions(reorder(skipJava(stats)))
+    addMissingCompanions(reorder(stats))
   }
 
   override def transformDefDef(ddef: DefDef)(implicit ctx: Context, info: TransformerInfo) = {
@@ -119,47 +108,10 @@ class FirstTransform extends MiniPhaseTransform with IdentityDenotTransformer wi
   override def transformStats(trees: List[Tree])(implicit ctx: Context, info: TransformerInfo): List[Tree] =
     ast.Trees.flatten(reorderAndComplete(trees)(ctx.withPhase(thisTransformer.next)))
 
-  private def normalizeType(tree: Tree)(implicit ctx: Context) =
-    if (tree.isType) TypeTree(tree.tpe).withPos(tree.pos) else tree
-
-  override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = tree.tpe match {
-    case tpe: ThisType =>
-      /*
-       A this reference hide in a self ident, and be subsequently missed
-        when deciding on whether outer accessors are needed and computing outer paths.
-        We do this normalization directly after Typer, because during typer the
-        ident should rest available for hyperlinking.*/
-      This(tpe.cls).withPos(tree.pos)
-    case _ => normalizeType(tree)
-  }
-
-
-
-  override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) =
-    normalizeType {
-      val qual = tree.qualifier
-      qual.symbol.moduleClass.denot match {
-        case pkg: PackageClassDenotation if !tree.symbol.maybeOwner.is(Package) =>
-          cpy.Select(tree)(qual select pkg.packageObj.symbol, tree.name)
-        case _ =>
-          tree
-      }
-    }
-
-  override def transformSelectFromTypeTree(tree: SelectFromTypeTree)(implicit ctx: Context, info: TransformerInfo) =
-    normalizeType(tree)
-
   override def transformOther(tree: Tree)(implicit ctx: Context, info: TransformerInfo) = tree match {
     case tree: Import => EmptyTree
     case tree: NamedArg => transform(tree.arg)
-    case AppliedTypeTree(tycon, args) =>
-      val tparams = tycon.tpe.typeSymbol.typeParams
-      val bounds = tparams.map(tparam =>
-        tparam.info.asSeenFrom(tycon.tpe.normalizedPrefix, tparam.owner.owner).bounds)
-      Checking.checkBounds(args, bounds, _.substDealias(tparams, _))
-      normalizeType(tree)
-    case tree =>
-      normalizeType(tree)
+    case tree => tree
   }
 
   // invariants: all modules have companion objects

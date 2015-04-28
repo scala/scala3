@@ -211,6 +211,10 @@ object SymDenotations {
     final def hasAnnotation(cls: Symbol)(implicit ctx: Context) =
       dropOtherAnnotations(annotations, cls).nonEmpty
 
+    /** Apply transform `f` to all annotations of this denotation */
+    final def transformAnnotations(f: Annotation => Annotation)(implicit ctx: Context): Unit =
+      annotations = annotations.mapConserve(f)
+
     /** Optionally, the annotation matching the given class symbol */
     final def getAnnotation(cls: Symbol)(implicit ctx: Context): Option[Annotation] =
       dropOtherAnnotations(annotations, cls) match {

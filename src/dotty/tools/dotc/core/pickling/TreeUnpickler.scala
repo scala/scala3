@@ -657,10 +657,10 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
     }
 
     def readIndexedStat(exprOwner: Symbol)(implicit ctx: Context): Tree = nextByte match {
-      case TYPEDEF | VALDEF | DEFDEF | IMPORT =>
+      case TYPEDEF | VALDEF | DEFDEF =>
         readIndexedDef()
       case IMPORT =>
-        ???
+        readImport()
       case PACKAGE =>
         val start = currentAddr
         processPackage { (pid, end) => implicit ctx =>
@@ -668,6 +668,24 @@ class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
         }
       case _ =>
         readTerm()(ctx.withOwner(exprOwner))
+    }
+
+    def readImport()(implicit ctx: Context): Tree = {
+      readByte()
+      readEnd()
+      val expr = readTerm()
+      def readSelectors(): List[untpd.Tree] = nextByte match {
+        case RENAMED =>
+          readByte()
+          readEnd()
+          untpd.Pair(untpd.Ident(readName()), untpd.Ident(readName())) :: readSelectors()
+        case IMPORTED =>
+          readByte()
+          untpd.Ident(readName()) :: readSelectors()
+        case _ =>
+          Nil
+      }
+      Import(expr, readSelectors())
     }
 
     def readIndexedStats(exprOwner: Symbol, end: Addr)(implicit ctx: Context): List[Tree] =

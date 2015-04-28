@@ -107,18 +107,18 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
      *  in `enclosure` or there is an intermediate class properly containing `enclosure`
      *  in which `sym` is also free. Also, update `liftedOwner` of `enclosure` so
      *  that `enclosure` can access `sym`, or its proxy in an intermediate class.
-     *  This means: 
-     *  
+     *  This means:
+     *
      *    1. If there is an intermediate class in which `sym` is free, `enclosure`
-     *       must be contained in that class (in order to access the `sym proxy stored 
+     *       must be contained in that class (in order to access the `sym proxy stored
      *       in the class).
-     *       
+     *
      *    2. If there is no intermediate class, `enclosure` must be contained
      *       in the class enclosing `sym`.
-     *       
+     *
      *  Return the closest enclosing intermediate class between `enclosure` and
      *  the owner of sym, or NoSymbol if none exists.
-     *  
+     *
      *  pre: sym.owner.isTerm, (enclosure.isMethod || enclosure.isClass)
      *
      *  The idea of `markFree` is illustrated with an example:
@@ -150,10 +150,10 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       else {
         ctx.log(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
         ctx.debuglog(i"$enclosure != ${sym.enclosure}")
-        val intermediate = 
+        val intermediate =
           if (enclosure.is(PackageClass)) enclosure
-          else markFree(sym, enclosure.skipConstructor.enclosure) 
-            // `enclosure` might be a constructor, in which case we want the enclosure 
+          else markFree(sym, enclosure.skipConstructor.enclosure)
+            // `enclosure` might be a constructor, in which case we want the enclosure
             // of the enclosing class, so skipConstructor is needed here.
         if (intermediate.exists) {
           narrowLiftedOwner(enclosure, intermediate)
@@ -394,12 +394,12 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       val sym = tree.symbol
       tree.tpe match {
         case tpe @ TermRef(prefix, _) =>
-          if (prefix eq NoPrefix) 
+          if (prefix eq NoPrefix)
             if (sym.enclosure != currentEnclosure && !sym.isStatic)
               (if (sym is Method) memberRef(sym) else proxyRef(sym)).withPos(tree.pos)
             else if (sym.owner.isClass) // sym was lifted out
               ref(sym).withPos(tree.pos)
-            else 
+            else
               tree
           else if (!prefixIsElidable(tpe)) ref(tpe)
           else tree
