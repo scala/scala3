@@ -10,6 +10,7 @@ import reporting.Reporter
 import transform.TreeChecker
 import java.io.{BufferedWriter, OutputStreamWriter}
 import scala.reflect.io.VirtualFile
+import scala.util.control.NonFatal
 
 class Run(comp: Compiler)(implicit ctx: Context) {
 
@@ -27,9 +28,13 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     }
   }
 
-  def compile(fileNames: List[String]): Unit = {
+  def compile(fileNames: List[String]): Unit = try {
     val sources = fileNames map getSource
     compileSources(sources)
+  } catch {
+    case NonFatal(ex) =>
+      println(s"exception occurred while compiling $units%, %")
+      throw ex
   }
 
   /** TODO: There's a fundamental design problem here: We assmble phases using `squash`
