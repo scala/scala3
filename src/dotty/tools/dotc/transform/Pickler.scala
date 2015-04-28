@@ -46,8 +46,8 @@ class Pickler extends Phase {
       unit.picklers += (cls -> pickler)
       val treePkl = new TreePickler(pickler)
       treePkl.pickle(tree :: Nil)
-      unit.addrOfTree = treePkl.buf.addrOfTree
-      unit.addrOfSym = treePkl.addrOfSym
+      pickler.addrOfTree = treePkl.buf.addrOfTree
+      pickler.addrOfSym = treePkl.addrOfSym
       if (unit.source.exists)
         pickleSourcefile(pickler, unit.source)
       if (tree.pos.exists)
