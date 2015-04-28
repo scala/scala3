@@ -639,12 +639,14 @@ object Denotations {
       var current = symbol.current
       while (current.validFor.firstPhaseId < phase.id && (current.nextInRun.validFor.code > current.validFor.code))
         current = current.nextInRun
-      while ((current.validFor.firstPhaseId >= phase.id) && (current.nextInRun.validFor.code > current.validFor.code)) {
+      var hasNext = true
+      while ((current.validFor.firstPhaseId >= phase.id) && hasNext) {
         val current1: SingleDenotation = f(current.asSymDenotation)
         if (current1 ne current) {
           current1.validFor = current.validFor
           current1.replaceDenotation(current)
         }
+        hasNext = current1.nextInRun.validFor.code > current1.validFor.code
         current = current1.nextInRun
       }
     }
