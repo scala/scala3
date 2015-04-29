@@ -1,7 +1,8 @@
 package dotty.tools
 package dotc
 package core
-package pickling
+package tasty
+
 
 import util.Positions._
 import collection.mutable

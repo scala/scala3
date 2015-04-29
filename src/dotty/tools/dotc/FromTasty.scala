@@ -14,7 +14,7 @@ import Phases.Phase
 import util._
 import Decorators._
 import dotty.tools.dotc.transform.Pickler
-import pickling.DottyUnpickler
+import tasty.DottyUnpickler
 import ast.tpd._
 
 /** Compiler for TASTY files.

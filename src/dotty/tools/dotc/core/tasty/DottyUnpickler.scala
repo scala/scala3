@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 package core
-package pickling
+package tasty
 
 import Contexts._, SymDenotations._
 import dotty.tools.dotc.ast.tpd
@@ -9,6 +9,7 @@ import TastyUnpickler._, TastyBuffer._
 import util.Positions._
 import util.{SourceFile, NoSource}
 import PositionUnpickler._
+import classfile.ClassfileParser
 
 object DottyUnpickler {
 

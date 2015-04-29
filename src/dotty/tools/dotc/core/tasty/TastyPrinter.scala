@@ -1,6 +1,6 @@
 package dotty.tools.dotc
 package core
-package pickling
+package tasty
 
 import Contexts._, Decorators._
 import printing.Texts._
@@ -43,7 +43,7 @@ class TastyPrinter(bytes: Array[Byte])(implicit ctx: Context) {
   }
 
   class TreeSectionUnpickler extends SectionUnpickler[Unit]("ASTs") {
-    import PickleFormat._
+    import TastyFormat._
     def unpickle(reader: TastyReader, tastyName: TastyName.Table): Unit = {
       import reader._
       var indent = 0

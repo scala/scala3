@@ -4,7 +4,7 @@ package transform
 import core._
 import Contexts.Context
 import Decorators._
-import pickling._
+import tasty._
 import config.Printers.{noPrinter, pickling}
 import java.io.PrintStream
 import Periods._

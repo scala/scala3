@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 package core
-package pickling
+package classfile
 
 import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble

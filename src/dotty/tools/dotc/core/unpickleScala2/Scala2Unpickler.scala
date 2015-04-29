@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 package core
-package pickling
+package unpickleScala2
 
 import java.io.IOException
 import java.lang.Float.intBitsToFloat
@@ -20,6 +20,7 @@ import typer.Checking.checkNonCyclic
 import PickleBuffer._
 import scala.reflect.internal.pickling.PickleFormat._
 import Decorators._
+import classfile.ClassfileParser
 import scala.collection.{ mutable, immutable }
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch

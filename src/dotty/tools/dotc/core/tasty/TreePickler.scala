@@ -1,11 +1,10 @@
 package dotty.tools
 package dotc
 package core
-package pickling
+package tasty
 
 import ast.Trees._
-import PickleFormat._
-import core._
+import TastyFormat._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._, StdNames.tpnme, NameOps._
 import collection.mutable
 import NameOps._
@@ -190,7 +189,7 @@ class TreePickler(pickler: TastyPickler) {
           pickleName(tpe.name); pickleType(tpe.prefix)
         }
       case tpe: ThisType =>
-        if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot) 
+        if (tpe.cls.is(Flags.Package) && !tpe.cls.isEffectiveRoot)
           picklePackageRef(tpe.cls)
         else {
           writeByte(THIS)
@@ -260,7 +259,7 @@ class TreePickler(pickler: TastyPickler) {
         println(i"error while pickling type $tpe")
         throw ex
     }
-    
+
     def picklePackageRef(pkg: Symbol): Unit = {
       writeByte(TERMREFpkg)
       pickleName(qualifiedName(pkg))

@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 package core
-package pickling
+package tasty
 
 import Contexts._, Symbols._, Types._, Scopes._, SymDenotations._, Names._, NameOps._
 import StdNames._, Denotations._, Flags._, Constants._, Annotations._
@@ -9,19 +9,18 @@ import util.Positions._
 import dotty.tools.dotc.ast.{tpd, Trees, untpd}
 import Trees._
 import Decorators._
-import TastyUnpickler._, TastyBuffer._
+import TastyUnpickler._, TastyBuffer._, PositionPickler._
 import annotation.switch
 import scala.collection.{ mutable, immutable }
 import typer.Mode
 import config.Printers.pickling
-import PositionPickler._
 
 /** Unpickler for typed trees
  *  @param reader         the reader from which to unpickle
  *  @param tastyName      the nametable
  */
 class TreeUnpickler(reader: TastyReader, tastyName: TastyName.Table) {
-  import dotty.tools.dotc.core.pickling.PickleFormat._
+  import TastyFormat._
   import TastyName._
   import tpd._
 

@@ -1,5 +1,6 @@
-package dotty.tools.dotc.core
-package pickling
+package dotty.tools.dotc
+package core
+package classfile
 
 import scala.annotation.switch
 

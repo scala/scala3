@@ -27,7 +27,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   /** Does tree contain an initialization part when seen as a member of a class or trait?
    */
   def isNoInitMember(tree: Tree): Boolean = unsplice(tree) match {
-    case EmptyTree | Import(_, _) | TypeDef(_, _) => true
+    case EmptyTree | Import(_, _) | TypeDef(_, _) | DefDef(_, _, _, _, _) => true
     case tree: ValDef => tree.unforcedRhs == EmptyTree
     case _ => false
   }

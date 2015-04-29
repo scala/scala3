@@ -1,9 +1,9 @@
 package dotty.tools.dotc
 package core
-package pickling
+package tasty
 
 import scala.collection.mutable
-import PickleFormat._
+import TastyFormat._
 import Names.{Name, termName}
 import java.util.UUID
 

@@ -5,7 +5,7 @@
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
 \*                                                                      */
-package dotty.tools.dotc.core.pickling
+package dotty.tools.dotc.core.classfile
 
 object ByteCodecs {
 
