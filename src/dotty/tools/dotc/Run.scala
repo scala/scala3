@@ -33,7 +33,7 @@ class Run(comp: Compiler)(implicit ctx: Context) {
     compileSources(sources)
   } catch {
     case NonFatal(ex) =>
-      println(s"exception occurred while compiling $units%, %")
+      println(i"exception occurred while compiling $units%, %")
       throw ex
   }
 
