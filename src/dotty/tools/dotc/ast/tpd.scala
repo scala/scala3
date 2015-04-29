@@ -245,6 +245,34 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.TypeDef(cls.name, impl), cls)
   }
 
+  /** An anonymous class
+   *
+   *      new parent { forwarders }
+   *
+   *  where `forwarders` contains forwarders for all functions in `fns`.
+   *  `fns` must be non-empty. The class has the same owner as the first function in `fns`.
+   *  Its position is the union of all functions in `fns`.
+   */
+  def AnonClass(parent: Type, fns: List[TermSymbol], methNames: List[TermName])(implicit ctx: Context): Block = {
+    def methName(fnName: TermName): TermName = if (fnName == nme.ANON_FUN) nme.apply else fnName
+    val owner = fns.head.owner
+    val parents =
+      if (parent.classSymbol.is(Trait)) defn.ObjectClass.typeRef :: parent :: Nil
+      else parent :: Nil
+    val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_FUN, Synthetic, parents,
+        coord = fns.map(_.pos).reduceLeft(_ union _))
+    println(i"creating anon class with parent $parent -> ${cls.info.parents}%, %")
+    println(cls.classInfo.classParents)
+    val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil).entered
+    def forwarder(fn: TermSymbol, name: TermName) = {
+      val fwdMeth = fn.copy(cls, name, Synthetic | Method).entered.asTerm
+      DefDef(fwdMeth, prefss => ref(fn).appliedToArgss(prefss))
+    }
+    val forwarders = (fns, methNames).zipped.map(forwarder)
+    val cdef = ClassDef(cls, DefDef(constr), forwarders)
+    Block(cdef :: Nil, New(cls.typeRef, Nil))
+  }
+
   // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }
   def WhileDo(owner: Symbol, cond: Tree, body: List[Tree])(implicit ctx: Context): Tree = {
     val sym = ctx.newSymbol(owner, nme.WHILE_PREFIX, Flags.Label | Flags.Synthetic,
@@ -254,7 +282,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val rhs = If(cond, Block(body, call), unitLiteral)
     Block(List(DefDef(sym, rhs)), call)
   }
-
 
   def Import(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
     ta.assignType(untpd.Import(expr, selectors), ctx.newImportSymbol(ctx.owner, expr))
