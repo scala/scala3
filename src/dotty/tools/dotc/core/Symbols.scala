@@ -109,6 +109,30 @@ trait Symbols { this: Context =>
         ClassInfo(owner.thisType, _, parents, decls, selfInfo),
         privateWithin, coord, assocFile)
 
+  /** Same as `newCompleteClassSymbol` except that `parents` can be a list of arbitary
+   *  types which get normalized into type refs and parameter bindings.
+   */
+  def newNormalizedClassSymbol(
+      owner: Symbol,
+      name: TypeName,
+      flags: FlagSet,
+      parentTypes: List[Type],
+      decls: Scope = newScope,
+      selfInfo: Type = NoType,
+      privateWithin: Symbol = NoSymbol,
+      coord: Coord = NoCoord,
+      assocFile: AbstractFile = null): ClassSymbol = {
+    def completer = new LazyType {
+      def complete(denot: SymDenotation)(implicit ctx: Context): Unit = {
+        val cls = denot.asClass.classSymbol
+        val decls = newScope
+        val parentRefs: List[TypeRef] = normalizeToClassRefs(parentTypes, cls, decls)
+        denot.info = ClassInfo(owner.thisType, cls, parentRefs, decls)
+      }
+    }
+    newClassSymbol(owner, name, flags, completer, privateWithin, coord, assocFile)
+  }
+
   /** Create a module symbol with associated module class
    *  from its non-info fields and a function producing the info
    *  of the module class (this info may be lazy).
