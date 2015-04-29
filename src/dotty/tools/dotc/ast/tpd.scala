@@ -210,7 +210,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.TypeDef(sym.name, TypeTree(sym.info)), sym)
 
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree], superArgs: List[Tree] = Nil)(implicit ctx: Context): TypeDef = {
-    val firstParent :: otherParents = cls.info.parents
+    val firstParentRef :: otherParentRefs = cls.info.parents
+    val firstParent = cls.typeRef.baseTypeWithArgs(firstParentRef.symbol)
     val superRef =
       if (cls is Trait) TypeTree(firstParent)
       else {
@@ -225,7 +226,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val constr = firstParent.decl(nme.CONSTRUCTOR).suchThat(constr => isApplicable(constr.info))
         New(firstParent, constr.symbol.asTerm, superArgs)
       }
-    val parents = superRef :: otherParents.map(TypeTree(_))
+    val parents = superRef :: otherParentRefs.map(TypeTree(_))
 
     val selfType =
       if (cls.classInfo.selfInfo ne NoType) ValDef(ctx.newSelfSym(cls))
