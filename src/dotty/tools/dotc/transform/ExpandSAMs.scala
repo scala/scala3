@@ -41,21 +41,8 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
 
   private def toPartialFunction(tree: Block)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val Block(
-          (applyDef @ DefDef(nme.ANON_FUN, Nil, List(params), _, _)) :: Nil,
+          (applyDef @ DefDef(nme.ANON_FUN, Nil, List(List(param)), _, _)) :: Nil,
           Closure(_, _, tpt)) = tree
-    val List(param) = params
-    // Dotty problem: If we match instead List(List(param)) directly,
-    // we get:
-    // Exception in thread "main" java.lang.AssertionError: assertion failed: self instantiation of (A?
-    // ...
-    //  at scala.Predef$.assert(Predef.scala:165)
-    //  at dotty.tools.dotc.core.Types$TypeVar.instantiateWith(Types.scala:2308)
-    //  at dotty.tools.dotc.core.Types$TypeVar.instantiate(Types.scala:2363)
-    //  at dotty.tools.dotc.typer.Inferencing$$anonfun$interpolate$1$1$$anonfun$apply$mcV$sp$4.apply(Inferencing.scala:198)
-    // at dotty.tools.dotc.typer.Inferencing$$anonfun$interpolate$1$1$$anonfun$apply$mcV$sp$4.apply(Inferencing.scala:195)
-    //
-    // I think it has to do with the double :: (or List) pattern to extract `param`.
-
     val applyRhs: Tree = applyDef.rhs
     val applyFn = applyDef.symbol.asTerm
 
