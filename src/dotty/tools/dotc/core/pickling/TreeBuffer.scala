@@ -8,10 +8,9 @@ import TastyBuffer.{Addr, AddrWidth}
 import config.Printers.pickling
 import ast.tpd.Tree
 
-class TreeBuffer extends TastyBuffer(1000000) {
+class TreeBuffer extends TastyBuffer(50000) {
 
   private final val ItemsOverOffsets = 2
-
   private val initialOffsetSize = bytes.length / (AddrWidth * ItemsOverOffsets)
   private var offsets = new Array[Int](initialOffsetSize)
   private var isRelative = new Array[Boolean](initialOffsetSize)
