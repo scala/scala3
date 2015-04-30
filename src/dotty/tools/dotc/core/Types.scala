@@ -2066,14 +2066,16 @@ object Types {
     def apply(paramTypes: List[Type], resultType: Type)(implicit ctx: Context): MethodType =
       apply(nme.syntheticParamNames(paramTypes.length), paramTypes, resultType)
     def fromSymbols(params: List[Symbol], resultType: Type)(implicit ctx: Context) = {
-      def paramInfo(param: Symbol): Type = param.info match {
+      def translateRepeated(tp: Type): Type = tp match {
+        case tp @ ExprType(tp1) => tp.derivedExprType(translateRepeated(tp1))
         case AnnotatedType(annot, tp) if annot matches defn.RepeatedAnnot =>
-          val typeSym = param.info.typeSymbol.asClass
+          val typeSym = tp.typeSymbol.asClass
           assert(typeSym == defn.SeqClass || typeSym == defn.ArrayClass)
           tp.translateParameterized(typeSym, defn.RepeatedParamClass)
         case tp =>
           tp
       }
+      def paramInfo(param: Symbol): Type = translateRepeated(param.info)
       def transformResult(mt: MethodType) =
         resultType.subst(params, (0 until params.length).toList map (MethodParam(mt, _)))
       apply(params map (_.name.asTermName), params map paramInfo)(transformResult _)

@@ -282,12 +282,17 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** Translate a type of the form From[T] to To[T], keep other types as they are.
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
+   *  Do the same for by name types => From[T] and => To[T]
    */
-  def translateParameterized(from: ClassSymbol, to: ClassSymbol)(implicit ctx: Context): Type =
-    if (self.derivesFrom(from))
-      if (ctx.erasedTypes) to.typeRef
-      else RefinedType(to.typeRef, to.typeParams.head.name, self.member(from.typeParams.head.name).info)
-    else self
+  def translateParameterized(from: ClassSymbol, to: ClassSymbol)(implicit ctx: Context): Type = self match {
+    case self @ ExprType(tp) =>
+      self.derivedExprType(tp.translateParameterized(from, to))
+    case _ =>
+      if (self.derivesFrom(from))
+        if (ctx.erasedTypes) to.typeRef
+        else RefinedType(to.typeRef, to.typeParams.head.name, self.member(from.typeParams.head.name).info)
+      else self
+  }
 
   /** If this is repeated parameter type, its underlying Seq type,
    *  or, if isJava is true, Array type, else the type itself.

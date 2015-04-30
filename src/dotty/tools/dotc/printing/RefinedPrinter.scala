@@ -63,7 +63,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   override def toTextPrefix(tp: Type): Text = controlled {
-    def isOmittable(sym: Symbol) = 
+    def isOmittable(sym: Symbol) =
       if (ctx.settings.verbose.value) false
       else if (homogenizedView) isEmptyPrefix(sym) // drop <root> and anonymous classes, but not scala, Predef.
       else isOmittablePrefix(sym)
@@ -351,6 +351,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextLocal(tpt) ~ " " ~ blockText(refines)
       case AppliedTypeTree(tpt, args) =>
         toTextLocal(tpt) ~ "[" ~ Text(args map argText, ", ") ~ "]"
+      case ByNameTypeTree(tpt) =>
+        "=> " ~ toTextLocal(tpt)
       case TypeBoundsTree(lo, hi) =>
         optText(lo)(" >: " ~ _) ~ optText(hi)(" <: " ~ _)
       case Bind(name, body) =>
