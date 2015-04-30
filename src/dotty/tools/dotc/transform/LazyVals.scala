@@ -16,7 +16,6 @@ import dotty.tools.dotc.ast.{untpd, tpd}
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Types.{ExprType, NoType, MethodType}
 import dotty.tools.dotc.core.Names.Name
-import dotty.runtime.{LazyVals => RLazyVals} // dotty deviation
 import SymUtils._
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
@@ -100,8 +99,8 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
 
         val holderSymbol = ctx.newSymbol(x.symbol.owner, holderName, containerFlags, holderImpl.typeRef, coord = x.pos)
         val initSymbol = ctx.newSymbol(x.symbol.owner, initName, initFlags, MethodType(Nil, tpe), coord = x.pos)
-        val result = ref(holderSymbol).select(nme_value)
-        val flag = ref(holderSymbol).select(nme_initialized)
+        val result = ref(holderSymbol).select(lazyNme.value)
+        val flag = ref(holderSymbol).select(lazyNme.initialized)
         val initer = valueInitter.changeOwner(x.symbol, initSymbol)
         val initBody =
           adaptToType(
@@ -229,15 +228,15 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       val computeState = Literal(Constants.Constant(1))
       val notifyState = Literal(Constants.Constant(2))
       val computedState = Literal(Constants.Constant(3))
-      val flagSymbol = ctx.newSymbol(methodSymbol, nme_flag, containerFlags, defn.LongType)
+      val flagSymbol = ctx.newSymbol(methodSymbol, lazyNme.flag, containerFlags, defn.LongType)
       val flagDef = ValDef(flagSymbol, Literal(Constant(0L)))
 
       val thiz = This(claz)(ctx.fresh.setOwner(claz))
 
-      val resultSymbol = ctx.newSymbol(methodSymbol, nme_result, containerFlags, tp)
+      val resultSymbol = ctx.newSymbol(methodSymbol, lazyNme.result, containerFlags, tp)
       val resultDef = ValDef(resultSymbol, initValue(tp))
 
-      val retrySymbol = ctx.newSymbol(methodSymbol, nme_retry, containerFlags, defn.BooleanType)
+      val retrySymbol = ctx.newSymbol(methodSymbol, lazyNme.retry, containerFlags, defn.BooleanType)
       val retryDef = ValDef(retrySymbol, Literal(Constants.Constant(true)))
 
       val whileCond = ref(retrySymbol)
@@ -297,7 +296,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         val thizClass = Literal(Constant(claz.info))
         val companion = claz.companionModule
         val helperModule = ctx.requiredModule("dotty.runtime.LazyVals")
-        val getOffset = Select(ref(helperModule), RLazyValsNames_getOffset)
+        val getOffset = Select(ref(helperModule), lazyNme.RLazyVals.getOffset)
         var offsetSymbol: TermSymbol = null
         var flag: Tree = EmptyTree
         var ord = 0
@@ -305,7 +304,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         // compute or create appropriate offsetSymol, bitmap and bits used by current ValDef
         appendOffsetDefs.get(companion.moduleClass) match {
           case Some(info) =>
-            val flagsPerLong = 64 / RLazyVals.BITS_PER_LAZY_VAL
+            val flagsPerLong = 64 / dotty.runtime.LazyVals.BITS_PER_LAZY_VAL
             info.ord += 1
             ord = info.ord % flagsPerLong
             val id = info.ord / flagsPerLong
@@ -336,11 +335,11 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
         val containerTree = ValDef(containerSymbol, initValue(tpe))
 
         val offset =  ref(companion).ensureApplied.select(offsetSymbol)
-        val getFlag = Select(ref(helperModule), RLazyValsNames_get)
-        val setFlag = Select(ref(helperModule), RLazyValsNames_setFlag)
-        val wait =    Select(ref(helperModule), RLazyValsNames_wait4Notification)
-        val state =   Select(ref(helperModule), RLazyValsNames_state)
-        val cas =     Select(ref(helperModule), RLazyValsNames_cas)
+        val getFlag = Select(ref(helperModule), lazyNme.RLazyVals.get)
+        val setFlag = Select(ref(helperModule), lazyNme.RLazyVals.setFlag)
+        val wait =    Select(ref(helperModule), lazyNme.RLazyVals.wait4Notification)
+        val state =   Select(ref(helperModule), lazyNme.RLazyVals.state)
+        val cas =     Select(ref(helperModule), lazyNme.RLazyVals.cas)
 
         val accessor = mkThreadSafeDef(x.symbol.asTerm, claz, ord, containerSymbol, x.rhs, tpe, offset, getFlag, state, cas, setFlag, wait)
         if (flag eq EmptyTree)
@@ -350,18 +349,22 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
 }
 
 object LazyVals {
-  val RLazyValsNames_get               = RLazyVals.Names.get.toTermName
-  val RLazyValsNames_setFlag           = RLazyVals.Names.setFlag.toTermName
-  val RLazyValsNames_wait4Notification = RLazyVals.Names.wait4Notification.toTermName
-  val RLazyValsNames_state             = RLazyVals.Names.state.toTermName
-  val RLazyValsNames_cas               = RLazyVals.Names.cas.toTermName
-  val RLazyValsNames_getOffset         = RLazyVals.Names.getOffset.toTermName
-  val nme_flag                         = "flag".toTermName
-  val nme_result                       = "result".toTermName
-  val nme_value                        = "value".toTermName
-  val nme_initialized                  = "initialized".toTermName
-  val nme_retry                        = "retry".toTermName
-
+  object lazyNme {
+    object RLazyVals {
+      import dotty.runtime.LazyVals._
+      val get               = Names.get.toTermName
+      val setFlag           = Names.setFlag.toTermName
+      val wait4Notification = Names.wait4Notification.toTermName
+      val state             = Names.state.toTermName
+      val cas               = Names.cas.toTermName
+      val getOffset         = Names.getOffset.toTermName
+    }
+    val flag        = "flag".toTermName
+    val result      = "result".toTermName
+    val value       = "value".toTermName
+    val initialized = "initialized".toTermName
+    val retry       = "retry".toTermName
+  }
 }
 
 
