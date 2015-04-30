@@ -121,10 +121,14 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
 
 
   override def transformStats(trees: List[tpd.Tree])(implicit ctx: Context, info: TransformerInfo): List[tpd.Tree] = {
+    // backend requires field usage to be after field definition
+    // need to bring containers to start of method
     val (holders, stats) =
       atGroupEnd { implicit ctx: Context =>
         trees.partition {
-          _.symbol.flags == containerFlags
+          _.symbol.flags.&~(Flags.Touched) == containerFlags
+          // Filtering out Flags.Touched is not required currently, as there are no LazyTypes involved here
+          // but just to be more safe
         }
       }
     holders:::stats
