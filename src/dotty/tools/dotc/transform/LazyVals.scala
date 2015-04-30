@@ -53,10 +53,10 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
           val isField = tree.symbol.owner.isClass
 
           if (isField) {
-            if (tree.symbol.isVolatile || tree.symbol.is(Flags.Module)) transformFieldValDefVolatile(tree)
-            else transformFieldValDefNonVolatile(tree)
+            if (tree.symbol.isVolatile || tree.symbol.is(Flags.Module)) transformMemberDefVolatile(tree)
+            else transformMemberDefNonVolatile(tree)
           }
-          else transformLocalValDef(tree)
+          else transformLocalDef(tree)
       }
     }
 
@@ -78,7 +78,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       * with a LazyHolder from
       * dotty.runtime(eg dotty.runtime.LazyInt)
       */
-    def transformLocalValDef(x: DefDef)(implicit ctx: Context) = {
+    def transformLocalDef(x: DefDef)(implicit ctx: Context) = {
         val valueInitter = x.rhs
         val holderName = ctx.freshName(x.name ++ StdNames.nme.LAZY_LOCAL).toTermName
         val initName = ctx.freshName(x.name ++ StdNames.nme.LAZY_LOCAL_INIT).toTermName
@@ -164,7 +164,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       If(cond, init, exp)
     }
 
-    def transformFieldValDefNonVolatile(x: DefDef)(implicit ctx: Context) = {
+    def transformMemberDefNonVolatile(x: DefDef)(implicit ctx: Context) = {
         val claz = x.symbol.owner.asClass
         val tpe = x.tpe.widen.resultType.widen
         assert(!(x.mods is Flags.Mutable))
@@ -285,7 +285,7 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       DefDef(methodSymbol, Block(resultDef :: retryDef :: flagDef :: cycle :: Nil, ref(resultSymbol)))
     }
 
-    def transformFieldValDefVolatile(x: DefDef)(implicit ctx: Context) = {
+    def transformMemberDefVolatile(x: DefDef)(implicit ctx: Context) = {
         assert(!(x.mods is Flags.Mutable))
 
         val tpe = x.tpe.widen.resultType.widen
