@@ -545,6 +545,11 @@ object Types {
         (name, buf) => buf ++= member(name).altsWith(x => x.isClass))
     }
 
+    final def fields(implicit ctx: Context): Seq[SingleDenotation] = track("fields") {
+      memberDenots(fieldFilter,
+        (name, buf) => buf ++= member(name).altsWith(x => !x.is(Method)))
+    }
+
     /** The set of members  of this type  having at least one of `requiredFlags` but none of  `excludedFlags` set */
     final def membersBasedOnFlags(requiredFlags: FlagSet, excludedFlags: FlagSet)(implicit ctx: Context): Seq[SingleDenotation] = track("implicitMembers") {
       memberDenots(takeAllFilter,
@@ -3047,6 +3052,11 @@ object Types {
 
   object typeNameFilter extends NameFilter {
     def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean = name.isTypeName
+  }
+
+  object fieldFilter extends NameFilter {
+    def apply(pre: Type, name: Name)(implicit ctx: Context): Boolean =
+      name.isTermName && (pre member name).hasAltWith(!_.symbol.is(Method))
   }
 
   object takeAllFilter extends NameFilter {

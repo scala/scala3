@@ -418,6 +418,7 @@ object StdNames {
     val isArray: N              = "isArray"
     val isDefined: N            = "isDefined"
     val isDefinedAt: N          = "isDefinedAt"
+    val isDefinedAtImpl: N      = "$isDefinedAt"
     val isEmpty: N              = "isEmpty"
     val isInstanceOf_ : N       = "isInstanceOf"
     val java: N                 = "java"
