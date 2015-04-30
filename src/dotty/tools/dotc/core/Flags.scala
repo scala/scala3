@@ -332,7 +332,7 @@ object Flags {
   final val JavaStaticTerm = JavaStatic.toTermFlags
   final val JavaStaticType = JavaStatic.toTypeFlags
 
-  /** Trait is not an interface, but does not have fields or initialization code */
+  /** Trait does not have fields or initialization code */
   final val NoInits = typeFlag(32, "<noInits>")
 
   /** Variable is accessed from nested function. */

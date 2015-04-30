@@ -5,15 +5,19 @@ import core._
 import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Constants._
 import SymDenotations.SymDenotation
 import TreeTransforms._
+import SymUtils._
 import ast.untpd
 import ast.Trees._
 
-/** Expand SAM closures that cannot be represented by the JVM to anonymous classes.
- *  These fall into three categories
+/** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.
+ *  These fall into five categories
  *
  *   1. Partial function closures, we need to generate a isDefinedAt method for these.
- *   2. Closures implementaing non-trait classes.
- *   3. Closures that get synthesized abstract methods in the transformation pipeline. These methods can be
+ *   2. Closures implementing non-trait classes.
+ *   3. Closures implementing classes that inherit from a class other than Object
+ *      (a lambda cannot not be a run-time subtype of such a class)
+ *   4. Closures that implement traits which run initialization code.
+ *   5. Closures that get synthesized abstract methods in the transformation pipeline. These methods can be
  *      (1) superaccessors, (2) outer references, (3) accessors for fields.
  */
 class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
@@ -22,7 +26,13 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
   import ast.tpd._
 
   def noJvmSam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
-    !cls.is(Trait) || ExplicitOuter.needsOuterIfReferenced(cls) || cls.typeRef.fields.nonEmpty
+    !cls.is(Trait) ||
+    cls.superClass != defn.ObjectClass ||
+    !cls.is(NoInits) ||
+    !cls.directlyInheritedTraits.forall(_.is(NoInits)) ||
+    ExplicitOuter.needsOuterIfReferenced(cls) ||
+    cls.typeRef.fields.nonEmpty // Superaccessors already show up as abstract methods here, so no test necessary
+
 
   override def transformBlock(tree: Block)(implicit ctx: Context, info: TransformerInfo): Tree = tree match {
     case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>

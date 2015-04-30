@@ -15,11 +15,23 @@ object test {
 
   val u: U = (x: Int) => 2   // needs to be an anonymous class because of inherited field
 
+  trait V extends Exception { def foo(x: Int): Int }
+
+  val v: V = (x: Int) => 2   // needs to be an anonymous class because the trait extends a non-object class
+
   trait Y extends X {
     def baz = super.bar
   }
 
   val y: Y = (x: Int) => 2   // needs to be an anonymous class because of super accessor
+
+  trait Z {
+    def foo(x: Int): Int; println("hi there!")
+  }
+  trait ZZ extends Z
+
+  val z: Z = (x: Int) => 2   // needs to be an anonymous class because trait has initialization code
+  val zz: ZZ = (x: Int) => 2   // needs to be an anonymous class becaiuse trait has initialization code
 
   abstract class C {
     def foo(x: Int): Int
