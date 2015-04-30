@@ -28,8 +28,8 @@ import collection.mutable
  *
  *   - add outer parameters to constructors
  *   - pass outer arguments in constructor calls
- *   - replace outer this by outer paths.
  *
+ *   replacement of outer this by outer paths is done in Erasure.
  *   needs to run after pattern matcher as it can add outer checks and force creation of $outer
  */
 class ExplicitOuter extends MiniPhaseTransform with InfoTransformer { thisTransformer =>

@@ -16,15 +16,21 @@ import Decorators._
 /** Performs the following rewritings for fields of a class:
  *
  *    <mods> val x: T = e
- *      -->  <mods> <stable> def x: T = e
+ *      -->  <mods> <stable> <accessor> def x: T = e
  *    <mods> var x: T = e
- *      -->  <mods> def x: T = e
+ *      -->  <mods> <accessor> def x: T = e
  *
  *    <mods> val x: T
- *      -->  <mods> <stable> def x: T
+ *      -->  <mods> <stable> <accessor> def x: T
+ *
+ *    <mods> lazy val x: T = e
+ *      -->  <mods> <accessor> lazy def x: T =e
  *
  *    <mods> var x: T
- *      -->  <mods> def x: T
+ *      -->  <mods> <accessor> def x: T
+ *
+ *    <mods> non-static <module> val x$ = e
+ *      -->  <mods> <module> <accessor> def x$ = e
  *
  *  Omitted from the rewritings are
  *
@@ -47,10 +53,10 @@ class Getters extends MiniPhaseTransform with SymTransformer { thisTransform =>
   override def transformSym(d: SymDenotation)(implicit ctx: Context): SymDenotation = {
     def noGetterNeeded =
       d.is(NoGetterNeeded) ||
-      d.initial.asInstanceOf[SymDenotation].is(PrivateLocal) && !d.owner.is(Trait) ||
+      d.initial.asInstanceOf[SymDenotation].is(PrivateLocal) && !d.owner.is(Trait) && !d.is(Flags.Lazy) ||
       d.is(Module) && d.isStatic ||
       d.isSelfSym
-    if (d.isTerm && d.owner.isClass && d.info.isValueType && !noGetterNeeded) {
+    if (d.isTerm && (d.is(Lazy) || d.owner.isClass) && d.info.isValueType && !noGetterNeeded) {
       val maybeStable = if (d.isStable) Stable else EmptyFlags
       d.copySymDenotation(
         initFlags = d.flags | maybeStable | AccessorCreationFlags,
@@ -58,7 +64,7 @@ class Getters extends MiniPhaseTransform with SymTransformer { thisTransform =>
     }
     else d
   }
-  private val NoGetterNeeded = Method | Param | JavaDefined | JavaStatic | Lazy
+  private val NoGetterNeeded = Method | Param | JavaDefined | JavaStatic
 
   override def transformValDef(tree: ValDef)(implicit ctx: Context, info: TransformerInfo): Tree =
     if (tree.symbol is Method) DefDef(tree.symbol.asTerm, tree.rhs) else tree

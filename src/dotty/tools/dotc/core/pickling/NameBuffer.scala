@@ -11,7 +11,7 @@ import scala.io.Codec
 import TastyName._
 import PickleFormat._
 
-class NameBuffer extends TastyBuffer(100000) {
+class NameBuffer extends TastyBuffer(10000) {
 
   private val nameRefs = new mutable.LinkedHashMap[TastyName, NameRef]
 

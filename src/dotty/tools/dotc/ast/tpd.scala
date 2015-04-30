@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package ast
 
+import dotty.tools.dotc.transform.ExplicitOuter
 import dotty.tools.dotc.typer.ProtoTypes.FunProtoTyped
 import transform.SymUtils._
 import core._
@@ -243,6 +244,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.TypeDef(cls.name, impl), cls)
   }
 
+  // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }
+  def WhileDo(owner: Symbol, cond: Tree, body: List[Tree])(implicit ctx: Context): Tree = {
+    val sym = ctx.newSymbol(owner, nme.WHILE_PREFIX, Flags.Label | Flags.Synthetic,
+      MethodType(Nil, defn.UnitType), coord = cond.pos)
+
+    val call = Apply(ref(sym), Nil)
+    val rhs = If(cond, Block(body, call), unitLiteral)
+    Block(List(DefDef(sym, rhs)), call)
+  }
+
+
   def Import(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
     ta.assignType(untpd.Import(expr, selectors), ctx.newImportSymbol(ctx.owner, expr))
 
@@ -288,7 +300,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (tp.isType) TypeTree(tp)
     else if (prefixIsElidable(tp)) Ident(tp)
     else tp.prefix match {
-      case pre: SingletonType => singleton(pre).select(tp)
+      case pre: SingletonType =>
+        val prefix =
+          singleton(pre) match {
+            case t: This if ctx.erasedTypes && !(t.symbol == ctx.owner.enclosingClass || t.symbol.isStaticOwner) =>
+              // after erasure outer paths should be respected
+              new ExplicitOuter.OuterOps(ctx).path(t.tpe.widen.classSymbol)
+            case t =>
+              t
+          }
+        prefix.select(tp)
       case pre => SelectFromTypeTree(TypeTree(pre), tp)
     } // no checks necessary
 
@@ -563,7 +584,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           loop(from.owner, from :: froms, to :: tos)
         else {
           //println(i"change owner ${from :: froms}%, % ==> $tos of $tree")
-          new TreeTypeMap(oldOwners = from :: froms, newOwners = tos).apply(tree)
+          new TreeTypeMap(oldOwners = from :: froms, newOwners = tos)(ctx.withMode(Mode.FutureDefsOK)).apply(tree)
         }
       }
       loop(from, Nil, to :: Nil)
@@ -578,8 +599,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         def traverse(tree: Tree)(implicit ctx: Context) = tree match {
           case tree: DefTree =>
             val sym = tree.symbol
-            if (sym.denot(ctx.withPhase(trans)).owner == from)
-              sym.copySymDenotation(owner = to).installAfter(trans)
+            if (sym.denot(ctx.withPhase(trans)).owner == from) {
+              val d = sym.copySymDenotation(owner = to)
+              d.installAfter(trans)
+              d.transformAfter(trans, d => if (d.owner eq from) d.copySymDenotation(owner = to) else d)
+            }
             if (sym.isWeakOwner) traverseChildren(tree)
           case _ =>
             traverseChildren(tree)

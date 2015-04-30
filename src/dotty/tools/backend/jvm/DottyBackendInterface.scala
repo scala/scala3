@@ -589,7 +589,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     def isDeferred: Boolean = sym is Flags.Deferred
     def isPrivate: Boolean = sym is Flags.Private
     def getsJavaFinalFlag: Boolean =
-      isFinal &&  !toDenot(sym).isClassConstructor && !(sym is Flags.Mutable) &&  !(sym.enclosingClass is Flags.JavaInterface)
+      isFinal &&  !toDenot(sym).isClassConstructor && !(sym is Flags.Mutable) &&  !(sym.enclosingClass is Flags.Trait)
 
     def getsJavaPrivateFlag: Boolean =
       isPrivate //|| (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)

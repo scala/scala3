@@ -5,11 +5,15 @@ import java.nio.channels.FileLock
 
 object DottyBuild extends Build {
 
+  val travisMemLimit = List("-Xmx1g", "-Xss2m")
+
   val TRAVIS_BUILD = "dotty.travis.build"
 
   val agentOptions = List(
     // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
     // "-agentpath:/home/dark/opt/yjp-2013-build-13072/bin/linux-x86-64/libyjpagent.so"
+    // "-agentpath:/Applications/YourKit_Java_Profiler_2015_build_15052.app/Contents/Resources/bin/mac/libyjpagent.jnilib",
+    // "-XX:+HeapDumpOnOutOfMemoryError", "-Xmx1g", "-Xss2m"
   )
 
   var partestLock: FileLock = null
@@ -79,7 +83,7 @@ object DottyBuild extends Build {
 
        val travis_build = // propagate if this is a travis build
          if (sys.props.isDefinedAt(TRAVIS_BUILD))
-           List(s"-D$TRAVIS_BUILD=${sys.props(TRAVIS_BUILD)}")
+           List(s"-D$TRAVIS_BUILD=${sys.props(TRAVIS_BUILD)}") ::: travisMemLimit
          else
            List()
 

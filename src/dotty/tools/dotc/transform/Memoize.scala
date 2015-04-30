@@ -48,38 +48,26 @@ import Decorators._
     case _ =>
   }
 
-  override def prepareForDefDef(tree: DefDef)(implicit ctx: Context) = {
-    val sym = tree.symbol
-    if (sym.isGetter && !sym.is(NoFieldNeeded)) {
-      // allocate field early so that initializer has the right owner for subsequeny phases in
-      // the group.
-      val maybeMutable = if (sym is Stable) EmptyFlags else Mutable
-      val field = ctx.newSymbol(
-        owner = ctx.owner,
-        name = sym.name.asTermName.fieldName,
-        flags = Private | maybeMutable,
-        info = sym.info.resultType,
-        coord = tree.pos).enteredAfter(thisTransform)
-      tree.rhs.changeOwnerAfter(sym, field, thisTransform)
-    }
-    this
-  }
-
   override def transformDefDef(tree: DefDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
     val sym = tree.symbol
-    def field = {
-      val field = sym.field.asTerm
-      assert(field.exists, i"no field for ${sym.showLocated} in ${sym.owner.info.decls.toList.map{_.showDcl}}%; %")
-      field
-    }
+    
+    def newField = ctx.newSymbol(
+      owner = ctx.owner,
+      name = sym.name.asTermName.fieldName,
+      flags = Private | (if (sym is Stable) EmptyFlags else Mutable),
+      info = sym.info.resultType,
+      coord = tree.pos).enteredAfter(thisTransform)
+      
+    lazy val field = sym.field.orElse(newField).asTerm    
     if (sym.is(Accessor, butNot = NoFieldNeeded))
       if (sym.isGetter) {
+        tree.rhs.changeOwnerAfter(sym, field, thisTransform)
         val fieldDef = transformFollowing(ValDef(field, tree.rhs))
         val getterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(ref(field)))
         Thicket(fieldDef, getterDef)
       }
       else if (sym.isSetter) {
-        if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs }
+        if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs } // this is intended as an assertion
         val initializer = Assign(ref(field), ref(tree.vparamss.head.head.symbol))
         cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer))
       }

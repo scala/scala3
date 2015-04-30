@@ -80,11 +80,10 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
     //  (2) If the parameter accessor reference was to an alias getter,
     //      drop the () when replacing by the parameter.
     object intoConstr extends TreeMap {
-      private var excluded: FlagSet = _
       override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
         case Ident(_) | Select(This(_), _) =>
           var sym = tree.symbol
-          if (sym is (ParamAccessor, butNot = excluded)) sym = sym.subst(accessors, paramSyms)
+          if (sym is (ParamAccessor, butNot = Mutable)) sym = sym.subst(accessors, paramSyms)
           if (sym.owner.isConstructor) ref(sym).withPos(tree.pos) else tree
         case Apply(fn, Nil) =>
           val fn1 = transform(fn)
@@ -95,9 +94,8 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
           if (noDirectRefsFrom(tree)) tree else super.transform(tree)
       }
 
-      def apply(tree: Tree, inSuperCall: Boolean = false)(implicit ctx: Context): Tree = {
-        this.excluded = if (inSuperCall) EmptyFlags else Mutable
-        transform(tree)
+      def apply(tree: Tree, prevOwner: Symbol)(implicit ctx: Context): Tree = {
+        transform(tree).changeOwnerAfter(prevOwner, constr.symbol, thisTransform)
       }
     }
 
@@ -153,19 +151,19 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
             val sym = stat.symbol
             if (isRetained(sym)) {
               if (!stat.rhs.isEmpty && !isWildcardArg(stat.rhs))
-                constrStats += Assign(ref(sym), intoConstr(stat.rhs)).withPos(stat.pos)
+                constrStats += Assign(ref(sym), intoConstr(stat.rhs, sym)).withPos(stat.pos)
               clsStats += cpy.ValDef(stat)(rhs = EmptyTree)
             }
             else if (!stat.rhs.isEmpty) {
               sym.copySymDenotation(
                 initFlags = sym.flags &~ Private,
                 owner = constr.symbol).installAfter(thisTransform)
-              constrStats += intoConstr(stat)
+              constrStats += intoConstr(stat, sym)
             }
           case _: DefTree =>
             clsStats += stat
           case _ =>
-            constrStats += intoConstr(stat)
+            constrStats += intoConstr(stat, tree.symbol)
         }
         splitStats(stats1)
       case Nil =>
