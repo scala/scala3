@@ -247,22 +247,21 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** An anonymous class
    *
-   *      new parent { forwarders }
+   *      new parents { forwarders }
    *
    *  where `forwarders` contains forwarders for all functions in `fns`.
-   *  `fns` must be non-empty. The class has the same owner as the first function in `fns`.
+   *  @param parents    a non-empty list of class types
+   *  @param fns        a non-empty of functions for which forwarders should be defined in the class.
+   *  The class has the same owner as the first function in `fns`.
    *  Its position is the union of all functions in `fns`.
    */
-  def AnonClass(parent: Type, fns: List[TermSymbol], methNames: List[TermName])(implicit ctx: Context): Block = {
-    def methName(fnName: TermName): TermName = if (fnName == nme.ANON_FUN) nme.apply else fnName
+  def AnonClass(parents: List[Type], fns: List[TermSymbol], methNames: List[TermName])(implicit ctx: Context): Block = {
     val owner = fns.head.owner
-    val parents =
-      if (parent.classSymbol.is(Trait)) defn.ObjectClass.typeRef :: parent :: Nil
-      else parent :: Nil
-    val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_FUN, Synthetic, parents,
+    val parents1 =
+      if (parents.head.classSymbol.is(Trait)) defn.ObjectClass.typeRef :: parents
+      else parents
+    val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_FUN, Synthetic, parents1,
         coord = fns.map(_.pos).reduceLeft(_ union _))
-    println(i"creating anon class with parent $parent -> ${cls.info.parents}%, %")
-    println(cls.classInfo.classParents)
     val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil).entered
     def forwarder(fn: TermSymbol, name: TermName) = {
       val fwdMeth = fn.copy(cls, name, Synthetic | Method).entered.asTerm

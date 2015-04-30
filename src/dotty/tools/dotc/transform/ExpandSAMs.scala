@@ -33,7 +33,7 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
           else tree
         case tpe =>
           cpy.Block(tree)(stats,
-              AnonClass(tpe, fn.symbol.asTerm :: Nil, nme.apply :: Nil))
+              AnonClass(tpe :: Nil, fn.symbol.asTerm :: Nil, nme.apply :: Nil))
       }
     case _ =>
       tree
@@ -72,7 +72,7 @@ class ExpandSAMs extends MiniPhaseTransform { thisTransformer =>
         tru
     }
     val isDefinedAtDef = transformFollowingDeep(DefDef(isDefinedAtFn, isDefinedAtRhs(_)))
-    val anonCls = AnonClass(tpt.tpe, List(applyFn, isDefinedAtFn), List(nme.apply, nme.isDefinedAt))
+    val anonCls = AnonClass(tpt.tpe :: Nil, List(applyFn, isDefinedAtFn), List(nme.apply, nme.isDefinedAt))
     cpy.Block(tree)(List(applyDef, isDefinedAtDef), anonCls)
   }
 }
