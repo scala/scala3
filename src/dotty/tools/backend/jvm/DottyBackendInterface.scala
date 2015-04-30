@@ -733,6 +733,10 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
 
 
     def addRemoteRemoteExceptionAnnotation: Unit = ()
+
+    def samMethod(): Symbol =
+      toDenot(sym).info.membersBasedOnFlags(Flags.Deferred, Flags.EmptyFlags).flatMap(_.altsWith(_ is Flags.Method)).
+        headOption.getOrElse(toDenot(sym).info.member(nme.apply)).symbol
   }
 
 
