@@ -44,7 +44,8 @@ class TastyBuffer(initialSize: Int) {
 
   /** Write a byte of data. */
   def writeByte(b: Int): Unit = {
-    if (length == bytes.length) bytes = dble(bytes)
+    if (length >= bytes.length)
+      bytes = dble(bytes)
     bytes(length) = b.toByte
     length += 1
   }
@@ -116,6 +117,8 @@ class TastyBuffer(initialSize: Int) {
   def putNat(at: Addr, x: Int, width: Int): Unit = {
     var y = x
     var w = width
+    if(at.index + w >= bytes.length)
+      bytes = dble(bytes)
     var digit = y & 0x7f | 0x80
     while (w > 0) {
       w -= 1
