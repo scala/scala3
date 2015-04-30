@@ -15,6 +15,7 @@ import util._
 import Decorators._
 import dotty.tools.dotc.transform.Pickler
 import pickling.DottyUnpickler
+import ast.tpd._
 
 /** Compiler for TASTY files.
  *  Usage:
@@ -57,6 +58,10 @@ object FromTasty extends Driver {
     override def toString = s"class file $className"
   }
 
+  object force extends TreeTraverser {
+    def traverse(tree: Tree)(implicit ctx: Context): Unit = traverseChildren(tree)
+  }
+
   class ReadTastyTreesFromClasses extends FrontEnd {
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
       units.map(readTASTY)
@@ -80,6 +85,7 @@ object FromTasty extends Driver {
                     val (List(unpickled), source) = unpickler.body(readPositions = true)
                     val unit1 = new CompilationUnit(source)
                     unit1.tpdTree = unpickled
+                    force.traverse(unit1.tpdTree)
                     unit1
                   case _ =>
                     cannotUnpickle(s"its class file ${info.classfile} does not have a TASTY attribute")
