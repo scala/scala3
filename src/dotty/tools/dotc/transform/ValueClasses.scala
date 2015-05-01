@@ -13,6 +13,7 @@ import StdNames._
 object ValueClasses {
 
   def isDerivedValueClass(d: SymDenotation)(implicit ctx: Context) = {
+    !ctx.settings.XnoValueClasses.value &&
     !d.isRefinementClass &&
     d.isValueClass &&
     (d.initial.symbol ne defn.AnyValClass) && // Compare the initial symbol because AnyVal does not exist after erasure
