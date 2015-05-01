@@ -9,6 +9,8 @@
 package scala
 package runtime
 
+import dotty.runtime.vc.VCArrayPrototype
+
 import scala.collection.{ Seq, IndexedSeq, TraversableView, AbstractIterator }
 import scala.collection.mutable.WrappedArray
 import scala.collection.immutable.{ StringLike, NumericRange, List, Stream, Nil, :: }
@@ -29,7 +31,8 @@ object ScalaRunTime {
     x != null && isArrayClass(x.getClass, atLevel)
 
   private def isArrayClass(clazz: jClass[_], atLevel: Int): Boolean =
-    clazz.isArray && (atLevel == 1 || isArrayClass(clazz.getComponentType, atLevel - 1))
+    (clazz.isArray || classOf[VCArrayPrototype[_]].isAssignableFrom(clazz)) &&
+      (atLevel == 1 || isArrayClass(clazz.getComponentType, atLevel - 1))
 
   def isValueClass(clazz: jClass[_]) = clazz.isPrimitive()
 
@@ -47,6 +50,7 @@ object ScalaRunTime {
   /** Return the class object representing an array with element class `clazz`.
     */
   def arrayClass(clazz: jClass[_]): jClass[_] = {
+    ??? // Dmitry: I want to see where this method is used to know how to fix it
     // newInstance throws an exception if the erasure is Void.TYPE. see SI-5680
     if (clazz == java.lang.Void.TYPE) classOf[Array[Unit]]
     else java.lang.reflect.Array.newInstance(clazz, 0).getClass
@@ -81,6 +85,7 @@ object ScalaRunTime {
       case x: Array[Short]   => x(idx).asInstanceOf[Any]
       case x: Array[Boolean] => x(idx).asInstanceOf[Any]
       case x: Array[Unit]    => x(idx).asInstanceOf[Any]
+      case x: VCArrayPrototype[_] => x.apply(idx)
       case null => throw new NullPointerException
     }
   }
@@ -98,6 +103,7 @@ object ScalaRunTime {
       case x: Array[Short]   => x(idx) = value.asInstanceOf[Short]
       case x: Array[Boolean] => x(idx) = value.asInstanceOf[Boolean]
       case x: Array[Unit]    => x(idx) = value.asInstanceOf[Unit]
+      case x: VCArrayPrototype[t] => x.update(idx, value.asInstanceOf[t])
       case null => throw new NullPointerException
     }
   }
@@ -114,6 +120,7 @@ object ScalaRunTime {
     case x: Array[Short]   => x.length
     case x: Array[Boolean] => x.length
     case x: Array[Unit]    => x.length
+    case x: VCArrayPrototype[_] => x.length
     case null => throw new NullPointerException
   }
 
