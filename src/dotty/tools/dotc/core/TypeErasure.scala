@@ -142,14 +142,14 @@ object TypeErasure {
    *   - For $asInstanceOf           : [T]T
    *   - For $isInstanceOf           : [T]Boolean
    *   - For all abstract types      : = ?
-   *   - For COMPANION_CLASS_METHOD  : the erasure of their type with semiEraseVCs = false,
-   *                                   this is needed to keep [[SymDenotation#companionClass]]
-   *                                   working after erasure for value classes.
+   *   - For companion methods       : the erasure of their type with semiEraseVCs = false.
+   *                                   The signature of these methods are used to keep a
+   *                                   link between companions and should not be semi-erased.
    *   - For all other symbols       : the semi-erasure of their types, with
    *                                   isJava, isConstructor set according to symbol.
    */
   def transformInfo(sym: Symbol, tp: Type)(implicit ctx: Context): Type = {
-    val semiEraseVCs = sym.name ne nme.COMPANION_CLASS_METHOD
+    val semiEraseVCs = !sym.isCompanionMethod
     val erase = erasureFn(sym is JavaDefined, semiEraseVCs, sym.isConstructor, wildcardOK = false)
 
     def eraseParamBounds(tp: PolyType): Type =

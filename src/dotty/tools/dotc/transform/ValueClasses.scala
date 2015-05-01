@@ -25,7 +25,7 @@ object ValueClasses {
       !d.isConstructor &&
       !d.is(SuperAccessor) &&
       !d.is(Macro) &&
-      !(d.name eq nme.COMPANION_MODULE_METHOD)
+      !d.isCompanionMethod
 
   /** The member that of a derived value class that unboxes it. */
   def valueClassUnbox(d: ClassDenotation)(implicit ctx: Context): Symbol =
