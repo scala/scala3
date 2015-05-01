@@ -958,7 +958,7 @@ object SymDenotations {
      */
     final def accessBoundary(base: Symbol)(implicit ctx: Context): Symbol = {
       val fs = flags
-      if (fs is (Private, butNot = NotJavaPrivate)) owner
+      if (fs is Private) owner
       else if (fs is StaticProtected) defn.RootClass
       else if (privateWithin.exists && !ctx.phase.erasedTypes) privateWithin
       else if (fs is Protected) base
