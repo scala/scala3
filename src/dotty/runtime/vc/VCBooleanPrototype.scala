@@ -24,6 +24,11 @@ abstract class VCBooleanCasePrototype(underlying: Boolean) extends VCBooleanProt
 abstract class VCBooleanCompanion[T <: VCBooleanPrototype] extends ClassTag[T] {
   def box(underlying: Boolean): T
   final def unbox(boxed: T) = boxed.underlying
+
+  final def _1$extension(underlying: Boolean)       = underlying
+  final def hashCode$extension(underlying: Boolean) = underlying.hashCode()
+  final def toString$extension(underlying: Boolean) = s"${productPrefix$extension(underlying)}($underlying)"
+  def productPrefix$extension(underlying: Boolean): String
 }
 
 final class VCArrayBoolean[T <: VCBooleanPrototype](val ct: VCBooleanCompanion[T], sz: Int) extends VCArrayPrototype[T] {

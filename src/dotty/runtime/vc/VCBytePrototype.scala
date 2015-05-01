@@ -24,6 +24,11 @@ abstract class VCByteCasePrototype(underlying: Byte) extends VCBytePrototype(und
 abstract class VCByteCompanion[T <: VCBytePrototype] extends ClassTag[T] {
   def box(underlying: Byte): T
   final def unbox(boxed: T) = boxed.underlying
+
+  final def _1$extension(underlying: Byte)       = underlying
+  final def hashCode$extension(underlying: Byte) = underlying.hashCode()
+  final def toString$extension(underlying: Byte) = s"${productPrefix$extension(underlying)}($underlying)"
+  def productPrefix$extension(underlying: Byte): String
 }
 
 final class VCArrayByte[T <: VCBytePrototype](val ct: VCByteCompanion[T], sz: Int) extends VCArrayPrototype[T] {

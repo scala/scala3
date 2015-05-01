@@ -24,6 +24,11 @@ abstract class VCCharCasePrototype(underlying: Char) extends VCCharPrototype(und
 abstract class VCCharCompanion[T <: VCCharPrototype] extends ClassTag[T] {
   def box(underlying: Char): T
   final def unbox(boxed: T) = boxed.underlying
+
+  final def _1$extension(underlying: Char)       = underlying
+  final def hashCode$extension(underlying: Char) = underlying.hashCode()
+  final def toString$extension(underlying: Char) = s"${productPrefix$extension(underlying)}($underlying)"
+  def productPrefix$extension(underlying: Char): String
 }
 
 final class VCArrayChar[T <: VCCharPrototype](val ct: VCCharCompanion[T], sz: Int) extends VCArrayPrototype[T] {

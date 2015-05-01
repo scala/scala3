@@ -22,8 +22,13 @@ abstract class VCIntCasePrototype(underlying: Int) extends VCIntPrototype(underl
 }
 
 abstract class VCIntCompanion[T <: VCIntPrototype] extends ClassTag[T] {
-    def box(underlying: Int): T
-    final def unbox(boxed: T) = boxed.underlying
+  def box(underlying: Int): T
+  final def unbox(boxed: T) = boxed.underlying
+
+  final def _1$extension(underlying: Int)       = underlying
+  final def hashCode$extension(underlying: Int) = underlying.hashCode()
+  final def toString$extension(underlying: Int) = s"${productPrefix$extension(underlying)}($underlying)"
+  def productPrefix$extension(underlying: Int): String
 }
 
 final class VCArrayInt[T <: VCIntPrototype](val ct: VCIntCompanion[T], sz: Int) extends VCArrayPrototype[T] {

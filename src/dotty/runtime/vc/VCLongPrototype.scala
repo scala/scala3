@@ -24,6 +24,11 @@ abstract class VCLongCasePrototype(underlying: Long) extends VCLongPrototype(und
 abstract class VCLongCompanion[T <: VCLongPrototype] extends ClassTag[T] {
   def box(underlying: Long): T
   final def unbox(boxed: T) = boxed.underlying
+
+  final def _1$extension(underlying: Long)       = underlying
+  final def hashCode$extension(underlying: Long) = underlying.hashCode()
+  final def toString$extension(underlying: Long) = s"${productPrefix$extension(underlying)}($underlying)"
+  def productPrefix$extension(underlying: Long): String
 }
 
 final class VCArrayLong[T <: VCLongPrototype](val ct: VCLongCompanion[T], sz: Int) extends VCArrayPrototype[T] {

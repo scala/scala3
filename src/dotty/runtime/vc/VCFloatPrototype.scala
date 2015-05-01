@@ -24,6 +24,11 @@ abstract class VCFloatCasePrototype(underlying: Float) extends VCFloatPrototype(
 abstract class VCFloatCompanion[T <: VCFloatPrototype] extends ClassTag[T] {
   def box(underlying: Float): T
   final def unbox(boxed: T) = boxed.underlying
+
+  final def _1$extension(underlying: Float)       = underlying
+  final def hashCode$extension(underlying: Float) = underlying.hashCode()
+  final def toString$extension(underlying: Float) = s"${productPrefix$extension(underlying)}($underlying)"
+  def productPrefix$extension(underlying: Float): String
 }
 
 final class VCArrayFloat[T <: VCFloatPrototype](val ct: VCFloatCompanion[T], sz: Int) extends VCArrayPrototype[T] {
