@@ -56,7 +56,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
   private def mightBeDropped(sym: Symbol)(implicit ctx: Context) =
     sym.is(Private, butNot = KeeperFlags) && !sym.is(MutableParamAccessor)
 
-  private final val KeeperFlags = Method | Lazy | NotJavaPrivate
+  private final val KeeperFlags = Method | Lazy
   private final val MutableParamAccessor = allOf(Mutable, ParamAccessor)
 
   override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo): Tree = {

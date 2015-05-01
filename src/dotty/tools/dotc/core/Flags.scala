@@ -367,9 +367,6 @@ object Flags {
   /** Symbol is defined in a super call */
   final val InSuperCall = commonFlag(46, "<in supercall>")
 
-  /** Symbol with private access is accessed outside its private scope */
-  final val NotJavaPrivate = commonFlag(47, "<not-java-private>")
-
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
   final val Touched = commonFlag(48, "<touched>")
 

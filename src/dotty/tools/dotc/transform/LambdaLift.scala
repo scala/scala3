@@ -290,11 +290,10 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
         val (newOwner, maybeStatic) =
           if (lOwner is Package) (local.topLevelClass, JavaStatic)
           else (lOwner, EmptyFlags)
-        val maybeNotJavaPrivate = if (calledFromInner(local)) NotJavaPrivate else EmptyFlags
         local.copySymDenotation(
           owner = newOwner,
           name = newName(local),
-          initFlags = local.flags &~ InSuperCall | Private | maybeStatic | maybeNotJavaPrivate,
+          initFlags = local.flags &~ InSuperCall | Private | maybeStatic,
           info = liftedInfo(local)).installAfter(thisTransform)
         if (local.isClass)
           for (member <- local.asClass.info.decls)
