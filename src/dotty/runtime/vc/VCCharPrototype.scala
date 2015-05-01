@@ -27,14 +27,18 @@ abstract class VCCharCompanion[T <: VCCharPrototype] extends ClassTag[T] {
   override def newArray(len: Int): Array[T] =
     new VCCharArray(this, len).asInstanceOf[Array[T]]
 
+
   final def _1$extension(underlying: Char)       = underlying
   final def hashCode$extension(underlying: Char) = underlying.hashCode()
   final def toString$extension(underlying: Char) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Char): String
 }
 
-final class VCCharArray[T <: VCCharPrototype](val ct: VCCharCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  var arr = new Array[Char](sz) // mutable for clone
+final class VCCharArray[T <: VCCharPrototype] private (val arr: Array[Char], val ct: VCCharCompanion[T])
+  extends VCArrayPrototype[T] {
+  def this(ct: VCCharCompanion[T], sz: Int) =
+    this(new Array[Char](sz), ct)
+
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
@@ -42,11 +46,8 @@ final class VCCharArray[T <: VCCharPrototype](val ct: VCCharCompanion[T], sz: In
   def length: Int = arr.length
 
   override def clone(): VCCharArray[T] = {
-    val t = super.clone().asInstanceOf[VCCharArray[T]]
-    t.arr = this.arr.clone()
-    t
+    new VCCharArray[T](arr.clone(), ct)
   }
-
 
   override def toString: String = {
     "[" + ct.runtimeClass

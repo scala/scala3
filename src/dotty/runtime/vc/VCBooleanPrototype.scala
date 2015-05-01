@@ -34,8 +34,11 @@ abstract class VCBooleanCompanion[T <: VCBooleanPrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Boolean): String
 }
 
-final class VCBooleanArray[T <: VCBooleanPrototype](val ct: VCBooleanCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  var arr = new Array[Boolean](sz) // mutable for clone()
+final class VCBooleanArray[T <: VCBooleanPrototype] private (val arr: Array[Boolean], val ct: VCBooleanCompanion[T])
+  extends VCArrayPrototype[T] {
+  def this(ct: VCBooleanCompanion[T], sz: Int) =
+    this(new Array[Boolean](sz), ct)
+
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
@@ -43,9 +46,7 @@ final class VCBooleanArray[T <: VCBooleanPrototype](val ct: VCBooleanCompanion[T
   def length: Int = arr.length
 
   override def clone(): VCBooleanArray[T] = {
-    val t = super.clone().asInstanceOf[VCBooleanArray[T]]
-    t.arr = this.arr.clone()
-    t
+    new VCBooleanArray[T](arr.clone(), ct)
   }
 
   override def toString: String = {

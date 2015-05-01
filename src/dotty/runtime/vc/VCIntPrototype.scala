@@ -27,14 +27,18 @@ abstract class VCIntCompanion[T <: VCIntPrototype] extends ClassTag[T] {
   override def newArray(len: Int): Array[T] =
     new VCIntArray(this, len).asInstanceOf[Array[T]]
 
+
   final def _1$extension(underlying: Int)       = underlying
   final def hashCode$extension(underlying: Int) = underlying.hashCode()
   final def toString$extension(underlying: Int) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Int): String
 }
 
-final class VCIntArray[T <: VCIntPrototype](val ct: VCIntCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  var arr = new Array[Int](sz) // mutable for clone
+final class VCIntArray[T <: VCIntPrototype] private (val arr: Array[Int], val ct: VCIntCompanion[T])
+  extends VCArrayPrototype[T] {
+  def this(ct: VCIntCompanion[T], sz: Int) =
+    this(new Array[Int](sz), ct)
+
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
@@ -42,9 +46,7 @@ final class VCIntArray[T <: VCIntPrototype](val ct: VCIntCompanion[T], sz: Int) 
   def length: Int = arr.length
 
   override def clone(): VCIntArray[T] = {
-    val t = super.clone().asInstanceOf[VCIntArray[T]]
-    t.arr = this.arr.clone()
-    t
+    new VCIntArray[T](arr.clone(), ct)
   }
 
   override def toString: String = {

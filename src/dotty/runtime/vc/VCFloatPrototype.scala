@@ -27,14 +27,18 @@ abstract class VCFloatCompanion[T <: VCFloatPrototype] extends ClassTag[T] {
   override def newArray(len: Int): Array[T] =
     new VCFloatArray(this, len).asInstanceOf[Array[T]]
 
+
   final def _1$extension(underlying: Float)       = underlying
   final def hashCode$extension(underlying: Float) = underlying.hashCode()
   final def toString$extension(underlying: Float) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Float): String
 }
 
-final class VCFloatArray[T <: VCFloatPrototype](val ct: VCFloatCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  var arr = new Array[Float](sz) // mutable for clone
+final class VCFloatArray[T <: VCFloatPrototype] private (val arr: Array[Float], val ct: VCFloatCompanion[T])
+  extends VCArrayPrototype[T] {
+  def this(ct: VCFloatCompanion[T], sz: Int) =
+    this(new Array[Float](sz), ct)
+
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
@@ -42,9 +46,7 @@ final class VCFloatArray[T <: VCFloatPrototype](val ct: VCFloatCompanion[T], sz:
   def length: Int = arr.length
 
   override def clone(): VCFloatArray[T] = {
-    val t = super.clone().asInstanceOf[VCFloatArray[T]]
-    t.arr = this.arr.clone()
-    t
+    new VCFloatArray[T](arr.clone(), ct)
   }
 
   override def toString: String = {

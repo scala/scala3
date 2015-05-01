@@ -27,14 +27,18 @@ abstract class VCDoubleCompanion[T <: VCDoublePrototype] extends ClassTag[T] {
   override def newArray(len: Int): Array[T] =
     new VCDoubleArray(this, len).asInstanceOf[Array[T]]
 
+
   final def _1$extension(underlying: Double)       = underlying
   final def hashCode$extension(underlying: Double) = underlying.hashCode()
   final def toString$extension(underlying: Double) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Double): String
 }
 
-final class VCDoubleArray[T <: VCDoublePrototype](val ct: VCDoubleCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  var arr = new Array[Double](sz) // mutable for clone
+final class VCDoubleArray[T <: VCDoublePrototype] private (val arr: Array[Double], val ct: VCDoubleCompanion[T])
+  extends VCArrayPrototype[T] {
+  def this(ct: VCDoubleCompanion[T], sz: Int) =
+    this(new Array[Double](sz), ct)
+
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
@@ -42,9 +46,7 @@ final class VCDoubleArray[T <: VCDoublePrototype](val ct: VCDoubleCompanion[T], 
   def length: Int = arr.length
 
   override def clone(): VCDoubleArray[T] = {
-    val t = super.clone().asInstanceOf[VCDoubleArray[T]]
-    t.arr = this.arr.clone()
-    t
+    new VCDoubleArray[T](arr.clone(), ct)
   }
 
   override def toString: String = {

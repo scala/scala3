@@ -27,14 +27,18 @@ abstract class VCShortCompanion[T <: VCShortPrototype] extends ClassTag[T] {
   override def newArray(len: Int): Array[T] =
     new VCShortArray(this, len).asInstanceOf[Array[T]]
 
+
   final def _1$extension(underlying: Short)       = underlying
   final def hashCode$extension(underlying: Short) = underlying.hashCode()
   final def toString$extension(underlying: Short) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Short): String
 }
 
-final class VCShortArray[T <: VCShortPrototype](val ct: VCShortCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  var arr = new Array[Short](sz) // mutable for clone
+final class VCShortArray[T <: VCShortPrototype] private (val arr: Array[Short], val ct: VCShortCompanion[T])
+  extends VCArrayPrototype[T] {
+  def this(ct: VCShortCompanion[T], sz: Int) =
+    this(new Array[Short](sz), ct)
+
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
@@ -42,9 +46,7 @@ final class VCShortArray[T <: VCShortPrototype](val ct: VCShortCompanion[T], sz:
   def length: Int = arr.length
 
   override def clone(): VCShortArray[T] = {
-    val t = super.clone().asInstanceOf[VCShortArray[T]]
-    t.arr = this.arr.clone()
-    t
+    new VCShortArray[T](arr.clone(), ct)
   }
 
   override def toString: String = {

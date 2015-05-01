@@ -27,14 +27,18 @@ abstract class VCByteCompanion[T <: VCBytePrototype] extends ClassTag[T] {
   override def newArray(len: Int): Array[T] =
     new VCByteArray(this, len).asInstanceOf[Array[T]]
 
+
   final def _1$extension(underlying: Byte)       = underlying
   final def hashCode$extension(underlying: Byte) = underlying.hashCode()
   final def toString$extension(underlying: Byte) = s"${productPrefix$extension(underlying)}($underlying)"
   def productPrefix$extension(underlying: Byte): String
 }
 
-final class VCByteArray[T <: VCBytePrototype](val ct: VCByteCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  var arr = new Array[Byte](sz) // mutable for clone
+final class VCByteArray[T <: VCBytePrototype] private (val arr: Array[Byte], val ct: VCByteCompanion[T])
+  extends VCArrayPrototype[T] {
+  def this(ct: VCByteCompanion[T], sz: Int) =
+    this(new Array[Byte](sz), ct)
+
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
@@ -42,11 +46,8 @@ final class VCByteArray[T <: VCBytePrototype](val ct: VCByteCompanion[T], sz: In
   def length: Int = arr.length
 
   override def clone(): VCByteArray[T] = {
-    val t = super.clone().asInstanceOf[VCByteArray[T]]
-    t.arr = this.arr.clone()
-    t
+    new VCByteArray[T](arr.clone(), ct)
   }
-
 
   override def toString: String = {
     "[" + ct.runtimeClass
