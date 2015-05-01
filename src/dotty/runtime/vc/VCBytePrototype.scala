@@ -25,7 +25,7 @@ abstract class VCByteCompanion[T <: VCBytePrototype] extends ClassTag[T] {
   def box(underlying: Byte): T
   final def unbox(boxed: T) = boxed.underlying
   override def newArray(len: Int): Array[T] =
-    new VCArrayByte(this, len).asInstanceOf[Array[T]]
+    new VCByteArray(this, len).asInstanceOf[Array[T]]
 
   final def _1$extension(underlying: Byte)       = underlying
   final def hashCode$extension(underlying: Byte) = underlying.hashCode()
@@ -33,7 +33,7 @@ abstract class VCByteCompanion[T <: VCBytePrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Byte): String
 }
 
-final class VCArrayByte[T <: VCBytePrototype](val ct: VCByteCompanion[T], sz: Int) extends VCArrayPrototype[T] {
+final class VCByteArray[T <: VCBytePrototype](val ct: VCByteCompanion[T], sz: Int) extends VCArrayPrototype[T] {
   val arr = new Array[Byte](sz)
   def apply(idx: Int) =
     ct.box(arr(idx))

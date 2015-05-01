@@ -25,7 +25,7 @@ abstract class VCDoubleCompanion[T <: VCDoublePrototype] extends ClassTag[T] {
   def box(underlying: Double): T
   final def unbox(boxed: T) = boxed.underlying
   override def newArray(len: Int): Array[T] =
-    new VCArrayDouble(this, len).asInstanceOf[Array[T]]
+    new VCDoubleArray(this, len).asInstanceOf[Array[T]]
 
   final def _1$extension(underlying: Double)       = underlying
   final def hashCode$extension(underlying: Double) = underlying.hashCode()
@@ -33,7 +33,7 @@ abstract class VCDoubleCompanion[T <: VCDoublePrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Double): String
 }
 
-final class VCArrayDouble[T <: VCDoublePrototype](val ct: VCDoubleCompanion[T], sz: Int) extends VCArrayPrototype[T] {
+final class VCDoubleArray[T <: VCDoublePrototype](val ct: VCDoubleCompanion[T], sz: Int) extends VCArrayPrototype[T] {
   val arr = new Array[Double](sz)
   def apply(idx: Int) =
     ct.box(arr(idx))

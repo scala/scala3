@@ -25,7 +25,7 @@ abstract class VCFloatCompanion[T <: VCFloatPrototype] extends ClassTag[T] {
   def box(underlying: Float): T
   final def unbox(boxed: T) = boxed.underlying
   override def newArray(len: Int): Array[T] =
-    new VCArrayFloat(this, len).asInstanceOf[Array[T]]
+    new VCFloatArray(this, len).asInstanceOf[Array[T]]
 
   final def _1$extension(underlying: Float)       = underlying
   final def hashCode$extension(underlying: Float) = underlying.hashCode()
@@ -33,7 +33,7 @@ abstract class VCFloatCompanion[T <: VCFloatPrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Float): String
 }
 
-final class VCArrayFloat[T <: VCFloatPrototype](val ct: VCFloatCompanion[T], sz: Int) extends VCArrayPrototype[T] {
+final class VCFloatArray[T <: VCFloatPrototype](val ct: VCFloatCompanion[T], sz: Int) extends VCArrayPrototype[T] {
   val arr = new Array[Float](sz)
   def apply(idx: Int) =
     ct.box(arr(idx))

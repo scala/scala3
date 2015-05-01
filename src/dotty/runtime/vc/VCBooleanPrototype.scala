@@ -25,7 +25,7 @@ abstract class VCBooleanCompanion[T <: VCBooleanPrototype] extends ClassTag[T] {
   def box(underlying: Boolean): T
   final def unbox(boxed: T) = boxed.underlying
   override def newArray(len: Int): Array[T] =
-    new VCArrayBoolean(this, len).asInstanceOf[Array[T]]
+    new VCBooleanArray(this, len).asInstanceOf[Array[T]]
 
 
   final def _1$extension(underlying: Boolean)       = underlying
@@ -34,8 +34,8 @@ abstract class VCBooleanCompanion[T <: VCBooleanPrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Boolean): String
 }
 
-final class VCArrayBoolean[T <: VCBooleanPrototype](val ct: VCBooleanCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  val arr = new Array[Boolean](sz)
+final class VCBooleanArray[T <: VCBooleanPrototype](val ct: VCBooleanCompanion[T], sz: Int) extends VCArrayPrototype[T] {
+  var arr = new Array[Boolean](sz) // mutable for clone()
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =

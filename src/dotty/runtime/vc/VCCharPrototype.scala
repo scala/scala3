@@ -25,7 +25,7 @@ abstract class VCCharCompanion[T <: VCCharPrototype] extends ClassTag[T] {
   def box(underlying: Char): T
   final def unbox(boxed: T) = boxed.underlying
   override def newArray(len: Int): Array[T] =
-    new VCArrayChar(this, len).asInstanceOf[Array[T]]
+    new VCCharArray(this, len).asInstanceOf[Array[T]]
 
   final def _1$extension(underlying: Char)       = underlying
   final def hashCode$extension(underlying: Char) = underlying.hashCode()
@@ -33,7 +33,7 @@ abstract class VCCharCompanion[T <: VCCharPrototype] extends ClassTag[T] {
   def productPrefix$extension(underlying: Char): String
 }
 
-final class VCArrayChar[T <: VCCharPrototype](val ct: VCCharCompanion[T], sz: Int) extends VCArrayPrototype[T] {
+final class VCCharArray[T <: VCCharPrototype](val ct: VCCharCompanion[T], sz: Int) extends VCArrayPrototype[T] {
   val arr = new Array[Char](sz)
   def apply(idx: Int) =
     ct.box(arr(idx))
