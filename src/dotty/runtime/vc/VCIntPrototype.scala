@@ -24,6 +24,8 @@ abstract class VCIntCasePrototype(underlying: Int) extends VCIntPrototype(underl
 abstract class VCIntCompanion[T <: VCIntPrototype] extends ClassTag[T] {
   def box(underlying: Int): T
   final def unbox(boxed: T) = boxed.underlying
+  override def newArray(len: Int): Array[T] =
+    new VCArrayInt(this, len).asInstanceOf[Array[T]]
 
   final def _1$extension(underlying: Int)       = underlying
   final def hashCode$extension(underlying: Int) = underlying.hashCode()

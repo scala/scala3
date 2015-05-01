@@ -24,6 +24,8 @@ abstract class VCObjectCasePrototype(underlying: Object) extends VCObjectPrototy
 abstract class VCObjectCompanion[T <: VCObjectPrototype] extends ClassTag[T] {
   def box(underlying: Object): T
   final def unbox(boxed: T) = boxed.underlying
+  override def newArray(len: Int): Array[T] =
+    new VCArrayObject(this, len).asInstanceOf[Array[T]]
 
   final def _1$extension(underlying: Object)       = underlying
   final def hashCode$extension(underlying: Object) = underlying.hashCode()

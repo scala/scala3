@@ -24,6 +24,8 @@ abstract class VCCharCasePrototype(underlying: Char) extends VCCharPrototype(und
 abstract class VCCharCompanion[T <: VCCharPrototype] extends ClassTag[T] {
   def box(underlying: Char): T
   final def unbox(boxed: T) = boxed.underlying
+  override def newArray(len: Int): Array[T] =
+    new VCArrayChar(this, len).asInstanceOf[Array[T]]
 
   final def _1$extension(underlying: Char)       = underlying
   final def hashCode$extension(underlying: Char) = underlying.hashCode()

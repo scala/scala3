@@ -24,6 +24,8 @@ abstract class VCDoubleCasePrototype(underlying: Double) extends VCDoublePrototy
 abstract class VCDoubleCompanion[T <: VCDoublePrototype] extends ClassTag[T] {
   def box(underlying: Double): T
   final def unbox(boxed: T) = boxed.underlying
+  override def newArray(len: Int): Array[T] =
+    new VCArrayDouble(this, len).asInstanceOf[Array[T]]
 
   final def _1$extension(underlying: Double)       = underlying
   final def hashCode$extension(underlying: Double) = underlying.hashCode()
