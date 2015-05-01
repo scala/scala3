@@ -741,11 +741,9 @@ class RefChecks extends MiniPhase with SymTransformer { thisTransformer =>
    */
   override def transformSym(d: SymDenotation)(implicit ctx: Context) = {
     def mustBePublicInValueClass = d.isPrimaryConstructor || d.is(ParamAccessor)
-    def mustBePublicInTrait = !d.is(Method) || d.isSetter || d.is(ParamAccessor)
     def mustBePublic = {
       val cls = d.owner
-      (isDerivedValueClass(cls) && mustBePublicInValueClass ||
-      cls.is(Trait) && mustBePublicInTrait)
+      (isDerivedValueClass(cls) && mustBePublicInValueClass
     }
     if ((d is PrivateTerm) && mustBePublic) notPrivate(d) else d
   }
