@@ -1049,6 +1049,13 @@ object SymDenotations {
      */
     override def transformAfter(phase: DenotTransformer, f: SymDenotation => SymDenotation)(implicit ctx: Context): Unit =
       super.transformAfter(phase, f)
+
+    def ensureNotPrivate(implicit ctx: Context) =
+      if (is(Private))
+        copySymDenotation(
+          name = if (is(ExpandedName) || isConstructor) this.name else this.name.expandedName(owner),
+          initFlags = this.flags &~ Private | ExpandedName)
+      else this
   }
 
   /** The contents of a class definition during a period
