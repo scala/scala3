@@ -34,12 +34,18 @@ abstract class VCShortCompanion[T <: VCShortPrototype] extends ClassTag[T] {
 }
 
 final class VCShortArray[T <: VCShortPrototype](val ct: VCShortCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  val arr = new Array[Short](sz)
+  var arr = new Array[Short](sz) // mutable for clone
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
     arr(idx) = ct.unbox(elem)
   def length: Int = arr.length
+
+  override def clone(): VCShortArray[T] = {
+    val t = super.clone().asInstanceOf[VCShortArray[T]]
+    t.arr = this.arr.clone()
+    t
+  }
 
   override def toString: String = {
     "[" + ct.runtimeClass

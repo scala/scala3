@@ -34,12 +34,18 @@ abstract class VCObjectCompanion[T <: VCObjectPrototype] extends ClassTag[T] {
 }
 
 final class VCObjectArray[T <: VCObjectPrototype](val ct: VCObjectCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  val arr = new Array[Object](sz)
+  var arr = new Array[Object](sz) // mutable for clone
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
     arr(idx) = ct.unbox(elem)
   def length: Int = arr.length
+
+  override def clone(): VCObjectArray[T] = {
+    val t = super.clone().asInstanceOf[VCObjectArray[T]]
+    t.arr = this.arr.clone()
+    t
+  }
 
   override def toString: String = {
     "[" + ct.runtimeClass

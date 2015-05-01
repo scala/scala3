@@ -135,6 +135,7 @@ object ScalaRunTime {
     case x: Array[Short]   => ArrayRuntime.cloneArray(x)
     case x: Array[Boolean] => ArrayRuntime.cloneArray(x)
     case x: Array[Unit]    => x
+    case x: VCArrayPrototype[_] => x.clone()
     case null => throw new NullPointerException
   }
 

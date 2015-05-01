@@ -34,12 +34,18 @@ abstract class VCIntCompanion[T <: VCIntPrototype] extends ClassTag[T] {
 }
 
 final class VCIntArray[T <: VCIntPrototype](val ct: VCIntCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  val arr = new Array[Int](sz)
+  var arr = new Array[Int](sz) // mutable for clone
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
     arr(idx) = ct.unbox(elem)
   def length: Int = arr.length
+
+  override def clone(): VCIntArray[T] = {
+    val t = super.clone().asInstanceOf[VCIntArray[T]]
+    t.arr = this.arr.clone()
+    t
+  }
 
   override def toString: String = {
     "[" + ct.runtimeClass

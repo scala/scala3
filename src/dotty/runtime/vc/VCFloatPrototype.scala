@@ -34,12 +34,18 @@ abstract class VCFloatCompanion[T <: VCFloatPrototype] extends ClassTag[T] {
 }
 
 final class VCFloatArray[T <: VCFloatPrototype](val ct: VCFloatCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  val arr = new Array[Float](sz)
+  var arr = new Array[Float](sz) // mutable for clone
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
     arr(idx) = ct.unbox(elem)
   def length: Int = arr.length
+
+  override def clone(): VCFloatArray[T] = {
+    val t = super.clone().asInstanceOf[VCFloatArray[T]]
+    t.arr = this.arr.clone()
+    t
+  }
 
   override def toString: String = {
     "[" + ct.runtimeClass

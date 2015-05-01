@@ -34,12 +34,18 @@ abstract class VCDoubleCompanion[T <: VCDoublePrototype] extends ClassTag[T] {
 }
 
 final class VCDoubleArray[T <: VCDoublePrototype](val ct: VCDoubleCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  val arr = new Array[Double](sz)
+  var arr = new Array[Double](sz) // mutable for clone
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
     arr(idx) = ct.unbox(elem)
   def length: Int = arr.length
+
+  override def clone(): VCDoubleArray[T] = {
+    val t = super.clone().asInstanceOf[VCDoubleArray[T]]
+    t.arr = this.arr.clone()
+    t
+  }
 
   override def toString: String = {
     "[" + ct.runtimeClass

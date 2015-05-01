@@ -34,12 +34,19 @@ abstract class VCByteCompanion[T <: VCBytePrototype] extends ClassTag[T] {
 }
 
 final class VCByteArray[T <: VCBytePrototype](val ct: VCByteCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  val arr = new Array[Byte](sz)
+  var arr = new Array[Byte](sz) // mutable for clone
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
     arr(idx) = ct.unbox(elem)
   def length: Int = arr.length
+
+  override def clone(): VCByteArray[T] = {
+    val t = super.clone().asInstanceOf[VCByteArray[T]]
+    t.arr = this.arr.clone()
+    t
+  }
+
 
   override def toString: String = {
     "[" + ct.runtimeClass

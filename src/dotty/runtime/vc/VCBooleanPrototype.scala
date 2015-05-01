@@ -42,6 +42,12 @@ final class VCBooleanArray[T <: VCBooleanPrototype](val ct: VCBooleanCompanion[T
     arr(idx) = ct.unbox(elem)
   def length: Int = arr.length
 
+  override def clone(): VCBooleanArray[T] = {
+    val t = super.clone().asInstanceOf[VCBooleanArray[T]]
+    t.arr = this.arr.clone()
+    t
+  }
+
   override def toString: String = {
     "[" + ct.runtimeClass
   }

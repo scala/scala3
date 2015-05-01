@@ -34,12 +34,19 @@ abstract class VCCharCompanion[T <: VCCharPrototype] extends ClassTag[T] {
 }
 
 final class VCCharArray[T <: VCCharPrototype](val ct: VCCharCompanion[T], sz: Int) extends VCArrayPrototype[T] {
-  val arr = new Array[Char](sz)
+  var arr = new Array[Char](sz) // mutable for clone
   def apply(idx: Int) =
     ct.box(arr(idx))
   def update(idx: Int, elem: T) =
     arr(idx) = ct.unbox(elem)
   def length: Int = arr.length
+
+  override def clone(): VCCharArray[T] = {
+    val t = super.clone().asInstanceOf[VCCharArray[T]]
+    t.arr = this.arr.clone()
+    t
+  }
+
 
   override def toString: String = {
     "[" + ct.runtimeClass
