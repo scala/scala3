@@ -1050,10 +1050,15 @@ object SymDenotations {
     override def transformAfter(phase: DenotTransformer, f: SymDenotation => SymDenotation)(implicit ctx: Context): Unit =
       super.transformAfter(phase, f)
 
+    /** If denotation is private, remove the Private flag and expand the name if necessary */
     def ensureNotPrivate(implicit ctx: Context) =
       if (is(Private))
         copySymDenotation(
-          name = if (is(ExpandedName) || isConstructor) this.name else this.name.expandedName(owner),
+          name =
+            if (is(ExpandedName) || isConstructor) this.name
+            else this.name.expandedName(initial.asSymDenotation.owner),
+              // need to use initial owner to disambiguate, as multiple private symbols with the same name
+              // might have been moved from different origins into the same class
           initFlags = this.flags &~ Private | ExpandedName)
       else this
   }
