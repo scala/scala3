@@ -65,7 +65,12 @@ class Compiler {
       List(new LambdaLift,   // in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
            new Flatten,
            new RestoreScopes),
-      List(/*new PrivateToStatic,*/ new CollectEntryPoints, new LabelDefs, new ElimWildcardIdents, new TraitConstructors),
+      List(/*new PrivateToStatic,*/
+           new ExpandPrivate,
+           new CollectEntryPoints,
+           new LabelDefs,
+           new ElimWildcardIdents,
+           new TraitConstructors),
       List(new GenBCode)
     )
 
