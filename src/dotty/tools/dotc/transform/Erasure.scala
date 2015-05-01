@@ -62,7 +62,7 @@ class Erasure extends Phase with DenotTransformer { thisTransformer =>
         }
       }
     case ref =>
-      ref.derivedSingleDenotation(ref.symbol, eraseInfo(ref.info, ref.symbol))
+      ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.info))
   }
 
   val eraser = new Erasure.Typer
@@ -170,15 +170,29 @@ object Erasure extends TypeTestsCasts{
     def unbox(tree: Tree, pt: Type)(implicit ctx: Context): Tree = ctx.traceIndented(i"unboxing ${tree.showSummary}: ${tree.tpe} as a $pt") {
       pt match {
         case ErasedValueType(clazz, underlying) =>
+          def unboxedTree(t: Tree) =
+            adaptToType(t, clazz.typeRef)
+            .select(valueClassUnbox(clazz))
+            .appliedToNone
+
+          // Null unboxing needs to be treated separately since we cannot call a method on null.
+          // "Unboxing" null to underlying is equivalent to doing null.asInstanceOf[underlying]
+          // See tests/pos/valueclasses/nullAsInstanceOfVC.scala for cases where this might happen.
           val tree1 =
-            if ((tree.tpe isRef defn.NullClass) && underlying.isPrimitiveValueType)
-              // convert `null` directly to underlying type, as going
-              // via the unboxed type would yield a NPE (see SI-5866)
-              unbox(tree, underlying)
-            else
-              adaptToType(tree, clazz.typeRef)
-                .select(valueClassUnbox(clazz))
-                .appliedToNone
+            if (tree.tpe isRef defn.NullClass)
+              adaptToType(tree, underlying)
+            else if (!(tree.tpe <:< clazz.typeRef)) {
+              assert(!(tree.tpe.typeSymbol.isPrimitiveValueClass))
+              val nullTree = Literal(Constant(null))
+              val unboxedNull = adaptToType(nullTree, underlying)
+
+              evalOnce(tree) { t =>
+                If(t.select(defn.Object_eq).appliedTo(nullTree),
+                  unboxedNull,
+                  unboxedTree(t))
+              }
+            } else unboxedTree(tree)
+
           cast(tree1, pt)
         case _ =>
           val cls = pt.widen.classSymbol
@@ -192,6 +206,8 @@ object Erasure extends TypeTestsCasts{
 
     /** Generate a synthetic cast operation from tree.tpe to pt.
      *  Does not do any boxing/unboxing (this is handled upstream).
+     *  Casts from and to ErasedValueType are special, see the explanation
+     *  in ExtensionMethods#transform.
      */
     def cast(tree: Tree, pt: Type)(implicit ctx: Context): Tree = {
       // TODO: The commented out assertion fails for tailcall/t6574.scala
@@ -203,9 +219,18 @@ object Erasure extends TypeTestsCasts{
         if treeElem.widen.isPrimitiveValueType && !ptElem.isPrimitiveValueType =>
           // See SI-2386 for one example of when this might be necessary.
           cast(ref(defn.runtimeMethod(nme.toObjectArray)).appliedTo(tree), pt)
+        case (_, ErasedValueType(cls, _)) =>
+          ref(u2evt(cls)).appliedTo(tree)
         case _ =>
-          if (pt.isPrimitiveValueType) primitiveConversion(tree, pt.classSymbol)
-          else tree.asInstance(pt)
+          tree.tpe.widen match {
+            case ErasedValueType(cls, _) =>
+              ref(evt2u(cls)).appliedTo(tree)
+            case _ =>
+              if (pt.isPrimitiveValueType)
+                primitiveConversion(tree, pt.classSymbol)
+              else
+                tree.asInstance(pt)
+          }
       }
     }
 
@@ -243,16 +268,37 @@ object Erasure extends TypeTestsCasts{
   class Typer extends typer.ReTyper with NoChecking {
     import Boxing._
 
-    def erasedType(tree: untpd.Tree)(implicit ctx: Context): Type = tree.typeOpt match {
-      case tp: TermRef if tree.isTerm => erasedRef(tp)
-      case tp => erasure(tp)
+    def erasedType(tree: untpd.Tree, semiEraseVCs: Boolean = true)(implicit ctx: Context): Type =
+      tree.typeOpt match {
+        case tp: TermRef if tree.isTerm => erasedRef(tp)
+        case tp => erasure(tp, semiEraseVCs)
+      }
+
+    def promote(tree: untpd.Tree, semiEraseVCs: Boolean)(implicit ctx: Context): tree.ThisTree[Type] = {
+      assert(tree.hasType)
+      val erased = erasedType(tree, semiEraseVCs)
+      ctx.log(s"promoting ${tree.show}: ${erased.showWithUnderlying()}")
+      tree.withType(erased)
     }
 
     override def promote(tree: untpd.Tree)(implicit ctx: Context): tree.ThisTree[Type] = {
-      assert(tree.hasType)
-      val erased = erasedType(tree)
-      ctx.log(s"promoting ${tree.show}: ${erased.showWithUnderlying()}")
-      tree.withType(erased)
+      promote(tree, true)
+    }
+
+    /** When erasing most TypeTrees we should not semi-erase value types.
+     *  This is not the case for [[DefDef#tpt]], [[ValDef#tpt]] and [[Typed#tpt]], they
+     *  are handled separately by [[typedDefDef]], [[typedValDef]] and [[typedTyped]].
+     */
+    override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(implicit ctx: Context): TypeTree = {
+      promote(tree, semiEraseVCs = false)
+    }
+
+    /** This override is only needed to semi-erase type ascriptions */
+    override def typedTyped(tree: untpd.Typed, pt: Type)(implicit ctx: Context): Tree = {
+      val Typed(expr, tpt) = tree
+      val tpt1 = promote(tpt)
+      val expr1 = typed(expr, tpt1.tpe)
+      assignType(untpd.cpy.Typed(tree)(expr1, tpt1), tpt1)
     }
 
     override def typedLiteral(tree: untpd.Literal)(implicit ctc: Context): Literal =
@@ -319,7 +365,7 @@ object Erasure extends TypeTestsCasts{
           assert(sym.isConstructor, s"${sym.showLocated}")
           select(qual, defn.ObjectClass.info.decl(sym.name).symbol)
         }
-        else if (qualIsPrimitive && !symIsPrimitive || qual.tpe.isErasedValueType)
+        else if (qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType)
           recur(box(qual))
         else if (!qualIsPrimitive && symIsPrimitive)
           recur(unbox(qual, sym.owner.typeRef))
@@ -338,7 +384,7 @@ object Erasure extends TypeTestsCasts{
     }
 
     override def typedSelectFromTypeTree(tree: untpd.SelectFromTypeTree, pt: Type)(implicit ctx: Context) =
-      untpd.Ident(tree.name).withPos(tree.pos).withType(erasedType(tree))
+      untpd.Ident(tree.name).withPos(tree.pos).withType(erasedType(tree, semiEraseVCs = false))
 
     override def typedThis(tree: untpd.This)(implicit ctx: Context): Tree =
       if (tree.symbol == ctx.owner.enclosingClass || tree.symbol.isStaticOwner) promote(tree)
@@ -433,6 +479,58 @@ object Erasure extends TypeTestsCasts{
           case _ => ddef.rhs
         })
       super.typedDefDef(ddef1, sym)
+    }
+
+    /** After erasure, we may have to replace the closure method by a bridge.
+     *  LambdaMetaFactory handles this automatically for most types, but we have
+     *  to deal with boxing and unboxing of value classes ourselves.
+     */
+    override def typedClosure(tree: untpd.Closure, pt: Type)(implicit ctx: Context) = {
+      val implClosure @ Closure(_, meth, _) = super.typedClosure(tree, pt)
+      implClosure.tpe match {
+        case SAMType(sam) =>
+          val implType = meth.tpe.widen
+
+          val List(implParamTypes) = implType.paramTypess
+          val List(samParamTypes) = sam.info.paramTypess
+          val implResultType = implType.resultType
+          val samResultType = sam.info.resultType
+
+          // Given a value class V with an underlying type U, the following code:
+          //   val f: Function1[V, V] = x => ...
+          // results in the creation of a closure and a method:
+          //   def $anonfun(v1: V): V = ...
+          //   val f: Function1[V, V] = closure($anonfun)
+          // After [[Erasure]] this method will look like:
+          //   def $anonfun(v1: ErasedValueType(V, U)): ErasedValueType(V, U) = ...
+          // And after [[ElimErasedValueType]] it will look like:
+          //   def $anonfun(v1: U): U = ...
+          // This method does not implement the SAM of Function1[V, V] anymore and
+          // needs to be replaced by a bridge:
+          //   def $anonfun$2(v1: V): V = new V($anonfun(v1.underlying))
+          //   val f: Function1 = closure($anonfun$2)
+          // In general, a bridge is needed when the signature of the closure method after
+          // Erasure contains an ErasedValueType but the corresponding type in the functional
+          // interface is not an ErasedValueType.
+          val bridgeNeeded =
+            (implResultType :: implParamTypes, samResultType :: samParamTypes).zipped.forall(
+              (implType, samType) => implType.isErasedValueType && !samType.isErasedValueType
+            )
+
+          if (bridgeNeeded) {
+            val bridge = ctx.newSymbol(ctx.owner, nme.ANON_FUN, Flags.Synthetic | Flags.Method, sam.info)
+            val bridgeCtx = ctx.withOwner(bridge)
+            Closure(bridge, bridgeParamss => {
+              implicit val ctx: Context = bridgeCtx
+
+              val List(bridgeParams) = bridgeParamss
+              val rhs = Apply(meth, (bridgeParams, implParamTypes).zipped.map(adapt(_, _)))
+              adapt(rhs, sam.info.resultType)
+            })
+          } else implClosure
+        case _ =>
+          implClosure
+      }
     }
 
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(implicit ctx: Context) =

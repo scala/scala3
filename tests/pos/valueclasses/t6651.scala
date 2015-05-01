@@ -1,3 +1,5 @@
+package t6651
+
 class YouAreYourself[A <: AnyRef](val you: A) extends AnyVal {
   def yourself: you.type = you
 }

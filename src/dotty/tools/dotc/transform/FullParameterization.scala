@@ -52,6 +52,7 @@ import ast.Trees._
 trait FullParameterization {
 
   import tpd._
+  import FullParameterization._
 
   /** If references to original symbol `referenced` from within fully parameterized method
    *  `derived` should be rewired to some fully parameterized method, the rewiring target symbol,
@@ -122,15 +123,6 @@ trait FullParameterization {
         if (ctparams.isEmpty) resultType(identity)
         else PolyType(ctnames)(mappedClassBounds, pt => resultType(mapClassParams(_, pt)))
     }
-  }
-
-  /** Assuming `info` is a result of a `fullyParameterizedType` call, the signature of the
-   *  original method type `X` such that `info = fullyParameterizedType(X, ...)`.
-   */
-  def memberSignature(info: Type)(implicit ctx: Context): Signature = info match {
-    case info: PolyType => memberSignature(info.resultType)
-    case info @ MethodType(nme.SELF :: Nil, _) => info.resultType.ensureMethodic.signature
-    case _ => Signature.NotAMethod
   }
 
   /** The type parameters (skolems) of the method definition `originalDef`,
@@ -229,4 +221,15 @@ trait FullParameterization {
       .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
       .appliedToArgss(originalDef.vparamss.nestedMap(vparam => ref(vparam.symbol)))
       .withPos(originalDef.rhs.pos)
+}
+
+object FullParameterization {
+  /** Assuming `info` is a result of a `fullyParameterizedType` call, the signature of the
+   *  original method type `X` such that `info = fullyParameterizedType(X, ...)`.
+   */
+  def memberSignature(info: Type)(implicit ctx: Context): Signature = info match {
+    case info: PolyType => memberSignature(info.resultType)
+    case info @ MethodType(nme.SELF :: Nil, _) => info.resultType.ensureMethodic.signature
+    case _ => Signature.NotAMethod
+  }
 }

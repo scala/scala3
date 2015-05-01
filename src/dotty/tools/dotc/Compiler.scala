@@ -56,7 +56,9 @@ class Compiler {
            new ElimByName,
            new ResolveSuper),
       List(new Erasure),
-      List(new Mixin,
+      List(new ElimErasedValueType,
+           new VCInline,
+           new Mixin,
            new LazyVals,
            new Memoize,
            new CapturedVars, // capturedVars has a transformUnit: no phases should introduce local mutable vars here

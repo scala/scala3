@@ -1,3 +1,5 @@
+package t5953
+
 import scala.collection.{ mutable, immutable, generic, GenTraversableOnce }
 
 package object foo {

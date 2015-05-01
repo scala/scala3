@@ -232,6 +232,7 @@ object Phases {
 
     private val typerCache = new PhaseCache(classOf[FrontEnd])
     private val refChecksCache = new PhaseCache(classOf[RefChecks])
+    private val extensionMethodsCache = new PhaseCache(classOf[ExtensionMethods])
     private val erasureCache = new PhaseCache(classOf[Erasure])
     private val patmatCache = new PhaseCache(classOf[PatternMatcher])
     private val flattenCache = new PhaseCache(classOf[Flatten])
@@ -241,6 +242,7 @@ object Phases {
 
     def typerPhase = typerCache.phase
     def refchecksPhase = refChecksCache.phase
+    def extensionMethodsPhase = extensionMethodsCache.phase
     def erasurePhase = erasureCache.phase
     def patmatPhase = patmatCache.phase
     def flattenPhase = flattenCache.phase

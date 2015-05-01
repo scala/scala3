@@ -1,3 +1,5 @@
+package t6601
+
 object Test {
     // After the first attempt to make seprately compiled value
     // classes respect the privacy of constructors, we got:

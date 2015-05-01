@@ -1447,10 +1447,16 @@ object SymDenotations {
 
       def inCache(tp: Type) = baseTypeRefCache.containsKey(tp)
 
-      /** Can't cache types containing type variables which are uninstantiated
-       *  or whose instances can change, depending on typerstate.
+      /** We cannot cache:
+       *  - type variables which are uninstantiated or whose instances can
+       *    change, depending on typerstate.
+       *  - types where the underlying type is an ErasedValueType, because
+       *    this underlying type will change after ElimErasedValueType,
+       *    and this changes subtyping relations. As a shortcut, we do not
+       *    cache ErasedValueType at all.
        */
       def isCachable(tp: Type): Boolean = tp match {
+        case _: TypeErasure.ErasedValueType => false
         case tp: TypeVar => tp.inst.exists && inCache(tp.inst)
         case tp: TypeProxy => inCache(tp.underlying)
         case tp: AndOrType => inCache(tp.tp1) && inCache(tp.tp2)

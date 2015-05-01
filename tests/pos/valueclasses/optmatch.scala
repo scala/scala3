@@ -1,3 +1,5 @@
+package optmatch
+
 // final case class NonZeroLong(value: Long) extends AnyVal {
 //   def get: Long = value
 //   def isEmpty: Boolean = get == 0l
@@ -5,7 +7,7 @@
 
 class NonZeroLong(val value: Long) extends AnyVal {
   def get: Long = value
-  def isEmpty: Boolean = get == 0l
+  def isDefined: Boolean = get != 0l
 }
 object NonZeroLong {
   def unapply(value: Long): NonZeroLong = new NonZeroLong(value)
