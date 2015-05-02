@@ -352,10 +352,11 @@ trait TypeOps { this: Context => // TODO: Make standalone object.
         //println(i"instantiating ${bounds.hi} with $argTypes")
         //println(i" = ${instantiate(bounds.hi, argTypes)}")
         val hiBound = instantiate(bounds.hi, argTypes.mapConserve(_.bounds.hi))
+        val loBound = instantiate(bounds.lo, argTypes.mapConserve(_.bounds.lo))
           // Note that argTypes can contain a TypeBounds type for arguments that are
           // not fully determined. In that case we need to check against the hi bound of the argument.
         if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
-        if (!(bounds.lo <:< hi)) violations += ((arg, "lower", bounds.lo))
+        if (!(loBound <:< hi)) violations += ((arg, "lower", bounds.lo))
       }
       arg.tpe match {
         case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi)
