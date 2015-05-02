@@ -8,7 +8,7 @@ import Symbols._
 import Scopes._
 import typer.{FrontEnd, Typer, Mode, ImportInfo, RefChecks}
 import reporting.ConsoleReporter
-import dotty.tools.dotc.core.Phases.Phase
+import Phases.Phase
 import dotty.tools.dotc.transform._
 import dotty.tools.dotc.transform.TreeTransforms.{TreeTransform, TreeTransformer}
 import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
@@ -103,9 +103,13 @@ class Compiler {
     (start.setRunInfo(new RunInfo(start)) /: defn.RootImports)(addImport)
   }
 
-  def newRun(implicit ctx: Context): Run = {
+  def reset()(implicit ctx: Context): Unit = {
     ctx.base.reset()
     ctx.runInfo.clear()
+  }
+
+  def newRun(implicit ctx: Context): Run = {
+    reset()
     new Run(this)(rootContext)
   }
 }

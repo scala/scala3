@@ -251,7 +251,10 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     else (rootDenot, linkedDenot)
   }
 
-  def doComplete(root: SymDenotation)(implicit ctx: Context): Unit = {
+  override def doComplete(root: SymDenotation)(implicit ctx: Context): Unit =
+    load(root)
+
+  def load(root: SymDenotation)(implicit ctx: Context): Option[ClassfileParser.Embedded] = {
     val (classRoot, moduleRoot) = rootDenots(root.asClass)
     new ClassfileParser(classfile, classRoot, moduleRoot)(ctx).run()
   }

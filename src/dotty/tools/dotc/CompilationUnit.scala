@@ -24,18 +24,4 @@ class CompilationUnit(val source: SourceFile) {
    * Subsequent phases can add new sections.
    */
   var picklers: Map[ClassSymbol, TastyPickler] = Map()
-
-  /**
-   * Addresses in TASTY file of trees, stored by pickling.
-   * Note that trees are checked for reference equality,
-   * so one can reliably use this function only dirrectly after `pickler`
-   */
-  var addrOfTree: tpd.Tree => Option[Addr] = (_ => None)
-
-  /**
-   * Addresses in TASTY file of symbols, stored by pickling.
-   * Note that trees are checked for reference equality,
-   * so one can reliably use this function only dirrectly after `pickler`
-   */
-  var addrOfSym: Symbol => Option[Addr] = (_ => None)
 }
