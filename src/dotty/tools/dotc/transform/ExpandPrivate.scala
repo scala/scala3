@@ -16,12 +16,8 @@ import Decorators._
 import ast.Trees._
 import TreeTransforms._
 
-/** Makes private methods static, provided they not deferred, accessors, or static,
- *  by rewriting a method `m` in class `C` as follows:
- *
- *     private def m(ps) = e
- *
- *     --> private static def($this: C, ps) = [this -> $this] e
+/** Make private term members accessed from other classes non-private
+ *  by resetting the Private flag and expanding their name.
  */
 class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
   import ast.tpd._
