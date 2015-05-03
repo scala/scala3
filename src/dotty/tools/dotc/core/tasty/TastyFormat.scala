@@ -1,6 +1,6 @@
 package dotty.tools.dotc
 package core
-package pickling
+package tasty
 
 /************************************************************
 Notation:
@@ -205,7 +205,7 @@ Standard Section: "Positions" sourceLength_Nat Assoc*
 
 **************************************************************************************/
 
-object PickleFormat {
+object TastyFormat {
 
   final val header = Array(0x5C, 0xA1, 0xAB, 0x1F)
   final val MajorVersion = 0

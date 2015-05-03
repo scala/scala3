@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 package core
-package pickling
+package tasty
 
 import util.Util.{bestFit, dble}
 import TastyBuffer.{Addr, AddrWidth}
@@ -17,7 +17,7 @@ class TreeBuffer extends TastyBuffer(50000) {
   private var delta: Array[Int] = _
   private var numOffsets = 0
 
-  private[pickling] val pickledTrees = new java.util.IdentityHashMap[Tree, Any] // Value type is really Addr, but that's not compatible with null
+  private[tasty] val pickledTrees = new java.util.IdentityHashMap[Tree, Any] // Value type is really Addr, but that's not compatible with null
 
   def addrOfTree(tree: Tree): Option[Addr] = pickledTrees.get(tree) match {
     case null => None

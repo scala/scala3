@@ -1,10 +1,10 @@
 package dotty.tools
 package dotc
 package core
-package pickling
+package classfile
 
 import Contexts._, Symbols._, Types._, Names._, StdNames._, NameOps._, Scopes._, Decorators._
-import SymDenotations._, Scala2Unpickler._, Constants._, Annotations._, util.Positions._
+import SymDenotations._, unpickleScala2.Scala2Unpickler._, Constants._, Annotations._, util.Positions._
 import ast.tpd._
 import java.io.{ File, IOException }
 import java.lang.Integer.toHexString
@@ -672,13 +672,13 @@ class ClassfileParser(
       }
 
       def unpickleScala(bytes: Array[Byte]): Some[Embedded] = {
-        val unpickler = new Scala2Unpickler(bytes, classRoot, moduleRoot)(ctx)
+        val unpickler = new unpickleScala2.Scala2Unpickler(bytes, classRoot, moduleRoot)(ctx)
         unpickler.run()
         Some(unpickler)
       }
 
       def unpickleTASTY(bytes: Array[Byte]): Some[Embedded]  = {
-        val unpickler = new DottyUnpickler(bytes)
+        val unpickler = new tasty.DottyUnpickler(bytes)
         unpickler.enter(roots = Set(classRoot, moduleRoot, moduleRoot.sourceModule))
         Some(unpickler)
       }

@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 package core
-package pickling
+package unpickleScala2
 
 import Flags._
 

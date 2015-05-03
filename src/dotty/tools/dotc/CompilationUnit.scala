@@ -2,10 +2,9 @@ package dotty.tools
 package dotc
 
 import dotty.tools.dotc.core.Types.Type
-import dotty.tools.dotc.core.pickling.{TastyBuffer, TastyPickler}
+import dotty.tools.dotc.core.tasty.{TastyBuffer, TastyPickler}
 import util.SourceFile
 import ast.{tpd, untpd}
-import TastyBuffer._
 import dotty.tools.dotc.core.Symbols._
 
 class CompilationUnit(val source: SourceFile) {

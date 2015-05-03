@@ -7,7 +7,7 @@ import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
 import scala.reflect.internal.Flags
 import scala.reflect.internal.pickling.PickleFormat
-import core.pickling.PickleBuffer
+import core.unpickleScala2.PickleBuffer
 import core.Names._
 
 object ShowPickled {

@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 package core
-package pickling
+package tasty
 
 import core.Names.TermName
 import collection.mutable

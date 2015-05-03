@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 package core
-package pickling
+package tasty
 
 import collection.mutable
 import Names.{Name, chrs}
@@ -9,7 +9,7 @@ import Decorators._, NameOps._
 import TastyBuffer._
 import scala.io.Codec
 import TastyName._
-import PickleFormat._
+import TastyFormat._
 
 class NameBuffer extends TastyBuffer(10000) {
 

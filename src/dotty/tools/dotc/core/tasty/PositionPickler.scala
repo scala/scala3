@@ -1,11 +1,11 @@
 package dotty.tools
 package dotc
 package core
-package pickling
+package tasty
 
 import ast.tpd._
 import ast.Trees.WithLazyField
-import PickleFormat._
+import TastyFormat._
 import core._
 import Contexts._, Symbols._, Types._, Names._, Constants._, Decorators._, Annotations._
 import collection.mutable

@@ -1,9 +1,9 @@
 package dotty.tools
 package dotc
 package core
-package pickling
+package tasty
 
-import PickleFormat._
+import TastyFormat._
 import collection.mutable
 import TastyBuffer._
 import java.util.UUID
