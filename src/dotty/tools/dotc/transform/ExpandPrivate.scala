@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import DenotTransformers.IdentityDenotTransformer
+import dotty.tools.dotc.core.DenotTransformers.{SymTransformer, IdentityDenotTransformer}
 import Contexts.Context
 import Symbols._
 import Scopes._
@@ -16,13 +16,22 @@ import Decorators._
 import ast.Trees._
 import TreeTransforms._
 
-/** Make private term members accessed from other classes non-private
- *  by resetting the Private flag and expanding their name.
+/** Make private term members that are:
+ *    - accessed from another class
+ *    - deferred
+ *  non-private by resetting the Private flag and expanding their name.
  */
-class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
+class ExpandPrivate extends MiniPhaseTransform with SymTransformer { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "expandPrivate"
+
+
+  def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
+    if (sym.is(Method) && sym.is(Deferred))
+      sym.ensureNotPrivate
+    else sym
+  }
 
   /** Make private terms accessed from different classes non-private.
    *  Note: this happens also for accesses between class and linked module class.
