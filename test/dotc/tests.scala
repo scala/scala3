@@ -37,11 +37,11 @@ class tests extends CompilerTest {
   val negDir        = testsDir + "neg/"
   val newDir        = testsDir + "new/"
 
-  val dottyDir = "./src/dotty/"
-  val toolsDir = dottyDir + "tools/"
-  val dotcDir  = toolsDir + "dotc/"
-  val coreDir  = dotcDir + "core/"
-
+  val sourceDir = "./src/"
+  val dottyDir  = sourceDir + "dotty/"
+  val toolsDir  = dottyDir + "tools/"
+  val dotcDir   = toolsDir + "dotc/"
+  val coreDir   = dotcDir + "core/"
   @Test def pickle_pickleOK = compileDir(testsDir, "pickling", testPickling)
   @Test def pickle_pickling = compileDir(coreDir, "pickling", testPickling)
   @Test def pickle_ast = compileDir(dotcDir, "ast", testPickling)
@@ -135,8 +135,8 @@ class tests extends CompilerTest {
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
   @Test def neg_selfInheritance = compileFile(negDir, "selfInheritance", xerrors = 5)
 
-  @Test def dotc = compileDir(toolsDir, "dotc", "-deep" :: allowDeepSubtypes ++ twice) // note the -deep argument
 
+  @Test def dotty = compileDir(sourceDir, "", "-deep" :: allowDeepSubtypes ++ twice) // note the -deep argument
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
   @Test def dotc_core = compileDir(dotcDir, "core")("-Yno-double-bindings" :: allowDeepSubtypes)// twice omitted to make tests run faster
