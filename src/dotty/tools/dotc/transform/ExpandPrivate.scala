@@ -16,22 +16,13 @@ import Decorators._
 import ast.Trees._
 import TreeTransforms._
 
-/** Make private term members that are:
- *    - accessed from another class
- *    - deferred
+/** Make private term members that are accessed from another class
  *  non-private by resetting the Private flag and expanding their name.
  */
-class ExpandPrivate extends MiniPhaseTransform with SymTransformer { thisTransform =>
+class ExpandPrivate extends MiniPhaseTransform with IdentityDenotTransformer { thisTransform =>
   import ast.tpd._
 
   override def phaseName: String = "expandPrivate"
-
-
-  def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
-    if (sym.is(Method) && sym.is(Deferred))
-      sym.ensureNotPrivate
-    else sym
-  }
 
   /** Make private terms accessed from different classes non-private.
    *  Note: this happens also for accesses between class and linked module class.
