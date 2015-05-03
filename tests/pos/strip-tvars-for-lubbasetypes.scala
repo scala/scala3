@@ -1,8 +1,8 @@
 object Test {
 
   implicit final class EqualOps[T](val x: T) extends AnyVal {
-    def ===[T1, Ph >: T <: T1, Ph2 >: Ph <: T1](other: T1): Boolean = x == other
-    def !!![T1, Ph2 >: Ph <: T1, Ph >: T <: T1](other: T1): Boolean = x == other
+    def ===[T1 >: T, Ph >: T <: T1, Ph2 >: Ph <: T1](other: T1): Boolean = x == other
+    def !!![T1 >: T, Ph2 >: Ph <: T1, Ph >: T <: T1](other: T1): Boolean = x == other
   }
 
   class A
