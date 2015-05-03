@@ -191,7 +191,7 @@ trait ConstraintHandling {
           val lower = constraint.lower(param)
           val upper = constraint.upper(param)
           if (lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass) ||
-            upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) println(i"INIT*** $pt")
+            upper.nonEmpty && !bounds.hi.isRef(defn.AnyClass)) constr.println(i"INIT*** $pt")
           lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
             upper.forall(addOneBound(_, bounds.lo, isUpper = false))
         }
