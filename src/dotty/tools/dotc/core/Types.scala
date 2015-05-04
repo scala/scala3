@@ -1283,9 +1283,7 @@ object Types {
           (lastDefRunId == NoRunId)
         } ||
         (lastSymbol.infoOrCompleter == ErrorType ||
-        defn.overriddenBySynthetic.contains(lastSymbol)
-          // for overriddenBySynthetic symbols a TermRef such as SomeCaseClass.this.hashCode
-          // might be rewritten from Object#hashCode to the hashCode generated at SyntheticMethods
+        sym.owner.derivesFrom(lastSymbol.owner) && sym.owner != lastSymbol.owner
       ),
         s"data race? overwriting symbol of ${this.show} / $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id} / ${sym.owner} / ${lastSymbol.owner} / ${ctx.phase}")
 
