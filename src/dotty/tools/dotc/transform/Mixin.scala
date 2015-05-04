@@ -72,7 +72,7 @@ class Mixin extends MiniPhaseTransform with SymTransformer { thisTransform =>
 
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (sym.is(Accessor, butNot = Deferred) && sym.owner.is(Trait))
-      sym.copySymDenotation(initFlags = sym.flags | Deferred)
+      sym.copySymDenotation(initFlags = sym.flags | Deferred).ensureNotPrivate
     else
       sym
 

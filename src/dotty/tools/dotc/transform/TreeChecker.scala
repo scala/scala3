@@ -80,6 +80,9 @@ class TreeChecker extends Phase with SymTransformer {
       testDuplicate(sym, seenClasses, "class")
     }
 
+    if (sym.is(Method) && sym.is(Deferred) && sym.is(Private))
+      assert(false, s"$sym is both Deferred and Private")
+
     checkCompanion(symd)
 
     symd

@@ -362,6 +362,7 @@ object RefChecks {
 
       def ignoreDeferred(member: SingleDenotation) =
         member.isType ||
+          member.symbol.is(SuperAccessor) || // not yet synthesized
           member.symbol.is(JavaDefined) && hasJavaErasedOverriding(member.symbol)
 
       // 2. Check that only abstract classes have deferred members
@@ -726,41 +727,13 @@ import RefChecks._
  *  todo: But RefChecks is not done yet. It's still a somewhat dirty port from the Scala 2 version.
  *  todo: move untrivial logic to their own mini-phases
  */
-class RefChecks extends MiniPhase with SymTransformer { thisTransformer =>
+class RefChecks extends MiniPhase { thisTransformer =>
 
   import tpd._
 
   override def phaseName: String = "refchecks"
 
   val treeTransform = new Transform(NoLevelInfo)
-
-  /** Ensure the following members are not private:
-   *   - term members of traits
-   *   - the primary constructor of a value class
-   *   - the parameter accessor of a value class
-   */
-  override def transformSym(d: SymDenotation)(implicit ctx: Context) = {
-    def mustBePublicInValueClass = d.isPrimaryConstructor || d.is(ParamAccessor)
-    def mustBePublicInTrait = !d.is(Method) || d.isSetter || d.is(ParamAccessor)
-    def mustBePublic = {
-      val cls = d.owner
-      (isDerivedValueClass(cls) && mustBePublicInValueClass ||
-      cls.is(Trait) && mustBePublicInTrait)
-    }
-    if ((d is PrivateTerm) && mustBePublic) notPrivate(d) else d
-  }
-
-  /** Make private terms accessed from different classes non-private.
-   *  Note: this happens also for accesses between class and linked module class.
-   *  If we change the scheme at one point to make static module class computations
-   *  static members of the companion class, we should tighten the condition below.
-   */
-  private def ensurePrivateAccessible(d: SymDenotation)(implicit ctx: Context) =
-    if (d.is(PrivateTerm) && d.owner != ctx.owner.enclosingClass)
-      notPrivate(d).installAfter(thisTransformer)
-
-  private def notPrivate(d: SymDenotation)(implicit ctx: Context) =
-    d.copySymDenotation(initFlags = d.flags | NotJavaPrivate)
 
   class Transform(currentLevel: RefChecks.OptLevelInfo = RefChecks.NoLevelInfo) extends TreeTransform {
     def phase = thisTransformer
@@ -812,14 +785,12 @@ class RefChecks extends MiniPhase with SymTransformer { thisTransformer =>
 
     override def transformIdent(tree: Ident)(implicit ctx: Context, info: TransformerInfo) = {
       checkUndesiredProperties(tree.symbol, tree.pos)
-      ensurePrivateAccessible(tree.symbol)
       currentLevel.enterReference(tree.symbol, tree.pos)
       tree
     }
 
     override def transformSelect(tree: Select)(implicit ctx: Context, info: TransformerInfo) = {
       checkUndesiredProperties(tree.symbol, tree.pos)
-      ensurePrivateAccessible(tree.symbol)
       tree
     }
 

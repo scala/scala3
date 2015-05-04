@@ -33,7 +33,7 @@ class PrivateToStatic extends MiniPhase with SymTransformer { thisTransform =>
   def shouldBeStatic(sd: SymDenotation)(implicit ctx: Context) =
     sd.current(ctx.withPhase(thisTransform)).asSymDenotation
       .is(PrivateMethod, butNot = Immovable) &&
-    (sd.owner.is(Trait) || sd.is(NotJavaPrivate))
+    sd.owner.is(Trait)
 
   override def transformSym(sd: SymDenotation)(implicit ctx: Context): SymDenotation =
     if (shouldBeStatic(sd)) {

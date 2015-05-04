@@ -6,4 +6,8 @@ trait Test {
 
   private def bar() = foo()
 
+  class Inner {
+    foo()
+  }
+
 }
