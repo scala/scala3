@@ -145,12 +145,15 @@ object TypeErasure {
    *   - For companion methods       : the erasure of their type with semiEraseVCs = false.
    *                                   The signature of these methods are used to keep a
    *                                   link between companions and should not be semi-erased.
+   *   - For Java-defined symbols:   : the erasure of their type with isJava = true,
+   *                                   semiEraseVCs = false. Semi-erasure never happens in Java.
    *   - For all other symbols       : the semi-erasure of their types, with
    *                                   isJava, isConstructor set according to symbol.
    */
   def transformInfo(sym: Symbol, tp: Type)(implicit ctx: Context): Type = {
-    val semiEraseVCs = !sym.isCompanionMethod
-    val erase = erasureFn(sym is JavaDefined, semiEraseVCs, sym.isConstructor, wildcardOK = false)
+    val isJava = sym is JavaDefined
+    val semiEraseVCs = !isJava && !sym.isCompanionMethod
+    val erase = erasureFn(isJava, semiEraseVCs, sym.isConstructor, wildcardOK = false)
 
     def eraseParamBounds(tp: PolyType): Type =
       tp.derivedPolyType(
