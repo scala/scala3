@@ -54,7 +54,7 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
           ctx.atPhase(thisTransformer.next) { implicit ctx =>
             // In Scala 2, extension methods are added before pickling so we should
             // not generate them again.
-            if (!(origClass is Scala2x)) {
+            if (!(origClass is Scala2x)) ctx.atPhase(thisTransformer) { implicit ctx =>
               for (decl <- origClass.classInfo.decls) {
                 if (isMethodWithExtension(decl))
                   decls1.enter(createExtensionMethod(decl, ref.symbol))
@@ -91,7 +91,6 @@ class ExtensionMethods extends MiniPhaseTransform with DenotTransformer with Ful
     else NoSymbol
 
   private def createExtensionMethod(imeth: Symbol, staticClass: Symbol)(implicit ctx: Context): TermSymbol = {
-    assert(ctx.phase == thisTransformer.next)
     val extensionName = extensionNames(imeth).head.toTermName
     val extensionMeth = ctx.newSymbol(staticClass, extensionName,
       imeth.flags | Final &~ (Override | Protected | AbsOverride),
