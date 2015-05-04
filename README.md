@@ -12,3 +12,12 @@ We expect that, over time, some of the new technologies explored in this project
 If you want to try it out, to get started have a look at https://github.com/lampepfl/dotty/wiki/Getting-Started.
 
 Developers mailing list is https://groups.google.com/forum/#!forum/dotty-internals.
+
+
+&nbsp;
+
+&nbsp;
+
+![YourKit](https://www.yourkit.com/images/yklogo.png) supports open source projects with its full-featured Java Profiler.
+
+YourKit, LLC is the creator of [YourKit Java Profiler](https://www.yourkit.com/java/profiler/index.jsp).
