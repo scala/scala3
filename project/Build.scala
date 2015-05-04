@@ -19,6 +19,13 @@ object DottyBuild extends Build {
   var partestLock: FileLock = null
 
   val defaults = Defaults.defaultSettings ++ Seq(
+    scalaVersion in Global := "2.11.5",
+    version in Global := "0.1-SNAPSHOT",
+    organization in Global := "org.scala-lang",
+    organizationName in Global := "LAMP/EPFL",
+    organizationHomepage in Global := Some(url("http://lamp.epfl.ch")),
+    homepage in Global := Some(url("https://github.com/lampepfl/dotty")),
+
     // set sources to src/, tests to test/ and resources to resources/
     scalaSource in Compile := baseDirectory.value / "src",
     javaSource in Compile := baseDirectory.value / "src",
