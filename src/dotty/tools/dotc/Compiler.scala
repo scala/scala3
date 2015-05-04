@@ -45,6 +45,7 @@ class Compiler {
            new ElimRepeated,
            new NormalizeFlags,
            new ExtensionMethods,
+           new ExpandSAMs,
            new TailRec),
       List(new PatternMatcher,
            new ExplicitOuter,

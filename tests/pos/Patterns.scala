@@ -94,3 +94,8 @@ object Patterns {
       t
   }
 }
+
+object NestedPattern {
+  val xss: List[List[String]] = ???
+  val List(List(x)) = xss
+}

@@ -647,7 +647,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     }
     def parentSymbols: List[Symbol] = toDenot(sym).info.parents.map(_.typeSymbol)
     def superClass: Symbol =  {
-      val t = toDenot(sym).superClass
+      val t = toDenot(sym).asClass.superClass
       if (t.exists) t
       else if (sym is Flags.ModuleClass) {
         // workaround #371
@@ -712,7 +712,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
      * All interfaces implemented by a class, except for those inherited through the superclass.
      *
      */
-    def superInterfaces: List[Symbol] = decorateSymbol(sym).superInterfaces
+    def superInterfaces: List[Symbol] = decorateSymbol(sym).directlyInheritedTraits
 
     /**
      * True for module classes of package level objects. The backend will generate a mirror class for

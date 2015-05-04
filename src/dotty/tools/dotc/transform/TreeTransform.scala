@@ -486,7 +486,14 @@ object TreeTransforms {
       var nxCopied = false
       var result = info.transformers
       var resultNX = info.nx
-      var i = mutationPlan(0) // if TreeTransform.transform() method didn't exist we could have used mutationPlan(cur)
+      var i = mutationPlan(cur)
+        // @DarkDimius You commented on the previous version
+        //
+        //     var i = mutationPlan(0) // if TreeTransform.transform() method didn't exist we could have used mutationPlan(cur)
+        //
+        // But we need to use `cur` or otherwise we call prepare actions preceding the
+        // phase that issued a transformFollowing. This can lead to "denotation not defined
+        // here" errors. Note that tests still pass with the current modified code.
       val l = result.length
       var allDone = i < l
       while (i < l) {

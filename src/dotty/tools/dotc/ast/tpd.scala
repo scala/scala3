@@ -210,7 +210,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.TypeDef(sym.name, TypeTree(sym.info)), sym)
 
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree], superArgs: List[Tree] = Nil)(implicit ctx: Context): TypeDef = {
-    val firstParent :: otherParents = cls.info.parents
+    val firstParentRef :: otherParentRefs = cls.info.parents
+    val firstParent = cls.typeRef.baseTypeWithArgs(firstParentRef.symbol)
     val superRef =
       if (cls is Trait) TypeTree(firstParent)
       else {
@@ -225,7 +226,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val constr = firstParent.decl(nme.CONSTRUCTOR).suchThat(constr => isApplicable(constr.info))
         New(firstParent, constr.symbol.asTerm, superArgs)
       }
-    val parents = superRef :: otherParents.map(TypeTree(_))
+    val parents = superRef :: otherParentRefs.map(TypeTree(_))
 
     val selfType =
       if (cls.classInfo.selfInfo ne NoType) ValDef(ctx.newSelfSym(cls))
@@ -244,6 +245,33 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.TypeDef(cls.name, impl), cls)
   }
 
+  /** An anonymous class
+   *
+   *      new parents { forwarders }
+   *
+   *  where `forwarders` contains forwarders for all functions in `fns`.
+   *  @param parents    a non-empty list of class types
+   *  @param fns        a non-empty of functions for which forwarders should be defined in the class.
+   *  The class has the same owner as the first function in `fns`.
+   *  Its position is the union of all functions in `fns`.
+   */
+  def AnonClass(parents: List[Type], fns: List[TermSymbol], methNames: List[TermName])(implicit ctx: Context): Block = {
+    val owner = fns.head.owner
+    val parents1 =
+      if (parents.head.classSymbol.is(Trait)) defn.ObjectClass.typeRef :: parents
+      else parents
+    val cls = ctx.newNormalizedClassSymbol(owner, tpnme.ANON_FUN, Synthetic, parents1,
+        coord = fns.map(_.pos).reduceLeft(_ union _))
+    val constr = ctx.newConstructor(cls, Synthetic, Nil, Nil).entered
+    def forwarder(fn: TermSymbol, name: TermName) = {
+      val fwdMeth = fn.copy(cls, name, Synthetic | Method).entered.asTerm
+      DefDef(fwdMeth, prefss => ref(fn).appliedToArgss(prefss))
+    }
+    val forwarders = (fns, methNames).zipped.map(forwarder)
+    val cdef = ClassDef(cls, DefDef(constr), forwarders)
+    Block(cdef :: Nil, New(cls.typeRef, Nil))
+  }
+
   // { <label> def while$(): Unit = if (cond) { body; while$() } ; while$() }
   def WhileDo(owner: Symbol, cond: Tree, body: List[Tree])(implicit ctx: Context): Tree = {
     val sym = ctx.newSymbol(owner, nme.WHILE_PREFIX, Flags.Label | Flags.Synthetic,
@@ -253,7 +281,6 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val rhs = If(cond, Block(body, call), unitLiteral)
     Block(List(DefDef(sym, rhs)), call)
   }
-
 
   def Import(expr: Tree, selectors: List[untpd.Tree])(implicit ctx: Context): Import =
     ta.assignType(untpd.Import(expr, selectors), ctx.newImportSymbol(ctx.owner, expr))
