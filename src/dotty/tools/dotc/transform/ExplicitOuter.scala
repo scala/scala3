@@ -213,7 +213,7 @@ object ExplicitOuter {
       case id: Ident =>
         id.tpe match {
           case ref @ TermRef(NoPrefix, _) =>
-            ref.symbol.is(Method) && isOuter(id.symbol.owner.enclosingClass)
+            ref.symbol.is(Hoistable) && isOuter(id.symbol.owner.enclosingClass)
             // methods will be placed in enclosing class scope by LambdaLift, so they will get
             // an outer path then.
           case _ => false
@@ -224,6 +224,8 @@ object ExplicitOuter {
        false
     }
   }
+
+  private final val Hoistable = Method | Lazy | Module
 
   /** The outer prefix implied by type `tpe` */
   private def outerPrefix(tpe: Type)(implicit ctx: Context): Type = tpe match {

@@ -37,7 +37,7 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
    */
   override def transformSym(sym: SymDenotation)(implicit ctx: Context): SymDenotation = {
     def ownerBecomesConstructor(owner: Symbol): Boolean =
-      (owner.isLocalDummy || owner.isTerm && !owner.is(Method | Lazy)) &&
+      (owner.isLocalDummy || owner.isTerm && !owner.is(MethodOrLazy)) &&
       owner.owner.isClass
     if (ownerBecomesConstructor(sym.owner))
       sym.copySymDenotation(owner = sym.owner.enclosingClass.primaryConstructor)
@@ -54,9 +54,8 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
    *  constructor.
    */
   private def mightBeDropped(sym: Symbol)(implicit ctx: Context) =
-    sym.is(Private, butNot = KeeperFlags) && !sym.is(MutableParamAccessor)
+    sym.is(Private, butNot = MethodOrLazy) && !sym.is(MutableParamAccessor)
 
-  private final val KeeperFlags = Method | Lazy
   private final val MutableParamAccessor = allOf(Mutable, ParamAccessor)
 
   override def transformTemplate(tree: Template)(implicit ctx: Context, info: TransformerInfo): Tree = {
