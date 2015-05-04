@@ -126,6 +126,17 @@ object Types {
         false
     }
 
+    /** Same as `isRef`, but follows more types: all type proxies as well as and- and or-types */
+    private[Types] def isWeakRef(sym: Symbol)(implicit ctx: Context): Boolean = stripTypeVar match {
+      case tp: NamedType => tp.info.isWeakRef(sym)
+      case tp: ClassInfo => tp.cls eq sym
+      case tp: Types.ThisType => tp.cls eq sym
+      case tp: TypeProxy => tp.underlying.isWeakRef(sym)
+      case tp: AndType => tp.tp1.isWeakRef(sym) && tp.tp2.isWeakRef(sym)
+      case tp: OrType => tp.tp1.isWeakRef(sym) || tp.tp2.isWeakRef(sym)
+      case _ => false
+    }
+
     /** Is this type an instance of a non-bottom subclass of the given class `cls`? */
     final def derivesFrom(cls: Symbol)(implicit ctx: Context): Boolean = this match {
       case tp: TypeRef =>
@@ -1216,27 +1227,17 @@ object Types {
             val sym = lastSymbol
             if (sym == null) loadDenot else denotOfSym(sym)
           case d: SymDenotation =>
-            if (   d.validFor.runId == ctx.runId
-                || ctx.stillValid(d)
-                || this.isInstanceOf[WithFixedSym]) d.current
+            if (this.isInstanceOf[WithFixedSym]) d.current
+            else if (d.validFor.runId == ctx.runId || ctx.stillValid(d))
+              if (prefix.isWeakRef(d.owner) || d.isConstructor) d.current
+              else recomputeMember(d) // symbol could have been overridden, recompute membership
             else {
               val newd = loadDenot
               if (newd.exists) newd else d.staleSymbolError
             }
           case d =>
-            if (d.validFor.runId != ctx.period.runId)
-              loadDenot
-            // The following branch was used to avoid an assertErased error.
-            // It's idea was to void keeping non-sym denotations after erasure
-            // since they violate the assertErased contract. But the problem is
-            // that when seen again in an earlier phase the denotation is
-            // still seen as a SymDenotation, whereas it should be a SingleDenotation.
-            // That's why the branch is disabled.
-            //
-            //   else if (ctx.erasedTypes && lastSymbol != null)
-            //   denotOfSym(lastSymbol)
-            else
-              d.current
+            if (d.validFor.runId != ctx.period.runId) loadDenot
+            else d.current
         }
         if (ctx.typerState.ephemeral) record("ephemeral cache miss: loadDenot")
         else if (d.exists) {
@@ -1245,13 +1246,24 @@ object Types {
           // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
           // is undefined after erasure.) We need to be able to do time travel back and
           // forth also in these cases.
-          setDenot(d)
+
+          // Don't use setDenot here; double binding checks can give spurious failures after erasure
+          lastDenotation = d
+          lastSymbol = d.symbol
           checkedPeriod = ctx.period
         }
         d
       }
       finally ctx.typerState.ephemeral |= savedEphemeral
     }
+
+    /** A member of `prefix` (disambiguated by `d.signature`) or, if none was found, `d.current`. */
+    private def recomputeMember(d: SymDenotation)(implicit ctx: Context): Denotation =
+      asMemberOf(prefix) match {
+        case NoDenotation => d.current
+        case newd: SingleDenotation => newd
+        case newd => newd.atSignature(d.signature).orElse(d.current)
+      }
 
     private def denotOfSym(sym: Symbol)(implicit ctx: Context): Denotation = {
       val d = sym.denot
@@ -1275,7 +1287,7 @@ object Types {
           // for overriddenBySynthetic symbols a TermRef such as SomeCaseClass.this.hashCode
           // might be rewritten from Object#hashCode to the hashCode generated at SyntheticMethods
       ),
-        s"data race? overwriting symbol of ${this.show} / $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id}")
+        s"data race? overwriting symbol of ${this.show} / $this / ${this.getClass} / ${lastSymbol.id} / ${sym.id} / ${sym.owner} / ${lastSymbol.owner} / ${ctx.phase}")
 
     protected def sig: Signature = Signature.NotAMethod
 
