@@ -2,9 +2,16 @@
 # This script is used for running compiler standalone(outside of sbt)
 # it's based on miniboxing script and paulp's launcher script
 
+# Try to autodetect real location of the script
+DOTTY_ROOT="`readlink \"$0\"`"             #  relative, symbolic links resolved
+if [[ "$DOTTY_ROOT" == "" ]]; then
+  DOTTY_ROOT="$0"
+fi
+DOTTY_ROOT="`dirname \"$DOTTY_ROOT\"`"
+DOTTY_ROOT="`( cd \"$DOTTY_ROOT\" && pwd )`/.."  # absolute
 
 # Configuration
-SCALA_VERSION=2.11.5
+SCALA_VERSION="`grep scalaVersion \"$DOTTY_ROOT\"/build.sbt|sed -n 's/.*\"\(.*\)\"/\1/'p`"
 SCALA_BINARY_VERSION=2.11
 SCALA_COMPILER_VERSION=2.11.5-20150416-144435-09c4a520e1
 DOTTY_VERSION=0.1
@@ -25,13 +32,6 @@ CompilerMain=dotty.tools.dotc.Main
 ReplMain=test.DottyRepl
 
 
-# Try to autodetect real location of the script
-DOTTY_ROOT="`readlink \"$0\"`"             #  relative, symbolic links resolved
-if [[ "$DOTTY_ROOT" == "" ]]; then
-  DOTTY_ROOT="$0"
-fi
-DOTTY_ROOT="`dirname \"$DOTTY_ROOT\"`"
-DOTTY_ROOT="`( cd \"$DOTTY_ROOT\" && pwd )`/.."  # absolute
 # autodetecting the compiler jar. this is location where sbt 'packages' it
 MAIN_JAR=$DOTTY_ROOT/target/scala-$SCALA_BINARY_VERSION/dotty_$SCALA_BINARY_VERSION-$DOTTY_VERSION-SNAPSHOT.jar
 TEST_JAR=$DOTTY_ROOT/target/scala-$SCALA_BINARY_VERSION/dotty_$SCALA_BINARY_VERSION-$DOTTY_VERSION-SNAPSHOT-tests.jar
