@@ -126,14 +126,16 @@ object Types {
         false
     }
 
-    /** Same as `isRef`, but follows more types: all type proxies as well as and- and or-types */
-    private[Types] def isWeakRef(sym: Symbol)(implicit ctx: Context): Boolean = stripTypeVar match {
-      case tp: NamedType => tp.info.isWeakRef(sym)
+    /** Does this type refer exactly to class symbol `sym`, instead of to a subclass of `sym`?
+     *  Implemented like `isRef`, but follows more types: all type proxies as well as and- and or-types
+     */
+    private[Types] def isTightPrefix(sym: Symbol)(implicit ctx: Context): Boolean = stripTypeVar match {
+      case tp: NamedType => tp.info.isTightPrefix(sym)
       case tp: ClassInfo => tp.cls eq sym
       case tp: Types.ThisType => tp.cls eq sym
-      case tp: TypeProxy => tp.underlying.isWeakRef(sym)
-      case tp: AndType => tp.tp1.isWeakRef(sym) && tp.tp2.isWeakRef(sym)
-      case tp: OrType => tp.tp1.isWeakRef(sym) || tp.tp2.isWeakRef(sym)
+      case tp: TypeProxy => tp.underlying.isTightPrefix(sym)
+      case tp: AndType => tp.tp1.isTightPrefix(sym) && tp.tp2.isTightPrefix(sym)
+      case tp: OrType => tp.tp1.isTightPrefix(sym) || tp.tp2.isTightPrefix(sym)
       case _ => false
     }
 
@@ -1229,7 +1231,7 @@ object Types {
           case d: SymDenotation =>
             if (this.isInstanceOf[WithFixedSym]) d.current
             else if (d.validFor.runId == ctx.runId || ctx.stillValid(d))
-              if (prefix.isWeakRef(d.owner) || d.isConstructor) d.current
+              if (prefix.isTightPrefix(d.owner) || d.isConstructor) d.current
               else recomputeMember(d) // symbol could have been overridden, recompute membership
             else {
               val newd = loadDenot
