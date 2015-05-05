@@ -750,7 +750,6 @@ trait Applications extends Compatibility { self: Typer =>
           case _ => args
         }
         if (argTypes.length != bunchedArgs.length) {
-          println(argTypes)
           ctx.error(d"wrong number of argument patterns for $qual; expected: ($argTypes%, %)", tree.pos)
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
