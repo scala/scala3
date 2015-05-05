@@ -11,10 +11,10 @@ import Decorators.StringInterpolators
 
 object ImportInfo {
   /** The import info for a root import from given symbol `sym` */
-  def rootImport(sym: Symbol)(implicit ctx: Context) = {
-    val expr = tpd.Ident(sym.valRef)
+  def rootImport(sym: () => Symbol)(implicit ctx: Context) = {
     val selectors = untpd.Ident(nme.WILDCARD) :: Nil
-    val imp = tpd.Import(expr, selectors)
+    def expr = tpd.Ident(sym().valRef)
+    def imp = tpd.Import(expr, selectors)
     new ImportInfo(imp.symbol, selectors, isRootImport = true)
   }
 }
@@ -25,7 +25,9 @@ object ImportInfo {
  *  @param   rootImport true if this is one of the implicit imports of scala, java.lang
  *                      or Predef in the start context, false otherwise.
  */
-class ImportInfo(val sym: Symbol, val selectors: List[untpd.Tree], val isRootImport: Boolean = false)(implicit ctx: Context) {
+class ImportInfo(symf: => Symbol, val selectors: List[untpd.Tree], val isRootImport: Boolean = false)(implicit ctx: Context) {
+
+  lazy val sym = symf
 
   /** The (TermRef) type of the qualifier of the import clause */
   def site(implicit ctx: Context): Type = {
