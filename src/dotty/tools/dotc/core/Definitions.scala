@@ -451,7 +451,6 @@ class Definitions {
 
   lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
 
-  lazy val overriddenBySynthetic = Set[Symbol](Any_equals, Any_hashCode, Any_toString, Product_canEqual)
   def isTupleType(tp: Type)(implicit ctx: Context) = {
     val arity = tp.dealias.argInfos.length
     arity <= MaxTupleArity && (tp isRef TupleClass(arity))
