@@ -51,9 +51,12 @@ object Applications {
     sels.takeWhile(_.exists).toList
   }
 
-  def getUnapplySelectors(tp: Type, args:List[untpd.Tree], pos: Position = NoPosition)(implicit ctx: Context): List[Type] =
-    if (defn.isProductSubType(tp) && args.length > 1) productSelectorTypes(tp, pos)
-    else tp :: Nil
+  def getUnapplySelectors(tp: Type, args: List[untpd.Tree], pos: Position = NoPosition)(implicit ctx: Context): List[Type] =
+    if (args.length > 1 && !(tp.derivesFrom(defn.SeqClass))) {
+      val sels = productSelectorTypes(tp, pos)
+      if (sels.length == args.length) sels
+      else tp :: Nil
+    } else tp :: Nil
 
   def unapplyArgs(unapplyResult: Type, unapplyFn:Tree, args:List[untpd.Tree], pos: Position = NoPosition)(implicit ctx: Context): List[Type] = {
 
@@ -747,6 +750,7 @@ trait Applications extends Compatibility { self: Typer =>
           case _ => args
         }
         if (argTypes.length != bunchedArgs.length) {
+          println(argTypes)
           ctx.error(d"wrong number of argument patterns for $qual; expected: ($argTypes%, %)", tree.pos)
           argTypes = argTypes.take(args.length) ++
             List.fill(argTypes.length - args.length)(WildcardType)
