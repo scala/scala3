@@ -164,7 +164,7 @@ class LabelDefs extends MiniPhaseTransform {
     }
   }
 
-  val collectLabelDefs = new TreeMap() {
+  object collectLabelDefs extends TreeMap() {
 
     // label calls from this DefDef
     var parentLabelCalls: mutable.Set[Tree] = new mutable.HashSet[Tree]()
