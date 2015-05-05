@@ -136,7 +136,7 @@ class tests extends CompilerTest {
   @Test def neg_instantiateAbstract = compileFile(negDir, "instantiateAbstract", xerrors = 8)
   @Test def neg_selfInheritance = compileFile(negDir, "selfInheritance", xerrors = 5)
 */
-  @Test def dotty = compileDir(sourceDir, "", "-deep" :: allowDeepSubtypes ++ twice) // note the -deep argument
+  @Test def dotty = compileDir(toolsDir, "", "-deep" :: allowDeepSubtypes ++ twice) // note the -deep argument
 /*
   @Test def dotc_ast = compileDir(dotcDir, "ast")
   @Test def dotc_config = compileDir(dotcDir, "config")
