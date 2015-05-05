@@ -24,6 +24,8 @@ abstract class VCIntCasePrototype(underlying: Int) extends VCIntPrototype(underl
 abstract class VCIntCompanion[T <: VCIntPrototype] extends ClassTag[T] {
   def box(underlying: Int): T
   final def unbox(boxed: T) = boxed.underlying
+
+  implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCIntArray(this, len).asInstanceOf[Array[T]]
 

@@ -24,6 +24,8 @@ abstract class VCObjectCasePrototype(underlying: Object) extends VCObjectPrototy
 abstract class VCObjectCompanion[T <: VCObjectPrototype] extends ClassTag[T] {
   def box(underlying: Object): T
   final def unbox(boxed: T) = boxed.underlying
+
+  implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCObjectArray(this, len).asInstanceOf[Array[T]]
 

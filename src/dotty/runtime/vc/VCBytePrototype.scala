@@ -24,6 +24,8 @@ abstract class VCByteCasePrototype(underlying: Byte) extends VCBytePrototype(und
 abstract class VCByteCompanion[T <: VCBytePrototype] extends ClassTag[T] {
   def box(underlying: Byte): T
   final def unbox(boxed: T) = boxed.underlying
+
+  implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCByteArray(this, len).asInstanceOf[Array[T]]
 

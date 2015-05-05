@@ -24,6 +24,8 @@ abstract class VCLongCasePrototype(underlying: Long) extends VCLongPrototype(und
 abstract class VCLongCompanion[T <: VCLongPrototype] extends ClassTag[T] {
   def box(underlying: Long): T
   final def unbox(boxed: T) = boxed.underlying
+
+  implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCLongArray(this, len).asInstanceOf[Array[T]]
 

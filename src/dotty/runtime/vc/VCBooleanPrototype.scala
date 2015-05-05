@@ -24,6 +24,8 @@ abstract class VCBooleanCasePrototype(underlying: Boolean) extends VCBooleanProt
 abstract class VCBooleanCompanion[T <: VCBooleanPrototype] extends ClassTag[T] {
   def box(underlying: Boolean): T
   final def unbox(boxed: T) = boxed.underlying
+
+  implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCBooleanArray(this, len).asInstanceOf[Array[T]]
 

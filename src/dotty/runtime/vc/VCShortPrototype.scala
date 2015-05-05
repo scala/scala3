@@ -24,6 +24,8 @@ abstract class VCShortCasePrototype(underlying: Short) extends VCShortPrototype(
 abstract class VCShortCompanion[T <: VCShortPrototype] extends ClassTag[T] {
   def box(underlying: Short): T
   final def unbox(boxed: T) = boxed.underlying
+
+  implicit def classTag: this.type = this
   override def newArray(len: Int): Array[T] =
     new VCShortArray(this, len).asInstanceOf[Array[T]]
 
