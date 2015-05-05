@@ -449,7 +449,9 @@ class Definitions {
 
   lazy val isPolymorphicAfterErasure = Set[Symbol](Any_isInstanceOf, Any_asInstanceOf, newRefArrayMethod)
 
-  lazy val RootImports = List[Symbol](JavaLangPackageVal, ScalaPackageVal, ScalaPredefModule, DottyPredefModule)
+  val RootImportFns = List[() => Symbol](() => JavaLangPackageVal, () => ScalaPackageVal, () => ScalaPredefModule, () => DottyPredefModule)
+
+  lazy val RootImports = RootImportFns.map(_())
 
   def isTupleType(tp: Type)(implicit ctx: Context) = {
     val arity = tp.dealias.argInfos.length

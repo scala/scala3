@@ -104,11 +104,9 @@ class Compiler {
       .setMode(Mode.ImplicitsEnabled)
       .setTyperState(new MutableTyperState(ctx.typerState, new ConsoleReporter()(ctx), isCommittable = true))
     ctx.definitions.init(start) // set context of definitions to start
-    start.setRunInfo(new RunInfo(start))
-    def addImport(ctx: Context, sym: Symbol) =
-      ctx.fresh.setImportInfo(ImportInfo.rootImport(sym)(ctx))
-    if (ctx.settings.YnoImports.value) start
-    else (start /: defn.RootImports)(addImport)
+    def addImport(ctx: Context, symf: () => Symbol) =
+      ctx.fresh.setImportInfo(ImportInfo.rootImport(symf)(ctx))
+    (start.setRunInfo(new RunInfo(start)) /: defn.RootImportFns)(addImport)
   }
 
   def reset()(implicit ctx: Context): Unit = {
