@@ -33,7 +33,6 @@ import StdNames.nme
 import NameOps._
 
 class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
-  trait NonExistentTree extends tpd.Tree
   type Symbol          = Symbols.Symbol
   type Type            = Types.Type
   type Tree            = tpd.Tree
@@ -68,8 +67,8 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
   type Modifiers       = tpd.Modifiers
   type Annotation      = Annotations.Annotation
   type ArrayValue      = tpd.JavaSeqLiteral
-  type ApplyDynamic    = NonExistentTree
-  type ModuleDef       = NonExistentTree
+  type ApplyDynamic    = Null
+  type ModuleDef       = Null
   type LabelDef        = tpd.DefDef
   type Closure         = tpd.Closure
 
