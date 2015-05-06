@@ -182,12 +182,13 @@ object TypeErasure {
     case tp: PolyParam =>
       !tp.derivesFrom(defn.ObjectClass) &&
       !tp.binder.resultType.isInstanceOf[JavaMethodType]
+    case tp: TypeAlias => isUnboundedGeneric(tp.alias)
+    case tp: TypeBounds => !tp.hi.derivesFrom(defn.ObjectClass)
     case tp: TypeProxy => isUnboundedGeneric(tp.underlying)
     case tp: AndType => isUnboundedGeneric(tp.tp1) || isUnboundedGeneric(tp.tp2)
     case tp: OrType => isUnboundedGeneric(tp.tp1) && isUnboundedGeneric(tp.tp2)
     case _ => false
   }
-
 
   /** The erased least upper bound is computed as follows
    *  - if both argument are arrays, an array of the lub of the element types
@@ -365,6 +366,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     val defn.ArrayType(elemtp) = tp
     def arrayErasure(tpToErase: Type) =
       erasureFn(isJava, semiEraseVCs = false, isConstructor, wildcardOK)(tpToErase)
+    println(s"erase array, elemtp = $elemtp")
     if (elemtp derivesFrom defn.NullClass) JavaArrayType(defn.ObjectType)
     else if (isUnboundedGeneric(elemtp)) defn.ObjectType
     else JavaArrayType(arrayErasure(elemtp))
