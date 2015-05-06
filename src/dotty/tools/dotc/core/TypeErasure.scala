@@ -366,7 +366,6 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     val defn.ArrayType(elemtp) = tp
     def arrayErasure(tpToErase: Type) =
       erasureFn(isJava, semiEraseVCs = false, isConstructor, wildcardOK)(tpToErase)
-    println(s"erase array, elemtp = $elemtp")
     if (elemtp derivesFrom defn.NullClass) JavaArrayType(defn.ObjectType)
     else if (isUnboundedGeneric(elemtp)) defn.ObjectType
     else JavaArrayType(arrayErasure(elemtp))
