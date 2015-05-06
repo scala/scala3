@@ -308,8 +308,12 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
 
   private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)], bcodeStore: BCodeHelpers)
                         (innerClasesStore: bcodeStore.BCInnerClassGen) = {
-    for ((name, value) <- assocs) {
-      emitArgument(av, name.toString(), value.asInstanceOf[Tree], bcodeStore)(innerClasesStore)
+    //for ((name, value) <- assocs) { // dotty deviation, does not work
+
+    for (nv <- assocs) {
+      val name = nv._1
+      val value = nv._2
+      emitArgument(av, name.toString, value.asInstanceOf[Tree], bcodeStore)(innerClasesStore)
     }
     av.visitEnd()
   }
@@ -802,7 +806,8 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
       def primitiveOrClassToBType(sym: Symbol): BType = {
         assert(sym.isClass, sym)
         assert(sym != ArrayClass || isCompilingArray, sym)
-        primitiveTypeMap.getOrElse(sym, storage.getClassBTypeAndRegisterInnerClass(sym.asInstanceOf[ct.int.Symbol]))
+        primitiveTypeMap.getOrElse(sym.asInstanceOf[ct.bTypes.coreBTypes.bTypes.int.Symbol],
+          storage.getClassBTypeAndRegisterInnerClass(sym.asInstanceOf[ct.int.Symbol])).asInstanceOf[BType]
       }
 
       /**
@@ -811,7 +816,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
        */
       def nonClassTypeRefToBType(sym: Symbol): ClassBType = {
         assert(sym.isType && isCompilingArray, sym)
-        ObjectReference
+        ObjectReference.asInstanceOf[ct.bTypes.ClassBType]
       }
 
       tp.widenDealias match {
@@ -856,7 +861,7 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
               "If possible, please file a bug on issues.scala-lang.org.")
 
           tp match {
-            case ThisType(ArrayClass)               => ObjectReference // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
+            case ThisType(ArrayClass)               => ObjectReference.asInstanceOf[ct.bTypes.ClassBType] // was introduced in 9b17332f11 to fix SI-999, but this code is not reached in its test, or any other test
             case ThisType(sym)                      => storage.getClassBTypeAndRegisterInnerClass(sym.asInstanceOf[ct.int.Symbol])
            // case t: SingletonType                 => primitiveOrClassToBType(t.classSymbol)
             case t: SingletonType                  => t.underlying.toTypeKind(ct)(storage)
