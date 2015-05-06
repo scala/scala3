@@ -464,7 +464,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
           // all potentially stored subpat binders
           val potentiallyStoredBinders = stored.unzip._1.toSet
           // compute intersection of all symbols in the tree `in` and all potentially stored subpat binders
-          new DeepFolder[Unit]((x: Unit, t:Tree) => if (potentiallyStoredBinders(t.symbol)) usedBinders += t.symbol).apply((), in)
+          new DeepFolder[Unit]((x: Unit, t:Tree) =>
+            if (potentiallyStoredBinders(t.symbol)) usedBinders += t.symbol).apply((), in)
 
           if (usedBinders.isEmpty) in
           else {
@@ -1440,9 +1441,8 @@ class PatternMatcher extends MiniPhaseTransform with DenotTransformer {thisTrans
       // require (nbSubPats > 0 && (!lastIsStar || isSeq))
       protected def subPatRefs(binder: Symbol): List[Tree] = {
         val refs = if (totalArity > 0 && isSeq) subPatRefsSeq(binder)
-        else if (defn.isProductSubType(binder.info)) productElemsToN(binder, totalArity)
+        else if (totalArity > 1 && !isSeq) productElemsToN(binder, totalArity)
         else ref(binder):: Nil
-        val refsSymbols = refs.map(_.symbol)  // just for debugging
         refs
       }
 
