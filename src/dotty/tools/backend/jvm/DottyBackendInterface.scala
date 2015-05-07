@@ -682,14 +682,14 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
     /** For currently compiled classes: All locally defined classes including local classes.
      *  The empty list for classes that are not currently compiled.
      */
-    def nestedClasses: List[Symbol] = localClasses(ctx.flattenPhase)
+    def nestedClasses: List[Symbol] = definedClasses(ctx.flattenPhase)
 
     /** For currently compiled classes: All classes that are declared as members of this class
      *  (but not inherited ones). The empty list for classes that are not currently compiled.
      */
-    def memberClasses: List[Symbol] = localClasses(ctx.lambdaLiftPhase)
+    def memberClasses: List[Symbol] = definedClasses(ctx.lambdaLiftPhase)
 
-    private def localClasses(phase: Phase) =
+    private def definedClasses(phase: Phase) =
       if (sym.isDefinedInCurrentRun)
         ctx.atPhase(phase) { implicit ctx =>
           toDenot(sym).info.decls.filter(_.isClass).toList
