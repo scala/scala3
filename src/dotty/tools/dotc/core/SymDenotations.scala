@@ -1650,7 +1650,7 @@ object SymDenotations {
     }
   }
 
-  object NoDenotation extends SymDenotation(
+  class NoDenotation extends SymDenotation(
     NoSymbol, NoSymbol, "<none>".toTermName, Permanent, NoType) {
     override def exists = false
     override def isTerm = false
@@ -1659,6 +1659,9 @@ object SymDenotations {
     override def computeAsSeenFrom(pre: Type)(implicit ctx: Context): SingleDenotation = this
     validFor = Period.allInRun(NoRunId) // will be brought forward automatically
   }
+
+  val NoDenotation = new NoDenotation
+  val NotDefinedHereDenotation = new NoDenotation
 
   // ---- Completion --------------------------------------------------------
 
