@@ -170,9 +170,9 @@ object TypeErasure {
     }
   }
 
-  /** Is `tp` an abstract type or polymorphic type parameter that has `Any`
-   *  as upper bound and that is not Java defined? Arrays of such types are
-   *  erased to `Object` instead of `ObjectArray`.
+  /** Is `tp` an abstract type or polymorphic type parameter that has `Any`, `AnyVal`,
+   *  or a universal trait as upper bound and that is not Java defined? Arrays of such types are
+   *  erased to `Object` instead of `Object[]`.
    */
   def isUnboundedGeneric(tp: Type)(implicit ctx: Context): Boolean = tp.dealias match {
     case tp: TypeRef =>
@@ -182,12 +182,13 @@ object TypeErasure {
     case tp: PolyParam =>
       !tp.derivesFrom(defn.ObjectClass) &&
       !tp.binder.resultType.isInstanceOf[JavaMethodType]
+    case tp: TypeAlias => isUnboundedGeneric(tp.alias)
+    case tp: TypeBounds => !tp.hi.derivesFrom(defn.ObjectClass)
     case tp: TypeProxy => isUnboundedGeneric(tp.underlying)
     case tp: AndType => isUnboundedGeneric(tp.tp1) || isUnboundedGeneric(tp.tp2)
     case tp: OrType => isUnboundedGeneric(tp.tp1) && isUnboundedGeneric(tp.tp2)
     case _ => false
   }
-
 
   /** The erased least upper bound is computed as follows
    *  - if both argument are arrays, an array of the lub of the element types
