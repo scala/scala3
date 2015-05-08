@@ -10,4 +10,8 @@ object varargs {
   g(Nil: _*)
   g(1)
   g()
+
+  def f(x: Int): Unit = ()
+  def f(x: Int*): Unit = ()
+  f(1)
 }

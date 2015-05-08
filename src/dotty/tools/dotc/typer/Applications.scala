@@ -849,7 +849,10 @@ trait Applications extends Compatibility { self: Typer =>
           case tp @ ExprType(tp1) => tp.derivedExprType(repeatedToSingle(tp1))
           case _ => if (tp.isRepeatedParam) tp.argTypesHi.head else tp
         }
-        isApplicable(alt2, tp1.paramTypes map repeatedToSingle, WildcardType) ||
+        val formals1 =
+          if (tp1.isVarArgsMethod && tp2.isVarArgsMethod) tp1.paramTypes map repeatedToSingle
+          else tp1.paramTypes
+        isApplicable(alt2, formals1, WildcardType) ||
         tp1.paramTypes.isEmpty && tp2.isInstanceOf[MethodOrPoly]
       case _ =>
         tp2 match {
@@ -878,7 +881,7 @@ trait Applications extends Compatibility { self: Typer =>
     def winsOwner2 = isDerived(owner2, owner1)
     def winsType2  = isAsSpecific(alt2, tp2, alt1, tp1)
 
-    implicits.println(i"isAsGood($alt1, $alt2)? $tp1 $tp2 $winsOwner1 $winsType1 $winsOwner2 $winsType2")
+    overload.println(i"isAsGood($alt1, $alt2)? $tp1 $tp2 $winsOwner1 $winsType1 $winsOwner2 $winsType2")
 
     // Assume the following probabilities:
     //
@@ -1013,6 +1016,7 @@ trait Applications extends Compatibility { self: Typer =>
     if (isDetermined(candidates)) candidates
     else narrowMostSpecific(candidates) match {
       case result @ (alt1 :: alt2 :: _) =>
+//        overload.println(i"ambiguous $alt1 $alt2")
         val deepPt = pt.deepenProto
         if (deepPt ne pt) resolveOverloaded(alts, deepPt, targs)
         else result
