@@ -109,10 +109,10 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
             tpe)
         val initTree = DefDef(initSymbol, initBody)
         val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, List()))
-        val methodBody = {
-          tpd.If(flag, EmptyTree, ref(initSymbol))
-          result.ensureApplied.ensureConforms(tpe)
-          }
+        val methodBody = tpd.If(flag.ensureApplied,
+          result.ensureApplied,
+          ref(initSymbol).ensureApplied).ensureConforms(tpe)
+
         val methodTree = DefDef(x.symbol.asTerm, methodBody)
         ctx.debuglog(s"found a lazy val ${x.show},\n rewrote with ${holderTree.show}")
         Thicket(holderTree, initTree, methodTree)
