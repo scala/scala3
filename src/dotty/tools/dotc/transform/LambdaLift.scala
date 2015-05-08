@@ -288,7 +288,13 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     private def liftLocals()(implicit ctx: Context): Unit = {
       for ((local, lOwner) <- liftedOwner) {
         val (newOwner, maybeStatic) =
-          if (lOwner is Package) (local.topLevelClass, JavaStatic)
+          if (lOwner is Package)  {
+            println(s"lifting $local encl class ${local.enclosingClass}")
+            if (local.enclosingClass.isStatic) // member of a static object
+              (local.enclosingClass, EmptyFlags)
+            else
+              (local.topLevelClass, JavaStatic)
+          }
           else (lOwner, EmptyFlags)
         local.copySymDenotation(
           owner = newOwner,
