@@ -60,7 +60,10 @@ object LazyVals {
   }.toArray
 
   @inline def getMonitor(obj: Object, fieldId: Int = 0) = {
-    var id = (java.lang.System.identityHashCode(obj) + fieldId) % base
+    var id = (
+      /*java.lang.System.identityHashCode(obj) + */ // should be here, but #548
+      fieldId) % base
+
     if (id < 0) id += base
     monitors(id)
   }
