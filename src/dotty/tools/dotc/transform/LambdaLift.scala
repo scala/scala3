@@ -66,7 +66,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
     /** A map from local methods and classes to the owners to which they will be lifted as members.
      *  For methods and classes that do not have any dependencies this will be the enclosing package.
      *  symbols with packages as lifted owners will subsequently represented as static
-     *  members of their toplevel class.
+     *  members of their toplevel class, unless their enclosing class was already static.
      */
     private val liftedOwner = new HashMap[Symbol, Symbol]
 
@@ -289,7 +289,6 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisTransform
       for ((local, lOwner) <- liftedOwner) {
         val (newOwner, maybeStatic) =
           if (lOwner is Package)  {
-            println(s"lifting $local encl class ${local.enclosingClass}")
             if (local.enclosingClass.isStatic) // member of a static object
               (local.enclosingClass, EmptyFlags)
             else
