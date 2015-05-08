@@ -678,8 +678,24 @@ class DottyBackendInterface()(implicit ctx: Context) extends BackendInterface{
 
     // members
     def primaryConstructor: Symbol = toDenot(sym).primaryConstructor
-    def nestedClasses: List[Symbol] = memberClasses //exitingPhase(currentRun.lambdaliftPhase)(sym.memberClasses)
-    def memberClasses: List[Symbol] = toDenot(sym).info.memberClasses.map(_.symbol).toList
+
+    /** For currently compiled classes: All locally defined classes including local classes.
+     *  The empty list for classes that are not currently compiled.
+     */
+    def nestedClasses: List[Symbol] = definedClasses(ctx.flattenPhase)
+
+    /** For currently compiled classes: All classes that are declared as members of this class
+     *  (but not inherited ones). The empty list for classes that are not currently compiled.
+     */
+    def memberClasses: List[Symbol] = definedClasses(ctx.lambdaLiftPhase)
+
+    private def definedClasses(phase: Phase) =
+      if (sym.isDefinedInCurrentRun)
+        ctx.atPhase(phase) { implicit ctx =>
+          toDenot(sym).info.decls.filter(_.isClass).toList
+        }
+      else Nil
+
     def annotations: List[Annotation] = Nil
     def companionModuleMembers: List[Symbol] =  {
       // phase travel to exitingPickler: this makes sure that memberClassesOf only sees member classes,
