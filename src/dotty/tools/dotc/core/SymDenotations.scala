@@ -478,9 +478,16 @@ object SymDenotations {
       }
     }
 
-    /** Is this a user defined "def" method? Excluded are accessors and anonymous functions. */
-    final def isSourceMethod(implicit ctx: Context) =
-      this.is(Method, butNot = AccessorOrLabel) && !isAnonymousFunction
+    /** Is this a "real" method? A real method is a method which is:
+     *  - not an accessor
+     *  - not a label
+     *  - not an anonymous function
+     *  - not a companion method
+     */
+    final def isRealMethod(implicit ctx: Context) =
+      this.is(Method, butNot = AccessorOrLabel) &&
+        !isAnonymousFunction &&
+        !isCompanionMethod
 
     /** Is this a setter? */
     final def isGetter(implicit ctx: Context) =

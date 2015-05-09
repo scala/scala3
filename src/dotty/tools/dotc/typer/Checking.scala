@@ -312,7 +312,7 @@ trait Checking {
           def doubleDefError(decl: Symbol, other: Symbol): Unit = {
             def ofType = if (decl.isType) "" else d": ${other.info}"
             def explanation =
-              if (!decl.isSourceMethod) ""
+              if (!decl.isRealMethod) ""
               else "\n (both definitions have the same erased type signature)"
             ctx.error(d"$decl is already defined as $other$ofType$explanation", decl.pos)
           }

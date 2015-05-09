@@ -708,7 +708,7 @@ class Typer extends Namer with TypeAssigner with Applications with Implicits wit
         ctx.error("return outside method definition", tree.pos)
         (EmptyTree, WildcardType)
       }
-      else if (owner != cx.outer.owner && owner.isSourceMethod) {
+      else if (owner != cx.outer.owner && owner.isRealMethod) {
         if (owner.isCompleted) {
           val from = Ident(TermRef(NoPrefix, owner.asTerm))
           val proto = returnProto(owner, cx.scope)
