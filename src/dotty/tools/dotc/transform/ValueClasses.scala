@@ -20,7 +20,7 @@ object ValueClasses {
   }
 
   def isMethodWithExtension(d: SymDenotation)(implicit ctx: Context) =
-    d.isSourceMethod &&
+    d.isRealMethod &&
       isDerivedValueClass(d.owner) &&
       !d.isConstructor &&
       !d.is(SuperAccessor) &&

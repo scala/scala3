@@ -297,9 +297,9 @@ object RefChecks {
           "(this rule is designed to prevent ``accidental overrides'')")
       } else if (other.isStable && !member.isStable) { // (1.4)
         overrideError("needs to be a stable, immutable value")
-      } else if (member.is(Lazy) && !other.isSourceMethod && !other.is(Deferred | Lazy)) {
+      } else if (member.is(Lazy) && !other.isRealMethod && !other.is(Deferred | Lazy)) {
         overrideError("cannot override a concrete non-lazy value")
-      } else if (other.is(Lazy, butNot = Deferred) && !other.isSourceMethod && !member.is(Lazy)) {
+      } else if (other.is(Lazy, butNot = Deferred) && !other.isRealMethod && !member.is(Lazy)) {
         overrideError("must be declared lazy to override a concrete lazy value")
       } else if (other.is(Deferred) && member.is(Macro) && member.extendedOverriddenSymbols.forall(_.is(Deferred))) { // (1.9)
         overrideError("cannot be used here - term macros cannot override abstract methods")
@@ -1132,7 +1132,7 @@ class RefChecks extends MiniPhase { thisTransformer =>
       }
 
       val doTransform =
-        sym.isSourceMethod &&
+        sym.isRealMethod &&
         sym.isCase &&
         sym.name == nme.apply &&
         isClassTypeAccessible(tree)

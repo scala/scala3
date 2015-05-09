@@ -131,7 +131,7 @@ object CheckTrees {
       check(guard.tpe.derivesFrom(defn.BooleanClass))
     case Return(expr, from) =>
       check(expr.isValue); check(from.isTerm)
-      check(from.tpe.termSymbol.isSourceMethod)
+      check(from.tpe.termSymbol.isRealMethod)
     case Try(block, handler, finalizer) =>
       check(block.isTerm)
       check(finalizer.isTerm)
