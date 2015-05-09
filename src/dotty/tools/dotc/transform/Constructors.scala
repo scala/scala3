@@ -32,6 +32,17 @@ class Constructors extends MiniPhaseTransform with SymTransformer { thisTransfor
   override def phaseName: String = "constructors"
   override def runsAfter: Set[Class[_ <: Phase]] = Set(classOf[Erasure])
 
+
+  /** All initializers should be moved into constructor
+    */
+  override def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+    tree match {
+      case t: ValDef if ((t.rhs ne EmptyTree) && !(t.symbol is Flags.Lazy) && t.symbol.owner.isClass) =>
+        assert(false, i"$t initializers should be moved to constructors")
+      case _ =>
+    }
+  }
+
   /** Symbols that are owned by either <local dummy> or a class field move into the
    *  primary constructor.
    */

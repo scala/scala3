@@ -40,13 +40,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def homogenize(tp: Type): Type =
     if (homogenizedView)
       tp match {
-        case tp: ThisType if tp.cls.is(Package) && !tp.cls.isEffectiveRoot => 
+        case tp: ThisType if tp.cls.is(Package) && !tp.cls.isEffectiveRoot =>
           ctx.requiredPackage(tp.cls.fullName).termRef
-        case tp: TypeVar if tp.isInstantiated => 
+        case tp: TypeVar if tp.isInstantiated =>
           homogenize(tp.instanceOpt)
-        case AndType(tp1, tp2) => 
+        case AndType(tp1, tp2) =>
           homogenize(tp1) & homogenize(tp2)
-        case OrType(tp1, tp2) => 
+        case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
         case _ =>
           val tp1 = tp.simplifyApply
@@ -390,7 +390,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(const: Constant): Text = const.tag match {
     case StringTag => "\"" + escapedString(const.value.toString) + "\""
-    case ClazzTag => "classOf[" ~ toText(const.tpe.firstBaseArgInfo(defn.ClassClass)) ~ "]"
+    case ClazzTag => "classOf[" ~ toText(const.typeValue.classSymbol) ~ "]"
     case CharTag => s"'${escapedChar(const.charValue)}'"
     case LongTag => const.longValue.toString + "L"
     case EnumTag => const.symbolValue.name.toString

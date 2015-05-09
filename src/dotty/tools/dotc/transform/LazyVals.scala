@@ -59,20 +59,20 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
       }
     }
 
-    /** Append offset fields to companion objects
-     */
-    override def transformTypeDef(tree: TypeDef)(implicit ctx: Context, info: TransformerInfo): Tree = {
-      if (!tree.symbol.isClass) tree
-      else {
-        appendOffsetDefs.get(tree.symbol) match {
-          case None => tree
-          case Some(data) =>
-            val template = tree.rhs.asInstanceOf[Template]
-            val newTemplate = cpy.Template(template)(body = data.defs ::: template.body)
-            cpy.TypeDef(tree)(rhs = newTemplate) //(ctx.withMode(Mode.FutureDefsOK))
-        }
-      }
+
+  /** Append offset fields to companion objects
+    */
+  override def transformTemplate(template: tpd.Template)(implicit ctx: Context, info: TransformerInfo): tpd.Tree = {
+    val cls = ctx.owner.asClass
+
+    appendOffsetDefs.get(cls) match {
+      case None => template
+      case Some(data) =>
+        cpy.Template(template)(body = data.defs ::: template.body)
     }
+
+  }
+
     /** Replace a local lazy val inside a method,
       * with a LazyHolder from
       * dotty.runtime(eg dotty.runtime.LazyInt)
@@ -109,10 +109,10 @@ class LazyVals extends MiniPhaseTransform with IdentityDenotTransformer {
             tpe)
         val initTree = DefDef(initSymbol, initBody)
         val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, List()))
-        val methodBody = {
-          tpd.If(flag, EmptyTree, ref(initSymbol))
-          result.ensureApplied.ensureConforms(tpe)
-          }
+        val methodBody = tpd.If(flag.ensureApplied,
+          result.ensureApplied,
+          ref(initSymbol).ensureApplied).ensureConforms(tpe)
+
         val methodTree = DefDef(x.symbol.asTerm, methodBody)
         ctx.debuglog(s"found a lazy val ${x.show},\n rewrote with ${holderTree.show}")
         Thicket(holderTree, initTree, methodTree)
